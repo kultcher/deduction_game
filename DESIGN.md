@@ -254,6 +254,13 @@ affecting the game, e.g. the final day's vote is a **Séance** in which the dead
   evening** before the kill (75% accurate in the prototype, otherwise a random other block).
   This rewards tracking evening whereabouts. The trace card must state this rule plainly
   (the prototype's card wrongly implies home/work).
+- **Known issue (evening shifts):** because the trace uses the killer's *evening* block, a
+  demon who works an evening shift has a fixed, publicly known evening block, so traces
+  converge on their workplace more reliably than for other demons. **(proposed fix, with
+  paths)** decouple the trace from day schedules: at night the killer walks a path from a
+  starting point (home or a deliberate detour) to the victim; evidence is drawn from that
+  path, which the demon chooses (a cunning demon routes through the scapegoat's block).
+  Evening whereabouts then matter as alibis rather than as trace input.
 - Conflict to watch: if every evening position were automatically recorded, the trace
   would point straight at a suspect. See the visibility proposal above.
 

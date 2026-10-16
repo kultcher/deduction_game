@@ -243,7 +243,8 @@ func _resolve_go(target: String) -> String:
 		return _best_location_on(b)
 	var n = find_npc(target)
 	if n != null:
-		if n.working or n.busy_with != "":
+		# Exact spot known if they're working, in a visible conversation, or nearby.
+		if n.working or n.busy_with != "" or (moved and w.loc_block(n.loc) == w.loc_block(loc)):
 			return n.loc
 		if not n.at_home():
 			return _best_location_on(w.loc_block(n.loc))
@@ -260,6 +261,7 @@ func _best_location_on(b: String) -> String:
 func _day_command(verb: String, rest: String) -> void:
 	match verb:
 		"go", "visit", "g":
+			var sought = find_npc(rest) if find_location(rest) == "" and find_block(rest) == "" else null
 			var l = _resolve_go(rest)
 			if l == "":
 				var n = find_npc(rest)
@@ -288,14 +290,30 @@ func _day_command(verb: String, rest: String) -> void:
 			w.player_loc = l
 			w.dlog.add("player_move", "player", "", {"loc": l})
 			_observe()
+			if sought != null and sought.loc != l and w.loc_block(sought.loc) == w.loc_block(l):
+				_narr("%s isn't here, but you spot them at %s. ('talk %s' walks you over, using your free move.)" %
+					[sought.name, w.loc_name(sought.loc), sought.name.to_lower()])
 		"talk", "t":
 			if not moved:
 				_err("First choose where to spend this phase ('go <place>').")
 				return
 			var n = find_npc(rest)
-			if n == null or n.loc != loc:
-				_err("%s isn't here." % (rest if n == null else n.name))
+			if n == null:
+				_err("Talk to whom?")
 				return
+			if n.loc != loc:
+				if not n.at_home() and w.loc_block(n.loc) == w.loc_block(loc) and not free_move_used:
+					free_move_used = true
+					loc = n.loc
+					w.player_loc = loc
+					w.dlog.add("player_move", "player", "", {"loc": loc, "free_move": true, "via": "talk"})
+					_narr("You walk over to %s." % w.loc_name(loc))
+				elif not n.at_home() and w.loc_block(n.loc) == w.loc_block(loc):
+					_err("%s is at %s, and you've already used your free move this %s." % [n.name, w.loc_name(n.loc), w.phase_name().to_lower()])
+					return
+				else:
+					_err("%s isn't here." % n.name)
+					return
 			if n.busy_with != "":
 				_err("%s is deep in conversation with %s." % [n.name, w.by_id[n.busy_with].name])
 				return

@@ -55,7 +55,10 @@ Names and places accept prefixes (`talk bart`, `go tav`). Crime scenes appear as
 locations (`go scene_greta`, or `go greta`).
 
 **The town.** Each phase opens with a view of the town: people at work and pairs deep in
-conversation are shown exactly; everyone else only by block. Workers can always be found
+conversation are shown exactly; everyone else only by block. `go <person>` takes you to
+their exact spot if you know it (working, in conversation, or visible nearby); otherwise
+to a location on their block. If they turn out to be next door, `talk <name>` walks you
+over using your free move. Workers can always be found
 at work during their (known) shift. People in conversation can't be talked to.
 
 **Asking about gifts.** `ask gift` answers at one of four levels depending on the NPC's
