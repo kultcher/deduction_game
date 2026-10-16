@@ -199,10 +199,10 @@ func _decide() -> String:
 			return "ask about " + others[rng.randi_range(0, others.size() - 1)].id
 		"meeting":
 			var ts = _top_suspect()
-			if not g.player_done and ts[0] != null and ts[1] >= 1.0 and w.day >= 2 and w.can_nominate("player", ts[0].id) == "":
+			if ts[0] != null and ts[1] >= 1.0 and w.day >= 2 and w.can_nominate("player", ts[0].id) == "":
 				if w.meeting["block"] != ts[0].id:
 					return "nominate " + ts[0].id
-			return "done"
+			return "done" if g.town_quiet else "wait"
 		"nomination":
 			var sc = _scores()
 			var nm: Dictionary = w.meeting["pending"]

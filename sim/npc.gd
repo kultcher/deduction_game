@@ -49,6 +49,7 @@ var npc_trust = {}
 var pressure = 0.0
 var pressed_today = 0
 var talked_day = -1      # last day the player had a conversation with them
+var cleared = {}         # ids their own Seer reading said are not the demon
 var heard = {}           # card text -> times the player has used it on them (diminishing returns)
 
 ## Beliefs: list of dictionaries, e.g. {kind:"saw", who, loc, block, day, phase}

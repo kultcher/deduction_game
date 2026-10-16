@@ -124,7 +124,9 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float) ->
 						"%s sight said one of them is the demon" % src_name, not own)
 			else:
 				for i in others:
-					adjust(w, listener, i, -0.3 * weight, tag + ": seer no", "", not own)
+					adjust(w, listener, i, (-0.45 if own else -0.3) * weight, tag + ": seer no", "", not own)
+					if own:
+						listener.cleared[i] = true
 		"nightwatch":
 			var seen: Array = d["seen"]
 			for i in seen:
@@ -383,8 +385,10 @@ static func next_nomination(w):
 			if t.id in m["nominated"]:
 				continue
 			var s = susp(n, t.id)
+			if n.cleared.has(t.id):
+				s -= 0.2  # their own sight said this person is no demon
 			if s < thr:
-				break
+				continue
 			if block != "" and susp(n, block) >= s:
 				break  # content with who is already on the block
 			cands.append({"nominee": t.id, "by": n.id, "score": s,
@@ -597,8 +601,7 @@ static func _gossip_share(w, n, topic: String) -> int:
 	if g < 0.2 and n.pressure < 0.5:
 		w.dlog.think(n.id, topic, "Gossip %.2f: none of my business (pressure %.2f)." % [g, n.pressure])
 		return 0
-	var limit = 1 + int(round((g + n.pressure * 0.5) * 6.0))
-	return limit
+	return 1 + int(round((g + n.pressure * 0.5) * 3.0))
 
 static func answer_night(w, n) -> Dictionary:
 	on_question(w, n)
@@ -679,20 +682,28 @@ static func answer_today(w, n) -> Dictionary:
 	if limit == 0:
 		lines.append(say(n, "Who goes where is none of my business."))
 		return {"lines": lines, "facts": facts}
+	# Memory: they recall only their most recent few sightings (more with Insight), one per person.
+	var memory = 2 + int(round(trait_of(n, "insight") * 4.0))
 	var seen: Array = n.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] != C.NIGHT and b["day"] >= w.day - 1)
-	var dedup = {}
-	for b in seen:
+	var recalled: Array = []
+	var people = {}
+	for i in range(seen.size() - 1, -1, -1):
+		var b: Dictionary = seen[i]
+		if people.has(b["who"]):
+			continue
 		if n.is_evil() and Evil.is_teammate(w, n, b["who"]):
 			continue
-		dedup["%s|%d|%d" % [b["who"], b["day"], b["phase"]]] = b
-	if dedup.is_empty():
+		people[b["who"]] = true
+		recalled.append(b)
+		if recalled.size() >= memory:
+			break
+	if recalled.is_empty():
 		lines.append(say(n, "Nobody worth mentioning."))
 		return {"lines": lines, "facts": facts}
-	var keys: Array = dedup.keys()
-	keys.reverse()
+	w.dlog.think(n.id, "share_sightings", "Recalls %d recent sighting(s) (memory %d from insight), shares up to %d (gossip)." %
+		[recalled.size(), memory, limit])
 	var parts: Array = []
-	for k in keys.slice(0, limit):
-		var b: Dictionary = dedup[k]
+	for b in recalled.slice(0, limit):
 		var who = w.by_id[b["who"]]
 		var when = "%s %s" % ["yesterday" if b["day"] < w.day else "this", C.PHASES[b["phase"]].to_lower()]
 		var where: String = w.loc_name(b["loc"]) if b["loc"] != "" else C.block_name(b["block"])

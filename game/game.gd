@@ -19,7 +19,7 @@ var talk_with = null
 var questions_left = 0
 var board: Array = []
 var _card_keys = {}
-var player_done = false    # player has closed their nominations for today
+var town_quiet = false     # the town has had its say since the last nomination (allows 'done')
 var statement_used = false # player's one statement on the pending nomination
 var log_dir = "user://logs"
 var log_paths: Array = []
@@ -519,7 +519,7 @@ func _close_conversation() -> void:
 
 func _start_meeting() -> void:
 	state = "meeting"
-	player_done = false
+	town_quiet = false
 	_hdr("Day %d: the town meeting" % w.day)
 	var testimony: Array = w.begin_meeting()
 	if testimony.is_empty():
@@ -528,15 +528,12 @@ func _start_meeting() -> void:
 		_lines(t["lines"])
 		_facts(t["facts"])
 	_narr("")
-	_prompt("Nominations are open (%d votes needed of %d). 'nominate <name>', 'wait' to let the town speak, or 'done' to close your nominations." %
+	_prompt("Nominations are open (%d votes needed of %d). 'nominate <name>', or 'wait' to let the town speak." %
 		[w.vote_threshold(), w.voter_count()])
 
 func _meeting_command(verb: String, rest: String) -> void:
 	match verb:
 		"nominate", "nom":
-			if player_done:
-				_err("You've closed your nominations for today.")
-				return
 			var n = find_npc(rest)
 			if n == null:
 				_err("Nominate whom?")
@@ -546,21 +543,22 @@ func _meeting_command(verb: String, rest: String) -> void:
 				_err(why)
 				return
 			w.open_nomination("player", n.id)
+			town_quiet = false
 			_narr("You stand and nominate %s." % n.name)
 			_show_nomination()
 		"wait":
 			if not _next_npc_nomination():
+				town_quiet = true
 				_narr("No one else rises to nominate.")
-				if w.meeting["block"] == "" and not player_done:
-					_prompt("'nominate <name>' or 'done'.")
-				elif not player_done:
-					_prompt("'nominate <name>' or 'done' to close the meeting.")
+				if "player" in w.meeting["nominators"]:
+					_prompt("'done' to close the meeting.")
 				else:
-					_close_meeting()
+					_prompt("'nominate <name>', or 'done' to close the meeting.")
 		"done", "pass", "close":
-			player_done = true
-			if not _next_npc_nomination():
-				_close_meeting()
+			if not town_quiet:
+				_err("Let the town have its say first ('wait').")
+				return
+			_close_meeting()
 		_:
 			_err("At the meeting: nominate <name> | wait | done")
 
@@ -569,6 +567,7 @@ func _next_npc_nomination() -> bool:
 	if nm == null:
 		return false
 	w.open_nomination(nm["by"], nm["nominee"], nm["reason"])
+	town_quiet = false
 	_line(nm["speech"])
 	_show_nomination()
 	return true
@@ -655,11 +654,7 @@ func _nomination_command(verb: String, rest: String) -> void:
 
 func _after_vote() -> void:
 	state = "meeting"
-	if player_done:
-		if not _next_npc_nomination():
-			_close_meeting()
-		return
-	_prompt("'nominate <name>', 'wait' for the town, or 'done'.")
+	_prompt("%s'wait' for the town." % ("" if "player" in w.meeting["nominators"] else "'nominate <name>', or "))
 
 func _close_meeting() -> void:
 	var ex = w.end_meeting()
@@ -771,7 +766,7 @@ func _help() -> String:
   Talking : ask gift | ask night | ask today | ask about <name>
             tell <suspect> <card#>   (make a case using a card from your board)
             bye
-  Meeting : nominate <name> | wait (let the town nominate) | done (close your nominations)
+  Meeting : nominate <name> | wait (let the town nominate) | done (close, once the town is quiet)
   Voting  : defend | accuse (one statement) | clemency (once per case) | vote yes | vote no
   Night   : ward <name> (once per case) | vigil <block> | sleep
 Each day phase (morning, afternoon, evening) allows one action. A conversation allows 3 questions.

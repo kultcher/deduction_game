@@ -46,7 +46,7 @@ Each day has three phases (morning, afternoon, evening), then a town meeting, th
 | Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `roles`, `tools`, `help`, `log` |
 | Day phase | `go <place / block / person>`, optionally one more `go` within the same block, then one action: `talk <name>`, `search`, `gossip` (tavern only), `wait` |
 | Talking (3 questions) | `ask gift`, `ask night`, `ask today`, `ask about <name>`, `tell <suspect> <card#>`, `bye` |
-| Town meeting | `nominate <name>` (once), `wait` (let the town nominate), `done` (close your nominations) |
+| Town meeting | `nominate <name>` (once), `wait` (let the town nominate), `done` (close the meeting, once a `wait` finds no more nominations) |
 | On a nomination | `defend` or `accuse` (one statement), `clemency` (once per case), `vote yes` / `vote no` |
 | Night | `ward <name>` (once per case), `vigil <block>`, `sleep` |
 | After the case | `grimoire`, `grimoire lies` |

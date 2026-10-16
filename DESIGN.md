@@ -596,6 +596,26 @@ player). Both use the same roll (lower Insight, more often vague).
   asking `info` before `gift` repeats the answer (resolved by the unified question);
   "as I said" is used for claims never said to the player.
 
+- **Playtest 4 (case 90028):** strong "figured it out, too late" feeling. Findings:
+  - **Poison is exploitable as inversion.** Poisoned readings are currently the *opposite*
+    of the truth (Seer yes/no flips; Hearthwitch always a wrong count; Night Watch always a
+    wrong name). A player who suspects poison can invert the reading and get perfect info.
+    **(proposed)** Poisoned readings become *arbitrary*, as in BotC: drawn from plausible
+    results, which can coincide with the truth; later chosen by the storyteller/director.
+  - **Players want to cite evidence in meeting statements** (tried `accuse 30`). Until
+    `convince` (stage 3), `accuse`/`defend` could optionally take a card, evaluated by every
+    voter like a private argument but weaker. **(proposed)**
+  - **Key info stayed private.** The Gravedigger learned Fenwick was the Veteran (which,
+    with the Seer's night-0 pair, pointed at the demon) but never went public before being
+    killed. Working as intended (privacy, caution), but it argues for NPC-to-NPC sharing and
+    approaches in stage 2.
+  - Fixed: sighting answers were a long dump (now memory scales with Insight, sharing with
+    Gossip); `done` closed the meeting before the town spoke (now requires a quiet `wait`);
+    a Seer could nominate someone their own sight cleared (own "no" now weighs more and
+    raises their bar to nominate that person). `ask info` remains an alias of `ask gift`.
+- **Planned (stage 2): ask about a role.** `ask about <role>`: a trusting, gossipy NPC who
+  has heard from (or about) that role may share who claims it and what they said.
+
 ## Open questions
 
 - Is unlimited Vigil too strong?
