@@ -68,6 +68,16 @@ var revealed_traits = {}     # trait -> tier string
 var secret_known = false     # the player learned their secret from them
 var secret_spread = false    # the player used it against them
 
+## Social knowledge (stage 2). Every item records where it came from.
+var hearsay: Array = []      # facts heard from other NPCs: {kind, about, from (original source), via, day, ...}
+var known_claims = {}        # npc id -> {role, readings: [entries], via}
+var known_secrets = {}       # owner id -> who told them (owner id if confided directly)
+var player_cases: Array = [] # cards the player used to make a case to them
+var told_to = {}             # "listener|key" -> true: what they've already told whom
+var secret_spread_by_npc = false   # someone other than the player spread their secret
+## Evil only: what this member knows (own observations and what they were told).
+var intel = {}               # key -> {kind, about, score, why, day, from}
+
 ## Seer only: the good NPC who falsely reads as demon.
 var red_herring = ""
 

@@ -555,7 +555,7 @@ player). Both use the same roll (lower Insight, more often vague).
    schedules/availability with the in-block move, unified gift question with tiers and
    hints, trust building/reactions/ceiling, BotC-style one-at-a-time nominations, the
    two-slot toolbox (Ward, Clemency), demon retargeting, and the opinion-template fix.
-2. **The town talks (text).** NPC-to-NPC conversations and belief provenance; evil
+2. **The town talks (text). [built]** NPC-to-NPC conversations and belief provenance; evil
    coordination replacing hidden-state reads; NPC approaches (incl. busybody secrets);
    pressure and paranoia. Bot runs to check evil isn't too weak; playtest round.
 3. **The case board (thin Godot UI).** `convince` with conclusions, contradiction cards and
@@ -613,8 +613,15 @@ player). Both use the same roll (lower Insight, more often vague).
     Gossip); `done` closed the meeting before the town spoke (now requires a quiet `wait`);
     a Seer could nominate someone their own sight cleared (own "no" now weighs more and
     raises their bar to nominate that person). `ask info` remains an alias of `ask gift`.
-- **Planned (stage 2): ask about a role.** `ask about <role>`: a trusting, gossipy NPC who
+- **Built (stage 2): ask about a role.** `ask about <role>`: a trusting, gossipy NPC who
   has heard from (or about) that role may share who claims it and what they said.
+
+- **Stage 2 balance notes:** evil sharing and approaches use exactly the same willingness
+  formulas as good NPCs (otherwise evil was suspiciously forthcoming and a third of all
+  shares were lies). Evil's sense of public "heat" ignores its own team's accusations and
+  readings (otherwise it talked itself into early nominations). Gifts aren't leaked by
+  reasons: an NPC who hasn't claimed keeps a reason vague if it comes from their own reading.
+  Bot win rate stays ~30-40%, in line with stage 1.
 
 ## Open questions
 

@@ -45,9 +45,10 @@ Each day has three phases (morning, afternoon, evening), then a town meeting, th
 |---|---|
 | Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `roles`, `tools`, `help`, `log` |
 | Day phase | `go <place / block / person>`, optionally one more `go` within the same block, then one action: `talk <name>`, `search`, `gossip` (tavern only), `wait` |
-| Talking (3 questions) | `ask gift`, `ask night`, `ask today`, `ask about <name>`, `tell <suspect> <card#>`, `bye` |
+| Talking (3 questions) | `ask gift`, `ask night`, `ask today`, `ask about <name or gift>`, `tell <suspect> <card#>`, `bye` |
+| Approached | `accept` (talk now; uses the phase) or `decline` (any other action also declines) |
 | Town meeting | `nominate <name>` (once), `wait` (let the town nominate), `done` (close the meeting, once a `wait` finds no more nominations) |
-| On a nomination | `defend` or `accuse` (one statement), `clemency` (once per case), `vote yes` / `vote no` |
+| On a nomination | `defend [card#]` or `accuse [card#]` (one statement, optionally citing a card), `clemency` (once per case), `vote yes` / `vote no` |
 | Night | `ward <name>` (once per case), `vigil <block>`, `sleep` |
 | After the case | `grimoire`, `grimoire lies` |
 
@@ -79,6 +80,16 @@ you're talking to. How far it moves them depends on the card, its source, their 
 their trust in you and in the suspect, and whether they've heard it before. Telling your
 case to an evil NPC warns the demon. Using someone's confessed secret against them costs
 their trust, permanently for very private people.
+
+**The town talks.** NPCs who pair off actually exchange things: a reading, a night
+sighting, an opinion, a case you made to them, or a secret. Everyone remembers who told them
+what. Gossips relay what they've heard; busybodies may approach you with it (including
+other people's secrets). `ask about <gift>` (e.g. `ask about seer`) asks what someone
+knows about that gift: who claims it, and what they've been told privately.
+
+**Evil knows only what it could know:** public events, what each member saw or was told,
+and what they pool when they meet (pairs you may see talking) or whisper in a crowded
+tavern. Paranoia rises with every death: the town grows quicker to suspect and to hang.
 
 **Meetings** follow Blood on the Clocktower: one nomination at a time; each person
 nominates and is nominated at most once a day; a nomination reaching half the voters puts
@@ -123,12 +134,15 @@ Main entry types:
 | `grimoire` | hidden setup: roles, alignments, homes, work shifts, lane order, relationships, rolled traits and baselines, secrets, bluffs, evil plan |
 | `secret_assigned` | a good NPC's personal reason to be out at night (and lie) |
 | `positions`, `night_movement` | where everyone is each phase (working / busy); who walked at night and why |
-| `npc_conversation` | NPC pairs (visible pre-paired or hidden post-choice; evil meetings flagged). Content comes in stage 2 |
+| `npc_conversation` | NPC pairs (visible pre-paired or hidden post-choice; evil meetings flagged) |
+| `npc_share` | what one NPC told another, the original source, whether it was relayed, and whether it was a lie |
+| `evil_intel`, `evil_share` | what an evil member learned and how (own sighting, told by someone, the player's case); when members pool knowledge (first-night conference, meeting, tavern whisper) |
+| `approach`, `approach_declined` | an NPC seeking out the player, with their agenda (news / frame / gossip) |
 | `night_sighting` | who glimpsed whom at night |
 | `poison`, `protect`, `protect_failed`, `kill`, `kill_failed` | night actions and outcomes |
 | `info` | every ability result, with `true:false` and a `why` when it's wrong |
 | `fake_info` | evil fabrications and the reasoning behind each |
-| `think` | NPC reasoning, tagged by `data.topic`: `claim`, `lie`, `disclosure` (tier and inputs), `deny_or_refuse`, `confess`, `lie_or_stonewall`, `stonewall`, `withhold`, `omit`, `cue`, `share_sightings`, `vote`, `nominate`, `accuse`, `opinion`, `persuaded`, `gossip`, `seer_pick`, `watch_pick`, `warden_pick`, `grief`, `kill_choice` (with every candidate's score breakdown), `poison_choice`, `scapegoat`, `evil_plan`, `evil_learns`. Weighted rolls log every score part and the probability |
+| `think` | NPC reasoning, tagged by `data.topic`: `claim`, `lie`, `disclosure` (tier and inputs), `deny_or_refuse`, `confess`, `lie_or_stonewall`, `stonewall`, `withhold`, `omit`, `cue`, `share_sightings`, `vote`, `nominate`, `accuse`, `opinion`, `persuaded`, `gossip`, `approach`, `about_role`, `paranoia`, `seer_pick`, `watch_pick`, `warden_pick`, `grief`, `kill_choice` (with every candidate's score breakdown), `poison_choice`, `scapegoat`, `evil_plan`, `evil_learns`. Weighted rolls log every score part and the probability |
 | `suspicion` | every change ≥ 0.05 in one NPC's suspicion of another, with the cause |
 | `trust`, `trust_cap` | changes in an NPC's trust in the player, and permanent caps, with the cause |
 | `npc_trust` | changes in one NPC's trust in another |
@@ -152,7 +166,7 @@ python3 tools/trace.py logs/case_42.jsonl --player
 
 - Dialogue is templated and repetitive; personality mostly affects numbers, not voice.
 - NPC-to-NPC trust biases suspicion, votes and who pairs off; those who trusted an executed NPC resent its nominator, yes-voters and you. NPC conversations happen but carry no content yet (stage 2).
-- No NPC approaches, paranoia, or evil coordination yet (stage 2).
+- NPC exchanges are one item each way per conversation and aren't visible to the player except through relays, gossip and approaches.
 - The demon's view of who suspects it is approximated from internal suspicion.
 - No solvability check or storyteller director yet.
 - Balance is untuned: NPCs execute fairly readily, and games can end by day 3.

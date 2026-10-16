@@ -9,9 +9,11 @@ extends RefCounted
 const C = preload("res://sim/content.gd")
 const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
+const Social = preload("res://sim/social.gd")
 
 var w
-var state = "day"          # day | talk | meeting | nomination | night | over
+var state = "day"          # day | approach | talk | meeting | nomination | night | over
+var approach = {}          # pending approach: {npc, agenda}
 var moved = false          # has the player chosen a location this phase
 var free_move_used = false
 var loc = ""
@@ -103,6 +105,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	events = []
 	_intro()
 	_morning_report()
+	_maybe_approach()
 	return _finish_command("new_case", "")
 
 func command(line: String) -> String:
@@ -152,6 +155,15 @@ func find_location(token: String) -> String:
 	var victim = find_npc(t, true)
 	if victim and not victim.alive and w.scenes.has("scene_" + victim.id):
 		return "scene_" + victim.id
+	return ""
+
+func find_role(token: String) -> String:
+	var t = token.to_lower().strip_edges().trim_prefix("the ")
+	if t == "":
+		return ""
+	for r in C.ROLES:
+		if r == t or C.ROLES[r]["name"].to_lower() == t:
+			return r
 	return ""
 
 func find_block(token: String) -> String:
@@ -223,6 +235,8 @@ func _dispatch(text: String) -> void:
 	match state:
 		"day":
 			_day_command(verb, rest)
+		"approach":
+			_approach_command(verb, rest)
 		"talk":
 			_talk_command(verb, rest)
 		"meeting":
@@ -333,7 +347,7 @@ func _day_command(verb: String, rest: String) -> void:
 			var cue = Mind.greeting_cue(w, n)
 			if cue != "":
 				_narr(cue)
-			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask today | ask about <name> | tell <suspect> <card#> | bye)" % n.name)
+			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask today | ask about <name or gift> | tell <suspect> <card#> | bye)" % n.name)
 		"search", "s":
 			if not moved:
 				_err("First choose where to spend this phase ('go <place>').")
@@ -438,8 +452,51 @@ func _end_phase(talked_id: String) -> void:
 	w.player_loc = ""
 	if w.end_day_phase(talked_id):
 		_phase_header()
+		_maybe_approach()
 	else:
 		_start_meeting()
+
+# ---------------------------------------------------------------- approaches
+
+func _maybe_approach() -> void:
+	var c = Social.approach_candidate(w)
+	if c == null:
+		return
+	approach = c
+	state = "approach"
+	var n = c["npc"]
+	w.dlog.add("approach", n.id, "player", {"agenda": c["agenda"]})
+	_narr("%s the %s approaches you. \"Demonologist, a word?\"" % [n.name, n.occupation])
+	_prompt("'accept' (talk now; it uses this phase's action) or 'decline'.")
+
+func _approach_command(verb: String, rest: String) -> void:
+	var n = approach["npc"]
+	match verb:
+		"accept", "yes", "y", "talk":
+			state = "talk"
+			moved = true
+			free_move_used = true
+			loc = n.loc
+			w.player_loc = loc
+			talk_with = n
+			questions_left = 3
+			w.dlog.add("player_talk", "player", n.id, {"trust": snappedf(n.trust, 0.01), "approach": approach["agenda"]})
+			_narr("You step aside with %s at %s." % [n.name, w.loc_name(loc)])
+			var r: Dictionary = Social.approach_open(w, n, approach["agenda"])
+			_lines(r["lines"])
+			_facts(r["facts"])
+			_prompt("(3 questions: ask gift | ask night | ask today | ask about <name or role> | tell <suspect> <card#> | bye)")
+		"decline", "no", "n":
+			state = "day"
+			w.dlog.add("approach_declined", "player", n.id)
+			_narr("You excuse yourself. %s shrugs and goes about their day." % n.name)
+			_prompt("Where will you spend the %s? ('go <place | block | person>')" % w.phase_name().to_lower())
+		_:
+			# Any other action means declining; carry on with it.
+			state = "day"
+			w.dlog.add("approach_declined", "player", n.id, {"implicit": true})
+			_narr("You wave %s off for now." % n.name)
+			_day_command(verb, rest)
 
 func _phase_header() -> void:
 	_hdr("Day %d, %s" % [w.day, w.phase_name()])
@@ -463,16 +520,21 @@ func _talk_command(verb: String, rest: String) -> void:
 				"today", "seen":
 					r = Mind.answer_today(w, n)
 				"about", "opinion":
-					var t = find_npc(" ".join(p.slice(1)), true)
-					if t == null:
-						_err("Ask about whom?")
+					var target = " ".join(p.slice(1))
+					var role = find_role(target)
+					var t = null if role != "" else find_npc(target, true)
+					if role != "":
+						r = Social.answer_about_role(w, n, role)
+					elif t == null:
+						_err("Ask about whom (a person or a gift)?")
 						return
-					if t == n:
+					elif t == n:
 						_narr("%s gives you a flat look." % n.name)
 						return
-					r = Mind.answer_opinion(w, n, t)
+					else:
+						r = Mind.answer_opinion(w, n, t)
 				_:
-					_err("Ask about: gift | night | today | about <name>")
+					_err("Ask about: gift | night | today | about <name or gift>")
 					return
 		"tell", "accuse":
 			var p = rest.split(" ", false)
@@ -582,7 +644,7 @@ func _show_nomination() -> void:
 	if w.meeting["block"] != "":
 		blk = " %s is on the block with %d votes." % [w.by_id[w.meeting["block"]].name, w.meeting["block_count"]]
 	var opts = "'vote yes' or 'vote no'"
-	opts += ". Before voting you may 'defend' or 'accuse' (one statement)"
+	opts += ". Before voting you may 'defend' or 'accuse', optionally citing a card (one statement)"
 	if w.tools["clemency"] > 0 and nm["by"] != "player":
 		opts += ", or use 'clemency' to spare them"
 	_prompt("Vote on %s (%d needed).%s %s." % [t.name, w.vote_threshold(), blk, opts])
@@ -596,8 +658,18 @@ func _nomination_command(verb: String, rest: String) -> void:
 			if statement_used:
 				_err("You've already spoken on this nomination.")
 				return
+			var card = {}
+			if r != "":
+				var num = r.trim_prefix("#").to_int()
+				if num < 1 or num > board.size():
+					_err("No such card on your board. ('%s' alone, or '%s <card#>')" % [verb, verb])
+					return
+				card = board[num - 1]
 			statement_used = true
 			nm["statement"] = verb
+			if not card.is_empty():
+				_narr("You lay card #%d before the town: %s" % [card["n"], card["text"]])
+				Mind.public_case(w, t, card, verb)
 			if verb == "defend":
 				_narr("You speak in %s's defence." % t.name)
 				Mind.set_trust(w, t, t.trust + 0.06, "the Demonologist defended me")
@@ -732,6 +804,7 @@ func _resolve_night() -> void:
 	state = "day"
 	moved = false
 	_morning_report()
+	_maybe_approach()
 
 func _morning_report() -> void:
 	_hdr("Day %d, Morning" % w.day)
@@ -763,11 +836,12 @@ func _help() -> String:
   Anytime : look | map | cast | profile <name> | board [filter] | roles | tools | help | log
   Day     : go <place | block | person>   (then one free move within the same block)
             then one action: talk <name> | search | gossip (tavern) | wait
-  Talking : ask gift | ask night | ask today | ask about <name>
+  Talking : ask gift | ask night | ask today | ask about <name or gift>
             tell <suspect> <card#>   (make a case using a card from your board)
             bye
   Meeting : nominate <name> | wait (let the town nominate) | done (close, once the town is quiet)
-  Voting  : defend | accuse (one statement) | clemency (once per case) | vote yes | vote no
+  Voting  : defend [card#] | accuse [card#] (one statement) | clemency (once per case) | vote yes | vote no
+  Approach: someone may ask for a word at the start of a phase: accept (uses the phase) | decline
   Night   : ward <name> (once per case) | vigil <block> | sleep
 Each day phase (morning, afternoon, evening) allows one action. A conversation allows 3 questions.
 Workers can always be found at work during their shift. Others may be busy talking with each other.

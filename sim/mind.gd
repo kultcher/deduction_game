@@ -19,6 +19,24 @@ static func say(n, text: String) -> Dictionary:
 static func trait_of(n, t: String) -> float:
 	return n.traits.get(t, 0.5)
 
+## Effective paranoia (rises with the dead; composure dampens).
+static func paranoia(w, n) -> float:
+	var dead = w.npcs.filter(func(m): return not m.alive).size()
+	return 0.07 * dead * (1.0 - 0.6 * trait_of(n, "composure"))
+
+static func implicated(e: Dictionary) -> Array:
+	var d: Dictionary = e["data"]
+	match e["role"]:
+		"seer":
+			return d["pair"] if d["yes"] else []
+		"hearthwitch":
+			return d["nbrs"] if d["count"] > 0 else []
+		"archivist":
+			return d["pair"]
+		"nightwatch":
+			return d["seen"]
+	return []
+
 static func sigmoid(x: float) -> float:
 	return 1.0 / (1.0 + exp(-x))
 
@@ -58,7 +76,10 @@ static func cap_trust(w, n, cap: float, why: String) -> void:
 static func end_of_day_trust(w) -> void:
 	for n in w.living():
 		if n.secret_known and not n.secret_spread:
-			set_trust(w, n, n.trust + 0.03 + 0.04 * trait_of(n, "privacy"), "the Demonologist kept my secret today")
+			var bonus = 0.03 + 0.04 * trait_of(n, "privacy")
+			if n.secret_spread_by_npc:
+				bonus *= 0.4
+			set_trust(w, n, n.trust + bonus, "the Demonologist kept my secret today%s" % (" (though others are talking)" if n.secret_spread_by_npc else ""))
 
 # ---------------------------------------------------------------- suspicion
 
@@ -255,6 +276,7 @@ static func meeting_testimony(w) -> Array:
 				if e["shared"]:
 					continue
 				e["shared"] = true
+				w.public_event("reading", implicated(e), n.id)
 				lines.append(info_line(w, n, e))
 				facts.append(info_fact(w, n, e))
 				for l in w.living():
@@ -363,6 +385,7 @@ static func _public_accusation(w, n):
 			adjust(w, l, t.id, 0.12 * heard_weight(l, n) * 2.0, "public accusation by %s" % n.id,
 				"%s spoke against them at the meeting" % n.name)
 	t.pressure += 0.15
+	w.public_event("accusation", [t.id], n.id)
 	var tail = (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else " Something's off about them."
 	return {"line": say(n, "I don't trust %s.%s" % [t.name, tail]),
 		"fact": {"kind": "accusation", "subject": [t.id], "source": n.id, "text": "%s publicly accused %s." % [n.name, t.name]}}
@@ -380,7 +403,7 @@ static func next_nomination(w):
 			if ev != null:
 				cands.append(ev)
 			continue
-		var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (trait_of(n, "confidence") - 0.5) * 2.0
+		var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (trait_of(n, "confidence") - 0.5) * 2.0 - 0.5 * paranoia(w, n)
 		for t in ranked_suspects(w, n):
 			if t.id in m["nominated"]:
 				continue
@@ -438,7 +461,7 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 	for k in parts:
 		if k != "suspicion":
 			s += parts[k]
-	var need = 0.5 - 0.12 * (trait_of(v, "confidence") - 0.5) * 2.0 + (0.1 if w.day <= 1 else 0.0)
+	var need = 0.5 - 0.12 * (trait_of(v, "confidence") - 0.5) * 2.0 + (0.1 if w.day <= 1 else 0.0) - 0.4 * paranoia(w, v)
 	var yes = s >= need
 	parts["total"] = snappedf(s, 0.01)
 	parts["need"] = snappedf(need, 0.01)
@@ -512,13 +535,13 @@ static func _target_tier(w, n) -> int:
 	return t
 
 ## The unified gift/info question. Tiers: 1 deny/refuse, 2 hint, 3 gift, 4 gift + readings.
-static func answer_gift(w, n) -> Dictionary:
+static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
 	var facts: Array = []
 	var evil: bool = n.is_evil()
 	var role: String = w.evil_plan["bluffs"][n.id] if evil else n.role
-	var target = _target_tier(w, n)
+	var target = maxi(_target_tier(w, n), force_tier)
 	if n.claim_public:
 		target = maxi(target, 3)
 	var tier = maxi(target, n.max_tier)
@@ -744,7 +767,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	if level < 0.25:
 		text = "I trust %s." % t.name
 	elif level < 0.45:
-		if w.rng.randf() < 0.6 - 0.4 * trait_of(n, "insight"):
+		if w.rng.randf() < 0.6 - 0.4 * trait_of(n, "insight") + paranoia(w, n):
 			text = "I can't put my finger on it, but something's off about %s." % t.name
 			shown = 0.5
 		else:
@@ -829,11 +852,9 @@ static func _secret_used(w, card: Dictionary) -> void:
 	elif p >= 0.34:
 		cap_trust(w, owner, 0.6, "the Demonologist spread my secret")
 
-## The player's case: "tell <n>: <suspect> is suspicious because <card>".
-static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
-	on_question(w, n)
-	_secret_used(w, card)
-	var lines: Array = []
+## How much a card weighs with one listener, against or for one suspect. Counts as a hearing
+## (diminishing returns per card per listener).
+static func card_weight(w, n, suspect, card: Dictionary) -> Dictionary:
 	var subj: Array = card.get("subject", [])
 	var relevance = 1.0 if suspect.id in subj else 0.25
 	var src: String = card.get("source", "")
@@ -841,7 +862,7 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	var cred_why = ""
 	if src == "player":
 		cred = 1.0
-		cred_why = "you saw it yourself"
+		cred_why = "the Demonologist saw it"
 	elif src == "evidence":
 		cred = 0.9
 		cred_why = "physical evidence"
@@ -853,30 +874,70 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 		cred_why = "source %s (suspicion %.2f)" % [src, susp(n, src)]
 	if card.get("kind", "") == "trace":
 		relevance = 1.0 if suspect.home_block == card.get("block", "") or w.loc_block(suspect.work) == card.get("block", "") else 0.3
-	var strength = card_strength(w, card, suspect)
-	relevance *= strength
 	var cls = evidence_class(card)
 	var ins = trait_of(n, "insight")
 	var class_w = {"speech": lerpf(1.0, 0.2, ins), "circumstantial": lerpf(1.0, 0.6, ins), "concrete": 1.0}[cls]
 	var key: String = card.get("text", "")
 	var times: int = n.heard.get(key, 0)
 	n.heard[key] = times + 1
-	var repeat_mult = pow(0.35, times)
+	return {"relevance": relevance, "cred": cred, "cred_why": cred_why, "cls": cls, "class_w": class_w,
+		"repeat": pow(0.35, times), "times": times, "key": key, "subj": subj}
+
+## How strongly a card speaks *for* someone (used when defending a nominee).
+static func defend_strength(card: Dictionary, nominee: String) -> float:
+	var subj: Array = card.get("subject", [])
+	if not (nominee in subj):
+		return 0.1
+	var d: Dictionary = card.get("data", {})
+	match card.get("kind", ""):
+		"info":
+			match card.get("role", ""):
+				"seer":
+					return 0.0 if d.get("yes", false) else 0.8
+				"hearthwitch":
+					return 0.6 if d.get("count", 0) == 0 else 0.0
+				"clerk":
+					return 0.5
+				"nightwatch":
+					return 0.0
+		"claim":
+			return 0.2
+		"death":
+			return 1.0
+		"vigil":
+			return 0.4
+		"secret":
+			return 0.4
+	return 0.15
+
+## The player's case: "tell <n>: <suspect> is suspicious because <card>".
+static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
+	on_question(w, n)
+	_secret_used(w, card)
+	var lines: Array = []
+	var cw = card_weight(w, n, suspect, card)
+	var strength = card_strength(w, card, suspect)
+	var relevance: float = cw["relevance"] * strength
+	var times: int = cw["times"]
+	var cls: String = cw["cls"]
+	var ins = trait_of(n, "insight")
 	if n.is_evil():
 		return Evil.evil_hear_accusation(w, n, suspect, card, relevance)
-	var delta: float = 0.35 * cred * relevance * class_w * repeat_mult * (0.5 + n.trust)
+	if times == 0:
+		n.player_cases.append({"suspect": suspect.id, "card": card})
+	var delta: float = 0.35 * cw["cred"] * relevance * cw["class_w"] * cw["repeat"] * (0.5 + n.trust)
 	var bond: float = n.npc_trust.get(suspect.id, 0.5)
 	if bond > 0.6:
 		delta *= 1.0 - (bond - 0.5) * 1.4
 		set_trust(w, n, n.trust - 0.12 * (bond - 0.5) * 2.0, "player accused %s, whom I trust" % suspect.id)
 	var old = susp(n, suspect.id)
 	adjust(w, n, suspect.id, delta, "player accusation using card '%s' (class %s x%.2f, cred %.2f: %s, relevance %.2f, repeat x%.2f, trust %.2f)" %
-		[key, cls, class_w, cred, cred_why, relevance, repeat_mult, n.trust], "the Demonologist made a case against them")
+		[cw["key"], cls, cw["class_w"], cw["cred"], cw["cred_why"], relevance, cw["repeat"], n.trust], "the Demonologist made a case against them")
 	var nv = susp(n, suspect.id)
 	w.dlog.think(n.id, "persuaded", "Accusation moved suspicion of %s from %.2f to %.2f." % [suspect.id, old, nv])
 	if times > 0:
 		lines.append(say(n, "You've told me that already."))
-	elif strength < 0.3 and suspect.id in subj:
+	elif strength < 0.3 and suspect.id in cw["subj"]:
 		lines.append(say(n, "That proves nothing against %s." % suspect.name))
 	elif relevance < 0.3:
 		lines.append(say(n, "I don't see what that has to do with %s." % suspect.name))
@@ -895,6 +956,28 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	elif delta >= 0.1:
 		set_trust(w, n, n.trust + 0.02, "player made a case that seemed sound")
 	return {"lines": lines, "facts": []}
+
+## A card-backed public statement on a nomination: every voter weighs it (more weakly than
+## in private). direction: "accuse" or "defend". Returns a short summary for the log.
+static func public_case(w, nominee, card: Dictionary, direction: String) -> void:
+	_secret_used(w, card)
+	for v in w.living():
+		if v == nominee:
+			continue
+		var cw = card_weight(w, v, nominee, card)
+		if v.is_evil():
+			if direction == "accuse" and Evil.is_teammate(w, v, nominee.id):
+				Evil.add_intel(w, v, "player_suspects", nominee.id, 0.0, "the Demonologist accused %s at the meeting" % nominee.id)
+			continue
+		var mult: float = 0.25 * cw["cred"] * cw["class_w"] * cw["repeat"] * (0.5 + v.trust)
+		var delta = 0.0
+		if direction == "accuse":
+			delta = mult * cw["relevance"] * card_strength(w, card, nominee)
+		else:
+			delta = -mult * defend_strength(card, nominee.id)
+		adjust(w, v, nominee.id, delta, "the Demonologist's public %s using card '%s' (class %s, cred %.2f, repeat x%.2f)" %
+			[direction, cw["key"], cw["cls"], cw["cred"], cw["repeat"]],
+			"the Demonologist made a case against them" if direction == "accuse" else "")
 
 ## Tavern gossip. Returns {lines, facts}.
 static func gossip(w) -> Dictionary:
@@ -929,7 +1012,7 @@ static func gossip(w) -> Dictionary:
 	if not ranked.is_empty() and susp(speaker, ranked[0].id) >= 0.4:
 		var t = ranked[0]
 		w.dlog.think(speaker.id, "gossip", "Shares their suspicion of %s." % t.id)
-		var why: String = speaker.sus_why.get(t.id, "")
+		var why: String = Evil.cite(w, speaker, speaker.sus_why.get(t.id, ""))
 		var tail = (", because " + why) if why != "" else ". Something's off about them, apparently"
 		return {"lines": ["You overhear %s muttering that %s can't be trusted%s." % [speaker.name, t.name, tail]],
 			"facts": [{"kind": "opinion", "subject": [t.id], "source": speaker.id, "text": "Gossip: %s distrusts %s." % [speaker.name, t.name]}]}

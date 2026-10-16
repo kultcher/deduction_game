@@ -8,6 +8,7 @@ const NPC = preload("res://sim/npc.gd")
 const DevLog = preload("res://sim/devlog.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
+const Social = preload("res://sim/social.gd")
 
 var rng = RandomNumberGenerator.new()
 var seed_value = 0
@@ -30,6 +31,8 @@ var executed_today = ""
 var executions: Array = []          # {day, id, nominator, yes, player_yes, player_nominated}
 var night_walkers: Array = []       # last night: {id, block, why}
 var public_claims: Array = []       # {day, who, role}
+## Everything said or done in public (what evil, and anyone, can know without being told).
+var public_log: Array = []          # {day, kind, subjects, by}
 
 ## Meeting state (BotC-style: one nomination at a time, "on the block").
 var meeting = {}
@@ -154,6 +157,11 @@ func _names(ids: Array) -> String:
 	if names.size() == 2:
 		return "%s and %s" % names
 	return ", ".join(PackedStringArray(names))
+
+func public_event(kind: String, subjects: Array, by: String) -> void:
+	if subjects.is_empty():
+		return
+	public_log.append({"day": day, "kind": kind, "subjects": subjects.duplicate(), "by": by})
 
 ## Total voters at a meeting: living NPCs plus the player.
 func voter_count() -> int:
@@ -285,6 +293,8 @@ func _assign_secrets() -> void:
 			s["dest"] = f.home_block
 			s["text"] = s["text"] % f.name
 		n.secret = s
+		if s.has("with"):
+			npc(s["with"]).known_secrets[n.id] = n.id
 		dlog.add("secret_assigned", n.id, s.get("with", ""), s, "%s %s (good NPC; will hide it)" % [n.name, s["text"]])
 
 func _log_grimoire() -> void:
@@ -311,6 +321,7 @@ func start_phase() -> void:
 		else:
 			n.loc = _choose_idle_location(n)
 	_pre_pair()
+	Social.tavern_whispers(self)
 	for n in living():
 		n.history[time_key()] = n.loc if n.loc != "home" else "home:" + n.home_block
 	var placed = {}
@@ -352,7 +363,7 @@ func player_options() -> Array:
 ## Weight for two NPCs choosing to talk: driven by mutual trust.
 func pair_weight(a, b) -> float:
 	var t: float = (a.npc_trust.get(b.id, 0.5) + b.npc_trust.get(a.id, 0.5)) / 2.0
-	return clampf((t - 0.3) * 2.0, 0.02, 1.5)
+	return clampf((t - 0.3) * 2.0 + Social.news_bonus(self, a, b), 0.02, 2.0)
 
 func _idle_pairable() -> Array:
 	return living().filter(func(n): return not n.working and n.available() and n.pair_day != day)
@@ -401,8 +412,7 @@ func _make_pair(a, b, when: String) -> void:
 	var evil_meet = a.is_evil() and b.is_evil()
 	dlog.add("npc_conversation", a.id, b.id, {"when": when, "loc": a.loc, "visible": when == "pre", "evil_meeting": evil_meet},
 		"%s and %s talk%s (content: stage 2)." % [a.name, b.name, " (evil meeting)" if evil_meet else ""])
-	for p in [[a, b], [b, a]]:
-		p[0].npc_trust[p[1].id] = clampf(p[0].npc_trust.get(p[1].id, 0.5) + 0.02, 0.0, 1.0)
+	Social.converse(self, a, b, when)
 
 ## After the player's action: remaining idlers on the same location may pair off.
 func _post_pair(talked_id: String) -> void:
@@ -419,7 +429,7 @@ func _post_pair(talked_id: String) -> void:
 		var pr = _choose_pair(group)
 		if pr.is_empty():
 			continue
-		var p = 0.5 * pair_weight(pr[0], pr[1])
+		var p = 0.4 * pair_weight(pr[0], pr[1])
 		if chance(p):
 			_make_pair(pr[0], pr[1], "post")
 
@@ -473,6 +483,7 @@ func open_nomination(by: String, nominee: String, reason: String = "") -> Dictio
 	var nm = {"by": by, "nominee": nominee, "statement": "", "reason": reason}
 	meeting["pending"] = nm
 	var target = by_id[nominee]
+	public_event("nomination", [nominee], by)
 	target.pressure += 0.4
 	if by == "player":
 		Mind.set_trust(self, target, target.trust - 0.15, "the Demonologist nominated me")
@@ -515,6 +526,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 	for v in living():
 		if Mind.vote(self, v, nid, nm["by"], player_yes, nm["statement"], yes.size()):
 			yes.append(v.id)
+			public_event("vote_yes", [nid], v.id)
 		else:
 			no.append(v.id)
 	var count = yes.size() + (1 if player_yes else 0)
@@ -672,6 +684,7 @@ func resolve_night() -> void:
 			_receive_info(n, watch_block)
 
 	_night_sightings()
+	Evil.gather_night_intel(self)
 	Evil.make_fake_info(self)
 	Mind.update_from_own_info(self)
 	player_ward = ""
@@ -848,6 +861,8 @@ func start_new_day() -> void:
 		dlog.set_time(day, "Morning")
 		_finish("evil", "Time ran out: the demon survived %d days." % max_days)
 		return
+	dlog.set_time(day, "Morning")
+	Social.paranoia_drift(self)
 	start_phase()
 
 # ---------------------------------------------------------------- dev snapshots

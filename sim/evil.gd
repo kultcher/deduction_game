@@ -22,8 +22,6 @@ static func make_plan(w) -> Dictionary:
 		"mood": mood,
 		"scapegoat": "",
 		"bluffs": {d.id: ordered[0], m.id: ordered[1] if ordered.size() > 1 else ordered[0]},
-		"player_suspects": {},
-		"silence": {},
 		"failed": [],
 		"fake_watch": {},
 		"fake_sightings": {},
@@ -43,8 +41,11 @@ static func _pick_scapegoat(w, why: String) -> void:
 	var best_s = -1.0
 	for g in goods:
 		var s: float = w.rng.randf()
-		if not g.secret.is_empty():
-			s += 1.0  # out at night: easier to frame
+		for m in [w.demon(), w.minion()]:
+			for k in m.intel:
+				var it: Dictionary = m.intel[k]
+				if it["kind"] == "walker" and it["about"] == g.id:
+					s += 1.0  # seen out at night by one of us: easier to frame
 		if w.demon().npc_trust.get(g.id, 0.5) < 0.4:
 			s += 0.5
 		if g.role == "veteran" or g.role == "warden":
@@ -59,6 +60,93 @@ static func ensure_scapegoat(w) -> void:
 	var s: String = w.evil_plan.get("scapegoat", "")
 	if s == "" or not w.by_id[s].alive:
 		_pick_scapegoat(w, "previous scapegoat gone")
+
+# ---------------------------------------------------------------- what evil knows
+
+## Record something an evil member knows. kind: threat | walker | player_suspects
+static func add_intel(w, m, kind: String, about: String, score: float, why: String, extra: Dictionary = {}) -> void:
+	var key = "%s:%s:%s" % [kind, about, why]
+	if m.intel.has(key):
+		return
+	var it = {"kind": kind, "about": about, "score": score, "why": why, "day": w.day, "from": m.id}
+	for k in extra:
+		it[k] = extra[k]
+	m.intel[key] = it
+	w.dlog.add("evil_intel", m.id, about, it, "%s learns: %s (%s)" % [m.name, why, kind])
+
+## Two evil members pool what they know (a meeting, a whisper, or the first night).
+static func share_intel(w, a, b, how: String) -> void:
+	var gave_a = 0
+	var gave_b = 0
+	for k in a.intel:
+		if not b.intel.has(k):
+			b.intel[k] = a.intel[k].duplicate()
+			gave_a += 1
+	for k in b.intel:
+		if not a.intel.has(k):
+			a.intel[k] = b.intel[k].duplicate()
+			gave_b += 1
+	w.dlog.add("evil_share", a.id, b.id, {"how": how, "a_gave": gave_a, "b_gave": gave_b},
+		"Evil %s: %s and %s pool what they know (%d + %d items)." % [how, a.name, b.name, gave_a, gave_b])
+
+static func unshared_intel(a, b) -> int:
+	var c = 0
+	for k in a.intel:
+		if not b.intel.has(k):
+			c += 1
+	return c
+
+static func intel_threat(m, id: String) -> float:
+	var t = 0.0
+	for k in m.intel:
+		var it: Dictionary = m.intel[k]
+		if it["kind"] == "threat" and it["about"] == id:
+			t += it["score"]
+	return minf(t, 3.0)
+
+## After each night: evil members note who they saw out (and who may have seen them).
+static func gather_night_intel(w) -> void:
+	for m in [w.demon(), w.minion()]:
+		if not m.alive:
+			continue
+		for b in m.beliefs:
+			if b["kind"] == "saw" and b["phase"] == C.NIGHT and b["day"] == w.day and not w.by_id[b["who"]].is_evil():
+				add_intel(w, m, "walker", b["who"], 0.0, "saw them out on %s on night %d" % [C.block_name(b["block"]), w.day],
+					{"block": b["block"], "night": w.day})
+				if m.out_last_night and m.night_block == b["block"]:
+					add_intel(w, m, "threat", b["who"], 1.0, "was out near me on night %d; may have seen me" % w.day)
+	if w.day == 0 and w.demon().alive and w.minion().alive:
+		share_intel(w, w.demon(), w.minion(), "first-night conference")
+
+## How hot the public mood is against someone, from public events only (0..1). Evil
+## discounts its own team's contributions: it knows those aren't the town's view.
+static func public_heat(w, t) -> float:
+	var h = 0.15
+	for e in w.public_log:
+		if w.by_id.has(e["by"]) and w.by_id[e["by"]].is_evil():
+			continue
+		if t.id in e["subjects"]:
+			match e["kind"]:
+				"accusation":
+					h += 0.12
+				"nomination":
+					h += 0.2
+				"reading":
+					h += 0.2
+				"vote_yes":
+					h += 0.04
+	return clampf(h, 0.0, 1.0)
+
+## How much someone has publicly acted against the evil team.
+static func public_hostility(w, n) -> float:
+	var h = 0.0
+	for e in w.public_log:
+		if e["by"] != n.id:
+			continue
+		for sid in e["subjects"]:
+			if w.by_id.has(sid) and w.by_id[sid].is_evil():
+				h += 0.5 if e["kind"] == "vote_yes" else 1.0
+	return minf(h, 2.5)
 
 ## True if an info result points toward the evil team.
 static func info_implicates(w, e: Dictionary) -> bool:
@@ -98,14 +186,12 @@ static func choose_kill_target(w) -> String:
 			warden_claimed = true
 	for n in w.living_good():
 		var parts = _public_threat(w, n)
-		var hostility: float = n.suspicion.get(d.id, 0.0)
-		if hostility > 0.4:
-			parts["hostile_to_demon"] = snappedf(hostility * 1.5, 0.01)
-		for b in n.beliefs:
-			if b["kind"] == "saw" and b["who"] in [w.demon_id, w.minion_id] and b["phase"] == C.NIGHT:
-				parts["saw_us_at_night"] = 2.0
-		if plan["silence"].has(n.id):
-			parts["confided_in_player"] = plan["silence"][n.id]
+		var hostile = public_hostility(w, n)
+		if hostile > 0.0:
+			parts["publicly_against_us"] = snappedf(hostile * 0.8, 0.01)
+		var known = intel_threat(d, n.id)
+		if known > 0.0:
+			parts["known_threat"] = known
 		var alone = true
 		for m in w.living():
 			if m != n and m.home_block == n.home_block:
@@ -118,7 +204,7 @@ static func choose_kill_target(w) -> String:
 					parts["mood_vengeful"] = 1.5
 			"cunning":
 				var s = w.by_id[plan["scapegoat"]]
-				if s.npc_trust.get(n.id, 0.5) < 0.4 or n.home_block == s.home_block:
+				if n.home_block == s.home_block:
 					parts["mood_cunning_frame"] = 1.5
 			"hungry":
 				parts["mood_hungry"] = snappedf(w.rng.randf() * 2.0, 0.01)
@@ -151,9 +237,12 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 		if n.id == exclude:
 			continue
 		var parts = _public_threat(w, n)
-		var hostility: float = n.suspicion.get(w.demon_id, 0.0) + n.suspicion.get(m.id, 0.0)
-		if hostility > 0.5:
-			parts["hostile_to_us"] = snappedf(hostility, 0.01)
+		var hostile = public_hostility(w, n)
+		if hostile > 0.0:
+			parts["publicly_against_us"] = snappedf(hostile * 0.6, 0.01)
+		var known = intel_threat(m, n.id)
+		if known > 0.0:
+			parts["known_threat"] = known
 		parts["noise"] = snappedf(w.rng.randf() * 1.5, 0.01)
 		var total = 0.0
 		for k in parts:
@@ -226,14 +315,16 @@ static func make_fake_info(w) -> void:
 			"nightwatch":
 				var block: String = w.by_id[s].home_block
 				var seen: Array = []
-				for wk in w.night_walkers:
-					if wk["block"] == block and not w.by_id[wk["id"]].is_evil():
-						seen.append(wk["id"])
+				for k in n.intel:
+					var it: Dictionary = n.intel[k]
+					if it["kind"] == "walker" and it.get("night", -1) == w.day and it.get("block", "") == block and w.by_id[it["about"]].alive:
+						if not (it["about"] in seen):
+							seen.append(it["about"])
 				if not (s in seen) and w.day >= 1:
 					seen.append(s)
 					why = "watches scapegoat's block; adds fake sighting of %s to true ones" % s
 				else:
-					why = "reports true walkers on scapegoat's block, hiding teammates"
+					why = "reports walkers it knows of on scapegoat's block, hiding teammates"
 				plan["fake_watch"][str(w.day)] = block
 				entry = {"data": {"block": block, "seen": seen},
 					"text": "I watched %s: %s" % [C.block_name(block),
@@ -317,6 +408,8 @@ static func fake_gossip(w, speaker):
 static func cite(w, n, why: String) -> String:
 	if why == "":
 		return ""
+	if why.begins_with("my own") and not n.claim_public:
+		return ""  # citing it would give away a gift they haven't claimed
 	if w.rng.randf() < 0.5 * (1.0 - n.traits.get("insight", 0.5)):
 		return ""
 	return why
@@ -345,15 +438,9 @@ static func bluff_reason(w, n, t) -> String:
 		return ""
 	return w.pick(opts)
 
-## What the town (good NPCs) thinks of someone on average; evil mimics this.
+## What the town seems to think of someone, judged from public events; evil mimics this.
 static func town_view(w, t) -> float:
-	var goods: Array = w.living_good().filter(func(g): return g != t)
-	if goods.is_empty():
-		return 0.3
-	var total = 0.0
-	for g in goods:
-		total += g.suspicion.get(t.id, 0.0)
-	return total / goods.size()
+	return public_heat(w, t)
 
 static func evil_nomination(w, n):
 	ensure_scapegoat(w)
@@ -364,16 +451,12 @@ static func evil_nomination(w, n):
 	if m["block"] != "" and not w.by_id[m["block"]].is_evil():
 		w.dlog.think(n.id, "nominate", "Evil: a good NPC (%s) is already on the block; no need to nominate." % m["block"])
 		return null
-	var goods: Array = w.living_good()
-	var total = 0.0
-	for g in goods:
-		total += g.suspicion.get(s, 0.0)
-	var avg = total / maxf(1.0, goods.size())
+	var avg = public_heat(w, w.by_id[s])
 	var bold = n.traits.get("confidence", 0.5)
-	if avg >= 0.4 - 0.2 * bold:
+	if avg >= 0.45 - 0.15 * bold:
 		return {"nominee": s, "by": n.id, "score": avg + 0.2,
-			"reason": "Evil: town suspicion of scapegoat %s averages %.2f; pushes the nomination." % [s, avg]}
-	w.dlog.think(n.id, "nominate", "Evil: scapegoat %s not suspected enough yet (avg %.2f); waits." % [s, avg])
+			"reason": "Evil: public heat on scapegoat %s is %.2f; pushes the nomination." % [s, avg]}
+	w.dlog.think(n.id, "nominate", "Evil: public heat on scapegoat %s only %.2f; waits." % [s, avg])
 	return null
 
 static func evil_vote(w, v, nominee: String, yes_so_far: int) -> bool:
@@ -407,10 +490,10 @@ static func evil_hear_accusation(w, n, suspect, card: Dictionary, relevance: flo
 	var lines: Array = []
 	var src: String = card.get("source", "")
 	if suspect.is_evil():
-		plan["player_suspects"][suspect.id] = true
+		add_intel(w, n, "player_suspects", suspect.id, 0.0, "the Demonologist suspects %s" % suspect.id)
 		if src != "" and w.by_id.has(src) and not w.by_id[src].is_evil() and w.by_id[src].alive:
-			plan["silence"][src] = 2.0
-		w.dlog.think(n.id, "evil_learns", "Player suspects teammate %s; evil will try to silence source %s and keep framing %s." %
+			add_intel(w, n, "threat", src, 2.0, "their evidence is being used against %s" % suspect.id)
+		w.dlog.think(n.id, "evil_learns", "Player suspects teammate %s; will try to silence source %s and keep framing %s." %
 			[suspect.id, src, plan["scapegoat"]], {"card": card.get("text", "")})
 		if suspect == n:
 			lines.append(say(n, "Me? That's madness."))
@@ -423,3 +506,20 @@ static func evil_hear_accusation(w, n, suspect, card: Dictionary, relevance: flo
 		w.dlog.think(n.id, "evil_learns", "Player suspects good NPC %s; evil encourages it." % suspect.id)
 		lines.append(say(n, "Could be. I wouldn't put it past %s." % suspect.name))
 	return {"lines": lines, "facts": []}
+
+## An evil NPC learns from what a good NPC told them in conversation.
+static func intel_from_share(w, m, speaker, item: Dictionary) -> void:
+	var about: String = item.get("about", "")
+	match item["kind"]:
+		"reading":
+			if info_implicates(w, item["entry"]):
+				add_intel(w, m, "threat", speaker.id, 2.0, "their %s reading points at us" % item["entry"]["role"])
+		"sighting":
+			if about != "" and w.by_id[about].is_evil():
+				add_intel(w, m, "threat", speaker.id, 2.0, "says they saw %s out at night" % about)
+			elif about != "":
+				add_intel(w, m, "walker", about, 0.0, "heard they were out on %s on night %d" % [C.block_name(item["block"]), item["day"]],
+					{"block": item["block"], "night": item["day"]})
+		"opinion", "case":
+			if about != "" and w.by_id[about].is_evil():
+				add_intel(w, m, "threat", speaker.id, 1.0, "is suspicious of %s" % about)

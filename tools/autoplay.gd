@@ -23,7 +23,8 @@ func _init() -> void:
 	var games: int = int(args.get("games", "1"))
 	transcript = args.has("transcript")
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
-	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards"]
+	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
+		"shares", "evil_shares", "approaches", "kill_on_threat"]
 	var stats = {"good": 0, "evil": 0}
 	for k in keys:
 		stats[k] = 0
@@ -41,6 +42,8 @@ func _init() -> void:
 			[games, stats["good"], stats["evil"], 100.0 * stats["good"] / gf, stats["days"] / gf, stats["exec_good"] / gf, stats["exec_evil"] / gf])
 		print("  nominations %.1f/case, trait reveals %.1f/case, NPCs reaching tier 4 %.1f/case, NPC conversations %.1f/case, lies %.1f/case, stuck games %d" %
 			[stats["nominations"] / gf, stats["reveals"] / gf, stats["max_tier4"] / gf, stats["pairs"] / gf, stats["lies"] / gf, stats["guards"]])
+		print("  NPC shares %.1f/case, evil intel pools %.1f/case, approaches %.1f/case" %
+			[stats["shares"] / gf, stats["evil_shares"] / gf, stats["approaches"] / gf])
 	quit()
 
 func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictionary:
@@ -60,7 +63,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	var w = g.w
 	var r = {"winner": w.winner if w.winner != "" else "evil", "days": w.day, "reason": w.end_reason,
 		"exec_good": 0, "exec_evil": 0, "kills": 0, "lies": 0, "nominations": 0, "clemency": 0, "reveals": 0,
-		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0}
+		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0}
 	for e in w.executions:
 		if w.by_id[e["id"]].is_evil():
 			r["exec_evil"] += 1
@@ -76,6 +79,12 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 				r["reveals"] += 1
 			"npc_conversation":
 				r["pairs"] += 1
+			"npc_share":
+				r["shares"] += 1
+			"evil_share":
+				r["evil_shares"] += 1
+			"approach":
+				r["approaches"] += 1
 			"think":
 				if e["data"].get("topic", "") == "lie":
 					r["lies"] += 1
@@ -163,6 +172,8 @@ func _top_suspect():
 func _decide() -> String:
 	var w = g.w
 	match g.state:
+		"approach":
+			return "accept" if rng.randf() < 0.7 else "decline"
 		"day":
 			if not g.moved:
 				return "go " + _pick_location()
@@ -195,6 +206,8 @@ func _decide() -> String:
 				for c in g.board:
 					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and c["kind"] != "vote" and c["kind"] != "secret":
 						return "tell %s %d" % [ts[0].id, c["n"]]
+			if rng.randf() < 0.25:
+				return "ask about " + ["seer", "gravedigger", "archivist", "night watch", "hearthwitch"][rng.randi_range(0, 4)]
 			var others: Array = w.living().filter(func(m): return m != n)
 			return "ask about " + others[rng.randi_range(0, others.size() - 1)].id
 		"meeting":
@@ -208,10 +221,14 @@ func _decide() -> String:
 			var nm: Dictionary = w.meeting["pending"]
 			var s: float = sc.get(nm["nominee"], 0.0)
 			if not g.statement_used and nm["by"] != "player":
+				var best_card = 0
+				for c in g.board:
+					if nm["nominee"] in c.get("subject", []) and c.get("source", "") != nm["nominee"] and c["kind"] in ["info", "sighting", "trace"]:
+						best_card = c["n"]
 				if s <= -0.3:
 					return "defend"
 				if s >= 1.0:
-					return "accuse"
+					return "accuse %d" % best_card if best_card > 0 else "accuse"
 			if w.tools["clemency"] > 0 and nm["by"] != "player" and s <= -0.8 and rng.randf() < 0.5:
 				return "clemency"
 			return "vote yes" if s >= 0.5 else "vote no"
