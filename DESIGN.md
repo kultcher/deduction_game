@@ -71,10 +71,11 @@ but it means the game must teach its own way of thinking and make evidence very 
   **busy** (talking with someone). This lets the player plan, but they still risk
   missing a conversation: if they want two people in the afternoon and pick one, the
   other may be busy by evening.
-- **(proposed)** Only the *current* phase is visible. The timeline automatically
-  records only what the player saw at their own location. Recording others' positions is
-  a deliberate player action (pin/note). This keeps the evening trace and daytime
-  testimony meaningful (see conflict note under Evidence).
+- Only the *current* phase is shown live. On the map and timeline, positions the player
+  witnessed are shown as **confirmed**; positions heard secondhand (testimony, gossip) are
+  shown as **tentative** (e.g. low alpha) and carry their source. Recording other
+  positions is otherwise a deliberate player action. This keeps the evening trace and
+  daytime testimony meaningful (see Evidence).
 
 ## Occupations vs. gifts
 
@@ -130,9 +131,11 @@ Night action:
   and become unlockable/customisable through progression.
 - Starting tools:
   - **Ward:** at night, shield one person from the demon (once).
-  - **Clemency:** spare one person from execution (once). **(proposed)** Used after the
-    final tally; nobody is executed that day; the town knows the Demonologist intervened
-    (trust cost, especially with those who voted for it).
+  - **Clemency:** spare one person from execution (once). Used **immediately when a
+    nomination is made**: the player is given a chance to intervene, and that nomination
+    is cancelled. Other nominations that day proceed normally. Trust effects follow each
+    NPC's attitude to the spared person: those who trust them think better of the
+    player; those who suspect them think worse.
 - Future candidates: Autopsy (learn a dead person's gift), Séance (question the dead; evil
   dead may still lie), Scry (is X the demon? once, foolable at higher difficulty), Binding
   circle (sets up exorcism). Info tools must narrow, never settle. Evil should react to the
@@ -183,9 +186,10 @@ discounts, believed roles, and believed-good flags.
 - **Unfounded arguments are allowed.** If no template supports a link, a sharp NPC rejects
   it; a credulous or trusting one may be swayed anyway. The player can mislead the town by
   mistake.
-- **No invisible technicalities:** every card field a template depends on (day/night
-  number, phase, block, source) is shown on the card. When an NPC rejects an argument they
-  name the reason ("that was night 2; she said night 1").
+- Caution (not a hard rule): avoid cases where the player believes they are proving
+  something but the cards disagree on an invisible technicality. Showing the fields a
+  template depends on (night number, phase, block, source) and having NPCs name why they
+  reject an argument are the expected mitigations.
 
 ### The conclusion builder
 
@@ -212,20 +216,23 @@ discounts, believed roles, and believed-good flags.
 
 Follows BotC's structure:
 
-1. **Floor:** the player may present one prepared argument to everyone at once
-   **(proposed: one per meeting)**. NPCs give testimony and claims.
+1. **Floor:** the player may present one prepared argument to everyone at once. NPCs
+   give testimony and claims.
 2. **Nominations, one at a time.** Each nomination is its own event with a start and an
-   end: nominator speaks, the player may make one short statement (accuse or defend)
-   **(proposed)**, then everyone votes and the tally is recorded before the next
+   end: nominator speaks, the player may make one short statement (accuse or defend) or
+   use Clemency, then everyone votes and the tally is recorded before the next
    nomination.
 3. **On the block:** a nomination that reaches the threshold puts that person on the
    block. A later nomination with more votes replaces them (the first is safe). A tie at
    the highest count means no execution.
 4. At the end, whoever is on the block is executed (unless the player uses Clemency).
 
-**(proposed)** BotC limits: each person nominates at most once and can be nominated at
-most once per day. Threshold: votes from at least half the living (rounded up).
-**(open)** Dead NPCs keep one ghost vote, as in BotC?
+BotC limits: each person nominates at most once and can be nominated at most once per
+day. Threshold: votes from at least half the living (rounded up).
+
+**Dead NPCs (deferred):** no ghost votes for now. In BotC that rule mainly keeps dead
+players engaged, which matters less in single player. Keep the door open to the dead
+affecting the game, e.g. the final day's vote is a **Séance** in which the dead also vote.
 
 **(prototype)** All nominations are voted on together and the player can't speak.
 
@@ -321,9 +328,33 @@ hidden state. Unmatched player contradiction links are flagged for template work
 - Text prototype first: terminal CLI and in-editor text console share one command
   interpreter. An autoplay bot runs many seeds for testing.
 
+## Playtest findings (3 cases, 2 players)
+
+- Gradual reveal works; relationships and secrets work as intended.
+- **Wasted actions:** many day actions were spent searching ordinary empty locations,
+  usually because the person sought wasn't there. Addressed by day visibility; consider
+  making `go` free to look.
+- **Players expect evidence chains:** after a trace pointed to a block, players went and
+  searched that block. Candidate: traces lead to a secondary clue at the killer's evening
+  location (dropped item, witness), giving `search` a real purpose. **(open)**
+- **Players read social patterns** ("Agnes keeps meeting the other evil"). The prototype
+  has no daytime evil coordination, so that read was coincidence. Candidate: make it real
+  (evil meetups to coordinate, which can be observed; friends and lovers meet too, as
+  noise). **(open)**
+- **Evil information is the most forthcoming:** evil NPCs claim early and share a
+  steady, consistent frame of the scapegoat, which is easy to follow into lynching the
+  innocent. Working as intended, but town and player pull may be too strong: a
+  player-led nomination of the true Seer passed 7/8. Consider NPCs resisting when their
+  own information contradicts the nomination.
+- **Vigil is strong:** one well-placed vigil on the kill block (plus an Archivist pair)
+  won a case on day 3. Keep watching.
+- **Template tell (fix):** evil opinions say "Something's off about them" with no reason,
+  while good opinions cite one. Evil must cite (fabricated) reasons too.
+- **UX:** `go <block>` and `go <person>` should work; asking `info` before `gift` repeats
+  the same answer; "as I said" is used for claims never said to the player.
+
 ## Open questions
 
-- Ghost votes for the dead.
 - Is unlimited Vigil too strong?
 - Persuasion economy beyond trust (how pressure sours NPCs).
 - Evidence planting (Framer-type evil role).
