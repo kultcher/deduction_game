@@ -121,7 +121,10 @@ Evil:
 
 ## Player: the Demonologist
 
-Day actions (one per phase, at the location chosen for that phase):
+Day actions (one per phase). After choosing a location, the player sees who is there and
+who is nearby. They get **one free move within the same block** (e.g. tavern → well) before
+acting, as a backup when nobody useful is home, without letting them scout the whole map.
+Then one action:
 
 - **Talk** to an NPC present: a conversation of up to 3 exchanges (questions or
   `convince` arguments).
@@ -347,7 +350,7 @@ constant for the case; low/mid/high tiers):
 | Trait | Low | High |
 |---|---|---|
 | **Privacy** (about self: role, relationships, whereabouts) | shares who they are and what they know even at low trust; claims publicly early | withholds as long as possible; reveals under pressure; stonewalls rather than lies |
-| **Gossip** (about others) | keeps out of others' business | volunteers what they've seen and heard |
+| **Gossip** (about others) | keeps out of others' business; at the extreme, won't share even if asked ("none of my business") until under pressure | volunteers what they've seen and heard |
 | **Confidence** | opinions shift quickly; stonewalls or cracks when pushed; rarely nominates | opinions shift slowly both ways; lies boldly when pushed (as good or evil); nominates and votes readily |
 | **Insight** (logic, impressionability) | swayed by speech alone | swayed only by concrete evidence or a preponderance of circumstantial evidence |
 | **Composure** (keeps emotions in check) | attitude cues obvious; strongly affected by pressure and paranoia | almost no cues; resists pressure and paranoia |
@@ -404,7 +407,7 @@ threshold), gossip (tavern speaker pick).
 | 7 | Opinion, reasoned | Insight ↑; Gossip shares | fabricated reasons |
 | 8 | NPC-made argument / contradiction | Insight finds; Confidence airs publicly | built from bluffs |
 | 9 | Accusation / nomination | Confidence ↑; Paranoia lowers threshold; Pressure deflects onto others; Composure dampens | pushes scapegoat |
-| 10 | Defence of self or another | trust in defended, Confidence; self-defence rises with Pressure | defends teammate, carefully |
+| 10 | Defence of self or another | trust in defended, Confidence; self-defence rises with Pressure | defends teammate, carefully. **(later)** Overrides: a pressured minion distances himself from the demon and tries to look like someone else's minion ("throw under the bus"); the demon goes along with town/player conclusions to build trust |
 | 11 | Confession | low Privacy, high Trust, high Pressure, low Confidence | false confessions (fake secrets) |
 | 12 | Hearsay / relay | Gossip; distortion with low Insight | seeds lies |
 | 13 | Request to the player | low Privacy; trust in player and subject | "protect X" as bait or probe |
@@ -429,7 +432,7 @@ unfounded suspicion is normal town behaviour, not an evil tell. Evil also cites
 | Pressed with too many questions | loss | high Privacy loses more; Composure dampens |
 | Player accuses them privately | loss, Pressure ↑ | high Confidence counter-accuses; low cracks (more disclosure) |
 | Player accuses someone they trust | loss | scaled by trust in that person and Confidence |
-| Publicly nominated / accused | Pressure ↑ | Composure dampens; low Confidence discloses, high counter-attacks |
+| Publicly nominated / accused | Pressure ↑ and trust loss toward the nominator (and the player, if they nominated or backed it) | Composure dampens; low Confidence discloses, high counter-attacks |
 | Caught in a contradiction | Pressure ↑↑; #15 fires | confession + player discretion can raise trust |
 | Friend executed | loss toward nominators, yes-voters, player if yes | scaled by trust in friend; trust ceiling if the player nominated |
 | Player proven right | gain | bigger for high Insight |
@@ -453,8 +456,9 @@ unfounded suspicion is normal town behaviour, not an evil tell. Evil also cites
   (aim for 2+ roles per package).
 
 ### NPCs approach the player
-- At the start of some phases an NPC asks to talk. Accepting **costs the phase action**:
-  sussing out who's worth talking to is part of play.
+- At the start of some phases an NPC asks to talk. The approach itself is free: the
+  player gets a yes/no prompt. **Having the conversation costs the phase action**; if they
+  decline, the slot is used normally. Sussing out who's worth talking to is part of play.
 - Who approaches: a good NPC with news, an evil NPC spreading a frame or probing, or a
   **busybody** (high Gossip). Busybodies always give *some* information, usually low
   impact (a sighting), and are a main path to learning others' **secrets** (an affair, a
@@ -528,6 +532,27 @@ unfounded suspicion is normal town behaviour, not an evil tell. Evil also cites
 - **Urgency:** NPCs become more willing to execute late ("we must hang someone"); the
   player may need to talk them down. Tune paranoia and urgency together so the last days
   don't become random lynchings.
+
+## Rollout plan (proposed)
+
+1. **Foundation (text).** Split game output into structured events/cards with text as a
+   rendering layer, so a UI can later consume the same data. Add the trait model,
+   schedules/availability with the in-block move, unified gift question with tiers and
+   hints, trust building/reactions/ceiling, BotC-style one-at-a-time nominations, the
+   two-slot toolbox (Ward, Clemency), demon retargeting, and the opinion-template fix.
+2. **The town talks (text).** NPC-to-NPC conversations and belief provenance; evil
+   coordination replacing hidden-state reads; NPC approaches (incl. busybody secrets);
+   pressure and paranoia. Bot runs to check evil isn't too weak; playtest round.
+3. **The case board (thin Godot UI).** `convince` with conclusions, contradiction cards and
+   templates, evidence classes, diminishing returns; timeline grid, profiles, filters,
+   confirmed vs. tentative positions. Built as a minimal Godot panel because multi-card
+   building is painful in pure text. Playtest round.
+4. **Full UI.** Map (homes, work, known positions), board/timeline, profiles with role icons
+   and confidence. Trait reveals and trust cues presented diegetically.
+5. **Geography and confrontation.** Paths, dropped evidence along paths, confrontation,
+   alibis and confessions. Benefits from the real map.
+6. **Later:** urgency tuning, throw-under-the-bus overrides, Séance final vote, roster
+   expansion and hint packages, solver/director, larger towns.
 
 ## Playtest findings (3 cases, 2 players)
 
