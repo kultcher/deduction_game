@@ -55,9 +55,10 @@ but it means the game must teach its own way of thinking and make evidence very 
 - The town is divided into **blocks**; each block holds 1–2 **locations**.
 - Testimony and evidence usually point to **blocks**, not exact locations.
 - NPCs have **homes** (on a block) and **occupations** (tied to a location).
-- **Schedules:** each NPC has anchored slots (usually Morning at work) and flexible
-  slots. Deviation is normal, so absence alone is not damning. Overall schedules are
-  never shown to the player.
+- **Schedules:** each NPC has **at least one work slot**; their work schedule is known to
+  the player, and the player can always find and talk to them at work then, no
+  exceptions. Free slots are flexible and not shown in advance. Deviation is normal, so
+  absence alone is not damning.
 - **Sightings:** NPCs in the same location see each other; NPCs on the same block may
   notice each other. Sightings are stored as beliefs and can be reported (truthfully or
   not).
@@ -68,9 +69,17 @@ but it means the game must teach its own way of thinking and make evidence very 
 ### Visibility of NPCs by day
 
 - The map shows where each NPC is **during the current phase**, and whether they are
-  **busy** (talking with someone). This lets the player plan, but they still risk
-  missing a conversation: if they want two people in the afternoon and pick one, the
-  other may be busy by evening.
+  **busy** (in a conversation). This lets the player plan, but they still risk missing a
+  conversation: if they want two people in the afternoon and pick one, the other may be
+  busy by evening.
+- **Availability per phase:** working NPCs are always available at work. Idle NPCs may
+  be pre-paired into a visible conversation, but only while the player keeps **at least 3
+  people to choose from** (relaxed late in the game). Example (7 NPCs, morning): 2 working,
+  5 idle; 2 pair off; the player chooses among 3 idle + 2 working. After the player
+  chooses, remaining idles may pair off (a semi-random chance, with partners chosen by
+  trust, confidence and paranoia: two who dislike each other rarely talk; of three, the
+  two who like each other are likeliest). Each NPC has at most one NPC conversation per
+  day; once pre-paired, they can't be pre-paired again that day (but may still be at work).
 - Only the *current* phase is shown live. On the map and timeline, positions the player
   witnessed are shown as **confirmed**; positions heard secondhand (testimony, gossip) are
   shown as **tentative** (e.g. low alpha) and carry their source. Recording other
@@ -265,9 +274,9 @@ The prototype's text interface (a flat numbered card list) is a stand-in.
 - **Suspicion:** each NPC holds a suspicion score for every other NPC, updated by ability
   info, contradictions, sightings near murders, and arguments from people they trust.
 - **Trust in the player:** gates how much they share and how much arguments move them.
-- **Personality traits:** honesty, caution, gossip, temper, loyalty, **insight**
-  (argument evaluation), **readability** (how much they let their feelings show).
-- **Relationships:** friend/rival edges bias suspicion and voting. Friends of an executed
+- **Personality traits:** see *Trait model* (Planned features). Prototype still uses
+  honesty, caution, gossip, temper, loyalty.
+- **Relationships:** friend/rival edges seed NPC-to-NPC trust and bias suspicion and voting. Friends of an executed
   NPC resent its nominators, yes-voters and the player (implemented).
 - **Evil coordination:** demon and minion share a plan: bluffs, a scapegoat to frame,
   kill priority.
@@ -276,8 +285,8 @@ The prototype's text interface (a flat numbered card list) is a stand-in.
 
 - Greetings, refusals, willingness and small body-language lines change by trust tier
   ("What do *you* want?" vs. "Ah, Demonologist. Sit."). Kept subtle.
-- An NPC's **readability** decides whether these cues appear in the text at all: some
-  people are open books, some give nothing away.
+- An NPC's **Composure** decides whether these cues appear in the text at all: low
+  composure, open book; high composure, gives nothing away.
 
 ## Lying
 
@@ -330,91 +339,133 @@ hidden state. Unmatched player contradiction links are flagged for template work
 
 ## Planned features (tentative)
 
-### Personality-driven social style
-- See **Trait model** below. **Forthcoming** is the primary social trait: how readily an NPC claims, shares readings
-  and speaks at meetings. It applies **regardless of alignment**: a chatty Agnes is chatty
-  as good or evil, so evil isn't revealed by being outgoing.
-- Each cast member has either a **fixed** forthcoming value (stable habits across runs, as
-  with a regular Clocktower group) or a **volatile** flag (rerolled per case).
-- Evil's fabricated information should vary naturally; a perfectly consistent frame is a
-  tell of its own.
-- Watch for overlap between forthcoming, honesty, caution and readability; consolidate if
-  they blur.
-
 ### Trait model
-- Traits: **Forthcoming** (shares about self), **Gossip** (talks about others, incl.
-  noise), **Honesty**, **Caution**, **Temper**, **Loyalty**, **Insight**, **Readability**.
-- Each trait has a **base** and its **own volatility**; each case rolls
-  `value = base ± volatility`. (One NPC can be steadfastly honest every run but variable in
-  chattiness.)
-- Decisions are **weighted rolls**: a score from traits, trust and context becomes a
-  probability. Score breakdowns are logged.
-- Traits apply regardless of alignment. Honesty also shapes evil lying style: low-honesty
-  evil fabricate boldly; high-honesty evil prefer omissions and half-truths.
-- **(prototype)** Traits are mostly hard thresholds: caution (claim timing, trust needed to
-  reveal a gift, starting trust), temper (meeting accusations, trust lost when pressed),
-  loyalty (votes and accusations involving friends, grief), honesty (confession
-  threshold), gossip (tavern speaker pick).
+
+**Defined traits** (rolled once at case start as base ± that trait's volatility, then
+constant for the case; low/mid/high tiers):
+
+| Trait | Low | High |
+|---|---|---|
+| **Privacy** (about self: role, relationships, whereabouts) | shares who they are and what they know even at low trust; claims publicly early | withholds as long as possible; reveals under pressure; stonewalls rather than lies |
+| **Gossip** (about others) | keeps out of others' business | volunteers what they've seen and heard |
+| **Confidence** | opinions shift quickly; stonewalls or cracks when pushed; rarely nominates | opinions shift slowly both ways; lies boldly when pushed (as good or evil); nominates and votes readily |
+| **Insight** (logic, impressionability) | swayed by speech alone | swayed only by concrete evidence or a preponderance of circumstantial evidence |
+| **Composure** (keeps emotions in check) | attitude cues obvious; strongly affected by pressure and paranoia | almost no cues; resists pressure and paranoia |
+
+- **Privacy decides whether** an NPC discloses; **Confidence decides what they do when
+  pushed** (high: lie outright; low: stonewall or crack). This keeps personal-secret lies
+  alive for good NPCs.
+
+**Derived traits** (change during the case, always hidden from the player):
+- **Pressure** (individual): scrutiny from accusations, nominations, circulating
+  evidence. Pushes high-Privacy NPCs to open up and low-Gossip NPCs to deflect.
+- **Paranoia** (global): baseline suspicion of everyone not confirmed; rises as bodies pile
+  up. Weighs against Insight and Confidence (flimsy nominations get support late).
+- **Trust**: toward the player and toward each other NPC. NPC-to-NPC trust replaces the
+  old Loyalty trait.
+- Composure reduces the effect of Pressure and Paranoia.
+
+**Alignment:** traits apply to both alignments. Evil **overrides content** (lies instead of
+truth) but **style follows traits and pressure**: a high-Privacy demon stonewalls (good
+cover); a low-Privacy demon volunteers a bluff early. Pressure is the legitimate reason for
+behaviour to shift, for both.
+
+**Decisions are weighted rolls:** a score from traits, trust and context becomes a
+probability; score breakdowns are logged.
+
+**Trait reveals to the player:** after a private conversation, one trait is revealed with a
+roll for a second (Composure lowers it); after each meeting, a chance per attendee
+(Composure lowers it) to learn one trait. Reveals show the rolled value, not the cast
+member's baseline. Only defined traits are revealable. Tuning: if too fast, make the
+conversation reveal a chance and the meeting chance low. Present as tiers, described in
+character the first time.
+
+**(prototype)** Traits are mostly hard thresholds on the old set: caution (claim timing,
+trust needed to reveal a gift, starting trust), temper (meeting accusations, trust lost
+when pressed), loyalty (friends in votes/accusations, grief), honesty (confession
+threshold), gossip (tavern speaker pick).
+
+### Evidence classes (for Insight)
+- **Speech:** claims, opinions, hearsay.
+- **Circumstantial:** reported sightings, traces, readings reported by others.
+- **Concrete:** player-witnessed events, owner-identifying items, template-confirmed
+  contradictions.
 
 ### Statement taxonomy
 
-| # | Statement | Main traits |
+| # | Statement | Drivers | Evil variant |
+|---|---|---|---|
+| 1 | Gift disclosure (tiers) | Privacy ↑ lower/later; Trust ↑ and Pressure ↑ raise tier; Composure dampens pressure | same schedule, bluff content |
+| 2 | Gift reading | as #1; trust drop stops new readings, with explicit refusal | fabricated; high Confidence frames, low stays harmless |
+| 3 | Own whereabouts / alibi | Privacy high stonewalls, low volunteers; if hiding and pushed: Confidence high lies, low cracks/stonewalls; Pressure pushes to lie-or-confess | same; always hiding after a night out |
+| 4 | Sighting of others | Gossip high volunteers, low only if asked; high trust in subject may omit friends | omits teammates; Confidence decides inventing |
+| 5 | Corroborate / deny an alibi | trust in that person; shared secret: Privacy (quiet) vs Confidence (lie to protect) | may deny a true alibi to frame |
+| 6 | Opinion, vibes ("something's off") | low Insight, high Paranoia; Gossip shares | same mix |
+| 7 | Opinion, reasoned | Insight ↑; Gossip shares | fabricated reasons |
+| 8 | NPC-made argument / contradiction | Insight finds; Confidence airs publicly | built from bluffs |
+| 9 | Accusation / nomination | Confidence ↑; Paranoia lowers threshold; Pressure deflects onto others; Composure dampens | pushes scapegoat |
+| 10 | Defence of self or another | trust in defended, Confidence; self-defence rises with Pressure | defends teammate, carefully |
+| 11 | Confession | low Privacy, high Trust, high Pressure, low Confidence | false confessions (fake secrets) |
+| 12 | Hearsay / relay | Gossip; distortion with low Insight | seeds lies |
+| 13 | Request to the player | low Privacy; trust in player and subject | "protect X" as bait or probe |
+| 14 | Reaction to an argument | Insight sets bar by evidence class; Confidence sets shift speed; trust in source and subject | judges what it reveals |
+| 15 | Changed story when caught | Confidence high doubles down, low confesses; Composure hides fluster | main improvisation point |
+| 16 | Small talk / noise | Gossip | same |
+| 17 | Approaching the player | low Privacy or high Gossip, plus an agenda | to frame or probe |
+| 18 | Withholding ("I've told you enough") | trust fell below highest shared tier; Composure decides whether a reason is given | same |
+
+Vibes-based opinions (#6) are used by good NPCs too, including about other good NPCs, so
+unfounded suspicion is normal town behaviour, not an evil tell. Evil also cites
+(fabricated) reasons.
+
+### Reactions
+
+| Event | Effect | Modifiers |
 |---|---|---|
-| 1 | Gift claim (with hint levels) | caution, forthcoming, trust |
-| 2 | Gift reading | forthcoming, caution, trust |
-| 3 | Own whereabouts / alibi | honesty, loyalty |
-| 4 | Sighting of someone else | gossip, honesty, loyalty (omit friends) |
-| 5 | Corroboration / denial of another's alibi | loyalty, honesty |
-| 6 | Opinion, vibes-based ("something's off") | temper, gossip, low insight |
-| 7 | Opinion, reasoned (cites evidence) | insight, forthcoming |
-| 8 | NPC-made argument / contradiction | insight, forthcoming |
-| 9 | Public accusation / nomination | temper, forthcoming, urgency |
-| 10 | Defence of self or another | loyalty, temper |
-| 11 | Confession of a personal secret | honesty, trust |
-| 12 | Hearsay / relay (may distort) | gossip |
-| 13 | Request to the player ("watch over Greta") | forthcoming, loyalty |
-| 14 | Reaction to an argument or claim | insight, temper |
-| 15 | Changed story when caught (evil improvisation) | honesty, temper, caution |
-| 16 | Small talk / noise | gossip |
+| Player airs their secret publicly | trust loss | Privacy low: small; mid: large; high: large + **trust ceiling** (can't rebuild past "wary" this case). High Confidence may retaliate publicly. Composure: visible anger or not |
+| Player keeps their secret (end of day) | trust gain | bigger for high Privacy; reduced (not lost) if someone else spread it and the player stayed quiet |
+| Neutral chat (once/day) | small gain | high Privacy warms up slower |
+| Player argues something they agree with | gain scaled by agreement | high Insight gains less from agreement alone |
+| Pressed with too many questions | loss | high Privacy loses more; Composure dampens |
+| Player accuses them privately | loss, Pressure ↑ | high Confidence counter-accuses; low cracks (more disclosure) |
+| Player accuses someone they trust | loss | scaled by trust in that person and Confidence |
+| Publicly nominated / accused | Pressure ↑ | Composure dampens; low Confidence discloses, high counter-attacks |
+| Caught in a contradiction | Pressure ↑↑; #15 fires | confession + player discretion can raise trust |
+| Friend executed | loss toward nominators, yes-voters, player if yes | scaled by trust in friend; trust ceiling if the player nominated |
+| Player proven right | gain | bigger for high Insight |
+| Ward/Clemency on someone they trust / suspect | gain / loss | Paranoia tilts toward loss |
+| Body found; town shrinks | Paranoia ↑ (global) | Composure dampens |
+| Evidence against them circulates | Pressure ↑ | Composure dampens |
 
-Expect more types from playtesting.
+**Trust ceiling:** serious betrayals cap the maximum trust regainable with that NPC.
 
-### Disclosure levels and hints
-Answers to the unified gift question escalate:
-1. No gift. 2. Won't say. 3. **Flavoured hint** pointing to a role category (protection:
-Warden/Veteran; the dead: Gravedigger; sight: Seer/Hearthwitch/Night Watch; records:
-Archivist/Clerk). 4. **3-for-3** (three roles, one true). 5. Gift without readings.
-6. Gift and readings. Evil can bluff hints, committing to less.
+### Unified gift/info question and hints
+- `ask gift` and `ask info` merge. Disclosure tiers:
+  1. Denies having a gift, **or** refuses to say what it is.
+  2. **Flavoured hint** (in-world, not metagame) pointing to a role package (e.g.
+     protection: Warden/Veteran).
+  3. Gift, **or** vague information. **(tabled until the roster is defined)**
+  4. Everything.
+- No 3-for-3.
+- Good NPCs never illogically fall back to a lower tier. If trust drops after sharing,
+  they withhold *new* information and say so explicitly ("I've told you enough").
+- Roles are flavoured to fit hint packages; keep packages in mind when adding roles
+  (aim for 2+ roles per package).
 
 ### NPCs approach the player
-- At the start of some phases an NPC asks to talk; the player accepts or declines.
-- Who approaches depends on forthcoming and agenda: a good NPC with news, an evil NPC
-  spreading a frame, or a busybody with nothing relevant.
-- **(proposed)** Accepting is a short free exchange (one statement); a full conversation
-  still costs the phase action.
+- At the start of some phases an NPC asks to talk. Accepting **costs the phase action**:
+  sussing out who's worth talking to is part of play.
+- Who approaches: a good NPC with news, an evil NPC spreading a frame or probing, or a
+  **busybody** (high Gossip). Busybodies always give *some* information, usually low
+  impact (a sighting), and are a main path to learning others' **secrets** (an affair, a
+  reason someone sneaks out).
 
 ### Building trust
-- Neutral conversation: small gain, once per day per NPC.
-- Presenting a case the NPC agrees with (even one the player doesn't believe, e.g. winning
-  over someone by echoing their suspicion).
-- Acting in their interest: warding or sparing someone they trust.
-- Being proven right (e.g. an execution the player pushed is confirmed by the Gravedigger).
-- Keeping a confessed secret; spreading it costs heavily.
-
-### Vibes-based opinions
-- "Something's off about them" (an opinion with no stated reason) is used by good NPCs
-  too, including about other good NPCs, so unfounded suspicion is normal town behaviour
-  rather than an evil tell. Evil NPCs also cite (fabricated) reasons.
-
-### Unified gift/info question
-- `ask gift` and `ask info` merge into one question. Answers escalate with trust and
-  forthcomingness:
-  1. "I don't have a gift." (true or a lie)
-  2. "I have a gift, but I'm not saying what."
-  3. "Here's my gift, but not what it told me."
-  4. "Here's my gift and what it told me."
-- NPCs can **stop** sharing new readings with the player if trust drops (e.g. an Empath
-  shares nights 0–1 but withholds night 2), while possibly still sharing at the meeting.
+- Neutral conversation; presenting a case they agree with (even one the player doesn't
+  believe); acting in their interest (warding/sparing someone they trust); being proven
+  right; keeping their secret (end-of-day bonus). See Reactions for losses.
+- Using someone's secret publicly costs trust with its owner regardless of who told the
+  player.
 
 ### Evil knowledge and coordination
 - At baseline evil knows: each other's identities, bluffs, and a shared plan. The first
@@ -436,9 +487,9 @@ Archivist/Clerk). 4. **3-for-3** (three roles, one true). 5. Gift without readin
   the same evaluation as player arguments (source trust, diminishing returns).
 - Every belief records **who it was heard from**, so it can be traced and disowned.
 - Evil can feed lies into the network.
-- Limit: each NPC talks to at most one other NPC per day. **(proposed)** Pairings are
-  rolled at the **start** of each phase so the paired NPCs can be shown as busy; the
-  player chooses among the rest; then the pairs exchange information.
+- Limit and scheduling: see *Availability per phase* (World). Pre-paired conversations are
+  visible (busy); evil meetups use the same mechanism and each evil NPC's one daily
+  conversation, with good pairs as noise. Tune the signal:noise ratio.
 
 ### Claims matter to good NPCs
 - Good NPCs weigh public claims. A Warden who trusts a claimed strong information role is
@@ -464,7 +515,7 @@ Archivist/Clerk). 4. **3-for-3** (three roles, one true). 5. Gift without readin
   which can produce a word-against-word contradiction card.
 - Evil may claim a false secret ("I was meeting Jory for an affair"), or name someone they
   really did meet, to throw suspicion on them. Good NPCs may also lie to protect a shared
-  secret out of loyalty, so a real affair can stay hidden.
+  secret out of trust in their partner, so a real affair can stay hidden.
 - Evil naming each other as alibis is a classic BotC pairing tell; smart evil usually
   avoids it.
 - All of these are expressed as cards (alibi claim, confirmation, denial, confession).
@@ -499,7 +550,8 @@ Archivist/Clerk). 4. **3-for-3** (three roles, one true). 5. Gift without readin
 - **Vigil is strong:** one well-placed vigil on the kill block (plus an Archivist pair)
   won a case on day 3. Keep watching.
 - **Template tell (fix):** evil opinions say "Something's off about them" with no reason,
-  while good opinions cite one. Evil must cite (fabricated) reasons too.
+  while good opinions cite one. Fix both ways: good NPCs give vibes opinions too; evil also
+  cites (fabricated) reasons.
 - **UX:** `go <block>`/`go <person>` should work (expected to resolve with the real UI);
   asking `info` before `gift` repeats the answer (resolved by the unified question);
   "as I said" is used for claims never said to the player.
