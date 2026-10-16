@@ -108,7 +108,7 @@ static func known_good(w, id: String) -> bool:
 
 ## Apply one ability result (own or heard) to a listener's suspicion.
 static func apply_info(w, listener, source, entry: Dictionary, weight: float) -> void:
-	if weight <= 0.01 or listener.is_evil():
+	if absf(weight) <= 0.01 or listener.is_evil():
 		return
 	var d: Dictionary = entry["data"]
 	var r: String = entry["role"]
@@ -244,6 +244,7 @@ static func warden_target(w, n) -> String:
 			s += 1.0 - susp(n, m.id)
 		s += (n.npc_trust.get(m.id, 0.5) - 0.5) * 0.8
 		s -= susp(n, m.id) * 0.5
+		s += n.protect_pref.get(m.id, 0.0) * 1.2
 		scores[m.id] = snappedf(s, 0.01)
 		if s > best_s:
 			best_s = s
@@ -455,6 +456,8 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 	parts["trust_in_nominee"] = -(v.npc_trust.get(nominee, 0.5) - 0.5) * 0.6
 	if nominator != "player" and susp(v, nominator) > 0.7:
 		parts["distrusts_nominator"] = -0.15
+	if v.spare_pref.get(nominee, 0.0) > 0.0:
+		parts["persuaded_to_spare"] = -0.5 * v.spare_pref[nominee]
 	var block: String = w.meeting["block"]
 	if block != "" and block != nominee and susp(v, block) >= base:
 		parts["prefers_block"] = -0.4
@@ -626,6 +629,10 @@ static func _gossip_share(w, n, topic: String) -> int:
 		return 0
 	return 1 + int(round((g + n.pressure * 0.5) * 3.0))
 
+static func _alibi_home(n, nd: int) -> Dictionary:
+	return {"kind": "alibi", "subject": [n.id], "home": true, "day": nd, "phase": C.NIGHT, "source": n.id,
+		"text": "%s says they were home on night %d." % [n.name, nd]}
+
 static func answer_night(w, n) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
@@ -638,11 +645,14 @@ static func answer_night(w, n) -> Dictionary:
 		var fb: String = w.evil_plan["fake_watch"][str(nd)]
 		w.dlog.think(n.id, "lie", "Evil bluffing Night Watch: claims to have watched %s (actually %s)." % [fb, where], {"lie": true})
 		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(fb)))
+		facts.append({"kind": "sighting", "subject": [n.id], "block": fb, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
+			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(fb), nd]})
 	elif not was_out:
 		lines.append(say(n, "At home, asleep, same as any honest soul."))
+		facts.append(_alibi_home(n, nd))
 	elif n.role == "nightwatch" and n.claimed_role == "nightwatch":
 		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(block)))
-		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
+		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
 			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(block), nd]})
 	else:
 		# Out with something to hide: evil work, a personal secret, or a hidden Night Watch gift.
@@ -664,6 +674,7 @@ static func answer_night(w, n) -> Dictionary:
 			if bold:
 				w.dlog.think(n.id, "lie", "Hiding (%s): was on %s, claims to have been home." % [hiding, block], {"lie": true})
 				lines.append(say(n, "Home. Where else would I be?"))
+				facts.append(_alibi_home(n, nd))
 			else:
 				w.dlog.think(n.id, "stonewall", "Hiding (%s): refuses to say where they were." % hiding)
 				lines.append(say(n, "Where I go at night is my own business."))
@@ -794,7 +805,9 @@ static func evidence_class(card: Dictionary) -> String:
 	var kind: String = card.get("kind", "")
 	if src == "player" and kind in ["sighting", "vigil", "death", "vote", "execution"]:
 		return "concrete"
-	if kind in ["claim", "hint", "refusal", "opinion", "accusation"]:
+	if kind == "deduction":
+		return card.get("class", "circumstantial")
+	if kind in ["claim", "hint", "refusal", "opinion", "accusation", "alibi"]:
 		return "speech"
 	return "circumstantial"
 

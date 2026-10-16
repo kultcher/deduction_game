@@ -1,33 +1,46 @@
-## Minimal in-engine text UI. Builds its widgets in code and forwards typed commands
-## to the same game.gd interpreter the terminal CLI uses.
+## In-engine UI: the text console (actions), a summary case-board sidebar, and a
+## full-screen case view. Commands go to the same game.gd interpreter the CLI uses; the
+## board panels read the game's structured data directly.
 extends Control
 
 const Game = preload("res://game/game.gd")
+const CaseView = preload("res://ui/case_view.gd")
 
 var g
 var out: RichTextLabel
 var input: LineEdit
 var seed_box: SpinBox
+var side: VBoxContainer
+var side_filter: LineEdit
+var side_list: ItemList
+var side_person: OptionButton
+var side_profile: RichTextLabel
+var case_view
+var mono: SystemFont
 var history: Array = []
-var hist_i := 0
+var hist_i = 0
 
 func _ready() -> void:
-	var bg := ColorRect.new()
+	var bg = ColorRect.new()
 	bg.color = Color(0.07, 0.07, 0.08)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
-	var mono := SystemFont.new()
+	mono = SystemFont.new()
 	mono.font_names = PackedStringArray(["DejaVu Sans Mono", "Consolas", "Menlo", "monospace"])
 
-	var vb := VBoxContainer.new()
-	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 10)
-	vb.add_theme_constant_override("separation", 8)
-	add_child(vb)
+	var split = HSplitContainer.new()
+	split.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 10)
+	add_child(split)
 
-	var top := HBoxContainer.new()
+	var vb = VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_theme_constant_override("separation", 8)
+	split.add_child(vb)
+
+	var top = HBoxContainer.new()
 	vb.add_child(top)
-	var lbl := Label.new()
+	var lbl = Label.new()
 	lbl.text = "Case seed"
 	top.add_child(lbl)
 	seed_box = SpinBox.new()
@@ -38,10 +51,12 @@ func _ready() -> void:
 	_button(top, "New case", _new_case)
 	_button(top, "Cast", func(): _run("cast"))
 	_button(top, "Map", func(): _run("map"))
-	_button(top, "Board", func(): _run("board"))
+	_button(top, "Timeline", func(): _run("timeline"))
 	_button(top, "Roles", func(): _run("roles"))
 	_button(top, "Help", func(): _run("help"))
 	_button(top, "Write dev log", func(): _run("log"))
+	_button(top, "Board panel", func(): side.visible = not side.visible)
+	_button(top, "Case view", _open_case_view)
 
 	out = RichTextLabel.new()
 	out.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -51,7 +66,7 @@ func _ready() -> void:
 	out.add_theme_font_size_override("normal_font_size", 15)
 	vb.add_child(out)
 
-	var bottom := HBoxContainer.new()
+	var bottom = HBoxContainer.new()
 	vb.add_child(bottom)
 	input = LineEdit.new()
 	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -62,22 +77,74 @@ func _ready() -> void:
 	bottom.add_child(input)
 	_button(bottom, "Send", func(): _on_submit(input.text))
 
+	# Summary sidebar.
+	side = VBoxContainer.new()
+	side.custom_minimum_size = Vector2(380, 0)
+	split.add_child(side)
+	var st = Label.new()
+	st.text = "Case board (newest first)"
+	side.add_child(st)
+	side_filter = LineEdit.new()
+	side_filter.placeholder_text = "filter: person, place, kind, d2, n1, text"
+	side_filter.text_changed.connect(func(_t): _refresh_side())
+	side.add_child(side_filter)
+	side_list = ItemList.new()
+	side_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	side_list.add_theme_font_override("font", mono)
+	side_list.add_theme_font_size_override("font_size", 12)
+	side_list.item_activated.connect(_on_side_activated)
+	side.add_child(side_list)
+	var hint = Label.new()
+	hint.text = "Double-click a card to add its number to your command."
+	hint.add_theme_font_size_override("font_size", 11)
+	side.add_child(hint)
+	side_person = OptionButton.new()
+	side_person.item_selected.connect(func(_i): _refresh_side())
+	side.add_child(side_person)
+	side_profile = RichTextLabel.new()
+	side_profile.custom_minimum_size = Vector2(0, 170)
+	side_profile.add_theme_font_size_override("normal_font_size", 12)
+	side.add_child(side_profile)
+	_button(side, "Open case view", _open_case_view)
+
+	case_view = CaseView.new()
+	case_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	case_view.visible = false
+	add_child(case_view)
+	case_view.build(mono)
+	case_view.changed.connect(_refresh_side)
+
 	_new_case()
 
 func _button(parent: Node, text: String, cb: Callable) -> void:
-	var b := Button.new()
+	var b = Button.new()
 	b.text = text
 	b.pressed.connect(cb)
 	parent.add_child(b)
+
+func _on_side_activated(i: int) -> void:
+	input.text += " " + str(side_list.get_item_metadata(i))
+	input.grab_focus()
+	input.caret_column = input.text.length()
 
 func _new_case() -> void:
 	g = Game.new()
 	out.clear()
 	_print(g.new_case(int(seed_box.value)))
+	side_person.clear()
+	for n in g.w.npcs:
+		side_person.add_item(n.name)
+		side_person.set_item_metadata(side_person.item_count - 1, n.id)
+	case_view.set_game(g)
+	_refresh_side()
 	input.grab_focus()
 
+func _open_case_view() -> void:
+	case_view.refresh()
+	case_view.visible = true
+
 func _on_submit(text: String) -> void:
-	var t := text.strip_edges()
+	var t = text.strip_edges()
 	input.clear()
 	if t == "":
 		return
@@ -88,10 +155,38 @@ func _on_submit(text: String) -> void:
 func _run(cmd: String) -> void:
 	_print("\n> " + cmd)
 	_print(g.command(cmd))
+	_refresh_side()
+	if case_view.visible:
+		case_view.refresh()
 	input.grab_focus()
 
 func _print(s: String) -> void:
 	out.add_text(s + "\n")
+
+func _refresh_side() -> void:
+	if g == null or side_list == null:
+		return
+	side_list.clear()
+	var cards: Array = g.filter_cards(side_filter.text)
+	cards.reverse()
+	for c in cards.slice(0, 60):
+		side_list.add_item("#%-3d %s" % [c["n"], c["text"]])
+		var i = side_list.item_count - 1
+		side_list.set_item_metadata(i, c["n"])
+		side_list.set_item_tooltip(i, c["text"])
+		if c["kind"] == "deduction":
+			side_list.set_item_custom_fg_color(i, Color(0.95, 0.8, 0.45))
+		elif c.get("source", "") != "player" and c.get("source", "") != "evidence":
+			side_list.set_item_custom_fg_color(i, Color(0.72, 0.72, 0.78))
+	if side_person.selected >= 0:
+		var p: Dictionary = g.profile_data(side_person.get_item_metadata(side_person.selected))
+		var tl = PackedStringArray()
+		for t in ["privacy", "gossip", "confidence", "insight", "composure"]:
+			tl.append("%s %s" % [t.substr(0, 4), p["traits"].get(t, "?")])
+		var gs: Dictionary = p["guess"]
+		side_profile.text = "%s the %s (%s)\nWorks %s; lives on %s.\n%s\nTraits: %s\nYour guess: %s%s\n%s" % [p["name"], p["occupation"],
+			p["status"], p["work"], p["home"], p["claim"], ", ".join(tl),
+			gs.get("guess", "?"), (" (%d/3)" % gs["confidence"]) if gs.has("confidence") else "", p["note"]]
 
 func _on_input_key(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not history.is_empty():

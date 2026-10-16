@@ -11,10 +11,12 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
+const Argue = preload("res://sim/argue.gd")
 
 var g
 var transcript = false
 var talked = {}
+var linked_pairs = {}
 var rng = RandomNumberGenerator.new()
 
 func _init() -> void:
@@ -24,7 +26,7 @@ func _init() -> void:
 	transcript = args.has("transcript")
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
-		"shares", "evil_shares", "approaches", "kill_on_threat"]
+		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links"]
 	var stats = {"good": 0, "evil": 0}
 	for k in keys:
 		stats[k] = 0
@@ -44,6 +46,8 @@ func _init() -> void:
 			[stats["nominations"] / gf, stats["reveals"] / gf, stats["max_tier4"] / gf, stats["pairs"] / gf, stats["lies"] / gf, stats["guards"]])
 		print("  NPC shares %.1f/case, evil intel pools %.1f/case, approaches %.1f/case" %
 			[stats["shares"] / gf, stats["evil_shares"] / gf, stats["approaches"] / gf])
+		print("  links %.1f/case (%.1f matched), deductions %.1f/case, NPC argument evaluations %.1f/case" %
+			[stats["links"] / gf, stats["matched_links"] / gf, stats["deductions"] / gf, stats["arguments"] / gf])
 	quit()
 
 func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictionary:
@@ -51,6 +55,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	g.log_dir = log_dir
 	rng.seed = seed_v * 7919
 	talked = {}
+	linked_pairs = {}
 	_out(g.new_case(seed_v, npc_count))
 	if echo:
 		g.w.dlog.echo = true
@@ -63,7 +68,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	var w = g.w
 	var r = {"winner": w.winner if w.winner != "" else "evil", "days": w.day, "reason": w.end_reason,
 		"exec_good": 0, "exec_evil": 0, "kills": 0, "lies": 0, "nominations": 0, "clemency": 0, "reveals": 0,
-		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0}
+		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0, "deductions": 0, "arguments": 0, "matched_links": 0, "links": 0}
 	for e in w.executions:
 		if w.by_id[e["id"]].is_evil():
 			r["exec_evil"] += 1
@@ -85,6 +90,14 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 				r["evil_shares"] += 1
 			"approach":
 				r["approaches"] += 1
+			"deduction":
+				r["deductions"] += 1
+			"argument":
+				r["arguments"] += 1
+			"player_link":
+				r["links"] += 1
+				if not e["data"]["matches"].is_empty():
+					r["matched_links"] += 1
 			"think":
 				if e["data"].get("topic", "") == "lie":
 					r["lies"] += 1
@@ -201,6 +214,10 @@ func _decide() -> String:
 				return "ask gift"
 			if asked == 1:
 				return "ask night" if rng.randf() < 0.5 else "ask today"
+			if asked == 2 and rng.randf() < 0.5:
+				var dd = _latest_deduction()
+				if dd > 0:
+					return "convince %d" % dd
 			var ts = _top_suspect()
 			if ts[0] != null and ts[1] >= 0.8 and ts[0] != n:
 				for c in g.board:
@@ -211,6 +228,10 @@ func _decide() -> String:
 			var others: Array = w.living().filter(func(m): return m != n)
 			return "ask about " + others[rng.randi_range(0, others.size() - 1)].id
 		"meeting":
+			if not g.presented_today:
+				var ded = _find_or_file_deduction()
+				if ded > 0:
+					return "present %d" % ded
 			var ts = _top_suspect()
 			if ts[0] != null and ts[1] >= 1.0 and w.day >= 2 and w.can_nominate("player", ts[0].id) == "":
 				if w.meeting["block"] != ts[0].id:
@@ -275,3 +296,35 @@ static func _parse(argv: PackedStringArray) -> Dictionary:
 				out[k] = "true"
 		i += 1
 	return out
+
+## Look for a contradiction among recent cards; file the explanation blaming the most
+## suspicious person. Returns the deduction card number, or 0.
+func _find_or_file_deduction() -> int:
+	var recent: Array = g.board.filter(func(c): return c["kind"] != "deduction").slice(-14)
+	var sc = _scores()
+	for i in range(recent.size()):
+		for j in range(i + 1, recent.size()):
+			var key = "%d:%d" % [recent[i]["n"], recent[j]["n"]]
+			if linked_pairs.has(key):
+				continue
+			linked_pairs[key] = true
+			if Argue.check(g.w, [recent[i], recent[j]])["matches"].is_empty():
+				continue
+			var lk = g.link_cards([recent[i]["n"], recent[j]["n"]])
+			var best = 0
+			var best_s = -99.0
+			for k in range(lk["options"].size()):
+				var b: String = lk["options"][k]["expl"].get("blame", "")
+				var s2 = sc.get(b, 0.0) + (0.3 if lk["options"][k]["expl"]["kind"] == "poisoned" else 0.0)
+				if s2 > best_s:
+					best_s = s2
+					best = k
+			var o = lk["options"][best]
+			return g.file_deduction(o["expl"]["conclusion"], o["match"]["cards"], o["match"], o["expl"]["id"])
+	return _latest_deduction()
+
+func _latest_deduction() -> int:
+	for i in range(g.board.size() - 1, -1, -1):
+		if g.board[i]["kind"] == "deduction":
+			return g.board[i]["n"]
+	return 0

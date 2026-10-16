@@ -75,6 +75,11 @@ var known_secrets = {}       # owner id -> who told them (owner id if confided d
 var player_cases: Array = [] # cards the player used to make a case to them
 var told_to = {}             # "listener|key" -> true: what they've already told whom
 var secret_spread_by_npc = false   # someone other than the player spread their secret
+## Effects of the player's arguments (stage 3).
+var protect_pref = {}        # id -> how strongly they've been persuaded to protect/keep them
+var spare_pref = {}          # id -> how strongly they've been persuaded not to execute them
+var believed_roles = {}      # id -> role they've been persuaded someone holds
+var discounted = {}          # "source:night" -> weight already discounted (believed poisoned)
 ## Evil only: what this member knows (own observations and what they were told).
 var intel = {}               # key -> {kind, about, score, why, day, from}
 

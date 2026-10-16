@@ -10,6 +10,7 @@ const C = preload("res://sim/content.gd")
 const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
+const Argue = preload("res://sim/argue.gd")
 
 var w
 var state = "day"          # day | approach | talk | meeting | nomination | night | over
@@ -23,6 +24,10 @@ var board: Array = []
 var _card_keys = {}
 var town_quiet = false     # the town has had its say since the last nomination (allows 'done')
 var statement_used = false # player's one statement on the pending nomination
+var presented_today = false # player has had the meeting floor today
+var last_link = {}          # result of the last 'link' (for 'conclude <number>')
+var notes = {}              # npc id -> player's note
+var guesses = {}            # npc id -> {guess, confidence 1..3}
 var log_dir = "user://logs"
 var log_paths: Array = []
 var debug = false
@@ -208,8 +213,38 @@ func _dispatch(text: String) -> void:
 		"cast", "people", "who":
 			_screen(_cast())
 			return
-		"board", "notes", "b":
+		"board", "b":
 			_screen(_board(rest))
+			return
+		"timeline", "tl":
+			_screen(_timeline(rest))
+			return
+		"link":
+			_link_command(rest)
+			return
+		"conclude", "deduce":
+			_conclude_command(rest)
+			return
+		"note":
+			var p0 = rest.split(" ", false)
+			var nn = find_npc(p0[0], true) if p0.size() > 0 else null
+			if nn == null:
+				_err("Usage: note <name> <text>")
+			else:
+				set_note(nn.id, " ".join(p0.slice(1)))
+				_narr("Noted.")
+			return
+		"guess":
+			var p1 = rest.split(" ", false)
+			var gn = find_npc(p1[0], true) if p1.size() > 1 else null
+			if gn == null:
+				_err("Usage: guess <name> <role | evil | good | ?> [1-3]")
+			else:
+				var conf = p1[p1.size() - 1].to_int() if p1.size() > 2 and p1[p1.size() - 1].is_valid_int() else 2
+				var gtext = " ".join(p1.slice(1, p1.size() - 1 if p1.size() > 2 and p1[p1.size() - 1].is_valid_int() else p1.size()))
+				var role = find_role(gtext)
+				set_guess(gn.id, role if role != "" else gtext.to_lower(), conf)
+				_narr("Marked %s as %s (confidence %d)." % [gn.name, C.role_name(role) if role != "" else gtext, conf])
 			return
 		"profile", "p":
 			_screen(_profile(rest))
@@ -536,6 +571,14 @@ func _talk_command(verb: String, rest: String) -> void:
 				_:
 					_err("Ask about: gift | night | today | about <name or gift>")
 					return
+		"convince", "argue":
+			var num0 = rest.strip_edges().trim_prefix("#").to_int()
+			if num0 < 1 or num0 > board.size() or board[num0 - 1]["kind"] != "deduction":
+				_err("Convince them of which deduction? ('convince <card#>'; to cite a plain card use 'tell <suspect> <card#>')")
+				return
+			r = Argue.evaluate(w, n, board[num0 - 1], board, 1.0)
+			r["facts"] = []
+			Mind.on_question(w, n)
 		"tell", "accuse":
 			var p = rest.split(" ", false)
 			if p.size() < 2:
@@ -558,7 +601,7 @@ func _talk_command(verb: String, rest: String) -> void:
 			_close_conversation()
 			return
 		_:
-			_err("In conversation: ask gift | ask night | ask today | ask about <name> | tell <suspect> <card#> | bye")
+			_err("In conversation: ask gift | ask night | ask today | ask about <name or gift> | tell <suspect> <card#> | convince <deduction#> | bye")
 			return
 	questions_left -= 1
 	_lines(r["lines"])
@@ -582,6 +625,7 @@ func _close_conversation() -> void:
 func _start_meeting() -> void:
 	state = "meeting"
 	town_quiet = false
+	presented_today = false
 	_hdr("Day %d: the town meeting" % w.day)
 	var testimony: Array = w.begin_meeting()
 	if testimony.is_empty():
@@ -590,11 +634,13 @@ func _start_meeting() -> void:
 		_lines(t["lines"])
 		_facts(t["facts"])
 	_narr("")
-	_prompt("Nominations are open (%d votes needed of %d). 'nominate <name>', or 'wait' to let the town speak." %
+	_prompt("Nominations are open (%d votes needed of %d). 'present <deduction#>' to take the floor (once), 'nominate <name>', or 'wait' to let the town speak." %
 		[w.vote_threshold(), w.voter_count()])
 
 func _meeting_command(verb: String, rest: String) -> void:
 	match verb:
+		"present":
+			_present_deduction(rest)
 		"nominate", "nom":
 			var n = find_npc(rest)
 			if n == null:
@@ -622,7 +668,7 @@ func _meeting_command(verb: String, rest: String) -> void:
 				return
 			_close_meeting()
 		_:
-			_err("At the meeting: nominate <name> | wait | done")
+			_err("At the meeting: present <deduction#> (once) | nominate <name> | wait | done")
 
 func _next_npc_nomination() -> bool:
 	var nm = Mind.next_nomination(w)
@@ -669,7 +715,12 @@ func _nomination_command(verb: String, rest: String) -> void:
 			nm["statement"] = verb
 			if not card.is_empty():
 				_narr("You lay card #%d before the town: %s" % [card["n"], card["text"]])
-				Mind.public_case(w, t, card, verb)
+				if card["kind"] == "deduction":
+					for v in w.living():
+						if v != t:
+							Argue.evaluate(w, v, card, board, 0.5)
+				else:
+					Mind.public_case(w, t, card, verb)
 			if verb == "defend":
 				_narr("You speak in %s's defence." % t.name)
 				Mind.set_trust(w, t, t.trust + 0.06, "the Demonologist defended me")
@@ -794,7 +845,7 @@ func _resolve_night() -> void:
 			var names: Array = w.player_vigil_seen.map(func(i): return w.by_id[i].name)
 			_narr("During your vigil you see %s moving through %s." % [", ".join(PackedStringArray(names)), C.block_name(vig)])
 			_facts([{"kind": "sighting", "subject": w.player_vigil_seen.duplicate(), "block": vig, "source": "player",
-				"day": w.day, "phase": C.NIGHT, "text": "Night %d vigil: you saw %s on %s." % [w.day, ", ".join(PackedStringArray(names)), C.block_name(vig)]}])
+				"day": w.day, "phase": C.NIGHT, "vigil": true, "text": "Night %d vigil: you saw %s on %s." % [w.day, ", ".join(PackedStringArray(names)), C.block_name(vig)]}])
 	w.player_vigil = ""
 	if w.game_over:
 		return
@@ -815,7 +866,7 @@ func _morning_report() -> void:
 			var v = w.by_id[id]
 			_narr("Dawn breaks over a body: %s the %s was killed in the night. Their cottage on %s is now a crime scene." %
 				[v.name, v.occupation, C.block_name(v.home_block)])
-			_facts([{"kind": "death", "subject": [id], "block": v.home_block, "source": "player",
+			_facts([{"kind": "death", "subject": [id], "block": v.home_block, "source": "player", "night": w.day - 1,
 				"text": "%s was killed by the demon on night %d (home on %s)." % [v.name, w.day - 1, C.block_name(v.home_block)]}])
 	_screen(_map())
 	_prompt("%d townsfolk remain. Where will you spend the morning? ('go <place | block | person>', 'help')" % w.living().size())
@@ -833,13 +884,19 @@ func _intro() -> void:
 
 func _help() -> String:
 	return """Commands
-  Anytime : look | map | cast | profile <name> | board [filter] | roles | tools | help | log
+  Anytime : look | map | cast | profile <name> | board [filter] | timeline [filter] | roles | tools | help | log
+            filters: person, block, location, kind, class, d2 / n1, or any text
+  Case    : link <card#> <card#> [card#]  (check for a contradiction)
+            conclude <number>  (file an explanation from your last link)
+            conclude <type> <name> [role|night|card#] [because <card#> ...]
+              types: evil, demon, good, role, notrole, lied, poisoned, protect, spare, mistaken
+            note <name> <text> | guess <name> <role|evil|good> [1-3]
   Day     : go <place | block | person>   (then one free move within the same block)
             then one action: talk <name> | search | gossip (tavern) | wait
-  Talking : ask gift | ask night | ask today | ask about <name or gift>
+  Talking : ask gift | ask night | ask today | ask about <name or gift> | convince <deduction#>
             tell <suspect> <card#>   (make a case using a card from your board)
             bye
-  Meeting : nominate <name> | wait (let the town nominate) | done (close, once the town is quiet)
+  Meeting : present <deduction#> (once) | nominate <name> | wait | done (close, once the town is quiet)
   Voting  : defend [card#] | accuse [card#] (one statement) | clemency (once per case) | vote yes | vote no
   Approach: someone may ask for a word at the start of a phase: accept (uses the phase) | decline
   Night   : ward <name> (once per case) | vigil <block> | sleep
@@ -927,7 +984,12 @@ func _profile(token: String) -> String:
 	for t in C.TRAITS:
 		tl.append("%s: %s" % [t.capitalize(), n.revealed_traits.get(t, "?")])
 	out.append("Traits: " + ", ".join(tl))
-	var cards: Array = board.filter(func(c): return n.id in c.get("subject", []) or c.get("source", "") == n.id)
+	if guesses.has(n.id):
+		var gg: Dictionary = guesses[n.id]
+		out.append("Your guess: %s (confidence %d/3)" % [C.role_name(gg["guess"]) if C.ROLES.has(gg["guess"]) else gg["guess"], gg["confidence"]])
+	if notes.get(n.id, "") != "":
+		out.append("Your note: " + notes[n.id])
+	var cards: Array = filter_cards(n.id)
 	if cards.is_empty():
 		out.append("No cards on your board involve them yet.")
 	else:
@@ -954,12 +1016,7 @@ func _board(filter: String) -> String:
 	if board.is_empty():
 		return "Your case board is empty."
 	var out = PackedStringArray()
-	var f = filter.strip_edges().to_lower()
-	for c in board:
-		if f != "" and c["kind"] != f and c.get("class", "") != f:
-			var subj_names: Array = c.get("subject", []).map(func(i): return w.by_id[i].name.to_lower())
-			if not (f in subj_names) and not f in c["text"].to_lower():
-				continue
+	for c in filter_cards(filter):
 		out.append("#%-3d [%s/%s] %s" % [c["n"], c["kind"], c.get("class", "?"), c["text"]])
 	if out.is_empty():
 		return "No cards match."
@@ -1022,3 +1079,278 @@ func _write_logs() -> String:
 	log_paths = w.dlog.write_files(log_dir, base)
 	var shown: Array = log_paths.map(func(p): return ProjectSettings.globalize_path(p))
 	return "Dev log written: %s" % ", ".join(PackedStringArray(shown))
+
+# ---------------------------------------------------------------- case work (stage 3)
+# Data API used by the UI panel as well as the text commands.
+
+## Filter the board. Accepts card kind, evidence class, person, block, location, day
+## ("d2") or night ("n1"), or any text in the card.
+func filter_cards(filter: String) -> Array:
+	var f = filter.strip_edges().to_lower()
+	if f == "":
+		return board.duplicate()
+	var blk = find_block(f)
+	var lc = find_location(f) if blk == "" else ""
+	var person = find_npc(f, true)
+	var out: Array = []
+	for c in board:
+		var ok = false
+		if c["kind"] == f or c.get("class", "") == f:
+			ok = true
+		elif person != null and (person.id in c.get("subject", []) or c.get("source", "") == person.id or c.get("via", "") == person.id):
+			ok = true
+		elif blk != "" and (c.get("block", "") == blk or w.loc_block(c.get("loc", "")) == blk):
+			ok = true
+		elif lc != "" and c.get("loc", "") == lc:
+			ok = true
+		elif f.length() >= 2 and f[0] in ["d", "n"] and f.substr(1).is_valid_int():
+			var num = f.substr(1).to_int()
+			var is_night = c.get("phase", -1) == C.NIGHT or c["kind"] in ["vigil", "alibi"]
+			ok = c.get("day", -99) == num and ((f[0] == "n") == is_night)
+		elif f in c["text"].to_lower():
+			ok = true
+		if ok:
+			out.append(c)
+	return out
+
+## Link cards: run the contradiction templates. Returns the check result and remembers it.
+func link_cards(nums: Array) -> Dictionary:
+	var cards: Array = []
+	for x in nums:
+		if x >= 1 and x <= board.size():
+			cards.append(board[x - 1])
+	var res: Dictionary = Argue.check(w, cards)
+	var options: Array = []
+	for m in res["matches"]:
+		for e in m["explanations"]:
+			options.append({"match": m, "expl": e})
+	last_link = {"cards": nums.duplicate(), "result": res, "options": options}
+	w.dlog.add("player_link", "player", "", {"cards": nums, "matches": res["matches"].map(func(m): return m["template"]),
+		"near": res["near"]}, "matched" if not res["matches"].is_empty() else "no template matched (flag for template work)")
+	return last_link
+
+## File a deduction card. conclusion: {type, a, role?, night?, card?}.
+func file_deduction(conclusion: Dictionary, supports: Array, match_info: Dictionary = {}, chosen: int = 0) -> int:
+	var cls = "concrete"
+	var rank = {"speech": 0, "circumstantial": 1, "concrete": 2}
+	for x in supports:
+		if x >= 1 and x <= board.size():
+			var cc: String = board[x - 1].get("class", "circumstantial")
+			if rank.get(cc, 1) < rank[cls]:
+				cls = cc
+	var unfounded = match_info.is_empty() and not last_link.is_empty() and last_link["result"]["matches"].is_empty() and last_link["cards"] == supports
+	var basis = ""
+	if not match_info.is_empty():
+		basis = " (from #%s: %s)" % [", #".join(PackedStringArray(match_info["cards"].map(func(x): return str(x)))), match_info["text"]]
+	elif not supports.is_empty():
+		basis = " (because #%s%s)" % [", #".join(PackedStringArray(supports.map(func(x): return str(x)))), "; unfounded" if unfounded else ""]
+	var subj: Array = [conclusion["a"]] if conclusion.has("a") else []
+	var card = {"kind": "deduction", "subject": subj, "source": "player", "class": cls, "conclusion": conclusion,
+		"supports": supports.duplicate(), "template": match_info.get("template", ""), "explanations": match_info.get("explanations", []),
+		"chosen": chosen, "unfounded": unfounded, "near": last_link.get("result", {}).get("near", [""])[0] if unfounded and not last_link["result"]["near"].is_empty() else "",
+		"text": "Deduction: %s%s." % [Argue.conclusion_text(w, conclusion), basis]}
+	var n = add_card(card)
+	w.dlog.add("deduction", "player", conclusion.get("a", ""), {"card": n, "conclusion": conclusion, "supports": supports,
+		"template": card["template"], "unfounded": unfounded}, card["text"])
+	return n
+
+## Parse "conclude <type> <name> [role|night|card#] [because <n> <n> ...]".
+func _parse_conclusion(rest: String) -> Dictionary:
+	var parts = rest.split(" ", false)
+	if parts.size() < 2:
+		return {"error": "Usage: conclude <number> (after 'link'), or conclude <type> <name> [role|night|card#] [because <card#> ...]. Types: %s" % ", ".join(PackedStringArray(Argue.CONCLUSION_TYPES))}
+	var t = parts[0].to_lower()
+	var aliases = {"isnt": "notrole", "isn't": "notrole", "not": "notrole", "is": "role", "liar": "lied", "lie": "lied",
+		"poison": "poisoned", "dont-execute": "spare", "innocent": "good"}
+	t = aliases.get(t, t)
+	if not (t in Argue.CONCLUSION_TYPES):
+		return {"error": "Unknown conclusion type '%s'. Types: %s" % [t, ", ".join(PackedStringArray(Argue.CONCLUSION_TYPES))]}
+	var who = find_npc(parts[1], true)
+	if who == null:
+		return {"error": "Who is '%s'?" % parts[1]}
+	var c = {"type": t, "a": who.id}
+	var i = 2
+	var supports: Array = []
+	while i < parts.size():
+		var p = parts[i].to_lower()
+		if p == "because":
+			for q in parts.slice(i + 1):
+				var num = q.trim_prefix("#").to_int()
+				if num >= 1 and num <= board.size():
+					supports.append(num)
+			break
+		if t in ["role", "notrole"] and not c.has("role"):
+			var role = find_role(" ".join(parts.slice(i, i + 2)))
+			if role == "":
+				role = find_role(p)
+			else:
+				i += 1
+			if role == "":
+				return {"error": "Which gift is '%s'?" % p}
+			c["role"] = role
+		elif t == "poisoned" and not c.has("night"):
+			c["night"] = p.trim_prefix("n").trim_prefix("night").to_int()
+		elif t in ["lied", "mistaken"] and not c.has("card"):
+			c["card"] = p.trim_prefix("#").to_int()
+		i += 1
+	if t in ["role", "notrole"] and not c.has("role"):
+		return {"error": "Which gift?"}
+	if t == "poisoned" and not c.has("night"):
+		return {"error": "Which night? (e.g. 'conclude poisoned hollis 1')"}
+	if t in ["lied", "mistaken"] and not c.has("card"):
+		return {"error": "Which card did they lie about? (e.g. 'conclude lied hollis 12')"}
+	if supports.is_empty() and not last_link.is_empty():
+		supports = last_link["cards"].duplicate()
+	return {"conclusion": c, "supports": supports}
+
+func _link_command(rest: String) -> void:
+	var nums: Array = []
+	for q in rest.split(" ", false):
+		var num = q.trim_prefix("#").to_int()
+		if num >= 1 and num <= board.size() and not (num in nums):
+			nums.append(num)
+	if nums.size() < 1 or nums.size() > 3:
+		_err("Usage: link <card#> <card#> [card#]   (1-3 cards; see 'board')")
+		return
+	var lk = link_cards(nums)
+	var res: Dictionary = lk["result"]
+	if res["matches"].is_empty():
+		_narr("No contradiction between those cards.")
+		for r in res["near"].slice(0, 2):
+			_narr("  Close, but " + r)
+		_prompt("You can still file a conclusion from them: 'conclude <type> <name> ...' (it will be marked unfounded).")
+		return
+	var k = 0
+	for m in res["matches"]:
+		_narr("These conflict: " + m["text"])
+		for e in m["explanations"]:
+			k += 1
+			_narr("  %d. %s" % [k, e["label"]])
+	_prompt("'conclude <number>' to file the explanation you believe as a deduction.")
+
+func _conclude_command(rest: String) -> void:
+	var r = rest.strip_edges()
+	if r.is_valid_int() and not last_link.is_empty():
+		var k = r.to_int()
+		var opts: Array = last_link["options"]
+		if k < 1 or k > opts.size():
+			_err("Pick one of the numbered explanations from your last 'link'.")
+			return
+		var o: Dictionary = opts[k - 1]
+		var n = file_deduction(o["expl"]["conclusion"], o["match"]["cards"], o["match"], o["expl"]["id"])
+		_narr("Filed.")
+		_ev({"k": "card", "n": n})
+		return
+	var p = _parse_conclusion(r)
+	if p.has("error"):
+		_err(p["error"])
+		return
+	var n2 = file_deduction(p["conclusion"], p["supports"])
+	_narr("Filed%s." % (" (unfounded: no contradiction backs it)" if board[n2 - 1]["unfounded"] else ""))
+	_ev({"k": "card", "n": n2})
+
+## Present a deduction to the whole meeting (once per meeting).
+func _present_deduction(rest: String) -> void:
+	if presented_today:
+		_err("You've already had the floor today.")
+		return
+	var num = rest.strip_edges().trim_prefix("#").to_int()
+	if num < 1 or num > board.size() or board[num - 1]["kind"] != "deduction":
+		_err("Present which deduction? ('present <card#>'; file one with 'link' and 'conclude')")
+		return
+	presented_today = true
+	var ded: Dictionary = board[num - 1]
+	_narr("You take the floor: %s" % ded["text"])
+	w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
+	for n in w.living():
+		var r: Dictionary = Argue.evaluate(w, n, ded, board, 0.6)
+		_lines(r["lines"])
+
+## Timeline: who was where, by phase, from your board. * = you saw it, ~ = heard.
+func timeline_data(filter: String = "") -> Dictionary:
+	var cols: Array = [{"label": "N0", "day": 0, "phase": C.NIGHT}]
+	for d in range(1, w.day + 1):
+		for p in [C.MORNING, C.AFTERNOON, C.EVENING, C.NIGHT]:
+			if d == w.day and p > w.phase and state != "night":
+				break
+			cols.append({"label": ("N%d" % d) if p == C.NIGHT else "D%d%s" % [d, C.PHASES[p].substr(0, 1)], "day": d, "phase": p})
+	var cards: Array = filter_cards(filter) if filter != "" else board
+	var rows = {}
+	for n in w.npcs:
+		rows[n.id] = {}
+	for c in cards:
+		for a in Argue.assertions(c):
+			var who: String = a.get("who", "")
+			if not rows.has(who):
+				continue
+			var key = ""
+			var val = ""
+			match a["t"]:
+				"at":
+					key = "%d:%d" % [a["day"], a["phase"]]
+					val = _abbr(a["block"])
+				"out":
+					key = "%d:%d" % [a["night"], C.NIGHT]
+					val = _abbr(a["block"])
+				"home":
+					key = "%d:%d" % [a["night"], C.NIGHT]
+					val = "hm"
+				"killed":
+					key = "%d:%d" % [a["night"], C.NIGHT]
+					val = "XX"
+				_:
+					continue
+			var confirmed = a.get("src", "") == "player"
+			if not rows[who].has(key):
+				rows[who][key] = []
+			rows[who][key].append({"val": val, "confirmed": confirmed, "card": c["n"]})
+	return {"cols": cols, "rows": rows}
+
+func _abbr(b: String) -> String:
+	return {"square": "Sq", "market": "Mk", "docks": "Dk", "hill": "Hl"}.get(b, "??")
+
+func _timeline(filter: String) -> String:
+	var td = timeline_data(filter)
+	var out = PackedStringArray()
+	var head = "%-12s" % ""
+	for col in td["cols"]:
+		head += "%-7s" % col["label"]
+	out.append(head)
+	for n in w.npcs:
+		var line = "%-12s" % (n.name if n.alive else n.name + "†")
+		for col in td["cols"]:
+			var key = "%d:%d" % [col["day"], col["phase"]]
+			var cell = ""
+			var vals: Array = td["rows"][n.id].get(key, [])
+			var shown = {}
+			for v in vals:
+				var tag = v["val"] + ("" if v["confirmed"] else "~")
+				if not shown.has(tag):
+					shown[tag] = true
+					cell += ("/" if cell != "" else "") + tag
+			line += "%-7s" % (cell if cell != "" else ".")
+		out.append(line)
+	out.append("Sq Square, Mk Market, Dk Docks, Hl Chapel Hill, hm home, XX killed. No mark = you saw it; ~ = someone told you.")
+	return "\n".join(out)
+
+func set_note(id: String, text: String) -> void:
+	notes[id] = text
+
+func set_guess(id: String, guess: String, confidence: int) -> void:
+	guesses[id] = {"guess": guess, "confidence": clampi(confidence, 1, 3)}
+
+func profile_data(id: String) -> Dictionary:
+	var n = w.by_id[id]
+	var claim = ""
+	if n.claim_public:
+		claim = "claims (public): " + C.role_name(n.claimed_role)
+	elif n.max_tier >= 3:
+		claim = "told you: " + C.role_name(n.claimed_role)
+	elif n.max_tier == 2:
+		claim = "hinted: " + C.package_of(w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role).replace("_", " ")
+	elif n.claimed_role == "none":
+		claim = "told you: no gift"
+	var status = "alive" if n.alive else ("killed by the demon, night %d" % n.death_day if n.death_cause == "demon" else "executed, day %d" % n.death_day)
+	return {"id": id, "name": n.name, "occupation": n.occupation, "blurb": n.blurb, "work": "%s at %s" % [C.phase_list(n.work_phases), w.loc_name(n.work)],
+		"home": C.block_name(n.home_block), "status": status, "traits": n.revealed_traits.duplicate(), "claim": claim,
+		"guess": guesses.get(id, {}), "note": notes.get(id, ""), "cards": filter_cards(id).map(func(c): return c["n"])}

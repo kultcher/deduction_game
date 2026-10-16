@@ -14,7 +14,12 @@ design decisions so far.
 Requires Godot 4.4+ (tested with 4.4.1).
 
 **In the editor:** open the project and press Play. A text console appears: type commands
-and press Enter. Buttons along the top cover the common info screens.
+and press Enter. Buttons along the top cover the common info screens. The **Board panel**
+on the right lists your cards (filterable; double-click a card to add its number to your
+command) and a quick profile. **Case view** opens a full-screen board: filters (text, kind,
+person, place), the card list with multi-select, the timeline grid (who was where, by
+phase; bright = you saw it, dim = you were told; click a cell for its cards), profiles with
+your guess, confidence and notes, and the Link / Conclude builder.
 
 **In a terminal:**
 
@@ -50,6 +55,9 @@ Each day has three phases (morning, afternoon, evening), then a town meeting, th
 | Town meeting | `nominate <name>` (once), `wait` (let the town nominate), `done` (close the meeting, once a `wait` finds no more nominations) |
 | On a nomination | `defend [card#]` or `accuse [card#]` (one statement, optionally citing a card), `clemency` (once per case), `vote yes` / `vote no` |
 | Night | `ward <name>` (once per case), `vigil <block>`, `sleep` |
+| Case work (any time) | `link <#> <#> [#]`, `conclude <number>` (after a link), `conclude <type> <name> [role/night/card#] [because <#> ...]`, `timeline [filter]`, `note <name> <text>`, `guess <name> <role/evil/good> [1-3]` |
+| In conversation | `convince <deduction#>` (uses a question) |
+| At the meeting | `present <deduction#>` (once: everyone hears it) |
 | After the case | `grimoire`, `grimoire lies` |
 
 Names and places accept prefixes (`talk bart`, `go tav`). Crime scenes appear as
@@ -91,6 +99,23 @@ knows about that gift: who claims it, and what they've been told privately.
 and what they pool when they meet (pairs you may see talking) or whisper in a crowded
 tavern. Paranoia rises with every death: the town grows quicker to suspect and to hang.
 
+**Building a case.** `link` checks 1–3 cards against a library of contradiction templates
+(someone in two places at once; out at night vs. "I was home"; two people claiming one
+gift; a watcher who missed someone; your vigil missing someone a witness put there; a
+reading that flips; a Gravedigger contradicting a claim; a Veteran killed by the demon;
+a reading pointing only at the demon's victims; a changed story). A match lists possible
+explanations, and never says which is true. `conclude <number>` files the one you believe
+as a **deduction** card. You can also conclude directly from supporting cards; a
+conclusion with no contradiction behind it is marked *unfounded*, and sharp (high-Insight)
+NPCs will reject it. Conclusion types: evil, demon, good, role, notrole, lied, poisoned,
+protect, spare, mistaken.
+
+NPCs weigh a deduction by scoring the same explanations from their own point of view
+(whom they suspect or trust, whether an information gift could be poisoned, what they
+know firsthand about where they themselves were), compared with the strongest
+alternative. "X was poisoned on night N" makes them discount that reading instead of
+suspecting X; "protect X" makes a Warden likelier to guard X; "spare X" lowers their vote.
+
 **Meetings** follow Blood on the Clocktower: one nomination at a time; each person
 nominates and is nominated at most once a day; a nomination reaching half the voters puts
 the nominee on the block, a later one needs more votes to replace them, and a tie clears
@@ -116,6 +141,11 @@ ui/main.gd       in-engine text console
 tools/cli.gd     terminal frontend
 tools/autoplay.gd  bot player / batch runner
 tools/trace.py   dev-log filter for evaluating a playthrough
+tools/test_argue.gd  unit checks for the contradiction templates and evaluation
+tools/test_ui.gd     headless smoke test of the UI panels
+sim/social.gd    NPC-to-NPC exchanges, approaches, role questions, paranoia
+sim/argue.gd     card assertions, contradiction templates, conclusions, NPC evaluation
+ui/case_view.gd  full-screen case view
 ```
 
 The simulation is deterministic for a given seed and never touches presentation, so it
@@ -138,11 +168,15 @@ Main entry types:
 | `npc_share` | what one NPC told another, the original source, whether it was relayed, and whether it was a lie |
 | `evil_intel`, `evil_share` | what an evil member learned and how (own sighting, told by someone, the player's case); when members pool knowledge (first-night conference, meeting, tavern whisper) |
 | `approach`, `approach_declined` | an NPC seeking out the player, with their agenda (news / frame / gossip) |
+| `player_link` | cards the player linked, templates matched and near-miss reasons (unmatched links flag missing templates) |
+| `deduction` | a deduction the player filed: conclusion, supports, template, unfounded or not |
+| `argument` | an NPC weighing a deduction: explanation weights, agreement vs. the best alternative, quality, effect |
+| `player_present` | the player taking the meeting floor |
 | `night_sighting` | who glimpsed whom at night |
 | `poison`, `protect`, `protect_failed`, `kill`, `kill_failed` | night actions and outcomes |
 | `info` | every ability result, with `true:false` and a `why` when it's wrong |
 | `fake_info` | evil fabrications and the reasoning behind each |
-| `think` | NPC reasoning, tagged by `data.topic`: `claim`, `lie`, `disclosure` (tier and inputs), `deny_or_refuse`, `confess`, `lie_or_stonewall`, `stonewall`, `withhold`, `omit`, `cue`, `share_sightings`, `vote`, `nominate`, `accuse`, `opinion`, `persuaded`, `gossip`, `approach`, `about_role`, `paranoia`, `seer_pick`, `watch_pick`, `warden_pick`, `grief`, `kill_choice` (with every candidate's score breakdown), `poison_choice`, `scapegoat`, `evil_plan`, `evil_learns`. Weighted rolls log every score part and the probability |
+| `think` | NPC reasoning, tagged by `data.topic`: `claim`, `lie`, `disclosure` (tier and inputs), `deny_or_refuse`, `confess`, `lie_or_stonewall`, `stonewall`, `withhold`, `omit`, `cue`, `share_sightings`, `vote`, `nominate`, `accuse`, `opinion`, `persuaded`, `gossip`, `approach`, `about_role`, `paranoia`, `poison_belief`, `seer_pick`, `watch_pick`, `warden_pick`, `grief`, `kill_choice` (with every candidate's score breakdown), `poison_choice`, `scapegoat`, `evil_plan`, `evil_learns`. Weighted rolls log every score part and the probability |
 | `suspicion` | every change ≥ 0.05 in one NPC's suspicion of another, with the cause |
 | `trust`, `trust_cap` | changes in an NPC's trust in the player, and permanent caps, with the cause |
 | `npc_trust` | changes in one NPC's trust in another |

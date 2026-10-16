@@ -558,7 +558,7 @@ player). Both use the same roll (lower Insight, more often vague).
 2. **The town talks (text). [built]** NPC-to-NPC conversations and belief provenance; evil
    coordination replacing hidden-state reads; NPC approaches (incl. busybody secrets);
    pressure and paranoia. Bot runs to check evil isn't too weak; playtest round.
-3. **The case board (thin Godot UI).** `convince` with conclusions, contradiction cards and
+3. **The case board (thin Godot UI). [built]** `convince` with conclusions, contradiction cards and
    templates, evidence classes, diminishing returns; timeline grid, profiles, filters,
    confirmed vs. tentative positions. Built as a minimal Godot panel because multi-card
    building is painful in pure text. Playtest round.
@@ -622,6 +622,12 @@ player). Both use the same roll (lower Insight, more often vague).
   readings (otherwise it talked itself into early nominations). Gifts aren't leaked by
   reasons: an NPC who hasn't claimed keeps a reason vague if it comes from their own reading.
   Bot win rate stays ~30-40%, in line with stage 1.
+
+- **Stage 3 notes:** NPC agreement compares the chosen explanation with the strongest
+  alternative (with three options, an even split otherwise always read as rejection).
+  Conflicts are never auto-marked on the timeline (space for a future optional hint
+  system). The board panel is a summary; the full case view is a separate full-screen
+  overlay. Bot win rate rose from ~30% to ~36% on the same seeds once it used deductions.
 
 ## Open questions
 
