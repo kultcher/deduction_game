@@ -331,7 +331,7 @@ hidden state. Unmatched player contradiction links are flagged for template work
 ## Planned features (tentative)
 
 ### Personality-driven social style
-- **Forthcoming** is the primary social trait: how readily an NPC claims, shares readings
+- See **Trait model** below. **Forthcoming** is the primary social trait: how readily an NPC claims, shares readings
   and speaks at meetings. It applies **regardless of alignment**: a chatty Agnes is chatty
   as good or evil, so evil isn't revealed by being outgoing.
 - Each cast member has either a **fixed** forthcoming value (stable habits across runs, as
@@ -340,6 +340,66 @@ hidden state. Unmatched player contradiction links are flagged for template work
   tell of its own.
 - Watch for overlap between forthcoming, honesty, caution and readability; consolidate if
   they blur.
+
+### Trait model
+- Traits: **Forthcoming** (shares about self), **Gossip** (talks about others, incl.
+  noise), **Honesty**, **Caution**, **Temper**, **Loyalty**, **Insight**, **Readability**.
+- Each trait has a **base** and its **own volatility**; each case rolls
+  `value = base ± volatility`. (One NPC can be steadfastly honest every run but variable in
+  chattiness.)
+- Decisions are **weighted rolls**: a score from traits, trust and context becomes a
+  probability. Score breakdowns are logged.
+- Traits apply regardless of alignment. Honesty also shapes evil lying style: low-honesty
+  evil fabricate boldly; high-honesty evil prefer omissions and half-truths.
+- **(prototype)** Traits are mostly hard thresholds: caution (claim timing, trust needed to
+  reveal a gift, starting trust), temper (meeting accusations, trust lost when pressed),
+  loyalty (votes and accusations involving friends, grief), honesty (confession
+  threshold), gossip (tavern speaker pick).
+
+### Statement taxonomy
+
+| # | Statement | Main traits |
+|---|---|---|
+| 1 | Gift claim (with hint levels) | caution, forthcoming, trust |
+| 2 | Gift reading | forthcoming, caution, trust |
+| 3 | Own whereabouts / alibi | honesty, loyalty |
+| 4 | Sighting of someone else | gossip, honesty, loyalty (omit friends) |
+| 5 | Corroboration / denial of another's alibi | loyalty, honesty |
+| 6 | Opinion, vibes-based ("something's off") | temper, gossip, low insight |
+| 7 | Opinion, reasoned (cites evidence) | insight, forthcoming |
+| 8 | NPC-made argument / contradiction | insight, forthcoming |
+| 9 | Public accusation / nomination | temper, forthcoming, urgency |
+| 10 | Defence of self or another | loyalty, temper |
+| 11 | Confession of a personal secret | honesty, trust |
+| 12 | Hearsay / relay (may distort) | gossip |
+| 13 | Request to the player ("watch over Greta") | forthcoming, loyalty |
+| 14 | Reaction to an argument or claim | insight, temper |
+| 15 | Changed story when caught (evil improvisation) | honesty, temper, caution |
+| 16 | Small talk / noise | gossip |
+
+Expect more types from playtesting.
+
+### Disclosure levels and hints
+Answers to the unified gift question escalate:
+1. No gift. 2. Won't say. 3. **Flavoured hint** pointing to a role category (protection:
+Warden/Veteran; the dead: Gravedigger; sight: Seer/Hearthwitch/Night Watch; records:
+Archivist/Clerk). 4. **3-for-3** (three roles, one true). 5. Gift without readings.
+6. Gift and readings. Evil can bluff hints, committing to less.
+
+### NPCs approach the player
+- At the start of some phases an NPC asks to talk; the player accepts or declines.
+- Who approaches depends on forthcoming and agenda: a good NPC with news, an evil NPC
+  spreading a frame, or a busybody with nothing relevant.
+- **(proposed)** Accepting is a short free exchange (one statement); a full conversation
+  still costs the phase action.
+
+### Building trust
+- Neutral conversation: small gain, once per day per NPC.
+- Presenting a case the NPC agrees with (even one the player doesn't believe, e.g. winning
+  over someone by echoing their suspicion).
+- Acting in their interest: warding or sparing someone they trust.
+- Being proven right (e.g. an execution the player pushed is confirmed by the Gravedigger).
+- Keeping a confessed secret; spreading it costs heavily.
 
 ### Vibes-based opinions
 - "Something's off about them" (an opinion with no stated reason) is used by good NPCs
@@ -364,6 +424,8 @@ hidden state. Unmatched player contradiction links are flagged for template work
   plan updates (scapegoat, kill target, consistent bluffs and alibis).
 - This replaces places where the prototype's evil AI reads hidden state directly (private
   suspicion, private night sightings, true night walkers, whom the player confided in).
+- If this makes evil too weak (measure with the autoplay bot), add specific knowledge back
+  to evil's automatic pile selectively.
 - Meetings can be crowded (tavern; slow, hard to observe) or private (fast, riskier).
   Frequency follows personality, not alignment. Good NPCs meet constantly too, so meetings
   aren't a tell on their own.
@@ -373,14 +435,17 @@ hidden state. Unmatched player contradiction links are flagged for template work
   reading, an opinion, something the player argued); it affects NPC 2's judgement through
   the same evaluation as player arguments (source trust, diminishing returns).
 - Every belief records **who it was heard from**, so it can be traced and disowned.
-- Evil can feed lies into the network. Cap conversations per phase so the town doesn't
-  converge too fast in either direction.
+- Evil can feed lies into the network.
+- Limit: each NPC talks to at most one other NPC per day. **(proposed)** Pairings are
+  rolled at the **start** of each phase so the paired NPCs can be shown as busy; the
+  player chooses among the rest; then the pairs exchange information.
 
 ### Claims matter to good NPCs
 - Good NPCs weigh public claims. A Warden who trusts a claimed strong information role is
   more likely to protect them; NPCs value claimed roles when voting and choosing whom to
   confide in.
-- The demon factors in a known Warden claim when choosing targets.
+- The demon factors in a known Warden claim when choosing targets, and after a failed
+  kill almost always switches to a new target the next night.
 
 ### Geography, paths and dropped evidence
 - Blocks remain the unit of space; the map gains real **paths** (sequences of
