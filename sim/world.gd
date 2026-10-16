@@ -400,10 +400,39 @@ func execute(id: String, results: Array) -> void:
 	executions.append({"day": day, "id": id, "nominators": nominators})
 	dlog.add("execution", "world", id, {"role": n.role, "align": n.alignment},
 		"%s (%s) executed by town vote." % [n.name, n.role])
+	_grief(n, results)
 	if id == demon_id:
 		_finish("good", "The demon's host was executed.")
 	else:
 		_check_parity()
+
+## Friends of the executed resent whoever pushed for it (shifting allegiances).
+func _grief(ex, results: Array) -> void:
+	var yes_voters: Array = []
+	var player_yes := false
+	var nominators: Array = []
+	for r in results:
+		if r["nominee"] == ex.id:
+			yes_voters = r["yes"]
+			player_yes = r["player_yes"]
+			nominators.append(r["by"])
+	for f in living_good():
+		if not (ex.id in f.friends):
+			continue
+		var loy: float = f.traits["loyalty"]
+		for nom in nominators:
+			if nom != "player" and nom != f.id:
+				Mind.adjust(self, f, nom, 0.3 * loy, "grief: %s nominated my friend %s" % [nom, ex.id],
+					"they pushed to hang my friend %s" % ex.name)
+		for v in yes_voters:
+			if v != f.id and not (v in nominators):
+				Mind.adjust(self, f, v, 0.12 * loy, "grief: voted to hang my friend %s" % ex.id)
+		if player_yes:
+			var old: float = f.trust
+			f.trust = clampf(f.trust - 0.25 * loy, 0.0, 1.0)
+			dlog.add("trust", f.id, "player", {"from": snappedf(old, 0.01), "to": snappedf(f.trust, 0.01)},
+				"grief: the Demonologist voted to hang my friend %s" % ex.id)
+		dlog.think(f.id, "grief", "Mourns friend %s; resents those who pushed the execution." % ex.id)
 
 func _check_parity() -> void:
 	if game_over:

@@ -98,7 +98,7 @@ Main entry types:
 | `poison`, `protect`, `protect_failed`, `kill`, `kill_failed` | night actions and outcomes |
 | `info` | every ability result, with `true:false` and a `why` when it's wrong |
 | `fake_info` | evil fabrications and the reasoning behind each |
-| `think` | NPC reasoning, tagged by `data.topic`: `claim`, `lie`, `confess`, `vote`, `nominate`, `accuse`, `opinion`, `persuaded`, `gossip`, `seer_pick`, `watch_pick`, `warden_pick`, `kill_choice` (with every candidate's score breakdown), `poison_choice`, `scapegoat`, `evil_plan`, `evil_learns` |
+| `think` | NPC reasoning, tagged by `data.topic`: `claim`, `lie`, `confess`, `vote`, `nominate`, `accuse`, `opinion`, `persuaded`, `gossip`, `seer_pick`, `watch_pick`, `warden_pick`, `grief`, `kill_choice` (with every candidate's score breakdown), `poison_choice`, `scapegoat`, `evil_plan`, `evil_learns` |
 | `suspicion` | every change ≥ 0.05 in one NPC's suspicion of another, with the cause |
 | `trust` | changes in an NPC's trust in the player, with the cause |
 | `vote_tally`, `execution`, `no_execution`, `game_over` | meeting outcomes |
@@ -119,7 +119,7 @@ python3 tools/trace.py logs/case_42.jsonl --player
 ## Known gaps / next steps
 
 - Dialogue is templated and repetitive; personality mostly affects numbers, not voice.
-- Relationships only bias suspicion and votes; no relationship changes yet.
+- Relationships bias suspicion and votes; friends of an executed NPC resent its nominators, yes-voters and you (if you voted yes). No other relationship changes yet.
 - NPCs don't talk to each other privately (only public testimony and gossip).
 - The demon's view of who suspects it is approximated from internal suspicion.
 - No solvability check or storyteller director yet.
