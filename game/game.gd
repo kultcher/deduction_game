@@ -234,6 +234,13 @@ func _dispatch(text: String) -> void:
 
 # ---------------------------------------------------------------- day
 
+## Who the player can see at a location (a home shows only its owner, if in).
+func _present(l: String) -> Array:
+	if l.begins_with("home_"):
+		var o = w.by_id.get(l.substr(5))
+		return [o] if o != null and o.alive and o.at_home() else []
+	return w.npcs_at(l)
+
 func _resolve_go(target: String) -> String:
 	var l = find_location(target)
 	if l != "":
@@ -246,8 +253,9 @@ func _resolve_go(target: String) -> String:
 		# Exact spot known if they're working, in a visible conversation, or nearby.
 		if n.working or n.busy_with != "" or (moved and w.loc_block(n.loc) == w.loc_block(loc)):
 			return n.loc
-		if not n.at_home():
-			return _best_location_on(w.loc_block(n.loc))
+		if n.at_home():
+			return "home_" + n.id
+		return _best_location_on(w.loc_block(n.loc))
 	return ""
 
 func _best_location_on(b: String) -> String:
@@ -264,11 +272,7 @@ func _day_command(verb: String, rest: String) -> void:
 			var sought = find_npc(rest) if find_location(rest) == "" and find_block(rest) == "" else null
 			var l = _resolve_go(rest)
 			if l == "":
-				var n = find_npc(rest)
-				if n != null and n.at_home():
-					_err("%s is at home this %s." % [n.name, w.phase_name().to_lower()])
-				else:
-					_err("Where? Try 'map' for places (a location, a block, or a person).")
+				_err("Where? Try 'map' for places (a location, a block, or a person).")
 				return
 			if moved:
 				if l == loc:
@@ -290,7 +294,7 @@ func _day_command(verb: String, rest: String) -> void:
 			w.player_loc = l
 			w.dlog.add("player_move", "player", "", {"loc": l})
 			_observe()
-			if sought != null and sought.loc != l and w.loc_block(sought.loc) == w.loc_block(l):
+			if sought != null and not sought.at_home() and sought.loc != l and w.loc_block(sought.loc) == w.loc_block(l):
 				_narr("%s isn't here, but you spot them at %s. ('talk %s' walks you over, using your free move.)" %
 					[sought.name, w.loc_name(sought.loc), sought.name.to_lower()])
 		"talk", "t":
@@ -301,14 +305,19 @@ func _day_command(verb: String, rest: String) -> void:
 			if n == null:
 				_err("Talk to whom?")
 				return
-			if n.loc != loc:
-				if not n.at_home() and w.loc_block(n.loc) == w.loc_block(loc) and not free_move_used:
+			var at_their_home = loc == "home_" + n.id and n.at_home()
+			if n.loc != loc and not at_their_home:
+				if n.at_home():
+					_err("%s is at home (on %s) this %s. 'go %s' to call on them." % [n.name, C.block_name(n.home_block),
+						w.phase_name().to_lower(), n.name.to_lower()])
+					return
+				if w.loc_block(n.loc) == w.loc_block(loc) and not free_move_used:
 					free_move_used = true
 					loc = n.loc
 					w.player_loc = loc
 					w.dlog.add("player_move", "player", "", {"loc": loc, "free_move": true, "via": "talk"})
 					_narr("You walk over to %s." % w.loc_name(loc))
-				elif not n.at_home() and w.loc_block(n.loc) == w.loc_block(loc):
+				elif w.loc_block(n.loc) == w.loc_block(loc):
 					_err("%s is at %s, and you've already used your free move this %s." % [n.name, w.loc_name(n.loc), w.phase_name().to_lower()])
 					return
 				else:
@@ -328,6 +337,9 @@ func _day_command(verb: String, rest: String) -> void:
 		"search", "s":
 			if not moved:
 				_err("First choose where to spend this phase ('go <place>').")
+				return
+			if loc.begins_with("home_"):
+				_err("You can't search someone's home from their doorstep.")
 				return
 			_search()
 			_end_phase("")
@@ -368,10 +380,17 @@ func _who_here(l: String) -> String:
 func _observe() -> void:
 	var l = loc
 	_narr("You spend the %s at %s (%s)." % [w.phase_name().to_lower(), w.loc_name(l), C.block_name(w.loc_block(l))])
-	var here: Array = w.npcs_at(l)
-	if here.is_empty():
+	var here: Array = _present(l)
+	if l.begins_with("home_"):
+		if here.is_empty():
+			_narr("You knock, but nobody answers.")
+		else:
+			_narr("You knock, and %s opens the door." % here[0].name)
+			_facts([{"kind": "sighting", "subject": [here[0].id], "block": w.loc_block(l), "loc": l, "day": w.day, "phase": w.phase,
+				"source": "player", "text": "You found %s at home, day %d %s." % [here[0].name, w.day, w.phase_name()]}])
+	elif here.is_empty():
 		_narr("Nobody is here.")
-	else:
+	elif not l.begins_with("home_"):
 		_narr("Present: " + _who_here(l) + ".")
 		_facts([{"kind": "sighting", "subject": here.map(func(n): return n.id), "block": w.loc_block(l),
 			"loc": l, "day": w.day, "phase": w.phase, "source": "player",
@@ -385,6 +404,8 @@ func _observe() -> void:
 	if w.scenes.has(l):
 		_narr("This is where %s was killed. ('search' to examine it.)" % w.by_id[w.scenes[l]["victim"]].name)
 	var acts = "Actions: talk <name> | search%s | wait" % (" | gossip" if l == "tavern" else "")
+	if l.begins_with("home_"):
+		acts = "Actions: talk <name> | wait"
 	if not free_move_used:
 		acts += "   (or 'go <place>' once more within %s)" % C.block_name(w.loc_block(l))
 	_prompt(acts)
@@ -403,6 +424,9 @@ func _search() -> void:
 		_facts([{"kind": "trace", "subject": [], "block": tb, "source": "evidence", "day": w.day,
 			"text": "Trace at %s's death scene: the killer most likely spent the evening of day %d on %s." %
 				[w.by_id[sc["victim"]].name, w.day - 1, C.block_name(tb)]}])
+		return
+	if l.begins_with("home_"):
+		_narr("You can't search someone's home from their doorstep.")
 		return
 	w.dlog.add("player_search", "player", "", {"loc": l}, "Nothing to find at an ordinary location.")
 	_narr("You search %s carefully. Nothing out of place: nobody has hidden anything here." % w.loc_name(l))
@@ -801,7 +825,7 @@ func _map() -> String:
 		if n.at_home():
 			at_home.append(n.name)
 	if not at_home.is_empty():
-		out.append("  At home: " + ", ".join(PackedStringArray(at_home)))
+		out.append("  At home (you can call on them): " + ", ".join(PackedStringArray(at_home)))
 	return "\n".join(out)
 
 func _cast() -> String:

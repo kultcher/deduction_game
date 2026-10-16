@@ -55,6 +55,7 @@ but it means the game must teach its own way of thinking and make evidence very 
 - The town is divided into **blocks**; each block holds 1–2 **locations**.
 - Testimony and evidence usually point to **blocks**, not exact locations.
 - NPCs have **homes** (on a block) and **occupations** (tied to a location).
+- **Homes are visitable:** an NPC at home can be called on (talking still costs the action).
 - **Schedules:** each NPC has **at least one work slot**; their work schedule is known to
   the player, and the player can always find and talk to them at work then, no
   exceptions. Free slots are flexible and not shown in advance. Deviation is normal, so
@@ -261,6 +262,11 @@ affecting the game, e.g. the final day's vote is a **Séance** in which the dead
   starting point (home or a deliberate detour) to the victim; evidence is drawn from that
   path, which the demon chooses (a cunning demon routes through the scapegoat's block).
   Evening whereabouts then matter as alibis rather than as trace input.
+  **Limit on routes (proposed):** the route is home → at most one detour block → victim.
+  The physical trace reflects where the killer *started* (their home block, with the usual
+  chance of being misleading), so detours can't hide the origin; they only let the demon
+  pass near someone it wants to implicate. Every extra block raises the chance of being
+  seen by night walkers or a vigil, so wandering is a risk, not a free smokescreen.
 - Conflict to watch: if every evening position were automatically recorded, the trace
   would point straight at a suspect. See the visibility proposal above.
 
@@ -424,9 +430,11 @@ threshold), gossip (tavern speaker pick).
 | 17 | Approaching the player | low Privacy or high Gossip, plus an agenda | to frame or probe |
 | 18 | Withholding ("I've told you enough") | trust fell below highest shared tier; Composure decides whether a reason is given | same |
 
-Vibes-based opinions (#6) are used by good NPCs too, including about other good NPCs, so
-unfounded suspicion is normal town behaviour, not an evil tell. Evil also cites
-(fabricated) reasons.
+Vague opinions are the default for both alignments ("something's off about them"), so
+neither vagueness nor a stated reason is a tell. Good NPCs state a reason only when it is
+grounded in something real they heard or saw; evil NPCs state one only when it is grounded
+in an active bluff (a fabricated reading already shared, or a fake sighting they told the
+player). Both use the same roll (lower Insight, more often vague).
 
 ### Reactions
 

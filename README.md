@@ -58,7 +58,8 @@ locations (`go scene_greta`, or `go greta`).
 conversation are shown exactly; everyone else only by block. `go <person>` takes you to
 their exact spot if you know it (working, in conversation, or visible nearby); otherwise
 to a location on their block. If they turn out to be next door, `talk <name>` walks you
-over using your free move. Workers can always be found
+over using your free move. People at home can be visited: `go <person>` takes you to their
+door (it still costs your action to talk). Workers can always be found
 at work during their (known) shift. People in conversation can't be talked to.
 
 **Asking about gifts.** `ask gift` answers at one of four levels depending on the NPC's

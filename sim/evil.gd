@@ -312,23 +312,48 @@ static func fake_gossip(w, speaker):
 
 # ---------------------------------------------------------------- meeting behaviour
 
-## A plausible-sounding (fabricated) reason to distrust someone, or "" for vibes.
-static func fabricated_reason(w, n, t) -> String:
+## Whether a speaker states their reason or keeps it vague ("something's off").
+## Identical for both alignments, so vagueness is never a tell.
+static func cite(w, n, why: String) -> String:
+	if why == "":
+		return ""
+	if w.rng.randf() < 0.5 * (1.0 - n.traits.get("insight", 0.5)):
+		return ""
+	return why
+
+## A reason evil can give for distrusting someone, grounded only in an active bluff:
+## a fabricated reading (own or teammate's) already shared that names them, or a fake
+## sighting of them this NPC has told the player. "" if none (then they stay vague).
+static func bluff_reason(w, n, t) -> String:
 	var opts: Array = []
-	var mate = w.minion() if n.id == w.demon_id else w.demon()
-	for e in mate.info_log:
+	for e in n.info_log:
 		var d: Dictionary = e["data"]
 		var named: Array = d.get("pair", []) + d.get("nbrs", []) + d.get("seen", [])
 		if e.get("fake", false) and e["shared"] and t.id in named:
+			opts.append("my own reading pointed at them")
+	var mate = w.minion() if n.id == w.demon_id else w.demon()
+	for e in mate.info_log:
+		var d2: Dictionary = e["data"]
+		var named2: Array = d2.get("pair", []) + d2.get("nbrs", []) + d2.get("seen", [])
+		if e.get("fake", false) and e["shared"] and t.id in named2:
 			opts.append("%s's reading pointed at them" % mate.name)
-	for sid in w.scenes:
-		if w.scenes[sid]["block"] == t.home_block:
-			opts.append("they live right where %s was killed" % w.by_id[w.scenes[sid]["victim"]].name)
-	if t.out_last_night:
-		opts.append("they were out of doors last night")
-	if opts.is_empty() or w.rng.randf() < 0.3 * (1.0 - n.traits.get("insight", 0.5)):
+	for k in w.evil_plan["fake_sightings"]:
+		var fs = w.evil_plan["fake_sightings"][k]
+		if fs is Dictionary and fs["who"] == t.id and k.begins_with(n.id + ":"):
+			opts.append("I saw them out on %s at night" % C.block_name(fs["block"]))
+	if opts.is_empty():
 		return ""
 	return w.pick(opts)
+
+## What the town (good NPCs) thinks of someone on average; evil mimics this.
+static func town_view(w, t) -> float:
+	var goods: Array = w.living_good().filter(func(g): return g != t)
+	if goods.is_empty():
+		return 0.3
+	var total = 0.0
+	for g in goods:
+		total += g.suspicion.get(t.id, 0.0)
+	return total / goods.size()
 
 static func evil_nomination(w, n):
 	ensure_scapegoat(w)
@@ -376,33 +401,6 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int) -> bool:
 		why = "Coin-flip vote on a good NPC to look natural."
 	w.dlog.think(v.id, "vote", "%s on %s. %s" % ["YES" if yes else "no", nominee, why], {"evil": true})
 	return yes
-
-static func evil_opinion(w, n, t) -> Dictionary:
-	var s: String = w.evil_plan["scapegoat"]
-	var text = ""
-	var level = 0.3
-	var why = ""
-	var lie = true
-	if is_teammate(w, n, t.id):
-		text = "%s? Harmless, I'd say." % t.name
-		level = 0.2
-		why = "covers for teammate"
-	elif t.id == s:
-		var reason = fabricated_reason(w, n, t)
-		text = "I don't like %s. %s" % [t.name, (reason[0].to_upper() + reason.substr(1) + ".") if reason != "" else "Something's off about them."]
-		level = 0.9
-		why = "pushes the scapegoat (%s)" % (reason if reason != "" else "vibes")
-	elif w.rng.randf() < 0.35 * (1.0 - n.traits.get("insight", 0.5)):
-		text = "I can't put my finger on it, but something's off about %s." % t.name
-		level = 0.5
-		why = "vibes-based doubt about a good NPC, to look natural"
-	else:
-		level = 0.3 + w.rng.randf() * 0.2
-		text = "%s seems all right to me." % t.name
-		why = "neutral filler about a good NPC"
-		lie = false
-	w.dlog.think(n.id, "lie" if lie else "opinion", "Evil opinion of %s: %s." % [t.id, why])
-	return {"text": text, "level": level}
 
 static func evil_hear_accusation(w, n, suspect, card: Dictionary, relevance: float) -> Dictionary:
 	var plan: Dictionary = w.evil_plan

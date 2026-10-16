@@ -103,6 +103,8 @@ func time_key(d: int = -1, p: int = -1) -> String:
 func loc_name(l: String) -> String:
 	if scenes.has(l):
 		return scenes[l]["name"]
+	if l.begins_with("home_") and by_id.has(l.substr(5)):
+		return "%s's home" % by_id[l.substr(5)].name
 	return C.loc_name(l)
 
 func loc_block(l: String) -> String:
@@ -110,6 +112,8 @@ func loc_block(l: String) -> String:
 		return scenes[l]["block"]
 	if l.begins_with("home:") or l.begins_with("night:"):
 		return l.substr(l.find(":") + 1)
+	if l.begins_with("home_") and by_id.has(l.substr(5)):
+		return by_id[l.substr(5)].home_block
 	return C.loc_block(l)
 
 func all_locations() -> Array:

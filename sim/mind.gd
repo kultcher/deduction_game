@@ -341,7 +341,7 @@ static func _public_accusation(w, n):
 			return null
 		t = w.by_id[sg]
 		s2 = 0.8
-		why = Evil.fabricated_reason(w, n, t)
+		why = Evil.bluff_reason(w, n, t)
 	else:
 		var ranked = ranked_suspects(w, n)
 		if ranked.is_empty():
@@ -349,6 +349,7 @@ static func _public_accusation(w, n):
 		t = ranked[0]
 		s2 = susp(n, t.id)
 		why = n.sus_why.get(t.id, "")
+	why = Evil.cite(w, n, why)
 	var parts = {"suspicion": (s2 - 0.6) * 1.5, "confidence": (trait_of(n, "confidence") - 0.5) * 0.8,
 		"pressure_deflect": n.pressure * 0.4}
 	if not decide(w, n, "accuse", parts, "Publicly accuse %s?" % t.id):
@@ -396,7 +397,7 @@ static func next_nomination(w):
 	w.dlog.think(c["by"], "nominate", c["reason"], {"nominee": c["nominee"]})
 	var nom = w.by_id[c["by"]]
 	var t = w.by_id[c["nominee"]]
-	var why: String = Evil.fabricated_reason(w, nom, t) if nom.is_evil() else nom.sus_why.get(t.id, "")
+	var why: String = Evil.cite(w, nom, Evil.bluff_reason(w, nom, t) if nom.is_evil() else nom.sus_why.get(t.id, ""))
 	c["speech"] = say(nom, "I nominate %s.%s" % [t.name, (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else ""])
 	return c
 
@@ -711,34 +712,43 @@ static func answer_opinion(w, n, t) -> Dictionary:
 		w.dlog.think(n.id, "opinion", "Gossip %.2f: won't discuss others." % trait_of(n, "gossip"))
 		lines.append(say(n, "It's not my place to say."))
 		return {"lines": lines, "facts": facts}
+	# Same pipeline for both alignments: a suspicion level plus an optional grounded reason.
+	var why = ""
+	var lie = false
 	if n.is_evil():
-		var r: Dictionary = Evil.evil_opinion(w, n, t)
-		text = r["text"]
-		level = r["level"]
+		if Evil.is_teammate(w, n, t.id):
+			level = 0.2
+			lie = true
+		elif t.id == w.evil_plan["scapegoat"]:
+			level = 0.85
+			why = Evil.bluff_reason(w, n, t)
+			lie = true
+		else:
+			level = Evil.town_view(w, t)
 	else:
 		level = susp(n, t.id)
-		var why: String = n.sus_why.get(t.id, "")
-		var vibes = why == "" or w.rng.randf() < 0.5 * (1.0 - trait_of(n, "insight"))
-		if level < 0.25:
-			text = "I trust %s." % t.name
-		elif level < 0.45:
-			if vibes and w.rng.randf() < 0.6 - 0.4 * trait_of(n, "insight"):
-				text = "I can't put my finger on it, but something's off about %s." % t.name
-				level = 0.5
-			else:
-				text = "%s seems all right to me." % t.name
-		elif level < 0.8:
-			text = "I have my doubts about %s." % t.name
+		why = n.sus_why.get(t.id, "")
+	why = Evil.cite(w, n, why)
+	var shown = level
+	if level < 0.25:
+		text = "I trust %s." % t.name
+	elif level < 0.45:
+		if w.rng.randf() < 0.6 - 0.4 * trait_of(n, "insight"):
+			text = "I can't put my finger on it, but something's off about %s." % t.name
+			shown = 0.5
 		else:
-			text = "If you ask me, %s is the one." % t.name
-		if susp(n, t.id) >= 0.45:
-			if vibes:
-				text += " Something's off about them."
-			else:
-				text += " " + why[0].to_upper() + why.substr(1) + "."
-		if n.npc_trust.get(t.id, 0.5) > 0.7:
-			text += " We're close, mind."
-		w.dlog.think(n.id, "opinion", "Honest opinion of %s: suspicion %.2f%s." % [t.id, susp(n, t.id), " (vibes)" if vibes else ""])
+			text = "%s seems all right to me." % t.name
+	elif level < 0.8:
+		text = "I have my doubts about %s." % t.name
+	else:
+		text = "If you ask me, %s is the one." % t.name
+	if level >= 0.45:
+		text += (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else " Something's off about them."
+	if n.npc_trust.get(t.id, 0.5) > 0.7 and not (n.is_evil() and t.id == w.evil_plan["scapegoat"]):
+		text += " We're close, mind."
+	w.dlog.think(n.id, "lie" if lie else "opinion", "%s opinion of %s: level %.2f, reason: %s." %
+		["Evil cover" if lie else ("Evil (mimicking the town)" if n.is_evil() else "Honest"), t.id, level, why if why != "" else "vibes"])
+	level = shown
 	lines.append(say(n, text))
 	if level >= 0.5:
 		facts.append({"kind": "opinion", "subject": [t.id], "source": n.id, "text": "%s distrusts %s." % [n.name, t.name]})
