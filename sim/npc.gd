@@ -6,10 +6,12 @@ var name = ""
 var pron = "they"
 var style = "plain"
 var blurb = ""
-var traits = {}
+var traits = {}          # rolled case values, 0..1 (privacy, gossip, confidence, insight, composure)
+var trait_base = {}      # cast baseline, for the dev log
 
 var occupation = ""
 var work = ""            # work location id
+var work_phases: Array = []   # day phases they always work (known to the player)
 var home_block = ""
 var ring = 0             # position on the lane ring (neighbours for the Hearthwitch)
 
@@ -20,12 +22,15 @@ var death_day = -1
 var death_cause = ""     # "demon" | "executed"
 var poisoned = false
 
-var loc = ""             # current location id, or "home"
-var night_block = ""     # block they were on last night
+var loc = ""             # current location id, "home", or "night:<block>"
+var working = false      # at work this phase
+var busy_with = ""       # npc id they're in conversation with this phase
+var pair_day = -1        # day they last had an NPC conversation (max one per day)
+var night_block = ""
 var out_last_night = false
-var history = {}         # "d:p" -> location id (or "home:<block>")
+var history = {}         # "d:p" -> location id (or "home:<block>" / "night:<block>")
 
-var friends: Array = []
+var friends: Array = []  # seeds for npc_trust
 var rivals: Array = []
 var secret = {}          # personal reason to be out at night (good NPCs only), may be empty
 
@@ -33,31 +38,37 @@ var secret = {}          # personal reason to be out at night (good NPCs only), 
 var suspicion = {}
 ## Player-readable reason for the most recent large rise in suspicion, per target.
 var sus_why = {}
-## Ids of info entries already applied to this NPC's own suspicion.
 var applied_info = 0
-## Trust in the player, 0..1.
-var trust = 0.5
-## Questions the player asked today (pressing too hard sours trust).
-var pressed_today = 0
 
-## Beliefs: list of dictionaries. kinds:
-##  {kind:"saw", who, loc, block, day, phase}
-##  {kind:"info", ...}  ability results (see info_log)
-##  {kind:"heard", from, text, ...}
+## Trust in the player, 0..1, capped by trust_cap (lowered by serious betrayals).
+var trust = 0.5
+var trust_cap = 1.0
+## Trust in each other NPC, 0..1 (0.5 neutral). Replaces the old loyalty trait.
+var npc_trust = {}
+## Scrutiny from accusations and nominations; decays each night.
+var pressure = 0.0
+var pressed_today = 0
+var talked_day = -1      # last day the player had a conversation with them
+var heard = {}           # card text -> times the player has used it on them (diminishing returns)
+
+## Beliefs: list of dictionaries, e.g. {kind:"saw", who, loc, block, day, phase}
 var beliefs: Array = []
-## Ability results: {day, role, data, text, true:bool, why}
+## Ability results: {day, role, data, text, true:bool, why, shared}
 var info_log: Array = []
 
-## What this NPC claims publicly.
-var claimed_role = ""        # "" = not claimed yet; "none" = claims no gift
-var claim_public = false     # has spoken their claim at a town meeting
-var told_player_role = false
+## Claims.
+var claimed_role = ""        # "" = not claimed; "none" = denies a gift
+var claim_public = false
+var max_tier = 0             # highest disclosure tier shared with the player (0 = never asked)
+var told_readings = 0        # how many info_log entries have been told to the player privately
+
+## Player knowledge about them.
+var revealed_traits = {}     # trait -> tier string
+var secret_known = false     # the player learned their secret from them
+var secret_spread = false    # the player used it against them
 
 ## Seer only: the good NPC who falsely reads as demon.
 var red_herring = ""
-
-func display() -> String:
-	return name
 
 func is_evil() -> bool:
 	return alignment == "evil"
@@ -65,5 +76,5 @@ func is_evil() -> bool:
 func at_home() -> bool:
 	return loc.begins_with("home")
 
-func short_status() -> String:
-	return "%s (%s)%s" % [name, occupation, "" if alive else " [dead]"]
+func available() -> bool:
+	return alive and busy_with == "" and not at_home()

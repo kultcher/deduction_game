@@ -5,8 +5,8 @@ extends RefCounted
 
 const C = preload("res://sim/content.gd")
 
-static func say(n, text: String) -> String:
-	return "%s: \"%s\"" % [n.name, text]
+static func say(n, text: String) -> Dictionary:
+	return {"speaker": n.id, "name": n.name, "text": text}
 
 static func is_teammate(w, n, id: String) -> bool:
 	return id != n.id and w.by_id[id].is_evil()
@@ -22,15 +22,13 @@ static func make_plan(w) -> Dictionary:
 		"mood": mood,
 		"scapegoat": "",
 		"bluffs": {d.id: ordered[0], m.id: ordered[1] if ordered.size() > 1 else ordered[0]},
-		"claim_day": {},
 		"player_suspects": {},
 		"silence": {},
 		"failed": [],
 		"fake_watch": {},
 		"fake_sightings": {},
+		"spared": [],
 	}
-	for e in [d, m]:
-		plan["claim_day"][e.id] = 1 if e.traits["caution"] < 0.5 else 2
 	w.evil_plan = plan
 	_pick_scapegoat(w, "initial plan")
 	w.dlog.think(d.id, "evil_plan", "Demon temperament '%s'. Demon bluffs %s, minion bluffs %s. Scapegoat %s." %
@@ -47,7 +45,7 @@ static func _pick_scapegoat(w, why: String) -> void:
 		var s: float = w.rng.randf()
 		if not g.secret.is_empty():
 			s += 1.0  # out at night: easier to frame
-		if g.id in w.demon().rivals:
+		if w.demon().npc_trust.get(g.id, 0.5) < 0.4:
 			s += 0.5
 		if g.role == "veteran" or g.role == "warden":
 			s += 0.2
@@ -94,6 +92,10 @@ static func choose_kill_target(w) -> String:
 	var scores = {}
 	var best = ""
 	var best_s = -99.0
+	var warden_claimed = false
+	for pc in w.public_claims:
+		if pc["role"] == "warden" and w.by_id[pc["who"]].alive and pc["who"] != d.id:
+			warden_claimed = true
 	for n in w.living_good():
 		var parts = _public_threat(w, n)
 		var hostility: float = n.suspicion.get(d.id, 0.0)
@@ -112,11 +114,11 @@ static func choose_kill_target(w) -> String:
 			parts["lives_alone"] = 0.7
 		match plan["mood"]:
 			"vengeful":
-				if n.id in d.rivals:
+				if d.npc_trust.get(n.id, 0.5) < 0.4:
 					parts["mood_vengeful"] = 1.5
 			"cunning":
 				var s = w.by_id[plan["scapegoat"]]
-				if n.id in s.rivals or n.home_block == s.home_block:
+				if s.npc_trust.get(n.id, 0.5) < 0.4 or n.home_block == s.home_block:
 					parts["mood_cunning_frame"] = 1.5
 			"hungry":
 				parts["mood_hungry"] = snappedf(w.rng.randf() * 2.0, 0.01)
@@ -124,7 +126,11 @@ static func choose_kill_target(w) -> String:
 			parts["keep_scapegoat"] = -4.0
 		var fails: int = plan["failed"].filter(func(x): return x == n.id).size()
 		if fails > 0:
-			parts["failed_before"] = -3.0 * fails
+			parts["failed_before"] = -10.0 * fails
+		if n.id in plan["spared"] and w.living().size() > 4:
+			parts["spared_keep_to_frame"] = -1.5
+		if warden_claimed and n.claim_public and n.claimed_role in C.INFO_ROLES:
+			parts["likely_warded"] = -0.8
 		parts["noise"] = snappedf(w.rng.randf() * 0.8, 0.01)
 		var total = 0.0
 		for k in parts:
@@ -163,7 +169,7 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 static func note_kill_result(w, target: String, outcome: String) -> void:
 	if outcome != "killed":
 		w.evil_plan["failed"].append(target)
-		w.dlog.think(w.demon_id, "kill_failed", "Attack on %s failed; demon suspects protection and will avoid them." % target)
+		w.dlog.think(w.demon_id, "kill_failed", "Attack on %s failed; demon will switch to a new target." % target)
 
 # ---------------------------------------------------------------- fabricated info
 
@@ -200,12 +206,14 @@ static func make_fake_info(w) -> void:
 					goods = w.living().filter(func(x): return x != n).map(func(x): return x.id)
 				var pair: Array = []
 				var yes = false
-				if w.by_id[s].alive and (w.day % 2 == 1 or w.day == 0) and not goods.is_empty():
-					pair = [s, w.pick(goods)]
+				var others_s: Array = goods.filter(func(x): return x != s)
+				var others_m: Array = goods.filter(func(x): return x != mate.id)
+				if w.by_id[s].alive and (w.day % 2 == 1 or w.day == 0) and not others_s.is_empty():
+					pair = [s, w.pick(others_s)]
 					yes = true
 					why = "frames scapegoat %s with a 'yes'" % s
-				elif mate.alive and w.chance(0.4) and not goods.is_empty():
-					pair = [mate.id, w.pick(goods)]
+				elif mate.alive and w.chance(0.4) and not others_m.is_empty():
+					pair = [mate.id, w.pick(others_m)]
 					why = "clears teammate %s with a 'no'" % mate.id
 				elif goods.size() >= 2:
 					pair = w.shuffled(goods).slice(0, 2)
@@ -304,43 +312,67 @@ static func fake_gossip(w, speaker):
 
 # ---------------------------------------------------------------- meeting behaviour
 
-static func evil_nomination(w):
+## A plausible-sounding (fabricated) reason to distrust someone, or "" for vibes.
+static func fabricated_reason(w, n, t) -> String:
+	var opts: Array = []
+	var mate = w.minion() if n.id == w.demon_id else w.demon()
+	for e in mate.info_log:
+		var d: Dictionary = e["data"]
+		var named: Array = d.get("pair", []) + d.get("nbrs", []) + d.get("seen", [])
+		if e.get("fake", false) and e["shared"] and t.id in named:
+			opts.append("%s's reading pointed at them" % mate.name)
+	for sid in w.scenes:
+		if w.scenes[sid]["block"] == t.home_block:
+			opts.append("they live right where %s was killed" % w.by_id[w.scenes[sid]["victim"]].name)
+	if t.out_last_night:
+		opts.append("they were out of doors last night")
+	if opts.is_empty() or w.rng.randf() < 0.3 * (1.0 - n.traits.get("insight", 0.5)):
+		return ""
+	return w.pick(opts)
+
+static func evil_nomination(w, n):
 	ensure_scapegoat(w)
 	var s: String = w.evil_plan["scapegoat"]
-	if w.day < 2 or not w.by_id[s].alive:
+	var m: Dictionary = w.meeting
+	if w.day < 2 or s == "" or not w.by_id[s].alive or s in m["nominated"] or m["block"] == s:
+		return null
+	if m["block"] != "" and not w.by_id[m["block"]].is_evil():
+		w.dlog.think(n.id, "nominate", "Evil: a good NPC (%s) is already on the block; no need to nominate." % m["block"])
 		return null
 	var goods: Array = w.living_good()
 	var total = 0.0
 	for g in goods:
 		total += g.suspicion.get(s, 0.0)
 	var avg = total / maxf(1.0, goods.size())
-	var nominator = w.minion() if w.minion().alive else w.demon()
-	if avg >= 0.3:
-		return {"nominee": s, "by": nominator.id, "score": avg + 0.3,
+	var bold = n.traits.get("confidence", 0.5)
+	if avg >= 0.4 - 0.2 * bold:
+		return {"nominee": s, "by": n.id, "score": avg + 0.2,
 			"reason": "Evil: town suspicion of scapegoat %s averages %.2f; pushes the nomination." % [s, avg]}
-	w.dlog.think(nominator.id, "nominate", "Evil: scapegoat %s not suspected enough yet (avg %.2f); waits." % [s, avg])
+	w.dlog.think(n.id, "nominate", "Evil: scapegoat %s not suspected enough yet (avg %.2f); waits." % [s, avg])
 	return null
 
 static func evil_vote(w, v, nominee: String, yes_so_far: int) -> bool:
-	var living: int = w.living().size()
-	var majority: int = (living + 1) / 2 + 1
+	var thr: int = w.vote_threshold()
+	var block: String = w.meeting["block"]
 	var yes = false
 	var why = ""
 	if is_teammate(w, v, nominee):
-		if v.id == w.demon_id and yes_so_far >= majority - 1:
+		if v.id == w.demon_id and yes_so_far >= thr - 1:
 			yes = true
 			why = "Demon votes to execute own minion: it will pass anyway, and this looks good."
 		else:
-			yes = false
 			why = "Protects teammate."
+	elif block != "" and w.by_id[block].is_evil() and block != nominee:
+		yes = true
+		why = "A teammate is on the block; votes to replace them with a good NPC."
 	elif nominee == w.evil_plan["scapegoat"]:
 		yes = true
 		why = "Votes to hang the scapegoat."
-	elif yes_so_far >= majority - 2:
+	elif yes_so_far >= thr - 2:
 		yes = true
 		why = "Joins a likely-winning vote against a good NPC."
 	else:
-		yes = w.chance(0.4)
+		yes = w.chance(0.35 + 0.2 * v.traits.get("confidence", 0.5))
 		why = "Coin-flip vote on a good NPC to look natural."
 	w.dlog.think(v.id, "vote", "%s on %s. %s" % ["YES" if yes else "no", nominee, why], {"evil": true})
 	return yes
@@ -350,19 +382,26 @@ static func evil_opinion(w, n, t) -> Dictionary:
 	var text = ""
 	var level = 0.3
 	var why = ""
+	var lie = true
 	if is_teammate(w, n, t.id):
 		text = "%s? Harmless, I'd say." % t.name
 		level = 0.2
 		why = "covers for teammate"
 	elif t.id == s:
-		text = "I don't like %s. Something's off about them." % t.name
+		var reason = fabricated_reason(w, n, t)
+		text = "I don't like %s. %s" % [t.name, (reason[0].to_upper() + reason.substr(1) + ".") if reason != "" else "Something's off about them."]
 		level = 0.9
-		why = "pushes the scapegoat"
+		why = "pushes the scapegoat (%s)" % (reason if reason != "" else "vibes")
+	elif w.rng.randf() < 0.35 * (1.0 - n.traits.get("insight", 0.5)):
+		text = "I can't put my finger on it, but something's off about %s." % t.name
+		level = 0.5
+		why = "vibes-based doubt about a good NPC, to look natural"
 	else:
 		level = 0.3 + w.rng.randf() * 0.2
-		text = "%s seems all right, I suppose." % t.name
+		text = "%s seems all right to me." % t.name
 		why = "neutral filler about a good NPC"
-	w.dlog.think(n.id, "lie" if why != "neutral filler about a good NPC" else "opinion", "Evil opinion of %s: %s." % [t.id, why])
+		lie = false
+	w.dlog.think(n.id, "lie" if lie else "opinion", "Evil opinion of %s: %s." % [t.id, why])
 	return {"text": text, "level": level}
 
 static func evil_hear_accusation(w, n, suspect, card: Dictionary, relevance: float) -> Dictionary:

@@ -535,7 +535,7 @@ unfounded suspicion is normal town behaviour, not an evil tell. Evil also cites
 
 ## Rollout plan (proposed)
 
-1. **Foundation (text).** Split game output into structured events/cards with text as a
+1. **Foundation (text). [built]** Split game output into structured events/cards with text as a
    rendering layer, so a UI can later consume the same data. Add the trait model,
    schedules/availability with the in-block move, unified gift question with tiers and
    hints, trust building/reactions/ceiling, BotC-style one-at-a-time nominations, the
@@ -574,7 +574,7 @@ unfounded suspicion is normal town behaviour, not an evil tell. Evil also cites
   own information contradicts the nomination.
 - **Vigil is strong:** one well-placed vigil on the kill block (plus an Archivist pair)
   won a case on day 3. Keep watching.
-- **Template tell (fix):** evil opinions say "Something's off about them" with no reason,
+- **Template tell (fixed in stage 1):** evil opinions say "Something's off about them" with no reason,
   while good opinions cite one. Fix both ways: good NPCs give vibes opinions too; evil also
   cites (fabricated) reasons.
 - **UX:** `go <block>`/`go <person>` should work (expected to resolve with the real UI);

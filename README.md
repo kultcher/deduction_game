@@ -33,7 +33,8 @@ godot --headless --path . --script res://tools/autoplay.gd -- --seed 7 --transcr
 ```
 
 The bot plays through the same command interface a human uses and prints one line per
-case plus a summary (bot win rate is roughly 30–35% at the moment). `--transcript`
+case plus a summary (bot win rate is roughly 30–35% at the moment), including trait
+reveals, disclosure and NPC-conversation counts. `--transcript`
 prints everything the player would have seen.
 
 ## How to play
@@ -42,28 +43,51 @@ Each day has three phases (morning, afternoon, evening), then a town meeting, th
 
 | When | Commands |
 |---|---|
-| Any time | `look`, `map`, `cast`, `board [filter]`, `roles`, `help`, `log` |
-| Day phase | `go <place>`, then one action: `talk <name>`, `search`, `gossip` (tavern only), `wait` |
-| Talking (3 questions) | `ask gift`, `ask info`, `ask night`, `ask today`, `ask about <name>`, `tell <suspect> <card#>`, `bye` |
-| Town meeting | `nominate <name>` (once), `vote <name>`, `done` |
-| Night | `ward <name>`, `vigil <block>`, `sleep` |
+| Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `roles`, `tools`, `help`, `log` |
+| Day phase | `go <place / block / person>`, optionally one more `go` within the same block, then one action: `talk <name>`, `search`, `gossip` (tavern only), `wait` |
+| Talking (3 questions) | `ask gift`, `ask night`, `ask today`, `ask about <name>`, `tell <suspect> <card#>`, `bye` |
+| Town meeting | `nominate <name>` (once), `wait` (let the town nominate), `done` (close your nominations) |
+| On a nomination | `defend` or `accuse` (one statement), `clemency` (once per case), `vote yes` / `vote no` |
+| Night | `ward <name>` (once per case), `vigil <block>`, `sleep` |
 | After the case | `grimoire`, `grimoire lies` |
 
 Names and places accept prefixes (`talk bart`, `go tav`). Crime scenes appear as
 locations (`go scene_greta`, or `go greta`).
 
-**The case board.** Everything you learn becomes a numbered card. `tell <suspect> <card#>`
-uses a card to make a case to whoever you're talking to (the "mad-libs" accusation). How
-far it moves them depends on what kind of card it is, how much they believe its source,
-how much they trust you, and whether the suspect is their friend. Telling your case to an
-evil NPC warns the demon.
+**The town.** Each phase opens with a view of the town: people at work and pairs deep in
+conversation are shown exactly; everyone else only by block. Workers can always be found
+at work during their (known) shift. People in conversation can't be talked to.
+
+**Asking about gifts.** `ask gift` answers at one of four levels depending on the NPC's
+Privacy, their trust in you, pressure and the day: deny or refuse, a flavoured hint
+(night sight / names / shelter), the gift itself, or the gift and its readings. Once
+someone has told you something they won't pretend otherwise; if trust drops they say
+they're withholding newer readings.
+
+**Traits.** Each NPC has five traits (Privacy, Gossip, Confidence, Insight, Composure),
+rolled per case from the character's baseline. You learn them gradually from conversations
+and meetings; `profile <name>` shows what you know. Composure also decides whether you
+notice how someone feels about you.
+
+**The case board.** Everything you learn becomes a numbered card with an evidence class
+(speech, circumstantial, concrete). `tell <suspect> <card#>` makes a case to whoever
+you're talking to. How far it moves them depends on the card, its source, their Insight,
+their trust in you and in the suspect, and whether they've heard it before. Telling your
+case to an evil NPC warns the demon. Using someone's confessed secret against them costs
+their trust, permanently for very private people.
+
+**Meetings** follow Blood on the Clocktower: one nomination at a time; each person
+nominates and is nominated at most once a day; a nomination reaching half the voters puts
+the nominee on the block, a later one needs more votes to replace them, and a tie clears
+the block. Whoever is on the block when the meeting closes is executed.
 
 **Win:** the demon's host is executed. **Lose:** only two townsfolk remain, or day 6 ends.
 
 ## Code layout
 
 ```
-sim/content.gd   static data: map, occupations, cast pool, roles, secrets
+sim/content.gd   static data: map, occupations and shifts, cast pool with trait baselines,
+                 roles, hint packages, secrets
 sim/npc.gd       one NPC's state (beliefs, suspicion, trust, claims, info results)
 sim/world.gd     case setup, schedules, sightings, night resolution, votes, executions
 sim/mind.gd      NPC reasoning: suspicion updates, claims, testimony, nominations,
@@ -71,7 +95,8 @@ sim/mind.gd      NPC reasoning: suspicion updates, claims, testimony, nomination
 sim/evil.gd      evil team AI: plan, bluffs, scapegoat framing, kill/poison choice,
                  fabricated info
 sim/devlog.gd    developer trace (JSONL + text)
-game/game.gd     command interpreter, case board, all player-facing text
+game/game.gd     command interpreter, case board; emits structured events (last_events)
+                 that are rendered to text
 ui/main.gd       in-engine text console
 tools/cli.gd     terminal frontend
 tools/autoplay.gd  bot player / batch runner
@@ -91,17 +116,20 @@ Main entry types:
 
 | type | what it records |
 |---|---|
-| `grimoire` | hidden setup: roles, alignments, homes, lane order, relationships, secrets, bluffs, evil plan |
+| `grimoire` | hidden setup: roles, alignments, homes, work shifts, lane order, relationships, rolled traits and baselines, secrets, bluffs, evil plan |
 | `secret_assigned` | a good NPC's personal reason to be out at night (and lie) |
-| `positions`, `night_movement` | where everyone is each phase; who walked at night and why |
+| `positions`, `night_movement` | where everyone is each phase (working / busy); who walked at night and why |
+| `npc_conversation` | NPC pairs (visible pre-paired or hidden post-choice; evil meetings flagged). Content comes in stage 2 |
 | `night_sighting` | who glimpsed whom at night |
 | `poison`, `protect`, `protect_failed`, `kill`, `kill_failed` | night actions and outcomes |
 | `info` | every ability result, with `true:false` and a `why` when it's wrong |
 | `fake_info` | evil fabrications and the reasoning behind each |
-| `think` | NPC reasoning, tagged by `data.topic`: `claim`, `lie`, `confess`, `vote`, `nominate`, `accuse`, `opinion`, `persuaded`, `gossip`, `seer_pick`, `watch_pick`, `warden_pick`, `grief`, `kill_choice` (with every candidate's score breakdown), `poison_choice`, `scapegoat`, `evil_plan`, `evil_learns` |
+| `think` | NPC reasoning, tagged by `data.topic`: `claim`, `lie`, `disclosure` (tier and inputs), `deny_or_refuse`, `confess`, `lie_or_stonewall`, `stonewall`, `withhold`, `omit`, `cue`, `share_sightings`, `vote`, `nominate`, `accuse`, `opinion`, `persuaded`, `gossip`, `seer_pick`, `watch_pick`, `warden_pick`, `grief`, `kill_choice` (with every candidate's score breakdown), `poison_choice`, `scapegoat`, `evil_plan`, `evil_learns`. Weighted rolls log every score part and the probability |
 | `suspicion` | every change ≥ 0.05 in one NPC's suspicion of another, with the cause |
-| `trust` | changes in an NPC's trust in the player, with the cause |
-| `vote_tally`, `execution`, `no_execution`, `game_over` | meeting outcomes |
+| `trust`, `trust_cap` | changes in an NPC's trust in the player, and permanent caps, with the cause |
+| `npc_trust` | changes in one NPC's trust in another |
+| `trait_reveal` | which trait the player learned about whom |
+| `nomination`, `player_statement`, `clemency`, `vote_tally`, `execution`, `no_execution`, `game_over` | meeting events (vote tallies include threshold and block state) |
 | `snapshot` | per-phase table of every living NPC's location, poison, trust, claim and suspicion |
 | `player_command` | each command the player typed and the full text they saw |
 
@@ -119,8 +147,8 @@ python3 tools/trace.py logs/case_42.jsonl --player
 ## Known gaps / next steps
 
 - Dialogue is templated and repetitive; personality mostly affects numbers, not voice.
-- Relationships bias suspicion and votes; friends of an executed NPC resent its nominators, yes-voters and you (if you voted yes). No other relationship changes yet.
-- NPCs don't talk to each other privately (only public testimony and gossip).
+- NPC-to-NPC trust biases suspicion, votes and who pairs off; those who trusted an executed NPC resent its nominator, yes-voters and you. NPC conversations happen but carry no content yet (stage 2).
+- No NPC approaches, paranoia, or evil coordination yet (stage 2).
 - The demon's view of who suspects it is approximated from internal suspicion.
 - No solvability check or storyteller director yet.
 - Balance is untuned: NPCs execute fairly readily, and games can end by day 3.

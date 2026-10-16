@@ -1,4 +1,4 @@
-## The case simulation: setup, schedules, sightings, night resolution, executions.
+## The case simulation: setup, schedules, sightings, night resolution, meetings, executions.
 ## Deterministic from the seed. No presentation code lives here; player-facing text is
 ## produced by game.gd from the facts this class exposes.
 extends RefCounted
@@ -25,16 +25,20 @@ var evil_plan = {}
 
 ## Dynamic locations (crime scenes). id -> {name, block, victim, day, trace_block, trace_true, why, searched}
 var scenes = {}
-var deaths_last_night: Array = []   # ids killed in the most recent night
+var deaths_last_night: Array = []
 var executed_today = ""
-var executions: Array = []          # {day, id, votes, nominators}
+var executions: Array = []          # {day, id, nominator, yes, player_yes, player_nominated}
 var night_walkers: Array = []       # last night: {id, block, why}
 var public_claims: Array = []       # {day, who, role}
-var nominations_today: Array = []   # {nominee, by}
 
+## Meeting state (BotC-style: one nomination at a time, "on the block").
+var meeting = {}
+
+## Player tools and night choices.
+var tools = {"ward": 1, "clemency": 1}
 var player_ward = ""
 var player_vigil = ""
-var player_vigil_seen: Array = []   # ids the player saw during last night's vigil
+var player_vigil_seen: Array = []
 var player_loc = ""
 
 var game_over = false
@@ -67,9 +71,6 @@ func npc(id: String):
 
 func living() -> Array:
 	return npcs.filter(func(n): return n.alive)
-
-func living_ids() -> Array:
-	return living().map(func(n): return n.id)
 
 func living_good() -> Array:
 	return npcs.filter(func(n): return n.alive and not n.is_evil())
@@ -107,6 +108,8 @@ func loc_name(l: String) -> String:
 func loc_block(l: String) -> String:
 	if scenes.has(l):
 		return scenes[l]["block"]
+	if l.begins_with("home:") or l.begins_with("night:"):
+		return l.substr(l.find(":") + 1)
 	return C.loc_block(l)
 
 func all_locations() -> Array:
@@ -114,6 +117,9 @@ func all_locations() -> Array:
 	for s in scenes.keys():
 		out.append(s)
 	return out
+
+func locations_on(block: String) -> Array:
+	return all_locations().filter(func(l): return loc_block(l) == block)
 
 func npcs_at(l: String) -> Array:
 	return npcs.filter(func(n): return n.alive and n.loc == l)
@@ -139,6 +145,20 @@ func living_neighbours(n) -> Array:
 func set_log_time() -> void:
 	dlog.set_time(day, "Setup" if (day == 0 and phase != C.NIGHT) else phase_name())
 
+func _names(ids: Array) -> String:
+	var names: Array = ids.map(func(i): return by_id[i].name)
+	if names.size() == 2:
+		return "%s and %s" % names
+	return ", ".join(PackedStringArray(names))
+
+## Total voters at a meeting: living NPCs plus the player.
+func voter_count() -> int:
+	return living().size() + 1
+
+## BotC threshold: at least half the voters, rounded up.
+func vote_threshold() -> int:
+	return int(ceil(voter_count() / 2.0))
+
 # ---------------------------------------------------------------- setup
 
 func setup(seed_in: int, npc_count: int = 7) -> void:
@@ -162,9 +182,18 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 		n.pron = c["pron"]
 		n.style = c["style"]
 		n.blurb = c["blurb"]
-		n.traits = c["traits"].duplicate()
-		n.occupation = C.OCCUPATIONS[occs[i]]["title"]
-		n.work = C.OCCUPATIONS[occs[i]]["work"]
+		for t in C.TRAITS:
+			var bv: Array = c["traits"][t]
+			n.trait_base[t] = bv[0]
+			n.traits[t] = snappedf(clampf(bv[0] + rng.randf_range(-bv[1], bv[1]), 0.0, 1.0), 0.01)
+		var occ: Dictionary = C.OCCUPATIONS[occs[i]]
+		n.occupation = occ["title"]
+		n.work = occ["work"]
+		n.work_phases = occ["shifts"].duplicate()
+		if chance(0.3):
+			var extra = pick([0, 1, 2].filter(func(p): return not (p in n.work_phases)))
+			n.work_phases.append(extra)
+			n.work_phases.sort()
 		n.home_block = pick(blocks)
 		n.ring = ring_order[i]
 		npcs.append(n)
@@ -176,21 +205,24 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 
 	for n in npcs:
 		for m in npcs:
-			if m != n:
-				var s = 0.1
-				if m.id in n.rivals:
-					s += 0.15
-				if m.id in n.friends:
-					s -= 0.1
-				n.suspicion[m.id] = s
-		n.trust = clampf(0.3 + 0.3 * (1.0 - n.traits["caution"]) + rng.randf_range(-0.05, 0.1), 0.1, 0.9)
+			if m == n:
+				continue
+			var s = 0.1
+			var t = 0.5 + rng.randf_range(-0.05, 0.05)
+			if m.id in n.rivals:
+				s += 0.15
+				t -= 0.25
+			if m.id in n.friends:
+				s -= 0.1
+				t += 0.25
+			n.suspicion[m.id] = s
+			n.npc_trust[m.id] = snappedf(t, 0.01)
+		n.trust = clampf(0.3 + 0.25 * (1.0 - n.traits["privacy"]) + rng.randf_range(-0.05, 0.1), 0.1, 0.9)
 
 	evil_plan = Evil.make_plan(self)
 	_log_grimoire()
 
-	# First night: poisoner acts, first-night info, no kill.
 	resolve_night()
-	# Dawn of day 1.
 	day = 1
 	phase = C.MORNING
 	start_phase()
@@ -249,48 +281,52 @@ func _assign_secrets() -> void:
 			s["dest"] = f.home_block
 			s["text"] = s["text"] % f.name
 		n.secret = s
-		dlog.add("secret_assigned", n.id, s.get("with", ""), s, "%s %s (good NPC; will lie about it)" % [n.name, s["text"]])
+		dlog.add("secret_assigned", n.id, s.get("with", ""), s, "%s %s (good NPC; will hide it)" % [n.name, s["text"]])
 
 func _log_grimoire() -> void:
 	var g = []
 	for n in npcs:
-		g.append({"id": n.id, "occupation": n.occupation, "role": n.role, "align": n.alignment,
-			"home": n.home_block, "ring": n.ring, "friends": n.friends, "rivals": n.rivals,
-			"traits": n.traits, "secret": n.secret.get("kind", ""), "red_herring": n.red_herring})
+		g.append({"id": n.id, "occupation": n.occupation, "work_phases": n.work_phases, "role": n.role,
+			"align": n.alignment, "home": n.home_block, "ring": n.ring, "friends": n.friends, "rivals": n.rivals,
+			"traits": n.traits, "trait_base": n.trait_base, "secret": n.secret.get("kind", ""),
+			"red_herring": n.red_herring, "trust": snappedf(n.trust, 0.01)})
 	dlog.add("grimoire", "world", "", {"npcs": g, "bluffs": bluffs, "plan": evil_plan},
 		"Hidden setup. Demon=%s, Poisoner=%s, bluffs=%s" % [demon_id, minion_id, str(bluffs)])
 
 # ---------------------------------------------------------------- day phases
 
-## Called at the start of each day phase: NPCs move and see each other.
+## Start of each day phase: workers go to work, idlers wander, some idlers pair off
+## into a visible conversation (keeping at least 3 people available to the player).
 func start_phase() -> void:
 	set_log_time()
-	for n in npcs:
-		if not n.alive:
-			continue
-		var l = _choose_location(n)
-		n.loc = l
-		n.history[time_key()] = l if l != "home" else "home:" + n.home_block
+	for n in living():
+		n.busy_with = ""
+		n.working = phase in n.work_phases
+		if n.working:
+			n.loc = n.work
+		else:
+			n.loc = _choose_idle_location(n)
+	_pre_pair()
+	for n in living():
+		n.history[time_key()] = n.loc if n.loc != "home" else "home:" + n.home_block
 	var placed = {}
 	for n in living():
-		placed[n.id] = n.loc
+		placed[n.id] = {"loc": n.loc, "working": n.working, "busy_with": n.busy_with}
 	dlog.add("positions", "world", "", placed)
 	_day_sightings()
 
-func _choose_location(n) -> String:
+func _choose_idle_location(n) -> String:
 	var r = rng.randf()
 	var social: Array = ["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"]
 	match phase:
 		C.MORNING:
-			if r < 0.85:
-				return n.work
+			if r < 0.15:
+				return "home"
 			return pick(social)
 		C.AFTERNOON:
-			if r < 0.45:
-				return n.work
-			if r < 0.62:
+			if r < 0.3:
 				return "tavern"
-			if r < 0.75 and not n.friends.is_empty():
+			if r < 0.45 and not n.friends.is_empty():
 				var f = npc(pick(n.friends))
 				if f and f.alive:
 					return f.work
@@ -298,12 +334,90 @@ func _choose_location(n) -> String:
 		C.EVENING:
 			if r < 0.4:
 				return "tavern"
-			if r < 0.68:
+			if r < 0.65:
 				return "home"
-			if r < 0.78:
+			if r < 0.75:
 				return "chapel"
 			return pick(social)
 	return "home"
+
+## Player options this phase: working NPCs plus available idlers.
+func player_options() -> Array:
+	return living().filter(func(n): return n.available())
+
+## Weight for two NPCs choosing to talk: driven by mutual trust.
+func pair_weight(a, b) -> float:
+	var t: float = (a.npc_trust.get(b.id, 0.5) + b.npc_trust.get(a.id, 0.5)) / 2.0
+	return clampf((t - 0.3) * 2.0, 0.02, 1.5)
+
+func _idle_pairable() -> Array:
+	return living().filter(func(n): return not n.working and n.available() and n.pair_day != day)
+
+func _pre_pair() -> void:
+	var max_pairs = 1 if n_npcs < 10 else n_npcs / 5
+	var made = 0
+	while made < max_pairs:
+		var cands = _idle_pairable()
+		if cands.size() < 2 or player_options().size() - 2 < 3:
+			break
+		if not chance(0.65):
+			break
+		var pr = _choose_pair(cands)
+		if pr.is_empty():
+			break
+		_make_pair(pr[0], pr[1], "pre")
+		made += 1
+
+func _choose_pair(cands: Array) -> Array:
+	var best: Array = []
+	var total = 0.0
+	var options: Array = []
+	for i in range(cands.size()):
+		for j in range(i + 1, cands.size()):
+			var wgt = pair_weight(cands[i], cands[j])
+			options.append([cands[i], cands[j], wgt])
+			total += wgt
+	if options.is_empty():
+		return best
+	var r = rng.randf() * total
+	for o in options:
+		r -= o[2]
+		if r <= 0:
+			return [o[0], o[1]]
+	var last = options[options.size() - 1]
+	return [last[0], last[1]]
+
+func _make_pair(a, b, when: String) -> void:
+	if when == "pre":
+		b.loc = a.loc
+	a.busy_with = b.id
+	b.busy_with = a.id
+	a.pair_day = day
+	b.pair_day = day
+	var evil_meet = a.is_evil() and b.is_evil()
+	dlog.add("npc_conversation", a.id, b.id, {"when": when, "loc": a.loc, "visible": when == "pre", "evil_meeting": evil_meet},
+		"%s and %s talk%s (content: stage 2)." % [a.name, b.name, " (evil meeting)" if evil_meet else ""])
+	for p in [[a, b], [b, a]]:
+		p[0].npc_trust[p[1].id] = clampf(p[0].npc_trust.get(p[1].id, 0.5) + 0.02, 0.0, 1.0)
+
+## After the player's action: remaining idlers on the same location may pair off.
+func _post_pair(talked_id: String) -> void:
+	var cands = _idle_pairable().filter(func(n): return n.id != talked_id)
+	var by_loc = {}
+	for n in cands:
+		if not by_loc.has(n.loc):
+			by_loc[n.loc] = []
+		by_loc[n.loc].append(n)
+	for l in by_loc:
+		var group: Array = by_loc[l]
+		if group.size() < 2:
+			continue
+		var pr = _choose_pair(group)
+		if pr.is_empty():
+			continue
+		var p = 0.5 * pair_weight(pr[0], pr[1])
+		if chance(p):
+			_make_pair(pr[0], pr[1], "post")
 
 func _day_sightings() -> void:
 	var live = living()
@@ -319,8 +433,9 @@ func _day_sightings() -> void:
 				a.beliefs.append({"kind": "saw", "who": b.id, "loc": b.loc if same_loc else "",
 					"block": loc_block(b.loc), "day": day, "phase": phase})
 
-## Advance to the next day phase (Morning->Afternoon->Evening). Returns false at Evening end.
-func end_day_phase() -> bool:
+## Advance to the next day phase. Returns false at the end of Evening.
+func end_day_phase(talked_id: String = "") -> bool:
+	_post_pair(talked_id)
 	snapshot("phase_end")
 	if phase < C.EVENING:
 		phase += 1
@@ -330,109 +445,150 @@ func end_day_phase() -> bool:
 
 # ---------------------------------------------------------------- town meeting
 
-func run_testimony() -> Array:
+func begin_meeting() -> Array:
 	set_log_time()
-	nominations_today = []
 	executed_today = ""
+	meeting = {"block": "", "block_count": 0, "nominated": [], "nominators": [], "results": [], "pending": {}}
+	for n in living():
+		n.busy_with = ""
 	return Mind.meeting_testimony(self)
 
-func npc_nominations() -> Array:
-	var noms: Array = Mind.npc_nominations(self)
-	for nm in noms:
-		nominations_today.append(nm)
-	return noms
+func can_nominate(by: String, nominee: String) -> String:
+	if not by_id.has(nominee) or not by_id[nominee].alive:
+		return "They are not here."
+	if nominee in meeting["nominated"]:
+		return "%s has already been nominated today." % by_id[nominee].name
+	if by in meeting["nominators"]:
+		return "You have already nominated today." if by == "player" else "already nominated"
+	return ""
 
-## nominees: Array of {nominee, by}. player_vote: npc id the player supports ("" = none).
-## Returns {results:[{nominee, by, yes:[ids], no:[ids], player_yes}], executed}
-func run_votes(nominees: Array, player_vote: String) -> Dictionary:
-	set_log_time()
-	var voters = living()
-	var total_voters = voters.size() + 1
-	var results: Array = []
-	var best = ""
-	var best_votes = 0
-	var tie = false
-	for nm in nominees:
-		var nid: String = nm["nominee"]
-		if not by_id[nid].alive:
-			continue
-		var yes: Array = []
-		var no: Array = []
-		for v in voters:
-			var decision: bool = Mind.vote(self, v, nid, nm["by"], player_vote == nid, yes.size())
-			if decision:
-				yes.append(v.id)
-			else:
-				no.append(v.id)
-		var py: bool = player_vote == nid
-		var count = yes.size() + (1 if py else 0)
-		results.append({"nominee": nid, "by": nm["by"], "yes": yes, "no": no, "player_yes": py, "count": count})
-		dlog.add("vote_tally", "world", nid, {"yes": yes, "no": no, "player_yes": py, "count": count,
-			"needed": total_voters / 2 + 1})
-		if count > total_voters / 2:
-			if count > best_votes:
-				best = nid
-				best_votes = count
-				tie = false
-			elif count == best_votes:
-				tie = true
-	var executed = ""
-	if best != "" and not tie:
-		executed = best
-		execute(best, results)
-	elif tie:
-		dlog.add("no_execution", "world", "", {}, "Tie between nominees; nobody is executed.")
+## Opens a nomination. Returns the pending nomination dict.
+func open_nomination(by: String, nominee: String, reason: String = "") -> Dictionary:
+	meeting["nominated"].append(nominee)
+	meeting["nominators"].append(by)
+	var nm = {"by": by, "nominee": nominee, "statement": "", "reason": reason}
+	meeting["pending"] = nm
+	var target = by_id[nominee]
+	target.pressure += 0.4
+	if by == "player":
+		Mind.set_trust(self, target, target.trust - 0.15, "the Demonologist nominated me")
 	else:
-		dlog.add("no_execution", "world", "", {}, "No nominee reached a majority.")
-	return {"results": results, "executed": executed, "total_voters": total_voters}
+		target.npc_trust[by] = clampf(target.npc_trust.get(by, 0.5) - 0.25, 0.0, 1.0)
+		dlog.add("npc_trust", nominee, by, {"to": target.npc_trust[by]}, "%s nominated me" % by)
+	dlog.add("nomination", by, nominee, {"reason": reason, "on_block": meeting["block"], "block_count": meeting["block_count"]})
+	return nm
 
-func execute(id: String, results: Array) -> void:
+## The player intervenes with Clemency: the nomination is cancelled.
+func clemency() -> void:
+	var nm: Dictionary = meeting["pending"]
+	var spared = by_id[nm["nominee"]]
+	tools["clemency"] -= 1
+	evil_plan["spared"].append(spared.id)
+	dlog.add("clemency", "player", spared.id, {"nominator": nm["by"]}, "The Demonologist spares %s from this nomination." % spared.name)
+	for n in living():
+		if n == spared:
+			Mind.set_trust(self, n, n.trust + 0.15, "the Demonologist spared me")
+			continue
+		if n.is_evil():
+			continue
+		var s = Mind.susp(n, spared.id)
+		if s < 0.35:
+			Mind.set_trust(self, n, n.trust + 0.06, "the Demonologist spared %s, whom I trust" % spared.id)
+		elif s > 0.6:
+			Mind.set_trust(self, n, n.trust - 0.1, "the Demonologist spared %s, whom I suspect" % spared.id)
+	if nm["by"] != "player":
+		var nom = by_id[nm["by"]]
+		Mind.set_trust(self, nom, nom.trust - 0.08, "the Demonologist overruled my nomination")
+	meeting["pending"] = {}
+
+## Count the votes on the pending nomination and update who is on the block.
+func vote_pending(player_yes: bool) -> Dictionary:
+	set_log_time()
+	var nm: Dictionary = meeting["pending"]
+	var nid: String = nm["nominee"]
+	var yes: Array = []
+	var no: Array = []
+	for v in living():
+		if Mind.vote(self, v, nid, nm["by"], player_yes, nm["statement"], yes.size()):
+			yes.append(v.id)
+		else:
+			no.append(v.id)
+	var count = yes.size() + (1 if player_yes else 0)
+	var thr = vote_threshold()
+	var outcome = "fails"
+	if count >= thr:
+		if count > meeting["block_count"]:
+			meeting["block"] = nid
+			meeting["block_count"] = count
+			outcome = "on_block"
+		elif count == meeting["block_count"]:
+			meeting["block"] = ""
+			outcome = "tie"
+		else:
+			outcome = "short_of_block"
+	var res = {"nominee": nid, "by": nm["by"], "yes": yes, "no": no, "player_yes": player_yes, "count": count,
+		"threshold": thr, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"]}
+	meeting["results"].append(res)
+	meeting["pending"] = {}
+	dlog.add("vote_tally", "world", nid, res)
+	if player_yes:
+		var t = by_id[nid]
+		if nm["by"] != "player":
+			Mind.set_trust(self, t, t.trust - 0.08, "the Demonologist voted to hang me")
+	return res
+
+## Close the meeting: whoever is on the block is executed.
+func end_meeting() -> String:
+	set_log_time()
+	var b: String = meeting["block"]
+	if b == "":
+		dlog.add("no_execution", "world", "", {}, "Nobody is on the block when the meeting closes.")
+		return ""
+	var res = {}
+	for r in meeting["results"]:
+		if r["nominee"] == b:
+			res = r
+	execute(b, res)
+	return b
+
+func execute(id: String, res: Dictionary) -> void:
 	var n = by_id[id]
 	n.alive = false
 	n.death_day = day
 	n.death_cause = "executed"
 	n.loc = "dead"
 	executed_today = id
-	var nominators: Array = []
-	for r in results:
-		if r["nominee"] == id:
-			nominators.append(r["by"])
-	executions.append({"day": day, "id": id, "nominators": nominators})
+	executions.append({"day": day, "id": id, "nominator": res.get("by", ""), "yes": res.get("yes", []),
+		"player_yes": res.get("player_yes", false), "player_nominated": res.get("by", "") == "player"})
 	dlog.add("execution", "world", id, {"role": n.role, "align": n.alignment},
 		"%s (%s) executed by town vote." % [n.name, n.role])
-	_grief(n, results)
+	_grief(n, res)
 	if id == demon_id:
 		_finish("good", "The demon's host was executed.")
 	else:
 		_check_parity()
 
-## Friends of the executed resent whoever pushed for it (shifting allegiances).
-func _grief(ex, results: Array) -> void:
-	var yes_voters: Array = []
-	var player_yes := false
-	var nominators: Array = []
-	for r in results:
-		if r["nominee"] == ex.id:
-			yes_voters = r["yes"]
-			player_yes = r["player_yes"]
-			nominators.append(r["by"])
+## Those who trusted the executed resent whoever pushed for it (shifting allegiances).
+func _grief(ex, res: Dictionary) -> void:
 	for f in living_good():
-		if not (ex.id in f.friends):
+		var t: float = f.npc_trust.get(ex.id, 0.5)
+		if t < 0.62:
 			continue
-		var loy: float = f.traits["loyalty"]
-		for nom in nominators:
-			if nom != "player" and nom != f.id:
-				Mind.adjust(self, f, nom, 0.3 * loy, "grief: %s nominated my friend %s" % [nom, ex.id],
-					"they pushed to hang my friend %s" % ex.name)
-		for v in yes_voters:
-			if v != f.id and not (v in nominators):
-				Mind.adjust(self, f, v, 0.12 * loy, "grief: voted to hang my friend %s" % ex.id)
-		if player_yes:
-			var old: float = f.trust
-			f.trust = clampf(f.trust - 0.25 * loy, 0.0, 1.0)
-			dlog.add("trust", f.id, "player", {"from": snappedf(old, 0.01), "to": snappedf(f.trust, 0.01)},
-				"grief: the Demonologist voted to hang my friend %s" % ex.id)
-		dlog.think(f.id, "grief", "Mourns friend %s; resents those who pushed the execution." % ex.id)
+		var strength = (t - 0.5) * 2.0
+		var nom: String = res.get("by", "")
+		if nom != "" and nom != "player" and nom != f.id:
+			Mind.adjust(self, f, nom, 0.3 * strength, "grief: %s nominated %s, whom I trusted" % [nom, ex.id],
+				"they pushed to hang %s" % ex.name, false)
+			f.npc_trust[nom] = clampf(f.npc_trust.get(nom, 0.5) - 0.2 * strength, 0.0, 1.0)
+		for v in res.get("yes", []):
+			if v != f.id and v != nom:
+				Mind.adjust(self, f, v, 0.12 * strength, "grief: voted to hang %s" % ex.id, "", false)
+		if nom == "player":
+			Mind.set_trust(self, f, f.trust - 0.3 * strength, "grief: the Demonologist nominated %s" % ex.id)
+			Mind.cap_trust(self, f, 0.55, "grief: the Demonologist nominated %s" % ex.id)
+		elif res.get("player_yes", false):
+			Mind.set_trust(self, f, f.trust - 0.2 * strength, "grief: the Demonologist voted to hang %s" % ex.id)
+		dlog.think(f.id, "grief", "Mourns %s (trust %.2f); resents those who pushed the execution." % [ex.id, t])
 
 func _check_parity() -> void:
 	if game_over:
@@ -440,15 +596,14 @@ func _check_parity() -> void:
 	if demon().alive and living().size() <= 2:
 		_finish("evil", "Only two townsfolk remain and the demon still walks among them.")
 
-func _finish(w: String, why: String) -> void:
+func _finish(wn: String, why: String) -> void:
 	game_over = true
-	winner = w
+	winner = wn
 	end_reason = why
-	dlog.add("game_over", "world", "", {"winner": w}, why)
+	dlog.add("game_over", "world", "", {"winner": wn}, why)
 
 # ---------------------------------------------------------------- night
 
-## Resolves one night: evil choices, movement, poison, protection, kill, info, sightings.
 func resolve_night() -> void:
 	phase = C.NIGHT
 	set_log_time()
@@ -458,6 +613,9 @@ func resolve_night() -> void:
 			dlog.add("poison_wears_off", "world", n.id)
 		n.poisoned = false
 		n.pressed_today = 0
+		n.busy_with = ""
+		n.pressure = n.pressure * 0.6
+	Mind.end_of_day_trust(self)
 
 	var kill_t = ""
 	if not first and demon().alive:
@@ -545,20 +703,20 @@ func _walk(n, block: String, why: String) -> void:
 
 func _night_sightings() -> void:
 	player_vigil_seen = []
-	for w in night_walkers:
-		var wn = by_id[w["id"]]
+	for wk in night_walkers:
+		var wn = by_id[wk["id"]]
 		for o in living():
 			if o == wn:
 				continue
 			var saw = false
-			if o.out_last_night and o.night_block == w["block"]:
+			if o.out_last_night and o.night_block == wk["block"]:
 				saw = chance(0.5)
-			elif not o.out_last_night and o.home_block == w["block"]:
+			elif not o.out_last_night and o.home_block == wk["block"]:
 				saw = chance(0.15)
 			if saw:
-				o.beliefs.append({"kind": "saw", "who": wn.id, "loc": "", "block": w["block"], "day": day, "phase": C.NIGHT})
-				dlog.add("night_sighting", o.id, wn.id, {"block": w["block"]}, "%s glimpsed %s on %s at night." % [o.name, wn.name, C.block_name(w["block"])])
-		if player_vigil != "" and w["block"] == player_vigil and wn.alive:
+				o.beliefs.append({"kind": "saw", "who": wn.id, "loc": "", "block": wk["block"], "day": day, "phase": C.NIGHT})
+				dlog.add("night_sighting", o.id, wn.id, {"block": wk["block"]}, "%s glimpsed %s on %s at night." % [o.name, wn.name, C.block_name(wk["block"])])
+		if player_vigil != "" and wk["block"] == player_vigil and wn.alive:
 			player_vigil_seen.append(wn.id)
 	if player_vigil != "":
 		dlog.add("player_vigil", "player", "", {"block": player_vigil, "seen": player_vigil_seen})
@@ -570,13 +728,8 @@ func _kill(v) -> void:
 	v.loc = "dead"
 	deaths_last_night.append(v.id)
 	var d = demon()
-	# Physical trace: usually the block where the killer spent the evening.
 	var ev_loc: String = d.history.get(time_key(day, C.EVENING), "home:" + d.home_block)
-	var true_block = ""
-	if ev_loc.begins_with("home:"):
-		true_block = ev_loc.substr(5)
-	else:
-		true_block = loc_block(ev_loc)
+	var true_block: String = loc_block(ev_loc)
 	var trace_block = true_block
 	var trace_true = true
 	var why = "Trace matches where the demon spent the evening (%s)." % true_block
@@ -615,11 +768,10 @@ func _receive_info(n, watch_block: String) -> void:
 		"seer":
 			var pair: Array = Mind.seer_picks(self, n)
 			var yes = false
+			var true_yes = false
 			for pid in pair:
 				if pid == demon_id or pid == n.red_herring:
 					yes = true
-			var true_yes = false
-			for pid in pair:
 				if pid == demon_id:
 					true_yes = true
 			var reported_yes = yes
@@ -631,9 +783,9 @@ func _receive_info(n, watch_block: String) -> void:
 				entry["why"] = "red herring %s" % n.red_herring
 		"nightwatch":
 			var seen: Array = []
-			for w in night_walkers:
-				if w["block"] == watch_block and w["id"] != n.id:
-					seen.append(w["id"])
+			for wk in night_walkers:
+				if wk["block"] == watch_block and wk["id"] != n.id:
+					seen.append(wk["id"])
 			var real = seen.duplicate()
 			if n.poisoned:
 				seen = []
@@ -685,13 +837,6 @@ func _receive_info(n, watch_block: String) -> void:
 	dlog.add("info", n.id, "", entry, "%s (%s) learns: %s%s" % [n.name, r, entry["text"],
 		"" if entry["true"] else "  [FALSE: %s]" % entry.get("why", "?")])
 
-func _names(ids: Array) -> String:
-	var names: Array = ids.map(func(i): return by_id[i].name)
-	if names.size() == 2:
-		return "%s and %s" % names
-	return ", ".join(PackedStringArray(names))
-
-## Morning bookkeeping after a night.
 func start_new_day() -> void:
 	day += 1
 	phase = C.MORNING
@@ -712,6 +857,6 @@ func snapshot(tag: String) -> void:
 		for k in n.suspicion.keys():
 			if by_id[k].alive:
 				sus[k] = snappedf(n.suspicion[k], 0.01)
-		s[n.id] = {"loc": n.loc, "poisoned": n.poisoned, "trust": snappedf(n.trust, 0.01),
-			"claim": n.claimed_role, "suspicion": sus}
+		s[n.id] = {"loc": n.loc, "poisoned": n.poisoned, "trust": snappedf(n.trust, 0.01), "trust_cap": n.trust_cap,
+			"pressure": snappedf(n.pressure, 0.01), "claim": n.claimed_role, "max_tier": n.max_tier, "suspicion": sus}
 	dlog.add("snapshot", "world", "", {"tag": tag, "npcs": s})
