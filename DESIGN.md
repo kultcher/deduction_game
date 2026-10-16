@@ -328,6 +328,91 @@ hidden state. Unmatched player contradiction links are flagged for template work
 - Text prototype first: terminal CLI and in-editor text console share one command
   interpreter. An autoplay bot runs many seeds for testing.
 
+## Planned features (tentative)
+
+### Personality-driven social style
+- **Forthcoming** is the primary social trait: how readily an NPC claims, shares readings
+  and speaks at meetings. It applies **regardless of alignment**: a chatty Agnes is chatty
+  as good or evil, so evil isn't revealed by being outgoing.
+- Each cast member has either a **fixed** forthcoming value (stable habits across runs, as
+  with a regular Clocktower group) or a **volatile** flag (rerolled per case).
+- Evil's fabricated information should vary naturally; a perfectly consistent frame is a
+  tell of its own.
+- Watch for overlap between forthcoming, honesty, caution and readability; consolidate if
+  they blur.
+
+### Vibes-based opinions
+- "Something's off about them" (an opinion with no stated reason) is used by good NPCs
+  too, including about other good NPCs, so unfounded suspicion is normal town behaviour
+  rather than an evil tell. Evil NPCs also cite (fabricated) reasons.
+
+### Unified gift/info question
+- `ask gift` and `ask info` merge into one question. Answers escalate with trust and
+  forthcomingness:
+  1. "I don't have a gift." (true or a lie)
+  2. "I have a gift, but I'm not saying what."
+  3. "Here's my gift, but not what it told me."
+  4. "Here's my gift and what it told me."
+- NPCs can **stop** sharing new readings with the player if trust drops (e.g. an Empath
+  shares nights 0–1 but withholds night 2), while possibly still sharing at the meeting.
+
+### Evil knowledge and coordination
+- At baseline evil knows: each other's identities, bluffs, and a shared plan. The first
+  night gives free shared knowledge (as in BotC).
+- After that, evil knows only what a member **saw or was told**, and must **meet** to
+  share: own sightings, what the player argued to them, readings of public behaviour,
+  plan updates (scapegoat, kill target, consistent bluffs and alibis).
+- This replaces places where the prototype's evil AI reads hidden state directly (private
+  suspicion, private night sightings, true night walkers, whom the player confided in).
+- Meetings can be crowded (tavern; slow, hard to observe) or private (fast, riskier).
+  Frequency follows personality, not alignment. Good NPCs meet constantly too, so meetings
+  aren't a tell on their own.
+
+### Good-to-good social dynamics
+- Simple model: two NPCs choose to talk; NPC 1 shares one thing they know (a sighting, a
+  reading, an opinion, something the player argued); it affects NPC 2's judgement through
+  the same evaluation as player arguments (source trust, diminishing returns).
+- Every belief records **who it was heard from**, so it can be traced and disowned.
+- Evil can feed lies into the network. Cap conversations per phase so the town doesn't
+  converge too fast in either direction.
+
+### Claims matter to good NPCs
+- Good NPCs weigh public claims. A Warden who trusts a claimed strong information role is
+  more likely to protect them; NPCs value claimed roles when voting and choosing whom to
+  confide in.
+- The demon factors in a known Warden claim when choosing targets.
+
+### Geography, paths and dropped evidence
+- Blocks remain the unit of space; the map gains real **paths** (sequences of
+  blocks/locations). Night movement follows paths.
+- Evidence can be dropped **anywhere along a path**, by the killer or by anyone else out
+  for their own reasons (noise). E.g. demon goes chapel → graveyard → victim's house; a
+  clue may turn up in the graveyard.
+- The death-scene trace (killer's evening block) stays.
+- Owner-identifying items (a named scarf) are strong evidence: keep them rare, and later
+  plantable by a Framer-type role. Category traces (soot, mud) are common.
+
+### Confrontation, alibis and confessions
+- The player can **confront** an NPC with evidence. The NPC may confess the true reason
+  (including a personal secret like a gambling debt), lie, or name an alibi.
+- Alibis **name a corroborator** ("I was with Jory"). The corroborator confirms or denies,
+  which can produce a word-against-word contradiction card.
+- Evil may claim a false secret ("I was meeting Jory for an affair"), or name someone they
+  really did meet, to throw suspicion on them. Good NPCs may also lie to protect a shared
+  secret out of loyalty, so a real affair can stay hidden.
+- Evil naming each other as alibis is a classic BotC pairing tell; smart evil usually
+  avoids it.
+- All of these are expressed as cards (alibi claim, confirmation, denial, confession).
+
+### Clemency and the demon
+- The demon may deliberately **not** kill someone the player spared, leaving them alive to
+  be suspected (fits the existing scapegoat logic).
+- **Town paranoia:** as the town shrinks, good NPCs grow more suspicious of everyone not
+  yet killed or otherwise confirmed.
+- **Urgency:** NPCs become more willing to execute late ("we must hang someone"); the
+  player may need to talk them down. Tune paranoia and urgency together so the last days
+  don't become random lynchings.
+
 ## Playtest findings (3 cases, 2 players)
 
 - Gradual reveal works; relationships and secrets work as intended.
@@ -350,8 +435,9 @@ hidden state. Unmatched player contradiction links are flagged for template work
   won a case on day 3. Keep watching.
 - **Template tell (fix):** evil opinions say "Something's off about them" with no reason,
   while good opinions cite one. Evil must cite (fabricated) reasons too.
-- **UX:** `go <block>` and `go <person>` should work; asking `info` before `gift` repeats
-  the same answer; "as I said" is used for claims never said to the player.
+- **UX:** `go <block>`/`go <person>` should work (expected to resolve with the real UI);
+  asking `info` before `gift` repeats the answer (resolved by the unified question);
+  "as I said" is used for claims never said to the player.
 
 ## Open questions
 
