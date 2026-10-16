@@ -1,0 +1,4 @@
+logs/
+.godot/
+*.import
+export/
