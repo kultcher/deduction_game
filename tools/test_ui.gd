@@ -2,6 +2,7 @@
 ## view, links and files a deduction through the panel.
 ##   godot --headless --path . --script res://tools/test_ui.gd
 extends SceneTree
+var fails = 0
 
 func _init() -> void:
 	var scene = load("res://ui/main.tscn").instantiate()
@@ -55,8 +56,33 @@ func _init() -> void:
 	scene.side_filter.text = "square"
 	scene._refresh_side()
 	print("sidebar square cards: ", scene.side_list.count())
+	# The theory shortcut and banner work independently of the board filters.
+	scene.seed_box.value = 4242
+	scene._new_case()
+	g = scene.g
+	cv = scene.case_view
+	_check("not recorded" in scene.theory_label.text, "console reminds the player to record a theory")
+	cv.prof_opt.select(0)
+	cv._refresh_profile()
+	var id = cv.prof_opt.get_item_metadata(0)
+	for i in range(cv.guess_opt.item_count):
+		if cv.guess_opt.get_item_metadata(i) == "demon":
+			cv.guess_opt.select(i)
+	cv._on_save_profile()
+	_check(g.guesses[id]["guess"] == "demon" and g.w.by_id[id].name in scene.theory_label.text, "profile guess updates the persistent banner")
+	scene._open_theory()
+	_check(cv.visible and cv.prof_opt.get_item_metadata(cv.prof_opt.selected) == id, "Record theory opens the saved candidate's profile")
+	g.capture_prediction("before_night")
+	g.w._finish("evil", "UI test")
+	scene._run("look")
+	_check(cv.guess_opt.disabled and not cv.conf_spin.editable and "Final theory" in cv.theory_label.text, "post-case theory controls are frozen")
 	print("UI OK")
-	quit()
+	quit(1 if fails > 0 else 0)
+
+func _check(ok: bool, label: String) -> void:
+	print(("PASS " if ok else "FAIL ") + label)
+	if not ok:
+		fails += 1
 
 func _esc() -> InputEventKey:
 	var e = InputEventKey.new()

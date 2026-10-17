@@ -42,6 +42,22 @@ godot --headless --path . --script res://tools/autoplay.gd -- --seed 7 --transcr
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 1000 --games 150 --passive
 ```
 
+To compare the same starting towns and retain machine-readable results:
+
+```sh
+godot --headless --path . --script res://tools/autoplay.gd -- --seed 1000 --games 150 --log-dir logs --results logs/active.json
+godot --headless --path . --script res://tools/autoplay.gd -- --seed 1000 --games 150 --passive --log-dir logs --results logs/passive.json
+python3 tools/compare_runs.py logs/active.json logs/passive.json
+```
+
+Case logs are separated into `active/` and `passive/` beneath the chosen log directory.
+The comparison reports paired wins and reversals, wrongful executions per execution,
+player backing/opposition, identification, and innocent survivors in victories. Only
+completed cases enter outcome rates. Same seeds match the starting setup; player actions
+can change subsequent random draws, so a reversal alone does not prove a particular
+intervention caused a loss. The bot records its top living suspicion score as demon and
+runner-up as minion; these are diagnostic guesses, not a sophisticated role solver.
+
 `--passive` is the control: a player who does nothing at all (waits every phase, declines
 approaches, never nominates, votes no). Compare its win rate with the normal bot on the
 same seeds to see how much the player's actions matter.
@@ -57,7 +73,7 @@ Each day has three phases (morning, afternoon, evening), then a town meeting, th
 
 | When | Commands |
 |---|---|
-| Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `roles`, `tools`, `help`, `log` |
+| Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `theory`, `roles`, `tools`, `help`, `log` |
 | Day phase | `go <place / block / person>`, optionally one more `go` within the same block, then one action: `talk <name>`, `search`, `gossip` (tavern only), `wait` |
 | Talking (3 questions) | `ask gift`, `ask night`, `ask today`, `ask about <name or gift>`, `present <card#> [for/against <name>]`, `bye` |
 | Approached | `accept` (talk now; uses the phase) or `decline` (any other action also declines) |
@@ -117,6 +133,34 @@ nights when nobody died all become cards. NPCs notice who was talking with whom 
 mention it. A Warden or Veteran claimant gains credit with the town after a quiet night
 (evil can bluff these too). `profile` lists what readings on your board say about someone
 ("possibly the Warden, per Dorian's Clerk reading").
+
+**Your private theory.** Use **Record theory** to jump to a profile's **Your guess**, or
+`guess <name> demon [1-3]` / `guess <name> poisoner [1-3]`. `theory` shows your current
+candidates. A new demon/minion guess replaces the previous candidate for that identity.
+Guesses are optional, private, and cost no action. The persistent banner and meeting
+reminders encourage recording them before voting, since a case can end early.
+
+Every revision is logged with confidence, notes and game time. Snapshots before votes,
+executions and nights preserve what you believed before the outcome; the latest snapshot
+is scored only at the ending. The ending separately reports town survival, demon and
+minion identification, and innocent lives preserved. "Identified but lost" recognizes a
+correct final demon theory when the town falls; it does not claim why persuasion failed.
+Earlier correct guesses remain in the history but do not earn final-theory credit after
+being abandoned. Guesses cannot change after the reveal. Opening a debug grimoire before
+the ending marks identification as unscored.
+
+`case_summary` is the versioned machine-readable end-of-case event. Execution rows retain
+player nomination, yes/no vote and explicit accuse/defend statements. Their stance is
+`backed`, `opposed`, or `mixed` (e.g. accused, then voted no); these categories are mutually
+exclusive. Public deductions and earlier private persuasion remain available in the trace
+but are not automatically attributed as causes of an execution. Zero executions gives a
+null wrongful-execution fraction, rather than a misleading zero.
+
+Tracking regression checks:
+
+```sh
+godot --headless --path . --script res://tools/test_outcomes.gd
+```
 
 **The town talks.** NPCs who pair off actually exchange things: a reading, a night
 sighting, an opinion, a case you made to them, or a secret. Everyone remembers who told them
@@ -233,6 +277,8 @@ Main entry types:
 | `nomination`, `player_statement`, `clemency`, `vote_tally`, `execution`, `no_execution`, `game_over` | meeting events (vote tallies include threshold and block state) |
 | `snapshot` | per-phase table of every living NPC's location, poison, trust, claim and suspicion |
 | `player_command` | each command the player typed and the full text they saw |
+| `player_guess`, `prediction_snapshot`, `prediction_spoiled` | private theory revisions; frozen copies before votes, executions and nights; debug-reveal exclusion |
+| `player_execution_context`, `case_summary` | known card IDs and theory before execution; final identity credit, survival, wrongful-execution fraction and player stance |
 
 Every lie has a `think` entry with `topic: "lie"` explaining why (evil cover, a personal
 secret, caution about revealing a gift). Filter examples:

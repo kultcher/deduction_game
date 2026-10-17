@@ -701,6 +701,37 @@ player). Both use the same roll (lower Insight, more often vague).
   system). The board panel is a summary; the full case view is a separate full-screen
   overlay. Bot win rate rose from ~30% to ~36% on the same seeds once it used deductions.
 
+## Outcome tracking (built)
+
+Private profile guesses now form a timestamped revision history, with copies frozen before
+votes, executions and night resolution. The latest pre-outcome copy is used for final
+identification credit; abandoned earlier guesses remain inspectable but do not count as a
+solved final theory. Confidence and player notes are preserved without requiring a
+template-approved argument. Correctness is revealed only after the case ends. The console
+and case view show the current demon/minion candidates, with optional reminders before
+votes and a Record theory shortcut. There is one candidate per evil identity; changing it
+replaces the former candidate. Opening a debug grimoire disqualifies identification credit.
+
+Case results distinguish identifying the demon, identifying the minion, saving the town,
+and preserving good townsfolk. Identified-but-lost is descriptive partial credit, not a
+claim that persuasion specifically caused the loss. Each execution logs nomination,
+yes/no vote and explicit accuse/defend statements; conflicting actions are marked mixed.
+Known card IDs and the private theory are saved before execution for manual diagnosis.
+Earlier arguments are not automatically assigned causal responsibility for a death.
+
+Autoplay emits versioned JSON results with --results; compare_runs.py pairs completed
+seeds across active/passive reports. Wrongful-execution fractions use all executions as
+the denominator, alongside counts per case and good survivors in victories. Incomplete
+cases are excluded from outcome rates. Same seeds guarantee the starting setup, not the
+later random draws after different actions. No RNG streams or gameplay rules changed.
+The active bot records its existing suspicion ranking (first = demon, second = minion),
+which is a deliberately simple diagnostic prediction policy.
+
+Validation on seeds 1000–1149: active 53/150 wins, passive 25/150; active identified the
+demon in 84/150 cases and both identities in 29/150, with 36 identified-but-lost cases.
+Wrongful executions were 210/317 active vs 198/265 passive. All 150 active per-seed case
+results match the pre-tracking commit, including deaths, executions and end reasons.
+
 ## Open questions
 
 - Is unlimited Vigil too strong?

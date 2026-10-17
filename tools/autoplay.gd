@@ -2,7 +2,7 @@
 ## a human uses, then reports results and writes dev logs.
 ##
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
-##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive]
+##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE]
 ##
 ## --passive: a control player who does nothing (waits every phase, declines approaches,
 ## never nominates, votes no, sleeps). The town's win rate on its own.
@@ -16,6 +16,7 @@ const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Argue = preload("res://sim/argue.gd")
 const Mind = preload("res://sim/mind.gd")
+const Metrics = preload("res://game/case_metrics.gd")
 
 var g
 var transcript = false
@@ -34,11 +35,13 @@ func _init() -> void:
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links"]
 	var stats = {"good": 0, "evil": 0}
+	var case_results: Array = []
 	for k in keys:
 		stats[k] = 0
 	for i in range(games):
 		var seed_v = first + i
 		var r = _play(seed_v, int(args.get("npcs", "7")), log_dir, args.has("echo-log"))
+		case_results.append(r["metrics"])
 		stats[r["winner"]] += 1
 		for k in keys:
 			stats[k] += r[k]
@@ -54,11 +57,29 @@ func _init() -> void:
 			[stats["shares"] / gf, stats["evil_shares"] / gf, stats["approaches"] / gf])
 		print("  links %.1f/case (%.1f matched), deductions %.1f/case, NPC argument evaluations %.1f/case" %
 			[stats["links"] / gf, stats["matched_links"] / gf, stats["deductions"] / gf, stats["arguments"] / gf])
+	var summary = Metrics.aggregate(case_results)
+	print("  identification: demon %d, minion %d, both %d; identified but lost %d; eligible recorded theories %d/%d" %
+		[summary["demon_identified"], summary["minion_identified"], summary["both_identified"], summary["identified_but_lost"], summary["demon_recorded"], summary["complete"]])
+	print("  wrongful executions %d/%d; player's stance: backed %d, opposed %d, mixed %d; good survivors in wins %s" %
+		[summary["executions_good"], summary["executions_total"], summary["wrongful_backed"], summary["wrongful_opposed"], summary["wrongful_mixed"], str(summary["saved_good_surviving_average"])])
+	if args.has("results"):
+		var path = ProjectSettings.globalize_path(args["results"])
+		DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+		var file = FileAccess.open(path, FileAccess.WRITE)
+		if file == null:
+			push_error("Cannot write results: " + path)
+			quit(1)
+			return
+		file.store_string(JSON.stringify({"schema_version": 1, "mode": "passive" if passive else "active", "seed_start": first,
+			"npcs": int(args.get("npcs", "7")), "rng_note": "Same seed matches setup; player actions can change later random draws.",
+			"summary": summary, "cases": case_results}, "\t"))
+		file.close()
+		print("  Results written: " + path)
 	quit()
 
 func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictionary:
 	g = Game.new()
-	g.log_dir = log_dir
+	g.log_dir = log_dir.path_join("passive" if passive else "active")
 	rng.seed = seed_v * 7919
 	talked = {}
 	linked_pairs = {}
@@ -68,6 +89,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	var guard = 0
 	while g.state != "over" and guard < 600:
 		guard += 1
+		if not passive and g.state in ["meeting", "nomination", "night"]:
+			_record_theory()
 		var cmd = _decide()
 		_out("\n> " + cmd)
 		_out(g.command(cmd))
@@ -112,7 +135,20 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 			r["max_tier4"] += 1
 	if g.log_paths.is_empty():
 		g.command("log")
+	r["metrics"] = g.case_summary.duplicate(true) if not g.case_summary.is_empty() else Metrics.summarize(w, {}, false)
+	r["metrics"]["mode"] = "passive" if passive else "active"
+	r["metrics"]["guard_exhausted"] = guard >= 600 and g.state != "over"
 	return r
+
+## Record the bot's existing heuristic ranking without consulting hidden identities.
+## This adds no simulation RNG draws and doesn't alter its decisions.
+func _record_theory() -> void:
+	var scores = _scores()
+	var candidates: Array = g.w.living()
+	candidates.sort_custom(func(a, b): return scores[a.id] > scores[b.id] if scores[a.id] != scores[b.id] else a.id < b.id)
+	if candidates.size() >= 2 and scores[candidates[0].id] > 0.0:
+		g.set_guess(candidates[0].id, "demon", 2)
+		g.set_guess(candidates[1].id, "poisoner", 1)
 
 func _out(s: String) -> void:
 	if transcript:
