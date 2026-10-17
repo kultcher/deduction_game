@@ -263,6 +263,8 @@ func _decide() -> String:
 				return "talk " + n.id
 			if g.loc == "tavern":
 				return "gossip"
+			if w.dropped.has(g.loc) or rng.randf() < 0.5:
+				return "search"
 			return "wait"
 		"talk":
 			var n = g.talk_with

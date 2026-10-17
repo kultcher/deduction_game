@@ -526,8 +526,26 @@ func _search() -> void:
 	if l.begins_with("home_"):
 		_narr("You can't search someone's home from their doorstep.")
 		return
-	w.dlog.add("player_search", "player", "", {"loc": l}, "Nothing to find at an ordinary location.")
-	_narr("You search %s carefully. Nothing out of place: nobody has hidden anything here." % w.loc_name(l))
+	var items: Array = w.dropped.get(l, [])
+	if items.is_empty():
+		w.dlog.add("player_search", "player", "", {"loc": l}, "Nothing dropped here.")
+		_narr("You search %s carefully. Nothing out of place." % w.loc_name(l))
+		return
+	w.dropped.erase(l)
+	var blk: String = w.loc_block(l)
+	for it in items:
+		w.dlog.add("player_search", "player", it["who"], {"loc": l, "item": it}, "Found something %s dropped (%s)." % [it["who"], it["why"]])
+		if it["owner"] != "":
+			var o = w.by_id[it["owner"]]
+			_narr("Tucked against the wall of %s you find something of %s's, dropped there on night %d." % [w.loc_name(l), o.name, it["night"]])
+			_facts([{"kind": "sighting", "subject": [o.id], "block": blk, "loc": l, "day": it["night"], "phase": C.NIGHT, "source": "evidence", "dropped": true,
+				"text": "%s's belongings found at %s: they were on %s on night %d." % [o.name, w.loc_name(l), C.block_name(blk), it["night"]]}])
+		else:
+			_narr("At %s you find %s, left there on night %d. Someone who lives on %s passed this way in the dark." %
+				[w.loc_name(l), C.BLOCKS[it["material"]]["trace"], it["night"], C.block_name(it["material"])])
+			_facts([{"kind": "dropped", "subject": [], "block": blk, "loc": l, "day": it["night"], "phase": C.NIGHT, "source": "evidence",
+				"material": it["material"], "text": "%s found at %s, left on night %d: someone from %s was out that night." %
+				[C.BLOCKS[it["material"]]["trace"].capitalize(), w.loc_name(l), it["night"], C.block_name(it["material"])]}])
 
 func _end_phase(talked_id: String) -> void:
 	moved = false

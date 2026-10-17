@@ -13,11 +13,27 @@ design decisions so far.
 
 Requires Godot 4.4+ (tested with 4.4.1).
 
-**In the editor:** open the project and press Play. A text console appears: type commands
-and press Enter. Buttons along the top cover the common info screens. The **Board panel**
-on the right lists your cards (filterable; double-click a card to add its number to your
-command) and a quick profile. **Case view** opens a full-screen board: filters (text, kind,
-person, place), the card list with multi-select, the timeline grid (who was where, by
+**In the editor:** open the project and press Play. Everything can be done with the mouse:
+
+- **The map** (top left) shows the four blocks and the roads between them. Click a block to
+  zoom in; click a place to spend the phase there, a home to call on whoever's in, or a
+  crime scene to search it. People are coloured dots: at their exact spot if they're
+  working, in conversation, or on your block once you're there; loose in the street if you
+  only know their block; in their homes otherwise. **Clicking a person walks you to them
+  and starts a conversation.** At night, click a block or person to pick your vigil or
+  ward. Right-click or **◀ Whole town** zooms out.
+- **The action panel** (right) shows what you can do now, as buttons: talk, search,
+  gossip, wait; in conversation, the ask buttons, **Ask about… ▸** (people in one column,
+  gifts in the other) and **Present a card…** (pick from your board, optionally "speak
+  for/against" someone); at the meeting, nominate, present, wait, close; on a vote, vote,
+  accuse or defend with an optional card, clemency; at night, vigil, ward, sleep.
+- **The log** (bottom left) colours every character's name and speech in their own colour.
+  The typed prompt still works as a fallback.
+- **The profile** (bottom right) follows whoever you click or talk to.
+- **Board** toggles the card sidebar. **Case view** opens a full-screen board: a text
+  filter plus multi-select **Kinds / People / Places** lists (tick several; *match any*
+  shows cards fitting any ticked item, *match all* requires each ticked list to match), the
+  card list, the timeline grid (who was where, by
 phase; bright = you saw it, dim = you were told; click a cell for its cards), profiles with
 your guess, confidence and notes, the conclusion builder and Link results. Double-click a
 card (or select it and press **>>**) to put it in your **working set**, which stays put
@@ -140,6 +156,15 @@ card about their gift makes them reconsider revealing it (a Clerk reading naming
 opens them up most). Anyone hiding something may show nerves, and so, less often, may a
 rattled innocent; composure decides. Pressing costs a little trust. `ask about <gift>`
 put to the person who actually holds it makes them decide whether to own up.
+
+**Night walkers follow the roads**, so they can be seen (and caught on a vigil, or by a
+Night Watch) on any block along their route, not just where they end up. They sometimes
+drop something on the way: usually a material from their own home block (mud, chalk,
+soot, straw), rarely something of theirs. **Searching an ordinary place** finds whatever
+was dropped there. A personal item puts its owner out on that block that night; a
+material says someone from that block was out (link it with a resident's "I was home").
+A misleading death-scene trace now has a cause: someone else passed the cottage that night
+and left traces from where *they* spent the evening.
 
 **More evidence.** Conversations you see on the town view, people you see nearby, and
 nights when nobody died all become cards. NPCs notice who was talking with whom and may

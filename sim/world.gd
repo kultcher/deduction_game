@@ -29,7 +29,8 @@ var scenes = {}
 var deaths_last_night: Array = []
 var executed_today = ""
 var executions: Array = []          # {day, id, nominator, yes, player_yes, player_nominated}
-var night_walkers: Array = []       # last night: {id, block, why}
+var night_walkers: Array = []       # last night: {id, block, path, why}
+var dropped = {}                    # location -> [{night, material (block), owner, who, why}] not yet found
 var public_claims: Array = []       # {day, who, role}
 ## Everything said or done in public (what evil, and anyone, can know without being told).
 var public_log: Array = []          # {day, kind, subjects, by}
@@ -718,6 +719,7 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 	for n in living():
 		n.out_last_night = false
 		n.night_block = n.home_block
+		n.night_path = []
 		n.loc = "home"
 	if kill_t != "":
 		_walk(demon(), by_id[kill_t].home_block, "hunting %s" % by_id[kill_t].name)
@@ -741,25 +743,47 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 func _walk(n, block: String, why: String) -> void:
 	n.out_last_night = true
 	n.night_block = block
+	n.night_path = C.route(n.home_block, block)
 	n.loc = "night:" + block
-	night_walkers.append({"id": n.id, "block": block, "why": why})
+	night_walkers.append({"id": n.id, "block": block, "path": n.night_path, "why": why})
+	_maybe_drop(n, why)
+
+## Something a night walker may leave behind somewhere along their route: usually a
+## material from their own home block (mud, chalk, soot, straw); rarely something of theirs.
+func _maybe_drop(n, why: String) -> void:
+	var p = 0.35 if n.id == demon_id else 0.15
+	if not chance(p):
+		return
+	var blk: String = pick(n.night_path)
+	var l: String = pick(C.LOCATIONS.keys().filter(func(x): return C.LOCATIONS[x]["block"] == blk))
+	var owned = chance(0.12)
+	var item = {"night": day, "material": n.home_block, "owner": n.id if owned else "", "who": n.id, "why": why}
+	if not dropped.has(l):
+		dropped[l] = []
+	dropped[l].append(item)
+	dlog.add("dropped", n.id, "", {"loc": l, "night": day, "owned": owned, "material": n.home_block},
+		"%s dropped %s at %s while %s." % [n.name, ("a personal item" if owned else C.BLOCKS[n.home_block]["trace"]), C.loc_name(l), why])
 
 func _night_sightings() -> void:
 	player_vigil_seen = []
 	for wk in night_walkers:
 		var wn = by_id[wk["id"]]
+		var path: Array = wk.get("path", [wk["block"]])
 		for o in living():
 			if o == wn:
 				continue
 			var saw = false
-			if o.out_last_night and o.night_block == wk["block"]:
+			var where = ""
+			if o.out_last_night and o.night_block in path:
 				saw = chance(0.5)
-			elif not o.out_last_night and o.home_block == wk["block"]:
+				where = o.night_block
+			elif not o.out_last_night and o.home_block in path:
 				saw = chance(0.15)
+				where = o.home_block
 			if saw:
-				o.beliefs.append({"kind": "saw", "who": wn.id, "loc": "", "block": wk["block"], "day": day, "phase": C.NIGHT})
-				dlog.add("night_sighting", o.id, wn.id, {"block": wk["block"]}, "%s glimpsed %s on %s at night." % [o.name, wn.name, C.block_name(wk["block"])])
-		if player_vigil != "" and wk["block"] == player_vigil and wn.alive:
+				o.beliefs.append({"kind": "saw", "who": wn.id, "loc": "", "block": where, "day": day, "phase": C.NIGHT})
+				dlog.add("night_sighting", o.id, wn.id, {"block": where}, "%s glimpsed %s on %s at night." % [o.name, wn.name, C.block_name(where)])
+		if player_vigil != "" and player_vigil in path and wn.alive:
 			player_vigil_seen.append(wn.id)
 	if player_vigil != "":
 		dlog.add("player_vigil", "player", "", {"block": player_vigil, "seen": player_vigil_seen})
@@ -776,11 +800,17 @@ func _kill(v) -> void:
 	var trace_block = true_block
 	var trace_true = true
 	var why = "Trace matches where the demon spent the evening (%s)." % true_block
-	if chance(0.25):
-		trace_true = false
-		var others: Array = C.BLOCKS.keys().filter(func(b): return b != true_block)
-		trace_block = pick(others)
-		why = "Misleading trace (25%% roll): points to %s, demon was on %s." % [trace_block, true_block]
+	# A misleading trace has a cause: someone else passed the cottage that night and left
+	# traces from where *they* spent the evening.
+	var passers: Array = night_walkers.filter(func(wk): return wk["id"] != demon_id and v.home_block in wk.get("path", [wk["block"]]))
+	if not passers.is_empty() and chance(0.4):
+		var wk: Dictionary = pick(passers)
+		var o = by_id[wk["id"]]
+		var o_block: String = loc_block(o.history.get(time_key(day, C.EVENING), "home:" + o.home_block))
+		if o_block != true_block:
+			trace_true = false
+			trace_block = o_block
+			why = "Misleading trace: %s passed the cottage that night (%s) and left traces from their evening on %s; the demon spent the evening on %s." % [o.name, wk["why"], o_block, true_block]
 	var sid = "scene_" + v.id
 	scenes[sid] = {"name": "%s's cottage" % v.name, "block": v.home_block, "victim": v.id, "day": day,
 		"trace_block": trace_block, "trace_true": trace_true, "why": why, "searched": false}
@@ -827,7 +857,7 @@ func _receive_info(n, watch_block: String) -> void:
 		"nightwatch":
 			var seen: Array = []
 			for wk in night_walkers:
-				if wk["block"] == watch_block and wk["id"] != n.id:
+				if watch_block in wk.get("path", [wk["block"]]) and wk["id"] != n.id:
 					seen.append(wk["id"])
 			var real = seen.duplicate()
 			if n.poisoned:

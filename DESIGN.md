@@ -625,6 +625,16 @@ player). Both use the same roll (lower Insight, more often vague).
   kill almost always switches to a new target the next night.
 
 ### Geography, paths and dropped evidence
+**Built (v1):** roads Square–Market, Square–Docks, Square–Hill, Market–Hill. Night walkers
+take the shortest route from home; sightings, vigils and the Night Watch see them on any
+block along it. Each walker may drop something on the route (demon 35%, others 15%): a
+home-block material (88%) or a personal item (12%). Searching a location finds everything
+dropped there; personal items become a night "out" card for the owner (works with every
+place-based template); materials become a card linkable with a resident's home alibi
+(`dropped_vs_home`). The scene trace is misleading only when another walker actually
+passed the victim's block (40% then), and the grimoire says who and why. Still to come:
+paths within blocks, planting by a Framer, NPCs searching.
+
 - Blocks remain the unit of space; the map gains real **paths** (sequences of
   blocks/locations). Night movement follows paths.
 - Evidence can be dropped **anywhere along a path**, by the killer or by anyone else out
@@ -684,9 +694,15 @@ player). Both use the same roll (lower Insight, more often vague).
    templates, evidence classes, diminishing returns; timeline grid, profiles, filters,
    confirmed vs. tentative positions. Built as a minimal Godot panel because multi-card
    building is painful in pure text. Playtest round.
-4. **Full UI.** Map (homes, work, known positions), board/timeline, profiles with role icons
+4. **Full UI. [first pass built]** Mouse-driven: a `_draw()` town map (zoom to block; click
+   places, homes, scenes, people), a context action panel with pickers for every command,
+   character colours in the log, multi-select case-view filters. Still placeholder art; no
+   portraits or role icons yet; the typed prompt remains as a fallback.
+   Map (homes, work, known positions), board/timeline, profiles with role icons
    and confidence. Trait reveals and trust cues presented diegetically.
-5. **Geography and confrontation.** Paths, dropped evidence along paths, confrontation,
+5. **Geography and confrontation. [partly built]** Roads and routes, dropped evidence,
+   causal misleading traces, press/confront, Warden walking. Remaining: named alibis and
+   corroborators, Framer planting. Paths, dropped evidence along paths, confrontation,
    alibis and confessions. Benefits from the real map.
 6. **Later:** urgency tuning, throw-under-the-bus overrides, Séance final vote, roster
    expansion and hint packages, solver/director, larger towns.

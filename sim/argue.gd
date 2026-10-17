@@ -123,6 +123,8 @@ static func assertions(card: Dictionary) -> Array:
 			out.append({"t": "killed", "who": subj[0], "night": card.get("night", day - 1), "src": src, "card": n})
 		"trace":
 			out.append({"t": "trace", "block": card.get("block", ""), "day": day, "src": src, "card": n})
+		"dropped":
+			out.append({"t": "dropped", "material": card.get("material", ""), "block": card.get("block", ""), "night": day, "src": src, "card": n})
 		"conversation":
 			for who in subj:
 				out.append({"t": "at", "who": who, "block": card.get("block", ""), "day": day, "phase": ph, "src": src, "card": n})
@@ -321,6 +323,15 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 		var m5 = _mk(w, "quiet_night", "Nobody died on night %d%s, and %s claims %s." % [a["night"], ward_note, _nm(w, who), what], cards, expls5, who, [])
 		m5["relation"] = "corroboration"
 		return m5
+	# Something from block M was dropped on night N; someone who lives on M says they were home.
+	if ta == "dropped" and tb == "home" and w.by_id.has(b["who"]) and w.by_id[b["who"]].home_block == a["material"] and b["night"] == a["night"]:
+		var who6: String = b["who"]
+		var m6 = _mk(w, "dropped_vs_home", "Someone from %s was out on night %d (%s found at %s), and %s, who lives there, says they were home." %
+			[C.block_name(a["material"]), a["night"], C.BLOCKS[a["material"]]["trace"], C.block_name(a["block"]), _nm(w, who6)], cards,
+			[_lied(w, who6, b["card"]), _clear(w, who6, {"type": "truthful", "card": b["card"]}, "%s is telling the truth: someone else from %s was out" % [_nm(w, who6), C.block_name(a["material"])])],
+			who6, [b])
+		m6["relation"] = "inference"
+		return m6
 	# A death-scene trace points to a block for the evening; someone was there then.
 	if ta == "trace" and tb == "at" and b["block"] == a["block"] and b["day"] == a["day"] and b["phase"] == C.EVENING:
 		var m4 = _mk(w, "trace_match", "The trace says the killer spent the evening of day %d on %s, and %s was there." %

@@ -27,6 +27,7 @@ var working = false      # at work this phase
 var busy_with = ""       # npc id they're in conversation with this phase
 var pair_day = -1        # day they last had an NPC conversation (max one per day)
 var night_block = ""
+var night_path: Array = []   # blocks walked through last night (home -> destination)
 var out_last_night = false
 var history = {}         # "d:p" -> location id (or "home:<block>" / "night:<block>")
 

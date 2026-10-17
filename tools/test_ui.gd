@@ -2,6 +2,8 @@
 ## view, links and files a deduction through the panel.
 ##   godot --headless --path . --script res://tools/test_ui.gd
 extends SceneTree
+
+const C = preload("res://sim/content.gd")
 var fails = 0
 
 func _init() -> void:
@@ -76,6 +78,62 @@ func _init() -> void:
 	g.w._finish("evil", "UI test")
 	scene._run("look")
 	_check(cv.guess_opt.disabled and not cv.conf_spin.editable and "Final theory" in cv.theory_label.text, "post-case theory controls are frozen")
+	# Mouse-driven play: map clicks and the action panel.
+	scene.seed_box.value = 22111
+	scene._new_case()
+	await process_frame
+	g = scene.g
+	_check(scene.actions.get_child_count() > 0 and "where will you go" in scene.action_title.text, "day panel offers actions before moving")
+	var t = null
+	for n in g.w.living():
+		if not n.at_home() and n.busy_with == "":
+			t = n
+			break
+	scene._on_map_clicked("npc", t.id)
+	await process_frame
+	_check(g.state == "talk" and g.talk_with == t, "clicking a person walks over and starts talking")
+	_check(scene.map.zoom_block == g.w.loc_block(g.loc), "the map zooms to your block")
+	var labels: Array = scene.actions.get_children().filter(func(c): return c is Button).map(func(b): return b.text)
+	_check(labels.any(func(x): return x.begins_with("Ask about")) and labels.has("Ask about their gift"), "talk panel has the ask buttons (%s)" % str(labels))
+	scene._run("bye")
+	scene._run("wait")
+	await process_frame
+	# Coloured log: speech lines carry the speaker's colour.
+	var col = scene._colourize("%s: \"Hello there.\"" % t.name)
+	_check(C.npc_color(t.id).to_html(false) in col, "speech is coloured by speaker")
+	# Multi-select filters: any vs all (after a day of play, so the board has content).
+	for i in range(12):
+		match g.state:
+			"day":
+				scene._run("go tavern" if not g.moved else "wait")
+			"meeting":
+				scene._run("done" if g.town_quiet else "wait")
+			"nomination":
+				scene._run("vote no")
+			"approach":
+				scene._run("decline")
+			"night":
+				scene._run("sleep")
+	cv = scene.case_view
+	cv.set_game(g)
+	var ids: Array = g.w.npcs.map(func(n): return n.id)
+	cv.sel_people[ids[0]] = true
+	cv.sel_people[ids[1]] = true
+	cv._refresh_cards()
+	var both = cv.card_list.count()
+	cv.sel_people.erase(ids[1])
+	cv._refresh_cards()
+	var one = cv.card_list.count()
+	cv.sel_people[ids[1]] = true
+	cv.sel_kinds["sighting"] = true
+	cv.match_opt.select(1)
+	cv._refresh_cards()
+	var all_n = cv.card_list.count()
+	cv.match_opt.select(0)
+	cv._refresh_cards()
+	var any_n = cv.card_list.count()
+	print("filters: one person %d, two people %d; +sightings: all %d, any %d" % [one, both, all_n, any_n])
+	_check(both >= one and any_n >= all_n, "multi-select filters: OR within a list; 'all' narrows across lists")
 	print("UI OK")
 	quit(1 if fails > 0 else 0)
 

@@ -15,6 +15,34 @@ const BLOCKS = {
 	"hill": {"name": "Chapel Hill", "trace": "pale chalk dust from the hill path"},
 }
 
+## Roads between blocks (night walkers follow the shortest route and can be seen, or drop
+## things, anywhere along it). The Square is the hub; the Market and Chapel Hill also meet.
+const ROADS = [["square", "market"], ["square", "docks"], ["square", "hill"], ["market", "hill"]]
+
+## Shortest route between two blocks, inclusive of both ends.
+static func route(a: String, b: String) -> Array:
+	if a == b:
+		return [a]
+	var prev = {a: ""}
+	var queue: Array = [a]
+	while not queue.is_empty():
+		var cur: String = queue.pop_front()
+		for r in ROADS:
+			var nxt = ""
+			if r[0] == cur:
+				nxt = r[1]
+			elif r[1] == cur:
+				nxt = r[0]
+			if nxt != "" and not prev.has(nxt):
+				prev[nxt] = cur
+				queue.append(nxt)
+	if not prev.has(b):
+		return [a, b]
+	var path: Array = [b]
+	while path[0] != a:
+		path.push_front(prev[path[0]])
+	return path
+
 const LOCATIONS = {
 	"tavern": {"name": "the Drowned Lamb tavern", "block": "square"},
 	"well": {"name": "the town well", "block": "square"},
@@ -46,6 +74,18 @@ const OCCUPATIONS = {
 ##  insight:    keenness of logic; resistance to weak arguments
 ##  composure:  emotional control; hides attitude cues; resists pressure (and paranoia)
 ## style is used by dialogue templates.
+## Each character's colour (their name and speech), chosen to read well on a dark background
+## and to stay distinguishable from each other.
+const CAST_COLORS = {
+	"agnes": Color(0.98, 0.62, 0.42), "bart": Color(0.55, 0.78, 0.98), "constance": Color(0.86, 0.60, 0.95),
+	"dorian": Color(0.62, 0.92, 0.55), "edda": Color(0.98, 0.86, 0.40), "fenwick": Color(0.40, 0.90, 0.85),
+	"greta": Color(0.98, 0.52, 0.68), "hollis": Color(0.75, 0.72, 0.98), "isolde": Color(0.95, 0.75, 0.55),
+	"jory": Color(0.60, 0.98, 0.78),
+}
+
+static func npc_color(id: String) -> Color:
+	return CAST_COLORS.get(id, Color(0.85, 0.85, 0.85))
+
 const CAST = [
 	{"id": "agnes", "name": "Agnes", "pron": "she", "style": "warm", "blurb": "a widow who knows everyone's business",
 		"traits": {"privacy": [0.2, 0.1], "gossip": [0.9, 0.05], "confidence": [0.5, 0.2], "insight": [0.4, 0.15], "composure": [0.3, 0.1]}},

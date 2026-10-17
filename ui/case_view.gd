@@ -12,9 +12,13 @@ const Metrics = preload("res://game/case_metrics.gd")
 var g
 var mono: Font
 var filter_edit: LineEdit
-var kind_opt: OptionButton
-var person_opt: OptionButton
-var place_opt: OptionButton
+var kind_menu: MenuButton
+var person_menu: MenuButton
+var place_menu: MenuButton
+var match_opt: OptionButton
+var sel_kinds = {}            # multi-select filters: OR within each, and by default across them
+var sel_people = {}
+var sel_places = {}
 var card_list
 var grid: GridContainer
 var prof_opt: OptionButton
@@ -72,15 +76,11 @@ func build(font: Font) -> void:
 	filter_edit.custom_minimum_size = Vector2(180, 0)
 	filter_edit.text_changed.connect(func(_t): _refresh_cards())
 	top.add_child(filter_edit)
-	kind_opt = _option(top, KINDS, func(_i): _refresh_cards())
-	person_opt = OptionButton.new()
-	person_opt.item_selected.connect(func(_i): _refresh_cards())
-	top.add_child(person_opt)
-	place_opt = OptionButton.new()
-	place_opt.clip_text = true
-	place_opt.custom_minimum_size = Vector2(160, 0)
-	place_opt.item_selected.connect(func(_i): _refresh_cards())
-	top.add_child(place_opt)
+	kind_menu = _multi(top, "Kinds", sel_kinds)
+	person_menu = _multi(top, "People", sel_people)
+	place_menu = _multi(top, "Places", sel_places)
+	match_opt = _option(top, ["match any", "match all"], func(_i): _refresh_cards())
+	match_opt.tooltip_text = "Any: a card shows if it fits any ticked kind, person or place. All: it must fit each list you've ticked (any item within a list)."
 	hidden_check = CheckBox.new()
 	hidden_check.text = "Show hidden"
 	hidden_check.toggled.connect(func(on):
@@ -117,9 +117,10 @@ func build(font: Font) -> void:
 	_btn(lb, "Clear filters", func():
 		cell_filter = []
 		filter_edit.text = ""
-		kind_opt.select(0)
-		person_opt.select(0)
-		place_opt.select(0)
+		sel_kinds.clear()
+		sel_people.clear()
+		sel_places.clear()
+		_sync_menus()
 		_refresh_cards())
 	var wl = Label.new()
 	wl.text = "Working set (what you link, and the 'because' of a conclusion)"
@@ -257,30 +258,38 @@ func _btn(parent: Node, text: String, cb: Callable) -> Button:
 
 func set_game(game) -> void:
 	g = game
-	person_opt.clear()
-	person_opt.add_item("anyone")
-	person_opt.set_item_metadata(0, "")
+	var pp: PopupMenu = person_menu.get_popup()
+	pp.clear()
+	sel_people.clear()
+	sel_places.clear()
+	sel_kinds.clear()
 	prof_opt.clear()
 	b_who.clear()
 	hidden_check.set_pressed_no_signal(g.show_hidden)
 	for n in g.w.npcs:
 		b_who.add_item(n.name)
 		b_who.set_item_metadata(b_who.item_count - 1, n.id)
-		person_opt.add_item(n.name)
-		person_opt.set_item_metadata(person_opt.item_count - 1, n.id)
+		pp.add_check_item(n.name)
+		pp.set_item_metadata(pp.item_count - 1, n.id)
 		prof_opt.add_item(n.name)
 		prof_opt.set_item_metadata(prof_opt.item_count - 1, n.id)
 	b_who.add_item("One of these people")
 	b_who.set_item_metadata(b_who.item_count - 1, "*group")
-	place_opt.clear()
-	place_opt.add_item("anywhere")
-	place_opt.set_item_metadata(0, "")
+	var lp: PopupMenu = place_menu.get_popup()
+	lp.clear()
 	for b in C.BLOCKS:
-		place_opt.add_item(C.block_name(b))
-		place_opt.set_item_metadata(place_opt.item_count - 1, b)
+		lp.add_check_item(C.block_name(b))
+		lp.set_item_metadata(lp.item_count - 1, b)
 	for l in C.LOCATIONS:
-		place_opt.add_item("  " + C.loc_name(l))
-		place_opt.set_item_metadata(place_opt.item_count - 1, l)
+		lp.add_check_item("    " + C.loc_name(l))
+		lp.set_item_metadata(lp.item_count - 1, l)
+	var kp: PopupMenu = kind_menu.get_popup()
+	kp.clear()
+	for k in KINDS:
+		if k != "all":
+			kp.add_check_item(k)
+			kp.set_item_metadata(kp.item_count - 1, k)
+	_sync_menus()
 	refresh()
 
 func refresh() -> void:
@@ -292,6 +301,11 @@ func refresh() -> void:
 	_refresh_cards()
 	_refresh_timeline()
 	_refresh_profile()
+	_fill_nights()
+	_refresh_work()
+	if b_status.item_count == 0:
+		_fill_status()
+	_update_preview()
 
 func open_theory() -> void:
 	# Select the existing candidate or leave the ordinary first profile selected.
@@ -302,11 +316,6 @@ func open_theory() -> void:
 				prof_opt.select(i)
 	_refresh_profile()
 	guess_opt.grab_focus()
-	_fill_nights()
-	_refresh_work()
-	if b_status.item_count == 0:
-		_fill_status()
-	_update_preview()
 
 func _input(ev: InputEvent) -> void:
 	if visible and ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:
@@ -319,19 +328,60 @@ func _meta(o: OptionButton) -> String:
 	var m = o.get_item_metadata(o.selected)
 	return m if m != null else ""
 
+## A checkable drop-down list feeding one of the filter sets.
+func _multi(parent: Node, title: String, store: Dictionary) -> MenuButton:
+	var mb = MenuButton.new()
+	mb.text = title + " ▾"
+	mb.flat = false
+	var pm: PopupMenu = mb.get_popup()
+	pm.hide_on_checkable_item_selection = false
+	pm.id_pressed.connect(func(id):
+		var i = pm.get_item_index(id)
+		var key = pm.get_item_metadata(i)
+		if store.has(key):
+			store.erase(key)
+		else:
+			store[key] = true
+		pm.set_item_checked(i, store.has(key))
+		_sync_menus()
+		_refresh_cards())
+	parent.add_child(mb)
+	return mb
+
+func _sync_menus() -> void:
+	for pair in [[kind_menu, sel_kinds, "Kinds"], [person_menu, sel_people, "People"], [place_menu, sel_places, "Places"]]:
+		var mb: MenuButton = pair[0]
+		var store: Dictionary = pair[1]
+		var pm: PopupMenu = mb.get_popup()
+		for i in range(pm.item_count):
+			pm.set_item_checked(i, store.has(pm.get_item_metadata(i)))
+		mb.text = "%s%s ▾" % [pair[2], (" (%d)" % store.size()) if not store.is_empty() else ""]
+
 func _visible_cards() -> Array:
 	var cards: Array = g.filter_cards(filter_edit.text)
-	var kind = KINDS[kind_opt.selected] if kind_opt.selected >= 0 else "all"
-	if kind != "all":
-		cards = cards.filter(func(c): return c["kind"] == kind)
-	var who = _meta(person_opt)
-	if who != "":
-		var ids: Array = g.filter_cards(who).map(func(c): return c["n"])
-		cards = cards.filter(func(c): return c["n"] in ids)
-	var place = _meta(place_opt)
-	if place != "":
-		var pids: Array = g.filter_cards(place).map(func(c): return c["n"])
-		cards = cards.filter(func(c): return c["n"] in pids)
+	var lists: Array = []  # each ticked list -> set of matching card numbers
+	if not sel_kinds.is_empty():
+		var ks = {}
+		for c in cards:
+			if sel_kinds.has(c["kind"]):
+				ks[c["n"]] = true
+		lists.append(ks)
+	for store in [sel_people, sel_places]:
+		if store.is_empty():
+			continue
+		var ids = {}
+		for key in store:
+			for c in g.filter_cards(key):
+				ids[c["n"]] = true
+		lists.append(ids)
+	if not lists.is_empty():
+		var any = match_opt.selected <= 0
+		cards = cards.filter(func(c):
+			var hits = 0
+			for st in lists:
+				if st.has(c["n"]):
+					hits += 1
+			return hits > 0 if any else hits == lists.size())
 	if not cell_filter.is_empty():
 		cards = cards.filter(func(c): return c["n"] in cell_filter)
 	return cards
@@ -388,7 +438,9 @@ func _refresh_timeline() -> void:
 	for col in td["cols"]:
 		grid.add_child(_cell_label(col["label"]))
 	for n in g.w.npcs:
-		grid.add_child(_cell_label(n.name if n.alive else n.name + " †"))
+		var nl = _cell_label(n.name if n.alive else n.name + " †")
+		nl.add_theme_color_override("font_color", C.npc_color(n.id))
+		grid.add_child(nl)
 		for col in td["cols"]:
 			var key = "%d:%d" % [col["day"], col["phase"]]
 			var vals: Array = td["rows"][n.id].get(key, [])
@@ -428,7 +480,7 @@ func _refresh_profile() -> void:
 		return
 	var p: Dictionary = g.profile_data(id)
 	var lines = PackedStringArray()
-	lines.append("[b]%s[/b] the %s" % [p["name"], p["occupation"]])
+	lines.append("[color=#%s][b]%s[/b][/color] the %s" % [C.npc_color(id).to_html(false), p["name"], p["occupation"]])
 	lines.append(p["blurb"])
 	lines.append("Works %s; lives on %s; %s." % [p["work"], p["home"], p["status"]])
 	if p["claim"] != "":
