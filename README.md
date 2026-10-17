@@ -30,6 +30,10 @@ Requires Godot 4.4+ (tested with 4.4.1).
 - **The log** (bottom left) colours every character's name and speech in their own colour.
   The typed prompt still works as a fallback.
 - **The profile** (bottom right) follows whoever you click or talk to.
+- **Debug** (checkbox) shows what NPCs privately make of things: each card's influence
+  across the NPCs who've heard it (average, highest and lowest, with initials) and, on
+  profiles, how the town credits and suspects that person. Turning it on mid-case leaves
+  your identification unscored.
 - **Board** toggles the card sidebar. **Case view** opens a full-screen board: a text
   filter plus multi-select **Kinds / People / Places** lists (tick several; *match any*
   shows cards fitting any ticked item, *match all* requires each ticked list to match), the

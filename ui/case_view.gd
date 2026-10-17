@@ -391,6 +391,10 @@ func _refresh_cards() -> void:
 	card_list.reset()
 	for c in _visible_cards():
 		var line = "#%-3d %-10s %s%s" % [c["n"], c["kind"], "[hidden] " if c.get("hidden", false) else "", c["text"]]
+		if g.debug_overlay:
+			var dbg: String = g.debug_card_text(c)
+			if dbg != "":
+				line += "\n      ⟨" + dbg + "⟩"
 		var col = null
 		if c.get("hidden", false):
 			col = Color(0.45, 0.45, 0.5)
@@ -487,6 +491,8 @@ func _refresh_profile() -> void:
 		lines.append(p["claim"])
 	for x in p["named"]:
 		lines.append("Readings say: " + x)
+	if g.debug_overlay:
+		lines.append("[color=#9fd3a8]" + g.debug_npc_text(id) + "[/color]")
 	var tl = PackedStringArray()
 	for t in C.TRAITS:
 		tl.append("%s %s" % [t.capitalize(), p["traits"].get(t, "?")])

@@ -36,6 +36,7 @@ var case_summary: Dictionary = {}
 var show_hidden = false     # include cards the player has hidden
 var ward_log = {}           # night -> who you warded
 var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
+var debug_overlay = false   # show NPCs' hidden credence (spoils identification credit)
 var last_error = ""         # why the last file_deduction was refused
 var log_dir = "user://logs"
 var log_paths: Array = []
@@ -1747,6 +1748,59 @@ func _outcome_text() -> String:
 		else:
 			lines.append("No true evidence pointed at the demon this case.")
 	return "\n".join(lines)
+
+## Debug overlay: reveal what NPCs privately make of cards and people. Turning it on during
+## a case marks identification as unscored (like opening the grimoire).
+func set_debug_overlay(on: bool) -> void:
+	debug_overlay = on
+	if on and not w.game_over and not prediction_spoiled:
+		prediction_spoiled = true
+		w.dlog.add("prediction_spoiled", "player", "", {}, "Turned on the debug overlay during the case; identification credit disabled.")
+
+## Summary of how a value varies across good NPCs: "avg 0.46 · high 0.60 (A) · low 0.30 (H)".
+func _spread(vals: Dictionary) -> String:
+	if vals.is_empty():
+		return "—"
+	var tot = 0.0
+	var hi_id = ""
+	var lo_id = ""
+	for id in vals:
+		tot += vals[id]
+		if hi_id == "" or vals[id] > vals[hi_id]:
+			hi_id = id
+		if lo_id == "" or vals[id] < vals[lo_id]:
+			lo_id = id
+	return "avg %.2f · high %.2f (%s) · low %.2f (%s)" % [tot / vals.size(), vals[hi_id], w.by_id[hi_id].name.substr(0, 1),
+		vals[lo_id], w.by_id[lo_id].name.substr(0, 1)]
+
+## A card's current influence on each good NPC who has heard the claim behind it (the share
+## of its full weight it carries for them). Readings and your arguments map cleanly; other
+## cards only if an NPC holds the same fact. Returns "" when nobody's record matches.
+func debug_card_text(card: Dictionary) -> String:
+	var eid = ""
+	if card.get("kind", "") == "deduction":
+		eid = "arg:" + Argue.conclusion_key(Argue.normalize(card["conclusion"].duplicate()))
+	else:
+		eid = Mind.fact_id(card)
+	var vals = {}
+	var listeners = w.living_good()
+	for n in listeners:
+		if n.ledger.has(eid):
+			vals[n.id] = n.ledger[eid].get("eff", n.ledger[eid]["weight"])
+	if vals.is_empty():
+		return ""
+	return "influence %s · heard by %d of %d" % [_spread(vals), vals.size(), listeners.size()]
+
+## How the town (good NPCs) credits and suspects this person.
+func debug_npc_text(id: String) -> String:
+	var hon = {}
+	var sus = {}
+	for n in w.living_good():
+		if n.id == id:
+			continue
+		hon[n.id] = n.honesty.get(id, 1.0)
+		sus[n.id] = n.suspicion.get(id, 0.0)
+	return "Credited by others: %s\nSuspected by others: %s" % [_spread(hon), _spread(sus)]
 
 ## What readings on your board say this person might be ("possible: the Warden, per
 ## Dorian's Clerk reading, with Constance").

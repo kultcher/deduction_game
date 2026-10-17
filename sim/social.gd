@@ -187,12 +187,12 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 			var e1: Array = []
 			Mind._eff(e1, item["about"], 0.15 + bonus, "heard from %s that %s was out at night" % [s.id, item["about"]],
 				"%s says they were out at night" % s.name)
-			Mind.ledger_hear(w, l, "heard:" + hs["key"], e1, wgt * 2.0, [s.id, item.get("day", -1)])
+			Mind.ledger_hear(w, l, "heard:" + hs["key"], e1, wgt * 2.0, [s.id, item.get("day", -1), "report"])
 			l.hearsay.append(hs)
 		"opinion":
 			var e2: Array = []
 			Mind._eff(e2, item["about"], 0.12, "%s told me they distrust %s" % [s.id, item["about"]], "%s has doubts about them" % s.name)
-			Mind.ledger_hear(w, l, "opinion:%s>%s" % [s.id, item["about"]], e2, wgt * 2.0, [s.id, -1])
+			Mind.ledger_hear(w, l, "opinion:%s>%s" % [s.id, item["about"]], e2, wgt * 2.0, [s.id, -1, "report"])
 			l.hearsay.append(hs)
 		"case":
 			var e3: Array = []

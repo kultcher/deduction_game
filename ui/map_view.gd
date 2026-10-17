@@ -78,7 +78,14 @@ func _loc_rect(l: String) -> Rect2:
 	var R: Rect2 = BLOCK_RECTS[b]
 	var locs: Array = C.LOCATIONS.keys().filter(func(x): return C.LOCATIONS[x]["block"] == b)
 	var i = locs.find(l)
-	return Rect2(R.position.x + R.size.x * (0.05 + 0.48 * i), R.position.y + R.size.y * 0.30, R.size.x * 0.42, R.size.y * 0.32)
+	return Rect2(R.position.x + R.size.x * (0.05 + 0.48 * i), R.position.y + R.size.y * 0.27, R.size.x * 0.42, R.size.y * 0.38)
+
+## Which location a layout rect belongs to (if it's a building).
+func _loc_of_rect(rect: Rect2) -> String:
+	for l in C.LOCATIONS:
+		if _loc_rect(l) == rect:
+			return l
+	return ""
 
 func _street_rect(b: String) -> Rect2:
 	var R: Rect2 = BLOCK_RECTS[b]
@@ -134,7 +141,7 @@ func _draw() -> void:
 			draw_rect(LR, Color(0.55, 0.48, 0.38), false, 1.5)
 			# A simple roof.
 			draw_colored_polygon(PackedVector2Array([LR.position, LR.position + Vector2(LR.size.x, 0), LR.position + Vector2(LR.size.x / 2.0, -LR.size.y * 0.18)]), Color(0.42, 0.24, 0.18) if not night else Color(0.2, 0.12, 0.1))
-			draw_string(font, LR.position + Vector2(4, LR.size.y - 5), C.loc_name(l).trim_prefix("the "), HORIZONTAL_ALIGNMENT_LEFT, LR.size.x - 6, _fs(12), Color(0.9, 0.88, 0.8))
+			draw_string(font, LR.position + Vector2(5, _fs(12) + 3), C.loc_name(l).trim_prefix("the "), HORIZONTAL_ALIGNMENT_LEFT, LR.size.x - 8, _fs(12), Color(0.9, 0.88, 0.8))
 			if g.moved and g.loc == l and not night:
 				draw_rect(LR.grow(3), Color(1, 1, 1), false, 2.0)
 			if zoom_block != "":
@@ -202,14 +209,24 @@ func _draw_people(font) -> void:
 	for key in groups:
 		var rect: Rect2 = rects[key]
 		var members: Array = groups[key]
-		# Space dots in screen units, wide enough for their labels when zoomed in.
-		var step = maxf(2.0 * r + 8.0, (_fs(12) * 5.2) if zoom_block != "" else 2.0 * r + 8.0)
-		var c = _p(rect.get_center())
-		var x0 = c.x - (members.size() - 1) * step / 2.0
+		# Space dots in screen units, wide enough for their labels when zoomed in, wrapping
+		# into rows so a crowded building keeps everyone inside it.
+		var sr: Rect2 = _r(rect)
+		var lf = mini(_fs(12), 14)  # name label size under each dot
+		var head = (minf(_fs(12), 30.0) + 6.0) if C.LOCATIONS.has(_loc_of_rect(rect)) else 0.0  # building name strip
+		var area = Rect2(sr.position + Vector2(0, head), sr.size - Vector2(0, head))
+		var step = maxf(2.0 * r + 8.0, (lf * 5.0) if zoom_block != "" else 2.0 * r + 8.0)
+		var per_row = maxi(1, int(area.size.x / step))
+		var rows = int(ceil(float(members.size()) / per_row))
+		var row_h = (2.0 * r + lf + 6.0) if zoom_block != "" else 2.0 * r + 4.0
+		var top_y = area.get_center().y - (rows - 1) * row_h / 2.0 - (float(lf) if zoom_block != "" else 0.0)
 		for i in range(members.size()):
 			var n = members[i][0]
 			var exact: bool = members[i][1]
-			var sp = Vector2(x0 + i * step, c.y)
+			var row = i / per_row
+			var in_row = mini(per_row, members.size() - row * per_row)
+			var x0 = sr.get_center().x - (in_row - 1) * step / 2.0
+			var sp = Vector2(x0 + (i % per_row) * step, top_y + row * row_h)
 			var col = C.npc_color(n.id)
 			if not exact:
 				col = col.darkened(0.25)
@@ -222,7 +239,7 @@ func _draw_people(font) -> void:
 			if g.talk_with != null and g.talk_with == n:
 				draw_arc(sp, r + 8, 0, TAU, 24, Color(0.95, 0.85, 0.4), 2.0)
 			var label = n.name if zoom_block != "" else n.name.substr(0, 1)
-			draw_string(font, sp + Vector2(-40, r + _fs(13) + 2), label, HORIZONTAL_ALIGNMENT_CENTER, 80, _fs(12), col)
+			draw_string(font, sp + Vector2(-step / 2.0, r + lf + 1), label, HORIZONTAL_ALIGNMENT_CENTER, step, lf, col)
 			var hint = ""
 			if g.state == "day":
 				hint = "busy talking" if n.busy_with != "" else ("click to talk" if not n.at_home() else "click to call on them")

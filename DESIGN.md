@@ -301,14 +301,21 @@ each NPC reasons only from what they actually heard or witnessed.
 - When an old argument finally lands, they say so next time you talk: "I didn't put much
   stock in what you told me, that Jory is misled... perhaps I should have."
 - Accepting "X is the Seer" makes anyone else claiming the Seer a liar to that NPC.
+- **Terms.** A **claim** is any stated piece of information from an NPC. Kinds: a **role
+  claim** (what someone says their gift is), a **reading** (a gift's result; poison can
+  break it), a **report** (ordinary testimony: a sighting, an alibi, an opinion; poison
+  doesn't touch it). **Evidence** is what the player saw or physically found (no source to
+  doubt). An **argument** is a deduction the player presents (credible as its supports).
 - **Credibility.** Every claim has a source, and counts as much as that source is credible
   to the listener. Credibility is two separate factors:
   - **Honesty of the person**: 1 − a modest, capped share (max 50%) of the *evidence*
     against them, from any source or role (a verdict that they were evil, a sighting, an
     argued deduction). Never from suspicion, which includes vibes and grudges.
   - **Doubt about a particular reading**: from "X was misled on night N". Poison is a
-    property of the night, not the person, so it doesn't touch their honesty or their
-    other readings.
+    property of the night, not the person, so it doesn't touch their honesty, their other
+    readings, or their ordinary reports from that night. A good NPC never doubts their own
+    honesty, but can accept that their own reading was poisoned (and stop suspecting the
+    people it named).
 - **No circular reasoning.** Everything is recomputed from scratch from the underlying
   inputs (each entry's original strength, the player's arguments and their supports) to a
   fixed depth: night doubt; honesty from evidence at original strength; honesty again with
@@ -322,7 +329,20 @@ each NPC reasons only from what they actually heard or witnessed.
   (as far as other evidence allows). Discrediting is not vindicating: it removes evidence
   against A rather than proving A good.
 - **Accepted conclusions track their supports.** An argument the NPC accepted weakens if
-  the evidence it rested on is later discredited.
+  the evidence it rested on is later discredited, including through a chain (a deduction
+  built on another deduction is followed down to the claims underneath). Each distinct
+  justification for a conclusion is kept separately with its own strength and supports;
+  the conclusion counts as its strongest justification *as it stands now*, so a weak
+  restatement can't borrow a discredited strong one's weight.
+- **Order of the recompute.** First estimate of reading doubt and honesty (arguments at
+  full strength) → arguments scaled by their supports' credibility → final reading doubt
+  → final honesty under that same doubt → effects applied. Everything downstream of a
+  poison argument uses the same final doubt, so undoing the argument undoes all of it.
+- **Debug overlay** (checkbox): each card shows its current influence across the good NPCs
+  who've heard it (avg / high / low, with initials, and how many heard it); profiles show
+  how the town credits and suspects the person. Turning it on marks the case's
+  identification unscored. Readings and arguments map to NPC records cleanly; role
+  claims and sightings mostly don't yet (claims become per-listener records next).
 - Acceptance tests: `tools/test_beliefs.gd` (recovery; independent evidence keeps a
   discount; poison doesn't damage honesty; recomputing is stable; works for any source;
   mutual accusation is stable and bounded).
@@ -834,6 +854,12 @@ results match the pre-tracking commit, including deaths, executions and end reas
 - Who you saw nearby is now on the cards. Anonymising unseen people ("someone") would be
   a broader visibility redesign; revisit only if the town view gives away too much.
 
+- **Early-disclosure bonus (next).** Per listener, attached to their record of first
+  hearing a claim: volunteered early +0.05, and before any rival claim +0.10 (on the 0.50
+  hearing weight). Keeps the first record on re-hearing; evil can earn it too. Needs role
+  claims to become per-listener records with a credence (used for double-claim
+  resolution, believing a role, quiet-night credit), not for the claimant's later
+  readings (no double counting). Other situational bonuses go in the same table later.
 - **Initial general skepticism (filed, not built).** Early on, every claim is just someone's
   word with nothing to corroborate it, so all claims could start with extra doubt that
   fades as evidence accumulates. Likely makes the early game too indecisive; keep it as a

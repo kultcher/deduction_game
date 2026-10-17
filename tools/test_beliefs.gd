@@ -4,6 +4,7 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
+const Argue = preload("res://sim/argue.gd")
 
 var fails = 0
 
@@ -14,6 +15,11 @@ func _init() -> void:
 	_test_stable_recompute()
 	_test_other_source()
 	_test_mutual_accusation()
+	_test_chained_deduction()
+	_test_weak_restatement()
+	_test_poison_argument_undone()
+	_test_own_reading_poisoned()
+	_test_sightings_not_poisoned()
 	print("FAILURES: %d" % fails)
 	quit()
 
@@ -130,6 +136,93 @@ func _test_mutual_accusation() -> void:
 	var last = _snapshot(t)
 	print("6. mutual accusation: A %.2f, B %.2f; after 20 recomputes %s" % [_h(t, t["A"].id), _h(t, t["B"].id), "unchanged" if first == last else "changed"])
 	_check(first == last and _h(t, t["A"].id) >= 0.5 and _h(t, t["B"].id) >= 0.5, "mutual accusation is stable and bounded")
+
+## An argument the listener accepts, resting on the given supports ([source, night, kind]).
+func _argue(t: Dictionary, eid: String, effects: Array, base: float, supports: Array) -> void:
+	Mind.ledger_hear(t["w"], t["L"], eid, effects, base * (0.5 + t["L"].trust), [],
+		{"kind": "arg", "base": base, "supports": supports})
+
+func _eff(t: Dictionary, eid: String) -> float:
+	return t["L"].ledger[eid]["eff"] if t["L"].ledger.has(eid) else 0.0
+
+# 7. A deduction built on another deduction weakens when the original evidence is discredited.
+#    (Through the real filing and evaluation path.)
+func _test_chained_deduction() -> void:
+	var t = _setup(5107)
+	var g = t["g"]
+	var w = t["w"]
+	var L = t["L"]
+	var kb = g.add_card(Mind.info_fact(w, t["B"], _seer(1, t["A"].id, t["C"].id)))
+	var d1 = g.file_deduction({"type": "evil", "a": t["A"].id}, [kb])
+	Argue.evaluate(w, L, g.board[d1 - 1], g.board, 1.0)
+	var d2 = g.file_deduction({"type": "demon", "a": t["A"].id}, [d1])
+	Argue.evaluate(w, L, g.board[d2 - 1], g.board, 1.0)
+	var e1 = "arg:" + Argue.conclusion_key({"type": "evil", "a": t["A"].id})
+	var e2 = "arg:" + Argue.conclusion_key({"type": "demon", "a": t["A"].id})
+	var a1 = _eff(t, e1)
+	var a2 = _eff(t, e2)
+	_doubt(t, t["B"].id, 1)
+	var b1 = _eff(t, e1)
+	var b2 = _eff(t, e2)
+	print("7. 'A is evil' %.3f -> %.3f; 'A is the demon' (built on it) %.3f -> %.3f once B's reading is doubted" % [a1, b1, a2, b2])
+	_check(a2 > 0.0 and b1 < a1 and b2 < a2 * 0.7, "a deduction built on another weakens when the original evidence is discredited")
+
+# 8. Restating a conclusion with weaker evidence can't restore its old strength.
+func _test_weak_restatement() -> void:
+	var t = _setup(5108)
+	var A = t["A"].id
+	var eid = "arg:test-evil-A"
+	var effs = [[A, 0.45, true, "test", ""]]
+	_argue(t, eid, effs, 0.5, [[t["B"].id, 1, "reading"]])  # strong, rests on B's reading
+	var strong = _eff(t, eid)
+	_doubt(t, t["B"].id, 1)
+	var discredited = _eff(t, eid)
+	_argue(t, eid, effs, 0.05, [["", -1, "evidence"]])      # weak restatement, other support
+	var after = _eff(t, eid)
+	print("8. strong %.3f -> discredited %.3f -> after a weak restatement %.3f" % [strong, discredited, after])
+	_check(after < strong * 0.5, "a weak restatement doesn't restore the discredited argument's strength")
+
+# 9. B says A was evil; C's evidence says B was poisoned; then C's evidence is discredited:
+#    A's credibility should fall again.
+func _test_poison_argument_undone() -> void:
+	var t = _setup(5109)
+	var w = t["w"]
+	var L = t["L"]
+	var B = t["B"].id
+	var Cc = t["C"].id
+	Mind.apply_info(w, L, t["B"], _verdict(2, t["A"].id, "poisoner"), 0.5)
+	var h0 = _h(t, t["A"].id)
+	_argue(t, "arg:test-B-misled", [["disc:%s:2" % B, 0.9, false, "test", ""]], 0.8, [[Cc, 1, "reading"]])
+	var h1 = _h(t, t["A"].id)
+	_doubt(t, Cc, 1)
+	var h2 = _h(t, t["A"].id)
+	print("9. A's credibility %.2f (B's verdict) -> %.2f (C shows B was poisoned) -> %.2f (C's reading doubted)" % [h0, h1, h2])
+	_check(h1 > h0 and h2 < h1 - 0.05, "undoing the poison argument undoes its effect on A")
+
+# 10. Accepting that your own reading was poisoned restores the people it implicated.
+func _test_own_reading_poisoned() -> void:
+	var t = _setup(5110)
+	var w = t["w"]
+	var L = t["L"]
+	Mind.apply_info(w, L, L, _seer(1, t["C"].id, t["D"].id), 1.0)
+	var h0 = _h(t, t["C"].id)
+	_doubt(t, L.id, 1)
+	var h1 = _h(t, t["C"].id)
+	print("10. C's credibility %.2f under my own reading -> %.2f once I accept my reading was poisoned (my reading now %.2f)" % [h0, h1, Mind.reliability(L, L.id, 1)])
+	_check(h0 < 1.0 and h1 > h0 and Mind.reliability(L, L.id, 1) < 0.5, "own poisoned reading stops implicating people")
+
+# 11. "B's gift failed that night" doesn't discount B's ordinary eyewitness report.
+func _test_sightings_not_poisoned() -> void:
+	var t = _setup(5111)
+	var w = t["w"]
+	var L = t["L"]
+	var B = t["B"].id
+	Mind.ledger_hear(w, L, "heard:test-sighting", [[t["A"].id, 0.3, true, "B saw A out", ""]], 0.5, [B, 1, "report"])
+	var before = _eff(t, "heard:test-sighting")
+	_doubt(t, B, 1)
+	var after = _eff(t, "heard:test-sighting")
+	print("11. B's sighting of A: influence %.3f -> %.3f after B's night-1 reading is doubted" % [before, after])
+	_check(absf(after - before) < 0.001, "poison doubt doesn't touch ordinary testimony")
 
 func _snapshot(t: Dictionary) -> String:
 	var L = t["L"]

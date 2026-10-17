@@ -28,6 +28,7 @@ var mono: SystemFont
 var history: Array = []
 var hist_i = 0
 var theory_label: Label
+var debug_check: CheckBox
 var _name_re: RegEx
 var _speech_re: RegEx
 
@@ -63,6 +64,13 @@ func _ready() -> void:
 	_button(top, "Roles", func(): _run("roles"))
 	_button(top, "Help", func(): _run("help"))
 	_button(top, "Write dev log", func(): _run("log"))
+	debug_check = CheckBox.new()
+	debug_check.text = "Debug"
+	debug_check.tooltip_text = "Show what NPCs privately make of each card and person (influence, credibility, suspicion). Turning it on mid-case leaves your identification unscored."
+	debug_check.toggled.connect(func(on):
+		g.set_debug_overlay(on)
+		_refresh_all())
+	top.add_child(debug_check)
 	theory_label = Label.new()
 	theory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(theory_label)
@@ -104,11 +112,13 @@ func _ready() -> void:
 	bottom.add_child(input)
 	_button(bottom, "Send", func(): _on_submit(input.text))
 
-	# Right: what you can do now, then the selected person.
+	# Right: what you can do now, then the selected person; the optional board beside it.
+	var rightbox = HBoxContainer.new()
+	body.add_child(rightbox)
 	var right = VBoxContainer.new()
 	right.custom_minimum_size = Vector2(330, 0)
 	right.add_theme_constant_override("separation", 6)
-	body.add_child(right)
+	rightbox.add_child(right)
 	action_title = Label.new()
 	action_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	action_title.add_theme_font_size_override("font_size", 16)
@@ -136,7 +146,7 @@ func _ready() -> void:
 	side = VBoxContainer.new()
 	side.custom_minimum_size = Vector2(300, 0)
 	side.visible = false
-	body.add_child(side)
+	rightbox.add_child(side)
 	var st = Label.new()
 	st.text = "Case board (newest first)"
 	side.add_child(st)
@@ -203,6 +213,8 @@ func _new_case() -> void:
 		side_person.set_item_icon(side_person.item_count - 1, _swatch(C.npc_color(n.id)))
 	case_view.set_game(g)
 	map.set_game(g)
+	if debug_check.button_pressed:
+		g.set_debug_overlay(true)
 	_refresh_all()
 
 func _input(ev: InputEvent) -> void:
@@ -594,7 +606,8 @@ func _refresh_side() -> void:
 			col = Color(0.95, 0.8, 0.45)
 		elif c.get("source", "") != "player" and c.get("source", "") != "evidence":
 			col = Color(0.72, 0.72, 0.78)
-		side_list.add("#%-3d %s" % [c["n"], c["text"]], c["n"], c["text"], col)
+		var dbg = g.debug_card_text(c) if g.debug_overlay else ""
+		side_list.add("#%-3d %s%s" % [c["n"], c["text"], ("\n      ⟨" + dbg + "⟩") if dbg != "" else ""], c["n"], c["text"], col)
 	_refresh_profile()
 
 func _refresh_profile() -> void:
@@ -618,6 +631,8 @@ func _refresh_profile() -> void:
 	lines.append("Your guess: %s%s" % [gs.get("guess", "?"), (" (%d/3)" % gs["confidence"]) if gs.has("confidence") else ""])
 	if p["note"] != "":
 		lines.append("Note: " + p["note"])
+	if g.debug_overlay:
+		lines.append("[color=#9fd3a8]" + g.debug_npc_text(id) + "[/color]")
 	side_profile.text = "\n".join(lines).replace("[lb]", "[")
 
 func _on_input_key(ev: InputEvent) -> void:

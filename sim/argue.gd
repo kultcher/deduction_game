@@ -836,7 +836,7 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 		for f in facts:
 			n.used_facts[f + ">" + c.get("a", "")] = true
 	var base: float = agreement * quality * scale * novel
-	var gain = _apply(w, n, ded, supports, base)
+	var gain = _apply(w, n, ded, supports, base, board)
 	var m: float = base * (0.5 + n.trust)
 	var repeat = novel
 	if agreement >= 0.6 and gain >= 0.1:
@@ -954,7 +954,20 @@ static func effects_of(w, c: Dictionary, supports: Array, why: String) -> Array:
 
 ## Take the argument in through the ledger. base excludes trust, so it can be re-weighed
 ## later. Returns the gain in weight (0 if they'd already accepted as much).
-static func _apply(w, n, ded: Dictionary, supports: Array, base: float) -> float:
+## The underlying claims an argument rests on. A deduction used as support is followed
+## down to what *it* rests on, so discrediting the original evidence weakens the whole chain.
+static func support_refs(cards: Array, board: Array, depth: int = 0) -> Array:
+	var out: Array = []
+	for card in cards:
+		if card.get("kind", "") == "deduction" and depth < 4 and not board.is_empty():
+			var inner: Array = board.filter(func(x): return x["n"] in card.get("supports", []))
+			for r in support_refs(inner, board, depth + 1):
+				out.append(r)
+		else:
+			out.append(Mind.support_ref(card))
+	return out
+
+static func _apply(w, n, ded: Dictionary, supports: Array, base: float, board: Array = []) -> float:
 	var c: Dictionary = normalize(ded["conclusion"])
 	if base <= 0.004:
 		return 0.0
@@ -962,13 +975,7 @@ static func _apply(w, n, ded: Dictionary, supports: Array, base: float) -> float
 	var said = "what you told me, that %s" % conclusion_text(w, c)
 	# Remember what the argument rests on: if that evidence is later discredited, the
 	# conclusion weakens with it.
-	var sup: Array = []
-	for card in supports:
-		var src: String = card.get("source", "")
-		if w.by_id.has(src):
-			sup.append([src, card.get("day", -1) if card.get("kind", "") == "info" or card.get("phase", -1) == C.NIGHT else -1])
-		else:
-			sup.append(["", -1])
+	var sup: Array = support_refs(supports, board)
 	var h = Mind.ledger_hear(w, n, "arg:" + conclusion_key(c), effects_of(w, c, supports, why), base * (0.5 + n.trust), [],
 		{"kind": "arg", "base": base, "text": conclusion_text(w, c), "said": said, "supports": sup})
 	return h["gain"]

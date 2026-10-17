@@ -134,6 +134,17 @@ func _init() -> void:
 	var any_n = cv.card_list.count()
 	print("filters: one person %d, two people %d; +sightings: all %d, any %d" % [one, both, all_n, any_n])
 	_check(both >= one and any_n >= all_n, "multi-select filters: OR within a list; 'all' narrows across lists")
+	# Debug overlay: shows NPCs' private view, and marks identification unscored.
+	scene.debug_check.button_pressed = true
+	await process_frame
+	_check(g.debug_overlay and g.prediction_spoiled, "debug overlay spoils identification credit")
+	_check("Credited by others" in scene.side_profile.text, "profile shows credibility across the town")
+	var shown = 0
+	for c in g.board:
+		if g.debug_card_text(c) != "":
+			shown += 1
+	print("debug: %d of %d cards have an influence readout" % [shown, g.board.size()])
+	_check(shown > 0, "some cards show their influence")
 	print("UI OK")
 	quit(1 if fails > 0 else 0)
 
