@@ -5,8 +5,8 @@ from pathlib import Path
 
 
 def compare(active, passive):
-    if active.get("schema_version") != 1 or passive.get("schema_version") != 1:
-        raise ValueError("Expected schema_version 1 autoplay reports")
+    if active.get("schema_version") not in (1, 2) or passive.get("schema_version") not in (1, 2):
+        raise ValueError("Expected schema_version 1 or 2 autoplay reports")
     if active.get("mode") != "active" or passive.get("mode") != "passive":
         raise ValueError("Pass the active report first and the passive report second")
     if active.get("npcs") != passive.get("npcs"):
@@ -31,6 +31,19 @@ def compare(active, passive):
         lines.append(f"{label}: wins {wins}/{len(rows)} ({wins/len(rows):.1%}); wrongful executions {wrong}/{executions} ({fraction}); good survivors in wins {survivors}")
         lines.append(f"  Demon identified {sum(c['demon_identified'] for c in rows)}; both identities {sum(c['both_identified'] for c in rows)}; identified but lost {sum(c['identified_but_lost'] for c in rows)}")
         lines.append(f"  Wrongful execution stance: backed {sum(c['wrongful_backed'] for c in rows)}, opposed {sum(c['wrongful_opposed'] for c in rows)}, mixed {sum(c['wrongful_mixed'] for c in rows)}")
+        hints = {}
+        for c in rows:
+            h = c.get("loss_hint", "")
+            if h:
+                hints[h] = hints.get(h, 0) + 1
+        if hints:
+            lines.append("  Losses by evidence: " + ", ".join(f"{k} {v}" for k, v in sorted(hints.items())))
+        ns = [c["nights"] for c in rows if "nights" in c]
+        if ns:
+            prot = sum(n["warden_protects"] for n in ns)
+            blk = sum(n["blocked_warden"] for n in ns)
+            rate = f"{blk/prot:.1%}" if prot else "n/a"
+            lines.append(f"  Nights: kills {sum(n['kills'] for n in ns)}, stopped by Warden {blk} (hit rate {rate} of {prot} guards), Veteran {sum(n['blocked_veteran'] for n in ns)}, your ward {sum(n['blocked_ward'] for n in ns)}; Warden spotted by demon {sum(n['warden_spotted'] for n in ns)}, Warden killed in {sum(1 for n in ns if n['warden_killed'])} cases")
     lines += [f"Win-rate difference: {100*(len(active_only)-len(passive_only))/len(seeds):+.1f} percentage points",
               f"Active-only wins ({len(active_only)}): {active_only}",
               f"Passive-only wins ({len(passive_only)}): {passive_only}",

@@ -35,6 +35,7 @@ var prediction_spoiled = false
 var case_summary: Dictionary = {}
 var show_hidden = false     # include cards the player has hidden
 var ward_log = {}           # night -> who you warded
+var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
 var last_error = ""         # why the last file_deduction was refused
 var log_dir = "user://logs"
 var log_paths: Array = []
@@ -122,6 +123,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	last_link = {}
 	log_paths = []
 	ward_log = {}
+	fallback_count = 0
 	show_hidden = false
 	last_error = ""
 	w = World.new()
@@ -624,6 +626,9 @@ func _talk_command(verb: String, rest: String) -> void:
 			if pr.has("error"):
 				_err(pr["error"])
 				return
+			if pr.has("flat"):
+				_narr(pr["flat"])
+				return
 			_narr("(%s)" % pr["note"])
 			_talk_command(pr["verb"], pr["rest"])
 			return
@@ -633,6 +638,7 @@ func _talk_command(verb: String, rest: String) -> void:
 				_err("Convince them of which deduction? ('convince <card#>'; to cite a plain card use 'tell <suspect> <card#>')")
 				return
 			_secrets_used(board[num0 - 1])
+			_conflict_pressure(board[num0 - 1], 0.1, n)
 			r = Argue.evaluate(w, n, board[num0 - 1], board, 1.0)
 			r["facts"] = []
 			Mind.on_question(w, n)
@@ -648,29 +654,46 @@ func _talk_command(verb: String, rest: String) -> void:
 			r = Mind.press(w, n, pc)
 		"defend", "vouch":
 			var pd = rest.split(" ", false)
-			var sd = find_npc(pd[0]) if pd.size() >= 2 else null
 			var numd = pd[pd.size() - 1].trim_prefix("#").to_int() if pd.size() >= 2 else 0
-			if sd == null or numd < 1 or numd > board.size() or board[numd - 1].get("deleted", false):
+			var sds: Array = []
+			if pd.size() >= 2:
+				for nm in pd[0].split(","):
+					var x = find_npc(nm)
+					if x != null:
+						sds.append(x)
+			if sds.is_empty() or numd < 1 or numd > board.size() or board[numd - 1].get("deleted", false):
 				_err("Usage: present <card#> for <name>")
 				return
-			r = Mind.hear_defence(w, n, sd, board[numd - 1])
+			r = Mind.hear_defence(w, n, sds, board[numd - 1])
 		"tell", "accuse":
 			var p = rest.split(" ", false)
 			if p.size() < 2:
 				_err("Usage: tell <suspect> <card#>  (see 'board')")
 				return
-			var s = find_npc(p[0])
-			var num = p[p.size() - 1].trim_prefix("#").to_int()
-			if s == null:
-				_err("Who is suspicious?")
-				return
-			if s == n:
-				_err("To confront %s with a card about them, use 'press <card#>'." % n.name)
-				return
-			if num < 1 or num > board.size():
-				_err("No such card on your board.")
-				return
-			r = Mind.hear_accusation(w, n, s, board[num - 1])
+			if "," in p[0]:
+				var grp: Array = []
+				for nm in p[0].split(","):
+					var x = find_npc(nm)
+					if x != null and x != n:
+						grp.append(x)
+				var numg = p[p.size() - 1].trim_prefix("#").to_int()
+				if grp.is_empty() or numg < 1 or numg > board.size():
+					_err("Usage: present <card#>")
+					return
+				r = Mind.hear_group_case(w, n, grp, board[numg - 1])
+			else:
+				var s = find_npc(p[0])
+				var num = p[p.size() - 1].trim_prefix("#").to_int()
+				if s == null:
+					_err("Who is suspicious?")
+					return
+				if s == n:
+					_err("To confront %s with a card about them, use 'press <card#>'." % n.name)
+					return
+				if num < 1 or num > board.size():
+					_err("No such card on your board.")
+					return
+				r = Mind.hear_accusation(w, n, s, board[num - 1])
 		"bye", "leave", "done":
 			_narr("You leave %s to their business." % n.name)
 			_close_conversation()
@@ -983,6 +1006,7 @@ func _help() -> String:
   Case    : link <card#> <card#> [card#]  (check for a contradiction)
             conclude <number>  (file an explanation from your last link)
             conclude <name> <is | is not | should be> <status> [night N] [because <card#> ...]
+            conclude one of these is misled or lying because <card#> ...  ("something doesn't add up")
               status: good, evil, the demon, a gift (seer...), lying, misled, misled or lying;
                       should be protected / spared
               misled = not lying, but their information was wrong (poisoned or mistaken)
@@ -1141,7 +1165,8 @@ func _board(filter: String) -> String:
 
 func _ending() -> void:
 	var frozen: Dictionary = prediction_snapshots[-1] if not prediction_snapshots.is_empty() else {}
-	case_summary = CaseMetrics.summarize(w, frozen, prediction_spoiled)
+	case_summary = CaseMetrics.summarize(w, frozen, prediction_spoiled, board)
+	case_summary["present_fallbacks"] = fallback_count
 	w.dlog.add("case_summary", "world", "", case_summary, "Frozen pre-outcome identification, town survival, and execution attribution.")
 	if w.winner == "good":
 		_narr("*** VICTORY ***  " + w.end_reason)
@@ -1244,6 +1269,12 @@ func link_cards(nums: Array) -> Dictionary:
 	var res: Dictionary = Argue.check(w, cards)
 	var options: Array = []
 	for m in res["matches"]:
+		if m.get("relation", "contradiction") == "contradiction":
+			var grp: Array = Argue.group_of(w, cards.filter(func(x): return x["n"] in m["cards"]))
+			if grp.size() >= 2:
+				var cc = {"type": "conflict", "a": "", "group": grp}
+				options.append({"match": m, "expl": {"id": 0, "kind": "conflict", "blame": "", "conclusion": cc,
+					"label": "Something doesn't add up (no explanation chosen): one of %s is misled or lying" % Argue._names(w, grp)}})
 		for e in m["explanations"]:
 			options.append({"match": m, "expl": e})
 	last_link = {"cards": nums.duplicate(), "result": res, "options": options}
@@ -1258,7 +1289,16 @@ func file_deduction(conclusion: Dictionary, supports: Array, match_info: Diction
 	var cards: Array = board.filter(func(x): return x["n"] in supports)
 	# The same conclusion from the same cards gets the same footing however it was built:
 	# if a template among the supports offers this conclusion, use it.
-	if match_info.is_empty() and not supports.is_empty():
+	if conclusion.get("type", "") == "conflict":
+		if conclusion.get("group", []).is_empty():
+			conclusion["group"] = Argue.group_of(w, cards)
+		if match_info.is_empty():
+			for m in Argue.check(w, cards)["matches"]:
+				if m.get("relation", "contradiction") == "contradiction":
+					match_info = m
+					chosen = 0
+					break
+	elif match_info.is_empty() and not supports.is_empty():
 		for m in Argue.check(w, cards)["matches"]:
 			for e in m["explanations"]:
 				if Argue.conclusion_key(Argue.normalize(e["conclusion"].duplicate())) == Argue.conclusion_key(conclusion):
@@ -1286,7 +1326,7 @@ func file_deduction(conclusion: Dictionary, supports: Array, match_info: Diction
 		basis = " (from #%s: %s)" % [", #".join(PackedStringArray(match_info["cards"].map(func(x): return str(x)))), match_info["text"]]
 	else:
 		basis = " (because #%s%s)" % [", #".join(PackedStringArray(supports.map(func(x): return str(x)))), "; unfounded" if unfounded else "; your inference"]
-	var subj: Array = [conclusion["a"]] if conclusion.has("a") else []
+	var subj: Array = conclusion.get("group", []).duplicate() if conclusion.get("type", "") == "conflict" else ([conclusion["a"]] if conclusion.has("a") else [])
 	var near = ""
 	if unfounded:
 		var nr: Array = Argue.check(w, cards)["near"]
@@ -1294,7 +1334,7 @@ func file_deduction(conclusion: Dictionary, supports: Array, match_info: Diction
 			near = nr[0]
 	var card = {"kind": "deduction", "subject": subj, "source": "player", "class": cls, "conclusion": conclusion,
 		"supports": supports.duplicate(), "template": match_info.get("template", ""), "explanations": match_info.get("explanations", []),
-		"chosen": chosen, "unfounded": unfounded, "near": near,
+		"chosen": chosen, "unfounded": unfounded, "near": near, "relation": match_info.get("relation", ""),
 		"text": "Deduction: %s%s [basis: %s]." % [Argue.conclusion_text(w, conclusion), basis, cls]}
 	var n = add_card(card)
 	w.dlog.add("deduction", "player", conclusion.get("a", ""), {"card": n, "conclusion": conclusion, "supports": supports,
@@ -1331,6 +1371,19 @@ func _parse_conclusion(rest: String) -> Dictionary:
 	var words = text.split(" ", false)
 	if words.size() < 3:
 		return {"error": usage}
+	var group_lead = 0
+	if words[0] in ["someone", "somebody"]:
+		group_lead = 1
+	elif words.size() > 3 and words[0] == "one" and words[1] == "of" and words[2] in ["these", "them", "those"]:
+		group_lead = 3
+	if group_lead > 0:
+		if supports.is_empty() and not last_link.is_empty():
+			supports = last_link["cards"].duplicate()
+		var tail = " ".join(words.slice(group_lead)).strip_edges()
+		if not (tail in ["is misled or lying", "are misled or lying", "is lying or misled", "doesn't add up", "is wrong"]):
+			return {"error": "For a group, say: conclude one of these is misled or lying because <cards>."}
+		var gcards: Array = board.filter(func(x): return x["n"] in supports)
+		return {"conclusion": Argue.conflict_of(w, gcards), "supports": supports}
 	var who = find_npc(words[0], true)
 	if who == null:
 		return {"error": "Who is '%s'?" % words[0]}
@@ -1422,12 +1475,14 @@ func _conclude_command(rest: String) -> void:
 	_ev({"k": "card", "n": n2})
 
 ## "present <card#> [for|against <name>]" in conversation: work out what the player means.
-## About the listener -> press them. A deduction about someone else -> argue it. A plain card
-## about someone else -> make a case against (or, with "for", for) them.
+## About the listener -> press them. A deduction -> argue it. A plain card about others ->
+## a case for or against them, direction read from the card itself (a Seer "yes" accuses, a
+## Seer "no" clears), split across everyone it names. for/against is only an override; if
+## the card has no direction of its own, it falls flat (logged as a fallback).
 func _route_present(n, rest: String) -> Dictionary:
 	var p = rest.strip_edges().split(" ", false)
 	if p.is_empty():
-		return {"error": "Present which card? ('present <card#>', optionally 'for <name>' or 'against <name>')"}
+		return {"error": "Present which card? ('present <card#>')"}
 	var num = p[0].trim_prefix("#").to_int()
 	if num < 1 or num > board.size() or board[num - 1].get("deleted", false):
 		return {"error": "No such card on your board."}
@@ -1440,8 +1495,8 @@ func _route_present(n, rest: String) -> Dictionary:
 		if who == null:
 			return {"error": "Who is '%s'?" % p[2]}
 	if card["kind"] == "deduction":
-		var a: String = card["conclusion"].get("a", "")
-		if a == n.id and not (Argue.normalize(card["conclusion"].duplicate())["type"] in ["misled", "unreliable"]):
+		var cc: Dictionary = Argue.normalize(card["conclusion"].duplicate())
+		if cc.get("a", "") == n.id and not (cc["type"] in ["misled", "unreliable"]):
 			return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
 		return {"verb": "convince", "rest": str(num), "note": "You argue it to %s." % n.name}
 	var subj: Array = card.get("subject", []).duplicate()
@@ -1450,20 +1505,49 @@ func _route_present(n, rest: String) -> Dictionary:
 			subj.append(x)
 	if who == null and (n.id in subj or card.get("owner", "") == n.id):
 		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
-	if who == null:
-		var cands: Array = subj.filter(func(x): return x != n.id and x != card.get("source", "") and w.by_id.has(x))
-		if cands.size() == 1:
-			who = w.by_id[cands[0]]
-		elif cands.is_empty():
-			return {"error": "That card isn't about anyone in particular. Try 'present %d against <name>' or 'for <name>'." % num}
-		else:
-			return {"error": "About whom? It mentions %s. ('present %d against <name>' or 'for <name>')" %
-				[" and ".join(PackedStringArray(cands.map(func(x): return w.by_id[x].name))), num]}
 	if who == n:
 		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
+	var targets: Array = [who.id] if who != null else subj.filter(func(x): return x != n.id and x != card.get("source", "") and w.by_id.has(x) and w.by_id[x].alive)
+	if targets.is_empty():
+		return _present_fallback(n, num, "the card isn't about anyone living")
+	if dir == "":
+		var inc = 0.0
+		var dfn = 0.0
+		for x in targets:
+			inc = maxf(inc, Mind.card_strength(w, card, w.by_id[x]))
+			dfn = maxf(dfn, Mind.defend_strength(card, x))
+		if inc >= 0.4 and inc > dfn:
+			dir = "against"
+		elif dfn >= 0.4 and dfn > inc:
+			dir = "for"
+		else:
+			return _present_fallback(n, num, "no clear direction (incriminating %.2f, clearing %.2f)" % [inc, dfn])
+	var names = Argue._names(w, targets)
+	var ids = ",".join(PackedStringArray(targets))
 	if dir == "for":
-		return {"verb": "defend", "rest": "%s %d" % [who.id, num], "note": "You speak for %s." % who.name}
-	return {"verb": "tell", "rest": "%s %d" % [who.id, num], "note": "You make your case against %s." % who.name}
+		return {"verb": "defend", "rest": "%s %d" % [ids, num], "note": "You speak up for %s." % names}
+	return {"verb": "tell", "rest": "%s %d" % [ids, num], "note": ("You make your case against %s." if targets.size() == 1 else "You point out it implicates one of %s.") % names}
+
+## The card has no direction of its own: it falls flat, costs no question, and is logged
+## so we can see which cards keep landing here.
+func _present_fallback(n, num: int, why: String) -> Dictionary:
+	fallback_count += 1
+	w.dlog.add("present_fallback", "player", n.id, {"card": num, "kind": board[num - 1]["kind"], "why": why},
+		"present couldn't tell what the card was meant to prove (%s)" % why)
+	return {"verb": "", "rest": "", "note": "", "flat": "%s: \"I'm not sure what you're trying to prove.\" (You can say 'present %d for <name>' or 'against <name>'.)" % [n.name, num]}
+
+## "Something doesn't add up" puts the people involved under scrutiny: publicly, all of
+## them; privately, only the listener if they're one of them.
+func _conflict_pressure(ded: Dictionary, amount: float, listener) -> void:
+	var c: Dictionary = ded.get("conclusion", {})
+	if c.get("type", "") != "conflict":
+		return
+	for id in c.get("group", []):
+		var m = w.by_id[id]
+		if not m.alive or (listener != null and m != listener):
+			continue
+		m.pressure += amount
+		w.dlog.think(m.id, "pressed", "Under scrutiny: the Demonologist says something doesn't add up (pressure +%.2f -> %.2f)." % [amount, m.pressure])
 
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
 func _secrets_used(ded: Dictionary, depth: int = 0) -> void:
@@ -1502,6 +1586,7 @@ func _present_deduction(rest: String) -> void:
 	_narr("You take the floor: %s" % ded["text"])
 	w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
 	_secrets_used(ded)
+	_conflict_pressure(ded, 0.2, null)
 	for n in w.living():
 		var r: Dictionary = Argue.evaluate(w, n, ded, board, 0.6)
 		_lines(r["lines"])
@@ -1633,6 +1718,16 @@ func _outcome_text() -> String:
 	lines.append("Innocent townsfolk surviving: %d/%d. Wrongful executions: %d (%d backed, %d opposed, %d mixed)." %
 		[case_summary["good_surviving"], case_summary["good_initial"], case_summary["executions_good"],
 		case_summary["wrongful_backed"], case_summary["wrongful_opposed"], case_summary["wrongful_mixed"]])
+	# What evidence against the demon existed (descriptive, not a verdict on your play).
+	var ob: Array = case_summary.get("demon_evidence_on_board", [])
+	var rc: Array = case_summary.get("demon_evidence_reachable", [])
+	if not case_summary["town_saved"]:
+		if not ob.is_empty():
+			lines.append("Evidence pointing at the demon was on your board: #%s." % ", #".join(PackedStringArray(ob.map(func(x): return str(x)))))
+		elif not rc.is_empty():
+			lines.append("Evidence pointing at the demon existed but never reached your board: %s." % "; ".join(PackedStringArray(rc.slice(0, 4))))
+		else:
+			lines.append("No true evidence pointed at the demon this case.")
 	return "\n".join(lines)
 
 ## What readings on your board say this person might be ("possible: the Warden, per

@@ -70,7 +70,7 @@ func _init() -> void:
 			push_error("Cannot write results: " + path)
 			quit(1)
 			return
-		file.store_string(JSON.stringify({"schema_version": 1, "mode": "passive" if passive else "active", "seed_start": first,
+		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "seed_start": first,
 			"npcs": int(args.get("npcs", "7")), "rng_note": "Same seed matches setup; player actions can change later random draws.",
 			"summary": summary, "cases": case_results}, "\t"))
 		file.close()

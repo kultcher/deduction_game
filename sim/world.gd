@@ -634,6 +634,8 @@ func resolve_night() -> void:
 		n.busy_with = ""
 		n.pressure = n.pressure * 0.6
 	Mind.end_of_day_trust(self)
+	for n in living_good():
+		Mind.refresh_source_doubt(self, n)
 
 	var kill_t = ""
 	if not first and demon().alive:
@@ -650,7 +652,7 @@ func resolve_night() -> void:
 	if watch and watch.alive:
 		watch_block = Mind.watch_block(self, watch)
 
-	_night_movement(poison_t, kill_t, watch, watch_block)
+	_night_movement(poison_t, kill_t, watch, watch_block, warden, warden_t)
 
 	if poison_t != "":
 		by_id[poison_t].poisoned = true
@@ -668,6 +670,7 @@ func resolve_night() -> void:
 		dlog.add("protect", "player", player_ward, {}, "Demonologist's ward.")
 
 	deaths_last_night = []
+	var kill_outcome = ""
 	if kill_t != "":
 		var v = by_id[kill_t]
 		var outcome = "killed"
@@ -675,7 +678,7 @@ func resolve_night() -> void:
 			outcome = "veteran"
 		elif protected.has(kill_t):
 			outcome = "protected_" + protected[kill_t]
-		Evil.note_kill_result(self, kill_t, outcome)
+		kill_outcome = outcome
 		if outcome == "killed":
 			_kill(v)
 		else:
@@ -688,6 +691,8 @@ func resolve_night() -> void:
 			_receive_info(n, watch_block)
 
 	_night_sightings()
+	if kill_t != "":
+		Evil.note_kill_result(self, kill_t, kill_outcome)
 	Evil.gather_night_intel(self)
 	Evil.make_fake_info(self)
 	Mind.update_from_own_info(self)
@@ -710,7 +715,7 @@ func _quiet_night() -> void:
 				"nobody died on night %d, and they claim the %s" % [day, C.role_name(pc["role"])])
 			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0)
 
-func _night_movement(poison_t: String, kill_t: String, watch, watch_block: String) -> void:
+func _night_movement(poison_t: String, kill_t: String, watch, watch_block: String, warden = null, warden_t: String = "") -> void:
 	night_walkers = []
 	for n in living():
 		n.out_last_night = false
@@ -724,8 +729,12 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 			_walk(m, by_id[poison_t].home_block, "poisoning %s" % by_id[poison_t].name)
 	if watch and watch.alive and watch_block != "":
 		_walk(watch, watch_block, "keeping the night watch")
+	if warden and warden.alive and warden_t != "":
+		# The Warden stands guard at the door, so it can be seen (and hunted).
+		_walk(warden, by_id[warden_t].home_block, "guarding %s" % by_id[warden_t].name)
+		warden.warden_log[str(day)] = warden_t
 	for n in living_good():
-		if not n.secret.is_empty() and n != watch and chance(0.55):
+		if not n.secret.is_empty() and n != watch and n != warden and chance(0.55):
 			_walk(n, n.secret["dest"], "secret: " + n.secret["kind"])
 	for n in living():
 		n.history[time_key(day, C.NIGHT)] = ("night:" if n.out_last_night else "home:") + n.night_block

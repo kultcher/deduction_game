@@ -87,6 +87,9 @@ Each day has three phases (morning, afternoon, evening), then a town meeting, th
 Names and places accept prefixes (`talk bart`, `go tav`). Crime scenes appear as
 locations (`go scene_greta`, or `go greta`).
 
+**The Warden walks** to the door it guards at night, so it can be seen by anyone out on
+that block or watching it. A demon whose attack fails may realise who was standing there.
+
 **The town.** Each phase opens with a view of the town: people at work and pairs deep in
 conversation are shown exactly; everyone else only by block. `go <person>` takes you to
 their exact spot if you know it (working, in conversation, or visible nearby); otherwise
@@ -116,9 +119,19 @@ their trust, permanently for very private people.
 **Presenting a card in conversation.** `present <card#>` is the one verb for using your
 board on someone (it uses a question). The game works out what you mean: a card or
 deduction about the person you're talking to presses them (below); a deduction about
-someone else argues it; a plain card about someone else makes a case against them. Add
-`for <name>` to speak up for someone instead, or `against <name>` when a card mentions
-several people. `press`, `convince`, `tell` and `defend` remain as shortcuts.
+someone else argues it; a plain card about someone else makes a case for or against them,
+with the direction read from the card itself (a Seer "yes" accuses, a Seer "no" clears). A
+card naming several people applies to all of them, split ("it's one of these two"). Cards
+with no direction of their own (a daytime sighting) fall flat: "I'm not sure what you're
+trying to prove". That costs no question, and is logged. `for <name>` / `against <name>`
+override the reading. `press`, `convince`, `tell` and `defend` remain as shortcuts.
+
+**Something doesn't add up.** When Link finds a conflict, the first option files it
+without choosing an explanation. In the builder, pick **One of these people** (the people
+your working set rests on) and **misled or lying**; or `conclude one of these is misled or
+lying because #a #b`. NPCs who accept it take what those people say with a pinch of salt,
+and presenting it raises the pressure on them (all of them at the meeting; privately, the
+listener if they're one of them), which makes them readier to explain themselves.
 
 **Pressing someone** confronts the person you're talking to with a card
 or deduction about them. It raises the pressure on them and makes them answer it: a night
@@ -156,6 +169,13 @@ exclusive. Public deductions and earlier private persuasion remain available in 
 but are not automatically attributed as causes of an execution. Zero executions gives a
 null wrongful-execution fraction, rather than a misleading zero.
 
+The ending also lists evidence that pointed at the demon: cards on your board, or (if none)
+true readings, night sightings or an unsearched trace that never reached you. It's
+descriptive, not a verdict. `case_summary` (schema 2) adds `loss_hint`
+(`identified_not_persuaded`, `evidence_on_board`, `evidence_reachable`, `no_evidence`),
+night stats (kills; attacks stopped by the Warden, Veteran or your ward; Warden hit rate;
+Warden spotted or killed) and `present_fallbacks`. `compare_runs.py` prints both.
+
 Tracking regression checks:
 
 ```sh
@@ -179,7 +199,12 @@ witness put there; a reading that flips; a Gravedigger contradicting a claim; a 
 killed by the demon; a reading pointing only at the demon's victims; a changed story.
 *Corroborations*: two witnesses putting someone in the same place; a Clerk reading backing
 a claim; a night when nobody died, alongside a Warden or Veteran claim (or a "shelter"
-hint). *Inferences*: a Seer or Archivist pair where one person is cleared (killed by the
+hint). A Clerk naming two people who both claim other gifts is also a conflict. *Inferences* also
+include **association** (someone implicated as evil, by a Gravedigger or a deduction you've
+argued, seen talking with Y; stronger with more separate conversations, and with how much
+each listener believes the first part) and **vindication** (if a Gravedigger was poisoned
+on the night they named someone the Poisoner, the Poisoner was alive then, so the hanged
+person wasn't it). *Inferences*: a Seer or Archivist pair where one person is cleared (killed by the
 demon, or shown good after execution; for a Seer pair, also anyone hanged without ending
 the case, since they weren't the demon), which leaves the other; the death-scene trace
 matching someone seen on that block that evening. A match lists possible explanations,
@@ -195,6 +220,11 @@ don't concern that person at all, and sharp (high-Insight) NPCs reject those. Fi
 checks your cards for a template either way, so pressing Link first makes no difference. A deduction needs supporting
 cards, and one that only restates what someone said about themselves ("Jory is the
 Seer because of Jory's claim and Jory's reading") is refused.
+
+**Doubt cascades.** A Gravedigger reporting that the hanged person was evil makes their
+earlier readings count for less, scaled by how credible the Gravedigger is; discredit the
+Gravedigger and those readings regain their weight. Strongly suspected people's readings
+also count for less (re-checked at nightfall and before votes).
 
 **Each NPC keeps an evidence ledger**, keyed by the underlying fact, not the card or
 whoever relayed it. Hearing the same reading again, or seeing the same sighting re-wrapped

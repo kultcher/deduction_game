@@ -257,6 +257,27 @@ discounts, believed roles, and believed-good flags.
 - A deduction resting on someone's confessed secret spreads it, exactly as citing the
   secret directly does.
 
+### Something doesn't add up
+
+A conclusion in its own right: "one of these people is misled or lying", where the group is
+the people the supporting cards rest on (sources and claimants, excluding the player,
+physical evidence and the demon's victims; at least two). Link offers it first on any
+conflict, so the player can flag a clash without committing to an explanation; the builder
+offers it as **One of these people**. Template-backed, anyone sees the clash (agreement
+rises with Insight); otherwise it rests on trust in the player, and sharp NPCs ask what
+doesn't add up. Accepting it splits a little doubt across the group's readings plus a
+small suspicion bump; presenting it raises **pressure** on those involved (all of them at
+the meeting; privately, the listener if involved), which loosens claims and secrets later.
+Group members know they told the truth and answer accordingly; evil uses the same lines.
+
+### Presenting: direction from the card
+
+`present` reads direction from the card (incriminating vs. clearing strength), applies
+multi-person cards to the whole group split, and keeps `for`/`against` as an override. A
+card with no direction of its own falls flat ("I'm not sure what you're trying to prove"),
+costs no question, and is logged (`present_fallback`, counted in `case_summary`) so we
+can see which cards land there.
+
 ### The evidence ledger (belief record)
 
 Each good NPC keeps a ledger of the evidence and arguments they've taken in, keyed by the
@@ -280,6 +301,14 @@ each NPC reasons only from what they actually heard or witnessed.
 - When an old argument finally lands, they say so next time you talk: "I didn't put much
   stock in what you told me, that Jory is misled... perhaps I should have."
 - Accepting "X is the Seer" makes anyone else claiming the Seer a liar to that NPC.
+- **Cascades.** Role verdicts doubt the named person's own information: a Gravedigger
+  saying the hanged person was evil adds doubt to their readings, scaled (as everything
+  is) by the Gravedigger's reliability, so discrediting the Gravedigger gives it back.
+  Being strongly suspected also discounts someone's readings, re-checked only at nightfall
+  and before votes to avoid readings and suspicion chasing each other; a depth guard stops
+  runaway loops.
+- **Vindication** follows from the rules: if the Gravedigger was poisoned the night they
+  named someone the Poisoner, the Poisoner was alive then, so the hanged person wasn't.
 - Every evaluation is logged with its explanation weights.
 
 ## Town meeting
@@ -758,9 +787,11 @@ results match the pre-tracking commit, including deaths, executions and end reas
   no visible cause, so the demon avoids that person and shies away from high-profile
   targets for a couple of nights (fading). A kill stopped by the Demonologist's ward
   leaves a chalk sigil on the door; wards are single-use, so the demon isn't cautious.
-- **Should the Warden walk?** Today only the demon, Poisoner, Night Watch and secret-keepers
-  walk at night; the Warden shields from home. Walking to the guarded house would make the
-  Warden sightable, and huntable. Undecided.
+- **The Warden walks. [built]** It stands guard at the protected door, so it can be sighted
+  (and seen on vigils), framed by evil fake sightings, and hunted: a demon whose attack is
+  stopped by a Warden marks anyone it glimpsed on that block as a likely Warden. An open
+  Warden answers "where were you" with whose door they guarded; an evil Warden bluff
+  invents one on the block they were really on.
 - **A claims/reveals timeline** alongside the location timeline (cards per person per
   slot, with shortcuts), for the full UI.
 - Who you saw nearby is now on the cards. Anonymising unseen people ("someone") would be

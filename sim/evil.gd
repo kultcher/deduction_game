@@ -269,6 +269,13 @@ static func note_kill_result(w, target: String, outcome: String) -> void:
 		# The Demonologist's chalk sigil is plain on the door, and a ward is spent once used.
 		w.dlog.think(w.demon_id, "kill_failed", "Attack on %s failed: the Demonologist's sigil was on the door. Wards are single-use; no need for caution." % target)
 		return
+	if outcome == "protected_warden":
+		# Anyone the demon glimpsed on that block tonight is probably the Warden at the door.
+		var d = w.demon()
+		var tb: String = w.by_id[target].home_block
+		for b in d.beliefs:
+			if b["kind"] == "saw" and b["day"] == w.day and b["phase"] == C.NIGHT and b["block"] == tb and b["who"] != target:
+				add_intel(w, d, "threat", b["who"], 2.0, "was outside %s's door when the attack failed: likely the Warden" % target)
 	if outcome != "killed":
 		w.evil_plan["failed"].append(target)
 		w.evil_plan["caution"] = minf(w.evil_plan.get("caution", 0.0) + 1.0, 1.5)

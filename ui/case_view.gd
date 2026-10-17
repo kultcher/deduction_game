@@ -158,7 +158,9 @@ func build(font: Font) -> void:
 	var brow = HFlowContainer.new()
 	mid.add_child(brow)
 	b_who = OptionButton.new()
-	b_who.item_selected.connect(func(_i): _builder_changed())
+	b_who.item_selected.connect(func(_i):
+		_fill_status()
+		_builder_changed())
 	brow.add_child(b_who)
 	b_verb = _option(brow, ["is", "is not", "should be"], func(_i):
 		_fill_status()
@@ -268,6 +270,8 @@ func set_game(game) -> void:
 		person_opt.set_item_metadata(person_opt.item_count - 1, n.id)
 		prof_opt.add_item(n.name)
 		prof_opt.set_item_metadata(prof_opt.item_count - 1, n.id)
+	b_who.add_item("One of these people")
+	b_who.set_item_metadata(b_who.item_count - 1, "*group")
 	place_opt.clear()
 	place_opt.add_item("anywhere")
 	place_opt.set_item_metadata(0, "")
@@ -509,6 +513,12 @@ func _nums(a: Array) -> String:
 func _fill_status() -> void:
 	var verb: String = b_verb.get_item_text(max(0, b_verb.selected))
 	b_status.clear()
+	if b_who.selected >= 0 and b_who.get_item_metadata(b_who.selected) == "*group":
+		# "Something doesn't add up": the people your working set rests on.
+		b_verb.select(0)
+		b_status.add_item("misled or lying (something doesn't add up)")
+		b_status.set_item_metadata(0, "conflict")
+		return
 	for pair in Argue.BUILDER[verb]:
 		b_status.add_item(pair[0])
 		b_status.set_item_metadata(b_status.item_count - 1, pair[1])
@@ -546,6 +556,8 @@ func _built() -> Dictionary:
 	if b_who.selected < 0 or b_status.selected < 0:
 		return {}
 	var who: String = b_who.get_item_metadata(b_who.selected)
+	if who == "*group":
+		return Argue.conflict_of(g.w, g.board.filter(func(x): return x["n"] in staged))
 	var verb: String = b_verb.get_item_text(b_verb.selected)
 	var status: String = b_status.get_item_metadata(b_status.selected)
 	var c: Dictionary = Argue.from_builder(who, verb, status, _meta_int(b_night))
@@ -577,8 +589,14 @@ func _use_option(o: Dictionary) -> void:
 	var c: Dictionary = Argue.normalize(o["expl"]["conclusion"].duplicate())
 	_setting = true
 	for i in range(b_who.item_count):
-		if b_who.get_item_metadata(i) == c.get("a", ""):
+		if b_who.get_item_metadata(i) == (c.get("a", "") if c["type"] != "conflict" else "*group"):
 			b_who.select(i)
+	if c["type"] == "conflict":
+		_fill_status()
+		_setting = false
+		pending = {"conclusion": c, "match": o["match"], "id": 0}
+		_update_preview()
+		return
 	var verb = "is"
 	var status: String = c["type"]
 	match c["type"]:

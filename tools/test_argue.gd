@@ -197,13 +197,76 @@ func _init() -> void:
 	if not lis2.is_empty():
 		var Q = lis2[0]
 		_check(g._route_present(Q, str(k1)).get("verb", "") == "tell", "present a sighting of A -> case against A (%s)" % str(g._route_present(Q, str(k1))))
-		_check(g._route_present(Q, str(k8)).has("error"), "present a Seer pair -> asks about whom")
+		var rq = g._route_present(Q, str(k8))
+		_check(rq.get("verb", "") == "tell" and "," in rq.get("rest", ""), "present a Seer yes on two -> split case against both (%s)" % str(rq))
+		var k9r = g._route_present(Q, str(k9))
+		_check(k9r.get("verb", "") == "defend", "present a Seer no -> speaks for them (%s)" % str(k9r))
+		var kday = g.add_card({"kind": "sighting", "subject": [a], "block": "market", "day": 1, "phase": C.MORNING, "source": "player", "text": "You saw A at the market, day 1 morning (test)."})
+		var fb0 = g.fallback_count
+		_check(g._route_present(Q, str(kday)).has("flat") and g.fallback_count == fb0 + 1, "a directionless card falls flat and is counted")
 		_check(g._route_present(Q, "%d against %s" % [k8, w.by_id[a].name]).get("verb", "") == "tell", "present ... against <name>")
 		_check(g._route_present(Q, "%d for %s" % [k8, w.by_id[a].name]).get("verb", "") == "defend", "present ... for <name>")
 		var kq2 = g.add_card({"kind": "info", "subject": [Q.id, a], "source": c, "day": 0, "role": "clerk", "data": {"pair": [Q.id, a], "role": "warden"}, "text": "C clerk: Q or A is warden"})
 		_check(g._route_present(Q, str(kq2)).get("verb", "") == "press", "present a card naming them -> press")
 		var dq = g.file_deduction({"type": "evil", "a": a}, [k1])
 		_check(g._route_present(Q, str(dq)).get("verb", "") == "convince", "present a deduction -> argue it")
+	# Something doesn't add up.
+	var lkc = g.link_cards([k1, k2])
+	_check(lkc["options"][0]["expl"]["kind"] == "conflict", "link offers 'something doesn't add up' first")
+	var pc = g._parse_conclusion("one of these is misled or lying because #%d #%d" % [k1, k2])
+	_check(pc.get("conclusion", {}).get("type", "") == "conflict" and pc["conclusion"]["group"].size() == 2, "parse 'one of these is misled or lying' (%s)" % str(pc))
+	var dcf = g.file_deduction(pc["conclusion"], pc["supports"])
+	_check(dcf > 0 and g.board[dcf - 1]["template"] == "out_vs_home", "group conclusion picks up the contradiction (%s)" % (g.board[dcf - 1]["template"] if dcf > 0 else g.last_error))
+	var Lc = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))[0]
+	var before_rel = Mind.reliability(Lc, b, 1)
+	var rc = Argue.evaluate(w, Lc, g.board[dcf - 1], g.board, 1.0)
+	print("conflict: agreement %.2f, line %s" % [rc["agreement"], rc["lines"][0]["text"]])
+	_check(rc["agreement"] >= 0.5 and Mind.reliability(Lc, b, 1) < before_rel, "accepting it casts some doubt on those involved")
+	var p0b = w.by_id[b].pressure
+	g._conflict_pressure(g.board[dcf - 1], 0.2, null)
+	_check(w.by_id[b].pressure > p0b, "presenting it raises pressure on those involved")
+	_check(g.file_deduction({"type": "conflict", "a": "", "group": [b]}, [k1]) < 0, "a one-person group is refused")
+	# Clerk vs both claims.
+	var kcl = g.add_card({"kind": "info", "subject": [a, b], "source": d, "day": 0, "role": "clerk", "data": {"pair": [a, b], "role": "warden"}, "text": "D clerk: A or B is warden"})
+	var kca = g.add_card({"kind": "claim", "subject": [a], "role": "veteran", "source": a, "text": "A claims veteran (test)"})
+	var cvc = g.link_cards([kcl, kca, k5])["result"]["matches"].map(func(m): return m["template"])
+	_check("clerk_vs_claims" in cvc, "clerk vs both claims (got %s)" % str(cvc))
+	# Association scales with how far the listener believes the base claim.
+	var kt1 = g.add_card({"kind": "conversation", "subject": [a, c], "block": "docks", "loc": "wharf", "day": 1, "phase": C.MORNING, "source": "player", "text": "A and C talking d1 (test)"})
+	var kt2 = g.add_card({"kind": "conversation", "subject": [a, c], "block": "square", "loc": "tavern", "day": 2, "phase": C.EVENING, "source": "player", "text": "A and C talking d2 (test)"})
+	var dev = g.file_deduction({"type": "evil", "a": a}, [k1, k3])
+	var asc = g.link_cards([dev, kt1, kt2])
+	var assoc_e = {}
+	for o in asc["options"]:
+		if o["expl"]["kind"] == "associate":
+			assoc_e = o["expl"]
+	_check(not assoc_e.is_empty() and assoc_e["times"] == 2, "association from a deduction plus two conversations")
+	if not assoc_e.is_empty():
+		var La = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]) and not x.ledger.has(assoc_e["base_eid"]))
+		if La.is_empty():
+			La = w.living_good().filter(func(x): return not (x.id in [a, c]) and not x.ledger.has(assoc_e["base_eid"]))
+		var L1 = La[0]
+		var wt_before = Argue._expl_weight(w, L1, assoc_e)
+		Argue.evaluate(w, L1, g.board[dev - 1], g.board, 1.0)
+		var wt_after = Argue._expl_weight(w, L1, assoc_e)
+		print("association weight %.2f -> %.2f once they accept 'A is evil'" % [wt_before, wt_after])
+		_check(wt_after > wt_before, "association grows with belief in the base claim")
+	# Vindication + cascade: D (Gravedigger) says A was the Poisoner on night 2.
+	var e_gd = {"day": 2, "role": "gravedigger", "data": {"executed": a, "role": "poisoner"}, "text": "A was the Poisoner"}
+	var kgd = g.add_card(Mind.info_fact(w, w.by_id[d], e_gd))
+	var dmi = g.file_deduction({"type": "misled", "a": d, "night": 2}, [kgd])
+	var vin = g.link_cards([dmi, kgd])["result"]["matches"].map(func(m): return m["template"])
+	_check("vindication" in vin, "vindication (got %s)" % str(vin))
+	var Lv = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))[-1]
+	var e_a = {"day": 1, "role": "seer", "data": {"pair": [b, c], "yes": true}, "text": "A's seer reading"}
+	Mind.apply_info(w, Lv, w.by_id[a], e_a, 0.5)
+	var rel0 = Mind.reliability(Lv, a, 1)
+	Mind.apply_info(w, Lv, w.by_id[d], e_gd, 0.5)
+	var rel1 = Mind.reliability(Lv, a, 1)
+	Mind.ledger_hear(w, Lv, "test-doubt-d", [[ "disc:%s:2" % d, 0.8, false, "test", ""]], 1.0)
+	var rel2 = Mind.reliability(Lv, a, 1)
+	print("A's readings: reliability %.2f -> %.2f after D's verdict -> %.2f once D is doubted" % [rel0, rel1, rel2])
+	_check(rel1 < rel0 and rel2 > rel1, "doubt cascades: discrediting the Gravedigger restores A's readings")
 	# Timeline and filters.
 	print(g._timeline(""))
 	_check(g.filter_cards("market").size() >= 3, "location filter by block")

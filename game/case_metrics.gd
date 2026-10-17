@@ -9,7 +9,83 @@ static func named_guesses(guesses: Dictionary, role: String) -> Array:
 	ids.sort()
 	return ids
 
-static func summarize(w, snapshot: Dictionary, spoiled: bool) -> Dictionary:
+## Was there evidence pointing at the demon, and where? on_board: cards you held; reachable:
+## held by living townsfolk (true readings, night sightings) or an unsearched true trace.
+## Descriptive only: it says what existed, not that the player should have found it.
+static func demon_evidence(w, board: Array) -> Dictionary:
+	var d: String = w.demon_id
+	var dn = w.by_id[d]
+	var on_board: Array = []
+	for c in board:
+		if c.get("deleted", false) or c.get("kind", "") == "deduction":
+			continue
+		if _points_at(w, c.get("kind", ""), c.get("role", ""), c.get("data", {}), c.get("subject", []), c.get("phase", -1), d):
+			on_board.append(c["n"])
+		elif c.get("kind", "") == "trace" and c.get("block", "") == w.loc_block(dn.history.get(w.time_key(c.get("day", -1), 2), "home:" + dn.home_block)):
+			on_board.append(c["n"])
+	var reachable: Array = []
+	for n in w.npcs:
+		if n.is_evil():
+			continue
+		for e in n.info_log:
+			if not e.get("true", true):
+				continue
+			if _points_at(w, "info", e.get("role", ""), e.get("data", {}), [], -1, d):
+				reachable.append("%s's %s reading (night %d)" % [n.name, e.get("role", ""), e.get("day", -1)])
+		for b in n.beliefs:
+			if b.get("kind", "") == "saw" and b.get("who", "") == d and b.get("phase", -1) == 3:
+				reachable.append("%s saw %s out on night %d" % [n.name, dn.name, b.get("day", -1)])
+	for sid in w.scenes:
+		var sc: Dictionary = w.scenes[sid]
+		if not sc["searched"] and sc["trace_true"]:
+			reachable.append("the unsearched trace at %s" % sc["name"])
+	return {"on_board": on_board, "reachable": reachable}
+
+static func _points_at(w, kind: String, role: String, data: Dictionary, subj: Array, phase: int, d: String) -> bool:
+	match kind:
+		"info":
+			match role:
+				"seer":
+					return data.get("yes", false) and d in data.get("pair", [])
+				"nightwatch":
+					return d in data.get("seen", [])
+				"hearthwitch":
+					return data.get("count", 0) > 0 and d in data.get("nbrs", [])
+		"sighting", "vigil":
+			return phase == 3 and d in subj
+	return false
+
+## Night outcomes: how often the demon was stopped, and by what; how well the Warden did.
+static func night_stats(w) -> Dictionary:
+	var out = {"kills": 0, "blocked_warden": 0, "blocked_veteran": 0, "blocked_ward": 0, "warden_protects": 0,
+		"warden_spotted": 0, "warden_killed": false, "warden_in_play": false}
+	for n in w.npcs:
+		if n.role == "warden":
+			out["warden_in_play"] = true
+	for e in w.dlog.entries:
+		match e["type"]:
+			"kill":
+				out["kills"] += 1
+				if e["data"].get("role", "") == "warden":
+					out["warden_killed"] = true
+			"kill_failed":
+				var why: String = e["data"].get("why", "")
+				if why == "protected_warden":
+					out["blocked_warden"] += 1
+				elif why == "veteran":
+					out["blocked_veteran"] += 1
+				elif why == "protected_player":
+					out["blocked_ward"] += 1
+			"protect":
+				if e["actor"] != "player":
+					out["warden_protects"] += 1
+			"evil_intel":
+				if "likely the Warden" in e.get("reason", ""):
+					out["warden_spotted"] += 1
+	out["warden_hit_rate"] = float(out["blocked_warden"]) / out["warden_protects"] if out["warden_protects"] > 0 else null
+	return out
+
+static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = []) -> Dictionary:
 	var guesses: Dictionary = snapshot.get("guesses", {})
 	var demon_guesses = named_guesses(guesses, "demon")
 	var minion_guesses = named_guesses(guesses, "poisoner")
@@ -50,10 +126,22 @@ static func summarize(w, snapshot: Dictionary, spoiled: bool) -> Dictionary:
 			else:
 				opposed_wrongful += 1
 	var saved: bool = w.game_over and w.winner == "good"
+	var ev = demon_evidence(w, board)
+	var loss_hint = ""
+	if w.game_over and not saved:
+		if demon_correct:
+			loss_hint = "identified_not_persuaded"
+		elif not ev["on_board"].is_empty():
+			loss_hint = "evidence_on_board"
+		elif not ev["reachable"].is_empty():
+			loss_hint = "evidence_reachable"
+		else:
+			loss_hint = "no_evidence"
 	var outcome = "incomplete"
 	if w.game_over:
 		outcome = "identified_and_saved" if saved and demon_correct else "saved_without_identification" if saved else "identified_but_lost" if demon_correct else "lost_without_identification"
-	return {"schema_version": 1, "seed": w.seed_value, "complete": w.game_over, "winner": w.winner,
+	return {"schema_version": 2, "seed": w.seed_value, "loss_hint": loss_hint,
+		"demon_evidence_on_board": ev["on_board"], "demon_evidence_reachable": ev["reachable"], "nights": night_stats(w), "complete": w.game_over, "winner": w.winner,
 		"day": w.day, "reason": w.end_reason, "outcome": outcome, "town_saved": saved,
 		"prediction_eligible": eligible, "prediction_spoiled": spoiled, "prediction": snapshot.duplicate(true),
 		"demon_guesses": demon_guesses, "minion_guesses": minion_guesses,
@@ -83,6 +171,22 @@ static func aggregate(cases: Array) -> Dictionary:
 			totals[key] += c[key]
 		if c["town_saved"]:
 			totals["saved_good_surviving"] += c["good_surviving"]
+	var hints = {}
+	var nights = {"kills": 0, "blocked_warden": 0, "blocked_veteran": 0, "blocked_ward": 0, "warden_protects": 0, "warden_spotted": 0, "warden_killed": 0, "warden_cases": 0}
+	for c in complete:
+		var h: String = c.get("loss_hint", "")
+		if h != "":
+			hints[h] = hints.get(h, 0) + 1
+		var ns: Dictionary = c.get("nights", {})
+		for k in ["kills", "blocked_warden", "blocked_veteran", "blocked_ward", "warden_protects", "warden_spotted"]:
+			nights[k] += ns.get(k, 0)
+		if ns.get("warden_killed", false):
+			nights["warden_killed"] += 1
+		if ns.get("warden_in_play", false):
+			nights["warden_cases"] += 1
+	nights["warden_hit_rate"] = float(nights["blocked_warden"]) / nights["warden_protects"] if nights["warden_protects"] > 0 else null
+	totals["loss_hints"] = hints
+	totals["nights"] = nights
 	totals["win_rate"] = float(totals["town_saved"]) / complete.size() if not complete.is_empty() else null
 	totals["identification_rate"] = float(totals["demon_identified"]) / totals["prediction_eligible"] if totals["prediction_eligible"] > 0 else null
 	totals["execution_wrongful_fraction"] = float(totals["executions_good"]) / totals["executions_total"] if totals["executions_total"] > 0 else null

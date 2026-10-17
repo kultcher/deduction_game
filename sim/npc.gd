@@ -56,6 +56,7 @@ var heard = {}           # card text -> times the player has used it on them (di
 var beliefs: Array = []
 ## Ability results: {day, role, data, text, true:bool, why, shared}
 var info_log: Array = []
+var warden_log = {}          # Warden only: "night" -> who they guarded
 
 ## Claims.
 var claimed_role = ""        # "" = not claimed; "none" = denies a gift

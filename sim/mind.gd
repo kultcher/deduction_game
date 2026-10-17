@@ -147,7 +147,28 @@ static func reliability(n, src: String, night: int) -> float:
 	if src == "":
 		return 1.0
 	var d = maxf(n.discounted.get("%s:%d" % [src, night], 0.0), n.discounted.get(src + ":*", 0.0))
-	return clampf(1.0 - d, 0.0, 1.0)
+	return clampf((1.0 - d) * (1.0 - n.discounted.get(src + ":sus", 0.0)), 0.0, 1.0)
+
+## Someone they now strongly suspect: their earlier readings count for less. Only re-checked
+## at the ledger's re-weighing moments (before votes, at nightfall), not continuously, so
+## readings and suspicion don't chase each other.
+static func refresh_source_doubt(w, n) -> void:
+	if n.is_evil():
+		return
+	var srcs = {}
+	for e in n.ledger.values():
+		if not e["rel"].is_empty() and e["rel"][0] != n.id:
+			srcs[e["rel"][0]] = true
+	for src in srcs:
+		var want = clampf((susp(n, src) - 0.6) * 0.6, 0.0, 0.5)
+		var key = src + ":sus"
+		if absf(want - n.discounted.get(key, 0.0)) < 0.05:
+			continue
+		n.discounted[key] = want
+		w.dlog.think(n.id, "poison_belief", "Suspects %s (%.2f): their readings now count %.0f%% less." % [src, susp(n, src), want * 100.0])
+		for e in n.ledger.values():
+			if not e["rel"].is_empty() and e["rel"][0] == src:
+				_ledger_refresh(w, n, e, " (suspects the source)")
 
 ## Take in a piece of evidence or an argument. Hearing the same thing again only raises
 ## its weight to the stronger hearing; it never stacks. rel = [source, night] if the
@@ -174,7 +195,16 @@ static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: A
 		e["meta"]["w0"] = e["weight"]
 	return {"fresh": fresh, "gain": maxf(0.0, weight - old_w), "times": times}
 
+static var _depth = 0  # guards doubt cascades (A doubts B doubts A ...)
+
 static func _ledger_refresh(w, n, e: Dictionary, note: String) -> void:
+	if _depth > 6:
+		return
+	_depth += 1
+	_ledger_refresh_inner(w, n, e, note)
+	_depth -= 1
+
+static func _ledger_refresh_inner(w, n, e: Dictionary, note: String) -> void:
 	var r = 1.0
 	if not e["rel"].is_empty():
 		r = reliability(n, e["rel"][0], e["rel"][1])
@@ -326,6 +356,10 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 		"gravedigger":
 			var ex = w.by_id[d["executed"]]
 			var ex_good: bool = C.ROLES[d["role"]]["align"] == "good"
+			if not ex_good and ex.id != listener.id:
+				# If they were evil, whatever they told us was a lie. This doubt is scaled by how
+				# reliable the Gravedigger looks, so discrediting the Gravedigger gives it back.
+				_eff(effs, "disc:%s:*" % ex.id, 0.7, tag + ": %s was evil (%s), so their readings were lies" % [ex.id, d["role"]], "", false)
 			for e in w.executions:
 				if e["id"] == ex.id:
 					var nom: String = e["nominator"]
@@ -601,6 +635,7 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 	if v.is_evil():
 		return Evil.evil_vote(w, v, nominee, yes_so_far)
 	reconsider(w, v, "thinking it over before the vote")
+	refresh_source_doubt(w, v)
 	var base = susp(v, nominee)
 	var s = base
 	var parts = {"suspicion": snappedf(base, 0.01)}
@@ -875,9 +910,27 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(block)))
 		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
 			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(block), nd]})
+	elif n.claimed_role == "warden" and (n.claim_public or n.max_tier >= 3) and (n.role == "warden" or n.is_evil()):
+		# An open Warden says whose door they guarded; an evil one bluffing it invents a door
+		# on the block they were really on (or anyone, if they stayed in).
+		var guarded: String = n.warden_log.get(str(nd), "")
+		if n.is_evil():
+			var cands: Array = w.living().filter(func(m): return m != n and not Evil.is_teammate(w, n, m.id) and (not was_out or m.home_block == block))
+			if cands.is_empty():
+				cands = w.living().filter(func(m): return m != n and not Evil.is_teammate(w, n, m.id))
+			guarded = cands[w.rng.randi_range(0, cands.size() - 1)].id if not cands.is_empty() else ""
+			w.dlog.think(n.id, "lie", "Evil bluffing Warden: claims to have guarded %s on night %d." % [guarded, nd], {"lie": true})
+		if guarded != "" and w.by_id.has(guarded):
+			var gb: String = w.by_id[guarded].home_block
+			lines.append(say(n, "Standing guard at %s's door, as my gift asks." % w.by_id[guarded].name))
+			facts.append({"kind": "sighting", "subject": [n.id], "block": gb, "day": nd, "phase": C.NIGHT, "source": n.id, "guard_claim": guarded,
+				"text": "%s says they guarded %s's door (on %s) on night %d." % [n.name, w.by_id[guarded].name, C.block_name(gb), nd]})
+		else:
+			lines.append(say(n, "At home, asleep, same as any honest soul."))
+			facts.append(_alibi_home(n, nd))
 	else:
 		# Out with something to hide: evil work, a personal secret, or a hidden Night Watch gift.
-		var hiding = "evil work" if n.is_evil() else ("hidden Night Watch gift" if n.role == "nightwatch" else "secret: %s" % n.secret.get("kind", "?"))
+		var hiding = "evil work" if n.is_evil() else ("hidden Night Watch gift" if n.role == "nightwatch" else "hidden Warden gift" if n.role == "warden" else "secret: %s" % n.secret.get("kind", "?"))
 		var can_confess = not n.is_evil() and not n.secret.is_empty()
 		var confess = false
 		if can_confess:
@@ -1210,9 +1263,12 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	return {"lines": lines, "facts": []}
 
 ## The player speaks for someone in private, citing a card ("present <card#> for <name>").
-static func hear_defence(w, n, who, card: Dictionary) -> Dictionary:
+static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
+	var group: Array = whos if whos is Array else [whos]
+	var who = group[0]
+	var gname: String = who.name if group.size() == 1 else " and ".join(PackedStringArray(group.map(func(x): return x.name)))
 	if n.is_evil():
 		var r = w.rng.randf()
 		if who.is_evil():
@@ -1220,20 +1276,58 @@ static func hear_defence(w, n, who, card: Dictionary) -> Dictionary:
 		else:
 			lines.append(say(n, "Maybe. I'll keep an open mind about %s." % who.name if r < 0.7 else "That doesn't clear %s." % who.name))
 		return {"lines": lines, "facts": []}
-	var cw = card_weight(w, n, who, card)
-	var strength = defend_strength(card, who.id)
-	var base: float = 0.3 * cw["cred"] * cw["class_w"] * strength * (0.35 if n.ledger.has(cw["key"]) else 1.0)
-	var effs: Array = []
-	_eff(effs, who.id, -1.0, "the Demonologist spoke for them, citing '%s'" % cw["key"])
-	var h = ledger_hear(w, n, "for:%s>%s" % [cw["key"], who.id], effs, base * (0.5 + n.trust), [], {"kind": "tell", "base": base, "text": card.get("text", "")})
+	var h = {"times": 0, "gain": 0.0}
+	var strength = 0.0
+	for x in group:
+		var cw = card_weight(w, n, x, card)
+		var st = defend_strength(card, x.id)
+		strength = maxf(strength, st)
+		var base: float = 0.3 * cw["cred"] * cw["class_w"] * st * (0.35 if n.ledger.has(cw["key"]) else 1.0) / group.size()
+		var effs: Array = []
+		_eff(effs, x.id, -1.0, "the Demonologist spoke for them, citing '%s'" % cw["key"])
+		var hx = ledger_hear(w, n, "for:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), [], {"kind": "tell", "base": base, "text": card.get("text", "")})
+		h["times"] = maxi(h["times"], hx["times"])
+		h["gain"] += hx["gain"]
 	if h["times"] > 0:
 		lines.append(say(n, "You've told me that already."))
 	elif strength < 0.2:
-		lines.append(say(n, "That doesn't clear %s." % who.name))
+		lines.append(say(n, "That doesn't clear %s." % gname))
 	elif h["gain"] >= 0.12:
-		lines.append(say(n, "Fair enough. I'll think better of %s." % who.name))
+		lines.append(say(n, "Fair enough. I'll think better of %s." % gname))
 	else:
-		lines.append(say(n, "Maybe. I'll keep an open mind about %s." % who.name))
+		lines.append(say(n, "Maybe. I'll keep an open mind about %s." % gname))
+	return {"lines": lines, "facts": []}
+
+## A card that implicates one of several people (a Seer "yes" on two): the case is split
+## between them. Evil hears it through the usual mask.
+static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
+	on_question(w, n)
+	var lines: Array = []
+	var gname = " and ".join(PackedStringArray(group.map(func(x): return x.name)))
+	if n.is_evil():
+		for x in group:
+			if x.is_evil():
+				Evil.add_intel(w, n, "player_suspects", x.id, 0.0, "the Demonologist thinks it's one of %s" % gname)
+		lines.append(say(n, "Maybe. I'll keep an eye on them both." if w.rng.randf() < 0.6 else "That... does look bad for one of them."))
+		return {"lines": lines, "facts": []}
+	var gain = 0.0
+	var times = 0
+	for x in group:
+		var cw = card_weight(w, n, x, card)
+		var known = 0.35 if n.ledger.has(cw["key"]) else 1.0
+		var base: float = 0.35 * cw["cred"] * card_strength(w, card, x) * cw["class_w"] * known / group.size()
+		var effs: Array = []
+		_eff(effs, x.id, 1.0, "player's case that one of %s is guilty, citing '%s'" % [gname, cw["key"]], "the Demonologist made a case against them")
+		var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), [], {"kind": "tell", "base": base, "text": card.get("text", "")})
+		n.used_facts[cw["key"] + ">" + x.id] = true
+		gain += h["gain"]
+		times = maxi(times, h["times"])
+	if times > 0:
+		lines.append(say(n, "You've told me that already."))
+	elif gain >= 0.12:
+		lines.append(say(n, "That... does look bad for one of them."))
+	else:
+		lines.append(say(n, "Maybe. I'll keep an eye on them both."))
 	return {"lines": lines, "facts": []}
 
 ## A card-backed public statement on a nomination: every voter weighs it (more weakly than
