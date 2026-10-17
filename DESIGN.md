@@ -722,6 +722,10 @@ paths within blocks, planting by a Framer, NPCs searching.
   contradiction). Evil's invented sightings follow the same rule: from their own window,
   or while out on a night-active bluff (a Night Watch's watched block, a Warden's
   guarded door); a liar who refused to say where they were invents nothing.
+- **To do: more ways to discover and confront secrets.** Today a secret surfaces only if the
+  holder confesses when asked about a night, or someone gossips it. Needed: more routes to
+  find one (sightings that don't fit, a confidant, physical evidence such as a personal
+  item) and ways to confront someone with it, as a card, and to use it as leverage.
 - **Filed:** an open Warden saying "I saw X out while I stood guard" (strong; maybe too
   strong).
 - Alibis **name a corroborator** ("I was with Jory"). The corroborator confirms or denies,
