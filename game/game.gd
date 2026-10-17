@@ -29,6 +29,7 @@ var last_link = {}          # result of the last 'link' (for 'conclude <number>'
 var notes = {}              # npc id -> player's note
 var guesses = {}            # npc id -> {guess, confidence 1..3}
 var show_hidden = false     # include cards the player has hidden
+var ward_log = {}           # night -> who you warded
 var last_error = ""         # why the last file_deduction was refused
 var log_dir = "user://logs"
 var log_paths: Array = []
@@ -311,12 +312,11 @@ func _resolve_go(target: String) -> String:
 		return _best_location_on(b)
 	var n = find_npc(target)
 	if n != null:
-		# Exact spot known if they're working, in a visible conversation, or nearby.
-		if n.working or n.busy_with != "" or (moved and w.loc_block(n.loc) == w.loc_block(loc)):
-			return n.loc
+		# Go straight to them: anyone out on a block can be seen from either location there,
+		# so walking to their exact spot reveals nothing you wouldn't see on arrival.
 		if n.at_home():
 			return "home_" + n.id
-		return _best_location_on(w.loc_block(n.loc))
+		return n.loc
 	return ""
 
 func _best_location_on(b: String) -> String:
@@ -398,7 +398,7 @@ func _day_command(verb: String, rest: String) -> void:
 				var said: String = n.remarks.pop_front()
 				w.dlog.think(n.id, "reconsider", "Tells the player they've come round to %s." % said)
 				_lines([Mind.say(n, "I didn't put much stock in %s. After all that's happened since... perhaps I should have." % said)])
-			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask today | ask about <name or gift> | tell <suspect> <card#> | bye)" % n.name)
+			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask today | ask about <name or gift> | tell <suspect> <card#> | press <card#> | convince <deduction#> | bye)" % n.name)
 		"search", "s":
 			if not moved:
 				_err("First choose where to spend this phase ('go <place>').")
@@ -466,6 +466,9 @@ func _observe() -> void:
 		var there: Array = w.npcs_at(other)
 		if not there.is_empty():
 			_narr("Nearby, at %s: %s." % [w.loc_name(other), _who_here(other)])
+			_facts([{"kind": "sighting", "subject": there.map(func(x): return x.id), "block": w.loc_block(other), "loc": other, "day": w.day,
+				"phase": w.phase, "source": "player", "text": "You saw %s nearby at %s, day %d %s." %
+				[", ".join(PackedStringArray(there.map(func(x): return x.name))), w.loc_name(other), w.day, w.phase_name()]}])
 	if w.scenes.has(l):
 		_narr("This is where %s was killed. ('search' to examine it.)" % w.by_id[w.scenes[l]["victim"]].name)
 	var acts = "Actions: talk <name> | search%s | wait" % (" | gossip" if l == "tavern" else "")
@@ -552,6 +555,7 @@ func _approach_command(verb: String, rest: String) -> void:
 func _phase_header() -> void:
 	_hdr("Day %d, %s" % [w.day, w.phase_name()])
 	_screen(_map())
+	_card_conversations()
 	_prompt("Where will you spend the %s? ('go <place | block | person>')" % w.phase_name().to_lower())
 
 # ---------------------------------------------------------------- conversation
@@ -596,6 +600,16 @@ func _talk_command(verb: String, rest: String) -> void:
 			r = Argue.evaluate(w, n, board[num0 - 1], board, 1.0)
 			r["facts"] = []
 			Mind.on_question(w, n)
+		"press", "confront":
+			var num1 = rest.strip_edges().trim_prefix("#").to_int()
+			if num1 < 1 or num1 > board.size() or board[num1 - 1].get("deleted", false):
+				_err("Press them with which card? ('press <card#>': a card or deduction about them)")
+				return
+			var pc: Dictionary = board[num1 - 1].duplicate()
+			if pc["kind"] == "deduction":
+				pc["support_cards"] = board.filter(func(x): return x["n"] in pc["supports"])
+				_secrets_used(pc)
+			r = Mind.press(w, n, pc)
 		"tell", "accuse":
 			var p = rest.split(" ", false)
 			if p.size() < 2:
@@ -607,7 +621,7 @@ func _talk_command(verb: String, rest: String) -> void:
 				_err("Who is suspicious?")
 				return
 			if s == n:
-				_err("Accusing %s to their own face? Try someone else." % n.name)
+				_err("To confront %s with a card about them, use 'press <card#>'." % n.name)
 				return
 			if num < 1 or num > board.size():
 				_err("No such card on your board.")
@@ -833,6 +847,7 @@ func _night_command(verb: String, rest: String) -> void:
 				return
 			w.tools["ward"] -= 1
 			w.player_ward = n.id
+			ward_log[w.day] = n.id
 			w.player_vigil = ""
 			_narr("You chalk a warding sigil on %s's door." % n.name)
 			_resolve_night()
@@ -880,6 +895,11 @@ func _morning_report() -> void:
 	if w.day > 1 or not w.deaths_last_night.is_empty():
 		if w.deaths_last_night.is_empty():
 			_narr("Dawn breaks. Nobody died in the night.")
+			var nq = w.day - 1
+			if nq >= 1:
+				var wd: String = ward_log.get(nq, "")
+				_facts([{"kind": "quiet", "subject": [], "night": nq, "day": nq, "phase": C.NIGHT, "source": "player", "ward": wd,
+					"text": "Nobody died on night %d%s." % [nq, (" (you had warded %s)" % w.by_id[wd].name) if wd != "" else ""]}])
 		for id in w.deaths_last_night:
 			var v = w.by_id[id]
 			_narr("Dawn breaks over a body: %s the %s was killed in the night. Their cottage on %s is now a crime scene." %
@@ -887,6 +907,7 @@ func _morning_report() -> void:
 			_facts([{"kind": "death", "subject": [id], "block": v.home_block, "source": "player", "night": w.day - 1,
 				"text": "%s was killed by the demon on night %d (home on %s)." % [v.name, w.day - 1, C.block_name(v.home_block)]}])
 	_screen(_map())
+	_card_conversations()
 	_prompt("%d townsfolk remain. Where will you spend the morning? ('go <place | block | person>', 'help')" % w.living().size())
 
 # ---------------------------------------------------------------- info screens
@@ -945,6 +966,20 @@ func _look() -> void:
 			_narr("Night falls. %svigil <block> | sleep" % ("ward <name> | " if w.tools["ward"] > 0 else ""))
 		_:
 			_narr("The case is over.")
+
+## Conversations visible on the town view become cards (who was talking with whom, where).
+func _card_conversations() -> void:
+	var done = {}
+	var facts: Array = []
+	for n in w.living():
+		if n.busy_with == "" or done.has(n.id) or n.at_home():
+			continue
+		var m = w.by_id[n.busy_with]
+		done[m.id] = true
+		facts.append({"kind": "conversation", "subject": [n.id, m.id], "block": w.loc_block(n.loc), "loc": n.loc, "day": w.day, "phase": w.phase,
+			"source": "player", "text": "You saw %s and %s talking at %s, day %d %s." % [n.name, m.name, w.loc_name(n.loc), w.day, w.phase_name()]})
+	if not facts.is_empty():
+		_facts(facts)
 
 ## Current-phase view of the town: workers and conversations exactly; others by block.
 func _map() -> String:
@@ -1005,6 +1040,11 @@ func _profile(token: String) -> String:
 	for t in C.TRAITS:
 		tl.append("%s: %s" % [t.capitalize(), n.revealed_traits.get(t, "?")])
 	out.append("Traits: " + ", ".join(tl))
+	var cl = _claim_text(n)
+	if cl != "":
+		out.append(cl.substr(0, 1).to_upper() + cl.substr(1))
+	for x in named_in(n.id):
+		out.append("Readings say: " + x)
 	if guesses.has(n.id):
 		var gg: Dictionary = guesses[n.id]
 		out.append("Your guess: %s (confidence %d/3)" % [C.role_name(gg["guess"]) if C.ROLES.has(gg["guess"]) else gg["guess"], gg["confidence"]])
@@ -1435,18 +1475,53 @@ func set_note(id: String, text: String) -> void:
 func set_guess(id: String, guess: String, confidence: int) -> void:
 	guesses[id] = {"guess": guess, "confidence": clampi(confidence, 1, 3)}
 
+## What readings on your board say this person might be ("possible: the Warden, per
+## Dorian's Clerk reading, with Constance").
+func named_in(id: String) -> Array:
+	var out: Array = []
+	for c in board:
+		if c["kind"] != "info" or c.get("deleted", false) or not w.by_id.has(c.get("source", "")):
+			continue
+		var d: Dictionary = c.get("data", {})
+		var pair: Array = d.get("pair", [])
+		if not (id in pair) or c["source"] == id:
+			continue
+		var other = ""
+		for x in pair:
+			if x != id:
+				other = w.by_id[x].name if w.by_id.has(x) else x
+		var src: String = w.by_id[c["source"]].name
+		var what = ""
+		match c.get("role", ""):
+			"clerk":
+				what = "the " + C.role_name(d.get("role", ""))
+			"archivist":
+				what = "the Poisoner"
+			"seer":
+				what = "the demon" if d.get("yes", false) else "not the demon (cleared)"
+		if what == "":
+			continue
+		var lead = "" if what.begins_with("not") else "possibly "
+		out.append("%s%s (#%d: %s's %s reading, night %d%s)" % [lead, what, c["n"], src, C.role_name(c["role"]), c.get("day", 0),
+			(", with " + other) if other != "" else ""])
+	return out
+
+func _claim_text(n) -> String:
+	if n.claim_public:
+		return "claims (public): " + C.role_name(n.claimed_role)
+	elif n.max_tier >= 3:
+		return "told you: " + C.role_name(n.claimed_role)
+	elif n.max_tier == 2:
+		return "hinted: " + C.package_of(w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role).replace("_", " ")
+	elif n.claimed_role == "none":
+		return "told you: no gift"
+	return ""
+
 func profile_data(id: String) -> Dictionary:
 	var n = w.by_id[id]
-	var claim = ""
-	if n.claim_public:
-		claim = "claims (public): " + C.role_name(n.claimed_role)
-	elif n.max_tier >= 3:
-		claim = "told you: " + C.role_name(n.claimed_role)
-	elif n.max_tier == 2:
-		claim = "hinted: " + C.package_of(w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role).replace("_", " ")
-	elif n.claimed_role == "none":
-		claim = "told you: no gift"
+	var claim = _claim_text(n)
 	var status = "alive" if n.alive else ("killed by the demon, night %d" % n.death_day if n.death_cause == "demon" else "executed, day %d" % n.death_day)
 	return {"id": id, "name": n.name, "occupation": n.occupation, "blurb": n.blurb, "work": "%s at %s" % [C.phase_list(n.work_phases), w.loc_name(n.work)],
 		"home": C.block_name(n.home_block), "status": status, "traits": n.revealed_traits.duplicate(), "claim": claim,
-		"guess": guesses.get(id, {}), "note": notes.get(id, ""), "cards": filter_cards(id).map(func(c): return c["n"])}
+		"guess": guesses.get(id, {}), "note": notes.get(id, ""), "cards": filter_cards(id).map(func(c): return c["n"]),
+		"named": named_in(id)}

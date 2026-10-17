@@ -446,7 +446,8 @@ func _day_sightings() -> void:
 			var same_block: bool = loc_block(a.loc) == loc_block(b.loc)
 			if same_loc or (same_block and chance(0.4)):
 				a.beliefs.append({"kind": "saw", "who": b.id, "loc": b.loc if same_loc else "",
-					"block": loc_block(b.loc), "day": day, "phase": phase})
+					"block": loc_block(b.loc), "day": day, "phase": phase,
+					"with": b.busy_with if same_loc and b.busy_with != a.id else ""})
 
 ## Advance to the next day phase. Returns false at the end of Evening.
 func end_day_phase(talked_id: String = "") -> bool:
@@ -680,6 +681,8 @@ func resolve_night() -> void:
 		else:
 			dlog.add("kill_failed", demon_id, kill_t, {"why": outcome}, "The demon's attack on %s failed (%s)." % [v.name, outcome])
 
+	if day >= 1 and deaths_last_night.is_empty():
+		_quiet_night()
 	for n in living_good():
 		if C.ROLES[n.role]["kind"] == "info":
 			_receive_info(n, watch_block)
@@ -691,6 +694,21 @@ func resolve_night() -> void:
 	player_ward = ""
 	snapshot("night_end")
 	_check_parity()
+
+## Nobody died: a point in favour of whoever publicly claims to protect (Warden) or to be
+## unkillable (Veteran). Evil can claim these too, so it's evidence, not proof.
+func _quiet_night() -> void:
+	dlog.add("quiet_night", "world", "", {"night": day}, "Nobody died on night %d." % day)
+	for pc in public_claims:
+		if not (pc["role"] in ["warden", "veteran"]) or not by_id[pc["who"]].alive:
+			continue
+		for l in living_good():
+			if l.id == pc["who"]:
+				continue
+			var e: Array = []
+			Mind._eff(e, pc["who"], -0.15 if pc["role"] == "warden" else -0.06,
+				"nobody died on night %d, and they claim the %s" % [day, C.role_name(pc["role"])])
+			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0)
 
 func _night_movement(poison_t: String, kill_t: String, watch, watch_block: String) -> void:
 	night_walkers = []

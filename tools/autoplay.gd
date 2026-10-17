@@ -15,6 +15,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Argue = preload("res://sim/argue.gd")
+const Mind = preload("res://sim/mind.gd")
 
 var g
 var transcript = false
@@ -240,9 +241,17 @@ func _decide() -> String:
 					return "convince %d" % dd
 			var ts = _top_suspect()
 			if ts[0] != null and ts[1] >= 0.8 and ts[0] != n:
+				# Use the strongest card against them.
+				var best_c = 0
+				var best_v = 0.25
 				for c in g.board:
-					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and c["kind"] != "vote" and c["kind"] != "secret":
-						return "tell %s %d" % [ts[0].id, c["n"]]
+					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and not (c["kind"] in ["vote", "secret", "deduction", "conversation"]):
+						var v: float = Mind.card_strength(w, c, ts[0])
+						if v > best_v:
+							best_v = v
+							best_c = c["n"]
+				if best_c > 0:
+					return "tell %s %d" % [ts[0].id, best_c]
 			if rng.randf() < 0.25:
 				return "ask about " + ["seer", "gravedigger", "archivist", "night watch", "hearthwitch"][rng.randi_range(0, 4)]
 			var others: Array = w.living().filter(func(m): return m != n)
@@ -335,7 +344,10 @@ func _find_or_file_deduction() -> int:
 			var best_s = -99.0
 			for k in range(lk["options"].size()):
 				var b: String = lk["options"][k]["expl"].get("blame", "")
-				var s2 = sc.get(b, 0.0) + (0.3 if lk["options"][k]["expl"]["kind"] == "misled" else 0.0)
+				var ek: String = lk["options"][k]["expl"]["kind"]
+				var s2 = sc.get(b, 0.0) + (0.3 if ek == "misled" else 0.0)
+				if ek in ["clear", "herring"]:
+					s2 = -sc.get(b, 0.0) - 0.2  # clearing someone: prefer the least suspicious
 				if s2 > best_s:
 					best_s = s2
 					best = k

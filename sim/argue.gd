@@ -95,6 +95,18 @@ static func assertions(card: Dictionary) -> Array:
 			out.append({"t": "killed", "who": subj[0], "night": card.get("night", day - 1), "src": src, "card": n})
 		"trace":
 			out.append({"t": "trace", "block": card.get("block", ""), "day": day, "src": src, "card": n})
+		"conversation":
+			for who in subj:
+				out.append({"t": "at", "who": who, "block": card.get("block", ""), "day": day, "phase": ph, "src": src, "card": n})
+		"quiet":
+			out.append({"t": "quiet", "night": card.get("night", day), "ward": card.get("ward", ""), "src": src, "card": n})
+		"hint":
+			if card.get("package", "") == "shelter":
+				out.append({"t": "shelter_hint", "who": subj[0], "src": src, "card": n})
+		"execution":
+			# Hanged and the case went on: whoever it was, they weren't the demon.
+			if not subj.is_empty():
+				out.append({"t": "not_demon", "who": subj[0], "src": src, "card": n})
 	return out
 
 # ---------------------------------------------------------------- templates
@@ -197,6 +209,8 @@ static func _clear(w, who: String, c: Dictionary, label: String) -> Dictionary:
 static func _cleared_how(a: Dictionary) -> String:
 	if a["t"] == "killed":
 		return "killed by the demon on night %d" % a["night"]
+	if a["t"] == "not_demon":
+		return "hanged without ending the case, so not the demon"
 	return "shown to be the %s after their execution" % C.role_name(a["role"])
 
 ## Corroboration and inference: cards that don't conflict but, together, point somewhere.
@@ -206,7 +220,7 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 	var cards: Array = [a["card"], b["card"]]
 	cards.sort()
 	# Pair elimination: a reading names two people; one is cleared, which leaves the other.
-	if ta == "reading" and (tb == "killed" or (tb == "was_role" and C.ROLES.get(b["role"], {}).get("align", "") == "good")):
+	if ta == "reading" and (tb == "killed" or (tb == "not_demon" and a["role"] == "seer") or (tb == "was_role" and C.ROLES.get(b["role"], {}).get("align", "") == "good")):
 		var d: Dictionary = a["data"]
 		var pair: Array = []
 		if a["role"] == "seer" and d.get("yes", false):
@@ -250,6 +264,25 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 				_clear(w, b["src"], {"type": "truthful", "card": b["card"]}, "%s is telling the truth" % _nm(w, b["src"]))], a["who"], [])
 			m3["relation"] = "corroboration"
 			return m3
+	# Nobody died, and someone claims (or hints at) a protective gift.
+	if ta == "quiet" and tb in ["claim", "shelter_hint"] and (tb == "shelter_hint" or b["role"] in ["warden", "veteran"]):
+		var who: String = b["who"]
+		var ward_note = ""
+		if a["ward"] != "":
+			ward_note = " (you had warded %s that night)" % _nm(w, a["ward"])
+		var expls5: Array = []
+		var what = "a protective gift" if tb == "shelter_hint" else "the " + C.role_name(b["role"])
+		if tb == "claim":
+			expls5.append(_clear(w, who, {"type": "role", "role": b["role"]}, "%s is %s, and it worked" % [_nm(w, who), what]))
+			expls5.append(_notrole(w, who, b["role"]))
+			expls5[1]["label"] += " (the quiet night had another cause%s)" % (": your ward, or the demon held back" if ward_note != "" else ", or the demon held back")
+		else:
+			expls5.append(_clear(w, who, {"type": "role", "role": "warden"}, "%s is the Warden" % _nm(w, who)))
+			expls5.append(_clear(w, who, {"type": "role", "role": "veteran"}, "%s is the Veteran" % _nm(w, who)))
+			expls5.append(_lied(w, who, b["card"]))
+		var m5 = _mk(w, "quiet_night", "Nobody died on night %d%s, and %s claims %s." % [a["night"], ward_note, _nm(w, who), what], cards, expls5, who, [])
+		m5["relation"] = "corroboration"
+		return m5
 	# A death-scene trace points to a block for the evening; someone was there then.
 	if ta == "trace" and tb == "at" and b["block"] == a["block"] and b["day"] == a["day"] and b["phase"] == C.EVENING:
 		var m4 = _mk(w, "trace_match", "The trace says the killer spent the evening of day %d on %s, and %s was there." %
@@ -600,7 +633,17 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 				seen = true
 		lines.append(_evil_mask(w, n, c, times, seen))
 		return {"lines": lines, "agreement": 0.0}
-	if target == n and c["type"] in ["evil", "demon", "lied", "notrole", "unreliable"]:
+	var self_misled = target == n and c["type"] in ["misled", "unreliable"]
+	if self_misled:
+		# They know they aren't lying, so "misled or lying" reads as "misled" to them.
+		# Whether they accept their gift failed depends on how sure of themselves they are.
+		c = c.duplicate()
+		c["type"] = "misled"
+		ded = ded.duplicate()
+		ded["conclusion"] = c
+		agreement = 0.35 + 0.55 * (1.0 - Mind.trait_of(n, "confidence"))
+		reason = "self_misled"
+	elif target == n and c["type"] in ["evil", "demon", "lied", "notrole"]:
 		agreement = 0.0
 		reason = "it's about me, and I know it's false"
 		Mind.set_trust(w, n, n.trust - 0.05, "the Demonologist argued against me to my face")
@@ -667,6 +710,9 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 		[n.name, ded["text"], agreement, m, (" (" + reason + ")") if reason != "" else ""])
 	if times > 0:
 		lines.append(Mind.say(n, "You've told me that already."))
+	elif self_misled:
+		lines.append(Mind.say(n, "I'm no liar. But my gift may have failed me; I'll grant that." if agreement >= 0.5 else
+			"I'm no liar, and I trust what my gift showed me. But I'll think on it."))
 	elif agreement >= 0.6 and m >= 0.1:
 		lines.append(Mind.say(n, "That's sound. " + _paraphrase(w, c)))
 	elif agreement >= 0.6 and gain < 0.02:
@@ -778,6 +824,9 @@ static func _evil_mask(w, n, c: Dictionary, times: int, seen: bool) -> Dictionar
 	var accusing = c["type"] in ["evil", "demon", "lied", "notrole", "unreliable"]
 	var serves = 0.5
 	if target != null:
+		if target == n and c["type"] in ["misled", "unreliable"]:
+			return Mind.say(n, "I'm no liar. But my gift may have failed me; I'll grant that." if w.rng.randf() < 0.5 else
+				"I'm no liar, and I trust what my gift showed me. But I'll think on it.")
 		if target == n and accusing:
 			return Mind.say(n, "I don't buy it: it's about me, and I know it's false.")
 		if target.is_evil():

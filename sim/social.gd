@@ -364,6 +364,14 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 	if mine == role and (n.claim_public or n.max_tier >= 3):
 		lines.append(Mind.say(n, "That would be me."))
 		return {"lines": lines, "facts": facts}
+	# Asking the holder directly: they decide whether to own up (a little more readily,
+	# since you've guessed). If they won't, they answer like anyone else would.
+	if mine == role:
+		var tier: int = Mind._target_tier(w, n) + (1 if w.rng.randf() < 0.5 else 0)
+		w.dlog.think(n.id, "about_role", "Asked about their own gift (%s): disclosure tier %d." % [role, tier])
+		if tier >= 2:
+			n.pressed_today -= 1  # answer_gift counts the question again
+			return Mind.answer_gift(w, n, mini(tier, 4))
 	var public: Array = w.public_claims.filter(func(c): return c["role"] == role and w.by_id[c["who"]].alive).map(func(c): return w.by_id[c["who"]].name)
 	var text = ""
 	if not public.is_empty():

@@ -591,6 +591,13 @@ player). Both use the same roll (lower Insight, more often vague).
 ### Confrontation, alibis and confessions
 - The player can **confront** an NPC with evidence. The NPC may confess the true reason
   (including a personal secret like a gambling debt), lie, or name an alibi.
+  **v1 built (`press <card#>`):** raises pressure in proportion to the card's strength;
+  a night card makes them account for that night (existing confess/lie/stonewall logic),
+  a card about their gift re-runs the disclosure decision (a true Clerk naming opens them
+  up), a rival's claim of their gift makes them restate it and turn on the rival. Nerves
+  show with probability ~ (hiding ? 0.6 : 0.2) × (1 − Composure) × strength, so they're a
+  hint, not a tell. Costs trust (Privacy-scaled) unless the card names them favourably.
+  Named alibis and corroborators are still to come.
 - Alibis **name a corroborator** ("I was with Jory"). The corroborator confirms or denies,
   which can produce a word-against-word contradiction card.
 - Evil may claim a false secret ("I was meeting Jory for an affair"), or name someone they
@@ -706,6 +713,19 @@ player). Both use the same roll (lower Insight, more often vague).
 - Keep the 7-person town until the core loop reliably works: form a hypothesis, choose an
   investigation that tests it, revise, make a consequential argument. 12–15 people with
   the same three actions a day may make relationship-building too expensive.
+
+## Directions noted from playtests (not built yet)
+
+- **Caution tied to the gift.** Gifts that pay off over many nights (Seer, Hearthwitch)
+  should stay quiet early; one-shot first-night gifts (Clerk, Archivist) have less to lose.
+- **Warden and demon are too correlated.** Both favour "the most valuable trusted info
+  claimant", so the Warden guesses the demon's target too often (2-for-2 in case 22111).
+  The demon should sometimes avoid the obvious target when a Warden may be in play; the
+  Warden's choice should be noisier.
+- **A claims/reveals timeline** alongside the location timeline (cards per person per
+  slot, with shortcuts), for the full UI.
+- Who you saw nearby is now on the cards. Anonymising unseen people ("someone") would be
+  a broader visibility redesign; revisit only if the town view gives away too much.
 
 ## Testing baselines
 

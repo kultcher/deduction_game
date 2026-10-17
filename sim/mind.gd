@@ -622,6 +622,70 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 	w.dlog.think(v.id, "vote", "%s on %s (score %.2f vs %.2f)." % ["YES" if yes else "no", nominee, s, need], parts)
 	return yes
 
+# ---------------------------------------------------------------- pressing
+
+## "press <card>": confront someone with a card or deduction about them. It raises the
+## pressure on them (which loosens tongues and secrets) and asks them to answer it: where
+## they were that night, or what their gift really is. Anyone with something to hide may
+## show nerves, and so, less often, may an innocent who's simply rattled.
+static func press(w, n, card: Dictionary) -> Dictionary:
+	var lines: Array = []
+	var facts: Array = []
+	var c: Dictionary = card.get("conclusion", {})
+	var subj: Array = card.get("subject", [])
+	var pair: Array = card.get("data", {}).get("pair", [])
+	var about_me = n.id in subj or c.get("a", "") == n.id or n.id in pair
+	if not about_me:
+		on_question(w, n)
+		lines.append(say(n, "What has that to do with me?"))
+		return {"lines": lines, "facts": facts}
+	var kind: String = card.get("kind", "")
+	var d: Dictionary = card.get("data", {})
+	# What is the card pushing on: their night, or their gift?
+	var night = -1
+	if kind in ["sighting", "secret"] and card.get("phase", -1) == C.NIGHT and card.get("source", "") != n.id:
+		night = card.get("day", -1)
+	elif kind == "deduction" and c.get("type", "") in ["lied", "unreliable"]:
+		for x in card.get("support_cards", []):
+			if x.get("phase", -1) == C.NIGHT:
+				night = x.get("day", -1)
+	var naming_me = kind == "info" and card.get("role", "") == "clerk" and n.id in pair  # "one of you two is the X"
+	var counter = kind == "claim" and card.get("source", "") != n.id and n.claim_public and card.get("role", "") == n.claimed_role
+	var strength = 0.6 if kind == "deduction" else clampf(card_strength(w, card, n), 0.3, 1.0)
+	if naming_me:
+		strength = 0.5
+	# Hiding something this card touches?
+	var mine: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	var hiding = n.is_evil() or (night >= 0 and not n.secret.is_empty()) or (night < 0 and n.max_tier < 3 and not n.claim_public and C.ROLES[mine]["kind"] != "evil")
+	var p_nerves = (0.6 if hiding else 0.2) * (1.0 - trait_of(n, "composure")) * strength
+	var nervous = w.rng.randf() < p_nerves
+	w.dlog.think(n.id, "pressed", "Pressed with '%s' (strength %.2f; hiding %s; nerves p=%.2f -> %s)." %
+		[card.get("text", ""), strength, str(hiding), p_nerves, str(nervous)], {"night": night, "naming_me": naming_me, "counter": counter})
+	n.pressure += 0.35 * strength
+	if not naming_me and not n.is_evil():
+		set_trust(w, n, n.trust - (0.03 + 0.06 * trait_of(n, "privacy")), "the Demonologist pressed me with evidence")
+	if nervous:
+		lines.append("%s %s" % [n.name, ["looks away a moment too quickly.", "shifts uneasily.", "goes a little pale.", "fumbles for an answer."][w.rng.randi_range(0, 3)]])
+	if counter:
+		on_question(w, n)
+		var rival = w.by_id[card["source"]]
+		lines.append(say(n, "I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name]))
+		if not n.is_evil():
+			adjust(w, n, rival.id, 0.3, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift")
+		return {"lines": lines, "facts": facts}
+	if night >= 0:
+		var r = answer_night(w, n, night)
+		lines += r["lines"]
+		facts += r["facts"]
+		return {"lines": lines, "facts": facts}
+	# Their gift: a true naming opens them up; otherwise pressure decides.
+	var bonus = 1 if naming_me and d.get("role", "") == mine else 0
+	var tier = mini(_target_tier(w, n) + bonus, 4)
+	var r2 = answer_gift(w, n, tier)
+	lines += r2["lines"]
+	facts += r2["facts"]
+	return {"lines": lines, "facts": facts}
+
 # ---------------------------------------------------------------- conversation
 
 static func on_question(w, n) -> void:
@@ -784,11 +848,11 @@ static func _alibi_home(n, nd: int) -> Dictionary:
 	return {"kind": "alibi", "subject": [n.id], "home": true, "day": nd, "phase": C.NIGHT, "source": n.id,
 		"text": "%s says they were home on night %d." % [n.name, nd]}
 
-static func answer_night(w, n) -> Dictionary:
+static func answer_night(w, n, night: int = -1) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
 	var facts: Array = []
-	var nd: int = w.day - 1
+	var nd: int = w.day - 1 if night < 0 else night
 	var where: String = n.history.get(w.time_key(nd, C.NIGHT), "home:" + n.home_block)
 	var was_out = where.begins_with("night:")
 	var block = where.substr(where.find(":") + 1)
@@ -892,7 +956,15 @@ static func answer_today(w, n) -> Dictionary:
 		var who = w.by_id[b["who"]]
 		var when = "%s %s" % ["yesterday" if b["day"] < w.day else "this", C.PHASES[b["phase"]].to_lower()]
 		var where: String = w.loc_name(b["loc"]) if b["loc"] != "" else C.block_name(b["block"])
-		parts.append("%s at %s (%s)" % [who.name, where, when])
+		var partner: String = b.get("with", "")
+		if partner != "" and w.by_id.has(partner) and not (n.is_evil() and Evil.is_teammate(w, n, partner)):
+			var pn = w.by_id[partner]
+			parts.append("%s at %s, talking with %s (%s)" % [who.name, where, pn.name, when])
+			facts.append({"kind": "conversation", "subject": [who.id, partner], "block": b["block"], "loc": b["loc"], "day": b["day"], "phase": b["phase"],
+				"source": n.id, "text": "%s saw %s and %s talking at %s, day %d %s." % [n.name, who.name, pn.name, where, b["day"], C.PHASES[b["phase"]]]})
+			people[partner] = true
+		else:
+			parts.append("%s at %s (%s)" % [who.name, where, when])
 		facts.append({"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": b["phase"], "source": n.id,
 			"text": "%s saw %s on %s, day %d %s." % [n.name, who.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
 	lines.append(say(n, "Let me think. " + "; ".join(PackedStringArray(parts)) + "."))
@@ -954,7 +1026,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 static func evidence_class(card: Dictionary) -> String:
 	var src: String = card.get("source", "")
 	var kind: String = card.get("kind", "")
-	if src == "player" and kind in ["sighting", "vigil", "death", "vote", "execution"]:
+	if src == "player" and kind in ["sighting", "vigil", "death", "vote", "execution", "conversation", "quiet"]:
 		return "concrete"
 	if kind == "deduction":
 		return card.get("class", "circumstantial")

@@ -161,6 +161,37 @@ func _init() -> void:
 			okl = false
 			print("odd evil line: ", line)
 	_check(okl, "evil argument replies come from the shared set")
+	# Executed without ending the case: not the demon, so a Seer pair leaves the other.
+	var kx = g.add_card({"kind": "execution", "subject": [a], "source": "player", "text": "A was executed on day 1."})
+	var ex = g.link_cards([k8, kx])["result"]["matches"].map(func(m): return m["template"])
+	_check("pair_elimination" in ex, "seer pair + execution -> pair elimination (got %s)" % str(ex))
+	# Quiet night supports a Warden claim.
+	var kq = g.add_card({"kind": "quiet", "subject": [], "night": 1, "day": 1, "phase": C.NIGHT, "source": "player", "ward": "", "text": "Nobody died on night 1."})
+	var kw = g.add_card({"kind": "claim", "subject": [d], "role": "warden", "source": d, "text": "D claims warden"})
+	var qn = g.link_cards([kq, kw])["result"]["matches"].map(func(m): return m["template"])
+	_check("quiet_night" in qn, "quiet night + Warden claim (got %s)" % str(qn))
+	# Conversations seen count as being somewhere.
+	var kv = g.add_card({"kind": "conversation", "subject": [a, b], "block": "docks", "loc": "wharf", "day": 2, "phase": C.MORNING, "source": "player", "text": "A and B talking at the wharf"})
+	var kv2 = g.add_card({"kind": "sighting", "subject": [a], "block": "market", "day": 2, "phase": C.MORNING, "source": c, "text": "C saw A at market d2m"})
+	var tp = g.link_cards([kv, kv2])["result"]["matches"].map(func(m): return m["template"])
+	_check("two_places" in tp, "conversation card places people (got %s)" % str(tp))
+	# Profile lists what readings say about someone.
+	_check(not g.named_in(a).is_empty(), "profile shows reading mentions (%s)" % str(g.named_in(a)))
+	# Pressing.
+	var pz = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))
+	if not pz.is_empty():
+		var P = pz[0]
+		var r0 = Mind.press(w, P, g.board[k1 - 1])
+		_check(r0["lines"][0]["text"].begins_with("What has that"), "pressing with an unrelated card")
+		var ksp = g.add_card({"kind": "sighting", "subject": [P.id], "block": "docks", "day": 1, "phase": C.NIGHT, "source": c, "text": "C saw P on docks n1"})
+		var p0 = P.pressure
+		var r1 = Mind.press(w, P, g.board[ksp - 1])
+		_check(P.pressure > p0 and not r1["lines"].is_empty(), "pressing with a night sighting raises pressure and gets an answer (%s)" % str(r1["lines"]))
+		# Misled about yourself: no "it's about me" rejection.
+		var dme = g.file_deduction({"type": "unreliable", "a": P.id}, [ksp])
+		if dme > 0:
+			var rm = Argue.evaluate(w, P, g.board[dme - 1], g.board, 1.0)
+			_check(rm["lines"][0]["text"].begins_with("I'm no liar"), "misled-or-lying about yourself reads as misled (%s)" % rm["lines"][0]["text"])
 	# Timeline and filters.
 	print(g._timeline(""))
 	_check(g.filter_cards("market").size() >= 3, "location filter by block")

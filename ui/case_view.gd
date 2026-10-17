@@ -6,6 +6,7 @@ signal changed
 
 const C = preload("res://sim/content.gd")
 const Argue = preload("res://sim/argue.gd")
+const CardList = preload("res://ui/card_list.gd")
 
 var g
 var mono: Font
@@ -13,7 +14,7 @@ var filter_edit: LineEdit
 var kind_opt: OptionButton
 var person_opt: OptionButton
 var place_opt: OptionButton
-var card_list: ItemList
+var card_list
 var grid: GridContainer
 var prof_opt: OptionButton
 var prof_text: RichTextLabel
@@ -93,10 +94,9 @@ func build(font: Font) -> void:
 	var ll = Label.new()
 	ll.text = "Cards (select 1-3 to link, or as support for a conclusion)"
 	left.add_child(ll)
-	card_list = ItemList.new()
-	card_list.select_mode = ItemList.SELECT_MULTI
+	card_list = CardList.new()
 	card_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card_list.multi_selected.connect(func(_i, _on): _update_preview())
+	card_list.selection_changed.connect(func(): _update_preview())
 	card_list.add_theme_font_override("font", mono)
 	card_list.add_theme_font_size_override("font_size", 13)
 	left.add_child(card_list)
@@ -296,30 +296,25 @@ func _visible_cards() -> Array:
 
 func _refresh_cards() -> void:
 	var keep: Array = selected_cards()
-	card_list.clear()
+	card_list.reset()
 	for c in _visible_cards():
 		var line = "#%-3d %-10s %s%s" % [c["n"], c["kind"], "[hidden] " if c.get("hidden", false) else "", c["text"]]
-		card_list.add_item(line)
-		var i = card_list.item_count - 1
-		card_list.set_item_metadata(i, c["n"])
-		card_list.set_item_tooltip(i, "%s\n[%s, %s%s]" % [c["text"], c["kind"], c.get("class", "?"),
-			"" if c.get("source", "") == "player" else ", heard"])
+		var col = null
 		if c.get("hidden", false):
-			card_list.set_item_custom_fg_color(i, Color(0.45, 0.45, 0.5))
+			col = Color(0.45, 0.45, 0.5)
 		elif c["kind"] == "deduction":
-			card_list.set_item_custom_fg_color(i, Color(0.95, 0.8, 0.45))
+			col = Color(0.95, 0.8, 0.45)
 		elif c.get("source", "") != "player" and c.get("source", "") != "evidence":
-			card_list.set_item_custom_fg_color(i, Color(0.72, 0.72, 0.78))
+			col = Color(0.72, 0.72, 0.78)
+		card_list.add(line, c["n"], "%s\n[%s, %s%s]" % [c["text"], c["kind"], c.get("class", "?"),
+			"" if c.get("source", "") == "player" else ", heard"], col)
 		if c["n"] in keep:
-			card_list.select(i, false)
+			card_list.select_meta(c["n"])
 
 func selected_cards() -> Array:
-	var out: Array = []
 	if card_list == null:
-		return out
-	for i in card_list.get_selected_items():
-		out.append(card_list.get_item_metadata(i))
-	return out
+		return []
+	return card_list.selected_metas()
 
 func _refresh_timeline() -> void:
 	for ch in grid.get_children():
@@ -375,6 +370,8 @@ func _refresh_profile() -> void:
 	lines.append("Works %s; lives on %s; %s." % [p["work"], p["home"], p["status"]])
 	if p["claim"] != "":
 		lines.append(p["claim"])
+	for x in p["named"]:
+		lines.append("Readings say: " + x)
 	var tl = PackedStringArray()
 	for t in C.TRAITS:
 		tl.append("%s %s" % [t.capitalize(), p["traits"].get(t, "?")])
@@ -391,6 +388,12 @@ func _refresh_profile() -> void:
 			guess_opt.select(i)
 	conf_spin.value = gs.get("confidence", 2)
 	note_edit.text = p["note"]
+
+func show_profile(id: String) -> void:
+	for i in range(prof_opt.item_count):
+		if prof_opt.get_item_metadata(i) == id:
+			prof_opt.select(i)
+	_refresh_profile()
 
 func _on_save_profile() -> void:
 	var id = _meta(prof_opt)
@@ -456,8 +459,8 @@ func _fill_nights() -> void:
 	b_night.clear()
 	b_night.add_item("(any night)")
 	b_night.set_item_metadata(0, -1)
-	for nt in range(1, g.w.day + 1):
-		b_night.add_item("on night %d" % nt)
+	for nt in range(0, g.w.day + 1):
+		b_night.add_item("on night 0 (the first night)" if nt == 0 else "on night %d" % nt)
 		b_night.set_item_metadata(b_night.item_count - 1, nt)
 	for i in range(b_night.item_count):
 		if b_night.get_item_metadata(i) == keep:

@@ -15,10 +15,10 @@ func _init() -> void:
 	scene._open_case_view()
 	await process_frame
 	var cv = scene.case_view
-	print("case view visible: ", cv.visible, " cards listed: ", cv.card_list.item_count, " timeline cells: ", cv.grid.get_child_count())
-	if cv.card_list.item_count >= 2:
-		cv.card_list.select(0, false)
-		cv.card_list.select(1, false)
+	print("case view visible: ", cv.visible, " cards listed: ", cv.card_list.count(), " timeline cells: ", cv.grid.get_child_count())
+	if cv.card_list.count() >= 2:
+		cv.card_list.select_index(0)
+		cv.card_list.select_index(1)
 		cv._on_link()
 		await process_frame
 		print("link result: ", cv.result_text.text.substr(0, 120))
@@ -33,11 +33,11 @@ func _init() -> void:
 		cv._on_file()
 		await process_frame
 		print("error: ", cv.b_error.text)
-		cv.card_list.select(0, false)
+		cv.card_list.select_index(0)
 		cv._hide_selected(true)
-		print("after hide: cards listed ", cv.card_list.item_count)
+		print("after hide: cards listed ", cv.card_list.count())
 		cv.hidden_check.button_pressed = true
-		print("show hidden: cards listed ", cv.card_list.item_count)
+		print("show hidden: cards listed ", cv.card_list.count())
 		cv._input(_esc())
 		print("escape closes: ", not cv.visible)
 		print("after file: ", cv.result_text.text.substr(0, 140))
@@ -48,7 +48,7 @@ func _init() -> void:
 	print("profile note saved: ", g.notes.values())
 	scene.side_filter.text = "square"
 	scene._refresh_side()
-	print("sidebar square cards: ", scene.side_list.item_count)
+	print("sidebar square cards: ", scene.side_list.count())
 	print("UI OK")
 	quit()
 

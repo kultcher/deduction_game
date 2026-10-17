@@ -5,6 +5,7 @@ extends Control
 
 const Game = preload("res://game/game.gd")
 const CaseView = preload("res://ui/case_view.gd")
+const CardList = preload("res://ui/card_list.gd")
 
 var g
 var out: RichTextLabel
@@ -12,7 +13,7 @@ var input: LineEdit
 var seed_box: SpinBox
 var side: VBoxContainer
 var side_filter: LineEdit
-var side_list: ItemList
+var side_list
 var side_person: OptionButton
 var side_profile: RichTextLabel
 var case_view
@@ -88,11 +89,12 @@ func _ready() -> void:
 	side_filter.placeholder_text = "filter: person, place, kind, d2, n1, text"
 	side_filter.text_changed.connect(func(_t): _refresh_side())
 	side.add_child(side_filter)
-	side_list = ItemList.new()
+	side_list = CardList.new()
+	side_list.select_mode = Tree.SELECT_ROW
 	side_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	side_list.add_theme_font_override("font", mono)
 	side_list.add_theme_font_size_override("font_size", 12)
-	side_list.item_activated.connect(_on_side_activated)
+	side_list.card_activated.connect(_on_side_activated)
 	side.add_child(side_list)
 	var hint = Label.new()
 	hint.text = "Double-click a card to add its number to your command."
@@ -123,8 +125,8 @@ func _button(parent: Node, text: String, cb: Callable) -> void:
 	b.pressed.connect(cb)
 	parent.add_child(b)
 
-func _on_side_activated(i: int) -> void:
-	input.text += " " + str(side_list.get_item_metadata(i))
+func _on_side_activated(num) -> void:
+	input.text += " " + str(num)
 	input.grab_focus()
 	input.caret_column = input.text.length()
 
@@ -160,10 +162,19 @@ func _on_submit(text: String) -> void:
 func _run(cmd: String) -> void:
 	_print("\n> " + cmd)
 	_print(g.command(cmd))
+	if g.state == "talk" and g.talk_with != null:
+		_select_person(g.talk_with.id)
 	_refresh_side()
 	if case_view.visible:
 		case_view.refresh()
 	input.grab_focus()
+
+## Show this person's profile in the sidebar and the case view.
+func _select_person(id: String) -> void:
+	for i in range(side_person.item_count):
+		if side_person.get_item_metadata(i) == id:
+			side_person.select(i)
+	case_view.show_profile(id)
 
 func _print(s: String) -> void:
 	out.add_text(s + "\n")
@@ -171,28 +182,29 @@ func _print(s: String) -> void:
 func _refresh_side() -> void:
 	if g == null or side_list == null:
 		return
-	side_list.clear()
+	side_list.reset()
 	var cards: Array = g.filter_cards(side_filter.text)
 	cards.reverse()
 	for c in cards.slice(0, 60):
-		side_list.add_item("#%-3d %s" % [c["n"], c["text"]])
-		var i = side_list.item_count - 1
-		side_list.set_item_metadata(i, c["n"])
-		side_list.set_item_tooltip(i, c["text"])
+		var col = null
 		if c.get("hidden", false):
-			side_list.set_item_custom_fg_color(i, Color(0.45, 0.45, 0.5))
+			col = Color(0.45, 0.45, 0.5)
 		elif c["kind"] == "deduction":
-			side_list.set_item_custom_fg_color(i, Color(0.95, 0.8, 0.45))
+			col = Color(0.95, 0.8, 0.45)
 		elif c.get("source", "") != "player" and c.get("source", "") != "evidence":
-			side_list.set_item_custom_fg_color(i, Color(0.72, 0.72, 0.78))
+			col = Color(0.72, 0.72, 0.78)
+		side_list.add("#%-3d %s" % [c["n"], c["text"]], c["n"], c["text"], col)
 	if side_person.selected >= 0:
 		var p: Dictionary = g.profile_data(side_person.get_item_metadata(side_person.selected))
 		var tl = PackedStringArray()
 		for t in ["privacy", "gossip", "confidence", "insight", "composure"]:
 			tl.append("%s %s" % [t.substr(0, 4), p["traits"].get(t, "?")])
 		var gs: Dictionary = p["guess"]
-		side_profile.text = "%s the %s (%s)\nWorks %s; lives on %s.\n%s\nTraits: %s\nYour guess: %s%s\n%s" % [p["name"], p["occupation"],
-			p["status"], p["work"], p["home"], p["claim"], ", ".join(tl),
+		var named = ""
+		for x in p["named"]:
+			named += "Readings say: %s\n" % x
+		side_profile.text = "%s the %s (%s)\nWorks %s; lives on %s.\n%s\n%sTraits: %s\nYour guess: %s%s\n%s" % [p["name"], p["occupation"],
+			p["status"], p["work"], p["home"], p["claim"], named, ", ".join(tl),
 			gs.get("guess", "?"), (" (%d/3)" % gs["confidence"]) if gs.has("confidence") else "", p["note"]]
 
 func _on_input_key(ev: InputEvent) -> void:

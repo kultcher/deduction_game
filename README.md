@@ -57,7 +57,7 @@ Each day has three phases (morning, afternoon, evening), then a town meeting, th
 |---|---|
 | Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `roles`, `tools`, `help`, `log` |
 | Day phase | `go <place / block / person>`, optionally one more `go` within the same block, then one action: `talk <name>`, `search`, `gossip` (tavern only), `wait` |
-| Talking (3 questions) | `ask gift`, `ask night`, `ask today`, `ask about <name or gift>`, `tell <suspect> <card#>`, `bye` |
+| Talking (3 questions) | `ask gift`, `ask night`, `ask today`, `ask about <name or gift>`, `tell <suspect> <card#>`, `press <card#>`, `bye` |
 | Approached | `accept` (talk now; uses the phase) or `decline` (any other action also declines) |
 | Town meeting | `nominate <name>` (once), `wait` (let the town nominate), `done` (close the meeting, once a `wait` finds no more nominations) |
 | On a nomination | `defend [card#]` or `accuse [card#]` (one statement, optionally citing a card), `clemency` (once per case), `vote yes` / `vote no` |
@@ -96,6 +96,20 @@ their trust in you and in the suspect, and whether they've heard it before. Tell
 case to an evil NPC warns the demon. Using someone's confessed secret against them costs
 their trust, permanently for very private people.
 
+**Pressing someone.** `press <card#>` confronts the person you're talking to with a card
+or deduction about them. It raises the pressure on them and makes them answer it: a night
+sighting makes them account for that night (a good NPC hiding a secret may confess), and a
+card about their gift makes them reconsider revealing it (a Clerk reading naming them
+opens them up most). Anyone hiding something may show nerves, and so, less often, may a
+rattled innocent; composure decides. Pressing costs a little trust. `ask about <gift>`
+put to the person who actually holds it makes them decide whether to own up.
+
+**More evidence.** Conversations you see on the town view, people you see nearby, and
+nights when nobody died all become cards. NPCs notice who was talking with whom and may
+mention it. A Warden or Veteran claimant gains credit with the town after a quiet night
+(evil can bluff these too). `profile` lists what readings on your board say about someone
+("possibly the Warden, per Dorian's Clerk reading").
+
 **The town talks.** NPCs who pair off actually exchange things: a reading, a night
 sighting, an opinion, a case you made to them, or a secret. Everyone remembers who told them
 what. Gossips relay what they've heard; busybodies may approach you with it (including
@@ -112,8 +126,10 @@ people claiming one gift; a watcher who missed someone; your vigil missing someo
 witness put there; a reading that flips; a Gravedigger contradicting a claim; a Veteran
 killed by the demon; a reading pointing only at the demon's victims; a changed story.
 *Corroborations*: two witnesses putting someone in the same place; a Clerk reading backing
-a claim. *Inferences*: a Seer or Archivist pair where one person is cleared (killed by the
-demon, or shown good after execution), which leaves the other; the death-scene trace
+a claim; a night when nobody died, alongside a Warden or Veteran claim (or a "shelter"
+hint). *Inferences*: a Seer or Archivist pair where one person is cleared (killed by the
+demon, or shown good after execution; for a Seer pair, also anyone hanged without ending
+the case, since they weren't the demon), which leaves the other; the death-scene trace
 matching someone seen on that block that evening. A match lists possible explanations,
 and never says which is true. `conclude <number>` files the one you believe
 as a **deduction** card. You can also write a conclusion yourself as a sentence, e.g.
