@@ -221,10 +221,14 @@ checks your cards for a template either way, so pressing Link first makes no dif
 cards, and one that only restates what someone said about themselves ("Jory is the
 Seer because of Jory's claim and Jory's reading") is refused.
 
-**Doubt cascades.** A Gravedigger reporting that the hanged person was evil makes their
-earlier readings count for less, scaled by how credible the Gravedigger is; discredit the
-Gravedigger and those readings regain their weight. Strongly suspected people's readings
-also count for less (re-checked at nightfall and before votes).
+**Credibility.** Every claim counts as much as its source is credible to the listener:
+how honest the person seems (from evidence against them, from any source; capped, so
+"probably evil" means "take it with salt", not "ignore it") times any doubt about that
+particular reading (poison affects the reading, not the person's honesty). Everything is
+recomputed from the underlying evidence whenever anything changes, so discrediting the
+evidence against someone restores their claims at once, and beliefs can't feed their own
+justification. `godot --headless --path . --script res://tools/test_beliefs.gd` runs the
+acceptance tests.
 
 **Each NPC keeps an evidence ledger**, keyed by the underlying fact, not the card or
 whoever relayed it. Hearing the same reading again, or seeing the same sighting re-wrapped

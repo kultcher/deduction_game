@@ -634,8 +634,6 @@ func resolve_night() -> void:
 		n.busy_with = ""
 		n.pressure = n.pressure * 0.6
 	Mind.end_of_day_trust(self)
-	for n in living_good():
-		Mind.refresh_source_doubt(self, n)
 
 	var kill_t = ""
 	if not first and demon().alive:

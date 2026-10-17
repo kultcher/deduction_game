@@ -949,8 +949,17 @@ static func _apply(w, n, ded: Dictionary, supports: Array, base: float) -> float
 		return 0.0
 	var why = "the Demonologist argued: %s" % ded["text"]
 	var said = "what you told me, that %s" % conclusion_text(w, c)
+	# Remember what the argument rests on: if that evidence is later discredited, the
+	# conclusion weakens with it.
+	var sup: Array = []
+	for card in supports:
+		var src: String = card.get("source", "")
+		if w.by_id.has(src):
+			sup.append([src, card.get("day", -1) if card.get("kind", "") == "info" or card.get("phase", -1) == C.NIGHT else -1])
+		else:
+			sup.append(["", -1])
 	var h = Mind.ledger_hear(w, n, "arg:" + conclusion_key(c), effects_of(w, c, supports, why), base * (0.5 + n.trust), [],
-		{"kind": "arg", "base": base, "text": conclusion_text(w, c), "said": said})
+		{"kind": "arg", "base": base, "text": conclusion_text(w, c), "said": said, "supports": sup})
 	return h["gain"]
 
 ## An evil listener's reply: drawn from the same lines a good listener uses, according to

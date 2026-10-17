@@ -301,14 +301,35 @@ each NPC reasons only from what they actually heard or witnessed.
 - When an old argument finally lands, they say so next time you talk: "I didn't put much
   stock in what you told me, that Jory is misled... perhaps I should have."
 - Accepting "X is the Seer" makes anyone else claiming the Seer a liar to that NPC.
-- **Cascades.** Role verdicts doubt the named person's own information: a Gravedigger
-  saying the hanged person was evil adds doubt to their readings, scaled (as everything
-  is) by the Gravedigger's reliability, so discrediting the Gravedigger gives it back.
-  Being strongly suspected also discounts someone's readings, re-checked only at nightfall
-  and before votes to avoid readings and suspicion chasing each other; a depth guard stops
-  runaway loops.
+- **Credibility.** Every claim has a source, and counts as much as that source is credible
+  to the listener. Credibility is two separate factors:
+  - **Honesty of the person**: 1 − a modest, capped share (max 50%) of the *evidence*
+    against them, from any source or role (a verdict that they were evil, a sighting, an
+    argued deduction). Never from suspicion, which includes vibes and grudges.
+  - **Doubt about a particular reading**: from "X was misled on night N". Poison is a
+    property of the night, not the person, so it doesn't touch their honesty or their
+    other readings.
+- **No circular reasoning.** Everything is recomputed from scratch from the underlying
+  inputs (each entry's original strength, the player's arguments and their supports) to a
+  fixed depth: night doubt; honesty from evidence at original strength; honesty again with
+  that evidence weighted by the first-pass honesty of whoever gave it; arguments scaled by
+  how credible their supporting evidence still is; then every effect applied as a
+  difference. Nothing carries over between calculations, so recomputing without new
+  evidence changes nothing, and A and B accusing each other can't amplify. It recomputes
+  immediately whenever anything an NPC believes changes, so there's no stale reasoning.
+- **Cascades fall out of this, with no role-specific rules.** B says A was evil → A's
+  claims count for less. Discredit B's report → that evidence weakens → A's claims recover
+  (as far as other evidence allows). Discrediting is not vindicating: it removes evidence
+  against A rather than proving A good.
+- **Accepted conclusions track their supports.** An argument the NPC accepted weakens if
+  the evidence it rested on is later discredited.
+- Acceptance tests: `tools/test_beliefs.gd` (recovery; independent evidence keeps a
+  discount; poison doesn't damage honesty; recomputing is stable; works for any source;
+  mutual accusation is stable and bounded).
 - **Vindication** follows from the rules: if the Gravedigger was poisoned the night they
   named someone the Poisoner, the Poisoner was alive then, so the hanged person wasn't.
+  This relies on poison always making a reading wrong (current rule). If the director
+  later makes poisoned results merely plausible (sometimes right), revisit this template.
 - Every evaluation is logged with its explanation weights.
 
 ## Town meeting
@@ -796,6 +817,15 @@ results match the pre-tracking commit, including deaths, executions and end reas
   slot, with shortcuts), for the full UI.
 - Who you saw nearby is now on the cards. Anonymising unseen people ("someone") would be
   a broader visibility redesign; revisit only if the town view gives away too much.
+
+- **Initial general skepticism (filed, not built).** Early on, every claim is just someone's
+  word with nothing to corroborate it, so all claims could start with extra doubt that
+  fades as evidence accumulates. Likely makes the early game too indecisive; keep it as a
+  lever if the opposite problem (early game too decisive) shows up.
+- **Template generalization (deferred to roster expansion).** Templates should read
+  abstract statements ("one of {A, B} is P", "none of these is P", "X is P") produced by
+  a single per-role translation table, so pair elimination, pair-vs-claims and quiet-night
+  logic work for any role that makes such a statement.
 
 ## Testing baselines
 

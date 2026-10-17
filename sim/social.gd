@@ -161,7 +161,8 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 			l.known_secrets[item["about"]] = s.id
 		return
 	# Repeats are handled by the listener's ledger (same reading never stacks).
-	var wgt = clampf(0.75 * l.npc_trust.get(s.id, 0.5) * (1.0 - Mind.susp(l, s.id)), 0.0, 0.55)
+	# The teller's credibility is applied live by the listener's ledger (rel = the source).
+	var wgt = clampf(0.75 * l.npc_trust.get(s.id, 0.5), 0.0, 0.55)
 	var times: int = l.heard.get(item["key"].trim_prefix("relay:"), 0)
 	l.heard[item["key"].trim_prefix("relay:")] = times + 1
 	var hs = item.duplicate()
@@ -186,12 +187,12 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 			var e1: Array = []
 			Mind._eff(e1, item["about"], 0.15 + bonus, "heard from %s that %s was out at night" % [s.id, item["about"]],
 				"%s says they were out at night" % s.name)
-			Mind.ledger_hear(w, l, "heard:" + hs["key"], e1, wgt * 2.0)
+			Mind.ledger_hear(w, l, "heard:" + hs["key"], e1, wgt * 2.0, [s.id, item.get("day", -1)])
 			l.hearsay.append(hs)
 		"opinion":
 			var e2: Array = []
 			Mind._eff(e2, item["about"], 0.12, "%s told me they distrust %s" % [s.id, item["about"]], "%s has doubts about them" % s.name)
-			Mind.ledger_hear(w, l, "opinion:%s>%s" % [s.id, item["about"]], e2, wgt * 2.0)
+			Mind.ledger_hear(w, l, "opinion:%s>%s" % [s.id, item["about"]], e2, wgt * 2.0, [s.id, -1])
 			l.hearsay.append(hs)
 		"case":
 			var e3: Array = []

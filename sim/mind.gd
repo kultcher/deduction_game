@@ -142,37 +142,21 @@ static func fact_id(card: Dictionary) -> String:
 			return "%s:%s" % [k, ss]
 	return "card:" + card.get("text", "")
 
-## How much this NPC currently trusts a source's readings from a night (1 = fully).
+## How much this NPC currently credits a source's claim from a night (1 = fully): their
+## doubt about that night's reading x the source's honesty. Both are derived values, set
+## by recompute_beliefs.
 static func reliability(n, src: String, night: int) -> float:
-	if src == "":
-		return 1.0
-	var d = maxf(n.discounted.get("%s:%d" % [src, night], 0.0), n.discounted.get(src + ":*", 0.0))
-	return clampf((1.0 - d) * (1.0 - n.discounted.get(src + ":sus", 0.0)), 0.0, 1.0)
+	if src == "" or src == n.id:
+		return 1.0 if src == "" else night_reliability(n, src, night)
+	return clampf(night_reliability(n, src, night) * n.honesty.get(src, 1.0), 0.0, 1.0)
 
-## Someone they now strongly suspect: their earlier readings count for less. Only re-checked
-## at the ledger's re-weighing moments (before votes, at nightfall), not continuously, so
-## readings and suspicion don't chase each other.
-static func refresh_source_doubt(w, n) -> void:
-	if n.is_evil():
-		return
-	var srcs = {}
-	for e in n.ledger.values():
-		if not e["rel"].is_empty() and e["rel"][0] != n.id:
-			srcs[e["rel"][0]] = true
-	for src in srcs:
-		var want = clampf((susp(n, src) - 0.6) * 0.6, 0.0, 0.5)
-		var key = src + ":sus"
-		if absf(want - n.discounted.get(key, 0.0)) < 0.05:
-			continue
-		n.discounted[key] = want
-		w.dlog.think(n.id, "poison_belief", "Suspects %s (%.2f): their readings now count %.0f%% less." % [src, susp(n, src), want * 100.0])
-		for e in n.ledger.values():
-			if not e["rel"].is_empty() and e["rel"][0] == src:
-				_ledger_refresh(w, n, e, " (suspects the source)")
+static func night_reliability(n, src: String, night: int) -> float:
+	var d = maxf(n.discounted.get("%s:%d" % [src, night], 0.0), n.discounted.get(src + ":*", 0.0))
+	return clampf(1.0 - d, 0.0, 1.0)
 
 ## Take in a piece of evidence or an argument. Hearing the same thing again only raises
-## its weight to the stronger hearing; it never stacks. rel = [source, night] if the
-## evidence is a reading whose reliability can be doubted. Returns {fresh, gain, times}.
+## its weight to the stronger hearing; it never stacks. rel = [source, night] for a claim
+## whose source can be doubted (night -1: no particular night). Returns {fresh, gain, times}.
 static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
 	if n.is_evil():
 		return {"fresh": false, "gain": 0.0, "times": 0}
@@ -190,35 +174,120 @@ static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: A
 			e["meta"][k] = meta[k]
 	if weight > old_w:
 		e["weight"] = weight
-		_ledger_refresh(w, n, e, "")
 	if not e["meta"].has("w0"):
 		e["meta"]["w0"] = e["weight"]
+	recompute_beliefs(w, n, "")
 	return {"fresh": fresh, "gain": maxf(0.0, weight - old_w), "times": times}
 
-static var _depth = 0  # guards doubt cascades (A doubts B doubts A ...)
+# Credibility (honesty) tuning: how far evidence of evil discounts what someone says.
+const HONESTY_K = 0.8
+const HONESTY_CAP = 0.5
 
-static func _ledger_refresh(w, n, e: Dictionary, note: String) -> void:
-	if _depth > 6:
+## Recompute everything the ledger implies, from scratch, from the underlying inputs: each
+## entry's original strength, the player's arguments, and their supporting evidence. Nothing
+## is carried over from the previous calculation, so re-running it with no new evidence
+## changes nothing, and beliefs can't feed their own justification. Fixed depth:
+##   1. night doubt (from arguments that a reading was misled), at the arguments' strength
+##   2. honesty(s) from evidence against s, counted at original strength x night doubt
+##   3. honesty again, weighting that evidence by the first-pass honesty of whoever gave it
+##   4. arguments scaled by how credible their supporting evidence still is
+##   5. final night doubt, and every effect applied as a difference from what's applied now
+static func recompute_beliefs(w, n, note: String) -> void:
+	if n.is_evil():
 		return
-	_depth += 1
-	_ledger_refresh_inner(w, n, e, note)
-	_depth -= 1
-
-static func _ledger_refresh_inner(w, n, e: Dictionary, note: String) -> void:
-	var r = 1.0
-	if not e["rel"].is_empty():
-		r = reliability(n, e["rel"][0], e["rel"][1])
+	var E: Array = n.ledger.values()
+	var disc1 = _night_doubt(E, func(e): return e["weight"])
+	var h1 = _honesty(n, E, disc1, {})
+	var h2 = _honesty(n, E, disc1, h1)
+	var wf = {}
+	for e in E:
+		wf[e["eid"]] = e["weight"] * _support_factor(n, e, disc1, h2)
+	var disc = _night_doubt(E, func(e): return wf[e["eid"]])
+	# Log notable changes in doubt and honesty (derived values, kept for display).
+	for k in disc:
+		if absf(disc[k] - n.discounted.get(k, 0.0)) >= 0.05:
+			var parts = k.split(":")
+			w.dlog.think(n.id, "poison_belief", "Doubt in %s's readings (%s) now %.2f%s." %
+				[parts[0], "all nights" if parts[1] == "*" else "night " + parts[1], disc[k], note])
+	for s in h2:
+		if absf(h2[s] - n.honesty.get(s, 1.0)) >= 0.05:
+			w.dlog.think(n.id, "credibility", "Credits %s's word at %.0f%% (evidence against them)%s." % [s, h2[s] * 100.0, note])
+	n.discounted = disc
+	n.honesty = h2
 	var conf = 1.4 - 0.8 * trait_of(n, "confidence")
-	var effs: Array = e["effects"]
-	for i in range(effs.size()):
-		var f: Array = effs[i]
-		var want: float = f[1] * (conf if f[2] else 1.0) * e["weight"] * r
-		var have: float = e["applied"].get(i, 0.0)
-		var diff = want - have
-		if absf(diff) < 0.002:
+	for e in E:
+		var r = 1.0
+		if not e["rel"].is_empty():
+			r = reliability(n, e["rel"][0], e["rel"][1])
+		var effs: Array = e["effects"]
+		for i in range(effs.size()):
+			var f: Array = effs[i]
+			if f[0].begins_with("disc:"):
+				continue  # derived above
+			var want: float = f[1] * (conf if f[2] else 1.0) * wf[e["eid"]] * r
+			var have: float = e["applied"].get(i, 0.0)
+			var diff = want - have
+			if absf(diff) < 0.002:
+				continue
+			e["applied"][i] = want
+			_ledger_apply(w, n, f, diff, want, note)
+
+static func _night_doubt(E: Array, weight_of: Callable) -> Dictionary:
+	var d = {}
+	for e in E:
+		for f in e["effects"]:
+			if f[0].begins_with("disc:"):
+				var key: String = f[0].substr(5)
+				d[key] = minf(d.get(key, 0.0) + f[1] * weight_of.call(e), 0.9)
+	return d
+
+## Honesty of each source = 1 - (modest, capped) share of the evidence against them. Evidence
+## counts at its original strength, adjusted by doubt about the particular reading and, in
+## the second pass, by the honesty of whoever gave it. Never by suspicion (which includes
+## vibes and grudges), and never by its own previous value.
+static func _honesty(n, E: Array, disc: Dictionary, prev: Dictionary) -> Dictionary:
+	var grounds = {}
+	for e in E:
+		var src: String = e["rel"][0] if not e["rel"].is_empty() else ""
+		var r = 1.0
+		if src != "" and src != n.id:
+			var night: int = e["rel"][1]
+			r = 1.0 - maxf(disc.get("%s:%d" % [src, night], 0.0), disc.get(src + ":*", 0.0))
+			r *= prev.get(src, 1.0)
+		var sf = _support_factor(n, e, disc, prev) if not prev.is_empty() else 1.0
+		for f in e["effects"]:
+			var t: String = f[0]
+			if t.begins_with("disc:") or t.begins_with("pref:") or t.begins_with("role:") or t == src or t == n.id:
+				continue
+			grounds[t] = grounds.get(t, 0.0) + f[1] * e["weight"] * r * sf
+	var out = {}
+	for t in grounds:
+		out[t] = 1.0 - clampf(HONESTY_K * maxf(0.0, grounds[t]), 0.0, HONESTY_CAP)
+	return out
+
+## An argument the NPC accepted counts as much as its supporting evidence is still
+## credible. Supports the argument itself casts doubt on don't count against it.
+static func _support_factor(n, e: Dictionary, disc: Dictionary, hon: Dictionary) -> float:
+	var sup: Array = e["meta"].get("supports", [])
+	if sup.is_empty():
+		return 1.0
+	var own_doubt = {}
+	for f in e["effects"]:
+		if f[0].begins_with("disc:"):
+			own_doubt[f[0].substr(5)] = true
+	var total = 0.0
+	var count = 0
+	for sp in sup:
+		var src: String = sp[0]
+		var night: int = sp[1]
+		if own_doubt.has("%s:%d" % [src, night]) or own_doubt.has(src + ":*"):
 			continue
-		e["applied"][i] = want
-		_ledger_apply(w, n, f, diff, want, note)
+		count += 1
+		if src == "" or src == n.id:
+			total += 1.0
+			continue
+		total += (1.0 - maxf(disc.get("%s:%d" % [src, night], 0.0), disc.get(src + ":*", 0.0))) * hon.get(src, 1.0)
+	return total / count if count > 0 else 1.0
 
 static func _ledger_apply(w, n, f: Array, diff: float, total: float, note: String) -> void:
 	var t: String = f[0]
@@ -232,15 +301,6 @@ static func _ledger_apply(w, n, f: Array, diff: float, total: float, note: Strin
 			n.believed_roles[parts2[1]] = parts2[2]
 		elif n.believed_roles.get(parts2[1], "") == parts2[2]:
 			n.believed_roles.erase(parts2[1])
-	elif t.begins_with("disc:"):
-		var parts3 = t.split(":")
-		var key = parts3[1] + ":" + parts3[2]
-		n.discounted[key] = clampf(n.discounted.get(key, 0.0) + diff, 0.0, 0.9)
-		w.dlog.think(n.id, "poison_belief", "Doubt in %s's readings (%s) now %.2f%s." %
-			[parts3[1], "all nights" if parts3[2] == "*" else "night " + parts3[2], n.discounted[key], note])
-		for e2 in n.ledger.values():
-			if not e2["rel"].is_empty() and e2["rel"][0] == parts3[1] and (parts3[2] == "*" or str(e2["rel"][1]) == parts3[2]):
-				_ledger_refresh(w, n, e2, " (now doubts the source)")
 	else:
 		adjust(w, n, t, diff, f[3] + note, f[4] if diff > 0 else "", false)
 
@@ -262,13 +322,13 @@ static func reconsider(w, n, why: String) -> void:
 			continue
 		var nw = cur + (want - cur) * rate
 		e["weight"] = nw
-		_ledger_refresh(w, n, e, " (reconsidered: %s)" % why)
 		w.dlog.think(n.id, "reconsider", "Re-weighs '%s': %.2f -> %.2f (trust %.2f, %s)." % [m.get("text", e["eid"]), cur, nw, n.trust, why],
 			{"eid": e["eid"], "from": snappedf(cur, 0.01), "to": snappedf(nw, 0.01)})
 		var w0: float = m.get("w0", cur)
 		if m.get("kind", "") == "arg" and nw >= maxf(w0 * 1.35, w0 + 0.05) and not m.get("remarked", false) and m.get("said", "") != "":
 			m["remarked"] = true
 			n.remarks.append(m["said"])
+	recompute_beliefs(w, n, " (reconsidered: %s)" % why)
 
 ## Apply one ability result (own or heard) to a listener's suspicion, through their ledger:
 ## hearing the same reading again (directly, relayed, at the meeting) never stacks.
@@ -356,10 +416,10 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 		"gravedigger":
 			var ex = w.by_id[d["executed"]]
 			var ex_good: bool = C.ROLES[d["role"]]["align"] == "good"
-			if not ex_good and ex.id != listener.id:
-				# If they were evil, whatever they told us was a lie. This doubt is scaled by how
-				# reliable the Gravedigger looks, so discrediting the Gravedigger gives it back.
-				_eff(effs, "disc:%s:*" % ex.id, 0.7, tag + ": %s was evil (%s), so their readings were lies" % [ex.id, d["role"]], "", false)
+			if ex.id != listener.id:
+				# "X was evil" (or good) is evidence about X like any other; X's credibility
+				# follows from it in recompute_beliefs, not from a role-specific rule.
+				_eff(effs, ex.id, 1.0 if not ex_good else -0.4, tag + ": %s was the %s" % [ex.id, d["role"]], "", false)
 			for e in w.executions:
 				if e["id"] == ex.id:
 					var nom: String = e["nominator"]
@@ -382,8 +442,10 @@ static func update_from_own_info(w) -> void:
 			n.applied_info += 1
 			apply_info(w, n, n, e, 1.0)
 
+## How much a reading heard first-hand from its giver counts, before credibility. The
+## giver's credibility is applied live by the ledger (it changes as evidence comes in).
 static func heard_weight(listener, speaker) -> float:
-	return clampf(0.55 * (1.0 - susp(listener, speaker.id)), 0.0, 0.6)
+	return 0.5
 
 # ---------------------------------------------------------------- night choices (good)
 
@@ -635,7 +697,6 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 	if v.is_evil():
 		return Evil.evil_vote(w, v, nominee, yes_so_far)
 	reconsider(w, v, "thinking it over before the vote")
-	refresh_source_doubt(w, v)
 	var base = susp(v, nominee)
 	var s = base
 	var parts = {"suspicion": snappedf(base, 0.01)}
@@ -1165,8 +1226,8 @@ static func card_weight(w, n, suspect, card: Dictionary) -> Dictionary:
 		cred = 1.0
 		cred_why = "their own words"
 	elif src != "" and w.by_id.has(src):
-		cred = clampf(0.9 - susp(n, src), 0.1, 0.9)
-		cred_why = "source %s (suspicion %.2f)" % [src, susp(n, src)]
+		cred = 0.75  # their credibility is applied live by the ledger (rel below)
+		cred_why = "source %s" % src
 	if card.get("kind", "") == "trace":
 		relevance = 1.0 if suspect.home_block == card.get("block", "") or w.loc_block(suspect.work) == card.get("block", "") else 0.3
 	var cls = evidence_class(card)
@@ -1175,7 +1236,10 @@ static func card_weight(w, n, suspect, card: Dictionary) -> Dictionary:
 	var key: String = fact_id(card)
 	var times: int = n.heard.get(key, 0)
 	n.heard[key] = times + 1
-	return {"relevance": relevance, "cred": cred, "cred_why": cred_why, "cls": cls, "class_w": class_w,
+	var rel: Array = []
+	if src != "" and w.by_id.has(src) and src != n.id:
+		rel = [src, card.get("day", -1) if card.get("kind", "") == "info" or card.get("phase", -1) == C.NIGHT else -1]
+	return {"rel": rel, "relevance": relevance, "cred": cred, "cred_why": cred_why, "cls": cls, "class_w": class_w,
 		"repeat": pow(0.35, times), "times": times, "key": key, "subj": subj}
 
 ## How strongly a card speaks *for* someone (used when defending a nominee).
@@ -1232,7 +1296,7 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	var why = "player accusation using card '%s' (class %s x%.2f, cred %.2f: %s, relevance %.2f, already known x%.2f)" % [cw["key"], cls, cw["class_w"], cw["cred"], cw["cred_why"], relevance, known]
 	var effs: Array = []
 	_eff(effs, suspect.id, 1.0, why, "the Demonologist made a case against them")
-	var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], suspect.id], effs, base * (0.5 + n.trust), [],
+	var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], suspect.id], effs, base * (0.5 + n.trust), cw["rel"],
 		{"kind": "tell", "base": base, "text": card.get("text", "")})
 	n.used_facts[cw["key"] + ">" + suspect.id] = true
 	var delta: float = h["gain"]
@@ -1285,7 +1349,7 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		var base: float = 0.3 * cw["cred"] * cw["class_w"] * st * (0.35 if n.ledger.has(cw["key"]) else 1.0) / group.size()
 		var effs: Array = []
 		_eff(effs, x.id, -1.0, "the Demonologist spoke for them, citing '%s'" % cw["key"])
-		var hx = ledger_hear(w, n, "for:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), [], {"kind": "tell", "base": base, "text": card.get("text", "")})
+		var hx = ledger_hear(w, n, "for:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), cw["rel"], {"kind": "tell", "base": base, "text": card.get("text", "")})
 		h["times"] = maxi(h["times"], hx["times"])
 		h["gain"] += hx["gain"]
 	if h["times"] > 0:
@@ -1318,7 +1382,7 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 		var base: float = 0.35 * cw["cred"] * card_strength(w, card, x) * cw["class_w"] * known / group.size()
 		var effs: Array = []
 		_eff(effs, x.id, 1.0, "player's case that one of %s is guilty, citing '%s'" % [gname, cw["key"]], "the Demonologist made a case against them")
-		var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), [], {"kind": "tell", "base": base, "text": card.get("text", "")})
+		var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), cw["rel"], {"kind": "tell", "base": base, "text": card.get("text", "")})
 		n.used_facts[cw["key"] + ">" + x.id] = true
 		gain += h["gain"]
 		times = maxi(times, h["times"])
@@ -1353,7 +1417,7 @@ static func public_case(w, nominee, card: Dictionary, direction: String) -> void
 		var effs: Array = []
 		_eff(effs, nominee.id, sign, "the Demonologist's public %s using card '%s' (class %s, cred %.2f, already known x%.2f)" %
 			[direction, cw["key"], cw["cls"], cw["cred"], known], "the Demonologist made a case against them" if direction == "accuse" else "")
-		ledger_hear(w, v, "pub:%s:%s>%s" % [direction, cw["key"], nominee.id], effs, base * (0.5 + v.trust), [],
+		ledger_hear(w, v, "pub:%s:%s>%s" % [direction, cw["key"], nominee.id], effs, base * (0.5 + v.trust), cw["rel"],
 			{"kind": "tell", "base": base, "text": card.get("text", "")})
 		if direction == "accuse":
 			v.used_facts[cw["key"] + ">" + nominee.id] = true
