@@ -11,6 +11,7 @@ const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
 const Argue = preload("res://sim/argue.gd")
+const CaseMetrics = preload("res://game/case_metrics.gd")
 
 var w
 var state = "day"          # day | approach | talk | meeting | nomination | night | over
@@ -28,6 +29,10 @@ var presented_today = false # player has had the meeting floor today
 var last_link = {}          # result of the last 'link' (for 'conclude <number>')
 var notes = {}              # npc id -> player's note
 var guesses = {}            # npc id -> {guess, confidence 1..3}
+var guess_history: Array = []
+var prediction_snapshots: Array = []
+var prediction_spoiled = false
+var case_summary: Dictionary = {}
 var show_hidden = false     # include cards the player has hidden
 var last_error = ""         # why the last file_deduction was refused
 var log_dir = "user://logs"
@@ -105,6 +110,16 @@ static func render(evs: Array) -> String:
 # ---------------------------------------------------------------- lifecycle
 
 func new_case(seed_in: int, npc_count: int = 7) -> String:
+	board = []
+	_card_keys = {}
+	notes = {}
+	guesses = {}
+	guess_history = []
+	prediction_snapshots = []
+	prediction_spoiled = false
+	case_summary = {}
+	last_link = {}
+	log_paths = []
 	w = World.new()
 	w.setup(seed_in, npc_count)
 	state = "day"
@@ -255,8 +270,15 @@ func _dispatch(text: String) -> void:
 				var conf = p1[p1.size() - 1].to_int() if p1.size() > 2 and p1[p1.size() - 1].is_valid_int() else 2
 				var gtext = " ".join(p1.slice(1, p1.size() - 1 if p1.size() > 2 and p1[p1.size() - 1].is_valid_int() else p1.size()))
 				var role = find_role(gtext)
-				set_guess(gn.id, role if role != "" else gtext.to_lower(), conf)
-				_narr("Marked %s as %s (confidence %d)." % [gn.name, C.role_name(role) if role != "" else gtext, conf])
+				if set_guess(gn.id, role if role != "" else gtext.to_lower(), conf):
+					_narr(theory_status())
+				else:
+					_err(last_error)
+			return
+		"theory":
+			_screen(theory_status())
+			if not w.game_over:
+				_prompt("Record privately with 'guess <name> demon [1-3]' and 'guess <name> poisoner [1-3]', or use a profile's Your guess. This costs no time and gives no correctness feedback.")
 			return
 		"profile", "p":
 			_screen(_profile(rest))
@@ -272,6 +294,9 @@ func _dispatch(text: String) -> void:
 			return
 		"grimoire":
 			if debug or state == "over":
+				if not w.game_over:
+					prediction_spoiled = true
+					w.dlog.add("prediction_spoiled", "player", "", {}, "Opened the hidden grimoire before the case ended; identification credit disabled.")
 				_screen(_lies() if rest.strip_edges().to_lower() == "lies" else _grimoire())
 			else:
 				_err("The grimoire is sealed until the case ends.")
@@ -651,6 +676,8 @@ func _start_meeting() -> void:
 		_lines(t["lines"])
 		_facts(t["facts"])
 	_narr("")
+	_narr(theory_status())
+	_prompt("Before voting, record or update your private demon guess in a profile or with 'guess <name> demon'. A case can end at this meeting; guessing is optional and costs no time.")
 	_prompt("Nominations are open (%d votes needed of %d). 'present <deduction#>' to take the floor (once), 'nominate <name>', or 'wait' to let the town speak." %
 		[w.vote_threshold(), w.voter_count()])
 
@@ -703,6 +730,8 @@ func _show_nomination() -> void:
 	var nm: Dictionary = w.meeting["pending"]
 	var t = w.by_id[nm["nominee"]]
 	_line(Mind.defence_line(w, t))
+	if CaseMetrics.named_guesses(guesses, "demon").is_empty():
+		_prompt("No demon guess recorded. You can still 'guess <name> demon' before voting, or save Your guess in a profile.")
 	var blk = ""
 	if w.meeting["block"] != "":
 		blk = " %s is on the block with %d votes." % [w.by_id[w.meeting["block"]].name, w.meeting["block_count"]]
@@ -748,7 +777,7 @@ func _nomination_command(verb: String, rest: String) -> void:
 			else:
 				_narr("You add your voice against %s." % t.name)
 				Mind.set_trust(w, t, t.trust - 0.08, "the Demonologist spoke against me")
-			w.dlog.add("player_statement", "player", t.id, {"statement": verb})
+			w.dlog.add("player_statement", "player", t.id, {"statement": verb, "card": card.get("n", 0)})
 			_prompt("'vote yes' or 'vote no'.")
 		"clemency":
 			if w.tools["clemency"] <= 0:
@@ -766,6 +795,7 @@ func _nomination_command(verb: String, rest: String) -> void:
 			if not yes and not no:
 				_err("'vote yes' or 'vote no'.")
 				return
+			capture_prediction("before_vote", {"nominee": t.id, "player_yes": yes})
 			var res: Dictionary = w.vote_pending(yes)
 			var yes_names: Array = res["yes"].map(func(i): return w.by_id[i].name)
 			if res["player_yes"]:
@@ -798,6 +828,11 @@ func _after_vote() -> void:
 	_prompt("%s'wait' for the town." % ("" if "player" in w.meeting["nominators"] else "'nominate <name>', or "))
 
 func _close_meeting() -> void:
+	var frozen = capture_prediction("before_execution", {"on_block": w.meeting["block"]})
+	if w.meeting["block"] != "":
+		w.dlog.add("player_execution_context", "player", w.meeting["block"], {"prediction_id": frozen["id"],
+			"known_cards": board.filter(func(c): return not c.get("deleted", false)).map(func(c): return c["n"])},
+			"Evidence and private theory available before execution; no automatic judgement of whether a mistake was reasonable.")
 	var ex = w.end_meeting()
 	if ex != "":
 		var n = w.by_id[ex]
@@ -852,6 +887,7 @@ func _night_command(verb: String, rest: String) -> void:
 			_err("At night: %svigil <block> | sleep" % ("ward <name> | " if w.tools["ward"] > 0 else ""))
 
 func _resolve_night() -> void:
+	capture_prediction("before_night")
 	var vig: String = w.player_vigil
 	w.resolve_night()
 	if vig != "":
@@ -911,7 +947,7 @@ func _help() -> String:
                       should be protected / spared
               misled = not lying, but their information was wrong (poisoned or mistaken)
             hide <#> | unhide <#> | showhidden | delete <#> (your own deductions only)
-            note <name> <text> | guess <name> <role|evil|good> [1-3]
+            note <name> <text> | guess <name> <role|evil|good> [1-3] | theory
   Day     : go <place | block | person>   (then one free move within the same block)
             then one action: talk <name> | search | gossip (tavern) | wait
   Talking : ask gift | ask night | ask today | ask about <name or gift> | convince <deduction#>
@@ -1044,10 +1080,14 @@ func _board(filter: String) -> String:
 	return "\n".join(out)
 
 func _ending() -> void:
+	var frozen: Dictionary = prediction_snapshots[-1] if not prediction_snapshots.is_empty() else {}
+	case_summary = CaseMetrics.summarize(w, frozen, prediction_spoiled)
+	w.dlog.add("case_summary", "world", "", case_summary, "Frozen pre-outcome identification, town survival, and execution attribution.")
 	if w.winner == "good":
 		_narr("*** VICTORY ***  " + w.end_reason)
 	else:
 		_narr("*** DEFEAT ***  " + w.end_reason)
+	_narr(_outcome_text())
 	_narr("")
 	_screen(_grimoire())
 	_narr("")
@@ -1432,8 +1472,64 @@ func _timeline(filter: String) -> String:
 func set_note(id: String, text: String) -> void:
 	notes[id] = text
 
-func set_guess(id: String, guess: String, confidence: int) -> void:
+func set_guess(id: String, guess: String, confidence: int) -> bool:
+	last_error = ""
+	if w.game_over:
+		last_error = "The case is closed. Your pre-outcome theory is frozen."
+		return false
+	if not w.by_id.has(id) or not (guess in C.ROLES or guess in ["?", "good", "evil"]):
+		last_error = "Choose a known person and a role, good, evil, or ?."
+		return false
+	var before = guesses.duplicate(true)
+	# These are nominations for two unique identities, not a list of alternate suspects.
+	if guess in ["demon", "poisoner"]:
+		for old_id in CaseMetrics.named_guesses(guesses, guess):
+			if old_id != id:
+				guesses[old_id] = {"guess": "?", "confidence": 1}
 	guesses[id] = {"guess": guess, "confidence": clampi(confidence, 1, 3)}
+	if before == guesses:
+		return true
+	var revision = {"revision": guess_history.size() + 1, "day": w.day, "phase": w.phase_name(), "state": state,
+		"who": id, "guess": guess, "confidence": clampi(confidence, 1, 3), "before": before,
+		"guesses": guesses.duplicate(true), "notes": notes.duplicate(true)}
+	guess_history.append(revision)
+	w.set_log_time()
+	w.dlog.add("player_guess", "player", id, revision, "Private theory revised; no truth feedback.")
+	return true
+
+func capture_prediction(reason: String, extra: Dictionary = {}) -> Dictionary:
+	var snapshot = {"id": prediction_snapshots.size() + 1, "day": w.day, "phase": w.phase_name(), "state": state,
+		"reason": reason, "revision": guess_history.size(), "guesses": guesses.duplicate(true), "notes": notes.duplicate(true),
+		"spoiled": prediction_spoiled, "context": extra.duplicate(true)}
+	prediction_snapshots.append(snapshot)
+	w.set_log_time()
+	w.dlog.add("prediction_snapshot", "player", "", snapshot, "Private theory frozen before resolving an outcome.")
+	return snapshot
+
+func theory_status() -> String:
+	var parts: Array = []
+	for role in ["demon", "poisoner"]:
+		var ids = CaseMetrics.named_guesses(guesses, role)
+		parts.append("%s: %s" % ["Demon" if role == "demon" else "Minion", w.by_id[ids[0]].name if ids.size() == 1 else "not recorded"])
+	return ("Final theory — " if w.game_over else "Your private theory — ") + "; ".join(PackedStringArray(parts))
+
+func _outcome_text() -> String:
+	var lines = PackedStringArray()
+	if case_summary["prediction_spoiled"]:
+		lines.append("Identification unscored: the hidden grimoire was opened during this case.")
+	else:
+		for role in ["demon", "minion"]:
+			var ids: Array = case_summary[role + "_guesses"]
+			var result = "not recorded" if ids.is_empty() else "correct" if case_summary[role + "_identified"] else "incorrect"
+			lines.append("%s identified: %s." % [role.capitalize(), result])
+		if case_summary["identified_but_lost"]:
+			lines.append("You identified the demon, but could not save the town in time.")
+		elif case_summary["town_saved"] and not case_summary["demon_identified"]:
+			lines.append("The town survived, though your final theory did not identify the demon.")
+	lines.append("Innocent townsfolk surviving: %d/%d. Wrongful executions: %d (%d backed, %d opposed, %d mixed)." %
+		[case_summary["good_surviving"], case_summary["good_initial"], case_summary["executions_good"],
+		case_summary["wrongful_backed"], case_summary["wrongful_opposed"], case_summary["wrongful_mixed"]])
+	return "\n".join(lines)
 
 func profile_data(id: String) -> Dictionary:
 	var n = w.by_id[id]

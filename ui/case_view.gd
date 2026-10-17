@@ -6,6 +6,7 @@ signal changed
 
 const C = preload("res://sim/content.gd")
 const Argue = preload("res://sim/argue.gd")
+const Metrics = preload("res://game/case_metrics.gd")
 
 var g
 var mono: Font
@@ -18,6 +19,7 @@ var grid: GridContainer
 var prof_opt: OptionButton
 var prof_text: RichTextLabel
 var guess_opt: OptionButton
+var theory_label: Label
 var conf_spin: SpinBox
 var note_edit: TextEdit
 var result_text: RichTextLabel
@@ -52,6 +54,9 @@ func build(font: Font) -> void:
 	var root = VBoxContainer.new()
 	root.add_theme_constant_override("separation", 8)
 	add_child(root)
+	theory_label = Label.new()
+	theory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(theory_label)
 
 	var top = HFlowContainer.new()
 	root.add_child(top)
@@ -258,9 +263,22 @@ func set_game(game) -> void:
 func refresh() -> void:
 	if g == null:
 		return
+	theory_label.text = g.theory_status()
+	if not g.w.game_over:
+		theory_label.text += " — Save Your guess in a profile before voting. No correctness feedback until the case ends."
 	_refresh_cards()
 	_refresh_timeline()
 	_refresh_profile()
+
+func open_theory() -> void:
+	# Select the existing candidate or leave the ordinary first profile selected.
+	var ids = Metrics.named_guesses(g.guesses, "demon")
+	if not ids.is_empty():
+		for i in range(prof_opt.item_count):
+			if prof_opt.get_item_metadata(i) == ids[0]:
+				prof_opt.select(i)
+	_refresh_profile()
+	guess_opt.grab_focus()
 	_fill_nights()
 	if b_status.item_count == 0:
 		_fill_status()
@@ -390,14 +408,18 @@ func _refresh_profile() -> void:
 		if gs.get("guess", "?") == guess_opt.get_item_metadata(i):
 			guess_opt.select(i)
 	conf_spin.value = gs.get("confidence", 2)
+	guess_opt.disabled = g.w.game_over
+	conf_spin.editable = not g.w.game_over
 	note_edit.text = p["note"]
 
 func _on_save_profile() -> void:
 	var id = _meta(prof_opt)
 	if id == "":
 		return
-	g.set_guess(id, guess_opt.get_item_metadata(guess_opt.selected), int(conf_spin.value))
 	g.set_note(id, note_edit.text)
+	if not g.w.game_over:
+		g.set_guess(id, guess_opt.get_item_metadata(guess_opt.selected), int(conf_spin.value))
+	refresh()
 	changed.emit()
 
 func _clear_results() -> void:

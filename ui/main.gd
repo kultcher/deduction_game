@@ -19,6 +19,7 @@ var case_view
 var mono: SystemFont
 var history: Array = []
 var hist_i = 0
+var theory_label: Label
 
 func _ready() -> void:
 	var bg = ColorRect.new()
@@ -57,6 +58,10 @@ func _ready() -> void:
 	_button(top, "Write dev log", func(): _run("log"))
 	_button(top, "Board panel", func(): side.visible = not side.visible)
 	_button(top, "Case view", _open_case_view)
+	_button(top, "Record theory", _open_theory)
+	theory_label = Label.new()
+	theory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(theory_label)
 
 	out = RichTextLabel.new()
 	out.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -148,6 +153,10 @@ func _open_case_view() -> void:
 	case_view.refresh()
 	case_view.visible = true
 
+func _open_theory() -> void:
+	_open_case_view()
+	case_view.open_theory()
+
 func _on_submit(text: String) -> void:
 	var t = text.strip_edges()
 	input.clear()
@@ -171,6 +180,9 @@ func _print(s: String) -> void:
 func _refresh_side() -> void:
 	if g == null or side_list == null:
 		return
+	theory_label.text = g.theory_status()
+	if not g.w.game_over:
+		theory_label.text += " — Record your demon guess before voting; it costs no time."
 	side_list.clear()
 	var cards: Array = g.filter_cards(side_filter.text)
 	cards.reverse()
