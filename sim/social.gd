@@ -363,17 +363,29 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 	var facts: Array = []
 	var rn = C.role_name(role)
 	var mine: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	var asks: int = n.role_asks
+	n.role_asks += 1
 	if mine == role and (n.claim_public or n.max_tier >= 3):
 		lines.append(Mind.say(n, "That would be me."))
 		return {"lines": lines, "facts": facts}
-	# Asking the holder directly: they decide whether to own up (a little more readily,
-	# since you've guessed). If they won't, they answer like anyone else would.
+	# Asking the holder directly: they decide whether to own up (a little more readily if it's
+	# the first gift you've put to them; not if you're going down the list). If they won't,
+	# they answer like anyone else would.
 	if mine == role:
-		var tier: int = Mind._target_tier(w, n) + (1 if w.rng.randf() < 0.5 else 0)
-		w.dlog.think(n.id, "about_role", "Asked about their own gift (%s): disclosure tier %d." % [role, tier])
+		var bonus = 1 if asks == 0 and w.rng.randf() < 0.5 else 0
+		var tier: int = Mind._target_tier(w, n) + bonus
+		w.dlog.think(n.id, "about_role", "Asked about their own gift (%s): disclosure tier %d%s." % [role, tier,
+			"" if asks == 0 else " (no bonus: you've asked them about other gifts before)"])
 		if tier >= 2:
 			n.pressed_today -= 1  # answer_gift counts the question again
 			return Mind.answer_gift(w, n, mini(tier, 4))
+	elif asks > 0 and not n.claim_public and n.max_tier < 3:
+		# A wrong guess about their gift, after another: it reads as fishing. The first question
+		# about a gift is free (it might just be a question about the town).
+		var cost = 0.03 * asks
+		Mind.set_trust(w, n, n.trust - cost, "the Demonologist keeps guessing at my gift (wrong, %d times)" % asks)
+		if asks >= 2:
+			lines.append(Mind.say(n, "Why do you keep asking me about gifts?"))
 	var public: Array = w.public_claims.filter(func(c): return c["role"] == role and w.by_id[c["who"]].alive).map(func(c): return w.by_id[c["who"]].name)
 	var text = ""
 	if not public.is_empty():

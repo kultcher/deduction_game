@@ -734,15 +734,76 @@ static func _public_accusation(w, n):
 		return null
 	if n.is_evil():
 		w.dlog.think(n.id, "lie", "Evil: publicly accuses scapegoat %s, citing: %s." % [t.id, why if why != "" else "vibes"])
+	var prev_target: String = w.stances.get(n.id, {}).get("target", "")
+	w.stances[n.id] = {"target": t.id, "day": w.day}
 	for l in w.living():
-		if l != n and l != t:
-			adjust(w, l, t.id, 0.12 * heard_weight(l, n) * 2.0, "public accusation by %s" % n.id,
-				"%s spoke against them at the meeting" % n.name)
-	t.pressure += 0.15
+		refresh_consensus(w, l, t.id)
+		if prev_target != "" and prev_target != t.id:
+			refresh_consensus(w, l, prev_target)
+	# Scrutiny rises with each voice, but less for each one that only joins in.
+	var earlier: Array = w.meeting.get("accusations", []).filter(func(a): return a["target"] == t.id)
+	t.pressure += 0.15 * pow(0.5, earlier.size())
 	w.public_event("accusation", [t.id], n.id)
-	var tail = (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else " Something's off about them."
-	return {"line": say(n, "I don't trust %s.%s" % [t.name, tail]),
+	var line: Dictionary
+	if not earlier.is_empty():
+		# Someone already said it: agree rather than restate their grounds. Only grounds of
+		# their own (their reading, what they saw) are worth adding.
+		var first = w.by_id[earlier[0]["by"]]
+		var own = why.begins_with("my own") or why.begins_with("I ")
+		line = say(n, "I agree with %s about %s.%s" % [first.name, t.name, (" " + why[0].to_upper() + why.substr(1) + ".") if own else ""])
+	else:
+		var tail = (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else " Something's off about them."
+		line = say(n, "I don't trust %s.%s" % [t.name, tail])
+	if w.meeting.has("accusations"):
+		w.meeting["accusations"].append({"by": n.id, "target": t.id})
+	return {"line": line,
 		"fact": {"kind": "accusation", "subject": [t.id], "source": n.id, "text": "%s publicly accused %s." % [n.name, t.name]}}
+
+## Peer pressure: what the town's public accusations against target add to a listener's
+## suspicion. Each accuser counts once (their latest stance), older accusations fade, and
+## each further voice adds half as much as the one before, so a chorus can't bury someone.
+## Applied as a difference from what's applied now, like the evidence ledger, but kept out
+## of the ledger: a crowd's opinion isn't evidence against anyone's honesty.
+const CONSENSUS_BASE = 0.12
+const CONSENSUS_FADE = 0.6
+const CONSENSUS_CAP = 0.3
+
+static func refresh_consensus(w, l, target: String) -> void:
+	if l.is_evil() or l.id == target or not l.suspicion.has(target):
+		return
+	var vals: Array = []
+	for a in w.stances:
+		var st: Dictionary = w.stances[a]
+		if st["target"] != target or a == l.id or a == target:
+			continue
+		var bond: float = l.npc_trust.get(a, 0.5)
+		vals.append(CONSENSUS_BASE * (0.5 + bond) * pow(CONSENSUS_FADE, w.day - st["day"]))
+	vals.sort()
+	vals.reverse()
+	var want = 0.0
+	for i in range(vals.size()):
+		want += vals[i] * pow(0.5, i)
+	want = minf(want, CONSENSUS_CAP)
+	var have: float = l.consensus_applied.get(target, 0.0)
+	if absf(want - have) < 0.002:
+		return
+	l.consensus_applied[target] = want
+	adjust(w, l, target, want - have, "town consensus: %d voice(s) against them" % vals.size(),
+		"several people have spoken against them" if vals.size() > 1 else "%s spoke against them at the meeting" % w.by_id[_first_accuser(w, target, l.id)].name)
+
+static func _first_accuser(w, target: String, not_id: String) -> String:
+	for a in w.stances:
+		if w.stances[a]["target"] == target and a != not_id:
+			return a
+	return target
+
+static func refresh_all_consensus(w) -> void:
+	var targets = {}
+	for a in w.stances:
+		targets[w.stances[a]["target"]] = true
+	for l in w.living():
+		for t in targets:
+			refresh_consensus(w, l, t)
 
 ## Next NPC nomination, or null. Respects BotC limits and who is already on the block.
 static func next_nomination(w):
@@ -796,7 +857,7 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 		w.dlog.think(v.id, "vote", "Votes no on own execution.", {"nominee": nominee, "yes": false})
 		return false
 	if v.is_evil():
-		return Evil.evil_vote(w, v, nominee, yes_so_far)
+		return Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
 	reconsider(w, v, "thinking it over before the vote")
 	var base = susp(v, nominee)
 	var s = base
@@ -1049,7 +1110,7 @@ static func _gossip_share(w, n, topic: String) -> int:
 
 static func _alibi_home(n, nd: int) -> Dictionary:
 	return {"kind": "alibi", "subject": [n.id], "home": true, "day": nd, "phase": C.NIGHT, "source": n.id,
-		"text": "%s says they were home on night %d." % [n.name, nd]}
+		"text": "%s says they were home (on %s) on night %d." % [n.name, C.block_name(n.home_block), nd]}
 
 static func answer_night(w, n, night: int = -1) -> Dictionary:
 	on_question(w, n)
@@ -1059,16 +1120,24 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	var where: String = n.history.get(w.time_key(nd, C.NIGHT), "home:" + n.home_block)
 	var was_out = where.begins_with("night:")
 	var block = where.substr(where.find(":") + 1)
+	# Where they say they were: what their sightings must be told from. "" = not saying.
+	var vantage = ""
+	var how = "window"
 	if n.is_evil() and n.claimed_role == "nightwatch" and w.evil_plan["fake_watch"].has(str(nd)):
 		var fb: String = w.evil_plan["fake_watch"][str(nd)]
 		w.dlog.think(n.id, "lie", "Evil bluffing Night Watch: claims to have watched %s (actually %s)." % [fb, where], {"lie": true})
 		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(fb)))
 		facts.append({"kind": "sighting", "subject": [n.id], "block": fb, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
 			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(fb), nd]})
+		vantage = fb
+		how = "street"
 	elif not was_out:
-		lines.append(say(n, "At home, asleep, same as any honest soul."))
+		lines.append(say(n, "At home all night, same as any honest soul."))
 		facts.append(_alibi_home(n, nd))
+		vantage = n.home_block
 	elif n.role == "nightwatch" and n.claimed_role == "nightwatch":
+		vantage = block
+		how = "street"
 		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(block)))
 		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
 			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(block), nd]})
@@ -1085,11 +1154,14 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		if guarded != "" and w.by_id.has(guarded):
 			var gb: String = w.by_id[guarded].home_block
 			lines.append(say(n, "Standing guard at %s's door, as my gift asks." % w.by_id[guarded].name))
+			vantage = gb
+			how = "street"
 			facts.append({"kind": "sighting", "subject": [n.id], "block": gb, "day": nd, "phase": C.NIGHT, "source": n.id, "guard_claim": guarded,
 				"text": "%s says they guarded %s's door (on %s) on night %d." % [n.name, w.by_id[guarded].name, C.block_name(gb), nd]})
 		else:
-			lines.append(say(n, "At home, asleep, same as any honest soul."))
+			lines.append(say(n, "At home all night, same as any honest soul."))
 			facts.append(_alibi_home(n, nd))
+			vantage = n.home_block
 	else:
 		# Out with something to hide: evil work, a personal secret, or a hidden Night Watch gift.
 		var hiding = "evil work" if n.is_evil() else ("hidden Night Watch gift" if n.role == "nightwatch" else "hidden Warden gift" if n.role == "warden" else "secret: %s" % n.secret.get("kind", "?"))
@@ -1102,6 +1174,8 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		if confess:
 			n.secret_known = true
 			lines.append(say(n, "...I wasn't home. I %s. Please, keep it quiet." % n.secret["text"]))
+			vantage = block
+			how = "street"
 			facts.append({"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
 				"text": "%s confessed they were out on %s on night %d: they %s." % [n.name, C.block_name(block), nd, n.secret["text"]]})
 		else:
@@ -1111,24 +1185,33 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				w.dlog.think(n.id, "lie", "Hiding (%s): was on %s, claims to have been home." % [hiding, block], {"lie": true})
 				lines.append(say(n, "Home. Where else would I be?"))
 				facts.append(_alibi_home(n, nd))
+				vantage = n.home_block
 			else:
 				w.dlog.think(n.id, "stonewall", "Hiding (%s): refuses to say where they were." % hiding)
 				lines.append(say(n, "Where I go at night is my own business."))
 				facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "day": nd, "phase": C.NIGHT,
 					"text": "%s refused to say where they were on night %d." % [n.name, nd]})
 	var limit = _gossip_share(w, n, "share_sightings")
-	var seen: Array = n.beliefs.filter(func(b): return b["kind"] == "saw" and b["day"] == nd and b["phase"] == C.NIGHT)
+	var seen: Array = n.beliefs.filter(func(b): return b["kind"] in ["saw", "stayed_in"] and b["day"] == nd and b["phase"] == C.NIGHT)
 	var reported: Array = []
 	for b in seen:
-		if n.is_evil() and Evil.is_teammate(w, n, b["who"]):
+		if n.is_evil() and Evil.is_teammate(w, n, b["who"]) and b["kind"] == "saw":
 			w.dlog.think(n.id, "lie", "Evil: omits seeing teammate %s at night." % b["who"])
 			continue
-		if n.npc_trust.get(b["who"], 0.5) > 0.7 and w.rng.randf() < 0.6:
+		if b["kind"] == "saw" and n.npc_trust.get(b["who"], 0.5) > 0.7 and w.rng.randf() < 0.6:
 			w.dlog.think(n.id, "omit", "Leaves out seeing %s, whom they trust." % b["who"])
 			continue
+		if vantage != "" and b["block"] != vantage:
+			# Seen from somewhere they say they weren't: telling it would give the lie away.
+			# Most keep quiet; a rattled few let it slip.
+			var slip = 0.25 * (1.0 - trait_of(n, "composure")) + 0.15 * n.pressure
+			if w.rng.randf() >= slip:
+				w.dlog.think(n.id, "omit", "Leaves out seeing %s on %s: they say they were on %s." % [b["who"], b["block"], vantage])
+				continue
+			w.dlog.think(n.id, "slip", "Lets slip seeing %s on %s, though they say they were on %s (p=%.2f)." % [b["who"], b["block"], vantage, slip])
 		reported.append(b)
-	if n.is_evil():
-		var fake = Evil.fake_night_sighting(w, n, nd)
+	if n.is_evil() and vantage != "":
+		var fake = Evil.fake_night_sighting(w, n, nd, vantage, how)
 		if fake != null:
 			reported.append(fake)
 	if limit == 0 and not reported.is_empty():
@@ -1138,11 +1221,33 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	if reported.is_empty() and not (was_out and not n.is_evil()):
 		lines.append(say(n, "I saw nobody."))
 	for b in reported:
-		var who = w.by_id[b["who"]]
-		lines.append(say(n, "I did see %s out on %s that night." % [who.name, C.block_name(b["block"])]))
-		facts.append({"kind": "sighting", "subject": [who.id], "block": b["block"], "day": nd, "phase": C.NIGHT, "source": n.id,
-			"text": "%s says they saw %s on %s on night %d." % [n.name, who.name, C.block_name(b["block"]), nd]})
+		var r = sighting_report(w, n, b, nd)
+		lines.append(r["line"])
+		facts.append(r["fact"])
 	return {"lines": lines, "facts": facts}
+
+## One night sighting (or a neighbour seen going in for the night), as said and as a card.
+## From a window, they can only speak for their own street.
+static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
+	var who = w.by_id[b["who"]]
+	var bn = C.block_name(b["block"])
+	if b["kind"] == "stayed_in":
+		return {"line": say(n, "From my window, I saw %s go in for the night, and they never came out." % who.name),
+			"fact": {"kind": "alibi", "subject": [who.id], "home": true, "witness": true, "day": nd, "phase": C.NIGHT, "source": n.id, "block": b["block"],
+				"text": "%s says they saw %s go home for the night on night %d and not come out (from their window, %s)." % [n.name, who.name, nd, bn]}}
+	var line = ""
+	var how = ""
+	if b.get("how", "street") == "window":
+		how = " (from their window)"
+		if b.get("detail", "") == "leaving_home":
+			line = "From my window, I saw %s leave their house that night." % who.name
+		else:
+			line = "From my window, I saw %s out in the street that night." % who.name
+	else:
+		line = "I did see %s out on %s that night." % [who.name, bn]
+	return {"line": say(n, line),
+		"fact": {"kind": "sighting", "subject": [who.id], "block": b["block"], "day": nd, "phase": C.NIGHT, "source": n.id, "how": b.get("how", "street"),
+			"text": "%s says they saw %s on %s on night %d%s." % [n.name, who.name, bn, nd, how]}}
 
 static func answer_today(w, n) -> Dictionary:
 	on_question(w, n)

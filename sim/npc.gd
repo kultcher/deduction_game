@@ -48,7 +48,10 @@ var trust_cap = 1.0
 var npc_trust = {}
 ## Scrutiny from accusations and nominations; decays each night.
 var pressure = 0.0
+## Suspicion currently applied from the town's public accusations (Mind.refresh_consensus), per target.
+var consensus_applied = {}
 var pressed_today = 0
+var role_asks = 0           # times the player has asked them about a particular gift
 var talked_day = -1      # last day the player had a conversation with them
 var cleared = {}         # ids their own Seer reading said are not the demon
 var heard = {}           # card text -> times the player has used it on them (diminishing returns)

@@ -32,6 +32,7 @@ var executions: Array = []          # {day, id, nominator, yes, player_yes, play
 var night_walkers: Array = []       # last night: {id, block, path, why}
 var dropped = {}                    # location -> [{night, material (block), owner, who, why}] not yet found
 var public_claims: Array = []       # {day, who, role}
+var stances = {}                    # accuser id -> {target, day}: their latest public accusation
 ## Everything said or done in public (what evil, and anyone, can know without being told).
 var public_log: Array = []          # {day, kind, subjects, by}
 
@@ -471,8 +472,10 @@ func begin_meeting() -> Array:
 	set_log_time()
 	executed_today = ""
 	meeting = {"block": "", "block_count": 0, "nominated": [], "nominators": [], "results": [], "pending": {}}
+	meeting["accusations"] = []
 	for n in living():
 		n.busy_with = ""
+	Mind.refresh_all_consensus(self)  # yesterday's accusations count for less today
 	return Mind.meeting_testimony(self)
 
 func can_nominate(by: String, nominee: String) -> String:
@@ -594,6 +597,8 @@ func execute(id: String, res: Dictionary) -> void:
 
 ## Those who trusted the executed resent whoever pushed for it (shifting allegiances).
 func _grief(ex, res: Dictionary) -> void:
+	if ex.id == demon_id:
+		return  # the town was right; nobody mourns the demon
 	for f in living_good():
 		var t: float = f.npc_trust.get(ex.id, 0.5)
 		if t < 0.62:
@@ -787,10 +792,22 @@ func _night_sightings() -> void:
 				saw = chance(0.15)
 				where = o.home_block
 			if saw:
-				o.beliefs.append({"kind": "saw", "who": wn.id, "loc": "", "block": where, "day": day, "phase": C.NIGHT})
+				# From home you see the street from your window; out, you see them in passing.
+				var how = "street" if o.out_last_night else "window"
+				var detail = "leaving_home" if (how == "window" and where == wn.home_block) else "street"
+				o.beliefs.append({"kind": "saw", "who": wn.id, "loc": "", "block": where, "day": day, "phase": C.NIGHT, "how": how, "detail": detail})
 				dlog.add("night_sighting", o.id, wn.id, {"block": where}, "%s glimpsed %s on %s at night." % [o.name, wn.name, C.block_name(where)])
 		if player_vigil != "" and player_vigil in path and wn.alive:
 			player_vigil_seen.append(wn.id)
+	# Neighbours at home sometimes notice each other going in for the night and not coming
+	# out again: a (true, if weak) alibi for those who stayed in.
+	for o in living():
+		if o.out_last_night:
+			continue
+		for m in living():
+			if m != o and m.home_block == o.home_block and not m.out_last_night and chance(0.2):
+				o.beliefs.append({"kind": "stayed_in", "who": m.id, "loc": "", "block": m.home_block, "day": day, "phase": C.NIGHT, "how": "window"})
+				dlog.add("night_alibi", o.id, m.id, {"block": m.home_block}, "%s saw %s go in for the night and not come out." % [o.name, m.name])
 	if player_vigil != "":
 		dlog.add("player_vigil", "player", "", {"block": player_vigil, "seen": player_vigil_seen})
 

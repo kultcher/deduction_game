@@ -423,8 +423,10 @@ static func _match_pair(w, a: Dictionary, b: Dictionary, near: Array):
 		near.append("cards #%d and #%d are about %s on different nights (%d vs %d)." % [a["card"], b["card"], _nm(w, a["who"]), a["night"], b["night"]])
 	if ta == "out" and tb == "home" and a["who"] == b["who"]:
 		if a["night"] == b["night"]:
-			return _mk(w, "out_vs_home", "%s says they were home on night %d, but card #%d puts them out on %s." %
-				[_nm(w, a["who"]), a["night"], a["card"], C.block_name(a["block"])], cards, _place_expls(w, a, b), a["who"], [a, b])
+			var said = ("%s says they were home on night %d" % [_nm(w, a["who"]), a["night"]]) if b["src"] == b["who"] else \
+				("%s says %s stayed home on night %d" % [_nm(w, b["src"]), _nm(w, a["who"]), a["night"]])
+			return _mk(w, "out_vs_home", "%s, but card #%d puts them out on %s." %
+				[said, a["card"], C.block_name(a["block"])], cards, _place_expls(w, a, b), a["who"], [a, b])
 		near.append("cards #%d and #%d are about %s on different nights (%d vs %d)." % [a["card"], b["card"], _nm(w, a["who"]), a["night"], b["night"]])
 	# Double claim / changed story.
 	if ta == "claim" and tb == "claim" and a["card"] < b["card"]:

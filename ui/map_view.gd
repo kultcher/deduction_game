@@ -3,9 +3,9 @@
 ## people as coloured dots. Emits `clicked(kind, id)` for the main UI to turn into commands:
 ## kind = "block" | "location" | "home" | "scene" | "npc" | "back".
 ##
-## Visibility follows the game's rules: people at work or in conversation are shown at their
-## exact spot; anyone on your block once you're there is shown exactly; everyone else who's
-## out is only known by block (drawn loose in the street); people at home are in their homes.
+## Visibility follows the game's rules (Game.can_see): people at work or in conversation are
+## shown at their exact spot from anywhere; anyone else (out, or at home) only once you're on
+## their block this phase. At night everyone is home.
 extends Control
 
 signal clicked(kind, id)
@@ -191,15 +191,16 @@ func _draw_people(font) -> void:
 	var groups = {}  # virtual rect key -> [npc]
 	var rects = {}
 	for n in w.living():
+		if not g.can_see(n):
+			continue  # out of sight until the player is on their block
 		var rect: Rect2
 		var exact = true
 		if night or n.at_home():
 			rect = _home_rect(n)
-		elif n.working or n.busy_with != "" or (g.moved and w.loc_block(n.loc) == w.loc_block(g.loc)):
-			rect = _loc_rect(n.loc) if C.LOCATIONS.has(n.loc) else _street_rect(w.loc_block(n.loc))
+		elif C.LOCATIONS.has(n.loc):
+			rect = _loc_rect(n.loc)
 		else:
 			rect = _street_rect(w.loc_block(n.loc))
-			exact = false
 		var key = str(rect)
 		if not groups.has(key):
 			groups[key] = []

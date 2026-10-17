@@ -81,6 +81,11 @@ but it means the game must teach its own way of thinking and make evidence very 
   trust, confidence and paranoia: two who dislike each other rarely talk; of three, the
   two who like each other are likeliest). Each NPC has at most one NPC conversation per
   day; once pre-paired, they can't be pre-paired again that day (but may still be at work).
+- **Who you can see [built].** People at work or deep in conversation are visible from
+  anywhere. Anyone else (out and about, or at home) is out of sight until the player
+  chooses a block for the phase; then everyone on that block shows, including who's home
+  (a lit window). `go <person>` only works for someone you can see; otherwise the game
+  points you to their work and home block. At night everyone is home.
 - Only the *current* phase is shown live. On the map and timeline, positions the player
   witnessed are shown as **confirmed**; positions heard secondhand (testimony, gossip) are
   shown as **tentative** (e.g. low alpha) and carry their source. Recording other
@@ -371,6 +376,15 @@ Follows BotC's structure:
 BotC limits: each person nominates at most once and can be nominated at most once per
 day. Threshold: votes from at least half the living (rounded up).
 
+**Peer pressure, not a pile-on [built].** A public accusation is a social signal, not
+evidence. Each accuser counts once (their latest stance), by how much the listener trusts
+them; each further voice adds half as much as the one before; an accusation fades to 60%
+per day; the total is capped (0.3 before Confidence scaling). Re-accusing at the next
+meeting adds nothing. It's kept out of the evidence ledger, so a crowd's opinion never
+lowers anyone's credibility. Pressure from an accusation halves with each voice that only
+joins in. In speech, the second person to accuse the same target says "I agree with X
+about Y", adding grounds only if they're their own (their reading, what they saw).
+
 **Dead NPCs (deferred):** no ghost votes for now. In BotC that rule mainly keeps dead
 players engaged, which matters less in single player. Keep the door open to the dead
 affecting the game, e.g. the final day's vote is a **Séance** in which the dead also vote.
@@ -628,6 +642,21 @@ player). Both use the same roll (lower Insight, more often vague).
   Frequency follows personality, not alignment. Good NPCs meet constantly too, so meetings
   aren't a tell on their own.
 
+- **Poisoner sense and team play [built].** The Poisoner skips gifts that poisoning
+  wouldn't stop tonight, judged from public claims only: first-night gifts (Archivist,
+  Clerk) after night 0, a Gravedigger on a night with no execution, a claimed Veteran on
+  its own. The demon treats a claimed Veteran, or someone whose attack failed with nobody
+  at the door, as a possible Veteran: with the Poisoner alive it may go for them anyway
+  and ask the Poisoner to poison them first (one retry), so the kill lands. A suspected
+  Warden (claimed, or glimpsed at a door when a kill failed) is a poison target on nights
+  the demon goes for someone prominent.
+- **Demon on the block.** When one more vote for its own minion would tie the block's
+  count (clearing it), a demon on the block may cast it (likelier when confident). It
+  votes for its minion otherwise only when the vote passes without it.
+- **Bluff consistency.** A Seer bluff never gives a "no" that covers the scapegoat (it
+  would undo its own frame) and frames every night once five or fewer remain. Still to
+  come: a "throw a teammate under the bus" pass.
+
 ### Good-to-good social dynamics
 - Simple model: two NPCs choose to talk; NPC 1 shares one thing they know (a sighting, a
   reading, an opinion, something the player argued); it affects NPC 2's judgement through
@@ -683,6 +712,18 @@ paths within blocks, planting by a Framer, NPCs searching.
   case, arguing a deduction, speaking up for someone, and pressing the listener; the game
   infers which from the card and who it's about, and asks when a card mentions several
   people. It mirrors the meeting's `present`, which is the same act in public.
+- **Sightings are told from where you say you were [built].** Someone at home saw the
+  street from their window ("From my window, I saw X leave their house" / "out in the
+  street"); someone out saw them in passing ("I saw X out on the Docks"). Neighbours at
+  home sometimes notice each other go in for the night and not come out: a true, weak
+  **witness alibi** card ("Y says X stayed home on night N"), which works with
+  `out_vs_home`. A person who claims home won't report what they saw on another block
+  (a rattled few let it slip: 0.25 × (1 − Composure) + 0.15 × pressure, a catchable
+  contradiction). Evil's invented sightings follow the same rule: from their own window,
+  or while out on a night-active bluff (a Night Watch's watched block, a Warden's
+  guarded door); a liar who refused to say where they were invents nothing.
+- **Filed:** an open Warden saying "I saw X out while I stood guard" (strong; maybe too
+  strong).
 - Alibis **name a corroborator** ("I was with Jory"). The corroborator confirms or denies,
   which can produce a word-against-word contradiction card.
 - Evil may claim a false secret ("I was meeting Jory for an affair"), or name someone they
@@ -691,6 +732,14 @@ paths within blocks, planting by a Framer, NPCs searching.
 - Evil naming each other as alibis is a classic BotC pairing tell; smart evil usually
   avoids it.
 - All of these are expressed as cards (alibi claim, confirmation, denial, confession).
+
+### Asking about a gift
+- `ask about <gift>` doubles as a guess at the listener's own gift: the holder owns up a
+  little more readily, but only if it's the first gift you've put to them. Each further
+  wrong guess with the same person costs trust (0.03 × the number of earlier guesses), and
+  after a few they ask why you keep asking. A holder who won't own up answers exactly as a
+  non-holder would, so one guess doesn't eliminate anyone. A card you've already shown
+  someone ("You've told me that already") costs no question, once per conversation.
 
 ### Clemency and the demon
 - The demon may deliberately **not** kill someone the player spared, leaving them alive to
@@ -891,3 +940,9 @@ results match the pre-tracking commit, including deaths, executions and end reas
 - `--passive` bot: a player who does nothing (waits, declines, never nominates, votes no).
   The town should sometimes win on its own, but a playing player should raise the win
   rate substantially. First measurement (150 seeds): passive 16%, playing bot 33%.
+- After the consensus cap, smarter Poisoner, visibility rules (the bot now only sees what a
+  player sees) and window-only sightings, over 300 seeds (1000–1149, 2000–2149): playing bot
+  99/300 (33%) vs passive 47/300 (16%), against 115/300 (38%) vs 35/300 (12%) before. The
+  bot lost about 2 points from the visibility rule alone; passive gained mostly from fewer
+  pile-on executions (fewer executions overall). Seed-to-seed noise is about ±3 points per
+  150-seed batch.

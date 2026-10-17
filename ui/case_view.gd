@@ -30,6 +30,10 @@ var note_edit: TextEdit
 var result_text: RichTextLabel
 var result_box: VBoxContainer
 var cell_filter: Array = []   # card numbers picked from a timeline cell ([] = off)
+var cell_key = ""             # which cell ("id:day:phase"), so clicking it again turns it off
+var cell_label = ""
+var cell_chip: HBoxContainer
+var cell_chip_label: Label
 var hidden_check: CheckBox
 var work_list
 var staged: Array = []        # the working set: card numbers, kept across filters
@@ -74,12 +78,12 @@ func build(font: Font) -> void:
 	filter_edit = LineEdit.new()
 	filter_edit.placeholder_text = "filter: text, d2, n1 ..."
 	filter_edit.custom_minimum_size = Vector2(180, 0)
-	filter_edit.text_changed.connect(func(_t): _refresh_cards())
+	filter_edit.text_changed.connect(func(_t): _filters_changed())
 	top.add_child(filter_edit)
 	kind_menu = _multi(top, "Kinds", sel_kinds)
 	person_menu = _multi(top, "People", sel_people)
 	place_menu = _multi(top, "Places", sel_places)
-	match_opt = _option(top, ["match any", "match all"], func(_i): _refresh_cards())
+	match_opt = _option(top, ["match any", "match all"], func(_i): _filters_changed())
 	match_opt.tooltip_text = "Any: a card shows if it fits any ticked kind, person or place. All: it must fit each list you've ticked (any item within a list)."
 	hidden_check = CheckBox.new()
 	hidden_check.text = "Show hidden"
@@ -88,6 +92,17 @@ func build(font: Font) -> void:
 		_refresh_cards()
 		changed.emit())
 	top.add_child(hidden_check)
+	_btn(top, "Clear filters", _clear_filters)
+	# Shown while a timeline cell is narrowing the list, so it's clear why and how to undo it.
+	cell_chip = HBoxContainer.new()
+	cell_chip.visible = false
+	root.add_child(cell_chip)
+	cell_chip_label = Label.new()
+	cell_chip_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5))
+	cell_chip.add_child(cell_chip_label)
+	_btn(cell_chip, "✕ Show all cards", func():
+		_clear_cell()
+		_refresh_cards())
 
 	var body = HSplitContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -114,14 +129,6 @@ func build(font: Font) -> void:
 	_btn(lb, "Hide", func(): _hide_selected(true))
 	_btn(lb, "Unhide", func(): _hide_selected(false))
 	_btn(lb, "Delete deduction", _delete_selected)
-	_btn(lb, "Clear filters", func():
-		cell_filter = []
-		filter_edit.text = ""
-		sel_kinds.clear()
-		sel_people.clear()
-		sel_places.clear()
-		_sync_menus()
-		_refresh_cards())
 	var wl = Label.new()
 	wl.text = "Working set (what you link, and the 'because' of a conclusion)"
 	left.add_child(wl)
@@ -344,9 +351,28 @@ func _multi(parent: Node, title: String, store: Dictionary) -> MenuButton:
 			store[key] = true
 		pm.set_item_checked(i, store.has(key))
 		_sync_menus()
-		_refresh_cards())
+		_filters_changed())
 	parent.add_child(mb)
 	return mb
+
+func _clear_filters() -> void:
+	_clear_cell()
+	filter_edit.text = ""
+	sel_kinds.clear()
+	sel_people.clear()
+	sel_places.clear()
+	_sync_menus()
+	_refresh_cards()
+
+func _clear_cell() -> void:
+	cell_filter = []
+	cell_key = ""
+	cell_label = ""
+
+## Any other filter replaces a timeline-cell selection rather than narrowing inside it.
+func _filters_changed() -> void:
+	_clear_cell()
+	_refresh_cards()
 
 func _sync_menus() -> void:
 	for pair in [[kind_menu, sel_kinds, "Kinds"], [person_menu, sel_people, "People"], [place_menu, sel_places, "Places"]]:
@@ -387,6 +413,8 @@ func _visible_cards() -> Array:
 	return cards
 
 func _refresh_cards() -> void:
+	cell_chip.visible = not cell_filter.is_empty()
+	cell_chip_label.text = "Showing only the timeline cell %s.  " % cell_label
 	var keep: Array = card_list.selected_metas()
 	card_list.reset()
 	for c in _visible_cards():
@@ -466,10 +494,27 @@ func _refresh_timeline() -> void:
 			b.add_theme_color_override("font_color", Color(1, 1, 1) if any_confirmed else Color(0.6, 0.6, 0.66))
 			if not nums.is_empty():
 				b.tooltip_text = "Cards #" + ", #".join(PackedStringArray(nums.map(func(x): return str(x))))
+				var ck = "%s:%s" % [n.id, key]
+				var cl = "%s · %s (%d card%s)" % [n.name, col["label"].replace("\n", " "), nums.size(), "" if nums.size() == 1 else "s"]
+				if ck == cell_key:
+					b.flat = false
+					b.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
+					b.add_theme_stylebox_override("normal", _cell_box())
 				b.pressed.connect(func():
-					cell_filter = nums
-					_refresh_cards())
+					if cell_key == ck:
+						_clear_cell()  # clicking the selected cell again turns it off
+					else:
+						cell_filter = nums
+						cell_key = ck
+						cell_label = cl
+					_refresh_cards()
+					_refresh_timeline())
 			grid.add_child(b)
+
+func _cell_box() -> StyleBoxFlat:
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(0.3, 0.26, 0.12)
+	return sb
 
 func _cell_label(t: String) -> Label:
 	var l = Label.new()

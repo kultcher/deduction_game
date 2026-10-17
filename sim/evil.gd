@@ -27,6 +27,9 @@ static func make_plan(w) -> Dictionary:
 		"fake_watch": {},
 		"fake_sightings": {},
 		"spared": [],
+		"vet_suspects": [],    # failed kills nobody visibly explained: maybe a Veteran
+		"warden_suspects": [], # glimpsed at a door when a kill failed
+		"poison_for_kill": "", # tonight's kill target the Poisoner should poison (Veteran combo)
 	}
 	w.evil_plan = plan
 	_pick_scapegoat(w, "initial plan")
@@ -212,7 +215,13 @@ static func choose_kill_target(w) -> String:
 		if n.id == plan["scapegoat"] and w.living().size() > 4:
 			parts["keep_scapegoat"] = -4.0
 		var fails: int = plan["failed"].filter(func(x): return x == n.id).size()
-		if fails > 0:
+		var vet = believed_veteran(w, n)
+		if vet and w.minion().alive and fails < 2:
+			# Can't be killed... unless the Poisoner breaks the gift first.
+			parts["veteran_with_poison"] = 0.6
+		elif vet:
+			parts["veteran_unkillable"] = -10.0
+		elif fails > 0:
 			parts["failed_before"] = -10.0 * fails
 		if n.id in plan["spared"] and w.living().size() > 4:
 			parts["spared_keep_to_frame"] = -1.5
@@ -234,11 +243,54 @@ static func choose_kill_target(w) -> String:
 			best_s = total
 			best = n.id
 	w.dlog.think(d.id, "kill_choice", "Demon targets %s (score %.2f)." % [best, best_s], {"scores": scores, "caution": plan.get("caution", 0.0)})
+	plan["poison_for_kill"] = ""
+	if best != "" and believed_veteran(w, w.by_id[best]) and w.minion().alive and best_s > -5.0:
+		plan["poison_for_kill"] = best
+		w.dlog.think(d.id, "evil_plan", "Asks the Poisoner to poison %s first, so the Veteran's gift fails tonight." % best)
 	plan["caution"] = plan.get("caution", 0.0) * 0.5  # fades over the next nights
 	return best
 
+## Whether evil believes this person is the Veteran: they claimed it publicly, or an
+## attack on them failed with no Warden or ward in sight.
+static func believed_veteran(w, n) -> bool:
+	for pc in w.public_claims:
+		if pc["who"] == n.id and pc["role"] == "veteran":
+			return true
+	return n.id in w.evil_plan.get("vet_suspects", [])
+
+## Whether poisoning this person tonight would stop anything. Gifts of the first night only
+## are spent after it; the Gravedigger only works after an execution; the Veteran only
+## matters if attacked. Judged from what evil knows: public claims (else assume it's live).
+static func gift_live_tonight(w, n) -> bool:
+	if not n.claim_public:
+		return true
+	var r: String = n.claimed_role
+	if not C.ROLES.has(r):
+		return true
+	if C.ROLES[r].get("first_night", false):
+		return w.day == 0
+	if r == "gravedigger":
+		return w.executed_today != ""
+	if r == "veteran":
+		return false  # only worth it as part of an attack (see poison_for_kill)
+	return true
+
 static func choose_poison_target(w, exclude: String = "") -> String:
 	var m = w.minion()
+	var plan: Dictionary = w.evil_plan
+	var combo: String = plan.get("poison_for_kill", "")
+	if combo != "" and w.by_id[combo].alive and w.demon().alive:
+		w.dlog.think(m.id, "poison_choice", "Poisoner targets %s, as the demon asked: the Veteran's gift must fail tonight." % combo, {"combo": true})
+		return combo
+	# A Warden at the door would spoil a kill on someone prominent: break the Warden instead.
+	var kt = w.by_id.get(exclude)
+	var wardens: Array = []
+	for pc in w.public_claims:
+		if pc["role"] == "warden" and w.by_id[pc["who"]].alive and not w.by_id[pc["who"]].is_evil():
+			wardens.append(pc["who"])
+	for id in plan.get("warden_suspects", []):
+		if w.by_id[id].alive and not (id in wardens):
+			wardens.append(id)
 	var scores = {}
 	var best = ""
 	var best_s = -99.0
@@ -246,12 +298,16 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 		if n.id == exclude:
 			continue
 		var parts = _public_threat(w, n)
+		if not gift_live_tonight(w, n):
+			parts["gift_spent"] = -3.5  # poisoning them tonight would change nothing
 		var hostile = public_hostility(w, n)
 		if hostile > 0.0:
 			parts["publicly_against_us"] = snappedf(hostile * 0.6, 0.01)
 		var known = intel_threat(m, n.id)
 		if known > 0.0:
 			parts["known_threat"] = known
+		if n.id in wardens and kt != null:
+			parts["disable_warden"] = 2.5 if (kt.claim_public and kt.claimed_role in C.INFO_ROLES) else 1.2
 		parts["noise"] = snappedf(w.rng.randf() * 1.5, 0.01)
 		var total = 0.0
 		for k in parts:
@@ -269,18 +325,25 @@ static func note_kill_result(w, target: String, outcome: String) -> void:
 		# The Demonologist's chalk sigil is plain on the door, and a ward is spent once used.
 		w.dlog.think(w.demon_id, "kill_failed", "Attack on %s failed: the Demonologist's sigil was on the door. Wards are single-use; no need for caution." % target)
 		return
+	var spotted = false
 	if outcome == "protected_warden":
 		# Anyone the demon glimpsed on that block tonight is probably the Warden at the door.
 		var d = w.demon()
 		var tb: String = w.by_id[target].home_block
 		for b in d.beliefs:
 			if b["kind"] == "saw" and b["day"] == w.day and b["phase"] == C.NIGHT and b["block"] == tb and b["who"] != target:
+				spotted = true
 				add_intel(w, d, "threat", b["who"], 2.0, "was outside %s's door when the attack failed: likely the Warden" % target)
+				if not (b["who"] in w.evil_plan["warden_suspects"]):
+					w.evil_plan["warden_suspects"].append(b["who"])
 	if outcome != "killed":
 		w.evil_plan["failed"].append(target)
+		if not spotted and not (target in w.evil_plan["vet_suspects"]):
+			# Nobody at the door: perhaps they simply can't be killed.
+			w.evil_plan["vet_suspects"].append(target)
 		w.evil_plan["caution"] = minf(w.evil_plan.get("caution", 0.0) + 1.0, 1.5)
-		w.dlog.think(w.demon_id, "kill_failed", "Attack on %s failed for no visible reason (a Warden? a Veteran?). Avoids them from now on and will shy away from high-profile targets for a while (caution %.2f)." %
-			[target, w.evil_plan["caution"]])
+		w.dlog.think(w.demon_id, "kill_failed", "Attack on %s failed (%s). Will shy away from high-profile targets for a while (caution %.2f)." %
+			[target, "someone was at the door: a Warden" if spotted else "nobody in sight: a Warden unseen, or a Veteran; may try again with poison", w.evil_plan["caution"]])
 
 # ---------------------------------------------------------------- fabricated info
 
@@ -317,17 +380,19 @@ static func make_fake_info(w) -> void:
 					goods = w.living().filter(func(x): return x != n).map(func(x): return x.id)
 				var pair: Array = []
 				var yes = false
-				var others_s: Array = goods.filter(func(x): return x != s)
-				var others_m: Array = goods.filter(func(x): return x != mate.id)
-				if w.by_id[s].alive and (w.day % 2 == 1 or w.day == 0) and not others_s.is_empty():
+				# Never a 'no' that covers the scapegoat: it would undo the frame.
+				var others_s: Array = goods.filter(func(x): return x != s and x != mate.id)
+				var others_m: Array = goods.filter(func(x): return x != mate.id and x != s)
+				var late = w.living().size() <= 5
+				if w.by_id[s].alive and (w.day % 2 == 1 or w.day == 0 or late) and not others_s.is_empty():
 					pair = [s, w.pick(others_s)]
 					yes = true
 					why = "frames scapegoat %s with a 'yes'" % s
 				elif mate.alive and w.chance(0.4) and not others_m.is_empty():
 					pair = [mate.id, w.pick(others_m)]
 					why = "clears teammate %s with a 'no'" % mate.id
-				elif goods.size() >= 2:
-					pair = w.shuffled(goods).slice(0, 2)
+				elif others_s.size() >= 2:
+					pair = w.shuffled(others_s).slice(0, 2)
 					why = "harmless 'no' on two people"
 				else:
 					continue
@@ -392,22 +457,28 @@ static func make_fake_info(w) -> void:
 		n.info_log.append(entry)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
 
-static func fake_night_sighting(w, n, nd: int):
+## A made-up sighting of the scapegoat on night nd, told from where this evil member says
+## they were (vantage): from their own window at home, or while out on a night-active bluff
+## (Night Watch, Warden). One story per night: if the cached one was told from elsewhere, it
+## isn't repeated here (it wouldn't fit). "" vantage = their own home.
+static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String = "window"):
+	if vantage == "":
+		vantage = n.home_block
+		how = "window"
 	var key = "%s:%d" % [n.id, nd]
 	var cache: Dictionary = w.evil_plan["fake_sightings"]
-	if cache.has(key):
-		return cache[key] if cache[key] is Dictionary else null
-	var s: String = w.evil_plan["scapegoat"]
-	var result = null
-	if s != n.id and w.by_id[s].alive and nd >= 1 and w.chance(0.5):
-		var block: String = w.by_id[s].home_block
-		for sid in w.scenes:
-			if w.scenes[sid]["day"] == nd:
-				block = w.scenes[sid]["block"]
-		result = {"kind": "saw", "who": s, "loc": "", "block": block, "day": nd, "phase": C.NIGHT}
-		w.dlog.think(n.id, "lie", "Evil: invents a night sighting of scapegoat %s on %s." % [s, block], {"lie": true})
-	cache[key] = result if result != null else false
-	return result
+	if not cache.has(key):
+		var s: String = w.evil_plan["scapegoat"]
+		var result = null
+		if s != n.id and w.by_id[s].alive and nd >= 1 and w.chance(0.5):
+			var detail = "leaving_home" if (how == "window" and w.by_id[s].home_block == vantage and w.chance(0.5)) else "street"
+			result = {"kind": "saw", "who": s, "loc": "", "block": vantage, "day": nd, "phase": C.NIGHT, "how": how, "detail": detail}
+			w.dlog.think(n.id, "lie", "Evil: invents a night sighting of scapegoat %s on %s (%s)." % [s, vantage, "from their window" if how == "window" else "while out"], {"lie": true})
+		cache[key] = result if result != null else false
+	var r = cache[key]
+	if not (r is Dictionary) or r["block"] != vantage:
+		return null
+	return r
 
 static func fake_gossip(w, speaker):
 	var s: String = w.evil_plan["scapegoat"]
@@ -455,7 +526,7 @@ static func bluff_reason(w, n, t) -> String:
 	for k in w.evil_plan["fake_sightings"]:
 		var fs = w.evil_plan["fake_sightings"][k]
 		if fs is Dictionary and fs["who"] == t.id and k.begins_with(n.id + ":"):
-			opts.append("I saw them out on %s at night" % C.block_name(fs["block"]))
+			opts.append("I saw them out in the street from my window at night" if fs.get("how", "window") == "window" else "I saw them out on %s at night" % C.block_name(fs["block"]))
 	if opts.is_empty():
 		return ""
 	return w.pick(opts)
@@ -481,15 +552,21 @@ static func evil_nomination(w, n):
 	w.dlog.think(n.id, "nominate", "Evil: public heat on scapegoat %s only %.2f; waits." % [s, avg])
 	return null
 
-static func evil_vote(w, v, nominee: String, yes_so_far: int) -> bool:
+static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool = false) -> bool:
 	var thr: int = w.vote_threshold()
 	var block: String = w.meeting["block"]
+	var bc: int = w.meeting["block_count"]
 	var yes = false
 	var why = ""
 	if is_teammate(w, v, nominee):
-		if v.id == w.demon_id and yes_so_far >= thr - 1:
+		var have = yes_so_far + (1 if player_yes else 0)  # counted so far, without me
+		if v.id == w.demon_id and block == v.id and have + 1 == bc and have + 1 >= thr and w.chance(0.4 + 0.5 * v.traits.get("confidence", 0.5)):
+			# On the block myself: one more vote ties the count and clears the block.
 			yes = true
-			why = "Demon votes to execute own minion: it will pass anyway, and this looks good."
+			why = "Demon on the block votes for own minion: %d votes ties the block's %d and clears it." % [have + 1, bc]
+		elif v.id == w.demon_id and have >= thr and have > bc:
+			yes = true
+			why = "Demon votes to execute own minion: it passes without me (%d of %d), and this looks good." % [have, thr]
 		else:
 			why = "Protects teammate."
 	elif block != "" and w.by_id[block].is_evil() and block != nominee:

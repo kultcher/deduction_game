@@ -21,6 +21,7 @@ var free_move_used = false
 var loc = ""
 var talk_with = null
 var questions_left = 0
+var free_repeats = 0       # repeats this conversation that cost no question (one allowed)
 var board: Array = []
 var _card_keys = {}
 var town_quiet = false     # the town has had its say since the last nomination (allows 'done')
@@ -327,6 +328,18 @@ func _dispatch(text: String) -> void:
 
 # ---------------------------------------------------------------- day
 
+## Whether the player can see where someone is right now: anyone at work or deep in
+## conversation is plain to see from anywhere; anyone else only once the player is on
+## their block this phase (out on the street, or a lit window at home).
+func can_see(n) -> bool:
+	if not n.alive:
+		return false
+	if state == "night":
+		return true
+	if not n.at_home() and (n.working or n.busy_with != ""):
+		return true
+	return moved and w.loc_block(n.loc) == w.loc_block(loc)
+
 ## Who the player can see at a location (a home shows only its owner, if in).
 func _present(l: String) -> Array:
 	if l.begins_with("home_"):
@@ -343,8 +356,11 @@ func _resolve_go(target: String) -> String:
 		return _best_location_on(b)
 	var n = find_npc(target)
 	if n != null:
-		# Go straight to them: anyone out on a block can be seen from either location there,
-		# so walking to their exact spot reveals nothing you wouldn't see on arrival.
+		# Go straight to them, if you can see where they are: anyone out on a block can be
+		# seen from either location there, so walking to their exact spot reveals nothing
+		# you wouldn't see on arrival.
+		if not can_see(n):
+			return ""
 		if n.at_home():
 			return "home_" + n.id
 		return n.loc
@@ -364,7 +380,12 @@ func _day_command(verb: String, rest: String) -> void:
 			var sought = find_npc(rest) if find_location(rest) == "" and find_block(rest) == "" else null
 			var l = _resolve_go(rest)
 			if l == "":
-				_err("Where? Try 'map' for places (a location, a block, or a person).")
+				var lost = find_npc(rest)
+				if lost != null and lost.alive:
+					_err("You can't see where %s is this %s. Try their work (%s) or their home block (%s)." % [lost.name,
+						w.phase_name().to_lower(), w.loc_name(lost.work), C.block_name(lost.home_block)])
+				else:
+					_err("Where? Try 'map' for places (a location, a block, or a person).")
 				return
 			if moved:
 				if l == loc:
@@ -420,6 +441,7 @@ func _day_command(verb: String, rest: String) -> void:
 				return
 			talk_with = n
 			questions_left = 3
+			free_repeats = 0
 			state = "talk"
 			w.dlog.add("player_talk", "player", n.id, {"trust": snappedf(n.trust, 0.01)})
 			var cue = Mind.greeting_cue(w, n)
@@ -583,6 +605,7 @@ func _approach_command(verb: String, rest: String) -> void:
 			w.player_loc = loc
 			talk_with = n
 			questions_left = 3
+			free_repeats = 0
 			w.dlog.add("player_talk", "player", n.id, {"trust": snappedf(n.trust, 0.01), "approach": approach["agenda"]})
 			_narr("You step aside with %s at %s." % [n.name, w.loc_name(loc)])
 			var r: Dictionary = Social.approach_open(w, n, approach["agenda"])
@@ -720,9 +743,19 @@ func _talk_command(verb: String, rest: String) -> void:
 		_:
 			_err("In conversation: ask gift | ask night | ask today | ask about <name or gift> | present <card#> [for|against <name>] | bye")
 			return
-	questions_left -= 1
+	# Something they've already heard from you: they say so, and it costs no question.
+	var repeat = r["lines"].size() == 1 and r["lines"][0] is Dictionary and r["lines"][0].get("text", "") == "You've told me that already."
+	if repeat and free_repeats >= 1:
+		repeat = false  # once is a slip; after that it's wasting their time
+	if repeat:
+		free_repeats += 1
+	else:
+		questions_left -= 1
 	_lines(r["lines"])
 	_facts(r["facts"])
+	if repeat:
+		_prompt("(No question used. %d question%s left)" % [questions_left, "" if questions_left == 1 else "s"])
+		return
 	if questions_left <= 0:
 		_narr("%s has other things to do." % n.name)
 		_close_conversation()
@@ -1080,16 +1113,21 @@ func _card_conversations() -> void:
 	if not facts.is_empty():
 		_facts(facts)
 
-## Current-phase view of the town: workers and conversations exactly; others by block.
+## Current-phase view of the town: workers and conversations from anywhere; anyone else
+## only on the player's own block (once they've chosen where to go).
 func _map() -> String:
 	var out = PackedStringArray()
 	out.append("Around town this %s:" % w.phase_name().to_lower())
 	var at_home: Array = []
+	var unseen = 0
 	for b in C.BLOCKS:
 		var parts: Array = []
 		var done = {}
 		for n in w.living():
 			if done.has(n.id) or w.loc_block(n.loc) != b or n.at_home():
+				continue
+			if not can_see(n):
+				unseen += 1
 				continue
 			if n.busy_with != "":
 				var m = w.by_id[n.busy_with]
@@ -1104,9 +1142,14 @@ func _map() -> String:
 			"; ".join(PackedStringArray(parts)) if not parts.is_empty() else "-"])
 	for n in w.living():
 		if n.at_home():
-			at_home.append(n.name)
+			if can_see(n):
+				at_home.append(n.name)
+			else:
+				unseen += 1
 	if not at_home.is_empty():
-		out.append("  At home (you can call on them): " + ", ".join(PackedStringArray(at_home)))
+		out.append("  At home nearby (you can call on them): " + ", ".join(PackedStringArray(at_home)))
+	if unseen > 0:
+		out.append("  %d other%s out of sight: go to a block to see who's about there." % [unseen, "" if unseen == 1 else "s"])
 	return "\n".join(out)
 
 func _cast() -> String:
@@ -1800,7 +1843,18 @@ func debug_npc_text(id: String) -> String:
 			continue
 		hon[n.id] = n.honesty.get(id, 1.0)
 		sus[n.id] = n.suspicion.get(id, 0.0)
-	return "Credited by others: %s\nSuspected by others: %s" % [_spread(hon), _spread(sus)]
+	var n0 = w.by_id[id]
+	var town = {}
+	for n in w.living_good():
+		if n.id != id and n.consensus_applied.get(id, 0.0) > 0.0:
+			town[n.id] = n.consensus_applied[id]
+	var trust_line = "Trust in you: %.2f%s" % [n0.trust, (" (capped at %.2f)" % n0.trust_cap) if n0.trust_cap < 1.0 else ""]
+	if n0.is_evil():
+		trust_line += " (evil: acted, not felt)"
+	var out = "%s · Pressure: %.2f\nCredited by others: %s\nSuspected by others: %s" % [trust_line, n0.pressure, _spread(hon), _spread(sus)]
+	if not town.is_empty():
+		out += "\n  of which public accusations: %s" % _spread(town)
+	return out
 
 ## What readings on your board say this person might be ("possible: the Warden, per
 ## Dorian's Clerk reading, with Constance").

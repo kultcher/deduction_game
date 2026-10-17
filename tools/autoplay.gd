@@ -343,7 +343,7 @@ func _pick_location() -> String:
 	var best = "tavern"
 	var best_n = -1
 	for l in C.LOCATIONS:
-		var n: int = w.npcs_at(l).filter(func(m): return m.busy_with == "" and talked.get(m.id, -1) != w.day).size()
+		var n: int = w.npcs_at(l).filter(func(m): return m.busy_with == "" and g.can_see(m) and talked.get(m.id, -1) != w.day).size()
 		if n > best_n:
 			best_n = n
 			best = l
