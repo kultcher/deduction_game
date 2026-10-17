@@ -176,6 +176,7 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 			Mind.apply_info(w, l, src, e, wgt)
 			if not l.known_claims.has(src.id):
 				l.known_claims[src.id] = {"role": e["role"], "readings": [], "via": s.id}
+			Mind.hear_claim(w, l, src.id, e["role"], wgt, "relayed")
 			if not (e in l.known_claims[src.id]["readings"]):
 				l.known_claims[src.id]["readings"].append(e)
 			l.hearsay.append(hs)

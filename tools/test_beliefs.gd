@@ -20,6 +20,9 @@ func _init() -> void:
 	_test_poison_argument_undone()
 	_test_own_reading_poisoned()
 	_test_sightings_not_poisoned()
+	_test_double_claim_shifts()
+	_test_own_gift()
+	_test_known_good_claimant()
 	print("FAILURES: %d" % fails)
 	quit()
 
@@ -223,6 +226,66 @@ func _test_sightings_not_poisoned() -> void:
 	var after = _eff(t, "heard:test-sighting")
 	print("11. B's sighting of A: influence %.3f -> %.3f after B's night-1 reading is doubted" % [before, after])
 	_check(absf(after - before) < 0.001, "poison doubt doesn't touch ordinary testimony")
+
+## A role that isn't the listener's own (so their own record doesn't interfere).
+func _other_role(t: Dictionary) -> String:
+	for r in ["seer", "hearthwitch", "archivist", "clerk", "gravedigger"]:
+		if r != t["L"].role:
+			return r
+	return "warden"
+
+# 12. Two people claim one gift: the suspicion splits by credence, and shifts when one
+#     claimant's credibility falls.
+func _test_double_claim_shifts() -> void:
+	var t = _setup(5112)
+	var w = t["w"]
+	var L = t["L"]
+	var r = _other_role(t)
+	var X = t["A"].id
+	var Y = t["B"].id
+	var sx0 = Mind.susp(L, X)
+	var sy0 = Mind.susp(L, Y)
+	Mind.hear_claim(w, L, X, r, 0.5, "public")
+	Mind.hear_claim(w, L, Y, r, 0.5, "public")
+	var dx1 = Mind.susp(L, X) - sx0
+	var dy1 = Mind.susp(L, Y) - sy0
+	# Evidence against Y (someone reports seeing them out) lowers Y's credibility.
+	Mind.apply_info(w, L, t["C"], _watch(1, t["B"].home_block, [Y]), 0.5)
+	Mind.apply_info(w, L, t["D"], _seer(1, Y, L.id), 0.5)
+	var cx = Mind.claim_credence(L, X, r)
+	var cy = Mind.claim_credence(L, Y, r)
+	print("12. double claim: +%.2f / +%.2f each; after evidence against Y, credence X %.2f vs Y %.2f" % [dx1, dy1, cx, cy])
+	_check(dx1 > 0.0 and dy1 > 0.0 and cy < cx, "a double claim resolves by credence, and shifts with credibility")
+
+# 13. Someone claims the listener's own gift: the listener knows they're lying.
+func _test_own_gift() -> void:
+	var t = _setup(5113)
+	var w = t["w"]
+	var L = t["L"]
+	var X = t["A"].id
+	var s0 = Mind.susp(L, X)
+	Mind.hear_claim(w, L, X, L.role, 0.5, "public")
+	var s1 = Mind.susp(L, X)
+	print("13. %s (the real %s) hears %s claim it: suspicion %.2f -> %.2f, credibility %.2f" % [L.name, L.role, t["A"].name, s0, s1, _h(t, X)])
+	_check(s1 - s0 >= 0.5 and _h(t, X) <= 0.6, "claiming the listener's own gift marks the claimant a liar")
+
+# 14. The claim of someone the demon killed is believed: a rival claim weighs more heavily.
+func _test_known_good_claimant() -> void:
+	var t = _setup(5114)
+	var w = t["w"]
+	var L = t["L"]
+	var r = _other_role(t)
+	var X = t["A"].id
+	var Y = t["B"]
+	Mind.hear_claim(w, L, Y.id, r, 0.5, "public")
+	Mind.hear_claim(w, L, X, r, 0.5, "public")
+	var alive_s = Mind.susp(L, X)
+	Y.alive = false
+	Y.death_cause = "demon"
+	Mind.recompute_beliefs(w, L, "")
+	var dead_s = Mind.susp(L, X)
+	print("14. rival of a living claimant: %.2f; once that claimant is killed by the demon: %.2f" % [alive_s, dead_s])
+	_check(dead_s > alive_s, "a demon victim's claim counts more against a rival")
 
 func _snapshot(t: Dictionary) -> String:
 	var L = t["L"]

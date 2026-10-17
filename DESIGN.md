@@ -342,7 +342,8 @@ each NPC reasons only from what they actually heard or witnessed.
   who've heard it (avg / high / low, with initials, and how many heard it); profiles show
   how the town credits and suspects the person. Turning it on marks the case's
   identification unscored. Readings and arguments map to NPC records cleanly; role
-  claims and sightings mostly don't yet (claims become per-listener records next).
+  claims now map too; most sightings and reports still don't (they're told to the player,
+  not held by NPCs).
 - Acceptance tests: `tools/test_beliefs.gd` (recovery; independent evidence keeps a
   discount; poison doesn't damage honesty; recomputing is stable; works for any source;
   mutual accusation is stable and bounded).
@@ -854,12 +855,28 @@ results match the pre-tracking commit, including deaths, executions and end reas
 - Who you saw nearby is now on the cards. Anonymising unseen people ("someone") would be
   a broader visibility redesign; revisit only if the town view gives away too much.
 
-- **Early-disclosure bonus (next).** Per listener, attached to their record of first
-  hearing a claim: volunteered early +0.05, and before any rival claim +0.10 (on the 0.50
-  hearing weight). Keeps the first record on re-hearing; evil can earn it too. Needs role
-  claims to become per-listener records with a credence (used for double-claim
-  resolution, believing a role, quiet-night credit), not for the claimant's later
-  readings (no double counting). Other situational bonuses go in the same table later.
+- **Role claims are per-listener records. [built]** Hearing a role claim (publicly at a
+  meeting at weight 0.5, or relayed privately at the relayer's weight) creates a record
+  whose **credence** = hearing weight × the claimant's honesty. Each record counts against
+  everyone else that listener knows claims the same gift (0.6 × credence), so a double
+  claim resolves by comparing credences and shifts as either claimant's credibility
+  changes. A good NPC's knowledge of their own gift is a record at weight 1.5 (a false
+  claimant of it is a liar to them). Quiet-night credit to a Warden/Veteran claimant is
+  scaled by that claimant's credibility. An argued "X is the R" also counts against any
+  rival claimant of R, now or later.
+- **Situational credence adjustments.** One table of small, situational modifiers to how
+  much a claim is credited, recorded per listener so logs show why. Built so far: a
+  claimant the demon killed (so known good) has their claim counted double. Candidates
+  to settle once the roster is fleshed out:
+  - **Early disclosure:** volunteered early +0.05, and before any rival claim +0.10 (on the
+    0.50 hearing weight); per listener, kept from their first hearing; evil can earn it.
+    Applies to the role claim only, not the claimant's later readings (no double counting).
+  - **No demon kill:** a quiet night supports Warden/Veteran claimants (currently a
+    suspicion credit; could become a credence boost on their claim).
+  - **Admission against interest:** a confessed secret is more credible than an alibi.
+  - **Consistency:** a claimant whose readings have held up (nothing contradicted) gains a
+    little credence over time.
+  - **Role-specific confirmations:** e.g. a Clerk or Gravedigger confirming someone's gift.
 - **Initial general skepticism (filed, not built).** Early on, every claim is just someone's
   word with nothing to corroborate it, so all claims could start with extra doubt that
   fades as evidence accumulates. Likely makes the early game too indecisive; keep it as a

@@ -921,10 +921,8 @@ static func effects_of(w, c: Dictionary, supports: Array, why: String) -> Array:
 		"role":
 			Mind._eff(e, "role:%s:%s" % [a, c["role"]], 1.0, why, "", false)
 			Mind._eff(e, a, -0.1, why)
-			# Believing a's claim makes anyone else claiming that gift a liar.
-			for pc in w.public_claims:
-				if pc["role"] == c["role"] and pc["who"] != a:
-					Mind._eff(e, pc["who"], 0.3, why + " (so their rival claim is false)", "their claim clashes with someone I believe")
+			# Believing a's claim makes anyone else claiming that gift a liar (now or later).
+			Mind._eff(e, "rivals:%s:%s" % [c["role"], a], 0.3, why + " (so a rival claim is false)", "their claim clashes with someone I believe")
 		"notrole":
 			Mind._eff(e, a, 0.3, why, "the Demonologist showed their claim is false")
 		"lied":

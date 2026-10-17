@@ -123,6 +123,51 @@ static func known_good(w, id: String) -> bool:
 static func _eff(effs: Array, target: String, delta: float, why: String, public_why: String = "", conf_scaled: bool = true) -> void:
 	effs.append([target, delta, conf_scaled, why, public_why])
 
+## A role claim reaches a listener. It becomes a record whose credence (hearing weight x the
+## claimant's honesty) is what the listener makes of it. Each record counts against anyone
+## else claiming the same gift, so a double claim resolves by comparing credences, and it
+## shifts as either claimant's credibility changes. An NPC's knowledge of their own true
+## gift is a record too (weight 1.5: they *know* a rival is lying). how: public | relayed |
+## own | told.
+static func hear_claim(w, l, who: String, role: String, weight: float, how: String) -> void:
+	if l.is_evil() or not C.ROLES.has(role) or C.ROLES[role]["align"] != "good" or not w.by_id.has(who):
+		return
+	var rn = C.role_name(role)
+	var nm: String = w.by_id[who].name
+	var effs: Array = []
+	if how == "own":
+		_eff(effs, "rivals:%s:%s" % [role, who], 0.6, "claimed MY gift (%s); they are lying" % role, "they claimed my own gift, so they're lying", false)
+	else:
+		_eff(effs, "rivals:%s:%s" % [role, who], 0.6, "%s claims the %s too" % [nm, rn], "they claim a gift %s claims" % nm)
+	_eff(effs, "role:%s:%s" % [who, role], 1.0, "%s claims the %s" % [nm, rn], "", false)
+	ledger_hear(w, l, claim_eid(who, role), effs, weight, [who, -1, "role"], {"kind": "role_claim", "how": how, "role": role, "who": who})
+
+static func claim_eid(who: String, role: String) -> String:
+	return "claim:%s:%s" % [who, role]
+
+## How much this listener credits who's claim to role (0 = never heard it).
+static func claim_credence(n, who: String, role: String) -> float:
+	var e = n.ledger.get(claim_eid(who, role))
+	return e.get("eff", 0.0) if e != null else 0.0
+
+## Who this listener has heard claim each gift: role -> [ids].
+static func _claimants(E: Array) -> Dictionary:
+	var out = {}
+	for e in E:
+		if e["meta"].get("kind", "") == "role_claim":
+			var r: String = e["meta"]["role"]
+			if not out.has(r):
+				out[r] = []
+			out[r].append(e["meta"]["who"])
+	return out
+
+## A "rivals:<role>:<who>" effect lands on everyone else this listener knows claims role.
+static func _expand(t: String, claimants: Dictionary) -> Array:
+	if not t.begins_with("rivals:"):
+		return [t]
+	var parts = t.split(":")
+	return claimants.get(parts[1], []).filter(func(x): return x != parts[2])
+
 ## What a card rests on, as [source, night, kind] (kind: reading | report | evidence).
 static func support_ref(card: Dictionary) -> Array:
 	var src: String = card.get("source", "")
@@ -241,15 +286,21 @@ static func recompute_beliefs(w, n, note: String) -> void:
 	if n.is_evil():
 		return
 	var E: Array = n.ledger.values()
-	var raw = func(e): return e["weight"]
+	var cl = _claimants(E)
+	# Situational credence: the claim of someone the demon killed (so known good) is believed.
+	var kg = func(e) -> float:
+		return 2.0 if e["meta"].get("kind", "") == "role_claim" and e["meta"].get("how", "") != "own" and known_good(w, e["meta"]["who"]) else 1.0
+	var raw = func(e): return e["weight"] * kg.call(e)
 	var disc_a = _night_doubt(E, raw)
-	var h_a = _honesty(n, E, disc_a, _honesty(n, E, disc_a, {}, raw), raw)
+	var h_a = {}
+	var h_a1 = _honesty(n, E, disc_a, {}, raw, cl)
+	h_a = _honesty(n, E, disc_a, h_a1, raw, cl)
 	var wf = {}
 	for e in E:
-		wf[e["eid"]] = _final_weight(n, e, disc_a, h_a)
+		wf[e["eid"]] = _final_weight(n, e, disc_a, h_a) * kg.call(e)
 	var final_w = func(e): return wf[e["eid"]]
 	var disc = _night_doubt(E, final_w)
-	var h = _honesty(n, E, disc, _honesty(n, E, disc, {}, final_w), final_w)
+	var h = _honesty(n, E, disc, _honesty(n, E, disc, {}, final_w, cl), final_w, cl)
 	# Log notable changes in doubt and honesty (derived values, kept for display).
 	for k in disc:
 		if absf(disc[k] - n.discounted.get(k, 0.0)) >= 0.05:
@@ -272,12 +323,14 @@ static func recompute_beliefs(w, n, note: String) -> void:
 			if f[0].begins_with("disc:"):
 				continue  # derived above
 			var want: float = f[1] * (conf if f[2] else 1.0) * wf[e["eid"]] * r
-			var have: float = e["applied"].get(i, 0.0)
-			var diff = want - have
-			if absf(diff) < 0.002:
-				continue
-			e["applied"][i] = want
-			_ledger_apply(w, n, f, diff, want, note)
+			for t in _expand(f[0], cl):
+				var key = i if t == f[0] else "%d:%s" % [i, t]
+				var have: float = e["applied"].get(key, 0.0)
+				var diff = want - have
+				if absf(diff) < 0.002:
+					continue
+				e["applied"][key] = want
+				_ledger_apply(w, n, [t, f[1], f[2], f[3], f[4]], diff, want, note)
 
 ## An argument's weight = its strongest justification as it stands now (each justification
 ## scaled by how credible its own supports are). Other entries: their weight.
@@ -303,7 +356,7 @@ static func _night_doubt(E: Array, weight_of: Callable) -> Dictionary:
 ## counts at its weight (weight_of), adjusted by doubt about the particular reading (the
 ## listener's own readings included) and, in the second pass, by the honesty of whoever gave
 ## it. Never by suspicion (which includes vibes and grudges), never by its previous value.
-static func _honesty(n, E: Array, disc: Dictionary, prev: Dictionary, weight_of: Callable) -> Dictionary:
+static func _honesty(n, E: Array, disc: Dictionary, prev: Dictionary, weight_of: Callable, cl: Dictionary = {}) -> Dictionary:
 	var grounds = {}
 	for e in E:
 		var rp = _rel(e)
@@ -313,10 +366,10 @@ static func _honesty(n, E: Array, disc: Dictionary, prev: Dictionary, weight_of:
 			r *= prev.get(src, 1.0)
 		var wgt: float = weight_of.call(e)
 		for f in e["effects"]:
-			var t: String = f[0]
-			if t.begins_with("disc:") or t.begins_with("pref:") or t.begins_with("role:") or t == src or t == n.id:
-				continue
-			grounds[t] = grounds.get(t, 0.0) + f[1] * wgt * r
+			for t in _expand(f[0], cl):
+				if t.begins_with("disc:") or t.begins_with("pref:") or t.begins_with("role:") or t == src or t == n.id:
+					continue
+				grounds[t] = grounds.get(t, 0.0) + f[1] * wgt * r
 	var out = {}
 	for t in grounds:
 		out[t] = 1.0 - clampf(HONESTY_K * maxf(0.0, grounds[t]), 0.0, HONESTY_CAP)
@@ -583,7 +636,9 @@ static func meeting_testimony(w) -> Array:
 				lines.append(_claim_line(n, claim))
 				facts.append({"kind": "claim", "subject": [n.id], "role": claim, "source": n.id,
 					"text": "%s publicly claims to be the %s." % [n.name, C.role_name(claim)]})
-				_react_to_claim(w, n, claim)
+				for l in w.living():
+					if l != n:
+						hear_claim(w, l, n.id, claim, 0.5, "public")
 		if n.claim_public and n.claimed_role in C.INFO_ROLES:
 			for e in n.info_log:
 				if e["shared"]:
@@ -628,29 +683,6 @@ static func _public_claim_decision(w, n) -> String:
 			w.dlog.think(n.id, "lie", "Evil cover: publicly claims bluff %s." % role, {"bluff": role, "true_role": n.role})
 		return role
 	return ""
-
-static func _react_to_claim(w, claimant, role: String) -> void:
-	for l in w.living():
-		if l == claimant or l.is_evil():
-			continue
-		if l.role == role:
-			adjust(w, l, claimant.id, 0.9, "claimed MY role (%s); they are lying" % role,
-				"they claimed my own gift, so they're lying", false)
-			continue
-		for pc in w.public_claims:
-			if pc["role"] == role and pc["who"] != claimant.id:
-				var other = w.by_id[pc["who"]]
-				if l.believed_roles.get(other.id, "") == role:
-					adjust(w, l, claimant.id, 0.6, "double claim of %s; I believe %s holds it" % [role, other.id],
-						"they claimed %s's gift, and I believe %s" % [other.name, other.name])
-				elif known_good(w, other.id):
-					adjust(w, l, claimant.id, 0.8, "double claim of %s; other claimant died to the demon" % role,
-						"%s claimed the same gift as %s, who the demon killed" % [claimant.name, other.name])
-				else:
-					adjust(w, l, claimant.id, 0.35, "double claim of %s with %s" % [role, other.id],
-						"they and %s both claim to be the %s" % [other.name, C.role_name(role)])
-					adjust(w, l, other.id, 0.25, "double claim of %s with %s" % [role, claimant.id],
-						"they and %s both claim to be the %s" % [claimant.name, C.role_name(role)])
 
 static func _claim_line(n, role: String) -> Dictionary:
 	var openers = {

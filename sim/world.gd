@@ -233,6 +233,11 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 		n.trust = clampf(0.3 + 0.25 * (1.0 - n.traits["privacy"]) + rng.randf_range(-0.05, 0.1), 0.1, 0.9)
 		n.trust_at_reconsider = n.trust
 
+	# Each good NPC knows their own gift: a firsthand record that counts against anyone
+	# who claims it falsely.
+	for n in npcs:
+		if not n.is_evil():
+			Mind.hear_claim(self, n, n.id, n.role, 1.5, "own")
 	evil_plan = Evil.make_plan(self)
 	_log_grimoire()
 
@@ -712,7 +717,8 @@ func _quiet_night() -> void:
 			var e: Array = []
 			Mind._eff(e, pc["who"], -0.15 if pc["role"] == "warden" else -0.06,
 				"nobody died on night %d, and they claim the %s" % [day, C.role_name(pc["role"])])
-			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0)
+			# Scaled live by how credible the claimant is to this listener.
+			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0, [pc["who"], -1, "report"])
 
 func _night_movement(poison_t: String, kill_t: String, watch, watch_block: String, warden = null, warden_t: String = "") -> void:
 	night_walkers = []
