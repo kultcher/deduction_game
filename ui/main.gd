@@ -455,10 +455,9 @@ func _actions_day(w) -> void:
 func _actions_talk(w) -> void:
 	var n = g.talk_with
 	action_title.text = "Talking with %s (%d question%s left)" % [n.name, g.questions_left, "" if g.questions_left == 1 else "s"]
-	_button(actions, "Ask about their gift", func(): _run("ask gift"))
-	_button(actions, "Ask where they were last night", func(): _run("ask night"))
-	_button(actions, "Ask who they've seen today", func(): _run("ask today"))
-	var ab = _button(actions, "Ask about…  ▸", func(): pass)
+	var sb = _button(actions, "Ask about %s…  ▸" % n.name, func(): pass)
+	sb.pressed.connect(func(): _ask_self_picker(sb))
+	var ab = _button(actions, "Ask about others…  ▸", func(): pass)
 	ab.pressed.connect(func(): _ask_about_picker(ab))
 	_button(actions, "Present a card…", func(): _card_picker("Present a card to %s" % n.name, func(c): return true,
 		func(num, extra): _run(("present %d" % num) + extra), false, true))
@@ -490,11 +489,32 @@ func _column(title: String) -> VBoxContainer:
 	v.add_child(l)
 	return v
 
-## "Ask about…": people in one column, gifts in the other.
+## "Ask about <them>…": questions about the listener themselves, and a column of gifts to
+## ask if they hold one.
+func _ask_self_picker(anchor: Control) -> void:
+	var n = g.talk_with
+	var h = HBoxContainer.new()
+	h.add_theme_constant_override("separation", 16)
+	var qs = _column("Ask %s…" % n.name)
+	for it in [["about their gift", "ask gift"], ["who they've seen around today", "ask today"], ["if they saw anything last night", "ask night"]]:
+		var cmd: String = it[1]
+		_button(qs, it[0], func():
+			popup.hide()
+			_run(cmd))
+	h.add_child(qs)
+	var gifts = _column("…if they are the")
+	for r in C.GOOD_ROLES:
+		_button(gifts, C.role_name(r), func():
+			popup.hide()
+			_run("ask are " + C.role_name(r).to_lower()))
+	h.add_child(gifts)
+	_show_popup(h, anchor)
+
+## "Ask about others…": opinion on a person, or whether they've heard of anyone holding a gift.
 func _ask_about_picker(anchor: Control) -> void:
 	var h = HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
-	var people = _column("People")
+	var people = _column("Opinion on…")
 	for n in g.w.npcs:
 		if n == g.talk_with:
 			continue
@@ -502,7 +522,7 @@ func _ask_about_picker(anchor: Control) -> void:
 			popup.hide()
 			_run("ask about " + n.id), C.npc_color(n.id))
 	h.add_child(people)
-	var gifts = _column("Gifts")
+	var gifts = _column("Heard of a…")
 	for r in C.GOOD_ROLES:
 		_button(gifts, C.role_name(r), func():
 			popup.hide()

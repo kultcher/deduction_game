@@ -363,29 +363,18 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 	var facts: Array = []
 	var rn = C.role_name(role)
 	var mine: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
-	var asks: int = n.role_asks
-	n.role_asks += 1
 	if mine == role and (n.claim_public or n.max_tier >= 3):
 		lines.append(Mind.say(n, "That would be me."))
 		return {"lines": lines, "facts": facts}
-	# Asking the holder directly: they decide whether to own up (a little more readily if it's
-	# the first gift you've put to them; not if you're going down the list). If they won't,
-	# they answer like anyone else would.
+	# A general question about the town, but it touches their own gift: a small chance they
+	# own up (likelier the more they trust you). Otherwise they answer like anyone else.
 	if mine == role:
-		var bonus = 1 if asks == 0 and w.rng.randf() < 0.5 else 0
-		var tier: int = Mind._target_tier(w, n) + bonus
-		w.dlog.think(n.id, "about_role", "Asked about their own gift (%s): disclosure tier %d%s." % [role, tier,
-			"" if asks == 0 else " (no bonus: you've asked them about other gifts before)"])
-		if tier >= 2:
+		var p = 0.15 + 0.2 * n.trust
+		var out = w.rng.randf() < p
+		w.dlog.think(n.id, "about_role", "Asked who holds their own gift (%s): owns up? -> %s (p=%.2f)." % [role, "yes" if out else "no", p])
+		if out:
 			n.pressed_today -= 1  # answer_gift counts the question again
-			return Mind.answer_gift(w, n, mini(tier, 4))
-	elif asks > 0 and not n.claim_public and n.max_tier < 3:
-		# A wrong guess about their gift, after another: it reads as fishing. The first question
-		# about a gift is free (it might just be a question about the town).
-		var cost = 0.03 * asks
-		Mind.set_trust(w, n, n.trust - cost, "the Demonologist keeps guessing at my gift (wrong, %d times)" % asks)
-		if asks >= 2:
-			lines.append(Mind.say(n, "Why do you keep asking me about gifts?"))
+			return Mind.answer_gift(w, n, maxi(2, Mind._target_tier(w, n)))
 	var public: Array = w.public_claims.filter(func(c): return c["role"] == role and w.by_id[c["who"]].alive).map(func(c): return w.by_id[c["who"]].name)
 	var text = ""
 	if not public.is_empty():
@@ -415,3 +404,33 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 		text = "I couldn't tell you who the %s is." % rn if willing or n.is_evil() else "That's not for me to say."
 	lines.append(Mind.say(n, text))
 	return {"lines": lines, "facts": facts}
+
+## "Are you the <gift>?": a direct guess at the listener's own gift. Right, they own up a
+## little more readily than usual (only for the first guess you put to them, so going down
+## the list doesn't pay). Wrong, or unwilling, they give the same non-answer either way, so
+## a guess never eliminates anyone, and each wrong guess costs a little more trust.
+static func answer_is_role(w, n, role: String) -> Dictionary:
+	Mind.on_question(w, n)
+	var rn = C.role_name(role)
+	var mine: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	var said: bool = n.claim_public or n.max_tier >= 3
+	if said:
+		var claimed: String = n.claimed_role
+		if claimed == role:
+			return {"lines": [Mind.say(n, "I am. I've said as much.")], "facts": []}
+		return {"lines": [Mind.say(n, "No. I told you: I'm the %s." % C.role_name(claimed) if C.ROLES.has(claimed) else "No.")], "facts": []}
+	if mine == role:
+		var first = n.role_guesses == 0
+		var tier: int = Mind._target_tier(w, n) + (1 if first and w.rng.randf() < 0.5 else 0)
+		w.dlog.think(n.id, "about_role", "Asked if they are the %s (right): disclosure tier %d%s." % [role, tier,
+			"" if first else " (no bonus: you guessed wrong before)"])
+		if tier >= 2:
+			n.pressed_today -= 1  # answer_gift counts the question again
+			return Mind.answer_gift(w, n, mini(tier, 4))
+	else:
+		n.role_guesses += 1
+		var cost = 0.02 * n.role_guesses
+		Mind.set_trust(w, n, n.trust - cost, "the Demonologist guessed my gift wrong (%s; %d wrong so far)" % [role, n.role_guesses])
+		w.dlog.think(n.id, "about_role", "Asked if they are the %s (wrong): gives the usual non-answer." % role)
+	var line = "Why do you keep asking me that?" if n.role_guesses >= 3 else "What my gift is, I'll keep to myself."
+	return {"lines": [Mind.say(n, line)], "facts": []}

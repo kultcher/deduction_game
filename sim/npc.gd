@@ -51,7 +51,7 @@ var pressure = 0.0
 ## Suspicion currently applied from the town's public accusations (Mind.refresh_consensus), per target.
 var consensus_applied = {}
 var pressed_today = 0
-var role_asks = 0           # times the player has asked them about a particular gift
+var role_guesses = 0        # times the player has asked 'are you the <gift>?' and guessed wrong
 var talked_day = -1      # last day the player had a conversation with them
 var cleared = {}         # ids their own Seer reading said are not the demon
 var heard = {}           # card text -> times the player has used it on them (diminishing returns)

@@ -163,7 +163,8 @@ func _test_visibility() -> void:
 	g.loc = wanderer.loc
 	_check(g.can_see(wanderer), "on their block, you see them")
 
-## Running down the list of gifts with the same person costs trust; the first question is free.
+## "Heard of a <gift>?" is a question about the town and costs nothing; "are you the
+## <gift>?" guesses wrong at a growing trust cost, with a non-answer that doesn't eliminate.
 func _test_role_fishing() -> void:
 	var g = _game(7106)
 	var w = g.w
@@ -171,13 +172,21 @@ func _test_role_fishing() -> void:
 	var t0 = n.trust
 	var wrong: Array = C.GOOD_ROLES.filter(func(r): return r != n.role)
 	Social.answer_about_role(w, n, wrong[0])
-	var t1 = n.trust
 	Social.answer_about_role(w, n, wrong[1])
-	Social.answer_about_role(w, n, wrong[2])
+	var t1 = n.trust
+	var r1 = Social.answer_is_role(w, n, wrong[0])
+	Social.answer_is_role(w, n, wrong[1])
 	var t3 = n.trust
-	print("trust %.2f -> %.2f after one wrong gift, %.2f after three" % [t0, t1, t3])
-	_check(absf(t1 - t0) < 0.001, "one question about a gift is free")
-	_check(t3 < t1 - 0.05, "fishing through gifts costs trust")
+	print("trust %.2f -> %.2f after asking about two gifts, %.2f after two wrong guesses" % [t0, t1, t3])
+	print("  wrong guess: %s" % r1["lines"][0]["text"])
+	_check(absf(t1 - t0) < 0.001, "asking who holds a gift costs nothing")
+	_check(t3 < t1 - 0.04, "wrong guesses at their gift cost trust")
+	# A holder who won't own up says the same thing.
+	var m = w.living_good()[1]
+	m.trust = 0.0
+	m.traits["privacy"] = 1.0
+	var r2 = Social.answer_is_role(w, m, m.role)
+	_check(r2["facts"].is_empty() and r2["lines"][0]["text"] == "What my gift is, I'll keep to myself.", "an unwilling holder gives the same non-answer")
 
 ## At home, a sighting is told from the window; a neighbour seen staying in is an alibi.
 func _test_window_wording() -> void:

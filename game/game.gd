@@ -451,7 +451,7 @@ func _day_command(verb: String, rest: String) -> void:
 				var said: String = n.remarks.pop_front()
 				w.dlog.think(n.id, "reconsider", "Tells the player they've come round to %s." % said)
 				_lines([Mind.say(n, "I didn't put much stock in %s. After all that's happened since... perhaps I should have." % said)])
-			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask today | ask about <name or gift> | present <card#> [for|against <name>] | bye)" % n.name)
+			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask today | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | bye)" % n.name)
 		"search", "s":
 			if not moved:
 				_err("First choose where to spend this phase ('go <place>').")
@@ -611,7 +611,7 @@ func _approach_command(verb: String, rest: String) -> void:
 			var r: Dictionary = Social.approach_open(w, n, approach["agenda"])
 			_lines(r["lines"])
 			_facts(r["facts"])
-			_prompt("(3 questions: ask gift | ask night | ask today | ask about <name or role> | present <card#> [for|against <name>] | bye)")
+			_prompt("(3 questions: ask gift | ask night | ask today | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | bye)")
 		"decline", "no", "n":
 			state = "day"
 			w.dlog.add("approach_declined", "player", n.id)
@@ -660,8 +660,16 @@ func _talk_command(verb: String, rest: String) -> void:
 						return
 					else:
 						r = Mind.answer_opinion(w, n, t)
+				"are", "if", "is":
+					# "ask are you the seer" / "ask if seer": a guess at their own gift.
+					var words: Array = Array(p.slice(1)).filter(func(x): return not (x.to_lower() in ["you", "the", "a", "an", "they", "are"]))
+					var grole = find_role(" ".join(PackedStringArray(words)))
+					if grole == "":
+						_err("Ask if they are which gift? ('ask are seer')")
+						return
+					r = Social.answer_is_role(w, n, grole)
 				_:
-					_err("Ask about: gift | night | today | about <name or gift>")
+					_err("Ask: gift | night | today | are <gift> | about <name or gift>")
 					return
 		"present", "show", "case":
 			var pr = _route_present(n, rest)
@@ -741,7 +749,7 @@ func _talk_command(verb: String, rest: String) -> void:
 			_close_conversation()
 			return
 		_:
-			_err("In conversation: ask gift | ask night | ask today | ask about <name or gift> | present <card#> [for|against <name>] | bye")
+			_err("In conversation: ask gift | ask night | ask today | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | bye")
 			return
 	# Something they've already heard from you: they say so, and it costs no question.
 	var repeat = r["lines"].size() == 1 and r["lines"][0] is Dictionary and r["lines"][0].get("text", "") == "You've told me that already."
@@ -1066,7 +1074,7 @@ func _help() -> String:
             note <name> <text> | guess <name> <role|evil|good> [1-3] | theory
   Day     : go <place | block | person>   (then one free move within the same block)
             then one action: talk <name> | search | gossip (tavern) | wait
-  Talking : ask gift | ask night | ask today | ask about <name or gift> | bye
+  Talking : ask gift | ask night | ask today | ask are <gift> | ask about <name or gift> | bye
             present <card#> [for|against <name>]   (uses a question) - about them: you press them
               to answer it; a deduction: you argue it; a card about someone else: a case against
               them ('for' to speak up for them). Shortcuts: press, convince, tell, defend

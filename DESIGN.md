@@ -733,13 +733,20 @@ paths within blocks, planting by a Framer, NPCs searching.
   avoids it.
 - All of these are expressed as cards (alibi claim, confirmation, denial, confession).
 
-### Asking about a gift
-- `ask about <gift>` doubles as a guess at the listener's own gift: the holder owns up a
-  little more readily, but only if it's the first gift you've put to them. Each further
-  wrong guess with the same person costs trust (0.03 × the number of earlier guesses), and
-  after a few they ask why you keep asking. A holder who won't own up answers exactly as a
-  non-holder would, so one guess doesn't eliminate anyone. A card you've already shown
-  someone ("You've told me that already") costs no question, once per conversation.
+### Asking questions
+Two menus in conversation:
+- **Ask about <them>…:** their gift, who they've seen around today, whether they saw
+  anything last night, and **"are you the <gift>?"** (`ask are <gift>`). A right guess
+  makes them own up a little more readily, but only if it's the first guess you've put to
+  them. A wrong guess costs trust (0.02 × the number of wrong guesses so far) and gets the
+  same non-answer an unwilling holder gives ("What my gift is, I'll keep to myself"), so a
+  guess never eliminates anyone; after a few they ask why you keep asking.
+- **Ask about others…:** "Opinion on…" a person, or "Heard of a…" gift: whether they've
+  heard anyone claim it (publicly, or told in private if they're willing to pass it on).
+  If it's their own gift there's a small chance they own up (0.15 + 0.2 × trust); it never
+  costs trust.
+- A card you've already shown someone ("You've told me that already") costs no question,
+  once per conversation.
 
 ### Clemency and the demon
 - The demon may deliberately **not** kill someone the player spared, leaving them alive to

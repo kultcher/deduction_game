@@ -94,7 +94,7 @@ func _init() -> void:
 	_check(g.state == "talk" and g.talk_with == t, "clicking a person walks over and starts talking")
 	_check(scene.map.zoom_block == g.w.loc_block(g.loc), "the map zooms to your block")
 	var labels: Array = scene.actions.get_children().filter(func(c): return c is Button).map(func(b): return b.text)
-	_check(labels.any(func(x): return x.begins_with("Ask about")) and labels.has("Ask about their gift"), "talk panel has the ask buttons (%s)" % str(labels))
+	_check(labels.has("Ask about %s…  ▸" % t.name) and labels.has("Ask about others…  ▸"), "talk panel has the ask buttons (%s)" % str(labels))
 	scene._run("bye")
 	scene._run("wait")
 	await process_frame
