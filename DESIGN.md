@@ -164,11 +164,16 @@ All persuasion uses one model:
 
 ### Conclusions (starting set; expand from playtesting)
 
-- [X] is evil / is good / is the demon
+Built as a sentence: **[name] [is / is not / should be] [status] [on night N] because
+[cards]**.
+
+- [X] is evil / is good / is (not) the demon
 - [X] is (or isn't) the [role]
-- [X] lied about [card]
-- [X] was poisoned on night [N]
-- [X] should be protected / shouldn't be executed
+- [X] is lying / is not lying (about a card of theirs among the supports)
+- [X] is **misled** [on night N]: not lying, but their information was wrong (poisoned or
+  mistaken; the town can't tell those apart, so they are one status)
+- [X] is **misled or lying**: the hedge when you only know their information is wrong
+- [X] should be protected / spared from execution
 
 Each conclusion moves a different part of the NPC's mind:
 
@@ -177,8 +182,10 @@ Each conclusion moves a different part of the NPC's mind:
 | X is evil / the demon | suspicion of X up |
 | X is good | suspicion of X down; Warden more likely to protect X |
 | X is / isn't the role | belief about X's claim; affects double-claim reasoning |
+| X is not the demon / not lying | suspicion of X down a little |
 | X lied about card | discredits that card; suspicion of X up (less than "evil") |
-| X was poisoned on night N | discounts X's info from night N; **no** suspicion change |
+| X is misled on night N | discounts X's info from night N (all their info if no night); **no** suspicion change |
+| X is misled or lying | discounts X's info by half; small suspicion rise. As an explanation it doesn't compete with "lying" or "misled" about X, since it contains both |
 | protect X / don't execute X | protection weighting; vote intention |
 
 This needs belief state the prototype lacks: per-source/per-night "possibly poisoned"
@@ -208,7 +215,19 @@ discounts, believed roles, and believed-good flags.
 
 - Available from the evidence board at any time to draft and file conclusions ahead of
   time, and inside conversations and the meeting to present them.
-- Filed conclusions appear on the board and in NPC profiles.
+- Piece by piece: name, verb, status, optional night, and the selected cards as "because".
+  Picking an explanation from a link prefills it (and backs it with the contradiction).
+- **Restatements are refused.** A positive conclusion (good, a role, not the demon, not
+  lying, protect, spare) whose supports all come from the subject ("Jory is the Seer
+  because of Jory's claim and Jory's reading") can't be filed unless a template matched.
+  Flimsy conclusions with outside evidence are allowed ("Jory named Hollis and then died,
+  so Hollis is the demon"), as is a conclusion with no contradiction behind it (marked
+  unfounded). A deduction needs at least one supporting card.
+- A deduction's evidence class is the weakest of its supports when a template matched;
+  otherwise at most circumstantial.
+- Filed conclusions appear on the board and in NPC profiles. The player can delete their
+  own deductions; any card can be hidden (and shown again with "show hidden"), but only
+  deductions can be deleted.
 
 ### How NPCs evaluate an argument
 

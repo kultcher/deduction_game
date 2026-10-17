@@ -315,12 +315,14 @@ func _find_or_file_deduction() -> int:
 			var best_s = -99.0
 			for k in range(lk["options"].size()):
 				var b: String = lk["options"][k]["expl"].get("blame", "")
-				var s2 = sc.get(b, 0.0) + (0.3 if lk["options"][k]["expl"]["kind"] == "poisoned" else 0.0)
+				var s2 = sc.get(b, 0.0) + (0.3 if lk["options"][k]["expl"]["kind"] == "misled" else 0.0)
 				if s2 > best_s:
 					best_s = s2
 					best = k
 			var o = lk["options"][best]
-			return g.file_deduction(o["expl"]["conclusion"], o["match"]["cards"], o["match"], o["expl"]["id"])
+			var fn = g.file_deduction(o["expl"]["conclusion"], o["match"]["cards"], o["match"], o["expl"]["id"])
+			if fn > 0:
+				return fn
 	return _latest_deduction()
 
 func _latest_deduction() -> int:

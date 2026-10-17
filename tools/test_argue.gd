@@ -64,9 +64,33 @@ func _init() -> void:
 	print("A hears 'B lied about A being out': agreement %.2f (%s)" % [r3["agreement"], "A evil" if w.by_id[a].is_evil() else "A good"])
 	# Unfounded conclusion.
 	g.link_cards([k5, k1])
-	var p = g._parse_conclusion("evil %s" % w.by_id[b].name)
+	var p = g._parse_conclusion("%s is evil" % w.by_id[b].name)
 	var dn3 = g.file_deduction(p["conclusion"], p["supports"])
-	_check(g.board[dn3 - 1]["unfounded"], "unlinked conclusion is marked unfounded")
+	_check(dn3 > 0 and g.board[dn3 - 1]["unfounded"], "unlinked conclusion is marked unfounded")
+	_check(g.board[dn3 - 1]["class"] != "concrete", "free-form deduction is at most circumstantial")
+	# Sentence grammar.
+	var p2 = g._parse_conclusion("%s is misled on night 1 because #%d" % [w.by_id[c].name, k9])
+	_check(p2.get("conclusion", {}).get("type", "") == "misled" and p2["conclusion"].get("night", -1) == 1 and p2["supports"] == [k9], "parse 'X is misled on night 1 because #N' (%s)" % str(p2))
+	var p3 = g._parse_conclusion("%s is not the demon because #%d" % [w.by_id[c].name, k9])
+	_check(p3.get("conclusion", {}).get("type", "") == "notdemon", "parse 'is not the demon'")
+	var p4 = g._parse_conclusion("%s is the seer because #%d" % [w.by_id[b].name, k5])
+	_check(p4.get("conclusion", {}).get("role", "") == "seer", "parse 'is the seer'")
+	# Restating someone's own claim is refused; no supports is refused.
+	var dn4 = g.file_deduction(p4["conclusion"], [k5])
+	_check(dn4 < 0 and "restates" in g.last_error, "self-restating deduction refused (%s)" % g.last_error)
+	_check(g.file_deduction({"type": "evil", "a": b}, []) < 0, "deduction with no supports refused")
+	# Flimsy but legitimate: someone else's reading pointing at b.
+	var dn5 = g.file_deduction({"type": "demon", "a": a}, [k8, k11])
+	_check(dn5 > 0, "flimsy outside-sourced deduction allowed (%s)" % g.last_error)
+	# Hide / delete.
+	g.hide_card(k1, true)
+	_check(not (k1 in g.filter_cards("").map(func(x): return x["n"])), "hidden card filtered out")
+	g.show_hidden = true
+	_check(k1 in g.filter_cards("").map(func(x): return x["n"]), "show hidden includes it")
+	g.show_hidden = false
+	_check(g.delete_deduction(k1).begins_with("You can only"), "can't delete an info card")
+	g.delete_deduction(dn5)
+	_check(not (dn5 in g.filter_cards("").map(func(x): return x["n"])), "deleted deduction gone")
 	# Timeline and filters.
 	print(g._timeline(""))
 	_check(g.filter_cards("market").size() >= 3, "location filter by block")

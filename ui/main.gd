@@ -38,7 +38,7 @@ func _ready() -> void:
 	vb.add_theme_constant_override("separation", 8)
 	split.add_child(vb)
 
-	var top = HBoxContainer.new()
+	var top = HFlowContainer.new()
 	vb.add_child(top)
 	var lbl = Label.new()
 	lbl.text = "Case seed"
@@ -79,7 +79,7 @@ func _ready() -> void:
 
 	# Summary sidebar.
 	side = VBoxContainer.new()
-	side.custom_minimum_size = Vector2(380, 0)
+	side.custom_minimum_size = Vector2(320, 0)
 	split.add_child(side)
 	var st = Label.new()
 	st.text = "Case board (newest first)"
@@ -99,6 +99,7 @@ func _ready() -> void:
 	hint.add_theme_font_size_override("font_size", 11)
 	side.add_child(hint)
 	side_person = OptionButton.new()
+	side_person.clip_text = true
 	side_person.item_selected.connect(func(_i): _refresh_side())
 	side.add_child(side_person)
 	side_profile = RichTextLabel.new()
@@ -139,6 +140,10 @@ func _new_case() -> void:
 	_refresh_side()
 	input.grab_focus()
 
+func _input(ev: InputEvent) -> void:
+	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible:
+		input.grab_focus()
+
 func _open_case_view() -> void:
 	case_view.refresh()
 	case_view.visible = true
@@ -174,7 +179,9 @@ func _refresh_side() -> void:
 		var i = side_list.item_count - 1
 		side_list.set_item_metadata(i, c["n"])
 		side_list.set_item_tooltip(i, c["text"])
-		if c["kind"] == "deduction":
+		if c.get("hidden", false):
+			side_list.set_item_custom_fg_color(i, Color(0.45, 0.45, 0.5))
+		elif c["kind"] == "deduction":
 			side_list.set_item_custom_fg_color(i, Color(0.95, 0.8, 0.45))
 		elif c.get("source", "") != "player" and c.get("source", "") != "evidence":
 			side_list.set_item_custom_fg_color(i, Color(0.72, 0.72, 0.78))

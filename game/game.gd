@@ -28,6 +28,8 @@ var presented_today = false # player has had the meeting floor today
 var last_link = {}          # result of the last 'link' (for 'conclude <number>')
 var notes = {}              # npc id -> player's note
 var guesses = {}            # npc id -> {guess, confidence 1..3}
+var show_hidden = false     # include cards the player has hidden
+var last_error = ""         # why the last file_deduction was refused
 var log_dir = "user://logs"
 var log_paths: Array = []
 var debug = false
@@ -221,6 +223,16 @@ func _dispatch(text: String) -> void:
 			return
 		"link":
 			_link_command(rest)
+			return
+		"hide", "unhide":
+			_narr(hide_card(rest.strip_edges().trim_prefix("#").to_int(), verb == "hide"))
+			return
+		"delete":
+			_narr(delete_deduction(rest.strip_edges().trim_prefix("#").to_int()))
+			return
+		"showhidden":
+			show_hidden = not show_hidden
+			_narr("Hidden cards are now %s." % ("shown" if show_hidden else "hidden"))
 			return
 		"conclude", "deduce":
 			_conclude_command(rest)
@@ -573,7 +585,7 @@ func _talk_command(verb: String, rest: String) -> void:
 					return
 		"convince", "argue":
 			var num0 = rest.strip_edges().trim_prefix("#").to_int()
-			if num0 < 1 or num0 > board.size() or board[num0 - 1]["kind"] != "deduction":
+			if num0 < 1 or num0 > board.size() or board[num0 - 1]["kind"] != "deduction" or board[num0 - 1].get("deleted", false):
 				_err("Convince them of which deduction? ('convince <card#>'; to cite a plain card use 'tell <suspect> <card#>')")
 				return
 			r = Argue.evaluate(w, n, board[num0 - 1], board, 1.0)
@@ -888,8 +900,11 @@ func _help() -> String:
             filters: person, block, location, kind, class, d2 / n1, or any text
   Case    : link <card#> <card#> [card#]  (check for a contradiction)
             conclude <number>  (file an explanation from your last link)
-            conclude <type> <name> [role|night|card#] [because <card#> ...]
-              types: evil, demon, good, role, notrole, lied, poisoned, protect, spare, mistaken
+            conclude <name> <is | is not | should be> <status> [night N] [because <card#> ...]
+              status: good, evil, the demon, a gift (seer...), lying, misled, misled or lying;
+                      should be protected / spared
+              misled = not lying, but their information was wrong (poisoned or mistaken)
+            hide <#> | unhide <#> | showhidden | delete <#> (your own deductions only)
             note <name> <text> | guess <name> <role|evil|good> [1-3]
   Day     : go <place | block | person>   (then one free move within the same block)
             then one action: talk <name> | search | gossip (tavern) | wait
@@ -1087,13 +1102,14 @@ func _write_logs() -> String:
 ## ("d2") or night ("n1"), or any text in the card.
 func filter_cards(filter: String) -> Array:
 	var f = filter.strip_edges().to_lower()
+	var base: Array = board.filter(func(c): return not c.get("deleted", false) and (show_hidden or not c.get("hidden", false)))
 	if f == "":
-		return board.duplicate()
+		return base
 	var blk = find_block(f)
 	var lc = find_location(f) if blk == "" else ""
 	var person = find_npc(f, true)
 	var out: Array = []
-	for c in board:
+	for c in base:
 		var ok = false
 		if c["kind"] == f or c.get("class", "") == f:
 			ok = true
@@ -1129,78 +1145,105 @@ func link_cards(nums: Array) -> Dictionary:
 		"near": res["near"]}, "matched" if not res["matches"].is_empty() else "no template matched (flag for template work)")
 	return last_link
 
-## File a deduction card. conclusion: {type, a, role?, night?, card?}.
+## File a deduction card. conclusion: {type, a, role?, night?, card?}. Returns the card
+## number, or -1 if refused (reason in last_error).
 func file_deduction(conclusion: Dictionary, supports: Array, match_info: Dictionary = {}, chosen: int = 0) -> int:
-	var cls = "concrete"
+	conclusion = Argue.normalize(conclusion.duplicate())
+	last_error = Argue.filing_problem(w, conclusion, supports, board, not match_info.is_empty())
+	if last_error != "":
+		w.dlog.add("deduction_refused", "player", conclusion.get("a", ""), {"conclusion": conclusion, "supports": supports}, last_error)
+		return -1
 	var rank = {"speech": 0, "circumstantial": 1, "concrete": 2}
+	var cls = "concrete"
 	for x in supports:
-		if x >= 1 and x <= board.size():
-			var cc: String = board[x - 1].get("class", "circumstantial")
-			if rank.get(cc, 1) < rank[cls]:
-				cls = cc
+		var cc: String = board[x - 1].get("class", "circumstantial")
+		if rank.get(cc, 1) < rank[cls]:
+			cls = cc
+	if match_info.is_empty() and rank[cls] > 1:
+		cls = "circumstantial"  # an inference is never stronger than circumstantial on its own
 	var unfounded = match_info.is_empty() and not last_link.is_empty() and last_link["result"]["matches"].is_empty() and last_link["cards"] == supports
 	var basis = ""
 	if not match_info.is_empty():
 		basis = " (from #%s: %s)" % [", #".join(PackedStringArray(match_info["cards"].map(func(x): return str(x)))), match_info["text"]]
-	elif not supports.is_empty():
+	else:
 		basis = " (because #%s%s)" % [", #".join(PackedStringArray(supports.map(func(x): return str(x)))), "; unfounded" if unfounded else ""]
 	var subj: Array = [conclusion["a"]] if conclusion.has("a") else []
+	var near = ""
+	if unfounded and not last_link["result"]["near"].is_empty():
+		near = last_link["result"]["near"][0]
 	var card = {"kind": "deduction", "subject": subj, "source": "player", "class": cls, "conclusion": conclusion,
 		"supports": supports.duplicate(), "template": match_info.get("template", ""), "explanations": match_info.get("explanations", []),
-		"chosen": chosen, "unfounded": unfounded, "near": last_link.get("result", {}).get("near", [""])[0] if unfounded and not last_link["result"]["near"].is_empty() else "",
-		"text": "Deduction: %s%s." % [Argue.conclusion_text(w, conclusion), basis]}
+		"chosen": chosen, "unfounded": unfounded, "near": near,
+		"text": "Deduction: %s%s [basis: %s]." % [Argue.conclusion_text(w, conclusion), basis, cls]}
 	var n = add_card(card)
 	w.dlog.add("deduction", "player", conclusion.get("a", ""), {"card": n, "conclusion": conclusion, "supports": supports,
-		"template": card["template"], "unfounded": unfounded}, card["text"])
+		"template": card["template"], "unfounded": unfounded, "class": cls}, card["text"])
 	return n
 
-## Parse "conclude <type> <name> [role|night|card#] [because <n> <n> ...]".
+## Parse "conclude <name> <is | is not | should be> <status> [night N] [about #N] [because <#> ...]".
+## Status: good, evil, the demon, a gift, lying, misled, misled or lying, protected, spared.
 func _parse_conclusion(rest: String) -> Dictionary:
-	var parts = rest.split(" ", false)
-	if parts.size() < 2:
-		return {"error": "Usage: conclude <number> (after 'link'), or conclude <type> <name> [role|night|card#] [because <card#> ...]. Types: %s" % ", ".join(PackedStringArray(Argue.CONCLUSION_TYPES))}
-	var t = parts[0].to_lower()
-	var aliases = {"isnt": "notrole", "isn't": "notrole", "not": "notrole", "is": "role", "liar": "lied", "lie": "lied",
-		"poison": "poisoned", "dont-execute": "spare", "innocent": "good"}
-	t = aliases.get(t, t)
-	if not (t in Argue.CONCLUSION_TYPES):
-		return {"error": "Unknown conclusion type '%s'. Types: %s" % [t, ", ".join(PackedStringArray(Argue.CONCLUSION_TYPES))]}
-	var who = find_npc(parts[1], true)
-	if who == null:
-		return {"error": "Who is '%s'?" % parts[1]}
-	var c = {"type": t, "a": who.id}
-	var i = 2
+	var usage = "Usage: conclude <name> <is | is not | should be> <status> [night N] [because <card#> ...]. Status: good, evil, the demon, a gift (seer...), lying, misled, misled or lying; should be protected / spared."
+	var text = " " + rest.to_lower().strip_edges() + " "
 	var supports: Array = []
-	while i < parts.size():
-		var p = parts[i].to_lower()
-		if p == "because":
-			for q in parts.slice(i + 1):
-				var num = q.trim_prefix("#").to_int()
-				if num >= 1 and num <= board.size():
-					supports.append(num)
-			break
-		if t in ["role", "notrole"] and not c.has("role"):
-			var role = find_role(" ".join(parts.slice(i, i + 2)))
-			if role == "":
-				role = find_role(p)
-			else:
-				i += 1
-			if role == "":
-				return {"error": "Which gift is '%s'?" % p}
-			c["role"] = role
-		elif t == "poisoned" and not c.has("night"):
-			c["night"] = p.trim_prefix("n").trim_prefix("night").to_int()
-		elif t in ["lied", "mistaken"] and not c.has("card"):
-			c["card"] = p.trim_prefix("#").to_int()
-		i += 1
-	if t in ["role", "notrole"] and not c.has("role"):
-		return {"error": "Which gift?"}
-	if t == "poisoned" and not c.has("night"):
-		return {"error": "Which night? (e.g. 'conclude poisoned hollis 1')"}
-	if t in ["lied", "mistaken"] and not c.has("card"):
-		return {"error": "Which card did they lie about? (e.g. 'conclude lied hollis 12')"}
+	var bi = text.find(" because ")
+	if bi >= 0:
+		for q in text.substr(bi + 9).split(" ", false):
+			var num = q.trim_prefix("#").to_int()
+			if num >= 1 and num <= board.size() and not board[num - 1].get("deleted", false):
+				supports.append(num)
+		text = text.substr(0, bi + 1)
+	var night = -1
+	var ni = text.find(" night ")
+	if ni >= 0:
+		var after = text.substr(ni + 7).split(" ", false)
+		if after.size() > 0 and after[0].is_valid_int():
+			night = after[0].to_int()
+		text = text.substr(0, ni + 1)
+		if text.ends_with(" on "):
+			text = text.substr(0, text.length() - 3)
+	var card = -1
+	var ai = text.find(" about #")
+	if ai >= 0:
+		card = text.substr(ai + 8).split(" ", false)[0].to_int()
+		text = text.substr(0, ai + 1)
+	var words = text.split(" ", false)
+	if words.size() < 3:
+		return {"error": usage}
+	var who = find_npc(words[0], true)
+	if who == null:
+		return {"error": "Who is '%s'?" % words[0]}
+	var verb = ""
+	var rest_i = 1
+	if words[1] == "should" and words.size() > 2 and words[2] == "be":
+		verb = "should be"
+		rest_i = 3
+	elif words[1] in ["isnt", "isn't"] or (words[1] == "is" and words.size() > 2 and words[2] == "not"):
+		verb = "is not"
+		rest_i = 2 if words[1] != "is" else 3
+	elif words[1] == "is":
+		verb = "is"
+		rest_i = 2
+	else:
+		return {"error": usage}
+	var status = " ".join(words.slice(rest_i)).strip_edges().trim_prefix("the ").strip_edges()
+	if status == "demon":
+		status = "the demon"
+	if status in ["spared", "spared from execution"]:
+		status = "spared from execution"
+	var role = find_role(status)
+	if role != "" and role in C.GOOD_ROLES:
+		status = role
+	var c = Argue.from_builder(who.id, verb, status, night, card)
+	if c.is_empty():
+		return {"error": "'%s %s' isn't something you can conclude. %s" % [verb, status, usage]}
 	if supports.is_empty() and not last_link.is_empty():
 		supports = last_link["cards"].duplicate()
+	if c["type"] in ["lied", "unreliable", "truthful"] and not c.has("card"):
+		for x in supports:
+			if board[x - 1].get("source", "") == who.id:
+				c["card"] = x
+				break
 	return {"conclusion": c, "supports": supports}
 
 func _link_command(rest: String) -> void:
@@ -1218,7 +1261,7 @@ func _link_command(rest: String) -> void:
 		_narr("No contradiction between those cards.")
 		for r in res["near"].slice(0, 2):
 			_narr("  Close, but " + r)
-		_prompt("You can still file a conclusion from them: 'conclude <type> <name> ...' (it will be marked unfounded).")
+		_prompt("You can still file a conclusion from them: 'conclude <name> is <status>' (it will be marked unfounded).")
 		return
 	var k = 0
 	for m in res["matches"]:
@@ -1226,7 +1269,7 @@ func _link_command(rest: String) -> void:
 		for e in m["explanations"]:
 			k += 1
 			_narr("  %d. %s" % [k, e["label"]])
-	_prompt("'conclude <number>' to file the explanation you believe as a deduction.")
+	_prompt("'conclude <number>' to file the explanation you believe, or write your own: 'conclude <name> is <status> because <cards>'.")
 
 func _conclude_command(rest: String) -> void:
 	var r = rest.strip_edges()
@@ -1238,6 +1281,9 @@ func _conclude_command(rest: String) -> void:
 			return
 		var o: Dictionary = opts[k - 1]
 		var n = file_deduction(o["expl"]["conclusion"], o["match"]["cards"], o["match"], o["expl"]["id"])
+		if n < 0:
+			_err(last_error)
+			return
 		_narr("Filed.")
 		_ev({"k": "card", "n": n})
 		return
@@ -1246,8 +1292,25 @@ func _conclude_command(rest: String) -> void:
 		_err(p["error"])
 		return
 	var n2 = file_deduction(p["conclusion"], p["supports"])
+	if n2 < 0:
+		_err(last_error)
+		return
 	_narr("Filed%s." % (" (unfounded: no contradiction backs it)" if board[n2 - 1]["unfounded"] else ""))
 	_ev({"k": "card", "n": n2})
+
+## Hide a card from views (any card), or delete one of your own deductions.
+func hide_card(num: int, on: bool) -> String:
+	if num < 1 or num > board.size() or board[num - 1].get("deleted", false):
+		return "No such card."
+	board[num - 1]["hidden"] = on
+	return "Card #%d %s." % [num, "hidden ('showhidden' to see hidden cards)" if on else "shown again"]
+
+func delete_deduction(num: int) -> String:
+	if num < 1 or num > board.size() or board[num - 1]["kind"] != "deduction" or board[num - 1].get("deleted", false):
+		return "You can only delete your own deductions."
+	board[num - 1]["deleted"] = true
+	w.dlog.add("deduction_deleted", "player", "", {"card": num})
+	return "Deduction #%d deleted." % num
 
 ## Present a deduction to the whole meeting (once per meeting).
 func _present_deduction(rest: String) -> void:
@@ -1255,7 +1318,7 @@ func _present_deduction(rest: String) -> void:
 		_err("You've already had the floor today.")
 		return
 	var num = rest.strip_edges().trim_prefix("#").to_int()
-	if num < 1 or num > board.size() or board[num - 1]["kind"] != "deduction":
+	if num < 1 or num > board.size() or board[num - 1]["kind"] != "deduction" or board[num - 1].get("deleted", false):
 		_err("Present which deduction? ('present <card#>'; file one with 'link' and 'conclude')")
 		return
 	presented_today = true

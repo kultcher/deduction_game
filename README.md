@@ -19,7 +19,9 @@ on the right lists your cards (filterable; double-click a card to add its number
 command) and a quick profile. **Case view** opens a full-screen board: filters (text, kind,
 person, place), the card list with multi-select, the timeline grid (who was where, by
 phase; bright = you saw it, dim = you were told; click a cell for its cards), profiles with
-your guess, confidence and notes, and the Link / Conclude builder.
+your guess, confidence and notes, the conclusion builder and Link results. **◀ Back to
+console** (or Esc) returns to the console. Hide / Unhide work on any card (tick **Show
+hidden** to see them); **Delete deduction** removes your own deductions only.
 
 **In a terminal:**
 
@@ -55,7 +57,7 @@ Each day has three phases (morning, afternoon, evening), then a town meeting, th
 | Town meeting | `nominate <name>` (once), `wait` (let the town nominate), `done` (close the meeting, once a `wait` finds no more nominations) |
 | On a nomination | `defend [card#]` or `accuse [card#]` (one statement, optionally citing a card), `clemency` (once per case), `vote yes` / `vote no` |
 | Night | `ward <name>` (once per case), `vigil <block>`, `sleep` |
-| Case work (any time) | `link <#> <#> [#]`, `conclude <number>` (after a link), `conclude <type> <name> [role/night/card#] [because <#> ...]`, `timeline [filter]`, `note <name> <text>`, `guess <name> <role/evil/good> [1-3]` |
+| Case work (any time) | `link <#> <#> [#]`, `conclude <number>` (after a link), `conclude <name> <is / is not / should be> <status> [on night N] [because <#> ...]`, `hide <#>`, `unhide <#>`, `showhidden`, `delete <#>` (deductions only), `timeline [filter]`, `note <name> <text>`, `guess <name> <role/evil/good> [1-3]` |
 | In conversation | `convince <deduction#>` (uses a question) |
 | At the meeting | `present <deduction#>` (once: everyone hears it) |
 | After the case | `grimoire`, `grimoire lies` |
@@ -105,15 +107,20 @@ gift; a watcher who missed someone; your vigil missing someone a witness put the
 reading that flips; a Gravedigger contradicting a claim; a Veteran killed by the demon;
 a reading pointing only at the demon's victims; a changed story). A match lists possible
 explanations, and never says which is true. `conclude <number>` files the one you believe
-as a **deduction** card. You can also conclude directly from supporting cards; a
-conclusion with no contradiction behind it is marked *unfounded*, and sharp (high-Insight)
-NPCs will reject it. Conclusion types: evil, demon, good, role, notrole, lied, poisoned,
-protect, spare, mistaken.
+as a **deduction** card. You can also write a conclusion yourself as a sentence, e.g.
+`conclude jory is misled on night 1 because #4 #7`, `conclude hollis is not the demon
+because #3`, `conclude edda should be protected because #9`. Statuses: good, evil, the
+demon, a gift (seer...), lying, **misled** (not lying, but their information was wrong:
+poisoned or mistaken), **misled or lying**; with "should be": protected, spared. A
+conclusion with no contradiction behind it is marked *unfounded* and is at most
+circumstantial; sharp (high-Insight) NPCs will reject it. A deduction needs supporting
+cards, and one that only restates what someone said about themselves ("Jory is the
+Seer because of Jory's claim and Jory's reading") is refused.
 
 NPCs weigh a deduction by scoring the same explanations from their own point of view
 (whom they suspect or trust, whether an information gift could be poisoned, what they
 know firsthand about where they themselves were), compared with the strongest
-alternative. "X was poisoned on night N" makes them discount that reading instead of
+alternative. "X is misled on night N" makes them discount that reading instead of
 suspecting X; "protect X" makes a Warden likelier to guard X; "spare X" lowers their vote.
 
 **Meetings** follow Blood on the Clocktower: one nomination at a time; each person
@@ -169,7 +176,7 @@ Main entry types:
 | `evil_intel`, `evil_share` | what an evil member learned and how (own sighting, told by someone, the player's case); when members pool knowledge (first-night conference, meeting, tavern whisper) |
 | `approach`, `approach_declined` | an NPC seeking out the player, with their agenda (news / frame / gossip) |
 | `player_link` | cards the player linked, templates matched and near-miss reasons (unmatched links flag missing templates) |
-| `deduction` | a deduction the player filed: conclusion, supports, template, unfounded or not |
+| `deduction`, `deduction_refused`, `deduction_deleted` | a deduction the player filed (conclusion, supports, template, unfounded, class), one refused and why, one deleted |
 | `argument` | an NPC weighing a deduction: explanation weights, agreement vs. the best alternative, quality, effect |
 | `player_present` | the player taking the meeting floor |
 | `night_sighting` | who glimpsed whom at night |

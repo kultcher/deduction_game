@@ -23,6 +23,16 @@ var note_edit: TextEdit
 var result_text: RichTextLabel
 var result_box: VBoxContainer
 var cell_filter: Array = []   # card numbers picked from a timeline cell ([] = off)
+var hidden_check: CheckBox
+var b_who: OptionButton
+var b_verb: OptionButton
+var b_status: OptionButton
+var b_night: OptionButton
+var b_because: Label
+var b_preview: Label
+var b_error: Label
+var pending: Dictionary = {}  # explanation picked from a link: {conclusion, match, id}
+var _setting = false
 
 const KINDS = ["all", "sighting", "info", "claim", "hint", "refusal", "alibi", "secret", "opinion", "accusation",
 	"trace", "vigil", "vote", "death", "execution", "deduction"]
@@ -43,14 +53,15 @@ func build(font: Font) -> void:
 	root.add_theme_constant_override("separation", 8)
 	add_child(root)
 
-	var top = HBoxContainer.new()
+	var top = HFlowContainer.new()
 	root.add_child(top)
+	_btn(top, "◀ Back to console (Esc)", func(): visible = false)
 	var title = Label.new()
-	title.text = "CASE VIEW"
+	title.text = "  CASE VIEW  "
 	top.add_child(title)
 	filter_edit = LineEdit.new()
 	filter_edit.placeholder_text = "filter: text, d2, n1 ..."
-	filter_edit.custom_minimum_size = Vector2(220, 0)
+	filter_edit.custom_minimum_size = Vector2(180, 0)
 	filter_edit.text_changed.connect(func(_t): _refresh_cards())
 	top.add_child(filter_edit)
 	kind_opt = _option(top, KINDS, func(_i): _refresh_cards())
@@ -58,19 +69,26 @@ func build(font: Font) -> void:
 	person_opt.item_selected.connect(func(_i): _refresh_cards())
 	top.add_child(person_opt)
 	place_opt = OptionButton.new()
+	place_opt.clip_text = true
+	place_opt.custom_minimum_size = Vector2(160, 0)
 	place_opt.item_selected.connect(func(_i): _refresh_cards())
 	top.add_child(place_opt)
-	var spacer = Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(spacer)
-	_btn(top, "Close", func(): visible = false)
+	hidden_check = CheckBox.new()
+	hidden_check.text = "Show hidden"
+	hidden_check.toggled.connect(func(on):
+		g.show_hidden = on
+		_refresh_cards()
+		changed.emit())
+	top.add_child(hidden_check)
 
 	var body = HSplitContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(body)
 
 	var left = VBoxContainer.new()
-	left.custom_minimum_size = Vector2(560, 0)
+	left.custom_minimum_size = Vector2(420, 0)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.size_flags_stretch_ratio = 0.8
 	body.add_child(left)
 	var ll = Label.new()
 	ll.text = "Cards (select 1-3 to link, or as support for a conclusion)"
@@ -78,17 +96,21 @@ func build(font: Font) -> void:
 	card_list = ItemList.new()
 	card_list.select_mode = ItemList.SELECT_MULTI
 	card_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card_list.multi_selected.connect(func(_i, _on): _update_preview())
 	card_list.add_theme_font_override("font", mono)
 	card_list.add_theme_font_size_override("font_size", 13)
 	left.add_child(card_list)
-	var lb = HBoxContainer.new()
+	var lb = HFlowContainer.new()
 	left.add_child(lb)
 	_btn(lb, "Link selected", _on_link)
-	_btn(lb, "Conclude...", _on_conclude_form)
-	_btn(lb, "Clear", func():
+	_btn(lb, "Clear selection", func():
 		card_list.deselect_all()
 		cell_filter = []
-		_refresh_cards())
+		_refresh_cards()
+		_update_preview())
+	_btn(lb, "Hide", func(): _hide_selected(true))
+	_btn(lb, "Unhide", func(): _hide_selected(false))
+	_btn(lb, "Delete deduction", _delete_selected)
 
 	var mid_split = HSplitContainer.new()
 	mid_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -107,22 +129,55 @@ func build(font: Font) -> void:
 	grid.add_theme_constant_override("v_separation", 2)
 	sc.add_child(grid)
 	var res_title = Label.new()
-	res_title.text = "Builder"
+	res_title.text = "Conclusion builder"
 	mid.add_child(res_title)
+	var brow = HFlowContainer.new()
+	mid.add_child(brow)
+	b_who = OptionButton.new()
+	b_who.item_selected.connect(func(_i): _builder_changed())
+	brow.add_child(b_who)
+	b_verb = _option(brow, ["is", "is not", "should be"], func(_i):
+		_fill_status()
+		_builder_changed())
+	b_status = OptionButton.new()
+	b_status.item_selected.connect(func(_i): _builder_changed())
+	brow.add_child(b_status)
+	b_night = OptionButton.new()
+	b_night.item_selected.connect(func(_i): _builder_changed())
+	brow.add_child(b_night)
+	b_because = Label.new()
+	b_because.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mid.add_child(b_because)
+	b_preview = Label.new()
+	b_preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b_preview.add_theme_color_override("font_color", Color(0.95, 0.8, 0.45))
+	mid.add_child(b_preview)
+	var frow = HBoxContainer.new()
+	mid.add_child(frow)
+	_btn(frow, "File deduction", _on_file)
+	b_error = Label.new()
+	b_error.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b_error.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b_error.add_theme_color_override("font_color", Color(1, 0.55, 0.5))
+	frow.add_child(b_error)
+	var lt = Label.new()
+	lt.text = "Link results"
+	mid.add_child(lt)
 	var rs = ScrollContainer.new()
-	rs.custom_minimum_size = Vector2(0, 220)
+	rs.custom_minimum_size = Vector2(0, 160)
+	rs.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	mid.add_child(rs)
 	result_box = VBoxContainer.new()
 	result_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rs.add_child(result_box)
 	result_text = RichTextLabel.new()
 	result_text.fit_content = true
-	result_text.custom_minimum_size = Vector2(400, 0)
-	result_text.text = "Select cards and press Link to check them for a contradiction."
+	result_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	result_text.text = "Select cards and press Link to check them for a contradiction. Or pick cards and build a conclusion above."
 	result_box.add_child(result_text)
 
 	var right = VBoxContainer.new()
-	right.custom_minimum_size = Vector2(320, 0)
+	right.custom_minimum_size = Vector2(280, 0)
 	mid_split.add_child(right)
 	var pl = Label.new()
 	pl.text = "Profile"
@@ -180,7 +235,11 @@ func set_game(game) -> void:
 	person_opt.add_item("anyone")
 	person_opt.set_item_metadata(0, "")
 	prof_opt.clear()
+	b_who.clear()
+	hidden_check.set_pressed_no_signal(g.show_hidden)
 	for n in g.w.npcs:
+		b_who.add_item(n.name)
+		b_who.set_item_metadata(b_who.item_count - 1, n.id)
 		person_opt.add_item(n.name)
 		person_opt.set_item_metadata(person_opt.item_count - 1, n.id)
 		prof_opt.add_item(n.name)
@@ -202,6 +261,15 @@ func refresh() -> void:
 	_refresh_cards()
 	_refresh_timeline()
 	_refresh_profile()
+	_fill_nights()
+	if b_status.item_count == 0:
+		_fill_status()
+	_update_preview()
+
+func _input(ev: InputEvent) -> void:
+	if visible and ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:
+		visible = false
+		get_viewport().set_input_as_handled()
 
 func _meta(o: OptionButton) -> String:
 	if o.selected < 0:
@@ -230,13 +298,15 @@ func _refresh_cards() -> void:
 	var keep: Array = selected_cards()
 	card_list.clear()
 	for c in _visible_cards():
-		var line = "#%-3d %-10s %s" % [c["n"], c["kind"], c["text"]]
+		var line = "#%-3d %-10s %s%s" % [c["n"], c["kind"], "[hidden] " if c.get("hidden", false) else "", c["text"]]
 		card_list.add_item(line)
 		var i = card_list.item_count - 1
 		card_list.set_item_metadata(i, c["n"])
 		card_list.set_item_tooltip(i, "%s\n[%s, %s%s]" % [c["text"], c["kind"], c.get("class", "?"),
 			"" if c.get("source", "") == "player" else ", heard"])
-		if c["kind"] == "deduction":
+		if c.get("hidden", false):
+			card_list.set_item_custom_fg_color(i, Color(0.45, 0.45, 0.5))
+		elif c["kind"] == "deduction":
 			card_list.set_item_custom_fg_color(i, Color(0.95, 0.8, 0.45))
 		elif c.get("source", "") != "player" and c.get("source", "") != "evidence":
 			card_list.set_item_custom_fg_color(i, Color(0.72, 0.72, 0.78))
@@ -344,67 +414,176 @@ func _on_link() -> void:
 	var lk: Dictionary = g.link_cards(sel)
 	var res: Dictionary = lk["result"]
 	if res["matches"].is_empty():
-		var t = "No contradiction between cards %s." % str(sel)
+		var t = "No contradiction between cards %s." % _nums(sel)
 		for r in res["near"].slice(0, 2):
 			t += "\nClose, but " + r
-		t += "\nYou can still file a conclusion from them (Conclude...); it will be marked unfounded."
+		t += "\nYou can still build a conclusion from them above; it will be marked unfounded."
 		result_text.text = t
 		return
 	var t2 = ""
-	var k = 0
 	for m in res["matches"]:
 		t2 += "These conflict: %s\n" % m["text"]
-	result_text.text = t2 + "File the explanation you believe:"
+	result_text.text = t2 + "Possible explanations (this doesn't say which is true). Pick one to put it in the builder:"
+	var k = 0
 	for o in lk["options"]:
 		k += 1
 		var idx = k
-		_btn(result_box, "%d. %s" % [k, o["expl"]["label"]], func():
-			var n = g.file_deduction(o["expl"]["conclusion"], o["match"]["cards"], o["match"], o["expl"]["id"])
-			result_text.text = "Filed card #%d: %s" % [n, g.board[n - 1]["text"]]
-			_clear_results()
-			g.w.dlog.add("ui_conclude", "player", "", {"option": idx})
-			refresh()
-			changed.emit())
+		var b = _btn(result_box, "%d. %s" % [k, o["expl"]["label"]], func():
+			_use_option(o)
+			g.w.dlog.add("ui_use_option", "player", "", {"option": idx}))
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		b.tooltip_text = o["expl"]["label"]
 
-func _on_conclude_form() -> void:
+func _nums(a: Array) -> String:
+	return " ".join(PackedStringArray(a.map(func(x): return "#%d" % x)))
+
+# ---------------------------------------------------------------- builder
+
+func _fill_status() -> void:
+	var verb: String = b_verb.get_item_text(max(0, b_verb.selected))
+	b_status.clear()
+	for pair in Argue.BUILDER[verb]:
+		b_status.add_item(pair[0])
+		b_status.set_item_metadata(b_status.item_count - 1, pair[1])
+	if verb != "should be":
+		for r in C.GOOD_ROLES:
+			b_status.add_item("the " + C.role_name(r))
+			b_status.set_item_metadata(b_status.item_count - 1, r)
+
+func _fill_nights() -> void:
+	var keep = _meta_int(b_night)
+	b_night.clear()
+	b_night.add_item("(any night)")
+	b_night.set_item_metadata(0, -1)
+	for nt in range(1, g.w.day + 1):
+		b_night.add_item("on night %d" % nt)
+		b_night.set_item_metadata(b_night.item_count - 1, nt)
+	for i in range(b_night.item_count):
+		if b_night.get_item_metadata(i) == keep:
+			b_night.select(i)
+
+func _meta_int(o: OptionButton) -> int:
+	if o == null or o.selected < 0 or o.item_count == 0:
+		return -1
+	return int(o.get_item_metadata(o.selected))
+
+func _builder_changed() -> void:
+	if not _setting:
+		pending = {}
+	_update_preview()
+
+## The conclusion the builder currently describes (empty if incomplete).
+func _built() -> Dictionary:
+	if not pending.is_empty():
+		return pending["conclusion"]
+	if b_who.selected < 0 or b_status.selected < 0:
+		return {}
+	var who: String = b_who.get_item_metadata(b_who.selected)
+	var verb: String = b_verb.get_item_text(b_verb.selected)
+	var status: String = b_status.get_item_metadata(b_status.selected)
+	var c: Dictionary = Argue.from_builder(who, verb, status, _meta_int(b_night))
+	if c.is_empty():
+		return c
+	if c["type"] in ["lied", "unreliable", "truthful"]:
+		for x in selected_cards():
+			if g.board[x - 1].get("source", "") == who:
+				c["card"] = x
+				break
+	return c
+
+func _update_preview() -> void:
+	if b_preview == null or g == null:
+		return
+	var st: String = b_status.get_item_metadata(b_status.selected) if b_status.selected >= 0 else ""
+	b_night.disabled = not pending.is_empty() or not (st in ["misled", "unreliable"])
+	var sel: Array = pending["match"]["cards"] if not pending.is_empty() else selected_cards()
+	b_because.text = "because: " + (_nums(sel) if not sel.is_empty() else "(select the cards that support it)")
+	var c = _built()
+	if c.is_empty():
+		b_preview.text = ""
+		return
+	var backing = ("  [backed by a contradiction: %s]" % pending["match"]["text"]) if not pending.is_empty() else ""
+	b_preview.text = Argue.conclusion_text(g.w, Argue.normalize(c.duplicate())) + backing
+	b_error.text = ""
+
+func _use_option(o: Dictionary) -> void:
+	var c: Dictionary = Argue.normalize(o["expl"]["conclusion"].duplicate())
+	_setting = true
+	for i in range(b_who.item_count):
+		if b_who.get_item_metadata(i) == c.get("a", ""):
+			b_who.select(i)
+	var verb = "is"
+	var status: String = c["type"]
+	match c["type"]:
+		"role":
+			status = c["role"]
+		"notrole":
+			verb = "is not"
+			status = c["role"]
+		"notdemon":
+			verb = "is not"
+		"truthful":
+			verb = "is not"
+		"protect", "spare":
+			verb = "should be"
+	for i in range(b_verb.item_count):
+		if b_verb.get_item_text(i) == verb:
+			b_verb.select(i)
+	_fill_status()
+	for i in range(b_status.item_count):
+		if b_status.get_item_metadata(i) == status:
+			b_status.select(i)
+	for i in range(b_night.item_count):
+		if b_night.get_item_metadata(i) == c.get("night", -1):
+			b_night.select(i)
+	_setting = false
+	pending = {"conclusion": c, "match": o["match"], "id": o["expl"]["id"]}
+	_update_preview()
+
+func _on_file() -> void:
+	var n = -1
+	if not pending.is_empty():
+		n = g.file_deduction(pending["conclusion"], pending["match"]["cards"], pending["match"], pending["id"])
+	else:
+		var c = _built()
+		if c.is_empty():
+			b_error.text = "That isn't a complete conclusion."
+			return
+		n = g.file_deduction(c, selected_cards())
+	if n < 0:
+		b_error.text = g.last_error
+		return
+	pending = {}
+	b_error.text = ""
 	_clear_results()
-	var sel: Array = selected_cards()
-	result_text.text = "New conclusion (supports: %s)" % (str(sel) if not sel.is_empty() else "none selected")
-	var row = HBoxContainer.new()
-	result_box.add_child(row)
-	var type_opt = OptionButton.new()
-	for t in Argue.CONCLUSION_TYPES:
-		type_opt.add_item(t)
-	row.add_child(type_opt)
-	var who_opt = OptionButton.new()
-	for n in g.w.npcs:
-		who_opt.add_item(n.name)
-		who_opt.set_item_metadata(who_opt.item_count - 1, n.id)
-	row.add_child(who_opt)
-	var role_opt = OptionButton.new()
-	for r in C.GOOD_ROLES:
-		role_opt.add_item(C.role_name(r))
-		role_opt.set_item_metadata(role_opt.item_count - 1, r)
-	row.add_child(role_opt)
-	var night_spin = SpinBox.new()
-	night_spin.prefix = "night"
-	night_spin.max_value = 9
-	row.add_child(night_spin)
-	var card_spin = SpinBox.new()
-	card_spin.prefix = "card #"
-	card_spin.min_value = 0
-	card_spin.max_value = max(1, g.board.size())
-	row.add_child(card_spin)
-	_btn(result_box, "File conclusion", func():
-		var c = {"type": Argue.CONCLUSION_TYPES[type_opt.selected], "a": who_opt.get_item_metadata(who_opt.selected)}
-		if c["type"] in ["role", "notrole"]:
-			c["role"] = role_opt.get_item_metadata(role_opt.selected)
-		if c["type"] == "poisoned":
-			c["night"] = int(night_spin.value)
-		if c["type"] in ["lied", "mistaken"]:
-			c["card"] = int(card_spin.value)
-		var n = g.file_deduction(c, sel)
-		result_text.text = "Filed card #%d: %s" % [n, g.board[n - 1]["text"]]
-		_clear_results()
-		refresh()
-		changed.emit())
+	result_text.text = "Filed card #%d: %s" % [n, g.board[n - 1]["text"]]
+	card_list.deselect_all()
+	refresh()
+	changed.emit()
+
+func _hide_selected(on: bool) -> void:
+	var sel = selected_cards()
+	if sel.is_empty():
+		result_text.text = "Select cards to %s." % ("hide" if on else "unhide")
+		return
+	for x in sel:
+		g.hide_card(x, on)
+	_clear_results()
+	result_text.text = "%s %s.%s" % ["Hid" if on else "Unhid", _nums(sel), " Tick 'Show hidden' to see hidden cards." if on and not g.show_hidden else ""]
+	card_list.deselect_all()
+	refresh()
+	changed.emit()
+
+func _delete_selected() -> void:
+	var sel = selected_cards().filter(func(x): return g.board[x - 1]["kind"] == "deduction")
+	_clear_results()
+	if sel.is_empty():
+		result_text.text = "Select one of your deductions to delete. (Other cards can only be hidden.)"
+		return
+	for x in sel:
+		g.delete_deduction(x)
+	result_text.text = "Deleted deduction %s." % _nums(sel)
+	card_list.deselect_all()
+	refresh()
+	changed.emit()

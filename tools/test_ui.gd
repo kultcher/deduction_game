@@ -22,11 +22,24 @@ func _init() -> void:
 		cv._on_link()
 		await process_frame
 		print("link result: ", cv.result_text.text.substr(0, 120))
-		cv._on_conclude_form()
+		var opts = cv.result_box.get_children().filter(func(c): return c is Button)
+		if opts.size() > 0:
+			opts[0].emit_signal("pressed")
+		else:
+			cv.b_who.select(1)
+			cv._builder_changed()
 		await process_frame
-		var buttons = cv.result_box.get_children().filter(func(c): return c is Button)
-		buttons[buttons.size() - 1].emit_signal("pressed")
+		print("builder: ", cv.b_because.text, " | ", cv.b_preview.text)
+		cv._on_file()
 		await process_frame
+		print("error: ", cv.b_error.text)
+		cv.card_list.select(0, false)
+		cv._hide_selected(true)
+		print("after hide: cards listed ", cv.card_list.item_count)
+		cv.hidden_check.button_pressed = true
+		print("show hidden: cards listed ", cv.card_list.item_count)
+		cv._input(_esc())
+		print("escape closes: ", not cv.visible)
 		print("after file: ", cv.result_text.text.substr(0, 140))
 	cv.prof_opt.select(1)
 	cv._refresh_profile()
@@ -38,3 +51,9 @@ func _init() -> void:
 	print("sidebar square cards: ", scene.side_list.item_count)
 	print("UI OK")
 	quit()
+
+func _esc() -> InputEventKey:
+	var e = InputEventKey.new()
+	e.pressed = true
+	e.keycode = KEY_ESCAPE
+	return e
