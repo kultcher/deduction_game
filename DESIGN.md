@@ -412,6 +412,45 @@ affecting the game, e.g. the final day's vote is a **Séance** in which the dead
 - Conflict to watch: if every evening position were automatically recorded, the trace
   would point straight at a suspect. See the visibility proposal above.
 
+## UI overhaul (planned, Oct 2026)
+
+Mockups: main screen = map/meeting (top left), cast list (top middle), profile (top right),
+actions beside the text log (bottom). Case screen = card library + builder (left), main
+board (centre), profile and notes (right).
+
+**Decisions so far**
+- Every card carries two times: **when it happened** (event time) and **when you learned it**
+  (with a list of disclosures: who told you, private or public, when). Sightings and Process
+  place a card at event time; Statements at the time it was said.
+- Board views (exclusive, each with its own filters): **Places & sightings** (your sightings,
+  conversations seen, location hearsay, physical traces), **Statements** (claims, readings,
+  opinions, accusations; private and at meetings), **Process** (nominations, votes,
+  executions, deaths and quiet nights). One card may show in two views (a Night Watch report
+  is a statement whose positions also appear in Sightings as "ability report" markers);
+  selecting either highlights the same card, and it counts once in a deduction.
+- Deductions live in a "My theories" section of the library, visible from every view, and can
+  be pinned beside evidence on the board.
+- Movement: solid marker = you saw it; hollow = someone told you; conflicting reports both
+  shown; observations aren't joined into an implied route.
+- Strings (source, subjects, supports) on hover; click to pin.
+- Three zoom levels: overview (dots, icons, stack counts), day (one-line summaries), close
+  (full text). Row and time headers stay readable at any zoom. Fit day, fit selection, reset.
+- Every filter that hides evidence shows as a removable chip beside a Clear all. Row-name
+  filters in Statements mean "said by" by default, with "about" as an option. The card
+  library and board share view and filter state; the working set is independent.
+- One profile component on both screens (header: name, portrait, status, claimed role and
+  your guess styled differently; tabs: lore and stats | claims they've made | claims about
+  them), with clickable evidence and private/public labels.
+- Link folds into the builder as a live "what these cards suggest" panel that updates as
+  cards are added; filing is unchanged.
+- Panels: dock, collapse, resize, reset layout first; free-floating later. A future "Script"
+  panel lists the roles that may be in play.
+- Visual skin through one shared theme (StyleBox/NinePatch textures), so frames and window
+  art can be dropped in later without touching layout code.
+- Meeting circle (low priority): votes counted clockwise from the nominator's left, and
+  resolved in that order (evil voters react to votes already cast, so order is a rule, not
+  just presentation). Fast/instant counting; clear tie message.
+
 ## Player UI (target)
 
 Three main views:
