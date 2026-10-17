@@ -398,7 +398,7 @@ func _day_command(verb: String, rest: String) -> void:
 				var said: String = n.remarks.pop_front()
 				w.dlog.think(n.id, "reconsider", "Tells the player they've come round to %s." % said)
 				_lines([Mind.say(n, "I didn't put much stock in %s. After all that's happened since... perhaps I should have." % said)])
-			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask today | ask about <name or gift> | tell <suspect> <card#> | press <card#> | convince <deduction#> | bye)" % n.name)
+			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask today | ask about <name or gift> | present <card#> [for|against <name>] | bye)" % n.name)
 		"search", "s":
 			if not moved:
 				_err("First choose where to spend this phase ('go <place>').")
@@ -539,7 +539,7 @@ func _approach_command(verb: String, rest: String) -> void:
 			var r: Dictionary = Social.approach_open(w, n, approach["agenda"])
 			_lines(r["lines"])
 			_facts(r["facts"])
-			_prompt("(3 questions: ask gift | ask night | ask today | ask about <name or role> | tell <suspect> <card#> | bye)")
+			_prompt("(3 questions: ask gift | ask night | ask today | ask about <name or role> | present <card#> [for|against <name>] | bye)")
 		"decline", "no", "n":
 			state = "day"
 			w.dlog.add("approach_declined", "player", n.id)
@@ -591,6 +591,14 @@ func _talk_command(verb: String, rest: String) -> void:
 				_:
 					_err("Ask about: gift | night | today | about <name or gift>")
 					return
+		"present", "show", "case":
+			var pr = _route_present(n, rest)
+			if pr.has("error"):
+				_err(pr["error"])
+				return
+			_narr("(%s)" % pr["note"])
+			_talk_command(pr["verb"], pr["rest"])
+			return
 		"convince", "argue":
 			var num0 = rest.strip_edges().trim_prefix("#").to_int()
 			if num0 < 1 or num0 > board.size() or board[num0 - 1]["kind"] != "deduction" or board[num0 - 1].get("deleted", false):
@@ -610,6 +618,14 @@ func _talk_command(verb: String, rest: String) -> void:
 				pc["support_cards"] = board.filter(func(x): return x["n"] in pc["supports"])
 				_secrets_used(pc)
 			r = Mind.press(w, n, pc)
+		"defend", "vouch":
+			var pd = rest.split(" ", false)
+			var sd = find_npc(pd[0]) if pd.size() >= 2 else null
+			var numd = pd[pd.size() - 1].trim_prefix("#").to_int() if pd.size() >= 2 else 0
+			if sd == null or numd < 1 or numd > board.size() or board[numd - 1].get("deleted", false):
+				_err("Usage: present <card#> for <name>")
+				return
+			r = Mind.hear_defence(w, n, sd, board[numd - 1])
 		"tell", "accuse":
 			var p = rest.split(" ", false)
 			if p.size() < 2:
@@ -632,7 +648,7 @@ func _talk_command(verb: String, rest: String) -> void:
 			_close_conversation()
 			return
 		_:
-			_err("In conversation: ask gift | ask night | ask today | ask about <name or gift> | tell <suspect> <card#> | convince <deduction#> | bye")
+			_err("In conversation: ask gift | ask night | ask today | ask about <name or gift> | present <card#> [for|against <name>] | bye")
 			return
 	questions_left -= 1
 	_lines(r["lines"])
@@ -935,9 +951,10 @@ func _help() -> String:
             note <name> <text> | guess <name> <role|evil|good> [1-3]
   Day     : go <place | block | person>   (then one free move within the same block)
             then one action: talk <name> | search | gossip (tavern) | wait
-  Talking : ask gift | ask night | ask today | ask about <name or gift> | convince <deduction#>
-            tell <suspect> <card#>   (make a case using a card from your board)
-            bye
+  Talking : ask gift | ask night | ask today | ask about <name or gift> | bye
+            present <card#> [for|against <name>]   (uses a question) - about them: you press them
+              to answer it; a deduction: you argue it; a card about someone else: a case against
+              them ('for' to speak up for them). Shortcuts: press, convince, tell, defend
   Meeting : present <deduction#> (once) | nominate <name> | wait | done (close, once the town is quiet)
   Voting  : defend [card#] | accuse [card#] (one statement) | clemency (once per case) | vote yes | vote no
   Approach: someone may ask for a word at the start of a phase: accept (uses the phase) | decline
@@ -1360,6 +1377,50 @@ func _conclude_command(rest: String) -> void:
 	_narr("Filed%s." % (" (unfounded: those cards don't bear on them)" if d2["unfounded"] else
 		(" (backed by: %s)" % d2["template"]) if d2["template"] != "" else " (your inference)"))
 	_ev({"k": "card", "n": n2})
+
+## "present <card#> [for|against <name>]" in conversation: work out what the player means.
+## About the listener -> press them. A deduction about someone else -> argue it. A plain card
+## about someone else -> make a case against (or, with "for", for) them.
+func _route_present(n, rest: String) -> Dictionary:
+	var p = rest.strip_edges().split(" ", false)
+	if p.is_empty():
+		return {"error": "Present which card? ('present <card#>', optionally 'for <name>' or 'against <name>')"}
+	var num = p[0].trim_prefix("#").to_int()
+	if num < 1 or num > board.size() or board[num - 1].get("deleted", false):
+		return {"error": "No such card on your board."}
+	var card: Dictionary = board[num - 1]
+	var dir = ""
+	var who = null
+	if p.size() >= 3 and p[1].to_lower() in ["for", "against", "about"]:
+		dir = p[1].to_lower()
+		who = find_npc(p[2], true)
+		if who == null:
+			return {"error": "Who is '%s'?" % p[2]}
+	if card["kind"] == "deduction":
+		var a: String = card["conclusion"].get("a", "")
+		if a == n.id and not (Argue.normalize(card["conclusion"].duplicate())["type"] in ["misled", "unreliable"]):
+			return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
+		return {"verb": "convince", "rest": str(num), "note": "You argue it to %s." % n.name}
+	var subj: Array = card.get("subject", []).duplicate()
+	for x in card.get("data", {}).get("pair", []):
+		if not (x in subj):
+			subj.append(x)
+	if who == null and (n.id in subj or card.get("owner", "") == n.id):
+		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
+	if who == null:
+		var cands: Array = subj.filter(func(x): return x != n.id and x != card.get("source", "") and w.by_id.has(x))
+		if cands.size() == 1:
+			who = w.by_id[cands[0]]
+		elif cands.is_empty():
+			return {"error": "That card isn't about anyone in particular. Try 'present %d against <name>' or 'for <name>'." % num}
+		else:
+			return {"error": "About whom? It mentions %s. ('present %d against <name>' or 'for <name>')" %
+				[" and ".join(PackedStringArray(cands.map(func(x): return w.by_id[x].name))), num]}
+	if who == n:
+		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
+	if dir == "for":
+		return {"verb": "defend", "rest": "%s %d" % [who.id, num], "note": "You speak for %s." % who.name}
+	return {"verb": "tell", "rest": "%s %d" % [who.id, num], "note": "You make your case against %s." % who.name}
 
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
 func _secrets_used(ded: Dictionary, depth: int = 0) -> void:

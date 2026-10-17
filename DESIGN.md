@@ -598,6 +598,10 @@ player). Both use the same roll (lower Insight, more often vague).
   show with probability ~ (hiding ? 0.6 : 0.2) × (1 − Composure) × strength, so they're a
   hint, not a tell. Costs trust (Privacy-scaled) unless the card names them favourably.
   Named alibis and corroborators are still to come.
+- **One verb.** In conversation, `present <card#> [for|against <name>]` covers making a
+  case, arguing a deduction, speaking up for someone, and pressing the listener; the game
+  infers which from the card and who it's about, and asks when a card mentions several
+  people. It mirrors the meeting's `present`, which is the same act in public.
 - Alibis **name a corroborator** ("I was with Jory"). The corroborator confirms or denies,
   which can produce a word-against-word contradiction card.
 - Evil may claim a false secret ("I was meeting Jory for an affair"), or name someone they
@@ -716,12 +720,16 @@ player). Both use the same roll (lower Insight, more often vague).
 
 ## Directions noted from playtests (not built yet)
 
-- **Caution tied to the gift.** Gifts that pay off over many nights (Seer, Hearthwitch)
-  should stay quiet early; one-shot first-night gifts (Clerk, Archivist) have less to lose.
-- **Warden and demon are too correlated.** Both favour "the most valuable trusted info
-  claimant", so the Warden guesses the demon's target too often (2-for-2 in case 22111).
-  The demon should sometimes avoid the obvious target when a Warden may be in play; the
-  Warden's choice should be noisier.
+- **Caution tied to the gift. [built]** One more term in the same claim roll: Seer,
+  Hearthwitch and Night Watch lean quieter on days 1–2; Clerk and Archivist lean a little
+  more open. A chatty Seer can still come out on day 1.
+- **Demon caution after a failed kill. [built]** A kill stopped by a Warden or Veteran has
+  no visible cause, so the demon avoids that person and shies away from high-profile
+  targets for a couple of nights (fading). A kill stopped by the Demonologist's ward
+  leaves a chalk sigil on the door; wards are single-use, so the demon isn't cautious.
+- **Should the Warden walk?** Today only the demon, Poisoner, Night Watch and secret-keepers
+  walk at night; the Warden shields from home. Walking to the guarded house would make the
+  Warden sightable, and huntable. Undecided.
 - **A claims/reveals timeline** alongside the location timeline (cards per person per
   slot, with shortcuts), for the full UI.
 - Who you saw nearby is now on the cards. Anonymising unseen people ("someone") would be

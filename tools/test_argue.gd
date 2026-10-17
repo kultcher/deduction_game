@@ -192,6 +192,18 @@ func _init() -> void:
 		if dme > 0:
 			var rm = Argue.evaluate(w, P, g.board[dme - 1], g.board, 1.0)
 			_check(rm["lines"][0]["text"].begins_with("I'm no liar"), "misled-or-lying about yourself reads as misled (%s)" % rm["lines"][0]["text"])
+	# present routing.
+	var lis2 = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))
+	if not lis2.is_empty():
+		var Q = lis2[0]
+		_check(g._route_present(Q, str(k1)).get("verb", "") == "tell", "present a sighting of A -> case against A (%s)" % str(g._route_present(Q, str(k1))))
+		_check(g._route_present(Q, str(k8)).has("error"), "present a Seer pair -> asks about whom")
+		_check(g._route_present(Q, "%d against %s" % [k8, w.by_id[a].name]).get("verb", "") == "tell", "present ... against <name>")
+		_check(g._route_present(Q, "%d for %s" % [k8, w.by_id[a].name]).get("verb", "") == "defend", "present ... for <name>")
+		var kq2 = g.add_card({"kind": "info", "subject": [Q.id, a], "source": c, "day": 0, "role": "clerk", "data": {"pair": [Q.id, a], "role": "warden"}, "text": "C clerk: Q or A is warden"})
+		_check(g._route_present(Q, str(kq2)).get("verb", "") == "press", "present a card naming them -> press")
+		var dq = g.file_deduction({"type": "evil", "a": a}, [k1])
+		_check(g._route_present(Q, str(dq)).get("verb", "") == "convince", "present a deduction -> argue it")
 	# Timeline and filters.
 	print(g._timeline(""))
 	_check(g.filter_cards("market").size() >= 3, "location filter by block")

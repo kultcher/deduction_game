@@ -19,7 +19,9 @@ on the right lists your cards (filterable; double-click a card to add its number
 command) and a quick profile. **Case view** opens a full-screen board: filters (text, kind,
 person, place), the card list with multi-select, the timeline grid (who was where, by
 phase; bright = you saw it, dim = you were told; click a cell for its cards), profiles with
-your guess, confidence and notes, the conclusion builder and Link results. **◀ Back to
+your guess, confidence and notes, the conclusion builder and Link results. Double-click a
+card (or select it and press **>>**) to put it in your **working set**, which stays put
+while you filter; Link and the builder use the working set. **◀ Back to
 console** (or Esc) returns to the console. Hide / Unhide work on any card (tick **Show
 hidden** to see them); **Delete deduction** removes your own deductions only.
 
@@ -57,13 +59,12 @@ Each day has three phases (morning, afternoon, evening), then a town meeting, th
 |---|---|
 | Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `roles`, `tools`, `help`, `log` |
 | Day phase | `go <place / block / person>`, optionally one more `go` within the same block, then one action: `talk <name>`, `search`, `gossip` (tavern only), `wait` |
-| Talking (3 questions) | `ask gift`, `ask night`, `ask today`, `ask about <name or gift>`, `tell <suspect> <card#>`, `press <card#>`, `bye` |
+| Talking (3 questions) | `ask gift`, `ask night`, `ask today`, `ask about <name or gift>`, `present <card#> [for/against <name>]`, `bye` |
 | Approached | `accept` (talk now; uses the phase) or `decline` (any other action also declines) |
 | Town meeting | `nominate <name>` (once), `wait` (let the town nominate), `done` (close the meeting, once a `wait` finds no more nominations) |
 | On a nomination | `defend [card#]` or `accuse [card#]` (one statement, optionally citing a card), `clemency` (once per case), `vote yes` / `vote no` |
 | Night | `ward <name>` (once per case), `vigil <block>`, `sleep` |
 | Case work (any time) | `link <#> <#> [#]`, `conclude <number>` (after a link), `conclude <name> <is / is not / should be> <status> [on night N] [because <#> ...]`, `hide <#>`, `unhide <#>`, `showhidden`, `delete <#>` (deductions only), `timeline [filter]`, `note <name> <text>`, `guess <name> <role/evil/good> [1-3]` |
-| In conversation | `convince <deduction#>` (uses a question) |
 | At the meeting | `present <deduction#>` (once: everyone hears it) |
 | After the case | `grimoire`, `grimoire lies` |
 
@@ -96,7 +97,14 @@ their trust in you and in the suspect, and whether they've heard it before. Tell
 case to an evil NPC warns the demon. Using someone's confessed secret against them costs
 their trust, permanently for very private people.
 
-**Pressing someone.** `press <card#>` confronts the person you're talking to with a card
+**Presenting a card in conversation.** `present <card#>` is the one verb for using your
+board on someone (it uses a question). The game works out what you mean: a card or
+deduction about the person you're talking to presses them (below); a deduction about
+someone else argues it; a plain card about someone else makes a case against them. Add
+`for <name>` to speak up for someone instead, or `against <name>` when a card mentions
+several people. `press`, `convince`, `tell` and `defend` remain as shortcuts.
+
+**Pressing someone** confronts the person you're talking to with a card
 or deduction about them. It raises the pressure on them and makes them answer it: a night
 sighting makes them account for that night (a good NPC hiding a secret may confess), and a
 card about their gift makes them reconsider revealing it (a Clerk reading naming them

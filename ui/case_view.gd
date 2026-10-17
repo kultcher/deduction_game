@@ -25,6 +25,8 @@ var result_text: RichTextLabel
 var result_box: VBoxContainer
 var cell_filter: Array = []   # card numbers picked from a timeline cell ([] = off)
 var hidden_check: CheckBox
+var work_list
+var staged: Array = []        # the working set: card numbers, kept across filters
 var b_who: OptionButton
 var b_verb: OptionButton
 var b_status: OptionButton
@@ -92,25 +94,42 @@ func build(font: Font) -> void:
 	left.size_flags_stretch_ratio = 0.8
 	body.add_child(left)
 	var ll = Label.new()
-	ll.text = "Cards (select 1-3 to link, or as support for a conclusion)"
+	ll.text = "Cards (double-click or >> to add to your working set)"
 	left.add_child(ll)
 	card_list = CardList.new()
 	card_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card_list.selection_changed.connect(func(): _update_preview())
+	card_list.size_flags_stretch_ratio = 2.5
+	card_list.card_activated.connect(func(num): _stage([num]))
 	card_list.add_theme_font_override("font", mono)
 	card_list.add_theme_font_size_override("font_size", 13)
 	left.add_child(card_list)
 	var lb = HFlowContainer.new()
 	left.add_child(lb)
-	_btn(lb, "Link selected", _on_link)
-	_btn(lb, "Clear selection", func():
-		card_list.deselect_all()
-		cell_filter = []
-		_refresh_cards()
-		_update_preview())
+	_btn(lb, ">> Add to working set", func(): _stage(card_list.selected_metas()))
 	_btn(lb, "Hide", func(): _hide_selected(true))
 	_btn(lb, "Unhide", func(): _hide_selected(false))
 	_btn(lb, "Delete deduction", _delete_selected)
+	_btn(lb, "Clear filters", func():
+		cell_filter = []
+		filter_edit.text = ""
+		kind_opt.select(0)
+		person_opt.select(0)
+		place_opt.select(0)
+		_refresh_cards())
+	var wl = Label.new()
+	wl.text = "Working set (what you link, and the 'because' of a conclusion)"
+	left.add_child(wl)
+	work_list = CardList.new()
+	work_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	work_list.card_activated.connect(func(num): _unstage([num]))
+	work_list.add_theme_font_override("font", mono)
+	work_list.add_theme_font_size_override("font_size", 13)
+	left.add_child(work_list)
+	var wb = HFlowContainer.new()
+	left.add_child(wb)
+	_btn(wb, "Link working set", _on_link)
+	_btn(wb, "<< Remove", func(): _unstage(work_list.selected_metas()))
+	_btn(wb, "Clear", func(): _unstage(staged.duplicate()))
 
 	var mid_split = HSplitContainer.new()
 	mid_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -262,6 +281,7 @@ func refresh() -> void:
 	_refresh_timeline()
 	_refresh_profile()
 	_fill_nights()
+	_refresh_work()
 	if b_status.item_count == 0:
 		_fill_status()
 	_update_preview()
@@ -295,7 +315,7 @@ func _visible_cards() -> Array:
 	return cards
 
 func _refresh_cards() -> void:
-	var keep: Array = selected_cards()
+	var keep: Array = card_list.selected_metas()
 	card_list.reset()
 	for c in _visible_cards():
 		var line = "#%-3d %-10s %s%s" % [c["n"], c["kind"], "[hidden] " if c.get("hidden", false) else "", c["text"]]
@@ -311,10 +331,31 @@ func _refresh_cards() -> void:
 		if c["n"] in keep:
 			card_list.select_meta(c["n"])
 
+## The working set (what Link and the builder use).
 func selected_cards() -> Array:
-	if card_list == null:
-		return []
-	return card_list.selected_metas()
+	return staged.duplicate()
+
+func _stage(nums: Array) -> void:
+	for x in nums:
+		if not (x in staged):
+			staged.append(x)
+	card_list.deselect_all()
+	_refresh_work()
+
+func _unstage(nums: Array) -> void:
+	staged = staged.filter(func(x): return not (x in nums))
+	_refresh_work()
+
+func _refresh_work() -> void:
+	if work_list == null or g == null:
+		return
+	staged = staged.filter(func(x): return x >= 1 and x <= g.board.size() and not g.board[x - 1].get("deleted", false))
+	work_list.reset()
+	for x in staged:
+		var c: Dictionary = g.board[x - 1]
+		work_list.add("#%-3d %-10s %s" % [x, c["kind"], c["text"]], x, c["text"],
+			Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else null)
+	_update_preview()
 
 func _refresh_timeline() -> void:
 	for ch in grid.get_children():
@@ -412,7 +453,7 @@ func _on_link() -> void:
 	_clear_results()
 	var sel: Array = selected_cards()
 	if sel.size() < 1 or sel.size() > 3:
-		result_text.text = "Select 1 to 3 cards to link."
+		result_text.text = "Put 1 to 3 cards in your working set to link them."
 		return
 	var lk: Dictionary = g.link_cards(sel)
 	var res: Dictionary = lk["result"]
@@ -501,7 +542,7 @@ func _update_preview() -> void:
 	var st: String = b_status.get_item_metadata(b_status.selected) if b_status.selected >= 0 else ""
 	b_night.disabled = not pending.is_empty() or not (st in ["misled", "unreliable"])
 	var sel: Array = pending["match"]["cards"] if not pending.is_empty() else selected_cards()
-	b_because.text = "because: " + (_nums(sel) if not sel.is_empty() else "(select the cards that support it)")
+	b_because.text = "because: " + (_nums(sel) if not sel.is_empty() else "(add the supporting cards to your working set)")
 	var c = _built()
 	if c.is_empty():
 		b_preview.text = ""
@@ -561,12 +602,13 @@ func _on_file() -> void:
 	b_error.text = ""
 	_clear_results()
 	result_text.text = "Filed card #%d: %s" % [n, g.board[n - 1]["text"]]
+	staged = []
 	card_list.deselect_all()
 	refresh()
 	changed.emit()
 
 func _hide_selected(on: bool) -> void:
-	var sel = selected_cards()
+	var sel = card_list.selected_metas()
 	if sel.is_empty():
 		result_text.text = "Select cards to %s." % ("hide" if on else "unhide")
 		return
@@ -579,7 +621,7 @@ func _hide_selected(on: bool) -> void:
 	changed.emit()
 
 func _delete_selected() -> void:
-	var sel = selected_cards().filter(func(x): return g.board[x - 1]["kind"] == "deduction")
+	var sel = (card_list.selected_metas() + work_list.selected_metas()).filter(func(x): return g.board[x - 1]["kind"] == "deduction")
 	_clear_results()
 	if sel.is_empty():
 		result_text.text = "Select one of your deductions to delete. (Other cards can only be hidden.)"

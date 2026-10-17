@@ -449,6 +449,12 @@ static func _public_claim_decision(w, n) -> String:
 	}
 	if kind != "info":
 		parts["hides_from_demon"] = -0.5
+	# Gifts that pay off night after night are worth protecting early; one-shot first-night
+	# gifts have less to lose by coming out.
+	if role in ["seer", "hearthwitch", "nightwatch"] and w.day <= 2:
+		parts["gift_keeps_giving"] = -0.4
+	elif role in ["clerk", "archivist"]:
+		parts["one_shot_gift"] = 0.3
 	if w.living().size() <= 4:
 		parts["few_left"] = 0.8
 	var why = ("Evil cover: publicly claim bluff %s?" % role) if n.is_evil() else ("Publicly reveal true role %s?" % role)
@@ -1201,6 +1207,33 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 		set_trust(w, n, n.trust + 0.05 * (1.0 - 0.5 * ins), "the Demonologist agrees with me about %s" % suspect.id)
 	elif delta >= 0.1:
 		set_trust(w, n, n.trust + 0.02, "player made a case that seemed sound")
+	return {"lines": lines, "facts": []}
+
+## The player speaks for someone in private, citing a card ("present <card#> for <name>").
+static func hear_defence(w, n, who, card: Dictionary) -> Dictionary:
+	on_question(w, n)
+	var lines: Array = []
+	if n.is_evil():
+		var r = w.rng.randf()
+		if who.is_evil():
+			lines.append(say(n, "Fair enough. I'll think better of %s." % who.name if r < 0.6 else "Maybe. I'll keep an open mind about %s." % who.name))
+		else:
+			lines.append(say(n, "Maybe. I'll keep an open mind about %s." % who.name if r < 0.7 else "That doesn't clear %s." % who.name))
+		return {"lines": lines, "facts": []}
+	var cw = card_weight(w, n, who, card)
+	var strength = defend_strength(card, who.id)
+	var base: float = 0.3 * cw["cred"] * cw["class_w"] * strength * (0.35 if n.ledger.has(cw["key"]) else 1.0)
+	var effs: Array = []
+	_eff(effs, who.id, -1.0, "the Demonologist spoke for them, citing '%s'" % cw["key"])
+	var h = ledger_hear(w, n, "for:%s>%s" % [cw["key"], who.id], effs, base * (0.5 + n.trust), [], {"kind": "tell", "base": base, "text": card.get("text", "")})
+	if h["times"] > 0:
+		lines.append(say(n, "You've told me that already."))
+	elif strength < 0.2:
+		lines.append(say(n, "That doesn't clear %s." % who.name))
+	elif h["gain"] >= 0.12:
+		lines.append(say(n, "Fair enough. I'll think better of %s." % who.name))
+	else:
+		lines.append(say(n, "Maybe. I'll keep an open mind about %s." % who.name))
 	return {"lines": lines, "facts": []}
 
 ## A card-backed public statement on a nomination: every voter weighs it (more weakly than

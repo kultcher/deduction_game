@@ -19,6 +19,12 @@ func _init() -> void:
 	if cv.card_list.count() >= 2:
 		cv.card_list.select_index(0)
 		cv.card_list.select_index(1)
+		cv._stage(cv.card_list.selected_metas())
+		cv.filter_edit.text = "zzz"
+		cv._refresh_cards()
+		print("working set survives filtering: ", cv.selected_cards().size() == 2)
+		cv.filter_edit.text = ""
+		cv._refresh_cards()
 		cv._on_link()
 		await process_frame
 		print("link result: ", cv.result_text.text.substr(0, 120))

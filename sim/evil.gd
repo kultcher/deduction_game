@@ -23,6 +23,7 @@ static func make_plan(w) -> Dictionary:
 		"scapegoat": "",
 		"bluffs": {d.id: ordered[0], m.id: ordered[1] if ordered.size() > 1 else ordered[0]},
 		"failed": [],
+		"caution": 0.0,        # after an unexplained failed kill: shy away from high-profile targets
 		"fake_watch": {},
 		"fake_sightings": {},
 		"spared": [],
@@ -217,6 +218,13 @@ static func choose_kill_target(w) -> String:
 			parts["spared_keep_to_frame"] = -1.5
 		if warden_claimed and n.claim_public and n.claimed_role in C.INFO_ROLES:
 			parts["likely_warded"] = -0.8
+		var caution: float = plan.get("caution", 0.0)
+		if caution > 0.05:
+			var profile = 0.0
+			for k in _public_threat(w, n):
+				profile += _public_threat(w, n)[k]
+			if profile > 0.0:
+				parts["caution_low_profile"] = snappedf(-caution * minf(profile, 4.0) * 0.7, 0.01)
 		parts["noise"] = snappedf(w.rng.randf() * 0.8, 0.01)
 		var total = 0.0
 		for k in parts:
@@ -225,7 +233,8 @@ static func choose_kill_target(w) -> String:
 		if total > best_s:
 			best_s = total
 			best = n.id
-	w.dlog.think(d.id, "kill_choice", "Demon targets %s (score %.2f)." % [best, best_s], {"scores": scores})
+	w.dlog.think(d.id, "kill_choice", "Demon targets %s (score %.2f)." % [best, best_s], {"scores": scores, "caution": plan.get("caution", 0.0)})
+	plan["caution"] = plan.get("caution", 0.0) * 0.5  # fades over the next nights
 	return best
 
 static func choose_poison_target(w, exclude: String = "") -> String:
@@ -256,9 +265,15 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 	return best
 
 static func note_kill_result(w, target: String, outcome: String) -> void:
+	if outcome == "protected_player":
+		# The Demonologist's chalk sigil is plain on the door, and a ward is spent once used.
+		w.dlog.think(w.demon_id, "kill_failed", "Attack on %s failed: the Demonologist's sigil was on the door. Wards are single-use; no need for caution." % target)
+		return
 	if outcome != "killed":
 		w.evil_plan["failed"].append(target)
-		w.dlog.think(w.demon_id, "kill_failed", "Attack on %s failed; demon will switch to a new target." % target)
+		w.evil_plan["caution"] = minf(w.evil_plan.get("caution", 0.0) + 1.0, 1.5)
+		w.dlog.think(w.demon_id, "kill_failed", "Attack on %s failed for no visible reason (a Warden? a Veteran?). Avoids them from now on and will shy away from high-profile targets for a while (caution %.2f)." %
+			[target, w.evil_plan["caution"]])
 
 # ---------------------------------------------------------------- fabricated info
 
