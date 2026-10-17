@@ -191,11 +191,18 @@ Each conclusion moves a different part of the NPC's mind:
 This needs belief state the prototype lacks: per-source/per-night "possibly poisoned"
 discounts, believed roles, and believed-good flags.
 
-### Contradiction cards
+### Contradiction, corroboration and inference
 
-- **Player-built**: the player links two (or more) cards; the game creates a
-  contradiction card. Contradictions prove nothing by themselves; they state "these can't
-  both be true".
+- **Player-built**: the player links two (or more) cards and the game checks them against a
+  template library. Three kinds of link, one interface:
+  - **Contradiction**: these accounts can't both be accurate (two places at once, a
+    reading that flips, ...).
+  - **Corroboration**: independent evidence supports the same account (two witnesses put
+    someone in the same place; a Clerk reading backs someone's claim).
+  - **Inference**: these facts make one explanation more plausible (a Seer or Archivist
+    names two people and one is cleared, which leaves the other; the death-scene trace
+    points to a block and someone was there that evening).
+  None of them prove anything; each lists explanations, and the player picks one.
 - Each contradiction template carries a set of **explanations** (A lied, B lied, A
   poisoned, B mistaken/red herring/misleading trace, ...). The player chooses which
   explanation they argue as their conclusion.
@@ -203,9 +210,12 @@ discounts, believed roles, and believed-good flags.
   watcher omitted someone seen on their block; info vs. confirmed fact; etc.). Checking all
   card pairs against all templates is cheap. The dev log flags player links no template
   covers, to grow the library.
-- **Unfounded arguments are allowed.** If no template supports a link, a sharp NPC rejects
-  it; a credulous or trusting one may be swayed anyway. The player can mislead the town by
-  mistake.
+- **No template is not the same as unfounded.** A conclusion argued from cards that bear on
+  the person is the player's own inference, weighed on its support. It's **unfounded** only
+  when the cards don't touch the person at all; a sharp NPC rejects that, a credulous or
+  trusting one may be swayed anyway. The player can mislead the town by mistake.
+- The same conclusion from the same cards gets the same footing however it was built
+  (pressing Link first or not): filing checks the supports for a template that offers it.
 - Caution (not a hard rule): avoid cases where the player believes they are proving
   something but the cards disagree on an invisible technicality. Showing the fields a
   template depends on (night number, phase, block, source) and having NPCs name why they
@@ -237,11 +247,39 @@ discounts, believed roles, and believed-good flags.
   player's chosen conclusion.
 - **Insight** trait: higher insight checks more explanations and catches unfounded
   arguments; lower insight is easier to persuade (and to mislead).
-- **Diminishing returns:** tracked per NPC per card, so hearing the same evidence again,
-  or the same card re-wrapped under another conclusion, counts much less. Corroboration
-  only counts independent sources.
+- **Diminishing returns** follow the underlying evidence, not the card or its wording (see
+  the evidence ledger below): hearing the same reading again by any route adds nothing,
+  re-wrapping a card in a new deduction counts much less, and only independent sources
+  corroborate.
 - Evil NPCs evaluate arguments for what they reveal: arguing your case to a minion tells
-  the demon what you know.
+  the demon what you know. Their replies come from the same lines good NPCs use, chosen by
+  what serves evil, so wording is never an alignment tell.
+- A deduction resting on someone's confessed secret spreads it, exactly as citing the
+  secret directly does.
+
+### The evidence ledger (belief record)
+
+Each good NPC keeps a ledger of the evidence and arguments they've taken in, keyed by the
+underlying fact (Jory's night-1 reading; Agnes's sighting of Bart on the Docks), not by who
+relayed it or which card or deduction wrapped it. The record keeps the whole history, but
+each NPC reasons only from what they actually heard or witnessed.
+
+- Suspicion = a social base (vibes, nominations, grudges, claims) + each ledger entry's
+  effects × its weight × how reliable the NPC currently thinks its source is.
+- Hearing the same fact again only raises its weight to the stronger hearing; it never
+  stacks.
+- "Jory is misled on night 1" doesn't overwrite Jory's report: it lowers how much that
+  report counts, for readings already heard and for ones heard later. Trust in a person
+  and confidence in a particular reading are separate: "Jory is honest, but his gift
+  failed" is a coherent belief.
+- **Shifting trust.** The player's arguments are stored with their weight before trust.
+  When an NPC's trust in the player shifts noticeably, and before every vote, they re-weigh
+  what the player argued with current trust. An earlier dismissal is not extra evidence
+  against the argument (that would count the same distrust twice); **Confidence** sets
+  how far they move at once. Evidence they witnessed themselves doesn't depend on trust.
+- When an old argument finally lands, they say so next time you talk: "I didn't put much
+  stock in what you told me, that Jory is misled... perhaps I should have."
+- Accepting "X is the Seer" makes anyone else claiming the Seer a liar to that NPC.
 - Every evaluation is logged with its explanation weights.
 
 ## Town meeting
@@ -543,6 +581,10 @@ player). Both use the same roll (lower Insight, more often vague).
   for their own reasons (noise). E.g. demon goes chapel → graveyard → victim's house; a
   clue may turn up in the graveyard.
 - The death-scene trace (killer's evening block) stays.
+- **Misleading evidence should have a cause.** The current 25% random wrong trace is a
+  placeholder. Here it becomes something that happened: another walker passed through,
+  borrowed clothing, contamination, or a Framer planting it, so the end-of-case reveal can
+  explain *why* the evidence misled you, and a sharp player could have reconstructed it.
 - Owner-identifying items (a named scarf) are strong evidence: keep them rare, and later
   plantable by a Framer-type role. Category traces (soot, mud) are common.
 
@@ -656,3 +698,17 @@ player). Both use the same roll (lower Insight, more often vague).
 - Demon types with bestiary entries; exorcism/true-name alternate win.
 - Solvability verifier and storyteller director.
 - How many clues per day feel right (1 vs 2 player actions per phase).
+- **Why did the player lose?** Record it in playtests: wrong interpretation, missed
+  accessible information, information that was never available, or failure to persuade.
+  Each calls for a different fix. The logs can classify the first three automatically
+  (was evidence pointing at the demon on the board, reachable but missed, or absent);
+  persuasion failures need the player's notes.
+- Keep the 7-person town until the core loop reliably works: form a hypothesis, choose an
+  investigation that tests it, revise, make a consequential argument. 12–15 people with
+  the same three actions a day may make relationship-building too expensive.
+
+## Testing baselines
+
+- `--passive` bot: a player who does nothing (waits, declines, never nominates, votes no).
+  The town should sometimes win on its own, but a playing player should raise the win
+  rate substantially. First measurement (150 seeds): passive 16%, playing bot 33%.

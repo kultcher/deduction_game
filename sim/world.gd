@@ -230,6 +230,7 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 			n.suspicion[m.id] = s
 			n.npc_trust[m.id] = snappedf(t, 0.01)
 		n.trust = clampf(0.3 + 0.25 * (1.0 - n.traits["privacy"]) + rng.randf_range(-0.05, 0.1), 0.1, 0.9)
+		n.trust_at_reconsider = n.trust
 
 	evil_plan = Evil.make_plan(self)
 	_log_grimoire()

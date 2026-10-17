@@ -160,10 +160,10 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 		if item["kind"] == "secret":
 			l.known_secrets[item["about"]] = s.id
 		return
+	# Repeats are handled by the listener's ledger (same reading never stacks).
 	var wgt = clampf(0.75 * l.npc_trust.get(s.id, 0.5) * (1.0 - Mind.susp(l, s.id)), 0.0, 0.55)
 	var times: int = l.heard.get(item["key"].trim_prefix("relay:"), 0)
 	l.heard[item["key"].trim_prefix("relay:")] = times + 1
-	wgt *= pow(0.35, times)
 	var hs = item.duplicate()
 	hs["via"] = s.id
 	hs["day_heard"] = w.day
@@ -183,16 +183,21 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 			for sid in w.scenes:
 				if w.scenes[sid]["day"] == item["day"] and w.scenes[sid]["block"] == item["block"]:
 					bonus = 0.25
-			Mind.adjust(w, l, item["about"], (0.15 + bonus) * wgt * 2.0, "heard from %s that %s was out at night" % [s.id, item["about"]],
+			var e1: Array = []
+			Mind._eff(e1, item["about"], 0.15 + bonus, "heard from %s that %s was out at night" % [s.id, item["about"]],
 				"%s says they were out at night" % s.name)
+			Mind.ledger_hear(w, l, "heard:" + hs["key"], e1, wgt * 2.0)
 			l.hearsay.append(hs)
 		"opinion":
-			Mind.adjust(w, l, item["about"], 0.12 * wgt * 2.0, "%s told me they distrust %s" % [s.id, item["about"]],
-				"%s has doubts about them" % s.name)
+			var e2: Array = []
+			Mind._eff(e2, item["about"], 0.12, "%s told me they distrust %s" % [s.id, item["about"]], "%s has doubts about them" % s.name)
+			Mind.ledger_hear(w, l, "opinion:%s>%s" % [s.id, item["about"]], e2, wgt * 2.0)
 			l.hearsay.append(hs)
 		"case":
-			Mind.adjust(w, l, item["about"], 0.1 * wgt * 2.0, "heard the Demonologist's case against %s via %s" % [item["about"], s.id],
+			var e3: Array = []
+			Mind._eff(e3, item["about"], 0.1, "heard the Demonologist's case against %s via %s" % [item["about"], s.id],
 				"the Demonologist has a case against them")
+			Mind.ledger_hear(w, l, "relayed-case:%s>%s" % [Mind.fact_id(item["card"]), item["about"]], e3, wgt * 2.0)
 			l.hearsay.append(hs)
 		"secret":
 			var owner = w.by_id[item["about"]]

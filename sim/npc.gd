@@ -79,7 +79,12 @@ var secret_spread_by_npc = false   # someone other than the player spread their 
 var protect_pref = {}        # id -> how strongly they've been persuaded to protect/keep them
 var spare_pref = {}          # id -> how strongly they've been persuaded not to execute them
 var believed_roles = {}      # id -> role they've been persuaded someone holds
-var discounted = {}          # "source:night" -> weight already discounted (believed poisoned)
+var discounted = {}          # "source:night|*" -> doubt in that source's readings (0..0.9)
+## Evidence ledger (see Mind.ledger_hear): eid -> {effects, weight, rel, applied, meta, times}.
+var ledger = {}
+var used_facts = {}          # "fact>target" -> true: evidence already used against target
+var remarks: Array = []      # things they've come round to, to mention to the player
+var trust_at_reconsider = 0.5
 ## Evil only: what this member knows (own observations and what they were told).
 var intel = {}               # key -> {kind, about, score, why, day, from}
 

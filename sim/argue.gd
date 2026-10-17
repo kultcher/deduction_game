@@ -21,6 +21,8 @@ const BUILDER = {
 	"should be": [["protected", "protect"], ["spared from execution", "spare"]],
 }
 
+const RELATION_LEAD = {"contradiction": "These conflict:", "corroboration": "These agree:", "inference": "Put together:"}
+
 ## Old names kept working.
 static func normalize(c: Dictionary) -> Dictionary:
 	var t: String = c.get("type", "")
@@ -91,6 +93,8 @@ static func assertions(card: Dictionary) -> Array:
 				out.append({"t": "was_role", "who": d["executed"], "role": d["role"], "src": src, "night": day, "card": n})
 		"death":
 			out.append({"t": "killed", "who": subj[0], "night": card.get("night", day - 1), "src": src, "card": n})
+		"trace":
+			out.append({"t": "trace", "block": card.get("block", ""), "day": day, "src": src, "card": n})
 	return out
 
 # ---------------------------------------------------------------- templates
@@ -149,6 +153,8 @@ static func check(w, cards: Array) -> Dictionary:
 			if a["card"] == b["card"]:
 				continue
 			var m = _match_pair(w, a, b, near)
+			if m == null:
+				m = _match_support(w, a, b, killed)
 			if m != null:
 				matches.append(m)
 	for a in asserts:
@@ -178,6 +184,82 @@ static func _place_expls(w, a: Dictionary, b: Dictionary) -> Array:
 		if _is_npc(w, s["src"]):
 			ex.append(_lied(w, s["src"], s["card"]))
 	return ex
+
+## Explanations that accuse or clear someone outright (used by the support templates).
+static func _accuse(w, who: String, type: String, label: String) -> Dictionary:
+	return {"kind": "accuse", "label": label, "blame": who, "conclusion": {"type": type, "a": who}}
+
+static func _clear(w, who: String, c: Dictionary, label: String) -> Dictionary:
+	var cc = c.duplicate()
+	cc["a"] = who
+	return {"kind": "clear", "label": label, "blame": who, "conclusion": cc}
+
+static func _cleared_how(a: Dictionary) -> String:
+	if a["t"] == "killed":
+		return "killed by the demon on night %d" % a["night"]
+	return "shown to be the %s after their execution" % C.role_name(a["role"])
+
+## Corroboration and inference: cards that don't conflict but, together, point somewhere.
+static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
+	var ta: String = a["t"]
+	var tb: String = b["t"]
+	var cards: Array = [a["card"], b["card"]]
+	cards.sort()
+	# Pair elimination: a reading names two people; one is cleared, which leaves the other.
+	if ta == "reading" and (tb == "killed" or (tb == "was_role" and C.ROLES.get(b["role"], {}).get("align", "") == "good")):
+		var d: Dictionary = a["data"]
+		var pair: Array = []
+		if a["role"] == "seer" and d.get("yes", false):
+			pair = d["pair"]
+		elif a["role"] == "archivist":
+			pair = d["pair"]
+		if pair.size() == 2 and b["who"] in pair:
+			var other: String = pair[0] if pair[1] == b["who"] else pair[1]
+			if killed.has(other) or other == b["who"]:
+				return null
+			var what = "the demon" if a["role"] == "seer" else "the Poisoner"
+			var expls: Array = [_accuse(w, other, "demon" if a["role"] == "seer" else "evil", "%s is %s" % [_nm(w, other), what])]
+			if a["role"] == "seer":
+				expls.append(_clear(w, other, {"type": "good"}, "%s is the one who reads falsely as the demon (and is good)" % _nm(w, other)))
+			expls.append(_poisoned(w, a["src"], a["night"]))
+			expls.append(_lied(w, a["src"], a["card"]))
+			var m = _mk(w, "pair_elimination", "%s's %s reading named %s and %s; %s was %s, which leaves %s." %
+				[_nm(w, a["src"]), C.role_name(a["role"]), _nm(w, pair[0]), _nm(w, pair[1]), _nm(w, b["who"]), _cleared_how(b), _nm(w, other)],
+				cards, expls, other, [a])
+			m["relation"] = "inference"
+			return m
+	# A Clerk names a pair, one holding a gift; someone in the pair claims that gift.
+	if ta == "claim" and tb == "reading" and b["role"] == "clerk" and a["src"] == a["who"] and b["src"] != a["who"]:
+		var d2: Dictionary = b["data"]
+		if a["who"] in d2.get("pair", []) and d2.get("role", "") == a["role"]:
+			var other2: String = d2["pair"][0] if d2["pair"][1] == a["who"] else d2["pair"][1]
+			var m2 = _mk(w, "claim_backed", "%s claims the %s, and %s's Clerk reading says one of %s and %s holds it." %
+				[_nm(w, a["who"]), C.role_name(a["role"]), _nm(w, b["src"]), _nm(w, d2["pair"][0]), _nm(w, d2["pair"][1])], cards,
+				[_clear(w, a["who"], {"type": "role", "role": a["role"]}, "%s is the %s" % [_nm(w, a["who"]), C.role_name(a["role"])]),
+				_notrole(w, a["who"], a["role"]), _poisoned(w, b["src"], b["night"])], a["who"], [a])
+			m2["explanations"][1]["label"] += " (%s holds it)" % _nm(w, other2)
+			m2["relation"] = "corroboration"
+			return m2
+	# Two independent witnesses put the same person in the same place at the same time.
+	if ta == tb and ta in ["out", "at"] and a["who"] == b["who"] and a["block"] == b["block"] and a["card"] < b["card"]:
+		var same_time = a.get("night", -9) == b.get("night", -9) if ta == "out" else (a["day"] == b["day"] and a["phase"] == b["phase"])
+		if same_time and a["src"] != b["src"] and a["src"] != a["who"] and b["src"] != b["who"] and _is_npc(w, a["src"]) and _is_npc(w, b["src"]):
+			var m3 = _mk(w, "corroborated", "%s and %s both put %s on %s (%s)." %
+				[_nm(w, a["src"]), _nm(w, b["src"]), _nm(w, a["who"]), C.block_name(a["block"]), _when(a)], cards,
+				[_clear(w, a["src"], {"type": "truthful", "card": a["card"]}, "%s is telling the truth" % _nm(w, a["src"])),
+				_clear(w, b["src"], {"type": "truthful", "card": b["card"]}, "%s is telling the truth" % _nm(w, b["src"]))], a["who"], [])
+			m3["relation"] = "corroboration"
+			return m3
+	# A death-scene trace points to a block for the evening; someone was there then.
+	if ta == "trace" and tb == "at" and b["block"] == a["block"] and b["day"] == a["day"] and b["phase"] == C.EVENING:
+		var m4 = _mk(w, "trace_match", "The trace says the killer spent the evening of day %d on %s, and %s was there." %
+			[a["day"], C.block_name(a["block"]), _nm(w, b["who"])], cards,
+			[_accuse(w, b["who"], "demon", "%s is the demon" % _nm(w, b["who"])),
+			_clear(w, b["who"], {"type": "notdemon"}, "%s is not the demon: someone else on %s was the killer" % [_nm(w, b["who"]), C.block_name(a["block"])])],
+			b["who"], [])
+		m4["relation"] = "inference"
+		return m4
+	return null
 
 static func _match_pair(w, a: Dictionary, b: Dictionary, near: Array):
 	var ta: String = a["t"]
@@ -304,9 +386,16 @@ static func _match_dead(w, a: Dictionary, killed: Dictionary):
 		if not killed.has(x):
 			return null
 	var cards: Array = [a["card"]]
+	var expls: Array = [_poisoned(w, a["src"], a["night"]), _lied(w, a["src"], a["card"])]
+	if a["role"] == "seer":
+		# A yes can be honest: one of the pair may be the soul who reads falsely as the demon.
+		expls.append({"kind": "herring", "blame": "",
+			"label": "%s's reading was honest: one of %s is the one who reads falsely as the demon" %
+				[_nm(w, a["src"]), " and ".join(PackedStringArray(named.map(func(x): return _nm(w, x))))],
+			"conclusion": {"type": "truthful", "a": a["src"], "card": a["card"]}})
 	return _mk(w, "reading_vs_dead", "%s's %s reading pointed only at people the demon has since killed (%s)." %
 		[_nm(w, a["src"]), C.role_name(a["role"]), ", ".join(PackedStringArray(named.map(func(x): return _nm(w, x))))], cards,
-		[_poisoned(w, a["src"], a["night"]), _lied(w, a["src"], a["card"])], "", [a])
+		expls, "", [a])
 
 static func _mk(w, template: String, text: String, cards: Array, expls: Array, subject: String, asserts: Array) -> Dictionary:
 	# Where someone could be either lying or misled, also offer "misled or lying".
@@ -327,7 +416,7 @@ static func _mk(w, template: String, text: String, cards: Array, expls: Array, s
 		for s in asserts:
 			if s["card"] == e.get("card", -1):
 				e["assert"] = s
-	return {"template": template, "text": text, "cards": cards, "explanations": expls, "subject": subject}
+	return {"template": template, "text": text, "cards": cards, "explanations": expls, "subject": subject, "relation": "contradiction"}
 
 # ---------------------------------------------------------------- conclusions
 
@@ -429,6 +518,17 @@ static func _expl_weight(w, n, e: Dictionary) -> float:
 		"misled":
 			var t = w.by_id.get(who)
 			return 0.25 + (0.1 if t != null and t.claim_public and t.claimed_role in C.INFO_ROLES else 0.0)
+		"accuse":
+			if who == n.id:
+				return 0.0
+			return maxf(0.15 + Mind.susp(n, who) * 1.2 - (n.npc_trust.get(who, 0.5) - 0.5) * 0.5, 0.02)
+		"clear":
+			if who == n.id:
+				return 3.0
+			return maxf(0.3 + (0.6 - Mind.susp(n, who)) * 0.6 + (n.npc_trust.get(who, 0.5) - 0.5) * 0.4, 0.05)
+		"herring":
+			var src: String = e["conclusion"]["a"]
+			return 0.3 + 0.4 * (1.0 - clampf(Mind.susp(n, src), 0.0, 1.0)) + (0.1 if src == n.id else 0.0)
 		"unreliable":
 			var lie = _expl_weight(w, n, {"kind": "lied", "blame": who})
 			var mis = _expl_weight(w, n, {"kind": "misled", "blame": who})
@@ -462,19 +562,6 @@ static func _support_strength(w, c: Dictionary, supports: Array) -> float:
 			return 0.2
 	return 0.2
 
-## Undo some of the effect a reading had on this NPC (they now doubt it).
-static func _discount_reading(w, n, card: Dictionary, amount: float) -> void:
-	if card.get("kind", "") != "info" or not w.by_id.has(card.get("source", "")):
-		return
-	var key = "%s:%d" % [card["source"], card.get("day", -1)]
-	var already: float = n.discounted.get(key, 0.0)
-	var add = minf(amount, 0.6 - already)
-	if add <= 0.01:
-		return
-	n.discounted[key] = already + add
-	var entry = {"data": card.get("data", {}), "role": card.get("role", ""), "day": card.get("day", -1)}
-	Mind.apply_info(w, n, w.by_id[card["source"]], entry, -add)
-
 ## One NPC weighs a deduction card. scale: 1.0 privately, 0.6 at the meeting.
 ## "X is misled or lying" contains "X is lying" and "X is misled": it doesn't compete
 ## with them as an alternative.
@@ -493,10 +580,12 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 	var c: Dictionary = normalize(ded["conclusion"])
 	var target = w.by_id.get(c.get("a", ""))
 	var supports: Array = board.filter(func(x): return x["n"] in ded["supports"])
-	var key: String = "ded:" + ded["text"]
+	# Repetition follows the conclusion and the facts behind it, not the card's wording.
+	var facts: Array = supports.map(func(x): return Mind.fact_id(x))
+	facts.sort()
+	var key: String = "ded:%s|%s" % [conclusion_key(c), ",".join(PackedStringArray(facts))]
 	var times: int = n.heard.get(key, 0)
 	n.heard[key] = times + 1
-	var repeat = pow(0.35, times)
 	var ins = n.traits.get("insight", 0.5)
 	var weights = {}
 	var agreement = 0.0
@@ -505,14 +594,11 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 		if target != null and target.is_evil() and c["type"] in ["evil", "demon", "lied", "notrole"]:
 			Evil.add_intel(w, n, "player_suspects", target.id, 0.0, "the Demonologist argues: %s" % conclusion_text(w, c))
 		w.dlog.add("argument", n.id, c.get("a", ""), {"conclusion": c, "evil": true}, "Evil hears the argument: %s" % ded["text"])
-		if times > 0:
-			lines.append(Mind.say(n, "You've told me that already."))
-		elif target != null and target.id == w.evil_plan.get("scapegoat", ""):
-			lines.append(Mind.say(n, "I've thought as much myself."))
-		elif target != null and target.is_evil():
-			lines.append(Mind.say(n, "Hm. I'd not be so sure."))
-		else:
-			lines.append(Mind.say(n, "Maybe so."))
+		var seen = false
+		for k in n.heard:
+			if k != key and k.begins_with("ded:%s|" % conclusion_key(c)):
+				seen = true
+		lines.append(_evil_mask(w, n, c, times, seen))
 		return {"lines": lines, "agreement": 0.0}
 	if target == n and c["type"] in ["evil", "demon", "lied", "notrole", "unreliable"]:
 		agreement = 0.0
@@ -558,9 +644,22 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 		if ins >= 0.67 and agreement < 0.3:
 			reason = "that's not enough to go on"
 	var quality = _quality(w, n, supports)
-	var m: float = agreement * quality * (0.5 + n.trust) * repeat * scale
-	_apply(w, n, ded, supports, m)
-	if agreement >= 0.6 and m >= 0.1:
+	# Evidence already used against this person (told directly, or in an earlier argument)
+	# counts for less: re-wrapping a card in a new deduction isn't new evidence.
+	var novel = 1.0
+	if c["type"] in ["evil", "demon", "lied", "notrole", "unreliable"] and not facts.is_empty():
+		var fresh_n = 0
+		for f in facts:
+			if not n.used_facts.has(f + ">" + c.get("a", "")):
+				fresh_n += 1
+		novel = 0.35 + 0.65 * float(fresh_n) / facts.size()
+		for f in facts:
+			n.used_facts[f + ">" + c.get("a", "")] = true
+	var base: float = agreement * quality * scale * novel
+	var gain = _apply(w, n, ded, supports, base)
+	var m: float = base * (0.5 + n.trust)
+	var repeat = novel
+	if agreement >= 0.6 and gain >= 0.1:
 		Mind.set_trust(w, n, n.trust + 0.02, "the Demonologist made a sound argument")
 	w.dlog.add("argument", n.id, c.get("a", ""), {"conclusion": c, "template": ded.get("template", ""), "chosen": ded.get("chosen", 0),
 		"weights": weights, "agreement": snappedf(agreement, 0.01), "quality": snappedf(quality, 0.01), "repeat": snappedf(repeat, 0.01),
@@ -570,6 +669,8 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 		lines.append(Mind.say(n, "You've told me that already."))
 	elif agreement >= 0.6 and m >= 0.1:
 		lines.append(Mind.say(n, "That's sound. " + _paraphrase(w, c)))
+	elif agreement >= 0.6 and gain < 0.02:
+		lines.append(Mind.say(n, "I'd come to that already."))
 	elif agreement >= 0.35:
 		lines.append(Mind.say(n, "Maybe. I'll think on it."))
 	elif reason != "":
@@ -605,50 +706,106 @@ static func _paraphrase(w, c: Dictionary) -> String:
 			return "So %s isn't really the %s." % [a, C.role_name(c["role"])]
 	return ""
 
-static func _apply(w, n, ded: Dictionary, supports: Array, m: float) -> void:
-	if m <= 0.005:
-		return
-	var c: Dictionary = ded["conclusion"]
+## A key for "the same conclusion": type, person and its qualifier.
+static func conclusion_key(c: Dictionary) -> String:
+	return "%s:%s:%s:%s" % [c.get("type", ""), c.get("a", ""), c.get("role", ""), str(c.get("night", c.get("card", "")))]
+
+## What accepting a conclusion does to the listener, as ledger effects at weight 1.
+static func effects_of(w, c: Dictionary, supports: Array, why: String) -> Array:
 	var a: String = c.get("a", "")
-	var why = "the Demonologist argued: %s" % ded["text"]
+	var e: Array = []
 	match c["type"]:
 		"evil":
-			Mind.adjust(w, n, a, 0.45 * m, why, "the Demonologist made a case against them")
+			Mind._eff(e, a, 0.45, why, "the Demonologist made a case against them")
 		"demon":
-			Mind.adjust(w, n, a, 0.55 * m, why, "the Demonologist made a case against them")
+			Mind._eff(e, a, 0.55, why, "the Demonologist made a case against them")
 		"good":
-			Mind.adjust(w, n, a, -0.4 * m, why)
-			n.protect_pref[a] = n.protect_pref.get(a, 0.0) + 0.5 * m
+			Mind._eff(e, a, -0.4, why)
+			Mind._eff(e, "pref:protect:" + a, 0.5, why, "", false)
 		"protect":
-			n.protect_pref[a] = n.protect_pref.get(a, 0.0) + m
-			Mind.adjust(w, n, a, -0.15 * m, why)
+			Mind._eff(e, "pref:protect:" + a, 1.0, why, "", false)
+			Mind._eff(e, a, -0.15, why)
 		"spare":
-			n.spare_pref[a] = n.spare_pref.get(a, 0.0) + m
-			Mind.adjust(w, n, a, -0.15 * m, why)
+			Mind._eff(e, "pref:spare:" + a, 1.0, why, "", false)
+			Mind._eff(e, a, -0.15, why)
 		"role":
-			if m >= 0.12:
-				n.believed_roles[a] = c["role"]
-			Mind.adjust(w, n, a, -0.1 * m, why)
+			Mind._eff(e, "role:%s:%s" % [a, c["role"]], 1.0, why, "", false)
+			Mind._eff(e, a, -0.1, why)
+			# Believing a's claim makes anyone else claiming that gift a liar.
+			for pc in w.public_claims:
+				if pc["role"] == c["role"] and pc["who"] != a:
+					Mind._eff(e, pc["who"], 0.3, why + " (so their rival claim is false)", "their claim clashes with someone I believe")
 		"notrole":
-			Mind.adjust(w, n, a, 0.3 * m, why, "the Demonologist showed their claim is false")
+			Mind._eff(e, a, 0.3, why, "the Demonologist showed their claim is false")
 		"lied":
-			Mind.adjust(w, n, a, 0.3 * m, why, "the Demonologist caught them in a lie")
+			Mind._eff(e, a, 0.3, why, "the Demonologist caught them in a lie")
 			for card in supports:
-				if card["n"] == c.get("card", -1):
-					_discount_reading(w, n, card, 0.5 * m)
+				if card["n"] == c.get("card", -1) and card.get("kind", "") == "info":
+					Mind._eff(e, "disc:%s:%d" % [card["source"], card.get("day", -1)], 0.5, why, "", false)
 		"misled", "unreliable":
-			for card in supports:
-				if card.get("kind", "") == "info" and card.get("source", "") == a and (not c.has("night") or card.get("day", -1) == c["night"]):
-					_discount_reading(w, n, card, (0.8 if c["type"] == "misled" else 0.5) * m)
+			var night: int = c.get("night", -1)
+			if night < 0 and c.has("card"):
+				for card in supports:
+					if card["n"] == c["card"] and card.get("kind", "") == "info":
+						night = card.get("day", -1)
+			Mind._eff(e, "disc:%s:%s" % [a, str(night) if night >= 0 else "*"], 0.8 if c["type"] == "misled" else 0.5, why, "", false)
 			if c["type"] == "unreliable":
-				Mind.adjust(w, n, a, 0.12 * m, why)
-			w.dlog.think(n.id, "poison_belief", "Now doubts %s's information%s (weight %.2f)." % [a, (" from night %d" % c["night"]) if c.has("night") else "", m])
+				Mind._eff(e, a, 0.12, why)
 		"notdemon":
-			Mind.adjust(w, n, a, -0.25 * m, why)
+			Mind._eff(e, a, -0.25, why)
 		"truthful":
-			Mind.adjust(w, n, a, -0.15 * m, why)
+			Mind._eff(e, a, -0.15, why)
+	return e
+
+## Take the argument in through the ledger. base excludes trust, so it can be re-weighed
+## later. Returns the gain in weight (0 if they'd already accepted as much).
+static func _apply(w, n, ded: Dictionary, supports: Array, base: float) -> float:
+	var c: Dictionary = normalize(ded["conclusion"])
+	if base <= 0.004:
+		return 0.0
+	var why = "the Demonologist argued: %s" % ded["text"]
+	var said = "what you told me, that %s" % conclusion_text(w, c)
+	var h = Mind.ledger_hear(w, n, "arg:" + conclusion_key(c), effects_of(w, c, supports, why), base * (0.5 + n.trust), [],
+		{"kind": "arg", "base": base, "text": conclusion_text(w, c), "said": said})
+	return h["gain"]
+
+## An evil listener's reply: drawn from the same lines a good listener uses, according to
+## what serves evil, so the wording carries no alignment tell.
+static func _evil_mask(w, n, c: Dictionary, times: int, seen: bool) -> Dictionary:
+	if times > 0:
+		return Mind.say(n, "You've told me that already.")
+	var target = w.by_id.get(c.get("a", ""))
+	var accusing = c["type"] in ["evil", "demon", "lied", "notrole", "unreliable"]
+	var serves = 0.5
+	if target != null:
+		if target == n and accusing:
+			return Mind.say(n, "I don't buy it: it's about me, and I know it's false.")
+		if target.is_evil():
+			serves = 0.1 if accusing else 0.9
+		else:
+			serves = 0.85 if accusing else 0.3
+	var r = w.rng.randf()
+	if serves >= 0.7 and seen:
+		return Mind.say(n, "I'd come to that already.")
+	if serves >= 0.7 and r < 0.65:
+		return Mind.say(n, "That's sound. " + _paraphrase(w, c))
+	if serves <= 0.2 and r < 0.4:
+		return Mind.say(n, "I don't buy it.")
+	return Mind.say(n, "Maybe. I'll think on it.")
 
 # ---------------------------------------------------------------- filing checks
+
+## Do these cards actually say something about the conclusion's subject?
+static func bears_on(w, c: Dictionary, cards: Array) -> bool:
+	var a: String = c.get("a", "")
+	for x in cards:
+		if a in x.get("subject", []) or x.get("source", "") == a or a in x.get("data", {}).get("pair", []):
+			return true
+		if x.get("kind", "") == "trace" and w.by_id.has(a):
+			var t = w.by_id[a]
+			if x.get("block", "") == t.home_block or x.get("block", "") == w.loc_block(t.work):
+				return true
+	return false
 
 ## Is this deduction allowed? Returns "" if fine, otherwise a reason for the player.
 ## A deduction can rest on weak or secondhand evidence, but it can't simply restate what

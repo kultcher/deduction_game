@@ -64,6 +64,8 @@ static func set_trust(w, n, value: float, why: String) -> void:
 	n.trust = clampf(value, 0.0, n.trust_cap)
 	if absf(n.trust - old) >= 0.01:
 		w.dlog.add("trust", n.id, "player", {"from": snappedf(old, 0.01), "to": snappedf(n.trust, 0.01), "cap": n.trust_cap}, why)
+	if absf(n.trust - n.trust_at_reconsider) >= 0.1:
+		reconsider(w, n, why)
 
 static func cap_trust(w, n, cap: float, why: String) -> void:
 	if cap < n.trust_cap:
@@ -106,10 +108,154 @@ static func known_good(w, id: String) -> bool:
 	var t = w.by_id[id]
 	return not t.alive and t.death_cause == "demon"
 
-## Apply one ability result (own or heard) to a listener's suspicion.
-static func apply_info(w, listener, source, entry: Dictionary, weight: float) -> void:
-	if absf(weight) <= 0.01 or listener.is_evil():
+# ---------------------------------------------------------------- evidence ledger
+## Each good NPC keeps a ledger of the evidence and arguments they've taken in, keyed by the
+## underlying fact (not by who relayed it, or which card or deduction wrapped it).
+## An entry's contribution = its effects x weight x current reliability of its source.
+## When weight or reliability changes, only the difference is applied, so suspicion is
+## always "social base + what the evidence currently says". Social effects (vibes,
+## nominations, grudges, claims) stay as direct adjustments.
+##
+## Effect = [target, delta, conf_scaled, why, public_why]. Targets: an NPC id (suspicion),
+## "pref:protect:<id>", "pref:spare:<id>", "disc:<source>:<night|*>" (doubt in a source's
+## readings), "role:<id>:<role>" (believes id holds role).
+
+static func _eff(effs: Array, target: String, delta: float, why: String, public_why: String = "", conf_scaled: bool = true) -> void:
+	effs.append([target, delta, conf_scaled, why, public_why])
+
+## A stable identity for the fact behind a board card.
+static func fact_id(card: Dictionary) -> String:
+	var k: String = card.get("kind", "")
+	var subj: Array = card.get("subject", []).duplicate()
+	subj.sort()
+	var ss = ",".join(PackedStringArray(subj))
+	match k:
+		"info":
+			return info_eid(card.get("source", ""), {"day": card.get("day", -1), "role": card.get("role", "")})
+		"sighting", "vigil", "alibi", "secret":
+			return "%s:%s:%s:%d:%d:%s" % [k, card.get("source", ""), ss, card.get("day", -1), card.get("phase", -1), card.get("block", "")]
+		"trace":
+			return "trace:%s:%d" % [card.get("block", ""), card.get("day", -1)]
+		"claim":
+			return "claim:%s:%s" % [card.get("source", ""), card.get("role", "")]
+		"death", "execution":
+			return "%s:%s" % [k, ss]
+	return "card:" + card.get("text", "")
+
+## How much this NPC currently trusts a source's readings from a night (1 = fully).
+static func reliability(n, src: String, night: int) -> float:
+	if src == "":
+		return 1.0
+	var d = maxf(n.discounted.get("%s:%d" % [src, night], 0.0), n.discounted.get(src + ":*", 0.0))
+	return clampf(1.0 - d, 0.0, 1.0)
+
+## Take in a piece of evidence or an argument. Hearing the same thing again only raises
+## its weight to the stronger hearing; it never stacks. rel = [source, night] if the
+## evidence is a reading whose reliability can be doubted. Returns {fresh, gain, times}.
+static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
+	if n.is_evil():
+		return {"fresh": false, "gain": 0.0, "times": 0}
+	var fresh = not n.ledger.has(eid)
+	if fresh:
+		n.ledger[eid] = {"eid": eid, "effects": effects, "weight": 0.0, "rel": rel, "applied": {}, "meta": {}, "day": w.day, "times": 0}
+	var e: Dictionary = n.ledger[eid]
+	var times: int = e["times"]
+	e["times"] = times + 1
+	var old_w: float = e["weight"]
+	for k in meta:
+		if k == "base":
+			e["meta"]["base"] = maxf(e["meta"].get("base", 0.0), meta["base"])
+		else:
+			e["meta"][k] = meta[k]
+	if weight > old_w:
+		e["weight"] = weight
+		_ledger_refresh(w, n, e, "")
+	if not e["meta"].has("w0"):
+		e["meta"]["w0"] = e["weight"]
+	return {"fresh": fresh, "gain": maxf(0.0, weight - old_w), "times": times}
+
+static func _ledger_refresh(w, n, e: Dictionary, note: String) -> void:
+	var r = 1.0
+	if not e["rel"].is_empty():
+		r = reliability(n, e["rel"][0], e["rel"][1])
+	var conf = 1.4 - 0.8 * trait_of(n, "confidence")
+	var effs: Array = e["effects"]
+	for i in range(effs.size()):
+		var f: Array = effs[i]
+		var want: float = f[1] * (conf if f[2] else 1.0) * e["weight"] * r
+		var have: float = e["applied"].get(i, 0.0)
+		var diff = want - have
+		if absf(diff) < 0.002:
+			continue
+		e["applied"][i] = want
+		_ledger_apply(w, n, f, diff, want, note)
+
+static func _ledger_apply(w, n, f: Array, diff: float, total: float, note: String) -> void:
+	var t: String = f[0]
+	if t.begins_with("pref:"):
+		var parts = t.split(":")
+		var d: Dictionary = n.protect_pref if parts[1] == "protect" else n.spare_pref
+		d[parts[2]] = maxf(0.0, d.get(parts[2], 0.0) + diff)
+	elif t.begins_with("role:"):
+		var parts2 = t.split(":")
+		if total >= 0.12:
+			n.believed_roles[parts2[1]] = parts2[2]
+		elif n.believed_roles.get(parts2[1], "") == parts2[2]:
+			n.believed_roles.erase(parts2[1])
+	elif t.begins_with("disc:"):
+		var parts3 = t.split(":")
+		var key = parts3[1] + ":" + parts3[2]
+		n.discounted[key] = clampf(n.discounted.get(key, 0.0) + diff, 0.0, 0.9)
+		w.dlog.think(n.id, "poison_belief", "Doubt in %s's readings (%s) now %.2f%s." %
+			[parts3[1], "all nights" if parts3[2] == "*" else "night " + parts3[2], n.discounted[key], note])
+		for e2 in n.ledger.values():
+			if not e2["rel"].is_empty() and e2["rel"][0] == parts3[1] and (parts3[2] == "*" or str(e2["rel"][1]) == parts3[2]):
+				_ledger_refresh(w, n, e2, " (now doubts the source)")
+	else:
+		adjust(w, n, t, diff, f[3] + note, f[4] if diff > 0 else "", false)
+
+## Re-weigh what the player has argued, in light of current trust. Firsthand knowledge and
+## the evidence itself don't change; how much the player's word counts does. Confidence
+## sets how far they move at once. Called when trust shifts noticeably and before votes.
+static func reconsider(w, n, why: String) -> void:
+	if n.is_evil() or absf(n.trust - n.trust_at_reconsider) < 0.03:
 		return
+	n.trust_at_reconsider = n.trust
+	var rate = 1.0 - 0.6 * trait_of(n, "confidence")
+	for e in n.ledger.values():
+		var m: Dictionary = e["meta"]
+		if not m.has("base"):
+			continue
+		var want: float = m["base"] * (0.5 + n.trust)
+		var cur: float = e["weight"]
+		if absf(want - cur) < 0.02:
+			continue
+		var nw = cur + (want - cur) * rate
+		e["weight"] = nw
+		_ledger_refresh(w, n, e, " (reconsidered: %s)" % why)
+		w.dlog.think(n.id, "reconsider", "Re-weighs '%s': %.2f -> %.2f (trust %.2f, %s)." % [m.get("text", e["eid"]), cur, nw, n.trust, why],
+			{"eid": e["eid"], "from": snappedf(cur, 0.01), "to": snappedf(nw, 0.01)})
+		var w0: float = m.get("w0", cur)
+		if m.get("kind", "") == "arg" and nw >= maxf(w0 * 1.35, w0 + 0.05) and not m.get("remarked", false) and m.get("said", "") != "":
+			m["remarked"] = true
+			n.remarks.append(m["said"])
+
+## Apply one ability result (own or heard) to a listener's suspicion, through their ledger:
+## hearing the same reading again (directly, relayed, at the meeting) never stacks.
+static func apply_info(w, listener, source, entry: Dictionary, weight: float) -> void:
+	if weight <= 0.01 or listener.is_evil():
+		return
+	var eid = info_eid(source.id, entry)
+	var fresh = not listener.ledger.has(eid)
+	var effs: Array = _info_effects(w, listener, source, entry, weight, fresh)
+	ledger_hear(w, listener, eid, effs, weight, [source.id, entry["day"]], {"kind": "reading"})
+
+static func info_eid(src: String, entry: Dictionary) -> String:
+	return "info:%s:%d:%s" % [src, entry["day"], entry["role"]]
+
+## The suspicion effects of one reading, at weight 1 (side effects only on first hearing).
+static func _info_effects(w, listener, source, entry: Dictionary, weight: float, fresh: bool) -> Array:
+	var effs: Array = []
 	var d: Dictionary = entry["data"]
 	var r: String = entry["role"]
 	var own = source == listener
@@ -124,16 +270,16 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float) ->
 			var excluded = nbrs.size() - others.size()
 			if count == 0:
 				for i in others:
-					adjust(w, listener, i, -0.25 * weight, tag + ": hearthwitch count 0", "", not own)
+					_eff(effs, i, -0.25, tag + ": hearthwitch count 0", "", not own)
 			else:
 				var per = 0.35 * count
 				if excluded > 0:
 					per = 0.7 * count
 				if count > others.size() and not own:
-					adjust(w, listener, source.id, 0.5 * weight, tag + ": hearthwitch count impossible from my view",
+					_eff(effs, source.id, 0.5, tag + ": hearthwitch count impossible from my view",
 						"%s reading about the lane can't be right" % src_name)
 				for i in others:
-					adjust(w, listener, i, per * weight, tag + ": hearthwitch count %d" % count,
+					_eff(effs, i, per, tag + ": hearthwitch count %d" % count,
 						"%s reading pointed at their neighbours" % src_name, not own)
 		"seer":
 			var pair: Array = d["pair"]
@@ -141,12 +287,12 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float) ->
 			if d["yes"]:
 				var per = 0.45 if others.size() > 1 else 0.85
 				for i in others:
-					adjust(w, listener, i, per * weight, tag + ": seer yes",
+					_eff(effs, i, per, tag + ": seer yes",
 						"%s sight said one of them is the demon" % src_name, not own)
 			else:
 				for i in others:
-					adjust(w, listener, i, (-0.45 if own else -0.3) * weight, tag + ": seer no", "", not own)
-					if own:
+					_eff(effs, i, (-0.45 if own else -0.3), tag + ": seer no", "", not own)
+					if own and fresh:
 						listener.cleared[i] = true
 		"nightwatch":
 			var seen: Array = d["seen"]
@@ -154,29 +300,29 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float) ->
 				if i == listener.id:
 					var where: String = listener.history.get(w.time_key(entry["day"], C.NIGHT), "")
 					if where.begins_with("home") and not own:
-						adjust(w, listener, source.id, 0.45 * weight, tag + ": claims to have seen me out, but I was home",
+						_eff(effs, source.id, 0.45, tag + ": claims to have seen me out, but I was home",
 							"%s claims to have seen me out at night, which is a lie" % src_bare)
 					continue
 				var bonus = 0.0
 				for sid in w.scenes:
 					if w.scenes[sid]["day"] == entry["day"] and w.scenes[sid]["block"] == d["block"]:
 						bonus = 0.3
-				adjust(w, listener, i, (0.2 + bonus) * weight, tag + ": seen out at night",
+				_eff(effs, i, (0.2 + bonus), tag + ": seen out at night",
 					"%s saw them out at night" % src_bare, not own)
 		"archivist":
 			var pair: Array = d["pair"]
 			var others: Array = pair.filter(func(i): return i != listener.id and not known_good(w, i))
 			var per = 0.35 if others.size() > 1 else 0.75
 			for i in others:
-				adjust(w, listener, i, per * weight, tag + ": archivist pair",
+				_eff(effs, i, per, tag + ": archivist pair",
 					"%s records tie them to the Poisoner" % src_name, not own)
 		"clerk":
 			var pair: Array = d["pair"]
 			if listener.id in pair and d["role"] == listener.role and not own:
-				adjust(w, listener, source.id, -0.3 * weight, tag + ": clerk correctly named my role")
+				_eff(effs, source.id, -0.3, tag + ": clerk correctly named my role")
 			for i in pair:
 				if i != listener.id:
-					adjust(w, listener, i, -0.15 * weight, tag + ": clerk pair probably good", "", not own)
+					_eff(effs, i, -0.15, tag + ": clerk pair probably good", "", not own)
 		"gravedigger":
 			var ex = w.by_id[d["executed"]]
 			var ex_good: bool = C.ROLES[d["role"]]["align"] == "good"
@@ -184,15 +330,16 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float) ->
 				if e["id"] == ex.id:
 					var nom: String = e["nominator"]
 					if nom != "" and nom != "player":
-						adjust(w, listener, nom, (0.25 if ex_good else -0.2) * weight,
+						_eff(effs, nom, (0.25 if ex_good else -0.2),
 							tag + ": nominator of %s, who was %s" % [ex.id, d["role"]],
 							"they pushed to hang %s, who was innocent" % ex.name)
-					if not own and weight > 0.2 and (e["player_nominated"] or e["player_yes"]):
+					if fresh and not own and weight > 0.2 and (e["player_nominated"] or e["player_yes"]):
 						if ex_good:
 							set_trust(w, listener, listener.trust - 0.06, "the Demonologist backed hanging %s, an innocent" % ex.id)
 						else:
 							set_trust(w, listener, listener.trust + 0.08 + 0.06 * trait_of(listener, "insight"),
 								"the Demonologist was proven right about %s" % ex.id)
+	return effs
 
 static func update_from_own_info(w) -> void:
 	for n in w.living_good():
@@ -322,7 +469,10 @@ static func _react_to_claim(w, claimant, role: String) -> void:
 		for pc in w.public_claims:
 			if pc["role"] == role and pc["who"] != claimant.id:
 				var other = w.by_id[pc["who"]]
-				if known_good(w, other.id):
+				if l.believed_roles.get(other.id, "") == role:
+					adjust(w, l, claimant.id, 0.6, "double claim of %s; I believe %s holds it" % [role, other.id],
+						"they claimed %s's gift, and I believe %s" % [other.name, other.name])
+				elif known_good(w, other.id):
 					adjust(w, l, claimant.id, 0.8, "double claim of %s; other claimant died to the demon" % role,
 						"%s claimed the same gift as %s, who the demon killed" % [claimant.name, other.name])
 				else:
@@ -444,6 +594,7 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 		return false
 	if v.is_evil():
 		return Evil.evil_vote(w, v, nominee, yes_so_far)
+	reconsider(w, v, "thinking it over before the vote")
 	var base = susp(v, nominee)
 	var s = base
 	var parts = {"suspicion": snappedf(base, 0.01)}
@@ -890,7 +1041,7 @@ static func card_weight(w, n, suspect, card: Dictionary) -> Dictionary:
 	var cls = evidence_class(card)
 	var ins = trait_of(n, "insight")
 	var class_w = {"speech": lerpf(1.0, 0.2, ins), "circumstantial": lerpf(1.0, 0.6, ins), "concrete": 1.0}[cls]
-	var key: String = card.get("text", "")
+	var key: String = fact_id(card)
 	var times: int = n.heard.get(key, 0)
 	n.heard[key] = times + 1
 	return {"relevance": relevance, "cred": cred, "cred_why": cred_why, "cls": cls, "class_w": class_w,
@@ -935,21 +1086,31 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	var cls: String = cw["cls"]
 	var ins = trait_of(n, "insight")
 	if n.is_evil():
-		return Evil.evil_hear_accusation(w, n, suspect, card, relevance)
+		return Evil.evil_hear_accusation(w, n, suspect, card, relevance, times)
 	if times == 0:
 		n.player_cases.append({"suspect": suspect.id, "card": card})
-	var delta: float = 0.35 * cw["cred"] * relevance * cw["class_w"] * cw["repeat"] * (0.5 + n.trust)
+	# Already knowing the fact itself (heard the reading, saw it) leaves less to add.
+	var known = 0.35 if n.ledger.has(cw["key"]) else 1.0
+	var base: float = 0.35 * cw["cred"] * relevance * cw["class_w"] * known
 	var bond: float = n.npc_trust.get(suspect.id, 0.5)
 	if bond > 0.6:
-		delta *= 1.0 - (bond - 0.5) * 1.4
-		set_trust(w, n, n.trust - 0.12 * (bond - 0.5) * 2.0, "player accused %s, whom I trust" % suspect.id)
+		base *= 1.0 - (bond - 0.5) * 1.4
+		if times == 0:
+			set_trust(w, n, n.trust - 0.12 * (bond - 0.5) * 2.0, "player accused %s, whom I trust" % suspect.id)
 	var old = susp(n, suspect.id)
-	adjust(w, n, suspect.id, delta, "player accusation using card '%s' (class %s x%.2f, cred %.2f: %s, relevance %.2f, repeat x%.2f, trust %.2f)" %
-		[cw["key"], cls, cw["class_w"], cw["cred"], cw["cred_why"], relevance, cw["repeat"], n.trust], "the Demonologist made a case against them")
+	var why = "player accusation using card '%s' (class %s x%.2f, cred %.2f: %s, relevance %.2f, already known x%.2f)" % [cw["key"], cls, cw["class_w"], cw["cred"], cw["cred_why"], relevance, known]
+	var effs: Array = []
+	_eff(effs, suspect.id, 1.0, why, "the Demonologist made a case against them")
+	var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], suspect.id], effs, base * (0.5 + n.trust), [],
+		{"kind": "tell", "base": base, "text": card.get("text", "")})
+	n.used_facts[cw["key"] + ">" + suspect.id] = true
+	var delta: float = h["gain"]
 	var nv = susp(n, suspect.id)
 	w.dlog.think(n.id, "persuaded", "Accusation moved suspicion of %s from %.2f to %.2f." % [suspect.id, old, nv])
 	if times > 0:
 		lines.append(say(n, "You've told me that already."))
+	elif suspect == n:
+		lines.append(say(n, "Me? That's madness."))
 	elif strength < 0.3 and suspect.id in cw["subj"]:
 		lines.append(say(n, "That proves nothing against %s." % suspect.name))
 	elif relevance < 0.3:
@@ -982,15 +1143,21 @@ static func public_case(w, nominee, card: Dictionary, direction: String) -> void
 			if direction == "accuse" and Evil.is_teammate(w, v, nominee.id):
 				Evil.add_intel(w, v, "player_suspects", nominee.id, 0.0, "the Demonologist accused %s at the meeting" % nominee.id)
 			continue
-		var mult: float = 0.25 * cw["cred"] * cw["class_w"] * cw["repeat"] * (0.5 + v.trust)
-		var delta = 0.0
+		var known = 0.35 if v.ledger.has(cw["key"]) else 1.0
+		var base: float = 0.25 * cw["cred"] * cw["class_w"] * known
+		var sign = 1.0
 		if direction == "accuse":
-			delta = mult * cw["relevance"] * card_strength(w, card, nominee)
+			base *= cw["relevance"] * card_strength(w, card, nominee)
 		else:
-			delta = -mult * defend_strength(card, nominee.id)
-		adjust(w, v, nominee.id, delta, "the Demonologist's public %s using card '%s' (class %s, cred %.2f, repeat x%.2f)" %
-			[direction, cw["key"], cw["cls"], cw["cred"], cw["repeat"]],
-			"the Demonologist made a case against them" if direction == "accuse" else "")
+			base *= defend_strength(card, nominee.id)
+			sign = -1.0
+		var effs: Array = []
+		_eff(effs, nominee.id, sign, "the Demonologist's public %s using card '%s' (class %s, cred %.2f, already known x%.2f)" %
+			[direction, cw["key"], cw["cls"], cw["cred"], known], "the Demonologist made a case against them" if direction == "accuse" else "")
+		ledger_hear(w, v, "pub:%s:%s>%s" % [direction, cw["key"], nominee.id], effs, base * (0.5 + v.trust), [],
+			{"kind": "tell", "base": base, "text": card.get("text", "")})
+		if direction == "accuse":
+			v.used_facts[cw["key"] + ">" + nominee.id] = true
 
 ## Tavern gossip. Returns {lines, facts}.
 static func gossip(w) -> Dictionary:

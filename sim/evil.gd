@@ -41,15 +41,15 @@ static func _pick_scapegoat(w, why: String) -> void:
 	var best_s = -1.0
 	for g in goods:
 		var s: float = w.rng.randf()
-		for m in [w.demon(), w.minion()]:
-			for k in m.intel:
-				var it: Dictionary = m.intel[k]
-				if it["kind"] == "walker" and it["about"] == g.id:
-					s += 1.0  # seen out at night by one of us: easier to frame
+		# Only what the demon itself knows (its own sightings, and whatever the team has pooled).
+		for k in w.demon().intel:
+			var it: Dictionary = w.demon().intel[k]
+			if it["kind"] == "walker" and it["about"] == g.id:
+				s += 1.0  # seen out at night: easier to frame
 		if w.demon().npc_trust.get(g.id, 0.5) < 0.4:
 			s += 0.5
-		if g.role == "veteran" or g.role == "warden":
-			s += 0.2
+		if g.claim_public and g.claimed_role in ["veteran", "warden"]:
+			s += 0.2  # claims a gift the demon can't kill through: better hanged
 		if s > best_s:
 			best_s = s
 			best = g
@@ -485,26 +485,42 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int) -> bool:
 	w.dlog.think(v.id, "vote", "%s on %s. %s" % ["YES" if yes else "no", nominee, why], {"evil": true})
 	return yes
 
-static func evil_hear_accusation(w, n, suspect, card: Dictionary, relevance: float) -> Dictionary:
+static func evil_hear_accusation(w, n, suspect, card: Dictionary, relevance: float, times: int = 0) -> Dictionary:
 	var plan: Dictionary = w.evil_plan
 	var lines: Array = []
 	var src: String = card.get("source", "")
+	var serves = 0.85  # how much evil wants this case to land
 	if suspect.is_evil():
+		serves = 0.1
 		add_intel(w, n, "player_suspects", suspect.id, 0.0, "the Demonologist suspects %s" % suspect.id)
 		if src != "" and w.by_id.has(src) and not w.by_id[src].is_evil() and w.by_id[src].alive:
 			add_intel(w, n, "threat", src, 2.0, "their evidence is being used against %s" % suspect.id)
 		w.dlog.think(n.id, "evil_learns", "Player suspects teammate %s; will try to silence source %s and keep framing %s." %
 			[suspect.id, src, plan["scapegoat"]], {"card": card.get("text", "")})
-		if suspect == n:
-			lines.append(say(n, "Me? That's madness."))
-		else:
-			lines.append(say(n, "Hm. I'll keep an eye on %s, then." % suspect.name))
 	elif suspect.id == plan["scapegoat"]:
 		w.dlog.think(n.id, "evil_learns", "Player already suspects the scapegoat %s. Good." % suspect.id)
-		lines.append(say(n, "I knew it. I've thought so about %s for days." % suspect.name))
 	else:
 		w.dlog.think(n.id, "evil_learns", "Player suspects good NPC %s; evil encourages it." % suspect.id)
-		lines.append(say(n, "Could be. I wouldn't put it past %s." % suspect.name))
+	# Replies come from the same set a good listener uses (see mind.gd hear_accusation).
+	var r = w.rng.randf()
+	var strength: float = relevance
+	if times > 0:
+		lines.append(say(n, "You've told me that already."))
+	elif suspect == n:
+		lines.append(say(n, "Me? That's madness."))
+	elif relevance < 0.3:
+		lines.append(say(n, "I don't see what that has to do with %s." % suspect.name))
+	elif serves < 0.5:
+		if card.get("kind", "") in ["claim", "hint", "refusal", "opinion", "accusation", "alibi"] and r < 0.5:
+			lines.append(say(n, "That's only talk. Show me something real."))
+		else:
+			lines.append(say(n, "Maybe. I'll keep an eye on %s." % suspect.name))
+	elif strength >= 0.9 and r < 0.35:
+		lines.append(say(n, "You're right. I'll not trust %s again." % suspect.name))
+	elif r < 0.7:
+		lines.append(say(n, "That... does look bad for %s." % suspect.name))
+	else:
+		lines.append(say(n, "Maybe. I'll keep an eye on %s." % suspect.name))
 	return {"lines": lines, "facts": []}
 
 ## An evil NPC learns from what a good NPC told them in conversation.

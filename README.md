@@ -37,7 +37,12 @@ Options: `--seed N`, `--npcs 7`, `--log-dir DIR` (default `logs/`), `--debug`
 ```sh
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 1 --games 50
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 7 --transcript
+godot --headless --path . --script res://tools/autoplay.gd -- --seed 1000 --games 150 --passive
 ```
+
+`--passive` is the control: a player who does nothing at all (waits every phase, declines
+approaches, never nominates, votes no). Compare its win rate with the normal bot on the
+same seeds to see how much the player's actions matter.
 
 The bot plays through the same command interface a human uses and prints one line per
 case plus a summary (bot win rate is roughly 30–35% at the moment), including trait
@@ -101,21 +106,34 @@ knows about that gift: who claims it, and what they've been told privately.
 and what they pool when they meet (pairs you may see talking) or whisper in a crowded
 tavern. Paranoia rises with every death: the town grows quicker to suspect and to hang.
 
-**Building a case.** `link` checks 1–3 cards against a library of contradiction templates
-(someone in two places at once; out at night vs. "I was home"; two people claiming one
-gift; a watcher who missed someone; your vigil missing someone a witness put there; a
-reading that flips; a Gravedigger contradicting a claim; a Veteran killed by the demon;
-a reading pointing only at the demon's victims; a changed story). A match lists possible
-explanations, and never says which is true. `conclude <number>` files the one you believe
+**Building a case.** `link` checks 1–3 cards against a library of templates of three
+kinds. *Contradictions*: someone in two places at once; out at night vs. "I was home"; two
+people claiming one gift; a watcher who missed someone; your vigil missing someone a
+witness put there; a reading that flips; a Gravedigger contradicting a claim; a Veteran
+killed by the demon; a reading pointing only at the demon's victims; a changed story.
+*Corroborations*: two witnesses putting someone in the same place; a Clerk reading backing
+a claim. *Inferences*: a Seer or Archivist pair where one person is cleared (killed by the
+demon, or shown good after execution), which leaves the other; the death-scene trace
+matching someone seen on that block that evening. A match lists possible explanations,
+and never says which is true. `conclude <number>` files the one you believe
 as a **deduction** card. You can also write a conclusion yourself as a sentence, e.g.
 `conclude jory is misled on night 1 because #4 #7`, `conclude hollis is not the demon
 because #3`, `conclude edda should be protected because #9`. Statuses: good, evil, the
 demon, a gift (seer...), lying, **misled** (not lying, but their information was wrong:
 poisoned or mistaken), **misled or lying**; with "should be": protected, spared. A
-conclusion with no contradiction behind it is marked *unfounded* and is at most
-circumstantial; sharp (high-Insight) NPCs will reject it. A deduction needs supporting
+conclusion with no template behind it is your own inference, at most circumstantial and
+weighed on how strongly its cards bear on the person; it's *unfounded* only if the cards
+don't concern that person at all, and sharp (high-Insight) NPCs reject those. Filing
+checks your cards for a template either way, so pressing Link first makes no difference. A deduction needs supporting
 cards, and one that only restates what someone said about themselves ("Jory is the
 Seer because of Jory's claim and Jory's reading") is refused.
+
+**Each NPC keeps an evidence ledger**, keyed by the underlying fact, not the card or
+whoever relayed it. Hearing the same reading again, or seeing the same sighting re-wrapped
+in another deduction, adds little or nothing. Doubts ("X is misled on night 1") lower how
+much that reading counts, including readings they only hear later. When their trust in you
+shifts, and before they vote, they re-weigh what you argued earlier (Confidence sets how
+far they move at once), and may tell you they've come round.
 
 NPCs weigh a deduction by scoring the same explanations from their own point of view
 (whom they suspect or trust, whether an information gift could be poisoned, what they
@@ -183,7 +201,7 @@ Main entry types:
 | `poison`, `protect`, `protect_failed`, `kill`, `kill_failed` | night actions and outcomes |
 | `info` | every ability result, with `true:false` and a `why` when it's wrong |
 | `fake_info` | evil fabrications and the reasoning behind each |
-| `think` | NPC reasoning, tagged by `data.topic`: `claim`, `lie`, `disclosure` (tier and inputs), `deny_or_refuse`, `confess`, `lie_or_stonewall`, `stonewall`, `withhold`, `omit`, `cue`, `share_sightings`, `vote`, `nominate`, `accuse`, `opinion`, `persuaded`, `gossip`, `approach`, `about_role`, `paranoia`, `poison_belief`, `seer_pick`, `watch_pick`, `warden_pick`, `grief`, `kill_choice` (with every candidate's score breakdown), `poison_choice`, `scapegoat`, `evil_plan`, `evil_learns`. Weighted rolls log every score part and the probability |
+| `think` | NPC reasoning, tagged by `data.topic`: `claim`, `lie`, `disclosure` (tier and inputs), `deny_or_refuse`, `confess`, `lie_or_stonewall`, `stonewall`, `withhold`, `omit`, `cue`, `share_sightings`, `vote`, `reconsider`, `nominate`, `accuse`, `opinion`, `persuaded`, `gossip`, `approach`, `about_role`, `paranoia`, `poison_belief`, `seer_pick`, `watch_pick`, `warden_pick`, `grief`, `kill_choice` (with every candidate's score breakdown), `poison_choice`, `scapegoat`, `evil_plan`, `evil_learns`. Weighted rolls log every score part and the probability |
 | `suspicion` | every change ≥ 0.05 in one NPC's suspicion of another, with the cause |
 | `trust`, `trust_cap` | changes in an NPC's trust in the player, and permanent caps, with the cause |
 | `npc_trust` | changes in one NPC's trust in another |

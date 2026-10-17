@@ -394,6 +394,10 @@ func _day_command(verb: String, rest: String) -> void:
 			var cue = Mind.greeting_cue(w, n)
 			if cue != "":
 				_narr(cue)
+			if not n.remarks.is_empty() and not n.is_evil():
+				var said: String = n.remarks.pop_front()
+				w.dlog.think(n.id, "reconsider", "Tells the player they've come round to %s." % said)
+				_lines([Mind.say(n, "I didn't put much stock in %s. After all that's happened since... perhaps I should have." % said)])
 			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask today | ask about <name or gift> | tell <suspect> <card#> | bye)" % n.name)
 		"search", "s":
 			if not moved:
@@ -480,11 +484,11 @@ func _search() -> void:
 			return
 		sc["searched"] = true
 		var tb: String = sc["trace_block"]
-		_narr("Near the body you find %s. Whoever did this most likely spent the evening on %s." % [C.BLOCKS[tb]["trace"], C.block_name(tb)])
+		_narr("Near the body you find %s. Whoever did this most likely spent the evening of day %d on %s." % [C.BLOCKS[tb]["trace"], sc["day"], C.block_name(tb)])
 		w.dlog.add("player_search", "player", sc["victim"], {"trace_block": tb, "trace_true": sc["trace_true"]}, sc["why"])
-		_facts([{"kind": "trace", "subject": [], "block": tb, "source": "evidence", "day": w.day,
+		_facts([{"kind": "trace", "subject": [], "block": tb, "source": "evidence", "day": sc["day"], "phase": C.EVENING,
 			"text": "Trace at %s's death scene: the killer most likely spent the evening of day %d on %s." %
-				[w.by_id[sc["victim"]].name, w.day - 1, C.block_name(tb)]}])
+				[w.by_id[sc["victim"]].name, sc["day"], C.block_name(tb)]}])
 		return
 	if l.begins_with("home_"):
 		_narr("You can't search someone's home from their doorstep.")
@@ -588,6 +592,7 @@ func _talk_command(verb: String, rest: String) -> void:
 			if num0 < 1 or num0 > board.size() or board[num0 - 1]["kind"] != "deduction" or board[num0 - 1].get("deleted", false):
 				_err("Convince them of which deduction? ('convince <card#>'; to cite a plain card use 'tell <suspect> <card#>')")
 				return
+			_secrets_used(board[num0 - 1])
 			r = Argue.evaluate(w, n, board[num0 - 1], board, 1.0)
 			r["facts"] = []
 			Mind.on_question(w, n)
@@ -728,6 +733,7 @@ func _nomination_command(verb: String, rest: String) -> void:
 			if not card.is_empty():
 				_narr("You lay card #%d before the town: %s" % [card["n"], card["text"]])
 				if card["kind"] == "deduction":
+					_secrets_used(card)
 					for v in w.living():
 						if v != t:
 							Argue.evaluate(w, v, card, board, 0.5)
@@ -1149,6 +1155,18 @@ func link_cards(nums: Array) -> Dictionary:
 ## number, or -1 if refused (reason in last_error).
 func file_deduction(conclusion: Dictionary, supports: Array, match_info: Dictionary = {}, chosen: int = 0) -> int:
 	conclusion = Argue.normalize(conclusion.duplicate())
+	var cards: Array = board.filter(func(x): return x["n"] in supports)
+	# The same conclusion from the same cards gets the same footing however it was built:
+	# if a template among the supports offers this conclusion, use it.
+	if match_info.is_empty() and not supports.is_empty():
+		for m in Argue.check(w, cards)["matches"]:
+			for e in m["explanations"]:
+				if Argue.conclusion_key(Argue.normalize(e["conclusion"].duplicate())) == Argue.conclusion_key(conclusion):
+					match_info = m
+					chosen = e["id"]
+					break
+			if not match_info.is_empty():
+				break
 	last_error = Argue.filing_problem(w, conclusion, supports, board, not match_info.is_empty())
 	if last_error != "":
 		w.dlog.add("deduction_refused", "player", conclusion.get("a", ""), {"conclusion": conclusion, "supports": supports}, last_error)
@@ -1161,16 +1179,19 @@ func file_deduction(conclusion: Dictionary, supports: Array, match_info: Diction
 			cls = cc
 	if match_info.is_empty() and rank[cls] > 1:
 		cls = "circumstantial"  # an inference is never stronger than circumstantial on its own
-	var unfounded = match_info.is_empty() and not last_link.is_empty() and last_link["result"]["matches"].is_empty() and last_link["cards"] == supports
+	# Unfounded = the cards don't actually bear on the person (not merely "no template").
+	var unfounded = match_info.is_empty() and not Argue.bears_on(w, conclusion, cards)
 	var basis = ""
 	if not match_info.is_empty():
 		basis = " (from #%s: %s)" % [", #".join(PackedStringArray(match_info["cards"].map(func(x): return str(x)))), match_info["text"]]
 	else:
-		basis = " (because #%s%s)" % [", #".join(PackedStringArray(supports.map(func(x): return str(x)))), "; unfounded" if unfounded else ""]
+		basis = " (because #%s%s)" % [", #".join(PackedStringArray(supports.map(func(x): return str(x)))), "; unfounded" if unfounded else "; your inference"]
 	var subj: Array = [conclusion["a"]] if conclusion.has("a") else []
 	var near = ""
-	if unfounded and not last_link["result"]["near"].is_empty():
-		near = last_link["result"]["near"][0]
+	if unfounded:
+		var nr: Array = Argue.check(w, cards)["near"]
+		if not nr.is_empty():
+			near = nr[0]
 	var card = {"kind": "deduction", "subject": subj, "source": "player", "class": cls, "conclusion": conclusion,
 		"supports": supports.duplicate(), "template": match_info.get("template", ""), "explanations": match_info.get("explanations", []),
 		"chosen": chosen, "unfounded": unfounded, "near": near,
@@ -1258,14 +1279,14 @@ func _link_command(rest: String) -> void:
 	var lk = link_cards(nums)
 	var res: Dictionary = lk["result"]
 	if res["matches"].is_empty():
-		_narr("No contradiction between those cards.")
+		_narr("Nothing links those cards: no conflict, corroboration or inference the town would recognise.")
 		for r in res["near"].slice(0, 2):
 			_narr("  Close, but " + r)
-		_prompt("You can still file a conclusion from them: 'conclude <name> is <status>' (it will be marked unfounded).")
+		_prompt("You can still argue from them: 'conclude <name> is <status> because <cards>'. If the cards bear on that person it's your own inference; if not, it's unfounded.")
 		return
 	var k = 0
 	for m in res["matches"]:
-		_narr("These conflict: " + m["text"])
+		_narr("%s %s" % [Argue.RELATION_LEAD[m.get("relation", "contradiction")], m["text"]])
 		for e in m["explanations"]:
 			k += 1
 			_narr("  %d. %s" % [k, e["label"]])
@@ -1295,8 +1316,19 @@ func _conclude_command(rest: String) -> void:
 	if n2 < 0:
 		_err(last_error)
 		return
-	_narr("Filed%s." % (" (unfounded: no contradiction backs it)" if board[n2 - 1]["unfounded"] else ""))
+	var d2: Dictionary = board[n2 - 1]
+	_narr("Filed%s." % (" (unfounded: those cards don't bear on them)" if d2["unfounded"] else
+		(" (backed by: %s)" % d2["template"]) if d2["template"] != "" else " (your inference)"))
 	_ev({"k": "card", "n": n2})
+
+## A deduction resting on someone's confessed secret spreads it, just like citing it.
+func _secrets_used(ded: Dictionary, depth: int = 0) -> void:
+	for x in ded.get("supports", []):
+		var c: Dictionary = board[x - 1]
+		if c["kind"] == "secret":
+			Mind._secret_used(w, c)
+		elif c["kind"] == "deduction" and depth < 3:
+			_secrets_used(c, depth + 1)
 
 ## Hide a card from views (any card), or delete one of your own deductions.
 func hide_card(num: int, on: bool) -> String:
@@ -1325,6 +1357,7 @@ func _present_deduction(rest: String) -> void:
 	var ded: Dictionary = board[num - 1]
 	_narr("You take the floor: %s" % ded["text"])
 	w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
+	_secrets_used(ded)
 	for n in w.living():
 		var r: Dictionary = Argue.evaluate(w, n, ded, board, 0.6)
 		_lines(r["lines"])

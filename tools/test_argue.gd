@@ -5,6 +5,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Argue = preload("res://sim/argue.gd")
 const C = preload("res://sim/content.gd")
+const Mind = preload("res://sim/mind.gd")
 
 var fails = 0
 
@@ -63,10 +64,19 @@ func _init() -> void:
 	var r3 = Argue.evaluate(w, w.by_id[a], g.board[dn2 - 1], g.board, 1.0)
 	print("A hears 'B lied about A being out': agreement %.2f (%s)" % [r3["agreement"], "A evil" if w.by_id[a].is_evil() else "A good"])
 	# Unfounded conclusion.
-	g.link_cards([k5, k1])
-	var p = g._parse_conclusion("%s is evil" % w.by_id[b].name)
+	# Unfounded = the cards don't bear on the person; it doesn't depend on pressing Link.
+	g.link_cards([k6, k3])
+	var p = g._parse_conclusion("%s is evil" % w.by_id[d].name)
 	var dn3 = g.file_deduction(p["conclusion"], p["supports"])
-	_check(dn3 > 0 and g.board[dn3 - 1]["unfounded"], "unlinked conclusion is marked unfounded")
+	_check(dn3 > 0 and g.board[dn3 - 1]["unfounded"], "conclusion from unrelated cards is unfounded")
+	g.last_link = {}
+	var dn3b = g.file_deduction({"type": "evil", "a": b}, [k5, k1])
+	g.link_cards([k5, k1])
+	var dn3c = g.file_deduction({"type": "evil", "a": b}, [k5, k1])
+	_check(not g.board[dn3b - 1]["unfounded"] and not g.board[dn3c - 1]["unfounded"], "same conclusion, same footing with or without Link")
+	# Filing directly finds the template the cards support.
+	var dn3d = g.file_deduction({"type": "misled", "a": c, "night": 1}, [k8, k9])
+	_check(g.board[dn3d - 1]["template"] == "reading_flip", "direct filing picks up the matching template (%s)" % g.board[dn3d - 1]["template"])
 	_check(g.board[dn3 - 1]["class"] != "concrete", "free-form deduction is at most circumstantial")
 	# Sentence grammar.
 	var p2 = g._parse_conclusion("%s is misled on night 1 because #%d" % [w.by_id[c].name, k9])
@@ -91,6 +101,66 @@ func _init() -> void:
 	_check(g.delete_deduction(k1).begins_with("You can only"), "can't delete an info card")
 	g.delete_deduction(dn5)
 	_check(not (dn5 in g.filter_cards("").map(func(x): return x["n"])), "deleted deduction gone")
+	# Red herring: a Seer yes on two people the demon later killed can be honest.
+	var rd = g.link_cards([k8, k11, k13])
+	var herring = false
+	for o in rd["options"]:
+		if o["expl"]["kind"] == "herring":
+			herring = true
+	_check(herring, "reading_vs_dead offers the red-herring explanation")
+	# Pair elimination: C's Seer yes on A,B; A killed -> B.
+	var pe = g.link_cards([k8, k11])["result"]["matches"].map(func(m): return m["template"])
+	_check("pair_elimination" in pe, "pair elimination (got %s)" % str(pe))
+	# Corroboration: two witnesses put A on the docks on night 1 (C's card k3, plus D's).
+	var kc = g.add_card({"kind": "sighting", "subject": [a], "block": "docks", "day": 1, "phase": C.NIGHT, "source": d, "text": "D saw A on docks n1"})
+	var co = g.link_cards([k3, kc])["result"]["matches"].map(func(m): return m["template"])
+	_check("corroborated" in co, "corroborated sighting (got %s)" % str(co))
+	# Ledger: re-wrapping the same sighting doesn't stack.
+	var lis = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))
+	if not lis.is_empty():
+		var L = lis[0]
+		var s0 = Mind.susp(L, a)
+		var da = g.file_deduction({"type": "evil", "a": a}, [k1])
+		var db = g.file_deduction({"type": "evil", "a": a}, [k1, k2])
+		var dc = g.file_deduction({"type": "evil", "a": a}, [k2, k1])
+		Argue.evaluate(w, L, g.board[da - 1], g.board, 1.0)
+		var s1 = Mind.susp(L, a)
+		Argue.evaluate(w, L, g.board[db - 1], g.board, 1.0)
+		Argue.evaluate(w, L, g.board[dc - 1], g.board, 1.0)
+		var s3 = Mind.susp(L, a)
+		print("repackaging: suspicion %.2f -> %.2f -> %.2f" % [s0, s1, s3])
+		_check(s3 - s1 <= 0.5 * maxf(s1 - s0, 0.05), "repackaged argument adds little (%.2f vs first %.2f)" % [s3 - s1, s1 - s0])
+		# Doubt before hearing: L is told D is misled on night 1, then hears D's reading.
+		var e_d = {"day": 1, "role": "seer", "data": {"pair": [b, c], "yes": true}, "text": "x"}
+		var L2 = lis[1] if lis.size() > 1 else L
+		var before = Mind.susp(L2, b)
+		var dm = g.file_deduction({"type": "misled", "a": d, "night": 1}, [k7])
+		var unheard = Argue.evaluate(w, L2, g.board[dm - 1], g.board, 1.0)
+		_check(absf(Mind.susp(L2, b) - before) < 0.01, "doubting an unheard reading changes nothing")
+		Mind.apply_info(w, L2, w.by_id[d], e_d, 0.5)
+		var after = Mind.susp(L2, b)
+		print("doubted-then-heard reading moved suspicion of B by %.2f (reliability %.2f)" % [after - before, Mind.reliability(L2, d, 1)])
+		_check(Mind.reliability(L2, d, 1) < 1.0, "doubt recorded before hearing the reading")
+		# Trust rises: the earlier argument is re-weighed.
+		var wt0: float = L.ledger["arg:" + Argue.conclusion_key({"type": "evil", "a": a})]["weight"]
+		Mind.set_trust(w, L, minf(L.trust + 0.3, L.trust_cap), "test")
+		var wt1: float = L.ledger["arg:" + Argue.conclusion_key({"type": "evil", "a": a})]["weight"]
+		_check(wt1 > wt0 or L.trust_cap <= L.trust, "argument re-weighed after trust rises (%.2f -> %.2f)" % [wt0, wt1])
+	# Evil replies use the shared lines.
+	var good_lines = ["You've told me that already.", "Maybe. I'll think on it.", "I don't buy it.", "I'd come to that already."]
+	var ev = w.demon()
+	var okl = true
+	for t in w.npcs:
+		if t == ev:
+			continue
+		var de = g.file_deduction({"type": "good", "a": t.id}, [k1])
+		if de < 0:
+			continue
+		var line: String = Argue.evaluate(w, ev, g.board[de - 1], g.board, 1.0)["lines"][0]["text"]
+		if not (line in good_lines or line.begins_with("That's sound.") or line.begins_with("I don't buy it:")):
+			okl = false
+			print("odd evil line: ", line)
+	_check(okl, "evil argument replies come from the shared set")
 	# Timeline and filters.
 	print(g._timeline(""))
 	_check(g.filter_cards("market").size() >= 3, "location filter by block")

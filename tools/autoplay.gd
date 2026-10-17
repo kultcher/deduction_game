@@ -2,7 +2,10 @@
 ## a human uses, then reports results and writes dev logs.
 ##
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
-##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log]
+##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive]
+##
+## --passive: a control player who does nothing (waits every phase, declines approaches,
+## never nominates, votes no, sleeps). The town's win rate on its own.
 ##
 ## --transcript prints everything the player would see. Logs go to <log-dir>/case_<seed>.*
 ## The bot only uses information a player could see, except that it knows which idle NPCs
@@ -15,6 +18,7 @@ const Argue = preload("res://sim/argue.gd")
 
 var g
 var transcript = false
+var passive = false
 var talked = {}
 var linked_pairs = {}
 var rng = RandomNumberGenerator.new()
@@ -24,6 +28,7 @@ func _init() -> void:
 	var first: int = int(args.get("seed", "1"))
 	var games: int = int(args.get("games", "1"))
 	transcript = args.has("transcript")
+	passive = args.has("passive")
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links"]
@@ -40,8 +45,8 @@ func _init() -> void:
 			[seed_v, r["winner"], r["days"], r["exec_good"], r["exec_evil"], r["kills"], r["lies"], r["nominations"], r["pairs"], r["reason"]])
 	if games > 1:
 		var gf = float(games)
-		print("\nSUMMARY over %d cases: good %d / evil %d (%.0f%%), avg days %.1f, wrongful executions %.2f/case, evil executed %.2f/case," %
-			[games, stats["good"], stats["evil"], 100.0 * stats["good"] / gf, stats["days"] / gf, stats["exec_good"] / gf, stats["exec_evil"] / gf])
+		print("\n%sSUMMARY over %d cases: good %d / evil %d (%.0f%%), avg days %.1f, wrongful executions %.2f/case, evil executed %.2f/case," %
+			["PASSIVE " if passive else "", games, stats["good"], stats["evil"], 100.0 * stats["good"] / gf, stats["days"] / gf, stats["exec_good"] / gf, stats["exec_evil"] / gf])
 		print("  nominations %.1f/case, trait reveals %.1f/case, NPCs reaching tier 4 %.1f/case, NPC conversations %.1f/case, lies %.1f/case, stuck games %d" %
 			[stats["nominations"] / gf, stats["reveals"] / gf, stats["max_tier4"] / gf, stats["pairs"] / gf, stats["lies"] / gf, stats["guards"]])
 		print("  NPC shares %.1f/case, evil intel pools %.1f/case, approaches %.1f/case" %
@@ -184,6 +189,21 @@ func _top_suspect():
 
 func _decide() -> String:
 	var w = g.w
+	if passive:
+		match g.state:
+			"approach":
+				return "decline"
+			"day":
+				return "wait"
+			"talk":
+				return "bye"
+			"meeting":
+				return "done" if g.town_quiet else "wait"
+			"nomination":
+				return "vote no"
+			"night":
+				return "sleep"
+		return "look"
 	match g.state:
 		"approach":
 			return "accept" if rng.randf() < 0.7 else "decline"

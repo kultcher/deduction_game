@@ -414,16 +414,16 @@ func _on_link() -> void:
 	var lk: Dictionary = g.link_cards(sel)
 	var res: Dictionary = lk["result"]
 	if res["matches"].is_empty():
-		var t = "No contradiction between cards %s." % _nums(sel)
+		var t = "Nothing links cards %s: no conflict, corroboration or inference." % _nums(sel)
 		for r in res["near"].slice(0, 2):
 			t += "\nClose, but " + r
-		t += "\nYou can still build a conclusion from them above; it will be marked unfounded."
+		t += "\nYou can still build a conclusion from them above: your own inference if they bear on that person, unfounded if not."
 		result_text.text = t
 		return
 	var t2 = ""
 	for m in res["matches"]:
-		t2 += "These conflict: %s\n" % m["text"]
-	result_text.text = t2 + "Possible explanations (this doesn't say which is true). Pick one to put it in the builder:"
+		t2 += "%s %s\n" % [Argue.RELATION_LEAD[m.get("relation", "contradiction")], m["text"]]
+	result_text.text = t2 + "Possible conclusions (this doesn't say which is true). Pick one to put it in the builder:"
 	var k = 0
 	for o in lk["options"]:
 		k += 1
