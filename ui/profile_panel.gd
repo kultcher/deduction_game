@@ -25,7 +25,9 @@ var sub_label: Label
 var claim_icon: TextureRect
 var claim_label: Label
 var guess_opt: OptionButton
-var conf_spin: SpinBox
+var conf_opt: OptionButton      # confidence in the role guess: Flimsy, Maybe, Likely, Confirmed
+var secret_opt: OptionButton
+var secret_conf_opt: OptionButton
 var tab_buttons: Array = []
 var body: RichTextLabel
 var tab = 0
@@ -57,9 +59,12 @@ func build() -> void:
 	var head = PanelContainer.new()
 	head.add_theme_stylebox_override("panel", UITheme.panel("paper"))
 	add_child(head)
+	var hv = VBoxContainer.new()
+	hv.add_theme_constant_override("separation", 6)
+	head.add_child(hv)
 	var hb = HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 10)
-	head.add_child(hb)
+	hv.add_child(hb)
 	portrait = TextureRect.new()
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -90,30 +95,53 @@ func build() -> void:
 	claim_label.add_theme_font_size_override("font_size", 16)
 	claim_label.add_theme_color_override("font_color", UITheme.color("ink"))
 	crow.add_child(claim_label)
-	# Your guess: a pencilled note, visibly yours, not a fact.
-	var grow = HBoxContainer.new()
-	info.add_child(grow)
+	# Your guesses: pencilled notes, visibly yours, not facts. A role and a secret, each
+	# with how sure you are.
 	var gl = Label.new()
-	gl.text = "Your guess:"
+	gl.text = "Your guesses:"
 	gl.add_theme_font_size_override("font_size", 15)
 	gl.add_theme_color_override("font_color", UITheme.color("red"))
-	grow.add_child(gl)
+	hv.add_child(gl)
+	var grid = GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 4)
+	var gpad = MarginContainer.new()
+	gpad.add_theme_constant_override("margin_left", 14)
+	gpad.add_theme_constant_override("margin_bottom", 6)
+	gpad.add_child(grid)
+	hv.add_child(gpad)
 	guess_opt = OptionButton.new()
-	guess_opt.add_theme_font_size_override("font_size", 15)
 	for x in ["?", "good", "evil"] + C.GOOD_ROLES + C.EVIL_ROLES:
 		guess_opt.add_item((x if not C.ROLES.has(x) else C.role_name(x)) + ("" if x == "?" else " ?"))
 		guess_opt.set_item_metadata(guess_opt.item_count - 1, x)
-	guess_opt.tooltip_text = "Your private theory about this person. Nobody else sees it."
+	guess_opt.tooltip_text = "Your private theory about this person's role. Nobody else sees it."
 	guess_opt.item_selected.connect(func(_i): _save_guess())
-	grow.add_child(guess_opt)
-	conf_spin = SpinBox.new()
-	conf_spin.min_value = 1
-	conf_spin.max_value = 3
-	conf_spin.value = 2
-	conf_spin.prefix = "sure"
-	conf_spin.tooltip_text = "How sure you are (1-3)."
-	conf_spin.value_changed.connect(func(_v): _save_guess())
-	grow.add_child(conf_spin)
+	secret_opt = OptionButton.new()
+	for x in ["?", "none"] + C.SECRET_MOD_LIST:
+		secret_opt.add_item("?" if x == "?" else ("None" if x == "none" else C.secret_name(x)) + " ?")
+		secret_opt.set_item_metadata(secret_opt.item_count - 1, x)
+	secret_opt.tooltip_text = "Your guess at whether they carry the secret in play, and which."
+	secret_opt.item_selected.connect(func(_i): _save_secret())
+	conf_opt = _conf_menu()
+	conf_opt.item_selected.connect(func(_i): _save_guess())
+	secret_conf_opt = _conf_menu()
+	secret_conf_opt.item_selected.connect(func(_i): _save_secret())
+	for row in [["Role:", guess_opt, conf_opt], ["Secret:", secret_opt, secret_conf_opt]]:
+		var l1 = Label.new()
+		l1.text = row[0]
+		l1.add_theme_font_size_override("font_size", 15)
+		l1.add_theme_color_override("font_color", UITheme.color("ink_soft"))
+		grid.add_child(l1)
+		row[1].add_theme_font_size_override("font_size", 15)
+		row[1].size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(row[1])
+		var l2 = Label.new()
+		l2.text = "Confidence:"
+		l2.add_theme_font_size_override("font_size", 15)
+		l2.add_theme_color_override("font_color", UITheme.color("ink_soft"))
+		grid.add_child(l2)
+		grid.add_child(row[2])
 
 	# Tabs.
 	var tabs = HBoxContainer.new()
@@ -183,19 +211,38 @@ func show_person(id: String) -> void:
 	_setting = false
 	refresh()
 
+func _conf_menu() -> OptionButton:
+	var o = OptionButton.new()
+	for i in range(C.CONFIDENCE.size()):
+		o.add_item(C.CONFIDENCE[i])
+		o.set_item_metadata(i, i + 1)
+	o.select(1)
+	o.add_theme_font_size_override("font_size", 15)
+	o.tooltip_text = "How sure you are."
+	return o
+
+func _conf_of(o: OptionButton) -> int:
+	return int(o.get_item_metadata(o.selected)) if o.selected >= 0 else 2
+
+func _save_secret() -> void:
+	if _setting or g == null or current() == "" or g.w.game_over:
+		return
+	g.set_secret_guess(current(), secret_opt.get_item_metadata(secret_opt.selected), _conf_of(secret_conf_opt))
+	changed.emit()
+
 ## Save the guess (and notes) now; used by the case board's banner shortcut and tests.
 func save() -> void:
 	var id = current()
 	if id == "" or g == null:
 		return
 	if not g.w.game_over:
-		g.set_guess(id, guess_opt.get_item_metadata(guess_opt.selected), int(conf_spin.value))
+		g.set_guess(id, guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt))
 	changed.emit()
 
 func _save_guess() -> void:
 	if _setting or g == null or current() == "" or g.w.game_over:
 		return
-	g.set_guess(current(), guess_opt.get_item_metadata(guess_opt.selected), int(conf_spin.value))
+	g.set_guess(current(), guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt))
 	changed.emit()
 
 func refresh() -> void:
@@ -237,9 +284,14 @@ func refresh() -> void:
 	for i in range(guess_opt.item_count):
 		if gs.get("guess", "?") == guess_opt.get_item_metadata(i):
 			guess_opt.select(i)
-	conf_spin.value = gs.get("confidence", 2)
-	guess_opt.disabled = g.w.game_over
-	conf_spin.editable = not g.w.game_over
+	conf_opt.select(clampi(int(gs.get("confidence", 2)), 1, 4) - 1)
+	secret_opt.select(0)
+	for i in range(secret_opt.item_count):
+		if gs.get("secret", "?") == secret_opt.get_item_metadata(i):
+			secret_opt.select(i)
+	secret_conf_opt.select(clampi(int(gs.get("secret_conf", 2)), 1, 4) - 1)
+	for o in [guess_opt, conf_opt, secret_opt, secret_conf_opt]:
+		o.disabled = g.w.game_over
 	for i in range(tab_buttons.size()):
 		tab_buttons[i].set_pressed_no_signal(i == tab)
 	_setting = false

@@ -40,7 +40,11 @@ but it means the game must teach its own way of thinking and make evidence very 
   demon and one minion.
 - **Cast pool:** NPCs are persistent characters with fixed personalities who get dealt
   different occupations/roles each case, or sit a case out. Personality must never
-  predict alignment.
+  predict alignment. The pool is 15: the original ten plus Kiran (affable, nosy but private,
+  deflects with humour), Lian (blunt, practical, moved by concrete evidence), Merrin
+  (theatrical worrier, repeats stories overconfidently), Nisha (patient, precise, keeps
+  confidences, stubborn about her theories) and Odette (dry, independent, won't follow a
+  crowd), each with a portrait and a standee.
 
 ## Time
 
@@ -192,8 +196,9 @@ most are hanged on the bot's nomination after hiding their gift and saying they 
 home. The fix that remains is the filed "rebuttals/excuses" item: a hidden walker caught
 out at night should be able to explain with their gift.
 
-**Not built yet:** role icons for the new gifts (the roles window falls back to a plain
-marker); the Revenant actively drawing suspicion to get itself hanged; NPCs searching for
+Every role and secret on the script now has its own icon (`assets/ui/roles/<id>.png`).
+
+**Not built yet:** the Revenant actively drawing suspicion to get itself hanged; NPCs searching for
 totems; Beckon, Tallyman and the rest of On Deck; Relationships.
 
 - Evil NPCs know each other and receive bluffs (good roles not in play, at least one more
@@ -548,7 +553,9 @@ board (centre), profile and notes (right).
   paper: portrait (greyed when dead), name in their ink colour, occupation and status,
   their claim with its role icon ("Claims: Night Watch (to the town)" / "told you
   privately" / "Hinted at a night-sight gift" / "Says they have no gift"), and **Your
-  guess** in red pencil with a "?" on every option and a 1-3 "sure" rating. Tabs: About
+  guesses** in red pencil: a role dropdown and a secret dropdown ("None" or any secret on
+  the script), each with "?" on its options and its own confidence (Flimsy / Maybe /
+  Likely / Confirmed). Tabs: About
   (blurb, work and home, revealed traits, what readings say, debug lines), Their claims
   (cards they're the source or relayer of), About them (cards about them from others),
   each entry a link with when it happened and how you heard it; clicking selects the card

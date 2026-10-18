@@ -47,8 +47,8 @@ var prof_opt: OptionButton:
 var guess_opt: OptionButton:
 	get: return profile.guess_opt
 var theory_label: Label
-var conf_spin: SpinBox:
-	get: return profile.conf_spin
+var conf_opt: OptionButton:
+	get: return profile.conf_opt
 var result_text: RichTextLabel
 var result_box: VBoxContainer
 var hidden_check: CheckBox

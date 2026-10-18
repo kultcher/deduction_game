@@ -312,7 +312,7 @@ func _dispatch(text: String) -> void:
 			var p1 = rest.split(" ", false)
 			var gn = find_npc(p1[0], true) if p1.size() > 1 else null
 			if gn == null:
-				_err("Usage: guess <name> <role | evil | good | ?> [1-3]")
+				_err("Usage: guess <name> <role | evil | good | ?> [1-4: flimsy, maybe, likely, confirmed]")
 			else:
 				var conf = p1[p1.size() - 1].to_int() if p1.size() > 2 and p1[p1.size() - 1].is_valid_int() else 2
 				var gtext = " ".join(p1.slice(1, p1.size() - 1 if p1.size() > 2 and p1[p1.size() - 1].is_valid_int() else p1.size()))
@@ -325,7 +325,7 @@ func _dispatch(text: String) -> void:
 		"theory":
 			_screen(theory_status())
 			if not w.game_over:
-				_prompt("Record privately with 'guess <name> demon [1-3]' and 'guess <name> <minion gift> [1-3]', or use a profile's Your guess. This costs no time and gives no correctness feedback.")
+				_prompt("Record privately with 'guess <name> demon [1-4]' and 'guess <name> <minion gift> [1-4]', or use a profile's Your guess. This costs no time and gives no correctness feedback.")
 			return
 		"profile", "p":
 			_screen(_profile(rest))
@@ -1178,7 +1178,7 @@ func _help() -> String:
                       should be protected / spared
               misled = not lying, but their information was wrong (poisoned or mistaken)
             hide <#> | unhide <#> | showhidden | delete <#> (your own deductions only)
-            note <name> <text> | guess <name> <role|evil|good> [1-3] | theory
+            note <name> <text> | guess <name> <role|evil|good> [1-4] | theory
   Day     : go <place | block | person>   (then one free move within the same block)
             then one action: talk <name> | search | gossip (tavern) | wait
   Talking : ask gift | ask night | ask today | ask are <gift> | ask about <name or gift> | bye
@@ -1311,7 +1311,9 @@ func _profile(token: String) -> String:
 		out.append("Readings say: " + x)
 	if guesses.has(n.id):
 		var gg: Dictionary = guesses[n.id]
-		out.append("Your guess: %s (confidence %d/3)" % [C.role_name(gg["guess"]) if C.ROLES.has(gg["guess"]) else gg["guess"], gg["confidence"]])
+		out.append("Your guess: %s (%s)" % [C.role_name(gg["guess"]) if C.ROLES.has(gg["guess"]) else gg["guess"], C.CONFIDENCE[clampi(int(gg["confidence"]), 1, 4) - 1]])
+		if gg.get("secret", "?") != "?":
+			out.append("Your secret guess: %s (%s)" % ["None" if gg["secret"] == "none" else C.secret_name(gg["secret"]), C.CONFIDENCE[clampi(int(gg.get("secret_conf", 2)), 1, 4) - 1]])
 	if notes.get(n.id, "") != "":
 		out.append("Your note: " + notes[n.id])
 	var cards: Array = filter_cards(n.id)
@@ -1867,16 +1869,42 @@ func set_guess(id: String, guess: String, confidence: int) -> bool:
 	if guess == "demon" or C.is_minion(guess):
 		for old_id in CaseMetrics.named_guesses(guesses, guess):
 			if old_id != id:
-				guesses[old_id] = {"guess": "?", "confidence": 1}
-	guesses[id] = {"guess": guess, "confidence": clampi(confidence, 1, 3)}
+				guesses[old_id]["guess"] = "?"
+				guesses[old_id]["confidence"] = 1
+	var entry: Dictionary = guesses.get(id, {}).duplicate()
+	entry["guess"] = guess
+	entry["confidence"] = clampi(confidence, 1, 4)
+	guesses[id] = entry
 	if before == guesses:
 		return true
 	var revision = {"revision": guess_history.size() + 1, "day": w.day, "phase": w.phase_name(), "state": state,
-		"who": id, "guess": guess, "confidence": clampi(confidence, 1, 3), "before": before,
+		"who": id, "guess": guess, "confidence": clampi(confidence, 1, 4), "before": before,
 		"guesses": guesses.duplicate(true), "notes": notes.duplicate(true)}
 	guess_history.append(revision)
 	w.set_log_time()
 	w.dlog.add("player_guess", "player", id, revision, "Private theory revised; no truth feedback.")
+	return true
+
+## Your guess at someone's secret ("?" unknown, "none", or a secret on the script), with
+## how sure you are (1..4). Kept beside the role guess, in the same theory history.
+func set_secret_guess(id: String, secret: String, confidence: int) -> bool:
+	last_error = ""
+	if w.game_over or not w.by_id.has(id) or not (secret in ["?", "none"] or secret in C.SECRET_MOD_LIST):
+		last_error = "Choose a known person and a secret, none, or ?."
+		return false
+	var before = guesses.duplicate(true)
+	var entry: Dictionary = guesses.get(id, {"guess": "?", "confidence": 2}).duplicate()
+	entry["secret"] = secret
+	entry["secret_conf"] = clampi(confidence, 1, 4)
+	guesses[id] = entry
+	if before == guesses:
+		return true
+	var revision = {"revision": guess_history.size() + 1, "day": w.day, "phase": w.phase_name(), "state": state,
+		"who": id, "secret": secret, "confidence": entry["secret_conf"], "before": before,
+		"guesses": guesses.duplicate(true), "notes": notes.duplicate(true)}
+	guess_history.append(revision)
+	w.set_log_time()
+	w.dlog.add("player_guess", "player", id, revision, "Private secret guess revised; no truth feedback.")
 	return true
 
 func capture_prediction(reason: String, extra: Dictionary = {}) -> Dictionary:

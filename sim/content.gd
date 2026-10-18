@@ -83,6 +83,8 @@ const CAST_COLORS = {
 	"dorian": Color(0.62, 0.92, 0.55), "edda": Color(0.98, 0.86, 0.40), "fenwick": Color(0.40, 0.90, 0.85),
 	"greta": Color(0.98, 0.52, 0.68), "hollis": Color(0.75, 0.72, 0.98), "isolde": Color(0.95, 0.75, 0.55),
 	"jory": Color(0.60, 0.98, 0.78),
+	"kiran": Color(1.00, 0.74, 0.22), "lian": Color(0.80, 0.88, 0.42), "merrin": Color(1.00, 0.47, 0.40),
+	"nisha": Color(0.38, 0.72, 1.00), "odette": Color(0.96, 0.45, 0.95),
 }
 
 static func npc_color(id: String) -> Color:
@@ -109,6 +111,21 @@ const CAST = [
 		"traits": {"privacy": [0.65, 0.2], "gossip": [0.45, 0.15], "confidence": [0.25, 0.15], "insight": [0.45, 0.25], "composure": [0.25, 0.15]}},
 	{"id": "jory", "name": "Jory", "pron": "he", "style": "plain", "blurb": "a cheerful lad who never stops moving",
 		"traits": {"privacy": [0.3, 0.3], "gossip": [0.7, 0.2], "confidence": [0.5, 0.3], "insight": [0.35, 0.15], "composure": [0.45, 0.25]}},
+	# Affable and quick-witted; loves everyone else's business, guards his own; deflects with humour.
+	{"id": "kiran", "name": "Kiran", "pron": "he", "style": "warm", "blurb": "an affable wit who loves everyone's business but his own",
+		"traits": {"privacy": [0.8, 0.1], "gossip": [0.85, 0.1], "confidence": [0.6, 0.15], "insight": [0.55, 0.15], "composure": [0.7, 0.1]}},
+	# Blunt, practical, quietly generous; no patience for speculation, moved by hard evidence.
+	{"id": "lian", "name": "Lian", "pron": "she", "style": "gruff", "blurb": "blunt and practical, with no patience for idle talk",
+		"traits": {"privacy": [0.45, 0.15], "gossip": [0.2, 0.1], "confidence": [0.6, 0.15], "insight": [0.8, 0.1], "composure": [0.7, 0.1]}},
+	# A theatrical worrier who predicts catastrophe loudly, and is first to help when it comes.
+	{"id": "merrin", "name": "Merrin", "pron": "they", "style": "nervous", "blurb": "a theatrical worrier who always sees disaster coming",
+		"traits": {"privacy": [0.2, 0.1], "gossip": [0.85, 0.1], "confidence": [0.6, 0.2], "insight": [0.25, 0.1], "composure": [0.15, 0.1]}},
+	# Patient, observant, keeps confidences; asks precise questions; clings to a theory she's built.
+	{"id": "nisha", "name": "Nisha", "pron": "she", "style": "formal", "blurb": "patient and observant, and slow to let go of a theory",
+		"traits": {"privacy": [0.7, 0.1], "gossip": [0.2, 0.1], "confidence": [0.85, 0.05], "insight": [0.85, 0.05], "composure": [0.75, 0.1]}},
+	# Quiet, dryly funny, fiercely independent; remembers promises and slights; won't follow a crowd.
+	{"id": "odette", "name": "Odette", "pron": "she", "style": "plain", "blurb": "quiet, dry and fiercely her own woman",
+		"traits": {"privacy": [0.7, 0.1], "gossip": [0.3, 0.15], "confidence": [0.8, 0.1], "insight": [0.6, 0.15], "composure": [0.6, 0.15]}},
 ]
 
 const TRAITS = ["privacy", "gossip", "confidence", "insight", "composure"]
@@ -209,6 +226,9 @@ const SECRET_MODS = {
 	"sleepwalker": {"name": "Sleepwalker", "desc": "Leaves home each night without knowing it."},
 }
 const SECRET_MOD_LIST = ["delusional", "marked", "lovers", "sleepwalker"]
+
+## How sure you are of a guess (stored as 1..4).
+const CONFIDENCE = ["Flimsy", "Maybe", "Likely", "Confirmed"]
 
 static func secret_name(k: String) -> String:
 	return SECRET_MODS[k]["name"] if SECRET_MODS.has(k) else k

@@ -74,7 +74,7 @@ func _init() -> void:
 	g.capture_prediction("before_night")
 	g.w._finish("evil", "UI test")
 	scene._run("look")
-	_check(cv.guess_opt.disabled and not cv.conf_spin.editable and "Final theory" in cv.theory_label.text, "post-case theory controls are frozen")
+	_check(cv.guess_opt.disabled and cv.conf_opt.disabled and "Final theory" in cv.theory_label.text, "post-case theory controls are frozen")
 	# Mouse-driven play: map clicks and the action panel.
 	scene.seed_box.value = 22111
 	scene._new_case()

@@ -10,6 +10,9 @@ func fresh():
 	var g = Game.new()
 	g.log_dir = "user://test_outcome_logs"
 	g.new_case(4242)
+	for m in g.w.minions():
+		if m.role == "scion":
+			m.role = "poisoner"  # these checks need hanging the demon to end the case
 	return g
 
 func finish_by_execution(g, id: String, yes: bool = true) -> String:
@@ -33,6 +36,11 @@ func _init() -> void:
 	_check(g.guess_history.size() == 3 and g.guess_history[0]["guesses"][innocent.id]["guess"] == "demon", "revisions retain earlier theories")
 	g.set_guess(m, "poisoner", 2)
 	_check(g.guess_history.size() == 3, "saving unchanged guesses is not a revision")
+	g.set_secret_guess(innocent.id, "marked", 3)
+	g.set_guess(innocent.id, "seer", 4)
+	_check(g.guesses[innocent.id]["secret"] == "marked" and g.guesses[innocent.id]["secret_conf"] == 3 and g.guesses[innocent.id]["confidence"] == 4,
+		"role and secret guesses, each with its own confidence (1-4), live side by side")
+	g.set_guess(innocent.id, "?", 2)
 	var rng_state = g.w.rng.state
 	var snap = g.capture_prediction("test")
 	g.set_note(d, "Revised note")
