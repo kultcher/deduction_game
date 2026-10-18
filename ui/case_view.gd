@@ -8,6 +8,9 @@ const C = preload("res://sim/content.gd")
 const Argue = preload("res://sim/argue.gd")
 const CardList = preload("res://ui/card_list.gd")
 const Metrics = preload("res://game/case_metrics.gd")
+const CaseState = preload("res://ui/case_state.gd")
+const UITheme = preload("res://ui/theme.gd")
+const CardModel = preload("res://game/card_model.gd")
 
 var g
 var mono: Font
@@ -16,9 +19,17 @@ var kind_menu: MenuButton
 var person_menu: MenuButton
 var place_menu: MenuButton
 var match_opt: OptionButton
-var sel_kinds = {}            # multi-select filters: OR within each, and by default across them
-var sel_people = {}
-var sel_places = {}
+## Shared view/filter/selection state (owned by the main screen; see ui/case_state.gd).
+var state = CaseState.new()
+var sel_kinds: Dictionary:
+	get: return state.kinds
+var sel_people: Dictionary:
+	get: return state.people
+var sel_places: Dictionary:
+	get: return state.places
+var view_opt: OptionButton
+var status_label: Label
+var chip_row: HFlowContainer
 var card_list
 var grid: GridContainer
 var prof_opt: OptionButton
@@ -29,11 +40,6 @@ var conf_spin: SpinBox
 var note_edit: TextEdit
 var result_text: RichTextLabel
 var result_box: VBoxContainer
-var cell_filter: Array = []   # card numbers picked from a timeline cell ([] = off)
-var cell_key = ""             # which cell ("id:day:phase"), so clicking it again turns it off
-var cell_label = ""
-var cell_chip: HBoxContainer
-var cell_chip_label: Label
 var hidden_check: CheckBox
 var work_list
 var staged: Array = []        # the working set: card numbers, kept across filters
@@ -47,14 +53,9 @@ var b_error: Label
 var pending: Dictionary = {}  # explanation picked from a link: {conclusion, match, id}
 var _setting = false
 
-const KINDS = ["all", "sighting", "info", "claim", "hint", "refusal", "alibi", "secret", "opinion", "accusation",
-	"trace", "vigil", "vote", "death", "execution", "deduction"]
 
 func _init() -> void:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.06, 0.06, 0.08, 0.98)
-	sb.set_content_margin_all(10)
-	add_theme_stylebox_override("panel", sb)
+	add_theme_stylebox_override("panel", UITheme.panel("panel"))
 
 func build(font: Font) -> void:
 	mono = font
@@ -75,15 +76,26 @@ func build(font: Font) -> void:
 	var title = Label.new()
 	title.text = "  CASE VIEW  "
 	top.add_child(title)
+	view_opt = OptionButton.new()
+	for v in ["all", "places", "statements", "process"]:
+		view_opt.add_item(CardModel.VIEW_NAMES[v])
+		view_opt.set_item_metadata(view_opt.item_count - 1, v)
+	view_opt.item_selected.connect(func(i): state.set_view(view_opt.get_item_metadata(i)))
+	view_opt.tooltip_text = "Which cards to show: where people were; what people said; the town's official business."
+	top.add_child(view_opt)
 	filter_edit = LineEdit.new()
 	filter_edit.placeholder_text = "filter: text, d2, n1 ..."
 	filter_edit.custom_minimum_size = Vector2(180, 0)
-	filter_edit.text_changed.connect(func(_t): _filters_changed())
+	filter_edit.text_changed.connect(func(t):
+		state.text = t
+		state.edited())
 	top.add_child(filter_edit)
 	kind_menu = _multi(top, "Kinds", sel_kinds)
 	person_menu = _multi(top, "People", sel_people)
 	place_menu = _multi(top, "Places", sel_places)
-	match_opt = _option(top, ["match any", "match all"], func(_i): _filters_changed())
+	match_opt = _option(top, ["match any", "match all"], func(i):
+		state.match_all = i == 1
+		state.edited())
 	match_opt.tooltip_text = "Any: a card shows if it fits any ticked kind, person or place. All: it must fit each list you've ticked (any item within a list)."
 	hidden_check = CheckBox.new()
 	hidden_check.text = "Show hidden"
@@ -93,16 +105,17 @@ func build(font: Font) -> void:
 		changed.emit())
 	top.add_child(hidden_check)
 	_btn(top, "Clear filters", _clear_filters)
-	# Shown while a timeline cell is narrowing the list, so it's clear why and how to undo it.
-	cell_chip = HBoxContainer.new()
-	cell_chip.visible = false
-	root.add_child(cell_chip)
-	cell_chip_label = Label.new()
-	cell_chip_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5))
-	cell_chip.add_child(cell_chip_label)
-	_btn(cell_chip, "✕ Show all cards", func():
-		_clear_cell()
-		_refresh_cards())
+	# What's showing and why, always: one status line, then a removable chip per filter.
+	status_label = Label.new()
+	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5))
+	root.add_child(status_label)
+	chip_row = HFlowContainer.new()
+	root.add_child(chip_row)
+	state.changed.connect(func():
+		_sync_menus()
+		_refresh_cards()
+		_refresh_timeline())
 
 	var body = HSplitContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -120,6 +133,10 @@ func build(font: Font) -> void:
 	card_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	card_list.size_flags_stretch_ratio = 2.5
 	card_list.card_activated.connect(func(num): _stage([num]))
+	card_list.selection_changed.connect(func():
+		var sel: Array = card_list.selected_metas()
+		if not sel.is_empty():
+			state.select_card(sel[0]))
 	card_list.add_theme_font_override("font", mono)
 	card_list.add_theme_font_size_override("font_size", 13)
 	left.add_child(card_list)
@@ -217,7 +234,9 @@ func build(font: Font) -> void:
 	pl.text = "Profile"
 	right.add_child(pl)
 	prof_opt = OptionButton.new()
-	prof_opt.item_selected.connect(func(_i): _refresh_profile())
+	prof_opt.item_selected.connect(func(_i):
+		state.select_person(_meta(prof_opt))
+		_refresh_profile())
 	right.add_child(prof_opt)
 	prof_text = RichTextLabel.new()
 	prof_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -267,9 +286,10 @@ func set_game(game) -> void:
 	g = game
 	var pp: PopupMenu = person_menu.get_popup()
 	pp.clear()
-	sel_people.clear()
-	sel_places.clear()
-	sel_kinds.clear()
+	state.people.clear()
+	state.places.clear()
+	state.kinds.clear()
+	state.cell = {}
 	prof_opt.clear()
 	b_who.clear()
 	hidden_check.set_pressed_no_signal(g.show_hidden)
@@ -290,12 +310,7 @@ func set_game(game) -> void:
 	for l in C.LOCATIONS:
 		lp.add_check_item("    " + C.loc_name(l))
 		lp.set_item_metadata(lp.item_count - 1, l)
-	var kp: PopupMenu = kind_menu.get_popup()
-	kp.clear()
-	for k in KINDS:
-		if k != "all":
-			kp.add_check_item(k)
-			kp.set_item_metadata(kp.item_count - 1, k)
+	_fill_kinds()
 	_sync_menus()
 	refresh()
 
@@ -344,37 +359,41 @@ func _multi(parent: Node, title: String, store: Dictionary) -> MenuButton:
 	pm.hide_on_checkable_item_selection = false
 	pm.id_pressed.connect(func(id):
 		var i = pm.get_item_index(id)
-		var key = pm.get_item_metadata(i)
-		if store.has(key):
-			store.erase(key)
-		else:
-			store[key] = true
-		pm.set_item_checked(i, store.has(key))
-		_sync_menus()
-		_filters_changed())
+		state.toggle(_store(title), pm.get_item_metadata(i)))
 	parent.add_child(mb)
 	return mb
 
+func _store(title: String) -> Dictionary:
+	return state.kinds if title == "Kinds" else state.people if title == "People" else state.places
+
+## The kinds menu offers only what exists in the active view.
+func _fill_kinds() -> void:
+	var kp: PopupMenu = kind_menu.get_popup()
+	kp.clear()
+	for k in CardModel.VIEW_KINDS[state.view]:
+		kp.add_check_item(k)
+		kp.set_item_metadata(kp.item_count - 1, k)
+	_fill_kinds_view = state.view
+
+var _fill_kinds_view = ""
+
 func _clear_filters() -> void:
-	_clear_cell()
+	filter_edit.set_block_signals(true)
 	filter_edit.text = ""
-	sel_kinds.clear()
-	sel_people.clear()
-	sel_places.clear()
-	_sync_menus()
-	_refresh_cards()
-
-func _clear_cell() -> void:
-	cell_filter = []
-	cell_key = ""
-	cell_label = ""
-
-## Any other filter replaces a timeline-cell selection rather than narrowing inside it.
-func _filters_changed() -> void:
-	_clear_cell()
-	_refresh_cards()
+	filter_edit.set_block_signals(false)
+	state.clear()
 
 func _sync_menus() -> void:
+	if _fill_kinds_view != state.view:
+		_fill_kinds()
+	for i in range(view_opt.item_count):
+		if view_opt.get_item_metadata(i) == state.view:
+			view_opt.select(i)
+	if filter_edit.text != state.text:
+		filter_edit.set_block_signals(true)
+		filter_edit.text = state.text
+		filter_edit.set_block_signals(false)
+	match_opt.select(1 if state.match_all else 0)
 	for pair in [[kind_menu, sel_kinds, "Kinds"], [person_menu, sel_people, "People"], [place_menu, sel_places, "Places"]]:
 		var mb: MenuButton = pair[0]
 		var store: Dictionary = pair[1]
@@ -384,40 +403,16 @@ func _sync_menus() -> void:
 		mb.text = "%s%s ▾" % [pair[2], (" (%d)" % store.size()) if not store.is_empty() else ""]
 
 func _visible_cards() -> Array:
-	var cards: Array = g.filter_cards(filter_edit.text)
-	var lists: Array = []  # each ticked list -> set of matching card numbers
-	if not sel_kinds.is_empty():
-		var ks = {}
-		for c in cards:
-			if sel_kinds.has(c["kind"]):
-				ks[c["n"]] = true
-		lists.append(ks)
-	for store in [sel_people, sel_places]:
-		if store.is_empty():
-			continue
-		var ids = {}
-		for key in store:
-			for c in g.filter_cards(key):
-				ids[c["n"]] = true
-		lists.append(ids)
-	if not lists.is_empty():
-		var any = match_opt.selected <= 0
-		cards = cards.filter(func(c):
-			var hits = 0
-			for st in lists:
-				if st.has(c["n"]):
-					hits += 1
-			return hits > 0 if any else hits == lists.size())
-	if not cell_filter.is_empty():
-		cards = cards.filter(func(c): return c["n"] in cell_filter)
-	return cards
+	state.text = filter_edit.text
+	state.match_all = match_opt.selected == 1
+	return state.apply(g)
 
 func _refresh_cards() -> void:
-	cell_chip.visible = not cell_filter.is_empty()
-	cell_chip_label.text = "Showing only the timeline cell %s.  " % cell_label
 	var keep: Array = card_list.selected_metas()
 	card_list.reset()
-	for c in _visible_cards():
+	var vis: Array = _visible_cards()
+	_refresh_chips(vis.size())
+	for c in vis:
 		var line = "#%-3d %-10s %s%s" % [c["n"], c["kind"], "[hidden] " if c.get("hidden", false) else "", c["text"]]
 		if g.debug_overlay:
 			var dbg: String = g.debug_card_text(c)
@@ -434,6 +429,24 @@ func _refresh_cards() -> void:
 			"" if c.get("source", "") == "player" else ", heard"], col)
 		if c["n"] in keep:
 			card_list.select_meta(c["n"])
+
+func _refresh_chips(shown: int) -> void:
+	status_label.text = state.status_text(g, shown)
+	for ch in chip_row.get_children():
+		ch.queue_free()
+	var chips: Array = state.chips(g)
+	for c in chips:
+		var kind: String = c["kind"]
+		var key = c["key"]
+		var b = _btn(chip_row, c["label"] + "  ✕", func():
+			if kind == "text":
+				filter_edit.set_block_signals(true)
+				filter_edit.text = ""
+				filter_edit.set_block_signals(false)
+			state.remove_chip(kind, key))
+		b.tooltip_text = "Remove this filter"
+	if not chips.is_empty():
+		_btn(chip_row, "Clear all", _clear_filters)
 
 ## The working set (what Link and the builder use).
 func selected_cards() -> Array:
@@ -496,19 +509,11 @@ func _refresh_timeline() -> void:
 				b.tooltip_text = "Cards #" + ", #".join(PackedStringArray(nums.map(func(x): return str(x))))
 				var ck = "%s:%s" % [n.id, key]
 				var cl = "%s · %s (%d card%s)" % [n.name, col["label"].replace("\n", " "), nums.size(), "" if nums.size() == 1 else "s"]
-				if ck == cell_key:
+				if ck == state.cell.get("key", ""):
 					b.flat = false
 					b.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
 					b.add_theme_stylebox_override("normal", _cell_box())
-				b.pressed.connect(func():
-					if cell_key == ck:
-						_clear_cell()  # clicking the selected cell again turns it off
-					else:
-						cell_filter = nums
-						cell_key = ck
-						cell_label = cl
-					_refresh_cards()
-					_refresh_timeline())
+				b.pressed.connect(func(): state.set_cell(ck, cl, nums))
 			grid.add_child(b)
 
 func _cell_box() -> StyleBoxFlat:

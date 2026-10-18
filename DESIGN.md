@@ -419,9 +419,19 @@ actions beside the text log (bottom). Case screen = card library + builder (left
 board (centre), profile and notes (right).
 
 **Decisions so far**
-- Every card carries two times: **when it happened** (event time) and **when you learned it**
-  (with a list of disclosures: who told you, private or public, when). Sightings and Process
-  place a card at event time; Statements at the time it was said.
+- Every card carries two times: **when it happened** (`when`, the canonical time) and **when
+  you learned it** (`learned`: every disclosure, with who told you and whether it was
+  public). **All views place cards at the canonical time** (a Seer reading about night 1
+  sits at N1 however late you heard it), so a gift's readings line up night by night. A
+  claim or opinion happened when it was said. **[built]**
+- The same fact reaching you again (told privately, relayed, announced at a meeting) is one
+  card with another disclosure, not a new card (claims, readings, sightings, alibis).
+  **[built]**
+- Rows: Places by place (toggle: by person); Statements by the person a card is **about**
+  (a "said by" toggle may come later); Process by person (nominee and each yes voter).
+  **[built in the layout model]**
+- Deductions: a fold-up tray along the bottom of the board, about a quarter showing
+  ("Deductions (#)" and the tops of the cards), from which they can be pinned to the board.
 - Board views (exclusive, each with its own filters): **Places & sightings** (your sightings,
   conversations seen, location hearsay, physical traces), **Statements** (claims, readings,
   opinions, accusations; private and at meetings), **Process** (nominations, votes,
@@ -435,7 +445,9 @@ board (centre), profile and notes (right).
 - Strings (source, subjects, supports) on hover; click to pin.
 - Three zoom levels: overview (dots, icons, stack counts), day (one-line summaries), close
   (full text). Row and time headers stay readable at any zoom. Fit day, fit selection, reset.
-- Every filter that hides evidence shows as a removable chip beside a Clear all. Row-name
+- Every filter that hides evidence shows as a removable chip beside a Clear all, and a status
+  line always says what's showing ("Showing 4 of 31 · Statements · Filters: About: Agnes");
+  if a view comes up empty because of filters, it says so. **[built]** Row-name
   filters in Statements mean "said by" by default, with "about" as an option. The card
   library and board share view and filter state; the working set is independent.
 - One profile component on both screens (header: name, portrait, status, claimed role and
@@ -445,8 +457,11 @@ board (centre), profile and notes (right).
   cards are added; filing is unchanged.
 - Panels: dock, collapse, resize, reset layout first; free-floating later. A future "Script"
   panel lists the roles that may be in play.
-- Visual skin through one shared theme (StyleBox/NinePatch textures), so frames and window
-  art can be dropped in later without touching layout code.
+- Visual skin through one shared theme (`ui/theme.gd`): nine-slice art in `assets/ui/`
+  (see its README) replaces the flat look when present. **[built]**
+- Code: `game/card_model.gd` (times, views, rows, place markers), `game/board_model.gd`
+  (layout as plain data), `ui/case_state.gd` (shared view, filters, selection);
+  tests in `tools/test_board.gd`.
 - Meeting circle (low priority): votes counted clockwise from the nominator's left, and
   resolved in that order (evil voters react to votes already cast, so order is a rule, not
   just presentation). Fast/instant counting; clear tie message.

@@ -12,6 +12,7 @@ const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
 const Argue = preload("res://sim/argue.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
+const CardModel = preload("res://game/card_model.gd")
 
 var w
 var state = "day"          # day | approach | talk | meeting | nomination | night | over
@@ -24,6 +25,7 @@ var questions_left = 0
 var free_repeats = 0       # repeats this conversation that cost no question (one allowed)
 var board: Array = []
 var _card_keys = {}
+var _fact_keys = {}      # Mind.fact_id -> card number, for facts that can reach you twice
 var town_quiet = false     # the town has had its say since the last nomination (allows 'done')
 var statement_used = false # player's one statement on the pending nomination
 var presented_today = false # player has had the meeting floor today
@@ -116,6 +118,7 @@ static func render(evs: Array) -> String:
 func new_case(seed_in: int, npc_count: int = 7) -> String:
 	board = []
 	_card_keys = {}
+	_fact_keys = {}
 	notes = {}
 	guesses = {}
 	guess_history = []
@@ -207,17 +210,50 @@ func find_block(token: String) -> String:
 
 func add_card(fact: Dictionary) -> int:
 	var key: String = fact.get("text", "")
+	var disc = _disclosure(fact)
 	if _card_keys.has(key):
+		_disclose(board[_card_keys[key] - 1], disc)
 		return _card_keys[key]
+	# The same fact reaching you again (told privately, then publicly; relayed by someone
+	# else) is one card with another disclosure, not a second card.
+	var fk = Mind.fact_id(fact) if fact.get("kind", "") in CardModel.MERGE_KINDS else ""
+	if fk != "" and _fact_keys.has(fk):
+		var n0: int = _fact_keys[fk]
+		_disclose(board[n0 - 1], disc)
+		_card_keys[key] = n0
+		return n0
 	var card = fact.duplicate()
 	card["n"] = board.size() + 1
 	if not card.has("day"):
 		card["day"] = w.day
 	if not card.has("class"):
 		card["class"] = Mind.evidence_class(card)
+	card["when"] = CardModel.when(card, w.day, _phase_now())
+	card["learned"] = [disc]
+	card["view"] = CardModel.view_of(card)
 	board.append(card)
 	_card_keys[key] = card["n"]
+	if fk != "":
+		_fact_keys[fk] = card["n"]
 	return card["n"]
+
+## The current time slot as the board counts it (the meeting and the night belong to the
+## evening and night of the day they're in).
+func _phase_now() -> int:
+	return C.NIGHT if state == "night" else w.phase
+
+## When, how and from whom you heard this fact (public = at a town meeting).
+func _disclosure(fact: Dictionary) -> Dictionary:
+	var via: String = fact.get("via", fact.get("source", ""))
+	return {"day": w.day, "phase": _phase_now(), "via": via, "public": state in ["meeting", "nomination"]}
+
+func _disclose(card: Dictionary, disc: Dictionary) -> void:
+	var ls: Array = card.get("learned", [])
+	for d in ls:
+		if d["day"] == disc["day"] and d["phase"] == disc["phase"] and d["via"] == disc["via"] and d["public"] == disc["public"]:
+			return
+	ls.append(disc)
+	card["learned"] = ls
 
 # ---------------------------------------------------------------- dispatch
 
@@ -920,7 +956,9 @@ func _nomination_command(verb: String, rest: String) -> void:
 				", ".join(PackedStringArray(yes_names)) if not yes_names.is_empty() else "nobody"])
 			var subj: Array = res["yes"].duplicate()
 			subj.append(t.id)
-			_facts([{"kind": "vote", "subject": subj, "source": "player",
+			_facts([{"kind": "vote", "subject": subj, "source": "player", "day": w.day, "phase": C.EVENING,
+				"nominee": t.id, "by": res["by"], "yes": res["yes"].duplicate(), "no": res["no"].duplicate(), "player_yes": res["player_yes"],
+				"outcome": res["outcome"], "count": res["count"], "threshold": res["threshold"],
 				"text": "Day %d vote on %s (nominated by %s): for = %s." % [w.day, t.name,
 					"you" if res["by"] == "player" else w.by_id[res["by"]].name, ", ".join(PackedStringArray(yes_names)) if not yes_names.is_empty() else "nobody"]}])
 			match res["outcome"]:
@@ -953,7 +991,7 @@ func _close_meeting() -> void:
 	if ex != "":
 		var n = w.by_id[ex]
 		_narr("The meeting closes. %s is hanged at dusk." % n.name)
-		_facts([{"kind": "execution", "subject": [ex], "source": "player", "text": "%s was executed on day %d." % [n.name, w.day]}])
+		_facts([{"kind": "execution", "subject": [ex], "source": "player", "day": w.day, "phase": C.EVENING, "text": "%s was executed on day %d." % [n.name, w.day]}])
 	else:
 		_narr("The meeting closes with nobody on the block. Nobody is executed.")
 	if w.game_over:

@@ -1109,7 +1109,7 @@ static func _gossip_share(w, n, topic: String) -> int:
 	return 1 + int(round((g + n.pressure * 0.5) * 3.0))
 
 static func _alibi_home(n, nd: int) -> Dictionary:
-	return {"kind": "alibi", "subject": [n.id], "home": true, "day": nd, "phase": C.NIGHT, "source": n.id,
+	return {"kind": "alibi", "subject": [n.id], "home": true, "day": nd, "phase": C.NIGHT, "source": n.id, "block": n.home_block,
 		"text": "%s says they were home (on %s) on night %d." % [n.name, C.block_name(n.home_block), nd]}
 
 static func answer_night(w, n, night: int = -1) -> Dictionary:

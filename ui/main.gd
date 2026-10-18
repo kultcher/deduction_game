@@ -9,6 +9,8 @@ const C = preload("res://sim/content.gd")
 const CaseView = preload("res://ui/case_view.gd")
 const CardList = preload("res://ui/card_list.gd")
 const MapView = preload("res://ui/map_view.gd")
+const CaseState = preload("res://ui/case_state.gd")
+const UITheme = preload("res://ui/theme.gd")
 
 var g
 var out: RichTextLabel
@@ -20,6 +22,7 @@ var side_list
 var side_person: OptionButton
 var side_profile: RichTextLabel
 var case_view
+var case_state = CaseState.new()   # view, filters and selection shared by every panel
 var map
 var actions: VBoxContainer
 var action_title: Label
@@ -40,6 +43,7 @@ func _ready() -> void:
 
 	mono = SystemFont.new()
 	mono.font_names = PackedStringArray(["DejaVu Sans Mono", "Consolas", "Menlo", "monospace"])
+	theme = UITheme.make(mono)
 
 	var root = VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
@@ -134,7 +138,9 @@ func _ready() -> void:
 	right.add_child(HSeparator.new())
 	side_person = OptionButton.new()
 	side_person.clip_text = true
-	side_person.item_selected.connect(func(_i): _refresh_profile())
+	side_person.item_selected.connect(func(_i):
+		case_state.select_person(_side_person_id())
+		_refresh_profile())
 	right.add_child(side_person)
 	side_profile = RichTextLabel.new()
 	side_profile.bbcode_enabled = true
@@ -168,15 +174,14 @@ func _ready() -> void:
 	_button(side, "Open case view", _open_case_view)
 
 	popup = PopupPanel.new()
-	var psb = StyleBoxFlat.new()
-	psb.bg_color = Color(0.1, 0.1, 0.13)
-	psb.border_color = Color(0.45, 0.42, 0.35)
-	psb.set_border_width_all(1)
-	psb.set_content_margin_all(10)
-	popup.add_theme_stylebox_override("panel", psb)
+	popup.add_theme_stylebox_override("panel", UITheme.panel("popup"))
 	add_child(popup)
 
 	case_view = CaseView.new()
+	case_view.state = case_state
+	case_state.selection_changed.connect(func():
+		if case_state.selected_person != "" and _side_person_id() != case_state.selected_person:
+			_select_person(case_state.selected_person))
 	case_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	case_view.visible = false
 	add_child(case_view)
@@ -271,7 +276,11 @@ func _refresh_all() -> void:
 		case_view.refresh()
 
 ## Show this person's profile in the sidebar and the case view.
+func _side_person_id() -> String:
+	return side_person.get_item_metadata(side_person.selected) if side_person.selected >= 0 else ""
+
 func _select_person(id: String) -> void:
+	case_state.select_person(id)
 	for i in range(side_person.item_count):
 		if side_person.get_item_metadata(i) == id:
 			side_person.select(i)
