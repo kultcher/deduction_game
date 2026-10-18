@@ -791,6 +791,12 @@ paths within blocks, planting by a Framer, NPCs searching.
   holder confesses when asked about a night, or someone gossips it. Needed: more routes to
   find one (sightings that don't fit, a confidant, physical evidence such as a personal
   item) and ways to confront someone with it, as a card, and to use it as leverage.
+- **Filed (playtest 30294): evil reads as evil.** (1) An evil NPC casting aspersions with no
+  information stands out because good NPCs rarely do it; either give good NPCs reasons to
+  do it too (secrets, grudges, relationships) or make evil hold back. (2) An evil NPC
+  doubting a sound player deduction everyone else accepts looks suspicious; fine once the
+  player's own information can be suspect, otherwise fold into the "throw a teammate under
+  the bus" pass.
 - **Filed:** an open Warden saying "I saw X out while I stood guard" (strong; maybe too
   strong).
 - Alibis **name a corroborator** ("I was with Jory"). The corroborator confirms or denies,

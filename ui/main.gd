@@ -596,6 +596,9 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 				who.add_item(n.name)
 				who.set_item_metadata(who.item_count - 1, n.id)
 		row.add_child(who)
+		# Whom to speak for or against only matters once you pick one of those.
+		who.visible = false
+		mode.item_selected.connect(func(i): who.visible = i > 0)
 	var extra = func() -> String:
 		if mode == null or mode.selected == 0 or who.selected < 0:
 			return ""

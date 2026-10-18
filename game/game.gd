@@ -546,18 +546,22 @@ func _observe() -> void:
 		_narr("Nobody is here.")
 	elif not l.begins_with("home_"):
 		_narr("Present: " + _who_here(l) + ".")
-		_facts([{"kind": "sighting", "subject": here.map(func(n): return n.id), "block": w.loc_block(l),
-			"loc": l, "day": w.day, "phase": w.phase, "source": "player",
-			"text": "You saw %s at %s, day %d %s." % [", ".join(PackedStringArray(here.map(func(n): return n.name))), w.loc_name(l), w.day, w.phase_name()]}])
+		# One card per person: being in the same place isn't being together (a conversation
+		# you see gets its own card linking the two).
+		for n in here:
+			_facts([{"kind": "sighting", "subject": [n.id], "block": w.loc_block(l),
+				"loc": l, "day": w.day, "phase": w.phase, "source": "player",
+				"text": "You saw %s at %s, day %d %s." % [n.name, w.loc_name(l), w.day, w.phase_name()]}])
 	for other in w.locations_on(w.loc_block(l)):
 		if other == l:
 			continue
 		var there: Array = w.npcs_at(other)
 		if not there.is_empty():
 			_narr("Nearby, at %s: %s." % [w.loc_name(other), _who_here(other)])
-			_facts([{"kind": "sighting", "subject": there.map(func(x): return x.id), "block": w.loc_block(other), "loc": other, "day": w.day,
-				"phase": w.phase, "source": "player", "text": "You saw %s nearby at %s, day %d %s." %
-				[", ".join(PackedStringArray(there.map(func(x): return x.name))), w.loc_name(other), w.day, w.phase_name()]}])
+			for x in there:
+				_facts([{"kind": "sighting", "subject": [x.id], "block": w.loc_block(other), "loc": other, "day": w.day,
+					"phase": w.phase, "source": "player", "text": "You saw %s nearby at %s, day %d %s." %
+					[x.name, w.loc_name(other), w.day, w.phase_name()]}])
 	if w.scenes.has(l):
 		_narr("This is where %s was killed. ('search' to examine it.)" % w.by_id[w.scenes[l]["victim"]].name)
 	var acts = "Actions: talk <name> | search%s | wait" % (" | gossip" if l == "tavern" else "")
