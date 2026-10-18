@@ -163,6 +163,29 @@ func _init() -> void:
 	await process_frame
 	_check(bv.lay["items"].is_empty() and "Nothing matches" in cv.status_label.text, "an empty board under filters says why")
 	cv._clear_filters()
+	# The shared profile: one component on both screens, kept on the same person.
+	var pp = cv.profile
+	var said_by = ""
+	for c in g.board:
+		if g.w.by_id.has(c.get("source", "")):
+			said_by = c["source"]
+			break
+	if said_by != "":
+		scene._select_person(said_by)
+		pp.tab = 1
+		pp.refresh()
+		_check(pp.current() == said_by and scene.profile.current() == said_by, "both profiles follow the selected person")
+		_check("[url=card:" in pp.body.text, "'Their claims' lists their cards as links")
+		var first = pp.body.text.get_slice("[url=card:", 1).to_int()
+		pp.body.meta_clicked.emit("card:%d" % first)
+		_check(cv.state.selected_card == first, "clicking a card link selects that card")
+		pp.tab = 0
+		pp.refresh()
+		for i in range(pp.guess_opt.item_count):
+			if pp.guess_opt.get_item_metadata(i) == "poisoner":
+				pp.guess_opt.select(i)
+				pp.guess_opt.item_selected.emit(i)
+		_check(g.guesses.get(said_by, {}).get("guess", "") == "poisoner", "a guess saves as soon as it's chosen")
 	cv.visible = false
 	# Debug overlay: shows NPCs' private view, and marks identification unscored.
 	scene.debug_check.button_pressed = true

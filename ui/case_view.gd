@@ -13,6 +13,7 @@ const UITheme = preload("res://ui/theme.gd")
 const CardModel = preload("res://game/card_model.gd")
 const BoardView = preload("res://ui/board_view.gd")
 const DeductionTray = preload("res://ui/deduction_tray.gd")
+const ProfilePanel = preload("res://ui/profile_panel.gd")
 
 var g
 var mono: Font
@@ -38,12 +39,16 @@ var tray                      # ui/deduction_tray.gd
 var view_tabs: Array = []
 var rows_btn: Button
 var day_label: Label
-var prof_opt: OptionButton
-var prof_text: RichTextLabel
-var guess_opt: OptionButton
+var profile                   # ui/profile_panel.gd
+var prof_opt: OptionButton:
+	get: return profile.person_opt
+var guess_opt: OptionButton:
+	get: return profile.guess_opt
 var theory_label: Label
-var conf_spin: SpinBox
-var note_edit: TextEdit
+var conf_spin: SpinBox:
+	get: return profile.conf_spin
+var note_edit: TextEdit:
+	get: return profile.note_edit
 var result_text: RichTextLabel
 var result_box: VBoxContainer
 var hidden_check: CheckBox
@@ -282,49 +287,15 @@ func build(font: Font) -> void:
 		board.queue_redraw()
 		tray.queue_redraw())
 
-	# Right: the profile.
-	var right = VBoxContainer.new()
-	right.custom_minimum_size = Vector2(280, 0)
-	mid_split.add_child(right)
-	right.add_child(_heading("Profile"))
-	prof_opt = OptionButton.new()
-	prof_opt.item_selected.connect(func(_i):
-		state.select_person(_meta(prof_opt))
-		_refresh_profile())
-	right.add_child(prof_opt)
-	var paper = PanelContainer.new()
-	paper.add_theme_stylebox_override("panel", UITheme.panel("paper"))
-	paper.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	right.add_child(paper)
-	prof_text = RichTextLabel.new()
-	prof_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	prof_text.custom_minimum_size = Vector2(0, 240)
-	prof_text.add_theme_font_size_override("normal_font_size", 13)
-	prof_text.add_theme_color_override("default_color", UITheme.color("ink"))
-	paper.add_child(prof_text)
-	var gl = HBoxContainer.new()
-	right.add_child(gl)
-	var glab = Label.new()
-	glab.text = "Your guess"
-	gl.add_child(glab)
-	guess_opt = OptionButton.new()
-	for x in ["?", "good", "evil"] + C.GOOD_ROLES + ["demon", "poisoner"]:
-		guess_opt.add_item(x if not C.ROLES.has(x) else C.role_name(x))
-		guess_opt.set_item_metadata(guess_opt.item_count - 1, x)
-	gl.add_child(guess_opt)
-	conf_spin = SpinBox.new()
-	conf_spin.min_value = 1
-	conf_spin.max_value = 3
-	conf_spin.value = 2
-	conf_spin.prefix = "conf"
-	gl.add_child(conf_spin)
-	var nl = Label.new()
-	nl.text = "Notes"
-	right.add_child(nl)
-	note_edit = TextEdit.new()
-	note_edit.custom_minimum_size = Vector2(0, 110)
-	right.add_child(note_edit)
-	_btn(right, "Save guess and notes", _on_save_profile)
+	# Right: the profile (the same component as on the town screen).
+	profile = ProfilePanel.new()
+	profile.custom_minimum_size = Vector2(300, 0)
+	profile.build()
+	profile.changed.connect(func():
+		theory_label.text = _theory_text()
+		changed.emit())
+	profile.card_clicked.connect(func(_n): board.fit_selection())
+	mid_split.add_child(profile)
 
 func _heading(t: String) -> Label:
 	var l = Label.new()
@@ -367,7 +338,6 @@ func set_game(game) -> void:
 	state.places.clear()
 	state.kinds.clear()
 	state.cell = {}
-	prof_opt.clear()
 	b_who.clear()
 	hidden_check.set_pressed_no_signal(g.show_hidden)
 	for n in g.w.npcs:
@@ -375,8 +345,6 @@ func set_game(game) -> void:
 		b_who.set_item_metadata(b_who.item_count - 1, n.id)
 		pp.add_check_item(n.name)
 		pp.set_item_metadata(pp.item_count - 1, n.id)
-		prof_opt.add_item(n.name)
-		prof_opt.set_item_metadata(prof_opt.item_count - 1, n.id)
 	b_who.add_item("One of these people")
 	b_who.set_item_metadata(b_who.item_count - 1, "*group")
 	var lp: PopupMenu = place_menu.get_popup()
@@ -387,16 +355,21 @@ func set_game(game) -> void:
 	for l in C.LOCATIONS:
 		lp.add_check_item("    " + C.loc_name(l))
 		lp.set_item_metadata(lp.item_count - 1, l)
+	profile.setup(g, state)
 	_fill_kinds()
 	_sync_menus()
 	refresh()
 
+func _theory_text() -> String:
+	var t: String = g.theory_status()
+	if not g.w.game_over:
+		t += " — Set your guess in a profile before voting. No correctness feedback until the case ends."
+	return t
+
 func refresh() -> void:
 	if g == null:
 		return
-	theory_label.text = g.theory_status()
-	if not g.w.game_over:
-		theory_label.text += " — Save Your guess in a profile before voting. No correctness feedback until the case ends."
+	theory_label.text = _theory_text()
 	_refresh_cards()
 	_refresh_profile()
 	_fill_nights()
@@ -583,52 +556,13 @@ func _refresh_work() -> void:
 		board.queue_redraw()
 
 func _refresh_profile() -> void:
-	var id = _meta(prof_opt)
-	if id == "":
-		return
-	var p: Dictionary = g.profile_data(id)
-	var lines = PackedStringArray()
-	lines.append("[color=#%s][b]%s[/b][/color] the %s" % [UITheme.ink_of(C.npc_color(id)).to_html(false), p["name"], p["occupation"]])
-	lines.append(p["blurb"])
-	lines.append("Works %s; lives on %s; %s." % [p["work"], p["home"], p["status"]])
-	if p["claim"] != "":
-		lines.append(p["claim"])
-	for x in p["named"]:
-		lines.append("Readings say: " + x)
-	if g.debug_overlay:
-		lines.append("[color=#9fd3a8]" + g.debug_npc_text(id) + "[/color]")
-	var tl = PackedStringArray()
-	for t in C.TRAITS:
-		tl.append("%s %s" % [t.capitalize(), p["traits"].get(t, "?")])
-	lines.append("Traits: " + ", ".join(tl))
-	lines.append("")
-	for num in p["cards"]:
-		lines.append("#%d %s" % [num, g.board[num - 1]["text"]])
-	prof_text.bbcode_enabled = true
-	prof_text.text = "\n".join(lines)
-	var gs: Dictionary = p["guess"]
-	guess_opt.select(0)
-	for i in range(guess_opt.item_count):
-		if gs.get("guess", "?") == guess_opt.get_item_metadata(i):
-			guess_opt.select(i)
-	conf_spin.value = gs.get("confidence", 2)
-	guess_opt.disabled = g.w.game_over
-	conf_spin.editable = not g.w.game_over
-	note_edit.text = p["note"]
+	profile.refresh()
 
 func show_profile(id: String) -> void:
-	for i in range(prof_opt.item_count):
-		if prof_opt.get_item_metadata(i) == id:
-			prof_opt.select(i)
-	_refresh_profile()
+	profile.show_person(id)
 
 func _on_save_profile() -> void:
-	var id = _meta(prof_opt)
-	if id == "":
-		return
-	g.set_note(id, note_edit.text)
-	if not g.w.game_over:
-		g.set_guess(id, guess_opt.get_item_metadata(guess_opt.selected), int(conf_spin.value))
+	profile.save()
 	refresh()
 	changed.emit()
 

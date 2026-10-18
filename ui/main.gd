@@ -11,6 +11,7 @@ const CardList = preload("res://ui/card_list.gd")
 const MapView = preload("res://ui/map_view.gd")
 const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
+const ProfilePanel = preload("res://ui/profile_panel.gd")
 
 var g
 var out: RichTextLabel
@@ -19,8 +20,9 @@ var seed_box: SpinBox
 var side: VBoxContainer
 var side_filter: LineEdit
 var side_list
-var side_person: OptionButton
-var side_profile: RichTextLabel
+var profile                  # ui/profile_panel.gd: the same profile as on the case board
+var side_profile: RichTextLabel:
+	get: return profile.body
 var case_view
 var case_state = CaseState.new()   # view, filters and selection shared by every panel
 var map
@@ -136,17 +138,17 @@ func _ready() -> void:
 	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	asc.add_child(actions)
 	right.add_child(HSeparator.new())
-	side_person = OptionButton.new()
-	side_person.clip_text = true
-	side_person.item_selected.connect(func(_i):
-		case_state.select_person(_side_person_id())
-		_refresh_profile())
-	right.add_child(side_person)
-	side_profile = RichTextLabel.new()
-	side_profile.bbcode_enabled = true
-	side_profile.custom_minimum_size = Vector2(0, 220)
-	side_profile.add_theme_font_size_override("normal_font_size", 12)
-	right.add_child(side_profile)
+	profile = ProfilePanel.new(true)
+	profile.build()
+	profile.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	profile.size_flags_stretch_ratio = 1.4
+	profile.person_changed.connect(func(id): map.selected_npc = id)
+	profile.changed.connect(func(): theory_label.text = g.theory_status())
+	profile.card_clicked.connect(func(n):
+		_open_case_view()
+		case_state.select_card(n)
+		case_view.board.fit_selection())
+	right.add_child(profile)
 
 	# Optional case-board sidebar.
 	side = VBoxContainer.new()
@@ -212,12 +214,8 @@ func _new_case() -> void:
 	out.clear()
 	_build_colour_rules()
 	_print(g.new_case(int(seed_box.value)))
-	side_person.clear()
-	for n in g.w.npcs:
-		side_person.add_item(n.name)
-		side_person.set_item_metadata(side_person.item_count - 1, n.id)
-		side_person.set_item_icon(side_person.item_count - 1, _swatch(C.npc_color(n.id)))
 	case_view.set_game(g)
+	profile.setup(g, case_state)
 	map.set_game(g)
 	if debug_check.button_pressed:
 		g.set_debug_overlay(true)
@@ -278,13 +276,11 @@ func _refresh_all() -> void:
 
 ## Show this person's profile in the sidebar and the case view.
 func _side_person_id() -> String:
-	return side_person.get_item_metadata(side_person.selected) if side_person.selected >= 0 else ""
+	return profile.current()
 
 func _select_person(id: String) -> void:
 	case_state.select_person(id)
-	for i in range(side_person.item_count):
-		if side_person.get_item_metadata(i) == id:
-			side_person.select(i)
+	profile.show_person(id)
 	case_view.show_profile(id)
 	map.selected_npc = id
 	_refresh_profile()
@@ -644,29 +640,8 @@ func _refresh_side() -> void:
 	_refresh_profile()
 
 func _refresh_profile() -> void:
-	if g == null or side_person.selected < 0:
-		return
-	var id: String = side_person.get_item_metadata(side_person.selected)
-	var p: Dictionary = g.profile_data(id)
-	var hex = C.npc_color(id).to_html(false)
-	var tl = PackedStringArray()
-	for t in ["privacy", "gossip", "confidence", "insight", "composure"]:
-		tl.append("%s %s" % [t.substr(0, 4), p["traits"].get(t, "?")])
-	var gs: Dictionary = p["guess"]
-	var lines = PackedStringArray()
-	lines.append("[color=#%s][b]%s[/b][/color] the %s (%s)" % [hex, p["name"], p["occupation"], p["status"]])
-	lines.append("Works %s; lives on %s." % [p["work"], p["home"]])
-	if p["claim"] != "":
-		lines.append(p["claim"])
-	for x in p["named"]:
-		lines.append("Readings say: " + x)
-	lines.append("Traits: " + ", ".join(tl))
-	lines.append("Your guess: %s%s" % [gs.get("guess", "?"), (" (%d/3)" % gs["confidence"]) if gs.has("confidence") else ""])
-	if p["note"] != "":
-		lines.append("Note: " + p["note"])
-	if g.debug_overlay:
-		lines.append("[color=#9fd3a8]" + g.debug_npc_text(id) + "[/color]")
-	side_profile.text = "\n".join(lines).replace("[lb]", "[")
+	if g != null:
+		profile.refresh()
 
 func _on_input_key(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not history.is_empty():

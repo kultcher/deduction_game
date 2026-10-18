@@ -467,6 +467,16 @@ board (centre), profile and notes (right).
   Fit day / Fit selection / Whole case. Cards drag to the working set; deductions wait in a
   fold-up tray and pin to the board where dropped (drag to move, right-click to unpin).
   Link is now live: "What these cards suggest" updates as the working set changes.
+- **Shared profile [built]** (`ui/profile_panel.gd`): the same component on the town screen
+  (compact) and the case board, following the shared selected person. Header on framed
+  paper: portrait (greyed when dead), name in their ink colour, occupation and status,
+  their claim with its role icon ("Claims: Night Watch (to the town)" / "told you
+  privately" / "Hinted at a night-sight gift" / "Says they have no gift"), and **Your
+  guess** in red pencil with a "?" on every option and a 1-3 "sure" rating. Tabs: About
+  (blurb, work and home, revealed traits, what readings say, debug lines), Their claims
+  (cards they're the source or relayer of), About them (cards about them from others),
+  each entry a link with when it happened and how you heard it; clicking selects the card
+  (and shows it on the board). Guess and notes save as you change them.
 - **Papercraft skin [built]**: navy board, cream plaques as buttons (red when pressed), gold
   edges, framed paper for the profile, serif type. Art sliced from the sheets by
   `tools/slice_sheets.py` (see `assets/ui/README.md`).
