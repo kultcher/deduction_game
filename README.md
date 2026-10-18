@@ -11,6 +11,11 @@ design decisions so far.
 
 ## Running it
 
+**Dialogue prototype:** open `ui/dialogue_lab.tscn` and press **F6** to compare Agnes,
+Bartholomew and Constance across five situations. The same voices also appear in normal
+play. See [the dialogue prototype guide](docs/dialogue_prototype.md) for controls,
+integration points, scope and headless preview/test commands.
+
 Requires Godot 4.4+ (tested with 4.4.1).
 
 **In the editor:** open the project and press Play. Everything can be done with the mouse:

@@ -10,11 +10,37 @@ extends RefCounted
 
 const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
+const Dialogue = preload("res://sim/dialogue.gd")
 
 # ---------------------------------------------------------------- utilities
 
 static func say(n, text: String) -> Dictionary:
 	return {"speaker": n.id, "name": n.name, "text": text}
+
+## Small presentation boundary: approve content first, then supply only delivery cues.
+static func voiced(n, kind: String, statement: String, event_id: String = "", context: Dictionary = {}) -> Dictionary:
+	var cues = context.duplicate()
+	cues["trust"] = n.trust
+	cues["pressure"] = n.pressure
+	var rendered = Dialogue.compose(n.id, {"kind": kind, "statement": statement, "event_id": event_id}, cues, n.dialogue_memory)
+	return say(n, rendered["text"])
+
+static func reconsideration_line(n, said: String) -> Dictionary:
+	var rendered = Dialogue.compose(n.id, Dialogue.reconsideration_intent(said), {"reconsidered": true}, n.dialogue_memory)
+	return say(n, rendered["text"])
+
+static func whereabouts_refusal(n, nd: int) -> Dictionary:
+	var rendered = Dialogue.compose(n.id, Dialogue.whereabouts_intent("whereabouts:%d" % nd), {"withholding": true}, n.dialogue_memory)
+	return say(n, rendered["text"])
+
+## Keep every fact and narration intact; only the first spoken response is rephrased.
+static func _challenged(n, response: Dictionary, card: Dictionary) -> Dictionary:
+	for i in range(response["lines"].size()):
+		var line = response["lines"][i]
+		if line is Dictionary and line.get("speaker", "") == n.id:
+			response["lines"][i] = voiced(n, "doubted", line["text"], fact_id(card), {"challenged": true})
+			break
+	return response
 
 static func trait_of(n, t: String) -> float:
 	return n.traits.get(t, 0.5)
@@ -645,7 +671,7 @@ static func meeting_testimony(w) -> Array:
 					continue
 				e["shared"] = true
 				w.public_event("reading", implicated(e), n.id)
-				lines.append(info_line(w, n, e))
+				lines.append(info_line(w, n, e, "town"))
 				facts.append(info_fact(w, n, e))
 				for l in w.living():
 					if l != n:
@@ -694,9 +720,9 @@ static func _claim_line(n, role: String) -> Dictionary:
 	}
 	return say(n, "%sI am the %s." % [openers.get(n.style, ""), C.role_name(role)])
 
-static func info_line(w, n, e: Dictionary) -> Dictionary:
+static func info_line(w, n, e: Dictionary, audience: String = "player") -> Dictionary:
 	var when = "On the first night" if e["day"] == 0 else "Last night" if e["day"] == w.day - 1 else "On night %d" % e["day"]
-	return say(n, "%s, %s." % [when, e["text"]])
+	return voiced(n, "report", "%s, %s." % [when, e["text"]], info_eid(n.id, e), {"audience": audience})
 
 static func info_fact(w, n, e: Dictionary) -> Dictionary:
 	var subj: Array = []
@@ -936,19 +962,19 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		lines.append(say(n, "I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name]))
 		if not n.is_evil():
 			adjust(w, n, rival.id, 0.3, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift")
-		return {"lines": lines, "facts": facts}
+		return _challenged(n, {"lines": lines, "facts": facts}, card)
 	if night >= 0:
 		var r = answer_night(w, n, night)
 		lines += r["lines"]
 		facts += r["facts"]
-		return {"lines": lines, "facts": facts}
+		return _challenged(n, {"lines": lines, "facts": facts}, card)
 	# Their gift: a true naming opens them up; otherwise pressure decides.
 	var bonus = 1 if naming_me and d.get("role", "") == mine else 0
 	var tier = mini(_target_tier(w, n) + bonus, 4)
 	var r2 = answer_gift(w, n, tier)
 	lines += r2["lines"]
 	facts += r2["facts"]
-	return {"lines": lines, "facts": facts}
+	return _challenged(n, {"lines": lines, "facts": facts}, card)
 
 # ---------------------------------------------------------------- conversation
 
@@ -1188,7 +1214,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				vantage = n.home_block
 			else:
 				w.dlog.think(n.id, "stonewall", "Hiding (%s): refuses to say where they were." % hiding)
-				lines.append(say(n, "Where I go at night is my own business."))
+				lines.append(whereabouts_refusal(n, nd))
 				facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "day": nd, "phase": C.NIGHT,
 					"text": "%s refused to say where they were on night %d." % [n.name, nd]})
 	var limit = _gossip_share(w, n, "share_sightings")
@@ -1355,12 +1381,13 @@ static func answer_opinion(w, n, t) -> Dictionary:
 		text = "If you ask me, %s is the one." % t.name
 	if level >= 0.45:
 		text += (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else " Something's off about them."
-	if n.npc_trust.get(t.id, 0.5) > 0.7 and not (n.is_evil() and t.id == w.evil_plan["scapegoat"]):
+	var close = n.npc_trust.get(t.id, 0.5) > 0.7 and not (n.is_evil() and t.id == w.evil_plan["scapegoat"])
+	if close and not Dialogue.has_voice(n.id):
 		text += " We're close, mind."
 	w.dlog.think(n.id, "lie" if lie else "opinion", "%s opinion of %s: level %.2f, reason: %s." %
 		["Evil cover" if lie else ("Evil (mimicking the town)" if n.is_evil() else "Honest"), t.id, level, why if why != "" else "vibes"])
 	level = shown
-	lines.append(say(n, text))
+	lines.append(voiced(n, "friend", text, "opinion:" + t.id, {"close": close, "subject": t.name}))
 	if level >= 0.5:
 		facts.append({"kind": "opinion", "subject": [t.id], "source": n.id, "text": "%s distrusts %s." % [n.name, t.name]})
 	return {"lines": lines, "facts": facts}

@@ -79,6 +79,7 @@ var known_claims = {}        # npc id -> {role, readings: [entries], via}
 var known_secrets = {}       # owner id -> who told them (owner id if confided directly)
 var player_cases: Array = [] # cards the player used to make a case to them
 var told_to = {}             # "listener|key" -> true: what they've already told whom
+var dialogue_memory = {}     # presentation only: delivered statements / variant counts per audience
 var secret_spread_by_npc = false   # someone other than the player spread their secret
 ## Effects of the player's arguments (stage 3).
 var protect_pref = {}        # id -> how strongly they've been persuaded to protect/keep them
