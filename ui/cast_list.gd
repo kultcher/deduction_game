@@ -95,6 +95,8 @@ func _claimed(n) -> String:
 
 func _sub_line(n) -> String:
 	if not n.alive:
+		if n.death_cause == "martyr":
+			return "died in another's place, day %d" % n.death_day
 		return "killed, night %d" % n.death_day if n.death_cause == "demon" else "executed, day %d" % n.death_day
 	var parts: Array = []
 	if n.claim_public:

@@ -19,6 +19,7 @@ var g
 var out: RichTextLabel
 var input: LineEdit
 var seed_box: SpinBox
+var size_opt: OptionButton
 var side: VBoxContainer
 var side_filter: LineEdit
 var side_list
@@ -98,6 +99,13 @@ func _ready() -> void:
 	seed_box.max_value = 999999
 	seed_box.value = randi() % 100000
 	top.add_child(seed_box)
+	size_opt = OptionButton.new()
+	size_opt.add_item("7 townsfolk")
+	size_opt.set_item_metadata(0, 7)
+	size_opt.add_item("10 townsfolk")
+	size_opt.set_item_metadata(1, 10)
+	size_opt.tooltip_text = "Town size for the next case: 7 (one minion) or 10 (two minions)."
+	top.add_child(size_opt)
 	_button(top, "New case", _new_case)
 	var more = MenuButton.new()
 	more.text = "More ▾"
@@ -310,7 +318,7 @@ func _new_case() -> void:
 	g = Game.new()
 	out.clear()
 	_build_colour_rules()
-	_print(g.new_case(int(seed_box.value)))
+	_print(g.new_case(int(seed_box.value), int(size_opt.get_item_metadata(size_opt.selected))))
 	case_view.set_game(g)
 	profile.setup(g, case_state)
 	cast_list.setup(g)
@@ -350,7 +358,7 @@ func _open_roles() -> void:
 	for ch in roles_box.get_children():
 		ch.queue_free()
 	var ink = UITheme.color("ink")
-	for group in [["Gifts of the town", C.GOOD_ROLES], ["The demon's side", ["demon", "poisoner"]]]:
+	for group in [["Gifts of the town", C.GOOD_ROLES], ["The demon's side (the demon and %d of the minions)" % g.w.minion_ids.size(), C.EVIL_ROLES], ["Secrets (one in play, on top of a gift)", C.SECRET_MOD_LIST]]:
 		var h = Label.new()
 		h.text = group[0]
 		h.add_theme_font_size_override("font_size", 19)
@@ -361,7 +369,8 @@ func _open_roles() -> void:
 			row.add_theme_constant_override("separation", 10)
 			roles_box.add_child(row)
 			var ic = TextureRect.new()
-			ic.texture = UITheme.tex("ui/roles/" + r, 0.12)
+			var rt = UITheme.tex("ui/roles/" + r, 0.12)
+			ic.texture = rt if rt != null else UITheme.tex("ui/roles/unknown", 0.12)  # icons for new gifts still to come
 			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			ic.custom_minimum_size = Vector2(40, 40)
@@ -375,7 +384,7 @@ func _open_roles() -> void:
 			nm.add_theme_color_override("font_color", ink)
 			col.add_child(nm)
 			var d = Label.new()
-			d.text = C.ROLES[r]["desc"]
+			d.text = C.ROLES[r]["desc"] if C.ROLES.has(r) else C.SECRET_MODS[r]["desc"]
 			d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			d.add_theme_font_size_override("font_size", 15)
 			d.add_theme_color_override("font_color", UITheme.color("ink_soft"))

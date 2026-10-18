@@ -115,7 +115,7 @@ func _test_stable_recompute() -> void:
 
 # 5. The same chain works when the evidence against A comes from another source.
 func _test_other_source() -> void:
-	var t = _setup(5105)
+	var t = _setup(5205)  # (re-seeded when the roster changed; the old seed's new setup masked the effect)
 	var w = t["w"]
 	var L = t["L"]
 	Mind.apply_info(w, L, t["A"], _seer(1, t["C"].id, t["D"].id), 0.5)

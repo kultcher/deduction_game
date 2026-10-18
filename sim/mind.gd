@@ -10,6 +10,7 @@ extends RefCounted
 
 const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
+const Gifts = preload("res://sim/gifts.gd")
 
 # ---------------------------------------------------------------- utilities
 
@@ -25,17 +26,7 @@ static func paranoia(w, n) -> float:
 	return 0.07 * dead * (1.0 - 0.6 * trait_of(n, "composure"))
 
 static func implicated(e: Dictionary) -> Array:
-	var d: Dictionary = e["data"]
-	match e["role"]:
-		"seer":
-			return d["pair"] if d["yes"] else []
-		"hearthwitch":
-			return d["nbrs"] if d["count"] > 0 else []
-		"archivist":
-			return d["pair"]
-		"nightwatch":
-			return d["seen"]
-	return []
+	return Gifts.implicated(e)
 
 static func sigmoid(x: float) -> float:
 	return 1.0 / (1.0 + exp(-x))
@@ -475,8 +466,8 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 	var src_bare: String = "I" if own else source.name
 	var tag = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
 	match r:
-		"hearthwitch":
-			var nbrs: Array = d["nbrs"]
+		"hearthwitch", "dowser":
+			var nbrs: Array = Gifts.group_of(d)
 			var count: int = d["count"]
 			var others: Array = nbrs.filter(func(i): return i != listener.id and not known_good(w, i))
 			var excluded = nbrs.size() - others.size()
@@ -491,8 +482,8 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 					_eff(effs, source.id, 0.5, tag + ": hearthwitch count impossible from my view",
 						"%s reading about the lane can't be right" % src_name)
 				for i in others:
-					_eff(effs, i, per, tag + ": hearthwitch count %d" % count,
-						"%s reading pointed at their neighbours" % src_name, not own)
+					_eff(effs, i, per, tag + ": %s count %d" % [r, count],
+						"%s reading pointed at %s" % [src_name, "their neighbours" if r == "hearthwitch" else "that crowd"], not own)
 		"seer":
 			var pair: Array = d["pair"]
 			var others: Array = pair.filter(func(i): return i != listener.id and not known_good(w, i))
@@ -527,7 +518,51 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 			var per = 0.35 if others.size() > 1 else 0.75
 			for i in others:
 				_eff(effs, i, per, tag + ": archivist pair",
-					"%s records tie them to the Poisoner" % src_name, not own)
+					"%s records tie them to the %s" % [src_name, C.role_name(d.get("role", "poisoner"))], not own)
+		"rumormonger":
+			# Secret-holders are good, so "one of these two carries a secret" speaks for both a little.
+			for i in d["pair"]:
+				if i != listener.id:
+					_eff(effs, i, -0.12, tag + ": rumormonger pair probably good", "", not own)
+		"martyr":
+			if d.get("chosen", false) and d["target"] != listener.id:
+				_eff(effs, d["target"], -0.2, tag + ": the Martyr would die for them", "", not own)
+			elif d.get("evil", false) and d["target"] != listener.id:
+				_eff(effs, d["target"], 1.0, tag + ": hanged and the Martyr lived: evil", "", false)
+		"veteran":
+			# The demon came by way of that block: a little toward those who live there.
+			for m in w.living():
+				if m != listener and m != source and m.home_block == d.get("block", "") and not known_good(w, m.id):
+					_eff(effs, m.id, 0.12, tag + ": the demon came by way of their block",
+						"the demon came by way of %s, where they live" % C.block_name(d["block"]), not own)
+		"psychologist":
+			# Close to someone I suspect: a little rubs off. The reading itself says nothing of good or evil.
+			var subj: String = d.get("subject", "")
+			var tr: String = d.get("trusts", "")
+			if subj != listener.id and tr != listener.id and tr != "" and susp(listener, subj) > 0.5:
+				_eff(effs, tr, 0.1, tag + ": %s, whom I suspect, trusts them most" % subj,
+					"%s, whom I suspect, trusts them most" % (w.by_id[subj].name if w.by_id.has(subj) else subj), not own)
+			if tr != listener.id and subj != listener.id and tr != "" and susp(listener, tr) > 0.5:
+				_eff(effs, subj, 0.1, tag + ": trusts %s, whom I suspect" % tr, "", not own)
+		"medium":
+			# What the dead knew, at a remove: weaker than hearing it from them.
+			var it: Dictionary = d.get("item", {})
+			var dead: String = d.get("dead", "")
+			match it.get("type", ""):
+				"reading":
+					var inner: Dictionary = it["entry"]
+					var dn = w.by_id.get(dead)
+					if dn != null:
+						for ef in _info_effects(w, listener, dn, inner, weight, false):
+							ef[1] = ef[1] * 0.6
+							effs.append(ef)
+				"sighting":
+					if it["who"] != listener.id:
+						_eff(effs, it["who"], 0.25, tag + ": the dead %s saw them out at night" % dead,
+							"the dead saw them out at night", not own)
+				"suspicion":
+					if it["about"] != listener.id:
+						_eff(effs, it["about"], 0.12, tag + ": the dead %s distrusted them" % dead, "", not own)
 		"clerk":
 			var pair: Array = d["pair"]
 			if listener.id in pair and d["role"] == listener.role and not own:
@@ -626,6 +661,8 @@ static func meeting_testimony(w) -> Array:
 	for n in speakers:
 		var lines: Array = []
 		var facts: Array = []
+		if n.silenced:
+			continue  # the Breathstealer took their voice
 		if not n.claim_public:
 			var claim = _public_claim_decision(w, n)
 			if claim != "":
@@ -639,9 +676,9 @@ static func meeting_testimony(w) -> Array:
 				for l in w.living():
 					if l != n:
 						hear_claim(w, l, n.id, claim, 0.5, "public")
-		if n.claim_public and n.claimed_role in C.INFO_ROLES:
+		if n.claim_public and C.has_readings(n.claimed_role):
 			for e in n.info_log:
-				if e["shared"]:
+				if e["shared"] or e.get("disowned", false):
 					continue
 				e["shared"] = true
 				w.public_event("reading", implicated(e), n.id)
@@ -671,10 +708,12 @@ static func _public_claim_decision(w, n) -> String:
 		parts["hides_from_demon"] = -0.5
 	# Gifts that pay off night after night are worth protecting early; one-shot first-night
 	# gifts have less to lose by coming out.
-	if role in ["seer", "hearthwitch", "nightwatch"] and w.day <= 2:
+	if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"] and w.day <= 2:
 		parts["gift_keeps_giving"] = -0.4
-	elif role in ["clerk", "archivist"]:
+	elif role in C.START_ROLES:
 		parts["one_shot_gift"] = 0.3
+	elif role == "martyr" and not n.is_evil() and n.martyr_target != "":
+		parts["martyr_chosen"] = 0.4  # coming out as the Martyr protects their choice by deterrence
 	if w.living().size() <= 4:
 		parts["few_left"] = 0.8
 	var why = ("Evil cover: publicly claim bluff %s?" % role) if n.is_evil() else ("Publicly reveal true role %s?" % role)
@@ -696,20 +735,22 @@ static func _claim_line(n, role: String) -> Dictionary:
 
 static func info_line(w, n, e: Dictionary) -> Dictionary:
 	var when = "On the first night" if e["day"] == 0 else "Last night" if e["day"] == w.day - 1 else "On night %d" % e["day"]
+	if e.has("phase"):
+		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
 	return say(n, "%s, %s." % [when, e["text"]])
 
 static func info_fact(w, n, e: Dictionary) -> Dictionary:
-	var subj: Array = []
+	var subj: Array = Gifts.subjects(e)
 	var d: Dictionary = e["data"]
-	for k in ["nbrs", "pair", "seen"]:
-		if d.has(k):
-			subj += d[k]
-	if d.has("executed"):
-		subj.append(d["executed"])
-	return {"kind": "info", "subject": subj, "source": n.id, "day": e["day"], "role": e["role"], "data": d.duplicate(),
-		"text": "%s (as %s, night %d): %s." % [n.name, C.role_name(e["role"]), e["day"], e["text"]]}
+	var f = {"kind": "info", "subject": subj, "source": n.id, "day": e["day"], "role": e["role"], "data": d.duplicate(),
+		"text": "%s (as %s, %s %d): %s." % [n.name, C.role_name(e["role"]), "day" if e.has("phase") else "night", e["day"], e["text"]]}
+	if e.has("phase"):
+		f["phase"] = e["phase"]
+	return f
 
 static func _public_accusation(w, n):
+	if n.silenced:
+		return null
 	var t = null
 	var s2 = 0.0
 	var why = ""
@@ -811,7 +852,7 @@ static func next_nomination(w):
 	var cands: Array = []
 	var block: String = m["block"]
 	for n in w.living():
-		if n.id in m["nominators"]:
+		if n.id in m["nominators"] or n.silenced:
 			continue
 		if n.is_evil():
 			var ev = Evil.evil_nomination(w, n)
@@ -844,6 +885,8 @@ static func next_nomination(w):
 	return c
 
 static func defence_line(w, n) -> Dictionary:
+	if n.silenced:
+		return {"speaker": n.id, "name": n.name, "text": "...", "silent": true}
 	var c = trait_of(n, "confidence")
 	if c > 0.66:
 		return say(n, "This is madness, and you all know it.")
@@ -1071,7 +1114,7 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 	if first_time:
 		set_trust(w, n, n.trust + 0.03, "shared their gift with the Demonologist")
 	n.max_tier = maxi(n.max_tier, 3)
-	if not (role in C.INFO_ROLES):
+	if not C.has_readings(role):
 		lines.append(say(n, "My gift doesn't tell me things. It only does what it does."))
 		n.max_tier = maxi(n.max_tier, tier)
 		return {"lines": lines, "facts": facts}
@@ -1079,6 +1122,8 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 	var readings: Array = []
 	for i in range(n.info_log.size()):
 		var e: Dictionary = n.info_log[i]
+		if e.get("disowned", false):
+			continue
 		if e["shared"] or i < n.told_readings or tier >= 4 and not withholding:
 			readings.append(e)
 	if tier >= 4 and not withholding:
@@ -1119,6 +1164,9 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	var nd: int = w.day - 1 if night < 0 else night
 	var where: String = n.history.get(w.time_key(nd, C.NIGHT), "home:" + n.home_block)
 	var was_out = where.begins_with("night:")
+	if n.secret_mod == "sleepwalker" and was_out:
+		w.dlog.think(n.id, "unaware", "Sleepwalker: was out on %s on night %d but honestly believes they slept at home." % [where, nd])
+		was_out = false  # they truly don't know
 	var block = where.substr(where.find(":") + 1)
 	# Where they say they were: what their sightings must be told from. "" = not saying.
 	var vantage = ""
@@ -1141,6 +1189,16 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(block)))
 		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
 			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(block), nd]})
+	elif n.claimed_role in ["lamplighter", "medium"] and (n.claim_public or n.max_tier >= 3) and (n.role == n.claimed_role or n.is_evil()):
+		if n.is_evil():
+			block = block if was_out else n.home_block
+			w.dlog.think(n.id, "lie", "Evil bluffing %s: claims their gift took them out on night %d." % [n.claimed_role, nd], {"lie": true})
+		vantage = block
+		how = "street"
+		var duty = "Walking the lamp route, as I do every night." if n.claimed_role == "lamplighter" else "Sitting at the hearth of the dead, as my gift asks."
+		lines.append(say(n, duty))
+		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "duty_claim": n.role,
+			"text": "%s says they were out on %s on night %d (%s)." % [n.name, C.block_name(block), nd, "the lamp route" if n.claimed_role == "lamplighter" else "visiting the dead"]})
 	elif n.claimed_role == "warden" and (n.claim_public or n.max_tier >= 3) and (n.role == "warden" or n.is_evil()):
 		# An open Warden says whose door they guarded; an evil one bluffing it invents a door
 		# on the block they were really on (or anyone, if they stayed in).
@@ -1164,7 +1222,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			vantage = n.home_block
 	else:
 		# Out with something to hide: evil work, a personal secret, or a hidden Night Watch gift.
-		var hiding = "evil work" if n.is_evil() else ("hidden Night Watch gift" if n.role == "nightwatch" else "hidden Warden gift" if n.role == "warden" else "secret: %s" % n.secret.get("kind", "?"))
+		var hiding = "evil work" if n.is_evil() else ("hidden %s gift" % C.role_name(n.role) if C.ROLES[n.role].get("night_walk", false) and n.secret.is_empty() else "secret: %s" % n.secret.get("kind", "?"))
 		var can_confess = not n.is_evil() and not n.secret.is_empty()
 		var confess = false
 		if can_confess:
@@ -1395,6 +1453,8 @@ static func card_strength(w, card: Dictionary, suspect) -> float:
 					return 1.0 if suspect.id in d.get("seen", []) else 0.0
 				"gravedigger":
 					return 0.3
+			if suspect.id in Gifts.implicated(card):
+				return 0.6
 			return 0.0
 		"trace":
 			return 0.7
@@ -1482,6 +1542,8 @@ static func defend_strength(card: Dictionary, nominee: String) -> float:
 					return 0.5
 				"nightwatch":
 					return 0.0
+			if nominee in Gifts.clears(card):
+				return 0.5
 		"claim":
 			return 0.2
 		"death":

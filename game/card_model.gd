@@ -12,6 +12,8 @@
 ##                     with two disclosures).
 extends RefCounted
 
+const Gifts = preload("res://sim/gifts.gd")
+
 const C = preload("res://sim/content.gd")
 
 ## Board views. "theory" (your deductions) lives in the tray and can be pinned to any view.
@@ -20,11 +22,11 @@ const VIEW_NAMES = {"places": "Places & sightings", "statements": "Statements", 
 
 ## Kinds the filter menus offer in each view.
 const VIEW_KINDS = {
-	"places": ["sighting", "conversation", "vigil", "alibi", "trace", "dropped"],
+	"places": ["sighting", "conversation", "vigil", "alibi", "trace", "dropped", "totem"],
 	"statements": ["info", "claim", "hint", "refusal", "opinion", "accusation", "secret", "case"],
-	"process": ["vote", "execution", "death", "quiet"],
-	"all": ["sighting", "conversation", "vigil", "alibi", "trace", "dropped", "info", "claim", "hint", "refusal",
-		"opinion", "accusation", "secret", "vote", "execution", "death", "quiet", "deduction"],
+	"process": ["vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell"],
+	"all": ["sighting", "conversation", "vigil", "alibi", "trace", "dropped", "totem", "info", "claim", "hint", "refusal",
+		"opinion", "accusation", "secret", "vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell", "deduction"],
 }
 
 ## Facts that can reach you more than once (told privately, then publicly; relayed by
@@ -45,7 +47,7 @@ static func when(card: Dictionary, learned_day: int, learned_phase: int) -> Dict
 	var k: String = card.get("kind", "")
 	if k == "death":
 		return {"day": card.get("night", card.get("day", learned_day) - 1), "phase": C.NIGHT}
-	if k in ["info", "quiet"]:
+	if k in ["info", "quiet"] and not (k == "info" and card.has("phase")):
 		return {"day": card.get("night", card.get("day", learned_day)), "phase": C.NIGHT}
 	if card.has("phase") and card.get("phase", -1) >= 0 and card.has("day"):
 		return {"day": card["day"], "phase": card["phase"]}
@@ -97,13 +99,17 @@ static func place_markers(card: Dictionary, learned_day: int = -1, learned_phase
 			out.append({"who": who2, "block": card.get("block", ""), "loc": "home_" + who2, "time": t, "mark": "solid" if firsthand else "hollow", "home": true})
 		"vigil":
 			out.append({"who": "", "block": card.get("block", ""), "loc": "", "time": t, "mark": "solid"})
-		"trace", "dropped":
+		"trace", "dropped", "totem":
 			out.append({"who": "", "block": card.get("block", ""), "loc": card.get("loc", ""), "time": t, "mark": "trace"})
 		"info":
 			var d: Dictionary = card.get("data", {})
 			if card.get("role", "") == "nightwatch" and d.has("block"):
 				for who3 in d.get("seen", []):
 					out.append({"who": who3, "block": d["block"], "loc": "", "time": t, "mark": "ability"})
+			elif card.get("role", "") == "dowser" and d.has("block"):
+				# The Dowser names who stood on that block with them.
+				for who4 in d.get("group", []) + [src]:
+					out.append({"who": who4, "block": d["block"], "loc": "", "time": t, "mark": "ability"})
 	return out
 
 ## The rows a card appears on in a view (row ids: person ids, or block ids in Places
@@ -137,20 +143,7 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 	var src: String = nm.call(card.get("source", ""))
 	match k:
 		"info":
-			var d: Dictionary = card.get("data", {})
-			match card.get("role", ""):
-				"seer":
-					return "%s Seer: %s → %s" % [src, " / ".join(PackedStringArray(d.get("pair", []).map(nm))), "YES" if d.get("yes", false) else "no"]
-				"hearthwitch":
-					return "%s Hearthwitch: %d evil of %s" % [src, d.get("count", 0), " / ".join(PackedStringArray(d.get("nbrs", []).map(nm)))]
-				"nightwatch":
-					return "%s Watch %s: %s" % [src, C.block_name(d.get("block", "")), ", ".join(PackedStringArray(d.get("seen", []).map(nm))) if not d.get("seen", []).is_empty() else "nobody"]
-				"archivist":
-					return "%s Archivist: Poisoner in %s" % [src, " / ".join(PackedStringArray(d.get("pair", []).map(nm)))]
-				"clerk":
-					return "%s Clerk: %s in %s" % [src, C.role_name(d.get("role", "")), " / ".join(PackedStringArray(d.get("pair", []).map(nm)))]
-				"gravedigger":
-					return "%s Gravedigger: %s was %s" % [src, nm.call(d.get("executed", "")), C.role_name(d.get("role", ""))]
+			return Gifts.short_text(card.get("role", ""), card.get("data", {}), src, nm)
 		"claim":
 			return "%s claims %s" % [src, C.role_name(card.get("role", ""))]
 		"vote":

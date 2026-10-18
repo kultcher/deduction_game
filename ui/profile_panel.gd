@@ -100,7 +100,7 @@ func build() -> void:
 	grow.add_child(gl)
 	guess_opt = OptionButton.new()
 	guess_opt.add_theme_font_size_override("font_size", 15)
-	for x in ["?", "good", "evil"] + C.GOOD_ROLES + ["demon", "poisoner"]:
+	for x in ["?", "good", "evil"] + C.GOOD_ROLES + C.EVIL_ROLES:
 		guess_opt.add_item((x if not C.ROLES.has(x) else C.role_name(x)) + ("" if x == "?" else " ?"))
 		guess_opt.set_item_metadata(guess_opt.item_count - 1, x)
 	guess_opt.tooltip_text = "Your private theory about this person. Nobody else sees it."

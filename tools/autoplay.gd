@@ -250,7 +250,7 @@ func _decide() -> String:
 			var here: Array = w.npcs_at(g.loc)
 			if w.scenes.has(g.loc) and not w.scenes[g.loc]["searched"]:
 				return "search"
-			var fresh: Array = here.filter(func(n): return n.busy_with == "" and talked.get(n.id, -1) != w.day)
+			var fresh: Array = here.filter(func(n): return n.busy_with == "" and not n.silenced and talked.get(n.id, -1) != w.day)
 			if fresh.is_empty() and not g.free_move_used:
 				for l in w.locations_on(w.loc_block(g.loc)):
 					if l != g.loc and not w.npcs_at(l).filter(func(n): return n.busy_with == "").is_empty():
@@ -268,6 +268,8 @@ func _decide() -> String:
 			return "wait"
 		"talk":
 			var n = g.talk_with
+			if n.silenced:
+				return "bye"
 			var asked: int = 3 - g.questions_left
 			if asked == 0:
 				return "ask gift"
@@ -291,7 +293,7 @@ func _decide() -> String:
 				if best_c > 0:
 					return "tell %s %d" % [ts[0].id, best_c]
 			if rng.randf() < 0.25:
-				return "ask about " + ["seer", "gravedigger", "archivist", "night watch", "hearthwitch"][rng.randi_range(0, 4)]
+				return "ask about " + C.role_name(C.GOOD_ROLES[rng.randi_range(0, C.GOOD_ROLES.size() - 1)]).to_lower()
 			var others: Array = w.living().filter(func(m): return m != n)
 			return "ask about " + others[rng.randi_range(0, others.size() - 1)].id
 		"meeting":

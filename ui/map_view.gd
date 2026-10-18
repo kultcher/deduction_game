@@ -113,9 +113,20 @@ func _home_rect(n) -> Rect2:
 	var i = residents.find(n)
 	var hs = minf(R.size.y * 0.2, 46.0)
 	var gap = hs * 0.35
-	var total = residents.size() * hs + (residents.size() - 1) * gap
+	# One row along the bottom; a crowded block (bigger towns) shrinks the cottages, then
+	# starts a second row above.
+	var per_row = maxi(1, int((R.size.x * 0.92 + gap) / (hs + gap)))
+	if residents.size() > per_row:
+		hs = minf(hs, (R.size.x * 0.92) / (residents.size() * 1.35))
+		gap = hs * 0.35
+		hs = maxf(hs, 30.0)
+		gap = hs * 0.35
+		per_row = maxi(1, int((R.size.x * 0.92 + gap) / (hs + gap)))
+	var row = i / per_row
+	var in_row = mini(per_row, residents.size() - row * per_row)
+	var total = in_row * hs + (in_row - 1) * gap
 	var x0 = R.position.x + (R.size.x - total) / 2.0
-	return Rect2(x0 + i * (hs + gap), R.position.y + R.size.y - hs - 8, hs, hs)
+	return Rect2(x0 + (i % per_row) * (hs + gap), R.position.y + R.size.y - hs - 8 - row * (hs + 4), hs, hs)
 
 func _block_center(b: String) -> Vector2:
 	return BLOCK_RECTS[b].get_center()

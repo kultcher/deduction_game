@@ -1,6 +1,18 @@
 ## Post-case analysis only. Never consulted by NPCs or the player's bot policy.
 extends RefCounted
 
+const C = preload("res://sim/content.gd")
+const Gifts = preload("res://sim/gifts.gd")
+
+## Everyone guessed as any minion role (the generic minion guess is any of them).
+static func minion_guesses(guesses: Dictionary) -> Array:
+	var ids: Array = []
+	for id in guesses:
+		if C.is_minion(guesses[id].get("guess", "")):
+			ids.append(id)
+	ids.sort()
+	return ids
+
 static func named_guesses(guesses: Dictionary, role: String) -> Array:
 	var ids: Array = []
 	for id in guesses:
@@ -44,13 +56,7 @@ static func demon_evidence(w, board: Array) -> Dictionary:
 static func _points_at(w, kind: String, role: String, data: Dictionary, subj: Array, phase: int, d: String) -> bool:
 	match kind:
 		"info":
-			match role:
-				"seer":
-					return data.get("yes", false) and d in data.get("pair", [])
-				"nightwatch":
-					return d in data.get("seen", [])
-				"hearthwitch":
-					return data.get("count", 0) > 0 and d in data.get("nbrs", [])
+			return d in Gifts.implicated({"role": role, "data": data})
 		"sighting", "vigil":
 			return phase == 3 and d in subj
 	return false
@@ -88,10 +94,12 @@ static func night_stats(w) -> Dictionary:
 static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = []) -> Dictionary:
 	var guesses: Dictionary = snapshot.get("guesses", {})
 	var demon_guesses = named_guesses(guesses, "demon")
-	var minion_guesses = named_guesses(guesses, "poisoner")
+	var m_guesses = minion_guesses(guesses)
 	var eligible = not spoiled and not snapshot.is_empty()
 	var demon_correct = eligible and demon_guesses == [w.demon_id]
-	var minion_correct = eligible and minion_guesses == [w.minion_id]
+	var true_minions: Array = w.minion_ids.duplicate()
+	true_minions.sort()
+	var minion_correct = eligible and m_guesses == true_minions
 	var goods = w.npcs.filter(func(n): return not n.is_evil())
 	var survivors = w.living_good().size()
 	var executions: Array = []
@@ -144,7 +152,7 @@ static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = [])
 		"demon_evidence_on_board": ev["on_board"], "demon_evidence_reachable": ev["reachable"], "nights": night_stats(w), "complete": w.game_over, "winner": w.winner,
 		"day": w.day, "reason": w.end_reason, "outcome": outcome, "town_saved": saved,
 		"prediction_eligible": eligible, "prediction_spoiled": spoiled, "prediction": snapshot.duplicate(true),
-		"demon_guesses": demon_guesses, "minion_guesses": minion_guesses,
+		"demon_guesses": demon_guesses, "minion_guesses": m_guesses,
 		"demon_identified": demon_correct, "minion_identified": minion_correct,
 		"both_identified": demon_correct and minion_correct, "identified_but_lost": demon_correct and w.game_over and not saved,
 		"good_initial": goods.size(), "good_surviving": survivors,

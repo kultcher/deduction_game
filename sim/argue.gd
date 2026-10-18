@@ -271,7 +271,7 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 			var other: String = pair[0] if pair[1] == b["who"] else pair[1]
 			if killed.has(other) or other == b["who"]:
 				return null
-			var what = "the demon" if a["role"] == "seer" else "the Poisoner"
+			var what = "the demon" if a["role"] == "seer" else "the " + C.role_name(d.get("role", "poisoner"))
 			var expls: Array = [_accuse(w, other, "demon" if a["role"] == "seer" else "evil", "%s is %s" % [_nm(w, other), what])]
 			if a["role"] == "seer":
 				expls.append(_clear(w, other, {"type": "good"}, "%s is the one who reads falsely as the demon (and is good)" % _nm(w, other)))

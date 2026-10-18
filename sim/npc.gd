@@ -34,6 +34,23 @@ var history = {}         # "d:p" -> location id (or "home:<block>" / "night:<blo
 var friends: Array = []  # seeds for npc_trust
 var rivals: Array = []
 var secret = {}          # personal reason to be out at night (good NPCs only), may be empty
+var secret_mod = ""      # secret modifier on top of their gift: delusional | marked | lovers | sleepwalker
+var lover = ""           # Secret Lovers: the other lover's id
+
+## Gift state.
+var vet_used = false         # Veteran: survived their one attack
+var martyr_target = ""       # Martyr: whom they chose ("" = not yet)
+var gift_used = false        # one-shot gifts spent (Sexton's knell)
+var medium_visited: Array = []   # Medium: the dead whose homes they've visited
+var talked_today: Array = []     # NPCs they talked with today (Psychologist picks from these)
+var dowsed_day = -1          # Dowser: day they last read a block
+var breath_day = -1          # Breathstealer: day they last silenced someone
+var breath_last = ""         # Breathstealer: whom they silenced last
+var silenced = false         # can't speak (from a meeting until the next evening)
+var silence_day = -1         # day the silence began (at that evening's meeting)
+var silence_pending = -1     # day they were chosen (takes hold at that evening's meeting)
+var turned = false           # turned evil by the Revenant's curse
+var turned_day = -1
 
 ## Suspicion of each other NPC id (0 = trusting, 1+ = convinced evil).
 var suspicion = {}
@@ -96,6 +113,10 @@ var intel = {}               # key -> {kind, about, score, why, day, from}
 
 ## Seer only: the good NPC who falsely reads as demon.
 var red_herring = ""
+
+## Their gift does nothing real tonight/today: poisoned, or Delusional.
+func gift_broken() -> bool:
+	return poisoned or secret_mod == "delusional"
 
 func is_evil() -> bool:
 	return alignment == "evil"

@@ -83,7 +83,7 @@ func _init() -> void:
 	_check(scene.actions.get_child_count() > 0 and "where will you go" in scene.action_title.text, "day panel offers actions before moving")
 	var t = null
 	for n in g.w.living():
-		if not n.at_home() and n.busy_with == "":
+		if not n.at_home() and n.busy_with == "" and g.can_see(n):
 			t = n
 			break
 	scene._on_map_clicked("npc", t.id)
@@ -231,6 +231,18 @@ func _init() -> void:
 			shown += 1
 	print("debug: %d of %d cards have an influence readout" % [shown, g.board.size()])
 	_check(shown > 0, "some cards show their influence")
+	# Town size: the selector beside the seed starts a 10-person case with two minions.
+	scene.debug_check.button_pressed = false
+	scene.size_opt.select(1)
+	scene._new_case()
+	await process_frame
+	print("size test: npcs %d, minions %d, selected %d" % [scene.g.w.npcs.size(), scene.g.w.minion_ids.size(), scene.size_opt.selected])
+	_check(scene.g.w.npcs.size() == 10 and scene.g.w.minion_ids.size() == 2, "the size selector starts a 10-person case")
+	scene._open_roles()
+	await process_frame
+	_check(scene.roles_box.get_child_count() >= C.GOOD_ROLES.size() + C.EVIL_ROLES.size() + C.SECRET_MOD_LIST.size() + 3, "the roles window lists the whole script and the secrets")
+	scene.roles_win.hide()
+	scene.size_opt.select(0)
 	print("UI OK")
 	quit(1 if fails > 0 else 0)
 

@@ -6,6 +6,7 @@
 extends RefCounted
 
 const C = preload("res://sim/content.gd")
+const Gifts = preload("res://sim/gifts.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 
@@ -19,25 +20,17 @@ static func _mark(s, l, key: String) -> void:
 	s.told_to[l.id + "|" + key] = true
 
 static func _implicated(e: Dictionary) -> Array:
-	var d: Dictionary = e["data"]
-	match e["role"]:
-		"seer":
-			return d["pair"] if d["yes"] else []
-		"hearthwitch":
-			return d["nbrs"] if d["count"] > 0 else []
-		"archivist":
-			return d["pair"]
-		"nightwatch":
-			return d["seen"]
-	return []
+	return Gifts.implicated(e)
 
 # ---------------------------------------------------------------- news (drives who seeks whom out)
 
 ## Does this NPC have something they'd want to tell someone today?
 static func has_news(w, n) -> bool:
 	if n.is_evil():
-		var mate = w.minion() if n.id == w.demon_id else w.demon()
-		return mate.alive and Evil.unshared_intel(n, mate) > 0
+		for mate in Evil.mates(w, n):
+			if Evil.unshared_intel(n, mate) > 0:
+				return true
+		return false
 	for e in n.info_log:
 		if not e["shared"]:
 			return true
@@ -61,6 +54,8 @@ static func news_bonus(w, a, b) -> float:
 # ---------------------------------------------------------------- NPC-to-NPC exchanges
 
 static func converse(w, a, b, when: String) -> void:
+	if a.silenced or b.silenced:
+		return  # one of them can't speak
 	if a.is_evil() and b.is_evil():
 		Evil.share_intel(w, a, b, "meeting (%s)" % when)
 		return
@@ -229,14 +224,15 @@ static func _describe(w, s, item: Dictionary) -> String:
 
 ## Evil members in the same crowded tavern can pass word unobserved (slow, partial).
 static func tavern_whispers(w) -> void:
-	var d = w.demon()
-	var m = w.minion()
-	if not d.alive or not m.alive or d.loc != "tavern" or m.loc != "tavern" or d.busy_with != "" or m.busy_with != "":
+	if w.npcs_at("tavern").size() < 4:
 		return
-	if w.npcs_at("tavern").size() < 4 or Evil.unshared_intel(d, m) + Evil.unshared_intel(m, d) == 0:
-		return
-	if w.chance(0.5):
-		Evil.share_intel(w, d, m, "whisper in the crowded tavern")
+	var here: Array = w.evil_team().filter(func(x): return x.loc == "tavern" and x.busy_with == "")
+	for i in range(here.size()):
+		for j in range(i + 1, here.size()):
+			var d = here[i]
+			var m = here[j]
+			if Evil.unshared_intel(d, m) + Evil.unshared_intel(m, d) > 0 and w.chance(0.5):
+				Evil.share_intel(w, d, m, "whisper in the crowded tavern")
 
 # ---------------------------------------------------------------- paranoia
 

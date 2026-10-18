@@ -121,7 +121,7 @@ func _seats() -> Array:
 	return g.w.seats()  # nobody dies mid-meeting, so the ring holds still through a count
 
 func _center() -> Vector2:
-	return Vector2(size.x / 2.0, size.y * 0.55)
+	return Vector2(size.x / 2.0, size.y * 0.52)
 
 func _radii() -> Vector2:
 	return Vector2(size.x * 0.4, size.y * 0.31)
@@ -170,7 +170,7 @@ func _draw() -> void:
 		var id: String = seats[i]
 		order.append({"i": i, "id": id, "pos": _seat_pos(i, n, _offset.get(id, 0.0) * (0.45 if id == "player" else 1.0))})
 	order.sort_custom(func(x, y): return x["pos"].y < y["pos"].y)
-	var h = clampf(size.y * 0.22, 60.0, 150.0)
+	var h = clampf(size.y * 0.22, 60.0, 150.0) * minf(1.0, 8.0 / float(n))  # a bigger ring stands closer
 	for e in order:
 		_draw_person(e["id"], e["pos"], h, e["id"] == nominee, e["id"] == nominator)
 	# The nominee in the middle.
@@ -320,14 +320,13 @@ func _draw_tally() -> void:
 		lines.append("On the block: %s (%d)" % [g.w.by_id[blk].name, m.get("block_count", 0)])
 	elif m.get("block_count", 0) > 0:
 		lines.append("Block empty after a tie at %d" % m["block_count"])
-	var y = size.y - 12.0 - lines.size() * (fs * 1.7 + 6)
-	for ln in lines:
-		var w = _font.get_string_size(ln, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 24
-		var r = Rect2(12, y, w, fs * 1.7)
-		draw_rect(r, Color(0.07, 0.09, 0.14, 0.82))
-		draw_rect(r, UITheme.color("border").darkened(0.2), false, 1.0)
-		draw_string(_font, Vector2(r.position.x + 12, r.position.y + fs * 1.2), ln, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UITheme.color("accent"))
-		y += fs * 1.7 + 6
+	# One strip along the bottom edge, clear of the ring.
+	var txt = "   ·   ".join(PackedStringArray(lines.filter(func(x): return x != "")))
+	var tw = _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 28
+	var r = Rect2((size.x - tw) / 2.0, size.y - fs * 1.7 - 6, tw, fs * 1.7)
+	draw_rect(r, Color(0.07, 0.09, 0.14, 0.85))
+	draw_rect(r, UITheme.color("border").darkened(0.2), false, 1.0)
+	draw_string(_font, Vector2(r.position.x + 14, r.position.y + fs * 1.2), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UITheme.color("accent"))
 
 # ---------------------------------------------------------------- input
 

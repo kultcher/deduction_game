@@ -324,7 +324,7 @@ func _dispatch(text: String) -> void:
 		"theory":
 			_screen(theory_status())
 			if not w.game_over:
-				_prompt("Record privately with 'guess <name> demon [1-3]' and 'guess <name> poisoner [1-3]', or use a profile's Your guess. This costs no time and gives no correctness feedback.")
+				_prompt("Record privately with 'guess <name> demon [1-3]' and 'guess <name> <minion gift> [1-3]', or use a profile's Your guess. This costs no time and gives no correctness feedback.")
 			return
 		"profile", "p":
 			_screen(_profile(rest))
@@ -591,10 +591,22 @@ func _search() -> void:
 	if l.begins_with("home_"):
 		_narr("You can't search someone's home from their doorstep.")
 		return
+	var tt: Dictionary = w.find_totem(l)
+	if not tt.is_empty():
+		var mat: String = C.BLOCKS[tt["material"]]["trace"]
+		_narr("Wedged out of sight at %s you find a crude totem of bone and twine, caked with %s. It reeks of the grave. You burn it." % [w.loc_name(l), mat])
+		_facts([{"kind": "totem", "subject": [], "block": tt["material"], "loc": l, "source": "evidence", "day": w.day, "phase": w.phase,
+			"text": "A Revenant's totem, hidden at %s and found on day %d, caked with %s (from %s)." % [w.loc_name(l), w.day, mat, C.block_name(tt["material"])]}])
+		if tt.get("freed", "") != "":
+			_narr("As it burns, you feel the curse on the town lift. Whoever it turned is themselves again.")
+			_facts([{"kind": "curse_lifted", "subject": [], "source": "player", "day": w.day, "phase": w.phase,
+				"text": "Day %d: the totem burned and the Revenant's curse lifted. The turned soul is good again." % w.day}])
 	var items: Array = w.dropped.get(l, [])
 	if items.is_empty():
-		w.dlog.add("player_search", "player", "", {"loc": l}, "Nothing dropped here.")
-		_narr("You search %s carefully. Nothing out of place." % w.loc_name(l))
+		if tt.is_empty():
+			w.dlog.add("player_search", "player", "", {"loc": l}, "Nothing dropped here.")
+		if tt.is_empty():
+			_narr("You search %s carefully. Nothing out of place." % w.loc_name(l))
 		return
 	w.dropped.erase(l)
 	var blk: String = w.loc_block(l)
@@ -677,6 +689,9 @@ func _phase_header() -> void:
 func _talk_command(verb: String, rest: String) -> void:
 	var n = talk_with
 	var r = {}
+	if n.silenced and verb in ["ask", "a", "tell", "t", "present", "accuse", "show", "press"]:
+		_narr("%s opens their mouth, but no sound comes. They can't speak (until tomorrow evening)." % n.name)
+		return
 	match verb:
 		"ask", "a":
 			var p = rest.split(" ", false)
@@ -828,6 +843,11 @@ func _start_meeting() -> void:
 	presented_today = false
 	_hdr("Day %d: the town meeting" % w.day)
 	var testimony: Array = w.begin_meeting()
+	for sid in w.meeting.get("silenced", []):
+		var sn = w.by_id[sid]
+		_narr("%s rises to speak, but no sound comes. Their voice has been stolen; they can still vote." % sn.name)
+		_facts([{"kind": "silenced", "subject": [sid], "source": "player", "day": w.day, "phase": C.EVENING,
+			"text": "Day %d: %s could not speak at the meeting (silenced; can still vote)." % [w.day, sn.name]}])
 	if testimony.is_empty():
 		_narr("Nobody has much to say tonight.")
 	for t in testimony:
@@ -994,10 +1014,20 @@ func _close_meeting() -> void:
 			"known_cards": board.filter(func(c): return not c.get("deleted", false)).map(func(c): return c["n"])},
 			"Evidence and private theory available before execution; no automatic judgement of whether a mistake was reasonable.")
 	var ex = w.end_meeting()
-	if ex != "":
+	if ex != "" and w.meeting.has("martyr"):
+		var mt = w.by_id[w.meeting["martyr"]["martyr"]]
+		var sv = w.by_id[w.meeting["martyr"]["saved"]]
+		_narr("The meeting closes. As the noose tightens on %s, %s cries out and falls dead. %s is cut down alive: the Martyr has died in their place." % [sv.name, mt.name, sv.name])
+		_facts([{"kind": "martyr", "subject": [mt.id, sv.id], "source": "player", "day": w.day, "phase": C.EVENING,
+			"text": "Day %d: %s died in %s's place at the gallows. Both are proven good." % [w.day, mt.name, sv.name]}])
+	elif ex != "":
 		var n = w.by_id[ex]
 		_narr("The meeting closes. %s is hanged at dusk." % n.name)
 		_facts([{"kind": "execution", "subject": [ex], "source": "player", "day": w.day, "phase": C.EVENING, "text": "%s was executed on day %d." % [n.name, w.day]}])
+		if w.meeting.get("curse", false):
+			_narr("As %s swings, a cold wind moans through Hollowmere. A curse has taken one of those who voted to hang them: someone among you has turned." % n.name)
+			_facts([{"kind": "curse", "subject": [ex], "source": "player", "day": w.day, "phase": C.EVENING,
+				"text": "Day %d: as %s was hanged, a Revenant's curse turned one of those who voted for it. Find its totem to break the curse." % [w.day, n.name]}])
 	else:
 		_narr("The meeting closes with nobody on the block. Nobody is executed.")
 	if w.game_over:
@@ -1051,6 +1081,11 @@ func _resolve_night() -> void:
 	capture_prediction("before_night")
 	var vig: String = w.player_vigil
 	w.resolve_night()
+	for e in w.public_log:
+		if e["kind"] == "knell" and e["day"] == w.day:
+			_narr("At dusk the death knell tolls from the chapel. Doors are barred; nobody walks abroad tonight, or should.")
+			_facts([{"kind": "knell", "subject": [], "source": "player", "day": w.day, "phase": C.EVENING,
+				"text": "Night %d: the Sexton tolled the death knell (no gift that walks abroad should work)." % w.day}])
 	if vig != "":
 		if w.player_vigil_seen.is_empty():
 			_narr("Nobody moves through %s all night." % C.block_name(vig))
@@ -1097,7 +1132,7 @@ func _morning_report() -> void:
 func _intro() -> void:
 	_narr("THE DEMONOLOGIST  (case #%d)" % w.seed_value)
 	_narr("You arrive in the village of Hollowmere at dawn. A demon wears the skin of one of its people,")
-	_narr("and a Poisoner serves it. Find the host and see them hanged before the town falls.")
+	_narr("and %s serve%s it. Find the host and see them hanged before the town falls." % ["a minion" if w.minion_ids.size() == 1 else "%d minions" % w.minion_ids.size(), "s" if w.minion_ids.size() == 1 else ""])
 	_narr("")
 	_screen(_cast())
 	_narr("")
@@ -1208,7 +1243,7 @@ func _cast() -> String:
 	var out = PackedStringArray()
 	out.append("The townsfolk:")
 	for n in w.npcs:
-		var status = "" if n.alive else ("  [killed night %d]" % n.death_day if n.death_cause == "demon" else "  [executed day %d]" % n.death_day)
+		var status = "" if n.alive else "  [%s]" % _death_text(n)
 		var claim = ""
 		if n.claim_public:
 			claim = "  claims: %s" % C.role_name(n.claimed_role)
@@ -1229,7 +1264,7 @@ func _profile(token: String) -> String:
 	var out = PackedStringArray()
 	out.append("%s the %s: %s." % [n.name, n.occupation, n.blurb])
 	out.append("Works %s at %s; lives on %s.%s" % [C.phase_list(n.work_phases), w.loc_name(n.work), C.block_name(n.home_block),
-		"" if n.alive else (" Killed by the demon on night %d." % n.death_day if n.death_cause == "demon" else " Executed on day %d." % n.death_day)])
+		"" if n.alive else " %s%s." % [_death_text(n)[0].to_upper(), _death_text(n).substr(1)]])
 	var tl = PackedStringArray()
 	for t in C.TRAITS:
 		tl.append("%s: %s" % [t.capitalize(), n.revealed_traits.get(t, "?")])
@@ -1258,10 +1293,17 @@ func _script() -> String:
 	out.append("Gifts that may be in play (not all will be):")
 	for r in C.GOOD_ROLES:
 		out.append("  %-12s %s" % [C.role_name(r), C.ROLES[r]["desc"]])
-	out.append("Hint families: night sight (Seer, Hearthwitch, Night Watch); names (Gravedigger, Archivist, Clerk); shelter (Warden, Veteran).")
-	out.append("Evil (always in play): ")
+	var fams = PackedStringArray()
+	for pk in C.HINT_PACKAGES:
+		fams.append("%s (%s)" % [C.HINT_PACKAGES[pk]["name"], ", ".join(PackedStringArray(C.HINT_PACKAGES[pk]["roles"].filter(func(r): return r in C.GOOD_ROLES).map(func(r): return C.role_name(r))))])
+	out.append("Hint families: " + "; ".join(fams) + ".")
+	out.append("Evil: the Demon, and %d of these minions:" % w.minion_ids.size())
 	out.append("  %-12s %s" % ["Demon", C.ROLES["demon"]["desc"]])
-	out.append("  %-12s %s" % ["Poisoner", C.ROLES["poisoner"]["desc"]])
+	for r in C.MINION_ROLES:
+		out.append("  %-12s %s" % [C.role_name(r), C.ROLES[r]["desc"]])
+	out.append("Secrets (one in play, laid on a townsfolk on top of their gift):")
+	for k in C.SECRET_MOD_LIST:
+		out.append("  %-12s %s" % [C.secret_name(k), C.SECRET_MODS[k]["desc"]])
 	return "\n".join(out)
 
 func _tools() -> String:
@@ -1785,7 +1827,7 @@ func set_guess(id: String, guess: String, confidence: int) -> bool:
 		return false
 	var before = guesses.duplicate(true)
 	# These are nominations for two unique identities, not a list of alternate suspects.
-	if guess in ["demon", "poisoner"]:
+	if guess == "demon" or C.is_minion(guess):
 		for old_id in CaseMetrics.named_guesses(guesses, guess):
 			if old_id != id:
 				guesses[old_id] = {"guess": "?", "confidence": 1}
@@ -1811,9 +1853,10 @@ func capture_prediction(reason: String, extra: Dictionary = {}) -> Dictionary:
 
 func theory_status() -> String:
 	var parts: Array = []
-	for role in ["demon", "poisoner"]:
-		var ids = CaseMetrics.named_guesses(guesses, role)
-		parts.append("%s: %s" % ["Demon" if role == "demon" else "Minion", w.by_id[ids[0]].name if ids.size() == 1 else "not recorded"])
+	var dids = CaseMetrics.named_guesses(guesses, "demon")
+	parts.append("Demon: %s" % (w.by_id[dids[0]].name if dids.size() == 1 else "not recorded"))
+	var mids = CaseMetrics.minion_guesses(guesses)
+	parts.append("Minion%s: %s" % ["" if w.minion_ids.size() == 1 else "s", ", ".join(PackedStringArray(mids.map(func(i): return "%s (%s)" % [w.by_id[i].name, C.role_name(guesses[i]["guess"])]))) if not mids.is_empty() else "not recorded"])
 	return ("Final theory — " if w.game_over else "Your private theory — ") + "; ".join(PackedStringArray(parts))
 
 func _outcome_text() -> String:
@@ -1929,7 +1972,9 @@ func named_in(id: String) -> Array:
 			"clerk":
 				what = "the " + C.role_name(d.get("role", ""))
 			"archivist":
-				what = "the Poisoner"
+				what = "the " + C.role_name(d.get("role", "poisoner"))
+			"rumormonger":
+				what = C.secret_name(d.get("secret", "")) + " (a secret)"
 			"seer":
 				what = "the demon" if d.get("yes", false) else "not the demon (cleared)"
 		if what == "":
@@ -1938,6 +1983,14 @@ func named_in(id: String) -> Array:
 		out.append("%s%s (#%d: %s's %s reading, night %d%s)" % [lead, what, c["n"], src, C.role_name(c["role"]), c.get("day", 0),
 			(", with " + other) if other != "" else ""])
 	return out
+
+func _death_text(n) -> String:
+	match n.death_cause:
+		"demon":
+			return "killed by the demon, night %d" % n.death_day
+		"martyr":
+			return "died in another's place at the gallows, day %d" % n.death_day
+	return "executed, day %d" % n.death_day
 
 func _claim_text(n) -> String:
 	if n.claim_public:
@@ -1953,7 +2006,7 @@ func _claim_text(n) -> String:
 func profile_data(id: String) -> Dictionary:
 	var n = w.by_id[id]
 	var claim = _claim_text(n)
-	var status = "alive" if n.alive else ("killed by the demon, night %d" % n.death_day if n.death_cause == "demon" else "executed, day %d" % n.death_day)
+	var status = "alive" if n.alive else _death_text(n)
 	return {"id": id, "name": n.name, "occupation": n.occupation, "blurb": n.blurb, "work": "%s at %s" % [C.phase_list(n.work_phases), w.loc_name(n.work)],
 		"home": C.block_name(n.home_block), "status": status, "traits": n.revealed_traits.duplicate(), "claim": claim,
 		"guess": guesses.get(id, {}), "note": notes.get(id, ""), "cards": filter_cards(id).map(func(c): return c["n"]),

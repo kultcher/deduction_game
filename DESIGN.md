@@ -99,29 +99,89 @@ but it means the game must teach its own way of thinking and make evidence very 
 - Occupations loosely correlate with gifts (believable bluffs). **(prototype: occupation
   and role independent)**
 
-## Roles (prototype set, BotC-inspired)
+## Roles: the script (built Oct 2026)
 
-Good:
+The full design notes live in `role_exploration.md`; this is what's built. Data in
+`sim/content.gd`; what each reading *says* in general terms (who it points at, who it speaks
+for, who it names) in `sim/gifts.gd`, so reasoning keys off a few reading shapes rather than
+off particular gifts.
 
-| Role | BotC analogue | Ability |
-|---|---|---|
-| Gravedigger | Undertaker | Each night after an execution, learns the executed NPC's true role. |
-| Hearthwitch | Empath | Each night, learns how many of their two lane-neighbours are evil. |
-| Seer | Fortune Teller | Each night, picks two NPCs; learns if either is the demon. Has one good "red herring" who reads as the demon. |
-| Night Watch | (new) | Each night, watches a block; learns who passed through it. Is out on that block. |
-| Archivist | Investigator | Starts knowing that one of two NPCs is the Poisoner. |
-| Clerk | Washerwoman | Starts knowing that one of two NPCs holds a specific good role. |
-| Warden | Monk | Each night, protects one other NPC from the demon. |
-| Veteran | Soldier | Cannot be killed by the demon. |
+**Case sizes.** 7 townsfolk: 5 good (one carries the secret), 1 minion, the demon. 10
+townsfolk: 7 good (one carries the secret), 2 minions, the demon (8 days instead of 6).
+Roles are drawn from the script with no duplicates and a little protection: at least two
+start-knowledge gifts (Archivist, Clerk, Surveyor, Rumormonger) and at least one strong
+identifier (Seer, Dowser, Gravedigger). The town size is picked beside the case seed.
 
-Evil:
+Good (15):
 
-| Role | BotC analogue | Ability |
-|---|---|---|
-| Demon | Imp | Kills one NPC each night (not the first night). |
-| Poisoner | Poisoner | Each night poisons one NPC; their ability malfunctions until the next night. |
+| Gift | Ability (as built) |
+|---|---|
+| Archivist | Starts knowing that one of two people is a particular minion. |
+| Clerk | Starts knowing that one of two people holds a particular gift. |
+| Dowser | The first time each day they're on a block with 2+ others (at home counts as your home block), learns how many of those are evil. A day reading, shared with its time. |
+| Gravedigger | Each night after an execution, learns the hanged person's true role. |
+| Lamplighter | Each night walks the lamp route through every block (so is out, and can be seen) and learns how many others were out. |
+| Martyr | Once per case, secretly chooses someone they trust (needs trust ≥ 0.62, minus suspicion; never on night 0). If that person is later executed while good, the Martyr dies in their place: both proven good to everyone. If the chosen is hanged and the Martyr lives, the Martyr learns they were evil. Doesn't cover demon kills. A poisoned Martyr's save fails. The choice is shareable like a reading ("I've given my life over for X"). |
+| Medium | Each night visits the home of the most recent dead not yet visited and learns one thing they knew but never said in public: unshared readings first, then night sightings, then their strongest suspicion; else where they were their last night. The evil dead give their cover story (fake readings, the scapegoat). |
+| Night Watch | Each night watches a block; learns who passed through it. Is out on that block. |
+| Psychologist | Each night picks someone they talked with that day (NPC conversations) and learns whom they trust and suspect most. Evil mostly name a teammate as most trusted and their scapegoat as most suspected. The Psychologist gets a nudge to seek conversations. |
+| Rumormonger | Starts knowing that one of two people carries a particular secret ("one of two", like the Clerk; one person outright would fully clear them, since secret-holders are good). |
+| Seer | Each night picks two people; learns if either is the demon. One good soul reads falsely as the demon (and a Marked soul may). |
+| Sexton | Once per case, with fewer than five alive, may toll the death knell in the evening (likely once allowed). That night no gift that walks abroad works: the demon's kill, the Poisoner, Warden, Night Watch, Medium, Lamplighter. Secrets still walk (they aren't gifts). The toll is public; the bell's ringer isn't named. A poisoned Sexton tolls for nothing. (Replaces the Sexton occupation: now groundskeeper.) |
+| Surveyor | Starts knowing how many of the four blocks have an evil resident. |
+| Veteran | The first attack fails; they learn the last block the attacker came through before theirs (their own if the demon lives on the same block). A second attack kills. |
+| Warden | Each night guards one other person's door against the demon (stands at the door, so can be seen). |
 
-- Evil NPCs know each other and receive **3 bluffs** (good roles not in play).
+Hearthwitch is benched (kept in code, out of the script).
+
+Evil: the Demon (kills each night from night 1) and minions:
+
+| Minion | Ability (as built) |
+|---|---|
+| Poisoner | Each night poisons one person: their gift fails or lies until the next night. Kept at night for first-night poisoning; when no Poisoner is in play the demon is the only evil out at night. |
+| Breathstealer | Once a day (any day phase, likelier later), silences someone on its block. The silence takes hold at that evening's meeting (so the player never meets a freshly silenced person mid-day) and lasts until the next evening. Silenced people can't claim, testify, accuse, nominate, defend themselves, talk with you, or chat with NPCs; they can still vote. Never the same person twice running. Picks the most dangerous voice (public info claims, hostility, known threats). |
+| Revenant | Hides a totem at a location it visits, on any day that began with no totem in play (so a totem found in the morning can't be replaced until the next day). If hanged with a totem hidden (and not poisoned), a random good NPC who voted yes turns evil; the town is warned ("someone among you has turned"). The player's `search` at the totem's location finds and burns it (the totem is caked with the Revenant's home-block material, a lead). Found before the hanging: no curse. Found after: the turned soul is good again. Evil teammates often vote to let a Revenant with a totem hang. |
+| Scion | If the demon is executed while five or more are alive, the Scion becomes the demon (no double kill). |
+
+Secrets are **modifiers**: one per case, laid on a good townsfolk on top of their gift
+(the Lovers affect two but count as one secret):
+
+| Secret | Effect (as built) |
+|---|---|
+| Delusional | Their gift doesn't work and gives arbitrary information (they don't know). Protective gifts fail too. |
+| Marked | Each gift that reads them sees them as evil (Dowser, Surveyor, Hearthwitch) or the demon (Seer) half the time; a Gravedigger sees a random evil role 30% of the time. |
+| Secret Lovers | Two townsfolk meet at a random block each night (both out), trust each other, know each other's secret, and hide it like any secret (they may confess). |
+| Sleepwalker | Leaves home each night to a random block without knowing it: they honestly say they were home, and see nothing while out. |
+
+The older personal night-outs (insomnia, smuggling, debt) remain as flavour secrets.
+
+**The turned (Revenant's curse).** They keep their gift and keep claiming it (their bluff
+is their own role); from then on their readings are fabricated the way evil bluffs are.
+They know the team and the team knows them. When the totem burns they're good again,
+remember nothing of who else was evil, and disown what they said while turned (they
+won't repeat it, and it no longer counts in their own beliefs). Other NPCs still hold what
+they heard; nobody knows who was turned. (Simplification: their evil-era claims aren't
+discounted by the town; the player can argue it.)
+
+**Town reactions to the new events** (existing patterns): someone silenced gets a small
+credit with everyone (evil wanted them quiet); a curse makes every good yes-voter on the
+Revenant a little suspect to the rest; a Martyr's sacrifice proves both good; a Veteran's
+"came by way of X" nudges suspicion toward X's residents; a Psychologist's reading rubs a
+little suspicion between a suspect and whom they trust most; the Rumormonger's pair is
+mildly cleared; what a Medium hears counts at 0.6 of hearing it from the dead.
+
+**Evil bluffs** cover the new info gifts: a fake Surveyor count (true ±1), a Rumormonger
+pair that lends a teammate a harmless secret, a plausible Lamplighter count, a Medium who
+says the dead saw the scapegoat out, a Psychologist who says someone suspects the
+scapegoat, a Martyr who "chose" a teammate. Evil bluffing a walking gift says their gift
+took them out when asked where they were.
+
+**Not built yet:** role icons for the new gifts (the roles window falls back to a plain
+marker); the Revenant actively drawing suspicion to get itself hanged; NPCs searching for
+totems; Beckon, Tallyman and the rest of On Deck; Relationships.
+
+- Evil NPCs know each other and receive bluffs (good roles not in play, at least one more
+  than the evil team's size).
 - A demon kill is **strong but not certain** evidence of goodness: future demons may kill
   their own minion to fake a good death. Rules text should not promise otherwise.
 
@@ -1093,3 +1153,10 @@ results match the pre-tracking commit, including deaths, executions and end reas
   bot lost about 2 points from the visibility rule alone; passive gained mostly from fewer
   pile-on executions (fewer executions overall). Seed-to-seed noise is about ±3 points per
   150-seed batch.
+- After the roster (new script, secrets, 7/10 sizes), 150 seeds each (1000–1149): 7
+  townsfolk, playing bot 57/150 (38%) vs passive 18/150 (12%); 10 townsfolk, 43/150 (29%)
+  vs 15/150 (10%). The bot names one minion, so "both identified" is rare at 10. How often
+  the new pieces came up in the playing runs (7 / 10): silences 115 / 231; totems hidden
+  37 / 77, someone turned 10 / 14 (the bot never finds totems); Martyr choices 25 / 60,
+  saves 0 / 12; knells 17 / 17; Scion rose 5 / 25; Veteran survived 10 / 10. Tests:
+  `tools/test_roster.gd` covers setups and every new mechanic.

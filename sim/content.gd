@@ -58,12 +58,14 @@ const LOCATIONS = {
 const OCCUPATIONS = {
 	"innkeeper": {"title": "innkeeper", "work": "tavern", "shifts": [2]},
 	"priest": {"title": "priest", "work": "chapel", "shifts": [0]},
-	"sexton": {"title": "sexton", "work": "graveyard", "shifts": [1]},
+	"groundskeeper": {"title": "groundskeeper", "work": "graveyard", "shifts": [1]},
 	"smith": {"title": "blacksmith", "work": "smithy", "shifts": [0]},
 	"baker": {"title": "baker", "work": "bakery", "shifts": [0]},
 	"fisher": {"title": "fisher", "work": "wharf", "shifts": [0]},
 	"miller": {"title": "miller", "work": "mill", "shifts": [1]},
 	"water_carrier": {"title": "water carrier", "work": "well", "shifts": [1]},
+	"ostler": {"title": "ostler", "work": "tavern", "shifts": [0]},
+	"net_mender": {"title": "net mender", "work": "wharf", "shifts": [1]},
 }
 
 ## Social traits, 0..1. Each entry is [base, volatility]: the case value is rolled once as
@@ -125,50 +127,113 @@ const TRAIT_TEXT = {
 		"high": "%s gives nothing away"},
 }
 
-## kind: info roles give information; protect roles act on others; passive roles just are.
-## first_night: info received only on the first night.
+## kind: info roles give information (readings); protect roles act on others; passive roles
+## just are; evil roles are the demon's side.
+## first_night: info received only on the first night (start knowledge).
+## night_walk: the gift takes them out of the house at night (they can be seen, and they
+## have a reason to give for being out).
+## day: the gift works during the day.
 const ROLES = {
+	"archivist": {"name": "Archivist", "align": "good", "kind": "info", "first_night": true,
+		"desc": "Starts knowing that one of two people is a particular minion."},
+	"clerk": {"name": "Clerk", "align": "good", "kind": "info", "first_night": true,
+		"desc": "Starts knowing that one of two people holds a particular gift."},
+	"dowser": {"name": "Dowser", "align": "good", "kind": "info", "day": true,
+		"desc": "The first time each day the Dowser is on a block with two or more others, learns how many of them are evil."},
 	"gravedigger": {"name": "Gravedigger", "align": "good", "kind": "info",
 		"desc": "Each night after an execution, learns the true role of the executed."},
-	"hearthwitch": {"name": "Hearthwitch", "align": "good", "kind": "info",
-		"desc": "Each night, learns how many of their two living lane-neighbours are evil."},
+	"lamplighter": {"name": "Lamplighter", "align": "good", "kind": "info", "night_walk": true,
+		"desc": "Each night, walks the lamp route and learns how many other people were out."},
+	"martyr": {"name": "Martyr", "align": "good", "kind": "protect",
+		"desc": "Once per case, secretly chooses someone. If they are later executed while good, the Martyr dies in their place."},
+	"medium": {"name": "Medium", "align": "good", "kind": "info", "night_walk": true,
+		"desc": "Each night, visits the home of a dead person and learns something they knew but never said in public."},
+	"nightwatch": {"name": "Night Watch", "align": "good", "kind": "info", "night_walk": true,
+		"desc": "Each night, watches one block and learns who moved through it. Is out on that block."},
+	"psychologist": {"name": "Psychologist", "align": "good", "kind": "info",
+		"desc": "Each night, picks someone they talked with that day and learns whom that person trusts and suspects most."},
+	"rumormonger": {"name": "Rumormonger", "align": "good", "kind": "info", "first_night": true,
+		"desc": "Starts knowing that one of two people carries a particular secret."},
 	"seer": {"name": "Seer", "align": "good", "kind": "info",
 		"desc": "Each night, picks two people and learns if either is the demon. One good soul reads falsely as the demon."},
-	"nightwatch": {"name": "Night Watch", "align": "good", "kind": "info",
-		"desc": "Each night, watches one block and learns who moved through it. Is out on that block."},
-	"archivist": {"name": "Archivist", "align": "good", "kind": "info", "first_night": true,
-		"desc": "Begins knowing that one of two people is the Poisoner."},
-	"clerk": {"name": "Clerk", "align": "good", "kind": "info", "first_night": true,
-		"desc": "Begins knowing that one of two people holds a particular gift."},
-	"warden": {"name": "Warden", "align": "good", "kind": "protect",
-		"desc": "Each night, shields one other person from the demon."},
+	"sexton": {"name": "Sexton", "align": "good", "kind": "protect",
+		"desc": "Once per case, with fewer than five alive, may toll the death knell in the evening: that night, no gift that needs walking abroad works."},
+	"surveyor": {"name": "Surveyor", "align": "good", "kind": "info", "first_night": true,
+		"desc": "Starts knowing how many blocks have an evil resident."},
 	"veteran": {"name": "Veteran", "align": "good", "kind": "passive",
-		"desc": "Cannot be killed by the demon."},
+		"desc": "The first time the demon attacks the Veteran, they survive and learn the last block the attacker came through."},
+	"warden": {"name": "Warden", "align": "good", "kind": "protect", "night_walk": true,
+		"desc": "Each night, guards one other person's door against the demon."},
+	"hearthwitch": {"name": "Hearthwitch", "align": "good", "kind": "info",
+		"desc": "Each night, learns how many of their two living lane-neighbours are evil. (Benched: not in the script.)"},
 	"demon": {"name": "Demon", "align": "evil", "kind": "evil",
 		"desc": "Kills one person each night (not the first)."},
-	"poisoner": {"name": "Poisoner", "align": "evil", "kind": "evil",
-		"desc": "Each night, poisons one person; their gift fails until the next night."},
+	"poisoner": {"name": "Poisoner", "align": "evil", "kind": "evil", "minion": true, "night_walk": true,
+		"desc": "Each night, poisons one person; their gift fails or lies until the next night."},
+	"breathstealer": {"name": "Breathstealer", "align": "evil", "kind": "evil", "minion": true, "day": true,
+		"desc": "Once a day, silences someone on the same block, from that evening's meeting until the next evening. Silenced people can still vote."},
+	"revenant": {"name": "Revenant", "align": "evil", "kind": "evil", "minion": true, "day": true,
+		"desc": "Hides a totem somewhere each day it has none in play. If hanged while a totem is hidden, a good soul who voted for it turns evil until the totem is found."},
+	"scion": {"name": "Scion", "align": "evil", "kind": "evil", "minion": true,
+		"desc": "If the demon is executed while five or more are alive, the Scion becomes the demon."},
 }
 
-const GOOD_ROLES = ["gravedigger", "hearthwitch", "seer", "nightwatch", "archivist", "clerk", "warden", "veteran"]
-const INFO_ROLES = ["gravedigger", "hearthwitch", "seer", "nightwatch", "archivist", "clerk"]
+## The script: what may be in play in a case. No duplicates.
+const GOOD_ROLES = ["archivist", "clerk", "dowser", "gravedigger", "lamplighter", "martyr", "medium", "nightwatch",
+	"psychologist", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
+const MINION_ROLES = ["breathstealer", "poisoner", "revenant", "scion"]
+const EVIL_ROLES = ["demon", "breathstealer", "poisoner", "revenant", "scion"]
+## Gifts that produce readings to share.
+const INFO_ROLES = ["archivist", "clerk", "dowser", "gravedigger", "hearthwitch", "lamplighter", "medium", "nightwatch",
+	"psychologist", "rumormonger", "seer", "surveyor"]
+## Setup protection: at least two start-knowledge gifts and one strong identifier.
+const START_ROLES = ["archivist", "clerk", "surveyor", "rumormonger"]
+const IDENTIFIER_ROLES = ["seer", "dowser", "gravedigger"]
+## Case sizes: townsfolk (one carries the secret), minions, demon.
+const SETUPS = {7: {"town": 5, "minions": 1}, 10: {"town": 7, "minions": 2}}
 
-## Flavoured hints. Each package should hold 2+ roles so a hint is never a full reveal.
+## Gifts with something to tell: readings, or a one-off result (Veteran attacked, Martyr's
+## choice, Martyr's grim confirmation).
+static func has_readings(r: String) -> bool:
+	return r in INFO_ROLES or r in ["veteran", "martyr"]
+
+static func is_minion(r: String) -> bool:
+	return ROLES.get(r, {}).get("minion", false)
+
+## Secret modifiers: one per case, laid on a townsfolk (two for the Lovers), on top of
+## their gift. Good townsfolk only.
+const SECRET_MODS = {
+	"delusional": {"name": "Delusional", "desc": "Their gift does not work and gives arbitrary information. They don't know."},
+	"marked": {"name": "Marked", "desc": "May register as evil, or as the demon, to gifts that read them."},
+	"lovers": {"name": "Secret Lovers", "desc": "Two townsfolk meet in secret at a different place each night."},
+	"sleepwalker": {"name": "Sleepwalker", "desc": "Leaves home each night without knowing it."},
+}
+const SECRET_MOD_LIST = ["delusional", "marked", "lovers", "sleepwalker"]
+
+static func secret_name(k: String) -> String:
+	return SECRET_MODS[k]["name"] if SECRET_MODS.has(k) else k
+
+## Flavoured hints. Each package holds 2+ roles so a hint is never a full reveal; a gift
+## may sit in two (its hint is from the first).
 const HINT_PACKAGES = {
-	"night_sight": {"roles": ["seer", "hearthwitch", "nightwatch"], "name": "a night-sight gift",
+	"official": {"roles": ["archivist", "clerk", "surveyor", "rumormonger"], "name": "a gift of official business",
+		"text": "My gift deals in records and reports, the town's official business."},
+	"night_sight": {"roles": ["seer", "nightwatch", "lamplighter", "hearthwitch"], "name": "a night-sight gift",
 		"text": "My gift shows me things in the dark hours."},
-	"names": {"roles": ["gravedigger", "archivist", "clerk"], "name": "a gift of names",
-		"text": "My gift deals in names and records, of the living and the dead."},
-	"shelter": {"roles": ["warden", "veteran"], "name": "a sheltering gift",
+	"the_dead": {"roles": ["gravedigger", "medium", "sexton", "martyr"], "name": "a gift of the dead",
+		"text": "My gift has to do with the dead, and with death."},
+	"shelter": {"roles": ["warden", "veteran", "martyr"], "name": "a sheltering gift",
 		"text": "My gift is a kind of shelter against the demon."},
+	"people": {"roles": ["dowser", "psychologist", "rumormonger"], "name": "a gift for reading people",
+		"text": "My gift lets me read people, if I'm close enough."},
 }
 
 ## Demon temperaments shape kill choice.
 const DEMON_MOODS = ["vengeful", "cunning", "hungry"]
 
 ## Personal reasons a good NPC may be out at night (and hide it).
+## (The Secret Lovers are a secret modifier now; see SECRET_MODS.)
 const SECRETS = [
-	{"kind": "lover", "text": "slips out to meet %s in secret", "needs_friend": true},
 	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "dest": "hill"},
 	{"kind": "smuggling", "text": "trades contraband with river smugglers at the docks", "dest": "docks"},
 	{"kind": "debt", "text": "sneaks to the market to pay off a gambling debt", "dest": "market"},
@@ -190,7 +255,9 @@ static func loc_block(l: String) -> String:
 static func role_name(r: String) -> String:
 	if r == "" or r == "none":
 		return "no gift"
-	return ROLES[r]["name"]
+	if SECRET_MODS.has(r):
+		return SECRET_MODS[r]["name"]
+	return ROLES[r]["name"] if ROLES.has(r) else r
 
 static func package_of(r: String) -> String:
 	for p in HINT_PACKAGES:

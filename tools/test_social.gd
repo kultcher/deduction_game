@@ -96,6 +96,7 @@ func _test_agree_line() -> void:
 func _test_poison_spent_gift() -> void:
 	var g = _game(7104)
 	var w = g.w
+	w.minion().role = "poisoner"  # (the script has four minions now; this test needs the Poisoner)
 	w.day = 2
 	var goods: Array = w.living_good()
 	var A = goods[0]
@@ -117,6 +118,7 @@ func _test_veteran_combo() -> void:
 	for sd in range(7110, 7130):
 		var g = _game(sd)
 		var w = g.w
+		w.minion().role = "poisoner"
 		w.day = 2
 		var vet = null
 		for n in w.living_good():
@@ -186,6 +188,7 @@ func _test_role_fishing() -> void:
 	var m = w.living_good()[1]
 	m.trust = 0.0
 	m.traits["privacy"] = 1.0
+	m.role_guesses = 1  # no first-right-guess bonus: this holder is simply unwilling
 	var r2 = Social.answer_is_role(w, m, m.role)
 	_check(r2["facts"].is_empty() and r2["lines"][0]["text"] == "What my gift is, I'll keep to myself.", "an unwilling holder gives the same non-answer")
 
