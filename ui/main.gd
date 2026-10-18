@@ -45,6 +45,8 @@ var cast_header: Label
 var meeting_show_map = false # during a meeting, peek at the map instead of the circle
 var _popup_anchor = null
 var _case_seed = -1
+var show_script_at_start = true   # the script opens when a case begins
+var _last_state = ""
 var notes_win: Window
 var notes_edit: TextEdit
 var roles_win: Window
@@ -278,7 +280,7 @@ func _ready() -> void:
 		if g != null:
 			g.case_notes = notes_edit.text)
 	nv.add_child(notes_edit)
-	var rwin = _make_window("Gifts that may be in play", Vector2i(620, 640))
+	var rwin = _make_window("The script: what may be in play", Vector2i(1120, 960))
 	roles_win = rwin[0]
 	var rsc = ScrollContainer.new()
 	rsc.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -347,6 +349,8 @@ func _new_case() -> void:
 	if debug_check.button_pressed:
 		g.set_debug_overlay(true)
 	_refresh_all()
+	if is_inside_tree() and show_script_at_start:
+		_open_roles()
 
 func _input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible:
@@ -372,55 +376,72 @@ func _make_window(title: String, sz: Vector2i) -> Array:
 	add_child(win)
 	return [win, v]
 
-## The roles list: every gift with its icon and what it does, and who has claimed it.
+## The roles list (the script, as in Clocktower): the town's gifts on the left; the demon's
+## side and the secrets on the right. Each with its icon, what it does, and who has claimed it.
 func _open_roles() -> void:
 	for ch in roles_box.get_children():
 		ch.queue_free()
-	var ink = UITheme.color("ink")
-	for group in [["Gifts of the town", C.GOOD_ROLES], ["The demon's side (the demon and %d of the minions)" % g.w.minion_ids.size(), C.EVIL_ROLES], ["Secrets (one in play, on top of a gift)", C.SECRET_MOD_LIST]]:
-		var h = Label.new()
-		h.text = group[0]
-		h.add_theme_font_size_override("font_size", 19)
-		h.add_theme_color_override("font_color", UITheme.color("red"))
-		roles_box.add_child(h)
-		for r in group[1]:
-			var row = HBoxContainer.new()
-			row.add_theme_constant_override("separation", 10)
-			roles_box.add_child(row)
-			var ic = TextureRect.new()
-			var rt = UITheme.tex("ui/roles/" + r, 0.12)
-			ic.texture = rt if rt != null else UITheme.tex("ui/roles/unknown", 0.12)  # icons for new gifts still to come
-			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			ic.custom_minimum_size = Vector2(40, 40)
-			row.add_child(ic)
-			var col = VBoxContainer.new()
-			col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			row.add_child(col)
-			var nm = Label.new()
-			nm.text = C.role_name(r)
-			nm.add_theme_font_size_override("font_size", 17)
-			nm.add_theme_color_override("font_color", ink)
-			col.add_child(nm)
-			var d = Label.new()
-			d.text = C.ROLES[r]["desc"] if C.ROLES.has(r) else C.SECRET_MODS[r]["desc"]
-			d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			d.add_theme_font_size_override("font_size", 15)
-			d.add_theme_color_override("font_color", UITheme.color("ink_soft"))
-			col.add_child(d)
-			var who: Array = []
-			for n in g.w.npcs:
-				if n.claimed_role == r and (n.claim_public or n.max_tier >= 3):
-					who.append("%s (%s)" % [n.name, "to the town" if n.claim_public else "told you"])
-			if not who.is_empty():
-				var c2 = Label.new()
-				c2.text = "Claimed by: " + ", ".join(PackedStringArray(who))
-				c2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				c2.add_theme_font_size_override("font_size", 14)
-				c2.add_theme_color_override("font_color", UITheme.color("red").darkened(0.2))
-				col.add_child(c2)
+	var cols = HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 18)
+	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	roles_box.add_child(cols)
+	var left = VBoxContainer.new()
+	var right = VBoxContainer.new()
+	for c in [left, right]:
+		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		c.add_theme_constant_override("separation", 6)
+		cols.add_child(c)
+	_roles_group(left, "Gifts of the town", C.GOOD_ROLES)
+	_roles_group(right, "The demon's side: the demon and %d minion%s" % [g.w.minion_ids.size(), "" if g.w.minion_ids.size() == 1 else "s"], C.EVIL_ROLES)
+	_roles_group(right, "Secrets: one in play, on top of a gift", C.SECRET_MOD_LIST)
 	if not roles_win.visible:
 		roles_win.popup_centered()
+
+func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
+	var ink = UITheme.color("ink")
+	var h = Label.new()
+	h.text = title
+	h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	h.add_theme_font_size_override("font_size", 18)
+	h.add_theme_color_override("font_color", UITheme.color("red"))
+	box.add_child(h)
+	for r in roles:
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		box.add_child(row)
+		var ic = TextureRect.new()
+		var rt = UITheme.tex("ui/roles/" + r, 0.1)
+		ic.texture = rt if rt != null else UITheme.tex("ui/roles/unknown", 0.1)  # icons for new gifts still to come
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.custom_minimum_size = Vector2(34, 34)
+		row.add_child(ic)
+		var col = VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_constant_override("separation", 0)
+		row.add_child(col)
+		var nm = Label.new()
+		nm.text = C.role_name(r)
+		nm.add_theme_font_size_override("font_size", 16)
+		nm.add_theme_color_override("font_color", ink)
+		col.add_child(nm)
+		var d = Label.new()
+		d.text = C.ROLES[r]["desc"] if C.ROLES.has(r) else C.SECRET_MODS[r]["desc"]
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.add_theme_font_size_override("font_size", 14)
+		d.add_theme_color_override("font_color", UITheme.color("ink_soft"))
+		col.add_child(d)
+		var who: Array = []
+		for n in g.w.npcs:
+			if n.claimed_role == r and (n.claim_public or n.max_tier >= 3):
+				who.append("%s (%s)" % [n.name, "to the town" if n.claim_public else "told you"])
+		if not who.is_empty():
+			var c2 = Label.new()
+			c2.text = "Claimed by: " + ", ".join(PackedStringArray(who))
+			c2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			c2.add_theme_font_size_override("font_size", 13)
+			c2.add_theme_color_override("font_color", UITheme.color("red").darkened(0.2))
+			col.add_child(c2)
 
 func _on_more(i: int) -> void:
 	if i == 0:
@@ -478,8 +499,9 @@ func _refresh_all() -> void:
 	_refresh_side()
 	_refresh_actions()
 	var meeting = g.state in ["meeting", "nomination"]
-	if not meeting:
-		meeting_show_map = false
+	if not meeting or (g.state == "nomination" and _last_state != "nomination") or (g.state == "meeting" and _last_state == "nomination"):
+		meeting_show_map = false  # a vote starting (or being counted) brings the circle back
+	_last_state = g.state
 	map.visible = not meeting or meeting_show_map
 	meeting_view.visible = meeting and not meeting_show_map
 	if meeting:

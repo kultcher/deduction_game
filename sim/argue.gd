@@ -10,6 +10,7 @@ extends RefCounted
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
+const Gifts = preload("res://sim/gifts.gd")
 
 ## Conclusion types. The player builds them as "<name> <is / is not / should be> <status>".
 const CONCLUSION_TYPES = ["good", "evil", "demon", "notdemon", "role", "notrole", "lied", "truthful", "misled", "unreliable", "protect", "spare"]
@@ -142,9 +143,13 @@ static func assertions(card: Dictionary) -> Array:
 			if dc.get("type", "") in ["misled", "unreliable"] and dc.has("night"):
 				out.append({"t": "ded_misled", "who": dc.get("a", ""), "night": dc["night"], "src": src, "card": n})
 		"execution":
-			# Hanged and the case went on: whoever it was, they weren't the demon.
+			# Hanged and the case went on: whoever it was, they weren't the demon, unless five or
+			# more were alive at the hanging, when a Scion could have taken the demon's place.
 			if not subj.is_empty():
-				out.append({"t": "not_demon", "who": subj[0], "src": src, "card": n})
+				out.append({"t": "not_demon", "who": subj[0], "src": src, "card": n, "scion_possible": card.get("alive_before", 99) >= 5})
+		"refusal":
+			if card.get("withheld", false) and not subj.is_empty():
+				out.append({"t": "withheld", "who": subj[0], "role": card.get("role", ""), "src": src, "card": n})
 	return out
 
 # ---------------------------------------------------------------- templates
@@ -250,6 +255,8 @@ static func _cleared_how(a: Dictionary) -> String:
 	if a["t"] == "killed":
 		return "killed by the demon on night %d" % a["night"]
 	if a["t"] == "not_demon":
+		if a.get("scion_possible", false):
+			return "hanged without ending the case (so not the demon, unless a Scion took over)"
 		return "hanged without ending the case, so not the demon"
 	return "shown to be the %s after their execution" % C.role_name(a["role"])
 
@@ -275,6 +282,8 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 			var expls: Array = [_accuse(w, other, "demon" if a["role"] == "seer" else "evil", "%s is %s" % [_nm(w, other), what])]
 			if a["role"] == "seer":
 				expls.append(_clear(w, other, {"type": "good"}, "%s is the one who reads falsely as the demon (and is good)" % _nm(w, other)))
+			if b["t"] == "not_demon" and b.get("scion_possible", false):
+				expls.append(_accuse(w, b["who"], "demon", "%s was the demon, and a Scion took over when they hanged" % _nm(w, b["who"])))
 			expls.append(_poisoned(w, a["src"], a["night"]))
 			expls.append(_lied(w, a["src"], a["card"]))
 			var m = _mk(w, "pair_elimination", "%s's %s reading named %s and %s; %s was %s, which leaves %s." %
@@ -282,6 +291,55 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 				cards, expls, other, [a])
 			m["relation"] = "inference"
 			return m
+	# Two readings that point toward evil overlap in exactly one person.
+	if ta == "reading" and tb == "reading" and a["card"] < b["card"]:
+		var ia: Array = Gifts.implicated({"role": a["role"], "data": a["data"]}).filter(func(x): return not killed.has(x))
+		var ib: Array = Gifts.implicated({"role": b["role"], "data": b["data"]}).filter(func(x): return not killed.has(x))
+		var both: Array = ia.filter(func(x): return x in ib)
+		if both.size() == 1 and ia.size() > 1 and ib.size() > 1:
+			var x: String = both[0]
+			var seers = a["role"] == "seer" and b["role"] == "seer"
+			var ex_o: Array = []
+			if seers:
+				ex_o.append(_accuse(w, x, "demon", "%s is the demon" % _nm(w, x)))
+				ex_o.append(_clear(w, x, {"type": "good"}, "%s is the one who reads falsely as the demon (and is good)" % _nm(w, x)))
+			else:
+				ex_o.append(_accuse(w, x, "evil", "%s is evil" % _nm(w, x)))
+			for s2 in [a, b]:
+				if _is_npc(w, s2["src"]):
+					ex_o.append(_poisoned(w, s2["src"], s2["night"]))
+			var mo = _mk(w, "overlap", "%s's %s reading and %s's %s reading both point toward evil, and the only person in both is %s." %
+				[_nm(w, a["src"]), C.role_name(a["role"]), _nm(w, b["src"]), C.role_name(b["role"]), _nm(w, x)], cards, ex_o, x, [a, b])
+			mo["relation"] = "inference"
+			return mo
+	# A reading that says one of a few is evil, and another that clears all but one of them.
+	if ta == "reading" and tb == "reading" and a["card"] != b["card"]:
+		var da: Dictionary = a["data"]
+		var one_of = (a["role"] in ["dowser", "hearthwitch"] and da.get("count", 0) == 1) or (a["role"] == "seer" and da.get("yes", false))
+		var grp: Array = Gifts.implicated({"role": a["role"], "data": da}).filter(func(x): return not killed.has(x))
+		var clr: Array = Gifts.clears({"role": b["role"], "data": b["data"]})
+		var left: Array = grp.filter(func(x): return not (x in clr))
+		if one_of and grp.size() >= 2 and left.size() == 1 and grp.size() > left.size():
+			var y: String = left[0]
+			var ex_s: Array = [_accuse(w, y, "demon" if a["role"] == "seer" else "evil", "%s is %s" % [_nm(w, y), "the demon" if a["role"] == "seer" else "the evil one"])]
+			if a["role"] == "seer":
+				ex_s.append(_clear(w, y, {"type": "good"}, "%s is the one who reads falsely as the demon (and is good)" % _nm(w, y)))
+			for s3 in [a, b]:
+				if _is_npc(w, s3["src"]):
+					ex_s.append(_poisoned(w, s3["src"], s3["night"]))
+			var ms = _mk(w, "group_elimination", "%s's %s reading says one of %s is %s; %s's %s reading clears the rest, which leaves %s." %
+				[_nm(w, a["src"]), C.role_name(a["role"]), _names(w, grp), "the demon" if a["role"] == "seer" else "evil", _nm(w, b["src"]), C.role_name(b["role"]), _nm(w, y)],
+				cards, ex_s, y, [a, b])
+			ms["relation"] = "inference"
+			return ms
+	# Claims an information gift but won't share what it has shown them.
+	if ta == "claim" and tb == "withheld" and a["who"] == b["who"] and a["role"] == b["role"] and C.has_readings(a["role"]):
+		var mw = _mk(w, "withholding", "%s claims the %s but won't share its readings." % [_nm(w, a["who"]), C.role_name(a["role"])], cards,
+			[_accuse(w, a["who"], "evil", "%s is hiding something: the claim is a cover" % _nm(w, a["who"])),
+			_notrole(w, a["who"], a["role"]),
+			_clear(w, a["who"], {"type": "good"}, "%s is simply cautious" % _nm(w, a["who"]))], a["who"], [a])
+		mw["relation"] = "inference"
+		return mw
 	# A Clerk names a pair, one holding a gift; someone in the pair claims that gift.
 	if ta == "claim" and tb == "reading" and b["role"] == "clerk" and a["src"] == a["who"] and b["src"] != a["who"]:
 		var d2: Dictionary = b["data"]

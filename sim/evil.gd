@@ -398,8 +398,23 @@ static func make_fake_info(w) -> void:
 				for x in w.npcs:
 					if x.is_evil():
 						tb[x.home_block] = true
-				var cnt: int = clampi(tb.size() + w.pick([-1, 0, 0, 1]), 1, C.BLOCKS.size())
-				why = "reports %d blocks (true count %d, nudged)" % [cnt, tb.size()]
+				# Mostly a plausible wrong count (no more blocks than the team could cover);
+				# sometimes the truth; now and then a count only a Marked soul could explain,
+				# which can pass for a poisoned or Delusional reading.
+				var team: int = 1 + w.minion_ids.size()
+				var hi: int = mini(team, C.BLOCKS.size())
+				var r_s = w.rng.randf()
+				var cnt: int = tb.size()
+				var kind_s = "the truth"
+				if r_s < 0.6:
+					var opts: Array = range(1, hi + 1).filter(func(x): return x != tb.size())
+					if not opts.is_empty():
+						cnt = w.pick(opts)
+						kind_s = "a plausible wrong count"
+				elif r_s >= 0.85 and team < C.BLOCKS.size():
+					cnt = team + 1
+					kind_s = "a count too high for the team (passes for a poisoned or Delusional reading)"
+				why = "reports %d blocks: %s (true %d)" % [cnt, kind_s, tb.size()]
 				entry = {"data": {"count": cnt}, "text": "I learned that %d of the four blocks %s an evil resident" % [cnt, "has" if cnt == 1 else "have"]}
 			"rumormonger":
 				if w.day != 0:

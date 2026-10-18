@@ -239,6 +239,12 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 	var occs = shuffled(C.OCCUPATIONS.keys()).slice(0, npc_count)
 	var blocks: Array = C.BLOCKS.keys()
 	var ring_order = shuffled(range(npc_count))
+	# Homes spread as evenly as the blocks allow (10: 3/3/2/2; 7: 2/2/2/1), in a random order.
+	var homes: Array = []
+	var bl: Array = shuffled(blocks)
+	for i in range(npc_count):
+		homes.append(bl[i % bl.size()])
+	homes = shuffled(homes)
 	for i in range(npc_count):
 		var c: Dictionary = cast[i]
 		var n = NPC.new()
@@ -259,7 +265,7 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 			var extra = pick([0, 1, 2].filter(func(p): return not (p in n.work_phases)))
 			n.work_phases.append(extra)
 			n.work_phases.sort()
-		n.home_block = pick(blocks)
+		n.home_block = homes[i]
 		# Habits: two favourite spots for idle hours (not their workplace).
 		n.haunts = shuffled(["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"].filter(func(x): return x != n.work)).slice(0, 2)
 		n.ring = ring_order[i]
@@ -269,7 +275,8 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 	_assign_roles()
 	_assign_relationships()
 	_assign_secret_mod()
-	_assign_secrets()
+	if C.USE_FLAVOR_SECRETS:
+		_assign_secrets()
 
 	for n in npcs:
 		for m in npcs:

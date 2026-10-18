@@ -626,15 +626,44 @@ static func ranked_suspects(w, n) -> Array:
 	c.sort_custom(func(a, b): return susp(n, a.id) > susp(n, b.id))
 	return c
 
+## The Seer's two picks, by Insight. A sharp Seer usually re-checks their top suspect and
+## pairs them with someone they haven't looked at yet; once two readings have said "yes"
+## with that suspect in them, it's settled as far as sight can tell (the demon or the one
+## who reads falsely), so they spend their sight on two fresh people instead. A dull Seer
+## is more random and doesn't build on what they've seen.
 static func seer_picks(w, n) -> Array:
 	var ranked = ranked_suspects(w, n)
+	var ins = trait_of(n, "insight")
 	var pair: Array = []
+	var why = ""
+	var checked = {}
+	var yes_on = {}
+	for e in n.info_log:
+		if e.get("role", "") == "seer":
+			for pid in e["data"]["pair"]:
+				checked[pid] = true
+				if e["data"]["yes"]:
+					yes_on[pid] = yes_on.get(pid, 0) + 1
+	var fresh: Array = ranked.filter(func(m): return not checked.has(m.id))
 	if w.day == 0 or ranked.size() < 3:
 		pair = w.shuffled(ranked).slice(0, 2)
+		why = "first look: two at random"
+	elif w.rng.randf() >= 0.3 + 0.5 * ins:
+		pair = w.shuffled(ranked).slice(0, 2)
+		why = "a scattered look (insight %.2f): two at random" % ins
+	elif ins >= 0.6 and yes_on.get(ranked[0].id, 0) >= 2 and fresh.size() >= 2:
+		pair = w.shuffled(fresh).slice(0, 2)
+		why = "settled on %s (two yeses); looks at two fresh people" % ranked[0].id
 	else:
-		pair = [ranked[0], w.pick(ranked.slice(1))]
+		var others: Array = ranked.slice(1)
+		if ins >= 0.6:
+			var fr: Array = others.filter(func(m): return not checked.has(m.id))
+			if not fr.is_empty():
+				others = fr
+		pair = [ranked[0], w.pick(others)]
+		why = "top suspect plus %s (insight %.2f)" % ["someone unchecked" if ins >= 0.6 else "one other", ins]
 	var ids: Array = pair.map(func(m): return m.id)
-	w.dlog.think(n.id, "seer_pick", "Seer checks the top suspect plus one other.", {"pair": ids})
+	w.dlog.think(n.id, "seer_pick", "Seer: " + why + ".", {"pair": ids})
 	return ids
 
 static func watch_block(w, n) -> String:
@@ -1156,6 +1185,9 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 			w.dlog.think(n.id, "withhold", "Trust fell; withholding %d newer reading(s) from the player." % held)
 		else:
 			lines.append(say(n, "What it's shown me, I'll keep to myself for now."))
+		# One card per person and gift (the same refusal again adds nothing new).
+		facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "withheld": true, "role": role,
+			"text": "%s claims the %s but won't share what it has shown them." % [n.name, C.role_name(role)]})
 	elif n.info_log.is_empty():
 		lines.append(say(n, "It hasn't shown me anything yet."))
 	return {"lines": lines, "facts": facts}

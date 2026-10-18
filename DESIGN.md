@@ -1143,6 +1143,40 @@ Built from the session's list:
 - Habit strength: at 60% the bot found fewer people and won ~8 points less at 7 townsfolk;
   at 40% it's back to baseline. The bot now also uses the "someone's there" counts.
 
+## After playtest 13473: follow-up pass
+
+- **Homes spread evenly** across the blocks (10: 3/3/2/2; 7: 2/2/2/1, random order), so
+  no block is a much better vigil than the rest.
+- **Seer picks scale with Insight.** Re-checks the top suspect 30% (dull) to 80% (sharp) of
+  the time, else two at random. A sharp Seer pairs the suspect with someone unchecked, and
+  once two "yes" readings include the same person (demon or the one who reads falsely,
+  sight can't tell which), looks at two fresh people. Bot runs, 10 townsfolk, demon in the
+  pair: night 1 41% -> 30%, night 3 62% -> 43% (random would be 24% / 34%).
+- **Withholding** is a card ("X claims the Archivist but won't share what it has shown
+  them", one per person and gift) and a deduction: claims an information gift + won't share
+  = hiding something (evil), not that gift, or simply cautious. Weak (speech).
+- **Fake Surveyor counts:** mostly a plausible wrong count (no more blocks than the evil
+  team could cover), sometimes the truth (25%), now and then a count too high for the team
+  (15%), which can pass for a poisoned or Delusional reading.
+- **Flavour secrets benched** (insomnia, smuggling, debt; `C.USE_FLAVOR_SECRETS`). Night
+  walkers per night (bot runs): 7 townsfolk 2.04 -> 1.88 (innocent 1.01 -> 0.89); 10
+  townsfolk 2.68 -> 2.36 (innocent 1.47 -> 1.13). Only the Lovers can confess a secret now.
+- **The script** opens when a case begins, in two columns (the town's gifts; the demon's
+  side and the secrets).
+- **Scion-safe deductions:** "hanged without ending the case, so not the demon" only holds
+  with fewer than five alive at the hanging; otherwise pair elimination also offers "they
+  were the demon, and a Scion took over". (NPC reasoning never used this inference.)
+- **New deduction patterns:** *overlap* (two readings pointing toward evil share exactly
+  one person: two Seer yeses -> the demon or the one who reads falsely; otherwise -> evil)
+  and *group elimination* (a "one of these is evil" reading, Seer yes or a Dowser/
+  Hearthwitch count of 1, with another reading clearing all but one of them). They label
+  what the town's aggregate suspicion was already doing.
+- **Meeting view:** a vote starting (or being counted) brings the circle back from the map.
+- Left as is: good NPCs creating a final-day tie (social dynamics as intended).
+- Deferred: the night-proximity rule for sightings (user exploring options).
+- Bots after this pass: 7 townsfolk 58/150 (39%) vs passive 11/150 (7%); 10 townsfolk
+  42/150 (28%) vs 16/150 (11%).
+
 ## Directions noted from playtests (not built yet)
 
 - **Caution tied to the gift. [built]** One more term in the same claim roll: Seer,

@@ -143,9 +143,11 @@ func _init() -> void:
 		_check(Mind.reliability(L2, d, 1) < 1.0, "doubt recorded before hearing the reading")
 		# Trust rises: the earlier argument is re-weighed.
 		var wt0: float = L.ledger["arg:" + Argue.conclusion_key({"type": "evil", "a": a})]["weight"]
+		var tr0: float = L.trust
 		Mind.set_trust(w, L, minf(L.trust + 0.3, L.trust_cap), "test")
 		var wt1: float = L.ledger["arg:" + Argue.conclusion_key({"type": "evil", "a": a})]["weight"]
-		_check(wt1 > wt0 or L.trust_cap <= L.trust, "argument re-weighed after trust rises (%.2f -> %.2f)" % [wt0, wt1])
+		# (Re-weighing skips changes under 0.02, so a very light argument may not visibly move.)
+		_check(wt1 > wt0 or L.trust - tr0 < 0.05 or wt0 * (L.trust - tr0) < 0.03, "argument re-weighed after trust rises (%.2f -> %.2f; trust %.2f -> %.2f)" % [wt0, wt1, tr0, L.trust])
 	# Evil replies use the shared lines.
 	var good_lines = ["You've told me that already.", "Maybe. I'll think on it.", "I don't buy it.", "I'd come to that already."]
 	var ev = w.demon()

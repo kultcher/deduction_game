@@ -1049,7 +1049,9 @@ func _close_meeting() -> void:
 	elif ex != "":
 		var n = w.by_id[ex]
 		_narr("The meeting closes. %s is hanged at dusk." % n.name)
-		_facts([{"kind": "execution", "subject": [ex], "source": "player", "day": w.day, "phase": C.EVENING, "text": "%s was executed on day %d." % [n.name, w.day]}])
+		# How many were alive at the hanging: with five or more, a Scion could have taken over.
+		_facts([{"kind": "execution", "subject": [ex], "source": "player", "day": w.day, "phase": C.EVENING, "alive_before": w.living().size() + 1,
+			"text": "%s was executed on day %d." % [n.name, w.day]}])
 		if w.meeting.get("curse", false):
 			_narr("As %s swings, a cold wind moans through Hollowmere. A curse has taken one of those who voted to hang them: someone among you has turned." % n.name)
 			_facts([{"kind": "curse", "subject": [ex], "source": "player", "day": w.day, "phase": C.EVENING,

@@ -80,6 +80,8 @@ func _init() -> void:
 	scene._new_case()
 	await process_frame
 	g = scene.g
+	if g.state == "approach":
+		scene._run("decline")  # someone may want a word first
 	_check(scene.actions.get_child_count() > 0 and "where will you go" in scene.action_title.text, "day panel offers actions before moving")
 	var t = null
 	for n in g.w.living():
@@ -218,7 +220,7 @@ func _init() -> void:
 	_check(g.case_notes == "Suspect the miller", "case notes save as you type")
 	scene._open_roles()
 	await process_frame
-	_check(scene.roles_win.visible and scene.roles_box.get_child_count() >= C.GOOD_ROLES.size() + 4, "roles window lists every gift")
+	_check(scene.roles_win.visible and _role_rows(scene.roles_box) >= C.GOOD_ROLES.size() + 4, "roles window lists every gift")
 	scene.roles_win.hide()
 	# Debug overlay: shows NPCs' private view, and marks identification unscored.
 	scene.debug_check.button_pressed = true
@@ -240,7 +242,7 @@ func _init() -> void:
 	_check(scene.g.w.npcs.size() == 10 and scene.g.w.minion_ids.size() == 2, "the size selector starts a 10-person case")
 	scene._open_roles()
 	await process_frame
-	_check(scene.roles_box.get_child_count() >= C.GOOD_ROLES.size() + C.EVIL_ROLES.size() + C.SECRET_MOD_LIST.size() + 3, "the roles window lists the whole script and the secrets")
+	_check(_role_rows(scene.roles_box) == C.GOOD_ROLES.size() + C.EVIL_ROLES.size() + C.SECRET_MOD_LIST.size(), "the roles window lists the whole script and the secrets")
 	scene.roles_win.hide()
 	# Card numbers in the log open the card on the case board.
 	scene.out.meta_clicked.emit("card:1")
@@ -257,6 +259,15 @@ func _init() -> void:
 	scene.size_opt.select(0)
 	print("UI OK")
 	quit(1 if fails > 0 else 0)
+
+## Rows in the script window (one per role: an icon beside its text).
+func _role_rows(node) -> int:
+	var c = 0
+	for ch in node.get_children():
+		if ch is HBoxContainer and ch.get_child_count() > 0 and ch.get_child(0) is TextureRect:
+			c += 1
+		c += _role_rows(ch)
+	return c
 
 func _check(ok: bool, label: String) -> void:
 	print(("PASS " if ok else "FAIL ") + label)

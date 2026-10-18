@@ -233,7 +233,9 @@ const DEMON_MOODS = ["vengeful", "cunning", "hungry"]
 
 ## Personal reasons a good NPC may be out at night (and hide it). "text" follows a name
 ## ("Fenwick cannot sleep..."); "me" is how they put it themselves ("I can't sleep...").
-## (The Secret Lovers are a secret modifier now; see SECRET_MODS.)
+## (The Secret Lovers are a secret modifier now; see SECRET_MODS.) Benched for now: with the
+## secret modifiers in play these put too many innocents out at night.
+const USE_FLAVOR_SECRETS = false
 const SECRETS = [
 	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "me": "can't sleep, so I walk to the chapel to pray", "dest": "hill"},
 	{"kind": "smuggling", "text": "trades contraband with river smugglers at the docks", "me": "trade contraband with the river smugglers at the docks", "dest": "docks"},
