@@ -3,6 +3,7 @@
 extends PanelContainer
 
 signal changed
+signal notes_requested
 
 const C = preload("res://sim/content.gd")
 const Argue = preload("res://sim/argue.gd")
@@ -121,6 +122,7 @@ func build(font: Font) -> void:
 		changed.emit())
 	top.add_child(hidden_check)
 	_btn(top, "Clear filters", _clear_filters)
+	_btn(top, "Notes", func(): notes_requested.emit())
 	# What's showing and why, always: one status line, then a removable chip per filter.
 	var srow = HFlowContainer.new()
 	root.add_child(srow)

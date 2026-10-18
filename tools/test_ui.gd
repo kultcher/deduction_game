@@ -187,6 +187,23 @@ func _init() -> void:
 				pp.guess_opt.item_selected.emit(i)
 		_check(g.guesses.get(said_by, {}).get("guess", "") == "poisoner", "a guess saves as soon as it's chosen")
 	cv.visible = false
+	# Town screen: the cast list selects people; case notes save as you type.
+	var cl = scene.cast_list
+	await process_frame
+	var target = g.w.npcs[2].id
+	for r in cl._rows:
+		if r["id"] == target:
+			var ev = InputEventMouseButton.new()
+			ev.button_index = MOUSE_BUTTON_LEFT
+			ev.pressed = true
+			ev.position = r["rect"].get_center()
+			cl._gui_input(ev)
+	_check(scene.profile.current() == target, "clicking a townsperson shows them in the profile")
+	scene._open_notes()
+	scene.notes_edit.text = "Suspect the miller"
+	scene.notes_edit.text_changed.emit()
+	scene.notes_win.hide()
+	_check(g.case_notes == "Suspect the miller", "case notes save as you type")
 	# Debug overlay: shows NPCs' private view, and marks identification unscored.
 	scene.debug_check.button_pressed = true
 	await process_frame

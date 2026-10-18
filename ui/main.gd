@@ -12,6 +12,7 @@ const MapView = preload("res://ui/map_view.gd")
 const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
 const ProfilePanel = preload("res://ui/profile_panel.gd")
+const CastList = preload("res://ui/cast_list.gd")
 
 var g
 var out: RichTextLabel
@@ -34,6 +35,11 @@ var history: Array = []
 var hist_i = 0
 var theory_label: Label
 var debug_check: CheckBox
+var day_icon: TextureRect
+var day_label: Label
+var cast_list                # ui/cast_list.gd
+var notes_win: Window
+var notes_edit: TextEdit
 var _name_re: RegEx
 var _speech_re: RegEx
 
@@ -51,10 +57,38 @@ func _ready() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
 	add_child(root)
 
-	var top = HFlowContainer.new()
+	# Title bar: the day, the screens, and case controls.
+	var top = HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
 	root.add_child(top)
+	day_icon = TextureRect.new()
+	day_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	day_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	day_icon.custom_minimum_size = Vector2(30, 30)
+	top.add_child(day_icon)
+	var title = Label.new()
+	title.text = "DEMONOLOGIST"
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", UITheme.color("accent"))
+	top.add_child(title)
+	day_label = Label.new()
+	day_label.add_theme_font_size_override("font_size", 18)
+	day_label.custom_minimum_size = Vector2(170, 0)
+	top.add_child(day_label)
+	var town_tab = _button(top, "Town", func(): pass)
+	town_tab.toggle_mode = true
+	town_tab.button_pressed = true
+	_button(top, "Case board", _open_case_view)
+	_button(top, "Notes", _open_notes)
+	_button(top, "Roles", func(): _run("roles"))
+	_button(top, "Record theory", _open_theory)
+	_button(top, "Help", func(): _run("help"))
+	var spacer = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(spacer)
 	var lbl = Label.new()
-	lbl.text = "Case seed"
+	lbl.text = "Case"
+	lbl.add_theme_color_override("font_color", UITheme.color("muted"))
 	top.add_child(lbl)
 	seed_box = SpinBox.new()
 	seed_box.min_value = 0
@@ -62,14 +96,14 @@ func _ready() -> void:
 	seed_box.value = randi() % 100000
 	top.add_child(seed_box)
 	_button(top, "New case", _new_case)
-	_button(top, "Case board", _open_case_view)
-	_button(top, "Record theory", _open_theory)
-	_button(top, "Board", func(): side.visible = not side.visible)
-	_button(top, "Cast", func(): _run("cast"))
-	_button(top, "Timeline", func(): _run("timeline"))
-	_button(top, "Roles", func(): _run("roles"))
-	_button(top, "Help", func(): _run("help"))
-	_button(top, "Write dev log", func(): _run("log"))
+	var more = MenuButton.new()
+	more.text = "More ▾"
+	more.flat = false
+	var mp: PopupMenu = more.get_popup()
+	for it in ["Cast (text)", "Timeline (text)", "Card list sidebar", "Write dev log"]:
+		mp.add_item(it)
+	mp.id_pressed.connect(_on_more)
+	top.add_child(more)
 	debug_check = CheckBox.new()
 	debug_check.text = "Debug"
 	debug_check.tooltip_text = "Show what NPCs privately make of each card and person (influence, credibility, suspicion). Turning it on mid-case leaves your identification unscored."
@@ -79,25 +113,82 @@ func _ready() -> void:
 	top.add_child(debug_check)
 	theory_label = Label.new()
 	theory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	theory_label.add_theme_color_override("font_color", UITheme.color("muted"))
 	root.add_child(theory_label)
 
-	var body = HSplitContainer.new()
+	# Top: the map, the townsfolk, the profile. Bottom: what you can do, beside the log.
+	var body = VSplitContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(body)
-
-	# Left: map over log, with the typed prompt as a fallback.
-	var left = VSplitContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(left)
+	var upper = HBoxContainer.new()
+	upper.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	upper.size_flags_stretch_ratio = 1.25
+	upper.add_theme_constant_override("separation", 10)
+	body.add_child(upper)
 	map = MapView.new()
 	map.custom_minimum_size = Vector2(500, 300)
-	map.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map.size_flags_stretch_ratio = 1.1
+	map.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map.clicked.connect(_on_map_clicked)
-	left.add_child(map)
+	upper.add_child(map)
+	var castbox = VBoxContainer.new()
+	castbox.custom_minimum_size = Vector2(270, 0)
+	upper.add_child(castbox)
+	var ch = Label.new()
+	ch.text = "Townsfolk"
+	ch.add_theme_font_size_override("font_size", 18)
+	ch.add_theme_color_override("font_color", UITheme.color("accent"))
+	castbox.add_child(ch)
+	var csc = ScrollContainer.new()
+	csc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	csc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	castbox.add_child(csc)
+	cast_list = CastList.new()
+	cast_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cast_list.person_clicked.connect(func(id): _select_person(id))
+	csc.add_child(cast_list)
+	profile = ProfilePanel.new(true)
+	profile.build()
+	profile.custom_minimum_size = Vector2(400, 0)
+	profile.person_changed.connect(func(id):
+		map.selected_npc = id
+		cast_list.selected = id
+		cast_list.refresh())
+	profile.changed.connect(func():
+		theory_label.text = g.theory_status()
+		cast_list.refresh())
+	profile.card_clicked.connect(func(n):
+		_open_case_view()
+		case_state.select_card(n)
+		case_view.board.fit_selection())
+	upper.add_child(profile)
+
+	var lower = HBoxContainer.new()
+	lower.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	lower.add_theme_constant_override("separation", 10)
+	body.add_child(lower)
+	var right = VBoxContainer.new()
+	right.custom_minimum_size = Vector2(380, 0)
+	right.add_theme_constant_override("separation", 6)
+	lower.add_child(right)
+	action_title = Label.new()
+	action_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	action_title.add_theme_font_size_override("font_size", 17)
+	action_title.add_theme_color_override("font_color", UITheme.color("accent"))
+	right.add_child(action_title)
+	var asc = ScrollContainer.new()
+	asc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	asc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	right.add_child(asc)
+	actions = VBoxContainer.new()
+	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	asc.add_child(actions)
 	var logbox = VBoxContainer.new()
-	logbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left.add_child(logbox)
+	logbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lower.add_child(logbox)
+	var logpanel = PanelContainer.new()
+	logpanel.add_theme_stylebox_override("panel", UITheme.panel("inset"))
+	logpanel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	logbox.add_child(logpanel)
 	out = RichTextLabel.new()
 	out.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	out.custom_minimum_size = Vector2(0, 160)
@@ -106,7 +197,7 @@ func _ready() -> void:
 	out.bbcode_enabled = true
 	out.add_theme_font_override("normal_font", mono)
 	out.add_theme_font_size_override("normal_font_size", 14)
-	logbox.add_child(out)
+	logpanel.add_child(out)
 	var bottom = HBoxContainer.new()
 	logbox.add_child(bottom)
 	input = LineEdit.new()
@@ -118,43 +209,11 @@ func _ready() -> void:
 	bottom.add_child(input)
 	_button(bottom, "Send", func(): _on_submit(input.text))
 
-	# Right: what you can do now, then the selected person; the optional board beside it.
-	var rightbox = HBoxContainer.new()
-	body.add_child(rightbox)
-	var right = VBoxContainer.new()
-	right.custom_minimum_size = Vector2(330, 0)
-	right.add_theme_constant_override("separation", 6)
-	rightbox.add_child(right)
-	action_title = Label.new()
-	action_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	action_title.add_theme_font_size_override("font_size", 16)
-	action_title.add_theme_color_override("font_color", Color(0.95, 0.88, 0.6))
-	right.add_child(action_title)
-	var asc = ScrollContainer.new()
-	asc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	asc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	right.add_child(asc)
-	actions = VBoxContainer.new()
-	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	asc.add_child(actions)
-	right.add_child(HSeparator.new())
-	profile = ProfilePanel.new(true)
-	profile.build()
-	profile.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	profile.size_flags_stretch_ratio = 1.4
-	profile.person_changed.connect(func(id): map.selected_npc = id)
-	profile.changed.connect(func(): theory_label.text = g.theory_status())
-	profile.card_clicked.connect(func(n):
-		_open_case_view()
-		case_state.select_card(n)
-		case_view.board.fit_selection())
-	right.add_child(profile)
-
-	# Optional case-board sidebar.
+	# Optional card-list sidebar (More ▾).
 	side = VBoxContainer.new()
 	side.custom_minimum_size = Vector2(300, 0)
 	side.visible = false
-	rightbox.add_child(side)
+	lower.add_child(side)
 	var st = Label.new()
 	st.text = "Case board (newest first)"
 	side.add_child(st)
@@ -173,7 +232,32 @@ func _ready() -> void:
 	hint.text = "Double-click a card to add its number to your command."
 	hint.add_theme_font_size_override("font_size", 11)
 	side.add_child(hint)
-	_button(side, "Open case view", _open_case_view)
+	_button(side, "Open case board", _open_case_view)
+
+	# Case notes: one window, reachable from both screens.
+	notes_win = Window.new()
+	notes_win.title = "Case notes"
+	notes_win.size = Vector2i(560, 480)
+	notes_win.visible = false
+	notes_win.close_requested.connect(func(): notes_win.hide())
+	var np = PanelContainer.new()
+	np.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	np.add_theme_stylebox_override("panel", UITheme.panel("paper"))
+	notes_win.add_child(np)
+	var nv = VBoxContainer.new()
+	np.add_child(nv)
+	var nh = Label.new()
+	nh.text = "Your notes on the case (saved as you type)"
+	nh.add_theme_color_override("font_color", UITheme.color("ink"))
+	nv.add_child(nh)
+	notes_edit = TextEdit.new()
+	notes_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	notes_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	notes_edit.text_changed.connect(func():
+		if g != null:
+			g.case_notes = notes_edit.text)
+	nv.add_child(notes_edit)
+	add_child(notes_win)
 
 	popup = PopupPanel.new()
 	popup.add_theme_stylebox_override("panel", UITheme.panel("popup"))
@@ -189,6 +273,7 @@ func _ready() -> void:
 	add_child(case_view)
 	case_view.build(mono)
 	case_view.changed.connect(_refresh_side)
+	case_view.notes_requested.connect(_open_notes)
 
 	_new_case()
 
@@ -216,6 +301,8 @@ func _new_case() -> void:
 	_print(g.new_case(int(seed_box.value)))
 	case_view.set_game(g)
 	profile.setup(g, case_state)
+	cast_list.setup(g)
+	notes_edit.text = g.case_notes
 	map.set_game(g)
 	if debug_check.button_pressed:
 		g.set_debug_overlay(true)
@@ -228,6 +315,20 @@ func _input(ev: InputEvent) -> void:
 func _open_case_view() -> void:
 	case_view.refresh()
 	case_view.visible = true
+
+func _on_more(i: int) -> void:
+	if i == 0:
+		_run("cast")
+	elif i == 1:
+		_run("timeline")
+	elif i == 2:
+		side.visible = not side.visible
+	elif i == 3:
+		_run("log")
+
+func _open_notes() -> void:
+	notes_edit.text = g.case_notes
+	notes_win.popup_centered()
 
 func _open_theory() -> void:
 	_open_case_view()
@@ -271,6 +372,10 @@ func _refresh_all() -> void:
 	_refresh_side()
 	_refresh_actions()
 	map.refresh()
+	cast_list.refresh()
+	var night = g.state == "night"
+	day_icon.texture = UITheme.tex("ui/moon" if night else "ui/sun", 0.15)
+	day_label.text = ("Night %d" % g.w.day) if night else ("Day %d · %s" % [g.w.day, "Town meeting" if g.state in ["meeting", "nomination"] else C.PHASES[g.w.phase]])
 	if case_view.visible:
 		case_view.refresh()
 
@@ -281,6 +386,8 @@ func _side_person_id() -> String:
 func _select_person(id: String) -> void:
 	case_state.select_person(id)
 	profile.show_person(id)
+	cast_list.selected = id
+	cast_list.refresh()
 	case_view.show_profile(id)
 	map.selected_npc = id
 	_refresh_profile()
@@ -302,17 +409,41 @@ func _hex_for(name: String) -> String:
 			return C.npc_color(n["id"]).to_html(false)
 	return "dddddd"
 
-## Plain text from the game -> BBCode: speech lines in the speaker's colour, names coloured
-## wherever they appear.
+func _id_for(name: String) -> String:
+	for n in C.CAST:
+		if n["name"] == name:
+			return n["id"]
+	return ""
+
+## An inline icon for the log, if the art is there.
+func _icon(rel: String, h: int) -> String:
+	var path = "res://assets/" + rel + ".png"
+	return ("[img height=%d]%s[/img] " % [h, path]) if ResourceLoader.exists(path) else ""
+
+var _tag_re: RegEx
+
+## Plain text from the game -> BBCode: speech lines in the speaker's colour with their
+## portrait, names coloured wherever they appear, icons for day headers, deaths and new
+## case-board cards.
 func _colourize(s: String) -> String:
+	if _tag_re == null:
+		_tag_re = RegEx.new()
+		_tag_re.compile("\\[lb\\]case board: ([^\\]]*)\\]")
 	var lines = PackedStringArray()
 	for line in s.split("\n"):
 		var esc = line.replace("[", "[lb]")
+		esc = _tag_re.sub(esc, "[color=#8a8f99]%s$1[/color]" % _icon("ui/cards/card_04", 14), true)
 		var m = _speech_re.search(esc)
 		if m != null:
 			var hex = _hex_for(m.get_string(2))
-			lines.append("%s[color=#%s][b]%s[/b]: %s[/color]" % [m.get_string(1), hex, m.get_string(2), m.get_string(3)])
+			lines.append("%s%s[color=#%s][b]%s[/b]: %s[/color]" % [m.get_string(1), _icon("art/portraits/" + _id_for(m.get_string(2)), 24), hex, m.get_string(2), m.get_string(3)])
 			continue
+		if line.begins_with("=== "):
+			var ic = "ui/moon" if "Night" in line else ("ui/wax_seal" if "meeting" in line else "ui/sun")
+			lines.append("%s[color=#%s][b]%s[/b][/color]" % [_icon(ic, 20), UITheme.color("accent").to_html(false), esc.trim_prefix("=== ").trim_suffix(" ===")])
+			continue
+		if "was killed" in line:
+			esc = _icon("ui/raven", 20) + esc
 		var outl = ""
 		var pos = 0
 		for mm in _name_re.search_all(esc):
@@ -460,7 +591,7 @@ func _actions_day(w) -> void:
 
 func _actions_talk(w) -> void:
 	var n = g.talk_with
-	action_title.text = "Talking with %s (%d question%s left)" % [n.name, g.questions_left, "" if g.questions_left == 1 else "s"]
+	action_title.text = "Talking with %s · %d question%s left" % [n.name, g.questions_left, "" if g.questions_left == 1 else "s"]
 	var sb = _button(actions, "Ask about %s…  ▸" % n.name, func(): pass)
 	sb.pressed.connect(func(): _ask_self_picker(sb))
 	var ab = _button(actions, "Ask about others…  ▸", func(): pass)

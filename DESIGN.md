@@ -477,6 +477,15 @@ board (centre), profile and notes (right).
   (cards they're the source or relayer of), About them (cards about them from others),
   each entry a link with when it happened and how you heard it; clicking selects the card
   (and shows it on the board). Guess and notes save as you change them.
+- **Town screen [built]**: title bar (sun or moon, "DEMONOLOGIST", day and phase, Town / Case
+  board / Notes / Roles / Record theory / Help; case seed, New case, More ▾ for the text
+  cast and timeline, the old card sidebar and the dev log; Debug). Top: map, the
+  townsfolk list (`ui/cast_list.gd`: portrait in a gold ring, colour, claim icon, your
+  pencilled guess, where they are if visible; dead greyed with a cross), the compact
+  profile. Bottom: actions with a context line ("Talking with Greta · 2 questions left")
+  beside the log. The log shows the speaker's portrait on speech lines, sun/moon/seal on
+  day headers, a raven on deaths and a card icon on new case-board cards. **Case notes**
+  open in one window from either screen and save as you type.
 - **Papercraft skin [built]**: navy board, cream plaques as buttons (red when pressed), gold
   edges, framed paper for the profile, serif type. Art sliced from the sheets by
   `tools/slice_sheets.py` (see `assets/ui/README.md`).

@@ -298,14 +298,16 @@ func _entries(cards: Array, id: String) -> PackedStringArray:
 	sorted.sort_custom(func(a, b): return CardModel.time_order(a.get("when", {"day": a.get("day", 0), "phase": 0})) < CardModel.time_order(b.get("when", {"day": b.get("day", 0), "phase": 0})))
 	for c in sorted:
 		var t: Dictionary = c.get("when", {"day": c.get("day", 0), "phase": 0})
-		var heard = PackedStringArray()
+		var heard: Array = []
 		for d in c.get("learned", []):
 			var who: String = d.get("via", "")
 			var how = "public" if d.get("public", false) else ("private" if who == id or who == c.get("source", "") else "via " + (g.w.by_id[who].name if g.w.by_id.has(who) else "you"))
 			if who in ["player", "evidence", ""]:
 				how = "you saw" if not d.get("public", false) else "public"
-			heard.append("%s %s" % [CardModel.time_label({"day": d["day"], "phase": d["phase"]}), how])
+			# First time heard each way only (asking again doesn't need listing).
+			if not heard.any(func(x): return x.ends_with(" " + how)):
+				heard.append("%s %s" % [CardModel.time_label({"day": d["day"], "phase": d["phase"]}), how])
 		var col = "7a1f1a" if c.get("kind", "") == "deduction" else "2b2116"
 		out.append("[color=#8a7a5a]%s[/color] [url=card:%d][color=#%s]#%d %s[/color][/url] [color=#8a7a5a](%s)[/color]" %
-			[CardModel.time_label(t), c["n"], col, c["n"], c.get("text", ""), ", ".join(heard)])
+			[CardModel.time_label(t), c["n"], col, c["n"], c.get("text", ""), ", ".join(PackedStringArray(heard))])
 	return out
