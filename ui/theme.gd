@@ -123,9 +123,14 @@ static func panel(name: String = "panel") -> StyleBox:
 		_:
 			return flat(color("panel"), Color(0, 0, 0, 0), 0, 0, 10)
 
+static var _serif: Font = null
+
 static func serif() -> Font:
+	if _serif != null:
+		return _serif
 	var f = SystemFont.new()
 	f.font_names = PackedStringArray(["Georgia", "Palatino Linotype", "Book Antiqua", "Garamond", "Times New Roman", "DejaVu Serif", "serif"])
+	_serif = f
 	return f
 
 ## The Theme set on the root of each screen.

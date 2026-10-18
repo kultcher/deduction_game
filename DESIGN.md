@@ -486,6 +486,13 @@ board (centre), profile and notes (right).
   beside the log. The log shows the speaker's portrait on speech lines, sun/moon/seal on
   day headers, a raven on deaths and a card icon on new case-board cards. **Case notes**
   open in one window from either screen and save as you type.
+- **Painted map [built]** (`ui/map_view.gd`): each block is its painted base (Square plaza,
+  Market clearings, Docks with the pier, Chapel Hill's winding path), places are building
+  sprites with name signs, homes are small cottages with the owner's colour at the door
+  (crossed out when they become a crime scene), sandy roads with lamps join the blocks,
+  trees and flowers dress the edges, and townsfolk are paper standees (busy ones marked,
+  the person you're talking to framed in gold). Night tints everything blue. Zooming into a
+  block dims the rest. Same layout logic and click targets as before.
 - **Papercraft skin [built]**: navy board, cream plaques as buttons (red when pressed), gold
   edges, framed paper for the profile, serif type. Art sliced from the sheets by
   `tools/slice_sheets.py` (see `assets/ui/README.md`).
