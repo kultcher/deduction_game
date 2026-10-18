@@ -255,6 +255,8 @@ func _page(id: String, p: Dictionary) -> String:
 			var bl: String = p["blurb"]
 			lines.append("[i]%s.[/i]" % (bl[0].to_upper() + bl.substr(1)))
 			lines.append("Works %s; lives on %s." % [p["work"], p["home"]])
+			if p.get("haunts", "") != "":
+				lines.append("Off work, often at %s." % p["haunts"])
 			var tl = PackedStringArray()
 			for t in C.TRAITS:
 				tl.append("%s [b]%s[/b]" % [t.capitalize(), p["traits"].get(t, "?")])

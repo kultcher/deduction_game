@@ -85,6 +85,8 @@ func _test_martyr_save() -> void:
 	var mart = goods[0]
 	var target = goods[1]
 	_give(w, mart, "martyr")
+	mart.secret_mod = ""
+	mart.poisoned = false
 	mart.martyr_target = target.id
 	w.begin_meeting()
 	w.execute(target.id, {"by": "player", "yes": [], "player_yes": true})
@@ -98,6 +100,8 @@ func _test_martyr_evil() -> void:
 	w.day = 2
 	var mart = w.living_good()[0]
 	_give(w, mart, "martyr")
+	mart.secret_mod = ""
+	mart.poisoned = false
 	var ev = w.minions()[0]
 	mart.martyr_target = ev.id
 	w.begin_meeting()

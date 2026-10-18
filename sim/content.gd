@@ -231,12 +231,13 @@ const HINT_PACKAGES = {
 ## Demon temperaments shape kill choice.
 const DEMON_MOODS = ["vengeful", "cunning", "hungry"]
 
-## Personal reasons a good NPC may be out at night (and hide it).
+## Personal reasons a good NPC may be out at night (and hide it). "text" follows a name
+## ("Fenwick cannot sleep..."); "me" is how they put it themselves ("I can't sleep...").
 ## (The Secret Lovers are a secret modifier now; see SECRET_MODS.)
 const SECRETS = [
-	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "dest": "hill"},
-	{"kind": "smuggling", "text": "trades contraband with river smugglers at the docks", "dest": "docks"},
-	{"kind": "debt", "text": "sneaks to the market to pay off a gambling debt", "dest": "market"},
+	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "me": "can't sleep, so I walk to the chapel to pray", "dest": "hill"},
+	{"kind": "smuggling", "text": "trades contraband with river smugglers at the docks", "me": "trade contraband with the river smugglers at the docks", "dest": "docks"},
+	{"kind": "debt", "text": "sneaks to the market to pay off a gambling debt", "me": "sneak to the market to pay off a gambling debt", "dest": "market"},
 ]
 
 static func block_name(b: String) -> String:

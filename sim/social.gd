@@ -216,7 +216,7 @@ static func _describe(w, s, item: Dictionary) -> String:
 			return "the Demonologist's case against %s" % w.by_id[item["about"]].name
 		"secret":
 			var o = w.by_id[item["about"]]
-			return "%s's secret: they %s" % [o.name, o.secret.get("text", "?")]
+			return "%s's secret: %s %s" % [o.name, o.name, o.secret.get("text", "?")]
 	return item["kind"]
 
 ## Evil members in the same crowded tavern can pass word unobserved (slow, partial).
@@ -330,7 +330,7 @@ static func gossip_item(w, n) -> Dictionary:
 			o.secret_spread_by_npc = true
 			return {"lines": [Mind.say(n, "Between you and me, %s %s. That's why they're about at night." % [o.name, o.secret["text"]])],
 				"facts": [{"kind": "secret", "subject": [owner], "owner": owner, "source": n.id, "via": n.known_secrets[owner],
-					"text": "%s told you %s's secret: they %s." % [n.name, o.name, o.secret["text"]]}]}
+					"text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, o.secret["text"]]}]}
 	for i in range(n.hearsay.size() - 1, -1, -1):
 		var h: Dictionary = n.hearsay[i]
 		var src = w.by_id.get(h["from"])

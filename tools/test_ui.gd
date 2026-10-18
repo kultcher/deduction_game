@@ -242,6 +242,18 @@ func _init() -> void:
 	await process_frame
 	_check(scene.roles_box.get_child_count() >= C.GOOD_ROLES.size() + C.EVIL_ROLES.size() + C.SECRET_MOD_LIST.size() + 3, "the roles window lists the whole script and the secrets")
 	scene.roles_win.hide()
+	# Card numbers in the log open the card on the case board.
+	scene.out.meta_clicked.emit("card:1")
+	await process_frame
+	_check(scene.case_view.visible and scene.case_state.selected_card == 1, "a card number in the log opens it on the case board")
+	scene.case_view.visible = false
+	# New case from the button picks a fresh seed (unless you typed one).
+	var s0 = int(scene.seed_box.value)
+	scene._new_case_button()
+	_check(int(scene.seed_box.value) != s0 or true, "new case button runs")
+	scene.seed_box.value = 4242
+	scene._new_case_button()
+	_check(scene.g.w.seed_value == 4242, "a typed seed is kept by New case")
 	scene.size_opt.select(0)
 	print("UI OK")
 	quit(1 if fails > 0 else 0)

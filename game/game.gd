@@ -28,6 +28,7 @@ var _card_keys = {}
 var _fact_keys = {}      # Mind.fact_id -> card number, for facts that can reach you twice
 var case_notes = ""       # the player's free-form notes on the case
 var town_quiet = false     # the town has had its say since the last nomination (allows 'done')
+var talk_approached = false  # this conversation began with them approaching you (it costs the phase)
 var statement_used = false # player's one statement on the pending nomination
 var presented_today = false # player has had the meeting floor today
 var last_link = {}          # result of the last 'link' (for 'conclude <number>')
@@ -369,6 +370,11 @@ func _dispatch(text: String) -> void:
 ## Whether the player can see where someone is right now: anyone at work or deep in
 ## conversation is plain to see from anywhere; anyone else only once the player is on
 ## their block this phase (out on the street, or a lit window at home).
+## How many people are at a location whom you can't see from here (not who: just that
+## someone's there, so you don't walk into an empty spot).
+func unseen_at(l: String) -> int:
+	return w.npcs_at(l).filter(func(n): return not n.at_home() and not can_see(n)).size()
+
 func can_see(n) -> bool:
 	if not n.alive:
 		return false
@@ -420,8 +426,8 @@ func _day_command(verb: String, rest: String) -> void:
 			if l == "":
 				var lost = find_npc(rest)
 				if lost != null and lost.alive:
-					_err("You can't see where %s is this %s. Try their work (%s) or their home block (%s)." % [lost.name,
-						w.phase_name().to_lower(), w.loc_name(lost.work), C.block_name(lost.home_block)])
+					_err("You can't see where %s is this %s. Try their work (%s), where they often go (%s), or their home block (%s)." % [lost.name,
+						w.phase_name().to_lower(), w.loc_name(lost.work), " or ".join(PackedStringArray(lost.haunts.map(func(x): return w.loc_name(x)))), C.block_name(lost.home_block)])
 				else:
 					_err("Where? Try 'map' for places (a location, a block, or a person).")
 				return
@@ -480,6 +486,7 @@ func _day_command(verb: String, rest: String) -> void:
 			talk_with = n
 			questions_left = 3
 			free_repeats = 0
+			talk_approached = false
 			state = "talk"
 			w.dlog.add("player_talk", "player", n.id, {"trust": snappedf(n.trust, 0.01)})
 			var cue = Mind.greeting_cue(w, n)
@@ -659,6 +666,7 @@ func _approach_command(verb: String, rest: String) -> void:
 			w.player_loc = loc
 			talk_with = n
 			questions_left = 3
+			talk_approached = true
 			free_repeats = 0
 			w.dlog.add("player_talk", "player", n.id, {"trust": snappedf(n.trust, 0.01), "approach": approach["agenda"]})
 			_narr("You step aside with %s at %s." % [n.name, w.loc_name(loc)])
@@ -701,8 +709,18 @@ func _talk_command(verb: String, rest: String) -> void:
 					r = Mind.answer_gift(w, n)
 				"night", "lastnight":
 					r = Mind.answer_night(w, n)
-				"today", "seen":
-					r = Mind.answer_today(w, n)
+				"today", "seen", "yesterday", "morning", "afternoon", "evening":
+					var frame: String = topic if topic in ["yesterday", "morning", "afternoon", "evening"] else (p[1].to_lower() if p.size() > 1 else "")
+					if frame == "today":
+						frame = ""
+					var fi = ["morning", "afternoon", "evening"].find(frame)
+					if frame != "" and frame != "yesterday" and fi < 0:
+						_err("Ask about when? ('ask seen morning | afternoon | evening | yesterday', or 'ask today')")
+						return
+					if fi > w.phase:
+						_err("It isn't the %s yet." % frame)
+						return
+					r = Mind.answer_today(w, n, frame, w.loc_block(loc))
 				"about", "opinion":
 					var target = " ".join(p.slice(1))
 					var role = find_role(target)
@@ -802,11 +820,19 @@ func _talk_command(verb: String, rest: String) -> void:
 					return
 				r = Mind.hear_accusation(w, n, s, board[num - 1])
 		"bye", "leave", "done":
+			if questions_left == 3 and free_repeats == 0 and not talk_approached:
+				# Nothing asked yet: you think better of it, and the phase isn't spent.
+				_narr("You think better of it and leave %s be. (No time spent.)" % n.name)
+				w.dlog.add("player_talk_cancel", "player", n.id, {})
+				talk_with = null
+				state = "day"
+				_prompt("You're still at %s this %s." % [w.loc_name(loc), w.phase_name().to_lower()])
+				return
 			_narr("You leave %s to their business." % n.name)
 			_close_conversation()
 			return
 		_:
-			_err("In conversation: ask gift | ask night | ask today | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | bye")
+			_err("In conversation: ask gift | ask night | ask today | ask seen <morning|afternoon|evening|yesterday> | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | bye")
 			return
 	# Something they've already heard from you: they say so, and it costs no question.
 	var repeat = r["lines"].size() == 1 and r["lines"][0] is Dictionary and r["lines"][0].get("text", "") == "You've told me that already."
@@ -1225,6 +1251,13 @@ func _map() -> String:
 			else:
 				parts.append(n.name)
 		var places: Array = w.locations_on(b).map(func(l): return w.loc_name(l).trim_prefix("the "))
+		var more: Array = []
+		for l in w.locations_on(b):
+			var u = unseen_at(l)
+			if u > 0:
+				more.append("%d more at %s" % [u, w.loc_name(l).trim_prefix("the ")])
+		if not more.is_empty():
+			parts.append("(" + ", ".join(PackedStringArray(more)) + ")")
 		out.append("  %-12s (%s): %s" % [C.block_name(b), ", ".join(PackedStringArray(places)),
 			"; ".join(PackedStringArray(parts)) if not parts.is_empty() else "-"])
 	for n in w.living():
@@ -1236,7 +1269,7 @@ func _map() -> String:
 	if not at_home.is_empty():
 		out.append("  At home nearby (you can call on them): " + ", ".join(PackedStringArray(at_home)))
 	if unseen > 0:
-		out.append("  %d other%s out of sight: go to a block to see who's about there." % [unseen, "" if unseen == 1 else "s"])
+		out.append("  %d other%s out of sight (the counts above say where someone is, not who; those at home aren't counted)." % [unseen, "" if unseen == 1 else "s"])
 	return "\n".join(out)
 
 func _cast() -> String:
@@ -1263,7 +1296,7 @@ func _profile(token: String) -> String:
 		return "Profile of whom?"
 	var out = PackedStringArray()
 	out.append("%s the %s: %s." % [n.name, n.occupation, n.blurb])
-	out.append("Works %s at %s; lives on %s.%s" % [C.phase_list(n.work_phases), w.loc_name(n.work), C.block_name(n.home_block),
+	out.append("Works %s at %s; off work, often at %s; lives on %s.%s" % [C.phase_list(n.work_phases), w.loc_name(n.work), " or ".join(PackedStringArray(n.haunts.map(func(l): return w.loc_name(l)))), C.block_name(n.home_block),
 		"" if n.alive else " %s%s." % [_death_text(n)[0].to_upper(), _death_text(n).substr(1)]])
 	var tl = PackedStringArray()
 	for t in C.TRAITS:
@@ -2010,6 +2043,7 @@ func profile_data(id: String) -> Dictionary:
 	var claim = _claim_text(n)
 	var status = "alive" if n.alive else _death_text(n)
 	return {"id": id, "name": n.name, "occupation": n.occupation, "blurb": n.blurb, "work": "%s at %s" % [C.phase_list(n.work_phases), w.loc_name(n.work)],
+		"haunts": " or ".join(PackedStringArray(n.haunts.map(func(l): return w.loc_name(l)))),
 		"home": C.block_name(n.home_block), "status": status, "traits": n.revealed_traits.duplicate(), "claim": claim,
 		"guess": guesses.get(id, {}), "note": notes.get(id, ""), "cards": filter_cards(id).map(func(c): return c["n"]),
 		"named": named_in(id)}

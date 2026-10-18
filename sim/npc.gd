@@ -13,6 +13,7 @@ var occupation = ""
 var work = ""            # work location id
 var work_phases: Array = []   # day phases they always work (known to the player)
 var home_block = ""
+var haunts: Array = []   # favourite places when not working (town knowledge)
 var ring = 0             # position on the lane ring (neighbours for the Hearthwitch)
 
 var role = ""            # true role id

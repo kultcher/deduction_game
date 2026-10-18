@@ -355,9 +355,10 @@ func _pick_location() -> String:
 	if w.phase == C.EVENING and rng.randf() < 0.5:
 		return "tavern"
 	var best = "tavern"
-	var best_n = -1
+	var best_n = -1.0
 	for l in C.LOCATIONS:
-		var n: int = w.npcs_at(l).filter(func(m): return m.busy_with == "" and g.can_see(m) and talked.get(m.id, -1) != w.day).size()
+		# Free people it can see there, plus the "someone's there" count for those it can't.
+		var n: float = w.npcs_at(l).filter(func(m): return m.busy_with == "" and g.can_see(m) and talked.get(m.id, -1) != w.day).size() + 0.8 * g.unseen_at(l)
 		if n > best_n:
 			best_n = n
 			best = l

@@ -9,8 +9,8 @@ signal person_clicked(id)
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
 
-const ROW_H = 62.0
-const GAP = 6.0
+const ROW_H = 70.0
+const GAP = 2.0
 
 var g
 var selected = ""
@@ -62,29 +62,40 @@ func _draw() -> void:
 			draw_texture_rect(ring, Rect2(c - Vector2(rad, rad), Vector2(rad, rad) * 2.0), false)
 		else:
 			draw_arc(c, rad, 0, TAU, 32, UITheme.color("border"), 2.0)
-		# Name, colour dot, status.
+		# Name, colour dot, status. The right end holds two slots: their claim, your guess.
 		var ink = UITheme.color("paper") if sel else UITheme.ink_of(C.npc_color(n.id))
 		var tx = r.position.x + ROW_H + 6
-		draw_circle(Vector2(tx + 4, pr.position.y + 16), 5, C.npc_color(n.id))
-		draw_string(_font, Vector2(tx + 14, pr.position.y + 22), n.name + ("" if n.alive else "  †"), HORIZONTAL_ALIGNMENT_LEFT, pr.end.x - tx - 50, 18, ink if (n.alive or sel) else UITheme.color("ink_soft"))
+		var slot = 30.0
+		var slots_x = pr.end.x - 18 - slot * 2 - 4
+		var text_w = slots_x - tx - 18
+		draw_circle(Vector2(tx + 4, pr.position.y + 17), 5, C.npc_color(n.id))
+		draw_string(_font, Vector2(tx + 14, pr.position.y + 24), n.name + ("" if n.alive else "  †"), HORIZONTAL_ALIGNMENT_LEFT, text_w, 18, ink if (n.alive or sel) else UITheme.color("ink_soft"))
 		var sub = _sub_line(n)
-		draw_string(_font, Vector2(tx, pr.end.y - 12), sub, HORIZONTAL_ALIGNMENT_LEFT, pr.end.x - tx - 40, 13, UITheme.color("paper_dim") if sel else UITheme.color("ink_soft"))
-		# Claim icon (their word) and your guess (pencilled, with a question mark).
-		var ix = pr.end.x - 30
+		draw_string(_font, Vector2(tx, pr.end.y - 12), sub, HORIZONTAL_ALIGNMENT_LEFT, text_w + 10, 13, UITheme.color("paper_dim") if sel else UITheme.color("ink_soft"))
+		var cy = pr.position.y + (pr.size.y - slot) / 2.0
 		var claim = _claimed(n)
 		if claim != "":
-			var ct = UITheme.tex("ui/roles/" + claim, 0.06)
-			if ct != null:
-				draw_texture(ct, Vector2(ix - 26, pr.position.y + (pr.size.y - ct.get_height()) / 2.0))
+			_role_mark(claim, Rect2(slots_x, cy, slot, slot), Color.WHITE, sel)
 		var gs: String = g.guesses.get(n.id, {}).get("guess", "?")
 		if gs != "?":
-			var gt = UITheme.tex("ui/roles/" + gs, 0.05) if C.ROLES.has(gs) else null
-			var gp = Vector2(ix + 2, pr.position.y + 8)
-			if gt != null:
-				draw_texture(gt, gp, Color(1, 1, 1, 0.75))
-			else:
-				draw_string(_font, gp + Vector2(0, 14), gs, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.color("red"))
-			draw_string(_font, gp + Vector2(14, 30), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UITheme.color("red"))
+			var gr = Rect2(slots_x + slot + 4, cy, slot, slot)
+			_role_mark(gs, gr, Color(1, 1, 1, 0.75), sel)
+			draw_string(_font, Vector2(gr.end.x - 6, gr.end.y + 2), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.color("red"))
+
+## A role's icon in a square slot, or (for gifts without art yet, and good/evil guesses) a
+## small tag with the first letters.
+func _role_mark(role: String, rect: Rect2, tint: Color, sel: bool) -> void:
+	var t = UITheme.tex("ui/roles/" + role, 0.06) if C.ROLES.has(role) or role == "none" else null
+	if t != null:
+		var ts = Vector2(t.get_width(), t.get_height())
+		var k = minf(rect.size.x / ts.x, rect.size.y / ts.y)
+		var sz = ts * k
+		draw_texture_rect(t, Rect2(rect.get_center() - sz / 2.0, sz), false, tint)
+		return
+	var label = (C.role_name(role) if C.ROLES.has(role) else role).substr(0, 4)
+	var col = UITheme.color("red") if role in ["evil", "demon"] or C.is_minion(role) else UITheme.color("ink_soft")
+	draw_style_box(UITheme.flat(Color(1, 1, 1, 0.0), col, 1, 3, 1), rect.grow(-3))
+	draw_string(_font, Vector2(rect.position.x, rect.get_center().y + 4), label, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 11, UITheme.color("paper") if sel else col)
 
 func _claimed(n) -> String:
 	if n.claim_public or n.max_tier >= 3:

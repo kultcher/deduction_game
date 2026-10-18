@@ -23,6 +23,9 @@ func _init() -> void:
 	_test_fake_sighting_vantage()
 	_test_demon_tie_vote()
 	_test_fake_watch_story()
+	_test_ask_seen()
+	_test_back_out()
+	_test_haunts_and_counts()
 	print("FAILURES: %d" % fails)
 	quit()
 
@@ -269,6 +272,57 @@ func _test_fake_watch_story() -> void:
 			bad += 1
 			print("  inconsistent: ", txt)
 	_check(bad == 0, "a false Night Watch's night story matches their fake report (%d cases)" % tried)
+
+## "Ask today" leaves out people you can see beside you; "ask seen <time>" narrows it.
+func _test_ask_seen() -> void:
+	var g = _game(7300)
+	var w = g.w
+	var n = w.living_good()[0]
+	var x = w.living_good()[1]
+	var y = w.living_good()[2]
+	n.traits["gossip"] = 1.0
+	n.beliefs = [
+		{"kind": "saw", "who": x.id, "loc": "tavern", "block": "square", "day": 1, "phase": 0, "with": ""},
+		{"kind": "saw", "who": y.id, "loc": "smithy", "block": "market", "day": 1, "phase": 0, "with": ""}]
+	var r1 = Mind.answer_today(w, n, "", "square")
+	var t1 = r1["lines"][0]["text"]
+	_check(not (x.name in t1) and y.name in t1, "people beside you this phase are left out (%s)" % t1)
+	n.beliefs.append({"kind": "saw", "who": x.id, "loc": "well", "block": "square", "day": 0, "phase": 2, "with": ""})
+	w.day = 1
+	var r2 = Mind.answer_today(w, n, "yesterday", "square")
+	_check(x.name in r2["lines"][0]["text"] and not (y.name in r2["lines"][0]["text"]), "ask seen yesterday reaches back a day")
+	var r3 = Mind.answer_today(w, n, "morning", "")
+	_check(y.name in r3["lines"][0]["text"], "ask seen morning names who was seen this morning")
+
+## Leaving a conversation before asking anything costs no time.
+func _test_back_out() -> void:
+	var g = _game(7301)
+	var w = g.w
+	var t = null
+	for n in w.living():
+		if not n.at_home() and n.busy_with == "" and g.can_see(n):
+			t = n
+			break
+	g.command("go " + t.id)
+	g.command("talk " + t.id)
+	var ph = w.phase
+	g.command("bye")
+	_check(g.state == "day" and w.phase == ph and g.talk_with == null, "backing out with no questions keeps the phase")
+	g.command("talk " + t.id)
+	g.command("ask gift")
+	g.command("bye")
+	_check(w.phase != ph or g.state != "talk", "leaving after a question spends the phase")
+
+## Habits and "someone's there" counts.
+func _test_haunts_and_counts() -> void:
+	var g = _game(7302)
+	var w = g.w
+	_check(w.npcs.all(func(n): return n.haunts.size() == 2 and not (n.work in n.haunts)), "everyone has two haunts, not their workplace")
+	var total = 0
+	for l in C.LOCATIONS:
+		total += g.unseen_at(l)
+	var hidden = w.living().filter(func(n): return not n.at_home() and not g.can_see(n) and C.LOCATIONS.has(n.loc)).size()
+	_check(total == hidden, "unseen counts add up to everyone out of sight (%d)" % total)
 
 func _check(ok: bool, what: String) -> void:
 	print(("PASS " if ok else "FAIL ") + what)

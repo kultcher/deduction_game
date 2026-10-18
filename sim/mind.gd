@@ -1246,11 +1246,11 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				"Confess personal secret (%s)?" % n.secret.get("kind", "?"))
 		if confess:
 			n.secret_known = true
-			lines.append(say(n, "...I wasn't home. I %s. Please, keep it quiet." % n.secret["text"]))
+			lines.append(say(n, "...I wasn't home. I %s. Please, keep it quiet." % n.secret.get("me", n.secret["text"])))
 			vantage = block
 			how = "street"
 			facts.append({"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
-				"text": "%s confessed they were out on %s on night %d: they %s." % [n.name, C.block_name(block), nd, n.secret["text"]]})
+				"text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]})
 		else:
 			var bold = decide(w, n, "lie_or_stonewall", {"confidence": (trait_of(n, "confidence") - 0.5) * 1.5,
 				"privacy_stonewalls": -(trait_of(n, "privacy") - 0.5) * 0.6}, "Hiding (%s): lie outright rather than stonewall?" % hiding)
@@ -1339,7 +1339,11 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 		"fact": {"kind": "sighting", "subject": [who.id], "block": b["block"], "day": nd, "phase": C.NIGHT, "source": n.id, "how": b.get("how", "street"),
 			"text": "%s says they saw %s on %s on night %d%s." % [n.name, who.name, bn, nd, how]}}
 
-static func answer_today(w, n) -> Dictionary:
+## Who they've seen around by day. when: "" (recently: today and yesterday), "morning",
+## "afternoon", "evening" (today) or "yesterday". near_block: where the player is right now;
+## people seen there this phase are left out (you can see them yourself), and memory reaches
+## further back instead.
+static func answer_today(w, n, when: String = "", near_block: String = "") -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
 	var facts: Array = []
@@ -1349,7 +1353,18 @@ static func answer_today(w, n) -> Dictionary:
 		return {"lines": lines, "facts": facts}
 	# Memory: they recall only their most recent few sightings (more with Insight), one per person.
 	var memory = 2 + int(round(trait_of(n, "insight") * 4.0))
-	var seen: Array = n.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] != C.NIGHT and b["day"] >= w.day - 1)
+	var ph = C.PHASES.map(func(x): return x.to_lower()).find(when)
+	var in_frame = func(b) -> bool:
+		if when == "yesterday":
+			return b["day"] == w.day - 1
+		if ph >= 0:
+			return b["day"] == w.day and b["phase"] == ph
+		return b["day"] >= w.day - 1
+	var before: Array = n.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] != C.NIGHT and in_frame.call(b))
+	var seen: Array = before.filter(func(b): return near_block == "" or not (b["day"] == w.day and b["phase"] == w.phase and b.get("block", "") == near_block))
+	if seen.is_empty() and not before.is_empty():
+		lines.append(say(n, "Only who you can see around you for yourself."))
+		return {"lines": lines, "facts": facts}
 	var recalled: Array = []
 	var people = {}
 	for i in range(seen.size() - 1, -1, -1):
@@ -1370,17 +1385,17 @@ static func answer_today(w, n) -> Dictionary:
 	var parts: Array = []
 	for b in recalled.slice(0, limit):
 		var who = w.by_id[b["who"]]
-		var when = "%s %s" % ["yesterday" if b["day"] < w.day else "this", C.PHASES[b["phase"]].to_lower()]
+		var when_s = "%s %s" % ["yesterday" if b["day"] < w.day else "this", C.PHASES[b["phase"]].to_lower()]
 		var where: String = w.loc_name(b["loc"]) if b["loc"] != "" else C.block_name(b["block"])
 		var partner: String = b.get("with", "")
 		if partner != "" and w.by_id.has(partner) and not (n.is_evil() and Evil.is_teammate(w, n, partner)):
 			var pn = w.by_id[partner]
-			parts.append("%s at %s, talking with %s (%s)" % [who.name, where, pn.name, when])
+			parts.append("%s at %s, talking with %s (%s)" % [who.name, where, pn.name, when_s])
 			facts.append({"kind": "conversation", "subject": [who.id, partner], "block": b["block"], "loc": b["loc"], "day": b["day"], "phase": b["phase"],
 				"source": n.id, "text": "%s saw %s and %s talking at %s, day %d %s." % [n.name, who.name, pn.name, where, b["day"], C.PHASES[b["phase"]]]})
 			people[partner] = true
 		else:
-			parts.append("%s at %s (%s)" % [who.name, where, when])
+			parts.append("%s at %s (%s)" % [who.name, where, when_s])
 		facts.append({"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": b["phase"], "source": n.id,
 			"text": "%s saw %s on %s, day %d %s." % [n.name, who.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
 	lines.append(say(n, "Let me think. " + "; ".join(PackedStringArray(parts)) + "."))

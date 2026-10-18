@@ -41,6 +41,10 @@ var debug_check: CheckBox
 var day_icon: TextureRect
 var day_label: Label
 var cast_list                # ui/cast_list.gd
+var cast_header: Label
+var meeting_show_map = false # during a meeting, peek at the map instead of the circle
+var _popup_anchor = null
+var _case_seed = -1
 var notes_win: Window
 var notes_edit: TextEdit
 var roles_win: Window
@@ -106,7 +110,7 @@ func _ready() -> void:
 	size_opt.set_item_metadata(1, 10)
 	size_opt.tooltip_text = "Town size for the next case: 7 (one minion) or 10 (two minions)."
 	top.add_child(size_opt)
-	_button(top, "New case", _new_case)
+	_button(top, "New case", _new_case_button)
 	var more = MenuButton.new()
 	more.text = "More ▾"
 	more.flat = false
@@ -149,9 +153,10 @@ func _ready() -> void:
 	meeting_view.person_clicked.connect(func(id): _select_person(id))
 	upper.add_child(meeting_view)
 	var castbox = VBoxContainer.new()
-	castbox.custom_minimum_size = Vector2(270, 0)
+	castbox.custom_minimum_size = Vector2(330, 0)
 	upper.add_child(castbox)
 	var ch = Label.new()
+	cast_header = ch
 	ch.text = "Townsfolk"
 	ch.add_theme_font_size_override("font_size", 18)
 	ch.add_theme_color_override("font_color", UITheme.color("accent"))
@@ -166,7 +171,7 @@ func _ready() -> void:
 	csc.add_child(cast_list)
 	profile = ProfilePanel.new(true)
 	profile.build()
-	profile.custom_minimum_size = Vector2(400, 0)
+	profile.custom_minimum_size = Vector2(360, 0)
 	profile.person_changed.connect(func(id):
 		map.selected_npc = id
 		cast_list.selected = id
@@ -215,6 +220,12 @@ func _ready() -> void:
 	out.bbcode_enabled = true
 	out.add_theme_font_override("normal_font", mono)
 	out.add_theme_font_size_override("normal_font_size", 16)
+	out.meta_clicked.connect(func(meta):
+		var m = str(meta)
+		if m.begins_with("card:"):
+			_open_case_view()
+			case_state.select_card(int(m.substr(5)))
+			case_view.board.fit_selection())
 	logpanel.add_child(out)
 	var bottom = HBoxContainer.new()
 	logbox.add_child(bottom)
@@ -229,8 +240,8 @@ func _ready() -> void:
 
 	# Optional card-list sidebar (More ▾).
 	side = VBoxContainer.new()
-	side.custom_minimum_size = Vector2(300, 0)
-	side.visible = false
+	side.custom_minimum_size = Vector2(320, 0)
+	side.visible = true
 	lower.add_child(side)
 	var st = Label.new()
 	st.text = "Case board (newest first)"
@@ -314,7 +325,15 @@ func _on_side_activated(num) -> void:
 	input.grab_focus()
 	input.caret_column = input.text.length()
 
+## New case from the button: a fresh seed, unless you've typed one in since this case began.
+func _new_case_button() -> void:
+	if int(seed_box.value) == _case_seed:
+		seed_box.value = randi() % 100000
+	_new_case()
+
 func _new_case() -> void:
+	_case_seed = int(seed_box.value)
+	case_state.select_card(0)
 	g = Game.new()
 	out.clear()
 	_build_colour_rules()
@@ -459,14 +478,17 @@ func _refresh_all() -> void:
 	_refresh_side()
 	_refresh_actions()
 	var meeting = g.state in ["meeting", "nomination"]
-	map.visible = not meeting
-	meeting_view.visible = meeting
+	if not meeting:
+		meeting_show_map = false
+	map.visible = not meeting or meeting_show_map
+	meeting_view.visible = meeting and not meeting_show_map
 	if meeting:
 		meeting_view.refresh()
 	else:
 		meeting_view.finish()
 	map.refresh()
 	cast_list.refresh()
+	cast_header.text = "Townsfolk · %d alive" % g.w.living().size()
 	var night = g.state == "night"
 	day_icon.texture = UITheme.tex("ui/moon" if night else "ui/sun", 0.15)
 	day_label.text = ("Night %d" % g.w.day) if night else ("Day %d · %s" % [g.w.day, "Town meeting" if g.state in ["meeting", "nomination"] else C.PHASES[g.w.phase]])
@@ -515,6 +537,7 @@ func _icon(rel: String, h: int) -> String:
 	return ("[img height=%d]%s[/img] " % [h, path]) if ResourceLoader.exists(path) else ""
 
 var _tag_re: RegEx
+var _num_re: RegEx
 
 ## Plain text from the game -> BBCode: speech lines in the speaker's colour with their
 ## portrait, names coloured wherever they appear, icons for day headers, deaths and new
@@ -527,6 +550,13 @@ func _colourize(s: String) -> String:
 	for line in s.split("\n"):
 		var esc = line.replace("[", "[lb]")
 		esc = _tag_re.sub(esc, "[color=#8a8f99]%s$1[/color]" % _icon("ui/cards/card_04", 14), true)
+		if _num_re == null:
+			_num_re = RegEx.new()
+			_num_re.compile("#(\\d+)(?![0-9a-fA-F])")  # card numbers, not colour codes
+		var cpos = esc.find("[color=#8a8f99]")
+		if cpos >= 0 and "case board" in line:
+			# Card numbers in the log open that card on the case board.
+			esc = esc.substr(0, cpos) + _num_re.sub(esc.substr(cpos), "[url=card:$1]#$1[/url]", true)
 		var m = _speech_re.search(esc)
 		if m != null:
 			var hex = _hex_for(m.get_string(2))
@@ -575,12 +605,12 @@ func _on_map_clicked(kind: String, id: String) -> void:
 						_print("(You've already chosen where to spend this phase.)")
 				"home":
 					var hn = w.by_id[id]
-					if g.moved:
-						_print("(You've already chosen where to spend this phase.)")
-					elif hn.alive and hn.at_home():
+					if not (hn.alive and hn.at_home()):
+						_print("(Nobody's home at %s's just now. You can only call on someone who's in.)" % hn.name)
+					elif not g.moved or (not g.free_move_used and w.loc_block("home_" + id) == w.loc_block(g.loc)):
 						_run("go " + id)
 					else:
-						_print("(Nobody's home at %s's just now.)" % hn.name)
+						_print("(%s is in, but you've already chosen where to spend this phase.)" % hn.name)
 				"npc":
 					var n = w.by_id[id]
 					var cmds: Array = []
@@ -612,6 +642,7 @@ func _refresh_actions() -> void:
 			_actions_talk(w)
 		"meeting":
 			action_title.text = "Day %d: the town meeting" % w.day
+			_map_toggle()
 			_button(actions, "Let the town speak (wait)", func(): _run("wait"))
 			if not g.presented_today:
 				_button(actions, "Present a deduction to everyone…", func(): _card_picker("Present a deduction to the meeting",
@@ -625,6 +656,7 @@ func _refresh_actions() -> void:
 		"nomination":
 			var nm: Dictionary = w.meeting["pending"]
 			action_title.text = "Vote on %s" % w.by_id[nm["nominee"]].name
+			_map_toggle()
 			_button(actions, "Vote to execute", func(): _run("vote yes"))
 			_button(actions, "Vote against", func(): _run("vote no"))
 			if not g.statement_used:
@@ -651,7 +683,7 @@ func _refresh_actions() -> void:
 			action_title.text = "The case is closed."
 			_button(actions, "Show the grimoire", func(): _run("grimoire"))
 			_button(actions, "Show every lie", func(): _run("grimoire lies"))
-			_button(actions, "New case", _new_case)
+			_button(actions, "New case", _new_case_button)
 
 func _actions_day(w) -> void:
 	if not g.moved:
@@ -694,6 +726,12 @@ func _actions_talk(w) -> void:
 		func(num, extra): _run(("present %d" % num) + extra), false, true))
 	_button(actions, "Leave", func(): _run("bye"))
 
+## During the meeting: switch the top-left view between the meeting circle and the map.
+func _map_toggle() -> void:
+	_button(actions, "Back to the meeting" if meeting_show_map else "Look at the map", func():
+		meeting_show_map = not meeting_show_map
+		_refresh_all())
+
 func _hint(t: String) -> void:
 	var l = Label.new()
 	l.text = t
@@ -705,8 +743,30 @@ func _hint(t: String) -> void:
 # ---------------------------------------------------------------- pickers
 
 func _show_popup(content: Control, anchor: Control) -> void:
+	# Clicking the same button again closes its menu.
+	if popup.visible and anchor != null and anchor == _popup_anchor:
+		popup.hide()
+		_popup_anchor = null
+		content.queue_free()
+		return
+	_popup_anchor = anchor
 	for ch in popup.get_children():
 		ch.queue_free()
+	# Every menu gets its own close button (Esc works too).
+	var wrap = VBoxContainer.new()
+	var bar = HBoxContainer.new()
+	var sp = Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_child(sp)
+	var x = Button.new()
+	x.text = "✕ Close"
+	x.pressed.connect(func():
+		popup.hide()
+		_popup_anchor = null)
+	bar.add_child(x)
+	wrap.add_child(bar)
+	wrap.add_child(content)
+	content = wrap
 	popup.add_child(content)
 	var pos = Vector2i(anchor.get_screen_position()) + Vector2i(0, int(anchor.size.y)) if anchor != null else Vector2i(get_viewport_rect().size / 2.0)
 	popup.popup(Rect2i(pos, Vector2i(10, 10)))
@@ -727,7 +787,13 @@ func _ask_self_picker(anchor: Control) -> void:
 	var h = HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
 	var qs = _column("Ask %s…" % n.name)
-	for it in [["about their gift", "ask gift"], ["who they've seen around today", "ask today"], ["if they saw anything last night", "ask night"]]:
+	var items: Array = [["about their gift", "ask gift"], ["who they've seen around lately", "ask today"]]
+	for ph in range(g.w.phase + 1):
+		items.append(["  …who they saw this %s" % C.PHASES[ph].to_lower(), "ask seen " + C.PHASES[ph].to_lower()])
+	if g.w.day > 1:
+		items.append(["  …who they saw yesterday", "ask seen yesterday"])
+	items.append(["if they saw anything last night", "ask night"])
+	for it in items:
 		var cmd: String = it[1]
 		_button(qs, it[0], func():
 			popup.hide()
@@ -797,7 +863,9 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 	v.add_child(lst)
 	var fill = func():
 		lst.reset()
-		for c in g.filter_cards(f.text):
+		var cs: Array = g.filter_cards(f.text)
+		cs.reverse()  # newest first
+		for c in cs:
 			if keep.call(c):
 				lst.add("#%-3d %s" % [c["n"], c["text"]], c["n"], c["text"], Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else null)
 	fill.call()

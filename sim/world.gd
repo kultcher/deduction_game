@@ -260,6 +260,8 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 			n.work_phases.append(extra)
 			n.work_phases.sort()
 		n.home_block = pick(blocks)
+		# Habits: two favourite spots for idle hours (not their workplace).
+		n.haunts = shuffled(["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"].filter(func(x): return x != n.work)).slice(0, 2)
 		n.ring = ring_order[i]
 		npcs.append(n)
 		by_id[n.id] = n
@@ -353,7 +355,7 @@ func _assign_secret_mod() -> void:
 				pr[0].friends.append(pr[1].id)
 			pr[0].rivals.erase(pr[1].id)
 			pr[0].secret = {"kind": "lover", "with": pr[1].id, "dest": pr[1].home_block,
-				"text": "slips out to meet %s in secret" % pr[1].name}
+				"text": "slips out to meet %s in secret" % pr[1].name, "me": "slip out to meet %s in secret" % pr[1].name}
 			pr[0].known_secrets[pr[1].id] = pr[1].id
 	dlog.add("secret_mod", a.id, a.lover, {"mod": k}, "Secret: %s is %s%s." % [a.name, C.secret_name(k),
 		(" with " + by_id[a.lover].name) if a.lover != "" else ""])
@@ -443,6 +445,10 @@ func start_phase() -> void:
 func _choose_idle_location(n) -> String:
 	var r = rng.randf()
 	var social: Array = ["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"]
+	# Creatures of habit: idle hours often go to one of their two haunts (40%; at 60% the bot
+	# player found fewer people and won ~8 points less at 7 townsfolk).
+	if not n.haunts.is_empty() and chance(0.4):
+		social = n.haunts
 	match phase:
 		C.MORNING:
 			if r < 0.15:

@@ -427,6 +427,8 @@ func _row_anchor(id: String) -> Vector2:
 	return Vector2(HEAD_W - 4, to_screen(Vector2(0, row_y[id] + row_h[id] / 2.0)).y)
 
 func _draw_strings(n: int) -> void:
+	if n < 1 or n > g.board.size():
+		return  # (a selection left over from an earlier case)
 	var card: Dictionary = g.board[n - 1]
 	var mine: Array = _rects_of(n)
 	if mine.is_empty():

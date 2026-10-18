@@ -1105,6 +1105,44 @@ results match the pre-tracking commit, including deaths, executions and end reas
   investigation that tests it, revise, make a consequential argument. 12–15 people with
   the same three actions a day may make relationship-building too expensive.
 
+## Playtest 13473 (10 townsfolk; Agnes demon, Isolde Scion, Edda Poisoner)
+
+Findings:
+- Lost on a final-day tie: with Isolde on the block 2-2, a good NPC nominated Hollis and
+  the tie cleared the block. Clemency was available and would have saved it. **Filed:**
+  good NPCs should avoid creating a tie when few remain (no execution at the end loses).
+- The Scion's rise had no confirmation: the Gravedigger claimed and was killed the same
+  night, before his reading. Fair, but flat.
+- NPCs don't combine group readings: a Dowser "0 among Fenwick, Hollis, Constance" didn't
+  clear Hollis of an earlier "1 among Edda, Hollis, Greta", so a Seer pair with the real
+  demon was pinned on Hollis. **Filed:** templates for "readings that overlap in one
+  person" (two Seer yeses sharing Agnes; Archivist pair and Dowser crowd sharing Edda) and
+  "a clean group clears a member of a dirty one".
+- The death-block night rule weakened two good vigil catches (Edda and Isolde seen leaving
+  home on kill nights). **Open:** count sightings on the person's route from home to the
+  death block (user thinking it over).
+- Key readings withheld from the player (Archivist, Dowser), while shared with an evil
+  NPC in a private chat.
+
+Built from the session's list:
+- UI: crowds at one spot spread out and shrink to one row; every menu has a Close button
+  (and clicking its button again closes it); card numbers in the log open the card on the
+  case board; the map tooltip no longer clips; townsfolk rows are bigger with fixed claim
+  and guess slots (gifts without icons get a lettered tag); the profile is a little
+  narrower; homes say plainly you can only call on someone who's in (and the free move to
+  a home on your block works); the case-card sidebar shows by default at the lower right;
+  the present-card picker and sidebar list newest first; "Look at the map" during
+  meetings; "Townsfolk · N alive"; New case picks a fresh seed unless you typed one.
+- Game: "ask today" leaves out people seen this phase where you are (you can see them) and
+  reaches further back; "ask seen morning | afternoon | evening | yesterday" (also in the
+  ask menu); leaving a conversation before asking anything costs no time (not for an
+  approach you accepted); habitual haunts (two favourite idle spots per person, 40% of
+  idle hours, shown in profiles, the cast list and the "can't see them" hint); the town
+  overview and the map show how many people are at a spot you can't see (a count, not a
+  name); confession grammar ("I can't sleep, so I walk to the chapel").
+- Habit strength: at 60% the bot found fewer people and won ~8 points less at 7 townsfolk;
+  at 40% it's back to baseline. The bot now also uses the "someone's there" counts.
+
 ## Directions noted from playtests (not built yet)
 
 - **Caution tied to the gift. [built]** One more term in the same claim roll: Seer,
@@ -1179,3 +1217,6 @@ results match the pre-tracking commit, including deaths, executions and end reas
 - After the death-tied night suspicion, Sleepwalker chance and spent-gift kill discount
   (bot updated to read gifts generally): 7 townsfolk 55/150 (37%) vs passive 14/150 (9%);
   10 townsfolk 40/150 (27%) vs 17/150 (11%).
+- After playtest 13473's fixes (habits, unseen counts, ask-today changes; bot uses the
+  counts): 7 townsfolk 61/150 (41%) vs passive 12/150 (8%); 10 townsfolk 38/150 (25%) vs
+  13/150 (9%).

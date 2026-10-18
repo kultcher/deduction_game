@@ -217,15 +217,26 @@ func _draw() -> void:
 			if art == null:
 				draw_rect(LR, Color(0.3, 0.26, 0.22))
 			var here_l = g.moved and g.loc == l and not night
+			var sign_r = drawn
 			if zoom_block != "" or _scale > 0.9:
-				_sign(font, C.loc_name(l).trim_prefix("the ").capitalize(), Vector2(drawn.get_center().x, drawn.end.y - 4), _fs(11), here_l)
+				sign_r = _sign(font, C.loc_name(l).trim_prefix("the ").capitalize(), Vector2(drawn.get_center().x, drawn.end.y - 4), _fs(11), here_l)
 			elif here_l:
 				draw_rect(drawn.grow(2), UITheme.color("accent"), false, 2.0)
+			# Someone's there you can't see yet: a count, not a name.
+			var unseen = g.unseen_at(l) if g.state in ["day", "talk", "approach"] else 0
+			if unseen > 0:
+				var bc = Vector2(sign_r.end.x + 2, sign_r.position.y + 2)
+				var br = maxf(9.0, 11.0 * _scale)
+				draw_circle(bc, br, UITheme.color("red"))
+				draw_arc(bc, br, 0, TAU, 20, UITheme.color("border"), 1.5)
+				draw_string(font, Vector2(bc.x - br, bc.y + br * 0.4), "+%d" % unseen, HORIZONTAL_ALIGNMENT_CENTER, br * 2.0, int(br * 1.1), UITheme.color("paper"))
 			if zoom_block != "":
 				var hint = "Click to spend the phase here" if not g.moved else ("Click to step over (free move)" if not g.free_move_used and w.loc_block(g.loc) == b and g.loc != l else "")
 				if g.state != "day":
 					hint = ""
-				_hits.append({"rect": LR, "kind": "location", "id": l, "label": C.loc_name(l), "hint": hint})
+				var un = g.unseen_at(l)
+				var lbl = C.loc_name(l) + ((" (%d more there you can't see from here)" % un) if un > 0 else "")
+				_hits.append({"rect": LR, "kind": "location", "id": l, "label": lbl, "hint": hint})
 		# Homes (and crime scenes): small cottages with the owner's colour on the door.
 		for n in w.npcs:
 			if n.home_block != b:
@@ -244,7 +255,15 @@ func _draw() -> void:
 				if w.scenes.has(sid):
 					_hits.append({"rect": HR, "kind": "scene", "id": sid, "label": w.scenes[sid]["name"] + " (crime scene)", "hint": "Click to go and search it" if g.state == "day" else ""})
 				else:
-					_hits.append({"rect": HR, "kind": "home", "id": n.id, "label": "%s's home" % n.name, "hint": ("Click to call on them" if n.alive and n.at_home() else "Click to knock") if g.state == "day" else ""})
+					var home_hint = ""
+					if g.state == "day":
+						if not (n.alive and n.at_home()):
+							home_hint = "nobody's in; you can only call on someone who's home"
+						elif g.moved and (g.free_move_used or w.loc_block(g.loc) != b):
+							home_hint = "they're in, but you've already chosen where to spend this phase"
+						else:
+							home_hint = "click to call on them" + (" (free move)" if g.moved else "")
+					_hits.append({"rect": HR, "kind": "home", "id": n.id, "label": "%s's home" % n.name, "hint": home_hint})
 		# The block's name on a sign.
 		_sign(font, C.block_name(b).trim_prefix("the "), Vector2(R.get_center().x, R.position.y + _fs(16)), _fs(15), b == selected_block)
 	if night:
@@ -265,7 +284,7 @@ func _draw() -> void:
 		_hits.push_front({"rect": br, "kind": "back", "id": "", "label": "Back to the whole town", "hint": ""})
 	if not _hover.is_empty():
 		var t2 = _hover["label"] + ((" — " + _hover["hint"]) if _hover.get("hint", "") != "" else "")
-		var tw = font.get_string_size(t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 18
+		var tw = font.get_string_size(t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 24
 		var tr = Rect2(Vector2(8, size.y - 32), Vector2(minf(size.x - 16, tw), 26))
 		draw_style_box(UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 1, 3, 4), tr)
 		draw_string(font, tr.position + Vector2(9, 18), t2, HORIZONTAL_ALIGNMENT_LEFT, tr.size.x - 12, 16, UITheme.color("ink"))
@@ -298,30 +317,37 @@ func _draw_people(font) -> void:
 		var rect: Rect2 = rects[key]
 		var members: Array = groups[key]
 		var sr: Rect2 = _r(rect)
-		var step = h * 0.78
-		var per_row = maxi(1, int(maxf(sr.size.x, step * 2) / step))
-		var base_y = sr.end.y - (h * 0.1 if C.LOCATIONS.has(_loc_of_rect(rect)) else -h * 0.15)
+		# A crowd at one spot spreads a little wider than the building and shrinks to fit in
+		# one row, rather than stacking standees on top of each other.
+		var hh = h
+		var avail = maxf(sr.size.x * 1.5, h * 1.8)
+		if members.size() * hh * 0.78 > avail:
+			hh = maxf(h * 0.55, avail / (members.size() * 0.78))
+		var step = hh * 0.78
+		var per_row = maxi(1, int(avail / step))
+		var base_y = sr.end.y - (hh * 0.1 if C.LOCATIONS.has(_loc_of_rect(rect)) else -hh * 0.15)
 		for i in range(members.size()):
 			var n = members[i]
 			var row = i / per_row
 			var in_row = mini(per_row, members.size() - row * per_row)
 			var x0 = sr.get_center().x - (in_row - 1) * step / 2.0
-			var foot = Vector2(x0 + (i % per_row) * step, base_y - row * h * 0.55)
+			var foot = Vector2(x0 + (i % per_row) * step, base_y - row * hh * 0.55)
 			var t = _art("standees/" + n.id, 0.3)
-			var rr = Rect2(foot - Vector2(h * 0.4, h), Vector2(h * 0.8, h))
-			draw_circle(foot + Vector2(0, -2), h * 0.3, Color(0, 0, 0, 0.35))
+			var rr = Rect2(foot - Vector2(hh * 0.4, hh), Vector2(hh * 0.8, hh))
+			draw_circle(foot + Vector2(0, -2), hh * 0.3, Color(0, 0, 0, 0.35))
 			if t != null:
 				rr = _draw_art(t, rr, "contain", Color(0.75, 0.78, 1.0) if night else Color.WHITE)
 			else:
-				draw_circle(rr.get_center(), h * 0.3, C.npc_color(n.id))
+				draw_circle(rr.get_center(), hh * 0.3, C.npc_color(n.id))
 			if n.busy_with != "":
-				draw_arc(rr.position + Vector2(rr.size.x * 0.85, rr.size.y * 0.15), h * 0.12, 0, TAU, 12, Color(1, 1, 1, 0.9), 2.0)
+				draw_arc(rr.position + Vector2(rr.size.x * 0.85, rr.size.y * 0.15), hh * 0.12, 0, TAU, 12, Color(1, 1, 1, 0.9), 2.0)
 			if n.id == selected_npc:
 				draw_rect(rr.grow(2), Color(1, 1, 1, 0.9), false, 2.0)
 			if g.talk_with != null and g.talk_with == n:
 				draw_rect(rr.grow(4), UITheme.color("accent"), false, 3.0)
 			if zoom_block != "":
-				draw_string(font, Vector2(foot.x - step / 2.0 - 10, foot.y + lf + 2), n.name, HORIZONTAL_ALIGNMENT_CENTER, step + 20, lf, C.npc_color(n.id))
+				var lfs = lf if members.size() <= 2 else maxi(11, int(lf * 0.85))
+				draw_string(font, Vector2(foot.x - step / 2.0 - 4, foot.y + lfs + 2 + (lfs if (i % 2 == 1 and members.size() > 2) else 0)), n.name, HORIZONTAL_ALIGNMENT_CENTER, step + 8, lfs, C.npc_color(n.id))
 			var hint = ""
 			if g.state == "day":
 				hint = "busy talking" if n.busy_with != "" else ("click to talk" if not n.at_home() else "click to call on them")
