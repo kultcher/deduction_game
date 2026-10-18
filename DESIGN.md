@@ -499,6 +499,21 @@ board (centre), profile and notes (right).
   trees and flowers dress the edges, and townsfolk are paper standees (busy ones marked,
   the person you're talking to framed in gold). Night tints everything blue. Zooming into a
   block dims the rest. Same layout logic and click targets as before.
+- **Town meeting circle [built]** (`ui/meeting_view.gd`): during the meeting and
+  nominations the map gives way to a ring of the living townsfolk's standees on the Square
+  (you at the bottom, a candle for your seat), set well back from the middle. The nominee's
+  portrait sits in the centre with who nominated them; the nominee's standee is framed red
+  and the nominator's gold. When a vote is taken a gold hand sweeps clockwise from the seat
+  after the nominee, counting each vote as it passes: yes voters step in and get a numbered
+  red token (1, 2, 3 ... in counting order), no voters pull back and grey out. A tally in the
+  corner shows the running count against the threshold, then the outcome and who is on the
+  block. Click to finish the count; click a person to show their profile.
+  - **Rule change:** votes now resolve in BotC order (clockwise from the nominee's left,
+    nominee last), not roster order. Evil votes react to the running count, so order
+    matters. Bots after the change, 300 seeds: active 31.7%, passive 13.7% (was ~33/16;
+    within noise for active, passive a touch lower).
+  - The log still prints the full result at once, ahead of the hand.
+  - **Later:** fake and noncommittal voting (a hand half-raised, a late switch).
 - **Papercraft skin [built]**: navy board, cream plaques as buttons (red when pressed), gold
   edges, framed paper for the profile, serif type. Art sliced from the sheets by
   `tools/slice_sheets.py` (see `assets/ui/README.md`).

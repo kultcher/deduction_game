@@ -99,18 +99,33 @@ func _init() -> void:
 	var col = scene._colourize("%s: \"Hello there.\"" % t.name)
 	_check(C.npc_color(t.id).to_html(false) in col, "speech is coloured by speaker")
 	# Multi-select filters: any vs all (after a day of play, so the board has content).
-	for i in range(12):
+	var meet_checked = false
+	for i in range(16):
 		match g.state:
 			"day":
 				scene._run("go tavern" if not g.moved else "wait")
 			"meeting":
-				scene._run("done" if g.town_quiet else "wait")
+				if not meet_checked and not "player" in g.w.meeting["nominators"]:
+					scene._run("nominate " + g.w.living()[1].id)
+				else:
+					scene._run("done" if g.town_quiet else "wait")
 			"nomination":
+				var first = not meet_checked
+				if first:
+					_check(scene.meeting_view.visible and not scene.map.visible, "the meeting circle replaces the map")
 				scene._run("vote no")
+				if first:
+					meet_checked = true
+					var res: Dictionary = g.w.meeting["results"].back()
+					_check(res["order"].back() == res["nominee"] and g.w.seats().find(res["order"][0]) == (g.w.seats().find(res["nominee"]) + 1) % g.w.seats().size(), "votes go clockwise from the nominee's left; the nominee votes last")
+					_check(scene.meeting_view.animating(), "the hand starts counting")
+					scene.meeting_view.finish()
+					_check(not scene.meeting_view.animating() and scene.meeting_view._target.size() == res["order"].size(), "finishing the count marks every voter")
 			"approach":
 				scene._run("decline")
 			"night":
 				scene._run("sleep")
+	_check(meet_checked, "a nomination came up to check the meeting view")
 	cv = scene.case_view
 	cv.set_game(g)
 	var ids: Array = g.w.npcs.map(func(n): return n.id)

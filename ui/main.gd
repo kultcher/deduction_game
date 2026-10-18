@@ -9,6 +9,7 @@ const C = preload("res://sim/content.gd")
 const CaseView = preload("res://ui/case_view.gd")
 const CardList = preload("res://ui/card_list.gd")
 const MapView = preload("res://ui/map_view.gd")
+const MeetingView = preload("res://ui/meeting_view.gd")
 const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
 const ProfilePanel = preload("res://ui/profile_panel.gd")
@@ -27,6 +28,7 @@ var side_profile: RichTextLabel:
 var case_view
 var case_state = CaseState.new()   # view, filters and selection shared by every panel
 var map
+var meeting_view
 var actions: VBoxContainer
 var action_title: Label
 var popup: PopupPanel
@@ -131,6 +133,13 @@ func _ready() -> void:
 	map.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map.clicked.connect(_on_map_clicked)
 	upper.add_child(map)
+	# While the town meets, the meeting circle takes the map's place.
+	meeting_view = MeetingView.new()
+	meeting_view.custom_minimum_size = Vector2(500, 300)
+	meeting_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	meeting_view.visible = false
+	meeting_view.person_clicked.connect(func(id): _select_person(id))
+	upper.add_child(meeting_view)
 	var castbox = VBoxContainer.new()
 	castbox.custom_minimum_size = Vector2(270, 0)
 	upper.add_child(castbox)
@@ -307,6 +316,7 @@ func _new_case() -> void:
 	cast_list.setup(g)
 	notes_edit.text = g.case_notes
 	map.set_game(g)
+	meeting_view.set_game(g)
 	if debug_check.button_pressed:
 		g.set_debug_overlay(true)
 	_refresh_all()
@@ -439,6 +449,13 @@ func _refresh_all() -> void:
 		map.zoom_block = g.w.loc_block(g.loc)
 	_refresh_side()
 	_refresh_actions()
+	var meeting = g.state in ["meeting", "nomination"]
+	map.visible = not meeting
+	meeting_view.visible = meeting
+	if meeting:
+		meeting_view.refresh()
+	else:
+		meeting_view.finish()
 	map.refresh()
 	cast_list.refresh()
 	var night = g.state == "night"

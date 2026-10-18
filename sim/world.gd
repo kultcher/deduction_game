@@ -169,6 +169,26 @@ func public_event(kind: String, subjects: Array, by: String) -> void:
 func voter_count() -> int:
 	return living().size() + 1
 
+## Seats round the meeting circle, clockwise: the player first, then the living townsfolk in
+## roster order. (The view draws the player at the bottom; clockwise on screen.)
+func seats() -> Array:
+	var out: Array = ["player"]
+	for n in living():
+		out.append(n.id)
+	return out
+
+## BotC voting order: the hand starts with the seat clockwise of the nominee, goes round,
+## and the nominee votes last.
+func vote_order(nominee: String) -> Array:
+	var s: Array = seats()
+	var i = s.find(nominee)
+	if i < 0:
+		return s
+	var out: Array = []
+	for k in range(1, s.size() + 1):
+		out.append(s[(i + k) % s.size()])
+	return out
+
 ## BotC threshold: at least half the voters, rounded up.
 func vote_threshold() -> int:
 	return int(ceil(voter_count() / 2.0))
@@ -534,7 +554,11 @@ func vote_pending(player_yes: bool) -> Dictionary:
 	var nid: String = nm["nominee"]
 	var yes: Array = []
 	var no: Array = []
-	for v in living():
+	var order: Array = vote_order(nid)
+	for vid in order:
+		if vid == "player":
+			continue  # declared up front; counted as the hand passes your seat
+		var v = by_id[vid]
 		if Mind.vote(self, v, nid, nm["by"], player_yes, nm["statement"], yes.size()):
 			yes.append(v.id)
 			public_event("vote_yes", [nid], v.id)
@@ -554,7 +578,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		else:
 			outcome = "short_of_block"
 	var res = {"nominee": nid, "by": nm["by"], "yes": yes, "no": no, "player_yes": player_yes, "count": count,
-		"threshold": thr, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"]}
+		"threshold": thr, "order": order, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"]}
 	meeting["results"].append(res)
 	meeting["pending"] = {}
 	dlog.add("vote_tally", "world", nid, res)
