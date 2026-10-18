@@ -4,6 +4,8 @@ Status: early design + text prototype. This doc records decisions so far.
 Tags: **(prototype)** = what the current build does as a placeholder; **(proposed)** = a
 resolution suggested but not yet confirmed; **(open)** = unresolved. Untagged = decided.
 
+The running to-do list (bugs, deferred and open items, by effort) is in BACKLOG.md.
+
 ## Pitch
 
 A single-player social deduction game inspired by Blood on the Clocktower (BotC). Unlike
