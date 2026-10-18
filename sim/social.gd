@@ -176,12 +176,9 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 				l.known_claims[src.id]["readings"].append(e)
 			l.hearsay.append(hs)
 		"sighting":
-			var bonus = 0.0
-			for sid in w.scenes:
-				if w.scenes[sid]["day"] == item["day"] and w.scenes[sid]["block"] == item["block"]:
-					bonus = 0.25
+			var sc = Mind.night_sighting_scale(w, l, item["about"], item.get("block", ""), item.get("day", -1))
 			var e1: Array = []
-			Mind._eff(e1, item["about"], 0.15 + bonus, "heard from %s that %s was out at night" % [s.id, item["about"]],
+			Mind._eff(e1, item["about"], 0.4 * sc, "heard from %s that %s was out at night (x%.2f)" % [s.id, item["about"], sc],
 				"%s says they were out at night" % s.name)
 			Mind.ledger_hear(w, l, "heard:" + hs["key"], e1, wgt * 2.0, [s.id, item.get("day", -1), "report"])
 			l.hearsay.append(hs)

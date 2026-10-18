@@ -1081,7 +1081,7 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 				x.secret["dest"] = spot
 				_walk(x, spot, "secret: meeting %s" % by_id[x.lover].name)
 				met[x.id] = true
-		elif n.secret_mod == "sleepwalker" and not n.out_last_night:
+		elif n.secret_mod == "sleepwalker" and not n.out_last_night and chance(0.5):
 			_walk(n, pick(C.BLOCKS.keys()), "sleepwalking (doesn't know it)")
 	for n in living_good():
 		if not n.secret.is_empty() and n.secret.get("kind", "") != "lover" and not n.out_last_night and chance(0.55):

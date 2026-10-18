@@ -14,6 +14,7 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
+const Gifts = preload("res://sim/gifts.gd")
 const Argue = preload("res://sim/argue.gd")
 const Mind = preload("res://sim/mind.gd")
 const Metrics = preload("res://game/case_metrics.gd")
@@ -175,21 +176,32 @@ func _scores() -> Dictionary:
 			var add = 0.0
 			match c["kind"]:
 				"info":
+					# Any reading: what it points at, and what it speaks for (see sim/gifts.gd).
+					var role: String = c.get("role", "")
 					var d: Dictionary = c.get("data", {})
-					match c.get("role", ""):
-						"seer":
-							add = 1.0 if d.get("yes", false) else -0.4
-						"hearthwitch":
-							add = 0.5 * d.get("count", 0) if d.get("count", 0) > 0 else -0.3
-						"archivist":
-							add = 0.7
-						"nightwatch":
-							add = 0.4
-						"clerk":
-							add = -0.3
+					var imp: Array = Gifts.implicated(c)
+					var clr: Array = Gifts.clears(c)
+					var strong = {"seer": 1.0, "archivist": 0.7, "nightwatch": 0.4, "hearthwitch": 0.5, "dowser": 0.5,
+						"gravedigger": 1.2, "martyr": 1.2, "medium": 0.4}
+					for i in subj:
+						if i == src or not nsc.has(i):
+							continue
+						var a = 0.0
+						if i in imp:
+							a = strong.get(role, 0.3)
+							if role in ["hearthwitch", "dowser"]:
+								a = a * d.get("count", 0) / maxf(1.0, Gifts.group_of(d).size()) * 2.0
+						elif i in clr:
+							a = -0.3
+						nsc[i] += a * cred
+					subj = []
 				"sighting":
 					if c.get("phase", -1) == C.NIGHT:
-						add = 0.6 if src == "player" else 0.3
+						# Out at night only counts near a death (and less for open walkers), as the town reckons it.
+						var sc_n = 0.12
+						if not subj.is_empty():
+							sc_n = Mind.night_sighting_scale(w, null, subj[0], c.get("block", ""), c.get("day", -1))
+						add = (0.6 if src == "player" else 0.3) * sc_n * 2.0
 				"refusal":
 					add = 0.15
 				"accusation", "opinion":

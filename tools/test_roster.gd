@@ -30,6 +30,8 @@ func _init() -> void:
 	_test_marked_and_delusional()
 	_test_sleepwalker()
 	_test_lovers()
+	_test_night_suspicion()
+	_test_spent_gift_kills()
 	print("FAILURES: %d" % fails)
 	quit()
 
@@ -367,6 +369,59 @@ func _test_lovers() -> void:
 		if a.out_last_night and b.out_last_night and a.night_block == b.night_block:
 			together += 1
 	_check(together == 20, "the Secret Lovers meet in the same place each night")
+
+## Being out at night counts in full only near a death; an openly claimed walking gift
+## is discounted.
+func _test_night_suspicion() -> void:
+	var w = _game(9260).w
+	var l = w.living_good()[0]
+	var x = w.living_good()[1]
+	w.scenes["scene_test"] = {"name": "t", "block": "docks", "victim": "", "day": 1, "trace_block": "docks", "trace_true": true, "why": "", "searched": false}
+	var near = Mind.night_sighting_scale(w, l, x.id, "docks", 1)
+	var far = Mind.night_sighting_scale(w, l, x.id, "hill", 1)
+	x.claimed_role = "lamplighter"
+	x.claim_public = true
+	Mind.hear_claim(w, l, x.id, "lamplighter", 0.5, "public")
+	var claimed = Mind.night_sighting_scale(w, l, x.id, "docks", 1)
+	print("night sighting scale: near a death %.2f, elsewhere %.2f, near a death but an open Lamplighter %.2f" % [near, far, claimed])
+	_check(near == 1.0 and far < 0.2 and claimed < near, "night sightings count near deaths, and less for open walkers")
+	var sw_out = 0
+	for sd in range(9270, 9290):
+		var w2 = _game(sd).w
+		var sw = w2.living_good()[0]
+		for n in w2.npcs:
+			n.secret_mod = ""
+		sw.secret_mod = "sleepwalker"
+		w2.day = 1
+		w2._night_movement("", "", null, "")
+		if sw.out_last_night:
+			sw_out += 1
+	print("Sleepwalker out %d/20 nights" % sw_out)
+	_check(sw_out > 3 and sw_out < 17, "the Sleepwalker walks on some nights, not all")
+
+## Start-knowledge gifts already spent are worth less to kill than live ones.
+func _test_spent_gift_kills() -> void:
+	var spent_picked = 0
+	var tries = 0
+	for sd in range(9300, 9330):
+		var w = _game(sd).w
+		var goods: Array = w.living_good()
+		var a = goods[0]
+		var b = goods[1]
+		_give(w, a, "archivist")
+		_give(w, b, "seer")
+		for pr in [[a, "archivist"], [b, "seer"]]:
+			pr[0].claimed_role = pr[1]
+			pr[0].claim_public = true
+			w.public_claims.append({"day": 1, "who": pr[0].id, "role": pr[1]})
+		w.day = 2
+		var kt = Evil.choose_kill_target(w)
+		if kt in [a.id, b.id]:
+			tries += 1
+			if kt == a.id:
+				spent_picked += 1
+	print("between a spent Archivist and a live Seer, the demon took the Archivist %d/%d" % [spent_picked, tries])
+	_check(tries > 0 and spent_picked * 3 < tries, "the demon prefers a gift that keeps reporting")
 
 func _check(ok: bool, what: String) -> void:
 	if ok:

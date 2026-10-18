@@ -1671,6 +1671,8 @@ func _route_present(n, rest: String) -> Dictionary:
 		var dfn = 0.0
 		for x in targets:
 			inc = maxf(inc, Mind.card_strength(w, card, w.by_id[x]))
+			if card.get("kind", "") == "sighting" and card.get("phase", -1) == C.NIGHT:
+				inc = maxf(inc, 0.45)  # its direction is plain even when it's weak (far from any death)
 			dfn = maxf(dfn, Mind.defend_strength(card, x))
 		if inc >= 0.4 and inc > dfn:
 			dir = "against"

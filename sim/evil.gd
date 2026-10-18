@@ -203,6 +203,9 @@ static func choose_kill_target(w) -> String:
 			warden_claimed = true
 	for n in w.living_good():
 		var parts = _public_threat(w, n)
+		if parts.has("info_claim") and C.ROLES.get(n.claimed_role, {}).get("first_night", false) and w.day >= 1:
+			# Their start knowledge is already out: less of a threat than a gift that keeps reporting.
+			parts["info_claim"] = 1.0
 		var hostile = public_hostility(w, n)
 		if hostile > 0.0:
 			parts["publicly_against_us"] = snappedf(hostile * 0.8, 0.01)

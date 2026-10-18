@@ -141,6 +141,23 @@ static func claim_credence(n, who: String, role: String) -> float:
 	var e = n.ledger.get(claim_eid(who, role))
 	return e.get("eff", 0.0) if e != null else 0.0
 
+## How much a night sighting of someone counts (0..1). Being out at night is only damning
+## near a death: seen on the block where someone was killed that night counts in full,
+## anywhere else very little. Someone who openly claims a gift that walks at night (Night
+## Watch, Warden, Lamplighter, Medium) is discounted further, as far as the listener
+## believes the claim.
+static func night_sighting_scale(w, listener, who: String, block: String, night: int) -> float:
+	var near_death = false
+	for sid in w.scenes:
+		if w.scenes[sid]["day"] == night and w.scenes[sid]["block"] == block:
+			near_death = true
+	var s = 1.0 if near_death else 0.12
+	var nn = w.by_id.get(who)
+	if nn != null and nn.claim_public and C.ROLES.get(nn.claimed_role, {}).get("night_walk", false):
+		var cr = claim_credence(listener, who, nn.claimed_role) if listener != null else 0.5
+		s *= 1.0 - 0.7 * clampf(cr, 0.0, 1.0)
+	return s
+
 ## Who this listener has heard claim each gift: role -> [ids].
 static func _claimants(E: Array) -> Dictionary:
 	var out = {}
@@ -506,12 +523,9 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 						_eff(effs, source.id, 0.45, tag + ": claims to have seen me out, but I was home",
 							"%s claims to have seen me out at night, which is a lie" % src_bare)
 					continue
-				var bonus = 0.0
-				for sid in w.scenes:
-					if w.scenes[sid]["day"] == entry["day"] and w.scenes[sid]["block"] == d["block"]:
-						bonus = 0.3
-				_eff(effs, i, (0.2 + bonus), tag + ": seen out at night",
-					"%s saw them out at night" % src_bare, not own)
+				var sc = night_sighting_scale(w, listener, i, d["block"], entry["day"])
+				_eff(effs, i, 0.5 * sc, tag + ": seen out at night (x%.2f: %s)" % [sc, "near a death" if sc >= 0.99 else "nowhere near a death" if sc > 0.1 else "discounted"],
+					"%s saw them out at night%s" % [src_bare, " where someone was killed" if sc >= 0.5 else ""], not own)
 		"archivist":
 			var pair: Array = d["pair"]
 			var others: Array = pair.filter(func(i): return i != listener.id and not known_good(w, i))
@@ -558,7 +572,8 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 							effs.append(ef)
 				"sighting":
 					if it["who"] != listener.id:
-						_eff(effs, it["who"], 0.25, tag + ": the dead %s saw them out at night" % dead,
+						var sc2 = night_sighting_scale(w, listener, it["who"], it.get("block", ""), it.get("night", -1))
+						_eff(effs, it["who"], 0.3 * sc2, tag + ": the dead %s saw them out at night (x%.2f)" % [dead, sc2],
 							"the dead saw them out at night", not own)
 				"suspicion":
 					if it["about"] != listener.id:
@@ -1439,7 +1454,9 @@ static func evidence_class(card: Dictionary) -> String:
 static func card_strength(w, card: Dictionary, suspect) -> float:
 	match card.get("kind", ""):
 		"sighting":
-			return 1.4 if card.get("phase", -1) == C.NIGHT else 0.15
+			if card.get("phase", -1) != C.NIGHT:
+				return 0.15
+			return 1.4 * night_sighting_scale(w, null, suspect.id, card.get("block", ""), card.get("day", -1))
 		"info":
 			var d: Dictionary = card.get("data", {})
 			match card.get("role", ""):

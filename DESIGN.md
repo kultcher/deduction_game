@@ -176,6 +176,22 @@ says the dead saw the scapegoat out, a Psychologist who says someone suspects th
 scapegoat, a Martyr who "chose" a teammate. Evil bluffing a walking gift says their gift
 took them out when asked where they were.
 
+**Night sightings and deaths (after the roster).** Being seen out at night now counts
+in full only on the block where someone was killed that night (x1.0); anywhere else it
+counts very little (x0.12). Someone who openly claims a walking gift is discounted further
+by how far the listener believes the claim (up to -70%). This applies to Night Watch
+reports, NPC gossip, the Medium, and the strength of your night-sighting cards (which
+still read as "against" when presented, just weakly away from a death). The Sleepwalker
+now walks on about half of nights. The demon values a claimed start-knowledge gift
+(spent after night 0) less as a kill target than a gift that keeps reporting. The bot
+player reads every gift's reading through `sim/gifts.gd` and weighs night sightings the
+same way. Effect (10 townsfolk, 150 seeds): Lamplighters hanged 57% -> 43%, Veterans
+49% -> 33%, Sleepwalkers 58% -> 40%; Wardens unchanged (48%). Walkers really are near
+the deaths (the Lamplighter passes every block, the Warden stands at a target's door), and
+most are hanged on the bot's nomination after hiding their gift and saying they were
+home. The fix that remains is the filed "rebuttals/excuses" item: a hidden walker caught
+out at night should be able to explain with their gift.
+
 **Not built yet:** role icons for the new gifts (the roles window falls back to a plain
 marker); the Revenant actively drawing suspicion to get itself hanged; NPCs searching for
 totems; Beckon, Tallyman and the rest of On Deck; Relationships.
@@ -1160,3 +1176,6 @@ results match the pre-tracking commit, including deaths, executions and end reas
   37 / 77, someone turned 10 / 14 (the bot never finds totems); Martyr choices 25 / 60,
   saves 0 / 12; knells 17 / 17; Scion rose 5 / 25; Veteran survived 10 / 10. Tests:
   `tools/test_roster.gd` covers setups and every new mechanic.
+- After the death-tied night suspicion, Sleepwalker chance and spent-gift kill discount
+  (bot updated to read gifts generally): 7 townsfolk 55/150 (37%) vs passive 14/150 (9%);
+  10 townsfolk 40/150 (27%) vs 17/150 (11%).
