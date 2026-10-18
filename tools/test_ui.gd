@@ -52,9 +52,6 @@ func _init() -> void:
 		print("after file: ", cv.result_text.text.substr(0, 140))
 	cv.prof_opt.select(1)
 	cv._refresh_profile()
-	cv.note_edit.text = "seems shifty"
-	cv._on_save_profile()
-	print("profile note saved: ", g.notes.values())
 	scene.side_filter.text = "square"
 	scene._refresh_side()
 	print("sidebar square cards: ", scene.side_list.count())
@@ -204,6 +201,10 @@ func _init() -> void:
 	scene.notes_edit.text_changed.emit()
 	scene.notes_win.hide()
 	_check(g.case_notes == "Suspect the miller", "case notes save as you type")
+	scene._open_roles()
+	await process_frame
+	_check(scene.roles_win.visible and scene.roles_box.get_child_count() >= C.GOOD_ROLES.size() + 4, "roles window lists every gift")
+	scene.roles_win.hide()
 	# Debug overlay: shows NPCs' private view, and marks identification unscored.
 	scene.debug_check.button_pressed = true
 	await process_frame

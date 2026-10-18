@@ -9,7 +9,7 @@ signal person_clicked(id)
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
 
-const ROW_H = 58.0
+const ROW_H = 62.0
 const GAP = 6.0
 
 var g
@@ -65,10 +65,10 @@ func _draw() -> void:
 		# Name, colour dot, status.
 		var ink = UITheme.color("paper") if sel else UITheme.ink_of(C.npc_color(n.id))
 		var tx = r.position.x + ROW_H + 6
-		draw_circle(Vector2(tx + 4, pr.position.y + 18), 5, C.npc_color(n.id))
-		draw_string(_font, Vector2(tx + 14, pr.position.y + 23), n.name + ("" if n.alive else "  †"), HORIZONTAL_ALIGNMENT_LEFT, pr.end.x - tx - 50, 16, ink if (n.alive or sel) else UITheme.color("ink_soft"))
+		draw_circle(Vector2(tx + 4, pr.position.y + 16), 5, C.npc_color(n.id))
+		draw_string(_font, Vector2(tx + 14, pr.position.y + 22), n.name + ("" if n.alive else "  †"), HORIZONTAL_ALIGNMENT_LEFT, pr.end.x - tx - 50, 18, ink if (n.alive or sel) else UITheme.color("ink_soft"))
 		var sub = _sub_line(n)
-		draw_string(_font, Vector2(tx, pr.end.y - 8), sub, HORIZONTAL_ALIGNMENT_LEFT, pr.end.x - tx - 40, 11, UITheme.color("paper_dim") if sel else UITheme.color("ink_soft"))
+		draw_string(_font, Vector2(tx, pr.end.y - 12), sub, HORIZONTAL_ALIGNMENT_LEFT, pr.end.x - tx - 40, 13, UITheme.color("paper_dim") if sel else UITheme.color("ink_soft"))
 		# Claim icon (their word) and your guess (pencilled, with a question mark).
 		var ix = pr.end.x - 30
 		var claim = _claimed(n)

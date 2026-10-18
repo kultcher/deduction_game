@@ -40,6 +40,8 @@ var day_label: Label
 var cast_list                # ui/cast_list.gd
 var notes_win: Window
 var notes_edit: TextEdit
+var roles_win: Window
+var roles_box: VBoxContainer
 var _name_re: RegEx
 var _speech_re: RegEx
 
@@ -80,8 +82,7 @@ func _ready() -> void:
 	town_tab.button_pressed = true
 	_button(top, "Case board", _open_case_view)
 	_button(top, "Notes", _open_notes)
-	_button(top, "Roles", func(): _run("roles"))
-	_button(top, "Record theory", _open_theory)
+	_button(top, "Roles", _open_roles)
 	_button(top, "Help", func(): _run("help"))
 	var spacer = Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -172,7 +173,7 @@ func _ready() -> void:
 	lower.add_child(right)
 	action_title = Label.new()
 	action_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	action_title.add_theme_font_size_override("font_size", 17)
+	action_title.add_theme_font_size_override("font_size", 19)
 	action_title.add_theme_color_override("font_color", UITheme.color("accent"))
 	right.add_child(action_title)
 	var asc = ScrollContainer.new()
@@ -196,7 +197,7 @@ func _ready() -> void:
 	out.selection_enabled = true
 	out.bbcode_enabled = true
 	out.add_theme_font_override("normal_font", mono)
-	out.add_theme_font_size_override("normal_font_size", 14)
+	out.add_theme_font_size_override("normal_font_size", 16)
 	logpanel.add_child(out)
 	var bottom = HBoxContainer.new()
 	logbox.add_child(bottom)
@@ -225,27 +226,19 @@ func _ready() -> void:
 	side_list.select_mode = Tree.SELECT_ROW
 	side_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	side_list.add_theme_font_override("font", mono)
-	side_list.add_theme_font_size_override("font_size", 12)
+	side_list.add_theme_font_size_override("font_size", 14)
 	side_list.card_activated.connect(_on_side_activated)
 	side.add_child(side_list)
 	var hint = Label.new()
 	hint.text = "Double-click a card to add its number to your command."
-	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_font_size_override("font_size", 14)
 	side.add_child(hint)
 	_button(side, "Open case board", _open_case_view)
 
-	# Case notes: one window, reachable from both screens.
-	notes_win = Window.new()
-	notes_win.title = "Case notes"
-	notes_win.size = Vector2i(560, 480)
-	notes_win.visible = false
-	notes_win.close_requested.connect(func(): notes_win.hide())
-	var np = PanelContainer.new()
-	np.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	np.add_theme_stylebox_override("panel", UITheme.panel("paper"))
-	notes_win.add_child(np)
-	var nv = VBoxContainer.new()
-	np.add_child(nv)
+	# Case notes and the roles list: movable windows, reachable from both screens.
+	var nwin = _make_window("Case notes", Vector2i(560, 480))
+	notes_win = nwin[0]
+	var nv: VBoxContainer = nwin[1]
 	var nh = Label.new()
 	nh.text = "Your notes on the case (saved as you type)"
 	nh.add_theme_color_override("font_color", UITheme.color("ink"))
@@ -257,7 +250,16 @@ func _ready() -> void:
 		if g != null:
 			g.case_notes = notes_edit.text)
 	nv.add_child(notes_edit)
-	add_child(notes_win)
+	var rwin = _make_window("Gifts that may be in play", Vector2i(620, 640))
+	roles_win = rwin[0]
+	var rsc = ScrollContainer.new()
+	rsc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	rwin[1].add_child(rsc)
+	roles_box = VBoxContainer.new()
+	roles_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	roles_box.add_theme_constant_override("separation", 8)
+	rsc.add_child(roles_box)
 
 	popup = PopupPanel.new()
 	popup.add_theme_stylebox_override("panel", UITheme.panel("popup"))
@@ -274,6 +276,7 @@ func _ready() -> void:
 	case_view.build(mono)
 	case_view.changed.connect(_refresh_side)
 	case_view.notes_requested.connect(_open_notes)
+	case_view.roles_requested.connect(_open_roles)
 
 	_new_case()
 
@@ -315,6 +318,71 @@ func _input(ev: InputEvent) -> void:
 func _open_case_view() -> void:
 	case_view.refresh()
 	case_view.visible = true
+
+## A movable window on framed paper. Returns [window, content vbox].
+func _make_window(title: String, sz: Vector2i) -> Array:
+	var win = Window.new()
+	win.title = title
+	win.size = sz
+	win.visible = false
+	win.close_requested.connect(func(): win.hide())
+	var panel = PanelContainer.new()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.add_theme_stylebox_override("panel", UITheme.panel("paper"))
+	win.add_child(panel)
+	var v = VBoxContainer.new()
+	panel.add_child(v)
+	add_child(win)
+	return [win, v]
+
+## The roles list: every gift with its icon and what it does, and who has claimed it.
+func _open_roles() -> void:
+	for ch in roles_box.get_children():
+		ch.queue_free()
+	var ink = UITheme.color("ink")
+	for group in [["Gifts of the town", C.GOOD_ROLES], ["The demon's side", ["demon", "poisoner"]]]:
+		var h = Label.new()
+		h.text = group[0]
+		h.add_theme_font_size_override("font_size", 19)
+		h.add_theme_color_override("font_color", UITheme.color("red"))
+		roles_box.add_child(h)
+		for r in group[1]:
+			var row = HBoxContainer.new()
+			row.add_theme_constant_override("separation", 10)
+			roles_box.add_child(row)
+			var ic = TextureRect.new()
+			ic.texture = UITheme.tex("ui/roles/" + r, 0.12)
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ic.custom_minimum_size = Vector2(40, 40)
+			row.add_child(ic)
+			var col = VBoxContainer.new()
+			col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(col)
+			var nm = Label.new()
+			nm.text = C.role_name(r)
+			nm.add_theme_font_size_override("font_size", 17)
+			nm.add_theme_color_override("font_color", ink)
+			col.add_child(nm)
+			var d = Label.new()
+			d.text = C.ROLES[r]["desc"]
+			d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			d.add_theme_font_size_override("font_size", 15)
+			d.add_theme_color_override("font_color", UITheme.color("ink_soft"))
+			col.add_child(d)
+			var who: Array = []
+			for n in g.w.npcs:
+				if n.claimed_role == r and (n.claim_public or n.max_tier >= 3):
+					who.append("%s (%s)" % [n.name, "to the town" if n.claim_public else "told you"])
+			if not who.is_empty():
+				var c2 = Label.new()
+				c2.text = "Claimed by: " + ", ".join(PackedStringArray(who))
+				c2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				c2.add_theme_font_size_override("font_size", 14)
+				c2.add_theme_color_override("font_color", UITheme.color("red").darkened(0.2))
+				col.add_child(c2)
+	if not roles_win.visible:
+		roles_win.popup_centered()
 
 func _on_more(i: int) -> void:
 	if i == 0:
@@ -604,7 +672,7 @@ func _hint(t: String) -> void:
 	var l = Label.new()
 	l.text = t
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", 15)
 	l.add_theme_color_override("font_color", Color(0.65, 0.65, 0.7))
 	actions.add_child(l)
 

@@ -3,7 +3,7 @@
 ## (your theory, styled so it can never pass for a confirmed role). Tabs: About | Their
 ## claims (what they've told you or the town) | About them (what others say of them). Card
 ## entries are links: clicking one selects that card (and shows it on the board). Your guess
-## and notes save as you change them.
+## saves as you change it. (Case notes live in their own window.)
 extends VBoxContainer
 
 signal changed                # guess or notes saved
@@ -28,7 +28,6 @@ var guess_opt: OptionButton
 var conf_spin: SpinBox
 var tab_buttons: Array = []
 var body: RichTextLabel
-var note_edit: TextEdit
 var tab = 0
 var _setting = false
 var compact = false   # the town screen's narrower column: smaller portrait
@@ -71,11 +70,11 @@ func build() -> void:
 	info.add_theme_constant_override("separation", 2)
 	hb.add_child(info)
 	name_label = Label.new()
-	name_label.add_theme_font_size_override("font_size", 20 if compact else 24)
+	name_label.add_theme_font_size_override("font_size", 22 if compact else 26)
 	info.add_child(name_label)
 	sub_label = Label.new()
 	sub_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub_label.add_theme_font_size_override("font_size", 13)
+	sub_label.add_theme_font_size_override("font_size", 15)
 	sub_label.add_theme_color_override("font_color", UITheme.color("ink_soft"))
 	info.add_child(sub_label)
 	var crow = HBoxContainer.new()
@@ -88,7 +87,7 @@ func build() -> void:
 	claim_label = Label.new()
 	claim_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	claim_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	claim_label.add_theme_font_size_override("font_size", 14)
+	claim_label.add_theme_font_size_override("font_size", 16)
 	claim_label.add_theme_color_override("font_color", UITheme.color("ink"))
 	crow.add_child(claim_label)
 	# Your guess: a pencilled note, visibly yours, not a fact.
@@ -96,11 +95,11 @@ func build() -> void:
 	info.add_child(grow)
 	var gl = Label.new()
 	gl.text = "Your guess:"
-	gl.add_theme_font_size_override("font_size", 13)
+	gl.add_theme_font_size_override("font_size", 15)
 	gl.add_theme_color_override("font_color", UITheme.color("red"))
 	grow.add_child(gl)
 	guess_opt = OptionButton.new()
-	guess_opt.add_theme_font_size_override("font_size", 13)
+	guess_opt.add_theme_font_size_override("font_size", 15)
 	for x in ["?", "good", "evil"] + C.GOOD_ROLES + ["demon", "poisoner"]:
 		guess_opt.add_item((x if not C.ROLES.has(x) else C.role_name(x)) + ("" if x == "?" else " ?"))
 		guess_opt.set_item_metadata(guess_opt.item_count - 1, x)
@@ -125,7 +124,7 @@ func build() -> void:
 		var b = Button.new()
 		b.text = TABS[i]
 		b.toggle_mode = true
-		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_font_size_override("font_size", 15)
 		b.pressed.connect(func():
 			tab = k
 			refresh())
@@ -139,7 +138,7 @@ func build() -> void:
 	body.bbcode_enabled = true
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.custom_minimum_size = Vector2(0, 140 if compact else 200)
-	body.add_theme_font_size_override("normal_font_size", 13)
+	body.add_theme_font_size_override("normal_font_size", 16)
 	body.add_theme_color_override("default_color", UITheme.color("ink"))
 	body.meta_clicked.connect(func(meta):
 		var s = str(meta)
@@ -149,18 +148,6 @@ func build() -> void:
 				state.select_card(n)
 			card_clicked.emit(n))
 	page.add_child(body)
-	var nl = Label.new()
-	nl.text = "Your notes on them"
-	nl.add_theme_font_size_override("font_size", 13)
-	add_child(nl)
-	note_edit = TextEdit.new()
-	note_edit.custom_minimum_size = Vector2(0, 60 if compact else 90)
-	note_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	note_edit.placeholder_text = "Saved as you type."
-	note_edit.text_changed.connect(func():
-		if not _setting and g != null and current() != "":
-			g.set_note(current(), note_edit.text))
-	add_child(note_edit)
 
 func setup(game, st) -> void:
 	g = game
@@ -201,7 +188,6 @@ func save() -> void:
 	var id = current()
 	if id == "" or g == null:
 		return
-	g.set_note(id, note_edit.text)
 	if not g.w.game_over:
 		g.set_guess(id, guess_opt.get_item_metadata(guess_opt.selected), int(conf_spin.value))
 	changed.emit()
@@ -254,8 +240,6 @@ func refresh() -> void:
 	conf_spin.value = gs.get("confidence", 2)
 	guess_opt.disabled = g.w.game_over
 	conf_spin.editable = not g.w.game_over
-	if note_edit.text != p["note"]:
-		note_edit.text = p["note"]
 	for i in range(tab_buttons.size()):
 		tab_buttons[i].set_pressed_no_signal(i == tab)
 	_setting = false

@@ -4,6 +4,7 @@ extends PanelContainer
 
 signal changed
 signal notes_requested
+signal roles_requested
 
 const C = preload("res://sim/content.gd")
 const Argue = preload("res://sim/argue.gd")
@@ -48,8 +49,6 @@ var guess_opt: OptionButton:
 var theory_label: Label
 var conf_spin: SpinBox:
 	get: return profile.conf_spin
-var note_edit: TextEdit:
-	get: return profile.note_edit
 var result_text: RichTextLabel
 var result_box: VBoxContainer
 var hidden_check: CheckBox
@@ -123,6 +122,7 @@ func build(font: Font) -> void:
 	top.add_child(hidden_check)
 	_btn(top, "Clear filters", _clear_filters)
 	_btn(top, "Notes", func(): notes_requested.emit())
+	_btn(top, "Roles", func(): roles_requested.emit())
 	# What's showing and why, always: one status line, then a removable chip per filter.
 	var srow = HFlowContainer.new()
 	root.add_child(srow)
@@ -158,7 +158,7 @@ func build(font: Font) -> void:
 		if not sel.is_empty():
 			state.select_card(sel[0]))
 	card_list.add_theme_font_override("font", mono)
-	card_list.add_theme_font_size_override("font_size", 12)
+	card_list.add_theme_font_size_override("font_size", 14)
 	lib.add_child(card_list)
 	var lb = HFlowContainer.new()
 	lib.add_child(lb)
@@ -178,7 +178,7 @@ func build(font: Font) -> void:
 	var wl = Label.new()
 	wl.text = "Drag cards here (or double-click them). They're what you link, and the 'because' of a conclusion."
 	wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	wl.add_theme_font_size_override("font_size", 12)
+	wl.add_theme_font_size_override("font_size", 14)
 	wl.add_theme_color_override("font_color", UITheme.color("muted"))
 	ws.add_child(wl)
 	work_list = CardList.new()
@@ -187,7 +187,7 @@ func build(font: Font) -> void:
 	work_list.cards_dropped.connect(func(nums): _stage(nums))
 	work_list.card_activated.connect(func(num): _unstage([num]))
 	work_list.add_theme_font_override("font", mono)
-	work_list.add_theme_font_size_override("font_size", 12)
+	work_list.add_theme_font_size_override("font_size", 14)
 	ws.add_child(work_list)
 	var wb = HFlowContainer.new()
 	ws.add_child(wb)
@@ -282,7 +282,7 @@ func build(font: Font) -> void:
 	var hint = Label.new()
 	hint.text = "Drag the background to pan, wheel to zoom (shift-wheel scrolls sideways). Hover a card for its strings; click to pin them. Click a row name to filter by it."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", UITheme.color("muted"))
 	mid.add_child(hint)
 	state.selection_changed.connect(func():

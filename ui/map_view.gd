@@ -86,7 +86,7 @@ func _r(r: Rect2) -> Rect2:
 	return Rect2(_p(r.position), r.size * _scale)
 
 func _fs(base: float) -> int:
-	return int(clampf(base * _scale, 9.0, 30.0))
+	return int(clampf(base * _scale * 1.25, 13.0, 32.0))
 
 func _loc_rect(l: String) -> Rect2:
 	var b: String = C.LOCATIONS[l]["block"]
@@ -257,7 +257,7 @@ func _draw() -> void:
 		var tw = font.get_string_size(t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 18
 		var tr = Rect2(Vector2(8, size.y - 32), Vector2(minf(size.x - 16, tw), 26))
 		draw_style_box(UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 1, 3, 4), tr)
-		draw_string(font, tr.position + Vector2(9, 18), t2, HORIZONTAL_ALIGNMENT_LEFT, tr.size.x - 12, 14, UITheme.color("ink"))
+		draw_string(font, tr.position + Vector2(9, 18), t2, HORIZONTAL_ALIGNMENT_LEFT, tr.size.x - 12, 16, UITheme.color("ink"))
 
 ## Where each living person is drawn, following what the player can actually see: a paper
 ## standee of them at their building, in the street, or at their home.
@@ -282,7 +282,7 @@ func _draw_people(font) -> void:
 			rects[key] = rect
 		groups[key].append(n)
 	var h = clampf(54.0 * _scale, 22.0, 120.0)
-	var lf = mini(_fs(12), 16)
+	var lf = mini(_fs(12), 19)
 	for key in groups:
 		var rect: Rect2 = rects[key]
 		var members: Array = groups[key]

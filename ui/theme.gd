@@ -137,7 +137,7 @@ static func serif() -> Font:
 static func make(mono: Font = null) -> Theme:
 	var th = Theme.new()
 	th.default_font = serif()
-	th.default_font_size = 15
+	th.default_font_size = 17
 	if mono != null:
 		th.set_font("font", "Tree", mono)
 	var ink = color("ink")

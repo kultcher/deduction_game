@@ -296,7 +296,7 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 		if icon != null:
 			var s = 20.0 * zoom
 			draw_texture_rect(icon, Rect2(Vector2(r.end.x - s - 6 * zoom, r.position.y + 6 * zoom), Vector2(s, s * icon.get_height() / icon.get_width())), false)
-		var fs = int(clampf(12.0 * zoom, 10, 26))
+		var fs = int(clampf(13.5 * zoom, 12, 28))
 		var names = {}
 		for m in g.w.npcs:
 			names[m.id] = m.name
@@ -408,7 +408,7 @@ func _draw_pinned(n: int) -> void:
 	if seal != null:
 		var ss = 22.0 * zoom
 		draw_texture_rect(seal, Rect2(r.position + Vector2(r.size.x / 2 - ss / 2, -ss * 0.4), Vector2(ss, ss)), false)
-	var fs = int(clampf(11.0 * zoom, 8, 26))
+	var fs = int(clampf(12.5 * zoom, 10, 28))
 	draw_multiline_string(_font, r.position + Vector2(10 * zoom, fs + 14 * zoom), card.get("text", "").trim_prefix("Deduction: "),
 		HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 18 * zoom, fs, 2 if _lod() < 2 else 6, UITheme.color("red").darkened(0.3))
 	if n == state.selected_card or n == _hover:
@@ -503,12 +503,12 @@ func _draw_headers() -> void:
 			col_c = UITheme.color("paper")
 		if r["kind"] == "person":
 			draw_circle(box.position + Vector2(13, box.size.y / 2.0), 5, C.npc_color(r["id"]))
-		draw_string(_font, box.position + Vector2(22 if r["kind"] == "person" else 10, box.size.y / 2.0 + 5), r["label"], HORIZONTAL_ALIGNMENT_LEFT, box.size.x - 26, 13, col_c)
+		draw_string(_font, box.position + Vector2(22 if r["kind"] == "person" else 10, box.size.y / 2.0 + 5), r["label"], HORIZONTAL_ALIGNMENT_LEFT, box.size.x - 26, 15, col_c)
 		_row_hits.append({"rect": box, "row": r})
 	draw_line(Vector2(HEAD_W, HEAD_H), Vector2(HEAD_W, size.y), UITheme.color("border"), 1.5)
 	draw_rect(Rect2(0, 0, HEAD_W, HEAD_H), UITheme.color("panel"))
 	var corner = {"places": "Places" if state.rows_by == "place" else "People", "statements": "About", "process": "People"}
-	draw_string(_font, Vector2(10, HEAD_H - 11), corner.get(lay["view"], ""), HORIZONTAL_ALIGNMENT_LEFT, HEAD_W - 14, 13, UITheme.color("muted"))
+	draw_string(_font, Vector2(10, HEAD_H - 11), corner.get(lay["view"], ""), HORIZONTAL_ALIGNMENT_LEFT, HEAD_W - 14, 14, UITheme.color("muted"))
 
 func _staged() -> Array:
 	var p = get_parent()

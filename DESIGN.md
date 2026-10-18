@@ -476,16 +476,22 @@ board (centre), profile and notes (right).
   (blurb, work and home, revealed traits, what readings say, debug lines), Their claims
   (cards they're the source or relayer of), About them (cards about them from others),
   each entry a link with when it happened and how you heard it; clicking selects the card
-  (and shows it on the board). Guess and notes save as you change them.
+  (and shows it on the board). The guess saves as you change it. (Per-person notes were
+  dropped; the case notes window covers it.)
 - **Town screen [built]**: title bar (sun or moon, "DEMONOLOGIST", day and phase, Town / Case
-  board / Notes / Roles / Record theory / Help; case seed, New case, More ▾ for the text
+  board / Notes / Roles / Help; case seed, New case, More ▾ for the text
   cast and timeline, the old card sidebar and the dev log; Debug). Top: map, the
   townsfolk list (`ui/cast_list.gd`: portrait in a gold ring, colour, claim icon, your
   pencilled guess, where they are if visible; dead greyed with a cross), the compact
   profile. Bottom: actions with a context line ("Talking with Greta · 2 questions left")
   beside the log. The log shows the speaker's portrait on speech lines, sun/moon/seal on
   day headers, a raven on deaths and a card icon on new case-board cards. **Case notes**
-  open in one window from either screen and save as you type.
+  open in one window from either screen and save as you type. **Roles** is a second movable
+  window (from either screen) listing every gift with its icon and description, and who has
+  claimed it to the town or to you. Record theory was dropped from the title bar (the case
+  board's builder does it). Other panels stay fixed for now; making them movable is deferred.
+  Text sizes were raised across the town screen, map, profile, log and board (deeper type
+  polish later).
 - **Painted map [built]** (`ui/map_view.gd`): each block is its painted base (Square plaza,
   Market clearings, Docks with the pier, Chapel Hill's winding path), places are building
   sprites with name signs, homes are small cottages with the owner's colour at the door
@@ -1053,6 +1059,9 @@ results match the pre-tracking commit, including deaths, executions and end reas
   word with nothing to corroborate it, so all claims could start with extra doubt that
   fades as evidence accumulates. Likely makes the early game too indecisive; keep it as a
   lever if the opposite problem (early game too decisive) shows up.
+- **Procedural town (future).** Generate the town per case: different blocks, buildings
+  and routes between them, rather than the fixed four blocks. The map already lays places
+  out from data per block; the block rectangles, roads and decor would need generating too.
 - **Template generalization (deferred to roster expansion).** Templates should read
   abstract statements ("one of {A, B} is P", "none of these is P", "X is P") produced by
   a single per-role translation table, so pair elimination, pair-vs-claims and quiet-night
