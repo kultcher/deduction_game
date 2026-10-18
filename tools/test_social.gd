@@ -22,6 +22,7 @@ func _init() -> void:
 	_test_window_wording()
 	_test_fake_sighting_vantage()
 	_test_demon_tie_vote()
+	_test_fake_watch_story()
 	print("FAILURES: %d" % fails)
 	quit()
 
@@ -241,6 +242,30 @@ func _test_demon_tie_vote() -> void:
 	print("demon on the block votes to tie: %d/30; with no tie possible: %d/30" % [ties, wrong])
 	_check(ties > 0, "the demon sometimes ties the count to clear the block")
 	_check(wrong == 0, "no yes vote when it neither ties nor passes")
+
+## A false Night Watch says they saw exactly who their made-up watch report names.
+func _test_fake_watch_story() -> void:
+	var bad = 0
+	var tried = 0
+	for sd in range(7170, 7190):
+		var g = _game(sd)
+		var w = g.w
+		var m = w.minion()
+		var goods: Array = w.living_good()
+		w.day = 2
+		m.claimed_role = "nightwatch"
+		m.max_tier = 3
+		w.evil_plan["fake_watch"]["1"] = "hill"
+		m.info_log.append({"day": 1, "role": "nightwatch", "fake": true, "shared": false, "true": false,
+			"data": {"block": "hill", "seen": [goods[0].id]}, "text": "I watched Chapel Hill: I saw %s pass by" % goods[0].name})
+		m.traits["gossip"] = 0.9
+		var r = Mind.answer_night(w, m, 1)
+		var txt = " ".join(PackedStringArray(r["lines"].map(func(l): return l["text"])))
+		tried += 1
+		if not (goods[0].name in txt) or "I saw nobody" in txt:
+			bad += 1
+			print("  inconsistent: ", txt)
+	_check(bad == 0, "a false Night Watch's night story matches their fake report (%d cases)" % tried)
 
 func _check(ok: bool, what: String) -> void:
 	print(("PASS " if ok else "FAIL ") + what)

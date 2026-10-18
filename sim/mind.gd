@@ -1210,14 +1210,24 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				continue
 			w.dlog.think(n.id, "slip", "Lets slip seeing %s on %s, though they say they were on %s (p=%.2f)." % [b["who"], b["block"], vantage, slip])
 		reported.append(b)
-	if n.is_evil() and vantage != "":
+	var watch_story = _fake_watch_entry(n, nd) if n.is_evil() and n.claimed_role == "nightwatch" else {}
+	if not watch_story.is_empty():
+		# A false Night Watch tells the same story as their made-up watch report: exactly
+		# who they "saw" pass on the block they "watched", nothing more, nothing less.
+		reported = []
+		for x in watch_story["data"].get("seen", []):
+			if x != n.id and w.by_id.has(x):
+				reported.append({"kind": "saw", "who": x, "loc": "", "block": watch_story["data"]["block"], "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"})
+		w.dlog.think(n.id, "lie", "Evil bluffing Night Watch: night-%d sightings match the fake watch report (%s)." % [nd, ", ".join(PackedStringArray(watch_story["data"].get("seen", [])))])
+	elif n.is_evil() and vantage != "":
 		var fake = Evil.fake_night_sighting(w, n, nd, vantage, how)
 		if fake != null:
 			reported.append(fake)
 	if limit == 0 and not reported.is_empty():
 		lines.append(say(n, "As for anyone else, that's none of my business."))
 		return {"lines": lines, "facts": facts}
-	reported = reported.slice(0, limit)
+	if watch_story.is_empty():
+		reported = reported.slice(0, limit)
 	if reported.is_empty() and not (was_out and not n.is_evil()):
 		lines.append(say(n, "I saw nobody."))
 	for b in reported:
@@ -1225,6 +1235,13 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		lines.append(r["line"])
 		facts.append(r["fact"])
 	return {"lines": lines, "facts": facts}
+
+## An evil member's made-up Night Watch report for night nd, or {}.
+static func _fake_watch_entry(n, nd: int) -> Dictionary:
+	for e in n.info_log:
+		if e.get("fake", false) and e.get("role", "") == "nightwatch" and e.get("day", -1) == nd:
+			return e
+	return {}
 
 ## One night sighting (or a neighbour seen going in for the night), as said and as a card.
 ## From a window, they can only speak for their own street.

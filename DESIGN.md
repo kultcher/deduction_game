@@ -807,6 +807,21 @@ paths within blocks, planting by a Framer, NPCs searching.
   doubting a sound player deduction everyone else accepts looks suspicious; fine once the
   player's own information can be suspect, otherwise fold into the "throw a teammate under
   the bus" pass.
+- **To settle: lie severity.** A proven lie should weigh by what it was about. A false gift
+  report (a Night Watch's watched block, a Warden's guarded door, a reading) is strong
+  evidence of evil, since good people hide secrets, not invent gifts. A lie about
+  whereabouts is weaker (it might hide a secret), but weighs more when it places them near
+  the crime (at the murder scene's block on the murder night). Also: when an NPC accepts an
+  argument but still won't vote to hang, they should say so ("So she lied. That's not
+  enough for me to hang her.").
+- **To do (next social pass): rebuttals and excuses.** An accused NPC should push back with
+  a reason when they have one ("I was out there because I'm the Night Watch"), which buys
+  some grace with listeners. Evil without a bluff that fits can claim a secret they don't
+  have ("I was paying off a debt"), which needs more ways for the player to unravel fake
+  secrets (ties into the secrets item above).
+- **Built:** a false Night Watch's answer to "where were you" now names exactly who their
+  made-up watch report names (case 30294: Isolde's report said she saw Bartholomew, but
+  she told you she saw nobody).
 - **Filed:** an open Warden saying "I saw X out while I stood guard" (strong; maybe too
   strong).
 - Alibis **name a corroborator** ("I was with Jory"). The corroborator confirms or denies,
