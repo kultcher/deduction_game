@@ -37,7 +37,7 @@ var _speech_re: RegEx
 
 func _ready() -> void:
 	var bg = ColorRect.new()
-	bg.color = Color(0.07, 0.07, 0.08)
+	bg.color = UITheme.color("bg")
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -60,7 +60,7 @@ func _ready() -> void:
 	seed_box.value = randi() % 100000
 	top.add_child(seed_box)
 	_button(top, "New case", _new_case)
-	_button(top, "Case view", _open_case_view)
+	_button(top, "Case board", _open_case_view)
 	_button(top, "Record theory", _open_theory)
 	_button(top, "Board", func(): side.visible = not side.visible)
 	_button(top, "Cast", func(): _run("cast"))
@@ -196,8 +196,9 @@ func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
 	b.pressed.connect(cb)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if color != null:
-		b.add_theme_color_override("font_color", color)
-		b.add_theme_color_override("font_hover_color", color.lightened(0.3))
+		# Character colours are tuned for the dark board; on a paper button, use their ink.
+		b.add_theme_color_override("font_color", UITheme.ink_of(color))
+		b.add_theme_color_override("font_hover_color", UITheme.ink_of(color).darkened(0.2))
 	parent.add_child(b)
 	return b
 

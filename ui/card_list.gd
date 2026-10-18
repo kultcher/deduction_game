@@ -3,6 +3,9 @@ extends Tree
 
 signal card_activated(num)
 signal selection_changed
+signal cards_dropped(nums)   # cards dragged here from the board, the tray or another list
+
+var accept_drops = false
 
 var _root: TreeItem
 var _items: Array = []
@@ -36,6 +39,14 @@ func add(text: String, meta, tip: String = "", color = null) -> TreeItem:
 	_items.append(it)
 	return it
 
+## A section heading row (not a card: not counted, not selectable).
+func add_header(text: String, color = null) -> void:
+	var it = create_item(_root)
+	it.set_text(0, text)
+	it.set_selectable(0, false)
+	if color != null:
+		it.set_custom_color(0, color)
+
 func count() -> int:
 	return _items.size()
 
@@ -58,3 +69,19 @@ func selected_metas() -> Array:
 		out.append(it.get_metadata(0))
 		it = get_next_selected(it)
 	return out
+
+# Drag cards out of the list (to the working set or another list), and accept drops.
+func _get_drag_data(_at: Vector2):
+	var sel: Array = selected_metas().filter(func(x): return x is int and x > 0)
+	if sel.is_empty():
+		return null
+	var l = Label.new()
+	l.text = "#" + ", #".join(PackedStringArray(sel.map(func(x): return str(x))))
+	set_drag_preview(l)
+	return {"cards": sel, "from": self}
+
+func _can_drop_data(_at: Vector2, data) -> bool:
+	return accept_drops and data is Dictionary and data.has("cards") and data.get("from") != self
+
+func _drop_data(_at: Vector2, data) -> void:
+	cards_dropped.emit(data["cards"])

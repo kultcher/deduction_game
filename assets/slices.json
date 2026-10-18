@@ -1,0 +1,1692 @@
+{
+ "art/blocks/docks": {
+  "box": [
+   25,
+   654,
+   605,
+   549
+  ],
+  "sheet": "art/source/block_bases.png",
+  "size": [
+   605,
+   549
+  ]
+ },
+ "art/blocks/hill": {
+  "box": [
+   634,
+   621,
+   601,
+   590
+  ],
+  "sheet": "art/source/block_bases.png",
+  "size": [
+   601,
+   590
+  ]
+ },
+ "art/blocks/market": {
+  "box": [
+   632,
+   35,
+   603,
+   559
+  ],
+  "sheet": "art/source/block_bases.png",
+  "size": [
+   603,
+   559
+  ]
+ },
+ "art/blocks/square": {
+  "box": [
+   26,
+   46,
+   584,
+   536
+  ],
+  "sheet": "art/source/block_bases.png",
+  "size": [
+   584,
+   536
+  ]
+ },
+ "art/buildings/bakery": {
+  "box": [
+   6,
+   155,
+   346,
+   353
+  ],
+  "sheet": "art/source/buildings.png",
+  "size": [
+   346,
+   353
+  ]
+ },
+ "art/buildings/chapel": {
+  "box": [
+   1300,
+   13,
+   317,
+   508
+  ],
+  "sheet": "art/source/buildings.png",
+  "size": [
+   317,
+   508
+  ]
+ },
+ "art/buildings/cottage_blue": {
+  "box": [
+   1293,
+   556,
+   321,
+   378
+  ],
+  "sheet": "art/source/buildings.png",
+  "size": [
+   321,
+   378
+  ]
+ },
+ "art/buildings/cottage_red": {
+  "box": [
+   987,
+   588,
+   311,
+   341
+  ],
+  "sheet": "art/source/buildings.png",
+  "size": [
+   311,
+   341
+  ]
+ },
+ "art/buildings/graveyard": {
+  "box": [
+   9,
+   605,
+   306,
+   333
+  ],
+  "sheet": "art/source/buildings.png",
+  "size": [
+   306,
+   333
+  ]
+ },
+ "art/buildings/mill": {
+  "box": [
+   332,
+   555,
+   347,
+   382
+  ],
+  "sheet": "art/source/buildings.png",
+  "size": [
+   347,
+   382
+  ]
+ },
+ "art/buildings/smithy": {
+  "box": [
+   342,
+   117,
+   326,
+   392
+  ],
+  "sheet": "art/source/buildings.png",
+  "size": [
+   326,
+   392
+  ]
+ },
+ "art/buildings/tavern": {
+  "box": [
+   659,
+   101,
+   392,
+   414
+  ],
+  "sheet": "art/source/buildings.png",
+  "size": [
+   392,
+   414
+  ]
+ },
+ "art/buildings/well": {
+  "box": [
+   1058,
+   166,
+   228,
+   354
+  ],
+  "sheet": "art/source/buildings.png",
+  "size": [
+   228,
+   354
+  ]
+ },
+ "art/buildings/wharf": {
+  "box": [
+   685,
+   716,
+   304,
+   231
+  ],
+  "sheet": "art/source/buildings.png",
+  "size": [
+   304,
+   231
+  ]
+ },
+ "art/decor/boat": {
+  "box": [
+   661,
+   1045,
+   270,
+   164
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   270,
+   164
+  ]
+ },
+ "art/decor/bridge": {
+  "box": [
+   332,
+   392,
+   316,
+   238
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   316,
+   238
+  ]
+ },
+ "art/decor/bush": {
+  "box": [
+   973,
+   769,
+   257,
+   165
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   257,
+   165
+  ]
+ },
+ "art/decor/crates": {
+  "box": [
+   334,
+   1031,
+   260,
+   175
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   260,
+   175
+  ]
+ },
+ "art/decor/fence": {
+  "box": [
+   675,
+   437,
+   239,
+   173
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   239,
+   173
+  ]
+ },
+ "art/decor/flowers": {
+  "box": [
+   949,
+   1080,
+   290,
+   124
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   290,
+   124
+  ]
+ },
+ "art/decor/lamp": {
+  "box": [
+   130,
+   943,
+   99,
+   284
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   99,
+   284
+  ]
+ },
+ "art/decor/road_bend": {
+  "box": [
+   643,
+   61,
+   257,
+   259
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   257,
+   259
+  ]
+ },
+ "art/decor/road_cross": {
+  "box": [
+   34,
+   342,
+   277,
+   277
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   277,
+   277
+  ]
+ },
+ "art/decor/road_h": {
+  "box": [
+   37,
+   110,
+   315,
+   139
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   315,
+   139
+  ]
+ },
+ "art/decor/road_t": {
+  "box": [
+   939,
+   59,
+   295,
+   255
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   295,
+   255
+  ]
+ },
+ "art/decor/road_v": {
+  "box": [
+   415,
+   37,
+   140,
+   279
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   140,
+   279
+  ]
+ },
+ "art/decor/stone_wall": {
+  "box": [
+   952,
+   454,
+   289,
+   166
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   289,
+   166
+  ]
+ },
+ "art/decor/tree_autumn": {
+  "box": [
+   675,
+   651,
+   236,
+   294
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   236,
+   294
+  ]
+ },
+ "art/decor/tree_oak": {
+  "box": [
+   30,
+   641,
+   288,
+   297
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   288,
+   297
+  ]
+ },
+ "art/decor/tree_pine": {
+  "box": [
+   383,
+   643,
+   185,
+   300
+  ],
+  "sheet": "art/source/roads_decor.png",
+  "size": [
+   185,
+   300
+  ]
+ },
+ "art/portraits/agnes": {
+  "box": [
+   5,
+   57,
+   351,
+   411
+  ],
+  "sheet": "art/source/portraits.png",
+  "size": [
+   351,
+   411
+  ]
+ },
+ "art/portraits/bart": {
+  "box": [
+   335,
+   54,
+   353,
+   416
+  ],
+  "sheet": "art/source/portraits.png",
+  "size": [
+   353,
+   416
+  ]
+ },
+ "art/portraits/constance": {
+  "box": [
+   687,
+   13,
+   264,
+   457
+  ],
+  "sheet": "art/source/portraits.png",
+  "size": [
+   264,
+   457
+  ]
+ },
+ "art/portraits/dorian": {
+  "box": [
+   943,
+   42,
+   347,
+   427
+  ],
+  "sheet": "art/source/portraits.png",
+  "size": [
+   347,
+   427
+  ]
+ },
+ "art/portraits/edda": {
+  "box": [
+   1270,
+   74,
+   345,
+   396
+  ],
+  "sheet": "art/source/portraits.png",
+  "size": [
+   345,
+   396
+  ]
+ },
+ "art/portraits/fenwick": {
+  "box": [
+   5,
+   523,
+   343,
+   431
+  ],
+  "sheet": "art/source/portraits.png",
+  "size": [
+   343,
+   431
+  ]
+ },
+ "art/portraits/greta": {
+  "box": [
+   335,
+   485,
+   339,
+   468
+  ],
+  "sheet": "art/source/portraits.png",
+  "size": [
+   339,
+   468
+  ]
+ },
+ "art/portraits/hollis": {
+  "box": [
+   692,
+   486,
+   277,
+   468
+  ],
+  "sheet": "art/source/portraits.png",
+  "size": [
+   277,
+   468
+  ]
+ },
+ "art/portraits/isolde": {
+  "box": [
+   972,
+   509,
+   323,
+   445
+  ],
+  "sheet": "art/source/portraits.png",
+  "size": [
+   323,
+   445
+  ]
+ },
+ "art/portraits/jory": {
+  "box": [
+   1295,
+   495,
+   320,
+   459
+  ],
+  "sheet": "art/source/portraits.png",
+  "size": [
+   320,
+   459
+  ]
+ },
+ "art/standees/agnes": {
+  "box": [
+   19,
+   131,
+   446,
+   530
+  ],
+  "sheet": "art/source/standees_a.png",
+  "size": [
+   446,
+   530
+  ]
+ },
+ "art/standees/bart": {
+  "box": [
+   473,
+   127,
+   428,
+   533
+  ],
+  "sheet": "art/source/standees_a.png",
+  "size": [
+   428,
+   533
+  ]
+ },
+ "art/standees/constance": {
+  "box": [
+   896,
+   57,
+   366,
+   602
+  ],
+  "sheet": "art/source/standees_a.png",
+  "size": [
+   366,
+   602
+  ]
+ },
+ "art/standees/dorian": {
+  "box": [
+   1272,
+   123,
+   429,
+   536
+  ],
+  "sheet": "art/source/standees_a.png",
+  "size": [
+   429,
+   536
+  ]
+ },
+ "art/standees/edda": {
+  "box": [
+   1707,
+   139,
+   431,
+   524
+  ],
+  "sheet": "art/source/standees_a.png",
+  "size": [
+   431,
+   524
+  ]
+ },
+ "art/standees/fenwick": {
+  "box": [
+   28,
+   139,
+   436,
+   527
+  ],
+  "sheet": "art/source/standees_b.png",
+  "size": [
+   436,
+   527
+  ]
+ },
+ "art/standees/greta": {
+  "box": [
+   456,
+   117,
+   439,
+   549
+  ],
+  "sheet": "art/source/standees_b.png",
+  "size": [
+   439,
+   549
+  ]
+ },
+ "art/standees/hollis": {
+  "box": [
+   916,
+   97,
+   405,
+   569
+  ],
+  "sheet": "art/source/standees_b.png",
+  "size": [
+   405,
+   569
+  ]
+ },
+ "art/standees/isolde": {
+  "box": [
+   1323,
+   125,
+   421,
+   541
+  ],
+  "sheet": "art/source/standees_b.png",
+  "size": [
+   421,
+   541
+  ]
+ },
+ "art/standees/jory": {
+  "box": [
+   1748,
+   109,
+   403,
+   557
+  ],
+  "sheet": "art/source/standees_b.png",
+  "size": [
+   403,
+   557
+  ]
+ },
+ "art/terrain/cliff_bend": {
+  "box": [
+   962,
+   489,
+   277,
+   393
+  ],
+  "sheet": "art/source/terrain_water_walls.png",
+  "size": [
+   277,
+   393
+  ]
+ },
+ "art/terrain/cliff_h": {
+  "box": [
+   446,
+   503,
+   496,
+   139
+  ],
+  "sheet": "art/source/terrain_water_walls.png",
+  "size": [
+   496,
+   139
+  ]
+ },
+ "art/terrain/dirt_a": {
+  "box": [
+   716,
+   48,
+   404,
+   325
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   404,
+   325
+  ]
+ },
+ "art/terrain/dirt_b": {
+  "box": [
+   31,
+   390,
+   430,
+   331
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   430,
+   331
+  ]
+ },
+ "art/terrain/dirt_c": {
+  "box": [
+   1135,
+   769,
+   295,
+   270
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   295,
+   270
+  ]
+ },
+ "art/terrain/field_crops": {
+  "box": [
+   421,
+   720,
+   349,
+   338
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   349,
+   338
+  ]
+ },
+ "art/terrain/field_ploughed": {
+  "box": [
+   1106,
+   395,
+   324,
+   323
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   324,
+   323
+  ]
+ },
+ "art/terrain/field_wheat": {
+  "box": [
+   24,
+   721,
+   391,
+   333
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   391,
+   333
+  ]
+ },
+ "art/terrain/grass_a": {
+  "box": [
+   30,
+   32,
+   436,
+   343
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   436,
+   343
+  ]
+ },
+ "art/terrain/grass_b": {
+  "box": [
+   1132,
+   106,
+   292,
+   257
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   292,
+   257
+  ]
+ },
+ "art/terrain/grass_c": {
+  "box": [
+   777,
+   740,
+   356,
+   316
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   356,
+   316
+  ]
+ },
+ "art/terrain/grass_dirt": {
+  "box": [
+   700,
+   388,
+   393,
+   327
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   393,
+   327
+  ]
+ },
+ "art/terrain/grass_strip": {
+  "box": [
+   473,
+   24,
+   233,
+   363
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   233,
+   363
+  ]
+ },
+ "art/terrain/path_strip": {
+  "box": [
+   461,
+   385,
+   219,
+   336
+  ],
+  "sheet": "art/source/terrain_patches.png",
+  "size": [
+   219,
+   336
+  ]
+ },
+ "art/terrain/wall_corner": {
+  "box": [
+   884,
+   890,
+   356,
+   316
+  ],
+  "sheet": "art/source/terrain_water_walls.png",
+  "size": [
+   356,
+   316
+  ]
+ },
+ "art/terrain/wall_h": {
+  "box": [
+   10,
+   960,
+   466,
+   183
+  ],
+  "sheet": "art/source/terrain_water_walls.png",
+  "size": [
+   466,
+   183
+  ]
+ },
+ "art/terrain/wall_step": {
+  "box": [
+   517,
+   889,
+   303,
+   288
+  ],
+  "sheet": "art/source/terrain_water_walls.png",
+  "size": [
+   303,
+   288
+  ]
+ },
+ "art/terrain/water_big": {
+  "box": [
+   23,
+   35,
+   453,
+   410
+  ],
+  "sheet": "art/source/terrain_water_walls.png",
+  "size": [
+   453,
+   410
+  ]
+ },
+ "art/terrain/water_h": {
+  "box": [
+   486,
+   159,
+   531,
+   196
+  ],
+  "sheet": "art/source/terrain_water_walls.png",
+  "size": [
+   531,
+   196
+  ]
+ },
+ "art/terrain/water_l": {
+  "box": [
+   20,
+   459,
+   487,
+   409
+  ],
+  "sheet": "art/source/terrain_water_walls.png",
+  "size": [
+   487,
+   409
+  ]
+ },
+ "art/terrain/water_v": {
+  "box": [
+   1036,
+   11,
+   192,
+   473
+  ],
+  "sheet": "art/source/terrain_water_walls.png",
+  "size": [
+   192,
+   473
+  ]
+ },
+ "ui/arrow_left": {
+  "box": [
+   756,
+   1053,
+   204,
+   129
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   204,
+   129
+  ]
+ },
+ "ui/arrow_right": {
+  "box": [
+   1023,
+   1051,
+   204,
+   130
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   204,
+   130
+  ]
+ },
+ "ui/books": {
+  "box": [
+   996,
+   798,
+   246,
+   154
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   246,
+   154
+  ]
+ },
+ "ui/candle": {
+  "box": [
+   560,
+   761,
+   158,
+   211
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   158,
+   211
+  ]
+ },
+ "ui/cards/card_01": {
+  "box": [
+   33,
+   60,
+   328,
+   218
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   328,
+   218
+  ]
+ },
+ "ui/cards/card_02": {
+  "box": [
+   385,
+   60,
+   331,
+   215
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   331,
+   215
+  ]
+ },
+ "ui/cards/card_03": {
+  "box": [
+   737,
+   61,
+   327,
+   214
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   327,
+   214
+  ]
+ },
+ "ui/cards/card_04": {
+  "box": [
+   1087,
+   61,
+   332,
+   216
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   332,
+   216
+  ]
+ },
+ "ui/cards/card_05": {
+  "box": [
+   35,
+   317,
+   325,
+   211
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   325,
+   211
+  ]
+ },
+ "ui/cards/card_06": {
+  "box": [
+   387,
+   314,
+   328,
+   212
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   328,
+   212
+  ]
+ },
+ "ui/cards/card_07": {
+  "box": [
+   737,
+   318,
+   328,
+   209
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   328,
+   209
+  ]
+ },
+ "ui/cards/card_08": {
+  "box": [
+   1087,
+   318,
+   332,
+   211
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   332,
+   211
+  ]
+ },
+ "ui/cards/card_09": {
+  "box": [
+   33,
+   565,
+   330,
+   216
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   330,
+   216
+  ]
+ },
+ "ui/cards/card_10": {
+  "box": [
+   386,
+   568,
+   330,
+   212
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   330,
+   212
+  ]
+ },
+ "ui/cards/card_11": {
+  "box": [
+   739,
+   568,
+   325,
+   218
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   325,
+   218
+  ]
+ },
+ "ui/cards/card_12": {
+  "box": [
+   1088,
+   569,
+   331,
+   212
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   331,
+   212
+  ]
+ },
+ "ui/cards/card_13": {
+  "box": [
+   33,
+   815,
+   331,
+   212
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   331,
+   212
+  ]
+ },
+ "ui/cards/card_14": {
+  "box": [
+   384,
+   816,
+   333,
+   214
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   333,
+   214
+  ]
+ },
+ "ui/cards/card_15": {
+  "box": [
+   736,
+   815,
+   329,
+   213
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   329,
+   213
+  ]
+ },
+ "ui/cards/card_16": {
+  "box": [
+   1084,
+   815,
+   335,
+   214
+  ],
+  "sheet": "ui/source/cards.png",
+  "size": [
+   335,
+   214
+  ]
+ },
+ "ui/corner_bl": {
+  "box": [
+   524,
+   511,
+   189,
+   208
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   189,
+   208
+  ]
+ },
+ "ui/corner_br": {
+  "box": [
+   788,
+   511,
+   190,
+   208
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   190,
+   208
+  ]
+ },
+ "ui/corner_tl": {
+  "box": [
+   30,
+   511,
+   218,
+   204
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   218,
+   204
+  ]
+ },
+ "ui/corner_tr": {
+  "box": [
+   283,
+   511,
+   216,
+   205
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   216,
+   205
+  ]
+ },
+ "ui/curtain_left": {
+  "box": [
+   38,
+   744,
+   207,
+   235
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   207,
+   235
+  ]
+ },
+ "ui/curtain_right": {
+  "box": [
+   281,
+   743,
+   205,
+   236
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   205,
+   236
+  ]
+ },
+ "ui/divider": {
+  "box": [
+   994,
+   562,
+   244,
+   85
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   244,
+   85
+  ]
+ },
+ "ui/frame_banner": {
+  "box": [
+   613,
+   928,
+   615,
+   286
+  ],
+  "sheet": "ui/source/frames.png",
+  "size": [
+   615,
+   286
+  ]
+ },
+ "ui/frame_portrait": {
+  "box": [
+   124,
+   372,
+   448,
+   531
+  ],
+  "sheet": "ui/source/frames.png",
+  "size": [
+   448,
+   531
+  ]
+ },
+ "ui/frame_stage": {
+  "box": [
+   649,
+   31,
+   582,
+   315
+  ],
+  "sheet": "ui/source/frames.png",
+  "size": [
+   582,
+   315
+  ]
+ },
+ "ui/frame_tab": {
+  "box": [
+   27,
+   926,
+   566,
+   283
+  ],
+  "sheet": "ui/source/frames.png",
+  "size": [
+   566,
+   283
+  ]
+ },
+ "ui/frame_titled": {
+  "box": [
+   686,
+   373,
+   463,
+   530
+  ],
+  "sheet": "ui/source/frames.png",
+  "size": [
+   463,
+   530
+  ]
+ },
+ "ui/frame_wide": {
+  "box": [
+   25,
+   34,
+   595,
+   318
+  ],
+  "sheet": "ui/source/frames.png",
+  "size": [
+   595,
+   318
+  ]
+ },
+ "ui/moon": {
+  "box": [
+   309,
+   1021,
+   147,
+   179
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   147,
+   179
+  ]
+ },
+ "ui/plaque_cream": {
+  "box": [
+   19,
+   83,
+   241,
+   87
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   241,
+   87
+  ]
+ },
+ "ui/plaque_gold": {
+  "box": [
+   270,
+   83,
+   230,
+   88
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   230,
+   88
+  ]
+ },
+ "ui/plaque_grey": {
+  "box": [
+   759,
+   84,
+   229,
+   86
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   229,
+   86
+  ]
+ },
+ "ui/plaque_navy": {
+  "box": [
+   1004,
+   75,
+   232,
+   95
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   232,
+   95
+  ]
+ },
+ "ui/plaque_red": {
+  "box": [
+   514,
+   81,
+   232,
+   89
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   232,
+   89
+  ]
+ },
+ "ui/plaque_wide": {
+  "box": [
+   997,
+   318,
+   236,
+   91
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   236,
+   91
+  ]
+ },
+ "ui/raven": {
+  "box": [
+   771,
+   769,
+   206,
+   215
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   206,
+   215
+  ]
+ },
+ "ui/ring_gold": {
+  "box": [
+   530,
+   273,
+   197,
+   197
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   197,
+   197
+  ]
+ },
+ "ui/ring_red": {
+  "box": [
+   771,
+   273,
+   196,
+   197
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   196,
+   197
+  ]
+ },
+ "ui/roles/archivist": {
+  "box": [
+   20,
+   398,
+   356,
+   310
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   356,
+   310
+  ]
+ },
+ "ui/roles/clerk": {
+  "box": [
+   428,
+   388,
+   278,
+   326
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   278,
+   326
+  ]
+ },
+ "ui/roles/demon": {
+  "box": [
+   76,
+   712,
+   209,
+   343
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   209,
+   343
+  ]
+ },
+ "ui/roles/gravedigger": {
+  "box": [
+   81,
+   14,
+   280,
+   369
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   280,
+   369
+  ]
+ },
+ "ui/roles/hearthwitch": {
+  "box": [
+   393,
+   40,
+   324,
+   325
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   324,
+   325
+  ]
+ },
+ "ui/roles/nightwatch": {
+  "box": [
+   1164,
+   13,
+   234,
+   377
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   234,
+   377
+  ]
+ },
+ "ui/roles/none": {
+  "box": [
+   1129,
+   751,
+   289,
+   290
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   289,
+   290
+  ]
+ },
+ "ui/roles/poisoner": {
+  "box": [
+   432,
+   734,
+   239,
+   313
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   239,
+   313
+  ]
+ },
+ "ui/roles/seer": {
+  "box": [
+   751,
+   42,
+   346,
+   327
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   346,
+   327
+  ]
+ },
+ "ui/roles/unknown": {
+  "box": [
+   807,
+   743,
+   213,
+   303
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   213,
+   303
+  ]
+ },
+ "ui/roles/veteran": {
+  "box": [
+   1122,
+   412,
+   309,
+   298
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   309,
+   298
+  ]
+ },
+ "ui/roles/warden": {
+  "box": [
+   767,
+   394,
+   273,
+   325
+  ],
+  "sheet": "ui/source/role_icons.png",
+  "size": [
+   273,
+   325
+  ]
+ },
+ "ui/sun": {
+  "box": [
+   24,
+   1003,
+   221,
+   213
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   221,
+   213
+  ]
+ },
+ "ui/tab_cream": {
+  "box": [
+   28,
+   295,
+   219,
+   114
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   219,
+   114
+  ]
+ },
+ "ui/tab_red": {
+  "box": [
+   269,
+   296,
+   230,
+   112
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   230,
+   112
+  ]
+ },
+ "ui/wax_seal": {
+  "box": [
+   541,
+   1028,
+   164,
+   165
+  ],
+  "sheet": "ui/source/ui_bits.png",
+  "size": [
+   164,
+   165
+  ]
+ }
+}

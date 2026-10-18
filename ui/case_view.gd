@@ -1,4 +1,4 @@
-## Full-screen case view: filters, card list with selection, timeline grid, profiles,
+## Full-screen case board: filters, card library, the board (ui/board_view.gd), profiles,
 ## and the Link / Conclude builder. Reads the game's structured data directly.
 extends PanelContainer
 
@@ -11,6 +11,8 @@ const Metrics = preload("res://game/case_metrics.gd")
 const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
 const CardModel = preload("res://game/card_model.gd")
+const BoardView = preload("res://ui/board_view.gd")
+const DeductionTray = preload("res://ui/deduction_tray.gd")
 
 var g
 var mono: Font
@@ -31,7 +33,11 @@ var view_opt: OptionButton
 var status_label: Label
 var chip_row: HFlowContainer
 var card_list
-var grid: GridContainer
+var board                     # ui/board_view.gd
+var tray                      # ui/deduction_tray.gd
+var view_tabs: Array = []
+var rows_btn: Button
+var day_label: Label
 var prof_opt: OptionButton
 var prof_text: RichTextLabel
 var guess_opt: OptionButton
@@ -60,32 +66,37 @@ func _init() -> void:
 func build(font: Font) -> void:
 	mono = font
 	var bg = ColorRect.new()
-	bg.color = Color(0.06, 0.06, 0.08)
+	bg.color = UITheme.color("bg")
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(bg)
 	var root = VBoxContainer.new()
-	root.add_theme_constant_override("separation", 8)
+	root.add_theme_constant_override("separation", 6)
 	add_child(root)
 	theory_label = Label.new()
 	theory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	theory_label.add_theme_color_override("font_color", UITheme.color("muted"))
 	root.add_child(theory_label)
 
+	# Filters: shared by the card library and the board.
 	var top = HFlowContainer.new()
+	top.add_theme_constant_override("h_separation", 6)
 	root.add_child(top)
-	_btn(top, "◀ Back to console (Esc)", func(): visible = false)
+	_btn(top, "◀ Back to town (Esc)", func(): visible = false)
 	var title = Label.new()
-	title.text = "  CASE VIEW  "
+	title.text = "  CASE BOARD  "
+	title.add_theme_color_override("font_color", UITheme.color("accent"))
+	title.add_theme_font_size_override("font_size", 18)
 	top.add_child(title)
 	view_opt = OptionButton.new()
-	for v in ["all", "places", "statements", "process"]:
+	for v in ["places", "statements", "process", "all"]:
 		view_opt.add_item(CardModel.VIEW_NAMES[v])
 		view_opt.set_item_metadata(view_opt.item_count - 1, v)
 	view_opt.item_selected.connect(func(i): state.set_view(view_opt.get_item_metadata(i)))
-	view_opt.tooltip_text = "Which cards to show: where people were; what people said; the town's official business."
+	view_opt.tooltip_text = "Which cards to show: where people were; what people said; the town's official business. ('All cards' lists everything; the board then shows Places.)"
 	top.add_child(view_opt)
 	filter_edit = LineEdit.new()
 	filter_edit.placeholder_text = "filter: text, d2, n1 ..."
-	filter_edit.custom_minimum_size = Vector2(180, 0)
+	filter_edit.custom_minimum_size = Vector2(170, 0)
 	filter_edit.text_changed.connect(func(t):
 		state.text = t
 		state.edited())
@@ -106,82 +117,88 @@ func build(font: Font) -> void:
 	top.add_child(hidden_check)
 	_btn(top, "Clear filters", _clear_filters)
 	# What's showing and why, always: one status line, then a removable chip per filter.
+	var srow = HFlowContainer.new()
+	root.add_child(srow)
 	status_label = Label.new()
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5))
-	root.add_child(status_label)
+	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status_label.add_theme_color_override("font_color", UITheme.color("accent"))
+	srow.add_child(status_label)
 	chip_row = HFlowContainer.new()
 	root.add_child(chip_row)
 	state.changed.connect(func():
 		_sync_menus()
-		_refresh_cards()
-		_refresh_timeline())
+		_refresh_cards())
 
 	var body = HSplitContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(body)
 
-	var left = VBoxContainer.new()
-	left.custom_minimum_size = Vector2(420, 0)
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.size_flags_stretch_ratio = 0.8
+	# Left: the card library, then the working set and the builder.
+	var left = VSplitContainer.new()
+	left.custom_minimum_size = Vector2(380, 0)
 	body.add_child(left)
-	var ll = Label.new()
-	ll.text = "Cards (double-click or >> to add to your working set)"
-	left.add_child(ll)
+	var lib = VBoxContainer.new()
+	lib.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_child(lib)
+	lib.add_child(_heading("Cards"))
 	card_list = CardList.new()
 	card_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card_list.size_flags_stretch_ratio = 2.5
+	card_list.custom_minimum_size = Vector2(0, 160)
 	card_list.card_activated.connect(func(num): _stage([num]))
 	card_list.selection_changed.connect(func():
 		var sel: Array = card_list.selected_metas()
 		if not sel.is_empty():
 			state.select_card(sel[0]))
 	card_list.add_theme_font_override("font", mono)
-	card_list.add_theme_font_size_override("font_size", 13)
-	left.add_child(card_list)
+	card_list.add_theme_font_size_override("font_size", 12)
+	lib.add_child(card_list)
 	var lb = HFlowContainer.new()
-	left.add_child(lb)
-	_btn(lb, ">> Add to working set", func(): _stage(card_list.selected_metas()))
+	lib.add_child(lb)
+	_btn(lb, "Add to working set ▼", func(): _stage(card_list.selected_metas().filter(func(x): return x is int and x > 0)))
 	_btn(lb, "Hide", func(): _hide_selected(true))
 	_btn(lb, "Unhide", func(): _hide_selected(false))
 	_btn(lb, "Delete deduction", _delete_selected)
+
+	var ws_scroll = ScrollContainer.new()
+	ws_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	ws_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_child(ws_scroll)
+	var ws = VBoxContainer.new()
+	ws.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ws_scroll.add_child(ws)
+	ws.add_child(_heading("Working set"))
 	var wl = Label.new()
-	wl.text = "Working set (what you link, and the 'because' of a conclusion)"
-	left.add_child(wl)
+	wl.text = "Drag cards here (or double-click them). They're what you link, and the 'because' of a conclusion."
+	wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	wl.add_theme_font_size_override("font_size", 12)
+	wl.add_theme_color_override("font_color", UITheme.color("muted"))
+	ws.add_child(wl)
 	work_list = CardList.new()
-	work_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	work_list.custom_minimum_size = Vector2(0, 110)
+	work_list.accept_drops = true
+	work_list.cards_dropped.connect(func(nums): _stage(nums))
 	work_list.card_activated.connect(func(num): _unstage([num]))
 	work_list.add_theme_font_override("font", mono)
-	work_list.add_theme_font_size_override("font_size", 13)
-	left.add_child(work_list)
+	work_list.add_theme_font_size_override("font_size", 12)
+	ws.add_child(work_list)
 	var wb = HFlowContainer.new()
-	left.add_child(wb)
-	_btn(wb, "Link working set", _on_link)
-	_btn(wb, "<< Remove", func(): _unstage(work_list.selected_metas()))
+	ws.add_child(wb)
+	_btn(wb, "Remove", func(): _unstage(work_list.selected_metas()))
 	_btn(wb, "Clear", func(): _unstage(staged.duplicate()))
-
-	var mid_split = HSplitContainer.new()
-	mid_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(mid_split)
-	var mid = VBoxContainer.new()
-	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mid_split.add_child(mid)
-	var tl = Label.new()
-	tl.text = "Timeline (bright = you saw it, dim = you were told; click a cell for its cards)"
-	mid.add_child(tl)
-	var sc = ScrollContainer.new()
-	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	mid.add_child(sc)
-	grid = GridContainer.new()
-	grid.add_theme_constant_override("h_separation", 2)
-	grid.add_theme_constant_override("v_separation", 2)
-	sc.add_child(grid)
-	var res_title = Label.new()
-	res_title.text = "Conclusion builder"
-	mid.add_child(res_title)
+	# What the working set suggests (updates as cards come and go).
+	ws.add_child(_heading("What these cards suggest"))
+	result_box = VBoxContainer.new()
+	result_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ws.add_child(result_box)
+	result_text = RichTextLabel.new()
+	result_text.fit_content = true
+	result_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	result_text.text = "Put one to three cards in the working set to see what they suggest: a contradiction, a corroboration or an inference."
+	result_box.add_child(result_text)
+	ws.add_child(_heading("Conclusion builder"))
 	var brow = HFlowContainer.new()
-	mid.add_child(brow)
+	ws.add_child(brow)
 	b_who = OptionButton.new()
 	b_who.item_selected.connect(func(_i):
 		_fill_status()
@@ -198,51 +215,93 @@ func build(font: Font) -> void:
 	brow.add_child(b_night)
 	b_because = Label.new()
 	b_because.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	mid.add_child(b_because)
+	ws.add_child(b_because)
 	b_preview = Label.new()
 	b_preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	b_preview.add_theme_color_override("font_color", Color(0.95, 0.8, 0.45))
-	mid.add_child(b_preview)
+	b_preview.add_theme_color_override("font_color", UITheme.color("deduction"))
+	ws.add_child(b_preview)
 	var frow = HBoxContainer.new()
-	mid.add_child(frow)
+	ws.add_child(frow)
 	_btn(frow, "File deduction", _on_file)
 	b_error = Label.new()
 	b_error.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	b_error.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b_error.add_theme_color_override("font_color", Color(1, 0.55, 0.5))
 	frow.add_child(b_error)
-	var lt = Label.new()
-	lt.text = "Link results"
-	mid.add_child(lt)
-	var rs = ScrollContainer.new()
-	rs.custom_minimum_size = Vector2(0, 160)
-	rs.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	mid.add_child(rs)
-	result_box = VBoxContainer.new()
-	result_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rs.add_child(result_box)
-	result_text = RichTextLabel.new()
-	result_text.fit_content = true
-	result_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	result_text.text = "Select cards and press Link to check them for a contradiction. Or pick cards and build a conclusion above."
-	result_box.add_child(result_text)
 
+	# Centre: the board, its toolbar and the deductions tray.
+	var mid_split = HSplitContainer.new()
+	mid_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(mid_split)
+	var mid = VBoxContainer.new()
+	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mid.add_theme_constant_override("separation", 4)
+	mid_split.add_child(mid)
+	var tb = HFlowContainer.new()
+	tb.add_theme_constant_override("h_separation", 6)
+	mid.add_child(tb)
+	for v in CardModel.VIEWS:
+		var vv: String = v
+		var b = _btn(tb, CardModel.VIEW_NAMES[v], func(): state.set_view(vv))
+		b.toggle_mode = true
+		b.set_meta("view", v)
+		view_tabs.append(b)
+	rows_btn = _btn(tb, "Rows: places", func():
+		state.rows_by = "person" if state.rows_by == "place" else "place"
+		state.changed.emit())
+	rows_btn.tooltip_text = "Places & sightings: one row per place (dots are people), or one row per person."
+	_btn(tb, "◀", func(): _goto_day(board.day_in_view() - 1))
+	day_label = Label.new()
+	day_label.add_theme_color_override("font_color", UITheme.color("accent"))
+	tb.add_child(day_label)
+	_btn(tb, "▶", func(): _goto_day(board.day_in_view() + 1))
+	_btn(tb, "Fit day", func(): _goto_day(board.day_in_view()))
+	_btn(tb, "Fit selection", func(): board.fit_selection())
+	_btn(tb, "Whole case", func(): board.fit_all())
+	board = BoardView.new()
+	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	board.custom_minimum_size = Vector2(420, 260)
+	board.card_activated.connect(func(num): _stage([num]))
+	board.row_clicked.connect(func(kind, id):
+		state.toggle(state.people if kind == "person" else state.places, id)
+		if kind == "person":
+			state.select_person(id)
+			show_profile(id))
+	mid.add_child(board)
+	tray = DeductionTray.new()
+	tray.card_activated.connect(func(num): _stage([num]))
+	mid.add_child(tray)
+	var hint = Label.new()
+	hint.text = "Drag the background to pan, wheel to zoom (shift-wheel scrolls sideways). Hover a card for its strings; click to pin them. Click a row name to filter by it."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_color_override("font_color", UITheme.color("muted"))
+	mid.add_child(hint)
+	state.selection_changed.connect(func():
+		board.queue_redraw()
+		tray.queue_redraw())
+
+	# Right: the profile.
 	var right = VBoxContainer.new()
 	right.custom_minimum_size = Vector2(280, 0)
 	mid_split.add_child(right)
-	var pl = Label.new()
-	pl.text = "Profile"
-	right.add_child(pl)
+	right.add_child(_heading("Profile"))
 	prof_opt = OptionButton.new()
 	prof_opt.item_selected.connect(func(_i):
 		state.select_person(_meta(prof_opt))
 		_refresh_profile())
 	right.add_child(prof_opt)
+	var paper = PanelContainer.new()
+	paper.add_theme_stylebox_override("panel", UITheme.panel("paper"))
+	paper.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right.add_child(paper)
 	prof_text = RichTextLabel.new()
 	prof_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	prof_text.custom_minimum_size = Vector2(0, 260)
+	prof_text.custom_minimum_size = Vector2(0, 240)
 	prof_text.add_theme_font_size_override("normal_font_size", 13)
-	right.add_child(prof_text)
+	prof_text.add_theme_color_override("default_color", UITheme.color("ink"))
+	paper.add_child(prof_text)
 	var gl = HBoxContainer.new()
 	right.add_child(gl)
 	var glab = Label.new()
@@ -263,9 +322,25 @@ func build(font: Font) -> void:
 	nl.text = "Notes"
 	right.add_child(nl)
 	note_edit = TextEdit.new()
-	note_edit.custom_minimum_size = Vector2(0, 120)
+	note_edit.custom_minimum_size = Vector2(0, 110)
 	right.add_child(note_edit)
 	_btn(right, "Save guess and notes", _on_save_profile)
+
+func _heading(t: String) -> Label:
+	var l = Label.new()
+	l.text = t
+	l.add_theme_color_override("font_color", UITheme.color("accent"))
+	l.add_theme_font_size_override("font_size", 15)
+	return l
+
+func _goto_day(d: int) -> void:
+	board.fit_day(clampi(d, 0, g.w.day))
+	_update_day_label()
+
+func _update_day_label() -> void:
+	if board != null and g != null:
+		var d: int = clampi(board.day_in_view(), 0, g.w.day)
+		day_label.text = "  Day %d  " % d if d > 0 else "  Night 0  "
 
 func _option(parent: Node, items: Array, cb: Callable) -> OptionButton:
 	var o = OptionButton.new()
@@ -284,6 +359,8 @@ func _btn(parent: Node, text: String, cb: Callable) -> Button:
 
 func set_game(game) -> void:
 	g = game
+	board.setup(g, state)
+	tray.setup(g, state)
 	var pp: PopupMenu = person_menu.get_popup()
 	pp.clear()
 	state.people.clear()
@@ -321,7 +398,6 @@ func refresh() -> void:
 	if not g.w.game_over:
 		theory_label.text += " — Save Your guess in a profile before voting. No correctness feedback until the case ends."
 	_refresh_cards()
-	_refresh_timeline()
 	_refresh_profile()
 	_fill_nights()
 	_refresh_work()
@@ -412,7 +488,17 @@ func _refresh_cards() -> void:
 	card_list.reset()
 	var vis: Array = _visible_cards()
 	_refresh_chips(vis.size())
+	# Your deductions head the list in every view ("My theories"), then the evidence.
+	if state.view != "all":
+		var theories: Array = g.filter_cards(state.text).filter(func(c): return c["kind"] == "deduction")
+		if not theories.is_empty():
+			card_list.add_header("── My theories (%d) ──" % theories.size(), UITheme.color("deduction"))
+			vis = theories + vis
+	var first_evidence = true
 	for c in vis:
+		if state.view != "all" and c["kind"] != "deduction" and first_evidence:
+			first_evidence = false
+			card_list.add_header("── %s ──" % CardModel.VIEW_NAMES[state.view], UITheme.color("muted"))
 		var line = "#%-3d %-10s %s%s" % [c["n"], c["kind"], "[hidden] " if c.get("hidden", false) else "", c["text"]]
 		if g.debug_overlay:
 			var dbg: String = g.debug_card_text(c)
@@ -429,6 +515,18 @@ func _refresh_cards() -> void:
 			"" if c.get("source", "") == "player" else ", heard"], col)
 		if c["n"] in keep:
 			card_list.select_meta(c["n"])
+	_refresh_board()
+
+func _refresh_board() -> void:
+	if board == null or g == null:
+		return
+	for b in view_tabs:
+		b.set_pressed_no_signal(b.get_meta("view") == board.board_view())
+	rows_btn.text = "Rows: " + ("places" if state.rows_by == "place" else "people")
+	rows_btn.visible = board.board_view() == "places"
+	board.rebuild()
+	tray.queue_redraw()
+	_update_day_label()
 
 func _refresh_chips(shown: int) -> void:
 	status_label.text = state.status_text(g, shown)
@@ -473,60 +571,16 @@ func _refresh_work() -> void:
 		work_list.add("#%-3d %-10s %s" % [x, c["kind"], c["text"]], x, c["text"],
 			Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else null)
 	_update_preview()
-
-func _refresh_timeline() -> void:
-	for ch in grid.get_children():
-		ch.queue_free()
-	var td: Dictionary = g.timeline_data()
-	grid.columns = td["cols"].size() + 1
-	grid.add_child(_cell_label(""))
-	for col in td["cols"]:
-		grid.add_child(_cell_label(col["label"]))
-	for n in g.w.npcs:
-		var nl = _cell_label(n.name if n.alive else n.name + " †")
-		nl.add_theme_color_override("font_color", C.npc_color(n.id))
-		grid.add_child(nl)
-		for col in td["cols"]:
-			var key = "%d:%d" % [col["day"], col["phase"]]
-			var vals: Array = td["rows"][n.id].get(key, [])
-			var b = Button.new()
-			b.flat = true
-			b.custom_minimum_size = Vector2(54, 24)
-			b.add_theme_font_override("font", mono)
-			b.add_theme_font_size_override("font_size", 12)
-			var parts: Array = []
-			var nums: Array = []
-			var any_confirmed = false
-			for v in vals:
-				var tag = v["val"] + ("" if v["confirmed"] else "~")
-				if not (tag in parts):
-					parts.append(tag)
-				nums.append(v["card"])
-				any_confirmed = any_confirmed or v["confirmed"]
-			b.text = "/".join(PackedStringArray(parts)) if not parts.is_empty() else "."
-			b.add_theme_color_override("font_color", Color(1, 1, 1) if any_confirmed else Color(0.6, 0.6, 0.66))
-			if not nums.is_empty():
-				b.tooltip_text = "Cards #" + ", #".join(PackedStringArray(nums.map(func(x): return str(x))))
-				var ck = "%s:%s" % [n.id, key]
-				var cl = "%s · %s (%d card%s)" % [n.name, col["label"].replace("\n", " "), nums.size(), "" if nums.size() == 1 else "s"]
-				if ck == state.cell.get("key", ""):
-					b.flat = false
-					b.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
-					b.add_theme_stylebox_override("normal", _cell_box())
-				b.pressed.connect(func(): state.set_cell(ck, cl, nums))
-			grid.add_child(b)
-
-func _cell_box() -> StyleBoxFlat:
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.3, 0.26, 0.12)
-	return sb
-
-func _cell_label(t: String) -> Label:
-	var l = Label.new()
-	l.text = t
-	l.add_theme_font_override("font", mono)
-	l.add_theme_font_size_override("font_size", 12)
-	return l
+	# Live: what the working set suggests, as cards come and go.
+	if result_text != null:
+		if staged.size() >= 1 and staged.size() <= 3:
+			_on_link()
+		else:
+			_clear_results()
+			result_text.text = "Put one to three cards in the working set to see what they suggest." if staged.is_empty() else \
+				"%d cards in the working set: suggestions look at up to three at a time (you can still file a conclusion from all of them)." % staged.size()
+	if board != null:
+		board.queue_redraw()
 
 func _refresh_profile() -> void:
 	var id = _meta(prof_opt)
@@ -534,7 +588,7 @@ func _refresh_profile() -> void:
 		return
 	var p: Dictionary = g.profile_data(id)
 	var lines = PackedStringArray()
-	lines.append("[color=#%s][b]%s[/b][/color] the %s" % [C.npc_color(id).to_html(false), p["name"], p["occupation"]])
+	lines.append("[color=#%s][b]%s[/b][/color] the %s" % [UITheme.ink_of(C.npc_color(id)).to_html(false), p["name"], p["occupation"]])
 	lines.append(p["blurb"])
 	lines.append("Works %s; lives on %s; %s." % [p["work"], p["home"], p["status"]])
 	if p["claim"] != "":

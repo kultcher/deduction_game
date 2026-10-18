@@ -10,7 +10,7 @@ signal selection_changed  # selected card or person changed
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
 
-var view = "all"          # "all" | "places" | "statements" | "process"
+var view = "places"       # "places" | "statements" | "process" | "all" (the list only)
 var rows_by = "place"     # Places view rows: "place" | "person"
 var text = ""
 var kinds = {}            # ticked kinds (OR within the list)

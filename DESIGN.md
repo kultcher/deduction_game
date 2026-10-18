@@ -459,6 +459,17 @@ board (centre), profile and notes (right).
   panel lists the roles that may be in play.
 - Visual skin through one shared theme (`ui/theme.gd`): nine-slice art in `assets/ui/`
   (see its README) replaces the flat look when present. **[built]**
+- **Case board v1 [built]** (`ui/board_view.gd`, `ui/deduction_tray.gd`): drawn board with
+  pan (drag) and zoom (wheel), three levels of detail, paper cards with role icons and the
+  speaker's colour, coloured dots in Places (solid/hollow/ability ring), red strings on hover
+  or selection (to the speaker's and relayers' rows, between a card's appearances, to a
+  deduction's supports), row-name filters, day navigation (a day includes the night before),
+  Fit day / Fit selection / Whole case. Cards drag to the working set; deductions wait in a
+  fold-up tray and pin to the board where dropped (drag to move, right-click to unpin).
+  Link is now live: "What these cards suggest" updates as the working set changes.
+- **Papercraft skin [built]**: navy board, cream plaques as buttons (red when pressed), gold
+  edges, framed paper for the profile, serif type. Art sliced from the sheets by
+  `tools/slice_sheets.py` (see `assets/ui/README.md`).
 - Code: `game/card_model.gd` (times, views, rows, place markers), `game/board_model.gd`
   (layout as plain data), `ui/case_state.gd` (shared view, filters, selection);
   tests in `tools/test_board.gd`.

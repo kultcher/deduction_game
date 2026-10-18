@@ -18,7 +18,7 @@ func _init() -> void:
 	scene._open_case_view()
 	await process_frame
 	var cv = scene.case_view
-	print("case view visible: ", cv.visible, " cards listed: ", cv.card_list.count(), " timeline cells: ", cv.grid.get_child_count())
+	print("case view visible: ", cv.visible, " cards listed: ", cv.card_list.count(), " board items: ", cv.board.lay.get("items", []).size())
 	if cv.card_list.count() >= 2:
 		cv.card_list.select_index(0)
 		cv.card_list.select_index(1)
@@ -134,6 +134,36 @@ func _init() -> void:
 	var any_n = cv.card_list.count()
 	print("filters: one person %d, two people %d; +sightings: all %d, any %d" % [one, both, all_n, any_n])
 	_check(both >= one and any_n >= all_n, "multi-select filters: OR within a list; 'all' narrows across lists")
+	# The case board: items drawn, a card can be dragged out, a deduction pinned and unpinned.
+	scene._open_case_view()
+	for i in range(4):
+		await process_frame
+	var bv = cv.board
+	_check(bv.lay.get("items", []).size() > 0 and bv._items.size() > 0, "the board lays out and draws cards (%d items)" % bv._items.size())
+	var it0: Dictionary = bv._items[0]
+	var dd = bv._get_drag_data(it0["rect"].get_center())
+	_check(dd is Dictionary and dd["cards"] == [it0["n"]], "a board card can be dragged out")
+	cv.work_list._drop_data(Vector2.ZERO, dd)
+	_check(it0["n"] in cv.staged, "dropping it on the working set adds it")
+	var ev_cards: Array = g.board.filter(func(c): return c["kind"] in ["sighting", "alibi", "info", "claim"]).map(func(c): return c["n"])
+	var dn = g.file_deduction({"type": "conflict", "a": "", "group": []}, ev_cards.slice(0, 2)) if ev_cards.size() >= 2 else -1
+	if dn < 0:
+		dn = g.file_deduction({"type": "evil", "a": g.w.npcs[0].id}, ev_cards.slice(0, 1))
+	cv.refresh()
+	_check(cv.tray.deductions().size() >= 1, "a filed deduction waits in the tray")
+	bv._drop_data(bv.size / 2, {"pin": dn})
+	await process_frame
+	await process_frame
+	_check(bv.lay["pinned"].has(dn) and bv._items.any(func(x): return x.get("pinned", false)), "a deduction dropped on the board is pinned there")
+	bv.unpin(dn)
+	_check(not bv.lay["pinned"].has(dn), "and can be unpinned")
+	cv.state.set_view("statements")
+	cv.state.text = "zzzz"
+	cv.state.edited()
+	await process_frame
+	_check(bv.lay["items"].is_empty() and "Nothing matches" in cv.status_label.text, "an empty board under filters says why")
+	cv._clear_filters()
+	cv.visible = false
 	# Debug overlay: shows NPCs' private view, and marks identification unscored.
 	scene.debug_check.button_pressed = true
 	await process_frame

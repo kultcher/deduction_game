@@ -9,7 +9,7 @@
 ##     items: [{card, row, col, mark, who}]       one per (card, row); mark: solid | hollow |
 ##                                                ability | trace | statement | process
 ##     cells: {"row|col": [item indexes]}         for stacking and counts
-##     pinned: [card numbers]                     deductions pinned onto this view
+##     pinned: [card numbers]                     deductions pinned onto this view (card.pins[view] = world position)
 ##   }
 ##   ctx: {day, phase (current), people: [{id, name, alive}], blocks: [ids], rows_by}
 ##
@@ -54,7 +54,7 @@ static func layout(cards: Array, view: String, ctx: Dictionary) -> Dictionary:
 	for card in cards:
 		var cv: String = card.get("view", CardModel.view_of(card))
 		if cv == "theory":
-			if view in card.get("pinned_views", []):
+			if card.get("pins", {}).has(view):
 				pinned.append(card["n"])
 			continue
 		var t: Dictionary = card.get("when", CardModel.when(card, ctx.get("day", 1), ctx.get("phase", C.MORNING)))
@@ -92,7 +92,7 @@ static func layout(cards: Array, view: String, ctx: Dictionary) -> Dictionary:
 
 static func _add(items: Array, cells: Dictionary, n: int, row: String, col: String, mark: String, who: String) -> void:
 	for it in items:
-		if it["card"] == n and it["row"] == row and it["col"] == col:
+		if it["card"] == n and it["row"] == row and it["col"] == col and it["who"] == who:
 			return
 	items.append({"card": n, "row": row, "col": col, "mark": mark, "who": who})
 

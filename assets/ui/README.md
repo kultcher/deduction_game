@@ -1,15 +1,25 @@
-# UI art
+# Art
 
-Optional. Any of these PNGs, if present, replace the flat default look (see `ui/theme.gd`):
+The original sheets live in `assets/ui/source/` and `assets/art/source/` (ignored by Godot's
+importer). `tools/slice_sheets.py` cuts each sheet into one PNG per piece:
 
-| File | Used for |
+    python3 tools/slice_sheets.py --preview
+
+| Folder | Pieces |
 |---|---|
-| `panel.png` | large panels (case view background, side panels) |
-| `popup.png` | popup menus and pickers |
-| `frame.png` | framed boxes (profile, notes, board cards) |
-| `button.png`, `button_hover.png`, `button_pressed.png` | buttons, option and menu buttons |
-| `field.png` | text fields |
+| `assets/ui/` | plaques, tabs, rings, corners, divider, curtains, candle, raven, books, sun, moon, wax seal, arrows, six frames |
+| `assets/ui/cards/` | `card_01`–`card_16`: paper cards for the case board |
+| `assets/ui/roles/` | one icon per gift, plus `demon`, `poisoner`, `unknown`, `none` |
+| `assets/art/portraits/`, `assets/art/standees/` | one per character id (agnes … jory) |
+| `assets/art/buildings/`, `blocks/`, `decor/`, `terrain/` | map pieces (not used yet) |
 
-All are drawn as nine-slice: corners stay fixed, edges and centre stretch, so a frame
-works at any size. Slice margins default to 12 px on each side; override per file in
-`slices.json`, e.g. `{"panel": [24, 24, 24, 24], "button": [8, 6, 8, 6]}`.
+`assets/slices.json` records each piece's size and where it came from;
+`assets/ui/source/slices_preview.png` shows every piece with its name.
+
+To change art: edit or replace a sheet, keep the pieces in the same reading order (rows top
+to bottom, left to right), and re-run the script. If a sheet gains or loses pieces, update
+its name list in the script (it stops with an error if the count doesn't match). Pieces need
+a transparent background with clear gaps between them.
+
+How the art is used is all in `ui/theme.gd` (palette, plaques as buttons, frames as panels,
+nine-slice margins). Missing art falls back to flat colour.
