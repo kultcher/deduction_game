@@ -73,6 +73,9 @@ static func tint_for(c: Dictionary):
 			return C.npc_color(subj[0]).lerp(Color(0.85, 0.85, 0.88), 0.55)
 	return null
 
+static func color_for(c: Dictionary, tint = null) -> Color:
+	return UITheme.card_color(c, tint if tint != null else UITheme.color("text"))
+
 func reset() -> void:
 	clear()
 	_items = []

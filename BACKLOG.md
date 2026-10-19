@@ -314,3 +314,21 @@ Settled decisions, built work and parked levers, kept for the record.
   4.4.1, plus rendered town, portrait and trait-bar views. The existing UI test's
   synthetic drag-preview and shutdown diagnostics remain; rendered checks had no
   errors.
+- **Oct 19: hidden-card fading and recent sightings** (`codex/ui-sightings-followup`).
+  Shown hidden cards now draw at 42% opacity across board cards, place markers,
+  pinned/tray deductions and text card lists, including staged cards. Cast-list
+  locations now use "at". Asking about a person can add remembered sightings of
+  that specific person from the current and previous two timeframes, keeping their
+  original times and speaker attribution. Gossip controls willingness to share;
+  the addition uses no extra question. Night reports require a disclosed walking
+  gift and respect existing alibis/refusals; evil Night Watch claims reuse their
+  approved fake report, and other night bluffs only repeat committed sightings.
+  No new bluff generation or shadow-self decision changes. Each daytime phase,
+  including the first morning and later dawns, automatically records people
+  visibly working at their actual workplace as firsthand sighting cards and
+  timeline markers. Repeated looks merge rather than duplicate observations;
+  hidden idlers, dead people and night work are excluded. Verified 37 focused
+  sighting checks, 110 UI, 25 town UI, 25 board, 89 fixes, 28 social, 102 shadow,
+  138 dialogue and 20 dialogue-decision checks on standard Godot 4.4.1, plus
+  rendered town, hidden-card and timeline views. The UI test's previously
+  documented synthetic drag-preview and shutdown diagnostics remain.

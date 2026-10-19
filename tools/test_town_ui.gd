@@ -41,10 +41,10 @@ func _run() -> void:
 	n.loc = "home_" + n.id
 	n.working = false
 	n.busy_with = ""
-	_check(cl._sub_line(n) == "Location: Unknown", "an unseen living townsperson shows Location: Unknown")
+	_check(cl._sub_line(n) == "at Unknown", "an unseen living townsperson shows at Unknown")
 	n.loc = n.work
 	n.working = true
-	_check(cl._sub_line(n).begins_with("Location: ") and not "Unknown" in cl._sub_line(n), "a visible townsperson shows their location")
+	_check(cl._sub_line(n).begins_with("at ") and not "Unknown" in cl._sub_line(n), "a visible townsperson shows their location")
 	_check(cl._fit_text("Bartholomew at the Drowned Lamb tavern", 80, 17).ends_with("…") and cl._font.get_string_size(cl._fit_text("Bartholomew at the Drowned Lamb tavern", 80, 17), HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x <= 80, "long row text is elided inside its available width")
 	n.loc = "home_" + n.id
 	n.working = false
@@ -86,7 +86,7 @@ func _run() -> void:
 	g.state = "night"
 	scene._on_map_clicked("npc", n.id)
 	_check(scene._ward_target == n.id and scene.map.selected_npc == other.id, "night ward targeting stays separate from map highlighting")
-	_check(cl._sub_line(n) == "Location: Unknown", "the night list does not substitute an occupation for an unknown location")
+	_check(cl._sub_line(n) == "at Unknown", "the night list does not substitute an occupation for an unknown location")
 	scene._new_case()
 	scene.roles_win.hide()
 	await _settle()

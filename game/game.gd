@@ -13,6 +13,7 @@ const Social = preload("res://sim/social.gd")
 const Argue = preload("res://sim/argue.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
 const CardModel = preload("res://game/card_model.gd")
+const RecentSightings = preload("res://game/recent_sightings.gd")
 
 var w
 var state = "day"          # day | approach | talk | meeting | nomination | night | over
@@ -801,6 +802,7 @@ func _approach_command(verb: String, rest: String) -> void:
 func _phase_header() -> void:
 	_hdr("Day %d, %s" % [w.day, w.phase_name()])
 	_screen(_map())
+	_card_workers()
 	_card_conversations()
 	_prompt("Where will you spend the %s? ('go <place | block | person>')" % w.phase_name().to_lower())
 
@@ -859,6 +861,7 @@ func _talk_command(verb: String, rest: String) -> void:
 					else:
 						r = Mind.answer_opinion(w, n, t)
 						_maybe_tell_haunts(n, t, r)
+						RecentSightings.append_to(w, n, t, r, board)
 				"are", "if", "is":
 					# "ask are you the seer" / "ask if seer": a guess at their own gift.
 					var words: Array = Array(p.slice(1)).filter(func(x): return not (x.to_lower() in ["you", "the", "a", "an", "they", "are"]))
@@ -1379,6 +1382,7 @@ func _morning_report() -> void:
 			_facts([{"kind": "death", "subject": [id], "block": v.home_block, "source": "player", "night": w.day - 1,
 				"text": "%s was killed by the demon on night %d (home on %s)." % [v.name, w.day - 1, C.block_name(v.home_block)]}])
 	_screen(_map())
+	_card_workers()
 	_card_conversations()
 	_prompt("%d townsfolk remain. Where will you spend the morning? ('go <place | block | person>', 'help')" % w.living().size())
 
@@ -1409,7 +1413,7 @@ func _help() -> String:
   Day     : go <place | block | person>   (then one free move within the same block)
             then one action: talk <name> | search | gossip (tavern) | wait
   Talking : ask gift | ask night | ask seen <today | morning | afternoon | evening | yesterday [phase]>
-            ask are <gift> | ask about <name or gift> (may tell you where they idle) | bye
+            ask are <gift> | ask about <name or gift> (may share haunts and recent sightings) | bye
             offer ward | offer vigil  (promise your ward on their door, or a vigil on their block, tonight;
               costs no question; keep it and they'll trust you more, break it and they'll trust you less)
             present <card#> [for|against <name>]   (uses a question) - about them: you press them
@@ -1443,6 +1447,21 @@ func _look() -> void:
 			_narr("Night falls. %svigil <block> | sleep" % ("ward <name> | " if w.tools["ward"] > 0 else ""))
 		_:
 			_narr("The case is over.")
+
+## Public workers are already visible on the map: preserve that observation per phase.
+func _card_workers() -> void:
+	if w.phase == C.NIGHT:
+		return
+	var facts: Array = []
+	for n in w.living():
+		if not n.working or n.at_home() or n.loc != n.work or not can_see(n):
+			continue
+		var fact = {"kind": "sighting", "subject": [n.id], "block": w.loc_block(n.loc), "loc": n.loc,
+			"day": w.day, "phase": w.phase, "source": "player", "work_sighting": true,
+			"text": "You saw %s working at %s, day %d %s." % [n.name, w.loc_name(n.loc), w.day, w.phase_name()]}
+		if not _fact_keys.has(Mind.fact_id(fact)):
+			facts.append(fact)
+	_facts(facts)
 
 ## Conversations visible on the town view become cards (who was talking with whom, where).
 func _card_conversations() -> void:

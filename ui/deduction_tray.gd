@@ -70,18 +70,20 @@ func _draw() -> void:
 		if r.end.x < 0 or r.position.x > size.x:
 			continue
 		var pinned_here = c.get("pins", {}).has(view)
+		var fade = UITheme.card_color(c)
 		var tint = Color(0.7, 0.7, 0.7) if pinned_here else Color.WHITE
+		tint *= fade
 		if not _cards_tex.is_empty():
 			draw_texture_rect(_cards_tex[(c["n"] * 5) % _cards_tex.size()], r, false, tint)
 		else:
 			draw_rect(r, UITheme.color("paper") * tint)
 		var seal = UITheme.tex("ui/wax_seal", 0.15)
 		if seal != null:
-			draw_texture(seal, r.position + Vector2(6, 6))
+			draw_texture(seal, r.position + Vector2(6, 6), fade)
 		draw_multiline_string(_font, r.position + Vector2(36, 22), c.get("text", "").trim_prefix("Deduction: "), HORIZONTAL_ALIGNMENT_LEFT,
-			r.size.x - 44, 12, 5 if open else 1, UITheme.color("red").darkened(0.3))
+			r.size.x - 44, 12, 5 if open else 1, UITheme.color("red").darkened(0.3) * fade)
 		if pinned_here:
-			draw_string(_font, Vector2(r.position.x + 36, r.end.y - 10), "pinned", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.color("ink_soft"))
+			draw_string(_font, Vector2(r.position.x + 36, r.end.y - 10), "pinned", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.color("ink_soft") * fade)
 		if state != null and c["n"] == state.selected_card:
 			draw_rect(r.grow(2), UITheme.color("string"), false, 2.0)
 		_rects.append({"rect": r, "n": c["n"]})

@@ -294,6 +294,10 @@ func _init() -> void:
 	cv.card_menu.id_pressed.emit(cv.CardAction.HIDE)
 	_check(g.board[it0["n"] - 1].get("hidden", false) and not cv.state.apply(g).any(func(c): return c["n"] == it0["n"]), "Hide removes the clicked evidence from normal views")
 	cv.hidden_check.button_pressed = true
+	var hidden_row: TreeItem = cv.card_list._items.filter(func(item): return item.get_metadata(0) == it0["n"])[0]
+	_check(hidden_row.get_custom_color(0).a < 0.5, "shown hidden cards have translucent text in Card List")
+	var staged_row: TreeItem = cv.work_list._items.filter(func(item): return item.get_metadata(0) == it0["n"])[0]
+	_check(staged_row.get_custom_color(0).a < 0.5, "a shown hidden card also stays translucent in the working set")
 	cv.show_card_menu(it0["n"], Vector2i(200, 200))
 	_check(_menu_labels(cv.card_menu) == ["Add to Deduction", "Unhide", "Find Links", "Hints"], "hidden cards offer Unhide instead of Hide")
 	cv.card_menu.id_pressed.emit(cv.CardAction.HIDE)
