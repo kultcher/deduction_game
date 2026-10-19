@@ -11,6 +11,7 @@ const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
 const Argue = preload("res://sim/argue.gd")
+const Evil = preload("res://sim/evil.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
 const CardModel = preload("res://game/card_model.gd")
 const RecentSightings = preload("res://game/recent_sightings.gd")
@@ -2316,6 +2317,21 @@ func debug_npc_text(id: String) -> String:
 	var out = "%s · Pressure: %.2f\nCredited by others: %s\nSuspected by others: %s" % [trust_line, n0.pressure, _spread(hon), _spread(sus)]
 	if not town.is_empty():
 		out += "\n  of which public accusations: %s" % _spread(town)
+	if n0.is_evil() and n0.shadow != null:
+		# The shadow self: what this evil NPC would believe if it were the good townsperson it
+		# pretends to be (its public acts default to this; see docs/shadow_self_plan.md).
+		var sh = {}
+		for k in n0.shadow.suspicion:
+			if w.by_id.has(k) and w.by_id[k].alive:
+				sh[k] = n0.shadow.suspicion[k]
+		var top: Array = sh.keys()
+		top.sort_custom(func(a, b): return sh[a] > sh[b])
+		var parts = PackedStringArray(top.slice(0, 4).map(func(k): return "%s %.2f" % [w.by_id[k].name, sh[k]]))
+		var exp_parts: Dictionary = Evil.exposure(w, n0)
+		var ex = 0.0
+		for k in exp_parts:
+			ex += exp_parts[k]
+		out += "\nIf good (as the %s): suspects %s · exposure %.2f, caution %.2f" % [C.role_name(n0.shadow.role) if n0.shadow.role != "" else "townsperson", ", ".join(parts), ex, Evil.caution(w, n0)]
 	return out
 
 ## What readings on your board say this person might be ("possible: the Warden, per

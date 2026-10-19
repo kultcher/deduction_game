@@ -1610,3 +1610,43 @@ Overrides, broken cover against kept cover, over 150 games:
 
 Private cases mostly break cover, because they're nearly always about a teammate. That's
 a candidate for tuning once playtests show how it reads.
+
+## Shadow good self, steps 4–5 (Oct 19)
+
+**Step 4: fake Medium readings** (`Evil._fake_medium_item`) fit what the town knows of
+the dead, and frame the scapegoat only where it matters:
+- **A dead public Night Watch** "tells" an unshared watch report from their last night,
+  of their own block, naming the scapegoat.
+- **Anyone else:** a sighting of the scapegoat near the death, meaning on the dead's own
+  block on their last night. It's used only when that isn't the scapegoat's own block,
+  since being seen on your own block just says you went out.
+- **Not every night:** after the first frame, about half the time
+  (`evil_plan["medium_frames"]`).
+- **The other nights,** or when no frame fits: the dead's last public stance (if it wasn't
+  against the team), or "home on their last night".
+- Still each dead person once, most recent first.
+
+**Debug overlay:** the profile's debug text for an evil NPC adds "If good (as the
+<bluff>): suspects …, exposure …, caution …".
+
+**Step 5: measurements,** 150 games each, seeds 1000–1149, on main after the Oct 19 UI
+merge. `SHADOW_SELF` off → on; the off column now includes the heat refinement.
+
+| | good wins | good hanged | evil hanged | evil off the crowd | good off the crowd |
+|---|---|---|---|---|---|
+| 7 townsfolk | 57 → 50 | 120 → 137 | 93 → 90 | 82% → 34% | 13% → 14% |
+| 10 townsfolk | 41 → 43 | 285 → 286 | 117 → 130 | 69% → 29% | 15% → 15% |
+
+- Evil's tell (how often its reply differs from the good crowd's) is down to about twice
+  good's own disagreement rate, from about five times.
+- At 7 townsfolk evil got stronger (good wins −7). That's expected and acceptable: a
+  smaller town has fewer good voices to hide among. At 10 townsfolk it's even.
+- Runtime: 600 bot games in about 2 minutes, with no noticeable cost from the shadows.
+
+**Not done, deliberately:** step 3 (rebuttals and excuses) waits on the meeting-flow
+design. The "build with in mind" items stay as notes.
+
+**Tuning candidates from these numbers:**
+- private-case overrides, which break cover about 9 times in 10;
+- nomination overrides at 10 townsfolk (185 broken against 131 kept): as the days pass,
+  minions break cover more often to push the scapegoat or to avoid naming a teammate.

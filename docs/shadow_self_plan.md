@@ -259,6 +259,8 @@ Sleepwalker, Warden) before and after.
 
 ## Step 4: fake Medium readings from the shadow
 
+**Done Oct 19** (DESIGN, "Shadow good self, steps 4–5").
+
 In `evil.gd` around line 442, generate fake Medium readings from the shadow's view of the
 dead's public record:
 - fit what the dead were known to be doing that night (watching a block, guarding a door,
@@ -272,6 +274,8 @@ Keep "each dead person once, most recent first".
 fake reading never puts what they saw on another block.
 
 ## Step 5: measure and write up
+
+**Done Oct 19** (same section). Step 3 is on hold for the meeting-flow design.
 
 - 150 games each at 7 and 10 townsfolk. Compare win rate, wrongful executions, evil
   hanged per game, the tell metric and override counts against the step 0 baseline.

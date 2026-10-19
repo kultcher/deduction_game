@@ -131,6 +131,36 @@ static func review_scapegoat(w) -> void:
 	else:
 		w.dlog.think(w.demon_id, "scapegoat", "Evil keeps scapegoat %s (scores %s)." % [cur, str(table)], {"scores": table})
 
+## A fake Medium reading at dd's hearth that fits what the town knows of the dead
+## (shadow plan step 4), framing scapegoat s only where it matters and not every night:
+## - a public Night Watch "tells" an unshared watch report from their last night, of the
+##   block where it counts;
+## - otherwise a sighting of s near the death (the dead's own block, on their last night),
+##   but only if that isn't s's own block (seen on your own block only says you went out);
+## - on other nights, or when no frame fits: what the dead said in public (their last
+##   stance, if it wasn't against the team), or that they were home.
+static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
+	var night = maxi(0, dd.death_day - 1)
+	var sg = w.by_id[s]
+	var frames: int = w.evil_plan.get("medium_frames", 0)
+	var frame_ok = sg.home_block != dd.home_block and (frames == 0 or w.chance(0.5))
+	if frame_ok:
+		w.evil_plan["medium_frames"] = frames + 1
+		if dd.claim_public and dd.claimed_role == "nightwatch":
+			var e = {"role": "nightwatch", "day": night, "data": {"block": dd.home_block, "seen": [s]},
+				"text": "I watched %s: I saw %s pass by" % [C.block_name(dd.home_block), sg.name], "fake": true}
+			return {"item": {"type": "reading", "entry": e, "lie": true},
+				"why": "claims the dead Night Watch %s saw scapegoat %s on their last watch" % [dd.id, s]}
+		return {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": night, "lie": true},
+			"why": "claims the dead %s saw scapegoat %s out near their cottage on their last night" % [dd.id, s]}
+	var st: Dictionary = w.stances.get(dd.id, {})
+	var said: String = st.get("target", "")
+	if said != "" and w.by_id.has(said) and w.by_id[said].alive and not w.by_id[said].is_evil():
+		return {"item": {"type": "suspicion", "about": said, "lie": false},
+			"why": "repeats the dead %s's public distrust of %s (no frame tonight)" % [dd.id, said]}
+	return {"item": {"type": "home", "night": night, "block": dd.home_block, "lie": false},
+		"why": "says only that the dead %s was home (no frame tonight)" % dd.id}
+
 static func ensure_scapegoat(w) -> void:
 	var s: String = w.evil_plan.get("scapegoat", "")
 	if s == "" or not w.by_id[s].alive:
@@ -541,8 +571,9 @@ static func make_fake_info(w) -> void:
 				dead.sort_custom(func(a, b): return a.death_day > b.death_day)
 				var dd = dead[0]
 				n.medium_visited.append(dd.id)
-				var it = {"type": "sighting", "who": s, "block": w.by_id[s].home_block, "night": maxi(0, dd.death_day - 1)}
-				why = "claims the dead %s saw scapegoat %s out" % [dd.id, s]
+				var fk = _fake_medium_item(w, n, dd, s)
+				var it: Dictionary = fk["item"]
+				why = fk["why"]
 				entry = {"data": {"dead": dd.id, "item": it}, "text": w._medium_text(dd, it)}
 			"psychologist":
 				var talked: Array = n.talked_today.filter(func(i): return w.by_id[i].alive and i != s)

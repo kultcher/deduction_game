@@ -19,6 +19,7 @@ func _init() -> void:
 		_case(sd)
 	_scapegoat_review()
 	_private_case_reaches_shadow()
+	_fake_medium()
 	print("SHADOW FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -113,3 +114,34 @@ func _private_case_reaches_shadow() -> void:
 	Mind.hear_accusation(w, e, t, card)
 	_check(e.shadow != null and e.shadow.ledger.keys().any(func(k): return k.begins_with("tell:")), "the good self heard the player's private case")
 	_check(e.ledger.is_empty(), "the real evil mind still takes nothing from it")
+
+## Fake Medium readings fit the dead's public record (plan step 4).
+func _fake_medium() -> void:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(4242, 10)
+	var w = g.w
+	var Evil = load("res://sim/evil.gd")
+	var n = w.evil_team()[0]
+	var goods: Array = w.living_good()
+	var dd = goods[0]
+	var sg = goods.filter(func(x): return x.home_block != dd.home_block)[0]
+	dd.alive = false
+	dd.death_day = 2
+	dd.claim_public = true
+	dd.claimed_role = "nightwatch"
+	w.evil_plan["medium_frames"] = 0
+	var r = Evil._fake_medium_item(w, n, dd, sg.id)
+	_check(r["item"]["type"] == "reading" and r["item"]["entry"]["role"] == "nightwatch", "a dead public Night Watch 'tells' a watch report, not a stray sighting")
+	_check(r["item"]["entry"]["data"]["block"] == dd.home_block and sg.id in r["item"]["entry"]["data"]["seen"], "framing the scapegoat near the death")
+	var same = goods.filter(func(x): return x != dd and x.home_block == dd.home_block)
+	if not same.is_empty():
+		dd.claim_public = false
+		var r2 = Evil._fake_medium_item(w, n, dd, same[0].id)
+		_check(r2["item"]["type"] != "sighting", "no frame when the scapegoat lives on that block (seen on your own block says nothing)")
+	var framed = 0
+	for i in range(40):
+		w.evil_plan["medium_frames"] = 1
+		if Evil._fake_medium_item(w, n, dd, sg.id)["item"].get("lie", false):
+			framed += 1
+	_check(framed > 8 and framed < 32, "after the first frame, not every night (%d/40)" % framed)
