@@ -1,7 +1,8 @@
 # Shared text formatting
 
 Step 1 provides `ui/text_terms.gd`: the public term registry and matching rules.
-The formatter, rich-text rendering, hover behavior and UI integration are later steps.
+Step 2 adds `ui/text_formatter.gd` and `ui/rich_text_renderer.gd`: styled spans and
+an isolated native rich-text adapter. Game-panel integration starts in step 3.
 
 ## Registry
 
@@ -50,16 +51,77 @@ does not parse BBCode, recognize links, resolve pronouns, or infer a person's ro
 Existing markup and card references must be handled structurally by the later
 formatter. It emits no icons, colors, hover controls, or changes to source strings.
 
+## Formatter (step 2)
+
+`Formatter.new(registry = null)` uses a supplied registry or seeds the defaults.
+`format_text(plain_text, context = {})` returns spans covering the complete original
+text, with no gaps, repeated characters or generated markup. Empty text returns
+an empty array. Each span has:
+
+- `text`, `start`, `end`: original text and exclusive character ranges.
+- `entity_id`: the registry ID, or an empty string for ordinary text.
+- `color`: resolved text color, retaining its own alpha.
+- `opacity`: overall opacity, clamped to 0..1 and not yet multiplied into color.
+- `font_size`, `icon_size`: positive pixel sizes.
+- `icon_path`, `tooltip`: optional metadata, empty when absent or disabled.
+
+Context options:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `surface` | `"dark"` | `"paper"` uses parchment ink variants for entity/speaker colors. |
+| `base_color` | Surface's text/ink color | Color for ordinary text without a known speaker. |
+| `speaker_id` | `""` | A cast ID, such as `"bart"`; supplies the surrounding speech color. |
+| `font_size` | `16` | Text size; also the default icon height. |
+| `icon_size` | Font size | Explicit icon height. |
+| `opacity` | `1.0` | Overall opacity, including icons. |
+| `icons`, `tooltips` | `true` | Disable either decoration independently of name colors. |
+| `enabled`, `kinds`, `role_context` | Registry defaults | Control recognition on this eligible segment. |
+
+Color precedence is explicit entity color, then known speaker color, then base
+color. A role with no explicit color inherits the surrounding speech/base color.
+Entity overrides end at the entity span; subsequent ordinary text resumes the
+base style. Parchment conversion preserves custom color alpha. A supplied base
+color is already a surface-specific color and is not converted a second time.
+`enabled: false` disables recognition while retaining surrounding speech styling.
+
+`Formatter.plain_text(spans)` reconstructs the exact source text for copying,
+searching or a plain renderer; icons are supplemental metadata. Future board and
+list renderers can use these spans without parsing rich-text markup.
+
+## Rich-text adapter (step 2)
+
+`Renderer.new().append_to(rich_text_label, spans)` appends using native font, color,
+hint and image operations. Source text goes through `add_text()`, so literal
+brackets and BBCode-looking strings are displayed as text. Hints likewise use the
+native API. The adapter balances its own pushes and pops, preserving an outer
+card-link/bold/italic context; it does not create click actions or clear the label.
+Callers own the label's font family, tooltip underline style and other UI settings.
+
+Existing icon textures retain aspect ratio and their natural colors. The adapter
+adds a nonbreaking gap between each icon and its complete textual role name.
+Unavailable textures produce text without an icon or added gap. Texture lookups,
+including missing resources, are cached by the renderer instance.
+
+The shared `Renderer.text_color(span)` and `Renderer.icon_color(span)` helpers apply
+overall opacity once: text alpha is its own alpha times opacity; icon modulation
+is white with that opacity. Both native and later custom renderers should use the
+same rule, without multiplying overall opacity again at the parent control.
+
+Append successive formatted entries to retain log content. Call `clear()` to rebuild
+a label; assigning its `text` property after native rendering reconstructs its
+contents and discards native styling. Godot's parsed-text fallback represents inline
+images with spaces; use `Formatter.plain_text()` when exact original text is needed.
+
 ## Next steps
 
-2. Turn matches and intervening plain text into styled spans, with speaker/background
-   context and whole-content opacity applied by the renderer.
 3. Integrate logs and profiles, including role hints that coexist with card links.
 4. Add wrapping/layout support for board cards, pinned deductions and the tray.
 5. Integrate Card List and other eligible text surfaces.
 
-Run the step-1 checks:
+Run the registry and formatter checks:
 
 ```sh
 godot --headless --path . --script res://tools/test_text_terms.gd
+godot --headless --path . --script res://tools/test_text_formatter.gd
 ```
