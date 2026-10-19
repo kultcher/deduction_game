@@ -286,7 +286,8 @@ func _decide() -> String:
 			if asked == 0:
 				return "ask gift"
 			if asked == 1:
-				return "ask night" if rng.randf() < 0.5 else "ask today"
+				# The talk menu asks about one stretch of time: last night, today, or yesterday.
+				return "ask night" if rng.randf() < 0.5 else ("ask seen yesterday" if w.day > 1 and rng.randf() < 0.5 else "ask today")
 			if asked == 2 and rng.randf() < 0.5:
 				var dd = _latest_deduction()
 				if dd > 0:

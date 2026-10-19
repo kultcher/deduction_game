@@ -17,41 +17,14 @@ All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones 
 ## 2. Small features and tuning (a day or so each)
 
 ### Deduction types and templates
-- **Martyr results as facts templates can use.** "The Martyr died in X's place" should
-  clear both people (good), and work in pair elimination, Archivist/Seer pairs and
-  overlap. Today the card matches nothing, and a filed "X is good" doesn't feed templates
-  either (deductions only give templates *evil/demon* and *misled* facts). (55774) [decided]
-- **The Martyr who doesn't die.** If the chosen person is hanged and the Martyr lives,
-  the conclusion options are: the chosen is evil, the chosen is Marked, or the Martyr is
-  lying. The player has to commit to one. [decided]
-- **Pair reading with both proven good → reading is false.** For example, the
-  Archivist's "one of Bartholomew/Fenwick is the Revenant" when both are proven
-  good. (55774) [decided]
-- **"Misread" conclusions:** a "misread" heading in the builder with *Marked* and *Red
-  herring* as its options (separate conclusions: Marked fools every gift, a red herring
-  only that Seer). Future "misread as good" (Spy-type) results go here too. [decided]
-- **"Is suspicious":** a weak, capped push for building pressure (e.g. claims an info
-  gift but won't share). Partly covered by the withholding card. [decided: add]
-- **"Has a secret":** an innocent explanation that eases pressure; also an option on
-  out-at-night/lie conflicts. [decided: add]
-- **Builder status list gets headings:** descriptor (lying, suspicious) | misread | good
-  role | evil role | secret. Evil roles aren't offered today (only "the demon"). [decided]
+- *Built Oct 18:* Martyr facts in templates, the Martyr who doesn't die, pair with both
+  proven good, Misread (Marked, red herring), suspicious, hiding a secret, secrets and
+  evil roles as conclusions, builder headings.
 - **Template generalization** (one translation table per role, so pair elimination
   etc. work for any gift that makes the same kind of statement). (DESIGN, deferred to
   roster expansion) [decided]
 
 ### NPC behaviour
-- **NPCs know their own lies.** Self-evaluation treats any "X lied" about oneself as
-  false ("it's about me, and I know it's false"), which conflates *I'm good* with *I
-  never lied*. Isolde told you she was home while walking the lamp route, then
-  privately rejected a sound "Isolde lied" argument. An NPC shown a lie card about
-  their own statement should check it against what they really did: privately they
-  know it's true (no trust drop at the player for it), publicly they may keep denying
-  (Confidence, Privacy). When they later disclose the reason, the admission should
-  reference it: "Yes, I was out. I wasn't ready to tell you why." That turns the lie
-  card into "lied to hide a gift" (ties to rebuttals). (Astra, 55774) [decided]
-- **Fear as a mild cover for silence:** "If I say what I am, I'll be dead by morning"
-  softens the withholding penalty a little. Pairs with rebuttals. [decided]
 - **NPCs push back on nominations their own information contradicts** (a player-led
   nomination of the true Seer passed 7/8). (DESIGN playtests) [open]
 - **Lie severity:** a false gift report weighs more than a whereabouts lie, unless the
@@ -73,36 +46,21 @@ All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones 
   role-specific confirmations. (DESIGN) [open]
 - **Initial general skepticism:** a lever to pull only if the early game gets too
   decisive. [knob]
+- **"No gift" denials** (C.ALLOW_NO_GIFT_DENIAL, off since Oct 18): evil almost never
+  bluffed it, so a denial was near-proof of good at the cost of the gift. [knob]
+- **Vigil deterrent** (-0.25 on targets living on the watched block (C.VIGIL_DETER)) and **offer trust**
+  (+0.03 offer, +0.06 kept, -0.15 broken): first guesses, tune from play. [watch]
 
 ### UI
-- **People filter shows claims by *and* about that person** (same as the typed
-  filter). [decided]
-- **Case-board log readability:** clearer font, coloured names, bold action words, more
-  spacing between entries. [decided]
-- **Case-board hints:** detect existing cards that fit a template and mark them (a
-  badge or highlight on the cards, "these two can be linked"). Optional, or tied to
-  difficulty. [decided]
-- **"What can this be part of" helper:** for a selected card, list the templates it can
-  take part in and what the other piece would have to be ("with a sighting of Greta on
-  a block off her way home → off-route"). For teaching and reminding, not only for
-  combinations already on the board. [decided]
-- **Selecting an NPC highlights** their standee, home and workplace on the map, with
-  lighter highlights for their haunts. [decided]
-- **Trait bars in the profile:** each of the five traits as a bar with its name above
-  and the extremes either side (Privacy: Secretive ↔ Open Book; Gossip: Discreet ↔
-  Busybody; Confidence: Pliable ↔ Unwavering; Composure: Skittish ↔ Coolheaded;
-  Insight: Uncritical ↔ Discerning). Unrevealed traits show an empty or "?" bar; a
-  revealed one fills the band it was read at (low / mid / high), not an exact value.
-  Label colour black or matching the bar. [decided]
 - **"Stayed home" vs "none of your business"** on the sightings/claims boards. [watch]
-- **Endgame dump: an NPC information-exchange tracker** (who told whom what, and when;
-  the `npc_share` events already exist). [decided]
-- **From Playtest Notes 12553**: checked and done: "I agree with X" in meetings,
-  "from my window" wording, home block on "was home" cards. Not checked yet: pin cards
-  to the main view; filter out sightings; people who aren't talking or working showing
-  on the map; a wrong role guess blocking process of elimination; pressure in the debug
-  view; conversations missing from filters; no way back after clicking a timeline node;
-  combined text filters ("Greta+Night").
+- **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main
+  view; people who aren't talking or working showing on the map; a wrong role guess
+  blocking process of elimination. (Done: "I agree with X", "from my window", home on
+  "was home" cards, pressure in the debug view, combined and excluding filters
+  "greta+night" / "-sighting", clicking a timeline cell again clears it.)
+- **Case-board card rows with mixed formatting** (bold kind, each name in its colour):
+  the lists are Godot Trees, one colour per row; true rich rows need a custom-drawn or
+  RichText list. [decided, later]
 
 ## 3. Medium features (several days; touch a few systems)
 
@@ -142,6 +100,8 @@ All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones 
 - **Dialogue voices for the rest of the cast.** The composer is merged (Agnes,
   Bartholomew, Constance × five situations; dialogue lab at `ui/dialogue_lab.tscn`).
   Everyone else uses the plain lines until they get a voice. [decided, later]
+- **Bot coverage of the new talk options:** the bot doesn't offer wards or vigils or ask
+  about others to learn haunts, so bot runs don't measure them. [decided]
 - **Evidence-reading bot.** The bot ignores traces and dropped materials entirely (and
   peeks at `w.dropped` when deciding to search), so bot win rates say nothing about
   physical evidence. Teach it to read traces and drops, and stop the peek, to measure
@@ -191,12 +151,6 @@ A running list of patterns that come up in play, or that the mechanics make mean
 but that no link template recognises yet. Add to it whenever a playtest log shows
 "no template matched" on a combination that should mean something.
 
-- **Martyr saved X** → both the Martyr and X are good (and the Martyr's claim is true).
-  Needs a "proven good" fact that the clearing templates accept. (55774)
-- **Martyr's chosen hanged, Martyr lives** → the chosen is evil, or Marked, or the
-  Martyr lied. Commit to one.
-- **Pair reading, both named proven good** → the reading is false (poisoned, misread or
-  a lie). E.g. Archivist "Bartholomew or Fenwick is the Revenant". (55774)
 - **Succession breaks earlier clears.** A Seer "no" (or any not-the-demon clear) only
   speaks for the demon *as of that night*. If a hanging with 5+ alive (so a Scion could
   rise) falls between two readings, group elimination, overlap and pair elimination
@@ -205,16 +159,13 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   Edda" using the night-4 "Fenwick or Edda: neither", across Hollis's hanging. Greta
   was right, but Edda (evil, an equally possible successor) stayed a live candidate.
   NPC reasoning and the bot should apply the same limit to old clears. (Astra, 55774)
-- **Seer pair with one proven good** → the other is the demon, *or* the proven-good one
-  is the Seer's red herring. Pair elimination exists, but only for killed / executed /
-  shown-by-role, not for Martyr-proven or deduced-good people. (55774)
+- *Built Oct 18:* Martyr saves as proof of good; the chosen hanged with the Martyr
+  standing; a pair reading naming two proven-good people; filed good / Marked / red
+  herring deductions as template inputs; a Seer pair with one proven good (pair
+  elimination, with "the proven-good one is the red herring" offered).
 - **Same person in repeated Seer yeses, later proven good** → that person is the
   red herring; drop them from the Seer's later readings. (55774: Jory)
 - **Evil reading on a proven-good person** (Dowser count, Archivist pair) → Marked.
-- **Good/role deductions as inputs.** A filed "X is good" or "X is the Warden" gives
-  templates nothing; only evil/demon and misled conclusions do. Let committed good,
-  role and notrole conclusions act as facts (with the chain followed down to its
-  evidence, as NPC evaluation already does).
 - **Accounting:** a Lamplighter's "N others out" plus home alibis for everyone but one
   → the unaccounted person was out.
 - **Role confirmations:** a Clerk or Gravedigger confirming someone's gift → that claim

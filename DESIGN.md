@@ -716,6 +716,61 @@ least predictable). Decided, not built yet: 3% of nights the demon skips its top
   RNG.
 - The case board's card list is newest first, like the other lists.
 
+## Talk rework and small features, Oct 18 (evening)
+
+**Talking.** The menu is: Ask about <name>'s gift… (their gift, or "are you the X?") ·
+Offer… (your ward on their door / a vigil on their block, tonight) · Ask where they were
+and who they saw… (today, last night, yesterday evening / afternoon / morning) · Ask
+about others… · Present a card · Leave. The generic "who have you seen lately" is gone.
+Daytime answers start with where they were ("Yesterday afternoon I was at the wharf, and
+saw Jory at the wharf, talking with Odette; Nisha at the Docks"); daytime whereabouts
+are open to anyone's eyes, so they're told truthfully.
+
+**Offers.** Free (no question). +0.03 trust on the offer, +0.06 when you keep it, -0.15
+when you don't; settled when you choose your night work (the night menu puts your
+promises first). The ward is once per case, so it can only be promised once.
+
+**Vigil as a deterrent.** The demon knows where you keep vigil (a deliberate exception to
+"evil doesn't see your choices"): anyone living on the watched block is -0.25 as a target (C.VIGIL_DETER; bot runs at 7 townsfolk: no deterrent 41 wins, 0.25 35, 0.6 32 of 150),
+enough to tip a close choice, not to save a prime target.
+
+**Haunts are learned.** Nobody's off-work haunts are known at the start. Asking someone
+about a person may add one or both (chance 0.15 + 0.55 x Gossip + 0.5 x (trust - 0.5),
+capped 0.9), as a "haunt" card; the profile, the "can't see them" hint and the map's
+selection marks use only what you've learned.
+
+**No "no gift" denials** (knob, off): a cautious NPC refuses to say instead.
+
+**Deductions.**
+- New conclusions: *suspicious* (a small push, 0.15, capped support), *hiding a secret*
+  (an innocent explanation, -0.12), *Misread*: *Marked* (-0.3) and *the Seer's red
+  herring* (-0.4), secrets (*Delusional*: their readings discounted; *Secret Lover*,
+  *Sleepwalker*: -0.15), and the evil roles ("X is the Poisoner": +0.5). The builder's
+  status list is headed: descriptors | Misread | Good roles | Evil roles | Secrets.
+- A Martyr's save proves both people good for the templates (pair elimination; a pair
+  reading naming both is false: *pair_both_good*). A filed "X is good" / Marked / red
+  herring deduction counts as proven good too (followed down to its evidence when NPCs
+  weigh it). *martyr_no_save*: the Martyr said they'd die for X, X was hanged, the Martyr
+  stands: X was evil, or Marked, or the Martyr lied (or was poisoned).
+- The Martyr's gift reads a Marked nominee like other gifts (may read as evil, 50%).
+
+**NPCs.**
+- A good NPC shown a sound "you lied" about their own statement knows it's true: open or
+  pressed ones own up ("I wasn't where I said I was… I wasn't ready to tell you"), the
+  rest stonewall ("I've said what I've said"); no trust drop either way. Disclosing a
+  walking gift later, they own the earlier lie ("So yes: I was out on night 2…").
+- Fear as cover: refusals sometimes say "If I say what I am, I'll be dead by morning"
+  (more likely as deaths mount and for the skittish; same odds for evil bluffers). Such
+  refusals weigh less (0.25 vs 0.35), and withholding's innocent explanation says so.
+
+**UI.** Trait bars in the profile; card lists in a proportional font with spacing,
+kind labels ("#12 Sighting · …") and a tint for the person they're about; bold lead-ins
+and spacing in the town log; the selected person's home and workplace outlined on the
+map (learned haunts fainter); Statements' people filter shows cards by and about them;
+text filters combine with "+" and exclude with "-"; "What can this be part of?" and
+"Find links" on the case board; clicking a card in the log or a profile switches the
+board to its view; "grimoire talk" and exchange stats at the end.
+
 ## Dialogue composer (merged from codex/dialogue-prototype)
 
 Presentation only: the simulation decides what is said (including an evil character's
@@ -1330,3 +1385,9 @@ Built from the session's list:
 - After playtest 13473's fixes (habits, unseen counts, ask-today changes; bot uses the
   counts): 7 townsfolk 61/150 (41%) vs passive 12/150 (8%); 10 townsfolk 38/150 (25%) vs
   13/150 (9%).
+- After the Oct 18 passes (all roads joined, quick fixes, talk rework, vigil deterrent
+  0.25, learned haunts; the bot asks about today / yesterday / last night): 7 townsfolk
+  35/150 (23%) vs passive 8/150 (5%); 10 townsfolk 38/150 (25%) vs 15/150 (10%). The
+  deterrent is most of the drop from the morning's 46 / 41 (at 7: none 41, 0.25 35,
+  0.6 32); the narrower "ask today" cost the old bot about 5.
+
