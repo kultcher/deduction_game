@@ -1079,6 +1079,17 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 		approved["already"] = mask.get("already", false)
 		if approved["stance"] != "accept" and approved["special"] == "":
 			_evil_reason(w, n, c, ded, approved)
+		# Shadow self (step 2): answer as their good self would, unless breaking cover is
+		# worth it. Arguments about themselves keep the mask ("it's about me").
+		if C.SHADOW_SELF and times == 0 and target != n:
+			var sr = Mind.shadow_eval(w, n, func(sh): return evaluate(w, sh, ded, board, scale, false))
+			if sr != null and sr.has("dialogue") and sr["dialogue"].get("stance", "") != approved["stance"]:
+				var mine: Dictionary = sr["dialogue"]
+				var rank = {"reject": 0, "partial": 1, "accept": 2}
+				var dev = absf(rank.get(mine["stance"], 1) - rank.get(approved["stance"], 1)) / 2.0
+				var stakes = _evil_argument_stakes(w, n, c, target)
+				if not Mind.evil_override(w, n, "argument", stakes, dev, "%s (good self: %s, evil: %s)" % [conclusion_text(w, c), mine["stance"], approved["stance"]]):
+					approved = mine.duplicate(true)
 		if times > 0:
 			var prior: Dictionary = delivery_memory.get("decisions", {}).get(JSON.stringify([audience, conclusion_key(c)]), {})
 			# Reuse their expressed position, not new private strategy. A new audience
@@ -1088,6 +1099,7 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 					approved[field] = prior[field]
 		if not n.silenced:
 			lines.append(_argument_line(n, approved, audience, delivery_memory))
+		w.dlog.add("argument_stance", n.id, c.get("a", ""), {"key": conclusion_key(c), "stance": approved["stance"], "evil": true, "repeat": times > 0})
 		return {"lines": lines, "agreement": 0.0, "repeated": times > 0, "dialogue": approved}
 	# Caught in a lie they know they told (a good NPC hiding a gift or a secret): they don't
 	# pretend to themselves it's false.
@@ -1198,6 +1210,7 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 		[n.name, ded["text"], agreement, m, (" (" + reason + ")") if reason != "" else ""])
 	var stance = "accept" if agreement >= 0.6 else "partial" if agreement >= 0.35 else "reject"
 	var approved = _argument_descriptor(w, c, facts, stance)
+	w.dlog.add("argument_stance", n.id, c.get("a", ""), {"key": conclusion_key(c), "stance": stance, "evil": false, "repeat": times > 0})
 	# They agree, but it moved nothing: they'd already come to it themselves.
 	approved["already"] = stance == "accept" and gain < 0.02 and times == 0
 	if self_misled:
@@ -1393,6 +1406,20 @@ static func _apply(w, n, ded: Dictionary, supports: Array, base: float, board: A
 	var h = Mind.ledger_hear(w, n, "arg:" + conclusion_key(c), effects_of(w, c, supports, why), base * (0.5 + n.trust), [],
 		{"kind": "arg", "base": base, "text": conclusion_text(w, c), "said": said, "supports": sup})
 	return h["gain"]
+
+## What answering as evil (rather than as its good self) buys an evil listener: protecting a
+## teammate under fire, or pushing a case against the good (more for the scapegoat).
+static func _evil_argument_stakes(w, n, c: Dictionary, target) -> float:
+	if target == null:
+		return 0.2
+	var accusing = c["type"] in ACCUSING or (c["type"] == "role" and is_evil_role(c.get("role", "")))
+	if target.is_evil():
+		var v = Evil.teammate_value(w, target.id)
+		return v * (0.3 + Evil.public_heat(w, target)) if accusing else 0.4 * v
+	var sg = target.id == w.evil_plan.get("scapegoat", "")
+	if accusing:
+		return 0.25 + (0.35 if sg else 0.0)
+	return 0.3 + (0.2 if Evil.intel_threat(n, target.id) > 0.0 else 0.0)
 
 ## An evil listener's reply: drawn from the same lines a good listener uses, according to
 ## what serves evil, so the wording carries no alignment tell.

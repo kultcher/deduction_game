@@ -305,6 +305,12 @@ const SHADOW_OWN_READING_WEIGHT = 1.2
 ## Evil accusing with nothing it can cite sometimes hints at a "private reason" instead:
 ## unverifiable, so a free bluff, and it keeps the hint from being a tell of good.
 const EVIL_HINT_CHANCE = 0.3
+## Shadow self step 2: evil breaks cover (overrides what its good self would do) only when
+## stakes - exposure cost > caution. Minions' caution drifts down each day after day 2.
+const EVIL_CAUTION_DEMON = 0.8
+const EVIL_CAUTION_MINION = 0.7
+const MINION_ID_DRIFT = 0.08
+const MINION_CAUTION_FLOOR = 0.25
 const USE_FLAVOR_SECRETS = false
 const SECRETS = [
 	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "me": "can't sleep, so I walk to the chapel to pray", "dest": "hill"},

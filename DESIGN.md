@@ -1516,3 +1516,53 @@ next talk to them, the talk menu offers "Ask why they suspect X" (`ask why`, whi
   either has an unshared fake reading pointing at the target ready, or takes the
   free-bluff chance. Asked why with nothing ready, it stalls ("Not yet. Give me a day or
   two…").
+
+## Shadow good self, step 2, first slice (Oct 19)
+
+Evil's **argument replies, votes and opinions** now follow the shadow, with an override.
+
+- **Argument replies** (`Argue.evaluate`, evil branch): the shadow evaluates the same
+  argument through the good path, so it now hears the player's arguments too. Evil
+  answers with the shadow's stance unless `Mind.evil_override` says break cover.
+  Arguments about the evil NPC itself, and repeats, keep the old mask.
+  - The stakes come from `Argue._evil_argument_stakes`: a teammate accused is worth
+    (0.3 + their heat) × their value (the demon counts 2, a minion 1); a case against
+    the good is worth 0.25, plus 0.35 for the scapegoat.
+- **Votes** (`Mind.vote`): the shadow's vote, unless `evil_override` says break cover.
+  - The evil choice is still `Evil.evil_vote`, with its special cases.
+  - The stakes are a teammate's value × how pivotal my vote is (1.0 within one of the
+    threshold, otherwise 0.35); pushing a good nominee is worth 0.5, plus 0.3 for the
+    scapegoat.
+- **Opinions** of non-teammates: the shadow's suspicion replaces `town_view`.
+  Teammates and the scapegoat still get the cover levels.
+- **The override rule** (`Mind.evil_override`): break cover when stakes − deviation ×
+  exposure > caution.
+  - Exposure (`Evil.exposure`, named parts): public talk about them, counting evil's own;
+    +0.3 if the player is known to suspect them; +0.5 × pressure; +0.2 if on the block.
+  - Caution (`Evil.caution`): the demon 0.8, minus 0.03 a day (floor 0.45); minions 0.7,
+    minus `MINION_ID_DRIFT` 0.08 a day after day 2 (floor 0.25).
+  - Every decision is logged (`think`, topic `override`).
+- **Tell metric:** new `argument_stance` dlog events record each listener's final stance.
+  "Off the crowd" is the share of first-hearing replies that differ from the rounded
+  average of the good listeners on the same argument in the same phase.
+
+Bot, 150 games each, seeds 1000–1149, `SHADOW_SELF` off → on:
+
+| | good wins | good hanged | evil hanged | evil off the crowd | good off the crowd |
+|---|---|---|---|---|---|
+| 7 townsfolk | 42 → 44 | 148 → 131 | 81 → 91 | 78% → 43% | 18% → 19% |
+| 10 townsfolk | 41 → 43 | 298 → 279 | 119 → 132 | 70% → 34% | 17% → 18% |
+
+Overrides happened in about 1 in 5 arguments (43 of 221 at 7, 70 of 331 at 10) and about
+1 in 3 votes where the shadow and evil disagreed (113 of 296; 317 of 911). The rest of
+evil's gap comes from three places: arguments about themselves, overrides, and the
+shadow not yet hearing the player's private cases. More evil hanged means evil now
+sometimes votes with the town against a teammate, which is the bus-throwing we wanted.
+
+**Still to do in step 2:**
+- route `hear_accusation`, `hear_defense` and `hear_group_case` to the shadow (careful:
+  `_secret_used` runs at the top of these, so the shadow must not repeat it);
+- nominations through the shadow;
+- refine the heat calculation;
+- the daily scapegoat re-pick;
+- teammates' opinions through the shadow plus override.

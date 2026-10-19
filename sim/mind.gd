@@ -199,6 +199,28 @@ static func _shadow_own_info(w, n) -> void:
 			s.applied_info = s.info_log.size()
 			apply_info(w, s, s, mine, C.SHADOW_OWN_READING_WEIGHT))
 
+## Step 2: should evil NPC n break cover, doing the evil choice instead of what its good
+## self would? stakes: what the evil choice buys (a teammate saved, a frame pushed);
+## deviation: how far the evil choice strays from the shadow's (0..1). Logged either way.
+static func evil_override(w, n, act: String, stakes: float, deviation: float, detail: String) -> bool:
+	var exp_parts: Dictionary = Evil.exposure(w, n)
+	var exposure = 0.0
+	for k in exp_parts:
+		exposure += exp_parts[k]
+	var cost = deviation * exposure
+	var caution = Evil.caution(w, n)
+	var yes = stakes - cost > caution
+	w.dlog.think(n.id, "override", "%s %s: %s (stakes %.2f - exposure cost %.2f vs caution %.2f)." %
+		["Breaks cover on" if yes else "Keeps cover on", act, detail, stakes, cost, caution],
+		{"act": act, "stakes": snappedf(stakes, 0.01), "cost": snappedf(cost, 0.01), "caution": snappedf(caution, 0.01), "exposure": exp_parts, "override": yes})
+	return yes
+
+## Run f(shadow) and return what it returns (null without a shadow).
+static func shadow_eval(w, n, f: Callable):
+	var box = {}
+	shadow_run(w, n, func(sh): box["r"] = f.call(sh))
+	return box.get("r")
+
 ## Turned or freed by the Revenant's curse: the shadow is rebuilt (or dropped) next time.
 static func shadow_reset(n) -> void:
 	n.shadow = null
@@ -1294,7 +1316,22 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 		w.dlog.think(v.id, "vote", "Votes no on own execution.", {"nominee": nominee, "yes": false})
 		return false
 	if v.is_evil():
-		return Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
+		var evil_yes: bool = Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
+		if not C.SHADOW_SELF:
+			return evil_yes
+		# Shadow self (step 2): vote as their good self would, unless breaking cover is worth it.
+		var sh_yes = shadow_eval(w, v, func(sh): return vote(w, sh, nominee, nominator, player_yes, statement, yes_so_far))
+		if sh_yes == null or sh_yes == evil_yes:
+			return evil_yes
+		var have = yes_so_far + (1 if player_yes else 0)
+		var pivot = 1.0 if absi(have + 1 - w.vote_threshold()) <= 1 else 0.35
+		var stakes = 0.3
+		if Evil.is_teammate(w, v, nominee):
+			stakes = Evil.teammate_value(w, nominee) * pivot if not evil_yes else 0.6
+		elif evil_yes:
+			stakes = (0.5 + (0.3 if nominee == w.evil_plan.get("scapegoat", "") else 0.0)) * pivot
+		var detail = "%s on %s (good self: %s)" % ["YES" if evil_yes else "no", nominee, "yes" if sh_yes else "no"]
+		return evil_yes if evil_override(w, v, "vote", stakes, 0.6, detail) else sh_yes
 	reconsider(w, v, "thinking it over before the vote")
 	var base = susp(v, nominee)
 	var s = base
@@ -1933,7 +1970,8 @@ static func answer_opinion(w, n, t) -> Dictionary:
 			why = Evil.bluff_reason(w, n, t)
 			lie = true
 		else:
-			level = Evil.town_view(w, t)
+			var sl = shadow_eval(w, n, func(sh): return susp(sh, t.id)) if C.SHADOW_SELF else null
+			level = sl if sl != null else Evil.town_view(w, t)
 	else:
 		level = susp(n, t.id)
 		why = citable_reason(w, n, t.id, "player")

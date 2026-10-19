@@ -154,6 +154,10 @@ below in three ways:
 
 ## Step 2: public acts follow the shadow, with an override
 
+**First slice done Oct 19:** argument replies, votes, and opinions of non-teammates, plus
+exposure, caution, the override and the tell metric. See DESIGN, "Shadow good self, step
+2, first slice", for the numbers and what's left.
+
 0. **Refine heat first.** `public_heat` gives every implicating public reading the same
    +0.2 and never goes down. Before exposure and scapegoat scoring build on it:
    - weight each reading by how strongly it implicates: a Seer "yes" pair counts more than

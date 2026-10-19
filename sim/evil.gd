@@ -161,6 +161,46 @@ static func public_heat(w, t) -> float:
 					h += 0.04
 	return clampf(h, 0.0, 1.0)
 
+## How exposed an evil member is right now (0..~1.5), as named parts: the town's public
+## talk about them (evil's own included: the town can't tell it apart), the player's known
+## suspicion, pressure, and being on the block. The cost of breaking cover scales with it.
+static func exposure(w, n) -> Dictionary:
+	var h = 0.0
+	for e in w.public_log:
+		if n.id in e["subjects"]:
+			match e["kind"]:
+				"accusation":
+					h += 0.12
+				"nomination":
+					h += 0.2
+				"reading":
+					h += 0.2
+				"vote_yes":
+					h += 0.04
+	var parts = {"public_talk": snappedf(minf(h, 1.0), 0.01)}
+	for k in n.intel:
+		if n.intel[k]["kind"] == "player_suspects" and n.intel[k]["about"] == n.id:
+			parts["player_suspects"] = 0.3
+			break
+	if n.pressure > 0.0:
+		parts["pressure"] = snappedf(0.5 * n.pressure, 0.01)
+	var m: Dictionary = w.meeting
+	if m.get("block", "") == n.id or n.id in m.get("nominated", []):
+		parts["on_the_block"] = 0.2
+	return parts
+
+## How much it takes for an evil member to break cover (stakes beyond exposure must beat
+## it). The demon stays careful; minions loosen as the days pass, from self-preservation
+## toward sowing chaos (their "evil id").
+static func caution(w, n) -> float:
+	if n.id == w.demon_id:
+		return maxf(0.45, C.EVIL_CAUTION_DEMON - 0.03 * (w.day - 1))
+	return maxf(C.MINION_CAUTION_FLOOR, C.EVIL_CAUTION_MINION - C.MINION_ID_DRIFT * maxi(0, w.day - 2))
+
+## What a teammate's life is worth to the team: the demon's is the game.
+static func teammate_value(w, id: String) -> float:
+	return 2.0 if id == w.demon_id else 1.0
+
 ## How much someone has publicly acted against the evil team.
 static func public_hostility(w, n) -> float:
 	var h = 0.0
