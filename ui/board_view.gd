@@ -11,11 +11,14 @@ extends Control
 
 signal card_activated(num)          # double-click: add to the working set
 signal row_clicked(kind, id)        # a row label: person | place
+signal view_changed                # pan/zoom or the initial fit changed
+signal person_context_requested(id) # right-click a person's row label
 
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
 const BoardModel = preload("res://game/board_model.gd")
 const UITheme = preload("res://ui/theme.gd")
+const Icons = preload("res://ui/board_icons.gd")
 
 const HEAD_W = 132.0     # row labels (screen pixels, not zoomed)
 const HEAD_H = 34.0      # time labels
@@ -50,6 +53,7 @@ var _ink: Color
 var _cards_tex: Array = []
 var _role_tex = {}
 var _fitted = false
+var _fit_pending = false
 
 func _init() -> void:
 	clip_contents = true
@@ -83,10 +87,20 @@ func rebuild() -> void:
 		"blocks": C.BLOCKS.keys()}
 	lay = BoardModel.layout(cards, board_view(), ctx)
 	_measure()
-	if not _fitted and size.x > 0:
-		_fitted = true
-		fit_day(g.w.day)
+	_schedule_initial_fit()
 	queue_redraw()
+
+func _schedule_initial_fit() -> void:
+	if g == null or _fitted or _fit_pending or not is_visible_in_tree():
+		return
+	_fit_pending = true
+	_fit_after_layout.call_deferred()
+
+func _fit_after_layout() -> void:
+	await get_tree().process_frame
+	_fit_pending = false
+	if g != null and not _fitted and is_visible_in_tree() and size.x > HEAD_W:
+		fit_day(g.w.day)
 
 ## Row heights grow with the busiest cell; places rows hold dots, others hold cards.
 func _measure() -> void:
@@ -130,15 +144,18 @@ func _clamp_pan() -> void:
 	pan.y = clampf(pan.y, -view.y * 0.25, maxf(0.0, world_size.y - view.y * 0.5))
 
 func zoom_at(screen: Vector2, factor: float) -> void:
+	_fitted = true
 	var before = to_world(screen)
 	zoom = clampf(zoom * factor, ZOOM_MIN, ZOOM_MAX)
 	_measure()
 	pan = before - (screen - Vector2(HEAD_W, HEAD_H)) / zoom
 	_clamp_pan()
 	queue_redraw()
+	view_changed.emit()
 
 ## Show a day's four time slots (morning to night) across the board.
 func fit_day(d: int) -> void:
+	_fitted = true
 	# A day, with the night before it (where last night's readings and sightings sit).
 	var keys: Array = lay.get("cols", []).filter(func(c): return c["day"] == d or (c["day"] == d - 1 and c["phase"] == C.NIGHT)).map(func(c): return c["key"])
 	if keys.is_empty():
@@ -152,8 +169,10 @@ func fit_day(d: int) -> void:
 	pan = Vector2(x0 - 10.0, 0)
 	_clamp_pan()
 	queue_redraw()
+	view_changed.emit()
 
 func fit_all() -> void:
+	_fitted = true
 	var cr = _content_rect()
 	if world_size.x <= 0:
 		return
@@ -163,9 +182,11 @@ func fit_all() -> void:
 	_measure()
 	pan = Vector2(-10, -10)
 	queue_redraw()
+	view_changed.emit()
 
 ## Fit the selected card (all its places on the board).
 func fit_selection() -> void:
+	_fitted = true
 	var n: int = state.selected_card
 	var pts: Array = []
 	for it in lay.get("items", []):
@@ -182,6 +203,7 @@ func fit_selection() -> void:
 	_measure()
 	pan = r.position
 	queue_redraw()
+	view_changed.emit()
 
 ## The day whose columns are mostly in view.
 func day_in_view() -> int:
@@ -203,7 +225,7 @@ func _draw() -> void:
 	if lay.is_empty():
 		return
 	var cr = _content_rect()
-	# Row stripes and night shading.
+	# Related day tints, darker nights, and clear boundaries for every timeframe.
 	for r in lay["rows"]:
 		var y0 = to_screen(Vector2(0, row_y[r["id"]])).y
 		var hh = row_h[r["id"]] * zoom
@@ -218,10 +240,11 @@ func _draw() -> void:
 		var w = COL_W * zoom
 		if x0 + w < cr.position.x or x0 > size.x:
 			continue
-		if c["phase"] == C.NIGHT:
-			draw_rect(Rect2(x0, cr.position.y, w, cr.size.y), Color(0, 0, 0, 0.22))
+		draw_rect(Rect2(x0, cr.position.y, w, cr.size.y), Icons.phase_shade(c["phase"]))
 		var day_start = c["phase"] == C.MORNING or c["key"] == lay["cols"][0]["key"]
-		draw_line(Vector2(x0, cr.position.y), Vector2(x0, size.y), UITheme.color("border").darkened(0.2) if day_start else Color(1, 1, 1, 0.05), 2.0 if day_start else 1.0)
+		draw_line(Vector2(x0, cr.position.y), Vector2(x0, size.y), UITheme.color("border").darkened(0.2) if day_start else Color(0.67, 0.64, 0.56, 0.42), 2.0 if day_start else 1.2)
+		if c["key"] == lay["cols"].back()["key"]:
+			draw_line(Vector2(x0 + w, cr.position.y), Vector2(x0 + w, size.y), Color(0.67, 0.64, 0.56, 0.42), 1.2)
 	# Items.
 	var by_cell: Dictionary = lay["cells"]
 	for key in by_cell:
@@ -292,10 +315,18 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 		_draw_paper(r, n, Color(0.85, 0.85, 0.85) if card.get("hidden", false) else Color.WHITE)
 		draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(4, r.size.y - 10 * zoom) * Vector2(zoom, 1)), UITheme.ink_of(src_col))
 		var icon = _icon_for(card, it)
+		var kind = Icons.kind_for(card)
+		var kind_icon = Icons.texture(kind)
+		var icon_count = 1 if icon != null or kind_icon != null else 0
 		var tx = r.position.x + 14 * zoom
+		var icon_x = r.end.x - 26 * zoom
 		if icon != null:
 			var s = 20.0 * zoom
-			draw_texture_rect(icon, Rect2(Vector2(r.end.x - s - 6 * zoom, r.position.y + 6 * zoom), Vector2(s, s * icon.get_height() / icon.get_width())), false)
+			draw_texture_rect(icon, Rect2(Vector2(icon_x, r.position.y + 6 * zoom), Vector2(s, s * icon.get_height() / icon.get_width())), false)
+		if kind_icon != null:
+			var kind_y = r.end.y - 26 * zoom if icon != null else r.position.y + 6 * zoom
+			draw_texture_rect(kind_icon, Rect2(Vector2(icon_x, kind_y), Vector2(20, 20) * zoom), false,
+				UITheme.color("red").darkened(0.1) if kind == "accusation" else _ink)
 		var fs = int(clampf(13.5 * zoom, 12, 28))
 		var names = {}
 		for m in g.w.npcs:
@@ -305,11 +336,11 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 			text = "Voted to hang %s" % names.get(card.get("nominee", ""), "?") if lod >= 1 else text
 		var lines = 2 if lod == 1 else 5
 		draw_multiline_string(_font, Vector2(tx, r.position.y + fs + 6 * zoom), text, HORIZONTAL_ALIGNMENT_LEFT,
-			r.size.x - 22 * zoom - (22 * zoom if icon != null else 0.0), fs, lines, _ink)
+			r.size.x - 22 * zoom - 24 * zoom * icon_count, fs, lines, _ink)
 		if lod == 2:
 			var heard = _heard_line(card)
 			if heard != "":
-				draw_string(_font, Vector2(tx, r.end.y - 6 * zoom), heard, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 20 * zoom, int(fs * 0.8), UITheme.color("ink_soft"))
+				draw_string(_font, Vector2(tx, r.end.y - 6 * zoom), heard, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - (44 if kind_icon != null else 20) * zoom, int(fs * 0.8), UITheme.color("ink_soft"))
 		if it["mark"] == "nominated":
 			var seal = UITheme.tex("ui/wax_seal", 0.25)
 			if seal != null:
@@ -477,11 +508,17 @@ func _draw_headers() -> void:
 		if zoom >= 0.7:
 			lab = ("Night %d" % c["day"]) if c["phase"] == C.NIGHT else "Day %d · %s" % [c["day"], C.PHASES[c["phase"]]]
 		var night = c["phase"] == C.NIGHT
-		var icon = UITheme.tex("ui/moon" if night else "ui/sun", 0.09)
+		draw_rect(Rect2(x0, 0, w, HEAD_H), Icons.phase_shade(c["phase"]))
+		var icon = Icons.texture("sunrise" if c["phase"] == C.MORNING else "sunset") if c["phase"] in [C.MORNING, C.EVENING] else UITheme.tex("ui/moon" if night else "ui/sun", 0.09)
 		var tx = x0 + 8
 		if icon != null and zoom >= 0.45:
-			draw_texture(icon, Vector2(x0 + 6, (HEAD_H - icon.get_height()) / 2.0))
-			tx += icon.get_width() + 4
+			var tint = Color.WHITE
+			if c["phase"] == C.MORNING:
+				tint = Color(0.98, 0.76, 0.38)
+			elif c["phase"] == C.EVENING:
+				tint = Color(0.83, 0.8, 0.75)
+			draw_texture_rect(icon, Rect2(x0 + 6, (HEAD_H - 20) / 2, 20, 20), false, tint)
+			tx += 24
 		draw_string(_font, Vector2(tx, HEAD_H - 11), lab, HORIZONTAL_ALIGNMENT_LEFT, maxf(10.0, w - (tx - x0) - 4), 13,
 			UITheme.color("accent") if not night else text)
 	draw_line(Vector2(0, HEAD_H), Vector2(size.x, HEAD_H), UITheme.color("border"), 1.5)
@@ -534,6 +571,7 @@ func _gui_input(ev: InputEvent) -> void:
 				pan.x += (-60.0 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 60.0) / zoom
 				_clamp_pan()
 				queue_redraw()
+				view_changed.emit()
 			else:
 				zoom_at(mb.position, 1.12 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.12)
 			accept_event()
@@ -563,6 +601,11 @@ func _gui_input(ev: InputEvent) -> void:
 				_panning = false
 				_moving_pin = 0
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			for rh in _row_hits:
+				if rh["row"]["kind"] == "person" and rh["rect"].has_point(mb.position):
+					person_context_requested.emit(rh["row"]["id"])
+					accept_event()
+					return
 			var h2 = _hit(mb.position)
 			if h2.get("pinned", false):
 				unpin(h2["n"])
@@ -579,6 +622,7 @@ func _gui_input(ev: InputEvent) -> void:
 			pan -= mm.relative / zoom
 			_clamp_pan()
 			queue_redraw()
+			view_changed.emit()
 			return
 		var h3 = _hit(mm.position)
 		var n: int = h3.get("n", 0)
@@ -591,7 +635,10 @@ func _get_tooltip(at: Vector2) -> String:
 	if h.is_empty():
 		for rh in _row_hits:
 			if rh["rect"].has_point(at):
-				return "Click to show only cards %s %s." % ["about" if lay["view"] != "places" else "placing" if rh["row"]["kind"] == "person" else "at", rh["row"]["label"]]
+				var hint = "Click to show only cards %s %s." % ["about" if lay["view"] != "places" else "placing" if rh["row"]["kind"] == "person" else "at", rh["row"]["label"]]
+				if rh["row"]["kind"] == "person":
+					hint += " Right-click to open or minimize their profile."
+				return hint
 		return ""
 	var card: Dictionary = g.board[h["n"] - 1]
 	var t = "#%d  %s" % [card["n"], card.get("text", "")]
@@ -635,6 +682,5 @@ func unpin(n: int) -> void:
 	rebuild()
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_RESIZED and g != null and not _fitted and size.x > 0:
-		_fitted = true
-		fit_day(g.w.day)
+	if what in [NOTIFICATION_RESIZED, NOTIFICATION_VISIBILITY_CHANGED]:
+		_schedule_initial_fit()

@@ -16,6 +16,7 @@ const CardModel = preload("res://game/card_model.gd")
 const BoardView = preload("res://ui/board_view.gd")
 const DeductionTray = preload("res://ui/deduction_tray.gd")
 const ProfilePanel = preload("res://ui/profile_panel.gd")
+const BoardPanel = preload("res://ui/board_panel.gd")
 
 var g
 var mono: Font
@@ -32,9 +33,8 @@ var sel_people: Dictionary:
 	get: return state.people
 var sel_places: Dictionary:
 	get: return state.places
-var view_opt: OptionButton
 var status_label: Label
-var chip_row: HFlowContainer
+var chip_row: HBoxContainer
 var card_list
 var board                     # ui/board_view.gd
 var tray                      # ui/deduction_tray.gd
@@ -63,6 +63,12 @@ var b_preview: Label
 var b_error: Label
 var pending: Dictionary = {}  # explanation picked from a link: {conclusion, match, id}
 var _setting = false
+var canvas: Control
+var panels: Dictionary = {}
+var panel_buttons: Dictionary = {}
+var _panels_placed = false
+var _panel_layout_pending = false
+var dock: HBoxContainer
 
 
 func _init() -> void:
@@ -80,78 +86,128 @@ func build(font: Font) -> void:
 	theory_label = Label.new()
 	theory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	theory_label.add_theme_color_override("font_color", UITheme.color("muted"))
-	root.add_child(theory_label)
 
-	# Filters: shared by the card library and the board.
-	var top = HFlowContainer.new()
-	top.add_theme_constant_override("h_separation", 6)
-	root.add_child(top)
-	_btn(top, "◀ Back to town (Esc)", func(): visible = false)
+	# Three header rows: title, centered views, then shared filters and navigation.
+	var heading = HBoxContainer.new()
+	heading.add_theme_constant_override("separation", 12)
+	root.add_child(heading)
+	var back_slot = HBoxContainer.new()
+	back_slot.custom_minimum_size.x = 220
+	back_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(back_slot)
+	_btn(back_slot, "◀ Back to town", func(): visible = false)
 	var title = Label.new()
-	title.text = "  CASE BOARD  "
+	title.text = "Case Board"
 	title.add_theme_color_override("font_color", UITheme.color("accent"))
-	title.add_theme_font_size_override("font_size", 18)
-	top.add_child(title)
-	view_opt = OptionButton.new()
-	for v in ["places", "statements", "process", "all"]:
-		view_opt.add_item(CardModel.VIEW_NAMES[v])
-		view_opt.set_item_metadata(view_opt.item_count - 1, v)
-	view_opt.item_selected.connect(func(i): state.set_view(view_opt.get_item_metadata(i)))
-	view_opt.tooltip_text = "Which cards to show: where people were; what people said; the town's official business. ('All cards' lists everything; the board then shows Places.)"
-	top.add_child(view_opt)
+	title.add_theme_font_size_override("font_size", 34)
+	title.custom_minimum_size.y = 54
+	heading.add_child(title)
+	var balance = Control.new()
+	balance.custom_minimum_size.x = 220
+	balance.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(balance)
+	var view_center = CenterContainer.new()
+	root.add_child(view_center)
+	var views = HBoxContainer.new()
+	views.add_theme_constant_override("separation", 12)
+	view_center.add_child(views)
+	for v in CardModel.VIEWS:
+		var vv: String = v
+		var b = _btn(views, CardModel.VIEW_NAMES[v], func(): state.set_view(vv))
+		b.toggle_mode = true
+		b.add_theme_font_size_override("font_size", 20)
+		b.set_meta("view", v)
+		view_tabs.append(b)
+	var controls = HBoxContainer.new()
+	controls.add_theme_constant_override("separation", 18)
+	root.add_child(controls)
+	var filters = HFlowContainer.new()
+	filters.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	filters.add_theme_constant_override("h_separation", 6)
+	controls.add_child(filters)
 	filter_edit = LineEdit.new()
-	filter_edit.placeholder_text = "filter: text, d2, n1, a+b ..."
-	filter_edit.custom_minimum_size = Vector2(170, 0)
+	filter_edit.placeholder_text = "Search text, d2, n1, a+b ..."
+	filter_edit.custom_minimum_size = Vector2(230, 0)
 	filter_edit.text_changed.connect(func(t):
 		state.text = t
 		state.edited())
-	top.add_child(filter_edit)
-	kind_menu = _multi(top, "Kinds", sel_kinds)
-	person_menu = _multi(top, "People", sel_people)
-	place_menu = _multi(top, "Places", sel_places)
-	match_opt = _option(top, ["match any", "match all"], func(i):
+	filters.add_child(filter_edit)
+	kind_menu = _multi(filters, "Kinds", sel_kinds)
+	person_menu = _multi(filters, "People", sel_people)
+	place_menu = _multi(filters, "Places", sel_places)
+	match_opt = _option(filters, ["match any", "match all"], func(i):
 		state.match_all = i == 1
 		state.edited())
-	match_opt.tooltip_text = "Any: a card shows if it fits any ticked kind, person or place. All: it must fit each list you've ticked (any item within a list)."
+	match_opt.tooltip_text = "Any: match any selected filter. All: match each selected filter group. Applies to both cards and the grid."
 	hidden_check = CheckBox.new()
 	hidden_check.text = "Show hidden"
 	hidden_check.toggled.connect(func(on):
 		g.show_hidden = on
 		_refresh_cards()
 		changed.emit())
-	top.add_child(hidden_check)
-	_btn(top, "Clear filters", _clear_filters)
-	_btn(top, "Notes", func(): notes_requested.emit())
-	_btn(top, "Roles", func(): roles_requested.emit())
-	# What's showing and why, always: one status line, then a removable chip per filter.
-	var srow = HFlowContainer.new()
-	root.add_child(srow)
+	filters.add_child(hidden_check)
+	rows_btn = _btn(filters, "Rows: places", func():
+		state.rows_by = "person" if state.rows_by == "place" else "place"
+		state.changed.emit())
+	rows_btn.tooltip_text = "Places & sightings: arrange by place or person."
+	_btn(filters, "Clear filters", _clear_filters)
+	var navigation = HBoxContainer.new()
+	navigation.alignment = BoxContainer.ALIGNMENT_END
+	controls.add_child(navigation)
+	_btn(navigation, "◀", func(): _goto_day(board.day_in_view() - 1))
+	day_label = Label.new()
+	day_label.custom_minimum_size.x = 82
+	day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	day_label.add_theme_color_override("font_color", UITheme.color("accent"))
+	navigation.add_child(day_label)
+	_btn(navigation, "▶", func(): _goto_day(board.day_in_view() + 1))
+	_btn(navigation, "Fit day", func(): _goto_day(board.day_in_view()))
+	_btn(navigation, "Fit selection", func(): board.fit_selection())
+	_btn(navigation, "Whole case", func(): board.fit_all())
+	canvas = Control.new()
+	canvas.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	canvas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	canvas.custom_minimum_size = Vector2(420, 260)
+	canvas.clip_contents = true
+	root.add_child(canvas)
+	canvas.resized.connect(_queue_panel_layout)
+	# The dock and filter status have a fixed height, so typing never reshapes the canvas.
+	dock = HBoxContainer.new()
+	dock.add_theme_constant_override("separation", 8)
+	root.add_child(dock)
+	for entry in [["cards", "Cards"], ["work", "Build case"], ["profile", "Profile"]]:
+		var key: String = entry[0]
+		var toggle = _btn(dock, entry[1], func(): set_panel_open(key, not panels[key].visible))
+		toggle.toggle_mode = true
+		panel_buttons[key] = toggle
+	_btn(dock, "Notes", func(): notes_requested.emit())
+	_btn(dock, "Roles", func(): roles_requested.emit())
+	var chip_scroll = ScrollContainer.new()
+	chip_scroll.custom_minimum_size.y = 64
+	chip_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	dock.add_child(chip_scroll)
+	chip_row = HBoxContainer.new()
+	chip_scroll.add_child(chip_row)
 	status_label = Label.new()
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status_label.add_theme_color_override("font_color", UITheme.color("accent"))
-	srow.add_child(status_label)
-	chip_row = HFlowContainer.new()
-	root.add_child(chip_row)
+	status_label.clip_text = true
+	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	status_label.custom_minimum_size.x = 270
+	status_label.add_theme_font_size_override("font_size", 14)
+	status_label.add_theme_color_override("font_color", UITheme.color("muted"))
+	dock.add_child(status_label)
 	state.changed.connect(func():
 		_sync_menus()
 		_refresh_cards())
+	var cards_panel = _make_panel("cards", "Cards", Vector2(500, 700))
 
-	var body = HSplitContainer.new()
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(body)
-
-	# Left: the card library, then the working set and the builder.
-	var left = VSplitContainer.new()
-	left.custom_minimum_size = Vector2(380, 0)
-	body.add_child(left)
+	# Library and builder have separate, initially minimized panels.
 	var lib = VBoxContainer.new()
 	lib.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left.add_child(lib)
-	lib.add_child(_heading("Cards"))
+	cards_panel.content.add_child(lib)
 	card_list = CardList.new()
 	card_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card_list.custom_minimum_size = Vector2(0, 160)
+	card_list.custom_minimum_size = Vector2(0, 260)
 	card_list.card_activated.connect(func(num): _stage([num]))
 	card_list.selection_changed.connect(func():
 		var sel: Array = card_list.selected_metas()
@@ -168,13 +224,8 @@ func build(font: Font) -> void:
 	_btn(lb, "What can this be part of?", _hint_selected)
 	_btn(lb, "Find links", _find_links)
 
-	var ws_scroll = ScrollContainer.new()
-	ws_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	ws_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left.add_child(ws_scroll)
-	var ws = VBoxContainer.new()
-	ws.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ws_scroll.add_child(ws)
+	var work_panel = _make_panel("work", "Build case", Vector2(600, 760))
+	var ws: VBoxContainer = work_panel.content
 	ws.add_child(_heading("Working set"))
 	var wl = Label.new()
 	wl.text = "Drag cards here (or double-click them). They're what you link, and the 'because' of a conclusion."
@@ -237,60 +288,32 @@ func build(font: Font) -> void:
 	b_error.add_theme_color_override("font_color", Color(1, 0.55, 0.5))
 	frow.add_child(b_error)
 
-	# Centre: the board, its toolbar and the deductions tray.
-	var mid_split = HSplitContainer.new()
-	mid_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(mid_split)
-	var mid = VBoxContainer.new()
-	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mid.add_theme_constant_override("separation", 4)
-	mid_split.add_child(mid)
-	var tb = HFlowContainer.new()
-	tb.add_theme_constant_override("h_separation", 6)
-	mid.add_child(tb)
-	for v in CardModel.VIEWS:
-		var vv: String = v
-		var b = _btn(tb, CardModel.VIEW_NAMES[v], func(): state.set_view(vv))
-		b.toggle_mode = true
-		b.set_meta("view", v)
-		view_tabs.append(b)
-	rows_btn = _btn(tb, "Rows: places", func():
-		state.rows_by = "person" if state.rows_by == "place" else "place"
-		state.changed.emit())
-	rows_btn.tooltip_text = "Places & sightings: one row per place (dots are people), or one row per person."
-	_btn(tb, "◀", func(): _goto_day(board.day_in_view() - 1))
-	day_label = Label.new()
-	day_label.add_theme_color_override("font_color", UITheme.color("accent"))
-	tb.add_child(day_label)
-	_btn(tb, "▶", func(): _goto_day(board.day_in_view() + 1))
-	_btn(tb, "Fit day", func(): _goto_day(board.day_in_view()))
-	_btn(tb, "Fit selection", func(): board.fit_selection())
-	_btn(tb, "Whole case", func(): board.fit_all())
 	board = BoardView.new()
-	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	board.custom_minimum_size = Vector2(420, 260)
+	canvas.add_child(board)
+	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas.move_child(board, 0)
+	board.view_changed.connect(_update_day_label)
 	board.card_activated.connect(func(num): _stage([num]))
 	board.row_clicked.connect(func(kind, id):
 		state.toggle(state.people if kind == "person" else state.places, id)
-		if kind == "person":
+		if kind == "person" and board.board_view() != "statements":
 			state.select_person(id)
-			show_profile(id))
-	mid.add_child(board)
+			show_profile(id, true))
+	board.person_context_requested.connect(_toggle_profile)
 	tray = DeductionTray.new()
 	tray.card_activated.connect(func(num): _stage([num]))
-	mid.add_child(tray)
-	var hint = Label.new()
-	hint.text = "Drag the background to pan, wheel to zoom (shift-wheel scrolls sideways). Hover a card for its strings; click to pin them. Click a row name to filter by it."
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.add_theme_font_size_override("font_size", 14)
-	hint.add_theme_color_override("font_color", UITheme.color("muted"))
-	mid.add_child(hint)
+	canvas.add_child(tray)
+	tray.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	tray.offset_top = -tray.FOLDED_H
+	tray.toggled.connect(func(open): tray.offset_top = -tray.OPEN_H if open else -tray.FOLDED_H)
+	board.tooltip_text = "Drag the background to pan; wheel to zoom. Double-click a card to build a case. Open tools from the bottom dock; drag panel titles to move and bottom-right corners to resize."
 	state.selection_changed.connect(func():
 		board.queue_redraw()
 		tray.queue_redraw())
 
-	# Right: the profile (the same component as on the town screen).
+	# The profile stays synchronized even while its panel is minimized.
+	var profile_panel = _make_panel("profile", "Profile", Vector2(540, 800))
+	profile_panel.content.add_child(theory_label)
 	profile = ProfilePanel.new()
 	profile.custom_minimum_size = Vector2(300, 0)
 	profile.build()
@@ -301,7 +324,62 @@ func build(font: Font) -> void:
 		reveal(n)
 		state.select_card(n)
 		board.fit_selection())
-	mid_split.add_child(profile)
+	profile_panel.content.add_child(profile)
+	_queue_panel_layout()
+
+func _make_panel(key: String, title: String, initial_size: Vector2):
+	var panel = BoardPanel.new()
+	canvas.add_child(panel)
+	panel.build(title)
+	panel.size = initial_size
+	panel.set_meta("initial_size", initial_size)
+	panels[key] = panel
+	panel.visibility_changed.connect(func(): panel_buttons[key].set_pressed_no_signal(panel.visible))
+	return panel
+
+func set_panel_open(key: String, on: bool) -> void:
+	var panel = panels[key]
+	if on:
+		if not _panels_placed:
+			_layout_panels()
+			_panels_placed = true
+		panel.fit_inside()
+		panel.move_to_front()
+	panel.visible = on
+
+func _queue_panel_layout() -> void:
+	if _panel_layout_pending:
+		return
+	_panel_layout_pending = true
+	_layout_after_frame.call_deferred()
+
+func _layout_after_frame() -> void:
+	# Container sorting may briefly report only the canvas minimum height.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_panel_layout_pending = false
+	_layout_panels()
+
+func _toggle_profile(id: String) -> void:
+	if panels["profile"].visible and profile.current() == id:
+		set_panel_open("profile", false)
+	else:
+		state.select_person(id)
+		show_profile(id, true)
+
+func _layout_panels() -> void:
+	if panels.size() < 3 or canvas.size.x <= 0 or canvas.size.y <= 0:
+		return
+	for panel in panels.values():
+		# Hidden controls are sized before their containers finish the first layout.
+		# Keep the intended defaults until a panel is actually opened by the player.
+		if not _panels_placed:
+			panel.size = panel.get_meta("initial_size")
+		panel.fit_inside()
+	if not _panels_placed:
+		panels["cards"].move_to(Vector2(8, 8))
+		panels["work"].move_to((canvas.size - panels["work"].size) / 2)
+		panels["profile"].move_to(Vector2(canvas.size.x - panels["profile"].size.x - 8, 8))
 
 func _heading(t: String) -> Label:
 	var l = Label.new()
@@ -336,6 +414,9 @@ func _btn(parent: Node, text: String, cb: Callable) -> Button:
 
 func set_game(game) -> void:
 	g = game
+	for key in panels:
+		set_panel_open(key, false)
+	tray.set_open(false)
 	board.setup(g, state)
 	tray.setup(g, state)
 	var pp: PopupMenu = person_menu.get_popup()
@@ -392,6 +473,7 @@ func open_theory() -> void:
 			if prof_opt.get_item_metadata(i) == ids[0]:
 				prof_opt.select(i)
 	_refresh_profile()
+	set_panel_open("profile", true)
 	guess_opt.grab_focus()
 
 func _input(ev: InputEvent) -> void:
@@ -456,9 +538,6 @@ func _clear_filters() -> void:
 func _sync_menus() -> void:
 	if _fill_kinds_view != state.view:
 		_fill_kinds()
-	for i in range(view_opt.item_count):
-		if view_opt.get_item_metadata(i) == state.view:
-			view_opt.select(i)
 	if filter_edit.text != state.text:
 		filter_edit.set_block_signals(true)
 		filter_edit.text = state.text
@@ -527,6 +606,7 @@ func _refresh_board() -> void:
 
 func _refresh_chips(shown: int) -> void:
 	status_label.text = state.status_text(g, shown)
+	status_label.tooltip_text = status_label.text
 	for ch in chip_row.get_children():
 		ch.queue_free()
 	var chips: Array = state.chips(g)
@@ -553,6 +633,8 @@ func _stage(nums: Array) -> void:
 			staged.append(x)
 	card_list.deselect_all()
 	_refresh_work()
+	if not nums.is_empty():
+		set_panel_open("work", true)
 
 func _unstage(nums: Array) -> void:
 	staged = staged.filter(func(x): return not (x in nums))
@@ -582,8 +664,10 @@ func _refresh_work() -> void:
 func _refresh_profile() -> void:
 	profile.refresh()
 
-func show_profile(id: String) -> void:
+func show_profile(id: String, open: bool = false) -> void:
 	profile.show_person(id)
+	if open:
+		set_panel_open("profile", true)
 
 func _on_save_profile() -> void:
 	profile.save()
@@ -787,6 +871,7 @@ func _on_file() -> void:
 
 ## Teaching helper: what the selected card could be linked with, and what that would show.
 func _hint_selected() -> void:
+	set_panel_open("work", true)
 	var sel: Array = card_list.selected_metas().filter(func(x): return x is int and x > 0)
 	if sel.is_empty():
 		result_text.text = "Select a card to see what it could be linked with."
@@ -803,6 +888,7 @@ func _hint_selected() -> void:
 
 ## Board hint: cards already on your board that a pattern would connect.
 func _find_links() -> void:
+	set_panel_open("work", true)
 	var found: Array = g.find_links()
 	if found.is_empty():
 		result_text.text = "Nothing among your recent cards links up yet."

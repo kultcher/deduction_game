@@ -1949,7 +1949,7 @@ static func public_case(w, nominee, card: Dictionary, direction: String) -> void
 
 ## Tavern gossip. Returns {lines, facts}.
 static func gossip(w) -> Dictionary:
-	var present: Array = w.npcs_at("tavern")
+	var present: Array = w.npcs_at("tavern").filter(func(n): return not n.silenced)
 	if present.is_empty():
 		return {"lines": ["The tavern is nearly empty. Nobody to overhear."], "facts": []}
 	var weights: Array = present.map(func(m): return 0.1 + trait_of(m, "gossip"))

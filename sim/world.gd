@@ -1184,7 +1184,7 @@ func _kill(v) -> void:
 	var why = "Trace matches where the demon spent the evening (%s)." % true_block
 	# A misleading trace has a cause: someone else passed the cottage that night and left
 	# traces from where *they* spent the evening.
-	var passers: Array = night_walkers.filter(func(wk): return wk["id"] != demon_id and v.home_block in wk.get("path", [wk["block"]]))
+	var passers: Array = night_walkers.filter(func(wk): return wk["id"] != demon_id and wk["id"] != v.id and v.home_block in wk.get("path", [wk["block"]]))
 	if not passers.is_empty() and chance(0.4):
 		var wk: Dictionary = pick(passers)
 		var o = by_id[wk["id"]]

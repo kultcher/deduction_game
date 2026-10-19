@@ -12,19 +12,12 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
-- **Silenced NPCs can approach you.** Fenwick, silenced until the next evening, sought
-  you out the next morning (the approach check ignores silence; tavern gossip should
-  skip the silenced too). (96773) [decided]
 - **Meeting opinions cite private evidence with no card.** Hollis: "I saw them out at
   night where someone was killed" (his unshared Night Watch reading) made only an
   opinion card. Rule: an NPC can't cite something as a reason unless they've already
   made that claim, at least privately to you. Evil leaning on a fabricated reason has to
   put the fake claim out first, which turns its lies into cards you can check.
   (96773) [decided]
-- **The victim leaves a "misleading trace" at their own cottage.** Hollis was out on his
-  watch and killed at home; the trace code counted him as someone who passed the
-  cottage. Exclude the victim. (All three traces in 96773 were misleading; re-measure
-  the true-trace rate with every block joined.) [decided]
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -103,8 +96,6 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   meeting too as noise. (DESIGN) [open]
 - **Throw a teammate under the bus:** a pressured minion distances themselves from the
   demon; the demon goes along with town conclusions to build trust. (DESIGN) [open]
-- **Full-screen case board** with profile, deductions and cards as overlays; ties into
-  modular, movable windows (also deferred). [decided]
 - **Claims/reveals timeline** next to the location timeline. (DESIGN) [open]
 - **Dialogue voices for the rest of the cast.** The composer is merged (Agnes,
   Bartholomew, Constance × five situations; dialogue lab at `ui/dialogue_lab.tscn`).
@@ -118,6 +109,19 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 
 ## 4. Major structural work (a week or more; design first)
 
+- **Pattern-based cases.** Alongside existing deductions, build a case from many
+  cards, without the three-card limit: repeated encounters, conflicting stories, or
+  other patterns. Offer small observation cards automatically ("Bart was near a
+  silencing"), then let the player name a suspect and a role or explanation. Show
+  support, counterevidence, gaps, and other people who fit. Unknown whereabouts are
+  not an alibi; retellings and observation cards don't count the same evidence again.
+  NPCs weigh what was actually presented plus what they know, considering sources
+  and alternatives, and explain their response. Reassess when evidence becomes
+  doubtful. Use plain-language strength, not exact odds. Prototype one pattern first,
+  initially reporting assessments without changing votes. Breathstealer contact is
+  one example, not the scope; use actual possible action times (currently any daytime
+  phase, with silence starting at the meeting). [decided: prototype; broader design
+  open; discussed 2026-10-19]
 - **Night movement and trace model.** One package of related items:
   - the deferred night-proximity rule for sightings (route from home to the death
     block);
@@ -234,3 +238,31 @@ Settled decisions, built work and parked levers, kept for the record.
 - **Template gaps built Oct 18:** Martyr saves as proof of good; the chosen hanged with the Martyr standing; a pair reading naming two proven-good people; filed good / Marked / red herring deductions as template inputs; a Seer pair with one proven good.
 - **Vigil deterrent:** tried and removed Oct 18 (it cost the bot's vigil catches). Offered vigils build trust only.
 - **An open Warden: "I saw X out while I stood guard":** dropped Oct 19.
+- **Oct 19: silenced NPC eligibility.** Silenced NPCs are excluded from player
+  approaches and tavern gossip. They become eligible again when silence ends. (96773)
+- **Oct 19: victim trace filter.** A victim's own night walk cannot supply the
+  misleading trace at their cottage. Other passers still can; no balance tuning. (96773)
+- **Oct 19: full-screen case board.** The grid fills the canvas. Cards & filters,
+  Build case, and Profile start minimized and open as movable, resizable overlays.
+  Opening or minimizing them preserves the board's pan/zoom and the working set;
+  staging cards opens Build case, and Record theory opens Profile. The deduction
+  tray also overlays the grid. Initial zoom waits for the visible layout to settle.
+  Checked with rendered views and mouse drags; regression checks: 71 fixes, 28 social,
+  and 63 UI checks passed on standard Godot 4.4.1. The UI test's existing synthetic
+  card-drag preview and shutdown resource diagnostics remain.
+- **Oct 19: case-board layout and filter follow-up.** Fixed recognized text filters
+  resizing initially closed tools: filter chips/status keep a stable dock height,
+  and overlay sizing waits for container layout to settle. Shared text, kind,
+  person, place and any/all filters now live only on the main screen and apply to
+  both the grid and Cards. Added the centered title and view tabs, filters with
+  day/fit controls below, and a bottom-left dock for Cards, Build case, Profile,
+  Notes and Roles, retaining the existing visual style. Timeframes have stronger
+  separators and subtle distinct tints, darkest at night; morning/evening use
+  sunrise/paler sunset icons. Statement, reading and accusation glyphs supplement
+  role icons; no legend. In Statements, left-clicking a name only filters;
+  right-click opens its profile, switches to another person, or minimizes the
+  already displayed person's profile. Checked rendered layouts and panel mouse
+  movement/resizing; 81 UI and 25 board checks passed on standard Godot 4.4.1,
+  including recognized/misspelled filters before opening tools and profile toggles.
+  The UI test's existing synthetic drag-preview and shutdown diagnostics remain;
+  the rendered check completed without errors.

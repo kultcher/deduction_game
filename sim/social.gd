@@ -253,7 +253,7 @@ static func approach_candidate(w):
 	var best_s = 0.0
 	var agenda = ""
 	for n in w.living():
-		if not n.available() or n.working:
+		if not n.available() or n.working or n.silenced:
 			continue
 		var s = 0.0
 		var a = ""

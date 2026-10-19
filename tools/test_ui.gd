@@ -4,6 +4,7 @@
 extends SceneTree
 
 const C = preload("res://sim/content.gd")
+const Icons = preload("res://ui/board_icons.gd")
 var fails = 0
 
 func _init() -> void:
@@ -11,18 +12,84 @@ func _init() -> void:
 	root.add_child(scene)
 	await process_frame
 	await process_frame
+	scene.roles_win.hide()
+	scene.show_script_at_start = false
 	var g = scene.g
 	for cmd in ["go tavern", "wait", "go well", "wait", "go tavern", "wait", "wait", "done", "vigil square", "board", "timeline"]:
 		scene._run(cmd)
 	await process_frame
 	scene._open_case_view()
-	await process_frame
+	for i in range(3):
+		await process_frame
 	var cv = scene.case_view
+	_check(cv.panels.values().all(func(p): return not p.visible), "case-board tools start minimized")
+	_check(cv.board.size.is_equal_approx(cv.canvas.size), "the grid fills the canvas without sidebar columns")
+	_check(cv.board.zoom > 1.0, "the initial day view uses the full canvas rather than the hidden control's startup size")
+	_check(not cv.panels["cards"].is_ancestor_of(cv.filter_edit) and not cv.panels["cards"].is_ancestor_of(cv.kind_menu), "shared filters live on the main case screen, outside the card popup")
+	_check(cv.dock.get_global_rect().position.y >= cv.canvas.get_global_rect().end.y, "popup controls live in the bottom dock")
+	var panel_rects = {}
+	for key in cv.panels:
+		panel_rects[key] = cv.panels[key].get_rect()
+	var canvas_before: Vector2 = cv.canvas.size
+	var recognized: String = g.w.npcs[0].id
+	for query in [recognized, recognized + "zzz", "fenwick", "fenwhick", "lian", "liahn", ""]:
+		cv.filter_edit.text = query
+		cv.filter_edit.text_changed.emit(query)
+		for i in range(6):
+			await process_frame
+		var stable = cv.canvas.size.is_equal_approx(canvas_before)
+		for key in cv.panels:
+			stable = stable and cv.panels[key].get_rect().is_equal_approx(panel_rects[key])
+		_check(stable, "filter '%s' preserves closed overlays and canvas dimensions" % query)
+	cv.set_panel_open("profile", true)
+	cv.set_panel_open("work", true)
+	_check(cv.panels["profile"].get_rect().is_equal_approx(panel_rects["profile"]) and cv.panels["work"].get_rect().is_equal_approx(panel_rects["work"]), "filtered-before-opening tools retain their original dimensions")
+	cv.set_panel_open("profile", false)
+	cv.set_panel_open("work", false)
+	var board_rect: Rect2 = cv.board.get_global_rect()
+	var board_pan: Vector2 = cv.board.pan
+	var board_zoom: float = cv.board.zoom
+	for key in cv.panels:
+		cv.panel_buttons[key].emit_signal("pressed")
+		await process_frame
+		_check(cv.panels[key].visible and cv.panel_buttons[key].button_pressed, "%s opens from the dock" % key)
+		var panel = cv.panels[key]
+		_check(panel.size.x >= 400 and panel.size.y >= 500, "%s opens at a usable size after the initial layout" % key)
+		panel.move_to(Vector2.ZERO)
+		panel.resize_to(Vector2(410, 320))
+		await process_frame
+		_check(panel.size.x < 600 and panel.size.y < 400, "%s can be resized" % key)
+		panel.move_to(cv.canvas.size * 2)
+		_check(Rect2(Vector2.ZERO, cv.canvas.size).encloses(panel.get_rect()), "%s stays reachable inside the canvas" % key)
+		panel.hide()
+		_check(not cv.panel_buttons[key].button_pressed, "%s minimizing updates its dock toggle" % key)
+	await process_frame
+	_check(cv.board.get_global_rect().is_equal_approx(board_rect) and cv.board.pan == board_pan and cv.board.zoom == board_zoom,
+		"opening, moving, resizing and minimizing tools preserves the board viewport")
+	cv.set_panel_open("work", true)
+	var floating = cv.panels["work"]
+	floating.move_to(Vector2(140, 40))
+	floating.resize_to(Vector2(500, 400))
+	await process_frame
+	var position_before: Vector2 = floating.position
+	var at: Vector2 = floating.global_position + Vector2(60, 20)
+	await _drag_panel(at, at + Vector2(80, 40))
+	_check(floating.position.is_equal_approx(position_before + Vector2(80, 40)), "dragging a panel title moves the overlay")
+	var size_before: Vector2 = floating.size
+	at = floating.global_position + floating.size - Vector2(18, 18)
+	await _drag_panel(at, at + Vector2(60, 30))
+	_check(floating.size.is_equal_approx(size_before + Vector2(60, 30)), "dragging the corner resizes the overlay")
+	floating.hide()
 	print("case view visible: ", cv.visible, " cards listed: ", cv.card_list.count(), " board items: ", cv.board.lay.get("items", []).size())
 	if cv.card_list.count() >= 2:
 		cv.card_list.select_index(0)
 		cv.card_list.select_index(1)
 		cv._stage(cv.card_list.selected_metas())
+		_check(cv.panels["work"].visible, "staging evidence opens the case builder")
+		var staged_before: Array = cv.selected_cards()
+		cv.set_panel_open("work", false)
+		cv.set_panel_open("work", true)
+		_check(cv.selected_cards() == staged_before, "minimizing and reopening the builder preserves staged evidence")
 		cv.filter_edit.text = "zzz"
 		cv._refresh_cards()
 		print("working set survives filtering: ", cv.selected_cards().size() == 2)
@@ -60,6 +127,7 @@ func _init() -> void:
 	scene._new_case()
 	g = scene.g
 	cv = scene.case_view
+	_check(cv.panels.values().all(func(p): return not p.visible), "a new case starts with tools minimized again")
 	_check("not recorded" in scene.theory_label.text, "console reminds the player to record a theory")
 	cv.prof_opt.select(0)
 	cv._refresh_profile()
@@ -70,7 +138,7 @@ func _init() -> void:
 	cv._on_save_profile()
 	_check(g.guesses[id]["guess"] == "demon" and g.w.by_id[id].name in scene.theory_label.text, "profile guess updates the persistent banner")
 	scene._open_theory()
-	_check(cv.visible and cv.prof_opt.get_item_metadata(cv.prof_opt.selected) == id, "Record theory opens the saved candidate's profile")
+	_check(cv.visible and cv.panels["profile"].visible and cv.prof_opt.get_item_metadata(cv.prof_opt.selected) == id, "Record theory opens the saved candidate's profile")
 	g.capture_prediction("before_night")
 	g.w._finish("evil", "UI test")
 	scene._run("look")
@@ -150,6 +218,39 @@ func _init() -> void:
 	var any_n = cv.card_list.count()
 	print("filters: one person %d, two people %d; +sightings: all %d, any %d" % [one, both, all_n, any_n])
 	_check(both >= one and any_n >= all_n, "multi-select filters: OR within a list; 'all' narrows across lists")
+	# Statements: left click filters; right click opens, switches, or closes a profile.
+	scene._open_case_view()
+	cv._clear_filters()
+	cv.state.set_view("statements")
+	cv.set_panel_open("profile", false)
+	cv.board.fit_all()
+	for i in range(3):
+		await process_frame
+	var people_rows: Array = cv.board._row_hits.filter(func(r): return r["row"]["kind"] == "person")
+	_check(people_rows.size() >= 2, "two person labels are available for profile interactions")
+	if people_rows.size() >= 2:
+		var first_row: Dictionary = people_rows[0]
+		var second_row: Dictionary = people_rows[1]
+		var click = InputEventMouseButton.new()
+		click.pressed = true
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.position = first_row["rect"].get_center()
+		cv.board._gui_input(click)
+		_check(not cv.panels["profile"].visible and cv.state.people.has(first_row["row"]["id"]), "left-clicking a statement name filters without opening Profile")
+		var filters_before = cv.state.people.duplicate()
+		click.button_index = MOUSE_BUTTON_RIGHT
+		cv.board._gui_input(click)
+		_check(cv.panels["profile"].visible and cv.profile.current() == first_row["row"]["id"], "right-clicking a name opens that profile")
+		click.position = second_row["rect"].get_center()
+		cv.board._gui_input(click)
+		_check(cv.panels["profile"].visible and cv.profile.current() == second_row["row"]["id"], "right-clicking another name switches the open profile")
+		cv.board._gui_input(click)
+		_check(not cv.panels["profile"].visible and cv.state.people == filters_before, "right-clicking the shown person closes Profile without changing filters")
+	cv._clear_filters()
+	cv.state.set_view("places")
+	_check(Icons.kind_for({"kind": "info"}) == "reading" and Icons.kind_for({"kind": "claim"}) == "statement" and Icons.kind_for({"kind": "accusation"}) == "accusation", "readings, statements and accusations have distinct icon meanings")
+	_check(["statement", "reading", "accusation", "sunrise", "sunset"].all(func(k): return Icons.texture(k) != null), "all new line icons render")
+	_check(Icons.phase_shade(C.NIGHT).a > Icons.phase_shade(C.MORNING).a and Icons.phase_shade(C.MORNING) != Icons.phase_shade(C.EVENING), "night has the strongest shading and day phases differ subtly")
 	# The case board: items drawn, a card can be dragged out, a deduction pinned and unpinned.
 	scene._open_case_view()
 	for i in range(4):
@@ -287,3 +388,30 @@ func _esc() -> InputEventKey:
 	e.pressed = true
 	e.keycode = KEY_ESCAPE
 	return e
+
+func _drag_panel(start: Vector2, finish: Vector2) -> void:
+	var move = InputEventMouseMotion.new()
+	move.position = start
+	move.global_position = start
+	root.push_input(move, true)
+	await process_frame
+	var press = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = start
+	press.global_position = start
+	root.push_input(press, true)
+	await process_frame
+	move = InputEventMouseMotion.new()
+	move.position = finish
+	move.global_position = finish
+	move.relative = finish - start
+	move.button_mask = MOUSE_BUTTON_MASK_LEFT
+	root.push_input(move, true)
+	await process_frame
+	press = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.position = finish
+	press.global_position = finish
+	root.push_input(press, true)
+	await process_frame

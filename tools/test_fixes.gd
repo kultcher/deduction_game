@@ -11,6 +11,7 @@ const C = preload("res://sim/content.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
 const Argue = preload("res://sim/argue.gd")
 const CardList = preload("res://ui/card_list.gd")
+const Social = preload("res://sim/social.gd")
 
 var fails = 0
 
@@ -32,6 +33,8 @@ func _init() -> void:
 	_own_lies()
 	_corroboration()
 	_claim_backed_options()
+	_silenced_speakers()
+	_victim_trace()
 	print("FIXES FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -45,6 +48,54 @@ func _check(ok: bool, label: String) -> void:
 	print(("PASS " if ok else "FAIL ") + label)
 	if not ok:
 		fails += 1
+
+func _silenced_speakers() -> void:
+	var g = _game(7130)
+	var w = g.w
+	var speaker = w.living_good()[0]
+	var target = w.living_good()[1]
+	for n in w.living():
+		n.loc = "home"
+		n.working = false
+		n.busy_with = ""
+	speaker.loc = "tavern"
+	speaker.traits["gossip"] = 1.0
+	speaker.beliefs.append({"kind": "saw", "who": target.id, "block": target.home_block, "day": w.day - 1, "phase": C.NIGHT})
+	speaker.silenced = true
+	var approached = false
+	for i in range(60):
+		approached = approached or Social.approach_candidate(w) != null
+	_check(not approached, "a silenced NPC cannot approach, even with fresh gossip")
+	var quiet = Mind.gossip(w)
+	_check(quiet["facts"].is_empty() and "Nobody to overhear" in quiet["lines"][0], "a tavern with only silenced NPCs has no speakers")
+	speaker.silenced = false
+	for i in range(60):
+		approached = approached or Social.approach_candidate(w) != null
+	_check(approached, "an NPC can approach again once silence ends")
+	_check(not Mind.gossip(w)["facts"].is_empty(), "an NPC can supply tavern gossip again once silence ends")
+
+func _victim_trace() -> void:
+	var all_true = true
+	var other_passers_can_mislead = false
+	for seed_v in range(7140, 7170):
+		var g = _game(seed_v)
+		var w = g.w
+		var victim = w.living_good()[0]
+		var d = w.demon()
+		var other_block: String = C.BLOCKS.keys().filter(func(b): return b != d.home_block)[0]
+		d.history[w.time_key(w.day, C.EVENING)] = "home:" + d.home_block
+		victim.history[w.time_key(w.day, C.EVENING)] = "home:" + other_block
+		w.night_walkers = [{"id": victim.id, "block": victim.home_block, "path": [victim.home_block], "why": "keeping watch"}]
+		w._kill(victim)
+		all_true = all_true and w.scenes["scene_" + victim.id]["trace_true"]
+		var next_victim = w.living_good()[0]
+		var passer = w.living_good()[1]
+		passer.history[w.time_key(w.day, C.EVENING)] = "home:" + other_block
+		w.night_walkers = [{"id": passer.id, "block": next_victim.home_block, "path": [next_victim.home_block], "why": "passing by"}]
+		w._kill(next_victim)
+		other_passers_can_mislead = other_passers_can_mislead or not w.scenes["scene_" + next_victim.id]["trace_true"]
+	_check(all_true, "a victim's own night walk cannot create a misleading trace at their cottage")
+	_check(other_passers_can_mislead, "other passers can still leave misleading traces")
 
 func _roads() -> void:
 	var direct = true

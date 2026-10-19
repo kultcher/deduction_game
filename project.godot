@@ -1,12 +1,23 @@
 ; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
 config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
 config/name="Demonologist (text prototype)"
 config/description="Single-player social deduction prototype inspired by Blood on the Clocktower."
 run/main_scene="res://ui/main.tscn"
-config/features=PackedStringArray("4.4")
+config/features=PackedStringArray("4.7")
 
 [display]
 
@@ -14,3 +25,7 @@ window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[dotnet]
+
+project/assembly_name="Demonologist (text prototype)"
