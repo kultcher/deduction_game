@@ -12,7 +12,20 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
-All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones go here.
+Cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones:
+
+- **Silenced NPCs can approach you.** Fenwick, silenced until the next evening, sought
+  you out the next morning (the approach check ignores silence; tavern gossip should
+  skip the silenced too). (96773) [decided]
+- **Meeting opinions cite private evidence with no card.** Hollis: "I saw them out at
+  night where someone was killed" (his unshared Night Watch reading) made only an
+  opinion card. A reason that rests on the speaker's own sighting or reading should
+  disclose it as a card (evil citing a fabricated one, a fake card), or not be cited.
+  (96773) [decided]
+- **The victim leaves a "misleading trace" at their own cottage.** Hollis was out on his
+  watch and killed at home; the trace code counted him as someone who passed the
+  cottage. Exclude the victim. (All three traces in 96773 were misleading; re-measure
+  the true-trace rate with every block joined.) [decided]
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -25,6 +38,18 @@ All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones 
   roster expansion) [decided]
 
 ### NPC behaviour
+- **Offering protection eases fear.** Someone you've offered your ward or a vigil (and
+  kept your word to) should be less afraid to say what they are. (96773) [decided]
+- **More talk in town, especially in bigger towns.** 96773 (10 townsfolk, 4 days): 7
+  conversations, 7 shares; three conversations passed nothing on, and one pair swapped
+  the same sighting back and forth. Scale conversations with population, let each pass
+  on the one or two most newsworthy things the other hasn't heard, never echo back what
+  you were just told. Check with bot runs. [decided]
+- **Fake Medium readings** (with the shadow self, below): fit the dead's public record
+  (Hollis watched the Square on night 2, so he can't have "seen Jory on the Market"),
+  match the dead's claimed gift (an unshared Night Watch report, say), frame the
+  scapegoat where it matters (a block away from their home, near a death; seen on their
+  own block only says they went out), and don't frame every night. [decided]
 - **NPCs push back on nominations their own information contradicts** (a player-led
   nomination of the true Seer passed 7/8). (DESIGN playtests) [open]
 - **Lie severity:** a false gift report weighs more than a whereabouts lie, unless the
@@ -116,6 +141,10 @@ All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones 
   - traces based on where the killer *started* rather than their evening block (this
     fixes the evening-shift demon problem);
   Timing within the night: settled, not modelled (a night stays one instant).
+  With every block joined, a walker is seen only at home (leaving) or at their
+  destination, so "passing vs stopping" mostly collapses into "seen on their own block
+  (they went out)" vs "seen elsewhere (where they went)"; homes are what tells the two
+  apart.
   When this is settled, check whether the home cards and haunt cards still earn their
   place (with every block joined, a route is just home → destination and homes may say
   little a template needs); remove them if not. The
@@ -128,6 +157,18 @@ All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones 
   window glimpses), and the wording ("heading toward the Docks" vs "out on the
   Docks"). Destination sightings on a kill night overlap with the night-proximity rule,
   and it makes vigils stronger. [open]
+- **Breathstealer confirms the good.** It only silences the good, so a silenced person
+  is proven good, and the role's visible effect becomes a gift to the town. Options:
+  (a) the Breathstealer may silence a teammate under suspicion, as cover (a strong evil
+  play; silence becomes "probably good"); (b) silence goes quiet: not announced; the
+  victim volunteers nothing and stonewalls direct questions, with a small tell you can
+  see in private ("…opens her mouth, then shakes her head"); evil can feign it; (c) both.
+  [open; see 96773 discussion]
+- **Shadow good self for evil** (part of the rebuttal/meeting work): each evil NPC runs
+  the good belief pipeline on public information plus its own fake readings; public acts
+  default to what that self would do, overridden only when the stakes beat the exposure.
+  Gives consistent cover, blending in, throwing teammates under the bus as a choice, and
+  a difficulty dial (how often evil overrides). [decided]
 - **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration).
   Relationship mods for the Lovers live here too. [open]
 - **Roster expansion:** On Deck gifts (Tracker, Clairvoyant, Beckon, Tallyman…); minions
@@ -175,6 +216,16 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   there); a reading that failed on a night someone was near the reader's home (the
   Poisoner's visit); a totem found and the people who live where its material is from
   (the Revenant). Needs "silenced" and "totem" facts that templates read.
+- **Breathstealer by presence:** someone silenced, and who was on their block that
+  evening (the Breathstealer has to be there); over several silencings, the one person
+  present each time. (96773: Bartholomew was nearby for each.) Needs "silenced" facts
+  with where the silenced person was. Depends on the Breathstealer decision below.
+- **Night companions of the proven evil:** out on the same block on the same nights as
+  someone proven evil (a Gravedigger-confirmed Poisoner) → likely their teammate. 96773:
+  Hollis's watch put Isolde out with Greta on night 1 (the kill block) and night 2;
+  Greta was hanged and shown to be the Poisoner, but nothing linked Isolde to her.
+- **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
+  guarded a different block that night, so couldn't have seen what the Medium says.
 - **Accounting:** a Lamplighter's "N others out" plus home alibis for everyone but one
   → the unaccounted person was out.
 - **Role confirmations:** a Clerk or Gravedigger confirming someone's gift → that claim
