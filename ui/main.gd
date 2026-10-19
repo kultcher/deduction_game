@@ -968,7 +968,7 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 		cs.reverse()  # newest first
 		for c in cs:
 			if keep.call(c):
-				lst.add(CardList.line_for(c), c["n"], c["text"], Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else CardList.tint_for(c))
+				lst.add(CardList.line_for(c), c["n"], c["text"], CardList.color_for(c, Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else CardList.tint_for(c)))
 	fill.call()
 	f.text_changed.connect(func(_x): fill.call())
 	var mode: OptionButton = null
@@ -1030,7 +1030,7 @@ func _refresh_side() -> void:
 		else:
 			col = CardList.tint_for(c)
 		var dbg = g.debug_card_text(c) if g.debug_overlay else ""
-		side_list.add("%s%s" % [CardList.line_for(c), ("\n      ⟨" + dbg + "⟩") if dbg != "" else ""], c["n"], c["text"], col)
+		side_list.add("%s%s" % [CardList.line_for(c), ("\n      ⟨" + dbg + "⟩") if dbg != "" else ""], c["n"], c["text"], CardList.color_for(c, col))
 	_refresh_profile()
 
 func _refresh_profile() -> void:

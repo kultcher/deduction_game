@@ -636,7 +636,7 @@ func _refresh_cards() -> void:
 		else:
 			col = CardList.tint_for(c)
 		card_list.add(line, c["n"], "%s\n[%s, %s%s]" % [c["text"], c["kind"], c.get("class", "?"),
-			"" if c.get("source", "") == "player" else ", heard"], col)
+			"" if c.get("source", "") == "player" else ", heard"], CardList.color_for(c, col))
 		if c["n"] in keep:
 			card_list.select_meta(c["n"])
 	_refresh_board()
@@ -698,7 +698,7 @@ func _refresh_work() -> void:
 	for x in staged:
 		var c: Dictionary = g.board[x - 1]
 		work_list.add("#%-3d %-10s %s" % [x, c["kind"], c["text"]], x, c["text"],
-			Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else null)
+			CardList.color_for(c, Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else null))
 	_update_preview()
 	# Live: what the working set suggests, as cards come and go.
 	if result_text != null:

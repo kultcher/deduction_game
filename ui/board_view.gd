@@ -291,6 +291,7 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 	var n: int = it["card"]
 	var card: Dictionary = g.board[n - 1]
 	var r = _item_rect(row, col, k)
+	var fade = UITheme.card_color(card)
 	if not r.intersects(Rect2(Vector2.ZERO, size)):
 		return
 	_items.append({"rect": r, "n": n})
@@ -309,12 +310,12 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 				chip = UITheme.color("paper_dim")
 		if card.get("kind", "") in ["death", "execution"]:
 			chip = Color(0.25, 0.22, 0.24)
-		draw_rect(r, chip)
-		draw_rect(Rect2(r.position, Vector2(maxf(3.0, 6.0 * zoom), r.size.y)), src_col)
+		draw_rect(r, chip * fade)
+		draw_rect(Rect2(r.position, Vector2(maxf(3.0, 6.0 * zoom), r.size.y)), src_col * fade)
 	else:
-		draw_rect(Rect2(r.position + Vector2(3, 4) * zoom, r.size), Color(0, 0, 0, 0.35))  # shadow
-		_draw_paper(r, n, Color(0.85, 0.85, 0.85) if card.get("hidden", false) else Color.WHITE)
-		draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(4, r.size.y - 10 * zoom) * Vector2(zoom, 1)), UITheme.ink_of(src_col))
+		draw_rect(Rect2(r.position + Vector2(3, 4) * zoom, r.size), Color(0, 0, 0, 0.35) * fade)  # shadow
+		_draw_paper(r, n, fade)
+		draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(4, r.size.y - 10 * zoom) * Vector2(zoom, 1)), UITheme.ink_of(src_col) * fade)
 		var icon = _icon_for(card, it)
 		var kind = Icons.kind_for(card)
 		var kind_icon = Icons.texture(kind)
@@ -323,11 +324,11 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 		var icon_x = r.end.x - 26 * zoom
 		if icon != null:
 			var s = 20.0 * zoom
-			draw_texture_rect(icon, Rect2(Vector2(icon_x, r.position.y + 6 * zoom), Vector2(s, s * icon.get_height() / icon.get_width())), false)
+			draw_texture_rect(icon, Rect2(Vector2(icon_x, r.position.y + 6 * zoom), Vector2(s, s * icon.get_height() / icon.get_width())), false, fade)
 		if kind_icon != null:
 			var kind_y = r.end.y - 26 * zoom if icon != null else r.position.y + 6 * zoom
 			draw_texture_rect(kind_icon, Rect2(Vector2(icon_x, kind_y), Vector2(20, 20) * zoom), false,
-				UITheme.color("red").darkened(0.1) if kind == "accusation" else _ink)
+				(UITheme.color("red").darkened(0.1) if kind == "accusation" else _ink) * fade)
 		var fs = int(clampf(13.5 * zoom, 12, 28))
 		var names = {}
 		for m in g.w.npcs:
@@ -337,16 +338,16 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 			text = "Voted to hang %s" % names.get(card.get("nominee", ""), "?") if lod >= 1 else text
 		var lines = 2 if lod == 1 else 5
 		draw_multiline_string(_font, Vector2(tx, r.position.y + fs + 6 * zoom), text, HORIZONTAL_ALIGNMENT_LEFT,
-			r.size.x - 22 * zoom - 24 * zoom * icon_count, fs, lines, _ink)
+			r.size.x - 22 * zoom - 24 * zoom * icon_count, fs, lines, _ink * fade)
 		if lod == 2:
 			var heard = _heard_line(card)
 			if heard != "":
-				draw_string(_font, Vector2(tx, r.end.y - 6 * zoom), heard, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - (44 if kind_icon != null else 20) * zoom, int(fs * 0.8), UITheme.color("ink_soft"))
+				draw_string(_font, Vector2(tx, r.end.y - 6 * zoom), heard, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - (44 if kind_icon != null else 20) * zoom, int(fs * 0.8), UITheme.color("ink_soft") * fade)
 		if it["mark"] == "nominated":
 			var seal = UITheme.tex("ui/wax_seal", 0.25)
 			if seal != null:
 				var ss = 18.0 * zoom
-				draw_texture_rect(seal, Rect2(r.end - Vector2(ss + 4 * zoom, ss + 4 * zoom), Vector2(ss, ss)), false)
+				draw_texture_rect(seal, Rect2(r.end - Vector2(ss + 4 * zoom, ss + 4 * zoom), Vector2(ss, ss)), false, fade)
 	if selected or hovered:
 		draw_rect(r.grow(2), UITheme.color("string") if selected else UITheme.color("accent"), false, 2.0)
 	if n in _staged():
@@ -390,31 +391,32 @@ func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 	if not hit.intersects(Rect2(Vector2.ZERO, size)):
 		return
 	var n: int = it["card"]
+	var fade = UITheme.card_color(g.board[n - 1])
 	_items.append({"rect": hit, "n": n})
 	var who: String = it["who"]
 	var mark: String = it["mark"]
-	var col_c = C.npc_color(who) if g.w.by_id.has(who) else UITheme.color("paper_dim")
-	draw_circle(c + Vector2(1.5, 2.5) * zoom, rad, Color(0, 0, 0, 0.4))
+	var col_c = (C.npc_color(who) if g.w.by_id.has(who) else UITheme.color("paper_dim")) * fade
+	draw_circle(c + Vector2(1.5, 2.5) * zoom, rad, Color(0, 0, 0, 0.4) * fade)
 	match mark:
 		"solid":
 			draw_circle(c, rad, col_c)
 		"hollow":
-			draw_circle(c, rad, UITheme.color("bg"))
+			draw_circle(c, rad, UITheme.color("bg") * fade)
 			draw_arc(c, rad - 2 * zoom, 0, TAU, 28, col_c, maxf(2.0, 4.0 * zoom))
 		"ability":
 			draw_circle(c, rad, col_c.darkened(0.15))
-			draw_arc(c, rad + 2 * zoom, 0, TAU, 28, UITheme.color("border"), maxf(1.5, 2.5 * zoom))
+			draw_arc(c, rad + 2 * zoom, 0, TAU, 28, UITheme.color("border") * fade, maxf(1.5, 2.5 * zoom))
 		"trace":
 			var t = UITheme.tex("ui/wax_seal", 0.18)
 			if t != null:
-				draw_texture_rect(t, hit, false)
+				draw_texture_rect(t, hit, false, fade)
 			else:
-				draw_rect(hit, UITheme.color("red"))
+				draw_rect(hit, UITheme.color("red") * fade)
 	if who != "" and g.w.by_id.has(who):
 		var initial: String = g.w.by_id[who].name.substr(0, 1)
 		var fs = int(clampf(15 * zoom, 7, 30))
 		draw_string(_font, c + Vector2(-rad, fs * 0.35), initial, HORIZONTAL_ALIGNMENT_CENTER, rad * 2, fs,
-			UITheme.color("ink") if mark != "hollow" else col_c)
+			UITheme.color("ink") * fade if mark != "hollow" else col_c)
 		if _lod() >= 2:
 			var card: Dictionary = g.board[n - 1]
 			var where = C.loc_name(card["loc"]).trim_prefix("the ") if C.LOCATIONS.has(card.get("loc", "")) else ""
@@ -422,7 +424,7 @@ func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 			if card.get("kind", "") == "alibi":
 				lab = "home"
 			var lw = (DOT + 6.0) * zoom
-			draw_string(_font, c + Vector2(-lw / 2, rad + 11 * zoom), lab, HORIZONTAL_ALIGNMENT_CENTER, lw, int(clampf(8 * zoom, 7, 16)), UITheme.color("text"))
+			draw_string(_font, c + Vector2(-lw / 2, rad + 11 * zoom), lab, HORIZONTAL_ALIGNMENT_CENTER, lw, int(clampf(8 * zoom, 7, 16)), UITheme.color("text") * fade)
 	if n == state.selected_card or n == _hover:
 		draw_arc(c, rad + 4 * zoom, 0, TAU, 28, UITheme.color("string") if n == state.selected_card else UITheme.color("accent"), 2.0)
 
@@ -432,23 +434,24 @@ func _pin_rect(n: int) -> Rect2:
 
 func _draw_pinned(n: int) -> void:
 	var card: Dictionary = g.board[n - 1]
+	var fade = UITheme.card_color(card)
 	var r = _pin_rect(n)
 	_items.append({"rect": r, "n": n, "pinned": true})
-	draw_rect(Rect2(r.position + Vector2(4, 5) * zoom, r.size), Color(0, 0, 0, 0.4))
-	_draw_paper(r, n + 3, Color(1.0, 0.95, 0.85))
+	draw_rect(Rect2(r.position + Vector2(4, 5) * zoom, r.size), Color(0, 0, 0, 0.4) * fade)
+	_draw_paper(r, n + 3, Color(1.0, 0.95, 0.85) * fade)
 	var seal = UITheme.tex("ui/wax_seal", 0.2)
 	if seal != null:
 		var ss = 22.0 * zoom
-		draw_texture_rect(seal, Rect2(r.position + Vector2(r.size.x / 2 - ss / 2, -ss * 0.4), Vector2(ss, ss)), false)
+		draw_texture_rect(seal, Rect2(r.position + Vector2(r.size.x / 2 - ss / 2, -ss * 0.4), Vector2(ss, ss)), false, fade)
 	var fs = int(clampf(12.5 * zoom, 10, 28))
 	draw_multiline_string(_font, r.position + Vector2(10 * zoom, fs + 14 * zoom), card.get("text", "").trim_prefix("Deduction: "),
-		HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 18 * zoom, fs, 2 if _lod() < 2 else 6, UITheme.color("red").darkened(0.3))
+		HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 18 * zoom, fs, 2 if _lod() < 2 else 6, UITheme.color("red").darkened(0.3) * fade)
 	if n == state.selected_card or n == _hover:
 		draw_rect(r.grow(2), UITheme.color("string"), false, 2.0)
 	# A deduction's own strings to its supports are always shown, faintly.
 	for s in card.get("supports", []):
 		for rr in _rects_of(s):
-			_string(r.get_center(), rr.get_center(), Color(UITheme.color("string"), 0.35), 1.5)
+			_string(r.get_center(), rr.get_center(), Color(UITheme.color("string"), 0.35) * fade, 1.5)
 
 func _rects_of(n: int) -> Array:
 	return _items.filter(func(x): return x["n"] == n).map(func(x): return x["rect"])

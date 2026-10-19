@@ -30,6 +30,11 @@ const COLORS = {
 static func color(name: String) -> Color:
 	return COLORS.get(name, Color.WHITE)
 
+const HIDDEN_CARD_ALPHA = 0.42
+
+static func card_color(card: Dictionary, tint: Color = Color.WHITE) -> Color:
+	return tint * Color(1, 1, 1, HIDDEN_CARD_ALPHA if card.get("hidden", false) else 1.0)
+
 ## A character colour made dark enough to read on cream paper.
 static func ink_of(c: Color) -> Color:
 	return Color.from_hsv(c.h, minf(1.0, c.s * 1.1 + 0.25), 0.42)
