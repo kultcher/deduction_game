@@ -26,6 +26,9 @@ static func voiced(n, kind: String, statement: String, event_id: String = "", co
 	var rendered = Dialogue.compose(n.id, {"kind": kind, "statement": statement, "event_id": event_id}, cues, n.dialogue_memory)
 	return say(n, rendered["text"])
 
+static func decision_line(n, approved: Dictionary, audience: String = "player") -> Dictionary:
+	return say(n, Dialogue.decision(n.id, approved, audience, n.dialogue_memory)["text"])
+
 static func reconsideration_line(n, said: String) -> Dictionary:
 	var rendered = Dialogue.compose(n.id, Dialogue.reconsideration_intent(said), {"reconsidered": true}, n.dialogue_memory)
 	return say(n, rendered["text"])
@@ -951,7 +954,8 @@ static func next_nomination(w):
 	var nom = w.by_id[c["by"]]
 	var t = w.by_id[c["nominee"]]
 	var why: String = Evil.cite(w, nom, Evil.bluff_reason(w, nom, t) if nom.is_evil() else nom.sus_why.get(t.id, ""))
-	c["speech"] = say(nom, "I nominate %s.%s" % [t.name, (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else ""])
+	c["speech"] = decision_line(nom, {"kind": "nomination", "target": t.name,
+		"reason_text": (why[0].to_upper() + why.substr(1) + ".") if why != "" else ""}, "town")
 	return c
 
 static func defence_line(w, n) -> Dictionary:
@@ -968,9 +972,20 @@ static func defence_line(w, n) -> Dictionary:
 static func vote(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int) -> bool:
 	if v.id == nominee:
 		w.dlog.think(v.id, "vote", "Votes no on own execution.", {"nominee": nominee, "yes": false})
+		_vote_speech(w, v, nominee, false, "self")
 		return false
 	if v.is_evil():
-		return Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
+		var yes = Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
+		# Public cover only. Do not verbalize teammate/scapegoat strategy from evil_vote.
+		var cover = "enough" if yes else "insufficient"
+		if not yes and v.npc_trust.get(nominee, 0.5) > 0.6:
+			cover = "trust"
+		elif not yes and statement == "defend":
+			cover = "defend"
+		elif yes and statement == "accuse":
+			cover = "accuse"
+		_vote_speech(w, v, nominee, yes, cover)
+		return yes
 	reconsider(w, v, "thinking it over before the vote")
 	var base = susp(v, nominee)
 	var s = base
@@ -997,7 +1012,38 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 	parts["total"] = snappedf(s, 0.01)
 	parts["need"] = snappedf(need, 0.01)
 	w.dlog.think(v.id, "vote", "%s on %s (score %.2f vs %.2f)." % ["YES" if yes else "no", nominee, s, need], parts)
+	_vote_speech(w, v, nominee, yes, _vote_reason(parts, s, need, yes))
 	return yes
+
+## Explain an actual contributing factor. Prefer a factor that changed the outcome;
+## otherwise use the strongest contribution in the direction of the resolved vote.
+static func _vote_reason(parts: Dictionary, total: float, need: float, yes: bool) -> String:
+	var best = ""
+	var best_score = 0.0
+	for key in ["trust_in_nominee", "prefers_block", "persuaded_to_spare", "player_defends", "player_accuses", "player_votes_yes", "distrusts_nominator"]:
+		var value: float = parts.get(key, 0.0)
+		if (yes and value <= 0.0) or (not yes and value >= 0.0):
+			continue
+		var score = absf(value) + (1.0 if (total - value >= need) != yes else 0.0)
+		if score > best_score:
+			best_score = score
+			best = key
+	if best == "trust_in_nominee":
+		return "distrust" if yes else "trust"
+	# A negative response to the player's yes vote is distrust, not support.
+	if best == "player_votes_yes" and not yes:
+		return "insufficient"
+	return {"prefers_block": "block", "persuaded_to_spare": "spare", "player_defends": "defend", "player_accuses": "accuse", "player_votes_yes": "backing", "distrusts_nominator": "nominator"}.get(best, "enough" if yes else "insufficient")
+
+static func _vote_speech(w, v, nominee: String, yes: bool, reason: String) -> void:
+	# Silence suppresses speech, not the existing vote.
+	if v.silenced:
+		v.vote_speech = {}
+		return
+	var block: String = w.meeting.get("block", "")
+	v.vote_speech = decision_line(v, {"kind": "vote", "yes": yes, "target_id": nominee,
+		"target": w.by_id[nominee].name, "reason": reason,
+		"block": w.by_id[block].name if w.by_id.has(block) else ""}, "town")
 
 # ---------------------------------------------------------------- pressing
 
@@ -1700,7 +1746,7 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 		set_trust(w, n, n.trust + 0.05 * (1.0 - 0.5 * ins), "the Demonologist agrees with me about %s" % suspect.id)
 	elif delta >= 0.1:
 		set_trust(w, n, n.trust + 0.02, "player made a case that seemed sound")
-	return {"lines": lines, "facts": []}
+	return {"lines": lines, "facts": [], "repeated": times > 0}
 
 ## The player speaks for someone in private, citing a card ("present <card#> for <name>").
 static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
@@ -1736,7 +1782,7 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		lines.append(say(n, "Fair enough. I'll think better of %s." % gname))
 	else:
 		lines.append(say(n, "Maybe. I'll keep an open mind about %s." % gname))
-	return {"lines": lines, "facts": []}
+	return {"lines": lines, "facts": [], "repeated": h["times"] > 0}
 
 ## A card that implicates one of several people (a Seer "yes" on two): the case is split
 ## between them. Evil hears it through the usual mask.
@@ -1768,7 +1814,7 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 		lines.append(say(n, "That... does look bad for one of them."))
 	else:
 		lines.append(say(n, "Maybe. I'll keep an eye on them both."))
-	return {"lines": lines, "facts": []}
+	return {"lines": lines, "facts": [], "repeated": times > 0}
 
 ## A card-backed public statement on a nomination: every voter weighs it (more weakly than
 ## in private). direction: "accuse" or "defend". Returns a short summary for the log.

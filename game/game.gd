@@ -835,7 +835,7 @@ func _talk_command(verb: String, rest: String) -> void:
 			_err("In conversation: ask gift | ask night | ask today | ask seen <morning|afternoon|evening|yesterday> | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | bye")
 			return
 	# Something they've already heard from you: they say so, and it costs no question.
-	var repeat = r["lines"].size() == 1 and r["lines"][0] is Dictionary and r["lines"][0].get("text", "") == "You've told me that already."
+	var repeat: bool = r.get("repeated", false)
 	if repeat and free_repeats >= 1:
 		repeat = false  # once is a slip; after that it's wasting their time
 	if repeat:
@@ -969,7 +969,7 @@ func _nomination_command(verb: String, rest: String) -> void:
 					_secrets_used(card)
 					for v in w.living():
 						if v != t:
-							Argue.evaluate(w, v, card, board, 0.5)
+							Argue.evaluate(w, v, card, board, 0.5, false)
 				else:
 					Mind.public_case(w, t, card, verb)
 			if verb == "defend":
@@ -1001,6 +1001,7 @@ func _nomination_command(verb: String, rest: String) -> void:
 				return
 			capture_prediction("before_vote", {"nominee": t.id, "player_yes": yes})
 			var res: Dictionary = w.vote_pending(yes)
+			_lines(res.get("speeches", []))
 			var yes_names: Array = res["yes"].map(func(i): return w.by_id[i].name)
 			if res["player_yes"]:
 				yes_names.append("you")

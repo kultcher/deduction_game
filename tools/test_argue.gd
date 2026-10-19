@@ -52,7 +52,7 @@ func _init() -> void:
 	var r = Argue.evaluate(w, listener, g.board[dn - 1], g.board, 1.0)
 	print("evaluate poisoned: agreement %.2f -> %s" % [r["agreement"], r["lines"][0]["text"]])
 	var r2 = Argue.evaluate(w, listener, g.board[dn - 1], g.board, 1.0)
-	_check(r2["lines"][0]["text"].begins_with("You've told me"), "repeat argument is recognised")
+	_check(r2.get("repeated", false), "repeat argument is recognised")
 	# Self-knowledge: telling A they were out when they know they weren't.
 	var lk2 = g.link_cards([k1, k2])
 	var blame_b = 0
@@ -149,7 +149,6 @@ func _init() -> void:
 		# (Re-weighing skips changes under 0.02, so a very light argument may not visibly move.)
 		_check(wt1 > wt0 or L.trust - tr0 < 0.05 or wt0 * (L.trust - tr0) < 0.03, "argument re-weighed after trust rises (%.2f -> %.2f; trust %.2f -> %.2f)" % [wt0, wt1, tr0, L.trust])
 	# Evil replies use the shared lines.
-	var good_lines = ["You've told me that already.", "Maybe. I'll think on it.", "I don't buy it.", "I'd come to that already."]
 	var ev = w.demon()
 	var okl = true
 	for t in w.npcs:
@@ -158,8 +157,9 @@ func _init() -> void:
 		var de = g.file_deduction({"type": "good", "a": t.id}, [k1])
 		if de < 0:
 			continue
-		var line: String = Argue.evaluate(w, ev, g.board[de - 1], g.board, 1.0)["lines"][0]["text"]
-		if not (line in good_lines or line.begins_with("That's sound.") or line.begins_with("I don't buy it:")):
+		var reply = Argue.evaluate(w, ev, g.board[de - 1], g.board, 1.0)
+		var line: String = reply["lines"][0]["text"]
+		if not (reply["dialogue"]["stance"] in ["accept", "partial", "reject"] and not line.is_empty()):
 			okl = false
 			print("odd evil line: ", line)
 	_check(okl, "evil argument replies come from the shared set")
@@ -193,7 +193,7 @@ func _init() -> void:
 		var dme = g.file_deduction({"type": "unreliable", "a": P.id}, [ksp])
 		if dme > 0:
 			var rm = Argue.evaluate(w, P, g.board[dme - 1], g.board, 1.0)
-			_check(rm["lines"][0]["text"].begins_with("I'm no liar"), "misled-or-lying about yourself reads as misled (%s)" % rm["lines"][0]["text"])
+			_check("I'm no liar" in rm["lines"][0]["text"], "misled-or-lying about yourself reads as misled (%s)" % rm["lines"][0]["text"])
 	# present routing.
 	var lis2 = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))
 	if not lis2.is_empty():

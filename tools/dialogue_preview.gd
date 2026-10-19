@@ -13,7 +13,9 @@ func _init() -> void:
 			var context: Dictionary = scenario["context"].duplicate(true)
 			context.merge({"trust": 0.6, "pressure": 0.0, "audience": "player"})
 			var cast: Dictionary = C.CAST.filter(func(c): return c["id"] == id)[0]
-			var result = Dialogue.compose(id, scenario, context, {})
+			var memory = {}
+			Fixtures.prime(id, scenario, context["audience"], memory)
+			var result = Dialogue.compose(id, scenario, context, memory)
 			print("%s: %s" % [cast["name"], result["text"]])
 	print("\n--- Same fact, listener memory ---")
 	var memory = {}

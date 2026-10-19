@@ -671,6 +671,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 	var yes: Array = []
 	var no: Array = []
 	var order: Array = vote_order(nid)
+	var speeches: Array = []
 	for vid in order:
 		if vid == "player":
 			continue  # declared up front; counted as the hand passes your seat
@@ -680,6 +681,8 @@ func vote_pending(player_yes: bool) -> Dictionary:
 			public_event("vote_yes", [nid], v.id)
 		else:
 			no.append(v.id)
+		if not v.silenced and not v.vote_speech.is_empty():
+			speeches.append(v.vote_speech.duplicate(true))
 	var count = yes.size() + (1 if player_yes else 0)
 	var thr = vote_threshold()
 	var outcome = "fails"
@@ -694,7 +697,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		else:
 			outcome = "short_of_block"
 	var res = {"nominee": nid, "by": nm["by"], "yes": yes, "no": no, "player_yes": player_yes, "count": count,
-		"threshold": thr, "order": order, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"]}
+		"threshold": thr, "order": order, "speeches": speeches, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"]}
 	meeting["results"].append(res)
 	meeting["pending"] = {}
 	dlog.add("vote_tally", "world", nid, res)

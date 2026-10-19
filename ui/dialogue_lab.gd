@@ -39,7 +39,7 @@ func _ready() -> void:
 	body.add_theme_constant_override("separation", 18)
 	scroll.add_child(body)
 	_label(body, "Dialogue workshop", 32)
-	_label(body, "Three voices, five situations. Synthetic examples; no live case or hidden roles are loaded.", 18)
+	_label(body, "Three voices, fifteen situations. Synthetic examples; no live case or hidden roles are loaded.", 18)
 	var selectors = HFlowContainer.new()
 	selectors.add_theme_constant_override("h_separation", 18)
 	body.add_child(selectors)
@@ -88,7 +88,7 @@ func _ready() -> void:
 	reset.text = "Reset conversation memory"
 	reset.pressed.connect(reset_memory)
 	actions.add_child(reset)
-	_label(body, "Changing controls previews the next line. Speak records delivery; previews never consume memory.\nTrust and pressure affect reporting. Friendship gates the friend response. Confidentiality applies only to private reports.", 17)
+	_label(body, "Changing controls previews the next line. Speak records delivery; previews never consume memory.\nTrust and pressure affect reporting. Friendship gates the friend response. Confidentiality applies only to private reports. Decision scenarios use fixed, explicit assessments.", 17)
 	_refresh(false)
 
 func _label(parent: Node, text_value: String, font_size: int) -> Label:
@@ -135,6 +135,7 @@ func _refresh(deliver: bool) -> void:
 	core.text = "Approved statement: " + scenario["statement"]
 	for id in Fixtures.IDS:
 		var memory: Dictionary = memories[id] if deliver else memories[id].duplicate(true)
+		Fixtures.prime(id, scenario, context["audience"], memory)
 		var result = Dialogue.compose(id, scenario, context, memory)
 		outputs[id].text = result["text"]
 		cues[id].text = "%s · %s" % ["Delivered" if deliver else "Preview", result["cue"] if result["cue"] != "" else "unchanged fallback"]
