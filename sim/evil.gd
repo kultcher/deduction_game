@@ -131,35 +131,177 @@ static func review_scapegoat(w) -> void:
 	else:
 		w.dlog.think(w.demon_id, "scapegoat", "Evil keeps scapegoat %s (scores %s)." % [cur, str(table)], {"scores": table})
 
-## A fake Medium reading at dd's hearth that fits what the town knows of the dead
-## (shadow plan step 4), framing scapegoat s only where it matters and not every night:
-## - a public Night Watch "tells" an unshared watch report from their last night, of the
-##   block where it counts;
-## - otherwise a sighting of s near the death (the dead's own block, on their last night),
-##   but only if that isn't s's own block (seen on your own block only says you went out);
-## - on other nights, or when no frame fits: what the dead said in public (their last
-##   stance, if it wasn't against the team), or that they were home.
+## A fake Medium reading at dd's hearth. Drawn from the same menu a real Medium's
+## readings fall into, so no single kind of answer gives it away:
+## - now and then (C.MEDIUM_USELESS_CHANCE) something true-sounding but empty, as a real
+##   Medium sometimes gets;
+## - a reading in the dead's publicly claimed gift that they "never shared"
+##   (_fake_dead_reading): not always the most damning one; it may carry on an earlier
+##   suspicion of theirs, or quietly clear the demon;
+## - a sighting of the scapegoat near the death (the dead's own block, their last night),
+##   unless that's the scapegoat's own block;
+## - "nothing they hadn't already told us" (when they had shared readings), their last
+##   public stance, or that they were home.
+## Framing (anything that points at the good) isn't every night: after the first, about half.
 static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 	var night = maxi(0, dd.death_day - 1)
 	var sg = w.by_id[s]
+	if w.chance(C.MEDIUM_USELESS_CHANCE):
+		var gs: Array = w.living_good()
+		if not gs.is_empty() and w.chance(0.5):
+			var g = w.pick(gs)
+			return {"item": {"type": "sighting", "who": g.id, "block": g.home_block, "night": night, "lie": true, "idle": true},
+				"why": "an empty one: the dead saw %s out on their own block (no frame)" % g.id}
+		return {"item": {"type": "home", "night": night, "block": dd.home_block, "lie": false},
+			"why": "an empty one: the dead was home"}
 	var frames: int = w.evil_plan.get("medium_frames", 0)
-	var frame_ok = sg.home_block != dd.home_block and (frames == 0 or w.chance(0.5))
-	if frame_ok:
-		w.evil_plan["medium_frames"] = frames + 1
-		if dd.claim_public and dd.claimed_role == "nightwatch":
-			var e = {"role": "nightwatch", "day": night, "data": {"block": dd.home_block, "seen": [s]},
-				"text": "I watched %s: I saw %s pass by" % [C.block_name(dd.home_block), sg.name], "fake": true}
-			return {"item": {"type": "reading", "entry": e, "lie": true},
-				"why": "claims the dead Night Watch %s saw scapegoat %s on their last watch" % [dd.id, s]}
-		return {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": night, "lie": true},
-			"why": "claims the dead %s saw scapegoat %s out near their cottage on their last night" % [dd.id, s]}
-	var st: Dictionary = w.stances.get(dd.id, {})
-	var said: String = st.get("target", "")
+	var frame_ok = frames == 0 or w.chance(0.5)
+	var opts: Array = []   # [weight, {item, why, frames}]
+	if dd.claim_public and dd.claimed_role != "":
+		var r = _fake_dead_reading(w, n, dd, dd.claimed_role, s, night)
+		if not r.is_empty() and (frame_ok or not r["frames"]):
+			opts.append([3.0, {"item": {"type": "reading", "entry": r["entry"], "lie": true}, "why": r["why"], "frames": r["frames"]}])
+	if frame_ok and sg.home_block != dd.home_block:
+		opts.append([1.5, {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": night, "lie": true},
+			"why": "claims the dead %s saw scapegoat %s out near their cottage on their last night" % [dd.id, s], "frames": true}])
+	if dd.info_log.any(func(e): return e.get("shared", false)):
+		opts.append([0.8, {"item": {"type": "nothing", "lie": false}, "why": "says the dead %s had nothing new to tell" % dd.id, "frames": false}])
+	var said: String = w.stances.get(dd.id, {}).get("target", "")
 	if said != "" and w.by_id.has(said) and w.by_id[said].alive and not w.by_id[said].is_evil():
-		return {"item": {"type": "suspicion", "about": said, "lie": false},
-			"why": "repeats the dead %s's public distrust of %s (no frame tonight)" % [dd.id, said]}
-	return {"item": {"type": "home", "night": night, "block": dd.home_block, "lie": false},
-		"why": "says only that the dead %s was home (no frame tonight)" % dd.id}
+		opts.append([0.8, {"item": {"type": "suspicion", "about": said, "lie": false},
+			"why": "repeats the dead %s's public distrust of %s" % [dd.id, said], "frames": false}])
+	opts.append([0.4, {"item": {"type": "home", "night": night, "block": dd.home_block, "lie": false},
+		"why": "says only that the dead %s was home" % dd.id, "frames": false}])
+	var total = 0.0
+	for o in opts:
+		total += o[0]
+	var r2 = w.rng.randf() * total
+	var pick: Dictionary = opts[-1][1]
+	for o in opts:
+		r2 -= o[0]
+		if r2 <= 0.0:
+			pick = o[1]
+			break
+	if pick["frames"]:
+		w.evil_plan["medium_frames"] = frames + 1
+	return pick
+
+## Whether the demon has been named by any public reading (so clearing it is worth a lie).
+static func _demon_implicated(w) -> bool:
+	return w.public_log.any(func(e): return e["kind"] == "reading" and w.demon_id in e["subjects"])
+
+## A reading the dead (publicly the `role`) supposedly never shared, for their last night
+## (or the first night, for gifts that only read then). {} if none fits: the gift has no
+## readings, they already shared that night's, or there's nobody to name.
+## Returns {entry, why, frames} (frames: it points at the good).
+static func _fake_dead_reading(w, n, dd, role: String, s: String, night: int) -> Dictionary:
+	if not C.has_readings(role):
+		return {}
+	if role in C.START_ROLES:
+		night = 0
+	if dd.info_log.any(func(e): return e.get("shared", false) and e.get("role", "") == role and e.get("day", -1) == night):
+		return {}
+	var sg = w.by_id[s]
+	var goods: Array = w.living_good().filter(func(x): return x != dd)
+	var other = func(not_ids: Array): 
+		var c = goods.filter(func(x): return not (x.id in not_ids))
+		return w.pick(c) if not c.is_empty() else null
+	var d = w.by_id[w.demon_id] if w.by_id.has(w.demon_id) else null
+	var team_mates: Array = mates(w, n).filter(func(x): return x.alive)
+	var e = {"role": role, "day": night, "fake": true}
+	match role:
+		"nightwatch":
+			e["data"] = {"block": dd.home_block, "seen": [s]}
+			e["text"] = "I watched %s: I saw %s pass by" % [C.block_name(dd.home_block), sg.name]
+			return {"entry": e, "why": "the dead Night Watch %s saw scapegoat %s on their last watch" % [dd.id, s], "frames": true}
+		"seer":
+			# Clear the demon if it's been named; else carry on an earlier yes of theirs on a
+			# good person (a red herring or a poisoned read), or name the scapegoat.
+			if d != null and d.alive and _demon_implicated(w) and w.chance(0.5):
+				var o = other.call([])
+				if o != null:
+					e["data"] = {"pair": [d.id, o.id], "yes": false}
+					e["text"] = "I looked at %s: neither is the demon" % w._names([d.id, o.id])
+					return {"entry": e, "why": "the dead Seer %s 'cleared' the demon %s" % [dd.id, d.id], "frames": false}
+			var prior: Array = []
+			for pe in dd.info_log:
+				if pe.get("shared", false) and pe.get("role", "") == "seer" and pe["data"].get("yes", false):
+					for x in pe["data"]["pair"]:
+						if w.by_id[x].alive and not w.by_id[x].is_evil():
+							prior.append(x)
+			var a: String = w.pick(prior) if not prior.is_empty() and w.chance(0.5) else s
+			var o2 = other.call([a])
+			if o2 == null:
+				return {}
+			e["data"] = {"pair": [a, o2.id], "yes": true}
+			e["text"] = "I looked at %s: one of them reads as the demon" % w._names([a, o2.id])
+			return {"entry": e, "why": "the dead Seer %s 'pinged' %s again" % [dd.id, a], "frames": true}
+		"dowser", "hearthwitch":
+			if d != null and d.alive and _demon_implicated(w) and w.chance(0.5):
+				var near: Array = goods.filter(func(x): return x.home_block == d.home_block).slice(0, 2)
+				var grp: Array = [d.id] + near.map(func(x): return x.id)
+				if grp.size() >= 2:
+					e["data"] = {"group": grp, "count": 0, "block": d.home_block}
+					e["text"] = "on %s I sensed 0 evil among %s" % [C.block_name(d.home_block), w._names(grp)]
+					return {"entry": e, "why": "the dead Dowser %s 'found no evil' with the demon %s" % [dd.id, d.id], "frames": false}
+			var near2: Array = goods.filter(func(x): return x != sg and x.home_block == sg.home_block).slice(0, 2)
+			var grp2: Array = [s] + near2.map(func(x): return x.id)
+			if grp2.size() < 2:
+				return {}
+			e["data"] = {"group": grp2, "count": 1, "block": sg.home_block}
+			e["text"] = "on %s I sensed 1 evil among %s" % [C.block_name(sg.home_block), w._names(grp2)]
+			return {"entry": e, "why": "the dead Dowser %s sensed evil around scapegoat %s" % [dd.id, s], "frames": true}
+		"gravedigger":
+			var read: Array = dd.info_log.filter(func(x): return x.get("role", "") == "gravedigger").map(func(x): return x["data"].get("executed", ""))
+			var hanged: Array = w.npcs.filter(func(x): return not x.alive and x.death_cause == "executed" and not (x.id in read) and x != dd)
+			if hanged.is_empty():
+				return {}
+			var ex = hanged[0]
+			var rl = ""
+			if ex.is_evil():
+				rl = w.evil_plan["bluffs"].get(ex.id, "")  # a hanged teammate was who they claimed
+				if rl == "":
+					return {}
+			else:
+				# A good hanged soul "was a minion": sometimes one that isn't even in the game.
+				# Never the Breathstealer unless there is one: its silences would give it away.
+				var pool: Array = C.MINION_ROLES.filter(func(m): return m != "breathstealer" or w.living_with_role("breathstealer") != null)
+				rl = w.pick(pool)
+			e["data"] = {"executed": ex.id, "role": rl}
+			e["text"] = "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(rl)]
+			return {"entry": e, "why": "the dead Gravedigger %s 'learned' %s was the %s" % [dd.id, ex.id, rl], "frames": not ex.is_evil()}
+		"psychologist":
+			var subj = other.call([s])
+			var tr = w.pick(team_mates) if not team_mates.is_empty() else null
+			if subj == null or tr == null:
+				return {}
+			var sus_id: String = s if w.chance(0.6) else (other.call([subj.id]).id if other.call([subj.id]) != null else s)
+			e["data"] = {"subject": subj.id, "trusts": tr.id, "suspects": sus_id}
+			e["text"] = "I read %s: they trust %s most, and suspect %s most" % [subj.name, tr.name, w.by_id[sus_id].name]
+			return {"entry": e, "why": "the dead Psychologist %s 'read' trust in %s" % [dd.id, tr.id], "frames": true}
+		"clerk":
+			# Back a teammate's bluff.
+			var claimed: Array = team_mates.filter(func(x): return x.claim_public and C.ROLES.get(x.claimed_role, {}).get("align", "") == "good")
+			if claimed.is_empty():
+				return {}
+			var m = w.pick(claimed)
+			var o3 = other.call([])
+			if o3 == null:
+				return {}
+			var pair: Array = w.shuffled([m.id, o3.id])
+			e["data"] = {"pair": pair, "role": m.claimed_role}
+			e["text"] = "I learned that one of %s is the %s" % [w._names(pair), C.role_name(m.claimed_role)]
+			return {"entry": e, "why": "the dead Clerk %s 'backs' %s's claim" % [dd.id, m.id], "frames": false}
+		"archivist":
+			var o4 = other.call([s])
+			if o4 == null:
+				return {}
+			var pair2: Array = w.shuffled([s, o4.id])
+			var mr: String = w.pick(C.MINION_ROLES.filter(func(x): return x != "breathstealer" or w.living_with_role("breathstealer") != null))
+			e["data"] = {"pair": pair2, "role": mr}
+			e["text"] = "I learned that one of %s is the %s" % [w._names(pair2), C.role_name(mr)]
+			return {"entry": e, "why": "the dead Archivist %s 'named' scapegoat %s as a minion" % [dd.id, s], "frames": true}
+	return {}
 
 static func ensure_scapegoat(w) -> void:
 	var s: String = w.evil_plan.get("scapegoat", "")

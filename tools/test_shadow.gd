@@ -115,7 +115,7 @@ func _private_case_reaches_shadow() -> void:
 	_check(e.shadow != null and e.shadow.ledger.keys().any(func(k): return k.begins_with("tell:")), "the good self heard the player's private case")
 	_check(e.ledger.is_empty(), "the real evil mind still takes nothing from it")
 
-## Fake Medium readings fit the dead's public record (plan step 4).
+## Fake Medium readings fit the dead's public record and vary (plan step 4, Oct 19 menu).
 func _fake_medium() -> void:
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
@@ -128,20 +128,60 @@ func _fake_medium() -> void:
 	var sg = goods.filter(func(x): return x.home_block != dd.home_block)[0]
 	dd.alive = false
 	dd.death_day = 2
+	dd.death_cause = "demon"
 	dd.claim_public = true
 	dd.claimed_role = "nightwatch"
-	w.evil_plan["medium_frames"] = 0
-	var r = Evil._fake_medium_item(w, n, dd, sg.id)
-	_check(r["item"]["type"] == "reading" and r["item"]["entry"]["role"] == "nightwatch", "a dead public Night Watch 'tells' a watch report, not a stray sighting")
-	_check(r["item"]["entry"]["data"]["block"] == dd.home_block and sg.id in r["item"]["entry"]["data"]["seen"], "framing the scapegoat near the death")
-	var same = goods.filter(func(x): return x != dd and x.home_block == dd.home_block)
-	if not same.is_empty():
-		dd.claim_public = false
-		var r2 = Evil._fake_medium_item(w, n, dd, same[0].id)
-		_check(r2["item"]["type"] != "sighting", "no frame when the scapegoat lives on that block (seen on your own block says nothing)")
-	var framed = 0
+	var kinds = {}
+	for i in range(80):
+		w.evil_plan["medium_frames"] = 0
+		var it: Dictionary = Evil._fake_medium_item(w, n, dd, sg.id)["item"]
+		var k: String = it["type"] + (":" + it["entry"]["role"] if it["type"] == "reading" else "") + (":idle" if it.get("idle", false) else "")
+		kinds[k] = kinds.get(k, 0) + 1
+	_check(kinds.get("reading:nightwatch", 0) > 30, "a dead public Night Watch mostly 'tells' a watch report (%s)" % str(kinds))
+	var empty = kinds.get("home", 0) + kinds.get("sighting:idle", 0)
+	_check(empty >= 4 and empty <= 30, "sometimes only something empty (%d/80)" % empty)
+	# A dead Seer, with the demon publicly named: sometimes the fake 'clears' the demon.
+	dd.claimed_role = "seer"
+	w.public_event("reading", [w.demon_id, sg.id], goods[1].id)
+	var cleared = 0
+	var pinged = 0
+	for i in range(80):
+		w.evil_plan["medium_frames"] = 0
+		var it2: Dictionary = Evil._fake_medium_item(w, n, dd, sg.id)["item"]
+		if it2["type"] == "reading" and it2["entry"]["role"] == "seer":
+			if not it2["entry"]["data"]["yes"] and w.demon_id in it2["entry"]["data"]["pair"]:
+				cleared += 1
+			elif it2["entry"]["data"]["yes"]:
+				pinged += 1
+	_check(cleared > 5 and pinged > 5, "a dead Seer's fake reading both clears the demon and pings the good (%d / %d)" % [cleared, pinged])
+	# A dead Gravedigger 'learns' a hanged good soul was a minion; never a Breathstealer
+	# unless one is in play.
+	dd.claimed_role = "gravedigger"
+	var hanged = goods[2]
+	hanged.alive = false
+	hanged.death_cause = "executed"
+	var bs_named = false
+	var minion = 0
+	for i in range(60):
+		var r = Evil._fake_dead_reading(w, n, dd, "gravedigger", sg.id, 1)
+		if r.is_empty():
+			continue
+		if r["entry"]["data"]["role"] in C.MINION_ROLES:
+			minion += 1
+		if r["entry"]["data"]["role"] == "breathstealer":
+			bs_named = true
+	_check(minion > 50, "the hanged good soul 'was a minion' (%d/60)" % minion)
+	_check(w.living_with_role("breathstealer") != null or not bs_named, "no fake Breathstealer unless one is in play")
+	# The real Medium: a dead soul who shared everything has nothing new.
+	var real_dead = goods[3]
+	real_dead.alive = false
+	real_dead.death_day = 2
+	real_dead.beliefs = []
+	real_dead.suspicion = {}
+	real_dead.warden_log = {}
+	real_dead.info_log = [{"day": 0, "role": "dowser", "data": {}, "text": "x", "shared": true}]
+	var nothing = 0
 	for i in range(40):
-		w.evil_plan["medium_frames"] = 1
-		if Evil._fake_medium_item(w, n, dd, sg.id)["item"].get("lie", false):
-			framed += 1
-	_check(framed > 8 and framed < 32, "after the first frame, not every night (%d/40)" % framed)
+		if w._medium_item(goods[4], real_dead, false)["type"] == "nothing":
+			nothing += 1
+	_check(nothing >= 28, "the real Medium at a hearth with nothing unshared: 'nothing new' (%d/40)" % nothing)
