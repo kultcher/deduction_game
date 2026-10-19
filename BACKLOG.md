@@ -41,22 +41,21 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   Poisoner planned to bluff Seer but is seen out at night, and nobody has claimed Night
   Watch, so it claims Night Watch. This opens the door to double claims (the real Night
   Watch may just be quiet), which need their own logic: a classic of the genre, needed
-  eventually. (Oct 19) [decided]
+  eventually. Once double claims are handled, fake Mediums (and evil generally) can also
+  make bolder lies: fake readings in gifts the dead never claimed. (Oct 19) [decided]
 - **Storyteller-driven Medium visits.** Today the Medium visits the most recent dead it
   hasn't visited (demon victims first). Eventually: "I was called to Hollis's home to
   commune with his spirit", chosen by a director. (Oct 19) [open]
-- **Fake Medium readings** (with the shadow self, below): fit the dead's public record
-  (Hollis watched the Square on night 2, so he can't have "seen Jory on the Market"),
-  match the dead's claimed gift (an unshared Night Watch report, say), frame the
-  scapegoat where it matters (a block away from their home, near a death; seen on their
-  own block only says they went out), and don't frame every night. [decided]
 - **NPCs push back on nominations their own information contradicts** (a player-led
   nomination of the true Seer passed 7/8). (DESIGN playtests) [open]
 - **Lie severity:** a false gift report weighs more than a whereabouts lie, unless the
   lie puts them near the crime. NPCs who accept a lie but won't hang should say so.
   (DESIGN) [open]
 - **Evil reads as evil:** evil casting aspersions with no information stands out; give
-  good NPCs reasons (grudges, secrets) or make evil hold back. (playtest 30294) [open]
+  good NPCs reasons (grudges, secrets) or make evil hold back. (playtest 30294) Largely
+  addressed by the shadow self (evil's replies now differ from the good crowd's about
+  twice as often as good's own disagreements, down from about five times); revisit
+  after playtests. [watch]
 
 ### Numbers
 - **Unlimited Vigil strength.** (DESIGN open question) [watch]
@@ -81,7 +80,8 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   because I'm the Lamplighter"; own-lie admissions are built), which buys some grace with listeners; evil without a
   fitting bluff can claim a fake secret. Biggest open hole: hidden night walkers frame
   themselves (Isolde 55774, Constance 96773; Lamplighter/Veteran/Sleepwalker/Warden hang rates). (DESIGN)
-  [decided: next social pass]
+  Shadow-self plan step 3; on hold until the meeting-flow design is worked out.
+  [decided, on hold]
 - **Nominations make a case.** The nominator cites several cards, even weak ones.
   Mostly flavour; it only moves NPCs if it brings new information. [decided]
 - **Meeting and vote talk** (returns with the rebuttal work). Votes are silent for now;
@@ -187,11 +187,6 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   - make the Breathstealer's silence optional (it may skip days), which also explains
     why the secret's silences come on some days and not others, for maximum
     dastardliness. (Oct 19) [open]
-- **Shadow good self for evil** (part of the rebuttal/meeting work; step-by-step plan in docs/shadow_self_plan.md): each evil NPC runs
-  the good belief pipeline on public information plus its own fake readings; public acts
-  default to what that self would do, overridden only when the stakes beat the exposure.
-  Gives consistent cover, blending in, throwing teammates under the bus as a choice, and
-  a difficulty dial (how often evil overrides). [decided]
 - **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration).
   Relationship mods for the Lovers live here too. [open]
 - **Roster expansion:** On Deck gifts (Tracker, Clairvoyant, Beckon, Tallyman…); minions
@@ -262,6 +257,10 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 ## Closed
 
 Settled decisions, built work and parked levers, kept for the record.
+
+- **Oct 19: shadow good self for evil,** steps 1, 2, 4 and 5 of docs/shadow_self_plan.md (step 3, rebuttals, is on hold in section 3). Evil's public acts follow its good self unless breaking cover beats caution; refined heat; daily scapegoat re-pick. See DESIGN, "Shadow good self".
+- **Oct 19: Mediums,** a shared menu for real and fake: fake readings fit the dead's public record and claimed gift, frame only some nights, "nothing new" and empty answers for both. See DESIGN, "Mediums".
+- **Oct 19: hints at the meeting and following up on them** ("ask why", confidences). See DESIGN, "Citing reasons".
 
 - **Oct 19: meeting opinions cite only what the audience has.** Reasons carry their source; private readings become a hint or a reveal (see DESIGN, "Citing reasons").
 

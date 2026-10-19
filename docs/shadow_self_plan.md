@@ -1,6 +1,8 @@
 # Shadow good self: implementation plan
 
-Status: planned (Oct 19). Backlog: "Shadow good self for evil" (section 4), "Rebuttals and
+Status (Oct 19, evening): steps 0, 1, 2, 4 and 5 built; step 3 (rebuttals) on hold until
+the meeting-flow design is worked out. Built details and measurements are in DESIGN.md
+("Shadow good self", "Citing reasons", "Mediums"). Backlog: "Shadow good self for evil" (section 4), "Rebuttals and
 excuses" (section 3) and "Fake Medium readings" (section 2). This doc is the step-by-step
 plan. Each step ends with a check, and steps should land as separate commits.
 
