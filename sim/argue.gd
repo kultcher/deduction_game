@@ -257,6 +257,14 @@ static func assertions(card: Dictionary) -> Array:
 static func _nm(w, id: String) -> String:
 	return w.by_id[id].name if w.by_id.has(id) else id
 
+## A source named in a sentence: "you", "the evidence", or the person.
+static func _who_saw(w, src: String) -> String:
+	if src == "player":
+		return "You"
+	if src == "evidence":
+		return "The evidence"
+	return _nm(w, src)
+
 static func _is_npc(w, id: String) -> bool:
 	return w.by_id.has(id)
 
@@ -510,11 +518,15 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 	# Two independent witnesses put the same person in the same place at the same time.
 	if ta == tb and ta in ["out", "at"] and a["who"] == b["who"] and a["block"] == b["block"] and a["card"] < b["card"]:
 		var same_time = a.get("night", -9) == b.get("night", -9) if ta == "out" else (a["day"] == b["day"] and a["phase"] == b["phase"])
-		if same_time and a["src"] != b["src"] and a["src"] != a["who"] and b["src"] != b["who"] and _is_npc(w, a["src"]) and _is_npc(w, b["src"]):
+		# One of the two may be you (or physical evidence): a witness backing what you saw.
+		if same_time and a["src"] != b["src"] and a["src"] != a["who"] and b["src"] != b["who"] and (_is_npc(w, a["src"]) or _is_npc(w, b["src"])):
+			var ex3: Array = []
+			for s3 in [a, b]:
+				if _is_npc(w, s3["src"]):
+					ex3.append(_clear(w, s3["src"], {"type": "truthful", "card": s3["card"]}, "%s is telling the truth" % _nm(w, s3["src"])))
 			var m3 = _mk(w, "corroborated", "%s and %s both put %s on %s (%s)." %
-				[_nm(w, a["src"]), _nm(w, b["src"]), _nm(w, a["who"]), C.block_name(a["block"]), _when(a)], cards,
-				[_clear(w, a["src"], {"type": "truthful", "card": a["card"]}, "%s is telling the truth" % _nm(w, a["src"])),
-				_clear(w, b["src"], {"type": "truthful", "card": b["card"]}, "%s is telling the truth" % _nm(w, b["src"]))], a["who"], [])
+				[_who_saw(w, a["src"]), _who_saw(w, b["src"]), _nm(w, a["who"]), C.block_name(a["block"]), _when(a)], cards,
+				ex3, a["who"], [])
 			m3["relation"] = "corroboration"
 			return m3
 	# Nobody died, and someone claims (or hints at) a protective gift.

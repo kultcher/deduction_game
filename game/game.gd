@@ -90,6 +90,9 @@ func _lines(arr: Array) -> void:
 
 func _facts(facts: Array) -> void:
 	for f in facts:
+		if f.get("silent", false):
+			_silent_corroboration(f)
+			continue
 		_ev({"k": "card", "n": add_card(f)})
 
 static func render(evs: Array) -> String:
@@ -263,7 +266,67 @@ func add_card(fact: Dictionary) -> int:
 	_card_keys[key] = card["n"]
 	if fk != "":
 		_fact_keys[fk] = card["n"]
+	_link_corroboration(card)
 	return card["n"]
+
+# ---------------------------------------------------------------- corroboration
+
+## What a card says happened, independent of who said it: "who was where, when" for each
+## person it places, and "these two talked" for a conversation. Two cards from different
+## sources that share a key back each other up.
+static func core_keys(card: Dictionary) -> Array:
+	var k: String = card.get("kind", "")
+	if not (k in ["sighting", "conversation"]):
+		return []
+	var out: Array = []
+	var subj: Array = card.get("subject", [])
+	for who in subj:
+		out.append("at:%s|%d|%d|%s" % [who, card.get("day", -1), card.get("phase", -1), card.get("block", "")])
+	if k == "conversation" and subj.size() == 2:
+		var pr = subj.duplicate()
+		pr.sort()
+		out.append("talk:%s|%d|%d" % [",".join(PackedStringArray(pr)), card.get("day", -1), card.get("phase", -1)])
+	return out
+
+func _corroborate(card: Dictionary, src: String) -> void:
+	if src == "" or src == card.get("source", "") or src in card.get("subject", []):
+		return
+	var cb: Array = card.get("corroborated_by", [])
+	if not (src in cb):
+		cb.append(src)
+	card["corroborated_by"] = cb
+
+func _link_corroboration(card: Dictionary) -> void:
+	var mine: Array = core_keys(card)
+	if mine.is_empty():
+		return
+	for other in board:
+		if other == card or other.get("deleted", false) or other.get("source", "") == card.get("source", ""):
+			continue
+		var theirs: Array = core_keys(other)
+		if theirs.any(func(x): return x in mine):
+			_corroborate(other, card.get("source", ""))
+			_corroborate(card, other.get("source", ""))
+
+## Cards you've already got for a conversation (for "don't tell me what I saw myself").
+func seen_pairs() -> Dictionary:
+	var out = {}
+	for c in board:
+		if c.get("kind", "") == "conversation" and c.get("source", "") == "player":
+			for k in core_keys(c):
+				if k.begins_with("talk:"):
+					out[k] = c["n"]
+	return out
+
+## A fact an NPC passes over in silence because you saw it yourself: no new card, they're
+## just recorded as backing yours.
+func _silent_corroboration(f: Dictionary) -> void:
+	var keys: Array = core_keys(f)
+	for c in board:
+		if c.get("deleted", false):
+			continue
+		if core_keys(c).any(func(x): return x in keys):
+			_corroborate(c, f.get("source", ""))
 
 ## The current time slot as the board counts it (the meeting and the night belong to the
 ## evening and night of the day they're in).
@@ -757,7 +820,7 @@ func _talk_command(verb: String, rest: String) -> void:
 						_err("It isn't the %s yet." % frame)
 						return
 					else:
-						r = Mind.answer_today(w, n, frame, w.loc_block(loc))
+						r = Mind.answer_today(w, n, frame, w.loc_block(loc), seen_pairs())
 				"about", "opinion":
 					var target = " ".join(p.slice(1))
 					var role = find_role(target)

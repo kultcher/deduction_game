@@ -10,6 +10,7 @@ const Evil = preload("res://sim/evil.gd")
 const C = preload("res://sim/content.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
 const Argue = preload("res://sim/argue.gd")
+const CardList = preload("res://ui/card_list.gd")
 
 var fails = 0
 
@@ -29,6 +30,7 @@ func _init() -> void:
 	_martyr_templates()
 	_new_conclusions()
 	_own_lies()
+	_corroboration()
 	print("FIXES FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -344,4 +346,40 @@ func _own_lies() -> void:
 	var r2 = Mind.answer_gift(w, n, 3)
 	var txt = " ".join(PackedStringArray(r2["lines"].filter(func(l): return l is Dictionary).map(func(l): return l["text"])))
 	_check("I was out" in txt and "wasn't ready to tell you why" in txt, "disclosing the gift, they own the earlier lie (%s)" % txt)
+
+func _corroboration() -> void:
+	var g = _game(7130)
+	var w = g.w
+	g.board = []
+	g._card_keys = {}
+	g._fact_keys = {}
+	var ids: Array = w.living().map(func(n): return n.id)
+	var x: String = ids[0]
+	var y: String = ids[1]
+	var wit = w.by_id[ids[2]]
+	var listener = w.by_id[ids[3]]
+	var mine = g.add_card({"kind": "conversation", "subject": [x, y], "block": "square", "loc": "tavern", "day": 1, "phase": 0, "source": "player", "text": "You saw X and Y talking"})
+	var theirs = g.add_card({"kind": "sighting", "subject": [x], "block": "square", "day": 1, "phase": 0, "source": wit.id, "text": "W saw X on the square"})
+	_check(wit.id in g.board[mine - 1].get("corroborated_by", []) and "player" in g.board[theirs - 1].get("corroborated_by", []), "the same fact from you and a witness: each card names the other source")
+	_check("also seen by" in CardList.line_for(g.board[mine - 1]), "the card list says who else saw it")
+	_check("corroborated" in _templates_for(g, [mine, theirs]), "your sighting and a witness's link as corroboration")
+	listener.trust = 0.0
+	listener.suspicion[wit.id] = 0.0
+	var plain = {"kind": "sighting", "subject": [x], "source": "player", "text": "x"}
+	_check(Mind.word_factor(w, listener, g.board[mine - 1]) > Mind.word_factor(w, listener, plain), "a trusted witness lifts your word with someone who doesn't trust you")
+	# A witness asked about a pair you saw yourself leaves it out and backs your card instead.
+	var seen = g.seen_pairs()
+	_check(not seen.is_empty(), "your own conversation cards are known as seen pairs")
+	var n = w.by_id[ids[4]]
+	n.traits["gossip"] = 1.0
+	n.traits["insight"] = 1.0
+	n.beliefs.append({"kind": "saw", "who": x, "loc": "tavern", "block": "square", "day": 1, "phase": 0, "how": "street", "with": y})
+	w.day = 1
+	w.phase = 1
+	var r = Mind.answer_today(w, n, "morning", "", seen)
+	var t: String = r["lines"][0]["text"]
+	_check(not (w.by_id[x].name + " at") in t, "a pair you saw yourself isn't repeated to you (%s)" % t)
+	_check(r["facts"].any(func(f): return f.get("silent", false)), "...but it's kept as silent backing")
+	g._facts(r["facts"])
+	_check(n.id in g.board[mine - 1].get("corroborated_by", []), "...which lands on your card")
 

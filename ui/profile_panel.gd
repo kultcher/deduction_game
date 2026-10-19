@@ -352,6 +352,9 @@ func _entries(cards: Array, id: String) -> PackedStringArray:
 			# First time heard each way only (asking again doesn't need listing).
 			if not heard.any(func(x): return x.ends_with(" " + how)):
 				heard.append("%s %s" % [CardModel.time_label({"day": d["day"], "phase": d["phase"]}), how])
+		var cb: Array = c.get("corroborated_by", [])
+		if not cb.is_empty():
+			heard.append("also seen by " + ", ".join(PackedStringArray(cb.map(func(x): return "you" if x == "player" else (g.w.by_id[x].name if g.w.by_id.has(x) else x)))))
 		var col = "7a1f1a" if c.get("kind", "") == "deduction" else "2b2116"
 		out.append("[color=#8a7a5a]%s[/color] [url=card:%d][color=#%s]#%d %s[/color][/url] [color=#8a7a5a](%s)[/color]" %
 			[CardModel.time_label(t), c["n"], col, c["n"], c.get("text", ""), ", ".join(PackedStringArray(heard))])

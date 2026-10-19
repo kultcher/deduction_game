@@ -767,6 +767,18 @@ text filters combine with "+" and exclude with "-"; "What can this be part of?" 
 "Find links" on the case board; clicking a card in the log or a profile switches the
 board to its view; "grimoire talk" and exchange stats at the end.
 
+## Corroboration (Oct 18, late)
+
+A card's identity includes its source, so the same fact from two witnesses is two cards.
+They now know about each other: cards placing the same person at the same place and
+time (or the same pair talking) record each other's source as `corroborated_by`, shown
+as "(also seen by Dorian)" in the card lists and profile. The corroboration template
+accepts you (or physical evidence) as one of the two witnesses. When you put your own
+sighting to someone who trusts you little, it counts at the better of (0.5 + their trust
+in you) and (0.5 + their credit for a corroborating witness), or at full if the listener
+saw it too. Asked where they were, an NPC leaves out a conversation you saw yourself
+and is recorded, silently, as backing your card.
+
 ## Dialogue composer (merged from codex/dialogue-prototype)
 
 Presentation only: the simulation decides what is said (including an evil character's

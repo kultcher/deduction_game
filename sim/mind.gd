@@ -1490,7 +1490,7 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 ## morning" / "yesterday afternoon" / "yesterday evening". They say where they were
 ## (daytime whereabouts are open to anyone's eyes), then who they saw: as many as their
 ## memory (Insight) holds and their Gossip lets them share.
-static func answer_today(w, n, when: String = "", near_block: String = "") -> Dictionary:
+static func answer_today(w, n, when: String = "", near_block: String = "", seen_pairs: Dictionary = {}) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
 	var facts: Array = []
@@ -1568,14 +1568,25 @@ static func answer_today(w, n, when: String = "", near_block: String = "") -> Di
 		var partner: String = b.get("with", "")
 		if partner != "" and w.by_id.has(partner) and not (n.is_evil() and Evil.is_teammate(w, n, partner)):
 			var pn = w.by_id[partner]
-			parts.append("%s at %s, talking with %s%s" % [who.name, where, pn.name, tag])
-			facts.append({"kind": "conversation", "subject": [who.id, partner], "block": b["block"], "loc": b["loc"], "day": b["day"], "phase": b["phase"],
-				"source": n.id, "text": "%s saw %s and %s talking at %s, day %d %s." % [n.name, who.name, pn.name, where, b["day"], C.PHASES[b["phase"]]]})
+			var pair = [who.id, partner]
+			pair.sort()
+			var conv = {"kind": "conversation", "subject": [who.id, partner], "block": b["block"], "loc": b["loc"], "day": b["day"], "phase": b["phase"],
+				"source": n.id, "text": "%s saw %s and %s talking at %s, day %d %s." % [n.name, who.name, pn.name, where, b["day"], C.PHASES[b["phase"]]]}
 			people[partner] = true
+			if seen_pairs.has("talk:%s|%d|%d" % [",".join(PackedStringArray(pair)), b["day"], b["phase"]]):
+				# You saw this pair yourself: they leave it out, but it backs your card.
+				conv["silent"] = true
+				facts.append(conv)
+				continue
+			parts.append("%s at %s, talking with %s%s" % [who.name, where, pn.name, tag])
+			facts.append(conv)
 		else:
 			parts.append("%s at %s%s" % [who.name, where, tag])
 		facts.append({"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": b["phase"], "source": n.id,
 			"text": "%s saw %s on %s, day %d %s." % [n.name, who.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
+	if parts.is_empty():
+		lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + "Nobody you didn't see for yourself."))
+		return {"lines": lines, "facts": facts}
 	var seen_s = "; ".join(PackedStringArray(parts))
 	lines.append(say(n, ("%s, and saw %s." % [was_s, seen_s]) if was_s != "" else ("Let me think. %s." % seen_s)))
 	return {"lines": lines, "facts": facts}
@@ -1708,6 +1719,20 @@ static func _secret_used(w, card: Dictionary) -> void:
 
 ## How much a card weighs with one listener, against or for one suspect. Counts as a hearing
 ## (diminishing returns per card per listener).
+## How much the listener takes your word on a card: 0.5 + their trust in you, unless it's
+## something you saw that a witness they believe saw too, in which case the witness carries
+## it ("Dorian saw it as well").
+static func word_factor(w, n, card: Dictionary) -> float:
+	var f = 0.5 + n.trust
+	if card.get("source", "") != "player":
+		return f
+	for c in card.get("corroborated_by", []):
+		if c == n.id:
+			return maxf(f, 1.4)
+		if w.by_id.has(c):
+			f = maxf(f, 0.5 + clampf(0.9 - susp(n, c), 0.1, 0.9))
+	return f
+
 static func card_weight(w, n, suspect, card: Dictionary) -> Dictionary:
 	var subj: Array = card.get("subject", [])
 	var relevance = 1.0 if suspect.id in subj else 0.25
@@ -1796,7 +1821,7 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	var why = "player accusation using card '%s' (class %s x%.2f, cred %.2f: %s, relevance %.2f, already known x%.2f)" % [cw["key"], cls, cw["class_w"], cw["cred"], cw["cred_why"], relevance, known]
 	var effs: Array = []
 	_eff(effs, suspect.id, 1.0, why, "the Demonologist made a case against them")
-	var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], suspect.id], effs, base * (0.5 + n.trust), cw["rel"],
+	var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], suspect.id], effs, base * word_factor(w, n, card), cw["rel"],
 		{"kind": "tell", "base": base, "text": card.get("text", "")})
 	n.used_facts[cw["key"] + ">" + suspect.id] = true
 	var delta: float = h["gain"]
@@ -1917,7 +1942,7 @@ static func public_case(w, nominee, card: Dictionary, direction: String) -> void
 		var effs: Array = []
 		_eff(effs, nominee.id, sign, "the Demonologist's public %s using card '%s' (class %s, cred %.2f, already known x%.2f)" %
 			[direction, cw["key"], cw["cls"], cw["cred"], known], "the Demonologist made a case against them" if direction == "accuse" else "")
-		ledger_hear(w, v, "pub:%s:%s>%s" % [direction, cw["key"], nominee.id], effs, base * (0.5 + v.trust), cw["rel"],
+		ledger_hear(w, v, "pub:%s:%s>%s" % [direction, cw["key"], nominee.id], effs, base * word_factor(w, v, card), cw["rel"],
 			{"kind": "tell", "base": base, "text": card.get("text", "")})
 		if direction == "accuse":
 			v.used_facts[cw["key"] + ">" + nominee.id] = true

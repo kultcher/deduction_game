@@ -24,21 +24,6 @@ All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones 
   etc. work for any gift that makes the same kind of statement). (DESIGN, deferred to
   roster expansion) [decided]
 
-### Evidence and corroboration
-- **"Corroborated by" on cards.** The same sighting from two witnesses is two cards
-  today (a card's identity includes its source), and the corroboration template needs
-  two NPC witnesses, so your own sighting backed by an NPC's never links. Proposed: show
-  "also seen by Dorian" on the matching cards; let the template take you as one
-  witness; when you present your own sighting to someone who trusts you little, weigh
-  it by their trust in the corroborating witness if that's higher (your word counts at
-  0.5 + their trust in you). Small: the cards and disclosures exist, it needs a lookup
-  of "the same fact, any source". [decided: add]
-- **Conversation pairs you've already seen.** A whereabouts answer can name a pair you
-  saw yourself (and, before Oct 18, could name the same pair twice; that's fixed).
-  Proposed with the item above: leave pairs you saw out of the spoken answer, and record
-  the NPC as corroborating your card silently, so nothing clutters but the second
-  source isn't lost. [waiting on the call above]
-
 ### NPC behaviour
 - **NPCs push back on nominations their own information contradicts** (a player-led
   nomination of the true Seer passed 7/8). (DESIGN playtests) [open]

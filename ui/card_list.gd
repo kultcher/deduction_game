@@ -39,7 +39,18 @@ func readable(size: int = 15) -> void:
 static func line_for(c: Dictionary) -> String:
 	var k: String = c.get("kind", "")
 	var label: String = KIND_LABELS.get(k, k.capitalize())
-	return "#%d  %s · %s" % [c["n"], label, c.get("text", "")]
+	var also = ""
+	var cb: Array = c.get("corroborated_by", [])
+	if not cb.is_empty():
+		var names: Array = cb.map(func(id): return "you" if id == "player" else _name_of(id))
+		also = "  (also seen by %s)" % ", ".join(PackedStringArray(names))
+	return "#%d  %s · %s%s" % [c["n"], label, c.get("text", ""), also]
+
+static func _name_of(id: String) -> String:
+	for n in C.CAST:
+		if n["id"] == id:
+			return n["name"]
+	return id
 
 ## Rows take a light tint of the person they're about, so a list scans by person.
 static func tint_for(c: Dictionary):
