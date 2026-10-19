@@ -65,17 +65,33 @@ exposure.
 
 So step 2 needs a new `Evil.exposure(w, n)`. The pieces above are its inputs.
 
-## Step 0: warm-up bug fixes (do first, separate commit)
+## Step 0: warm-up bug fixes
 
-From backlog section 1:
-- Silenced NPCs can't approach the player or be picked for tavern gossip.
-- Meeting opinions may cite only reasons the NPC has already claimed, at least privately
-  to the player. This matters for step 2: the shadow's reasons must obey the same rule.
-- Exclude the victim from "passed the cottage" traces.
+- **Done (b8baa69, checked Oct 19):** silenced NPCs no longer approach the player or
+  supply tavern gossip (`Social.approach_candidate`, `Mind.gossip`). The victim is no
+  longer a "passer" for their own cottage's trace (`World._kill`). Both have tests in
+  `tools/test_fixes.gd`.
+- **Still open, and must land before step 2. Treat it as an evidence-provenance problem,
+  not missing card creation.** Meeting opinions cite reasons the NPC never put out
+  (Hollis citing his unshared Night Watch reading made only an opinion card). The rule:
+  an NPC may cite a reason only if they've already made that claim, at least privately
+  to the player.
+  - Every reason an opinion can cite (`sus_why`, `Evil.cite`, `Evil.bluff_reason`,
+    `decision_line` reason text) should carry a pointer to the claim or fact it rests on:
+    a reading entry, a sighting belief, or a public event.
+  - "Already claimed" means that pointer is shared, or is on the player's board with
+    this NPC as source or via.
+  - Unshared reasons fall back to vaguer wording ("something's off about them") or force
+    the claim out first. The second is a design choice: it makes evil put its fakes out
+    before leaning on them.
+  - Don't fix it by minting a card at the moment of citing. That hides the provenance gap
+    instead of closing it, and would let evil create evidence just by referring to it.
+  - The shadow's reasons in step 2 go through the same gate.
 
-**Check:** a headless Godot parse check, all `tools/test_*.gd` pass, then a bot baseline
-of 150 games at 7 townsfolk and 150 at 10. Record the baseline in DESIGN.md. It's the
-"before" for step 5.
+**Check (for the open item):** a test where an NPC holding an unshared reading gives an
+opinion about its subject, and the reason is vague or the reading is claimed first. Then
+all `tools/test_*.gd`, a headless Godot parse check, and a bot baseline of 150 games at 7
+townsfolk and 150 at 10. Record the baseline in DESIGN.md. It's the "before" for step 5.
 
 ## Step 1: the shadow mind, inspection only (no behaviour change)
 
@@ -130,6 +146,16 @@ of 150 games at 7 townsfolk and 150 at 10. Record the baseline in DESIGN.md. It'
 
 ## Step 2: public acts follow the shadow, with an override
 
+0. **Refine heat first.** `public_heat` gives every implicating public reading the same
+   +0.2 and never goes down. Before exposure and scapegoat scoring build on it:
+   - weight each reading by how strongly it implicates: a Seer "yes" pair counts more than
+     one of three in a Dowser count, and a Night Watch "seen out" or an Archivist pair
+     naming a good role counts less;
+   - cool heat a little on public clears and proven-good results;
+   - decay older events by day.
+
+   Keep the old function's callers (scapegoat nomination, `town_view`, gossip) on the new
+   version, and log the parts.
 1. **`Evil.exposure(w, n)`, from 0 to about 1.5:**
    - `public_heat` on n, but counting evil's own contributions too (the town can't tell
      them apart);
@@ -169,6 +195,23 @@ of 150 games at 7 townsfolk and 150 at 10. Record the baseline in DESIGN.md. It'
      follow the bluff.
 6. **Throwing a teammate under the bus** now happens on its own. When the shadow suspects
    a teammate and the stakes are low, evil goes along with it.
+7. **Re-pick the scapegoat daily.** Today it's chosen once at setup (`_pick_scapegoat`)
+   and replaced only when that person dies (`ensure_scapegoat`). Make it a scoring
+   function, run each morning, over living good candidates:
+   - **momentum:** refined heat, plus how much the evil members' shadows suspect them, as
+     a stand-in for "what the town thinks";
+   - **fit:** how well they match lies already told (a fake sighting near a death, a fake
+     reading naming them);
+   - **dead ends:** a big minus for someone proven good, confirmed by a Clerk or cleared
+     by a Gravedigger;
+   - **switching cost:** a member who has publicly accused the old scapegoat pays to drop
+     them, unless a new fact (a card) gives a reason. This keeps evil from flip-flopping,
+     which would be a tell.
+
+   **Ride, don't steer:** if the town is settling on a good person, that person usually
+   wins on momentum. Evil's own fakes matter most when the town is settling on a
+   teammate. Keep it a scoring function with named parts, so a "pattern fit" term can join
+   later (see "Build with in mind").
 
 **Check:**
 - Update `test_argue`, `test_dialogue_decisions` and `test_beliefs` where they assert the
@@ -192,6 +235,11 @@ of 150 games at 7 townsfolk and 150 at 10. Record the baseline in DESIGN.md. It'
 3. Evil rebuts with its bluff, but only when the shadow would, plus override. With the
    step 0 cite rule, the excuse is a card the player can check.
 4. Optional: evil with no fitting bluff claims a fake secret.
+5. **The desperation play:** "I don't know what's going on, but I know I'm not evil."
+   Available to both sides when exposure is high and there's no fitting gift to claim.
+   Good NPCs say it honestly; for evil it's a free bluff. Listeners give it a little
+   grace, scaled by their trust in the speaker. It makes no card, since it claims
+   nothing checkable. Keep its effect small so it can't save someone on its own.
 
 **Check:** a scenario test where a Lamplighter is accused for a night sighting and
 rebuts; a bot run comparing the hang rates of hidden night walkers (Lamplighter, Veteran,
@@ -289,6 +337,26 @@ fake reading never puts what they saw on another block.
   makes the demon easier to find through the "night companions" pattern. That's
   acceptable, but watch it.
 - Mind the 6- and 8-day limits: a later-game shift only matters if games last.
+
+## Build with in mind (not this pass)
+
+Evil needs to "world build": keep a coherent false story and adapt it as the town's
+direction changes. This pass lays the groundwork; don't build these yet, but don't close
+the doors either.
+- **A shared story ledger.** The evil team keeps one record of what each member has
+  claimed and faked, so new lies fit old ones. The fake Medium problem in step 4 is one
+  case. The shadow is the consistency check: "would my good self believe this, given
+  what's public?"
+- **Coordination lag is a feature.** A scapegoat switch spreads only when evil members
+  confer (at night or in a daytime meetup). A teammate who hasn't heard keeps pushing the
+  old target; that visible split is a natural tell, so don't paper over it. Late in the
+  game, minions in "evil id" mode could deliberately push a second target to split the
+  town.
+- **One pattern evaluator for both sides.** When good NPCs get pattern reasoning (the
+  footprint and case-file idea: who keeps turning up near silencings, failed readings,
+  deaths), evil should use the same evaluator in reverse. It frames the good person the
+  evidence already half-fits. The scapegoat score in step 2 should gain that as a
+  "pattern fit" term rather than a separate system.
 
 ## Out of scope here
 

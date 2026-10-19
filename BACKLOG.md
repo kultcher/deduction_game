@@ -17,6 +17,8 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   opinion card. Rule: an NPC can't cite something as a reason unless they've already
   made that claim, at least privately to you. Evil leaning on a fabricated reason has to
   put the fake claim out first, which turns its lies into cards you can check.
+  Medium risk: an evidence-provenance problem, not just missing card creation (see
+  docs/shadow_self_plan.md, step 0). Must land before the shadow self's step 2.
   (96773) [decided]
 
 ## 2. Small features and tuning (a day or so each)
