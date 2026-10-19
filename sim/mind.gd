@@ -103,10 +103,124 @@ static func end_of_day_trust(w) -> void:
 				bonus *= 0.4
 			set_trust(w, n, n.trust + bonus, "the Demonologist kept my secret today%s" % (" (though others are talking)" if n.secret_spread_by_npc else ""))
 
+# ---------------------------------------------------------------- shadow self
+
+## Evil NPCs keep a second, good mind: what they'd believe if they were the good
+## townsperson they pretend to be, with their bluff as their gift (docs/shadow_self_plan.md).
+## Every belief entry point below that used to skip evil listeners now feeds the shadow
+## instead, through shadow_run. The shadow is a separate NPC object, never in w.npcs or
+## w.by_id; it hears what the real NPC heard, minus what only evil could know (night
+## sightings made while out on evil work), and takes evil's fake readings as its own.
+## It runs on its own random stream and its own log (w.shadow_log), so it can't change
+## the case. Step 1: nothing reads it yet.
+
+## Fields copied once, when the shadow is made (a turned NPC's good mind carries over).
+const SHADOW_COPY = ["traits", "trait_base", "work_phases", "haunts", "friends", "rivals",
+	"suspicion", "sus_why", "npc_trust", "ledger", "honesty", "discounted", "believed_roles",
+	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts"]
+const SHADOW_SAME = ["id", "name", "pron", "style", "blurb", "occupation", "work", "home_block", "ring"]
+
+## Run f(shadow) for evil NPC n inside the shadow context: the shadow's RNG and log in
+## place of the world's, and the shadow synced with what n has seen since last time.
+static func shadow_run(w, n, f: Callable) -> void:
+	if not C.SHADOW_SELF or not n.is_evil():
+		return
+	var saved_rng = w.rng
+	var saved_log = w.dlog
+	var made = n.shadow == null
+	if made:
+		n.shadow = _make_shadow(w, n)
+	var s = n.shadow
+	w.rng = s.shadow_rng
+	w.shadow_log.set_time(saved_log.day, saved_log.phase)
+	w.dlog = w.shadow_log
+	_shadow_sync(w, n, s)
+	if made and s.role != "":
+		hear_claim(w, s, s.id, s.role, 1.5, "own")  # knows "its own" gift, as every good NPC does
+	f.call(s)
+	w.rng = saved_rng
+	w.dlog = saved_log
+
+static func _make_shadow(w, n):
+	var s = n.get_script().new()
+	for f in SHADOW_SAME:
+		s.set(f, n.get(f))
+	for f in SHADOW_COPY:
+		s.set(f, n.get(f).duplicate(true))
+	s.alignment = "good"
+	var bluff: String = w.evil_plan["bluffs"].get(n.id, "")
+	s.role = bluff if C.ROLES.has(bluff) and C.ROLES[bluff]["align"] == "good" else ""
+	# A turned NPC's own true readings were theirs before the curse; fake ones arrive below.
+	s.info_log = n.info_log.filter(func(e): return not e.get("fake", false)).map(func(e): return e.duplicate(true))
+	s.applied_info = s.info_log.size()
+	s.shadow_rng = RandomNumberGenerator.new()
+	s.shadow_rng.seed = hash("%d:shadow:%s" % [w.seed_value, n.id])
+	n.shadow_seen = {"beliefs": n.beliefs.size() if n.turned else 0, "hearsay": n.hearsay.size() if n.turned else 0, "fake": 0}
+	if n.turned:
+		s.beliefs = n.beliefs.map(func(b): return b.duplicate(true))
+		s.hearsay = n.hearsay.map(func(h): return h.duplicate(true))
+	return s
+
+## Bring the shadow up to date with what the real NPC has seen and heard. Night sightings
+## made while out (killing, poisoning, guarding a teammate) stay out: a good self would
+## have been at home.
+static func _shadow_sync(w, n, s) -> void:
+	for f in ["alive", "death_day", "loc", "working", "busy_with", "silenced", "trust", "trust_cap",
+			"pressure", "claimed_role", "claim_public", "max_tier", "told_readings", "night_block", "out_last_night"]:
+		s.set(f, n.get(f))
+	for k in n.npc_trust:
+		s.npc_trust[k] = n.npc_trust[k]
+	s.history = n.history.duplicate()
+	var seen: Dictionary = n.shadow_seen
+	while seen["beliefs"] < n.beliefs.size():
+		var b: Dictionary = n.beliefs[seen["beliefs"]]
+		seen["beliefs"] += 1
+		if b.get("phase", -1) == C.NIGHT and not str(n.history.get(w.time_key(b.get("day", 0), C.NIGHT), "home")).begins_with("home"):
+			continue
+		s.beliefs.append(b.duplicate(true))
+	while seen["hearsay"] < n.hearsay.size():
+		s.hearsay.append(n.hearsay[seen["hearsay"]].duplicate(true))
+		seen["hearsay"] += 1
+	for k in n.known_claims:
+		if not s.known_claims.has(k) or s.known_claims[k] != n.known_claims[k]:
+			s.known_claims[k] = n.known_claims[k].duplicate(true)
+
+## Evil's fake readings, taken by the shadow as its own (firmly, not unshakably).
+static func _shadow_own_info(w, n) -> void:
+	shadow_run(w, n, func(s):
+		var seen: Dictionary = n.shadow_seen
+		while seen["fake"] < n.info_log.size():
+			var e: Dictionary = n.info_log[seen["fake"]]
+			seen["fake"] += 1
+			if not e.get("fake", false):
+				continue
+			var mine = e.duplicate(true)
+			s.info_log.append(mine)
+			s.applied_info = s.info_log.size()
+			apply_info(w, s, s, mine, C.SHADOW_OWN_READING_WEIGHT))
+
+## Turned or freed by the Revenant's curse: the shadow is rebuilt (or dropped) next time.
+static func shadow_reset(n) -> void:
+	n.shadow = null
+	n.shadow_seen = {}
+
+## Debug: the shadow's view, for snapshots. {} if none.
+static func shadow_view(w, n) -> Dictionary:
+	if n.shadow == null:
+		return {}
+	var sus = {}
+	for k in n.shadow.suspicion:
+		if w.by_id.has(k) and w.by_id[k].alive:
+			sus[k] = snappedf(n.shadow.suspicion[k], 0.01)
+	return {"role": n.shadow.role, "trust": snappedf(n.shadow.trust, 0.01), "suspicion": sus}
+
 # ---------------------------------------------------------------- suspicion
 
 static func adjust(w, listener, target_id: String, delta: float, why: String, public_why: String = "", conf_scaled: bool = true) -> void:
-	if listener.is_evil() or target_id == listener.id or not listener.suspicion.has(target_id):
+	if listener.is_evil():
+		shadow_run(w, listener, func(sh): adjust(w, sh, target_id, delta, why, public_why, conf_scaled))
+		return
+	if target_id == listener.id or not listener.suspicion.has(target_id):
 		return
 	var t = w.by_id[target_id]
 	if not t.alive and t.death_cause == "demon":
@@ -150,7 +264,10 @@ static func _eff(effs: Array, target: String, delta: float, why: String, public_
 ## gift is a record too (weight 1.5: they *know* a rival is lying). how: public | relayed |
 ## own | told.
 static func hear_claim(w, l, who: String, role: String, weight: float, how: String) -> void:
-	if l.is_evil() or not C.ROLES.has(role) or C.ROLES[role]["align"] != "good" or not w.by_id.has(who):
+	if l.is_evil():
+		shadow_run(w, l, func(sh): hear_claim(w, sh, who, role, weight, how))
+		return
+	if not C.ROLES.has(role) or C.ROLES[role]["align"] != "good" or not w.by_id.has(who):
 		return
 	var rn = C.role_name(role)
 	var nm: String = w.by_id[who].name
@@ -268,6 +385,8 @@ static func night_reliability(n, src: String, night: int) -> float:
 ## restatement can't borrow a strong one's weight. Returns {fresh, gain, times}.
 static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
 	if n.is_evil():
+		# The shadow hears it; the real evil mind still takes nothing from it.
+		shadow_run(w, n, func(sh): ledger_hear(w, sh, eid, effects, weight, rel, meta))
 		return {"fresh": false, "gain": 0.0, "times": 0}
 	var fresh = not n.ledger.has(eid)
 	if fresh:
@@ -321,6 +440,7 @@ const HONESTY_CAP = 0.5
 ## downstream of it. Only step 2 looks one level back (step 1), by design.
 static func recompute_beliefs(w, n, note: String) -> void:
 	if n.is_evil():
+		shadow_run(w, n, func(sh): recompute_beliefs(w, sh, note))
 		return
 	var E: Array = n.ledger.values()
 	var cl = _claimants(E)
@@ -456,7 +576,10 @@ static func _ledger_apply(w, n, f: Array, diff: float, total: float, note: Strin
 ## the evidence itself don't change; how much the player's word counts does. Confidence
 ## sets how far they move at once. Called when trust shifts noticeably and before votes.
 static func reconsider(w, n, why: String) -> void:
-	if n.is_evil() or absf(n.trust - n.trust_at_reconsider) < 0.03:
+	if n.is_evil():
+		shadow_run(w, n, func(sh): reconsider(w, sh, why))
+		return
+	if absf(n.trust - n.trust_at_reconsider) < 0.03:
 		return
 	n.trust_at_reconsider = n.trust
 	var rate = 1.0 - 0.6 * trait_of(n, "confidence")
@@ -492,7 +615,10 @@ static func reconsider(w, n, why: String) -> void:
 ## Apply one ability result (own or heard) to a listener's suspicion, through their ledger:
 ## hearing the same reading again (directly, relayed, at the meeting) never stacks.
 static func apply_info(w, listener, source, entry: Dictionary, weight: float) -> void:
-	if weight <= 0.01 or listener.is_evil():
+	if weight <= 0.01:
+		return
+	if listener.is_evil():
+		shadow_run(w, listener, func(sh): apply_info(w, sh, source, entry, weight))
 		return
 	var eid = info_eid(source.id, entry)
 	var fresh = not listener.ledger.has(eid)
@@ -637,6 +763,9 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 	return effs
 
 static func update_from_own_info(w) -> void:
+	for n in w.evil_team():
+		if n.alive:
+			_shadow_own_info(w, n)
 	for n in w.living_good():
 		while n.applied_info < n.info_log.size():
 			var e: Dictionary = n.info_log[n.applied_info]
@@ -883,7 +1012,10 @@ const CONSENSUS_FADE = 0.6
 const CONSENSUS_CAP = 0.3
 
 static func refresh_consensus(w, l, target: String) -> void:
-	if l.is_evil() or l.id == target or not l.suspicion.has(target):
+	if l.is_evil():
+		shadow_run(w, l, func(sh): refresh_consensus(w, sh, target))
+		return
+	if l.id == target or not l.suspicion.has(target):
 		return
 	var vals: Array = []
 	for a in w.stances:
@@ -1930,22 +2062,27 @@ static func public_case(w, nominee, card: Dictionary, direction: String) -> void
 		if v.is_evil():
 			if direction == "accuse" and Evil.is_teammate(w, v, nominee.id):
 				Evil.add_intel(w, v, "player_suspects", nominee.id, 0.0, "the Demonologist accused %s at the meeting" % nominee.id)
+			shadow_run(w, v, func(sh): _public_case_hear(w, sh, nominee, card, direction, card_weight(w, sh, nominee, card)))
 			continue
-		var known = 0.35 if v.ledger.has(cw["key"]) else 1.0
-		var base: float = 0.25 * cw["cred"] * cw["class_w"] * known
-		var sign = 1.0
-		if direction == "accuse":
-			base *= cw["relevance"] * card_strength(w, card, nominee)
-		else:
-			base *= defend_strength(card, nominee.id)
-			sign = -1.0
-		var effs: Array = []
-		_eff(effs, nominee.id, sign, "the Demonologist's public %s using card '%s' (class %s, cred %.2f, already known x%.2f)" %
-			[direction, cw["key"], cw["cls"], cw["cred"], known], "the Demonologist made a case against them" if direction == "accuse" else "")
-		ledger_hear(w, v, "pub:%s:%s>%s" % [direction, cw["key"], nominee.id], effs, base * word_factor(w, v, card), cw["rel"],
-			{"kind": "tell", "base": base, "text": card.get("text", "")})
-		if direction == "accuse":
-			v.used_facts[cw["key"] + ">" + nominee.id] = true
+		_public_case_hear(w, v, nominee, card, direction, cw)
+
+## One voter weighs the player's public case (see public_case).
+static func _public_case_hear(w, v, nominee, card: Dictionary, direction: String, cw: Dictionary) -> void:
+	var known = 0.35 if v.ledger.has(cw["key"]) else 1.0
+	var base: float = 0.25 * cw["cred"] * cw["class_w"] * known
+	var sign = 1.0
+	if direction == "accuse":
+		base *= cw["relevance"] * card_strength(w, card, nominee)
+	else:
+		base *= defend_strength(card, nominee.id)
+		sign = -1.0
+	var effs: Array = []
+	_eff(effs, nominee.id, sign, "the Demonologist's public %s using card '%s' (class %s, cred %.2f, already known x%.2f)" %
+		[direction, cw["key"], cw["cls"], cw["cred"], known], "the Demonologist made a case against them" if direction == "accuse" else "")
+	ledger_hear(w, v, "pub:%s:%s>%s" % [direction, cw["key"], nominee.id], effs, base * word_factor(w, v, card), cw["rel"],
+		{"kind": "tell", "base": base, "text": card.get("text", "")})
+	if direction == "accuse":
+		v.used_facts[cw["key"] + ">" + nominee.id] = true
 
 ## Tavern gossip. Returns {lines, facts}.
 static func gossip(w) -> Dictionary:

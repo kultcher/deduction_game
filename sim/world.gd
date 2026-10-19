@@ -13,6 +13,7 @@ const Social = preload("res://sim/social.gd")
 var rng = RandomNumberGenerator.new()
 var seed_value = 0
 var dlog = DevLog.new()
+var shadow_log = DevLog.new()   # the shadow selves' reasoning (kept out of the case log)
 
 var npcs: Array = []
 var by_id = {}
@@ -811,6 +812,7 @@ func _revenant_curse(rv, res: Dictionary) -> void:
 
 func turn_evil(v, why: String) -> void:
 	v.alignment = "evil"
+	Mind.shadow_reset(v)  # rebuilt from their good mind as it stands now
 	v.turned = true
 	v.turned_day = day
 	evil_plan["bluffs"][v.id] = v.role  # they keep claiming their own gift
@@ -829,6 +831,7 @@ func free_turned() -> String:
 	if not v.alive:
 		return ""
 	v.alignment = "good"
+	Mind.shadow_reset(v)
 	v.turned = false
 	v.intel = {}
 	for e in v.info_log:
@@ -1200,6 +1203,8 @@ func _kill(v) -> void:
 	for n in npcs:
 		if n.alive and not n.is_evil():
 			n.suspicion[v.id] = 0.0
+		elif n.alive and n.shadow != null:
+			n.shadow.suspicion[v.id] = 0.0  # a good self knows the demon's victims were good
 
 # ---------------------------------------------------------------- abilities
 
@@ -1548,4 +1553,11 @@ func snapshot(tag: String) -> void:
 				sus[k] = snappedf(n.suspicion[k], 0.01)
 		s[n.id] = {"loc": n.loc, "poisoned": n.poisoned, "trust": snappedf(n.trust, 0.01), "trust_cap": n.trust_cap,
 			"pressure": snappedf(n.pressure, 0.01), "claim": n.claimed_role, "max_tier": n.max_tier, "suspicion": sus}
-	dlog.add("snapshot", "world", "", {"tag": tag, "npcs": s})
+	var shadows = {}
+	for n in npcs:
+		if n.alive and n.shadow != null:
+			shadows[n.id] = Mind.shadow_view(self, n)
+	var d = {"tag": tag, "npcs": s}
+	if not shadows.is_empty():
+		d["shadow"] = shadows  # evil NPCs' "if I were good" view (debug only)
+	dlog.add("snapshot", "world", "", d)

@@ -95,6 +95,13 @@ townsfolk and 150 at 10. Record the baseline in DESIGN.md. It's the "before" for
 
 ## Step 1: the shadow mind, inspection only (no behaviour change)
 
+**Done Oct 19** (see DESIGN.md, "Shadow good self, step 1"). It differs from the text
+below in three ways:
+- It's built on first use rather than at setup.
+- The debug UI column isn't built yet; snapshots carry the data.
+- The player's private cases and arguments don't reach the shadow yet; step 2 rewrites
+  those paths anyway.
+
 1. **Data.** Add `var shadow = null` to `sim/npc.gd`. For each evil NPC at setup
    (`world.gd`, after roles and bluffs are assigned), build a shadow NPC object:
    - copy traits, home, work, friends and rivals;

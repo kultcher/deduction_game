@@ -113,6 +113,11 @@ var trust_at_reconsider = 0.5
 var honesty = {}             # derived: id -> how far they credit that person's word (from evidence)
 ## Evil only: what this member knows (own observations and what they were told).
 var intel = {}               # key -> {kind, about, score, why, day, from}
+## Evil only: the shadow good self (Mind.shadow_run): what they'd believe if they were the
+## good townsperson they pretend to be. A separate NPC object, never in the town's lists.
+var shadow = null
+var shadow_rng = null        # on the shadow: its own random stream (never the world's)
+var shadow_seen = {}         # on the real NPC: how far each list has been mirrored
 
 ## Seer only: the good NPC who falsely reads as demon.
 var red_herring = ""

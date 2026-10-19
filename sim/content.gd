@@ -296,6 +296,12 @@ const DEMON_MOODS = ["vengeful", "cunning", "hungry"]
 ## Tuning knob: may a cautious NPC deny having any gift ("I'm only the baker")? Off: evil
 ## almost never bluffed it, so a denial was close to proof of good.
 const ALLOW_NO_GIFT_DENIAL = false
+## Shadow good self for evil NPCs (docs/shadow_self_plan.md). Step 1: built and fed, but
+## nothing reads it, so switching it off must not change a single case.
+const SHADOW_SELF = true
+## How firmly the shadow holds evil's own fake readings, relative to a townsperson's own
+## reading (1.0): firmer, but still open to "my gift was poisoned".
+const SHADOW_OWN_READING_WEIGHT = 1.2
 const USE_FLAVOR_SECRETS = false
 const SECRETS = [
 	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "me": "can't sleep, so I walk to the chapel to pray", "dest": "hill"},

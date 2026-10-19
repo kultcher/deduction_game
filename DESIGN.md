@@ -1411,3 +1411,37 @@ Built from the session's list:
   nothing for their safety; it's a way to build trust. With the deterrent gone and the
   bot asking by timeframe, 7 townsfolk: 41/150 (27%) vs passive 8/150.
 
+
+## Shadow good self, step 1 (Oct 19)
+
+Plan: docs/shadow_self_plan.md. Each evil NPC now keeps a second, good mind
+(`n.shadow`, built by `Mind.shadow_run`). Its gift is the NPC's bluff. It's a separate
+NPC object, never in `w.npcs` or `w.by_id`. **Nothing reads it yet**: switching
+`C.SHADOW_SELF` off gives identical bot results (checked: 60 games each at 7 and 10
+townsfolk, seeds 1000–1059, case by case).
+
+**Routed** (these used to return early for evil listeners; they now run the same code on
+the shadow, then still return as before for the real NPC): `adjust`, `hear_claim`,
+`ledger_hear`, `recompute_beliefs`, `reconsider`, `apply_info`, `refresh_consensus`,
+the per-voter part of `public_case` (`_public_case_hear`), and `update_from_own_info`
+(evil's fake readings go to the shadow at `C.SHADOW_OWN_READING_WEIGHT` = 1.2). In
+world.gd, the demon's victims are cleared in the shadow too, and the curse resets it
+(`turn_evil`, `free_turned`).
+
+**Kept apart:**
+- The shadow uses its own random stream (seeded from the case seed and NPC id) and
+  writes to `w.shadow_log`, never the case log.
+- Night sightings from nights the real NPC spent out don't reach it.
+- Trust, pressure, location, claims, hearsay and known claims are copied from the real
+  NPC each time the shadow runs.
+- The shadow learns its own gift as every good NPC does (`hear_claim` "own"), so it
+  takes a rival claim of its bluff as a lie.
+
+**Not yet routed (step 2 rewrites these paths anyway):** the player's private cases,
+defences and group cases (`hear_accusation`, `hear_defense`, `hear_group_case`) and
+arguments (`Argue.check`'s evil branch). So shadows hear less than good NPCs and move
+less: in 96773 at day 3 with an idle player, the shadows sat near baseline while the town
+average on Greta was 0.34. Bartholomew's and Isolde's shadows still ranked Greta second
+and first; that's the seed of throwing a teammate under the bus.
+
+Debug: snapshots carry `"shadow": {id: {role, trust, suspicion}}`. Test: tools/test_shadow.gd.
