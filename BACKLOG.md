@@ -332,3 +332,15 @@ Settled decisions, built work and parked levers, kept for the record.
   138 dialogue and 20 dialogue-decision checks on standard Godot 4.4.1, plus
   rendered town, hidden-card and timeline views. The UI test's previously
   documented synthetic drag-preview and shutdown diagnostics remain.
+- **Oct 19: shared text system, step 1** (`codex/text-term-registry`). Added a
+  public display-term registry seeded from the cast, character colors, role
+  descriptions and existing role icons. Stable person/role IDs carry optional
+  color, icon and tooltip metadata; other term kinds can register through the
+  same API. Matching returns original character ranges, preserves capitalization,
+  supports possessives and Unicode word boundaries, and prefers the longest
+  phrase. Ambiguous lowercase words such as medium/clerk require explicit role
+  context; callers can limit eligible term kinds or opt out. Registry lookups
+  return copies. No world/secret-role state is read. API and remaining steps are
+  documented in `docs/text_formatting.md`. This is the registry/matching foundation;
+  UI formatting and tooltips will be integrated in later steps. Verified 25 focused
+  checks and a clean Godot 4.4.1 editor import.
