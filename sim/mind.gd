@@ -1153,7 +1153,9 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 	var tier = maxi(target, n.max_tier)
 	var withholding = target < n.max_tier
 	if tier <= 1:
-		var lie = decide(w, n, "deny_or_refuse", {"confidence": (trait_of(n, "confidence") - 0.5) * 1.5, "base": -0.1},
+		# Denying any gift is off (C.ALLOW_NO_GIFT_DENIAL): evil almost never says it, so it
+		# read as a near-certain good, at the price of the gift. Refusing to say remains.
+		var lie = C.ALLOW_NO_GIFT_DENIAL and decide(w, n, "deny_or_refuse", {"confidence": (trait_of(n, "confidence") - 0.5) * 1.5, "base": -0.1},
 			"Tier 1: deny having a gift (lie) rather than refuse to say?")
 		if lie:
 			if not evil:
@@ -1461,27 +1463,57 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 ## "afternoon", "evening" (today) or "yesterday". near_block: where the player is right now;
 ## people seen there this phase are left out (you can see them yourself), and memory reaches
 ## further back instead.
+## "Where were you, and who did you see?" for a daytime frame: "" (earlier today, up to
+## now), "morning" / "afternoon" / "evening" (today), "yesterday", or "yesterday
+## morning" / "yesterday afternoon" / "yesterday evening". They say where they were
+## (daytime whereabouts are open to anyone's eyes), then who they saw: as many as their
+## memory (Insight) holds and their Gossip lets them share.
 static func answer_today(w, n, when: String = "", near_block: String = "") -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
 	var facts: Array = []
+	var parts_w: PackedStringArray = when.split(" ", false)
+	var yday = parts_w.size() > 0 and parts_w[0] == "yesterday"
+	var ph_name: String = parts_w[parts_w.size() - 1] if parts_w.size() > 0 and parts_w[parts_w.size() - 1] != "yesterday" else ""
+	var ph = C.PHASES.map(func(x): return x.to_lower()).find(ph_name)
+	var day: int = w.day - 1 if yday else w.day
+	# The phases the question covers, in order.
+	var phases: Array = []
+	if ph >= 0:
+		phases = [ph]
+	else:
+		for p in range(3):
+			if yday or p <= w.phase:
+				phases.append(p)
+	var in_frame = func(b) -> bool:
+		return b["day"] == day and b["phase"] in phases
+	# Where they were.
+	var was: Array = []
+	for p in phases:
+		if day < 1 or (day == w.day and p > w.phase):
+			continue
+		var at: String = n.history.get(w.time_key(day, p), "")
+		if day == w.day and p == w.phase:
+			at = n.loc
+		if at == "" or at == "dead":
+			continue
+		var place: String = "at home" if at.begins_with("home") else ("at " + w.loc_name(at))
+		var lead: String = ("yesterday " if yday else "this ") + C.PHASES[p].to_lower()
+		was.append("%s I was %s" % [lead, place])
+	var was_s = ""
+	if not was.is_empty():
+		was_s = ", and ".join(PackedStringArray(was))
+		was_s = was_s[0].to_upper() + was_s.substr(1)
 	var limit = _gossip_share(w, n, "share_sightings")
 	if limit == 0:
-		lines.append(say(n, "Who goes where is none of my business."))
+		lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + "Who else goes where is none of my business."))
 		return {"lines": lines, "facts": facts}
 	# Memory: they recall only their most recent few sightings (more with Insight), one per person.
 	var memory = 2 + int(round(trait_of(n, "insight") * 4.0))
-	var ph = C.PHASES.map(func(x): return x.to_lower()).find(when)
-	var in_frame = func(b) -> bool:
-		if when == "yesterday":
-			return b["day"] == w.day - 1
-		if ph >= 0:
-			return b["day"] == w.day and b["phase"] == ph
-		return b["day"] >= w.day - 1
 	var before: Array = n.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] != C.NIGHT and in_frame.call(b))
 	var seen: Array = before.filter(func(b): return near_block == "" or not (b["day"] == w.day and b["phase"] == w.phase and b.get("block", "") == near_block))
 	if seen.is_empty() and not before.is_empty():
-		lines.append(say(n, "Only who you can see around you for yourself."))
+		lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + "Nobody but who you can see around you for yourself."))
 		return {"lines": lines, "facts": facts}
 	var recalled: Array = []
 	var people = {}
@@ -1496,27 +1528,34 @@ static func answer_today(w, n, when: String = "", near_block: String = "") -> Di
 		if recalled.size() >= memory:
 			break
 	if recalled.is_empty():
-		lines.append(say(n, "Nobody worth mentioning."))
+		lines.append(say(n, (was_s + ", and saw nobody worth mentioning.") if was_s != "" else "Nobody worth mentioning."))
 		return {"lines": lines, "facts": facts}
 	w.dlog.think(n.id, "share_sightings", "Recalls %d recent sighting(s) (memory %d from insight), shares up to %d (gossip)." %
 		[recalled.size(), memory, limit])
 	var parts: Array = []
+	var named = {}   # people already mentioned (as someone's conversation partner, too)
 	for b in recalled.slice(0, limit):
+		if named.has("%s:%d:%d" % [b["who"], b["day"], b["phase"]]):
+			continue
 		var who = w.by_id[b["who"]]
 		var when_s = "%s %s" % ["yesterday" if b["day"] < w.day else "this", C.PHASES[b["phase"]].to_lower()]
 		var where: String = w.loc_name(b["loc"]) if b["loc"] != "" else C.block_name(b["block"])
+		var tag = (" (%s)" % when_s) if phases.size() > 1 else ""
+		if b.get("with", "") != "":
+			named["%s:%d:%d" % [b["with"], b["day"], b["phase"]]] = true
 		var partner: String = b.get("with", "")
 		if partner != "" and w.by_id.has(partner) and not (n.is_evil() and Evil.is_teammate(w, n, partner)):
 			var pn = w.by_id[partner]
-			parts.append("%s at %s, talking with %s (%s)" % [who.name, where, pn.name, when_s])
+			parts.append("%s at %s, talking with %s%s" % [who.name, where, pn.name, tag])
 			facts.append({"kind": "conversation", "subject": [who.id, partner], "block": b["block"], "loc": b["loc"], "day": b["day"], "phase": b["phase"],
 				"source": n.id, "text": "%s saw %s and %s talking at %s, day %d %s." % [n.name, who.name, pn.name, where, b["day"], C.PHASES[b["phase"]]]})
 			people[partner] = true
 		else:
-			parts.append("%s at %s (%s)" % [who.name, where, when_s])
+			parts.append("%s at %s%s" % [who.name, where, tag])
 		facts.append({"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": b["phase"], "source": n.id,
 			"text": "%s saw %s on %s, day %d %s." % [n.name, who.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
-	lines.append(say(n, "Let me think. " + "; ".join(PackedStringArray(parts)) + "."))
+	var seen_s = "; ".join(PackedStringArray(parts))
+	lines.append(say(n, ("%s, and saw %s." % [was_s, seen_s]) if was_s != "" else ("Let me think. %s." % seen_s)))
 	return {"lines": lines, "facts": facts}
 
 static func answer_opinion(w, n, t) -> Dictionary:
@@ -1609,7 +1648,7 @@ static func card_strength(w, card: Dictionary, suspect) -> float:
 			return 0.0
 		"trace":
 			return 0.7
-		"home":
+		"home", "haunt":
 			return 0.0
 		"accusation", "opinion":
 			return 0.4

@@ -296,7 +296,10 @@ func build(font: Font) -> void:
 	profile.changed.connect(func():
 		theory_label.text = _theory_text()
 		changed.emit())
-	profile.card_clicked.connect(func(_n): board.fit_selection())
+	profile.card_clicked.connect(func(n):
+		reveal(n)
+		state.select_card(n)
+		board.fit_selection())
 	mid_split.add_child(profile)
 
 func _heading(t: String) -> Label:
@@ -427,6 +430,21 @@ func _fill_kinds() -> void:
 	_fill_kinds_view = state.view
 
 var _fill_kinds_view = ""
+
+## Make sure card n can be seen: switch to the view it lives in, and drop the filters if
+## they'd still hide it (used when a card is clicked from the town log).
+func reveal(n: int) -> void:
+	if n < 1 or n > g.board.size():
+		return
+	var card: Dictionary = g.board[n - 1]
+	if card.get("kind", "") != "deduction" and not state.in_view(card):
+		state.set_view(card.get("view", CardModel.view_of(card)))
+	if card.get("hidden", false) and not g.show_hidden:
+		g.show_hidden = true
+	var shown: Array = state.apply(g).map(func(c): return c["n"])
+	if card.get("kind", "") != "deduction" and not (n in shown):
+		_clear_filters()
+	refresh()
 
 func _clear_filters() -> void:
 	filter_edit.set_block_signals(true)

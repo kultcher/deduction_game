@@ -21,6 +21,11 @@ func _init() -> void:
 	_martyr_reluctance()
 	_summary()
 	_zag()
+	_no_gift_denial()
+	_where_were_you()
+	_haunts()
+	_offers()
+	_vigil_deters()
 	print("FIXES FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -172,3 +177,107 @@ func _zag() -> void:
 			if e["type"] == "think" and e["data"].get("topic", "") == "kill_choice" and e["data"].get("zag", false):
 				zags += 1
 	_check(zags >= 1 and zags <= nights * 0.12, "the demon sometimes skips its top three (%d of %d choices)" % [zags, nights])
+
+func _no_gift_denial() -> void:
+	var denials = 0
+	for sd in range(7300, 7320):
+		var g = _game(sd)
+		for n in g.w.npcs:
+			n.trust = 0.0
+			n.traits["privacy"] = 1.0
+			var r = Mind.answer_gift(g.w, n)
+			if r["facts"].any(func(f): return f["kind"] == "claim" and f.get("role", "") == "none"):
+				denials += 1
+	_check(denials == 0, "nobody denies having a gift (the knob is off)")
+
+func _talk_to(g, n) -> void:
+	g.state = "talk"
+	g.talk_with = n
+	g.questions_left = 3
+	g.free_repeats = 0
+	g.talk_offered = false
+	g.talk_approached = false
+	g.loc = n.loc if C.LOCATIONS.has(n.loc) else "tavern"
+
+func _where_were_you() -> void:
+	var g = _game(7110)
+	for i in range(40):
+		if g.w.day >= 2 and g.state == "day":
+			break
+		match g.state:
+			"night":
+				g.command("sleep")
+			"meeting", "nomination":
+				g.command("done" if g.state == "meeting" else "vote no")
+				g.command("wait")
+			"approach":
+				g.command("decline")
+			_:
+				g.command("wait")
+	var w = g.w
+	var n = w.living()[0]
+	n.traits["gossip"] = 0.9
+	_talk_to(g, n)
+	var r = Mind.answer_today(w, n, "yesterday afternoon")
+	var t: String = r["lines"][0]["text"]
+	_check(t.begins_with("Yesterday afternoon I was "), "a timeframe answer starts with where they were (%s)" % t)
+	g.command("ask seen yesterday morning")
+	_check(g.last_events.any(func(e): return e["k"] == "speech" and "Yesterday morning I was" in e["text"]), "'ask seen yesterday morning' works as a command")
+
+func _haunts() -> void:
+	var g = _game(7111)
+	var w = g.w
+	var t = w.npcs[1]
+	_check(g.profile_data(t.id)["haunts"] == "", "nobody's haunts are known at the start")
+	var told = false
+	for n in w.npcs:
+		if n == t:
+			continue
+		n.traits["gossip"] = 1.0
+		n.trust = 1.0
+		n.silenced = false
+		for k in range(6):
+			_talk_to(g, n)
+			g.command("ask about " + t.id)
+			if g.known_haunts.has(t.id):
+				told = true
+				break
+		if told:
+			break
+	_check(told and g.known_haunts[t.id].all(func(x): return x in t.haunts), "asking a chatty, trusting person about someone can reveal their haunts")
+	_check(g.board.any(func(c): return c["kind"] == "haunt" and c["subject"] == [t.id]), "a revealed haunt is a card")
+	_check(g.profile_data(t.id)["haunts"] != "", "the profile shows haunts once you've been told")
+
+func _offers() -> void:
+	var g = _game(7112)
+	var w = g.w
+	var a = w.living()[0]
+	var b = w.living()[1]
+	_talk_to(g, a)
+	var t0 = a.trust
+	g.command("offer vigil")
+	_check(a.trust > t0 and g.questions_left == 3, "offering a vigil earns a little trust and costs no question")
+	_talk_to(g, b)
+	g.command("offer ward")
+	var tb = b.trust
+	var ta = a.trust
+	g.state = "night"
+	g.command("ward " + b.id)   # kept the ward, not the vigil
+	_check(b.trust > tb, "keeping your word raises trust")
+	_check(a.trust < ta - 0.1, "breaking your word costs a lot of trust")
+	_check(g.offer.is_empty(), "promises are settled with the night")
+
+func _vigil_deters() -> void:
+	var g = _game(7113)
+	var w = g.w
+	w.player_vigil = w.living_good()[0].home_block
+	Evil.choose_kill_target(w)
+	var e = w.dlog.entries.filter(func(x): return x["type"] == "think" and x["data"].get("topic", "") == "kill_choice")[-1]
+	var marked = 0
+	for id in e["data"]["scores"]:
+		if e["data"]["scores"][id]["parts"].has("vigil_watch"):
+			marked += 1
+			if w.by_id[id].home_block != w.player_vigil:
+				marked = -99
+	_check(marked > 0, "a vigil weighs against killing anyone on the watched block")
+

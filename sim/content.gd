@@ -293,6 +293,9 @@ const DEMON_MOODS = ["vengeful", "cunning", "hungry"]
 ## ("Fenwick cannot sleep..."); "me" is how they put it themselves ("I can't sleep...").
 ## (The Secret Lovers are a secret modifier now; see SECRET_MODS.) Benched for now: with the
 ## secret modifiers in play these put too many innocents out at night.
+## Tuning knob: may a cautious NPC deny having any gift ("I'm only the baker")? Off: evil
+## almost never bluffed it, so a denial was close to proof of good.
+const ALLOW_NO_GIFT_DENIAL = false
 const USE_FLAVOR_SECRETS = false
 const SECRETS = [
 	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "me": "can't sleep, so I walk to the chapel to pray", "dest": "hill"},

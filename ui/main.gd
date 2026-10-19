@@ -183,6 +183,7 @@ func _ready() -> void:
 		cast_list.refresh())
 	profile.card_clicked.connect(func(n):
 		_open_case_view()
+		case_view.reveal(n)
 		case_state.select_card(n)
 		case_view.board.fit_selection())
 	upper.add_child(profile)
@@ -226,6 +227,7 @@ func _ready() -> void:
 		var m = str(meta)
 		if m.begins_with("card:"):
 			_open_case_view()
+			case_view.reveal(int(m.substr(5)))
 			case_state.select_card(int(m.substr(5)))
 			case_view.board.fit_selection())
 	logpanel.add_child(out)
@@ -690,6 +692,17 @@ func _refresh_actions() -> void:
 				_button(actions, "Invoke Clemency (once per case)", func(): _run("clemency"))
 		"night":
 			action_title.text = "Night %d: your night work" % w.day
+			# Tonight's promises first, so keeping your word is one click.
+			if g.offer.has("ward") and w.tools["ward"] > 0:
+				var wid: String = g.offer["ward"]
+				_button(actions, "Keep your word: ward %s's door" % w.by_id[wid].name, func(): _run("ward " + wid), C.npc_color(wid))
+			var vblocks = {}
+			for id in g.offer.get("vigil", {}):
+				vblocks[g.offer["vigil"][id]] = true
+			for vb in vblocks:
+				_button(actions, "Keep your word: vigil on %s" % C.block_name(vb), func(): _run("vigil " + vb))
+			if not g.offer.is_empty():
+				_hint("You promised %s." % g.offer_text())
 			if map.selected_block != "":
 				_button(actions, "Keep vigil on %s" % C.block_name(map.selected_block), func(): _run("vigil " + map.selected_block))
 			if map.selected_npc != "" and w.tools["ward"] > 0 and w.by_id[map.selected_npc].alive:
@@ -740,8 +753,12 @@ func _actions_day(w) -> void:
 func _actions_talk(w) -> void:
 	var n = g.talk_with
 	action_title.text = "Talking with %s · %d question%s left" % [n.name, g.questions_left, "" if g.questions_left == 1 else "s"]
-	var sb = _button(actions, "Ask about %s…  ▸" % n.name, func(): pass)
-	sb.pressed.connect(func(): _ask_self_picker(sb))
+	var gb = _button(actions, "Ask about %s's gift…  ▸" % n.name, func(): pass)
+	gb.pressed.connect(func(): _ask_gift_picker(gb))
+	var ob = _button(actions, "Offer…  ▸", func(): pass)
+	ob.pressed.connect(func(): _offer_picker(ob))
+	var wb = _button(actions, "Ask where they were and who they saw…  ▸", func(): pass)
+	wb.pressed.connect(func(): _ask_when_picker(wb))
 	var ab = _button(actions, "Ask about others…  ▸", func(): pass)
 	ab.pressed.connect(func(): _ask_about_picker(ab))
 	_button(actions, "Present a card…", func(): _card_picker("Present a card to %s" % n.name, func(c): return true,
@@ -802,24 +819,15 @@ func _column(title: String) -> VBoxContainer:
 	v.add_child(l)
 	return v
 
-## "Ask about <them>…": questions about the listener themselves, and a column of gifts to
-## ask if they hold one.
-func _ask_self_picker(anchor: Control) -> void:
+## "Ask about <them>'s gift…": what their gift is, or whether they hold a particular one.
+func _ask_gift_picker(anchor: Control) -> void:
 	var n = g.talk_with
 	var h = HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
 	var qs = _column("Ask %s…" % n.name)
-	var items: Array = [["about their gift", "ask gift"], ["who they've seen around lately", "ask today"]]
-	for ph in range(g.w.phase + 1):
-		items.append(["  …who they saw this %s" % C.PHASES[ph].to_lower(), "ask seen " + C.PHASES[ph].to_lower()])
-	if g.w.day > 1:
-		items.append(["  …who they saw yesterday", "ask seen yesterday"])
-	items.append(["if they saw anything last night", "ask night"])
-	for it in items:
-		var cmd: String = it[1]
-		_button(qs, it[0], func():
-			popup.hide()
-			_run(cmd))
+	_button(qs, "about their gift", func():
+		popup.hide()
+		_run("ask gift"))
 	h.add_child(qs)
 	var gifts = _column("…if they are the")
 	for r in C.GOOD_ROLES:
@@ -828,6 +836,41 @@ func _ask_self_picker(anchor: Control) -> void:
 			_run("ask are " + C.role_name(r).to_lower()))
 	h.add_child(gifts)
 	_show_popup(h, anchor)
+
+## "Offer…": your ward on their door tonight, or a vigil on their block.
+func _offer_picker(anchor: Control) -> void:
+	var n = g.talk_with
+	var v = _column("Offer %s…" % n.name)
+	var wb = _button(v, "my ward on your door tonight", func():
+		popup.hide()
+		_run("offer ward"))
+	wb.disabled = g.w.tools["ward"] <= 0 or g.offer.has("ward")
+	if g.w.tools["ward"] <= 0:
+		wb.tooltip_text = "Your ward is spent (once per case)."
+	var vb = _button(v, "a vigil on %s tonight" % C.block_name(n.home_block), func():
+		popup.hide()
+		_run("offer vigil"))
+	vb.disabled = g.offer.has("vigil")
+	if not g.offer.is_empty():
+		_hint_into(v, "You've promised tonight: %s." % g.offer_text())
+	_show_popup(v, anchor)
+
+## "Ask where they were and who they saw…": a time to ask about.
+func _ask_when_picker(anchor: Control) -> void:
+	var items: Array = [["…today", "ask seen today", null], ["…last night", "ask night", null]]
+	if g.w.day > 1:
+		for ph in [2, 1, 0]:
+			items.append(["…yesterday %s" % C.PHASES[ph].to_lower(), "ask seen yesterday " + C.PHASES[ph].to_lower(), null])
+	_list_picker(anchor, "Ask where they were and who they saw…", items)
+
+func _hint_into(box: Control, t: String) -> void:
+	var l = Label.new()
+	l.text = t
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(260, 0)
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	box.add_child(l)
 
 ## "Ask about others…": opinion on a person, or whether they've heard of anyone holding a gift.
 func _ask_about_picker(anchor: Control) -> void:

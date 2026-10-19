@@ -297,7 +297,7 @@ func _decide() -> String:
 				var best_c = 0
 				var best_v = 0.25
 				for c in g.board:
-					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and not (c["kind"] in ["vote", "secret", "deduction", "conversation", "home"]):
+					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and not (c["kind"] in ["vote", "secret", "deduction", "conversation", "home", "haunt"]):
 						var v: float = Mind.card_strength(w, c, ts[0])
 						if v > best_v:
 							best_v = v
@@ -382,7 +382,7 @@ static func _parse(argv: PackedStringArray) -> Dictionary:
 ## Look for a contradiction among recent cards; file the explanation blaming the most
 ## suspicious person. Returns the deduction card number, or 0.
 func _find_or_file_deduction() -> int:
-	var recent: Array = g.board.filter(func(c): return not (c["kind"] in ["deduction", "home"])).slice(-14)
+	var recent: Array = g.board.filter(func(c): return not (c["kind"] in ["deduction", "home", "haunt"])).slice(-14)
 	var sc = _scores()
 	for i in range(recent.size()):
 		for j in range(i + 1, recent.size()):
