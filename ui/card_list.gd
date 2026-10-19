@@ -2,6 +2,7 @@
 extends Tree
 
 signal card_activated(num)
+signal card_context_requested(num, at)
 signal selection_changed
 signal cards_dropped(nums)   # cards dragged here from the board, the tray or another list
 
@@ -21,6 +22,16 @@ func _init() -> void:
 			card_activated.emit(it.get_metadata(0)))
 	multi_selected.connect(func(_item, _col, _sel): selection_changed.emit())
 	item_selected.connect(func(): selection_changed.emit())
+	gui_input.connect(_context_input)
+
+func _context_input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_RIGHT:
+		var item = get_item_at_position(ev.position)
+		if item != null:
+			var num = item.get_metadata(0)
+			if num is int and num > 0:
+				card_context_requested.emit(num, Vector2i(get_screen_transform() * ev.position))
+				accept_event()
 
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")

@@ -8,6 +8,7 @@ extends VBoxContainer
 
 signal changed                # guess or notes saved
 signal card_clicked(num)
+signal card_context_requested(num, at)
 signal person_changed(id)
 
 const C = preload("res://sim/content.gd")
@@ -35,6 +36,7 @@ var bars
 var tab = 0
 var _setting = false
 var compact = false   # the town screen's narrower column: smaller portrait
+var _hovered_card = 0
 
 func _init(is_compact: bool = false) -> void:
 	compact = is_compact
@@ -171,6 +173,15 @@ func build() -> void:
 	pv.add_child(bars)
 	body = RichTextLabel.new()
 	body.bbcode_enabled = true
+	body.context_menu_enabled = false
+	body.meta_hover_started.connect(func(meta):
+		var value = str(meta)
+		_hovered_card = value.substr(5).to_int() if value.begins_with("card:") else 0)
+	body.meta_hover_ended.connect(func(_meta): _hovered_card = 0)
+	body.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_RIGHT and _hovered_card > 0:
+			card_context_requested.emit(_hovered_card, Vector2i(body.get_screen_transform() * ev.position))
+			body.accept_event())
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.custom_minimum_size = Vector2(0, 140 if compact else 200)
 	body.add_theme_font_size_override("normal_font_size", 16)
@@ -253,6 +264,7 @@ func _save_guess() -> void:
 	changed.emit()
 
 func refresh() -> void:
+	_hovered_card = 0
 	if g == null or person_opt == null:
 		return
 	var id = current()

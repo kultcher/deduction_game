@@ -13,6 +13,7 @@ signal card_activated(num)          # double-click: add to the working set
 signal row_clicked(kind, id)        # a row label: person | place
 signal view_changed                # pan/zoom or the initial fit changed
 signal person_context_requested(id) # right-click a person's row label
+signal card_context_requested(num, at)
 
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
@@ -81,7 +82,7 @@ func rebuild() -> void:
 	if g == null:
 		return
 	var cards: Array = state.apply(g)
-	cards += g.board.filter(func(c): return c.get("kind", "") == "deduction" and not c.get("deleted", false) and c.get("pins", {}).has(board_view()))
+	cards += g.board.filter(func(c): return c.get("kind", "") == "deduction" and not c.get("deleted", false) and (g.show_hidden or not c.get("hidden", false)) and c.get("pins", {}).has(board_view()))
 	var ctx = {"day": g.w.day, "phase": g._phase_now(), "rows_by": state.rows_by,
 		"people": g.w.npcs.map(func(n): return {"id": n.id, "name": n.name, "alive": n.alive}),
 		"blocks": C.BLOCKS.keys()}
@@ -607,8 +608,9 @@ func _gui_input(ev: InputEvent) -> void:
 					accept_event()
 					return
 			var h2 = _hit(mb.position)
-			if h2.get("pinned", false):
-				unpin(h2["n"])
+			if not h2.is_empty():
+				card_context_requested.emit(h2["n"], Vector2i(get_screen_transform() * mb.position))
+				accept_event()
 		elif mb.button_index == MOUSE_BUTTON_MIDDLE:
 			_panning = mb.pressed
 	elif ev is InputEventMouseMotion:
@@ -645,7 +647,7 @@ func _get_tooltip(at: Vector2) -> String:
 	var heard = _heard_line(card)
 	if heard != "":
 		t += "\n" + heard
-	t += "\n(double-click or drag to add to your working set%s)" % ("; right-click to unpin" if h.get("pinned", false) else "")
+	t += "\n(double-click or drag to add to your working set; right-click for card actions)"
 	return t
 
 ## Dragging a card off the board (to the working set). Pinned deductions move instead.

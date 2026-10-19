@@ -5,6 +5,7 @@
 extends Control
 
 signal card_activated(num)
+signal card_context_requested(num, at)
 signal toggled(open)
 
 const UITheme = preload("res://ui/theme.gd")
@@ -41,7 +42,7 @@ func setup(game, st) -> void:
 func deductions() -> Array:
 	if g == null:
 		return []
-	return g.board.filter(func(c): return c.get("kind", "") == "deduction" and not c.get("deleted", false))
+	return g.board.filter(func(c): return c.get("kind", "") == "deduction" and not c.get("deleted", false) and (g.show_hidden or not c.get("hidden", false)))
 
 func set_open(v: bool) -> void:
 	open = v
@@ -107,6 +108,11 @@ func _gui_input(ev: InputEvent) -> void:
 				queue_redraw()
 			elif not open:
 				set_open(true)
+		elif ev.button_index == MOUSE_BUTTON_RIGHT:
+			var n = _hit(ev.position)
+			if n > 0:
+				card_context_requested.emit(n, Vector2i(get_screen_transform() * ev.position))
+				accept_event()
 		elif ev.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 			var most = maxf(0.0, deductions().size() * (CARD_W + 10) + 246 - size.x)
 			scroll = clampf(scroll + (-80.0 if ev.button_index == MOUSE_BUTTON_WHEEL_UP else 80.0), 0.0, most)
@@ -117,7 +123,7 @@ func _get_tooltip(at: Vector2) -> String:
 	var n = _hit(at)
 	if n == 0:
 		return "Your deductions. Click to open; drag one onto the board to pin it." if Rect2(10, 4, 210, 28).has_point(at) else ""
-	return g.board[n - 1].get("text", "") + "\n(drag onto the board to pin it; double-click to add to your working set)"
+	return g.board[n - 1].get("text", "") + "\n(drag onto the board to pin it; double-click to add to your working set; right-click for card actions)"
 
 func _get_drag_data(at: Vector2):
 	var n = _hit(at)

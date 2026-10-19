@@ -27,7 +27,13 @@ func build(title: String) -> void:
 	handle.gui_input.connect(func(ev): _handle_input(ev, false))
 	header.add_child(handle)
 	var close = Button.new()
-	close.text = "Minimize"
+	close.text = "—"
+	close.flat = true
+	close.custom_minimum_size.x = 32
+	close.tooltip_text = "Minimize"
+	close.add_theme_color_override("font_color", UITheme.color("text"))
+	close.add_theme_color_override("font_hover_color", UITheme.color("accent"))
+	close.add_theme_color_override("font_pressed_color", UITheme.color("accent"))
 	close.pressed.connect(hide)
 	header.add_child(close)
 	var scroll = ScrollContainer.new()

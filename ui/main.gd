@@ -186,6 +186,7 @@ func _ready() -> void:
 		case_view.reveal(n)
 		case_state.select_card(n)
 		case_view.board.fit_selection())
+	profile.card_context_requested.connect(func(n, at): case_view.show_card_menu(n, at))
 	upper.add_child(profile)
 
 	var lower = HBoxContainer.new()
@@ -259,6 +260,7 @@ func _ready() -> void:
 	side_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	side_list.readable(15)
 	side_list.card_activated.connect(_on_side_activated)
+	side_list.card_context_requested.connect(func(n, at): case_view.show_card_menu(n, at))
 	side.add_child(side_list)
 	var hint = Label.new()
 	hint.text = "Double-click a card to add its number to your command."
@@ -938,6 +940,9 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 	f.placeholder_text = "filter: person, place, kind, d2, n1, text; join with + (greta+night)"
 	v.add_child(f)
 	var lst = CardList.new()
+	lst.card_context_requested.connect(func(n, at):
+		popup.hide()
+		case_view.show_card_menu(n, at))
 	lst.select_mode = Tree.SELECT_ROW
 	lst.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	lst.readable(14)

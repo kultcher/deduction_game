@@ -266,3 +266,17 @@ Settled decisions, built work and parked levers, kept for the record.
   including recognized/misspelled filters before opening tools and profile toggles.
   The UI test's existing synthetic drag-preview and shutdown diagnostics remain;
   the rendered check completed without errors.
+- **Oct 19: case-board UI phase 2.** Bottom rows now run from the grid to removable
+  filter chips, the popup toolbar, then the deduction tray. Filter chips wrap in
+  their own row without stretching the toolbar buttons; deductions expand beneath
+  both rows. Renamed Cards to Card List, starting at its minimum width (340), and
+  removed its action buttons. All three board windows use a visible flat line to
+  minimize. A shared right-click menu on grid cards, list entries, tray deductions
+  and profile card links offers Add to Deduction, Hide/Unhide, Find Links and Hints;
+  deductions also offer Delete, with Unpin retained for pinned deductions. Actions
+  target the clicked card; Find Links searches for links involving that card.
+  Hidden deductions now respect Show hidden in both the grid and tray. Moved Show
+  hidden after Clear filters and gave Clear filters a gold border. Verified 108 UI
+  and 25 board checks on standard Godot 4.4.1, plus rendered layouts, the card menu,
+  and panel mouse movement/resizing. The UI test's previously recorded synthetic
+  drag-preview and shutdown diagnostics remain.

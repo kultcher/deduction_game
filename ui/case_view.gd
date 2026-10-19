@@ -34,7 +34,7 @@ var sel_people: Dictionary:
 var sel_places: Dictionary:
 	get: return state.places
 var status_label: Label
-var chip_row: HBoxContainer
+var chip_row: HFlowContainer
 var card_list
 var board                     # ui/board_view.gd
 var tray                      # ui/deduction_tray.gd
@@ -68,7 +68,12 @@ var panels: Dictionary = {}
 var panel_buttons: Dictionary = {}
 var _panels_placed = false
 var _panel_layout_pending = false
-var dock: HBoxContainer
+var dock: HFlowContainer
+var filter_bar: HBoxContainer
+var clear_btn: Button
+var card_menu: PopupMenu
+var _context_card = 0
+enum CardAction { ADD, HIDE, LINKS, HINTS, DELETE, UNPIN }
 
 
 func _init() -> void:
@@ -145,12 +150,13 @@ func build(font: Font) -> void:
 		g.show_hidden = on
 		_refresh_cards()
 		changed.emit())
-	filters.add_child(hidden_check)
 	rows_btn = _btn(filters, "Rows: places", func():
 		state.rows_by = "person" if state.rows_by == "place" else "place"
 		state.changed.emit())
 	rows_btn.tooltip_text = "Places & sightings: arrange by place or person."
-	_btn(filters, "Clear filters", _clear_filters)
+	clear_btn = _btn(filters, "Clear filters", _clear_filters)
+	clear_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 2, 4, 6))
+	filters.add_child(hidden_check)
 	var navigation = HBoxContainer.new()
 	navigation.alignment = BoxContainer.ALIGNMENT_END
 	controls.add_child(navigation)
@@ -171,35 +177,40 @@ func build(font: Font) -> void:
 	canvas.clip_contents = true
 	root.add_child(canvas)
 	canvas.resized.connect(_queue_panel_layout)
-	# The dock and filter status have a fixed height, so typing never reshapes the canvas.
-	dock = HBoxContainer.new()
-	dock.add_theme_constant_override("separation", 8)
-	root.add_child(dock)
-	for entry in [["cards", "Cards"], ["work", "Build case"], ["profile", "Profile"]]:
-		var key: String = entry[0]
-		var toggle = _btn(dock, entry[1], func(): set_panel_open(key, not panels[key].visible))
-		toggle.toggle_mode = true
-		panel_buttons[key] = toggle
-	_btn(dock, "Notes", func(): notes_requested.emit())
-	_btn(dock, "Roles", func(): roles_requested.emit())
-	var chip_scroll = ScrollContainer.new()
-	chip_scroll.custom_minimum_size.y = 64
-	chip_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	dock.add_child(chip_scroll)
-	chip_row = HBoxContainer.new()
-	chip_scroll.add_child(chip_row)
+	# Independent bottom rows: removable filters, tool buttons, then deductions.
+	filter_bar = HBoxContainer.new()
+	filter_bar.add_theme_constant_override("separation", 8)
+	root.add_child(filter_bar)
+	chip_row = HFlowContainer.new()
+	chip_row.custom_minimum_size.y = 44
+	chip_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip_row.add_theme_constant_override("v_separation", 4)
+	filter_bar.add_child(chip_row)
 	status_label = Label.new()
 	status_label.clip_text = true
 	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	status_label.custom_minimum_size.x = 270
 	status_label.add_theme_font_size_override("font_size", 14)
 	status_label.add_theme_color_override("font_color", UITheme.color("muted"))
-	dock.add_child(status_label)
+	filter_bar.add_child(status_label)
+	dock = HFlowContainer.new()
+	dock.add_theme_constant_override("h_separation", 8)
+	dock.add_theme_constant_override("v_separation", 4)
+	root.add_child(dock)
+	for entry in [["cards", "Card List"], ["work", "Build case"], ["profile", "Profile"]]:
+		var key: String = entry[0]
+		var toggle = _btn(dock, entry[1], func(): set_panel_open(key, not panels[key].visible))
+		toggle.toggle_mode = true
+		panel_buttons[key] = toggle
+	_btn(dock, "Notes", func(): notes_requested.emit())
+	_btn(dock, "Roles", func(): roles_requested.emit())
+	card_menu = PopupMenu.new()
+	card_menu.id_pressed.connect(_on_card_action)
+	add_child(card_menu)
 	state.changed.connect(func():
 		_sync_menus()
 		_refresh_cards())
-	var cards_panel = _make_panel("cards", "Cards", Vector2(500, 700))
+	var cards_panel = _make_panel("cards", "Card List", Vector2(340, 700))
 
 	# Library and builder have separate, initially minimized panels.
 	var lib = VBoxContainer.new()
@@ -209,20 +220,13 @@ func build(font: Font) -> void:
 	card_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	card_list.custom_minimum_size = Vector2(0, 260)
 	card_list.card_activated.connect(func(num): _stage([num]))
+	card_list.card_context_requested.connect(show_card_menu)
 	card_list.selection_changed.connect(func():
 		var sel: Array = card_list.selected_metas()
 		if not sel.is_empty():
 			state.select_card(sel[0]))
 	card_list.readable(15)
 	lib.add_child(card_list)
-	var lb = HFlowContainer.new()
-	lib.add_child(lb)
-	_btn(lb, "Add to working set ▼", func(): _stage(card_list.selected_metas().filter(func(x): return x is int and x > 0)))
-	_btn(lb, "Hide", func(): _hide_selected(true))
-	_btn(lb, "Unhide", func(): _hide_selected(false))
-	_btn(lb, "Delete deduction", _delete_selected)
-	_btn(lb, "What can this be part of?", _hint_selected)
-	_btn(lb, "Find links", _find_links)
 
 	var work_panel = _make_panel("work", "Build case", Vector2(600, 760))
 	var ws: VBoxContainer = work_panel.content
@@ -238,6 +242,7 @@ func build(font: Font) -> void:
 	work_list.accept_drops = true
 	work_list.cards_dropped.connect(func(nums): _stage(nums))
 	work_list.card_activated.connect(func(num): _unstage([num]))
+	work_list.card_context_requested.connect(show_card_menu)
 	work_list.add_theme_font_override("font", mono)
 	work_list.add_theme_font_size_override("font_size", 14)
 	ws.add_child(work_list)
@@ -294,6 +299,7 @@ func build(font: Font) -> void:
 	canvas.move_child(board, 0)
 	board.view_changed.connect(_update_day_label)
 	board.card_activated.connect(func(num): _stage([num]))
+	board.card_context_requested.connect(show_card_menu)
 	board.row_clicked.connect(func(kind, id):
 		state.toggle(state.people if kind == "person" else state.places, id)
 		if kind == "person" and board.board_view() != "statements":
@@ -302,10 +308,8 @@ func build(font: Font) -> void:
 	board.person_context_requested.connect(_toggle_profile)
 	tray = DeductionTray.new()
 	tray.card_activated.connect(func(num): _stage([num]))
-	canvas.add_child(tray)
-	tray.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	tray.offset_top = -tray.FOLDED_H
-	tray.toggled.connect(func(open): tray.offset_top = -tray.OPEN_H if open else -tray.FOLDED_H)
+	tray.card_context_requested.connect(show_card_menu)
+	root.add_child(tray)
 	board.tooltip_text = "Drag the background to pan; wheel to zoom. Double-click a card to build a case. Open tools from the bottom dock; drag panel titles to move and bottom-right corners to resize."
 	state.selection_changed.connect(func():
 		board.queue_redraw()
@@ -317,6 +321,7 @@ func build(font: Font) -> void:
 	profile = ProfilePanel.new()
 	profile.custom_minimum_size = Vector2(300, 0)
 	profile.build()
+	profile.card_context_requested.connect(show_card_menu)
 	profile.changed.connect(func():
 		theory_label.text = _theory_text()
 		changed.emit())
@@ -367,6 +372,47 @@ func _toggle_profile(id: String) -> void:
 		state.select_person(id)
 		show_profile(id, true)
 
+## All card surfaces share this menu. Actions target the clicked card, independently
+## of older selections in the library or working set.
+func show_card_menu(num: int, at: Vector2i) -> void:
+	if g == null or num < 1 or num > g.board.size() or g.board[num - 1].get("deleted", false):
+		return
+	_context_card = num
+	state.select_card(num)
+	var card: Dictionary = g.board[num - 1]
+	card_menu.clear()
+	card_menu.add_item("Add to Deduction", CardAction.ADD)
+	card_menu.add_item("Unhide" if card.get("hidden", false) else "Hide", CardAction.HIDE)
+	card_menu.add_item("Find Links", CardAction.LINKS)
+	card_menu.add_item("Hints", CardAction.HINTS)
+	if card.get("kind", "") == "deduction":
+		if card.get("pins", {}).has(board.board_view()):
+			card_menu.add_item("Unpin from board", CardAction.UNPIN)
+		card_menu.add_separator()
+		card_menu.add_item("Delete deduction", CardAction.DELETE)
+	card_menu.popup(Rect2i(at, Vector2i.ZERO))
+
+func _on_card_action(action: int) -> void:
+	var num = _context_card
+	card_menu.hide()
+	if g == null or num < 1 or num > g.board.size() or g.board[num - 1].get("deleted", false):
+		return
+	if action in [CardAction.ADD, CardAction.LINKS, CardAction.HINTS]:
+		visible = true
+	match action:
+		CardAction.ADD:
+			_stage([num])
+		CardAction.HIDE:
+			_hide_selected(not g.board[num - 1].get("hidden", false), [num])
+		CardAction.LINKS:
+			_find_links(num)
+		CardAction.HINTS:
+			_hint_selected(num)
+		CardAction.DELETE:
+			_delete_selected([num])
+		CardAction.UNPIN:
+			board.unpin(num)
+
 func _layout_panels() -> void:
 	if panels.size() < 3 or canvas.size.x <= 0 or canvas.size.y <= 0:
 		return
@@ -413,6 +459,8 @@ func _btn(parent: Node, text: String, cb: Callable) -> Button:
 	return b
 
 func set_game(game) -> void:
+	card_menu.hide()
+	_context_card = 0
 	g = game
 	for key in panels:
 		set_panel_open(key, false)
@@ -613,13 +661,15 @@ func _refresh_chips(shown: int) -> void:
 	for c in chips:
 		var kind: String = c["kind"]
 		var key = c["key"]
-		var b = _btn(chip_row, c["label"] + "  ✕", func():
+		var b = _btn(chip_row, c["label"] + "  ×", func():
 			if kind == "text":
 				filter_edit.set_block_signals(true)
 				filter_edit.text = ""
 				filter_edit.set_block_signals(false)
 			state.remove_chip(kind, key))
-		b.tooltip_text = "Remove this filter"
+		b.custom_minimum_size.x = minf(b.get_combined_minimum_size().x, 320)
+		b.clip_text = true
+		b.tooltip_text = c["label"] + "\nRemove this filter"
 	if not chips.is_empty():
 		_btn(chip_row, "Clear all", _clear_filters)
 
@@ -870,9 +920,10 @@ func _on_file() -> void:
 	changed.emit()
 
 ## Teaching helper: what the selected card could be linked with, and what that would show.
-func _hint_selected() -> void:
+func _hint_selected(num: int = 0) -> void:
 	set_panel_open("work", true)
-	var sel: Array = card_list.selected_metas().filter(func(x): return x is int and x > 0)
+	_clear_results()
+	var sel: Array = [num] if num > 0 else card_list.selected_metas().filter(func(x): return x is int and x > 0)
 	if sel.is_empty():
 		result_text.text = "Select a card to see what it could be linked with."
 		return
@@ -887,21 +938,36 @@ func _hint_selected() -> void:
 	result_text.text = "\n".join(lines)
 
 ## Board hint: cards already on your board that a pattern would connect.
-func _find_links() -> void:
+func _find_links(num: int = 0) -> void:
 	set_panel_open("work", true)
-	var found: Array = g.find_links()
+	_clear_results()
+	var found: Array = g.find_links() if num == 0 else _links_for_card(num)
 	if found.is_empty():
-		result_text.text = "Nothing among your recent cards links up yet."
+		result_text.text = "No cards link with card #%d yet." % num if num > 0 else "Nothing among your recent cards links up yet."
 		return
-	var lines = PackedStringArray(["These cards connect (put them in the working set to see how):"])
+	var lines = PackedStringArray(["Links for card #%d (put them in the working set to see how):" % num if num > 0 else "These cards connect (put them in the working set to see how):"])
 	for f in found.slice(0, 8):
 		lines.append("  • #%s" % ", #".join(PackedStringArray(f["cards"].map(func(x): return str(x)))))
 	if found.size() > 8:
 		lines.append("  …and %d more." % (found.size() - 8))
 	result_text.text = "\n".join(lines)
 
-func _hide_selected(on: bool) -> void:
-	var sel = card_list.selected_metas()
+func _links_for_card(num: int) -> Array:
+	var found: Array = []
+	var seen = {}
+	for other in g.board:
+		if other["n"] == num or other.get("deleted", false):
+			continue
+		var result: Dictionary = Argue.check(g.w, [g.board[num - 1], other])
+		for m in result["matches"]:
+			var key = str(m["cards"])
+			if not seen.has(key):
+				seen[key] = true
+				found.append({"cards": m["cards"]})
+	return found
+
+func _hide_selected(on: bool, nums: Array = []) -> void:
+	var sel = card_list.selected_metas() if nums.is_empty() else nums
 	if sel.is_empty():
 		result_text.text = "Select cards to %s." % ("hide" if on else "unhide")
 		return
@@ -913,8 +979,9 @@ func _hide_selected(on: bool) -> void:
 	refresh()
 	changed.emit()
 
-func _delete_selected() -> void:
-	var sel = (card_list.selected_metas() + work_list.selected_metas()).filter(func(x): return g.board[x - 1]["kind"] == "deduction")
+func _delete_selected(nums: Array = []) -> void:
+	var candidates: Array = card_list.selected_metas() + work_list.selected_metas() if nums.is_empty() else nums
+	var sel = candidates.filter(func(x): return g.board[x - 1]["kind"] == "deduction")
 	_clear_results()
 	if sel.is_empty():
 		result_text.text = "Select one of your deductions to delete. (Other cards can only be hidden.)"

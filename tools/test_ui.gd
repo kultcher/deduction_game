@@ -27,6 +27,12 @@ func _init() -> void:
 	_check(cv.board.zoom > 1.0, "the initial day view uses the full canvas rather than the hidden control's startup size")
 	_check(not cv.panels["cards"].is_ancestor_of(cv.filter_edit) and not cv.panels["cards"].is_ancestor_of(cv.kind_menu), "shared filters live on the main case screen, outside the card popup")
 	_check(cv.dock.get_global_rect().position.y >= cv.canvas.get_global_rect().end.y, "popup controls live in the bottom dock")
+	_check(cv.filter_bar.get_global_rect().position.y >= cv.canvas.get_global_rect().end.y and cv.dock.get_global_rect().position.y >= cv.filter_bar.get_global_rect().end.y and cv.tray.get_global_rect().position.y >= cv.dock.get_global_rect().end.y, "bottom rows are ordered board, filters, popup tools, deductions")
+	_check(cv.panel_buttons["cards"].text == "Card List" and cv.panels["cards"].size.x == cv.panels["cards"].minimum_panel_size.x, "Card List starts at its minimum width")
+	var library_buttons = cv.panels["cards"].find_children("*", "Button", true, false)
+	_check(library_buttons.size() == 1 and library_buttons[0].text == "—" and library_buttons[0].tooltip_text == "Minimize", "Card List has only a line-shaped minimize button")
+	_check(cv.hidden_check.get_index() == cv.clear_btn.get_index() + 1 and cv.clear_btn.has_theme_stylebox_override("normal"), "Show hidden follows the distinct Clear filters button")
+	_check(cv.panel_buttons["cards"].size.y == cv.panel_buttons["cards"].get_combined_minimum_size().y, "dock buttons keep their natural height")
 	var panel_rects = {}
 	for key in cv.panels:
 		panel_rects[key] = cv.panels[key].get_rect()
@@ -41,6 +47,18 @@ func _init() -> void:
 		for key in cv.panels:
 			stable = stable and cv.panels[key].get_rect().is_equal_approx(panel_rects[key])
 		_check(stable, "filter '%s' preserves closed overlays and canvas dimensions" % query)
+	var dock_height: float = cv.dock.size.y
+	for npc in g.w.npcs:
+		cv.state.people[npc.id] = true
+	for place in C.LOCATIONS:
+		cv.state.places[place] = true
+	cv.state.changed.emit()
+	for i in range(6):
+		await process_frame
+	_check(cv.chip_row.size.y > 44 and cv.dock.size.y == dock_height and cv.panel_buttons["cards"].size.y == cv.panel_buttons["cards"].get_combined_minimum_size().y, "many filters wrap independently without stretching the window toolbar")
+	cv._clear_filters()
+	for i in range(6):
+		await process_frame
 	cv.set_panel_open("profile", true)
 	cv.set_panel_open("work", true)
 	_check(cv.panels["profile"].get_rect().is_equal_approx(panel_rects["profile"]) and cv.panels["work"].get_rect().is_equal_approx(panel_rects["work"]), "filtered-before-opening tools retain their original dimensions")
@@ -54,7 +72,7 @@ func _init() -> void:
 		await process_frame
 		_check(cv.panels[key].visible and cv.panel_buttons[key].button_pressed, "%s opens from the dock" % key)
 		var panel = cv.panels[key]
-		_check(panel.size.x >= 400 and panel.size.y >= 500, "%s opens at a usable size after the initial layout" % key)
+		_check(panel.size.x >= (340 if key == "cards" else 400) and panel.size.y >= 500, "%s opens at a usable size after the initial layout" % key)
 		panel.move_to(Vector2.ZERO)
 		panel.resize_to(Vector2(410, 320))
 		await process_frame
@@ -258,6 +276,40 @@ func _init() -> void:
 	var bv = cv.board
 	_check(bv.lay.get("items", []).size() > 0 and bv._items.size() > 0, "the board lays out and draws cards (%d items)" % bv._items.size())
 	var it0: Dictionary = bv._items[0]
+	var context_click = InputEventMouseButton.new()
+	context_click.button_index = MOUSE_BUTTON_RIGHT
+	context_click.pressed = true
+	context_click.position = it0["rect"].get_center()
+	bv._gui_input(context_click)
+	_check(cv.card_menu.visible and cv._context_card == it0["n"] and _menu_labels(cv.card_menu) == ["Add to Deduction", "Hide", "Find Links", "Hints"], "right-clicking a grid card opens its four actions")
+	cv.card_menu.id_pressed.emit(cv.CardAction.ADD)
+	_check(it0["n"] in cv.staged and cv.panels["work"].visible, "Add to Deduction stages the clicked card")
+	cv.show_card_menu(it0["n"], Vector2i(200, 200))
+	cv.card_menu.id_pressed.emit(cv.CardAction.HINTS)
+	_check("#%d" % it0["n"] in cv.result_text.text, "Hints describe the clicked card")
+	cv.show_card_menu(it0["n"], Vector2i(200, 200))
+	cv.card_menu.id_pressed.emit(cv.CardAction.LINKS)
+	_check("#%d" % it0["n"] in cv.result_text.text, "Find Links searches for the clicked card")
+	cv.show_card_menu(it0["n"], Vector2i(200, 200))
+	cv.card_menu.id_pressed.emit(cv.CardAction.HIDE)
+	_check(g.board[it0["n"] - 1].get("hidden", false) and not cv.state.apply(g).any(func(c): return c["n"] == it0["n"]), "Hide removes the clicked evidence from normal views")
+	cv.hidden_check.button_pressed = true
+	cv.show_card_menu(it0["n"], Vector2i(200, 200))
+	_check(_menu_labels(cv.card_menu) == ["Add to Deduction", "Unhide", "Find Links", "Hints"], "hidden cards offer Unhide instead of Hide")
+	cv.card_menu.id_pressed.emit(cv.CardAction.HIDE)
+	_check(not g.board[it0["n"] - 1].get("hidden", false), "Unhide restores the clicked evidence")
+	cv.hidden_check.button_pressed = false
+	cv.set_panel_open("work", false)
+	cv.set_panel_open("profile", false)
+	cv.set_panel_open("cards", true)
+	for i in range(3):
+		await process_frame
+	var first_item = cv.card_list._items[0]
+	var list_at: Vector2 = cv.card_list.get_item_area_rect(first_item).get_center()
+	await _right_click(cv.card_list.global_position + list_at)
+	_check(cv.card_menu.visible and cv._context_card == first_item.get_metadata(0), "a mouse right-click on a text entry opens the same card menu")
+	cv.card_menu.hide()
+	cv.set_panel_open("cards", false)
 	var dd = bv._get_drag_data(it0["rect"].get_center())
 	_check(dd is Dictionary and dd["cards"] == [it0["n"]], "a board card can be dragged out")
 	cv.work_list._drop_data(Vector2.ZERO, dd)
@@ -272,8 +324,41 @@ func _init() -> void:
 	await process_frame
 	await process_frame
 	_check(bv.lay["pinned"].has(dn) and bv._items.any(func(x): return x.get("pinned", false)), "a deduction dropped on the board is pinned there")
-	bv.unpin(dn)
+	cv.show_card_menu(dn, Vector2i(200, 200))
+	cv.card_menu.id_pressed.emit(cv.CardAction.HIDE)
+	_check(not bv.lay["pinned"].has(dn), "Hide also removes a pinned deduction from the grid")
+	cv.hidden_check.button_pressed = true
+	_check(bv.lay["pinned"].has(dn), "Show hidden restores the pinned representation")
+	cv.show_card_menu(dn, Vector2i(200, 200))
+	cv.card_menu.id_pressed.emit(cv.CardAction.HIDE)
+	cv.hidden_check.button_pressed = false
+	cv.show_card_menu(dn, Vector2i(200, 200))
+	_check("Delete deduction" in _menu_labels(cv.card_menu) and "Unpin from board" in _menu_labels(cv.card_menu), "pinned deductions also offer Delete and Unpin")
+	cv.card_menu.id_pressed.emit(cv.CardAction.UNPIN)
 	_check(not bv.lay["pinned"].has(dn), "and can be unpinned")
+	cv.tray.set_open(true)
+	for i in range(4):
+		await process_frame
+	_check(cv.dock.get_global_rect().end.y <= cv.tray.get_global_rect().position.y, "the popup toolbar stays above the expanded deduction tray")
+	var tray_card: Array = cv.tray._rects.filter(func(r): return r["n"] == dn)
+	_check(not tray_card.is_empty(), "the filed deduction is available in the expanded tray")
+	if not tray_card.is_empty():
+		context_click.position = tray_card[0]["rect"].get_center()
+		cv.tray._gui_input(context_click)
+		_check(cv.card_menu.visible and cv._context_card == dn and "Delete deduction" in _menu_labels(cv.card_menu), "tray deductions use the same right-click menu")
+		cv.card_menu.id_pressed.emit(cv.CardAction.HIDE)
+		_check(not cv.tray.deductions().any(func(c): return c["n"] == dn), "hidden deductions leave the normal tray")
+		cv.hidden_check.button_pressed = true
+		_check(cv.tray.deductions().any(func(c): return c["n"] == dn), "Show hidden reveals hidden deductions in the tray")
+		cv.show_card_menu(dn, Vector2i(200, 200))
+		_check("Unhide" in _menu_labels(cv.card_menu), "hidden deductions offer Unhide")
+		cv.card_menu.id_pressed.emit(cv.CardAction.HIDE)
+		cv.hidden_check.button_pressed = false
+	cv.tray.set_open(false)
+	var untouched: Array = g.board.filter(func(c): return c["kind"] == "deduction" and c["n"] != dn and not c.get("deleted", false)).map(func(c): return c["n"])
+	cv.show_card_menu(dn, Vector2i(200, 200))
+	cv.card_menu.id_pressed.emit(cv.CardAction.DELETE)
+	_check(g.board[dn - 1].get("deleted", false) and untouched.all(func(n): return not g.board[n - 1].get("deleted", false)) and not cv.tray.deductions().any(func(c): return c["n"] == dn), "Delete removes only the clicked deduction and refreshes its surfaces")
 	cv.state.set_view("statements")
 	cv.state.text = "zzzz"
 	cv.state.edited()
@@ -293,9 +378,13 @@ func _init() -> void:
 		pp.refresh()
 		_check(pp.current() == said_by and scene.profile.current() == said_by, "both profiles follow the selected person")
 		_check("[url=card:" in pp.body.text, "'Their claims' lists their cards as links")
-		var first = pp.body.text.get_slice("[url=card:", 1).to_int()
+		var first = pp.body.text.get_slice("[url=card:", 1).get_slice("]", 0).to_int()
 		pp.body.meta_clicked.emit("card:%d" % first)
 		_check(cv.state.selected_card == first, "clicking a card link selects that card")
+		pp.body.meta_hover_started.emit("card:%d" % first)
+		pp.body.gui_input.emit(context_click)
+		_check(cv.card_menu.visible and cv._context_card == first, "profile card links offer the shared right-click actions")
+		cv.card_menu.hide()
 		pp.tab = 0
 		pp.refresh()
 		for i in range(pp.guess_opt.item_count):
@@ -303,6 +392,11 @@ func _init() -> void:
 				pp.guess_opt.select(i)
 				pp.guess_opt.item_selected.emit(i)
 		_check(g.guesses.get(said_by, {}).get("guess", "") == "poisoner", "a guess saves as soon as it's chosen")
+	cv.visible = false
+	scene.side_list.card_context_requested.emit(it0["n"], Vector2i(200, 200))
+	_check(cv.card_menu.visible and not cv.visible, "town text entries can open the menu while the case board is closed")
+	cv.card_menu.id_pressed.emit(cv.CardAction.ADD)
+	_check(cv.visible and cv.panels["work"].visible, "Add to Deduction from town opens the case builder")
 	cv.visible = false
 	# Town screen: the cast list selects people; case notes save as you type.
 	var cl = scene.cast_list
@@ -388,6 +482,28 @@ func _esc() -> InputEventKey:
 	e.pressed = true
 	e.keycode = KEY_ESCAPE
 	return e
+
+func _menu_labels(menu: PopupMenu) -> Array:
+	var labels: Array = []
+	for i in range(menu.item_count):
+		if not menu.is_item_separator(i):
+			labels.append(menu.get_item_text(i))
+	return labels
+
+func _right_click(at: Vector2) -> void:
+	var move = InputEventMouseMotion.new()
+	move.position = at
+	root.push_input(move, true)
+	await process_frame
+	var click = InputEventMouseButton.new()
+	click.position = at
+	click.button_index = MOUSE_BUTTON_RIGHT
+	click.pressed = true
+	root.push_input(click, true)
+	await process_frame
+	click.pressed = false
+	root.push_input(click, true)
+	await process_frame
 
 func _drag_panel(start: Vector2, finish: Vector2) -> void:
 	var move = InputEventMouseMotion.new()
