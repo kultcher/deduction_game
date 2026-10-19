@@ -730,10 +730,6 @@ are open to anyone's eyes, so they're told truthfully.
 when you don't; settled when you choose your night work (the night menu puts your
 promises first). The ward is once per case, so it can only be promised once.
 
-**Vigil as a deterrent.** The demon knows where you keep vigil (a deliberate exception to
-"evil doesn't see your choices"): anyone living on the watched block is -0.25 as a target (C.VIGIL_DETER; bot runs at 7 townsfolk: no deterrent 41 wins, 0.25 35, 0.6 32 of 150),
-enough to tip a close choice, not to save a prime target.
-
 **Haunts are learned.** Nobody's off-work haunts are known at the start. Asking someone
 about a person may add one or both (chance 0.15 + 0.55 x Gossip + 0.5 x (trust - 0.5),
 capped 0.9), as a "haunt" card; the profile, the "can't see them" hint and the map's
@@ -1385,9 +1381,9 @@ Built from the session's list:
 - After playtest 13473's fixes (habits, unseen counts, ask-today changes; bot uses the
   counts): 7 townsfolk 61/150 (41%) vs passive 12/150 (8%); 10 townsfolk 38/150 (25%) vs
   13/150 (9%).
-- After the Oct 18 passes (all roads joined, quick fixes, talk rework, vigil deterrent
-  0.25, learned haunts; the bot asks about today / yesterday / last night): 7 townsfolk
-  35/150 (23%) vs passive 8/150 (5%); 10 townsfolk 38/150 (25%) vs 15/150 (10%). The
-  deterrent is most of the drop from the morning's 46 / 41 (at 7: none 41, 0.25 35,
-  0.6 32); the narrower "ask today" cost the old bot about 5.
+- Oct 18 evening: a vigil deterrent (the demon shying off targets on your vigil block)
+  was tried and removed: the bot keeps vigil where it expects the kill, so it cost catches
+  (7 townsfolk: none 41 wins, 0.25 35, 0.6 32 of 150). A vigil you offer someone does
+  nothing for their safety; it's a way to build trust. With the deterrent gone and the
+  bot asking by timeframe, 7 townsfolk: 41/150 (27%) vs passive 8/150.
 

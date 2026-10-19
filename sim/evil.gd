@@ -254,10 +254,6 @@ static func choose_kill_target(w) -> String:
 				profile += _public_threat(w, n)[k]
 			if profile > 0.0:
 				parts["caution_low_profile"] = snappedf(-caution * minf(profile, 4.0) * 0.7, 0.01)
-		# The Demonologist keeping vigil on their block: not enough to save a prime target,
-		# but it can tip a close choice elsewhere.
-		if w.player_vigil != "" and n.home_block == w.player_vigil:
-			parts["vigil_watch"] = -C.VIGIL_DETER
 		parts["noise"] = snappedf(w.rng.randf() * 0.8, 0.01)
 		var total = 0.0
 		for k in parts:

@@ -9,6 +9,7 @@ const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const C = preload("res://sim/content.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
+const Argue = preload("res://sim/argue.gd")
 
 var fails = 0
 
@@ -25,7 +26,6 @@ func _init() -> void:
 	_where_were_you()
 	_haunts()
 	_offers()
-	_vigil_deters()
 	_martyr_templates()
 	_new_conclusions()
 	_own_lies()
@@ -269,22 +269,6 @@ func _offers() -> void:
 	_check(b.trust > tb, "keeping your word raises trust")
 	_check(a.trust < ta - 0.1, "breaking your word costs a lot of trust")
 	_check(g.offer.is_empty(), "promises are settled with the night")
-
-func _vigil_deters() -> void:
-	var g = _game(7113)
-	var w = g.w
-	w.player_vigil = w.living_good()[0].home_block
-	Evil.choose_kill_target(w)
-	var e = w.dlog.entries.filter(func(x): return x["type"] == "think" and x["data"].get("topic", "") == "kill_choice")[-1]
-	var marked = 0
-	for id in e["data"]["scores"]:
-		if e["data"]["scores"][id]["parts"].has("vigil_watch"):
-			marked += 1
-			if w.by_id[id].home_block != w.player_vigil:
-				marked = -99
-	_check(marked > 0, "a vigil weighs against killing anyone on the watched block")
-
-const Argue = preload("res://sim/argue.gd")
 
 func _templates_for(g, nums: Array) -> Array:
 	return g.link_cards(nums)["result"]["matches"].map(func(m): return m["template"])

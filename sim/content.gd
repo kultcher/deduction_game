@@ -293,11 +293,6 @@ const DEMON_MOODS = ["vengeful", "cunning", "hungry"]
 ## ("Fenwick cannot sleep..."); "me" is how they put it themselves ("I can't sleep...").
 ## (The Secret Lovers are a secret modifier now; see SECRET_MODS.) Benched for now: with the
 ## secret modifiers in play these put too many innocents out at night.
-## How much your vigil puts the demon off killing anyone living on the watched block (a
-## target-score penalty; the noise between close candidates is 0..0.8). Bot runs, 7
-## townsfolk, 150 seeds: 0 -> 41 wins, 0.25 -> 35, 0.6 -> 32 (the bot keeps vigil where it
-## expects the kill, so any deterrent costs it catches).
-const VIGIL_DETER = 0.25
 ## Tuning knob: may a cautious NPC deny having any gift ("I'm only the baker")? Off: evil
 ## almost never bluffed it, so a denial was close to proof of good.
 const ALLOW_NO_GIFT_DENIAL = false

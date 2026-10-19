@@ -24,6 +24,21 @@ All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones 
   etc. work for any gift that makes the same kind of statement). (DESIGN, deferred to
   roster expansion) [decided]
 
+### Evidence and corroboration
+- **"Corroborated by" on cards.** The same sighting from two witnesses is two cards
+  today (a card's identity includes its source), and the corroboration template needs
+  two NPC witnesses, so your own sighting backed by an NPC's never links. Proposed: show
+  "also seen by Dorian" on the matching cards; let the template take you as one
+  witness; when you present your own sighting to someone who trusts you little, weigh
+  it by their trust in the corroborating witness if that's higher (your word counts at
+  0.5 + their trust in you). Small: the cards and disclosures exist, it needs a lookup
+  of "the same fact, any source". [decided: add]
+- **Conversation pairs you've already seen.** A whereabouts answer can name a pair you
+  saw yourself (and, before Oct 18, could name the same pair twice; that's fixed).
+  Proposed with the item above: leave pairs you saw out of the spoken answer, and record
+  the NPC as corroborating your card silently, so nothing clutters but the second
+  source isn't lost. [waiting on the call above]
+
 ### NPC behaviour
 - **NPCs push back on nominations their own information contradicts** (a player-led
   nomination of the true Seer passed 7/8). (DESIGN playtests) [open]
@@ -48,8 +63,8 @@ All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones 
   decisive. [knob]
 - **"No gift" denials** (C.ALLOW_NO_GIFT_DENIAL, off since Oct 18): evil almost never
   bluffed it, so a denial was near-proof of good at the cost of the gift. [knob]
-- **Vigil deterrent** (-0.25 on targets living on the watched block (C.VIGIL_DETER)) and **offer trust**
-  (+0.03 offer, +0.06 kept, -0.15 broken): first guesses, tune from play. [watch]
+- **Offer trust** (+0.03 offer, +0.06 kept, -0.15 broken): first guesses, tune from
+  play. [watch]
 
 ### UI
 - **"Stayed home" vs "none of your business"** on the sightings/claims boards. [watch]
@@ -115,7 +130,10 @@ All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones 
   - the proposed route limit (home → at most one detour → victim);
   - traces based on where the killer *started* rather than their evening block (this
     fixes the evening-shift demon problem);
-  Timing within the night: settled, not modelled (a night stays one instant). The
+  Timing within the night: settled, not modelled (a night stays one instant).
+  When this is settled, check whether the home cards and haunt cards still earn their
+  place (with every block joined, a route is just home → destination and homes may say
+  little a template needs); remove them if not. The
   evidence-chain item, and the watchtower idea in role_exploration.md, depend on this
   package. (DESIGN) [open]
 - **Passing through vs. stopping** (potential movement overhaul direction). Sightings say
@@ -166,6 +184,12 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 - **Same person in repeated Seer yeses, later proven good** → that person is the
   red herring; drop them from the Seer's later readings. (55774: Jory)
 - **Evil reading on a proven-good person** (Dowser count, Archivist pair) → Marked.
+- **Minion gifts in templates.** The builder can now conclude "X is the Breathstealer /
+  Poisoner / Revenant / Scion", but no template reasons toward a minion: e.g. someone
+  silenced, and the people seen on their block that evening (the Breathstealer has to be
+  there); a reading that failed on a night someone was near the reader's home (the
+  Poisoner's visit); a totem found and the people who live where its material is from
+  (the Revenant). Needs "silenced" and "totem" facts that templates read.
 - **Accounting:** a Lamplighter's "N others out" plus home alibis for everyone but one
   → the unaccounted person was out.
 - **Role confirmations:** a Clerk or Gravedigger confirming someone's gift → that claim
