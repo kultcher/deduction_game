@@ -31,6 +31,7 @@ func _init() -> void:
 	_new_conclusions()
 	_own_lies()
 	_corroboration()
+	_claim_backed_options()
 	print("FIXES FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -382,4 +383,24 @@ func _corroboration() -> void:
 	_check(r["facts"].any(func(f): return f.get("silent", false)), "...but it's kept as silent backing")
 	g._facts(r["facts"])
 	_check(n.id in g.board[mine - 1].get("corroborated_by", []), "...which lands on your card")
+
+func _claim_backed_options() -> void:
+	var g = _game(7140)
+	var w = g.w
+	g.board = []
+	g._card_keys = {}
+	g._fact_keys = {}
+	var ids: Array = w.living().map(func(n): return n.id)
+	var f: String = ids[0]
+	var nn: String = ids[1]
+	var ag: String = ids[2]
+	var kc = g.add_card({"kind": "claim", "subject": [f], "role": "lamplighter", "source": f, "text": "F claims Lamplighter"})
+	var kr = g.add_card({"kind": "info", "subject": [f, nn], "source": ag, "day": 0, "role": "clerk", "data": {"pair": [f, nn], "role": "lamplighter"}, "text": "A clerk: F or N lamplighter"})
+	var lk = g.link_cards([kc, kr])
+	var labels: Array = lk["options"].map(func(o): return o["expl"]["label"])
+	_check(not labels.any(func(x): return "misled" in x), "a corroboration doesn't offer 'the reader was misled' for filing (%s)" % str(labels))
+	_check(labels.any(func(x): return "working together" in x), "...but offers 'both lying, working together'")
+	_check(labels.any(func(x): return ("is the Lamplighter" in x) and ("lying" in x)), "...and words the other half plainly")
+	var m: Dictionary = lk["result"]["matches"][0]
+	_check(m["explanations"].any(func(e): return e.get("rival_only", false)), "the misled rival is still there for NPCs to weigh")
 

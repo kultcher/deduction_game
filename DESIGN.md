@@ -779,6 +779,18 @@ in you) and (0.5 + their credit for a corroborating witness), or at full if the 
 saw it too. Asked where they were, an NPC leaves out a conversation you saw yourself
 and is recorded, silently, as backing your card.
 
+**Filing vs weighing (Oct 18, late).** A template's explanations do two jobs: what you can
+file, and the rivals an NPC compares your choice against. In a contradiction every
+explanation is a way out of a real clash, so all can be filed. In an agreement or an
+inference, "the reader was wrong" (misled, lying) and "the claim is false" are rivals
+the town weighs but nothing in the cards shows, so they're marked `rival_only` and not
+offered for filing (a template can mark one `fileable` to keep it). The Clerk-backs-a-
+claim pattern now offers: X is the gift; X is lying and the other one is; the Clerk and
+X are working together (both lying: evil's own move, a fake Clerk reading vouching for a
+teammate's bluff). The Martyr who didn't die is a contradiction now. The builder's
+preview says what kind of backing a deduction has (contradiction, corroboration,
+inference).
+
 ## Dialogue composer (merged from codex/dialogue-prototype)
 
 Presentation only: the simulation decides what is said (including an evil character's

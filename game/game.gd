@@ -1713,7 +1713,10 @@ func link_cards(nums: Array) -> Dictionary:
 				options.append({"match": m, "expl": {"id": 0, "kind": "conflict", "blame": "", "conclusion": cc,
 					"label": "Something doesn't add up (no explanation chosen): one of %s is misled or lying" % Argue._names(w, grp)}})
 		for e in m["explanations"]:
-			options.append({"match": m, "expl": e})
+			# Alternatives the town weighs, but that nothing in these cards supports, aren't
+			# offered for filing.
+			if not e.get("rival_only", false):
+				options.append({"match": m, "expl": e})
 	last_link = {"cards": nums.duplicate(), "result": res, "options": options}
 	w.dlog.add("player_link", "player", "", {"cards": nums, "matches": res["matches"].map(func(m): return m["template"]),
 		"near": res["near"]}, "matched" if not res["matches"].is_empty() else "no template matched (flag for template work)")
@@ -1883,12 +1886,12 @@ func _link_command(rest: String) -> void:
 			_narr("  Close, but " + r)
 		_prompt("You can still argue from them: 'conclude <name> is <status> because <cards>'. If the cards bear on that person it's your own inference; if not, it's unfounded.")
 		return
-	var k = 0
 	for m in res["matches"]:
 		_narr("%s %s" % [Argue.RELATION_LEAD[m.get("relation", "contradiction")], m["text"]])
-		for e in m["explanations"]:
-			k += 1
-			_narr("  %d. %s" % [k, e["label"]])
+	var k = 0
+	for o in lk["options"]:
+		k += 1
+		_narr("  %d. %s" % [k, o["expl"]["label"]])
 	_prompt("'conclude <number>' to file the explanation you believe, or write your own: 'conclude <name> is <status> because <cards>'.")
 
 func _conclude_command(rest: String) -> void:

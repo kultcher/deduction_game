@@ -336,6 +336,13 @@ static func check(w, cards: Array) -> Dictionary:
 		seen[key] = true
 		for i in range(m["explanations"].size()):
 			m["explanations"][i]["id"] = i + 1
+			# In an agreement or an inference, "the reader was wrong" (or "the claim is
+			# false") is a rival the town weighs against your conclusion, not something
+			# these cards show; in a contradiction every explanation is a way out of a real
+			# clash.
+			var ex: Dictionary = m["explanations"][i]
+			if m.get("relation", "contradiction") != "contradiction" and ex["kind"] in ["lied", "misled", "unreliable", "notrole"] and not ex.get("fileable", false):
+				ex["rival_only"] = true
 		uniq.append(m)
 	var near_u: Array = []
 	for r in near:
@@ -452,7 +459,8 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 			ex_m.append(_poisoned(w, mt, b.get("night", a["night"])))
 		var m_m = _mk(w, "martyr_no_save", "%s said they'd give their life for %s. %s was hanged, and %s still stands." % [_nm(w, mt), _nm(w, x), _nm(w, x), _nm(w, mt)],
 			cards, ex_m, x, [a])
-		m_m["relation"] = "inference"
+		# The Martyr's word and what happened at the gallows clash: every way out is fair.
+		m_m["relation"] = "contradiction"
 		return m_m
 	# Two readings that point toward evil overlap in exactly one person.
 	if ta == "reading" and tb == "reading" and a["card"] < b["card"]:
@@ -508,11 +516,15 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 		var d2: Dictionary = b["data"]
 		if a["who"] in d2.get("pair", []) and d2.get("role", "") == a["role"]:
 			var other2: String = d2["pair"][0] if d2["pair"][1] == a["who"] else d2["pair"][1]
+			var other_is = _notrole(w, a["who"], a["role"])
+			other_is["label"] = "%s is lying about the %s: %s is the %s" % [_nm(w, a["who"]), C.role_name(a["role"]), _nm(w, other2), C.role_name(a["role"])]
+			other_is["fileable"] = true
+			# Evil's own move: a fake Clerk reading vouching for a teammate's bluffed gift.
+			var together = _accuse(w, a["who"], "evil", "%s and %s are working together: both lying (so %s is evil)" % [_nm(w, b["src"]), _nm(w, a["who"]), _nm(w, a["who"])])
 			var m2 = _mk(w, "claim_backed", "%s claims the %s, and %s's Clerk reading says one of %s and %s holds it." %
 				[_nm(w, a["who"]), C.role_name(a["role"]), _nm(w, b["src"]), _nm(w, d2["pair"][0]), _nm(w, d2["pair"][1])], cards,
 				[_clear(w, a["who"], {"type": "role", "role": a["role"]}, "%s is the %s" % [_nm(w, a["who"]), C.role_name(a["role"])]),
-				_notrole(w, a["who"], a["role"]), _poisoned(w, b["src"], b["night"])], a["who"], [a])
-			m2["explanations"][1]["label"] += " (%s holds it)" % _nm(w, other2)
+				other_is, together, _poisoned(w, b["src"], b["night"])], a["who"], [a])
 			m2["relation"] = "corroboration"
 			return m2
 	# Two independent witnesses put the same person in the same place at the same time.

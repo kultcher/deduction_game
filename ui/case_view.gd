@@ -714,7 +714,10 @@ func _update_preview() -> void:
 	if c.is_empty():
 		b_preview.text = ""
 		return
-	var backing = ("  [backed by a contradiction: %s]" % pending["match"]["text"]) if not pending.is_empty() else ""
+	var backing = ""
+	if not pending.is_empty():
+		var how = {"contradiction": "a contradiction", "corroboration": "corroboration", "inference": "an inference"}.get(pending["match"].get("relation", "contradiction"), "a contradiction")
+		backing = "  [backed by %s: %s]" % [how, pending["match"]["text"]]
 	b_preview.text = Argue.conclusion_text(g.w, Argue.normalize(c.duplicate())) + backing
 	b_error.text = ""
 
