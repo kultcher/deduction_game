@@ -1500,3 +1500,19 @@ hint from being proof of good.
 - 10 townsfolk: good wins 35 → 39, good NPCs hanged 304 → 294.
 
 Test: tools/test_fixes.gd (`_cite_provenance`, `_accuse_tiers`).
+
+**Following up on a hint (Oct 19).** An NPC who hints records it (`n.hints`). When you
+next talk to them, the talk menu offers "Ask why they suspect X" (`ask why`, which calls
+`Mind.answer_hint`).
+- **Whether they tell** is a `decide` on trust, privacy and fear. If they decline: "I
+  said I'm not ready…".
+- **If they tell,** it's full disclosure through `answer_gift(4)`: their gift and the
+  reading.
+- **If their gift isn't public,** they ask you to keep it between you. The cards are
+  marked confidential (`game.confidences`). Using one at the meeting, as your card
+  statement or as a support of a presented deduction, costs 0.15 of their trust, the
+  same as a broken offer. That's waived if they've gone public since.
+- **Evil's hints keep to the bluff.** Evil hints only if its bluff gives readings, and
+  either has an unshared fake reading pointing at the target ready, or takes the
+  free-bluff chance. Asked why with nothing ready, it stalls ("Not yet. Give me a day or
+  two…").

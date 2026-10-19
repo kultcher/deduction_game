@@ -35,6 +35,13 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   the same sighting back and forth. Scale conversations with population, let each pass
   on the one or two most newsworthy things the other hasn't heard, never echo back what
   you were just told. Check with bot runs. [decided]
+- **Evil backs into a bluff.** Like the scapegoat switch: an evil NPC that hasn't
+  claimed yet can change its planned bluff when another gift would serve better, if no
+  one has claimed that gift and it would build a frame or deflect suspicion. Example: the
+  Poisoner planned to bluff Seer but is seen out at night, and nobody has claimed Night
+  Watch, so it claims Night Watch. This opens the door to double claims (the real Night
+  Watch may just be quiet), which need their own logic: a classic of the genre, needed
+  eventually. (Oct 19) [decided]
 - **Fake Medium readings** (with the shadow self, below): fit the dead's public record
   (Hollis watched the Square on night 2, so he can't have "seen Jory on the Market"),
   match the dead's claimed gift (an unshared Night Watch report, say), frame the

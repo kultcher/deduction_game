@@ -998,6 +998,56 @@ static func reading_strength(e: Dictionary, t_id: String) -> float:
 			return 0.5
 	return 0.3
 
+## Evil: an unshared fake reading of theirs that points at t, or {}.
+static func _unshared_fake_on(n, t_id: String) -> Dictionary:
+	for e in n.info_log:
+		if e.get("fake", false) and not e.get("shared", false) and t_id in Gifts.implicated(e):
+			return e
+	return {}
+
+## The player follows up on a hint ("what's your reason?"). They may still keep it back;
+## if they tell, it comes out as their gift and the reading (as in answer_gift at full
+## disclosure), and if their gift isn't public they ask you to keep it to yourself: the
+## cards come back marked confidential, and using them at the meeting breaks your word.
+## Returns {lines, facts}.
+static func answer_hint(w, n) -> Dictionary:
+	on_question(w, n)
+	var lines: Array = []
+	var target = ""
+	var best_day = -1
+	for k in n.hints:
+		if w.by_id[k].alive and n.hints[k]["day"] > best_day:
+			best_day = n.hints[k]["day"]
+			target = k
+	if target == "":
+		lines.append(say(n, "I've nothing more to tell you."))
+		return {"lines": lines, "facts": []}
+	var t = w.by_id[target]
+	var has_reason = _unshared_fake_on(n, target) != {} if n.is_evil() else reason_status(w, n, target)["kind"] in ["private", "player"]
+	if not has_reason and not n.claim_public:
+		# Evil's free bluff (or a reason since shared): nothing it can show.
+		w.dlog.think(n.id, "hint_followup", "Asked about the hint on %s: nothing to back it; declines." % target, {"evil": n.is_evil()})
+		lines.append(say(n, "Not yet. Give me a day or two, and watch %s." % t.name))
+		return {"lines": lines, "facts": []}
+	var cost = reveal_cost(w, n)
+	var parts = {"trust": (n.trust - 0.45) * 2.0, "privacy": (0.5 - trait_of(n, "privacy")) * 0.8}
+	if cost.has("afraid"):
+		parts["afraid"] = -0.3
+	if not decide(w, n, "hint_followup", parts, "Tell the Demonologist why they suspect %s?" % target):
+		lines.append(say(n, "I said I'm not ready, and I'm not. Ask me again another time."))
+		return {"lines": lines, "facts": []}
+	var r = answer_gift(w, n, 4)
+	lines.append(say(n, "All right. You asked, so here's why I suspect %s." % t.name))
+	lines.append_array(r["lines"])
+	var facts: Array = r["facts"]
+	if not n.claim_public:
+		lines.append(say(n, "But keep this between us. Don't bring it up at the meeting; not yet."))
+		for f in facts:
+			if f.get("source", "") == n.id and f.get("kind", "") in ["info", "claim"]:
+				f["confidential"] = n.id
+	n.hints.erase(target)
+	return {"lines": lines, "facts": facts}
+
 ## What going public with their gift would cost n right now (higher = more reluctant):
 ## gifts that hide from the demon or keep paying off, fear, privacy; less as the game
 ## wears on or the town thins out. 0 if they've already claimed it.
@@ -1091,8 +1141,12 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	# keeping back, or their gift and its reading brought out now.
 	var hint = false
 	if n.is_evil():
-		if why == "" and w.chance(C.EVIL_HINT_CHANCE):
-			hint = true  # unverifiable, so a free bluff (and no tell of good)
+		# A hinted "private reason" must fit the bluff: a gift that gives readings, with a
+		# fake one ready that points at the target, or (sometimes) none yet, as a free bluff
+		# they'll decline to back up if asked.
+		var bluff: String = w.evil_plan["bluffs"].get(n.id, "")
+		if why == "" and C.has_readings(bluff) and (_unshared_fake_on(n, t.id) != {} or w.chance(C.EVIL_HINT_CHANCE)):
+			hint = true
 		w.dlog.think(n.id, "lie", "Evil: publicly accuses scapegoat %s, citing: %s." % [t.id, "a hinted private reason" if hint else why if why != "" else "vibes"])
 	else:
 		var tier = _accuse_tier(w, n, t, s2)
@@ -1101,6 +1155,8 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		hint = tier["tier"] == "hint"
 		why = tier["why"]
 		w.dlog.think(n.id, "accuse_tier", "Accuses %s: %s%s." % [t.id, tier["tier"], (" (" + why + ")") if why != "" else ""])
+	if hint:
+		n.hints[t.id] = {"day": w.day, "src": n.sus_src.get(t.id, "")}
 	why = Evil.cite(w, n, why)
 	var prev_target: String = w.stances.get(n.id, {}).get("target", "")
 	w.stances[n.id] = {"target": t.id, "day": w.day, "hint": hint}

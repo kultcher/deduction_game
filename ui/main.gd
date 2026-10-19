@@ -789,6 +789,11 @@ func _actions_talk(w) -> void:
 	wb.pressed.connect(func(): _ask_when_picker(wb))
 	var ab = _button(actions, "Ask about others…  ▸", func(): pass)
 	ab.pressed.connect(func(): _ask_about_picker(ab))
+	for k in n.hints:
+		if w.by_id[k].alive:
+			# They hinted at a private reason at the meeting: ask them for it.
+			_button(actions, "Ask why they suspect %s" % w.by_id[k].name, func(): _run("ask why"), C.npc_color(k))
+			break
 	_button(actions, "Present a card…", func(): _card_picker("Present a card to %s" % n.name, func(c): return true,
 		func(num, extra): _run(("present %d" % num) + extra), false, true))
 	_button(actions, "Leave", func(): _run("bye"))

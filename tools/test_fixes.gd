@@ -37,6 +37,7 @@ func _init() -> void:
 	_victim_trace()
 	_cite_provenance()
 	_accuse_tiers()
+	_hint_followup()
 	print("FIXES FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -521,3 +522,52 @@ func _accuse_tiers() -> void:
 	# No private reason: a bare accusation.
 	n.sus_why.erase(t.id)
 	_check(Mind._accuse_tier(w, n, t, 0.9)["tier"] == "generic", "with no reason to protect, a generic accusation")
+
+## Asking a hinter why: they may decline; if they tell, it's in confidence, and using it at
+## the meeting costs their trust.
+func _hint_followup() -> void:
+	var r = _setup_private_reading(7220)
+	var g = r[0]
+	var w = r[1]
+	var n = r[2]
+	var t = r[3]
+	n.hints[t.id] = {"day": w.day, "src": n.sus_src.get(t.id, "")}
+	n.trust = 0.05
+	n.traits["privacy"] = 1.0
+	var declined = 0
+	for i in range(20):
+		n.hints[t.id] = {"day": w.day, "src": ""}
+		n.max_tier = 0
+		n.told_readings = 0
+		n.claimed_role = ""
+		n.trust = 0.05
+		var a = Mind.answer_hint(w, n)
+		if a["facts"].is_empty():
+			declined += 1
+	n.hints[t.id] = {"day": w.day, "src": ""}
+	n.max_tier = 0
+	n.told_readings = 0
+	n.claimed_role = ""
+	_check(declined >= 15, "a guarded, distrustful hinter mostly keeps it back (%d/20)" % declined)
+	n.trust = 0.95
+	n.traits["privacy"] = 0.0
+	var told = {}
+	for i in range(20):
+		told = Mind.answer_hint(w, n)
+		if not told["facts"].is_empty():
+			break
+	_check(not told["facts"].is_empty(), "a trusting hinter tells you why")
+	_check(told["facts"].all(func(f): return f.get("confidential", "") == n.id or f.get("source", "") != n.id), "and asks you to keep it quiet (cards marked confidential)")
+	_check(not n.hints.has(t.id), "the hint is answered")
+	var before = g.board.size()
+	g._facts(told["facts"])
+	_check(g.confidences.size() >= 1 and g.board.size() > before, "the confidential cards are on the board and remembered")
+	var tr = n.trust
+	g._break_confidences(g.confidences.keys())
+	_check(n.trust < tr - 0.1 and g.confidences.is_empty(), "using them at the meeting breaks your word (trust %.2f -> %.2f)" % [tr, n.trust])
+	# Evil's free bluff hint: nothing to show for it, so it declines.
+	var e = w.evil_team()[0]
+	e.hints[t.id] = {"day": w.day, "src": ""}
+	e.info_log = e.info_log.filter(func(x): return not (t.id in Mind.implicated(x)))
+	var ea = Mind.answer_hint(w, e)
+	_check(ea["facts"].is_empty() and e.hints.has(t.id), "evil with nothing behind its hint declines to back it up")

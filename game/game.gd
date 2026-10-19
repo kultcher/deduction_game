@@ -88,12 +88,32 @@ func _lines(arr: Array) -> void:
 	for x in arr:
 		_line(x)
 
+## Cards told to you in confidence: card number -> the NPC who asked you to keep it quiet.
+var confidences = {}
+
+## Using a confidential card at the meeting breaks your word to whoever told you: a trust
+## blow (like a broken offer), unless they've since gone public themselves.
+func _break_confidences(nums: Array) -> void:
+	for num in nums:
+		if not confidences.has(num):
+			continue
+		var n = w.by_id[confidences[num]]
+		confidences.erase(num)
+		if not n.alive or n.claim_public:
+			continue
+		Mind.set_trust(w, n, n.trust - 0.15, "the Demonologist broke my confidence (card #%d) at the meeting" % num)
+		w.dlog.add("player_confidence_broken", "player", n.id, {"card": num})
+		_narr("%s stiffens. You promised to keep that between you." % n.name)
+
 func _facts(facts: Array) -> void:
 	for f in facts:
 		if f.get("silent", false):
 			_silent_corroboration(f)
 			continue
-		_ev({"k": "card", "n": add_card(f)})
+		var num = add_card(f)
+		if f.get("confidential", "") != "":
+			confidences[num] = f["confidential"]
+		_ev({"k": "card", "n": num})
 
 static func render(evs: Array) -> String:
 	var lines = PackedStringArray()
@@ -131,6 +151,7 @@ static func render(evs: Array) -> String:
 
 func new_case(seed_in: int, npc_count: int = 7) -> String:
 	board = []
+	confidences = {}
 	_card_keys = {}
 	_fact_keys = {}
 	case_notes = ""
@@ -587,7 +608,7 @@ func _day_command(verb: String, rest: String) -> void:
 				var said: String = n.remarks.pop_front()
 				w.dlog.think(n.id, "reconsider", "Tells the player they've come round to %s." % said)
 				_lines([Mind.reconsideration_line(n, said)])
-			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)" % n.name)
+			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift> | ask why (after a hint) | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)" % n.name)
 		"search", "s":
 			if not moved:
 				_err("First choose where to spend this phase ('go <place>').")
@@ -764,7 +785,7 @@ func _approach_command(verb: String, rest: String) -> void:
 			var r: Dictionary = Social.approach_open(w, n, approach["agenda"])
 			_lines(r["lines"])
 			_facts(r["facts"])
-			_prompt("(3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)")
+			_prompt("(3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift> | ask why (after a hint) | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)")
 		"decline", "no", "n":
 			state = "day"
 			w.dlog.add("approach_declined", "player", n.id)
@@ -821,6 +842,8 @@ func _talk_command(verb: String, rest: String) -> void:
 						return
 					else:
 						r = Mind.answer_today(w, n, frame, w.loc_block(loc), seen_pairs())
+				"why", "reason", "hint":
+					r = Mind.answer_hint(w, n)
 				"about", "opinion":
 					var target = " ".join(p.slice(1))
 					var role = find_role(target)
@@ -1167,6 +1190,7 @@ func _nomination_command(verb: String, rest: String) -> void:
 			nm["statement"] = verb
 			if not card.is_empty():
 				_narr("You lay card #%d before the town: %s" % [card["n"], card["text"]])
+				_break_confidences([card["n"]] + Array(card.get("supports", [])))
 				if card["kind"] == "deduction":
 					_secrets_used(card)
 					for v in w.living():
@@ -2038,6 +2062,7 @@ func _present_deduction(rest: String) -> void:
 	var ded: Dictionary = board[num - 1]
 	_narr("You take the floor: %s" % ded["text"])
 	w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
+	_break_confidences([num] + Array(ded.get("supports", [])))
 	_secrets_used(ded)
 	_conflict_pressure(ded, 0.2, null)
 	for n in w.living():
