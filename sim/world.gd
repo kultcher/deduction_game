@@ -961,6 +961,12 @@ func resolve_night() -> void:
 		dlog.add("protect", "player", player_ward, {}, "Demonologist's ward.")
 
 	deaths_last_night = []
+	# The night's readings come before the kill (unlike BotC: our dead can't speak, so a
+	# victim's last reading only reaches the town through a Medium).
+	if C.INFO_BEFORE_KILL:
+		for n in living_good():
+			if C.ROLES[n.role]["kind"] == "info":
+				_receive_info(n, watch_block, medium_t, lamp)
 	var kill_outcome = ""
 	if kill_t != "":
 		var v = by_id[kill_t]
@@ -975,9 +981,10 @@ func resolve_night() -> void:
 
 	if day >= 1 and deaths_last_night.is_empty():
 		_quiet_night()
-	for n in living_good():
-		if C.ROLES[n.role]["kind"] == "info":
-			_receive_info(n, watch_block, medium_t, lamp)
+	if not C.INFO_BEFORE_KILL:
+		for n in living_good():
+			if C.ROLES[n.role]["kind"] == "info":
+				_receive_info(n, watch_block, medium_t, lamp)
 
 	_night_sightings()
 	if kill_t != "":

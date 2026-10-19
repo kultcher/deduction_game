@@ -308,6 +308,9 @@ const EVIL_HINT_CHANCE = 0.3
 ## How often a Medium (real or fake) gets only something true-sounding but empty: the dead
 ## were home, or saw someone out on their own block.
 const MEDIUM_USELESS_CHANCE = 0.15
+## Night order: readings before the demon's kill, so a victim keeps their last reading
+## (for a Medium to find). false = the BotC order (kill first).
+const INFO_BEFORE_KILL = true
 ## Shadow self step 2: evil breaks cover (overrides what its good self would do) only when
 ## stakes - exposure cost > caution. Minions' caution drifts down each day after day 2.
 const EVIL_CAUTION_DEMON = 0.8

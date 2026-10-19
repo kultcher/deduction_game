@@ -1706,3 +1706,22 @@ offered only about half the time.
 nothing new, 140 home, 104 empty, 24 stances, 12 Psychologist and 4 Gravedigger
 readings. The gift readings are rare because the dead have seldom claimed in public.
 They'll show up more once claims are more common.
+
+**Night order changed (Oct 19): readings before the kill** (`C.INFO_BEFORE_KILL`, default
+true; false gives the BotC order). In BotC the kill comes first to deny a reading the
+victim could still announce. Our dead can't speak, so a victim's last reading only
+reaches the town through a Medium. Nothing else depends on the order: walkers are set
+before both steps, no reading looks at that night's death, and a Medium's target is
+picked before the kill.
+
+Bot, 300 games each, seeds 2000–2299, kill first → readings first:
+
+| | Medium finds an untold reading at a demon victim's hearth (info gifts only) | good wins |
+|---|---|---|
+| 7 townsfolk | 28% → 41% (of 32 → 37 visits) | 106 → 111 |
+| 10 townsfolk | 23% → 32% (of 56 → 71 visits) | 87 → 95 |
+
+The rest of the visits come back empty-handed for three reasons: gifts that only read on
+the first night (Clerk, Archivist, Surveyor), nights a Night Watch didn't go out, and
+the 15% empty answers. The fake Medium's "last-night reading" now fits the common case,
+since real victims usually have one.
