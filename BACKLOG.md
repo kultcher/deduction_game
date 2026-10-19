@@ -31,6 +31,13 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 ### NPC behaviour
 - **Offering protection eases fear.** Someone you've offered your ward or a vigil (and
   kept your word to) should be less afraid to say what they are. (96773) [decided]
+- **Backing a strong case builds trust.** Nominating or voting for someone the town
+  strongly suspects (and who turns out evil, or is widely believed so) earns a little
+  trust from the NPCs who agree. It's what makes throwing a teammate under the bus pay
+  for evil, and it rewards good NPCs who stick their necks out. (Oct 19) [decided]
+- **The fearful ask for protection.** NPCs afraid their gift makes them a target appeal
+  to the Demonologist (a ward, a vigil) and/or the Warden for protection, instead of
+  only clamming up. Ties into offers easing fear. (Oct 19) [decided]
 - **More talk in town, especially in bigger towns.** 96773 (10 townsfolk, 4 days): 7
   conversations, 7 shares; three conversations passed nothing on, and one pair swapped
   the same sighting back and forth. Scale conversations with population, let each pass
