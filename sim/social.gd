@@ -277,7 +277,7 @@ static func approach_candidate(w):
 			if hidden_new > 0 and n.trust >= 0.5 and unshared > 0:
 				s = (1.0 - trait_of(n, "privacy")) + n.trust - 0.6
 				a = "news"
-		if gos >= 0.6 and (not n.hearsay.is_empty() or not n.known_secrets.is_empty()):
+		if gos >= 0.6 and has_gossip(w, n):
 			var gs = gos - 0.3
 			if gs > s:
 				s = gs
@@ -317,29 +317,55 @@ static func approach_open(w, n, agenda: String) -> Dictionary:
 			facts += g["facts"]
 	return {"lines": lines, "facts": facts}
 
-## A busybody's best bit of news for the player: a secret, a relayed reading or sighting.
-static func gossip_item(w, n) -> Dictionary:
+## Gossip the player hasn't heard from them, and that the whole town didn't already hear:
+## a known secret, or a relayed reading or sighting. Returns [kind, owner/index] or [].
+static func _gossip_items(w, n) -> Array:
+	var out: Array = []
 	for owner in n.known_secrets:
-		if owner == n.id:
+		if owner != n.id and w.by_id[owner].alive and not n.told_to.has("player|secret:" + owner):
+			out.append(["secret", owner])
+	for i in range(n.hearsay.size() - 1, -1, -1):
+		var h: Dictionary = n.hearsay[i]
+		if n.told_to.has("player|hs:%d" % i):
 			continue
+		if h["kind"] == "reading" and w.by_id.has(h["from"]) and not h["entry"].get("shared", false):
+			out.append(["hearsay", i])
+		elif h["kind"] == "sighting" and w.by_id.has(h["about"]):
+			out.append(["hearsay", i])
+	return out
+
+static func has_gossip(w, n) -> bool:
+	return not _gossip_items(w, n).is_empty()
+
+## A busybody's best bit of news for the player: a secret, a relayed reading or sighting,
+## never one they've already told you or one the whole town heard at a meeting.
+static func gossip_item(w, n) -> Dictionary:
+	var items: Array = _gossip_items(w, n)
+	for it in items:
+		if it[0] != "secret":
+			continue
+		var owner: String = it[1]
 		var o = w.by_id[owner]
-		if not o.alive:
-			continue
 		if w.chance(0.5 + 0.3 * trait_of(n, "gossip")):
+			n.told_to["player|secret:" + owner] = true
 			w.dlog.think(n.id, "gossip", "Tells the player %s's secret (heard via %s)." % [owner, n.known_secrets[owner]])
 			o.secret_spread_by_npc = true
 			return {"lines": [Mind.say(n, "Between you and me, %s %s. That's why they're about at night." % [o.name, o.secret["text"]])],
 				"facts": [{"kind": "secret", "subject": [owner], "owner": owner, "source": n.id, "via": n.known_secrets[owner],
 					"text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, o.secret["text"]]}]}
-	for i in range(n.hearsay.size() - 1, -1, -1):
+	for it in items:
+		if it[0] != "hearsay":
+			continue
+		var i: int = it[1]
 		var h: Dictionary = n.hearsay[i]
 		var src = w.by_id.get(h["from"])
+		n.told_to["player|hs:%d" % i] = true
 		if h["kind"] == "reading" and src != null:
 			var e: Dictionary = h["entry"]
 			var f = Mind.info_fact(w, src, e)
 			f["via"] = n.id
 			f["text"] = "Via %s: " % n.name + f["text"]
-			return {"lines": [Mind.say(n, "%s told me their gift is %s, and that %s." % [src.name, C.role_name(e["role"]), e["text"]])], "facts": [f]}
+			return {"lines": [Mind.say(n, "%s told me their gift is %s, and that %s." % [src.name, C.role_name(e["role"]), C.third_person(e["text"])])], "facts": [f]}
 		if h["kind"] == "sighting":
 			var who = w.by_id[h["about"]]
 			var by = w.by_id[h["from"]].name if w.by_id.has(h["from"]) else "someone"

@@ -37,14 +37,16 @@ func _init() -> void:
 	_expect(g, [k1, k2], "out_vs_home")
 	# Night sightings on two blocks: only a conflict when no route from home covers both.
 	w.by_id[a].home_block = "market"
-	_expect_none(g, [k1, k3], "fit together")   # Market -> Square -> Docks passes both
+	_expect_none(g, [k1, k3], "fit together")   # Market -> Docks: leaving home, and arriving
 	w.by_id[a].home_block = "hill"
 	_expect(g, [k1, k3], "off_route")           # from the Hill, Market and Docks lie on different ways
 	var ld = g.add_card({"kind": "sighting", "subject": [a], "block": "docks", "day": 3, "phase": C.NIGHT, "source": a, "duty_claim": "medium", "duty": "medium", "text": "A says out on docks n3 (visiting the dead)"})
 	var lh = g.add_card({"kind": "sighting", "subject": [a], "block": "market", "day": 3, "phase": C.NIGHT, "source": b, "text": "B saw A on market n3"})
 	var ls = g.add_card({"kind": "sighting", "subject": [a], "block": "square", "day": 3, "phase": C.NIGHT, "source": c, "text": "C saw A on square n3"})
 	_expect(g, [ld, lh], "off_route")           # the way Hill -> Docks doesn't touch the Market
-	_expect_none(g, [ld, ls], "fit together")   # ...but it does pass the Square
+	_expect(g, [ld, ls], "off_route")           # every block has its own road: Hill -> Docks skips the Square too
+	var lw = g.add_card({"kind": "sighting", "subject": [a], "block": "hill", "day": 3, "phase": C.NIGHT, "source": c, "text": "C saw A on hill n3"})
+	_expect_none(g, [ld, lw], "fit together")   # seen leaving home on the way to the Docks
 	var ll = g.add_card({"kind": "sighting", "subject": [a], "block": "docks", "day": 4, "phase": C.NIGHT, "source": a, "duty_claim": "lamplighter", "duty": "lamplighter", "text": "A says out on docks n4 (the lamp route)"})
 	var lm = g.add_card({"kind": "sighting", "subject": [a], "block": "market", "day": 4, "phase": C.NIGHT, "source": b, "text": "B saw A on market n4"})
 	_expect_none(g, [ll, lm], "lamp route")
@@ -53,6 +55,7 @@ func _init() -> void:
 	var lk_r = g.link_cards([k1, k3])["result"]["matches"]
 	_check(not lk_r.is_empty() and lk_r[0]["explanations"].any(func(e): return "lamp route" in e["label"]), "off-route offers the lamp route as an explanation")
 	_expect_none(g, [k1, k4], "different nights")
+	_builder_checks()
 	_expect(g, [k5, k6], "double_claim")
 	_expect(g, [k7, k1], "watch_omission")
 	_expect(g, [k8, k9], "reading_flip")
@@ -291,6 +294,15 @@ func _init() -> void:
 	_check(g.filter_cards("n1").size() >= 3, "night filter")
 	print("FAILURES: %d" % fails)
 	quit()
+
+func _builder_checks() -> void:
+	# Labels and stored types swap under "is not": the drop-down passes the type, typed
+	# commands pass the label.
+	_check(Argue.from_builder("x", "is not", "good", -1, -1, true)["type"] == "good", "builder: 'is not evil' (stored as good) files as good")
+	_check(Argue.from_builder("x", "is not", "evil", -1, -1, true)["type"] == "evil", "builder: 'is not good' (stored as evil) files as evil")
+	_check(Argue.from_builder("x", "is not", "evil")["type"] == "good", "typed: 'is not evil' files as good")
+	_check(Argue.from_builder("x", "is not", "good")["type"] == "evil", "typed: 'is not good' files as evil")
+	_check(Argue.from_builder("x", "is", "evil")["type"] == "evil", "typed: 'is evil' files as evil")
 
 func _expect(g, nums: Array, template: String) -> void:
 	var res = g.link_cards(nums)["result"]

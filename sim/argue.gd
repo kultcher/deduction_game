@@ -58,22 +58,34 @@ static func _names(w, ids: Array) -> String:
 	return ", ".join(PackedStringArray(names.slice(0, names.size() - 1))) + " and " + names[-1]
 
 ## Build a conclusion from builder pieces. Returns {} if the combination is invalid.
-static func from_builder(who: String, verb: String, status: String, night: int = -1, card: int = -1) -> Dictionary:
+## status is the label the player reads ("evil" in "is not evil"), or with by_value the
+## stored conclusion type (the builder's drop-down metadata). Labels and types swap under
+## "is not" ("is not evil" = good), so the two must never be matched against each other.
+static func from_builder(who: String, verb: String, status: String, night: int = -1, card: int = -1, by_value: bool = false) -> Dictionary:
 	if C.ROLES.has(status) and status in C.GOOD_ROLES:
 		if verb == "is":
 			return {"type": "role", "a": who, "role": status}
 		if verb == "is not":
 			return {"type": "notrole", "a": who, "role": status}
 		return {}
+	var hit: Array = []
 	for pair in BUILDER.get(verb, []):
-		if pair[0] == status or pair[1] == status:
-			var c = {"type": pair[1], "a": who}
-			if pair[1] in ["misled", "unreliable"] and night >= 0:
-				c["night"] = night
-			if pair[1] in ["lied", "unreliable", "truthful"] and card > 0:
-				c["card"] = card
-			return c
-	return {}
+		if (pair[1] if by_value else pair[0]) == status:
+			hit = pair
+			break
+	if hit.is_empty() and not by_value:
+		for pair in BUILDER.get(verb, []):
+			if pair[1] == status:
+				hit = pair
+				break
+	if hit.is_empty():
+		return {}
+	var c = {"type": hit[1], "a": who}
+	if hit[1] in ["misled", "unreliable"] and night >= 0:
+		c["night"] = night
+	if hit[1] in ["lied", "unreliable", "truthful"] and card > 0:
+		c["card"] = card
+	return c
 
 # ---------------------------------------------------------------- assertions
 
@@ -870,8 +882,9 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 		var mask = _evil_mask(w, n, c, times, seen)
 		var approved = _argument_descriptor(w, c, facts, mask.get("stance", "partial"))
 		approved["special"] = mask.get("special", "")
+		approved["already"] = mask.get("already", false)
 		if approved["stance"] != "accept" and approved["special"] == "":
-			approved["reason"] = "weak"
+			_evil_reason(w, n, c, ded, approved)
 		if times > 0:
 			var prior: Dictionary = delivery_memory.get("decisions", {}).get(JSON.stringify([audience, conclusion_key(c)]), {})
 			# Reuse their expressed position, not new private strategy. A new audience
@@ -985,6 +998,8 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 		[n.name, ded["text"], agreement, m, (" (" + reason + ")") if reason != "" else ""])
 	var stance = "accept" if agreement >= 0.6 else "partial" if agreement >= 0.35 else "reject"
 	var approved = _argument_descriptor(w, c, facts, stance)
+	# They agree, but it moved nothing: they'd already come to it themselves.
+	approved["already"] = stance == "accept" and gain < 0.02 and times == 0
 	if self_misled:
 		approved["special"] = "I'm no liar. But my gift may have failed me; I'll grant that." if agreement >= 0.5 else "I'm no liar, and I trust what my gift showed me. But I'll think on it."
 	elif in_group:
@@ -1006,6 +1021,25 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 	if not n.silenced:
 		lines.append(_argument_line(n, approved, audience, delivery_memory))
 	return {"lines": lines, "agreement": agreement, "repeated": times > 0, "dialogue": approved}
+
+## An evil listener's stated reason for not being convinced, drawn from the same kinds of
+## reason good listeners give (another explanation, shaky evidence, a likelier suspect),
+## so evil replies aren't all "the evidence doesn't establish that". Deterministic per
+## listener and argument: no game RNG is drawn.
+static func _evil_reason(w, n, c: Dictionary, ded: Dictionary, approved: Dictionary) -> void:
+	var h: int = absi(hash(n.id + "|" + conclusion_key(c)))
+	var alts: Array = ded.get("explanations", []).filter(func(e): return e.get("id", -1) != ded.get("chosen", 0))
+	var pick: int = h % 4
+	if pick <= 1 and not alts.is_empty():
+		approved["reason"] = "alternative" if pick == 0 else "possible_alternative"
+		approved["alternative"] = alts[(h / 4) % alts.size()]["label"]
+	elif pick == 2:
+		approved["reason"] = "quality"
+	else:
+		approved["reason"] = "weak"
+	var sg = w.by_id.get(w.evil_plan.get("scapegoat", ""))
+	if c["type"] in ["evil", "demon"] and sg != null and sg.alive and sg.id != c.get("a", "") and sg != n and (h / 16) % 2 == 0:
+		approved["preferred"] = sg.name
 
 static func _argument_descriptor(w, c: Dictionary, facts: Array, stance: String) -> Dictionary:
 	return {"kind": "argument", "key": conclusion_key(c), "facts": facts.duplicate(), "stance": stance,
@@ -1155,7 +1189,7 @@ static func _evil_mask(w, n, c: Dictionary, times: int, seen: bool) -> Dictionar
 			serves = 0.85 if accusing else 0.3
 	var r = w.rng.randf()
 	if serves >= 0.7 and seen:
-		return {"stance": "accept"}
+		return {"stance": "accept", "already": true}
 	if serves >= 0.7 and r < 0.65:
 		return {"stance": "accept"}
 	if serves <= 0.2 and r < 0.4:

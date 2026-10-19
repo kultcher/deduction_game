@@ -463,9 +463,12 @@ func _refresh_cards() -> void:
 	card_list.reset()
 	var vis: Array = _visible_cards()
 	_refresh_chips(vis.size())
+	# Newest first, like the other card lists (the start-of-case home cards end up last).
+	vis.reverse()
 	# Your deductions head the list in every view ("My theories"), then the evidence.
 	if state.view != "all":
 		var theories: Array = g.filter_cards(state.text).filter(func(c): return c["kind"] == "deduction")
+		theories.reverse()
 		if not theories.is_empty():
 			card_list.add_header("── My theories (%d) ──" % theories.size(), UITheme.color("deduction"))
 			vis = theories + vis
@@ -631,7 +634,7 @@ func _fill_nights() -> void:
 	b_night.add_item("(any night)")
 	b_night.set_item_metadata(0, -1)
 	for nt in range(0, g.w.day + 1):
-		b_night.add_item("on night 0 (the first night)" if nt == 0 else "on night %d" % nt)
+		b_night.add_item("on the night before you arrived" if nt == 0 else "on night %d" % nt)
 		b_night.set_item_metadata(b_night.item_count - 1, nt)
 	for i in range(b_night.item_count):
 		if b_night.get_item_metadata(i) == keep:
@@ -658,7 +661,7 @@ func _built() -> Dictionary:
 		return Argue.conflict_of(g.w, g.board.filter(func(x): return x["n"] in staged))
 	var verb: String = b_verb.get_item_text(b_verb.selected)
 	var status: String = b_status.get_item_metadata(b_status.selected)
-	var c: Dictionary = Argue.from_builder(who, verb, status, _meta_int(b_night))
+	var c: Dictionary = Argue.from_builder(who, verb, status, _meta_int(b_night), -1, true)
 	if c.is_empty():
 		return c
 	if c["type"] in ["lied", "unreliable", "truthful"]:

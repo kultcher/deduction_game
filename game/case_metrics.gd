@@ -96,7 +96,10 @@ static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = [])
 	var demon_guesses = named_guesses(guesses, "demon")
 	var m_guesses = minion_guesses(guesses)
 	var eligible = not spoiled and not snapshot.is_empty()
-	var demon_correct = eligible and demon_guesses == [w.demon_id]
+	# Credit goes for naming the demon the case started with (if a Scion took over, the
+	# single demon guess can't name both).
+	var first: String = w.first_demon_id if w.first_demon_id != "" else w.demon_id
+	var demon_correct = eligible and demon_guesses == [first]
 	var true_minions: Array = w.minion_ids.duplicate()
 	true_minions.sort()
 	var minion_correct = eligible and m_guesses == true_minions
@@ -108,7 +111,10 @@ static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = [])
 	var opposed_wrongful = 0
 	var mixed_wrongful = 0
 	for ex in w.executions:
-		var target = w.by_id[ex["id"]]
+		# A Martyr's death is recorded against the nomination: the nominee (who lived) and
+		# the Martyr who died in their place.
+		var target = w.by_id[ex.get("saved", ex["id"])]
+		var died = w.by_id[ex["id"]]
 		var accused = false
 		var defended = false
 		for event in w.dlog.entries:
@@ -124,8 +130,10 @@ static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = [])
 			"nominator": ex.get("nominator", ""), "player_nominated": nominated, "player_voted_yes": yes,
 			"player_voted_no": not yes, "player_accused": accused, "player_defended": defended,
 			"player_backed": backed, "player_opposed": opposed, "player_stance": stance}
+		if ex.get("martyr", false):
+			row["martyr_died"] = died.id
 		executions.append(row)
-		if not target.is_evil():
+		if not died.is_evil():
 			wrongful += 1
 			if stance == "backed":
 				backed_wrongful += 1

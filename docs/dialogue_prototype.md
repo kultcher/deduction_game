@@ -1,8 +1,8 @@
 # Dialogue prototype
 
 Three voices (Agnes, Bartholomew and Constance) now cover the original five situations
-plus argument responses, nominations, and vote explanations. The workshop has fifteen
-scenarios. Existing gameplay decisions and evidence cards remain authoritative. Other
+plus argument responses and nominations. The workshop covers each of these. (Vote
+explanations were removed on Oct 18: voting is silent until the meeting/rebuttal work.) Existing gameplay decisions and evidence cards remain authoritative. Other
 characters use generic decision lines and retain their previous wording at the original
 five hooks. This phase extends the merged implementation rather than replacing it.
 
@@ -71,7 +71,6 @@ poison claim is true. An affectionate response can still explicitly suspect its 
 | Revise a belief | Queued `remarks` consumed when the player starts a conversation | Existing reconsideration logic has queued an argument for comment |
 | Answer a deduction | `Argue.evaluate`, private and meeting presentations | Existing agreement, quality, and competing-explanation weights select approved speech content |
 | Nominate | `Mind.next_nomination` | Target and the existing disclosure-approved citation have already been chosen |
-| Explain a vote | `Mind.vote` → `World.vote_pending` → game log | The actual vote and a contributing factor are resolved before rendering; replies follow clockwise order |
 
 ## Phase two: resolved decisions and continuity
 
@@ -141,7 +140,7 @@ godot --headless --path . --script res://tools/test_dialogue.gd
 godot --headless --path . --script res://tools/test_dialogue_decisions.gd
 ```
 
-Checks include all fifteen scenarios, context guards, unchanged evidence, source attribution,
+Checks include every workshop scenario, context guards, unchanged evidence, source attribution,
 private/public delivery, per-listener repetition, no secret leaks, identical phrasing for
 identical honest/fabricated readings, no gameplay RNG consumption, live conversation
 hooks, new-case reset, and the workshop's controls/memory behavior. Decision checks cover

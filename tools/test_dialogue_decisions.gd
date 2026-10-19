@@ -36,18 +36,17 @@ func _continuity() -> void:
 	_check(Dialogue.decision("agnes", d, "player", memory)["cue"] == "new_evidence", "new evidence for the same conclusion is not dismissed as repetition")
 	d["facts"] = ["reading:1"]
 	_check(Dialogue.decision("agnes", d, "player", memory)["cue"] == "reframed", "removing a support is not called new evidence")
-	var vote = {"kind": "vote", "target_id": "edda", "target": "Edda", "yes": false, "reason": "trust"}
-	_check("I heard your case" in Dialogue.decision("agnes", vote, "town", memory)["text"], "a no vote acknowledges the previously accepted case")
-	d["stance"] = "reject"
-	Dialogue.decision("agnes", d, "town", memory)
-	_check(not "I heard your case" in Dialogue.decision("agnes", vote, "town", memory)["text"], "latest rejection supersedes an older acceptance across audiences")
+	var known = {"kind": "argument", "key": "lied:isolde", "facts": ["x"], "stance": "accept", "already": true, "claim": "Isolde lied"}
+	_check("already" in Dialogue.decision("unwritten_character", known, "player", {})["text"], "an accepted argument that moved nothing says they'd come to it already")
+	known["already"] = false
+	_check(not "already" in Dialogue.decision("unwritten_character", known, "player", {})["text"], "a persuasive accepted argument doesn't")
 	var hidden = d.duplicate(true)
 	hidden.merge({"alignment": "evil", "secret": "smuggling", "true_role": "demon"})
 	_check(Dialogue.decision("bart", hidden, "town", {}) == Dialogue.decision("bart", d, "town", {}), "irrelevant hidden fields cannot alter presentation")
 	var weird = {"kind": "nomination", "target": "{reason} 100%", "reason_text": "A quoted {target} remains literal."}
 	var text: String = Dialogue.decision("bart", weird, "town", {})["text"]
 	_check("{reason} 100%" in text and "quoted {target}" in text, "substituted content is not recursively treated as template code")
-	_check(not Dialogue.decision("unwritten_character", vote, "town", {})["text"].is_empty(), "unauthored characters receive usable generic decision speech")
+	_check(not Dialogue.decision("unwritten_character", {"kind": "nomination", "target": "Edda"}, "town", {})["text"].is_empty(), "unauthored characters receive usable generic decision speech")
 
 func _live() -> void:
 	var g = Game.new()
@@ -93,46 +92,11 @@ func _live() -> void:
 	_check(g.questions_left == 3 and g.free_repeats == 1, "already-heard argument is free once despite rewritten response")
 	g.command("convince %d" % dn)
 	_check(g.questions_left == 2, "a further repeat still costs a question")
-	# Control the vote inputs, then use the real vote resolver.
-	n.ledger.clear()
-	n.suspicion.clear()
-	n.suspicion[target.id] = 0.45
-	n.npc_trust[target.id] = 1.0
-	n.trust = 0.8
-	n.spare_pref.clear()
-	n.traits["confidence"] = 0.5
-	w.begin_meeting()
-	Dialogue.decision(n.id, {"kind": "argument", "key": "fixture", "facts": ["fixture"], "stance": "accept", "target_id": target.id, "accusing": true, "claim": target.name + " is evil"}, "player", n.dialogue_memory)
-	var no = Mind.vote(w, n, target.id, "player", false, "", 0)
-	_check(not no and "trust" in n.vote_speech["text"].to_lower(), "actual trust penalty explains a resolved no vote")
-	_check("case against" in n.vote_speech["text"], "live vote connects acceptance to a different voting decision")
-	n.npc_trust[target.id] = 0.5
-	n.suspicion[target.id] = 0.4
-	var yes = Mind.vote(w, n, target.id, "player", false, "accuse", 0)
-	_check(yes and "accusation" in n.vote_speech["text"], "a pivotal player accusation explains a resolved yes vote")
-	var other = w.living().filter(func(x): return x != n and x != target)[0]
-	w.meeting["block"] = other.id
-	n.suspicion[other.id] = 0.8
-	_check(not Mind.vote(w, n, target.id, "player", false, "", 0) and other.name in n.vote_speech["text"], "existing-block preference names the actual competing nominee")
-	n.silenced = true
-	Mind.vote(w, n, target.id, "player", false, "", 0)
-	_check(n.vote_speech.is_empty(), "silenced voters do not speak")
-	n.silenced = false
-	# Normal meeting command emits ordered replies consistent with the actual tally.
+	# Voting is silent: a real vote command adds no speech.
 	w.begin_meeting()
 	g.state = "meeting"
 	g.command("nominate " + target.id)
-	var cards_before = g.board.size()
 	g.command("vote yes")
-	var tally: Dictionary = w.meeting["results"][-1]
-	var speeches: Array = tally["speeches"]
-	_check(speeches.map(func(x): return x["speaker"]) == tally["order"].filter(func(x): return x != "player"), "vote speech follows the actual clockwise order")
-	_check(g.last_events.filter(func(e): return e["k"] == "speech").size() == speeches.size(), "real game command delivers all vote explanations to the main log")
-	_check(g.board.size() == cards_before + 1, "vote explanations create no extra evidence cards")
-	for speech in speeches:
-		var voter = w.by_id[speech["speaker"]]
-		var is_yes = voter.id in tally["yes"]
-		var expected = Dialogue.decision(voter.id, {"kind": "vote", "target": target.name, "yes": is_yes}, "town", {})["text"].split(".")[0]
-		_check(speech["text"].begins_with(expected), "speech agrees with counted vote: " + voter.id)
+	_check(g.last_events.filter(func(e): return e["k"] == "speech").is_empty(), "votes are counted without vote speeches")
 	g.new_case(4242, 10)
-	_check(g.w.npcs.all(func(x): return x.dialogue_memory.is_empty() and x.vote_speech.is_empty()), "new case resets both delivery history and vote presentation")
+	_check(g.w.npcs.all(func(x): return x.dialogue_memory.is_empty()), "new case resets delivery history")

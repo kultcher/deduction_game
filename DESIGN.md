@@ -313,8 +313,11 @@ discounts, believed roles, and believed-good flags.
 
 Where everyone lives is common knowledge: each case opens with a "lives on" card per
 resident (Statements view; it can't be presented to anyone). At night a walker takes the
-shortest road from home to their destination and can be seen on any block along it, so
-being seen on two blocks in one night is normal. The night `two_places` template is
+shortest road from home to their destination and can be seen on any block along it.
+**Since Oct 18 every block has a road to every other** (outer roads Market–Docks and
+Chapel Hill–Docks), so a route is just home → destination: nobody passes through a
+block, and a walker is seen only at home or where they went. The Lamplighter is the
+exception (the lamp route passes every block), which may make the gift easy to confirm. The night `two_places` template is
 gone. Its replacement, *off-route*, fires only when no single way from their home passes
 both blocks, or when someone names where their night took them (a watch kept, a door
 guarded, the hearth of the dead) and the way there doesn't pass a block they were seen
@@ -682,6 +685,36 @@ against it); *cunning* +1.5 for anyone living on the scapegoat's block (so the k
 falls near the scapegoat); *hungry* adds a random 0 to 2.0 per person per night (the
 least predictable). Decided, not built yet: 3% of nights the demon skips its top three
 (BACKLOG).
+
+## Quick-fix pass, Oct 18
+
+- Builder: "is not evil" / "is not good" file correctly (the drop-down passes the stored
+  type, typed commands the label; they're no longer matched against each other).
+- An evil Medium bluff's night story names the hearth of its fake reading ("Communing
+  with the dead at Dorian's hearth"), on that hearth's block, not wherever they really
+  were; fake readings visit each of the dead once, most recent first. A real Medium
+  names the hearth too. The duty card no longer carries the speaker's true role.
+- A Warden asked about their gift lists whose doors they guarded, one card per night; an
+  evil Warden bluff's invented doors are fixed per night (same story on every ask).
+- A Martyr is reluctant to vote to hang the person they'd die for, unless the case,
+  pressure or panic is overwhelming.
+- Case summary: a Martyr's death is recorded against the nomination (the nominee, who
+  lived, plus `martyr_died`); demon identification credits naming the demon the case
+  started with (a Scion's rise doesn't take it away).
+- The demon skips its top three targets 3% of nights (logged as an unpredictable choice).
+- Wording: "night 0" anywhere player-facing reads "the night before you arrived";
+  relayed readings are retold in the third person ("Agnes told me… that they looked
+  at…"); Medium readings say "Communing with the dead at X's hearth".
+- Gossip (tavern and approaches) skips what that person already told you and readings
+  the whole town heard at a meeting; an approach with nothing new doesn't happen.
+- "town consensus fading" is logged when old stances fade (it said "against them").
+- The "No demon guess recorded" voting prompt is gone.
+- Votes are silent (PR #3's vote explanations removed until the rebuttal/meeting work).
+  Argument replies say when the listener had already come to the conclusion; evil
+  listeners' reasons for doubt now come from the same range good listeners use (another
+  explanation, shaky evidence, a likelier suspect: their scapegoat), chosen without game
+  RNG.
+- The case board's card list is newest first, like the other lists.
 
 ## Dialogue composer (merged from codex/dialogue-prototype)
 

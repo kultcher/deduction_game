@@ -52,6 +52,8 @@ var last_events: Array = []
 # ---------------------------------------------------------------- events
 
 func _ev(e: Dictionary) -> void:
+	if e.has("text"):
+		e["text"] = C.natural_nights(e["text"])
 	events.append(e)
 
 func _hdr(t: String) -> void:
@@ -222,6 +224,9 @@ func find_block(token: String) -> String:
 	return ""
 
 func add_card(fact: Dictionary) -> int:
+	if fact.has("text"):
+		fact = fact.duplicate()
+		fact["text"] = C.natural_nights(fact["text"])
 	var key: String = fact.get("text", "")
 	var disc = _disclosure(fact)
 	if _card_keys.has(key):
@@ -944,8 +949,6 @@ func _show_nomination() -> void:
 	var nm: Dictionary = w.meeting["pending"]
 	var t = w.by_id[nm["nominee"]]
 	_line(Mind.defence_line(w, t))
-	if CaseMetrics.named_guesses(guesses, "demon").is_empty():
-		_prompt("No demon guess recorded. You can still 'guess <name> demon' before voting, or save Your guess in a profile.")
 	var blk = ""
 	if w.meeting["block"] != "":
 		blk = " %s is on the block with %d votes." % [w.by_id[w.meeting["block"]].name, w.meeting["block_count"]]
@@ -1011,7 +1014,6 @@ func _nomination_command(verb: String, rest: String) -> void:
 				return
 			capture_prediction("before_vote", {"nominee": t.id, "player_yes": yes})
 			var res: Dictionary = w.vote_pending(yes)
-			_lines(res.get("speeches", []))
 			var yes_names: Array = res["yes"].map(func(i): return w.by_id[i].name)
 			if res["player_yes"]:
 				yes_names.append("you")

@@ -20,6 +20,7 @@ var day = 0
 var phase = C.MORNING
 
 var demon_id = ""
+var first_demon_id = ""            # the demon at the start (a Scion may take over later)
 var minion_id = ""                  # the first minion (kept for older code paths)
 var minion_ids: Array = []
 var bluffs: Array = []
@@ -327,6 +328,7 @@ func _assign_roles() -> void:
 	order[0].role = "demon"
 	order[0].alignment = "evil"
 	demon_id = order[0].id
+	first_demon_id = demon_id
 	minion_ids = []
 	for i in range(mins.size()):
 		order[1 + i].role = mins[i]
@@ -671,7 +673,6 @@ func vote_pending(player_yes: bool) -> Dictionary:
 	var yes: Array = []
 	var no: Array = []
 	var order: Array = vote_order(nid)
-	var speeches: Array = []
 	for vid in order:
 		if vid == "player":
 			continue  # declared up front; counted as the hand passes your seat
@@ -681,8 +682,6 @@ func vote_pending(player_yes: bool) -> Dictionary:
 			public_event("vote_yes", [nid], v.id)
 		else:
 			no.append(v.id)
-		if not v.silenced and not v.vote_speech.is_empty():
-			speeches.append(v.vote_speech.duplicate(true))
 	var count = yes.size() + (1 if player_yes else 0)
 	var thr = vote_threshold()
 	var outcome = "fails"
@@ -697,7 +696,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		else:
 			outcome = "short_of_block"
 	var res = {"nominee": nid, "by": nm["by"], "yes": yes, "no": no, "player_yes": player_yes, "count": count,
-		"threshold": thr, "order": order, "speeches": speeches, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"]}
+		"threshold": thr, "order": order, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"]}
 	meeting["results"].append(res)
 	meeting["pending"] = {}
 	dlog.add("vote_tally", "world", nid, res)
@@ -1462,12 +1461,12 @@ func _medium_item(m, dead, broken: bool) -> Dictionary:
 func _medium_text(dead, it: Dictionary) -> String:
 	match it["type"]:
 		"reading":
-			return "at %s's hearth I heard what they never told us: %s" % [dead.name, it["entry"]["text"]]
+			return "communing with the dead at %s's hearth, I heard what they never told us: %s" % [dead.name, C.third_person(it["entry"]["text"])]
 		"sighting":
-			return "at %s's hearth I learned they saw %s out on %s on night %d" % [dead.name, by_id[it["who"]].name, C.block_name(it["block"]), it["night"]]
+			return "communing with the dead at %s's hearth, I learned they saw %s out on %s on night %d" % [dead.name, by_id[it["who"]].name, C.block_name(it["block"]), it["night"]]
 		"suspicion":
-			return "at %s's hearth I felt their distrust of %s" % [dead.name, by_id[it["about"]].name]
-	return "at %s's hearth I learned only that they were home on their last night" % dead.name
+			return "communing with the dead at %s's hearth, I felt their distrust of %s" % [dead.name, by_id[it["about"]].name]
+	return "communing with the dead at %s's hearth, I learned only that they were home on their last night" % dead.name
 
 # ---------------------------------------------------------------- day gifts
 

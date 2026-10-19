@@ -22,7 +22,7 @@ static func reconsideration_intent(argument: String) -> Dictionary:
 		"statement": "I didn't put much stock in %s. After all that's happened since... perhaps I should have." % argument}
 
 static func compose(id: String, intent: Dictionary, context: Dictionary, memory: Dictionary) -> Dictionary:
-	if intent.get("kind", "") in ["argument", "nomination", "vote"] and context.get("decided", false):
+	if intent.get("kind", "") in ["argument", "nomination"] and context.get("decided", false):
 		return decision(id, intent, context.get("audience", "player"), memory)
 	var kind: String = intent.get("kind", "")
 	var statement: String = intent.get("statement", "")

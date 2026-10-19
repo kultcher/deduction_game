@@ -131,6 +131,21 @@ func _home_rect(n) -> Rect2:
 func _block_center(b: String) -> Vector2:
 	return BLOCK_RECTS[b].get_center()
 
+## A road's course in virtual coordinates. The outer roads to the Docks run down the
+## sides of the map and in along the bottom, clear of the Square.
+func _road_points(a: String, b: String) -> Array:
+	var key = [a, b]
+	key.sort()
+	if key == ["docks", "market"] or key == ["docks", "hill"]:
+		var top: String = key[1]
+		var tr: Rect2 = BLOCK_RECTS[top]
+		var dr: Rect2 = BLOCK_RECTS["docks"]
+		var x: float = tr.get_center().x
+		var y: float = dr.get_center().y
+		var dx: float = dr.position.x if top == "market" else dr.end.x
+		return [tr.get_center(), Vector2(x, y), Vector2(dx + (40.0 if top == "market" else -40.0), y)]
+	return [_block_center(a), _block_center(b)]
+
 # ---------------------------------------------------------------- drawing
 
 func _art(rel: String, scale: float = 0.5):
@@ -186,13 +201,18 @@ func _draw() -> void:
 			_draw_art(t, _r(Rect2(d[1] - Vector2(ww / 2.0, 0), Vector2(ww, hh))), "contain", tint)
 	# Roads: sandy paths with a dark edge, and a lamp halfway along.
 	for road in C.ROADS:
-		var a = _p(_block_center(road[0]))
-		var b2 = _p(_block_center(road[1]))
-		draw_line(a, b2, Color(0.2, 0.17, 0.12), 26.0 * _scale)
-		draw_line(a, b2, Color(0.78, 0.66, 0.45) * tint, 20.0 * _scale)
+		var pts: Array = _road_points(road[0], road[1])
+		for i in range(pts.size() - 1):
+			var a = _p(pts[i])
+			var b2 = _p(pts[i + 1])
+			draw_line(a, b2, Color(0.2, 0.17, 0.12), 26.0 * _scale)
+			draw_line(a, b2, Color(0.78, 0.66, 0.45) * tint, 20.0 * _scale)
+		for i in range(1, pts.size() - 1):
+			draw_circle(_p(pts[i]), 10.0 * _scale, Color(0.78, 0.66, 0.45) * tint)
 		var lamp = _art("decor/lamp", 0.3)
 		if lamp != null:
-			var mid = (_block_center(road[0]) + _block_center(road[1])) / 2.0 + Vector2(18, -10)
+			var mid: Vector2 = pts[1] if pts.size() > 2 else (pts[0] + pts[1]) / 2.0
+			mid += Vector2(18, -10)
 			_draw_art(lamp, _r(Rect2(mid - Vector2(10, 48), Vector2(20, 48))), "contain", Color(1, 1, 1) if not night else Color(1, 0.95, 0.75))
 	# Blocks.
 	for b in BLOCK_RECTS:

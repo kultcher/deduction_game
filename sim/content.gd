@@ -17,9 +17,47 @@ const BLOCKS = {
 
 ## Roads between blocks (night walkers follow the shortest route and can be seen, or drop
 ## things, anywhere along it). The Square is the hub; the Market and Chapel Hill also meet.
-const ROADS = [["square", "market"], ["square", "docks"], ["square", "hill"], ["market", "hill"]]
+## Every block is joined to every other (the outer roads Market–Docks and Chapel Hill–Docks
+## were added Oct 2026): nobody passes *through* a block on the way somewhere, so a walker
+## is seen only at home or where they're going (the lamp route is the exception).
+const ROADS = [["square", "market"], ["square", "docks"], ["square", "hill"], ["market", "hill"],
+	["market", "docks"], ["hill", "docks"]]
 
 ## Shortest route between two blocks, inclusive of both ends.
+## Night 0 is the night before the Demonologist arrived; nobody calls it "night 0".
+static func night_name(nd: int) -> String:
+	return "the night before you arrived" if nd == 0 else "night %d" % nd
+
+## Rewrite any "night 0" in player-facing text into natural phrasing.
+static func natural_nights(text: String) -> String:
+	if not ("night 0" in text or "Night 0" in text):
+		return text
+	var re = RegEx.new()
+	re.compile("\\b(on |On )?([Nn])ight 0\\b")
+	var out = ""
+	var cursor = 0
+	for m in re.search_all(text):
+		out += text.substr(cursor, m.get_start() - cursor)
+		var lead: String = m.get_string(1)
+		var phrase = "the night before you arrived"
+		if lead != "":
+			phrase = lead + phrase
+		elif m.get_string(2) == "N":
+			phrase = "The night before you arrived"
+		out += phrase
+		cursor = m.get_end()
+	return out + text.substr(cursor)
+
+## Someone's first-person report retold about them ("I looked at..." -> "they looked at...").
+static func third_person(text: String) -> String:
+	var out = text
+	for pair in [["I am", "they are"], ["I was", "they were"], ["I'm", "they're"], ["I've", "they've"], ["I'd", "they'd"],
+			["I", "they"], ["my", "their"], ["me", "them"], ["myself", "themselves"]]:
+		var re = RegEx.new()
+		re.compile("\\b%s\\b" % pair[0])
+		out = re.sub(out, pair[1], true)
+	return out
+
 static func route(a: String, b: String) -> Array:
 	if a == b:
 		return [a]

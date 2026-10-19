@@ -807,7 +807,7 @@ static func _claim_line(n, role: String) -> Dictionary:
 	return say(n, "%sI am the %s." % [openers.get(n.style, ""), C.role_name(role)])
 
 static func info_line(w, n, e: Dictionary, audience: String = "player") -> Dictionary:
-	var when = "On the first night" if e["day"] == 0 else "Last night" if e["day"] == w.day - 1 else "On night %d" % e["day"]
+	var when = "The night before you arrived" if e["day"] == 0 else "Last night" if e["day"] == w.day - 1 else "On night %d" % e["day"]
 	if e.has("phase"):
 		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
 	return voiced(n, "report", "%s, %s." % [when, e["text"]], info_eid(n.id, e), {"audience": audience})
@@ -902,7 +902,8 @@ static func refresh_consensus(w, l, target: String) -> void:
 	if absf(want - have) < 0.002:
 		return
 	l.consensus_applied[target] = want
-	adjust(w, l, target, want - have, "town consensus: %d voice(s) against them" % vals.size(),
+	var what = ("town consensus: %d voice(s) against them" % vals.size()) if want > have else ("town consensus fading (%d older voice(s) against them)" % vals.size())
+	adjust(w, l, target, want - have, what,
 		"several people have spoken against them" if vals.size() > 1 else "%s spoke against them at the meeting" % w.by_id[_first_accuser(w, target, l.id)].name)
 
 static func _first_accuser(w, target: String, not_id: String) -> String:
@@ -972,20 +973,9 @@ static func defence_line(w, n) -> Dictionary:
 static func vote(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int) -> bool:
 	if v.id == nominee:
 		w.dlog.think(v.id, "vote", "Votes no on own execution.", {"nominee": nominee, "yes": false})
-		_vote_speech(w, v, nominee, false, "self")
 		return false
 	if v.is_evil():
-		var yes = Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
-		# Public cover only. Do not verbalize teammate/scapegoat strategy from evil_vote.
-		var cover = "enough" if yes else "insufficient"
-		if not yes and v.npc_trust.get(nominee, 0.5) > 0.6:
-			cover = "trust"
-		elif not yes and statement == "defend":
-			cover = "defend"
-		elif yes and statement == "accuse":
-			cover = "accuse"
-		_vote_speech(w, v, nominee, yes, cover)
-		return yes
+		return Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
 	reconsider(w, v, "thinking it over before the vote")
 	var base = susp(v, nominee)
 	var s = base
@@ -1004,6 +994,12 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 	var block: String = w.meeting["block"]
 	if block != "" and block != nominee and susp(v, block) >= base:
 		parts["prefers_block"] = -0.4
+	if v.role == "martyr" and v.martyr_target == nominee and not v.gift_broken():
+		# They'd die in this one's place: reluctant, unless the case, the pressure or the
+		# panic is overwhelming.
+		var r = 0.6 - 0.4 * paranoia(w, v) - 0.3 * v.pressure - 0.4 * maxf(0.0, base - 0.8)
+		if r > 0.0:
+			parts["martyr_reluctance"] = -snappedf(r, 0.01)
 	for k in parts:
 		if k != "suspicion":
 			s += parts[k]
@@ -1012,38 +1008,7 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 	parts["total"] = snappedf(s, 0.01)
 	parts["need"] = snappedf(need, 0.01)
 	w.dlog.think(v.id, "vote", "%s on %s (score %.2f vs %.2f)." % ["YES" if yes else "no", nominee, s, need], parts)
-	_vote_speech(w, v, nominee, yes, _vote_reason(parts, s, need, yes))
 	return yes
-
-## Explain an actual contributing factor. Prefer a factor that changed the outcome;
-## otherwise use the strongest contribution in the direction of the resolved vote.
-static func _vote_reason(parts: Dictionary, total: float, need: float, yes: bool) -> String:
-	var best = ""
-	var best_score = 0.0
-	for key in ["trust_in_nominee", "prefers_block", "persuaded_to_spare", "player_defends", "player_accuses", "player_votes_yes", "distrusts_nominator"]:
-		var value: float = parts.get(key, 0.0)
-		if (yes and value <= 0.0) or (not yes and value >= 0.0):
-			continue
-		var score = absf(value) + (1.0 if (total - value >= need) != yes else 0.0)
-		if score > best_score:
-			best_score = score
-			best = key
-	if best == "trust_in_nominee":
-		return "distrust" if yes else "trust"
-	# A negative response to the player's yes vote is distrust, not support.
-	if best == "player_votes_yes" and not yes:
-		return "insufficient"
-	return {"prefers_block": "block", "persuaded_to_spare": "spare", "player_defends": "defend", "player_accuses": "accuse", "player_votes_yes": "backing", "distrusts_nominator": "nominator"}.get(best, "enough" if yes else "insufficient")
-
-static func _vote_speech(w, v, nominee: String, yes: bool, reason: String) -> void:
-	# Silence suppresses speech, not the existing vote.
-	if v.silenced:
-		v.vote_speech = {}
-		return
-	var block: String = w.meeting.get("block", "")
-	v.vote_speech = decision_line(v, {"kind": "vote", "yes": yes, "target_id": nominee,
-		"target": w.by_id[nominee].name, "reason": reason,
-		"block": w.by_id[block].name if w.by_id.has(block) else ""}, "town")
 
 # ---------------------------------------------------------------- pressing
 
@@ -1230,6 +1195,19 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 	if first_time:
 		set_trust(w, n, n.trust + 0.03, "shared their gift with the Demonologist")
 	n.max_tier = maxi(n.max_tier, 3)
+	if role == "warden":
+		# A Warden's work is whose door they stood at: say so when asked about the gift.
+		var doors: Array = []
+		for nd in range(0, w.day):
+			var gd: String = warden_door(w, n, nd)
+			if gd != "" and w.by_id.has(gd):
+				doors.append("%s at %s's door" % [C.night_name(nd), w.by_id[gd].name])
+				facts.append(_guard_fact(w, n, nd, gd))
+		if not doors.is_empty():
+			var said: String = "; ".join(PackedStringArray(doors))
+			lines.append(say(n, "I keep watch over one door each night: %s." % (said[0].to_upper() + said.substr(1))))
+			n.max_tier = maxi(n.max_tier, tier)
+			return {"lines": lines, "facts": facts}
 	if not C.has_readings(role):
 		lines.append(say(n, "My gift doesn't tell me things. It only does what it does."))
 		n.max_tier = maxi(n.max_tier, tier)
@@ -1272,6 +1250,42 @@ static func _gossip_share(w, n, topic: String) -> int:
 		return 0
 	return 1 + int(round((g + n.pressure * 0.5) * 3.0))
 
+## Whose door a Warden (or an evil Warden bluff) says they guarded on night nd. A bluff
+## invents one on the block they were really on (or anyone, if they stayed in), once per
+## night, so the story stays the same however often they're asked.
+static func warden_door(w, n, nd: int) -> String:
+	if n.warden_log.has(str(nd)) or not n.is_evil():
+		return n.warden_log.get(str(nd), "")
+	var hist: String = n.history.get(w.time_key(nd, C.NIGHT), "home:" + n.home_block)
+	var was_out = hist.begins_with("night:")
+	var block: String = hist.split(":")[1] if ":" in hist else n.home_block
+	var cands: Array = w.living().filter(func(m): return m != n and not Evil.is_teammate(w, n, m.id) and (not was_out or m.home_block == block))
+	if cands.is_empty():
+		cands = w.living().filter(func(m): return m != n and not Evil.is_teammate(w, n, m.id))
+	var guarded = cands[w.rng.randi_range(0, cands.size() - 1)].id if not cands.is_empty() else ""
+	n.warden_log[str(nd)] = guarded
+	w.dlog.think(n.id, "lie", "Evil bluffing Warden: claims to have guarded %s on night %d." % [guarded, nd], {"lie": true})
+	return guarded
+
+static func _guard_fact(w, n, nd: int, guarded: String) -> Dictionary:
+	var gb: String = w.by_id[guarded].home_block
+	return {"kind": "sighting", "subject": [n.id], "block": gb, "day": nd, "phase": C.NIGHT, "source": n.id, "guard_claim": guarded,
+		"text": "%s says they guarded %s's door (on %s) on night %d." % [n.name, w.by_id[guarded].name, C.block_name(gb), nd]}
+
+## Whose hearth a Medium's reading (real, or an evil bluff's fake) for night nd names.
+static func _hearth_dead(w, n, nd: int):
+	for e in n.info_log:
+		if e.get("role", "") == "medium" and e.get("day", -1) == nd and (e.get("fake", false) == n.is_evil()):
+			var dead = w.by_id.get(e.get("data", {}).get("dead", ""))
+			if dead != null:
+				return dead
+	return null
+
+## The block of the hearth an evil Medium bluff's fake reading for night nd names ("" if none).
+static func _bluff_hearth(w, n, nd: int) -> String:
+	var dead = _hearth_dead(w, n, nd)
+	return dead.home_block if dead != null and n.is_evil() else ""
+
 static func _alibi_home(n, nd: int) -> Dictionary:
 	return {"kind": "alibi", "subject": [n.id], "home": true, "day": nd, "phase": C.NIGHT, "source": n.id, "block": n.home_block,
 		"text": "%s says they were home (on %s) on night %d." % [n.name, C.block_name(n.home_block), nd]}
@@ -1308,33 +1322,33 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(block)))
 		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
 			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(block), nd]})
-	elif n.claimed_role in ["lamplighter", "medium"] and (n.claim_public or n.max_tier >= 3) and (n.role == n.claimed_role or n.is_evil()):
-		if n.is_evil():
+	elif n.claimed_role in ["lamplighter", "medium"] and (n.claim_public or n.max_tier >= 3) and (n.role == n.claimed_role or n.is_evil()) \
+			and not (n.is_evil() and n.claimed_role == "medium" and _bluff_hearth(w, n, nd) == ""):
+		if n.is_evil() and n.claimed_role == "medium":
+			# Their story puts them at the hearth their fake reading names, not where they were.
+			block = _bluff_hearth(w, n, nd)
+			w.dlog.think(n.id, "lie", "Evil bluffing Medium: claims to have sat at a hearth on %s on night %d." % [block, nd], {"lie": true})
+		elif n.is_evil():
 			block = block if was_out else n.home_block
 			w.dlog.think(n.id, "lie", "Evil bluffing %s: claims their gift took them out on night %d." % [n.claimed_role, nd], {"lie": true})
 		vantage = block
 		how = "street"
-		var duty = "Walking the lamp route, as I do every night." if n.claimed_role == "lamplighter" else "Sitting at the hearth of the dead, as my gift asks."
+		var hearth = _hearth_dead(w, n, nd)
+		var duty = "Walking the lamp route, as I do every night." if n.claimed_role == "lamplighter" else \
+			("Communing with the dead at %s's hearth, as my gift asks." % hearth.name if hearth != null else "Communing with the dead, as my gift asks.")
 		lines.append(say(n, duty))
-		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "duty_claim": n.role, "duty": n.claimed_role,
+		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "duty_claim": true, "duty": n.claimed_role,
 			"text": "%s says they were out on %s on night %d (%s)." % [n.name, C.block_name(block), nd, "the lamp route" if n.claimed_role == "lamplighter" else "visiting the dead"]})
 	elif n.claimed_role == "warden" and (n.claim_public or n.max_tier >= 3) and (n.role == "warden" or n.is_evil()):
 		# An open Warden says whose door they guarded; an evil one bluffing it invents a door
 		# on the block they were really on (or anyone, if they stayed in).
-		var guarded: String = n.warden_log.get(str(nd), "")
-		if n.is_evil():
-			var cands: Array = w.living().filter(func(m): return m != n and not Evil.is_teammate(w, n, m.id) and (not was_out or m.home_block == block))
-			if cands.is_empty():
-				cands = w.living().filter(func(m): return m != n and not Evil.is_teammate(w, n, m.id))
-			guarded = cands[w.rng.randi_range(0, cands.size() - 1)].id if not cands.is_empty() else ""
-			w.dlog.think(n.id, "lie", "Evil bluffing Warden: claims to have guarded %s on night %d." % [guarded, nd], {"lie": true})
+		var guarded: String = warden_door(w, n, nd)
 		if guarded != "" and w.by_id.has(guarded):
 			var gb: String = w.by_id[guarded].home_block
 			lines.append(say(n, "Standing guard at %s's door, as my gift asks." % w.by_id[guarded].name))
 			vantage = gb
 			how = "street"
-			facts.append({"kind": "sighting", "subject": [n.id], "block": gb, "day": nd, "phase": C.NIGHT, "source": n.id, "guard_claim": guarded,
-				"text": "%s says they guarded %s's door (on %s) on night %d." % [n.name, w.by_id[guarded].name, C.block_name(gb), nd]})
+			facts.append(_guard_fact(w, n, nd, guarded))
 		else:
 			lines.append(say(n, "At home all night, same as any honest soul."))
 			facts.append(_alibi_home(n, nd))
@@ -1866,18 +1880,22 @@ static func gossip(w) -> Dictionary:
 		var fake = Evil.fake_gossip(w, speaker)
 		if fake != null:
 			return fake
-	var night_seen: Array = speaker.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] == C.NIGHT and b["day"] >= w.day - 2)
+	# Nothing they've already told you (privately, or in your hearing at the tavern).
+	var night_seen: Array = speaker.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] == C.NIGHT and b["day"] >= w.day - 2 \
+		and not speaker.told_to.has("player|saw:%s:%d" % [b["who"], b["day"]]))
 	if not night_seen.is_empty() and trait_of(speaker, "gossip") >= 0.2:
 		var b: Dictionary = night_seen[night_seen.size() - 1]
 		var who = w.by_id[b["who"]]
+		speaker.told_to["player|saw:%s:%d" % [b["who"], b["day"]]] = true
 		w.dlog.think(speaker.id, "gossip", "Shares a true night sighting of %s." % who.id)
 		return {"lines": ["You overhear %s telling the room that %s was out on %s on night %d." %
 			[speaker.name, who.name, C.block_name(b["block"]), b["day"]]],
 			"facts": [{"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": C.NIGHT, "source": speaker.id,
 				"text": "Gossip from %s: %s was out on %s on night %d." % [speaker.name, who.name, C.block_name(b["block"]), b["day"]]}]}
 	var ranked = ranked_suspects(w, speaker)
-	if not ranked.is_empty() and susp(speaker, ranked[0].id) >= 0.4:
+	if not ranked.is_empty() and susp(speaker, ranked[0].id) >= 0.4 and not speaker.told_to.has("player|gossip_susp:%s:%d" % [ranked[0].id, w.day]):
 		var t = ranked[0]
+		speaker.told_to["player|gossip_susp:%s:%d" % [t.id, w.day]] = true
 		w.dlog.think(speaker.id, "gossip", "Shares their suspicion of %s." % t.id)
 		var why: String = Evil.cite(w, speaker, speaker.sus_why.get(t.id, ""))
 		var tail = (", because " + why) if why != "" else ". Something's off about them, apparently"

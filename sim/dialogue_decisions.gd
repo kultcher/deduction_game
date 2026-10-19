@@ -5,6 +5,7 @@ extends RefCounted
 const LINES = {
 	"default": {
 		"accept": "That makes sense to me: {claim}.",
+		"already": "I'd come to that already: {claim}.",
 		"partial": "I can see a case for {claim}, but I'm not convinced.",
 		"reject": "I'm not persuaded that {claim}.",
 		"repeat": "We've discussed this evidence. My answer is the same.",
@@ -18,23 +19,10 @@ const LINES = {
 		"source": "I'm doubtful of {source}'s account.",
 		"preferred": "I'm more suspicious of {preferred}.",
 		"nominate": "I nominate {target}.",
-		"vote_yes": "Yes, to executing {target}.",
-		"vote_no": "No, to executing {target}.",
-		"self": "I won't vote for my own execution.",
-		"trust": "I still trust {target}.",
-		"distrust": "I don't trust {target}.",
-		"block": "I'd rather keep {block} on the block.",
-		"spare": "I'm still persuaded we should spare {target}.",
-		"defend": "Your defence gives me pause.",
-		"accuse": "Your accusation adds to my doubts about {target}.",
-		"backing": "Your vote adds weight to the case for me.",
-		"nominator": "I distrust the person bringing this nomination.",
-		"enough": "The case is strong enough for my vote.",
-		"insufficient": "I don't have enough reason to hang {target}.",
-		"accepted_but_no": "I took your case against {target} seriously, but that isn't a promise to hang them.",
 	},
 	"agnes": {
 		"accept": "Yes, I follow you: {claim}.",
+		"already": "I'd got there myself, love: {claim}.",
 		"partial": "I understand your argument that {claim}. I'm just not sure yet.",
 		"reject": "I can't agree that {claim}.",
 		"repeat": "I remember, love. I still see that evidence the same way.",
@@ -47,12 +35,10 @@ const LINES = {
 		"source": "I'm having trouble trusting {source}'s account.",
 		"preferred": "It's {preferred} I'm more worried about.",
 		"nominate": "I'll put the name forward: {target}.",
-		"vote_yes": "Yes. I vote to hang {target}.",
-		"vote_no": "No. I won't vote to hang {target}.",
-		"accepted_but_no": "I heard your case against {target}. I'm still not ready to send them to the gallows.",
 	},
 	"bart": {
 		"accept": "Fair case: {claim}.",
+		"already": "Knew that already. {claim}, aye.",
 		"partial": "Could be that {claim}. I'm not certain.",
 		"reject": "Not convinced that {claim}.",
 		"repeat": "Same evidence. Same answer.",
@@ -65,12 +51,10 @@ const LINES = {
 		"source": "Don't put much stock in {source}'s account.",
 		"preferred": "I'd look harder at {preferred}.",
 		"nominate": "Put {target} up for a vote.",
-		"vote_yes": "Yes. Hang {target}.",
-		"vote_no": "No. Not {target}.",
-		"accepted_but_no": "Your case against {target} had weight. Doesn't mean I'll hang them.",
 	},
 	"constance": {
 		"accept": "I accept the argument that {claim}.",
+		"already": "I had already concluded that {claim}.",
 		"partial": "The proposition that {claim} deserves consideration, though I remain uncertain.",
 		"reject": "I cannot endorse the conclusion that {claim}.",
 		"repeat": "You have supplied the same evidence. My assessment stands.",
@@ -83,9 +67,6 @@ const LINES = {
 		"source": "I have reservations about {source}'s account.",
 		"preferred": "My greater suspicion rests with {preferred}.",
 		"nominate": "I propose {target} for execution.",
-		"vote_yes": "I vote in favour of executing {target}.",
-		"vote_no": "I vote against executing {target}.",
-		"accepted_but_no": "I acknowledged your case against {target}; I did not commit to their execution.",
 	},
 }
 
@@ -127,7 +108,7 @@ static func render(id: String, d: Dictionary, audience: String, memory: Dictiona
 		if not str(d.get("special", "")).is_empty():
 			chunks.append(d["special"])
 		else:
-			chunks.append(_line(id, d.get("stance", "partial"), d))
+			chunks.append(_line(id, "already" if d.get("already", false) and d.get("stance", "") == "accept" else d.get("stance", "partial"), d))
 			if not str(d.get("reason", "")).is_empty():
 				chunks.append(_line(id, d["reason"], d))
 		if not str(d.get("preferred", "")).is_empty():
@@ -145,15 +126,5 @@ static func render(id: String, d: Dictionary, audience: String, memory: Dictiona
 		chunks.append(_line(id, "nominate", d))
 		if not str(d.get("reason_text", "")).is_empty():
 			chunks.append(d["reason_text"])
-	elif kind == "vote":
-		chunks.append(_line(id, "vote_yes" if d["yes"] else "vote_no", d))
-		# Latest expressed stance, not whichever older acceptance happens to be found first.
-		var last = {}
-		for entry in memory.get("decisions", {}).values():
-			if entry.get("target_id", "") == d.get("target_id", "") and entry.get("accusing", false) and int(entry.get("sequence", 0)) > int(last.get("sequence", -1)):
-				last = entry
-		if not d["yes"] and last.get("stance", "") == "accept":
-			chunks.append(_line(id, "accepted_but_no", d))
-		chunks.append(_line(id, d.get("reason", "enough" if d["yes"] else "insufficient"), d))
 	result["text"] = " ".join(PackedStringArray(chunks.filter(func(x): return not str(x).is_empty())))
 	return result

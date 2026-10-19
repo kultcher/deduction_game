@@ -262,7 +262,18 @@ static func choose_kill_target(w) -> String:
 		if total > best_s:
 			best_s = total
 			best = n.id
-	w.dlog.think(d.id, "kill_choice", "Demon targets %s (score %.2f)." % [best, best_s], {"scores": scores, "caution": plan.get("caution", 0.0)})
+	# Now and then the demon does something nobody would predict: it passes over its top
+	# three and takes someone else.
+	var zag = false
+	if w.rng.randf() < 0.03 and scores.size() > 3:
+		var order: Array = scores.keys()
+		order.sort_custom(func(x, y): return scores[x]["total"] > scores[y]["total"])
+		var rest: Array = order.slice(3).filter(func(x): return scores[x]["total"] > -5.0)
+		if not rest.is_empty():
+			best = rest[w.rng.randi_range(0, rest.size() - 1)]
+			best_s = scores[best]["total"]
+			zag = true
+	w.dlog.think(d.id, "kill_choice", "Demon targets %s (score %.2f)%s." % [best, best_s, " (an unpredictable choice: skipped its top three)" if zag else ""], {"scores": scores, "caution": plan.get("caution", 0.0), "zag": zag})
 	plan["poison_for_kill"] = ""
 	if best != "" and believed_veteran(w, w.by_id[best]) and w.living_with_role("poisoner") != null and best_s > -5.0 \
 			and not (best in plan["failed"]):
@@ -429,10 +440,13 @@ static func make_fake_info(w) -> void:
 				why = "guesses a plausible count of walkers (%d)" % cnt
 				entry = {"data": {"count": cnt}, "text": "walking the lamps, I counted %d other%s out" % [cnt, "" if cnt == 1 else "s"]}
 			"medium":
-				var dead: Array = w.npcs.filter(func(x): return not x.alive and not x.is_evil())
+				# Like the real Medium: each of the dead once, the most recent first.
+				var dead: Array = w.npcs.filter(func(x): return not x.alive and not x.is_evil() and not (x.id in n.medium_visited))
 				if dead.is_empty() or w.day == 0 or not w.by_id[s].alive:
 					continue
-				var dd = dead[w.rng.randi_range(0, dead.size() - 1)]
+				dead.sort_custom(func(a, b): return a.death_day > b.death_day)
+				var dd = dead[0]
+				n.medium_visited.append(dd.id)
 				var it = {"type": "sighting", "who": s, "block": w.by_id[s].home_block, "night": maxi(0, dd.death_day - 1)}
 				why = "claims the dead %s saw scapegoat %s out" % [dd.id, s]
 				entry = {"data": {"dead": dd.id, "item": it}, "text": w._medium_text(dd, it)}

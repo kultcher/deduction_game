@@ -12,59 +12,7 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
-- **"is not evil" files as "is evil".** Confirmed (55774: "Fenwick is evil", deleted,
-  then refiled as "good"). The builder's "is not" list maps the status *good* to
-  `evil` and *evil* to `good`, but `Argue.from_builder` matches on either column, so
-  the stored value `good` hits the first row ("good" → `evil`). Match on the stored
-  value only. [decided]
-- **Evil Medium bluff gives away where they killed.** A bluffing Medium's "hearth of
-  the dead" alibi uses the block they really were on (Greta: the Docks, where she'd
-  just killed). It should use the home block of the dead person in that night's fake
-  reading. The fake reading also picks a dead person at random, so it repeats
-  ("Dorian" on two nights). Visit each dead person once, most recent first, like the
-  real Medium. (55774) [decided]
-- **Martyr attribution in the case summary.** The saved person's nomination is
-  recorded as the Martyr's execution ("Bartholomew, nominated by Agnes"). Record the
-  nominee, nominator and votes, plus the Martyr who died in their place. (55774) [decided]
-- **Demon identification with a Scion.** Credit the player for naming the *starting*
-  demon for now. The single demon guess also stops you marking both Hollis (dead) and
-  Greta (risen). (55774) [decided]
-- **Remove the "No demon guess recorded…" voting prompt** for now. Fold it into
-  scoring later. [decided]
-- **Consensus log text.** "town consensus: N voice(s) against them" also prints when
-  the effect is shrinking (old stances fading). Say "fading" or skip the line when it
-  goes down. [decided]
-- **"I reported" vs "they reported"** when an NPC relays someone else's claim. [decided]
-- **Gossip repeats.** Gossipers re-tell the player things they've already told them,
-  or things the whole town heard. Skip anything they already told you or that was said
-  publicly; info you learned privately from others is fine to repeat. [decided]
-- **"Night 0" wording.** Use natural phrasing everywhere ("the night before you
-  arrived" / "the first night"), including the builder's night list. [decided]
-- **Medium wording.** "At Jory's hearth I learned…" → "Communing with the dead at
-  Jory's hearth, I learned…" (and the alibi line to match). [decided]
-- **Martyr voting.** A Martyr should be reluctant to vote to hang their chosen unless
-  evidence, pressure or panic is high (Bartholomew voted yes on Fenwick). [decided]
-- **Warden answers "ask gift" with their guarded doors,** not only when asked about the
-  night. [decided]
-- **Evil vote explanations are a tell** (dialogue phase two, PR #3). Good voters explain
-  with their real deciding factor ("I don't trust Edda", "I'd rather keep Edda on the
-  block", "Your vote adds weight"); evil voters mostly get the generic cover "The case
-  is strong enough for my vote" / "I don't have enough reason". In a sample meeting all
-  three evil yes-votes used that one line. Evil cover should draw from the same spread
-  of reasons good voters give (e.g. pick the reason a good voter with their public
-  stance would give). Same check for argument replies: good listeners name an
-  alternative, a doubtful source or a preferred suspect; evil masks almost always say
-  "weak". [decided]
-- **Vote speech volume.** Every voter now speaks on every vote (8–9 lines per vote,
-  several votes a meeting). Keep the lines that tell you something (a reason that
-  differs from the crowd, a vote against their stated stance, a swing vote) and fold
-  the rest into the tally. [decided]
-- **"I'd come to that already" is gone.** The old reply told you the listener already
-  believed the conclusion (no gain); the new accept line doesn't distinguish. Restore
-  it as a cue. [decided]
-- **Demon zag.** 3% of nights the demon skips its top three targets and picks from the
-  rest, for the occasional chaos-inducing kill. Today the pick is the top score plus a
-  little noise (see DESIGN, Demon kill choice). [decided]
+All cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones go here.
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -138,8 +86,6 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
   take part in and what the other piece would have to be ("with a sighting of Greta on
   a block off her way home → off-route"). For teaching and reminding, not only for
   combinations already on the board. [decided]
-- **Home cards in the library** list first (#1–#10), pushing newer cards down; group
-  them under their own heading or sort them last. [decided]
 - **Selecting an NPC highlights** their standee, home and workplace on the map, with
   lighter highlights for their haunts. [decided]
 - **Trait bars in the profile:** each of the five traits as a bar with its name above
@@ -167,6 +113,11 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
   [decided: next social pass]
 - **Nominations make a case.** The nominator cites several cards, even weak ones.
   Mostly flavour; it only moves NPCs if it brings new information. [decided]
+- **Meeting and vote talk** (returns with the rebuttal work). Votes are silent for now;
+  PR #3's vote explanations were removed. When vote talk comes back: evil voters must
+  draw from the same spread of reasons as good ones (in PR #3 they all said "the case is
+  strong enough"), and only lines that tell you something should be spoken (a reason
+  that differs from the crowd, a vote against a stated stance, a swing vote). [decided]
 - **Talking to a group:** 3 questions per phase, split among anyone at the spot.
   [open; discussed 2026-10-18]
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for

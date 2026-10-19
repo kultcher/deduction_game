@@ -195,65 +195,6 @@ const SCENARIOS = [
 		},
 		"note": "The target and citation were already chosen by the simulation."
 	},
-	{
-		"title": "Accepting evidence, withholding a vote",
-		"kind": "vote",
-		"target": "Edda",
-		"target_id": "edda",
-		"yes": false,
-		"reason": "trust",
-		"prior": [
-			{
-				"title": "Accepting a case",
-				"kind": "argument",
-				"key": "demon:edda",
-				"claim": "Edda is the demon",
-				"stance": "accept",
-				"facts": [
-					"reading:2"
-				],
-				"target_id": "edda",
-				"accusing": true,
-				"statement": "Edda is the demon",
-				"context": {
-					"decided": true
-				},
-				"note": "Synthetic resolved decision: controls change audience, not the underlying evidence assessment."
-			}
-		],
-		"statement": "Vote no on Edda, despite accepting the earlier case.",
-		"context": {
-			"decided": true
-		},
-		"note": "Acceptance is remembered, but the resolved vote is no. Trust in the nominee was a contributing factor."
-	},
-	{
-		"title": "Keeping someone else on the block",
-		"kind": "vote",
-		"target": "Edda",
-		"target_id": "edda",
-		"yes": false,
-		"reason": "block",
-		"block": "Hollis",
-		"statement": "Vote no on Edda; prefer Hollis on the block.",
-		"context": {
-			"decided": true
-		},
-		"note": "The existing block preference contributed to a no vote."
-	},
-	{
-		"title": "The player tips a vote",
-		"kind": "vote",
-		"target": "Greta",
-		"target_id": "greta",
-		"yes": true,
-		"reason": "accuse",
-		"statement": "Vote yes on Greta; the player accusation contributed.",
-		"context": {
-			"decided": true
-		},
-		"note": "The actual decision has already been made. No extra suspicion or RNG is added."
-	},
 ]
 
 ## Seed only explicit fictional prior speech, once per scenario/audience. Preview callers
