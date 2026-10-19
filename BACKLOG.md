@@ -42,6 +42,9 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   Watch, so it claims Night Watch. This opens the door to double claims (the real Night
   Watch may just be quiet), which need their own logic: a classic of the genre, needed
   eventually. (Oct 19) [decided]
+- **Storyteller-driven Medium visits.** Today the Medium visits the most recent dead it
+  hasn't visited (demon victims first). Eventually: "I was called to Hollis's home to
+  commune with his spirit", chosen by a director. (Oct 19) [open]
 - **Fake Medium readings** (with the shadow self, below): fit the dead's public record
   (Hollis watched the Square on night 2, so he can't have "seen Jory on the Market"),
   match the dead's claimed gift (an unshared Night Watch report, say), frame the
@@ -153,6 +156,17 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   little a template needs); remove them if not. The
   evidence-chain item, and the watchtower idea in role_exploration.md, depend on this
   package. (DESIGN) [open]
+- **Locations as evidence, from both sides.**
+  - A Dowser's "on the Market I sensed 1 evil among A, B, C" places the Dowser and the
+    group on that block on the timeline ("ability" marks), but it isn't a location card:
+    it doesn't take part in corroboration or the two-places contradiction. So the player
+    can't use it to show a (fake) Medium or Dowser wasn't where they said.
+  - Your own visit excludes people. Being at a spot shows everyone at that spot (and the
+    other spot on the block), so anyone not seen wasn't there that phase. Hearsay can't
+    do that. Caveat: people at home on that block aren't shown. A "not there" fact from
+    the player's own presence would let templates rule people out.
+
+  Low impact while most suspicious activity happens at night. (Oct 19) [open]
 - **Passing through vs. stopping** (potential movement overhaul direction). Sightings say
   whether someone was passing through a block or out on it (their destination). Two
   "out on" sightings on different blocks are a real contradiction; "passing through"
@@ -167,6 +181,12 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   victim volunteers nothing and stonewalls direct questions, with a small tell you can
   see in private ("…opens her mouth, then shakes her head"); evil can feign it; (c) both.
   [open; see 96773 discussion]
+- **Breathstealer ambiguity, two more routes** (for the Breathstealer decision above):
+  - a good secret that inflicts the same silence (a vow, a sore throat), so a silence
+    isn't proof of the Breathstealer or of the victim's good;
+  - make the Breathstealer's silence optional (it may skip days), which also explains
+    why the secret's silences come on some days and not others, for maximum
+    dastardliness. (Oct 19) [open]
 - **Shadow good self for evil** (part of the rebuttal/meeting work; step-by-step plan in docs/shadow_self_plan.md): each evil NPC runs
   the good belief pipeline on public information plus its own fake readings; public acts
   default to what that self would do, overridden only when the stakes beat the exposure.
