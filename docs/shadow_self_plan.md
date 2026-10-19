@@ -71,8 +71,9 @@ So step 2 needs a new `Evil.exposure(w, n)`. The pieces above are its inputs.
   supply tavern gossip (`Social.approach_candidate`, `Mind.gossip`). The victim is no
   longer a "passer" for their own cottage's trace (`World._kill`). Both have tests in
   `tools/test_fixes.gd`.
-- **Still open, and must land before step 2. Treat it as an evidence-provenance problem,
-  not missing card creation.** Meeting opinions cite reasons the NPC never put out
+- **Done Oct 19** (DESIGN, "Citing reasons"): reasons carry their source, and meeting
+  accusations go silent / generic / hint / reveal. The original framing, kept for
+  reference: **treat it as an evidence-provenance problem, not missing card creation.** Meeting opinions cite reasons the NPC never put out
   (Hollis citing his unshared Night Watch reading made only an opinion card). The rule:
   an NPC may cite a reason only if they've already made that claim, at least privately
   to the player.
