@@ -5,22 +5,21 @@ role_exploration On Deck list, the Project notes and playtests 13473/55774. Item
 sorted by effort. DESIGN.md stays the record of how things work and why.
 Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not chosen yet;
 **[watch]** = no change, keep an eye on it; **[knob]** = not planned, a balancing tool to
-reach for only if needed. Source in parentheses where useful. Exploratory mechanics
+reach for only if needed. Settled, built and parked items move to **Closed** at the end. Source in parentheses where useful. Exploratory mechanics
 (new roles, places, ideas still being shaped) live in role_exploration.md.
 
 ---
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
-Cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones:
-
 - **Silenced NPCs can approach you.** Fenwick, silenced until the next evening, sought
   you out the next morning (the approach check ignores silence; tavern gossip should
   skip the silenced too). (96773) [decided]
 - **Meeting opinions cite private evidence with no card.** Hollis: "I saw them out at
   night where someone was killed" (his unshared Night Watch reading) made only an
-  opinion card. A reason that rests on the speaker's own sighting or reading should
-  disclose it as a card (evil citing a fabricated one, a fake card), or not be cited.
+  opinion card. Rule: an NPC can't cite something as a reason unless they've already
+  made that claim, at least privately to you. Evil leaning on a fabricated reason has to
+  put the fake claim out first, which turns its lies into cards you can check.
   (96773) [decided]
 - **The victim leaves a "misleading trace" at their own cottage.** Hollis was out on his
   watch and killed at home; the trace code counted him as someone who passed the
@@ -30,9 +29,6 @@ Cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones:
 ## 2. Small features and tuning (a day or so each)
 
 ### Deduction types and templates
-- *Built Oct 18:* Martyr facts in templates, the Martyr who doesn't die, pair with both
-  proven good, Misread (Marked, red herring), suspicious, hiding a secret, secrets and
-  evil roles as conclusions, builder headings.
 - **Template generalization** (one translation table per role, so pair elimination
   etc. work for any gift that makes the same kind of statement). (DESIGN, deferred to
   roster expansion) [decided]
@@ -55,24 +51,14 @@ Cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones:
 - **Lie severity:** a false gift report weighs more than a whereabouts lie, unless the
   lie puts them near the crime. NPCs who accept a lie but won't hang should say so.
   (DESIGN) [open]
-- **An open Warden: "I saw X out while I stood guard"** (filed; may be too strong).
-  [open]
 - **Evil reads as evil:** evil casting aspersions with no information stands out; give
   good NPCs reasons (grudges, secrets) or make evil hold back. (playtest 30294) [open]
 
 ### Numbers
-- Day limit by town size: settled, kept as is (6 days for 7 townsfolk, 8 for 10).
-- **"Maybe" conclusions:** half the persuasion and half the trust consequences, if
-  committed conclusions turn out too punishing. If used: "maybe" can't support further
-  deductions or be cited in accuse/defend. [knob]
 - **Unlimited Vigil strength.** (DESIGN open question) [watch]
 - **Situational credence modifiers** still to settle: early disclosure, quiet night
   as a credence boost, admission against interest, consistency over time,
   role-specific confirmations. (DESIGN) [open]
-- **Initial general skepticism:** a lever to pull only if the early game gets too
-  decisive. [knob]
-- **"No gift" denials** (C.ALLOW_NO_GIFT_DENIAL, off since Oct 18): evil almost never
-  bluffed it, so a denial was near-proof of good at the cost of the gift. [knob]
 - **Offer trust** (+0.03 offer, +0.06 kept, -0.15 broken): first guesses, tune from
   play. [watch]
 
@@ -80,9 +66,7 @@ Cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones:
 - **"Stayed home" vs "none of your business"** on the sightings/claims boards. [watch]
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main
   view; people who aren't talking or working showing on the map; a wrong role guess
-  blocking process of elimination. (Done: "I agree with X", "from my window", home on
-  "was home" cards, pressure in the debug view, combined and excluding filters
-  "greta+night" / "-sighting", clicking a timeline cell again clears it.)
+  blocking process of elimination.
 - **Case-board card rows with mixed formatting** (bold kind, each name in its colour):
   the lists are Godot Trees, one colour per row; true rich rows need a custom-drawn or
   RichText list. [decided, later]
@@ -90,9 +74,9 @@ Cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones:
 ## 3. Medium features (several days; touch a few systems)
 
 - **Rebuttals and excuses.** Someone accused explains with their gift ("I was out
-  because I'm the Lamplighter"; see also "NPCs know their own lies" above), which buys some grace with listeners; evil without a
+  because I'm the Lamplighter"; own-lie admissions are built), which buys some grace with listeners; evil without a
   fitting bluff can claim a fake secret. Biggest open hole: hidden night walkers frame
-  themselves (Isolde 55774; Lamplighter/Veteran/Sleepwalker hang rates). (DESIGN)
+  themselves (Isolde 55774, Constance 96773; Lamplighter/Veteran/Sleepwalker/Warden hang rates). (DESIGN)
   [decided: next social pass]
 - **Nominations make a case.** The nominator cites several cards, even weak ones.
   Mostly flavour; it only moves NPCs if it brings new information. [decided]
@@ -140,7 +124,6 @@ Cleared in the Oct 18 pass (see DESIGN, "Quick-fix pass, Oct 18"). New ones:
   - the proposed route limit (home → at most one detour → victim);
   - traces based on where the killer *started* rather than their evening block (this
     fixes the evening-shift demon problem);
-  Timing within the night: settled, not modelled (a night stays one instant).
   With every block joined, a walker is seen only at home (leaving) or at their
   destination, so "passing vs stopping" mostly collapses into "seen on their own block
   (they went out)" vs "seen elsewhere (where they went)"; homes are what tells the two
@@ -203,10 +186,6 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   Edda" using the night-4 "Fenwick or Edda: neither", across Hollis's hanging. Greta
   was right, but Edda (evil, an equally possible successor) stayed a live candidate.
   NPC reasoning and the bot should apply the same limit to old clears. (Astra, 55774)
-- *Built Oct 18:* Martyr saves as proof of good; the chosen hanged with the Martyr
-  standing; a pair reading naming two proven-good people; filed good / Marked / red
-  herring deductions as template inputs; a Seer pair with one proven good (pair
-  elimination, with "the proven-good one is the red herring" offered).
 - **Same person in repeated Seer yeses, later proven good** → that person is the
   red herring; drop them from the Seer's later readings. (55774: Jory)
 - **Evil reading on a proven-good person** (Dowser count, Archivist pair) → Marked.
@@ -238,3 +217,20 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 - **Walker's sightings vs the Lamplighter count:** more people reported out than the
   Lamplighter counted (or a Lamplighter who counted others but is seen nowhere).
 
+---
+
+## Closed
+
+Settled decisions, built work and parked levers, kept for the record.
+
+- **Oct 18 quick-fix pass:** everything then in this section (see DESIGN, "Quick-fix pass, Oct 18").
+- **Deduction types built Oct 18:** Martyr facts in templates, the Martyr who doesn't die, pair with both proven good, Misread (Marked, red herring), suspicious, hiding a secret, secrets and evil roles as conclusions, builder headings; NPCs owning their own lies; fear as cover.
+- **Day limit by town size:** settled, kept as is (6 days for 7 townsfolk, 8 for 10).
+- **"Maybe" conclusions** [knob]: half the persuasion and half the trust consequences, if committed conclusions turn out too punishing. If used: "maybe" can't support further deductions or be cited in accuse/defend.
+- **Initial general skepticism** [knob]: a lever to pull only if the early game gets too decisive.
+- **"No gift" denials** [knob] (C.ALLOW_NO_GIFT_DENIAL, off since Oct 18): evil almost never bluffed it, so a denial was near-proof of good at the cost of the gift.
+- **Playtest Notes 12553, done:** "I agree with X", "from my window", home on "was home" cards, pressure in the debug view, combined and excluding filters ("greta+night" / "-sighting"), clicking a timeline cell again clears it.
+- **Timing within the night:** settled, not modelled (a night stays one instant).
+- **Template gaps built Oct 18:** Martyr saves as proof of good; the chosen hanged with the Martyr standing; a pair reading naming two proven-good people; filed good / Marked / red herring deductions as template inputs; a Seer pair with one proven good.
+- **Vigil deterrent:** tried and removed Oct 18 (it cost the bot's vigil catches). Offered vigils build trust only.
+- **An open Warden: "I saw X out while I stood guard":** dropped Oct 19.
