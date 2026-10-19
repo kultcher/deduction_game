@@ -718,7 +718,7 @@ static func evil_hear_accusation(w, n, suspect, card: Dictionary, relevance: flo
 		lines.append(say(n, "That... does look bad for %s." % suspect.name))
 	else:
 		lines.append(say(n, "Maybe. I'll keep an eye on %s." % suspect.name))
-	return {"lines": lines, "facts": []}
+	return {"lines": lines, "facts": [], "repeated": times > 0}
 
 ## An evil NPC learns from what a good NPC told them in conversation.
 static func intel_from_share(w, m, speaker, item: Dictionary) -> void:

@@ -12,8 +12,8 @@ design decisions so far.
 ## Running it
 
 **Dialogue prototype:** open `ui/dialogue_lab.tscn` and press **F6** to compare Agnes,
-Bartholomew and Constance across five situations. The same voices also appear in normal
-play. See [the dialogue prototype guide](docs/dialogue_prototype.md) for controls,
+Bartholomew and Constance across fifteen situations. Normal play includes voiced argument
+replies, nominations, and vote explanations, with memory of earlier expressed positions. See [the dialogue prototype guide](docs/dialogue_prototype.md) for controls,
 integration points, scope and headless preview/test commands.
 
 Requires Godot 4.4+ (tested with 4.4.1).

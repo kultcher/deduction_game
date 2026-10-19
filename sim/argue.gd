@@ -789,7 +789,7 @@ static func _overlaps(e1: Dictionary, e2: Dictionary) -> bool:
 	var t = [c1.get("type", ""), c2.get("type", "")]
 	return "unreliable" in t and ("lied" in t or "misled" in t)
 
-static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dictionary:
+static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: bool = true) -> Dictionary:
 	var lines: Array = []
 	var c: Dictionary = normalize(ded["conclusion"])
 	var target = w.by_id.get(c.get("a", ""))
@@ -804,6 +804,9 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 	var weights = {}
 	var agreement = 0.0
 	var reason = ""
+	var alternative = ""
+	var audience = "player" if scale >= 1.0 else "town"
+	var delivery_memory: Dictionary = n.dialogue_memory if speak and not n.silenced else n.dialogue_memory.duplicate(true)
 	if n.is_evil():
 		if target != null and target.is_evil() and c["type"] in ["evil", "demon", "lied", "notrole"]:
 			Evil.add_intel(w, n, "player_suspects", target.id, 0.0, "the Demonologist argues: %s" % conclusion_text(w, c))
@@ -812,8 +815,21 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 		for k in n.heard:
 			if k != key and k.begins_with("ded:%s|" % conclusion_key(c)):
 				seen = true
-		lines.append(_evil_mask(w, n, c, times, seen))
-		return {"lines": lines, "agreement": 0.0}
+		var mask = _evil_mask(w, n, c, times, seen)
+		var approved = _argument_descriptor(w, c, facts, mask.get("stance", "partial"))
+		approved["special"] = mask.get("special", "")
+		if approved["stance"] != "accept" and approved["special"] == "":
+			approved["reason"] = "weak"
+		if times > 0:
+			var prior: Dictionary = delivery_memory.get("decisions", {}).get(JSON.stringify([audience, conclusion_key(c)]), {})
+			# Reuse their expressed position, not new private strategy. A new audience
+			# gets a cautious answer without pretending it heard the earlier reply.
+			for field in ["stance", "special", "reason", "alternative", "source", "preferred"]:
+				if prior.has(field):
+					approved[field] = prior[field]
+		if not n.silenced:
+			lines.append(_argument_line(n, approved, audience, delivery_memory))
+		return {"lines": lines, "agreement": 0.0, "repeated": times > 0, "dialogue": approved}
 	var self_misled = target == n and c["type"] in ["misled", "unreliable"]
 	var conflict = c["type"] == "conflict"
 	var in_group = conflict and n.id in c.get("group", [])
@@ -861,6 +877,8 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 		var rival = 0.0
 		for e in ded["explanations"]:
 			if e["id"] != ded["chosen"] and not _overlaps(chosen_e, e):
+				if weights[e["id"]] > rival:
+					alternative = e["label"]
 				rival = maxf(rival, weights[e["id"]])
 		agreement = mine / maxf(mine + rival, 0.01)
 		if agreement < 0.35:
@@ -884,6 +902,14 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 		if ins >= 0.67 and agreement < 0.3:
 			reason = "that's not enough to go on"
 	var quality = _quality(w, n, supports)
+	var doubtful_source = ""
+	var least_credit = 0.3
+	for support in supports:
+		var source: String = support.get("source", "")
+		var credit = _cred(w, n, source)
+		if w.by_id.has(source) and source != n.id and credit < least_credit:
+			least_credit = credit
+			doubtful_source = w.by_id[source].name
 	# Evidence already used against this person (told directly, or in an earlier argument)
 	# counts for less: re-wrapping a card in a new deduction isn't new evidence.
 	var novel = 1.0
@@ -905,25 +931,37 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float) -> Dicti
 		"weights": weights, "agreement": snappedf(agreement, 0.01), "quality": snappedf(quality, 0.01), "repeat": snappedf(repeat, 0.01),
 		"scale": scale, "effect": snappedf(m, 0.01)}, "%s weighs '%s': agreement %.2f, effect %.2f%s" %
 		[n.name, ded["text"], agreement, m, (" (" + reason + ")") if reason != "" else ""])
-	if times > 0:
-		lines.append(Mind.say(n, "You've told me that already."))
-	elif self_misled:
-		lines.append(Mind.say(n, "I'm no liar. But my gift may have failed me; I'll grant that." if agreement >= 0.5 else
-			"I'm no liar, and I trust what my gift showed me. But I'll think on it."))
+	var stance = "accept" if agreement >= 0.6 else "partial" if agreement >= 0.35 else "reject"
+	var approved = _argument_descriptor(w, c, facts, stance)
+	if self_misled:
+		approved["special"] = "I'm no liar. But my gift may have failed me; I'll grant that." if agreement >= 0.5 else "I'm no liar, and I trust what my gift showed me. But I'll think on it."
 	elif in_group:
-		lines.append(Mind.say(n, "I've told the truth. But something's off there, I'll grant you." if agreement >= 0.5 else
-			"I've told the truth, and I stand by it. Look to the others."))
-	elif agreement >= 0.6 and m >= 0.1:
-		lines.append(Mind.say(n, "That's sound. " + _paraphrase(w, c)))
-	elif agreement >= 0.6 and gain < 0.02:
-		lines.append(Mind.say(n, "I'd come to that already."))
-	elif agreement >= 0.35:
-		lines.append(Mind.say(n, "Maybe. I'll think on it."))
-	elif reason != "":
-		lines.append(Mind.say(n, "I don't buy it: %s." % reason))
-	else:
-		lines.append(Mind.say(n, "I don't buy it."))
-	return {"lines": lines, "agreement": agreement}
+		approved["special"] = "I've told the truth. But something's off there, I'll grant you." if agreement >= 0.5 else "I've told the truth, and I stand by it. Look to the others."
+	elif target == n and agreement == 0.0:
+		approved["special"] = "I don't buy it: it's about me, and I know it's false."
+	elif not alternative.is_empty() and agreement < 0.6:
+		approved["reason"] = "alternative" if agreement < 0.5 else "possible_alternative"
+		approved["alternative"] = alternative
+	elif quality < 0.35:
+		approved["reason"] = "source" if doubtful_source != "" else "quality"
+		approved["source"] = doubtful_source
+	elif agreement < 0.6:
+		approved["reason"] = "weak"
+	if c["type"] in ["evil", "demon"] and target != n:
+		var ranked: Array = Mind.ranked_suspects(w, n)
+		if not ranked.is_empty() and ranked[0].id != c.get("a", "") and Mind.susp(n, ranked[0].id) > Mind.susp(n, c.get("a", "")) + 0.05:
+			approved["preferred"] = ranked[0].name
+	if not n.silenced:
+		lines.append(_argument_line(n, approved, audience, delivery_memory))
+	return {"lines": lines, "agreement": agreement, "repeated": times > 0, "dialogue": approved}
+
+static func _argument_descriptor(w, c: Dictionary, facts: Array, stance: String) -> Dictionary:
+	return {"kind": "argument", "key": conclusion_key(c), "facts": facts.duplicate(), "stance": stance,
+		"claim": conclusion_text(w, c).trim_prefix("Something doesn't add up: "), "target_id": c.get("a", ""),
+		"accusing": c.get("type", "") in ["evil", "demon", "lied", "notrole", "unreliable"]}
+
+static func _argument_line(n, approved: Dictionary, audience: String, memory: Dictionary) -> Dictionary:
+	return Mind.say(n, Mind.Dialogue.decision(n.id, approved, audience, memory)["text"])
 
 static func _paraphrase(w, c: Dictionary) -> String:
 	var a = _nm(w, c.get("a", ""))
@@ -1041,35 +1079,36 @@ static func _apply(w, n, ded: Dictionary, supports: Array, base: float, board: A
 ## An evil listener's reply: drawn from the same lines a good listener uses, according to
 ## what serves evil, so the wording carries no alignment tell.
 static func _evil_mask(w, n, c: Dictionary, times: int, seen: bool) -> Dictionary:
+	# Same branch order and RNG draws as the original mask; only its output is structured.
 	if times > 0:
-		return Mind.say(n, "You've told me that already.")
+		return {"stance": "partial"}
 	var target = w.by_id.get(c.get("a", ""))
 	var accusing = c["type"] in ["evil", "demon", "lied", "notrole", "unreliable"]
 	var serves = 0.5
 	if c["type"] == "conflict":
 		var grp: Array = c.get("group", [])
 		if n.id in grp:
-			return Mind.say(n, "I've told the truth. But something's off there, I'll grant you." if w.rng.randf() < 0.5 else
-				"I've told the truth, and I stand by it. Look to the others.")
+			var agrees = w.rng.randf() < 0.5
+			return {"stance": "partial", "special": "I've told the truth. But something's off there, I'll grant you." if agrees else "I've told the truth, and I stand by it. Look to the others."}
 		serves = 0.15 if grp.any(func(x): return w.by_id[x].is_evil()) else 0.75
 	elif target != null:
 		if target == n and c["type"] in ["misled", "unreliable"]:
-			return Mind.say(n, "I'm no liar. But my gift may have failed me; I'll grant that." if w.rng.randf() < 0.5 else
-				"I'm no liar, and I trust what my gift showed me. But I'll think on it.")
+			var agrees = w.rng.randf() < 0.5
+			return {"stance": "partial", "special": "I'm no liar. But my gift may have failed me; I'll grant that." if agrees else "I'm no liar, and I trust what my gift showed me. But I'll think on it."}
 		if target == n and accusing:
-			return Mind.say(n, "I don't buy it: it's about me, and I know it's false.")
+			return {"stance": "reject", "special": "I don't buy it: it's about me, and I know it's false."}
 		if target.is_evil():
 			serves = 0.1 if accusing else 0.9
 		else:
 			serves = 0.85 if accusing else 0.3
 	var r = w.rng.randf()
 	if serves >= 0.7 and seen:
-		return Mind.say(n, "I'd come to that already.")
+		return {"stance": "accept"}
 	if serves >= 0.7 and r < 0.65:
-		return Mind.say(n, "That's sound. " + _paraphrase(w, c))
+		return {"stance": "accept"}
 	if serves <= 0.2 and r < 0.4:
-		return Mind.say(n, "I don't buy it.")
-	return Mind.say(n, "Maybe. I'll think on it.")
+		return {"stance": "reject"}
+	return {"stance": "partial"}
 
 # ---------------------------------------------------------------- filing checks
 

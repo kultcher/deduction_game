@@ -6,6 +6,7 @@
 ## memory is owned by one NPC, scoped to the case and listener; no gameplay RNG is used.
 extends RefCounted
 
+const Decisions = preload("res://sim/dialogue_decisions.gd")
 const Voices = preload("res://sim/dialogue_voices.gd")
 const INTENTS = ["report", "doubted", "friend", "conceal", "revise"]
 
@@ -21,6 +22,8 @@ static func reconsideration_intent(argument: String) -> Dictionary:
 		"statement": "I didn't put much stock in %s. After all that's happened since... perhaps I should have." % argument}
 
 static func compose(id: String, intent: Dictionary, context: Dictionary, memory: Dictionary) -> Dictionary:
+	if intent.get("kind", "") in ["argument", "nomination", "vote"] and context.get("decided", false):
+		return decision(id, intent, context.get("audience", "player"), memory)
 	var kind: String = intent.get("kind", "")
 	var statement: String = intent.get("statement", "")
 	var result = {"text": statement, "statement": statement, "voice": id, "intent": kind, "cue": "", "repeated": false}
@@ -78,3 +81,7 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 	memory["seen"] = seen
 	memory["counts"] = counts
 	return result
+
+## The simulation has already approved this descriptor. Never pass private decision logs.
+static func decision(id: String, approved: Dictionary, audience: String, memory: Dictionary) -> Dictionary:
+	return Decisions.render(id, approved, audience, memory)

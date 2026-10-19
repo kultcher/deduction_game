@@ -1,9 +1,10 @@
 # Dialogue prototype
 
-Three voices (Agnes, Bartholomew and Constance) now express five situations through a
-small composer: reporting information, answering a challenge, discussing someone close,
-withholding whereabouts, and reconsidering an argument. Existing gameplay decisions and
-evidence cards remain authoritative. Other characters retain their previous wording.
+Three voices (Agnes, Bartholomew and Constance) now cover the original five situations
+plus argument responses, nominations, and vote explanations. The workshop has fifteen
+scenarios. Existing gameplay decisions and evidence cards remain authoritative. Other
+characters use generic decision lines and retain their previous wording at the original
+five hooks. This phase extends the merged implementation rather than replacing it.
 
 ## Try it
 
@@ -56,8 +57,9 @@ poison claim is true. An affectionate response can still explicitly suspect its 
 2. The caller supplies an intent, approved sentence, stable event ID and only relevant
    delivery cues. `sim/dialogue.gd` receives no world or NPC object and performs no
    reasoning about truth, roles, secrets, or evidence.
-3. `sim/dialogue_voices.gd` supplies authored lines for a named character. Unsupported
-   characters/intents fall back to the original statement without touching memory.
+3. `sim/dialogue_voices.gd` supplies authored lines for the original five intents.
+   Unsupported characters/intents fall back to the original statement. Resolved decisions
+   use `sim/dialogue_decisions.gd`, with a generic fallback and three authored voices.
 4. The existing speech event carries the result. Evidence creation is unchanged.
 
 | Situation | Live integration | Authorization |
@@ -67,6 +69,38 @@ poison claim is true. An affectionate response can still explicitly suspect its 
 | Discuss a friend | `Mind.answer_opinion` | Same closeness threshold and scapegoat exclusion as the existing "We're close" line |
 | Conceal a secret | Stonewall branch of `Mind.answer_night` | Decision to refuse has already happened; composer never receives the concealed information |
 | Revise a belief | Queued `remarks` consumed when the player starts a conversation | Existing reconsideration logic has queued an argument for comment |
+| Answer a deduction | `Argue.evaluate`, private and meeting presentations | Existing agreement, quality, and competing-explanation weights select approved speech content |
+| Nominate | `Mind.next_nomination` | Target and the existing disclosure-approved citation have already been chosen |
+| Explain a vote | `Mind.vote` → `World.vote_pending` → game log | The actual vote and a contributing factor are resolved before rendering; replies follow clockwise order |
+
+## Phase two: resolved decisions and continuity
+
+The decision renderer accepts a small descriptor, never a world/NPC or private reasoning
+log. For good NPCs, argument replies can cite the strongest evaluated alternative, weak
+support, low evidence quality, a distrusted source, or an already stronger suspect. These
+are descriptions of the current evaluator's judgment, not a new reasoning engine.
+In particular, freeform arguments do not gain logical deductions from this layer.
+
+Delivery history is keyed by conclusion and audience and stores the supplied facts,
+expressed stance, and explanation. Repetition, added evidence, and changed assessments
+receive different lines. Removing support is not presented as adding evidence. The
+latest expressed accusation across audiences can be acknowledged when the same NPC
+subsequently votes no. This does not create a promise or alter their vote.
+
+Good vote explanations prefer a factor that tipped the actual result, otherwise the
+strongest contribution toward that result. They can explain trust, an existing nominee
+on the block, a preference to spare, or the player's intervention. Evil speakers use
+the same vocabulary for public cover; their teammate and scapegoat calculations never
+enter the renderer. The existing evil strategy and random draws are preserved.
+
+Silenced characters do not deliver the new replies. Arguments evaluated silently during
+an accusation/defence do not enter spoken history. Neither vote explanations nor argument
+phrasing create evidence cards or feed back into NPC beliefs.
+
+Question cost uses the explicit response flag `repeated`, not English text. This retains
+the existing one-free-repeat-per-conversation rule, independently of whether the wording
+acknowledges a repeat, a new audience, or a changed assessment. Keep the flag on all
+response producers when extending private interactions.
 
 Reporting chooses one opening in this priority: repeated delivery to this listener,
 high pressure (>= 0.8), low trust (< 0.3), ordinary report. Trust/pressure select tone only.
@@ -86,11 +120,12 @@ every listener's memory or normalize equivalent time phrases across days.
 This is a writing/behavior prototype, not a complete dialogue rewrite. It does not yet
 author greetings, confessions, bereavement, betrayal or execution scenes, record new
 promises, or track a full conversational history. Existing narration and ordinary lines
-outside the five hooks remain in place. More consequential personal scenes should get
-bespoke writing rather than automatically adding adjectives to every utterance.
+outside these hooks remain in place. Plain-card accusation/defence responses keep their
+existing wording; richer argument replies currently apply to filed deductions. More
+consequential personal scenes should get bespoke writing rather than automatically adding adjectives to every utterance.
 
-Add voices in `dialogue_voices.gd`; add situations only when an existing event can
-authorize the reaction. New factual information should enter through the game's normal
+Add voices in `dialogue_voices.gd` and `dialogue_decisions.gd`; add situations only when
+an existing event can authorize the reaction. New factual information should enter through the game's normal
 facts/disclosure pipeline. Do not turn hidden alignment, actual poisoning, or `entry.true`
 into delivery cues. Good and evil speakers must be able to use exactly the same voice.
 
@@ -103,17 +138,23 @@ beliefs or evidence.
 
 ```sh
 godot --headless --path . --script res://tools/test_dialogue.gd
+godot --headless --path . --script res://tools/test_dialogue_decisions.gd
 ```
 
-Checks include all five scenarios, context guards, unchanged evidence, source attribution,
+Checks include all fifteen scenarios, context guards, unchanged evidence, source attribution,
 private/public delivery, per-listener repetition, no secret leaks, identical phrasing for
 identical honest/fabricated readings, no gameplay RNG consumption, live conversation
-hooks, new-case reset, and the workshop's controls/memory behavior.
+hooks, new-case reset, and the workshop's controls/memory behavior. Decision checks cover
+the actual argument/command/vote paths, repeat costs, competing explanations, silent
+evaluation, latest spoken stance, silence, and correspondence between speech and votes.
 
 The existing social, beliefs, arguments, outcomes, board and UI suites were also run.
 All assertions passed. The existing UI test emits a drag-state diagnostic and a font
 resource leak at shutdown on both the base and this branch; neither originates in the
 new workshop, whose headless test completes without those errors.
 Ten active and ten passive cases (seeds 8200-8209) produced identical result JSON on this
-branch and its unchanged base, including case outcomes and player theories. This checks
-mechanical preservation; it is not a new balance estimate.
+branch and merged base `9c94fc3`, including case outcomes and player theories. Their full
+JSONL event streams also match after excluding only player-facing command output and the
+new `vote_tally.speeches` field. This checks mechanical preservation; it is not a new
+balance estimate. The existing night-movement contradiction templates are outside this
+dialogue change and still need the separate evidence-system correction discussed in review.
