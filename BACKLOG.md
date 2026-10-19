@@ -151,7 +151,7 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   victim volunteers nothing and stonewalls direct questions, with a small tell you can
   see in private ("…opens her mouth, then shakes her head"); evil can feign it; (c) both.
   [open; see 96773 discussion]
-- **Shadow good self for evil** (part of the rebuttal/meeting work): each evil NPC runs
+- **Shadow good self for evil** (part of the rebuttal/meeting work; step-by-step plan in docs/shadow_self_plan.md): each evil NPC runs
   the good belief pipeline on public information plus its own fake readings; public acts
   default to what that self would do, overridden only when the stakes beat the exposure.
   Gives consistent cover, blending in, throwing teammates under the bus as a choice, and
