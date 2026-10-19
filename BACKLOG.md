@@ -4,7 +4,9 @@ The single to-do list. It gathers the deferred and open items from DESIGN.md, th
 role_exploration On Deck list, the Project notes and playtests 13473/55774. Items are
 sorted by effort. DESIGN.md stays the record of how things work and why.
 Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not chosen yet;
-**[watch]** = no change, keep an eye on it. Source in parentheses where useful.
+**[watch]** = no change, keep an eye on it; **[knob]** = not planned, a balancing tool to
+reach for only if needed. Source in parentheses where useful. Exploratory mechanics
+(new roles, places, ideas still being shaped) live in role_exploration.md.
 
 ---
 
@@ -44,6 +46,9 @@ Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not ch
   evidence, pressure or panic is high (Bartholomew voted yes on Fenwick). [decided]
 - **Warden answers "ask gift" with their guarded doors,** not only when asked about the
   night. [decided]
+- **Demon zag.** 3% of nights the demon skips its top three targets and picks from the
+  rest, for the occasional chaos-inducing kill. Today the pick is the top score plus a
+  little noise (see DESIGN, Demon kill choice). [decided]
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -58,16 +63,14 @@ Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not ch
 - **Pair reading with both proven good → reading is false.** For example, the
   Archivist's "one of Bartholomew/Fenwick is the Revenant" when both are proven
   good. (55774) [decided]
-- **Misregistration conclusions:** "is Marked" and "is the Seer's red herring" as
-  options, bundled under one "misread" heading. [decided: add; open: one entry or two,
-  discussed 2026-10-18]
-- **"Maybe" conclusions:** half the persuasion and half the trust consequences, as an
-  alternative to forcing a commitment. [open]
+- **"Misread" conclusions:** a "misread" heading in the builder with *Marked* and *Red
+  herring* as its options (separate conclusions: Marked fools every gift, a red herring
+  only that Seer). Future "misread as good" (Spy-type) results go here too. [decided]
 - **"Is suspicious":** a weak, capped push for building pressure (e.g. claims an info
   gift but won't share). Partly covered by the withholding card. [decided: add]
 - **"Has a secret":** an innocent explanation that eases pressure; also an option on
   out-at-night/lie conflicts. [decided: add]
-- **Builder status list gets headings:** descriptor (lying, suspicious, misread) | good
+- **Builder status list gets headings:** descriptor (lying, suspicious) | misread | good
   role | evil role | secret. Evil roles aren't offered today (only "the demon"). [decided]
 - **Template generalization** (one translation table per role, so pair elimination
   etc. work for any gift that makes the same kind of statement). (DESIGN, deferred to
@@ -87,14 +90,16 @@ Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not ch
   good NPCs reasons (grudges, secrets) or make evil hold back. (playtest 30294) [open]
 
 ### Numbers
-- **Day limit by town size.** Today: 6 days for 7 townsfolk, 8 for 10. Your formula
-  (+1 per 3 over 7) would give 7 for 10, so it would be *tighter* than now. [open]
+- Day limit by town size: settled, kept as is (6 days for 7 townsfolk, 8 for 10).
+- **"Maybe" conclusions:** half the persuasion and half the trust consequences, if
+  committed conclusions turn out too punishing. If used: "maybe" can't support further
+  deductions or be cited in accuse/defend. [knob]
 - **Unlimited Vigil strength.** (DESIGN open question) [watch]
 - **Situational credence modifiers** still to settle: early disclosure, quiet night
   as a credence boost, admission against interest, consistency over time,
   role-specific confirmations. (DESIGN) [open]
 - **Initial general skepticism:** a lever to pull only if the early game gets too
-  decisive. [watch]
+  decisive. [knob]
 
 ### UI
 - **People filter shows claims by *and* about that person** (same as the typed
@@ -103,6 +108,12 @@ Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not ch
   spacing between entries. [decided]
 - **Selecting an NPC highlights** their standee, home and workplace on the map, with
   lighter highlights for their haunts. [decided]
+- **Trait bars in the profile:** each of the five traits as a bar with its name above
+  and the extremes either side (Privacy: Secretive ↔ Open Book; Gossip: Discreet ↔
+  Busybody; Confidence: Pliable ↔ Unwavering; Composure: Skittish ↔ Coolheaded;
+  Insight: Uncritical ↔ Discerning). Unrevealed traits show an empty or "?" bar; a
+  revealed one fills the band it was read at (low / mid / high), not an exact value.
+  Label colour black or matching the bar. [decided]
 - **"Stayed home" vs "none of your business"** on the sightings/claims boards. [watch]
 - **Endgame dump: an NPC information-exchange tracker** (who told whom what, and when;
   the `npc_share` events already exist). [decided]
@@ -127,8 +138,9 @@ Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not ch
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
   totems.** Today the Revenant is often invisible (55774). [decided]
 - **NPCs find evidence and personal items** (dropped items, traces). [decided]
-- **Lovers downside:** when one dies, the other becomes withdrawn (max Privacy, min
-  Gossip, …), or loses their gift. [open; discussed 2026-10-18]
+- **Lovers downside:** when one dies, the other becomes withdrawn: Privacy to max,
+  Gossip to min, and whichever other shifts hurt the player most (e.g. Composure up so
+  they're harder to read). Visible, so the player can notice the change. [decided]
 - **Ways to discover and confront secrets:** sightings that don't fit, confidants,
   personal items, a "you have a secret" card used as leverage. (DESIGN) [open]
 - **Named corroborators in alibis** ("I was with Jory"), word-against-word cards; evil
@@ -142,12 +154,13 @@ Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not ch
 - **Full-screen case board** with profile, deductions and cards as overlays; ties into
   modular, movable windows (also deferred). [decided]
 - **Claims/reveals timeline** next to the location timeline. (DESIGN) [open]
-- **Watchtower** (or a belfry or similar in town): spend a phase there to see who is at
-  every public spot. [open; discussed 2026-10-18]
-- **Dialogue composer** (Codex `codex/dialogue-prototype`, 1 commit): three voices
-  (Agnes, Bartholomew, Constance) × five situations, plus a dialogue lab scene. It's 5
-  commits behind main and conflicts in `sim/mind.gd`, so it needs a rebase. The new
-  cast has no voices. [open: review and merge]
+- **Dialogue voices for the rest of the cast.** The composer is merged (Agnes,
+  Bartholomew, Constance × five situations; dialogue lab at `ui/dialogue_lab.tscn`).
+  Everyone else uses the plain lines until they get a voice. [decided, later]
+- **Evidence-reading bot.** The bot ignores traces and dropped materials entirely (and
+  peeks at `w.dropped` when deciding to search), so bot win rates say nothing about
+  physical evidence. Teach it to read traces and drops, and stop the peek, to measure
+  what evidence is worth. [decided]
 
 ## 4. Major structural work (a week or more; design first)
 
@@ -157,9 +170,10 @@ Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not ch
   - the proposed route limit (home → at most one detour → victim);
   - traces based on where the killer *started* rather than their evening block (this
     fixes the evening-shift demon problem);
-  - optionally, timing within the night.
 
-  The watchtower and the evidence-chain items depend on this choice. (DESIGN) [open]
+  Timing within the night: settled, not modelled (a night stays one instant). The
+  evidence-chain item, and the watchtower idea in role_exploration.md, depend on this
+  package. (DESIGN) [open]
 - **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration).
   Relationship mods for the Lovers live here too. [open]
 - **Roster expansion:** On Deck gifts (Tracker, Clairvoyant, Beckon, Tallyman…); minions
@@ -177,3 +191,39 @@ Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not ch
 - **Larger towns (12–15):** only after the core loop works at 7/10. [watch]
 - **NPC memory and recency bias.** (Random ideas) [open]
 - **Dead NPCs:** no ghost votes for now. (DESIGN, deferred) [watch]
+
+---
+
+## Template gaps (NYI)
+
+A running list of patterns that come up in play, or that the mechanics make meaningful,
+but that no link template recognises yet. Add to it whenever a playtest log shows
+"no template matched" on a combination that should mean something.
+
+- **Martyr saved X** → both the Martyr and X are good (and the Martyr's claim is true).
+  Needs a "proven good" fact that the clearing templates accept. (55774)
+- **Martyr's chosen hanged, Martyr lives** → the chosen is evil, or Marked, or the
+  Martyr lied. Commit to one.
+- **Pair reading, both named proven good** → the reading is false (poisoned, misread or
+  a lie). E.g. Archivist "Bartholomew or Fenwick is the Revenant". (55774)
+- **Seer pair with one proven good** → the other is the demon, *or* the proven-good one
+  is the Seer's red herring. Pair elimination exists, but only for killed / executed /
+  shown-by-role, not for Martyr-proven or deduced-good people. (55774)
+- **Same person in repeated Seer yeses, later proven good** → that person is the
+  red herring; drop them from the Seer's later readings. (55774: Jory)
+- **Evil reading on a proven-good person** (Dowser count, Archivist pair) → Marked.
+- **Good/role deductions as inputs.** A filed "X is good" or "X is the Warden" gives
+  templates nothing; only evil/demon and misled conclusions do. Let committed good,
+  role and notrole conclusions act as facts (with the chain followed down to its
+  evidence, as NPC evaluation already does).
+- **Accounting:** a Lamplighter's "N others out" plus home alibis for everyone but one
+  → the unaccounted person was out.
+- **Role confirmations:** a Clerk or Gravedigger confirming someone's gift → that claim
+  is backed (claim_backed covers the Clerk; the Gravedigger on a living rival claim
+  does not).
+- **Duty claim vs reading:** a Medium who says they sat at Dorian's hearth (the Square)
+  but was seen on another block that night. two_places caught Greta's case only because
+  her alibi used her real block; once the bluff is fixed this needs its own check.
+- **Walker's sightings vs the Lamplighter count:** more people reported out than the
+  Lamplighter counted (or a Lamplighter who counted others but is seen nowhere).
+

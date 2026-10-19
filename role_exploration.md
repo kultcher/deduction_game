@@ -82,3 +82,8 @@ Random notes:
 Check: Is dropped evidence being found by NPCs?
 
 Allow for backing into bluffs
+
+Exploratory mechanics (not planned; directions to try):
+- Places:
+1. Watchtower (or a belfry, something in-town): spend a phase there to see who is at every public spot. Morning and afternoon only (too dark in the evening), so it never sees the evening whereabouts that kill traces use. Questionable value: the map already shows counts at unseen spots. Revisit after the night movement/trace model is settled. [exploratory]
+

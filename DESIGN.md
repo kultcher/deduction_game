@@ -661,6 +661,26 @@ Each candidate is scored on threat (info claims, suspicion of the demon, saw the
 night, confided in the player), opportunity (lives alone, not a known protection target)
 and motive (demon temperament: vengeful, cunning, hungry). Kills are evidence.
 
+How it works now: the demon takes the highest score; a noise term (0 to 0.8) only matters
+between close candidates. The temperament is rolled once per case and only touches the
+kill choice: *vengeful* +1.5 for anyone the demon trusts below 0.4 (people who've been
+against it); *cunning* +1.5 for anyone living on the scapegoat's block (so the kill
+falls near the scapegoat); *hungry* adds a random 0 to 2.0 per person per night (the
+least predictable). Decided, not built yet: 3% of nights the demon skips its top three
+(BACKLOG).
+
+## Dialogue composer (merged from codex/dialogue-prototype)
+
+Presentation only: the simulation decides what is said (including an evil character's
+fabricated account), then `sim/dialogue.gd` words it in a character's voice from
+`sim/dialogue_voices.gd`. It never sees world state, alignment, truth or secrets, and
+draws no game RNG (30 bot cases came out identical with and without it). Three voices
+(Agnes, Bartholomew, Constance) cover five situations: reporting information, being
+doubted, discussing a friend, refusing whereabouts, and coming round to an argument.
+Everyone else keeps the plain lines. Per-NPC `dialogue_memory` notices a repeated
+answer to the same listener. Workshop: `ui/dialogue_lab.tscn`; guide:
+`docs/dialogue_prototype.md`; tests: `tools/test_dialogue.gd`.
+
 ## Logic depth
 
 - **NPCs reason with templates**: explainable (every judgement fits a log line), fallible,
