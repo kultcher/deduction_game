@@ -79,6 +79,58 @@ static func _pick_scapegoat(w, why: String) -> void:
 	w.evil_plan["scapegoat"] = best.id
 	w.dlog.think(w.demon_id, "scapegoat", "Evil picks %s as scapegoat (%s)." % [best.id, why])
 
+## Each morning (from day 2), evil reconsiders its scapegoat: ride the town's suspect
+## rather than steer it. Score per living good candidate, as named parts:
+##   momentum   the town's heat on them, plus how far evil's good selves suspect them;
+##   fit        lies already told that point at them, and being seen out at night;
+##   dead_end   public clears;
+##   keep       the current scapegoat's switching cost (more if the team has accused them
+##              in public: dropping them cold would look odd).
+static func review_scapegoat(w) -> void:
+	ensure_scapegoat(w)
+	var cur: String = w.evil_plan.get("scapegoat", "")
+	if w.day < 2 or cur == "":
+		return
+	var team: Array = w.evil_team().filter(func(m): return m.alive)
+	var best = ""
+	var best_s = -99.0
+	var table = {}
+	for g in w.living_good():
+		var parts = {"momentum": public_heat(w, g)}
+		var sh_vals: Array = team.filter(func(m): return m.shadow != null).map(func(m): return m.shadow.suspicion.get(g.id, 0.1))
+		if not sh_vals.is_empty():
+			parts["momentum"] += 0.5 * sh_vals.reduce(func(a, b): return a + b) / sh_vals.size()
+		var fit = 0.0
+		for m in team:
+			for e in m.info_log:
+				if e.get("fake", false) and e.get("shared", false) and g.id in Gifts.implicated(e):
+					fit += 0.25
+			for k in m.intel:
+				if m.intel[k]["kind"] == "walker" and m.intel[k]["about"] == g.id:
+					fit += 0.15
+		parts["fit"] = minf(fit, 0.6)
+		var clears = 0.0
+		for e in w.public_log:
+			if e["kind"] == "clear" and g.id in e["subjects"]:
+				clears += 0.3 * pow(HEAT_FADE, w.day - e["day"])
+		if clears > 0.0:
+			parts["dead_end"] = -clears
+		if g.id == cur:
+			var accused = w.public_log.filter(func(e): return e["kind"] == "accusation" and g.id in e["subjects"] and w.by_id.has(e["by"]) and w.by_id[e["by"]].is_evil()).size()
+			parts["keep"] = 0.25 + 0.15 * accused
+		var total = 0.0
+		for k in parts:
+			total += parts[k]
+		table[g.id] = snappedf(total, 0.01)
+		if total > best_s:
+			best_s = total
+			best = g.id
+	if best != "" and best != cur:
+		w.evil_plan["scapegoat"] = best
+		w.dlog.think(w.demon_id, "scapegoat", "Evil switches scapegoat %s -> %s (scores %s)." % [cur, best, str(table)], {"scores": table, "from": cur, "to": best})
+	else:
+		w.dlog.think(w.demon_id, "scapegoat", "Evil keeps scapegoat %s (scores %s)." % [cur, str(table)], {"scores": table})
+
 static func ensure_scapegoat(w) -> void:
 	var s: String = w.evil_plan.get("scapegoat", "")
 	if s == "" or not w.by_id[s].alive:
@@ -144,22 +196,32 @@ static func gather_night_intel(w) -> void:
 
 ## How hot the public mood is against someone, from public events only (0..1). Evil
 ## discounts its own team's contributions: it knows those aren't the town's view.
+## Readings count by how strongly they point at t (a Seer "yes" more than one of four in a
+## Dowser's crowd); public clears cool it; older talk fades (HEAT_FADE a day).
+const HEAT_FADE = 0.75
 static func public_heat(w, t) -> float:
 	var h = 0.15
 	for e in w.public_log:
 		if w.by_id.has(e["by"]) and w.by_id[e["by"]].is_evil():
 			continue
 		if t.id in e["subjects"]:
-			match e["kind"]:
-				"accusation":
-					h += 0.12
-				"nomination":
-					h += 0.2
-				"reading":
-					h += 0.2
-				"vote_yes":
-					h += 0.04
+			h += _heat_of(e, t.id) * pow(HEAT_FADE, w.day - e["day"])
 	return clampf(h, 0.0, 1.0)
+
+static func _heat_of(e: Dictionary, id: String) -> float:
+	match e["kind"]:
+		"accusation":
+			return 0.12
+		"nomination":
+			return 0.2
+		"reading":
+			var wt = e.get("data", {}).get("weights", {})
+			return 0.4 * wt[id] if wt.has(id) else 0.2
+		"vote_yes":
+			return 0.04
+		"clear":
+			return -0.12
+	return 0.0
 
 ## How exposed an evil member is right now (0..~1.5), as named parts: the town's public
 ## talk about them (evil's own included: the town can't tell it apart), the player's known
@@ -168,16 +230,8 @@ static func exposure(w, n) -> Dictionary:
 	var h = 0.0
 	for e in w.public_log:
 		if n.id in e["subjects"]:
-			match e["kind"]:
-				"accusation":
-					h += 0.12
-				"nomination":
-					h += 0.2
-				"reading":
-					h += 0.2
-				"vote_yes":
-					h += 0.04
-	var parts = {"public_talk": snappedf(minf(h, 1.0), 0.01)}
+			h += _heat_of(e, n.id) * pow(HEAT_FADE, w.day - e["day"])
+	var parts = {"public_talk": snappedf(clampf(h, 0.0, 1.0), 0.01)}
 	for k in n.intel:
 		if n.intel[k]["kind"] == "player_suspects" and n.intel[k]["about"] == n.id:
 			parts["player_suspects"] = 0.3
@@ -205,7 +259,7 @@ static func teammate_value(w, id: String) -> float:
 static func public_hostility(w, n) -> float:
 	var h = 0.0
 	for e in w.public_log:
-		if e["by"] != n.id:
+		if e["by"] != n.id or e["kind"] == "clear":
 			continue
 		for sid in e["subjects"]:
 			if w.by_id.has(sid) and w.by_id[sid].is_evil():

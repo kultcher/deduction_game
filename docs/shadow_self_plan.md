@@ -154,7 +154,7 @@ below in three ways:
 
 ## Step 2: public acts follow the shadow, with an override
 
-**First slice done Oct 19:** argument replies, votes, and opinions of non-teammates, plus
+**Step 2 done Oct 19** (DESIGN, "Shadow good self, step 2"). The first slice was argument replies, votes, and opinions of non-teammates, plus
 exposure, caution, the override and the tell metric. See DESIGN, "Shadow good self, step
 2, first slice", for the numbers and what's left.
 

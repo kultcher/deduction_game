@@ -192,10 +192,13 @@ func _names(ids: Array) -> String:
 		return "%s and %s" % names
 	return ", ".join(PackedStringArray(names))
 
-func public_event(kind: String, subjects: Array, by: String) -> void:
+func public_event(kind: String, subjects: Array, by: String, data: Dictionary = {}) -> void:
 	if subjects.is_empty():
 		return
-	public_log.append({"day": day, "kind": kind, "subjects": subjects.duplicate(), "by": by})
+	var e = {"day": day, "kind": kind, "subjects": subjects.duplicate(), "by": by}
+	if not data.is_empty():
+		e["data"] = data.duplicate(true)
+	public_log.append(e)
 
 ## Total voters at a meeting: living NPCs plus the player.
 func voter_count() -> int:
@@ -1538,6 +1541,8 @@ func start_new_day() -> void:
 		return
 	dlog.set_time(day, "Morning")
 	Social.paranoia_drift(self)
+	if C.SHADOW_SELF:
+		Evil.review_scapegoat(self)
 	start_phase()
 
 # ---------------------------------------------------------------- dev snapshots

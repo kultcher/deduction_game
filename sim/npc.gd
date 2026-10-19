@@ -122,6 +122,7 @@ var intel = {}               # key -> {kind, about, score, why, day, from}
 ## Evil only: the shadow good self (Mind.shadow_run): what they'd believe if they were the
 ## good townsperson they pretend to be. A separate NPC object, never in the town's lists.
 var shadow = null
+var is_shadow = false        # true on the shadow object itself
 var shadow_rng = null        # on the shadow: its own random stream (never the world's)
 var shadow_seen = {}         # on the real NPC: how far each list has been mirrored
 

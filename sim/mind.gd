@@ -148,6 +148,7 @@ static func _make_shadow(w, n):
 	for f in SHADOW_COPY:
 		s.set(f, n.get(f).duplicate(true))
 	s.alignment = "good"
+	s.is_shadow = true
 	var bluff: String = w.evil_plan["bluffs"].get(n.id, "")
 	s.role = bluff if C.ROLES.has(bluff) and C.ROLES[bluff]["align"] == "good" else ""
 	# A turned NPC's own true readings were theirs before the curse; fake ones arrive below.
@@ -1049,14 +1050,14 @@ static func answer_hint(w, n) -> Dictionary:
 	if not has_reason and not n.claim_public:
 		# Evil's free bluff (or a reason since shared): nothing it can show.
 		w.dlog.think(n.id, "hint_followup", "Asked about the hint on %s: nothing to back it; declines." % target, {"evil": n.is_evil()})
-		lines.append(say(n, "Not yet. Give me a day or two, and watch %s." % t.name))
+		lines.append(_hint_decline(w, n, t))
 		return {"lines": lines, "facts": []}
 	var cost = reveal_cost(w, n)
 	var parts = {"trust": (n.trust - 0.45) * 2.0, "privacy": (0.5 - trait_of(n, "privacy")) * 0.8}
 	if cost.has("afraid"):
 		parts["afraid"] = -0.3
 	if not decide(w, n, "hint_followup", parts, "Tell the Demonologist why they suspect %s?" % target):
-		lines.append(say(n, "I said I'm not ready, and I'm not. Ask me again another time."))
+		lines.append(_hint_decline(w, n, t))
 		return {"lines": lines, "facts": []}
 	var r = answer_gift(w, n, 4)
 	lines.append(say(n, "All right. You asked, so here's why I suspect %s." % t.name))
@@ -1069,6 +1070,14 @@ static func answer_hint(w, n) -> Dictionary:
 				f["confidential"] = n.id
 	n.hints.erase(target)
 	return {"lines": lines, "facts": facts}
+
+## Keeping a hinted reason back. Good and evil draw from the same lines, so stalling ("give
+## me a day or two") is no tell: a cautious good NPC stalls as often as an evil one with
+## nothing behind its hint.
+static func _hint_decline(w, n, t) -> Dictionary:
+	if w.chance(0.5):
+		return say(n, "Not yet. Give me a day or two, and watch %s." % t.name)
+	return say(n, "I said I'm not ready, and I'm not. Ask me again another time.")
 
 ## What going public with their gift would cost n right now (higher = more reluctant):
 ## gifts that hide from the demon or keep paying off, fear, privacy; less as the game
@@ -1129,7 +1138,11 @@ static func _go_public(w, n, lines: Array, facts: Array) -> void:
 			if e["shared"] or e.get("disowned", false):
 				continue
 			e["shared"] = true
-			w.public_event("reading", implicated(e), n.id)
+			var weights = {}
+			for x in implicated(e):
+				weights[x] = reading_strength(e, x)
+			w.public_event("reading", implicated(e), n.id, {"weights": weights})
+			w.public_event("clear", Gifts.clears(e), n.id)
 			lines.append(info_line(w, n, e, "town"))
 			facts.append(info_fact(w, n, e))
 			for l in w.living():
@@ -1261,6 +1274,46 @@ static func refresh_all_consensus(w) -> void:
 		for t in targets:
 			refresh_consensus(w, l, t)
 
+## Whom a good NPC would nominate now, or null.
+static func _good_nomination(w, n, m: Dictionary, block: String):
+	var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (trait_of(n, "confidence") - 0.5) * 2.0 - 0.5 * paranoia(w, n)
+	for t in ranked_suspects(w, n):
+		if t.id in m["nominated"] or t.id == n.id:
+			continue
+		var s = susp(n, t.id)
+		if n.cleared.has(t.id):
+			s -= 0.2  # their own sight said this person is no demon
+		if s < thr:
+			continue
+		if block != "" and susp(n, block) >= s:
+			return null  # content with who is already on the block
+		return {"nominee": t.id, "by": n.id, "score": s,
+			"reason": "suspicion of %s %.2f >= threshold %.2f" % [t.id, s, thr]}
+	return null
+
+## Shadow self (step 2): evil nominates as its good self would. Naming a teammate is
+## high stakes (overridden unless caution has worn thin); pushing the scapegoat when the
+## good self wouldn't nominate is an override that's cheap once the town is already hot on them.
+static func _evil_nomination(w, n, m: Dictionary, block: String):
+	var ev = Evil.evil_nomination(w, n)
+	if not C.SHADOW_SELF:
+		return ev
+	var sc = shadow_eval(w, n, func(sh): return _good_nomination(w, sh, m, block))
+	if sc != null:
+		sc["by"] = n.id
+		if Evil.is_teammate(w, n, sc["nominee"]):
+			var stakes = 0.8 * Evil.teammate_value(w, sc["nominee"])
+			if evil_override(w, n, "nomination", stakes, 1.0, "good self would nominate teammate %s" % sc["nominee"]):
+				return ev
+			sc["reason"] = "Evil (good self): nominates teammate %s; %s" % [sc["nominee"], sc["reason"]]
+		return sc
+	if ev == null:
+		return null
+	var sg = w.by_id[ev["nominee"]]
+	if evil_override(w, n, "nomination", 0.4 + Evil.public_heat(w, sg), 0.5, "push scapegoat %s (good self wouldn't nominate)" % sg.id):
+		return ev
+	return null
+
 ## Next NPC nomination, or null. Respects BotC limits and who is already on the block.
 static func next_nomination(w):
 	var m: Dictionary = w.meeting
@@ -1270,24 +1323,13 @@ static func next_nomination(w):
 		if n.id in m["nominators"] or n.silenced:
 			continue
 		if n.is_evil():
-			var ev = Evil.evil_nomination(w, n)
+			var ev = _evil_nomination(w, n, m, block)
 			if ev != null:
 				cands.append(ev)
 			continue
-		var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (trait_of(n, "confidence") - 0.5) * 2.0 - 0.5 * paranoia(w, n)
-		for t in ranked_suspects(w, n):
-			if t.id in m["nominated"]:
-				continue
-			var s = susp(n, t.id)
-			if n.cleared.has(t.id):
-				s -= 0.2  # their own sight said this person is no demon
-			if s < thr:
-				continue
-			if block != "" and susp(n, block) >= s:
-				break  # content with who is already on the block
-			cands.append({"nominee": t.id, "by": n.id, "score": s,
-				"reason": "suspicion of %s %.2f >= threshold %.2f" % [t.id, s, thr]})
-			break
+		var gc = _good_nomination(w, n, m, block)
+		if gc != null:
+			cands.append(gc)
 	if cands.is_empty():
 		return null
 	cands.sort_custom(func(a, b): return a["score"] > b["score"])
@@ -1965,6 +2007,13 @@ static func answer_opinion(w, n, t) -> Dictionary:
 		if Evil.is_teammate(w, n, t.id):
 			level = 0.2
 			lie = true
+			# Shadow self: if their good self would speak against this teammate, cover them
+			# only when it's worth breaking cover; otherwise go along (under the bus).
+			var tl = shadow_eval(w, n, func(sh): return susp(sh, t.id)) if C.SHADOW_SELF else null
+			if tl != null and tl >= 0.45:
+				var stakes = Evil.teammate_value(w, t.id) * (0.3 + Evil.public_heat(w, t))
+				if not evil_override(w, n, "opinion", stakes, 0.5, "good self distrusts teammate %s (%.2f)" % [t.id, tl]):
+					level = tl
 		elif t.id == w.evil_plan["scapegoat"]:
 			level = 0.85
 			why = Evil.bluff_reason(w, n, t)
@@ -2157,7 +2206,8 @@ static func defend_strength(card: Dictionary, nominee: String) -> float:
 ## The player's case: "tell <n>: <suspect> is suspicious because <card>".
 static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	on_question(w, n)
-	_secret_used(w, card)
+	if not n.is_shadow:
+		_secret_used(w, card)
 	var lines: Array = []
 	var cw = card_weight(w, n, suspect, card)
 	var strength = card_strength(w, card, suspect)
@@ -2166,7 +2216,17 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	var cls: String = cw["cls"]
 	var ins = trait_of(n, "insight")
 	if n.is_evil():
-		return Evil.evil_hear_accusation(w, n, suspect, card, relevance, times)
+		var er: Dictionary = Evil.evil_hear_accusation(w, n, suspect, card, relevance, times)
+		# Shadow self (step 2): the good self hears the case too, and its reply is the one
+		# given, unless it's about them or breaking cover to protect a teammate is worth it.
+		var sr = shadow_eval(w, n, func(sh): return hear_accusation(w, sh, suspect, card)) if C.SHADOW_SELF else null
+		if sr == null or suspect == n or times > 0:
+			return er
+		if Evil.is_teammate(w, n, suspect.id):
+			var stakes = Evil.teammate_value(w, suspect.id) * (0.3 + Evil.public_heat(w, suspect))
+			if evil_override(w, n, "private case", stakes, 0.5, "the Demonologist's case against %s" % suspect.id):
+				return er
+		return sr
 	if times == 0:
 		n.player_cases.append({"suspect": suspect.id, "card": card})
 	# Already knowing the fact itself (heard the reading, saw it) leaves less to add.
@@ -2224,6 +2284,15 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 			lines.append(say(n, "Fair enough. I'll think better of %s." % who.name if r < 0.6 else "Maybe. I'll keep an open mind about %s." % who.name))
 		else:
 			lines.append(say(n, "Maybe. I'll keep an open mind about %s." % who.name if r < 0.7 else "That doesn't clear %s." % who.name))
+		var dr = shadow_eval(w, n, func(sh): return hear_defence(w, sh, whos, card)) if C.SHADOW_SELF and not (n in group) else null
+		if dr != null:
+			# Evil would rather a good person stay suspect: worth more if they're a threat.
+			var threats = group.filter(func(x): return not x.is_evil())
+			var stakes = 0.0
+			for x in threats:
+				stakes += 0.3 + (0.3 if Evil.intel_threat(n, x.id) > 0.0 else 0.0)
+			if threats.is_empty() or not evil_override(w, n, "private defence", stakes, 0.5, "the Demonologist speaking for %s" % gname):
+				return dr
 		return {"lines": lines, "facts": []}
 	var h = {"times": 0, "gain": 0.0}
 	var strength = 0.0
@@ -2258,6 +2327,14 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 			if x.is_evil():
 				Evil.add_intel(w, n, "player_suspects", x.id, 0.0, "the Demonologist thinks it's one of %s" % gname)
 		lines.append(say(n, "Maybe. I'll keep an eye on them both." if w.rng.randf() < 0.6 else "That... does look bad for one of them."))
+		var gr = shadow_eval(w, n, func(sh): return hear_group_case(w, sh, group, card)) if C.SHADOW_SELF and not (n in group) else null
+		if gr != null:
+			var mates = group.filter(func(x): return Evil.is_teammate(w, n, x.id))
+			var stakes = 0.0
+			for x in mates:
+				stakes += 0.5 * Evil.teammate_value(w, x.id) * (0.3 + Evil.public_heat(w, x))
+			if mates.is_empty() or not evil_override(w, n, "private group case", stakes, 0.5, "a case against %s" % gname):
+				return gr
 		return {"lines": lines, "facts": []}
 	var gain = 0.0
 	var times = 0

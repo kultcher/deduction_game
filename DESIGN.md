@@ -1559,10 +1559,54 @@ evil's gap comes from three places: arguments about themselves, overrides, and t
 shadow not yet hearing the player's private cases. More evil hanged means evil now
 sometimes votes with the town against a teammate, which is the bus-throwing we wanted.
 
-**Still to do in step 2:**
-- route `hear_accusation`, `hear_defense` and `hear_group_case` to the shadow (careful:
-  `_secret_used` runs at the top of these, so the shadow must not repeat it);
-- nominations through the shadow;
-- refine the heat calculation;
-- the daily scapegoat re-pick;
-- teammates' opinions through the shadow plus override.
+**Rest of step 2 (Oct 19, same day):**
+- **Private cases** (`hear_accusation`, `hear_defence`, `hear_group_case`): the shadow
+  hears them, and its reply is given unless breaking cover to protect a teammate (or keep
+  a threat suspect) wins. Shadows set `is_shadow` and skip `_secret_used`.
+- **Nominations** (`_evil_nomination`, sharing `_good_nomination` with good NPCs): evil
+  nominates as its good self would.
+  - Naming a teammate is a high-stakes override (0.8 × the teammate's value).
+  - Pushing the scapegoat when the good self wouldn't nominate is an override worth
+    0.4 + the scapegoat's heat.
+- **Teammates' opinions:** if the good self distrusts a teammate (≥ 0.45), evil covers
+  for them only when the override wins; otherwise it goes along.
+- **Heat** (`Evil.public_heat`, `_heat_of`):
+  - a public reading counts 0.4 × how strongly it points at the person (the
+    `reading_strength` weights now travel with the "reading" public event);
+  - public clears are a new "clear" public event, worth −0.12;
+  - everything fades by `HEAT_FADE` 0.75 a day;
+  - `Evil.exposure` uses the same weights, counting evil's own talk;
+  - `public_hostility` ignores clears.
+- **Daily scapegoat re-pick** (`Evil.review_scapegoat`, each morning from day 2), scored
+  on four parts:
+  - momentum: heat, plus half the good selves' average suspicion;
+  - fit: shared fake readings naming them (+0.25 each), sightings of them out at night
+    (+0.15), at most 0.6;
+  - dead ends: public clears (−0.3 each, fading);
+  - the current scapegoat's switching cost: +0.25, plus 0.15 per public evil accusation
+    of them.
+
+  It's logged as keep or switch with the score table. There's no coordination lag yet:
+  the team shares one plan.
+- **Stalling isn't a tell:** good NPCs who decline to explain a hint draw from the same
+  lines as evil stalling (`_hint_decline`).
+
+Bot, 150 games each, `SHADOW_SELF` off → on. The heat refinement applies either way, so
+the "off" column moved from the first slice.
+
+| | good wins | good hanged | evil hanged | evil off the crowd | good off the crowd |
+|---|---|---|---|---|---|
+| 7 townsfolk | 49 → 46 | 140 → 149 | 88 → 91 | 79% → 42% | 18% → 20% |
+| 10 townsfolk | 43 → 44 | 293 → 285 | 125 → 130 | 70% → 37% | 17% → 19% |
+
+Overrides, broken cover against kept cover, over 150 games:
+
+| | 7 townsfolk | 10 townsfolk |
+|---|---|---|
+| votes | 170 / 184 | 411 / 727 |
+| arguments | 41 / 177 | 64 / 242 |
+| nominations | 36 / 43 | 181 / 138 |
+| private cases | 37 / 4 | 67 / 11 |
+
+Private cases mostly break cover, because they're nearly always about a teammate. That's
+a candidate for tuning once playtests show how it reads.

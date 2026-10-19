@@ -17,6 +17,8 @@ func _init() -> void:
 		return
 	for sd in [96773, 55774, 4242]:
 		_case(sd)
+	_scapegoat_review()
+	_private_case_reaches_shadow()
 	print("SHADOW FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -79,3 +81,35 @@ func _case(sd: int) -> void:
 	_check(not snaps.is_empty(), tag + " snapshots carry a shadow view")
 	# Shadow reasoning goes to its own log, not the case log.
 	_check(w.shadow_log.entries.size() > 0, tag + " shadow reasoning lands in the shadow log (%d entries)" % w.shadow_log.entries.size())
+
+## The scapegoat follows the town: a good person the town turns hot on overtakes a cold
+## scapegoat (switching cost and all).
+func _scapegoat_review() -> void:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(96773, 10)
+	var w = g.w
+	w.day = 3
+	var Evil = load("res://sim/evil.gd")
+	Evil.ensure_scapegoat(w)
+	var cur: String = w.evil_plan["scapegoat"]
+	var other = w.living_good().filter(func(x): return x.id != cur)[0]
+	for i in range(4):
+		w.public_event("accusation", [other.id], w.living_good().filter(func(x): return x != other)[i].id)
+	w.public_event("nomination", [other.id], w.living_good()[0].id)
+	Evil.review_scapegoat(w)
+	_check(w.evil_plan["scapegoat"] == other.id, "the scapegoat switches to the town's hot suspect (%s -> %s)" % [cur, w.evil_plan["scapegoat"]])
+
+## A private case the player makes to an evil NPC reaches its good self.
+func _private_case_reaches_shadow() -> void:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(55774, 10)
+	var w = g.w
+	var e = w.evil_team()[0]
+	var t = w.living_good()[0]
+	var card = {"kind": "sighting", "subject": [t.id], "source": "player", "day": 0, "phase": C.NIGHT, "block": t.home_block,
+		"text": "You saw %s out at night." % t.name, "n": 1}
+	Mind.hear_accusation(w, e, t, card)
+	_check(e.shadow != null and e.shadow.ledger.keys().any(func(k): return k.begins_with("tell:")), "the good self heard the player's private case")
+	_check(e.ledger.is_empty(), "the real evil mind still takes nothing from it")
