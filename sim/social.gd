@@ -96,7 +96,7 @@ static func _pick_item(w, s, l):
 		if not ranked.is_empty() and Mind.susp(s, ranked[0].id) >= 0.5 and not _told(s, l, "opinion:" + ranked[0].id):
 			var t = ranked[0]
 			cands.append([gos * 0.6 + (trait_of(s, "confidence") - 0.5) * 0.4, {"kind": "opinion", "about": t.id,
-				"why": s.sus_why.get(t.id, ""), "from": s.id, "key": "opinion:" + t.id}])
+				"why": Mind.citable_reason(w, s, t.id, "town"), "from": s.id, "key": "opinion:" + t.id}])
 		for c in s.player_cases.slice(-2):
 			var about: String = c["suspect"]
 			if about != l.id and not _told(s, l, "case:" + c["card"]["text"]):

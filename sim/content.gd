@@ -302,6 +302,9 @@ const SHADOW_SELF = true
 ## How firmly the shadow holds evil's own fake readings, relative to a townsperson's own
 ## reading (1.0): firmer, but still open to "my gift was poisoned".
 const SHADOW_OWN_READING_WEIGHT = 1.2
+## Evil accusing with nothing it can cite sometimes hints at a "private reason" instead:
+## unverifiable, so a free bluff, and it keeps the hint from being a tell of good.
+const EVIL_HINT_CHANCE = 0.3
 const USE_FLAVOR_SECRETS = false
 const SECRETS = [
 	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "me": "can't sleep, so I walk to the chapel to pray", "dest": "hill"},

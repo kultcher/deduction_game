@@ -116,7 +116,7 @@ static func end_of_day_trust(w) -> void:
 
 ## Fields copied once, when the shadow is made (a turned NPC's good mind carries over).
 const SHADOW_COPY = ["traits", "trait_base", "work_phases", "haunts", "friends", "rivals",
-	"suspicion", "sus_why", "npc_trust", "ledger", "honesty", "discounted", "believed_roles",
+	"suspicion", "sus_why", "sus_src", "npc_trust", "ledger", "honesty", "discounted", "believed_roles",
 	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts"]
 const SHADOW_SAME = ["id", "name", "pron", "style", "blurb", "occupation", "work", "home_block", "ring"]
 
@@ -216,9 +216,9 @@ static func shadow_view(w, n) -> Dictionary:
 
 # ---------------------------------------------------------------- suspicion
 
-static func adjust(w, listener, target_id: String, delta: float, why: String, public_why: String = "", conf_scaled: bool = true) -> void:
+static func adjust(w, listener, target_id: String, delta: float, why: String, public_why: String = "", conf_scaled: bool = true, src: String = "") -> void:
 	if listener.is_evil():
-		shadow_run(w, listener, func(sh): adjust(w, sh, target_id, delta, why, public_why, conf_scaled))
+		shadow_run(w, listener, func(sh): adjust(w, sh, target_id, delta, why, public_why, conf_scaled, src))
 		return
 	if target_id == listener.id or not listener.suspicion.has(target_id):
 		return
@@ -234,6 +234,7 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 		w.dlog.add("suspicion", listener.id, target_id, {"from": snappedf(old, 0.01), "to": snappedf(nv, 0.01)}, why)
 	if delta >= 0.15 and public_why != "":
 		listener.sus_why[target_id] = public_why
+		listener.sus_src[target_id] = src  # where the reason came from (a ledger entry id), for citing
 
 static func susp(n, target_id: String) -> float:
 	return n.suspicion.get(target_id, 0.0)
@@ -487,7 +488,7 @@ static func recompute_beliefs(w, n, note: String) -> void:
 				if absf(diff) < 0.002:
 					continue
 				e["applied"][key] = want
-				_ledger_apply(w, n, [t, f[1], f[2], f[3], f[4]], diff, want, note)
+				_ledger_apply(w, n, [t, f[1], f[2], f[3], f[4]], diff, want, note, e["eid"])
 
 ## An argument's weight = its strongest justification as it stands now (each justification
 ## scaled by how credible its own supports are). Other entries: their weight.
@@ -557,7 +558,7 @@ static func _support_factor(n, e: Dictionary, sup: Array, disc: Dictionary, hon:
 		total += f2
 	return total / count if count > 0 else 1.0
 
-static func _ledger_apply(w, n, f: Array, diff: float, total: float, note: String) -> void:
+static func _ledger_apply(w, n, f: Array, diff: float, total: float, note: String, eid: String = "") -> void:
 	var t: String = f[0]
 	if t.begins_with("pref:"):
 		var parts = t.split(":")
@@ -570,7 +571,7 @@ static func _ledger_apply(w, n, f: Array, diff: float, total: float, note: Strin
 		elif n.believed_roles.get(parts2[1], "") == parts2[2]:
 			n.believed_roles.erase(parts2[1])
 	else:
-		adjust(w, n, t, diff, f[3] + note, f[4] if diff > 0 else "", false)
+		adjust(w, n, t, diff, f[3] + note, f[4] if diff > 0 else "", false, eid)
 
 ## Re-weigh what the player has argued, in light of current trust. Firsthand knowledge and
 ## the evidence itself don't change; how much the player's word counts does. Confidence
@@ -865,31 +866,11 @@ static func meeting_testimony(w) -> Array:
 		var facts: Array = []
 		if n.silenced:
 			continue  # the Breathstealer took their voice
-		if not n.claim_public:
-			var claim = _public_claim_decision(w, n)
-			if claim != "":
-				n.claimed_role = claim
-				n.claim_public = true
-				n.max_tier = maxi(n.max_tier, 3)
-				w.public_claims.append({"day": w.day, "who": n.id, "role": claim})
-				lines.append(_claim_line(n, claim))
-				facts.append({"kind": "claim", "subject": [n.id], "role": claim, "source": n.id,
-					"text": "%s publicly claims to be the %s." % [n.name, C.role_name(claim)]})
-				for l in w.living():
-					if l != n:
-						hear_claim(w, l, n.id, claim, 0.5, "public")
-		if n.claim_public and C.has_readings(n.claimed_role):
-			for e in n.info_log:
-				if e["shared"] or e.get("disowned", false):
-					continue
-				e["shared"] = true
-				w.public_event("reading", implicated(e), n.id)
-				lines.append(info_line(w, n, e, "town"))
-				facts.append(info_fact(w, n, e))
-				for l in w.living():
-					if l != n:
-						apply_info(w, l, n, e, heard_weight(l, n))
-		var acc = _public_accusation(w, n)
+		if not n.claim_public and _public_claim_decision(w, n) != "":
+			_go_public(w, n, lines, facts)
+		elif n.claim_public:
+			_go_public(w, n, lines, facts)  # already out: share any new readings
+		var acc = _public_accusation(w, n, lines, facts)
 		if acc != null:
 			lines.append(acc["line"])
 			facts.append(acc["fact"])
@@ -950,7 +931,140 @@ static func info_fact(w, n, e: Dictionary) -> Dictionary:
 		f["phase"] = e["phase"]
 	return f
 
-static func _public_accusation(w, n):
+# ---------------------------------------------------------------- citing reasons
+
+## Where n's current reason for suspecting t stands. Returns {why, kind, entry, strength}:
+##   kind "none"    no reason on record (vibes);
+##        "public"  the town already knows it (or it reveals nothing of n's gift);
+##        "player"  n's own reading, told to the player privately but not to the town;
+##        "private" n's own reading, told to nobody.
+## An NPC may only cite what the audience already has; a private reason has to be claimed
+## first (see _accuse_tier). The reason's provenance is the ledger entry that last raised
+## the suspicion (n.sus_src), not its wording.
+static func reason_status(w, n, t_id: String) -> Dictionary:
+	var why: String = n.sus_why.get(t_id, "")
+	var src: String = n.sus_src.get(t_id, "")
+	var out = {"why": why, "kind": "none" if why == "" else "public", "entry": {}, "strength": 0.0}
+	if why == "":
+		return out
+	if src == "own_role":
+		out["kind"] = "public" if n.claim_public else "private"
+		out["strength"] = 0.5
+		return out
+	var own = "info:%s:" % n.id
+	if not src.begins_with(own):
+		return out
+	for i in range(n.info_log.size()):
+		var e: Dictionary = n.info_log[i]
+		if info_eid(n.id, e) != src:
+			continue
+		out["entry"] = e
+		out["strength"] = reading_strength(e, t_id)
+		if e.get("shared", false):
+			out["kind"] = "public"
+		elif i < n.told_readings:
+			out["kind"] = "player"
+		else:
+			out["kind"] = "private"
+		return out
+	return out
+
+## The reason n may give for suspecting t to this audience ("town" or "player"), or "" if
+## the only reason they have is one the audience hasn't been told.
+static func citable_reason(w, n, t_id: String, audience: String = "town") -> String:
+	var rs = reason_status(w, n, t_id)
+	if rs["kind"] == "public" or (rs["kind"] == "player" and audience == "player"):
+		return rs["why"]
+	return ""
+
+## How strongly one reading points at t (0..1): a Seer naming the demon among two says far
+## more than one in a Dowser's crowd of four.
+static func reading_strength(e: Dictionary, t_id: String) -> float:
+	var d: Dictionary = e.get("data", {})
+	match e.get("role", ""):
+		"seer":
+			return 0.9 if d.get("yes", false) else 0.0
+		"martyr":
+			return 0.9 if d.get("evil", false) else 0.0
+		"dowser", "hearthwitch":
+			var g: Array = Gifts.group_of(d)
+			return clampf(0.9 * d.get("count", 0) / maxf(1.0, g.size()), 0.0, 0.8) if t_id in g else 0.0
+		"archivist":
+			var r: String = d.get("role", "")
+			return (0.6 if r == "demon" else 0.4) if C.ROLES.get(r, {}).get("align", "good") == "evil" else 0.15
+		"nightwatch":
+			return 0.35
+		"medium":
+			return 0.5
+	return 0.3
+
+## What going public with their gift would cost n right now (higher = more reluctant):
+## gifts that hide from the demon or keep paying off, fear, privacy; less as the game
+## wears on or the town thins out. 0 if they've already claimed it.
+static func reveal_cost(w, n) -> Dictionary:
+	if n.claim_public:
+		return {}
+	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	var parts = {"privacy": (trait_of(n, "privacy") - 0.5) * 0.8, "base": 0.2}
+	if C.ROLES[role]["kind"] != "info":
+		parts["hides_from_demon"] = 0.5
+	if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"] and w.day <= 2:
+		parts["gift_keeps_giving"] = 0.4
+	if _afraid(w, n):
+		parts["afraid"] = 0.35
+	parts["day"] = -0.12 * (w.day - 1)
+	if w.living().size() <= 4:
+		parts["few_left"] = -0.6
+	return parts
+
+## The four ways a good NPC with a reason to suspect t can speak at the meeting:
+##   "silent"  (didn't want to accuse at all; decided by the caller)
+##   "generic" no reason to protect: "I don't trust X." with whatever they can cite;
+##   "hint"    a reason they won't give yet: "I have a reason to suspect X, but I'm not
+##             ready to share it yet.";
+##   "reveal"  claim their gift (if not yet claimed) and give the reading.
+static func _accuse_tier(w, n, t, s2: float) -> Dictionary:
+	var rs = reason_status(w, n, t.id)
+	if rs["kind"] in ["none", "public"]:
+		return {"tier": "generic", "why": rs["why"]}
+	var cost = reveal_cost(w, n)
+	var parts = {"strength": (rs["strength"] - 0.45) * 1.4, "suspicion": (s2 - 0.75) * 1.2,
+		"confidence": (trait_of(n, "confidence") - 0.5) * 0.6}
+	for k in cost:
+		parts["cost_" + k] = -cost[k]
+	if decide(w, n, "reveal_to_accuse", parts, "Go public with what points at %s (%s)?" % [t.id, rs["why"]]):
+		return {"tier": "reveal", "why": rs["why"], "entry": rs["entry"]}
+	return {"tier": "hint", "why": ""}
+
+## Come out with their gift at the meeting (if not already) and share their unshared
+## readings with the town. Adds the lines and cards; shared by the claim step and the
+## reveal tier of an accusation.
+static func _go_public(w, n, lines: Array, facts: Array) -> void:
+	if not n.claim_public:
+		var claim: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+		n.claimed_role = claim
+		n.claim_public = true
+		n.max_tier = maxi(n.max_tier, 3)
+		w.public_claims.append({"day": w.day, "who": n.id, "role": claim})
+		lines.append(_claim_line(n, claim))
+		facts.append({"kind": "claim", "subject": [n.id], "role": claim, "source": n.id,
+			"text": "%s publicly claims to be the %s." % [n.name, C.role_name(claim)]})
+		for l in w.living():
+			if l != n:
+				hear_claim(w, l, n.id, claim, 0.5, "public")
+	if C.has_readings(n.claimed_role):
+		for e in n.info_log:
+			if e["shared"] or e.get("disowned", false):
+				continue
+			e["shared"] = true
+			w.public_event("reading", implicated(e), n.id)
+			lines.append(info_line(w, n, e, "town"))
+			facts.append(info_fact(w, n, e))
+			for l in w.living():
+				if l != n:
+					apply_info(w, l, n, e, heard_weight(l, n))
+
+static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	if n.silenced:
 		return null
 	var t = null
@@ -969,16 +1083,27 @@ static func _public_accusation(w, n):
 			return null
 		t = ranked[0]
 		s2 = susp(n, t.id)
-		why = n.sus_why.get(t.id, "")
-	why = Evil.cite(w, n, why)
 	var parts = {"suspicion": (s2 - 0.6) * 1.5, "confidence": (trait_of(n, "confidence") - 0.5) * 0.8,
 		"pressure_deflect": n.pressure * 0.4}
 	if not decide(w, n, "accuse", parts, "Publicly accuse %s?" % t.id):
 		return null
+	# What they can say for it: a reason the town already has, a hint at one they're
+	# keeping back, or their gift and its reading brought out now.
+	var hint = false
 	if n.is_evil():
-		w.dlog.think(n.id, "lie", "Evil: publicly accuses scapegoat %s, citing: %s." % [t.id, why if why != "" else "vibes"])
+		if why == "" and w.chance(C.EVIL_HINT_CHANCE):
+			hint = true  # unverifiable, so a free bluff (and no tell of good)
+		w.dlog.think(n.id, "lie", "Evil: publicly accuses scapegoat %s, citing: %s." % [t.id, "a hinted private reason" if hint else why if why != "" else "vibes"])
+	else:
+		var tier = _accuse_tier(w, n, t, s2)
+		if tier["tier"] == "reveal":
+			_go_public(w, n, lines, facts)
+		hint = tier["tier"] == "hint"
+		why = tier["why"]
+		w.dlog.think(n.id, "accuse_tier", "Accuses %s: %s%s." % [t.id, tier["tier"], (" (" + why + ")") if why != "" else ""])
+	why = Evil.cite(w, n, why)
 	var prev_target: String = w.stances.get(n.id, {}).get("target", "")
-	w.stances[n.id] = {"target": t.id, "day": w.day}
+	w.stances[n.id] = {"target": t.id, "day": w.day, "hint": hint}
 	for l in w.living():
 		refresh_consensus(w, l, t.id)
 		if prev_target != "" and prev_target != t.id:
@@ -993,14 +1118,18 @@ static func _public_accusation(w, n):
 		# their own (their reading, what they saw) are worth adding.
 		var first = w.by_id[earlier[0]["by"]]
 		var own = why.begins_with("my own") or why.begins_with("I ")
-		line = say(n, "I agree with %s about %s.%s" % [first.name, t.name, (" " + why[0].to_upper() + why.substr(1) + ".") if own else ""])
+		var extra = " I have my own reason, but I'm not ready to share it yet." if hint else ((" " + why[0].to_upper() + why.substr(1) + ".") if own else "")
+		line = say(n, "I agree with %s about %s.%s" % [first.name, t.name, extra])
+	elif hint:
+		line = say(n, "I have a reason to suspect %s, but I'm not ready to share it yet." % t.name)
 	else:
 		var tail = (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else " Something's off about them."
 		line = say(n, "I don't trust %s.%s" % [t.name, tail])
 	if w.meeting.has("accusations"):
 		w.meeting["accusations"].append({"by": n.id, "target": t.id})
+	var text = ("%s publicly accused %s, hinting at a private reason they won't share yet." if hint else "%s publicly accused %s.") % [n.name, t.name]
 	return {"line": line,
-		"fact": {"kind": "accusation", "subject": [t.id], "source": n.id, "text": "%s publicly accused %s." % [n.name, t.name]}}
+		"fact": {"kind": "accusation", "subject": [t.id], "source": n.id, "text": text, "hint": hint}}
 
 ## Peer pressure: what the town's public accusations against target add to a listener's
 ## suspicion. Each accuser counts once (their latest stance), older accusations fade, and
@@ -1010,6 +1139,7 @@ static func _public_accusation(w, n):
 const CONSENSUS_BASE = 0.12
 const CONSENSUS_FADE = 0.6
 const CONSENSUS_CAP = 0.3
+const CONSENSUS_HINT = 1.15  # "I have a reason, but I'm not ready to share it": a little more than a bare accusation
 
 static func refresh_consensus(w, l, target: String) -> void:
 	if l.is_evil():
@@ -1023,7 +1153,8 @@ static func refresh_consensus(w, l, target: String) -> void:
 		if st["target"] != target or a == l.id or a == target:
 			continue
 		var bond: float = l.npc_trust.get(a, 0.5)
-		vals.append(CONSENSUS_BASE * (0.5 + bond) * pow(CONSENSUS_FADE, w.day - st["day"]))
+		var hint_w = CONSENSUS_HINT if st.get("hint", false) else 1.0
+		vals.append(CONSENSUS_BASE * hint_w * (0.5 + bond) * pow(CONSENSUS_FADE, w.day - st["day"]))
 	vals.sort()
 	vals.reverse()
 	var want = 0.0
@@ -1086,7 +1217,7 @@ static func next_nomination(w):
 	w.dlog.think(c["by"], "nominate", c["reason"], {"nominee": c["nominee"]})
 	var nom = w.by_id[c["by"]]
 	var t = w.by_id[c["nominee"]]
-	var why: String = Evil.cite(w, nom, Evil.bluff_reason(w, nom, t) if nom.is_evil() else nom.sus_why.get(t.id, ""))
+	var why: String = Evil.cite(w, nom, Evil.bluff_reason(w, nom, t) if nom.is_evil() else citable_reason(w, nom, t.id, "town"))
 	c["speech"] = decision_line(nom, {"kind": "nomination", "target": t.name,
 		"reason_text": (why[0].to_upper() + why.substr(1) + ".") if why != "" else ""}, "town")
 	return c
@@ -1191,7 +1322,7 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		var rival = w.by_id[card["source"]]
 		lines.append(say(n, "I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name]))
 		if not n.is_evil():
-			adjust(w, n, rival.id, 0.3, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift")
+			adjust(w, n, rival.id, 0.3, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift", true, "own_role")
 		return _challenged(n, {"lines": lines, "facts": facts}, card)
 	if night >= 0:
 		var r = answer_night(w, n, night)
@@ -1736,6 +1867,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	# Same pipeline for both alignments: a suspicion level plus an optional grounded reason.
 	var why = ""
 	var lie = false
+	var held = false
 	if n.is_evil():
 		if Evil.is_teammate(w, n, t.id):
 			level = 0.2
@@ -1748,7 +1880,9 @@ static func answer_opinion(w, n, t) -> Dictionary:
 			level = Evil.town_view(w, t)
 	else:
 		level = susp(n, t.id)
-		why = n.sus_why.get(t.id, "")
+		why = citable_reason(w, n, t.id, "player")
+		# A reason they haven't told you (their unshared reading) stays back, but they say so.
+		held = why == "" and reason_status(w, n, t.id)["kind"] == "private"
 	why = Evil.cite(w, n, why)
 	var shown = level
 	if level < 0.25:
@@ -1764,7 +1898,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	else:
 		text = "If you ask me, %s is the one." % t.name
 	if level >= 0.45:
-		text += (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else " Something's off about them."
+		text += (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else (" I have my reasons, but I'm not ready to say." if held else " Something's off about them.")
 	var close = n.npc_trust.get(t.id, 0.5) > 0.7 and not (n.is_evil() and t.id == w.evil_plan["scapegoat"])
 	if close and not Dialogue.has_voice(n.id):
 		text += " We're close, mind."
@@ -2121,7 +2255,7 @@ static func gossip(w) -> Dictionary:
 		var t = ranked[0]
 		speaker.told_to["player|gossip_susp:%s:%d" % [t.id, w.day]] = true
 		w.dlog.think(speaker.id, "gossip", "Shares their suspicion of %s." % t.id)
-		var why: String = Evil.cite(w, speaker, speaker.sus_why.get(t.id, ""))
+		var why: String = Evil.cite(w, speaker, citable_reason(w, speaker, t.id, "town"))
 		var tail = (", because " + why) if why != "" else ". Something's off about them, apparently"
 		return {"lines": ["You overhear %s muttering that %s can't be trusted%s." % [speaker.name, t.name, tail]],
 			"facts": [{"kind": "opinion", "subject": [t.id], "source": speaker.id, "text": "Gossip: %s distrusts %s." % [speaker.name, t.name]}]}

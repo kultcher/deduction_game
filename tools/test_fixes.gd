@@ -35,6 +35,8 @@ func _init() -> void:
 	_claim_backed_options()
 	_silenced_speakers()
 	_victim_trace()
+	_cite_provenance()
+	_accuse_tiers()
 	print("FIXES FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -455,3 +457,67 @@ func _claim_backed_options() -> void:
 	var m: Dictionary = lk["result"]["matches"][0]
 	_check(m["explanations"].any(func(e): return e.get("rival_only", false)), "the misled rival is still there for NPCs to weigh")
 
+
+## A reason is citable only to an audience that already has it (Oct 19 provenance fix).
+func _setup_private_reading(sd: int):
+	var g = _game(sd)
+	var w = g.w
+	var good: Array = w.living_good()
+	var n = good[0]
+	var t = good[1]
+	var x = good[2]
+	n.role = "seer"
+	n.claimed_role = ""
+	n.claim_public = false
+	n.info_log = [{"day": 0, "role": "seer", "data": {"pair": [t.id, x.id], "yes": true},
+		"text": "I learned that one of %s and %s is the demon" % [t.name, x.name], "shared": false, "true": false, "why": "test"}]
+	n.applied_info = 0
+	n.told_readings = 0
+	Mind.update_from_own_info(w)
+	return [g, w, n, t]
+
+func _cite_provenance() -> void:
+	var r = _setup_private_reading(7200)
+	var w = r[1]
+	var n = r[2]
+	var t = r[3]
+	var rs = Mind.reason_status(w, n, t.id)
+	_check(n.sus_src.get(t.id, "").begins_with("info:%s:" % n.id), "the reason records its source: their own reading (%s)" % n.sus_src.get(t.id, ""))
+	_check(rs["kind"] == "private" and rs["strength"] > 0.8, "an unshared Seer yes is a private, strong reason")
+	_check(Mind.citable_reason(w, n, t.id, "town") == "" and Mind.citable_reason(w, n, t.id, "player") == "", "a private reason can't be cited to anyone")
+	n.told_readings = 1
+	_check(Mind.reason_status(w, n, t.id)["kind"] == "player", "told to the player privately: the player's to hear")
+	_check(Mind.citable_reason(w, n, t.id, "player") != "" and Mind.citable_reason(w, n, t.id, "town") == "", "citable to the player, not the town")
+	n.info_log[0]["shared"] = true
+	_check(Mind.citable_reason(w, n, t.id, "town") != "", "once shared at the meeting, citable to the town")
+
+func _accuse_tiers() -> void:
+	# Reluctant: private, keeps-giving gift, afraid-ish, early: mostly hints, never silent here.
+	var r = _setup_private_reading(7210)
+	var w = r[1]
+	var n = r[2]
+	var t = r[3]
+	n.traits["privacy"] = 1.0
+	n.traits["confidence"] = 0.2
+	w.day = 1
+	var counts = {"hint": 0, "reveal": 0, "generic": 0}
+	for i in range(60):
+		counts[Mind._accuse_tier(w, n, t, 0.8)["tier"]] += 1
+	_check(counts["hint"] > counts["reveal"] and counts["generic"] == 0, "a private, reluctant Seer mostly hints (%s)" % str(counts))
+	# Bold, late, few left: mostly reveals.
+	n.traits["privacy"] = 0.1
+	n.traits["confidence"] = 0.9
+	w.day = 5
+	counts = {"hint": 0, "reveal": 0, "generic": 0}
+	for i in range(60):
+		counts[Mind._accuse_tier(w, n, t, 1.1)["tier"]] += 1
+	_check(counts["reveal"] > counts["hint"], "a bold Seer late in the game mostly reveals (%s)" % str(counts))
+	# Reveal brings the gift and the reading out, as cards.
+	var lines: Array = []
+	var facts: Array = []
+	Mind._go_public(w, n, lines, facts)
+	_check(n.claim_public and n.info_log[0]["shared"], "going public claims the gift and shares the reading")
+	_check(facts.any(func(f): return f["kind"] == "claim") and facts.any(func(f): return f["kind"] == "info"), "both become cards")
+	# No private reason: a bare accusation.
+	n.sus_why.erase(t.id)
+	_check(Mind._accuse_tier(w, n, t, 0.9)["tier"] == "generic", "with no reason to protect, a generic accusation")

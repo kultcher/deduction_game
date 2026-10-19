@@ -1445,3 +1445,58 @@ average on Greta was 0.34. Bartholomew's and Isolde's shadows still ranked Greta
 and first; that's the seed of throwing a teammate under the bus.
 
 Debug: snapshots carry `"shadow": {id: {role, trust, suspicion}}`. Test: tools/test_shadow.gd.
+
+## Citing reasons: provenance and the accusation tiers (Oct 19)
+
+The bug: in 96773, Hollis said at the meeting "I saw them out at night where someone was
+killed". That was his unshared Night Watch reading, and it produced only an opinion card.
+Reasons were bare text with no record of where they came from.
+
+**Provenance.** When a piece of evidence raises suspicion enough to set the reason
+(`sus_why`), the NPC also records the ledger entry it came from (`sus_src`). Own gift
+knowledge such as "they claim my gift" is recorded as `"own_role"`.
+`Mind.reason_status(w, n, t)` classifies the reason:
+- **none:** no reason on record (vibes);
+- **public:** the town already has it, or citing it reveals nothing of the NPC's gift
+  (hearsay, the player's cases, crowd talk);
+- **player:** their own reading, told to the player privately, not to the town;
+- **private:** their own reading, told to nobody.
+
+`Mind.citable_reason(w, n, t, audience)` returns the reason only if the audience has it.
+Every place that speaks a reason goes through it:
+- meeting accusations and nominations;
+- tavern gossip;
+- NPC-to-NPC opinion shares;
+- private opinions to the player. These may cite what the player was told, and say "I have
+  my reasons, but I'm not ready to say" when the reason is still private.
+
+Evil already cited only shared fakes (`Evil.bluff_reason`).
+
+**The accusation tiers** (`_public_accusation`, `_accuse_tier`):
+1. **Silent:** the existing accuse decision says no (suspicion, confidence, deflecting
+   pressure).
+2. **Generic:** no private reason to protect. "I don't trust X", with whatever public
+   reason they have.
+3. **Hint:** a private reason they won't give yet. "I have a reason to suspect X, but I'm
+   not ready to share it yet." It makes an accusation card marked as a hint, and counts
+   1.15× a bare accusation in town consensus (`CONSENSUS_HINT`).
+4. **Reveal:** they claim their gift if they haven't (`_go_public`, shared with the
+   meeting's claim step) and give the reading; both become cards.
+
+**Hint or reveal** is a `decide` on:
+- how strongly the reading points at the target (`reading_strength`: a Seer "yes" 0.9, a
+  Dowser crowd by count/size, an Archivist evil-role pair 0.4–0.6, a Night Watch sighting
+  0.35);
+- suspicion and confidence;
+- the reveal cost (`reveal_cost`): privacy; gifts that hide from the demon or keep paying
+  off; fear (`_afraid`); less as days pass or when four or fewer are left.
+
+**Evil** accusing with nothing citable hints instead 30% of the time
+(`C.EVIL_HINT_CHANCE`). The hint is unverifiable, so it's a free bluff, and it keeps the
+hint from being proof of good.
+
+**Bot check** (150 games each, seeds 1000–1149, against the same seeds just before):
+- 7 townsfolk: good wins 43 → 44, good NPCs hanged 158 → 142;
+- 10 townsfolk: good wins 35 → 39, good NPCs hanged 304 → 294.
+
+Test: tools/test_fixes.gd (`_cite_provenance`, `_accuse_tiers`).

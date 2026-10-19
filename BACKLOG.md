@@ -12,14 +12,6 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
-- **Meeting opinions cite private evidence with no card.** Hollis: "I saw them out at
-  night where someone was killed" (his unshared Night Watch reading) made only an
-  opinion card. Rule: an NPC can't cite something as a reason unless they've already
-  made that claim, at least privately to you. Evil leaning on a fabricated reason has to
-  put the fake claim out first, which turns its lies into cards you can check.
-  Medium risk: an evidence-provenance problem, not just missing card creation (see
-  docs/shadow_self_plan.md, step 0). Must land before the shadow self's step 2.
-  (96773) [decided]
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -87,6 +79,14 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   draw from the same spread of reasons as good ones (in PR #3 they all said "the case is
   strong enough"), and only lines that tell you something should be spoken (a reason
   that differs from the crowd, a vote against a stated stance, a swing vote). [decided]
+- **Fading into the crowd.** NPCs weigh how much talking is already going on before
+  speaking or disclosing. When the town is already moving in a direction, a private
+  character may just bide their time and listen. (Oct 19) [decided]
+- **Outing yourself to defend someone.** The flip side of the accusation tiers: when an
+  NPC holds information that could clear someone on the block (a Seer "no", a Night
+  Watch who saw them stay in), when are they willing to come out to defend them? The
+  same weighing as accusing (how strong the clearing is, what the reveal costs, how
+  close the vote is). (Oct 19) [decided]
 - **Talking to a group:** 3 questions per phase, split among anyone at the spot.
   [open; discussed 2026-10-18]
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
@@ -235,6 +235,8 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 ## Closed
 
 Settled decisions, built work and parked levers, kept for the record.
+
+- **Oct 19: meeting opinions cite only what the audience has.** Reasons carry their source; private readings become a hint or a reveal (see DESIGN, "Citing reasons").
 
 - **Oct 18 quick-fix pass:** everything then in this section (see DESIGN, "Quick-fix pass, Oct 18").
 - **Deduction types built Oct 18:** Martyr facts in templates, the Martyr who doesn't die, pair with both proven good, Misread (Marked, red herring), suspicious, hiding a secret, secrets and evil roles as conclusions, builder headings; NPCs owning their own lies; fear as cover.

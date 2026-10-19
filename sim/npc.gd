@@ -57,6 +57,9 @@ var turned_day = -1
 var suspicion = {}
 ## Player-readable reason for the most recent large rise in suspicion, per target.
 var sus_why = {}
+## Where each of those reasons came from: the evidence-ledger entry id ("" = no record).
+## Decides whether the reason can be cited, and to whom (Mind.reason_status).
+var sus_src = {}
 var applied_info = 0
 
 ## Trust in the player, 0..1, capped by trust_cap (lowered by serious betrayals).
