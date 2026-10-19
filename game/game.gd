@@ -2330,8 +2330,13 @@ func profile_data(id: String) -> Dictionary:
 	var n = w.by_id[id]
 	var claim = _claim_text(n)
 	var status = "alive" if n.alive else _death_text(n)
+	# Discovery still gates each trait; the visual uses its actual score once learned.
+	var traits = {}
+	for key in n.revealed_traits:
+		if n.traits.has(key):
+			traits[key] = n.traits[key]
 	return {"id": id, "name": n.name, "occupation": n.occupation, "blurb": n.blurb, "work": "%s at %s" % [C.phase_list(n.work_phases), w.loc_name(n.work)],
 		"haunts": known_haunt_names(id),
-		"home": C.block_name(n.home_block), "status": status, "traits": n.revealed_traits.duplicate(), "claim": claim,
+		"home": C.block_name(n.home_block), "status": status, "traits": traits, "claim": claim,
 		"guess": guesses.get(id, {}), "note": notes.get(id, ""), "cards": filter_cards(id).map(func(c): return c["n"]),
 		"named": named_in(id)}

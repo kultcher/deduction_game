@@ -42,7 +42,7 @@ const BUILDING_ART = {"tavern": "tavern", "well": "well", "smithy": "smithy", "b
 
 var g
 var zoom_block = ""
-var selected_npc = ""
+var selected_npc = ""        # persistent highlight owned by the townsfolk panel
 var selected_block = ""
 var _hits: Array = []        # [{rect (screen), kind, id, label, hint}]
 var _hover: Dictionary = {}
@@ -380,8 +380,6 @@ func _draw_people(font) -> void:
 			if n.id == selected_npc:
 				draw_rect(rr.grow(3), C.npc_color(n.id), false, 3.0)
 				draw_rect(rr.grow(1), Color(1, 1, 1, 0.9), false, 1.5)
-			if g.talk_with != null and g.talk_with == n:
-				draw_rect(rr.grow(4), UITheme.color("accent"), false, 3.0)
 			if zoom_block != "":
 				var lfs = lf if members.size() <= 2 else maxi(11, int(lf * 0.85))
 				draw_string(font, Vector2(foot.x - step / 2.0 - 4, foot.y + lfs + 2 + (lfs if (i % 2 == 1 and members.size() > 2) else 0)), n.name, HORIZONTAL_ALIGNMENT_CENTER, step + 8, lfs, C.npc_color(n.id))
@@ -427,8 +425,6 @@ func _gui_input(ev: InputEvent) -> void:
 				queue_redraw()
 				clicked.emit("block", h["id"])
 			_:
-				if h["kind"] == "npc":
-					selected_npc = h["id"]
 				clicked.emit(h["kind"], h["id"])
 				queue_redraw()
 

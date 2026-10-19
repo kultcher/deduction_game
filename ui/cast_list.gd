@@ -1,13 +1,14 @@
 ## The townsfolk list on the town screen: one paper plaque per person with their portrait
 ## in a ring, their colour, what they claim and your guess (pencilled, with a "?"), and where
-## they are if you can see them. Dead townsfolk are greyed with a cross. Click to show them
-## in the profile.
+## they are if you can see them. Dead townsfolk are greyed with a cross. Click to show
+## their profile and toggle the map highlight; only this panel owns that highlight.
 extends Control
 
 signal person_clicked(id)
 
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
+const PortraitBadge = preload("res://ui/portrait_badge.gd")
 
 const ROW_H = 70.0
 const GAP = 2.0
@@ -17,6 +18,7 @@ var selected = ""
 var _rows: Array = []   # {rect, id}
 var _hover = ""
 var _font: Font
+var _portraits: Dictionary = {}
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -25,6 +27,17 @@ func _init() -> void:
 
 func setup(game) -> void:
 	g = game
+	selected = ""
+	_hover = ""
+	for badge in _portraits.values():
+		badge.hide()
+		badge.queue_free()
+	_portraits.clear()
+	for n in g.w.npcs:
+		var badge = PortraitBadge.new()
+		add_child(badge)
+		badge.show_person(n.id, n.alive)
+		_portraits[n.id] = badge
 	custom_minimum_size = Vector2(0, g.w.npcs.size() * (ROW_H + GAP))
 	queue_redraw()
 
@@ -41,46 +54,49 @@ func _draw() -> void:
 		y += ROW_H + GAP
 		_rows.append({"rect": r, "id": n.id})
 		var sel = n.id == selected
-		var plaque = UITheme.nine("ui/plaque_red" if sel else ("ui/plaque_gold" if n.id == _hover else "ui/plaque_cream"), ROW_H - 8, [12, 10, 12, 10])
-		var pr = Rect2(r.position + Vector2(ROW_H * 0.55, 4), Vector2(r.size.x - ROW_H * 0.55, ROW_H - 8))
+		var plaque = UITheme.nine("ui/plaque_red" if sel else ("ui/plaque_gold" if n.id == _hover else "ui/plaque_cream"), ROW_H - 12, [12, 10, 12, 10])
+		var pr = Rect2(r.position + Vector2(ROW_H * 0.55, 6), Vector2(r.size.x - ROW_H * 0.55, ROW_H - 12))
 		if plaque != null:
 			draw_style_box(plaque, pr)
 		else:
 			draw_rect(pr, UITheme.color("paper"))
-		var tint = Color.WHITE if n.alive else Color(0.5, 0.48, 0.48)
-		# Portrait in a gold ring.
-		var c = r.position + Vector2(ROW_H / 2.0, ROW_H / 2.0)
-		var rad = ROW_H / 2.0 - 2
-		draw_circle(c, rad, C.npc_color(n.id).darkened(0.35))
-		var tex = UITheme.tex("art/portraits/" + n.id, 0.18)
-		if tex != null:
-			var s = rad * 2.0 - 6
-			var src_h = minf(tex.get_height(), tex.get_width() * 1.0)
-			draw_texture_rect_region(tex, Rect2(c - Vector2(s, s) / 2.0, Vector2(s, s)), Rect2(0, 0, tex.get_width(), src_h), tint)
-		var ring = UITheme.tex("ui/ring_gold", 0.3)
-		if ring != null:
-			draw_texture_rect(ring, Rect2(c - Vector2(rad, rad), Vector2(rad, rad) * 2.0), false)
-		else:
-			draw_arc(c, rad, 0, TAU, 32, UITheme.color("border"), 2.0)
-		# Name, colour dot, status. The right end holds two slots: their claim, your guess.
+		var badge = _portraits[n.id]
+		badge.position = r.position + Vector2(2, 2)
+		badge.size = Vector2(ROW_H - 4, ROW_H - 4)
+		badge.show_person(n.id, n.alive)
+		# Keep text inside the decorative edges; reserve only occupied role slots.
 		var ink = UITheme.color("paper") if sel else UITheme.ink_of(C.npc_color(n.id))
-		var tx = r.position.x + ROW_H + 6
-		var slot = 30.0
-		var slots_x = pr.end.x - 18 - slot * 2 - 4
-		var text_w = slots_x - tx - 18
-		draw_circle(Vector2(tx + 4, pr.position.y + 17), 5, C.npc_color(n.id))
-		draw_string(_font, Vector2(tx + 14, pr.position.y + 24), n.name + ("" if n.alive else "  †"), HORIZONTAL_ALIGNMENT_LEFT, text_w, 18, ink if (n.alive or sel) else UITheme.color("ink_soft"))
-		var sub = _sub_line(n)
-		draw_string(_font, Vector2(tx, pr.end.y - 12), sub, HORIZONTAL_ALIGNMENT_LEFT, text_w + 10, 13, UITheme.color("paper_dim") if sel else UITheme.color("ink_soft"))
-		var cy = pr.position.y + (pr.size.y - slot) / 2.0
+		var tx = r.position.x + ROW_H + 12
+		var slot = 24.0
 		var claim = _claimed(n)
+		var gs: String = g.guesses.get(n.id, {}).get("guess", "?")
+		var slot_count = int(claim != "") + int(gs != "?")
+		var slots_x = pr.end.x - 20 - slot_count * (slot + 4)
+		var text_w = maxf(0, slots_x - tx - (8 if slot_count > 0 else 0))
+		draw_circle(Vector2(tx + 4, pr.position.y + 21), 4, C.npc_color(n.id))
+		var name_w = maxf(0, text_w - 14)
+		draw_string(_font, Vector2(tx + 14, pr.position.y + 26), _fit_text(n.name + ("" if n.alive else "  +"), name_w, 17), HORIZONTAL_ALIGNMENT_LEFT, name_w, 17, ink if (n.alive or sel) else UITheme.color("ink_soft"))
+		draw_string(_font, Vector2(tx, pr.end.y - 12), _fit_text(_sub_line(n), text_w, 13), HORIZONTAL_ALIGNMENT_LEFT, text_w, 13, UITheme.color("paper_dim") if sel else UITheme.color("ink_soft"))
+		var cy = pr.position.y + (pr.size.y - slot) / 2.0
 		if claim != "":
 			_role_mark(claim, Rect2(slots_x, cy, slot, slot), Color.WHITE, sel)
-		var gs: String = g.guesses.get(n.id, {}).get("guess", "?")
+			slots_x += slot + 4
 		if gs != "?":
-			var gr = Rect2(slots_x + slot + 4, cy, slot, slot)
+			var gr = Rect2(slots_x, cy, slot, slot)
 			_role_mark(gs, gr, Color(1, 1, 1, 0.75), sel)
 			draw_string(_font, Vector2(gr.end.x - 6, gr.end.y + 2), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.color("red"))
+
+func _fit_text(text: String, width: float, font_size: int) -> String:
+	if width <= 0:
+		return ""
+	if _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x <= width:
+		return text
+	var clipped = text
+	while not clipped.is_empty():
+		clipped = clipped.left(-1)
+		if _font.get_string_size(clipped + "…", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x <= width:
+			return clipped + "…"
+	return ""
 
 ## A role's icon in a square slot, or (for gifts without art yet, and good/evil guesses) a
 ## small tag with the first letters.
@@ -109,14 +125,10 @@ func _sub_line(n) -> String:
 		if n.death_cause == "martyr":
 			return "died in another's place, day %d" % n.death_day
 		return "killed, night %d" % n.death_day if n.death_cause == "demon" else "executed, day %d" % n.death_day
-	var parts: Array = []
-	if n.claim_public:
-		parts.append("claims " + C.role_name(n.claimed_role))
-	elif n.max_tier >= 3 and C.ROLES.has(n.claimed_role):
-		parts.append("told you: " + C.role_name(n.claimed_role))
-	if g.state != "night" and g.can_see(n):
-		parts.append(("at home" if n.at_home() else g.w.loc_name(n.loc).trim_prefix("the ")))
-	return " · ".join(PackedStringArray(parts)) if not parts.is_empty() else n.occupation
+	if g.state == "night" or not g.can_see(n):
+		return "Location: Unknown"
+	var place = "At home" if n.at_home() else g.w.loc_name(n.loc).trim_prefix("the ")
+	return "Location: " + place.left(1).to_upper() + place.substr(1)
 
 func _row_at(p: Vector2) -> String:
 	for r in _rows:
@@ -128,7 +140,6 @@ func _gui_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 		var id = _row_at(ev.position)
 		if id != "":
-			selected = id
 			person_clicked.emit(id)
 			queue_redraw()
 	elif ev is InputEventMouseMotion:

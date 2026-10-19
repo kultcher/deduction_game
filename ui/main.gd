@@ -47,6 +47,7 @@ var _popup_anchor = null
 var _case_seed = -1
 var show_script_at_start = true   # the script opens when a case begins
 var _last_state = ""
+var _ward_target = ""       # choosing a night action does not own map highlighting
 var notes_win: Window
 var notes_edit: TextEdit
 var roles_win: Window
@@ -169,15 +170,12 @@ func _ready() -> void:
 	castbox.add_child(csc)
 	cast_list = CastList.new()
 	cast_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cast_list.person_clicked.connect(func(id): _select_person(id))
+	cast_list.person_clicked.connect(_on_town_person_clicked)
 	csc.add_child(cast_list)
 	profile = ProfilePanel.new(true)
 	profile.build()
 	profile.custom_minimum_size = Vector2(360, 0)
-	profile.person_changed.connect(func(id):
-		map.selected_npc = id
-		cast_list.selected = id
-		cast_list.refresh())
+	profile.person_changed.connect(func(id): case_view.show_profile(id))
 	profile.changed.connect(func():
 		theory_label.text = g.theory_status()
 		cast_list.refresh())
@@ -348,6 +346,7 @@ func _new_case() -> void:
 	cast_list.setup(g)
 	notes_edit.text = g.case_notes
 	map.set_game(g)
+	_ward_target = ""
 	meeting_view.set_game(g)
 	if debug_check.button_pressed:
 		g.set_debug_overlay(true)
@@ -527,11 +526,20 @@ func _side_person_id() -> String:
 func _select_person(id: String) -> void:
 	case_state.select_person(id)
 	profile.show_person(id)
-	cast_list.selected = id
-	cast_list.refresh()
 	case_view.show_profile(id)
-	map.selected_npc = id
 	_refresh_profile()
+
+func _on_town_person_clicked(id: String) -> void:
+	var selected: String = "" if cast_list.selected == id else id
+	cast_list.selected = selected
+	map.selected_npc = selected
+	if selected != "":
+		_select_person(selected)
+	cast_list.refresh()
+	map.refresh()
+	if g.state == "night":
+		_ward_target = selected
+		_refresh_actions()
 
 # ---------------------------------------------------------------- coloured log
 
@@ -633,6 +641,8 @@ func _swatch(c: Color) -> ImageTexture:
 func _on_map_clicked(kind: String, id: String) -> void:
 	if kind == "npc":
 		_select_person(id)
+		if g.state == "night":
+			_ward_target = id
 	match g.state:
 		"day":
 			var w = g.w
@@ -722,8 +732,8 @@ func _refresh_actions() -> void:
 				_hint("You promised %s." % g.offer_text())
 			if map.selected_block != "":
 				_button(actions, "Keep vigil on %s" % C.block_name(map.selected_block), func(): _run("vigil " + map.selected_block))
-			if map.selected_npc != "" and w.tools["ward"] > 0 and w.by_id[map.selected_npc].alive:
-				_button(actions, "Ward %s's door (once per case)" % w.by_id[map.selected_npc].name, func(): _run("ward " + map.selected_npc), C.npc_color(map.selected_npc))
+			if _ward_target != "" and w.tools["ward"] > 0 and w.by_id[_ward_target].alive:
+				_button(actions, "Ward %s's door (once per case)" % w.by_id[_ward_target].name, func(): _run("ward " + _ward_target), C.npc_color(_ward_target))
 			var vig = _button(actions, "Keep vigil on…", func(): pass)
 			vig.pressed.connect(func(): _list_picker(vig, "Watch which block?", C.BLOCKS.keys().map(func(b): return [C.block_name(b), "vigil " + b, null])))
 			if w.tools["ward"] > 0:

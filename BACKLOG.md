@@ -282,3 +282,19 @@ Settled decisions, built work and parked levers, kept for the record.
   and 25 board checks on standard Godot 4.4.1, plus rendered layouts, the card menu,
   and panel mouse movement/resizing. The UI test's previously recorded synthetic
   drag-preview and shutdown diagnostics remain.
+- **Oct 19: continuous social bars and town selection.** Learned social traits now
+  display their actual scores, filling from the midpoint toward the value; 0.5 is
+  a thin center marker. Undiscovered traits remain unknown. Privacy runs from Open
+  Book (0) to Secretive (1), matching its actual score. Townsfolk rows have more
+  padding, reserve only occupied role-icon slots, and elide long text inside the
+  plaque. Living townsfolk show Location: followed by the visible location or
+  Unknown, instead of falling back to their occupation. Circular portrait masks
+  prevent artwork spilling past its frame; face crops were adjusted, including
+  Hollis, Odette and Constance. Only townsfolk-panel clicks own the map highlight:
+  select home, workplace, visible icon and known haunts; click again to clear, or
+  another person to switch. Map hover, map clicks, profile changes and conversation
+  focus cannot take it over. Night ward targeting remains available separately.
+  Verified 25 focused town-UI, 108 existing UI and 71 fixes checks on standard Godot
+  4.4.1, plus rendered town, portrait and trait-bar views. The existing UI test's
+  synthetic drag-preview and shutdown diagnostics remain; rendered checks had no
+  errors.
