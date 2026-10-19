@@ -26,6 +26,9 @@ func _init() -> void:
 	_haunts()
 	_offers()
 	_vigil_deters()
+	_martyr_templates()
+	_new_conclusions()
+	_own_lies()
 	print("FIXES FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -280,4 +283,81 @@ func _vigil_deters() -> void:
 			if w.by_id[id].home_block != w.player_vigil:
 				marked = -99
 	_check(marked > 0, "a vigil weighs against killing anyone on the watched block")
+
+const Argue = preload("res://sim/argue.gd")
+
+func _templates_for(g, nums: Array) -> Array:
+	return g.link_cards(nums)["result"]["matches"].map(func(m): return m["template"])
+
+func _martyr_templates() -> void:
+	var g = _game(7120)
+	var w = g.w
+	g.board = []
+	g._card_keys = {}
+	var ids: Array = w.npcs.map(func(n): return n.id)
+	var a: String = ids[0]
+	var b: String = ids[1]
+	var c: String = ids[2]
+	var d: String = ids[3]
+	var km = g.add_card({"kind": "martyr", "subject": [a, b], "source": "player", "day": 3, "phase": C.EVENING, "text": "M died for B"})
+	var kseer = g.add_card({"kind": "info", "subject": [b, c], "source": d, "day": 2, "role": "seer", "data": {"pair": [b, c], "yes": true}, "text": "D seer yes B,C"})
+	var karch = g.add_card({"kind": "info", "subject": [a, b], "source": c, "day": 0, "role": "archivist", "data": {"pair": [a, b], "role": "revenant"}, "text": "C archivist A,B revenant"})
+	_check("pair_elimination" in _templates_for(g, [kseer, km]), "a Martyr's save clears its nominee for pair elimination")
+	_check("pair_both_good" in _templates_for(g, [karch, km]), "a pair reading naming two proven-good people is false")
+	_check(not ("pair_elimination" in _templates_for(g, [karch, km])), "...and doesn't 'leave' one of them")
+	var kgood = g.add_card({"kind": "deduction", "subject": [c], "source": "player", "conclusion": {"type": "good", "a": c}, "supports": [km], "text": "C is good"})
+	_check("pair_elimination" in _templates_for(g, [kseer, kgood]), "a filed 'X is good' deduction works as a template input")
+	var kchose = g.add_card({"kind": "info", "subject": [d, c], "source": d, "day": 1, "role": "martyr", "data": {"target": c, "chosen": true}, "text": "D chose C"})
+	var kex = g.add_card({"kind": "execution", "subject": [c], "source": "player", "day": 4, "phase": C.EVENING, "alive_before": 6, "text": "C hanged"})
+	var mm = g.link_cards([kchose, kex])["result"]["matches"].filter(func(m): return m["template"] == "martyr_no_save")
+	_check(not mm.is_empty(), "the chosen hanged and the Martyr still standing is a template")
+	if not mm.is_empty():
+		var kinds: Array = mm[0]["explanations"].map(func(e): return e["conclusion"].get("type", ""))
+		_check("evil" in kinds and "marked" in kinds and "lied" in kinds, "...offering evil, Marked, or the Martyr lied (%s)" % str(kinds))
+
+func _new_conclusions() -> void:
+	for pair in [["suspicious", "suspicious"], ["hiding a secret", "secret"], ["Marked", "marked"], ["the Seer's red herring", "red_herring"]]:
+		_check(Argue.from_builder("x", "is", pair[0]).get("type", "") == pair[1], "typed: 'is %s'" % pair[0])
+		_check(Argue.from_builder("x", "is", pair[1], -1, -1, true).get("type", "") == pair[1], "builder: %s" % pair[1])
+	var sm = Argue.from_builder("x", "is", "a Sleepwalker")
+	_check(sm.get("type", "") == "secret_mod" and sm.get("mod", "") == "sleepwalker", "typed: 'is a Sleepwalker'")
+	var ev = Argue.from_builder("x", "is", "poisoner", -1, -1, true)
+	_check(ev.get("type", "") == "role" and ev.get("role", "") == "poisoner", "evil roles can be concluded")
+	var g = _game(7121)
+	var w = g.w
+	var t = w.npcs[0]
+	var e: Array = Argue.effects_of(w, {"type": "role", "a": t.id, "role": "poisoner"}, [], "x")
+	_check(e.any(func(x): return x[0] == t.id and x[1] > 0.0), "concluding someone is the Poisoner raises suspicion of them")
+	var e2: Array = Argue.effects_of(w, {"type": "suspicious", "a": t.id}, [], "x")
+	_check(e2.any(func(x): return x[0] == t.id and x[1] > 0.0 and x[1] <= 0.2), "'suspicious' is a small push")
+	var e3: Array = Argue.effects_of(w, {"type": "marked", "a": t.id}, [], "x")
+	_check(e3.any(func(x): return x[0] == t.id and x[1] < 0.0), "'Marked' speaks for them")
+
+func _own_lies() -> void:
+	var g = _game(7122)
+	var w = g.w
+	var n = w.living_good()[0]
+	w.day = 3
+	n.history[w.time_key(2, C.NIGHT)] = "night:" + n.home_block
+	g.board = []
+	g._card_keys = {}
+	var lie = g.add_card({"kind": "alibi", "subject": [n.id], "home": true, "day": 2, "phase": C.NIGHT, "source": n.id, "block": n.home_block, "text": "N says home n2"})
+	var seen = g.add_card({"kind": "sighting", "subject": [n.id], "block": n.home_block, "day": 2, "phase": C.NIGHT, "source": "player", "vigil": true, "text": "vigil saw N n2"})
+	var dn = g.file_deduction({"type": "lied", "a": n.id, "card": lie}, [lie, seen])
+	var t0 = n.trust
+	n.traits["privacy"] = 0.0
+	n.pressure = 1.0
+	n.trust = 1.0
+	var r = Argue.evaluate(w, n, g.board[dn - 1], g.board, 1.0)
+	var line: String = r["lines"][0]["text"] if not r["lines"].is_empty() else ""
+	_check(not ("I know it's false" in line), "caught in their own lie, they don't call it false (%s)" % line)
+	_check("wasn't where I said" in line, "an open, pressed NPC owns up")
+	# Later, telling you their walking gift, they own the lie.
+	n.role = "lamplighter"
+	n.lied_nights = [2]
+	n.claim_public = false
+	n.max_tier = 0
+	var r2 = Mind.answer_gift(w, n, 3)
+	var txt = " ".join(PackedStringArray(r2["lines"].filter(func(l): return l is Dictionary).map(func(l): return l["text"])))
+	_check("I was out" in txt and "wasn't ready to tell you why" in txt, "disclosing the gift, they own the earlier lie (%s)" % txt)
 

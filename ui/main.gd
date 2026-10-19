@@ -251,14 +251,13 @@ func _ready() -> void:
 	st.text = "Case board (newest first)"
 	side.add_child(st)
 	side_filter = LineEdit.new()
-	side_filter.placeholder_text = "filter: person, place, kind, d2, n1, text"
+	side_filter.placeholder_text = "filter: person, place, kind, d2, n1, text; join with + (greta+night)"
 	side_filter.text_changed.connect(func(_t): _refresh_side())
 	side.add_child(side_filter)
 	side_list = CardList.new()
 	side_list.select_mode = Tree.SELECT_ROW
 	side_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	side_list.add_theme_font_override("font", mono)
-	side_list.add_theme_font_size_override("font_size", 14)
+	side_list.readable(15)
 	side_list.card_activated.connect(_on_side_activated)
 	side.add_child(side_list)
 	var hint = Label.new()
@@ -599,9 +598,25 @@ func _colourize(s: String) -> String:
 			pos = mm.get_end()
 		outl += esc.substr(pos)
 		if line.begins_with("> "):
-			outl = "[color=#8a8f99]" + outl + "[/color]"
+			# Each command's result starts with a little space, so turns don't run together.
+			outl = "\n[color=#8a8f99]" + outl + "[/color]"
+		else:
+			outl = _bold_lead(outl)
 		lines.append(outl)
 	return "\n".join(lines)
+
+var _lead_re: RegEx
+
+## Bold the words a line hangs on ("Present:", "Nearby, at the well:", "You spend the morning"),
+## so the eye finds where each piece starts.
+func _bold_lead(t: String) -> String:
+	if _lead_re == null:
+		_lead_re = RegEx.new()
+		_lead_re.compile("^(\\s*)(Present:|Nearby[^:\\[]{0,40}:|Actions:|Around town [a-z ]+:|You (?:spend|keep|search|draw|overhear|step|leave|promise|chalk|sleep|stand|take|lay|excuse|break|go over|think|find)\\b|Dawn breaks|During your vigil|Near the body|Votes to execute [^:]*:|The meeting closes)")
+	var m = _lead_re.search(t)
+	if m == null:
+		return t
+	return t.substr(0, m.get_start(2)) + "[b]" + m.get_string(2) + "[/b]" + t.substr(m.get_end(2))
 
 func _print(s: String) -> void:
 	out.append_text(_colourize(s) + "\n")
@@ -718,6 +733,7 @@ func _refresh_actions() -> void:
 			action_title.text = "The case is closed."
 			_button(actions, "Show the grimoire", func(): _run("grimoire"))
 			_button(actions, "Show every lie", func(): _run("grimoire lies"))
+			_button(actions, "Show who told whom what", func(): _run("grimoire talk"))
 			_button(actions, "New case", _new_case_button)
 
 func _actions_day(w) -> void:
@@ -919,12 +935,12 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 	t.add_theme_color_override("font_color", Color(0.95, 0.88, 0.6))
 	v.add_child(t)
 	var f = LineEdit.new()
-	f.placeholder_text = "filter: person, place, kind, d2, n1, text"
+	f.placeholder_text = "filter: person, place, kind, d2, n1, text; join with + (greta+night)"
 	v.add_child(f)
 	var lst = CardList.new()
 	lst.select_mode = Tree.SELECT_ROW
 	lst.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	lst.add_theme_font_size_override("font_size", 12)
+	lst.readable(14)
 	v.add_child(lst)
 	var fill = func():
 		lst.reset()
@@ -932,7 +948,7 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 		cs.reverse()  # newest first
 		for c in cs:
 			if keep.call(c):
-				lst.add("#%-3d %s" % [c["n"], c["text"]], c["n"], c["text"], Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else null)
+				lst.add(CardList.line_for(c), c["n"], c["text"], Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else CardList.tint_for(c))
 	fill.call()
 	f.text_changed.connect(func(_x): fill.call())
 	var mode: OptionButton = null
@@ -991,10 +1007,10 @@ func _refresh_side() -> void:
 			col = Color(0.45, 0.45, 0.5)
 		elif c["kind"] == "deduction":
 			col = Color(0.95, 0.8, 0.45)
-		elif c.get("source", "") != "player" and c.get("source", "") != "evidence":
-			col = Color(0.72, 0.72, 0.78)
+		else:
+			col = CardList.tint_for(c)
 		var dbg = g.debug_card_text(c) if g.debug_overlay else ""
-		side_list.add("#%-3d %s%s" % [c["n"], c["text"], ("\n      ⟨" + dbg + "⟩") if dbg != "" else ""], c["n"], c["text"], col)
+		side_list.add("%s%s" % [CardList.line_for(c), ("\n      ⟨" + dbg + "⟩") if dbg != "" else ""], c["n"], c["text"], col)
 	_refresh_profile()
 
 func _refresh_profile() -> void:

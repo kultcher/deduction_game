@@ -100,7 +100,7 @@ func build(font: Font) -> void:
 	view_opt.tooltip_text = "Which cards to show: where people were; what people said; the town's official business. ('All cards' lists everything; the board then shows Places.)"
 	top.add_child(view_opt)
 	filter_edit = LineEdit.new()
-	filter_edit.placeholder_text = "filter: text, d2, n1 ..."
+	filter_edit.placeholder_text = "filter: text, d2, n1, a+b ..."
 	filter_edit.custom_minimum_size = Vector2(170, 0)
 	filter_edit.text_changed.connect(func(t):
 		state.text = t
@@ -157,8 +157,7 @@ func build(font: Font) -> void:
 		var sel: Array = card_list.selected_metas()
 		if not sel.is_empty():
 			state.select_card(sel[0]))
-	card_list.add_theme_font_override("font", mono)
-	card_list.add_theme_font_size_override("font_size", 14)
+	card_list.readable(15)
 	lib.add_child(card_list)
 	var lb = HFlowContainer.new()
 	lib.add_child(lb)
@@ -166,6 +165,8 @@ func build(font: Font) -> void:
 	_btn(lb, "Hide", func(): _hide_selected(true))
 	_btn(lb, "Unhide", func(): _hide_selected(false))
 	_btn(lb, "Delete deduction", _delete_selected)
+	_btn(lb, "What can this be part of?", _hint_selected)
+	_btn(lb, "Find links", _find_links)
 
 	var ws_scroll = ScrollContainer.new()
 	ws_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -495,7 +496,7 @@ func _refresh_cards() -> void:
 		if state.view != "all" and c["kind"] != "deduction" and first_evidence:
 			first_evidence = false
 			card_list.add_header("── %s ──" % CardModel.VIEW_NAMES[state.view], UITheme.color("muted"))
-		var line = "#%-3d %-10s %s%s" % [c["n"], c["kind"], "[hidden] " if c.get("hidden", false) else "", c["text"]]
+		var line = ("[hidden] " if c.get("hidden", false) else "") + CardList.line_for(c)
 		if g.debug_overlay:
 			var dbg: String = g.debug_card_text(c)
 			if dbg != "":
@@ -505,8 +506,8 @@ func _refresh_cards() -> void:
 			col = Color(0.45, 0.45, 0.5)
 		elif c["kind"] == "deduction":
 			col = Color(0.95, 0.8, 0.45)
-		elif c.get("source", "") != "player" and c.get("source", "") != "evidence":
-			col = Color(0.72, 0.72, 0.78)
+		else:
+			col = CardList.tint_for(c)
 		card_list.add(line, c["n"], "%s\n[%s, %s%s]" % [c["text"], c["kind"], c.get("class", "?"),
 			"" if c.get("source", "") == "player" else ", heard"], col)
 		if c["n"] in keep:
@@ -638,13 +639,26 @@ func _fill_status() -> void:
 		b_status.add_item("misled or lying (something doesn't add up)")
 		b_status.set_item_metadata(0, "conflict")
 		return
+	var add = func(label: String, meta: String):
+		b_status.add_item(label)
+		b_status.set_item_metadata(b_status.item_count - 1, meta)
 	for pair in Argue.BUILDER[verb]:
-		b_status.add_item(pair[0])
-		b_status.set_item_metadata(b_status.item_count - 1, pair[1])
+		add.call(pair[0], pair[1])
+	if verb == "is":
+		b_status.add_separator("Misread")
+		for pair in Argue.MISREAD:
+			add.call(pair[0], pair[1])
 	if verb != "should be":
+		b_status.add_separator("Good roles")
 		for r in C.GOOD_ROLES:
-			b_status.add_item("the " + C.role_name(r))
-			b_status.set_item_metadata(b_status.item_count - 1, r)
+			add.call("the " + C.role_name(r), r)
+		b_status.add_separator("Evil roles")
+		for r in C.MINION_ROLES:
+			add.call("the " + C.role_name(r), r)
+	if verb == "is":
+		b_status.add_separator("Secrets")
+		for pair in Argue.SECRET_CONCLUSIONS:
+			add.call(pair[0], pair[1])
 
 func _fill_nights() -> void:
 	var keep = _meta_int(b_night)
@@ -721,6 +735,8 @@ func _use_option(o: Dictionary) -> void:
 	match c["type"]:
 		"role":
 			status = c["role"]
+		"secret_mod":
+			status = c.get("mod", "")
 		"notrole":
 			verb = "is not"
 			status = c["role"]
@@ -765,6 +781,35 @@ func _on_file() -> void:
 	card_list.deselect_all()
 	refresh()
 	changed.emit()
+
+## Teaching helper: what the selected card could be linked with, and what that would show.
+func _hint_selected() -> void:
+	var sel: Array = card_list.selected_metas().filter(func(x): return x is int and x > 0)
+	if sel.is_empty():
+		result_text.text = "Select a card to see what it could be linked with."
+		return
+	var c: Dictionary = g.board[sel[0] - 1]
+	var hs: Array = Argue.hints_for(c)
+	if hs.is_empty():
+		result_text.text = "Card #%d doesn't take part in any pattern the town recognises (yet)." % sel[0]
+		return
+	var lines = PackedStringArray(["Card #%d could be linked with:" % sel[0]])
+	for h in hs:
+		lines.append("  • %s → %s" % [h[0], h[1]])
+	result_text.text = "\n".join(lines)
+
+## Board hint: cards already on your board that a pattern would connect.
+func _find_links() -> void:
+	var found: Array = g.find_links()
+	if found.is_empty():
+		result_text.text = "Nothing among your recent cards links up yet."
+		return
+	var lines = PackedStringArray(["These cards connect (put them in the working set to see how):"])
+	for f in found.slice(0, 8):
+		lines.append("  • #%s" % ", #".join(PackedStringArray(f["cards"].map(func(x): return str(x)))))
+	if found.size() > 8:
+		lines.append("  …and %d more." % (found.size() - 8))
+	result_text.text = "\n".join(lines)
 
 func _hide_selected(on: bool) -> void:
 	var sel = card_list.selected_metas()

@@ -725,7 +725,9 @@ func execute(id: String, res: Dictionary) -> void:
 	var alive_before = living().size()
 	# The Martyr dies in the place of a good soul they chose.
 	var mart = living_with_role("martyr")
-	if mart != null and mart != n and mart.martyr_target == id and not n.is_evil() and not mart.gift_broken():
+	# The Martyr's gift reads the nominee like any other: a Marked soul may read as evil.
+	var reads_evil = mart != null and mart.martyr_target == id and registers_evil(n)
+	if mart != null and mart != n and mart.martyr_target == id and not reads_evil and not mart.gift_broken():
 		_martyr_dies(mart, n, res)
 		return
 	n.alive = false
@@ -738,10 +740,13 @@ func execute(id: String, res: Dictionary) -> void:
 	dlog.add("execution", "world", id, {"role": n.role, "align": n.alignment},
 		"%s (%s) executed by town vote." % [n.name, n.role])
 	_grief(n, res)
-	if mart != null and mart.martyr_target == id and n.is_evil() and not mart.gift_broken():
+	if mart != null and mart.martyr_target == id and reads_evil and not mart.gift_broken():
 		# Hanged, and the Martyr still stands: their chosen was evil.
-		_add_info(mart, {"data": {"target": id, "evil": true}, "true": true,
-			"text": "%s was hanged and I still stand: %s was evil" % [n.name, n.name]})
+		var info = {"data": {"target": id, "evil": true}, "true": n.is_evil(),
+			"text": "%s was hanged and I still stand: %s was evil" % [n.name, n.name]}
+		if not n.is_evil():
+			info["why"] = "Marked reads as evil"
+		_add_info(mart, info)
 	if n.role == "revenant":
 		_revenant_curse(n, res)
 	if id == demon_id:

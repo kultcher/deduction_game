@@ -1141,6 +1141,14 @@ static func _target_tier(w, n) -> int:
 	return t
 
 ## The unified gift/info question. Tiers: 1 deny/refuse, 2 hint, 3 gift, 4 gift + readings.
+## Fear as a reason for silence ("I'll be dead by morning"): more likely as the bodies pile
+## up and for the skittish. Fixed per person and day (no game RNG), and the same chance for
+## evil hiding behind a bluffed gift as for good, so it isn't a tell.
+static func _afraid(w, n) -> bool:
+	var dead = w.npcs.filter(func(x): return not x.alive and x.death_cause == "demon").size()
+	var p = 0.15 + 0.1 * dead + 0.25 * (1.0 - trait_of(n, "composure"))
+	return float(absi(hash(n.id + ":" + str(w.day))) % 1000) / 1000.0 < p
+
 static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
@@ -1166,6 +1174,10 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 			lines.append(say(n, "A gift? No, nothing like that. I'm only the %s." % n.occupation))
 			facts.append({"kind": "claim", "subject": [n.id], "role": "none", "source": n.id, "private": true,
 				"text": "%s told you privately they have no gift." % n.name})
+		elif _afraid(w, n):
+			lines.append(say(n, "If I say what I am, I'll be dead by morning. Ask me again when it's safer."))
+			facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "fear": true,
+				"text": "%s won't say whether they have a gift: afraid it would make them the demon's next mark." % n.name})
 		else:
 			lines.append(say(n, "Whether I have a gift is my own business."))
 			facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "private": true,
@@ -1190,6 +1202,12 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 		w.dlog.think(n.id, "lie", "Evil cover: tells the player they are the %s." % role, {"true_role": n.role})
 	if first_time:
 		lines.append(say(n, "I'll trust you with this. I'm the %s." % C.role_name(role)))
+		if not evil and C.ROLES[role].get("night_walk", false) and not n.lied_nights.is_empty():
+			# The lie they told you about that night, owned now it has a reason.
+			var nights: Array = n.lied_nights.map(func(x): return C.night_name(x))
+			lines.append(say(n, "So yes: I was out %s, whatever I told you. I wasn't ready to tell you why." % " and ".join(PackedStringArray(nights.map(func(x): return ("on " + x) if x.begins_with("night") else x)))))
+			w.dlog.think(n.id, "admit", "Owns the whereabouts lie(s) now the gift is out: nights %s." % str(n.lied_nights))
+			n.lied_nights.clear()
 	else:
 		lines.append(say(n, "As you know, I'm the %s." % C.role_name(role)))
 	facts.append({"kind": "claim", "subject": [n.id], "role": role, "source": n.id, "private": not n.claim_public,
@@ -1235,10 +1253,12 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 		if withholding:
 			lines.append(say(n, "I've told you what I knew before. The rest I'll keep, for now."))
 			w.dlog.think(n.id, "withhold", "Trust fell; withholding %d newer reading(s) from the player." % held)
+		elif _afraid(w, n):
+			lines.append(say(n, "If word gets round what my gift has shown me, I'll be dead by morning. Not yet."))
 		else:
 			lines.append(say(n, "What it's shown me, I'll keep to myself for now."))
 		# One card per person and gift (the same refusal again adds nothing new).
-		facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "withheld": true, "role": role,
+		facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "withheld": true, "role": role, "fear": _afraid(w, n),
 			"text": "%s claims the %s but won't share what it has shown them." % [n.name, C.role_name(role)]})
 	elif n.info_log.is_empty():
 		lines.append(say(n, "It hasn't shown me anything yet."))
@@ -1376,6 +1396,8 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				"privacy_stonewalls": -(trait_of(n, "privacy") - 0.5) * 0.6}, "Hiding (%s): lie outright rather than stonewall?" % hiding)
 			if bold:
 				w.dlog.think(n.id, "lie", "Hiding (%s): was on %s, claims to have been home." % [hiding, block], {"lie": true})
+				if not n.is_evil() and not (nd in n.lied_nights):
+					n.lied_nights.append(nd)
 				lines.append(say(n, "Home. Where else would I be?"))
 				facts.append(_alibi_home(n, nd))
 				vantage = n.home_block
@@ -1653,7 +1675,8 @@ static func card_strength(w, card: Dictionary, suspect) -> float:
 		"accusation", "opinion":
 			return 0.4
 		"refusal":
-			return 0.35
+			# Fear is a better reason than none: it softens, but doesn't clear, the silence.
+			return 0.25 if card.get("fear", false) else 0.35
 		"secret":
 			return 0.5
 		"claim":

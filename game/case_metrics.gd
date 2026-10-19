@@ -168,7 +168,21 @@ static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = [])
 		"executions_total": executions.size(), "executions_good": wrongful, "executions_evil": executions.size() - wrongful,
 		"wrongful_execution_fraction": float(wrongful) / executions.size() if not executions.is_empty() else null,
 		"wrongful_backed": backed_wrongful, "wrongful_opposed": opposed_wrongful, "wrongful_mixed": mixed_wrongful,
-		"executions": executions}
+		"executions": executions, "exchanges": exchange_stats(w)}
+
+## How much the town talked among itself: shares by kind, lies among them, evil conferences.
+static func exchange_stats(w) -> Dictionary:
+	var out = {"shares": 0, "lies": 0, "evil_conferences": 0, "by_kind": {}}
+	for e in w.dlog.entries:
+		if e["type"] == "npc_share":
+			out["shares"] += 1
+			if e["data"].get("lie", false):
+				out["lies"] += 1
+			var k: String = e["data"].get("kind", "?")
+			out["by_kind"][k] = out["by_kind"].get(k, 0) + 1
+		elif e["type"] == "evil_share":
+			out["evil_conferences"] += 1
+	return out
 
 static func aggregate(cases: Array) -> Dictionary:
 	var complete: Array = cases.filter(func(c): return c.get("complete", false))

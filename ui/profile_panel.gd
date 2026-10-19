@@ -15,6 +15,7 @@ const CardModel = preload("res://game/card_model.gd")
 const UITheme = preload("res://ui/theme.gd")
 
 const TABS = ["About", "Their claims", "About them"]
+const TraitBars = preload("res://ui/trait_bars.gd")
 
 var g
 var state
@@ -30,6 +31,7 @@ var secret_opt: OptionButton
 var secret_conf_opt: OptionButton
 var tab_buttons: Array = []
 var body: RichTextLabel
+var bars
 var tab = 0
 var _setting = false
 var compact = false   # the town screen's narrower column: smaller portrait
@@ -162,6 +164,11 @@ func build() -> void:
 	page.add_theme_stylebox_override("panel", UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 1, 4, 10))
 	page.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(page)
+	var pv = VBoxContainer.new()
+	pv.add_theme_constant_override("separation", 6)
+	page.add_child(pv)
+	bars = TraitBars.new()
+	pv.add_child(bars)
 	body = RichTextLabel.new()
 	body.bbcode_enabled = true
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -175,7 +182,7 @@ func build() -> void:
 			if state != null:
 				state.select_card(n)
 			card_clicked.emit(n))
-	page.add_child(body)
+	pv.add_child(body)
 
 func setup(game, st) -> void:
 	g = game
@@ -296,6 +303,8 @@ func refresh() -> void:
 		tab_buttons[i].set_pressed_no_signal(i == tab)
 	_setting = false
 	body.text = _page(id, p)
+	bars.visible = tab == 0
+	bars.show_traits(p["traits"])
 
 func _ink(hex_from: Color) -> String:
 	return UITheme.ink_of(hex_from).to_html(false)
@@ -311,10 +320,6 @@ func _page(id: String, p: Dictionary) -> String:
 				lines.append("Off work, often at %s." % p["haunts"])
 			else:
 				lines.append("Where they go off work: nobody's told you yet. Ask around.")
-			var tl = PackedStringArray()
-			for t in C.TRAITS:
-				tl.append("%s [b]%s[/b]" % [t.capitalize(), p["traits"].get(t, "?")])
-			lines.append("Traits: " + ", ".join(tl))
 			for x in p["named"]:
 				lines.append("Readings say: " + x)
 			if g.debug_overlay:

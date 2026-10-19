@@ -288,6 +288,7 @@ func _draw() -> void:
 		_sign(font, C.block_name(b).trim_prefix("the "), Vector2(R.get_center().x, R.position.y + _fs(16)), _fs(15), b == selected_block)
 	if night:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.1, 0.25))
+	_draw_selection_marks()
 	# People.
 	_draw_people(font)
 	# Zoomed in: dim everything outside the block in view.
@@ -308,6 +309,21 @@ func _draw() -> void:
 		var tr = Rect2(Vector2(8, size.y - 32), Vector2(minf(size.x - 16, tw), 26))
 		draw_style_box(UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 1, 3, 4), tr)
 		draw_string(font, tr.position + Vector2(9, 18), t2, HORIZONTAL_ALIGNMENT_LEFT, tr.size.x - 12, 16, UITheme.color("ink"))
+
+## The selected person's places: home and workplace in their colour, the haunts you've been
+## told about in a fainter version of it.
+func _draw_selection_marks() -> void:
+	if selected_npc == "" or not g.w.by_id.has(selected_npc):
+		return
+	var n = g.w.by_id[selected_npc]
+	var col: Color = C.npc_color(n.id)
+	var w2 = maxf(2.0, 3.0 * _scale)
+	draw_rect(_r(_home_rect(n)).grow(4), col, false, w2)
+	if C.LOCATIONS.has(n.work):
+		draw_rect(_r(_loc_rect(n.work)).grow(3), col, false, w2)
+	for l in g.known_haunts.get(n.id, []):
+		if C.LOCATIONS.has(l):
+			draw_rect(_r(_loc_rect(l)).grow(3), Color(col.r, col.g, col.b, 0.45), false, maxf(1.5, 2.0 * _scale))
 
 ## Where each living person is drawn, following what the player can actually see: a paper
 ## standee of them at their building, in the street, or at their home.
@@ -362,7 +378,8 @@ func _draw_people(font) -> void:
 			if n.busy_with != "":
 				draw_arc(rr.position + Vector2(rr.size.x * 0.85, rr.size.y * 0.15), hh * 0.12, 0, TAU, 12, Color(1, 1, 1, 0.9), 2.0)
 			if n.id == selected_npc:
-				draw_rect(rr.grow(2), Color(1, 1, 1, 0.9), false, 2.0)
+				draw_rect(rr.grow(3), C.npc_color(n.id), false, 3.0)
+				draw_rect(rr.grow(1), Color(1, 1, 1, 0.9), false, 1.5)
 			if g.talk_with != null and g.talk_with == n:
 				draw_rect(rr.grow(4), UITheme.color("accent"), false, 3.0)
 			if zoom_block != "":

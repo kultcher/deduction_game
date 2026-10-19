@@ -22,6 +22,35 @@ func _init() -> void:
 	multi_selected.connect(func(_item, _col, _sel): selection_changed.emit())
 	item_selected.connect(func(): selection_changed.emit())
 
+const C = preload("res://sim/content.gd")
+const UITheme = preload("res://ui/theme.gd")
+
+const KIND_LABELS = {"info": "Reading", "deduction": "Theory", "alibi": "Alibi", "home": "Home", "haunt": "Haunt",
+	"conversation": "Talk", "accusation": "Accusation", "case": "Case"}
+
+## Easier to read than the raw card: a proportional font, more space between rows.
+func readable(size: int = 15) -> void:
+	add_theme_font_override("font", UITheme.serif())
+	add_theme_font_size_override("font_size", size)
+	add_theme_constant_override("v_separation", 7)
+	add_theme_constant_override("item_margin", 6)
+
+## "#12  Sighting · Nisha saw Hollis on the Square" (the card's kind as a word, then its text).
+static func line_for(c: Dictionary) -> String:
+	var k: String = c.get("kind", "")
+	var label: String = KIND_LABELS.get(k, k.capitalize())
+	return "#%d  %s · %s" % [c["n"], label, c.get("text", "")]
+
+## Rows take a light tint of the person they're about, so a list scans by person.
+static func tint_for(c: Dictionary):
+	var subj: Array = c.get("subject", [])
+	if subj.is_empty():
+		return null
+	for n in C.CAST:
+		if n["id"] == subj[0]:
+			return C.npc_color(subj[0]).lerp(Color(0.85, 0.85, 0.88), 0.55)
+	return null
+
 func reset() -> void:
 	clear()
 	_items = []

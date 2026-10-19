@@ -86,10 +86,13 @@ func in_view(card: Dictionary) -> bool:
 	return card.get("view", CardModel.view_of(card)) == view
 
 ## Does the card involve this person, in the sense the active view means? Statements: what
-## was said about them; Places: where they were; otherwise any involvement.
+## was said about them and what they said (or passed on); Places: where they were;
+## otherwise any involvement.
 func _involves(g, card: Dictionary, id: String) -> bool:
 	match view:
-		"statements", "process":
+		"statements":
+			return id in CardModel.about(card) or card.get("source", "") == id or card.get("via", "") == id
+		"process":
 			return id in CardModel.about(card) or id in card.get("yes", [])
 		"places":
 			for m in CardModel.place_markers(card):
@@ -142,7 +145,7 @@ func chips(g) -> Array:
 		out.append({"label": "Kind: %s" % k, "kind": "kinds", "key": k})
 	for id in people:
 		var nm: String = g.w.by_id[id].name if g.w.by_id.has(id) else id
-		out.append({"label": ("About: %s" if view in ["statements", "process"] else "Person: %s") % nm, "kind": "people", "key": id})
+		out.append({"label": ("By or about: %s" if view == "statements" else "About: %s" if view == "process" else "Person: %s") % nm, "kind": "people", "key": id})
 	for p in places:
 		out.append({"label": "Place: %s" % (C.block_name(p) if C.BLOCKS.has(p) else C.loc_name(p)), "kind": "places", "key": p})
 	if not cell.is_empty():

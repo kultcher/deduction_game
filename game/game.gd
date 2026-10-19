@@ -369,7 +369,8 @@ func _dispatch(text: String) -> void:
 				if not w.game_over:
 					prediction_spoiled = true
 					w.dlog.add("prediction_spoiled", "player", "", {}, "Opened the hidden grimoire before the case ended; identification credit disabled.")
-				_screen(_lies() if rest.strip_edges().to_lower() == "lies" else _grimoire())
+				var sub: String = rest.strip_edges().to_lower()
+				_screen(_lies() if sub == "lies" else (_exchanges() if sub in ["talk", "shares", "exchanges"] else _grimoire()))
 			else:
 				_err("The grimoire is sealed until the case ends.")
 			return
@@ -972,6 +973,23 @@ func _maybe_tell_haunts(n, t, r: Dictionary) -> void:
 		"text": "%s says %s often goes to %s when not working." % [n.name, t.name, " and ".join(PackedStringArray(names))]})
 	w.dlog.add("player_learns_haunts", n.id, t.id, {"locs": tell})
 
+## Board hint: pairs of cards (among the most recent) that a template would recognise,
+## so you know a link is there to be made. Doesn't say what it shows.
+func find_links(limit: int = 40) -> Array:
+	var pool: Array = board.filter(func(c): return not c.get("deleted", false) and not (c["kind"] in ["home", "haunt"]))
+	pool = pool.slice(maxi(0, pool.size() - limit))
+	var found: Array = []
+	var seen = {}
+	for i in range(pool.size()):
+		for j in range(i + 1, pool.size()):
+			var res: Dictionary = Argue.check(w, [pool[i], pool[j]])
+			for m in res["matches"]:
+				var key = str(m["cards"])
+				if not seen.has(key):
+					seen[key] = true
+					found.append({"cards": m["cards"], "relation": m.get("relation", "contradiction")})
+	return found
+
 ## Haunts you've been told about, as place names.
 func known_haunt_names(id: String) -> String:
 	return " or ".join(PackedStringArray(known_haunts.get(id, []).map(func(l): return w.loc_name(l))))
@@ -1521,7 +1539,27 @@ func _grimoire() -> String:
 		out.append("  %-12s %-11s %-5s %s" % [n.name, C.role_name(n.role), n.alignment.to_upper(), "; ".join(extra)])
 		out.append("  %-12s traits: %s; trust in you %.2f" % ["", ", ".join(traits), n.trust])
 	out.append("Demon temperament: %s." % w.evil_plan["mood"])
-	out.append("Type 'grimoire lies' to see every lie and false reading with its reason.")
+	out.append("Type 'grimoire lies' to see every lie and false reading with its reason, or 'grimoire talk' for who told whom what.")
+	return "\n".join(out)
+
+## Hindsight: every piece of information NPCs passed to each other, and the evil team's
+## private conferences, day by day.
+func _exchanges() -> String:
+	var out = PackedStringArray()
+	out.append("WHO TOLD WHOM")
+	var day = -1
+	var count = 0
+	for e in w.dlog.entries:
+		if not (e["type"] in ["npc_share", "evil_share"]):
+			continue
+		if e["day"] != day:
+			day = e["day"]
+			out.append("Day %d" % day)
+		var lie = e["data"].get("lie", false)
+		out.append("  %-9s %s%s" % [e["phase"], e["reason"].replace("  [LIE]", ""), "   [LIE]" if lie else ""])
+		count += 1
+	if count == 0:
+		out.append("  (Nobody passed anything on.)")
 	return "\n".join(out)
 
 ## Hindsight reveal: every lie told and every false reading, with its reason.
@@ -1549,20 +1587,39 @@ func _write_logs() -> String:
 
 ## Filter the board. Accepts card kind, evidence class, person, block, location, day
 ## ("d2") or night ("n1"), or any text in the card.
+## Filter the board by a text query. Terms joined with "+" must all match ("greta+night"):
+## a person (by, about or via), a block or place, a kind or class, d2 / n1 (a day or a
+## night), "night" / "day", or any text.
 func filter_cards(filter: String) -> Array:
 	var f = filter.strip_edges().to_lower()
 	var base: Array = board.filter(func(c): return not c.get("deleted", false) and (show_hidden or not c.get("hidden", false)))
 	if f == "":
 		return base
+	var terms: Array = Array(f.split("+", false)).map(func(x): return x.strip_edges()).filter(func(x): return x != "")
+	var out: Array = base
+	for t in terms:
+		out = _filter_term(out, t)
+	return out
+
+func _filter_term(cards: Array, f: String) -> Array:
+	# "-sighting" (or any term with a leading minus) leaves those cards out.
+	if f.begins_with("-") and f.length() > 1:
+		var drop: Array = _filter_term(cards, f.substr(1)).map(func(c): return c["n"])
+		return cards.filter(func(c): return not (c["n"] in drop))
 	var blk = find_block(f)
 	var lc = find_location(f) if blk == "" else ""
 	var person = find_npc(f, true)
 	var out: Array = []
-	for c in base:
+	for c in cards:
 		var ok = false
+		var is_night = c.get("phase", -1) == C.NIGHT or c["kind"] in ["vigil", "alibi"] or (c.get("when", {}).get("phase", -1) == C.NIGHT)
 		if c["kind"] == f or c.get("class", "") == f:
 			ok = true
-		elif person != null and (person.id in c.get("subject", []) or c.get("source", "") == person.id or c.get("via", "") == person.id):
+		elif f in ["night", "nights"]:
+			ok = is_night
+		elif f in ["day", "daytime"]:
+			ok = not is_night and c.get("phase", -1) >= 0
+		elif person != null and (person.id in c.get("subject", []) or c.get("source", "") == person.id or c.get("via", "") == person.id or person.id in CardModel.about(c)):
 			ok = true
 		elif blk != "" and (c.get("block", "") == blk or w.loc_block(c.get("loc", "")) == blk):
 			ok = true
@@ -1570,7 +1627,6 @@ func filter_cards(filter: String) -> Array:
 			ok = true
 		elif f.length() >= 2 and f[0] in ["d", "n"] and f.substr(1).is_valid_int():
 			var num = f.substr(1).to_int()
-			var is_night = c.get("phase", -1) == C.NIGHT or c["kind"] in ["vigil", "alibi"]
 			ok = c.get("day", -99) == num and ((f[0] == "n") == is_night)
 		elif f in c["text"].to_lower():
 			ok = true
@@ -1662,7 +1718,7 @@ func file_deduction(conclusion: Dictionary, supports: Array, match_info: Diction
 ## Parse "conclude <name> <is | is not | should be> <status> [night N] [about #N] [because <#> ...]".
 ## Status: good, evil, the demon, a gift, lying, misled, misled or lying, protected, spared.
 func _parse_conclusion(rest: String) -> Dictionary:
-	var usage = "Usage: conclude <name> <is | is not | should be> <status> [night N] [because <card#> ...]. Status: good, evil, the demon, a gift (seer...), lying, misled, misled or lying; should be protected / spared."
+	var usage = "Usage: conclude <name> <is | is not | should be> <status> [night N] [because <card#> ...]. Status: good, evil, the demon, a gift (seer, poisoner...), lying, misled, misled or lying, suspicious, hiding a secret, Marked, the Seer's red herring, Delusional, a Secret Lover, a Sleepwalker; should be protected / spared."
 	var text = " " + rest.to_lower().strip_edges() + " "
 	var supports: Array = []
 	var bi = text.find(" because ")
@@ -1724,8 +1780,17 @@ func _parse_conclusion(rest: String) -> Dictionary:
 	if status in ["spared", "spared from execution"]:
 		status = "spared from execution"
 	var role = find_role(status)
-	if role != "" and role in C.GOOD_ROLES:
+	if role != "" and role != "demon":
 		status = role
+	match status:
+		"a secret", "hiding a secret", "a secret (innocent)":
+			status = "hiding a secret"
+		"red herring", "the red herring", "the seer's red herring", "a red herring":
+			status = "the Seer's red herring"
+		"a lover", "a secret lover", "lover", "lovers":
+			status = "a Secret Lover"
+		"a sleepwalker", "sleepwalker":
+			status = "a Sleepwalker"
 	var c = Argue.from_builder(who.id, verb, status, night, card)
 	if c.is_empty():
 		return {"error": "'%s %s' isn't something you can conclude. %s" % [verb, status, usage]}

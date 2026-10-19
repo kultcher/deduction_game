@@ -96,6 +96,7 @@ var hearsay: Array = []      # facts heard from other NPCs: {kind, about, from (
 var known_claims = {}        # npc id -> {role, readings: [entries], via}
 var known_secrets = {}       # owner id -> who told them (owner id if confided directly)
 var player_cases: Array = [] # cards the player used to make a case to them
+var lied_nights: Array = []  # nights they told you they were home when they weren't (good NPCs hiding a gift or secret)
 var told_to = {}             # "listener|key" -> true: what they've already told whom
 var dialogue_memory = {}     # presentation only: delivered statements / variant counts per audience
 var secret_spread_by_npc = false   # someone other than the player spread their secret
