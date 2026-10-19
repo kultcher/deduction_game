@@ -495,7 +495,7 @@ func _day_command(verb: String, rest: String) -> void:
 			if not n.remarks.is_empty() and not n.is_evil():
 				var said: String = n.remarks.pop_front()
 				w.dlog.think(n.id, "reconsider", "Tells the player they've come round to %s." % said)
-				_lines([Mind.say(n, "I didn't put much stock in %s. After all that's happened since... perhaps I should have." % said)])
+				_lines([Mind.reconsideration_line(n, said)])
 			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask today | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | bye)" % n.name)
 		"search", "s":
 			if not moved:

@@ -1,0 +1,47 @@
+## Authored presentation only. No roles, secrets, alignment or decision rules belong here.
+extends RefCounted
+
+const VOICES = {
+	"agnes": {
+		"description": "Warm, socially attentive; invites confidence without claiming certainty.",
+		"report": ["Here, let me put it plainly.", "Here's what I can tell you."],
+		"doubted": ["All right, let's talk it through.", "You want an explanation. Fair enough."],
+		"friend": ["I'm fond of {subject}. I won't pretend that doesn't matter to me.", "{subject} matters to me. Bear that in mind when you weigh my words."],
+		"conceal": ["You'll have to leave me a little privacy.", "We all need a corner of our own, don't we?"],
+		"revise": ["I've been turning your words over.", "I'm not too proud to listen again."],
+		"repeat": ["It's the same account I gave you.", "We have spoken about this already."],
+		"guarded": ["Let's keep to the question.", "I'll say this much."],
+		"pressure": ["One question at a time, please.", "Give me a moment to answer."],
+		"private": ["Please keep this between us.", "I'm telling you privately."],
+		"whereabouts": ["You'll have to leave me a little privacy. I'm keeping my whereabouts to myself.", "Where I spend my nights is something I'd rather keep to myself."],
+		"reconsideration": ["I've been thinking about {argument}. I brushed it aside before. Perhaps I shouldn't have.", "You may have had a point about {argument}. I'm giving it more thought."],
+	},
+	"bart": {
+		"description": "Gruff and economical; firm delivery without extra certainty.",
+		"report": ["Right.", "Listen."],
+		"doubted": ["Then hear me out.", "Ask straight. I'll answer."],
+		"friend": ["I'm close to {subject}. Take that into account.", "{subject} matters to me. There it is."],
+		"conceal": ["Enough prying.", "Leave it."],
+		"revise": ["I've thought again.", "Might have been too quick."],
+		"repeat": ["Same answer.", "I've told you."],
+		"guarded": ["Keep to the point.", "This much, then."],
+		"pressure": ["Let me finish.", "Give me a breath."],
+		"private": ["Between us.", "Keep it quiet."],
+		"whereabouts": ["My whereabouts are my business. Leave it.", "Where was I? Not saying."],
+		"reconsideration": ["About {argument}: I dismissed that. Might deserve another look.", "Might have been too quick about {argument}. I'm thinking again."],
+	},
+	"constance": {
+		"description": "Formal and exacting; distinguishes an account from its interpretation.",
+		"report": ["Let us be precise.", "Here is my account."],
+		"doubted": ["Then we should examine the matter properly.", "An objection deserves an answer."],
+		"friend": ["I am close to {subject}; you should allow for my partiality.", "My attachment to {subject} is relevant to how you judge my opinion."],
+		"conceal": ["There are limits to this inquiry.", "I am entitled to some discretion."],
+		"revise": ["I ought to give that argument another hearing.", "I have reconsidered my earlier assessment."],
+		"repeat": ["My account remains the same.", "As I have already stated:"],
+		"guarded": ["I shall confine myself to the question.", "I will answer that much."],
+		"pressure": ["Allow me to answer in order.", "A moment, if you please."],
+		"private": ["This is a private confidence.", "I ask that you treat this as confidential."],
+		"whereabouts": ["I do not intend to account for my whereabouts.", "I shall keep my movements private."],
+		"reconsideration": ["I previously gave little weight to {argument}. I now consider it more plausible.", "My assessment of {argument} was too dismissive. It warrants further consideration."],
+	},
+}
