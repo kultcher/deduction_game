@@ -35,7 +35,23 @@ func _init() -> void:
 	var k12 = g.add_card({"kind": "claim", "subject": [a], "role": "veteran", "source": a, "text": "A claims veteran"})
 	var k13 = g.add_card({"kind": "death", "subject": [b], "block": "hill", "source": "player", "night": 2, "text": "B killed n2"})
 	_expect(g, [k1, k2], "out_vs_home")
-	_expect(g, [k1, k3], "two_places")
+	# Night sightings on two blocks: only a conflict when no route from home covers both.
+	w.by_id[a].home_block = "market"
+	_expect_none(g, [k1, k3], "fit together")   # Market -> Square -> Docks passes both
+	w.by_id[a].home_block = "hill"
+	_expect(g, [k1, k3], "off_route")           # from the Hill, Market and Docks lie on different ways
+	var ld = g.add_card({"kind": "sighting", "subject": [a], "block": "docks", "day": 3, "phase": C.NIGHT, "source": a, "duty_claim": "medium", "duty": "medium", "text": "A says out on docks n3 (visiting the dead)"})
+	var lh = g.add_card({"kind": "sighting", "subject": [a], "block": "market", "day": 3, "phase": C.NIGHT, "source": b, "text": "B saw A on market n3"})
+	var ls = g.add_card({"kind": "sighting", "subject": [a], "block": "square", "day": 3, "phase": C.NIGHT, "source": c, "text": "C saw A on square n3"})
+	_expect(g, [ld, lh], "off_route")           # the way Hill -> Docks doesn't touch the Market
+	_expect_none(g, [ld, ls], "fit together")   # ...but it does pass the Square
+	var ll = g.add_card({"kind": "sighting", "subject": [a], "block": "docks", "day": 4, "phase": C.NIGHT, "source": a, "duty_claim": "lamplighter", "duty": "lamplighter", "text": "A says out on docks n4 (the lamp route)"})
+	var lm = g.add_card({"kind": "sighting", "subject": [a], "block": "market", "day": 4, "phase": C.NIGHT, "source": b, "text": "B saw A on market n4"})
+	_expect_none(g, [ll, lm], "lamp route")
+	var hc = g.add_card({"kind": "home", "subject": [a], "block": "hill", "source": "town", "text": "A lives on the hill"})
+	_expect(g, [hc, k1, k3], "off_route")       # citing the home card alongside works too
+	var lk_r = g.link_cards([k1, k3])["result"]["matches"]
+	_check(not lk_r.is_empty() and lk_r[0]["explanations"].any(func(e): return "lamp route" in e["label"]), "off-route offers the lamp route as an explanation")
 	_expect_none(g, [k1, k4], "different nights")
 	_expect(g, [k5, k6], "double_claim")
 	_expect(g, [k7, k1], "watch_omission")

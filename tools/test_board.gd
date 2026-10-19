@@ -162,7 +162,8 @@ func _test_state_filters() -> void:
 	st.toggle(st.kinds, "claim")
 	_check(st.cell.is_empty(), "another filter replaces the cell selection")
 	print("all %d, statements %d, places %d" % [all_n, stmt_n, places_n])
-	_check(places_n < all_n or stmt_n < all_n, "a view shows a subset of the cards")
+	var total_n: int = g.board.filter(func(x): return not x.get("deleted", false) and x["kind"] != "deduction").size()
+	_check(places_n < total_n and stmt_n < total_n, "each view shows a subset of the cards (%d, %d of %d)" % [places_n, stmt_n, total_n])
 
 func _test_theme_fallback() -> void:
 	var p = UITheme.panel("popup")

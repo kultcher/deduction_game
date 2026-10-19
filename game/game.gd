@@ -136,6 +136,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	last_error = ""
 	w = World.new()
 	w.setup(seed_in, npc_count)
+	_home_cards()
 	state = "day"
 	moved = false
 	events = []
@@ -143,6 +144,15 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	_morning_report()
 	_maybe_approach()
 	return _finish_command("new_case", "")
+
+## Where everyone lives is common knowledge: one card per resident, so arguments about
+## where someone could have walked at night can cite it.
+func _home_cards() -> void:
+	var people: Array = w.npcs.duplicate()
+	people.sort_custom(func(a, b): return a.name < b.name)
+	for n in people:
+		add_card({"kind": "home", "subject": [n.id], "block": n.home_block, "source": "town", "class": "concrete",
+			"text": "%s lives on %s." % [n.name, C.block_name(n.home_block)]})
 
 func command(line: String) -> String:
 	var text = line.strip_edges()
@@ -1681,6 +1691,8 @@ func _route_present(n, rest: String) -> Dictionary:
 	if num < 1 or num > board.size() or board[num - 1].get("deleted", false):
 		return {"error": "No such card on your board."}
 	var card: Dictionary = board[num - 1]
+	if card["kind"] == "home":
+		return {"flat": "Everyone knows where %s lives; there's nothing to put to anyone there." % w.by_id[card["subject"][0]].name}
 	var dir = ""
 	var who = null
 	if p.size() >= 3 and p[1].to_lower() in ["for", "against", "about"]:

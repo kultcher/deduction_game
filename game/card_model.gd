@@ -23,9 +23,9 @@ const VIEW_NAMES = {"places": "Places & sightings", "statements": "Statements", 
 ## Kinds the filter menus offer in each view.
 const VIEW_KINDS = {
 	"places": ["sighting", "conversation", "vigil", "alibi", "trace", "dropped", "totem"],
-	"statements": ["info", "claim", "hint", "refusal", "opinion", "accusation", "secret", "case"],
+	"statements": ["home", "info", "claim", "hint", "refusal", "opinion", "accusation", "secret", "case"],
 	"process": ["vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell"],
-	"all": ["sighting", "conversation", "vigil", "alibi", "trace", "dropped", "totem", "info", "claim", "hint", "refusal",
+	"all": ["home", "sighting", "conversation", "vigil", "alibi", "trace", "dropped", "totem", "info", "claim", "hint", "refusal",
 		"opinion", "accusation", "secret", "vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell", "deduction"],
 }
 

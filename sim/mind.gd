@@ -1316,7 +1316,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		how = "street"
 		var duty = "Walking the lamp route, as I do every night." if n.claimed_role == "lamplighter" else "Sitting at the hearth of the dead, as my gift asks."
 		lines.append(say(n, duty))
-		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "duty_claim": n.role,
+		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "duty_claim": n.role, "duty": n.claimed_role,
 			"text": "%s says they were out on %s on night %d (%s)." % [n.name, C.block_name(block), nd, "the lamp route" if n.claimed_role == "lamplighter" else "visiting the dead"]})
 	elif n.claimed_role == "warden" and (n.claim_public or n.max_tier >= 3) and (n.role == "warden" or n.is_evil()):
 		# An open Warden says whose door they guarded; an evil one bluffing it invents a door
@@ -1595,6 +1595,8 @@ static func card_strength(w, card: Dictionary, suspect) -> float:
 			return 0.0
 		"trace":
 			return 0.7
+		"home":
+			return 0.0
 		"accusation", "opinion":
 			return 0.4
 		"refusal":

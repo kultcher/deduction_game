@@ -17,12 +17,6 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
   `evil` and *evil* to `good`, but `Argue.from_builder` matches on either column, so
   the stored value `good` hits the first row ("good" → `evil`). Match on the stored
   value only. [decided]
-- **Night "two places" is unsound.** Walkers are seen anywhere along their route, so
-  "X can't have been out on both the Market and the Docks on night 5" is false whenever
-  both blocks are on one route (Greta went Market → Square → Docks; Agnes and Fenwick
-  both agreed at 1.0). Remove the night version of `two_places`; keep the day version
-  (one phase, one place) and out-vs-home. Its route-aware replacement belongs to the
-  night-movement package. (Astra, 55774) [decided]
 - **Evil Medium bluff gives away where they killed.** A bluffing Medium's "hearth of
   the dead" alibi uses the block they really were on (Greta: the Docks, where she'd
   just killed). It should use the home block of the dead person in that night's fake
@@ -52,6 +46,22 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
   evidence, pressure or panic is high (Bartholomew voted yes on Fenwick). [decided]
 - **Warden answers "ask gift" with their guarded doors,** not only when asked about the
   night. [decided]
+- **Evil vote explanations are a tell** (dialogue phase two, PR #3). Good voters explain
+  with their real deciding factor ("I don't trust Edda", "I'd rather keep Edda on the
+  block", "Your vote adds weight"); evil voters mostly get the generic cover "The case
+  is strong enough for my vote" / "I don't have enough reason". In a sample meeting all
+  three evil yes-votes used that one line. Evil cover should draw from the same spread
+  of reasons good voters give (e.g. pick the reason a good voter with their public
+  stance would give). Same check for argument replies: good listeners name an
+  alternative, a doubtful source or a preferred suspect; evil masks almost always say
+  "weak". [decided]
+- **Vote speech volume.** Every voter now speaks on every vote (8–9 lines per vote,
+  several votes a meeting). Keep the lines that tell you something (a reason that
+  differs from the crowd, a vote against their stated stance, a swing vote) and fold
+  the rest into the tally. [decided]
+- **"I'd come to that already" is gone.** The old reply told you the listener already
+  believed the conclusion (no gain); the new accept line doesn't distinguish. Restore
+  it as a cue. [decided]
 - **Demon zag.** 3% of nights the demon skips its top three targets and picks from the
   rest, for the occasional chaos-inducing kill. Today the pick is the top score plus a
   little noise (see DESIGN, Demon kill choice). [decided]
@@ -121,6 +131,15 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
   filter). [decided]
 - **Case-board log readability:** clearer font, coloured names, bold action words, more
   spacing between entries. [decided]
+- **Case-board hints:** detect existing cards that fit a template and mark them (a
+  badge or highlight on the cards, "these two can be linked"). Optional, or tied to
+  difficulty. [decided]
+- **"What can this be part of" helper:** for a selected card, list the templates it can
+  take part in and what the other piece would have to be ("with a sighting of Greta on
+  a block off her way home → off-route"). For teaching and reminding, not only for
+  combinations already on the board. [decided]
+- **Home cards in the library** list first (#1–#10), pushing newer cards down; group
+  them under their own heading or sort them last. [decided]
 - **Selecting an NPC highlights** their standee, home and workplace on the map, with
   lighter highlights for their haunts. [decided]
 - **Trait bars in the profile:** each of the five traits as a bar with its name above
@@ -185,24 +204,16 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
   - the proposed route limit (home → at most one detour → victim);
   - traces based on where the killer *started* rather than their evening block (this
     fixes the evening-shift demon problem);
-  - **route-aware location logic** (replaces the night `two_places`, removed as a quick
-    fix). Two directions, which combine:
-    - *Homes as known facts.* Everyone's home block is public, so templates can test a
-      sighting against the routes that start there: seen on a block that no route from
-      their home to their claimed destination passes through is a real contradiction;
-      two sightings are contradictory only if no single route from home contains both.
-      Either a "lives on the Docks" card per person at the start, or homes as implicit
-      facts that templates cite without a card (less board clutter).
-    - *Passing through vs. stopping.* Sightings say whether someone was passing through
-      a block or out on it (their destination). Two "out on" sightings on different
-      blocks are a real contradiction; "passing through" fits a route. Who can tell the
-      difference (street observers and vigils, not window glimpses) and how loaded the
-      wording is ("heading toward the Docks" vs "lingering") are open. Destination
-      sightings on a kill night overlap with the deferred night-proximity rule.
-
   Timing within the night: settled, not modelled (a night stays one instant). The
   evidence-chain item, and the watchtower idea in role_exploration.md, depend on this
   package. (DESIGN) [open]
+- **Passing through vs. stopping** (potential movement overhaul direction). Sightings say
+  whether someone was passing through a block or out on it (their destination). Two
+  "out on" sightings on different blocks are a real contradiction; "passing through"
+  fits a route. Open: who can tell the difference (street observers and vigils, not
+  window glimpses), and the wording ("heading toward the Docks" vs "out on the
+  Docks"). Destination sightings on a kill night overlap with the night-proximity rule,
+  and it makes vigils stronger. [open]
 - **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration).
   Relationship mods for the Lovers live here too. [open]
 - **Roster expansion:** On Deck gifts (Tracker, Clairvoyant, Beckon, Tallyman…); minions
@@ -258,9 +269,10 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 - **Role confirmations:** a Clerk or Gravedigger confirming someone's gift → that claim
   is backed (claim_backed covers the Clerk; the Gravedigger on a living rival claim
   does not).
-- **Duty claim vs reading:** a Medium who says they sat at Dorian's hearth (the Square)
-  but was seen on another block that night. two_places caught Greta's case only because
-  her alibi used her real block; once the bluff is fixed this needs its own check.
+- **Duty claim vs reading:** the off-route check now tests a named destination (a watch
+  kept, a door guarded, the hearth of the dead) against sightings. Still missing: the
+  hearth in the Medium's *reading* ("at Dorian's hearth") as the destination, so a
+  reading and a sighting can conflict, not only the alibi and a sighting.
 - **Walker's sightings vs the Lamplighter count:** more people reported out than the
   Lamplighter counted (or a Lamplighter who counted others but is seen nowhere).
 

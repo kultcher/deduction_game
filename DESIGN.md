@@ -309,6 +309,20 @@ discounts, believed roles, and believed-good flags.
   template depends on (night number, phase, block, source) and having NPCs name why they
   reject an argument are the expected mitigations.
 
+### Homes and routes (Oct 2026)
+
+Where everyone lives is common knowledge: each case opens with a "lives on" card per
+resident (Statements view; it can't be presented to anyone). At night a walker takes the
+shortest road from home to their destination and can be seen on any block along it, so
+being seen on two blocks in one night is normal. The night `two_places` template is
+gone. Its replacement, *off-route*, fires only when no single way from their home passes
+both blocks, or when someone names where their night took them (a watch kept, a door
+guarded, the hearth of the dead) and the way there doesn't pass a block they were seen
+on. Explanations: a source lied, or they were walking the lamp route. A claimed lamp
+route never conflicts. Compatible pairs get a "these fit together" note showing the way
+(Market → Square → Docks). Day `two_places` (one phase, one place) and out-vs-home are
+unchanged.
+
 ### The conclusion builder
 
 - Available from the evidence board at any time to draft and file conclusions ahead of

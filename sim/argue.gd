@@ -93,8 +93,14 @@ static func assertions(card: Dictionary) -> Array:
 					for who in subj:
 						out.append({"t": "out", "who": who, "block": card["block"], "night": day, "src": src, "card": n})
 				else:
+					# Someone's own account of where their night took them (a watch kept, a door
+					# guarded, the hearth of the dead) names a destination; the lamp route
+					# passes every block.
+					var own = subj.size() == 1 and subj[0] == src
+					var dest = own and (card.get("watch_claim", false) or card.has("guard_claim") or (card.has("duty_claim") and card.get("duty", "") != "lamplighter"))
+					var lamp = own and card.has("duty_claim") and card.get("duty", "") == "lamplighter"
 					for who in subj:
-						out.append({"t": "out", "who": who, "block": card["block"], "night": day, "src": src, "card": n})
+						out.append({"t": "out", "who": who, "block": card["block"], "night": day, "src": src, "card": n, "dest": dest, "lamp": lamp})
 			else:
 				for who in subj:
 					out.append({"t": "at", "who": who, "block": card.get("block", ""), "day": day, "phase": ph, "src": src, "card": n})
@@ -102,7 +108,9 @@ static func assertions(card: Dictionary) -> Array:
 			out.append({"t": "vigil", "block": card["block"], "night": day, "seen": [], "src": src, "card": n})
 		"secret":
 			if card.has("block"):
-				out.append({"t": "out", "who": card["owner"], "block": card["block"], "night": day, "src": src, "card": n})
+				out.append({"t": "out", "who": card["owner"], "block": card["block"], "night": day, "src": src, "card": n, "dest": true})
+		"home":
+			out.append({"t": "lives", "who": subj[0], "block": card.get("block", ""), "src": src, "card": n})
 		"alibi":
 			out.append({"t": "home", "who": subj[0], "night": day, "src": src, "card": n})
 		"claim":
@@ -115,7 +123,7 @@ static func assertions(card: Dictionary) -> Array:
 			out.append({"t": "reading", "src": src, "role": role2, "night": day, "data": d, "card": n})
 			if role2 == "nightwatch":
 				out.append({"t": "watch", "who": src, "block": d["block"], "night": day, "seen": d["seen"], "src": src, "card": n})
-				out.append({"t": "out", "who": src, "block": d["block"], "night": day, "src": src, "card": n})
+				out.append({"t": "out", "who": src, "block": d["block"], "night": day, "src": src, "card": n, "dest": true})
 			if role2 == "gravedigger":
 				out.append({"t": "was_role", "who": d["executed"], "role": d["role"], "src": src, "night": day, "card": n})
 				if C.ROLES.get(d["role"], {}).get("align", "") == "evil":
@@ -234,6 +242,46 @@ static func check(w, cards: Array) -> Dictionary:
 		if not (r in near_u):
 			near_u.append(r)
 	return {"matches": uniq, "near": near_u}
+
+## The way from someone's home to a block, as the town's roads run (public knowledge).
+static func _way(home: String, block: String) -> String:
+	return " → ".join(PackedStringArray(C.route(home, block).map(func(x): return C.block_name(x))))
+
+## Night sightings of one person on two blocks: fine if one route from home covers both.
+static func _match_route(w, a: Dictionary, b: Dictionary, cards: Array, near: Array):
+	var who: String = a["who"]
+	if not w.by_id.has(who):
+		return null
+	if a.get("lamp", false) or b.get("lamp", false):
+		near.append("%s says they walked the lamp route, which passes every block." % _nm(w, who))
+		return null
+	var home: String = w.by_id[who].home_block
+	var dest_a: Dictionary = a if a.get("dest", false) else (b if b.get("dest", false) else {})
+	var text = ""
+	if not dest_a.is_empty():
+		var other: Dictionary = b if dest_a == a else a
+		if other.get("dest", false) and other["block"] != dest_a["block"]:
+			text = "%s can't have ended the night on both %s and %s on night %d." % [_nm(w, who), C.block_name(dest_a["block"]), C.block_name(other["block"]), a["night"]]
+		elif other["block"] in C.route(home, dest_a["block"]):
+			near.append("%s lives on %s; the way to %s (%s) passes %s, so cards #%d and #%d fit together." %
+				[_nm(w, who), C.block_name(home), C.block_name(dest_a["block"]), _way(home, dest_a["block"]), C.block_name(other["block"]), a["card"], b["card"]])
+			return null
+		else:
+			text = "%s lives on %s. The way to %s, where card #%d puts the end of their night, runs %s and doesn't pass %s (card #%d)." % \
+				[_nm(w, who), C.block_name(home), C.block_name(dest_a["block"]), dest_a["card"], _way(home, dest_a["block"]), C.block_name(other["block"]), other["card"]]
+	else:
+		for d in C.BLOCKS:
+			var r: Array = C.route(home, d)
+			if a["block"] in r and b["block"] in r:
+				near.append("%s lives on %s; a walk to %s (%s) passes both %s and %s, so cards #%d and #%d fit together." %
+					[_nm(w, who), C.block_name(home), C.block_name(d), _way(home, d), C.block_name(a["block"]), C.block_name(b["block"]), a["card"], b["card"]])
+				return null
+		text = "%s lives on %s, and no single way from there passes both %s and %s, yet cards #%d and #%d put them on both on night %d." % \
+			[_nm(w, who), C.block_name(home), C.block_name(a["block"]), C.block_name(b["block"]), a["card"], b["card"], a["night"]]
+	var ex: Array = _place_expls(w, a, b)
+	ex.append(_clear(w, who, {"type": "role", "role": "lamplighter"}, "%s was walking the lamp route (the Lamplighter)" % _nm(w, who)))
+	var m = _mk(w, "off_route", text, cards, ex, who, [a, b])
+	return m
 
 static func _place_expls(w, a: Dictionary, b: Dictionary) -> Array:
 	var ex: Array = []
@@ -473,12 +521,16 @@ static func _match_pair(w, a: Dictionary, b: Dictionary, near: Array):
 			return _mk(w, "two_places", "%s can't have been on both %s and %s on %s." %
 				[_nm(w, a["who"]), C.block_name(a["block"]), C.block_name(b["block"]), _when(a)], cards, _place_expls(w, a, b), a["who"], [a, b])
 		near.append("cards #%d and #%d are about %s at different times (%s vs %s)." % [a["card"], b["card"], _nm(w, a["who"]), _when(a), _when(b)])
-	# Two places at once (night), or out vs home.
+	# Two blocks in one night. Walkers are seen anywhere along their way, so this only
+	# conflicts when no single route from their home takes in both (or the way to a
+	# destination they named doesn't pass the other block).
 	if ta == "out" and tb == "out" and a["who"] == b["who"] and a["block"] != b["block"] and a["card"] < b["card"]:
 		if a["night"] == b["night"]:
-			return _mk(w, "two_places", "%s can't have been out on both %s and %s on night %d." %
-				[_nm(w, a["who"]), C.block_name(a["block"]), C.block_name(b["block"]), a["night"]], cards, _place_expls(w, a, b), a["who"], [a, b])
-		near.append("cards #%d and #%d are about %s on different nights (%d vs %d)." % [a["card"], b["card"], _nm(w, a["who"]), a["night"], b["night"]])
+			var m_r = _match_route(w, a, b, cards, near)
+			if m_r != null:
+				return m_r
+		else:
+			near.append("cards #%d and #%d are about %s on different nights (%d vs %d)." % [a["card"], b["card"], _nm(w, a["who"]), a["night"], b["night"]])
 	if ta == "out" and tb == "home" and a["who"] == b["who"]:
 		if a["night"] == b["night"]:
 			var said = ("%s says they were home on night %d" % [_nm(w, a["who"]), a["night"]]) if b["src"] == b["who"] else \
