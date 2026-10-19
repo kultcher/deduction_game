@@ -17,6 +17,12 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
   `evil` and *evil* to `good`, but `Argue.from_builder` matches on either column, so
   the stored value `good` hits the first row ("good" → `evil`). Match on the stored
   value only. [decided]
+- **Night "two places" is unsound.** Walkers are seen anywhere along their route, so
+  "X can't have been out on both the Market and the Docks on night 5" is false whenever
+  both blocks are on one route (Greta went Market → Square → Docks; Agnes and Fenwick
+  both agreed at 1.0). Remove the night version of `two_places`; keep the day version
+  (one phase, one place) and out-vs-home. Its route-aware replacement belongs to the
+  night-movement package. (Astra, 55774) [decided]
 - **Evil Medium bluff gives away where they killed.** A bluffing Medium's "hearth of
   the dead" alibi uses the block they really were on (Greta: the Docks, where she'd
   just killed). It should use the home block of the dead person in that night's fake
@@ -77,6 +83,15 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
   roster expansion) [decided]
 
 ### NPC behaviour
+- **NPCs know their own lies.** Self-evaluation treats any "X lied" about oneself as
+  false ("it's about me, and I know it's false"), which conflates *I'm good* with *I
+  never lied*. Isolde told you she was home while walking the lamp route, then
+  privately rejected a sound "Isolde lied" argument. An NPC shown a lie card about
+  their own statement should check it against what they really did: privately they
+  know it's true (no trust drop at the player for it), publicly they may keep denying
+  (Confidence, Privacy). When they later disclose the reason, the admission should
+  reference it: "Yes, I was out. I wasn't ready to tell you why." That turns the lie
+  card into "lied to hide a gift" (ties to rebuttals). (Astra, 55774) [decided]
 - **Fear as a mild cover for silence:** "If I say what I am, I'll be dead by morning"
   softens the withholding penalty a little. Pairs with rebuttals. [decided]
 - **NPCs push back on nominations their own information contradicts** (a player-led
@@ -127,7 +142,7 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
 ## 3. Medium features (several days; touch a few systems)
 
 - **Rebuttals and excuses.** Someone accused explains with their gift ("I was out
-  because I'm the Lamplighter"), which buys some grace with listeners; evil without a
+  because I'm the Lamplighter"; see also "NPCs know their own lies" above), which buys some grace with listeners; evil without a
   fitting bluff can claim a fake secret. Biggest open hole: hidden night walkers frame
   themselves (Isolde 55774; Lamplighter/Veteran/Sleepwalker hang rates). (DESIGN)
   [decided: next social pass]
@@ -170,6 +185,20 @@ reach for only if needed. Source in parentheses where useful. Exploratory mechan
   - the proposed route limit (home → at most one detour → victim);
   - traces based on where the killer *started* rather than their evening block (this
     fixes the evening-shift demon problem);
+  - **route-aware location logic** (replaces the night `two_places`, removed as a quick
+    fix). Two directions, which combine:
+    - *Homes as known facts.* Everyone's home block is public, so templates can test a
+      sighting against the routes that start there: seen on a block that no route from
+      their home to their claimed destination passes through is a real contradiction;
+      two sightings are contradictory only if no single route from home contains both.
+      Either a "lives on the Docks" card per person at the start, or homes as implicit
+      facts that templates cite without a card (less board clutter).
+    - *Passing through vs. stopping.* Sightings say whether someone was passing through
+      a block or out on it (their destination). Two "out on" sightings on different
+      blocks are a real contradiction; "passing through" fits a route. Who can tell the
+      difference (street observers and vigils, not window glimpses) and how loaded the
+      wording is ("heading toward the Docks" vs "lingering") are open. Destination
+      sightings on a kill night overlap with the deferred night-proximity rule.
 
   Timing within the night: settled, not modelled (a night stays one instant). The
   evidence-chain item, and the watchtower idea in role_exploration.md, depend on this
@@ -206,6 +235,14 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   Martyr lied. Commit to one.
 - **Pair reading, both named proven good** → the reading is false (poisoned, misread or
   a lie). E.g. Archivist "Bartholomew or Fenwick is the Revenant". (55774)
+- **Succession breaks earlier clears.** A Seer "no" (or any not-the-demon clear) only
+  speaks for the demon *as of that night*. If a hanging with 5+ alive (so a Scion could
+  rise) falls between two readings, group elimination, overlap and pair elimination
+  must keep "X became the demon afterwards" as an explanation instead of "the earlier
+  reading clears the rest". In 55774, #150 cleared Edda from Agnes's night-5 "Greta or
+  Edda" using the night-4 "Fenwick or Edda: neither", across Hollis's hanging. Greta
+  was right, but Edda (evil, an equally possible successor) stayed a live candidate.
+  NPC reasoning and the bot should apply the same limit to old clears. (Astra, 55774)
 - **Seer pair with one proven good** → the other is the demon, *or* the proven-good one
   is the Seer's red herring. Pair elimination exists, but only for killed / executed /
   shown-by-role, not for Martyr-proven or deduced-good people. (55774)
