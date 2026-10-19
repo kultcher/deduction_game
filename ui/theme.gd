@@ -22,6 +22,8 @@ const COLORS = {
 	"text": Color(0.93, 0.89, 0.8),         # body text on navy
 	"muted": Color(0.66, 0.65, 0.68),
 	"heard": Color(0.76, 0.74, 0.78),       # cards someone told you
+	"role_good": Color(0.25, 0.60, 0.90),   # deeper blue than Nisha; reserved for role words
+	"role_evil": Color(0.94, 0.28, 0.28),   # reserved red for evil role words
 	"deduction": Color(0.95, 0.8, 0.45),
 	"hidden": Color(0.45, 0.45, 0.5),
 	"string": Color(0.78, 0.13, 0.12),      # red string on the board
@@ -137,6 +139,21 @@ static func serif() -> Font:
 	f.font_names = PackedStringArray(["Georgia", "Palatino Linotype", "Book Antiqua", "Garamond", "Times New Roman", "DejaVu Serif", "serif"])
 	_serif = f
 	return f
+
+## Native rich text needs matching bold/italic faces when its normal font is overridden.
+static func font_face(font: Font, bold: bool = false, italic: bool = false) -> Font:
+	if font is SystemFont:
+		var face = font.duplicate() as SystemFont
+		face.font_weight = 700 if bold else 400
+		face.font_italic = italic
+		return face
+	return font
+
+static func rich_text_fonts(label: RichTextLabel, font: Font) -> void:
+	label.add_theme_font_override("normal_font", font)
+	label.add_theme_font_override("bold_font", font_face(font, true))
+	label.add_theme_font_override("italics_font", font_face(font, false, true))
+	label.add_theme_font_override("bold_italics_font", font_face(font, true, true))
 
 ## The Theme set on the root of each screen.
 static func make(mono: Font = null) -> Theme:

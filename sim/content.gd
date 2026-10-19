@@ -305,6 +305,9 @@ const SHADOW_OWN_READING_WEIGHT = 1.2
 ## Evil accusing with nothing it can cite sometimes hints at a "private reason" instead:
 ## unverifiable, so a free bluff, and it keeps the hint from being a tell of good.
 const EVIL_HINT_CHANCE = 0.3
+## How often a Medium (real or fake) gets only something true-sounding but empty: the dead
+## were home, or saw someone out on their own block.
+const MEDIUM_USELESS_CHANCE = 0.15
 ## Shadow self step 2: evil breaks cover (overrides what its good self would do) only when
 ## stakes - exposure cost > caution. Minions' caution drifts down each day after day 2.
 const EVIL_CAUTION_DEMON = 0.8

@@ -4,6 +4,7 @@ extends SceneTree
 
 const Terms = preload("res://ui/text_terms.gd")
 const C = preload("res://sim/content.gd")
+const UITheme = preload("res://ui/theme.gd")
 var fails = 0
 
 func _init() -> void:
@@ -13,7 +14,9 @@ func _init() -> void:
 	_check(person["icon_path"] == "" and person["tooltip"] == "", "names do not acquire unsolicited portraits or tooltip behavior")
 	var role = registry.lookup("role:nightwatch")
 	_check(role["label"] == "Night Watch" and C.ROLES["nightwatch"]["desc"] in role["tooltip"], "role tooltips use the public role definition")
-	_check(role["icon_path"] == "res://assets/ui/roles/nightwatch.png" and role["color"] == null, "existing role art is referenced and role text can inherit its surrounding color")
+	_check(role["icon_path"] == "res://assets/ui/roles/nightwatch.png" and role["color"] == UITheme.color("role_good"), "existing role art is referenced and good roles have their own blue")
+	_check(registry.lookup("role:poisoner")["color"] == UITheme.color("role_evil") and C.CAST.all(func(n): return not C.npc_color(n["id"]) in [role["color"], UITheme.color("role_evil")]), "evil roles use a red and neither role color is shared with a character")
+	_check(person["bold"] and C.ROLES.keys().all(func(id): return registry.lookup("role:" + id)["bold"]), "names and all roles request bold text")
 	_check(C.CAST.all(func(n): return not registry.lookup("person:" + n["id"]).is_empty()) and C.ROLES.keys().all(func(id): return not registry.lookup("role:" + id).is_empty()), "all cast members and defined roles are registered without case state")
 	person["color"] = Color.BLACK
 	person["aliases"].clear()

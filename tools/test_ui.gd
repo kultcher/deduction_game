@@ -186,8 +186,8 @@ func _init() -> void:
 	scene._run("wait")
 	await process_frame
 	# Coloured log: speech lines carry the speaker's colour.
-	var col = scene._colourize("%s: \"Hello there.\"" % t.name)
-	_check(C.npc_color(t.id).to_html(false) in col, "speech is coloured by speaker")
+	var speech_spans = scene.log_text.formatter.format_text("Hello there.", {"speaker_id": t.id})
+	_check(speech_spans[0]["color"] == C.npc_color(t.id), "speech is coloured by speaker")
 	# Multi-select filters: any vs all (after a day of play, so the board has content).
 	var meet_checked = false
 	for i in range(16):
@@ -381,8 +381,11 @@ func _init() -> void:
 		pp.tab = 1
 		pp.refresh()
 		_check(pp.current() == said_by and scene.profile.current() == said_by, "both profiles follow the selected person")
-		_check("[url=card:" in pp.body.text, "'Their claims' lists their cards as links")
-		var first = pp.body.text.get_slice("[url=card:", 1).get_slice("]", 0).to_int()
+		var card_ref = RegEx.new()
+		card_ref.compile("#([0-9]+)")
+		var first_match = card_ref.search(pp.body.get_parsed_text())
+		_check(first_match != null, "'Their claims' lists their card entries")
+		var first = first_match.get_string(1).to_int()
 		pp.body.meta_clicked.emit("card:%d" % first)
 		_check(cv.state.selected_card == first, "clicking a card link selects that card")
 		pp.body.meta_hover_started.emit("card:%d" % first)
@@ -427,7 +430,7 @@ func _init() -> void:
 	scene.debug_check.button_pressed = true
 	await process_frame
 	_check(g.debug_overlay and g.prediction_spoiled, "debug overlay spoils identification credit")
-	_check("Credited by others" in scene.side_profile.text, "profile shows credibility across the town")
+	_check("Credited by others" in scene.side_profile.get_parsed_text(), "profile shows credibility across the town")
 	var shown = 0
 	for c in g.board:
 		if g.debug_card_text(c) != "":

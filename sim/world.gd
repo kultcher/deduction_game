@@ -1443,6 +1443,12 @@ func _medium_item(m, dead, broken: bool) -> Dictionary:
 	if broken:
 		var who = pick(living().filter(func(x): return x != m))
 		return {"type": "sighting", "who": who.id, "block": who.home_block, "night": maxi(0, dead.death_day - 1), "lie": true}
+	# Sometimes the dead give only something true but empty (fake Mediums do too, at the same rate).
+	if chance(C.MEDIUM_USELESS_CHANCE):
+		for b in dead.beliefs:
+			if b["kind"] == "saw" and b["phase"] == C.NIGHT and by_id.has(b["who"]) and by_id[b["who"]].alive and b["block"] == by_id[b["who"]].home_block:
+				return {"type": "sighting", "who": b["who"], "block": b["block"], "night": b["day"], "idle": true}
+		return {"type": "home", "night": maxi(0, dead.death_day - (1 if dead.death_cause == "demon" else 0)), "block": dead.home_block, "lie": dead.is_evil()}
 	for e in dead.info_log:
 		if not e.get("shared", false) and not e.get("disowned", false) and C.ROLES.get(e.get("role", ""), {}).get("kind", "") == "info":
 			e["shared"] = true
@@ -1453,6 +1459,11 @@ func _medium_item(m, dead, broken: bool) -> Dictionary:
 				continue
 			dead.told_to["medium|" + b["who"]] = true
 			return {"type": "sighting", "who": b["who"], "block": b["block"], "night": b["day"]}
+	# A Warden's doors: whom they guarded, night by night (never said aloud).
+	for k in dead.warden_log:
+		if not dead.told_to.has("medium|guard:" + str(k)) and by_id.has(dead.warden_log[k]):
+			dead.told_to["medium|guard:" + str(k)] = true
+			return {"type": "guard", "who": dead.warden_log[k], "night": int(k), "lie": dead.is_evil()}
 	if dead.is_evil():
 		var sg: String = evil_plan.get("scapegoat", "")
 		if sg != "" and by_id[sg].alive and not dead.told_to.has("medium|cover"):
@@ -1468,6 +1479,9 @@ func _medium_item(m, dead, broken: bool) -> Dictionary:
 		if best != "" and not dead.told_to.has("medium|susp:" + best):
 			dead.told_to["medium|susp:" + best] = true
 			return {"type": "suspicion", "about": best}
+	# They had shared all they knew: the hearth has nothing new.
+	if dead.info_log.any(func(e): return e.get("shared", false)):
+		return {"type": "nothing", "lie": false}
 	var nd = maxi(0, dead.death_day - (1 if dead.death_cause == "demon" else 0))
 	return {"type": "home", "night": nd, "block": dead.home_block, "lie": dead.is_evil()}
 
@@ -1479,6 +1493,10 @@ func _medium_text(dead, it: Dictionary) -> String:
 			return "communing with the dead at %s's hearth, I learned they saw %s out on %s on night %d" % [dead.name, by_id[it["who"]].name, C.block_name(it["block"]), it["night"]]
 		"suspicion":
 			return "communing with the dead at %s's hearth, I felt their distrust of %s" % [dead.name, by_id[it["about"]].name]
+		"nothing":
+			return "communing with the dead at %s's hearth, I learned nothing they hadn't already told us" % dead.name
+		"guard":
+			return "communing with the dead at %s's hearth, I learned they stood guard at %s's door on %s" % [dead.name, by_id[it["who"]].name, C.night_name(it["night"])]
 	return "communing with the dead at %s's hearth, I learned only that they were home on their last night" % dead.name
 
 # ---------------------------------------------------------------- day gifts

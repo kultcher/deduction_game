@@ -1650,3 +1650,59 @@ design. The "build with in mind" items stay as notes.
 - private-case overrides, which break cover about 9 times in 10;
 - nomination overrides at 10 townsfolk (185 broken against 131 kept): as the days pass,
   minions break cover more often to push the scapegoat or to avoid naming a teammate.
+
+## Mediums: a shared menu for real and fake (Oct 19)
+
+**Ordering:** the demon's kill resolves before the night's readings, so a killed info
+role misses that night's reading. Their earlier unshared readings are what a Medium
+finds.
+
+**Real Medium** (`World._medium_item`). The visit order is unchanged: the most recent
+dead not yet visited, demon victims first. What it finds, in order:
+1. If poisoned or Delusional: a random false sighting (unchanged).
+2. With `C.MEDIUM_USELESS_CHANCE` (0.15): something true but empty. Either a night
+   sighting the dead made of someone on that person's own block (marked `idle`), or
+   "home".
+3. The first unshared reading from any information gift (unchanged).
+4. An unreported night sighting (unchanged).
+5. **New:** a Warden's guard history, one night per visit ("stood guard at X's door on
+   night N"; item `guard`).
+6. Distrust: for evil dead, the scapegoat (a lie); for good dead, real distrust above 0.35.
+7. **New:** if the dead had shared readings and nothing else is left, "nothing they hadn't
+   already told us" (item `nothing`). Otherwise "home".
+
+**Fake Medium** (`Evil._fake_medium_item`, `_fake_dead_reading`) draws from the same
+kinds of answer. First, the same 15% chance of something empty: an idle own-block
+sighting of a random good person, or "home". Then a weighted pick:
+- **(weight 3) A reading in the dead's publicly claimed gift** that they "never shared",
+  for their last night (night 0 for start-of-game gifts). Skipped if they had already
+  shared that night's reading. By gift:
+  - **Seer:** if the demon has been publicly named, half the time "the demon and some
+    good person: neither is the demon". Otherwise a "yes" on someone from one of the
+    Seer's earlier shared yeses, half the time (a red herring or a poisoned read carried
+    on), or on the scapegoat.
+  - **Dowser / Hearthwitch:** if the demon is named, half the time 0 evil among the demon
+    and good neighbours from its home block. Otherwise 1 evil among the scapegoat and
+    their neighbours.
+  - **Gravedigger:** the next hanged person not yet read. A good one "was a minion",
+    possibly one not in the game, but never the Breathstealer unless there is one. An
+    evil one "was" their bluff.
+  - **Psychologist:** someone "trusts" a teammate most and suspects the scapegoat (60%)
+    or some good person most.
+  - **Clerk:** backs a teammate's public claim ("one of <teammate> and X is the
+    <claimed role>").
+  - **Archivist:** names the scapegoat in a minion pair.
+  - **Night Watch:** saw the scapegoat on the dead's block on their last watch.
+- **(weight 1.5) A sighting of the scapegoat near the death,** unless that's the
+  scapegoat's own block.
+- **(weight 0.8) "Nothing new",** if the dead had shared readings.
+- **(weight 0.8) The dead's public stance.**
+- **(weight 0.4) "Home".**
+
+Anything that points at the good is a frame. After the first frame, framing paths are
+offered only about half the time.
+
+**From 150 bot games at 10 townsfolk**, the paths taken: 240 frame sightings, 156
+nothing new, 140 home, 104 empty, 24 stances, 12 Psychologist and 4 Gravedigger
+readings. The gift readings are rare because the dead have seldom claimed in public.
+They'll show up more once claims are more common.

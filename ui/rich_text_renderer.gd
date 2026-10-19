@@ -7,6 +7,8 @@ var _textures: Dictionary = {}
 func append_to(label: RichTextLabel, spans: Array) -> void:
 	for span in spans:
 		label.push_font_size(span["font_size"])
+		if span.get("bold", false):
+			label.push_bold()
 		var hint: String = span["tooltip"]
 		if not hint.is_empty():
 			label.push_hint(hint)
@@ -20,6 +22,8 @@ func append_to(label: RichTextLabel, spans: Array) -> void:
 		label.add_text(span["text"]) # add_text treats brackets and BBCode-looking input literally.
 		label.pop()
 		if not hint.is_empty():
+			label.pop()
+		if span.get("bold", false):
 			label.pop()
 		label.pop()
 

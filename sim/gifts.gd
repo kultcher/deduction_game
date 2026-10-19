@@ -129,5 +129,7 @@ static func short_text(role: String, d: Dictionary, src: String, nm: Callable) -
 					return "%s Medium: %s suspected %s" % [src, dead, nm.call(it.get("about", ""))]
 				"home":
 					return "%s Medium: %s was home on night %d" % [src, dead, it.get("night", 0)]
+				"guard":
+					return "%s Medium: %s guarded %s's door on night %d" % [src, dead, nm.call(it.get("who", "")), it.get("night", 0)]
 			return "%s Medium: %s had nothing to tell" % [src, dead]
 	return "%s %s reading" % [src, C.role_name(role)]

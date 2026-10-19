@@ -3,6 +3,7 @@
 extends RefCounted
 
 const C = preload("res://sim/content.gd")
+const UITheme = preload("res://ui/theme.gd")
 
 ## These names can also describe ordinary things or occupations. In prose, match their
 ## canonical capitalization only; a caller can opt into role_context for known gift text.
@@ -18,12 +19,13 @@ func _init(include_defaults: bool = true) -> void:
 		return
 	for person in C.CAST:
 		register_term({"id": "person:" + person["id"], "kind": "person", "content_id": person["id"],
-			"label": person["name"], "color": C.npc_color(person["id"]),
+			"label": person["name"], "color": C.npc_color(person["id"]), "bold": true,
 			"aliases": [person["name"]]})
 	for role_id in C.ROLES:
 		var role: Dictionary = C.ROLES[role_id]
 		var path = "res://assets/ui/roles/%s.png" % role_id
 		register_term({"id": "role:" + role_id, "kind": "role", "content_id": role_id,
+			"color": UITheme.color("role_evil" if role["align"] == "evil" else "role_good"), "bold": true,
 			"label": role["name"], "tooltip": role["name"] + "\n" + role["desc"],
 			"icon_path": path if FileAccess.file_exists(path) else "",
 			"aliases": [{"text": role["name"], "case_sensitive": role_id in AMBIGUOUS_ROLES},
@@ -60,9 +62,9 @@ func register_term(definition: Dictionary) -> bool:
 			return false
 		patterns.append({"id": definition["id"], "regex": regex, "role_only": rule.get("role_only", false)})
 	var term = definition.duplicate(true)
-	for field in ["color", "icon_path", "tooltip"]:
+	for field in ["color", "icon_path", "tooltip", "bold"]:
 		if not term.has(field):
-			term[field] = null if field == "color" else ""
+			term[field] = null if field == "color" else false if field == "bold" else ""
 	_terms[term["id"]] = term
 	_patterns.append_array(patterns)
 	return true

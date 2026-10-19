@@ -376,3 +376,19 @@ Settled decisions, built work and parked levers, kept for the record.
   notes in `docs/text_formatting.md`; game-panel integration remains step 3.
   Verified 24 formatter/adapter and 25 registry checks, a clean Godot 4.4.1 editor
   import, and rendered dark, parchment, faded, compact and literal-text samples.
+- **Oct 19: shared text system, step 3 and entity styling**
+  (`codex/text-log-profiles`). Names and roles are bold. Good role words use a
+  reserved blue darker than Nisha's; evil roles use a reserved red, with ink
+  variants on parchment. The speech log now enriches plain passages through the
+  shared formatter, keeping speaker colors, portraits, headers, emphasis and
+  clickable card references. Typed commands stay literal. Both profile panels
+  enrich About, readings, disclosed claim headers, Their claims and About them;
+  original times and private/public provenance remain visible. Role icons and
+  wrapping paper tooltips supplement role words. Native role hints inside card
+  links preserve left-click navigation and right-click card actions. Hidden
+  profile entries use the shared fade. Matching font faces preserve the existing
+  serif/monospace families when bold or italic. Updated the API notes. Verified
+  27 registry, 26 formatter, 17 text-UI, 110 existing UI and 25 town-UI checks,
+  including real mouse interaction through role hints and unchanged evidence/RNG
+  state, plus editor import and rendered 1920x1080/1280x720 town, profile and
+  tooltip views. Existing UI smoke-test drag-preview/shutdown diagnostics remain.

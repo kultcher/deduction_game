@@ -2,7 +2,7 @@
 
 Step 1 provides `ui/text_terms.gd`: the public term registry and matching rules.
 Step 2 adds `ui/text_formatter.gd` and `ui/rich_text_renderer.gd`: styled spans and
-an isolated native rich-text adapter. Game-panel integration starts in step 3.
+a native rich-text adapter. Step 3 integrates the speech log and both profiles.
 
 ## Registry
 
@@ -13,8 +13,13 @@ that those roles are in play.
 
 Stable IDs use `person:<cast id>` and `role:<role id>`; Bartholomew is `person:bart`.
 `lookup(id)` returns a deep copy with `kind`, `content_id`, `label`, `aliases`, and
-optional appearance: `color`, `icon_path`, `tooltip`. A null color means inherit;
-empty icon/tooltip strings mean absent. Characters start with their color only.
+optional appearance: `color`, `bold`, `icon_path`, `tooltip`. A null color means inherit;
+empty icon/tooltip strings mean absent; omitted bold defaults to false. Characters
+have their own color and bold text. Roles also use bold text, with `role_good`
+(deeper blue than Nisha) or `role_evil` (red) from the shared UI palette. Neither
+reserved color is assigned to a character. Colors describe the role word, not the
+speaker's actual alignment or the truth of a claim. On parchment the formatter
+uses darker ink variants of these colors.
 Role tooltip content is the existing public name and description. Existing role
 PNG paths are supplied where available, otherwise the icon path is empty.
 
@@ -60,7 +65,7 @@ an empty array. Each span has:
 
 - `text`, `start`, `end`: original text and exclusive character ranges.
 - `entity_id`: the registry ID, or an empty string for ordinary text.
-- `color`: resolved text color, retaining its own alpha.
+- `color`, `bold`: resolved text appearance; color retains its own alpha.
 - `opacity`: overall opacity, clamped to 0..1 and not yet multiplied into color.
 - `font_size`, `icon_size`: positive pixel sizes.
 - `icon_path`, `tooltip`: optional metadata, empty when absent or disabled.
@@ -75,11 +80,12 @@ Context options:
 | `font_size` | `16` | Text size; also the default icon height. |
 | `icon_size` | Font size | Explicit icon height. |
 | `opacity` | `1.0` | Overall opacity, including icons. |
+| `bold` | `false` | Emphasize a whole segment; registered name/role spans are always bold. |
 | `icons`, `tooltips` | `true` | Disable either decoration independently of name colors. |
 | `enabled`, `kinds`, `role_context` | Registry defaults | Control recognition on this eligible segment. |
 
 Color precedence is explicit entity color, then known speaker color, then base
-color. A role with no explicit color inherits the surrounding speech/base color.
+color. A custom term with no explicit color inherits the surrounding speech/base color.
 Entity overrides end at the entity span; subsequent ordinary text resumes the
 base style. Parchment conversion preserves custom color alpha. A supplied base
 color is already a surface-specific color and is not converted a second time.
@@ -113,15 +119,40 @@ a label; assigning its `text` property after native rendering reconstructs its
 contents and discards native styling. Godot's parsed-text fallback represents inline
 images with spaces; use `Formatter.plain_text()` when exact original text is needed.
 
+## Log and profiles (step 3)
+
+`ui/log_text.gd` presents the existing plain game output. It recognizes speech,
+headers and generated card-reference suffixes before rendering eligible text;
+there is no search-and-replace pass over generated markup. Speech retains its
+speaker color and portrait, while mentioned names and roles override their own
+spans. Headers, leading emphasis and card links use the native text stack. Typed
+command echoes opt out of enrichment, including apparent tags or card suffixes.
+Each new entry appends to the log without rebuilding its history.
+
+`ui/profile_panel.gd` renders both town and case-board profiles through the same
+formatter. About text, readings, disclosed claim headers, Their claims and About
+them share the vocabulary. Occupation/biography segments permit names only; debug
+text opts out. Private/public provenance and original card times are retained.
+The entire card passage remains a `card:<number>` link; native role hints sit
+inside that context, preserving its left-click and right-click actions. Hidden
+entries receive the shared hidden opacity, including names and role icons.
+Claim display still uses the existing disclosure gates.
+
+`ui/formatted_text_label.gd` provides wrapping role tooltips capped at 480 logical
+pixels (or 75% of the viewport when narrower), using the existing paper theme.
+The log uses 20px inline icons; profile entries use 18px alongside 16px text.
+Matching normal, bold, italic and bold-italic system-font faces are installed
+through `UITheme.rich_text_fonts()` so emphasizing names preserves the font family.
+
 ## Next steps
 
-3. Integrate logs and profiles, including role hints that coexist with card links.
 4. Add wrapping/layout support for board cards, pinned deductions and the tray.
 5. Integrate Card List and other eligible text surfaces.
 
-Run the registry and formatter checks:
+Run the registry, formatter and live UI checks:
 
 ```sh
 godot --headless --path . --script res://tools/test_text_terms.gd
 godot --headless --path . --script res://tools/test_text_formatter.gd
+godot --headless --path . --script res://tools/test_text_ui.gd
 ```
