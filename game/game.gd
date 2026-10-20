@@ -1156,6 +1156,9 @@ func _next_npc_nomination() -> bool:
 	w.open_nomination(nm["by"], nm["nominee"], nm["reason"])
 	town_quiet = false
 	_line(nm["speech"])
+	for l in nm.get("case_lines", []):
+		_line(l)
+	_facts(nm.get("case_facts", []))
 	_show_nomination()
 	return true
 

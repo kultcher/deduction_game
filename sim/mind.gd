@@ -1359,7 +1359,86 @@ static func next_nomination(w):
 	var why: String = Evil.cite(w, nom, Evil.bluff_reason(w, nom, t) if nom.is_evil() else citable_reason(w, nom, t.id, "town"))
 	c["speech"] = decision_line(nom, {"kind": "nomination", "target": t.name,
 		"reason_text": (why[0].to_upper() + why.substr(1) + ".") if why != "" else ""}, "town")
+	var cs = nomination_case(w, nom, t, why)
+	c["case_lines"] = cs["lines"]
+	c["case_facts"] = cs["facts"]
 	return c
+
+# ---------------------------------------------------------------- the nominator's case
+
+## What drove n's suspicion of t most (meeting-flow plan, step 1): ledger entries ranked by
+## how much they now add to it, at most `limit`. Each item: {eid, why, kind, strength,
+## entry}, with kind as in reason_status (public | player | private) for that entry. An
+## evil nominator ranks its good self's ledger (what an innocent would cite) but its own
+## readings (real or fake) are looked up on the real NPC.
+static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
+	var mind = n
+	if n.is_evil():
+		mind = n.shadow if n.shadow != null else n
+	var items: Array = []
+	for e in mind.ledger.values():
+		var contrib = 0.0
+		var why = ""
+		var effs: Array = e["effects"]
+		for i in range(effs.size()):
+			var f: Array = effs[i]
+			if f[0] != t_id:
+				continue
+			var a: float = e["applied"].get(i, 0.0) + e["applied"].get("%d:%s" % [i, t_id], 0.0)
+			if a > 0.0:
+				contrib += a
+				if why == "" and f[4] != "":
+					why = f[4]
+		if contrib >= 0.03 and why != "":
+			items.append({"eid": e["eid"], "why": why, "contrib": contrib})
+	items.sort_custom(func(x, y): return x["contrib"] > y["contrib"])
+	items = items.slice(0, limit)
+	var own = "info:%s:" % n.id
+	for it in items:
+		it["kind"] = "public"
+		it["strength"] = 0.3
+		it["entry"] = {}
+		if it["eid"].begins_with(own):
+			for i in range(n.info_log.size()):
+				var en: Dictionary = n.info_log[i]
+				if info_eid(n.id, en) == it["eid"]:
+					it["entry"] = en
+					it["strength"] = reading_strength(en, t_id)
+					it["kind"] = "public" if en.get("shared", false) else ("player" if i < n.told_readings else "private")
+		# Wording that gives away their own gift is private until the gift is public (the
+		# same rule Evil.cite applies to accusations), whatever entry it came from.
+		if it["kind"] == "public" and it["why"].begins_with("my own") and not n.claim_public:
+			it["kind"] = "private"
+			it["strength"] = maxf(it["strength"], 0.5)
+	return items
+
+## The nominator lays out their case: public reasons recapped (cosmetic: hearing them again
+## changes nothing), and their strongest private one hinted at or brought out (claim and
+## reading, with their usual effect, as at any other time). Returns {lines, facts}.
+static func nomination_case(w, n, t, already: String) -> Dictionary:
+	var lines: Array = []
+	var facts: Array = []
+	var items = case_against(w, n, t.id)
+	var recap: Array = items.filter(func(x): return x["kind"] == "public" and x["why"] != already).map(func(x): return x["why"])
+	var priv: Array = items.filter(func(x): return x["kind"] in ["private", "player"])
+	w.dlog.think(n.id, "nomination_case", "Case against %s: %s." % [t.id, ", ".join(PackedStringArray(items.map(func(x): return "%s (%s, %.2f)" % [x["why"], x["kind"], x["contrib"]])))], {"items": items.map(func(x): return {"eid": x["eid"], "kind": x["kind"]})})
+	if not recap.is_empty():
+		lines.append(say(n, "Remember: %s." % "; and ".join(PackedStringArray(recap.slice(0, 2)))))
+	if not priv.is_empty():
+		var top: Dictionary = priv[0]
+		var cost = reveal_cost(w, n)
+		var parts = {"strength": (top["strength"] - 0.45) * 1.4, "suspicion": (susp(n.shadow if n.is_evil() and n.shadow != null else n, t.id) - 0.75) * 1.2,
+			"confidence": (trait_of(n, "confidence") - 0.5) * 0.6, "nominating": 0.2}
+		for k in cost:
+			parts["cost_" + k] = -cost[k]
+		if decide(w, n, "reveal_to_nominate", parts, "Bring out what points at %s (%s) to back the nomination?" % [t.id, top["why"]]):
+			_go_public(w, n, lines, facts)
+		else:
+			n.hints[t.id] = {"day": w.day, "src": top["eid"]}
+			lines.append(say(n, "And I have another reason I'm not ready to share yet."))
+			facts.append({"kind": "accusation", "subject": [t.id], "source": n.id, "hint": true,
+				"text": "%s nominated %s, hinting at a private reason they won't share yet." % [n.name, t.name]})
+	return {"lines": lines, "facts": facts}
 
 static func defence_line(w, n) -> Dictionary:
 	if n.silenced:

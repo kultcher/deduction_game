@@ -1,6 +1,6 @@
 # Meeting flow: nominations, cases, defences, supporters
 
-Status: planned (Oct 19). It absorbs these backlog items:
+Status: step 1 built (Oct 19; DESIGN, "Meeting flow, step 1"). Steps 2–6 planned. It absorbs these backlog items:
 - "Rebuttals and excuses" (step 3 of docs/shadow_self_plan.md);
 - "Nominations make a case";
 - "Outing yourself to defend someone";

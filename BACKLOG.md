@@ -85,6 +85,10 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   fitting bluff can claim a fake secret. Biggest open hole: hidden night walkers frame
   themselves (Isolde 55774, Constance 96773; Lamplighter/Veteran/Sleepwalker/Warden hang rates). (DESIGN)
   Now part of the meeting-flow plan (docs/meeting_flow_plan.md, step 2). [decided]
+- **Relaying someone else's private reading.** Provenance covers an NPC's own gift; a
+  reading they heard from another in private ("Lian's sight said…") can still be cited at
+  the meeting, outing Lian's gift for them. Decide whether relays of private readings
+  need the original source's reveal, or count as gossip. (Oct 19) [open]
 - **Last words.** A condemned NPC gets some final words before the hanging (flavour). (Oct 19) [decided]
 - **Nominations make a case.** The nominator cites several cards, even weak ones.
   Mostly flavour; it only moves NPCs if it brings new information. [decided]

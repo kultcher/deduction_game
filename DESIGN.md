@@ -1727,3 +1727,38 @@ The rest of the visits come back empty-handed for three reasons: gifts that only
 the first night (Clerk, Archivist, Surveyor), nights a Night Watch didn't go out, and
 the 15% empty answers. The fake Medium's "last-night reading" now fits the common case,
 since real victims usually have one.
+
+## Meeting flow, step 1: the nominator's case (Oct 19)
+
+Plan: docs/meeting_flow_plan.md. After an NPC's nomination line, the nominator lays out
+their case (`Mind.nomination_case`, shown by `game._next_npc_nomination`).
+
+- **`Mind.case_against(w, n, t)`:** ledger entries ranked by how much they currently add
+  to n's suspicion of t (summed `applied` over effects on t), at most 3. Each gets a kind:
+  - **public** if it's someone else's, or a shared reading of n's own;
+  - **player** if told to the player only;
+  - **private** if told to nobody.
+
+  Wording that gives away the speaker's own gift ("my own…") counts as private until the
+  gift is public, whatever entry it came from. Evil nominators rank their good self's
+  ledger; their own readings, real or fake, are looked up on the real NPC.
+- **Public reasons are recapped:** "Remember: …; and …", up to two, skipping the one
+  already in the nomination line. **This is cosmetic:** no ledger effect, no card.
+- **The strongest private reason** goes through a hint-or-reveal `decide` (strength,
+  suspicion, confidence, +0.2 for nominating, minus `reveal_cost`):
+  - **reveal:** `_go_public`, the claim and the readings, with their normal cards and
+    effects;
+  - **hint:** "And I have another reason I'm not ready to share yet." This records
+    `n.hints`, so "ask why" works, and makes a hint-marked card.
+- Logged as `think`, topic `nomination_case`.
+
+Bot, 150 games each, seeds 1000–1149, before → after:
+
+| | good wins | good hanged | evil hanged |
+|---|---|---|---|
+| 7 townsfolk | 49 → 54 | 146 → 159 | 90 → 98 |
+| 10 townsfolk | 37 → 37 | 306 → 296 | 128 → 125 |
+
+Test: tools/test_fixes.gd `_nomination_case`. The private Seer reading behind a
+nomination was hinted at 12 times and revealed 6 times, and never quoted. A public
+recap moved nobody.

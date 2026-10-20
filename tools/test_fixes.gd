@@ -38,6 +38,7 @@ func _init() -> void:
 	_cite_provenance()
 	_accuse_tiers()
 	_hint_followup()
+	_nomination_case()
 	print("FIXES FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -571,3 +572,39 @@ func _hint_followup() -> void:
 	e.info_log = e.info_log.filter(func(x): return not (t.id in Mind.implicated(x)))
 	var ea = Mind.answer_hint(w, e)
 	_check(ea["facts"].is_empty() and e.hints.has(t.id), "evil with nothing behind its hint declines to back it up")
+
+## Meeting-flow step 1: the nominator's case hints at or reveals a private reading, never
+## quotes it; recapping public reasons changes nobody's mind.
+func _nomination_case() -> void:
+	var hinted = 0
+	var revealed = 0
+	var leaked = 0
+	for sd in range(7300, 7320):
+		var r = _setup_private_reading(sd)
+		var w = r[1]
+		var n = r[2]
+		var t = r[3]
+		var items = Mind.case_against(w, n, t.id)
+		if items.is_empty() or items[0]["kind"] != "private":
+			continue
+		var cs = Mind.nomination_case(w, n, t, "")
+		var text = " ".join(PackedStringArray(cs["lines"].map(func(l): return l["text"])))
+		if n.claim_public:
+			revealed += 1
+		elif n.hints.has(t.id):
+			hinted += 1
+		if not n.claim_public and ("my own" in text or "I looked at" in text):
+			leaked += 1
+	_check(hinted + revealed >= 15 and hinted > 0 and revealed > 0, "a private Seer reading behind a nomination is hinted at (%d) or brought out (%d)" % [hinted, revealed])
+	_check(leaked == 0, "never quoted without coming out")
+	# A recap of public reasons is cosmetic.
+	var r2 = _setup_private_reading(7330)
+	var w2 = r2[1]
+	var n2 = r2[2]
+	var t2 = r2[3]
+	n2.info_log[0]["shared"] = true
+	var lis = w2.living_good().filter(func(x): return x != n2 and x != t2)[0]
+	var before = lis.suspicion[t2.id]
+	var cs2 = Mind.nomination_case(w2, n2, t2, "")
+	_check(absf(lis.suspicion[t2.id] - before) < 0.001, "recapping a public reason moves nobody (%.3f -> %.3f)" % [before, lis.suspicion[t2.id]])
+	_check(cs2["lines"].size() >= 1, "but it is said: %s" % (cs2["lines"][0]["text"] if not cs2["lines"].is_empty() else "(nothing)"))
