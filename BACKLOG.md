@@ -82,6 +82,7 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   themselves (Isolde 55774, Constance 96773; Lamplighter/Veteran/Sleepwalker/Warden hang rates). (DESIGN)
   Shadow-self plan step 3; on hold until the meeting-flow design is worked out.
   [decided, on hold]
+- **Last words.** A condemned NPC gets some final words before the hanging (flavour). (Oct 19) [decided]
 - **Nominations make a case.** The nominator cites several cards, even weak ones.
   Mostly flavour; it only moves NPCs if it brings new information. [decided]
 - **Meeting and vote talk** (returns with the rebuttal work). Votes are silent for now;

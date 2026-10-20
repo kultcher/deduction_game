@@ -305,8 +305,9 @@ const SHADOW_OWN_READING_WEIGHT = 1.2
 ## Evil accusing with nothing it can cite sometimes hints at a "private reason" instead:
 ## unverifiable, so a free bluff, and it keeps the hint from being a tell of good.
 const EVIL_HINT_CHANCE = 0.3
-## How often a Medium (real or fake) gets only something true-sounding but empty: the dead
-## were home, or saw someone out on their own block.
+## How often a fake Medium gives only something empty (the dead were home, or saw someone
+## out on their own block), so it isn't always conveniently damning. Real Mediums come up
+## empty on their own, when the dead had nothing left to tell.
 const MEDIUM_USELESS_CHANCE = 0.15
 ## Night order: readings before the demon's kill, so a victim keeps their last reading
 ## (for a Medium to find). false = the BotC order (kill first).

@@ -1657,7 +1657,9 @@ design. The "build with in mind" items stay as notes.
 role misses that night's reading. Their earlier unshared readings are what a Medium
 finds.
 
-**Real Medium** (`World._medium_item`). The visit order is unchanged: the most recent
+**Real Medium** (`World._medium_item`). (Oct 19, later: the 15% empty answer was removed
+from the real Medium; it comes up empty on its own when the dead had nothing left. Only
+the fake keeps the 15%, so it isn't always conveniently damning.) The visit order is unchanged: the most recent
 dead not yet visited, demon victims first. What it finds, in order:
 1. If poisoned or Delusional: a random false sighting (unchanged).
 2. With `C.MEDIUM_USELESS_CHANCE` (0.15): something true but empty. Either a night

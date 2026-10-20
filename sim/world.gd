@@ -1450,12 +1450,6 @@ func _medium_item(m, dead, broken: bool) -> Dictionary:
 	if broken:
 		var who = pick(living().filter(func(x): return x != m))
 		return {"type": "sighting", "who": who.id, "block": who.home_block, "night": maxi(0, dead.death_day - 1), "lie": true}
-	# Sometimes the dead give only something true but empty (fake Mediums do too, at the same rate).
-	if chance(C.MEDIUM_USELESS_CHANCE):
-		for b in dead.beliefs:
-			if b["kind"] == "saw" and b["phase"] == C.NIGHT and by_id.has(b["who"]) and by_id[b["who"]].alive and b["block"] == by_id[b["who"]].home_block:
-				return {"type": "sighting", "who": b["who"], "block": b["block"], "night": b["day"], "idle": true}
-		return {"type": "home", "night": maxi(0, dead.death_day - (1 if dead.death_cause == "demon" else 0)), "block": dead.home_block, "lie": dead.is_evil()}
 	for e in dead.info_log:
 		if not e.get("shared", false) and not e.get("disowned", false) and C.ROLES.get(e.get("role", ""), {}).get("kind", "") == "info":
 			e["shared"] = true
