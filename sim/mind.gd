@@ -74,6 +74,8 @@ static func decide(w, n, topic: String, parts: Dictionary, why: String) -> bool:
 		d[k] = snappedf(parts[k], 0.01)
 	d["p"] = snappedf(p, 0.01)
 	d["result"] = yes
+	w.dlog.trace_event("decision_roll", n.id, "", {"topic": topic, "parts": parts,
+		"total": total, "probability": p, "draw": r, "result": yes}, why)
 	w.dlog.think(n.id, topic, "%s -> %s (p=%.2f)" % [why, "yes" if yes else "no", p], d)
 	return yes
 
@@ -82,6 +84,8 @@ static func decide(w, n, topic: String, parts: Dictionary, why: String) -> bool:
 static func set_trust(w, n, value: float, why: String) -> void:
 	var old: float = n.trust
 	n.trust = clampf(value, 0.0, n.trust_cap)
+	w.dlog.trace_event("value_change", n.id, "player", {"quantity": "trust",
+		"from": old, "requested_to": value, "to": n.trust, "cap": n.trust_cap}, why)
 	if absf(n.trust - old) >= 0.01:
 		w.dlog.add("trust", n.id, "player", {"from": snappedf(old, 0.01), "to": snappedf(n.trust, 0.01), "cap": n.trust_cap}, why)
 	if absf(n.trust - n.trust_at_reconsider) >= 0.1:
@@ -89,6 +93,8 @@ static func set_trust(w, n, value: float, why: String) -> void:
 
 static func cap_trust(w, n, cap: float, why: String) -> void:
 	if cap < n.trust_cap:
+		w.dlog.trace_event("value_change", n.id, "player", {"quantity": "trust_cap",
+			"from": n.trust_cap, "to": cap}, why)
 		n.trust_cap = cap
 		w.dlog.add("trust_cap", n.id, "player", {"cap": cap}, why)
 		if n.trust > cap:
@@ -134,10 +140,13 @@ static func shadow_run(w, n, f: Callable) -> void:
 	w.rng = s.shadow_rng
 	w.shadow_log.set_time(saved_log.day, saved_log.phase)
 	w.dlog = w.shadow_log
+	w.dlog.capture_npc(s, "before_shadow_sync")
 	_shadow_sync(w, n, s)
+	w.dlog.capture_npc(s, "after_shadow_sync")
 	if made and s.role != "":
 		hear_claim(w, s, s.id, s.role, 1.5, "own")  # knows "its own" gift, as every good NPC does
 	f.call(s)
+	w.dlog.capture_npc(s, "shadow_return")
 	w.rng = saved_rng
 	w.dlog = saved_log
 
@@ -272,6 +281,9 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 	var old: float = listener.suspicion[target_id]
 	var nv = clampf(old + delta, 0.0, 1.5)
 	listener.suspicion[target_id] = nv
+	w.dlog.trace_event("value_change", listener.id, target_id, {"quantity": "suspicion",
+		"from": old, "to": nv, "requested_delta": delta, "applied_delta": nv - old,
+		"ledger_id": src}, why)
 	if absf(delta) >= 0.05:
 		w.dlog.add("suspicion", listener.id, target_id, {"from": snappedf(old, 0.01), "to": snappedf(nv, 0.01)}, why)
 	if delta >= 0.15 and public_why != "":
@@ -531,6 +543,7 @@ static func recompute_beliefs(w, n, note: String) -> void:
 					continue
 				e["applied"][key] = want
 				_ledger_apply(w, n, [t, f[1], f[2], f[3], f[4]], diff, want, note, e["eid"])
+	w.dlog.capture_npc(n, "belief_recompute" + note)
 
 ## An argument's weight = its strongest justification as it stands now (each justification
 ## scaled by how credible its own supports are). Other entries: their weight.

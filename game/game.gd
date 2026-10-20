@@ -55,6 +55,10 @@ var last_error = ""         # why the last file_deduction was refused
 var log_dir = "user://logs"
 var log_paths: Array = []
 var debug = false
+var detailed_logging = true  # developer tracing, independent of spoiler/debug scoring
+var trace_build = ""
+var trace_tuning = ""
+var _trace_export_pending = false
 var events: Array = []
 var last_events: Array = []
 
@@ -172,8 +176,13 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	fallback_count = 0
 	show_hidden = false
 	last_error = ""
+	_trace_export_pending = false
 	w = World.new()
+	w.detailed_logging = detailed_logging
+	w.trace_build = trace_build
+	w.trace_tuning = trace_tuning
 	w.setup(seed_in, npc_count)
+	w.dlog.begin_action("new_case_presentation")
 	_home_cards()
 	state = "day"
 	moved = false
@@ -197,6 +206,10 @@ func command(line: String) -> String:
 	if text == "":
 		return ""
 	events = []
+	if w != null:
+		w.set_log_time()
+		w.dlog.begin_action("command", {"cmd": text})
+		w.trace_capture("before_command")
 	_dispatch(text)
 	if w.game_over and state != "over":
 		state = "over"
@@ -209,6 +222,15 @@ func _finish_command(kind: String, cmd: String) -> String:
 	if w != null:
 		w.set_log_time()
 		w.dlog.add("player_" + kind, "player", "", {"cmd": cmd, "output": out})
+		w.trace_capture("after_" + kind)
+		w.dlog.end_action()
+		# Endings/manual exports can occur inside dispatch. Flush again only after
+		# the final state and action_end have been recorded.
+		if _trace_export_pending:
+			_trace_export_pending = false
+			var error = w.dlog.write_trace_file(log_dir, "case_%d" % w.seed_value)
+			if error != OK:
+				push_error("Detailed trace export failed: %s" % error_string(error))
 	return out
 
 # ---------------------------------------------------------------- parsing helpers
@@ -1700,7 +1722,9 @@ func _lies() -> String:
 
 func _write_logs() -> String:
 	var base = "case_%d" % w.seed_value
+	w.trace_capture("export", true)
 	log_paths = w.dlog.write_files(log_dir, base)
+	_trace_export_pending = true
 	var shown: Array = log_paths.map(func(p): return ProjectSettings.globalize_path(p))
 	return "Dev log written: %s" % ", ".join(PackedStringArray(shown))
 
