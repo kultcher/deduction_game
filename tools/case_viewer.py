@@ -8,6 +8,9 @@ import argparse
 import copy
 import json
 import math
+import os
+import secrets
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 import sys
 import webbrowser
@@ -124,14 +127,128 @@ def render_report(case):
     return template.replace("/*CASE_DATA*/", payload, 1)
 
 
+def default_log_dir():
+    appdata = Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
+    return appdata / "Godot" / "app_userdata" / "Demonologist (text prototype)" / "logs"
+
+
+def choose_log(directory):
+    """Keep Tk on the launcher's main thread; import it only for native loading."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError as error:
+        raise RuntimeError("Native Load requires Python's tkinter component.") from error
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        root.attributes("-topmost", True)
+        selected = filedialog.askopenfilename(
+            parent=root, title="Load case log (.trace.jsonl recommended)",
+            initialdir=str(directory),
+            filetypes=[("Detailed traces", "*.trace.jsonl"), ("All JSONL logs", "*.jsonl"), ("All files", "*.*")],
+        )
+        return Path(selected) if selected else None
+    finally:
+        root.destroy()
+
+
+def make_viewer_server(case, directory, chooser=choose_log):
+    """Loopback-only UI. No arbitrary-path endpoint; Load opens a native chooser."""
+    token = secrets.token_urlsafe(24)
+    route = "/" + token + "/"
+    current = {"case": case}
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def send_payload(self, code, payload, content_type="application/json"):
+            body = payload.encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", content_type + "; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("Content-Security-Policy", "frame-ancestors 'none'")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def valid_host(self):
+            return self.headers.get("Host") == f"127.0.0.1:{self.server.server_port}"
+
+        def served_case(self):
+            return {**current["case"], "loader": {
+                "url": route + "load", "token": token, "directory": str(directory)}}
+
+        def do_GET(self):
+            if not self.valid_host() or self.path != route:
+                self.send_payload(404, '{"error":"Not found"}')
+                return
+            self.send_payload(200, render_report(self.served_case()), "text/html")
+
+        def do_POST(self):
+            expected_origin = f"http://127.0.0.1:{self.server.server_port}"
+            if (not self.valid_host() or self.path != route + "load"
+                    or self.headers.get("X-Case-Viewer") != token
+                    or self.headers.get("Origin") != expected_origin):
+                self.send_payload(403, '{"error":"Invalid local viewer session"}')
+                return
+            if self.headers.get("Content-Length", "0") != "0":
+                self.send_payload(400, '{"error":"Load does not accept request data"}')
+                return
+            try:
+                selected = chooser(directory)
+                if selected is None:
+                    self.send_payload(200, "{}")
+                    return
+                next_case = load_case(selected)
+                current["case"] = next_case
+                self.send_payload(200, json.dumps({"case": self.served_case()}, allow_nan=False))
+            except Exception as error:
+                # Picker/parse failures leave the previously loaded case intact.
+                self.send_payload(400, json.dumps({"error": str(error)}))
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    server.viewer_url = f"http://127.0.0.1:{server.server_port}{route}"
+    return server
+
+
+def serve_viewer(log, directory):
+    case = load_case(log) if log else {
+        "source": "No log loaded", "detailed": False, "warnings": [],
+        "events": [{"seq": 1, "day": 0, "phase": "Setup", "type": "viewer_ready",
+                    "actor": "world", "target": "", "data": {}, "reason": "Click Load log to choose a case."}],
+    }
+    server = make_viewer_server(case, directory)
+    print(f"Log folder: {directory}")
+    print(f"Viewer: {server.viewer_url}")
+    print("Leave this terminal running for Load; press Ctrl+C to stop.")
+    try:
+        webbrowser.open(server.viewer_url)
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("log", type=Path, help="case_<seed>.trace.jsonl (or legacy .jsonl)")
+    parser.add_argument("log", nargs="?", type=Path, help="case_<seed>.trace.jsonl (or legacy .jsonl)")
     parser.add_argument("-o", "--output", type=Path, help="HTML output (default: beside input)")
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--open", action="store_true", help="open generated HTML in the default browser")
+    parser.add_argument("--serve", action="store_true", help="open a local viewer with a native Load dialog")
+    parser.add_argument("--log-dir", type=Path, default=default_log_dir(), help="native Load starting folder (default: Godot userdata logs)")
     args = parser.parse_args(argv)
+    if args.validate_only and args.log is None:
+        parser.error("--validate-only requires a log")
     try:
+        if args.serve or args.log is None:
+            return serve_viewer(args.log, args.log_dir)
         case = load_case(args.log)
         print(f"{len(case['events'])} events; {'schema 1 replay verified' if case['detailed'] else 'legacy observations only'}")
         for warning in case["warnings"]:
