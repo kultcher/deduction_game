@@ -507,6 +507,7 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   reading and a sighting can conflict, not only the alibi and a sighting.
 - **Walker's sightings vs the Lamplighter count:** more people reported out than the
   Lamplighter counted (or a Lamplighter who counted others but is seen nowhere).
+- **NPC at evening location vs. murder evidence trace originating from a different location.**
 
 ---
 
