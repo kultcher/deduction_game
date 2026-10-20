@@ -84,8 +84,7 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   because I'm the Lamplighter"; own-lie admissions are built), which buys some grace with listeners; evil without a
   fitting bluff can claim a fake secret. Biggest open hole: hidden night walkers frame
   themselves (Isolde 55774, Constance 96773; Lamplighter/Veteran/Sleepwalker/Warden hang rates). (DESIGN)
-  Shadow-self plan step 3; on hold until the meeting-flow design is worked out.
-  [decided, on hold]
+  Now part of the meeting-flow plan (docs/meeting_flow_plan.md, step 2). [decided]
 - **Last words.** A condemned NPC gets some final words before the hanging (flavour). (Oct 19) [decided]
 - **Nominations make a case.** The nominator cites several cards, even weak ones.
   Mostly flavour; it only moves NPCs if it brings new information. [decided]
