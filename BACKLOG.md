@@ -427,7 +427,7 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 
 Settled decisions, built work and parked levers, kept for the record.
 
-- **Oct 19: relaying another's private reading** is gossip with the source unnamed ("Word reached me from the Seer"). See DESIGN, "Meeting flow, step 1".
+- **Oct 19: relaying another's private reading** is gossip with the source unnamed ("Word reached me from the Seer"). See DESIGN, "The town meeting" (Citing reasons: relays).
 
 - **Oct 19: shadow good self for evil,** steps 1, 2, 4 and 5 of docs/shadow_self_plan.md (step 3, rebuttals, is on hold in section 3). Evil's public acts follow its good self unless breaking cover beats caution; refined heat; daily scapegoat re-pick. See DESIGN, "Shadow good self".
 - **Oct 19: Mediums,** a shared menu for real and fake: fake readings fit the dead's public record and claimed gift, frame only some nights, "nothing new" and empty answers for both. See DESIGN, "Mediums".
@@ -435,7 +435,7 @@ Settled decisions, built work and parked levers, kept for the record.
 
 - **Oct 19: meeting opinions cite only what the audience has.** Reasons carry their source; private readings become a hint or a reveal (see DESIGN, "Citing reasons").
 
-- **Oct 18 quick-fix pass:** everything then in this section (see DESIGN, "Quick-fix pass, Oct 18").
+- **Oct 18 quick-fix pass:** everything then in this section (see DESIGN, "History and measurements"; the full notes are in git history before Oct 20).
 - **Deduction types built Oct 18:** Martyr facts in templates, the Martyr who doesn't die, pair with both proven good, Misread (Marked, red herring), suspicious, hiding a secret, secrets and evil roles as conclusions, builder headings; NPCs owning their own lies; fear as cover.
 - **Day limit by town size:** settled, kept as is (6 days for 7 townsfolk, 8 for 10).
 - **"Maybe" conclusions** [knob]: half the persuasion and half the trust consequences, if committed conclusions turn out too punishing. If used: "maybe" can't support further deductions or be cited in accuse/defend.

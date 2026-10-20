@@ -1,6 +1,6 @@
 # Meeting flow: nominations, cases, defences, supporters
 
-Status: steps 1–2 built (Oct 19; DESIGN, "Meeting flow, step 1/2"). Step 2 has open tuning issues (see DESIGN). Steps 3–6 planned. It absorbs these backlog items:
+Status: steps 1–2 built (Oct 19; DESIGN, "The town meeting"). Step 2 has open tuning issues (see DESIGN). Steps 3–6 planned. It absorbs these backlog items:
 - "Rebuttals and excuses" (step 3 of docs/shadow_self_plan.md);
 - "Nominations make a case";
 - "Outing yourself to defend someone";
