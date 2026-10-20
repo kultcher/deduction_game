@@ -16,7 +16,8 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 ## 2. Small features and tuning (a day or so each)
 
 ### Deduction types and templates
-- **Template generalization** (one translation table per role, so pair elimination
+- **Template generalization** (now part of "Cases instead of proofs" in section 4: one fit check per evidence type;
+  originally: one translation table per role, so pair elimination
   etc. work for any gift that makes the same kind of statement). (DESIGN, deferred to
   roster expansion) [decided]
 
@@ -134,6 +135,61 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   what evidence is worth. [decided]
 
 ## 4. Major structural work (a week or more; design first)
+
+- **Cases instead of proofs: the player argues a theory** (Oct 19–20 discussion; next up
+  after the usage reset, ahead of meeting-flow step 5). [decided, design first]
+  - **The problem:** deductions are "these cards prove this", gated by templates. Most
+    Clocktower reasoning is cumulative and probabilistic, so a strong case like "Seer
+    pair + near a murder + caught in a lie" gets filed as a weak "your inference". The
+    space of evidence interactions is too large for templates, and some that fit are
+    unintuitive to build.
+  - **The direction:** the player proposes a theory, which can be partial:
+    - the demon candidate and the suspected evil;
+    - optional assumptions ("Edda is the red herring", "Constance's reading was
+      poisoned").
+
+    The game scores each card on how well it fits that theory: supports, contradicts,
+    or doesn't bear. This answers the question the evidence poses (the Surveyor's "3":
+    mark who the evil are, and see if the count fits).
+  - **One fit check per evidence type** instead of templates for pairs:
+    - Surveyor: N blocks with an evil resident;
+    - Seer yes: the demon, the red herring or a Marked person is in the pair;
+    - Dowser and Hearthwitch: N evil among a group;
+    - Archivist: one of two is that minion;
+    - Gravedigger: the hanged person was that role;
+    - sightings near deaths: soft fits.
+
+    Partial theories need "fits / could fit / contradicts" (is the count still
+    reachable?). Demon victims count as good by default, so a Surveyor check includes
+    the dead without extra steps.
+  - **Against flooding the zone:** score fit weighted by how surprising it is.
+    Irrelevant cards add nothing, loose fits little (a Surveyor count fits many
+    theories), tight fits a lot (a Seer yes on the pair), contradictions cost.
+    Same-source cards count once. Every assumption weakens the case by the listener's
+    doubt in it.
+  - **NPCs judge the player's theory; they don't search for theories.** Each listener
+    checks it against what they know, at their own credibility weights, and answers two
+    questions: does it make it more likely (belief), and is it enough to act on
+    (execution priority: urgency, trust in the player, counterevidence)? An accepted
+    assumption can become a working belief that later arguments build on, and it's undone
+    if it collapses. That keeps the player as the detective and NPCs persuadable and
+    plausibly wrong (accidental misdirection and deliberate manipulation, such as
+    getting someone hanged for a Gravedigger read, both still work).
+  - **Keep:** templates, now as bonuses for rigorous links rather than gates; the evidence
+    ledger; cards; provenance; the shadow self. The per-card weighing that private cases
+    already use is the starting point for scoring.
+  - **Bonuses:** a supports/contradicts view of the board is a strong player tool on its
+    own. The private-theory panel (demon and minion guesses) is the natural entry point.
+    The bot can use the same checks.
+  - **Where it plugs in:** the player's turn in the meeting flow becomes "make a case".
+  - **Considered and not chosen:** Astra's full competing-hypotheses rework (every NPC
+    tracking demon, minion, red herring and Marked beliefs for everyone). It's sound,
+    but it makes NPCs better reasoners, which is the wrong direction, and it's a large
+    open-ended core rewrite. Revisit only if playtests keep pointing at "one suspicion
+    score" problems, and then as a log-only prototype first.
+  - **Related cheap idea, can come first:** an execution-priority term in nominations and
+    votes. A credible lead (a Seer yes, a trusted player's case) makes a target
+    actionable without inflating belief, scaled by urgency.
 
 - **Pattern-based cases.** Alongside existing deductions, build a case from many
   cards, without the three-card limit: repeated encounters, conflicting stories, or
