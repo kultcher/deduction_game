@@ -1,73 +1,97 @@
-# Demonologist — text prototype
+# Demonologist — prototype
 
 A single-player social deduction game inspired by Blood on the Clocktower. You are a
-Demonologist summoned to a small town where a demon has taken a host and a Poisoner serves
-it. Over several days you question townsfolk, search crime scenes, listen to gossip and
+Demonologist summoned to a small town where a demon has taken a host. Minions serve it (one
+of the Poisoner, Breathstealer, Revenant and Scion in a 7-person town, two in a 10-person
+town), and one innocent townsperson carries a secret (Delusional, Marked, Secret Lovers or
+Sleepwalker) that muddies their gift or puts them out at night. Over six days (seven
+townsfolk) or eight (ten) you question townsfolk, search crime scenes, listen to gossip and
 sway the town's votes, until the demon's host hangs or the town falls.
 
-This is a **text proof of concept** built in Godot 4 (GDScript). The point is to test
-whether the deduction is fun before any art exists. See [DESIGN.md](DESIGN.md) for the
-design decisions so far.
+This is a proof of concept built in Godot 4 (GDScript), with a painted town screen and case
+board over a deterministic simulation that also runs headless. The point is to test
+whether the deduction is fun. [DESIGN.md](DESIGN.md) describes how every system works and
+why; [BACKLOG.md](BACKLOG.md) is the to-do list; [TUNING.md](TUNING.md) has the numbers.
+This README covers running and playing.
 
 ## Running it
 
-**Dialogue prototype:** open `ui/dialogue_lab.tscn` and press **F6** to compare Agnes,
-Bartholomew and Constance across fifteen situations. Normal play includes voiced argument
-replies, nominations, and vote explanations, with memory of earlier expressed positions. See [the dialogue prototype guide](docs/dialogue_prototype.md) for controls,
-integration points, scope and headless preview/test commands.
-
 Requires Godot 4.4+ (tested with 4.4.1).
 
-**In the editor:** open the project and press Play. Everything can be done with the mouse:
+**In the editor:** open the project and press Play. Pick a town size (7 or 10 townsfolk)
+beside the case seed in the title bar and press **New case**. Everything can be done with
+the mouse; the typed prompt still works as a fallback.
 
-- **The map** (top left) shows the four blocks and the roads between them. Click a block to
-  zoom in; click a place to spend the phase there, a home to call on whoever's in, or a
-  crime scene to search it. People are coloured dots: at their exact spot if they're
-  working, in conversation, or on your block once you're there; loose in the street if you
-  only know their block; in their homes otherwise. **Clicking a person walks you to them
-  and starts a conversation.** At night, click a block or person to pick your vigil or
-  ward. Right-click or **◀ Whole town** zooms out.
-- **The action panel** (right) shows what you can do now, as buttons: talk, search,
-  gossip, wait; in conversation, the ask buttons, **Ask about… ▸** (people in one column,
-  gifts in the other) and **Present a card…** (pick from your board, optionally "speak
-  for/against" someone); at the meeting, nominate, present, wait, close; on a vote, vote,
-  accuse or defend with an optional card, clemency; at night, vigil, ward, sleep.
-- **The log** (bottom left) colours every character's name and speech in their own colour.
-  The typed prompt still works as a fallback.
-- **The profile** (bottom right) follows whoever you click or talk to.
-- **Debug** (checkbox) shows what NPCs privately make of things: each card's influence
-  across the NPCs who've heard it (average, highest and lowest, with initials) and, on
-  profiles, how the town credits and suspects that person. Turning it on mid-case leaves
+- **Title bar:** day and phase, **Town** / **Case board** / **Notes** / **Roles** /
+  **Help**, the case seed and town size, **New case**, **More ▾** (text cast and timeline,
+  card sidebar, dev log) and **Debug**.
+- **The town screen:** the painted map (top left), the townsfolk list (portrait, colour,
+  claim icon, your pencilled guess, where they are when you can see them; the dead greyed),
+  and the profile of whoever you click or talk to. Below, the actions for the current
+  moment sit beside the log.
+- **The map:** click a block to zoom in; click a place to spend the phase there, a home to
+  call on whoever's in, or a crime scene (a crossed-out cottage) to search it. Clicking a
+  person walks you to them and starts a conversation. At night, click a block or person to
+  pick your vigil or ward. People at work or in conversation are shown wherever they are;
+  everyone else only once you're on their block.
+- **Actions:** buttons for what you can do now: talk, search, gossip, wait; in
+  conversation, the ask menus, **Offer…** and **Present a card…**; at the meeting,
+  nominate, present, wait, close; on a vote, accuse or defend (optionally citing a card),
+  clemency, vote; at night, vigil, ward, sleep.
+- **The meeting circle:** at the town meeting the map gives way to a ring of standees on
+  the Square, with the nominee in the centre and a hand that sweeps round counting votes.
+- **The log** colours every name and speech line in the speaker's ink; card numbers open
+  the card on the board.
+- **The profile** shows occupation, claim, trait bars and **Your guesses** (a role and a
+  secret, each with a confidence), with tabs for what they've claimed and what's been said
+  about them.
+- **The case board** is a full screen of its own: three views (**Places & sightings**,
+  **Statements**, **Process**), pan and zoom, day navigation, filter chips, and red strings
+  between related cards. Overlays from the bottom-left dock (**Card List**, **Build case**,
+  **Profile**, **Notes**, **Roles**) can be moved and resized. Right-click any card to add
+  it to a deduction, hide it, find links or get hints. Deductions wait in a tray under the
+  grid and pin to the board where you drop them.
+- **Debug** shows what NPCs privately make of things (each card's influence on those who've
+  heard it; how the town credits and suspects each person). Turning it on mid-case leaves
   your identification unscored.
-- **Board** toggles the card sidebar. **Case view** opens a full-screen board: a text
-  filter plus multi-select **Kinds / People / Places** lists (tick several; *match any*
-  shows cards fitting any ticked item, *match all* requires each ticked list to match), the
-  card list, the timeline grid (who was where, by
-phase; bright = you saw it, dim = you were told; click a cell for its cards), profiles with
-your guess, confidence and notes, the conclusion builder and Link results. Double-click a
-card (or select it and press **>>**) to put it in your **working set**, which stays put
-while you filter; Link and the builder use the working set. **◀ Back to
-console** (or Esc) returns to the console. Hide / Unhide work on any card (tick **Show
-hidden** to see them); **Delete deduction** removes your own deductions only.
+
+**Dialogue lab:** open `ui/dialogue_lab.tscn` and press **F6** to compare Agnes,
+Bartholomew and Constance across fifteen situations. In normal play these three voice
+argument replies and nominations, with memory of what they said earlier; everyone else
+uses plain lines. Votes are silent (vote talk returns with the meeting-flow work). See
+[the dialogue prototype guide](docs/dialogue_prototype.md).
 
 **In a terminal:**
 
 ```sh
 godot --headless --path . --script res://tools/cli.gd -- --seed 42
+godot --headless --path . --script res://tools/cli.gd -- --seed 42 --npcs 10
 ```
 
-Options: `--seed N`, `--npcs 7`, `--log-dir DIR` (default `logs/`), `--debug`
-(unlocks `grimoire` mid-game), `--echo-log` (prints every dev-log entry as it happens).
+Options: `--seed N`, `--npcs 7|10` (town size, default 7), `--log-dir DIR` (default
+`logs/`), `--debug` (unlocks `grimoire` mid-game), `--echo-log` (prints every dev-log
+entry as it happens).
 
 **Autoplay bot** (for testing and balance):
 
 ```sh
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 1 --games 50
+godot --headless --path . --script res://tools/autoplay.gd -- --seed 1000 --games 150 --npcs 10
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 7 --transcript
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 1000 --games 150 --passive
 ```
 
-To compare the same starting towns and retain machine-readable results:
+The bot plays through the same command interface a human uses, sees only what a player
+sees, and prints one line per case plus a summary. `--transcript` prints everything the
+player would have seen. `--passive` is the control: a player who does nothing at all
+(waits every phase, declines approaches, never nominates, votes no). Compare it with the
+normal bot on the same seeds to see how much the player's actions matter. Recent runs win
+about a third of 7-townsfolk cases and a sixth to a quarter of 10-townsfolk cases (seeds
+1000–1149); the passive control wins far fewer. The measurements over time are in DESIGN's
+[History and measurements](DESIGN.md#history-and-measurements). Seed-to-seed noise is about
+±3 games per 150.
+
+To compare the same starting towns and keep machine-readable results:
 
 ```sh
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 1000 --games 150 --log-dir logs --results logs/active.json
@@ -77,236 +101,176 @@ python3 tools/compare_runs.py logs/active.json logs/passive.json
 
 Case logs are separated into `active/` and `passive/` beneath the chosen log directory.
 The comparison reports paired wins and reversals, wrongful executions per execution,
-player backing/opposition, identification, and innocent survivors in victories. Only
-completed cases enter outcome rates. Same seeds match the starting setup; player actions
-can change subsequent random draws, so a reversal alone does not prove a particular
-intervention caused a loss. The bot records its top living suspicion score as demon and
-runner-up as minion; these are diagnostic guesses, not a sophisticated role solver.
+player backing/opposition, identification, innocent survivors in victories, `loss_hint`
+and night stats. Only completed cases enter outcome rates. Same seeds match the starting
+setup; player actions change later random draws, so a reversal alone doesn't prove an
+intervention caused a loss.
 
-`--passive` is the control: a player who does nothing at all (waits every phase, declines
-approaches, never nominates, votes no). Compare its win rate with the normal bot on the
-same seeds to see how much the player's actions matter.
+**Tests** (each runs headless and prints its results):
 
-The bot plays through the same command interface a human uses and prints one line per
-case plus a summary (bot win rate is roughly 30–35% at the moment), including trait
-reveals, disclosure and NPC-conversation counts. `--transcript`
-prints everything the player would have seen.
+```sh
+godot --headless --path . --script res://tools/test_beliefs.gd
+```
+
+Others: `test_argue`, `test_fixes`, `test_roster`, `test_shadow`, `test_social`,
+`test_outcomes`, `test_board`, `test_ui`, `test_town_ui`, `test_text_ui`,
+`test_text_formatter`, `test_text_terms`, `test_dialogue`, `test_dialogue_decisions`,
+`test_sighting_followup`, `test_trace` (all in `tools/`).
 
 ## How to play
 
 Each day has three phases (morning, afternoon, evening), then a town meeting, then night.
+You get one action per phase. `help` lists every command in the current build.
 
 | When | Commands |
 |---|---|
-| Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `theory`, `roles`, `tools`, `help`, `log` |
+| Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `timeline [filter]`, `theory`, `roles`, `tools`, `help`, `log` |
 | Day phase | `go <place / block / person>`, optionally one more `go` within the same block, then one action: `talk <name>`, `search`, `gossip` (tavern only), `wait` |
-| Talking (3 questions) | `ask gift`, `ask night`, `ask today`, `ask about <name or gift>`, `present <card#> [for/against <name>]`, `bye` |
+| Talking (3 questions) | `ask gift`, `ask are <gift>`, `ask night`, `ask seen <today / morning / afternoon / evening / yesterday [phase]>`, `ask about <name or gift>`, `ask why`, `present <card#> [for/against <name>]`, `offer ward` / `offer vigil` (free), `bye` |
 | Approached | `accept` (talk now; uses the phase) or `decline` (any other action also declines) |
-| Town meeting | `nominate <name>` (once), `wait` (let the town nominate), `done` (close the meeting, once a `wait` finds no more nominations) |
-| On a nomination | `defend [card#]` or `accuse [card#]` (one statement, optionally citing a card), `clemency` (once per case), `vote yes` / `vote no` |
-| Night | `ward <name>` (once per case), `vigil <block>`, `sleep` |
-| Case work (any time) | `link <#> <#> [#]`, `conclude <number>` (after a link), `conclude <name> <is / is not / should be> <status> [on night N] [because <#> ...]`, `hide <#>`, `unhide <#>`, `showhidden`, `delete <#>` (deductions only), `timeline [filter]`, `note <name> <text>`, `guess <name> <role/evil/good> [1-3]` |
-| At the meeting | `present <deduction#>` (once: everyone hears it) |
+| Town meeting | `present <deduction#>` (once: everyone hears it), `nominate <name>` (once), `wait` (let the town nominate), `done` (close the meeting, once a `wait` finds no more nominations) |
+| On a nomination | `accuse [card#]` or `defend [card#]` (one statement), `clemency` (once per case), `vote yes` / `vote no` |
+| Night | `vigil <block>`, `ward <name>` (once per case), `sleep` |
+| Case work (any time) | `link <#> <#> [#]`, `conclude <number>` (after a link), `conclude <name> <is / is not / should be> <status> [on night N] [because <#> ...]`, `conclude one of these is misled or lying because <#> ...`, `hide <#>`, `unhide <#>`, `showhidden`, `delete <#>` (deductions only), `note <name> <text>`, `guess <name> <role / evil / good> [1-4]` |
 | After the case | `grimoire`, `grimoire lies` |
 
 Names and places accept prefixes (`talk bart`, `go tav`). Crime scenes appear as
 locations (`go scene_greta`, or `go greta`).
 
-**The Warden walks** to the door it guards at night, so it can be seen by anyone out on
-that block or watching it. A demon whose attack fails may realise who was standing there.
+**Win:** the demon's host is executed. **Lose:** only two townsfolk remain, or the last day
+(day 6 with seven townsfolk, day 8 with ten) ends.
 
-**The town.** Each phase opens with a view of the town: people at work and pairs deep in
-conversation are shown exactly; everyone else only by block. `go <person>` takes you to
-their exact spot if you know it (working, in conversation, or visible nearby); otherwise
-to a location on their block. If they turn out to be next door, `talk <name>` walks you
-over using your free move. People at home can be visited: `go <person>` takes you to their
-door (it still costs your action to talk). Workers can always be found
-at work during their (known) shift. People in conversation can't be talked to.
+**The roles.** `roles` (or the **Roles** window) lists every gift in the script, its icon
+and who has claimed it. Fifteen good gifts are drawn from (Archivist, Clerk, Dowser,
+Gravedigger, Lamplighter, Martyr, Medium, Night Watch, Psychologist, Rumormonger, Seer,
+Sexton, Surveyor, Veteran, Warden). The minions:
 
-**Asking about gifts.** `ask gift` answers at one of four levels depending on the NPC's
-Privacy, their trust in you, pressure and the day: deny or refuse, a flavoured hint
-(night sight / names / shelter), the gift itself, or the gift and its readings. Once
-someone has told you something they won't pretend otherwise; if trust drops they say
-they're withholding newer readings.
+- **Poisoner:** each night one person's gift fails or lies until the next night.
+- **Breathstealer:** once a day silences someone on its block from that evening's meeting
+  to the next; the silenced can't claim, testify, nominate or talk with you (they still
+  vote).
+- **Revenant:** hides a totem somewhere. Hanged with a totem hidden, it turns a good
+  yes-voter evil. `search` at the totem's location burns it.
+- **Scion:** becomes the demon if the demon is executed while five or more are alive.
 
-**Traits.** Each NPC has five traits (Privacy, Gossip, Confidence, Insight, Composure),
-rolled per case from the character's baseline. You learn them gradually from conversations
-and meetings; `profile <name>` shows what you know. Composure also decides whether you
-notice how someone feels about you.
+Evil knows each other and bluffs good gifts not in play. Full rules: DESIGN
+[Roles: the script](DESIGN.md#roles-the-script).
+
+**The town.** Four blocks (the Square, the Market, the Docks, Chapel Hill), each with
+one or two places and a home material (straw, soot, mud, chalk). Where everyone lives is
+known from the start, and so is everyone's work shift: workers can always be found at
+work. People at work or deep in conversation are visible from anywhere; anyone else only
+once you pick their block. `go <person>` takes you to them if you know where they are,
+otherwise to their block; people at home can be visited. People in conversation can't be
+talked to. Asking someone about a person may reveal that person's haunts.
+
+**Talking.** A conversation has three questions. `ask gift` answers at one of four levels
+depending on the NPC's Privacy, their trust in you, pressure and the day: deny or refuse, a
+flavoured hint at the kind of gift (night sight, shelter, the dead...), the gift itself,
+or the gift and its readings. `ask are <gift>` guesses; a wrong guess costs a little
+trust. Daytime questions are answered truthfully; night accounts may be lies.
+`ask about <gift>` asks who claims it. `offer ward` / `offer vigil` promise to protect
+or watch over them tonight: keeping the promise builds trust, breaking it costs more.
 
 **The case board.** Everything you learn becomes a numbered card with an evidence class
-(speech, circumstantial, concrete). `tell <suspect> <card#>` makes a case to whoever
-you're talking to. How far it moves them depends on the card, its source, their Insight,
-their trust in you and in the suspect, and whether they've heard it before. Telling your
-case to an evil NPC warns the demon. Using someone's confessed secret against them costs
-their trust, permanently for very private people.
+(speech, circumstantial, concrete), when it happened and when you learned it. The same
+fact heard twice is one card; the same fact from two witnesses is two cards that know
+about each other.
 
-**Presenting a card in conversation.** `present <card#>` is the one verb for using your
-board on someone (it uses a question). The game works out what you mean: a card or
-deduction about the person you're talking to presses them (below); a deduction about
-someone else argues it; a plain card about someone else makes a case for or against them,
-with the direction read from the card itself (a Seer "yes" accuses, a Seer "no" clears). A
-card naming several people applies to all of them, split ("it's one of these two"). Cards
-with no direction of their own (a daytime sighting) fall flat: "I'm not sure what you're
-trying to prove". That costs no question, and is logged. `for <name>` / `against <name>`
-override the reading. `press`, `convince`, `tell` and `defend` remain as shortcuts.
+**Presenting a card.** `present <card#>` is the one verb for using your board on someone
+(it uses a question). The game works out what you mean: a card or deduction about the
+person you're talking to **presses** them (raises the pressure and makes them answer it:
+account for that night, reconsider revealing their gift, maybe confess a secret; nerves
+may show); a deduction about someone else argues it; a plain card about someone else makes
+a case for or against them, with the direction read from the card (a Seer "yes" accuses,
+a Seer "no" clears). A card naming several people applies to all of them, split. A card
+with no direction of its own falls flat ("I'm not sure what you're trying to prove"),
+which costs no question. `for <name>` / `against <name>` override the reading. `press`,
+`convince`, `tell` and `defend` remain as shortcuts. Using someone's confessed secret
+against them costs their trust; making your case to an evil NPC warns the demon.
 
-**Something doesn't add up.** When Link finds a conflict, the first option files it
-without choosing an explanation. In the builder, pick **One of these people** (the people
-your working set rests on) and **misled or lying**; or `conclude one of these is misled or
-lying because #a #b`. NPCs who accept it take what those people say with a pinch of salt,
-and presenting it raises the pressure on them (all of them at the meeting; privately, the
-listener if they're one of them), which makes them readier to explain themselves.
+**Building a case.** `link` checks 1–3 cards against a library of templates:
+contradictions (someone in two places at once, out at night vs. "I was home", two people
+claiming one gift, a reading that flips...), corroborations and inferences (a Seer pair
+where one person is cleared leaves the other). A match lists possible explanations and
+never says which is true; `conclude <number>` files the one you believe as a
+**deduction** card. Or write the conclusion yourself, e.g. `conclude jory is misled on
+night 1 because #4 #7`, `conclude hollis is not the demon because #3`, `conclude edda
+should be protected because #9`. Statuses: good, evil, the demon, a gift, lying,
+**misled** (their information was wrong: poisoned or mistaken), misled or lying; with
+"should be": protected, spared. When the cards conflict but you can't say who is wrong,
+**something doesn't add up** (`conclude one of these is misled or lying because #a #b`)
+makes NPCs take those people with a pinch of salt and raises the pressure on them. The
+**Build case** overlay does all of this with the mouse. DESIGN
+[Deductions and arguments](DESIGN.md#deductions-and-arguments) has the full list.
 
-**Pressing someone** confronts the person you're talking to with a card
-or deduction about them. It raises the pressure on them and makes them answer it: a night
-sighting makes them account for that night (a good NPC hiding a secret may confess), and a
-card about their gift makes them reconsider revealing it (a Clerk reading naming them
-opens them up most). Anyone hiding something may show nerves, and so, less often, may a
-rattled innocent; composure decides. Pressing costs a little trust. `ask about <gift>`
-put to the person who actually holds it makes them decide whether to own up.
+**Night.** Most people stay home. Evil goes out to act, and so does anyone whose gift
+chooses a place (Night Watch, the Warden at the door it guards, the Medium, the
+Lamplighter) or whose secret takes them out (Lovers, Sleepwalker). Every block is joined to
+every other, so a walker is seen only on their own block (leaving home) or where they went;
+the Lamplighter walks every block. A vigil shows you who moves through a block. Being seen
+out counts heavily only on the block where someone was killed that night. Walkers
+sometimes drop something on the way: usually their home block's material, rarely a
+personal item. **Searching** finds what was dropped there (and the Revenant's totem); a
+crime scene gives a trace pointing to where the killer spent the evening.
 
-**Night walkers follow the roads**, so they can be seen (and caught on a vigil, or by a
-Night Watch) on any block along their route, not just where they end up. They sometimes
-drop something on the way: usually a material from their own home block (mud, chalk,
-soot, straw), rarely something of theirs. **Searching an ordinary place** finds whatever
-was dropped there. A personal item puts its owner out on that block that night; a
-material says someone from that block was out (link it with a resident's "I was home").
-A misleading death-scene trace now has a cause: someone else passed the cottage that night
-and left traces from where *they* spent the evening.
+**The town talks.** NPCs who pair off exchange readings, sightings, opinions, the cases you
+made to them, and secrets. Gossips relay what they've heard; busybodies may approach you
+with it. Evil knows only what it could know and coordinates when its members meet.
+Paranoia rises with every death.
 
-**More evidence.** Conversations you see on the town view, people you see nearby, and
-nights when nobody died all become cards. NPCs notice who was talking with whom and may
-mention it. A Warden or Veteran claimant gains credit with the town after a quiet night
-(evil can bluff these too). `profile` lists what readings on your board say about someone
-("possibly the Warden, per Dorian's Clerk reading").
+**Meetings** follow Blood on the Clocktower: testimony, then your chance to present one
+deduction to everyone, then nominations one at a time. Each person nominates and is
+nominated at most once a day. The nominator states their case, the nominee defends
+themselves, you may accuse or defend (or spend clemency), and the town votes in seat order,
+silently. Reaching half the voters puts the nominee on the block; a later nomination needs
+more votes to replace them, and a tie clears the block. Whoever is on the block when the
+meeting closes is executed.
 
-**Your private theory.** Use **Record theory** to jump to a profile's **Your guess**, or
-`guess <name> demon [1-3]` / `guess <name> poisoner [1-3]`. `theory` shows your current
-candidates. A new demon/minion guess replaces the previous candidate for that identity.
-Guesses are optional, private, and cost no action. The persistent banner and meeting
-reminders encourage recording them before voting, since a case can end early.
-
-Every revision is logged with confidence, notes and game time. Snapshots before votes,
-executions and nights preserve what you believed before the outcome; the latest snapshot
-is scored only at the ending. The ending separately reports town survival, demon and
-minion identification, and innocent lives preserved. "Identified but lost" recognizes a
-correct final demon theory when the town falls; it does not claim why persuasion failed.
-Earlier correct guesses remain in the history but do not earn final-theory credit after
-being abandoned. Guesses cannot change after the reveal. Opening a debug grimoire before
-the ending marks identification as unscored.
-
-`case_summary` is the versioned machine-readable end-of-case event. Execution rows retain
-player nomination, yes/no vote and explicit accuse/defend statements. Their stance is
-`backed`, `opposed`, or `mixed` (e.g. accused, then voted no); these categories are mutually
-exclusive. Public deductions and earlier private persuasion remain available in the trace
-but are not automatically attributed as causes of an execution. Zero executions gives a
-null wrongful-execution fraction, rather than a misleading zero.
-
-The ending also lists evidence that pointed at the demon: cards on your board, or (if none)
-true readings, night sightings or an unsearched trace that never reached you. It's
-descriptive, not a verdict. `case_summary` (schema 2) adds `loss_hint`
-(`identified_not_persuaded`, `evidence_on_board`, `evidence_reachable`, `no_evidence`),
-night stats (kills; attacks stopped by the Warden, Veteran or your ward; Warden hit rate;
-Warden spotted or killed) and `present_fallbacks`. `compare_runs.py` prints both.
-
-Tracking regression checks:
-
-```sh
-godot --headless --path . --script res://tools/test_outcomes.gd
-```
-
-**The town talks.** NPCs who pair off actually exchange things: a reading, a night
-sighting, an opinion, a case you made to them, or a secret. Everyone remembers who told them
-what. Gossips relay what they've heard; busybodies may approach you with it (including
-other people's secrets). `ask about <gift>` (e.g. `ask about seer`) asks what someone
-knows about that gift: who claims it, and what they've been told privately.
-
-**Evil knows only what it could know:** public events, what each member saw or was told,
-and what they pool when they meet (pairs you may see talking) or whisper in a crowded
-tavern. Paranoia rises with every death: the town grows quicker to suspect and to hang.
-
-**Building a case.** `link` checks 1–3 cards against a library of templates of three
-kinds. *Contradictions*: someone in two places at once; out at night vs. "I was home"; two
-people claiming one gift; a watcher who missed someone; your vigil missing someone a
-witness put there; a reading that flips; a Gravedigger contradicting a claim; a Veteran
-killed by the demon; a reading pointing only at the demon's victims; a changed story.
-*Corroborations*: two witnesses putting someone in the same place; a Clerk reading backing
-a claim; a night when nobody died, alongside a Warden or Veteran claim (or a "shelter"
-hint). A Clerk naming two people who both claim other gifts is also a conflict. *Inferences* also
-include **association** (someone implicated as evil, by a Gravedigger or a deduction you've
-argued, seen talking with Y; stronger with more separate conversations, and with how much
-each listener believes the first part) and **vindication** (if a Gravedigger was poisoned
-on the night they named someone the Poisoner, the Poisoner was alive then, so the hanged
-person wasn't it). *Inferences*: a Seer or Archivist pair where one person is cleared (killed by the
-demon, or shown good after execution; for a Seer pair, also anyone hanged without ending
-the case, since they weren't the demon), which leaves the other; the death-scene trace
-matching someone seen on that block that evening. A match lists possible explanations,
-and never says which is true. `conclude <number>` files the one you believe
-as a **deduction** card. You can also write a conclusion yourself as a sentence, e.g.
-`conclude jory is misled on night 1 because #4 #7`, `conclude hollis is not the demon
-because #3`, `conclude edda should be protected because #9`. Statuses: good, evil, the
-demon, a gift (seer...), lying, **misled** (not lying, but their information was wrong:
-poisoned or mistaken), **misled or lying**; with "should be": protected, spared. A
-conclusion with no template behind it is your own inference, at most circumstantial and
-weighed on how strongly its cards bear on the person; it's *unfounded* only if the cards
-don't concern that person at all, and sharp (high-Insight) NPCs reject those. Filing
-checks your cards for a template either way, so pressing Link first makes no difference. A deduction needs supporting
-cards, and one that only restates what someone said about themselves ("Jory is the
-Seer because of Jory's claim and Jory's reading") is refused.
-
-**Credibility.** Every claim counts as much as its source is credible to the listener:
-how honest the person seems (from evidence against them, from any source; capped, so
-"probably evil" means "take it with salt", not "ignore it") times any doubt about that
-particular reading (poison affects the reading, not the person's honesty). Everything is
-recomputed from the underlying evidence whenever anything changes, so discrediting the
-evidence against someone restores their claims at once, and beliefs can't feed their own
-justification. `godot --headless --path . --script res://tools/test_beliefs.gd` runs the
-acceptance tests.
-
-**Each NPC keeps an evidence ledger**, keyed by the underlying fact, not the card or
-whoever relayed it. Hearing the same reading again, or seeing the same sighting re-wrapped
-in another deduction, adds little or nothing. Doubts ("X is misled on night 1") lower how
-much that reading counts, including readings they only hear later. When their trust in you
-shifts, and before they vote, they re-weigh what you argued earlier (Confidence sets how
-far they move at once), and may tell you they've come round.
-
-NPCs weigh a deduction by scoring the same explanations from their own point of view
-(whom they suspect or trust, whether an information gift could be poisoned, what they
-know firsthand about where they themselves were), compared with the strongest
-alternative. "X is misled on night N" makes them discount that reading instead of
-suspecting X; "protect X" makes a Warden likelier to guard X; "spare X" lowers their vote.
-
-**Meetings** follow Blood on the Clocktower: one nomination at a time; each person
-nominates and is nominated at most once a day; a nomination reaching half the voters puts
-the nominee on the block, a later one needs more votes to replace them, and a tie clears
-the block. Whoever is on the block when the meeting closes is executed.
-
-**Win:** the demon's host is executed. **Lose:** only two townsfolk remain, or day 6 ends.
+**Your private theory.** Record guesses on a profile's **Your guesses**, or with
+`guess <name> demon [1-4]` / `guess <name> <minion gift> [1-4]` (Flimsy / Maybe / Likely /
+Confirmed). `theory` shows your current candidates. Guesses are private and free, and
+snapshots before votes, executions and nights preserve what you believed before the
+outcome. The ending reports town survival, demon and minion identification and innocent
+lives preserved, lists evidence that pointed at the demon, and writes a machine-readable
+`case_summary` to the dev log (see DESIGN
+[Outcome tracking and scoring](DESIGN.md#outcome-tracking-and-scoring)).
 
 ## Code layout
 
 ```
-sim/content.gd   static data: map, occupations and shifts, cast pool with trait baselines,
-                 roles, hint packages, secrets
-sim/npc.gd       one NPC's state (beliefs, suspicion, trust, claims, info results)
-sim/world.gd     case setup, schedules, sightings, night resolution, votes, executions
-sim/mind.gd      NPC reasoning: suspicion updates, claims, testimony, nominations,
-                 votes, conversation answers, gossip
-sim/evil.gd      evil team AI: plan, bluffs, scapegoat framing, kill/poison choice,
-                 fabricated info
-sim/devlog.gd    developer trace (JSONL + text)
-game/game.gd     command interpreter, case board; emits structured events (last_events)
-                 that are rendered to text
-ui/main.gd       in-engine text console
-tools/cli.gd     terminal frontend
-tools/autoplay.gd  bot player / batch runner
-tools/trace.py   dev-log filter for evaluating a playthrough
-tools/test_argue.gd  unit checks for the contradiction templates and evaluation
-tools/test_ui.gd     headless smoke test of the UI panels
-sim/social.gd    NPC-to-NPC exchanges, approaches, role questions, paranoia
-sim/argue.gd     card assertions, contradiction templates, conclusions, NPC evaluation
-ui/case_view.gd  full-screen case view
+sim/content.gd    static data: map, occupations and shifts, cast pool with trait baselines,
+                  roles, secrets, hint packages
+sim/gifts.gd      what each reading says in general terms (who it points at, clears, names)
+sim/npc.gd        one NPC's state (beliefs, suspicion, trust, claims, readings)
+sim/world.gd      case setup, schedules, sightings, night resolution, votes, executions
+sim/mind.gd       NPC reasoning: suspicion, claims, testimony, nominations, defences,
+                  votes, conversation answers
+sim/social.gd     NPC-to-NPC exchanges, approaches, role questions, paranoia
+sim/argue.gd      card assertions, templates, conclusions, NPC evaluation of arguments
+sim/evil.gd       evil team AI: plan, bluffs, scapegoat, kill/poison choice, fabrications
+sim/dialogue.gd, dialogue_voices.gd, dialogue_decisions.gd
+                  dialogue composer: words decided statements in a character's voice
+sim/devlog.gd     developer trace (JSONL + text)
+game/game.gd      command interpreter and case board; emits structured events
+game/card_model.gd     card times, views, rows and markers
+game/board_model.gd    case board layout as data
+game/case_metrics.gd   post-case outcome and identification analysis
+game/recent_sightings.gd  recent sightings an NPC adds when asked their opinion of someone
+ui/main.gd        town screen, title bar, actions and log (ui/main.tscn)
+ui/map_view.gd    painted map            ui/meeting_view.gd  meeting circle
+ui/case_view.gd   full-screen case board, with board_view.gd, case_state.gd,
+                  deduction_tray.gd, card_list.gd, board_panel.gd, board_icons.gd
+ui/profile_panel.gd, cast_list.gd, trait_bars.gd, portrait_badge.gd
+                  profiles and the townsfolk list
+ui/text_terms.gd, text_formatter.gd, rich_text_renderer.gd, formatted_text_label.gd,
+   inline_icons.gd, log_text.gd
+                  shared text system (coloured names and roles, inline icons)
+ui/theme.gd       papercraft theme      ui/dialogue_lab.gd  dialogue workshop
+tools/cli.gd      terminal frontend      tools/autoplay.gd  bot player / batch runner
+tools/compare_runs.py  paired active/passive comparison
+tools/trace.py    dev-log filter         tools/slice_sheets.py  art sheet slicer
+tools/test_*.gd   headless tests
 ```
 
 The simulation is deterministic for a given seed and never touches presentation, so it
@@ -359,11 +323,7 @@ python3 tools/trace.py logs/case_42.jsonl --topic kill_choice --full
 python3 tools/trace.py logs/case_42.jsonl --player
 ```
 
-## Known gaps / next steps
+## Next steps
 
-- Dialogue is templated and repetitive; personality mostly affects numbers, not voice.
-- NPC-to-NPC trust biases suspicion, votes and who pairs off; those who trusted an executed NPC resent its nominator, yes-voters and you. NPC conversations happen but carry no content yet (stage 2).
-- NPC exchanges are one item each way per conversation and aren't visible to the player except through relays, gossip and approaches.
-- The demon's view of who suspects it is approximated from internal suspicion.
-- No solvability check or storyteller director yet.
-- Balance is untuned: NPCs execute fairly readily, and games can end by day 3.
+The to-do list (bugs, deferred and open items, by effort) is [BACKLOG.md](BACKLOG.md);
+the agreed direction is in DESIGN's [Roadmap](DESIGN.md#roadmap).
