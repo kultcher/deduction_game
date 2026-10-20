@@ -4,8 +4,12 @@ import copy
 import json
 from pathlib import Path
 import tempfile
+import threading
+from http.client import HTTPConnection
+from urllib.parse import urlsplit
+from unittest.mock import patch
 import unittest
-from case_viewer import apply_changes, load_case, main, render_report
+from case_viewer import apply_changes, default_log_dir, load_case, main, make_viewer_server, render_report
 
 FIXTURE = Path(__file__).with_name("fixtures") / "case_viewer.trace.jsonl"
 
@@ -104,6 +108,58 @@ class ViewerTests(unittest.TestCase):
             self.assertEqual(main([str(FIXTURE), "-o", str(FIXTURE)]), 1)
             self.assertEqual(FIXTURE.read_bytes(), before)
             self.assertEqual(main([str(FIXTURE), "--validate-only"]), 0)
+
+
+    def test_default_log_folder(self):
+        with patch.dict("os.environ", {"APPDATA": "C:/Users/kultc/AppData/Roaming"}):
+            self.assertEqual(default_log_dir(), Path("C:/Users/kultc/AppData/Roaming") /
+                             "Godot/app_userdata/Demonologist (text prototype)/logs")
+
+    def test_native_load_session_and_failure_preservation(self):
+        requested = []
+        choices = iter([FIXTURE, None, FIXTURE.with_name("missing.jsonl")])
+        directory = Path("C:/Users/kultc/AppData/Roaming/Godot/app_userdata/Demonologist (text prototype)/logs")
+
+        def chooser(start):
+            requested.append(start)
+            return next(choices)
+
+        server = make_viewer_server(load_case(FIXTURE), directory, chooser)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        address = urlsplit(server.viewer_url)
+
+        def request(method, route, headers=None):
+            connection = HTTPConnection(address.hostname, address.port, timeout=5)
+            try:
+                connection.request(method, route, headers=headers or {})
+                response = connection.getresponse()
+                return response.status, response.read().decode("utf-8")
+            finally:
+                connection.close()
+
+        try:
+            status, report = request("GET", address.path)
+            self.assertEqual(status, 200)
+            payload = report.split('<script id="case-data" type="application/json">')[1].split("</script>")[0]
+            loader = json.loads(payload)["loader"]
+            self.assertEqual(loader["directory"], str(directory))
+            headers = {"X-Case-Viewer": loader["token"], "Origin": f"http://127.0.0.1:{address.port}"}
+            self.assertEqual(request("POST", loader["url"])[0], 403)
+            self.assertEqual(request("POST", loader["url"], {**headers, "Origin": "https://example.com"})[0], 403)
+            self.assertEqual(requested, [])
+            status, body = request("POST", loader["url"], headers)
+            self.assertEqual(status, 200)
+            self.assertTrue(json.loads(body)["case"]["detailed"])
+            self.assertEqual(requested, [directory])
+            self.assertEqual(request("POST", loader["url"], headers), (200, "{}"))
+            self.assertEqual(request("POST", loader["url"], headers)[0], 400)
+            self.assertEqual(request("GET", address.path)[1], report)
+            self.assertEqual(request("GET", "/not-a-viewer-session")[0], 404)
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join(timeout=5)
 
 
 if __name__ == "__main__":

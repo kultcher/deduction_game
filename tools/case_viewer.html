@@ -17,12 +17,12 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;max-height:460px;
 table{border-collapse:collapse;width:100%;font-size:13px}td,th{border-bottom:1px solid #34475b;padding:7px;text-align:left;overflow-wrap:anywhere}
 @media(max-width:900px){body{padding:12px}.grid{grid-template-columns:1fr}}
 </style></head><body>
-<h1>Case history inspector</h1><div id="meta" class="muted"></div><div id="warnings"></div>
+<h1>Case history inspector</h1><button id="load">Load log…</button><input id="file" type="file" accept=".jsonl,application/json" hidden><span id="loadStatus" class="muted" role="status"></span><p id="loadFolder" class="muted"></p><div id="meta" class="muted"></div><div id="warnings"></div>
 <section class="panel">
 <label>Mind<select id="mind"></select></label>
 <label>View<select id="mode"><option value="overview">Player trust, cap &amp; pressure</option><option value="suspicion">Suspicion toward NPCs</option><option value="npc_trust">Relationship trust</option><option value="honesty">Source honesty</option><option value="protect_pref">Protection preference</option><option value="spare_pref">Spare preference</option><option value="discounted">Reading doubt (recorded keys)</option><option value="ledger">Ledger entry</option></select></label>
 <label>Targets / recorded keys (Ctrl-click for several)<select id="targets" multiple size="3"></select></label>
-<label>Evidence<select id="evidence"></select></label>
+<label>Evidence<select id="evidence"></select></label><div id="availability" class="muted"></div>
 <label><span>Ledger comparison</span><span><input id="compare" type="checkbox"> All minds' effective weight</span></label>
 <div><label>First event<input id="start" type="number" min="1" value="1"></label><label>Last event<input id="end" type="number" min="1"></label><button id="reset">Full range</button></div>
 <svg id="plot" viewBox="0 0 1000 300" preserveAspectRatio="none" role="img" aria-label="History graph; click to select event"></svg>
@@ -42,8 +42,9 @@ table{border-collapse:collapse;width:100%;font-size:13px}td,th{border-bottom:1px
 <script id="case-data" type="application/json">/*CASE_DATA*/</script>
 <script>
 "use strict";
-const CASE=JSON.parse(document.getElementById("case-data").textContent);
-const E=CASE.events, $=id=>document.getElementById(id), clone=x=>JSON.parse(JSON.stringify(x));
+let CASE=JSON.parse(document.getElementById("case-data").textContent);
+let E=CASE.events;
+const $=id=>document.getElementById(id), clone=x=>JSON.parse(JSON.stringify(x));
 const own=(o,k)=>o!==null&&typeof o==="object"&&Object.prototype.hasOwnProperty.call(o,k);
 const get=(o,path)=>path.reduce((v,k)=>own(v,k)?v[k]:undefined,o);
 const numeric=x=>typeof x==="number"&&Number.isFinite(x);
@@ -52,7 +53,7 @@ function put(o,k,v){Object.defineProperty(o,k,{value:v,writable:true,enumerable:
 function apply(state,changes){for(const c of changes){let p=state;for(const k of c.path.slice(0,-1))p=p[k];const k=c.path.at(-1);if(c.has_after)put(p,k,clone(c.to));else delete p[k];}return state;}
 const records=new Map(), names=new Map(), decisions=new Map(), actions=new Map();
 function addRecord(key,r){if(!records.has(key))records.set(key,[]);records.get(key).push(r);}
-E.forEach((e,i)=>{
+function indexCase(){E.forEach((e,i)=>{
  const d=e.data;
  if(e.type==="action_begin")actions.set(e.action_id,d.label);
  if(e.type==="decision"){const id=d.decision_id;if(!decisions.has(id))decisions.set(id,[]);decisions.get(id).push(i);}
@@ -63,7 +64,7 @@ E.forEach((e,i)=>{
   for(const [id,state] of Object.entries(d.npcs||{}))addRecord("real:"+id,{i,state});
   for(const [id,state] of Object.entries(d.shadow||{}))addRecord("shadow:"+id,{i,state});
  }
-});
+});}
 function observe(previous,r){return r.state?clone(r.state):r.e.type==="state_checkpoint"?clone(r.e.data.state):apply(previous,r.e.data.changes);}
 function stateAt(key,index){
  const rows=records.get(key)||[];let start=-1;
@@ -74,12 +75,8 @@ function stateAt(key,index){
  return {state,last};
 }
 function option(select,value,label){select.append(new Option(label,value));}
-for(const key of records.keys())option($("mind"),key,(names.get(key)||key.split(":").slice(1).join(":"))+" ["+key.split(":")[0]+"]");
 function summarize(e,i){const d=e.data;return "#"+e.seq+" · D"+e.day+" "+e.phase+" · "+(e.stream||"real")+" · "+e.type+" · "+(e.actor||"")+" → "+(e.target||"")+" "+(e.reason||d.label||d.kind||d.tag||"");}
-$("meta").textContent=CASE.source+" · "+E.length.toLocaleString()+" events · "+(CASE.detailed?"Schema 1 · checkpoint replay validated":"Legacy observations");
-for(const warning of CASE.warnings){const p=document.createElement("p");p.className="warning";p.textContent=warning;$("warnings").append(p);}
-$("cursor").max=E.length-1;$("cursor").value=E.length-1;$("end").value=E.length;
-let cursor=E.length-1, series=[], matching=E.map((_,i)=>i);
+let cursor=0,series=[],matching=[];
 const colors=["#83cafa","#f3bc6e","#b49bff","#78d5b3","#ed97b8","#c5d56e","#c6b7a6","#78a2ff"];
 function range(){let a=Math.max(0,Math.min(E.length-1,Number($("start").value)-1||0)),b=Math.max(a,Math.min(E.length-1,Number($("end").value)-1||0));return [a,b];}
 function populate(){
@@ -97,6 +94,7 @@ function populate(){
  $("targets").replaceChildren();
  for(const target of targets)option($("targets"),target,target);
  for(const opt of Array.from($("targets").options).slice(0,3))opt.selected=true;
+ $("availability").textContent=!["overview","ledger"].includes(mode)&&!targets.size?"This log has no recorded "+mode+" targets for this mind. For complete relationships, open the .trace.jsonl sidecar.":mode==="ledger"&&!ids.size?"No ledger entries recorded for this mind in this log.":"";
  $("targets").disabled=["overview","ledger"].includes(mode);
  $("evidence").disabled=mode!=="ledger";$("compare").disabled=mode!=="ledger";
  rebuild();
@@ -178,5 +176,94 @@ $("search").oninput=()=>{const q=$("search").value.toLowerCase();matching=E.flat
 $("prevMatch").onclick=()=>{const i=matching.filter(i=>i<cursor).at(-1);if(i!==undefined)seek(i);};
 $("nextMatch").onclick=()=>{const i=matching.find(i=>i>cursor);if(i!==undefined)seek(i);};
 $("plot").onclick=event=>{const r=$("plot").getBoundingClientRect(),[lo,hi]=range();seek(Math.round(lo+((event.clientX-r.left)/r.width*1000-55)/925*(hi-lo)));};
-populate();
+function setupCase(caseData){
+ CASE=caseData;E=CASE.events;records.clear();names.clear();decisions.clear();actions.clear();indexCase();
+ $("mind").replaceChildren();$("warnings").replaceChildren();
+ for(const key of records.keys())option($("mind"),key,(names.get(key)||key.split(":").slice(1).join(":"))+" ["+key.split(":")[0]+"]");
+ $("meta").textContent=CASE.source+" · "+E.length.toLocaleString()+" events · "+(CASE.detailed?"Schema 1 · checkpoint replay validated":"Legacy observations");
+ for(const warning of CASE.warnings){const p=document.createElement("p");p.className="warning";p.textContent=warning;$("warnings").append(p);}
+ $("loadFolder").textContent=CASE.loader?"Load starts in: "+CASE.loader.directory:"Standalone report: Load uses your browser's file picker. Run python tools/case_viewer.py --serve to start in the Godot log folder.";
+ $("cursor").max=E.length-1;$("cursor").value=E.length-1;$("start").value=1;$("end").value=E.length;
+ cursor=E.length-1;matching=E.map((_,i)=>i);$("search").value="";$("mode").value="overview";$("compare").checked=false;
+ populate();
+}
+function equal(a,b){
+ if(a===b)return true;
+ if(a===null||b===null||typeof a!=="object"||typeof b!=="object"||Array.isArray(a)!==Array.isArray(b))return false;
+ const ka=Object.keys(a),kb=Object.keys(b);
+ return ka.length===kb.length&&ka.every(k=>own(b,k)&&equal(a[k],b[k]));
+}
+function parseCase(text,source){
+ const events=[];
+ for(const [i,line] of text.replace(/^\uFEFF/,"").split(/\r?\n/).entries()){
+  if(!line.trim())continue;
+  try{
+   const e=JSON.parse(line,(_,v)=>{if(typeof v==="number"&&!Number.isFinite(v))throw Error("non-finite number");return v;});
+   if(!e||Array.isArray(e)||typeof e!=="object"||!e.data||Array.isArray(e.data)||typeof e.data!=="object"||typeof e.type!=="string")throw Error("expected event object with dictionary data and string type");
+   events.push(e);
+  }catch(error){throw Error("Line "+(i+1)+": "+error.message);}
+ }
+ if(!events.length)throw Error("Empty log");
+ const detailed=events.some(e=>own(e,"schema")),states=new Map(),warnings=[];let previous=0;
+ for(const [i,e] of events.entries()){
+  if(!detailed)continue;
+  try{
+   if(e.schema!==1)throw Error("unsupported or mixed trace schema");
+   if(!Number.isSafeInteger(e.seq)||e.seq!==previous+1)throw Error("missing, repeated or out-of-order sequence");
+   previous=e.seq;
+   if(!["real","shadow"].includes(e.stream)||typeof e.actor!=="string")throw Error("invalid stream or actor");
+   if(!["state_checkpoint","state_delta"].includes(e.type))continue;
+   const d=e.data;
+   if(!["real","shadow"].includes(d.mind))throw Error("invalid state mind");
+   const key=d.mind+":"+e.actor;
+   if(e.type==="state_checkpoint"){
+    if(!d.state||Array.isArray(d.state)||typeof d.state!=="object")throw Error("checkpoint must be a dictionary");
+    if(states.has(key)&&!equal(states.get(key),d.state))throw Error("checkpoint does not match replay");
+    states.set(key,clone(d.state));
+   }else{
+    if(!states.has(key)||!Array.isArray(d.changes))throw Error("delta has no initial checkpoint or changes array");
+    const state=states.get(key);
+    for(const c of d.changes){
+     if(!Array.isArray(c.path)||!c.path.length||!c.path.every(k=>typeof k==="string"))throw Error("invalid delta path");
+     let parent=state;
+     for(const k of c.path.slice(0,-1)){if(!own(parent,k))throw Error("missing delta parent");parent=parent[k];}
+     const key=c.path.at(-1);
+     if(!parent||Array.isArray(parent)||typeof parent!=="object")throw Error("invalid delta parent");
+     if(typeof c.had_before!=="boolean"||typeof c.has_after!=="boolean"||own(parent,key)!==c.had_before)throw Error("delta existence mismatch");
+     if(c.had_before&&!equal(parent[key],c.from))throw Error("delta previous value mismatch");
+     if(c.has_after&&!own(c,"to"))throw Error("missing delta value");
+     apply(state,[c]);
+    }
+   }
+  }catch(error){throw Error("Event "+(i+1)+" (#"+e.seq+"): "+error.message);}
+ }
+ if(!detailed)warnings.push("Legacy log: observations are incomplete/rounded. Dots are recorded observations; missing relationships and ledger history are unknown. Open the .trace.jsonl sidecar for full history.");
+ else{
+  if(!states.size)warnings.push("No state checkpoints: event inspection only.");
+  if(events.at(-1).type!=="action_end")warnings.push("Export ends outside a completed action; it may be partial.");
+ }
+ return {source,detailed,warnings,events};
+}
+async function loadSelectedFile(file){
+ if(!file)return;
+ $("load").disabled=true;$("loadStatus").textContent=" Loading…";
+ try{const next=parseCase(await file.text(),file.name);setupCase(next);$("loadStatus").textContent=" Loaded "+file.name;}
+ catch(error){$("loadStatus").textContent=" "+error.message;}
+ finally{$("load").disabled=false;$("file").value="";}
+}
+$("file").onchange=()=>loadSelectedFile($("file").files[0]);
+$("load").onclick=async()=>{
+ if(!CASE.loader){$("file").click();return;}
+ $("load").disabled=true;$("loadStatus").textContent=" Choose a log in the file dialog…";
+ try{
+  const response=await fetch(CASE.loader.url,{method:"POST",headers:{"X-Case-Viewer":CASE.loader.token}});
+  const result=await response.json();
+  if(!response.ok)throw Error(result.error||"Load failed");
+  if(result.case){setupCase(result.case);$("loadStatus").textContent=" Loaded "+CASE.source;}
+  else $("loadStatus").textContent=" Cancelled.";
+ }catch(error){$("loadStatus").textContent=" "+error.message+" Is the Python launcher still running?";}
+ finally{$("load").disabled=false;}
+};
+setupCase(CASE);
+
 </script></body></html>

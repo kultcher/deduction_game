@@ -16,6 +16,7 @@ class Element {
  get selectedOptions(){return this.children.filter(x=>x.selected);}
  get value(){return this._value||this.children[0]?.value||"";}
  set value(v){this._value=String(v);}
+ click(){this.clicked=true;}
  getBoundingClientRect(){return {left:0,width:1000};}
 }
 function boot(events,detailed=true){
@@ -53,4 +54,26 @@ const legacy=boot([{seq:1,type:"snapshot",data:{npcs:{agnes:{trust:.3,suspicion:
 assert.equal(legacy.run('stateAt("real:agnes",0).state.trust'),.3);
 assert.equal(legacy.run('series[0].points[0].v'),.3);
 boot([{seq:1,type:"trust",data:{to:.4}}],false);
-console.log("VIEWER JS: 15 checks passed (DOM substitute; visual browser check still required)");
+
+const parsed=run('parseCase('+JSON.stringify(fixture.map(JSON.stringify).join("\n"))+',"real.trace.jsonl")');
+assert.equal(parsed.detailed,true);
+assert.equal(parsed.events.length,11);
+assert.throws(()=>run('parseCase("","empty")'),/Empty/);
+const corrupt=JSON.parse(JSON.stringify(fixture));corrupt[5].data.changes[0].from=.1;
+assert.throws(()=>run('parseCase('+JSON.stringify(corrupt.map(JSON.stringify).join("\n"))+',"bad")'),/previous value mismatch/);
+const missing=fixture.filter((_,i)=>i!==4);
+assert.throws(()=>run('parseCase('+JSON.stringify(missing.map(JSON.stringify).join("\n"))+',"gap")'),/sequence/);
+run('setupCase(parseCase('+JSON.stringify(fixture.map(JSON.stringify).join("\n"))+',"reload.trace.jsonl"));');
+assert.equal(run('E.length'),11);
+assert.equal(run('cursor'),10);
+assert.equal(run('records.size'),2);
+assert.equal(run('$("load").disabled'),undefined);
+const old=JSON.stringify({seq:1,type:"snapshot",data:{npcs:{agnes:{trust:.3,suspicion:{jory:.8}}}}});
+run('setupCase(parseCase('+JSON.stringify(old)+',"old.jsonl"));$("mode").value="suspicion";populate();');
+assert.equal(run('$("targets").options.length'),1);
+run('$("mode").value="npc_trust";populate();');
+assert.equal(run('$("availability").textContent.includes("no recorded")'),true);
+assert.equal(run('CASE.warnings[0].includes(".trace.jsonl")'),true);
+run('$("load").onclick();');
+assert.equal(run('$("file").clicked'),true);
+console.log("VIEWER JS: 28 checks passed (DOM substitute; visual browser check still required)");
