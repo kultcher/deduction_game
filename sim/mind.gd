@@ -222,6 +222,25 @@ static func shadow_eval(w, n, f: Callable):
 	shadow_run(w, n, func(sh): box["r"] = f.call(sh))
 	return box.get("r")
 
+## Freed from the Revenant's curse: the good self they kept while turned becomes their
+## mind again. It heard everything they heard as evil, and never knew who else was evil,
+## which is what "remembers nothing of their time as evil" means. What it took from their
+## own fake readings is dropped (those readings are disowned), and the beliefs re-derived.
+static func shadow_adopt(w, n) -> void:
+	var s = n.shadow
+	if s == null:
+		return
+	for f in SHADOW_COPY:
+		if f in ["traits", "trait_base", "work_phases", "haunts", "friends", "rivals"]:
+			continue
+		n.set(f, s.get(f).duplicate(true))
+	for e in n.info_log:
+		if e.get("fake", false):
+			n.ledger.erase(info_eid(n.id, e))
+	n.applied_info = n.info_log.size()
+	w.dlog.think(n.id, "shadow_adopt", "Freed: takes back their good self's beliefs (%d ledger entries)." % n.ledger.size())
+	recompute_beliefs(w, n, " (freed from the curse)")
+
 ## Turned or freed by the Revenant's curse: the shadow is rebuilt (or dropped) next time.
 static func shadow_reset(n) -> void:
 	n.shadow = null

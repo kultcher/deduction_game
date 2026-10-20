@@ -20,6 +20,7 @@ func _init() -> void:
 	_scapegoat_review()
 	_private_case_reaches_shadow()
 	_fake_medium()
+	_revenant_round_trip()
 	print("SHADOW FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -185,3 +186,28 @@ func _fake_medium() -> void:
 		if w._medium_item(goods[4], real_dead, false)["type"] == "nothing":
 			nothing += 1
 	_check(nothing >= 28, "the real Medium at a hearth with nothing unshared: 'nothing new' (%d/40)" % nothing)
+
+## The Revenant's curse: turning keeps the good mind as the shadow; freeing gives it back,
+## minus anything taken from their own fake readings, and with no evil knowledge.
+func _revenant_round_trip() -> void:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(55774, 10)
+	var w = g.w
+	var v = w.living_good()[0]
+	var t = w.living_good()[1]
+	Mind.ledger_hear(w, v, "test:before", [[t.id, 0.3, false, "before the curse", "before"]], 1.0)
+	var before = v.suspicion[t.id]
+	w.turn_evil(v, "test")
+	w.curse = {"victim": v.id}
+	_check(v.is_evil() and v.shadow == null, "turned: evil, shadow to be rebuilt")
+	Mind.ledger_hear(w, v, "test:during", [[t.id, 0.25, false, "heard while turned", "during"]], 1.0)
+	_check(v.shadow != null and v.shadow.ledger.has("test:before") and v.shadow.ledger.has("test:during"), "the shadow carries the good mind from before and keeps hearing")
+	_check(not v.ledger.has("test:during"), "the real (evil) mind takes nothing while turned")
+	v.info_log.append({"day": w.day, "role": v.role, "data": {}, "text": "fake", "fake": true, "shared": false})
+	Mind.update_from_own_info(w)
+	w.free_turned()
+	_check(not v.is_evil() and v.shadow == null and v.intel.is_empty(), "freed: good again, no shadow, no evil intel")
+	_check(v.ledger.has("test:during"), "what they heard while turned is theirs again")
+	_check(not v.ledger.has(Mind.info_eid(v.id, v.info_log[-1])), "nothing from their own fake readings")
+	_check(v.suspicion[t.id] >= before - 0.3, "beliefs re-derived, not lost (%.2f -> %.2f)" % [before, v.suspicion[t.id]])

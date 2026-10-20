@@ -834,6 +834,7 @@ func free_turned() -> String:
 	if not v.alive:
 		return ""
 	v.alignment = "good"
+	Mind.shadow_adopt(self, v)  # their good self, kept while turned, is their mind again
 	Mind.shadow_reset(v)
 	v.turned = false
 	v.intel = {}
