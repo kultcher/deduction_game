@@ -6,6 +6,8 @@ This is a reference for the implemented model, not a proposed rebalance. Values 
 
 **Version boundary:** the tested playtest-fix commit `402ac63` was still local when this document was written. Its social changes are listed separately at the end. Tables otherwise describe the audited main revision. The raw logs for cases 61251 and 25923 could not be read in this session because the execution environment was unavailable and their Library text extraction returned no content. Examples below are code-derived illustrations, not reconstructed trust timelines.
 
+**Later clarification supplement:** [section 16](#16-clarification-supplement-and-executed-ledger-example) checks the requested fatigue, fear, pressing, item-search and ledger details directly against `1998c66`. The full narrative walkthrough is in [TUNING_NARRATIVE.md section 16](TUNING_NARRATIVE.md#16-how-the-ledger-works-a-meeting-case-against-greta). This supplement does not revise the historical audit boundary above or apply the requested backlog retuning.
+
 ## 1. Quantities and common rules
 
 | Symbol | Meaning | Range / behavior |
@@ -1084,3 +1086,70 @@ When changing tuning:
 - Compare player-led outcomes and recovery from mistaken theories, not only NPC accuracy.
 - Check known information versus hidden ground truth, particularly secrets, fake readings, and shadow minds.
 - For future log analysis retain this audit's source revision; playtest binaries may predate some current-main behavior.
+
+## 16. Clarification supplement and executed ledger example
+
+Checked against revision `1998c6615547aaac224ce1f7a240239ca026d55e` on October 20, 2026. Sources: `Mind.on_question`, `_afraid`, `_target_tier`, `press`, `card_strength`, `ledger_hear`, `recompute_beliefs`; `World.resolve_night`, `_walk`, `_maybe_drop`; `Game._talk_command`, `_search`, `file_deduction`, `_present_deduction`; `Argue._expl_weight`, `_quality`, `_support_strength`, `evaluate`, `_apply`.
+
+### Clarifications
+
+- **Fatigue:** all `on_question` calls count, including different topics. After the first three calls per NPC/day, every subsequent call loses trust. Conversation slots and their one-repeat exemption are separate; a free visible repeat can already have charged daily fatigue. Night resolution resets `pressed_today`; reopening a conversation does not. Lifetime wrong-role guesses are separate and persist. Delegated answers can call the counter more than once; free protection offers do not use it.
+- **Daytime sighting 0.15:** raw incriminating card strength, not final suspicion or a probability. A fresh private raw accusation using a concrete player observation, T=C=B=.5 and full reliability, adds `.35 × .15 = .0525` suspicion, assuming no concurrent fatigue-induced trust change. Creating the player's board card does not automatically apply that to every NPC.
+- **Fear:** `_afraid` uses demon deaths, Composure and the NPC-ID/day hash; it does not use actual or claimed role, gift value, spent state, trust, or evil threat score. Separate public reveal costs do depend on role categories. Equal-Composure Seer and Clerk therefore have equal fear thresholds, even if their individual fixed outcomes differ.
+- **Dropped items:** choose a block on the walker's current `night_path`, then a static `C.LOCATIONS` place on that block. Search tavern/well, smithy/bakery, wharf/mill, or chapel/graveyard. No block-search command or home intrusion is needed. Found personal items become attributed night-sighting cards; ordinary material becomes a dropped-material card. The Lamplighter expands its path after `_walk` calls `_maybe_drop`, so its drop selection currently uses its home block only.
+
+For a good NPC, a relevant non-Clerk deduction press has strength .6 and adds R=.21. Before fatigue or clamping, its deterministic openness change is:
+
+`Δopenness = .126(1−.5K) − 1.2(.03+.06P)`.
+
+| Privacy | K=.2 | K=.5 | K=.8 |
+| --- | --- | --- | --- |
+| .2 | +.0630 | +.0441 | +.0252 |
+| .5 | +.0414 | +.0225 | +.0036 |
+| .8 | +.0198 | +.0009 | −.0180 |
+
+If the delegated answer also incurs one daily fatigue penalty, subtract `1.2(.03+.05P)(1−.5K)`:
+
+| Privacy | K=.2 | K=.5 | K=.8 |
+| --- | --- | --- | --- |
+| .2 | +.0198 | +.0081 | −.0036 |
+| .5 | −.0180 | −.0270 | −.0360 |
+| .8 | −.0558 | −.0621 | −.0684 |
+
+These are deterministic openness-score changes, not full response probabilities. Gift pressing rolls a target and then delegates to `answer_gift` with a forced tier; night pressing delegates to a different account/confession path. Strength .3 can backfire even at P=.2/K=.8 (−.0126 before fatigue); strength 1 helps every representative pre-fatigue combination (P=K=.8 gives +.0324). Correct Clerk naming is exempt from the normal pressing trust loss and has its own tier boost.
+
+### Ledger reproduction
+
+[tools/explain_ledger.gd](tools/explain_ledger.gd) runs production filing and whole-meeting presentation at scale .6, extracts detailed argument decisions, and verifies final suspicion/weight/trust changes. Run `godot --headless --path . --script res://tools/explain_ledger.gd`. Verified on Godot 4.4.1: **36 checks, 0 failures**. It does not simulate a full randomly generated case or assert that controlled profiles are cast baselines.
+
+Cards: (1) player vigil sighting of Greta on Market night 1, where a death occurred; (2) physical trace pointing to Market evening 1; (3) player-observed Greta sighting on Market evening 1. Greta lives/works on Market, is alive and has no public walking-role claim. Supports are fresh, with no earlier ledger contribution or source discount. Other omitted state is held neutral; prior suspicion is explicitly seeded.
+
+Version A cites all three and finds `trace_match` from cards 2/3. Version B cites only 1/2 and uses generic support, not an unfounded branch. The originally proposed vigil+trace+home combination does not match a Demon template: residence is not evening presence. Both filed cards are circumstantial; their support quality still averages individual card classes.
+
+| Listener | T | B(Greta) | C | I | Initial S(Greta) |
+| --- | --- | --- | --- | --- | --- |
+| Open listener | .8 | .5 | .2 | .2 | .2 |
+| Loyal skeptic | .5 | .8 | .8 | .5 | .2 |
+| Distrustful analyst | .2 | .5 | .5 | .8 | .5 |
+| Convinced rival | .5 | .2 | .8 | .8 | .8 |
+
+P=G=K=.5 for all. The four listeners are good, non-self targets; hidden Greta alignment does not determine their agreement. Each version starts from a fresh fixture. Trust-reconsideration baselines equal initial trust.
+
+| Version | Listener | Agreement | Quality | Stored/effective weight | Actual ΔS | Final S |
+| --- | --- | --- | --- | --- | --- | --- |
+| A: templated | Open listener | .419355 | .942667 | .308343 | +.210290 | .410290 |
+| A: templated | Loyal skeptic | .266667 | .906667 | .145067 | +.060638 | .260638 |
+| A: templated | Distrustful analyst | .675676 | .870667 | .247081 | +.135895 | .635895 |
+| A: templated | Convinced rival | .954545 | .870667 | .498655 | +.208438 | 1.008438 |
+| B: generic | Open listener | 1 | .914000 | .712920 | +.486211 | .686211 |
+| B: generic | Loyal skeptic | 1 | .860000 | .516000 | +.215688 | .415688 |
+| B: generic | Distrustful analyst | 1 | .806000 | .338520 | +.186186 | .686186 |
+| B: generic | Convinced rival | 1 | .806000 | .483600 | +.202145 | 1.002145 |
+
+Version A's rounded accusing/innocent explanation weights are .39/.54, .24/.66, .75/.36, and 1.26/.06. Version B sums raw support `1.4 + .7×.3 = 1.61`; dividing by 1.2 and clamping gives agreement 1 for everyone. **The generic route can therefore beat a better-supported template** by skipping that innocent-alternative comparison. This is implemented behavior to revisit, not a proposed tuning change or a calibrated certainty of guilt.
+
+For both versions, novelty=1, base=agreement×quality×.6, stored weight=base×(.5+T), support reliability=1, and ΔS=.55×weight×(1.4−.8C). No suspicion clamp is reached. The entry ID is `arg:demon:greta::`. Sound-argument trust +.02 goes to the last two listeners in A and all four in B, after application; it does not itself cross the .1 immediate-reconsideration trigger.
+
+**Ledger identities and update rules:** board IDs, underlying fact IDs, conclusion-entry IDs and justification keys are distinct. Current justification keys use sorted source/night/kind references, not underlying fact IDs; distinct direct evidence with the same reference shape can collide. Same-entry hearings retain maximum weight, and distinct justifications contribute their strongest currently reliable influence rather than a sum. Recomputed effects apply only the difference from previously applied contributions. Repeated inputs alone do not add another copy, but changed suspicion/trust can change a later evaluation and a stronger hearing can replace the old weight. Qualified lie conclusions can distinguish cards; unqualified ones may share an entry. This is part of the independent-instance backlog review.
+
+See [the full narrative walkthrough](TUNING_NARRATIVE.md#16-how-the-ledger-works-a-meeting-case-against-greta) for reply thresholds, support provenance, source-honesty feedback, repetition, and discrediting a support. Requested Confidence, ward, secret, Dowser, rebuttal, relationship and memory changes remain in [BACKLOG.md](BACKLOG.md#social-tuning-and-evidence-follow-ups-oct-20).
