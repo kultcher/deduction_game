@@ -76,6 +76,8 @@ static func decide(w, n, topic: String, parts: Dictionary, why: String) -> bool:
 	d["result"] = yes
 	w.dlog.trace_event("decision_roll", n.id, "", {"topic": topic, "parts": parts,
 		"total": total, "probability": p, "draw": r, "result": yes}, why)
+	w.dlog.decision(n.id, topic, "roll", yes, {"mechanism": "sigmoid", "parts": parts,
+		"total": total, "probability": p, "draw": r, "reason": why})
 	w.dlog.think(n.id, topic, "%s -> %s (p=%.2f)" % [why, "yes" if yes else "no", p], d)
 	return yes
 
@@ -220,6 +222,9 @@ static func evil_override(w, n, act: String, stakes: float, deviation: float, de
 	var cost = deviation * exposure
 	var caution = Evil.caution(w, n)
 	var yes = stakes - cost > caution
+	w.dlog.decision(n.id, "evil_override", "evaluation", yes, {"act": act, "detail": detail,
+		"stakes": stakes, "deviation": deviation, "exposure": exposure, "exposure_parts": exp_parts,
+		"cost": cost, "caution": caution, "score": stakes - cost, "comparison": ">"})
 	w.dlog.think(n.id, "override", "%s %s: %s (stakes %.2f - exposure cost %.2f vs caution %.2f)." %
 		["Breaks cover on" if yes else "Keeps cover on", act, detail, stakes, cost, caution],
 		{"act": act, "stakes": snappedf(stakes, 0.01), "cost": snappedf(cost, 0.01), "caution": snappedf(caution, 0.01), "exposure": exp_parts, "override": yes})
@@ -1081,11 +1086,14 @@ static func answer_hint(w, n) -> Dictionary:
 			best_day = n.hints[k]["day"]
 			target = k
 	if target == "":
+		w.dlog.decision(n.id, "hint_followup", "gate", false, {"gate": "no_living_hinted_target"})
 		lines.append(say(n, "I've nothing more to tell you."))
 		return {"lines": lines, "facts": []}
 	var t = w.by_id[target]
 	var has_reason = _unshared_fake_on(n, target) != {} if n.is_evil() else reason_status(w, n, target)["kind"] in ["private", "player"]
 	if not has_reason and not n.claim_public:
+		w.dlog.decision(n.id, "hint_followup", "gate", false,
+			{"gate": "no_revealable_reason"}, target)
 		# Evil's free bluff (or a reason since shared): nothing it can show.
 		w.dlog.think(n.id, "hint_followup", "Asked about the hint on %s: nothing to back it; declines." % target, {"evil": n.is_evil()})
 		lines.append(_hint_decline(w, n, t))
@@ -1175,6 +1183,15 @@ static func reveal_cost(w, n) -> Dictionary:
 ##             ready to share it yet.";
 ##   "reveal"  claim their gift (if not yet claimed) and give the reading.
 static func _accuse_tier(w, n, t, s2: float) -> Dictionary:
+	var result = _accuse_tier_impl(w, n, t, s2)
+	var logged: Dictionary = result.duplicate(true)
+	if logged.get("src") is Object:
+		logged["src"] = logged["src"].id
+	w.dlog.decision(n.id, "public_accusation_disclosure", "outcome", logged,
+		{"suspicion": s2, "public": n.claim_public}, t.id)
+	return result
+
+static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 	var rs = reason_status(w, n, t.id)
 	if rs["kind"] in ["none", "public"]:
 		return {"tier": "generic", "why": rs["why"]}
@@ -1350,16 +1367,34 @@ static func refresh_all_consensus(w) -> void:
 
 ## Whom a good NPC would nominate now, or null.
 static func _good_nomination(w, n, m: Dictionary, block: String):
+	var id = w.dlog.decision(n.id, "nomination", "start", null, {"block": block,
+		"nominated": m["nominated"], "confidence": trait_of(n, "confidence"),
+		"paranoia": paranoia(w, n), "day": w.day})
+	var result = _good_nomination_impl(w, n, m, block, id)
+	w.dlog.decision(n.id, "nomination", "outcome", result, {}, "", id)
+	return result
+
+static func _good_nomination_impl(w, n, m: Dictionary, block: String, trace_id: int):
 	var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (trait_of(n, "confidence") - 0.5) * 2.0 - 0.5 * paranoia(w, n)
 	for t in ranked_suspects(w, n):
 		if t.id in m["nominated"] or t.id == n.id:
+			w.dlog.decision(n.id, "nomination", "gate", false,
+				{"gate": "already_nominated_or_self"}, t.id, trace_id)
 			continue
 		var s = susp(n, t.id)
 		if n.cleared.has(t.id):
 			s -= 0.2  # their own sight said this person is no demon
+		w.dlog.decision(n.id, "nomination", "evaluation", s >= thr, {"score": s,
+			"raw_suspicion": susp(n, t.id), "own_clear_adjustment": -0.2 if n.cleared.has(t.id) else 0.0,
+			"threshold": thr, "comparison": ">=",
+			"threshold_parts": {"day_base": maxf(0.45, 0.86 - 0.08 * w.day),
+				"confidence": -0.15 * (trait_of(n, "confidence") - 0.5) * 2.0,
+				"paranoia": -0.5 * paranoia(w, n)}}, t.id, trace_id)
 		if s < thr:
 			continue
 		if block != "" and susp(n, block) >= s:
+			w.dlog.decision(n.id, "nomination", "gate", false, {"gate": "prefers_existing_block",
+				"block": block, "block_suspicion": susp(n, block), "candidate_score": s}, t.id, trace_id)
 			return null  # content with who is already on the block
 		return {"nominee": t.id, "by": n.id, "score": s,
 			"reason": "suspicion of %s %.2f >= threshold %.2f" % [t.id, s, thr]}
@@ -1395,6 +1430,8 @@ static func next_nomination(w):
 	var block: String = m["block"]
 	for n in w.living():
 		if n.id in m["nominators"] or n.silenced:
+			w.dlog.decision(n.id, "nomination", "gate", false,
+				{"gate": "silenced" if n.silenced else "no_nominations_remaining"})
 			continue
 		if n.is_evil():
 			var ev = _evil_nomination(w, n, m, block)
@@ -1405,8 +1442,10 @@ static func next_nomination(w):
 		if gc != null:
 			cands.append(gc)
 	if cands.is_empty():
+		w.dlog.decision("world", "nomination_selection", "outcome", null, {"candidates": []})
 		return null
 	cands.sort_custom(func(a, b): return a["score"] > b["score"])
+	w.dlog.decision("world", "nomination_selection", "outcome", cands[0], {"candidates": cands})
 	var c: Dictionary = cands[0]
 	w.dlog.think(c["by"], "nominate", c["reason"], {"nominee": c["nominee"]})
 	var nom = w.by_id[c["by"]]
@@ -1628,6 +1667,14 @@ static func defence_line(w, n) -> Dictionary:
 
 ## One NPC's vote on a nomination. statement: "", "defend" or "accuse" (the player's).
 static func vote(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int) -> bool:
+	var id = w.dlog.decision(v.id, "vote", "start", null, {"nominator": nominator,
+		"player_yes": player_yes, "statement": statement, "yes_so_far": yes_so_far,
+		"route": "self" if v.id == nominee else "evil_strategy" if v.is_evil() else "good_threshold"}, nominee)
+	var result = _vote_impl(w, v, nominee, nominator, player_yes, statement, yes_so_far, id)
+	w.dlog.decision(v.id, "vote", "outcome", result, {}, nominee, id)
+	return result
+
+static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int, trace_id: int) -> bool:
 	if v.id == nominee:
 		w.dlog.think(v.id, "vote", "Votes no on own execution.", {"nominee": nominee, "yes": false})
 		return false
@@ -1677,6 +1724,15 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 			s += parts[k]
 	var need = 0.5 - 0.12 * (trait_of(v, "confidence") - 0.5) * 2.0 + (0.1 if w.day <= 1 else 0.0) - 0.4 * paranoia(w, v)
 	var yes = s >= need
+	var exact_parts: Dictionary = parts.duplicate()
+	exact_parts["suspicion"] = base  # scoring starts from the unrounded base
+	w.dlog.decision(v.id, "vote", "evaluation", yes, {"parts": exact_parts,
+		"score": s, "threshold": need, "comparison": ">=", "margin": s - need,
+		"threshold_parts": {"base": 0.5,
+			"confidence": -0.12 * (trait_of(v, "confidence") - 0.5) * 2.0,
+			"early_day": 0.1 if w.day <= 1 else 0.0, "paranoia": -0.4 * paranoia(w, v)},
+		"trust": v.trust, "block": block, "spare_preference": v.spare_pref.get(nominee, 0.0),
+		"reluctance_rounding": "martyr contribution retains existing two-decimal rounding"}, nominee, trace_id)
 	parts["total"] = snappedf(s, 0.01)
 	parts["need"] = snappedf(need, 0.01)
 	w.dlog.think(v.id, "vote", "%s on %s (score %.2f vs %.2f)." % ["YES" if yes else "no", nominee, s, need], parts)
@@ -1798,9 +1854,10 @@ static func reveal_trait(w, n) -> String:
 	return "You get the measure of %s: %s. (%s: %s)" % [n.name, C.TRAIT_TEXT[t][tier] % n.name, t.capitalize(), tier]
 
 ## Disclosure tier the NPC is willing to reach right now (1..4).
-static func _target_tier(w, n) -> int:
+static func _target_tier(w, n, trace_id: int = 0) -> int:
+	var jitter = w.rng.randf_range(-0.2, 0.2)
 	var openness = (1.0 - trait_of(n, "privacy")) * 1.0 + n.trust * 1.2 + n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")) \
-		+ 0.1 * (w.day - 1) - 0.72 + w.rng.randf_range(-0.2, 0.2)
+		+ 0.1 * (w.day - 1) - 0.72 + jitter
 	var t = 1
 	if openness > 0.75:
 		t = 4
@@ -1808,6 +1865,12 @@ static func _target_tier(w, n) -> int:
 		t = 3
 	elif openness > 0.15:
 		t = 2
+	w.dlog.decision(n.id, "gift_disclosure", "tier", t, {"openness": openness,
+		"parts": {"privacy": (1.0 - trait_of(n, "privacy")) * 1.0, "trust": n.trust * 1.2,
+			"pressure": n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")),
+			"day": 0.1 * (w.day - 1), "base": -0.72, "jitter": jitter},
+		"thresholds": [{"above": 0.75, "tier": 4}, {"above": 0.45, "tier": 3},
+			{"above": 0.15, "tier": 2}, {"otherwise": 1}], "comparison": ">"}, "", trace_id)
 	w.dlog.think(n.id, "disclosure", "Disclosure tier %d (openness %.2f; privacy %.2f, trust %.2f, pressure %.2f)." %
 		[t, openness, trait_of(n, "privacy"), n.trust, n.pressure], {"tier": t})
 	return t
@@ -1822,16 +1885,29 @@ static func _afraid(w, n) -> bool:
 	return float(absi(hash(n.id + ":" + str(w.day))) % 1000) / 1000.0 < p
 
 static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
+	var id = w.dlog.decision(n.id, "gift_disclosure", "start", null,
+		{"force_tier": force_tier, "prior_tier": n.max_tier, "public": n.claim_public,
+			"trust": n.trust, "pressure": n.pressure, "questions_today": n.pressed_today})
+	var result = _answer_gift_impl(w, n, force_tier, id)
+	w.dlog.decision(n.id, "gift_disclosure", "outcome", result["facts"],
+		{"final_tier": n.max_tier, "told_readings": n.told_readings,
+			"role_claim": n.claimed_role, "public": n.claim_public}, "", id)
+	return result
+
+static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
 	var facts: Array = []
 	var evil: bool = n.is_evil()
 	var role: String = w.evil_plan["bluffs"][n.id] if evil else n.role
-	var target = maxi(_target_tier(w, n), force_tier)
+	var target = maxi(_target_tier(w, n, trace_id), force_tier)
 	if n.claim_public:
 		target = maxi(target, 3)
 	var tier = maxi(target, n.max_tier)
 	var withholding = target < n.max_tier
+	w.dlog.decision(n.id, "gift_disclosure", "gate", tier, {"target_tier": target,
+		"effective_tier": tier, "prior_tier": n.max_tier, "force_tier": force_tier,
+		"public_floor": 3 if n.claim_public else 0, "withhold_new_readings": withholding}, "", trace_id)
 	if tier <= 1:
 		# Denying any gift is off (C.ALLOW_NO_GIFT_DENIAL): evil almost never says it, so it
 		# read as a near-certain good, at the price of the gift. Refusing to say remains.
@@ -1940,9 +2016,15 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 static func _gossip_share(w, n, topic: String) -> int:
 	var g = trait_of(n, "gossip")
 	if g < 0.2 and n.pressure < 0.5:
+		w.dlog.decision(n.id, "gossip_share", "gate", 0, {"gate": "gossip_and_pressure_cutoff",
+			"topic": topic, "gossip": g, "gossip_minimum": 0.2,
+			"pressure": n.pressure, "pressure_override": 0.5})
 		w.dlog.think(n.id, topic, "Gossip %.2f: none of my business (pressure %.2f)." % [g, n.pressure])
 		return 0
-	return 1 + int(round((g + n.pressure * 0.5) * 3.0))
+	var count = 1 + int(round((g + n.pressure * 0.5) * 3.0))
+	w.dlog.decision(n.id, "gossip_share", "outcome", count,
+		{"topic": topic, "gossip": g, "pressure": n.pressure})
+	return count
 
 ## Whose door a Warden (or an evil Warden bluff) says they guarded on night nd. A bluff
 ## invents one on the block they were really on (or anyone, if they stayed in), once per
@@ -2270,6 +2352,9 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	var text = ""
 	var level = 0.0
 	if trait_of(n, "gossip") < 0.2 and n.pressure < 0.5:
+		w.dlog.decision(n.id, "opinion_disclosure", "gate", false,
+			{"gate": "gossip_and_pressure_cutoff", "gossip": trait_of(n, "gossip"),
+				"gossip_minimum": 0.2, "pressure": n.pressure, "pressure_override": 0.5}, t.id)
 		w.dlog.think(n.id, "opinion", "Gossip %.2f: won't discuss others." % trait_of(n, "gossip"))
 		lines.append(say(n, "It's not my place to say."))
 		return {"lines": lines, "facts": facts}

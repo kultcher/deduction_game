@@ -246,7 +246,7 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 	dlog.begin_action("setup", {"seed": seed_in, "npcs": npc_count})
 	dlog.trace_event("trace_header", "world", "", {"seed": seed_in, "npcs": npc_count,
 		"engine": Engine.get_version_info(), "build": trace_build, "tuning": trace_tuning,
-		"coverage": "milestone_1_action_boundaries_and_belief_recompute"})
+		"coverage": "milestone_2_state_and_structured_decisions"})
 	dlog.add("case_start", "world", "", {"seed": seed_in, "npcs": npc_count})
 
 	var cast = shuffled(C.CAST).slice(0, npc_count)

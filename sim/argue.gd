@@ -1060,6 +1060,12 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 	n.heard[key] = times + 1
 	var ins = n.traits.get("insight", 0.5)
 	var weights = {}
+	var explanation_trace: Array = []
+	var route = ""
+	var trace_id = w.dlog.decision(n.id, "argument", "start", null,
+		{"conclusion": c, "fact_ids": facts, "card": ded.get("n", 0),
+			"ledger_id": "arg:" + conclusion_key(c), "template": ded.get("template", ""),
+			"repeat_count": times, "scale": scale}, c.get("a", ""))
 	var agreement = 0.0
 	var reason = ""
 	var alternative = ""
@@ -1100,6 +1106,8 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 		if not n.silenced:
 			lines.append(_argument_line(n, approved, audience, delivery_memory))
 		w.dlog.add("argument_stance", n.id, c.get("a", ""), {"key": conclusion_key(c), "stance": approved["stance"], "evil": true, "repeat": times > 0})
+		w.dlog.decision(n.id, "argument", "outcome", approved, {"route": "evil_mask",
+			"agreement": 0.0, "updates_real_beliefs": false, "repeat_count": times}, c.get("a", ""), trace_id)
 		return {"lines": lines, "agreement": 0.0, "repeated": times > 0, "dialogue": approved}
 	# Caught in a lie they know they told (a good NPC hiding a gift or a secret): they don't
 	# pretend to themselves it's false.
@@ -1108,6 +1116,7 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 	var conflict = c["type"] == "conflict"
 	var in_group = conflict and n.id in c.get("group", [])
 	if conflict:
+		route = "conflict"
 		# "Something doesn't add up." Backed by a contradiction, anyone can see the clash;
 		# otherwise it rests on how far they trust you, and sharp people want to see it.
 		if ded.get("template", "") != "" and ded.get("relation", "contradiction") == "contradiction":
@@ -1122,6 +1131,7 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 			agreement = minf(agreement, 0.35 + 0.55 * (1.0 - Mind.trait_of(n, "confidence")))
 			reason = "in_group"
 	elif self_misled:
+		route = "self_misled"
 		# They know they aren't lying, so "misled or lying" reads as "misled" to them.
 		# Whether they accept their gift failed depends on how sure of themselves they are.
 		c = c.duplicate()
@@ -1131,19 +1141,27 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 		agreement = 0.35 + 0.55 * (1.0 - Mind.trait_of(n, "confidence"))
 		reason = "self_misled"
 	elif own_lie:
+		route = "own_lie"
 		agreement = 0.0
 		reason = "own_lie"
 	elif target == n and c["type"] in ["evil", "demon", "lied", "notrole", "suspicious"]:
+		route = "own_knowledge_rejection"
 		agreement = 0.0
 		reason = "it's about me, and I know it's false"
 		Mind.set_trust(w, n, n.trust - 0.05, "the Demonologist argued against me to my face")
 	elif target == n:
+		route = "self_support"
 		agreement = 1.0
 	elif ded.get("template", "") != "":
+		route = "template_contest"
 		var total = 0.0
 		for e in ded["explanations"]:
 			var wt = _expl_weight(w, n, e)
 			weights[e["id"]] = snappedf(wt, 0.01)
+			if w.dlog.detailed:
+				explanation_trace.append({"id": e["id"], "label": e.get("label", ""),
+					"kind": e.get("kind", ""), "raw_weight": wt,
+					"used_weight": weights[e["id"]], "chosen": e["id"] == ded["chosen"]})
 			total += wt
 		# Chosen explanation against the strongest alternative.
 		var mine: float = weights.get(ded["chosen"], 0.0)
@@ -1158,6 +1176,10 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 					alternative = e["label"]
 				rival = maxf(rival, weights[e["id"]])
 		agreement = mine / maxf(mine + rival, 0.01)
+		w.dlog.decision(n.id, "argument", "contest", agreement,
+			{"chosen_weight": mine, "strongest_rival_weight": rival,
+				"denominator_floor": 0.01, "explanations": explanation_trace,
+				"strongest_alternative": alternative, "overlapping_alternatives_excluded": true}, c.get("a", ""), trace_id)
 		if agreement < 0.35:
 			var best = 0
 			var best_w = -1.0
@@ -1169,12 +1191,14 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 				if e["id"] == best and best != ded["chosen"]:
 					reason = "more likely %s" % e["label"]
 	elif ded.get("unfounded", false):
+		route = "unfounded"
 		if w.rng.randf() < ins:
 			agreement = 0.0
 			reason = ded.get("near", "") if ded.get("near", "") != "" else "those don't contradict each other"
 		else:
 			agreement = 0.35 * (1.0 - ins) + 0.2 * n.trust
 	else:
+		route = "generic_support"
 		agreement = _support_strength(w, c, supports)
 		if ins >= 0.67 and agreement < 0.3:
 			reason = "that's not enough to go on"
@@ -1199,9 +1223,15 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 		for f in facts:
 			n.used_facts[f + ">" + c.get("a", "")] = true
 	var base: float = agreement * quality * scale * novel
-	var gain = _apply(w, n, ded, supports, base, board)
+	var gain = _apply(w, n, ded, supports, base, board, trace_id)
 	var m: float = base * (0.5 + n.trust)
 	var repeat = novel
+	w.dlog.decision(n.id, "argument", "evaluation", agreement,
+		{"route": route, "agreement": agreement, "quality": quality, "scale": scale,
+			"novelty": novel, "base": base, "trust_at_apply": n.trust,
+			"nominal_weight": m, "stored_weight_gain": gain, "reason": reason,
+			"stance_thresholds": {"accept": 0.6, "partial": 0.35},
+			"sound_argument_reward_gates": {"agreement_at_least": 0.6, "gain_at_least": 0.1}}, c.get("a", ""), trace_id)
 	if agreement >= 0.6 and gain >= 0.1:
 		Mind.set_trust(w, n, n.trust + 0.02, "the Demonologist made a sound argument")
 	w.dlog.add("argument", n.id, c.get("a", ""), {"conclusion": c, "template": ded.get("template", ""), "chosen": ded.get("chosen", 0),
@@ -1244,6 +1274,8 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 			approved["preferred"] = ranked[0].name
 	if not n.silenced:
 		lines.append(_argument_line(n, approved, audience, delivery_memory))
+	w.dlog.decision(n.id, "argument", "outcome", approved,
+		{"route": route, "agreement": agreement, "stored_weight_gain": gain}, c.get("a", ""), trace_id)
 	return {"lines": lines, "agreement": agreement, "repeated": times > 0, "dialogue": approved}
 
 ## An evil listener's stated reason for not being convinced, drawn from the same kinds of
@@ -1394,17 +1426,25 @@ static func support_refs(cards: Array, board: Array, depth: int = 0) -> Array:
 			out.append(Mind.support_ref(card))
 	return out
 
-static func _apply(w, n, ded: Dictionary, supports: Array, base: float, board: Array = []) -> float:
+static func _apply(w, n, ded: Dictionary, supports: Array, base: float, board: Array = [], trace_id: int = 0) -> float:
 	var c: Dictionary = normalize(ded["conclusion"])
 	if base <= 0.004:
+		w.dlog.decision(n.id, "argument", "gate", false,
+			{"gate": "base_too_small", "base": base, "must_exceed": 0.004}, c.get("a", ""), trace_id)
 		return 0.0
 	var why = "the Demonologist argued: %s" % ded["text"]
 	var said = "what you told me, that %s" % conclusion_text(w, c)
 	# Remember what the argument rests on: if that evidence is later discredited, the
 	# conclusion weakens with it.
 	var sup: Array = support_refs(supports, board)
-	var h = Mind.ledger_hear(w, n, "arg:" + conclusion_key(c), effects_of(w, c, supports, why), base * (0.5 + n.trust), [],
+	var ledger_id = "arg:" + conclusion_key(c)
+	var before: Dictionary = n.ledger.get(ledger_id, {}).duplicate(true) if w.dlog.detailed else {}
+	var suspicion_before: Dictionary = n.suspicion.duplicate() if w.dlog.detailed else {}
+	var h = Mind.ledger_hear(w, n, ledger_id, effects_of(w, c, supports, why), base * (0.5 + n.trust), [],
 		{"kind": "arg", "base": base, "text": conclusion_text(w, c), "said": said, "supports": sup})
+	w.dlog.decision(n.id, "argument", "ledger", h, {"ledger_id": ledger_id,
+		"before": before, "after": n.ledger.get(ledger_id, {}), "suspicion_before": suspicion_before,
+		"suspicion_after": n.suspicion, "supports": sup}, c.get("a", ""), trace_id)
 	return h["gain"]
 
 ## What answering as evil (rather than as its good self) buys an evil listener: protecting a
