@@ -70,9 +70,13 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main
   view; people who aren't talking or working showing on the map; a wrong role guess
   blocking process of elimination.
-- **Case-board card rows with mixed formatting** (bold kind, each name in its colour):
-  the lists are Godot Trees, one colour per row; true rich rows need a custom-drawn or
-  RichText list. [decided, later]
+- **Card zoom and text extension.** Settle card sizing, clipping and zoom/detail
+  transitions before extending rich text onto board cards, pinned deductions, the
+  tray and Card List. The shared formatter, log and profiles are built (steps 1–3);
+  steps 4–5 are deferred. Card List/working-set rows are wrapping Godot Trees with
+  one colour per row; richer rows still need custom cells or replacement controls.
+  See [the handoff](docs/text_system_handoff.md) for hooks, issues and alternatives.
+  [decided: extension deferred; renderer approach open]
 
 ## 3. Medium features (several days; touch a few systems)
 
@@ -352,3 +356,60 @@ Settled decisions, built work and parked levers, kept for the record.
   138 dialogue and 20 dialogue-decision checks on standard Godot 4.4.1, plus
   rendered town, hidden-card and timeline views. The UI test's previously
   documented synthetic drag-preview and shutdown diagnostics remain.
+- **Oct 19: shared text system, step 1** (`codex/text-term-registry`). Added a
+  public display-term registry seeded from the cast, character colors, role
+  descriptions and existing role icons. Stable person/role IDs carry optional
+  color, icon and tooltip metadata; other term kinds can register through the
+  same API. Matching returns original character ranges, preserves capitalization,
+  supports possessives and Unicode word boundaries, and prefers the longest
+  phrase. Ambiguous lowercase words such as medium/clerk require explicit role
+  context; callers can limit eligible term kinds or opt out. Registry lookups
+  return copies. No world/secret-role state is read. API and remaining steps are
+  documented in `docs/text_formatting.md`. This is the registry/matching foundation;
+  UI formatting and tooltips will be integrated in later steps. Verified 25 focused
+  checks and a clean Godot 4.4.1 editor import.
+- **Oct 19: shared text system, step 2** (`codex/text-formatter`). Added a formatter
+  that covers original plain text with styled spans, preserving source ranges,
+  wording and whitespace. A known speaker supplies the surrounding color; named
+  characters override only their own spans. Parchment uses readable ink variants,
+  and role spans carry public icon/hint metadata with configurable sizes and
+  decorations. Overall opacity applies once to text and icons. An isolated native
+  RichTextLabel adapter appends literal text, hints and inline images, preserves
+  outer formatting contexts and falls back to readable text for missing icons.
+  Original text can be reconstructed exactly from the spans. Extended the API
+  notes in `docs/text_formatting.md`; game-panel integration remains step 3.
+  Verified 24 formatter/adapter and 25 registry checks, a clean Godot 4.4.1 editor
+  import, and rendered dark, parchment, faded, compact and literal-text samples.
+- **Oct 19: shared text system, step 3 and entity styling**
+  (`codex/text-log-profiles`). Names and roles are bold. Good role words use a
+  reserved blue darker than Nisha's; evil roles use a reserved red, with ink
+  variants on parchment. The speech log now enriches plain passages through the
+  shared formatter, keeping speaker colors, portraits, headers, emphasis and
+  clickable card references. Typed commands stay literal. Both profile panels
+  enrich About, readings, disclosed claim headers, Their claims and About them;
+  original times and private/public provenance remain visible. Role icons and
+  wrapping paper tooltips supplement role words. Native role hints inside card
+  links preserve left-click navigation and right-click card actions. Hidden
+  profile entries use the shared fade. Matching font faces preserve the existing
+  serif/monospace families when bold or italic. Updated the API notes. Verified
+  27 registry, 26 formatter, 17 text-UI, 110 existing UI and 25 town-UI checks,
+  including real mouse interaction through role hints and unchanged evidence/RNG
+  state, plus editor import and rendered 1920x1080/1280x720 town, profile and
+  tooltip views. Existing UI smoke-test drag-preview/shutdown diagnostics remain.
+- **Oct 19: small inline icons on dark surfaces.** The shared formatter now carries
+  its display surface into the renderer. Dark backgrounds use a cached warm
+  light-ink version of each small inline icon, made by inverting luminance while
+  preserving transparency; parchment keeps the original art. Processing happens
+  once per icon/size on a small image copy, preserving source resources and the
+  existing opacity behavior. Portraits and decorative log art retain their
+  existing presentation. Documented the variant selection. Verified 29 formatter
+  checks (including source/alpha preservation and separate caches), 17 live text-UI
+  checks, editor import and rendered log/profile views on Godot 4.4.1.
+- **Oct 20: text-system handoff; card extension deferred.** Added
+  `docs/text_system_handoff.md` with completed steps 1–3, API/integration hooks,
+  remaining steps, existing verification and a resume checklist. Reviewed the
+  board/tray/list renderers and documented fixed card heights versus font/line
+  budgets, detail thresholds, zoom-dependent row geometry, input and caching
+  concerns. Compared custom drawing, reusable native cards, a hybrid and a compact
+  board/detail view. Linked the handoff from the API notes and deferred steps 4–5
+  until card zoom/presentation is settled. Documentation only; no runtime changes.

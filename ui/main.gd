@@ -14,6 +14,8 @@ const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
 const ProfilePanel = preload("res://ui/profile_panel.gd")
 const CastList = preload("res://ui/cast_list.gd")
+const LogText = preload("res://ui/log_text.gd")
+const FormattedTextLabel = preload("res://ui/formatted_text_label.gd")
 
 var g
 var out: RichTextLabel
@@ -52,8 +54,7 @@ var notes_win: Window
 var notes_edit: TextEdit
 var roles_win: Window
 var roles_box: VBoxContainer
-var _name_re: RegEx
-var _speech_re: RegEx
+var log_text = LogText.new()
 
 func _ready() -> void:
 	var bg = ColorRect.new()
@@ -214,13 +215,14 @@ func _ready() -> void:
 	logpanel.add_theme_stylebox_override("panel", UITheme.panel("inset"))
 	logpanel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	logbox.add_child(logpanel)
-	out = RichTextLabel.new()
+	out = FormattedTextLabel.new()
 	out.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	out.custom_minimum_size = Vector2(0, 160)
 	out.scroll_following = true
 	out.selection_enabled = true
 	out.bbcode_enabled = true
-	out.add_theme_font_override("normal_font", mono)
+	UITheme.rich_text_fonts(out, mono)
+	out.hint_underlined = false
 	out.add_theme_font_size_override("normal_font_size", 16)
 	out.meta_clicked.connect(func(meta):
 		var m = str(meta)
@@ -339,7 +341,6 @@ func _new_case() -> void:
 	case_state.select_card(0)
 	g = Game.new()
 	out.clear()
-	_build_colour_rules()
 	_print(g.new_case(int(seed_box.value), int(size_opt.get_item_metadata(size_opt.selected))))
 	case_view.set_game(g)
 	profile.setup(g, case_state)
@@ -543,93 +544,8 @@ func _on_town_person_clicked(id: String) -> void:
 
 # ---------------------------------------------------------------- coloured log
 
-func _build_colour_rules() -> void:
-	_name_re = RegEx.new()
-	_speech_re = RegEx.new()
-	var names: Array = []
-	for n in C.CAST:
-		names.append(n["name"])
-	_name_re.compile("\\b(" + "|".join(PackedStringArray(names)) + ")\\b")
-	_speech_re.compile("^(\\s*)(" + "|".join(PackedStringArray(names)) + "): (\".*)$")
-
-func _hex_for(name: String) -> String:
-	for n in C.CAST:
-		if n["name"] == name:
-			return C.npc_color(n["id"]).to_html(false)
-	return "dddddd"
-
-func _id_for(name: String) -> String:
-	for n in C.CAST:
-		if n["name"] == name:
-			return n["id"]
-	return ""
-
-## An inline icon for the log, if the art is there.
-func _icon(rel: String, h: int) -> String:
-	var path = "res://assets/" + rel + ".png"
-	return ("[img height=%d]%s[/img] " % [h, path]) if ResourceLoader.exists(path) else ""
-
-var _tag_re: RegEx
-var _num_re: RegEx
-
-## Plain text from the game -> BBCode: speech lines in the speaker's colour with their
-## portrait, names coloured wherever they appear, icons for day headers, deaths and new
-## case-board cards.
-func _colourize(s: String) -> String:
-	if _tag_re == null:
-		_tag_re = RegEx.new()
-		_tag_re.compile("\\[lb\\]case board: ([^\\]]*)\\]")
-	var lines = PackedStringArray()
-	for line in s.split("\n"):
-		var esc = line.replace("[", "[lb]")
-		esc = _tag_re.sub(esc, "[color=#8a8f99]%s$1[/color]" % _icon("ui/cards/card_04", 14), true)
-		if _num_re == null:
-			_num_re = RegEx.new()
-			_num_re.compile("#(\\d+)(?![0-9a-fA-F])")  # card numbers, not colour codes
-		var cpos = esc.find("[color=#8a8f99]")
-		if cpos >= 0 and "case board" in line:
-			# Card numbers in the log open that card on the case board.
-			esc = esc.substr(0, cpos) + _num_re.sub(esc.substr(cpos), "[url=card:$1]#$1[/url]", true)
-		var m = _speech_re.search(esc)
-		if m != null:
-			var hex = _hex_for(m.get_string(2))
-			lines.append("%s%s[color=#%s][b]%s[/b]: %s[/color]" % [m.get_string(1), _icon("art/portraits/" + _id_for(m.get_string(2)), 24), hex, m.get_string(2), m.get_string(3)])
-			continue
-		if line.begins_with("=== "):
-			var ic = "ui/moon" if "Night" in line else ("ui/wax_seal" if "meeting" in line else "ui/sun")
-			lines.append("%s[color=#%s][b]%s[/b][/color]" % [_icon(ic, 20), UITheme.color("accent").to_html(false), esc.trim_prefix("=== ").trim_suffix(" ===")])
-			continue
-		if "was killed" in line:
-			esc = _icon("ui/raven", 20) + esc
-		var outl = ""
-		var pos = 0
-		for mm in _name_re.search_all(esc):
-			outl += esc.substr(pos, mm.get_start() - pos) + "[color=#%s]%s[/color]" % [_hex_for(mm.get_string()), mm.get_string()]
-			pos = mm.get_end()
-		outl += esc.substr(pos)
-		if line.begins_with("> "):
-			# Each command's result starts with a little space, so turns don't run together.
-			outl = "\n[color=#8a8f99]" + outl + "[/color]"
-		else:
-			outl = _bold_lead(outl)
-		lines.append(outl)
-	return "\n".join(lines)
-
-var _lead_re: RegEx
-
-## Bold the words a line hangs on ("Present:", "Nearby, at the well:", "You spend the morning"),
-## so the eye finds where each piece starts.
-func _bold_lead(t: String) -> String:
-	if _lead_re == null:
-		_lead_re = RegEx.new()
-		_lead_re.compile("^(\\s*)(Present:|Nearby[^:\\[]{0,40}:|Actions:|Around town [a-z ]+:|You (?:spend|keep|search|draw|overhear|step|leave|promise|chalk|sleep|stand|take|lay|excuse|break|go over|think|find)\\b|Dawn breaks|During your vigil|Near the body|Votes to execute [^:]*:|The meeting closes)")
-	var m = _lead_re.search(t)
-	if m == null:
-		return t
-	return t.substr(0, m.get_start(2)) + "[b]" + m.get_string(2) + "[/b]" + t.substr(m.get_end(2))
-
 func _print(s: String) -> void:
-	out.append_text(_colourize(s) + "\n")
+	log_text.append_to(out, s)
 
 func _swatch(c: Color) -> ImageTexture:
 	var img = Image.create(12, 12, false, Image.FORMAT_RGBA8)

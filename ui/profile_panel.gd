@@ -14,6 +14,9 @@ signal person_changed(id)
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
 const UITheme = preload("res://ui/theme.gd")
+const Formatter = preload("res://ui/text_formatter.gd")
+const Renderer = preload("res://ui/rich_text_renderer.gd")
+const FormattedTextLabel = preload("res://ui/formatted_text_label.gd")
 
 const TABS = ["About", "Their claims", "About them"]
 const TraitBars = preload("res://ui/trait_bars.gd")
@@ -25,7 +28,7 @@ var portrait: TextureRect
 var name_label: Label
 var sub_label: Label
 var claim_icon: TextureRect
-var claim_label: Label
+var claim_label: RichTextLabel
 var guess_opt: OptionButton
 var conf_opt: OptionButton      # confidence in the role guess: Flimsy, Maybe, Likely, Confirmed
 var secret_opt: OptionButton
@@ -37,6 +40,8 @@ var tab = 0
 var _setting = false
 var compact = false   # the town screen's narrower column: smaller portrait
 var _hovered_card = 0
+var formatter = Formatter.new()
+var renderer = Renderer.new()
 
 func _init(is_compact: bool = false) -> void:
 	compact = is_compact
@@ -79,6 +84,7 @@ func build() -> void:
 	info.add_theme_constant_override("separation", 2)
 	hb.add_child(info)
 	name_label = Label.new()
+	name_label.add_theme_font_override("font", UITheme.font_face(UITheme.serif(), true))
 	name_label.add_theme_font_size_override("font_size", 22 if compact else 26)
 	info.add_child(name_label)
 	sub_label = Label.new()
@@ -93,11 +99,13 @@ func build() -> void:
 	claim_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	claim_icon.custom_minimum_size = Vector2(22, 22)
 	crow.add_child(claim_icon)
-	claim_label = Label.new()
+	claim_label = FormattedTextLabel.new()
 	claim_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	claim_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	claim_label.add_theme_font_size_override("font_size", 16)
-	claim_label.add_theme_color_override("font_color", UITheme.color("ink"))
+	claim_label.fit_content = true
+	claim_label.scroll_active = false
+	claim_label.hint_underlined = false
+	UITheme.rich_text_fonts(claim_label, UITheme.serif())
 	crow.add_child(claim_label)
 	# Your guesses: pencilled notes, visibly yours, not facts. A role and a secret, each
 	# with how sure you are.
@@ -171,8 +179,10 @@ func build() -> void:
 	page.add_child(pv)
 	bars = TraitBars.new()
 	pv.add_child(bars)
-	body = RichTextLabel.new()
+	body = FormattedTextLabel.new()
 	body.bbcode_enabled = true
+	body.hint_underlined = false
+	UITheme.rich_text_fonts(body, UITheme.serif())
 	body.context_menu_enabled = false
 	body.meta_hover_started.connect(func(meta):
 		var value = str(meta)
@@ -296,7 +306,8 @@ func refresh() -> void:
 		var pk: String = C.package_of(g.w.evil_plan["bluffs"][id] if n.is_evil() else n.role)
 		claim_txt = "Hinted at %s." % C.HINT_PACKAGES[pk]["name"] if C.HINT_PACKAGES.has(pk) else "Hinted at a gift."
 		role = "unknown"
-	claim_label.text = claim_txt
+	claim_label.clear()
+	renderer.append_to(claim_label, formatter.format_text(claim_txt, {"surface": "paper", "icons": false, "role_context": true}))
 	claim_icon.texture = UITheme.tex("ui/roles/" + role, 0.07) if role != "" else null
 	var gs: Dictionary = p["guess"]
 	guess_opt.select(0)
@@ -314,43 +325,46 @@ func refresh() -> void:
 	for i in range(tab_buttons.size()):
 		tab_buttons[i].set_pressed_no_signal(i == tab)
 	_setting = false
-	body.text = _page(id, p)
+	_render_page(id, p)
 	bars.visible = tab == 0
 	bars.show_traits(p["traits"])
 
-func _ink(hex_from: Color) -> String:
-	return UITheme.ink_of(hex_from).to_html(false)
+func _append_profile(text: String, context: Dictionary = {}) -> void:
+	var style = {"surface": "paper", "icon_size": 18}
+	style.merge(context, true)
+	renderer.append_to(body, formatter.format_text(text, style))
 
-func _page(id: String, p: Dictionary) -> String:
-	var lines = PackedStringArray()
+func _render_page(id: String, p: Dictionary) -> void:
+	body.clear()
 	match tab:
 		0:
 			var bl: String = p["blurb"]
-			lines.append("[i]%s.[/i]" % (bl[0].to_upper() + bl.substr(1)))
-			lines.append("Works %s; lives on %s." % [p["work"], p["home"]])
+			body.push_italics()
+			_append_profile("%s." % (bl[0].to_upper() + bl.substr(1)), {"kinds": ["person"]})
+			body.pop()
+			_append_profile("\nWorks %s; lives on %s." % [p["work"], p["home"]], {"kinds": ["person"]})
 			if p.get("haunts", "") != "":
-				lines.append("Off work, often at %s." % p["haunts"])
+				_append_profile("\nOff work, often at %s." % p["haunts"], {"kinds": ["person"]})
 			else:
-				lines.append("Where they go off work: nobody's told you yet. Ask around.")
+				_append_profile("\nWhere they go off work: nobody's told you yet. Ask around.")
 			for x in p["named"]:
-				lines.append("Readings say: " + x)
+				_append_profile("\nReadings say: " + x)
 			if g.debug_overlay:
-				lines.append("")
-				lines.append("[color=#2f6b3a]" + g.debug_npc_text(id) + "[/color]")
+				_append_profile("\n\n" + g.debug_npc_text(id), {"enabled": false, "base_color": Color("2f6b3a")})
 		1:
 			var said: Array = g.board.filter(func(c): return not c.get("deleted", false) and c.get("kind", "") != "deduction" and \
 				(c.get("source", "") == id or c.get("via", "") == id or c.get("learned", []).any(func(d): return d.get("via", "") == id)))
-			lines.append("[b]What %s has said[/b] (to you, or to the town)" % p["name"] if not said.is_empty() else "%s hasn't told you anything yet." % p["name"])
-			lines += _entries(said, id)
+			_append_profile("What %s has said" % p["name"], {"bold": true}) if not said.is_empty() else _append_profile("%s hasn't told you anything yet." % p["name"])
+			if not said.is_empty():
+				_append_profile(" (to you, or to the town)")
+			_render_entries(said, id)
 		2:
 			var about: Array = g.board.filter(func(c): return not c.get("deleted", false) and c.get("source", "") != id and id in CardModel.about(c))
-			lines.append("[b]What's been said or seen of %s[/b]" % p["name"] if not about.is_empty() else "Nothing on your board about %s yet." % p["name"])
-			lines += _entries(about, id)
-	return "\n".join(lines)
+			_append_profile("What's been said or seen of %s" % p["name"], {"bold": true}) if not about.is_empty() else _append_profile("Nothing on your board about %s yet." % p["name"])
+			_render_entries(about, id)
 
 ## Card links, oldest first, each with when it happened and how you heard it.
-func _entries(cards: Array, id: String) -> PackedStringArray:
-	var out = PackedStringArray()
+func _render_entries(cards: Array, id: String) -> void:
 	var sorted = cards.duplicate()
 	sorted.sort_custom(func(a, b): return CardModel.time_order(a.get("when", {"day": a.get("day", 0), "phase": 0})) < CardModel.time_order(b.get("when", {"day": b.get("day", 0), "phase": 0})))
 	for c in sorted:
@@ -367,7 +381,10 @@ func _entries(cards: Array, id: String) -> PackedStringArray:
 		var cb: Array = c.get("corroborated_by", [])
 		if not cb.is_empty():
 			heard.append("also seen by " + ", ".join(PackedStringArray(cb.map(func(x): return "you" if x == "player" else (g.w.by_id[x].name if g.w.by_id.has(x) else x)))))
-		var col = "7a1f1a" if c.get("kind", "") == "deduction" else "2b2116"
-		out.append("[color=#8a7a5a]%s[/color] [url=card:%d][color=#%s]#%d %s[/color][/url] [color=#8a7a5a](%s)[/color]" %
-			[CardModel.time_label(t), c["n"], col, c["n"], c.get("text", ""), ", ".join(PackedStringArray(heard))])
-	return out
+		var opacity = UITheme.HIDDEN_CARD_ALPHA if c.get("hidden", false) else 1.0
+		_append_profile("\n%s " % CardModel.time_label(t), {"base_color": Color("8a7a5a"), "opacity": opacity})
+		body.push_meta("card:%d" % c["n"])
+		_append_profile("#%d %s" % [c["n"], c.get("text", "")], {"base_color": Color("7a1f1a") if c.get("kind", "") == "deduction" else UITheme.color("ink"),
+			"opacity": opacity, "role_context": c.get("kind", "") == "claim"})
+		body.pop()
+		_append_profile(" (%s)" % ", ".join(PackedStringArray(heard)), {"base_color": Color("8a7a5a"), "font_size": 14, "opacity": opacity})
