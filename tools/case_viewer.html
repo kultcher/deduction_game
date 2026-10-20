@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Case history inspector</title>
+<style>
+:root{color-scheme:dark;font:15px system-ui;background:#111821;color:#e4eaf2}*{box-sizing:border-box}
+body{margin:0;padding:24px;max-width:1600px;margin-inline:auto}h1{font-size:25px;margin:0 0 8px}h2{font-size:18px;margin:10px 0}
+p{color:#afbed0;line-height:1.5}label{display:inline-flex;flex-direction:column;gap:5px;margin:4px 14px 8px 0}
+input,select,button{font:inherit;color:inherit;background:#152433;border:1px solid #40576c;border-radius:5px;padding:7px}
+button{cursor:pointer}button:hover{background:#29405a}select{max-width:100%}select[multiple]{min-width:160px}
+.panel{background:#1a2532;border:1px solid #34475b;border-radius:10px;padding:16px;margin:14px 0}
+.grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}.grid>.panel{min-width:0}
+#cursor{width:100%}#plot{width:100%;height:300px;display:block;cursor:crosshair}#legend span{margin-right:16px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;max-height:460px;overflow:auto;padding:10px;background:#111b27}
+.warning{border-left:4px solid #e4b76e;padding:10px;color:#efcb94}
+.event{display:block;text-align:left;width:100%;margin:4px 0;font-size:12px}.selected{border-color:#80c9f5;background:#29405a}
+#events{max-height:440px;overflow:auto}#search{width:min(100%,400px)}.muted{color:#a5b5c8;font-size:13px}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border-bottom:1px solid #34475b;padding:7px;text-align:left;overflow-wrap:anywhere}
+@media(max-width:900px){body{padding:12px}.grid{grid-template-columns:1fr}}
+</style></head><body>
+<h1>Case history inspector</h1><div id="meta" class="muted"></div><div id="warnings"></div>
+<section class="panel">
+<label>Mind<select id="mind"></select></label>
+<label>View<select id="mode"><option value="overview">Player trust, cap &amp; pressure</option><option value="suspicion">Suspicion toward NPCs</option><option value="npc_trust">Relationship trust</option><option value="honesty">Source honesty</option><option value="protect_pref">Protection preference</option><option value="spare_pref">Spare preference</option><option value="discounted">Reading doubt (recorded keys)</option><option value="ledger">Ledger entry</option></select></label>
+<label>Targets / recorded keys (Ctrl-click for several)<select id="targets" multiple size="3"></select></label>
+<label>Evidence<select id="evidence"></select></label>
+<label><span>Ledger comparison</span><span><input id="compare" type="checkbox"> All minds' effective weight</span></label>
+<div><label>First event<input id="start" type="number" min="1" value="1"></label><label>Last event<input id="end" type="number" min="1"></label><button id="reset">Full range</button></div>
+<svg id="plot" viewBox="0 0 1000 300" preserveAspectRatio="none" role="img" aria-label="History graph; click to select event"></svg>
+<div id="legend"></div><p class="muted">Lines show the last recorded boundary state, not a claim that nothing happened between captures. Dots mark recorded changes (all observations in legacy logs). Legacy logs use unconnected dots. Fine-grained value changes remain in the event inspector and are never applied twice.</p>
+<input id="cursor" type="range" min="0" value="0" aria-label="Event cursor">
+<div><button id="prev">Previous event</button> <button id="next">Next event</button> <span id="position"></span></div>
+</section>
+<div class="grid">
+<section class="panel"><h2>Events</h2><input id="search" placeholder="Filter type, NPC, reason, evidence ID…" aria-label="Search events">
+<div><button id="prevMatch">Previous match</button> <button id="nextMatch">Next match</button> <span id="matches" class="muted"></span></div><div id="events"></div></section>
+<section class="panel"><h2>Event / decision inspector</h2><p id="context" class="muted"></p><div id="decision"></div><pre id="raw"></pre></section>
+</div>
+<div class="grid">
+<section class="panel"><h2>State at cursor</h2><div id="stateInfo"></div><pre id="state"></pre></section>
+<section class="panel"><h2>Evidence at cursor</h2><div id="ledgerInfo"></div><pre id="ledger"></pre><p class="muted">Stored weight, effective weight and applied accounting contributions are distinct. Actual clamped suspicion movement appears in value_change events. No acceptance or source reliability is inferred from weight alone.</p></section>
+</div>
+<script id="case-data" type="application/json">/*CASE_DATA*/</script>
+<script>
+"use strict";
+const CASE=JSON.parse(document.getElementById("case-data").textContent);
+const E=CASE.events, $=id=>document.getElementById(id), clone=x=>JSON.parse(JSON.stringify(x));
+const own=(o,k)=>o!==null&&typeof o==="object"&&Object.prototype.hasOwnProperty.call(o,k);
+const get=(o,path)=>path.reduce((v,k)=>own(v,k)?v[k]:undefined,o);
+const numeric=x=>typeof x==="number"&&Number.isFinite(x);
+const pretty=x=>JSON.stringify(x,null,2);
+function put(o,k,v){Object.defineProperty(o,k,{value:v,writable:true,enumerable:true,configurable:true});}
+function apply(state,changes){for(const c of changes){let p=state;for(const k of c.path.slice(0,-1))p=p[k];const k=c.path.at(-1);if(c.has_after)put(p,k,clone(c.to));else delete p[k];}return state;}
+const records=new Map(), names=new Map(), decisions=new Map(), actions=new Map();
+function addRecord(key,r){if(!records.has(key))records.set(key,[]);records.get(key).push(r);}
+E.forEach((e,i)=>{
+ const d=e.data;
+ if(e.type==="action_begin")actions.set(e.action_id,d.label);
+ if(e.type==="decision"){const id=d.decision_id;if(!decisions.has(id))decisions.set(id,[]);decisions.get(id).push(i);}
+ if(CASE.detailed&&["state_checkpoint","state_delta"].includes(e.type)){
+  const key=d.mind+":"+e.actor;addRecord(key,{i,e});
+  if(d.state?.name)names.set(key,d.state.name);
+ }else if(!CASE.detailed&&e.type==="snapshot"){
+  for(const [id,state] of Object.entries(d.npcs||{}))addRecord("real:"+id,{i,state});
+  for(const [id,state] of Object.entries(d.shadow||{}))addRecord("shadow:"+id,{i,state});
+ }
+});
+function observe(previous,r){return r.state?clone(r.state):r.e.type==="state_checkpoint"?clone(r.e.data.state):apply(previous,r.e.data.changes);}
+function stateAt(key,index){
+ const rows=records.get(key)||[];let start=-1;
+ for(let j=0;j<rows.length&&rows[j].i<=index;j++)if(rows[j].state||rows[j].e.type==="state_checkpoint")start=j;
+ if(start<0)return null;
+ let state=null,last=null;
+ for(let j=start;j<rows.length&&rows[j].i<=index;j++){state=observe(state,rows[j]);last=rows[j].i;}
+ return {state,last};
+}
+function option(select,value,label){select.append(new Option(label,value));}
+for(const key of records.keys())option($("mind"),key,(names.get(key)||key.split(":").slice(1).join(":"))+" ["+key.split(":")[0]+"]");
+function summarize(e,i){const d=e.data;return "#"+e.seq+" · D"+e.day+" "+e.phase+" · "+(e.stream||"real")+" · "+e.type+" · "+(e.actor||"")+" → "+(e.target||"")+" "+(e.reason||d.label||d.kind||d.tag||"");}
+$("meta").textContent=CASE.source+" · "+E.length.toLocaleString()+" events · "+(CASE.detailed?"Schema 1 · checkpoint replay validated":"Legacy observations");
+for(const warning of CASE.warnings){const p=document.createElement("p");p.className="warning";p.textContent=warning;$("warnings").append(p);}
+$("cursor").max=E.length-1;$("cursor").value=E.length-1;$("end").value=E.length;
+let cursor=E.length-1, series=[], matching=E.map((_,i)=>i);
+const colors=["#83cafa","#f3bc6e","#b49bff","#78d5b3","#ed97b8","#c5d56e","#c6b7a6","#78a2ff"];
+function range(){let a=Math.max(0,Math.min(E.length-1,Number($("start").value)-1||0)),b=Math.max(a,Math.min(E.length-1,Number($("end").value)-1||0));return [a,b];}
+function populate(){
+ const key=$("mind").value,mode=$("mode").value,targets=new Set(),ids=new Map();
+ let state=null;
+ for(const r of records.get(key)||[]){
+  state=observe(state,r);
+  const map=state[mode];
+  if(map&&typeof map==="object")for(const k of Object.keys(map))targets.add(k);
+  for(const [id,e] of Object.entries(state.ledger||{}))ids.set(id,e.meta?.text||e.meta?.kind||"");
+ }
+ const old=$("evidence").value;$("evidence").replaceChildren();
+ for(const [id,text] of ids)option($("evidence"),id,id+(text?" — "+text.slice(0,90):""));
+ if(ids.has(old))$("evidence").value=old;
+ $("targets").replaceChildren();
+ for(const target of targets)option($("targets"),target,target);
+ for(const opt of Array.from($("targets").options).slice(0,3))opt.selected=true;
+ $("targets").disabled=["overview","ledger"].includes(mode);
+ $("evidence").disabled=mode!=="ledger";$("compare").disabled=mode!=="ledger";
+ rebuild();
+}
+function makeSeries(key,path,label){
+ let state=null;const points=[];
+ for(const r of records.get(key)||[]){state=observe(state,r);const value=get(state,path);const v=numeric(value)?value:null;if(!CASE.detailed||!points.length||points.at(-1).v!==v)points.push({i:r.i,v});}
+ return {label,points};
+}
+function rebuild(){
+ const key=$("mind").value,mode=$("mode").value,id=$("evidence").value;
+ if(mode==="overview")series=[["trust","Player trust"],["trust_cap","Trust cap"],["pressure","Pressure"]].map(([p,n])=>makeSeries(key,[p],n));
+ else if(mode==="ledger"){
+  series=$("compare").checked?Array.from(records.keys()).map(k=>makeSeries(k,["ledger",id,"eff"],k)):
+   ["weight","eff"].map(p=>makeSeries(key,["ledger",id,p],p==="eff"?"Effective weight":"Stored weight"));
+ }else series=Array.from($("targets").selectedOptions).map(o=>makeSeries(key,[mode,o.value],o.value));
+ draw();showCursor();
+}
+function svgNode(tag,attrs,text){const n=document.createElementNS("http://www.w3.org/2000/svg",tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,String(v));if(text!==undefined)n.textContent=text;return n;}
+function draw(){
+ const svg=$("plot");svg.replaceChildren();$("legend").replaceChildren();
+ const [lo,hi]=range(),x=i=>55+925*(i-lo)/Math.max(1,hi-lo);
+ let min=0,max=1;
+ for(const s of series)for(const p of s.points)if(p.i<=hi&&p.v!==null){min=Math.min(min,p.v);max=Math.max(max,p.v);}
+ const y=v=>255-225*(v-min)/Math.max(.001,max-min);
+ for(let n=0;n<=4;n++){let v=min+(max-min)*n/4;svg.append(svgNode("line",{x1:55,x2:980,y1:y(v),y2:y(v),stroke:"#34475b"}),svgNode("text",{x:2,y:y(v)+4,fill:"#afbed0","font-size":12},v.toFixed(2)));}
+ let lastPhase="";
+ for(let i=lo;i<=hi;i++){const phase="D"+E[i].day+" "+E[i].phase;if(phase!==lastPhase){svg.append(svgNode("line",{x1:x(i),x2:x(i),y1:20,y2:255,stroke:"#34475b","stroke-dasharray":"3 6"}));if(x(i)>55&&x(i)<900)svg.append(svgNode("text",{x:x(i)+3,y:15,fill:"#afbed0","font-size":10},phase));lastPhase=phase;}}
+ series.forEach((s,j)=>{
+  const color=colors[j%colors.length],span=document.createElement("span");span.style.color=color;span.textContent=s.label;$("legend").append(span);
+  let prior=null;
+  for(const p of s.points)if(p.i<lo)prior=p;else break;
+  const points=prior&&CASE.detailed?[{i:lo,v:prior.v},...s.points.filter(p=>p.i>=lo&&p.i<=hi)]:s.points.filter(p=>p.i>=lo&&p.i<=hi);
+  let last=null,d="";
+  for(const p of points){
+   if(p.v===null){if(last&&CASE.detailed)d+=" H"+x(p.i);last=null;continue;}
+   if(CASE.detailed){d+=last?" H"+x(p.i)+" V"+y(p.v):" M"+x(p.i)+" "+y(p.v);last=p;}
+   const circle=svgNode("circle",{cx:x(p.i),cy:y(p.v),r:2.5,fill:color});
+   circle.append(svgNode("title",{},s.label+": "+p.v+" · event "+(p.i+1)));
+   svg.append(circle);
+  }
+  if(last&&CASE.detailed)d+=" H"+x(hi);
+  if(d)svg.append(svgNode("path",{d,fill:"none",stroke:color,"stroke-width":2}));
+ });
+ if(cursor>=lo&&cursor<=hi)svg.append(svgNode("line",{x1:x(cursor),x2:x(cursor),y1:20,y2:260,stroke:"#fff","stroke-width":1.5}));
+ svg.append(svgNode("text",{x:55,y:285,fill:"#afbed0","font-size":12},"Event "+(lo+1)),svgNode("text",{x:890,y:285,fill:"#afbed0","font-size":12},"Event "+(hi+1)));
+}
+function renderEvents(){
+ const list=$("events");list.replaceChildren();
+ let at=matching.findIndex(i=>i>=cursor);if(at<0)at=matching.length-1;
+ const from=Math.max(0,at-35),to=Math.min(matching.length,from+90);
+ $("matches").textContent=matching.length+" matches · showing "+(matching.length?from+1:0)+"–"+to;
+ for(const i of matching.slice(from,to)){const b=document.createElement("button");b.className="event"+(i===cursor?" selected":"");b.textContent=summarize(E[i],i);b.onclick=()=>seek(i);list.append(b);}
+}
+function showCursor(){
+ const e=E[cursor];$("position").textContent=summarize(e,cursor);$("raw").textContent=pretty(e);
+ $("context").textContent="Action "+(e.action_id||"unscoped")+(actions.has(e.action_id)?" · "+actions.get(e.action_id):"");
+ $("decision").replaceChildren();
+ if(e.type==="decision"){
+  const p=document.createElement("p");p.className="muted";p.textContent="Linked decision stages (includes stages after the cursor).";$("decision").append(p);
+  for(const i of decisions.get(e.data.decision_id)||[]){const b=document.createElement("button");b.className="event";b.textContent="#"+E[i].seq+" · "+E[i].data.kind+" / "+E[i].data.stage+" · "+JSON.stringify(E[i].data.result).slice(0,160);b.onclick=()=>seek(i);$("decision").append(b);}
+ }
+ const observation=stateAt($("mind").value,cursor),state=observation?.state;
+ $("stateInfo").textContent=observation?"Last captured at event "+(observation.last+1)+" (#"+E[observation.last].seq+"). "+(CASE.detailed?"Boundary observation.":"Incomplete legacy observation."):"No state recorded yet for this mind.";
+ $("state").textContent=state?pretty(Object.fromEntries(Object.entries(state).filter(([key])=>key!=="ledger"))):"Unknown";
+ const entry=state?.ledger?.[$("evidence").value];
+ $("ledgerInfo").textContent=entry?"Stored "+entry.weight+" · effective "+entry.eff+" · hearings "+entry.times:"Entry not recorded at this cursor.";
+ $("ledger").textContent=entry?pretty({entry,source_honesty:state.honesty,reading_doubt:state.discounted}):"Unknown / absent from recorded ledger";
+ renderEvents();
+}
+function seek(i){cursor=Math.max(0,Math.min(E.length-1,i));$("cursor").value=cursor;draw();showCursor();}
+$("mind").onchange=populate;$("mode").onchange=populate;
+for(const id of ["targets","evidence","compare"])$(id).onchange=rebuild;
+for(const id of ["start","end"])$(id).onchange=draw;
+$("reset").onclick=()=>{$("start").value=1;$("end").value=E.length;draw();};
+$("cursor").oninput=()=>seek(Number($("cursor").value));
+$("prev").onclick=()=>seek(cursor-1);$("next").onclick=()=>seek(cursor+1);
+$("search").oninput=()=>{const q=$("search").value.toLowerCase();matching=E.flatMap((e,i)=>JSON.stringify(e).toLowerCase().includes(q)?[i]:[]);renderEvents();};
+$("prevMatch").onclick=()=>{const i=matching.filter(i=>i<cursor).at(-1);if(i!==undefined)seek(i);};
+$("nextMatch").onclick=()=>{const i=matching.find(i=>i>cursor);if(i!==undefined)seek(i);};
+$("plot").onclick=event=>{const r=$("plot").getBoundingClientRect(),[lo,hi]=range();seek(Math.round(lo+((event.clientX-r.left)/r.width*1000-55)/925*(hi-lo)));};
+populate();
+</script></body></html>
