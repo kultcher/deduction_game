@@ -13,7 +13,10 @@ const Social = preload("res://sim/social.gd")
 var rng = RandomNumberGenerator.new()
 var seed_value = 0
 var dlog = DevLog.new()
-var shadow_log = DevLog.new()   # the shadow selves' reasoning (kept out of the case log)
+var shadow_log = DevLog.new()   # legacy stream stays separate; detailed trace merges both
+var detailed_logging = true     # debug export only; does not enable the spoiler UI
+var trace_build = ""            # optional caller-supplied git/build identifier
+var trace_tuning = ""           # optional caller-supplied tuning identifier
 
 var npcs: Array = []
 var by_id = {}
@@ -237,7 +240,13 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 	max_days = 6 if npc_count < 10 else 8
 	day = 0
 	phase = C.NIGHT
+	dlog.configure_trace(detailed_logging)
+	shadow_log.configure_trace(detailed_logging, dlog.trace_context(), "shadow")
 	dlog.set_time(0, "Setup")
+	dlog.begin_action("setup", {"seed": seed_in, "npcs": npc_count})
+	dlog.trace_event("trace_header", "world", "", {"seed": seed_in, "npcs": npc_count,
+		"engine": Engine.get_version_info(), "build": trace_build, "tuning": trace_tuning,
+		"coverage": "milestone_1_action_boundaries_and_belief_recompute"})
 	dlog.add("case_start", "world", "", {"seed": seed_in, "npcs": npc_count})
 
 	var cast = shuffled(C.CAST).slice(0, npc_count)
@@ -310,11 +319,14 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 			Mind.hear_claim(self, n, n.id, n.role, 1.5, "own")
 	evil_plan = Evil.make_plan(self)
 	_log_grimoire()
+	trace_capture("initial_setup", true)
 
 	resolve_night()
 	day = 1
 	phase = C.MORNING
 	start_phase()
+	trace_capture("setup_complete", true)
+	dlog.end_action()
 
 ## Roles from the script, no duplicates, with a little protection: at least two
 ## start-knowledge gifts and one strong identifier (Seer, Dowser or Gravedigger).
@@ -1568,6 +1580,7 @@ func start_new_day() -> void:
 # ---------------------------------------------------------------- dev snapshots
 
 func snapshot(tag: String) -> void:
+	trace_capture(tag, true)
 	var s = {}
 	for n in npcs:
 		if not n.alive:
@@ -1586,3 +1599,14 @@ func snapshot(tag: String) -> void:
 	if not shadows.is_empty():
 		d["shadow"] = shadows  # evil NPCs' "if I were good" view (debug only)
 	dlog.add("snapshot", "world", "", d)
+
+## Capture boundaries catch direct assignments, including death/conversion resets.
+## Does not create/sync shadow minds or mutate any gameplay state.
+func trace_capture(tag: String, checkpoint: bool = false) -> void:
+	if not detailed_logging:
+		return
+	for n in npcs:
+		dlog.capture_npc(n, tag, checkpoint)
+		if n.shadow != null:
+			shadow_log.set_time(dlog.day, dlog.phase)
+			shadow_log.capture_npc(n.shadow, tag, checkpoint)
