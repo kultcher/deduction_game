@@ -1491,6 +1491,118 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 				"text": "%s nominated %s, hinting at a private reason they won't share yet." % [n.name, t.name]})
 	return {"lines": lines, "facts": facts}
 
+# ---------------------------------------------------------------- the defence
+
+## The nominee answers (meeting-flow plan, step 2). One or two moves, chosen from what's
+## against them and what they have:
+##   reveal    a night-walking gift explains being out: claim it and share readings
+##             (normal claim effects), plus an excuse for the sightings;
+##   secret    a good NPC's personal reason for being out, confessed;
+##   red_herring / pair_other / misled / lying   against a reading that names them;
+##   fear / desperation   when there's nothing else ("I know I'm not evil").
+## Each move's effect on listeners is a ledger entry of its own ("def:<id>:<day>:<move>"),
+## weighed by the listener's regard for the defender and the defender's credibility, so
+## it rises and falls with them. Only a reveal carries real weight; the rest sway little.
+## Evil defends as the good townsperson it pretends to be: its bluff stands in for its gift,
+## and it has no secret to confess. Returns {lines, facts, moves}.
+static func defend_self(w, d, nominator_id: String) -> Dictionary:
+	var lines: Array = []
+	var facts: Array = []
+	var moves: Array = []
+	if d.silenced:
+		return {"lines": [{"speaker": d.id, "name": d.name, "text": "...", "silent": true}], "facts": [], "moves": ["silenced"]}
+	var accuser = w.by_id.get(nominator_id) if nominator_id != "player" else null
+	if accuser == null:
+		var best = -1.0
+		for m in w.living_good():
+			if m != d and susp(m, d.id) > best:
+				best = susp(m, d.id)
+				accuser = m
+	var items: Array = case_against(w, accuser, d.id) if accuser != null else []
+	var role: String = w.evil_plan["bluffs"].get(d.id, "") if d.is_evil() else d.role
+	var out_items: Array = items.filter(func(x): return "out" in x["why"] or "night" in x["why"])
+	var out_weight = 0.0
+	for x in out_items:
+		out_weight += x["contrib"]
+	var effs_by_move = {}
+	# 1. A gift that walks at night explains being seen out.
+	if not out_items.is_empty() and C.ROLES.get(role, {}).get("night_walk", false):
+		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": 0.2}
+		for k in reveal_cost(w, d):
+			parts["cost_" + k] = -reveal_cost(w, d)[k]
+		if d.claim_public or decide(w, d, "defence_reveal", parts, "Explain being out with my gift (%s)?" % role):
+			if not d.claim_public:
+				_go_public(w, d, lines, facts)
+			lines.append(say(d, "I was out because I'm the %s. That's what you saw." % C.role_name(role)))
+			moves.append("reveal")
+			effs_by_move["reveal"] = [[d.id, -minf(0.35, out_weight), true, "excused: out at night as the %s" % C.role_name(role), ""]]
+	# 2. A personal secret explains it (good only: evil has nothing true to confess).
+	if moves.is_empty() and not out_items.is_empty() and not d.is_evil() and not d.secret.is_empty():
+		if decide(w, d, "defence_confess", {"facing_the_rope": 0.5, "privacy": (0.4 - trait_of(d, "privacy")) * 1.0}, "Confess my secret to explain being out?"):
+			d.secret_known = true
+			lines.append(say(d, "I wasn't out for anything wicked. I %s." % d.secret.get("me", d.secret.get("text", ""))))
+			facts.append({"kind": "secret", "subject": [d.id], "owner": d.id, "source": d.id,
+				"text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]})
+			moves.append("secret")
+			effs_by_move["secret"] = [[d.id, -minf(0.3, out_weight), true, "excused: a personal secret", ""]]
+	# 3. Against a reading that names them.
+	if moves.size() < 2:
+		var rd = {}
+		var src_id = ""
+		for x in items:
+			if x["eid"].begins_with("info:"):
+				var parts2 = x["eid"].split(":")
+				var sn = w.by_id.get(parts2[1])
+				if sn == null or sn == d:
+					continue
+				for en in sn.info_log:
+					if info_eid(sn.id, en) == x["eid"]:
+						rd = en
+						src_id = sn.id
+				if not rd.is_empty():
+					break
+		if not rd.is_empty():
+			var dd: Dictionary = rd.get("data", {})
+			var pair: Array = dd.get("pair", [])
+			var src = w.by_id[src_id]
+			var pings = src.info_log.filter(func(e): return e.get("shared", false) and e.get("role", "") == "seer" and e["data"].get("yes", false) and d.id in e["data"].get("pair", [])).size()
+			if rd["role"] == "seer" and pings >= 2:
+				lines.append(say(d, "%s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name))
+				moves.append("red_herring")
+				effs_by_move["red_herring"] = [[d.id, -0.12, true, "says they're the Seer's red herring", ""]]
+			elif pair.size() == 2 and d.id in pair:
+				var other: String = pair[0] if pair[1] == d.id else pair[1]
+				if w.by_id.has(other) and w.by_id[other].alive:
+					lines.append(say(d, "One of the two, %s said. It isn't me, so look at %s." % [src.name, w.by_id[other].name]))
+					moves.append("pair_other")
+					effs_by_move["pair_other"] = [[d.id, -0.06, true, "points at the other one in the pair", ""], [other, 0.06, true, "%s says it's the other one in the pair" % d.name, ""]]
+			if moves.size() < 2 and not ("red_herring" in moves):
+				if trait_of(d, "confidence") > 0.6:
+					lines.append(say(d, "Then %s is lying, and you should ask yourselves why." % src.name))
+					moves.append("lying")
+					effs_by_move["lying"] = [[d.id, -0.05, true, "says the reading against them is a lie", ""], [src_id, C.DEFENCE_LIE_BLOWBACK, true, "%s says they lied" % d.name, ""]]
+				else:
+					lines.append(say(d, "%s's gift could have been turned. It's happened before." % src.name))
+					moves.append("misled")
+					effs_by_move["misled"] = [[d.id, -0.06, true, "says the reading against them was misled", ""]]
+	# 4. Nothing to show: fear, or the desperation play.
+	if moves.is_empty():
+		if _afraid(w, d) and not d.claim_public:
+			lines.append(say(d, "If I say what I am, I'll be dead by morning. But I'm not what you think."))
+			moves.append("fear")
+		else:
+			lines.append(say(d, "I don't know what's going on, but I know I'm not evil."))
+			moves.append("desperation")
+		effs_by_move[moves[0]] = [[d.id, -0.02, true, "pleads innocence", ""]]
+	for mv in effs_by_move:
+		for l in w.living():
+			if l == d:
+				continue
+			ledger_hear(w, l, "def:%s:%d:%s" % [d.id, w.day, mv], effs_by_move[mv], 0.5 + 0.5 * l.npc_trust.get(d.id, 0.5),
+				[d.id, -1, "report"], {"kind": "defence"})
+	w.dlog.think(d.id, "defence", "Defends against %s: %s." % [nominator_id, ", ".join(PackedStringArray(moves))], {"moves": moves, "evil": d.is_evil()})
+	return {"lines": lines, "facts": facts, "moves": moves}
+
 static func defence_line(w, n) -> Dictionary:
 	if n.silenced:
 		return {"speaker": n.id, "name": n.name, "text": "...", "silent": true}

@@ -1775,3 +1775,46 @@ unnamed: "Word reached me from the Seer: …".
 
 Test: `_relay_unnamed`, where a relay moved a listener 0.051 against 0.161 for hearing it
 from the Seer.
+
+## Meeting flow, step 2: the defence (Oct 19)
+
+`Mind.defend_self(w, d, nominator)`, called once per nomination by
+`game._defend_pending`, replaces the one-line protest. `C.DEFENCE_MOVES = false` brings
+the old line back. The defender reads the case against them (`case_against` of the
+nominator, or of the NPC most suspicious of them when the player nominated) and makes
+one or two moves:
+- **reveal:** a night-walking gift explains being seen out. They claim it (`_go_public`)
+  and excuse the sightings: −min(0.35, the sightings' weight). It's a `decide` pushed by
+  `C.DEFENCE_ROPE` against `reveal_cost`.
+- **secret:** a good NPC confesses their reason for being out (−0.3 at most), with a
+  secret card.
+- **Against a reading that names them:**
+  - **red_herring,** if the Seer has named them in two or more shared yeses (−0.12);
+  - **pair_other,** pointing at the other name in the pair (−0.06 on themselves, +0.06
+    on the other);
+  - **lying** (if confident: −0.05, and `C.DEFENCE_LIE_BLOWBACK` 0.02 on the accuser);
+  - **misled** (−0.06).
+- **fear / desperation** when there's nothing else (−0.02).
+
+Each move is its own ledger entry (`def:<id>:<day>:<move>`) in every listener, weighted
+0.5 + 0.5 × the listener's regard for the defender, with the defender's credibility as
+the source. Silenced nominees get no defence. Evil uses its bluff for its gift and has no
+secret to confess.
+
+**Bot, 150 games, seeds 1000–1149, without → with (after tuning):**
+
+| | good wins | good NPCs with night-walking gifts hanged | other good NPCs hanged |
+|---|---|---|---|
+| 7 townsfolk | 53 → 49 | 33 → 32 | 124 → 118 |
+| 10 townsfolk | 37 → 26 | 78 → 75 | 217 → 221 |
+
+**Open:**
+1. **Evil gains more than good.** Its "misled" and "lying" defences of real readings,
+   and its bluff reveals (82 against good's 56 at 10 townsfolk), cost good about 11 wins
+   in 150 at 10 townsfolk.
+2. **The defence barely changes how often good night walkers hang.** Their nominations
+   are mostly not built on sightings, so the excuse rarely applies. Find out what does
+   drive those nominations before tuning further.
+
+Test: `_defence_moves` (an excuse sways trusting listeners 0.27 against 0.09 for
+distrustful ones; pair_other; plea; silenced).

@@ -40,6 +40,7 @@ func _init() -> void:
 	_hint_followup()
 	_nomination_case()
 	_relay_unnamed()
+	_defence_moves()
 	print("FIXES FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -635,3 +636,56 @@ func _relay_unnamed() -> void:
 	Mind.apply_info(w, lis2, seer, seer.info_log[0], Mind.heard_weight(lis2, seer))
 	var direct = lis2.suspicion[t.id] - b2
 	_check(relayed < direct * 0.6, "much weaker than hearing it from the Seer (%.3f vs %.3f)" % [relayed, direct])
+
+## Meeting-flow step 2: the nominee's defence moves.
+func _defence_moves() -> void:
+	# A Lamplighter seen out explains it; it sways those who trust them more.
+	var g = _game(7350)
+	var w = g.w
+	w.day = 4
+	var goods: Array = w.living_good()
+	var d = goods[0]
+	var a = goods[1]
+	var l1 = goods[2]
+	var l2 = goods[3]
+	d.role = "lamplighter"
+	d.claimed_role = "lamplighter"
+	d.claim_public = true
+	for m in [a, l1, l2]:
+		Mind.ledger_hear(w, m, "test:saw:" + d.id, [[d.id, 0.4, false, "seen out at night", "they were seen out at night"]], 1.0)
+	l1.npc_trust[d.id] = 0.95
+	l2.npc_trust[d.id] = 0.05
+	var b1 = l1.suspicion[d.id]
+	var b2 = l2.suspicion[d.id]
+	var df = Mind.defend_self(w, d, a.id)
+	_check("reveal" in df["moves"], "an accused Lamplighter seen out explains it (%s)" % str(df["moves"]))
+	var drop1 = b1 - l1.suspicion[d.id]
+	var drop2 = b2 - l2.suspicion[d.id]
+	_check(drop1 > drop2 and drop1 > 0.05, "it sways those who trust them more (%.2f vs %.2f)" % [drop1, drop2])
+	# Named in a Seer's pair: points at the other one.
+	var g2 = _game(7360)
+	var w2 = g2.w
+	var gs: Array = w2.living_good()
+	var seer = gs[0]
+	var d2 = gs[1]
+	var o = gs[2]
+	var lis = gs[3]
+	seer.role = "seer"
+	seer.claim_public = true
+	seer.claimed_role = "seer"
+	seer.info_log = [{"day": 0, "role": "seer", "data": {"pair": [d2.id, o.id], "yes": true}, "text": "I looked at them: one of them reads as the demon", "shared": true, "true": false}]
+	seer.applied_info = 0
+	Mind.update_from_own_info(w2)
+	var bo = lis.suspicion[o.id]
+	var df2 = Mind.defend_self(w2, d2, seer.id)
+	_check("pair_other" in df2["moves"], "named in a Seer's pair, they point at the other (%s)" % str(df2["moves"]))
+	_check(lis.suspicion[o.id] > bo, "some suspicion moves to the other name (%.2f -> %.2f)" % [bo, lis.suspicion[o.id]])
+	# Nothing to show: a plea, with almost no sway.
+	var g3 = _game(7370)
+	var w3 = g3.w
+	var d3 = w3.living_good()[0]
+	var df3 = Mind.defend_self(w3, d3, "player")
+	_check(df3["moves"].size() == 1 and df3["moves"][0] in ["fear", "desperation"], "with nothing against them in particular, a plea (%s)" % str(df3["moves"]))
+	# Silenced: no defence at all.
+	d3.silenced = true
+	_check(Mind.defend_self(w3, d3, "player")["moves"] == ["silenced"], "a silenced nominee can't defend themselves")

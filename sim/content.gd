@@ -316,6 +316,11 @@ const INFO_BEFORE_KILL = true
 ## Seer"): gossip, much weaker than the claim; and how often the source then steps forward.
 const RELAY_WEIGHT = 0.3
 const RELAY_CORROBORATE = 0.05
+## The defence (meeting-flow step 2): how hard the rope pushes a nominee to reveal a gift
+## that explains being out, and how much "they're lying" rubs off on the accuser.
+const DEFENCE_MOVES = true   # false: the old one-line protest
+const DEFENCE_ROPE = 1.1
+const DEFENCE_LIE_BLOWBACK = 0.02
 ## Shadow self step 2: evil breaks cover (overrides what its good self would do) only when
 ## stakes - exposure cost > caution. Minions' caution drifts down each day after day 2.
 const EVIL_CAUTION_DEMON = 0.8

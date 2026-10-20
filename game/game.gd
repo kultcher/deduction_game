@@ -1132,6 +1132,7 @@ func _meeting_command(verb: String, rest: String) -> void:
 			w.open_nomination("player", n.id)
 			town_quiet = false
 			_narr("You stand and nominate %s." % n.name)
+			_defend_pending()
 			_show_nomination()
 		"wait":
 			if not _next_npc_nomination():
@@ -1159,15 +1160,26 @@ func _next_npc_nomination() -> bool:
 	for l in nm.get("case_lines", []):
 		_line(l)
 	_facts(nm.get("case_facts", []))
+	_defend_pending()
 	_show_nomination()
 	return true
+
+## The nominee's defence (meeting-flow step 2), once per nomination.
+func _defend_pending() -> void:
+	var nm: Dictionary = w.meeting["pending"]
+	if not C.DEFENCE_MOVES:
+		_line(Mind.defence_line(w, w.by_id[nm["nominee"]]))
+		return
+	var df = Mind.defend_self(w, w.by_id[nm["nominee"]], nm["by"])
+	for l in df["lines"]:
+		_line(l)
+	_facts(df["facts"])
 
 func _show_nomination() -> void:
 	state = "nomination"
 	statement_used = false
 	var nm: Dictionary = w.meeting["pending"]
 	var t = w.by_id[nm["nominee"]]
-	_line(Mind.defence_line(w, t))
 	var blk = ""
 	if w.meeting["block"] != "":
 		blk = " %s is on the block with %d votes." % [w.by_id[w.meeting["block"]].name, w.meeting["block_count"]]
