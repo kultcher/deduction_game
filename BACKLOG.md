@@ -13,6 +13,11 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
+- **Lamplighter drop path order.** `_walk` rolls for a dropped item before the
+  Lamplighter's path is expanded to all blocks. Its drops currently choose a public
+  place only on its home block. Review whether drops should cover the full lamp route;
+  do not confuse this with inaccessible home drops (ordinary drops already choose
+  static public locations). Found while answering the Oct 20 tuning questions. [open]
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -126,6 +131,88 @@ implementation changes. See TUNING.md for the audited current values.
   the death. Keep sincerity, claimed role, and night-specific misdirection distinct;
   base changes on listener knowledge, not hidden actual roles or poison state.
   [tentative]
+
+### Social tuning and evidence follow-ups (Oct 20)
+These record the narrative-tuning review. They are backlog work, not changes to the
+implemented model. Explicit directions are marked decided; proposed mechanics and
+exact values remain open. The code-derived examples and clarifications are in
+[TUNING_NARRATIVE.md](TUNING_NARRATIVE.md#16-how-the-ledger-works-a-meeting-case-against-greta).
+
+- **Confidence should protect convictions, not create general resistance.** A
+  confident NPC without an established view should consider fresh evidence at normal
+  strength. Scale resistance with the strength of the belief being challenged; low
+  suspicion alone does not establish belief in innocence. Include evidence-based
+  convictions, relationships and firsthand knowledge without giving NPCs hidden truth.
+  Audit direct adjustment, ledger recomputation, trust-based reconsideration,
+  own-reading/conflict agreement, and role-specific effects/flags (including Medium
+  relays and own versus heard readings), so a global fix does not leave inconsistent
+  role paths. Reinforcing evidence should not receive a blanket Confidence penalty.
+  Direction [decided]; conviction representation and curve [open].
+- **Town knowledge of friends and rivals.** NPCs should know other people's public
+  friendships/rivalries and sometimes disclose them in the same style as haunt
+  locations. Separate that knowledge from exact private trust scores and hidden Lover
+  status. Track which relationships the player has learned; avoid duplicate reveals.
+  Add conversational wording and useful attribution. [decided; sharing rates open]
+- **Ward promises should outrank vigil promises.** Increase the relative value of a
+  fulfilled ward promise; add substantial plausible-success credit for a kept ward
+  followed by a deathless night. Warden/Veteran intervention remains an alternative,
+  not a reason to deny player credit. Base credit on the listener's observable facts
+  and beliefs, not the hidden attack target or actual blocker; avoid duplicate credit
+  for promise, protection, and outcome. Exact amounts and stacking [open; direction decided].
+- **Reduce secret-keeping rewards and soften secret breaches.** Review repeated
+  nightly gains, first-use and repeated breach losses, and permanent caps together.
+  Keep a meaningful betrayal consequence while allowing proportionate recovery;
+  coordinate with apologies and confidentiality promises. [decided; values open]
+- **Warn about repeated role guessing.** Before the player continues the escalating
+  wrong-guess/patience spiral, have the NPC say something like "Clearly you're just
+  grasping at straws, and I'm running out of patience." Make the warning communicate
+  their patience without revealing whether a particular bluff/guess is true. Keep
+  conversation slots, daily fatigue, and the across-days wrong-guess counter distinct.
+  [decided; warning cadence open]
+- **Track incrimination versus a suspected misread explanation?** Evaluate a separate
+  representation for "a Seer yes implicates this person, but I favor red herring or
+  Marked" rather than collapsing everything into net suspicion. It may be competing
+  hypotheses rather than another additive suspicion score. Explain apparent
+  incrimination, likely cause, and remaining uncertainty; reweight consistently when
+  either hypothesis loses support and avoid double-counting. Use accepted evidence,
+  never the actual hidden modifier. [open]
+- **Dowser clearing strength.** Evaluate only firing on a positive ping instead of
+  producing zero-count group clears. Specify whether "evil" means registered evil
+  (including Marked), how poison/Delusional results behave, and when a failed/absent
+  ping is observable. Absence must not become the same zero-count clear through a
+  known guaranteed trigger. Compare weaker zero clears/less frequent checks before
+  choosing the design. [tentative]
+- **Make night-sighting rebuttals explicit.** Let NPCs argue "I was seen out, but no
+  one died that night" or "the death happened on another block." Night-sighting
+  strength already falls to 12% away from an actual murder block/night. Add argument
+  support and attributed defence, rather than merely hidden scaling. Avoid clearing
+  all movement, double-crediting the same contextual discount, or ignoring thwarted
+  attacks and other reasons a walker might be evil. [decided]
+- **Accumulate discrete independent instances.** Multiple caught lies, trace matches,
+  and independent nights should strengthen a case with diminishing returns. Preserve
+  event/night/card identities and source provenance; distinguish independent facts
+  from several retellings of one origin. Audit conclusion IDs, strongest-justification
+  selection, and justification keys based on source/night/kind. In particular, the
+  reproduced generic two-card case can beat its better-supported template because
+  they use different agreement routes; align those semantics with the section-4
+  cases/evidence-fit work. [decided; aggregation design open]
+- **More rebuttals after a caught lie.** Beyond admission or stonewalling, allow
+  explaining concealed walking duties, personal secrets, protecting a confidence,
+  or other supported motives. Conceding the statement was false need not concede
+  evil or make future readings worthless. Give evil plausible access to the same
+  excuses, with later corroboration/challenges; do not erase the caught lie itself.
+  Extends section 3's rebuttal work. [decided; options open]
+- **Compare misled and reading-lie strength.** Review 0.80 reading doubt for misled
+  versus 0.50 doubt plus 0.30 suspicion for exposing a reading lie. Compare at equal
+  effective weight, with honesty feedback, night scope and self-knowledge included;
+  those coefficients affect different quantities and are not probabilities. No new
+  coefficient selected. [open]
+- **Signal honest observation forgetting.** When Insight/recency memory limits remove
+  people from a report, acknowledge incomplete recall ("There were others, but I
+  can't place them"). Distinguish memory loss from Gossip refusal, deliberate friend
+  omission, bluff constraints, and other concealment. The player-facing explanation
+  should not expose the omitted names or make hiding mechanically identifiable.
+  [decided; exact presentation open]
 
 ### UI
 - **Long dropdowns in columns.** Once a dropdown exceeds roughly eight options,
