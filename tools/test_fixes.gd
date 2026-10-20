@@ -39,6 +39,7 @@ func _init() -> void:
 	_accuse_tiers()
 	_hint_followup()
 	_nomination_case()
+	_relay_unnamed()
 	print("FIXES FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -608,3 +609,29 @@ func _nomination_case() -> void:
 	var cs2 = Mind.nomination_case(w2, n2, t2, "")
 	_check(absf(lis.suspicion[t2.id] - before) < 0.001, "recapping a public reason moves nobody (%.3f -> %.3f)" % [before, lis.suspicion[t2.id]])
 	_check(cs2["lines"].size() >= 1, "but it is said: %s" % (cs2["lines"][0]["text"] if not cs2["lines"].is_empty() else "(nothing)"))
+
+## Passing on someone else's private reading names the gift, not the person, and counts for
+## much less than the claim.
+func _relay_unnamed() -> void:
+	var r = _setup_private_reading(7340)
+	var w = r[1]
+	var seer = r[2]
+	var t = r[3]
+	var n = w.living_good().filter(func(x): return x != seer and x != t)[0]
+	Mind.apply_info(w, n, seer, seer.info_log[0], 1.0)
+	var rs = Mind.reason_status(w, n, t.id)
+	_check(rs["kind"] == "relay", "a reading heard in private is a relay, not citable (%s)" % rs["kind"])
+	_check(Mind.citable_reason(w, n, t.id, "town") == "", "it can't be quoted as is")
+	var lis = w.living_good().filter(func(x): return x != seer and x != t and x != n)[0]
+	var before = lis.suspicion[t.id]
+	var lines: Array = []
+	var facts: Array = []
+	Mind.relay_reading(w, n, seer, seer.info_log[0], lines, facts)
+	var text = lines[0]["text"]
+	_check("the Seer" in text and not (seer.name in text), "the gift is named, the person isn't: %s" % text)
+	var relayed = lis.suspicion[t.id] - before
+	var lis2 = w.living_good().filter(func(x): return x != seer and x != t and x != n and x != lis)[0]
+	var b2 = lis2.suspicion[t.id]
+	Mind.apply_info(w, lis2, seer, seer.info_log[0], Mind.heard_weight(lis2, seer))
+	var direct = lis2.suspicion[t.id] - b2
+	_check(relayed < direct * 0.6, "much weaker than hearing it from the Seer (%.3f vs %.3f)" % [relayed, direct])

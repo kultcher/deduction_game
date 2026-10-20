@@ -85,10 +85,9 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   fitting bluff can claim a fake secret. Biggest open hole: hidden night walkers frame
   themselves (Isolde 55774, Constance 96773; Lamplighter/Veteran/Sleepwalker/Warden hang rates). (DESIGN)
   Now part of the meeting-flow plan (docs/meeting_flow_plan.md, step 2). [decided]
-- **Relaying someone else's private reading.** Provenance covers an NPC's own gift; a
-  reading they heard from another in private ("Lian's sight said…") can still be cited at
-  the meeting, outing Lian's gift for them. Decide whether relays of private readings
-  need the original source's reveal, or count as gossip. (Oct 19) [open]
+- **Trust dynamics around sources (later).** A relayer may name their source outright,
+  at the cost of that person's trust; and evil may try to trace an unnamed source ("the
+  Seer told me") back to a person, to kill or frame them. (Oct 19) [open]
 - **Last words.** A condemned NPC gets some final words before the hanging (flavour). (Oct 19) [decided]
 - **Nominations make a case.** The nominator cites several cards, even weak ones.
   Mostly flavour; it only moves NPCs if it brings new information. [decided]
@@ -265,6 +264,8 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 ## Closed
 
 Settled decisions, built work and parked levers, kept for the record.
+
+- **Oct 19: relaying another's private reading** is gossip with the source unnamed ("Word reached me from the Seer"). See DESIGN, "Meeting flow, step 1".
 
 - **Oct 19: shadow good self for evil,** steps 1, 2, 4 and 5 of docs/shadow_self_plan.md (step 3, rebuttals, is on hold in section 3). Evil's public acts follow its good self unless breaking cover beats caution; refined heat; daily scapegoat re-pick. See DESIGN, "Shadow good self".
 - **Oct 19: Mediums,** a shared menu for real and fake: fake readings fit the dead's public record and claimed gift, frame only some nights, "nothing new" and empty answers for both. See DESIGN, "Mediums".

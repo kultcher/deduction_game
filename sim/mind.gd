@@ -995,6 +995,12 @@ static func reason_status(w, n, t_id: String) -> Dictionary:
 		return out
 	var own = "info:%s:" % n.id
 	if not src.begins_with(own):
+		var hr = _heard_reading(w, n, src)
+		if not hr.is_empty():
+			out["kind"] = "relay"
+			out["entry"] = hr["entry"]
+			out["src"] = hr["src"]
+			out["strength"] = reading_strength(hr["entry"], t_id) * 0.5
 		return out
 	for i in range(n.info_log.size()):
 		var e: Dictionary = n.info_log[i]
@@ -1098,6 +1104,38 @@ static func _hint_decline(w, n, t) -> Dictionary:
 		return say(n, "Not yet. Give me a day or two, and watch %s." % t.name)
 	return say(n, "I said I'm not ready, and I'm not. Ask me again another time.")
 
+## A reading someone else told n in private, not yet public: {src, entry}, or {}.
+static func _heard_reading(w, n, eid: String) -> Dictionary:
+	if not eid.begins_with("info:"):
+		return {}
+	var parts = eid.split(":")
+	if parts.size() < 4 or parts[1] == n.id or not w.by_id.has(parts[1]):
+		return {}
+	var src = w.by_id[parts[1]]
+	for e in src.info_log:
+		if info_eid(src.id, e) == eid:
+			return {} if e.get("shared", false) else {"src": src, "entry": e}
+	return {}
+
+## Passing on, at the meeting, a reading someone told them in private, without naming
+## them: "Word reached me from the Seer: …". Gossip, so it counts for much less than the
+## claim itself would (C.RELAY_WEIGHT, and through the relayer's credibility), but it
+## leaves a trail: there's a Seer, and the relayer knows who. Now and then
+## (C.RELAY_CORROBORATE) the source steps forward and confirms it.
+static func relay_reading(w, n, src, e: Dictionary, lines: Array, facts: Array) -> void:
+	var rn = C.role_name(e["role"])
+	var said = C.third_person(e["text"])
+	lines.append(say(n, "Word reached me from the %s: %s." % [rn, said]))
+	facts.append({"kind": "accusation", "subject": Gifts.implicated(e), "source": n.id, "relay": true, "role": e["role"],
+		"text": "%s says the %s (unnamed) told them: %s." % [n.name, rn, said]})
+	for l in w.living():
+		if l != n and l != src:
+			apply_info(w, l, src, e, C.RELAY_WEIGHT * heard_weight(l, n))
+	w.dlog.think(n.id, "relay", "Relays %s's private %s reading without naming them." % [src.id, e["role"]], {"src": src.id})
+	if src.alive and not src.silenced and not src.claim_public and w.chance(C.RELAY_CORROBORATE):
+		lines.append(say(src, "That was me."))
+		_go_public(w, src, lines, facts)
+
 ## What going public with their gift would cost n right now (higher = more reluctant):
 ## gifts that hide from the demon or keep paying off, fear, privacy; less as the game
 ## wears on or the town thins out. 0 if they've already claimed it.
@@ -1127,6 +1165,8 @@ static func _accuse_tier(w, n, t, s2: float) -> Dictionary:
 	var rs = reason_status(w, n, t.id)
 	if rs["kind"] in ["none", "public"]:
 		return {"tier": "generic", "why": rs["why"]}
+	if rs["kind"] == "relay":
+		return {"tier": "relay", "why": "", "src": rs["src"], "entry": rs["entry"]}
 	var cost = reveal_cost(w, n)
 	var parts = {"strength": (rs["strength"] - 0.45) * 1.4, "suspicion": (s2 - 0.75) * 1.2,
 		"confidence": (trait_of(n, "confidence") - 0.5) * 0.6}
@@ -1206,6 +1246,8 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		var tier = _accuse_tier(w, n, t, s2)
 		if tier["tier"] == "reveal":
 			_go_public(w, n, lines, facts)
+		elif tier["tier"] == "relay":
+			relay_reading(w, n, tier["src"], tier["entry"], lines, facts)
 		hint = tier["tier"] == "hint"
 		why = tier["why"]
 		w.dlog.think(n.id, "accuse_tier", "Accuses %s: %s%s." % [t.id, tier["tier"], (" (" + why + ")") if why != "" else ""])
@@ -1405,6 +1447,12 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 					it["entry"] = en
 					it["strength"] = reading_strength(en, t_id)
 					it["kind"] = "public" if en.get("shared", false) else ("player" if i < n.told_readings else "private")
+		elif it["eid"].begins_with("info:"):
+			var hr = _heard_reading(w, n, it["eid"])
+			if not hr.is_empty():
+				it["kind"] = "relay"
+				it["entry"] = hr["entry"]
+				it["src"] = hr["src"]
 		# Wording that gives away their own gift is private until the gift is public (the
 		# same rule Evil.cite applies to accusations), whatever entry it came from.
 		if it["kind"] == "public" and it["why"].begins_with("my own") and not n.claim_public:
@@ -1421,6 +1469,9 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 	var items = case_against(w, n, t.id)
 	var recap: Array = items.filter(func(x): return x["kind"] == "public" and x["why"] != already).map(func(x): return x["why"])
 	var priv: Array = items.filter(func(x): return x["kind"] in ["private", "player"])
+	var relays: Array = items.filter(func(x): return x["kind"] == "relay")
+	if priv.is_empty() and not relays.is_empty():
+		relay_reading(w, n, relays[0]["src"], relays[0]["entry"], lines, facts)
 	w.dlog.think(n.id, "nomination_case", "Case against %s: %s." % [t.id, ", ".join(PackedStringArray(items.map(func(x): return "%s (%s, %.2f)" % [x["why"], x["kind"], x["contrib"]])))], {"items": items.map(func(x): return {"eid": x["eid"], "kind": x["kind"]})})
 	if not recap.is_empty():
 		lines.append(say(n, "Remember: %s." % "; and ".join(PackedStringArray(recap.slice(0, 2)))))

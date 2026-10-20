@@ -1762,3 +1762,16 @@ Bot, 150 games each, seeds 1000–1149, before → after:
 Test: tools/test_fixes.gd `_nomination_case`. The private Seer reading behind a
 nomination was hinted at 12 times and revealed 6 times, and never quoted. A public
 recap moved nobody.
+
+**Relaying another's private reading (Oct 19)** (`Mind.relay_reading`; `reason_status` kind
+`relay`). A reading someone told an NPC in private, not yet public, can't be quoted with
+its source. At the meeting, in an accusation or a nomination case, it's passed on
+unnamed: "Word reached me from the Seer: …".
+- **It counts as gossip:** listeners take it at `C.RELAY_WEIGHT` (0.3) × their regard for
+  the relayer, much weaker than the claim.
+- **It leaves a trail:** there is a Seer, and the relayer knows who.
+- **The source steps forward and confirms** with `C.RELAY_CORROBORATE` (5%).
+- **The card** is an accusation card marked `relay`, naming the gift but not the person.
+
+Test: `_relay_unnamed`, where a relay moved a listener 0.051 against 0.161 for hearing it
+from the Seer.

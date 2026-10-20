@@ -312,6 +312,10 @@ const MEDIUM_USELESS_CHANCE = 0.15
 ## Night order: readings before the demon's kill, so a victim keeps their last reading
 ## (for a Medium to find). false = the BotC order (kill first).
 const INFO_BEFORE_KILL = true
+## A reading passed on at the meeting without naming its source ("Word reached me from the
+## Seer"): gossip, much weaker than the claim; and how often the source then steps forward.
+const RELAY_WEIGHT = 0.3
+const RELAY_CORROBORATE = 0.05
 ## Shadow self step 2: evil breaks cover (overrides what its good self would do) only when
 ## stakes - exposure cost > caution. Minions' caution drifts down each day after day 2.
 const EVIL_CAUTION_DEMON = 0.8
