@@ -1,11 +1,12 @@
-# Detailed case tracing: milestones 1-2
+# Detailed case tracing: milestones 1-3
 
 Milestone 1 was verified by the user on Godot 4.7.2: clean import, 27 tracing checks
 with zero failures, and reported zero failures in beliefs, shadow, and outcomes.
-Milestone 2 adds structured decision explanations. These additions have not been
-compiled/run in the authoring session because the execution service is unavailable.
-Run the smoke tests below before merging milestone 2. No intentional gameplay or
-tuning changes are included.
+Milestone 2 adds structured decision explanations and was reported passing by the
+user: 45 tracing checks, zero failures. Milestone 3 adds an offline Python/HTML
+viewer; see [the viewer guide](case_viewer.md) for setup, checks, and known limits.
+Python and real-browser verification remain outstanding in the authoring session.
+No intentional gameplay or tuning changes are included.
 
 ## Run locally
 
@@ -113,7 +114,7 @@ overwrites remain visible rather than being mislabeled as player interactions.
 Not yet covered: individual reasons for every relationship/pressure write,
 all secondary dialogue refusal gates, full internal evil strategy scoring,
 stable cross-card provenance beyond existing fact/ledger ids, direct UI API action
-scopes, file-size/performance budgets, a standalone loader or graphical viewer.
+scopes, and file-size/performance budgets.
 The sidecar currently accumulates in memory; assess real-case sizes before large
 batch runs. Legacy logs remain useful but cannot acquire missing history.
 
@@ -161,9 +162,13 @@ and RNG draw count. Disclosure jitter is assigned to a local variable before the
 same pure arithmetic expression; it is never redrawn for logging. Existing log
 events remain unchanged. The enhanced parity suite should be rerun locally.
 
-## Next milestone after smoke-test results
+## Viewer and follow-up work
 
-1. Add the Python loader/validator and local interactive history/ledger viewer.
+The Python loader/validator and local interactive history/ledger viewer are in
+`tools/case_viewer.py` and `tools/case_viewer.html`. See [case_viewer.md](case_viewer.md)
+for a synthetic smoke test and instructions for real/legacy exports.
+
+1. Verify the Python suite and browser interactions locally.
 2. Measure trace size/time on real cases; optimize without dropping small changes.
 3. Fill remaining mutation reasons, UI action scopes, and secondary dialogue gates
    when real investigations show the useful gaps.
