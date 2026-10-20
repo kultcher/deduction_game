@@ -4,7 +4,8 @@ The single to-do list. It gathers the deferred and open items from DESIGN.md, th
 role_exploration On Deck list, the Project notes and playtests 13473/55774. Items are
 sorted by effort. DESIGN.md stays the record of how things work and why.
 Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not chosen yet;
-**[watch]** = no change, keep an eye on it; **[knob]** = not planned, a balancing tool to
+**[watch]** = no change, keep an eye on it; **[tentative]** = proposal for later design/tuning review;
+**[knob]** = not planned, a balancing tool to
 reach for only if needed. Settled, built and parked items move to **Closed** at the end. Source in parentheses where useful. Exploratory mechanics
 (new roles, places, ideas still being shaped) live in role_exploration.md.
 
@@ -90,7 +91,50 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 - **Offer trust** (+0.03 offer, +0.06 kept, -0.15 broken): first guesses, tune from
   play. [watch]
 
+### Tentative social tuning (Oct 20 discussion)
+These are candidates for the player's unified retuning proposal, not approved
+implementation changes. See TUNING.md for the audited current values.
+
+- **Privacy without compounding trust penalties.** Remove Privacy from initial player
+  trust and benign trust gains; keep its direct disclosure gates and consequences for
+  active prying. Distinguish ordinary questions on different topics from repeating a
+  refused or intrusive question when applying fatigue. [tentative]
+- **Evidence can build NPC-to-NPC trust.** Consider a relationship gain when credible
+  evidence reduces suspicion, especially a Clerk reading matching the listener's own
+  actual role. Scale by evidential strength and deduplicate the underlying fact.
+  Distinguish apparent innocence/sincerity from confidence in someone's judgment;
+  preserve useful voting blocs without rewarding repeated retellings. [tentative]
+- **Diminishing trust changes near extremes.** Consider smaller gains near high trust
+  and smaller losses near low trust, retaining a minimum effect and meaningful
+  consequences for serious betrayal. Do not suppress recovery simply because trust
+  is far from its initial baseline. Exact curve and baseline remain open. Review
+  permanent grief/confidence caps separately; scaling alone cannot repair them.
+  [tentative]
+- **Opinion strength and shared origins.** Review private heard-opinion strength
+  (raw .12) separately from meeting consensus (also starting at .12, with its own
+  fading/diminishing sequence). Several NPCs repeating one original story should not
+  count as independent evidence. Inspect provenance/accumulation before choosing a
+  numeric reduction. [tentative]
+- **Martyr urgency.** Gradually lower the commitment threshold as days pass, with a
+  floor, while retaining candidate preferences and the possibility of refusing when
+  everyone looks deeply suspicious. Avoid a gift wasted solely because no ideal
+  confidant emerges. Exact schedule remains open. [tentative]
+- **Demon victims' earlier information.** Strengthen belief that a Demon victim was
+  reporting sincerely without automatically trusting every reading's accuracy.
+  Current code clears the victim and doubles role-claim weight on recomputation,
+  but does not directly restore source honesty or reweight old readings because of
+  the death. Keep sincerity, claimed role, and night-specific misdirection distinct;
+  base changes on listener knowledge, not hidden actual roles or poison state.
+  [tentative]
+
 ### UI
+- **Long dropdowns in columns.** Once a dropdown exceeds roughly eight options,
+  consider multiple columns: at most eight options per column for an uncategorized
+  list, or columns grouped by existing categories. Example: the deduction planner's
+  "is the <blank>" selector has about twenty options across roughly four categories.
+  Prefer meaningful existing groups where available; exact threshold/layout remains
+  open. Keep category labels, keyboard navigation, and screen bounds usable.
+  (Oct 20) [tentative]
 - **"Stayed home" vs "none of your business"** on the sightings/claims boards. [watch]
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main
   view; people who aren't talking or working showing on the map; a wrong role guess
@@ -104,6 +148,44 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   [decided: extension deferred; renderer approach open]
 
 ## 3. Medium features (several days; touch a few systems)
+
+- **Expanded dialogue and trust management** (Oct 20; design candidates, pending
+  the unified retuning proposal). [tentative]
+  - **Apologize for a specific incident:** a mistaken accusation, nomination, exposed
+    confidence, broken promise, or a friend's execution. Scale forgiveness by actual
+    harm/danger (a failed nomination versus nearly being executed), the evidence
+    available at the time, and responsibility taken. Insight can recognize either
+    an understandable mistake or ignored contradictions; it is not automatic
+    forgiveness. Allow partial repair once per incident; serious trust caps may
+    recover gradually through later conduct. An apology for treatment need not
+    require falsely withdrawing an ongoing suspicion.
+  - **Suggest actions based on claimed role:** ask a Warden to protect a person, a
+    Seer to check a person/pair, or a Night Watch to watch a block. Track request,
+    response/commitment, intended action, actual action, and follow-up separately.
+    Trust, Confidence, Composure, danger, and competing priorities can affect
+    compliance; allow refusal or a counterproposal. Offer the same dialogue to evil
+    bluffers, who can lie about compliance/results, so requests do not verify roles.
+    Exact trait interactions remain open.
+  - **General requests can spread through town chats:** "Someone should check Nisha"
+    or "Someone should watch the Wharf," without outing a gift-holder. Distinguish
+    hearing a request from volunteering and completing it; do not assume coverage.
+  - **Responsibility and useful follow-through can build trust:** a meaningful
+    accepted task may earn a small, non-repeatable rapport gain; later credit depends
+    on what the NPC believes was accomplished. A Seer "no" or empty watch can be
+    useful; do not reward incriminating results by default. Prevent request spam,
+    duplicate credit, and hidden-truth outcome checks. Follow-up dialogue can report
+    success, disappointment, or a convincing evil lie.
+  - **Withdraw or revise a case:** explicitly retract public endorsement or explain
+    changed reasoning without deleting the underlying evidence. NPCs may retain
+    their own view and explain why. Private role guesses remain private.
+  - **Ask what would change their mind:** expose friendship, conflicting information,
+    player distrust, or preference for another execution as actionable resistance.
+  - **Explain an execution's purpose:** propose an information-seeking execution
+    (e.g. for a Gravedigger read) without needing to assert the target is the Demon.
+  - **Promise confidentiality:** one straightforward promise option that can support
+    private disclosure, with consequences for keeping or breaking it. Avoid a
+    negotiation tree or multiple branching confidentiality terms; coordinate with
+    existing confidence/secret-keeping rules rather than awarding duplicate credit.
 
 - **Rebuttals and excuses.** Someone accused explains with their gift ("I was out
   because I'm the Lamplighter"; own-lie admissions are built), which buys some grace with listeners; evil without a
