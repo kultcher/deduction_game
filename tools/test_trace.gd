@@ -1,10 +1,12 @@
-## Milestone 1 tracing smoke tests. Exit status is nonzero on failure.
+## Tracing milestones 1-2 smoke tests. Exit status is nonzero on failure.
 ## godot --headless --path . --script res://tools/test_trace.gd
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const DevLog = preload("res://sim/devlog.gd")
 const Mind = preload("res://sim/mind.gd")
+const Argue = preload("res://sim/argue.gd")
+const C = preload("res://sim/content.gd")
 
 var fails = 0
 var checks = 0
@@ -12,6 +14,7 @@ var checks = 0
 func _init() -> void:
 	_test_diff()
 	_test_trace()
+	_test_decision_records()
 	for count in [7, 10]:
 		for sd in [42, 61251, 25923]:
 			_test_parity(sd, count)
@@ -188,3 +191,139 @@ func _test_reconstruction(log) -> void:
 	for key in log.trace_context()["states"]:
 		valid = valid and states.get(key) == _json_value(log.trace_context()["states"][key])
 	_check(valid, "state deltas reconstruct checkpoints and final observed state")
+
+func _last_decision(w, kind: String, stage: String, actor: String = "") -> Dictionary:
+	var events = w.dlog.trace_events().filter(func(e):
+		return e["type"] == "decision" and e["data"]["kind"] == kind and e["data"]["stage"] == stage and (actor == "" or e["actor"] == actor))
+	return events[-1] if not events.is_empty() else {}
+
+func _sum_parts(parts: Dictionary) -> float:
+	var total = 0.0
+	for value in parts.values():
+		total += value
+	return total
+
+func _test_decision_records() -> void:
+	var g = _fresh(25923, 7, true)
+	var w = g.w
+	var n = w.living_good()[0]
+	var others: Array = w.living().filter(func(x): return x != n)
+	var target = others[0]
+	var block = others[1]
+	w.begin_meeting()
+	n.trust = 0.5
+	n.trust_at_reconsider = 0.5
+	n.role = "warden"
+	n.traits["confidence"] = 0.5
+	n.cleared.clear()
+	n.spare_pref.clear()
+	for other in others:
+		n.suspicion[other.id] = 0.1
+		n.npc_trust[other.id] = 0.5
+	n.suspicion[target.id] = 0.700123
+	n.suspicion[block.id] = 0.9
+	w.meeting["block"] = block.id
+	var yes = Mind.vote(w, n, target.id, "player", false, "", 0)
+	var evaluation = _last_decision(w, "vote", "evaluation", n.id)
+	_check(not evaluation.is_empty(), "good vote has structured evaluation")
+	if not evaluation.is_empty():
+		var data: Dictionary = evaluation["data"]["details"]
+		_check(data["parts"].get("prefers_block") == -0.4, "vote explains existing-block penalty")
+		_check(absf(_sum_parts(data["parts"]) - data["score"]) < 0.000000001,
+			"vote parts reproduce the unrounded score")
+		_check(absf(_sum_parts(data["threshold_parts"]) - data["threshold"]) < 0.000000001,
+			"vote threshold parts reproduce threshold")
+		var outcome = _last_decision(w, "vote", "outcome", n.id)
+		_check(outcome["data"]["result"] == yes and outcome["data"]["decision_id"] == evaluation["data"]["decision_id"],
+			"vote evaluation and outcome share an id")
+	w.day = 3
+	w.meeting["nominated"] = [block.id]
+	var nomination = Mind._good_nomination(w, n, w.meeting, block.id)
+	var gate = _last_decision(w, "nomination", "gate", n.id)
+	_check(nomination == null and gate["data"]["details"].get("gate") == "prefers_existing_block",
+		"nomination refusal distinguishes existing execution preference")
+	_check(Mind._good_nomination(w, n, w.meeting, "") != null,
+		"nomination with sufficient suspicion and no competing block remains available")
+	n.traits["gossip"] = 0.1
+	n.pressure = 0.0
+	_check(Mind._gossip_share(w, n, "test") == 0, "low-gossip refusal retains behavior")
+	gate = _last_decision(w, "gossip_share", "gate", n.id)
+	_check(gate["data"]["details"].get("gate") == "gossip_and_pressure_cutoff",
+		"gossip cutoff has machine-readable refusal reason")
+	n.pressure = 0.5
+	_check(Mind._gossip_share(w, n, "test") > 0, "pressure override retains its inclusive boundary")
+	w.day = 1
+	n.role = "seer"
+	n.traits["privacy"] = 1.0
+	n.trust = 0.0
+	n.pressure = 0.0
+	n.max_tier = 0
+	n.claim_public = false
+	n.pressed_today = 0
+	var answer = Mind.answer_gift(w, n)
+	var tier = _last_decision(w, "gift_disclosure", "tier", n.id)
+	_check(answer["facts"].any(func(f): return f["kind"] == "refusal") and tier["data"]["result"] == 1,
+		"private role refusal records actual tier")
+	var details: Dictionary = tier["data"]["details"]
+	_check(absf(_sum_parts(details["parts"]) - details["openness"]) < 0.000000001,
+		"openness records full formula including the consumed jitter")
+	_check(details["thresholds"].size() == 4, "all disclosure tier thresholds are exported")
+	var support = {"n": 1, "kind": "sighting", "subject": [target.id], "source": "player",
+		"class": "concrete", "day": 0, "phase": C.NIGHT, "block": target.home_block, "text": "test sighting"}
+	var ded = {"n": 2, "kind": "deduction", "text": "test suspicion",
+		"conclusion": {"type": "suspicious", "a": target.id}, "supports": [1]}
+	Argue.evaluate(w, n, ded, [support], 1.0, false)
+	var argument = _last_decision(w, "argument", "evaluation", n.id)
+	_check(argument["data"]["details"]["route"] == "generic_support",
+		"generic inference evaluation is labeled separately")
+	var ledger = _last_decision(w, "argument", "ledger", n.id)
+	_check(ledger["data"]["details"].has("suspicion_before") and ledger["data"]["details"].has("after"),
+		"argument trace separates nominal weight from resulting ledger/suspicion state")
+	ded["template"] = "trace_test"
+	ded["chosen"] = 1
+	ded["explanations"] = [
+		{"id": 1, "kind": "accuse", "blame": target.id, "label": "suspicious",
+			"conclusion": {"type": "suspicious", "a": target.id}},
+		{"id": 2, "kind": "clear", "blame": target.id, "label": "innocent",
+			"conclusion": {"type": "good", "a": target.id}}]
+	Argue.evaluate(w, n, ded, [support], 1.0, false)
+	var contest = _last_decision(w, "argument", "contest", n.id)
+	_check(not contest.is_empty() and contest["data"]["details"]["explanations"].size() == 2,
+		"template contest includes raw and rounded explanation weights")
+	_test_active_parity()
+
+func _test_active_parity() -> void:
+	var a = _fresh(61251, 7, true)
+	var b = _fresh(61251, 7, false)
+	var na = a.w.living_good()[0]
+	var nb = b.w.by_id[na.id]
+	var identical = true
+	for forced in [0, 4, 0]:
+		var ra = Mind.answer_gift(a.w, na, forced)
+		var rb = Mind.answer_gift(b.w, nb, forced)
+		identical = identical and ra == rb and _fingerprint(a) == _fingerprint(b)
+	var sa = Mind.decide(a.w, na, "test_roll", {"base": 0.123456}, "parity")
+	var sb = Mind.decide(b.w, nb, "test_roll", {"base": 0.123456}, "parity")
+	identical = identical and sa == sb and _fingerprint(a) == _fingerprint(b)
+	var target = a.w.living().filter(func(n): return n.id != na.id)[0]
+	var support = {"n": 1, "kind": "sighting", "subject": [target.id], "source": "player",
+		"class": "concrete", "day": 0, "phase": C.NIGHT, "block": target.home_block, "text": "parity sighting"}
+	var ded = {"kind": "deduction", "text": "parity suspicion",
+		"conclusion": {"type": "suspicious", "a": target.id}, "supports": [1]}
+	for structured in [false, true]:
+		if structured:
+			ded["template"] = "trace_parity"
+			ded["chosen"] = 1
+			ded["explanations"] = [
+				{"id": 1, "kind": "accuse", "blame": target.id, "label": "suspicious",
+					"conclusion": {"type": "suspicious", "a": target.id}},
+				{"id": 2, "kind": "clear", "blame": target.id, "label": "innocent",
+					"conclusion": {"type": "good", "a": target.id}}]
+		var ra = Argue.evaluate(a.w, na, ded.duplicate(true), [support], 1.0, false)
+		var rb = Argue.evaluate(b.w, nb, ded.duplicate(true), [support], 1.0, false)
+		identical = identical and ra == rb and _fingerprint(a) == _fingerprint(b)
+	_check(identical, "disclosure, rolls, generic and structured arguments preserve on/off parity")
+	var roll = _last_decision(a.w, "test_roll", "roll", na.id)
+	var parts: Dictionary = roll["data"]["details"]
+	_check(parts.has("draw") and parts["probability"] == Mind.sigmoid(parts["total"] * 4.0),
+		"decision roll reports the existing draw and exact probability")

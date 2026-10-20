@@ -53,6 +53,18 @@ func trace_event(type: String, actor: String = "", target: String = "", data: Di
 		"stream": stream, "action_id": _trace["action"],
 		"data": data.duplicate(true), "reason": reason})
 
+## Structured decision records are explanatory; they never mutate replay state.
+## Reuse the returned id across start/gate/evaluation/outcome records.
+func decision(actor: String, kind: String, stage: String, result, details: Dictionary = {}, target: String = "", decision_id: int = 0) -> int:
+	if not detailed:
+		return 0
+	if decision_id == 0:
+		_trace["next_decision"] = _trace.get("next_decision", 0) + 1
+		decision_id = _trace["next_decision"]
+	trace_event("decision", actor, target, {"decision_id": decision_id, "kind": kind,
+		"stage": stage, "result": result, "details": details})
+	return decision_id
+
 func begin_action(label: String, data: Dictionary = {}) -> void:
 	if not detailed:
 		return

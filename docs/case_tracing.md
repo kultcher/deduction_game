@@ -1,8 +1,11 @@
-# Detailed case tracing: milestone 1
+# Detailed case tracing: milestones 1-2
 
-This branch adds logging foundations only. It has not been run in Godot in the
-authoring session: the execution service was unavailable. Run the smoke tests
-below before merging. There are no intentional gameplay/tuning changes.
+Milestone 1 was verified by the user on Godot 4.7.2: clean import, 27 tracing checks
+with zero failures, and reported zero failures in beliefs, shadow, and outcomes.
+Milestone 2 adds structured decision explanations. These additions have not been
+compiled/run in the authoring session because the execution service is unavailable.
+Run the smoke tests below before merging milestone 2. No intentional gameplay or
+tuning changes are included.
 
 ## Run locally
 
@@ -20,7 +23,11 @@ The new suite exits nonzero if a check fails and prints
 `TRACE: ... checks, 0 failures` on success. Also check for Godot parse/runtime errors;
 some older suites only print their failure count rather than returning nonzero.
 
-The new suite exercises small changes, direct relationship assignments, ledger
+The suite also checks vote score/threshold sums, existing-block refusal, full
+disclosure tier sequences, gossip pressure overrides, generic/template argument
+routes, ledger consequences, and forced/unforced disclosure parity.
+
+The suite exercises small changes, direct relationship assignments, ledger
 capture, real/shadow ordering, JSONL export, reconstruction from deltas, and six
 paired passive cases (seeds 42, 61251, 25923 with 7 and 10 NPCs). Each pair compares
 trace enabled/disabled gameplay state, RNG state, shadow RNG state, board, and
@@ -104,15 +111,59 @@ Shadow sync can overwrite its trust/pressure with the real NPC's values; those
 overwrites remain visible rather than being mislabeled as player interactions.
 
 Not yet covered: individual reasons for every relationship/pressure write,
-all early disclosure gates, complete vote/interpretation decision schemas,
+all secondary dialogue refusal gates, full internal evil strategy scoring,
 stable cross-card provenance beyond existing fact/ledger ids, direct UI API action
 scopes, file-size/performance budgets, a standalone loader or graphical viewer.
 The sidecar currently accumulates in memory; assess real-case sizes before large
 batch runs. Legacy logs remain useful but cannot acquire missing history.
 
+## Structured decisions (milestone 2)
+
+Additive `decision` events use `data.decision_id`, `kind`, `stage`, `result`,
+and `details`. A decision id links start/evaluation/outcome within the combined
+real/shadow timeline. Nested good-shadow decisions have separate ids and streams;
+they retain the same outer command action id. Independent percentage rolls get
+their own decision id; use the action/stream/topic for context, not an assumed
+parent decision. None of these events is a state mutation.
+
+- Good votes: all score contributions, unrounded suspicion base, score, named
+  threshold terms, threshold, margin, and result. Existing rounded Martyr
+  reluctance is retained as actually used. Own votes and real evil votes have
+  start/outcome records identifying their route, without inventing a good score.
+- Nominations: candidate order/eligibility, own-clear adjustment, score/threshold
+  components, competing-block refusal, each good mind's outcome, and final town
+  candidate selection. An NPC's willingness to nominate is distinct from winning
+  the selection among nominators. Existing nomination limits/silence have gates.
+- Private gift disclosure: consumed random jitter, openness components, all strict
+  tier boundaries, forced/public floors, retained previous tier, withholding flag,
+  and facts actually returned. Fear in returned refusals is presentation data:
+  it does not independently lower the calculated openness tier.
+- Gossip/opinion: low-gossip cutoff and the pressure override; hint follow-up
+  records missing-target/missing-reason gates. This is not yet every secondary
+  whereabouts or secret-disclosure branch.
+- Public disclosures/accusation reveals: existing sigmoid decisions now have
+  structured exact score/draw records; accusation disclosure records its chosen
+  generic/relay/hint/reveal tier.
+- Arguments: separate generic, template, conflict, self-knowledge, and evil-mask
+  routes. Explanation contests record raw weights as well as the rounded weights
+  used in the current comparison, strongest competing weight, and overlap exclusion.
+  Evaluation records distinguish agreement, quality, novelty, nominal weight,
+  and stored-weight gain. The ledger stage includes before/after entry and suspicion
+  maps so the inspector can show actual consequences, including reweighting other
+  evidence. These are total consequences during this application, not proof that
+  each score change came directly from this argument's own effect.
+- Evil cover overrides: stakes, exposure contributions, deviation cost, caution,
+  comparison and result. This records the override calculation; it does not expose
+  a nonexistent good-style threshold for the underlying evil tactical proposal.
+
+Implementation preserves formula arithmetic, threshold comparisons, branch order,
+and RNG draw count. Disclosure jitter is assigned to a local variable before the
+same pure arithmetic expression; it is never redrawn for logging. Existing log
+events remain unchanged. The enhanced parity suite should be rerun locally.
+
 ## Next milestone after smoke-test results
 
-1. Add specific reasons/causal ids to remaining direct mutations and UI actions.
-2. Standardize vote, nomination, disclosure-gate and interpretation records.
-3. Add the Python loader/validator and local interactive history/ledger viewer.
-4. Measure trace size/time on real cases; optimize without dropping small changes.
+1. Add the Python loader/validator and local interactive history/ledger viewer.
+2. Measure trace size/time on real cases; optimize without dropping small changes.
+3. Fill remaining mutation reasons, UI action scopes, and secondary dialogue gates
+   when real investigations show the useful gaps.
