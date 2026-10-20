@@ -67,6 +67,7 @@ an empty array. Each span has:
 - `entity_id`: the registry ID, or an empty string for ordinary text.
 - `color`, `bold`: resolved text appearance; color retains its own alpha.
 - `opacity`: overall opacity, clamped to 0..1 and not yet multiplied into color.
+- `surface`: normalized `dark` or `paper`, also used to choose readable inline art.
 - `font_size`, `icon_size`: positive pixel sizes.
 - `icon_path`, `tooltip`: optional metadata, empty when absent or disabled.
 
@@ -104,10 +105,15 @@ native API. The adapter balances its own pushes and pops, preserving an outer
 card-link/bold/italic context; it does not create click actions or clear the label.
 Callers own the label's font family, tooltip underline style and other UI settings.
 
-Existing icon textures retain aspect ratio and their natural colors. The adapter
+Inline icons retain aspect ratio and transparency. `ui/inline_icons.gd` returns
+original art on parchment and a warm light-ink variant on dark surfaces. The dark
+variant inverts luminance into the paper palette, keeping engraved details readable
+without the cyan colors of a full RGB negative. It processes only the small display
+image and caches by path and size. Original resources stay untouched. The adapter
 adds a nonbreaking gap between each icon and its complete textual role name.
-Unavailable textures produce text without an icon or added gap. Texture lookups,
-including missing resources, are cached by the renderer instance.
+Unavailable textures produce text without an icon or added gap. Source lookups,
+including missing resources, are also cached. Portraits and decorative log art use
+their existing presentation; this adjustment applies to the small inline term icons.
 
 The shared `Renderer.text_color(span)` and `Renderer.icon_color(span)` helpers apply
 overall opacity once: text alpha is its own alpha times opacity; icon modulation

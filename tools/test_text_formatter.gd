@@ -49,6 +49,26 @@ func _run() -> void:
 	var custom_spans = custom_formatter.format_text("At Test Place.", {"surface": "paper", "opacity": 0.5})
 	_check(_entity(custom_spans, "place:test")["entity_id"] == "place:test" and is_equal_approx(Renderer.text_color(custom_spans[1]).a, 0.25), "custom term kinds work and parchment conversion preserves their own alpha")
 	var renderer = Renderer.new()
+	var path = "res://assets/ui/roles/seer.png"
+	var original = load(path) as Texture2D
+	var source_pixels = original.get_image().get_data()
+	var dark_icon: Texture2D = renderer.icons.texture(path, "dark", 20)
+	_check(dark_icon.get_height() == 20 and dark_icon == renderer.icons.texture(path, "dark", 20) and renderer.icons.texture(path, "paper", 20) == original, "dark inline art is sized and cached independently of the original parchment icon")
+	var expected_mask = original.get_image().duplicate()
+	expected_mask.convert(Image.FORMAT_RGBA8)
+	expected_mask.resize(dark_icon.get_width(), 20, Image.INTERPOLATE_LANCZOS)
+	var dark_pixels = dark_icon.get_image()
+	var mask_preserved = true
+	var light_ink = false
+	for y in range(20):
+		for x in range(dark_icon.get_width()):
+			var source_pixel = expected_mask.get_pixel(x, y)
+			var dark_pixel = dark_pixels.get_pixel(x, y)
+			mask_preserved = mask_preserved and is_equal_approx(source_pixel.a, dark_pixel.a)
+			if source_pixel.a > 0.9 and source_pixel.get_luminance() < 0.2 and dark_pixel.get_luminance() > 0.7:
+				light_ink = true
+	_check(mask_preserved and light_ink, "the dark variant lightens ink details while preserving the resized alpha mask")
+	_check(original.get_image().get_data() == source_pixels, "creating a dark variant does not modify the source texture")
 	var label = RichTextLabel.new()
 	root.add_child(label)
 	label.size = Vector2(600, 300)

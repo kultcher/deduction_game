@@ -392,3 +392,12 @@ Settled decisions, built work and parked levers, kept for the record.
   including real mouse interaction through role hints and unchanged evidence/RNG
   state, plus editor import and rendered 1920x1080/1280x720 town, profile and
   tooltip views. Existing UI smoke-test drag-preview/shutdown diagnostics remain.
+- **Oct 19: small inline icons on dark surfaces.** The shared formatter now carries
+  its display surface into the renderer. Dark backgrounds use a cached warm
+  light-ink version of each small inline icon, made by inverting luminance while
+  preserving transparency; parchment keeps the original art. Processing happens
+  once per icon/size on a small image copy, preserving source resources and the
+  existing opacity behavior. Portraits and decorative log art retain their
+  existing presentation. Documented the variant selection. Verified 29 formatter
+  checks (including source/alpha preservation and separate caches), 17 live text-UI
+  checks, editor import and rendered log/profile views on Godot 4.4.1.

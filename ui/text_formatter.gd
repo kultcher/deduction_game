@@ -20,7 +20,7 @@ func format_text(text: String, context: Dictionary = {}) -> Array:
 	var speaker: Dictionary = terms.lookup("person:" + context.get("speaker_id", ""))
 	if speaker.get("color") is Color:
 		base = _readable(speaker["color"], paper)
-	var style = {"color": base, "bold": context.get("bold", false), "opacity": clampf(context.get("opacity", 1.0), 0.0, 1.0),
+	var style = {"color": base, "surface": "paper" if paper else "dark", "bold": context.get("bold", false), "opacity": clampf(context.get("opacity", 1.0), 0.0, 1.0),
 		"font_size": maxi(1, int(context.get("font_size", 16))),
 		"icon_size": maxi(1, int(context.get("icon_size", context.get("font_size", 16))))}
 	var result: Array = []

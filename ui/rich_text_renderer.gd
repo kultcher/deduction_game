@@ -2,7 +2,8 @@
 ## pushes so callers can wrap a passage in an existing card link, bold or italic style.
 extends RefCounted
 
-var _textures: Dictionary = {}
+const InlineIcons = preload("res://ui/inline_icons.gd")
+var icons = InlineIcons.new()
 
 func append_to(label: RichTextLabel, spans: Array) -> void:
 	for span in spans:
@@ -12,7 +13,7 @@ func append_to(label: RichTextLabel, spans: Array) -> void:
 		var hint: String = span["tooltip"]
 		if not hint.is_empty():
 			label.push_hint(hint)
-		var texture = _texture(span["icon_path"])
+		var texture = icons.texture(span["icon_path"], span.get("surface", "dark"), span["icon_size"])
 		if texture != null:
 			var height: int = span["icon_size"]
 			var width = maxi(1, roundi(height * float(texture.get_width()) / texture.get_height()))
@@ -35,10 +36,3 @@ static func text_color(span: Dictionary) -> Color:
 
 static func icon_color(span: Dictionary) -> Color:
 	return Color(1, 1, 1, span["opacity"])
-
-func _texture(path: String):
-	if path.is_empty():
-		return null
-	if not _textures.has(path):
-		_textures[path] = load(path) as Texture2D if ResourceLoader.exists(path, "Texture2D") else null
-	return _textures[path]
