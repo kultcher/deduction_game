@@ -6,6 +6,8 @@ A narrative companion to [TUNING.md](TUNING.md), translated on October 20, 2026.
 
 Throughout, **low / mid / high mean 0.2 / 0.5 / 0.8**. A table varies only the named trait unless stated otherwise. A change of 0.1 trust or suspicion means 0.1 on that internal scale, not a ten-percentage-point change in the chance of an action.
 
+**Follow-up checked against revision `1998c66`:** [section 16](#16-how-the-ledger-works-a-meeting-case-against-greta) walks through actual ledger execution for four controlled NPC profiles; [section 17](#17-follow-up-questions-fatigue-fear-pressing-and-dropped-items) answers the later clarification questions. These supplements inspect that revision directly; they do not silently replace the original audit's historical version boundary. Requested retuning is recorded in [BACKLOG.md](BACKLOG.md#social-tuning-and-evidence-follow-ups-oct-20), not applied to gameplay.
+
 ## 1. What the numbers represent
 
 An NPC has several separate attitudes. They can trust the player while distrusting the player's suspect, like another NPC while suspecting them, or believe an accusation without wanting to replace the person already awaiting execution.
@@ -774,3 +776,218 @@ Optional no-gift denial is off, so its dormant lie/refuse roll is not an ordinar
 Ordinary flavor secrets are off. Anonymous relay starts at 30% of ordinary direct-hearing weight and has a 5% source-corroboration opportunity. Evil hint opportunity is 30%; the Medium empty-report branch is 15%. Defence movement reveal has the +1.10 rope bonus included in section 7, and source-blame defence blowback is 0.02.
 
 Trait labels in dialogue use below 0.34 for low, 0.34 to below 0.67 for mid, and 0.67 upward for high. Those are descriptive labels; mechanics such as the Gossip gate or Confidence-based defence use their own thresholds. The 0.2 / 0.5 / 0.8 examples in this companion are representative points within those bands.
+
+## 16. How the ledger works: a meeting case against Greta
+
+This section was reproduced against `1998c66` using the production card-filing, meeting-presentation, argument-evaluation and ledger code. Run [tools/explain_ledger.gd](tools/explain_ledger.gd) with `godot --headless --path . --script res://tools/explain_ledger.gd`. On Godot 4.4.1 it completed **36 checks with zero failures**. It prints the underlying values for all eight evaluations. The profiles are controlled examples, not actual cast rolls or reconstructed playtests.
+
+### The board, the NPC's ledger, and suspicion are different things
+
+The **board** stores cards the player has collected. Finding a clue puts it on the board; that does not automatically tell every NPC about it.
+
+Each NPC's **ledger** records information or arguments that particular NPC has received. An entry says what it could change, how strongly it was heard, and what sources it depends on. A suspicion score is one result of those entries, together with starting attitudes and effects such as grief or public opinion. It is not the ledger itself.
+
+For example, “Greta is the Demon” can be a player argument in the ledger. At full effective weight it contributes +0.55 suspicion before applicable Confidence scaling. A “misled on night 1” entry instead changes reading doubt; a “spare Greta” entry changes an execution preference as well as suspicion. These quantities have different meanings.
+
+The ledger remembers what it has already contributed. When source reliability or argument weight changes, it computes the new intended contribution and applies the **difference**. It does not add the whole case again every time it recalculates.
+
+### What actually matches a template?
+
+The proposed combination “player vigil + death-scene trace + Greta's home” does **not** supply a Demon template in this revision. A home card establishes residence, not where Greta spent that evening. The trace is about the killer's **evening** block; the vigil is about movement during the **night**. The timing distinction matters.
+
+The closest supported example uses an actual evening sighting:
+
+| Card | What it establishes | Source and class |
+| --- | --- | --- |
+| #1 | Your night-1 vigil saw Greta on Market; someone died on Market that night | Player observation, concrete |
+| #2 | The death-scene trace points to the killer spending evening 1 on Market | Physical evidence, circumstantial |
+| #3 | You personally saw Greta on Market during evening 1 | Player observation, concrete |
+
+Greta lives and works on Market, has no public walking-role claim, and is alive. The death-scene context is available to the simulation, so the night sighting has its full raw strength. None of these player supports has previously been presented to the four listeners. There are no unrelated source doubts, confidentiality breaches, pressure effects or active caps in this example.
+
+**Version A: all three cards.** Filing “Greta is the Demon” finds `trace_match` from #2 and #3. Its alternatives are “Greta is the Demon” and “someone else on Market was the killer.” #1 remains a cited support for quality and provenance, but does not create a special combined three-card template or another competing-explanation weight.
+
+**Version B: only #1 and #2.** Removing the evening sighting removes that template. The conclusion remains a legitimate, generic inference: #1 directly names Greta, so it is not classified as unfounded. It uses a different agreement calculation.
+
+Both filed deduction cards are circumstantial because the trace is the weakest support class. Importantly, evaluation computes quality from the **individual supporting cards**, not by giving every support the filed deduction's weakest class.
+
+### Four listeners before the speech
+
+These are four good NPCs hearing a case about someone else. Greta's hidden alignment is not used to decide their agreement. Privacy, Gossip and Composure are all 0.5; the traits relevant to this calculation vary below. Starting suspicion is a controlled prior attitude, not a new entry applied during the example. Their ledgers have no earlier contribution to this case, and their trust-reconsideration baselines match starting trust.
+
+| Listener | Player trust | Relationship trust in Greta | Confidence | Insight | Starting suspicion of Greta |
+| --- | --- | --- | --- | --- | --- |
+| A: Open listener | 0.8 | 0.5 | 0.2 | 0.2 | 0.2 |
+| B: Loyal skeptic | 0.5 | 0.8 | 0.8 | 0.5 | 0.2 |
+| C: Distrustful analyst | 0.2 | 0.5 | 0.5 | 0.8 | 0.5 |
+| D: Convinced rival | 0.5 | 0.2 | 0.8 | 0.8 | 0.8 |
+
+Each version is a **separate fresh scenario**. Version B is not a follow-up speech after Version A; that would invoke used-fact novelty, changed attitudes and the existing ledger entry. This is a whole-meeting floor presentation, with scale 0.6, not a nomination statement at 0.5.
+
+### Step 1: Decide how much to agree
+
+For Version A, each listener weighs the chosen accusing explanation against the strongest innocent alternative. These weights use existing suspicion and relationship trust. They are rounded to hundredths before comparison.
+
+| Listener | Weight for “Greta is Demon” | Weight for “someone else did it” | Agreement | Stated stance |
+| --- | --- | --- | --- | --- |
+| A | 0.39 | 0.54 | 41.94% | Partial |
+| B | 0.24 | 0.66 | 26.67% | Reject |
+| C | 0.75 | 0.36 | 67.57% | Accept |
+| D | 1.26 | 0.06 | 95.45% | Accept |
+
+A sees a real lead but prefers the innocent alternative. B's friendship makes the accusing interpretation weaker and the innocent one stronger. C already suspects Greta enough to accept the interpretation despite low trust in the player. D is almost convinced before hearing how trustworthy the supports are.
+
+Here, Confidence does not directly alter those two interpretation weights. Its blanket damping comes later. Insight also does not directly alter this particular template contest, although it affects quality. Other template routes, such as own-reading challenges and conflicts, have their own trait rules.
+
+Version B instead adds relevant raw incriminating strengths. The murder-block vigil contributes 1.4. The trace contributes another 0.21: raw trace strength 0.7, with 30% generic relevance because the trace does not name Greta. The total 1.61 exceeds the generic route's 1.2 requirement for maximum agreement.
+
+**All four therefore get 100% numeric agreement with Version B.** That is the evaluator's agreement value, not a calibrated 100% belief that Greta is the Demon. Friendship and the innocent alternative do not enter this generic agreement calculation. Quality, trust and Confidence still reduce its eventual impact.
+
+This is a current-model inconsistency: fewer cards can produce a more agreeable case because removing the template switches evaluation routes. It is a reason to review route semantics, not a recommendation to teach the player to omit evidence.
+
+### Step 2: Assess support quality
+
+Player-observed concrete sightings retain quality 1. The physical trace starts with source credibility 0.9, then Insight discounts its circumstantial nature. At Insight 0.2 / 0.5 / 0.8 its contribution is 0.828 / 0.720 / 0.612.
+
+Version A averages two perfect observations and that trace. Version B averages one observation and the trace, so its quality is slightly lower:
+
+| Listener | Version A quality | Version B quality |
+| --- | --- | --- |
+| A | 0.942667 | 0.914000 |
+| B | 0.906667 | 0.860000 |
+| C | 0.870667 | 0.806000 |
+| D | 0.870667 | 0.806000 |
+
+The exact classes matter. Replacing a player's sighting with another NPC's testimony could additionally change source credibility and later live reliability. This example deliberately uses player observations and physical evidence so that distinction does not obscure the main comparison.
+
+### Step 3: Store a weighted argument
+
+All facts are fresh, so novelty is 1. Agreement, average support quality and the meeting scale combine into a base. Player trust then scales that base by 1.3 for A, 1.0 for B, 0.7 for C, and 1.0 for D.
+
+The argument is stored under **`arg:demon:greta::`**. The `demon` effect carries raw suspicion +0.55. The stored weight and trust-independent base are retained so later trust changes can reconsider player influence.
+
+The support references for these cards are all “direct evidence,” without an NPC source. Their live support reliability is therefore 1. This does not undo the trace's earlier 0.9 credibility or Insight reduction; those have already been incorporated into quality.
+
+| Listener | Version A stored/effective weight | Version B stored/effective weight |
+| --- | --- | --- |
+| A | 0.308343 | 0.712920 |
+| B | 0.145067 | 0.516000 |
+| C | 0.247081 | 0.338520 |
+| D | 0.498655 | 0.483600 |
+
+Stored and effective weights coincide in this fresh example because the supports have full live reliability. In cases resting on doubtful NPC readings, effective weight can be lower than stored weight.
+
+### Step 4: Apply the suspicion difference
+
+The new Demon entry contributes its raw 0.55 effect, scaled by effective weight and the listener's eligible Confidence multiplier. A gets 1.24, B and D get 0.76, and C gets 1.0. No result here hits the 0–1.5 suspicion clamp.
+
+| Listener | A: suspicion gained | A: final suspicion | B: suspicion gained | B: final suspicion |
+| --- | --- | --- | --- | --- |
+| A: Open listener | +0.210290 | 0.410290 | +0.486211 | 0.686211 |
+| B: Loyal skeptic | +0.060638 | 0.260638 | +0.215688 | 0.415688 |
+| C: Distrustful analyst | +0.135895 | 0.635895 | +0.186186 | 0.686186 |
+| D: Convinced rival | +0.208438 | 1.008438 | +0.202145 | 1.002145 |
+
+The column letters A/B refer to the **case versions**, not listener IDs.
+
+For A in the templated version: 41.94% agreement, quality 0.942667 and scale 0.6 produce base 0.237187. High player trust raises its weight to 0.308343. Raw effect 0.55 and low-Confidence multiplier 1.24 then give +0.210290 suspicion.
+
+For B, the template gets a verbal rejection, but still adds about 0.061 suspicion. “Reject” is a stance threshold, not a veto preventing all ledger change. For C, verbal acceptance does not overcome low trust's reduction in influence. D moves by roughly the same amount as A despite opposite personalities because much higher agreement offsets stronger Confidence damping.
+
+The sound-argument reward gives +0.02 player trust only when agreement is at least 0.6 **and** stored weight gain at least 0.1. In Version A, only C and D earn that reward. In Version B, all four do. The reward comes after applying the argument. It does not immediately rescale these results: +0.02 is below the ordinary 0.1 reconsideration trigger with these aligned starting baselines.
+
+The case also lowers derived honesty for Greta, because it contributes evidence grounds against her. That can weaken her other testimony if present. It does not weaken the player/physical supports of this case. Friendship-based private raw-accusation penalties do not run on this structured meeting route.
+
+### Step 5: What repetition or new evidence changes
+
+There are several identities to keep separate:
+
+- **Board card number:** where the player finds a card, such as #1.
+- **Underlying fact ID:** identifies its content/provenance for repetition and novelty. A night sighting includes its source, subjects, night and block.
+- **Conclusion entry ID:** the NPC's bucket for a claim such as `arg:demon:greta::`. Other conclusion types have separate buckets. A qualified lie can include a particular card, while an unqualified “Greta lied” can collapse multiple incidents into one bucket.
+- **Justification key:** currently a sorted list of source/night/kind references, not the full list of underlying fact IDs. Distinct physical clues with the same reference shape can share a key. This is another detail to inspect when adding independent-instance support.
+
+Hearing an unchanged fact again retains the stronger hearing; it does not add a second copy. Presenting an accusing deduction marks its cited fact IDs as used against that target. Reusing all the same facts gives a 35% novelty factor, even under a different conclusion.
+
+A repeated presentation may still evaluate differently because prior suspicion or player trust has changed. Deduplication prevents adding another unchanged contribution; it does not freeze all later evaluations. If a newly submitted weight exceeds the previous stored weight, the stronger value can replace it.
+
+Separate justifications for the same conclusion compete: the system uses the **strongest currently reliable justification**, rather than adding them together. If an existing entry contributes 0.20 and stronger support raises its intended contribution to 0.30, suspicion gains 0.10. It does not receive another 0.30 on top of the original 0.20. Conversely, later discrediting support can subtract part of an earlier contribution. Small differences under 0.002 are skipped, and clamping at the extremes can make reversal imperfect.
+
+### Step 6: If a support is later discredited
+
+With NPC-sourced support, the ledger recalculates reading doubt and source honesty, discounts each justification by its supports, then applies changed effects. Reading doubt affects gift readings, while dishonesty can affect ordinary testimony too. Recomputing without any changed inputs is not another hearing.
+
+**For illustration:** if a justification of stored weight 0.40 depends equally on two reading references, one still at reliability 1 and the other reduced to 0.5, its support factor becomes 0.75. Its effective weight becomes 0.30. A mid-Confidence Demon conclusion then contributes 0.165 suspicion instead of 0.220, a decrease of 0.055. Another stronger surviving justification could prevent that full decrease. The main Greta table does not have this discount because its supports are direct evidence.
+
+The ledger avoids some circularity by excluding a misdirection argument's own doubt targets when checking that argument's reading supports. Source honesty uses two passes rather than an unlimited self-reinforcing iteration.
+
+This is why “more cards,” “accepted,” “more suspicion,” and “will vote yes” are different outcomes. The evidence route, dependence on sources, strongest-justification rule and execution preferences all matter.
+
+## 17. Follow-up questions: fatigue, fear, pressing and dropped items
+
+These answers inspect revision `1998c66` directly. They describe the implemented behavior; proposed changes are in the backlog.
+
+### Does fatigue count only repeated questions, and when does it reset?
+
+**Different questions count too.** Each call to `Mind.on_question` increments that NPC's daily counter. The first three are free of this fatigue penalty; the fourth and every later call loses trust. It is per NPC and day, not per topic or per conversation.
+
+Separately, a conversation normally has three action/question slots. Its first recognized repeat can leave the visible slot count unchanged. That exemption is handled after the answer, so it does not necessarily undo the daily count or a penalty already charged inside the answer.
+
+Changing topics or leaving and reopening a conversation does not reset daily fatigue. `World.resolve_night` resets the daily counter at the start of night resolution. It also reduces pressure to 60%. The lifetime wrong-role-guess count is separate and is not reset there.
+
+Some delegated answers count twice; hint follow-up is one example. Offers of ward/vigil are free. An invalid command is not automatically a counted question, and a person-specific observation appended to an existing answer does not add a second displayed question. The correct way to audit an action is to follow its `on_question` calls, not just count its visible prompts.
+
+### Is a daytime sighting's 0.15 its suspicion gain?
+
+**No: it is raw incriminating card strength.** It is an input to a presentation or deduction, not an automatic suspicion increment when the card appears.
+
+For a fresh private raw accusation using a concrete player-observed daytime sighting, with neutral bond, trust 0.5, Confidence 0.5, no fatigue-induced trust change and full reliability, the actual gain is **0.0525 suspicion**: the private route keeps 35% of the raw 0.15 strength. Other routes use different calculations. A generic multi-card conclusion can use that 0.15 as one contribution toward its support sum instead.
+
+The ledger table in section 16 gives final suspicion changes, whereas the “how much different raw cards say” section gives intermediate raw strengths.
+
+### Is a Seer more likely to give a fear response than a Clerk?
+
+**Not through the fear flag itself.** `_afraid` checks demon-killed NPC count, Composure, and a fixed NPC-ID/day hash. It does not inspect actual role, claimed role, whether the gift is spent, player trust, or the evil threat score. At equal Composure and death count, Seer and Clerk have the same fear threshold, although their fixed individual outcomes can differ.
+
+Role categories do affect separate reveal decisions. A recurring information role is especially reluctant to go public early, and a non-information role has a different reveal penalty. Those costs can make a Seer and Clerk disclose differently without giving them different fear probabilities. Evil bluffers can also use fear wording.
+
+### Does pressing help open or nervous people more?
+
+Yes before fatigue, but card strength matters. The following is the **net change in the deterministic part of ordinary private openness** for a relevant, non-Clerk deduction press of strength 0.6 against a good NPC. It includes added pressure and the normal pressing trust loss. It excludes unrelated events, trust clamping and random disclosure rolls.
+
+| Privacy | Low Composure 0.2 | Mid Composure 0.5 | High Composure 0.8 |
+| --- | --- | --- | --- |
+| Low 0.2 | +0.0630 | +0.0441 | +0.0252 |
+| Mid 0.5 | +0.0414 | +0.0225 | +0.0036 |
+| High 0.8 | +0.0198 | +0.0009 | −0.0180 |
+
+Before fatigue, the example backfires only at the high-Privacy/high-Composure corner of these representative points. But several other combinations barely benefit. This supports the interpretation that a private, composed person can dig in when pressed, while showing how small the positive benefit often is.
+
+If this is also a counted question after the first three that day, the extra trust loss changes the same table to:
+
+| Privacy | Low Composure 0.2 | Mid Composure 0.5 | High Composure 0.8 |
+| --- | --- | --- | --- |
+| Low 0.2 | +0.0198 | +0.0081 | −0.0036 |
+| Mid 0.5 | −0.0180 | −0.0270 | −0.0360 |
+| High 0.8 | −0.0558 | −0.0621 | −0.0684 |
+
+So the concern is broader once fatigue starts. Also, weaker cards add less pressure for the same pressing trust cost: strength 0.3 can backfire even at low Privacy/high Composure (−0.0126 before fatigue). A maximum-strength 1.0 press helps every pre-fatigue representative combination above, including high/high (+0.0324).
+
+These are **score shifts, not percentage-point chances**. Tier thresholds and the random ±0.2 variation determine whether a small shift changes what is revealed. Gift pressing also rolls a target tier and delegates to `answer_gift` with a forced minimum tier, so these tables are not an exact probability calculation for the full multi-roll answer path. A night challenge delegates to night-account handling, whose confession formula is different. Correct Clerk naming has its special exemption/boost and is outside this table.
+
+### Where are personal items dropped, and how can the player search them?
+
+They are dropped at **named public locations**, not inside random homes and not at a block-level search marker. `_maybe_drop` first chooses a block on the walker's route, then one of the static public locations on that block:
+
+| Block | Possible search locations |
+| --- | --- |
+| Square | Tavern, well |
+| Market | Smithy, bakery |
+| Docks | Wharf, mill |
+| Hill | Chapel, graveyard |
+
+The player goes to that location and uses **Search**. The daytime action prompt includes it at public places. There does not need to be a death scene there. Items remain in that location's dropped-item list until found; discovery removes them from that list.
+
+A personal belonging produces an attributed night-sighting card for its owner at the discovery block/night. Ordinary material produces a weaker “someone from this home block passed here” dropped-material card. Neither requires searching somebody else's home. Home-door searches are rejected, and death-scene searches have a separate trace branch.
+
+The current Lamplighter code expands its route to all blocks **after** `_walk` has already called `_maybe_drop`. Consequently, Lamplighter drop selection uses the earlier home-to-home path and is restricted to public places on its home block in this revision. This is a code-order caveat to the general route rule, not a requirement to search houses.
