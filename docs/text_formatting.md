@@ -150,10 +150,17 @@ The log uses 20px inline icons; profile entries use 18px alongside 16px text.
 Matching normal, bold, italic and bold-italic system-font faces are installed
 through `UITheme.rich_text_fonts()` so emphasizing names preserves the font family.
 
-## Next steps
+## Deferred extension
+
+Steps 4–5 are paused until card zoom and presentation are settled. See the
+[text-system handoff](text_system_handoff.md) for completed work, integration hooks,
+known constraints, renderer alternatives and a resume checklist.
 
 4. Add wrapping/layout support for board cards, pinned deductions and the tray.
 5. Integrate Card List and other eligible text surfaces.
+
+The existing formatter and native adapter are ready; a custom measured span
+renderer for the board has not been built.
 
 Run the registry, formatter and live UI checks:
 

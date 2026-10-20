@@ -71,9 +71,13 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main
   view; people who aren't talking or working showing on the map; a wrong role guess
   blocking process of elimination.
-- **Case-board card rows with mixed formatting** (bold kind, each name in its colour):
-  the lists are Godot Trees, one colour per row; true rich rows need a custom-drawn or
-  RichText list. [decided, later]
+- **Card zoom and text extension.** Settle card sizing, clipping and zoom/detail
+  transitions before extending rich text onto board cards, pinned deductions, the
+  tray and Card List. The shared formatter, log and profiles are built (steps 1–3);
+  steps 4–5 are deferred. Card List/working-set rows are wrapping Godot Trees with
+  one colour per row; richer rows still need custom cells or replacement controls.
+  See [the handoff](docs/text_system_handoff.md) for hooks, issues and alternatives.
+  [decided: extension deferred; renderer approach open]
 
 ## 3. Medium features (several days; touch a few systems)
 
@@ -401,3 +405,11 @@ Settled decisions, built work and parked levers, kept for the record.
   existing presentation. Documented the variant selection. Verified 29 formatter
   checks (including source/alpha preservation and separate caches), 17 live text-UI
   checks, editor import and rendered log/profile views on Godot 4.4.1.
+- **Oct 20: text-system handoff; card extension deferred.** Added
+  `docs/text_system_handoff.md` with completed steps 1–3, API/integration hooks,
+  remaining steps, existing verification and a resume checklist. Reviewed the
+  board/tray/list renderers and documented fixed card heights versus font/line
+  budgets, detail thresholds, zoom-dependent row geometry, input and caching
+  concerns. Compared custom drawing, reusable native cards, a hybrid and a compact
+  board/detail view. Linked the handoff from the API notes and deferred steps 4–5
+  until card zoom/presentation is settled. Documentation only; no runtime changes.
