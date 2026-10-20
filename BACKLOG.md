@@ -22,6 +22,30 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   roster expansion) [decided]
 
 ### NPC behaviour
+- **From playtest 61251** (an evil team the player had identified won anyway). [decided]
+  - **A proven lie should hurt an info claimant's credibility hard.** Constance (the
+    Breathstealer bluffing Seer) was caught in an off-route lie on day 2, and listeners
+    still credited her at about 90% (from 94%). Her fake "yes" readings then hanged Lian
+    (+3.1 suspicion across the town) and Edda (+2.6), and a fake "no" cleared the demon.
+    A proven whereabouts lie by a public info claimant should cut their readings to
+    around 50% credibility. This turns "lie severity" around: the lie itself was minor,
+    but it says the claimant's readings can't be trusted.
+  - **A Seer's record.** Each "yes" pair that's hanged and shown good (by the
+    Gravedigger, the Martyr, or a public clear) should discount that Seer's later
+    readings, not just add red-herring talk. In 61251, Lian was shown to be the Warden,
+    but only the Gravedigger updated (−0.4), and he was killed that night.
+  - **Repeated trace matches add up.** Three kill nights in a row had a trace on the
+    Docks with Greta there each time. Each was judged alone ("more likely someone else
+    on the Docks"), at about 0.3 agreement. The same suspect matching across several
+    nights should compound. This is a natural first test case for the theory and fit
+    checks (section 4), and the same shape as the Breathstealer-by-presence pattern.
+  - **The player's voice in votes is small at ordinary trust.** At trust 0.3–0.5, "the
+    player accuses" added only 0.05–0.14 to votes, while non-template cases got 0.19
+    agreement. This is the execution-priority idea (section 4) applied to the player's
+    own nominations.
+  - **Not the cause:** a failed nomination costs trust only with the nominee (−0.15).
+    There's no town-wide penalty, so the early lark nomination of Bart didn't cascade.
+    Worth confirming in a conservative playthrough.
 - **Offering protection eases fear.** Someone you've offered your ward or a vigil (and
   kept your word to) should be less afraid to say what they are. (96773) [decided]
 - **Backing a strong case builds trust.** Nominating or voting for someone the town
