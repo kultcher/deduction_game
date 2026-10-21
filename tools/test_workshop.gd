@@ -70,20 +70,24 @@ func _init() -> void:
 	check(nights.pattern.incidents == 2 and nights.strength > one.strength, "a second night adds a distinct suspicious incident")
 	c.cards.append("gift_claim")
 	c.reasons = {"constance:1": "gift", "constance:2": "gift"}
+	c.citations = {"constance:1": "gift_claim", "constance:2": "gift_claim"}
 	var explained = Jury.evaluate(view, c, s.baseline[0].duplicate(true))
 	check(explained.strength < nights.strength, "credible night-gift testimony reduces outing suspicion")
 	var pattern_listener: Dictionary = s.baseline[0].duplicate(true)
 	Jury.evaluate(view, c, pattern_listener)
 	check(is_zero_approx(Jury.evaluate(view, c, pattern_listener).suspicion_delta), "a witness's case cannot feed back into its own credibility on repetition")
 	c.cards.erase("gift_claim")
+	c.citations.clear()
 	var unsupported = Jury.evaluate(view, c, s.baseline[0].duplicate(true))
 	check(is_equal_approx(unsupported.strength, nights.strength), "an unsupported explanation label grants no free discount")
 	c = Solver.empty_case()
 	c.cards = ["watch1", "alibi1"]
 	check(Solver.analyze(view, c).status == "conflicting", "watch sighting and same-night home alibi conflict")
 	c.conclusion.type = "conflict"
+	c.conflict_scope = ["watch1", "alibi1"]
 	check(Solver.analyze(view, c).entailment == "forced", "the player can conclude that the reports conflict")
 	c.cards = ["watch2", "lamp2"]
+	c.conclusion.type = "evil"
 	var movement = Solver.analyze(view, c)
 	check(movement.movement["2"].compatible == 1 and movement.movement["2"].forced_out.size() == 4, "Watch and Lamplighter jointly account for four walkers, excluding the lamp from its own count")
 	c = Solver.empty_case()
@@ -108,7 +112,7 @@ func _init() -> void:
 	check(before == after, "changing hidden truth alone has no evaluator effect")
 	for seed_value in [692, 101, 202, 303, 404]:
 		var fixture = Scenario.generate(seed_value)
-		check(fixture.public_view.cards.size() == 10, "seed %d generates five report types and supporting testimony" % seed_value)
+		check(fixture.public_view.cards.size() == 16, "seed %d generates five report types, associated claims and supporting testimony" % seed_value)
 		var truth = fixture.truth
 		var roles: Array = truth.map(func(p): return p.role)
 		check(roles.size() == 10 and roles.has("lamplighter"), "seed %d has a coherent ten-person lineup" % seed_value)
@@ -130,6 +134,8 @@ func _init() -> void:
 	var saved = JSON.parse_string(JSON.stringify(s.export_data()))
 	var restored = Session.new(101)
 	var restore_error = restored.restore(saved)
+	if restored.last_results != s.last_results:
+		_diff(restored.last_results, s.last_results, "results")
 	check(restore_error == "", "JSON experiment restores successfully: " + restore_error)
 	check(restored.last_results == s.last_results, "restored history reproduces actual before/after jury assessments")
 	check(restored.case_data == s.case_data, "restore preserves the current version and choices")
@@ -155,3 +161,16 @@ func check(okay: bool, label: String) -> void:
 		push_error("FAIL: " + label)
 	else:
 		print("PASS: " + label)
+
+func _diff(a, b, path: String) -> void:
+	if a == b:
+		return
+	if a is Dictionary and b is Dictionary:
+		for key in a:
+			if b.has(key):
+				_diff(a[key], b[key], path + "." + str(key))
+	elif a is Array and b is Array and a.size() == b.size():
+		for i in range(a.size()):
+			_diff(a[i], b[i], path + "." + str(i))
+	else:
+		print("DIFF %s: %s vs %s" % [path, str(a), str(b)])

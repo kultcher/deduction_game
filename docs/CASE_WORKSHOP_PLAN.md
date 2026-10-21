@@ -1,9 +1,10 @@
 # Case Workshop: revised implementation plan
 
 Updated October 21, 2026 after reviewing the user's pasted Opus discussion against
-the current Workshop and main simulation. This document proposes the next slices;
-it does not describe features already delivered. Current behavior remains documented
-in [CASE_WORKSHOP.md](CASE_WORKSHOP.md). This review changes documentation only.
+the Workshop and main simulation. Slices 1 and 2 are now implemented and verified
+on `codex/case-workshop`, including the case/line/evidence structure and a controlled
+soft-factor convergence experiment. Current behavior, provisional tuning and limits
+are documented in [CASE_WORKSHOP.md](CASE_WORKSHOP.md). Later slices remain proposed.
 
 ## Direction
 
@@ -131,7 +132,7 @@ Opus's first stage table (pasted discussion lines 48–50) skips these qualifica
 Its “either/or” sentence at line 20 also reverses the relationship: Constance evil and
 Nisha Marked occur together in one branch; they are not mutually exclusive.
 
-## Current implementation audit
+## Initial implementation audit (before slices 1 and 2)
 
 | Area | Verified structure and implication for the plan |
 | --- | --- |
@@ -361,6 +362,18 @@ References below identify line numbers in the user-provided Opus paste, headed
 | Lines 183, 223: reuse 3/4/5 memory; four to six claims are cheap | Current recall is 2–6; recall and reasoning have different jobs. Measure solver costs before setting budgets. |
 | Lines 199, 203–216, 243–244: fixed private facts, one theory, automatic poison excuses, searched worlds called forced | Protect experienced facts without assuming infallible gifts or omniscience. Make theory commitment defeasible and alternatives visible. Never call limited-search acceptance proof. |
 
-**Next implementation scope:** slices 1 and 2, in separately verified changes. Later
-slices are experiments with decision gates, not a commitment to a full Bayesian mind,
-one-world NPCs, or a production rewrite. This review has not implemented those changes.
+**Delivered scope:** slices 1 and 2. Shared credibility states now replace strongest-path
+selection for reading arguments; an old-model comparator remains visible. Source trust
+and per-reading accuracy are separate experimental inputs. Conflict questions preserve
+their evidence roots and report-level accuracy weights. The case supports six reasoning
+lines, isolated alternatives, citations and intermediate claims, with version-2 replay.
+Tests cover genuine corroboration, shared Merrin dependence, indirect convergence,
+neutral/contrary factors, duplicate incidents, retraction, hidden-truth independence and
+actual UI controls. The interface was rendered and inspected; main-game argument and
+belief regression suites also passed.
+
+**Remaining scope:** slices 3–5 are experiments with decision gates. Current convergence
+uses explicitly supplied test factors, not inferred movement/trace likelihoods. Direct
+outing patterns retain their earlier heuristic. Full causal health/transition histories,
+bounded Insight reasoning, multiple simultaneous cases and production integration remain
+future work. This is not a commitment to a full Bayesian mind or one-world NPCs.

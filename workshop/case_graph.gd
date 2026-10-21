@@ -1,0 +1,121 @@
+## Case organization and provenance. Compilation never promotes a conclusion to evidence.
+extends RefCounted
+const C = preload("res://sim/content.gd")
+
+static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
+	var result = value.duplicate(true)
+	var errors: Array = []
+	var assigned: Array = []
+	var included: Array = []
+	for line in value.get("lines", []):
+		for id in line.cards:
+			if id not in assigned:
+				assigned.append(id)
+		if line.get("relation", "supports") != "supports":
+			continue
+		included.append_array(line.cards)
+		for id in line.get("positions", {}):
+			var position: String = line.positions[id]
+			if result.positions.has(id) and result.positions[id] != position:
+				if result.positions[id] in ["good", "marked"] and position in ["good", "marked"]:
+					position = "marked"
+				else:
+					errors.append("%s: the supporting lines assign incompatible identities to %s." % [line.label, id])
+			result.positions[id] = position
+		for id in line.get("answers", {}):
+			if id not in roots(value, line.cards):
+				continue
+			var positive: Array = line.answers[id].get("positive", []).duplicate()
+			positive.sort()
+			var existing: Array = result.answers.get(id, {}).get("positive", []).duplicate()
+			existing.sort()
+			if result.answers.has(id) and existing != positive:
+				errors.append("%s: supporting lines give different answers to %s; put alternatives in a separate explanation." % [line.label, id])
+			result.answers[id] = line.answers[id].duplicate(true)
+		for key in line.get("reasons", {}):
+			var reason: String = line.reasons[key]
+			if reason == "unexplained":
+				continue
+			if result.reasons.get(key, "unexplained") not in ["unexplained", reason]:
+				errors.append("Supporting lines offer incompatible outing explanations for %s." % key)
+			result.reasons[key] = reason
+		for key in line.get("citations", {}):
+			if result.citations.has(key) and result.citations[key] != line.citations[key]:
+				errors.append("Supporting lines cite different gift explanations for %s; separate the alternatives." % key)
+			result.citations[key] = line.citations[key]
+	for id in value.cards:
+		if id not in assigned:
+			included.append(id)
+	result.cards = roots(value, included)
+	result["graph_errors"] = errors
+	result["test_factors"] = []
+	var factor_keys: Array = []
+	for line in value.get("lines", []):
+		if line.get("relation", "supports") != "supports" or not line.has("test_factor"):
+			continue
+		var factor: Dictionary = line.test_factor.duplicate(true)
+		factor["cards"] = roots(value, line.cards)
+		factor.cards.sort()
+		if factor.cards.is_empty():
+			errors.append("%s: a test factor needs cited evidence." % line.label)
+			continue
+		# Same event represented on multiple lines is still one input factor.
+		var facts: Array = []
+		for id in factor.cards:
+			var card: Dictionary = find_card(view, id)
+			var key = card.get("fact_id", id)
+			if card.kind in ["sighting", "alibi"]:
+				key = "outing:%s:%s" % [card.subject, card.night]
+			elif card.get("role", "") == "nightwatch" and card.kind == "report" and factor.target in card.data.seen:
+				key = "outing:%s:%s" % [factor.target, card.night]
+			if key not in facts:
+				facts.append(key)
+		facts.sort()
+		var key = JSON.stringify([factor.target, facts])
+		if key in factor_keys:
+			var prior: Dictionary = result.test_factors[factor_keys.find(key)]
+			if not is_equal_approx(float(prior.log2_ratio), float(factor.log2_ratio)):
+				errors.append("The same evidence has conflicting test factors in different lines.")
+			if not prior.routes.has(factor.cards):
+				prior.routes.append(factor.cards)
+			continue
+		for prior in result.test_factors:
+			if prior.target == factor.target and facts.any(func(event): return event in prior.events):
+				errors.append("Overlapping test factors reuse the same incident. Combine those citations in one line.")
+		factor_keys.append(key)
+		factor["label"] = line.label
+		factor["events"] = facts
+		factor["routes"] = [factor.cards]
+		result.test_factors.append(factor)
+	return result
+
+static func roots(value: Dictionary, ids: Array) -> Array:
+	var result: Array = []
+	for id in ids:
+		var expanded: Array = [id]
+		for question in value.get("derived", []):
+			if question.id == id:
+				expanded = question.supports
+		for root in expanded:
+			if root not in result:
+				result.append(root)
+	return result
+
+static func find_card(view: Dictionary, id: String) -> Dictionary:
+	for card in view.cards:
+		if card.id == id:
+			return card
+	return {}
+
+static func valid_citation(view: Dictionary, value: Dictionary, person: String, night: int) -> Dictionary:
+	var id: String = value.get("citations", {}).get("%s:%d" % [person, night], "")
+	var claim = find_card(view, id)
+	if claim.is_empty() or claim.kind != "claim" or claim.subject != person:
+		return {}
+	var gift: Dictionary = C.ROLES.get(claim.role, {})
+	if not gift.get("night_walk", false) or gift.get("align", "") != "good":
+		return {}
+	var interval: Dictionary = claim.get("applies", {"from": 0, "through": 3})
+	if night < interval.from or night > interval.through:
+		return {}
+	return claim

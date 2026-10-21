@@ -100,8 +100,35 @@ static func generate(seed_value: int = 692) -> Dictionary:
 		"observed_at": {"day": 1, "phase": "night"}, "acquired_day": 2, "text": "%s says they stayed home on night 1." % w.npcs[0].name})
 	cards.append({"id": "gift_claim", "kind": "claim", "source": ids[0], "subject": ids[0], "role": "medium", "night": -1,
 		"observed_at": {"day": 1, "phase": "day"}, "acquired_day": 1, "text": "%s claims Medium: visiting the dead could explain night work." % w.npcs[0].name})
+	cards.append({"id": "warden_claim", "kind": "claim", "source": ids[2], "subject": ids[2], "role": "warden", "night": -1,
+		"observed_at": {"day": 1, "phase": "day"}, "acquired_day": 1, "text": "%s claims Warden: guarding a home could explain night work. This fixture's quiet night was not a confirmed Warden save." % w.npcs[2].name})
 	cards.append({"id": "vigil1", "kind": "sighting", "source": "player", "subject": ids[0], "night": 1, "block": "docks",
 		"observed_at": {"day": 1, "phase": "night"}, "acquired_day": 2, "text": "You also saw %s at the Docks on night 1 (the same outing as the Watch report)." % w.npcs[0].name})
+	# Reporting an attributed gift result also conveys an implicit role assertion.
+	# Keep it separately citable, linked to its origin, rather than a second witness.
+	var claims: Array = []
+	for card in cards:
+		if card.kind != "report":
+			continue
+		var claim_id: String = "claim_" + card.role
+		card["claim_id"] = claim_id
+		if claims.any(func(c): return c.id == claim_id):
+			continue
+		claims.append({"id": claim_id, "kind": "claim", "source": card.source, "subject": card.source,
+			"role": card.role, "night": -1, "observed_at": {"day": card.acquired_day, "phase": "day"},
+			"acquired_day": card.acquired_day, "implicit": true, "origin": card.id,
+			"text": "%s implicitly claims %s by reporting this gift result. This does not establish the result's accuracy." % [w.by_id[card.source].name, C.role_name(card.role)]})
+	cards.append_array(claims)
+	for card in cards:
+		card["fact_id"] = "report:%s:%s" % [card.source, card.id] if card.kind != "claim" else "claim:%s:%s" % [card.subject, card.role]
+		card["reported_at"] = {"day": card.acquired_day, "phase": "day"}
+		card["learned_at"] = card.reported_at.duplicate(true)
+		card["provenance"] = {"source": card.source, "channel": "firsthand" if card.source == "player" else "testimony", "origin": card.get("origin", card.id)}
+		card["event_ids"] = ["outing:%s:%s" % [card.subject, card.night]] if card.kind in ["sighting", "alibi"] else [card.fact_id]
+		if card.kind == "report" and card.role == "nightwatch":
+			card.event_ids = card.data.seen.map(func(person): return "outing:%s:%s" % [person, card.night])
+		if card.kind == "claim":
+			card["applies"] = {"from": 0, "through": 3}
 	people[8].alive = false
 	w.npcs[8].alive = false
 	w.npcs[8].vet_used = true
@@ -143,7 +170,12 @@ static func _jury(w, slots: Dictionary, cards: Array) -> Array:
 		if i == 3:
 			suspicion[slots.warden] = 0.65
 		var own: Array = cards.filter(func(c): return c.kind == "report" and c.source == n.id).map(func(c): return c.id)
+		var reading_reliability = {}
+		for card in cards:
+			if card.kind == "report":
+				reading_reliability[card.fact_id] = 1.0
 		result.append({"id": n.id, "name": n.name, "preset": presets[i], "trust": [0.85, 0.2, 0.5, 0.5][i],
 			"confidence": n.traits.confidence, "npc_trust": trust, "suspicion": suspicion,
+			"reading_reliability": reading_reliability,
 			"knowledge": {"good": [n.id], "own_reports": own}, "ledger": {}, "case_memory": {}})
 	return result

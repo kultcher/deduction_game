@@ -4,8 +4,12 @@
 extends RefCounted
 
 const Solver = preload("res://workshop/solver.gd")
+const Graph = preload("res://workshop/case_graph.gd")
+const Support = preload("res://workshop/support_model.gd")
 
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
+	var original = case_data.duplicate(true)
+	case_data = Graph.compile_case(view, case_data)
 	var conclusion: Dictionary = case_data.conclusion
 	var target: String = conclusion.target
 	var before_suspicion: float = listener.suspicion.get(target, 0.1)
@@ -14,7 +18,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	# Assess from the baseline without this case's own previous persuasion. Otherwise
 	# accusing a witness would lower their credibility on every repetition.
 	if not old.is_empty():
-		listener.suspicion[old.target] = listener.suspicion.get(old.target, 0.1) - old.applied
+		listener.suspicion[old.target] = snappedf(listener.suspicion.get(old.target, 0.1) - old.applied, 0.000000001)
 	var knowledge: Dictionary = listener.knowledge
 	var full_case = case_data.duplicate(true)
 	for id in knowledge.get("own_reports", []):
@@ -61,13 +65,24 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 				if 0.4 * quality > best.weight:
 					best = {"weight": 0.4 * quality, "agreement": 0.4, "quality": quality, "cards": path, "kind": "conditional"}
 	var pattern = _pattern(view, case_data, listener)
+	var legacy = best.duplicate(true)
+	var combined = Support.assess(view, original, listener)
+	var paths: Array = []
+	for path in combined.paths:
+		for id in path:
+			if id not in paths:
+				paths.append(id)
+	if paths.is_empty():
+		paths = logical_cards.map(func(c): return c.id)
+	best = {"weight": combined.agreement, "agreement": combined.agreement, "quality": 1.0,
+		"cards": paths, "kind": "conditional" if combined.conditional_mass > combined.forced_mass else "reading"}
 	if conclusion.type == "suspicious" and pattern.weight > best.weight:
 		best = pattern
 	var conflict = assessment.status == "conflicting"
 	if conclusion.type == "conflict":
 		var agreement = 1.0 if shared.entailment == "forced" else 0.0
 		best = {"weight": agreement * _quality(view, case_data.cards, listener), "agreement": agreement, "quality": _quality(view, case_data.cards, listener), "cards": case_data.cards, "kind": "conflict"}
-	elif conflict and not (conclusion.type == "suspicious" and pattern.incidents > 0 and assessment.proposed > 0 and not assessment.movement_ok and shared.errors.is_empty()):
+	elif not assessment.errors.is_empty() or (assessment.proposed == 0 and assessment.compatible > 0):
 		best.weight = 0.0
 		best.agreement = 0.0
 	var player_factor: float = 0.5 + listener.trust
@@ -81,10 +96,10 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	var repeated: bool = previous.get("signature", "") == signature
 	# Replace this case's complete prior effect, even if target/conclusion changed.
 	var baseline: float = listener.suspicion.get(target, 0.1)
-	listener.suspicion[target] = clampf(baseline + effect, 0.0, 1.5)
-	var applied: float = listener.suspicion[target] - baseline
+	listener.suspicion[target] = snappedf(clampf(baseline + effect, 0.0, 1.5), 0.000000001)
+	var applied: float = snappedf(listener.suspicion[target] - baseline, 0.000000001)
 	listener.ledger[case_data.id] = {"target": target, "applied": applied, "cards": best.cards.duplicate(), "version": case_data.version,
-		"conclusion": conclusion.duplicate(true), "signature": signature}
+		"conclusion": conclusion.duplicate(true), "signature": signature, "report_acceptance": combined.report_acceptance.duplicate(true)}
 	# No recurring trust reward for restating a case. Workshop trust is a controlled input.
 	var changes = _changes(view, previous.get("case", {}), case_data)
 	listener.case_memory[case_data.id] = {"signature": signature, "version": case_data.version, "cards": case_data.cards.duplicate(), "strength": strength, "case": case_data.duplicate(true)}
@@ -94,22 +109,30 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	var response = ""
 	if repeated:
 		response = "That is the same case. Repeating it adds no new reason."
+	elif conclusion.type == "conflict":
+		response = "Those accounts cannot all be accurate. I have reopened which report to believe; this does not establish anyone's alignment." if shared.entailment == "forced" else "I don't see a conflict among the reports you selected."
 	elif best.kind == "pattern" and best.weight > 0:
 		response = "That gives me a reason to be suspicious, though it does not establish evil."
 	elif conflict and conclusion.type != "conflict":
-		response = "Those premises do not fit together. I have withdrawn this case's earlier weight."
+		response = "I cannot accept all those premises together. I give weight only to the explanations that survive doubting a report." if best.weight > 0 else "Those premises or choices do not fit together. I have withdrawn this case's earlier weight."
 	elif best.kind == "conditional":
 		response = "That follows if I grant your extra choices. You still need to establish those choices."
 	elif stance == "accept":
 		response = "The conclusion follows if those reports are sound. My doubt is in the premises."
+	elif combined.agreement < 0:
+		response = "The supplied evidence makes me less suspicious of this person."
+	elif assessment.entailment == "forced":
+		response = "The inference follows if the reports are accurate. I give it some weight, but I still doubt the supporting reports."
 	else:
 		response = "I can see that possibility, but the reports also allow another explanation."
+	if not combined.factors.is_empty():
+		response += " The supplied test factor changes which remaining explanation I favor; it does not prove it."
 	if not previous.is_empty() and not repeated and not changes.is_empty():
 		response += " " + " ".join(PackedStringArray(changes))
 	return {"listener": listener.id, "name": listener.name, "version": case_data.version, "stance": stance,
 		"agreement": best.agreement, "quality": best.quality, "strength": strength, "path": best.cards,
 		"path_kind": best.kind, "repeated": repeated, "response": response, "objection": objection, "changes": changes,
-		"assessment": assessment, "shared_assessment": shared, "pattern": pattern,
+		"assessment": assessment, "shared_assessment": shared, "pattern": pattern, "support_model": combined, "legacy_path": legacy,
 		"before_suspicion": before_suspicion, "after_suspicion": listener.suspicion[target], "suspicion_delta": delta,
 		"before_trust": before_trust, "after_trust": listener.trust, "trust_delta": 0.0,
 		"calculation": {"agreement": best.agreement, "premise_quality": best.quality, "player_factor": player_factor,
@@ -160,7 +183,7 @@ static func _pattern(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	var contradictions: Array = []
 	var cards = Solver.selected(view, case_data)
 	for card in cards:
-		var out: bool = (card.kind == "sighting" and card.subject == target) or (card.get("role", "") == "nightwatch" and target in card.data.seen)
+		var out: bool = (card.kind == "sighting" and card.subject == target) or (card.kind == "report" and card.get("role", "") == "nightwatch" and target in card.data.seen)
 		if not out:
 			continue
 		var key = "%s:%d" % [target, card.night]
@@ -174,10 +197,10 @@ static func _pattern(view: Dictionary, case_data: Dictionary, listener: Dictiona
 		var explanation: String = case_data.reasons.get(key, "unexplained")
 		var explained = 0.0
 		if explanation == "gift":
-			for card in cards:
-				if card.kind == "claim" and card.subject == target and card.role in ["medium", "nightwatch", "lamplighter", "warden", "seer"]:
-					explained = maxf(explained, 0.8 * _quality(view, [card.id], listener))
-					path.append(card.id)
+			var claim = Graph.valid_citation(view, case_data, target, incident.night)
+			if not claim.is_empty():
+				explained = 0.8 * _quality(view, [claim.id], listener)
+				path.append(claim.id)
 		# Merely selecting 'gift' without supporting testimony is not an explanation.
 		weight += 0.3 * incident.quality * (1.0 - explained)
 		path.append(incident.card)
@@ -228,7 +251,35 @@ static func _signature(view: Dictionary, case_data: Dictionary) -> String:
 			positive.sort()
 			answers[Solver.semantic_key(card)] = positive
 	# Ignore wrapper ids, card/slot order, version and venue.
-	return JSON.stringify([keys, case_data.positions, answers, case_data.reasons, case_data.conclusion])
+	var citations = {}
+	for key in case_data.get("citations", {}):
+		citations[key] = Solver.semantic_key(Solver.card_by_id(view, case_data.citations[key]))
+	var scope: Array = Graph.roots(case_data, case_data.get("conflict_scope", [])).map(func(id): return Solver.semantic_key(Solver.card_by_id(view, id)))
+	scope.sort()
+	var factors: Array = []
+	for factor in case_data.get("test_factors", []):
+		if not is_zero_approx(float(factor.log2_ratio)):
+			var routes: Array = []
+			for route in factor.routes:
+				var facts: Array = route.map(func(id): return Solver.semantic_key(Solver.card_by_id(view, id)))
+				facts.sort()
+				routes.append(JSON.stringify(facts))
+			routes.sort()
+			factors.append(JSON.stringify([factor.target, factor.log2_ratio, factor.events, routes]))
+	factors.sort()
+	return JSON.stringify(_canonical([keys, case_data.positions, answers, case_data.reasons, citations, scope, case_data.get("challenges", {}), factors, case_data.conclusion]))
+
+static func _canonical(value):
+	if value is Dictionary:
+		var result = {}
+		var keys = value.keys()
+		keys.sort()
+		for key in keys:
+			result[key] = _canonical(value[key])
+		return result
+	if value is Array:
+		return value.map(func(item): return _canonical(item))
+	return value
 
 static func _changes(view: Dictionary, previous: Dictionary, current: Dictionary) -> Array:
 	var changes: Array = []

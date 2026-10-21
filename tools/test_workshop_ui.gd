@@ -19,12 +19,12 @@ func _run() -> void:
 	check(scene.session.case_data.answers.dowse.slots[1] == "lian", "an actual answer signal records the chosen slot")
 	check(scene.find_child("Answer_dowse_0", true, false).selected == 0, "earlier unanswered slot stays unknown")
 	check(scene.find_child("Answer_dowse_1", true, false).selected == 4, "chosen slot survives the UI rebuild")
-	# Repeating a person produces visible feedback rather than silently fixing the case.
+	# Prevent a duplicate slot while preserving the earlier unknown answer.
 	slot = scene.find_child("Answer_dowse_0", true, false)
 	slot.select(4)
 	slot.item_selected.emit(4)
 	await process_frame
-	check(not scene.analysis.errors.is_empty(), "duplicate answers are permitted with a specific visible validation error")
+	check(scene.find_child("Answer_dowse_0", true, false).selected == 0 and scene.status.text.contains("already fills a slot"), "duplicate slot is blocked with specific feedback and remains unknown")
 	scene._load_example(3)
 	scene._present()
 	scene.remember.button_pressed = true
@@ -38,6 +38,39 @@ func _run() -> void:
 	scene._open(path)
 	check(scene.session.last_results == expected, "save/open controls restore the actual experiment")
 	check(scene.remember.button_pressed and scene.venue.selected == 1, "open restores discussion mode and venue")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	# Claim citations are actual controls; choosing a claim does not accept its read.
+	scene._load_example(4)
+	scene.focus_card = "watch1"
+	scene.session.case_data.reasons["agnes:1"] = "gift"
+	scene._refresh_case()
+	var citation = scene.find_child("Citation_agnes_1", true, false)
+	citation.select(1)
+	citation.item_selected.emit(1)
+	check(scene.session.case_data.citations["agnes:1"] == "claim_lamplighter" and "lamp1" not in scene.session.case_data.cards, "gift citation picker cites Agnes's implicit role claim without accepting her read")
+	scene._load_example(5)
+	check(not scene.find_child("ConclusionTarget", true, false).visible, "conflict argument hides the irrelevant accused-person picker")
+	var scope = scene.find_child("ConflictScope_alibi1", true, false)
+	scope.button_pressed = false
+	check(scene.analysis.entailment == "unsupported", "removing the alibi from conflict scope changes the actual argument")
+	scene._load_example(3)
+	scene.find_child("AddReasoningLine", true, false).pressed.emit()
+	check(scene.session.case_data.lines.size() == 1 and scene.active_line != "", "adding a line opens its own editable assumptions and evidence")
+	scene.find_child("LineEvidence_survey", true, false).button_pressed = true
+	check(scene.session.case_data.lines[0].cards == ["survey"], "line evidence selector stores a reference to the existing card")
+	scene._load_example(6)
+	scene.remember.button_pressed = false
+	scene._present()
+	var converged: float = scene.session.last_results[3].strength
+	var factor = scene.find_child("TestFactorRatio", true, false)
+	factor.value = 1.0
+	scene._present()
+	check(scene.session.last_results[3].strength < converged and scene.analysis.compatible == 2, "the actual test-factor control changes conviction while logical alternatives stay intact")
+	scene._save(path)
+	var grouped = scene.session.case_data.duplicate(true)
+	scene.session.generate(101)
+	scene._open(path)
+	check(scene.session.case_data == grouped and scene.active_line == "movement", "save/open preserves grouped evidence and supplied factor")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	scene.queue_free()
 	await process_frame

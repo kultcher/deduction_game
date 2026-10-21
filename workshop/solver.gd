@@ -2,8 +2,14 @@
 ## Counts measure compatible assignments, NOT posterior probabilities.
 extends RefCounted
 
+const Graph = preload("res://workshop/case_graph.gd")
+static var universes: Dictionary = {}
+static var report_matches: Dictionary = {}
+static var movement_cache: Dictionary = {}
+
 static func empty_case() -> Dictionary:
 	return {"id": "case-1", "version": 1, "cards": [], "positions": {}, "answers": {}, "reasons": {},
+		"citations": {}, "conflict_scope": [], "challenges": {}, "derived": [], "lines": [],
 		"conclusion": {"type": "evil", "target": "constance", "at": "opening through day 3"}}
 
 static func card_by_id(view: Dictionary, id: String) -> Dictionary:
@@ -24,6 +30,8 @@ static func selected(view: Dictionary, case_data: Dictionary) -> Array:
 	return cards
 
 static func semantic_key(card: Dictionary) -> String:
+	if card.has("fact_id"):
+		return card.fact_id
 	var data: Dictionary = card.get("data", {}).duplicate(true)
 	for key in ["pair", "group", "seen"]:
 		if data.has(key):
@@ -31,10 +39,13 @@ static func semantic_key(card: Dictionary) -> String:
 	return JSON.stringify([card.get("kind"), card.get("source"), card.get("role"), card.get("observed_at"), data, card.get("subject"), card.get("block")])
 
 static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictionary = {}) -> Dictionary:
+	case_data = Graph.compile_case(view, case_data)
 	var cards = selected(view, case_data)
+	if case_data.conclusion.type == "conflict":
+		cards = cards.filter(func(c): return c.id in Graph.roots(case_data, case_data.conflict_scope))
 	var base = solve(view, cards, {}, {}, knowledge)
 	var proposed = solve(view, cards, case_data.positions, case_data.answers, knowledge)
-	var errors = validate_answers(view, case_data)
+	var errors = validate_answers(view, case_data) + case_data.get("graph_errors", [])
 	var conclusion: Dictionary = case_data.conclusion
 	if conclusion.type in ["evil", "good", "marked"] and not proposed.worlds.is_empty() and not proposed.worlds.any(func(w): return holds(view, w, conclusion)):
 		errors.append("The conclusion contradicts every world allowed by these premises and choices.")
@@ -61,37 +72,82 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 		entailment = "unsupported"
 	if conclusion.type == "conflict" and (base.worlds.is_empty() or not base.movement_ok):
 		entailment = "forced"
+	var conflicts: Array = []
+	if base.worlds.is_empty() or not base.movement_ok:
+		conflicts = minimal_conflicts(view, cards, knowledge)
 	return {"status": status, "entailment": entailment, "compatible": base.worlds.size(), "supporting": n,
 		"proposed": proposed.worlds.size(), "alternative": alternative, "errors": errors,
 		"movement": proposed.movement, "movement_ok": proposed.movement_ok,
-		"assumptions": assumption_labels(view, cards), "unresolved": unresolved(view, proposed.worlds)}
+		"assumptions": assumption_labels(view, cards), "unresolved": unresolved(view, proposed.worlds), "conflicts": conflicts}
+
+static func minimal_conflicts(view: Dictionary, cards: Array, knowledge: Dictionary = {}) -> Array:
+	# Shrink one conflict, then explore excluding each member to discover other cores.
+	# This avoids enumerating every unrelated subset for a simple alibi conflict.
+	cards = cards.filter(func(c): return c.kind in ["report", "sighting", "alibi"])
+	var result: Array = []
+	_find_conflicts(view, cards, knowledge, result, {})
+	return result
+
+static func _find_conflicts(view: Dictionary, cards: Array, knowledge: Dictionary, result: Array, visited: Dictionary) -> void:
+	var ids: Array = cards.map(func(c): return c.id)
+	var key = str(ids)
+	if visited.has(key):
+		return
+	visited[key] = true
+	var solved = solve(view, cards, {}, {}, knowledge)
+	if not solved.worlds.is_empty() and solved.movement_ok:
+		return
+	var core = cards.duplicate()
+	for card in cards:
+		var trial = core.filter(func(c): return c.id != card.id)
+		var tested = solve(view, trial, {}, {}, knowledge)
+		if tested.worlds.is_empty() or not tested.movement_ok:
+			core = trial
+	var conflict: Array = core.map(func(c): return c.id)
+	if not result.has(conflict):
+		result.append(conflict)
+	for card in core:
+		_find_conflicts(view, cards.filter(func(c): return c.id != card.id), knowledge, result, visited)
 
 static func solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}) -> Dictionary:
 	var ids: Array = view.people.map(func(p): return p.id)
-	var worlds: Array = []
-	for evil in range(1 << ids.size()):
-		if popcount(evil) != view.evil_count:
+	var universe_key = str([ids.size(), view.evil_count])
+	if not universes.has(universe_key):
+		var all_worlds: Array = []
+		for evil in range(1 << ids.size()):
+			if popcount(evil) == view.evil_count:
+				for marked in range(ids.size()):
+					if not evil & (1 << marked):
+						all_worlds.append({"evil": evil, "marked": marked})
+		universes[universe_key] = all_worlds
+	var worlds: Array = universes[universe_key].duplicate()
+	for id in knowledge.get("good", []):
+		worlds = worlds.filter(func(w): return _position_holds(ids, w, id, "good"))
+	for id in positions:
+		worlds = worlds.filter(func(w): return _position_holds(ids, w, id, positions[id]))
+	for card in cards:
+		if card.kind != "report":
 			continue
-		for marked in range(ids.size()):
-			if evil & (1 << marked):
-				continue
-			var world = {"evil": evil, "marked": marked}
-			var okay = true
-			for id in knowledge.get("good", []):
-				if id in ids and evil & (1 << ids.find(id)):
-					okay = false
-			for id in positions:
-				if not _position_holds(ids, world, id, positions[id]):
-					okay = false
-			if not okay:
-				continue
-			for card in cards:
-				if not _report_holds(view, world, card, answers.get(card.id, {})):
-					okay = false
-					break
-			if okay:
-				worlds.append(world)
-	var movement = _movement(view, cards, answers)
+		var positive: Array = answers.get(card.id, {}).get("positive", []).duplicate()
+		positive.sort()
+		var key = JSON.stringify([view.people, view.evil_count, card.source, card.role, card.data, positive])
+		if not report_matches.has(key):
+			if report_matches.size() > 512:
+				report_matches.clear()
+			var matches = {}
+			for world in universes[universe_key]:
+				if _report_holds(view, world, card, {"positive": positive}):
+					matches[world.evil * ids.size() + world.marked] = true
+			report_matches[key] = matches
+		var accepted: Dictionary = report_matches[key]
+		worlds = worlds.filter(func(w): return accepted.has(w.evil * ids.size() + w.marked))
+	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
+	var movement_key = JSON.stringify([ids, movement_cards, answers])
+	if not movement_cache.has(movement_key):
+		if movement_cache.size() > 256:
+			movement_cache.clear()
+		movement_cache[movement_key] = _movement(view, movement_cards, answers)
+	var movement: Dictionary = movement_cache[movement_key]
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
 
 static func popcount(bits: int) -> int:
@@ -229,6 +285,9 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			errors.append("%s: there are more answers than positive slots." % id)
 		var unique: Array = []
 		for person in positive:
+			if person not in view.people.map(func(p): return p.id):
+				errors.append("%s: choose a known person." % id)
+				continue
 			if person in unique:
 				errors.append("%s: the same person fills two slots." % id)
 			unique.append(person)
@@ -239,10 +298,15 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 		if card.get("role", "") == "surveyor":
 			var blocks: Array = []
 			for person in positive:
-				var home: String = view.people.filter(func(p): return p.id == person)[0].home
+				var matches: Array = view.people.filter(func(p): return p.id == person)
+				if matches.is_empty():
+					continue
+				var home: String = matches[0].home
 				if home in blocks:
 					errors.append("%s: each slot needs a different block." % id)
 				blocks.append(home)
+		if card.get("role", "") == "rumormonger" and not positive.all(func(p): return p in card.data.pair):
+			errors.append("%s: choose someone in the named pair." % id)
 	return errors
 
 static func person_name(view: Dictionary, id: String) -> String:
