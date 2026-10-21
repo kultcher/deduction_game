@@ -147,7 +147,7 @@ func _night() -> void:
 	evil.beliefs = [_belief(target, 1, C.NIGHT)]
 	evil.info_log = []
 	_check(_report(g, evil, target)["facts"].is_empty(), "a night-role bluff does not expose real evil night movements")
-	evil.info_log = [{"fake": true, "role": "nightwatch", "day": 1, "data": {"seen": [target.id], "block": "market"}}]
+	evil.info_log = [{"fake": true, "shared": true, "role": "nightwatch", "day": 1, "data": {"seen": [target.id], "block": "market"}}]
 	r = _report(g, evil, target)
 	_check(r["facts"].size() == 1 and r["facts"][0]["block"] == "market", "a false Night Watch reuses its approved report instead of real sightings")
 	evil.info_log[0]["data"]["seen"] = []

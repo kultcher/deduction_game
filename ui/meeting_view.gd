@@ -279,9 +279,16 @@ func _draw_center(c: Vector2, nominee: String, nominator: String) -> void:
 	draw_circle(c, rad, C.npc_color(nominee).darkened(0.35))
 	var tex = UITheme.tex("art/portraits/" + nominee, 0.3)
 	if tex != null:
-		var s = rad * 2.0 - 8
+		# Clip the portrait to a circle. A square crop pokes through the ring's corners.
+		var portrait_radius = rad - 4.0
 		var src_h = minf(tex.get_height(), tex.get_width())
-		draw_texture_rect_region(tex, Rect2(c - Vector2(s, s) / 2.0, Vector2(s, s)), Rect2(0, 0, tex.get_width(), src_h))
+		var points = PackedVector2Array()
+		var uvs = PackedVector2Array()
+		for i in range(64):
+			var direction = Vector2.from_angle(i * TAU / 64.0)
+			points.append(c + direction * portrait_radius)
+			uvs.append(Vector2((direction.x + 1.0) * 0.5, (direction.y + 1.0) * 0.5 * src_h / tex.get_height()))
+		draw_polygon(points, PackedColorArray([Color.WHITE]), uvs, tex)
 	var ring = UITheme.tex("ui/ring_gold", 0.4)
 	if ring != null:
 		draw_texture_rect(ring, Rect2(c - Vector2(rad, rad) * 1.08, Vector2(rad, rad) * 2.16), false)

@@ -156,6 +156,9 @@ func build(font: Font) -> void:
 	rows_btn.tooltip_text = "Places & sightings: arrange by place or person."
 	clear_btn = _btn(filters, "Clear filters", _clear_filters)
 	clear_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 2, 4, 6))
+	clear_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.color("paper").lightened(0.1), UITheme.color("border"), 2, 4, 6))
+	for style in ["pressed", "hover_pressed"]:
+		clear_btn.add_theme_stylebox_override(style, UITheme.flat(UITheme.color("red"), UITheme.color("border"), 2, 4, 6))
 	filters.add_child(hidden_check)
 	var navigation = HBoxContainer.new()
 	navigation.alignment = BoxContainer.ALIGNMENT_END

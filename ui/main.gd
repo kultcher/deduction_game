@@ -615,6 +615,9 @@ func _refresh_actions() -> void:
 				_button(actions, "Present a deduction to everyone…", func(): _card_picker("Present a deduction to the meeting",
 					func(c): return c["kind"] == "deduction", func(num, _x): _run("present %d" % num), false))
 			var nom = _button(actions, "Nominate…", func(): pass)
+			nom.disabled = "player" in w.meeting.get("nominators", [])
+			if nom.disabled:
+				nom.tooltip_text = "No nominations remaining"
 			nom.pressed.connect(func(): _people_picker(nom, "Nominate whom?", func(id): _run("nominate " + id), func(n): return w.can_nominate("player", n.id) == ""))
 			var done = _button(actions, "Close the meeting", func(): _run("done"))
 			done.disabled = not g.town_quiet
@@ -898,9 +901,8 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 		row.add_child(mode)
 		who = OptionButton.new()
 		for n in g.w.living():
-			if n != g.talk_with:
-				who.add_item(n.name)
-				who.set_item_metadata(who.item_count - 1, n.id)
+			who.add_item(n.name)
+			who.set_item_metadata(who.item_count - 1, n.id)
 		row.add_child(who)
 		# Whom to speak for or against only matters once you pick one of those.
 		who.visible = false

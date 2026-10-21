@@ -47,6 +47,10 @@ static func _night_candidates(w, speaker, target, board: Array) -> Array:
 	var result: Array = []
 	# The window can cross at most one night. Do not invent new bluff material here.
 	var nd: int = w.day - 1
+	if speaker.claimed_role == "nightwatch":
+		for e in speaker.info_log:
+			if e.get("role", "") == "nightwatch" and e.get("day", -1) == nd and not Mind.reading_disclosed(speaker, e):
+				return []
 	if speaker.is_evil():
 		if speaker.claimed_role == "nightwatch":
 			var story = Mind._fake_watch_entry(speaker, nd)

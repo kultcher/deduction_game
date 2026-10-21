@@ -271,6 +271,9 @@ func _draw() -> void:
 			if w.scenes.has(sid):
 				draw_line(hd.position, hd.end, Color(0.85, 0.15, 0.15), 3.0)
 				draw_line(hd.position + Vector2(hd.size.x, 0), hd.position + Vector2(0, hd.size.y), Color(0.85, 0.15, 0.15), 3.0)
+			elif not n.alive:
+				draw_line(hd.position, hd.end, Color(0.2, 0.55, 0.95), 3.0)
+				draw_line(hd.position + Vector2(hd.size.x, 0), hd.position + Vector2(0, hd.size.y), Color(0.2, 0.55, 0.95), 3.0)
 			if zoom_block != "":
 				if w.scenes.has(sid):
 					_hits.append({"rect": HR, "kind": "scene", "id": sid, "label": w.scenes[sid]["name"] + " (crime scene)", "hint": "Click to go and search it" if g.state == "day" else ""})

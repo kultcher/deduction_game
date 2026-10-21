@@ -2028,6 +2028,10 @@ func _route_present(n, rest: String) -> Dictionary:
 		who = find_npc(p[2], true)
 		if who == null:
 			return {"error": "Who is '%s'?" % p[2]}
+	# An explicit supportive statement is not a demand that the listener explain
+	# themselves, whether the cited card is a claim or one of the player's deductions.
+	if who == n and dir == "for":
+		return {"verb": "defend", "rest": "%s %d" % [n.id, num], "note": "You speak up for %s." % n.name}
 	if card["kind"] == "deduction":
 		var cc: Dictionary = Argue.normalize(card["conclusion"].duplicate())
 		if cc.get("a", "") == n.id and not (cc["type"] in ["misled", "unreliable"]):
@@ -2039,7 +2043,7 @@ func _route_present(n, rest: String) -> Dictionary:
 			subj.append(x)
 	if who == null and (n.id in subj or card.get("owner", "") == n.id):
 		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
-	if who == n:
+	if who == n and dir != "for":
 		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
 	var targets: Array = [who.id] if who != null else subj.filter(func(x): return x != n.id and x != card.get("source", "") and w.by_id.has(x) and w.by_id[x].alive)
 	if targets.is_empty():
