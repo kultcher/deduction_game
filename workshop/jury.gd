@@ -6,6 +6,8 @@ extends RefCounted
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const Support = preload("res://workshop/support_model.gd")
+const Theory = preload("res://workshop/theory.gd")
+const Reasoner = preload("res://workshop/reasoner.gd")
 
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
 	var original = case_data.duplicate(true)
@@ -19,6 +21,12 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	# accusing a witness would lower their credibility on every repetition.
 	if not old.is_empty():
 		listener.suspicion[old.target] = snappedf(listener.suspicion.get(old.target, 0.1) - old.applied, 0.000000001)
+	var previous: Dictionary = listener.case_memory.get(case_data.id, {})
+	var signature = _signature(view, case_data)
+	var input_key = JSON.stringify(_canonical([signature, listener.get("reasoning_mode", "full"), listener.get("insight", 0.5),
+		listener.get("confidence_mode", "scale"), listener.confidence, listener.trust, listener.npc_trust,
+		listener.suspicion, listener.reading_reliability, listener.knowledge]))
+	var repeated: bool = previous.get("input_key", "") == input_key
 	var knowledge: Dictionary = listener.knowledge
 	var full_case = case_data.duplicate(true)
 	for id in knowledge.get("own_reports", []):
@@ -66,7 +74,17 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 					best = {"weight": 0.4 * quality, "agreement": 0.4, "quality": quality, "cards": path, "kind": "conditional"}
 	var pattern = _pattern(view, case_data, listener)
 	var legacy = best.duplicate(true)
-	var combined = Support.assess(view, original, listener)
+	var reasoning = Support.explain(view, original, listener)
+	if listener.get("reasoning_mode", "full") == "bounded":
+		var attended: Dictionary = Reasoner.prepare(view, original, listener).case
+		attended.cards = attended.cards.filter(func(id): return id not in reasoning.private_checks.rejected)
+		pattern = _pattern(view, attended, listener)
+		var considered_facts: Array = reasoning.considered.map(func(id): return Solver.semantic_key(Solver.card_by_id(view, id)))
+		considered_facts.sort()
+		input_key += JSON.stringify([considered_facts, reasoning.connections])
+		repeated = previous.get("input_key", "") == input_key
+	var theory = Theory.prepare(view, case_data, listener, reasoning, input_key)
+	var combined = Support.assess(view, original, listener, theory.bias)
 	var paths: Array = []
 	for path in combined.paths:
 		for id in path:
@@ -80,20 +98,21 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 		best = pattern
 	var conflict = assessment.status == "conflicting"
 	if conclusion.type == "conflict":
-		var agreement = 1.0 if shared.entailment == "forced" else 0.0
+		var detected: bool = (reasoning.status == "inconsistent" or not reasoning.private_checks.rejected.is_empty()) if listener.get("reasoning_mode", "full") == "bounded" else assessment.entailment == "forced"
+		var agreement = 1.0 if detected else 0.0
 		best = {"weight": agreement * _quality(view, case_data.cards, listener), "agreement": agreement, "quality": _quality(view, case_data.cards, listener), "cards": case_data.cards, "kind": "conflict"}
-	elif not assessment.errors.is_empty() or (assessment.proposed == 0 and assessment.compatible > 0):
+	elif listener.get("reasoning_mode", "full") != "bounded" and (not assessment.errors.is_empty() or (assessment.proposed == 0 and assessment.compatible > 0)):
+		best.weight = 0.0
+		best.agreement = 0.0
+	if reasoning.private_checks.fatal:
 		best.weight = 0.0
 		best.agreement = 0.0
 	var player_factor: float = 0.5 + listener.trust
-	var confidence_factor: float = 1.4 - 0.8 * listener.confidence
+	var confidence_factor: float = 1.0 if listener.get("confidence_mode", "scale") == "persistence" else 1.4 - 0.8 * listener.confidence
 	# Venue is deliberately the same: no private/public/nomination duplicate effects.
 	var strength: float = best.weight * player_factor * confidence_factor
 	var coefficient: float = {"evil": 0.45, "good": -0.4, "marked": -0.1, "suspicious": 0.3, "conflict": 0.0}.get(conclusion.type, 0.0)
 	var effect: float = strength * coefficient
-	var previous: Dictionary = listener.case_memory.get(case_data.id, {})
-	var signature = _signature(view, case_data)
-	var repeated: bool = previous.get("signature", "") == signature
 	# Replace this case's complete prior effect, even if target/conclusion changed.
 	var baseline: float = listener.suspicion.get(target, 0.1)
 	listener.suspicion[target] = snappedf(clampf(baseline + effect, 0.0, 1.5), 0.000000001)
@@ -102,7 +121,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 		"conclusion": conclusion.duplicate(true), "signature": signature, "report_acceptance": combined.report_acceptance.duplicate(true)}
 	# No recurring trust reward for restating a case. Workshop trust is a controlled input.
 	var changes = _changes(view, previous.get("case", {}), case_data)
-	listener.case_memory[case_data.id] = {"signature": signature, "version": case_data.version, "cards": case_data.cards.duplicate(), "strength": strength, "case": case_data.duplicate(true)}
+	listener.case_memory[case_data.id] = {"signature": signature, "input_key": input_key, "version": case_data.version, "cards": case_data.cards.duplicate(), "strength": strength, "case": case_data.duplicate(true)}
 	var objection = _objection(view, case_data, listener, shared, assessment, best, pattern)
 	var stance = "accept" if best.agreement >= 0.6 else ("partial" if best.agreement >= 0.35 else "reject")
 	var delta: float = listener.suspicion[target] - before_suspicion
@@ -110,7 +129,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	if repeated:
 		response = "That is the same case. Repeating it adds no new reason."
 	elif conclusion.type == "conflict":
-		response = "Those accounts cannot all be accurate. I have reopened which report to believe; this does not establish anyone's alignment." if shared.entailment == "forced" else "I don't see a conflict among the reports you selected."
+		response = "Those accounts cannot all be accurate. I have reopened which report to believe; this does not establish anyone's alignment." if best.agreement > 0 else "I don't see a conflict among the reports you selected."
 	elif best.kind == "pattern" and best.weight > 0:
 		response = "That gives me a reason to be suspicious, though it does not establish evil."
 	elif conflict and conclusion.type != "conflict":
@@ -120,24 +139,61 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	elif stance == "accept":
 		response = "The conclusion follows if those reports are sound. My doubt is in the premises."
 	elif combined.agreement < 0:
-		response = "The supplied evidence makes me less suspicious of this person."
+		response = "The supplied evidence weighs against that conclusion."
 	elif assessment.entailment == "forced":
 		response = "The inference follows if the reports are accurate. I give it some weight, but I still doubt the supporting reports."
 	else:
 		response = "I can see that possibility, but the reports also allow another explanation."
 	if not combined.factors.is_empty():
 		response += " The supplied test factor changes which remaining explanation I favor; it does not prove it."
+	if listener.get("reasoning_mode", "full") == "bounded":
+		objection = _bounded_objection(reasoning)
+		if reasoning.private_checks.fatal:
+			response = reasoning.private_checks.objections[0]
+		elif conclusion.type == "conflict":
+			response = "The accounts I considered cannot all be accurate. That does not identify anyone as evil." if best.agreement > 0 else "I have not established a conflict among the accounts I considered."
+		elif best.weight < 0:
+			response = "The evidence I considered weighs against this conclusion; my search was limited."
+		elif not reasoning.support.is_empty() and reasoning.status == "provisional":
+			response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
+		elif reasoning.status == "rival_found":
+			var alternative = Solver.describe_world(view, reasoning.rival)
+			response = "I checked another explanation and it also fits: %s evil; %s Marked. I cannot settle it from this alone." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, alternative.marked)]
+		elif reasoning.status == "entailed_in_attention":
+			response = "The reports I considered force this if they are accurate."
+		else:
+			response = "I could not follow your explanation through within what I considered. That does not prove it wrong."
+		if not reasoning.ignored.is_empty() or not reasoning.ignored_lines.is_empty():
+			response += " I did not combine all the evidence in this case."
+		if repeated:
+			response = "That is the same case; I made the same checks. Repeating it adds no new reason."
+	if not reasoning.private_checks.objections.is_empty():
+		objection = " ".join(PackedStringArray(reasoning.private_checks.objections))
+	if theory.mode == "persistence" and not repeated:
+		response += " " + theory.note
 	if not previous.is_empty() and not repeated and not changes.is_empty():
 		response += " " + " ".join(PackedStringArray(changes))
 	return {"listener": listener.id, "name": listener.name, "version": case_data.version, "stance": stance,
 		"agreement": best.agreement, "quality": best.quality, "strength": strength, "path": best.cards,
 		"path_kind": best.kind, "repeated": repeated, "response": response, "objection": objection, "changes": changes,
-		"assessment": assessment, "shared_assessment": shared, "pattern": pattern, "support_model": combined, "legacy_path": legacy,
+		"assessment": assessment, "shared_assessment": shared, "pattern": pattern, "support_model": combined, "legacy_path": legacy, "reasoning": reasoning, "theory": theory,
 		"before_suspicion": before_suspicion, "after_suspicion": listener.suspicion[target], "suspicion_delta": delta,
 		"before_trust": before_trust, "after_trust": listener.trust, "trust_delta": 0.0,
 		"calculation": {"agreement": best.agreement, "premise_quality": best.quality, "player_factor": player_factor,
 			"confidence_factor": confidence_factor, "coefficient": coefficient, "old_case_effect": old.get("applied", 0.0), "new_case_effect": applied,
 			"venue": context.get("venue", "private"), "rule": "Replace this case's prior effect; never add it again. Trust is held fixed for controlled comparisons."}}
+
+static func _bounded_objection(reasoning: Dictionary) -> String:
+	# Spoken objections use only this search, never the referee's alternative.
+	var result: String = {"provisional": "I have not established that this is the only explanation.",
+		"rival_found": "Both explanations fit the reports I granted for this comparison.",
+		"entailed_in_attention": "This follows within the reports I considered, if they are accurate.",
+		"inconsistent": "The accounts I checked cannot all be accurate together.",
+		"counterexample_found": "I checked an alternative, but did not establish your proposed explanation.",
+		"unresolved": "I could not make all the pieces fit, but I may be missing something."}.get(reasoning.status, "")
+	if not reasoning.doubted.is_empty():
+		result += " I still doubt these reports: " + ", ".join(PackedStringArray(reasoning.doubted)) + "."
+	return result
 
 static func _quality(view: Dictionary, ids: Array, listener: Dictionary) -> float:
 	var sources: Array = []

@@ -176,6 +176,8 @@ static func _jury(w, slots: Dictionary, cards: Array) -> Array:
 				reading_reliability[card.fact_id] = 1.0
 		result.append({"id": n.id, "name": n.name, "preset": presets[i], "trust": [0.85, 0.2, 0.5, 0.5][i],
 			"confidence": n.traits.confidence, "npc_trust": trust, "suspicion": suspicion,
+			"insight": n.traits.insight, "reasoning_mode": "full", "confidence_mode": "scale", "theories": {},
 			"reading_reliability": reading_reliability,
-			"knowledge": {"good": [n.id], "own_reports": own}, "ledger": {}, "case_memory": {}})
+			"knowledge": {"self": n.id, "good": [n.id], "own_reports": own,
+				"own_outings": {"1": roles[i] == "nightwatch", "2": roles[i] == "nightwatch"}}, "ledger": {}, "case_memory": {}})
 	return result

@@ -8,10 +8,11 @@ The Workshop freezes a scripted ten-person town at dawn on day 3. It tests expre
 interpreting and revising a case. Its new interpreter does not change the main game's
 argument, persuasion, voting or dialogue systems.
 
-Slices 1 and 2 of the [implementation plan](CASE_WORKSHOP_PLAN.md) are implemented:
+Slices 1–3 of the [implementation plan](CASE_WORKSHOP_PLAN.md) are implemented:
 explicit claims/citations, report conflicts, multiple reasoning lines, and shared
-support. The controlled soft-factor experiment tests convergence; actual movement
-and trace likelihoods remain slice 4.
+support, followed by bounded Insight reasoning and experimental confidence persistence.
+The controlled soft-factor experiment tests convergence; actual movement and trace
+likelihoods remain slice 4.
 
 ## Try these experiments
 
@@ -42,9 +43,9 @@ and trace likelihoods remain slice 4.
    questions refer to the originals and cannot multiply their effect.
 7. Under **Adjust this juror**, vary confidence, trust in you, or trust/suspicion toward
    a report's source. **Show calculation & accepted path** exposes agreement, premise
-   quality, confidence scaling and the actual old/new ledger effects. Confidence scales
-   movement, not the logical result. Restore the generated jury or reset discussion as
-   needed.
+   quality, confidence mode and the actual old/new ledger effects. The original mode
+   scales attitude change, not the logical result. Restore the generated jury or reset
+   discussion as needed.
 8. Set the conclusion to **Hollis is evil**, compare Surveyor + Rumormonger with all
    three readings, and inspect the calculation. Both force Hollis conditionally, but
    the second sufficient route now adds support. Merrin is a shared dependency, not
@@ -61,6 +62,17 @@ and trace likelihoods remain slice 4.
     in its source. Doubting Bart's reading preserves the Dowser/Rumormonger route;
     doubting Merrin's reading weakens both. Even a juror's own reading can be questioned
     without denying that they received that result.
+11. Load **Insight comparison**, or choose **Compare Insight levels** under any juror.
+    This compares full reasoning with Low, Medium and High Insight using the same juror,
+    private knowledge and starting attitudes. It does not change the discussion history.
+    Under **Adjust this juror**, choose **Bounded reasoning (Insight)** to use that model
+    for presentations. Inspect the explanation checks, rival checks, ignored evidence
+    and ignored lines. A coherent explanation without a rival search is provisional.
+12. Choose **Confidence sustains a theory (experiment)** and enable **Continue remembered
+    discussion**. Present, then revise the evidence or supplied factor and present again.
+    The inspector shows the remembered partial position and whether it was retained or
+    revised. Confidence no longer scales the incoming effect in this mode. **Reset
+    discussion** starts a fresh theory. Use the original confidence mode for comparison.
 
 There are up to six reasoning lines and eight derived questions per case. Duplicate
 or out-of-domain slots are blocked; unknown slots remain valid. Conflicting hypotheses
@@ -73,10 +85,12 @@ contradictory supplied test factors receive explicit feedback instead of multipl
 each presentation, objections and actual changes. **Open experiment** validates the file
 and replays its history rather than trusting the exported outcomes. Imports support up to
 200 presentations. Developer truth is omitted unless its checkbox is enabled; that data
-never reaches the interpreter. Version 2 records line references, derived-question
-provenance, citations, conflict scope, reading reliability and supplied factors. Version-1
-exports are explicitly refused because the evidence and assessment model changed;
-they are not silently replayed with different semantics.
+never reaches the interpreter. Version 3 records line references, derived-question
+provenance, citations, conflict scope, reading reliability, supplied factors and reasoning/
+confidence settings. Personal knowledge belongs to the fixture; theories are reconstructed
+from presentations, not accepted as injected baseline memory. Version-1 and version-2
+exports are explicitly refused because the assessment model changed; they are not
+silently replayed with different semantics.
 
 ## Scenario and evidence boundaries
 
@@ -135,6 +149,66 @@ using suspicion/trust terms shaped like `Argue._expl_weight`. Supplied soft fact
 those rankings and can favor either alternative. Counts of worlds never become probabilities.
 The inspector retains the previous strongest-path calculation for comparison.
 
+### Bounded Insight reasoning
+
+Full reasoning remains the default comparison mode. Bounded reasoning constructs and
+checks candidate explanations independently; it does not take the referee's surviving
+worlds and pretend to have searched them. The deterministic profiles are experimental:
+
+| Insight | Presented cards | Connected lines | Explanation checks | Rival checks |
+| --- | ---: | ---: | ---: | ---: |
+| Low, below 0.34 | 3 | 1 | 8 | 0 |
+| Medium, below 0.67 | 5 | 2 | 48 | 16 nearby swaps |
+| High | 10 | 6 | 840 | 840, exhaustive when necessary |
+
+These are upper limits, not work the juror must always perform. Source trust, count
+readings and references to the target affect attention priority. Duplicate line wrappers
+share one attention group. Own reports remain available outside the card limit. A juror
+can remember sightings while missing their connection to another line; the inspector
+shows ignored lines as well as ignored cards. Ignored evidence cannot silently add
+outing suspicion or cancel conviction through the referee's more complete assessment.
+
+The search can find a coherent proposal, a rival, a conditional implication, or remain
+unresolved. Medium Insight tests swaps from a found proposal; exhausting those swaps
+does not prove uniqueness. Only exhaustive rival absence can certify an implication,
+and only under the attended premises. A failed limited search is not disproof. The
+referee's logical answer is independent of Insight and stays visible as a diagnostic.
+Spoken alternatives come only from the juror's own search.
+
+Direct personal conflicts are checked even outside attention: being good at this epoch,
+what result the juror actually received, and their known whereabouts. Receipt does not
+guarantee a healthy gift result. A rejected report is disabled individually, without
+automatically discrediting its source's other reports. A direct home/sighting conflict
+within attended evidence is also recognized. This fixture has no Sleepwalker or personal
+conversion history; those exceptions still require slice 5.
+
+The displayed search grants reports with source weight at least 0.4 and reading accuracy
+at least 0.5. Numeric conviction separately averages the credibility states, running a
+bounded search in each. A checked but unchallenged proposal starts at 0.3 with one active
+core reading or 0.76 with two or more, before credibility and supplied-factor adjustments.
+This deliberately exposes a tunable limited-search acceptance rule; it is not a probability
+or a general measure of argument strength. Distrusted sources still weaken agreement.
+
+### Confidence as a provisional commitment
+
+The original mode retains the incoming-effect multiplier below. The alternative mode
+uses a multiplier of 1 and remembers a partial commitment about the target at the
+alignment epoch, with a separate Marked question. It compares at most the supporting
+and rival candidates found in the displayed search, rather than deriving everyone's
+suspicion from an arbitrary completed world. Initial adoption has no persistence bonus.
+
+On changed evidence, a retained commitment biases hypothesis ranking by `3^confidence`.
+A contrary candidate can dislodge it at comparison odds of `1 + 4 * confidence`; direct
+personal facts and an exhaustive opposite implication without extra player choices can
+override it. Low confidence can also rebuild provisionally when the prior alternative
+is unavailable. Source trust and reading accuracy do not change, and confidence cannot
+invent a poisoning excuse. Repeating identical inputs reuses the decision; it cannot
+incrementally reinforce the theory. Removing the evidence retracts the case's numerical
+effect even if a remembered theory label remains.
+
+This is an experiment in per-target commitments during revision of one editable case,
+not an autonomous, coherent theory of the whole town or production NPC integration.
+
 The initial tuning is deliberately visible and experimental:
 
 | Component | Rule |
@@ -147,7 +221,7 @@ The initial tuning is deliberately visible and experimental:
 | Reading accuracy | separate 0–1 inspector setting per report; defaults to 1, including own readings |
 | Supplied test factor | 1/16–16 evil/good likelihood ratio; same-incident factors share corroborating witness routes |
 | Player multiplier | `0.5 + trust in player` |
-| Confidence multiplier | `1.4 - 0.8 * confidence`, matching the current incoming-evidence shape |
+| Confidence multiplier | Original: `1.4 - 0.8 * confidence`; persistence experiment: 1 |
 | Conclusion effect | evil +0.45; good -0.4; Marked -0.1; suspicious +0.3; conflict 0 |
 | Outing pattern | 0.3 per distinct night, credibility-scaled; 0.2 for a conflicting alibi; capped at 0.8 |
 | Gift explanation | reduce that outing's weight by `0.8 * credibility of supporting gift claim` |
@@ -177,6 +251,7 @@ Run with the project's Godot executable:
 ```text
 godot --headless --path . --script res://tools/test_workshop.gd
 godot --headless --path . --script res://tools/test_workshop_cases.gd
+godot --headless --path . --script res://tools/test_workshop_reasoning.gd
 godot --headless --path . --script res://tools/test_workshop_ui.gd
 godot --headless --path . res://ui/case_workshop.tscn -- --workshop-smoke
 ```
@@ -186,13 +261,18 @@ persuasion, retraction, duplicate evidence, distinct outings, gift explanations,
 priors, confidence, hidden-truth independence, seeded coherence and JSON replay. The UI
 suite exercises actual slot signals, duplicate prevention, explicit claim citations,
 conflict scope, reasoning-line assignment, the factor control, remembered presentation,
-save/open, and opening/reopening the Workshop without replacing the running game.
+save/open, reasoning/confidence controls, nonmutating comparisons, and opening/reopening
+the Workshop without replacing the running game.
 The new cases suite covers shared proof routes, localized doubt, neutral/contrary factors,
 indirect Nisha-to-Constance support, conflicting/alternative line assumptions, same-incident
 corroboration, wrapper identity, provenance and atomic import validation.
+The reasoning suite covers paired Insight profiles, independent referee results,
+bounded conviction and speech, ignored connections, direct private checks, confidence
+revision, repeated presentations, no invented illness exceptions and exact theory replay.
 
 On the development machine (Intel i5-12400, Godot 4.7.2, Windows), a representative
-single-juror grouped assessment measured roughly 60–90 ms cold and 35–45 ms cached. Selecting all evidence
+single-juror full grouped assessment measured roughly 80–110 ms cold and 40–50 ms cached.
+Selecting all evidence
 types with every reading accuracy set to 0.5 exercised 4,096 credibility states and took
 about 1.1–1.3 seconds for one juror. Whole-jury assessment is synchronous, so broad stress
 cases can pause the UI for several seconds. These are fixture measurements, not general

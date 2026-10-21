@@ -26,6 +26,7 @@ var positions_open = false
 var analysis: Dictionary = {}
 var stale = true
 var active_line = ""
+var reasoning_comparisons: Dictionary = {}
 
 func _ready() -> void:
 	theme = WorkshopSkin.make()
@@ -67,7 +68,7 @@ func _ready() -> void:
 		session.generate(int(seed_input.value))
 		focus_card = "survey"
 		_changed(true))
-	var examples = _option(toolbar, ["Load example…", "Surveyor only", "Add Rumormonger", "Three core readings", "Repeated night outings", "Conflicting reports", "Converging lines (test factor)"])
+	var examples = _option(toolbar, ["Load example…", "Surveyor only", "Add Rumormonger", "Three core readings", "Repeated night outings", "Conflicting reports", "Converging lines (test factor)", "Insight comparison"])
 	examples.item_selected.connect(func(i):
 		if i > 0:
 			_load_example(i)
@@ -595,12 +596,20 @@ func _refresh_jury() -> void:
 			var r: Dictionary = session.last_results[i]
 			_label(box, r.response, 18)
 			_label(box, r.objection, 16, "muted")
+			var thought: Dictionary = r.reasoning
+			_label(box, "%s reasoning · %s\nExplanation checks: %d (rivals: %d). Unattended: %s." % [thought.profile, thought.status.replace("_", " "), thought.tested, thought.rivals_tested, ", ".join(PackedStringArray(thought.ignored)) if not thought.ignored.is_empty() else "none"], 15, "accent")
+			if not thought.ignored_lines.is_empty():
+				_label(box, "Lines not connected to this argument: " + ", ".join(PackedStringArray(thought.ignored_lines)), 15, "muted")
+			if r.theory.mode == "persistence":
+				_label(box, "Working theory: %s · %s" % [r.theory.position if r.theory.position != "" else "unsettled", r.theory.status], 15, "accent")
 			_label(box, "Suspicion %.3f → %.3f (%+.3f)\nTrust in you %.2f → %.2f" % [r.before_suspicion, r.after_suspicion, r.suspicion_delta, r.before_trust, r.after_trust], 16)
 			var show_calc = CheckBox.new()
 			show_calc.text = "Show calculation & accepted path"
 			box.add_child(show_calc)
 			var calculation = _label(box, "Agreement %.2f × premise quality %.3f × player %.2f × confidence %.2f\nPath: %s (%s)\nPrevious case effect %.3f; replacement %.3f. %s.\nPrivate compatible worlds: %d. These counts are not probabilities." % [r.agreement, r.quality, r.calculation.player_factor, r.calculation.confidence_factor, ", ".join(PackedStringArray(r.path)), r.path_kind, r.calculation.old_case_effect, r.calculation.new_case_effect, r.stance, r.assessment.compatible], 14, "muted")
 			calculation.text += "\nCombined support %.3f; old strongest-path score %.3f. Forced-assumption weight %.3f across %d credibility states.\nSupport routes: %s\n%s" % [r.support_model.agreement, r.legacy_path.weight, r.support_model.forced_mass, r.support_model.states, str(r.support_model.paths), r.support_model.model]
+			calculation.text += "\nConsidered: %s\nGranted for search: %s\nDoubted: %s\nOwn reports (outside attention limit): %s\n%s\nReferee: %s; NPC: %s. A limited search is never a proof." % [str(thought.considered), str(thought.accepted), str(thought.doubted), str(thought.private_reports), thought.assumption_note, r.assessment.entailment, thought.status]
+			calculation.text += "\nConfidence mode: %s; theory %s → %s (%s); revision comparison threshold %.2f×.\n%s" % [r.theory.mode, r.theory.before, r.theory.position, r.theory.status, r.theory.threshold, r.theory.guardrail]
 			for id in r.support_model.report_acceptance:
 				var card = _report(id)
 				if card.kind != "claim":
@@ -609,6 +618,14 @@ func _refresh_jury() -> void:
 			show_calc.toggled.connect(func(on): calculation.visible = on)
 		else:
 			_label(box, "Waiting to hear your case.", 17, "muted")
+		var compare = _button(box, "Compare Insight levels", func():
+			reasoning_comparisons[i] = session.compare_reasoning(i)
+			_refresh_jury())
+		compare.name = "CompareInsight_%d" % i
+		if reasoning_comparisons.has(i):
+			_label(box, "Same juror and starting attitudes; confidence uses its original scale. Snapshot: compare again after changing the case or settings.", 14, "muted")
+			for compared in reasoning_comparisons[i]:
+				_label(box, "%s: %s; conviction %.3f; suspicion change %+.3f; %d checks." % [compared.reasoning.profile, compared.reasoning.status.replace("_", " "), compared.agreement, compared.suspicion_delta, compared.reasoning.tested], 15)
 		var settings_check = CheckBox.new()
 		settings_check.text = "Adjust this juror"
 		box.add_child(settings_check)
@@ -618,6 +635,16 @@ func _refresh_jury() -> void:
 		settings_check.toggled.connect(func(on): settings.visible = on)
 		_slider(settings, "Trust in you", juror.trust, func(value): _set_juror(i, "trust", value))
 		_slider(settings, "Confidence", juror.confidence, func(value): _set_juror(i, "confidence", value))
+		var confidence_mode = _option(settings, ["Confidence scales change (original)", "Confidence sustains a theory (experiment)"])
+		confidence_mode.name = "ConfidenceMode_%d" % i
+		confidence_mode.select(0 if juror.confidence_mode == "scale" else 1)
+		confidence_mode.item_selected.connect(func(index): _set_juror(i, "confidence_mode", ["scale", "persistence"][index]))
+		_label(settings, "Theory persistence uses a change multiplier of 1. Reset discussion to start a fresh theory; use remembered discussion to test revisions.", 14, "muted")
+		var mode = _option(settings, ["Full reasoning (comparison)", "Bounded reasoning (Insight)"])
+		mode.name = "ReasoningMode_%d" % i
+		mode.select(0 if juror.reasoning_mode == "full" else 1)
+		mode.item_selected.connect(func(index): _set_juror(i, "reasoning_mode", ["full", "bounded"][index]))
+		_slider(settings, "Insight", juror.insight, func(value): _set_juror(i, "insight", value))
 		_label(settings, "Their view of…", 15)
 		var relation = _person_option(settings, session.case_data.conclusion.target)
 		var relation_box = VBoxContainer.new()
@@ -665,7 +692,7 @@ func _slider(parent: Node, title: String, value: float, action: Callable) -> voi
 		caption.text = "%s  %.2f" % [title, v]
 		action.call(v))
 
-func _set_juror(index: int, field: String, value: float) -> void:
+func _set_juror(index: int, field: String, value) -> void:
 	session.baseline[index][field] = value
 	session.listeners[index][field] = value
 	status.text = "Jury setting changed. Present again to compare the result."
@@ -696,19 +723,21 @@ func _report(id: String) -> Dictionary:
 	return Solver.card_by_id(session.scenario.public_view, id)
 
 func _present() -> void:
+	reasoning_comparisons.clear()
 	session.present(remember.button_pressed, ["private", "meeting", "nomination"][venue.selected])
 	stale = false
 	_refresh_jury()
 	status.text = "Presented v%d · %s · %d recorded presentations. Trust is held fixed; actual suspicion changes are shown." % [session.case_data.version, "remembered discussion" if remember.button_pressed else "identical starting attitudes", session.history.size()]
 
 func _load_example(index: int) -> void:
+	reasoning_comparisons.clear()
 	var target: String = session.scenario.slots.demon
 	var version: int = session.case_data.version + 1
 	session.case_data = Solver.empty_case()
 	active_line = ""
 	session.case_data.version = version
 	session.case_data.conclusion.target = target
-	session.case_data.cards = [["survey"], ["survey", "rumor"], ["survey", "rumor", "dowse"], ["watch1", "watch2"], ["watch1", "alibi1"], ["survey", "rumor", "dowse", "watch1", "watch2"]][index - 1].duplicate()
+	session.case_data.cards = [["survey"], ["survey", "rumor"], ["survey", "rumor", "dowse"], ["watch1", "watch2"], ["watch1", "alibi1"], ["survey", "rumor", "dowse", "watch1", "watch2"], ["survey", "rumor", "dowse"]][index - 1].duplicate()
 	if index == 4:
 		session.case_data.conclusion.type = "suspicious"
 		focus_card = "watch2"
@@ -722,6 +751,12 @@ func _load_example(index: int) -> void:
 			{"id": "movement", "label": "Movement comparison — supplied TEST factor", "relation": "supports", "cards": ["watch1", "watch2"], "positions": {}, "answers": {}, "test_factor": {"target": target, "log2_ratio": 2.0}}]
 		active_line = "movement"
 		focus_card = "watch2"
+	elif index == 7:
+		focus_card = "survey"
+		_changed()
+		reasoning_comparisons[0] = session.compare_reasoning(0)
+		_refresh_jury()
+		return
 	else:
 		focus_card = ["survey", "rumor", "dowse"][index - 1]
 	_changed()
@@ -743,13 +778,14 @@ func _open_dialog() -> void:
 
 func _open(path: String) -> void:
 	var value = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not value is Dictionary or value.get("format", "") not in ["demonologist-case-workshop-1", "demonologist-case-workshop-2"]:
+	if not value is Dictionary or value.get("format", "") not in ["demonologist-case-workshop-1", "demonologist-case-workshop-2", "demonologist-case-workshop-3"]:
 		status.text = "This is not a Case Workshop experiment."
 		return
 	var result = session.restore(value)
 	if result != "":
 		status.text = result
 		return
+	reasoning_comparisons.clear()
 	seed_input.value = value.seed
 	focus_card = "survey"
 	stale = session.last_results.is_empty() or (not session.history.is_empty() and session.history[-1].case != session.case_data)
@@ -776,9 +812,15 @@ func _smoke() -> void:
 	_present()
 	_load_example(5)
 	_present()
-	_load_example(6)
+	_load_example(3)
+	for i in range(session.baseline.size()):
+		session.baseline[i].reasoning_mode = "bounded" if i < 3 else "full"
+		session.baseline[i].insight = [0.1, 0.5, 0.9, 0.9][i]
+	session.baseline[0].confidence_mode = "persistence"
 	remember.button_pressed = false
 	_present()
+	reasoning_comparisons[0] = session.compare_reasoning(0)
+	_refresh_jury()
 	for frame in range(6):
 		await get_tree().process_frame
 	var args = OS.get_cmdline_user_args()

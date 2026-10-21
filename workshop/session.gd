@@ -39,8 +39,20 @@ func present(remember: bool = false, venue: String = "private") -> Array:
 	history.append({"case": case_data.duplicate(true), "remember": remember, "venue": venue, "jury_settings": baseline.duplicate(true), "results": last_results.duplicate(true)})
 	return last_results
 
+func compare_reasoning(index: int) -> Array:
+	# Independent clones hold identity, private knowledge and every social input fixed.
+	# Comparisons never become presentations or alter remembered theories.
+	var result: Array = []
+	for spec in [["full", 0.9], ["bounded", 0.1], ["bounded", 0.5], ["bounded", 0.9]]:
+		var clone: Dictionary = baseline[index].duplicate(true)
+		clone.reasoning_mode = spec[0]
+		clone.insight = spec[1]
+		clone.confidence_mode = "scale"
+		result.append(Jury.evaluate(scenario.public_view, case_data, clone))
+	return result
+
 func export_data(include_truth: bool = false) -> Dictionary:
-	var result = {"format": "demonologist-case-workshop-2", "seed": scenario.public_view.seed,
+	var result = {"format": "demonologist-case-workshop-3", "seed": scenario.public_view.seed,
 		"public_view": scenario.public_view.duplicate(true), "case": case_data.duplicate(true),
 		"jury_settings": baseline.duplicate(true), "history": history.duplicate(true)}
 	if include_truth:
@@ -50,8 +62,8 @@ func export_data(include_truth: bool = false) -> Dictionary:
 func restore(data: Dictionary) -> String:
 	# Load only this fixture format. Validate the complete experiment before mutating
 	# the session, then replay its presentations instead of trusting stored outcomes.
-	if data.get("format", "") != "demonologist-case-workshop-2" or not data.get("seed") is float and not data.get("seed") is int:
-		return "This experiment uses a different Workshop model. Version 2 is required for reliable replay."
+	if data.get("format", "") != "demonologist-case-workshop-3" or not data.get("seed") is float and not data.get("seed") is int:
+		return "This experiment uses a different Workshop model. Version 3 is required for reliable replay."
 	if not is_finite(float(data.seed)) or data.seed < 1 or data.seed > 2147483647 or float(int(data.seed)) != float(data.seed):
 		return "Invalid scenario seed."
 	var candidate = get_script().new(int(data.seed))
@@ -81,6 +93,8 @@ func restore(data: Dictionary) -> String:
 			var listener: Dictionary = candidate.listeners[i]
 			listener.trust = candidate.baseline[i].trust
 			listener.confidence = candidate.baseline[i].confidence
+			for field in ["insight", "reasoning_mode", "confidence_mode"]:
+				listener[field] = candidate.baseline[i][field]
 			listener.npc_trust = candidate.baseline[i].npc_trust.duplicate(true)
 			listener.reading_reliability = candidate.baseline[i].reading_reliability.duplicate(true)
 			for person in candidate.scenario.public_view.people:
@@ -101,6 +115,8 @@ func restore(data: Dictionary) -> String:
 	for i in range(listeners.size()):
 		listeners[i].trust = baseline[i].trust
 		listeners[i].confidence = baseline[i].confidence
+		for field in ["insight", "reasoning_mode", "confidence_mode"]:
+			listeners[i][field] = baseline[i][field]
 		listeners[i].npc_trust = baseline[i].npc_trust.duplicate(true)
 		listeners[i].reading_reliability = baseline[i].reading_reliability.duplicate(true)
 		for person in scenario.public_view.people:
@@ -196,11 +212,13 @@ func validate_jury(value) -> String:
 		var juror = value[i]
 		if not juror is Dictionary or juror.get("id") != scenario.jury[i].id or juror.get("knowledge") != scenario.jury[i].knowledge:
 			return "Jury identity or personal knowledge differs from the fixture."
-		if juror.get("name") != scenario.jury[i].name or juror.get("preset") != scenario.jury[i].preset or juror.get("ledger") != {} or juror.get("case_memory") != {}:
+		if juror.get("name") != scenario.jury[i].name or juror.get("preset") != scenario.jury[i].preset or juror.get("ledger") != {} or juror.get("case_memory") != {} or juror.get("theories") != {}:
 			return "Invalid baseline jury identity or memory."
-		for field in ["trust", "confidence"]:
+		for field in ["trust", "confidence", "insight"]:
 			if not _unit_number(juror.get(field)):
 				return "Invalid jury trait."
+		if juror.get("reasoning_mode") not in ["full", "bounded"] or juror.get("confidence_mode") not in ["scale", "persistence"]:
+			return "Invalid reasoning or confidence mode."
 		for field in ["npc_trust", "suspicion"]:
 			if not juror.get(field) is Dictionary:
 				return "Invalid jury relationship settings."

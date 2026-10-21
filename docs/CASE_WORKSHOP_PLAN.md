@@ -1,9 +1,10 @@
 # Case Workshop: revised implementation plan
 
 Updated October 21, 2026 after reviewing the user's pasted Opus discussion against
-the Workshop and main simulation. Slices 1 and 2 are now implemented and verified
+the Workshop and main simulation. Slices 1–3 are now implemented and verified
 on `codex/case-workshop`, including the case/line/evidence structure and a controlled
-soft-factor convergence experiment. Current behavior, provisional tuning and limits
+soft-factor convergence experiment, bounded Insight and confidence persistence.
+Current behavior, provisional tuning and limits
 are documented in [CASE_WORKSHOP.md](CASE_WORKSHOP.md). Later slices remain proposed.
 
 ## Direction
@@ -260,6 +261,16 @@ available direct self-knowledge conflicts; new contrary evidence can dislodge a
 confident theory; repeat presentations do not farm fresh reasoning rolls. Log the
 premises noticed, alternatives tested and precise source of each attitude change.
 
+**Implemented experiment:** deterministic Low/Medium/High attention and search profiles;
+direct candidate construction independent of the referee; considered/ignored evidence
+and line connections; tested alternatives and explicit provisional versus exhaustive
+statuses. Comparisons clone the same juror and starting attitudes. Private alignment,
+reading receipt and known whereabouts are protected without making gifts infallible.
+Confidence persistence is an alternative to effect scaling, remembers only a partial
+target/epoch commitment, and can revise without inventing illness explanations.
+Repetition is stable; version-3 replay reconstructs theories from presentations.
+This slice does not add autonomous town-wide theory construction or temporal exceptions.
+
 ## Slice 4 — soft evidence in the same case interface
 
 **Deliverable:** compare two recurring patterns, unexplained outings and crime-scene
@@ -362,18 +373,22 @@ References below identify line numbers in the user-provided Opus paste, headed
 | Lines 183, 223: reuse 3/4/5 memory; four to six claims are cheap | Current recall is 2–6; recall and reasoning have different jobs. Measure solver costs before setting budgets. |
 | Lines 199, 203–216, 243–244: fixed private facts, one theory, automatic poison excuses, searched worlds called forced | Protect experienced facts without assuming infallible gifts or omniscience. Make theory commitment defeasible and alternatives visible. Never call limited-search acceptance proof. |
 
-**Delivered scope:** slices 1 and 2. Shared credibility states now replace strongest-path
+**Delivered scope:** slices 1–3. Shared credibility states now replace strongest-path
 selection for reading arguments; an old-model comparator remains visible. Source trust
 and per-reading accuracy are separate experimental inputs. Conflict questions preserve
 their evidence roots and report-level accuracy weights. The case supports six reasoning
-lines, isolated alternatives, citations and intermediate claims, with version-2 replay.
+lines, isolated alternatives, citations and intermediate claims, with version-3 replay.
+Bounded reasoning has separate attention and rival search, visible missed connections
+and a complete referee comparison. Confidence can alternatively sustain a defeasible
+partial theory without stacking the original incoming-effect multiplier.
 Tests cover genuine corroboration, shared Merrin dependence, indirect convergence,
 neutral/contrary factors, duplicate incidents, retraction, hidden-truth independence and
-actual UI controls. The interface was rendered and inspected; main-game argument and
+actual UI controls, paired Insight, private knowledge and confidence revision. The
+interface was rendered and inspected; main-game argument and
 belief regression suites also passed.
 
-**Remaining scope:** slices 3–5 are experiments with decision gates. Current convergence
+**Remaining scope:** slices 4 and 5 are experiments with decision gates. Current convergence
 uses explicitly supplied test factors, not inferred movement/trace likelihoods. Direct
 outing patterns retain their earlier heuristic. Full causal health/transition histories,
-bounded Insight reasoning, multiple simultaneous cases and production integration remain
+autonomous reasoning, multiple simultaneous cases and production integration remain
 future work. This is not a commitment to a full Bayesian mind or one-world NPCs.

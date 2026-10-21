@@ -4,10 +4,15 @@ extends RefCounted
 
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
+const Reasoner = preload("res://workshop/reasoner.gd")
 static var cache: Dictionary = {}
 
-static func assess(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
+static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}) -> Dictionary:
 	var case_data = Graph.compile_case(view, value)
+	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
+	var attention = Reasoner.prepare(view, value, listener)
+	if bounded or case_data.conclusion.type == "conflict":
+		case_data = attention.case
 	var cards: Array = Solver.selected(view, case_data)
 	var factor_refs: Array = []
 	for factor in case_data.test_factors:
@@ -26,6 +31,10 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary) ->
 	var requirements = {}
 	for card in cards:
 		var required: Array = []
+		if card.id in attention.private_checks.rejected:
+			var known_key: String = "firsthand:" + Solver.semantic_key(card)
+			_add_atom(atoms, known_key, 0.0)
+			required.append(known_key)
 		var source_key: String = "source:" + card.source
 		_add_atom(atoms, source_key, source_quality(listener, card.source))
 		required.append(source_key)
@@ -47,7 +56,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary) ->
 	var strongest = 0.0
 	var states = 0
 	var impossible = 0.0
-	var ranks = prior_scores(view, listener)
+	var ranks = prior_scores(view, listener, bias)
 	for mask in range(1 << uncertain.size()):
 		var weight = 1.0
 		var accepted = {}
@@ -61,9 +70,14 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary) ->
 		if weight <= 0.0:
 			continue
 		var active: Array = cards.filter(func(c): return requirements[c.id].all(func(key): return accepted[key]))
-		var solved = _solve(view, active, listener.knowledge)
+		var solved = {}
+		var searched = {}
+		if bounded:
+			searched = Reasoner.search(view, case_data, active, listener, attention.limits)
+		else:
+			solved = _solve(view, active, listener.knowledge)
 		states += 1
-		if solved.worlds.is_empty() or not solved.movement_ok:
+		if (bounded and searched.status == "inconsistent") or (not bounded and (solved.worlds.is_empty() or not solved.movement_ok)):
 			impossible += weight
 			continue
 		total += weight
@@ -75,8 +89,8 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary) ->
 				used_factors.append(factor.label)
 		var contributing: Array = active.filter(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])
 		var a = 0.0
-		var all_hold: bool = solved.worlds.all(func(w): return Solver.holds(view, w, case_data.conclusion))
-		var any_hold: bool = solved.worlds.any(func(w): return Solver.holds(view, w, case_data.conclusion))
+		var all_hold: bool = searched.status == "entailed_in_attention" if bounded else solved.worlds.all(func(w): return Solver.holds(view, w, case_data.conclusion))
+		var any_hold: bool = not searched.support.is_empty() if bounded else solved.worlds.any(func(w): return Solver.holds(view, w, case_data.conclusion))
 		if all_hold and presented_reading:
 			a = 1.0
 			forced_mass += weight
@@ -85,11 +99,23 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary) ->
 			if not paths.has(path):
 				paths.append(path)
 		elif any_hold and ((presented_reading and not contributing.is_empty()) or not factors.is_empty()):
-			a = possibility(view, solved.worlds, case_data.conclusion, listener, factors, ranks)
-			if contributing.is_empty():
+			if bounded and searched.status == "provisional":
+				var ratio = _direct_ratio(factors, case_data.conclusion)
+				if contributing.is_empty():
+					a = 0.16 * (ratio / (1.0 + ratio) - 0.5)
+				else:
+					a = minf(0.95, (0.76 if contributing.size() >= 2 else 0.3) * 2.0 * ratio / (1.0 + ratio))
+				if not bias.is_empty() and not Solver._position_holds(view.people.map(func(p): return p.id), searched.support, bias.target, bias.position):
+					a /= bias.factor
+			elif bounded:
+				a = possibility(view, [searched.support, searched.rival], case_data.conclusion, listener, factors, ranks)
+			else:
+				a = possibility(view, solved.worlds, case_data.conclusion, listener, factors, ranks)
+			if contributing.is_empty() and not (bounded and searched.status == "provisional"):
 				# A factor about someone else that does not distinguish this conclusion
 				# must not create the generic 'possible accusation' tier by its presence.
-				a -= possibility(view, solved.worlds, case_data.conclusion, listener, [], ranks)
+				var candidates: Array = [searched.support] + ([] if searched.rival.is_empty() else [searched.rival]) if bounded else solved.worlds
+				a -= possibility(view, candidates, case_data.conclusion, listener, [], ranks)
 			var positions: Dictionary = case_data.positions.duplicate(true)
 			positions.erase(case_data.conclusion.target)
 			var answers: Dictionary = case_data.answers.duplicate(true)
@@ -98,8 +124,13 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary) ->
 					if card.role == "rumormonger":
 						answers.erase(card.id)
 			if not positions.is_empty() or not answers.is_empty():
-				var chosen = Solver.solve(view, active, positions, answers, listener.knowledge)
-				if not chosen.worlds.is_empty() and chosen.worlds.all(func(w): return Solver.holds(view, w, case_data.conclusion)):
+				var conditional = false
+				if bounded:
+					conditional = not searched.support.is_empty()
+				else:
+					var chosen = Solver.solve(view, active, positions, answers, listener.knowledge)
+					conditional = not chosen.worlds.is_empty() and chosen.worlds.all(func(w): return Solver.holds(view, w, case_data.conclusion))
+				if conditional:
 					a = maxf(a, 0.4)
 					conditional_mass += weight
 		agreement += weight * a
@@ -120,12 +151,43 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary) ->
 		"conflict_mass": impossible, "strongest_state": strongest, "factors": used_factors,
 		"model": "Experimental credibility-state mixture; weights are uncalibrated. Test factors are supplied inputs, not movement likelihoods."}
 
+static func explain(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
+	var attention = Reasoner.prepare(view, value, listener)
+	var considered = attention.case
+	var cards = Solver.selected(view, considered)
+	for id in listener.knowledge.get("own_reports", []):
+		if not cards.any(func(c): return c.id == id):
+			cards.append(Solver.card_by_id(view, id))
+	var accepted: Array = cards.filter(func(c): return c.id not in attention.private_checks.rejected and source_quality(listener, c.source) >= 0.4 and (c.kind != "report" or listener.reading_reliability.get(Solver.semantic_key(c), 1.0) >= 0.5))
+	var limits: Dictionary = attention.limits if listener.get("reasoning_mode", "full") == "bounded" else {"support": 840, "rivals": 840, "complete": true}
+	var result = Reasoner.search(view, considered, accepted, listener, limits)
+	result.merge(attention)
+	result.erase("case")
+	result["accepted"] = accepted.map(func(c): return c.id)
+	result["doubted"] = cards.filter(func(c): return c not in accepted).map(func(c): return c.id)
+	var factors: Array = considered.test_factors.filter(func(f): return f.routes.any(func(route): return route.all(func(id): return accepted.any(func(c): return Solver.semantic_key(c) == Solver.semantic_key(Solver.card_by_id(view, id))))))
+	var ranks = prior_scores(view, listener)
+	result["support_score"] = world_score(view, result.support, ranks, factors)
+	result["rival_score"] = world_score(view, result.rival, ranks, factors)
+	result["has_evidence"] = not Solver.selected(view, considered).is_empty()
+	result["assumption_note"] = "Search explanation grants source weight >= 0.4 and reading accuracy >= 0.5; numerical conviction averages credibility states."
+	return result
+
 static func source_quality(listener: Dictionary, source: String) -> float:
 	if source == listener.id:
 		return 1.0
 	if source == "player":
 		return 0.9
 	return clampf(0.2 + 0.65 * listener.npc_trust.get(source, 0.5) - 0.35 * listener.suspicion.get(source, 0.1), 0.05, 0.95)
+
+static func _direct_ratio(factors: Array, conclusion: Dictionary) -> float:
+	if conclusion.type not in ["evil", "good", "suspicious"]:
+		return 1.0
+	var exponent = 0.0
+	for factor in factors:
+		if factor.target == conclusion.target:
+			exponent += float(factor.log2_ratio) * (-1.0 if conclusion.type == "good" else 1.0)
+	return pow(2.0, exponent)
 
 static func _add_atom(atoms: Array, key: String, weight: float) -> void:
 	if not atoms.any(func(a): return a.key == key):
@@ -134,14 +196,14 @@ static func _add_atom(atoms: Array, key: String, weight: float) -> void:
 static func _solve(view: Dictionary, cards: Array, knowledge: Dictionary) -> Dictionary:
 	var signatures: Array = cards.map(func(c): return JSON.stringify([Solver.semantic_key(c), c.kind, c.source, c.get("role"), c.get("night"), c.get("block"), c.get("subject"), c.get("observed_at"), c.get("data", {})]))
 	signatures.sort()
-	var key = JSON.stringify([view.people, view.evil_count, signatures, knowledge.get("good", [])])
+	var key = JSON.stringify([view.people, view.evil_count, signatures, knowledge])
 	if not cache.has(key):
 		if cache.size() > 512:
 			cache.clear()
 		cache[key] = Solver.solve(view, cards, {}, {}, knowledge)
 	return cache[key]
 
-static func prior_scores(view: Dictionary, listener: Dictionary) -> Dictionary:
+static func prior_scores(view: Dictionary, listener: Dictionary, bias: Dictionary = {}) -> Dictionary:
 	var ranks = {}
 	for world in _solve(view, [], listener.knowledge).worlds:
 		var score = 1.0
@@ -153,8 +215,20 @@ static func prior_scores(view: Dictionary, listener: Dictionary) -> Dictionary:
 				score *= maxf(0.15 + suspicion * 1.2 - (trust - 0.5) * 0.5, 0.02)
 			else:
 				score *= maxf(0.3 + (0.6 - suspicion) * 0.6 + (trust - 0.5) * 0.4, 0.05)
+		if not bias.is_empty() and Solver._position_holds(view.people.map(func(p): return p.id), world, bias.target, bias.position):
+			score *= bias.factor
 		ranks[world.evil * view.people.size() + world.marked] = score
 	return ranks
+
+static func world_score(view: Dictionary, world: Dictionary, ranks: Dictionary, factors: Array) -> float:
+	if world.is_empty():
+		return 0.0
+	var score: float = ranks.get(world.evil * view.people.size() + world.marked, 0.0)
+	for factor in factors:
+		var target: int = view.people.map(func(p): return p.id).find(factor.target)
+		if target >= 0 and world.evil & (1 << target):
+			score *= pow(2.0, float(factor.log2_ratio))
+	return score
 
 static func possibility(view: Dictionary, worlds: Array, conclusion: Dictionary, listener: Dictionary, factors: Array = [], ranks: Dictionary = {}) -> float:
 	if ranks.is_empty():
@@ -162,11 +236,7 @@ static func possibility(view: Dictionary, worlds: Array, conclusion: Dictionary,
 	var supporting = 0.0
 	var rival = 0.0
 	for world in worlds:
-		var score: float = ranks.get(world.evil * view.people.size() + world.marked, 0.0)
-		for factor in factors:
-			var target: int = view.people.map(func(p): return p.id).find(factor.target)
-			if target >= 0 and world.evil & (1 << target):
-				score *= pow(2.0, float(factor.log2_ratio))
+		var score = world_score(view, world, ranks, factors)
 		if Solver.holds(view, world, conclusion):
 			supporting = maxf(supporting, score)
 		else:

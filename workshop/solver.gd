@@ -42,7 +42,7 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 	case_data = Graph.compile_case(view, case_data)
 	var cards = selected(view, case_data)
 	if case_data.conclusion.type == "conflict":
-		cards = cards.filter(func(c): return c.id in Graph.roots(case_data, case_data.conflict_scope))
+		cards = cards.filter(func(c): return c.id in Graph.roots(case_data, case_data.conflict_scope) or c.id in knowledge.get("own_reports", []))
 	var base = solve(view, cards, {}, {}, knowledge)
 	var proposed = solve(view, cards, case_data.positions, case_data.answers, knowledge)
 	var errors = validate_answers(view, case_data) + case_data.get("graph_errors", [])
@@ -142,13 +142,18 @@ static func solve(view: Dictionary, cards: Array, positions: Dictionary = {}, an
 		var accepted: Dictionary = report_matches[key]
 		worlds = worlds.filter(func(w): return accepted.has(w.evil * ids.size() + w.marked))
 	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
-	var movement_key = JSON.stringify([ids, movement_cards, answers])
+	var movement = movement_for(view, movement_cards, answers, knowledge)
+	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
+
+static func movement_for(view: Dictionary, cards: Array, answers: Dictionary = {}, knowledge: Dictionary = {}) -> Dictionary:
+	var ids: Array = view.people.map(func(p): return p.id)
+	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
+	var movement_key = JSON.stringify([ids, movement_cards, answers, knowledge])
 	if not movement_cache.has(movement_key):
 		if movement_cache.size() > 256:
 			movement_cache.clear()
-		movement_cache[movement_key] = _movement(view, movement_cards, answers)
-	var movement: Dictionary = movement_cache[movement_key]
-	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
+		movement_cache[movement_key] = _movement(view, movement_cards, answers, knowledge)
+	return movement_cache[movement_key]
 
 static func popcount(bits: int) -> int:
 	var count = 0
@@ -166,6 +171,7 @@ static func _position_holds(ids: Array, world: Dictionary, id: String, position:
 		"evil": return evil
 		"good": return not evil
 		"marked": return world.marked == index
+		"unmarked": return world.marked != index
 	return true
 
 static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
@@ -199,7 +205,7 @@ static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary,
 			return true
 	return false
 
-static func _movement(view: Dictionary, cards: Array, answers: Dictionary) -> Dictionary:
+static func _movement(view: Dictionary, cards: Array, answers: Dictionary, knowledge: Dictionary = {}) -> Dictionary:
 	var ids: Array = view.people.map(func(p): return p.id)
 	var nights = {}
 	var okay = true
@@ -210,6 +216,10 @@ static func _movement(view: Dictionary, cards: Array, answers: Dictionary) -> Di
 		var possibilities: Array = []
 		for mask in range(1 << ids.size()):
 			var valid = true
+			var own: String = knowledge.get("self", "")
+			if own in ids and knowledge.get("own_outings", {}).has(str(night)):
+				if ((mask & (1 << ids.find(own))) != 0) != knowledge.own_outings[str(night)]:
+					continue
 			for card in relevant:
 				var required: Array = []
 				if card.kind == "sighting":
