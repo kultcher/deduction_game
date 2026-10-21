@@ -8,6 +8,10 @@ The Workshop freezes a scripted ten-person town at dawn on day 3. It tests expre
 interpreting and revising a case. Its new interpreter does not change the main game's
 argument, persuasion, voting or dialogue systems.
 
+The [revised implementation plan](CASE_WORKSHOP_PLAN.md) records the October 21
+design review, known interaction gaps, proposed next slices and acceptance checks.
+That plan describes future work; the behavior below describes the current prototype.
+
 ## Try these experiments
 
 1. **Load example > Surveyor only.** Leave slots unknown and present the case. A partial
