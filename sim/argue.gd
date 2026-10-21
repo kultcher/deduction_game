@@ -65,6 +65,8 @@ const TEMPLATE_HINTS = {
 	"proven_good": [["a reading naming them in a pair", "it points at the other"],
 		["a reading naming them with someone else proven good", "the reading is false"]],
 	"trace": [["someone seen on that block that evening", "they were near where the killer spent the evening"]],
+	"secret_claim": [["a sighting of them out at night", "their confessed secret may explain the movement"],
+		["a reading implicating them (if they claim Marked)", "the reading may reflect their secret"]],
 	"dropped": [["someone who lives on that block saying they were home that night", "someone from the block was out"]],
 	"withheld": [["their claim to that gift", "they're hiding something, or just cautious"]],
 	"vigil": [["a sighting of someone on that block that night", "your vigil says otherwise"],
@@ -193,6 +195,7 @@ static func assertions(card: Dictionary) -> Array:
 		"vigil":
 			out.append({"t": "vigil", "block": card["block"], "night": day, "seen": [], "src": src, "card": n})
 		"secret":
+			out.append({"t": "secret_claim", "who": card.get("owner", subj[0] if not subj.is_empty() else src), "mod": card.get("mod", ""), "src": src, "card": n})
 			if card.has("block"):
 				out.append({"t": "out", "who": card["owner"], "block": card["block"], "night": day, "src": src, "card": n, "dest": true})
 		"home":
@@ -569,6 +572,23 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 			who6, [b])
 		m6["relation"] = "inference"
 		return m6
+	# Confessions are testimony, not a hard clear. The player can argue an innocent
+	# explanation; listeners can still doubt the person who supplied it.
+	if ta == "secret_claim" and tb == "out" and a["who"] == b["who"] and a.get("mod", "") in ["", "lovers", "sleepwalker"]:
+		var sc = {"type": "secret_mod", "mod": "lovers"} if a.get("mod", "") == "lovers" else {"type": "secret"}
+		var sx: Array = [_clear(w, a["who"], sc, "%s's confessed secret explains being out" % _nm(w, a["who"]))]
+		if _is_npc(w, a["src"]):
+			sx.append(_lied(w, a["src"], a["card"]))
+		var sm = _mk(w, "secret_explains_movement", "%s has an account of an innocent secret that could explain being out on night %d." % [_nm(w, a["who"]), b["night"]], cards, sx, a["who"], [])
+		sm["relation"] = "inference"
+		return sm
+	if ta == "secret_claim" and a.get("mod", "") == "marked" and tb == "reading" and b["role"] in ["seer", "dowser", "hearthwitch", "archivist", "gravedigger", "martyr"] and a["who"] in Gifts.implicated({"role": b["role"], "data": b["data"]}):
+		var mx: Array = [_clear(w, a["who"], {"type": "marked"}, "%s may read as evil because they are Marked" % _nm(w, a["who"]))]
+		if _is_npc(w, a["src"]):
+			mx.append(_lied(w, a["src"], a["card"]))
+		var mm = _mk(w, "marked_explains_reading", "%s is said to be Marked, which could explain the reading against them." % _nm(w, a["who"]), cards, mx, a["who"], [])
+		mm["relation"] = "inference"
+		return mm
 	# A death-scene trace points to a block for the evening; someone was there then.
 	if ta == "trace" and tb == "at" and b["block"] == a["block"] and b["day"] == a["day"] and b["phase"] == C.EVENING:
 		var m4 = _mk(w, "trace_match", "The trace says the killer spent the evening of day %d on %s, and %s was there." %
@@ -932,7 +952,12 @@ static func _knows_false(w, n, s: Dictionary) -> int:
 			var h: String = n.history.get(w.time_key(s["night"], C.NIGHT), "")
 			if h == "":
 				return 0
-			return -1 if (h.begins_with("night:") and h.substr(6) == s["block"]) else 1
+			if not h.begins_with("night:"):
+				return 1
+			if s.get("dest", false):
+				return -1 if h.substr(6) == s["block"] else 1
+			# A sighting can be on the way, not only at the recorded destination.
+			return -1 if n.role == "lamplighter" or s["block"] in C.route(n.home_block, h.substr(6)) else 1
 		"home":
 			var h2: String = n.history.get(w.time_key(s["night"], C.NIGHT), "")
 			if h2 == "":
@@ -955,6 +980,10 @@ static func _own_lie(w, n, c: Dictionary, supports: Array) -> bool:
 
 static func _expl_weight(w, n, e: Dictionary) -> float:
 	var who: String = e.get("blame", "")
+	var conclusion: Dictionary = e.get("conclusion", {})
+	# Firsthand role knowledge constrains explanations about oneself, never other people.
+	if conclusion.get("a", "") == n.id and conclusion.get("type", "") == "role" and conclusion.get("role", "") != n.role:
+		return 0.0
 	if e.has("assert"):
 		var k = _knows_false(w, n, e["assert"])
 		if k == 1:

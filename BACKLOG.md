@@ -16,12 +16,58 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 ## 2. Small features and tuning (a day or so each)
 
 ### Deduction types and templates
+- **Starting secret-count card.** Generate a public setup card stating how many secrets
+  are in town. Decide whether the count means modifier types, holders (Lovers count
+  twice), or includes ordinary personal secrets; do not expose assignments. (61251/25923)
+  [decided: card; count definition open]
+- **One evaluation path for generic and structured cases.** In 25923, vigil sighting
+  #86 + death #87 (Nisha at Merrin's murder block that night) had no template, while
+  the generic support sum capped at 1.0 agreement. `trace_match` is specifically an
+  evening trace + evening presence, and faces competing explanations. Add the missing
+  night-sighting + murder relationship (the death assertion also needs its location)
+  with the broader fit-check work, so recognizing a case cannot make it weaker. [decided]
+- **Independent support versus repetition.** The ledger currently takes the strongest
+  justification for a conclusion. Preserve duplicate-evidence suppression, but let
+  separate nights and independent sources build a cumulative case. Tie this to the
+  repeated-trace item below and the belief/action split, rather than raising every
+  suspicion increment. (61251) [decided]
 - **Template generalization** (now part of "Cases instead of proofs" in section 4: one fit check per evidence type;
   originally: one translation table per role, so pair elimination
   etc. work for any gift that makes the same kind of statement). (DESIGN, deferred to
   roster expansion) [decided]
 
 ### NPC behaviour
+- **Secret awareness and bluffing.** Lovers' existing confessions now carry a usable
+  secret type and can explain night movement. The same card/interpretation format can
+  represent a reported Marked secret, but no spontaneous Marked confession is added:
+  decide whether holders know they're Marked, how one asks about it, and how evil can
+  claim it too. Currently only Lovers have an explicit modifier-confession path. Keep
+  these as attributed claims, not hard alignment confirmations. (61251/25923) [open]
+- **Nisha's reticence.** 25923 used Gossip 0.11, Privacy 0.60, Trust 0.38. The shared
+  gossip rule returns zero below Gossip 0.20 unless pressure reaches 0.50; her pressure
+  stayed around 0–0.21. This explains repeated refusals without an evil-only penalty.
+  Consider a softer minimum-information policy separately from the bug fixes. [watch]
+- **Believable public revisions.** Let the player withdraw or revise an earlier case,
+  while NPCs may retain reasons they still believe. In 25923 the final Nisha nomination
+  cited the player's earlier argument after the player had adopted a different world.
+  Private guesses must remain private. [open]
+- **Quiet-night evidence.** Sightings outside an actual murder scene currently get
+  only 0.12 of normal weight, including failed attacks. Support a player-argued link
+  between protection, suspected attack and movement without exposing hidden attacks.
+  In 61251 the successful Fenwick ward suppressed the apparent value of the sightings.
+  [open]
+- **Vote resistance feedback.** Distinguish disbelief from execution priority and
+  distrust of the player. In 25923 the -0.4 preference for Lian already on the block
+  stopped several good NPCs voting for Nisha despite substantial suspicion. Revisit
+  with meeting/vote talk; do not turn every plausible alternative into inaction. [open]
+- **Evil vote stakes beyond the Demon.** Cover can no longer cause an evil NPC to
+  nominate/vote for the Demon. The existing pivot heuristic still considers only
+  votes already cast for other nominees. Future tactical bussing (including any
+  deliberate Scion succession) needs remaining-voter estimates and a team-benefit
+  policy; preserve ordinary minion bussing meanwhile. (25923) [open]
+- **Outcome attribution.** Separate identifying evil alignment, identifying an exact
+  minion gift, and making a useful execution. 61251 correctly identified Jory as evil
+  but guessed Breathstealer; executing the Revenant turned the last good NPC. [open]
 - **From playtest 61251** (an evil team the player had identified won anyway). [decided]
   - **A proven lie should hurt an info claimant's credibility hard.** Constance (the
     Breathstealer bluffing Seer) was caught in an off-route lie on day 2, and listeners
@@ -342,6 +388,26 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 ---
 
 ## Closed
+
+- **61251/25923 concrete fixes (Oct 20):** private card targets include the listener;
+  speaking for their own claim acknowledges support and grants +0.03 trust once per
+  fact, instead of pressing them. Daytime whereabouts produce attributed cards even
+  when the speaker withholds other sightings. Publicly cited night sightings produce
+  the same evidence cards as private testimony, including evil fabrications.
+- **Disclosure consistency:** a Night Watch's withheld reading cannot be obtained by
+  switching to whereabouts or person-specific follow-ups. Repeating old readings
+  before withholding newer ones now says "the rest of my readings" when citing fear.
+- **Secrets as evidence:** existing private, public-defence and gossip confessions
+  carry secret metadata; linking a confessed personal secret with night movement
+  offers a defeasible explanation. Marked-report support is wired for future disclosure.
+- **Own knowledge and evil cover:** NPCs do not entertain another gift as their own
+  identity; ordinary sightings can be on their route rather than only at their final
+  destination. Evil cover cannot nominate or vote to execute its Demon. A Warden
+  bluff may claim to protect a teammate, avoiding a metagame alignment tell.
+- **UI and phrasing:** spent nomination button disabled with tooltip; blue X on homes
+  of the dead without crime scenes; circular nominee portrait crop; consistent Clear
+  filters hover/pressed styles. Alternative-explanation replies label a subsequent
+  preferred suspect as a judgement about the whole case, not a trace-specific match.
 
 Settled decisions, built work and parked levers, kept for the record.
 
