@@ -469,6 +469,16 @@ A running list of patterns that come up in play, or that the mechanics make mean
 but that no link template recognises yet. Add to it whenever a playtest log shows
 "no template matched" on a combination that should mean something.
 
+- **Different evening location versus a death-scene trace.** A player sighting of
+  Fenwick on the Docks on evening N plus a trace pointing to the killer spending that
+  same evening on the Square should support "Fenwick is not the Demon" as a soft
+  defence. Require matching day/evening and genuinely different blocks; preserve a
+  misleading trace or unreliable witness as alternatives. The existing `trace_match`
+  handles matching locations, but the different-location case currently falls back to
+  generic defence strengths (.15 for the sighting plus .10 for the off-subject trace),
+  without understanding the mismatch. Do not infer a hard clear or treat residence
+  as evidence of evening presence. Keep NPC reasoning and player deductions aligned.
+  (Oct 20 tuning clarification)
 - **Succession breaks earlier clears.** A Seer "no" (or any not-the-demon clear) only
   speaks for the demon *as of that night*. If a hanging with 5+ alive (so a Scion could
   rise) falls between two readings, group elimination, overlap and pair elimination
