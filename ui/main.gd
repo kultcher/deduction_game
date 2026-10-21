@@ -55,6 +55,7 @@ var notes_edit: TextEdit
 var roles_win: Window
 var roles_box: VBoxContainer
 var log_text = LogText.new()
+var workshop_win: Window
 
 func _ready() -> void:
 	var bg = ColorRect.new()
@@ -119,7 +120,7 @@ func _ready() -> void:
 	more.text = "More ▾"
 	more.flat = false
 	var mp: PopupMenu = more.get_popup()
-	for it in ["Cast (text)", "Timeline (text)", "Card list sidebar", "Write dev log"]:
+	for it in ["Cast (text)", "Timeline (text)", "Card list sidebar", "Write dev log", "Case Workshop"]:
 		mp.add_item(it)
 	mp.id_pressed.connect(_on_more)
 	top.add_child(more)
@@ -455,6 +456,16 @@ func _on_more(i: int) -> void:
 		side.visible = not side.visible
 	elif i == 3:
 		_run("log")
+	elif i == 4:
+		if not is_instance_valid(workshop_win):
+			workshop_win = Window.new()
+			workshop_win.title = "Case Workshop"
+			workshop_win.min_size = Vector2i(1120, 700)
+			workshop_win.size = Vector2i(1500, 950)
+			workshop_win.close_requested.connect(func(): workshop_win.hide())
+			add_child(workshop_win)
+			workshop_win.add_child(load("res://ui/case_workshop.tscn").instantiate())
+		workshop_win.popup_centered_ratio(0.95)
 
 func _open_notes() -> void:
 	notes_edit.text = g.case_notes

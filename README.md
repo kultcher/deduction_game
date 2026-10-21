@@ -16,6 +16,11 @@ This README covers running and playing.
 
 ## Running it
 
+**Case Workshop proof of concept:** choose **More > Case Workshop**, or run
+`ui/case_workshop.tscn` with F6. Assemble and revise a case from five evidence types in
+a frozen day-3 scenario, then present it to four adjustable mock jurors. See the
+[Workshop guide](docs/CASE_WORKSHOP.md) for experiments, limitations and tests.
+
 Requires Godot 4.4+ (tested with 4.4.1).
 
 **In the editor:** open the project and press Play. Pick a town size (7 or 10 townsfolk)
