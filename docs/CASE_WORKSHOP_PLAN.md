@@ -25,6 +25,74 @@ reasoner. Neither receives the scenario's hidden truth. Keep the current trust,
 suspicion, confidence, stance and replaceable-ledger shape while experimenting.
 Do not replace the main game's suspicion or voting systems in this proof of concept.
 
+## One case, several converging lines of reasoning
+
+The player should be able to build one case containing several named lines, each
+with evidence, proposed answers, assumptions and an intermediate conclusion. For
+example, the top-level claim might be “Constance is evil”, supported by:
+
+| Line | Its contribution to the combined case |
+| --- | --- |
+| Surveyor + Rumormonger + Dowser | Conditional on accurate readings, Hollis and Lian are evil and the Constance/Nisha alternatives remain. This line supplies a relationship between their identities. |
+| Constance's movements and crime-scene traces | Compare how well the observations fit the Constance-evil and Constance-good explanations, including a possible genuine Medium gift. Mere outings may fit both; route, timing and trace details can distinguish them. |
+| Evidence supporting Nisha's Warden claim | A credible protection account and a relevant quiet night can favor a genuine Warden explanation. Through the first line, evidence favoring Nisha being good also favors Constance being evil at the relevant time. |
+
+This is a design example, not a new finding about the original case-692 trace. A
+quiet night is not proof of Warden protection: attack eligibility, other protection,
+Veteran survival and the knell matter. The scripted Workshop itself uses Veteran
+survival for its first attack. Only information available to the listener may affect
+its explanation; the actual hidden cause is not an inference input.
+
+**Convergence is different from corroboration.** Two paths can independently support
+the same conclusion, but one line can instead establish alternatives while another
+helps choose between them. Neither line has to establish the final accusation alone.
+
+- Evaluate lines against a shared set of hypotheses. Join on person, role, alignment
+  epoch, reading/outing time and underlying event identity. The current separate
+  alignment and movement solvers need an explicit bridge for the relevant roles,
+  actions and trace causes; adding their final suspicion scores is not that bridge.
+- Accepted hard constraints restrict which joint explanations are possible. Soft
+  evidence changes their relative support. Both Constance/Nisha alternatives may
+  remain possible while one becomes more persuasive. Preserve that distinction in
+  replies and diagnostics; do not silently discard a low-weight alternative as false.
+- “Separate lines” describes how the player organizes a case, not statistical
+  independence. Shared witnesses, incidents and fault hypotheses remain shared.
+  A reused sighting or a derived intermediate conclusion is not fresh evidence.
+- Keep simultaneous premises distinct from alternative explanations. The interface
+  should distinguish “also supports this” from “another possible explanation” without
+  asking the player to write logic. Incompatible branch assumptions cannot secretly
+  support different parts of one supposedly coherent world.
+- A supported Medium explanation may make Constance's outings neutral or even favor
+  her innocence; repeated outings do not automatically increase guilt. Compare the
+  actual evidence under both explanations. A bare Medium claim does not settle them.
+- Doubting a reading can weaken the connection between Nisha and Constance while
+  leaving movement evidence intact. Discrediting a sighting can remove its effects
+  wherever it was cited without erasing the independent reading argument. Recompute
+  jointly; do not score an intermediate conclusion again as an independent premise.
+- Allow red-string connections or grouped cards to express these links, with readable
+  labels such as “supports”, “explains” and “conflicts with”. References point to the
+  same evidence wherever shown. Start with groups and explicit links; freeform board
+  layout is optional presentation work, not a prerequisite for testing the reasoning.
+
+**Delivery:** slice 1 establishes the case/line/evidence structure and references;
+slice 2 tests shared dependencies and convergence with a controlled soft factor;
+slice 4 supplies the actual movement/trace likelihood model. The controlled factor
+must be visibly marked as test input, not shipped evidence tuning. Test the combined
+case as well as each line alone. Under the same considered premises, changing only
+grouping, links that restate existing support, card order, venue or intermediate-card
+wrappers must not increase evidence weight. Explicitly connecting lines can focus an
+NPC's attention on an inference it previously missed; log that as newly noticed
+reasoning, not newly acquired evidence or a repeatable presentation bonus.
+
+**Acceptance checks:** with the reading premises accepted, evidence favoring Nisha's
+innocence shifts the Constance/Nisha comparison; evidence equally expected in both
+alternatives does not favor either; sufficiently strong contrary evidence can reverse
+the preference without changing the referee's logical result; removing a key reading
+weakens the indirect inference while preserving direct evidence. Shared sightings
+are counted once, mutually incompatible branch assumptions are exposed, and a
+low-Insight listener can follow individual lines without necessarily noticing their
+connection. Log when that connection was actually considered.
+
 ## What the review changes
 
 | Opus proposal | Decision and qualification |
@@ -69,6 +137,7 @@ Nisha Marked occur together in one branch; they are not mutually exclusive.
 | --- | --- |
 | Conditional logic | [solver.gd](../workshop/solver.gd) enumerates alignment/Marked assignments and separate night walker sets. It does not yet model joint role, route, health or transition histories. |
 | Credibility | [jury.gd](../workshop/jury.gd) evaluates subsets and retains the strongest weighted path. Distinct-source qualities multiply; equal alternate paths add nothing. These qualities are tuning scores, not calibrated probabilities. |
+| Convergence | Reading support and outing patterns compete for the strongest path; pattern support is only selected for a suspicious conclusion. The prototype does not jointly reweight the reading alternatives using movement or trace explanations. |
 | Personal knowledge | The jury adds its own reports as reliable constraints. Future health hypotheses must distinguish knowing what result one received from knowing that result was accurate. |
 | Claim citations | Night-gift explanations recognize selected explicit claim cards. Agnes's Lamplighter report is not currently converted into a usable claim citation. The UI does not expose a specific citation link. |
 | Conflict arguments | All selected cards supply the scope. The conflict conclusion has coefficient zero and no persistent report-doubt effect. Replacing an earlier accusation can still retract its old effect. |
