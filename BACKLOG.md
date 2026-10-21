@@ -13,6 +13,15 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
+- **Voting text when a block already exists.** Replace the generic majority message
+  with the actual replacement/tie counts in both the nomination prompt and meeting
+  view: "X to put [nominee] on the block instead of [current nominee]; X-1 to tie
+  (no one will be executed)." Use the recorded highest vote count plus one for X,
+  subject to the normal minimum. Also handle an empty block after an earlier tie,
+  where the high count still matters. Current UI and text prompts still display
+  only `vote_threshold()`; voting logic already distinguishes these outcomes.
+  (Oct 21) [decided]
+
 - **Lamplighter drop path order.** `_walk` rolls for a dropped item before the
   Lamplighter's path is expanded to all blocks. Its drops currently choose a public
   place only on its home block. Review whether drops should cover the full lamp route;
@@ -43,6 +52,33 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   roster expansion) [decided]
 
 ### NPC behaviour
+- **A genuinely neutral opinion.** Add "I'm not sure what to think" between trust
+  and suspicion for both good and evil NPCs. `answer_opinion` has several suspicion
+  bands, but its middle replies still choose between "seems all right" and
+  "something's off"; distinguish uncertainty from a refusal or a veiled accusation.
+  Do not create incriminating opinion evidence solely from neutrality.
+  (Oct 21) [decided; boundaries/wording open]
+- **Explain distrust of the player.** Good and evil NPCs with low player trust should
+  be able to say so and, where remembered, cite the reasons: misguided executions,
+  accusations, nominations, votes or broken confidences/promises. Use their known
+  history and beliefs, with the same presentation options for evil; a refusal alone
+  should not be the only signal. Coordinate with apologies and vote-resistance
+  feedback. (Oct 21) [decided; delivery/frequency open]
+- **Medium visits only Demon victims.** Restrict the gift's eligible dead to people
+  killed by the Demon, and update role descriptions, dialogue, target selection
+  and real/fake report consistency. Current `_medium_choice` considers every
+  unvisited dead person; a same-day tie favors Demon victims, so the requested
+  restriction is not implemented. Coordinate with the existing director-driven
+  visit proposal and keep misleading results possible. (Oct 21) [decided]
+- **Revenant revelation and reversible town uncertainty.** A publicly recognized
+  haunting should establish the executed Revenant as evil and add a small global
+  suspicion/uncertainty response to "anyone could be possessed." Current curse
+  effects add +0.15 only toward living yes-voters; they are not global, and
+  `free_turned` does not explicitly retire that curse ledger entry. Decide how
+  global anxiety combines with the justified voter-specific suspicion; it does
+  not change who can actually be possessed. Destroying the totem should reverse
+  the added haunting uncertainty without undoing independent evidence, and the
+  possessed person's identity must stay hidden. (Oct 21) [decided; amounts open]
 - **Secret awareness and bluffing.** Lovers' existing confessions now carry a usable
   secret type and can explain night movement. The same card/interpretation format can
   represent a reported Marked secret, but no spontaneous Marked confession is added:
@@ -122,7 +158,9 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   make bolder lies: fake readings in gifts the dead never claimed. (Oct 19) [decided]
 - **Storyteller-driven Medium visits.** Today the Medium visits the most recent dead it
   hasn't visited (demon victims first). Eventually: "I was called to Hollis's home to
-  commune with his spirit", chosen by a director. (Oct 19) [open]
+  commune with his spirit", chosen by a director. Limit the future director's pool
+  to Demon victims if the Oct 21 eligibility change above is implemented.
+  (Oct 19; dependency clarified Oct 21) [open]
 - **NPCs push back on nominations their own information contradicts** (a player-led
   nomination of the true Seer passed 7/8). (DESIGN playtests) [open]
 - **Lie severity:** a false gift report weighs more than a whereabouts lie, unless the
@@ -133,6 +171,16 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   addressed by the shadow self (evil's replies now differ from the good crowd's about
   twice as often as good's own disagreements, down from about five times); revisit
   after playtests. [watch]
+
+### Exploration
+- **Role hints from workplaces and haunts.** Occasionally reward searching an NPC's
+  workplace or known haunt with an attributed hint about their claimed/possible
+  gift. Coordinate with the evidence/role-hint system; searches should not become
+  guaranteed hidden-role verification. (Oct 21) [open; frequency/content open]
+- **Occasional free arrival search.** A balancing option to sometimes grant a free
+  ordinary search when moving to a new location. Exclude evidence searches; define
+  the eligible search types, chance and per-location/phase limits so revisiting
+  cannot farm free actions. (Oct 21) [knob]
 
 ### Numbers
 - **Unlimited Vigil strength.** (DESIGN open question) [watch]
@@ -147,29 +195,51 @@ These are candidates for the player's unified retuning proposal, not approved
 implementation changes. See TUNING.md for the audited current values.
 
 - **Privacy without compounding trust penalties.** Remove Privacy from initial player
-  trust and benign trust gains; keep its direct disclosure gates and consequences for
-  active prying. Distinguish ordinary questions on different topics from repeating a
-  refused or intrusive question when applying fatigue. [tentative]
+  trust and benign trust changes. High Privacy should scale consequences only for
+  actions a private person would resent, such as intrusive pressure or revealing
+  secrets; it should not be a core modifier of rapport gains/losses. Keep direct
+  disclosure gates. Distinguish ordinary questions on different topics from
+  repeating a refused or intrusive question when applying fatigue.
+  (Refined Oct 21) [tentative]
 - **Evidence can build NPC-to-NPC trust.** Consider a relationship gain when credible
   evidence reduces suspicion, especially a Clerk reading matching the listener's own
-  actual role. Scale by evidential strength and deduplicate the underlying fact.
+  actual role. Oct 21 examples: that listener currently loses 0.30 suspicion toward
+  the Clerk; consider adding about +0.20 relationship trust (provisional), and a
+  Seer reporting "no" on a good NPC can similarly build the subject's trust in the
+  Seer. Base acceptance on the subject/listener's knowledge, not hidden alignment.
+  Scale by evidential strength and deduplicate the underlying fact.
   Distinguish apparent innocence/sincerity from confidence in someone's judgment;
   preserve useful voting blocs without rewarding repeated retellings. [tentative]
 - **Diminishing trust changes near extremes.** Consider smaller gains near high trust
   and smaller losses near low trust, retaining a minimum effect and meaningful
-  consequences for serious betrayal. Do not suppress recovery simply because trust
-  is far from its initial baseline. Exact curve and baseline remain open. Review
+  consequences for serious betrayal. Oct 21 knob: keep a normal band of 0.30-0.70;
+  soften further losses below 0.30 and further gains above 0.70, while allowing
+  recovery toward the middle at normal strength. Exact curve remains open. Review
   permanent grief/confidence caps separately; scaling alone cannot repair them.
-  [tentative]
-- **Opinion strength and shared origins.** Review private heard-opinion strength
-  (raw .12) separately from meeting consensus (also starting at .12, with its own
-  fading/diminishing sequence). Several NPCs repeating one original story should not
-  count as independent evidence. Inspect provenance/accumulation before choosing a
-  numeric reduction. [tentative]
+  [knob; Oct 21 band specified]
+- **Fewer trust penalties for presenting evidence.** A balancing option to reserve
+  most trust loss for nominations, votes and other direct offenses, rather than
+  merely offering evidence. Preserve meaningful consequences for intrusive pressure
+  and betraying confidences. Audit presentation/press routing and fatigue so a
+  harmless presentation is not accidentally treated as an accusation or demand.
+  Coordinate with the Privacy pass and existing supportive presentations.
+  (Oct 21) [knob]
+- **Opinion strength and shared origins.** Keep private heard-opinion strength
+  (raw 0.12) separate from meeting consensus. Oct 21 proposal: reduce the first
+  three equal-weight meeting voices from 0.12 / 0.06 / 0.03 to 0.08 / 0.04 / 0.02
+  before relationship/hint/day modifiers, continuing the existing halving sequence.
+  Audited current constants are BASE=0.12, FADE=0.6 per day, CAP=0.3; the latter
+  two are not the second/third accusation strengths, and the requested reduction
+  has not been implemented. Keep fade/cap unchanged unless separately retuned.
+  Several NPCs repeating one original story should not count as independent
+  evidence; inspect provenance/accumulation alongside the base change.
+  [tentative; proposed values specified Oct 21]
 - **Martyr urgency.** Gradually lower the commitment threshold as days pass, with a
   floor, while retaining candidate preferences and the possibility of refusing when
   everyone looks deeply suspicious. Avoid a gift wasted solely because no ideal
-  confidant emerges. Exact schedule remains open. [tentative]
+  confidant emerges. Oct 21 specifies that the decline starts on Day 3; decrement
+  and floor remain open. Audited `World._martyr_choice` still requires 0.62 on
+  every day, so this has not been implemented. [tentative; Day-3 start specified]
 - **Demon victims' earlier information.** Strengthen belief that a Demon victim was
   reporting sincerely without automatically trusting every reading's accuracy.
   Current code clears the victim and doubles role-claim weight on recomputation,
@@ -261,6 +331,22 @@ exact values remain open. The code-derived examples and clarifications are in
   [decided; exact presentation open]
 
 ### UI
+- **Limited-use tool warnings.** Clearly warn before spending Ward and other
+  limited-use abilities; show remaining uses and that spending one is irreversible.
+  Current help and some labels already say "once per case", but the generic
+  "Ward someone..." and promise paths do not consistently communicate the limit
+  before selection/use. Cover direct targeting and promises; distinguish promising
+  a tool from actually consuming it. (Oct 21) [decided; warning presentation open]
+- **Selected filter rows first.** On the case board, promote rows explicitly selected
+  in the person/place filters above unselected rows; e.g. filtering for Agnes,
+  Constance and Dorian puts those three first. Preserve predictable order within
+  both groups and coordinate with all/any/exclusion and timeline layout.
+  (Oct 21) [decided]
+- **Hide Unselected.** Add a case-board toggle to hide rows not explicitly selected
+  by the active person/place filters. Keep this distinct from hiding evidence cards,
+  showing hidden cards, and the currently focused card/profile; define the
+  no-selection behavior and retain pinned-card/filter consistency.
+  (Oct 21) [decided; edge cases open]
 - **Long dropdowns in columns.** Once a dropdown exceeds roughly eight options,
   consider multiple columns: at most eight options per column for an uncategorized
   list, or columns grouped by existing categories. Example: the deduction planner's
@@ -284,8 +370,10 @@ exact values remain open. The code-derived examples and clarifications are in
 
 - **Expanded dialogue and trust management** (Oct 20; design candidates, pending
   the unified retuning proposal). [tentative]
-  - **Apologize for a specific incident:** a mistaken accusation, nomination, exposed
-    confidence, broken promise, or a friend's execution. Scale forgiveness by actual
+  - **Apologize for a specific incident:** add Apology under the existing Offer...
+    dialogue menu. Cover accusations, nominations against them, votes against them,
+    contributing to a loved one's execution, exposed confidence and broken promises.
+    (Menu placement and vote/loved-one examples added Oct 21.) Scale forgiveness by actual
     harm/danger (a failed nomination versus nearly being executed), the evidence
     available at the time, and responsibility taken. Insight can recognize either
     an understandable mistake or ignored contradictions; it is not automatic
@@ -295,8 +383,9 @@ exact values remain open. The code-derived examples and clarifications are in
   - **Suggest actions based on claimed role:** ask a Warden to protect a person, a
     Seer to check a person/pair, or a Night Watch to watch a block. Track request,
     response/commitment, intended action, actual action, and follow-up separately.
-    Trust, Confidence, Composure, danger, and competing priorities can affect
-    compliance; allow refusal or a counterproposal. Offer the same dialogue to evil
+    Trust, Confidence, Composure, danger, competing priorities, and the NPC's
+    relationship with the requested target can affect compliance; allow refusal
+    or a counterproposal. (Target relationship added Oct 21.) Offer the same dialogue to evil
     bluffers, who can lie about compliance/results, so requests do not verify roles.
     Exact trait interactions remain open.
   - **General requests can spread through town chats:** "Someone should check Nisha"
@@ -308,6 +397,12 @@ exact values remain open. The code-derived examples and clarifications are in
     useful; do not reward incriminating results by default. Prevent request spam,
     duplicate credit, and hidden-truth outcome checks. Follow-up dialogue can report
     success, disappointment, or a convincing evil lie.
+  - **Responsibility can cut both ways:** an NPC may feel guilt when their information
+    helps execute someone, especially when later evidence makes that execution look
+    mistaken. Consider this as a core NPC response as well as a request follow-up.
+    Base it on perceived responsibility and known outcomes; do not treat an
+    execution as vindication merely because the information was acted on.
+    (Oct 21) [tentative]
   - **Withdraw or revise a case:** explicitly retract public endorsement or explain
     changed reasoning without deleting the underlying evidence. NPCs may retain
     their own view and explain why. Private role guesses remain private.
@@ -320,11 +415,39 @@ exact values remain open. The code-derived examples and clarifications are in
     negotiation tree or multiple branching confidentiality terms; coordinate with
     existing confidence/secret-keeping rules rather than awarding duplicate credit.
 
+- **Learn personality through other NPCs.** Asking about someone can reveal one of
+  that person's traits and unlock its actual score in their profile, using the
+  existing learned-trait presentation. Example: Agnes calls Bartholomew stubborn,
+  revealing Confidence. Filter descriptions through the speaker's relationship:
+  a confident friend is "principled", a rival "pigheaded". Separate the revealed
+  trait/score from that subjective wording, and define which traits the speaker
+  can reasonably know and how often this occurs. Coordinate with public
+  friends/rivals and haunt disclosure; do not reveal hidden relationships.
+  (Oct 21) [decided; discovery rules open]
+- **NPCs voice doubt about their own readings.** Detect apparently inconsistent
+  results, such as repeated Seer checks of the same pair changing yes/no, and let
+  the NPC acknowledge that something is unusual. Higher Insight can also help
+  notice a mismatch with their leading explanation/world. Use information they
+  actually have, allow legitimate changes such as succession, and distinguish
+  suspicion of misdirection from admitting a lie. Coordinate with source
+  credibility and the section-4 case/world model; existing self-reading doubt
+  mechanics do not yet provide this general proactive dialogue.
+  (Oct 21) [decided; triggers/presentation open]
+
 - **Rebuttals and excuses.** Someone accused explains with their gift ("I was out
   because I'm the Lamplighter"; own-lie admissions are built), which buys some grace with listeners; evil without a
   fitting bluff can claim a fake secret. Biggest open hole: hidden night walkers frame
   themselves (Isolde 55774, Constance 96773; Lamplighter/Veteran/Sleepwalker/Warden hang rates). (DESIGN)
   Now part of the meeting-flow plan (docs/meeting_flow_plan.md, step 2). [decided]
+- **Medium relay credibility at both sources.** Audit/fix relayed readings so full
+  credence requires trusting both the Medium and the dead source. Current
+  `Mind.apply_info` stores the Medium as the ledger reliability source; the Medium
+  branch expands the dead reader's effects at 60% but does not retain a separate
+  live reliability dependency on that reader. Cover relayed readings, sightings and
+  opinions, both sources' sincerity, and each relevant reading's own night-specific
+  doubt without double-discounting. Keep relationship hearing weight distinct from
+  source honesty; never consult hidden actual poison/alignment for acceptance.
+  (Oct 21 code audit) [decided; exact combination open]
 - **Trust dynamics around sources (later).** A relayer may name their source outright,
   at the cost of that person's trust; and evil may try to trace an unnamed source ("the
   Seer told me") back to a person, to kill or frame them. (Oct 19) [open]
@@ -515,6 +638,13 @@ A running list of patterns that come up in play, or that the mechanics make mean
 but that no link template recognises yet. Add to it whenever a playtest log shows
 "no template matched" on a combination that should mean something.
 
+- **Time-scoped Revenant possession premise.** Let "X was possessed by a Revenant
+  on day D" be an explicit argument/case premise, so testimony and alignment claims
+  can be evaluated for the relevant time rather than invalidating the person's
+  whole history. Keep suspected possession distinct from confirmed knowledge and
+  do not expose the hidden victim. Deferred to the case-builder/theory work in
+  section 4. (Oct 21) [decided; deferred]
+
 - **Succession breaks earlier clears.** A Seer "no" (or any not-the-demon clear) only
   speaks for the demon *as of that night*. If a hanging with 5+ alive (so a Scion could
   rise) falls between two readings, group elimination, overlap and pair elimination
@@ -559,9 +689,18 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 
 ## Closed
 
+- **Player-nominated NPCs already defend themselves (verified Oct 21).**
+  Player nominations call `Game._defend_pending` before voting, just as NPC
+  nominations do. With `C.DEFENCE_MOVES=true`, this invokes `Mind.defend_self`;
+  silenced nominees deliberately cannot speak. The idea-dump request is already
+  implemented, so no duplicate open task is added. Any observed missing defence
+  should be investigated as a reproduction-specific bug.
+
 - **61251/25923 concrete fixes (Oct 20):** private card targets include the listener;
   speaking for their own claim acknowledges support and grants +0.03 trust once per
-  fact, instead of pressing them. Daytime whereabouts produce attributed cards even
+  fact, instead of pressing them. Supportive deductions are routed as defence too.
+  Verified on current main Oct 21 (`_route_present`, `hear_defence`, private target
+  picker); no new support feature needed. Daytime whereabouts produce attributed cards even
   when the speaker withholds other sightings. Publicly cited night sightings produce
   the same evidence cards as private testimony, including evil fabrications.
 - **Disclosure consistency:** a Night Watch's withheld reading cannot be obtained by
