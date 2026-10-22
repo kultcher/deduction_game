@@ -8,8 +8,15 @@ const Reasoner = preload("res://workshop/reasoner.gd")
 const Theory = preload("res://workshop/theory.gd")
 const Movement = preload("res://workshop/movement_model.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
+const Profiler = preload("res://workshop/profiler.gd")
 
 static func assess(view: Dictionary, value: Dictionary, baseline: Dictionary, pattern_fn: Callable, common_key: String, primary_theory: Dictionary) -> Dictionary:
+	var span = Profiler.open("consequences")
+	var result = _assess(view, value, baseline, pattern_fn, common_key, primary_theory)
+	Profiler.close(span)
+	return result
+
+static func _assess(view: Dictionary, value: Dictionary, baseline: Dictionary, pattern_fn: Callable, common_key: String, primary_theory: Dictionary) -> Dictionary:
 	var attention = Reasoner.prepare(view, value, baseline)
 	var effects = {}
 	var projections = {}

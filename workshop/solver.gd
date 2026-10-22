@@ -5,6 +5,7 @@ const Domain = preload("res://workshop/world_domain.gd")
 
 const Graph = preload("res://workshop/case_graph.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
+const Profiler = preload("res://workshop/profiler.gd")
 static var universes: Dictionary = {}
 static var report_matches: Dictionary = {}
 static var movement_cache: Dictionary = {}
@@ -116,6 +117,12 @@ static func _find_conflicts(view: Dictionary, cards: Array, knowledge: Dictionar
 		_find_conflicts(view, cards.filter(func(c): return c.id != card.id), knowledge, result, visited)
 
 static func solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}, epoch: String = "", temporal_positions: Array = []) -> Dictionary:
+	var span = Profiler.open("constraint_solve")
+	var result = _solve(view, cards, positions, answers, knowledge, epoch, temporal_positions)
+	Profiler.close(span)
+	return result
+
+static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}, epoch: String = "", temporal_positions: Array = []) -> Dictionary:
 	var ids: Array = view.people.map(func(p): return p.id)
 	var universe_key = str([ids, view.evil_count, view.get("chronology", {}), view.get("world_options", {})])
 	if not universes.has(universe_key):

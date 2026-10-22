@@ -7,8 +7,15 @@ const Shared = preload("res://workshop/shared_ledger.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const Mind = preload("res://sim/mind.gd")
 const Argue = preload("res://sim/argue.gd")
+const Profiler = preload("res://workshop/profiler.gd")
 
 static func present(g, n, card: Dictionary, targets: Array, direction: String, venue: String, speak: bool) -> Dictionary:
+	var span = Profiler.open("presentation")
+	var result = _present(g, n, card, targets, direction, venue, speak)
+	Profiler.close(span)
+	return result
+
+static func _present(g, n, card: Dictionary, targets: Array, direction: String, venue: String, speak: bool) -> Dictionary:
 	if n.is_evil():
 		return {}
 	if card.has("workshop_case"):
@@ -46,7 +53,9 @@ static func present(g, n, card: Dictionary, targets: Array, direction: String, v
 			state.disclosures[id] = {"player": true, "public": false}
 		if venue != "private":
 			state.disclosures[id].public = true
+	var initial_span = Profiler.open("initial_refresh")
 	Mind.recompute_beliefs(g.w, n, " (interpreted presentation)")
+	Profiler.close(initial_span)
 	if not state.get("active", false):
 		# An interval-derived budget can change during recomputation. Do not leave
 		# an unsupported endorsement behind when returning to native presentation.
@@ -63,9 +72,13 @@ static func present(g, n, card: Dictionary, targets: Array, direction: String, v
 	var cached: Dictionary = g._workshop_responses.get(listener_key, {})
 	var assessment: Dictionary
 	if cached.get("input") == response_input:
+		Profiler.count("response_cache_hit")
 		assessment = cached.assessment
 	else:
+		Profiler.count("response_cache_miss")
+		var response_span = Profiler.open("scoped_response")
 		assessment = Shared.response(plan, snapshot, state.outside)
+		Profiler.close(response_span)
 		g._workshop_responses[listener_key] = {"input": response_input.duplicate(true), "assessment": assessment}
 	if assessment.is_empty():
 		return {}
@@ -89,7 +102,9 @@ static func present(g, n, card: Dictionary, targets: Array, direction: String, v
 	# restored on fallback/disable; its agreement comes from this assessment too.
 	if direction == "deduction":
 		var supports: Array = g.board.filter(func(c): return c.n in card.supports)
+		var park_span = Profiler.open("park_native")
 		Argue._apply(g.w, n, card, supports, maxf(0.0, assessment.agreement) * (1.0 if venue == "private" else 0.5 if venue == "nomination" else 0.6), g.board)
+		Profiler.close(park_span)
 	else:
 		for target in targets:
 			var sign_value = -0.4 if direction == "defend" else 0.45
@@ -108,8 +123,10 @@ static func present(g, n, card: Dictionary, targets: Array, direction: String, v
 	var trust_before: float = n.trust
 	var pressure_before: float = n.pressure
 	if assessment.agreement >= 0.6 and not fresh.is_empty() and not repeated:
+		var reward_span = Profiler.open("trust_reward")
 		Mind.set_trust(g.w, n, n.trust + 0.02, "the presented reports support the argument")
 		Mind.recompute_beliefs(g.w, n, " (presentation trust reward)")
+		Profiler.close(reward_span)
 	if root.conclusion.type == "conflict" and assessment.agreement >= 0.6 and not repeated:
 		if not state.has("scrutinized"):
 			state.scrutinized = {}

@@ -21,6 +21,7 @@ const WorkshopPresentation = preload("res://game/workshop_presentation.gd")
 const WorkshopGhost = preload("res://workshop/ghost_juror.gd")
 const WorkshopAssessment = preload("res://workshop/live_assessment.gd")
 const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
+const WorkshopProfiler = preload("res://workshop/profiler.gd")
 
 var w
 var state = "day"          # day | approach | talk | meeting | nomination | night | over
@@ -511,6 +512,12 @@ func _workshop_retract(number: int, listener_id: String) -> void:
 
 ## All three deduction venues share receipt ownership and optional comparison.
 func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
+	var span = WorkshopProfiler.open("listener", n.id)
+	var result = _evaluate_deduction_inner(n, ded, scale, speak, venue)
+	WorkshopProfiler.close(span)
+	return result
+
+func _evaluate_deduction_inner(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
 	if ded.has("workshop_case"):
 		workshop_canvas_retire(n, ded)
 	var snapshot = workshop_snapshot([ded.n], n.id, venue) if workshop_compare else {}

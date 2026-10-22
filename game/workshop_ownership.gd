@@ -3,8 +3,14 @@ extends RefCounted
 const Shared = preload("res://workshop/shared_ledger.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Mind = preload("res://sim/mind.gd")
+const Profiler = preload("res://workshop/profiler.gd")
 
 static func refresh(g, n, phase: String) -> void:
+	var span = Profiler.open("ownership_" + phase)
+	_refresh(g, n, phase)
+	Profiler.close(span)
+
+static func _refresh(g, n, phase: String) -> void:
 	if g._workshop_busy or n.workshop_state.is_empty():
 		return
 	var state: Dictionary = n.workshop_state
@@ -67,9 +73,13 @@ static func refresh(g, n, phase: String) -> void:
 		var cache_hit = cached.get("input") == inputs
 		var proposal: Dictionary
 		if cache_hit:
+			Profiler.count("union_cache_hit")
 			proposal = cached.proposal
 		else:
+			Profiler.count("union_cache_miss")
+			var union_span = Profiler.open("joint_effects")
 			proposal = Shared.evaluate(plan, n.suspicion, n.discounted)
+			Profiler.close(union_span)
 			g._workshop_evaluations[key] = {"input": inputs.duplicate(true), "proposal": proposal}
 		state.outside = n.suspicion.duplicate(true)
 		state.requested = {}

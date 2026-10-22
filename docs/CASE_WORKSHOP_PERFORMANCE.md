@@ -112,6 +112,14 @@ or move an individual assessment off the UI thread. Native typed commands remain
 synchronous. Continue measuring realistic cases before choosing a runtime port or
 reducing the uncertainty budget.
 
+**2026-10-22 profiling update:** the same seed-692 floor workload measured 31.1 seconds
+before and 8.7 seconds after reusing prior rankings, redundant local comparisons and
+candidate constraint checks. Dialogue, beliefs, ledgers, delivery routes, search budgets
+and RNG remain unchanged. Seed 4242 still takes 13.6 seconds, so this is not a universal
+latency promise. See the [listener/stage profile and reproduction commands](CASE_WORKSHOP_PROFILING.md).
+Native fallback-entry bookkeeping was about 13 ms in the original town profile; rebuilding
+prior rankings dominated. Further native-layer coalescing is not the first target.
+
 First measure, share work and defer diagnostics; then benchmark a port and/or bounded
 uncertainty. Keep the checkpoint examples as migration aids, with experimental numeric
 weights separate from permanent semantic requirements.

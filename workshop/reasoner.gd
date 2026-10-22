@@ -4,6 +4,9 @@ const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const Domain = preload("res://workshop/world_domain.gd")
+const Profiler = preload("res://workshop/profiler.gd")
+static var matches: Dictionary = {}
+static var reuse_matches = true # developer A/B switch, not a reasoning-budget change
 
 static func profile(insight: float) -> Dictionary:
 	if insight < 0.34:
@@ -95,6 +98,13 @@ static func _group_score(view: Dictionary, ids: Array, target: String, listener:
 	return score
 
 static func search(view: Dictionary, case_data: Dictionary, cards: Array, listener: Dictionary, limits: Dictionary) -> Dictionary:
+	var span = Profiler.open("candidate_search")
+	var result = _search(view, case_data, cards, listener, limits)
+	Profiler.count("candidates_tested", result.tested)
+	Profiler.close(span)
+	return result
+
+static func _search(view: Dictionary, case_data: Dictionary, cards: Array, listener: Dictionary, limits: Dictionary) -> Dictionary:
 	var local = _local_conflict(cards)
 	if not local.is_empty() or not case_data.get("graph_errors", []).is_empty() or not Solver.validate_answers(view, case_data).is_empty():
 		return {"status": "inconsistent", "support": {}, "rival": {}, "tested": 0, "support_tested": 0,
@@ -230,6 +240,17 @@ static func _swaps(view: Dictionary, cards: Array, case_data: Dictionary, listen
 
 static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listener: Dictionary, budget: int, want: bool, positions: Dictionary, answers: Dictionary) -> Dictionary:
 	var tested = 0
+	# A candidate's constraint check is independent of which person's alignment
+	# is being queried. Reuse only checks the search actually elects to perform:
+	# candidate order, tested counts, limits and exhaustion remain unchanged.
+	var inputs = [view.people, view.evil_count, view.get("chronology", {}), view.world_options,
+		listener.knowledge, cards, positions, answers, value.conclusion.at, value.get("temporal_positions", [])]
+	var key = hash(inputs)
+	if reuse_matches and (not matches.has(key) or matches[key].inputs != inputs):
+		if matches.size() >= 32:
+			matches.clear()
+		matches[key] = {"inputs": inputs.duplicate(true), "results": {}}
+	var known: Dictionary = matches[key].results if reuse_matches else {}
 	# Enumerate the public legal domain, not worlds filtered by the referee. The
 	# same hard test budget applies, and exhaustion alone can certify a conclusion.
 	for candidate in Domain.worlds(view):
@@ -238,7 +259,17 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 		if tested >= budget:
 			return {"world": {}, "tested": tested, "exhausted": false}
 		tested += 1
-		if _matches(view, candidate, cards, listener.knowledge, positions, answers, value.conclusion.at, value.get("temporal_positions", [])):
+		var world_key = TimeModel.key(view, candidate)
+		var fits: bool
+		if reuse_matches and known.has(world_key):
+			Profiler.count("candidate_cache_hit")
+			fits = known[world_key]
+		else:
+			Profiler.count("candidate_cache_miss")
+			fits = _matches(view, candidate, cards, listener.knowledge, positions, answers, value.conclusion.at, value.get("temporal_positions", []))
+			if reuse_matches:
+				known[world_key] = fits
+		if fits:
 			return {"world": candidate, "tested": tested, "exhausted": false}
 	return {"world": {}, "tested": tested, "exhausted": true}
 

@@ -7,10 +7,21 @@ const Graph = preload("res://workshop/case_graph.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const Movement = preload("res://workshop/movement_model.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
+const Profiler = preload("res://workshop/profiler.gd")
 static var cache: Dictionary = {}
 static var comparisons: Dictionary = {}
+static var priors: Dictionary = {}
+# Developer A/B switch for the reproducible profiler, not a gameplay setting.
+static var reuse_priors = true
+static var reuse_comparisons = true
 
 static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}) -> Dictionary:
+	var span = Profiler.open("support")
+	var result = _assess(view, value, listener, bias, prepared)
+	Profiler.close(span)
+	return result
+
+static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}) -> Dictionary:
 	var case_data = Graph.compile_case(view, value)
 	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
 	var attention = Reasoner.prepare(view, value, listener) if prepared.is_empty() else prepared
@@ -78,6 +89,9 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 	var states = 0
 	var impossible = 0.0
 	var ranks = prior_scores(view, listener, bias, case_data.conclusion.at)
+	# Private accepted subsets repeat across credibility states for other sources.
+	# Within this assessment their ranks, question, knowledge and factors are fixed.
+	var private_comparisons: Dictionary = {}
 	# The comparison starts with the listener's private reports, not an empty mind.
 	# Removing the public evidence must remove its effect, including effects on
 	# people who were never named in the player's conclusion.
@@ -143,13 +157,13 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 			elif bounded:
 				a = possibility(view, [searched.support, searched.rival], case_data.conclusion, listener, factors, ranks)
 			else:
-				a = possibility(view, solved.worlds, case_data.conclusion, listener, factors, ranks)
+				a = _possibility(comparison) if reuse_comparisons else possibility(view, solved.worlds, case_data.conclusion, listener, factors, ranks)
 			if Movement.available(view) and not (bounded and searched.status == "provisional") and factors.any(func(f): return f.get("origin") == "movement_model"):
 				# Soft evidence can persuade without logically eliminating a rival.
 				# Only the CHANGE in preference adds conviction; irrelevant factors
 				# cannot promote a merely possible accusation into a stronger tier.
 				var candidates: Array = [searched.support] + ([] if searched.rival.is_empty() else [searched.rival]) if bounded else solved.worlds
-				var preferred = _comparison(view, candidates, case_data.conclusion, factors, ranks)
+				var preferred = comparison if not bounded and reuse_comparisons else _comparison(view, candidates, case_data.conclusion, factors, ranks)
 				var reference_factors: Array = factors.filter(func(f): return f.get("origin") != "movement_model")
 				var neutral = _comparison(view, candidates, case_data.conclusion, reference_factors, ranks)
 				var shift: float = preferred.support / maxf(preferred.support + preferred.rival, 1e-12) - neutral.support / maxf(neutral.support + neutral.rival, 1e-12)
@@ -179,7 +193,14 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 		agreement += weight * a
 		var reference = 0.0
 		if presented_reading and not contributing.is_empty() and not private_worlds.is_empty():
-			var prior = _comparison(view, private_worlds, case_data.conclusion, [], ranks)
+			var private_key = JSON.stringify(private_cards.map(func(c): return c.id))
+			var prior: Dictionary
+			if reuse_comparisons and private_comparisons.has(private_key):
+				Profiler.count("private_comparison_reuse")
+				prior = private_comparisons[private_key]
+			else:
+				prior = _comparison(view, private_worlds, case_data.conclusion, [], ranks)
+				private_comparisons[private_key] = prior
 			if prior.support > 0 and prior.rival == 0:
 				reference = 1.0
 			elif prior.support > 0:
@@ -198,6 +219,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 		conditional_mass /= total
 		for id in accuracy:
 			accuracy[id] /= total
+	Profiler.count("credibility_states", states)
 	return {"agreement": agreement, "evidence_agreement": evidence_agreement, "forced_mass": forced_mass, "conditional_mass": conditional_mass,
 		"movement_comparison": Movement.factors(view, cards.filter(func(c): return c.get("quoted", false) or source_quality(listener, c.source) >= 0.4), case_data),
 		"paths": minimal, "report_acceptance": accuracy, "atoms": atoms, "states": states,
@@ -207,6 +229,12 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 		"model": "Experimental shared route/activity/haunt likelihood. Conviction adds twice the preference shift; signed alignment is capped before social multipliers. Profile priors and conviction tuning are uncalibrated; conditional trace/drop mechanisms are tested against the generator." if Movement.available(view) else "Experimental credibility-state mixture. Supplied test factors and the fixed 2x challenged-alibi factor are uncalibrated; no general movement/trace likelihood is inferred."}
 
 static func explain(view: Dictionary, value: Dictionary, listener: Dictionary, prepared: Dictionary = {}) -> Dictionary:
+	var span = Profiler.open("explain")
+	var result = _explain(view, value, listener, prepared)
+	Profiler.close(span)
+	return result
+
+static func _explain(view: Dictionary, value: Dictionary, listener: Dictionary, prepared: Dictionary = {}) -> Dictionary:
 	var attention = Reasoner.prepare(view, value, listener) if prepared.is_empty() else prepared
 	var considered = attention.case
 	var cards = Solver.selected(view, considered)
@@ -255,12 +283,20 @@ static func _add_atom(atoms: Array, key: String, weight: float) -> void:
 		atoms.append({"key": key, "weight": weight})
 
 static func _solve(view: Dictionary, cards: Array, knowledge: Dictionary) -> Dictionary:
+	var span = Profiler.open("support_solve")
+	var result = _solve_inner(view, cards, knowledge)
+	Profiler.close(span)
+	return result
+
+static func _solve_inner(view: Dictionary, cards: Array, knowledge: Dictionary) -> Dictionary:
 	# Hash lookup plus exact input comparison avoids rebuilding JSON signatures in
 	# every credibility state / character projection. Equality guards collisions.
 	var inputs = [view.people, view.evil_count, view.get("chronology", {}), view.get("world_options", {}), cards, knowledge]
 	var key = hash(inputs)
 	if cache.has(key) and cache[key].inputs == inputs:
+		Profiler.count("solve_cache_hit")
 		return cache[key].result
+	Profiler.count("solve_cache_miss")
 	if cache.size() > 512:
 		cache.clear()
 	var solved = Solver.solve(view, cards, {}, {}, knowledge)
@@ -268,6 +304,21 @@ static func _solve(view: Dictionary, cards: Array, knowledge: Dictionary) -> Dic
 	return solved
 
 static func prior_scores(view: Dictionary, listener: Dictionary, bias: Dictionary = {}, epoch: String = "") -> Dictionary:
+	var span = Profiler.open("priors")
+	var result = _prior_scores(view, listener, bias, epoch)
+	Profiler.close(span)
+	return result
+
+static func _prior_scores(view: Dictionary, listener: Dictionary, bias: Dictionary = {}, epoch: String = "") -> Dictionary:
+	# The same baseline ranks every person's projection and every credibility
+	# subset. Accuracy weights and the question's target do not enter these priors.
+	var inputs = [view.people, view.evil_count, view.get("chronology", {}), view.get("world_options", {}),
+		view.alignment_epoch, epoch, listener.knowledge, listener.suspicion, listener.npc_trust, bias]
+	var key = hash(inputs)
+	if reuse_priors and priors.has(key) and priors[key].inputs == inputs:
+		Profiler.count("prior_cache_hit")
+		return priors[key].ranks
+	Profiler.count("prior_cache_miss")
 	var ranks = {}
 	for world in _solve(view, [], listener.knowledge).worlds:
 		var score = 1.0
@@ -282,6 +333,10 @@ static func prior_scores(view: Dictionary, listener: Dictionary, bias: Dictionar
 		if not bias.is_empty() and Solver.position_holds(view, world, bias.target, bias.position, epoch):
 			score *= bias.factor
 		ranks[TimeModel.key(view, world)] = score
+	if reuse_priors:
+		if priors.size() >= 64:
+			priors.clear()
+		priors[key] = {"inputs": inputs.duplicate(true), "ranks": ranks}
 	return ranks
 
 static func world_score(view: Dictionary, world: Dictionary, ranks: Dictionary, factors: Array) -> float:
@@ -300,15 +355,25 @@ static func possibility(view: Dictionary, worlds: Array, conclusion: Dictionary,
 	if ranks.is_empty():
 		ranks = prior_scores(view, listener)
 	var comparison = _comparison(view, worlds, conclusion, factors, ranks)
+	return _possibility(comparison)
+
+static func _possibility(comparison: Dictionary) -> float:
 	return 0.02 + 0.16 * comparison.support / maxf(comparison.support + comparison.rival, 0.000000000001)
 
 static func _comparison(view: Dictionary, worlds: Array, conclusion: Dictionary, factors: Array, ranks: Dictionary) -> Dictionary:
+	var span = Profiler.open("world_comparison")
+	var result = _comparison_inner(view, worlds, conclusion, factors, ranks)
+	Profiler.close(span)
+	return result
+
+static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dictionary, factors: Array, ranks: Dictionary) -> Dictionary:
 	# One set of ranked worlds answers all characters' alignment/Marked questions.
 	# This cache only speeds the full/mixture calculation; bounded searches still
 	# construct their own candidates and never receive unseen public worlds.
 	var inputs = [view.people, view.get("chronology", {}), view.get("world_options", {}), worlds, factors, ranks, conclusion.at]
 	var key = hash(inputs)
 	if not comparisons.has(key) or comparisons[key].inputs != inputs:
+		Profiler.count("comparison_cache_miss")
 		if comparisons.size() > 512:
 			comparisons.clear()
 		var scores: Array = []
@@ -324,6 +389,8 @@ static func _comparison(view: Dictionary, worlds: Array, conclusion: Dictionary,
 				scores[i][alignment] = maxf(scores[i][alignment], score)
 				scores[i][registration] = maxf(scores[i][registration], score)
 		comparisons[key] = {"inputs": inputs, "scores": scores}
+	else:
+		Profiler.count("comparison_cache_hit")
 	var index: int = view.people.map(func(p): return p.id).find(conclusion.target)
 	if index < 0 or conclusion.type == "conflict":
 		return {"support": 0.0, "rival": 0.0}

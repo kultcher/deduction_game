@@ -10,8 +10,15 @@ const Theory = preload("res://workshop/theory.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const Consequences = preload("res://workshop/consequences.gd")
 const Movement = preload("res://workshop/movement_model.gd")
+const Profiler = preload("res://workshop/profiler.gd")
 
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
+	var span = Profiler.open("jury")
+	var result = _evaluate(view, case_data, listener, context)
+	Profiler.close(span)
+	return result
+
+static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
 	var before: Dictionary = listener.suspicion.duplicate(true)
 	var old: Dictionary = listener.ledger.get(case_data.id, {})
 	var old_effects: Dictionary = old.get("effects", {})
@@ -78,6 +85,12 @@ static func applied_to(entry: Dictionary, person: String) -> float:
 	return float(entry.get("applied", 0.0)) if entry.get("target") == person else 0.0
 
 static func _assess_target(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
+	var span = Profiler.open("headline")
+	var result = _assess_target_inner(view, case_data, listener, context)
+	Profiler.close(span)
+	return result
+
+static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
 	var original = case_data.duplicate(true)
 	case_data = Graph.compile_case(view, case_data)
 	var conclusion: Dictionary = case_data.conclusion

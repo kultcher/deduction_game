@@ -9,6 +9,7 @@
 extends RefCounted
 
 const WorkshopLedger = preload("res://workshop/shared_ledger.gd")
+const WorkshopLedgerProfiler = preload("res://workshop/profiler.gd")
 
 const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
@@ -529,6 +530,11 @@ const HONESTY_CAP = 0.5
 ## Steps 3-5 all use the same final doubt, so undoing a poison argument undoes everything
 ## downstream of it. Only step 2 looks one level back (step 1), by design.
 static func recompute_beliefs(w, n, note: String) -> void:
+	var span = WorkshopLedgerProfiler.open("belief_refresh")
+	_recompute_beliefs(w, n, note)
+	WorkshopLedgerProfiler.close(span)
+
+static func _recompute_beliefs(w, n, note: String) -> void:
 	if n.is_evil():
 		shadow_run(w, n, func(sh): recompute_beliefs(w, sh, note))
 		return
