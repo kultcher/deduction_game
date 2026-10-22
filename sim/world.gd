@@ -1115,9 +1115,7 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 		_walk(medium, by_id[medium_t].home_block, "visiting the home of the dead %s" % by_id[medium_t].name)
 	if lamp:
 		# The lamp route runs through every block; they finish where they started.
-		_walk(lamp, lamp.home_block, "walking the lamp route")
-		lamp.night_path = C.BLOCKS.keys()
-		night_walkers.back()["path"] = lamp.night_path
+		_walk(lamp, lamp.home_block, "walking the lamp route", C.BLOCKS.keys())
 	# The Secret Lovers meet somewhere new each night; the Sleepwalker wanders unknowing.
 	var met = {}
 	for n in living():
@@ -1136,10 +1134,10 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 		n.history[time_key(day, C.NIGHT)] = ("night:" if n.out_last_night else "home:") + n.night_block
 	dlog.add("night_movement", "world", "", {"walkers": night_walkers})
 
-func _walk(n, block: String, why: String) -> void:
+func _walk(n, block: String, why: String, path: Array = []) -> void:
 	n.out_last_night = true
 	n.night_block = block
-	n.night_path = C.route(n.home_block, block)
+	n.night_path = C.route(n.home_block, block) if path.is_empty() else path.duplicate()
 	n.loc = "night:" + block
 	night_walkers.append({"id": n.id, "block": block, "path": n.night_path, "why": why})
 	_maybe_drop(n, why)
