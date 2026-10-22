@@ -17,7 +17,7 @@ static var _cached_block_masks: Dictionary = {}
 static func _ensure_people(view: Dictionary) -> void:
 	if view.people == _cached_people:
 		return
-	_cached_people = view.people
+	_cached_people = view.people.duplicate(true)
 	_cached_ids = []
 	_cached_idx = {}
 	_cached_block_masks = {}
@@ -167,7 +167,41 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 						if not evil & (1 << marked):
 							all_worlds.append_array(TimeModel.expand(view, {"evil": evil, "marked": marked}))
 		universes[universe_key] = all_worlds
-	var worlds: Array = universes[universe_key].duplicate()
+	# Report masks use the universe's array index, including distinct conversion
+	# histories. Keep the worlds themselves unchanged for explanations/checkpoints.
+	var universe: Array = universes[universe_key]
+	var tables: Array = []
+	for card in cards:
+		if card.kind != "report" and not (card.kind == "event" and card.get("event") == "curse"):
+			continue
+		var positive: Array = answers.get(card.id, {}).get("positive", []).duplicate()
+		positive.sort()
+		# Homes affect Surveyor blocks; kind/event distinguish public process cards.
+		# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
+		var inputs = [universe_key, view.people, card.kind, card.get("event", ""), card.source,
+			card.get("role", ""), card.observed_at, card.data, positive]
+		var key = hash(inputs)
+		if not report_matches.has(key) or report_matches[key].inputs != inputs:
+			if report_matches.size() > 512:
+				report_matches.clear()
+			var accepted = PackedByteArray()
+			accepted.resize(universe.size())
+			for i in range(universe.size()):
+				accepted[i] = 1 if _report_holds(view, universe[i], card, {"positive": positive}) else 0
+			report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
+		tables.append(report_matches[key].accepted)
+	var worlds: Array = []
+	if tables.is_empty():
+		worlds = universe.duplicate()
+	else:
+		for i in range(universe.size()):
+			var accepted = true
+			for table in tables:
+				if table[i] == 0:
+					accepted = false
+					break
+			if accepted:
+				worlds.append(universe[i])
 	if Domain.live(view) and not Domain.claims_compatible(cards, knowledge):
 		worlds = []
 	var has_curse: bool = view.get("chronology", {}).has("curse")
@@ -183,6 +217,8 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 		for id in positions:
 			var idx = person_index(view, id)
 			if idx < 0:
+				if positions[id] in ["evil", "marked", "unmarked"]:
+					worlds = []
 				continue
 			var pos_val = positions[id]
 			if pos_val == "good":
@@ -190,6 +226,8 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 			elif pos_val == "evil":
 				must_be_evil |= (1 << idx)
 			elif pos_val == "marked":
+				if marked_req >= 0 and marked_req != idx:
+					worlds = [] # One world cannot have two different Marked people.
 				marked_req = idx
 			else:
 				other_positions.append({"id": id, "pos": pos_val})
@@ -212,22 +250,6 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 		for assignment in temporal_positions:
 			for id in assignment.positions:
 				worlds = worlds.filter(func(w): return position_holds(view, w, id, assignment.positions[id], assignment.at))
-	for card in cards:
-		if card.kind != "report" and not (card.kind == "event" and card.get("event") == "curse"):
-			continue
-		var positive: Array = answers.get(card.id, {}).get("positive", []).duplicate()
-		positive.sort()
-		var key = hash([universe_key, card.source, card.get("role", ""), card.observed_at, card.data, positive])
-		if not report_matches.has(key):
-			if report_matches.size() > 512:
-				report_matches.clear()
-			var matches = {}
-			for world in universes[universe_key]:
-				if _report_holds(view, world, card, {"positive": positive}):
-					matches[world.get("__key", TimeModel.key(view, world))] = true
-			report_matches[key] = matches
-		var accepted: Dictionary = report_matches[key]
-		worlds = worlds.filter(func(w): return accepted.has(w.get("__key", TimeModel.key(view, w))))
 	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
 	var movement = movement_for(view, movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
@@ -271,6 +293,7 @@ static func position_holds(view: Dictionary, world: Dictionary, id: String, posi
 	return evil if position == "evil" else not evil
 
 static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
+	_ensure_people(view)
 	if card.kind == "event" and card.get("event") == "curse":
 		return answer.get("positive", []).is_empty() or view.people[world.get("converted", -1)].id in answer.positive
 	if card.kind != "report":

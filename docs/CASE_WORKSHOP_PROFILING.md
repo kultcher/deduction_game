@@ -1,5 +1,89 @@
 # Whole-town presentation profile
 
+## Follow-up review of 6707759 (October 22)
+
+Flash's improvements were retained. On Godot 4.7.2 Mono, fresh paired sequential runs
+of that commit and this follow-up measured:
+
+| Native ten-person case | Flash commit | This follow-up | Reduction |
+|---|---:|---:|---:|
+| 692 | 2,424 ms | 1,659 ms | 32% |
+| 4242 | 4,112 ms | 2,504 ms | 39% |
+
+Both **complete canonical behavior objects** match exactly, not just their hashes.
+The hashes are the same `253d9f9a...` and `da951a4d...` recorded below. Dialogue,
+ownership, beliefs, credibility-state counts, conceptual search budgets/counts and RNG
+are preserved. These are single-run observations, not universal latency guarantees.
+[Recorded paired timings and counters](benchmarks/workshop-review-2026-10-22.json)
+exclude full private NPC dumps. The original baseline below remains as historical evidence.
+
+### Review findings and corrections
+
+- Confirmed Argon's cold/switched-roster Rumormonger bug: `_report_holds` now initializes
+  Solver's own roster cache before any early return. Chronology's cache is independent.
+- Roster caches previously retained the original mutable array. An in-place reorder or
+  home edit could therefore compare equal to its own cached reference. They now retain
+  snapshots, with tests for Solver, chronology and modifier indices.
+- Flash's combined position filter retained only the last Marked assignment. Two
+  different Marked people now yield no worlds, as the original predicates required.
+  Unknown identities also cannot satisfy evil/Marked positions or a good-target search.
+- The shortened report cache key omitted homes, which affect Surveyor readings, and
+  relied on a hash without an exact-input check. Cache entries now check copied inputs,
+  including homes and event kind; an injected hash-collision test verifies rejection.
+- Eight pre-existing profiling checks failed because new `__id` rank-cache metadata
+  was compared as if it were a score. Tests now compare actual scores while excluding
+  that metadata; the score calculations themselves matched.
+
+### Remaining optimizations implemented
+
+1. **Share credibility-state preparation across collateral questions.** Each frozen
+   full/scale listener assessment shares source atoms, requirements, the ordered state
+   schedule, active subsets, private/public solves and factors across all people's
+   evil/good projections. Exact-input checks include the public view, case content,
+   date, private knowledge, source quality and rejected firsthand reports. Plans remain
+   local to a single Consequences call. In 692, 38 plans were built and 285 reused;
+   support-solve calls fell from 4,831 to 575 (4,838 to 582 for 4242).
+2. **Intersect indexed report masks.** Report acceptance uses packed byte arrays indexed
+   by the universe's existing array order. One pass checks all report tables together;
+   no per-card lambda/hash filter or new fields on explanation worlds are needed.
+   Exclusive constraint time fell from 443 to 65 ms (583 to 78 ms for 4242).
+3. **Reuse exact explanation queries and remove inner-loop overhead.** The existing
+   candidate-check cache additionally stores completed queries by target, type, budget
+   and support/rival direction. Reuse returns the original tested/exhaustion result;
+   another target or budget cannot inherit it. At most 128 queries per cache entry are
+   retained. Role-claim compatibility is checked once per scan. Candidate cache counters
+   accumulate locally and are reported after the loop, with profiling on or off.
+   Exclusive search time fell from 1,066 to 764 ms (2,153 to 1,181 ms for 4242).
+
+### Qualifications to Argon's proposals
+
+The shared preparation is implemented without assuming that good/evil agreement is
+numerically complementary. Every question retains its own ranked comparison, private
+reference subtraction, conditional checks, explanation and original floating-point
+accumulation order. Positions and answers can still share the target-independent plan;
+their conditional checks are evaluated separately. Bounded reasoners retain their own
+limited search and do not consume these shared full-mode plans.
+
+The scalar comparison identity was already working; the report does not demonstrate
+an ownership/presentation line invalidating it. Repeated solve inputs and per-query
+preparation were real costs. Shared plans remove most of those calls without replacing
+the remaining exact structural keys with unsafe identity-only keys.
+
+The estimated **0.4–0.6 seconds was not reproduced**. Search still costs 764/1,181 ms;
+prior ranking costs 232/431 ms and world comparisons 335/559 ms. Further gains require
+another measured change. The byte-mask implementation delivered most of the observed
+constraint benefit without adding a separate packed-integer bitset representation.
+
+Validation: `test_workshop_efficiency.gd` adds **226 checks**: independent array/string
+report predicates versus indexed intersections, ordering, cold/switched/mutated caches,
+conflicting identities, hash collisions, shared/scalar results for every person in core,
+movement, poison, Revenant and live domains, edited answers/private knowledge, complete
+jury output and exact bounded-query reuse. The existing 38 profiling checks, all Workshop
+suites, native belief/argument/cover tests, game/board UI tests and trace tests also pass.
+Frozen checkpoint outputs remain unchanged. Editor import is clean.
+
+## Original profile before Flash's changes
+
 Measured 2026-10-22 with Godot 4.7.2 Mono, native ten-person case 692, three native-generated
 readings. This reproduces the live-canvas smoke test: one private presentation, normal
 conversation departure/meeting setup, then the first floor presentation. Setup is outside
@@ -102,9 +186,12 @@ godot --headless --path . --script res://tools/profile_workshop_town.gd -- --see
 
 The default JSON output is `logs/workshop_profile.json` (ignored by Git). Use
 `--output res://logs/name.json` to preserve each run. For a reference run, pass
-`--no-prior-cache --no-comparison-reuse --no-match-cache`. Those switches affect only
+`--no-prior-cache --no-comparison-reuse --no-match-cache --no-batch-reuse`. Those switches affect only
 that developer process; they are not game settings. Compare the `behavior_hash` and
 canonical `behavior` objects as well as elapsed time. Run timed comparisons sequentially.
+These switches disable the named reuse layers, not every subsequent optimization;
+use the recorded commit revisions to reproduce historical implementations. Indexed
+report masks are additionally checked against independent predicates in the efficiency suite.
 
 The opt-in `workshop/profiler.gd` records per-listener stage paths, call counts, inclusive
 and exclusive microseconds, cache counters and candidate/state counts. It is disabled
@@ -117,6 +204,6 @@ stage rows and counters for case 692, without the full private NPC dumps. Frozen
 checkpoint outputs are unchanged. `tools/test_workshop_profiling.gd` adds exact A/B checks
 for cache invalidation, soft/temporal fixture support, and bounded/full live searches.
 
-The next substantial targets are remaining explanation search and repeated constraint
-solves. Those require a separate measured change; the current fixes do not change
+The next substantial targets after the follow-up are remaining explanation search,
+prior ranking and world comparisons. Those require a separate measured change; these fixes do not change
 evidence coverage, uncertainty limits, confidence, balance, fallback rules or game content.

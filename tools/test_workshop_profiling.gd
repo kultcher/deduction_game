@@ -87,7 +87,10 @@ func _priors(view: Dictionary, listener: Dictionary, bias: Dictionary = {}) -> D
 	var expected = Support.prior_scores(view, listener, bias)
 	Support.reuse_priors = true
 	var actual = Support.prior_scores(view, listener, bias)
-	check(actual == expected, "cached prior rankings match fresh calculation")
+	var actual_scores = actual.duplicate()
+	actual_scores.erase("__id")
+	expected.erase("__id")
+	check(actual_scores == expected, "cached prior rankings match fresh calculation (cache IDs are metadata)")
 	return actual
 
 func _search(view: Dictionary, claim: Dictionary, listener: Dictionary, budget: int) -> void:

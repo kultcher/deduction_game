@@ -8,7 +8,7 @@ static var _cached_idx: Dictionary = {}
 
 static func _person_index(view: Dictionary, id: String) -> int:
 	if view.people != _cached_people:
-		_cached_people = view.people
+		_cached_people = view.people.duplicate(true)
 		_cached_idx = {}
 		for i in range(view.people.size()):
 			_cached_idx[view.people[i].id] = i

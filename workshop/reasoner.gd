@@ -191,8 +191,8 @@ static func _candidate_priority(id: String, target: String, cards: Array, listen
 		score += 10.0 if evil_target else -10.0
 	return score
 
-static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, positions: Dictionary, answers: Dictionary, epoch: String = "", temporal_positions: Array = []) -> bool:
-	if Domain.live(view) and not Domain.claims_compatible(cards, knowledge):
+static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, positions: Dictionary, answers: Dictionary, epoch: String = "", temporal_positions: Array = [], claims_checked: bool = false) -> bool:
+	if not claims_checked and Domain.live(view) and not Domain.claims_compatible(cards, knowledge):
 		return false
 	for id in knowledge.get("good", []):
 		if not Solver.position_holds(view, world, id, "good", knowledge.get("good_epoch", epoch)):
@@ -252,19 +252,30 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 		var table = PackedByteArray()
 		table.resize(n_worlds)
 		table.fill(255) # 255 = unknown, 0 = false, 1 = true
-		matches[key] = {"inputs": inputs.duplicate(true), "table": table}
+		matches[key] = {"inputs": inputs.duplicate(true), "table": table, "queries": {}}
+	# Repeating the exact bounded query reuses its original result, including
+	# tested counts and exhaustion. No larger budget or other target inherits it.
+	var query_key = JSON.stringify([value.conclusion.type, value.conclusion.target, budget, want])
+	if reuse_matches and matches[key].queries.has(query_key):
+		Profiler.count("candidate_query_cache_hit")
+		return matches[key].queries[query_key].duplicate(true)
 	var table: PackedByteArray = matches[key].table if reuse_matches else PackedByteArray()
 	var use_table: bool = reuse_matches and not table.is_empty()
 	var target_idx: int = Solver.person_index(view, value.conclusion.target)
 	var type: String = value.conclusion.type
 	var has_curse: bool = view.get("chronology", {}).has("curse")
 	var target_bit: int = (1 << target_idx) if target_idx >= 0 else 0
+	var hits = 0
+	var misses = 0
+	# Role ownership is a property of the selected reports and private knowledge,
+	# independent of the candidate's alignment/modifier assignment.
+	var claims_ok: bool = Domain.claims_compatible(cards, listener.knowledge)
 
 	# Enumerate the public legal domain, not worlds filtered by the referee. The
 	# same hard test budget applies, and exhaustion alone can certify a conclusion.
 	for candidate in Domain.worlds(view):
 		var holds_val: bool
-		if not has_curse:
+		if not has_curse and target_idx >= 0:
 			match type:
 				"evil", "suspicious": holds_val = (candidate.evil & target_bit) != 0
 				"good": holds_val = (candidate.evil & target_bit) == 0
@@ -275,21 +286,32 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 		if holds_val != want:
 			continue
 		if tested >= budget:
-			return {"world": {}, "tested": tested, "exhausted": false}
+			return _finish_live(key, query_key, {}, tested, false, hits, misses)
 		tested += 1
 		var c_idx: int = int(candidate.get("__i", -1))
 		var fits: bool
 		if use_table and c_idx >= 0 and table[c_idx] != 255:
-			Profiler.count("candidate_cache_hit")
+			hits += 1
 			fits = table[c_idx] == 1
 		else:
-			Profiler.count("candidate_cache_miss")
-			fits = _matches(view, candidate, cards, listener.knowledge, positions, answers, value.conclusion.at, value.get("temporal_positions", []))
+			misses += 1
+			fits = claims_ok and _matches(view, candidate, cards, listener.knowledge, positions, answers, value.conclusion.at, value.get("temporal_positions", []), true)
 			if use_table and c_idx >= 0:
 				table[c_idx] = 1 if fits else 0
 		if fits:
-			return {"world": candidate, "tested": tested, "exhausted": false}
-	return {"world": {}, "tested": tested, "exhausted": true}
+			return _finish_live(key, query_key, candidate, tested, false, hits, misses)
+	return _finish_live(key, query_key, {}, tested, true, hits, misses)
+
+static func _finish_live(key: int, query_key: String, world: Dictionary, tested: int, exhausted: bool, hits: int, misses: int) -> Dictionary:
+	# Instrumentation stays outside the candidate loop, including when disabled.
+	Profiler.count("candidate_cache_hit", hits)
+	Profiler.count("candidate_cache_miss", misses)
+	var result = {"world": world, "tested": tested, "exhausted": exhausted}
+	if reuse_matches:
+		if matches[key].queries.size() >= 128:
+			matches[key].queries.clear()
+		matches[key].queries[query_key] = result.duplicate(true)
+	return result
 
 static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Dictionary) -> Dictionary:
 	var objections: Array = []

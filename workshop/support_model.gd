@@ -14,69 +14,27 @@ static var priors: Dictionary = {}
 # Developer A/B switch for the reproducible profiler, not a gameplay setting.
 static var reuse_priors = true
 static var reuse_comparisons = true
+static var reuse_batches = true
 static var next_solve_id: int = 1
 static var next_rank_id: int = 1
 
-static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}) -> Dictionary:
+static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}, shared: Dictionary = {}) -> Dictionary:
 	var span = Profiler.open("support")
-	var result = _assess(view, value, listener, bias, prepared)
+	var result = _assess(view, value, listener, bias, prepared, shared)
 	Profiler.close(span)
 	return result
 
-static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}) -> Dictionary:
-	var case_data = Graph.compile_case(view, value)
+static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}, shared: Dictionary = {}) -> Dictionary:
+	var case_data = Graph.compile_case(view, value) if prepared.is_empty() else prepared.case
 	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
 	var attention = Reasoner.prepare(view, value, listener) if prepared.is_empty() else prepared
 	if bounded or case_data.conclusion.type == "conflict" or not prepared.is_empty():
 		case_data = attention.case
-	var cards: Array = Solver.selected(view, case_data)
-	var factor_refs: Array = []
-	factor_refs.append_array(Movement.claim_refs(view, case_data))
-	for factor in case_data.test_factors:
-		if not is_zero_approx(float(factor.log2_ratio)):
-			for route in factor.routes:
-				factor_refs.append_array(route)
-	# A role assertion alone supplies no alignment constraint. Avoid enumerating
-	# irrelevant reliability dimensions for optional claims with no test factor.
-	cards = cards.filter(func(c): return c.kind != "claim" or c.id in factor_refs)
-	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])
-	for id in listener.knowledge.get("own_reports", []):
-		var card = Solver.card_by_id(view, id)
-		if not cards.any(func(c): return Solver.semantic_key(c) == Solver.semantic_key(card)):
-			cards.append(card)
-	var atoms: Array = []
-	var requirements = {}
-	var fault_controls = {}
-	for card in cards:
-		var required: Array = []
-		if card.get("quoted", false):
-			requirements[card.id] = required
-			continue # Known testimony exists; its disputed contents are not endorsed.
-		if card.id in attention.private_checks.rejected:
-			var known_key: String = "firsthand:" + Solver.semantic_key(card)
-			_add_atom(atoms, known_key, 0.0)
-			required.append(known_key)
-		var source_key: String = TimeModel.source_key(view, card)
-		_add_atom(atoms, source_key, source_quality(listener, card.source))
-		required.append(source_key)
-		if card.kind == "report":
-			if TimeModel.disowned(view, card, listener.knowledge.get("known_events", [])):
-				_add_atom(atoms, "withdrawn:" + card.id, 0.0)
-				required.append("withdrawn:" + card.id)
-			var fault = TimeModel.fault_for(view, case_data, card)
-			if not fault.is_empty() and fault.basis in case_data.cards:
-				var basis = Solver.card_by_id(view, fault.basis)
-				if basis.get("kind") == "fault_evidence" and basis.get("window") in case_data.get("faults", {}):
-					var basis_key: String = TimeModel.source_key(view, basis)
-					_add_atom(atoms, basis_key, source_quality(listener, basis.source))
-					_add_atom(atoms, fault.key, 0.5)
-					required.append(fault.key)
-					fault_controls[fault.key] = basis_key
-			var accuracy_key: String = "accuracy:" + card.get("accuracy_origin", Solver.semantic_key(card))
-			_add_atom(atoms, accuracy_key, float(listener.get("reading_reliability", {}).get(card.get("accuracy_origin", Solver.semantic_key(card)), 1.0)))
-			required.append(accuracy_key)
-		requirements[card.id] = required
-	var uncertain: Array = atoms.filter(func(a): return a.weight > 0.0 and a.weight < 1.0)
+	var mixture = _mixture(view, case_data, listener, attention, bounded, shared)
+	var cards: Array = mixture.cards
+	var atoms: Array = mixture.atoms
+	var fault_controls: Dictionary = mixture.fault_controls
+	var presented_reading: bool = mixture.presented_reading
 	var total = 0.0
 	var agreement = 0.0
 	var evidence_agreement = 0.0
@@ -97,54 +55,31 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 	# Group evaluations by active card subset so identical subsets reuse the solve,
 	# factors and comparisons, while keeping exact sequential float accumulation.
 	var active_eval_cache: Dictionary = {}
-	for mask in range(1 << uncertain.size()):
-		var weight = 1.0
-		var accepted = {}
-		for atom in atoms:
-			accepted[atom.key] = atom.weight >= 1.0
-		for i in range(uncertain.size()):
-			var atom: Dictionary = uncertain[i]
-			var yes: bool = (mask & (1 << i)) != 0
-			accepted[atom.key] = yes
-			weight *= atom.weight if yes else (1.0 - atom.weight)
-		if weight <= 0.0:
-			continue
-		for healthy in fault_controls:
-			if not accepted[fault_controls[healthy]]:
-				accepted[healthy] = true
-		var card_mask: int = 0
-		for j in range(cards.size()):
-			if requirements[cards[j].id].all(func(key): return accepted[key]):
-				card_mask |= (1 << j)
+	for state in mixture.schedule:
+		var weight: float = state.weight
+		var card_mask: int = state.card_mask
 		var eval: Dictionary
 		if active_eval_cache.has(card_mask):
 			eval = active_eval_cache[card_mask]
 		else:
-			var active: Array = []
-			for j in range(cards.size()):
-				if (card_mask & (1 << j)) != 0:
-					active.append(cards[j])
-			var private_cards: Array = active.filter(func(c): return c.id in listener.knowledge.get("own_reports", []))
-			var private_solved = _solve(view, private_cards, listener.knowledge)
+			var subset: Dictionary = mixture.subsets[card_mask]
+			var active: Array = subset.active
+			var private_cards: Array = subset.private_cards
+			var private_solved: Dictionary = subset.private_solved
 			var private_worlds: Array = private_solved.worlds
-			var solved = {}
+			var solved: Dictionary = subset.solved
 			var searched = {}
 			if bounded:
 				searched = Reasoner.search(view, case_data, active, listener, attention.limits)
-			else:
-				solved = _solve(view, active, listener.knowledge)
 			var is_inconsistent: bool = (bounded and searched.status == "inconsistent") or (not bounded and (solved.worlds.is_empty() or not solved.movement_ok))
 			if is_inconsistent:
 				eval = {"inconsistent": true}
 			else:
-				var factors: Array = case_data.test_factors.filter(func(f): return not is_zero_approx(float(f.log2_ratio)) and f.routes.any(func(route): return route.all(func(id): return active.any(func(c): return Solver.semantic_key(c) == Solver.semantic_key(Solver.card_by_id(view, id))))))
-				factors.append_array(Movement.factors(view, active, case_data))
-				for factor in factors:
-					factor["epoch"] = case_data.conclusion.at
+				var factors: Array = subset.factors
 				for factor in factors:
 					if factor.label not in used_factors and not is_zero_approx(float(factor.log2_ratio)):
 						used_factors.append(factor.label)
-				var contributing: Array = active.filter(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])
+				var contributing: Array = subset.contributing
 				var a = 0.0
 				var solved_id: int = 0 if bounded else int(solved.get("__id", 0))
 				var comparison: Dictionary = {} if bounded else _comparison(view, solved.worlds, case_data.conclusion, factors, ranks, solved_id)
@@ -255,6 +190,114 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 		"faults": fault_controls.keys(),
 		"conflict_mass": impossible, "strongest_state": strongest, "factors": used_factors,
 		"model": "Experimental shared route/activity/haunt likelihood. Conviction adds twice the preference shift; signed alignment is capped before social multipliers. Profile priors and conviction tuning are uncalibrated; conditional trace/drop mechanisms are tested against the generator." if Movement.available(view) else "Experimental credibility-state mixture. Supplied test factors and the fixed 2x challenged-alibi factor are uncalibrated; no general movement/trace likelihood is inferred."}
+
+## Batch plans share only credibility states, active subsets and constraint/factor
+## work. Each question retains its own ranks, reference subtraction, conditional
+## checks and float accumulation order; evil/good are not assumed complements.
+static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictionary, attention: Dictionary, bounded: bool, shared: Dictionary) -> Dictionary:
+	var share: bool = reuse_batches and not bounded and shared.get("enabled", false)
+	var inputs: Array = []
+	if share:
+		var common = case_data.duplicate(true)
+		common.conclusion = {"at": case_data.conclusion.at}
+		inputs = [view, common, listener.id, listener.knowledge, listener.suspicion,
+			listener.npc_trust, listener.get("reading_reliability", {}), attention.private_checks.rejected]
+		if shared.get("inputs", []) == inputs:
+			Profiler.count("mixture_plan_hit")
+			return shared.plan
+	Profiler.count("mixture_plan_build")
+	var cards: Array = Solver.selected(view, case_data)
+	var factor_refs: Array = []
+	factor_refs.append_array(Movement.claim_refs(view, case_data))
+	for factor in case_data.test_factors:
+		if not is_zero_approx(float(factor.log2_ratio)):
+			for route in factor.routes:
+				factor_refs.append_array(route)
+	# A role assertion alone supplies no alignment constraint. Avoid enumerating
+	# irrelevant reliability dimensions for optional claims with no test factor.
+	cards = cards.filter(func(c): return c.kind != "claim" or c.id in factor_refs)
+	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])
+	for id in listener.knowledge.get("own_reports", []):
+		var card = Solver.card_by_id(view, id)
+		if not cards.any(func(c): return Solver.semantic_key(c) == Solver.semantic_key(card)):
+			cards.append(card)
+	var atoms: Array = []
+	var requirements = {}
+	var fault_controls = {}
+	for card in cards:
+		var required: Array = []
+		if card.get("quoted", false):
+			requirements[card.id] = required
+			continue # Known testimony exists; its disputed contents are not endorsed.
+		if card.id in attention.private_checks.rejected:
+			var known_key: String = "firsthand:" + Solver.semantic_key(card)
+			_add_atom(atoms, known_key, 0.0)
+			required.append(known_key)
+		var source_key: String = TimeModel.source_key(view, card)
+		_add_atom(atoms, source_key, source_quality(listener, card.source))
+		required.append(source_key)
+		if card.kind == "report":
+			if TimeModel.disowned(view, card, listener.knowledge.get("known_events", [])):
+				_add_atom(atoms, "withdrawn:" + card.id, 0.0)
+				required.append("withdrawn:" + card.id)
+			var fault = TimeModel.fault_for(view, case_data, card)
+			if not fault.is_empty() and fault.basis in case_data.cards:
+				var basis = Solver.card_by_id(view, fault.basis)
+				if basis.get("kind") == "fault_evidence" and basis.get("window") in case_data.get("faults", {}):
+					var basis_key: String = TimeModel.source_key(view, basis)
+					_add_atom(atoms, basis_key, source_quality(listener, basis.source))
+					_add_atom(atoms, fault.key, 0.5)
+					required.append(fault.key)
+					fault_controls[fault.key] = basis_key
+			var accuracy_key: String = "accuracy:" + card.get("accuracy_origin", Solver.semantic_key(card))
+			_add_atom(atoms, accuracy_key, float(listener.get("reading_reliability", {}).get(card.get("accuracy_origin", Solver.semantic_key(card)), 1.0)))
+			required.append(accuracy_key)
+		requirements[card.id] = required
+	var uncertain: Array = atoms.filter(func(a): return a.weight > 0.0 and a.weight < 1.0)
+	var schedule: Array = []
+	var subsets: Dictionary = {}
+	for mask in range(1 << uncertain.size()):
+		var weight = 1.0
+		var accepted = {}
+		for atom in atoms:
+			accepted[atom.key] = atom.weight >= 1.0
+		for i in range(uncertain.size()):
+			var atom: Dictionary = uncertain[i]
+			var yes: bool = (mask & (1 << i)) != 0
+			accepted[atom.key] = yes
+			weight *= atom.weight if yes else (1.0 - atom.weight)
+		if weight <= 0.0:
+			continue
+		for healthy in fault_controls:
+			if not accepted[fault_controls[healthy]]:
+				accepted[healthy] = true
+		var card_mask: int = 0
+		for j in range(cards.size()):
+			if requirements[cards[j].id].all(func(key): return accepted[key]):
+				card_mask |= (1 << j)
+		schedule.append({"weight": weight, "card_mask": card_mask})
+		if subsets.has(card_mask):
+			continue
+		var active: Array = []
+		for j in range(cards.size()):
+			if (card_mask & (1 << j)) != 0:
+				active.append(cards[j])
+		var private_cards: Array = active.filter(func(c): return c.id in listener.knowledge.get("own_reports", []))
+		var private_solved = _solve(view, private_cards, listener.knowledge)
+		var solved: Dictionary = {} if bounded else _solve(view, active, listener.knowledge)
+		var factors: Array = case_data.test_factors.filter(func(f): return not is_zero_approx(float(f.log2_ratio)) and f.routes.any(func(route): return route.all(func(id): return active.any(func(c): return Solver.semantic_key(c) == Solver.semantic_key(Solver.card_by_id(view, id)))))).duplicate(true)
+		factors.append_array(Movement.factors(view, active, case_data))
+		for factor in factors:
+			factor["epoch"] = case_data.conclusion.at
+		subsets[card_mask] = {"active": active, "private_cards": private_cards, "private_solved": private_solved,
+			"solved": solved, "factors": factors,
+			"contributing": active.filter(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])}
+	var plan = {"cards": cards, "atoms": atoms, "fault_controls": fault_controls,
+		"presented_reading": presented_reading, "schedule": schedule, "subsets": subsets}
+	if share:
+		shared.inputs = inputs.duplicate(true)
+		shared.plan = plan
+	return plan
 
 static func explain(view: Dictionary, value: Dictionary, listener: Dictionary, prepared: Dictionary = {}) -> Dictionary:
 	var span = Profiler.open("explain")

@@ -6,6 +6,13 @@ per day (about every 5–10 minutes of play); a few seconds at that boundary may
 acceptable. Keep ordinary interaction responsive and measure realistic cases before
 changing the model to meet an unnecessarily strict frame-time target.
 
+Latest measured follow-up (October 22): after reviewing Flash's `6707759` changes,
+shared credibility plans, indexed report masks and exact explanation-query reuse bring
+the native ten-person presentations to **1.66 seconds for 692** and **2.50 seconds for
+4242**, with complete behavior parity. Their paired Flash baselines were 2.42/4.11
+seconds on the same Godot 4.7.2 runtime. See the
+[review, correctness fixes and paired evidence](CASE_WORKSHOP_PROFILING.md).
+
 ## What drives cost
 
 `Session.present` currently assesses listeners sequentially. Shared caches reuse some

@@ -15,6 +15,7 @@ func _run() -> void:
 	preload("res://workshop/support_model.gd").reuse_priors = "--no-prior-cache" not in args
 	preload("res://workshop/support_model.gd").reuse_comparisons = "--no-comparison-reuse" not in args
 	preload("res://workshop/reasoner.gd").reuse_matches = "--no-match-cache" not in args
+	preload("res://workshop/support_model.gd").reuse_batches = "--no-batch-reuse" not in args
 	var seed_value = 692
 	if "--seed" in args:
 		seed_value = int(args[args.find("--seed") + 1])
@@ -58,7 +59,8 @@ func _run() -> void:
 	result["reports"] = reports.size()
 	result["optimizations"] = {"priors": preload("res://workshop/support_model.gd").reuse_priors,
 		"comparisons": preload("res://workshop/support_model.gd").reuse_comparisons,
-		"candidate_checks": preload("res://workshop/reasoner.gd").reuse_matches}
+		"candidate_checks": preload("res://workshop/reasoner.gd").reuse_matches,
+		"mixture_plans": preload("res://workshop/support_model.gd").reuse_batches}
 	result["deliveries"] = g.workshop_deliveries.duplicate(true)
 	result["output"] = output
 	result["rng_before"] = str(before_rng)

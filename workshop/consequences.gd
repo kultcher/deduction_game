@@ -21,6 +21,9 @@ static func _assess(view: Dictionary, value: Dictionary, baseline: Dictionary, p
 	var effects = {}
 	var projections = {}
 	var theories: Dictionary = baseline.get("theories", {}).duplicate(true)
+	# One listener and one frozen attention set. Full queries can share a mixture
+	# plan even with answers/positions; their conditional checks remain separate.
+	var shared = {"enabled": baseline.get("reasoning_mode", "full") == "full" and baseline.get("confidence_mode", "scale") == "scale"}
 	for person in view.people:
 		var evil_case: Dictionary = attention.case.duplicate(true)
 		evil_case.conclusion = {"type": "evil", "target": person.id, "at": value.conclusion.at}
@@ -31,11 +34,11 @@ static func _assess(view: Dictionary, value: Dictionary, baseline: Dictionary, p
 		for key in clone.get("theories", {}):
 			if key.begins_with(person.id + "|"):
 				theories[key] = clone.theories[key]
-		var evil = Support.assess(view, evil_case, baseline, theory.bias, prepared)
+		var evil = Support.assess(view, evil_case, baseline, theory.bias, prepared, shared)
 		var good_case = evil_case.duplicate(true)
 		good_case.conclusion.type = "good"
 		var good_prepared = _prepared(view, attention, good_case, baseline)
-		var good = Support.assess(view, good_case, baseline, theory.bias, good_prepared)
+		var good = Support.assess(view, good_case, baseline, theory.bias, good_prepared, shared)
 		# Subtract what the listener's private evidence and priors already explained.
 		# Comparing evil and good also lets exonerating evidence reduce suspicion.
 		var contrast: float = evil.evidence_agreement - good.evidence_agreement
