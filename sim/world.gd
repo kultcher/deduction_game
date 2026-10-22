@@ -14,6 +14,8 @@ var rng = RandomNumberGenerator.new()
 var seed_value = 0
 var dlog = DevLog.new()
 var shadow_log = DevLog.new()   # legacy stream stays separate; detailed trace merges both
+## Optional application adapter. Empty in simulation-only callers; no UI dependency.
+var workshop_refresh: Callable
 var detailed_logging = true     # debug export only; does not enable the spoiler UI
 var trace_build = ""            # optional caller-supplied git/build identifier
 var trace_tuning = ""           # optional caller-supplied tuning identifier
@@ -847,6 +849,10 @@ func free_turned() -> String:
 		return ""
 	v.alignment = "good"
 	Mind.shadow_adopt(self, v)  # their good self, kept while turned, is their mind again
+	if v.workshop_state.get("active", false):
+		# A turned mind may never have needed a cover. Retract its shared layer
+		# BEFORE applying the native post-restoration suspicion cap below.
+		Mind.recompute_beliefs(self, v, " (shared ownership before restoration cap)")
 	Mind.shadow_reset(v)
 	v.turned = false
 	v.intel = {}

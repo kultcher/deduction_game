@@ -4,6 +4,8 @@ const CanvasModel = preload("res://workshop/canvas_model.gd")
 const CanvasView = preload("res://ui/workshop_canvas_view.gd")
 const Fixtures = preload("res://workshop/fixtures.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
+const Ghost = preload("res://workshop/ghost_juror.gd")
+const ComparisonText = preload("res://ui/workshop_comparison.gd")
 var board
 var canvas
 var answer_window: Window
@@ -17,6 +19,8 @@ var premise_type: OptionButton
 var present_button: Button
 var selection_label: Label
 var experiment_picker: OptionButton
+var preview_window: Window
+var preview_output: RichTextLabel
 
 func _ready() -> void:
 	theme = WorkshopSkin.make()
@@ -84,6 +88,7 @@ func _ready() -> void:
 	selection_label.custom_minimum_size.x = 330
 	present_button = _button(actions, "Present selected premise", _present)
 	present_button.name = "PresentPremise"
+	_button(actions, "Preview effectiveness", _preview_effectiveness).name = "PreviewEffectiveness"
 	_button(actions, "Answer selected", func(): _open_answer(board.selected))
 	_button(actions, "Cancel link", func():
 		canvas.linking = ""
@@ -111,6 +116,17 @@ func _ready() -> void:
 		call_deferred("_smoke")
 
 func _build_windows() -> void:
+	preview_window = Window.new()
+	preview_window.title = "Effectiveness preview · neutral ghost"
+	preview_window.size = Vector2i(720, 720)
+	preview_window.visible = false
+	preview_window.close_requested.connect(func(): preview_window.hide())
+	add_child(preview_window)
+	var preview_body = _window_body(preview_window)
+	preview_output = RichTextLabel.new()
+	preview_output.custom_minimum_size = Vector2(610, 610)
+	preview_output.selection_enabled = true
+	preview_body.add_child(preview_output)
 	answer_window = Window.new()
 	answer_window.title = "Answer this card"
 	answer_window.size = Vector2i(650, 700)
@@ -344,6 +360,22 @@ func _edit() -> void:
 
 func _show_jury() -> void:
 	jury_window.popup_centered()
+
+func _preview_effectiveness() -> void:
+	if board.nodes[board.selected].kind != "premise" or board.nodes[board.selected].conclusion.is_empty():
+		status.text = "Select a premise with a claim to preview."
+		return
+	var compiled = board.compile(board.selected)
+	var validation = session.validate_case(compiled)
+	if validation != "":
+		status.text = validation
+		return
+	preview_output.text = "Calculating neutral reference response…"
+	preview_window.popup_centered()
+	var preview_view = board.view.duplicate(true)
+	await get_tree().process_frame
+	var result = Ghost.evaluate(preview_view, compiled)
+	preview_output.text = ComparisonText.describe(result)
 
 func _present() -> void:
 	if board.nodes[board.selected].kind != "premise" or board.nodes[board.selected].conclusion.is_empty():

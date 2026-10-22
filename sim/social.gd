@@ -240,7 +240,10 @@ static func paranoia_drift(w) -> void:
 			continue
 		for m in w.living():
 			if m != n and not n.cleared.has(m.id):
-				n.suspicion[m.id] = clampf(n.suspicion[m.id] + 0.06 * p, 0.0, 1.5)
+				if n.workshop_state.get("active", false):
+					Mind.adjust(w, n, m.id, 0.06 * p, "paranoia drift", "", false)
+				else:
+					n.suspicion[m.id] = clampf(n.suspicion[m.id] + 0.06 * p, 0.0, 1.5)
 		w.dlog.think(n.id, "paranoia", "Paranoia %.2f: everyone left alive looks a little more suspect." % p)
 
 # ---------------------------------------------------------------- approaches

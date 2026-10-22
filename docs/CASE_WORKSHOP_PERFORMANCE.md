@@ -71,6 +71,14 @@ recheck that platform constraint before committing if browser distribution is in
 
 ## Other routes
 
+The shared-ledger integration now recomputes an enabled listener's entire supported
+evidence union after ledger changes and before reconsideration/voting. Profile those
+refresh counts as well as per-assessment time: a presentation can invoke more than one
+legacy ledger update. The eight-reading/64-state gate bounds supported work and falls
+back coherently rather than truncating facts. Incremental invalidation/coalescing is the
+next optimization candidate if repeated refreshes dominate. Ghost effectiveness previews
+are explicitly requested with a button; editing links never launches them automatically.
+
 - Run pure assessment off the UI thread so the game stays responsive. This alone need
   not shorten the computation. Use immutable snapshots, separate/synchronized caches,
   cancellation and stale-result protection; do not access the active scene tree from

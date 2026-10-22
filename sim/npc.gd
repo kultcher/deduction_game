@@ -113,6 +113,9 @@ var believed_roles = {}      # id -> role they've been persuaded someone holds
 var discounted = {}          # derived: "source:night|*" -> doubt in that source's readings (0..0.9)
 ## Evidence ledger (see Mind.ledger_hear): eid -> {effects, weight, rel, applied, meta, times}.
 var ledger = {}
+## Experimental shared reading owner. Separate outside baseline makes its layer
+## retractable even after later independent suspicion changes hit a clamp.
+var workshop_state = {}
 var used_facts = {}          # "fact>target" -> true: evidence already used against target
 var remarks: Array = []      # things they've come round to, to mention to the player
 var trust_at_reconsider = 0.5

@@ -16,6 +16,8 @@ const CaseMetrics = preload("res://game/case_metrics.gd")
 const CardModel = preload("res://game/card_model.gd")
 const RecentSightings = preload("res://game/recent_sightings.gd")
 const WorkshopBridge = preload("res://game/workshop_bridge.gd")
+const WorkshopOwnership = preload("res://game/workshop_ownership.gd")
+const WorkshopGhost = preload("res://workshop/ghost_juror.gd")
 const WorkshopAssessment = preload("res://workshop/live_assessment.gd")
 
 var w
@@ -59,6 +61,9 @@ var log_paths: Array = []
 var debug = false
 var detailed_logging = true  # developer tracing, independent of spoiler/debug scoring
 var workshop_compare = false # opt-in diagnostics; never applies the proposed effects
+var workshop_effects = false # experimental restricted shared ownership, off by default
+var _workshop_busy = false
+var _workshop_plans = {}
 var workshop_comparisons: Array = []
 var trace_build = ""
 var trace_tuning = ""
@@ -161,6 +166,8 @@ static func render(evs: Array) -> String:
 
 func new_case(seed_in: int, npc_count: int = 7) -> String:
 	workshop_comparisons = []
+	_workshop_plans = {}
+	workshop_effects = false
 	board = []
 	confidences = {}
 	_card_keys = {}
@@ -187,6 +194,11 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	w.trace_build = trace_build
 	w.trace_tuning = trace_tuning
 	w.setup(seed_in, npc_count)
+	var weak_game = weakref(self)
+	w.workshop_refresh = func(n, phase):
+		var game = weak_game.get_ref()
+		if game != null:
+			WorkshopOwnership.refresh(game, n, phase)
 	w.dlog.begin_action("new_case_presentation")
 	_home_cards()
 	state = "day"
@@ -403,11 +415,58 @@ func workshop_snapshot(numbers: Array, listener_id: String = "", venue: String =
 func workshop_preview(number: int, listener_id: String, venue: String = "private") -> Dictionary:
 	return WorkshopAssessment.evaluate(workshop_snapshot([number], listener_id, venue))
 
-## All three deduction venues share the same read-only comparison boundary.
+func workshop_ghost_preview(number: int) -> Dictionary:
+	return WorkshopGhost.live(workshop_snapshot([number]))
+
+func set_workshop_effects(on: bool) -> void:
+	workshop_effects = on
+	for real in w.npcs:
+		var minds: Array = [real]
+		if real.shadow != null:
+			minds.append(real.shadow)
+		for n in minds:
+			if n.is_evil():
+				# Preserve a turned good mind's reversible layer until its cover
+				# is created or it is restored. Never run inference on real evil.
+				n.workshop_state["enabled"] = on
+				continue
+			n.workshop_state["enabled"] = on
+			Mind.recompute_beliefs(w, n, " (shared ownership toggled)")
+
+func workshop_retract(number: int, listener_id: String) -> void:
+	var real = w.by_id.get(listener_id)
+	if real == null:
+		return
+	var n = real.shadow if real.is_evil() else real
+	if n == null:
+		return
+	n.workshop_state.get("presentations", {}).erase(str(number))
+	if not n.workshop_state.has("withdrawn"):
+		n.workshop_state.withdrawn = {}
+	n.workshop_state.withdrawn[str(number)] = true
+	Mind.recompute_beliefs(w, n, " (case endorsement withdrawn)")
+
+## All three deduction venues share receipt ownership and optional comparison.
 func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
+	if workshop_effects:
+		var mind = n.shadow if n.is_evil() else n
+		if mind != null:
+			var endorsement = workshop_snapshot([ded.n], n.id, venue)
+			mind.workshop_state["enabled"] = true
+			if not mind.workshop_state.has("presentations"):
+				mind.workshop_state.presentations = {}
+			mind.workshop_state.presentations[str(ded.n)] = endorsement
+			mind.workshop_state.get("withdrawn", {}).erase(str(ded.n))
 	var snapshot = workshop_snapshot([ded.n], n.id, venue) if workshop_compare else {}
 	var before: Dictionary = n.suspicion.duplicate(true) if workshop_compare else {}
 	var result: Dictionary = Argue.evaluate(w, n, ded, board, scale, speak)
+	if workshop_effects:
+		if n.is_evil() and n.shadow != null and not n.shadow.workshop_state.get("presentations", {}).has(str(ded.n)):
+			n.shadow.workshop_state["enabled"] = true
+			if not n.shadow.workshop_state.has("presentations"):
+				n.shadow.workshop_state.presentations = {}
+			n.shadow.workshop_state.presentations[str(ded.n)] = workshop_snapshot([ded.n], n.id, venue)
+		Mind.recompute_beliefs(w, n, " (shared presentation)")
 	if workshop_compare:
 		var comparison = WorkshopAssessment.evaluate(snapshot)
 		comparison.listener = n.id

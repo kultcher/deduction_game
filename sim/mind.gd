@@ -8,6 +8,8 @@
 ## All functions are static and take the world as the first argument.
 extends RefCounted
 
+const WorkshopLedger = preload("res://workshop/shared_ledger.gd")
+
 const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
@@ -125,7 +127,7 @@ static func end_of_day_trust(w) -> void:
 ## Fields copied once, when the shadow is made (a turned NPC's good mind carries over).
 const SHADOW_COPY = ["traits", "trait_base", "work_phases", "haunts", "friends", "rivals",
 	"suspicion", "sus_why", "sus_src", "npc_trust", "ledger", "honesty", "discounted", "believed_roles",
-	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts"]
+	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts", "workshop_state"]
 const SHADOW_SAME = ["id", "name", "pron", "style", "blurb", "occupation", "work", "home_block", "ring"]
 
 ## Run f(shadow) for evil NPC n inside the shadow context: the shadow's RNG and log in
@@ -285,6 +287,18 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 		delta *= 1.4 - 0.8 * trait_of(listener, "confidence")
 	var old: float = listener.suspicion[target_id]
 	var nv = clampf(old + delta, 0.0, 1.5)
+	if listener.workshop_state.get("active", false):
+		var state: Dictionary = listener.workshop_state
+		var outside: float = state.outside.get(target_id, old)
+		var outside_before: float = outside
+		outside = clampf(outside + delta, 0.0, 1.5)
+		if src != "" and listener.ledger.has(src) and not is_equal_approx(outside - outside_before, delta):
+			listener.ledger[src]["workshop_clipped"] = true
+		state.outside[target_id] = outside
+		nv = clampf(outside + state.requested.get(target_id, 0.0), 0.0, 1.5)
+		state.applied[target_id] = nv - outside
+	elif src != "" and listener.ledger.has(src) and not is_equal_approx(nv - old, delta):
+		listener.ledger[src]["workshop_clipped"] = true
 	listener.suspicion[target_id] = nv
 	w.dlog.trace_event("value_change", listener.id, target_id, {"quantity": "suspicion",
 		"from": old, "to": nv, "requested_delta": delta, "applied_delta": nv - old,
@@ -470,9 +484,20 @@ static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: A
 			if jj["key"] == key:
 				jj["weight"] = maxf(jj["weight"], weight)
 				jj["base"] = maxf(jj["base"], meta.get("base", 0.0))
+				if meta.has("workshop_roots"):
+					# A coarse support key may hide different original receipts. Keep
+					# every proof; never let a later supported path certify a mixed one.
+					jj["workshop_roots"] = _merge_workshop_roots(jj.get("workshop_roots", {}), meta.workshop_roots)
+					if not jj.has("workshop_cases"):
+						jj["workshop_uncertified"] = true
+						jj["workshop_cases"] = {}
+					jj.workshop_cases[meta.get("workshop_case", "0")] = meta.workshop_roots.duplicate(true)
 				found = true
 		if not found:
 			js.append({"key": key, "weight": weight, "base": meta.get("base", 0.0), "supports": sup})
+			if meta.has("workshop_roots"):
+				js[-1]["workshop_roots"] = meta.workshop_roots.duplicate(true)
+				js[-1]["workshop_cases"] = {meta.get("workshop_case", "0"): meta.workshop_roots.duplicate(true)}
 		e["justs"] = js
 	if weight > old_w:
 		e["weight"] = weight
@@ -480,6 +505,11 @@ static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: A
 		e["meta"]["w0"] = e["weight"]
 	recompute_beliefs(w, n, "")
 	return {"fresh": fresh, "gain": maxf(0.0, weight - old_w), "times": times}
+
+static func _merge_workshop_roots(old: Dictionary, value: Dictionary) -> Dictionary:
+	var result = {"complete": old.get("complete", false) and value.get("complete", false), "receipts": old.get("receipts", {}).duplicate(true)}
+	result.receipts.merge(value.get("receipts", {}))
+	return result
 
 # Credibility (honesty) tuning: how far evidence of evil discounts what someone says.
 const HONESTY_K = 0.8
@@ -502,6 +532,8 @@ static func recompute_beliefs(w, n, note: String) -> void:
 	if n.is_evil():
 		shadow_run(w, n, func(sh): recompute_beliefs(w, sh, note))
 		return
+	if w.workshop_refresh.is_valid():
+		w.workshop_refresh.call(n, "before")
 	var E: Array = n.ledger.values()
 	var cl = _claimants(E)
 	# Situational credence: the claim of someone the demon killed (so known good) is believed.
@@ -540,14 +572,19 @@ static func recompute_beliefs(w, n, note: String) -> void:
 			if f[0].begins_with("disc:"):
 				continue  # derived above
 			var want: float = f[1] * (conf if f[2] else 1.0) * wf[e["eid"]] * r
+			if n.workshop_state.get("owned", {}).has(e.eid) and WorkshopLedger.ordinary(f[0]):
+				want = 0.0
 			for t in _expand(f[0], cl):
 				var key = i if t == f[0] else "%d:%s" % [i, t]
 				var have: float = e["applied"].get(key, 0.0)
 				var diff = want - have
-				if absf(diff) < 0.002:
+				var shared_transition = n.workshop_state.get("owned", {}).has(e.eid) or n.workshop_state.get("previous_owned", {}).has(e.eid)
+				if absf(diff) < (0.000000001 if shared_transition else 0.002):
 					continue
 				e["applied"][key] = want
 				_ledger_apply(w, n, [t, f[1], f[2], f[3], f[4]], diff, want, note, e["eid"])
+	if w.workshop_refresh.is_valid():
+		w.workshop_refresh.call(n, "after")
 	w.dlog.capture_npc(n, "belief_recompute" + note)
 
 ## An argument's weight = its strongest justification as it stands now (each justification
@@ -584,6 +621,8 @@ static func _honesty(n, E: Array, disc: Dictionary, prev: Dictionary, weight_of:
 			r *= prev.get(src, 1.0)
 		var wgt: float = weight_of.call(e)
 		for f in e["effects"]:
+			if n.workshop_state.get("owned", {}).has(e.eid) and WorkshopLedger.ordinary(f[0]):
+				continue # Joint evidence owns these grounds as well as suspicion.
 			for t in _expand(f[0], cl):
 				if t.begins_with("disc:") or t.begins_with("pref:") or t.begins_with("role:") or t == src or t == n.id:
 					continue
@@ -641,6 +680,8 @@ static func reconsider(w, n, why: String) -> void:
 		shadow_run(w, n, func(sh): reconsider(w, sh, why))
 		return
 	if absf(n.trust - n.trust_at_reconsider) < 0.03:
+		if n.workshop_state.get("enabled", false):
+			recompute_beliefs(w, n, " (shared evidence reconsidered: %s)" % why)
 		return
 	n.trust_at_reconsider = n.trust
 	var rate = 1.0 - 0.6 * trait_of(n, "confidence")
@@ -684,7 +725,10 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float) ->
 	var eid = info_eid(source.id, entry)
 	var fresh = not listener.ledger.has(eid)
 	var effs: Array = _info_effects(w, listener, source, entry, weight, fresh)
-	ledger_hear(w, listener, eid, effs, weight, [source.id, entry["day"], "reading"], {"kind": "reading"})
+	var receipts: Dictionary = listener.ledger.get(eid, {}).get("meta", {}).get("workshop_receipts", {}).duplicate(true)
+	var receipt = WorkshopLedger.reading(source.id, entry)
+	receipts[receipt.id] = receipt
+	ledger_hear(w, listener, eid, effs, weight, [source.id, entry["day"], "reading"], {"kind": "reading", "workshop_receipts": receipts})
 
 static func info_eid(src: String, entry: Dictionary) -> String:
 	return "info:%s:%d:%s" % [src, entry["day"], entry["role"]]

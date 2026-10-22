@@ -6,7 +6,16 @@ closing it preserves its state and leaves the running case alone. Alternatively,
 
 The Workshop freezes a scripted ten-person town at dawn on day 3. It tests expressing,
 interpreting and revising a case. Its new interpreter does not change the main game's
-argument, persuasion, voting or dialogue systems.
+argument, persuasion, voting or dialogue systems. The separate
+[live integration experiment](CASE_WORKSHOP_INTEGRATION.md) has an opt-in restricted
+shared ledger; this canvas still runs independently of the main case.
+
+**Preview effectiveness** calculates an on-demand response from a neutral ghost juror.
+It shows approximate effects for everyone and intermediate claim acceptance without
+changing the case or remembered mock jury. The ghost has no private knowledge or known
+role; its declared neutral inputs are shown with the result. This is a reference for case
+strength, not a prediction of a particular NPC or a probability of guilt. The live comparison
+panel also has a player-safe version that does not require Debug.
 
 Slices 1–5 of the [implementation plan](CASE_WORKSHOP_PLAN.md) are implemented within
 their bounded fixture scope. The first three provide:

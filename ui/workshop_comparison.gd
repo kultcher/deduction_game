@@ -5,6 +5,8 @@ var cases: OptionButton
 var listeners: OptionButton
 var automatic: CheckBox
 var inspect_button: Button
+var preview_button: Button
+var effects_toggle: CheckBox
 var output: RichTextLabel
 var heading: Label
 
@@ -26,6 +28,15 @@ func _ready() -> void:
 	automatic.text = "Record comparisons when I present deductions (may add a pause)"
 	automatic.toggled.connect(func(on): g.workshop_compare = on)
 	column.add_child(automatic)
+	effects_toggle = CheckBox.new()
+	effects_toggle.text = "Experimental shared reading effects (Debug; unsupported cases use legacy beliefs)"
+	effects_toggle.toggled.connect(func(on):
+		if g.debug_overlay:
+			g.set_workshop_effects(on)
+			effects_toggle.set_pressed_no_signal(g.workshop_effects)
+		else:
+			effects_toggle.set_pressed_no_signal(false))
+	column.add_child(effects_toggle)
 	var row = HBoxContainer.new()
 	column.add_child(row)
 	cases = OptionButton.new()
@@ -46,6 +57,19 @@ func _ready() -> void:
 	refresh_button.text = "Refresh cases"
 	refresh_button.pressed.connect(refresh)
 	actions.add_child(refresh_button)
+	preview_button = Button.new()
+	preview_button.text = "Preview effectiveness"
+	preview_button.pressed.connect(_preview)
+	actions.add_child(preview_button)
+	var retract_button = Button.new()
+	retract_button.text = "Withdraw selected endorsement"
+	retract_button.pressed.connect(func():
+		if not g.debug_overlay or cases.item_count == 0 or listeners.item_count == 0:
+			return
+		var id: String = listeners.get_item_metadata(listeners.selected)
+		g.workshop_retract(cases.get_item_metadata(cases.selected), id)
+		output.text = "Case endorsement withdrawn for %s. Independently learned reports remain.\n%s" % [id.capitalize(), _ownership(id)])
+	actions.add_child(retract_button)
 	var records_button = Button.new()
 	records_button.text = "Recorded presentations"
 	records_button.pressed.connect(_records)
@@ -68,10 +92,36 @@ func refresh() -> void:
 		listeners.add_item(n.name)
 		listeners.set_item_metadata(listeners.item_count - 1, n.id)
 	automatic.set_pressed_no_signal(g.workshop_compare)
+	effects_toggle.set_pressed_no_signal(g.workshop_effects)
+	effects_toggle.disabled = not g.debug_overlay
+	preview_button.disabled = cases.item_count == 0
 	inspect_button.disabled = cases.item_count == 0 or listeners.item_count == 0 or not g.debug_overlay
 	output.text = "Enable Debug in the main window to inspect private NPC responses. Debug inspection leaves identification unscored." if not g.debug_overlay else "Choose a filed deduction and a listener. Inspection costs no game time. Recorded presentations keep the original response alongside the new proposal."
 	if cases.item_count == 0:
 		output.text += "\n\nThere are no filed deductions in this case yet."
+	else:
+		output.text += "\n\nPreview effectiveness uses a neutral ghost with player-held evidence only; Debug is not required."
+
+func _preview() -> void:
+	if cases.item_count == 0:
+		return
+	var number: int = cases.get_item_metadata(cases.selected)
+	var captured_game = g
+	preview_button.disabled = true
+	output.text = "Calculating neutral reference response…"
+	await get_tree().process_frame
+	if g != captured_game:
+		return
+	output.text = "Effectiveness preview · neutral ghost\n\n" + describe(g.workshop_ghost_preview(number))
+	preview_button.disabled = false
+
+func _ownership(id: String) -> String:
+	var real = g.w.by_id[id]
+	var n = real.shadow if real.is_evil() else real
+	if n == null or n.workshop_state.is_empty():
+		return "Shared reading ownership is inactive."
+	var state: Dictionary = n.workshop_state
+	return "Shared owner active: %s. %d unique facts; %d replaced entries.\n%s" % [str(state.get("active", false)), state.get("facts", []).size(), state.get("owned", {}).size(), "\n".join(PackedStringArray(state.get("issues", [])))]
 
 func _inspect() -> void:
 	if not g.debug_overlay or cases.item_count == 0 or listeners.item_count == 0:
@@ -86,6 +136,7 @@ func _inspect() -> void:
 		return # A new case replaced the selected game while the status was rendering.
 	var result = g.workshop_preview(number, listener)
 	output.text = "Card #%d · %s\n\n%s" % [number, g.w.by_id[listener].name, describe(result)]
+	output.text += "\n\n" + _ownership(listener)
 	inspect_button.disabled = false
 
 func _records() -> void:
@@ -104,11 +155,13 @@ static func describe(result: Dictionary) -> String:
 		return "No numeric comparison:\n• " + "\n• ".join(PackedStringArray(result.issues))
 	var proposal: Dictionary = result.proposal
 	var lines = PackedStringArray(["New model: %s · agreement %.3f · %d ms" % [proposal.stance, proposal.support_model.agreement, result.elapsed_ms],
-		proposal.response, "", "Proposed changes relative to the captured beliefs (not applied):"])
+		proposal.response, "", "Evidence strength (not applied to the game):"])
+	lines.insert(2, "Conditional worlds: %d compatible; %d fit your answers. These are assignments, not odds of guilt." % [proposal.assessment.compatible, proposal.assessment.proposed])
 	for person in proposal.effects:
 		var effect: Dictionary = proposal.effects[person]
 		if not is_zero_approx(effect.requested):
-			lines.append("%s: %+.3f" % [person.capitalize(), effect.requested])
+			var clamped = " (clamped change %+.3f)" % effect.delta if not is_equal_approx(effect.delta, effect.requested) else ""
+			lines.append("%s: %+.3f%s" % [person.capitalize(), effect.requested, clamped])
 	for claim in proposal.claims:
 		lines.append("Claim about %s: %s. %s" % [claim.conclusion.target.capitalize(), claim.stance, claim.note])
 	var audit: Dictionary = result.get("ledger_audit", {})

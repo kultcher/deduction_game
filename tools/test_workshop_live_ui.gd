@@ -29,9 +29,17 @@ func _run() -> void:
 	root.add_child(panel)
 	await process_frame
 	check(panel.inspect_button.disabled and "Enable Debug" in panel.output.text, "live private inspection requires explicit Debug mode")
+	var safe_before = JSON.stringify([g.w.rng.state, n.suspicion, n.ledger, g.prediction_spoiled])
+	await panel._preview()
+	check("neutral ghost" in panel.output.text and "Conditional worlds" in panel.output.text, "effectiveness preview works before enabling Debug")
+	check(safe_before == JSON.stringify([g.w.rng.state, n.suspicion, n.ledger, g.prediction_spoiled]), "neutral UI preview neither spoils scoring nor changes private beliefs")
 	g.set_debug_overlay(true)
 	panel.refresh()
 	check(g.prediction_spoiled and not panel.inspect_button.disabled, "debug inspection is labelled and follows existing scoring rules")
+	panel.effects_toggle.button_pressed = true
+	check(g.workshop_effects, "experimental ownership switch enables restricted effects explicitly")
+	panel.effects_toggle.button_pressed = false
+	check(not g.workshop_effects, "experimental switch can restore legacy ownership")
 	for i in range(panel.listeners.item_count):
 		if panel.listeners.get_item_metadata(i) == n.id:
 			panel.listeners.select(i)
@@ -52,6 +60,9 @@ func _run() -> void:
 	if "--screenshot" in args:
 		var index = args.find("--screenshot")
 		if index + 1 < args.size():
+			await panel._preview()
+			await process_frame
+			await process_frame
 			root.get_texture().get_image().save_png(args[index + 1])
 	panel.queue_free()
 	await process_frame

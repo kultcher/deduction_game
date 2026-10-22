@@ -6,7 +6,7 @@ const Evidence = preload("res://workshop/live_evidence.gd")
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
 
-static func capture(g, selected: Array, listener_id: String = "", venue: String = "private") -> Dictionary:
+static func capture(g, selected: Array, listener_id: String = "", venue: String = "private", cover_mind = null) -> Dictionary:
 	var now = {"day": g.w.day, "phase": g._phase_now()}
 	var input = {"case_id": "case:%d:%d" % [g.w.seed_value, g.w.n_npcs], "now": now, "venue": venue,
 		"people": [], "receipts": [], "selected": [], "arguments": [], "root": 0, "issues": [],
@@ -43,7 +43,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 		else:
 			# Selecting an existing cover mind is routing, not an inference from evil truth.
 			# Do not create/sync it: that would mutate the simulation or advance an RNG.
-			var n = real.shadow if real.is_evil() else real
+			var n = cover_mind if cover_mind != null else (real.shadow if real.is_evil() else real)
 			if n == null:
 				input.issues.append({"code": "cover_unavailable", "fact": "", "detail": listener_id})
 			else:
