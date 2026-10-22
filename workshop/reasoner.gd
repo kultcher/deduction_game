@@ -142,7 +142,7 @@ static func _local_conflict(cards: Array) -> Array:
 static func _find(view: Dictionary, cards: Array, case_data: Dictionary, listener: Dictionary, budget: int, want: bool, positions: Dictionary, answers: Dictionary) -> Dictionary:
 	if Domain.live(view):
 		return _find_live(view, cards, case_data, listener, budget, want, positions, answers)
-	var ids: Array = view.people.map(func(p): return p.id)
+	var ids: Array = Solver.person_ids(view)
 	var good: Array = listener.knowledge.get("good", []).duplicate()
 	for card in cards:
 		if card.kind == "report" and card.source not in good:
@@ -194,7 +194,6 @@ static func _candidate_priority(id: String, target: String, cards: Array, listen
 static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, positions: Dictionary, answers: Dictionary, epoch: String = "", temporal_positions: Array = []) -> bool:
 	if Domain.live(view) and not Domain.claims_compatible(cards, knowledge):
 		return false
-	var ids: Array = view.people.map(func(p): return p.id)
 	for id in knowledge.get("good", []):
 		if not Solver.position_holds(view, world, id, "good", knowledge.get("good_epoch", epoch)):
 			return false
@@ -213,7 +212,7 @@ static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledg
 static func _swaps(view: Dictionary, cards: Array, case_data: Dictionary, listener: Dictionary, seed: Dictionary, budget: int) -> Dictionary:
 	if Domain.live(view):
 		return _find_live(view, cards, case_data, listener, budget, false, {}, {})
-	var ids: Array = view.people.map(func(p): return p.id)
+	var ids: Array = Solver.person_ids(view)
 	var evil: Array = ids.filter(func(id): return seed.evil & (1 << ids.find(id)))
 	var good: Array = ids.filter(func(id): return not seed.evil & (1 << ids.find(id)))
 	evil.sort_custom(func(a, b): return a == case_data.conclusion.target if a == case_data.conclusion.target or b == case_data.conclusion.target else a < b)
@@ -249,26 +248,45 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 	if reuse_matches and (not matches.has(key) or matches[key].inputs != inputs):
 		if matches.size() >= 32:
 			matches.clear()
-		matches[key] = {"inputs": inputs.duplicate(true), "results": {}}
-	var known: Dictionary = matches[key].results if reuse_matches else {}
+		var n_worlds = Domain.worlds(view).size()
+		var table = PackedByteArray()
+		table.resize(n_worlds)
+		table.fill(255) # 255 = unknown, 0 = false, 1 = true
+		matches[key] = {"inputs": inputs.duplicate(true), "table": table}
+	var table: PackedByteArray = matches[key].table if reuse_matches else PackedByteArray()
+	var use_table: bool = reuse_matches and not table.is_empty()
+	var target_idx: int = Solver.person_index(view, value.conclusion.target)
+	var type: String = value.conclusion.type
+	var has_curse: bool = view.get("chronology", {}).has("curse")
+	var target_bit: int = (1 << target_idx) if target_idx >= 0 else 0
+
 	# Enumerate the public legal domain, not worlds filtered by the referee. The
 	# same hard test budget applies, and exhaustion alone can certify a conclusion.
 	for candidate in Domain.worlds(view):
-		if Solver.holds(view, candidate, value.conclusion) != want:
+		var holds_val: bool
+		if not has_curse:
+			match type:
+				"evil", "suspicious": holds_val = (candidate.evil & target_bit) != 0
+				"good": holds_val = (candidate.evil & target_bit) == 0
+				"marked": holds_val = candidate.marked == target_idx
+				_: holds_val = Solver.holds(view, candidate, value.conclusion)
+		else:
+			holds_val = Solver.holds(view, candidate, value.conclusion)
+		if holds_val != want:
 			continue
 		if tested >= budget:
 			return {"world": {}, "tested": tested, "exhausted": false}
 		tested += 1
-		var world_key = TimeModel.key(view, candidate)
+		var c_idx: int = int(candidate.get("__i", -1))
 		var fits: bool
-		if reuse_matches and known.has(world_key):
+		if use_table and c_idx >= 0 and table[c_idx] != 255:
 			Profiler.count("candidate_cache_hit")
-			fits = known[world_key]
+			fits = table[c_idx] == 1
 		else:
 			Profiler.count("candidate_cache_miss")
 			fits = _matches(view, candidate, cards, listener.knowledge, positions, answers, value.conclusion.at, value.get("temporal_positions", []))
-			if reuse_matches:
-				known[world_key] = fits
+			if use_table and c_idx >= 0:
+				table[c_idx] = 1 if fits else 0
 		if fits:
 			return {"world": candidate, "tested": tested, "exhausted": false}
 	return {"world": {}, "tested": tested, "exhausted": true}

@@ -75,7 +75,7 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 static func _position(view: Dictionary, world: Dictionary, target: String, type: String, epoch: String) -> String:
 	if world.is_empty():
 		return ""
-	var index: int = view.people.map(func(p): return p.id).find(target)
+	var index: int = Solver.person_index(view, target)
 	if type == "marked":
 		return "marked" if world.marked == index else "unmarked"
 	return "evil" if Solver.position_holds(view, world, target, "evil", epoch) else "good"

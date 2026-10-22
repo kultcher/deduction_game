@@ -3,6 +3,16 @@
 extends RefCounted
 const C = preload("res://sim/content.gd")
 const Domain = preload("res://workshop/world_domain.gd")
+static var _cached_people = null
+static var _cached_idx: Dictionary = {}
+
+static func _person_index(view: Dictionary, person: String) -> int:
+	if view.people != _cached_people:
+		_cached_people = view.people
+		_cached_idx = {}
+		for i in range(view.people.size()):
+			_cached_idx[view.people[i].id] = i
+	return _cached_idx.get(person, -1)
 
 static func tick(stamp: Dictionary) -> int:
 	var phase: String = str(stamp.get("phase", "day"))
@@ -29,7 +39,7 @@ static func expand(view: Dictionary, world: Dictionary) -> Array:
 	return result
 
 static func evil_at(view: Dictionary, world: Dictionary, person: String, at) -> bool:
-	var index: int = view.people.map(func(p): return p.id).find(person)
+	var index: int = _person_index(view, person)
 	return evil_index(view, world, index, at)
 
 static func evil_index(view: Dictionary, world: Dictionary, index: int, at) -> bool:
@@ -44,6 +54,8 @@ static func evil_index(view: Dictionary, world: Dictionary, index: int, at) -> b
 	return time >= curse.from and time < curse.until
 
 static func key(view: Dictionary, world: Dictionary) -> int:
+	if world.has("__key"):
+		return world["__key"]
 	if Domain.live(view):
 		return Domain.key(view, world)
 	var n: int = view.people.size()

@@ -14,6 +14,8 @@ static var priors: Dictionary = {}
 # Developer A/B switch for the reproducible profiler, not a gameplay setting.
 static var reuse_priors = true
 static var reuse_comparisons = true
+static var next_solve_id: int = 1
+static var next_rank_id: int = 1
 
 static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}) -> Dictionary:
 	var span = Profiler.open("support")
@@ -92,9 +94,9 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 	# Private accepted subsets repeat across credibility states for other sources.
 	# Within this assessment their ranks, question, knowledge and factors are fixed.
 	var private_comparisons: Dictionary = {}
-	# The comparison starts with the listener's private reports, not an empty mind.
-	# Removing the public evidence must remove its effect, including effects on
-	# people who were never named in the player's conclusion.
+	# Group evaluations by active card subset so identical subsets reuse the solve,
+	# factors and comparisons, while keeping exact sequential float accumulation.
+	var active_eval_cache: Dictionary = {}
 	for mask in range(1 << uncertain.size()):
 		var weight = 1.0
 		var accepted = {}
@@ -110,103 +112,129 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 		for healthy in fault_controls:
 			if not accepted[fault_controls[healthy]]:
 				accepted[healthy] = true
-		var active: Array = cards.filter(func(c): return requirements[c.id].all(func(key): return accepted[key]))
-		var private_cards: Array = active.filter(func(c): return c.id in listener.knowledge.get("own_reports", []))
-		var private_worlds: Array = _solve(view, private_cards, listener.knowledge).worlds
-		var solved = {}
-		var searched = {}
-		if bounded:
-			searched = Reasoner.search(view, case_data, active, listener, attention.limits)
+		var card_mask: int = 0
+		for j in range(cards.size()):
+			if requirements[cards[j].id].all(func(key): return accepted[key]):
+				card_mask |= (1 << j)
+		var eval: Dictionary
+		if active_eval_cache.has(card_mask):
+			eval = active_eval_cache[card_mask]
 		else:
-			solved = _solve(view, active, listener.knowledge)
+			var active: Array = []
+			for j in range(cards.size()):
+				if (card_mask & (1 << j)) != 0:
+					active.append(cards[j])
+			var private_cards: Array = active.filter(func(c): return c.id in listener.knowledge.get("own_reports", []))
+			var private_solved = _solve(view, private_cards, listener.knowledge)
+			var private_worlds: Array = private_solved.worlds
+			var solved = {}
+			var searched = {}
+			if bounded:
+				searched = Reasoner.search(view, case_data, active, listener, attention.limits)
+			else:
+				solved = _solve(view, active, listener.knowledge)
+			var is_inconsistent: bool = (bounded and searched.status == "inconsistent") or (not bounded and (solved.worlds.is_empty() or not solved.movement_ok))
+			if is_inconsistent:
+				eval = {"inconsistent": true}
+			else:
+				var factors: Array = case_data.test_factors.filter(func(f): return not is_zero_approx(float(f.log2_ratio)) and f.routes.any(func(route): return route.all(func(id): return active.any(func(c): return Solver.semantic_key(c) == Solver.semantic_key(Solver.card_by_id(view, id))))))
+				factors.append_array(Movement.factors(view, active, case_data))
+				for factor in factors:
+					factor["epoch"] = case_data.conclusion.at
+				for factor in factors:
+					if factor.label not in used_factors and not is_zero_approx(float(factor.log2_ratio)):
+						used_factors.append(factor.label)
+				var contributing: Array = active.filter(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])
+				var a = 0.0
+				var solved_id: int = 0 if bounded else int(solved.get("__id", 0))
+				var comparison: Dictionary = {} if bounded else _comparison(view, solved.worlds, case_data.conclusion, factors, ranks, solved_id)
+				var all_hold: bool = searched.status == "entailed_in_attention" if bounded else comparison.support > 0.0 and comparison.rival == 0.0
+				var any_hold: bool = not searched.support.is_empty() if bounded else comparison.support > 0.0
+				var conditional: bool = false
+				if all_hold and presented_reading:
+					a = 1.0
+					var path: Array = contributing.map(func(c): return c.id)
+					path.sort()
+					if not paths.has(path):
+						paths.append(path)
+				elif any_hold and ((presented_reading and not contributing.is_empty()) or not factors.is_empty()):
+					if bounded and searched.status == "provisional":
+						var ratio = _direct_ratio(factors, case_data.conclusion)
+						if contributing.is_empty():
+							a = (2.0 if Movement.available(view) else 0.16) * (ratio / (1.0 + ratio) - 0.5)
+						else:
+							a = minf(0.95, (0.76 if contributing.size() >= 2 else 0.3) * 2.0 * ratio / (1.0 + ratio))
+						if not bias.is_empty() and not Solver.position_holds(view, searched.support, bias.target, bias.position, case_data.conclusion.at):
+							a /= bias.factor
+					elif bounded:
+						a = possibility(view, [searched.support, searched.rival], case_data.conclusion, listener, factors, ranks)
+					else:
+						a = _possibility(comparison) if reuse_comparisons else possibility(view, solved.worlds, case_data.conclusion, listener, factors, ranks, solved_id)
+					if Movement.available(view) and not (bounded and searched.status == "provisional") and factors.any(func(f): return f.get("origin") == "movement_model"):
+						var candidates: Array = [searched.support] + ([] if searched.rival.is_empty() else [searched.rival]) if bounded else solved.worlds
+						var candidates_id: int = 0 if bounded else solved_id
+						var preferred = comparison if not bounded and reuse_comparisons else _comparison(view, candidates, case_data.conclusion, factors, ranks, candidates_id)
+						var reference_factors: Array = factors.filter(func(f): return f.get("origin") != "movement_model")
+						var neutral = _comparison(view, candidates, case_data.conclusion, reference_factors, ranks, candidates_id)
+						var shift: float = preferred.support / maxf(preferred.support + preferred.rival, 1e-12) - neutral.support / maxf(neutral.support + neutral.rival, 1e-12)
+						a = clampf(a + 2.0 * shift, -1.0, 1.0)
+					if contributing.is_empty() and not (bounded and searched.status == "provisional"):
+						var candidates: Array = [searched.support] + ([] if searched.rival.is_empty() else [searched.rival]) if bounded else solved.worlds
+						var candidates_id: int = 0 if bounded else solved_id
+						a -= possibility(view, candidates, case_data.conclusion, listener, [], ranks, candidates_id)
+					var positions: Dictionary = case_data.positions.duplicate(true)
+					positions.erase(case_data.conclusion.target)
+					var answers: Dictionary = case_data.answers.duplicate(true)
+					if case_data.conclusion.type == "marked":
+						for card in contributing:
+							if card.role == "rumormonger":
+								answers.erase(card.id)
+					if not positions.is_empty() or not answers.is_empty() or not case_data.get("temporal_positions", []).is_empty():
+						if bounded:
+							conditional = not searched.support.is_empty()
+						else:
+							var chosen = Solver.solve(view, active, positions, answers, listener.knowledge, case_data.conclusion.at, case_data.get("temporal_positions", []))
+							conditional = not chosen.worlds.is_empty() and chosen.worlds.all(func(w): return Solver.holds(view, w, case_data.conclusion))
+						if conditional:
+							a = maxf(a, 0.4)
+				var reference = 0.0
+				if presented_reading and not contributing.is_empty() and not private_worlds.is_empty():
+					var private_key = JSON.stringify(private_cards.map(func(c): return c.id))
+					var prior: Dictionary
+					if reuse_comparisons and private_comparisons.has(private_key):
+						Profiler.count("private_comparison_reuse")
+						prior = private_comparisons[private_key]
+					else:
+						prior = _comparison(view, private_worlds, case_data.conclusion, [], ranks, int(private_solved.get("__id", 0)))
+						private_comparisons[private_key] = prior
+					if prior.support > 0 and prior.rival == 0:
+						reference = 1.0
+					elif prior.support > 0:
+						reference = 0.02 + 0.16 * prior.support / maxf(prior.support + prior.rival, 0.000000000001)
+				eval = {
+					"inconsistent": false,
+					"active": active,
+					"a": a,
+					"reference": reference,
+					"all_hold": all_hold,
+					"conditional": conditional
+				}
+			active_eval_cache[card_mask] = eval
+
 		states += 1
-		if (bounded and searched.status == "inconsistent") or (not bounded and (solved.worlds.is_empty() or not solved.movement_ok)):
+		if eval.inconsistent:
 			impossible += weight
 			continue
 		total += weight
-		for card in active:
+		for card in eval.active:
 			accuracy[card.id] = accuracy.get(card.id, 0.0) + weight
-		var factors: Array = case_data.test_factors.filter(func(f): return not is_zero_approx(float(f.log2_ratio)) and f.routes.any(func(route): return route.all(func(id): return active.any(func(c): return Solver.semantic_key(c) == Solver.semantic_key(Solver.card_by_id(view, id))))))
-		factors.append_array(Movement.factors(view, active, case_data))
-		for factor in factors:
-			factor["epoch"] = case_data.conclusion.at
-		for factor in factors:
-			if factor.label not in used_factors and not is_zero_approx(float(factor.log2_ratio)):
-				used_factors.append(factor.label)
-		var contributing: Array = active.filter(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])
-		var a = 0.0
-		var comparison: Dictionary = {} if bounded else _comparison(view, solved.worlds, case_data.conclusion, factors, ranks)
-		var all_hold: bool = searched.status == "entailed_in_attention" if bounded else comparison.support > 0.0 and comparison.rival == 0.0
-		var any_hold: bool = not searched.support.is_empty() if bounded else comparison.support > 0.0
-		if all_hold and presented_reading:
-			a = 1.0
+		if eval.all_hold and presented_reading:
 			forced_mass += weight
-			var path: Array = contributing.map(func(c): return c.id)
-			path.sort()
-			if not paths.has(path):
-				paths.append(path)
-		elif any_hold and ((presented_reading and not contributing.is_empty()) or not factors.is_empty()):
-			if bounded and searched.status == "provisional":
-				var ratio = _direct_ratio(factors, case_data.conclusion)
-				if contributing.is_empty():
-					a = (2.0 if Movement.available(view) else 0.16) * (ratio / (1.0 + ratio) - 0.5)
-				else:
-					a = minf(0.95, (0.76 if contributing.size() >= 2 else 0.3) * 2.0 * ratio / (1.0 + ratio))
-				if not bias.is_empty() and not Solver.position_holds(view, searched.support, bias.target, bias.position, case_data.conclusion.at):
-					a /= bias.factor
-			elif bounded:
-				a = possibility(view, [searched.support, searched.rival], case_data.conclusion, listener, factors, ranks)
-			else:
-				a = _possibility(comparison) if reuse_comparisons else possibility(view, solved.worlds, case_data.conclusion, listener, factors, ranks)
-			if Movement.available(view) and not (bounded and searched.status == "provisional") and factors.any(func(f): return f.get("origin") == "movement_model"):
-				# Soft evidence can persuade without logically eliminating a rival.
-				# Only the CHANGE in preference adds conviction; irrelevant factors
-				# cannot promote a merely possible accusation into a stronger tier.
-				var candidates: Array = [searched.support] + ([] if searched.rival.is_empty() else [searched.rival]) if bounded else solved.worlds
-				var preferred = comparison if not bounded and reuse_comparisons else _comparison(view, candidates, case_data.conclusion, factors, ranks)
-				var reference_factors: Array = factors.filter(func(f): return f.get("origin") != "movement_model")
-				var neutral = _comparison(view, candidates, case_data.conclusion, reference_factors, ranks)
-				var shift: float = preferred.support / maxf(preferred.support + preferred.rival, 1e-12) - neutral.support / maxf(neutral.support + neutral.rival, 1e-12)
-				a = clampf(a + 2.0 * shift, -1.0, 1.0)
-			if contributing.is_empty() and not (bounded and searched.status == "provisional"):
-				# A factor about someone else that does not distinguish this conclusion
-				# must not create the generic 'possible accusation' tier by its presence.
-				var candidates: Array = [searched.support] + ([] if searched.rival.is_empty() else [searched.rival]) if bounded else solved.worlds
-				a -= possibility(view, candidates, case_data.conclusion, listener, [], ranks)
-			var positions: Dictionary = case_data.positions.duplicate(true)
-			positions.erase(case_data.conclusion.target)
-			var answers: Dictionary = case_data.answers.duplicate(true)
-			if case_data.conclusion.type == "marked":
-				for card in contributing:
-					if card.role == "rumormonger":
-						answers.erase(card.id)
-			if not positions.is_empty() or not answers.is_empty() or not case_data.get("temporal_positions", []).is_empty():
-				var conditional = false
-				if bounded:
-					conditional = not searched.support.is_empty()
-				else:
-					var chosen = Solver.solve(view, active, positions, answers, listener.knowledge, case_data.conclusion.at, case_data.get("temporal_positions", []))
-					conditional = not chosen.worlds.is_empty() and chosen.worlds.all(func(w): return Solver.holds(view, w, case_data.conclusion))
-				if conditional:
-					a = maxf(a, 0.4)
-					conditional_mass += weight
-		agreement += weight * a
-		var reference = 0.0
-		if presented_reading and not contributing.is_empty() and not private_worlds.is_empty():
-			var private_key = JSON.stringify(private_cards.map(func(c): return c.id))
-			var prior: Dictionary
-			if reuse_comparisons and private_comparisons.has(private_key):
-				Profiler.count("private_comparison_reuse")
-				prior = private_comparisons[private_key]
-			else:
-				prior = _comparison(view, private_worlds, case_data.conclusion, [], ranks)
-				private_comparisons[private_key] = prior
-			if prior.support > 0 and prior.rival == 0:
-				reference = 1.0
-			elif prior.support > 0:
-				reference = 0.02 + 0.16 * prior.support / maxf(prior.support + prior.rival, 0.000000000001)
-		evidence_agreement += weight * (a - reference)
-		strongest = maxf(strongest, weight * a)
+		if eval.conditional:
+			conditional_mass += weight
+		agreement += weight * eval.a
+		evidence_agreement += weight * (eval.a - eval.reference)
+		strongest = maxf(strongest, weight * eval.a)
 	var minimal: Array = []
 	for path in paths:
 		if not paths.any(func(other): return other.size() < path.size() and other.all(func(id): return id in path)):
@@ -300,6 +328,8 @@ static func _solve_inner(view: Dictionary, cards: Array, knowledge: Dictionary) 
 	if cache.size() > 512:
 		cache.clear()
 	var solved = Solver.solve(view, cards, {}, {}, knowledge)
+	next_solve_id += 1
+	solved["__id"] = next_solve_id
 	cache[key] = {"inputs": inputs.duplicate(true), "result": solved}
 	return solved
 
@@ -333,6 +363,8 @@ static func _prior_scores(view: Dictionary, listener: Dictionary, bias: Dictiona
 		if not bias.is_empty() and Solver.position_holds(view, world, bias.target, bias.position, epoch):
 			score *= bias.factor
 		ranks[TimeModel.key(view, world)] = score
+	next_rank_id += 1
+	ranks["__id"] = next_rank_id
 	if reuse_priors:
 		if priors.size() >= 64:
 			priors.clear()
@@ -344,33 +376,35 @@ static func world_score(view: Dictionary, world: Dictionary, ranks: Dictionary, 
 		return 0.0
 	var score: float = ranks.get(TimeModel.key(view, world), 0.0)
 	for factor in factors:
-		var target: int = view.people.map(func(p): return p.id).find(factor.target)
+		var target: int = Solver.person_index(view, factor.target)
 		if target >= 0 and TimeModel.evil_at(view, world, factor.target, factor.get("epoch", view.alignment_epoch)):
 			score *= pow(2.0, float(factor.log2_ratio))
 		elif target >= 0 and factor.get("origin", "") == "movement_model" and world.marked == target:
 			score *= maxf(factor.good_marked_likelihood, 1e-12) / maxf(factor.good_likelihood, 1e-12)
 	return score
 
-static func possibility(view: Dictionary, worlds: Array, conclusion: Dictionary, listener: Dictionary, factors: Array = [], ranks: Dictionary = {}) -> float:
+static func possibility(view: Dictionary, worlds: Array, conclusion: Dictionary, listener: Dictionary, factors: Array = [], ranks: Dictionary = {}, worlds_id: int = 0) -> float:
 	if ranks.is_empty():
 		ranks = prior_scores(view, listener)
-	var comparison = _comparison(view, worlds, conclusion, factors, ranks)
+	var comparison = _comparison(view, worlds, conclusion, factors, ranks, worlds_id)
 	return _possibility(comparison)
 
 static func _possibility(comparison: Dictionary) -> float:
 	return 0.02 + 0.16 * comparison.support / maxf(comparison.support + comparison.rival, 0.000000000001)
 
-static func _comparison(view: Dictionary, worlds: Array, conclusion: Dictionary, factors: Array, ranks: Dictionary) -> Dictionary:
+static func _comparison(view: Dictionary, worlds: Array, conclusion: Dictionary, factors: Array, ranks: Dictionary, worlds_id: int = 0) -> Dictionary:
 	var span = Profiler.open("world_comparison")
-	var result = _comparison_inner(view, worlds, conclusion, factors, ranks)
+	var result = _comparison_inner(view, worlds, conclusion, factors, ranks, worlds_id)
 	Profiler.close(span)
 	return result
 
-static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dictionary, factors: Array, ranks: Dictionary) -> Dictionary:
+static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dictionary, factors: Array, ranks: Dictionary, worlds_id: int = 0) -> Dictionary:
 	# One set of ranked worlds answers all characters' alignment/Marked questions.
 	# This cache only speeds the full/mixture calculation; bounded searches still
 	# construct their own candidates and never receive unseen public worlds.
-	var inputs = [view.people, view.get("chronology", {}), view.get("world_options", {}), worlds, factors, ranks, conclusion.at]
+	var rank_id: int = int(ranks.get("__id", 0))
+	var fast_mode: bool = worlds_id != 0 and rank_id != 0
+	var inputs = [worlds_id, rank_id, factors, conclusion.at] if fast_mode else [view.people, view.get("chronology", {}), view.get("world_options", {}), worlds, factors, ranks, conclusion.at]
 	var key = hash(inputs)
 	if not comparisons.has(key) or comparisons[key].inputs != inputs:
 		Profiler.count("comparison_cache_miss")
@@ -391,7 +425,7 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 		comparisons[key] = {"inputs": inputs, "scores": scores}
 	else:
 		Profiler.count("comparison_cache_hit")
-	var index: int = view.people.map(func(p): return p.id).find(conclusion.target)
+	var index: int = Solver.person_index(view, conclusion.target)
 	if index < 0 or conclusion.type == "conflict":
 		return {"support": 0.0, "rival": 0.0}
 	var scores: Dictionary = comparisons[key].scores[index]

@@ -9,6 +9,35 @@ const Profiler = preload("res://workshop/profiler.gd")
 static var universes: Dictionary = {}
 static var report_matches: Dictionary = {}
 static var movement_cache: Dictionary = {}
+static var _cached_people = null
+static var _cached_ids: Array = []
+static var _cached_idx: Dictionary = {}
+static var _cached_block_masks: Dictionary = {}
+
+static func _ensure_people(view: Dictionary) -> void:
+	if view.people == _cached_people:
+		return
+	_cached_people = view.people
+	_cached_ids = []
+	_cached_idx = {}
+	_cached_block_masks = {}
+	for i in range(view.people.size()):
+		var p: Dictionary = view.people[i]
+		_cached_idx[p.id] = i
+		_cached_ids.append(p.id)
+		_cached_block_masks[p.home] = _cached_block_masks.get(p.home, 0) | (1 << i)
+
+static func person_index(view: Dictionary, id: String) -> int:
+	_ensure_people(view)
+	return _cached_idx.get(id, -1)
+
+static func person_ids(view: Dictionary) -> Array:
+	_ensure_people(view)
+	return _cached_ids
+
+static func block_masks(view: Dictionary) -> Array:
+	_ensure_people(view)
+	return _cached_block_masks.values()
 
 static func empty_case() -> Dictionary:
 	return {"id": "case-1", "version": 1, "cards": [], "positions": {}, "answers": {}, "reasons": {},
@@ -123,7 +152,7 @@ static func solve(view: Dictionary, cards: Array, positions: Dictionary = {}, an
 	return result
 
 static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}, epoch: String = "", temporal_positions: Array = []) -> Dictionary:
-	var ids: Array = view.people.map(func(p): return p.id)
+	var ids: Array = person_ids(view)
 	var universe_key = str([ids, view.evil_count, view.get("chronology", {}), view.get("world_options", {})])
 	if not universes.has(universe_key):
 		if universes.size() >= 16:
@@ -141,29 +170,64 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 	var worlds: Array = universes[universe_key].duplicate()
 	if Domain.live(view) and not Domain.claims_compatible(cards, knowledge):
 		worlds = []
-	for id in knowledge.get("good", []):
-		worlds = worlds.filter(func(w): return position_holds(view, w, id, "good", knowledge.get("good_epoch", epoch)))
-	for id in positions:
-		worlds = worlds.filter(func(w): return position_holds(view, w, id, positions[id], epoch))
-	for assignment in temporal_positions:
-		for id in assignment.positions:
-			worlds = worlds.filter(func(w): return position_holds(view, w, id, assignment.positions[id], assignment.at))
+	var has_curse: bool = view.get("chronology", {}).has("curse")
+	if not has_curse and temporal_positions.is_empty():
+		var must_be_good: int = 0
+		for id in knowledge.get("good", []):
+			var idx = person_index(view, id)
+			if idx >= 0:
+				must_be_good |= (1 << idx)
+		var must_be_evil: int = 0
+		var marked_req: int = -2
+		var other_positions: Array = []
+		for id in positions:
+			var idx = person_index(view, id)
+			if idx < 0:
+				continue
+			var pos_val = positions[id]
+			if pos_val == "good":
+				must_be_good |= (1 << idx)
+			elif pos_val == "evil":
+				must_be_evil |= (1 << idx)
+			elif pos_val == "marked":
+				marked_req = idx
+			else:
+				other_positions.append({"id": id, "pos": pos_val})
+		if must_be_good != 0 or must_be_evil != 0 or marked_req != -2:
+			worlds = worlds.filter(func(w):
+				if (w.evil & must_be_good) != 0:
+					return false
+				if (w.evil & must_be_evil) != must_be_evil:
+					return false
+				if marked_req >= 0 and w.marked != marked_req:
+					return false
+				return true)
+		for entry in other_positions:
+			worlds = worlds.filter(func(w): return position_holds(view, w, entry.id, entry.pos, epoch))
+	else:
+		for id in knowledge.get("good", []):
+			worlds = worlds.filter(func(w): return position_holds(view, w, id, "good", knowledge.get("good_epoch", epoch)))
+		for id in positions:
+			worlds = worlds.filter(func(w): return position_holds(view, w, id, positions[id], epoch))
+		for assignment in temporal_positions:
+			for id in assignment.positions:
+				worlds = worlds.filter(func(w): return position_holds(view, w, id, assignment.positions[id], assignment.at))
 	for card in cards:
 		if card.kind != "report" and not (card.kind == "event" and card.get("event") == "curse"):
 			continue
 		var positive: Array = answers.get(card.id, {}).get("positive", []).duplicate()
 		positive.sort()
-		var key = JSON.stringify([view.people, view.evil_count, view.get("chronology", {}), view.get("world_options", {}), card.source, card.get("role", ""), card.observed_at, card.data, positive])
+		var key = hash([universe_key, card.source, card.get("role", ""), card.observed_at, card.data, positive])
 		if not report_matches.has(key):
 			if report_matches.size() > 512:
 				report_matches.clear()
 			var matches = {}
 			for world in universes[universe_key]:
 				if _report_holds(view, world, card, {"positive": positive}):
-					matches[TimeModel.key(view, world)] = true
+					matches[world.get("__key", TimeModel.key(view, world))] = true
 			report_matches[key] = matches
 		var accepted: Dictionary = report_matches[key]
-		worlds = worlds.filter(func(w): return accepted.has(TimeModel.key(view, w)))
+		worlds = worlds.filter(func(w): return accepted.has(w.get("__key", TimeModel.key(view, w))))
 	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
 	var movement = movement_for(view, movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
@@ -199,7 +263,10 @@ static func _position_holds(ids: Array, world: Dictionary, id: String, position:
 
 static func position_holds(view: Dictionary, world: Dictionary, id: String, position: String, epoch: String = "") -> bool:
 	if position in ["marked", "unmarked"]:
-		return _position_holds(view.people.map(func(p): return p.id), world, id, position)
+		var index: int = person_index(view, id)
+		if index < 0:
+			return false
+		return world.marked == index if position == "marked" else world.marked != index
 	var evil: bool = TimeModel.evil_at(view, world, id, view.alignment_epoch if epoch == "" else epoch)
 	return evil if position == "evil" else not evil
 
@@ -208,7 +275,6 @@ static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary,
 		return answer.get("positive", []).is_empty() or view.people[world.get("converted", -1)].id in answer.positive
 	if card.kind != "report":
 		return true
-	var ids: Array = view.people.map(func(p): return p.id)
 	if TimeModel.evil_at(view, world, card.source, card.observed_at):
 		return false # An accepted healthy gift assumes a good source at the reading's time.
 	if Domain.live(view):
@@ -218,26 +284,40 @@ static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary,
 			return Domain.rumor(view, world, card, answer)
 	var d: Dictionary = card.data
 	if card.role == "rumormonger":
-		var marked: String = ids[world.marked]
-		return marked in d.pair and (answer.get("positive", []).is_empty() or marked in answer.positive)
+		var marked: int = world.marked
+		var marked_id: String = _cached_ids[marked] if marked >= 0 and marked < _cached_ids.size() else ""
+		return marked_id in d.pair and (answer.get("positive", []).is_empty() or marked_id in answer.positive)
 	if card.role not in ["surveyor", "dowser"]:
 		return true
 	# A Marked person may register either way, independently for each reading.
+	var evil_bits: int = world.evil
+	if world.has("converted") and world.converted >= 0:
+		if TimeModel.evil_index(view, world, world.converted, card.observed_at):
+			evil_bits |= (1 << world.converted)
+	var ans_pos = answer.get("positive", [])
+	var ans_mask: int = 0
+	for id in ans_pos:
+		ans_mask |= (1 << person_index(view, id))
+	var group_mask: int = 0
+	if card.role == "dowser":
+		for id in d.group:
+			group_mask |= (1 << person_index(view, id))
+	var is_surveyor: bool = card.role == "surveyor"
+	var target_count: int = d.count
+	_ensure_people(view)
+	var b_masks: Array = _cached_block_masks.values()
 	for mark_reads in [false, true]:
-		var positive: Array = []
-		for i in range(ids.size()):
-			if TimeModel.evil_index(view, world, i, card.observed_at) or (i == world.marked and mark_reads):
-				positive.append(ids[i])
-		var count = 0
-		if card.role == "surveyor":
-			var blocks: Array = []
-			for p in view.people:
-				if p.id in positive and p.home not in blocks:
-					blocks.append(p.home)
-			count = blocks.size()
+		var pos_mask: int = evil_bits | ((1 << world.marked) if (mark_reads and world.marked >= 0) else 0)
+		if (pos_mask & ans_mask) != ans_mask:
+			continue
+		var count: int = 0
+		if is_surveyor:
+			for b in b_masks:
+				if (pos_mask & b) != 0:
+					count += 1
 		else:
-			count = d.group.filter(func(id): return id in positive).size()
-		if count == d.count and answer.get("positive", []).all(func(id): return id in positive):
+			count = popcount(pos_mask & group_mask)
+		if count == target_count:
 			return true
 	return false
 
@@ -285,8 +365,7 @@ static func _movement(view: Dictionary, cards: Array, answers: Dictionary, knowl
 	return {"okay": okay, "nights": nights}
 
 static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -> bool:
-	var ids: Array = view.people.map(func(p): return p.id)
-	var index = ids.find(conclusion.target)
+	var index: int = person_index(view, conclusion.target)
 	if index < 0:
 		return false
 	match conclusion.type:
@@ -296,7 +375,7 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 	return false
 
 static func describe_world(view: Dictionary, world: Dictionary, epoch: String = "") -> Dictionary:
-	var ids: Array = view.people.map(func(p): return p.id)
+	var ids: Array = person_ids(view)
 	var result = {"evil": ids.filter(func(id): return TimeModel.evil_at(view, world, id, view.alignment_epoch if epoch == "" else epoch)), "marked": ids[world.marked] if world.marked >= 0 else ""}
 	if Domain.live(view):
 		result["modifier"] = world.modifier

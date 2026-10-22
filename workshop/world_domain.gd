@@ -3,6 +3,16 @@
 extends RefCounted
 const C = preload("res://sim/content.gd")
 static var cache = {}
+static var _cached_people = null
+static var _cached_idx: Dictionary = {}
+
+static func _person_index(view: Dictionary, id: String) -> int:
+	if view.people != _cached_people:
+		_cached_people = view.people
+		_cached_idx = {}
+		for i in range(view.people.size()):
+			_cached_idx[view.people[i].id] = i
+	return _cached_idx.get(id, -1)
 
 static func live(view: Dictionary) -> bool:
 	return view.has("world_options")
@@ -22,11 +32,17 @@ static func worlds(view: Dictionary) -> Array:
 				if evil & (1 << i):
 					continue
 				if kind != "lovers":
-					result.append({"evil": evil, "marked": i if kind == "marked" else -1, "modifier": kind, "holders": 1 << i})
+					var w = {"evil": evil, "marked": i if kind == "marked" else -1, "modifier": kind, "holders": 1 << i}
+					w["__key"] = key(view, w)
+					w["__i"] = result.size()
+					result.append(w)
 				else:
 					for j in range(i + 1, n):
 						if not evil & (1 << j):
-							result.append({"evil": evil, "marked": -1, "modifier": kind, "holders": (1 << i) | (1 << j)})
+							var w = {"evil": evil, "marked": -1, "modifier": kind, "holders": (1 << i) | (1 << j)}
+							w["__key"] = key(view, w)
+							w["__i"] = result.size()
+							result.append(w)
 	if cache.size() >= 16:
 		cache.clear()
 	cache[key] = {"input": input.duplicate(true), "worlds": result}
@@ -55,10 +71,10 @@ static func claims_compatible(cards: Array, knowledge: Dictionary) -> bool:
 	return true
 
 static func healthy(view: Dictionary, world: Dictionary, source: String) -> bool:
-	var i: int = view.people.map(func(p): return p.id).find(source)
+	var i: int = _person_index(view, source)
 	if i < 0:
 		return false
-	return world.modifier != "delusional" or not world.holders & (1 << i)
+	return world.modifier != "delusional" or not (world.holders & (1 << i))
 
 static func gift_time(card: Dictionary) -> bool:
 	if card.role in ["surveyor", "rumormonger"]:
@@ -66,8 +82,7 @@ static func gift_time(card: Dictionary) -> bool:
 	return card.role == "dowser" and card.observed_at.day >= 1 and card.observed_at.phase in ["morning", "afternoon", "evening"]
 
 static func rumor(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
-	var ids: Array = view.people.map(func(p): return p.id)
-	var source: int = ids.find(card.source)
+	var source: int = _person_index(view, card.source)
 	# The native gift excludes itself. With no other modifier holder, even a healthy
 	# Rumormonger receives an arbitrary pair/secret fallback. Keep that legal world;
 	# it cannot establish the reported pair or secret type.
@@ -75,7 +90,23 @@ static func rumor(view: Dictionary, world: Dictionary, card: Dictionary, answer:
 		return card.data.secret in C.SECRET_MOD_LIST and card.data.pair.all(func(id): return id != card.source) and answer.get("positive", []).is_empty()
 	if world.modifier != card.data.secret:
 		return false
-	return card.data.pair.any(func(id): return world.holders & (1 << ids.find(id))) and answer.get("positive", []).all(func(id): return world.holders & (1 << ids.find(id)))
+	var pair_mask: int = 0
+	for id in card.data.pair:
+		var idx = _person_index(view, id)
+		if idx >= 0:
+			pair_mask |= (1 << idx)
+	if not (world.holders & pair_mask):
+		return false
+	var ans_pos = answer.get("positive", [])
+	if not ans_pos.is_empty():
+		var ans_mask: int = 0
+		for id in ans_pos:
+			var idx = _person_index(view, id)
+			if idx >= 0:
+				ans_mask |= (1 << idx)
+		if (world.holders & ans_mask) != ans_mask:
+			return false
+	return true
 
 static func _count(value: int) -> int:
 	var result = 0
