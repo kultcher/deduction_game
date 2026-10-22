@@ -74,10 +74,21 @@ recheck that platform constraint before committing if browser distribution is in
 The shared-ledger integration now recomputes an enabled listener's entire supported
 evidence union after ledger changes and before reconsideration/voting. Profile those
 refresh counts as well as per-assessment time: a presentation can invoke more than one
-legacy ledger update. The eight-reading/64-state gate bounds supported work and falls
-back coherently rather than truncating facts. Incremental invalidation/coalescing is the
-next optimization candidate if repeated refreshes dominate. Ghost effectiveness previews
+legacy ledger update. Exact whole-assessment and scoped-response caches now keep the last
+pure input per good/cover listener, reset with the case; unchanged ledger refreshes reuse
+the calculation. A supported presentation also avoids the caller's formerly redundant
+final refresh. Tests change source trust and restore it to verify invalidation/recovery.
+The eight-reading/64-state gate bounds supported work and falls back coherently rather
+than truncating facts. More incremental invalidation/coalescing remains a candidate if
+refresh overhead dominates. Ghost effectiveness previews
 are explicitly requested with a button; editing links never launches them automatically.
+
+One controlled ten-person, three-reading grouped case measured about 4.2 seconds for
+its first listener assessment and 3 milliseconds for an unchanged repeated presentation
+after exact baseline restoration. This is one case/listener on the development machine,
+not a whole-town guarantee. Other listeners' knowledge/priors and newly changed cases
+still require their own calculations. The presentation suite prints current cold/repeat
+timings and checks exact input reuse, not a machine-specific timing threshold.
 
 - Run pure assessment off the UI thread so the game stays responsive. This alone need
   not shorten the computation. Use immutable snapshots, separate/synchronized caches,

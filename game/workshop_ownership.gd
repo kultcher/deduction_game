@@ -18,7 +18,11 @@ static func refresh(g, n, phase: String) -> void:
 				# through Mind.adjust and already maintain the outside layer).
 				var expected = clampf(state.outside[id] + state.requested.get(id, 0.0), 0.0, 1.5)
 				var before: float = n.suspicion.get(id, expected)
-				n.suspicion[id] = clampf(state.outside[id] + n.suspicion.get(id, expected) - expected, 0.0, 1.5)
+				var external_change: float = before - expected
+				# Preserve the exact stored baseline when nothing changed. Adding
+				# then subtracting the same float introduced rounding drift, which
+				# broke exact cache/repetition keys and fed priors on every refresh.
+				n.suspicion[id] = state.outside[id] if absf(external_change) < 0.000000001 else clampf(state.outside[id] + external_change, 0.0, 1.5)
 				if not is_equal_approx(before, n.suspicion[id]):
 					removed[id] = {"from": before, "to": n.suspicion[id], "delta": n.suspicion[id] - before}
 			g.w.dlog.trace_event("workshop_retraction", n.id, "", {"removed": removed,
@@ -36,6 +40,8 @@ static func refresh(g, n, phase: String) -> void:
 		state.issues = plan.issues
 		state.facts = plan.facts
 		state.owners = plan.owners
+		state.quoted = plan.quotations.keys()
+		state.reason_visibility = _visibility(n, plan.facts)
 		state.owned = plan.owned
 		if plan.ready:
 			g._workshop_plans[key] = plan
@@ -56,7 +62,15 @@ static func refresh(g, n, phase: String) -> void:
 		# Derive interval doubt first; evaluate joint effects only after removing
 		# the owned legacy grounds from honesty and the entire previous vector.
 		var started = Time.get_ticks_msec()
-		var proposal = Shared.evaluate(plan, n.suspicion, n.discounted)
+		var inputs = [plan.prepared, n.suspicion, n.discounted]
+		var cached: Dictionary = g._workshop_evaluations.get(key, {})
+		var cache_hit = cached.get("input") == inputs
+		var proposal: Dictionary
+		if cache_hit:
+			proposal = cached.proposal
+		else:
+			proposal = Shared.evaluate(plan, n.suspicion, n.discounted)
+			g._workshop_evaluations[key] = {"input": inputs.duplicate(true), "proposal": proposal}
 		state.outside = n.suspicion.duplicate(true)
 		state.requested = {}
 		state.applied = {}
@@ -74,6 +88,43 @@ static func refresh(g, n, phase: String) -> void:
 				"ledger_id": "workshop:shared"}, "Shared original reading evidence")
 		state.active = true
 		state.elapsed_ms = Time.get_ticks_msec() - started
+		state.cache_hit = cache_hit
 		g.w.dlog.trace_event("workshop_ownership", n.id, "", {"owned": state.owned, "facts": state.facts,
 			"owners": state.owners, "requested": state.requested, "applied": state.applied,
 			"elapsed_ms": state.elapsed_ms}, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
+
+## Conservative disclosure: a joint inference is not automatically this NPC's
+## own gift to reveal. Only explicit presentations/disclosures make roots citable.
+static func _visibility(n, facts: Array) -> String:
+	var public = {}
+	var player = {}
+	for id in n.workshop_state.get("disclosures", {}):
+		var disclosure: Dictionary = n.workshop_state.disclosures[id]
+		if disclosure.get("player", false):
+			player[id] = true
+		if disclosure.get("public", false):
+			public[id] = true
+	for snapshot in n.workshop_state.get("presentations", {}).values():
+		for id in snapshot.selected:
+			player[id] = true
+			if snapshot.venue != "private":
+				public[id] = true
+	for entry in n.ledger.values():
+		var meta: Dictionary = entry.get("meta", {})
+		for receipt in meta.get("workshop_receipts", {}).values():
+			if receipt.get("heard_in_public", false):
+				public[receipt.id] = true
+		if meta.get("workshop_public", false) and meta.has("workshop_card"):
+			public[meta.workshop_card.id] = true
+	for i in range(n.info_log.size()):
+		var entry: Dictionary = n.info_log[i]
+		var id: String = Shared.reading(n.id, entry).id
+		if entry.get("shared", false):
+			public[id] = true
+		if i < n.told_readings:
+			player[id] = true
+	if not facts.is_empty() and facts.all(func(id): return public.has(id)):
+		return "public"
+	if not facts.is_empty() and facts.all(func(id): return public.has(id) or player.has(id)):
+		return "shared_player"
+	return "shared_private"

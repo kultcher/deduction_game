@@ -121,7 +121,7 @@ func _ownership(id: String) -> String:
 	if n == null or n.workshop_state.is_empty():
 		return "Shared reading ownership is inactive."
 	var state: Dictionary = n.workshop_state
-	return "Shared owner active: %s. %d unique facts; %d replaced entries.\n%s" % [str(state.get("active", false)), state.get("facts", []).size(), state.get("owned", {}).size(), "\n".join(PackedStringArray(state.get("issues", [])))]
+	return "Shared owner active: %s. %d endorsed facts; %d quoted reports; %d replaced entries.\n%s" % [str(state.get("active", false)), state.get("facts", []).size(), state.get("quoted", []).size(), state.get("owned", {}).size(), "\n".join(PackedStringArray(state.get("issues", [])))]
 
 func _inspect() -> void:
 	if not g.debug_overlay or cases.item_count == 0 or listeners.item_count == 0:
@@ -145,9 +145,11 @@ func _records() -> void:
 		return
 	var lines = PackedStringArray()
 	for result in g.workshop_comparisons:
-		lines.append("Card #%d · %s · %s\nOriginal agreement %.3f\n%s" % [result.card,
+		var actual: Dictionary = result.get("actual", result.get("legacy", {}))
+		var label = "Applied shared assessment" if actual.get("model") == "shared" else "Original agreement"
+		lines.append("Card #%d · %s · %s\n%s %.3f\n%s" % [result.card,
 			g.w.by_id[result.listener].name if g.w.by_id.has(result.listener) else result.listener,
-			result.venue, result.legacy.agreement, describe(result)])
+			result.venue, label, actual.get("agreement", 0.0), describe(result)])
 	output.text = "\n\n————————————————\n\n".join(lines) if not lines.is_empty() else "No presentations recorded. Enable recording, then present a deduction in a conversation or meeting."
 
 static func describe(result: Dictionary) -> String:

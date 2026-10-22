@@ -16,6 +16,7 @@ var dlog = DevLog.new()
 var shadow_log = DevLog.new()   # legacy stream stays separate; detailed trace merges both
 ## Optional application adapter. Empty in simulation-only callers; no UI dependency.
 var workshop_refresh: Callable
+var workshop_present: Callable
 var detailed_logging = true     # debug export only; does not enable the spoiler UI
 var trace_build = ""            # optional caller-supplied git/build identifier
 var trace_tuning = ""           # optional caller-supplied tuning identifier

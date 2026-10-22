@@ -38,6 +38,10 @@ func _run() -> void:
 	check(g.prediction_spoiled and not panel.inspect_button.disabled, "debug inspection is labelled and follows existing scoring rules")
 	panel.effects_toggle.button_pressed = true
 	check(g.workshop_effects, "experimental ownership switch enables restricted effects explicitly")
+	g.workshop_compare = true
+	g._evaluate_deduction(n, g.board[-1], 0.6, true, "meeting")
+	panel._records()
+	check("Applied shared assessment" in panel.output.text and not g.workshop_comparisons[-1].has("legacy"), "recorded applied assessments name the actual model without inventing a legacy comparison")
 	panel.effects_toggle.button_pressed = false
 	check(not g.workshop_effects, "experimental switch can restore legacy ownership")
 	for i in range(panel.listeners.item_count):

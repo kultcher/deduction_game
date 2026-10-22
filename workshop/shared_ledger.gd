@@ -46,28 +46,34 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	var input = current.duplicate(true)
 	var facts = {}
 	var owners = {}
+	var quotations = {}
 	var issues: Array = []
 	for receipt in input.evidence:
-		if receipt.id in input.private_evidence and receipt.kind == "info":
+		if receipt.id in input.private_evidence and supported(receipt):
 			_add(facts, owners, receipt, "learned")
 	for eid in ledger:
 		var entry: Dictionary = ledger[eid]
 		if entry.get("meta", {}).get("kind") == "reading":
 			for receipt in entry.meta.get("workshop_receipts", {}).values():
-				_add(facts, owners, receipt, "reading:" + eid)
+				if supported(receipt):
+					_add(facts, owners, receipt, "reading:" + eid)
+		if entry.get("meta", {}).get("kind") == "tell" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
+			_add(facts, owners, entry.meta.workshop_card, "testimony:" + eid)
 	for key in presentations:
 		var presented: Dictionary = presentations[key]
 		for argument in presented.arguments:
 			if argument.conclusion.get("type") not in Assess.CONCLUSIONS:
 				issues.append("Unsupported endorsed claim: " + str(argument.conclusion.get("type")))
-			elif argument.conclusion.get("type") == "conflict":
-				issues.append("Conflict-only presentations need a shared quoted-report ownership adapter.")
 		for issue in presented.issues:
 			if issue.code in ["missing_card", "cyclic_argument", "argument_depth"]:
 				issues.append("Incomplete endorsement: " + issue.code)
+		var endorsed = endorsed_facts(presented, presented.root)
 		for receipt in presented.evidence:
 			if receipt.id in presented.selected:
-				_add(facts, owners, receipt, "case:" + str(key))
+				if receipt.id in endorsed:
+					_add(facts, owners, receipt, "case:" + str(key))
+				else:
+					quotations[receipt.id] = receipt.duplicate(true)
 	input.evidence = facts.values()
 	input.selected = facts.keys()
 	input.private_evidence = input.private_evidence.filter(func(id): return facts.has(id))
@@ -96,13 +102,15 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var entry: Dictionary = ledger[eid]
 		var meta: Dictionary = entry.get("meta", {})
 		var kind: String = meta.get("kind", "")
+		if kind == "tell" and meta.get("workshop_card", {}).get("kind") == "deduction" and not facts.is_empty():
+			issues.append("Unresolved deduction wrapper in old card testimony: " + eid)
 		if kind == "reading" and aliases.has(eid):
 			var receipts: Dictionary = meta.get("workshop_receipts", {})
 			if receipts.size() != 1 or not receipts.has(aliases[eid]):
 				issues.append("Reading ownership lacks an exact receipt: " + eid)
 			else:
 				owned[eid] = true
-		elif kind == "arg" and (_overlaps(entry, input.evidence) or _withdrawn(entry, withdrawn)):
+		elif kind == "arg" and (_overlaps(entry, input.evidence) or _withdrawn(entry, withdrawn) or _presented(entry, presentations)):
 			var justifications: Array = entry.get("justs", [])
 			var certified = not justifications.is_empty() and meta.get("workshop_conclusion", "") in Assess.CONCLUSIONS
 			for justification in justifications:
@@ -122,7 +130,20 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			else:
 				issues.append("Mixed or uncertified argument ownership: " + eid)
 		elif kind == "tell" and _overlaps(entry, input.evidence):
-			issues.append("Overlapping card testimony still needs an exact ownership adapter: " + eid)
+			if meta.has("workshop_card") and supported(meta.workshop_card) and facts.has(meta.workshop_card.id):
+				owned[eid] = true
+			else:
+				issues.append("Overlapping card testimony lacks an exact original receipt: " + eid)
+	# Unsupported effects can coexist only when their reading source is separate.
+	# Two claimed gifts from one source share role/credibility uncertainty that the
+	# restricted model cannot safely split between independent owners.
+	for eid in ledger:
+		var entry: Dictionary = ledger[eid]
+		if owned.has(eid) or entry.get("meta", {}).get("kind") != "reading" or entry.get("weight", 0.0) <= 0.01:
+			continue
+		var relation: Array = entry.get("rel", [])
+		if not relation.is_empty() and input.evidence.any(func(e): return supported(e) and e.source == relation[0]):
+			issues.append("Unsupported reading shares a source with owned reports: " + eid)
 	for eid in owned:
 		if ledger[eid].get("workshop_clipped", false):
 			issues.append("A legacy contribution was clipped; its reversible baseline is unavailable: " + eid)
@@ -170,7 +191,46 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		if sources.size() + uncertain > 6:
 			issues.append("Shared evidence exceeds the 64-state credibility budget.")
 	return {"ready": issues.is_empty(), "empty": facts.is_empty(), "issues": issues, "owned": owned if issues.is_empty() else {},
-		"prepared": prepared, "facts": facts.keys(), "owners": owners, "input": input}
+		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input}
+
+static func supported(receipt: Dictionary) -> bool:
+	return receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES
+
+static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) -> Array:
+	if number in path or path.size() >= 64:
+		return []
+	if snapshot.board_map.has(str(number)):
+		return [snapshot.board_map[str(number)]]
+	var arguments: Array = snapshot.arguments.filter(func(a): return a.board_number == number)
+	if arguments.is_empty() or arguments[0].conclusion.get("type") == "conflict":
+		return []
+	var result: Array = []
+	for child in arguments[0].supports:
+		for id in endorsed_facts(snapshot, child, path + [number]):
+			if id not in result:
+				result.append(id)
+	return result
+
+## Same original facts and credibility inputs as the applied union. A scoped claim
+## is assessed against the other learned reports, without applying a second vector.
+static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionary) -> Dictionary:
+	var scoped = Assess.prepare(snapshot)
+	if not plan.ready or not scoped.ready:
+		return {}
+	var view: Dictionary = scoped.view.duplicate(true)
+	for card in plan.prepared.view.cards:
+		if not view.cards.any(func(c): return c.id == card.id):
+			view.cards.append(card.duplicate(true))
+	var listener: Dictionary = plan.prepared.listener.duplicate(true)
+	listener.suspicion = baseline.duplicate(true)
+	for card in view.cards:
+		if not listener.reading_reliability.has(card.id):
+			listener.reading_reliability[card.id] = scoped.listener.reading_reliability.get(card.id, 1.0)
+	var endorsed = endorsed_facts(snapshot, snapshot.root)
+	listener.knowledge.own_reports = plan.facts.filter(func(id): return id not in endorsed)
+	if scoped.case.conclusion.type == "conflict":
+		listener.knowledge.own_reports = [] # Test the quoted set, not an unrelated background inconsistency.
+	return Jury.evaluate(view, scoped.case, listener)
 
 static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictionary) -> Dictionary:
 	if not plan.ready:
@@ -195,6 +255,8 @@ static func _add(facts: Dictionary, owners: Dictionary, receipt: Dictionary, own
 		owners[receipt.id].append(owner)
 
 static func _overlaps(entry: Dictionary, receipts: Array) -> bool:
+	if entry.get("meta", {}).has("workshop_card"):
+		return receipts.any(func(e): return e.id == entry.meta.workshop_card.id)
 	var supports: Array = [entry.rel] if not entry.get("rel", []).is_empty() else []
 	for justification in entry.get("justs", []):
 		supports.append_array(justification.get("supports", []))
@@ -209,5 +271,12 @@ static func _withdrawn(entry: Dictionary, withdrawn: Dictionary) -> bool:
 	for justification in entry.get("justs", []):
 		for number in justification.get("workshop_cases", {}):
 			if withdrawn.has(number):
+				return true
+	return false
+
+static func _presented(entry: Dictionary, presentations: Dictionary) -> bool:
+	for justification in entry.get("justs", []):
+		for number in justification.get("workshop_cases", {}):
+			if presentations.has(number):
 				return true
 	return false

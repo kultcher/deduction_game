@@ -1,0 +1,164 @@
+## One supported presentation path: assessment, parked legacy receipt, social response.
+## Runs only on a good mind (including evil's cover). No actual evil intelligence enters.
+extends RefCounted
+const Bridge = preload("res://game/workshop_bridge.gd")
+const Evidence = preload("res://workshop/live_evidence.gd")
+const Shared = preload("res://workshop/shared_ledger.gd")
+const Assess = preload("res://workshop/live_assessment.gd")
+const Mind = preload("res://sim/mind.gd")
+const Argue = preload("res://sim/argue.gd")
+
+static func present(g, n, card: Dictionary, targets: Array, direction: String, venue: String, speak: bool) -> Dictionary:
+	if n.is_evil():
+		return {}
+	var snapshot = _snapshot(g, n, card, targets, direction, venue)
+	if snapshot.is_empty() or not Assess.prepare(snapshot).ready:
+		return {}
+	var state: Dictionary = n.workshop_state
+	var original_ids: Array = snapshot.selected.duplicate()
+	original_ids.sort()
+	var target_ids = targets.duplicate()
+	target_ids.sort()
+	var origin = str(card.n) if card.get("n", 0) > 0 else JSON.stringify(original_ids).sha256_text()
+	var key = str(card.n) if direction == "deduction" else "direct:%s:%s:%s" % [origin, direction, ",".join(PackedStringArray(target_ids))]
+	var previous: Dictionary = state.get("presentations", {}).duplicate(true)
+	var proposals: Dictionary = previous.duplicate(true)
+	proposals[key] = snapshot
+	var current = Bridge.capture(g, [], n.id, venue, n)
+	var proposed = Shared.prepare(current, proposals, n.ledger, state.get("withdrawn", {}))
+	if not proposed.ready:
+		return {}
+	var earlier: Array = state.get("facts", []).duplicate()
+	var novelty_ids = Shared.endorsed_facts(snapshot, snapshot.root)
+	var headline: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
+	if headline.conclusion.type == "conflict":
+		novelty_ids = snapshot.selected
+	var fresh: Array = novelty_ids.filter(func(id): return id not in earlier and not state.get("rewarded_facts", {}).has(id))
+	state.enabled = true
+	state.presentations = proposals
+	state.get("withdrawn", {}).erase(key)
+	if not state.has("disclosures"):
+		state.disclosures = {}
+	for id in snapshot.selected:
+		if not state.disclosures.has(id):
+			state.disclosures[id] = {"player": true, "public": false}
+		if venue != "private":
+			state.disclosures[id].public = true
+	Mind.recompute_beliefs(g.w, n, " (interpreted presentation)")
+	if not state.get("active", false):
+		# An interval-derived budget can change during recomputation. Do not leave
+		# an unsupported endorsement behind when returning to native presentation.
+		state.presentations = previous
+		Mind.recompute_beliefs(g.w, n, " (presentation capability fallback)")
+		return {}
+	var listener_key = n.id + (":cover" if n.is_shadow else ":good")
+	var plan: Dictionary = g._workshop_plans[listener_key]
+	# Rebuild against final interval reliability, matching the applied union.
+	plan.input.listener.discounted = n.discounted.duplicate(true)
+	plan = Shared.prepare(plan.input, proposals, n.ledger, state.get("withdrawn", {}))
+	var response_input = [plan.prepared, snapshot.arguments, snapshot.root, snapshot.board_map, snapshot.selected,
+		snapshot.evidence.filter(func(e): return e.id in snapshot.selected), state.outside]
+	var cached: Dictionary = g._workshop_responses.get(listener_key, {})
+	var assessment: Dictionary
+	if cached.get("input") == response_input:
+		assessment = cached.assessment
+	else:
+		assessment = Shared.response(plan, snapshot, state.outside)
+		g._workshop_responses[listener_key] = {"input": response_input.duplicate(true), "assessment": assessment}
+	if assessment.is_empty():
+		return {}
+	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
+	var signature = JSON.stringify(Evidence.canonical([root.conclusion, original_ids]))
+	var inputs = JSON.stringify(Evidence.canonical([state.outside, plan.facts, n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events]))
+	var discussion: Dictionary = state.get("discussion", {})
+	var repeated: bool = discussion.get(signature, "") == inputs
+	var audience = "player" if venue == "private" else "town"
+	var delivery_key = signature + "|" + audience
+	var text: String = assessment.response
+	if repeated and state.get("delivered", {}).get(delivery_key, "") == inputs:
+		text = "Those are the same reports. My assessment is unchanged."
+	elif targets.size() > 1:
+		for claim in assessment.claims:
+			if claim.conclusion.target in targets.slice(1):
+				text += " About %s: %s" % [g.w.by_id[claim.conclusion.target].name, claim.note]
+	# Keep a compatible native contribution parked underneath the owner. It can be
+	# restored on fallback/disable; its agreement comes from this assessment too.
+	if direction == "deduction":
+		var supports: Array = g.board.filter(func(c): return c.n in card.supports)
+		Argue._apply(g.w, n, card, supports, maxf(0.0, assessment.agreement) * (1.0 if venue == "private" else 0.5 if venue == "nomination" else 0.6), g.board)
+	else:
+		for target in targets:
+			var sign_value = -0.4 if direction == "defend" else 0.45
+			var eid = "workshop:tell:%s:%s" % [key, target]
+			var meta = {"kind": "tell", "workshop_card": Evidence.normalize_card(card), "text": card.get("text", "")}
+			if card.get("kind") == "deduction":
+				meta = {"kind": "arg", "workshop_conclusion": root.conclusion.type, "workshop_roots": Shared.roots([card], g.board),
+					"workshop_case": key, "supports": Argue.support_refs([card], g.board)}
+			var scoped: Array = assessment.claims.filter(func(c): return c.conclusion.target == target and c.conclusion.type == root.conclusion.type)
+			var agreement: float = scoped[0].agreement if not scoped.is_empty() else assessment.agreement
+			Mind.ledger_hear(g.w, n, eid, [[target, sign_value, true, "Presented original report", ""]], maxf(0.0, agreement), Mind.support_ref(card), meta)
+	if not state.has("rewarded_facts"):
+		state.rewarded_facts = {}
+	for id in snapshot.selected:
+		state.rewarded_facts[id] = true
+	var trust_before: float = n.trust
+	var pressure_before: float = n.pressure
+	if assessment.agreement >= 0.6 and not fresh.is_empty() and not repeated:
+		Mind.set_trust(g.w, n, n.trust + 0.02, "the presented reports support the argument")
+		Mind.recompute_beliefs(g.w, n, " (presentation trust reward)")
+	if root.conclusion.type == "conflict" and assessment.agreement >= 0.6 and not repeated:
+		if not state.has("scrutinized"):
+			state.scrutinized = {}
+		var sources: Array = snapshot.evidence.filter(func(e): return e.id in snapshot.selected).map(func(e): return e.source)
+		if not state.scrutinized.has(signature) and n.id in sources:
+			n.pressure += 0.1 if venue == "private" else 0.2
+			state.scrutinized[signature] = true
+	if not state.has("discussion"):
+		state.discussion = {}
+	# Trust rewards are part of the new starting inputs on a repeat.
+	state.discussion[signature] = JSON.stringify(Evidence.canonical([state.outside, state.facts, n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events]))
+	if speak and not n.silenced:
+		if not state.has("delivered"):
+			state.delivered = {}
+		state.delivered[delivery_key] = state.discussion[signature]
+	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": assessment.stance,
+		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": text}
+	var lines: Array = [Mind.say(n, text)] if speak and not n.silenced else []
+	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
+		{"venue": venue, "key": key, "agreement": assessment.agreement, "stance": assessment.stance,
+		"repeated": repeated, "fresh": fresh, "claims": assessment.claims, "response": text,
+		"quoted": state.get("quoted", []), "trust_before": trust_before, "trust_after": n.trust,
+		"pressure_delta": n.pressure - pressure_before, "requested": state.requested}, "One assessment controls supported presentation and shared belief ownership.")
+	g.w.dlog.add("argument_stance", n.id, root.conclusion.get("a", ""), {"key": signature, "stance": assessment.stance,
+		"evil": false, "repeat": repeated, "model": "shared"})
+	return {"lines": lines, "facts": [], "agreement": assessment.agreement, "repeated": repeated,
+		"dialogue": descriptor, "workshop": true, "assessment": assessment}
+
+static func _snapshot(g, n, card: Dictionary, targets: Array, direction: String, venue: String) -> Dictionary:
+	if direction == "deduction":
+		if card.get("n", 0) <= 0 or card.n > g.board.size():
+			return {}
+		if g.board[card.n - 1].get("conclusion", {}) != card.conclusion or g.board[card.n - 1].get("supports", []) != card.supports:
+			return {} # Do not assess a stale wrapper as though it were the current filed case.
+		return Bridge.capture(g, [card.n], n.id, venue, n)
+	if targets.is_empty():
+		return {}
+	if card.get("kind") == "deduction":
+		if card.get("n", 0) <= 0 or card.n > g.board.size() or g.board[card.n - 1].get("supports", []) != card.get("supports", []) or g.board[card.n - 1].get("conclusion", {}) != card.get("conclusion", {}):
+			return {} # A relay of an old wrapper must not learn a later board revision.
+		var cited = Bridge.capture(g, [card.n], n.id, venue, n)
+		cited.root = -1
+		cited.arguments.append({"board_number": -1, "conclusion": {"type": "good" if direction == "defend" else "suspicious", "a": targets[0]}, "supports": [card.n]})
+		for i in range(1, targets.size()):
+			cited.arguments.append({"board_number": -2 - i, "conclusion": {"type": "good" if direction == "defend" else "suspicious", "a": targets[i]}, "supports": [card.n]})
+		return cited
+	var input = Bridge.capture(g, [], n.id, venue, n)
+	var receipt = Evidence.normalize_card(card)
+	input.evidence.append(receipt)
+	input.selected = [receipt.id]
+	input.board_map[str(card.get("n", 0))] = receipt.id
+	input.root = -1
+	input.arguments = [{"board_number": -1, "conclusion": {"type": "good" if direction == "defend" else "suspicious", "a": targets[0]}, "supports": [card.get("n", 0)]}]
+	for i in range(1, targets.size()):
+		input.arguments.append({"board_number": -2 - i, "conclusion": {"type": "good" if direction == "defend" else "suspicious", "a": targets[i]}, "supports": [card.get("n", 0)]})
+	return input

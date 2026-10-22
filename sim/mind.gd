@@ -540,7 +540,7 @@ static func recompute_beliefs(w, n, note: String) -> void:
 	var kg = func(e) -> float:
 		return 2.0 if e["meta"].get("kind", "") == "role_claim" and e["meta"].get("how", "") != "own" and known_good(w, e["meta"]["who"]) else 1.0
 	var raw = func(e): return e["weight"] * kg.call(e)
-	var disc_a = _night_doubt(E, raw)
+	var disc_a = _night_doubt(E, raw, n.workshop_state.get("owned", {}))
 	var h_a = {}
 	var h_a1 = _honesty(n, E, disc_a, {}, raw, cl)
 	h_a = _honesty(n, E, disc_a, h_a1, raw, cl)
@@ -548,7 +548,7 @@ static func recompute_beliefs(w, n, note: String) -> void:
 	for e in E:
 		wf[e["eid"]] = _final_weight(n, e, disc_a, h_a) * kg.call(e)
 	var final_w = func(e): return wf[e["eid"]]
-	var disc = _night_doubt(E, final_w)
+	var disc = _night_doubt(E, final_w, n.workshop_state.get("owned", {}))
 	var h = _honesty(n, E, disc, _honesty(n, E, disc, {}, final_w, cl), final_w, cl)
 	# Log notable changes in doubt and honesty (derived values, kept for display).
 	for k in disc:
@@ -598,9 +598,11 @@ static func _final_weight(n, e: Dictionary, disc: Dictionary, hon: Dictionary) -
 		best = maxf(best, jj["weight"] * _support_factor(n, e, jj["supports"], disc, hon))
 	return best
 
-static func _night_doubt(E: Array, weight_of: Callable) -> Dictionary:
+static func _night_doubt(E: Array, weight_of: Callable, owned: Dictionary = {}) -> Dictionary:
 	var d = {}
 	for e in E:
+		if owned.has(e.eid) and e.get("meta", {}).get("workshop_conclusion") == "conflict":
+			continue # A conflict does not arbitrarily invalidate every night from each source.
 		for f in e["effects"]:
 			if f[0].begins_with("disc:"):
 				var key: String = f[0].substr(5)
@@ -727,6 +729,7 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float) ->
 	var effs: Array = _info_effects(w, listener, source, entry, weight, fresh)
 	var receipts: Dictionary = listener.ledger.get(eid, {}).get("meta", {}).get("workshop_receipts", {}).duplicate(true)
 	var receipt = WorkshopLedger.reading(source.id, entry)
+	receipt["heard_in_public"] = entry.get("shared", false) or receipts.get(receipt.id, {}).get("heard_in_public", false)
 	receipts[receipt.id] = receipt
 	ledger_hear(w, listener, eid, effs, weight, [source.id, entry["day"], "reading"], {"kind": "reading", "workshop_receipts": receipts})
 
@@ -1048,6 +1051,12 @@ static func info_fact(w, n, e: Dictionary) -> Dictionary:
 static func reason_status(w, n, t_id: String) -> Dictionary:
 	var why: String = n.sus_why.get(t_id, "")
 	var src: String = n.sus_src.get(t_id, "")
+	if n.workshop_state.get("active", false):
+		var joint_strength: float = n.workshop_state.get("requested", {}).get(t_id, 0.0)
+		if joint_strength >= 0.15:
+			return {"why": "the reports considered together point toward them", "kind": n.workshop_state.get("reason_visibility", "shared_private"), "entry": {}, "strength": joint_strength}
+		if n.workshop_state.get("owned", {}).has(src):
+			return {"why": "", "kind": "none", "entry": {}, "strength": 0.0} # An obsolete raw bonus is no longer the reason.
 	var out = {"why": why, "kind": "none" if why == "" else "public", "entry": {}, "strength": 0.0}
 	if why == "":
 		return out
@@ -1083,7 +1092,7 @@ static func reason_status(w, n, t_id: String) -> Dictionary:
 ## the only reason they have is one the audience hasn't been told.
 static func citable_reason(w, n, t_id: String, audience: String = "town") -> String:
 	var rs = reason_status(w, n, t_id)
-	if rs["kind"] == "public" or (rs["kind"] == "player" and audience == "player"):
+	if rs["kind"] == "public" or (rs["kind"] in ["player", "shared_player"] and audience == "player"):
 		return rs["why"]
 	return ""
 
@@ -1239,6 +1248,8 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 	var rs = reason_status(w, n, t.id)
 	if rs["kind"] in ["none", "public"]:
 		return {"tier": "generic", "why": rs["why"]}
+	if rs["kind"] in ["shared_player", "shared_private"]:
+		return {"tier": "generic", "why": ""} # A joint private reason is not necessarily their own gift to reveal.
 	if rs["kind"] == "relay":
 		return {"tier": "relay", "why": "", "src": rs["src"], "entry": rs["entry"]}
 	var cost = reveal_cost(w, n)
@@ -2623,13 +2634,19 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 		# Shadow self (step 2): the good self hears the case too, and its reply is the one
 		# given, unless it's about them or breaking cover to protect a teammate is worth it.
 		var sr = shadow_eval(w, n, func(sh): return hear_accusation(w, sh, suspect, card)) if C.SHADOW_SELF else null
-		if sr == null or suspect == n or times > 0:
+		if sr == null or suspect == n or (times > 0 and not sr.get("workshop", false)):
 			return er
 		if Evil.is_teammate(w, n, suspect.id):
 			var stakes = Evil.teammate_value(w, suspect.id) * (0.3 + Evil.public_heat(w, suspect))
 			if evil_override(w, n, "private case", stakes, 0.5, "the Demonologist's case against %s" % suspect.id):
 				return er
 		return sr
+	if w.workshop_present.is_valid():
+		var interpreted: Dictionary = w.workshop_present.call(n, card, [suspect.id], "accuse", "private", true)
+		if not interpreted.is_empty():
+			if not interpreted.get("repeated", false):
+				n.player_cases.append({"suspect": suspect.id, "card": card.duplicate(true)})
+			return interpreted
 	if times == 0:
 		n.player_cases.append({"suspect": suspect.id, "card": card})
 	# Already knowing the fact itself (heard the reading, saw it) leaves less to add.
@@ -2645,7 +2662,7 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	var effs: Array = []
 	_eff(effs, suspect.id, 1.0, why, "the Demonologist made a case against them")
 	var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], suspect.id], effs, base * word_factor(w, n, card), cw["rel"],
-		{"kind": "tell", "base": base, "text": card.get("text", "")})
+		_tell_meta(card, base))
 	n.used_facts[cw["key"] + ">" + suspect.id] = true
 	var delta: float = h["gain"]
 	var nv = susp(n, suspect.id)
@@ -2697,6 +2714,10 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 			if threats.is_empty() or not evil_override(w, n, "private defence", stakes, 0.5, "the Demonologist speaking for %s" % gname):
 				return dr
 		return {"lines": lines, "facts": []}
+	if w.workshop_present.is_valid():
+		var interpreted: Dictionary = w.workshop_present.call(n, card, group.map(func(p): return p.id), "defend", "private", true)
+		if not interpreted.is_empty():
+			return interpreted
 	var h = {"times": 0, "gain": 0.0}
 	var strength = 0.0
 	for x in group:
@@ -2706,7 +2727,7 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		var base: float = 0.3 * cw["cred"] * cw["class_w"] * st * (0.35 if n.ledger.has(cw["key"]) else 1.0) / group.size()
 		var effs: Array = []
 		_eff(effs, x.id, -1.0, "the Demonologist spoke for them, citing '%s'" % cw["key"])
-		var hx = ledger_hear(w, n, "for:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), cw["rel"], {"kind": "tell", "base": base, "text": card.get("text", "")})
+		var hx = ledger_hear(w, n, "for:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), cw["rel"], _tell_meta(card, base))
 		h["times"] = maxi(h["times"], hx["times"])
 		h["gain"] += hx["gain"]
 	if h["times"] > 0:
@@ -2741,13 +2762,17 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 		return {"lines": lines, "facts": []}
 	var gain = 0.0
 	var times = 0
+	if w.workshop_present.is_valid():
+		var interpreted: Dictionary = w.workshop_present.call(n, card, group.map(func(p): return p.id), "accuse", "private", true)
+		if not interpreted.is_empty():
+			return interpreted
 	for x in group:
 		var cw = card_weight(w, n, x, card)
 		var known = 0.35 if n.ledger.has(cw["key"]) else 1.0
 		var base: float = 0.35 * cw["cred"] * card_strength(w, card, x) * cw["class_w"] * known / group.size()
 		var effs: Array = []
 		_eff(effs, x.id, 1.0, "player's case that one of %s is guilty, citing '%s'" % [gname, cw["key"]], "the Demonologist made a case against them")
-		var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), cw["rel"], {"kind": "tell", "base": base, "text": card.get("text", "")})
+		var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), cw["rel"], _tell_meta(card, base))
 		n.used_facts[cw["key"] + ">" + x.id] = true
 		gain += h["gain"]
 		times = maxi(times, h["times"])
@@ -2776,6 +2801,10 @@ static func public_case(w, nominee, card: Dictionary, direction: String) -> void
 
 ## One voter weighs the player's public case (see public_case).
 static func _public_case_hear(w, v, nominee, card: Dictionary, direction: String, cw: Dictionary) -> void:
+	if w.workshop_present.is_valid():
+		var interpreted: Dictionary = w.workshop_present.call(v, card, [nominee.id], direction, "nomination", false)
+		if not interpreted.is_empty():
+			return
 	var known = 0.35 if v.ledger.has(cw["key"]) else 1.0
 	var base: float = 0.25 * cw["cred"] * cw["class_w"] * known
 	var sign = 1.0
@@ -2788,9 +2817,12 @@ static func _public_case_hear(w, v, nominee, card: Dictionary, direction: String
 	_eff(effs, nominee.id, sign, "the Demonologist's public %s using card '%s' (class %s, cred %.2f, already known x%.2f)" %
 		[direction, cw["key"], cw["cls"], cw["cred"], known], "the Demonologist made a case against them" if direction == "accuse" else "")
 	ledger_hear(w, v, "pub:%s:%s>%s" % [direction, cw["key"], nominee.id], effs, base * word_factor(w, v, card), cw["rel"],
-		{"kind": "tell", "base": base, "text": card.get("text", "")})
+		_tell_meta(card, base, true))
 	if direction == "accuse":
 		v.used_facts[cw["key"] + ">" + nominee.id] = true
+
+static func _tell_meta(card: Dictionary, base: float, public: bool = false) -> Dictionary:
+	return {"kind": "tell", "base": base, "text": card.get("text", ""), "workshop_card": WorkshopLedger.Evidence.normalize_card(card), "workshop_public": public}
 
 ## Tavern gossip. Returns {lines, facts}.
 static func gossip(w) -> Dictionary:

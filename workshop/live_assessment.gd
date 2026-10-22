@@ -34,6 +34,8 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 			continue # Role assertions are not healthy readings; homes are in the public roster.
 		if e.id not in snapshot.selected and e.kind == "sighting":
 			continue # This comparison makes no movement claim or movement effect.
+		if e.id not in snapshot.selected and e.kind == "info" and e.content.get("role", "") not in ROLES:
+			continue # Independent unsupported readings keep their native baseline owner.
 		if e.kind != "info" or e.content.get("role", "") not in ROLES:
 			result.issues.append("Not yet supported: %s %s." % [e.kind, e.content.get("role", "")])
 			continue
@@ -72,6 +74,9 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 		for argument in snapshot.arguments:
 			var scoped = _case(snapshot, argument, epoch, [])
 			var inputs: Array = []
+			var direct: Array = argument.supports.filter(func(number): return snapshot.board_map.has(str(number))).map(func(number): return snapshot.board_map[str(number)])
+			if not direct.is_empty():
+				inputs.append({"id": "direct:%d" % argument.board_number, "cards": direct})
 			for child in snapshot.arguments.filter(func(a): return a.board_number in argument.supports):
 				inputs.append({"id": "argument:%d" % child.board_number, "cards": _case(snapshot, child, epoch, []).cards})
 			value.arguments.append({"id": "argument:%d" % argument.board_number, "label": "Filed claim #%d" % argument.board_number,
@@ -116,11 +121,13 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 	result.conclusion = {"type": argument.conclusion.get("type", "unsupported"), "target": _target(argument.conclusion), "at": epoch}
 	if argument.board_number in path:
 		return result
+	var direct: Array = []
 	for number in argument.supports:
 		if snapshot.board_map.has(str(number)):
 			var id: String = snapshot.board_map[str(number)]
 			if snapshot.evidence.any(func(e): return e.id == id and e.kind == "info"):
 				result.cards.append(id)
+				direct.append(id)
 		else:
 			var child: Array = snapshot.arguments.filter(func(a): return a.board_number == number)
 			if child.is_empty():
@@ -129,6 +136,15 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 			result.cards.append_array(sub.cards.filter(func(id): return id not in result.cards))
 			result.lines.append({"id": "argument:%d" % number, "label": "Supporting claim", "relation": "supports",
 				"conclusion": sub.conclusion, "cards": sub.cards, "answers": {}, "positions": {}, "reasons": {}})
+			if sub.conclusion.type == "conflict":
+				result.lines[-1].relation = "quotes"
+	if not direct.is_empty():
+		# A quoted child may contain the same report as a direct endorsed path.
+		# Preserve both routes so quoting cannot erase that independent endorsement.
+		result.lines.append({"id": "direct:%d" % argument.board_number, "label": "Direct reports", "relation": "supports",
+			"cards": direct, "answers": {}, "positions": {}, "reasons": {}})
+	if result.conclusion.type == "conflict":
+		result.conflict_scope = result.cards.duplicate()
 	return result
 
 static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:

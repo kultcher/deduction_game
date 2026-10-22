@@ -17,6 +17,7 @@ const CardModel = preload("res://game/card_model.gd")
 const RecentSightings = preload("res://game/recent_sightings.gd")
 const WorkshopBridge = preload("res://game/workshop_bridge.gd")
 const WorkshopOwnership = preload("res://game/workshop_ownership.gd")
+const WorkshopPresentation = preload("res://game/workshop_presentation.gd")
 const WorkshopGhost = preload("res://workshop/ghost_juror.gd")
 const WorkshopAssessment = preload("res://workshop/live_assessment.gd")
 
@@ -64,6 +65,8 @@ var workshop_compare = false # opt-in diagnostics; never applies the proposed ef
 var workshop_effects = false # experimental restricted shared ownership, off by default
 var _workshop_busy = false
 var _workshop_plans = {}
+var _workshop_evaluations = {}
+var _workshop_responses = {}
 var workshop_comparisons: Array = []
 var trace_build = ""
 var trace_tuning = ""
@@ -167,6 +170,8 @@ static func render(evs: Array) -> String:
 func new_case(seed_in: int, npc_count: int = 7) -> String:
 	workshop_comparisons = []
 	_workshop_plans = {}
+	_workshop_evaluations = {}
+	_workshop_responses = {}
 	workshop_effects = false
 	board = []
 	confidences = {}
@@ -195,10 +200,14 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	w.trace_tuning = trace_tuning
 	w.setup(seed_in, npc_count)
 	var weak_game = weakref(self)
+	var weak_world = weakref(w)
 	w.workshop_refresh = func(n, phase):
 		var game = weak_game.get_ref()
-		if game != null:
+		if game != null and game.w == weak_world.get_ref():
 			WorkshopOwnership.refresh(game, n, phase)
+	w.workshop_present = func(n, card, targets, direction, venue, speak):
+		var game = weak_game.get_ref()
+		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak) if game != null and game.w == weak_world.get_ref() and game.workshop_effects else {}
 	w.dlog.begin_action("new_case_presentation")
 	_home_cards()
 	state = "day"
@@ -440,44 +449,39 @@ func workshop_retract(number: int, listener_id: String) -> void:
 	var n = real.shadow if real.is_evil() else real
 	if n == null:
 		return
-	n.workshop_state.get("presentations", {}).erase(str(number))
+	var paths: Array = [str(number)]
+	for key in n.workshop_state.get("presentations", {}):
+		if str(key).begins_with("direct:%d:" % number):
+			paths.append(key)
 	if not n.workshop_state.has("withdrawn"):
 		n.workshop_state.withdrawn = {}
-	n.workshop_state.withdrawn[str(number)] = true
+	for key in paths:
+		n.workshop_state.get("presentations", {}).erase(key)
+		n.workshop_state.withdrawn[key] = true
 	Mind.recompute_beliefs(w, n, " (case endorsement withdrawn)")
 
 ## All three deduction venues share receipt ownership and optional comparison.
 func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
-	if workshop_effects:
-		var mind = n.shadow if n.is_evil() else n
-		if mind != null:
-			var endorsement = workshop_snapshot([ded.n], n.id, venue)
-			mind.workshop_state["enabled"] = true
-			if not mind.workshop_state.has("presentations"):
-				mind.workshop_state.presentations = {}
-			mind.workshop_state.presentations[str(ded.n)] = endorsement
-			mind.workshop_state.get("withdrawn", {}).erase(str(ded.n))
 	var snapshot = workshop_snapshot([ded.n], n.id, venue) if workshop_compare else {}
 	var before: Dictionary = n.suspicion.duplicate(true) if workshop_compare else {}
 	var result: Dictionary = Argue.evaluate(w, n, ded, board, scale, speak)
-	if workshop_effects:
-		if n.is_evil() and n.shadow != null and not n.shadow.workshop_state.get("presentations", {}).has(str(ded.n)):
-			n.shadow.workshop_state["enabled"] = true
-			if not n.shadow.workshop_state.has("presentations"):
-				n.shadow.workshop_state.presentations = {}
-			n.shadow.workshop_state.presentations[str(ded.n)] = workshop_snapshot([ded.n], n.id, venue)
+	if workshop_effects and not result.get("workshop", false):
 		Mind.recompute_beliefs(w, n, " (shared presentation)")
+		_conflict_pressure(ded, 0.1 if venue == "private" else 0.2, n, true)
 	if workshop_compare:
 		var comparison = WorkshopAssessment.evaluate(snapshot)
 		comparison.listener = n.id
 		comparison["card"] = ded.n
 		comparison["venue"] = venue
-		comparison["legacy"] = {"agreement": result.get("agreement", 0.0), "before": before, "after": n.suspicion.duplicate(true)}
+		comparison["actual"] = {"model": "shared" if result.get("workshop", false) else "legacy",
+			"agreement": result.get("agreement", 0.0), "before": before, "after": n.suspicion.duplicate(true)}
+		if not result.get("workshop", false):
+			comparison["legacy"] = comparison.actual.duplicate(true)
 		workshop_comparisons.append(comparison)
 		if workshop_comparisons.size() > 24:
 			workshop_comparisons.pop_front()
 		w.dlog.trace_event("workshop_comparison", n.id, ded.conclusion.get("a", ""), {"comparison": comparison, "input": snapshot},
-			"Read-only proposed assessment beside the real legacy result; proposed effects were not applied.")
+			"Read-only proposal beside the actual named presentation model; the comparison itself applies no effects.")
 	return result
 
 # ---------------------------------------------------------------- dispatch
@@ -2163,7 +2167,9 @@ func _present_fallback(n, num: int, why: String) -> Dictionary:
 
 ## "Something doesn't add up" puts the people involved under scrutiny: publicly, all of
 ## them; privately, only the listener if they're one of them.
-func _conflict_pressure(ded: Dictionary, amount: float, listener) -> void:
+func _conflict_pressure(ded: Dictionary, amount: float, listener, fallback: bool = false) -> void:
+	if workshop_effects and not fallback:
+		return # The supported assessment owns scrutiny; unsupported paths retain native behavior.
 	var c: Dictionary = ded.get("conclusion", {})
 	if c.get("type", "") != "conflict":
 		return

@@ -1072,6 +1072,7 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 	var audience = "player" if scale >= 1.0 else "town"
 	var delivery_memory: Dictionary = n.dialogue_memory if speak and not n.silenced else n.dialogue_memory.duplicate(true)
 	if n.is_evil():
+		var workshop_covered = false
 		if target != null and target.is_evil() and c["type"] in ACCUSING:
 			Evil.add_intel(w, n, "player_suspects", target.id, 0.0, "the Demonologist argues: %s" % conclusion_text(w, c))
 		w.dlog.add("argument", n.id, c.get("a", ""), {"conclusion": c, "evil": true}, "Evil hears the argument: %s" % ded["text"])
@@ -1087,16 +1088,17 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 			_evil_reason(w, n, c, ded, approved)
 		# Shadow self (step 2): answer as their good self would, unless breaking cover is
 		# worth it. Arguments about themselves keep the mask ("it's about me").
-		if C.SHADOW_SELF and times == 0 and target != n:
+		if C.SHADOW_SELF and (times == 0 or n.workshop_state.get("enabled", false)) and (target != n or n.workshop_state.get("enabled", false)):
 			var sr = Mind.shadow_eval(w, n, func(sh): return evaluate(w, sh, ded, board, scale, false))
-			if sr != null and sr.has("dialogue") and sr["dialogue"].get("stance", "") != approved["stance"]:
+			workshop_covered = sr != null and sr.get("workshop", false)
+			if target != n and sr != null and sr.has("dialogue") and sr["dialogue"].get("stance", "") != approved["stance"]:
 				var mine: Dictionary = sr["dialogue"]
 				var rank = {"reject": 0, "partial": 1, "accept": 2}
 				var dev = absf(rank.get(mine["stance"], 1) - rank.get(approved["stance"], 1)) / 2.0
 				var stakes = _evil_argument_stakes(w, n, c, target)
 				if not Mind.evil_override(w, n, "argument", stakes, dev, "%s (good self: %s, evil: %s)" % [conclusion_text(w, c), mine["stance"], approved["stance"]]):
 					approved = mine.duplicate(true)
-		if times > 0:
+		if times > 0 and not workshop_covered:
 			var prior: Dictionary = delivery_memory.get("decisions", {}).get(JSON.stringify([audience, conclusion_key(c)]), {})
 			# Reuse their expressed position, not new private strategy. A new audience
 			# gets a cautious answer without pretending it heard the earlier reply.
@@ -1108,7 +1110,11 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 		w.dlog.add("argument_stance", n.id, c.get("a", ""), {"key": conclusion_key(c), "stance": approved["stance"], "evil": true, "repeat": times > 0})
 		w.dlog.decision(n.id, "argument", "outcome", approved, {"route": "evil_mask",
 			"agreement": 0.0, "updates_real_beliefs": false, "repeat_count": times}, c.get("a", ""), trace_id)
-		return {"lines": lines, "agreement": 0.0, "repeated": times > 0, "dialogue": approved}
+		return {"lines": lines, "agreement": 0.0, "repeated": times > 0, "dialogue": approved, "workshop": workshop_covered}
+	if w.workshop_present.is_valid():
+		var interpreted: Dictionary = w.workshop_present.call(n, ded, [], "deduction", "private" if scale >= 1.0 else ("nomination" if scale <= 0.5 else "meeting"), speak)
+		if not interpreted.is_empty():
+			return interpreted
 	# Caught in a lie they know they told (a good NPC hiding a gift or a secret): they don't
 	# pretend to themselves it's false.
 	var own_lie = target == n and c["type"] in ["lied", "unreliable"] and _own_lie(w, n, c, supports)

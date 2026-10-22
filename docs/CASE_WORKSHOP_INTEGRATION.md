@@ -9,8 +9,9 @@ The read-only `Game.workshop_snapshot` API provides a portable evidence contract
 capability issues and hidden-state isolation checks. A restricted live comparison now
 consumes that contract for Surveyor, Rumormonger and Dowser cases. An experimental shared
 owner can now replace certified legacy suspicion for that restricted evidence set. It is
-off by default and explicitly enabled in the Debug inspector. This delivers stages 1–3
-within the scope below; unified response dialogue and broader playable rollout remain.
+off by default and explicitly enabled in the Debug inspector. This delivers stages 1–4
+within the reading scope below. Live canvas hookup, broader mechanic adapters and
+ordinary full-case playable rollout remain.
 
 ## Try the live comparison
 
@@ -19,8 +20,10 @@ responses, enable the existing **Debug** control; its normal identification-scor
 warning still applies. Choose a filed deduction and listener, then **Inspect now**.
 The optional recording checkbox also captures comparisons when actual deductions are
 presented privately, to the meeting, or during nomination speech. All three venues use
-one comparison adapter. The detailed trace stores the captured input, real legacy
-result, proposed new result, capability issues and elapsed time. Recording is off by
+one comparison adapter. The detailed trace stores the captured input, actual named
+presentation model, read-only proposal, capability issues and elapsed time. With shared
+effects disabled, the actual result is the original legacy result; with them enabled it
+can be the applied shared assessment. No hypothetical legacy result is fabricated. Recording is off by
 default and adds work only when enabled; the panel keeps the most recent 24 records.
 Each comparison also audits overlapping legacy reading entries and potentially
 dependent arguments. Distinct receipts sharing an old source/day/role key are exposed
@@ -98,9 +101,11 @@ second credibility penalty from the same accusation. Native interval doubt, prot
 spare preferences, and role-belief effects retain their original owners. Joint source
 credibility comes from independent baseline suspicion and NPC trust; this slice does not
 feed joint accusations back into native honesty, which would require another explicit
-credibility model. Native trust rewards, pressure, masking and argument dialogue remain
-in place. Consequently the spoken old agreement can differ from the newly applied joint
-belief shift; unified response dialogue is still stage 4.
+credibility model. Supported presentation replies, acceptance and sound-argument rewards
+now use a scoped assessment with the same clean baseline, report weights, background
+evidence and world rules as the applied union. Intermediate acceptance can be explained
+without accepting the headline. Strategic evil masking, ordinary conversation fatigue,
+public nomination support/hostility and voting remain separate social systems.
 
 Player trust discounts reports whose only route is player presentation (factor
 `clamp(0.5 + trust, 0, 1)` in report acceptance). Independently learned readings instead
@@ -128,14 +133,80 @@ cover routing never supplies actual evil intelligence to the interpreter. A turn
 dormant layer is retained until cover creation or restoration; if it was freed before a
 cover existed, native effects are restored before the post-restoration suspicion cap.
 
-Mixed or uncertified argument paths, ambiguous receipts, overlapping old raw-card
-accusations/defences, unsupported readings, conflict-only presentations requiring quoted
-report ownership, temporal transitions and workloads above the eight-report/64-state budget
-restore the complete legacy suspicion model for that listener. Original entries are kept,
-not deleted. Missing adapters appear in the inspector's ownership status and detailed trace.
-This conservative behavior means an ordinary mixed-role live case may remain entirely on
-legacy beliefs even with the switch enabled. Broader card/role ownership is still required
-for general play.
+Independent unsupported readings retain native ownership and contribute to the outside
+baseline; their presence no longer disables unrelated supported reports. Exact original
+receipts now identify private card accusations, defences, group presentations and public
+nomination cards, including reports heard before enabling the experiment. Those paths
+share one report owner with raw readings and filed deductions. Citing a deduction as a
+card follows its original roots rather than treating its conclusion as a new fact.
+Supported private accusations remain in ordinary NPC gossip; a stale relayed deduction
+does not silently borrow a later revision from the player's board.
+
+Inseparable mixed or uncertified argument paths, unresolved native receipt collisions,
+old deduction wrappers lacking roots, unsupported selected evidence, unsupported readings
+sharing a source with owned reports, temporal transitions
+and workloads above the eight-report/64-state budget still restore the legacy calculation
+where ownership cannot be established. Original entries are kept, not deleted. Missing
+adapters appear in the inspector's ownership status and detailed trace. General live
+movement/trace/health/transition semantics are still future work.
+
+## Unified presentations and quoted conflicts
+
+`game/workshop_presentation.gd` handles supported deduction and raw-card presentations
+through the same good-mind callback. Raw accusations ask whether the target is suspicious;
+defences ask whether they are good. Group presentations retain separately assessed
+questions and one joint evidence effect. Private, meeting and nomination venues preserve
+interpretation. Silence suppresses speech without suppressing reasoning. Evil's cover
+receives repetitions, revised cases and self-targeting allegations; the real evil mind
+keeps its strategic mask and receives no inferred suspicion or sound-argument trust.
+
+Accepted presentations can earn the existing +0.02 sound-argument trust reward when they
+offer new original reports. Rewrapping, changing targets, reordering roots or changing
+venue cannot repeatedly reward those reports. Ordinary question fatigue is unchanged.
+Semantic repetition and audience delivery are distinct: a new audience gets an explanation
+without another evidence award; a repeated explanation to the same audience is shortened.
+
+A conflict presents evidence that the statements were made, without endorsing both
+contents. Quoted roots stay separate from the endorsed union. If another path independently
+endorses one of those reports, that report retains its existing owner and weight. A nested
+conflict remains an assessed intermediate question without sneaking its contradictory
+contents into the parent's alignment premises.
+Independent direct endorsement of a report survives when that report also occurs in a
+quoted child. Branch-removal diagnostics retain roots still supplied by another path.
+Healthy report constraints still allow
+Marked to register differently on different readings; apparent conflicts with such an
+explanation are not called impossible.
+
+Recognizing a conflict adds no guilt and invents no all-night impairment for its sources.
+The parked legacy conflict's broad doubt and suspicion effects are suppressed while the
+shared owner is active. A supported conflict accepted at agreement >= 0.6 can put an
+actually cited participant under scrutiny once (+0.1 privately, +0.2 publicly); rejected
+conflicts and repeated wrappers/venues add no such pressure. Merely putting someone's
+name in the conflict group does not make them a cited source. This scrutiny is a social
+consequence, not an alignment inference.
+
+Substantial joint suspicion can be cited as coming from the reports considered together.
+Disclosure is conservative: private presentations are citable to the player, public
+presentations/disclosures to the town. Later private restatements do not erase public
+knowledge of those reports. Unknown private roots remain unpublished. A joint
+reason does not trigger the old own-gift reveal/hint machinery, and an owned legacy bonus
+that has been retracted cannot remain as the stated reason. Source health and honesty
+are still hypotheses, not public assertions established by this generic explanation.
+
+Compatible native entries are parked using the shared assessment's agreement so a later
+capability fallback has a contribution to restore. They are not a simulation of what the
+old argument interpreter would have concluded in a separate playthrough. Preferences and
+role beliefs retain native ownership. Withdrawal also removes direct citations of the
+selected filed deduction; independently learned raw-card reports remain known.
+
+`workshop_presentation` traces separate agreement, scoped intermediate assessments,
+response, original novelty, quoted receipts, trust change, scrutiny and the total applied
+union. Read-only inspector records explicitly name whether the actual response was shared
+or legacy. Joint effects and response calculations cache one exact pure input per good/
+cover listener, reset on a new case. Baseline, role knowledge, report weights, trust,
+interval doubt, evidence and public chronology invalidate the relevant calculation.
+Retraction restores an unchanged outside baseline exactly; it does not add and subtract
+the same floating-point value in a way that slowly changes priors or cache keys.
 
 ## Manual effectiveness preview
 
@@ -154,14 +225,17 @@ a particular NPC nor a vote. Assignment counts are not probabilities of guilt.
 
 ## Integration sequence and remaining work
 
-Stages 1–3 now have paired tests, including raw/case overlap, revisions, repeated venues,
+Stages 1–4 now have paired tests, including raw/case overlap, revisions, repeated venues,
 independent learning, source-doubt recovery, clamping/retraction, native preference and
 role effects, cover isolation, capability fallback and neutral preview. The frozen fixture
 checkpoint remains unchanged. Full-case general-role rollout and response parity remain
-future gates, not evidence supplied by these restricted tests.
+future gates, not evidence supplied by these restricted tests. The freeform Workshop
+canvas remains a fixture UI; presenting its full answered/linked graph in an active case
+still needs a live session adapter. The current game paths consume filed deductions/cards.
 
 Run `godot --headless --path . --script res://tools/test_workshop_ownership.gd` for the
-57 ownership/ghost checks, alongside `test_workshop_integration.gd`,
+57 ownership/ghost checks. `test_workshop_presentation.gd` adds presentation, mixed-owner,
+quoted-conflict, source privacy, intermediate acceptance and cache checks, alongside `test_workshop_integration.gd`,
 `test_workshop_live_ui.gd`, `test_workshop_canvas.gd`, native argument/belief/cover tests,
 and `test_trace.gd`. The ownership suite includes actual turn/free lifecycle calls with
 no cover, tiny legacy remnants below the usual display threshold, clipped-migration
