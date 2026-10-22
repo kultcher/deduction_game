@@ -67,14 +67,14 @@ static func likelihood(view: Dictionary, cards: Array, subject: String, evil: bo
 				var reports: Array = cards.filter(func(c): return c.night == night)
 				var night_p = 0.0
 				var out_rate: float = {"hunt": 1.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}[profile.kind]
-				var eligible: Array = rules.gift_destinations[subject][str(night)]
+				var eligible: Array = rules.gift_destinations[subject][str(int(night))]
 				if profile.kind == "gift" and eligible.is_empty():
 					out_rate = 0.0
 				for out in [false, true]:
 					for destination in C.BLOCKS:
 						var dest_p: float = 1.0 / C.BLOCKS.size()
 						if profile.kind == "hunt":
-							dest_p = 1.0 if destination == rules.scenes[str(night)] else 0.0
+							dest_p = 1.0 if destination == rules.scenes[str(int(night))] else 0.0
 						elif profile.kind == "gift" and not eligible.is_empty():
 							dest_p = 1.0 / eligible.size() if destination in eligible else 0.0
 						var home: String = view.people.filter(func(p0): return p0.id == subject)[0].home

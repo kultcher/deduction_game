@@ -1,7 +1,15 @@
-# Main-game integration: separate follow-on work
+# Main-game integration
 
 The bounded Workshop experiments are the reference implementation, not a replacement
 already running in the main game. Integrate in verified vertical steps:
+
+The pre-integration reference is commit `5d30513`. The [checkpoint and portable
+specimens](CASE_WORKSHOP_CHECKPOINT.md) describe what must survive an interpreter change.
+The first integration slice now provides the read-only `Game.workshop_snapshot` API,
+its portable evidence contract, capability issues and hidden-state isolation checks.
+Live numeric comparison and belief effects remain disabled until the narrower fixture
+assumptions have explicit live equivalents. This is a data boundary, not completed
+gameplay integration.
 
 1. **Live evidence adapter, read-only.** Map board reports, testimony and observations
    to stable original fact/incident identities, keeping observation, reporting and learned

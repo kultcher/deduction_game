@@ -15,6 +15,7 @@ const Evil = preload("res://sim/evil.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
 const CardModel = preload("res://game/card_model.gd")
 const RecentSightings = preload("res://game/recent_sightings.gd")
+const WorkshopBridge = preload("res://game/workshop_bridge.gd")
 
 var w
 var state = "day"          # day | approach | talk | meeting | nomination | night | over
@@ -390,6 +391,10 @@ func _disclose(card: Dictionary, disc: Dictionary) -> void:
 			return
 	ls.append(disc)
 	card["learned"] = ls
+
+## Read-only integration boundary. No NPC effects, time costs or Workshop fixture truth.
+func workshop_snapshot(numbers: Array, listener_id: String = "", venue: String = "private") -> Dictionary:
+	return WorkshopBridge.capture(self, numbers, listener_id, venue)
 
 # ---------------------------------------------------------------- dispatch
 

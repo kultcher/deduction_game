@@ -1,0 +1,5643 @@
+{
+	"examples": [
+		{
+			"case": {
+				"answers": {},
+				"cards": [
+					"survey",
+					"rumor",
+					"dowse"
+				],
+				"challenges": {},
+				"citations": {},
+				"conclusion": {
+					"at": "opening through day 3",
+					"target": "constance",
+					"type": "evil"
+				},
+				"conflict_scope": [],
+				"derived": [],
+				"disputes": [],
+				"faults": {},
+				"id": "case-1",
+				"lines": [],
+				"positions": {},
+				"reasons": {},
+				"temporal_positions": [],
+				"version": 1
+			},
+			"expected": {
+				"agreement": 0.0565939584878745,
+				"claims": [
+					{
+						"conclusion": {
+							"at": "opening through day 3",
+							"target": "constance",
+							"type": "evil"
+						},
+						"stance": "reject",
+						"status": "rival_found"
+					}
+				],
+				"compatible": 2,
+				"effects": {
+					"agnes": -0.0977806053952639,
+					"bart": -0.172732039358174,
+					"constance": -0.0206164039942939,
+					"fenwick": -0.16758,
+					"greta": -0.087266239358174,
+					"hollis": 0.123992442,
+					"lian": 0.0821142,
+					"merrin": -0.16758,
+					"nisha": 0.00000000000000000061675964335706,
+					"odette": 0.0
+				},
+				"reasoning": "rival_found",
+				"stance": "reject"
+			},
+			"listener": {
+				"case_memory": {},
+				"confidence": 0.8,
+				"confidence_mode": "scale",
+				"id": "odette",
+				"insight": 0.6,
+				"knowledge": {
+					"good": [
+						"odette"
+					],
+					"own_outings": {
+						"1": true,
+						"2": true
+					},
+					"own_reports": [
+						"watch1",
+						"watch2"
+					],
+					"self": "odette"
+				},
+				"ledger": {},
+				"name": "Odette",
+				"npc_trust": {
+					"agnes": 0.5,
+					"bart": 0.5,
+					"constance": 0.5,
+					"fenwick": 0.5,
+					"greta": 0.5,
+					"hollis": 0.5,
+					"lian": 0.5,
+					"merrin": 0.5,
+					"nisha": 0.5,
+					"odette": 1.0
+				},
+				"preset": "Suspects a rival",
+				"reading_reliability": {
+					"report:agnes:lamp1": 1.0,
+					"report:agnes:lamp2": 1.0,
+					"report:bart:survey": 1.0,
+					"report:fenwick:dowse": 1.0,
+					"report:merrin:rumor": 1.0,
+					"report:odette:watch1": 1.0,
+					"report:odette:watch2": 1.0
+				},
+				"reasoning_mode": "full",
+				"suspicion": {
+					"agnes": 0.1,
+					"bart": 0.1,
+					"constance": 0.1,
+					"fenwick": 0.1,
+					"greta": 0.1,
+					"hollis": 0.1,
+					"lian": 0.1,
+					"merrin": 0.1,
+					"nisha": 0.65,
+					"odette": 0.0
+				},
+				"theories": {},
+				"trust": 0.5
+			},
+			"name": "core",
+			"view": {
+				"alignment_epoch": "opening through day 3",
+				"cards": [
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_surveyor",
+						"data": {
+							"count": 4
+						},
+						"event_ids": [
+							"report:bart:survey"
+						],
+						"fact_id": "report:bart:survey",
+						"id": "survey",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"text": "Bartholomew Surveyor: 4 blocks with evil"
+					},
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_rumormonger",
+						"data": {
+							"pair": [
+								"constance",
+								"nisha"
+							],
+							"secret": "marked"
+						},
+						"event_ids": [
+							"report:merrin:rumor"
+						],
+						"fact_id": "report:merrin:rumor",
+						"id": "rumor",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"text": "Merrin Rumormonger: Marked in Constance / Nisha"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_dowser",
+						"data": {
+							"block": "market",
+							"count": 3,
+							"group": [
+								"nisha",
+								"hollis",
+								"merrin",
+								"lian"
+							]
+						},
+						"event_ids": [
+							"report:fenwick:dowse"
+						],
+						"fact_id": "report:fenwick:dowse",
+						"id": "dowse",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"text": "Fenwick Dowser: 3 evil of Nisha / Hollis / Merrin / Lian"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes"
+							]
+						},
+						"event_ids": [
+							"outing:constance:1",
+							"outing:agnes:1"
+						],
+						"fact_id": "report:odette:watch1",
+						"id": "watch1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp1"
+						],
+						"fact_id": "report:agnes:lamp1",
+						"id": "lamp1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes",
+								"nisha"
+							]
+						},
+						"event_ids": [
+							"outing:constance:2",
+							"outing:agnes:2",
+							"outing:nisha:2"
+						],
+						"fact_id": "report:odette:watch2",
+						"id": "watch2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch2",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes, Nisha"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp2"
+						],
+						"fact_id": "report:agnes:lamp2",
+						"id": "lamp2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp2",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 2,
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:constance:alibi1",
+						"id": "alibi1",
+						"kind": "alibi",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "alibi1",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance says they stayed home on night 1."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:constance:medium"
+						],
+						"fact_id": "claim:constance:medium",
+						"id": "gift_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "gift_claim",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "medium",
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance claims Medium: visiting the dead could explain night work."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:nisha:warden"
+						],
+						"fact_id": "claim:nisha:warden",
+						"id": "warden_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "warden_claim",
+							"source": "nisha"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "warden",
+						"source": "nisha",
+						"subject": "nisha",
+						"text": "Nisha claims Warden: guarding a home could explain night work. This fixture's quiet night was not a confirmed Warden save."
+					},
+					{
+						"acquired_day": 2,
+						"block": "docks",
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:player:vigil1",
+						"id": "vigil1",
+						"kind": "sighting",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "vigil1",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "You also saw Constance at the Docks on night 1 (the same outing as the Watch report)."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:bart:surveyor"
+						],
+						"fact_id": "claim:bart:surveyor",
+						"id": "claim_surveyor",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "survey",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"subject": "bart",
+						"text": "Bartholomew implicitly claims Surveyor by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:merrin:rumormonger"
+						],
+						"fact_id": "claim:merrin:rumormonger",
+						"id": "claim_rumormonger",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "rumor",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"subject": "merrin",
+						"text": "Merrin implicitly claims Rumormonger by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:fenwick:dowser"
+						],
+						"fact_id": "claim:fenwick:dowser",
+						"id": "claim_dowser",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "dowse",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"subject": "fenwick",
+						"text": "Fenwick implicitly claims Dowser by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:odette:nightwatch"
+						],
+						"fact_id": "claim:odette:nightwatch",
+						"id": "claim_nightwatch",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "watch1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"subject": "odette",
+						"text": "Odette implicitly claims Night Watch by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:agnes:lamplighter"
+						],
+						"fact_id": "claim:agnes:lamplighter",
+						"id": "claim_lamplighter",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "lamp1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"subject": "agnes",
+						"text": "Agnes implicitly claims Lamplighter by reporting this gift result. This does not establish the result's accuracy."
+					}
+				],
+				"day": 3,
+				"evil_count": 3,
+				"fixture": "core",
+				"history": [
+					"Night 1: no death was announced.",
+					"Dawn 3: Greta is found dead."
+				],
+				"people": [
+					{
+						"alive": true,
+						"claim": "medium",
+						"home": "hill",
+						"id": "constance",
+						"name": "Constance"
+					},
+					{
+						"alive": true,
+						"claim": "surveyor",
+						"home": "hill",
+						"id": "bart",
+						"name": "Bartholomew"
+					},
+					{
+						"alive": true,
+						"claim": "warden",
+						"home": "square",
+						"id": "nisha",
+						"name": "Nisha"
+					},
+					{
+						"alive": true,
+						"claim": "nightwatch",
+						"home": "square",
+						"id": "odette",
+						"name": "Odette"
+					},
+					{
+						"alive": true,
+						"claim": "lamplighter",
+						"home": "square",
+						"id": "agnes",
+						"name": "Agnes"
+					},
+					{
+						"alive": true,
+						"claim": "martyr",
+						"home": "market",
+						"id": "hollis",
+						"name": "Hollis"
+					},
+					{
+						"alive": true,
+						"claim": "rumormonger",
+						"home": "market",
+						"id": "merrin",
+						"name": "Merrin"
+					},
+					{
+						"alive": true,
+						"claim": "psychologist",
+						"home": "docks",
+						"id": "lian",
+						"name": "Lian"
+					},
+					{
+						"alive": false,
+						"claim": "veteran",
+						"home": "docks",
+						"id": "greta",
+						"name": "Greta"
+					},
+					{
+						"alive": true,
+						"claim": "dowser",
+						"home": "docks",
+						"id": "fenwick",
+						"name": "Fenwick"
+					}
+				],
+				"scope": "Ten people, three original evil, one good Marked. No alignment changes in this fixture. Reports may be lies or impaired; accepting a report assumes its source was good, held the claimed gift and was healthy when it was made.",
+				"secret": "marked",
+				"secret_count": 1,
+				"seed": 692
+			}
+		},
+		{
+			"case": {
+				"answers": {},
+				"cards": [
+					"survey",
+					"rumor",
+					"dowse",
+					"vigil3",
+					"soot2",
+					"evening2",
+					"soot3",
+					"evening3"
+				],
+				"challenges": {},
+				"citations": {},
+				"conclusion": {
+					"at": "opening through day 3",
+					"target": "constance",
+					"type": "evil"
+				},
+				"conflict_scope": [],
+				"derived": [],
+				"disputes": [],
+				"faults": {},
+				"id": "case-1",
+				"lines": [],
+				"positions": {},
+				"reasons": {},
+				"temporal_positions": [],
+				"version": 1
+			},
+			"expected": {
+				"agreement": 0.9867349,
+				"claims": [
+					{
+						"conclusion": {
+							"at": "opening through day 3",
+							"target": "constance",
+							"type": "evil"
+						},
+						"stance": "accept",
+						"status": "rival_found"
+					}
+				],
+				"compatible": 2,
+				"effects": {
+					"agnes": -0.24351791613558,
+					"bart": -0.279710416689562,
+					"constance": 0.342,
+					"fenwick": -0.16758,
+					"greta": -0.194244616689562,
+					"hollis": 0.123992442,
+					"lian": 0.0821142,
+					"merrin": -0.16758,
+					"nisha": -0.283778237136287,
+					"odette": 0.0
+				},
+				"reasoning": "rival_found",
+				"stance": "accept"
+			},
+			"listener": {
+				"case_memory": {},
+				"confidence": 0.8,
+				"confidence_mode": "scale",
+				"id": "odette",
+				"insight": 0.6,
+				"knowledge": {
+					"good": [
+						"odette"
+					],
+					"own_outings": {
+						"1": true,
+						"2": true
+					},
+					"own_reports": [
+						"watch1",
+						"watch2"
+					],
+					"self": "odette"
+				},
+				"ledger": {},
+				"name": "Odette",
+				"npc_trust": {
+					"agnes": 0.5,
+					"bart": 0.5,
+					"constance": 0.5,
+					"fenwick": 0.5,
+					"greta": 0.5,
+					"hollis": 0.5,
+					"lian": 0.5,
+					"merrin": 0.5,
+					"nisha": 0.5,
+					"odette": 1.0
+				},
+				"preset": "Suspects a rival",
+				"reading_reliability": {
+					"report:agnes:lamp1": 1.0,
+					"report:agnes:lamp2": 1.0,
+					"report:bart:survey": 1.0,
+					"report:fenwick:dowse": 1.0,
+					"report:merrin:rumor": 1.0,
+					"report:odette:watch1": 1.0,
+					"report:odette:watch2": 1.0
+				},
+				"reasoning_mode": "full",
+				"suspicion": {
+					"agnes": 0.1,
+					"bart": 0.1,
+					"constance": 0.1,
+					"fenwick": 0.1,
+					"greta": 0.1,
+					"hollis": 0.1,
+					"lian": 0.1,
+					"merrin": 0.1,
+					"nisha": 0.65,
+					"odette": 0.0
+				},
+				"theories": {},
+				"trust": 0.5
+			},
+			"name": "movement",
+			"view": {
+				"alignment_epoch": "opening through day 3",
+				"cards": [
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_surveyor",
+						"data": {
+							"count": 4
+						},
+						"event_ids": [
+							"report:bart:survey"
+						],
+						"fact_id": "report:bart:survey",
+						"id": "survey",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"text": "Bartholomew Surveyor: 4 blocks with evil"
+					},
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_rumormonger",
+						"data": {
+							"pair": [
+								"constance",
+								"nisha"
+							],
+							"secret": "marked"
+						},
+						"event_ids": [
+							"report:merrin:rumor"
+						],
+						"fact_id": "report:merrin:rumor",
+						"id": "rumor",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"text": "Merrin Rumormonger: Marked in Constance / Nisha"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_dowser",
+						"data": {
+							"block": "market",
+							"count": 3,
+							"group": [
+								"nisha",
+								"hollis",
+								"merrin",
+								"lian"
+							]
+						},
+						"event_ids": [
+							"report:fenwick:dowse"
+						],
+						"fact_id": "report:fenwick:dowse",
+						"id": "dowse",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"text": "Fenwick Dowser: 3 evil of Nisha / Hollis / Merrin / Lian"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes"
+							]
+						},
+						"event_ids": [
+							"outing:constance:1",
+							"outing:agnes:1"
+						],
+						"fact_id": "report:odette:watch1",
+						"id": "watch1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp1"
+						],
+						"fact_id": "report:agnes:lamp1",
+						"id": "lamp1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes",
+								"nisha"
+							]
+						},
+						"event_ids": [
+							"outing:constance:2",
+							"outing:agnes:2",
+							"outing:nisha:2"
+						],
+						"fact_id": "report:odette:watch2",
+						"id": "watch2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch2",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes, Nisha"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp2"
+						],
+						"fact_id": "report:agnes:lamp2",
+						"id": "lamp2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp2",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 2,
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:constance:alibi1",
+						"id": "alibi1",
+						"kind": "alibi",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "alibi1",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance says they stayed home on night 1."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:constance:medium"
+						],
+						"fact_id": "claim:constance:medium",
+						"id": "gift_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "gift_claim",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "medium",
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance claims Medium: visiting the dead could explain night work."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:nisha:warden"
+						],
+						"fact_id": "claim:nisha:warden",
+						"id": "warden_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "warden_claim",
+							"source": "nisha"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "warden",
+						"source": "nisha",
+						"subject": "nisha",
+						"text": "Nisha claims Warden: guarding a home could explain night work. This fixture's quiet night was not a confirmed Warden save."
+					},
+					{
+						"acquired_day": 2,
+						"block": "docks",
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:player:vigil1",
+						"id": "vigil1",
+						"kind": "sighting",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "vigil1",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "You also saw Constance at the Docks on night 1 (the same outing as the Watch report)."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:bart:surveyor"
+						],
+						"fact_id": "claim:bart:surveyor",
+						"id": "claim_surveyor",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "survey",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"subject": "bart",
+						"text": "Bartholomew implicitly claims Surveyor by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:merrin:rumormonger"
+						],
+						"fact_id": "claim:merrin:rumormonger",
+						"id": "claim_rumormonger",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "rumor",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"subject": "merrin",
+						"text": "Merrin implicitly claims Rumormonger by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:fenwick:dowser"
+						],
+						"fact_id": "claim:fenwick:dowser",
+						"id": "claim_dowser",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "dowse",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"subject": "fenwick",
+						"text": "Fenwick implicitly claims Dowser by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:odette:nightwatch"
+						],
+						"fact_id": "claim:odette:nightwatch",
+						"id": "claim_nightwatch",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "watch1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"subject": "odette",
+						"text": "Odette implicitly claims Night Watch by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:agnes:lamplighter"
+						],
+						"fact_id": "claim:agnes:lamplighter",
+						"id": "claim_lamplighter",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "lamp1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"subject": "agnes",
+						"text": "Agnes implicitly claims Lamplighter by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 3,
+						"block": "docks",
+						"data": {
+							"background": {
+								"docks": 0.25,
+								"hill": 0.25,
+								"market": 0.25,
+								"square": 0.25
+							},
+							"material": "market",
+							"passers": [
+								"hill"
+							],
+							"scene_block": "docks"
+						},
+						"event_ids": [
+							"trace:constance:2"
+						],
+						"fact_id": "fixture:soot2",
+						"id": "soot2",
+						"incident_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"kind": "trace",
+						"learned_at": {
+							"day": 3,
+							"phase": "morning"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 3,
+							"phase": "morning"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "soot2",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "morning"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "Market soot at the night 2 murder scene. An eligible passer can leave misleading evening material."
+					},
+					{
+						"acquired_day": 2,
+						"block": "market",
+						"data": {},
+						"event_ids": [
+							"evening:constance:2"
+						],
+						"fact_id": "fixture:evening2",
+						"id": "evening2",
+						"incident_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"kind": "evening",
+						"learned_at": {
+							"day": 2,
+							"phase": "evening"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "evening"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "evening2",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "evening"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "You saw Constance at the Market bakery on evening 2."
+					},
+					{
+						"acquired_day": 4,
+						"block": "square",
+						"data": {
+							"background": {
+								"docks": 0.25,
+								"hill": 0.25,
+								"market": 0.25,
+								"square": 0.25
+							},
+							"material": "market",
+							"passers": [
+								"hill"
+							],
+							"scene_block": "square"
+						},
+						"event_ids": [
+							"trace:constance:3"
+						],
+						"fact_id": "fixture:soot3",
+						"id": "soot3",
+						"incident_at": {
+							"day": 3,
+							"phase": "night"
+						},
+						"kind": "trace",
+						"learned_at": {
+							"day": 4,
+							"phase": "morning"
+						},
+						"night": 3,
+						"observed_at": {
+							"day": 4,
+							"phase": "morning"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "soot3",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 4,
+							"phase": "morning"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "Market soot at the night 3 murder scene. An eligible passer can leave misleading evening material."
+					},
+					{
+						"acquired_day": 3,
+						"block": "market",
+						"data": {},
+						"event_ids": [
+							"evening:constance:3"
+						],
+						"fact_id": "fixture:evening3",
+						"id": "evening3",
+						"incident_at": {
+							"day": 3,
+							"phase": "night"
+						},
+						"kind": "evening",
+						"learned_at": {
+							"day": 3,
+							"phase": "evening"
+						},
+						"night": 3,
+						"observed_at": {
+							"day": 3,
+							"phase": "evening"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "evening3",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "evening"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "You saw Constance at the Market bakery on evening 3."
+					},
+					{
+						"acquired_day": 3,
+						"block": "square",
+						"data": {},
+						"event_ids": [
+							"sighting:constance:3"
+						],
+						"fact_id": "fixture:vigil3",
+						"id": "vigil3",
+						"incident_at": {
+							"day": 3,
+							"phase": "night"
+						},
+						"kind": "sighting",
+						"learned_at": {
+							"day": 3,
+							"phase": "night"
+						},
+						"night": 3,
+						"observed_at": {
+							"day": 3,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "vigil3",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "night"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "You saw Constance on the Square on night 3."
+					},
+					{
+						"acquired_day": 4,
+						"block": "square",
+						"data": {
+							"detection": 1.0,
+							"seen": false
+						},
+						"event_ids": [
+							"coverage:nisha:3"
+						],
+						"fact_id": "fixture:coverage3",
+						"id": "coverage3",
+						"incident_at": {
+							"day": 3,
+							"phase": "night"
+						},
+						"kind": "coverage",
+						"learned_at": {
+							"day": 4,
+							"phase": "morning"
+						},
+						"night": 3,
+						"observed_at": {
+							"day": 4,
+							"phase": "morning"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "coverage3",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 4,
+							"phase": "morning"
+						},
+						"source": "player",
+						"subject": "nisha",
+						"text": "You watched the Square all night 3 and did not see Nisha. This does not cover other blocks."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 1,
+							"through": 3
+						},
+						"data": {},
+						"event_ids": [
+							"secret_claim:constance:-1"
+						],
+						"fact_id": "fixture:secret_claim",
+						"id": "secret_claim",
+						"incident_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"kind": "secret_claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "secret_claim",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"role": "secret",
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance claims a private errand could explain leaving home."
+					},
+					{
+						"acquired_day": 4,
+						"block": "square",
+						"data": {
+							"locations_in_block": 2
+						},
+						"event_ids": [
+							"item:constance:3"
+						],
+						"fact_id": "fixture:item3",
+						"id": "item3",
+						"incident_at": {
+							"day": 3,
+							"phase": "night"
+						},
+						"kind": "item",
+						"learned_at": {
+							"day": 4,
+							"phase": "morning"
+						},
+						"night": 3,
+						"observed_at": {
+							"day": 4,
+							"phase": "morning"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "item3",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 4,
+							"phase": "morning"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "A personal item belonging to Constance was found at a searched Square location after night 3. This is a dropped item, not the crime-scene material."
+					}
+				],
+				"day": 4,
+				"evil_count": 3,
+				"fixture": "movement",
+				"history": [
+					"Night 1: no death was announced.",
+					"Dawn 3: Greta is found dead."
+				],
+				"movement_experiment": {
+					"gift_destinations": {
+						"constance": {
+							"1": [],
+							"2": [],
+							"3": [
+								"docks"
+							]
+						},
+						"nisha": {
+							"1": [
+								"square",
+								"market",
+								"docks",
+								"hill"
+							],
+							"2": [
+								"square",
+								"market",
+								"docks",
+								"hill"
+							],
+							"3": [
+								"square",
+								"market",
+								"hill"
+							]
+						}
+					},
+					"haunt_visit": 0.7,
+					"note": "Fixture priors: evil = 1/3 hunting Demon + 2/3 minion (1/4 walks); good = ordinary/gift/secret mixture. Haunt persists across nights. Rates are hypotheses, not calibrated town prevalence.",
+					"scenes": {
+						"1": "docks",
+						"2": "docks",
+						"3": "square"
+					},
+					"subjects": [
+						"constance",
+						"nisha"
+					],
+					"version": 1
+				},
+				"people": [
+					{
+						"alive": true,
+						"claim": "medium",
+						"home": "hill",
+						"id": "constance",
+						"name": "Constance"
+					},
+					{
+						"alive": true,
+						"claim": "surveyor",
+						"home": "hill",
+						"id": "bart",
+						"name": "Bartholomew"
+					},
+					{
+						"alive": true,
+						"claim": "warden",
+						"home": "square",
+						"id": "nisha",
+						"name": "Nisha"
+					},
+					{
+						"alive": true,
+						"claim": "nightwatch",
+						"home": "square",
+						"id": "odette",
+						"name": "Odette"
+					},
+					{
+						"alive": false,
+						"claim": "lamplighter",
+						"home": "square",
+						"id": "agnes",
+						"name": "Agnes"
+					},
+					{
+						"alive": true,
+						"claim": "martyr",
+						"home": "market",
+						"id": "hollis",
+						"name": "Hollis"
+					},
+					{
+						"alive": true,
+						"claim": "rumormonger",
+						"home": "market",
+						"id": "merrin",
+						"name": "Merrin"
+					},
+					{
+						"alive": true,
+						"claim": "psychologist",
+						"home": "docks",
+						"id": "lian",
+						"name": "Lian"
+					},
+					{
+						"alive": false,
+						"claim": "veteran",
+						"home": "docks",
+						"id": "greta",
+						"name": "Greta"
+					},
+					{
+						"alive": true,
+						"claim": "dowser",
+						"home": "docks",
+						"id": "fenwick",
+						"name": "Fenwick"
+					}
+				],
+				"scope": "Ten people, three original evil, one good Marked. No alignment changes in this fixture. Reports may be lies or impaired; accepting a report assumes its source was good, held the claimed gift and was healthy when it was made. Movement experiment: dawn 4, a third scripted attack, fixed public route/haunt hypotheses. No hidden cause is an assessment input.",
+				"secret": "marked",
+				"secret_count": 1,
+				"seed": 692
+			}
+		},
+		{
+			"case": {
+				"answers": {},
+				"cards": [
+					"survey",
+					"rumor",
+					"dowse",
+					"dowse_recovered",
+					"vial1"
+				],
+				"challenges": {},
+				"citations": {},
+				"conclusion": {
+					"at": "opening through day 3",
+					"target": "hollis",
+					"type": "evil"
+				},
+				"conflict_scope": [],
+				"derived": [],
+				"disputes": [],
+				"faults": {
+					"night1": {
+						"basis": "vial1",
+						"type": "poisoned",
+						"window": "night1"
+					}
+				},
+				"id": "case-1",
+				"lines": [],
+				"positions": {},
+				"reasons": {},
+				"temporal_positions": [],
+				"version": 1
+			},
+			"expected": {
+				"agreement": 0.365819712525667,
+				"claims": [
+					{
+						"conclusion": {
+							"at": "opening through day 3",
+							"target": "hollis",
+							"type": "evil"
+						},
+						"stance": "partial",
+						"status": "inconsistent"
+					}
+				],
+				"compatible": 0,
+				"effects": {
+					"agnes": -0.0681508196417087,
+					"bart": -0.170753740877725,
+					"constance": -0.0206164039942939,
+					"fenwick": -0.103232032854209,
+					"greta": -0.0537574369762879,
+					"hollis": 0.107911885010267,
+					"lian": 0.0505836960985626,
+					"merrin": -0.16758,
+					"nisha": 0.00000000000000000129080165447496,
+					"odette": 0.0
+				},
+				"reasoning": "inconsistent",
+				"stance": "partial"
+			},
+			"listener": {
+				"case_memory": {},
+				"confidence": 0.8,
+				"confidence_mode": "scale",
+				"id": "odette",
+				"insight": 0.6,
+				"knowledge": {
+					"good": [
+						"odette"
+					],
+					"own_outings": {
+						"1": true,
+						"2": true
+					},
+					"own_reports": [
+						"watch1",
+						"watch2"
+					],
+					"self": "odette"
+				},
+				"ledger": {},
+				"name": "Odette",
+				"npc_trust": {
+					"agnes": 0.5,
+					"bart": 0.5,
+					"constance": 0.5,
+					"fenwick": 0.5,
+					"greta": 0.5,
+					"hollis": 0.5,
+					"lian": 0.5,
+					"merrin": 0.5,
+					"nisha": 0.5,
+					"odette": 1.0
+				},
+				"preset": "Suspects a rival",
+				"reading_reliability": {
+					"recovered-dowse": 1.0,
+					"report:agnes:lamp1": 1.0,
+					"report:agnes:lamp2": 1.0,
+					"report:bart:survey": 1.0,
+					"report:fenwick:dowse": 1.0,
+					"report:merrin:rumor": 1.0,
+					"report:odette:watch1": 1.0,
+					"report:odette:watch2": 1.0,
+					"retelling:poisoned-dowse": 1.0
+				},
+				"reasoning_mode": "full",
+				"suspicion": {
+					"agnes": 0.1,
+					"bart": 0.1,
+					"constance": 0.1,
+					"fenwick": 0.1,
+					"greta": 0.1,
+					"hollis": 0.1,
+					"lian": 0.1,
+					"merrin": 0.1,
+					"nisha": 0.65,
+					"odette": 0.0
+				},
+				"theories": {},
+				"trust": 0.5
+			},
+			"name": "poison",
+			"view": {
+				"alignment_epoch": "opening through day 3",
+				"cards": [
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_surveyor",
+						"data": {
+							"count": 4
+						},
+						"event_ids": [
+							"report:bart:survey"
+						],
+						"fact_id": "report:bart:survey",
+						"id": "survey",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"text": "Bartholomew Surveyor: 4 blocks with evil"
+					},
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_rumormonger",
+						"data": {
+							"pair": [
+								"constance",
+								"nisha"
+							],
+							"secret": "marked"
+						},
+						"event_ids": [
+							"report:merrin:rumor"
+						],
+						"fact_id": "report:merrin:rumor",
+						"id": "rumor",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"text": "Merrin Rumormonger: Marked in Constance / Nisha"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_dowser",
+						"data": {
+							"block": "market",
+							"count": 1,
+							"group": [
+								"nisha",
+								"hollis",
+								"merrin",
+								"lian"
+							]
+						},
+						"event_ids": [
+							"report:fenwick:dowse"
+						],
+						"fact_id": "report:fenwick:dowse",
+						"id": "dowse",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"text": "Fenwick Dowser: 1 evil of Nisha / Hollis / Merrin / Lian"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes",
+								"hollis"
+							]
+						},
+						"event_ids": [
+							"outing:constance:1",
+							"outing:agnes:1"
+						],
+						"fact_id": "report:odette:watch1",
+						"id": "watch1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes, Hollis"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 4
+						},
+						"event_ids": [
+							"report:agnes:lamp1"
+						],
+						"fact_id": "report:agnes:lamp1",
+						"id": "lamp1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 4 others out"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes",
+								"nisha"
+							]
+						},
+						"event_ids": [
+							"outing:constance:2",
+							"outing:agnes:2",
+							"outing:nisha:2"
+						],
+						"fact_id": "report:odette:watch2",
+						"id": "watch2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch2",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes, Nisha"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp2"
+						],
+						"fact_id": "report:agnes:lamp2",
+						"id": "lamp2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp2",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 2,
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:constance:alibi1",
+						"id": "alibi1",
+						"kind": "alibi",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "alibi1",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance says they stayed home on night 1."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:constance:medium"
+						],
+						"fact_id": "claim:constance:medium",
+						"id": "gift_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "gift_claim",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "medium",
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance claims Medium: visiting the dead could explain night work."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:nisha:warden"
+						],
+						"fact_id": "claim:nisha:warden",
+						"id": "warden_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "warden_claim",
+							"source": "nisha"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "warden",
+						"source": "nisha",
+						"subject": "nisha",
+						"text": "Nisha claims Warden: guarding a home could explain night work. This fixture's quiet night was not a confirmed Warden save."
+					},
+					{
+						"acquired_day": 2,
+						"block": "docks",
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:player:vigil1",
+						"id": "vigil1",
+						"kind": "sighting",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "vigil1",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "You also saw Constance at the Docks on night 1 (the same outing as the Watch report)."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:bart:surveyor"
+						],
+						"fact_id": "claim:bart:surveyor",
+						"id": "claim_surveyor",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "survey",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"subject": "bart",
+						"text": "Bartholomew implicitly claims Surveyor by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:merrin:rumormonger"
+						],
+						"fact_id": "claim:merrin:rumormonger",
+						"id": "claim_rumormonger",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "rumor",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"subject": "merrin",
+						"text": "Merrin implicitly claims Rumormonger by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:fenwick:dowser"
+						],
+						"fact_id": "claim:fenwick:dowser",
+						"id": "claim_dowser",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "dowse",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"subject": "fenwick",
+						"text": "Fenwick implicitly claims Dowser by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:odette:nightwatch"
+						],
+						"fact_id": "claim:odette:nightwatch",
+						"id": "claim_nightwatch",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "watch1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"subject": "odette",
+						"text": "Odette implicitly claims Night Watch by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:agnes:lamplighter"
+						],
+						"fact_id": "claim:agnes:lamplighter",
+						"id": "claim_lamplighter",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "lamp1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"subject": "agnes",
+						"text": "Agnes implicitly claims Lamplighter by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"accuracy_origin": "report:fenwick:dowse",
+						"acquired_day": 2,
+						"claim_id": "claim_dowser",
+						"data": {
+							"block": "market",
+							"count": 1,
+							"group": [
+								"nisha",
+								"hollis",
+								"merrin",
+								"lian"
+							]
+						},
+						"event_ids": [
+							"report:fenwick:dowse"
+						],
+						"fact_id": "retelling:poisoned-dowse",
+						"id": "dowse_relay",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "evening"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "evening"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"text": "Fenwick Dowser: 1 evil of Nisha / Hollis / Merrin / Lian"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_dowser",
+						"data": {
+							"block": "market",
+							"count": 3,
+							"group": [
+								"nisha",
+								"hollis",
+								"merrin",
+								"lian"
+							]
+						},
+						"event_ids": [
+							"recovered-dowse"
+						],
+						"fact_id": "recovered-dowse",
+						"id": "dowse_recovered",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "evening"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 3,
+							"phase": "afternoon"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse_recovered",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "evening"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"text": "Fenwick Dowser: 3 evil of Nisha / Hollis / Merrin / Lian"
+					},
+					{
+						"acquired_day": 1,
+						"data": {},
+						"event_ids": [
+							"fault_evidence:fenwick:1"
+						],
+						"fact_id": "fixture:vial1",
+						"id": "vial1",
+						"incident_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"kind": "fault_evidence",
+						"learned_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "vial1",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"source": "player",
+						"subject": "fenwick",
+						"text": "A witness saw a vial left at Fenwick's door on night 1. This supports possible poisoning, not certainty.",
+						"window": "night1"
+					}
+				],
+				"chronology": {
+					"epochs": {
+						"opening through day 3": 15
+					},
+					"poison_windows": {
+						"night1": {
+							"from": 7,
+							"subject": "fenwick",
+							"until": 11
+						}
+					},
+					"reserved_events": [
+						"scion_succession"
+					]
+				},
+				"day": 3,
+				"evil_count": 3,
+				"fixture": "poison",
+				"history": [
+					"Night 1: no death was announced.",
+					"Dawn 3: Greta is found dead."
+				],
+				"people": [
+					{
+						"alive": true,
+						"claim": "medium",
+						"home": "hill",
+						"id": "constance",
+						"name": "Constance"
+					},
+					{
+						"alive": true,
+						"claim": "surveyor",
+						"home": "hill",
+						"id": "bart",
+						"name": "Bartholomew"
+					},
+					{
+						"alive": true,
+						"claim": "warden",
+						"home": "square",
+						"id": "nisha",
+						"name": "Nisha"
+					},
+					{
+						"alive": true,
+						"claim": "nightwatch",
+						"home": "square",
+						"id": "odette",
+						"name": "Odette"
+					},
+					{
+						"alive": true,
+						"claim": "lamplighter",
+						"home": "square",
+						"id": "agnes",
+						"name": "Agnes"
+					},
+					{
+						"alive": true,
+						"claim": "martyr",
+						"home": "market",
+						"id": "hollis",
+						"name": "Hollis"
+					},
+					{
+						"alive": true,
+						"claim": "rumormonger",
+						"home": "market",
+						"id": "merrin",
+						"name": "Merrin"
+					},
+					{
+						"alive": true,
+						"claim": "psychologist",
+						"home": "docks",
+						"id": "lian",
+						"name": "Lian"
+					},
+					{
+						"alive": false,
+						"claim": "veteran",
+						"home": "docks",
+						"id": "greta",
+						"name": "Greta"
+					},
+					{
+						"alive": true,
+						"claim": "dowser",
+						"home": "docks",
+						"id": "fenwick",
+						"name": "Fenwick"
+					}
+				],
+				"scope": "Ten people, three original evil, one good Marked. No alignment changes in this fixture. Reports may be lies or impaired; accepting a report assumes its source was good, held the claimed gift and was healthy when it was made. Poison experiment: one possible Night 1-to-Night 2 impairment interval, supported or unsupported explanations and a Day 3 recovered reading.",
+				"secret": "marked",
+				"secret_count": 1,
+				"seed": 692
+			}
+		},
+		{
+			"case": {
+				"answers": {},
+				"cards": [
+					"survey",
+					"rumor",
+					"dowse",
+					"curse_warning",
+					"totem_found"
+				],
+				"challenges": {},
+				"citations": {},
+				"conclusion": {
+					"at": "during curse",
+					"target": "merrin",
+					"type": "evil"
+				},
+				"conflict_scope": [],
+				"derived": [],
+				"disputes": [],
+				"faults": {},
+				"id": "case-1",
+				"lines": [],
+				"positions": {},
+				"reasons": {},
+				"temporal_positions": [],
+				"version": 1
+			},
+			"expected": {
+				"agreement": 0.0867349,
+				"claims": [
+					{
+						"conclusion": {
+							"at": "during curse",
+							"target": "merrin",
+							"type": "evil"
+						},
+						"stance": "reject",
+						"status": "rival_found"
+					}
+				],
+				"compatible": 5,
+				"effects": {
+					"agnes": -0.0821142,
+					"bart": -0.16758,
+					"constance": 0.0,
+					"fenwick": -0.2530458,
+					"greta": -0.16758,
+					"hollis": 0.123992442,
+					"lian": 0.045366642,
+					"merrin": 0.0,
+					"nisha": 0.00000000000000000116281984041677,
+					"odette": 0.0
+				},
+				"reasoning": "rival_found",
+				"stance": "reject"
+			},
+			"listener": {
+				"case_memory": {},
+				"confidence": 0.8,
+				"confidence_mode": "scale",
+				"id": "odette",
+				"insight": 0.6,
+				"knowledge": {
+					"good": [
+						"odette"
+					],
+					"good_epoch": "before curse",
+					"known_events": [
+						"curse_warning",
+						"totem_found"
+					],
+					"own_outings": {
+						"1": true,
+						"2": true
+					},
+					"own_reports": [
+						"watch1",
+						"watch2"
+					],
+					"self": "odette"
+				},
+				"ledger": {},
+				"name": "Odette",
+				"npc_trust": {
+					"agnes": 0.5,
+					"bart": 0.5,
+					"constance": 0.5,
+					"fenwick": 0.5,
+					"greta": 0.5,
+					"hollis": 0.5,
+					"lian": 0.5,
+					"merrin": 0.5,
+					"nisha": 0.5,
+					"odette": 1.0
+				},
+				"preset": "Suspects a rival",
+				"reading_reliability": {
+					"report:agnes:lamp1": 1.0,
+					"report:agnes:lamp2": 1.0,
+					"report:bart:survey": 1.0,
+					"report:fenwick:dowse": 1.0,
+					"report:merrin:rumor": 1.0,
+					"report:odette:watch1": 1.0,
+					"report:odette:watch2": 1.0,
+					"retold:rumor": 1.0
+				},
+				"reasoning_mode": "full",
+				"suspicion": {
+					"agnes": 0.1,
+					"bart": 0.1,
+					"constance": 0.1,
+					"fenwick": 0.1,
+					"greta": 0.1,
+					"hollis": 0.1,
+					"lian": 0.1,
+					"merrin": 0.1,
+					"nisha": 0.65,
+					"odette": 0.0
+				},
+				"theories": {},
+				"trust": 0.5
+			},
+			"name": "revenant",
+			"view": {
+				"alignment_epoch": "after restoration",
+				"cards": [
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_surveyor",
+						"data": {
+							"count": 4
+						},
+						"event_ids": [
+							"report:bart:survey"
+						],
+						"fact_id": "report:bart:survey",
+						"id": "survey",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"text": "Bartholomew Surveyor: 4 blocks with evil"
+					},
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_rumormonger",
+						"data": {
+							"pair": [
+								"constance",
+								"nisha"
+							],
+							"secret": "marked"
+						},
+						"event_ids": [
+							"report:merrin:rumor"
+						],
+						"fact_id": "report:merrin:rumor",
+						"id": "rumor",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"text": "Merrin Rumormonger: Marked in Constance / Nisha"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_dowser",
+						"data": {
+							"block": "market",
+							"count": 3,
+							"group": [
+								"nisha",
+								"hollis",
+								"merrin",
+								"lian"
+							]
+						},
+						"event_ids": [
+							"report:fenwick:dowse"
+						],
+						"fact_id": "report:fenwick:dowse",
+						"id": "dowse",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"text": "Fenwick Dowser: 3 evil of Nisha / Hollis / Merrin / Lian"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes"
+							]
+						},
+						"event_ids": [
+							"outing:constance:1",
+							"outing:agnes:1"
+						],
+						"fact_id": "report:odette:watch1",
+						"id": "watch1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp1"
+						],
+						"fact_id": "report:agnes:lamp1",
+						"id": "lamp1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes",
+								"nisha"
+							]
+						},
+						"event_ids": [
+							"outing:constance:2",
+							"outing:agnes:2",
+							"outing:nisha:2"
+						],
+						"fact_id": "report:odette:watch2",
+						"id": "watch2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch2",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes, Nisha"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp2"
+						],
+						"fact_id": "report:agnes:lamp2",
+						"id": "lamp2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp2",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 2,
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:constance:alibi1",
+						"id": "alibi1",
+						"kind": "alibi",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "alibi1",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance says they stayed home on night 1."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:constance:medium"
+						],
+						"fact_id": "claim:constance:medium",
+						"id": "gift_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "gift_claim",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "medium",
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance claims Medium: visiting the dead could explain night work."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:nisha:warden"
+						],
+						"fact_id": "claim:nisha:warden",
+						"id": "warden_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "warden_claim",
+							"source": "nisha"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "warden",
+						"source": "nisha",
+						"subject": "nisha",
+						"text": "Nisha claims Warden: guarding a home could explain night work. This fixture's quiet night was not a confirmed Warden save."
+					},
+					{
+						"acquired_day": 2,
+						"block": "docks",
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:player:vigil1",
+						"id": "vigil1",
+						"kind": "sighting",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "vigil1",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "You also saw Constance at the Docks on night 1 (the same outing as the Watch report)."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:bart:surveyor"
+						],
+						"fact_id": "claim:bart:surveyor",
+						"id": "claim_surveyor",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "survey",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"subject": "bart",
+						"text": "Bartholomew implicitly claims Surveyor by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:merrin:rumormonger"
+						],
+						"fact_id": "claim:merrin:rumormonger",
+						"id": "claim_rumormonger",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "rumor",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"subject": "merrin",
+						"text": "Merrin implicitly claims Rumormonger by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:fenwick:dowser"
+						],
+						"fact_id": "claim:fenwick:dowser",
+						"id": "claim_dowser",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "dowse",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"subject": "fenwick",
+						"text": "Fenwick implicitly claims Dowser by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:odette:nightwatch"
+						],
+						"fact_id": "claim:odette:nightwatch",
+						"id": "claim_nightwatch",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "watch1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"subject": "odette",
+						"text": "Odette implicitly claims Night Watch by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:agnes:lamplighter"
+						],
+						"fact_id": "claim:agnes:lamplighter",
+						"id": "claim_lamplighter",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "lamp1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"subject": "agnes",
+						"text": "Agnes implicitly claims Lamplighter by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 3,
+						"data": {
+							"count": 1,
+							"eligible": [
+								"merrin",
+								"nisha",
+								"odette"
+							]
+						},
+						"event": "curse",
+						"event_ids": [
+							"event:lian:3"
+						],
+						"fact_id": "fixture:curse_warning",
+						"id": "curse_warning",
+						"incident_at": {
+							"day": 3,
+							"phase": "night"
+						},
+						"kind": "event",
+						"learned_at": {
+							"day": 3,
+							"phase": "evening"
+						},
+						"night": 3,
+						"observed_at": {
+							"day": 3,
+							"phase": "evening"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "curse_warning",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "evening"
+						},
+						"source": "player",
+						"subject": "lian",
+						"text": "Day 3: the hanged Revenant's curse activated. One surviving good yes-voter became evil: Merrin, Nisha or Odette."
+					},
+					{
+						"acquired_day": 5,
+						"data": {},
+						"event": "restoration",
+						"event_ids": [
+							"event:lian:5"
+						],
+						"fact_id": "fixture:totem_found",
+						"id": "totem_found",
+						"incident_at": {
+							"day": 5,
+							"phase": "night"
+						},
+						"kind": "event",
+						"learned_at": {
+							"day": 5,
+							"phase": "morning"
+						},
+						"night": 5,
+						"observed_at": {
+							"day": 5,
+							"phase": "morning"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "totem_found",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 5,
+							"phase": "morning"
+						},
+						"source": "player",
+						"subject": "lian",
+						"text": "Day 5: the totem was found and destroyed. The curse ended. Statements withdrawn by the restored speaker must be considered separately from earlier readings."
+					},
+					{
+						"acquired_day": 4,
+						"claim_id": "claim_rumormonger",
+						"data": {
+							"pair": [
+								"odette",
+								"greta"
+							],
+							"secret": "marked"
+						},
+						"event_ids": [
+							"report:merrin:rumor",
+							"statement:rumor_retold"
+						],
+						"fact_id": "retold:rumor",
+						"id": "rumor_retold",
+						"kind": "report",
+						"learned_at": {
+							"day": 4,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor_retold",
+							"references": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 4,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"text": "Day 4: Merrin retells his old Rumormonger result while the curse is active. After restoration he withdraws this retelling; the earlier report remains."
+					}
+				],
+				"chronology": {
+					"curse": {
+						"alive": [
+							"constance",
+							"bart",
+							"nisha",
+							"odette",
+							"agnes",
+							"hollis",
+							"merrin",
+							"fenwick"
+						],
+						"executed": "lian",
+						"from": 14,
+						"until": 20,
+						"yes_voters": [
+							"merrin",
+							"nisha",
+							"odette"
+						]
+					},
+					"epochs": {
+						"after restoration": 21,
+						"before curse": 13,
+						"during curse": 17
+					},
+					"reserved_events": [
+						"scion_succession"
+					],
+					"withdrawals": [
+						{
+							"card": "totem_found",
+							"reports": [
+								"rumor_retold"
+							]
+						}
+					]
+				},
+				"day": 5,
+				"evil_count": 3,
+				"fixture": "revenant",
+				"history": [
+					"Night 1: no death was announced.",
+					"Dawn 3: Greta is found dead.",
+					"Day 3: a good surviving yes-voter was cursed; identity was not announced.",
+					"Dawn 5: the hidden totem was destroyed and the curse ended."
+				],
+				"people": [
+					{
+						"alive": true,
+						"claim": "medium",
+						"home": "hill",
+						"id": "constance",
+						"name": "Constance"
+					},
+					{
+						"alive": true,
+						"claim": "surveyor",
+						"home": "hill",
+						"id": "bart",
+						"name": "Bartholomew"
+					},
+					{
+						"alive": true,
+						"claim": "warden",
+						"home": "square",
+						"id": "nisha",
+						"name": "Nisha"
+					},
+					{
+						"alive": true,
+						"claim": "nightwatch",
+						"home": "square",
+						"id": "odette",
+						"name": "Odette"
+					},
+					{
+						"alive": true,
+						"claim": "lamplighter",
+						"home": "square",
+						"id": "agnes",
+						"name": "Agnes"
+					},
+					{
+						"alive": true,
+						"claim": "martyr",
+						"home": "market",
+						"id": "hollis",
+						"name": "Hollis"
+					},
+					{
+						"alive": true,
+						"claim": "rumormonger",
+						"home": "market",
+						"id": "merrin",
+						"name": "Merrin"
+					},
+					{
+						"alive": false,
+						"claim": "psychologist",
+						"home": "docks",
+						"id": "lian",
+						"name": "Lian"
+					},
+					{
+						"alive": false,
+						"claim": "veteran",
+						"home": "docks",
+						"id": "greta",
+						"name": "Greta"
+					},
+					{
+						"alive": true,
+						"claim": "dowser",
+						"home": "docks",
+						"id": "fenwick",
+						"name": "Fenwick"
+					}
+				],
+				"scope": "Revenant experiment: public Day 3 activation and Day 5 restoration. Converted identity is unknown to the assessor; epochs are explicit. Scion succession is reserved but unsupported.",
+				"secret": "marked",
+				"secret_count": 1,
+				"seed": 692
+			}
+		},
+		{
+			"case": {
+				"answers": {},
+				"argument_root": "p:1",
+				"arguments": [
+					{
+						"case": {
+							"answers": {},
+							"cards": [
+								"alibi1",
+								"dowse",
+								"rumor",
+								"survey",
+								"vigil1"
+							],
+							"challenges": {},
+							"citations": {},
+							"conclusion": {
+								"at": "opening through day 3",
+								"target": "constance",
+								"type": "evil"
+							},
+							"conflict_scope": [],
+							"derived": [],
+							"disputes": [
+								{
+									"challenged": "alibi1",
+									"preferred": "vigil1",
+									"reports": [
+										"alibi1",
+										"vigil1"
+									]
+								}
+							],
+							"faults": {},
+							"id": "case-1",
+							"lines": [
+								{
+									"answers": {},
+									"assumption_sets": [
+										{}
+									],
+									"cards": [
+										"dowse",
+										"rumor",
+										"survey"
+									],
+									"conclusion": {
+										"at": "opening through day 3",
+										"target": "hollis",
+										"type": "evil"
+									},
+									"id": "p:2",
+									"label": "Hollis is evil",
+									"positions": {},
+									"relation": "supports"
+								},
+								{
+									"answers": {},
+									"assumption_sets": [
+										{}
+									],
+									"cards": [
+										"alibi1",
+										"vigil1"
+									],
+									"conclusion": {
+										"at": "opening through day 3",
+										"target": "constance",
+										"type": "suspicious"
+									},
+									"id": "p:3",
+									"label": "Constance is suspicious",
+									"positions": {},
+									"relation": "supports"
+								}
+							],
+							"positions": {},
+							"reasons": {},
+							"temporal_positions": [],
+							"version": 15
+						},
+						"id": "p:1",
+						"label": "Constance is evil",
+						"parents": [],
+						"without": {}
+					},
+					{
+						"case": {
+							"answers": {},
+							"cards": [
+								"dowse",
+								"rumor",
+								"survey"
+							],
+							"challenges": {},
+							"citations": {},
+							"conclusion": {
+								"at": "opening through day 3",
+								"target": "hollis",
+								"type": "evil"
+							},
+							"conflict_scope": [],
+							"derived": [],
+							"disputes": [],
+							"faults": {},
+							"id": "case-1",
+							"lines": [
+								{
+									"answers": {},
+									"cards": [
+										"dowse",
+										"rumor",
+										"survey"
+									],
+									"id": "direct",
+									"label": "Direct supporting evidence",
+									"positions": {},
+									"relation": "supports"
+								}
+							],
+							"positions": {},
+							"reasons": {},
+							"temporal_positions": [],
+							"version": 15
+						},
+						"id": "p:2",
+						"label": "Hollis is evil",
+						"parents": [
+							"p:1"
+						],
+						"without": {
+							"p:1": [
+								"alibi1",
+								"vigil1"
+							]
+						}
+					},
+					{
+						"case": {
+							"answers": {},
+							"cards": [
+								"alibi1",
+								"vigil1"
+							],
+							"challenges": {},
+							"citations": {},
+							"conclusion": {
+								"at": "opening through day 3",
+								"target": "constance",
+								"type": "suspicious"
+							},
+							"conflict_scope": [],
+							"derived": [],
+							"disputes": [
+								{
+									"challenged": "alibi1",
+									"preferred": "vigil1",
+									"reports": [
+										"alibi1",
+										"vigil1"
+									]
+								}
+							],
+							"faults": {},
+							"id": "case-1",
+							"lines": [
+								{
+									"answers": {},
+									"cards": [
+										"alibi1",
+										"vigil1"
+									],
+									"id": "direct",
+									"label": "Direct supporting evidence",
+									"positions": {},
+									"relation": "supports"
+								}
+							],
+							"positions": {},
+							"reasons": {},
+							"temporal_positions": [],
+							"version": 15
+						},
+						"id": "p:3",
+						"label": "Constance is suspicious",
+						"parents": [
+							"p:1"
+						],
+						"without": {
+							"p:1": [
+								"dowse",
+								"rumor",
+								"survey"
+							]
+						}
+					}
+				],
+				"cards": [
+					"alibi1",
+					"dowse",
+					"rumor",
+					"survey",
+					"vigil1"
+				],
+				"challenges": {},
+				"citations": {},
+				"conclusion": {
+					"at": "opening through day 3",
+					"target": "constance",
+					"type": "evil"
+				},
+				"conflict_scope": [],
+				"derived": [],
+				"disputes": [
+					{
+						"challenged": "alibi1",
+						"preferred": "vigil1",
+						"reports": [
+							"alibi1",
+							"vigil1"
+						]
+					}
+				],
+				"faults": {},
+				"id": "case-1",
+				"lines": [
+					{
+						"answers": {},
+						"assumption_sets": [
+							{}
+						],
+						"cards": [
+							"dowse",
+							"rumor",
+							"survey"
+						],
+						"conclusion": {
+							"at": "opening through day 3",
+							"target": "hollis",
+							"type": "evil"
+						},
+						"id": "p:2",
+						"label": "Hollis is evil",
+						"positions": {},
+						"relation": "supports"
+					},
+					{
+						"answers": {},
+						"assumption_sets": [
+							{}
+						],
+						"cards": [
+							"alibi1",
+							"vigil1"
+						],
+						"conclusion": {
+							"at": "opening through day 3",
+							"target": "constance",
+							"type": "suspicious"
+						},
+						"id": "p:3",
+						"label": "Constance is suspicious",
+						"positions": {},
+						"relation": "supports"
+					}
+				],
+				"positions": {},
+				"reasons": {},
+				"temporal_positions": [],
+				"version": 15
+			},
+			"expected": {
+				"agreement": 0.075298094851345,
+				"claims": [
+					{
+						"conclusion": {
+							"at": "opening through day 3",
+							"target": "constance",
+							"type": "evil"
+						},
+						"stance": "reject",
+						"status": "rival_found"
+					},
+					{
+						"conclusion": {
+							"at": "opening through day 3",
+							"target": "hollis",
+							"type": "evil"
+						},
+						"stance": "partial",
+						"status": "entailed_in_attention"
+					},
+					{
+						"conclusion": {
+							"at": "opening through day 3",
+							"target": "constance",
+							"type": "suspicious"
+						},
+						"stance": "partial",
+						"status": "rival_found"
+					}
+				],
+				"compatible": 2,
+				"effects": {
+					"agnes": -0.0998728081792639,
+					"bart": -0.174824242142174,
+					"constance": 0.083904,
+					"fenwick": -0.16758,
+					"greta": -0.089358442142174,
+					"hollis": 0.123992442,
+					"lian": 0.0821142,
+					"merrin": -0.16758,
+					"nisha": -0.00442146927261384,
+					"odette": 0.0
+				},
+				"reasoning": "rival_found",
+				"stance": "reject"
+			},
+			"listener": {
+				"case_memory": {},
+				"confidence": 0.8,
+				"confidence_mode": "scale",
+				"id": "odette",
+				"insight": 0.6,
+				"knowledge": {
+					"good": [
+						"odette"
+					],
+					"own_outings": {
+						"1": true,
+						"2": true
+					},
+					"own_reports": [
+						"watch1",
+						"watch2"
+					],
+					"self": "odette"
+				},
+				"ledger": {},
+				"name": "Odette",
+				"npc_trust": {
+					"agnes": 0.5,
+					"bart": 0.5,
+					"constance": 0.5,
+					"fenwick": 0.5,
+					"greta": 0.5,
+					"hollis": 0.5,
+					"lian": 0.5,
+					"merrin": 0.5,
+					"nisha": 0.5,
+					"odette": 1.0
+				},
+				"preset": "Suspects a rival",
+				"reading_reliability": {
+					"report:agnes:lamp1": 1.0,
+					"report:agnes:lamp2": 1.0,
+					"report:bart:survey": 1.0,
+					"report:fenwick:dowse": 1.0,
+					"report:merrin:rumor": 1.0,
+					"report:odette:watch1": 1.0,
+					"report:odette:watch2": 1.0
+				},
+				"reasoning_mode": "full",
+				"suspicion": {
+					"agnes": 0.1,
+					"bart": 0.1,
+					"constance": 0.1,
+					"fenwick": 0.1,
+					"greta": 0.1,
+					"hollis": 0.1,
+					"lian": 0.1,
+					"merrin": 0.1,
+					"nisha": 0.65,
+					"odette": 0.0
+				},
+				"theories": {},
+				"trust": 0.5
+			},
+			"name": "converging_intermediates",
+			"view": {
+				"alignment_epoch": "opening through day 3",
+				"cards": [
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_surveyor",
+						"data": {
+							"count": 4
+						},
+						"event_ids": [
+							"report:bart:survey"
+						],
+						"fact_id": "report:bart:survey",
+						"id": "survey",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"text": "Bartholomew Surveyor: 4 blocks with evil"
+					},
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_rumormonger",
+						"data": {
+							"pair": [
+								"constance",
+								"nisha"
+							],
+							"secret": "marked"
+						},
+						"event_ids": [
+							"report:merrin:rumor"
+						],
+						"fact_id": "report:merrin:rumor",
+						"id": "rumor",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"text": "Merrin Rumormonger: Marked in Constance / Nisha"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_dowser",
+						"data": {
+							"block": "market",
+							"count": 3,
+							"group": [
+								"nisha",
+								"hollis",
+								"merrin",
+								"lian"
+							]
+						},
+						"event_ids": [
+							"report:fenwick:dowse"
+						],
+						"fact_id": "report:fenwick:dowse",
+						"id": "dowse",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"text": "Fenwick Dowser: 3 evil of Nisha / Hollis / Merrin / Lian"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes"
+							]
+						},
+						"event_ids": [
+							"outing:constance:1",
+							"outing:agnes:1"
+						],
+						"fact_id": "report:odette:watch1",
+						"id": "watch1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp1"
+						],
+						"fact_id": "report:agnes:lamp1",
+						"id": "lamp1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes",
+								"nisha"
+							]
+						},
+						"event_ids": [
+							"outing:constance:2",
+							"outing:agnes:2",
+							"outing:nisha:2"
+						],
+						"fact_id": "report:odette:watch2",
+						"id": "watch2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch2",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes, Nisha"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp2"
+						],
+						"fact_id": "report:agnes:lamp2",
+						"id": "lamp2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp2",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 2,
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:constance:alibi1",
+						"id": "alibi1",
+						"kind": "alibi",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "alibi1",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance says they stayed home on night 1."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:constance:medium"
+						],
+						"fact_id": "claim:constance:medium",
+						"id": "gift_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "gift_claim",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "medium",
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance claims Medium: visiting the dead could explain night work."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:nisha:warden"
+						],
+						"fact_id": "claim:nisha:warden",
+						"id": "warden_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "warden_claim",
+							"source": "nisha"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "warden",
+						"source": "nisha",
+						"subject": "nisha",
+						"text": "Nisha claims Warden: guarding a home could explain night work. This fixture's quiet night was not a confirmed Warden save."
+					},
+					{
+						"acquired_day": 2,
+						"block": "docks",
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:player:vigil1",
+						"id": "vigil1",
+						"kind": "sighting",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "vigil1",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "You also saw Constance at the Docks on night 1 (the same outing as the Watch report)."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:bart:surveyor"
+						],
+						"fact_id": "claim:bart:surveyor",
+						"id": "claim_surveyor",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "survey",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"subject": "bart",
+						"text": "Bartholomew implicitly claims Surveyor by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:merrin:rumormonger"
+						],
+						"fact_id": "claim:merrin:rumormonger",
+						"id": "claim_rumormonger",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "rumor",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"subject": "merrin",
+						"text": "Merrin implicitly claims Rumormonger by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:fenwick:dowser"
+						],
+						"fact_id": "claim:fenwick:dowser",
+						"id": "claim_dowser",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "dowse",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"subject": "fenwick",
+						"text": "Fenwick implicitly claims Dowser by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:odette:nightwatch"
+						],
+						"fact_id": "claim:odette:nightwatch",
+						"id": "claim_nightwatch",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "watch1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"subject": "odette",
+						"text": "Odette implicitly claims Night Watch by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:agnes:lamplighter"
+						],
+						"fact_id": "claim:agnes:lamplighter",
+						"id": "claim_lamplighter",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "lamp1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"subject": "agnes",
+						"text": "Agnes implicitly claims Lamplighter by reporting this gift result. This does not establish the result's accuracy."
+					}
+				],
+				"day": 3,
+				"evil_count": 3,
+				"fixture": "core",
+				"history": [
+					"Night 1: no death was announced.",
+					"Dawn 3: Greta is found dead."
+				],
+				"people": [
+					{
+						"alive": true,
+						"claim": "medium",
+						"home": "hill",
+						"id": "constance",
+						"name": "Constance"
+					},
+					{
+						"alive": true,
+						"claim": "surveyor",
+						"home": "hill",
+						"id": "bart",
+						"name": "Bartholomew"
+					},
+					{
+						"alive": true,
+						"claim": "warden",
+						"home": "square",
+						"id": "nisha",
+						"name": "Nisha"
+					},
+					{
+						"alive": true,
+						"claim": "nightwatch",
+						"home": "square",
+						"id": "odette",
+						"name": "Odette"
+					},
+					{
+						"alive": true,
+						"claim": "lamplighter",
+						"home": "square",
+						"id": "agnes",
+						"name": "Agnes"
+					},
+					{
+						"alive": true,
+						"claim": "martyr",
+						"home": "market",
+						"id": "hollis",
+						"name": "Hollis"
+					},
+					{
+						"alive": true,
+						"claim": "rumormonger",
+						"home": "market",
+						"id": "merrin",
+						"name": "Merrin"
+					},
+					{
+						"alive": true,
+						"claim": "psychologist",
+						"home": "docks",
+						"id": "lian",
+						"name": "Lian"
+					},
+					{
+						"alive": false,
+						"claim": "veteran",
+						"home": "docks",
+						"id": "greta",
+						"name": "Greta"
+					},
+					{
+						"alive": true,
+						"claim": "dowser",
+						"home": "docks",
+						"id": "fenwick",
+						"name": "Fenwick"
+					}
+				],
+				"scope": "Ten people, three original evil, one good Marked. No alignment changes in this fixture. Reports may be lies or impaired; accepting a report assumes its source was good, held the claimed gift and was healthy when it was made.",
+				"secret": "marked",
+				"secret_count": 1,
+				"seed": 692
+			}
+		},
+		{
+			"case": {
+				"answers": {},
+				"cards": [
+					"survey"
+				],
+				"challenges": {},
+				"citations": {},
+				"conclusion": {
+					"at": "opening through day 3",
+					"target": "constance",
+					"type": "evil"
+				},
+				"conflict_scope": [],
+				"derived": [],
+				"disputes": [],
+				"faults": {},
+				"id": "case-1",
+				"lines": [],
+				"positions": {
+					"bart": "marked"
+				},
+				"reasons": {},
+				"temporal_positions": [],
+				"version": 1
+			},
+			"expected": {
+				"agreement": 0.049,
+				"claims": [
+					{
+						"conclusion": {
+							"at": "opening through day 3",
+							"target": "constance",
+							"type": "evil"
+						},
+						"stance": "reject",
+						"status": "counterexample_found"
+					}
+				],
+				"compatible": 66,
+				"effects": {
+					"agnes": -0.0206164039942939,
+					"bart": -0.16758,
+					"constance": -0.050274,
+					"fenwick": 0.0,
+					"greta": 0.0,
+					"hollis": 0.0,
+					"lian": 0.0,
+					"merrin": 0.0,
+					"nisha": 0.00000000000000000465127936166709,
+					"odette": 0.0
+				},
+				"reasoning": "counterexample_found",
+				"stance": "reject"
+			},
+			"listener": {
+				"case_memory": {},
+				"confidence": 0.8,
+				"confidence_mode": "scale",
+				"id": "odette",
+				"insight": 0.6,
+				"knowledge": {
+					"good": [
+						"odette"
+					],
+					"own_outings": {
+						"1": true,
+						"2": true
+					},
+					"own_reports": [
+						"watch1",
+						"watch2"
+					],
+					"self": "odette"
+				},
+				"ledger": {},
+				"name": "Odette",
+				"npc_trust": {
+					"agnes": 0.5,
+					"bart": 0.5,
+					"constance": 0.5,
+					"fenwick": 0.5,
+					"greta": 0.5,
+					"hollis": 0.5,
+					"lian": 0.5,
+					"merrin": 0.5,
+					"nisha": 0.5,
+					"odette": 1.0
+				},
+				"preset": "Suspects a rival",
+				"reading_reliability": {
+					"report:agnes:lamp1": 1.0,
+					"report:agnes:lamp2": 1.0,
+					"report:bart:survey": 1.0,
+					"report:fenwick:dowse": 1.0,
+					"report:merrin:rumor": 1.0,
+					"report:odette:watch1": 1.0,
+					"report:odette:watch2": 1.0
+				},
+				"reasoning_mode": "full",
+				"suspicion": {
+					"agnes": 0.1,
+					"bart": 0.1,
+					"constance": 0.1,
+					"fenwick": 0.1,
+					"greta": 0.1,
+					"hollis": 0.1,
+					"lian": 0.1,
+					"merrin": 0.1,
+					"nisha": 0.65,
+					"odette": 0.0
+				},
+				"theories": {},
+				"trust": 0.5
+			},
+			"name": "surveyor_could_be_marked",
+			"view": {
+				"alignment_epoch": "opening through day 3",
+				"cards": [
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_surveyor",
+						"data": {
+							"count": 4
+						},
+						"event_ids": [
+							"report:bart:survey"
+						],
+						"fact_id": "report:bart:survey",
+						"id": "survey",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"text": "Bartholomew Surveyor: 4 blocks with evil"
+					},
+					{
+						"acquired_day": 1,
+						"claim_id": "claim_rumormonger",
+						"data": {
+							"pair": [
+								"constance",
+								"nisha"
+							],
+							"secret": "marked"
+						},
+						"event_ids": [
+							"report:merrin:rumor"
+						],
+						"fact_id": "report:merrin:rumor",
+						"id": "rumor",
+						"kind": "report",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": 0,
+						"observed_at": {
+							"day": 0,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"text": "Merrin Rumormonger: Marked in Constance / Nisha"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_dowser",
+						"data": {
+							"block": "market",
+							"count": 3,
+							"group": [
+								"nisha",
+								"hollis",
+								"merrin",
+								"lian"
+							]
+						},
+						"event_ids": [
+							"report:fenwick:dowse"
+						],
+						"fact_id": "report:fenwick:dowse",
+						"id": "dowse",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"text": "Fenwick Dowser: 3 evil of Nisha / Hollis / Merrin / Lian"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes"
+							]
+						},
+						"event_ids": [
+							"outing:constance:1",
+							"outing:agnes:1"
+						],
+						"fact_id": "report:odette:watch1",
+						"id": "watch1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes"
+					},
+					{
+						"acquired_day": 2,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp1"
+						],
+						"fact_id": "report:agnes:lamp1",
+						"id": "lamp1",
+						"kind": "report",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_nightwatch",
+						"data": {
+							"block": "docks",
+							"seen": [
+								"constance",
+								"agnes",
+								"nisha"
+							]
+						},
+						"event_ids": [
+							"outing:constance:2",
+							"outing:agnes:2",
+							"outing:nisha:2"
+						],
+						"fact_id": "report:odette:watch2",
+						"id": "watch2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch2",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"text": "Odette Watch the Docks: Constance, Agnes, Nisha"
+					},
+					{
+						"acquired_day": 3,
+						"claim_id": "claim_lamplighter",
+						"data": {
+							"count": 3
+						},
+						"event_ids": [
+							"report:agnes:lamp2"
+						],
+						"fact_id": "report:agnes:lamp2",
+						"id": "lamp2",
+						"kind": "report",
+						"learned_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"night": 2,
+						"observed_at": {
+							"day": 2,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp2",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 3,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"text": "Agnes Lamplighter: 3 others out"
+					},
+					{
+						"acquired_day": 2,
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:constance:alibi1",
+						"id": "alibi1",
+						"kind": "alibi",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "alibi1",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance says they stayed home on night 1."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:constance:medium"
+						],
+						"fact_id": "claim:constance:medium",
+						"id": "gift_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "gift_claim",
+							"source": "constance"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "medium",
+						"source": "constance",
+						"subject": "constance",
+						"text": "Constance claims Medium: visiting the dead could explain night work."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:nisha:warden"
+						],
+						"fact_id": "claim:nisha:warden",
+						"id": "warden_claim",
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"provenance": {
+							"channel": "testimony",
+							"origin": "warden_claim",
+							"source": "nisha"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "warden",
+						"source": "nisha",
+						"subject": "nisha",
+						"text": "Nisha claims Warden: guarding a home could explain night work. This fixture's quiet night was not a confirmed Warden save."
+					},
+					{
+						"acquired_day": 2,
+						"block": "docks",
+						"event_ids": [
+							"outing:constance:1"
+						],
+						"fact_id": "report:player:vigil1",
+						"id": "vigil1",
+						"kind": "sighting",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": 1,
+						"observed_at": {
+							"day": 1,
+							"phase": "night"
+						},
+						"provenance": {
+							"channel": "firsthand",
+							"origin": "vigil1",
+							"source": "player"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"source": "player",
+						"subject": "constance",
+						"text": "You also saw Constance at the Docks on night 1 (the same outing as the Watch report)."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:bart:surveyor"
+						],
+						"fact_id": "claim:bart:surveyor",
+						"id": "claim_surveyor",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "survey",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "survey",
+							"source": "bart"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "surveyor",
+						"source": "bart",
+						"subject": "bart",
+						"text": "Bartholomew implicitly claims Surveyor by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 1,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:merrin:rumormonger"
+						],
+						"fact_id": "claim:merrin:rumormonger",
+						"id": "claim_rumormonger",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"origin": "rumor",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "rumor",
+							"source": "merrin"
+						},
+						"reported_at": {
+							"day": 1,
+							"phase": "day"
+						},
+						"role": "rumormonger",
+						"source": "merrin",
+						"subject": "merrin",
+						"text": "Merrin implicitly claims Rumormonger by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:fenwick:dowser"
+						],
+						"fact_id": "claim:fenwick:dowser",
+						"id": "claim_dowser",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "dowse",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "dowse",
+							"source": "fenwick"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "dowser",
+						"source": "fenwick",
+						"subject": "fenwick",
+						"text": "Fenwick implicitly claims Dowser by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:odette:nightwatch"
+						],
+						"fact_id": "claim:odette:nightwatch",
+						"id": "claim_nightwatch",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "watch1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "watch1",
+							"source": "odette"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "nightwatch",
+						"source": "odette",
+						"subject": "odette",
+						"text": "Odette implicitly claims Night Watch by reporting this gift result. This does not establish the result's accuracy."
+					},
+					{
+						"acquired_day": 2,
+						"applies": {
+							"from": 0,
+							"through": 3
+						},
+						"event_ids": [
+							"claim:agnes:lamplighter"
+						],
+						"fact_id": "claim:agnes:lamplighter",
+						"id": "claim_lamplighter",
+						"implicit": true,
+						"kind": "claim",
+						"learned_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"night": -1,
+						"observed_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"origin": "lamp1",
+						"provenance": {
+							"channel": "testimony",
+							"origin": "lamp1",
+							"source": "agnes"
+						},
+						"reported_at": {
+							"day": 2,
+							"phase": "day"
+						},
+						"role": "lamplighter",
+						"source": "agnes",
+						"subject": "agnes",
+						"text": "Agnes implicitly claims Lamplighter by reporting this gift result. This does not establish the result's accuracy."
+					}
+				],
+				"day": 3,
+				"evil_count": 3,
+				"fixture": "core",
+				"history": [
+					"Night 1: no death was announced.",
+					"Dawn 3: Greta is found dead."
+				],
+				"people": [
+					{
+						"alive": true,
+						"claim": "medium",
+						"home": "hill",
+						"id": "constance",
+						"name": "Constance"
+					},
+					{
+						"alive": true,
+						"claim": "surveyor",
+						"home": "hill",
+						"id": "bart",
+						"name": "Bartholomew"
+					},
+					{
+						"alive": true,
+						"claim": "warden",
+						"home": "square",
+						"id": "nisha",
+						"name": "Nisha"
+					},
+					{
+						"alive": true,
+						"claim": "nightwatch",
+						"home": "square",
+						"id": "odette",
+						"name": "Odette"
+					},
+					{
+						"alive": true,
+						"claim": "lamplighter",
+						"home": "square",
+						"id": "agnes",
+						"name": "Agnes"
+					},
+					{
+						"alive": true,
+						"claim": "martyr",
+						"home": "market",
+						"id": "hollis",
+						"name": "Hollis"
+					},
+					{
+						"alive": true,
+						"claim": "rumormonger",
+						"home": "market",
+						"id": "merrin",
+						"name": "Merrin"
+					},
+					{
+						"alive": true,
+						"claim": "psychologist",
+						"home": "docks",
+						"id": "lian",
+						"name": "Lian"
+					},
+					{
+						"alive": false,
+						"claim": "veteran",
+						"home": "docks",
+						"id": "greta",
+						"name": "Greta"
+					},
+					{
+						"alive": true,
+						"claim": "dowser",
+						"home": "docks",
+						"id": "fenwick",
+						"name": "Fenwick"
+					}
+				],
+				"scope": "Ten people, three original evil, one good Marked. No alignment changes in this fixture. Reports may be lies or impaired; accepting a report assumes its source was good, held the claimed gift and was healthy when it was made.",
+				"secret": "marked",
+				"secret_count": 1,
+				"seed": 692
+			}
+		}
+	],
+	"format": "demonologist-workshop-reference-1",
+	"meaning": "Specimen inputs contain permitted evidence and juror state, never generator truth. Numerical values document experimental model v5, not permanent design requirements.",
+	"reference_commit": "5d30513"
+}

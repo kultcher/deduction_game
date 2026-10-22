@@ -451,7 +451,7 @@ References below identify line numbers in the user-provided Opus paste, headed
 | Lines 183, 223: reuse 3/4/5 memory; four to six claims are cheap | Current recall is 2–6; recall and reasoning have different jobs. Measure solver costs before setting budgets. |
 | Lines 199, 203–216, 243–244: fixed private facts, one theory, automatic poison excuses, searched worlds called forced | Protect experienced facts without assuming infallible gifts or omniscience. Make theory commitment defeasible and alternatives visible. Never call limited-search acceptance proof. |
 
-**Delivered scope:** slices 1–3. Shared credibility states now replace strongest-path
+**Earlier checkpoint (slices 1–3):** shared credibility states replaced strongest-path
 selection for reading arguments; an old-model comparator remains visible. Source trust
 and per-reading accuracy are separate experimental inputs. Conflict questions preserve
 their evidence roots and report-level accuracy weights. The case supports six reasoning
@@ -465,8 +465,9 @@ actual UI controls, paired Insight, private knowledge and confidence revision. T
 interface was rendered and inspected; main-game argument and
 belief regression suites also passed.
 
-**Remaining scope:** slices 4 and 5 are experiments with decision gates. Current convergence
-uses explicitly supplied test factors, not inferred movement/trace likelihoods. Direct
-outing patterns retain their earlier heuristic. Full causal health/transition histories,
-autonomous reasoning, multiple simultaneous cases and production integration remain
-future work. This is not a commitment to a full Bayesian mind or one-world NPCs.
+**Current scope:** slices 4 and 5 are delivered within their bounded experiment scope;
+see [the experiment guide](CASE_WORKSHOP_EXPERIMENTS.md). The pre-integration reference
+and portable examples are in [the checkpoint](CASE_WORKSHOP_CHECKPOINT.md). Arbitrary
+health/transition histories, autonomous reasoning, multiple simultaneous cases and full
+production integration remain follow-on work. This is not a commitment to a full
+Bayesian mind or one-world NPCs.
