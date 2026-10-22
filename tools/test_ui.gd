@@ -126,7 +126,7 @@ func _init() -> void:
 		print("builder: ", cv.b_because.text, " | ", cv.b_preview.text)
 		cv._on_file()
 		await process_frame
-		print("error: ", cv.b_error.text)
+		print("builder validation: ", cv.b_error.text)
 		cv.card_list.select_index(0)
 		cv._hide_selected(true)
 		print("after hide: cards listed ", cv.card_list.count())
@@ -314,9 +314,13 @@ func _init() -> void:
 	_check(cv.card_menu.visible and cv._context_card == first_item.get_metadata(0), "a mouse right-click on a text entry opens the same card menu")
 	cv.card_menu.hide()
 	cv.set_panel_open("cards", false)
+	# This test invokes the callback directly; establish the engine drag context
+	# first so set_drag_preview owns and later frees the preview normally.
+	bv.force_drag({"cards": [it0["n"]]}, null)
 	var dd = bv._get_drag_data(it0["rect"].get_center())
 	_check(dd is Dictionary and dd["cards"] == [it0["n"]], "a board card can be dragged out")
 	cv.work_list._drop_data(Vector2.ZERO, dd)
+	bv.get_viewport().gui_cancel_drag()
 	_check(it0["n"] in cv.staged, "dropping it on the working set adds it")
 	var ev_cards: Array = g.board.filter(func(c): return c["kind"] in ["sighting", "alibi", "info", "claim"]).map(func(c): return c["n"])
 	var dn = g.file_deduction({"type": "conflict", "a": "", "group": []}, ev_cards.slice(0, 2)) if ev_cards.size() >= 2 else -1
@@ -467,6 +471,9 @@ func _init() -> void:
 	scene._new_case_button()
 	_check(scene.g.w.seed_value == 4242, "a typed seed is kept by New case")
 	scene.size_opt.select(0)
+	scene.queue_free()
+	await process_frame
+	await process_frame
 	print("UI OK")
 	quit(1 if fails > 0 else 0)
 
