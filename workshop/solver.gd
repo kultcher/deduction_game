@@ -1,6 +1,7 @@
 ## Small exhaustive constraint solver. Receives public evidence only, never hidden truth.
 ## Counts measure compatible assignments, NOT posterior probabilities.
 extends RefCounted
+const Domain = preload("res://workshop/world_domain.gd")
 
 const Graph = preload("res://workshop/case_graph.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
@@ -116,16 +117,23 @@ static func _find_conflicts(view: Dictionary, cards: Array, knowledge: Dictionar
 
 static func solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}, epoch: String = "", temporal_positions: Array = []) -> Dictionary:
 	var ids: Array = view.people.map(func(p): return p.id)
-	var universe_key = str([ids, view.evil_count, view.get("chronology", {})])
+	var universe_key = str([ids, view.evil_count, view.get("chronology", {}), view.get("world_options", {})])
 	if not universes.has(universe_key):
+		if universes.size() >= 16:
+			universes.clear()
 		var all_worlds: Array = []
-		for evil in range(1 << ids.size()):
-			if popcount(evil) == view.evil_count:
-				for marked in range(ids.size()):
-					if not evil & (1 << marked):
-						all_worlds.append_array(TimeModel.expand(view, {"evil": evil, "marked": marked}))
+		if Domain.live(view):
+			all_worlds = Domain.worlds(view)
+		else:
+			for evil in range(1 << ids.size()):
+				if popcount(evil) == view.evil_count:
+					for marked in range(ids.size()):
+						if not evil & (1 << marked):
+							all_worlds.append_array(TimeModel.expand(view, {"evil": evil, "marked": marked}))
 		universes[universe_key] = all_worlds
 	var worlds: Array = universes[universe_key].duplicate()
+	if Domain.live(view) and not Domain.claims_compatible(cards, knowledge):
+		worlds = []
 	for id in knowledge.get("good", []):
 		worlds = worlds.filter(func(w): return position_holds(view, w, id, "good", knowledge.get("good_epoch", epoch)))
 	for id in positions:
@@ -138,7 +146,7 @@ static func solve(view: Dictionary, cards: Array, positions: Dictionary = {}, an
 			continue
 		var positive: Array = answers.get(card.id, {}).get("positive", []).duplicate()
 		positive.sort()
-		var key = JSON.stringify([view.people, view.evil_count, view.get("chronology", {}), card.source, card.get("role", ""), card.observed_at, card.data, positive])
+		var key = JSON.stringify([view.people, view.evil_count, view.get("chronology", {}), view.get("world_options", {}), card.source, card.get("role", ""), card.observed_at, card.data, positive])
 		if not report_matches.has(key):
 			if report_matches.size() > 512:
 				report_matches.clear()
@@ -196,6 +204,11 @@ static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary,
 	var ids: Array = view.people.map(func(p): return p.id)
 	if TimeModel.evil_at(view, world, card.source, card.observed_at):
 		return false # An accepted healthy gift assumes a good source at the reading's time.
+	if Domain.live(view):
+		if not Domain.healthy(view, world, card.source) or not Domain.gift_time(card):
+			return false
+		if card.role == "rumormonger":
+			return Domain.rumor(view, world, card, answer)
 	var d: Dictionary = card.data
 	if card.role == "rumormonger":
 		var marked: String = ids[world.marked]
@@ -277,7 +290,10 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 
 static func describe_world(view: Dictionary, world: Dictionary, epoch: String = "") -> Dictionary:
 	var ids: Array = view.people.map(func(p): return p.id)
-	var result = {"evil": ids.filter(func(id): return TimeModel.evil_at(view, world, id, view.alignment_epoch if epoch == "" else epoch)), "marked": ids[world.marked]}
+	var result = {"evil": ids.filter(func(id): return TimeModel.evil_at(view, world, id, view.alignment_epoch if epoch == "" else epoch)), "marked": ids[world.marked] if world.marked >= 0 else ""}
+	if Domain.live(view):
+		result["modifier"] = world.modifier
+		result["holders"] = ids.filter(func(id): return world.holders & (1 << ids.find(id)))
 	if world.has("converted"):
 		result["converted"] = ids[world.converted]
 	return result

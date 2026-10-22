@@ -2,6 +2,7 @@
 ## is read here. A selected fault remains a hypothesis unless evidence supports it.
 extends RefCounted
 const C = preload("res://sim/content.gd")
+const Domain = preload("res://workshop/world_domain.gd")
 
 static func tick(stamp: Dictionary) -> int:
 	var phase: String = str(stamp.get("phase", "day"))
@@ -43,6 +44,8 @@ static func evil_index(view: Dictionary, world: Dictionary, index: int, at) -> b
 	return time >= curse.from and time < curse.until
 
 static func key(view: Dictionary, world: Dictionary) -> int:
+	if Domain.live(view):
+		return Domain.key(view, world)
 	var n: int = view.people.size()
 	return (world.evil * n + world.marked) * (n + 1) + world.get("converted", -1) + 1
 

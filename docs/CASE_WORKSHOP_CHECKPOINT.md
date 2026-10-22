@@ -59,7 +59,9 @@ is not proof of a shared original acquisition event. Direct witness report times
 first witnessed reports, not claims to know an earlier undisclosed statement.
 
 Live rules permit four modifier kinds, whereas the fixture assumes one Marked person.
-The adapter therefore reports `assessment_ready: false`. It does not feed live cases to
-the narrower fixture solver or apply additional suspicion over the old reading ledger.
-The next integration slice must represent those legal alternatives, resolve supported
-timing/provenance gaps, and compare assessments without enabling new belief effects.
+At the initial adapter checkpoint the transport therefore reports `assessment_ready:
+false`. It does not feed live cases to the narrower fixture solver or apply additional
+suspicion over the old reading ledger. Subsequent restricted comparison has its own
+interpreter-specific `ready` result and resolves the modifier alternatives for supported
+count-reading cases. Its current scope is documented in [the integration guide](CASE_WORKSHOP_INTEGRATION.md).
+The original transport remains independent of any particular interpreter's capabilities.

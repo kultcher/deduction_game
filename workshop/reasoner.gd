@@ -3,6 +3,7 @@ extends RefCounted
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
+const Domain = preload("res://workshop/world_domain.gd")
 
 static func profile(insight: float) -> Dictionary:
 	if insight < 0.34:
@@ -129,6 +130,8 @@ static func _local_conflict(cards: Array) -> Array:
 	return []
 
 static func _find(view: Dictionary, cards: Array, case_data: Dictionary, listener: Dictionary, budget: int, want: bool, positions: Dictionary, answers: Dictionary) -> Dictionary:
+	if Domain.live(view):
+		return _find_live(view, cards, case_data, listener, budget, want, positions, answers)
 	var ids: Array = view.people.map(func(p): return p.id)
 	var good: Array = listener.knowledge.get("good", []).duplicate()
 	for card in cards:
@@ -179,6 +182,8 @@ static func _candidate_priority(id: String, target: String, cards: Array, listen
 	return score
 
 static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, positions: Dictionary, answers: Dictionary, epoch: String = "", temporal_positions: Array = []) -> bool:
+	if Domain.live(view) and not Domain.claims_compatible(cards, knowledge):
+		return false
 	var ids: Array = view.people.map(func(p): return p.id)
 	for id in knowledge.get("good", []):
 		if not Solver.position_holds(view, world, id, "good", knowledge.get("good_epoch", epoch)):
@@ -196,6 +201,8 @@ static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledg
 	return true
 
 static func _swaps(view: Dictionary, cards: Array, case_data: Dictionary, listener: Dictionary, seed: Dictionary, budget: int) -> Dictionary:
+	if Domain.live(view):
+		return _find_live(view, cards, case_data, listener, budget, false, {}, {})
 	var ids: Array = view.people.map(func(p): return p.id)
 	var evil: Array = ids.filter(func(id): return seed.evil & (1 << ids.find(id)))
 	var good: Array = ids.filter(func(id): return not seed.evil & (1 << ids.find(id)))
@@ -220,6 +227,20 @@ static func _swaps(view: Dictionary, cards: Array, case_data: Dictionary, listen
 			if movement.okay and _matches(view, candidate, cards, listener.knowledge, {}, {}, case_data.conclusion.at):
 				return {"world": candidate, "tested": tested, "exhausted": false}
 	return {"world": {}, "tested": tested, "exhausted": false} # swaps are never an exhaustive proof
+
+static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listener: Dictionary, budget: int, want: bool, positions: Dictionary, answers: Dictionary) -> Dictionary:
+	var tested = 0
+	# Enumerate the public legal domain, not worlds filtered by the referee. The
+	# same hard test budget applies, and exhaustion alone can certify a conclusion.
+	for candidate in Domain.worlds(view):
+		if Solver.holds(view, candidate, value.conclusion) != want:
+			continue
+		if tested >= budget:
+			return {"world": {}, "tested": tested, "exhausted": false}
+		tested += 1
+		if _matches(view, candidate, cards, listener.knowledge, positions, answers, value.conclusion.at, value.get("temporal_positions", [])):
+			return {"world": candidate, "tested": tested, "exhausted": false}
+	return {"world": {}, "tested": tested, "exhausted": true}
 
 static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Dictionary) -> Dictionary:
 	var objections: Array = []

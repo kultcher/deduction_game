@@ -56,6 +56,7 @@ var roles_win: Window
 var roles_box: VBoxContainer
 var log_text = LogText.new()
 var workshop_win: Window
+var workshop_comparison_win: Window
 
 func _ready() -> void:
 	var bg = ColorRect.new()
@@ -120,7 +121,7 @@ func _ready() -> void:
 	more.text = "More ▾"
 	more.flat = false
 	var mp: PopupMenu = more.get_popup()
-	for it in ["Cast (text)", "Timeline (text)", "Card list sidebar", "Write dev log", "Case Workshop"]:
+	for it in ["Cast (text)", "Timeline (text)", "Card list sidebar", "Write dev log", "Case Workshop", "Live Workshop comparison"]:
 		mp.add_item(it)
 	mp.id_pressed.connect(_on_more)
 	top.add_child(more)
@@ -129,6 +130,8 @@ func _ready() -> void:
 	debug_check.tooltip_text = "Show what NPCs privately make of each card and person (influence, credibility, suspicion). Turning it on mid-case leaves your identification unscored."
 	debug_check.toggled.connect(func(on):
 		g.set_debug_overlay(on)
+		if is_instance_valid(workshop_comparison_win):
+			workshop_comparison_win.get_child(0).refresh()
 		_refresh_all())
 	top.add_child(debug_check)
 	theory_label = Label.new()
@@ -352,6 +355,10 @@ func _new_case() -> void:
 	meeting_view.set_game(g)
 	if debug_check.button_pressed:
 		g.set_debug_overlay(true)
+	if is_instance_valid(workshop_comparison_win):
+		workshop_comparison_win.get_child(0).g = g
+		workshop_comparison_win.get_child(0).refresh()
+		workshop_comparison_win.hide()
 	_refresh_all()
 	if is_inside_tree() and show_script_at_start:
 		_open_roles()
@@ -466,6 +473,21 @@ func _on_more(i: int) -> void:
 			add_child(workshop_win)
 			workshop_win.add_child(load("res://ui/case_workshop.tscn").instantiate())
 		workshop_win.popup_centered_ratio(0.95)
+	elif i == 5:
+		if not is_instance_valid(workshop_comparison_win):
+			workshop_comparison_win = Window.new()
+			workshop_comparison_win.title = "Live Workshop comparison · developer inspector"
+			workshop_comparison_win.min_size = Vector2i(850, 600)
+			workshop_comparison_win.size = Vector2i(1100, 820)
+			workshop_comparison_win.close_requested.connect(func(): workshop_comparison_win.hide())
+			add_child(workshop_comparison_win)
+			var inspector = load("res://ui/workshop_comparison.gd").new()
+			inspector.g = g
+			workshop_comparison_win.add_child(inspector)
+		else:
+			workshop_comparison_win.get_child(0).g = g
+			workshop_comparison_win.get_child(0).refresh()
+		workshop_comparison_win.popup_centered()
 
 func _open_notes() -> void:
 	notes_edit.text = g.case_notes

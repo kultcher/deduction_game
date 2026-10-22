@@ -20,6 +20,12 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 	for event in g.w.public_log:
 		input.public_events.append({"kind": event.kind, "subjects": event.get("subjects", []).duplicate(),
 			"by": event.get("by", ""), "at": {"day": event.day, "phase": "unknown"}})
+	# Native death announcements are player-observed process cards, not a query of
+	# the referee's death_cause field. Townspeople know these victims were good.
+	for card in g.board:
+		if card.get("kind") == "death" and card.get("source") == "player":
+			input.public_events.append({"kind": "demon_death", "subjects": card.get("subject", []).duplicate(),
+				"by": "town", "at": Evidence.stamp(card.get("when", {}))})
 	var numbers: Array = []
 	for number in selected:
 		_collect(g.board, number, numbers, input.arguments, input.issues, [])
@@ -45,6 +51,9 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 	return Evidence.normalize(input)
 
 static func _collect(board: Array, number, numbers: Array, arguments: Array, issues: Array, path: Array) -> void:
+	if path.size() >= 64:
+		issues.append({"code": "argument_depth", "fact": str(number), "detail": "The live adapter's deduction-depth limit was reached."})
+		return
 	if not number is int or number <= 0 or number > board.size() or board[number - 1].get("deleted", false):
 		issues.append({"code": "missing_card", "fact": str(number), "detail": "Selected evidence is absent or deleted."})
 		return
@@ -70,7 +79,17 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 		"suspicion": n.suspicion.duplicate(true), "npc_trust": n.npc_trust.duplicate(true),
 		"confidence": n.traits.get("confidence", 0.5), "insight": n.traits.get("insight", 0.5),
 		"discounted": n.discounted.duplicate(true), "honesty": n.honesty.duplicate(true),
-		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true)}
+		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true), "legacy_evidence": []}
+	for entry in n.ledger.values():
+		if entry.get("meta", {}).get("kind", "") not in ["reading", "arg", "tell"]:
+			continue
+		var supports: Array = entry.get("meta", {}).get("supports", []).duplicate(true)
+		for justification in entry.get("justs", []):
+			for support in justification.get("supports", []):
+				if support not in supports:
+					supports.append(support.duplicate())
+		input.listener.legacy_evidence.append({"id": entry.get("eid", ""), "kind": entry.meta.kind,
+			"rel": entry.get("rel", []).duplicate(true), "supports": supports})
 	for key in n.history:
 		if str(key).ends_with(":3"):
 			input.listener.own_outings[str(key).trim_suffix(":3")] = not str(n.history[key]).begins_with("home")

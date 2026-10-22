@@ -5,11 +5,82 @@ already running in the main game. Integrate in verified vertical steps:
 
 The pre-integration reference is commit `5d30513`. The [checkpoint and portable
 specimens](CASE_WORKSHOP_CHECKPOINT.md) describe what must survive an interpreter change.
-The first integration slice now provides the read-only `Game.workshop_snapshot` API,
-its portable evidence contract, capability issues and hidden-state isolation checks.
-Live numeric comparison and belief effects remain disabled until the narrower fixture
-assumptions have explicit live equivalents. This is a data boundary, not completed
-gameplay integration.
+The read-only `Game.workshop_snapshot` API provides a portable evidence contract,
+capability issues and hidden-state isolation checks. A restricted live comparison now
+consumes that contract for Surveyor, Rumormonger and Dowser cases. Belief effects remain
+on the legacy system. This delivers the first two integration stages within the scope
+below, not completed gameplay integration.
+
+## Try the live comparison
+
+Open **More → Live Workshop comparison** in the main game. To inspect private NPC
+responses, enable the existing **Debug** control; its normal identification-scoring
+warning still applies. Choose a filed deduction and listener, then **Inspect now**.
+The optional recording checkbox also captures comparisons when actual deductions are
+presented privately, to the meeting, or during nomination speech. All three venues use
+one comparison adapter. The detailed trace stores the captured input, real legacy
+result, proposed new result, capability issues and elapsed time. Recording is off by
+default and adds work only when enabled; the panel keeps the most recent 24 records.
+Each comparison also audits overlapping legacy reading entries and potentially
+dependent arguments. Distinct receipts sharing an old source/day/role key are exposed
+as ambiguous identities. Ordinary testimony is not treated as a gift-reading dependency.
+Ambiguous original reading identities defer numeric comparison. These diagnostics do
+not grant permission to delete or suppress any old entry.
+
+The live model enumerates legal original alignment worlds and all four public modifier
+kinds. Non-Marked worlds have no Marked person; Lovers have two good holders. Accepted
+healthy readings exclude a Delusional source. Healthy role claims must be compatible
+with unique gifts and the listener's own known gift. Modifier identities and actual
+poison/curse targets are never read from the simulation for inference.
+The listener retains public known-good Demon victims and Martyr participants even if
+their process cards are not cited. Working-gift branches respect first-night-only
+Surveyor/Rumormonger acquisition and daytime Dowser acquisition.
+
+One native exception matters: Rumormonger excludes itself when choosing a modifier
+holder. If it is the sole holder, a working gift can generate an arbitrary fallback
+pair/secret. The live model retains that explanation without establishing the reported
+pair or modifier type. This is tested against `_receive_info`, not inferred from a
+handwritten special-case fixture. The fixed Workshop validator's assumption that report
+contents are accurate is stronger than merely having a working gift in this situation.
+Changing the native fallback is recorded as a separate open backlog decision.
+
+Comparisons are conditional on report credibility and health, use full reasoning, and
+retain the Workshop's experimental weights. They support up to eight reading receipts,
+six claims and 64 credibility combinations for seven- or ten-person towns. Nested filed
+deductions retain their original evidence and scoped intermediate claims. Unsupported
+roles, live movement/trace likelihoods, incomplete payloads and public conversion history
+produce explicit non-numeric results. The complete live health/poison history is not
+modeled. Report, observation and learning times remain distinct; original report time
+can remain unknown when a legacy relay receipt does not record it.
+
+Venue is recorded but the new proposal is unscaled; the real original result keeps its
+actual venue scaling and side effects. Proposed effects use the captured existing beliefs,
+which can already contain legacy reading effects. They must not be added to those effects:
+the shared replacement ledger is the next integration gate. No new suspicion, trust,
+pressure or voting change is applied by the comparison. Existing evil cover minds are
+captured without creating or syncing them; a missing cover mind yields an unsupported
+result. Comparisons remain a developer tool rather than an alternate gameplay mode.
+
+Tests exercise public legal domains, all modifier types, distinct world/cache keys,
+healthy unique gifts, hidden-truth independence, no preview mutation, original behavior
+and RNG equivalence across all venues, JSON checkpoint replay and the actual inspector.
+The initial one-reading benchmark was roughly 0.2 seconds for seven people and 1.6
+seconds for ten on this machine; that is not a whole-town or large-case latency claim.
+See [performance and migration options](CASE_WORKSHOP_PERFORMANCE.md).
+
+## Remaining integration sequence
+
+The shared-ledger work must assess the union of learned original evidence once, rather
+than adding per-case vectors. Establish one owner for raw readings and deductions;
+preserve source/reading reliability, private evidence and non-suspicion preferences.
+The Workshop's private-evidence subtraction measures the marginal value of a presentation;
+it cannot simply be reused as the total effect of all private readings. Remove each
+owned previous vector before reassessment, including collateral effects, and use a
+baseline that cannot feed its own accusation back into source credibility. Retractions,
+trust changes, newly learned facts, repeated presentations and venue changes need paired
+tests. Resolve the coarse legacy identities/dependencies flagged by the audit before
+automatically suppressing old contributions. Public transitions and unsupported reports
+must cause a coherent fallback/retraction, not leave a partial second model applied.
 
 1. **Live evidence adapter, read-only.** Map board reports, testimony and observations
    to stable original fact/incident identities, keeping observation, reporting and learned

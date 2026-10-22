@@ -107,7 +107,10 @@ static func _assess_target(view: Dictionary, case_data: Dictionary, listener: Di
 	var best = {"weight": 0.0, "agreement": 0.0, "quality": 0.0, "cards": [], "kind": "none"}
 	# Consider independent support paths. Adding an optional premise cannot erase an
 	# already valid smaller path; a contradiction in the asserted case can reopen it.
-	for mask in range(1, 1 << logical_cards.size()):
+	# The legacy diagnostic enumerates every report subset. Live comparisons already
+	# retain the real Argue result; avoid computing this superseded experiment too.
+	var diagnostic_paths: int = 1 if Solver.Domain.live(view) else 1 << logical_cards.size()
+	for mask in range(1, diagnostic_paths):
 		var path: Array = []
 		for i in range(logical_cards.size()):
 			if mask & (1 << i):
@@ -142,6 +145,8 @@ static func _assess_target(view: Dictionary, case_data: Dictionary, listener: Di
 					best = {"weight": 0.4 * quality, "agreement": 0.4, "quality": quality, "cards": path, "kind": "conditional"}
 	var pattern = _pattern(view, case_data, listener)
 	var legacy = best.duplicate(true)
+	if Solver.Domain.live(view):
+		legacy["omitted"] = true
 	var reasoning = Support.explain(view, original, listener)
 	if listener.get("reasoning_mode", "full") == "bounded":
 		var attended: Dictionary = Reasoner.prepare(view, original, listener).case

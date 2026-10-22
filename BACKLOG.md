@@ -13,11 +13,14 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
-- **Lamplighter drop path order.** `_walk` rolls for a dropped item before the
-  Lamplighter's path is expanded to all blocks. Its drops currently choose a public
-  place only on its home block. Review whether drops should cover the full lamp route;
-  do not confuse this with inaccessible home drops (ordinary drops already choose
-  static public locations). Found while answering the Oct 20 tuning questions. [open]
+- **Rumormonger as the sole modifier holder.** The gift excludes its own holder from
+  its candidate pool. When a healthy Rumormonger is the sole Marked or Sleepwalker,
+  the current fallback produces an arbitrary false pair/secret instead of useful
+  information. Decide whether it should explicitly report no valid result or whether
+  setup/gift rules should change. This needs coordinated reading/UI/belief handling;
+  do not silently assume a healthy report always identifies someone else. The live
+  comparison currently preserves the native fallback, with a generator-backed test.
+  Found during Oct 22 integration. [open]
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -514,6 +517,12 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 ## Closed
 
 Settled decisions, built work and parked levers, kept for the record.
+
+- **Oct 22: Lamplighter drop path order.** `_walk` now receives the completed lamp
+  route before sampling a drop. Lamp drops can use public locations on all four
+  blocks; ordinary walkers retain their shortest routes and one drop roll. Seeded
+  route/drop checks cover both paths. No drop probability or inaccessible-home rule
+  was changed.
 
 - **Oct 19: relaying another's private reading** is gossip with the source unnamed ("Word reached me from the Seer"). See DESIGN, "The town meeting" (Citing reasons: relays).
 

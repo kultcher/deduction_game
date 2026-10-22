@@ -16,6 +16,7 @@ const CaseMetrics = preload("res://game/case_metrics.gd")
 const CardModel = preload("res://game/card_model.gd")
 const RecentSightings = preload("res://game/recent_sightings.gd")
 const WorkshopBridge = preload("res://game/workshop_bridge.gd")
+const WorkshopAssessment = preload("res://workshop/live_assessment.gd")
 
 var w
 var state = "day"          # day | approach | talk | meeting | nomination | night | over
@@ -57,6 +58,8 @@ var log_dir = "user://logs"
 var log_paths: Array = []
 var debug = false
 var detailed_logging = true  # developer tracing, independent of spoiler/debug scoring
+var workshop_compare = false # opt-in diagnostics; never applies the proposed effects
+var workshop_comparisons: Array = []
 var trace_build = ""
 var trace_tuning = ""
 var _trace_export_pending = false
@@ -157,6 +160,7 @@ static func render(evs: Array) -> String:
 # ---------------------------------------------------------------- lifecycle
 
 func new_case(seed_in: int, npc_count: int = 7) -> String:
+	workshop_comparisons = []
 	board = []
 	confidences = {}
 	_card_keys = {}
@@ -395,6 +399,27 @@ func _disclose(card: Dictionary, disc: Dictionary) -> void:
 ## Read-only integration boundary. No NPC effects, time costs or Workshop fixture truth.
 func workshop_snapshot(numbers: Array, listener_id: String = "", venue: String = "private") -> Dictionary:
 	return WorkshopBridge.capture(self, numbers, listener_id, venue)
+
+func workshop_preview(number: int, listener_id: String, venue: String = "private") -> Dictionary:
+	return WorkshopAssessment.evaluate(workshop_snapshot([number], listener_id, venue))
+
+## All three deduction venues share the same read-only comparison boundary.
+func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
+	var snapshot = workshop_snapshot([ded.n], n.id, venue) if workshop_compare else {}
+	var before: Dictionary = n.suspicion.duplicate(true) if workshop_compare else {}
+	var result: Dictionary = Argue.evaluate(w, n, ded, board, scale, speak)
+	if workshop_compare:
+		var comparison = WorkshopAssessment.evaluate(snapshot)
+		comparison.listener = n.id
+		comparison["card"] = ded.n
+		comparison["venue"] = venue
+		comparison["legacy"] = {"agreement": result.get("agreement", 0.0), "before": before, "after": n.suspicion.duplicate(true)}
+		workshop_comparisons.append(comparison)
+		if workshop_comparisons.size() > 24:
+			workshop_comparisons.pop_front()
+		w.dlog.trace_event("workshop_comparison", n.id, ded.conclusion.get("a", ""), {"comparison": comparison, "input": snapshot},
+			"Read-only proposed assessment beside the real legacy result; proposed effects were not applied.")
+	return result
 
 # ---------------------------------------------------------------- dispatch
 
@@ -919,7 +944,7 @@ func _talk_command(verb: String, rest: String) -> void:
 				return
 			_secrets_used(board[num0 - 1])
 			_conflict_pressure(board[num0 - 1], 0.1, n)
-			r = Argue.evaluate(w, n, board[num0 - 1], board, 1.0)
+			r = _evaluate_deduction(n, board[num0 - 1], 1.0)
 			r["facts"] = []
 			Mind.on_question(w, n)
 		"press", "confront":
@@ -1241,7 +1266,7 @@ func _nomination_command(verb: String, rest: String) -> void:
 					_secrets_used(card)
 					for v in w.living():
 						if v != t:
-							Argue.evaluate(w, v, card, board, 0.5, false)
+							_evaluate_deduction(v, card, 0.5, false, "nomination")
 				else:
 					Mind.public_case(w, t, card, verb)
 			if verb == "defend":
@@ -2130,7 +2155,7 @@ func _present_deduction(rest: String) -> void:
 	_secrets_used(ded)
 	_conflict_pressure(ded, 0.2, null)
 	for n in w.living():
-		var r: Dictionary = Argue.evaluate(w, n, ded, board, 0.6)
+		var r: Dictionary = _evaluate_deduction(n, ded, 0.6, true, "meeting")
 		_lines(r["lines"])
 
 ## Timeline: who was where, by phase, from your board. * = you saw it, ~ = heard.

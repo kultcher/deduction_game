@@ -215,6 +215,9 @@ static func explain(view: Dictionary, value: Dictionary, listener: Dictionary, p
 			cards.append(Solver.card_by_id(view, id))
 	var accepted: Array = cards.filter(func(c): return not TimeModel.disowned(view, c, listener.knowledge.get("known_events", [])) and (c.get("quoted", false) or (c.id not in attention.private_checks.rejected and source_quality(listener, c.source) >= 0.4 and (c.kind != "report" or listener.reading_reliability.get(c.get("accuracy_origin", Solver.semantic_key(c)), 1.0) >= 0.5))))
 	var limits: Dictionary = attention.limits if listener.get("reasoning_mode", "full") == "bounded" else {"support": 840, "rivals": 840, "complete": true}
+	if Solver.Domain.live(view) and listener.get("reasoning_mode", "full") == "full":
+		limits.support = Solver.Domain.worlds(view).size()
+		limits.rivals = limits.support
 	var result = Reasoner.search(view, considered, accepted, listener, limits)
 	result.merge(attention)
 	result.erase("case")
@@ -254,7 +257,7 @@ static func _add_atom(atoms: Array, key: String, weight: float) -> void:
 static func _solve(view: Dictionary, cards: Array, knowledge: Dictionary) -> Dictionary:
 	# Hash lookup plus exact input comparison avoids rebuilding JSON signatures in
 	# every credibility state / character projection. Equality guards collisions.
-	var inputs = [view.people, view.evil_count, view.get("chronology", {}), cards, knowledge]
+	var inputs = [view.people, view.evil_count, view.get("chronology", {}), view.get("world_options", {}), cards, knowledge]
 	var key = hash(inputs)
 	if cache.has(key) and cache[key].inputs == inputs:
 		return cache[key].result
@@ -303,7 +306,7 @@ static func _comparison(view: Dictionary, worlds: Array, conclusion: Dictionary,
 	# One set of ranked worlds answers all characters' alignment/Marked questions.
 	# This cache only speeds the full/mixture calculation; bounded searches still
 	# construct their own candidates and never receive unseen public worlds.
-	var inputs = [view.people, view.get("chronology", {}), worlds, factors, ranks, conclusion.at]
+	var inputs = [view.people, view.get("chronology", {}), view.get("world_options", {}), worlds, factors, ranks, conclusion.at]
 	var key = hash(inputs)
 	if not comparisons.has(key) or comparisons[key].inputs != inputs:
 		if comparisons.size() > 512:
