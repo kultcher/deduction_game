@@ -148,7 +148,7 @@ func remove_premise(id: String) -> void:
 	selected = add_premise("constance", "evil", Vector2(540, 50)) if remaining.is_empty() else remaining[0]
 	version += 1
 
-func compile(root: String) -> Dictionary:
+func compile(root: String, include_arguments: bool = true) -> Dictionary:
 	var result = Solver.empty_case()
 	result.version = version
 	if not nodes.has(root) or nodes[root].kind != "premise" or nodes[root].conclusion.is_empty():
@@ -200,6 +200,47 @@ func compile(root: String) -> Dictionary:
 	if result.conclusion.type == "conflict":
 		result.conflict_scope = result.cards.duplicate()
 		result.disputes = [] # Ask whether contents conflict; do not resolve one first.
+	if include_arguments:
+		result["argument_root"] = root
+		result["arguments"] = []
+		for id in all:
+			if nodes[id].kind != "premise" or nodes[id].conclusion.is_empty():
+				continue
+			var parents: Array = _argument_parents(id, all)
+			parents.sort()
+			var without = {}
+			for parent in parents:
+				without[parent] = _evidence(_ancestors_without(parent, id))
+			result.arguments.append({"id": id, "label": title(id), "parents": parents, "without": without, "case": compile(id, false)})
+		result.arguments.sort_custom(func(a, b): return a.id < b.id)
+	return result
+
+func _argument_parents(id: String, included: Array, seen: Array = []) -> Array:
+	if id in seen:
+		return []
+	var visited = seen + [id]
+	var result: Array = []
+	for edge in links:
+		if edge.from != id or edge.to not in included:
+			continue
+		if nodes[edge.to].kind == "premise" and not nodes[edge.to].conclusion.is_empty():
+			if edge.to not in result:
+				result.append(edge.to)
+		else:
+			for parent in _argument_parents(edge.to, included, visited):
+				if parent not in result:
+					result.append(parent)
+	return result
+
+func _ancestors_without(id: String, excluded: String, seen: Array = []) -> Array:
+	if id == excluded or id in seen:
+		return seen
+	var result = seen + [id]
+	for edge in links:
+		if edge.to == id:
+			result = _ancestors_without(edge.from, excluded, result)
+	for child in nodes[id].get("children", []):
+		result = _ancestors_without(child, excluded, result)
 	return result
 
 func _evidence(ids: Array) -> Array:

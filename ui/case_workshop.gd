@@ -609,11 +609,39 @@ func _refresh_jury() -> void:
 			if r.theory.mode == "persistence":
 				_label(box, "Working theory: %s · %s" % [r.theory.position if r.theory.position != "" else "unsettled", r.theory.status], 15, "accent")
 			_label(box, "Suspicion %.3f → %.3f (%+.3f)\nTrust in you %.2f → %.2f" % [r.before_suspicion, r.after_suspicion, r.suspicion_delta, r.before_trust, r.after_trust], 16)
+			_label(box, "Effects on everyone", 16, "accent")
+			var effect_lines: Array = []
+			for person in session.scenario.public_view.people:
+				var e: Dictionary = r.effects[person.id]
+				if not is_zero_approx(e.applied) or not is_zero_approx(e.delta):
+					effect_lines.append("%s: %.3f → %.3f (%+.3f) · %s" % [person.name, e.before, e.after, e.delta, e.route])
+			var effects_label = _label(box, "\n".join(PackedStringArray(effect_lines)) if not effect_lines.is_empty() else "No additional suspicion changes from this evidence.", 15)
+			effects_label.name = "CaseEffects_%d" % i
+			if r.claims.size() > 1:
+				var claims_check = CheckBox.new()
+				claims_check.text = "Claims and their connections"
+				claims_check.button_pressed = true
+				box.add_child(claims_check)
+				var claims_box = VBoxContainer.new()
+				claims_box.name = "CaseClaims_%d" % i
+				box.add_child(claims_box)
+				claims_check.toggled.connect(func(on): claims_box.visible = on)
+				for claim in r.claims:
+					_label(claims_box, "%s · %s (%.3f)" % [claim.label, claim.stance, claim.agreement], 15, "accent")
+					_label(claims_box, claim.note, 15)
+					if not claim.ignored.is_empty():
+						_label(claims_box, "Not attended in this branch: " + ", ".join(PackedStringArray(claim.ignored)), 14, "muted")
+					for link in claim.links:
+						_label(claims_box, "To %s: %s" % [link.parent_label, link.note], 14, "muted")
 			var show_calc = CheckBox.new()
 			show_calc.text = "Show calculation & accepted path"
 			box.add_child(show_calc)
-			var calculation = _label(box, "Agreement %.2f × premise quality %.3f × player %.2f × confidence %.2f\nPath: %s (%s)\nPrevious case effect %.3f; replacement %.3f. %s.\nPrivate compatible worlds: %d. These counts are not probabilities." % [r.agreement, r.quality, r.calculation.player_factor, r.calculation.confidence_factor, ", ".join(PackedStringArray(r.path)), r.path_kind, r.calculation.old_case_effect, r.calculation.new_case_effect, r.stance, r.assessment.compatible], 14, "muted")
+			var calculation = _label(box, "Headline agreement %.2f; premise quality %.3f (conviction diagnostics).\nEffect multipliers: player %.2f × confidence %.2f\nPath: %s (%s)\nPrevious headline-target effect %.3f; replacement %.3f. %s.\nPrivate compatible worlds: %d. These counts are not probabilities." % [r.agreement, r.quality, r.calculation.player_factor, r.calculation.confidence_factor, ", ".join(PackedStringArray(r.path)), r.path_kind, r.calculation.old_case_effect, r.calculation.new_case_effect, r.stance, r.assessment.compatible], 14, "muted")
 			calculation.text += "\nCombined support %.3f; old strongest-path score %.3f. Forced-assumption weight %.3f across %d credibility states.\nSupport routes: %s\n%s" % [r.support_model.agreement, r.legacy_path.weight, r.support_model.forced_mass, r.support_model.states, str(r.support_model.paths), r.support_model.model]
+			calculation.text += "\nThe agreement calculation above describes the headline assessment. Actual suspicion uses the signed evil/good evidence comparison below, with the private-evidence reference subtracted.\n" + r.effect_rule
+			for person in session.scenario.public_view.people:
+				var e: Dictionary = r.effects[person.id]
+				calculation.text += "\n%s: evil change %.4f; good change %.4f; alignment %.4f; pattern %.4f; requested %+.4f; applied %+.4f (previous %+.4f)." % [person.name, e.evil_change, e.good_change, e.alignment_signal, e.pattern_signal, e.requested, e.applied, e.previous]
 			calculation.text += "\nConsidered: %s\nGranted for search: %s\nDoubted: %s\nOwn reports (outside attention limit): %s\n%s\nReferee: %s; NPC: %s. A limited search is never a proof." % [str(thought.considered), str(thought.accepted), str(thought.doubted), str(thought.private_reports), thought.assumption_note, r.assessment.entailment, thought.status]
 			calculation.text += "\nConfidence mode: %s; theory %s → %s (%s); revision comparison threshold %.2f×.\n%s" % [r.theory.mode, r.theory.before, r.theory.position, r.theory.status, r.theory.threshold, r.theory.guardrail]
 			for id in r.support_model.report_acceptance:
@@ -786,7 +814,7 @@ func _open_dialog() -> void:
 
 func _open(path: String) -> void:
 	var value = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not value is Dictionary or value.get("format", "") not in ["demonologist-case-workshop-1", "demonologist-case-workshop-2", "demonologist-case-workshop-3"]:
+	if not value is Dictionary or value.get("format", "") not in ["demonologist-case-workshop-1", "demonologist-case-workshop-2", "demonologist-case-workshop-3", "demonologist-case-workshop-4"]:
 		status.text = "This is not a Case Workshop experiment."
 		return
 	var result = session.restore(value)

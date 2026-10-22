@@ -12,11 +12,13 @@ Slices 1–3 of the [implementation plan](CASE_WORKSHOP_PLAN.md) are implemented
 explicit claims/citations, report conflicts, multiple reasoning lines, and shared
 support, followed by bounded Insight reasoning and experimental confidence persistence.
 The controlled soft-factor experiment tests convergence; actual movement and trace
-likelihoods remain slice 4.
+likelihoods remain slice 4. A separate pre-Slice-4 step adds scoped intermediate-claim
+assessments and one replaceable set of effects on everyone implicated or exonerated.
 
 The default screen is now a freeform card canvas, limited to fixture 692. The previous
 list-based experiment remains available by running `ui/case_workshop_lab.tscn` with F6.
-It retains the seed generator, supplied-factor controls and previous saved experiments.
+It retains the seed generator and supplied-factor controls. Earlier experiment formats
+are refused because their belief-update semantics differ.
 
 ## Canvas workflow
 
@@ -53,11 +55,15 @@ It retains the seed generator, supplied-factor controls and previous saved exper
    wrong or assigning alignment guilt. The mock jury opens in its own window, with
    the existing trust, Insight, confidence and comparison controls. Close/reopen it
    using **Mock jury**. Remembered discussion still replaces this one case's prior
-   effect; it does not maintain several independent case ledgers.
+   effects on every character; it does not maintain several independent case ledgers.
+   **Effects on everyone** shows collateral changes and retractions. **Claims and their
+   connections** shows each scoped inference, its doubts, unattended evidence, and
+   whether its evidence strengthens the parent or leaves an alternative available.
 7. **Save/Open** stores the graph, card positions, answers, active premise, view, jury
    settings and replayable discussion. Canvas files use `demonologist-workshop-canvas-1`,
-   containing the version-3 experiment. Imports validate provenance and graph structure
-   before replacing the current workspace. Earlier list experiments open in the lab.
+   containing the version-4 experiment. Imports validate provenance and graph structure
+   before replacing the current workspace. Older histories require their original code
+   version; they are not silently replayed under the new model.
 
 Merrin linked through Bart/Fenwick and all three linked directly to the Hollis premise
 have the same evidence roots and assessment. Shared paths do not duplicate a witness.
@@ -72,6 +78,54 @@ its contents true; distrusting Constance does not erase the fact that she made t
 Repeated references to the same outing share this factor. It can favor Constance while
 both logical alignment alternatives remain possible. Its value is exposed in Inspect
 and in the jury calculation; it is not a general likelihood model for deception.
+
+## Intermediate claims and collateral consequences (pre-Slice-4 step)
+
+A Constance headline no longer limits the outcome to Constance. With the three core
+readings, Hollis and Lian can gain suspicion while Constance versus Nisha remains
+unresolved. Reliable reports can also exonerate people. A juror can acknowledge that
+Hollis follows **if the readings are sound**, while doubting the witnesses enough to
+remain only partly persuaded. Logical implication and social acceptance stay distinct.
+
+Each named premise is assessed using its own incoming evidence and assumptions, within
+the presentation's shared attention window. Claim-less groups preserve nested named
+premises. The NPC can dispute an incorrect intermediate claim and explain why its
+connection does not settle the parent. The label itself never becomes an extra report
+or a sequential suspicion bonus. Original observations can remain relevant even when
+the player's interpretation of them is mistaken; there is no hard all-or-nothing gate
+that discards them merely because an intermediate claim is rejected.
+
+For every person, the experiment compares support for evil and good using the same
+starting attitudes, source credibility, reading accuracy and attended evidence. It
+subtracts the comparison already supported by private reports and prior dispositions.
+The provisional alignment signal is `0.45 * (evil evidence change - good evidence change)`.
+This prevents a merely possible accusation from automatically increasing everyone's
+suspicion and prevents repackaging the juror's own known reading as fresh evidence.
+The reference subtraction is an experimental disposition comparison, not a posterior
+probability or a calibrated measure of information.
+
+The earlier outing-pattern heuristic remains available. Because it can describe the
+same incident as the challenged-alibi factor, the experiment takes the stronger absolute
+alignment/pattern route for that person, **never their sum**, then applies player trust
+and confidence once. This conservative envelope can hide a weaker independent route;
+it is deliberately temporary pending Slice 4's shared causal movement/trace model.
+The inspector distinguishes headline conviction from this actual signed effect.
+An explicit conflict question still assigns no alignment effects.
+
+Claim-to-parent diagnostics compare the parent with and without the branch's exclusive
+original evidence. Sources that also reach the parent through another path remain
+included. These differences are not additive contributions, and no extra persuasion is
+awarded for an accepted intermediate claim or a positive connection diagnostic. Grouping
+can affect bounded attention, but projections never receive extra unattended public
+cards. Each conclusion has the existing bounded search budget; this is not a single
+fixed total computation budget for an entire multi-conclusion presentation.
+
+The ledger records the actual clamped effect on each character. Before any revision,
+the whole old vector is retracted; all new consequences are computed from that frozen
+baseline and applied together. Hollis cannot become a less credible source halfway
+through the same presentation. Repetition, reused roots, duplicate derivations and
+switching the headline cannot stack effects. Independent simultaneous case ledgers and
+cross-case provenance remain future work.
 
 Board-to-workshop transfer, independent duplicate interpretations, collapsing whole
 cases, relationship-choice prompts for ambiguous future evidence, and automatic
@@ -150,10 +204,10 @@ contradictory supplied test factors receive explicit feedback instead of multipl
 each presentation, objections and actual changes. **Open experiment** validates the file
 and replays its history rather than trusting the exported outcomes. Imports support up to
 200 presentations. Developer truth is omitted unless its checkbox is enabled; that data
-never reaches the interpreter. Version 3 records line references, derived-question
-provenance, citations, conflict scope, reading reliability, supplied factors and reasoning/
-confidence settings. Personal knowledge belongs to the fixture; theories are reconstructed
-from presentations, not accepted as injected baseline memory. Version-1 and version-2
+never reaches the interpreter. Version 4 adds intermediate-claim scopes, dependency
+links and replay of multi-character effects to the earlier provenance and reasoning
+settings. Personal knowledge belongs to the fixture; theories are reconstructed
+from presentations, not accepted as injected baseline memory. Version-1 through version-3
 exports are explicitly refused because the assessment model changed; they are not
 silently replayed with different semantics.
 
@@ -287,7 +341,8 @@ The initial tuning is deliberately visible and experimental:
 | Supplied test factor | 1/16–16 evil/good likelihood ratio; same-incident factors share corroborating witness routes |
 | Player multiplier | `0.5 + trust in player` |
 | Confidence multiplier | Original: `1.4 - 0.8 * confidence`; persistence experiment: 1 |
-| Conclusion effect | evil +0.45; good -0.4; Marked -0.1; suspicious +0.3; conflict 0 |
+| Actual alignment effect | `0.45 * (evil evidence change - good evidence change)`, compared against private-evidence reference |
+| Overlapping pattern route | `0.3 * pattern weight`; choose stronger absolute alignment/pattern route, not their sum |
 | Outing pattern | 0.3 per distinct night, credibility-scaled; 0.2 for a conflicting alibi; capped at 0.8 |
 | Gift explanation | reduce that outing's weight by `0.8 * credibility of supporting gift claim` |
 | Stance | accept at 0.6 agreement; partial at 0.35; otherwise reject; actual numerical effect stays visible |
@@ -295,16 +350,17 @@ The initial tuning is deliberately visible and experimental:
 These are not calibrated probabilities or final balance recommendations. Accuracy sliders
 do not simulate the causes of illness. Chosen assumptions get a provisional conditional
 tier, not a full Bayesian posterior. Direct outing suspicion still uses the earlier pattern
-heuristic; adding sightings alone does not yet create an inferred movement likelihood for
-an evil-alignment argument. Use the explicitly labeled test factor to exercise convergence.
-Only the controlled test factor bridges the current separate alignment/movement models.
-Marked currently changes suspicion only;
+heuristic and can now affect implicated people under any alignment headline. It is not
+an inferred movement likelihood. Supplied test factors and the challenged-alibi factor
+exercise convergence within the world comparison. A Marked headline is assessed, but
+does not itself grant a fixed suspicion discount; only the underlying evidence's evil/good
+consequences change suspicion. There is still
 there is no separate learned-secret belief ledger. No public-pressure or vote-threshold
 effects are simulated. Player trust is held fixed as an experimental input, so its shown
 before/after change is zero. NPC responses use deterministic assessment text rather than
 the production voice system.
 
-One editable case has one replaceable ledger entry per listener. The old effect is
+One editable case has one replaceable vector ledger entry per listener. The old effects are
 removed **before** assessing a revision, avoiding feedback through the case's own
 accusation of a witness. Repetition, wrapper changes and venue changes cannot stack it.
 Independent simultaneous cases and support graphs shared between them are future work.
@@ -319,6 +375,7 @@ godot --headless --path . --script res://tools/test_workshop_cases.gd
 godot --headless --path . --script res://tools/test_workshop_reasoning.gd
 godot --headless --path . --script res://tools/test_workshop_ui.gd
 godot --headless --path . --script res://tools/test_workshop_canvas.gd
+godot --headless --path . --script res://tools/test_workshop_consequences.gd
 godot --headless --path . res://ui/case_workshop.tscn -- --workshop-smoke
 ```
 
@@ -338,13 +395,16 @@ revision, repeated presentations, no invented illness exceptions and exact theor
 The canvas suite covers equivalence of direct/chained readings, shared roots, nested
 assumptions, quoted versus endorsed alibis, conditional circumstantial convergence,
 merged provenance, cycles, real drag/link/answer/unlink signals, and canvas/history replay.
+The consequences suite covers collateral implication/exoneration, scoped intermediate
+claims, rejected inferences, nested claim-less groups, duplicate/shared branches,
+order-independent effects, private facts, shared bounded attention, clamping/retraction,
+exact replay after social-input edits, and the actual jury-window displays.
 
 On the development machine (Intel i5-12400, Godot 4.7.2, Windows), a representative
-single-juror full grouped assessment measured roughly 80–110 ms cold and 40–50 ms cached.
-Selecting all evidence
-types with every reading accuracy set to 0.5 exercised 4,096 credibility states and took
-about 1.1–1.3 seconds for one juror. Whole-jury assessment is synchronous, so broad stress
-cases can pause the UI for several seconds. These are fixture measurements, not general
+single-juror full grouped assessment now includes every character and intermediate claim.
+See the cases suite's printed cold/cached and 4,096-state broad-stress timings for current
+measurements. Whole-jury assessment is synchronous, so broad stress cases can pause
+the UI. These are fixture measurements, not general
 campaign performance guarantees. Constraint and movement caches are bounded; credibility
 weights are recomputed, so changing trust/reliability does not reuse stale weights.
 

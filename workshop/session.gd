@@ -52,7 +52,7 @@ func compare_reasoning(index: int) -> Array:
 	return result
 
 func export_data(include_truth: bool = false) -> Dictionary:
-	var result = {"format": "demonologist-case-workshop-3", "seed": scenario.public_view.seed,
+	var result = {"format": "demonologist-case-workshop-4", "seed": scenario.public_view.seed,
 		"public_view": scenario.public_view.duplicate(true), "case": case_data.duplicate(true),
 		"jury_settings": baseline.duplicate(true), "history": history.duplicate(true)}
 	if include_truth:
@@ -62,8 +62,8 @@ func export_data(include_truth: bool = false) -> Dictionary:
 func restore(data: Dictionary) -> String:
 	# Load only this fixture format. Validate the complete experiment before mutating
 	# the session, then replay its presentations instead of trusting stored outcomes.
-	if data.get("format", "") != "demonologist-case-workshop-3" or not data.get("seed") is float and not data.get("seed") is int:
-		return "This experiment uses a different Workshop model. Version 3 is required for reliable replay."
+	if data.get("format", "") != "demonologist-case-workshop-4" or not data.get("seed") is float and not data.get("seed") is int:
+		return "This experiment uses a different Workshop model. Version 4 is required for reliable replay of effects on multiple people."
 	if not is_finite(float(data.seed)) or data.seed < 1 or data.seed > 2147483647 or float(int(data.seed)) != float(data.seed):
 		return "Invalid scenario seed."
 	var candidate = get_script().new(int(data.seed))
@@ -85,8 +85,7 @@ func restore(data: Dictionary) -> String:
 			error = candidate.validate_jury(entry.get("jury_settings"))
 		if error != "":
 			return error
-		candidate.case_data = entry.case.duplicate(true)
-		candidate.case_data.version = int(candidate.case_data.version)
+		candidate.case_data = _normalized_case(entry.case)
 		candidate.baseline = entry.jury_settings.duplicate(true)
 		# Settings may have been changed during remembered discussion.
 		for i in range(candidate.listeners.size()):
@@ -100,13 +99,11 @@ func restore(data: Dictionary) -> String:
 			for person in candidate.scenario.public_view.people:
 				var applied = 0.0
 				for effect in listener.ledger.values():
-					if effect.target == person.id:
-						applied += effect.applied
+					applied += Jury.applied_to(effect, person.id)
 				listener.suspicion[person.id] = snappedf(candidate.baseline[i].suspicion[person.id] + applied, 0.000000001)
 		candidate.present(entry.remember, entry.venue)
 	scenario = candidate.scenario
-	case_data = data.case.duplicate(true)
-	case_data.version = int(case_data.version)
+	case_data = _normalized_case(data.case)
 	baseline = data.jury_settings.duplicate(true)
 	listeners = candidate.listeners
 	history = candidate.history
@@ -122,10 +119,16 @@ func restore(data: Dictionary) -> String:
 		for person in scenario.public_view.people:
 			var applied = 0.0
 			for effect in listeners[i].ledger.values():
-				if effect.target == person.id:
-					applied += effect.applied
+				applied += Jury.applied_to(effect, person.id)
 			listeners[i].suspicion[person.id] = snappedf(baseline[i].suspicion[person.id] + applied, 0.000000001)
 	return ""
+
+func _normalized_case(value: Dictionary) -> Dictionary:
+	var result = value.duplicate(true)
+	result.version = int(result.version)
+	for argument in result.get("arguments", []):
+		argument.case.version = int(argument.case.version)
+	return result
 
 func validate_case(value) -> String:
 	if not value is Dictionary:
@@ -215,7 +218,50 @@ func validate_case(value) -> String:
 				return "Invalid test factor."
 			if not is_finite(float(factor.log2_ratio)) or absf(float(factor.log2_ratio)) > 4.0 or line.cards.is_empty():
 				return "Test factor must cite evidence and stay between 1/16 and 16."
+	if not value.get("arguments", []) is Array or value.get("arguments", []).size() > 48:
+		return "Invalid argument graph (maximum 48 claims)."
+	var argument_ids: Array = []
+	for argument in value.get("arguments", []):
+		if not argument is Dictionary or not argument.get("id") is String or argument.id in argument_ids or not argument.get("label") is String or argument.label.length() > 120 or not argument.get("parents") is Array or not argument.get("without") is Dictionary:
+			return "Invalid intermediate claim."
+		argument_ids.append(argument.id)
+		if not argument.get("case") is Dictionary or argument.case.has("arguments") or argument.case.has("argument_root"):
+			return "Intermediate claims cannot contain another serialized argument graph."
+		var error = validate_case(argument.case)
+		if error != "" or not argument.case.cards.all(func(id): return id in value.cards):
+			return "Invalid intermediate claim evidence: " + error
+	for argument in value.get("arguments", []):
+		if argument.parents.size() > 48 or not argument.parents.all(func(id): return id in argument_ids and id != argument.id) or argument.without.size() != argument.parents.size():
+			return "Invalid intermediate claim links."
+		for parent in argument.parents:
+			if not argument.without.get(parent) is Array or argument.without[parent].size() > card_ids.size() or not argument.without[parent].all(func(id): return id in value.cards):
+				return "Invalid shared evidence provenance."
+	if value.has("arguments"):
+		if value.get("argument_root") not in argument_ids:
+			return "Missing argument root."
+		var root = value.arguments.filter(func(a): return a.id == value.argument_root)[0]
+		var expected = value.duplicate(true)
+		expected.erase("arguments")
+		expected.erase("argument_root")
+		if root.case != expected or not root.parents.is_empty():
+			return "The root claim and presented case disagree."
+		var memo = {}
+		for argument in value.arguments:
+			if not _argument_reaches_root(argument.id, value.argument_root, value.arguments, [], memo):
+				return "Intermediate claim links must lead to the root without cycles."
 	return ""
+
+func _argument_reaches_root(id: String, root: String, arguments: Array, seen: Array, memo: Dictionary) -> bool:
+	if id in seen:
+		return false
+	if id == root:
+		return true
+	if memo.has(id):
+		return memo[id]
+	var item: Dictionary = arguments.filter(func(a): return a.id == id)[0]
+	var result: bool = not item.parents.is_empty() and item.parents.all(func(parent): return _argument_reaches_root(parent, root, arguments, seen + [id], memo))
+	memo[id] = result
+	return result
 
 func validate_jury(value) -> String:
 	if not value is Array or value.size() != scenario.jury.size():

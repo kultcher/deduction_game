@@ -6,12 +6,13 @@ const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 static var cache: Dictionary = {}
+static var comparisons: Dictionary = {}
 
-static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}) -> Dictionary:
+static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}) -> Dictionary:
 	var case_data = Graph.compile_case(view, value)
 	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
-	var attention = Reasoner.prepare(view, value, listener)
-	if bounded or case_data.conclusion.type == "conflict":
+	var attention = Reasoner.prepare(view, value, listener) if prepared.is_empty() else prepared
+	if bounded or case_data.conclusion.type == "conflict" or not prepared.is_empty():
 		case_data = attention.case
 	var cards: Array = Solver.selected(view, case_data)
 	var factor_refs: Array = []
@@ -49,6 +50,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 	var uncertain: Array = atoms.filter(func(a): return a.weight > 0.0 and a.weight < 1.0)
 	var total = 0.0
 	var agreement = 0.0
+	var evidence_agreement = 0.0
 	var conditional_mass = 0.0
 	var forced_mass = 0.0
 	var accuracy = {}
@@ -60,6 +62,11 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 	var states = 0
 	var impossible = 0.0
 	var ranks = prior_scores(view, listener, bias)
+	# The comparison starts with the listener's private reports, not an empty mind.
+	# Removing the public evidence must remove its effect, including effects on
+	# people who were never named in the player's conclusion.
+	var private_cards: Array = listener.knowledge.get("own_reports", []).map(func(id): return Solver.card_by_id(view, id))
+	var private_worlds: Array = _solve(view, private_cards, listener.knowledge).worlds
 	for mask in range(1 << uncertain.size()):
 		var weight = 1.0
 		var accepted = {}
@@ -92,8 +99,9 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 				used_factors.append(factor.label)
 		var contributing: Array = active.filter(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])
 		var a = 0.0
-		var all_hold: bool = searched.status == "entailed_in_attention" if bounded else solved.worlds.all(func(w): return Solver.holds(view, w, case_data.conclusion))
-		var any_hold: bool = not searched.support.is_empty() if bounded else solved.worlds.any(func(w): return Solver.holds(view, w, case_data.conclusion))
+		var comparison: Dictionary = {} if bounded else _comparison(view, solved.worlds, case_data.conclusion, factors, ranks)
+		var all_hold: bool = searched.status == "entailed_in_attention" if bounded else comparison.support > 0.0 and comparison.rival == 0.0
+		var any_hold: bool = not searched.support.is_empty() if bounded else comparison.support > 0.0
 		if all_hold and presented_reading:
 			a = 1.0
 			forced_mass += weight
@@ -137,6 +145,14 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 					a = maxf(a, 0.4)
 					conditional_mass += weight
 		agreement += weight * a
+		var reference = 0.0
+		if presented_reading and not contributing.is_empty() and not private_worlds.is_empty():
+			var prior = _comparison(view, private_worlds, case_data.conclusion, [], ranks)
+			if prior.support > 0 and prior.rival == 0:
+				reference = 1.0
+			elif prior.support > 0:
+				reference = 0.02 + 0.16 * prior.support / maxf(prior.support + prior.rival, 0.000000000001)
+		evidence_agreement += weight * (a - reference)
 		strongest = maxf(strongest, weight * a)
 	var minimal: Array = []
 	for path in paths:
@@ -145,18 +161,19 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 	minimal.sort_custom(func(a, b): return str(a) < str(b))
 	if total > 0.0:
 		agreement /= total
+		evidence_agreement /= total
 		forced_mass /= total
 		conditional_mass /= total
 		for id in accuracy:
 			accuracy[id] /= total
-	return {"agreement": agreement, "forced_mass": forced_mass, "conditional_mass": conditional_mass,
+	return {"agreement": agreement, "evidence_agreement": evidence_agreement, "forced_mass": forced_mass, "conditional_mass": conditional_mass,
 		"paths": minimal, "report_acceptance": accuracy, "atoms": atoms, "states": states,
 		"quoted_cards": cards.filter(func(card): return card.get("quoted", false)).map(func(card): return card.id),
 		"conflict_mass": impossible, "strongest_state": strongest, "factors": used_factors,
 		"model": "Experimental credibility-state mixture. Supplied test factors and the fixed 2x challenged-alibi factor are uncalibrated; no general movement/trace likelihood is inferred."}
 
-static func explain(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
-	var attention = Reasoner.prepare(view, value, listener)
+static func explain(view: Dictionary, value: Dictionary, listener: Dictionary, prepared: Dictionary = {}) -> Dictionary:
+	var attention = Reasoner.prepare(view, value, listener) if prepared.is_empty() else prepared
 	var considered = attention.case
 	var cards = Solver.selected(view, considered)
 	for id in listener.knowledge.get("own_reports", []):
@@ -198,14 +215,17 @@ static func _add_atom(atoms: Array, key: String, weight: float) -> void:
 		atoms.append({"key": key, "weight": weight})
 
 static func _solve(view: Dictionary, cards: Array, knowledge: Dictionary) -> Dictionary:
-	var signatures: Array = cards.map(func(c): return JSON.stringify([Solver.semantic_key(c), c.kind, c.source, c.get("role"), c.get("night"), c.get("block"), c.get("subject"), c.get("observed_at"), c.get("data", {}), c.get("quoted", false)]))
-	signatures.sort()
-	var key = JSON.stringify([view.people, view.evil_count, signatures, knowledge])
-	if not cache.has(key):
-		if cache.size() > 512:
-			cache.clear()
-		cache[key] = Solver.solve(view, cards, {}, {}, knowledge)
-	return cache[key]
+	# Hash lookup plus exact input comparison avoids rebuilding JSON signatures in
+	# every credibility state / character projection. Equality guards collisions.
+	var inputs = [view.people, view.evil_count, cards, knowledge]
+	var key = hash(inputs)
+	if cache.has(key) and cache[key].inputs == inputs:
+		return cache[key].result
+	if cache.size() > 512:
+		cache.clear()
+	var solved = Solver.solve(view, cards, {}, {}, knowledge)
+	cache[key] = {"inputs": inputs.duplicate(true), "result": solved}
+	return solved
 
 static func prior_scores(view: Dictionary, listener: Dictionary, bias: Dictionary = {}) -> Dictionary:
 	var ranks = {}
@@ -237,12 +257,35 @@ static func world_score(view: Dictionary, world: Dictionary, ranks: Dictionary, 
 static func possibility(view: Dictionary, worlds: Array, conclusion: Dictionary, listener: Dictionary, factors: Array = [], ranks: Dictionary = {}) -> float:
 	if ranks.is_empty():
 		ranks = prior_scores(view, listener)
-	var supporting = 0.0
-	var rival = 0.0
-	for world in worlds:
-		var score = world_score(view, world, ranks, factors)
-		if Solver.holds(view, world, conclusion):
-			supporting = maxf(supporting, score)
-		else:
-			rival = maxf(rival, score)
-	return 0.02 + 0.16 * supporting / maxf(supporting + rival, 0.000000000001)
+	var comparison = _comparison(view, worlds, conclusion, factors, ranks)
+	return 0.02 + 0.16 * comparison.support / maxf(comparison.support + comparison.rival, 0.000000000001)
+
+static func _comparison(view: Dictionary, worlds: Array, conclusion: Dictionary, factors: Array, ranks: Dictionary) -> Dictionary:
+	# One set of ranked worlds answers all characters' alignment/Marked questions.
+	# This cache only speeds the full/mixture calculation; bounded searches still
+	# construct their own candidates and never receive unseen public worlds.
+	var inputs = [view.people, worlds, factors, ranks]
+	var key = hash(inputs)
+	if not comparisons.has(key) or comparisons[key].inputs != inputs:
+		if comparisons.size() > 512:
+			comparisons.clear()
+		var scores: Array = []
+		for i in range(view.people.size()):
+			scores.append({"evil": 0.0, "good": 0.0, "marked": 0.0, "unmarked": 0.0})
+		for world in worlds:
+			if world.is_empty():
+				continue
+			var score = world_score(view, world, ranks, factors)
+			for i in range(scores.size()):
+				var alignment: String = "evil" if world.evil & (1 << i) else "good"
+				var registration: String = "marked" if world.marked == i else "unmarked"
+				scores[i][alignment] = maxf(scores[i][alignment], score)
+				scores[i][registration] = maxf(scores[i][registration], score)
+		comparisons[key] = {"inputs": inputs, "scores": scores}
+	var index: int = view.people.map(func(p): return p.id).find(conclusion.target)
+	if index < 0 or conclusion.type == "conflict":
+		return {"support": 0.0, "rival": 0.0}
+	var scores: Dictionary = comparisons[key].scores[index]
+	var type: String = "evil" if conclusion.type == "suspicious" else conclusion.type
+	var opposite: String = {"evil": "good", "good": "evil", "marked": "unmarked"}[type]
+	return {"support": scores[type], "rival": scores[opposite]}

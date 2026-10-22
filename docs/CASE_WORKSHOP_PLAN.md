@@ -1,11 +1,13 @@
 # Case Workshop: revised implementation plan
 
-Updated October 21, 2026 after reviewing the user's pasted Opus discussion against
+Updated October 22, 2026 after reviewing the user's pasted Opus discussion against
 the Workshop and main simulation. Slices 1–3 are now implemented and verified
 on `codex/case-workshop`, including the case/line/evidence structure and a controlled
 soft-factor convergence experiment, bounded Insight and confidence persistence.
 The next UI step is delivered as a fixture-692 card canvas: movable evidence and premise
 cards, shared answers, directed links, merged contradictions and a separate jury window.
+The separately approved pre-Slice-4 step now adds scoped intermediate-claim assessments
+and simultaneous collateral suspicion effects with shared provenance and retraction.
 Current behavior, provisional tuning and limits
 are documented in [CASE_WORKSHOP.md](CASE_WORKSHOP.md). Later slices remain proposed.
 
@@ -270,8 +272,42 @@ statuses. Comparisons clone the same juror and starting attitudes. Private align
 reading receipt and known whereabouts are protected without making gifts infallible.
 Confidence persistence is an alternative to effect scaling, remembers only a partial
 target/epoch commitment, and can revise without inventing illness explanations.
-Repetition is stable; version-3 replay reconstructs theories from presentations.
+Repetition is stable; version-4 replay reconstructs theories and all character effects from presentations.
 This slice does not add autonomous town-wide theory construction or temporal exceptions.
+
+## Separate step before Slice 4 — evaluated claims and collateral effects
+
+**Delivered:** named intermediate claims are assessed in their own evidence scope,
+within the headline's attended evidence. The jury distinguishes “Hollis follows if these
+reports are sound” from “Constance versus Nisha remains unresolved”, disputes incorrect
+intermediate claims, and reports what a branch contributes to its parent. Claim-less
+groups preserve nested claims. Original sources remain the inference inputs; accepted
+intermediate labels never become independent testimony or extra suspicion awards.
+
+Every person's evil/good support is compared from one frozen baseline. The comparison
+subtracts what private evidence and prior rankings already supported; actual suspicion
+can rise or fall. Private good alignment is protected. Headline conviction remains a
+separate diagnostic. One vector replaces this case's prior effects on all people;
+source credibility cannot feed back halfway through a presentation. Shared reports,
+duplicate derivations, venue changes and repeats cannot stack effects. Counterfactual
+branch diagnostics retain roots cited through other paths and are not additive awards.
+
+The existing outing-pattern route and alignment comparison use a provisional stronger-
+absolute-effect envelope rather than being summed when they can describe the same
+incident. This can hide weaker independent contributions; Slice 4 must replace that
+conservative bridge with the shared movement/trace model. It is not new final tuning.
+Bounded projections share public attention and use per-conclusion search limits; a total
+town-wide reasoning-work budget remains future work. Conflict-only presentations assign
+no alignment effects. Multiple simultaneous cases and cross-case provenance are deferred.
+
+**Verified in `tools/test_workshop_consequences.gd`:** a Constance headline affects
+Hollis and unclaimed Lian, leaves the core Constance/Nisha ambiguity, and can exonerate
+others; direct/grouped/duplicate derivations have equal effects; mistaken intermediate
+claims are challenged; claim-less nested groups preserve scope; all effects are stable
+on repeat and retract together, including at clamping limits; person order creates no
+feedback; unattended or firsthand-rejected reports supply no collateral pattern effect;
+version-4 history replays all effects and claims after edited social inputs. Jury controls
+display all consequences and claim-to-parent explanations.
 
 ## Slice 4 — soft evidence in the same case interface
 

@@ -8,8 +8,75 @@ const Graph = preload("res://workshop/case_graph.gd")
 const Support = preload("res://workshop/support_model.gd")
 const Theory = preload("res://workshop/theory.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
+const Consequences = preload("res://workshop/consequences.gd")
 
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
+	var before: Dictionary = listener.suspicion.duplicate(true)
+	var old: Dictionary = listener.ledger.get(case_data.id, {})
+	var old_effects: Dictionary = old.get("effects", {})
+	if not old.is_empty() and old_effects.is_empty():
+		old_effects = {old.target: {"applied": old.applied}}
+	# Retract the ENTIRE previous vector before evaluating any conclusion. Every
+	# projection sees this same snapshot, including source credibility and priors.
+	var baseline = listener.duplicate(true)
+	for person in old_effects:
+		baseline.suspicion[person] = snappedf(baseline.suspicion.get(person, 0.1) - old_effects[person].applied, 0.000000001)
+	baseline.ledger = {}
+	var primary_listener = baseline.duplicate(true)
+	var result = _assess_target(view, case_data, primary_listener, context)
+	var signature_case = Graph.compile_case(view, case_data)
+	signature_case.conclusion = {"type": "evil", "target": "all", "at": view.alignment_epoch}
+	var common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
+		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.confidence,
+		baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
+	var consequences = Consequences.assess(view, case_data, baseline, _pattern, common_key, result.theory)
+	var effects = {}
+	for person in view.people:
+		var id: String = person.id
+		var entry: Dictionary = consequences.effects[id].duplicate(true)
+		entry["baseline"] = baseline.suspicion.get(id, 0.1)
+		entry["before"] = snappedf(before.get(id, 0.1), 0.000000001)
+		entry["after"] = snappedf(clampf(entry.baseline + entry.requested, 0.0, 1.5), 0.000000001)
+		entry["applied"] = snappedf(entry.after - entry.baseline, 0.000000001)
+		entry["delta"] = snappedf(entry.after - entry.before, 0.000000001)
+		entry["previous"] = old_effects.get(id, {}).get("applied", 0.0)
+		effects[id] = entry
+		listener.suspicion[id] = entry.after
+	var target: String = case_data.conclusion.target
+	listener.ledger[case_data.id] = primary_listener.ledger[case_data.id].duplicate(true)
+	listener.ledger[case_data.id].effects = effects.duplicate(true)
+	listener.ledger[case_data.id].applied = effects[target].applied
+	listener.case_memory = primary_listener.case_memory.duplicate(true)
+	listener.theories = consequences.theories
+	# The headline's original confidence decision remains the reported decision.
+	var theory_key: String = target + "|" + case_data.conclusion.at
+	if case_data.conclusion.type == "marked":
+		theory_key += "|marked"
+	if primary_listener.theories.has(theory_key):
+		listener.theories[theory_key] = primary_listener.theories[theory_key].duplicate(true)
+	result["effects"] = effects
+	result["claims"] = consequences.claims
+	result["effect_rule"] = consequences.rule
+	result.before_suspicion = effects[target].before
+	result.after_suspicion = effects[target].after
+	result.suspicion_delta = effects[target].delta
+	result.calculation.old_case_effect = effects[target].previous
+	result.calculation.new_case_effect = effects[target].applied
+	result.calculation.rule = consequences.rule
+	# Speak about accepted intermediate inferences separately from the headline.
+	if not result.repeated:
+		for claim in consequences.claims:
+			if claim.conclusion.target != target and claim.conclusion.type == "evil" and claim.status == "entailed_in_attention" and claim.forced_mass > 0:
+				result.response += " The reports I granted implicate %s, if sound. That conclusion does not by itself settle %s's alignment." % [Solver.person_name(view, claim.conclusion.target), Solver.person_name(view, target)]
+				break
+	return result
+
+static func applied_to(entry: Dictionary, person: String) -> float:
+	if entry.has("effects"):
+		return float(entry.effects.get(person, {}).get("applied", 0.0))
+	return float(entry.get("applied", 0.0)) if entry.get("target") == person else 0.0
+
+static func _assess_target(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
 	var original = case_data.duplicate(true)
 	case_data = Graph.compile_case(view, case_data)
 	var conclusion: Dictionary = case_data.conclusion
