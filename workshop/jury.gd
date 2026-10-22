@@ -145,7 +145,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	else:
 		response = "I can see that possibility, but the reports also allow another explanation."
 	if not combined.factors.is_empty():
-		response += " The supplied test factor changes which remaining explanation I favor; it does not prove it."
+		response += " If the linked observation is accurate, the home alibi is false. That is circumstantial evidence, not proof of deliberate deception or evil." if combined.factors.any(func(label): return label.begins_with("Challenged home alibi")) else " The supplied test factor changes which remaining explanation I favor; it does not prove it."
 	if listener.get("reasoning_mode", "full") == "bounded":
 		objection = _bounded_objection(reasoning)
 		if reasoning.private_checks.fatal:
@@ -169,6 +169,8 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 			response = "That is the same case; I made the same checks. Repeating it adds no new reason."
 	if not reasoning.private_checks.objections.is_empty():
 		objection = " ".join(PackedStringArray(reasoning.private_checks.objections))
+	if listener.get("reasoning_mode", "full") == "bounded" and combined.factors.any(func(label): return label.begins_with("Challenged home alibi")):
+		response += " The linked observation challenges the home alibi; it does not by itself prove evil."
 	if theory.mode == "persistence" and not repeated:
 		response += " " + theory.note
 	if not previous.is_empty() and not repeated and not changes.is_empty():
@@ -323,7 +325,7 @@ static func _signature(view: Dictionary, case_data: Dictionary) -> String:
 			routes.sort()
 			factors.append(JSON.stringify([factor.target, factor.log2_ratio, factor.events, routes]))
 	factors.sort()
-	return JSON.stringify(_canonical([keys, case_data.positions, answers, case_data.reasons, citations, scope, case_data.get("challenges", {}), factors, case_data.conclusion]))
+	return JSON.stringify(_canonical([keys, case_data.positions, answers, case_data.reasons, citations, scope, case_data.get("challenges", {}), factors, case_data.conclusion, case_data.get("graph_errors", [])]))
 
 static func _canonical(value):
 	if value is Dictionary:

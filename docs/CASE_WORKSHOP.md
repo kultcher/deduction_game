@@ -14,7 +14,72 @@ support, followed by bounded Insight reasoning and experimental confidence persi
 The controlled soft-factor experiment tests convergence; actual movement and trace
 likelihoods remain slice 4.
 
-## Try these experiments
+The default screen is now a freeform card canvas, limited to fixture 692. The previous
+list-based experiment remains available by running `ui/case_workshop_lab.tscn` with F6.
+It retains the seed generator, supplied-factor controls and previous saved experiments.
+
+## Canvas workflow
+
+1. The workspace starts with all sixteen evidence cards and a Constance accusation.
+   **Load mockup** assembles the user's proposed reading chain and challenged alibi.
+   The reading answers stay unknown so the alternative Constance/Nisha explanations
+   remain available to explore. **All evidence** fits the scratch cards; **Fit case**
+   fits the selected card and its incoming argument.
+2. Drag a card with the left button. Drag empty space or use the middle button to pan;
+   use the wheel to zoom. **Answer** opens a separate editor. Answers remain on the
+   card and are shared wherever that evidence is used. Closing the editor keeps edits.
+3. **Add Case Premise** creates a claimed conclusion or a generic **Supporting evidence**
+   group. A group's claim is optional. Its incoming evidence supplies the argument;
+   its intermediate conclusion never becomes an additional accepted fact. **Answer**
+   on a premise edits its assumed alignments/Marked identities. Root assumptions apply
+   to the whole selected case; supporting premises contribute their local assumptions.
+   Conflicting assumptions, including inside a nested branch, are reported.
+4. Click **Link**, then a destination card. Arrows point from support to the thing it
+   supports. Evidence-to-evidence links normally mean **read together**. An applicable
+   walking-role claim linked to a sighting defaults to **could explain outing**, using
+   the same citation checks as the list editor. Right-click switches applicable role
+   links between context and an outing explanation; an explicit outing answer takes
+   precedence over the default. A home alibi and same-night observation
+   that its subject was out automatically form a merged red contradiction card.
+5. **Inspect** a contradiction to see both originals and its interpretation. It means
+   that the observation challenges the home alibi. If the observation is accurate,
+   the alibi is false; deliberate lying and evil are further inferences. Right-click
+   **Unlink merged contradiction** restores the originals, retaining their answers and
+   references. Ordinary connections can also be removed through the right-click menu.
+   Premises can be removed while retaining their evidence. Circular links are refused.
+6. Select a premise with a claim and **Present selected premise**. Only its incoming
+   argument is presented. Disconnected cards remain scratch work. A conflict premise
+   can ask whether the original accounts conflict, without first resolving which is
+   wrong or assigning alignment guilt. The mock jury opens in its own window, with
+   the existing trust, Insight, confidence and comparison controls. Close/reopen it
+   using **Mock jury**. Remembered discussion still replaces this one case's prior
+   effect; it does not maintain several independent case ledgers.
+7. **Save/Open** stores the graph, card positions, answers, active premise, view, jury
+   settings and replayable discussion. Canvas files use `demonologist-workshop-canvas-1`,
+   containing the version-3 experiment. Imports validate provenance and graph structure
+   before replacing the current workspace. Earlier list experiments open in the lab.
+
+Merrin linked through Bart/Fenwick and all three linked directly to the Hollis premise
+have the same evidence roots and assessment. Shared paths do not duplicate a witness.
+Rearranging cards has no effect. Explicit grouping can still affect which connections a
+bounded-Insight juror attends to; named source trust and gift explanations retain their
+distinct roles. Links support editing and attention, not an ordering-dependent evidence bonus.
+
+The only added evidence-weighting rule in this UI step is the challenged home alibi:
+one fixed, uncalibrated **2× evil/good comparison factor**, gated by the contradicting
+observation's credibility. The quoted alibi records known testimony without assuming
+its contents true; distrusting Constance does not erase the fact that she made the claim.
+Repeated references to the same outing share this factor. It can favor Constance while
+both logical alignment alternatives remain possible. Its value is exposed in Inspect
+and in the jury calculation; it is not a general likelihood model for deception.
+
+Board-to-workshop transfer, independent duplicate interpretations, collapsing whole
+cases, relationship-choice prompts for ambiguous future evidence, and automatic
+movement/soot likelihoods remain future work. This canvas preloads the existing fixture;
+it does not read or alter the running main-game case. A linked role claim does not
+silently accept its associated gift result.
+
+## List lab experiments
 
 1. **Load example > Surveyor only.** Leave slots unknown and present the case. A partial
    explanation is allowed. Accepting the Surveyor claim assumes the source was good,
@@ -253,6 +318,7 @@ godot --headless --path . --script res://tools/test_workshop.gd
 godot --headless --path . --script res://tools/test_workshop_cases.gd
 godot --headless --path . --script res://tools/test_workshop_reasoning.gd
 godot --headless --path . --script res://tools/test_workshop_ui.gd
+godot --headless --path . --script res://tools/test_workshop_canvas.gd
 godot --headless --path . res://ui/case_workshop.tscn -- --workshop-smoke
 ```
 
@@ -269,6 +335,9 @@ corroboration, wrapper identity, provenance and atomic import validation.
 The reasoning suite covers paired Insight profiles, independent referee results,
 bounded conviction and speech, ignored connections, direct private checks, confidence
 revision, repeated presentations, no invented illness exceptions and exact theory replay.
+The canvas suite covers equivalence of direct/chained readings, shared roots, nested
+assumptions, quoted versus endorsed alibis, conditional circumstantial convergence,
+merged provenance, cycles, real drag/link/answer/unlink signals, and canvas/history replay.
 
 On the development machine (Intel i5-12400, Godot 4.7.2, Windows), a representative
 single-juror full grouped assessment measured roughly 80–110 ms cold and 40–50 ms cached.

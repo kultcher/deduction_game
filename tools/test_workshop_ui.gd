@@ -1,6 +1,6 @@
 ## Exercises actual UI signals, slot persistence, file replay and the main-menu entry.
 extends SceneTree
-const Workshop = preload("res://ui/case_workshop.tscn")
+const Workshop = preload("res://ui/case_workshop_lab.tscn")
 var fails = 0
 var checks = 0
 

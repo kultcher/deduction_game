@@ -4,6 +4,8 @@ Updated October 21, 2026 after reviewing the user's pasted Opus discussion again
 the Workshop and main simulation. Slices 1–3 are now implemented and verified
 on `codex/case-workshop`, including the case/line/evidence structure and a controlled
 soft-factor convergence experiment, bounded Insight and confidence persistence.
+The next UI step is delivered as a fixture-692 card canvas: movable evidence and premise
+cards, shared answers, directed links, merged contradictions and a separate jury window.
 Current behavior, provisional tuning and limits
 are documented in [CASE_WORKSHOP.md](CASE_WORKSHOP.md). Later slices remain proposed.
 
@@ -272,6 +274,22 @@ Repetition is stable; version-3 replay reconstructs theories from presentations.
 This slice does not add autonomous town-wide theory construction or temporal exceptions.
 
 ## Slice 4 — soft evidence in the same case interface
+
+**Completed prerequisite/UI step:** citing a home alibi as a statement to challenge
+no longer endorses its contents beside a contradicting observation. The 692 canvas
+automatically merges that direct contradiction, preserves both originals for inspection
+and unlinking, and can route its circumstantial contribution through a suspiciousness
+premise into an alignment case. The only new factor is a visible, uncalibrated 2×
+comparison for the challenged alibi, conditional on observation credibility. A false
+account does not establish intent or evil. Generic movement/trace likelihood work below
+remains proposed. The current canvas is a separate screen; it preloads fixture evidence
+instead of integrating transfer from the live board.
+
+Evidence and premise links compile to original roots. Direct/chained versions of the
+same three-reading argument are equivalent; intermediate claims supply no independent
+facts. Claim-less groups use the same premise-card object. Answer windows share one
+interpretation per evidence copy, and premise windows hold scoped identity assumptions.
+Future duplicate interpretations and collapse/expand behavior are deferred.
 
 **Deliverable:** compare two recurring patterns, unexplained outings and crime-scene
 soot, using explicit hypotheses and observation opportunities. Keep this bounded to

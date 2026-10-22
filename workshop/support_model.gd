@@ -31,6 +31,9 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 	var requirements = {}
 	for card in cards:
 		var required: Array = []
+		if card.get("quoted", false):
+			requirements[card.id] = required
+			continue # Known testimony exists; its disputed contents are not endorsed.
 		if card.id in attention.private_checks.rejected:
 			var known_key: String = "firsthand:" + Solver.semantic_key(card)
 			_add_atom(atoms, known_key, 0.0)
@@ -148,8 +151,9 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bi
 			accuracy[id] /= total
 	return {"agreement": agreement, "forced_mass": forced_mass, "conditional_mass": conditional_mass,
 		"paths": minimal, "report_acceptance": accuracy, "atoms": atoms, "states": states,
+		"quoted_cards": cards.filter(func(card): return card.get("quoted", false)).map(func(card): return card.id),
 		"conflict_mass": impossible, "strongest_state": strongest, "factors": used_factors,
-		"model": "Experimental credibility-state mixture; weights are uncalibrated. Test factors are supplied inputs, not movement likelihoods."}
+		"model": "Experimental credibility-state mixture. Supplied test factors and the fixed 2x challenged-alibi factor are uncalibrated; no general movement/trace likelihood is inferred."}
 
 static func explain(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
 	var attention = Reasoner.prepare(view, value, listener)
@@ -158,7 +162,7 @@ static func explain(view: Dictionary, value: Dictionary, listener: Dictionary) -
 	for id in listener.knowledge.get("own_reports", []):
 		if not cards.any(func(c): return c.id == id):
 			cards.append(Solver.card_by_id(view, id))
-	var accepted: Array = cards.filter(func(c): return c.id not in attention.private_checks.rejected and source_quality(listener, c.source) >= 0.4 and (c.kind != "report" or listener.reading_reliability.get(Solver.semantic_key(c), 1.0) >= 0.5))
+	var accepted: Array = cards.filter(func(c): return c.get("quoted", false) or (c.id not in attention.private_checks.rejected and source_quality(listener, c.source) >= 0.4 and (c.kind != "report" or listener.reading_reliability.get(Solver.semantic_key(c), 1.0) >= 0.5)))
 	var limits: Dictionary = attention.limits if listener.get("reasoning_mode", "full") == "bounded" else {"support": 840, "rivals": 840, "complete": true}
 	var result = Reasoner.search(view, considered, accepted, listener, limits)
 	result.merge(attention)
@@ -194,7 +198,7 @@ static func _add_atom(atoms: Array, key: String, weight: float) -> void:
 		atoms.append({"key": key, "weight": weight})
 
 static func _solve(view: Dictionary, cards: Array, knowledge: Dictionary) -> Dictionary:
-	var signatures: Array = cards.map(func(c): return JSON.stringify([Solver.semantic_key(c), c.kind, c.source, c.get("role"), c.get("night"), c.get("block"), c.get("subject"), c.get("observed_at"), c.get("data", {})]))
+	var signatures: Array = cards.map(func(c): return JSON.stringify([Solver.semantic_key(c), c.kind, c.source, c.get("role"), c.get("night"), c.get("block"), c.get("subject"), c.get("observed_at"), c.get("data", {}), c.get("quoted", false)]))
 	signatures.sort()
 	var key = JSON.stringify([view.people, view.evil_count, signatures, knowledge])
 	if not cache.has(key):

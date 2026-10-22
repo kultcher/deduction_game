@@ -181,6 +181,11 @@ func validate_case(value) -> String:
 			return "Invalid challenged report or grounds."
 	if not value.get("lines", []) is Array or value.get("lines", []).size() > 6:
 		return "Invalid reasoning lines (maximum six)."
+	if not value.get("disputes", []) is Array or value.get("disputes", []).size() > 8:
+		return "Invalid challenged accounts."
+	for dispute in value.get("disputes", []):
+		if not Solver.Graph.valid_dispute(scenario.public_view, dispute) or not dispute.reports.all(func(id): return id in value.cards):
+			return "A challenged home alibi needs its same-night contradicting observation."
 	var line_ids: Array = []
 	for line in value.get("lines", []):
 		if not line is Dictionary or not line.get("id") is String or line.id in line_ids or not line.get("label") is String or line.label.length() > 120 or line.get("relation") not in ["supports", "alternative"] or not line.get("cards") is Array or line.cards.size() > card_ids.size() or not line.cards.all(func(id): return id in value.cards):
@@ -197,6 +202,13 @@ func validate_case(value) -> String:
 		var error = validate_case(choices)
 		if error != "":
 			return "Invalid line choices: " + error
+		if not line.get("assumption_sets", []) is Array or line.get("assumption_sets", []).size() > 12:
+			return "Invalid nested premise assumptions."
+		for positions in line.get("assumption_sets", []):
+			var nested = Solver.empty_case()
+			nested.positions = positions
+			if validate_case(nested) != "":
+				return "Invalid nested premise assumptions."
 		if line.has("test_factor"):
 			var factor = line.test_factor
 			if not factor is Dictionary or factor.get("target") not in ids or not factor.get("log2_ratio") is float and not factor.get("log2_ratio") is int:

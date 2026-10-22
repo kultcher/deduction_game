@@ -9,7 +9,7 @@ static var movement_cache: Dictionary = {}
 
 static func empty_case() -> Dictionary:
 	return {"id": "case-1", "version": 1, "cards": [], "positions": {}, "answers": {}, "reasons": {},
-		"citations": {}, "conflict_scope": [], "challenges": {}, "derived": [], "lines": [],
+		"citations": {}, "conflict_scope": [], "challenges": {}, "derived": [], "lines": [], "disputes": [],
 		"conclusion": {"type": "evil", "target": "constance", "at": "opening through day 3"}}
 
 static func card_by_id(view: Dictionary, id: String) -> Dictionary:
@@ -25,6 +25,9 @@ static func selected(view: Dictionary, case_data: Dictionary) -> Array:
 	for id in case_data.cards:
 		var card = card_by_id(view, id)
 		if not card.is_empty() and semantic_key(card) not in keys:
+			if id in case_data.get("quoted_cards", []):
+				card = card.duplicate(true)
+				card["quoted"] = true
 			cards.append(card)
 			keys.append(semantic_key(card))
 	return cards
@@ -210,7 +213,7 @@ static func _movement(view: Dictionary, cards: Array, answers: Dictionary, knowl
 	var nights = {}
 	var okay = true
 	for night in [1, 2]:
-		var relevant: Array = cards.filter(func(c): return c.get("night", -1) == night and (c.kind in ["sighting", "alibi"] or c.get("role", "") in ["nightwatch", "lamplighter"]))
+		var relevant: Array = cards.filter(func(c): return not c.get("quoted", false) and c.get("night", -1) == night and (c.kind in ["sighting", "alibi"] or c.get("role", "") in ["nightwatch", "lamplighter"]))
 		if relevant.is_empty():
 			continue
 		var possibilities: Array = []
@@ -280,7 +283,7 @@ static func assumption_labels(view: Dictionary, cards: Array) -> Array:
 		if card.kind == "report":
 			result.append("%s: %s held %s, was good and healthy at %s %s, and reported honestly." % [card.id, person_name(view, card.source), card.role, card.observed_at.phase, card.observed_at.day])
 		elif card.kind == "alibi":
-			result.append("%s: accept the home alibi as accurate." % card.id)
+			result.append("%s: challenge the home alibi using the linked observation; falsity is conditional on that observation, and does not prove intent or evil." % card.id if card.get("quoted", false) else "%s: accept the home alibi as accurate." % card.id)
 	return result
 
 static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:

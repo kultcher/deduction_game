@@ -14,14 +14,15 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 		if line.get("relation", "supports") != "supports":
 			continue
 		included.append_array(line.cards)
-		for id in line.get("positions", {}):
-			var position: String = line.positions[id]
-			if result.positions.has(id) and result.positions[id] != position:
-				if result.positions[id] in ["good", "marked"] and position in ["good", "marked"]:
-					position = "marked"
-				else:
-					errors.append("%s: the supporting lines assign incompatible identities to %s." % [line.label, id])
-			result.positions[id] = position
+		for positions in [line.get("positions", {})] + line.get("assumption_sets", []):
+			for id in positions:
+				var position: String = positions[id]
+				if result.positions.has(id) and result.positions[id] != position:
+					if result.positions[id] in ["good", "marked"] and position in ["good", "marked"]:
+						position = "marked"
+					else:
+						errors.append("%s: the supporting lines assign incompatible identities to %s." % [line.label, id])
+				result.positions[id] = position
 		for id in line.get("answers", {}):
 			if id not in roots(value, line.cards):
 				continue
@@ -49,8 +50,20 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 	result.cards = roots(value, included)
 	result["graph_errors"] = errors
 	result["test_factors"] = []
+	# A challenged statement is evidence that the statement was made, not an
+	# instruction to endorse its contents alongside the contradicting observation.
+	result["quoted_cards"] = []
+	var factor_lines: Array = value.get("lines", []).duplicate(true)
+	for dispute in value.get("disputes", []):
+		if not valid_dispute(view, dispute) or not dispute.reports.all(func(id): return id in result.cards):
+			continue
+		var alibi = find_card(view, dispute.challenged)
+		if alibi.id not in result.quoted_cards:
+			result.quoted_cards.append(alibi.id)
+		factor_lines.append({"relation": "supports", "cards": dispute.reports, "label": "Challenged home alibi: " + alibi.subject,
+			"test_factor": {"target": alibi.subject, "log2_ratio": 1.0, "origin": "false_alibi"}})
 	var factor_keys: Array = []
-	for line in value.get("lines", []):
+	for line in factor_lines:
 		if line.get("relation", "supports") != "supports" or not line.has("test_factor"):
 			continue
 		var factor: Dictionary = line.test_factor.duplicate(true)
@@ -88,6 +101,15 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 		factor["routes"] = [factor.cards]
 		result.test_factors.append(factor)
 	return result
+
+static func valid_dispute(view: Dictionary, dispute) -> bool:
+	if not dispute is Dictionary or not dispute.get("reports") is Array or dispute.reports.size() != 2 or not dispute.get("challenged") is String or not dispute.get("preferred") is String:
+		return false
+	if dispute.challenged == dispute.preferred or not dispute.reports.has(dispute.challenged) or not dispute.reports.has(dispute.preferred):
+		return false
+	var home = find_card(view, dispute.challenged)
+	var out = find_card(view, dispute.preferred)
+	return not home.is_empty() and not out.is_empty() and home.kind == "alibi" and home.get("night", -1) == out.get("night", -2) and ((out.kind == "sighting" and out.subject == home.subject) or (out.kind == "report" and out.get("role", "") == "nightwatch" and home.subject in out.data.seen))
 
 static func roots(value: Dictionary, ids: Array) -> Array:
 	var result: Array = []

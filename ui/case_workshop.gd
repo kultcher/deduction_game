@@ -337,7 +337,7 @@ func _question(card: Dictionary) -> void:
 	_label(box, "Observed %s %s · reported day %s · learned day %s" % [card.observed_at.phase, card.observed_at.day, card.reported_at.day, card.learned_at.day], 14, "muted")
 	if card.kind == "claim":
 		_label(box, "An implicit role assertion from %s; accepting the claim does not accept the reading." % card.get("origin", "testimony") if card.get("implicit", false) else "This is a role claim, not proof that the gift works.", 15, "muted")
-	if card.id not in session.case_data.cards or (active_line != "" and card.id not in _active_choices().cards):
+	if not _card_available(card):
 		_button(box, "Use in this line" if active_line != "" else "Use this card", func():
 			if card.id not in session.case_data.cards:
 				session.case_data.cards.append(card.id)
@@ -381,7 +381,7 @@ func _question(card: Dictionary) -> void:
 				current.answers[card.id] = {"slots": values, "positive": positive}
 				_edit())
 		if role in ["surveyor", "dowser"]:
-			_label(box, "Why did they register? Optional: assign Good · Marked or Evil under assumptions below. Those choices remain hypotheses.", 15, "muted")
+			_label(box, _identity_hint(), 15, "muted")
 	elif (card.kind == "report" and role == "nightwatch") or card.kind == "sighting":
 		_label(box, "Why were they out? An unanswered reason is allowed. A gift explanation needs supporting testimony.", 16)
 		var current = _active_choices()
@@ -410,6 +410,12 @@ func _question(card: Dictionary) -> void:
 				_label(box, "Cited: %s. This could explain the outing; accuracy and activity are still assumptions." % support.text if not support.is_empty() else "No applicable walking-gift claim is cited; this explanation receives no discount.", 14, "muted")
 	else:
 		_label(box, "This statement can support an explanation or conflict with another report. No additional answer is required.", 16, "muted")
+
+func _card_available(card: Dictionary) -> bool:
+	return card.id in session.case_data.cards and (active_line == "" or card.id in _active_choices().cards)
+
+func _identity_hint() -> String:
+	return "Why did they register? Optional: assign Good · Marked or Evil under assumptions below. Those choices remain hypotheses."
 
 func _active_choices() -> Dictionary:
 	for line in session.case_data.lines:
@@ -612,7 +618,9 @@ func _refresh_jury() -> void:
 			calculation.text += "\nConfidence mode: %s; theory %s → %s (%s); revision comparison threshold %.2f×.\n%s" % [r.theory.mode, r.theory.before, r.theory.position, r.theory.status, r.theory.threshold, r.theory.guardrail]
 			for id in r.support_model.report_acceptance:
 				var card = _report(id)
-				if card.kind != "claim":
+				if id in r.support_model.quoted_cards:
+					calculation.text += "\n%s: quoted testimony; contents challenged, not accepted as accurate." % id
+				elif card.kind != "claim":
 					calculation.text += "\n%s: retained accuracy weight %.3f" % [id, r.support_model.report_acceptance[id]]
 			calculation.visible = false
 			show_calc.toggled.connect(func(on): calculation.visible = on)

@@ -118,7 +118,7 @@ static func search(view: Dictionary, case_data: Dictionary, cards: Array, listen
 static func _local_conflict(cards: Array) -> Array:
 	# Direct two-account contradiction, not a complete multi-card theorem search.
 	for home in cards:
-		if home.kind != "alibi":
+		if home.kind != "alibi" or home.get("quoted", false):
 			continue
 		for sight in cards:
 			if home.get("night", -1) != sight.get("night", -2):
@@ -224,6 +224,8 @@ static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Di
 			fatal = true
 	var self_id: String = knowledge.get("self", "")
 	for card in Solver.selected(view, case_data):
+		if card.get("quoted", false):
+			continue
 		if card.kind == "report" and card.source == self_id:
 			for id in knowledge.get("own_reports", []):
 				var received = Solver.card_by_id(view, id)
