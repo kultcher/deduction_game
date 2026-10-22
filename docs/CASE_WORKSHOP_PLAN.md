@@ -8,8 +8,12 @@ The next UI step is delivered as a fixture-692 card canvas: movable evidence and
 cards, shared answers, directed links, merged contradictions and a separate jury window.
 The separately approved pre-Slice-4 step now adds scoped intermediate-claim assessments
 and simultaneous collateral suspicion effects with shared provenance and retraction.
-Current behavior, provisional tuning and limits
-are documented in [CASE_WORKSHOP.md](CASE_WORKSHOP.md). Later slices remain proposed.
+Slices 4 and 5 are delivered as selectable bounded movement/soot, poison/recovery
+and Revenant/restoration experiments. Their mechanisms, controls, tests and limits are
+documented in [CASE_WORKSHOP_EXPERIMENTS.md](CASE_WORKSHOP_EXPERIMENTS.md).
+Current behavior is documented in [CASE_WORKSHOP.md](CASE_WORKSHOP.md). The Workshop
+plan is complete within its stated fixture scope. Production integration, arbitrary
+histories and deferred mechanics remain separate follow-on work.
 
 ## Direction
 
@@ -272,7 +276,7 @@ statuses. Comparisons clone the same juror and starting attitudes. Private align
 reading receipt and known whereabouts are protected without making gifts infallible.
 Confidence persistence is an alternative to effect scaling, remembers only a partial
 target/epoch commitment, and can revise without inventing illness explanations.
-Repetition is stable; version-4 replay reconstructs theories and all character effects from presentations.
+Repetition is stable; version-5 replay reconstructs theories and all character effects from presentations.
 This slice does not add autonomous town-wide theory construction or temporal exceptions.
 
 ## Separate step before Slice 4 — evaluated claims and collateral effects
@@ -311,14 +315,24 @@ display all consequences and claim-to-parent explanations.
 
 ## Slice 4 — soft evidence in the same case interface
 
+**Delivered:** the Movement & soot fixture uses one activity/route/haunt likelihood
+across sightings, explicit coverage, evening observations, crime-scene material and
+personal items. Credible gift/private-errand claims change the good explanations;
+Marked excludes an additional secret modifier. Repeated nights share latent causes,
+duplicate facts are conjoined, and eligible passers remain alternatives. The old
+pattern heuristic and 2× bonus are disabled in this fixture. Conditional trace/drop
+rates are checked against 10,000 actual generator calls; profile priors remain exposed
+experimental assumptions. Actual role-assignment/route planning for a whole town is
+outside this bounded deliverable. See the experiments guide for controls and limits.
+
 **Completed prerequisite/UI step:** citing a home alibi as a statement to challenge
 no longer endorses its contents beside a contradicting observation. The 692 canvas
 automatically merges that direct contradiction, preserves both originals for inspection
 and unlinking, and can route its circumstantial contribution through a suspiciousness
 premise into an alignment case. The only new factor is a visible, uncalibrated 2×
 comparison for the challenged alibi, conditional on observation credibility. A false
-account does not establish intent or evil. Generic movement/trace likelihood work below
-remains proposed. The current canvas is a separate screen; it preloads fixture evidence
+account does not establish intent or evil. The movement/trace work below is delivered
+as a separate selectable experiment. The canvas preloads fixture evidence
 instead of integrating transfer from the live board.
 
 Evidence and premise links compile to original roots. Direct/chained versions of the
@@ -359,6 +373,16 @@ changing the hidden actual cause alone cannot change the NPC's assessment. Valid
 likelihoods against the specified generative conditions, not just hand-picked examples.
 
 ## Slice 5 — temporal fault and conversion stress tests
+
+**Delivered:** separate legal poison/recovery and Revenant/restoration fixtures; dated
+reading versus reporting credibility; one shared health cause per supported interval;
+explicit unsupported fault hypotheses; epoch selectors and dated assumptions; unknown
+eligible conversion candidates; public withdrawal without erasing original readings;
+native curse/totem restoration, cover-boundary filtering, and version-5 canvas/history
+replay. Native generator paths are exercised, and hidden causes are excluded from
+assessment. Scion succession remains reserved and explicitly unsupported, as planned.
+The fixed public chronology is known to these jurors; uncertain or multiple event
+histories and production NPC integration are not implied by completion of this slice.
 
 **Deliverable:** small deterministic fixtures, not a full campaign integration: a
 poisoned period with recovery, and a Revenant conversion followed by restoration.

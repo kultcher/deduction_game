@@ -9,6 +9,7 @@ const Support = preload("res://workshop/support_model.gd")
 const Theory = preload("res://workshop/theory.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const Consequences = preload("res://workshop/consequences.gd")
+const Movement = preload("res://workshop/movement_model.gd")
 
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
 	var before: Dictionary = listener.suspicion.duplicate(true)
@@ -25,7 +26,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	var primary_listener = baseline.duplicate(true)
 	var result = _assess_target(view, case_data, primary_listener, context)
 	var signature_case = Graph.compile_case(view, case_data)
-	signature_case.conclusion = {"type": "evil", "target": "all", "at": view.alignment_epoch}
+	signature_case.conclusion = {"type": "evil", "target": "all", "at": case_data.conclusion.at}
 	var common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
 		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.confidence,
 		baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
@@ -163,6 +164,9 @@ static func _assess_target(view: Dictionary, case_data: Dictionary, listener: Di
 		"cards": paths, "kind": "conditional" if combined.conditional_mass > combined.forced_mass else "reading"}
 	if conclusion.type == "suspicious" and pattern.weight > best.weight:
 		best = pattern
+	if conclusion.type == "suspicious" and Movement.available(view) and combined.evidence_agreement > 0:
+		best.agreement = maxf(best.agreement, 0.5)
+		best.weight = maxf(best.weight, 0.5)
 	var conflict = assessment.status == "conflicting"
 	if conclusion.type == "conflict":
 		var detected: bool = (reasoning.status == "inconsistent" or not reasoning.private_checks.rejected.is_empty()) if listener.get("reasoning_mode", "full") == "bounded" else assessment.entailment == "forced"
@@ -203,6 +207,8 @@ static func _assess_target(view: Dictionary, case_data: Dictionary, listener: Di
 		response = "I cannot accept all those premises together. I give weight only to the explanations that survive doubting a report." if best.weight > 0 else "Those premises or choices do not fit together. I have withdrawn this case's earlier weight."
 	elif best.kind == "conditional":
 		response = "That follows if I grant your extra choices. You still need to establish those choices."
+	elif stance == "accept" and Movement.available(view) and assessment.entailment == "possible":
+		response = "These observations make your explanation convincing to me, though an alternative remains logically possible."
 	elif stance == "accept":
 		response = "The conclusion follows if those reports are sound. My doubt is in the premises."
 	elif combined.agreement < 0:
@@ -212,7 +218,10 @@ static func _assess_target(view: Dictionary, case_data: Dictionary, listener: Di
 	else:
 		response = "I can see that possibility, but the reports also allow another explanation."
 	if not combined.factors.is_empty():
-		response += " If the linked observation is accurate, the home alibi is false. That is circumstantial evidence, not proof of deliberate deception or evil." if combined.factors.any(func(label): return label.begins_with("Challenged home alibi")) else " The supplied test factor changes which remaining explanation I favor; it does not prove it."
+		if combined.factors.any(func(label): return label.begins_with("Movement / trace")):
+			response += " The routes, observation coverage and traces change which explanation I favor. Lawful activity and eligible passers remain alternatives; this is circumstantial evidence."
+		else:
+			response += " If the linked observation is accurate, the home alibi is false. That is circumstantial evidence, not proof of deliberate deception or evil." if combined.factors.any(func(label): return label.begins_with("Challenged home alibi")) else " The supplied test factor changes which remaining explanation I favor; it does not prove it."
 	if listener.get("reasoning_mode", "full") == "bounded":
 		objection = _bounded_objection(reasoning)
 		if reasoning.private_checks.fatal:
@@ -224,8 +233,10 @@ static func _assess_target(view: Dictionary, case_data: Dictionary, listener: Di
 		elif not reasoning.support.is_empty() and reasoning.status == "provisional":
 			response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
 		elif reasoning.status == "rival_found":
-			var alternative = Solver.describe_world(view, reasoning.rival)
+			var alternative = Solver.describe_world(view, reasoning.rival, conclusion.at)
 			response = "I checked another explanation and it also fits: %s evil; %s Marked. I cannot settle it from this alone." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, alternative.marked)]
+			if Movement.available(view) and stance == "accept":
+				response = "I checked another explanation that also fits, but the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible."
 		elif reasoning.status == "entailed_in_attention":
 			response = "The reports I considered force this if they are accurate."
 		else:
@@ -242,6 +253,8 @@ static func _assess_target(view: Dictionary, case_data: Dictionary, listener: Di
 		response += " " + theory.note
 	if not previous.is_empty() and not repeated and not changes.is_empty():
 		response += " " + " ".join(PackedStringArray(changes))
+	if not case_data.get("faults", {}).is_empty():
+		response += " Your explanation needs impairment in the selected interval. That remains a hypothesis; readings outside it keep their own support."
 	return {"listener": listener.id, "name": listener.name, "version": case_data.version, "stance": stance,
 		"agreement": best.agreement, "quality": best.quality, "strength": strength, "path": best.cards,
 		"path_kind": best.kind, "repeated": repeated, "response": response, "objection": objection, "changes": changes,
@@ -303,6 +316,8 @@ static func _possibility_agreement(view: Dictionary, worlds: Array, conclusion: 
 	return 0.02 + 0.16 * supporting / maxf(supporting + rival, 0.000000001)
 
 static func _pattern(view: Dictionary, case_data: Dictionary, listener: Dictionary) -> Dictionary:
+	if Movement.available(view):
+		return {"weight": 0.0, "agreement": 0.0, "quality": 0.0, "cards": [], "kind": "joint_movement", "incidents": 0, "alibi_conflicts": []}
 	var target: String = case_data.conclusion.target
 	var incidents = {}
 	var contradictions: Array = []
@@ -392,7 +407,14 @@ static func _signature(view: Dictionary, case_data: Dictionary) -> String:
 			routes.sort()
 			factors.append(JSON.stringify([factor.target, factor.log2_ratio, factor.events, routes]))
 	factors.sort()
-	return JSON.stringify(_canonical([keys, case_data.positions, answers, case_data.reasons, citations, scope, case_data.get("challenges", {}), factors, case_data.conclusion, case_data.get("graph_errors", [])]))
+	var timed: Array = []
+	for assignment in case_data.get("temporal_positions", []):
+		for id in assignment.positions:
+			var atom = [assignment.at, id, assignment.positions[id]]
+			if atom not in timed:
+				timed.append(atom)
+	timed.sort_custom(func(a, b): return JSON.stringify(a) < JSON.stringify(b))
+	return JSON.stringify(_canonical([keys, case_data.positions, answers, case_data.reasons, citations, scope, case_data.get("challenges", {}), factors, case_data.conclusion, case_data.get("graph_errors", []), case_data.get("faults", {}), timed]))
 
 static func _canonical(value):
 	if value is Dictionary:

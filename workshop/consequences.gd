@@ -6,6 +6,8 @@ const Graph = preload("res://workshop/case_graph.gd")
 const Support = preload("res://workshop/support_model.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const Theory = preload("res://workshop/theory.gd")
+const Movement = preload("res://workshop/movement_model.gd")
+const TimeModel = preload("res://workshop/chronology.gd")
 
 static func assess(view: Dictionary, value: Dictionary, baseline: Dictionary, pattern_fn: Callable, common_key: String, primary_theory: Dictionary) -> Dictionary:
 	var attention = Reasoner.prepare(view, value, baseline)
@@ -14,7 +16,7 @@ static func assess(view: Dictionary, value: Dictionary, baseline: Dictionary, pa
 	var theories: Dictionary = baseline.get("theories", {}).duplicate(true)
 	for person in view.people:
 		var evil_case: Dictionary = attention.case.duplicate(true)
-		evil_case.conclusion = {"type": "evil", "target": person.id, "at": view.alignment_epoch}
+		evil_case.conclusion = {"type": "evil", "target": person.id, "at": value.conclusion.at}
 		var prepared = _prepared(view, attention, evil_case, baseline)
 		var clone = baseline.duplicate(true)
 		var reasoning = Support.explain(view, evil_case, clone, prepared)
@@ -29,19 +31,20 @@ static func assess(view: Dictionary, value: Dictionary, baseline: Dictionary, pa
 		var good = Support.assess(view, good_case, baseline, theory.bias, good_prepared)
 		# Subtract what the listener's private evidence and priors already explained.
 		# Comparing evil and good also lets exonerating evidence reduce suspicion.
-		var alignment: float = 0.45 * (evil.evidence_agreement - good.evidence_agreement)
+		var contrast: float = evil.evidence_agreement - good.evidence_agreement
+		var alignment: float = 0.45 * (clampf(contrast, -1.0, 1.0) if Movement.available(view) else contrast)
 		var pattern_case = evil_case.duplicate(true)
 		pattern_case.conclusion.type = "suspicious"
 		pattern_case.cards = pattern_case.cards.filter(func(id): return id not in prepared.private_checks.rejected)
 		var pattern: Dictionary = pattern_fn.call(view, pattern_case, baseline)
-		var circumstantial: float = 0.3 * pattern.weight
+		var circumstantial: float = 0.0 if Movement.available(view) else 0.3 * pattern.weight
 		# Existing pattern tuning and the world comparison can describe the SAME
 		# incident. Use the stronger route, never sum them. Slice 4 replaces this
 		# provisional envelope with a causal movement/trace model.
 		var net_weight: float = circumstantial if circumstantial > absf(alignment) else alignment
 		if prepared.private_checks.fatal or not attention.case.get("graph_errors", []).is_empty() or not Solver.validate_answers(view, attention.case).is_empty():
 			net_weight = 0.0
-		if person.id in baseline.knowledge.get("good", []):
+		if TimeModel.known_good(view, baseline.knowledge, person.id, value.conclusion.at):
 			net_weight = 0.0
 		if value.conclusion.type == "conflict":
 			net_weight = 0.0 # Identifying inconsistent testimony is not an accusation.
@@ -68,6 +71,8 @@ static func assess(view: Dictionary, value: Dictionary, baseline: Dictionary, pa
 		var agreement: float = support.agreement
 		if scoped.conclusion.type == "suspicious":
 			agreement = maxf(agreement, pattern.agreement if pattern.weight > 0 else 0.0)
+			if Movement.available(view) and support.evidence_agreement > 0:
+				agreement = maxf(agreement, 0.5)
 		elif scoped.conclusion.type == "conflict":
 			agreement = 1.0 if thought.status == "inconsistent" or not thought.private_checks.rejected.is_empty() else 0.0
 		if thought.private_checks.fatal:
@@ -79,6 +84,8 @@ static func assess(view: Dictionary, value: Dictionary, baseline: Dictionary, pa
 			note = " ".join(PackedStringArray(thought.private_checks.objections))
 		elif scoped.conclusion.type == "suspicious" and pattern.weight > 0:
 			note = "The observations give a circumstantial reason for suspicion; they do not establish evil."
+		elif scoped.conclusion.type == "suspicious" and Movement.available(view) and support.evidence_agreement > 0:
+			note = "The joint movement and trace comparison gives a circumstantial reason for suspicion; it does not establish evil."
 		elif scoped.conclusion.type == "conflict":
 			note = "The considered accounts conflict; that does not identify deliberate deception or evil." if agreement > 0 else "I have not established a conflict in the considered accounts."
 		elif thought.status == "entailed_in_attention":
@@ -87,6 +94,8 @@ static func assess(view: Dictionary, value: Dictionary, baseline: Dictionary, pa
 			note = "This fits the evidence I checked; I have not checked another explanation."
 		elif thought.status == "inconsistent":
 			note = "The premises I checked cannot all hold together."
+		elif Movement.available(view) and agreement >= 0.6 and thought.status == "rival_found":
+			note = "Another explanation still fits, but the joint movement and trace comparison favors this claim."
 		var item = {"id": argument.id, "label": argument.label, "conclusion": scoped.conclusion.duplicate(true),
 			"parents": argument.parents.duplicate(), "cards": scoped.cards.duplicate(),
 			"ignored": Graph.compile_case(view, argument.case).cards.filter(func(id): return id not in scoped.cards),

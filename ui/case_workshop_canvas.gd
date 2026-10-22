@@ -2,6 +2,8 @@
 extends "res://ui/case_workshop.gd"
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const CanvasView = preload("res://ui/workshop_canvas_view.gd")
+const Fixtures = preload("res://workshop/fixtures.gd")
+const TimeModel = preload("res://workshop/chronology.gd")
 var board
 var canvas
 var answer_window: Window
@@ -14,6 +16,7 @@ var premise_person: OptionButton
 var premise_type: OptionButton
 var present_button: Button
 var selection_label: Label
+var experiment_picker: OptionButton
 
 func _ready() -> void:
 	theme = WorkshopSkin.make()
@@ -36,7 +39,9 @@ func _ready() -> void:
 	var heading = HBoxContainer.new()
 	page.add_child(heading)
 	_label(heading, "Make a Case", 30).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_label(heading, "692 · DAY 3 · EXPERIMENT", 16, "accent")
+	experiment_picker = _option(heading, Fixtures.NAMES)
+	experiment_picker.name = "WorkshopExperiment"
+	experiment_picker.item_selected.connect(_load_fixture)
 	var tools = HFlowContainer.new()
 	tools.add_theme_constant_override("h_separation", 10)
 	page.add_child(tools)
@@ -141,6 +146,35 @@ func _build_windows() -> void:
 	jury_body.add_child(jury_box)
 	_refresh_jury()
 
+func _load_fixture(index: int) -> void:
+	answer_window.hide()
+	answer_id = ""
+	session.generate(692, Fixtures.KINDS[index])
+	board = CanvasModel.new(session.scenario.public_view)
+	canvas.model = board
+	canvas.linking = ""
+	case_root = board.selected
+	if index == 0:
+		board.mockup()
+		case_root = board.selected
+	elif index == 1:
+		for id in ["survey", "rumor", "dowse", "vigil3", "soot2", "evening2", "soot3", "evening3"]:
+			board.connect_cards("e:" + id, case_root)
+	elif index == 2:
+		board.nodes[case_root].conclusion.target = session.scenario.slots.scion
+		for id in ["survey", "rumor", "dowse", "dowse_recovered", "vial1"]:
+			board.connect_cards("e:" + id, case_root)
+	else:
+		board.nodes[case_root].conclusion.target = session.scenario.slots.rumormonger
+		board.nodes[case_root].conclusion.at = "during curse"
+		for id in ["survey", "rumor", "dowse", "curse_warning", "totem_found"]:
+			board.connect_cards("e:" + id, case_root)
+	board.selected = case_root
+	remember.button_pressed = false
+	_session_changed()
+	_refresh_jury()
+	canvas.fit_case()
+
 func _window_body(window: Window) -> VBoxContainer:
 	var background = ColorRect.new()
 	background.color = WorkshopSkin.color("bg")
@@ -203,6 +237,8 @@ func _session_changed() -> void:
 	_sync()
 	canvas.queue_redraw()
 	var finding: String = analysis.errors[0] if not analysis.errors.is_empty() else ("These proposed accounts or choices conflict." if analysis.status == "conflicting" else analysis.entailment)
+	if not session.case_data.get("faults", {}).is_empty() and analysis.proposed > 0:
+		finding = "Fits conditionally on the selected impairment hypothesis"
 	status.text = "%s · %d connected reports · %s. Disconnected cards are scratch work." % [board.title(case_root), session.case_data.cards.size(), finding]
 
 func _open_answer(id: String) -> void:
@@ -231,24 +267,54 @@ func _refresh_case() -> void:
 		# Answers on disconnected copies are editable without enrolling those copies
 		# into the selected case. Only the presentation graph chooses its evidence.
 		_question(_report(node.card))
+		var report: Dictionary = _report(node.card)
+		if report.kind == "report" and session.scenario.public_view.get("chronology", {}).has("poison_windows"):
+			var windows: Dictionary = session.scenario.public_view.chronology.poison_windows
+			for key in windows:
+				var window: Dictionary = windows[key]
+				if report.source != window.subject or TimeModel.tick(report.observed_at) < window.from or TimeModel.tick(report.observed_at) >= window.until:
+					continue
+				_label(case_box, "Could this reading have been poisoned? The interval ends when the next night starts; a later recovered reading is separate.", 16)
+				var fault = _option(case_box, ["No poisoning hypothesis", "Possible poisoning — unsupported hypothesis", "Possible poisoning — cite the vial observation"])
+				fault.name = "PoisonExplanation"
+				var existing: Dictionary = node.get("faults", {}).get(key, {})
+				fault.select(0 if existing.is_empty() else (1 if existing.get("basis", "") == "" else 2))
+				fault.item_selected.connect(func(i):
+					if not node.has("faults"):
+						node.faults = {}
+					if i == 0:
+						node.faults.erase(key)
+					else:
+						node.faults[key] = {"type": "poisoned", "window": key, "basis": "vial1" if i == 2 else ""}
+					_edit())
+				_label(case_box, "A bare hypothesis adds no evidence. Cited support opens one shared healthy/poisoned uncertainty for reports in this interval; it does not prove poison.", 15, "muted")
 	elif node.kind == "contradiction":
 		for child in node.children:
 			_label(case_box, _report(board.nodes[child].card).text, 18)
 		_label(case_box, "The linked observation challenges the alibi. Both reports remain as evidence, but you are not asserting that both contents are accurate.", 17)
 		_label(case_box, "If the observation is believed, the alibi is false. Whether that was a deliberate lie, and whether it indicates evil, remain further inferences.", 16, "muted")
-		_label(case_box, "Workshop tuning: a fixed 2× evil/good comparison factor, gated by the linked observation's credibility. This is circumstantial and uncalibrated.", 15, "muted")
+		_label(case_box, "This fixture uses the shared movement/trace likelihood. The old separate 2× alibi bonus is disabled." if board.view.has("movement_experiment") else "Workshop tuning: a fixed 2× evil/good comparison factor, gated by the linked observation's credibility. This is circumstantial and uncalibrated.", 15, "muted")
 		_button(case_box, "Unlink and restore the originals", func():
 			board.unmerge(answer_id)
 			answer_window.hide()
 			answer_id = ""
 			_session_changed())
 	else:
+		var epochs: Array = TimeModel.epochs(session.scenario.public_view)
+		if epochs.size() > 1 and not node.conclusion.is_empty():
+			_label(case_box, "When is this claim about?", 17)
+			var when = _option(case_box, epochs)
+			when.name = "ClaimEpoch"
+			when.select(epochs.find(node.conclusion.at))
+			when.item_selected.connect(func(i):
+				node.conclusion.at = epochs[i]
+				_edit())
 		_label(case_box, "Assumptions apply to this premise's argument. Supporting premises keep their own local assumptions. Chosen identities are hypotheses, not testimony.", 16, "muted")
 		for person in session.scenario.public_view.people:
 			var row = HBoxContainer.new()
 			case_box.add_child(row)
 			_label(row, person.name, 17).custom_minimum_size.x = 180
-			var option = _option(row, ["? Unresolved", "Good", "Evil", "Good · Marked"])
+			var option = _option(row, ["? Unresolved", "Good", "Evil", "Marked (registration)" if board.view.get("chronology", {}).has("curse") else "Good · Marked"])
 			option.name = "Assumption_" + person.id
 			option.select(["", "good", "evil", "marked"].find(node.positions.get(person.id, "")))
 			option.item_selected.connect(func(i):
@@ -260,7 +326,7 @@ func _refresh_case() -> void:
 		if not node.conclusion.is_empty():
 			var isolated = board.compile(answer_id)
 			var result = Solver.analyze(board.view, isolated)
-			_label(case_box, "This argument: %s. %d compatible alignment/Marked assignments. Counts are not probabilities." % [result.entailment, result.compatible], 16)
+			_label(case_box, "Healthy-report check: %s (%d assignments). Proposed explanation: %s (%d assignments). Counts are not probabilities." % [result.entailment, result.compatible, result.status, result.proposed], 16)
 			for error in result.errors:
 				_label(case_box, error, 16, "accent")
 	_button(case_box, "Done", func():
@@ -380,6 +446,7 @@ func _open(path: String) -> void:
 		status.text = "Invalid canvas view or presentation settings."
 		return
 	session = candidate
+	experiment_picker.select(Fixtures.KINDS.find(session.scenario.fixture))
 	board = next_board
 	case_root = value.root
 	canvas.model = board
@@ -397,15 +464,21 @@ func _open(path: String) -> void:
 func _smoke() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
-	board.mockup()
-	case_root = board.selected
+	var args = OS.get_cmdline_user_args()
+	var fixture_index = args.find("--workshop-fixture")
+	if fixture_index >= 0 and fixture_index + 1 < args.size() and args[fixture_index + 1] in Fixtures.KINDS:
+		var selected_fixture: int = Fixtures.KINDS.find(args[fixture_index + 1])
+		experiment_picker.select(selected_fixture)
+		_load_fixture(selected_fixture)
+	else:
+		board.mockup()
+		case_root = board.selected
 	_session_changed()
 	canvas.fit_case()
 	_present()
 	jury_window.hide()
-	var args = OS.get_cmdline_user_args()
 	if "--workshop-answer-shot" in args:
-		_open_answer("e:survey")
+		_open_answer(case_root if session.scenario.fixture == "revenant" else ("e:dowse" if session.scenario.fixture == "poison" else "e:survey"))
 	elif "--workshop-jury-shot" in args:
 		_show_jury()
 	for frame in range(6):

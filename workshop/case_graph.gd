@@ -7,6 +7,7 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 	var errors: Array = []
 	var assigned: Array = []
 	var included: Array = []
+	result["faults"] = value.get("faults", {}).duplicate(true)
 	for line in value.get("lines", []):
 		for id in line.cards:
 			if id not in assigned:
@@ -14,6 +15,7 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 		if line.get("relation", "supports") != "supports":
 			continue
 		included.append_array(line.cards)
+		result.faults = combine_faults(result.faults, line.get("faults", {}), errors)
 		for positions in [line.get("positions", {})] + line.get("assumption_sets", []):
 			for id in positions:
 				var position: String = positions[id]
@@ -48,6 +50,22 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 		if id not in assigned:
 			included.append(id)
 	result.cards = roots(value, included)
+	if view.has("movement_experiment"):
+		# Choosing a citation in Answer is an explicit evidence reference, just like
+		# drawing a string from the claim. It enters the ordinary attention budget.
+		for key in result.get("citations", {}):
+			var claim = find_card(view, result.citations[key])
+			if claim.is_empty():
+				continue
+			var outings: Array = result.cards.map(func(id): return find_card(view, id)).filter(func(c): return "%s:%d" % [claim.get("subject", ""), c.get("night", -1)] == key and ((c.kind == "sighting" and c.subject == claim.subject) or (c.get("role") == "nightwatch" and claim.subject in c.data.seen)))
+			if outings.is_empty():
+				continue
+			var night: int = outings[0].night
+			var valid: bool = not valid_citation(view, result, claim.subject, night).is_empty()
+			if claim.kind == "secret_claim":
+				valid = night >= claim.applies.from and night <= claim.applies.through
+			if valid and claim.id not in result.cards:
+				result.cards.append(claim.id)
 	result["graph_errors"] = errors
 	result["test_factors"] = []
 	# A challenged statement is evidence that the statement was made, not an
@@ -60,6 +78,8 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 		var alibi = find_card(view, dispute.challenged)
 		if alibi.id not in result.quoted_cards:
 			result.quoted_cards.append(alibi.id)
+		if view.has("movement_experiment"):
+			continue # Outings already enter one shared likelihood; no extra 2x award.
 		factor_lines.append({"relation": "supports", "cards": dispute.reports, "label": "Challenged home alibi: " + alibi.subject,
 			"test_factor": {"target": alibi.subject, "log2_ratio": 1.0, "origin": "false_alibi"}})
 	var factor_keys: Array = []
@@ -100,6 +120,20 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 		factor["events"] = facts
 		factor["routes"] = [factor.cards]
 		result.test_factors.append(factor)
+	return result
+
+static func combine_faults(first: Dictionary, second: Dictionary, errors: Array = []) -> Dictionary:
+	var result = first.duplicate(true)
+	for key in second:
+		if not result.has(key):
+			result[key] = second[key].duplicate(true)
+		elif result[key] != second[key]:
+			var old: String = result[key].get("basis", "")
+			var added: String = second[key].get("basis", "")
+			if old != "" and added != "" and old != added:
+				errors.append("Supporting lines offer different fault grounds; separate the alternatives.")
+			elif old == "":
+				result[key] = second[key].duplicate(true)
 	return result
 
 static func valid_dispute(view: Dictionary, dispute) -> bool:

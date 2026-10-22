@@ -32,7 +32,7 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 		candidate_score = reasoning.rival_score
 		other = reasoning.support
 		other_score = reasoning.support_score
-	var position = _position(view, candidate, target, value.conclusion.type)
+	var position = _position(view, candidate, target, value.conclusion.type, value.conclusion.at)
 	var status = "adopted"
 	var apply_bias = false
 	if reasoning.private_checks.fatal:
@@ -49,7 +49,7 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 			status = "retained"
 			apply_bias = true
 		else:
-			var certified: bool = value.positions.is_empty() and value.answers.is_empty() and ((reasoning.support.is_empty() and reasoning.support_exhausted) or (reasoning.rival.is_empty() and reasoning.rivals_exhausted))
+			var certified: bool = value.positions.is_empty() and value.answers.is_empty() and value.get("temporal_positions", []).is_empty() and ((reasoning.support.is_empty() and reasoning.support_exhausted) or (reasoning.rival.is_empty() and reasoning.rivals_exhausted))
 			var old_score = other_score
 			var strong: bool = old_score > 0.0 and candidate_score / old_score >= result.threshold
 			if certified or strong or (old_score == 0.0 and listener.confidence < 0.34):
@@ -72,10 +72,10 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 		"shortlist": [reasoning.support.duplicate(true), reasoning.rival.duplicate(true)], "epoch": value.conclusion.at}
 	return result
 
-static func _position(view: Dictionary, world: Dictionary, target: String, type: String) -> String:
+static func _position(view: Dictionary, world: Dictionary, target: String, type: String, epoch: String) -> String:
 	if world.is_empty():
 		return ""
 	var index: int = view.people.map(func(p): return p.id).find(target)
 	if type == "marked":
 		return "marked" if world.marked == index else "unmarked"
-	return "evil" if world.evil & (1 << index) else "good"
+	return "evil" if Solver.position_holds(view, world, target, "evil", epoch) else "good"

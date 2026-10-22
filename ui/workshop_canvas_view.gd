@@ -30,6 +30,8 @@ func body(id: String) -> Array:
 	if node.kind == "premise":
 		var count: int = model.links.filter(func(e): return e.to == id).size()
 		var result: Array = ["%d incoming connections" % count, "Select this premise to present its case."]
+		if model.view.has("chronology") and not node.conclusion.is_empty():
+			result.append("At: " + node.conclusion.at)
 		for person in node.positions:
 			result.append("Assume %s: %s" % [Solver.person_name(model.view, person), node.positions[person]])
 		return result
@@ -39,6 +41,11 @@ func body(id: String) -> Array:
 		return [home.text, observation.text, "If the observation is accurate, the home alibi is false.", "Circumstantial; does not prove evil."]
 	var card = Solver.card_by_id(model.view, node.card)
 	var result: Array = [card.text]
+	if card.kind == "event" and card.get("event") == "curse":
+		var chosen: Array = node.answers.get(card.id, {}).get("positive", [])
+		result.append("Converted voter: " + ("?" if chosen.is_empty() else Solver.person_name(model.view, chosen[0])))
+	for fault in node.get("faults", {}).values():
+		result.append("Possible poison: %s (%s)" % [fault.window, "unsupported" if fault.get("basis", "") == "" else "cites " + fault.basis])
 	var slots: Array = node.answers.get(card.id, {}).get("slots", node.answers.get(card.id, {}).get("positive", []))
 	if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "lamplighter"]:
 		var count: int = 1 if card.role == "rumormonger" else card.data.count

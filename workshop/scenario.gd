@@ -6,12 +6,13 @@ const World = preload("res://sim/world.gd")
 const NPC = preload("res://sim/npc.gd")
 const C = preload("res://sim/content.gd")
 const Gifts = preload("res://sim/gifts.gd")
+const Fixtures = preload("res://workshop/fixtures.gd")
 
 const IDS = ["constance", "bart", "nisha", "odette", "agnes", "hollis", "merrin", "lian", "greta", "fenwick"]
 const ROLES = ["demon", "surveyor", "warden", "nightwatch", "lamplighter", "scion", "rumormonger", "revenant", "veteran", "dowser"]
 const HOMES = ["hill", "hill", "square", "square", "square", "market", "market", "docks", "docks", "docks"]
 
-static func generate(seed_value: int = 692) -> Dictionary:
+static func generate(seed_value: int = 692, fixture: String = "core") -> Dictionary:
 	var w = World.new()
 	w.seed_value = seed_value
 	w.rng.seed = seed_value
@@ -138,12 +139,12 @@ static func generate(seed_value: int = 692) -> Dictionary:
 	w.phase = C.MORNING
 	var public_view = {"seed": seed_value, "day": 3, "people": people, "cards": cards, "evil_count": 3,
 		"secret": "marked", "secret_count": 1, "alignment_epoch": "opening through day 3",
-		"history": ["Night 1: the Veteran's protection stops an attack.", "Dawn 3: %s is found dead after a second attack." % w.npcs[8].name],
+		"history": ["Night 1: no death was announced.", "Dawn 3: %s is found dead." % w.npcs[8].name],
 		"scope": "Ten people, three original evil, one good Marked. No alignment changes in this fixture. Reports may be lies or impaired; accepting a report assumes its source was good, held the claimed gift and was healthy when it was made."}
 	var truth: Array = []
 	for n in w.npcs:
 		truth.append({"id": n.id, "role": n.role, "alignment": n.alignment, "secret": n.secret_mod})
-	return {"public_view": public_view, "truth": truth, "timeline": timeline, "slots": slots, "jury": _jury(w, slots, cards)}
+	return Fixtures.configure({"public_view": public_view, "truth": truth, "timeline": timeline, "slots": slots, "jury": _jury(w, slots, cards)}, fixture, w)
 
 static func _add_report(cards: Array, n, id: String, acquired: int) -> void:
 	var e: Dictionary = n.info_log[-1]

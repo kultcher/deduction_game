@@ -2,6 +2,7 @@
 extends RefCounted
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
+const TimeModel = preload("res://workshop/chronology.gd")
 
 static func profile(insight: float) -> Dictionary:
 	if insight < 0.34:
@@ -157,13 +158,14 @@ static func _find(view: Dictionary, cards: Array, case_data: Dictionary, listene
 				if mask & (1 << i):
 					evil |= 1 << ids.find(pool[i])
 			var world = {"evil": evil, "marked": ids.find(marked)}
-			if Solver.holds(view, world, case_data.conclusion) != want:
-				continue
-			if tested >= budget:
-				return {"world": {}, "tested": tested, "exhausted": false}
-			tested += 1
-			if movement.okay and _matches(view, world, cards, listener.knowledge, positions, answers):
-				return {"world": world, "tested": tested, "exhausted": false}
+			for candidate in TimeModel.expand(view, world):
+				if Solver.holds(view, candidate, case_data.conclusion) != want:
+					continue
+				if tested >= budget:
+					return {"world": {}, "tested": tested, "exhausted": false}
+				tested += 1
+				if movement.okay and _matches(view, candidate, cards, listener.knowledge, positions, answers, case_data.conclusion.at, case_data.get("temporal_positions", [])):
+					return {"world": candidate, "tested": tested, "exhausted": false}
 	return {"world": {}, "tested": tested, "exhausted": true}
 
 static func _candidate_priority(id: String, target: String, cards: Array, listener: Dictionary, want: bool, type: String) -> float:
@@ -176,14 +178,18 @@ static func _candidate_priority(id: String, target: String, cards: Array, listen
 		score += 10.0 if evil_target else -10.0
 	return score
 
-static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, positions: Dictionary, answers: Dictionary) -> bool:
+static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, positions: Dictionary, answers: Dictionary, epoch: String = "", temporal_positions: Array = []) -> bool:
 	var ids: Array = view.people.map(func(p): return p.id)
 	for id in knowledge.get("good", []):
-		if not Solver._position_holds(ids, world, id, "good"):
+		if not Solver.position_holds(view, world, id, "good", knowledge.get("good_epoch", epoch)):
 			return false
 	for id in positions:
-		if not Solver._position_holds(ids, world, id, positions[id]):
+		if not Solver.position_holds(view, world, id, positions[id], epoch):
 			return false
+	for assignment in temporal_positions:
+		for id in assignment.positions:
+			if not Solver.position_holds(view, world, id, assignment.positions[id], assignment.at):
+				return false
 	for card in cards:
 		if not Solver._report_holds(view, world, card, answers.get(card.id, {})):
 			return false
@@ -202,12 +208,16 @@ static func _swaps(view: Dictionary, cards: Array, case_data: Dictionary, listen
 			var candidate = {"evil": (seed.evil & ~(1 << ids.find(outgoing))) | (1 << ids.find(incoming)), "marked": seed.marked}
 			if incoming == ids[seed.marked]:
 				candidate.marked = ids.find(outgoing)
+			if seed.has("converted"):
+				candidate["converted"] = seed.converted
+				if candidate.evil & (1 << candidate.converted):
+					continue
 			if Solver.holds(view, candidate, case_data.conclusion):
 				continue
 			if tested >= budget:
 				return {"world": {}, "tested": tested, "exhausted": false}
 			tested += 1
-			if movement.okay and _matches(view, candidate, cards, listener.knowledge, {}, {}):
+			if movement.okay and _matches(view, candidate, cards, listener.knowledge, {}, {}, case_data.conclusion.at):
 				return {"world": candidate, "tested": tested, "exhausted": false}
 	return {"world": {}, "tested": tested, "exhausted": false} # swaps are never an exhaustive proof
 
@@ -215,14 +225,19 @@ static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Di
 	var objections: Array = []
 	var rejected: Array = []
 	var fatal = false
-	if case_data.conclusion.type == "evil" and case_data.conclusion.target in knowledge.get("good", []):
+	if case_data.conclusion.type == "evil" and TimeModel.known_good(view, knowledge, case_data.conclusion.target, case_data.conclusion.at):
 		objections.append("I know I was good at that time; this accusation cannot be right about me.")
 		fatal = true
 	for id in knowledge.get("good", []):
-		if case_data.positions.get(id, "") == "evil":
+		if case_data.positions.get(id, "") == "evil" and TimeModel.known_good(view, knowledge, id, case_data.conclusion.at):
 			objections.append("Your explanation makes someone I know was good evil.")
 			fatal = true
 	var self_id: String = knowledge.get("self", "")
+	for assignment in case_data.get("temporal_positions", []):
+		for id in assignment.positions:
+			if assignment.positions[id] == "evil" and TimeModel.known_good(view, knowledge, id, assignment.at):
+				objections.append("Your dated explanation makes someone evil when I know they were good.")
+				fatal = true
 	for card in Solver.selected(view, case_data):
 		if card.get("quoted", false):
 			continue

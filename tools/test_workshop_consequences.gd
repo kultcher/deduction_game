@@ -168,7 +168,7 @@ func _run() -> void:
 	check(restored.restore(malformed) != "" and restored.export_data() == unchanged, "invalid argument graph is rejected atomically")
 	var obsolete = JSON.parse_string(JSON.stringify(session.export_data()))
 	obsolete.format = "demonologist-case-workshop-3"
-	check(restored.restore(obsolete).contains("Version 4"), "old model histories are not silently replayed with different persuasion semantics")
+	check(restored.restore(obsolete).contains("Version 5"), "old model histories are not silently replayed with different persuasion semantics")
 	await _ui()
 	print("Workshop consequences: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

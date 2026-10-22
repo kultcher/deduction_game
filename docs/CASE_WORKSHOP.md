@@ -8,19 +8,26 @@ The Workshop freezes a scripted ten-person town at dawn on day 3. It tests expre
 interpreting and revising a case. Its new interpreter does not change the main game's
 argument, persuasion, voting or dialogue systems.
 
-Slices 1–3 of the [implementation plan](CASE_WORKSHOP_PLAN.md) are implemented:
+Slices 1–5 of the [implementation plan](CASE_WORKSHOP_PLAN.md) are implemented within
+their bounded fixture scope. The first three provide:
 explicit claims/citations, report conflicts, multiple reasoning lines, and shared
 support, followed by bounded Insight reasoning and experimental confidence persistence.
 The controlled soft-factor experiment tests convergence; actual movement and trace
-likelihoods remain slice 4. A separate pre-Slice-4 step adds scoped intermediate-claim
+likelihoods are available in the separate Slice-4 experiment. A pre-Slice-4 step adds scoped intermediate-claim
 assessments and one replaceable set of effects on everyone implicated or exonerated.
 
-The default screen is now a freeform card canvas, limited to fixture 692. The previous
+The default screen is a freeform card canvas with four selectable experiments based
+on fixture 692. The previous
 list-based experiment remains available by running `ui/case_workshop_lab.tscn` with F6.
 It retains the seed generator and supplied-factor controls. Earlier experiment formats
 are refused because their belief-update semantics differ.
 
 ## Canvas workflow
+
+Use the selector beside **Make a Case** for **692 · Reading chains**, **Movement & soot**,
+**Poison & recovery**, or **Revenant & restoration**. See the
+[experiment guide](CASE_WORKSHOP_EXPERIMENTS.md) for the new controls, models and limits.
+Changing experiments starts a fresh workspace; save arrangements you want to retain.
 
 1. The workspace starts with all sixteen evidence cards and a Constance accusation.
    **Load mockup** assembles the user's proposed reading chain and challenged alibi.
@@ -61,7 +68,7 @@ are refused because their belief-update semantics differ.
    whether its evidence strengthens the parent or leaves an alternative available.
 7. **Save/Open** stores the graph, card positions, answers, active premise, view, jury
    settings and replayable discussion. Canvas files use `demonologist-workshop-canvas-1`,
-   containing the version-4 experiment. Imports validate provenance and graph structure
+   containing the version-5 experiment. Imports validate provenance and graph structure
    before replacing the current workspace. Older histories require their original code
    version; they are not silently replayed under the new model.
 
@@ -71,7 +78,7 @@ Rearranging cards has no effect. Explicit grouping can still affect which connec
 bounded-Insight juror attends to; named source trust and gift explanations retain their
 distinct roles. Links support editing and attention, not an ordering-dependent evidence bonus.
 
-The only added evidence-weighting rule in this UI step is the challenged home alibi:
+The original reading experiment's added evidence-weighting rule is the challenged home alibi:
 one fixed, uncalibrated **2× evil/good comparison factor**, gated by the contradicting
 observation's credibility. The quoted alibi records known testimony without assuming
 its contents true; distrusting Constance does not erase the fact that she made the claim.
@@ -129,7 +136,8 @@ cross-case provenance remain future work.
 
 Board-to-workshop transfer, independent duplicate interpretations, collapsing whole
 cases, relationship-choice prompts for ambiguous future evidence, and automatic
-movement/soot likelihoods remain future work. This canvas preloads the existing fixture;
+movement/soot inference from the running game remain future work. The separate movement
+experiment is implemented; this canvas preloads controlled fixture evidence,
 it does not read or alter the running main-game case. A linked role claim does not
 silently accept its associated gift result.
 
@@ -204,10 +212,11 @@ contradictory supplied test factors receive explicit feedback instead of multipl
 each presentation, objections and actual changes. **Open experiment** validates the file
 and replays its history rather than trusting the exported outcomes. Imports support up to
 200 presentations. Developer truth is omitted unless its checkbox is enabled; that data
-never reaches the interpreter. Version 4 adds intermediate-claim scopes, dependency
-links and replay of multi-character effects to the earlier provenance and reasoning
+never reaches the interpreter. Version 5 includes intermediate-claim scopes, dependency
+links, multi-character effects, movement models, poison hypotheses and chronology in
+the earlier provenance and reasoning
 settings. Personal knowledge belongs to the fixture; theories are reconstructed
-from presentations, not accepted as injected baseline memory. Version-1 through version-3
+from presentations, not accepted as injected baseline memory. Version-1 through version-4
 exports are explicitly refused because the assessment model changed; they are not
 silently replayed with different semantics.
 
@@ -230,15 +239,20 @@ silently replayed with different semantics.
   Reading/event time, reporting time and learned time are separate fields. In this
   fixture testimony is reported when the player acquires it. Role assertions retain
   whether they were implicit in a report, their origin and their asserted interval.
-- The proof of concept has no alignment transitions, poisoner, or role changes. The
+- The original reading fixture has no alignment transitions, poisoner, or role changes. The
   exported alignment epoch explicitly covers opening through day 3. Revenant/Scion
-  transitions, arbitrary poisoned readings and the remaining roles require further work.
+  transitions now have separate bounded experiments. Arbitrary histories, Scion
+  succession and the remaining roles require further work.
 - The movement solver checks possible sets of walkers and the Lamplighter's count,
   excluding the Lamplighter. Watch sightings require those people to be out. It does not
   solve alternative routes or infer that an unseen person stayed home. Full route/alibi
   reasoning and physical trace patterns remain outside this slice.
 
 ## Interpreter shape and provisional tuning
+
+The tuning discussion below describes the original reading fixture. The new joint
+movement and temporal experiments extend it as documented in the
+[experiment guide](CASE_WORKSHOP_EXPERIMENTS.md).
 
 `case + listener + context -> assessment + ledger update + response`
 
@@ -259,7 +273,8 @@ Each consistent scenario contributes once, so overlapping proof routes do not du
 Merrin. Inconsistent scenarios are excluded and remaining weights normalized, exposing
 localized report-accuracy doubt. These are experimental tuning weights, not calibrated
 probabilities or a full generative Bayesian model. A source variable is a coarse shared
-dependency; causal poison periods and conversion histories remain future work.
+dependency; bounded poison periods and conversion histories are now tested in the
+separate experiments. General causal histories remain future work.
 
 The jury retains player trust, confidence, stance, suspicion and a replaceable evidence
 ledger. Private knowledge of being good is fixed; own readings participate through their
@@ -376,6 +391,7 @@ godot --headless --path . --script res://tools/test_workshop_reasoning.gd
 godot --headless --path . --script res://tools/test_workshop_ui.gd
 godot --headless --path . --script res://tools/test_workshop_canvas.gd
 godot --headless --path . --script res://tools/test_workshop_consequences.gd
+godot --headless --path . --script res://tools/test_workshop_remaining.gd
 godot --headless --path . res://ui/case_workshop.tscn -- --workshop-smoke
 ```
 

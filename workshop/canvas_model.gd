@@ -155,6 +155,7 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 		return result
 	result.conclusion = nodes[root].conclusion.duplicate(true)
 	result.positions = nodes[root].positions.duplicate(true)
+	result.faults = nodes[root].get("faults", {}).duplicate(true)
 	var all = ancestors(root)
 	var direct: Array = []
 	for edge in links:
@@ -165,7 +166,8 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 			var line = {"id": edge.from, "label": title(edge.from), "relation": "supports", "cards": _evidence(branch), "positions": {}, "answers": {}, "assumption_sets": []}
 			for id in branch:
 				if nodes[id].kind == "premise":
-					line.assumption_sets.append(nodes[id].positions.duplicate(true))
+					if nodes[id].conclusion.get("at", result.conclusion.at) == result.conclusion.at:
+						line.assumption_sets.append(nodes[id].positions.duplicate(true))
 			if not nodes[edge.from].conclusion.is_empty():
 				line["conclusion"] = nodes[edge.from].conclusion.duplicate(true)
 			result.lines.append(line)
@@ -180,6 +182,7 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 			result.answers.merge(node.answers.duplicate(true), true)
 			result.reasons.merge(node.reasons.duplicate(true), true)
 			result.citations.merge(node.citations.duplicate(true), true)
+			result.faults = Graph.combine_faults(result.faults, node.get("faults", {}))
 		elif node.kind == "contradiction":
 			result.disputes.append(node.dispute.duplicate(true))
 		elif node.kind == "premise" and node.conclusion.get("type") == "conflict":
@@ -189,6 +192,8 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 					var dispute = {"reports": [home, out], "challenged": home, "preferred": out}
 					if Graph.valid_dispute(view, dispute) and not result.disputes.has(dispute):
 						result.disputes.append(dispute)
+		if node.kind == "premise" and not node.positions.is_empty() and node.conclusion.get("at", result.conclusion.at) != result.conclusion.at:
+			result.temporal_positions.append({"at": node.conclusion.at, "positions": node.positions.duplicate(true)})
 	for edge in links:
 		if edge.kind == "explains_outing" and edge.from in all and edge.to in all:
 			var claim = Solver.card_by_id(view, nodes[edge.from].card)
@@ -312,16 +317,19 @@ func restore(value, session) -> String:
 				return "Invalid evidence copy."
 			evidence.append(n.card)
 			var choices = Solver.empty_case()
+			choices.conclusion.at = view.alignment_epoch
 			choices.cards = [n.card]
 			choices.answers = n.answers
 			choices.reasons = n.reasons
 			choices.citations = n.citations
+			choices.faults = n.get("faults", {})
 			if session.validate_case(choices) != "" or not n.answers.keys().all(func(key): return key == n.card):
 				return "Invalid canvas answers."
 		elif n.kind == "premise":
 			if not n.get("conclusion") is Dictionary or not n.get("positions") is Dictionary:
 				return "Invalid premise."
 			var choices = Solver.empty_case()
+			choices.conclusion.at = view.alignment_epoch
 			choices.positions = n.positions
 			if not n.conclusion.is_empty():
 				choices.conclusion = n.conclusion

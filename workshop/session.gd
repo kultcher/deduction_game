@@ -4,6 +4,8 @@ extends RefCounted
 const Scenario = preload("res://workshop/scenario.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Jury = preload("res://workshop/jury.gd")
+const Fixtures = preload("res://workshop/fixtures.gd")
+const TimeModel = preload("res://workshop/chronology.gd")
 
 var scenario: Dictionary
 var case_data: Dictionary
@@ -12,12 +14,13 @@ var listeners: Array = []
 var history: Array = []
 var last_results: Array = []
 
-func _init(seed_value: int = 692) -> void:
-	generate(seed_value)
+func _init(seed_value: int = 692, fixture: String = "core") -> void:
+	generate(seed_value, fixture)
 
-func generate(seed_value: int) -> void:
-	scenario = Scenario.generate(seed_value)
+func generate(seed_value: int, fixture: String = "core") -> void:
+	scenario = Scenario.generate(seed_value, fixture)
 	case_data = Solver.empty_case()
+	case_data.conclusion.at = scenario.public_view.alignment_epoch
 	case_data.conclusion.target = scenario.slots.demon
 	baseline = scenario.jury.duplicate(true)
 	reset_discussion()
@@ -52,7 +55,7 @@ func compare_reasoning(index: int) -> Array:
 	return result
 
 func export_data(include_truth: bool = false) -> Dictionary:
-	var result = {"format": "demonologist-case-workshop-4", "seed": scenario.public_view.seed,
+	var result = {"format": "demonologist-case-workshop-5", "seed": scenario.public_view.seed, "fixture": scenario.fixture,
 		"public_view": scenario.public_view.duplicate(true), "case": case_data.duplicate(true),
 		"jury_settings": baseline.duplicate(true), "history": history.duplicate(true)}
 	if include_truth:
@@ -62,11 +65,11 @@ func export_data(include_truth: bool = false) -> Dictionary:
 func restore(data: Dictionary) -> String:
 	# Load only this fixture format. Validate the complete experiment before mutating
 	# the session, then replay its presentations instead of trusting stored outcomes.
-	if data.get("format", "") != "demonologist-case-workshop-4" or not data.get("seed") is float and not data.get("seed") is int:
-		return "This experiment uses a different Workshop model. Version 4 is required for reliable replay of effects on multiple people."
+	if data.get("format", "") != "demonologist-case-workshop-5" or not data.get("seed") is float and not data.get("seed") is int or data.get("fixture") not in Fixtures.KINDS:
+		return "This experiment uses a different Workshop model. Version 5 is required for reliable movement and chronology replay."
 	if not is_finite(float(data.seed)) or data.seed < 1 or data.seed > 2147483647 or float(int(data.seed)) != float(data.seed):
 		return "Invalid scenario seed."
-	var candidate = get_script().new(int(data.seed))
+	var candidate = get_script().new(int(data.seed), data.fixture)
 	if data.get("public_view") != JSON.parse_string(JSON.stringify(candidate.scenario.public_view)):
 		return "The scenario differs from this Workshop version; it cannot be replayed reliably."
 	var error = candidate.validate_case(data.get("case"))
@@ -150,11 +153,16 @@ func validate_case(value) -> String:
 	if not value.cards.all(func(id): return id in card_ids) or value.cards.size() > card_ids.size():
 		return "Unknown evidence card."
 	var conclusion = value.get("conclusion")
-	if not conclusion is Dictionary or conclusion.get("type") not in ["evil", "good", "marked", "suspicious", "conflict"] or conclusion.get("target") not in ids or conclusion.get("at") != scenario.public_view.alignment_epoch:
+	if not conclusion is Dictionary or conclusion.get("type") not in ["evil", "good", "marked", "suspicious", "conflict"] or conclusion.get("target") not in ids or conclusion.get("at") not in TimeModel.epochs(scenario.public_view):
 		return "Invalid conclusion or time."
 	for id in value.positions:
 		if id not in ids or value.positions[id] not in ["good", "evil", "marked"]:
 			return "Invalid alignment choice."
+	if not value.get("temporal_positions", []) is Array or value.get("temporal_positions", []).size() > 48:
+		return "Invalid dated assumptions."
+	for assignment in value.get("temporal_positions", []):
+		if not assignment is Dictionary or assignment.get("at") not in TimeModel.epochs(scenario.public_view) or not assignment.get("positions") is Dictionary or not assignment.positions.keys().all(func(id): return id in ids and assignment.positions[id] in ["good", "evil", "marked"]):
+			return "Invalid dated alignment choice."
 	for id in value.answers:
 		var answer = value.answers[id]
 		if id not in card_ids or not answer is Dictionary or not answer.get("positive") is Array:
@@ -170,12 +178,13 @@ func validate_case(value) -> String:
 		for id in ids:
 			valid_keys.append(id + ":1")
 			valid_keys.append(id + ":2")
-		if key not in valid_keys or value.reasons[key] not in ["unexplained", "gift", "evil"]:
+			valid_keys.append(id + ":3")
+		if key not in valid_keys or value.reasons[key] not in ["unexplained", "gift", "evil", "secret"]:
 			return "Invalid outing explanation."
 	if not value.get("citations", {}) is Dictionary or not value.get("conflict_scope", []) is Array or not value.get("challenges", {}) is Dictionary:
 		return "Invalid citations or conflict scope."
 	for key in value.get("citations", {}):
-		if key not in ids.map(func(id): return id + ":1") + ids.map(func(id): return id + ":2") or value.citations[key] not in scenario.public_view.cards.filter(func(c): return c.kind == "claim").map(func(c): return c.id):
+		if key not in ids.map(func(id): return id + ":1") + ids.map(func(id): return id + ":2") + ids.map(func(id): return id + ":3") or value.citations[key] not in scenario.public_view.cards.filter(func(c): return c.kind in ["claim", "secret_claim"]).map(func(c): return c.id):
 			return "Invalid claim citation."
 	if not value.get("conflict_scope", []).all(func(id): return id in card_ids):
 		return "Unknown report in conflict scope."
@@ -189,6 +198,14 @@ func validate_case(value) -> String:
 	for dispute in value.get("disputes", []):
 		if not Solver.Graph.valid_dispute(scenario.public_view, dispute) or not dispute.reports.all(func(id): return id in value.cards):
 			return "A challenged home alibi needs its same-night contradicting observation."
+	if not value.get("faults", {}) is Dictionary or value.get("faults", {}).size() > 4:
+		return "Invalid fault explanations."
+	for key in value.get("faults", {}):
+		var fault = value.faults[key]
+		if not TimeModel.valid_fault(scenario.public_view, fault) or key != fault.window or not fault.get("basis", "") is String:
+			return "Unsupported poison interval; this fixture permits only the configured Night 1 to Night 2 window."
+		if fault.get("basis", "") != "" and fault.basis not in scenario.public_view.cards.filter(func(c): return c.kind == "fault_evidence" and c.window == key).map(func(c): return c.id):
+			return "The poisoning hypothesis needs evidence about the same interval."
 	var line_ids: Array = []
 	for line in value.get("lines", []):
 		if not line is Dictionary or not line.get("id") is String or line.id in line_ids or not line.get("label") is String or line.label.length() > 120 or line.get("relation") not in ["supports", "alternative"] or not line.get("cards") is Array or line.cards.size() > card_ids.size() or not line.cards.all(func(id): return id in value.cards):
@@ -201,6 +218,7 @@ func validate_case(value) -> String:
 		choices.answers = line.get("answers", {})
 		choices.reasons = line.get("reasons", {})
 		choices.citations = line.get("citations", {})
+		choices.faults = line.get("faults", {})
 		choices.conclusion = line.get("conclusion", value.conclusion)
 		var error = validate_case(choices)
 		if error != "":
@@ -209,6 +227,7 @@ func validate_case(value) -> String:
 			return "Invalid nested premise assumptions."
 		for positions in line.get("assumption_sets", []):
 			var nested = Solver.empty_case()
+			nested.conclusion.at = scenario.public_view.alignment_epoch
 			nested.positions = positions
 			if validate_case(nested) != "":
 				return "Invalid nested premise assumptions."

@@ -335,6 +335,17 @@ func _question(card: Dictionary) -> void:
 	_label(box, "Answer this card", 20, "accent")
 	_label(box, card.text, 17)
 	_label(box, "Observed %s %s · reported day %s · learned day %s" % [card.observed_at.phase, card.observed_at.day, card.reported_at.day, card.learned_at.day], 14, "muted")
+	if card.kind == "event" and card.get("event") == "curse":
+		_label(box, "Who became evil when the Revenant was executed? This answer is a dated hypothesis, not proof of their identity.", 16)
+		var current = _active_choices()
+		var candidates: Array = card.data.eligible
+		var choice = _option(box, ["? Unknown converted voter"] + candidates.map(func(id): return _name(id)))
+		choice.name = "ConvertedVoter"
+		var selected: Array = current.answers.get(card.id, {}).get("positive", [])
+		choice.select(0 if selected.is_empty() else candidates.find(selected[0]) + 1)
+		choice.item_selected.connect(func(i):
+			current.answers[card.id] = {"positive": [] if i == 0 else [candidates[i - 1]]}
+			_edit())
 	if card.kind == "claim":
 		_label(box, "An implicit role assertion from %s; accepting the claim does not accept the reading." % card.get("origin", "testimony") if card.get("implicit", false) else "This is a role claim, not proof that the gift works.", 15, "muted")
 	if not _card_available(card):
@@ -389,14 +400,19 @@ func _question(card: Dictionary) -> void:
 		for id in seen:
 			_label(box, _name(id), 16)
 			var key = "%s:%d" % [id, card.night]
-			var option = _option(box, ["? Unexplained", "Night gift — choose supporting claim", "Possibly evil activity"])
+			var labels: Array = ["? Unexplained", "Night gift — choose supporting claim", "Possibly evil activity"]
 			var reasons = ["unexplained", "gift", "evil"]
+			if session.scenario.public_view.has("movement_experiment"):
+				labels.append("Private errand — choose supporting claim")
+				reasons.append("secret")
+			var option = _option(box, labels)
 			option.select(reasons.find(current.reasons.get(key, "unexplained")))
 			option.item_selected.connect(func(i):
 				current.reasons[key] = reasons[i]
 				_edit())
-			if current.reasons.get(key, "unexplained") == "gift":
-				var claims: Array = session.scenario.public_view.cards.filter(func(c): return c.kind == "claim" and c.subject == id)
+			if current.reasons.get(key, "unexplained") in ["gift", "secret"]:
+				var private_errand: bool = current.reasons[key] == "secret"
+				var claims: Array = session.scenario.public_view.cards.filter(func(c): return c.kind == ("secret_claim" if private_errand else "claim") and c.subject == id)
 				var citation = _option(box, ["? No supporting claim"] + claims.map(func(c): return "%s · %s · day %s" % [_name(c.subject), C.role_name(c.role), c.acquired_day]))
 				citation.name = "Citation_%s_%d" % [id, card.night]
 				citation.select(claims.map(func(c): return c.id).find(current.citations.get(key, "")) + 1)
@@ -407,6 +423,8 @@ func _question(card: Dictionary) -> void:
 						current.citations[key] = claims[i - 1].id
 					_edit())
 				var support = Graph.valid_citation(session.scenario.public_view, current, id, card.night)
+				if private_errand:
+					support = claims.filter(func(c): return c.id == current.citations.get(key, ""))[0] if claims.any(func(c): return c.id == current.citations.get(key, "")) else {}
 				_label(box, "Cited: %s. This could explain the outing; accuracy and activity are still assumptions." % support.text if not support.is_empty() else "No applicable walking-gift claim is cited; this explanation receives no discount.", 14, "muted")
 	else:
 		_label(box, "This statement can support an explanation or conflict with another report. No additional answer is required.", 16, "muted")
@@ -591,7 +609,7 @@ func _conflict_controls() -> void:
 
 func _refresh_jury() -> void:
 	_clear(jury_box)
-	_label(jury_box, "Four living good townsfolk. Each knows their own gift reports and their own alignment.", 16, "muted")
+	_label(jury_box, "Four jurors after restoration. Their own alignment knowledge is dated; the converted voter's identity is not supplied to the assessor." if session.scenario.public_view.get("chronology", {}).has("curse") else "Four living good townsfolk. Each knows their own gift reports and their own alignment.", 16, "muted")
 	if stale and not session.last_results.is_empty():
 		_label(jury_box, "Responses below are from the last presentation.", 15, "accent")
 	for i in range(session.baseline.size()):
@@ -638,6 +656,10 @@ func _refresh_jury() -> void:
 			box.add_child(show_calc)
 			var calculation = _label(box, "Headline agreement %.2f; premise quality %.3f (conviction diagnostics).\nEffect multipliers: player %.2f × confidence %.2f\nPath: %s (%s)\nPrevious headline-target effect %.3f; replacement %.3f. %s.\nPrivate compatible worlds: %d. These counts are not probabilities." % [r.agreement, r.quality, r.calculation.player_factor, r.calculation.confidence_factor, ", ".join(PackedStringArray(r.path)), r.path_kind, r.calculation.old_case_effect, r.calculation.new_case_effect, r.stance, r.assessment.compatible], 14, "muted")
 			calculation.text += "\nCombined support %.3f; old strongest-path score %.3f. Forced-assumption weight %.3f across %d credibility states.\nSupport routes: %s\n%s" % [r.support_model.agreement, r.legacy_path.weight, r.support_model.forced_mass, r.support_model.states, str(r.support_model.paths), r.support_model.model]
+			for comparison in r.support_model.get("movement_comparison", []):
+				calculation.text += "\n%s: P(observations | evil hypotheses) %.6f; P(observations | good hypotheses) %.6f; ratio %.3fx. These are conditional fixture likelihoods, not guilt probabilities." % [_name(comparison.target), comparison.evil_likelihood, comparison.good_likelihood, pow(2.0, comparison.log2_ratio)]
+			if not r.support_model.get("faults", []).is_empty():
+				calculation.text += "\nShared health uncertainty: " + str(r.support_model.faults) + ". Removing a cited basis removes that support; other periods retain their own reliability."
 			calculation.text += "\nThe agreement calculation above describes the headline assessment. Actual suspicion uses the signed evil/good evidence comparison below, with the private-evidence reference subtracted.\n" + r.effect_rule
 			for person in session.scenario.public_view.people:
 				var e: Dictionary = r.effects[person.id]
@@ -649,7 +671,7 @@ func _refresh_jury() -> void:
 				if id in r.support_model.quoted_cards:
 					calculation.text += "\n%s: quoted testimony; contents challenged, not accepted as accurate." % id
 				elif card.kind != "claim":
-					calculation.text += "\n%s: retained accuracy weight %.3f" % [id, r.support_model.report_acceptance[id]]
+					calculation.text += "\n%s: retained credibility weight %.3f" % [id, r.support_model.report_acceptance[id]]
 			calculation.visible = false
 			show_calc.toggled.connect(func(on): calculation.visible = on)
 		else:
@@ -699,7 +721,7 @@ func _refresh_jury() -> void:
 		settings.add_child(reliability_box)
 		var rebuild_reliability = func(index):
 			_clear(reliability_box)
-			var key: String = Solver.semantic_key(reports[index])
+			var key: String = reports[index].get("accuracy_origin", Solver.semantic_key(reports[index]))
 			_slider(reliability_box, "Reading accuracy", juror.reading_reliability[key], func(value):
 				session.baseline[i].reading_reliability[key] = value
 				session.listeners[i].reading_reliability[key] = value
@@ -814,7 +836,7 @@ func _open_dialog() -> void:
 
 func _open(path: String) -> void:
 	var value = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not value is Dictionary or value.get("format", "") not in ["demonologist-case-workshop-1", "demonologist-case-workshop-2", "demonologist-case-workshop-3", "demonologist-case-workshop-4"]:
+	if not value is Dictionary or value.get("format", "") not in ["demonologist-case-workshop-1", "demonologist-case-workshop-2", "demonologist-case-workshop-3", "demonologist-case-workshop-4", "demonologist-case-workshop-5"]:
 		status.text = "This is not a Case Workshop experiment."
 		return
 	var result = session.restore(value)
