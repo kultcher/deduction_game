@@ -1,14 +1,20 @@
 # Case Workshop proof of concept
 
-Open **More > Case Workshop** in the game. The experiment opens in its own window;
-closing it preserves its state and leaves the running case alone. Alternatively, open
-`ui/case_workshop.tscn` in Godot and run that scene with F6.
+Open **More > Case Workshop** in the game for the **live case editor**. It loads the
+current board's original evidence, retains a draft for the current case, and files cases
+that can be presented privately, on the meeting floor, or during nomination speech.
+Read the [live workflow and fallback limits](CASE_WORKSHOP_INTEGRATION.md#live-canvas).
+The experimental reading evaluator remains opt-in; the screen labels unsupported cards,
+whole-case fallback and actual listener outcomes. Opening it does not enable Debug.
+
+This document's remaining sections describe the **separate frozen experiment**. Open
+`ui/case_workshop.tscn` in Godot and run that scene with F6 to use it.
 
 The Workshop freezes a scripted ten-person town at dawn on day 3. It tests expressing,
 interpreting and revising a case. Its new interpreter does not change the main game's
 argument, persuasion, voting or dialogue systems. The separate
 [live integration experiment](CASE_WORKSHOP_INTEGRATION.md) has an opt-in restricted
-shared ledger; this canvas still runs independently of the main case.
+shared ledger; the F6 fixture canvas still runs independently of the main case.
 
 **Preview effectiveness** calculates an on-demand response from a neutral ghost juror.
 It shows approximate effects for everyone and intermediate claim acceptance without

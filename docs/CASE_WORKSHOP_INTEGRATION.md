@@ -9,9 +9,91 @@ The read-only `Game.workshop_snapshot` API provides a portable evidence contract
 capability issues and hidden-state isolation checks. A restricted live comparison now
 consumes that contract for Surveyor, Rumormonger and Dowser cases. An experimental shared
 owner can now replace certified legacy suspicion for that restricted evidence set. It is
-off by default and explicitly enabled in the Debug inspector. This delivers stages 1–4
-within the reading scope below. Live canvas hookup, broader mechanic adapters and
-ordinary full-case playable rollout remain.
+off by default and can be enabled in the live canvas without Debug, or in the developer
+inspector. Stages 1–4 and a restricted live canvas are implemented within the reading
+scope below. Broader mechanic adapters and ordinary multi-case playtesting remain.
+
+## Live canvas
+
+**More → Case Workshop** opens the live editor. A board card's right-click menu also
+offers **Add to Case Workshop**, which opens and selects that original receipt. This
+first version preloads all non-deduction board evidence; hidden cards are player-known
+and remain available. Native filed deductions are not imported as graph nodes: their
+old flat form cannot recover answers or branch semantics. The old fixture canvas is
+still available through `ui/case_workshop.tscn` with F6.
+
+1. Add a premise, answer supported readings, and link evidence or supporting premises.
+   Disconnected cards are scratch work. Dragging and layout supply no evidence.
+2. Inspect the **whole-case support label**. Enable **Experimental reading evaluator**
+   to apply the new restricted model for this case; opening the editor alone leaves it off.
+   This switch does not enable spoilers or disable identification scoring.
+3. **Preview effectiveness** is a manual, read-only neutral reference. It uses the same
+   full graph and live capability gate as presentation. Unsupported cases have no new-
+   model numeric preview and no claimed prediction of the native fallback.
+4. **File / update case** retains the graph as a native board deduction with an exact
+   original-receipt mapping. It preserves answers, assumptions, intermediate claims,
+   branch-removal provenance, quoted conflicts and all future unsupported choices.
+   Filing alone changes no listener beliefs. Each premise keeps its filed board number
+   across revisions; a listener replaces the old endorsement only upon hearing the revision.
+5. Present during an actual conversation, meeting or nomination. The button uses the
+   current context, not an unrestricted mock audience. Private presentations consume
+   normal questions; the floor remains once per meeting; nomination speech remains one
+   statement with normal social effects. Accuse/defend chooses the social stance toward
+   the nominee; it does not rewrite the case's headline.
+6. The result window names each delivered listener's **new shared evaluator** or
+   **fallback: existing rules**. Listener-dependent incompatibility is reported without
+   exposing their private evidence or alignment. Rejected/expired actions give no
+   delivery record and direct the player to the ordinary conversation log.
+
+The capability label covers Surveyor/Rumormonger/Dowser readings at supported acquisition
+times, original-alignment claims, selected answers and scoped identity assumptions. It
+does not promise that every listener can combine them with their existing knowledge:
+source/receipt ownership, credibility budgets and public temporal history can require
+fallback. Numerical shared effects use the original reports once; chosen answers are
+hypotheses assessed in the scoped response, never additional facts or extra bonuses.
+
+**Unsupported evidence is usable. It is never silently omitted from an asserted case.**
+Every unsupported card is labeled, and including it flags the whole connected case.
+Movement, trace, alibi disputes, additional role claims/home cards as separate premises,
+outing explanations/citations, impairment hypotheses, changed-alignment histories and
+composing a canvas graph inside a separate legacy deduction remain outside the new
+live evaluator. Even a linked role claim that seems redundant is explicitly flagged.
+Reading conflicts presented as the headline are supported without assigning guilt.
+Embedded conflict questions remain flagged: ownership can distinguish quotation from
+endorsement, but the scoped response's attention needs a quoted-evidence adapter before
+it can assess them together with a different headline. Present the conflict separately
+to use the new evaluator. Live movement/alibi conflicts also fall back and do not inherit
+the fixture's experimental 2× factor.
+
+The fallback uses the **headline plus original cards** through the existing argument
+system. It does **not** interpret canvas answers, assumed identities, intermediate
+claims or link meanings. This loss is stated before presentation, and actual fallback
+is labeled afterward. A mixed inseparable case is not partially evaluated by dropping
+unsupported evidence. An absent/deleted/changed original receipt blocks filing instead
+of submitting fewer roots. Independent reasoning lines with different evaluators are
+not implemented yet.
+
+Draft layouts/answers and filed-number mappings are retained in memory only for the
+running case, including closing/reopening the window and refreshing new board evidence.
+Starting a new case, even the same seed, clears them and resets effects off. There is
+no live draft disk export/import in this slice. **Withdraw endorsement…** is explicitly
+a developer testing tool: it retracts that case's shared/native canvas contribution for
+the selected listener while retaining independently learned evidence. It is not an
+in-character retraction conversation or a reversal of past trust/social effects.
+
+Town presentations yield between listeners and show progress. Individual assessments
+remain synchronous. Other game commands and a new-case action are locked until the
+presentation finishes, keeping one ordinary command/trace boundary. Typed presentations
+still use the synchronous command handler. A ten-person native-generated reading case
+took approximately 29 seconds for the first town presentation on the development machine;
+this is a measured limitation, not the earlier one-listener timing extrapolated to town.
+
+`workshop_canvas_filed` traces retain the full submitted graph and resolved board roots;
+`workshop_delivery` records actual model/fallback feedback for every recipient, and
+`workshop_presentation` retains shared assessments, novelty and ownership. The live canvas
+suite covers native-generated gifts, private → meeting → nomination → execution/night,
+floor/question/statement limits, progress action locking, mixed-case fallback/recovery,
+stable revisions, missing receipts, main-menu/context entry points and case resets.
 
 ## Try the live comparison
 
@@ -210,7 +292,7 @@ the same floating-point value in a way that slowly changes priors or cache keys.
 
 ## Manual effectiveness preview
 
-Both the fixture canvas and the live comparison panel have **Preview effectiveness**.
+The live canvas, fixture canvas and live comparison panel have **Preview effectiveness**.
 It calculates on demand, never on every link, and does not change the case, remembered
 mock-jury discussion, NPCs, time, RNG or identification scoring. Live preview is available
 without Debug and uses selected player-held evidence plus public process events only.
@@ -229,15 +311,15 @@ Stages 1–4 now have paired tests, including raw/case overlap, revisions, repea
 independent learning, source-doubt recovery, clamping/retraction, native preference and
 role effects, cover isolation, capability fallback and neutral preview. The frozen fixture
 checkpoint remains unchanged. Full-case general-role rollout and response parity remain
-future gates, not evidence supplied by these restricted tests. The freeform Workshop
-canvas remains a fixture UI; presenting its full answered/linked graph in an active case
-still needs a live session adapter. The current game paths consume filed deductions/cards.
+future gates, not evidence supplied by these restricted tests. The live canvas now files
+and presents its full answered graph through those paths. The separate F6 fixture UI
+remains the reference for mechanics not yet adapted to a running case.
 
 Run `godot --headless --path . --script res://tools/test_workshop_ownership.gd` for the
 57 ownership/ghost checks. `test_workshop_presentation.gd` adds presentation, mixed-owner,
 quoted-conflict, source privacy, intermediate acceptance and cache checks, alongside `test_workshop_integration.gd`,
 `test_workshop_live_ui.gd`, `test_workshop_canvas.gd`, native argument/belief/cover tests,
-and `test_trace.gd`. The ownership suite includes actual turn/free lifecycle calls with
+`test_workshop_live_canvas.gd` and `test_trace.gd`. The ownership suite includes actual turn/free lifecycle calls with
 no cover, tiny legacy remnants below the usual display threshold, clipped-migration
 refusal, and over-budget fallback. UI tests exercise the manual preview without Debug.
 

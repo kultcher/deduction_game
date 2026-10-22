@@ -71,6 +71,8 @@ static func _collect(board: Array, number, numbers: Array, arguments: Array, iss
 				var value = card.conclusion[key]
 				conclusion[key] = value.duplicate(true) if value is Array or value is Dictionary else value
 		arguments.append({"board_number": number, "conclusion": conclusion, "supports": card.get("supports", []).duplicate()})
+		if card.has("workshop_case"):
+			arguments[-1]["workshop_case"] = card.workshop_case.duplicate(true)
 		for support in card.get("supports", []):
 			_collect(board, support, numbers, arguments, issues, path + [number])
 

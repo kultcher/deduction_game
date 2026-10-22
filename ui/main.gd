@@ -314,6 +314,7 @@ func _ready() -> void:
 	case_view.changed.connect(_refresh_side)
 	case_view.notes_requested.connect(_open_notes)
 	case_view.roles_requested.connect(_open_roles)
+	case_view.workshop_requested.connect(_open_live_workshop)
 
 	_new_case()
 
@@ -341,6 +342,8 @@ func _new_case_button() -> void:
 	_new_case()
 
 func _new_case() -> void:
+	if g != null and g.workshop_presenting:
+		return
 	_case_seed = int(seed_box.value)
 	case_state.select_card(0)
 	g = Game.new()
@@ -359,6 +362,10 @@ func _new_case() -> void:
 		workshop_comparison_win.get_child(0).g = g
 		workshop_comparison_win.get_child(0).refresh()
 		workshop_comparison_win.hide()
+	if is_instance_valid(workshop_win):
+		workshop_win.get_child(0).g = g
+		workshop_win.get_child(0).refresh()
+		workshop_win.hide()
 	_refresh_all()
 	if is_inside_tree() and show_script_at_start:
 		_open_roles()
@@ -464,15 +471,7 @@ func _on_more(i: int) -> void:
 	elif i == 3:
 		_run("log")
 	elif i == 4:
-		if not is_instance_valid(workshop_win):
-			workshop_win = Window.new()
-			workshop_win.title = "Case Workshop"
-			workshop_win.min_size = Vector2i(1120, 700)
-			workshop_win.size = Vector2i(1500, 950)
-			workshop_win.close_requested.connect(func(): workshop_win.hide())
-			add_child(workshop_win)
-			workshop_win.add_child(load("res://ui/case_workshop.tscn").instantiate())
-		workshop_win.popup_centered_ratio(0.95)
+		_open_live_workshop()
 	elif i == 5:
 		if not is_instance_valid(workshop_comparison_win):
 			workshop_comparison_win = Window.new()
@@ -488,6 +487,38 @@ func _on_more(i: int) -> void:
 			workshop_comparison_win.get_child(0).g = g
 			workshop_comparison_win.get_child(0).refresh()
 		workshop_comparison_win.popup_centered()
+
+func _open_live_workshop(number: int = 0) -> void:
+	if not is_instance_valid(workshop_win):
+		workshop_win = Window.new()
+		workshop_win.title = "Case Workshop · live case"
+		workshop_win.min_size = Vector2i(1120, 700)
+		workshop_win.size = Vector2i(1500, 950)
+		workshop_win.close_requested.connect(func(): workshop_win.hide())
+		add_child(workshop_win)
+		var editor = load("res://ui/live_case_workshop.gd").new()
+		editor.g = g
+		editor.execute = _run_workshop
+		editor.filed.connect(_refresh_all)
+		workshop_win.add_child(editor)
+	else:
+		workshop_win.get_child(0).g = g
+		workshop_win.get_child(0).refresh()
+	var editor = workshop_win.get_child(0)
+	if number > 0 and number <= g.board.size() and g.board[number - 1].kind != "deduction":
+		var id: String = "e:" + Game.WorkshopCanvas.Evidence.normalize_card(g.board[number - 1]).id
+		if editor.board.nodes.has(id):
+			editor.board.selected = id
+			editor._sync()
+			editor.canvas.queue_redraw()
+	workshop_win.popup_centered_ratio(0.95)
+
+func _run_workshop(cmd: String, progress: Callable) -> void:
+	_print("\n> " + cmd)
+	_print(await g.workshop_command(cmd, progress))
+	if g.state == "talk" and g.talk_with != null:
+		_select_person(g.talk_with.id)
+	_refresh_all()
 
 func _open_notes() -> void:
 	notes_edit.text = g.case_notes
@@ -512,6 +543,8 @@ func _run(cmd: String) -> void:
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()
+	if is_instance_valid(workshop_win) and workshop_win.visible:
+		workshop_win.get_child(0).refresh()
 
 ## Several commands from one click (e.g. walk to someone, then talk to them).
 func _run_seq(cmds: Array) -> void:

@@ -208,7 +208,7 @@ func validate_case(value) -> String:
 			return "The poisoning hypothesis needs evidence about the same interval."
 	var line_ids: Array = []
 	for line in value.get("lines", []):
-		if not line is Dictionary or not line.get("id") is String or line.id in line_ids or not line.get("label") is String or line.label.length() > 120 or line.get("relation") not in ["supports", "alternative"] or not line.get("cards") is Array or line.cards.size() > card_ids.size() or not line.cards.all(func(id): return id in value.cards):
+		if not line is Dictionary or not line.get("id") is String or line.id in line_ids or not line.get("label") is String or line.label.length() > 120 or line.get("relation") not in ["supports", "alternative", "quotes"] or not line.get("cards") is Array or line.cards.size() > card_ids.size() or not line.cards.all(func(id): return id in value.cards):
 			return "Invalid reasoning line or evidence reference."
 		line_ids.append(line.id)
 		var choices = Solver.empty_case()

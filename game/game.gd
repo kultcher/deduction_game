@@ -20,6 +20,7 @@ const WorkshopOwnership = preload("res://game/workshop_ownership.gd")
 const WorkshopPresentation = preload("res://game/workshop_presentation.gd")
 const WorkshopGhost = preload("res://workshop/ghost_juror.gd")
 const WorkshopAssessment = preload("res://workshop/live_assessment.gd")
+const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
 
 var w
 var state = "day"          # day | approach | talk | meeting | nomination | night | over
@@ -68,6 +69,9 @@ var _workshop_plans = {}
 var _workshop_evaluations = {}
 var _workshop_responses = {}
 var workshop_comparisons: Array = []
+var workshop_draft: Dictionary = {} # case-local canvas layout and filed premise numbers
+var workshop_deliveries: Array = [] # explicit actual model/fallback feedback
+var workshop_presenting = false
 var trace_build = ""
 var trace_tuning = ""
 var _trace_export_pending = false
@@ -168,6 +172,10 @@ static func render(evs: Array) -> String:
 # ---------------------------------------------------------------- lifecycle
 
 func new_case(seed_in: int, npc_count: int = 7) -> String:
+	if workshop_presenting:
+		return "A case presentation is still being assessed."
+	workshop_draft = {}
+	workshop_deliveries = []
 	workshop_comparisons = []
 	_workshop_plans = {}
 	_workshop_evaluations = {}
@@ -228,6 +236,8 @@ func _home_cards() -> void:
 			"text": "%s lives on %s." % [n.name, C.block_name(n.home_block)]})
 
 func command(line: String) -> String:
+	if workshop_presenting:
+		return "A case presentation is still being assessed."
 	var text = line.strip_edges()
 	if text == "":
 		return ""
@@ -241,6 +251,30 @@ func command(line: String) -> String:
 		state = "over"
 		_ending()
 	return _finish_command("command", text)
+
+## Canvas town presentations yield BETWEEN listeners. Each listener assessment is
+## still atomic; action limits, disclosure, speech, voting and trace boundaries
+## are the very same handlers as the synchronous command interface.
+func workshop_command(line: String, progress: Callable) -> String:
+	if workshop_presenting:
+		return "A case presentation is still being assessed."
+	var parts = line.split(" ", false, 1)
+	if parts.size() != 2 or not ((state == "meeting" and parts[0] == "present") or (state == "nomination" and parts[0] in ["accuse", "defend"])):
+		return command(line)
+	workshop_presenting = true
+	events = []
+	w.set_log_time()
+	w.dlog.begin_action("command", {"cmd": line})
+	w.trace_capture("before_command")
+	if state == "meeting":
+		await _present_deduction(parts[1], progress)
+	else:
+		await _nomination_command(parts[0], parts[1], progress)
+	workshop_presenting = false
+	if w.game_over and state != "over":
+		state = "over"
+		_ending()
+	return _finish_command("command", line)
 
 func _finish_command(kind: String, cmd: String) -> String:
 	last_events = events.duplicate()
@@ -428,6 +462,8 @@ func workshop_ghost_preview(number: int) -> Dictionary:
 	return WorkshopGhost.live(workshop_snapshot([number]))
 
 func set_workshop_effects(on: bool) -> void:
+	if workshop_presenting:
+		return
 	workshop_effects = on
 	for real in w.npcs:
 		var minds: Array = [real]
@@ -443,6 +479,13 @@ func set_workshop_effects(on: bool) -> void:
 			Mind.recompute_beliefs(w, n, " (shared ownership toggled)")
 
 func workshop_retract(number: int, listener_id: String) -> void:
+	if workshop_presenting:
+		# Internal revision retirement is part of the same presentation, so it
+		# goes through the private helper; external withdrawal waits its turn.
+		return
+	_workshop_retract(number, listener_id)
+
+func _workshop_retract(number: int, listener_id: String) -> void:
 	var real = w.by_id.get(listener_id)
 	if real == null:
 		return
@@ -458,10 +501,18 @@ func workshop_retract(number: int, listener_id: String) -> void:
 	for key in paths:
 		n.workshop_state.get("presentations", {}).erase(key)
 		n.workshop_state.withdrawn[key] = true
+	if number > 0 and number <= board.size() and board[number - 1].has("workshop_case"):
+		var entry: Dictionary = n.ledger.get("arg:workshop:%d" % number, {})
+		if not entry.is_empty():
+			entry.weight = 0.0
+			entry.justs = []
+			entry.meta = {"kind": "retired_workshop"}
 	Mind.recompute_beliefs(w, n, " (case endorsement withdrawn)")
 
 ## All three deduction venues share receipt ownership and optional comparison.
 func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
+	if ded.has("workshop_case"):
+		workshop_canvas_retire(n, ded)
 	var snapshot = workshop_snapshot([ded.n], n.id, venue) if workshop_compare else {}
 	var before: Dictionary = n.suspicion.duplicate(true) if workshop_compare else {}
 	var result: Dictionary = Argue.evaluate(w, n, ded, board, scale, speak)
@@ -482,7 +533,37 @@ func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, v
 			workshop_comparisons.pop_front()
 		w.dlog.trace_event("workshop_comparison", n.id, ded.conclusion.get("a", ""), {"comparison": comparison, "input": snapshot},
 			"Read-only proposal beside the actual named presentation model; the comparison itself applies no effects.")
+	if ded.has("workshop_case"):
+		var capability = WorkshopCanvas.status(self, ded.workshop_case)
+		var issues: Array = capability.issues.duplicate()
+		if not workshop_effects:
+			issues.append("Experimental reading effects are switched off.")
+		elif not result.get("workshop", false) and issues.is_empty():
+			issues.append("This listener could not use the shared assessment; existing response rules were used.")
+		workshop_deliveries.append({"listener": n.id, "name": n.name, "card": ded.n, "venue": venue,
+			"model": "shared" if result.get("workshop", false) else "legacy", "issues": issues})
+		w.dlog.trace_event("workshop_delivery", n.id, ded.conclusion.get("a", ""), workshop_deliveries[-1],
+			"Actual live-canvas presentation model and player-safe fallback feedback.")
+		if workshop_deliveries.size() > 100:
+			workshop_deliveries.pop_front()
 	return result
+
+## Canvas revisions replace this listener's previous endorsement only when heard.
+## Keep a dedicated native ledger entry so other filed arguments are untouched.
+func workshop_canvas_retire(real, ded: Dictionary) -> void:
+	if ded.n < 1 or ded.n > board.size() or board[ded.n - 1].get("workshop_case", {}) != ded.workshop_case:
+		return # An old relayed wrapper cannot retract a newer heard revision.
+	var n = real.shadow if real.is_evil() else real
+	if n == null:
+		return
+	var state: Dictionary = n.workshop_state
+	if not state.has("canvas_versions"):
+		state.canvas_versions = {}
+	var key = str(ded.n)
+	var signature = JSON.stringify(ded.workshop_case)
+	if state.canvas_versions.get(key, signature) != signature:
+		_workshop_retract(ded.n, n.id)
+	state.canvas_versions[key] = signature
 
 # ---------------------------------------------------------------- dispatch
 
@@ -1304,7 +1385,7 @@ func _show_nomination() -> void:
 		opts += ", or use 'clemency' to spare them"
 	_prompt("Vote on %s (%d needed).%s %s." % [t.name, w.vote_threshold(), blk, opts])
 
-func _nomination_command(verb: String, rest: String) -> void:
+func _nomination_command(verb: String, rest: String, progress: Callable = Callable()) -> void:
 	var nm: Dictionary = w.meeting["pending"]
 	var t = w.by_id[nm["nominee"]]
 	var r = rest.strip_edges().to_lower()
@@ -1329,6 +1410,8 @@ func _nomination_command(verb: String, rest: String) -> void:
 					_secrets_used(card)
 					for v in w.living():
 						if v != t:
+							if progress.is_valid():
+								await progress.call(v.name)
 							_evaluate_deduction(v, card, 0.5, false, "nomination")
 				else:
 					Mind.public_case(w, t, card, verb)
@@ -1900,7 +1983,7 @@ func link_cards(nums: Array) -> Dictionary:
 
 ## File a deduction card. conclusion: {type, a, role?, night?, card?}. Returns the card
 ## number, or -1 if refused (reason in last_error).
-func file_deduction(conclusion: Dictionary, supports: Array, match_info: Dictionary = {}, chosen: int = 0) -> int:
+func file_deduction(conclusion: Dictionary, supports: Array, match_info: Dictionary = {}, chosen: int = 0, workshop_filing: bool = false) -> int:
 	conclusion = Argue.normalize(conclusion.duplicate())
 	var cards: Array = board.filter(func(x): return x["n"] in supports)
 	# The same conclusion from the same cards gets the same footing however it was built:
@@ -1952,6 +2035,8 @@ func file_deduction(conclusion: Dictionary, supports: Array, match_info: Diction
 		"supports": supports.duplicate(), "template": match_info.get("template", ""), "explanations": match_info.get("explanations", []),
 		"chosen": chosen, "unfounded": unfounded, "near": near, "relation": match_info.get("relation", ""),
 		"text": "Deduction: %s%s [basis: %s]." % [Argue.conclusion_text(w, conclusion), basis, cls]}
+	if workshop_filing:
+		card.text += " [Workshop filing %d]" % (board.size() + 1)
 	var n = add_card(card)
 	w.dlog.add("deduction", "player", conclusion.get("a", ""), {"card": n, "conclusion": conclusion, "supports": supports,
 		"template": card["template"], "unfounded": unfounded, "class": cls}, card["text"])
@@ -2204,7 +2289,7 @@ func delete_deduction(num: int) -> String:
 	return "Deduction #%d deleted." % num
 
 ## Present a deduction to the whole meeting (once per meeting).
-func _present_deduction(rest: String) -> void:
+func _present_deduction(rest: String, progress: Callable = Callable()) -> void:
 	if presented_today:
 		_err("You've already had the floor today.")
 		return
@@ -2220,6 +2305,8 @@ func _present_deduction(rest: String) -> void:
 	_secrets_used(ded)
 	_conflict_pressure(ded, 0.2, null)
 	for n in w.living():
+		if progress.is_valid():
+			await progress.call(n.name)
 		var r: Dictionary = _evaluate_deduction(n, ded, 0.6, true, "meeting")
 		_lines(r["lines"])
 

@@ -11,6 +11,8 @@ const Argue = preload("res://sim/argue.gd")
 static func present(g, n, card: Dictionary, targets: Array, direction: String, venue: String, speak: bool) -> Dictionary:
 	if n.is_evil():
 		return {}
+	if card.has("workshop_case"):
+		g.workshop_canvas_retire(n, card)
 	var snapshot = _snapshot(g, n, card, targets, direction, venue)
 	if snapshot.is_empty() or not Assess.prepare(snapshot).ready:
 		return {}
@@ -68,7 +70,9 @@ static func present(g, n, card: Dictionary, targets: Array, direction: String, v
 	if assessment.is_empty():
 		return {}
 	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
-	var signature = JSON.stringify(Evidence.canonical([root.conclusion, original_ids]))
+	var graph_choices: Dictionary = root.get("workshop_case", {}).duplicate(true)
+	graph_choices.erase("version")
+	var signature = JSON.stringify(Evidence.canonical([root.conclusion, original_ids, graph_choices]))
 	var inputs = JSON.stringify(Evidence.canonical([state.outside, plan.facts, n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events]))
 	var discussion: Dictionary = state.get("discussion", {})
 	var repeated: bool = discussion.get(signature, "") == inputs
@@ -138,13 +142,13 @@ static func _snapshot(g, n, card: Dictionary, targets: Array, direction: String,
 	if direction == "deduction":
 		if card.get("n", 0) <= 0 or card.n > g.board.size():
 			return {}
-		if g.board[card.n - 1].get("conclusion", {}) != card.conclusion or g.board[card.n - 1].get("supports", []) != card.supports:
+		if g.board[card.n - 1].get("conclusion", {}) != card.conclusion or g.board[card.n - 1].get("supports", []) != card.supports or g.board[card.n - 1].get("workshop_case", {}) != card.get("workshop_case", {}):
 			return {} # Do not assess a stale wrapper as though it were the current filed case.
 		return Bridge.capture(g, [card.n], n.id, venue, n)
 	if targets.is_empty():
 		return {}
 	if card.get("kind") == "deduction":
-		if card.get("n", 0) <= 0 or card.n > g.board.size() or g.board[card.n - 1].get("supports", []) != card.get("supports", []) or g.board[card.n - 1].get("conclusion", {}) != card.get("conclusion", {}):
+		if card.get("n", 0) <= 0 or card.n > g.board.size() or g.board[card.n - 1].get("supports", []) != card.get("supports", []) or g.board[card.n - 1].get("conclusion", {}) != card.get("conclusion", {}) or g.board[card.n - 1].get("workshop_case", {}) != card.get("workshop_case", {}):
 			return {} # A relay of an old wrapper must not learn a later board revision.
 		var cited = Bridge.capture(g, [card.n], n.id, venue, n)
 		cited.root = -1

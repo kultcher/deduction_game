@@ -42,13 +42,7 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 		var data: Dictionary = e.content.data
 		var ids: Array = snapshot.people.map(func(p): return p.id)
 		var role: String = e.content.role
-		var valid: bool = e.source in ids and e.observed_at.day >= 0 and e.observed_at.phase != "unknown"
-		if role == "surveyor":
-			valid = valid and _count_valid(data.get("count"), 4)
-		elif role == "dowser":
-			valid = valid and _group_valid(data.get("group"), ids) and _count_valid(data.get("count"), data.get("group", []).size())
-		else:
-			valid = valid and _group_valid(data.get("pair"), ids) and data.get("pair", []).size() == 2 and data.get("secret") in snapshot.rules.modifier_options
+		var valid = reading_valid(e, ids, snapshot.rules.modifier_options)
 		if not valid:
 			result.issues.append("Incomplete or invalid reading payload: " + e.id)
 			continue
@@ -69,6 +63,8 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 	if root.is_empty():
 		result.issues.append("Select a filed deduction as the comparison's headline claim.")
 	else:
+		if snapshot.arguments.any(func(a): return a.board_number != root.board_number and a.has("workshop_case")):
+			result.issues.append("A canvas graph cited inside a different filed deduction needs a graph composition adapter.")
 		var value = _case(snapshot, root, epoch, [])
 		value["arguments"] = []
 		for argument in snapshot.arguments:
@@ -82,6 +78,12 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 			value.arguments.append({"id": "argument:%d" % argument.board_number, "label": "Filed claim #%d" % argument.board_number,
 				"case": scoped, "inputs": inputs, "parents": snapshot.arguments.filter(func(a): return argument.board_number in a.supports).map(func(a): return "argument:%d" % a.board_number)})
 		result.case = value
+		if root.has("workshop_case"):
+			result.case = root.workshop_case.duplicate(true)
+			result.case.id = "live:" + snapshot.case_id
+			result.view = view
+			view.alignment_epoch = "Original alignment"
+			result.issues.append_array(canvas_issues(root.workshop_case, snapshot))
 		for argument in snapshot.arguments:
 			var conclusion = argument.conclusion
 			if conclusion.get("type") not in CONCLUSIONS or _target(conclusion) not in snapshot.people.map(func(p): return p.id):
@@ -98,6 +100,42 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 	result.view = view
 	result.ready = result.issues.is_empty()
 	return result
+
+## Explicit capability gate: no graph feature may silently disappear when the
+## restricted live evaluator replaces the native argument path.
+static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
+	var issues: Array = []
+	if value.cards != snapshot.selected and not (value.cards.size() == snapshot.selected.size() and value.cards.all(func(id): return id in snapshot.selected)):
+		issues.append("Canvas roots differ from the original evidence receipts.")
+	for field in ["reasons", "citations", "disputes", "faults", "temporal_positions", "derived", "challenges"]:
+		if not value.get(field, {}).is_empty():
+			issues.append("Not yet handled by the live evaluator: " + field + ".")
+	var claims: Array = [value] + value.get("arguments", []).map(func(a): return a.case)
+	if claims.size() > 7:
+		issues.append("Canvas exceeds the initial six-claim budget.")
+	for argument in value.get("arguments", []):
+		if argument.id == value.get("argument_root") or argument.case.conclusion.type != "conflict":
+			continue
+		# The shared owner can distinguish quoted roots, but the scoped response's
+		# attention still excludes them. Flag the missing joint interpretation.
+		issues.append("Embedded conflict questions need a live quoted-evidence assessment adapter; present the conflict as its own headline to use the new evaluator.")
+	var fields: Array = Solver.empty_case().keys() + ["arguments", "argument_root"]
+	for claim in claims:
+		for field in claim:
+			if field not in fields:
+				issues.append("Unrecognized canvas feature needs a live adapter: " + str(field) + ".")
+		if claim.conclusion.get("type") not in CONCLUSIONS or claim.conclusion.get("target") not in snapshot.people.map(func(p): return p.id) or claim.conclusion.get("at") != "Original alignment":
+			issues.append("Unsupported canvas claim or alignment time.")
+		for line in claim.get("lines", []):
+			if line.get("relation", "supports") not in ["supports", "quotes"] or line.has("test_factor"):
+				issues.append("This reasoning-line relationship/factor has no live adapter.")
+	for receipt in snapshot.evidence:
+		if receipt.id in snapshot.selected and receipt.kind in ["claim", "home"]:
+			issues.append("Not yet evaluated as a separate canvas premise: " + receipt.kind + ".")
+		if receipt.id in snapshot.selected and receipt.kind == "info" and receipt.content.get("role") in ROLES:
+			if not Domain.gift_time({"role": receipt.content.role, "observed_at": receipt.observed_at}):
+				issues.append("Reading time is outside the live adapter's supported gift interval: " + receipt.content.role + ".")
+	return issues
 
 static func evaluate(snapshot: Dictionary) -> Dictionary:
 	var started = Time.get_ticks_msec()
@@ -170,6 +208,18 @@ static func _target(conclusion: Dictionary) -> String:
 
 static func _count_valid(value, maximum: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and value >= 0 and value <= maximum and int(value) == value
+
+static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> bool:
+	if receipt.kind != "info" or receipt.content.get("role") not in ROLES or receipt.source not in ids or receipt.observed_at.day < 0 or receipt.observed_at.phase == "unknown":
+		return false
+	var data: Dictionary = receipt.content.data
+	match receipt.content.role:
+		"surveyor":
+			return _count_valid(data.get("count"), 4)
+		"dowser":
+			return _group_valid(data.get("group"), ids) and _count_valid(data.get("count"), data.get("group", []).size())
+		_:
+			return _group_valid(data.get("pair"), ids) and data.get("pair", []).size() == 2 and data.get("secret") in modifiers
 
 static func _group_valid(value, ids: Array) -> bool:
 	if not value is Array or value.is_empty():

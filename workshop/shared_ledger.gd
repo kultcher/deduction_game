@@ -204,6 +204,20 @@ static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) 
 	var arguments: Array = snapshot.arguments.filter(func(a): return a.board_number == number)
 	if arguments.is_empty() or arguments[0].conclusion.get("type") == "conflict":
 		return []
+	if arguments[0].has("workshop_case"):
+		var value: Dictionary = arguments[0].workshop_case
+		var assigned: Array = []
+		var endorsed: Array = []
+		for line in value.get("lines", []):
+			assigned.append_array(line.cards)
+			if line.get("relation", "supports") == "supports":
+				for id in line.cards:
+					if id not in endorsed:
+						endorsed.append(id)
+		for id in value.cards:
+			if id not in assigned and id not in endorsed:
+				endorsed.append(id)
+		return endorsed
 	var result: Array = []
 	for child in arguments[0].supports:
 		for id in endorsed_facts(snapshot, child, path + [number]):

@@ -359,6 +359,8 @@ func _question(card: Dictionary) -> void:
 	var role: String = card.get("role", "")
 	if card.kind == "report" and role in ["surveyor", "dowser", "rumormonger", "lamplighter"]:
 		var prompt: String = {"surveyor": "Which residents account for the positive blocks? A positive may be evil or Marked.", "dowser": "Who registered as evil in this reading? Marked is a possible explanation.", "rumormonger": "Which person is Marked in your explanation?", "lamplighter": "Who were the other people out? The Lamplighter is excluded."}[role]
+		if role == "rumormonger":
+			prompt = "Which person has the named secret (%s) in your explanation?" % card.data.get("secret", "marked")
 		_label(box, prompt, 16)
 		var count: int = 1 if role == "rumormonger" else card.data.count
 		var current = _active_choices()

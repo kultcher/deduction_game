@@ -103,6 +103,15 @@ timings and checks exact input reuse, not a machine-specific timing threshold.
 - Scheduling work during natural presentation/response pauses is preferable to
   sacrificing meaningful player expression solely for instantaneous answers.
 
+The live-canvas smoke test now measures the whole town using native-generated readings
+in a ten-person case. The first floor presentation took about **29 seconds** (10 listener
+records), compared with the earlier ~4.2-second single-listener synthetic chain. The
+live canvas yields and updates a progress dialog between listeners, with other game
+actions locked for that command. This improves feedback; it does not reduce total work
+or move an individual assessment off the UI thread. Native typed commands remain
+synchronous. Continue measuring realistic cases before choosing a runtime port or
+reducing the uncertainty budget.
+
 First measure, share work and defer diagnostics; then benchmark a port and/or bounded
 uncertainty. Keep the checkpoint examples as migration aids, with experimental numeric
 weights separate from permanent semantic requirements.

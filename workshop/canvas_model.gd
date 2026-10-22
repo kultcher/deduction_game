@@ -23,7 +23,10 @@ func reset() -> void:
 		var card: Dictionary = view.cards[i]
 		nodes["e:" + card.id] = {"id": "e:" + card.id, "kind": "evidence", "card": card.id,
 			"at": [60.0 + (i % 4) * 320.0, 400.0 + (i / 4) * 300.0], "answers": {}, "reasons": {}, "citations": {}}
-	selected = add_premise("constance", "evil", Vector2(540, 50))
+	selected = add_premise(_default_target(), "evil", Vector2(540, 50))
+
+func _default_target() -> String:
+	return "constance" if view.people.any(func(p): return p.id == "constance") else view.people[0].id
 
 func add_premise(target: String, type: String, at: Vector2) -> String:
 	serial += 1
@@ -145,7 +148,7 @@ func remove_premise(id: String) -> void:
 		if node.kind == "contradiction":
 			node.prior_links = node.prior_links.filter(func(edge): return edge.from != id and edge.to != id)
 	var remaining: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise" and not nodes[key].conclusion.is_empty())
-	selected = add_premise("constance", "evil", Vector2(540, 50)) if remaining.is_empty() else remaining[0]
+	selected = add_premise(_default_target(), "evil", Vector2(540, 50)) if remaining.is_empty() else remaining[0]
 	version += 1
 
 func compile(root: String, include_arguments: bool = true) -> Dictionary:
@@ -170,6 +173,8 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 						line.assumption_sets.append(nodes[id].positions.duplicate(true))
 			if not nodes[edge.from].conclusion.is_empty():
 				line["conclusion"] = nodes[edge.from].conclusion.duplicate(true)
+				if line.conclusion.type == "conflict":
+					line.relation = "quotes"
 			result.lines.append(line)
 		else:
 			direct.append_array(ancestors(edge.from))
@@ -267,7 +272,7 @@ func title(id: String) -> String:
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
 	var card = Solver.card_by_id(view, node.card)
-	return {"alibi": "Home alibi", "sighting": "Your vigil", "claim": "Role claim"}.get(card.kind, C.role_name(card.get("role", "")))
+	return {"alibi": "Home alibi", "sighting": "Sighting", "claim": "Role claim"}.get(card.kind, C.role_name(card.role) if card.get("role", "") != "" else card.kind.capitalize())
 
 func mockup() -> void:
 	reset()

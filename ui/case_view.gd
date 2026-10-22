@@ -5,6 +5,7 @@ extends PanelContainer
 signal changed
 signal notes_requested
 signal roles_requested
+signal workshop_requested(number: int)
 
 const C = preload("res://sim/content.gd")
 const Argue = preload("res://sim/argue.gd")
@@ -382,6 +383,8 @@ func show_card_menu(num: int, at: Vector2i) -> void:
 	var card: Dictionary = g.board[num - 1]
 	card_menu.clear()
 	card_menu.add_item("Add to Deduction", CardAction.ADD)
+	if card.kind != "deduction":
+		card_menu.add_item("Add to Case Workshop", 100)
 	card_menu.add_item("Unhide" if card.get("hidden", false) else "Hide", CardAction.HIDE)
 	card_menu.add_item("Find Links", CardAction.LINKS)
 	card_menu.add_item("Hints", CardAction.HINTS)
@@ -396,6 +399,9 @@ func _on_card_action(action: int) -> void:
 	var num = _context_card
 	card_menu.hide()
 	if g == null or num < 1 or num > g.board.size() or g.board[num - 1].get("deleted", false):
+		return
+	if action == 100:
+		workshop_requested.emit(num)
 		return
 	if action in [CardAction.ADD, CardAction.LINKS, CardAction.HINTS]:
 		visible = true

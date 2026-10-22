@@ -1444,6 +1444,8 @@ static func _apply(w, n, ded: Dictionary, supports: Array, base: float, board: A
 	# conclusion weakens with it.
 	var sup: Array = support_refs(supports, board)
 	var ledger_id = "arg:" + conclusion_key(c)
+	if ded.has("workshop_case"):
+		ledger_id = "arg:workshop:%d" % ded.n
 	var before: Dictionary = n.ledger.get(ledger_id, {}).duplicate(true) if w.dlog.detailed else {}
 	var suspicion_before: Dictionary = n.suspicion.duplicate() if w.dlog.detailed else {}
 	var h = Mind.ledger_hear(w, n, ledger_id, effects_of(w, c, supports, why), base * (0.5 + n.trust), [],
