@@ -13,6 +13,14 @@ the native ten-person presentations to **1.66 seconds for 692** and **2.50 secon
 seconds on the same Godot 4.7.2 runtime. See the
 [review, correctness fixes and paired evidence](CASE_WORKSHOP_PROFILING.md).
 
+Subsequent **live Insight/confidence integration changes the behavior model**. Its
+bounded/persistent native profiles measured **4.94 seconds for 692** and **2.54 seconds
+for 4242**. Per-person commitment biases require more prior/comparison work; bounded
+mixtures perform target-specific searches. A post-commit cache avoids a redundant
+theory pass (692 fell from 5.95 to 4.94 seconds with an identical behavior hash).
+Keep these timings distinct from the earlier full/scale reference. The benchmark's
+`--reference-cognition` option selects that reference profile; it does not affect game UI.
+
 ## What drives cost
 
 `Session.present` currently assesses listeners sequentially. Shared caches reuse some

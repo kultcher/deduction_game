@@ -55,7 +55,9 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 		result.issues.append("No supported reading is presented.")
 	if cards.size() > 8 or snapshot.arguments.size() > 6:
 		result.issues.append("This comparison exceeds the initial eight-reading / six-claim workload budget.")
-	var epoch: String = "live through day %d" % snapshot.now.day
+	# Supported questions concern original alignment. Advancing the day must not
+	# silently create a fresh theory and discard yesterday's commitment.
+	var epoch: String = "Original alignment"
 	var view = {"seed": 0, "day": snapshot.now.day, "people": snapshot.people.duplicate(true), "cards": cards,
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": epoch, "history": [],
 		"world_options": {"modifiers": snapshot.rules.modifier_options.duplicate()}, "scope": result.scope}
@@ -197,10 +199,12 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 	for card in cards:
 		reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), src.discounted.get(card.source + ":*", 0.0))
 	return {"id": src.id, "name": src.name, "trust": src.trust, "confidence": src.confidence,
-		"insight": src.insight, "reasoning_mode": "full", "confidence_mode": "scale", "theories": {},
+		"insight": src.insight, "reasoning_mode": src.get("reasoning_mode", "full"),
+		"confidence_mode": src.get("confidence_mode", "scale"), "theories": src.get("theories", {}).duplicate(true),
 		"npc_trust": src.npc_trust.duplicate(true), "suspicion": src.suspicion.duplicate(true),
 		"reading_reliability": reliability, "knowledge": {"self": src.id, "good": good, "own_role": src.own_gift,
-			"own_reports": cards.filter(func(c): return c.id in snapshot.private_evidence).map(func(c): return c.id), "own_outings": {}},
+			"own_reports": cards.filter(func(c): return c.id in snapshot.private_evidence).map(func(c): return c.id),
+			"attention_reports": cards.filter(func(c): return c.id in snapshot.private_evidence and c.source == src.id).map(func(c): return c.id), "own_outings": {}},
 		"ledger": {}, "case_memory": {}}
 
 static func _target(conclusion: Dictionary) -> String:

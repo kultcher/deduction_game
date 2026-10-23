@@ -157,11 +157,11 @@ func _advanced() -> void:
 		g.set_workshop_effects(true)
 		g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 		check(n.workshop_state.active, "%d-person town supports a shared presentation" % size)
-		var before = n.workshop_state.requested.duplicate(true)
+		var previous_fact: String = n.workshop_state.facts[0]
 		var other = g.add_card({"kind": "info", "source": source.id, "day": 2, "phase": 0, "role": "dowser", "data": {"group": [source.id, target.id], "count": 0}, "text": "Later report"})
 		g.board[ded - 1].supports = [other]
 		g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
-		check(n.workshop_state.active and n.workshop_state.facts.size() == 1 and not _close(before, n.workshop_state.requested), "re-presenting a revised case replaces its exclusive old evidence in a %d-person town" % size)
+		check(n.workshop_state.active and n.workshop_state.facts.size() == 1 and previous_fact not in n.workshop_state.facts and n.workshop_state.facts[0] == Shared.Evidence.normalize_card(g.board[other - 1]).id, "re-presenting a revised case replaces its exclusive old evidence in a %d-person town even when bounded conviction is unresolved" % size)
 		# The report itself can also be learned independently after presentation.
 		Mind.apply_info(g.w, n, source, {"day": 2, "phase": 0, "role": "dowser", "data": g.board[other - 1].data}, 0.6)
 		check(n.workshop_state.active and n.workshop_state.facts.size() == 1, "later independent learning joins the same shared fact")

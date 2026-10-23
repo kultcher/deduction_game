@@ -21,6 +21,11 @@ func _run() -> void:
 		seed_value = int(args[args.find("--seed") + 1])
 	var g = Game.new()
 	g.new_case(seed_value, 10)
+	if "--reference-cognition" in args:
+		for person in g.w.npcs:
+			person.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
+			if person.shadow != null:
+				person.shadow.workshop_state = person.workshop_state.duplicate(true)
 	g.w.dlog.detailed = false
 	g.w._day_gifts()
 	var reports: Array = []
@@ -56,6 +61,7 @@ func _run() -> void:
 	Profile.close(town_span)
 	result = Profile.finish()
 	result["seed"] = seed_value
+	result["cognition"] = "full/scale reference" if "--reference-cognition" in args else "native bounded/persistence"
 	result["reports"] = reports.size()
 	result["optimizations"] = {"priors": preload("res://workshop/support_model.gd").reuse_priors,
 		"comparisons": preload("res://workshop/support_model.gd").reuse_comparisons,

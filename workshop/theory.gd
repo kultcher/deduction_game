@@ -8,6 +8,10 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 		"guardrail": "Commitment changes hypothesis ranking only; source and reading reliability are not changed."}
 	if result.mode != "persistence":
 		return result
+	if Solver.Domain.live(view):
+		# Live minds retain a theory per person. Store a compact deterministic
+		# signature rather than duplicating the entire evidence/belief JSON in each.
+		input_key = input_key.sha256_text()
 	if not listener.has("theories"):
 		listener.theories = {}
 	var target: String = value.conclusion.target
@@ -16,12 +20,15 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 	# across accusing and defending the same person, not stored as opposing claims.
 	if value.conclusion.type == "marked":
 		key += "|marked"
+	if value.conclusion.type in ["evil", "good", "suspicious", "marked"] and listener.get("fixed_theory_decisions", {}).has(key):
+		return listener.fixed_theory_decisions[key].duplicate(true)
 	var old: Dictionary = listener.theories.get(key, {}).duplicate(true)
 	result.before = old.get("position", "")
 	result.threshold = 1.0 + 4.0 * listener.confidence
 	if old.get("input_key", "") == input_key:
 		result = old.decision.duplicate(true)
-		result.status = "unchanged"
+		if not Solver.Domain.live(view):
+			result.status = "unchanged"
 		return result
 	var candidate: Dictionary = reasoning.support
 	var candidate_score: float = reasoning.support_score

@@ -137,6 +137,9 @@ func _init() -> void:
 	low.reasoning_mode = "full"
 	low.confidence_mode = "persistence"
 	low.confidence = 0.1
+	# Isolate confidence from the earlier bounded presentations' collateral effects.
+	for id in low.suspicion:
+		low.suspicion[id] = 0.0 if id == low.id else 0.1
 	low.suspicion.constance = 0.15
 	low.npc_trust.constance = 0.5
 	low.npc_trust.nisha = 0.5

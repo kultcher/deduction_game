@@ -3,6 +3,9 @@ extends RefCounted
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const Jury = preload("res://workshop/jury.gd")
+const Support = preload("res://workshop/support_model.gd")
+const Theory = preload("res://workshop/theory.gd")
+const Reasoner = preload("res://workshop/reasoner.gd")
 
 static func reading(source: String, entry: Dictionary) -> Dictionary:
 	var card = {"kind": "info", "source": source, "role": entry.get("role", ""),
@@ -48,6 +51,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	var owners = {}
 	var quotations = {}
 	var issues: Array = []
+	var marked_questions: Array = []
 	for receipt in input.evidence:
 		if receipt.id in input.private_evidence and supported(receipt):
 			_add(facts, owners, receipt, "learned")
@@ -62,6 +66,13 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	for key in presentations:
 		var presented: Dictionary = presentations[key]
 		for argument in presented.arguments:
+			if argument.conclusion.get("type") == "marked":
+				var target: String = Assess._target(argument.conclusion)
+				if target not in marked_questions:
+					marked_questions.append(target)
+			for claim in argument.get("workshop_case", {}).get("arguments", []):
+				if claim.case.conclusion.get("type") == "marked" and claim.case.conclusion.target not in marked_questions:
+					marked_questions.append(claim.case.conclusion.target)
 			if argument.conclusion.get("type") not in Assess.CONCLUSIONS:
 				issues.append("Unsupported endorsed claim: " + str(argument.conclusion.get("type")))
 		for issue in presented.issues:
@@ -167,6 +178,11 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		prepared.case.id = "shared:" + input.case_id
 		prepared.case.arguments = []
 		prepared.listener.knowledge.own_reports = []
+		# Personally received gifts stay available outside the attention budget.
+		# Other learned testimony competes for attention like presented reports.
+		# Keep this separate from the private-only subtraction: the union owns the
+		# TOTAL effect, including the listener's own native gift contribution.
+		prepared.listener.knowledge["attention_reports"] = input.private_evidence.filter(func(id): return facts.has(id) and facts[id].source == input.listener.id)
 		# Raw discoveries must not change strength when player trust changes. Player
 		# trust discounts only facts whose sole route is the player's presentation.
 		var player_weight = clampf(0.5 + prepared.listener.trust, 0.0, 1.0)
@@ -191,7 +207,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		if sources.size() + uncertain > 6:
 			issues.append("Shared evidence exceeds the 64-state credibility budget.")
 	return {"ready": issues.is_empty(), "empty": facts.is_empty(), "issues": issues, "owned": owned if issues.is_empty() else {},
-		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input}
+		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input,
+		"marked_questions": marked_questions}
 
 static func supported(receipt: Dictionary) -> bool:
 	return receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES
@@ -237,11 +254,21 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 			view.cards.append(card.duplicate(true))
 	var listener: Dictionary = plan.prepared.listener.duplicate(true)
 	listener.suspicion = baseline.duplicate(true)
+	# A scoped explanation uses the union's current commitment. It cannot adopt a
+	# second, stronger commitment just because a different headline was asked.
+	listener["fixed_theory_decisions"] = {}
+	for key in listener.theories:
+		if listener.theories[key].has("decision"):
+			listener.fixed_theory_decisions[key] = listener.theories[key].decision.duplicate(true)
 	for card in view.cards:
 		if not listener.reading_reliability.has(card.id):
 			listener.reading_reliability[card.id] = scoped.listener.reading_reliability.get(card.id, 1.0)
 	var endorsed = endorsed_facts(snapshot, snapshot.root)
 	listener.knowledge.own_reports = plan.facts.filter(func(id): return id not in endorsed)
+	if listener.get("reasoning_mode", "full") == "bounded":
+		for id in listener.knowledge.own_reports:
+			if id not in scoped.case.cards:
+				scoped.case.cards.append(id)
 	if scoped.case.conclusion.type == "conflict":
 		listener.knowledge.own_reports = [] # Test the quoted set, not an unrelated background inconsistency.
 	return Jury.evaluate(view, scoped.case, listener)
@@ -259,7 +286,30 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 		var previous = maxf(plan.input.listener.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), plan.input.listener.discounted.get(card.source + ":*", 0.0))
 		var route_weight = prepared.listener.reading_reliability[card.id] / (1.0 - previous) if previous < 1.0 else 0.0
 		prepared.listener.reading_reliability[card.id] = route_weight * (1.0 - doubt)
-	return Jury.evaluate(prepared.view, prepared.case, prepared.listener)
+	var result = Jury.evaluate(prepared.view, prepared.case, prepared.listener)
+	if prepared.listener.get("confidence_mode") == "persistence":
+		# Registration is a separate theory, never an asserted identity or another
+		# suspicion award. Retain questions already considered as evidence changes.
+		prepared.listener.suspicion = suspicion.duplicate(true)
+		var attention = Reasoner.prepare(prepared.view, prepared.case, prepared.listener)
+		var targets: Array = plan.get("marked_questions", []).duplicate()
+		var fact_key: Array = plan.facts.duplicate()
+		fact_key.sort()
+		for key in prepared.listener.theories:
+			if key.ends_with("|marked") and key.get_slice("|", 0) not in targets:
+				targets.append(key.get_slice("|", 0))
+		for target in targets:
+			var question: Dictionary = attention.case.duplicate(true)
+			question.conclusion = {"type": "marked", "target": target, "at": prepared.case.conclusion.at}
+			var scoped = attention.duplicate(true)
+			scoped.case = question
+			var reasoning = Support.explain(prepared.view, question, prepared.listener, scoped)
+			var key = JSON.stringify(Evidence.canonical([fact_key, suspicion, prepared.listener.npc_trust,
+				prepared.listener.reading_reliability, prepared.listener.knowledge, prepared.listener.insight,
+				prepared.listener.confidence, target, reasoning.considered]))
+			Theory.prepare(prepared.view, question, prepared.listener, reasoning, key)
+	result["theories"] = prepared.listener.theories.duplicate(true)
+	return result
 
 static func _add(facts: Dictionary, owners: Dictionary, receipt: Dictionary, owner: String) -> void:
 	facts[receipt.id] = receipt.duplicate(true)

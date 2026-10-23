@@ -131,7 +131,8 @@ handwritten special-case fixture. The fixed Workshop validator's assumption that
 contents are accurate is stronger than merely having a working gift in this situation.
 Changing the native fallback is recorded as a separate open backlog decision.
 
-Comparisons are conditional on report credibility and health, use full reasoning, and
+Comparisons are conditional on report credibility and health, use the selected live
+NPC's bounded Insight and persistent confidence profile, and
 retain the Workshop's experimental weights. They support up to eight reading receipts,
 six claims and 64 credibility combinations for seven- or ten-person towns. Nested filed
 deductions retain their original evidence and scoped intermediate claims. Unsupported
@@ -194,7 +195,8 @@ Player trust discounts reports whose only route is player presentation (factor
 `clamp(0.5 + trust, 0, 1)` in report acceptance). Independently learned readings instead
 retain their legacy hearing weight (capped at 1), together with source credibility and
 interval reliability. They do not globally become stronger or weaker with player trust.
-The aggregate uses neutral player scaling and the listener's existing confidence scaling.
+The aggregate uses neutral player scaling and the listener's persistent working theories.
+Supported shared effects do not also apply the old confidence effect-size multiplier.
 These are experimental interpretation weights, not calibrated guilt probabilities.
 
 Re-presenting a revised board case replaces that case's exclusive roots. **Withdraw
@@ -290,6 +292,69 @@ cover listener, reset on a new case. Baseline, role knowledge, report weights, t
 interval doubt, evidence and public chronology invalidate the relevant calculation.
 Retraction restores an unchanged outside baseline exactly; it does not add and subtract
 the same floating-point value in a way that slowly changes priors or cache keys.
+
+## Live Insight and confidence
+
+With the experimental evaluator enabled, native good NPCs and evil's good cover use
+the existing bounded reasoning and persistent confidence models. The rolled native
+`traits.insight` and `traits.confidence` values cross the read-only bridge; referee
+alignment/health/secret knowledge does not. With the experiment disabled, native
+argument, belief, social and voting behavior retains its existing rules.
+
+| Insight | Presented cards | Connected lines | Support checks | Rival checks |
+|---|---:|---:|---:|---:|
+| Low, below 0.34 | 3 | 1 | 8 | 0 |
+| Medium, below 0.67 | 5 | 2 | 48 | 16 |
+| High, 0.67 and above | 10 | 6 | 840 | 840 |
+
+These are the experiment's existing provisional budgets, not final balance. High
+Insight attempts a complete rival search **within** its cap; 840 checks need not
+exhaust a ten-person domain. Not finding an explanation is unresolved, and not
+searching/finding a rival is not proof. The complete referee diagnostic remains
+separate from spoken bounded reasoning and numerical conviction.
+
+Only personally received gift reports are exempt from the external-card attention
+budget. Reports learned from other speakers remain available but compete for attention;
+privately hearing one does not turn it into firsthand experience. Receiving a gift
+does not establish its health. The shared owner projects one attended pooled report
+set into collateral beliefs; scoped replies additionally assess the presented graph's
+connections and hypotheses. Intermediate labels remain questions rather than extra facts.
+
+Confidence now controls commitment to a defeasible per-person working theory. Moderate
+contrary evidence can revise a low-confidence theory while a high-confidence listener
+retains the old explanation. Strong/exhaustive contrary evidence and known private facts
+can override commitment. The previous `1.4 - 0.8 * confidence` multiplier is disabled for
+these supported shared assessments; native social/vote uses of confidence are unchanged.
+Confidence does not change source honesty, report accuracy or manufacture impairment excuses.
+
+Theory memory belongs to each native good/cover mind's shared owner. Only the applied
+total-evidence assessment commits it. Scoped alignment/registration replies use that
+commitment without independently reinforcing it, and all previews operate on copies.
+Alignment and Marked-registration theories have separate keys. The epoch is stable
+`Original alignment`, so moving to another day does not discard memory. Compact live
+signatures avoid retaining a full evidence JSON string in every theory.
+
+Repeated evidence, wrappers, changed venue and automatic refresh cannot accumulate
+commitment or suspicion. An unchanged committed theory yields an identical assessment;
+the owner caches the post-commit input to avoid redoing it when a native receipt is parked.
+Changed evidence, independent beliefs, source reliability, knowledge, traits or modes
+invalidate the relevant assessment. Retraction removes unsupported persuasion even if
+a dormant theory remains. Disable/unsupported chronology restores native ownership;
+starting a new case clears cognitive memory and resets the experiment off.
+
+Read-only NPC comparisons now show their profile, considered/ignored report counts,
+search effort and theory decision. Neutral ghost previews intentionally remain full/scale
+without native identity or prior theory memory. Portable snapshots lacking the new optional
+mode fields retain their earlier full/scale reference interpretation. Tests that isolate
+presentation semantics explicitly pin that reference profile; live defaults are covered
+by `test_workshop_live_cognition.gd` (**71 checks**).
+
+Measured ten-person first-floor presentation: **4,937 ms for 692**, **2,536 ms for 4242**
+with detailed trace off on Godot 4.7.2 Mono. Persistent per-person biases and bounded
+credibility-state searches change both behavior and cost; these are not comparable as
+behavior-preserving speedups to the earlier full/scale timings. The same script accepts
+`--reference-cognition` to run the prior full/scale model for investigation. See the
+[recorded cognitive profile](benchmarks/workshop-cognition-2026-10-22.json).
 
 ## Manual effectiveness preview
 

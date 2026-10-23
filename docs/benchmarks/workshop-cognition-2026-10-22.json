@@ -1,0 +1,343 @@
+{
+  "format": "workshop-cognition-profile-1",
+  "date": "2026-10-22",
+  "engine": "Godot 4.7.2 Mono",
+  "cognition": "native bounded/persistence",
+  "conditions": "Sequential ten-person first-floor presentation, detailed trace off; setup excluded. Changes NPC interpretation, not expected to preserve full/scale behavior.",
+  "seeds": {
+    "692": {
+      "elapsed_us": 4936724,
+      "behavior_hash": "10334318b0e542bd670991428e5ed0f01f39a97c6bb7f83162c080c089c209c5",
+      "post_commit_cache_reference_us": 5948037,
+      "post_commit_cache_exact_behavior_parity": true,
+      "stages": {
+        "belief_refresh": {
+          "calls": 17,
+          "self_us": 9113,
+          "total_us": 4423288
+        },
+        "candidate_search": {
+          "calls": 2585,
+          "self_us": 1592825,
+          "total_us": 1592825
+        },
+        "consequences": {
+          "calls": 15,
+          "self_us": 39434,
+          "total_us": 4320251
+        },
+        "constraint_solve": {
+          "calls": 75,
+          "self_us": 27935,
+          "total_us": 27935
+        },
+        "explain": {
+          "calls": 173,
+          "self_us": 11275,
+          "total_us": 214136
+        },
+        "headline": {
+          "calls": 15,
+          "self_us": 11674,
+          "total_us": 487164
+        },
+        "initial_refresh": {
+          "calls": 8,
+          "self_us": 80,
+          "total_us": 4406161
+        },
+        "joint_effects": {
+          "calls": 7,
+          "self_us": 2570,
+          "total_us": 4389063
+        },
+        "jury": {
+          "calls": 15,
+          "self_us": 7012,
+          "total_us": 4814427
+        },
+        "listener": {
+          "calls": 10,
+          "self_us": 49552,
+          "total_us": 4929811
+        },
+        "ownership_after": {
+          "calls": 17,
+          "self_us": 10548,
+          "total_us": 4399611
+        },
+        "ownership_before": {
+          "calls": 17,
+          "self_us": 14564,
+          "total_us": 14564
+        },
+        "park_native": {
+          "calls": 8,
+          "self_us": 1937,
+          "total_us": 17559
+        },
+        "presentation": {
+          "calls": 10,
+          "self_us": 23710,
+          "total_us": 4878674
+        },
+        "priors": {
+          "calls": 496,
+          "self_us": 1691702,
+          "total_us": 1691987
+        },
+        "scoped_response": {
+          "calls": 8,
+          "self_us": 3310,
+          "total_us": 431244
+        },
+        "support": {
+          "calls": 323,
+          "self_us": 215870,
+          "total_us": 4514236
+        },
+        "support_solve": {
+          "calls": 2456,
+          "self_us": 15821,
+          "total_us": 15821
+        },
+        "town": {
+          "calls": 1,
+          "self_us": 6905,
+          "total_us": 4936716
+        },
+        "world_comparison": {
+          "calls": 1260,
+          "self_us": 1200879,
+          "total_us": 1200879
+        }
+      },
+      "counters": {
+        "candidate_cache_hit": 373488,
+        "candidate_cache_miss": 119944,
+        "candidate_query_cache_hit": 2550,
+        "candidates_tested": 1113916,
+        "prior_cache_hit": 452,
+        "solve_cache_hit": 2456,
+        "comparison_cache_hit": 912,
+        "credibility_states": 16544,
+        "mixture_plan_build": 323,
+        "private_comparison_reuse": 1809,
+        "union_cache_miss": 7,
+        "union_cache_hit": 8,
+        "response_cache_miss": 8,
+        "comparison_cache_miss": 348,
+        "prior_cache_miss": 44
+      },
+      "listeners": [
+        {
+          "id": "constance",
+          "elapsed_us": 964327
+        },
+        {
+          "id": "nisha",
+          "elapsed_us": 920666
+        },
+        {
+          "id": "hollis",
+          "elapsed_us": 942491
+        },
+        {
+          "id": "odette",
+          "elapsed_us": 109774
+        },
+        {
+          "id": "merrin",
+          "elapsed_us": 6788
+        },
+        {
+          "id": "lian",
+          "elapsed_us": 893637
+        },
+        {
+          "id": "agnes",
+          "elapsed_us": 73576
+        },
+        {
+          "id": "greta",
+          "elapsed_us": 923461
+        },
+        {
+          "id": "fenwick",
+          "elapsed_us": 6972
+        },
+        {
+          "id": "bart",
+          "elapsed_us": 88119
+        }
+      ]
+    },
+    "4242": {
+      "elapsed_us": 2536452,
+      "behavior_hash": "a5801757f2ef0efcb9a91364184193a10cca51ded9b2c33127a4c5eeb29e0aeb",
+      "post_commit_cache_reference_us": 2585746,
+      "post_commit_cache_exact_behavior_parity": true,
+      "stages": {
+        "belief_refresh": {
+          "calls": 15,
+          "self_us": 8622,
+          "total_us": 1870120
+        },
+        "candidate_search": {
+          "calls": 2764,
+          "self_us": 1089038,
+          "total_us": 1089038
+        },
+        "consequences": {
+          "calls": 16,
+          "self_us": 41350,
+          "total_us": 1796652
+        },
+        "constraint_solve": {
+          "calls": 116,
+          "self_us": 43665,
+          "total_us": 43665
+        },
+        "explain": {
+          "calls": 184,
+          "self_us": 12263,
+          "total_us": 337405
+        },
+        "headline": {
+          "calls": 16,
+          "self_us": 12105,
+          "total_us": 600221
+        },
+        "initial_refresh": {
+          "calls": 8,
+          "self_us": 82,
+          "total_us": 1857494
+        },
+        "joint_effects": {
+          "calls": 8,
+          "self_us": 2793,
+          "total_us": 1840519
+        },
+        "jury": {
+          "calls": 16,
+          "self_us": 7071,
+          "total_us": 2403944
+        },
+        "listener": {
+          "calls": 10,
+          "self_us": 63050,
+          "total_us": 2528493
+        },
+        "ownership_after": {
+          "calls": 15,
+          "self_us": 8331,
+          "total_us": 1848850
+        },
+        "ownership_before": {
+          "calls": 15,
+          "self_us": 12648,
+          "total_us": 12648
+        },
+        "park_native": {
+          "calls": 8,
+          "self_us": 1156,
+          "total_us": 10966
+        },
+        "presentation": {
+          "calls": 10,
+          "self_us": 24792,
+          "total_us": 2462545
+        },
+        "priors": {
+          "calls": 528,
+          "self_us": 548400,
+          "total_us": 548551
+        },
+        "scoped_response": {
+          "calls": 8,
+          "self_us": 3075,
+          "total_us": 569293
+        },
+        "support": {
+          "calls": 344,
+          "self_us": 207970,
+          "total_us": 1962348
+        },
+        "support_solve": {
+          "calls": 2595,
+          "self_us": 17326,
+          "total_us": 17326
+        },
+        "town": {
+          "calls": 1,
+          "self_us": 7949,
+          "total_us": 2536442
+        },
+        "world_comparison": {
+          "calls": 598,
+          "self_us": 424756,
+          "total_us": 424756
+        }
+      },
+      "counters": {
+        "candidate_cache_hit": 220239,
+        "candidate_cache_miss": 55913,
+        "candidate_query_cache_hit": 1918,
+        "candidates_tested": 430146,
+        "prior_cache_hit": 513,
+        "solve_cache_hit": 2595,
+        "comparison_cache_hit": 498,
+        "comparison_cache_miss": 100,
+        "credibility_states": 15308,
+        "mixture_plan_build": 344,
+        "private_comparison_reuse": 1935,
+        "prior_cache_miss": 15,
+        "union_cache_miss": 8,
+        "union_cache_hit": 4,
+        "response_cache_miss": 8
+      },
+      "listeners": [
+        {
+          "id": "odette",
+          "elapsed_us": 182528
+        },
+        {
+          "id": "greta",
+          "elapsed_us": 1210280
+        },
+        {
+          "id": "edda",
+          "elapsed_us": 223848
+        },
+        {
+          "id": "kiran",
+          "elapsed_us": 238513
+        },
+        {
+          "id": "fenwick",
+          "elapsed_us": 167188
+        },
+        {
+          "id": "nisha",
+          "elapsed_us": 7472
+        },
+        {
+          "id": "dorian",
+          "elapsed_us": 8637
+        },
+        {
+          "id": "bart",
+          "elapsed_us": 251993
+        },
+        {
+          "id": "merrin",
+          "elapsed_us": 150296
+        },
+        {
+          "id": "jory",
+          "elapsed_us": 87738
+        }
+      ]
+    }
+  }
+}

@@ -68,7 +68,7 @@ static func _refresh(g, n, phase: String) -> void:
 		# Derive interval doubt first; evaluate joint effects only after removing
 		# the owned legacy grounds from honesty and the entire previous vector.
 		var started = Time.get_ticks_msec()
-		var inputs = [plan.prepared, n.suspicion, n.discounted]
+		var inputs = [plan.prepared, n.suspicion, n.discounted, plan.marked_questions]
 		var cached: Dictionary = g._workshop_evaluations.get(key, {})
 		var cache_hit = cached.get("input") == inputs
 		var proposal: Dictionary
@@ -80,8 +80,17 @@ static func _refresh(g, n, phase: String) -> void:
 			var union_span = Profiler.open("joint_effects")
 			proposal = Shared.evaluate(plan, n.suspicion, n.discounted)
 			Profiler.close(union_span)
-			g._workshop_evaluations[key] = {"input": inputs.duplicate(true), "proposal": proposal}
 		state.outside = n.suspicion.duplicate(true)
+		# Only the applied total-evidence assessment commits theory memory. Scoped
+		# replies and developer/ghost previews operate on copies.
+		state.theories = proposal.get("theories", state.get("theories", {})).duplicate(true)
+		state.reasoning = proposal.get("reasoning", {}).duplicate(true)
+		# Theory commitment is idempotent for the same evidence/baseline. Cache the
+		# post-commit input too, so parking a native receipt cannot redo the entire
+		# union merely because the first pass filled in its own memory.
+		var committed_inputs: Array = inputs.duplicate(true)
+		committed_inputs[0].listener.theories = state.theories.duplicate(true)
+		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal}
 		state.requested = {}
 		state.applied = {}
 		for id in proposal.effects:
@@ -101,6 +110,8 @@ static func _refresh(g, n, phase: String) -> void:
 		state.cache_hit = cache_hit
 		g.w.dlog.trace_event("workshop_ownership", n.id, "", {"owned": state.owned, "facts": state.facts,
 			"owners": state.owners, "requested": state.requested, "applied": state.applied,
+			"reasoning": state.reasoning, "reasoning_mode": plan.prepared.listener.reasoning_mode,
+			"confidence_mode": plan.prepared.listener.confidence_mode,
 			"elapsed_ms": state.elapsed_ms}, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
 
 ## Conservative disclosure: a joint inference is not automatically this NPC's

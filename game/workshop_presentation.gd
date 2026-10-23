@@ -66,6 +66,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var plan: Dictionary = g._workshop_plans[listener_key]
 	# Rebuild against final interval reliability, matching the applied union.
 	plan.input.listener.discounted = n.discounted.duplicate(true)
+	plan.input.listener.theories = state.get("theories", {}).duplicate(true)
 	plan = Shared.prepare(plan.input, proposals, n.ledger, state.get("withdrawn", {}))
 	var response_input = [plan.prepared, snapshot.arguments, snapshot.root, snapshot.board_map, snapshot.selected,
 		snapshot.evidence.filter(func(e): return e.id in snapshot.selected), state.outside]
@@ -86,7 +87,9 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var graph_choices: Dictionary = root.get("workshop_case", {}).duplicate(true)
 	graph_choices.erase("version")
 	var signature = JSON.stringify(Evidence.canonical([root.conclusion, original_ids, graph_choices]))
-	var inputs = JSON.stringify(Evidence.canonical([state.outside, plan.facts, n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events]))
+	var cognitive_inputs = [plan.prepared.listener.reasoning_mode, plan.prepared.listener.insight,
+		plan.prepared.listener.confidence_mode, plan.prepared.listener.confidence]
+	var inputs = JSON.stringify(Evidence.canonical([state.outside, plan.facts, n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognitive_inputs]))
 	var discussion: Dictionary = state.get("discussion", {})
 	var repeated: bool = discussion.get(signature, "") == inputs
 	var audience = "player" if venue == "private" else "town"
@@ -137,7 +140,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	if not state.has("discussion"):
 		state.discussion = {}
 	# Trust rewards are part of the new starting inputs on a repeat.
-	state.discussion[signature] = JSON.stringify(Evidence.canonical([state.outside, state.facts, n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events]))
+	state.discussion[signature] = JSON.stringify(Evidence.canonical([state.outside, state.facts, n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognitive_inputs]))
 	if speak and not n.silenced:
 		if not state.has("delivered"):
 			state.delivered = {}
@@ -148,6 +151,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
 		{"venue": venue, "key": key, "agreement": assessment.agreement, "stance": assessment.stance,
 		"repeated": repeated, "fresh": fresh, "claims": assessment.claims, "response": text,
+		"reasoning": assessment.reasoning, "theory": assessment.theory, "cognition": cognitive_inputs,
 		"quoted": state.get("quoted", []), "trust_before": trust_before, "trust_after": n.trust,
 		"pressure_delta": n.pressure - pressure_before, "requested": state.requested}, "One assessment controls supported presentation and shared belief ownership.")
 	g.w.dlog.add("argument_stance", n.id, root.conclusion.get("a", ""), {"key": signature, "stance": assessment.stance,

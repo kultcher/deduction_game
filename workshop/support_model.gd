@@ -218,6 +218,8 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	cards = cards.filter(func(c): return c.kind != "claim" or c.id in factor_refs)
 	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])
 	for id in listener.knowledge.get("own_reports", []):
+		if bounded and id not in attention.considered and id not in listener.knowledge.get("attention_reports", listener.knowledge.get("own_reports", [])):
+			continue
 		var card = Solver.card_by_id(view, id)
 		if not cards.any(func(c): return Solver.semantic_key(c) == Solver.semantic_key(card)):
 			cards.append(card)
@@ -310,6 +312,8 @@ static func _explain(view: Dictionary, value: Dictionary, listener: Dictionary, 
 	var considered = attention.case
 	var cards = Solver.selected(view, considered)
 	for id in listener.knowledge.get("own_reports", []):
+		if listener.get("reasoning_mode", "full") == "bounded" and id not in attention.considered and id not in listener.knowledge.get("attention_reports", listener.knowledge.get("own_reports", [])):
+			continue
 		if not cards.any(func(c): return c.id == id):
 			cards.append(Solver.card_by_id(view, id))
 	var accepted: Array = cards.filter(func(c): return not TimeModel.disowned(view, c, listener.knowledge.get("known_events", [])) and (c.get("quoted", false) or (c.id not in attention.private_checks.rejected and source_quality(listener, c.source) >= 0.4 and (c.kind != "report" or listener.reading_reliability.get(c.get("accuracy_origin", Solver.semantic_key(c)), 1.0) >= 0.5))))

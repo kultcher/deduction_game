@@ -22,7 +22,12 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -
 		full.cards = full.cards.filter(func(id): return id in scope)
 	var limits = profile(listener.get("insight", 0.5))
 	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
+	if bounded and listener.knowledge.has("attention_reports"):
+		for id in listener.knowledge.get("own_reports", []):
+			if id not in full.cards:
+				full.cards.append(id)
 	var cards = Solver.selected(view, full)
+	var personal: Array = listener.knowledge.get("attention_reports", listener.knowledge.get("own_reports", []))
 	var groups: Array = []
 	var assigned: Array = []
 	for line in value.get("lines", []):
@@ -45,13 +50,13 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -
 		keep.append_array(groups[i].cards)
 		kept_lines.append_array(groups[i].ids)
 		connections.append(groups[i].key)
-	var ranked: Array = cards.filter(func(c): return c.id in keep and c.id not in listener.knowledge.get("own_reports", []))
+	var ranked: Array = cards.filter(func(c): return c.id in keep and c.id not in personal)
 	ranked.sort_custom(func(a, b):
 		var x = _salience(a, full.conclusion.target, listener)
 		var y = _salience(b, full.conclusion.target, listener)
 		return x > y if not is_equal_approx(x, y) else Solver.semantic_key(a) < Solver.semantic_key(b))
 	keep = ranked.slice(0, limits.cards if bounded else ranked.size()).map(func(c): return c.id)
-	for id in listener.knowledge.get("own_reports", []):
+	for id in personal:
 		if cards.any(func(c): return c.id == id):
 			keep.append(id)
 	var raw = value.duplicate(true)
@@ -68,7 +73,7 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -
 		"limits": limits, "considered": keep, "ignored": cards.filter(func(c): return c.id not in keep).map(func(c): return c.id),
 		"lines": kept_lines, "connections": connections,
 		"ignored_lines": value.get("lines", []).filter(func(line): return line.relation == "supports" and line.id not in kept_lines).map(func(line): return line.id),
-		"private_reports": listener.knowledge.get("own_reports", []).duplicate(),
+		"private_reports": personal.duplicate(),
 		"private_checks": direct_checks(view, full, listener.knowledge)}
 
 static func _add_group(view: Dictionary, groups: Array, id: String, roots: Array, target: String, listener: Dictionary) -> void:
@@ -334,7 +339,7 @@ static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Di
 		if card.get("quoted", false):
 			continue
 		if card.kind == "report" and card.source == self_id:
-			for id in knowledge.get("own_reports", []):
+			for id in knowledge.get("attention_reports", knowledge.get("own_reports", [])):
 				var received = Solver.card_by_id(view, id)
 				if received.get("role") == card.role and received.get("observed_at") == card.observed_at and received.get("data") != card.data:
 					objections.append("%s is not the result I received. That does not tell us whether my actual gift result was healthy." % card.id)

@@ -21,6 +21,9 @@ func _game():
 	g.detailed_logging = false
 	g.new_case(692, 7)
 	for p in g.w.npcs:
+		# This suite isolates presentation/ownership under its original reference
+		# cognition. Native bounded/persistent behavior has a separate live suite.
+		p.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 		p.role = "warden" if not p.is_evil() else p.role
 		p.info_log = []
 		p.known_claims = {}
@@ -229,6 +232,7 @@ func _intermediate() -> void:
 	g.detailed_logging = false
 	g.new_case(692, 10)
 	for p in g.w.npcs:
+		p.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 		p.info_log = []
 		p.known_claims = {}
 		p.beliefs = []

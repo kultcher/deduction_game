@@ -43,7 +43,7 @@ func _ready() -> void:
 	_button(tools, "All evidence", func(): canvas.fit_case(true))
 	effects_toggle = CheckBox.new()
 	effects_toggle.text = "Experimental reading evaluator"
-	effects_toggle.tooltip_text = "Opt in for this case. Supports Surveyor, Rumormonger and Dowser readings about original alignment. Other cases use the existing argument rules."
+	effects_toggle.tooltip_text = "Opt in for this case. NPC Insight limits attention and alternative searches; confidence sustains revisable theories. Supports Surveyor, Rumormonger and Dowser readings about original alignment. Other cases use the existing argument rules."
 	effects_toggle.toggled.connect(func(on):
 		g.set_workshop_effects(on)
 		_session_changed())

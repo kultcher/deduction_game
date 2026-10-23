@@ -159,6 +159,12 @@ static func describe(result: Dictionary) -> String:
 	var lines = PackedStringArray(["New model: %s · agreement %.3f · %d ms" % [proposal.stance, proposal.support_model.agreement, result.elapsed_ms],
 		proposal.response, "", "Evidence strength (not applied to the game):"])
 	lines.insert(2, "Conditional worlds: %d compatible; %d fit your answers. These are assignments, not odds of guilt." % [proposal.assessment.compatible, proposal.assessment.proposed])
+	var reasoning: Dictionary = proposal.get("reasoning", {})
+	if not reasoning.is_empty():
+		lines.insert(3, "Reasoning: %s · %d reports considered, %d set aside · %d support checks, %d alternative checks · %s." % [reasoning.profile, reasoning.considered.size(), reasoning.ignored.size(), reasoning.support_tested, reasoning.rivals_tested, reasoning.status])
+	var theory: Dictionary = proposal.get("theory", {})
+	if theory.get("mode") == "persistence":
+		lines.insert(4, "Working theory: %s. %s" % [theory.status, theory.note])
 	for person in proposal.effects:
 		var effect: Dictionary = proposal.effects[person]
 		if not is_zero_approx(effect.requested):
