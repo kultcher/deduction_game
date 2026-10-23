@@ -12,6 +12,7 @@ var fails = 0
 func _init() -> void:
 	_contracts()
 	_memory()
+	_flow()
 	_live()
 	call_deferred("_lab")
 
@@ -56,6 +57,34 @@ func _memory() -> void:
 	scenario["statement"] = "On night 2, neither Edda nor Jory read as the demon."
 	_check(not Dialogue.compose("agnes", scenario, {}, memory)["repeated"], "a changed account is never called the same answer")
 	_check(not Dialogue.compose("agnes", Fixtures.SCENARIOS[0], {}, {})["repeated"], "fresh case memory starts empty")
+
+func _flow() -> void:
+	for scenario in Fixtures.FLOW_SCENARIOS:
+		for id in Fixtures.IDS:
+			var memory = {}
+			var baseline = scenario["parts"].duplicate(true)
+			var parts = Dialogue.compose_turn(id, scenario["parts"], {"audience": "player"}, memory, scenario.get("preceded", false))
+			_check(parts.size() == baseline.size() and baseline == scenario["parts"], "turn keeps all approved utterances and source descriptors unchanged")
+			for i in range(parts.size()):
+				_check(parts[i]["statement"] == baseline[i]["statement"] and baseline[i]["statement"] in parts[i]["text"], "flow never alters an approved fact or fabricated report")
+				if i > 0 or scenario.get("preceded", false):
+					_check(not parts[i]["text"].begins_with(Dialogue.Voices.VOICES[id]["report"][0]) and not parts[i]["text"].begins_with(Dialogue.Voices.VOICES[id]["report"][1]), "continuations suppress new report openings")
+			var next = Dialogue.compose_turn(id, scenario["parts"], {"audience": "player"}, memory, scenario.get("preceded", false))
+			_check(next.all(func(p): return p["repeated"]), "turn delivery retains per-event repetition tracking")
+	var unknown_memory = {}
+	var fallback = Dialogue.compose_turn("edda", Fixtures.FLOW_SCENARIOS[0]["parts"], {}, unknown_memory, true)
+	_check(fallback.all(func(p): return p["text"] == p["statement"]) and unknown_memory.is_empty(), "unvoiced characters keep literal statements and no dialogue memory")
+	var partial = Fixtures.FLOW_SCENARIOS[1]["parts"]
+	var ctx = {"audience": "player", "request_privacy": true}
+	var memory = {}
+	var private_parts = Dialogue.compose_turn("agnes", partial, ctx, memory)
+	_check(private_parts.filter(func(p): return "Please keep this between us." in p["text"]).size() == 1, "privacy request occurs once, at the end of a turn")
+	var public_parts = Dialogue.compose_turn("agnes", partial, {"audience": "town", "request_privacy": true}, {})
+	_check(public_parts.all(func(p): return not "Please keep this between us." in p["text"]), "public turn never requests private confidence")
+	var fixture: Dictionary = Fixtures.FLOW_SCENARIOS[0]
+	var truthful = Dialogue.compose_turn("bart", fixture["parts"], {"audience": "player", "true": true}, {}, true)
+	var fabricated = Dialogue.compose_turn("bart", fixture["parts"], {"audience": "player", "true": false, "alignment": "evil"}, {}, true)
+	_check(truthful == fabricated, "flow presentation cannot distinguish real from fabricated accounts")
 
 func _live() -> void:
 	var g = Game.new()
@@ -119,6 +148,13 @@ func _live() -> void:
 	g.command("talk agnes")
 	_check(g.last_events.any(func(e): return e["k"] == "speech" and "I've been thinking about your argument" in e["text"]), "queued belief revision is expressed through the real conversation entry point")
 	_check(n.remarks.is_empty(), "the existing remark is consumed once")
+	var readings = [entry, entry.duplicate(true)]
+	readings[1]["day"] = 1
+	readings[1]["text"] = "my sight was unclear"
+	n.dialogue_memory.clear()
+	var grouped = Mind.info_lines(w, n, readings, "player", true)
+	_check(grouped.size() == 2 and "Last night, " + entry["text"] + "." in grouped[0]["text"] and "On night 1, my sight was unclear." in grouped[1]["text"], "live grouped readings retain content and ordering")
+	_check(not "Here's what I can tell you" in grouped[0]["text"] and not "Here, let me put it plainly" in grouped[1]["text"], "live uninterrupted role disclosure avoids fresh reading introductions")
 	_case_with(g, ["agnes"])
 	_check(g.w.by_id["agnes"].dialogue_memory.is_empty(), "starting a new case discards prior dialogue memory")
 
