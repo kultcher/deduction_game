@@ -232,6 +232,29 @@ const FLOW_SCENARIOS = [
 	},
 ]
 
+## Synthetic sequences across *separate* player/NPC exchanges. The player's
+## immediately preceding spoken act is supplied explicitly; it is not inferred.
+const EXCHANGE_SCENARIOS = [
+	{
+		"title": "Gift reveal after pressure",
+		"mode": "gift", "previous_action": "challenge_gift", "role": "Seer",
+		"statement": "I'm the Seer.",
+		"note": "Player just challenged this person's gift. The simulation now independently approved a first-time Seer claim. No alignment or truth is supplied.",
+	},
+	{
+		"title": "Opinion after accusation",
+		"mode": "opinion", "previous_action": "accusation", "subject_id": "edda", "subject_name": "Edda",
+		"statement": "I have my doubts about Edda.",
+		"note": "Player just accused Edda in a private exchange. The next response acknowledges that subject without asserting agreement with the accusation.",
+	},
+	{
+		"title": "Repeated refusal about someone",
+		"mode": "refusal", "previous_action": "opinion", "subject_id": "edda", "subject_name": "Edda",
+		"statement": "It's not my place to say.",
+		"note": "NPC refused the previous question about Edda. On a repeat, they still refuse, but do not recite the same boilerplate.",
+	},
+]
+
 ## Seed only explicit fictional prior speech, once per scenario/audience. Preview callers
 ## pass copied memory, so inspecting a scenario never delivers it to the real history.
 static func prime(id: String, scenario: Dictionary, audience: String, memory: Dictionary) -> void:
