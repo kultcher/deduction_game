@@ -114,6 +114,46 @@ Private and meeting delivery are conservatively kept separate; hearing a private
 does not imply the town heard it. The system does not yet propagate a public delivery to
 every listener's memory or normalize equivalent time phrases across days.
 
+## Turn composition (feature branch)
+
+The dialogue composer can now receive an **ordered speaker turn** through
+`Dialogue.compose_turn(id, approved_intents, context, memory, preceded)`. Each intent
+continues to carry an approved, exact factual statement and event ID. `preceded`
+means the caller has already supplied a spoken line in the same uninterrupted turn
+(for example, "I'm the Seer"). An opening report uses existing trust, pressure and
+repetition behavior; continuing reports suppress a fresh "Here is my account" lead-in.
+
+An approved `relation` on a report selects optional authored connective speech:
+`continuation` (the default, **no** connective), `development`, `contrast`,
+`transition`, or `correction`. The caller must explicitly authorize the relation.
+The composer does not read a statement to decide what contrasts or what is true.
+Agnes, Bartholomew and Constance have different connective styles. Non-voiced
+characters continue to use the unchanged approved statements. Confidentiality
+requests appear at most once at the end of a composed turn and never in town speech.
+
+`Mind.info_lines` now uses this path for multiple readings when privately revealing
+a gift and when publicly claiming a reading role at a meeting. The preceding role
+claim is accounted for, so even the *first* reading avoids starting another
+speech. Every report remains a separate speech event, with its original statement
+and fact card; evidence and disclosures are unchanged. Single reports still use
+`info_line` and its established behavior.
+
+The lab offers three new multi-line examples: role reveal with successive readings,
+developing/qualifying an account, and transitions/corrections. Its previews use
+copied dialogue memory, so only "Speak" commits delivery.
+
+**Scope:** this is turn composition, not conversational momentum between separate
+questions, and not a general overhaul of evidence-based rebuttals, excuses,
+social grievances, or offers. The latter need explicit approved responses from
+the NPC logic. In particular, no hidden role, secret or lie status enters
+connective selection.
+
+**Validation:** `tools/test_dialogue.gd` includes turn sequencing, content
+preservation, repeated delivery, confidentiality, default connectives and
+truth-independence checks. Run the commands below before merging. The GitHub
+editing environment used for this branch does not have a Godot executable, so
+these checks have been added but **have not been executed locally**.
+
 ## Scope and extensions
 
 This is a writing/behavior prototype, not a complete dialogue rewrite. It does not yet
