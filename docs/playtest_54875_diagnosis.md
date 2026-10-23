@@ -67,7 +67,11 @@ cleanly take ownership of that entry. The check protects exact reversibility.
 
 Since early readings often name someone the demon later kills, this will block the
 shared model in most games. Fixes, in order of effort:
-- skip the dead in the saturation check (their suspicion no longer matters);
+- skip demon victims (not all the dead) in the saturation check: their suspicion is
+  pinned at 0.0 on death and `adjust` ignores later changes, so nothing an entry
+  recorded on them actually landed. The executed dead stay in, since their suspicion
+  still changes and still weighs their old claims. This assumes a demon kill proves
+  good, which DESIGN wants to soften one day;
 - keep the unclamped sum (base + contributions) and clamp only on read, which makes
   every entry removable and lets the checks, the "clipped" flag and the fallback go;
 - meanwhile, no silent fallback: block the submission with the reason, log which exit

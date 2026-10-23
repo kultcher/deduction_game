@@ -48,8 +48,22 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
     beliefs need a reversible baseline") or was clipped. Demon victims sit at 0.0, and
     Constance's night-0 reading named Dorian, so every listener was blocked from the Day 2
     meeting on. This will happen in most games. [decided]
-    - **Quick fix:** skip the dead in the saturation check (a demon victim's suspicion no
-      longer matters, and `adjust` already ignores them).
+    - **Quick fix:** skip **demon victims** (not all the dead) in the saturation check.
+      Their suspicion number is pinned at 0.0 when they die (`World._kill`) and
+      `Mind.adjust` ignores every later change, so an entry's recorded effect on them
+      never actually landed and there's nothing to reverse. The shared model learns
+      they're good from the public `demon_death` event, not from that number. What
+      their earlier readings and claims are worth is a different quantity (honesty
+      plus reading doubt, recomputed from the ledger) and isn't touched by this. The
+      executed dead must stay in the check: their suspicion still changes and still
+      matters (legacy `Argue._cred` weighs their old claims by it). Caveat: this relies
+      on "killed by the demon = good" being certain, which DESIGN says should one day
+      be only strong evidence (a demon that kills its own minion); the real fix below
+      doesn't.
+    - **Related inconsistency:** legacy honesty doesn't exempt demon victims. Evidence
+      against Dorian (Constance's frame that he was out on night 0) still lowered how
+      much listeners credited his own word after his death, while his suspicion said
+      "known good". Decide which one wins. [open]
     - **Real fix:** the check exists because suspicion is a clamped running sum: each
       recompute applies differences to a value clamped to [0, 1.5], so removing an entry
       can't restore the value it had before the clamp. Keep the unclamped sum (base +
