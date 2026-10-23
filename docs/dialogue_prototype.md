@@ -154,6 +154,55 @@ truth-independence checks. Run the commands below before merging. The GitHub
 editing environment used for this branch does not have a Godot executable, so
 these checks have been added but **have not been executed locally**.
 
+## Across-exchange conversational continuity
+
+A private conversation now has a **short-lived interaction scope** independent of
+case-long disclosure/argument memory. The game calls
+`Dialogue.begin_conversation(n.dialogue_memory)` when the player starts a
+conversation or accepts an NPC approach. After the NPC has actually spoken to
+answer a question, the game records only the last **player-expressed action**
+and **named subject** with `Dialogue.record_exchange`. Invalid commands and
+unspoken responses do not create a false preceding act; an unrelated question
+breaks immediate adjacency.
+
+`Dialogue.exchange_cue` currently recognizes a deliberately small set:
+
+- A challenge to an NPC's gift followed by their subsequently approved **first
+  gift reveal**: the usual standalone "I'll trust you" opener becomes an authored
+  acknowledgement of the pressure. This never forces the NPC to disclose a gift;
+  if they still refuse, they continue refusing. Nighttime whereabouts challenges
+  are distinguished from gift challenges.
+- A player accusation against person X followed immediately by asking that same
+  NPC's opinion about X: the opinion acknowledges the accusation, without
+  implying agreement. Questions about different people do not inherit the cue.
+- A second immediate opinion question about the same subject: the NPC recognizes
+  that they were just asked. A second refusal uses a distinct but equally
+  non-disclosing line rather than "It's not my place to say" again.
+
+Agnes, Bartholomew, and Constance have independent authored wording for all
+three contexts. Unvoiced characters keep the prior behavior. No new NPC
+decision rules, suspicion modifiers, evidence cards, or assertion templates are
+introduced; even fabricated reading/role claims are composed from the same
+approved statements as honest claims. This is **immediate adjacency**, not a
+persistent long-term transcript or automatic reasoning about past objections.
+
+The lab now includes three synthetic across-exchange examples. It primes a
+fictional preceding action in preview-only memory, and records the current
+answer only on "Speak". The next preview of that same topic therefore sees
+the newly delivered exchange. Regression checks also exercise the real
+`tell edda <card>` → `ask about edda` → repeat-question path.
+
+### Parallel work boundary
+
+Reviewed Opus's `claude/case-reasoning` at stable commit `8e8f05a`. That branch
+changes case evaluation, argument logic, and parts of `sim/mind.gd` and
+`game/game.gd`. This work does not invoke workshop solvers or read their
+private reasoning. It uses the player's preceding conversational act and
+already-approved replies. File-level overlap exists in the two game scripts,
+so a later merge should reconcile those small entry/response hooks against
+Opus's additional workshop integration and rerun both test suites. Opus's
+branch was **not modified or rebased**.
+
 ## Scope and extensions
 
 This is a writing/behavior prototype, not a complete dialogue rewrite. It does not yet
