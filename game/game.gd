@@ -857,7 +857,7 @@ func _remember_dialogue_exchange(n, verb: String, rest: String, response: Dictio
 		var desc: Dictionary = response.get("dialogue_exchange", {})
 		action = desc.get("action", "challenge")
 		subject = desc.get("subject", n.id)
-	elif verb in ["tell", "accuse"] and not parts.is_empty() and not "," in parts[0]:
+	elif verb in ["tell", "accuse"] and not parts.is_empty() and not parts[0].contains(","):
 		var person = find_npc(parts[0])
 		if person != null:
 			action = "accusation"
