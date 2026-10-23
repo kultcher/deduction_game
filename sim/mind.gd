@@ -1842,14 +1842,18 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		var r = answer_night(w, n, night)
 		lines += r["lines"]
 		facts += r["facts"]
-		return _challenged(n, {"lines": lines, "facts": facts}, card)
+		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
+		pressed["dialogue_exchange"] = {"action": "challenge_night", "subject": n.id}
+		return pressed
 	# Their gift: a true naming opens them up; otherwise pressure decides.
 	var bonus = 1 if naming_me and d.get("role", "") == mine else 0
 	var tier = mini(_target_tier(w, n) + bonus, 4)
 	var r2 = answer_gift(w, n, tier)
 	lines += r2["lines"]
 	facts += r2["facts"]
-	return _challenged(n, {"lines": lines, "facts": facts}, card)
+	var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
+	pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
+	return pressed
 
 # ---------------------------------------------------------------- conversation
 
@@ -1998,7 +2002,9 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 	if evil:
 		w.dlog.think(n.id, "lie", "Evil cover: tells the player they are the %s." % role, {"true_role": n.role})
 	if first_time:
-		lines.append(say(n, "I'll trust you with this. I'm the %s." % C.role_name(role)))
+		var reveal_cue: String = Dialogue.exchange_cue(n.dialogue_memory, "gift", n.id)
+		var contextual: String = Dialogue.gift_reveal(n.id, C.role_name(role), reveal_cue)
+		lines.append(say(n, contextual if contextual != "" else "I'll trust you with this. I'm the %s." % C.role_name(role)))
 		if not evil and C.ROLES[role].get("night_walk", false) and not n.lied_nights.is_empty():
 			# The lie they told you about that night, owned now it has a reason.
 			var nights: Array = n.lied_nights.map(func(x): return C.night_name(x))
@@ -2471,7 +2477,10 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	w.dlog.think(n.id, "lie" if lie else "opinion", "%s opinion of %s: level %.2f, reason: %s." %
 		["Evil cover" if lie else ("Evil (mimicking the town)" if n.is_evil() else "Honest"), t.id, level, why if why != "" else "vibes"])
 	level = shown
-	lines.append(voiced(n, "friend", text, "opinion:" + t.id, {"close": close, "subject": t.name}))
+	var opinion_reply: Dictionary = voiced(n, "friend", text, "opinion:" + t.id, {"close": close, "subject": t.name})
+	var opinion_cue: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
+	opinion_reply["text"] = Dialogue.contextualize(n.id, opinion_reply["text"], opinion_cue, t.name)
+	lines.append(opinion_reply)
 	if level >= 0.5:
 		facts.append({"kind": "opinion", "subject": [t.id], "source": n.id, "text": "%s distrusts %s." % [n.name, t.name]})
 	return {"lines": lines, "facts": facts}
