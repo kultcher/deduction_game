@@ -13,6 +13,7 @@ func _init() -> void:
 	_contracts()
 	_memory()
 	_flow()
+	_exchange()
 	_live()
 	call_deferred("_lab")
 
@@ -86,6 +87,39 @@ func _flow() -> void:
 	var fabricated = Dialogue.compose_turn("bart", fixture["parts"], {"audience": "player", "true": false, "alignment": "evil"}, {}, true)
 	_check(truthful == fabricated, "flow presentation cannot distinguish real from fabricated accounts")
 
+func _exchange() -> void:
+	for id in Fixtures.IDS:
+		var memory = {}
+		Dialogue.begin_conversation(memory)
+		Dialogue.record_exchange(memory, "challenge_gift", id)
+		var cue = Dialogue.exchange_cue(memory, "gift", id)
+		var line = Dialogue.gift_reveal(id, "Seer", cue)
+		_check(cue == "gift_after_challenge" and "Seer" in line and line != "" and not "{" in line, "gift reveal follows a prior relevant challenge in %s's own voice" % id)
+		Dialogue.record_exchange(memory, "gift", id)
+		_check(Dialogue.exchange_cue(memory, "gift", id) == "", "a second gift question is not treated as a new concession")
+		Dialogue.record_exchange(memory, "accusation", "edda")
+		cue = Dialogue.exchange_cue(memory, "opinion", "edda")
+		var approved = "I have my doubts about Edda."
+		var presented = Dialogue.contextualize(id, approved, cue, "Edda")
+		_check(cue == "opinion_after_accusation" and approved in presented and presented != approved, "opinion refers to the immediately preceding accusation without changing stance")
+		_check(Dialogue.exchange_cue(memory, "opinion", "jory") == "", "unrelated target does not inherit accusation context")
+		Dialogue.record_exchange(memory, "opinion", "edda")
+		cue = Dialogue.exchange_cue(memory, "opinion", "edda")
+		_check(cue == "opinion_again" and approved in Dialogue.contextualize(id, approved, cue, "Edda"), "repeat question acknowledges prior exchange without asserting an unchanged belief")
+		Dialogue.record_exchange(memory, "other")
+		_check(Dialogue.exchange_cue(memory, "opinion", "edda") == "", "intervening action breaks conversational adjacency")
+		memory["seen"] = {"historic": true}
+		Dialogue.begin_conversation(memory)
+		_check(Dialogue.exchange_cue(memory, "gift", id) == "" and Dialogue.exchange_cue(memory, "opinion", "edda") == "" and memory["seen"].has("historic"), "new talk forgets adjacency, not earlier evidence disclosures")
+		_check(Dialogue.contextualize(id, approved, "opinion_after_accusation", "Edda") == presented, "wording is deterministic without game RNG")
+	var fallback = {}
+	Dialogue.begin_conversation(fallback)
+	Dialogue.record_exchange(fallback, "accusation", "edda")
+	_check(Dialogue.contextualize("fenwick", "I suspect Edda.", Dialogue.exchange_cue(fallback, "opinion", "edda"), "Edda") == "I suspect Edda.", "other NPCs retain unvoiced fallback")
+	var missing = {}
+	Dialogue.record_exchange(missing, "accusation", "edda")
+	_check(missing.is_empty(), "unscoped scripted speech cannot create phantom conversation history")
+
 func _live() -> void:
 	var g = Game.new()
 	g.log_dir = "user://dialogue_tests"
@@ -148,6 +182,32 @@ func _live() -> void:
 	g.command("talk agnes")
 	_check(g.last_events.any(func(e): return e["k"] == "speech" and "I've been thinking about your argument" in e["text"]), "queued belief revision is expressed through the real conversation entry point")
 	_check(n.remarks.is_empty(), "the existing remark is consumed once")
+	# An actual player action records its listener and target, then the next
+	# question can be contextualized without altering suspicion or evidence.
+	g.state = "talk"
+	g.talk_with = n
+	g.questions_left = 3
+	g.free_repeats = 0
+	n.silenced = false
+	n.traits["gossip"] = 0.9
+	Mind.Dialogue.begin_conversation(n.dialogue_memory)
+	var claim_card: int = g.add_card({"kind": "claim", "source": target.id, "subject": [target.id],
+		"role": "clerk", "text": "Edda claimed Clerk."})
+	g.command("tell edda %d" % claim_card)
+	_check(n.dialogue_memory.get("conversation", {}).get("last_action", "") == "accusation" and
+		n.dialogue_memory.get("conversation", {}).get("last_subject", "") == target.id,
+		"live conversation records the spoken accusation target")
+	g.command("ask about edda")
+	_check(g.last_events.any(func(ev): return ev.get("k", "") == "speech" and
+		"About that concern you raised over Edda:" in str(ev.get("text", ""))),
+		"live opinion answers the previous accusation with relevant context")
+	_check(n.dialogue_memory.get("conversation", {}).get("last_action", "") == "opinion",
+		"live dialogue records the last completed answer")
+	g.command("ask about edda")
+	_check(g.last_events.any(func(ev): return ev.get("k", "") == "speech" and
+		"You're still wondering about Edda" in str(ev.get("text", ""))),
+		"same-person followup is different from restarting the topic")
+
 	var readings = [entry, entry.duplicate(true)]
 	readings[1]["day"] = 1
 	readings[1]["text"] = "my sight was unclear"
