@@ -23,6 +23,7 @@ var preview_window: Window
 var preview_output: RichTextLabel
 
 func _ready() -> void:
+	_configure_subwindows()
 	theme = WorkshopSkin.make()
 	theme.default_font_size = 17
 	board = CanvasModel.new(session.scenario.public_view)
@@ -97,23 +98,34 @@ func _ready() -> void:
 	status = _label(page, "", 15, "muted")
 	_build_windows()
 	context_menu = PopupMenu.new()
-	add_child(context_menu)
+	_add_subwindow(context_menu)
 	context_menu.id_pressed.connect(_context_action)
 	export_dialog = FileDialog.new()
 	export_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 	export_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	export_dialog.add_filter("*.json", "Workshop canvas")
 	export_dialog.file_selected.connect(_save)
-	add_child(export_dialog)
+	_add_subwindow(export_dialog)
 	import_dialog = FileDialog.new()
 	import_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	import_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	import_dialog.add_filter("*.json", "Workshop canvas")
 	import_dialog.file_selected.connect(_open)
-	add_child(import_dialog)
+	_add_subwindow(import_dialog)
 	_session_changed()
 	if "--workshop-smoke" in OS.get_cmdline_user_args():
 		call_deferred("_smoke")
+
+func _configure_subwindows() -> void:
+	# Own the dialog layer inside the Workshop window. Otherwise nested windows
+	# can share the game's outer stack and be covered when Workshop regains focus.
+	get_window().gui_embed_subwindows = true
+
+func _add_subwindow(window: Window) -> void:
+	window.visible = false
+	window.transient = true
+	window.transient_to_focused = false
+	add_child(window)
 
 func _build_windows() -> void:
 	preview_window = Window.new()
@@ -121,7 +133,7 @@ func _build_windows() -> void:
 	preview_window.size = Vector2i(720, 720)
 	preview_window.visible = false
 	preview_window.close_requested.connect(func(): preview_window.hide())
-	add_child(preview_window)
+	_add_subwindow(preview_window)
 	var preview_body = _window_body(preview_window)
 	preview_output = RichTextLabel.new()
 	preview_output.custom_minimum_size = Vector2(610, 610)
@@ -137,7 +149,7 @@ func _build_windows() -> void:
 		answer_window.hide()
 		answer_id = ""
 		_sync())
-	add_child(answer_window)
+	_add_subwindow(answer_window)
 	case_box = _window_body(answer_window)
 	jury_window = Window.new()
 	jury_window.title = "Mock jury · test your selected case"
@@ -145,7 +157,7 @@ func _build_windows() -> void:
 	jury_window.min_size = Vector2i(440, 400)
 	jury_window.visible = false
 	jury_window.close_requested.connect(func(): jury_window.hide())
-	add_child(jury_window)
+	_add_subwindow(jury_window)
 	var jury_body = _window_body(jury_window)
 	_label(jury_body, "Mock jury", 26, "accent")
 	_label(jury_body, "Present any premise on the canvas. Its connected evidence is evaluated; disconnected cards stay scratch work.", 16, "muted")
@@ -262,7 +274,7 @@ func _open_answer(id: String) -> void:
 	focus_card = board.nodes[id].get("card", "")
 	active_line = ""
 	_refresh_case()
-	answer_window.popup_centered()
+	answer_window.popup_centered_clamped()
 
 func _active_choices() -> Dictionary:
 	return board.nodes[answer_id] if board != null and board.nodes.has(answer_id) else session.case_data
@@ -359,7 +371,7 @@ func _edit() -> void:
 	status.text = "Answer updated. The card keeps its answer when you close this window. Present again to reassess."
 
 func _show_jury() -> void:
-	jury_window.popup_centered()
+	jury_window.popup_centered_clamped()
 
 func _preview_effectiveness() -> void:
 	if board.nodes[board.selected].kind != "premise" or board.nodes[board.selected].conclusion.is_empty():
@@ -371,7 +383,7 @@ func _preview_effectiveness() -> void:
 		status.text = validation
 		return
 	preview_output.text = "Calculating neutral reference response…"
-	preview_window.popup_centered()
+	preview_window.popup_centered_clamped()
 	var preview_view = board.view.duplicate(true)
 	await get_tree().process_frame
 	var result = Ghost.evaluate(preview_view, compiled)

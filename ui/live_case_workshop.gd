@@ -16,6 +16,7 @@ var progress_label: Label
 var presenting = false
 
 func _ready() -> void:
+	_configure_subwindows()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = WorkshopSkin.make()
 	theme.default_font_size = 17
@@ -71,7 +72,7 @@ func _ready() -> void:
 	support_label.custom_minimum_size.y = 75
 	status = _label(page, "", 15, "muted")
 	context_menu = PopupMenu.new()
-	add_child(context_menu)
+	_add_subwindow(context_menu)
 	context_menu.id_pressed.connect(_context_action)
 	answer_window = Window.new()
 	answer_window.title = "Answer this live card"
@@ -81,14 +82,14 @@ func _ready() -> void:
 		answer_window.hide()
 		answer_id = ""
 		_session_changed())
-	add_child(answer_window)
+	_add_subwindow(answer_window)
 	case_box = _window_body(answer_window)
 	preview_window = Window.new()
 	preview_window.title = "Live case · preview and presentation feedback"
 	preview_window.size = Vector2i(760, 720)
 	preview_window.visible = false
 	preview_window.close_requested.connect(func(): preview_window.hide())
-	add_child(preview_window)
+	_add_subwindow(preview_window)
 	result_output = RichTextLabel.new()
 	result_output.custom_minimum_size = Vector2(660, 610)
 	result_output.selection_enabled = true
@@ -98,7 +99,7 @@ func _ready() -> void:
 	progress_window.size = Vector2i(600, 200)
 	progress_window.visible = false
 	progress_window.exclusive = true
-	add_child(progress_window)
+	_add_subwindow(progress_window)
 	progress_label = _label(_window_body(progress_window), "", 18)
 	refresh()
 
@@ -214,7 +215,7 @@ func _support_details() -> void:
 		result_output.text += "\n• " + issue
 	result_output.text += "\n\n" + check.warning
 	result_output.text += "\n\nThis is an original-alignment reading adapter. Public conversion history, other gifts and movement likelihoods require further adapters. Actual listener knowledge/ownership limits can also require fallback; presentation reports that without exposing private facts."
-	preview_window.popup_centered()
+	preview_window.popup_centered_clamped()
 
 func _edit() -> void:
 	board.version += 1
@@ -284,7 +285,7 @@ func _preview_effectiveness() -> void:
 		return
 	var input = Live.snapshot(g, board.compile(board.selected))
 	result_output.text = "Calculating neutral reference response…"
-	preview_window.popup_centered()
+	preview_window.popup_centered_clamped()
 	await get_tree().process_frame
 	var result = Ghost.live(input)
 	result_output.text = ComparisonText.describe(result)
@@ -307,8 +308,8 @@ func _present() -> void:
 		window.confirmed.connect(func(): _send("accuse %d" % number); window.queue_free())
 		window.custom_action.connect(func(_action): _send("defend %d" % number); window.queue_free())
 		window.canceled.connect(window.queue_free)
-		add_child(window)
-		window.popup_centered()
+		_add_subwindow(window)
+		window.popup_centered_clamped()
 	else:
 		_send(("convince %d" if g.state == "talk" else "present %d") % number)
 
@@ -318,8 +319,8 @@ func _send(command: String) -> void:
 	presenting = true
 	g.workshop_deliveries.clear()
 	status.text = "Presenting case; calculating listener responses…"
-	progress_label.text = "Calculating listener responses. A large first presentation can take around half a minute; completed assessments are reused when possible."
-	progress_window.popup_centered()
+	progress_label.text = "Calculating listener responses; completed assessments are reused when possible."
+	progress_window.popup_centered_clamped()
 	await get_tree().process_frame
 	await execute.call(command, _progress)
 	progress_window.hide()
@@ -332,11 +333,11 @@ func _send(command: String) -> void:
 	if lines.is_empty():
 		lines.append("No case assessment was delivered. Check the main conversation log for the current action limit or error.")
 	result_output.text = "\n".join(PackedStringArray(lines))
-	preview_window.popup_centered()
+	preview_window.popup_centered_clamped()
 	refresh()
 
 func _progress(name_value: String) -> void:
-	progress_label.text = "Assessing %s's response…\n%d listener responses completed. First presentations may take around half a minute in a ten-person town." % [name_value, g.workshop_deliveries.size()]
+	progress_label.text = "Assessing %s's response…\n%d listener responses completed." % [name_value, g.workshop_deliveries.size()]
 	await get_tree().process_frame
 
 func _withdraw_window() -> void:
@@ -348,7 +349,7 @@ func _withdraw_window() -> void:
 	window.title = "Developer withdrawal · case #%d" % number
 	window.size = Vector2i(520, 360)
 	window.close_requested.connect(window.queue_free)
-	add_child(window)
+	_add_subwindow(window)
 	var body = _window_body(window)
 	_label(body, "Testing tool: removes this case's endorsement. Independently learned reports stay known. This is not an in-character retraction conversation.", 17)
 	var person = _option(body, g.w.npcs.map(func(n): return n.name))
@@ -356,4 +357,4 @@ func _withdraw_window() -> void:
 		g.workshop_retract(number, g.w.npcs[person.selected].id)
 		status.text = "Endorsement withdrawn for " + g.w.npcs[person.selected].name
 		window.queue_free())
-	window.popup_centered()
+	window.popup_centered_clamped()

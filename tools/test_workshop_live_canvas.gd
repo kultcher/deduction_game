@@ -275,11 +275,19 @@ func _main_ui() -> void:
 	await process_frame
 	var editor = main.workshop_win.get_child(0)
 	check(editor.g == main.g and editor.board.view.get("live", false), "main menu opens the live editor rather than the fixture canvas")
+	check(main.workshop_win.gui_embed_subwindows, "Workshop owns its child dialog layer instead of sharing the outer game window stack")
+	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded() and window.get_parent().get_window() == main.workshop_win), "live answer, results, progress and context windows belong to the Workshop layer")
 	check(not main.g.prediction_spoiled and not main.g.workshop_effects, "opening the live editor does not enable debug spoilers or experimental effects")
 	var number: int = main.g.board[0].n
 	main.case_view.show_card_menu(number, Vector2i(200, 200))
 	main.case_view.card_menu.id_pressed.emit(100)
 	check(editor.board.selected == "e:" + Live.Evidence.normalize_card(main.g.board[number - 1]).id, "case-board context action focuses the same original evidence in the live editor")
+	editor._open_answer(editor.board.selected)
+	await process_frame
+	main.workshop_win.grab_focus()
+	await process_frame
+	check(editor.answer_window.visible and editor.answer_window.get_parent().get_window() == main.workshop_win, "answer panel remains in the Workshop layer when its main window regains focus")
+	editor.answer_window.close_requested.emit()
 	editor.board.connect_cards(editor.board.selected, editor.case_root)
 	editor.board.selected = editor.case_root
 	main.g.state = "talk"
@@ -287,6 +295,10 @@ func _main_ui() -> void:
 	main.g.questions_left = 3
 	editor._session_changed()
 	var filed_number: int = editor._file()
+	editor._withdraw_window()
+	var withdrawal: Window = editor.get_children().filter(func(child): return child is Window and child.title.begins_with("Developer withdrawal"))[0]
+	check(withdrawal.visible and withdrawal.transient and withdrawal.is_embedded() and withdrawal.get_parent().get_window() == main.workshop_win, "dynamically created withdrawal panel also uses the Workshop layer")
+	withdrawal.close_requested.emit()
 	await editor._send("convince %d" % filed_number)
 	check("FALLBACK" in editor.result_output.text and main.g.questions_left == 2, "live screen submits through the main game's command callback and displays actual fallback")
 	check(not editor.progress_window.visible and not editor.presenting, "presentation progress closes and releases the editor after delivery")

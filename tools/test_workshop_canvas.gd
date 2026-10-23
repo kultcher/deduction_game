@@ -120,6 +120,7 @@ func _ui() -> void:
 	await process_frame
 	await process_frame
 	var canvas = scene.canvas
+	check(scene.get_window().gui_embed_subwindows and [scene.answer_window, scene.preview_window, scene.jury_window, scene.export_dialog, scene.import_dialog, scene.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded()), "fixture Workshop dialogs share their parent's embedded layer and fixed window ownership")
 	var original: Array = scene.board.nodes["e:survey"].at.duplicate()
 	var point: Vector2 = canvas.hit["e:survey"].position + Vector2(35, 55)
 	_mouse(canvas, point, true)
