@@ -2426,7 +2426,10 @@ static func answer_opinion(w, n, t) -> Dictionary:
 			{"gate": "gossip_and_pressure_cutoff", "gossip": trait_of(n, "gossip"),
 				"gossip_minimum": 0.2, "pressure": n.pressure, "pressure_override": 0.5}, t.id)
 		w.dlog.think(n.id, "opinion", "Gossip %.2f: won't discuss others." % trait_of(n, "gossip"))
-		lines.append(say(n, "It's not my place to say."))
+		var refused: String = "It's not my place to say."
+		var previous: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
+		refused = Dialogue.repeated_opinion_refusal(n.id, t.name, previous, refused)
+		lines.append(say(n, Dialogue.contextualize(n.id, refused, previous if previous != "opinion_again" else "", t.name)))
 		return {"lines": lines, "facts": facts}
 	# Same pipeline for both alignments: a suspicion level plus an optional grounded reason.
 	var why = ""
