@@ -13,7 +13,9 @@ with reasoning that:
 - weighs doubtful sources **granularly** (a sleepwalker's whereabouts "lie" doesn't
   discredit their Seer readings);
 - leaves NPCs **persuadable and plausibly wrong**, because the player is the detective;
-- lets NPCs reason **beyond the player's framing**, from their own evidence.
+- lets NPCs reason **beyond the player's framing**, from their own evidence and the
+  rules of the world (the public setup: how many evil, which gifts and modifiers can be
+  in play, how each reading works).
 
 ## The board (UI)
 
@@ -29,7 +31,19 @@ with reasoning that:
 5. **File case:** turns the premise into a presentable card, which can become a
    premise in later cases (a day-2 "Constance is unreliable" supports a day-4 case).
 
-**Dropped:** the mock jury, preview effectiveness and save/open. They were test
+**Case strength, shown while building.** The player should see whether the argument
+does what they think it does, without exact numbers. The filed case card, and the
+premise while editing, carries one of:
+- **doesn't support** (the linked evidence doesn't bear on the premise, or contradicts it);
+- **weakly**, **moderately** or **strongly** supports the premise.
+
+It's computed by the same evaluator against a **neutral reference listener**: public
+rules, default trust, no private knowledge. So it describes the case, not any
+particular NPC. A short reason goes with it ("rests on one reading from a single
+source"; "two independent lines agree"). Real listeners may still differ because of
+their trust and private knowledge, and the board's post-presentation colours show that.
+
+**Dropped:** the mock jury, the separate preview window and save/open. They were test
 scaffolding. The fixture canvas and lab scenes go with them once their tests are
 ported.
 
@@ -110,8 +124,10 @@ cost. Contradictions just make worlds unlikely; no leave-one-out step is needed.
 
 ### NPCs' own reasoning (beyond the player's framing)
 
-One solve per NPC each night over public evidence plus their private readings,
-observations and accepted claims. That gives their shortlist of worlds and leading
+One solve per NPC each night over the rules of the world (the public setup: evil
+count, possible gifts and modifiers, how each reading constrains the world), public
+evidence, and their private readings, observations and accepted claims. The rules alone
+already rule worlds out, so NPCs can reach conclusions nobody argued to them. That gives their shortlist of worlds and leading
 suspects, through the same Insight limits. It feeds:
 - their own nominations and accusations (with provenance rules intact);
 - the rival theories above;
@@ -148,7 +164,9 @@ Evil NPCs run it on their good self (the shadow); the real evil mind is unchange
    - one solve on the linked cards;
    - likelihood weights with per-source, per-channel honesty and accuracy;
    - output: weighted surviving worlds, then belief and action for the premise, the
-     effects on everyone, and rival theories.
+     effects on everyone, and rival theories;
+   - a **strength category** for the premise from a neutral reference listener
+     (doesn't support / weakly / moderately / strongly), with a one-line reason.
 2. **Port the checkpoint specimens** as the referee and record where answers differ from
    model v5, case by case: which differences matter to the player?
 3. **Wire `Session.present` and the live presentation through `CaseEval`** for the
