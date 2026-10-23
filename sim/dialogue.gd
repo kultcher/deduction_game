@@ -161,6 +161,13 @@ static func exchange_cue(memory: Dictionary, action: String, subject_id: String 
 			return "opinion_again"
 	return ""
 
+## When an opinion was already refused, a repeated question should not launch
+## the same boilerplate again. This renders the SAME refusal, not a new judgment.
+static func repeated_opinion_refusal(id: String, subject_name: String, cue: String, original: String) -> String:
+	if cue != "opinion_again" or not has_voice(id):
+		return original
+	return str(Voices.VOICES[id].get("conversation_opinion_refusal_again", original)).replace("{subject}", subject_name)
+
 ## A full alternate first-reveal sentence, selected only when the underlying
 ## disclosure logic has ALREADY approved the gift being named.
 static func gift_reveal(id: String, role_name: String, cue: String) -> String:
