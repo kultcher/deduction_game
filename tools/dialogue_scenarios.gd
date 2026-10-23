@@ -197,6 +197,41 @@ const SCENARIOS = [
 	},
 ]
 
+## Multi-line examples test flow separately from the decision that approved each fact.
+## "relation" is a rhetorical relation explicitly supplied by the caller, never
+## inferred by inspecting a possibly fabricated account.
+const FLOW_SCENARIOS = [
+	{
+		"title": "Role reveal and three readings",
+		"note": "One speaker turn after an already-spoken role disclosure: no fresh opening on each reading.",
+		"lead_in": "I'll trust you with this. I'm the Seer.",
+		"preceded": true,
+		"parts": [
+			{"kind": "report", "event_id": "flow:seer:0", "statement": "On night 0, Edda or Jory read as the demon."},
+			{"kind": "report", "event_id": "flow:seer:1", "statement": "On night 1, neither Greta nor Fenwick read as the demon."},
+			{"kind": "report", "event_id": "flow:seer:2", "statement": "On night 2, Hollis or Isolde read as the demon."},
+		],
+	},
+	{
+		"title": "Developing and qualifying a thought",
+		"note": "The relationship between sentences is approved explicitly; the renderer does not decide that a statement is contradictory.",
+		"parts": [
+			{"kind": "report", "event_id": "flow:account:0", "statement": "I saw Jory near the square."},
+			{"kind": "report", "event_id": "flow:account:1", "relation": "development", "statement": "I saw Fenwick there as well."},
+			{"kind": "report", "event_id": "flow:account:2", "relation": "contrast", "statement": "I could not tell whether they arrived together."},
+		],
+	},
+	{
+		"title": "Changing topic and correcting an account",
+		"note": "An explicit topic transition and correction, without changing the approved facts.",
+		"parts": [
+			{"kind": "report", "event_id": "flow:topic:0", "statement": "I was at home that evening."},
+			{"kind": "report", "event_id": "flow:topic:1", "relation": "transition", "statement": "I heard that Greta was seen by the wharf."},
+			{"kind": "report", "event_id": "flow:topic:2", "relation": "correction", "statement": "To be precise, that report concerned the afternoon."},
+		],
+	},
+]
+
 ## Seed only explicit fictional prior speech, once per scenario/audience. Preview callers
 ## pass copied memory, so inspecting a scenario never delivers it to the real history.
 static func prime(id: String, scenario: Dictionary, audience: String, memory: Dictionary) -> void:
