@@ -976,11 +976,29 @@ static func _claim_line(n, role: String) -> Dictionary:
 	}
 	return say(n, "%sI am the %s." % [openers.get(n.style, ""), C.role_name(role)])
 
-static func info_line(w, n, e: Dictionary, audience: String = "player") -> Dictionary:
+## Construct the exact public-facing report before a presentation layer touches it.
+static func _info_intent(w, n, e: Dictionary) -> Dictionary:
 	var when = "The night before you arrived" if e["day"] == 0 else "Last night" if e["day"] == w.day - 1 else "On night %d" % e["day"]
 	if e.has("phase"):
 		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
-	return voiced(n, "report", "%s, %s." % [when, e["text"]], info_eid(n.id, e), {"audience": audience})
+	return {"kind": "report", "statement": "%s, %s." % [when, e["text"]], "event_id": info_eid(n.id, e)}
+
+static func info_line(w, n, e: Dictionary, audience: String = "player") -> Dictionary:
+	var approved = _info_intent(w, n, e)
+	return voiced(n, "report", approved["statement"], approved["event_id"], {"audience": audience})
+
+## A batch of readings is one uninterrupted speech turn. Each report remains an
+## independent line and fact; only its introduction/connective is turn-aware.
+static func info_lines(w, n, entries: Array, audience: String = "player", preceded: bool = false) -> Array:
+	var approved: Array = []
+	for e in entries:
+		approved.append(_info_intent(w, n, e))
+	var rendered: Array = Dialogue.compose_turn(n.id, approved,
+		{"audience": audience, "trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, preceded)
+	var lines: Array = []
+	for part in rendered:
+		lines.append(say(n, part["text"]))
+	return lines
 
 static func info_fact(w, n, e: Dictionary) -> Dictionary:
 	var subj: Array = Gifts.subjects(e)
@@ -1223,6 +1241,7 @@ static func _go_public(w, n, lines: Array, facts: Array) -> void:
 			if l != n:
 				hear_claim(w, l, n.id, claim, 0.5, "public")
 	if C.has_readings(n.claimed_role):
+		var shared_this_turn: Array = []
 		for e in n.info_log:
 			if e["shared"] or e.get("disowned", false):
 				continue
@@ -1232,11 +1251,12 @@ static func _go_public(w, n, lines: Array, facts: Array) -> void:
 				weights[x] = reading_strength(e, x)
 			w.public_event("reading", implicated(e), n.id, {"weights": weights})
 			w.public_event("clear", Gifts.clears(e), n.id)
-			lines.append(info_line(w, n, e, "town"))
+			shared_this_turn.append(e)
 			facts.append(info_fact(w, n, e))
 			for l in w.living():
 				if l != n:
 					apply_info(w, l, n, e, heard_weight(l, n))
+		lines.append_array(info_lines(w, n, shared_this_turn, "town", not lines.is_empty()))
 
 static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	if n.silenced:
@@ -2022,8 +2042,8 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 		n.max_tier = 4
 	if evil and not readings.is_empty():
 		w.dlog.think(n.id, "lie", "Evil: recites fabricated %s results." % role)
+	lines.append_array(info_lines(w, n, readings, "player", not lines.is_empty()))
 	for e in readings:
-		lines.append(info_line(w, n, e))
 		facts.append(info_fact(w, n, e))
 	var held = n.info_log.size() - readings.size()
 	if held > 0:
