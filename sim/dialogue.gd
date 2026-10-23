@@ -130,6 +130,57 @@ static func compose_turn(id: String, intents: Array, context: Dictionary, memory
 		results.append(compose(id, delivery, cues, memory))
 	return results
 
+## Immediate exchange continuity is deliberately separate from cross-day delivery memory.
+## Start a fresh scope when a new talk opens, but keep seen reports/decisions intact.
+static func begin_conversation(memory: Dictionary) -> void:
+	memory["conversation"] = {"last_action": "", "last_subject": ""}
+
+## Record only the player's expressed action, never hidden reasons, trust, or alignment.
+## Called after the NPC has actually spoken a reply to the player.
+static func record_exchange(memory: Dictionary, action: String, subject_id: String = "") -> void:
+	var current: Dictionary = memory.get("conversation", {})
+	if current.is_empty():
+		return # A scripted response outside a player conversation has no continuity scope.
+	current["last_action"] = action
+	current["last_subject"] = subject_id
+	memory["conversation"] = current
+
+## Returns a rhetorical relationship, not an assessment of the prior evidence.
+static func exchange_cue(memory: Dictionary, action: String, subject_id: String = "") -> String:
+	var current: Dictionary = memory.get("conversation", {})
+	if current.is_empty():
+		return ""
+	var last_action: String = current.get("last_action", "")
+	var last_subject: String = current.get("last_subject", "")
+	if action == "gift" and last_action == "challenge_gift":
+		return "gift_after_challenge"
+	if action == "opinion" and subject_id != "" and last_subject == subject_id:
+		if last_action == "accusation":
+			return "opinion_after_accusation"
+		if last_action == "opinion":
+			return "opinion_again"
+	return ""
+
+## A full alternate first-reveal sentence, selected only when the underlying
+## disclosure logic has ALREADY approved the gift being named.
+static func gift_reveal(id: String, role_name: String, cue: String) -> String:
+	if cue != "gift_after_challenge" or not has_voice(id):
+		return ""
+	var template: String = Voices.VOICES[id].get("conversation_gift_after_challenge", "")
+	return template.replace("{role}", role_name)
+
+## Prefix an approved opinion after a prior spoken exchange about that SAME
+## person. Never infer a stance from the prose or the subject's real role.
+static func contextualize(id: String, statement: String, cue: String, subject_name: String) -> String:
+	if not has_voice(id):
+		return statement
+	if not cue in ["opinion_after_accusation", "opinion_again"]:
+		return statement
+	var phrase: String = Voices.VOICES[id].get("conversation_" + cue, "")
+	if phrase.is_empty():
+		return statement
+	return phrase.replace("{subject}", subject_name) + " " + statement
+
 ## The simulation has already approved this descriptor. Never pass private decision logs.
 static func decision(id: String, approved: Dictionary, audience: String, memory: Dictionary) -> Dictionary:
 	return Decisions.render(id, approved, audience, memory)
