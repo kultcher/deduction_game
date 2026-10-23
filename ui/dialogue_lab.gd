@@ -39,11 +39,12 @@ func _ready() -> void:
 	body.add_theme_constant_override("separation", 18)
 	scroll.add_child(body)
 	_label(body, "Dialogue workshop", 32)
-	_label(body, "Three voices, fifteen situations. Synthetic examples; no live case or hidden roles are loaded.", 18)
+	_label(body, "Three voices, standalone situations and full speaker turns. Synthetic examples; no live case or hidden roles are loaded.", 18)
 	var selectors = HFlowContainer.new()
 	selectors.add_theme_constant_override("h_separation", 18)
 	body.add_child(selectors)
-	scenario_opt = _option(selectors, "Situation", Fixtures.SCENARIOS.map(func(s): return s["title"]))
+	var situations: Array = Fixtures.SCENARIOS + Fixtures.FLOW_SCENARIOS
+	scenario_opt = _option(selectors, "Situation", situations.map(func(s): return s["title"]))
 	scenario_opt.item_selected.connect(func(_i): _refresh(false))
 	trust_opt = _option(selectors, "Trust in listener", ["Low", "Neutral", "High"])
 	trust_opt.select(1)
@@ -88,7 +89,7 @@ func _ready() -> void:
 	reset.text = "Reset conversation memory"
 	reset.pressed.connect(reset_memory)
 	actions.add_child(reset)
-	_label(body, "Changing controls previews the next line. Speak records delivery; previews never consume memory.\nTrust and pressure affect reporting. Friendship gates the friend response. Confidentiality applies only to private reports. Decision scenarios use fixed, explicit assessments.", 17)
+	_label(body, "Changing controls previews the next line or entire turn. Speak records delivery; previews never consume memory.\nFlow examples keep all approved statements verbatim. Trust and pressure affect opening reports. Relationship cues are explicit; confidentiality applies only to private reports.", 17)
 	_refresh(false)
 
 func _label(parent: Node, text_value: String, font_size: int) -> Label:
@@ -123,20 +124,39 @@ func reset_memory() -> void:
 		memories[id] = {}
 	_refresh(false)
 
+func _flow_render(id: String, scenario: Dictionary, context: Dictionary, memory: Dictionary) -> Dictionary:
+	var parts: Array = Dialogue.compose_turn(id, scenario["parts"], context, memory, scenario.get("preceded", false))
+	var spoken: Array = []
+	if not str(scenario.get("lead_in", "")).is_empty():
+		spoken.append(scenario["lead_in"])
+	for part in parts:
+		spoken.append(part["text"])
+	return {"text": "\n\n".join(PackedStringArray(spoken)), "intent": "turn",
+		"parts": parts, "cue": " / ".join(PackedStringArray(parts.map(func(p): return p["cue"]))),
+		"repeated": parts.any(func(p): return p["repeated"])}
+
 func _refresh(deliver: bool) -> void:
-	var scenario: Dictionary = Fixtures.SCENARIOS[scenario_opt.selected]
-	var context: Dictionary = scenario["context"].duplicate(true)
+	var is_flow: bool = scenario_opt.selected >= Fixtures.SCENARIOS.size()
+	var scenario: Dictionary = Fixtures.FLOW_SCENARIOS[scenario_opt.selected - Fixtures.SCENARIOS.size()] if is_flow else Fixtures.SCENARIOS[scenario_opt.selected]
+	var context: Dictionary = scenario.get("context", {}).duplicate(true)
 	context["trust"] = [0.15, 0.5, 0.85][trust_opt.selected]
 	context["pressure"] = 1.0 if pressure_check.button_pressed else 0.0
 	context["audience"] = ["player", "town", "other_listener"][audience_opt.selected]
 	context["close"] = relationship_check.button_pressed
 	context["request_privacy"] = private_check.button_pressed
 	note.text = scenario["note"]
-	core.text = "Approved statement: " + scenario["statement"]
+	if is_flow:
+		core.text = "Approved statements:\n" + "\n".join(PackedStringArray(scenario["parts"].map(func(p): return p["statement"])))
+	else:
+		core.text = "Approved statement: " + scenario["statement"]
 	for id in Fixtures.IDS:
 		var memory: Dictionary = memories[id] if deliver else memories[id].duplicate(true)
-		Fixtures.prime(id, scenario, context["audience"], memory)
-		var result = Dialogue.compose(id, scenario, context, memory)
+		var result: Dictionary
+		if is_flow:
+			result = _flow_render(id, scenario, context, memory)
+		else:
+			Fixtures.prime(id, scenario, context["audience"], memory)
+			result = Dialogue.compose(id, scenario, context, memory)
 		outputs[id].text = result["text"]
 		cues[id].text = "%s · %s" % ["Delivered" if deliver else "Preview", result["cue"] if result["cue"] != "" else "unchanged fallback"]
 		last_results[id] = result
