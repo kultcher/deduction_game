@@ -43,7 +43,7 @@ func _ready() -> void:
 	var selectors = HFlowContainer.new()
 	selectors.add_theme_constant_override("h_separation", 18)
 	body.add_child(selectors)
-	var situations: Array = Fixtures.SCENARIOS + Fixtures.FLOW_SCENARIOS
+	var situations: Array = Fixtures.SCENARIOS + Fixtures.FLOW_SCENARIOS + Fixtures.EXCHANGE_SCENARIOS
 	scenario_opt = _option(selectors, "Situation", situations.map(func(s): return s["title"]))
 	scenario_opt.item_selected.connect(func(_i): _refresh(false))
 	trust_opt = _option(selectors, "Trust in listener", ["Low", "Neutral", "High"])
@@ -135,9 +135,39 @@ func _flow_render(id: String, scenario: Dictionary, context: Dictionary, memory:
 		"parts": parts, "cue": " / ".join(PackedStringArray(parts.map(func(p): return p["cue"]))),
 		"repeated": parts.any(func(p): return p["repeated"])}
 
+func _exchange_render(id: String, scenario: Dictionary, memory: Dictionary) -> Dictionary:
+	# A preview receives a copied memory; priming it cannot change real delivery.
+	if not memory.has("conversation"):
+		Dialogue.begin_conversation(memory)
+		Dialogue.record_exchange(memory, scenario["previous_action"],
+			id if scenario["mode"] == "gift" else scenario["subject_id"])
+	var mode: String = scenario["mode"]
+	var subject_id: String = id if mode == "gift" else scenario["subject_id"]
+	var cue: String = Dialogue.exchange_cue(memory, "gift" if mode == "gift" else "opinion", subject_id)
+	var said: String = scenario["statement"]
+	if mode == "gift":
+		var reveal: String = Dialogue.gift_reveal(id, scenario["role"], cue)
+		if reveal != "":
+			said = reveal
+	elif mode == "refusal":
+		said = Dialogue.repeated_opinion_refusal(id, scenario["subject_name"], cue, said)
+		said = Dialogue.contextualize(id, said, cue if cue != "opinion_again" else "", scenario["subject_name"])
+	else:
+		said = Dialogue.contextualize(id, said, cue, scenario["subject_name"])
+	Dialogue.record_exchange(memory, "gift" if mode == "gift" else "opinion", subject_id)
+	return {"text": said, "statement": scenario["statement"], "intent": "exchange",
+		"cue": cue, "repeated": false}
+
 func _refresh(deliver: bool) -> void:
-	var is_flow: bool = scenario_opt.selected >= Fixtures.SCENARIOS.size()
-	var scenario: Dictionary = Fixtures.FLOW_SCENARIOS[scenario_opt.selected - Fixtures.SCENARIOS.size()] if is_flow else Fixtures.SCENARIOS[scenario_opt.selected]
+	var is_flow: bool = scenario_opt.selected >= Fixtures.SCENARIOS.size() and scenario_opt.selected < Fixtures.SCENARIOS.size() + Fixtures.FLOW_SCENARIOS.size()
+	var is_exchange: bool = scenario_opt.selected >= Fixtures.SCENARIOS.size() + Fixtures.FLOW_SCENARIOS.size()
+	var scenario: Dictionary
+	if is_flow:
+		scenario = Fixtures.FLOW_SCENARIOS[scenario_opt.selected - Fixtures.SCENARIOS.size()]
+	elif is_exchange:
+		scenario = Fixtures.EXCHANGE_SCENARIOS[scenario_opt.selected - Fixtures.SCENARIOS.size() - Fixtures.FLOW_SCENARIOS.size()]
+	else:
+		scenario = Fixtures.SCENARIOS[scenario_opt.selected]
 	var context: Dictionary = scenario.get("context", {}).duplicate(true)
 	context["trust"] = [0.15, 0.5, 0.85][trust_opt.selected]
 	context["pressure"] = 1.0 if pressure_check.button_pressed else 0.0
@@ -152,7 +182,9 @@ func _refresh(deliver: bool) -> void:
 	for id in Fixtures.IDS:
 		var memory: Dictionary = memories[id] if deliver else memories[id].duplicate(true)
 		var result: Dictionary
-		if is_flow:
+		if is_exchange:
+			result = _exchange_render(id, scenario, memory)
+		elif is_flow:
 			result = _flow_render(id, scenario, context, memory)
 		else:
 			Fixtures.prime(id, scenario, context["audience"], memory)
