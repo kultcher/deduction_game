@@ -112,6 +112,8 @@ static func render(id: String, d: Dictionary, audience: String, memory: Dictiona
 			if not str(d.get("reason", "")).is_empty():
 				chunks.append(_line(id, d["reason"], d))
 		if not str(d.get("preferred", "")).is_empty():
+			if d.get("reason", "") in ["alternative", "possible_alternative"]:
+				chunks.append("Looking at the case as a whole:")
 			chunks.append(_line(id, "preferred", d))
 		var sequence = int(memory.get("decision_sequence", 0)) + 1
 		var entry = d.duplicate(true)
