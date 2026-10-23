@@ -1,0 +1,316 @@
+{
+  "date": "2026-10-23",
+  "engine": "Godot 4.7.2 mono, headless",
+  "model": "native bounded/persistence",
+  "note": "Expanded evidence families change report counts, identity/route constraints and native fallback workload. Timings are descriptive and are not parity comparisons with the previous six-gift benchmark. Activity and contamination priors are experimental.",
+  "runs": [
+    {
+      "seed": 692,
+      "reports": 5,
+      "elapsed_ms": 19246.82,
+      "behavior_hash": "07fb8b321ddbdc28f046f7aeb9ce02ede949964fa0d00bd1a666436a04479c5c",
+      "deliveries": {
+        "legacy": 3,
+        "shared": 7
+      },
+      "listeners": [
+        {
+          "listener": "constance",
+          "ms": 14.54
+        },
+        {
+          "listener": "nisha",
+          "ms": 3951.11
+        },
+        {
+          "listener": "hollis",
+          "ms": 3180.79
+        },
+        {
+          "listener": "odette",
+          "ms": 455.92
+        },
+        {
+          "listener": "merrin",
+          "ms": 10.23
+        },
+        {
+          "listener": "lian",
+          "ms": 6062.3
+        },
+        {
+          "listener": "agnes",
+          "ms": 518.72
+        },
+        {
+          "listener": "greta",
+          "ms": 4106.85
+        },
+        {
+          "listener": "fenwick",
+          "ms": 10.24
+        },
+        {
+          "listener": "bart",
+          "ms": 930.16
+        }
+      ],
+      "stages": {
+        "belief_refresh": {
+          "calls": 16,
+          "self_ms": 9.15,
+          "total_ms": 16003.25
+        },
+        "candidate_search": {
+          "calls": 7038,
+          "self_ms": 11786.4,
+          "total_ms": 11786.4
+        },
+        "consequences": {
+          "calls": 13,
+          "self_ms": 40.77,
+          "total_ms": 13588.73
+        },
+        "constraint_solve": {
+          "calls": 329,
+          "self_ms": 1148.48,
+          "total_ms": 1148.48
+        },
+        "explain": {
+          "calls": 150,
+          "self_ms": 175.75,
+          "total_ms": 1549.18
+        },
+        "headline": {
+          "calls": 13,
+          "self_ms": 14.94,
+          "total_ms": 5488.98
+        },
+        "initial_refresh": {
+          "calls": 7,
+          "self_ms": 0.07,
+          "total_ms": 15983.68
+        },
+        "joint_effects": {
+          "calls": 6,
+          "self_ms": 2.62,
+          "total_ms": 15966.62
+        },
+        "jury": {
+          "calls": 13,
+          "self_ms": 7.02,
+          "total_ms": 19084.73
+        },
+        "listener": {
+          "calls": 10,
+          "self_ms": 83.98,
+          "total_ms": 19240.86
+        },
+        "ownership_after": {
+          "calls": 15,
+          "self_ms": 11.45,
+          "total_ms": 15978.07
+        },
+        "ownership_before": {
+          "calls": 15,
+          "self_ms": 14.61,
+          "total_ms": 14.61
+        },
+        "park_native": {
+          "calls": 7,
+          "self_ms": 2.1,
+          "total_ms": 15.98
+        },
+        "presentation": {
+          "calls": 10,
+          "self_ms": 28.03,
+          "total_ms": 19152.54
+        },
+        "priors": {
+          "calls": 430,
+          "self_ms": 1611.88,
+          "total_ms": 2083.71
+        },
+        "scoped_response": {
+          "calls": 7,
+          "self_ms": 4.12,
+          "total_ms": 3124.85
+        },
+        "support": {
+          "calls": 280,
+          "self_ms": 1750.87,
+          "total_ms": 16795.8
+        },
+        "support_solve": {
+          "calls": 6903,
+          "self_ms": 52.79,
+          "total_ms": 524.26
+        },
+        "town": {
+          "calls": 1,
+          "self_ms": 5.96,
+          "total_ms": 19246.81
+        },
+        "world_comparison": {
+          "calls": 2386,
+          "self_ms": 2495.83,
+          "total_ms": 2495.83
+        }
+      }
+    },
+    {
+      "seed": 4242,
+      "reports": 7,
+      "elapsed_ms": 18899.39,
+      "behavior_hash": "ef951f1652ccab7a981d8f24e7f39d93ecf53f3194ed1274b4b4febcbdd27e82",
+      "deliveries": {
+        "legacy": 6,
+        "shared": 4
+      },
+      "listeners": [
+        {
+          "listener": "odette",
+          "ms": 21.96
+        },
+        {
+          "listener": "greta",
+          "ms": 956.46
+        },
+        {
+          "listener": "edda",
+          "ms": 16.38
+        },
+        {
+          "listener": "kiran",
+          "ms": 5855.08
+        },
+        {
+          "listener": "fenwick",
+          "ms": 16.41
+        },
+        {
+          "listener": "nisha",
+          "ms": 16.7
+        },
+        {
+          "listener": "dorian",
+          "ms": 17.34
+        },
+        {
+          "listener": "bart",
+          "ms": 5591.04
+        },
+        {
+          "listener": "merrin",
+          "ms": 2172.43
+        },
+        {
+          "listener": "jory",
+          "ms": 4226.83
+        }
+      ],
+      "stages": {
+        "belief_refresh": {
+          "calls": 18,
+          "self_ms": 11.5,
+          "total_ms": 11042.15
+        },
+        "candidate_search": {
+          "calls": 4659,
+          "self_ms": 5205.84,
+          "total_ms": 5205.84
+        },
+        "consequences": {
+          "calls": 9,
+          "self_ms": 31.8,
+          "total_ms": 7968.03
+        },
+        "constraint_solve": {
+          "calls": 388,
+          "self_ms": 5480.94,
+          "total_ms": 5480.94
+        },
+        "explain": {
+          "calls": 103,
+          "self_ms": 359.1,
+          "total_ms": 1267.19
+        },
+        "headline": {
+          "calls": 9,
+          "self_ms": 22.45,
+          "total_ms": 10718.12
+        },
+        "initial_refresh": {
+          "calls": 4,
+          "self_ms": 0.04,
+          "total_ms": 10077.15
+        },
+        "joint_effects": {
+          "calls": 5,
+          "self_ms": 2.4,
+          "total_ms": 11005.63
+        },
+        "jury": {
+          "calls": 9,
+          "self_ms": 4.69,
+          "total_ms": 18690.84
+        },
+        "listener": {
+          "calls": 10,
+          "self_ms": 133.39,
+          "total_ms": 18890.62
+        },
+        "ownership_after": {
+          "calls": 17,
+          "self_ms": 7.48,
+          "total_ms": 11013.11
+        },
+        "ownership_before": {
+          "calls": 17,
+          "self_ms": 15.76,
+          "total_ms": 15.76
+        },
+        "park_native": {
+          "calls": 4,
+          "self_ms": 0.96,
+          "total_ms": 7.15
+        },
+        "presentation": {
+          "calls": 10,
+          "self_ms": 25.41,
+          "total_ms": 17800.16
+        },
+        "priors": {
+          "calls": 296,
+          "self_ms": 861.87,
+          "total_ms": 1203.17
+        },
+        "scoped_response": {
+          "calls": 4,
+          "self_ms": 2.84,
+          "total_ms": 7690.46
+        },
+        "support": {
+          "calls": 193,
+          "self_ms": 5681.65,
+          "total_ms": 12224.8
+        },
+        "support_solve": {
+          "calls": 4571,
+          "self_ms": 40.85,
+          "total_ms": 381.88
+        },
+        "town": {
+          "calls": 1,
+          "self_ms": 8.75,
+          "total_ms": 18899.37
+        },
+        "world_comparison": {
+          "calls": 408,
+          "self_ms": 1001.64,
+          "total_ms": 1001.64
+        }
+      }
+    }
+  ]
+}

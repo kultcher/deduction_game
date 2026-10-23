@@ -64,6 +64,7 @@ func _semantics() -> void:
 	check(History.alive_at_night(view, "g", 1) and not History.alive_at_night(view, "g", 2), "Demon victim participates in death-night readings")
 	check(not History.alive_at_night(view, "b", 2) and History.alive_at_night(view, "c", 2), "Martyr substitution kills only the Martyr")
 	check(History.executed(view, "f", 1) and not History.executed(view, "g", 1), "execution bookkeeping does not confuse night deaths")
+	check(History.observer_alive(view, "f", {"day": 1, "phase": "morning"}) and not History.observer_alive(view, "f", {"day": 1, "phase": "night"}), "execution-day daytime reading precedes death while night reading does not")
 	var watch = report("watch", "c", "nightwatch", {"block": "square", "seen": ["d", "e"]})
 	var home = {"id": "home", "kind": "alibi", "source": "d", "subject": "d", "night": 1, "observed_at": {"day": 1, "phase": "night"}}
 	check(not Solver.solve(view, [watch, home], {}, {}, knowledge).movement_ok, "Watch list challenges each named person's home alibi")

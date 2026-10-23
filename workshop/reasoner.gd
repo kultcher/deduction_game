@@ -88,7 +88,7 @@ static func _add_group(view: Dictionary, groups: Array, id: String, roots: Array
 
 static func _salience(card: Dictionary, target: String, listener: Dictionary, live: bool = false) -> float:
 	var score = 1.0 + listener.npc_trust.get(card.source, 0.5) * 0.1
-	if card.kind == "report" and (card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (live and card.role in ["nightwatch", "gravedigger"])):
+	if card.kind == "report" and (card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (live and card.role in ["nightwatch", "gravedigger", "veteran", "lamplighter", "martyr", "sexton"])):
 		score += 3.0
 	if card.get("subject", "") == target or target in card.get("data", {}).get("pair", []) or target in card.get("data", {}).get("group", []) or target in card.get("data", {}).get("seen", []):
 		score += 2.0

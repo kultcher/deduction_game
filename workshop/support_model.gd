@@ -23,6 +23,18 @@ static var next_rank_id: int = 1
 ## one receipt. The same combination is used by _mixture, preserving correlations
 ## for speakers with several reports or claims.
 static func dimensions(cards: Array, listener: Dictionary, challenges: Dictionary = {}) -> int:
+	if cards.any(func(c): return c.has("relay_source")):
+		var sources = {}
+		var accuracies = {}
+		for card in cards:
+			for source in [card.source, card.get("relay_source", card.source)]:
+				if source not in [listener.id, "evidence"]:
+					sources[source] = true
+			for key in [card.id, card.get("accuracy_origin", card.id)]:
+				var weight: float = listener.reading_reliability.get(key, 1.0)
+				if weight > 0 and weight < 1 or challenges.has(card.id):
+					accuracies[key] = true
+		return sources.size() + accuracies.size()
 	var groups = {}
 	for card in cards:
 		groups[card.source] = groups.get(card.source, 0) + 1
@@ -231,7 +243,7 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	# A role assertion alone supplies no alignment constraint. Avoid enumerating
 	# irrelevant reliability dimensions for optional claims with no test factor.
 	cards = cards.filter(func(c): return c.kind != "claim" or view.get("world_options", {}).get("roles", false) or c.id in factor_refs)
-	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and (c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (Solver.Domain.live(view) and c.role in ["nightwatch", "gravedigger"])))
+	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and (c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (Solver.Domain.live(view) and c.role in ["nightwatch", "gravedigger", "veteran", "lamplighter", "martyr", "sexton"])))
 	for id in listener.knowledge.get("own_reports", []):
 		if bounded and id not in attention.considered and id not in listener.knowledge.get("attention_reports", listener.knowledge.get("own_reports", [])):
 			continue
@@ -254,6 +266,17 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 		var source_key: String = TimeModel.source_key(view, card)
 		_add_atom(atoms, source_key, (1.0 if Solver.Domain.live(view) and card.source == "evidence" else source_quality(listener, card.source)) * objections.sources.get(card.source, 1.0))
 		required.append(source_key)
+		if card.has("relay_source"):
+			var relay_key: String = "source:" + card.relay_source
+			_add_atom(atoms, relay_key, source_quality(listener, card.relay_source))
+			required.append(relay_key)
+			var relay_accuracy: String = "receipt:" + card.id
+			_add_atom(atoms, relay_accuracy, listener.reading_reliability.get(card.id, 1.0))
+			required.append(relay_accuracy)
+		elif card.has("route_origin"):
+			var receipt_key: String = "receipt:" + card.id
+			_add_atom(atoms, receipt_key, listener.reading_reliability.get(card.id, 1.0))
+			required.append(receipt_key)
 		if card.kind == "report":
 			if TimeModel.disowned(view, card, listener.knowledge.get("known_events", [])):
 				_add_atom(atoms, "withdrawn:" + card.id, 0.0)
@@ -325,13 +348,25 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 			factor["epoch"] = case_data.conclusion.at
 		subsets[card_mask] = {"active": active, "private_cards": private_cards, "private_solved": private_solved,
 			"solved": solved, "factors": factors,
-			"contributing": active.filter(func(c): return c.kind == "report" and (c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (Solver.Domain.live(view) and c.role in ["nightwatch", "gravedigger"])))}
+			"contributing": _contributing(view, active)}
 	var plan = {"cards": cards, "atoms": atoms, "fault_controls": fault_controls,
 		"presented_reading": presented_reading, "schedule": schedule, "subsets": subsets}
 	if share:
 		shared.inputs = inputs.duplicate(true)
 		shared.plan = plan
 	return plan
+
+static func _contributing(view: Dictionary, active: Array) -> Array:
+	var result: Array = []
+	var originals: Array = []
+	for card in active:
+		if card.kind != "report" or not (card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (Solver.Domain.live(view) and card.role in ["nightwatch", "gravedigger", "veteran", "lamplighter", "martyr", "sexton"])):
+			continue
+		var original: String = card.get("logical_origin", Solver.semantic_key(card))
+		if original not in originals:
+			originals.append(original)
+			result.append(card)
+	return result
 
 static func explain(view: Dictionary, value: Dictionary, listener: Dictionary, prepared: Dictionary = {}) -> Dictionary:
 	var span = Profiler.open("explain")

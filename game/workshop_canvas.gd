@@ -14,6 +14,8 @@ static func view(g) -> Dictionary:
 		if (receipt.kind == "claim" and content.get("role") in Assess.C.GOOD_ROLES) or (receipt.kind in ["sighting", "alibi"] and receipt.observed_at.phase == "night"):
 			note = "Adapter available · testimony and circumstances, not proof of evil"
 		var activity = Assess.activity_card(receipt, snapshot)
+		if receipt.kind == "info" and content.get("role") == "medium":
+			activity = Assess.medium_card(receipt, snapshot)
 		if not activity.is_empty():
 			note = "Adapter available · experimental joint activity/trace comparison"
 		if receipt.kind == "info" and content.get("role") in Assess.ROLES:
@@ -23,10 +25,12 @@ static func view(g) -> Dictionary:
 			var ids: Array = snapshot.people.map(func(p): return p.id)
 			if not Assess.reading_valid(receipt, ids, snapshot.rules.modifier_options):
 				note = "FALLBACK: reading payload is incomplete or invalid"
+			if content.role == "medium" and activity.is_empty():
+				note = "FALLBACK: this Medium item needs supported original evidence, its observation time, and a known deceased source"
 		cards.append({"id": receipt.id, "fact_id": receipt.id, "kind": "report" if receipt.kind == "info" else receipt.kind,
 			"source": receipt.source, "subject": receipt.subjects[0] if not receipt.subjects.is_empty() else "", "subjects": receipt.subjects.duplicate(),
 			"role": content.get("role", ""), "data": content.get("data", {}).duplicate(true),
-			"night": receipt.observed_at.day if receipt.observed_at.phase == "night" else -1,
+			"night": receipt.observed_at.day if receipt.observed_at.phase == "night" or content.get("role") in ["martyr", "sexton"] else -1,
 			"block": content.get("block", ""), "observed_at": receipt.observed_at,
 			"reported_at": receipt.reported_at if receipt.reported_at != null else {"day": "?"},
 			"learned_at": receipt.learned_at if receipt.learned_at != null else {"day": "?"},
@@ -34,6 +38,7 @@ static func view(g) -> Dictionary:
 			"text": receipt.text, "support_note": note})
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
+			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; transmission/source modifiers need separate attribution" if activity.has("relay_source") else note
 	return {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": "Original alignment",
 		"world_options": {"modifiers": snapshot.rules.modifier_options}, "live": true, "live_activity": true,

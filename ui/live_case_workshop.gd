@@ -214,7 +214,7 @@ func _support_details() -> void:
 	for issue in check.issues:
 		result_output.text += "\n• " + issue
 	result_output.text += "\n\n" + check.warning
-	result_output.text += "\n\nThis adapter handles original alignment, Demon/minion identity, eight gift types, role claims, reading challenges, complete Night Watch lists and a joint experimental activity/trace comparison. Old traces without scene metadata, public conversion history and other gifts require further adapters. Actual listener knowledge/ownership limits can also require fallback; presentation reports that without exposing private facts."
+	result_output.text += "\n\nSupports reading constraints, night movement and trace comparisons, quiet-night support, and supported single Medium relays. Card labels describe each available interpretation. Old traces without scene metadata, dated Martyr failures, nested relays, and conversion histories still require fallback. Medium cause modifiers need a choice of which source to question. Listener knowledge and workload limits can also require fallback."
 	preview_window.popup_centered_clamped()
 
 func _edit() -> void:
@@ -231,7 +231,7 @@ func _refresh_case() -> void:
 		_clear(case_box)
 		var card: Dictionary = _report(node.card)
 		_label(case_box, card.support_note, 17, "accent")
-		if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "gravedigger"] and not card.support_note.begins_with("FALLBACK"):
+		if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "martyr", "sexton"] and not card.support_note.begins_with("FALLBACK"):
 			_question(card)
 		elif not card.support_note.begins_with("FALLBACK"):
 			_label(case_box, card.text, 18)

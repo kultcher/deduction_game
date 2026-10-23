@@ -17,6 +17,8 @@ static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) ->
 	if person == knowledge.get("self", ""):
 		return knowledge.get("own_role", "")
 	for card in cards:
+		if card.get("relay_source") == person and not card.get("quoted", false):
+			return "medium"
 		if not card.get("quoted", false) and card.source == person and card.kind in ["claim", "report"]:
 			return card.role
 	return ""
@@ -37,10 +39,17 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 			continue
 		var okay = true
 		for card in cards:
+			if card.has("relay_source") and not card.get("quoted", false) and card.relay_source == person.id and card.relay_observed_at.day == night:
+				var hearth: String = view.people.filter(func(p): return p.id == card.source)[0].home
+				okay = okay and out and path.back() == hearth
 			if card.get("night", -1) != night or card.get("quoted", false):
 				continue
 			if card.kind == "sighting" and person.id in card.get("subjects", [card.get("subject", "")]):
 				okay = okay and out and (card.block == "" or card.block in path)
+				if card.has("guard_claim"):
+					okay = okay and out and path.back() == card.block
+			elif card.kind == "sighting" and card.get("complete", false) and person.id not in card.get("excluded", []):
+				okay = okay and card.block not in path
 			elif card.kind == "alibi" and card.subject == person.id:
 				okay = okay and not out
 			elif card.kind == "coverage" and person.id not in card.get("excluded", []):
@@ -67,6 +76,9 @@ static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, kno
 	for card in relevant(cards):
 		if card.get("night", -1) >= 0 and card.kind not in ["evening", "trace"]:
 			nights[str(card.night)] = {}
+	for card in cards:
+		if card.has("relay_source") and not card.get("quoted", false):
+			nights[str(card.relay_observed_at.day)] = {}
 	var okay = true
 	var forced_lamp: Array = []
 	for night_key in nights:
@@ -126,9 +138,14 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
+	var checked = cards.duplicate()
+	var movement = routes(view, cards)
+	for night in movement.nights:
+		for person in movement.nights[night].forced_out:
+			checked.append({"id": "inferred-out:%s:%s" % [person, night], "kind": "sighting", "source": "evidence", "subject": person, "subjects": [person], "block": "", "night": int(night)})
 	var profiles: Array = []
 	for person in view.people:
-		profiles.append({"good": _likelihood(view, cards, person, "good"), "minion": _likelihood(view, cards, person, "minion"), "demon": _likelihood(view, cards, person, "demon")})
+		profiles.append({"good": _likelihood(view, checked, person, "good"), "minion": _likelihood(view, checked, person, "minion"), "demon": _likelihood(view, checked, person, "demon")})
 	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
 		"label": "Movement / trace: joint live comparison", "profiles": profiles,
 		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
@@ -188,6 +205,14 @@ static func _profile_paths(view: Dictionary, person: Dictionary, night: int, pro
 	if not History.alive_at_night(view, person.id, night):
 		return [{"path": [], "weight": 1.0}]
 	var destinations: Array = C.BLOCKS.keys()
+	if profile == "gift":
+		var role = role_of(cards, person.id)
+		if role == "medium":
+			destinations = view.people.filter(func(p): return not History.alive_at_night(view, p.id, night)).map(func(p): return p.home)
+		elif role == "warden":
+			destinations = view.people.filter(func(p): return p.id != person.id and History.alive_at_night(view, p.id, night)).map(func(p): return p.home)
+		if destinations.is_empty():
+			rate = 0.0
 	if profile == "demon":
 		var scenes: Array = view.get("timeline", {}).get("events", []).filter(func(e): return e.kind == "demon_death" and e.at.day == night)
 		if not scenes.is_empty():
@@ -210,6 +235,8 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 		"sighting":
 			if person in card.get("subjects", [card.get("subject", "")]):
 				return 1.0 if out and (card.block == "" or card.block in path) else 0.0
+			if card.get("complete", false) and person not in card.get("excluded", []):
+				return 1.0 if card.block not in path else 0.0
 		"evening":
 			if person in card.get("subjects", [card.get("subject", "")]):
 				return 1.0 if card.block == evening else 0.0

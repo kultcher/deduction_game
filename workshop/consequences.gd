@@ -7,6 +7,7 @@ const Support = preload("res://workshop/support_model.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const Theory = preload("res://workshop/theory.gd")
 const Movement = preload("res://workshop/movement_model.gd")
+const Protection = preload("res://workshop/live_protection.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 
@@ -25,6 +26,7 @@ static func _assess(view: Dictionary, value: Dictionary, baseline: Dictionary, p
 	# plan even with answers/positions; their conditional checks remain separate.
 	var shared = {"enabled": baseline.get("reasoning_mode", "full") == "full" and baseline.get("confidence_mode", "scale") == "scale"}
 	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected))
+	var protection = Protection.assess(view, Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected), baseline)
 	for person in view.people:
 		var evil_case: Dictionary = attention.case.duplicate(true)
 		evil_case.conclusion = {"type": "evil", "target": person.id, "at": value.conclusion.at}
@@ -53,6 +55,9 @@ static func _assess(view: Dictionary, value: Dictionary, baseline: Dictionary, p
 		# incident. Use the stronger route, never sum them. Slice 4 replaces this
 		# provisional envelope with a causal movement/trace model.
 		var net_weight: float = circumstantial if circumstantial > absf(alignment) else alignment
+		var protection_signal: float = -protection.get(person.id, {}).get("weight", 0.0)
+		if absf(protection_signal) > absf(net_weight):
+			net_weight = protection_signal
 		for challenge in challenged.results:
 			if challenge.mode == "lying" and challenge.source == person.id and challenge.agreement >= 0.6:
 				net_weight = maxf(net_weight, 0.12 * challenge.agreement)
@@ -65,7 +70,7 @@ static func _assess(view: Dictionary, value: Dictionary, baseline: Dictionary, p
 		var confidence: float = 1.0 if baseline.get("confidence_mode", "scale") == "persistence" else 1.4 - 0.8 * baseline.confidence
 		var effect: float = net_weight * (0.5 + baseline.trust) * confidence
 		effects[person.id] = {"requested": effect, "alignment_signal": alignment, "pattern_signal": circumstantial,
-			"route": "circumstantial" if circumstantial > absf(alignment) else "alignment",
+			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"), "protection_signal": protection_signal,
 			"evil_agreement": evil.agreement, "good_agreement": good.agreement,
 			"evil_change": evil.evidence_agreement, "good_change": good.evidence_agreement,
 			"cards": attention.considered.duplicate(), "theory": theory, "reasoning": reasoning.status}
@@ -110,6 +115,10 @@ static func _assess(view: Dictionary, value: Dictionary, baseline: Dictionary, p
 			note = "The premises I checked cannot all hold together."
 		elif Movement.available(view) and agreement >= 0.6 and thought.status == "rival_found":
 			note = "Another explanation still fits, but the joint movement and trace comparison favors this claim."
+		var scoped_protection = Protection.assess(view, Solver.selected(view, scoped).filter(func(c): return c.id not in prepared.private_checks.rejected), baseline)
+		if scoped.conclusion.type == "good" and scoped_protection.has(scoped.conclusion.target) and not thought.private_checks.fatal:
+			agreement = maxf(agreement, minf(0.55, 0.35 + scoped_protection[scoped.conclusion.target].weight))
+			note = "A quiet night fits this protection claim, but it does not establish that an attack targeted their protection. Other explanations remain."
 		var item = {"id": argument.id, "label": argument.label, "conclusion": scoped.conclusion.duplicate(true),
 			"parents": argument.parents.duplicate(), "cards": scoped.cards.duplicate(),
 			"ignored": Graph.compile_case(view, argument.case).cards.filter(func(id): return id not in scoped.cards),

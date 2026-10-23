@@ -1096,7 +1096,7 @@ func _quiet_night() -> void:
 			Mind._eff(e, pc["who"], -0.15 if pc["role"] == "warden" else -0.06,
 				"nobody died on night %d, and they claim the %s" % [day, C.role_name(pc["role"])])
 			# Scaled live by how credible the claimant is to this listener.
-			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0, [pc["who"], -1, "report"])
+			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0, [pc["who"], -1, "report"], {"kind": "quiet_night", "night": day, "claimant": pc["who"], "role": pc["role"]})
 
 func _night_movement(poison_t: String, kill_t: String, watch, watch_block: String, warden = null, warden_t: String = "",
 		medium = null, medium_t: String = "", lamp = null) -> void:

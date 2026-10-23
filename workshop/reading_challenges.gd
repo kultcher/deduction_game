@@ -7,7 +7,7 @@ const MODES = ["misled", "lying", "unlikely"]
 
 static func valid(view: Dictionary, id: String, value) -> bool:
 	var card = Solver.card_by_id(view, id)
-	return value is Dictionary and value.get("mode") in MODES and card.get("kind") == "report" and (value.mode != "unlikely" or card.get("role") == "surveyor") and value.get("supports", []) is Array and value.get("supports", []).all(func(root): return root != id and not Solver.card_by_id(view, root).is_empty())
+	return value is Dictionary and value.get("mode") in MODES and card.get("kind") == "report" and not card.has("relay_source") and (value.mode != "unlikely" or card.get("role") == "surveyor") and value.get("supports", []) is Array and value.get("supports", []).all(func(root): return root != id and not Solver.card_by_id(view, root).is_empty())
 
 static func quality(listener: Dictionary, source: String) -> float:
 	if source == listener.id or source == "evidence":

@@ -89,9 +89,11 @@ static func healthy(view: Dictionary, world: Dictionary, source: String) -> bool
 	return world.get("modifier", "marked") != "delusional" or not (world.get("holders", 0) & (1 << i))
 
 static func gift_time(card: Dictionary) -> bool:
+	if card.role in ["martyr", "sexton"]:
+		return card.observed_at.day >= 1 and card.observed_at.phase in ["evening", "night"]
 	if card.role in ["surveyor", "rumormonger", "clerk", "archivist"]:
 		return card.observed_at.day == 0 and card.observed_at.phase == "night"
-	if card.role in ["seer", "nightwatch", "gravedigger"]:
+	if card.role in ["seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "medium"]:
 		return card.observed_at.day >= 0 and card.observed_at.phase == "night"
 	return card.role == "dowser" and card.observed_at.day >= 1 and card.observed_at.phase in ["morning", "afternoon", "evening"]
 

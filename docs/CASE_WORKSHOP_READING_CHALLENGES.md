@@ -1,3 +1,5 @@
+Subsequent evidence support and remaining boundaries are tracked in [the evidence expansion checkpoints](CASE_WORKSHOP_EVIDENCE_EXPANSION.md). This document records the earlier reading-challenge implementation.
+
 # Case Workshop: reading challenges and Clerk, Archivist, Seer integration
 
 Design reference, 2026-10-23. Adapted from Gemini/Argon's complete

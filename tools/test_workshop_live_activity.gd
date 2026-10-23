@@ -53,6 +53,11 @@ func _routes() -> void:
 	check(not Activity.routes(view, [empty, first]).okay, "empty complete vigil contradicts a positive crossing")
 	empty.excluded = ["a"]
 	check(Activity.routes(view, [empty, first]).okay, "coverage exclusions are honored")
+	var complete = _sight("complete", "b", 1, "market")
+	complete["complete"] = true
+	check(not Activity.routes(view, [complete, first]).okay, "positive complete vigil also constrains omitted passers")
+	complete["excluded"] = ["a"]
+	check(Activity.routes(view, [complete, first]).okay, "positive vigil preserves native same-night victim exclusions")
 	var knowledge = {"self": "a", "good": ["a"], "own_role": "warden", "own_outings": {"1": false}}
 	check(not Activity.routes(view, [first], {}, knowledge).okay, "firsthand home memory constrains routes")
 	var world = {"evil": 3, "demon": 1, "marked": 2, "modifier": "marked", "holders": 4}
@@ -82,7 +87,7 @@ func _patterns() -> void:
 	var alternative = evening.duplicate(true)
 	alternative.block = "docks"
 	check(Activity.score(world, Activity.factors(view, [sight, alternative, cards[2]], {})[0]) < original, "incompatible evening material weakens the suspected killer explanation")
-	var claim = {"id": "claim", "kind": "claim", "source": "a", "subject": "a", "role": "medium", "data": {}}
+	var claim = {"id": "claim", "kind": "claim", "source": "a", "subject": "a", "role": "warden", "data": {}}
 	check(Activity.score(world, Activity.factors(view, cards + [claim], {})[0]) < original, "legitimate walking gift makes an outing less incriminating")
 	var bare = Activity.factors(view, [_trace(1), _trace(2)], {})[0]
 	check(is_equal_approx(bare.profiles[0].demon, bare.profiles[1].demon), "repeated material without candidate evening evidence does not identify a suspect")
@@ -135,3 +140,6 @@ func _live() -> void:
 	var legacy_id: String = Live.Evidence.normalize_card(g.board[legacy - 1]).id
 	var old_view = Live.view(g)
 	check(Solver.card_by_id(old_view, legacy_id).support_note.begins_with("FALLBACK"), "old unstructured trace clearly flags fallback")
+	var vigil = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "square", "vigil": true, "text": "Complete positive vigil"})
+	var vigil_card = Solver.card_by_id(Live.view(g), Live.Evidence.normalize_card(g.board[vigil - 1]).id)
+	check(vigil_card.get("complete", false) and victim.id in vigil_card.get("excluded", []), "live positive vigil retains complete coverage and victim exclusion")

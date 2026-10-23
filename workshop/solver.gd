@@ -324,7 +324,7 @@ static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary,
 	if Domain.live(view):
 		if not Domain.healthy(view, world, card.source) or not Domain.gift_time(card):
 			return false
-		if card.get("night", -1) >= 0 and not preload("res://workshop/live_history.gd").alive_at_night(view, card.source, card.night):
+		if not preload("res://workshop/live_history.gd").observer_alive(view, card.source, card.observed_at):
 			return false
 		if card.role == "nightwatch" and card.data.seen.any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):
 			return false

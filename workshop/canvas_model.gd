@@ -89,7 +89,7 @@ func add_modifier(id: String, mode: String) -> String:
 	if not nodes.has(id) or nodes[id].kind != "evidence":
 		return "Select a reading card."
 	var report = Solver.card_by_id(view, nodes[id].card)
-	if report.kind != "report" or mode not in ["misled", "lying", "unlikely"] or (mode == "unlikely" and report.role != "surveyor"):
+	if report.kind != "report" or report.has("relay_source") or mode not in ["misled", "lying", "unlikely"] or (mode == "unlikely" and report.role != "surveyor"):
 		return "This modifier is not supported for that evidence type."
 	for node in nodes.values():
 		if node.kind == "modifier" and node.card == report.id:
@@ -319,6 +319,10 @@ func title(id: String) -> String:
 	if node.kind == "modifier":
 		return {"misled": "Misled reading", "lying": "Suspected lie", "unlikely": "Unlikely reading"}[node.mode]
 	var card = Solver.card_by_id(view, node.card)
+	if card.has("relay_source"):
+		return "Medium relay · " + (C.role_name(card.role) if card.get("role", "") != "" else card.kind.capitalize())
+	if card.kind == "event":
+		return "Public Martyr substitution" if card.get("event") == "martyr" else "Public death knell"
 	return {"alibi": "Home alibi", "sighting": "Sighting", "claim": "Role claim"}.get(card.kind, C.role_name(card.role) if card.get("role", "") != "" else card.kind.capitalize())
 
 func mockup() -> void:

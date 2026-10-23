@@ -59,8 +59,9 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   multi-person vigil receipts, Surveyor count generation/skepticism, preview clarity,
   and Clerk/Archivist/Seer integration in the
   [amended reference plan](docs/CASE_WORKSHOP_READING_CHALLENGES.md). Misled and Lying modifiers, Surveyor skepticism, alibi support, clearer feedback and
-  the three role adapters are implemented. General temporal/trace/citation adapters
-  remain explicitly gated; continue live-game tuning. [watch; broader adapters open]
+  the three role adapters are implemented. Further movement, trace, protection and role
+  adapters are tracked in [the expansion checkpoints](docs/CASE_WORKSHOP_EVIDENCE_EXPANSION.md);
+  dated outcomes, nested relays and conversion histories remain gated. [watch; broader adapters open]
 - **From playtest 61251** (an evil team the player had identified won anyway). [decided]
   - **A proven lie should hurt an info claimant's credibility hard.** Constance (the
     Breathstealer bluffing Seer) was caught in an off-route lie on day 2, and listeners
@@ -117,7 +118,20 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   not independent corroboration of that same reading. Defer the richer social response
   (who gains/loses trust or is blamed when a relay is challenged) until after semantic
   support. This does not defer the provenance/credibility safeguards. (Oct 23 evidence
-  expansion discussion.) [decided; social policy open]
+  expansion discussion.) Single-level reading/sighting/home/guard relays now retain
+  both sources, original and visit times, and shared original health. Richer social
+  consequences remain deferred. [implemented semantics; social policy open]
+- **Medium challenge attribution and nested relays.** Add an explicit choice between
+  questioning the Medium's transmission and the dead source's original information.
+  Until that exists, cause modifiers on relay cards are visibly unavailable; they
+  must not silently accuse the wrong speaker. Relays of another Medium's relay and
+  relayed opinions still use native fallback. (Oct 23 expansion.) [open]
+- **Martyr promise versus later hanging.** The new evaluator handles choice reports,
+  explicit evil-registration outcome reports (including Marked), and observed
+  substitutions. Combining an earlier choice with a later execution remains on
+  explicit fallback until an outcome-time health assumption/receipt can be evaluated
+  separately from health at the choice. Do not infer that both times were healthy
+  from the earlier promise alone. (Oct 23 expansion.) [decided; adapter open]
 - **NPCs push back on nominations their own information contradicts** (a player-led
   nomination of the true Seer passed 7/8). (DESIGN playtests) [open]
 - **Lie severity:** a false gift report weighs more than a whereabouts lie, unless the

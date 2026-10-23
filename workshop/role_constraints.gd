@@ -16,14 +16,60 @@ static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: D
 	if not cache.has(key) or cache[key].input != input:
 		if cache.size() >= 64:
 			cache.clear()
-		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": cards.any(func(c): return c.get("role") in ["seer", "gravedigger"] and not c.get("quoted", false))}
+		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": cards.any(func(c): return c.get("role") in ["seer", "gravedigger", "martyr"] and not c.get("quoted", false))}
 	var n: int = ids.size() + 1
 	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if cache[key].seer else 0)
+	if cards.any(func(c): return c.has("relay_source")):
+		mask = (mask * (1 << ids.size()) + int(world.get("holders", 0))) * 2 + int(world.get("modifier") == "delusional")
 	if not cache[key].results.has(mask):
 		cache[key].results[mask] = _fits_view(view, ids, world, cards, knowledge, answers)
 	return cache[key].results[mask]
 
 static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary) -> bool:
+	cards = cards.duplicate()
+	var visits = {}
+	for card in cards.duplicate():
+		if card.has("relay_source") and not card.get("quoted", false):
+			var medium: int = ids.find(card.relay_source)
+			if medium < 0 or world.evil & (1 << medium) or not preload("res://workshop/world_domain.gd").healthy(view, world, card.relay_source) or not preload("res://workshop/live_history.gd").alive_at_night(view, card.relay_source, card.relay_observed_at.day):
+				return false
+			var visit: String = card.relay_source + ":" + card.source
+			if visits.has(visit) and visits[visit] != card.relay_observed_at.day:
+				return false
+			visits[visit] = card.relay_observed_at.day
+			cards.append({"kind": "claim", "source": card.relay_source, "role": "medium"})
+	var sexton_night = -1
+	for card in cards:
+		if card.kind != "report" or card.get("quoted", false):
+			continue
+		if card.role == "martyr" and card.data.get("evil", false) and not preload("res://workshop/live_history.gd").executed(view, card.data.target, card.observed_at.day):
+			return false
+		if card.role == "sexton":
+			if sexton_night >= 0 and sexton_night != card.data.night:
+				return false
+			sexton_night = card.data.night
+	if sexton_night >= 0:
+		if view.people.filter(func(p): return preload("res://workshop/live_history.gd").alive_at_night(view, p.id, sexton_night)).size() >= 5:
+			return false
+		if view.get("timeline", {}).get("events", []).any(func(e): return e.kind == "demon_death" and e.at.day == sexton_night):
+			return false
+		for card in cards:
+			if card.get("quoted", false):
+				continue
+			if card.kind == "report" and card.role in ["nightwatch", "lamplighter", "medium"] and card.get("night", -1) == sexton_night:
+				return false
+			if card.has("relay_source") and card.relay_observed_at.day == sexton_night:
+				return false
+	for card in cards:
+		if card.get("role") != "veteran" or card.kind != "report" or card.get("quoted", false):
+			continue
+		var demon: int = world.get("demon", -1)
+		if demon < 0:
+			return false
+		var path: Array = C.route(view.people[demon].home, view.people[ids.find(card.source)].home)
+		var approach: String = path[path.size() - 2] if path.size() >= 2 else view.people[ids.find(card.source)].home
+		if approach != card.data.block or view.get("timeline", {}).get("events", []).any(func(e): return e.kind == "demon_death" and e.at.day == card.night):
+			return false
 	if Activity.available(view):
 		var routes = Activity.routes(view, cards, answers, knowledge)
 		if not routes.okay:
@@ -43,10 +89,17 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 	if own >= 0 and knowledge.get("own_role", "") in C.ROLES:
 		assignments[knowledge.own_role] = 1 << own
 	var seer = ""
+	var veteran_night = -1
+	var martyr_target = ""
 	var rh: int = good
 	for card in cards:
 		if card.get("quoted", false):
 			continue
+		if card.kind == "event" and card.get("event") == "martyr":
+			var actor: int = ids.find(card.data.martyr)
+			var saved: int = ids.find(card.data.saved)
+			if actor < 0 or saved < 0 or world.evil & ((1 << actor) | (1 << saved)) or not _assign(assignments, "martyr", 1 << actor):
+				return false
 		if card.kind not in ["report", "claim"]:
 			continue
 		var source: int = ids.find(card.source)
@@ -75,6 +128,18 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 				candidates &= selected
 			if not _assign(assignments, card.data.role, candidates):
 				return false
+		elif card.role == "veteran":
+			if veteran_night >= 0 and veteran_night != card.night:
+				return false
+			veteran_night = card.night
+		elif card.role == "martyr":
+			if martyr_target != "" and martyr_target != card.data.target:
+				return false
+			martyr_target = card.data.target
+			if card.data.get("evil", false):
+				var target: int = ids.find(card.data.target)
+				if target < 0 or not (world.evil & (1 << target)) and world.marked != target:
+					return false
 		elif card.role == "gravedigger":
 			var target: int = ids.find(card.data.executed)
 			if target < 0:

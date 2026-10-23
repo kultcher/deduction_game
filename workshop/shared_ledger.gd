@@ -33,7 +33,7 @@ static func roots(cards: Array, board: Array, path: Array = []) -> Dictionary:
 			var nested = roots(children, board, path + [number])
 			result.complete = result.complete and nested.complete
 			result.receipts.merge(nested.receipts)
-		elif (card.get("kind") == "info" and card.get("role") in Assess.ROLES) or (card.get("kind") == "claim" and card.get("role") in Assess.C.GOOD_ROLES) or (card.get("kind") in ["sighting", "alibi"] and card.get("phase", -1) in [2, 3]) or card.get("kind") in ["trace", "vigil"]:
+		elif (card.get("kind") == "info" and card.get("role") in Assess.ROLES) or (card.get("kind") == "claim" and card.get("role") in Assess.C.GOOD_ROLES) or (card.get("kind") in ["sighting", "alibi"] and card.get("phase", -1) in [2, 3]) or card.get("kind") in ["trace", "vigil", "quiet", "execution", "martyr", "knell"]:
 			var receipt = Evidence.normalize_card(card)
 			result.receipts[receipt.id] = receipt
 		elif card.get("kind") not in ["claim", "home"]:
@@ -124,6 +124,9 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var entry: Dictionary = ledger[eid]
 		var meta: Dictionary = entry.get("meta", {})
 		var kind: String = meta.get("kind", "")
+		if preload("res://workshop/live_protection.gd").owns(entry, prepared.view.get("cards", [])):
+			owned[eid] = true
+			continue
 		if kind == "tell" and meta.get("workshop_card", {}).get("kind") == "deduction" and not facts.is_empty():
 			issues.append("Unresolved deduction wrapper in old card testimony: " + eid)
 		if kind == "reading" and aliases.has(eid):
@@ -225,7 +228,12 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		"marked_questions": marked_questions}
 
 static func supported(receipt: Dictionary) -> bool:
-	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") in ["sighting", "alibi"] and receipt.observed_at.phase in ["night", "evening"]) or receipt.kind in ["trace", "vigil"]
+	if receipt.get("kind") == "info" and receipt.get("content", {}).get("role") == "medium":
+		var item: Dictionary = receipt.content.get("data", {}).get("item", {})
+		if item.get("type") == "reading":
+			return item.get("entry", {}).get("role") in Assess.ROLES and item.entry.role != "medium"
+		return item.get("type") in ["sighting", "home", "guard"] and item.get("night", -1) >= 0
+	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") in ["sighting", "alibi"] and receipt.observed_at.phase in ["night", "evening"]) or receipt.kind in ["trace", "vigil", "quiet", "execution", "martyr", "knell"]
 
 static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) -> Array:
 	if number in path or path.size() >= 64:
@@ -298,6 +306,17 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 	var prepared: Dictionary = plan.prepared.duplicate(true)
 	prepared.listener.suspicion = suspicion.duplicate(true)
 	for card in prepared.view.cards:
+		if card.has("relay_source"):
+			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
+			var relay_source: String = card.relay_source
+			var relay_day: int = card.relay_observed_at.day
+			var relay_before: float = maxf(plan.input.listener.discounted.get("%s:%d" % [relay_source, relay_day], 0.0), plan.input.listener.discounted.get(relay_source + ":*", 0.0))
+			var relay_after: float = maxf(discounted.get("%s:%d" % [relay_source, relay_day], 0.0), discounted.get(relay_source + ":*", 0.0))
+			prepared.listener.reading_reliability[card.id] = prepared.listener.reading_reliability[card.id] * (1.0 - relay_after) / (1.0 - relay_before) if relay_before < 1.0 else 0.0
+			continue
+		if card.has("route_origin"):
+			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
+			continue
 		if card.kind != "report":
 			continue # Impairment does not invalidate ordinary testimony/role claims.
 		var doubt = maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))

@@ -10,9 +10,10 @@ const REPORT_FIELDS = {
 	"seer": ["pair", "yes"], "archivist": ["pair", "role"], "clerk": ["pair", "role"],
 	"gravedigger": ["executed", "role"], "psychologist": ["subject", "trusts", "suspects"],
 	"veteran": ["attacked", "block"], "martyr": ["target", "chosen", "evil"],
+	"sexton": ["night"],
 }
 const FIELDS = ["block", "loc", "home", "night", "role", "duty_claim", "duty", "vigil", "dropped",
-	"nominee", "yes", "no", "alive_before", "owner", "material", "crime_night", "scene", "scene_block", "victim", "ward"]
+	"nominee", "yes", "no", "alive_before", "owner", "material", "crime_night", "scene", "scene_block", "victim", "ward", "guard_claim", "watch_claim"]
 const KINDS = ["home", "haunt", "info", "claim", "sighting", "conversation", "vigil", "alibi",
 	"trace", "dropped", "totem", "death", "execution", "quiet", "vote", "martyr", "curse",
 	"curse_lifted", "silenced", "knell", "secret", "hint", "refusal", "opinion", "accusation", "case"]
@@ -84,7 +85,7 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 			if content.data.has(field) and content.data[field] not in content.subjects:
 				content.subjects.append(content.data[field])
 		content.subjects.sort()
-		if card.get("role", "") not in REPORT_FIELDS:
+		if card.get("role", "") not in REPORT_FIELDS and card.get("role") != "medium":
 			issues.append("report_semantics_unsupported")
 		issues.append("original_report_time_unknown")
 	if kind not in KINDS:
@@ -120,6 +121,23 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 
 static func report_data(role: String, data: Dictionary) -> Dictionary:
 	var result = {}
+	if role == "medium":
+		result["dead"] = data.get("dead", "")
+		var item: Dictionary = data.get("item", {}) if data.get("item") is Dictionary else {}
+		result["item"] = {"type": item.get("type", "")}
+		for field in ["who", "block", "night", "about"]:
+			if item.has(field):
+				result.item[field] = item[field]
+		if item.get("type") == "reading" and item.get("entry") is Dictionary:
+			var entry: Dictionary = item.entry
+			var nested_role: String = entry.get("role", "")
+			# Nested Medium chains require a bounded transmission-chain adapter.
+			if nested_role != "medium":
+				result.item["entry"] = {"role": nested_role, "day": entry.get("day", -1),
+					"data": report_data(nested_role, entry.get("data", {})), "text": entry.get("text", "")}
+				if entry.has("phase"):
+					result.item.entry["phase"] = entry.phase
+		return result
 	for key in REPORT_FIELDS.get(role, []):
 		if data.has(key):
 			result[key] = data[key].duplicate(true) if data[key] is Array or data[key] is Dictionary else data[key]

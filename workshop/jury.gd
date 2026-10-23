@@ -77,6 +77,8 @@ static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Diction
 	result.calculation.rule = consequences.rule
 	# Speak about accepted intermediate inferences separately from the headline.
 	if not result.repeated:
+		if effects[target].get("protection_signal", 0.0) < 0 and case_data.conclusion.type != "conflict":
+			result.response += " The quiet night gives that protection claim some support, though other explanations remain."
 		for claim in consequences.claims:
 			if claim.conclusion.target != target and claim.conclusion.type == "evil" and claim.status == "entailed_in_attention" and claim.forced_mass > 0:
 				result.response += " The reports I granted implicate %s, if sound. That conclusion does not by itself settle %s's alignment." % [Solver.person_name(view, claim.conclusion.target), Solver.person_name(view, target)]

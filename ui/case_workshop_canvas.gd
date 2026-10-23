@@ -421,7 +421,7 @@ func _context(id: String) -> void:
 		var report = _report(board.nodes[id].card)
 		for entry in [[200, "Misled reading", "misled"], [201, "Suspected lie", "lying"], [202, "Unlikely reading", "unlikely"]]:
 			context_menu.add_item("Add modifier: " + entry[1], entry[0])
-			context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.get("support_note", "").begins_with("FALLBACK") or (entry[2] == "unlikely" and report.get("role") != "surveyor"))
+			context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.has("relay_source") or report.get("support_note", "").begins_with("FALLBACK") or (entry[2] == "unlikely" and report.get("role") != "surveyor"))
 	if board.nodes[id].kind == "modifier":
 		context_menu.add_item("Remove modifier (keep evidence and links)", 203)
 	if board.nodes[id].kind == "contradiction":
