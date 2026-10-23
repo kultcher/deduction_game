@@ -164,6 +164,10 @@ live worlds, nine listeners):**
 | 692 | 358 ms | 87 ms | 28 ms |
 | 4242 | 386 ms | 101 ms | 45 ms |
 
+After step 3 added movement, test factors, acceptance and per-person theories, the
+same tool measures 478 / 235 / 50 ms (692) and 675 / 225 / 91 ms (4242): slower, but
+well inside the 5-second allowance.
+
 - "New case, readings known" is the presentation cost once the cited readings have
   their tables: a new premise and card set, every listener. That's the budget figure,
   and it's at the line.
