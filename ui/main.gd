@@ -506,11 +506,7 @@ func _open_live_workshop(number: int = 0) -> void:
 		workshop_win.get_child(0).refresh()
 	var editor = workshop_win.get_child(0)
 	if number > 0 and number <= g.board.size() and g.board[number - 1].kind != "deduction":
-		var id: String = "e:" + Game.WorkshopCanvas.Evidence.normalize_card(g.board[number - 1]).id
-		if editor.board.nodes.has(id):
-			editor.board.selected = id
-			editor._sync()
-			editor.canvas.queue_redraw()
+		editor.add_evidence(number)
 	workshop_win.popup_centered_ratio(0.95)
 
 func _run_workshop(cmd: String, progress: Callable) -> void:

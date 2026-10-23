@@ -48,7 +48,7 @@ func _ready() -> void:
 		_session_changed())
 	page.add_child(effects_toggle)
 	context_label = _label(page, "", 16)
-	_label(page, "Drag cards · drag empty space to pan · wheel to zoom · Link, then choose a destination · right-click to unlink. Drafts are kept for this case only.", 14, "muted")
+	_label(page, "Add cards from the Case Board using Add to Case Workshop · drag cards or empty space · wheel to zoom · Link, then choose a destination. Drafts are kept for this case only.", 14, "muted")
 	canvas = CanvasView.new()
 	canvas.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	page.add_child(canvas)
@@ -112,7 +112,11 @@ func refresh() -> void:
 		answer_window.hide()
 		preview_window.hide()
 		answer_id = ""
-		board = CanvasModel.new(next_view)
+		# The public library stays current for receipt lookup and answer controls;
+		# only explicitly transferred cards get a copy on the live canvas.
+		var empty_view = next_view.duplicate()
+		empty_view.cards = []
+		board = CanvasModel.new(empty_view)
 		files = g.workshop_draft.get("files", {}).duplicate(true)
 		if g.workshop_draft.has("canvas"):
 			var saved: Dictionary = g.workshop_draft.canvas
@@ -122,19 +126,14 @@ func refresh() -> void:
 			board.serial = saved.serial
 			board.version = saved.version
 		case_root = g.workshop_draft.get("root", board.selected)
-	# Retain deleted originals visibly; they block filing until unlinked. New
-	# receipts are added without rearranging the player's existing argument.
+	# Retain missing transferred originals; they block filing until unlinked.
+	# Refreshing the library must never add new evidence copies to the canvas.
 	for old in board.view.cards:
-		if not next_view.cards.any(func(c): return c.id == old.id):
+		if board.nodes.has("e:" + old.id) and not next_view.cards.any(func(c): return c.id == old.id):
 			var missing: Dictionary = old.duplicate(true)
 			missing.support_note = "BLOCKED: original evidence is missing or changed"
 			next_view.cards.append(missing)
 	board.view = next_view
-	for card in next_view.cards:
-		if not board.nodes.has("e:" + card.id):
-			var i: int = board.nodes.size()
-			board.nodes["e:" + card.id] = {"id": "e:" + card.id, "kind": "evidence", "card": card.id,
-				"at": [60.0 + (i % 4) * 320.0, 400.0 + (i / 4) * 300.0], "answers": {}, "reasons": {}, "citations": {}}
 	session.scenario = {"public_view": next_view}
 	canvas.model = board
 	premise_person.clear()
@@ -144,6 +143,24 @@ func refresh() -> void:
 	_session_changed()
 	if reset:
 		_fit_after_layout()
+
+func add_evidence(number: int) -> void:
+	if number < 1 or number > g.board.size():
+		return
+	var receipt: Dictionary = g.board[number - 1]
+	if receipt.kind == "deduction" or receipt.get("deleted", false):
+		return
+	refresh()
+	var card_id: String = Live.Evidence.normalize_card(receipt).id
+	var id: String = "e:" + card_id
+	if not board.nodes.has(id):
+		var i: int = board.nodes.values().filter(func(n): return n.kind == "evidence").size()
+		board.nodes[id] = {"id": id, "kind": "evidence", "card": card_id,
+			"at": [60.0 + (i % 4) * 320.0, 400.0 + (i / 4) * 300.0], "answers": {}, "reasons": {}, "citations": {}}
+		board.version += 1
+	board.selected = id
+	_session_changed()
+	canvas.fit_case(true)
 
 func _fit_after_layout() -> void:
 	await get_tree().process_frame

@@ -17,8 +17,9 @@ scope below. Broader mechanic adapters and ordinary multi-case playtesting remai
 
 **More → Case Workshop** opens the live editor. A board card's right-click menu also
 offers **Add to Case Workshop**, which opens and selects that original receipt. This
-first version preloads all non-deduction board evidence; hidden cards are player-known
-and remain available. Native filed deductions are not imported as graph nodes: their
+canvas starts without evidence copies. Only cards explicitly selected through **Add to
+Case Workshop** are transferred; generating or refreshing evidence adds no canvas cards.
+Previously transferred cards remain when reopening the editor. Native filed deductions are not imported as graph nodes: their
 old flat form cannot recover answers or branch semantics. The old fixture canvas is
 still available through `ui/case_workshop.tscn` with F6.
 

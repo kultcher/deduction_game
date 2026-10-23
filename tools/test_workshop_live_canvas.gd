@@ -151,15 +151,26 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	root.add_child(editor)
 	await process_frame
 	check(editor.canvas.size.x > 1000 and editor.canvas.size.y > 200, "live editor fills the available window and leaves room for its canvas")
-	check(editor.board.view.live and editor.board.nodes.has("e:" + trace_id), "live screen uses real cards including unsupported evidence")
+	check(editor.board.view.live and not editor.board.nodes.values().any(func(n): return n.kind == "evidence"), "opening the live Workshop does not automatically transfer board evidence")
 	var headline: String = editor.board.selected
+	var report_number: int = g.board.filter(func(c): return c.kind != "deduction" and Live.Evidence.normalize_card(c).id == report_id)[0].n
+	var trace_number: int = g.board.filter(func(c): return c.kind != "deduction" and Live.Evidence.normalize_card(c).id == trace_id)[0].n
+	editor.add_evidence(report_number)
+	check(editor.board.nodes.has("e:" + report_id) and not editor.board.nodes.has("e:" + trace_id), "explicit transfer adds only the selected original card")
+	var count: int = editor.board.nodes.size()
+	editor.add_evidence(report_number)
+	check(editor.board.nodes.size() == count and editor.board.selected == "e:" + report_id, "transferring an existing card focuses its copy without duplication")
 	editor.board.connect_cards("e:" + report_id, headline)
+	editor.board.selected = headline
 	editor._session_changed()
 	check("NEW EVALUATOR" in editor.support_label.text, "supported reading case has a visible evaluator label")
 	editor._open_answer("e:" + report_id)
 	check(editor.case_box.get_child_count() > 0, "reading answers open using live people and receipts")
 	editor.answer_window.hide()
+	editor.add_evidence(trace_number)
+	check(editor.board.nodes.has("e:" + trace_id), "unsupported evidence can also be transferred explicitly")
 	editor.board.connect_cards("e:" + trace_id, headline)
+	editor.board.selected = headline
 	editor._session_changed()
 	check("FALLBACK" in editor.support_label.text and "trace" in editor.support_label.text, "mixed graph warning is visible without running a preview")
 	editor._open_answer("e:" + trace_id)
@@ -167,8 +178,15 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor.answer_window.hide()
 	editor._store()
 	var saved = editor.board.export_data()
+	var generated = g.add_card({"kind": "trace", "source": "player", "subject": [], "day": 2, "phase": 0, "block": "docks", "text": "New scene evidence, not selected for Workshop."})
 	editor.refresh()
-	check(editor.board.export_data() == saved, "refresh retains the player's canvas layout, links and answers")
+	check(editor.board.export_data() == saved and not editor.board.nodes.has("e:" + Live.Evidence.normalize_card(g.board[generated - 1]).id), "newly generated evidence and refresh leave transferred cards, layout, links and answers unchanged")
+	var reopened = Editor.new()
+	reopened.g = g
+	root.add_child(reopened)
+	await process_frame
+	check(reopened.board.export_data() == saved, "reopening restores only the player's previously transferred evidence")
+	reopened.queue_free()
 	var screenshot_index = OS.get_cmdline_user_args().find("--screenshot")
 	if screenshot_index >= 0 and DisplayServer.get_name() != "headless":
 		for frame in range(5):
@@ -177,7 +195,7 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 		root.get_texture().get_image().save_png(OS.get_cmdline_user_args()[screenshot_index + 1])
 	g.new_case(693, 10)
 	editor.refresh()
-	check(editor.files.is_empty() and editor.board.links.is_empty() and editor.board.view.people.size() == 10, "new case clears old graph, filed identities and people even in the same Game object")
+	check(editor.files.is_empty() and editor.board.links.is_empty() and editor.board.view.people.size() == 10 and not editor.board.nodes.values().any(func(n): return n.kind == "evidence"), "new case clears the graph and starts without transferred evidence")
 	check(not g.workshop_effects and g.workshop_deliveries.is_empty(), "case reset clears experimental switch and presentation feedback")
 	editor.queue_free()
 	await process_frame
