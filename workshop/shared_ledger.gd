@@ -221,7 +221,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 				sources[card.source] = true
 		var uncertain = prepared.listener.reading_reliability.values().filter(func(v): return v > 0 and v < 1).size()
 		var dimensions: int = Support.dimensions(prepared.view.cards, prepared.listener, prepared.case.reading_challenges) if prepared.view.world_options.get("roles", false) or not prepared.case.reading_challenges.is_empty() else sources.size() + uncertain
-		if dimensions > 6:
+		if Jury.engine == "legacy" and dimensions > 6:
 			issues.append("Shared evidence exceeds the 64-state credibility budget.")
 	return {"ready": issues.is_empty(), "empty": facts.is_empty(), "issues": issues, "owned": owned if issues.is_empty() else {},
 		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input,

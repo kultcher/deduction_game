@@ -10,7 +10,8 @@ const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
 const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion"]
 
-## mixture_budget: apply the old 2^u mixture's 64-state gate (CaseEval has no such limit).
+## mixture_budget: apply the old 2^u mixture's 64-state gate, on the legacy engine only
+## (CaseEval has no such limit, so no listener falls back to native rules over it).
 static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictionary:
 	var result = {"ready": false, "issues": [], "view": {}, "case": {}, "listener": {},
 		"scope": "Conditional report comparison with legal original alignment/modifier worlds and public event timing. Accepting a report assumes a good, correctly claimed, healthy source. Live movement and traces use experimental activity priors; quiet nights supply bounded circumstantial support. Medium relays retain separate original and transmission credibility. Alignment-transition histories remain unsupported. Venue is recorded; proposed effects use the unscaled Workshop response."}
@@ -84,7 +85,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			card["route_origin"] = card.id
 	if not cards.any(func(c): return c.id in snapshot.selected):
 		result.issues.append("No supported reading is presented.")
-	if cards.size() > 8 or snapshot.arguments.size() > 6:
+	if Jury.engine == "legacy" and (cards.size() > 8 or snapshot.arguments.size() > 6):
 		result.issues.append("This comparison exceeds the initial eight-reading / six-claim workload budget.")
 	# Supported questions concern original alignment. Advancing the day must not
 	# silently create a fresh theory and discard yesterday's commitment.
@@ -151,7 +152,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 				sources[source] = true
 			var discounts: int = result.listener.reading_reliability.values().filter(func(v): return v > 0 and v < 1).size()
 			var dimensions: int = Jury.Support.dimensions(cards, result.listener, result.case.get("reading_challenges", {})) if view.world_options.get("roles", false) or not result.case.get("reading_challenges", {}).is_empty() else sources.size() + discounts
-			if mixture_budget and dimensions > 6:
+			if mixture_budget and Jury.engine == "legacy" and dimensions > 6:
 				result.issues.append("This comparison exceeds the initial 64-state credibility budget.")
 	result.view = view
 	result.ready = result.issues.is_empty()

@@ -410,7 +410,13 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 				worlds = worlds.filter(func(w): return position_holds(view, w, id, assignment.positions[id], assignment.at))
 	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
 	if view.get("world_options", {}).get("roles", false):
-		worlds = worlds.filter(func(w): return Roles.fits(view, w, cards, knowledge, answers))
+		# One role table for the surviving worlds (same answers as fits per world).
+		var fit: PackedByteArray = Roles.fits_table(view, worlds, cards, knowledge, answers)
+		var kept: Array = []
+		for i in range(worlds.size()):
+			if fit[i] == 1:
+				kept.append(worlds[i])
+		worlds = kept
 	var movement = movement_for(view, cards if view.get("live_activity", false) else movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
 

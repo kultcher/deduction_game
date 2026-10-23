@@ -150,8 +150,9 @@ Evil NPCs run it on their good self (the shadow); the real evil mind is unchange
 
 ## Performance budget
 
-- **Whole-town presentation target: under 100 ms** (ten listeners), measured on the
-  development machine with a cold cache, including the per-listener weighting.
+- **Whole-town presentation: up to about 5 seconds is acceptable** (user, Oct 23),
+  since it happens only a handful of times a session. The evaluator alone aims far
+  lower (about 100 ms for ten listeners), so the rest of the live pipeline has room.
 - **Nightly NPC solves:** under 50 ms for the town, off the UI thread if needed.
 - Benchmarks are run commands, not committed JSON. Record headline numbers in this doc.
 
@@ -173,6 +174,12 @@ live worlds, nine listeners):**
 - Where it went: per-world work happens once per presentation (`compile`: about
   25 ms); each listener's work is per class (about 200 classes), plus a role check per
   class that their own role or outings could change (about 2 ms).
+**Measured live (Oct 23, `tools/profile_live_presentation.gd`: the real game path with
+shared effects on, nine listeners at a meeting):** 1.8–2.6 s on seeds 692, 4242, 1234
+and 77. The legacy engine on the same path, with the same solver speed-ups, takes
+2.9–10.2 s. The slowest stages are now the headline judgment (CaseEval plus the
+reasoner's logic checks) and the solver's diagnostic `analyze` calls.
+
 - **Domain growth** (fifteen-person towns, more modifiers) is the main risk. Measure the
   domain size per setup, and prune by evidence dependencies before considering C#.
 
@@ -180,15 +187,59 @@ live worlds, nine listeners):**
 
 **Status (Oct 23):**
 - Step 1: `workshop/case_eval.gd` exists. It has likelihood weighting, prior from
-  suspicion, the strength category with its reason, rivals and pivotal cards. Still to
-  come: per-source honesty channels (today each card has its own error rate), and
-  likelihoods for sightings and soot.
+  suspicion and trust, movement and trace likelihoods, supplied test factors, the
+  strength category with its reason, rivals and pivotal cards. Still to come:
+  per-source honesty channels (today each reading has its own error rate).
 - Step 2: `tools/test_case_eval.gd` prints old versus new for the six specimens and
-  checks the semantics. The difference that matters is the movement specimen: v5
-  accepts the case, but CaseEval scores it the same as "core", because movement isn't
-  weighted yet.
-- Step 4: the town timing is in the budget section. The nightly solves aren't built yet.
-- Step 3 (wiring presentations through CaseEval) is next.
+  checks the semantics. With movement weighted, the movement specimen now accepts, as
+  v5 does. `tools/test_workshop_checkpoint.gd` pins v5's exact outputs on the legacy
+  engine.
+- Step 3: done; see "Step 3: what changed" below.
+- Step 4: the town timings are in the budget section. The nightly solves aren't built
+  yet.
+
+### Step 3: what changed (Oct 23)
+
+`Jury.evaluate` (behind both `Session.present` and the live shared ledger) now runs on
+CaseEval by default (`Jury.engine = "case_eval"`; `"legacy"` keeps model v5 for
+comparison). For every listener:
+- **Headline:** agreement is how far the case moved the premise toward certainty
+  (`CaseEval.shift`: +1 all the way to yes, -1 all the way to no). Stance thresholds,
+  the suspicion coefficients and the trust and confidence factors are unchanged.
+- **Everyone else:** one CaseEval pass gives each person's change (0.45 × their shift),
+  replacing the per-person loop. Pattern, protection and "lying" challenge routes are
+  kept as before.
+- **Kept as layers on top:** Insight attention (which cards and lines a listener
+  weighs), the reasoner's logic checks (rival found / entailed / provisional, which
+  drive what bounded listeners say), theory persistence (now a bias on the posterior),
+  reading challenges (they scale the challenged reading's reliability), private
+  checks, and the conditional reading of player answers.
+- **Bounded listeners** who looked for no rival, or who checked an entailment, take
+  the case on trust as in v5: conviction is averaged over how many readings they credit
+  (source quality times reading reliability).
+- **Removed:** the 64-state credibility budget and the eight-reading workload gate
+  (legacy only now), so no listener falls back to native rules over the size of the
+  evidence.
+
+**Semantic changes worth knowing:**
+- **Base rates count.** With three evil in ten, every source starts about 30% likely
+  to be evil, and an evil source's reading is treated as chance. A neutral listener is
+  therefore skeptical: the Surveyor + Rumormonger + Dowser deduction on Hollis moves
+  them from 0.30 to about 0.46, while a listener who knows the three sources are good
+  goes to 0.99. Trust in a person halves (full trust) or doubles (none) their odds of
+  being evil. This is a tuning lever if NPCs feel too hard to persuade.
+- **Unmodelled error is small** (`DEFAULT_ERR` 0.01; 0.002 for one's own reading). At
+  0.05, "it was just wrong" explained away any surprising reading.
+- **Reliability 1.0 means no extra doubt**, not certainty; a doubted reading (0.5)
+  still counts for something, and 0 means it says nothing.
+
+**Still per listener (flagged, not changed):** with shared effects switched on, 1–3 of
+nine listeners in the four probe seeds still use native rules. The cause isn't the
+engine: their own earlier native contribution was clipped at 0 or 1.5, so the
+ownership layer can't reverse it exactly and declines to migrate them. These are
+usually the readings' own sources. Fixing it means accepting an approximate reversal
+for clipped contributions. Shared effects are still off by default in play
+(`Game.workshop_effects`).
 
 1. **A new `CaseEval` module:**
    - input: a case graph plus the snapshot contract plus a listener view;

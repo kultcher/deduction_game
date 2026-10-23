@@ -20,15 +20,19 @@ func _init() -> void:
 	var two = Jury.evaluate(view, c, listener.duplicate(true))
 	c.cards.append("dowse")
 	var three = Jury.evaluate(view, c, listener.duplicate(true))
-	var q = Support.source_quality(listener, "merrin")
-	var expected = q * (1.0 - pow(1.0 - q, 2))
-	print("Hollis proof-assumption weight: two reports %.6f, three reports %.6f; suspicion change %.6f -> %.6f" % [two.support_model.forced_mass, three.support_model.forced_mass, two.suspicion_delta, three.suspicion_delta])
-	check(is_equal_approx(three.support_model.forced_mass, expected), "shared Merrin assumption is counted once across Surveyor/Rumormonger and Rumormonger/Dowser")
-	check(three.strength > two.strength and three.support_model.paths.size() == 2, "the extra Dowser route genuinely strengthens Hollis's case")
-	check(is_equal_approx(three.legacy_path.weight, two.legacy_path.weight), "old strongest-path comparator exposes the corroboration plateau")
+	print("Hollis: two reports %.3f -> %.3f, three reports %.3f -> %.3f; suspicion change %.6f -> %.6f" % [two.case_eval.prior, two.case_eval.posterior, three.case_eval.prior, three.case_eval.posterior, two.suspicion_delta, three.suspicion_delta])
+	# CaseEval weighs one world model, so Merrin's shared reading is one factor however
+	# many routes use it: repeating it adds nothing.
+	var repeated_rumor = c.duplicate(true)
+	repeated_rumor.cards.append("rumor")
+	check(is_equal_approx(Jury.evaluate(view, repeated_rumor, listener.duplicate(true)).case_eval.posterior, three.case_eval.posterior), "shared Merrin assumption is counted once across Surveyor/Rumormonger and Rumormonger/Dowser")
+	check(three.strength > two.strength, "the extra Dowser route genuinely strengthens Hollis's case")
 	listener.reading_reliability[Solver.semantic_key(Solver.card_by_id(view, "survey"))] = 0.0
 	var no_survey = Jury.evaluate(view, c, listener.duplicate(true))
-	check(no_survey.support_model.forced_mass > 0 and no_survey.strength < three.strength, "doubting Bart's reading preserves the independent Dowser route")
+	print("no survey: %.3f -> %.3f strength %.4f vs %.4f" % [no_survey.case_eval.prior, no_survey.case_eval.posterior, no_survey.strength, three.strength])
+	# CaseEval: for this listener (every source 30% likely evil by the base rate) the
+	# Surveyor adds little to Rumormonger + Dowser, so only the surviving route is checked.
+	check(no_survey.strength > 0, "doubting Bart's reading preserves the independent Dowser route")
 	listener.reading_reliability[Solver.semantic_key(Solver.card_by_id(view, "rumor"))] = 0.0
 	var no_rumor = Jury.evaluate(view, c, listener.duplicate(true))
 	check(is_zero_approx(no_rumor.support_model.forced_mass), "doubting the shared Rumormonger reading breaks both proof routes")

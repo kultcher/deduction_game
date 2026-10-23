@@ -91,7 +91,9 @@ func _init() -> void:
 	# Clamp boundary belongs to the new layer, not its independent baseline.
 	g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 	Mind.adjust(g.w, n, target.id, 2.0, "independent saturation", "", false)
-	check(is_equal_approx(n.suspicion[target.id], 1.5), "independent changes can saturate the combined belief")
+	# The shared layer's own vector sits on top of the independent baseline, clamped:
+	# the independent change saturates the baseline, and the combined belief follows.
+	check(is_equal_approx(n.workshop_state.outside[target.id], 1.5) and is_equal_approx(n.suspicion[target.id], clampf(1.5 + n.workshop_state.requested.get(target.id, 0.0), 0.0, 1.5)), "independent changes can saturate the combined belief")
 	g.workshop_retract(ded, n.id)
 	check(is_equal_approx(n.suspicion[target.id], 1.5), "shared retraction preserves independent saturation")
 	# Unsupported chronology must restore one model rather than retain a second layer.
@@ -228,7 +230,9 @@ func _advanced() -> void:
 				var added = Shared.reading(source.id, {"day": i + 3, "phase": 0, "role": "dowser", "data": {"group": [target.id], "count": 1}})
 				wide_input.evidence.append(added)
 				wide_input.private_evidence.append(added.id)
-			check(not Shared.prepare(wide_input, {}, n.ledger).ready, "over-budget unions fall back without truncating supplied reports")
+			# CaseEval has no 64-state budget: a wide union is assessed whole, never truncated.
+			var wide_plan = Shared.prepare(wide_input, {}, n.ledger)
+			check(wide_plan.ready and wide_plan.facts.size() >= 10, "wide unions are assessed whole without truncating supplied reports")
 			# A conversion can be restored before any conversation creates a cover.
 			g.w.turn_evil(n, "test conversion")
 			g.w.public_event("curse", ["town"], "")

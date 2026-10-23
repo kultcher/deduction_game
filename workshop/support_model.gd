@@ -464,7 +464,16 @@ static func _prior_scores(view: Dictionary, listener: Dictionary, bias: Dictiona
 		return priors[key].ranks
 	Profiler.count("prior_cache_miss")
 	var ranks = {}
+	# Without conversion histories a world's score depends only on its evil team.
+	var plain: bool = Solver.Domain.live(view) and Solver.world_bits(view).plain
+	var by_team = {}
 	for world in _solve(view, [], listener.knowledge).worlds:
+		if plain and by_team.has(world.evil):
+			var cached: float = by_team[world.evil]
+			if not bias.is_empty() and Solver.position_holds(view, world, bias.target, bias.position, epoch):
+				cached *= bias.factor
+			ranks[TimeModel.key(view, world)] = cached
+			continue
 		var score = 1.0
 		for i in range(view.people.size()):
 			var id: String = view.people[i].id
@@ -474,6 +483,8 @@ static func _prior_scores(view: Dictionary, listener: Dictionary, bias: Dictiona
 				score *= maxf(0.15 + suspicion * 1.2 - (trust - 0.5) * 0.5, 0.02)
 			else:
 				score *= maxf(0.3 + (0.6 - suspicion) * 0.6 + (trust - 0.5) * 0.4, 0.05)
+		if plain:
+			by_team[world.evil] = score
 		if not bias.is_empty() and Solver.position_holds(view, world, bias.target, bias.position, epoch):
 			score *= bias.factor
 		ranks[TimeModel.key(view, world)] = score

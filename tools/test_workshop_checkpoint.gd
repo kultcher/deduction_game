@@ -9,6 +9,9 @@ const PATH = "res://tests/fixtures/workshop_checkpoint_v5.json"
 var failures = 0
 
 func _init() -> void:
+	# The reference is model v5's output: verify the legacy engine, kept for comparison.
+	# tools/test_case_eval.gd compares CaseEval against the same specimens.
+	Jury.engine = "legacy"
 	if "--record" in OS.get_cmdline_user_args():
 		_record()
 		return

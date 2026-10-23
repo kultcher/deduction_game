@@ -11,6 +11,14 @@ const Reasoner = preload("res://workshop/reasoner.gd")
 const Consequences = preload("res://workshop/consequences.gd")
 const Movement = preload("res://workshop/movement_model.gd")
 const Profiler = preload("res://workshop/profiler.gd")
+const CaseEval = preload("res://workshop/case_eval.gd")
+const Protection = preload("res://workshop/live_protection.gd")
+const TimeModel = preload("res://workshop/chronology.gd")
+
+## Which engine judges cases (docs/CASE_REASONING.md): "case_eval" (likelihood-weighted
+## worlds, one pass for every person) or "legacy" (model v5's credibility-state mixture
+## and per-person consequence loop), kept for offline comparison only.
+static var engine: String = "case_eval"
 
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
 	var span = Profiler.open("jury")
@@ -31,13 +39,14 @@ static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Diction
 		baseline.suspicion[person] = snappedf(baseline.suspicion.get(person, 0.1) - old_effects[person].applied, 0.000000001)
 	baseline.ledger = {}
 	var primary_listener = baseline.duplicate(true)
-	var result = _assess_target(view, case_data, primary_listener, context)
+	var modern: bool = engine == "case_eval"
+	var result = _assess_target_eval(view, case_data, primary_listener, context) if modern else _assess_target(view, case_data, primary_listener, context)
 	var signature_case = Graph.compile_case(view, case_data)
 	signature_case.conclusion = {"type": "evil", "target": "all", "at": case_data.conclusion.at}
 	var common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
 		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.confidence,
 		baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
-	var consequences = Consequences.assess(view, case_data, baseline, _pattern, common_key, result.theory)
+	var consequences = _consequences_eval(view, case_data, baseline, result, common_key) if modern else Consequences.assess(view, case_data, baseline, _pattern, common_key, result.theory)
 	var effects = {}
 	for person in view.people:
 		var id: String = person.id
@@ -290,6 +299,414 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 		"calculation": {"agreement": best.agreement, "premise_quality": best.quality, "player_factor": player_factor,
 			"confidence_factor": confidence_factor, "coefficient": coefficient, "old_case_effect": old.get("applied", 0.0), "new_case_effect": applied,
 			"venue": context.get("venue", "private"), "rule": "Replace this case's prior effect; never add it again. Trust is held fixed for controlled comparisons."}}
+
+## The listener as CaseEval sees them: their suspicion and trust as priors, their own
+## private readings folded into the starting view, and their reading reliability.
+## Challenges the listener accepts (unlikely / misled / lying) scale the reliability of
+## the challenged readings and sources.
+static func _eval_listener(listener: Dictionary, own: Array, challenges: Dictionary = {}) -> Dictionary:
+	var knowledge: Dictionary = listener.get("knowledge", {}).duplicate(true)
+	knowledge["own_reports"] = own
+	return {"id": listener.get("id", "listener"), "suspicion": listener.get("suspicion", {}),
+		"npc_trust": listener.get("npc_trust", {}), "knowledge": knowledge,
+		"reading_reliability": listener.get("reading_reliability", {}),
+		"challenge_reports": challenges.get("reports", {}), "challenge_sources": challenges.get("sources", {})}
+
+## A bounded listener who looked for no rival explanation ("provisional"), or who
+## checked that the attended reports force it ("entailed_in_attention"), takes a
+## coherent case on trust: model v5's provisional conviction, scaled by how far they
+## trust each source (Support.source_quality) and each reading. Supplied factors still
+## move them.
+## entailed: the listener checked that the attended reports force the conclusion, so
+## with every reading credible they're fully convinced.
+static func _provisional(view: Dictionary, conclusion: Dictionary, ev: Dictionary, cards: Array, listener: Dictionary, eval_listener: Dictionary, entailed: bool = false) -> float:
+	var ratio: float = Support._direct_ratio(ev.factors.filter(func(f): return not f.get("joint_live", false)), conclusion)
+	if cards.is_empty():
+		return (2.0 if Movement.available(view) else 0.16) * (ratio / (1.0 + ratio) - 0.5)
+	# Each source is credible with its quality; each of its readings, with that reading's
+	# own reliability. Conviction is v5's for however many readings survive (two or
+	# more: 0.76, one: 0.3), averaged over the chances.
+	var by_source = {}
+	for card in cards:
+		if not by_source.has(card.source):
+			by_source[card.source] = []
+		by_source[card.source].append(minf(1.0, (1.0 - CaseEval.reading_error(view, card, eval_listener)) / (1.0 - CaseEval.DEFAULT_ERR)))
+	var dist = PackedFloat64Array([1.0])  # chance of n credible readings
+	for source in by_source:
+		var quality: float = Support.source_quality(listener, source)
+		var inner = PackedFloat64Array([1.0])  # given the source is credible
+		for r in by_source[source]:
+			var grown = PackedFloat64Array()
+			grown.resize(inner.size() + 1)
+			grown.fill(0.0)
+			for n in range(inner.size()):
+				grown[n] += inner[n] * (1.0 - r)
+				grown[n + 1] += inner[n] * r
+			inner = grown
+		var next = PackedFloat64Array()
+		next.resize(dist.size() + inner.size() - 1)
+		next.fill(0.0)
+		for a in range(dist.size()):
+			next[a] += dist[a] * (1.0 - quality)
+			for b in range(inner.size()):
+				next[a + b] += dist[a] * quality * inner[b]
+		dist = next
+	var scale: float = 2.0 * ratio / (1.0 + ratio)
+	var conviction = 0.0
+	for n in range(1, dist.size()):
+		conviction += dist[n] * (1.0 if entailed and n == cards.size() else minf(0.95, (0.76 if n >= 2 else 0.3) * scale))
+	return conviction
+
+## The cards a listener weighs for this case: their attention set (Insight limits it for
+## bounded reasoners), without reports they know are false and without their own private
+## readings, which are part of their starting view instead.
+static func _eval_case(view: Dictionary, case_data: Dictionary, attention: Dictionary, listener: Dictionary) -> Dictionary:
+	var scoped: Dictionary = attention.case.duplicate(true)
+	var own: Array = listener.get("knowledge", {}).get("own_reports", [])
+	scoped.cards = scoped.cards.filter(func(id): return id not in attention.private_checks.rejected and id not in own)
+	scoped.conclusion = case_data.conclusion.duplicate(true)
+	if case_data.conclusion.type in ["suspicious"]:
+		scoped.conclusion.type = "evil"
+	return scoped
+
+## Headline judgment on the CaseEval engine. Same result shape as _assess_target_inner.
+static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
+	var span = Profiler.open("headline")
+	var original = case_data.duplicate(true)
+	case_data = Graph.compile_case(view, case_data)
+	var conclusion: Dictionary = case_data.conclusion
+	var target: String = conclusion.target
+	var before_suspicion: float = listener.suspicion.get(target, 0.1)
+	var before_trust: float = listener.trust
+	var old: Dictionary = listener.ledger.get(case_data.id, {})
+	if not old.is_empty():
+		listener.suspicion[old.target] = snappedf(listener.suspicion.get(old.target, 0.1) - old.applied, 0.000000001)
+	var previous: Dictionary = listener.case_memory.get(case_data.id, {})
+	var signature = _signature(view, case_data)
+	var input_key = JSON.stringify(_canonical([signature, listener.get("reasoning_mode", "full"), listener.get("insight", 0.5),
+		listener.get("confidence_mode", "scale"), listener.confidence, listener.trust, listener.npc_trust,
+		listener.suspicion, listener.reading_reliability, listener.knowledge]))
+	var repeated: bool = previous.get("input_key", "") == input_key
+	var knowledge: Dictionary = listener.knowledge
+	var full_case = case_data.duplicate(true)
+	for id in knowledge.get("own_reports", []):
+		if id not in full_case.cards:
+			full_case.cards.append(id)
+	var assessment = Solver.analyze(view, full_case, knowledge)
+	var shared = Solver.analyze(view, case_data)
+	var reasoning = Support.explain(view, original, listener)
+	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
+	if bounded:
+		var considered_facts: Array = reasoning.considered.map(func(id): return Solver.semantic_key(Solver.card_by_id(view, id)))
+		considered_facts.sort()
+		input_key += JSON.stringify([considered_facts, reasoning.connections])
+		repeated = previous.get("input_key", "") == input_key
+	var theory = Theory.prepare(view, case_data, listener, reasoning, input_key)
+	var attention = Reasoner.prepare(view, original, listener)
+	var scoped = _eval_case(view, case_data, attention, listener)
+	var challenges = Support.ReadingChallenges.assess(view, attention.case, listener, Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected))
+	var eval_listener = _eval_listener(listener, knowledge.get("own_reports", []), challenges)
+	eval_listener["theory_bias"] = theory.bias
+	var ev = CaseEval.evaluate(view, scoped, eval_listener)
+	var agreement: float = clampf(CaseEval.shift(ev.prior, ev.posterior), -1.0, 1.0)
+	var contributing: Array = Solver.selected(view, scoped).filter(func(c): return Solver.tabled(c))
+	if bounded and reasoning.status in ["provisional", "entailed_in_attention"] and ev.consistent and conclusion.type != "conflict":
+		agreement = clampf(_provisional(view, conclusion, ev, contributing, listener, eval_listener, reasoning.status == "entailed_in_attention"), -1.0, 1.0)
+	var pattern = _pattern(view, case_data, listener)
+	if bounded:
+		# Outings count only if the listener attended to them.
+		var attended_case: Dictionary = attention.case.duplicate(true)
+		attended_case.cards = attended_case.cards.filter(func(id): return id not in reasoning.private_checks.rejected)
+		pattern = _pattern(view, attended_case, listener)
+	var paths: Array = scoped.cards.filter(func(id): return Solver.tabled(Solver.card_by_id(view, id)))
+	var best = {"weight": agreement, "agreement": agreement, "quality": 1.0, "cards": paths, "kind": "reading"}
+	if conclusion.type == "suspicious" and pattern.weight > best.weight:
+		best = pattern
+	# The player's chosen answers and positions are a theory: if the conclusion follows
+	# only once they're granted, say so. They never add evidence.
+	if best.kind == "reading" and best.agreement < 0.6 and conclusion.type not in ["conflict", "suspicious"]:
+		var positions: Dictionary = case_data.positions.duplicate(true)
+		positions.erase(target)
+		var answers: Dictionary = case_data.answers.duplicate(true)
+		if not positions.is_empty() or not answers.is_empty() or not case_data.get("temporal_positions", []).is_empty():
+			var chosen = Solver.solve(view, Solver.selected(view, full_case).filter(func(c): return c.id not in reasoning.private_checks.rejected), positions, answers, knowledge, conclusion.at, case_data.get("temporal_positions", []))
+			if not chosen.worlds.is_empty() and chosen.worlds.all(func(w): return Solver.holds(view, w, conclusion)):
+				best.kind = "conditional"
+	var conflict = assessment.status == "conflicting" or not ev.consistent
+	if conclusion.type == "conflict":
+		var detected: bool = (reasoning.status == "inconsistent" or not reasoning.private_checks.rejected.is_empty()) if bounded else not ev.consistent
+		var value = 1.0 if detected else 0.0
+		best = {"weight": value, "agreement": value, "quality": 1.0, "cards": case_data.cards, "kind": "conflict"}
+	if reasoning.private_checks.fatal or ev.impossible:
+		best.weight = 0.0
+		best.agreement = 0.0
+	var player_factor: float = 0.5 + listener.trust
+	var confidence_factor: float = 1.0 if listener.get("confidence_mode", "scale") == "persistence" else 1.4 - 0.8 * listener.confidence
+	var strength: float = best.weight * player_factor * confidence_factor
+	var coefficient: float = {"evil": 0.45, "demon": 0.45, "minion": 0.45, "good": -0.4, "marked": -0.1, "suspicious": 0.3, "conflict": 0.0}.get(conclusion.type, 0.0)
+	var effect: float = strength * coefficient
+	var baseline: float = listener.suspicion.get(target, 0.1)
+	listener.suspicion[target] = snappedf(clampf(baseline + effect, 0.0, 1.5), 0.000000001)
+	var applied: float = snappedf(listener.suspicion[target] - baseline, 0.000000001)
+	listener.ledger[case_data.id] = {"target": target, "applied": applied, "cards": best.cards.duplicate(), "version": case_data.version,
+		"conclusion": conclusion.duplicate(true), "signature": signature, "report_acceptance": ev.acceptance.duplicate(true)}
+	var changes = _changes(view, previous.get("case", {}), case_data)
+	listener.case_memory[case_data.id] = {"signature": signature, "input_key": input_key, "version": case_data.version, "cards": case_data.cards.duplicate(), "strength": strength, "case": case_data.duplicate(true)}
+	var objection = _objection(view, case_data, listener, shared, assessment, best, pattern)
+	var stance = "accept" if best.agreement >= 0.6 else ("partial" if best.agreement >= 0.35 else "reject")
+	var response = _eval_response(view, case_data, best, stance, ev, conflict, repeated)
+	if bounded:
+		# What a bounded listener says reflects their own search, never the referee's.
+		objection = _bounded_objection(reasoning)
+		if reasoning.private_checks.fatal:
+			response = reasoning.private_checks.objections[0]
+		elif conclusion.type == "conflict":
+			response = "The accounts I considered cannot all be accurate. That does not identify anyone as evil." if best.agreement > 0 else "I have not established a conflict among the accounts I considered."
+		elif best.weight < 0:
+			response = "The evidence I considered weighs against this conclusion; my search was limited."
+		elif not reasoning.support.is_empty() and reasoning.status == "provisional":
+			response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
+		elif reasoning.status == "rival_found":
+			var alternative = Solver.describe_world(view, reasoning.rival, conclusion.at)
+			response = "I checked another explanation and it also fits: %s evil; %s Marked." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, alternative.marked)]
+			if alternative.has("demon"):
+				response += " In that explanation, %s is the Demon." % Solver.person_name(view, alternative.demon)
+			if stance == "accept":
+				response += " Even so, the evidence favors your explanation." if ev.movement.is_empty() else " Even so, the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible."
+		elif reasoning.status == "entailed_in_attention":
+			response = "The reports I considered force this if they are accurate."
+		elif reasoning.status != "provisional":
+			response = "I could not follow your explanation through within what I considered. That does not prove it wrong."
+		if not reasoning.ignored.is_empty() or not reasoning.ignored_lines.is_empty():
+			response += " I did not combine all the evidence in this case."
+		if ev.movement.any(func(label): return label.begins_with("Challenged home alibi")):
+			response += " The linked observation challenges the home alibi; it does not by itself prove evil."
+		if repeated:
+			response = "That is the same case; I made the same checks. Repeating it adds no new reason."
+	if not reasoning.private_checks.objections.is_empty():
+		objection = " ".join(PackedStringArray(reasoning.private_checks.objections))
+	if theory.mode == "persistence" and not repeated:
+		response += " " + theory.note
+	if not previous.is_empty() and not repeated and not changes.is_empty():
+		response += " " + " ".join(PackedStringArray(changes))
+	if not case_data.get("faults", {}).is_empty():
+		response += " Your explanation needs impairment in the selected interval. That remains a hypothesis; readings outside it keep their own support."
+	var support_model = {"agreement": agreement, "evidence_agreement": agreement, "forced_mass": ev.posterior if ev.posterior >= 0.999 else 0.0,
+		"conditional_mass": 0.0, "paths": [paths], "report_acceptance": ev.acceptance, "states": 1, "factors": ev.movement, "atoms": [], "credence": ev.credence,
+		"quoted_cards": scoped.get("quoted_cards", []).duplicate(), "faults": [], "movement_comparison": [], "prior": ev.prior, "posterior": ev.posterior,
+		"category": ev.category, "rivals": ev.rivals, "theory_fit": ev.theory_fit,
+		"model": "CaseEval: likelihood-weighted worlds (docs/CASE_REASONING.md)."}
+	Profiler.close(span)
+	return {"listener": listener.id, "name": listener.name, "version": case_data.version, "stance": stance,
+		"agreement": best.agreement, "quality": best.quality, "strength": strength, "path": best.cards,
+		"path_kind": best.kind, "repeated": repeated, "response": response, "objection": objection, "changes": changes,
+		"assessment": assessment, "shared_assessment": shared, "pattern": pattern, "support_model": support_model, "legacy_path": {"weight": 0.0, "omitted": true},
+		"reasoning": reasoning, "theory": theory, "case_eval": ev,
+		"before_suspicion": before_suspicion, "after_suspicion": listener.suspicion[target], "suspicion_delta": listener.suspicion[target] - before_suspicion,
+		"before_trust": before_trust, "after_trust": listener.trust, "trust_delta": 0.0,
+		"calculation": {"agreement": best.agreement, "premise_quality": best.quality, "player_factor": player_factor,
+			"confidence_factor": confidence_factor, "coefficient": coefficient, "old_case_effect": old.get("applied", 0.0), "new_case_effect": applied,
+			"venue": context.get("venue", "private"), "prior": ev.prior, "posterior": ev.posterior,
+			"rule": "Replace this case's prior effect; never add it again. Trust is held fixed for controlled comparisons."}}
+
+## What the listener says about the headline, from how far the case moved them.
+static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictionary, stance: String, ev: Dictionary, conflict: bool, repeated: bool) -> String:
+	var conclusion: Dictionary = case_data.conclusion
+	if repeated:
+		return "That is the same case. Repeating it adds no new reason."
+	if conclusion.type == "conflict":
+		return "Those accounts cannot all be accurate. I have reopened which report to believe; this does not establish anyone's alignment." if best.agreement > 0 else "I don't see a conflict among the reports you selected."
+	if best.kind == "pattern" and best.weight > 0:
+		return "That gives me a reason to be suspicious, though it does not establish evil."
+	var response = ""
+	if best.kind == "conditional":
+		response = "That follows if I grant your extra choices. You still need to establish those choices."
+	elif ev.impossible:
+		response = "Your selected explanation does not fit what I know. The underlying reports can still change my assessments."
+	elif conflict:
+		response = "Those reports can't all be right together, so I'm weighing which of them to doubt."
+	elif stance == "accept":
+		response = "Taken together, those reports convince me." if ev.posterior >= 0.9 else "Those reports convince me, though another explanation is still possible."
+	elif stance == "partial":
+		response = "That moves me, but the reports also allow another explanation."
+	elif best.agreement <= -0.2:
+		response = "The supplied evidence weighs against that conclusion."
+	elif best.agreement > 0.05:
+		response = "I can see that possibility, but it doesn't settle much for me."
+	else:
+		response = "Those reports don't change my view of that."
+	if stance != "accept" and not ev.rivals.is_empty():
+		var rival: Dictionary = ev.rivals[0]
+		if rival.shift > 0.2 and rival.posterior > 0.5:
+			response += " If anything, it points me toward %s." % Solver.person_name(view, rival.id)
+	if ev.movement.any(func(label): return label.begins_with("Movement / trace")):
+		response += " The routes, observation coverage and traces change which explanation I favor. Lawful activity and eligible passers remain alternatives; this is circumstantial evidence."
+	elif ev.movement.any(func(label): return label.begins_with("Challenged home alibi")):
+		response += " If the linked observation is accurate, the home alibi is false. That is circumstantial evidence, not proof of deliberate deception or evil."
+	elif not ev.movement.is_empty():
+		response += " The supplied test factor changes which remaining explanation I favor; it does not prove it."
+	return response
+
+## Effects on everyone from one CaseEval pass over the same attended evidence, plus the
+## intermediate claims. Same result shape as Consequences.assess.
+static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Dictionary, headline: Dictionary, common_key: String) -> Dictionary:
+	var span = Profiler.open("consequences")
+	var attention = Reasoner.prepare(view, value, baseline)
+	var compiled = Graph.compile_case(view, value)
+	var scoped = _eval_case(view, compiled, attention, baseline)
+	var attended: Array = Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected)
+	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
+	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged)
+	var ev: Dictionary = CaseEval.evaluate(view, scoped, eval_listener)
+	var protection = Protection.assess(view, attended, baseline)
+	# The headline's own fatal check (say, accusing the listener) doesn't void what the
+	# evidence says about everyone else: each person gets their own direct check.
+	var invalid: bool = not attention.case.get("graph_errors", []).is_empty() or not Solver.validate_answers(view, attention.case).is_empty()
+	var persistence: bool = baseline.get("confidence_mode", "scale") == "persistence"
+	var confidence: float = 1.0 if persistence else 1.4 - 0.8 * baseline.confidence
+	var theories: Dictionary = baseline.get("theories", {}).duplicate(true)
+	var effects = {}
+	for person in view.people:
+		var id: String = person.id
+		var theory: Dictionary = headline.theory if id == value.conclusion.target else {}
+		var person_ev: Dictionary = ev
+		if persistence:
+			# A committed listener keeps a working theory per person and reads the
+			# evidence through it (Theory bias), as the headline does.
+			var evil_case: Dictionary = attention.case.duplicate(true)
+			evil_case.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
+			var clone = baseline.duplicate(true)
+			var reasoning = Support.explain(view, evil_case, clone, Consequences._prepared(view, attention, evil_case, baseline))
+			if id != value.conclusion.target or value.conclusion.type not in ["evil", "good", "suspicious"]:
+				theory = Theory.prepare(view, evil_case, clone, reasoning, common_key + id)
+			for key in clone.get("theories", {}):
+				if key.begins_with(id + "|"):
+					theories[key] = clone.theories[key]
+			if not theory.get("bias", {}).is_empty():
+				var biased = eval_listener.duplicate(true)
+				biased["theory_bias"] = theory.bias
+				person_ev = CaseEval.evaluate(view, scoped, biased)
+		var odds: Dictionary = person_ev.people.get(id, {"prior": 0.0, "posterior": 0.0})
+		var s: float = CaseEval.shift(odds.prior, odds.posterior) if not ev.impossible else 0.0
+		var alignment: float = 0.45 * s
+		var circumstantial = 0.0
+		if not Movement.available(view):
+			var pattern_case = attention.case.duplicate(true)
+			pattern_case.conclusion = {"type": "suspicious", "target": id, "at": value.conclusion.at}
+			pattern_case.cards = pattern_case.cards.filter(func(c): return c not in attention.private_checks.rejected)
+			circumstantial = 0.3 * _pattern(view, pattern_case, baseline).weight
+		var net_weight: float = circumstantial if circumstantial > absf(alignment) else alignment
+		var protection_signal: float = -protection.get(id, {}).get("weight", 0.0)
+		if absf(protection_signal) > absf(net_weight):
+			net_weight = protection_signal
+		for challenge in challenged.results:
+			if challenge.mode == "lying" and challenge.source == id and challenge.agreement >= 0.6:
+				net_weight = maxf(net_weight, 0.12 * challenge.agreement)
+		var own_check: Dictionary = attention.case.duplicate(true)
+		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
+		if invalid or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict":
+			net_weight = 0.0
+		effects[id] = {"requested": net_weight * (0.5 + baseline.trust) * confidence, "alignment_signal": alignment, "pattern_signal": circumstantial,
+			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"),
+			"protection_signal": protection_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
+			"evil_change": s, "good_change": -s, "prior": odds.prior, "posterior": odds.posterior,
+			"cards": attention.considered.duplicate(), "theory": theory, "reasoning": headline.reasoning.status}
+	var claims: Array = []
+	var by_id = {}
+	var arguments: Array = Consequences._arguments(view, value)
+	for argument in arguments:
+		var claim_case = Consequences._scope(view, argument.case, attention.considered)
+		claims.append(_eval_claim(view, argument, claim_case, attention, baseline, eval_listener))
+		by_id[argument.id] = claims[-1]
+	# Links: how the parent claim fares without the evidence only this branch brings.
+	for argument in arguments:
+		var child: Dictionary = by_id[argument.id]
+		for parent_id in argument.parents:
+			if not by_id.has(parent_id):
+				continue
+			var parent: Dictionary = by_id[parent_id]
+			var parent_argument: Dictionary = arguments.filter(func(a): return a.id == parent_id)[0]
+			var retained: Array = argument.get("without", {}).get(parent_id, [])
+			if not argument.has("without"):
+				for input in parent_argument.get("inputs", []):
+					if input.id != argument.id:
+						retained.append_array(input.cards)
+			var exclusive: Array = child.cards.filter(func(id): return id not in retained)
+			var without = Consequences._scope(view, parent_argument.case, parent.cards.filter(func(id): return id not in exclusive))
+			var reduced = _eval_claim(view, parent_argument, without, attention, baseline, eval_listener)
+			var contribution: float = parent.agreement - reduced.agreement
+			var relation = "shared" if exclusive.is_empty() else ("strengthens" if contribution > 0.0000001 else ("weakens" if contribution < -0.0000001 else "no_preference"))
+			var remaining: bool = not parent.reasoning.get("rival", {}).is_empty()
+			var note = {"shared": "These original sources are already included through another connection.",
+				"strengthens": "This branch's evidence strengthens the parent claim.",
+				"weakens": "This branch's evidence weighs against the parent claim.",
+				"no_preference": "This branch does not add a preference for the parent claim."}[relation]
+			if child.stance == "reject":
+				note += " I do not accept the intermediate claim; its label supplies no extra evidence."
+			if remaining:
+				note += " An alternative to the parent claim still fits what I checked."
+			child.links.append({"parent": parent_id, "parent_label": parent.label, "relation": relation,
+				"evidence_difference": contribution, "exclusive_cards": exclusive, "alternative_remains": remaining, "note": note})
+	Profiler.close(span)
+	return {"effects": effects, "claims": claims, "theories": theories, "considered": attention.considered,
+		"rule": "One CaseEval pass over the attended evidence gives every person's change; intermediate claims add no evidence."}
+
+## One claim (the headline or an intermediate) judged on the attended evidence it cites.
+static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dictionary, attention: Dictionary, baseline: Dictionary, eval_listener: Dictionary) -> Dictionary:
+	var checks = Reasoner.direct_checks(view, claim_case, baseline.knowledge)
+	var scoped: Dictionary = claim_case.duplicate(true)
+	var own: Array = baseline.knowledge.get("own_reports", [])
+	scoped.cards = scoped.cards.filter(func(id): return id not in checks.rejected and id not in own)
+	if scoped.conclusion.type == "suspicious":
+		scoped.conclusion.type = "evil"
+	var ev = CaseEval.evaluate(view, scoped, eval_listener)
+	# The logical layer (what follows if the attended reports are sound) is the
+	# reasoner's; how much the listener believes it is CaseEval's.
+	var thought = Support.explain(view, claim_case, baseline, Consequences._prepared(view, attention, claim_case, baseline))
+	var status: String = thought.status
+	var agreement: float = clampf(CaseEval.shift(ev.prior, ev.posterior), -1.0, 1.0)
+	var pattern: Dictionary = {"weight": 0.0}
+	if claim_case.conclusion.type == "suspicious":
+		var pattern_case = claim_case.duplicate(true)
+		pattern_case.cards = pattern_case.cards.filter(func(id): return id not in checks.rejected)
+		pattern = _pattern(view, pattern_case, baseline)
+		agreement = maxf(agreement, pattern.agreement if pattern.weight > 0 else 0.0)
+	if claim_case.conclusion.type == "conflict":
+		agreement = 1.0 if status == "inconsistent" or not ev.consistent or not checks.rejected.is_empty() else 0.0
+	if checks.fatal or ev.impossible:
+		agreement = 0.0
+	var note = "Another explanation remains possible."
+	if claim_case.cards.is_empty():
+		note = "No attended evidence was offered for this claim."
+	elif checks.fatal:
+		note = " ".join(PackedStringArray(checks.objections))
+	elif claim_case.conclusion.type == "suspicious" and pattern.weight > 0:
+		note = "The observations give a circumstantial reason for suspicion; they do not establish evil."
+	elif claim_case.conclusion.type == "suspicious" and not ev.movement.is_empty() and agreement > 0:
+		note = "The joint movement and trace comparison gives a circumstantial reason for suspicion; it does not establish evil."
+	elif claim_case.conclusion.type == "conflict":
+		note = "The considered accounts conflict; that does not identify deliberate deception or evil." if agreement > 0 else "I have not established a conflict in the considered accounts."
+	elif status == "inconsistent" or not ev.consistent:
+		note = "The premises I checked cannot all hold together."
+	elif status == "entailed_in_attention":
+		note = "This follows from the reports I granted, if those reports are sound."
+	elif agreement >= 0.6:
+		note = "The evidence favors this, though another explanation is still possible."
+	elif status == "provisional":
+		note = "This fits the evidence I checked; I have not checked another explanation."
+	elif agreement <= -0.2:
+		note = "The evidence weighs against this."
+	var scoped_protection = Protection.assess(view, Solver.selected(view, claim_case).filter(func(c): return c.id not in checks.rejected), baseline)
+	if claim_case.conclusion.type == "good" and scoped_protection.has(claim_case.conclusion.target) and not checks.fatal:
+		agreement = maxf(agreement, minf(0.55, 0.35 + scoped_protection[claim_case.conclusion.target].weight))
+		note = "A quiet night fits this protection claim, but it does not establish that an attack targeted their protection. Other explanations remain."
+	return {"id": argument.id, "label": argument.label, "conclusion": claim_case.conclusion.duplicate(true),
+		"parents": argument.parents.duplicate(), "cards": claim_case.cards.duplicate(),
+		"ignored": Graph.compile_case(view, argument.case).cards.filter(func(id): return id not in claim_case.cards),
+		"agreement": agreement, "stance": Consequences._stance(agreement), "status": status,
+		"conditional_mass": 0.0, "forced_mass": 1.0 if status == "entailed_in_attention" and ev.consistent else 0.0,
+		"note": note, "links": [], "support_model": {"agreement": agreement, "prior": ev.prior, "posterior": ev.posterior, "category": ev.category},
+		"reasoning": thought}
 
 static func _bounded_objection(reasoning: Dictionary) -> String:
 	# Spoken objections use only this search, never the referee's alternative.

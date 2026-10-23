@@ -49,7 +49,7 @@ func _init() -> void:
 	_check(CaseEval.evaluate(mb.view, mb.case).category in ["none", "weak", "contradicts"], "one Surveyor count alone is at most weak evidence about Constance")
 	# A doubted source counts for less.
 	var doubt = core.listener.duplicate(true)
-	doubt["reading_reliability"] = {"report:bart:survey": 0.5, "report:merrin:rumor": 0.5, "report:hollis:dowse": 0.5}
+	doubt["reading_reliability"] = {"report:bart:survey": 0.5, "report:merrin:rumor": 0.5, "report:fenwick:dowse": 0.5}
 	var rd = CaseEval.evaluate(core.view, core.case, doubt)
 	_check(absf(rd.people.hollis.posterior - rd.people.hollis.prior) < absf(rc.people.hollis.posterior - rc.people.hollis.prior),
 		"doubting the readings weakens their consequences (Hollis shift %.2f vs %.2f)" % [rd.people.hollis.posterior - rd.people.hollis.prior, rc.people.hollis.posterior - rc.people.hollis.prior])
