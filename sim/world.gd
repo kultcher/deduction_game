@@ -1257,6 +1257,16 @@ func _other_than(true_v: int, lo: int, hi: int) -> int:
 	var opts: Array = range(lo, hi + 1).filter(func(x): return x != true_v)
 	return pick(opts) if not opts.is_empty() else true_v
 
+## Fabricated/impaired Surveyor counts favor ordinary layouts, retaining tails.
+func surveyor_result(exclude: int = -1) -> int:
+	var options: Array = []
+	for count in range(1, C.BLOCKS.size() + 1):
+		if count == exclude:
+			continue
+		for _i in range(12 if count in [2, 3] else 1):
+			options.append(count)
+	return pick(options)
+
 func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -> void:
 	var r: String = n.role
 	var first = day == 0
@@ -1363,7 +1373,7 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 					tb[m.home_block] = true
 			truth = tb.size()
 			if broken:
-				count = _other_than(truth, 1, C.BLOCKS.size())
+				count = surveyor_result(truth)
 			entry = {"data": {"count": count}, "true": count == truth,
 				"text": "I learned that %d of the four blocks %s an evil resident" % [count, "has" if count == 1 else "have"]}
 		"lamplighter":

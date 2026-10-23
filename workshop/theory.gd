@@ -20,7 +20,9 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 	# across accusing and defending the same person, not stored as opposing claims.
 	if value.conclusion.type == "marked":
 		key += "|marked"
-	if value.conclusion.type in ["evil", "good", "suspicious", "marked"] and listener.get("fixed_theory_decisions", {}).has(key):
+	elif value.conclusion.type in ["demon", "minion"]:
+		key += "|" + value.conclusion.type
+	if value.conclusion.type in ["evil", "good", "suspicious", "marked", "demon", "minion"] and listener.get("fixed_theory_decisions", {}).has(key):
 		return listener.fixed_theory_decisions[key].duplicate(true)
 	var old: Dictionary = listener.theories.get(key, {}).duplicate(true)
 	result.before = old.get("position", "")
@@ -85,4 +87,6 @@ static func _position(view: Dictionary, world: Dictionary, target: String, type:
 	var index: int = Solver.person_index(view, target)
 	if type == "marked":
 		return "marked" if world.marked == index else "unmarked"
+	if type in ["demon", "minion"]:
+		return type if Solver.position_holds(view, world, target, type, epoch) else "not" + type
 	return "evil" if Solver.position_holds(view, world, target, "evil", epoch) else "good"

@@ -153,7 +153,7 @@ func validate_case(value) -> String:
 	if not value.cards.all(func(id): return id in card_ids) or value.cards.size() > card_ids.size():
 		return "Unknown evidence card."
 	var conclusion = value.get("conclusion")
-	if not conclusion is Dictionary or conclusion.get("type") not in ["evil", "good", "marked", "suspicious", "conflict"] or conclusion.get("target") not in ids or conclusion.get("at") not in TimeModel.epochs(scenario.public_view):
+	if not conclusion is Dictionary or conclusion.get("type") not in ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion"] or conclusion.get("target") not in ids or conclusion.get("at") not in TimeModel.epochs(scenario.public_view):
 		return "Invalid conclusion or time."
 	for id in value.positions:
 		if id not in ids or value.positions[id] not in ["good", "evil", "marked"]:
@@ -191,6 +191,11 @@ func validate_case(value) -> String:
 	for id in value.get("challenges", {}):
 		if id not in scenario.public_view.cards.map(func(c): return c.id) or not value.challenges[id] is Array or not value.challenges[id].all(func(root): return root in card_ids):
 			return "Invalid challenged report or grounds."
+	if not value.get("reading_challenges", {}) is Dictionary:
+		return "Invalid reading challenges."
+	for id in value.get("reading_challenges", {}):
+		if not preload("res://workshop/reading_challenges.gd").valid(scenario.public_view, id, value.reading_challenges[id]):
+			return "Invalid reading challenge."
 	if not value.get("lines", []) is Array or value.get("lines", []).size() > 6:
 		return "Invalid reasoning lines (maximum six)."
 	if not value.get("disputes", []) is Array or value.get("disputes", []).size() > 8:

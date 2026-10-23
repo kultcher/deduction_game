@@ -2,6 +2,7 @@
 ## Counts measure compatible assignments, NOT posterior probabilities.
 extends RefCounted
 const Domain = preload("res://workshop/world_domain.gd")
+const Roles = preload("res://workshop/role_constraints.gd")
 
 const Graph = preload("res://workshop/case_graph.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
@@ -41,7 +42,7 @@ static func block_masks(view: Dictionary) -> Array:
 
 static func empty_case() -> Dictionary:
 	return {"id": "case-1", "version": 1, "cards": [], "positions": {}, "answers": {}, "reasons": {},
-		"citations": {}, "conflict_scope": [], "challenges": {}, "derived": [], "lines": [], "disputes": [], "faults": {}, "temporal_positions": [],
+		"citations": {}, "conflict_scope": [], "challenges": {}, "reading_challenges": {}, "derived": [], "lines": [], "disputes": [], "faults": {}, "temporal_positions": [],
 		"conclusion": {"type": "evil", "target": "constance", "at": "opening through day 3"}}
 
 static func card_by_id(view: Dictionary, id: String) -> Dictionary:
@@ -80,8 +81,21 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 		cards = cards.filter(func(c): return c.id in Graph.roots(case_data, case_data.conflict_scope) or c.id in knowledge.get("own_reports", []))
 	var base = solve(view, cards, {}, {}, knowledge)
 	var proposed_cards = TimeModel.hypothetical_cards(view, case_data, cards)
-	var proposed = solve(view, proposed_cards, case_data.positions, case_data.answers, knowledge, case_data.conclusion.at, case_data.get("temporal_positions", []))
+	var positions: Dictionary = case_data.positions.duplicate(true)
+	var challenge_errors: Array = []
+	for id in case_data.get("reading_challenges", {}):
+		var mode: String = case_data.reading_challenges[id].get("mode", "")
+		if mode in ["misled", "lying"]:
+			var source: String = card_by_id(view, id).get("source", "")
+			var assumed: String = "good" if mode == "misled" else "evil"
+			var allowed: Array = ["good", "marked"] if mode == "misled" else ["evil", "demon", "minion"]
+			if positions.get(source, assumed) not in allowed:
+				challenge_errors.append("The selected reader alignment conflicts with the %s explanation." % mode.capitalize())
+			else:
+				positions[source] = positions.get(source, assumed)
+	var proposed = solve(view, proposed_cards, positions, case_data.answers, knowledge, case_data.conclusion.at, case_data.get("temporal_positions", []))
 	var errors = validate_answers(view, case_data) + case_data.get("graph_errors", [])
+	errors.append_array(challenge_errors)
 	var conclusion: Dictionary = case_data.conclusion
 	if conclusion.type in ["evil", "good", "marked"] and not proposed.worlds.is_empty() and not proposed.worlds.any(func(w): return holds(view, w, conclusion)):
 		errors.append("The conclusion contradicts every world allowed by these premises and choices.")
@@ -251,6 +265,8 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 			for id in assignment.positions:
 				worlds = worlds.filter(func(w): return position_holds(view, w, id, assignment.positions[id], assignment.at))
 	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
+	if view.get("world_options", {}).get("roles", false):
+		worlds = worlds.filter(func(w): return Roles.fits(view, w, cards, knowledge, answers))
 	var movement = movement_for(view, movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
 
@@ -284,6 +300,9 @@ static func _position_holds(ids: Array, world: Dictionary, id: String, position:
 	return true
 
 static func position_holds(view: Dictionary, world: Dictionary, id: String, position: String, epoch: String = "") -> bool:
+	if position in ["demon", "minion"]:
+		var i: int = person_index(view, id)
+		return i >= 0 and (world.get("demon", -1) == i if position == "demon" else ((world.evil & (1 << i)) != 0 and world.get("demon", -1) != i))
 	if position in ["marked", "unmarked"]:
 		var index: int = person_index(view, id)
 		if index < 0:
@@ -348,7 +367,11 @@ static func _movement(view: Dictionary, cards: Array, answers: Dictionary, knowl
 	var ids: Array = view.people.map(func(p): return p.id)
 	var nights = {}
 	var okay = true
-	for night in [1, 2]:
+	var observed_nights: Array = []
+	for card in cards:
+		if card.get("night", -1) >= 0 and card.night not in observed_nights:
+			observed_nights.append(card.night)
+	for night in observed_nights:
 		var relevant: Array = cards.filter(func(c): return not c.get("quoted", false) and c.get("night", -1) == night and (c.kind in ["sighting", "alibi"] or c.get("role", "") in ["nightwatch", "lamplighter"]))
 		if relevant.is_empty():
 			continue
@@ -362,7 +385,7 @@ static func _movement(view: Dictionary, cards: Array, answers: Dictionary, knowl
 			for card in relevant:
 				var required: Array = []
 				if card.kind == "sighting":
-					required = [card.subject]
+					required = card.get("subjects", [card.subject])
 				elif card.kind == "alibi":
 					if mask & (1 << ids.find(card.subject)):
 						valid = false
@@ -392,6 +415,7 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 	if index < 0:
 		return false
 	match conclusion.type:
+		"demon", "minion": return position_holds(view, world, conclusion.target, conclusion.type, conclusion.at)
 		"evil", "suspicious": return TimeModel.evil_index(view, world, index, conclusion.at)
 		"good": return not TimeModel.evil_index(view, world, index, conclusion.at)
 		"marked": return world.marked == index
@@ -402,6 +426,8 @@ static func describe_world(view: Dictionary, world: Dictionary, epoch: String = 
 	var result = {"evil": ids.filter(func(id): return TimeModel.evil_at(view, world, id, view.alignment_epoch if epoch == "" else epoch)), "marked": ids[world.marked] if world.marked >= 0 else ""}
 	if Domain.live(view):
 		result["modifier"] = world.modifier
+		if world.has("demon"):
+			result["demon"] = ids[world.demon]
 		result["holders"] = ids.filter(func(id): return world.holders & (1 << ids.find(id)))
 	if world.has("converted"):
 		result["converted"] = ids[world.converted]
@@ -434,7 +460,7 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			continue
 		var card = card_by_id(view, id)
 		var positive: Array = case_data.answers[id].get("positive", [])
-		var maximum: int = 1 if card.get("role", "") == "rumormonger" else card.get("data", {}).get("count", 10)
+		var maximum: int = (0 if card.data.get("yes") == false else 1) if card.get("role") == "seer" else (1 if card.get("role", "") in ["rumormonger", "clerk", "archivist"] else card.get("data", {}).get("count", 10))
 		if positive.size() > maximum:
 			errors.append("%s: there are more answers than positive slots." % id)
 		var unique: Array = []
@@ -447,6 +473,10 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			unique.append(person)
 		if card.get("role", "") == "dowser" and not positive.all(func(p): return p in card.data.group):
 			errors.append("%s: choose people in this reading's group." % id)
+		if card.get("role", "") in ["clerk", "archivist", "seer"] and not positive.all(func(p): return p in card.data.pair):
+			errors.append("%s: choose a person in this reading's pair." % id)
+		if card.get("role") == "seer" and case_data.answers[id].get("registration", "") not in ["", "demon", "marked", "red_herring"]:
+			errors.append("%s: choose a valid registration explanation." % id)
 		if card.get("role", "") == "lamplighter" and card.source in positive:
 			errors.append("%s: the count excludes the Lamplighter." % id)
 		if card.get("role", "") == "surveyor":

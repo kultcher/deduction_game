@@ -98,7 +98,7 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 			var card: Dictionary = find_card(view, id)
 			var key = card.get("fact_id", id)
 			if card.kind in ["sighting", "alibi"]:
-				key = "outing:%s:%s" % [card.subject, card.night]
+				key = "outing:%s:%s" % [factor.target if factor.target in card.get("subjects", [card.subject]) else card.subject, card.night]
 			elif card.get("role", "") == "nightwatch" and card.kind == "report" and factor.target in card.data.seen:
 				key = "outing:%s:%s" % [factor.target, card.night]
 			if key not in facts:
@@ -143,7 +143,7 @@ static func valid_dispute(view: Dictionary, dispute) -> bool:
 		return false
 	var home = find_card(view, dispute.challenged)
 	var out = find_card(view, dispute.preferred)
-	return not home.is_empty() and not out.is_empty() and home.kind == "alibi" and home.get("night", -1) == out.get("night", -2) and ((out.kind == "sighting" and out.subject == home.subject) or (out.kind == "report" and out.get("role", "") == "nightwatch" and home.subject in out.data.seen))
+	return not home.is_empty() and not out.is_empty() and home.kind == "alibi" and home.get("night", -1) >= 0 and home.get("night", -1) == out.get("night", -2) and ((out.kind == "sighting" and home.subject in out.get("subjects", [out.subject])) or (out.kind == "report" and out.get("role", "") == "nightwatch" and home.subject in out.data.seen))
 
 static func roots(value: Dictionary, ids: Array) -> Array:
 	var result: Array = []

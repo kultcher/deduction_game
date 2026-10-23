@@ -13,7 +13,7 @@ const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
 
 ## Conclusion types. The player builds them as "<name> <is / is not / should be> <status>".
-const CONCLUSION_TYPES = ["good", "evil", "demon", "notdemon", "role", "notrole", "lied", "truthful", "misled", "unreliable", "protect", "spare",
+const CONCLUSION_TYPES = ["good", "evil", "demon", "minion", "notdemon", "role", "notrole", "lied", "truthful", "misled", "unreliable", "protect", "spare",
 	"suspicious", "secret", "marked", "red_herring", "secret_mod"]
 
 ## Builder vocabulary: verb -> [status, conclusion type] (role statuses are added per gift).
@@ -238,7 +238,7 @@ static func assertions(card: Dictionary) -> Array:
 			var dc: Dictionary = card.get("conclusion", {})
 			if dc.get("type", "") in ["good", "marked", "red_herring"] or (dc.get("type", "") == "secret_mod" and dc.get("mod", "") != "delusional"):
 				out.append({"t": "proven_good", "who": dc.get("a", ""), "how": "deduced", "src": src, "card": n})
-			if dc.get("type", "") in ["evil", "demon"]:
+			if dc.get("type", "") in ["evil", "demon", "minion"]:
 				out.append({"t": "believed_evil", "who": dc.get("a", ""), "eid": "arg:" + conclusion_key(dc), "src": src, "card": n})
 			if dc.get("type", "") in ["misled", "unreliable"] and dc.has("night"):
 				out.append({"t": "ded_misled", "who": dc.get("a", ""), "night": dc["night"], "src": src, "card": n})
@@ -849,6 +849,8 @@ static func conclusion_text(w, c: Dictionary) -> String:
 	var night = (" on night %d" % c["night"]) if c.has("night") else ""
 	var about = (" (card #%d)" % c["card"]) if c.get("card", -1) > 0 else ""
 	match c["type"]:
+		"minion":
+			return "%s is a minion" % a
 		"evil":
 			return "%s is evil" % a
 		"demon":
@@ -1274,7 +1276,7 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 		approved["source"] = doubtful_source
 	elif agreement < 0.6:
 		approved["reason"] = "weak"
-	if c["type"] in ["evil", "demon"] and target != n:
+	if c["type"] in ["evil", "demon", "minion"] and target != n:
 		var ranked: Array = Mind.ranked_suspects(w, n)
 		if not ranked.is_empty() and ranked[0].id != c.get("a", "") and Mind.susp(n, ranked[0].id) > Mind.susp(n, c.get("a", "")) + 0.05:
 			approved["preferred"] = ranked[0].name
@@ -1300,7 +1302,7 @@ static func _evil_reason(w, n, c: Dictionary, ded: Dictionary, approved: Diction
 	else:
 		approved["reason"] = "weak"
 	var sg = w.by_id.get(w.evil_plan.get("scapegoat", ""))
-	if c["type"] in ["evil", "demon"] and sg != null and sg.alive and sg.id != c.get("a", "") and sg != n and (h / 16) % 2 == 0:
+	if c["type"] in ["evil", "demon", "minion"] and sg != null and sg.alive and sg.id != c.get("a", "") and sg != n and (h / 16) % 2 == 0:
 		approved["preferred"] = sg.name
 
 static func _argument_descriptor(w, c: Dictionary, facts: Array, stance: String) -> Dictionary:
@@ -1357,7 +1359,7 @@ static func effects_of(w, c: Dictionary, supports: Array, why: String) -> Array:
 	var a: String = c.get("a", "")
 	var e: Array = []
 	match c["type"]:
-		"evil":
+		"evil", "minion":
 			Mind._eff(e, a, 0.45, why, "the Demonologist made a case against them")
 		"demon":
 			Mind._eff(e, a, 0.55, why, "the Demonologist made a case against them")

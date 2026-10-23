@@ -6,8 +6,8 @@ const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const C = preload("res://sim/content.gd")
 const WorkshopSkin = preload("res://ui/theme.gd")
-const TYPES = ["evil", "suspicious", "good", "marked", "conflict"]
-const TYPE_NAMES = ["is evil", "is suspicious", "is good", "is Marked", "these reports conflict"]
+const TYPES = ["evil", "suspicious", "good", "marked", "conflict", "demon", "minion"]
+const TYPE_NAMES = ["is evil", "is suspicious", "is good", "is Marked", "these reports conflict", "is the Demon", "is a Minion"]
 
 var session = Session.new()
 var evidence_box: VBoxContainer
@@ -357,18 +357,18 @@ func _question(card: Dictionary) -> void:
 			_edit())
 		_label(box, "Answers on a card outside this case or line have no effect.", 14, "muted")
 	var role: String = card.get("role", "")
-	if card.kind == "report" and role in ["surveyor", "dowser", "rumormonger", "lamplighter"]:
-		var prompt: String = {"surveyor": "Which residents account for the positive blocks? A positive may be evil or Marked.", "dowser": "Who registered as evil in this reading? Marked is a possible explanation.", "rumormonger": "Which person is Marked in your explanation?", "lamplighter": "Who were the other people out? The Lamplighter is excluded."}[role]
+	if card.kind == "report" and role in ["surveyor", "dowser", "rumormonger", "lamplighter", "clerk", "archivist", "seer"]:
+		var prompt: String = {"surveyor": "Which residents account for the positive blocks? A positive may be evil or Marked.", "dowser": "Who registered as evil in this reading? Marked is a possible explanation.", "rumormonger": "Which person is Marked in your explanation?", "lamplighter": "Who were the other people out? The Lamplighter is excluded.", "clerk": "If this reading is accurate, who holds the named good gift?", "archivist": "If this reading is accurate, who holds the named minion gift?", "seer": "What explains this Demon reading? A negative reading does not clear minions."}[role]
 		if role == "rumormonger":
 			prompt = "Which person has the named secret (%s) in your explanation?" % card.data.get("secret", "marked")
 		_label(box, prompt, 16)
-		var count: int = 1 if role == "rumormonger" else card.data.count
+		var count: int = (1 if card.data.yes else 0) if role == "seer" else (1 if role in ["rumormonger", "clerk", "archivist"] else card.data.count)
 		var current = _active_choices()
 		var answer: Dictionary = current.answers.get(card.id, {})
 		var slots: Array = answer.get("slots", answer.get("positive", []))
 		for i in range(count):
 			var choices: Array = session.scenario.public_view.people.map(func(p): return p.id)
-			if role == "rumormonger":
+			if role in ["rumormonger", "clerk", "archivist", "seer"]:
 				choices = card.data.pair
 			elif role == "surveyor" and count == 4:
 				var block: String = C.BLOCKS.keys()[i]
@@ -391,10 +391,21 @@ func _question(card: Dictionary) -> void:
 					status.text = "That person already fills a slot. Leave this slot unknown or choose someone else."
 					_refresh_case()
 					return
-				current.answers[card.id] = {"slots": values, "positive": positive}
+				var updated: Dictionary = current.answers.get(card.id, {}).duplicate(true)
+				updated.merge({"slots": values, "positive": positive}, true)
+				current.answers[card.id] = updated
 				_edit())
 		if role in ["surveyor", "dowser"]:
 			_label(box, _identity_hint(), 15, "muted")
+		if role == "seer" and card.data.yes:
+			var reasons: Array = ["", "demon", "red_herring", "marked"]
+			var reason = _option(box, ["? Any valid explanation", "Demon", "Red Herring", "Marked"])
+			reason.select(reasons.find(answer.get("registration", "")))
+			reason.item_selected.connect(func(i):
+				var updated: Dictionary = current.answers.get(card.id, {}).duplicate(true)
+				updated["registration"] = reasons[i]
+				current.answers[card.id] = updated
+				_edit())
 	elif (card.kind == "report" and role == "nightwatch") or card.kind == "sighting":
 		_label(box, "Why were they out? An unanswered reason is allowed. A gift explanation needs supporting testimony.", 16)
 		var current = _active_choices()

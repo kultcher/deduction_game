@@ -97,7 +97,7 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 			"rel": entry.get("rel", []).duplicate(true), "supports": supports})
 	for key in n.history:
 		if str(key).ends_with(":3"):
-			input.listener.own_outings[str(key).trim_suffix(":3")] = not str(n.history[key]).begins_with("home")
+			input.listener.own_outings[str(key).trim_suffix(":3")] = n.secret_mod != "sleepwalker" and not str(n.history[key]).begins_with("home")
 	for e in n.info_log:
 		var card = _reading(n.id, e)
 		input.receipts.append({"card": card, "private": true})

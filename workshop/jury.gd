@@ -58,11 +58,15 @@ static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Diction
 	listener.theories = consequences.theories
 	# The headline's original confidence decision remains the reported decision.
 	var theory_key: String = target + "|" + case_data.conclusion.at
-	if case_data.conclusion.type == "marked":
-		theory_key += "|marked"
+	if case_data.conclusion.type in ["marked", "demon", "minion"]:
+		theory_key += "|" + case_data.conclusion.type
 	if primary_listener.theories.has(theory_key):
 		listener.theories[theory_key] = primary_listener.theories[theory_key].duplicate(true)
 	result["effects"] = effects
+	var challenges = Support.ReadingChallenges.assess(view, case_data, baseline, Solver.selected(view, signature_case).filter(func(c): return c.id in result.reasoning.considered and c.id not in result.reasoning.private_checks.rejected))
+	result["reading_challenges"] = challenges.results
+	for challenge in challenges.results:
+		result.response += " " + challenge.note
 	result["claims"] = consequences.claims
 	result["effect_rule"] = consequences.rule
 	result.before_suspicion = effects[target].before
@@ -200,7 +204,7 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 	var confidence_factor: float = 1.0 if listener.get("confidence_mode", "scale") == "persistence" else 1.4 - 0.8 * listener.confidence
 	# Venue is deliberately the same: no private/public/nomination duplicate effects.
 	var strength: float = best.weight * player_factor * confidence_factor
-	var coefficient: float = {"evil": 0.45, "good": -0.4, "marked": -0.1, "suspicious": 0.3, "conflict": 0.0}.get(conclusion.type, 0.0)
+	var coefficient: float = {"evil": 0.45, "demon": 0.45, "minion": 0.45, "good": -0.4, "marked": -0.1, "suspicious": 0.3, "conflict": 0.0}.get(conclusion.type, 0.0)
 	var effect: float = strength * coefficient
 	# Replace this case's complete prior effect, even if target/conclusion changed.
 	var baseline: float = listener.suspicion.get(target, 0.1)
@@ -222,7 +226,7 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 	elif best.kind == "pattern" and best.weight > 0:
 		response = "That gives me a reason to be suspicious, though it does not establish evil."
 	elif conflict and conclusion.type != "conflict":
-		response = "I cannot accept all those premises together. I give weight only to the explanations that survive doubting a report." if best.weight > 0 else "Those premises or choices do not fit together. I have withdrawn this case's earlier weight."
+		response = "I cannot accept all those premises together. I give weight only to the explanations that survive doubting a report." if best.weight > 0 else "Your selected explanation does not fit. The underlying reports can still change my assessments."
 	elif best.kind == "conditional":
 		response = "That follows if I grant your extra choices. You still need to establish those choices."
 	elif stance == "accept" and Movement.available(view) and assessment.entailment == "possible":
@@ -253,6 +257,8 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 		elif reasoning.status == "rival_found":
 			var alternative = Solver.describe_world(view, reasoning.rival, conclusion.at)
 			response = "I checked another explanation and it also fits: %s evil; %s Marked. I cannot settle it from this alone." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, alternative.marked)]
+			if alternative.has("demon"):
+				response += " In that explanation, %s is the Demon." % Solver.person_name(view, alternative.demon)
 			if Movement.available(view) and stance == "accept":
 				response = "I checked another explanation that also fits, but the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible."
 		elif reasoning.status == "entailed_in_attention":
@@ -341,7 +347,7 @@ static func _pattern(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	var contradictions: Array = []
 	var cards = Solver.selected(view, case_data)
 	for card in cards:
-		var out: bool = (card.kind == "sighting" and card.subject == target) or (card.kind == "report" and card.get("role", "") == "nightwatch" and target in card.data.seen)
+		var out: bool = (card.kind == "sighting" and target in card.get("subjects", [card.subject])) or (card.kind == "report" and card.get("role", "") == "nightwatch" and target in card.data.seen)
 		if not out:
 			continue
 		var key = "%s:%d" % [target, card.night]
@@ -394,6 +400,8 @@ static func _objection(view: Dictionary, case_data: Dictionary, listener: Dictio
 		return "I am least convinced by %s's report (%s); its source and health assumptions still matter." % [Solver.person_name(view, Solver.card_by_id(view, weakest).source), weakest]
 	if not assessment.alternative.is_empty() and assessment.entailment == "possible":
 		var a: Dictionary = assessment.alternative
+		if a.has("demon"):
+			return "An alternative still fits with %s as the Demon; the other evil residents could be minions." % Solver.person_name(view, a.demon)
 		return "An alternative still fits: %s evil; %s Marked." % [", ".join(PackedStringArray(a.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, a.marked)]
 	if assessment.entailment == "unsupported":
 		return "The accepted reports exclude that conclusion."
@@ -432,7 +440,8 @@ static func _signature(view: Dictionary, case_data: Dictionary) -> String:
 			if atom not in timed:
 				timed.append(atom)
 	timed.sort_custom(func(a, b): return JSON.stringify(a) < JSON.stringify(b))
-	return JSON.stringify(_canonical([keys, case_data.positions, answers, case_data.reasons, citations, scope, case_data.get("challenges", {}), factors, case_data.conclusion, case_data.get("graph_errors", []), case_data.get("faults", {}), timed]))
+	var signature = JSON.stringify(_canonical([keys, case_data.positions, answers, case_data.reasons, citations, scope, case_data.get("challenges", {}), factors, case_data.conclusion, case_data.get("graph_errors", []), case_data.get("faults", {}), timed]))
+	return signature if case_data.get("reading_challenges", {}).is_empty() else signature + JSON.stringify(_canonical(case_data.reading_challenges))
 
 static func _canonical(value):
 	if value is Dictionary:

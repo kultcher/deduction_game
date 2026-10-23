@@ -24,13 +24,14 @@ static func _assess(view: Dictionary, value: Dictionary, baseline: Dictionary, p
 	# One listener and one frozen attention set. Full queries can share a mixture
 	# plan even with answers/positions; their conditional checks remain separate.
 	var shared = {"enabled": baseline.get("reasoning_mode", "full") == "full" and baseline.get("confidence_mode", "scale") == "scale"}
+	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected))
 	for person in view.people:
 		var evil_case: Dictionary = attention.case.duplicate(true)
 		evil_case.conclusion = {"type": "evil", "target": person.id, "at": value.conclusion.at}
 		var prepared = _prepared(view, attention, evil_case, baseline)
 		var clone = baseline.duplicate(true)
 		var reasoning = Support.explain(view, evil_case, clone, prepared)
-		var theory = primary_theory if person.id == value.conclusion.target and value.conclusion.type != "marked" else Theory.prepare(view, evil_case, clone, reasoning, common_key + person.id)
+		var theory = primary_theory if person.id == value.conclusion.target and value.conclusion.type in ["evil", "good", "suspicious"] else Theory.prepare(view, evil_case, clone, reasoning, common_key + person.id)
 		for key in clone.get("theories", {}):
 			if key.begins_with(person.id + "|"):
 				theories[key] = clone.theories[key]
@@ -52,6 +53,9 @@ static func _assess(view: Dictionary, value: Dictionary, baseline: Dictionary, p
 		# incident. Use the stronger route, never sum them. Slice 4 replaces this
 		# provisional envelope with a causal movement/trace model.
 		var net_weight: float = circumstantial if circumstantial > absf(alignment) else alignment
+		for challenge in challenged.results:
+			if challenge.mode == "lying" and challenge.source == person.id and challenge.agreement >= 0.6:
+				net_weight = maxf(net_weight, 0.12 * challenge.agreement)
 		if prepared.private_checks.fatal or not attention.case.get("graph_errors", []).is_empty() or not Solver.validate_answers(view, attention.case).is_empty():
 			net_weight = 0.0
 		if TimeModel.known_good(view, baseline.knowledge, person.id, value.conclusion.at):

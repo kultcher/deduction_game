@@ -11,6 +11,8 @@ static func view(g) -> Dictionary:
 	for receipt in snapshot.evidence:
 		var content: Dictionary = receipt.content
 		var note = "FALLBACK: this evidence has no live Workshop evaluator"
+		if (receipt.kind == "claim" and content.get("role") in Assess.C.GOOD_ROLES) or (receipt.kind in ["sighting", "alibi"] and receipt.observed_at.phase == "night"):
+			note = "Adapter available · testimony and circumstances, not proof of evil"
 		if receipt.kind == "info" and content.get("role") in Assess.ROLES:
 			note = "Reading adapter available · check whole-case support"
 			if not Assess.Domain.gift_time({"role": content.role, "observed_at": receipt.observed_at}):
@@ -19,7 +21,7 @@ static func view(g) -> Dictionary:
 			if not Assess.reading_valid(receipt, ids, snapshot.rules.modifier_options):
 				note = "FALLBACK: reading payload is incomplete or invalid"
 		cards.append({"id": receipt.id, "fact_id": receipt.id, "kind": "report" if receipt.kind == "info" else receipt.kind,
-			"source": receipt.source, "subject": receipt.subjects[0] if not receipt.subjects.is_empty() else "",
+			"source": receipt.source, "subject": receipt.subjects[0] if not receipt.subjects.is_empty() else "", "subjects": receipt.subjects.duplicate(),
 			"role": content.get("role", ""), "data": content.get("data", {}).duplicate(true),
 			"night": receipt.observed_at.day if receipt.observed_at.phase == "night" else -1,
 			"block": content.get("block", ""), "observed_at": receipt.observed_at,

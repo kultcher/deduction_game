@@ -13,6 +13,14 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
+- **Case 44814: inconsistent pair-reading defenses.** NPCs can both redirect a
+  reading toward the other candidate and declare its source a liar, with separate
+  mechanical effects. Choose one explanation, or explicitly frame alternatives
+  without awarding both as independent defenses. [decided]
+- **Case 44814: relayed role claims in the cast list.** Hearing a claim through
+  another NPC should appear as an attributed hearsay claim, distinct from direct or
+  public disclosure. Do not silently turn a relay into a direct confirmation. [decided]
+
 - **Rumormonger as the sole modifier holder.** The gift excludes its own holder from
   its candidate pool. When a healthy Rumormonger is the sole Marked or Sleepwalker,
   the current fallback produces an arbitrary false pair/secret instead of useful
@@ -31,6 +39,28 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   roster expansion) [decided]
 
 ### NPC behaviour
+- **Case 44814: asking about an already disclosed gift.** Currently "are you the X?"
+  repeats confirmation and consumes a question, without requesting withheld results;
+  a profile role guess is private bookkeeping only. Decide whether the dialogue
+  question should offer a useful route to the withheld readings or clearer feedback
+  about asking for them. No automatic extra disclosure from recording a guess. [open]
+- **Case 44814: readings after role disclosure.** Once a gift is officially claimed,
+  ordinarily share available readings unless trust is very low. Current public
+  disclosure guarantees only tier 3 (the role), so fresh readings can remain withheld
+  at ordinary trust and then be announced publicly moments later. Preserve valid
+  privacy/provenance boundaries when changing the policy. [decided; tuning open]
+- **Follow-up after a false alibi is established.** The initial good-NPC response can
+  concede "Fine, I was out. Doesn't mean I was doing anything wrong." Later add
+  pressure checks and possible forced revelation of the hidden gift/secret, with
+  proper handling of genuine home accounts, unremembered outings and evil cover
+  behavior. The pressure/revelation extension is deferred. (Oct 23, case 44814.)
+  [decided; mechanics open]
+- **Reading challenges and next supported gifts.** Track alibi/sighting intent,
+  multi-person vigil receipts, Surveyor count generation/skepticism, preview clarity,
+  and Clerk/Archivist/Seer integration in the
+  [amended reference plan](docs/CASE_WORKSHOP_READING_CHALLENGES.md). Misled and Lying modifiers, Surveyor skepticism, alibi support, clearer feedback and
+  the three role adapters are implemented. General temporal/trace/citation adapters
+  remain explicitly gated; continue live-game tuning. [watch; broader adapters open]
 - **From playtest 61251** (an evil team the player had identified won anyway). [decided]
   - **A proven lie should hurt an info claimant's credibility hard.** Constance (the
     Breathstealer bluffing Seer) was caught in an off-route lie on day 2, and listeners

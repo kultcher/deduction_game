@@ -96,7 +96,21 @@ static func fault_for(view: Dictionary, value: Dictionary, card: Dictionary) -> 
 static func hypothetical_cards(view: Dictionary, value: Dictionary, cards: Array) -> Array:
 	# For the PLAYER'S conditional explanation only. Numeric NPC conviction still
 	# averages healthy/broken credibility states and requires actual supporting input.
-	return cards.filter(func(card): return fault_for(view, value, card).is_empty())
+	var result: Array = []
+	for card in cards:
+		if not fault_for(view, value, card).is_empty():
+			continue
+		var challenge: Dictionary = value.get("reading_challenges", {}).get(card.id, {})
+		if challenge.is_empty():
+			result.append(card)
+		elif challenge.get("mode") == "misled":
+			# An honest misled reader still claims their gift. Dropping that identity
+			# too would let impairment excuse an impossible duplicate role claim.
+			var claim: Dictionary = card.duplicate(true)
+			claim.kind = "claim"
+			claim.data = {}
+			result.append(claim)
+	return result
 
 static func disowned(view: Dictionary, card: Dictionary, known_events: Array) -> bool:
 	# A public withdrawal must actually be in the listener's permitted knowledge.

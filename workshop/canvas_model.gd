@@ -85,6 +85,49 @@ func connect_cards(from: String, to: String) -> String:
 	version += 1
 	return ""
 
+func add_modifier(id: String, mode: String) -> String:
+	if not nodes.has(id) or nodes[id].kind != "evidence":
+		return "Select a reading card."
+	var report = Solver.card_by_id(view, nodes[id].card)
+	if report.kind != "report" or mode not in ["misled", "lying", "unlikely"] or (mode == "unlikely" and report.role != "surveyor"):
+		return "This modifier is not supported for that evidence type."
+	for node in nodes.values():
+		if node.kind == "modifier" and node.card == report.id:
+			node.mode = mode
+			selected = node.id
+			version += 1
+			return ""
+	serial += 1
+	var key = "m:%d" % serial
+	while nodes.has(key):
+		serial += 1
+		key = "m:%d" % serial
+	var prior: Array = links.filter(func(e): return e.from == id).duplicate(true)
+	for edge in links:
+		if edge.from == id:
+			edge.from = key
+	nodes[key] = {"id": key, "kind": "modifier", "card": report.id, "mode": mode,
+		"at": [nodes[id].at[0] + 320, nodes[id].at[1]], "prior_links": prior}
+	links.append({"from": id, "to": key, "kind": "supports"})
+	selected = key
+	version += 1
+	return ""
+
+func remove_modifier(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "modifier":
+		return
+	var reading: String = "e:" + nodes[id].card
+	var incoming: Array = links.filter(func(e): return e.to == id).map(func(e): return e.from)
+	var outgoing: Array = links.filter(func(e): return e.from == id).map(func(e): return e.to)
+	links = links.filter(func(e): return e.from != id and e.to != id)
+	nodes.erase(id)
+	for source in incoming:
+		for target in outgoing:
+			if source != target and not links.any(func(e): return e.from == source and e.to == target):
+				links.append({"from": source, "to": target, "kind": "supports"})
+	selected = reading
+	version += 1
+
 func _gift_link(a: Dictionary, b: Dictionary) -> bool:
 	if a.kind != "evidence" or b.kind != "evidence":
 		return false
@@ -190,6 +233,8 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 			result.faults = Graph.combine_faults(result.faults, node.get("faults", {}))
 		elif node.kind == "contradiction":
 			result.disputes.append(node.dispute.duplicate(true))
+		elif node.kind == "modifier":
+			result.reading_challenges[node.card] = {"mode": node.mode, "supports": _evidence(ancestors(id)).filter(func(card): return card != node.card)}
 		elif node.kind == "premise" and node.conclusion.get("type") == "conflict":
 			var reports: Array = _evidence(ancestors(id))
 			for home in reports:
@@ -271,6 +316,8 @@ func title(id: String) -> String:
 		return "%s is %s" % [Solver.person_name(view, node.conclusion.target), node.conclusion.type]
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
+	if node.kind == "modifier":
+		return {"misled": "Misled reading", "lying": "Suspected lie", "unlikely": "Unlikely reading"}[node.mode]
 	var card = Solver.card_by_id(view, node.card)
 	return {"alibi": "Home alibi", "sighting": "Sighting", "claim": "Role claim"}.get(card.kind, C.role_name(card.role) if card.get("role", "") != "" else card.kind.capitalize())
 
@@ -315,7 +362,7 @@ func restore(value, session) -> String:
 	var evidence: Array = []
 	for id in candidate.nodes:
 		var n = candidate.nodes[id]
-		if not id is String or not n is Dictionary or n.get("id") != id or n.get("kind") not in ["evidence", "premise", "contradiction"] or not n.get("at") is Array or n.at.size() != 2 or not n.at.all(func(x): return (x is float or x is int) and is_finite(float(x)) and absf(float(x)) <= 100000):
+		if not id is String or not n is Dictionary or n.get("id") != id or n.get("kind") not in ["evidence", "premise", "contradiction", "modifier"] or not n.get("at") is Array or n.at.size() != 2 or not n.at.all(func(x): return (x is float or x is int) and is_finite(float(x)) and absf(float(x)) <= 100000):
 			return "Invalid canvas card or position."
 		if n.kind == "evidence":
 			if not n.get("card") is String or n.card in evidence or Solver.card_by_id(view, n.card).is_empty() or not n.get("answers") is Dictionary or not n.get("reasons") is Dictionary or not n.get("citations") is Dictionary:
@@ -340,6 +387,9 @@ func restore(value, session) -> String:
 				choices.conclusion = n.conclusion
 			if session.validate_case(choices) != "":
 				return "Invalid premise choices."
+		elif n.kind == "modifier":
+			if not preload("res://workshop/reading_challenges.gd").valid(view, n.get("card", ""), {"mode": n.get("mode"), "supports": []}):
+				return "Invalid reading modifier."
 		elif not Graph.valid_dispute(view, n.get("dispute")) or not n.get("children") is Array or n.children.size() != 2 or not n.get("prior_links") is Array or n.prior_links.size() > 160:
 			return "Invalid contradiction provenance."
 	for id in candidate.nodes:

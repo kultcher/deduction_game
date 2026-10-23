@@ -21,7 +21,7 @@ func _ready() -> void:
 	heading.add_theme_font_size_override("font_size", 25)
 	column.add_child(heading)
 	var explanation = Label.new()
-	explanation.text = "Compare a filed deduction against the new reading model. Proposed belief changes are not applied. Surveyor, Rumormonger and Dowser reports are supported; other mechanics are flagged."
+	explanation.text = "Compare a filed deduction against the new reading model. Proposed belief changes are not applied. Surveyor, Rumormonger, Dowser, Clerk, Archivist and Seer readings, role claims, positive night sightings and home-alibi challenges are supported; other mechanics are flagged."
 	explanation.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(explanation)
 	automatic = CheckBox.new()
@@ -156,9 +156,15 @@ static func describe(result: Dictionary) -> String:
 	if not result.ready:
 		return "No numeric comparison:\n• " + "\n• ".join(PackedStringArray(result.issues))
 	var proposal: Dictionary = result.proposal
-	var lines = PackedStringArray(["New model: %s · agreement %.3f · %d ms" % [proposal.stance, proposal.support_model.agreement, result.elapsed_ms],
+	var lines = PackedStringArray(["New model: %s · agreement %.3f · %d ms" % [proposal.stance, proposal.agreement, result.elapsed_ms],
 		proposal.response, "", "Evidence strength (not applied to the game):"])
 	lines.insert(2, "Conditional worlds: %d compatible; %d fit your answers. These are assignments, not odds of guilt." % [proposal.assessment.compatible, proposal.assessment.proposed])
+	for error in proposal.assessment.errors:
+		lines.append("Explanation issue: " + error)
+	if proposal.assessment.proposed == 0 and proposal.assessment.compatible > 0:
+		lines.append("Answer validity: the selected explanation does not fit. The underlying reports may still have the effects listed above.")
+	if not proposal.assessment.get("hypothetically_released", []).is_empty():
+		lines.append("Conditional explanation: fits only after setting aside challenged report contents. This does not establish why those reports are wrong.")
 	var reasoning: Dictionary = proposal.get("reasoning", {})
 	if not reasoning.is_empty():
 		lines.insert(3, "Reasoning: %s · %d reports considered, %d set aside · %d support checks, %d alternative checks · %s." % [reasoning.profile, reasoning.considered.size(), reasoning.ignored.size(), reasoning.support_tested, reasoning.rivals_tested, reasoning.status])
@@ -172,6 +178,8 @@ static func describe(result: Dictionary) -> String:
 			lines.append("%s: %+.3f%s" % [person.capitalize(), effect.requested, clamped])
 	for claim in proposal.claims:
 		lines.append("Claim about %s: %s. %s" % [claim.conclusion.target.capitalize(), claim.stance, claim.note])
+	for challenge in proposal.get("reading_challenges", []):
+		lines.append("%s challenge: %s (agreement %.3f)." % [challenge.mode.capitalize(), challenge.note, challenge.agreement])
 	var audit: Dictionary = result.get("ledger_audit", {})
 	if not audit.is_empty():
 		lines.append("\nExisting evidence: %d reading entries, %d potentially overlapping arguments, %d ambiguous legacy identities.\n%s" % [audit.reading_entries.size(), audit.potential_arguments.size(), audit.aliases.size(), audit.note])

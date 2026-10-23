@@ -33,7 +33,7 @@ static func roots(cards: Array, board: Array, path: Array = []) -> Dictionary:
 			var nested = roots(children, board, path + [number])
 			result.complete = result.complete and nested.complete
 			result.receipts.merge(nested.receipts)
-		elif card.get("kind") == "info" and card.get("role") in Assess.ROLES:
+		elif (card.get("kind") == "info" and card.get("role") in Assess.ROLES) or (card.get("kind") == "claim" and card.get("role") in Assess.C.GOOD_ROLES) or (card.get("kind") in ["sighting", "alibi"] and card.get("phase", -1) == 3):
 			var receipt = Evidence.normalize_card(card)
 			result.receipts[receipt.id] = receipt
 		elif card.get("kind") not in ["claim", "home"]:
@@ -52,6 +52,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	var quotations = {}
 	var issues: Array = []
 	var marked_questions: Array = []
+	var disputes: Array = []
+	var reading_challenges = {}
 	for receipt in input.evidence:
 		if receipt.id in input.private_evidence and supported(receipt):
 			_add(facts, owners, receipt, "learned")
@@ -66,6 +68,15 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	for key in presentations:
 		var presented: Dictionary = presentations[key]
 		for argument in presented.arguments:
+			for id in argument.get("workshop_case", {}).get("reading_challenges", {}):
+				var challenge: Dictionary = argument.workshop_case.reading_challenges[id]
+				if reading_challenges.has(id) and reading_challenges[id].mode != challenge.mode:
+					issues.append("Conflicting reading challenges need separate alternatives.")
+				else:
+					reading_challenges[id] = challenge.duplicate(true)
+			for dispute in argument.get("workshop_case", {}).get("disputes", []):
+				if dispute not in disputes:
+					disputes.append(dispute.duplicate(true))
 			if argument.conclusion.get("type") == "marked":
 				var target: String = Assess._target(argument.conclusion)
 				if target not in marked_questions:
@@ -153,7 +164,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		if owned.has(eid) or entry.get("meta", {}).get("kind") != "reading" or entry.get("weight", 0.0) <= 0.01:
 			continue
 		var relation: Array = entry.get("rel", [])
-		if not relation.is_empty() and input.evidence.any(func(e): return supported(e) and e.source == relation[0]):
+		if not relation.is_empty() and input.evidence.any(func(e): return e.kind in ["info", "claim"] and supported(e) and e.source == relation[0]):
 			issues.append("Unsupported reading shares a source with owned reports: " + eid)
 	for eid in owned:
 		if ledger[eid].get("workshop_clipped", false):
@@ -177,6 +188,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		prepared.case.cards = facts.keys()
 		prepared.case.id = "shared:" + input.case_id
 		prepared.case.arguments = []
+		prepared.case.disputes = disputes
+		prepared.case.reading_challenges = reading_challenges
 		prepared.listener.knowledge.own_reports = []
 		# Personally received gifts stay available outside the attention budget.
 		# Other learned testimony competes for attention like presented reports.
@@ -188,7 +201,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var player_weight = clampf(0.5 + prepared.listener.trust, 0.0, 1.0)
 		prepared.listener.trust = 0.5
 		for id in facts:
-			if facts[id].kind != "info":
+			if facts[id].kind not in ["info", "claim"]:
 				continue
 			var weight = player_weight
 			if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:")):
@@ -204,14 +217,15 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			if card.source != prepared.listener.id:
 				sources[card.source] = true
 		var uncertain = prepared.listener.reading_reliability.values().filter(func(v): return v > 0 and v < 1).size()
-		if sources.size() + uncertain > 6:
+		var dimensions: int = Support.dimensions(prepared.view.cards, prepared.listener, prepared.case.reading_challenges) if prepared.view.world_options.get("roles", false) or not prepared.case.reading_challenges.is_empty() else sources.size() + uncertain
+		if dimensions > 6:
 			issues.append("Shared evidence exceeds the 64-state credibility budget.")
 	return {"ready": issues.is_empty(), "empty": facts.is_empty(), "issues": issues, "owned": owned if issues.is_empty() else {},
 		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input,
 		"marked_questions": marked_questions}
 
 static func supported(receipt: Dictionary) -> bool:
-	return receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES
+	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") in ["sighting", "alibi"] and receipt.observed_at.phase == "night")
 
 static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) -> Array:
 	if number in path or path.size() >= 64:
@@ -281,6 +295,8 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 	var prepared: Dictionary = plan.prepared.duplicate(true)
 	prepared.listener.suspicion = suspicion.duplicate(true)
 	for card in prepared.view.cards:
+		if card.kind != "report":
+			continue # Impairment does not invalidate ordinary testimony/role claims.
 		var doubt = maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
 		# Keep hearing-route discount, replacing only the stale interval reliability.
 		var previous = maxf(plan.input.listener.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), plan.input.listener.discounted.get(card.source + ":*", 0.0))

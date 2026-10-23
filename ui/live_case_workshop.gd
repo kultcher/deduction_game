@@ -43,7 +43,7 @@ func _ready() -> void:
 	_button(tools, "All evidence", func(): canvas.fit_case(true))
 	effects_toggle = CheckBox.new()
 	effects_toggle.text = "Experimental reading evaluator"
-	effects_toggle.tooltip_text = "Opt in for this case. NPC Insight limits attention and alternative searches; confidence sustains revisable theories. Supports Surveyor, Rumormonger and Dowser readings about original alignment. Other cases use the existing argument rules."
+	effects_toggle.tooltip_text = "Opt in for this case. NPC Insight limits attention and alternative searches; confidence sustains revisable theories. Supports Surveyor, Rumormonger, Dowser, Clerk, Archivist and Seer readings, role claims and night alibi challenges. Other cases use the existing argument rules."
 	effects_toggle.toggled.connect(func(on):
 		g.set_workshop_effects(on)
 		_session_changed())
@@ -214,7 +214,7 @@ func _support_details() -> void:
 	for issue in check.issues:
 		result_output.text += "\n• " + issue
 	result_output.text += "\n\n" + check.warning
-	result_output.text += "\n\nThis is an original-alignment reading adapter. Public conversion history, other gifts and movement likelihoods require further adapters. Actual listener knowledge/ownership limits can also require fallback; presentation reports that without exposing private facts."
+	result_output.text += "\n\nThis adapter handles original alignment, Demon/minion identity, six gift types, role claims, reading challenges and positive night sightings versus home alibis. Public conversion history, other gifts and general movement/trace likelihoods require further adapters. Actual listener knowledge/ownership limits can also require fallback; presentation reports that without exposing private facts."
 	preview_window.popup_centered_clamped()
 
 func _edit() -> void:
@@ -231,15 +231,26 @@ func _refresh_case() -> void:
 		_clear(case_box)
 		var card: Dictionary = _report(node.card)
 		_label(case_box, card.support_note, 17, "accent")
-		if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser"] and not card.support_note.begins_with("FALLBACK"):
+		if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] and not card.support_note.begins_with("FALLBACK"):
 			_question(card)
+		elif not card.support_note.begins_with("FALLBACK"):
+			_label(case_box, card.text, 18)
+			_label(case_box, "Link this testimony into your argument. Role claims remain conditional on honesty; sightings and alibi discrepancies are circumstantial.", 16)
 		else:
 			_label(case_box, card.text, 18)
 			_label(case_box, "You can link this card and present the case using existing rules. A live answer/relationship evaluator for this evidence has not been implemented; it contributes no new-model inference.", 16)
 		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
+	elif node.kind == "modifier":
+		_clear(case_box)
+		_label(case_box, board.title(answer_id), 22)
+		_label(case_box, "Link grounds to this modifier. It asks the listener to assess your explanation; selecting it does not prove error or deception.", 17)
+		var option = _option(case_box, ["Misled reading", "Suspected lie", "Unlikely reading"])
+		option.select(["misled", "lying", "unlikely"].find(node.mode))
+		option.set_item_disabled(2, _report(node.card).get("role") != "surveyor")
+		option.item_selected.connect(func(i): node.mode = ["misled", "lying", "unlikely"][i]; _edit())
 	elif node.kind == "contradiction":
 		_clear(case_box)
-		_label(case_box, "FALLBACK · live alibi/movement contradiction semantics are not implemented", 18, "accent")
+		_label(case_box, "The sighting challenges the home alibi. Both originals are retained; this is circumstantial evidence, not proof of evil.", 18, "accent")
 		for child in node.children:
 			_label(case_box, _report(board.nodes[child].card).text, 17)
 		_button(case_box, "Restore separate cards", func(): board.unmerge(answer_id); answer_window.hide(); _session_changed())
@@ -273,7 +284,8 @@ func _file() -> int:
 	var number = Live.file(g, value, files.get(board.selected, 0))
 	if number > 0:
 		files[board.selected] = number
-		status.text = "Filed / updated case #%d. Nobody's beliefs change until it is presented." % number
+		var originals: Array = Live.supports(g, value).numbers
+		status.text = "Filed / updated case #%d with originals %s. %d disconnected evidence cards are scratch work. Nobody's beliefs change until presentation." % [number, str(originals), board.nodes.values().filter(func(n): return n.kind == "evidence" and n.card not in value.cards).size()]
 		_store()
 		filed.emit()
 	else:

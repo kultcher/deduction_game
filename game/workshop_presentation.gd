@@ -95,6 +95,12 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var audience = "player" if venue == "private" else "town"
 	var delivery_key = signature + "|" + audience
 	var text: String = assessment.response
+	if not repeated and not n.is_shadow and n.secret_mod != "sleepwalker":
+		for dispute in snapshot.arguments[0].get("workshop_case", {}).get("disputes", []):
+			var alibis: Array = snapshot.evidence.filter(func(e): return e.id == dispute.challenged and n.id in e.subjects)
+			if not alibis.is_empty() and str(n.history.get(g.w.time_key(alibis[0].observed_at.day, 3), "")).begins_with("night:") and dispute.preferred in assessment.reasoning.considered:
+				text = "Fine, I was out. Doesn't mean I was doing anything wrong."
+				break
 	if repeated and state.get("delivered", {}).get(delivery_key, "") == inputs:
 		text = "Those are the same reports. My assessment is unchanged."
 	elif targets.size() > 1:
@@ -150,6 +156,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var lines: Array = [Mind.say(n, text)] if speak and not n.silenced else []
 	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
 		{"venue": venue, "key": key, "agreement": assessment.agreement, "stance": assessment.stance,
+		"reading_challenges": assessment.get("reading_challenges", []),
 		"repeated": repeated, "fresh": fresh, "claims": assessment.claims, "response": text,
 		"reasoning": assessment.reasoning, "theory": assessment.theory, "cognition": cognitive_inputs,
 		"quoted": state.get("quoted", []), "trust_before": trust_before, "trust_after": n.trust,

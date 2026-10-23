@@ -12,6 +12,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var args = OS.get_cmdline_user_args()
+	preload("res://workshop/role_constraints.gd").reuse = "--no-role-cache" not in args
 	preload("res://workshop/support_model.gd").reuse_priors = "--no-prior-cache" not in args
 	preload("res://workshop/support_model.gd").reuse_comparisons = "--no-comparison-reuse" not in args
 	preload("res://workshop/reasoner.gd").reuse_matches = "--no-match-cache" not in args

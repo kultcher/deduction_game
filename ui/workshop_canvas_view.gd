@@ -39,6 +39,8 @@ func body(id: String) -> Array:
 		var home = Solver.card_by_id(model.view, node.dispute.challenged)
 		var observation = Solver.card_by_id(model.view, node.dispute.preferred)
 		return [home.text, observation.text, "If the observation is accurate, the home alibi is false.", "Circumstantial; does not prove evil."]
+	if node.kind == "modifier":
+		return [Solver.card_by_id(model.view, node.card).text, "Player hypothesis: " + node.mode, "Link supporting evidence here. The jury may reject your explanation."]
 	var card = Solver.card_by_id(model.view, node.card)
 	var result: Array = [card.text]
 	if card.has("support_note"):
@@ -49,11 +51,13 @@ func body(id: String) -> Array:
 	for fault in node.get("faults", {}).values():
 		result.append("Possible poison: %s (%s)" % [fault.window, "unsupported" if fault.get("basis", "") == "" else "cites " + fault.basis])
 	var slots: Array = node.answers.get(card.id, {}).get("slots", node.answers.get(card.id, {}).get("positive", []))
-	if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "lamplighter"]:
-		var count: int = 1 if card.role == "rumormonger" else clampi(int(card.data.get("count", 0)), 0, model.view.people.size())
+	if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "lamplighter", "clerk", "archivist", "seer"]:
+		var count: int = (1 if card.data.yes else 0) if card.role == "seer" else (1 if card.role in ["rumormonger", "clerk", "archivist"] else clampi(int(card.data.get("count", 0)), 0, model.view.people.size()))
 		for i in range(count):
 			var prefix: String = C.block_name(C.BLOCKS.keys()[i]) if card.role == "surveyor" and count == 4 else (str(card.data.get("secret", "marked")).capitalize() if card.role == "rumormonger" else "Slot %d" % (i + 1))
 			result.append("%s: %s" % [prefix, Solver.person_name(model.view, slots[i]) if i < slots.size() and slots[i] is String and slots[i] != "" else "?"])
+		if card.role == "seer":
+			result.append("Registration: " + str(node.answers.get(card.id, {}).get("registration", "? Any valid cause")).replace("_", " ").capitalize())
 	for edge in model.links:
 		if edge.to == id and edge.kind == "explains_outing":
 			result.append("Linked role claim could explain this outing.")

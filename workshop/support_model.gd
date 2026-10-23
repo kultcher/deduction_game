@@ -8,6 +8,7 @@ const Reasoner = preload("res://workshop/reasoner.gd")
 const Movement = preload("res://workshop/movement_model.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const Profiler = preload("res://workshop/profiler.gd")
+const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 static var cache: Dictionary = {}
 static var comparisons: Dictionary = {}
 static var priors: Dictionary = {}
@@ -17,6 +18,20 @@ static var reuse_comparisons = true
 static var reuse_batches = true
 static var next_solve_id: int = 1
 static var next_rank_id: int = 1
+
+## Count effective uncertainty after combining honesty/accuracy for a source with
+## one receipt. The same combination is used by _mixture, preserving correlations
+## for speakers with several reports or claims.
+static func dimensions(cards: Array, listener: Dictionary, challenges: Dictionary = {}) -> int:
+	var groups = {}
+	for card in cards:
+		groups[card.source] = groups.get(card.source, 0) + 1
+	var count = groups.keys().filter(func(source): return source != listener.id).size()
+	for card in cards:
+		var accuracy: float = listener.reading_reliability.get(card.id, 1.0)
+		if ((accuracy > 0 and accuracy < 1) or challenges.has(card.id)) and (groups[card.source] > 1 or card.source == listener.id or card.source == "evidence"):
+			count += 1
+	return count
 
 static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}, shared: Dictionary = {}) -> Dictionary:
 	var span = Profiler.open("support")
@@ -215,8 +230,8 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 				factor_refs.append_array(route)
 	# A role assertion alone supplies no alignment constraint. Avoid enumerating
 	# irrelevant reliability dimensions for optional claims with no test factor.
-	cards = cards.filter(func(c): return c.kind != "claim" or c.id in factor_refs)
-	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])
+	cards = cards.filter(func(c): return c.kind != "claim" or view.get("world_options", {}).get("roles", false) or c.id in factor_refs)
+	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"])
 	for id in listener.knowledge.get("own_reports", []):
 		if bounded and id not in attention.considered and id not in listener.knowledge.get("attention_reports", listener.knowledge.get("own_reports", [])):
 			continue
@@ -224,6 +239,7 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 		if not cards.any(func(c): return Solver.semantic_key(c) == Solver.semantic_key(card)):
 			cards.append(card)
 	var atoms: Array = []
+	var objections = ReadingChallenges.assess(view, case_data, listener, cards.filter(func(c): return c.id not in attention.private_checks.rejected))
 	var requirements = {}
 	var fault_controls = {}
 	for card in cards:
@@ -236,7 +252,7 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 			_add_atom(atoms, known_key, 0.0)
 			required.append(known_key)
 		var source_key: String = TimeModel.source_key(view, card)
-		_add_atom(atoms, source_key, source_quality(listener, card.source))
+		_add_atom(atoms, source_key, source_quality(listener, card.source) * objections.sources.get(card.source, 1.0))
 		required.append(source_key)
 		if card.kind == "report":
 			if TimeModel.disowned(view, card, listener.knowledge.get("known_events", [])):
@@ -252,9 +268,25 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 					required.append(fault.key)
 					fault_controls[fault.key] = basis_key
 			var accuracy_key: String = "accuracy:" + card.get("accuracy_origin", Solver.semantic_key(card))
-			_add_atom(atoms, accuracy_key, float(listener.get("reading_reliability", {}).get(card.get("accuracy_origin", Solver.semantic_key(card)), 1.0)))
+			_add_atom(atoms, accuracy_key, float(listener.get("reading_reliability", {}).get(card.get("accuracy_origin", Solver.semantic_key(card)), 1.0)) * objections.reports.get(card.id, 1.0))
 			required.append(accuracy_key)
+		elif card.kind == "claim" and view.get("world_options", {}).get("roles", false):
+			# This is trust in the relay, not gift health. A role claim needs no
+			# sober/healthy assumption, but a player-only retelling still has a route.
+			var receipt_key: String = "receipt:" + Solver.semantic_key(card)
+			_add_atom(atoms, receipt_key, listener.reading_reliability.get(card.id, 1.0))
+			required.append(receipt_key)
 		requirements[card.id] = required
+	if view.get("world_options", {}).get("roles", false) or not case_data.get("reading_challenges", {}).is_empty():
+		for atom in atoms:
+			if not atom.key.begins_with("source:") or atom.weight >= 1 or fault_controls.values().has(atom.key):
+				continue
+			var users: Array = requirements.keys().filter(func(id): return atom.key in requirements[id])
+			if users.size() == 1:
+				var accuracy: Array = atoms.filter(func(a): return (a.key.begins_with("accuracy:") or a.key.begins_with("receipt:")) and a.key in requirements[users[0]])
+				if accuracy.size() == 1:
+					accuracy[0].weight *= atom.weight
+					atom.weight = 1.0
 	var uncertain: Array = atoms.filter(func(a): return a.weight > 0.0 and a.weight < 1.0)
 	var schedule: Array = []
 	var subsets: Dictionary = {}
@@ -293,7 +325,7 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 			factor["epoch"] = case_data.conclusion.at
 		subsets[card_mask] = {"active": active, "private_cards": private_cards, "private_solved": private_solved,
 			"solved": solved, "factors": factors,
-			"contributing": active.filter(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])}
+			"contributing": active.filter(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"])}
 	var plan = {"cards": cards, "atoms": atoms, "fault_controls": fault_controls,
 		"presented_reading": presented_reading, "schedule": schedule, "subsets": subsets}
 	if share:
@@ -460,6 +492,8 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 		var scores: Array = []
 		for i in range(view.people.size()):
 			scores.append({"evil": 0.0, "good": 0.0, "marked": 0.0, "unmarked": 0.0})
+			if view.get("world_options", {}).get("identities", false):
+				scores[-1].merge({"demon": 0.0, "notdemon": 0.0, "minion": 0.0, "notminion": 0.0})
 		for world in worlds:
 			if world.is_empty():
 				continue
@@ -469,6 +503,11 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 				var registration: String = "marked" if world.marked == i else "unmarked"
 				scores[i][alignment] = maxf(scores[i][alignment], score)
 				scores[i][registration] = maxf(scores[i][registration], score)
+				if world.has("demon"):
+					var identity: String = "demon" if world.demon == i else "notdemon"
+					var minion: String = "minion" if (world.evil & (1 << i)) != 0 and world.demon != i else "notminion"
+					scores[i][identity] = maxf(scores[i][identity], score)
+					scores[i][minion] = maxf(scores[i][minion], score)
 		comparisons[key] = {"inputs": inputs, "scores": scores}
 	else:
 		Profiler.count("comparison_cache_hit")
@@ -477,5 +516,5 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 		return {"support": 0.0, "rival": 0.0}
 	var scores: Dictionary = comparisons[key].scores[index]
 	var type: String = "evil" if conclusion.type == "suspicious" else conclusion.type
-	var opposite: String = {"evil": "good", "good": "evil", "marked": "unmarked"}[type]
+	var opposite: String = {"evil": "good", "good": "evil", "marked": "unmarked", "demon": "notdemon", "minion": "notminion"}[type]
 	return {"support": scores[type], "rival": scores[opposite]}

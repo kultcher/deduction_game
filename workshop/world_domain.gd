@@ -45,18 +45,30 @@ static func worlds(view: Dictionary) -> Array:
 							result.append(w)
 	if cache.size() >= 16:
 		cache.clear()
+	if view.world_options.get("identities", false):
+		var expanded: Array = []
+		for world in result:
+			for i in range(n):
+				if world.evil & (1 << i):
+					var candidate: Dictionary = world.duplicate()
+					candidate["demon"] = i
+					candidate["__key"] = key(view, candidate)
+					candidate["__i"] = expanded.size()
+					expanded.append(candidate)
+		result = expanded
 	cache[key] = {"input": input.duplicate(true), "worlds": result}
 	return result
 
 static func key(view: Dictionary, world: Dictionary) -> int:
 	var n: int = view.people.size()
-	return ((int(world.evil) * (n + 1) + int(world.marked) + 1) * 4 + C.SECRET_MOD_LIST.find(world.modifier)) * (1 << n) + int(world.holders)
+	var base: int = ((int(world.evil) * (n + 1) + int(world.marked) + 1) * 4 + C.SECRET_MOD_LIST.find(world.modifier)) * (1 << n) + int(world.holders)
+	return base * (n + 1) + world.demon + 1 if world.has("demon") else base
 
 static func claims_compatible(cards: Array, knowledge: Dictionary) -> bool:
 	var sources = {}
 	var roles = {}
 	for card in cards:
-		if card.kind != "report":
+		if card.kind not in ["report", "claim"] or card.get("quoted", false):
 			continue
 		if sources.has(card.source) and sources[card.source] != card.role:
 			return false
@@ -74,11 +86,13 @@ static func healthy(view: Dictionary, world: Dictionary, source: String) -> bool
 	var i: int = _person_index(view, source)
 	if i < 0:
 		return false
-	return world.modifier != "delusional" or not (world.holders & (1 << i))
+	return world.get("modifier", "marked") != "delusional" or not (world.get("holders", 0) & (1 << i))
 
 static func gift_time(card: Dictionary) -> bool:
-	if card.role in ["surveyor", "rumormonger"]:
+	if card.role in ["surveyor", "rumormonger", "clerk", "archivist"]:
 		return card.observed_at.day == 0 and card.observed_at.phase == "night"
+	if card.role == "seer":
+		return card.observed_at.day >= 0 and card.observed_at.phase == "night"
 	return card.role == "dowser" and card.observed_at.day >= 1 and card.observed_at.phase in ["morning", "afternoon", "evening"]
 
 static func rumor(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:

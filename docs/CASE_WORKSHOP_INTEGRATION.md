@@ -1,13 +1,15 @@
 # Main-game integration
 
-The bounded Workshop experiments are the reference implementation, not a replacement
-already running in the main game. Integrate in verified vertical steps:
+The bounded Workshop experiments remain the semantic reference. A restricted opt-in
+evaluator is now integrated into the main game; the capability gates below distinguish
+implemented evidence from mechanics still using the native fallback.
 
 The pre-integration reference is commit `5d30513`. The [checkpoint and portable
 specimens](CASE_WORKSHOP_CHECKPOINT.md) describe what must survive an interpreter change.
 The read-only `Game.workshop_snapshot` API provides a portable evidence contract,
 capability issues and hidden-state isolation checks. A restricted live comparison now
-consumes that contract for Surveyor, Rumormonger and Dowser cases. An experimental shared
+consumes that contract for Surveyor, Rumormonger, Dowser, Clerk, Archivist and Seer
+cases, relevant role claims and positive night-sighting/home-alibi challenges. An experimental shared
 owner can now replace certified legacy suspicion for that restricted evidence set. It is
 off by default and can be enabled in the live canvas without Debug, or in the developer
 inspector. Stages 1–4 and a restricted live canvas are implemented within the reading
@@ -46,8 +48,9 @@ still available through `ui/case_workshop.tscn` with F6.
    exposing their private evidence or alignment. Rejected/expired actions give no
    delivery record and direct the player to the ordinary conversation log.
 
-The capability label covers Surveyor/Rumormonger/Dowser readings at supported acquisition
-times, original-alignment claims, selected answers and scoped identity assumptions. It
+The capability label covers Surveyor/Rumormonger/Dowser/Clerk/Archivist/Seer readings
+at supported acquisition times, original-alignment and Demon/minion questions,
+selected answers, relevant role claims and scoped identity assumptions. It
 does not promise that every listener can combine them with their existing knowledge:
 source/receipt ownership, credibility budgets and public temporal history can require
 fallback. Numerical shared effects use the original reports once; chosen answers are
@@ -55,16 +58,22 @@ hypotheses assessed in the scoped response, never additional facts or extra bonu
 
 **Unsupported evidence is usable. It is never silently omitted from an asserted case.**
 Every unsupported card is labeled, and including it flags the whole connected case.
-Movement, trace, alibi disputes, additional role claims/home cards as separate premises,
-outing explanations/citations, impairment hypotheses, changed-alignment histories and
-composing a canvas graph inside a separate legacy deduction remain outside the new
-live evaluator. Even a linked role claim that seems redundant is explicitly flagged.
+General route/trace likelihoods, home cards as separate premises, outing gift citations,
+specific poisoning windows, changed-alignment histories and composing a canvas graph
+inside a separate legacy deduction remain outside the new live evaluator. Positive
+night sightings and matching home-alibi disputes now have scoped live support;
+multi-person sightings retain all subjects and an established false alibi can prompt
+an admission without forcing role disclosure. The limited live alibi factor is
+circumstantial, uncalibrated and not the full fixture movement model.
+
 Reading conflicts presented as the headline are supported without assigning guilt.
-Embedded conflict questions remain flagged: ownership can distinguish quotation from
-endorsement, but the scoped response's attention needs a quoted-evidence adapter before
-it can assess them together with a different headline. Present the conflict separately
-to use the new evaluator. Live movement/alibi conflicts also fall back and do not inherit
-the fixture's experimental 2× factor.
+Generic embedded quoted conflict questions remain flagged pending a scoped quotation
+adapter; merged home-alibi disputes are supported. Misled/Lying modifiers can explain
+why a reading is questioned, with Unlikely initially restricted to Surveyor. A bare
+modifier supplies no discount. Misled includes misleading registration as well as
+impairment; a healthy Red Herring/Marked explanation retains the registration report.
+Challenges apply through one reversible shared owner and are reconsidered on revision.
+See the [implementation reference](CASE_WORKSHOP_READING_CHALLENGES.md).
 
 The fallback uses the **headline plus original cards** through the existing argument
 system. It does **not** interpret canvas answers, assumed identities, intermediate

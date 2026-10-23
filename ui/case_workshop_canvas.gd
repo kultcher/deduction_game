@@ -316,6 +316,12 @@ func _refresh_case() -> void:
 						node.faults[key] = {"type": "poisoned", "window": key, "basis": "vial1" if i == 2 else ""}
 					_edit())
 				_label(case_box, "A bare hypothesis adds no evidence. Cited support opens one shared healthy/poisoned uncertainty for reports in this interval; it does not prove poison.", 15, "muted")
+	elif node.kind == "modifier":
+		_label(case_box, "Link supporting grounds to this modifier. It proposes an explanation; it does not establish error or dishonesty.", 17)
+		var choice = _option(case_box, ["Misled reading", "Suspected lie", "Unlikely reading"])
+		choice.select(["misled", "lying", "unlikely"].find(node.mode))
+		choice.set_item_disabled(2, _report(node.card).get("role") != "surveyor")
+		choice.item_selected.connect(func(i): node.mode = ["misled", "lying", "unlikely"][i]; _edit())
 	elif node.kind == "contradiction":
 		for child in node.children:
 			_label(case_box, _report(board.nodes[child].card).text, 18)
@@ -411,6 +417,13 @@ func _context(id: String) -> void:
 	context_menu.clear()
 	context_menu.add_item("Answer / inspect", 0)
 	context_menu.add_item("Link to another card", 1)
+	if board.nodes[id].kind == "evidence":
+		var report = _report(board.nodes[id].card)
+		for entry in [[200, "Misled reading", "misled"], [201, "Suspected lie", "lying"], [202, "Unlikely reading", "unlikely"]]:
+			context_menu.add_item("Add modifier: " + entry[1], entry[0])
+			context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.get("support_note", "").begins_with("FALLBACK") or (entry[2] == "unlikely" and report.get("role") != "surveyor"))
+	if board.nodes[id].kind == "modifier":
+		context_menu.add_item("Remove modifier (keep evidence and links)", 203)
 	if board.nodes[id].kind == "contradiction":
 		context_menu.add_item("Unlink merged contradiction", 2)
 	if board.nodes[id].kind == "premise":
@@ -425,7 +438,15 @@ func _context(id: String) -> void:
 	context_menu.popup()
 
 func _context_action(action: int) -> void:
-	if action == 0:
+	if action in [200, 201, 202]:
+		var error = board.add_modifier(context_id, ["misled", "lying", "unlikely"][action - 200])
+		_session_changed()
+		if error != "":
+			status.text = error
+	elif action == 203:
+		board.remove_modifier(context_id)
+		_session_changed()
+	elif action == 0:
 		_open_answer(context_id)
 	elif action == 1:
 		_begin_link(context_id)

@@ -1,0 +1,318 @@
+{
+  "date": "2026-10-23",
+  "engine": "Godot 4.7.2 mono, headless",
+  "model": "native bounded/persistence",
+  "note": "Expanded six-gift adapter and weighted Surveyor generator change workload and behavior; old timings/hashes are historical, not parity targets. Role cache and no-cache full behavior objects agree.",
+  "runs": [
+    {
+      "seed": 692,
+      "reports": 4,
+      "elapsed_ms": 6227.86,
+      "behavior_hash": "fd3027288409d65514536915c70eee260427b4aabac206ab1e405ae7e50fdbdc",
+      "role_cache_behavior_equal": true,
+      "deliveries": {
+        "shared": 7,
+        "legacy": 3
+      },
+      "listeners": [
+        {
+          "listener": "constance",
+          "ms": 11.1
+        },
+        {
+          "listener": "nisha",
+          "ms": 955.45
+        },
+        {
+          "listener": "hollis",
+          "ms": 1451.82
+        },
+        {
+          "listener": "odette",
+          "ms": 200.77
+        },
+        {
+          "listener": "merrin",
+          "ms": 7.83
+        },
+        {
+          "listener": "lian",
+          "ms": 1496.47
+        },
+        {
+          "listener": "agnes",
+          "ms": 171.91
+        },
+        {
+          "listener": "greta",
+          "ms": 1689.33
+        },
+        {
+          "listener": "fenwick",
+          "ms": 8.2
+        },
+        {
+          "listener": "bart",
+          "ms": 229.3
+        }
+      ],
+      "stages": {
+        "belief_refresh": {
+          "calls": 16,
+          "self_us": 7668,
+          "total_us": 5121857
+        },
+        "candidate_search": {
+          "calls": 3942,
+          "self_us": 3329000,
+          "total_us": 3329000
+        },
+        "consequences": {
+          "calls": 13,
+          "self_us": 36054,
+          "total_us": 4783471
+        },
+        "constraint_solve": {
+          "calls": 303,
+          "self_us": 254058,
+          "total_us": 254058
+        },
+        "explain": {
+          "calls": 150,
+          "self_us": 11866,
+          "total_us": 517276
+        },
+        "headline": {
+          "calls": 13,
+          "self_us": 12846,
+          "total_us": 1308118
+        },
+        "initial_refresh": {
+          "calls": 7,
+          "self_us": 66,
+          "total_us": 5105854
+        },
+        "joint_effects": {
+          "calls": 6,
+          "self_us": 2373,
+          "total_us": 5091407
+        },
+        "jury": {
+          "calls": 13,
+          "self_us": 6849,
+          "total_us": 6098438
+        },
+        "listener": {
+          "calls": 10,
+          "self_us": 62739,
+          "total_us": 6222195
+        },
+        "ownership_after": {
+          "calls": 15,
+          "self_us": 9521,
+          "total_us": 5100928
+        },
+        "ownership_before": {
+          "calls": 15,
+          "self_us": 12081,
+          "total_us": 12081
+        },
+        "park_native": {
+          "calls": 7,
+          "self_us": 1590,
+          "total_us": 12974
+        },
+        "presentation": {
+          "calls": 10,
+          "self_us": 24436,
+          "total_us": 6155951
+        },
+        "priors": {
+          "calls": 430,
+          "self_us": 1158427,
+          "total_us": 1257217
+        },
+        "scoped_response": {
+          "calls": 7,
+          "self_us": 3283,
+          "total_us": 1012687
+        },
+        "support": {
+          "calls": 280,
+          "self_us": 170464,
+          "total_us": 5369739
+        },
+        "support_solve": {
+          "calls": 3824,
+          "self_us": 22902,
+          "total_us": 121286
+        },
+        "town": {
+          "calls": 1,
+          "self_us": 5658,
+          "total_us": 6227853
+        },
+        "world_comparison": {
+          "calls": 1461,
+          "self_us": 1095972,
+          "total_us": 1095972
+        }
+      }
+    },
+    {
+      "seed": 4242,
+      "reports": 5,
+      "elapsed_ms": 13154.71,
+      "behavior_hash": "dd791fab2129649dcee8c6996c2a75969797910515b6896b42b467bb24c44a04",
+      "role_cache_behavior_equal": true,
+      "deliveries": {
+        "shared": 7,
+        "legacy": 3
+      },
+      "listeners": [
+        {
+          "listener": "odette",
+          "ms": 1786.0
+        },
+        {
+          "listener": "greta",
+          "ms": 4740.66
+        },
+        {
+          "listener": "edda",
+          "ms": 12.59
+        },
+        {
+          "listener": "kiran",
+          "ms": 1287.49
+        },
+        {
+          "listener": "fenwick",
+          "ms": 1014.98
+        },
+        {
+          "listener": "nisha",
+          "ms": 11.74
+        },
+        {
+          "listener": "dorian",
+          "ms": 12.04
+        },
+        {
+          "listener": "bart",
+          "ms": 1957.89
+        },
+        {
+          "listener": "merrin",
+          "ms": 557.7
+        },
+        {
+          "listener": "jory",
+          "ms": 1765.94
+        }
+      ],
+      "stages": {
+        "belief_refresh": {
+          "calls": 17,
+          "self_us": 9085,
+          "total_us": 8591303
+        },
+        "candidate_search": {
+          "calls": 6353,
+          "self_us": 7614071,
+          "total_us": 7614071
+        },
+        "consequences": {
+          "calls": 14,
+          "self_us": 43243,
+          "total_us": 9945755
+        },
+        "constraint_solve": {
+          "calls": 106,
+          "self_us": 878406,
+          "total_us": 878406
+        },
+        "explain": {
+          "calls": 161,
+          "self_us": 13677,
+          "total_us": 1304027
+        },
+        "headline": {
+          "calls": 14,
+          "self_us": 13952,
+          "total_us": 3039530
+        },
+        "initial_refresh": {
+          "calls": 7,
+          "self_us": 66,
+          "total_us": 8575312
+        },
+        "joint_effects": {
+          "calls": 7,
+          "self_us": 2578,
+          "total_us": 8558673
+        },
+        "jury": {
+          "calls": 14,
+          "self_us": 6596,
+          "total_us": 12991881
+        },
+        "listener": {
+          "calls": 10,
+          "self_us": 89074,
+          "total_us": 13147021
+        },
+        "ownership_after": {
+          "calls": 17,
+          "self_us": 9172,
+          "total_us": 8567845
+        },
+        "ownership_before": {
+          "calls": 17,
+          "self_us": 14373,
+          "total_us": 14373
+        },
+        "park_native": {
+          "calls": 7,
+          "self_us": 1548,
+          "total_us": 12084
+        },
+        "presentation": {
+          "calls": 10,
+          "self_us": 26083,
+          "total_us": 13052426
+        },
+        "priors": {
+          "calls": 462,
+          "self_us": 1788483,
+          "total_us": 2081538
+        },
+        "scoped_response": {
+          "calls": 7,
+          "self_us": 3161,
+          "total_us": 4438947
+        },
+        "support": {
+          "calls": 301,
+          "self_us": 280643,
+          "total_us": 11038429
+        },
+        "support_solve": {
+          "calls": 6209,
+          "self_us": 36946,
+          "total_us": 329718
+        },
+        "town": {
+          "calls": 1,
+          "self_us": 7680,
+          "total_us": 13154701
+        },
+        "world_comparison": {
+          "calls": 623,
+          "self_us": 2315864,
+          "total_us": 2315864
+        }
+      }
+    }
+  ]
+}

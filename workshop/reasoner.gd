@@ -88,7 +88,7 @@ static func _add_group(view: Dictionary, groups: Array, id: String, roots: Array
 
 static func _salience(card: Dictionary, target: String, listener: Dictionary) -> float:
 	var score = 1.0 + listener.npc_trust.get(card.source, 0.5) * 0.1
-	if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser"]:
+	if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"]:
 		score += 3.0
 	if card.get("subject", "") == target or target in card.get("data", {}).get("pair", []) or target in card.get("data", {}).get("group", []) or target in card.get("data", {}).get("seen", []):
 		score += 2.0
@@ -140,7 +140,7 @@ static func _local_conflict(cards: Array) -> Array:
 		for sight in cards:
 			if home.get("night", -1) != sight.get("night", -2):
 				continue
-			if (sight.kind == "sighting" and sight.subject == home.subject) or (sight.kind == "report" and sight.role == "nightwatch" and home.subject in sight.data.seen):
+			if (sight.kind == "sighting" and home.subject in sight.get("subjects", [sight.subject])) or (sight.kind == "report" and sight.role == "nightwatch" and home.subject in sight.data.seen):
 				return [home.id, sight.id]
 	return []
 
@@ -212,7 +212,7 @@ static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledg
 	for card in cards:
 		if not Solver._report_holds(view, world, card, answers.get(card.id, {})):
 			return false
-	return true
+	return Solver.Roles.fits(view, world, cards, knowledge, answers)
 
 static func _swaps(view: Dictionary, cards: Array, case_data: Dictionary, listener: Dictionary, seed: Dictionary, budget: int) -> Dictionary:
 	if Domain.live(view):
@@ -322,7 +322,7 @@ static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Di
 	var objections: Array = []
 	var rejected: Array = []
 	var fatal = false
-	if case_data.conclusion.type == "evil" and TimeModel.known_good(view, knowledge, case_data.conclusion.target, case_data.conclusion.at):
+	if case_data.conclusion.type in ["evil", "demon", "minion"] and TimeModel.known_good(view, knowledge, case_data.conclusion.target, case_data.conclusion.at):
 		objections.append("I know I was good at that time; this accusation cannot be right about me.")
 		fatal = true
 	for id in knowledge.get("good", []):
@@ -351,7 +351,7 @@ static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Di
 		if card.kind == "report" and card.role == "lamplighter" and self_id in case_data.answers.get(card.id, {}).get("positive", []) and not was_out:
 			objections.append("Your answer to %s says I was out, but I know I was home." % card.id)
 			fatal = true
-		var says_out: bool = (card.kind == "sighting" and card.subject == self_id) or (card.kind == "report" and card.role == "nightwatch" and self_id in card.data.seen)
+		var says_out: bool = (card.kind == "sighting" and self_id in card.get("subjects", [card.subject])) or (card.kind == "report" and card.role == "nightwatch" and self_id in card.data.seen)
 		if says_out and not was_out:
 			objections.append("%s conflicts with my firsthand knowledge that I was home on night %s; the report may be wrong." % [card.id, night])
 			rejected.append(card.id)
