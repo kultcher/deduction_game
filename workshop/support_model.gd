@@ -231,7 +231,7 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	# A role assertion alone supplies no alignment constraint. Avoid enumerating
 	# irrelevant reliability dimensions for optional claims with no test factor.
 	cards = cards.filter(func(c): return c.kind != "claim" or view.get("world_options", {}).get("roles", false) or c.id in factor_refs)
-	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"])
+	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and (c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (Solver.Domain.live(view) and c.role in ["nightwatch", "gravedigger"])))
 	for id in listener.knowledge.get("own_reports", []):
 		if bounded and id not in attention.considered and id not in listener.knowledge.get("attention_reports", listener.knowledge.get("own_reports", [])):
 			continue
@@ -252,7 +252,7 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 			_add_atom(atoms, known_key, 0.0)
 			required.append(known_key)
 		var source_key: String = TimeModel.source_key(view, card)
-		_add_atom(atoms, source_key, source_quality(listener, card.source) * objections.sources.get(card.source, 1.0))
+		_add_atom(atoms, source_key, (1.0 if Solver.Domain.live(view) and card.source == "evidence" else source_quality(listener, card.source)) * objections.sources.get(card.source, 1.0))
 		required.append(source_key)
 		if card.kind == "report":
 			if TimeModel.disowned(view, card, listener.knowledge.get("known_events", [])):
@@ -325,7 +325,7 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 			factor["epoch"] = case_data.conclusion.at
 		subsets[card_mask] = {"active": active, "private_cards": private_cards, "private_solved": private_solved,
 			"solved": solved, "factors": factors,
-			"contributing": active.filter(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"])}
+			"contributing": active.filter(func(c): return c.kind == "report" and (c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (Solver.Domain.live(view) and c.role in ["nightwatch", "gravedigger"])))}
 	var plan = {"cards": cards, "atoms": atoms, "fault_controls": fault_controls,
 		"presented_reading": presented_reading, "schedule": schedule, "subsets": subsets}
 	if share:
@@ -398,7 +398,7 @@ static func _solve(view: Dictionary, cards: Array, knowledge: Dictionary) -> Dic
 static func _solve_inner(view: Dictionary, cards: Array, knowledge: Dictionary) -> Dictionary:
 	# Hash lookup plus exact input comparison avoids rebuilding JSON signatures in
 	# every credibility state / character projection. Equality guards collisions.
-	var inputs = [view.people, view.evil_count, view.get("chronology", {}), view.get("world_options", {}), cards, knowledge]
+	var inputs = [view.people, view.evil_count, view.get("chronology", {}), view.get("timeline", {}), view.get("live_activity", false), view.get("world_options", {}), cards, knowledge]
 	var key = hash(inputs)
 	if cache.has(key) and cache[key].inputs == inputs:
 		Profiler.count("solve_cache_hit")
@@ -421,7 +421,7 @@ static func prior_scores(view: Dictionary, listener: Dictionary, bias: Dictionar
 static func _prior_scores(view: Dictionary, listener: Dictionary, bias: Dictionary = {}, epoch: String = "") -> Dictionary:
 	# The same baseline ranks every person's projection and every credibility
 	# subset. Accuracy weights and the question's target do not enter these priors.
-	var inputs = [view.people, view.evil_count, view.get("chronology", {}), view.get("world_options", {}),
+	var inputs = [view.people, view.evil_count, view.get("chronology", {}), view.get("timeline", {}), view.get("live_activity", false), view.get("world_options", {}),
 		view.alignment_epoch, epoch, listener.knowledge, listener.suspicion, listener.npc_trust, bias]
 	var key = hash(inputs)
 	if reuse_priors and priors.has(key) and priors[key].inputs == inputs:
@@ -455,6 +455,9 @@ static func world_score(view: Dictionary, world: Dictionary, ranks: Dictionary, 
 		return 0.0
 	var score: float = ranks.get(TimeModel.key(view, world), 0.0)
 	for factor in factors:
+		if factor.get("joint_live", false):
+			score *= Movement.Live.score(world, factor)
+			continue
 		var target: int = Solver.person_index(view, factor.target)
 		if target >= 0 and TimeModel.evil_at(view, world, factor.target, factor.get("epoch", view.alignment_epoch)):
 			score *= pow(2.0, float(factor.log2_ratio))
@@ -483,7 +486,7 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 	# construct their own candidates and never receive unseen public worlds.
 	var rank_id: int = int(ranks.get("__id", 0))
 	var fast_mode: bool = worlds_id != 0 and rank_id != 0
-	var inputs = [worlds_id, rank_id, factors, conclusion.at] if fast_mode else [view.people, view.get("chronology", {}), view.get("world_options", {}), worlds, factors, ranks, conclusion.at]
+	var inputs = [worlds_id, rank_id, factors, conclusion.at] if fast_mode else [view.people, view.get("chronology", {}), view.get("timeline", {}), view.get("live_activity", false), view.get("world_options", {}), worlds, factors, ranks, conclusion.at]
 	var key = hash(inputs)
 	if not comparisons.has(key) or comparisons[key].inputs != inputs:
 		Profiler.count("comparison_cache_miss")

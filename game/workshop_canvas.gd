@@ -13,6 +13,9 @@ static func view(g) -> Dictionary:
 		var note = "FALLBACK: this evidence has no live Workshop evaluator"
 		if (receipt.kind == "claim" and content.get("role") in Assess.C.GOOD_ROLES) or (receipt.kind in ["sighting", "alibi"] and receipt.observed_at.phase == "night"):
 			note = "Adapter available · testimony and circumstances, not proof of evil"
+		var activity = Assess.activity_card(receipt, snapshot)
+		if not activity.is_empty():
+			note = "Adapter available · experimental joint activity/trace comparison"
 		if receipt.kind == "info" and content.get("role") in Assess.ROLES:
 			note = "Reading adapter available · check whole-case support"
 			if not Assess.Domain.gift_time({"role": content.role, "observed_at": receipt.observed_at}):
@@ -29,9 +32,12 @@ static func view(g) -> Dictionary:
 			"learned_at": receipt.learned_at if receipt.learned_at != null else {"day": "?"},
 			"acquired_day": receipt.learned_at.day if receipt.learned_at != null else snapshot.now.day,
 			"text": receipt.text, "support_note": note})
+		if not activity.is_empty():
+			cards[-1].merge(activity, true)
 	return {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": "Original alignment",
-		"world_options": {"modifiers": snapshot.rules.modifier_options}, "live": true}
+		"world_options": {"modifiers": snapshot.rules.modifier_options}, "live": true, "live_activity": true,
+		"timeline": Assess.History.from_events(snapshot.public_events)}
 
 ## Resolve exact original facts afresh. Missing/deleted evidence is a blocker, never
 ## permission to file a weaker argument with fewer roots.

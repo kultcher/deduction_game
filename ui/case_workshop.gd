@@ -409,7 +409,7 @@ func _question(card: Dictionary) -> void:
 	elif (card.kind == "report" and role == "nightwatch") or card.kind == "sighting":
 		_label(box, "Why were they out? An unanswered reason is allowed. A gift explanation needs supporting testimony.", 16)
 		var current = _active_choices()
-		var seen: Array = card.data.seen if role == "nightwatch" else [card.subject]
+		var seen: Array = card.data.seen if role == "nightwatch" else card.get("subjects", [card.subject])
 		for id in seen:
 			_label(box, _name(id), 16)
 			var key = "%s:%d" % [id, card.night]

@@ -20,7 +20,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 	var selected: Dictionary = value.get("reading_challenges", {})
 	if selected.is_empty():
 		return {"reports": {}, "sources": {}, "results": []}
-	var input = [view.people, view.get("world_options", {}), view.evil_count, selected, cards, listener.knowledge, listener.suspicion, listener.npc_trust, listener.trust]
+	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), view.get("world_options", {}), view.evil_count, selected, cards, listener.knowledge, listener.suspicion, listener.npc_trust, listener.trust]
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result

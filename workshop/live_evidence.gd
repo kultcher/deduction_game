@@ -12,7 +12,7 @@ const REPORT_FIELDS = {
 	"veteran": ["attacked", "block"], "martyr": ["target", "chosen", "evil"],
 }
 const FIELDS = ["block", "loc", "home", "night", "role", "duty_claim", "duty", "vigil", "dropped",
-	"nominee", "yes", "no", "alive_before", "owner", "material", "crime_night", "scene"]
+	"nominee", "yes", "no", "alive_before", "owner", "material", "crime_night", "scene", "scene_block", "victim", "ward"]
 const KINDS = ["home", "haunt", "info", "claim", "sighting", "conversation", "vigil", "alibi",
 	"trace", "dropped", "totem", "death", "execution", "quiet", "vote", "martyr", "curse",
 	"curse_lifted", "silenced", "knell", "secret", "hint", "refusal", "opinion", "accusation", "case"]

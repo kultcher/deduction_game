@@ -91,7 +91,7 @@ static func healthy(view: Dictionary, world: Dictionary, source: String) -> bool
 static func gift_time(card: Dictionary) -> bool:
 	if card.role in ["surveyor", "rumormonger", "clerk", "archivist"]:
 		return card.observed_at.day == 0 and card.observed_at.phase == "night"
-	if card.role == "seer":
+	if card.role in ["seer", "nightwatch", "gravedigger"]:
 		return card.observed_at.day >= 0 and card.observed_at.phase == "night"
 	return card.role == "dowser" and card.observed_at.day >= 1 and card.observed_at.phase in ["morning", "afternoon", "evening"]
 

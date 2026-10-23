@@ -26,6 +26,9 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 		if card.get("kind") == "death" and card.get("source") == "player":
 			input.public_events.append({"kind": "demon_death", "subjects": card.get("subject", []).duplicate(),
 				"by": "town", "at": Evidence.stamp(card.get("when", {}))})
+		elif card.get("kind") == "execution" and card.get("source") == "player":
+			input.public_events.append({"kind": "execution", "subjects": card.get("subject", []).duplicate(),
+				"by": "town", "at": Evidence.stamp(card.get("when", {}))})
 	var numbers: Array = []
 	for number in selected:
 		_collect(g.board, number, numbers, input.arguments, input.issues, [])

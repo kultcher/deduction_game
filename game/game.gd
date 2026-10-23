@@ -909,6 +909,7 @@ func _search() -> void:
 		_narr("Near the body you find %s. Whoever did this most likely spent the evening of day %d on %s." % [C.BLOCKS[tb]["trace"], sc["day"], C.block_name(tb)])
 		w.dlog.add("player_search", "player", sc["victim"], {"trace_block": tb, "trace_true": sc["trace_true"]}, sc["why"])
 		_facts([{"kind": "trace", "subject": [], "block": tb, "source": "evidence", "day": sc["day"], "phase": C.EVENING,
+			"scene": l, "scene_block": sc.block, "victim": sc.victim, "crime_night": sc.day, "material": tb,
 			"text": "Trace at %s's death scene: the killer most likely spent the evening of day %d on %s." %
 				[w.by_id[sc["victim"]].name, sc["day"], C.block_name(tb)]}])
 		return

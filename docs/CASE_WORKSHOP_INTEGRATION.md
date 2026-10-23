@@ -1,3 +1,5 @@
+Current evidence expansion: see [the Oct 23 checkpoints](CASE_WORKSHOP_EVIDENCE_EXPANSION.md) for Night Watch, Gravedigger and live activity/trace support. The earlier integration history below retains its original scope descriptions.
+
 # Main-game integration
 
 The bounded Workshop experiments remain the semantic reference. A restricted opt-in

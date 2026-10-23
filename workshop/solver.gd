@@ -192,7 +192,7 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 		positive.sort()
 		# Homes affect Surveyor blocks; kind/event distinguish public process cards.
 		# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
-		var inputs = [universe_key, view.people, card.kind, card.get("event", ""), card.source,
+		var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.source,
 			card.get("role", ""), card.observed_at, card.data, positive]
 		var key = hash(inputs)
 		if not report_matches.has(key) or report_matches[key].inputs != inputs:
@@ -267,10 +267,12 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
 	if view.get("world_options", {}).get("roles", false):
 		worlds = worlds.filter(func(w): return Roles.fits(view, w, cards, knowledge, answers))
-	var movement = movement_for(view, movement_cards, answers, knowledge)
+	var movement = movement_for(view, cards if view.get("live_activity", false) else movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
 
 static func movement_for(view: Dictionary, cards: Array, answers: Dictionary = {}, knowledge: Dictionary = {}) -> Dictionary:
+	if preload("res://workshop/live_activity.gd").available(view):
+		return preload("res://workshop/live_activity.gd").routes(view, cards, answers, knowledge)
 	var ids: Array = view.people.map(func(p): return p.id)
 	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
 	var movement_key = JSON.stringify([ids, movement_cards, answers, knowledge])
@@ -321,6 +323,10 @@ static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary,
 		return false # An accepted healthy gift assumes a good source at the reading's time.
 	if Domain.live(view):
 		if not Domain.healthy(view, world, card.source) or not Domain.gift_time(card):
+			return false
+		if card.get("night", -1) >= 0 and not preload("res://workshop/live_history.gd").alive_at_night(view, card.source, card.night):
+			return false
+		if card.role == "nightwatch" and card.data.seen.any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):
 			return false
 		if card.role == "rumormonger":
 			return Domain.rumor(view, world, card, answer)

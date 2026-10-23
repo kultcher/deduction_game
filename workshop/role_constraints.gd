@@ -1,6 +1,7 @@
 ## Joint role completions and a persistent Red Herring, without full permutations.
 extends RefCounted
 const C = preload("res://sim/content.gd")
+const Activity = preload("res://workshop/live_activity.gd")
 static var cache: Dictionary = {}
 static var reuse = true
 
@@ -9,18 +10,28 @@ static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: D
 		return true
 	var ids: Array = view.people.map(func(p): return p.id)
 	if not reuse:
-		return _fits(ids, world, cards, knowledge, answers)
-	var input = [ids, cards, knowledge.get("self"), knowledge.get("own_role"), answers]
+		return _fits_view(view, ids, world, cards, knowledge, answers)
+	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers]
 	var key = hash(input)
 	if not cache.has(key) or cache[key].input != input:
 		if cache.size() >= 64:
 			cache.clear()
-		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": cards.any(func(c): return c.get("role") == "seer" and not c.get("quoted", false))}
+		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": cards.any(func(c): return c.get("role") in ["seer", "gravedigger"] and not c.get("quoted", false))}
 	var n: int = ids.size() + 1
 	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if cache[key].seer else 0)
 	if not cache[key].results.has(mask):
-		cache[key].results[mask] = _fits(ids, world, cards, knowledge, answers)
+		cache[key].results[mask] = _fits_view(view, ids, world, cards, knowledge, answers)
 	return cache[key].results[mask]
+
+static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary) -> bool:
+	if Activity.available(view):
+		var routes = Activity.routes(view, cards, answers, knowledge)
+		if not routes.okay:
+			return false
+		cards = cards.duplicate()
+		for person in routes.forced_lamp:
+			cards.append({"kind": "claim", "source": person, "role": "lamplighter"})
+	return _fits(ids, world, cards, knowledge, answers)
 
 static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary) -> bool:
 	var all: int = (1 << ids.size()) - 1
@@ -63,6 +74,18 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 			if selected != 0:
 				candidates &= selected
 			if not _assign(assignments, card.data.role, candidates):
+				return false
+		elif card.role == "gravedigger":
+			var target: int = ids.find(card.data.executed)
+			if target < 0:
+				return false
+			var read_role: String = card.data.role
+			var evil_role: bool = C.ROLES.get(read_role, {}).get("align") == "evil"
+			# Marked can receive any evil-role result without actually holding it.
+			if evil_role and world.marked == target:
+				continue
+			var candidates: int = (1 << demon) if read_role == "demon" and demon >= 0 else (minions if evil_role else good)
+			if not _assign(assignments, read_role, (1 << target) & candidates):
 				return false
 		elif card.role == "seer":
 			if seer != "" and seer != card.source:

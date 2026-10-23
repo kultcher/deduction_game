@@ -110,6 +110,14 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 - **Storyteller-driven Medium visits.** Today the Medium visits the most recent dead it
   hasn't visited (demon victims first). Eventually: "I was called to Hollis's home to
   commune with his spirit", chosen by a director. (Oct 19) [open]
+- **Medium relay: separate later social consequences.** When adding Workshop support,
+  reuse supported original-report semantics while retaining the dead source, original
+  observation time, Medium receipt time and shared original identity. Account for
+  credibility of both the Medium's transmission and the original source; a relay is
+  not independent corroboration of that same reading. Defer the richer social response
+  (who gains/loses trust or is blamed when a relay is challenged) until after semantic
+  support. This does not defer the provenance/credibility safeguards. (Oct 23 evidence
+  expansion discussion.) [decided; social policy open]
 - **NPCs push back on nominations their own information contradicts** (a player-led
   nomination of the true Seer passed 7/8). (DESIGN playtests) [open]
 - **Lie severity:** a false gift report weighs more than a whereabouts lie, unless the

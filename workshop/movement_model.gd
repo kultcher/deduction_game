@@ -2,10 +2,11 @@
 ## of one incident are conjoined, not multiplied as independent outings.
 extends RefCounted
 const C = preload("res://sim/content.gd")
+const Live = preload("res://workshop/live_activity.gd")
 static var cache: Dictionary = {}
 
 static func available(view: Dictionary) -> bool:
-	return view.has("movement_experiment")
+	return view.has("movement_experiment") or Live.available(view)
 
 static func claim_refs(view: Dictionary, value: Dictionary) -> Array:
 	if not available(view):
@@ -16,6 +17,8 @@ static func evidence(view: Dictionary, cards: Array) -> Array:
 	return cards.filter(func(c): return c.kind in ["sighting", "coverage", "evening", "trace", "item"] or (c.kind == "alibi" and c.get("quoted", false)) or c.get("role") == "nightwatch") if available(view) else []
 
 static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
+	if Live.available(view):
+		return Live.factors(view, cards, value)
 	if not available(view):
 		return []
 	var model: Dictionary = view.movement_experiment

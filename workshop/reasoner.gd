@@ -52,8 +52,8 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -
 		connections.append(groups[i].key)
 	var ranked: Array = cards.filter(func(c): return c.id in keep and c.id not in personal)
 	ranked.sort_custom(func(a, b):
-		var x = _salience(a, full.conclusion.target, listener)
-		var y = _salience(b, full.conclusion.target, listener)
+		var x = _salience(a, full.conclusion.target, listener, Domain.live(view))
+		var y = _salience(b, full.conclusion.target, listener, Domain.live(view))
 		return x > y if not is_equal_approx(x, y) else Solver.semantic_key(a) < Solver.semantic_key(b))
 	keep = ranked.slice(0, limits.cards if bounded else ranked.size()).map(func(c): return c.id)
 	for id in personal:
@@ -86,9 +86,9 @@ static func _add_group(view: Dictionary, groups: Array, id: String, roots: Array
 			return
 	groups.append({"ids": [id], "key": key, "cards": roots, "score": _group_score(view, roots, target, listener)})
 
-static func _salience(card: Dictionary, target: String, listener: Dictionary) -> float:
+static func _salience(card: Dictionary, target: String, listener: Dictionary, live: bool = false) -> float:
 	var score = 1.0 + listener.npc_trust.get(card.source, 0.5) * 0.1
-	if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"]:
+	if card.kind == "report" and (card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (live and card.role in ["nightwatch", "gravedigger"])):
 		score += 3.0
 	if card.get("subject", "") == target or target in card.get("data", {}).get("pair", []) or target in card.get("data", {}).get("group", []) or target in card.get("data", {}).get("seen", []):
 		score += 2.0
@@ -99,7 +99,7 @@ static func _group_score(view: Dictionary, ids: Array, target: String, listener:
 	for id in ids:
 		var card = Solver.card_by_id(view, id)
 		if not card.is_empty():
-			score = maxf(score, _salience(card, target, listener))
+			score = maxf(score, _salience(card, target, listener, Domain.live(view)))
 	return score
 
 static func search(view: Dictionary, case_data: Dictionary, cards: Array, listener: Dictionary, limits: Dictionary) -> Dictionary:
@@ -247,7 +247,7 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 	# A candidate's constraint check is independent of which person's alignment
 	# is being queried. Reuse only checks the search actually elects to perform:
 	# candidate order, tested counts, limits and exhaustion remain unchanged.
-	var inputs = [view.people, view.evil_count, view.get("chronology", {}), view.world_options,
+	var inputs = [view.people, view.evil_count, view.get("chronology", {}), view.get("timeline", {}), view.get("live_activity", false), view.world_options,
 		listener.knowledge, cards, positions, answers, value.conclusion.at, value.get("temporal_positions", [])]
 	var key = hash(inputs)
 	if reuse_matches and (not matches.has(key) or matches[key].inputs != inputs):
