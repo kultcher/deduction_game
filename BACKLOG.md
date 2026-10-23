@@ -58,9 +58,9 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 - **Reading challenges and next supported gifts.** Track alibi/sighting intent,
   multi-person vigil receipts, Surveyor count generation/skepticism, preview clarity,
   and Clerk/Archivist/Seer integration in the
-  [amended reference plan](docs/CASE_WORKSHOP_READING_CHALLENGES.md). Misled and Lying modifiers, Surveyor skepticism, alibi support, clearer feedback and
+  reference plan (now summarised in [docs/CASE_WORKSHOP_FINDINGS.md](docs/CASE_WORKSHOP_FINDINGS.md)). Misled and Lying modifiers, Surveyor skepticism, alibi support, clearer feedback and
   the three role adapters are implemented. Further movement, trace, protection and role
-  adapters are tracked in [the expansion checkpoints](docs/CASE_WORKSHOP_EVIDENCE_EXPANSION.md);
+  adapters are tracked in the expansion checkpoints (same findings doc). The interpreter is being rebuilt per [docs/CASE_REASONING.md](docs/CASE_REASONING.md);
   dated outcomes, nested relays and conversion histories remain gated. [watch; broader adapters open]
 - **From playtest 61251** (an evil team the player had identified won anyway). [decided]
   - **A proven lie should hurt an info claimant's credibility hard.** Constance (the

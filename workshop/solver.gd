@@ -36,10 +36,6 @@ static func person_ids(view: Dictionary) -> Array:
 	_ensure_people(view)
 	return _cached_ids
 
-static func block_masks(view: Dictionary) -> Array:
-	_ensure_people(view)
-	return _cached_block_masks.values()
-
 static func empty_case() -> Dictionary:
 	return {"id": "case-1", "version": 1, "cards": [], "positions": {}, "answers": {}, "reasons": {},
 		"citations": {}, "conflict_scope": [], "challenges": {}, "reading_challenges": {}, "derived": [], "lines": [], "disputes": [], "faults": {}, "temporal_positions": [],
@@ -288,18 +284,6 @@ static func popcount(bits: int) -> int:
 		bits &= bits - 1
 		count += 1
 	return count
-
-static func _position_holds(ids: Array, world: Dictionary, id: String, position: String) -> bool:
-	if id not in ids:
-		return false
-	var index = ids.find(id)
-	var evil: bool = (world.evil & (1 << index)) != 0
-	match position:
-		"evil": return evil
-		"good": return not evil
-		"marked": return world.marked == index
-		"unmarked": return world.marked != index
-	return true
 
 static func position_holds(view: Dictionary, world: Dictionary, id: String, position: String, epoch: String = "") -> bool:
 	if position in ["demon", "minion"]:
