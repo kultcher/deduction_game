@@ -1837,7 +1837,9 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		lines.append(say(n, "I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name]))
 		if not n.is_evil():
 			adjust(w, n, rival.id, 0.3, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift", true, "own_role")
-		return _challenged(n, {"lines": lines, "facts": facts}, card)
+		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
+		pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
+		return pressed
 	if night >= 0:
 		var r = answer_night(w, n, night)
 		lines += r["lines"]
