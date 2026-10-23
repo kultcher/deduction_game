@@ -159,6 +159,7 @@ func _live() -> void:
 	var pressed = Mind.press(w, n, challenge)
 	var speeches: Array = pressed["lines"].filter(func(x): return x is Dictionary)
 	_check(speeches[0]["text"].begins_with("All right, let's talk it through.") and "Edda is lying." in speeches[0]["text"], "a real challenge uses the authored response without changing its claim")
+	_check(pressed.get("dialogue_exchange", {}).get("action", "") == "challenge_gift", "live rival-role confrontation explicitly marks a gift challenge")
 	n.claim_public = false
 	n.claimed_role = "clerk"
 	n.traits["privacy"] = 1.0
@@ -217,6 +218,15 @@ func _live() -> void:
 	var grouped = Mind.info_lines(w, n, readings, "player", true)
 	_check(grouped.size() == 2 and "Last night, " + entry["text"] + "." in grouped[0]["text"] and "On night 1, my sight was unclear." in grouped[1]["text"], "live grouped readings retain content and ordering")
 	_check(not "Here's what I can tell you" in grouped[0]["text"] and not "Here, let me put it plainly" in grouped[1]["text"], "live uninterrupted role disclosure avoids fresh reading introductions")
+	n.dialogue_memory.clear()
+	Mind.Dialogue.begin_conversation(n.dialogue_memory)
+	Mind.Dialogue.record_exchange(n.dialogue_memory, "challenge_gift", n.id)
+	n.max_tier = 0
+	n.claim_public = false
+	var conceded: Dictionary = Mind.answer_gift(w, n, 3)
+	_check(conceded["lines"][0]["text"].begins_with("All right. You've been pressing me about this") and
+		"I'm the Clerk." in conceded["lines"][0]["text"], "real newly authorized gift disclosure acknowledges the previous challenge")
+	_check(conceded["facts"].any(func(f): return f.get("kind", "") == "claim" and f.get("role", "") == "clerk"), "contextual first reveal still creates the same approved role claim")
 	_case_with(g, ["agnes"])
 	_check(g.w.by_id["agnes"].dialogue_memory.is_empty(), "starting a new case discards prior dialogue memory")
 
