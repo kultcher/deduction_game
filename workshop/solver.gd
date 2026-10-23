@@ -161,45 +161,193 @@ static func solve(view: Dictionary, cards: Array, positions: Dictionary = {}, an
 	Profiler.close(span)
 	return result
 
-static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}, epoch: String = "", temporal_positions: Array = []) -> Dictionary:
+## Every legal world for this view (cached). Shared by the solve and by CaseEval.
+static func universe(view: Dictionary) -> Array:
+	return universes[_universe_key(view)] if universes.has(_universe_key(view)) else _build_universe(view)
+
+static func _universe_key(view: Dictionary) -> String:
+	return str([person_ids(view), view.evil_count, view.get("chronology", {}), view.get("world_options", {})])
+
+static func _build_universe(view: Dictionary) -> Array:
 	var ids: Array = person_ids(view)
-	var universe_key = str([ids, view.evil_count, view.get("chronology", {}), view.get("world_options", {})])
-	if not universes.has(universe_key):
-		if universes.size() >= 16:
-			universes.clear()
-		var all_worlds: Array = []
-		if Domain.live(view):
-			all_worlds = Domain.worlds(view)
+	var key = _universe_key(view)
+	if universes.size() >= 16:
+		universes.clear()
+	var all_worlds: Array = []
+	if Domain.live(view):
+		all_worlds = Domain.worlds(view)
+	else:
+		for evil in range(1 << ids.size()):
+			if popcount(evil) == view.evil_count:
+				for marked in range(ids.size()):
+					if not evil & (1 << marked):
+						all_worlds.append_array(TimeModel.expand(view, {"evil": evil, "marked": marked}))
+	universes[key] = all_worlds
+	return all_worlds
+
+## For one report (or curse event) card: a byte per universe world, 1 where the card's
+## content holds as a healthy reading from a good source (cached by exact inputs).
+static func report_table(view: Dictionary, card: Dictionary, positive: Array = []) -> PackedByteArray:
+	var universe_key = _universe_key(view)
+	var universe: Array = universe(view)
+	positive = positive.duplicate()
+	positive.sort()
+	# Homes affect Surveyor blocks; kind/event distinguish public process cards.
+	# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
+	var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.source,
+		card.get("role", ""), card.observed_at, card.data, positive]
+	var key = hash(inputs)
+	if not report_matches.has(key) or report_matches[key].inputs != inputs:
+		if report_matches.size() > 512:
+			report_matches.clear()
+		var accepted = PackedByteArray()
+		accepted.resize(universe.size())
+		# Worlds differing only in the demon's identity share one answer.
+		var groups = sig_groups(view)
+		var rep: PackedInt32Array = groups.rep
+		var of: PackedInt32Array = groups.of
+		var answers = PackedByteArray()
+		answers.resize(rep.size())
+		if card.kind == "report":
+			# A valid source (vectorised), then the content where it matters.
+			var valid: PackedByteArray = valid_table(view, card)
+			var trivial: bool = card.get("role", "") not in CONTENT_ROLES
+			for g in range(rep.size()):
+				answers[g] = 0 if valid[rep[g]] == 0 else (1 if trivial or _report_content(view, universe[rep[g]], card, {"positive": positive}) else 0)
 		else:
-			for evil in range(1 << ids.size()):
-				if popcount(evil) == view.evil_count:
-					for marked in range(ids.size()):
-						if not evil & (1 << marked):
-							all_worlds.append_array(TimeModel.expand(view, {"evil": evil, "marked": marked}))
-		universes[universe_key] = all_worlds
+			for g in range(rep.size()):
+				answers[g] = 1 if _report_holds(view, universe[rep[g]], card, {"positive": positive}) else 0
+		for i in range(universe.size()):
+			accepted[i] = answers[of[i]]
+		report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
+	return report_matches[key].accepted
+
+## A world's key without the demon's identity. Report contents and source validity
+## never read it, so worlds differing only there share one answer. -1: no key.
+static func content_sig(view: Dictionary, world: Dictionary) -> int:
+	if not world.has("__key"):
+		return -1
+	if world.has("demon"):
+		return int(world.__key) / (view.people.size() + 1)
+	return int(world.__key)
+
+## Roles whose report content can fail in a world (the rest only need a valid source).
+const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch"]
+
+static var _bits: Dictionary = {}
+
+## Per universe: each world's evil bits and Delusional holders' bits, and whether any
+## world has a conversion history (fixture curse worlds).
+static func world_bits(view: Dictionary) -> Dictionary:
+	var key = _universe_key(view)
+	if _bits.has(key):
+		return _bits[key]
+	if _bits.size() > 16:
+		_bits.clear()
+	var universe: Array = universe(view)
+	var evil = PackedInt64Array()
+	var deluded = PackedInt64Array()
+	evil.resize(universe.size())
+	deluded.resize(universe.size())
+	var plain = true
+	for i in range(universe.size()):
+		var w: Dictionary = universe[i]
+		evil[i] = int(w.evil)
+		deluded[i] = int(w.get("holders", 0)) if w.get("modifier", "") == "delusional" else 0
+		if w.has("converted"):
+			plain = false
+	_bits[key] = {"evil": evil, "deluded": deluded, "plain": plain}
+	return _bits[key]
+
+## source_valid for every world of the universe.
+static func valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
+	var universe: Array = universe(view)
+	var t = PackedByteArray()
+	t.resize(universe.size())
+	t.fill(0)
+	if card.kind != "report":
+		t.fill(1)
+		return t
+	var live: bool = Domain.live(view)
+	# Gift timing and the source being alive don't vary by world.
+	if live and (not Domain.gift_time(card) or not preload("res://workshop/live_history.gd").observer_alive(view, card.source, card.observed_at)):
+		return t
+	var bits = world_bits(view)
+	var source: int = person_ids(view).find(card.source)
+	if live and bits.plain:
+		# No conversions: a good source that isn't Delusional.
+		if source >= 0:
+			var bit: int = 1 << source
+			var evil: PackedInt64Array = bits.evil
+			var deluded: PackedInt64Array = bits.deluded
+			for i in range(universe.size()):
+				t[i] = 0 if (evil[i] & bit) or (deluded[i] & bit) else 1
+		return t
+	var groups = sig_groups(view)
+	var rep: PackedInt32Array = groups.rep
+	var of: PackedInt32Array = groups.of
+	var answers = PackedByteArray()
+	answers.resize(rep.size())
+	for g in range(rep.size()):
+		answers[g] = 1 if source_valid(view, universe[rep[g]], card) else 0
+	for i in range(universe.size()):
+		t[i] = answers[of[i]]
+	return t
+
+static var _sig_groups: Dictionary = {}
+
+## Per universe: worlds grouped by content_sig (dense ids, one representative each).
+## Worlds without a key get a group of their own.
+static func sig_groups(view: Dictionary) -> Dictionary:
+	var key = _universe_key(view)
+	if _sig_groups.has(key):
+		return _sig_groups[key]
+	if _sig_groups.size() > 16:
+		_sig_groups.clear()
+	var universe: Array = universe(view)
+	var index = {}
+	var rep = PackedInt32Array()
+	var of = PackedInt32Array()
+	of.resize(universe.size())
+	for i in range(universe.size()):
+		var sig: int = content_sig(view, universe[i])
+		var g: int = index.get(sig, -1) if sig >= 0 else -1
+		if g < 0:
+			g = rep.size()
+			rep.append(i)
+			if sig >= 0:
+				index[sig] = g
+		of[i] = g
+	_sig_groups[key] = {"rep": rep, "of": of}
+	return _sig_groups[key]
+
+## Whether a card is constrained by a report table (reports, and the curse event).
+static func tabled(card: Dictionary) -> bool:
+	return card.kind == "report" or (card.kind == "event" and card.get("event") == "curse")
+
+## The source-side conditions of _report_holds: a good, healthy source able to read then.
+## Where this fails, the report says nothing about the world (CaseEval: likelihood q).
+static func source_valid(view: Dictionary, world: Dictionary, card: Dictionary) -> bool:
+	if card.kind != "report":
+		return true
+	if TimeModel.evil_at(view, world, card.source, card.observed_at):
+		return false
+	if Domain.live(view):
+		if not Domain.healthy(view, world, card.source) or not Domain.gift_time(card):
+			return false
+		if not preload("res://workshop/live_history.gd").observer_alive(view, card.source, card.observed_at):
+			return false
+	return true
+
+static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}, epoch: String = "", temporal_positions: Array = []) -> Dictionary:
 	# Report masks use the universe's array index, including distinct conversion
 	# histories. Keep the worlds themselves unchanged for explanations/checkpoints.
-	var universe: Array = universes[universe_key]
+	var universe: Array = universe(view)
 	var tables: Array = []
 	for card in cards:
-		if card.kind != "report" and not (card.kind == "event" and card.get("event") == "curse"):
+		if not tabled(card):
 			continue
-		var positive: Array = answers.get(card.id, {}).get("positive", []).duplicate()
-		positive.sort()
-		# Homes affect Surveyor blocks; kind/event distinguish public process cards.
-		# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
-		var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.source,
-			card.get("role", ""), card.observed_at, card.data, positive]
-		var key = hash(inputs)
-		if not report_matches.has(key) or report_matches[key].inputs != inputs:
-			if report_matches.size() > 512:
-				report_matches.clear()
-			var accepted = PackedByteArray()
-			accepted.resize(universe.size())
-			for i in range(universe.size()):
-				accepted[i] = 1 if _report_holds(view, universe[i], card, {"positive": positive}) else 0
-			report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
-		tables.append(report_matches[key].accepted)
+		tables.append(report_table(view, card, answers.get(card.id, {}).get("positive", [])))
 	var worlds: Array = []
 	if tables.is_empty():
 		worlds = universe.duplicate()
@@ -303,13 +451,13 @@ static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary,
 		return answer.get("positive", []).is_empty() or view.people[world.get("converted", -1)].id in answer.positive
 	if card.kind != "report":
 		return true
-	if TimeModel.evil_at(view, world, card.source, card.observed_at):
-		return false # An accepted healthy gift assumes a good source at the reading's time.
+	# An accepted healthy gift assumes a good source at the reading's time.
+	return source_valid(view, world, card) and _report_content(view, world, card, answer)
+
+## What a report says, given a valid source (see source_valid): does it hold here?
+static func _report_content(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
+	_ensure_people(view)
 	if Domain.live(view):
-		if not Domain.healthy(view, world, card.source) or not Domain.gift_time(card):
-			return false
-		if not preload("res://workshop/live_history.gd").observer_alive(view, card.source, card.observed_at):
-			return false
 		if card.role == "nightwatch" and card.data.seen.any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):
 			return false
 		if card.role == "rumormonger":

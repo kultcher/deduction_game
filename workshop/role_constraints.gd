@@ -16,16 +16,59 @@ static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: D
 	if not cache.has(key) or cache[key].input != input:
 		if cache.size() >= 64:
 			cache.clear()
-		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": cards.any(func(c): return c.get("role") in ["seer", "gravedigger", "martyr"] and not c.get("quoted", false))}
-	var n: int = ids.size() + 1
-	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if cache[key].seer else 0)
-	if cards.any(func(c): return c.has("relay_source")):
-		mask = (mask * (1 << ids.size()) + int(world.get("holders", 0))) * 2 + int(world.get("modifier") == "delusional")
+		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
+	var mask: int = coarse_mask(ids.size(), world, cache[key].seer, cards.any(func(c): return c.has("relay_source")))
 	if not cache[key].results.has(mask):
 		cache[key].results[mask] = _fits_view(view, ids, world, cards, knowledge, answers)
 	return cache[key].results[mask]
 
-static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary) -> bool:
+## fits() for every world of a universe, hashing the view and cards once rather than
+## per world. Same memo as fits(), so the results agree.
+static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}) -> PackedByteArray:
+	var out = PackedByteArray()
+	out.resize(universe.size())
+	if not view.get("world_options", {}).get("roles", false):
+		out.fill(1)
+		return out
+	var ids: Array = view.people.map(func(p): return p.id)
+	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers]
+	var key = hash(input)
+	if not cache.has(key) or cache[key].input != input:
+		if cache.size() >= 64:
+			cache.clear()
+		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
+	var entry: Dictionary = cache[key]
+	var results: Dictionary = entry.results
+	var seer: bool = entry.seer
+	var relay: bool = cards.any(func(c): return c.has("relay_source"))
+	var routes = null
+	for i in range(universe.size()):
+		var world: Dictionary = universe[i]
+		var mask: int = coarse_mask(ids.size(), world, seer, relay)
+		if not results.has(mask):
+			# Relays add Medium claims per world before routing: no hoist then.
+			if routes == null and not relay and Activity.available(view):
+				routes = Activity.routes(view, cards, answers, knowledge)
+			results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, routes)
+		out[i] = 1 if results[mask] else 0
+	return out
+
+## The parts of a world the role check reads, as one int: fits() gives the same answer
+## for worlds with the same mask (for the same view, cards and knowledge).
+static func coarse_mask(people: int, world: Dictionary, seer: bool, relay: bool) -> int:
+	var n: int = people + 1
+	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if seer else 0)
+	if relay:
+		mask = (mask * (1 << people) + int(world.get("holders", 0))) * 2 + int(world.get("modifier") == "delusional")
+	return mask
+
+## The seer flag fits() keys its memo on.
+static func seer_flag(cards: Array) -> bool:
+	return cards.any(func(c): return c.get("role") in ["seer", "gravedigger", "martyr"] and not c.get("quoted", false))
+
+## routes: Activity.routes(view, cards, answers, knowledge) if already computed. It
+## doesn't depend on the world, so fits_table computes it once for all worlds.
+static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null) -> bool:
 	cards = cards.duplicate()
 	var visits = {}
 	for card in cards.duplicate():
@@ -71,7 +114,8 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 		if approach != card.data.block or view.get("timeline", {}).get("events", []).any(func(e): return e.kind == "demon_death" and e.at.day == card.night):
 			return false
 	if Activity.available(view):
-		var routes = Activity.routes(view, cards, answers, knowledge)
+		if routes == null:
+			routes = Activity.routes(view, cards, answers, knowledge)
 		if not routes.okay:
 			return false
 		cards = cards.duplicate()

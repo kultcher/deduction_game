@@ -154,10 +154,41 @@ Evil NPCs run it on their good self (the shadow); the real evil mind is unchange
   development machine with a cold cache, including the per-listener weighting.
 - **Nightly NPC solves:** under 50 ms for the town, off the UI thread if needed.
 - Benchmarks are run commands, not committed JSON. Record headline numbers in this doc.
+
+**Measured (Oct 23, `tools/profile_case_eval_town.gd`, ten-person native setup, 15,120
+live worlds, nine listeners):**
+
+| Seed | First case, all cold | New case, readings known | Repeat |
+|---|---|---|---|
+| 692 | 358 ms | 87 ms | 28 ms |
+| 4242 | 386 ms | 101 ms | 45 ms |
+
+- "New case, readings known" is the presentation cost once the cited readings have
+  their tables: a new premise and card set, every listener. That's the budget figure,
+  and it's at the line.
+- The cold extra is one-off: universe setup (about 120 ms per game day) and each
+  reading's table (5–55 ms per reading). Both can be built when a reading arrives
+  rather than when it's presented.
+- Snapshot capture and preparation add 13–21 ms for the town.
+- Where it went: per-world work happens once per presentation (`compile`: about
+  25 ms); each listener's work is per class (about 200 classes), plus a role check per
+  class that their own role or outings could change (about 2 ms).
 - **Domain growth** (fifteen-person towns, more modifiers) is the main risk. Measure the
   domain size per setup, and prune by evidence dependencies before considering C#.
 
-## Foundation pass (next)
+## Foundation pass
+
+**Status (Oct 23):**
+- Step 1: `workshop/case_eval.gd` exists. It has likelihood weighting, prior from
+  suspicion, the strength category with its reason, rivals and pivotal cards. Still to
+  come: per-source honesty channels (today each card has its own error rate), and
+  likelihoods for sightings and soot.
+- Step 2: `tools/test_case_eval.gd` prints old versus new for the six specimens and
+  checks the semantics. The difference that matters is the movement specimen: v5
+  accepts the case, but CaseEval scores it the same as "core", because movement isn't
+  weighted yet.
+- Step 4: the town timing is in the budget section. The nightly solves aren't built yet.
+- Step 3 (wiring presentations through CaseEval) is next.
 
 1. **A new `CaseEval` module:**
    - input: a case graph plus the snapshot contract plus a listener view;

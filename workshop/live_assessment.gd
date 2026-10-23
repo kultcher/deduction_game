@@ -10,7 +10,8 @@ const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
 const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion"]
 
-static func prepare(snapshot: Dictionary) -> Dictionary:
+## mixture_budget: apply the old 2^u mixture's 64-state gate (CaseEval has no such limit).
+static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictionary:
 	var result = {"ready": false, "issues": [], "view": {}, "case": {}, "listener": {},
 		"scope": "Conditional report comparison with legal original alignment/modifier worlds and public event timing. Accepting a report assumes a good, correctly claimed, healthy source. Live movement and traces use experimental activity priors; quiet nights supply bounded circumstantial support. Medium relays retain separate original and transmission credibility. Alignment-transition histories remain unsupported. Venue is recorded; proposed effects use the unscaled Workshop response."}
 	if snapshot.get("format") != "demonologist-live-evidence-1":
@@ -150,7 +151,7 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 				sources[source] = true
 			var discounts: int = result.listener.reading_reliability.values().filter(func(v): return v > 0 and v < 1).size()
 			var dimensions: int = Jury.Support.dimensions(cards, result.listener, result.case.get("reading_challenges", {})) if view.world_options.get("roles", false) or not result.case.get("reading_challenges", {}).is_empty() else sources.size() + discounts
-			if dimensions > 6:
+			if mixture_budget and dimensions > 6:
 				result.issues.append("This comparison exceeds the initial 64-state credibility budget.")
 	result.view = view
 	result.ready = result.issues.is_empty()
