@@ -58,6 +58,35 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 	var authored_form = (kind == "conceal" and form == "whereabouts") or (kind == "revise" and form == "reconsideration" and not str(intent.get("argument", "")).is_empty())
 	if authored_form:
 		cue = form
+	# A continuing report belongs to an already-open speaker turn. Suppress fresh
+	# introductions, but still track the delivered event and per-audience repetition.
+	# Relationship labels are caller-approved, not inferred from the report's text.
+	if kind == "report" and context.get("flow_position", "standalone") == "continuation":
+		var relation: String = context.get("flow_relation", "continuation")
+		var connective = ""
+		if relation in ["development", "contrast", "transition", "correction"]:
+			var flow_cue = "flow_" + relation
+			var options: Array = Voices.VOICES[id].get(flow_cue, [])
+			if not options.is_empty():
+				var flow_key = audience + ":" + flow_cue
+				connective = options[int(counts.get(flow_key, 0)) % options.size()]
+				counts[flow_key] = int(counts.get(flow_key, 0)) + 1
+		var parts: Array = []
+		if connective != "":
+			parts.append(connective)
+		parts.append(statement)
+		if audience != "town" and context.get("request_privacy", false):
+			var private_lines: Array = Voices.VOICES[id]["private"]
+			parts.append(private_lines[int(counts.get(audience + ":private", 0)) % private_lines.size()])
+			counts[audience + ":private"] = int(counts.get(audience + ":private", 0)) + 1
+		result["text"] = " ".join(PackedStringArray(parts))
+		result["cue"] = "flow_" + relation
+		result["repeated"] = repeated
+		if not event_id.is_empty():
+			seen[key] = true
+		memory["seen"] = seen
+		memory["counts"] = counts
+		return result
 	var count_key = audience + ":" + cue
 	var choices: Array = Voices.VOICES[id][cue]
 	var extra: String = choices[int(counts.get(count_key, 0)) % choices.size()]
@@ -81,6 +110,25 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 	memory["seen"] = seen
 	memory["counts"] = counts
 	return result
+
+## Compose an uninterrupted NPC turn from already-approved utterances. Nothing here
+## chooses disclosures or infers relationships from content. "preceded" means the caller
+## has already put spoken material (such as a role claim) in the same speaker turn.
+## Each result remains a distinct speech event with its exact statement and event ID.
+static func compose_turn(id: String, intents: Array, context: Dictionary, memory: Dictionary, preceded: bool = false) -> Array:
+	var results: Array = []
+	for i in range(intents.size()):
+		var approved: Dictionary = intents[i]
+		var cues: Dictionary = context.duplicate()
+		cues["flow_position"] = "continuation" if preceded or i > 0 else "opening"
+		cues["flow_relation"] = approved.get("relation", "continuation")
+		# A request for confidentiality belongs at the end of the turn, not after
+		# each individual reading. Standalone compose() retains its existing behavior.
+		cues["request_privacy"] = context.get("request_privacy", false) and i == intents.size() - 1
+		var delivery: Dictionary = approved.duplicate()
+		delivery.erase("relation")
+		results.append(compose(id, delivery, cues, memory))
+	return results
 
 ## The simulation has already approved this descriptor. Never pass private decision logs.
 static func decision(id: String, approved: Dictionary, audience: String, memory: Dictionary) -> Dictionary:
