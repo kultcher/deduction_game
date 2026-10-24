@@ -815,6 +815,39 @@ exact values remain open. The code-derived examples and clarifications are in
   held ward leave a mark (a scorched sigil) as physical proof the demon came to that
   door. Feeds the "Protection + quiet night + sighting" template gap. (user, Oct 23)
   [decided]
+- **Supporting evidence in a case: logical where possible, vibes where not.** After the
+  legacy migration. Example: an accusation that cites the accused's voting history ("she
+  voted to hang people you think are good"). (user, Oct 24) [decided: the split;
+  details open]
+  - **Observable actions go in the evaluator as soft evidence:** votes, nominations,
+    who defended whom, tie-breaks. "Voted to execute someone who is good in this world"
+    needs only each world's evil mask, so it adds no hidden dimension (cheap; see
+    Performance rules in docs/LEGACY_MIGRATION.md). Each action is a likelihood factor:
+    the rate at which evil and good players take it against good targets, measured
+    from bot runs, not hand-set. The interaction the user wants ("if the case raises my
+    suspicion, her votes against people I trust count more") then follows from the
+    joint evaluation: no ordering, no feedback loop, no double counting. This is a
+    new decision: Q1 put accusations (speech) outside evidence; votes are actions.
+  - **Listener impressions go in a second stage gated on the first:** demeanour,
+    nervousness under pressure, "oddly quiet", trust in the presenter. Stage 1 (the
+    logical case) runs and is applied. Stage 2 then scores these cards from a snapshot
+    of the listener's updated beliefs, scaled by how far stage 1 moved them, so vibes
+    can't carry a case alone. Guardrails:
+    - read stage 1 once and never iterate;
+    - judge the cards by beliefs about *other* people (the targets), never the accused's
+      own raised suspicion;
+    - keep stage 2 a separate, retractable contribution (like the ownership layer
+      today), so the next belief refresh doesn't treat it as a prior and count it
+      twice.
+
+    Accept that stage 2 depends on order: the same cards split across two cases can
+    total differently from one case.
+  - **Existing hook:** `_consequences_eval` already has a circumstantial route
+    (`_pattern`), but it takes the larger of the logical and circumstantial signals.
+    The gated stage-2 term should add to the logical one instead.
+  - Open: which actions qualify, the measured rates, stage-2 weights (ties into the
+    deferred Q6 Insight/Confidence pass), and the NPC lines ("your case convinced me,
+    and now her votes look worse").
 
 ## 4. Major structural work (a week or more; design first)
 
