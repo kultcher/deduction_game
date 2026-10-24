@@ -288,10 +288,18 @@ legacy values exactly and don't tune them:
   changes, its term in the vote and nomination thresholds, and the existing confidence
   modes in the shared model. Where the legacy rules use neither (defence moves, crowd
   talk), add nothing.
-- **Expected consequence:** the 54875 symptom (an accepted case that doesn't pass a
-  vote) will likely persist after the migration. That's the tuning pass's job, not a
-  migration bug. The 54875 replay fixture should record the numbers rather than assert
-  a vote passes.
+- **Expected consequence (corrected Oct 23):** "port the legacy values" means each path
+  keeps its *own* current numbers. The legacy argument route gave an accepted case about
+  +0.10 suspicion (agreement × quality × 0.6 at a meeting × novelty). The shared model's
+  existing coefficients give about +0.3 to +0.45 for the same accepted "X is evil"
+  (`Jury`: weight × (0.5 + trust) × confidence factor × 0.45, with no meeting discount
+  and no novelty penalty on revisions). In 54875 the voters sat at 0.14–0.26 against a
+  bar of 0.4–0.5, so once presentations stop falling back, an accepted case should
+  usually be enough to pass a vote. Things that can still hold it back, all deferred
+  or ported unchanged: defences stacking daily (fixed in P3), consensus fading, no
+  urgency term, and `prefers_block`. The 54875 replay fixture records each listener's
+  agreement, suspicion and vote margin; check after P0 whether case #85 now passes,
+  and treat a surprising answer either way as something to report, not tune.
 
 - **Q1.** Does a public accusation count as evidence, or stay a social signal outside
   belief (DESIGN today)?
