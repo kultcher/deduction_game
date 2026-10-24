@@ -24,7 +24,25 @@ static func factors(view: Dictionary) -> Array:
 	for person in demon_victims(events, view.people.map(func(p): return p.id)):
 		result.append({"target": person, "log2_ratio": log(victim_ratio()) / log(2.0),
 			"epoch": view.get("alignment_epoch", ""), "origin": "public_evidence",
-			"label": "Killed by the Demon: " + person, "cards": []})
+			"key": "demon_death:" + person, "label": "Killed by the Demon: " + person, "cards": []})
+	# Convert the existing -.12 alignment contribution at the native .3 reference
+	# prior to a finite likelihood ratio. Rehearing an event is not a new silence.
+	var prior = 0.3
+	var posterior = prior * (1.0 - 0.12 / 0.45)
+	var ratio = (posterior / (1.0 - posterior)) / (prior / (1.0 - prior))
+	var seen = {}
+	for event in events:
+		var day: int = event.get("at", {}).get("day", -1)
+		if event.get("kind") != "silenced" or day < 1:
+			continue
+		for person in event.get("subjects", []):
+			var key = "silenced:%s:%d" % [person, day]
+			if seen.has(key) or not view.people.any(func(p): return p.id == person):
+				continue
+			seen[key] = true
+			result.append({"target": person, "log2_ratio": log(ratio) / log(2.0),
+				"epoch": view.get("alignment_epoch", ""), "origin": "public_evidence",
+				"key": key, "label": "Silenced at the meeting: " + person, "cards": []})
 	return result
 
 ## Transitional native ledger uses the same finite odds update and the existing

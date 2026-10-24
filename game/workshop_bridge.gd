@@ -19,7 +19,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 		input.people.append({"id": n.id, "name": n.name, "home": n.home_block, "alive": n.alive})
 	for event in g.w.public_log:
 		input.public_events.append({"kind": event.kind, "subjects": event.get("subjects", []).duplicate(),
-			"by": event.get("by", ""), "at": {"day": event.day, "phase": "night" if event.kind == "demon_death" else "unknown"}})
+			"by": event.get("by", ""), "at": {"day": event.day, "phase": "night" if event.kind == "demon_death" else ("evening" if event.kind == "silenced" else "unknown")}})
 	# Native death announcements are player-observed process cards, not a query of
 	# the referee's death_cause field. A public death is strong, finite evidence.
 	for card in g.board:

@@ -39,6 +39,11 @@ func _run() -> void:
 	var target = g.w.living_good()[0]
 	var listener = g.w.living_good().filter(func(n): return n != target)[0]
 	var context: Array = []
+	if "--silenced" in args or "--day-two" in args:
+		g.w.day = 2
+	if "--silenced" in args:
+		g.w.public_log.append({"day": 1, "kind": "silenced", "subjects": [target.id], "by": ""})
+		context.append(g.add_card({"kind": "silenced", "source": "player", "subject": [target.id], "day": 1, "phase": 2, "text": "Benchmark public silence"}))
 	if "--outing" in args or "--private-errand" in args:
 		g.w.day = 2
 		context.append(g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "market", "text": "Benchmark night outing"}))
@@ -75,6 +80,7 @@ func _run() -> void:
 	result["nested"] = "--nested" in args
 	result["outing"] = "--outing" in args or "--private-errand" in args
 	result["private_errand"] = "--private-errand" in args
+	result["silenced"] = "--silenced" in args
 	result["cognition"] = "full/scale reference" if "--reference-cognition" in args else "native bounded/persistence"
 	result["reports"] = reports.size()
 	result["optimizations"] = {"priors": preload("res://workshop/support_model.gd").reuse_priors,

@@ -64,7 +64,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			cards.append(activity)
 			continue
 		if e.kind != "info" or e.content.get("role", "") not in ROLES:
-			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret"]:
+			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced"]:
 				result.issues.append("Incomplete or invalid %s card (%s)." % [e.kind, e.id])
 			else:
 				result.issues.append("The %s card%s isn't supported yet (%s)." % [e.kind, " (" + str(e.content.get("role")) + ")" if e.content.has("role") else "", e.id])
@@ -206,6 +206,12 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		return card # Public homes / reported haunts describe routes, not guilt.
 	if night < 0:
 		return {}
+	if e.kind == "silenced" and e.source == "player" and e.observed_at.phase == "evening" and night >= 1 and e.subjects.size() == 1 and e.subjects[0] in ids:
+		if not snapshot.public_events.any(func(event): return event.kind == "silenced" and event.at.day == night and e.subjects[0] in event.subjects):
+			return {}
+		card["kind"] = "context"
+		card["context_kind"] = "silenced"
+		return card # The public event supplies its one finite factor, even uncited.
 	if e.kind == "death" and e.source == "player" and e.observed_at.phase == "night" and night >= 1 and e.subjects.size() == 1 and e.subjects[0] in ids:
 		if block != "" and block != snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home:
 			return {}

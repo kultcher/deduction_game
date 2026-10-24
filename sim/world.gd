@@ -627,11 +627,12 @@ func begin_meeting() -> Array:
 			public_event("silenced", [n.id], "")
 			dlog.add("silenced", "world", n.id, {}, "%s cannot speak at the meeting (the Breathstealer's work)." % n.name)
 			# Evil wanted them quiet: a point in their favour with everyone else.
-			for l in living_good():
-				if l != n:
+			for real in living():
+				var l = real.shadow if real.is_evil() else real
+				if l != null and real != n:
 					var e: Array = []
 					Mind._eff(e, n.id, -0.12, "silenced by the demon's side: they must have been a threat to it")
-					Mind.ledger_hear(self, l, "silenced:%s:%d" % [n.id, day], e, 1.0, [], {"kind": "event"})
+					Mind.ledger_hear(self, l, "silenced:%s:%d" % [n.id, day], e, 1.0, [], {"kind": "silenced", "subject": n.id, "day": day})
 	Mind.refresh_all_consensus(self)  # yesterday's accusations count for less today
 	return Mind.meeting_testimony(self)
 

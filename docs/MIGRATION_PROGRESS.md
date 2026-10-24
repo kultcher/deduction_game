@@ -35,7 +35,7 @@ innocence evidence; weak hint/refusal rules remain recorded decisions awaiting m
 Targeted suites cover revision/repeat contracts, location and totem adapters, exact
 root ownership after native receipts are parked, malformed payloads, shared dialogue,
 Insight/Confidence preservation and live UI delivery. Remaining P1 work includes the
-silence/curse event cards, hints/refusals, and removing the
+curse event cards, hints/refusals, and removing the
 remaining native presentation routes after their replacements are measured.
 
 ## P0 implementation
@@ -327,18 +327,23 @@ against the same public death background, rather than incorrectly expecting the 
 itself to have no effect. The full frozen suite, including trace parity, is running;
 targeted evaluator, belief, integration and ownership checks pass.
 
-The initial Q2 replay and paired runtime measurements below were **invalidated** by
+The initial Q2 replay and paired runtime measurements were **invalidated** by
 the full trace suite: appending public factors mutated a cached movement array,
 allowing repeated queries to stack the event. Fixed by copying that array before
 extension; a focused cache-isolation regression passes. Fresh replay and trace
-measurements are running. The invalidated run had nine shared listeners, zero
+measurements are recorded below. The invalidated run had nine shared listeners, zero
 fallback and still failed 1 yes / 5 needed; its changed numbers are not tuning targets.
 A ten-person Day-1 probe retains the exact pre-change behavior hash
 `fe6dac94929d65dfbb959d26e2a134b30fb5e6a56fceb990af8bf1a14056765e` (2762 ms).
 
-**Superseded timing (repeat after the cache fix):** one paired replay under concurrent test/bot load measured
-the first overnight transition 781 -> 1792 ms, the Day-2 meeting/search 6069 -> 6958 ms,
-presentation 4190 -> 4850 ms, and nomination 1140 -> 1271 ms. Refreshing public evidence
+**Corrected measurement after the cache fix:** original #85/filed #89 still fails
+1 yes / 5 needed, with nine shared listeners and zero fallback. Jory agreement
+.775 -> .812; suspicion .596 -> .615. Full listener agreements, suspicion, vote margins
+and tally are under `logs/migration/resume/silence/current-measurement.json`.
+
+**Added runtime to flag:** a fresh paired replay under concurrent test/bot load measured
+the first overnight transition 759 -> 1768 ms, the Day-2 meeting/search 6273 -> 7144 ms,
+presentation 4368 -> 5034 ms, and nomination 1240 -> 1320 ms. Refreshing public evidence
 now does real shared work where the reset was constant-time. These are single-pair
 measurements, not an isolated scaling claim; progress continues above five seconds
 as authorized. Reports are under `logs/migration/resume/victims`.
@@ -348,6 +353,28 @@ and some role-bearing report contents as hard constraints before likelihood weig
 Per-source honesty/accuracy migration must preserve legal liar/impaired alternatives
 and joint unique-role assignments. The finite death adapter does not solve that
 separate source-channel gap; do not compensate by tuning this replay.
+
+## Public silence (Codex, Oct 24)
+
+Silence is a dated public observation, shared by good listeners and evil covers.
+Its existing -.12 native contribution is parked when shared ownership is active.
+The shared factor is finite: the corresponding odds update at the .3 reference
+prior, using the existing .45 alignment coefficient. It never proves the target's
+alignment. A second receipt of the same silence counts once; a genuinely separate
+silence on a later day remains another event. The card preserves its original
+receipt but does not add a second factor to the already-public observation.
+
+The public-evidence suite now passes 60 checks, including exact receipt ownership,
+strict presentation, malformed/unannounced/wrong-date rejection, all listeners and
+covers, and retraction. Roster and card-adapter suites also pass. The combined
+event/cache-fix regular run passes **52/54 suites**, with only the reproduced
+`test_social` and `test_text_ui` failures. The slow trace suite is still running under
+`logs/migration/resume/silence`.
+
+**Added runtime to flag:** a paired ten-person Day-2 probe measured 3434 ms without
+silence and 3828 ms with the public event/card (+394 ms, about 11%). Both evaluated
+all ten listeners with zero fallback. This single pair ran under concurrent tests
+and bot load. The opening replay contains no silence and isolates the Q2 cost above.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 
