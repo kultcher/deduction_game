@@ -327,14 +327,16 @@ against the same public death background, rather than incorrectly expecting the 
 itself to have no effect. The full frozen suite, including trace parity, is running;
 targeted evaluator, belief, integration and ownership checks pass.
 
-Opening replay: original #85/filed #89 still fails **1 yes / 5 needed**, nine shared
-listeners, zero fallback. Jory's agreement .775 -> .812 and suspicion .596 -> .615;
-other agreement changes are small. Full agreements, suspicion, margins and tally
-are recorded in `logs/migration/resume/victims/measurement.json`, not used as tuning
-targets. A ten-person Day-1 probe retains the exact pre-change behavior hash
+The initial Q2 replay and paired runtime measurements below were **invalidated** by
+the full trace suite: appending public factors mutated a cached movement array,
+allowing repeated queries to stack the event. Fixed by copying that array before
+extension; a focused cache-isolation regression passes. Fresh replay and trace
+measurements are running. The invalidated run had nine shared listeners, zero
+fallback and still failed 1 yes / 5 needed; its changed numbers are not tuning targets.
+A ten-person Day-1 probe retains the exact pre-change behavior hash
 `fe6dac94929d65dfbb959d26e2a134b30fb5e6a56fceb990af8bf1a14056765e` (2762 ms).
 
-**Added runtime to flag:** one paired replay under concurrent test/bot load measured
+**Superseded timing (repeat after the cache fix):** one paired replay under concurrent test/bot load measured
 the first overnight transition 781 -> 1792 ms, the Day-2 meeting/search 6069 -> 6958 ms,
 presentation 4190 -> 4850 ms, and nomination 1140 -> 1271 ms. Refreshing public evidence
 now does real shared work where the reset was constant-time. These are single-pair

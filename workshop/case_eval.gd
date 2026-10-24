@@ -351,7 +351,9 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 	# Movement and trace observations: a likelihood per world from the evil team and
 	# the Demon (live) or each subject's alignment and Mark (fixtures). Both are fixed
 	# within a class.
-	var movement: Array = Movement.factors(view, cards, case_data)
+	# Live factors are cached arrays. Extending one in place would contaminate
+	# later people/cases with repeated public-event likelihoods.
+	var movement: Array = Movement.factors(view, cards, case_data).duplicate()
 	movement.append_array(preload("res://workshop/public_evidence.gd").factors(view))
 	# Supplied test factors (and a challenged home alibi in fixtures): a likelihood ratio
 	# on their target being evil, once any of their routes is among the cards.
