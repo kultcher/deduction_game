@@ -884,6 +884,7 @@ func _day_command(verb: String, rest: String) -> void:
 				_err("%s is deep in conversation with %s." % [n.name, w.by_id[n.busy_with].name])
 				return
 			talk_with = n
+			Mind.Dialogue.begin_conversation(n.dialogue_memory)
 			questions_left = 3
 			free_repeats = 0
 			talk_approached = false
@@ -1067,6 +1068,7 @@ func _approach_command(verb: String, rest: String) -> void:
 			loc = n.loc
 			w.player_loc = loc
 			talk_with = n
+			Mind.Dialogue.begin_conversation(n.dialogue_memory)
 			questions_left = 3
 			talk_approached = true
 			free_repeats = 0
@@ -1096,6 +1098,37 @@ func _phase_header() -> void:
 	_prompt("Where will you spend the %s? ('go <place | block | person>')" % w.phase_name().to_lower())
 
 # ---------------------------------------------------------------- conversation
+
+## Store only the last *spoken* exchange in this talk, separate from the
+## case-long report/decision history. A new talk clears the immediate context.
+## Do not inspect argument reasoning, evidence truth, role assignments or secrets.
+func _remember_dialogue_exchange(n, verb: String, rest: String, response: Dictionary) -> void:
+	var spoken: bool = response.get("lines", []).any(func(line): return line is Dictionary and line.get("speaker", "") == n.id)
+	if not spoken:
+		return
+	var action = "other"
+	var subject = ""
+	var parts: PackedStringArray = rest.split(" ", false)
+	if verb in ["ask", "a"] and not parts.is_empty():
+		var topic: String = parts[0].to_lower()
+		if topic in ["gift", "role", "info", "learned"]:
+			action = "gift"
+			subject = n.id
+		elif topic in ["about", "opinion"] and parts.size() > 1:
+			var person = find_npc(" ".join(parts.slice(1)), true)
+			if person != null:
+				action = "opinion"
+				subject = person.id
+	elif verb in ["press", "confront"]:
+		var desc: Dictionary = response.get("dialogue_exchange", {})
+		action = desc.get("action", "challenge")
+		subject = desc.get("subject", n.id)
+	elif verb in ["tell", "accuse"] and not parts.is_empty() and not parts[0].contains(","):
+		var person = find_npc(parts[0])
+		if person != null:
+			action = "accusation"
+			subject = person.id
+	Mind.Dialogue.record_exchange(n.dialogue_memory, action, subject)
 
 func _talk_command(verb: String, rest: String) -> void:
 	var n = talk_with
@@ -1272,6 +1305,7 @@ func _talk_command(verb: String, rest: String) -> void:
 		questions_left -= 1
 	_lines(r["lines"])
 	_facts(r["facts"])
+	_remember_dialogue_exchange(n, verb, rest, r)
 	if repeat:
 		_prompt("(No question used. %d question%s left)" % [questions_left, "" if questions_left == 1 else "s"])
 		return
@@ -1307,6 +1341,7 @@ func _offer_command(n, what: String) -> void:
 			return
 	talk_offered = true
 	_line(Mind.say(n, "That's good of you. I'll sleep a little easier."))
+	Mind.Dialogue.record_exchange(n.dialogue_memory, "other")
 	Mind.set_trust(w, n, n.trust + 0.03, "the Demonologist offered to watch over me tonight")
 	w.dlog.add("player_offer", "player", n.id, {"what": what, "block": n.home_block})
 	_prompt("(No question used. %d question%s left)" % [questions_left, "" if questions_left == 1 else "s"])

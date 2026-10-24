@@ -197,6 +197,64 @@ const SCENARIOS = [
 	},
 ]
 
+## Multi-line examples test flow separately from the decision that approved each fact.
+## "relation" is a rhetorical relation explicitly supplied by the caller, never
+## inferred by inspecting a possibly fabricated account.
+const FLOW_SCENARIOS = [
+	{
+		"title": "Role reveal and three readings",
+		"note": "One speaker turn after an already-spoken role disclosure: no fresh opening on each reading.",
+		"lead_in": "I'll trust you with this. I'm the Seer.",
+		"preceded": true,
+		"parts": [
+			{"kind": "report", "event_id": "flow:seer:0", "statement": "On night 0, Edda or Jory read as the demon."},
+			{"kind": "report", "event_id": "flow:seer:1", "statement": "On night 1, neither Greta nor Fenwick read as the demon."},
+			{"kind": "report", "event_id": "flow:seer:2", "statement": "On night 2, Hollis or Isolde read as the demon."},
+		],
+	},
+	{
+		"title": "Developing and qualifying a thought",
+		"note": "The relationship between sentences is approved explicitly; the renderer does not decide that a statement is contradictory.",
+		"parts": [
+			{"kind": "report", "event_id": "flow:account:0", "statement": "I saw Jory near the square."},
+			{"kind": "report", "event_id": "flow:account:1", "relation": "development", "statement": "I saw Fenwick there as well."},
+			{"kind": "report", "event_id": "flow:account:2", "relation": "contrast", "statement": "I could not tell whether they arrived together."},
+		],
+	},
+	{
+		"title": "Changing topic and correcting an account",
+		"note": "An explicit topic transition and correction, without changing the approved facts.",
+		"parts": [
+			{"kind": "report", "event_id": "flow:topic:0", "statement": "I was at home that evening."},
+			{"kind": "report", "event_id": "flow:topic:1", "relation": "transition", "statement": "I heard that Greta was seen by the wharf."},
+			{"kind": "report", "event_id": "flow:topic:2", "relation": "correction", "statement": "To be precise, that report concerned the afternoon."},
+		],
+	},
+]
+
+## Synthetic sequences across *separate* player/NPC exchanges. The player's
+## immediately preceding spoken act is supplied explicitly; it is not inferred.
+const EXCHANGE_SCENARIOS = [
+	{
+		"title": "Gift reveal after pressure",
+		"mode": "gift", "previous_action": "challenge_gift", "role": "Seer",
+		"statement": "I'm the Seer.",
+		"note": "Player just challenged this person's gift. The simulation now independently approved a first-time Seer claim. No alignment or truth is supplied.",
+	},
+	{
+		"title": "Opinion after accusation",
+		"mode": "opinion", "previous_action": "accusation", "subject_id": "edda", "subject_name": "Edda",
+		"statement": "I have my doubts about Edda.",
+		"note": "Player just accused Edda in a private exchange. The next response acknowledges that subject without asserting agreement with the accusation.",
+	},
+	{
+		"title": "Repeated refusal about someone",
+		"mode": "refusal", "previous_action": "opinion", "subject_id": "edda", "subject_name": "Edda",
+		"statement": "It's not my place to say.",
+		"note": "NPC refused the previous question about Edda. On a repeat, they still refuse, but do not recite the same boilerplate.",
+	},
+]
+
 ## Seed only explicit fictional prior speech, once per scenario/audience. Preview callers
 ## pass copied memory, so inspecting a scenario never delivers it to the real history.
 static func prime(id: String, scenario: Dictionary, audience: String, memory: Dictionary) -> void:
