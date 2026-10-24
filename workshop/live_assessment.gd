@@ -103,9 +103,9 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		view.world_options["roles"] = true
 		view.world_options["identities"] = true
 	for card in cards:
-		if card.get("role") == "gravedigger" and not History.executed(view, card.data.executed, card.night):
+		if card.kind == "report" and card.get("role") == "gravedigger" and not History.executed(view, card.data.executed, card.night):
 			result.issues.append("Gravedigger report needs a matching public execution on the reported night.")
-		if card.get("role") == "martyr" and card.data.get("chosen", false) and cards.any(func(other): return other.kind == "execution" and other.subject == card.data.target and Solver.TimeModel.tick(other.observed_at) > Solver.TimeModel.tick(card.observed_at)):
+		if card.kind == "report" and card.get("role") == "martyr" and card.data.get("chosen", false) and cards.any(func(other): return other.kind == "execution" and other.subject == card.data.target and Solver.TimeModel.tick(other.observed_at) > Solver.TimeModel.tick(card.observed_at)):
 			result.issues.append("A prior Martyr promise versus a later execution needs a dated outcome/health adapter. The new evaluator does not yet infer failure from that pair; existing rules handle the case.")
 	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch"]):
 		view.world_options["roles"] = true
@@ -116,34 +116,40 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	if root.is_empty():
 		result.issues.append("Select a filed deduction as the comparison's headline claim.")
 	else:
-		if snapshot.arguments.any(func(a): return a.board_number != root.board_number and a.has("workshop_case")):
-			result.issues.append("A canvas graph cited inside a different filed deduction needs a graph composition adapter.")
-		var value = _case(snapshot, root, epoch, [])
+		for argument in snapshot.arguments:
+			if not argument.has("workshop_case"):
+				continue
+			var scope = snapshot.duplicate(false)
+			scope.selected = _argument_roots(snapshot, argument.board_number)
+			result.issues.append_array(canvas_issues(argument.workshop_case, scope))
+			for dispute in argument.workshop_case.get("disputes", []):
+				if not Solver.Graph.valid_dispute(view, dispute):
+					result.issues.append("Invalid or unsupported disputes: cite a home alibi and a sighting of that person on the same night.")
+			for id in argument.workshop_case.get("reading_challenges", {}):
+				var challenge = argument.workshop_case.reading_challenges[id]
+				if not preload("res://workshop/reading_challenges.gd").valid(view, id, challenge) or id not in argument.workshop_case.cards or not challenge.get("supports", []).all(func(s): return s in argument.workshop_case.cards):
+					result.issues.append("Invalid reading challenge or missing grounds.")
+		var value = _case(snapshot, root, epoch, [], result.issues)
 		value["arguments"] = []
 		for argument in snapshot.arguments:
-			var scoped = _case(snapshot, argument, epoch, [])
+			var scoped = _case(snapshot, argument, epoch, [], result.issues)
 			var inputs: Array = []
 			var direct: Array = argument.supports.filter(func(number): return snapshot.board_map.has(str(number))).map(func(number): return snapshot.board_map[str(number)])
 			if not direct.is_empty():
 				inputs.append({"id": "direct:%d" % argument.board_number, "cards": direct})
 			for child in snapshot.arguments.filter(func(a): return a.board_number in argument.supports):
-				inputs.append({"id": "argument:%d" % child.board_number, "cards": _case(snapshot, child, epoch, []).cards})
+				inputs.append({"id": "argument:%d" % child.board_number, "cards": _case(snapshot, child, epoch, [], result.issues).cards})
 			value.arguments.append({"id": "argument:%d" % argument.board_number, "label": "Filed claim #%d" % argument.board_number,
 				"case": scoped, "inputs": inputs, "parents": snapshot.arguments.filter(func(a): return argument.board_number in a.supports).map(func(a): return "argument:%d" % a.board_number)})
+		for argument in snapshot.arguments:
+			if argument.has("workshop_case") and argument.board_number != root.board_number:
+				_append_canvas_arguments(value.arguments, argument)
 		result.case = value
 		if root.has("workshop_case"):
 			result.case = root.workshop_case.duplicate(true)
 			result.case.id = "live:" + snapshot.case_id
 			result.view = view
 			view.alignment_epoch = "Original alignment"
-			result.issues.append_array(canvas_issues(root.workshop_case, snapshot))
-			for dispute in root.workshop_case.get("disputes", []):
-				if not Solver.Graph.valid_dispute(view, dispute):
-					result.issues.append("Invalid or unsupported disputes: cite a home alibi and a sighting of that person on the same night.")
-			for id in root.workshop_case.get("reading_challenges", {}):
-				var challenge = root.workshop_case.reading_challenges[id]
-				if not preload("res://workshop/reading_challenges.gd").valid(view, id, challenge) or id not in root.workshop_case.cards or not challenge.get("supports", []).all(func(s): return s in root.workshop_case.cards):
-					result.issues.append("Invalid reading challenge or missing grounds.")
 		for argument in snapshot.arguments:
 			var conclusion = argument.conclusion
 			if conclusion.get("type") not in CONCLUSIONS or _target(conclusion) not in snapshot.people.map(func(p): return p.id):
@@ -355,7 +361,46 @@ static func evaluate(snapshot: Dictionary) -> Dictionary:
 	result.elapsed_ms = Time.get_ticks_msec() - started
 	return result
 
-static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, path: Array) -> Dictionary:
+## Original board receipts, independently of a stored canvas's claimed root list.
+static func _argument_roots(snapshot: Dictionary, number: int, path: Array = []) -> Array:
+	if number in path:
+		return []
+	if snapshot.board_map.has(str(number)):
+		return [snapshot.board_map[str(number)]]
+	var found: Array = snapshot.arguments.filter(func(a): return a.board_number == number)
+	var result: Array = []
+	if not found.is_empty():
+		for support in found[0].supports:
+			for id in _argument_roots(snapshot, support, path + [number]):
+				if id not in result:
+					result.append(id)
+	return result
+
+static func _canvas_argument_id(argument: Dictionary, id: String) -> String:
+	return "argument:%d" % argument.board_number if id == argument.workshop_case.get("argument_root", "") else "canvas:%d:%s" % [argument.board_number, id]
+
+static func _has_canvas(snapshot: Dictionary, number: int, path: Array = []) -> bool:
+	if number in path:
+		return false
+	var found: Array = snapshot.arguments.filter(func(a): return a.board_number == number)
+	return not found.is_empty() and (found[0].has("workshop_case") or found[0].supports.any(func(child): return _has_canvas(snapshot, child, path + [number])))
+
+static func _append_canvas_arguments(into: Array, argument: Dictionary) -> void:
+	for inner in argument.workshop_case.get("arguments", []):
+		if inner.id == argument.workshop_case.get("argument_root", ""):
+			continue # The enclosing filed question already represents this premise.
+		var claim: Dictionary = inner.duplicate(true)
+		claim.id = _canvas_argument_id(argument, inner.id)
+		claim.parents = inner.parents.map(func(id): return _canvas_argument_id(argument, id))
+		if inner.has("without"):
+			claim.without = {}
+			for parent in inner.without:
+				claim.without[_canvas_argument_id(argument, parent)] = inner.without[parent].duplicate()
+		into.append(claim)
+
+static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, path: Array, issues: Array = []) -> Dictionary:
+	if argument.has("workshop_case"):
+		return argument.workshop_case.duplicate(true)
 	var result = Solver.empty_case()
 	result.id = "live:" + snapshot.case_id
 	result.conclusion = {"type": argument.conclusion.get("type", "unsupported"), "target": _target(argument.conclusion), "at": epoch}
@@ -366,18 +411,34 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 		if snapshot.board_map.has(str(number)):
 			var id: String = snapshot.board_map[str(number)]
 			if snapshot.evidence.any(func(e): return e.id == id):
-				result.cards.append(id)
+				if id not in result.cards:
+					result.cards.append(id)
 				direct.append(id)
 		else:
 			var child: Array = snapshot.arguments.filter(func(a): return a.board_number == number)
 			if child.is_empty():
 				continue
-			var sub = _case(snapshot, child[0], epoch, path + [argument.board_number])
+			var sub = _case(snapshot, child[0], epoch, path + [argument.board_number], issues)
 			result.cards.append_array(sub.cards.filter(func(id): return id not in result.cards))
 			result.lines.append({"id": "argument:%d" % number, "label": "Supporting claim", "relation": "supports",
-				"conclusion": sub.conclusion, "cards": sub.cards, "answers": {}, "positions": {}, "reasons": {}})
+				"conclusion": sub.conclusion, "cards": sub.cards, "answers": sub.answers.duplicate(true), "positions": sub.positions.duplicate(true),
+				"reasons": sub.reasons.duplicate(true), "citations": sub.citations.duplicate(true), "faults": sub.faults.duplicate(true)})
 			if sub.conclusion.type == "conflict":
 				result.lines[-1].relation = "quotes"
+				continue
+			if not _has_canvas(snapshot, number):
+				continue # Preserve the existing shape of native-only argument trees.
+			for line in sub.lines:
+				var nested: Dictionary = line.duplicate(true)
+				nested.id = "argument:%d/%s" % [number, line.id]
+				result.lines.append(nested)
+			for dispute in sub.disputes:
+				if dispute not in result.disputes:
+					result.disputes.append(dispute.duplicate(true))
+			for id in sub.reading_challenges:
+				if result.reading_challenges.has(id) and result.reading_challenges[id] != sub.reading_challenges[id]:
+					issues.append("Supporting cases give incompatible challenges to " + id + ".")
+				result.reading_challenges[id] = sub.reading_challenges[id].duplicate(true)
 	if not direct.is_empty():
 		# A quoted child may contain the same report as a direct endorsed path.
 		# Preserve both routes so quoting cannot erase that independent endorsement.

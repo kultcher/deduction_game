@@ -45,6 +45,9 @@ func _run() -> void:
 		board.connect_cards("e:" + Evidence.normalize_card(g.board[number - 1]).id, root_id)
 	var number = Live.file(g, board.compile(root_id))
 	assert(number > 0)
+	if "--nested" in args:
+		number = g.file_deduction({"type": "evil", "a": target.id}, [number])
+		assert(number > 0, "The nested benchmark must retain its original filed case")
 	g.set_workshop_effects(true)
 	g.state = "talk"
 	g.talk_with = listener
@@ -62,6 +65,7 @@ func _run() -> void:
 	Profile.close(town_span)
 	result = Profile.finish()
 	result["seed"] = seed_value
+	result["nested"] = "--nested" in args
 	result["cognition"] = "full/scale reference" if "--reference-cognition" in args else "native bounded/persistence"
 	result["reports"] = reports.size()
 	result["optimizations"] = {"priors": preload("res://workshop/support_model.gd").reuse_priors,

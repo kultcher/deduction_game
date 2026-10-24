@@ -34,7 +34,7 @@ rules are recorded decisions, not yet migrated behavior.
 Targeted suites cover revision/repeat contracts, location and totem adapters, exact
 root ownership after native receipts are parked, malformed payloads, shared dialogue,
 Insight/Confidence preservation and live UI delivery. Remaining P1 work includes the
-other event cards, hints/refusals, nested case composition, and removing the
+other event cards, hints/refusals, secrets, and removing the
 remaining native presentation routes after their replacements are measured.
 
 ## P0 implementation
@@ -172,6 +172,33 @@ This slice did not introduce a significant presentation cost. These timings are
 measurements on this machine, not guaranteed speedups. Reports are preserved under
 `logs/migration/resume/{baseline,attention}`. The replay now records each listener's
 considered/ignored cards as well as the applied refresh's considered cards.
+
+## Nested canvas cases (Codex, Oct 24)
+
+A filed canvas can now support a further deduction. Its intermediate questions keep
+their own evidence, with namespaced parent links. Child answers, assumptions,
+reading challenges and alibi disputes survive composition; the conclusion label
+adds no evidence. Repeated routes to a shared descendant retain one original fact.
+Each stored canvas is checked against its actual board supports, so an omitted root
+or invalid challenge cannot hide inside a larger parent. Native-only argument trees
+retain their existing shape.
+
+The new suite passes 16 checks; eight targeted suites pass, including live canvas,
+ownership, presentation, integration and reading challenges. The slow trace suite on
+the frozen attention commit also passes all 45 checks.
+
+The bot comparison exposed an existing readiness exception: a Gravedigger *claim*
+was checked for a reading's `executed` payload. The check now applies only to reports,
+with a regression test. The interrupted batches contain script errors and are not
+valid balance measurements; the full comparisons must be rerun on corrected source.
+
+`profile_workshop_town.gd --nested` measures an enclosing deduction over the same
+filed canvas. The ordinary benchmark keeps the exact behavior hashes from the
+attention commit at seeds 692 and 4242, with no fallbacks: 2150/2147 ms and
+2379/2391 ms (control/current). The nested seed-692 presentation takes 1623 ms,
+also with full shared coverage. No significant added presentation cost was observed
+in these probes; the results do not establish late-game scaling. Reports are under
+`logs/migration/resume/nested`.
 
 ## Performance pass after review (Claude, Oct 24; branch `claude/perf-reuse`, merged)
 
