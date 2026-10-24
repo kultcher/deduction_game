@@ -55,17 +55,22 @@ func _init() -> void:
 	var malformed = first.duplicate(true)
 	malformed.observed_at.phase = "unknown"
 	check(not Channels.compile(view, [malformed]).issues.is_empty(), "unknown original timing cannot silently select a poison window")
+	malformed.erase("observed_at")
+	check(not Channels.compile(view, [malformed]).issues.is_empty(), "missing original timing is rejected before canonicalizing the predicate")
 	print("Evidence channels: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
 func _medium(view: Dictionary, first: Dictionary) -> void:
 	var relay = first.duplicate(true)
 	relay.id = "relay"
+	relay.accuracy_origin = first.id
 	relay.relay_source = "c"
 	relay.relay_observed_at = {"day": 3, "phase": "night"}
 	var plan = Channels.compile(view, [first, relay])
 	check(plan.channels.size() == 5 and plan.channels.filter(func(channel): return channel.key == "gift_accuracy:a:1").size() == 1, "a faithful Medium relay shares the original gift's accuracy and adds its own channel and route")
 	var state = _all(plan)
+	var faithful = Channels.materialize(plan, state)
+	check(faithful.cards.filter(func(card): return card.kind == "report").size() == 1 and faithful.accurate.size() == 2 and faithful.cards.any(func(card): return card.get("relay_source") == "c"), "two faithful paths emit the original predicate once, while retaining the separate Medium visit and route acceptance")
 	state[_index(plan, "gift_accuracy:a:1")] = 0
 	var original_impaired = Channels.materialize(plan, state)
 	check(original_impaired.cards.any(func(card): return card.kind == "claim" and card.source == "c" and card.role == "medium") and original_impaired.cards.any(func(card): return card.get("relay_source") == "c"), "a faithful relay keeps the Medium's gift and visit when the original reading was impaired")

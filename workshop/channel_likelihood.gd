@@ -11,7 +11,9 @@ static var cache = {}
 
 ## rates maps channel keys to probabilities, or {healthy, impaired} for an
 ## accuracy channel. In a hypothetical Delusional world its impaired prior applies.
-## q maps original fact IDs to false-content likelihoods. Several faithful paths
+## q maps original reading IDs to false-content likelihoods. Role declarations
+## and ordinary testimony have no extra random-content penalty: their credibility
+## is already the shared honesty channel. Several faithful paths
 ## to one original fact are priced once, and accurate content may occur by chance.
 ## baseline_ids identifies private evidence held before the submitted case.
 static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates: Dictionary, q: Dictionary, baseline_ids: Array = [], prune_irrelevant: bool = true, representatives: PackedInt32Array = PackedInt32Array(), multiplicity: PackedFloat64Array = PackedFloat64Array()) -> Dictionary:
@@ -42,12 +44,15 @@ static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates:
 	var subsets: Dictionary = cache[key].states
 	var totals = {}
 	var origins = {}
+	var report_origins = {}
 	var private_origins = {}
 	for card in cards:
 		if card.get("quoted", false):
 			continue
 		var origin: String = card.get("accuracy_origin", card.get("fact_id", card.id))
 		origins[card.id] = origin
+		if card.kind == "report":
+			report_origins[origin] = true
 		var held: Array = []
 		held.resize(size)
 		held.fill(0.0)
@@ -88,7 +93,7 @@ static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates:
 			if priced.has(origin):
 				continue
 			priced[origin] = true
-			var likelihood: float = float(q.get(origin, q.get(id, 1.0)))
+			var likelihood: float = float(q.get(origin, q.get(id, 1.0))) if report_origins.has(origin) else 1.0
 			assert(is_finite(likelihood) and likelihood >= 0.0 and likelihood <= 1.0)
 			if not accurate.has(origin):
 				false_content *= likelihood

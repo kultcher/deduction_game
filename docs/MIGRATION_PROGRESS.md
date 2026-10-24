@@ -603,7 +603,7 @@ inactive. Conditional solves and private baselines are shared across states. The
 reference can evaluate CaseEval's compact representatives and their multiplicity;
 tests compare every legal world's baseline, posterior likelihood and accepted
 content against full enumeration at seven and ten people, including modifiers,
-private evidence and Medium routes. The three channel suites pass **40 checks**.
+private evidence and Medium routes. The three channel suites now pass **49 checks**.
 A frozen full regular run passes **60/62** suites, with only the two established
 baseline failures; the production behavior is unchanged from the action slice,
 whose 45 slow trace checks passed.
@@ -624,6 +624,17 @@ with the same likelihood mass. This is additional work compared with the old
 kernel, not a measured whole-town presentation or a live performance regression.
 `tools/profile_channel_likelihood.gd -- --npcs 10 --sources 3 [--classes]` reproduces
 the comparison. Logs: `logs/migration/resume/channels`.
+
+Pause checkpoint refinement: faithful paths materialize one canonical original
+predicate while retaining each route's acceptance and the Medium's separate visit.
+Conflicting payloads claiming the same original produce an explicit issue. Only
+gift report contents pay a false-content chance likelihood; declarations and
+whereabouts testimony already use their shared honesty channel. Tests verify that
+repeating a gift declaration adds no likelihood, restating a private declaration
+does not improve the case over its baseline, and a refuted alibi selects testimony
+dishonesty without damaging the independent gift channel. Invalid original timing
+is rejected before canonicalization. These changes remain offline and introduce no
+live presentation cost. Final checks: `logs/migration/resume/channels/pause-final`.
 
 ## P3 defence repeat identity (Codex, Oct 24)
 
@@ -674,7 +685,8 @@ including strict delivery to every good/cover listener, canonical identity, nati
 retraction, diagnostics, old/new coexistence and no assessment RNG draws. Eight
 related suites pass. The frozen regular run passes **62/64**, with only the two
 established baseline failures; the final explicit-stamp edge case also passes its
-targeted suites. Slow trace is running. Logs: `logs/migration/resume/reading-identity`.
+targeted suites. The frozen slow trace run also passes all **45 checks**.
+Logs: `logs/migration/resume/reading-identity`.
 
 The paired 54875 replay retains identical agreement, suspicion, vote margins,
 delivery coverage and tally: **1 yes / 5 needed**, nine shared, zero fallback.
@@ -687,16 +699,28 @@ consistent presentation regression. Nomination was **1205 -> 1320 ms** and
 the longer keys flow through the live contract. All measurements retained full
 shared coverage.
 
-## Current bot comparison in progress (frozen `0e60614`)
+## Current bot comparison interrupted at user pause (frozen `0e60614`)
 
-A fresh 600-game comparison is running from the frozen channel-foundation snapshot
+A fresh 600-game comparison was started from the frozen channel-foundation snapshot
 (production behavior `d6eb589`, before the defence-repeat fix). It uses seeds
 1000–1149, 150 games in each of seven/ten-person active/passive modes. Detailed
 state sidecars are disabled using the already parity-checked `--no-trace` switch;
-ordinary developer logs and complete metrics remain. Two workers run the ten-person
-rows first, followed by the seven-person rows. The source snapshot will not change
-as implementation continues. This is a current intermediate measurement, not the
-final migration sign-off. Results and status: `logs/migration/resume/current-batches`.
+ordinary developer logs remain. The user requested a pause after the current step,
+so both workers were stopped. Ten-person active finished **29 cases** (1000–1028),
+passive **25 cases** (1000–1024), with no printed script errors in either partial
+log. Seven-person rows had not started. No final batch metrics were produced; these
+partial runs do not satisfy the comparison or P0 sign-off. Status files record the
+interruption; partial logs remain in `logs/migration/resume/current-batches`.
+
+## Paused checkpoint (user, Oct 24)
+
+The requested current channel-reference step is complete. No implementation or bot
+jobs remain running. The migration is still incomplete: next is live joint-channel
+integration (replacing both the hard report gate and provisional reading model),
+then remaining anonymous/Medium and temporal histories, shared defences/NPC shares
+and priors, P4 baseline/reasons/bot work and P5 legacy deletion. Psychologist stays
+context-only; Q3/Q6 remain deferred. The latest replay is still **1 yes / 5 needed**
+with nine shared listeners and zero fallback. Its result has not been tuned.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 

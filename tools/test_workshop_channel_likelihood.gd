@@ -55,8 +55,43 @@ func _init() -> void:
 	check(Array(repeated.post).all(func(value): return is_equal_approx(value, 0.5)), "repeat routes price one inaccurate original content once")
 	var repeated_again = Model.assess(view, [first, copy], {}, single_rates, q)
 	check(repeated_again.post == repeated.post and repeated_again.base == repeated.base, "cached conditional solves do not accumulate likelihoods or mutate prior results")
+	var corrupt = copy.duplicate(true)
+	corrupt.data.yes = false
+	check(not Model.assess(view, [first, corrupt], {}, single_rates, q).issues.is_empty(), "conflicting payloads cannot silently reuse an original content identity")
+	_claims(view, first)
+	_testimony(view, first)
 	print("Channel likelihood: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
+
+func _claims(view: Dictionary, report: Dictionary) -> void:
+	var claim = {"id": "claim", "kind": "claim", "source": "a", "role": "seer", "observed_at": {"day": 1, "phase": "night"}, "data": {}}
+	var again = claim.duplicate(true)
+	again.id = "claim-tomorrow"
+	again.observed_at.day = 2
+	var rates = {"gift_honesty:a": 0.8, "gift_accuracy:a:1": {"healthy": 0.9, "impaired": 0.0}}
+	var q = {"one": 0.5, "claim": 0.01, "claim-tomorrow": 0.01}
+	var once = Model.assess(view, [claim], {}, rates, q)
+	var repeated = Model.assess(view, [claim, again], {}, rates, q)
+	check(_close(once.post, repeated.post), "repeating the same gift declaration tomorrow supplies no independent likelihood")
+	var universe = Solver.universe(view)
+	check(range(universe.size()).all(func(index): return is_equal_approx(once.post[index], 0.2 if universe[index].evil & 1 else 1.0)), "a role declaration has finite shared honesty, without an extra arbitrary false-content penalty")
+	var private_claim = Model.assess(view, [claim, again], {}, rates, q, [claim.id])
+	check(_close(private_claim.base, private_claim.post), "restating an already privately known declaration cannot improve the case over its own baseline")
+	var reading = Model.assess(view, [report], {}, rates, q)
+	var with_claim = Model.assess(view, [report, claim], {}, rates, q)
+	check(_close(reading.post, with_claim.post), "an explicit declaration adds nothing beyond the same declaration already inherent in a named reading")
+
+func _testimony(view: Dictionary, report: Dictionary) -> void:
+	var activity_view = view.duplicate(true)
+	activity_view.live_activity = true
+	var alibi = {"id": "alibi", "kind": "alibi", "source": "a", "subject": "a", "subjects": ["a"], "night": 1, "block": "", "observed_at": {"day": 1, "phase": "night"}}
+	var sighting = {"id": "seen", "kind": "sighting", "source": "player", "subject": "a", "subjects": ["a"], "night": 1, "block": "square", "observed_at": {"day": 1, "phase": "night"}}
+	var rates = {"gift_honesty:a": 0.8, "gift_accuracy:a:1": {"healthy": 0.9, "impaired": 0.0}, "testimony_honesty:a": 0.6}
+	var q = {"one": 0.5, "alibi": 0.001}
+	var without_alibi = Model.assess(activity_view, [report, sighting], {}, rates, q)
+	var caught = Model.assess(activity_view, [report, sighting, alibi], {}, rates, q)
+	check(_sum(caught.post) > 0.0 and range(caught.post.size()).all(func(index): return is_equal_approx(caught.post[index], 0.4 * without_alibi.post[index])), "a directly refuted alibi selects the testimony-dishonesty state without changing the gift likelihood or declaring guilt")
+	check(is_equal_approx(caught.acceptance.one, without_alibi.acceptance.one) and caught.acceptance.alibi == 0.0, "catching a whereabouts lie leaves the independent gift channel's acceptance intact")
 
 func _report(id: String, source: String) -> Dictionary:
 	return {"id": id, "kind": "report", "source": source, "role": "seer", "observed_at": {"day": 1, "phase": "night"}, "night": 1, "data": {"pair": ["c", "d"], "yes": true}}

@@ -4,6 +4,7 @@
 ## truthful gift declaration. No referee state or game RNG is available here.
 extends RefCounted
 const TimeModel = preload("res://workshop/chronology.gd")
+const Evidence = preload("res://workshop/live_evidence.gd")
 
 ## Poison given on night d lasts through the following day, until night d+1.
 static func window(at: Dictionary) -> int:
@@ -12,15 +13,23 @@ static func window(at: Dictionary) -> int:
 static func compile(view: Dictionary, cards: Array) -> Dictionary:
 	var plan = {"channels": [], "statements": [], "issues": []}
 	var indices = {}
+	var originals = {}
 	for card in cards:
 		var statement = {"card": card.duplicate(true), "identity": [], "content": [], "relay_identity": [], "relay_content": []}
 		if card.get("quoted", false):
 			plan.statements.append(statement)
 			continue # The statement exists without endorsing its disputed contents.
+		if card.kind in ["report", "claim"] and not _stamp(card.get("observed_at", {})):
+			plan.issues.append("Gift statement needs an original observation time: " + card.id)
+			continue
+		statement["origin"] = card.get("accuracy_origin", card.get("fact_id", card.id))
+		statement["body"] = _body(card)
+		var signature = Evidence.canonical(statement.body)
+		if originals.has(statement.origin) and originals[statement.origin] != signature:
+			plan.issues.append("Conflicting payloads share an original content identity: " + statement.origin)
+			continue
+		originals[statement.origin] = signature
 		if card.kind in ["report", "claim"]:
-			if not _stamp(card.get("observed_at", {})):
-				plan.issues.append("Gift statement needs an original observation time: " + card.id)
-				continue
 			var scope: String = TimeModel.source_key(view, card).trim_prefix("source:")
 			var honesty = _channel(plan, indices, "gift_honesty:" + scope, "gift_honesty", card.source)
 			statement.identity.append(honesty)
@@ -58,6 +67,19 @@ static func compile(view: Dictionary, cards: Array) -> Dictionary:
 		plan.statements.append(statement)
 	return plan
 
+## The original predicate, apart from its receipt/transmission metadata. A Medium
+## visit has its own conditional constraint; it must not be attached a second time
+## to the copied original. Payload fields used by the solver are retained.
+static func _body(card: Dictionary) -> Dictionary:
+	if card.kind == "report":
+		return {"kind": "report", "source": card.source, "role": card.role,
+			"data": Evidence.report_data(card.role, card.data), "observed_at": card.observed_at.duplicate(true),
+			"night": card.get("night", card.observed_at.day if card.observed_at.phase == "night" else -1)}
+	var body = card.duplicate(true)
+	for field in ["id", "fact_id", "accuracy_origin", "logical_origin", "route_origin", "relay_source", "relay_role", "relay_observed_at", "acquired_day", "learned_at", "reported_at", "text", "provenance", "provenance_paths", "disclosures"]:
+		body.erase(field)
+	return body
+
 static func _stamp(at: Dictionary) -> bool:
 	return at.get("day", -1) >= 0 and at.get("phase", "") in ["morning", "afternoon", "evening", "night"]
 
@@ -80,6 +102,7 @@ static func materialize(plan: Dictionary, state: PackedByteArray) -> Dictionary:
 	var result = {"cards": [], "accurate": [], "statements": []}
 	var claims = {}
 	var visits = {}
+	var emitted = {}
 	for statement in plan.statements:
 		var card: Dictionary = statement.card
 		result.statements.append(card.id)
@@ -100,8 +123,14 @@ static func materialize(plan: Dictionary, state: PackedByteArray) -> Dictionary:
 			if card.kind == "report" and _all(state, statement.identity):
 				_add_claim(result.cards, claims, card.source, card.role, card.observed_at)
 			continue
-		result.cards.append(card.duplicate(true))
-		result.accurate.append(card.id)
+		if not emitted.has(statement.origin):
+			emitted[statement.origin] = true
+			var body: Dictionary = statement.body.duplicate(true)
+			body["id"] = statement.origin
+			body["fact_id"] = statement.origin
+			result.cards.append(body)
+		if card.id not in result.accurate:
+			result.accurate.append(card.id)
 	return result
 
 static func _all(state: PackedByteArray, indices: Array) -> bool:
