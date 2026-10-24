@@ -1678,7 +1678,8 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 ##   secret    a good NPC's personal reason for being out, confessed;
 ##   red_herring / pair_other / misled / lying   against a reading that names them;
 ##   fear / desperation   when there's nothing else ("I know I'm not evil").
-## Each move's effect on listeners is a ledger entry of its own ("def:<id>:<day>:<move>"),
+## Each underlying defence has one stable ledger identity, independently of the
+## day it is repeated. A challenge to a different original reading is distinct.
 ## weighed by the listener's regard for the defender and the defender's credibility, so
 ## it rises and falls with them. Only a reveal carries real weight; the rest sway little.
 ## Evil defends as the good townsperson it pretends to be: its bluff stands in for its gift,
@@ -1703,6 +1704,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 	for x in out_items:
 		out_weight += x["contrib"]
 	var effs_by_move = {}
+	var defence_scopes = {}
 	# 1. A gift that walks at night explains being seen out.
 	if not out_items.is_empty() and C.ROLES.get(role, {}).get("night_walk", false):
 		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": 0.2}
@@ -1714,6 +1716,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 			lines.append(say(d, "I was out because I'm the %s. That's what you saw." % C.role_name(role)))
 			moves.append("reveal")
 			effs_by_move["reveal"] = [[d.id, -minf(0.35, out_weight), true, "excused: out at night as the %s" % C.role_name(role), ""]]
+			defence_scopes["reveal"] = {"type": "gift_claim", "role": role}
 	# 2. A personal secret explains it (good only: evil has nothing true to confess).
 	if moves.is_empty() and not out_items.is_empty() and not d.is_evil() and not d.secret.is_empty():
 		if decide(w, d, "defence_confess", {"facing_the_rope": 0.5, "privacy": (0.4 - trait_of(d, "privacy")) * 1.0}, "Confess my secret to explain being out?"):
@@ -1724,6 +1727,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 				"text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]})
 			moves.append("secret")
 			effs_by_move["secret"] = [[d.id, -minf(0.3, out_weight), true, "excused: a personal secret", ""]]
+			defence_scopes["secret"] = {"type": "secret_claim", "owner": d.id, "kind": d.secret.get("kind", "")}
 	# 3. Against a reading that names them.
 	if moves.size() < 2:
 		var rd = {}
@@ -1749,21 +1753,25 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 				lines.append(say(d, "%s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name))
 				moves.append("red_herring")
 				effs_by_move["red_herring"] = [[d.id, -0.12, true, "says they're the Seer's red herring", ""]]
+				defence_scopes["red_herring"] = {"type": "red_herring", "source": src_id}
 			elif pair.size() == 2 and d.id in pair:
 				var other: String = pair[0] if pair[1] == d.id else pair[1]
 				if w.by_id.has(other) and w.by_id[other].alive:
 					lines.append(say(d, "One of the two, %s said. It isn't me, so look at %s." % [src.name, w.by_id[other].name]))
 					moves.append("pair_other")
 					effs_by_move["pair_other"] = [[d.id, -0.06, true, "points at the other one in the pair", ""], [other, 0.06, true, "%s says it's the other one in the pair" % d.name, ""]]
+					defence_scopes["pair_other"] = {"type": "rival", "source": src_id, "other": other}
 			if moves.size() < 2 and not ("red_herring" in moves):
 				if trait_of(d, "confidence") > 0.6:
 					lines.append(say(d, "Then %s is lying, and you should ask yourselves why." % src.name))
 					moves.append("lying")
 					effs_by_move["lying"] = [[d.id, -0.05, true, "says the reading against them is a lie", ""], [src_id, C.DEFENCE_LIE_BLOWBACK, true, "%s says they lied" % d.name, ""]]
+					defence_scopes["lying"] = {"type": "challenge", "mode": "lying", "reading": WorkshopLedger.reading(src_id, rd).id}
 				else:
 					lines.append(say(d, "%s's gift could have been turned. It's happened before." % src.name))
 					moves.append("misled")
 					effs_by_move["misled"] = [[d.id, -0.06, true, "says the reading against them was misled", ""]]
+					defence_scopes["misled"] = {"type": "challenge", "mode": "misled", "reading": WorkshopLedger.reading(src_id, rd).id}
 	# 4. Nothing to show: fear, or the desperation play.
 	if moves.is_empty():
 		if _afraid(w, d) and not d.claim_public:
@@ -1773,12 +1781,22 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 			lines.append(say(d, "I don't know what's going on, but I know I'm not evil."))
 			moves.append("desperation")
 		effs_by_move[moves[0]] = [[d.id, -0.02, true, "pleads innocence", ""]]
+		defence_scopes[moves[0]] = {"type": "plea"}
 	for mv in effs_by_move:
+		var scope: Dictionary = defence_scopes[mv]
+		var identity: String = "def:%s:%s:%s" % [d.id, scope.type, JSON.stringify(WorkshopLedger.Evidence.canonical(scope)).sha256_text()]
+		var effects: Array = effs_by_move[mv].duplicate(true)
+		var strength = 1.0
+		if mv in ["reveal", "secret"]:
+			# Keep the strongest complete hearing, rather than borrowing a strong
+			# excuse's magnitude and a different hearing's stronger trust weight.
+			strength = -float(effects[0][1])
+			effects[0][1] = -1.0
 		for l in w.living():
 			if l == d:
 				continue
-			ledger_hear(w, l, "def:%s:%d:%s" % [d.id, w.day, mv], effs_by_move[mv], 0.5 + 0.5 * l.npc_trust.get(d.id, 0.5),
-				[d.id, -1, "report"], {"kind": "defence"})
+			ledger_hear(w, l, identity, effects, strength * (0.5 + 0.5 * l.npc_trust.get(d.id, 0.5)),
+				[d.id, -1, "report"], {"kind": "defence", "move": mv, "scope": scope.duplicate(true)})
 	w.dlog.think(d.id, "defence", "Defends against %s: %s." % [nominator_id, ", ".join(PackedStringArray(moves))], {"moves": moves, "evil": d.is_evil()})
 	return {"lines": lines, "facts": facts, "moves": moves}
 

@@ -604,6 +604,9 @@ reference can evaluate CaseEval's compact representatives and their multiplicity
 tests compare every legal world's baseline, posterior likelihood and accepted
 content against full enumeration at seven and ten people, including modifiers,
 private evidence and Medium routes. The three channel suites pass **40 checks**.
+A frozen full regular run passes **60/62** suites, with only the two established
+baseline failures; the production behavior is unchanged from the action slice,
+whose 45 slow trace checks passed.
 
 This foundation is **not connected to live assessment yet**. That integration must
 replace the unconditional `CaseEval._class_fits` / `claims_compatible` gate, supply
@@ -621,6 +624,43 @@ with the same likelihood mass. This is additional work compared with the old
 kernel, not a measured whole-town presentation or a live performance regression.
 `tools/profile_channel_likelihood.gd -- --npcs 10 --sources 3 [--classes]` reproduces
 the comparison. Logs: `logs/migration/resume/channels`.
+
+## P3 defence repeat identity (Codex, Oct 24)
+
+Native compatibility defences previously used `def:<person>:<day>:<move>`, so the
+same explanation reduced suspicion again on each later day. They now use stable
+semantic identities: a named gift, a confessed secret, a persistent red-herring
+claim, a rival about the same other person, or a challenge to an exact original
+reading. Fear and desperation are two wordings of the same plea. A challenge to a
+genuinely different original reading remains distinct.
+
+Gift and secret excuses keep the strongest complete hearing. Strength and trust
+from different hearings cannot be combined into a stronger path than either
+actually supplied. All first-hearing move strengths, regard weighting and the
+existing Confidence coefficient are retained; Q6 remains deferred. Evil covers
+receive the same stable ownership. This fixes the repeat bug in the compatibility
+route; converting the moves into shared claims/challenges still remains in P3.
+
+`test_defence_repeats.gd` passes **39 checks** across seven- and ten-person towns,
+including different plea wording, exact challenge roots, stronger hearings, trust,
+Confidence, covers and RNG. Five related suites pass. Full regression and slow
+trace are running on a frozen snapshot of the implementation.
+
+Paired ordinary fully shared ten-listener presentations: seed 692 **2451 -> 2386 ms**,
+seed 4242 **2674 -> 2749 ms**. No significant increase. The paired 54875 replay has
+identical agreement, suspicion, vote margins, coverage and tally: **1 yes / 5
+needed**, nine shared, zero fallback. Logs: `logs/migration/resume/defence`.
+
+## Current bot comparison in progress (frozen `0e60614`)
+
+A fresh 600-game comparison is running from the frozen channel-foundation snapshot
+(production behavior `d6eb589`, before the defence-repeat fix). It uses seeds
+1000–1149, 150 games in each of seven/ten-person active/passive modes. Detailed
+state sidecars are disabled using the already parity-checked `--no-trace` switch;
+ordinary developer logs and complete metrics remain. Two workers run the ten-person
+rows first, followed by the seven-person rows. The source snapshot will not change
+as implementation continues. This is a current intermediate measurement, not the
+final migration sign-off. Results and status: `logs/migration/resume/current-batches`.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 
