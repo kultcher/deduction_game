@@ -217,8 +217,9 @@ Sleepwalker behave per CASE_WORKSHOP_FINDINGS (its semantic rules are the test l
 1. **Defence moves** become what they are: a reveal is a walking-gift claim, a confessed
    secret is a secret card, red herring / misled / lying are challenges to a reading,
    pair_other is a rival theory, a plea is speech. Each is judged by the shared model
-   once, not re-added every day (fixes the stacking bug). Insight should discount
-   speech-only moves (54875: Insight currently plays no part here).
+   once, not re-added every day (fixes the stacking bug). Keep each move's legacy
+   strength and weighting (trust in the defender) for now; whether Insight should
+   discount speech-only moves is deferred (Q6).
 2. **NPC-to-NPC shares** (C3–C5) become receipts in the listener's own evidence with
    provenance (who told whom), credited by trust in the teller, deduplicated by the
    underlying fact.
@@ -238,10 +239,11 @@ Sleepwalker behave per CASE_WORKSHOP_FINDINGS (its semantic rules are the test l
    evidence, their private readings and accepted claims. It produces their baseline
    suspicion and rival theories, replacing the legacy ledger as the source of suspicion.
    Evil runs it on the shadow. Budget: under 50 ms for the town.
-2. **Belief and action:** feed the shared model's action output into nominations and
-   votes as an execution-priority term (CASE_REASONING; BACKLOG "agreement has to reach
-   the vote"). An accepted "X is evil" must be able to move a vote; when it doesn't,
-   the NPC says why.
+2. **Belief and action:** add the plumbing for an execution-priority term from the
+   shared model's action output into nominations and votes (CASE_REASONING; BACKLOG
+   "agreement has to reach the vote"), but ship it with weight 0 and the legacy vote
+   and nomination formulas unchanged (Q3 deferred). The NPC-says-why lines can come
+   with the tuning pass.
 3. **Reasons and provenance** for accusations, nominations and opinions come from the
    shared attribution, keeping the citing rules (public / told the player / private).
 4. Update the bot to read the same outputs.
@@ -263,22 +265,45 @@ pressure, disclosure and the vote formula.
   executions, evil hanged, and the "evil off the crowd" tell metric.
 - `tools/profile_live_presentation.gd` and `tools/profile_case_eval_town.gd`: stay
   inside the 5-second whole-town presentation budget.
-- A replay of case 54875's commands as a regression fixture: the accepted case should
-  now be able to pass a vote by Day 3 or 4 (exact numbers are a tuning question).
+- A replay of case 54875's commands as a regression fixture: it records each listener's
+  agreement, suspicion and vote margin for case #85. With Q3 and Q6 deferred it doesn't
+  assert that a vote passes; the tuning pass will use it.
 
 ## Decisions for the user (don't settle these in code)
+
+**Deferred to a later tuning pass (user, Oct 23): Q3 and Q6.** Until then, port the
+legacy values exactly and don't tune them:
+- **Q3, agreement to action:** keep `Mind._vote_impl`'s formula and `need`
+  (`0.5 − 0.12 × (confidence − 0.5) × 2 + 0.1 on day 1 − 0.4 × paranoia`), the player
+  terms (`player_votes_yes 0.25 × trust − 0.05`, `player_accuses 0.2 × trust`,
+  `player_defends −0.25 × trust`), `prefers_block −0.4`, Martyr reluctance, and the
+  nomination thresholds. The shared model keeps converting agreement into suspicion
+  with its current coefficients (CASE_REASONING step 3: stance thresholds, suspicion
+  coefficients, trust and confidence factors unchanged). No urgency term yet.
+- **Q6, Insight and Confidence:** keep what the legacy rules do today and carry it
+  across unchanged. Insight: `Argue._class_w` (speech weight 1.0 → 0.2,
+  circumstantial 1.0 → 0.6 as Insight rises), the unfounded and conflict routes, the
+  "that's not enough to go on" line, and the shared model's existing Insight attention
+  layer (`reasoner.gd`). Confidence: the `1.4 − 0.8 × confidence` scaling on suspicion
+  changes, its term in the vote and nomination thresholds, and the existing confidence
+  modes in the shared model. Where the legacy rules use neither (defence moves, crowd
+  talk), add nothing.
+- **Expected consequence:** the 54875 symptom (an accepted case that doesn't pass a
+  vote) will likely persist after the migration. That's the tuning pass's job, not a
+  migration bug. The 54875 replay fixture should record the numbers rather than assert
+  a vote passes.
 
 - **Q1.** Does a public accusation count as evidence, or stay a social signal outside
   belief (DESIGN today)?
 - **Q2.** Is a demon kill proof of good, or strong evidence (DESIGN wants the latter
   eventually)? It decides whether victims' suspicion and honesty can ever move.
-- **Q3.** The mapping from agreement to action: how much an accepted case moves a vote,
-  and the urgency term.
+- **Q3 (deferred).** The mapping from agreement to action: how much an accepted case
+  moves a vote, and the urgency term.
 - **Q4.** For each speech-like card (opinion, accusation, hint, refusal): weak
   testimony, or not presentable?
 - **Q5.** Strict mode in normal play: block unsupported cases always, or only in
   testing?
-- **Q6.** The roles of Insight and Confidence in judging (BACKLOG, 54875).
+- **Q6 (deferred).** The roles of Insight and Confidence in judging (BACKLOG, 54875).
 
 ## Related backlog items
 
