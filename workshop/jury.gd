@@ -400,8 +400,12 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			full_case.cards.append(id)
 	# Live belief/attention/action never read the exhaustive minimal-conflict list.
 	# Keep it available to the explicit diagnostic UI, out of every receipt refresh.
-	var assessment = Solver.analyze(view, full_case, knowledge, false)
-	var shared = Solver.analyze(view, case_data, {}, false)
+	# context.belief_refresh: the shared-union refresh keeps only effects, theories,
+	# reasoning and reading challenges. The two analyses below feed nothing but the
+	# spoken objection and "conflicting" wording, so a refresh skips them.
+	var refresh: bool = context.get("belief_refresh", false)
+	var assessment = {"status": "skipped"} if refresh else Solver.analyze(view, full_case, knowledge, false)
+	var shared = {"status": "skipped"} if refresh else Solver.analyze(view, case_data, {}, false)
 	var reasoning = Support.explain(view, original, listener)
 	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
 	if bounded:
@@ -460,7 +464,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 		"conclusion": conclusion.duplicate(true), "signature": signature, "report_acceptance": ev.acceptance.duplicate(true)}
 	var changes = _changes(view, previous.get("case", {}), case_data)
 	listener.case_memory[case_data.id] = {"signature": signature, "input_key": input_key, "version": case_data.version, "cards": case_data.cards.duplicate(), "strength": strength, "case": case_data.duplicate(true)}
-	var objection = _objection(view, case_data, listener, shared, assessment, best, pattern)
+	var objection = "" if refresh else _objection(view, case_data, listener, shared, assessment, best, pattern)
 	var stance = "accept" if best.agreement >= 0.6 else ("partial" if best.agreement >= 0.35 else "reject")
 	var response = _eval_response(view, case_data, best, stance, ev, conflict, repeated)
 	if bounded:
