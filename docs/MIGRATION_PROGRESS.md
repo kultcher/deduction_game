@@ -567,8 +567,8 @@ new urgency rule, suspicion adjustment or extra random draw was introduced.
 `test_workshop_action.gd` passes 84 checks, including exact vote score, threshold,
 margin and nomination parity at several boundary values, cover ownership, repeat
 and capability-loss behavior. Four related suites pass; the frozen full regular run
-passes **57/59**, with only the two established baseline failures. Slow trace is
-running on the frozen action slice. Logs: `logs/migration/resume/action`.
+passes **57/59**, with only the two established baseline failures. The frozen action
+slice also passes slow trace (45 checks). Logs: `logs/migration/resume/action`.
 
 Paired ten-listener presentations remain fully shared: seed 692 **2377 -> 2267 ms**,
 seed 4242 **2610 -> 2584 ms**. No significant added time. Both recorded behavior
@@ -578,6 +578,49 @@ delivery coverage and tally: **1 yes / 5 needed**, nine shared, zero fallback.
 Only command/profile timings differ. P4 nightly baseline solves, public citing
 reasons and bot integration remain; P5 deletion is still gated on the remaining
 replacements and measurements.
+
+## P2 source/channel likelihood foundation (Codex, Oct 24)
+
+`evidence_channels.gd` represents separate gift honesty, gift accuracy within a
+night-to-next-night poison window, whereabouts honesty and relay transmission.
+Failed accuracy relaxes a report's content while retaining a truthful gift claim;
+failed gift honesty relaxes both. A good person's whereabouts lie does not lower
+their gift accuracy. Quotation retains the statement without endorsing its content.
+A faithful Medium relay shares the original accuracy, retains the Medium's own
+gift and visit, and supplies no independent copy of the original content.
+
+`channel_likelihood.gd` is an exact reference marginalization over these states,
+using the joint role/route solver within each conditional state. Competing claims
+can be explained by dishonesty; impairment alone cannot excuse a duplicate unique
+gift. A known good person can lie without forcing their alignment evil. In a
+hypothetical Delusional world the model uses the impaired accuracy prior, and
+inaccurate content can still happen by chance. Submitted assumptions integrate out
+of the private baseline. Several paths to an inaccurate original content pay its
+chance likelihood once.
+
+An exact elimination skips channel variables once all constraints they affect are
+inactive. Conditional solves and private baselines are shared across states. The
+reference can evaluate CaseEval's compact representatives and their multiplicity;
+tests compare every legal world's baseline, posterior likelihood and accepted
+content against full enumeration at seven and ten people, including modifiers,
+private evidence and Medium routes. The three channel suites pass **40 checks**.
+
+This foundation is **not connected to live assessment yet**. That integration must
+replace the unconditional `CaseEval._class_fits` / `claims_compatible` gate, supply
+separate hearing and accuracy priors from the live contract, and replace the
+independent-per-reading accuracy distribution in `Jury._provisional`. Retaining
+one of those gates would still discard the very lying/impaired alternatives the
+channel model is meant to assess. Bounded attention and private rejection handling
+must retain the difference between a heard statement and its disputed contents.
+No live fallback or reduced-coverage timing is being claimed as progress here.
+
+Reference benchmark, native ten-person seed 692, three publicly stated readings
+from three sources: **27 conditional states, 15,120 worlds**. Full enumeration took
+**3097 ms** for one listener; compact representatives took **549 ms** (1,368 classes),
+with the same likelihood mass. This is additional work compared with the old
+kernel, not a measured whole-town presentation or a live performance regression.
+`tools/profile_channel_likelihood.gd -- --npcs 10 --sources 3 [--classes]` reproduces
+the comparison. Logs: `logs/migration/resume/channels`.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 
