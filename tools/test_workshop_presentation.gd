@@ -165,10 +165,11 @@ func _venues_and_mixed() -> void:
 			check(_close(vector, n.workshop_state.requested), "restoring source trust restores the same joint vector")
 			var unsupported_source = g.w.npcs.filter(func(p): return p != n and p != source and p != target)[0]
 			Mind.apply_info(g.w, n, unsupported_source, {"role": "hearthwitch", "day": 1, "data": {"nbrs": [source.id, target.id], "count": 1}}, 0.2)
-			check(n.workshop_state.active and not n.workshop_state.owned.has(Mind.info_eid(unsupported_source.id, {"role": "hearthwitch", "day": 1})), "independent unsupported readings retain native ownership without disabling supported evidence")
+			var unsupported_id = Mind.info_eid(unsupported_source.id, {"role": "hearthwitch", "day": 1, "data": {"nbrs": [source.id, target.id], "count": 1}})
+			check(n.workshop_state.active and n.ledger.has(unsupported_id) and not n.workshop_state.owned.has(unsupported_id), "independent unsupported readings retain native ownership without disabling supported evidence")
 			Mind.apply_info(g.w, n, source, {"role": "hearthwitch", "day": 1, "data": {"nbrs": [source.id, target.id], "count": 1}}, 0.2)
 			check(not n.workshop_state.active and n.workshop_state.issues.any(func(s): return "shares a source" in s), "unsupported reports from the same source cannot be treated as independent background evidence")
-			n.ledger[Mind.info_eid(source.id, {"role": "hearthwitch", "day": 1})].weight = 0.0
+			n.ledger[Mind.info_eid(source.id, {"role": "hearthwitch", "day": 1, "data": {"nbrs": [source.id, target.id], "count": 1}})].weight = 0.0
 			Mind.recompute_beliefs(g.w, n, "coupled unsupported reading withdrawn")
 			check(n.workshop_state.active, "removing the coupled unsupported contribution restores supported ownership")
 			var extra = _reading(g, unsupported_source, "hearthwitch", 1, {"nbrs": [source.id, target.id], "count": 1})

@@ -154,6 +154,10 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 		result.reported_at = result.learned_at.duplicate(true)
 	return result
 
+## Canonical ledger key for an original reading, independently of hearing paths.
+static func reading_key(receipt: Dictionary) -> String:
+	return "info:%s:%d:%s:%s" % [receipt.source, receipt.observed_at.day, receipt.content.role, receipt.id.trim_prefix("fact:")]
+
 static func report_data(role: String, data: Dictionary) -> Dictionary:
 	var result = {}
 	if role == "medium":

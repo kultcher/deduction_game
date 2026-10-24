@@ -414,7 +414,7 @@ static func fact_id(card: Dictionary) -> String:
 	var ss = ",".join(PackedStringArray(subj))
 	match k:
 		"info":
-			return info_eid(card.get("source", ""), {"day": card.get("day", -1), "role": card.get("role", "")})
+			return WorkshopLedger.Evidence.reading_key(WorkshopLedger.Evidence.normalize_card(card))
 		"sighting", "vigil", "alibi", "secret":
 			return "%s:%s:%s:%d:%d:%s" % [k, card.get("source", ""), ss, card.get("day", -1), card.get("phase", -1), card.get("block", "")]
 		"trace":
@@ -730,11 +730,13 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float, vi
 	if listener.is_evil():
 		shadow_run(w, listener, func(sh): apply_info(w, sh, source, entry, weight, via, anonymous))
 		return
-	var eid = info_eid(source.id, entry)
+	var receipt = WorkshopLedger.reading(source.id, entry, via)
+	var eid = WorkshopLedger.reading_key(receipt)
 	var fresh = not listener.ledger.has(eid)
 	var effs: Array = _info_effects(w, listener, source, entry, weight, fresh)
 	var receipts: Dictionary = listener.ledger.get(eid, {}).get("meta", {}).get("workshop_receipts", {}).duplicate(true)
-	var receipt = WorkshopLedger.reading(source.id, entry, via, anonymous)
+	if anonymous:
+		receipt = WorkshopLedger.reading(source.id, entry, via, true)
 	receipt["heard_in_public"] = anonymous or entry.get("shared", false) or receipts.get(receipt.id, {}).get("heard_in_public", false)
 	var paths: Array = receipts.get(receipt.id, {}).get("provenance_paths", []).duplicate(true)
 	if (via != "" or anonymous or not paths.is_empty()) and receipt.provenance not in paths:
@@ -744,7 +746,7 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float, vi
 	ledger_hear(w, listener, eid, effs, weight, [source.id, entry["day"], "reading"], {"kind": "reading", "workshop_receipts": receipts})
 
 static func info_eid(src: String, entry: Dictionary) -> String:
-	return "info:%s:%d:%s" % [src, entry["day"], entry["role"]]
+	return WorkshopLedger.reading_key(WorkshopLedger.reading(src, entry))
 
 ## The suspicion effects of one reading, at weight 1 (side effects only on first hearing).
 static func _info_effects(w, listener, source, entry: Dictionary, weight: float, fresh: bool) -> Array:

@@ -18,6 +18,11 @@ static func reading(source: String, entry: Dictionary, via: String = "", anonymo
 		card["anonymous"] = true
 	return Evidence.normalize_card(card)
 
+## Exact original reading, independently of how many times or through which
+## tellers it was heard. Source/day/role alone can alias different contents.
+static func reading_key(receipt: Dictionary) -> String:
+	return Evidence.reading_key(receipt)
+
 ## Exact original receipts, independent of legacy source/night support references.
 static func roots(cards: Array, board: Array, path: Array = []) -> Dictionary:
 	var result = {"complete": true, "receipts": {}}
@@ -118,13 +123,18 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	var prepared = Assess.prepare(input)
 	issues.append_array(prepared.issues.filter(func(issue): return not facts.is_empty() or issue != "No supported reading is presented."))
 	var aliases = {}
+	var coarse_aliases = {}
 	for receipt in input.evidence:
 		if receipt.kind != "info":
 			continue
 		var coarse = "info:%s:%d:%s" % [receipt.source, receipt.observed_at.day, receipt.content.role]
-		if aliases.has(coarse) and aliases[coarse] != receipt.id:
-			issues.append("Unresolved original reading identity: " + coarse)
-		aliases[coarse] = receipt.id
+		aliases[reading_key(receipt)] = receipt.id
+		if not coarse_aliases.has(coarse):
+			coarse_aliases[coarse] = []
+		coarse_aliases[coarse].append(receipt.id)
+	for coarse in coarse_aliases:
+		if coarse_aliases[coarse].size() == 1:
+			aliases[coarse] = coarse_aliases[coarse][0]
 	var owned = {}
 	var public_keys: Array = preload("res://workshop/public_evidence.gd").factors(prepared.view).map(func(f): return f.key)
 	for eid in ledger:
@@ -142,12 +152,19 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			continue
 		if kind == "tell" and meta.get("workshop_card", {}).get("kind") == "deduction" and not facts.is_empty():
 			issues.append("Unresolved deduction wrapper in old card testimony: " + eid)
-		if kind == "reading" and aliases.has(eid):
+		var reading_receipts: Dictionary = meta.get("workshop_receipts", {})
+		if kind == "reading" and coarse_aliases.has(eid) and reading_receipts.size() == 1 and reading_receipts.keys()[0] in coarse_aliases[eid]:
+			# Even an old coarse key is unambiguous when its original receipt was
+			# recorded exactly. Other statements on that day do not erase this proof.
+			owned[eid] = true
+		elif kind == "reading" and aliases.has(eid):
 			var receipts: Dictionary = meta.get("workshop_receipts", {})
 			if receipts.size() != 1 or not receipts.has(aliases[eid]):
 				issues.append("Reading ownership lacks an exact receipt: " + eid)
 			else:
 				owned[eid] = true
+		elif kind == "reading" and coarse_aliases.has(eid):
+			issues.append("Unresolved original reading identity: " + eid)
 		elif kind == "arg" and (_overlaps(entry, input.evidence) or _withdrawn(entry, withdrawn) or _presented(entry, presentations)):
 			var justifications: Array = entry.get("justs", [])
 			var certified = not justifications.is_empty() and meta.get("workshop_conclusion", "") in Assess.CONCLUSIONS
@@ -211,9 +228,12 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			var weight = player_weight
 			if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:")):
 				weight = 1.0
+				var hearing_weight = -1.0
 				for owner in owners[id]:
 					if owner.begins_with("reading:"):
-						weight = minf(weight, clampf(ledger[owner.trim_prefix("reading:")].weight, 0.0, 1.0))
+						hearing_weight = maxf(hearing_weight, clampf(ledger[owner.trim_prefix("reading:")].weight, 0.0, 1.0))
+				if hearing_weight >= 0.0:
+					weight = hearing_weight # Several paths retain the strongest hearing once.
 			prepared.listener.reading_reliability[id] *= weight
 		# Presentation weights add per-report uncertainty; enforce the budget AFTER
 		# introducing those dimensions as well as during ordinary preparation.

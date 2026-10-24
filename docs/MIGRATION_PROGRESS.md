@@ -643,13 +643,49 @@ route; converting the moves into shared claims/challenges still remains in P3.
 
 `test_defence_repeats.gd` passes **39 checks** across seven- and ten-person towns,
 including different plea wording, exact challenge roots, stronger hearings, trust,
-Confidence, covers and RNG. Five related suites pass. Full regression and slow
-trace are running on a frozen snapshot of the implementation.
+Confidence, covers and RNG. Five related suites pass. A frozen full regular run
+passes **61/63** suites, with only the two established baseline failures. Its
+slow trace run passes all **45 checks**.
 
 Paired ordinary fully shared ten-listener presentations: seed 692 **2451 -> 2386 ms**,
 seed 4242 **2674 -> 2749 ms**. No significant increase. The paired 54875 replay has
 identical agreement, suspicion, vote margins, coverage and tally: **1 yes / 5
 needed**, nine shared, zero fallback. Logs: `logs/migration/resume/defence`.
+
+## P2 exact original reading keys (Codex, Oct 24)
+
+Native reading entries now use the canonical original receipt, rather than only
+source/day/gift. Distinct same-day contents or observation phases get separate
+owners. Rewording, unordered groups, sharing flags and referee annotations do not
+create another original. Board facts use the same canonical key and respect an
+explicit observation stamp. Source lookup, spoken reading identity and withdrawal
+continue through `Mind.info_eid`, so they find the intended original rather than
+the first matching source/day entry.
+
+The shared ledger parks each exact native contribution and jointly assesses all
+original facts. Old coarse entries remain usable when their recorded exact receipt
+identifies one original. Missing or ambiguous proof still produces an explicit
+capability issue; it never chooses a sibling arbitrarily. If an identified old
+record coexists with a new one, the original is counted once at the strongest
+complete hearing weight. A weaker duplicate neither stacks nor weakens it.
+
+`test_workshop_reading_identity.gd` passes **75 checks** at seven and ten people,
+including strict delivery to every good/cover listener, canonical identity, native
+retraction, diagnostics, old/new coexistence and no assessment RNG draws. Eight
+related suites pass. The frozen regular run passes **62/64**, with only the two
+established baseline failures; the final explicit-stamp edge case also passes its
+targeted suites. Slow trace is running. Logs: `logs/migration/resume/reading-identity`.
+
+The paired 54875 replay retains identical agreement, suspicion, vote margins,
+delivery coverage and tally: **1 yes / 5 needed**, nine shared, zero fallback.
+This is an identity/coverage change, not a numerical optimization; recorded native
+ledger and dialogue keys change. Ordinary ten-listener timing was 2731 -> 2754 ms
+(692), and 3935 -> 3006 ms (4242) under concurrent test/bot load. Reversed replay
+pairs measured `present 89` at **4629 -> 4974 ms** and **4880 -> 4787 ms**: no
+consistent presentation regression. Nomination was **1205 -> 1320 ms** and
+**1333 -> 1389 ms**, an observed **56–115 ms increase (4–10%)** worth tracking as
+the longer keys flow through the live contract. All measurements retained full
+shared coverage.
 
 ## Current bot comparison in progress (frozen `0e60614`)
 

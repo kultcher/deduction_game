@@ -109,11 +109,22 @@ func _init() -> void:
 	check(not n.workshop_state.active and n.workshop_state.owned.is_empty(), "conversion chronology retracts joint ownership and falls back completely")
 	check(_close(n.suspicion, native), "conversion fallback restores the native reading effect")
 	g.w.public_log.clear()
-	# Legacy identities with distinct statements never silently certify one another.
+	# Distinct originals have exact native keys; old coarse records stay ambiguous.
 	var variant = entry.duplicate(true)
 	variant.data.count = 1
 	Mind.apply_info(g.w, n, source, variant, 0.5)
-	check(not n.workshop_state.active and not n.workshop_state.issues.is_empty(), "two receipts sharing a coarse legacy identity force explicit fallback")
+	var variant_eid = Mind.info_eid(source.id, variant)
+	check(n.workshop_state.active and eid != variant_eid and n.workshop_state.owned.has(eid) and n.workshop_state.owned.has(variant_eid), "different original readings sharing source/day/role acquire separate exact owners")
+	var old_ledger = n.ledger.duplicate(true)
+	var old = old_ledger[eid]
+	var coarse = "info:%s:%d:%s" % [source.id, entry.day, entry.role]
+	old.eid = coarse
+	old.meta.workshop_receipts.merge(old_ledger[variant_eid].meta.workshop_receipts)
+	old_ledger.erase(eid)
+	old_ledger.erase(variant_eid)
+	old_ledger[coarse] = old
+	var ambiguous = Shared.prepare(g.workshop_snapshot([], n.id), {}, old_ledger)
+	check(not ambiguous.ready and ambiguous.issues.any(func(issue): return "Unresolved original reading identity" in issue), "an ambiguous old coarse record still requires explicit fallback")
 	# A ghost is neither a particular NPC nor an oracle over hidden truth.
 	var before_ghost = _state(g)
 	var ghost = g.workshop_ghost_preview(ded)
@@ -171,7 +182,7 @@ func _advanced() -> void:
 		Mind.apply_info(g.w, n, source, {"day": 2, "phase": 0, "role": "dowser", "data": g.board[other - 1].data}, 0.6)
 		check(n.workshop_state.active and n.workshop_state.facts.size() == 1, "later independent learning joins the same shared fact")
 		var pref = [["pref:spare:" + target.id, 0.25, false, "preserved preference", ""], ["role:" + target.id + ":medium", 0.3, false, "preserved role", ""]]
-		var raw = n.ledger[Mind.info_eid(source.id, {"day": 2, "role": "dowser"})]
+		var raw = n.ledger[Mind.info_eid(source.id, {"day": 2, "phase": 0, "role": "dowser", "data": g.board[other - 1].data})]
 		raw.effects.append_array(pref)
 		Mind.recompute_beliefs(g.w, n, "non-suspicion ownership")
 		check(n.spare_pref.get(target.id, 0.0) > 0 and n.believed_roles.get(target.id) == "medium", "shared ownership preserves native preferences and role belief effects")
