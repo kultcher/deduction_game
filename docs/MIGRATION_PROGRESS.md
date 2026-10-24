@@ -431,11 +431,16 @@ the original receipts and refresh collateral beliefs. Real evil can retain its
 strategic reply; the returned engine flag reports whether the cover actually used
 shared belief evaluation, matching the existing filed-deduction path.
 
-The presentation suite passes 75 checks, including self support, collateral effects,
+The presentation suite passes 72 checks, including self support, collateral effects,
 cover delivery, non-stacking and no extra game RNG for self-defence. Dialogue-decision,
 ownership, live cognition and social-boundary suites pass. Newly covered self/group
 paths now pay for real evaluation; their large-town marginal cost has not yet been
 isolated. Curse capability and the remaining native fallback routes still need work.
+
+The playtest regression caught a missing social thank-you after routing self support
+through the evaluator. Restored the original one-time +.03 rapport and its repetition
+guard in the shared presentation boundary; receipt evaluation still runs first.
+All six related suites pass, including the actual command-level self-support check.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 
@@ -455,7 +460,11 @@ balance results and are not tuning targets. Seeds 1000–1149:
 
 All four 150-case batches have finished with no script errors. Active bot guards
 occurred at seven-person seed 1060 (fixed as described above) and ten-person seed
-1011 (current-source recheck pending). Ten-person active/passive elapsed 7834/8403 s
+1011. Both now finish on the current self/group-routing source, with no script error
+or guard exhaustion. The ten-person 1011 result is exactly equal with detailed trace
+on/off (104/111 s under concurrent load). Seven- and ten-person seed 1000 smokes
+also finish. These four-case checks are not replacement balance batches.
+Ten-person active/passive elapsed 7834/8403 s
 with detailed tracing and concurrent work. Fewer executions and fewer good wins
 are observations, not an established causal explanation or a passed balance
 criterion. In particular, passive ten-person good wins fell 20 -> 2: this intermediate

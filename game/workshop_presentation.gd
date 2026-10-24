@@ -186,7 +186,22 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		state.rewarded_facts[id] = true
 	var trust_before: float = n.trust
 	var pressure_before: float = n.pressure
-	if assessment.agreement >= 0.6 and not fresh.is_empty() and not repeated:
+	var self_support: bool = direction == "defend" and targets == [n.id] and venue == "private"
+	if self_support:
+		# Beliefs use the shared receipts; appreciation remains the original social
+		# response. Knowing oneself good supplies no evidential agreement bonus.
+		var support_key = "support_self:" + Mind.fact_id(card)
+		var already: bool = n.heard.has(support_key)
+		n.heard[support_key] = n.heard.get(support_key, 0) + 1
+		if already:
+			text = "You've told me that already. Thank you."
+		elif Mind.defend_strength(card, n.id) >= 0.2:
+			Mind.set_trust(g.w, n, n.trust + 0.03, "the Demonologist spoke up for me")
+			Mind.recompute_beliefs(g.w, n, " (self-support rapport)")
+			text = "Thank you for believing me."
+		else:
+			text = "I appreciate the support, but I'm not sure that explains it."
+	elif assessment.agreement >= 0.6 and not fresh.is_empty() and not repeated:
 		var reward_span = Profiler.open("trust_reward")
 		Mind.set_trust(g.w, n, n.trust + 0.02, "the presented reports support the argument")
 		Mind.recompute_beliefs(g.w, n, " (presentation trust reward)")
