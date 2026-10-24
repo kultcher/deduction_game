@@ -719,6 +719,10 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		"threshold": thr, "order": order, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"]}
 	meeting["results"].append(res)
 	meeting["pending"] = {}
+	# An aggregate process receipt is not another hostile act by the nominator.
+	# Individual vote_yes records above retain their existing social meaning.
+	public_event("vote", [nid], "town", {"nominee": nid, "nominator": nm["by"], "yes": yes.duplicate(), "no": no.duplicate(),
+		"player_yes": player_yes, "count": count, "threshold": thr, "outcome": outcome})
 	dlog.add("vote_tally", "world", nid, res)
 	if player_yes:
 		var t = by_id[nid]

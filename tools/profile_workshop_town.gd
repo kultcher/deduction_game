@@ -39,7 +39,7 @@ func _run() -> void:
 	var target = g.w.living_good()[0]
 	var listener = g.w.living_good().filter(func(n): return n != target)[0]
 	var context: Array = []
-	if "--silenced" in args or "--refusal" in args or "--gift-hint" in args or "--day-two" in args:
+	if "--silenced" in args or "--refusal" in args or "--gift-hint" in args or "--vote-context" in args or "--day-two" in args:
 		g.w.day = 2
 	if "--silenced" in args:
 		g.w.public_log.append({"day": 1, "kind": "silenced", "subjects": [target.id], "by": ""})
@@ -48,6 +48,15 @@ func _run() -> void:
 		context.append(g.add_card({"kind": "refusal", "source": target.id, "subject": [target.id], "day": 1, "phase": 3, "fear": true, "text": "Benchmark refusal of whereabouts"}))
 	if "--gift-hint" in args:
 		context.append(g.add_card({"kind": "hint", "source": target.id, "subject": [target.id], "day": 1, "phase": 0, "package": "official", "text": "Benchmark gift-family hint"}))
+	if "--vote-context" in args:
+		var yes: Array = g.w.npcs.slice(0, 2).map(func(n): return n.id)
+		var no: Array = g.w.npcs.filter(func(n): return n.id not in yes).map(func(n): return n.id)
+		var tally = {"nominee": target.id, "nominator": "player", "yes": yes, "no": no, "player_yes": false,
+			"count": yes.size(), "threshold": g.w.vote_threshold(), "outcome": "fails"}
+		g.w.public_log.append({"day": 1, "kind": "vote", "subjects": [target.id], "by": "town", "data": tally})
+		context.append(g.add_card({"kind": "vote", "source": "player", "subject": yes + [target.id], "day": 1, "phase": 2,
+			"nominee": target.id, "by": "player", "yes": yes, "no": no, "player_yes": false, "count": tally.count,
+			"threshold": tally.threshold, "outcome": tally.outcome, "text": "Benchmark public vote"}))
 	if "--outing" in args or "--private-errand" in args:
 		g.w.day = 2
 		context.append(g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "market", "text": "Benchmark night outing"}))
@@ -87,6 +96,7 @@ func _run() -> void:
 	result["silenced"] = "--silenced" in args
 	result["refusal"] = "--refusal" in args
 	result["gift_hint"] = "--gift-hint" in args
+	result["vote_context"] = "--vote-context" in args
 	result["cognition"] = "full/scale reference" if "--reference-cognition" in args else "native bounded/persistence"
 	result["reports"] = reports.size()
 	result["optimizations"] = {"priors": preload("res://workshop/support_model.gd").reuse_priors,

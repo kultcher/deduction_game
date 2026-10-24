@@ -442,6 +442,28 @@ through the evaluator. Restored the original one-time +.03 rapport and its repet
 guard in the shared presentation boundary; receipt evaluation still runs first.
 All six related suites pass, including the actual command-level self-support check.
 
+## Public vote receipts (Codex, Oct 24)
+
+The actual tally now publishes its public nominee, nominator, yes/no voters, player
+vote, count, threshold and outcome. The bridge copies only those public fields.
+Vote cards retain that receipt as neutral process context: they add no alignment
+likelihood or guilt by association. This also supplies dated, complete voter data
+needed for the forthcoming curse history model. Curse histories remain explicitly
+unsupported until that model is complete.
+
+The aggregate event is attributed to the town, keeping the existing individual
+`vote_yes` records' social meaning. Tests verify it adds no second hostility/heat
+credit, consumes no capture RNG, and does not pass non-public extra payload fields.
+The adapter rejects unknown people, overlapping/duplicate voter sets, mismatched
+counts/dates/outcomes and unannounced tallies. The new suite passes 49 checks,
+including real native votes and strict delivery to every seven- and ten-person
+listener/cover. The combined regular run passes **55/57 suites**, with only the
+two reproduced baseline failures.
+
+A ten-listener Day-2 pair measured 3170 ms without the card versus 3394 ms with it
+(+224 ms, about 7%), all shared with zero fallback. This single pair does not show a
+significant new runtime increase. Reports are under `logs/migration/resume/votes`.
+
 ## Intermediate bot measurements (frozen `0cfd073`)
 
 These runs precede Q1/Q4 and the bot rejection fix. They are not final-migration

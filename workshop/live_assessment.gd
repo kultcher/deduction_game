@@ -64,7 +64,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			cards.append(activity)
 			continue
 		if e.kind != "info" or e.content.get("role", "") not in ROLES:
-			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint"]:
+			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint", "vote"]:
 				result.issues.append("Incomplete or invalid %s card (%s)." % [e.kind, e.id])
 			else:
 				result.issues.append("The %s card%s isn't supported yet (%s)." % [e.kind, " (" + str(e.content.get("role")) + ")" if e.content.has("role") else "", e.id])
@@ -222,6 +222,25 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		return card # Public homes / reported haunts describe routes, not guilt.
 	if night < 0:
 		return {}
+	if e.kind == "vote" and e.source == "player" and e.observed_at.phase == "evening" and night >= 1:
+		var content: Dictionary = e.content
+		if content.get("nominee", "") not in ids or content.get("by", "") not in ids + ["player"] or not content.get("yes") is Array or not content.get("no") is Array or not content.get("player_yes") is bool:
+			return {}
+		var voters: Array = content.yes + content.no
+		if voters.is_empty() or not _group_valid(voters, ids) or content.get("count") != content.yes.size() + (1 if content.player_yes else 0) or not _count_valid(content.get("threshold"), ids.size() + 1) or content.threshold < 1 or content.get("outcome", "") not in ["fails", "on_block", "tie", "short_of_block"]:
+			return {}
+		var subjects: Array = []
+		for person in content.yes + [content.nominee]:
+			if person not in subjects:
+				subjects.append(person)
+		if not e.subjects.all(func(person): return person in subjects) or not subjects.all(func(person): return person in e.subjects):
+			return {}
+		if not snapshot.public_events.any(func(event): return event.kind == "vote" and event.at.day == night and event.get("data", {}).get("nominee") == content.nominee and event.get("data", {}).get("nominator") == content.by and event.get("data", {}).get("yes") == content.yes and event.get("data", {}).get("no") == content.no and event.get("data", {}).get("player_yes") == content.player_yes and event.get("data", {}).get("count") == content.count and event.get("data", {}).get("threshold") == content.threshold and event.get("data", {}).get("outcome") == content.outcome):
+			return {}
+		card["kind"] = "context"
+		card["context_kind"] = "vote"
+		card["data"] = {"nominee": content.nominee, "nominator": content.by, "yes": content.yes.duplicate(), "no": content.no.duplicate(), "player_yes": content.player_yes, "count": content.count, "threshold": content.threshold, "outcome": content.outcome}
+		return card # Public procedure, not guilt by association or majority vote.
 	if e.kind == "silenced" and e.source == "player" and e.observed_at.phase == "evening" and night >= 1 and e.subjects.size() == 1 and e.subjects[0] in ids:
 		if not snapshot.public_events.any(func(event): return event.kind == "silenced" and event.at.day == night and e.subjects[0] in event.subjects):
 			return {}
