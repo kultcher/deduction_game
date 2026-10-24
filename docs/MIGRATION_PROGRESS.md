@@ -200,6 +200,20 @@ also with full shared coverage. No significant added presentation cost was obser
 in these probes; the results do not establish late-game scaling. Reports are under
 `logs/migration/resume/nested`.
 
+## Public death cards (Codex, Oct 24)
+
+Public Demon-death receipts can be cited and owned through the shared path, alongside
+the existing execution-card adapter. A death card must match a public announcement,
+night, known person and public home; personal assertions are not promoted into
+public events. The receipt supplies existing chronology/context without awarding
+the already-public event again. Actual strict presentations retain both kinds of
+root. **This is card coverage, not the pending Q2 change:** the existing hard-good
+victim rule is still present and must become revisable 95% innocence evidence.
+
+Card-adapter suite: 57 checks pass. Six targeted suites pass, plus the nested-case
+regression checks. The ordinary seed-692 benchmark retains its exact behavior hash
+and zero fallbacks (2488 ms under four concurrent bot runs).
+
 ## Performance pass after review (Claude, Oct 24; branch `claude/perf-reuse`, merged)
 
 Profile of the replay's #85 presentation (9.6 s, nine listeners): `explain` 3.7 s self

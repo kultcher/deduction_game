@@ -60,7 +60,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			cards.append(activity)
 			continue
 		if e.kind != "info" or e.content.get("role", "") not in ROLES:
-			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "execution", "martyr", "knell"]:
+			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell"]:
 				result.issues.append("Incomplete or invalid %s card (%s)." % [e.kind, e.id])
 			else:
 				result.issues.append("The %s card%s isn't supported yet (%s)." % [e.kind, " (" + str(e.content.get("role")) + ")" if e.content.has("role") else "", e.id])
@@ -188,6 +188,16 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		return card # Public homes / reported haunts describe routes, not guilt.
 	if night < 0:
 		return {}
+	if e.kind == "death" and e.source == "player" and e.observed_at.phase == "night" and night >= 1 and e.subjects.size() == 1 and e.subjects[0] in ids:
+		if block != "" and block != snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home:
+			return {}
+		if not snapshot.public_events.any(func(event): return event.kind == "demon_death" and event.at == e.observed_at and e.subjects[0] in event.subjects):
+			return {}
+		# The public event already informs chronology and the listener's view.
+		# Citing its card retains that receipt without awarding it a second time.
+		card["kind"] = "context"
+		card["context_kind"] = "death"
+		return card
 	if e.kind == "totem" and e.source == "evidence" and block in C.BLOCKS:
 		card["kind"] = "totem"
 		card["data"] = {"candidates": snapshot.people.filter(func(p): return p.home == block).map(func(p): return p.id)}

@@ -17,6 +17,7 @@ func _init() -> void:
 	_opinions_are_not_evidence()
 	_totem()
 	_dropped_material()
+	_public_deaths()
 	print("Card adapters: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -104,6 +105,36 @@ func check(ok: bool, label: String) -> void:
 	if not ok:
 		fails += 1
 		push_error("FAIL: " + label)
+
+func _public_deaths() -> void:
+	var g = _game()
+	var listener = g.w.living_good()[0]
+	var target = g.w.npcs.filter(func(p): return p != listener)[0]
+	for raw in [
+		{"kind": "death", "source": "player", "subject": [target.id], "night": 1, "block": target.home_block, "text": "Public Demon death"},
+		{"kind": "execution", "source": "player", "subject": [target.id], "day": 2, "phase": 2, "text": "Public execution"}]:
+		var number = g.add_card(raw)
+		var value = Solver.empty_case()
+		var fact: String = Shared.Evidence.normalize_card(g.board[number - 1]).id
+		value.cards = [fact]
+		value.conclusion = {"type": "good", "target": target.id, "at": "Original alignment"}
+		var input = preload("res://game/workshop_canvas.gd").snapshot(g, value, listener.id)
+		var prepared = Assess.prepare(input)
+		check(prepared.ready and fact in prepared.case.cards, raw.kind + " is accepted as its original public receipt")
+		check(Shared.supported(Shared.Evidence.normalize_card(g.board[number - 1])), raw.kind + " has a shared owner")
+		if prepared.ready:
+			check(prepared.view.timeline.deaths.has(target.id), raw.kind + " carries public death timing into the common model")
+			var filed = preload("res://game/workshop_canvas.gd").file(g, value)
+			g.strict_evaluator = true
+			var result = g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
+			check(result.get("workshop", false) and fact in listener.workshop_state.facts, raw.kind + " stays a shared root in an actual strict presentation")
+		if raw.kind == "death":
+			var omitted = input.duplicate(true)
+			omitted.public_events = []
+			check(not Assess.prepare(omitted).ready, "a death receipt cannot manufacture a public death event")
+			var bad = input.duplicate(true)
+			bad.evidence.filter(func(e): return e.id == fact)[0].source = target.id
+			check(not Assess.prepare(bad).ready, "a personal assertion of a death is not a public announcement")
 
 func _opinions_are_not_evidence() -> void:
 	var g = _game()
