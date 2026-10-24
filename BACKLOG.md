@@ -815,6 +815,19 @@ exact values remain open. The code-derived examples and clarifications are in
   held ward leave a mark (a scorched sigil) as physical proof the demon came to that
   door. Feeds the "Protection + quiet night + sighting" template gap. (user, Oct 23)
   [decided]
+- **Votes and nominations ignore rank (Q3 pass).** (user question, Oct 24) Code check:
+  a good vote is an absolute bar (`Mind._vote_impl`: suspicion of the nominee + crowd
+  pressure + small terms ≥ about 0.43). The nomination walks `ranked_suspects` in order
+  and nominates the first not-yet-nominated person over its own absolute threshold, so a
+  second or third choice can be nominated if the first is taken. The only relative term
+  is `prefers_block` (−0.4 when the person already on the block is suspected at least as
+  much). Nothing lets an NPC say "not my first choice, but among my top suspects, so I'll
+  back the town's pick": an NPC with diffuse suspicion (0.3 on three people) can't vote for
+  any of them. Candidate: a rank-aware term for a nominee in the voter's top 3 at a
+  reasonable share of their top suspicion, through the shared execution-priority input
+  (wired at zero weight). Measure first: `autoplay.gd`'s AGREEMENT table (top-3 overlap,
+  peers' suspicion of each NPC's top suspect), after the impossible-refresh fix, since
+  that bug currently zeroes many voters. [decided: measure; design open]
 - **Supporting evidence in a case: logical where possible, vibes where not.** After the
   legacy migration. Example: an accusation that cites the accused's voting history ("she
   voted to hang people you think are good"). (user, Oct 24) [decided: the split;

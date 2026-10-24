@@ -752,6 +752,42 @@ result does not meet P0 sign-off. It predates Q1/Q4, Q2, event adapters and bot 
 current-source results are still required. Data and per-run script-error status are in
 `logs/migration/resume/adapters/batches`.
 
+## Impossible refreshes and the source-drop stopgap (Claude, Oct 24)
+
+**Finding.** Ten-person passive A/B, 50 seeds each, same source (`autoplay.gd` with and
+without `--native`): good wins 16% native vs 7% shared (Oct 23 legacy baseline 13%).
+Good NPCs' top suspicion is the same in both (about 0.30–0.41), but the voter's
+suspicion of the nominee is 0.43 native vs 0.32 shared; crowd pressure and the vote
+threshold barely differ. The gap is a split town: the share of voters at 0.4 or more is
+48% in both, while near-zero voters (under 0.15) rose from 13% to 31%. They are the
+High-Insight NPCs: 42% near-zero on evil nominees (native 18%).
+
+**Cause** (seed 1005, traced): 36 of 134 High and 23 of 53 Medium belief refreshes
+requested no change for anyone, every one with `CaseEval` `impossible` (no world fits
+the attended evidence), so `_consequences_eval` zeroed all effects. Low: 0 of 20. Two
+world-independent hard gates in `role_constraints.gd` are responsible: `routes.okay`
+(sightings and alibis taken as true) and unique-role claims (an evil bluff of a good
+NPC's role). One lie retracts a careful listener's whole belief state; attending fewer
+cards avoids contradictions, which inverts Insight. Example: Hollis (High, Gravedigger)
+held the poisoner at about 0.00 all game.
+
+**Stopgap** (`Jury._drop_contradicting_source`, belief refresh only): when the refresh
+is impossible, leave out one other source's cards at a time, least trusted first (never
+the listener's own readings, public events or physical evidence), and keep the first
+consistent set. It adds no suspicion of the dropped source; the refresh's `reasoning`
+records `contradiction` (`dropped_source`, `dropped_cards`, `tried`, or `unresolved`).
+Seed 1005: 59 impossible refreshes became 51 repaired + 8 unresolved; the dropped source
+was Agnes, an evil Breathstealer, 49 of 51 times. A contradiction is strong evidence
+against its liar, which the channel model should use.
+
+Declared behaviour change. 45/45 workshop/migration suites pass. 54875 replay: 9 shared,
+0 fallback; the case now files as #90 (an earlier conversation differs), **2 yes / 5
+needed** (Isolde now votes yes, margin +.14: her earlier "accept" with unchanged
+suspicion was this bug). Container timings (noisy, slower than the user's machine):
+search into meeting about 8.3 s (previously about 7 s), `present 90` 4.8 s, nomination
+2.1 s, `vote no` 1.2 s (previously about 0.25 s). Retried evaluations cost real time;
+replace with the channel model rather than extending.
+
 ## Performance pass after review (Claude, Oct 24; branch `claude/perf-reuse`, merged)
 
 Profile of the replay's #85 presentation (9.6 s, nine listeners): `explain` 3.7 s self

@@ -28,6 +28,26 @@ Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture),
 Psychologist remains metagame/context information for now (user, Oct 24); do not
 expand its automatic alignment reasoning.
 
+**Next for Codex (Claude review, Oct 24): live channel integration, with these acceptance
+tests.** Bot A/B runs (`autoplay.gd` with and without `--native`) found that a third or
+more of Medium/High-Insight belief refreshes come back *impossible*: no world fits the
+attended evidence, so `_consequences_eval` zeroes every effect, retracting suspicion the
+evidence had already earned. Two world-independent hard gates in
+`role_constraints.gd` cause it: `routes.okay` (every sighting/alibi taken as true) and
+unique-role claims (an evil bluff of a role a good NPC holds). One lie voids a careful
+listener's whole belief state. Low Insight attends too few cards to hit a contradiction,
+which inverts the Insight ordering. Details and numbers: MIGRATION_PROGRESS, "Impossible
+refreshes". A source-dropping stopgap is in `Jury._drop_contradicting_source`; replace it,
+don't extend it. The channel integration is done when:
+1. No belief refresh is impossible in a 50-game ten-person passive bot run because of a
+   lie: a contradiction is explained by some source lying or being impaired, and makes
+   that source more suspect.
+2. High-Insight NPCs aim at least as well as Medium (top suspect evil, Demon rank).
+3. What a listener says agrees with how far its belief moved (the 54875 replay had
+   Isolde "accept" at 1.00 agreement with Constance's suspicion unchanged at 0.10).
+4. The live version marginalizes per source given a world, not over every combination of
+   source states (the exact reference is 3^sources; use it only as a parity oracle).
+
 ## Terms
 
 - **Legacy rules:** the native belief code in `sim/mind.gd`, `sim/argue.gd`,
