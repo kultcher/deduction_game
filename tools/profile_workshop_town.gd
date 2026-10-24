@@ -36,12 +36,19 @@ func _run() -> void:
 				reports.append(g.add_card({"kind": "info", "source": person.id, "subject": [], "role": reading.role,
 					"day": reading.day, "phase": reading.get("phase", 3 if reading.day == 0 else 0),
 					"data": reading.data, "text": "Native %s: %s" % [reading.role, reading.text]}))
-	var board = Canvas.new(Live.view(g))
-	var root_id: String = board.selected
 	var target = g.w.living_good()[0]
 	var listener = g.w.living_good().filter(func(n): return n != target)[0]
+	var context: Array = []
+	if "--outing" in args or "--private-errand" in args:
+		g.w.day = 2
+		context.append(g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "market", "text": "Benchmark night outing"}))
+	if "--private-errand" in args:
+		context.append(g.add_card({"kind": "secret", "source": target.id, "subject": [target.id], "owner": target.id, "secret_kind": "debt", "day": 1, "phase": 3,
+			"text": "Benchmark private-errand claim"}))
+	var board = Canvas.new(Live.view(g))
+	var root_id: String = board.selected
 	board.nodes[root_id].conclusion.target = target.id
-	for number in reports:
+	for number in reports + context:
 		board.connect_cards("e:" + Evidence.normalize_card(g.board[number - 1]).id, root_id)
 	var number = Live.file(g, board.compile(root_id))
 	assert(number > 0)
@@ -66,6 +73,8 @@ func _run() -> void:
 	result = Profile.finish()
 	result["seed"] = seed_value
 	result["nested"] = "--nested" in args
+	result["outing"] = "--outing" in args or "--private-errand" in args
+	result["private_errand"] = "--private-errand" in args
 	result["cognition"] = "full/scale reference" if "--reference-cognition" in args else "native bounded/persistence"
 	result["reports"] = reports.size()
 	result["optimizations"] = {"priors": preload("res://workshop/support_model.gd").reuse_priors,

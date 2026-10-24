@@ -16,11 +16,11 @@ static func relevant(cards: Array) -> Array:
 ## Everything routes() and factors() read from a card list: the movement-relevant
 ## cards, relayed cards (in order) and each person's claimed role. Two listeners who
 ## differ only in other readings (Dowser, Surveyor, Clerk...) share one cache entry.
-static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionary = {}) -> Array:
+static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionary = {}, include_context: bool = false) -> Array:
 	var roles: Array = []
 	for person in view.people:
 		roles.append(role_of(cards, person.id, knowledge))
-	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "lamplighter", "veteran"])), roles]
+	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (c.kind == "report" and c.role in ["nightwatch", "lamplighter", "veteran"])), roles]
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):
@@ -172,7 +172,7 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	var observations = relevant(cards).filter(func(c): return not c.get("quoted", false) or c.kind == "alibi")
 	if observations.is_empty():
 		return []
-	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards)]
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true)]
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
@@ -262,7 +262,10 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 	return total
 
 static func _profile_paths(view: Dictionary, person: Dictionary, night: int, profile: String, cards: Array) -> Array:
-	var rate: float = {"demon": 1.0 if night > 0 else 0.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}[profile]
+	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
+	var rate: float = rates[profile]
+	if profile == "ordinary" and cards.any(func(c): return c.kind == "secret_claim" and not c.get("quoted", false) and c.subject == person.id and night >= c.applies.from and night <= c.applies.through):
+		rate = rates.secret # Existing private-errand rate, for this claimed night only.
 	if not History.alive_at_night(view, person.id, night):
 		return [{"path": [], "weight": 1.0}]
 	var destinations: Array = C.BLOCKS.keys()

@@ -233,7 +233,8 @@ func _refresh_case() -> void:
 		_clear(case_box)
 		var card: Dictionary = _report(node.card)
 		_label(case_box, card.support_note, 17, "accent")
-		if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "martyr", "sexton"] and not card.support_note.begins_with("FALLBACK"):
+		var editable: bool = (card.kind == "report" and card.role in Live.Assess.ROLES) or card.kind in ["sighting", "secret_claim"] or card.get("context_kind", "") == "psychologist"
+		if editable and not card.support_note.begins_with("FALLBACK"):
 			_question(card)
 		elif not card.support_note.begins_with("FALLBACK"):
 			_label(case_box, card.text, 18)

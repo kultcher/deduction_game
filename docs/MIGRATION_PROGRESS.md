@@ -35,7 +35,7 @@ rules are recorded decisions, not yet migrated behavior.
 Targeted suites cover revision/repeat contracts, location and totem adapters, exact
 root ownership after native receipts are parked, malformed payloads, shared dialogue,
 Insight/Confidence preservation and live UI delivery. Remaining P1 work includes the
-other event cards, hints/refusals, secrets, and removing the
+silence/curse event cards, hints/refusals, and removing the
 remaining native presentation routes after their replacements are measured.
 
 ## P0 implementation
@@ -261,7 +261,8 @@ adapters still need work.
 
 Psychologist suite: 65 checks pass. Social-evidence suite: 19 checks pass. Nine
 targeted suites pass, plus repeated checks of the final compatibility guards.
-The frozen full run (including trace parity) is under `logs/migration/resume/opinions/all`.
+The frozen full run (including trace parity) passes **50/52 suites**, with only the
+two documented baseline failures. It is under `logs/migration/resume/opinions/all`.
 The replay has the **same agreement, suspicion and 1-yes tally as the Q1 run**:
 nine shared, zero fallbacks; presentation 4092 ms versus 4023 ms, nomination 1110 ms
 versus 1097 ms. No significant presentation cost appeared in this slice.
@@ -273,6 +274,33 @@ now finishes on Day 5 with no guard exhaustion. Optional `autoplay.gd --no-trace
 skips detailed state sidecars while retaining ordinary logs and metrics; a tracing
 on/off run of seed 1060 produces identical result JSON. Presentation profiles and
 replay coverage checks continue to use full tracing.
+
+## Secret errand claims (Codex, Oct 24)
+
+Structured confessions and relayed secret stories are supported as `secret_claim`
+context. The owner, teller, original time and secret kind are preserved. A confession
+dated to one night explains only that night's ordinary activity; a generic recurring
+story supplies its stated historical interval. It uses the existing private-errand
+outing rate (.55) as an alternative to ordinary inactivity, without changing gift,
+Demon or minion rates or their profile weights. It never asserts an outing, an
+alignment or the hidden Lovers modifier. Multiple retellings do not multiply the
+alternative. Existing native defence-move entries still need P3 migration.
+
+The movement-factor cache includes secret context and its interval; hard route
+checks retain their smaller cache key because they do not read it. A claim by itself
+has no alignment effect. Explicit citations validate owner and night; the live
+editor now exposes the outing explanation controls and stores the original receipt.
+
+New suite: 18 checks pass, including actual live controls, date/owner validation,
+non-stacking, strict delivery and modifier independence. Eight evaluator regressions
+and five UI/context suites pass. Whole-town seed-692 probes, all ten listeners shared
+and no fallback: outing case 3305 ms; same case plus secret 3231 ms. No significant
+added presentation cost was observed. The default benchmark retains its exact
+behavior hash (2522 ms under concurrent bot runs). Reports are under
+`logs/migration/resume/secrets`.
+
+The user confirmed Psychologist can remain metagame information. Its existing
+context-only treatment stays; further automatic alignment inference is deferred.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 

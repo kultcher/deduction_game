@@ -357,7 +357,9 @@ func _question(card: Dictionary) -> void:
 			_edit())
 		_label(box, "Answers on a card outside this case or line have no effect.", 14, "muted")
 	var role: String = card.get("role", "")
-	if card.kind == "context" and card.get("context_kind", "") == "psychologist":
+	if card.kind == "secret_claim":
+		_label(box, "This claims a private errand that could explain an outing. It does not prove innocence, a particular secret modifier, or that the person was out.", 16, "muted")
+	elif card.kind == "context" and card.get("context_kind", "") == "psychologist":
 		_label(box, "This reports whom someone trusts and suspects. Those opinions do not establish anyone's alignment.", 16, "muted")
 	elif card.kind == "report" and role in ["surveyor", "dowser", "rumormonger", "lamplighter", "clerk", "archivist", "seer"]:
 		var prompt: String = {"surveyor": "Which blocks or residents account for the positives? A positive may be evil or Marked.", "dowser": "Who registered as evil in this reading? Marked is a possible explanation.", "rumormonger": "Which person is Marked in your explanation?", "lamplighter": "Who were the other people out? The Lamplighter is excluded.", "clerk": "If this reading is accurate, who holds the named good gift?", "archivist": "If this reading is accurate, who holds the named minion gift?", "seer": "What explains this Demon reading? A negative reading does not clear minions."}[role]
@@ -436,7 +438,7 @@ func _question(card: Dictionary) -> void:
 			var key = "%s:%d" % [id, card.night]
 			var labels: Array = ["? Unexplained", "Night gift â€” choose supporting claim", "Possibly evil activity"]
 			var reasons = ["unexplained", "gift", "evil"]
-			if session.scenario.public_view.has("movement_experiment"):
+			if session.scenario.public_view.has("movement_experiment") or session.scenario.public_view.get("live_activity", false):
 				labels.append("Private errand â€” choose supporting claim")
 				reasons.append("secret")
 			var option = _option(box, labels)

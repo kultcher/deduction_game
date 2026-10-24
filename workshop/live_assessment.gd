@@ -64,7 +64,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			cards.append(activity)
 			continue
 		if e.kind != "info" or e.content.get("role", "") not in ROLES:
-			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell"]:
+			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret"]:
 				result.issues.append("Incomplete or invalid %s card (%s)." % [e.kind, e.id])
 			else:
 				result.issues.append("The %s card%s isn't supported yet (%s)." % [e.kind, " (" + str(e.content.get("role")) + ")" if e.content.has("role") else "", e.id])
@@ -102,7 +102,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": epoch, "history": [],
 		"world_options": {"modifiers": snapshot.rules.modifier_options.duplicate()}, "scope": result.scope,
 		"timeline": History.from_events(snapshot.public_events)}
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event"] or c.get("role") in ["nightwatch", "veteran", "lamplighter", "sexton", "martyr"]):
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim"] or c.get("role") in ["nightwatch", "veteran", "lamplighter", "sexton", "martyr"]):
 		view["live_activity"] = true
 		view.world_options["roles"] = true
 		view.world_options["identities"] = true
@@ -187,6 +187,14 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["role"] = "psychologist"
 		card["data"] = e.content.data.duplicate(true)
 		return card # Opinions are context, even when the gift reports them accurately.
+	if e.kind == "secret" and e.source in ids and e.subjects.size() == 1 and e.subjects[0] in ids and e.content.get("owner", "") == e.subjects[0]:
+		if e.content.get("secret_kind", "") not in C.SECRETS.map(func(secret): return secret.kind) + ["lover"] or e.observed_at.day < 0 or e.observed_at.phase == "unknown" or (block != "" and block not in C.BLOCKS):
+			return {}
+		card["kind"] = "secret_claim"
+		card["night"] = -1 # Confessing an explanation does not prove an outing.
+		card["applies"] = {"from": night if e.observed_at.phase == "night" else 0, "through": night if e.observed_at.phase == "night" else snapshot.now.day}
+		card["data"] = {"secret_kind": e.content.secret_kind}
+		return card
 	if e.kind in ["home", "haunt"] and e.subjects.size() == 1 and e.subjects[0] in ids:
 		if e.kind == "home" and (block not in C.BLOCKS or snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home != block):
 			return {}
@@ -335,15 +343,22 @@ static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 		if not value.get(field, {}).is_empty():
 			issues.append("Not yet handled by the live evaluator: " + field + ".")
 	for key in value.get("reasons", {}):
-		if not value.reasons[key] is String or value.reasons[key] not in ["unexplained", "gift", "evil"]:
+		if not value.reasons[key] is String or value.reasons[key] not in ["unexplained", "gift", "evil", "secret"]:
 			issues.append("Unsupported reasons: " + str(value.reasons[key]))
 	for key in value.get("citations", {}):
 		if not value.citations[key] is String:
 			issues.append("Invalid activity citations: choose a supported claim.")
 			continue
-		var cited: Array = snapshot.evidence.filter(func(e): return e.id == value.citations[key] and e.kind == "claim")
-		if cited.is_empty() or not C.ROLES.get(cited[0].content.get("role", ""), {}).get("night_walk", false) or not str(key).begins_with(cited[0].source + ":") or value.citations[key] not in value.cards:
-			issues.append("Activity citations need an included walking-role claim for that person.")
+		var cited: Array = snapshot.evidence.filter(func(e): return e.id == value.citations[key] and e.kind in ["claim", "secret"])
+		var valid: bool = not cited.is_empty() and value.citations[key] in value.cards
+		if valid and cited[0].kind == "secret":
+			var context = activity_card(cited[0], snapshot)
+			var parts: PackedStringArray = str(key).split(":")
+			valid = not context.is_empty() and parts.size() == 2 and parts[0] == context.subject and parts[1].is_valid_int() and int(parts[1]) >= context.applies.from and int(parts[1]) <= context.applies.through
+		elif valid:
+			valid = C.ROLES.get(cited[0].content.get("role", ""), {}).get("night_walk", false) and str(key).begins_with(cited[0].source + ":")
+		if not valid:
+			issues.append("Activity citations need an included walking-role or applicable secret claim for that person.")
 	var claims: Array = [value] + value.get("arguments", []).map(func(a): return a.case)
 	if claims.size() > 7:
 		issues.append("Canvas exceeds the initial six-claim budget.")
