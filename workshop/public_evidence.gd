@@ -1,7 +1,30 @@
-## Public observations with finite alignment weight. No referee state is read.
+## Public observations and witnessed facts. No referee state is read.
 extends RefCounted
+const Evidence = preload("res://workshop/live_evidence.gd")
 
 const DEMON_VICTIM_GOOD = 0.95
+
+static func martyr_receipts(events: Array, ids: Array) -> Array:
+	var receipts = {}
+	for event in events:
+		var subjects: Array = event.get("subjects", [])
+		var actor: String = event.get("by", "")
+		var day: int = event.get("at", {}).get("day", -1)
+		if event.get("kind") != "martyr" or day < 1 or subjects.size() != 2 or subjects[0] == subjects[1] or actor not in subjects or not subjects.all(func(id): return id in ids):
+			continue
+		var saved: String = subjects[1] if subjects[0] == actor else subjects[0]
+		var receipt = Evidence.normalize_card({"kind": "martyr", "source": "player", "subject": [actor, saved], "martyr": actor, "saved": saved,
+			"day": day, "phase": 2, "text": "A public Martyr substitution."})
+		receipts[receipt.id] = receipt
+	return receipts.values()
+
+static func known_good(events: Array, ids: Array) -> Array:
+	var result: Array = []
+	for receipt in martyr_receipts(events, ids):
+		for person in receipt.subjects:
+			if person not in result:
+				result.append(person)
+	return result
 
 static func demon_victims(events: Array, ids: Array) -> Array:
 	var result: Array = []

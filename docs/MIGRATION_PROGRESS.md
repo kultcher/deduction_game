@@ -3,7 +3,8 @@
 Updated Oct 24, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
 
 The migration is **in progress**, not finished. P1 is partly implemented; P3
-consensus and Q4 opinion/context slices are implemented. The remaining P2 and P3 work, P4 and P5
+consensus, public death/silence/Martyr events and Q4 speech/context slices are implemented.
+The remaining P2 and P3 work, P4 and P5
 remain. Q3 and Q6 remain deferred. The Demon-victim rule now supplies finite 95:5
 innocence evidence; refusals supply weak suspicion and hints weakly support a
 tentative gift-family claim.
@@ -478,6 +479,42 @@ case and actual strict delivery to every living listener/cover. Martyr/Sexton an
 presentation suites pass. This fixes transport; the native Martyr proof entry is
 not yet migrated. The self/group-routing source also completed all 45 slow trace
 checks, in addition to its active trace-on/off smoke parity.
+
+## P3 shared Martyr proof (Codex, Oct 24)
+
+A witnessed substitution now supplies one automatic public receipt and its known
+gift identity, even without a player presentation. Notebook prose and reordered
+explicit-role wrappers resolve to the same structured receipt. Native `martyr:<day>`
+proof entries are certified and parked, including in evil cover minds. Their old
+-2 contribution no longer remains as an independent second evidence layer.
+
+Unlike the finite Demon-victim signal, the public Martyr rule proves both people
+good. The shared projection cancels the full independent baseline while retaining
+it under reversible ownership. Public reads retain that certainty between refreshes;
+independent additions remain recoverable beneath it. Turning ownership off/on restores
+exactly one native/shared contribution. The existing `cleared` knowledge flag still
+exempts these people from native paranoia drift; moving priors remains P3 work.
+Curse histories remain explicitly gated until dated current/original alignment is
+supported, rather than carrying a pre-curse proof into a new alignment epoch.
+
+Known public gift identity participates in role checks and their cache keys outside
+the card attention budget. Empty public-knowledge fields are omitted in ordinary
+cases. The isolated seed-692 and seed-4242 probes retain the exact pre-slice behavior
+hashes (`fe6dac...` and `12ae7619...`, respectively); all ten listeners use shared
+assessment, with no fallback. These are parity checks against `f1abd4b`, not the
+older pre-Q1/Q4 hash for seed 4242.
+
+The public-evidence suite passes **142 checks**, including every seven-/ten-person
+listener and cover, saturated baselines, automatic ownership, duplicate receipts,
+role identity, retraction and independent additions. Integration, presentation,
+reading-challenge, cognition, Medium, ownership and factor-cache checks pass. The full
+regular run passes **55/57 suites**, with only the two reproduced baseline failures.
+The slow trace run of the frozen proof source is still running.
+
+**Added runtime to flag:** an isolated native-event A/B measured 2 -> 45 ms for the
+seven-person town and 3 -> 384 ms for the ten-person town. Before, the proof stayed
+native; afterwards all six/nine surviving listeners have shared proof ownership,
+with no capability issues. Reports are under `logs/migration/resume/martyr`.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 

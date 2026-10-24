@@ -303,6 +303,8 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 		listener.sus_src[target_id] = src  # where the reason came from (a ledger entry id), for citing
 
 static func susp(n, target_id: String) -> float:
+	if n.workshop_state.get("active", false) and target_id in n.workshop_state.get("public_good", []):
+		return 0.0
 	return clampf(n.suspicion.get(target_id, 0.0), 0.0, 1.5)
 
 ## The stored vector is an exact, reversible sum. Consumers see bounded beliefs.

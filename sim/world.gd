@@ -796,13 +796,16 @@ func _martyr_dies(mart, saved, res: Dictionary) -> void:
 	public_event("martyr", [mart.id, saved.id], mart.id)
 	meeting["martyr"] = {"martyr": mart.id, "saved": saved.id}
 	dlog.add("martyr", mart.id, saved.id, {}, "%s (Martyr) dies in %s's place at the gallows. Both proven good." % [mart.name, saved.name])
-	for l in living_good():
+	for real in living():
+		var l = real.shadow if real.is_evil() else real
+		if l == null:
+			continue
 		var e: Array = []
 		for id in [mart.id, saved.id]:
 			if id != l.id:
 				l.cleared[id] = true
 				Mind._eff(e, id, -2.0, "the Martyr died in %s's place: proven good" % saved.id)
-		Mind.ledger_hear(self, l, "martyr:%d" % day, e, 1.0, [], {"kind": "proof"})
+		Mind.ledger_hear(self, l, "martyr:%d" % day, e, 1.0, [], {"kind": "martyr", "day": day})
 	_check_parity()
 
 ## The Revenant hangs with a totem hidden: a good soul who voted for it turns evil, and

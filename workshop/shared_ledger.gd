@@ -54,6 +54,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	var marked_questions: Array = []
 	var disputes: Array = []
 	var reading_challenges = {}
+	for receipt in preload("res://workshop/public_evidence.gd").martyr_receipts(input.public_events, input.people.map(func(p): return p.id)):
+		_add(facts, owners, receipt, "public")
 	for receipt in input.evidence:
 		if receipt.id in input.private_evidence and supported(receipt):
 			_add(facts, owners, receipt, "learned")
@@ -125,6 +127,9 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var entry: Dictionary = ledger[eid]
 		var meta: Dictionary = entry.get("meta", {})
 		var kind: String = meta.get("kind", "")
+		if kind in ["martyr", "proof"] and input.evidence.any(func(receipt): return receipt.kind == "martyr" and eid == "martyr:%d" % receipt.observed_at.day and not entry.get("effects", []).is_empty() and entry.effects.all(func(effect): return effect[0] in receipt.subjects and is_equal_approx(float(effect[1]), -2.0))):
+			owned[eid] = true
+			continue
 		if kind in ["demon_death", "silenced"] and eid in public_keys:
 			owned[eid] = true
 			continue
@@ -324,6 +329,23 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 		prepared.listener.reading_reliability[card.id] = route_weight * (1.0 - doubt)
 	# No headline: the union only asks how every suspicion moves (Jury.refresh).
 	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
+	var public_good: Array = preload("res://workshop/public_evidence.gd").known_good(plan.input.public_events, plan.input.people.map(func(p): return p.id))
+	if not public_good.is_empty():
+		result["public_good"] = public_good
+	# A witnessed proof replaces its old native clear exactly. It is not another
+	# capped .45 inference; the complete independent baseline stays retractable.
+	for person in public_good:
+		if person == prepared.listener.id or not result.effects.has(person):
+			continue
+		var effect: Dictionary = result.effects[person]
+		effect.requested = -float(suspicion.get(person, 0.0))
+		effect.after = 0.0
+		effect.applied = effect.requested
+		effect.delta = -effect.before
+		effect.route = "public_fact"
+		effect.posterior = 0.0
+		effect.evil_agreement = 0.0
+		effect.good_agreement = 1.0
 	if prepared.listener.get("confidence_mode") == "persistence":
 		# Registration is a separate theory, never an asserted identity or another
 		# suspicion award. Retain questions already considered as evidence changes.

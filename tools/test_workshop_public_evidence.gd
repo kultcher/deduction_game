@@ -13,6 +13,8 @@ func _init() -> void:
 	_live()
 	_silence()
 	_martyr_roles()
+	for size in [7, 10]:
+		_martyr_ownership(size)
 	print("Public evidence: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -128,10 +130,10 @@ func _silence() -> void:
 	var factor: Dictionary = single[0]
 	check(pow(2.0, factor.log2_ratio) > Public.victim_ratio() and factor.log2_ratio < 0.0, "silence's innocence signal stays weaker than Demon death")
 
-func _game():
+func _game(size: int = 7):
 	var g = Game.new()
 	g.detailed_logging = false
-	g.new_case(692, 7)
+	g.new_case(692, size)
 	for n in g.w.npcs:
 		for listener in [n, n.shadow]:
 			if listener == null:
@@ -179,6 +181,47 @@ func _martyr_roles() -> void:
 		var heard = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 		var listener = n.shadow if n.is_evil() else n
 		check(heard.get("workshop", false) and receipt.id in listener.workshop_state.facts, "a role-preserving Martyr receipt reaches " + n.id)
+
+func _martyr_ownership(size: int) -> void:
+	var g = _game(size)
+	g.w.day = 2
+	g.w.phase = 2
+	var actor = g.w.living_good()[0]
+	var saved = g.w.living_good()[1]
+	var observer = g.w.living_good()[2]
+	actor.role = "martyr"
+	for n in g.w.npcs:
+		for listener in [n, n.shadow]:
+			if listener != null:
+				for person in [actor.id, saved.id]:
+					if person != listener.id:
+						listener.suspicion[person] = 2.4
+	g.w._martyr_dies(actor, saved, {"by": "player", "yes": [], "player_yes": false})
+	for n in g.w.living():
+		var listener = n.shadow if n.is_evil() else n
+		check(listener.workshop_state.active and listener.workshop_state.owned.has("martyr:2"), "public Martyr proof is owned for " + n.id)
+		check(listener.ledger["martyr:2"].applied.values().all(func(v): return is_zero_approx(v)), "native Martyr proof is parked for " + n.id)
+		check(listener.workshop_state.facts.size() == 1 and listener.workshop_state.owners.values()[0] == ["public"], "uncited proof has one automatic public receipt for " + n.id)
+		check([actor.id, saved.id].all(func(person): return person == listener.id or (is_zero_approx(Mind.susp(listener, person)) and is_zero_approx(listener.suspicion[person]) and is_equal_approx(listener.workshop_state.outside[person], 2.4))), "a witnessed proof clears even saturated baselines without destroying them for " + n.id)
+	var before = observer.suspicion.duplicate(true)
+	var number = g.add_card({"kind": "martyr", "source": "player", "subject": [actor.id, saved.id], "martyr": actor.id, "saved": saved.id,
+		"day": 2, "phase": 2, "text": "The same witnessed substitution in the notebook"})
+	Mind.recompute_beliefs(g.w, observer, "proof on board")
+	check(_close(before, observer.suspicion) and observer.workshop_state.facts.size() == 1, "World proof and notebook prose share one receipt and one effect")
+	Mind.adjust(g.w, observer, saved.id, 0.12, "independent addition", "", false)
+	check(is_zero_approx(Mind.susp(observer, saved.id)), "readers retain public certainty while independent changes remain reversible")
+	Mind.recompute_beliefs(g.w, observer, "new independent baseline")
+	check(is_equal_approx(observer.workshop_state.outside[saved.id], 2.52) and is_zero_approx(observer.suspicion[saved.id]), "proof refresh preserves an independent addition under the clear")
+	# The empty direct snapshot has no headline, but its permitted knowledge is
+	# still well-defined independently of any player presentation.
+	var knowledge = Assess._listener(g.workshop_snapshot([], observer.id), []).knowledge
+	check(knowledge.public_roles.get(actor.id) == "martyr" and actor.id in knowledge.good and saved.id in knowledge.good, "the witnessed gift and alignments are public knowledge outside attention")
+	g.set_workshop_effects(false)
+	var restored = observer.suspicion.duplicate(true)
+	Mind.recompute_beliefs(g.w, observer, "native proof repeat")
+	check(_close(restored, observer.suspicion) and not observer.workshop_state.active, "disabling shared ownership restores one native proof, without stacking")
+	g.set_workshop_effects(true)
+	check(observer.workshop_state.active and is_zero_approx(observer.suspicion[saved.id]) and is_equal_approx(observer.workshop_state.outside[saved.id], 2.52), "re-enabling shared proof recovers the complete independent baseline")
 
 func _close(a: Dictionary, b: Dictionary) -> bool:
 	for id in a:

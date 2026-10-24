@@ -160,6 +160,8 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 				result.issues.append("Unsupported claim: " + str(conclusion.get("type", "unknown")))
 		if not snapshot.listener.is_empty():
 			result.listener = _listener(snapshot, cards)
+			if not result.listener.knowledge.get("public_roles", {}).is_empty():
+				view.world_options["roles"] = true
 			var uncertain = cards.filter(func(c): return c.source != snapshot.listener.id).map(func(c): return c.source)
 			var sources = {}
 			for source in uncertain:
@@ -535,11 +537,12 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 	var src: Dictionary = snapshot.listener
 	var reliability = {}
 	var good: Array = [src.id]
-	for event in snapshot.public_events:
-		if event.kind == "martyr":
-			for person in event.subjects:
-				if person not in good and person in snapshot.people.map(func(p): return p.id):
-					good.append(person)
+	var public_roles = {}
+	for receipt in preload("res://workshop/public_evidence.gd").martyr_receipts(snapshot.public_events, snapshot.people.map(func(p): return p.id)):
+		public_roles[receipt.content.martyr] = "martyr"
+		for person in receipt.subjects:
+			if person not in good:
+				good.append(person)
 	for card in cards:
 		reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), src.discounted.get(card.source + ":*", 0.0)) if card.kind == "report" else 1.0
 		if card.has("route_origin"):
@@ -548,14 +551,17 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 		if card.has("relay_source"):
 			reliability[card.accuracy_origin] = reliability[card.id]
 			reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.relay_source, card.relay_observed_at.day], 0.0), src.discounted.get(card.relay_source + ":*", 0.0))
-	return {"id": src.id, "name": src.name, "trust": src.trust, "confidence": src.confidence,
+	var result = {"id": src.id, "name": src.name, "trust": src.trust, "confidence": src.confidence,
 		"insight": src.insight, "reasoning_mode": src.get("reasoning_mode", "full"),
 		"confidence_mode": src.get("confidence_mode", "scale"), "theories": src.get("theories", {}).duplicate(true),
 		"npc_trust": src.npc_trust.duplicate(true), "suspicion": src.suspicion.duplicate(true),
-		"reading_reliability": reliability, "knowledge": {"self": src.id, "good": good, "own_role": src.own_gift,
+		"reading_reliability": reliability, "knowledge": {"self": src.id, "good": good, "own_role": src.own_gift, "public_roles": public_roles,
 			"own_reports": cards.filter(func(c): return c.id in snapshot.private_evidence).map(func(c): return c.id),
 			"attention_reports": cards.filter(func(c): return c.id in snapshot.private_evidence and (c.source == src.id or c.get("relay_source") == src.id)).map(func(c): return c.id), "own_outings": src.get("own_outings", {}).duplicate(true)},
 		"ledger": {}, "case_memory": {}}
+	if public_roles.is_empty():
+		result.knowledge.erase("public_roles")
+	return result
 
 static func _target(conclusion: Dictionary) -> String:
 	return conclusion.get("a", "") if conclusion.get("a", "") != "" else str(conclusion.get("group", [""])[0]) if not conclusion.get("group", []).is_empty() else ""

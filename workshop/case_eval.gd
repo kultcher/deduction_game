@@ -645,11 +645,13 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 		ones.fill(1.0)
 		return ones
 	var personal = {"self": knowledge.get("self", ""), "own_role": knowledge.get("own_role", ""), "own_outings": knowledge.get("own_outings", {})}
+	if not knowledge.get("public_roles", {}).is_empty():
+		personal["public_roles"] = knowledge.public_roles
 	var neutral_key = hash([cc.key, "neutral"])
 	if not _fits_cache.has(neutral_key):
 		_fits_cache[neutral_key] = _fits_over(view, cc, cards, {}, range(nc))
 	var neutral: PackedFloat64Array = _fits_cache[neutral_key]
-	if personal.own_role == "" and personal.own_outings.is_empty():
+	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
 		return neutral
 	var key = hash([cc.key, personal])
 	if not _fits_cache.has(key):

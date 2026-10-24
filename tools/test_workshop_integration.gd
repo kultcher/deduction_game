@@ -93,7 +93,7 @@ func _init() -> void:
 		cleared.public_events.append({"kind": "demon_death", "subjects": [target.id], "at": {"day": 1, "phase": "night"}})
 		var known = Assess.prepare(cleared)
 		check(target.id not in known.listener.knowledge.good and preload("res://workshop/public_evidence.gd").factors(known.view).any(func(f): return f.target == target.id and f.log2_ratio < 0.0), "uncited public Demon deaths supply finite evidence rather than hard good constraints")
-		cleared.public_events.append({"kind": "martyr", "subjects": [source.id, target.id], "at": {"day": 1, "phase": "evening"}})
+		cleared.public_events.append({"kind": "martyr", "subjects": [source.id, target.id], "by": source.id, "at": {"day": 1, "phase": "evening"}})
 		check(source.id in Assess.prepare(cleared).listener.knowledge.good, "a public Martyr sacrifice preserves its known-good participants")
 		for person in g.w.npcs:
 			if person != n:

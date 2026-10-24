@@ -89,6 +89,10 @@ static func _refresh(g, n, phase: String) -> void:
 		state.theories = proposal.get("theories", state.get("theories", {})).duplicate(true)
 		state.reasoning = proposal.get("reasoning", {}).duplicate(true)
 		state.reading_challenges = proposal.get("reading_challenges", []).duplicate(true)
+		if proposal.get("public_good", []).is_empty():
+			state.erase("public_good")
+		else:
+			state["public_good"] = proposal.public_good.duplicate()
 		# Theory commitment is idempotent for the same evidence/baseline. Cache the
 		# post-commit input too, so parking a native receipt cannot redo the entire
 		# union merely because the first pass filled in its own memory.

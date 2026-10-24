@@ -11,7 +11,7 @@ static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: D
 	var ids: Array = view.people.map(func(p): return p.id)
 	if not reuse:
 		return _fits_view(view, ids, world, cards, knowledge, answers)
-	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers]
+	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {})]
 	var key = hash(input)
 	if not cache.has(key) or cache[key].input != input:
 		if cache.size() >= 64:
@@ -31,7 +31,7 @@ static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledg
 		out.fill(1)
 		return out
 	var ids: Array = view.people.map(func(p): return p.id)
-	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers]
+	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {})]
 	var key = hash(input)
 	if not cache.has(key) or cache[key].input != input:
 		if cache.size() >= 64:
@@ -132,6 +132,11 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 	var own: int = ids.find(knowledge.get("self", ""))
 	if own >= 0 and knowledge.get("own_role", "") in C.ROLES:
 		assignments[knowledge.own_role] = 1 << own
+	for person in knowledge.get("public_roles", {}):
+		var index: int = ids.find(person)
+		var role: String = knowledge.public_roles[person]
+		if index < 0 or world.evil & (1 << index) or not _assign(assignments, role, 1 << index):
+			return false
 	var seer = ""
 	var veteran_night = -1
 	var martyr_target = ""

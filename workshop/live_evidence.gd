@@ -119,7 +119,7 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 		issues.append("original_report_time_unknown")
 	if kind not in KINDS:
 		issues.append("evidence_kind_unsupported")
-	if kind not in ["info", "claim", "sighting", "alibi", "conversation", "home", "dropped"] or "report_semantics_unsupported" in issues:
+	if kind not in ["info", "claim", "sighting", "alibi", "conversation", "home", "dropped", "martyr"] or "report_semantics_unsupported" in issues:
 		# Several legacy cards carry semantics only in their visible text. Retain that
 		# receipt; do not invent a structured interpretation or merge distinct scenes.
 		content["statement"] = card.get("text", "")
