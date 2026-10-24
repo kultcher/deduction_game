@@ -2684,6 +2684,7 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 		# Shadow self (step 2): the good self hears the case too, and its reply is the one
 		# given, unless it's about them or breaking cover to protect a teammate is worth it.
 		var sr = shadow_eval(w, n, func(sh): return hear_accusation(w, sh, suspect, card)) if C.SHADOW_SELF else null
+		er["workshop"] = sr != null and sr.get("workshop", false)
 		if sr == null or suspect == n or (times > 0 and not sr.get("workshop", false)):
 			return er
 		if Evil.is_teammate(w, n, suspect.id):
@@ -2748,7 +2749,17 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 	var group: Array = whos if whos is Array else [whos]
 	var who = group[0]
 	var gname: String = who.name if group.size() == 1 else " and ".join(PackedStringArray(group.map(func(x): return x.name)))
+	# A self-directed defence can carry evidence about other people too. Hear
+	# its roots before the social thanks, just like any other presentation.
+	if not n.is_evil() and w.workshop_present.is_valid():
+		var interpreted: Dictionary = w.workshop_present.call(n, card, group.map(func(p): return p.id), "defend", "private", true)
+		if not interpreted.is_empty():
+			return interpreted
 	if group.size() == 1 and who.id == n.id:
+		var shared_self = false
+		if n.is_evil() and C.SHADOW_SELF and n.workshop_state.get("enabled", false):
+			var own_defence = shadow_eval(w, n, func(sh): return hear_defence(w, sh, whos, card))
+			shared_self = own_defence != null and own_defence.get("workshop", false)
 		var key = "support_self:" + fact_id(card)
 		var repeated: bool = n.heard.has(key)
 		n.heard[key] = n.heard.get(key, 0) + 1
@@ -2759,14 +2770,14 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 			lines.append(say(n, "Thank you for believing me."))
 		else:
 			lines.append(say(n, "I appreciate the support, but I'm not sure that explains it."))
-		return {"lines": lines, "facts": [], "repeated": repeated}
+		return {"lines": lines, "facts": [], "repeated": repeated, "workshop": shared_self}
 	if n.is_evil():
 		var r = w.rng.randf()
 		if who.is_evil():
 			lines.append(say(n, "Fair enough. I'll think better of %s." % who.name if r < 0.6 else "Maybe. I'll keep an open mind about %s." % who.name))
 		else:
 			lines.append(say(n, "Maybe. I'll keep an open mind about %s." % who.name if r < 0.7 else "That doesn't clear %s." % who.name))
-		var dr = shadow_eval(w, n, func(sh): return hear_defence(w, sh, whos, card)) if C.SHADOW_SELF and not (n in group) else null
+		var dr = shadow_eval(w, n, func(sh): return hear_defence(w, sh, whos, card)) if C.SHADOW_SELF and (not (n in group) or n.workshop_state.get("enabled", false)) else null
 		if dr != null:
 			# Evil would rather a good person stay suspect: worth more if they're a threat.
 			var threats = group.filter(func(x): return not x.is_evil())
@@ -2775,11 +2786,7 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 				stakes += 0.3 + (0.3 if Evil.intel_threat(n, x.id) > 0.0 else 0.0)
 			if threats.is_empty() or not evil_override(w, n, "private defence", stakes, 0.5, "the Demonologist speaking for %s" % gname):
 				return dr
-		return {"lines": lines, "facts": []}
-	if w.workshop_present.is_valid():
-		var interpreted: Dictionary = w.workshop_present.call(n, card, group.map(func(p): return p.id), "defend", "private", true)
-		if not interpreted.is_empty():
-			return interpreted
+		return {"lines": lines, "facts": [], "workshop": dr != null and dr.get("workshop", false)}
 	var h = {"times": 0, "gain": 0.0}
 	var strength = 0.0
 	for x in group:
@@ -2813,7 +2820,7 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 			if x.is_evil():
 				Evil.add_intel(w, n, "player_suspects", x.id, 0.0, "the Demonologist thinks it's one of %s" % gname)
 		lines.append(say(n, "Maybe. I'll keep an eye on them both." if w.rng.randf() < 0.6 else "That... does look bad for one of them."))
-		var gr = shadow_eval(w, n, func(sh): return hear_group_case(w, sh, group, card)) if C.SHADOW_SELF and not (n in group) else null
+		var gr = shadow_eval(w, n, func(sh): return hear_group_case(w, sh, group, card)) if C.SHADOW_SELF and (not (n in group) or n.workshop_state.get("enabled", false)) else null
 		if gr != null:
 			var mates = group.filter(func(x): return Evil.is_teammate(w, n, x.id))
 			var stakes = 0.0
@@ -2821,7 +2828,7 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 				stakes += 0.5 * Evil.teammate_value(w, x.id) * (0.3 + Evil.public_heat(w, x))
 			if mates.is_empty() or not evil_override(w, n, "private group case", stakes, 0.5, "a case against %s" % gname):
 				return gr
-		return {"lines": lines, "facts": []}
+		return {"lines": lines, "facts": [], "workshop": gr != null and gr.get("workshop", false)}
 	var gain = 0.0
 	var times = 0
 	if w.workshop_present.is_valid():

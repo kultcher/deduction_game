@@ -414,13 +414,28 @@ against public content. The filing guard permits this tentative support for a go
 premise, while its existing rejection of merely restating a complete role claim
 remains. The new hint suite passes 42 checks, including actual strict delivery to
 every seven- and ten-person listener/cover, contradictions, repetitions, malformed
-payloads and withdrawal. Refusal and argument suites also pass. The full regular
-run of the combined speech source is running.
+payloads and withdrawal. Refusal and argument suites also pass. The combined speech
+source passes **54/56 regular suites**, with only the two reproduced baseline failures.
 
 **Added runtime to flag:** one ten-listener Day-2 pair measured 3181 ms without the
 hint versus 3558 ms with it (+377 ms, about 12%), all ten shared with zero fallback.
 The extra report/attention work is included; this is not an isolated evaluator-only
 cost. Reports are under `logs/migration/resume/hints`.
+
+## P1 self/group presentation routing (Codex, Oct 24)
+
+Raw self-defence previously returned thanks before its shared callback, discarding
+the card's evidence about other people. Evil listeners also skipped their cover
+assessment when included in a raw defence/accusation group. Those paths now hear
+the original receipts and refresh collateral beliefs. Real evil can retain its
+strategic reply; the returned engine flag reports whether the cover actually used
+shared belief evaluation, matching the existing filed-deduction path.
+
+The presentation suite passes 75 checks, including self support, collateral effects,
+cover delivery, non-stacking and no extra game RNG for self-defence. Dialogue-decision,
+ownership, live cognition and social-boundary suites pass. Newly covered self/group
+paths now pay for real evaluation; their large-town marginal cost has not yet been
+isolated. Curse capability and the remaining native fallback routes still need work.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 
@@ -433,11 +448,20 @@ balance results and are not tuning targets. Seeds 1000–1149:
 | 7 active, intermediate | 35 | 116 / 171 | 55 | 149 complete; 1 bot guard |
 | 7 passive, original baseline | 8 | 119 / 147 | 28 | 150 complete |
 | 7 passive, intermediate | 3 | 47 / 62 | 15 | 150 complete |
+| 10 active, original baseline | 28 | 318 / 430 | 112 | 150 complete |
+| 10 active, intermediate | 22 | 255 / 336 | 81 | 149 complete; 1 bot guard |
+| 10 passive, original baseline | 20 | 227 / 307 | 80 | 150 complete |
+| 10 passive, intermediate | 2 | 128 / 151 | 23 | 150 complete |
 
-The incomplete active seed is 1060, fixed as described above. The ten-person rows
-are still running. Fewer executions and fewer good wins are observations, not an
-established causal explanation or a passed balance criterion. Data and per-run
-script-error status are in `logs/migration/resume/adapters/batches`.
+All four 150-case batches have finished with no script errors. Active bot guards
+occurred at seven-person seed 1060 (fixed as described above) and ten-person seed
+1011 (current-source recheck pending). Ten-person active/passive elapsed 7834/8403 s
+with detailed tracing and concurrent work. Fewer executions and fewer good wins
+are observations, not an established causal explanation or a passed balance
+criterion. In particular, passive ten-person good wins fell 20 -> 2: this intermediate
+result does not meet P0 sign-off. It predates Q1/Q4, Q2, event adapters and bot filtering;
+current-source results are still required. Data and per-run script-error status are in
+`logs/migration/resume/adapters/batches`.
 
 ## Performance pass after review (Claude, Oct 24; branch `claude/perf-reuse`, merged)
 

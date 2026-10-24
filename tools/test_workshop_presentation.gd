@@ -13,6 +13,7 @@ func _init() -> void:
 	_scrutiny_and_cover()
 	_intermediate()
 	_private_reasons()
+	_self_support_paths()
 	print("Workshop presentation: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -307,6 +308,36 @@ func _private_reasons() -> void:
 	Mind.apply_info(g.w, n, source, rumor, 1.0)
 	check(Mind.reason_status(g.w, n, target.id).kind == "public", "explicit public disclosures make independently learned joint roots citable")
 	check(_close(before, n.workshop_state.requested), "publishing already learned roots changes disclosure, not evidence strength")
+
+func _self_support_paths() -> void:
+	var g = _game()
+	var n = g.w.living_good()[0]
+	var source = g.w.living_good()[1]
+	var target = g.w.living_good()[2]
+	var number = _reading(g, source, "dowser", 1, {"group": [target.id], "count": 1})
+	g.set_workshop_effects(true)
+	var root = Evidence.normalize_card(g.board[number - 1]).id
+	var heard = Mind.hear_defence(g.w, n, n, g.board[number - 1])
+	check(heard.get("workshop", false) and root in n.workshop_state.facts, "a raw self-defence hears the evidence before deciding its reply")
+	check(n.workshop_state.requested.get(target.id, 0.0) > 0.0, "a self-defence can update collateral beliefs about others")
+	var evil = g.w.npcs.filter(func(p): return p.is_evil())[0]
+	var rng = g.w.rng.state
+	var own = Mind.hear_defence(g.w, evil, evil, g.board[number - 1])
+	check(own.get("workshop", false) and root in evil.shadow.workshop_state.facts, "evil's self-defence delivers the same evidence to its cover")
+	check(g.w.rng.state == rng, "evaluating a self-defence adds no game RNG draw")
+	# Put the accused listener first: its self-good check must not discard all
+	# collateral evidence from the group submission.
+	var group_reply = Mind.hear_group_case(g.w, evil, [evil, target], g.board[number - 1])
+	check(evil.shadow.workshop_state.presentations.keys().any(func(key): return str(key).begins_with("direct:%d:accuse:" % number)), "an accusation group containing evil still reaches its cover")
+	check(group_reply.get("workshop", false), "a strategic evil group reply still reports the actual shared belief engine")
+	var defence_reply = Mind.hear_defence(g.w, evil, [evil, target], g.board[number - 1])
+	check(evil.shadow.workshop_state.presentations.keys().any(func(key): return str(key).begins_with("direct:%d:defend:" % number) and target.id in str(key)), "a defence group containing evil still reaches its cover")
+	check(defence_reply.get("workshop", false), "a strategic evil defence still reports shared belief delivery")
+	var accused = Mind.hear_accusation(g.w, evil, evil, g.board[number - 1])
+	check(accused.get("workshop", false), "an evil self-accusation keeps its mask while reporting shared belief delivery")
+	var fixed = evil.shadow.suspicion.duplicate(true)
+	Mind.recompute_beliefs(g.w, evil.shadow, "self/group repeat")
+	check(_close(fixed, evil.shadow.suspicion), "self and group roots cannot stack their original evidence")
 
 func _close(a: Dictionary, b: Dictionary) -> bool:
 	return a.size() == b.size() and a.keys().all(func(k): return b.has(k) and absf(a[k] - b[k]) < 0.000001)
