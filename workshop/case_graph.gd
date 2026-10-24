@@ -32,7 +32,11 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 			positive.sort()
 			var existing: Array = result.answers.get(id, {}).get("positive", []).duplicate()
 			existing.sort()
-			if result.answers.has(id) and existing != positive:
+			var blocks: Array = line.answers[id].get("blocks", []).duplicate()
+			blocks.sort()
+			var existing_blocks: Array = result.answers.get(id, {}).get("blocks", []).duplicate()
+			existing_blocks.sort()
+			if result.answers.has(id) and (existing != positive or existing_blocks != blocks):
 				errors.append("%s: supporting lines give different answers to %s; put alternatives in a separate explanation." % [line.label, id])
 			result.answers[id] = line.answers[id].duplicate(true)
 		for key in line.get("reasons", {}):

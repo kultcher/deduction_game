@@ -1,6 +1,7 @@
 ## Small exhaustive constraint solver. Receives public evidence only, never hidden truth.
 ## Counts measure compatible assignments, NOT posterior probabilities.
 extends RefCounted
+const C = preload("res://sim/content.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const Roles = preload("res://workshop/role_constraints.gd")
 
@@ -226,15 +227,17 @@ static func _build_universe(view: Dictionary) -> Array:
 
 ## For one report (or curse event) card: a byte per universe world, 1 where the card's
 ## content holds as a healthy reading from a good source (cached by exact inputs).
-static func report_table(view: Dictionary, card: Dictionary, positive: Array = []) -> PackedByteArray:
+static func report_table(view: Dictionary, card: Dictionary, positive: Array = [], positive_blocks: Array = []) -> PackedByteArray:
 	var universe_key = _universe_key(view)
 	var universe: Array = universe(view)
 	positive = positive.duplicate()
 	positive.sort()
+	positive_blocks = positive_blocks.duplicate()
+	positive_blocks.sort()
 	# Homes affect Surveyor blocks; kind/event distinguish public process cards.
 	# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
 	var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.source,
-		card.get("role", ""), card.observed_at, card.data, positive]
+		card.get("role", ""), card.observed_at, card.data, positive, positive_blocks]
 	var key = hash(inputs)
 	if not report_matches.has(key) or report_matches[key].inputs != inputs:
 		if report_matches.size() > 512:
@@ -252,10 +255,10 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 			var valid: PackedByteArray = valid_table(view, card)
 			var trivial: bool = card.get("role", "") not in CONTENT_ROLES
 			for g in range(rep.size()):
-				answers[g] = 0 if valid[rep[g]] == 0 else (1 if trivial or _report_content(view, universe[rep[g]], card, {"positive": positive}) else 0)
+				answers[g] = 0 if valid[rep[g]] == 0 else (1 if trivial or _report_content(view, universe[rep[g]], card, {"positive": positive, "blocks": positive_blocks}) else 0)
 		else:
 			for g in range(rep.size()):
-				answers[g] = 1 if _report_holds(view, universe[rep[g]], card, {"positive": positive}) else 0
+				answers[g] = 1 if _report_holds(view, universe[rep[g]], card, {"positive": positive, "blocks": positive_blocks}) else 0
 		for i in range(universe.size()):
 			accepted[i] = answers[of[i]]
 		report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
@@ -392,7 +395,7 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 	for card in cards:
 		if not tabled(card):
 			continue
-		tables.append(report_table(view, card, answers.get(card.id, {}).get("positive", [])))
+		tables.append(report_table(view, card, answers.get(card.id, {}).get("positive", []), answers.get(card.id, {}).get("blocks", [])))
 	var worlds: Array = []
 	if tables.is_empty():
 		worlds = universe.duplicate()
@@ -559,7 +562,10 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 	var ans_pos = answer.get("positive", [])
 	var ans_mask: int = 0
 	for id in ans_pos:
-		ans_mask |= (1 << person_index(view, id))
+		var index = person_index(view, id)
+		if index < 0:
+			return false
+		ans_mask |= 1 << index
 	var group_mask: int = 0
 	if card.role == "dowser":
 		for id in d.group:
@@ -568,9 +574,17 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 	var target_count: int = d.count
 	_ensure_people(view)
 	var b_masks: Array = _cached_block_masks.values()
+	var chosen_blocks: Array = answer.get("blocks", [])
+	if not is_surveyor and not chosen_blocks.is_empty():
+		return false
+	for block in chosen_blocks:
+		if not _cached_block_masks.has(block):
+			return false
 	for mark_reads in [false, true]:
 		var pos_mask: int = evil_bits | ((1 << world.marked) if (mark_reads and world.marked >= 0) else 0)
 		if (pos_mask & ans_mask) != ans_mask:
+			continue
+		if not chosen_blocks.all(func(block): return bool(pos_mask & _cached_block_masks[block])):
 			continue
 		var count: int = 0
 		if is_surveyor:
@@ -680,8 +694,9 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			continue
 		var card = card_by_id(view, id)
 		var positive: Array = case_data.answers[id].get("positive", [])
+		var chosen_blocks: Array = case_data.answers[id].get("blocks", [])
 		var maximum: int = (0 if card.data.get("yes") == false else 1) if card.get("role") == "seer" else (1 if card.get("role", "") in ["rumormonger", "clerk", "archivist"] else card.get("data", {}).get("count", 10))
-		if positive.size() > maximum:
+		if positive.size() + chosen_blocks.size() > maximum:
 			errors.append("%s: there are more answers than positive slots." % id)
 		var unique: Array = []
 		for person in positive:
@@ -701,6 +716,12 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			errors.append("%s: the count excludes the Lamplighter." % id)
 		if card.get("role", "") == "surveyor":
 			var blocks: Array = []
+			for block in chosen_blocks:
+				if block not in C.BLOCKS:
+					errors.append("%s: choose a known block." % id)
+				if block in blocks:
+					errors.append("%s: each slot needs a different block." % id)
+				blocks.append(block)
 			for person in positive:
 				var matches: Array = view.people.filter(func(p): return p.id == person)
 				if matches.is_empty():
@@ -709,6 +730,8 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 				if home in blocks:
 					errors.append("%s: each slot needs a different block." % id)
 				blocks.append(home)
+		elif not chosen_blocks.is_empty():
+			errors.append("%s: only Surveyor answers can name blocks." % id)
 		if card.get("role", "") == "rumormonger" and not positive.all(func(p): return p in card.data.pair):
 			errors.append("%s: choose someone in the named pair." % id)
 	return errors

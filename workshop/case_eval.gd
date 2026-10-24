@@ -265,7 +265,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	result["factors"] = cc.factors + test_used
 	result["rivals"] = _rivals(view, result.people, conclusion)
 	result["theory_fit"] = 1.0
-	if not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty()):
+	if not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty()):
 		result["theory_fit"] = _theory_fit(view, case_data, cards, _expand(cc, oc, post))
 	if listener.get("id", "") == "":
 		# Only the board's strength label needs it: the reference listener.
@@ -791,8 +791,9 @@ static func _theory_fit(view: Dictionary, case_data: Dictionary, cards: Array, p
 	var masks: Array = []
 	for card in cards:
 		var positive: Array = case_data.get("answers", {}).get(card.id, {}).get("positive", [])
-		if Solver.tabled(card) and not positive.is_empty():
-			masks.append(Solver.report_table(view, card, positive))
+		var blocks: Array = case_data.get("answers", {}).get(card.id, {}).get("blocks", [])
+		if Solver.tabled(card) and (not positive.is_empty() or not blocks.is_empty()):
+			masks.append(Solver.report_table(view, card, positive, blocks))
 	var positions: Dictionary = case_data.get("positions", {})
 	if masks.is_empty() and positions.is_empty():
 		return 1.0

@@ -61,6 +61,11 @@ historical case exceeds the five-second presentation budget.
 
 ## 54875 measurement
 
+The next P1 slice supports Surveyor answers naming a block without identifying a
+resident. Block and resident slots share validation and remain hypotheses: they
+change conditional fit, never the evidence posterior. The backend's 11 checks and
+the editor's actual selection/rebuild checks pass on Godot 4.7.2.
+
 `tools/replay_54875.gd` replays the original local playtest's opening commands through
 the first Day 2 vote on Constance. The committed fixture was extracted from the
 original `case_54875.jsonl`; it contains player actions and the filed graph, without
