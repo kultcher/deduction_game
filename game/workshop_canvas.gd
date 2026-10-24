@@ -18,6 +18,8 @@ static func view(g) -> Dictionary:
 			activity = Assess.medium_card(receipt, snapshot)
 		if not activity.is_empty():
 			note = "Adapter available · experimental joint activity/trace comparison"
+			if activity.kind in ["context", "location"]:
+				note = "Adapter available · location context; this does not establish guilt"
 		if receipt.kind == "info" and content.get("role") in Assess.ROLES:
 			note = "Reading adapter available · check whole-case support"
 			if not Assess.Domain.gift_time({"role": content.role, "observed_at": receipt.observed_at}):
@@ -75,10 +77,31 @@ static func status(g, value: Dictionary) -> Dictionary:
 		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	var issues: Array = prepared.issues.duplicate()
+	var audience_ready = true
+	# Reuse the same exact graph for each real listener; capability checks never
+	# evaluate numbers or reveal the listener's private evidence to the player.
+	for real in g.w.living():
+		var n = real.shadow if real.is_evil() else real
+		if n == null:
+			audience_ready = false
+			continue
+		var scoped = snapshot(g, value, n.id)
+		var check = Assess.prepare(scoped)
+		if not check.ready:
+			audience_ready = false
+			continue
+		var proposals: Dictionary = n.workshop_state.get("presentations", {}).duplicate(true)
+		proposals["draft"] = scoped
+		var plan = preload("res://workshop/shared_ledger.gd").prepare(Bridge.capture(g, [], n.id, "private", n), proposals, n.ledger, n.workshop_state.get("withdrawn", {}))
+		if not check.ready or not plan.ready:
+			audience_ready = false
+			for issue in check.issues + plan.issues:
+				if issue not in issues:
+					issues.append(issue)
 	var blocked = not supports(g, value).issues.is_empty() or value.cards.is_empty()
 	if value.cards.is_empty():
 		issues.append("Connect evidence to the selected premise before filing.")
-	return {"ready": prepared.ready and not blocked, "blocked": blocked, "issues": issues,
+	return {"ready": prepared.ready and not blocked, "audience_ready": audience_ready, "blocked": blocked or (g.strict_evaluator and (not prepared.ready or not audience_ready)), "issues": issues,
 		"mode": "shared" if prepared.ready and g.workshop_effects else "legacy",
 		"warning": "Fallback evaluates the headline and original cards using the existing argument system. Canvas answers, assumptions, intermediate claims and link meanings are NOT interpreted by that system."}
 
@@ -88,6 +111,8 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		return -1
 	if previous > 0 and previous <= g.board.size() and g.board[previous - 1].get("deleted", false):
 		previous = 0
+	while previous > 0 and previous <= g.board.size() and g.board[previous - 1].get("superseded_by", 0) > 0:
+		previous = g.board[previous - 1].superseded_by
 	var check = status(g, value)
 	if check.blocked:
 		g.last_error = "\n".join(PackedStringArray(check.issues))
@@ -105,17 +130,12 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 	var card: Dictionary = g.board[number - 1].duplicate(true)
 	card["workshop_case"] = value.duplicate(true)
 	card["text"] = "Case: %s (%d original reports)." % [g.Argue.conclusion_text(g.w, conclusion), roots.numbers.size()]
-	# Stable board number for revisions; listeners keep their old receipt until the
-	# next presentation. Editing a draft never changes anyone's beliefs.
+	# A revision is a new historical receipt. Listeners retain the version they
+	# actually heard until the new card is presented.
 	if previous > 0 and previous <= g.board.size() and g.board[previous - 1].has("workshop_case"):
-		if g.board[previous - 1].workshop_case == value:
-			return previous
-		card.n = previous
-		g.board[previous - 1] = card
-		if number != previous and number > old_size:
-			g.board[number - 1]["deleted"] = true
-		g.w.dlog.add("workshop_canvas_filed", "player", conclusion.get("a", ""), {"card": previous, "revision": true, "case": value, "supports": roots.numbers})
-		return previous
+		card["revises"] = previous
+		g.board[previous - 1]["superseded_by"] = number
+		g.board[previous - 1].text += " (Superseded by case #%d.)" % number
 	# The native filer may have returned a pre-existing flat deduction. Never
 	# overwrite that card or turn another draft into this graph.
 	if number > old_size:

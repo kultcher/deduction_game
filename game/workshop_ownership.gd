@@ -22,13 +22,13 @@ static func _refresh(g, n, phase: String) -> void:
 			for id in state.outside:
 				# Preserve direct native assignments too (ordinary adjustments go
 				# through Mind.adjust and already maintain the outside layer).
-				var expected = clampf(state.outside[id] + state.requested.get(id, 0.0), 0.0, 1.5)
+				var expected: float = state.outside[id] + state.requested.get(id, 0.0)
 				var before: float = n.suspicion.get(id, expected)
 				var external_change: float = before - expected
 				# Preserve the exact stored baseline when nothing changed. Adding
 				# then subtracting the same float introduced rounding drift, which
 				# broke exact cache/repetition keys and fed priors on every refresh.
-				n.suspicion[id] = state.outside[id] if absf(external_change) < 0.000000001 else clampf(state.outside[id] + external_change, 0.0, 1.5)
+				n.suspicion[id] = state.outside[id] if absf(external_change) < 0.000000001 else state.outside[id] + external_change
 				if not is_equal_approx(before, n.suspicion[id]):
 					removed[id] = {"from": before, "to": n.suspicion[id], "delta": n.suspicion[id] - before}
 			g.w.dlog.trace_event("workshop_retraction", n.id, "", {"removed": removed,
@@ -51,6 +51,8 @@ static func _refresh(g, n, phase: String) -> void:
 		state.owned = plan.owned
 		if plan.ready:
 			g._workshop_plans[key] = plan
+		else:
+			fallback(g, n, "ownership_before", plan.issues)
 	else:
 		if not g._workshop_plans.has(key):
 			return
@@ -61,6 +63,7 @@ static func _refresh(g, n, phase: String) -> void:
 		if not plan.ready:
 			state.owned = {}
 			state.issues = plan.issues
+			fallback(g, n, "ownership_after", plan.issues)
 			g._workshop_busy = true
 			Mind.recompute_beliefs(g.w, n, " (shared capability fallback)")
 			g._workshop_busy = false
@@ -91,7 +94,7 @@ static func _refresh(g, n, phase: String) -> void:
 		# union merely because the first pass filled in its own memory.
 		var committed_inputs: Array = inputs.duplicate(true)
 		committed_inputs[0].listener.theories = state.theories.duplicate(true)
-		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal}
+		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "cache_hit": cache_hit}
 		state.requested = {}
 		state.applied = {}
 		for id in proposal.effects:
@@ -100,20 +103,23 @@ static func _refresh(g, n, phase: String) -> void:
 			var desired: float = proposal.effects[id].requested
 			state.requested[id] = desired
 			var old: float = n.suspicion[id]
-			n.suspicion[id] = clampf(old + desired, 0.0, 1.5)
+			n.suspicion[id] = old + desired
 			state.applied[id] = n.suspicion[id] - old
 			if not is_zero_approx(state.applied[id]):
 				g.w.dlog.trace_event("value_change", n.id, id, {"quantity": "suspicion", "from": old,
 					"to": n.suspicion[id], "requested_delta": desired, "applied_delta": state.applied[id],
 				"ledger_id": "workshop:shared"}, "Shared original reading evidence")
 		state.active = true
-		state.elapsed_ms = Time.get_ticks_msec() - started
-		state.cache_hit = cache_hit
 		g.w.dlog.trace_event("workshop_ownership", n.id, "", {"owned": state.owned, "facts": state.facts,
 			"owners": state.owners, "requested": state.requested, "applied": state.applied,
 			"reasoning": state.reasoning, "reasoning_mode": plan.prepared.listener.reasoning_mode,
 			"confidence_mode": plan.prepared.listener.confidence_mode,
-			"elapsed_ms": state.elapsed_ms}, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
+			"elapsed_ms": Time.get_ticks_msec() - started, "cache_hit": cache_hit}, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
+
+static func fallback(g, n, point: String, issues: Array, card: int = 0) -> void:
+	g.w.dlog.trace_event("workshop_fallback", n.id, "", {"listener": n.id,
+		"card": card, "exit_point": point, "issues": issues.duplicate(true)},
+		"Shared evaluation unavailable: " + "; ".join(PackedStringArray(issues)))
 
 ## Conservative disclosure: a joint inference is not automatically this NPC's
 ## own gift to reveal. Only explicit presentations/disclosures make roots citable.

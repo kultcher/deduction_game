@@ -68,7 +68,7 @@ func _ready() -> void:
 		session.generate(int(seed_input.value))
 		focus_card = "survey"
 		_changed(true))
-	var examples = _option(toolbar, ["Load example…", "Surveyor only", "Add Rumormonger", "Three core readings", "Repeated night outings", "Conflicting reports", "Converging lines (test factor)", "Insight comparison"])
+	var examples = _option(toolbar, ["Load exampleâ€¦", "Surveyor only", "Add Rumormonger", "Three core readings", "Repeated night outings", "Conflicting reports", "Converging lines (test factor)", "Insight comparison"])
 	examples.item_selected.connect(func(i):
 		if i > 0:
 			_load_example(i)
@@ -79,8 +79,8 @@ func _ready() -> void:
 		session.case_data.conclusion.target = _report("survey").source
 		session.case_data.version = version
 		_changed(true))
-	_button(toolbar, "Save experiment…", _save_dialog)
-	_button(toolbar, "Open experiment…", _open_dialog)
+	_button(toolbar, "Save experimentâ€¦", _save_dialog)
+	_button(toolbar, "Open experimentâ€¦", _open_dialog)
 	var truth_check = CheckBox.new()
 	truth_check.text = "Developer truth"
 	truth_check.toggled.connect(func(on):
@@ -199,7 +199,7 @@ func _changed(rebuild_jury: bool = false) -> void:
 	_refresh_case()
 	if rebuild_jury:
 		_refresh_jury()
-	status.text = "Case v%d · %d selected cards · jury responses update when you present." % [session.case_data.version, session.case_data.cards.size()]
+	status.text = "Case v%d Â· %d selected cards Â· jury responses update when you present." % [session.case_data.version, session.case_data.cards.size()]
 
 func _edit() -> void:
 	session.revise()
@@ -229,7 +229,7 @@ func _refresh_evidence() -> void:
 			_edit())
 		row.add_child(check)
 		var title: String = C.role_name(card.role) if card.kind == "report" else {"alibi": "Home alibi", "claim": "Gift explanation", "sighting": "Your vigil"}.get(card.kind, card.kind)
-		var inspect = _button(row, title + ("  ◂" if focus_card == card.id else ""), func():
+		var inspect = _button(row, title + ("  â—‚" if focus_card == card.id else ""), func():
 			focus_card = card.id
 			_refresh_case()
 			_refresh_evidence())
@@ -240,11 +240,11 @@ func _refresh_evidence() -> void:
 				focus_card = card.claim_id
 				_refresh_case())
 		var time_text: String = C.night_name(int(card.observed_at.day)) if card.observed_at.phase == "night" else "day %d" % card.observed_at.day
-		_label(box, "%s · learned day %d" % [time_text.capitalize(), card.acquired_day], 14, "muted")
+		_label(box, "%s Â· learned day %d" % [time_text.capitalize(), card.acquired_day], 14, "muted")
 	var town = _box(evidence_box)
 	_label(town, "Town & timeline", 19, "accent")
 	for p in session.scenario.public_view.people:
-		_label(town, "%s · %s%s" % [p.name, C.block_name(p.home), " · dead" if not p.alive else ""], 15)
+		_label(town, "%s Â· %s%s" % [p.name, C.block_name(p.home), " Â· dead" if not p.alive else ""], 15)
 	for event in session.scenario.public_view.history:
 		_label(town, event, 15, "muted")
 
@@ -270,7 +270,7 @@ func _refresh_case() -> void:
 	var card = _report(focus_card)
 	if not card.is_empty():
 		_question(card)
-	_button(case_box, ("▾" if positions_open else "▸") + " Assumed alignments & Marked", func():
+	_button(case_box, ("â–¾" if positions_open else "â–¸") + " Assumed alignments & Marked", func():
 		positions_open = not positions_open
 		_refresh_case())
 	if positions_open:
@@ -282,7 +282,7 @@ func _refresh_case() -> void:
 			positions.add_child(row)
 			_label(row, p.name, 16)
 			var options = ["?", "good", "evil", "marked"]
-			var choice = _option(row, ["? Unresolved", "Good", "Evil", "Good · Marked"])
+			var choice = _option(row, ["? Unresolved", "Good", "Evil", "Good Â· Marked"])
 			choice.select(options.find(current.positions.get(p.id, "?")))
 			choice.item_selected.connect(func(i):
 				if i == 0:
@@ -291,7 +291,7 @@ func _refresh_case() -> void:
 					current.positions[p.id] = options[i]
 				_edit())
 	var summary = _box(case_box)
-	_label(summary, "Case check · v%d" % session.case_data.version, 20, "accent")
+	_label(summary, "Case check Â· v%d" % session.case_data.version, 20, "accent")
 	var status_text = "These choices conflict." if analysis.status == "conflicting" else "A coherent explanation; unanswered choices are allowed."
 	_label(summary, status_text, 18)
 	var meanings = {"forced": "The selected reports force this conclusion, if their premises are accepted.", "possible": "The conclusion is possible. Another explanation still fits.", "unsupported": "The selected reports do not support this conclusion.", "conflicting": "The selected premises cannot all be accepted together."}
@@ -310,7 +310,7 @@ func _refresh_case() -> void:
 				session.case_data.derived.append({"id": id, "supports": conflict.duplicate(), "text": "Which account is wrong?"})
 				session.case_data.cards.append(id)
 				_edit())
-	_button(case_box, ("▾" if details_open else "▸") + " Premises, alternatives & consequences", func():
+	_button(case_box, ("â–¾" if details_open else "â–¸") + " Premises, alternatives & consequences", func():
 		details_open = not details_open
 		_refresh_case())
 	if details_open:
@@ -326,15 +326,15 @@ func _refresh_case() -> void:
 		_label(detail, session.scenario.public_view.scope, 14, "muted")
 	if developer_truth:
 		var truth = _box(case_box)
-		_label(truth, "Developer truth · not used by the jury", 18, "accent")
+		_label(truth, "Developer truth Â· not used by the jury", 18, "accent")
 		for p in session.scenario.truth:
-			_label(truth, "%s: %s, %s%s" % [_name(p.id), p.role, p.alignment, " · " + p.secret if p.secret != "" else ""], 15)
+			_label(truth, "%s: %s, %s%s" % [_name(p.id), p.role, p.alignment, " Â· " + p.secret if p.secret != "" else ""], 15)
 
 func _question(card: Dictionary) -> void:
 	var box = _box(case_box)
 	_label(box, "Answer this card", 20, "accent")
 	_label(box, card.text, 17)
-	_label(box, "Observed %s %s · reported day %s · learned day %s" % [card.observed_at.phase, card.observed_at.day, card.reported_at.day, card.learned_at.day], 14, "muted")
+	_label(box, "Observed %s %s Â· reported day %s Â· learned day %s" % [card.observed_at.phase, card.observed_at.day, card.reported_at.day, card.learned_at.day], 14, "muted")
 	if card.kind == "event" and card.get("event") == "curse":
 		_label(box, "Who became evil when the Revenant was executed? This answer is a dated hypothesis, not proof of their identity.", 16)
 		var current = _active_choices()
@@ -358,27 +358,43 @@ func _question(card: Dictionary) -> void:
 		_label(box, "Answers on a card outside this case or line have no effect.", 14, "muted")
 	var role: String = card.get("role", "")
 	if card.kind == "report" and role in ["surveyor", "dowser", "rumormonger", "lamplighter", "clerk", "archivist", "seer"]:
-		var prompt: String = {"surveyor": "Which residents account for the positive blocks? A positive may be evil or Marked.", "dowser": "Who registered as evil in this reading? Marked is a possible explanation.", "rumormonger": "Which person is Marked in your explanation?", "lamplighter": "Who were the other people out? The Lamplighter is excluded.", "clerk": "If this reading is accurate, who holds the named good gift?", "archivist": "If this reading is accurate, who holds the named minion gift?", "seer": "What explains this Demon reading? A negative reading does not clear minions."}[role]
+		var prompt: String = {"surveyor": "Which blocks or residents account for the positives? A positive may be evil or Marked.", "dowser": "Who registered as evil in this reading? Marked is a possible explanation.", "rumormonger": "Which person is Marked in your explanation?", "lamplighter": "Who were the other people out? The Lamplighter is excluded.", "clerk": "If this reading is accurate, who holds the named good gift?", "archivist": "If this reading is accurate, who holds the named minion gift?", "seer": "What explains this Demon reading? A negative reading does not clear minions."}[role]
 		if role == "rumormonger":
 			prompt = "Which person has the named secret (%s) in your explanation?" % card.data.get("secret", "marked")
 		_label(box, prompt, 16)
 		var count: int = (1 if card.data.yes else 0) if role == "seer" else (1 if role in ["rumormonger", "clerk", "archivist"] else card.data.count)
 		var current = _active_choices()
 		var answer: Dictionary = current.answers.get(card.id, {})
-		var slots: Array = answer.get("slots", answer.get("positive", []))
+		var fallback_slots: Array = answer.get("positive", []).duplicate()
+		for block in answer.get("blocks", []):
+			fallback_slots.append("block:" + str(block))
+		if role == "surveyor" and count == 4:
+			var by_block = {}
+			for choice in fallback_slots:
+				if str(choice).begins_with("block:"):
+					by_block[str(choice).trim_prefix("block:")] = choice
+				else:
+					for person in session.scenario.public_view.people:
+						if person.id == choice:
+							by_block[person.home] = choice
+			fallback_slots = C.BLOCKS.keys().map(func(block): return by_block.get(block, ""))
+		var slots: Array = answer.get("slots", fallback_slots)
 		for i in range(count):
 			var choices: Array = session.scenario.public_view.people.map(func(p): return p.id)
 			if role in ["rumormonger", "clerk", "archivist", "seer"]:
 				choices = card.data.pair
-			elif role == "surveyor" and count == 4:
-				var block: String = C.BLOCKS.keys()[i]
-				_label(box, C.block_name(block), 15, "muted")
-				choices = session.scenario.public_view.people.filter(func(p): return p.home == block).map(func(p): return p.id)
+			elif role == "surveyor":
+				if count == 4:
+					var block: String = C.BLOCKS.keys()[i]
+					_label(box, C.block_name(block), 15, "muted")
+					choices = ["block:" + block] + session.scenario.public_view.people.filter(func(p): return p.home == block).map(func(p): return p.id)
+				else:
+					choices = C.BLOCKS.keys().map(func(block): return "block:" + block) + choices
 			elif role == "dowser":
 				choices = card.data.group
 			elif role == "lamplighter":
 				choices = choices.filter(func(id): return id != card.source)
-			var slot = _option(box, ["? Unresolved slot %d" % (i + 1)] + choices.map(func(id): return _name(id)))
+			var slot = _option(box, ["? Unresolved slot %d" % (i + 1)] + choices.map(func(id): return "Someone on " + C.block_name(str(id).trim_prefix("block:")) if str(id).begins_with("block:") else _name(id)))
 			slot.name = "Answer_%s_%d" % [card.id, i]
 			if i < slots.size() and slots[i] in choices:
 				slot.select(choices.find(slots[i]) + 1)
@@ -386,13 +402,16 @@ func _question(card: Dictionary) -> void:
 				var values: Array = current.answers.get(card.id, {}).get("slots", []).duplicate()
 				values.resize(count)
 				values[i] = "" if index == 0 else choices[index - 1]
-				var positive: Array = values.filter(func(v): return v is String and v != "")
-				if positive.size() != _unique(positive).size():
-					status.text = "That person already fills a slot. Leave this slot unknown or choose someone else."
+				var chosen: Array = values.filter(func(v): return v is String and v != "")
+				if chosen.size() != _unique(chosen).size():
+					status.text = "That answer already fills a slot. Leave this slot unknown or choose another."
 					_refresh_case()
 					return
 				var updated: Dictionary = current.answers.get(card.id, {}).duplicate(true)
+				var positive: Array = chosen.filter(func(v): return not v.begins_with("block:"))
 				updated.merge({"slots": values, "positive": positive}, true)
+				if role == "surveyor":
+					updated["blocks"] = chosen.filter(func(v): return v.begins_with("block:")).map(func(v): return v.trim_prefix("block:"))
 				current.answers[card.id] = updated
 				_edit())
 		if role in ["surveyor", "dowser"]:
@@ -413,10 +432,10 @@ func _question(card: Dictionary) -> void:
 		for id in seen:
 			_label(box, _name(id), 16)
 			var key = "%s:%d" % [id, card.night]
-			var labels: Array = ["? Unexplained", "Night gift — choose supporting claim", "Possibly evil activity"]
+			var labels: Array = ["? Unexplained", "Night gift â€” choose supporting claim", "Possibly evil activity"]
 			var reasons = ["unexplained", "gift", "evil"]
 			if session.scenario.public_view.has("movement_experiment"):
-				labels.append("Private errand — choose supporting claim")
+				labels.append("Private errand â€” choose supporting claim")
 				reasons.append("secret")
 			var option = _option(box, labels)
 			option.select(reasons.find(current.reasons.get(key, "unexplained")))
@@ -426,7 +445,7 @@ func _question(card: Dictionary) -> void:
 			if current.reasons.get(key, "unexplained") in ["gift", "secret"]:
 				var private_errand: bool = current.reasons[key] == "secret"
 				var claims: Array = session.scenario.public_view.cards.filter(func(c): return c.kind == ("secret_claim" if private_errand else "claim") and c.subject == id)
-				var citation = _option(box, ["? No supporting claim"] + claims.map(func(c): return "%s · %s · day %s" % [_name(c.subject), C.role_name(c.role), c.acquired_day]))
+				var citation = _option(box, ["? No supporting claim"] + claims.map(func(c): return "%s Â· %s Â· day %s" % [_name(c.subject), C.role_name(c.role), c.acquired_day]))
 				citation.name = "Citation_%s_%d" % [id, card.night]
 				citation.select(claims.map(func(c): return c.id).find(current.citations.get(key, "")) + 1)
 				citation.item_selected.connect(func(i):
@@ -454,7 +473,7 @@ func _card_available(card: Dictionary) -> bool:
 	return card.id in session.case_data.cards and (active_line == "" or card.id in _active_choices().cards)
 
 func _identity_hint() -> String:
-	return "Why did they register? Optional: assign Good · Marked or Evil under assumptions below. Those choices remain hypotheses."
+	return "Why did they register? Optional: assign Good Â· Marked or Evil under assumptions below. Those choices remain hypotheses."
 
 func _active_choices() -> Dictionary:
 	for line in session.case_data.lines:
@@ -477,13 +496,13 @@ func _reasoning_lines() -> void:
 	var box = _box(case_box)
 	_label(box, "Lines supporting this case", 20, "accent")
 	_label(box, "Each line groups evidence and optional assumptions. Intermediate claims are checked, never counted as extra evidence.", 15, "muted")
-	_button(box, "Edit whole-case assumptions" + (" ◂" if active_line == "" else ""), func():
+	_button(box, "Edit whole-case assumptions" + (" â—‚" if active_line == "" else ""), func():
 		active_line = ""
 		_refresh_case())
 	for line in session.case_data.lines:
 		var row = HBoxContainer.new()
 		box.add_child(row)
-		_button(row, line.label + (" ◂" if line.id == active_line else ""), func():
+		_button(row, line.label + (" â—‚" if line.id == active_line else ""), func():
 			active_line = line.id
 			_refresh_case())
 		_button(row, "Remove", func():
@@ -521,7 +540,7 @@ func _reasoning_lines() -> void:
 		for id in session.case_data.cards:
 			var card = _report(id)
 			var choice = CheckBox.new()
-			choice.text = ("Question: " + id) if card.is_empty() else (id + " · " + _name(card.source))
+			choice.text = ("Question: " + id) if card.is_empty() else (id + " Â· " + _name(card.source))
 			choice.name = "LineEvidence_" + id
 			choice.button_pressed = id in current.cards
 			box.add_child(choice)
@@ -571,7 +590,7 @@ func _reasoning_lines() -> void:
 				current.erase("test_factor")
 			_edit())
 		if current.has("test_factor"):
-			_label(box, "TEST INPUT ONLY. This does not infer an outing or trace likelihood. 1× is neutral; below 1 favors good, above 1 favors evil.", 14, "accent")
+			_label(box, "TEST INPUT ONLY. This does not infer an outing or trace likelihood. 1Ã— is neutral; below 1 favors good, above 1 favors evil.", 14, "accent")
 			var target = _person_option(box, current.test_factor.target)
 			target.item_selected.connect(func(i):
 				current.test_factor.target = session.scenario.public_view.people[i].id
@@ -583,12 +602,12 @@ func _reasoning_lines() -> void:
 			factor.step = 0.25
 			factor.value = pow(2.0, current.test_factor.log2_ratio)
 			box.add_child(factor)
-			_label(box, "Supplied evil/good evidence ratio: %.2f×" % pow(2.0, current.test_factor.log2_ratio), 14)
+			_label(box, "Supplied evil/good evidence ratio: %.2fÃ—" % pow(2.0, current.test_factor.log2_ratio), 14)
 			factor.value_changed.connect(func(value):
 				current.test_factor.log2_ratio = log(value) / log(2.0)
 				_edit())
 	for question in session.case_data.derived:
-		_label(box, "%s: %s · originals: %s" % [question.id, question.text, ", ".join(PackedStringArray(question.supports))], 15)
+		_label(box, "%s: %s Â· originals: %s" % [question.id, question.text, ", ".join(PackedStringArray(question.supports))], 15)
 		_button(box, "Remove " + question.id, func():
 			session.case_data.derived.erase(question)
 			session.case_data.cards.erase(question.id)
@@ -607,7 +626,7 @@ func _conflict_controls() -> void:
 			continue
 		var check = CheckBox.new()
 		check.name = "ConflictScope_" + id
-		check.text = id + " · " + _name(card.source)
+		check.text = id + " Â· " + _name(card.source)
 		check.button_pressed = id in session.case_data.conflict_scope
 		box.add_child(check)
 		check.toggled.connect(func(on):
@@ -636,24 +655,24 @@ func _refresh_jury() -> void:
 	for i in range(session.baseline.size()):
 		var juror: Dictionary = session.baseline[i]
 		var box = _box(jury_box)
-		_label(box, juror.name + " · " + juror.preset, 20, "accent")
+		_label(box, juror.name + " Â· " + juror.preset, 20, "accent")
 		if session.last_results.size() > i:
 			var r: Dictionary = session.last_results[i]
 			_label(box, r.response, 18)
 			_label(box, r.objection, 16, "muted")
 			var thought: Dictionary = r.reasoning
-			_label(box, "%s reasoning · %s\nExplanation checks: %d (rivals: %d). Unattended: %s." % [thought.profile, thought.status.replace("_", " "), thought.tested, thought.rivals_tested, ", ".join(PackedStringArray(thought.ignored)) if not thought.ignored.is_empty() else "none"], 15, "accent")
+			_label(box, "%s reasoning Â· %s\nExplanation checks: %d (rivals: %d). Unattended: %s." % [thought.profile, thought.status.replace("_", " "), thought.tested, thought.rivals_tested, ", ".join(PackedStringArray(thought.ignored)) if not thought.ignored.is_empty() else "none"], 15, "accent")
 			if not thought.ignored_lines.is_empty():
 				_label(box, "Lines not connected to this argument: " + ", ".join(PackedStringArray(thought.ignored_lines)), 15, "muted")
 			if r.theory.mode == "persistence":
-				_label(box, "Working theory: %s · %s" % [r.theory.position if r.theory.position != "" else "unsettled", r.theory.status], 15, "accent")
-			_label(box, "Suspicion %.3f → %.3f (%+.3f)\nTrust in you %.2f → %.2f" % [r.before_suspicion, r.after_suspicion, r.suspicion_delta, r.before_trust, r.after_trust], 16)
+				_label(box, "Working theory: %s Â· %s" % [r.theory.position if r.theory.position != "" else "unsettled", r.theory.status], 15, "accent")
+			_label(box, "Suspicion %.3f â†’ %.3f (%+.3f)\nTrust in you %.2f â†’ %.2f" % [r.before_suspicion, r.after_suspicion, r.suspicion_delta, r.before_trust, r.after_trust], 16)
 			_label(box, "Effects on everyone", 16, "accent")
 			var effect_lines: Array = []
 			for person in session.scenario.public_view.people:
 				var e: Dictionary = r.effects[person.id]
 				if not is_zero_approx(e.applied) or not is_zero_approx(e.delta):
-					effect_lines.append("%s: %.3f → %.3f (%+.3f) · %s" % [person.name, e.before, e.after, e.delta, e.route])
+					effect_lines.append("%s: %.3f â†’ %.3f (%+.3f) Â· %s" % [person.name, e.before, e.after, e.delta, e.route])
 			var effects_label = _label(box, "\n".join(PackedStringArray(effect_lines)) if not effect_lines.is_empty() else "No additional suspicion changes from this evidence.", 15)
 			effects_label.name = "CaseEffects_%d" % i
 			if r.claims.size() > 1:
@@ -666,7 +685,7 @@ func _refresh_jury() -> void:
 				box.add_child(claims_box)
 				claims_check.toggled.connect(func(on): claims_box.visible = on)
 				for claim in r.claims:
-					_label(claims_box, "%s · %s (%.3f)" % [claim.label, claim.stance, claim.agreement], 15, "accent")
+					_label(claims_box, "%s Â· %s (%.3f)" % [claim.label, claim.stance, claim.agreement], 15, "accent")
 					_label(claims_box, claim.note, 15)
 					if not claim.ignored.is_empty():
 						_label(claims_box, "Not attended in this branch: " + ", ".join(PackedStringArray(claim.ignored)), 14, "muted")
@@ -675,7 +694,7 @@ func _refresh_jury() -> void:
 			var show_calc = CheckBox.new()
 			show_calc.text = "Show calculation & accepted path"
 			box.add_child(show_calc)
-			var calculation = _label(box, "Headline agreement %.2f; premise quality %.3f (conviction diagnostics).\nEffect multipliers: player %.2f × confidence %.2f\nPath: %s (%s)\nPrevious headline-target effect %.3f; replacement %.3f. %s.\nPrivate compatible worlds: %d. These counts are not probabilities." % [r.agreement, r.quality, r.calculation.player_factor, r.calculation.confidence_factor, ", ".join(PackedStringArray(r.path)), r.path_kind, r.calculation.old_case_effect, r.calculation.new_case_effect, r.stance, r.assessment.compatible], 14, "muted")
+			var calculation = _label(box, "Headline agreement %.2f; premise quality %.3f (conviction diagnostics).\nEffect multipliers: player %.2f Ã— confidence %.2f\nPath: %s (%s)\nPrevious headline-target effect %.3f; replacement %.3f. %s.\nPrivate compatible worlds: %d. These counts are not probabilities." % [r.agreement, r.quality, r.calculation.player_factor, r.calculation.confidence_factor, ", ".join(PackedStringArray(r.path)), r.path_kind, r.calculation.old_case_effect, r.calculation.new_case_effect, r.stance, r.assessment.compatible], 14, "muted")
 			calculation.text += "\nCombined support %.3f; old strongest-path score %.3f. Forced-assumption weight %.3f across %d credibility states.\nSupport routes: %s\n%s" % [r.support_model.agreement, r.legacy_path.weight, r.support_model.forced_mass, r.support_model.states, str(r.support_model.paths), r.support_model.model]
 			for comparison in r.support_model.get("movement_comparison", []):
 				calculation.text += "\n%s: P(observations | evil hypotheses) %.6f; P(observations | good hypotheses) %.6f; ratio %.3fx. These are conditional fixture likelihoods, not guilt probabilities." % [_name(comparison.target), comparison.evil_likelihood, comparison.good_likelihood, pow(2.0, comparison.log2_ratio)]
@@ -686,7 +705,7 @@ func _refresh_jury() -> void:
 				var e: Dictionary = r.effects[person.id]
 				calculation.text += "\n%s: evil change %.4f; good change %.4f; alignment %.4f; pattern %.4f; requested %+.4f; applied %+.4f (previous %+.4f)." % [person.name, e.evil_change, e.good_change, e.alignment_signal, e.pattern_signal, e.requested, e.applied, e.previous]
 			calculation.text += "\nConsidered: %s\nGranted for search: %s\nDoubted: %s\nOwn reports (outside attention limit): %s\n%s\nReferee: %s; NPC: %s. A limited search is never a proof." % [str(thought.considered), str(thought.accepted), str(thought.doubted), str(thought.private_reports), thought.assumption_note, r.assessment.entailment, thought.status]
-			calculation.text += "\nConfidence mode: %s; theory %s → %s (%s); revision comparison threshold %.2f×.\n%s" % [r.theory.mode, r.theory.before, r.theory.position, r.theory.status, r.theory.threshold, r.theory.guardrail]
+			calculation.text += "\nConfidence mode: %s; theory %s â†’ %s (%s); revision comparison threshold %.2fÃ—.\n%s" % [r.theory.mode, r.theory.before, r.theory.position, r.theory.status, r.theory.threshold, r.theory.guardrail]
 			for id in r.support_model.report_acceptance:
 				var card = _report(id)
 				if id in r.support_model.quoted_cards:
@@ -724,7 +743,7 @@ func _refresh_jury() -> void:
 		mode.select(0 if juror.reasoning_mode == "full" else 1)
 		mode.item_selected.connect(func(index): _set_juror(i, "reasoning_mode", ["full", "bounded"][index]))
 		_slider(settings, "Insight", juror.insight, func(value): _set_juror(i, "insight", value))
-		_label(settings, "Their view of…", 15)
+		_label(settings, "Their view ofâ€¦", 15)
 		var relation = _person_option(settings, session.case_data.conclusion.target)
 		var relation_box = VBoxContainer.new()
 		settings.add_child(relation_box)
@@ -737,7 +756,7 @@ func _refresh_jury() -> void:
 		rebuild.call(relation.selected)
 		_label(settings, "Reliability of one reading (separate from source trust)", 15)
 		var reports: Array = session.scenario.public_view.cards.filter(func(c): return c.kind == "report")
-		var reading = _option(settings, reports.map(func(c): return c.id + " · " + _name(c.source)))
+		var reading = _option(settings, reports.map(func(c): return c.id + " Â· " + _name(c.source)))
 		var reliability_box = VBoxContainer.new()
 		settings.add_child(reliability_box)
 		var rebuild_reliability = func(index):
@@ -806,7 +825,7 @@ func _present() -> void:
 	session.present(remember.button_pressed, ["private", "meeting", "nomination"][venue.selected])
 	stale = false
 	_refresh_jury()
-	status.text = "Presented v%d · %s · %d recorded presentations. Trust is held fixed; actual suspicion changes are shown." % [session.case_data.version, "remembered discussion" if remember.button_pressed else "identical starting attitudes", session.history.size()]
+	status.text = "Presented v%d Â· %s Â· %d recorded presentations. Trust is held fixed; actual suspicion changes are shown." % [session.case_data.version, "remembered discussion" if remember.button_pressed else "identical starting attitudes", session.history.size()]
 
 func _load_example(index: int) -> void:
 	reasoning_comparisons.clear()
@@ -827,7 +846,7 @@ func _load_example(index: int) -> void:
 	elif index == 6:
 		session.case_data.lines = [
 			{"id": "readings", "label": "The readings narrow the candidates", "relation": "supports", "cards": ["survey", "rumor", "dowse"], "positions": {}, "answers": {}},
-			{"id": "movement", "label": "Movement comparison — supplied TEST factor", "relation": "supports", "cards": ["watch1", "watch2"], "positions": {}, "answers": {}, "test_factor": {"target": target, "log2_ratio": 2.0}}]
+			{"id": "movement", "label": "Movement comparison â€” supplied TEST factor", "relation": "supports", "cards": ["watch1", "watch2"], "positions": {}, "answers": {}, "test_factor": {"target": target, "log2_ratio": 2.0}}]
 		active_line = "movement"
 		focus_card = "watch2"
 	elif index == 7:

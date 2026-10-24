@@ -42,8 +42,8 @@ func _ready() -> void:
 	_button(tools, "Fit case", func(): canvas.fit_case())
 	_button(tools, "All evidence", func(): canvas.fit_case(true))
 	effects_toggle = CheckBox.new()
-	effects_toggle.text = "Experimental reading evaluator"
-	effects_toggle.tooltip_text = "Opt in for this case. NPC Insight limits attention and alternative searches; confidence sustains revisable theories. Supports Surveyor, Rumormonger, Dowser, Clerk, Archivist and Seer readings, role claims and night alibi challenges. Other cases use the existing argument rules."
+	effects_toggle.text = "Shared evidence evaluator"
+	effects_toggle.tooltip_text = "Enabled by default. NPC Insight limits attention and alternative searches; confidence sustains revisable theories. Unsupported evidence reports why the shared assessment is unavailable."
 	effects_toggle.toggled.connect(func(on):
 		g.set_workshop_effects(on)
 		_session_changed())
@@ -190,8 +190,10 @@ func _sync() -> void:
 			support_label.text += "\n%d more support issues — use Review evaluator support for the full list." % (check.issues.size() - 3)
 		if not check.ready or not g.workshop_effects:
 			support_label.text += "\n" + check.warning
+		elif check.get("audience_ready", false):
+			support_label.text += "\nEvery current listener can evaluate this case. Answers and assumptions are hypotheses, not extra evidence."
 		else:
-			support_label.text += "\nAnswers and assumptions are hypotheses, not extra evidence. Listener knowledge, ownership or workload limits can still require fallback; actual results are reported after presentation."
+			support_label.text += "\nSome current listeners cannot evaluate this case; review evaluator support for the reasons."
 		present_button.disabled = check.blocked or g.state not in ["talk", "meeting", "nomination"] or g.w.game_over
 	else:
 		support_label.text = "Select a premise to see support for the entire connected case. Card labels describe individual evidence only."
@@ -301,6 +303,8 @@ func _preview_effectiveness() -> void:
 	await get_tree().process_frame
 	var result = Ghost.live(input)
 	result_output.text = ComparisonText.describe(result)
+	var readiness = Live.status(g, board.compile(board.selected))
+	result_output.text += "\n\nEvery current listener can evaluate this case." if readiness.get("audience_ready", false) else "\n\nSome listeners cannot evaluate this case:\n• " + "\n• ".join(PackedStringArray(readiness.issues))
 	if not result.ready:
 		result_output.text += "\n\nNo effectiveness estimate is available for the existing-rules fallback. " + Live.status(g, board.compile(board.selected)).warning
 

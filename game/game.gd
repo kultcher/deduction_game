@@ -64,7 +64,11 @@ var log_paths: Array = []
 var debug = false
 var detailed_logging = true  # developer tracing, independent of spoiler/debug scoring
 var workshop_compare = false # opt-in diagnostics; never applies the proposed effects
-var workshop_effects = false # experimental restricted shared ownership, off by default
+var workshop_effects = true # shared assessment is the normal presentation path
+## Opt-in test assertion: unsupported presentations are rejected before any effects.
+var strict_evaluator = C.STRICT_EVALUATOR
+var _workshop_native_submission = false
+var _workshop_repeats: Dictionary = {}
 var _workshop_busy = false
 var _workshop_plans = {}
 var _workshop_evaluations = {}
@@ -181,7 +185,8 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	_workshop_plans = {}
 	_workshop_evaluations = {}
 	_workshop_responses = {}
-	workshop_effects = false
+	_workshop_repeats = {}
+	_workshop_native_submission = false
 	board = []
 	confidences = {}
 	_card_keys = {}
@@ -216,9 +221,15 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 			WorkshopOwnership.refresh(game, n, phase)
 	w.workshop_present = func(n, card, targets, direction, venue, speak):
 		var game = weak_game.get_ref()
-		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak) if game != null and game.w == weak_world.get_ref() and game.workshop_effects else {}
+		if game == null or game.w != weak_world.get_ref():
+			return {}
+		if not game.workshop_effects or game._workshop_native_submission:
+			WorkshopOwnership.fallback(game, n, "submission", ["The whole audience is using existing response rules for this submission."], card.get("n", 0))
+			return {}
+		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak)
 	w.dlog.begin_action("new_case_presentation")
 	_home_cards()
+	set_workshop_effects(workshop_effects)
 	state = "day"
 	moved = false
 	events = []
@@ -242,6 +253,7 @@ func command(line: String) -> String:
 	var text = line.strip_edges()
 	if text == "":
 		return ""
+	_workshop_native_submission = false
 	events = []
 	if w != null:
 		w.set_log_time()
@@ -263,6 +275,7 @@ func workshop_command(line: String, progress: Callable) -> String:
 	if parts.size() != 2 or not ((state == "meeting" and parts[0] == "present") or (state == "nomination" and parts[0] in ["accuse", "defend"])):
 		return command(line)
 	workshop_presenting = true
+	_workshop_native_submission = false
 	events = []
 	w.set_log_time()
 	w.dlog.begin_action("command", {"cmd": line})
@@ -460,7 +473,64 @@ func workshop_preview(number: int, listener_id: String, venue: String = "private
 	return WorkshopAssessment.evaluate(workshop_snapshot([number], listener_id, venue))
 
 func workshop_ghost_preview(number: int) -> Dictionary:
-	return WorkshopGhost.live(workshop_snapshot([number]))
+	var result = WorkshopGhost.live(workshop_snapshot([number]))
+	if number > 0 and number <= board.size():
+		result["audience"] = workshop_readiness(board[number - 1], w.living(), [], "deduction", "meeting")
+	return result
+
+## Read-only and exhaustive: one unavailable listener blocks the whole test-mode
+## submission. A preview may display only capability reasons, never private facts.
+func workshop_readiness(card: Dictionary, listeners: Array, targets: Array, direction: String, venue: String) -> Dictionary:
+	var result = {"ready": true, "listeners": [], "issues": []}
+	for real in listeners:
+		var n = real.shadow if real.is_evil() else real
+		var check: Dictionary
+		if not workshop_effects:
+			check = {"ready": false, "issues": ["Shared effects are disabled."], "exit_point": "disabled"}
+		elif n == null:
+			check = {"ready": false, "issues": ["Listener assessment is not available yet."], "exit_point": "listener"}
+		else:
+			check = WorkshopPresentation.readiness(self, n, card, targets, direction, venue)
+		result.listeners.append({"listener": real.id, "ready": check.ready, "issues": check.issues, "exit_point": check.exit_point})
+		if not check.ready:
+			result.ready = false
+			for issue in check.issues:
+				if issue not in result.issues:
+					result.issues.append(issue)
+	return result
+
+func _presentation_gate(card: Dictionary, listeners: Array, targets: Array, direction: String, venue: String) -> bool:
+	_workshop_native_submission = false
+	var rejected = _presentation_rejection(card)
+	if rejected != "":
+		_err(rejected)
+		return false
+	var check = workshop_readiness(card, listeners, targets, direction, venue)
+	if check.ready:
+		return true
+	for row in check.listeners:
+		if not row.ready:
+			WorkshopOwnership.fallback(self, w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
+	var reason = "Card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(check.issues))]
+	if strict_evaluator:
+		_err("Cannot present. " + reason)
+		return false
+	_workshop_native_submission = true
+	_narr("Shared assessment unavailable. " + reason + " Existing response rules will be used for this submission's entire audience.")
+	return true
+
+func _presentation_rejection(card: Dictionary) -> String:
+	if card.get("superseded_by", 0) > 0:
+		return "Case #%d was superseded by case #%d." % [card.n, card.superseded_by]
+	var speech: Array = []
+	if card.kind == "deduction":
+		var input = workshop_snapshot([card.n])
+		speech = input.evidence.filter(func(e): return e.id in input.selected and e.kind in ["opinion", "accusation"])
+	elif card.kind in ["opinion", "accusation"]:
+		speech = [card]
+	if not speech.is_empty():
+		return "An %s is not evidence. Cite the supporting observations or readings." % speech[0].kind
+	return ""
 
 func set_workshop_effects(on: bool) -> void:
 	if workshop_presenting:
@@ -518,11 +588,20 @@ func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, v
 	return result
 
 func _evaluate_deduction_inner(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
+	var rejected = _presentation_rejection(ded)
+	if rejected != "":
+		return {"blocked": true, "lines": [rejected], "facts": [], "agreement": 0.0}
+	if strict_evaluator:
+		var check = workshop_readiness(ded, [n], [], "deduction", venue)
+		if not check.ready:
+			return {"blocked": true, "lines": ["Cannot present: " + "; ".join(PackedStringArray(check.issues))], "facts": [], "agreement": 0.0}
 	if ded.has("workshop_case"):
 		workshop_canvas_retire(n, ded)
 	var snapshot = workshop_snapshot([ded.n], n.id, venue) if workshop_compare else {}
 	var before: Dictionary = n.suspicion.duplicate(true) if workshop_compare else {}
 	var result: Dictionary = Argue.evaluate(w, n, ded, board, scale, speak)
+	if result.get("blocked", false):
+		return result
 	if workshop_effects and not result.get("workshop", false):
 		Mind.recompute_beliefs(w, n, " (shared presentation)")
 		_conflict_pressure(ded, 0.1 if venue == "private" else 0.2, n, true)
@@ -564,6 +643,11 @@ func workshop_canvas_retire(real, ded: Dictionary) -> void:
 	if n == null:
 		return
 	var state: Dictionary = n.workshop_state
+	var ancestor: int = ded.get("revises", 0)
+	while ancestor > 0 and ancestor <= board.size():
+		if state.get("presentations", {}).has(str(ancestor)) or n.ledger.has("arg:workshop:%d" % ancestor):
+			_workshop_retract(ancestor, n.id)
+		ancestor = board[ancestor - 1].get("revises", 0)
 	if not state.has("canvas_versions"):
 		state.canvas_versions = {}
 	var key = str(ded.n)
@@ -1094,11 +1178,14 @@ func _talk_command(verb: String, rest: String) -> void:
 			if num0 < 1 or num0 > board.size() or board[num0 - 1]["kind"] != "deduction" or board[num0 - 1].get("deleted", false):
 				_err("Convince them of which deduction? ('convince <card#>'; to cite a plain card use 'tell <suspect> <card#>')")
 				return
+			if not _presentation_gate(board[num0 - 1], [n], [], "deduction", "private"):
+				return
 			_secrets_used(board[num0 - 1])
 			_conflict_pressure(board[num0 - 1], 0.1, n)
 			r = _evaluate_deduction(n, board[num0 - 1], 1.0)
 			r["facts"] = []
-			Mind.on_question(w, n)
+			if not r.get("repeated", false) or free_repeats >= 1:
+				Mind.on_question(w, n)
 		"press", "confront":
 			var num1 = rest.strip_edges().trim_prefix("#").to_int()
 			if num1 < 1 or num1 > board.size() or board[num1 - 1].get("deleted", false):
@@ -1121,6 +1208,8 @@ func _talk_command(verb: String, rest: String) -> void:
 			if sds.is_empty() or numd < 1 or numd > board.size() or board[numd - 1].get("deleted", false):
 				_err("Usage: present <card#> for <name>")
 				return
+			if not _presentation_gate(board[numd - 1], [n], sds.map(func(p): return p.id), "defend", "private"):
+				return
 			r = Mind.hear_defence(w, n, sds, board[numd - 1])
 		"tell", "accuse":
 			var p = rest.split(" ", false)
@@ -1137,6 +1226,8 @@ func _talk_command(verb: String, rest: String) -> void:
 				if grp.is_empty() or numg < 1 or numg > board.size():
 					_err("Usage: present <card#>")
 					return
+				if not _presentation_gate(board[numg - 1], [n], grp.map(func(p): return p.id), "accuse", "private"):
+					return
 				r = Mind.hear_group_case(w, n, grp, board[numg - 1])
 			else:
 				var s = find_npc(p[0])
@@ -1149,6 +1240,8 @@ func _talk_command(verb: String, rest: String) -> void:
 					return
 				if num < 1 or num > board.size():
 					_err("No such card on your board.")
+					return
+				if not _presentation_gate(board[num - 1], [n], [s.id], "accuse", "private"):
 					return
 				r = Mind.hear_accusation(w, n, s, board[num - 1])
 		"offer", "promise":
@@ -1409,6 +1502,8 @@ func _nomination_command(verb: String, rest: String, progress: Callable = Callab
 					_err("No such card on your board. ('%s' alone, or '%s <card#>')" % [verb, verb])
 					return
 				card = board[num - 1]
+			if not card.is_empty() and not _presentation_gate(card, w.living().filter(func(v): return v != t), [t.id], "deduction" if card.kind == "deduction" else verb, "nomination"):
+				return
 			statement_used = true
 			nm["statement"] = verb
 			if not card.is_empty():
@@ -2309,8 +2404,10 @@ func _present_deduction(rest: String, progress: Callable = Callable()) -> void:
 	if num < 1 or num > board.size() or board[num - 1]["kind"] != "deduction" or board[num - 1].get("deleted", false):
 		_err("Present which deduction? ('present <card#>'; file one with 'link' and 'conclude')")
 		return
-	presented_today = true
 	var ded: Dictionary = board[num - 1]
+	if not _presentation_gate(ded, w.living(), [], "deduction", "meeting"):
+		return
+	presented_today = true
 	_narr("You take the floor: %s" % ded["text"])
 	w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
 	_break_confidences([num] + Array(ded.get("supports", [])))
@@ -2538,7 +2635,7 @@ func debug_npc_text(id: String) -> String:
 		if n.id == id:
 			continue
 		hon[n.id] = n.honesty.get(id, 1.0)
-		sus[n.id] = n.suspicion.get(id, 0.0)
+		sus[n.id] = Mind.susp(n, id)
 	var n0 = w.by_id[id]
 	var town = {}
 	for n in w.living_good():
@@ -2556,7 +2653,7 @@ func debug_npc_text(id: String) -> String:
 		var sh = {}
 		for k in n0.shadow.suspicion:
 			if w.by_id.has(k) and w.by_id[k].alive:
-				sh[k] = n0.shadow.suspicion[k]
+				sh[k] = Mind.susp(n0.shadow, k)
 		var top: Array = sh.keys()
 		top.sort_custom(func(a, b): return sh[a] > sh[b])
 		var parts = PackedStringArray(top.slice(0, 4).map(func(k): return "%s %.2f" % [w.by_id[k].name, sh[k]]))

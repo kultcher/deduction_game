@@ -97,7 +97,7 @@ static func review_scapegoat(w) -> void:
 	var table = {}
 	for g in w.living_good():
 		var parts = {"momentum": public_heat(w, g)}
-		var sh_vals: Array = team.filter(func(m): return m.shadow != null).map(func(m): return m.shadow.suspicion.get(g.id, 0.1))
+		var sh_vals: Array = team.filter(func(m): return m.shadow != null).map(func(m): return clampf(m.shadow.suspicion.get(g.id, 0.1), 0.0, 1.5))
 		if not sh_vals.is_empty():
 			parts["momentum"] += 0.5 * sh_vals.reduce(func(a, b): return a + b) / sh_vals.size()
 		var fit = 0.0

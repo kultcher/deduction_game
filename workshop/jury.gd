@@ -392,8 +392,10 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 	for id in knowledge.get("own_reports", []):
 		if id not in full_case.cards:
 			full_case.cards.append(id)
-	var assessment = Solver.analyze(view, full_case, knowledge)
-	var shared = Solver.analyze(view, case_data)
+	# Live belief/attention/action never read the exhaustive minimal-conflict list.
+	# Keep it available to the explicit diagnostic UI, out of every receipt refresh.
+	var assessment = Solver.analyze(view, full_case, knowledge, false)
+	var shared = Solver.analyze(view, case_data, {}, false)
 	var reasoning = Support.explain(view, original, listener)
 	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
 	if bounded:

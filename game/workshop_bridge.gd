@@ -83,7 +83,7 @@ static func _collect(board: Array, number, numbers: Array, arguments: Array, iss
 
 static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 	input["listener"] = {"id": n.id, "name": n.name, "trust": n.trust, "own_gift": n.role,
-		"suspicion": n.suspicion.duplicate(true), "npc_trust": n.npc_trust.duplicate(true),
+		"suspicion": preload("res://sim/mind.gd").suspicion_view(n), "npc_trust": n.npc_trust.duplicate(true),
 		"confidence": n.traits.get("confidence", 0.5), "insight": n.traits.get("insight", 0.5),
 		"reasoning_mode": n.workshop_state.get("reasoning_mode", "bounded"),
 		"confidence_mode": n.workshop_state.get("confidence_mode", "persistence"),

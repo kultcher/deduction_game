@@ -33,7 +33,7 @@ static func roots(cards: Array, board: Array, path: Array = []) -> Dictionary:
 			var nested = roots(children, board, path + [number])
 			result.complete = result.complete and nested.complete
 			result.receipts.merge(nested.receipts)
-		elif (card.get("kind") == "info" and card.get("role") in Assess.ROLES) or (card.get("kind") == "claim" and card.get("role") in Assess.C.GOOD_ROLES) or (card.get("kind") in ["sighting", "alibi"] and card.get("phase", -1) in [2, 3]) or card.get("kind") in ["trace", "vigil", "quiet", "execution", "martyr", "knell"]:
+		elif supported(Evidence.normalize_card(card)):
 			var receipt = Evidence.normalize_card(card)
 			result.receipts[receipt.id] = receipt
 		elif card.get("kind") not in ["claim", "home"]:
@@ -169,22 +169,6 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var relation: Array = entry.get("rel", [])
 		if not relation.is_empty() and input.evidence.any(func(e): return e.kind in ["info", "claim"] and supported(e) and e.source == relation[0]):
 			issues.append("Unsupported reading shares a source with owned reports: " + eid)
-	for eid in owned:
-		if ledger[eid].get("workshop_clipped", false):
-			issues.append("A legacy contribution was clipped; its reversible baseline is unavailable: " + eid)
-		for i in range(ledger[eid].effects.size()):
-			var effect: Array = ledger[eid].effects[i]
-			if not ordinary(effect[0]):
-				continue
-			for person in input.people:
-				var key = i if effect[0] == person.id else "%d:%s" % [i, person.id]
-				if absf(float(ledger[eid].get("applied", {}).get(key, 0.0))) < 0.000001:
-					continue
-				# Without an outside layer, a saturated legacy target cannot promise
-				# exact reversal. Unrelated cleared people don't block migration.
-				var suspicion: float = input.listener.suspicion.get(person.id, 0.1)
-				if suspicion <= 0.0 or suspicion >= 1.5:
-					issues.append("Saturated legacy beliefs need a reversible baseline before migration: " + eid)
 	if prepared.ready or (facts.is_empty() and issues.is_empty()):
 		# TOTAL learned evidence, not the marginal value of a presentation over private
 		# reports. Self/role/public good knowledge remains; reports move into the union.
@@ -233,7 +217,7 @@ static func supported(receipt: Dictionary) -> bool:
 		if item.get("type") == "reading":
 			return item.get("entry", {}).get("role") in Assess.ROLES and item.entry.role != "medium"
 		return item.get("type") in ["sighting", "home", "guard"] and item.get("night", -1) >= 0
-	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") in ["sighting", "alibi"] and receipt.observed_at.phase in ["night", "evening"]) or receipt.kind in ["trace", "vigil", "quiet", "execution", "martyr", "knell"]
+	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") == "sighting" and receipt.observed_at.phase in ["morning", "afternoon", "evening", "night"]) or (receipt.get("kind") == "alibi" and receipt.observed_at.phase == "night") or receipt.kind in ["conversation", "home", "haunt", "totem", "dropped", "trace", "vigil", "quiet", "execution", "martyr", "knell"]
 
 static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) -> Array:
 	if number in path or path.size() >= 64:

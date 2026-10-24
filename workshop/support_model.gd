@@ -18,6 +18,8 @@ static var reuse_comparisons = true
 static var reuse_batches = true
 static var next_solve_id: int = 1
 static var next_rank_id: int = 1
+static var explanations: Dictionary = {}
+static var reuse_explanations = true
 
 ## Count effective uncertainty after combining honesty/accuracy for a source with
 ## one receipt. The same combination is used by _mixture, preserving correlations
@@ -370,7 +372,23 @@ static func _contributing(view: Dictionary, active: Array) -> Array:
 
 static func explain(view: Dictionary, value: Dictionary, listener: Dictionary, prepared: Dictionary = {}) -> Dictionary:
 	var span = Profiler.open("explain")
+	# These are the inputs read by attention, bounded search, source quality and
+	# prior ranking. Theory memory/receipt bookkeeping do not enter this operation.
+	var profile = {}
+	for field in ["id", "reasoning_mode", "insight", "knowledge", "suspicion", "npc_trust", "reading_reliability"]:
+		profile[field] = listener.get(field)
+	var inputs = [view, value, profile, prepared]
+	var key = hash(inputs)
+	if reuse_explanations and explanations.has(key) and explanations[key].inputs == inputs:
+		Profiler.count("explanation_cache_hit")
+		var cached: Dictionary = explanations[key].result.duplicate(true)
+		Profiler.close(span)
+		return cached
 	var result = _explain(view, value, listener, prepared)
+	if reuse_explanations:
+		if explanations.size() >= 256:
+			explanations.erase(explanations.keys()[0])
+		explanations[key] = {"inputs": inputs.duplicate(true), "result": result.duplicate(true)}
 	Profiler.close(span)
 	return result
 

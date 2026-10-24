@@ -270,7 +270,7 @@ static func shadow_view(w, n) -> Dictionary:
 	var sus = {}
 	for k in n.shadow.suspicion:
 		if w.by_id.has(k) and w.by_id[k].alive:
-			sus[k] = snappedf(n.shadow.suspicion[k], 0.01)
+			sus[k] = snappedf(susp(n.shadow, k), 0.01)
 	return {"role": n.shadow.role, "trust": snappedf(n.shadow.trust, 0.01), "suspicion": sus}
 
 # ---------------------------------------------------------------- suspicion
@@ -281,25 +281,17 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 		return
 	if target_id == listener.id or not listener.suspicion.has(target_id):
 		return
-	var t = w.by_id[target_id]
-	if not t.alive and t.death_cause == "demon":
-		return  # killed by the demon: treated as good
 	if conf_scaled:
 		delta *= 1.4 - 0.8 * trait_of(listener, "confidence")
 	var old: float = listener.suspicion[target_id]
-	var nv = clampf(old + delta, 0.0, 1.5)
+	var nv = old + delta
 	if listener.workshop_state.get("active", false):
 		var state: Dictionary = listener.workshop_state
 		var outside: float = state.outside.get(target_id, old)
-		var outside_before: float = outside
-		outside = clampf(outside + delta, 0.0, 1.5)
-		if src != "" and listener.ledger.has(src) and not is_equal_approx(outside - outside_before, delta):
-			listener.ledger[src]["workshop_clipped"] = true
+		outside += delta
 		state.outside[target_id] = outside
-		nv = clampf(outside + state.requested.get(target_id, 0.0), 0.0, 1.5)
+		nv = outside + state.requested.get(target_id, 0.0)
 		state.applied[target_id] = nv - outside
-	elif src != "" and listener.ledger.has(src) and not is_equal_approx(nv - old, delta):
-		listener.ledger[src]["workshop_clipped"] = true
 	listener.suspicion[target_id] = nv
 	w.dlog.trace_event("value_change", listener.id, target_id, {"quantity": "suspicion",
 		"from": old, "to": nv, "requested_delta": delta, "applied_delta": nv - old,
@@ -311,7 +303,14 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 		listener.sus_src[target_id] = src  # where the reason came from (a ledger entry id), for citing
 
 static func susp(n, target_id: String) -> float:
-	return n.suspicion.get(target_id, 0.0)
+	return clampf(n.suspicion.get(target_id, 0.0), 0.0, 1.5)
+
+## The stored vector is an exact, reversible sum. Consumers see bounded beliefs.
+static func suspicion_view(n) -> Dictionary:
+	var result = {}
+	for id in n.suspicion:
+		result[id] = susp(n, id)
+	return result
 
 static func known_good(w, id: String) -> bool:
 	var t = w.by_id[id]

@@ -18,6 +18,7 @@ func _init() -> void:
 
 func _game():
 	var g = Game.new()
+	g.workshop_effects = false # Explicit legacy baseline before testing migration.
 	g.detailed_logging = false
 	g.new_case(692, 7)
 	for p in g.w.npcs:
@@ -154,10 +155,10 @@ func _venues_and_mixed() -> void:
 		if venue == "private":
 			var vector: Dictionary = n.workshop_state.requested.duplicate(true)
 			Mind.recompute_beliefs(g.w, n, "unchanged inputs")
-			check(n.workshop_state.cache_hit and _close(vector, n.workshop_state.requested), "unchanged joint reassessment reuses an exact cached input without changing effects")
+			check(g._workshop_evaluations[n.id + (":cover" if n.is_shadow else ":good")].cache_hit and _close(vector, n.workshop_state.requested), "unchanged joint reassessment reuses an exact cached input without changing effects")
 			n.npc_trust[source.id] = 0.1
 			Mind.recompute_beliefs(g.w, n, "source credibility changed")
-			check(not n.workshop_state.cache_hit and not _close(vector, n.workshop_state.requested), "source trust invalidates the aggregate cache")
+			check(not g._workshop_evaluations[n.id + (":cover" if n.is_shadow else ":good")].cache_hit and not _close(vector, n.workshop_state.requested), "source trust invalidates the aggregate cache")
 			n.npc_trust[source.id] = 1.0
 			Mind.recompute_beliefs(g.w, n, "source credibility restored")
 			check(_close(vector, n.workshop_state.requested), "restoring source trust restores the same joint vector")
@@ -269,7 +270,7 @@ func _intermediate() -> void:
 		var repeated = g._evaluate_deduction(n, g.board[parent - 1], 1.0, true)
 		print("Ten-person grouped presentation cold/repeat: %d/%d ms" % [first_ms, Time.get_ticks_msec() - started])
 		var current_input: Array = g._workshop_responses[n.id + ":good"].input
-		check(previous_input == current_input and n.workshop_state.cache_hit and repeated.repeated, "ten-person repeated cases preserve an exact baseline and reuse both assessments")
+		check(previous_input == current_input and g._workshop_evaluations[n.id + (":cover" if n.is_shadow else ":good")].cache_hit and repeated.repeated, "ten-person repeated cases preserve an exact baseline and reuse both assessments")
 		g._evaluate_deduction(n, g.board[parent - 1], 0.6, true, "meeting")
 		check(Mind.citable_reason(g.w, n, "hollis", "town") != "", "public presentation makes its shared report-based reason publicly citable")
 		g._evaluate_deduction(n, g.board[parent - 1], 1.0, true)

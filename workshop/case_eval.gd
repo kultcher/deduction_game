@@ -218,7 +218,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	var team_prior = _team_prior(view, listener)
 	var fits = _class_fits(view, cc, cards, knowledge)
 	var case_like = _class_like(cc, cc.reports.map(func(c): return err_for.call(c)), -1)
-	var own_like = _state_like(view, own, own.map(func(c): return err_for.call(c)), ns)
+	var own_like = _state_like(view, own, own.map(func(c): return err_for.call(c)), oc.codes)
 	var compatible: bool = not Domain.live(view) or Domain.claims_compatible(cards, knowledge)
 	var base = PackedFloat64Array()
 	var post = PackedFloat64Array()
@@ -265,7 +265,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	result["factors"] = cc.factors + test_used
 	result["rivals"] = _rivals(view, result.people, conclusion)
 	result["theory_fit"] = 1.0
-	if not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty()):
+	if not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty()):
 		result["theory_fit"] = _theory_fit(view, case_data, cards, _expand(cc, oc, post))
 	if listener.get("id", "") == "":
 		# Only the board's strength label needs it: the reference listener.
@@ -501,29 +501,39 @@ static var _own_cache: Dictionary = {}
 ## Depends only on which own cards there are, so listeners holding the same share it.
 static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Dictionary:
 	if own.is_empty():
-		return {"states": 1, "counts": cc.count, "of": PackedInt32Array()}
+		return {"states": 1, "counts": cc.count, "of": PackedInt32Array(), "codes": [PackedByteArray()]}
 	var key = hash([cc.key, own.map(func(c): return c.get("fact_id", c.id))])
 	if _own_cache.has(key):
 		return _own_cache[key]
 	if _own_cache.size() > 64:
 		_own_cache.clear()
-	var ns: int = int(pow(3, own.size()))
 	var tables: Array = own.map(func(c): return Solver.report_table(view, c))
 	var valids: Array = own.map(func(c): return _valid_table(view, c))
 	var class_of: PackedInt32Array = cc.class_of
 	var n: int = class_of.size()
+	var of = PackedInt32Array()
+	of.resize(n)
+	# Only states actually present in legal worlds can carry probability. Enumerating
+	# all 3^private-readings combinations allocated mostly zero cells and made later
+	# presentations exponentially slower. Byte-vector keys also avoid integer overflow.
+	var codes: Array = []
+	var indices = {}
+	for i in range(n):
+		var code = PackedByteArray()
+		code.resize(own.size())
+		for c in range(own.size()):
+			code[c] = 0 if tables[c][i] == 1 else (1 if valids[c][i] == 1 else 2)
+		if not indices.has(code):
+			indices[code] = codes.size()
+			codes.append(code)
+		of[i] = indices[code]
+	var ns = codes.size()
 	var counts = PackedFloat64Array()
 	counts.resize(cc.team.size() * ns)
 	counts.fill(0.0)
-	var of = PackedInt32Array()
-	of.resize(n)
 	for i in range(n):
-		var o = 0
-		for c in range(own.size()):
-			o = o * 3 + (0 if tables[c][i] == 1 else (1 if valids[c][i] == 1 else 2))
-		of[i] = o
-		counts[class_of[i] * ns + o] += 1.0
-	var out = {"states": ns, "counts": counts, "of": of}
+		counts[class_of[i] * ns + of[i]] += 1.0
+	var out = {"states": ns, "counts": counts, "of": of, "codes": codes}
 	_own_cache[key] = out
 	return out
 
@@ -561,17 +571,14 @@ static func _class_like(cc: Dictionary, errs: Array, skip: int) -> PackedFloat64
 	return like
 
 ## The likelihood of each own-reading state (decoded from base 3).
-static func _state_like(view: Dictionary, own: Array, errs: Array, ns: int) -> PackedFloat64Array:
+static func _state_like(view: Dictionary, own: Array, errs: Array, codes: Array) -> PackedFloat64Array:
 	var out = PackedFloat64Array()
-	out.resize(ns)
+	out.resize(codes.size())
 	var qs: Array = own.map(func(c): return chance_content(view, c))
-	for o in range(ns):
+	for o in range(codes.size()):
 		var v = 1.0
-		var code = o
 		for c in range(own.size() - 1, -1, -1):
-			var st: int = code % 3
-			code /= 3
-			v *= _factor(st, errs[c], qs[c])
+			v *= _factor(codes[o][c], errs[c], qs[c])
 		out[o] = v
 	return out
 
@@ -676,8 +683,6 @@ static func _joint(view: Dictionary, cc: Dictionary, oc: Dictionary, own: Array,
 	var base_total = 0.0
 	var readable = 0.0
 	var consistent = false
-	var digits = PackedByteArray()
-	digits.resize(ko)
 	for x in range(base.size()):
 		var c: int = x / ns
 		var all_hold = dead[c] == 0 and move[c] > 0.0 and cc.movement_ok
@@ -691,10 +696,7 @@ static func _joint(view: Dictionary, cc: Dictionary, oc: Dictionary, own: Array,
 			if st == 2:
 				all_valid = false
 		if ko > 0:
-			var code: int = x % ns
-			for j in range(ko - 1, -1, -1):
-				digits[j] = code % 3
-				code /= 3
+			var digits: PackedByteArray = oc.codes[x % ns]
 			for j in range(ko):
 				if digits[j] == 0:
 					held[k + j] += post[x]
@@ -789,8 +791,9 @@ static func _theory_fit(view: Dictionary, case_data: Dictionary, cards: Array, p
 	var masks: Array = []
 	for card in cards:
 		var positive: Array = case_data.get("answers", {}).get(card.id, {}).get("positive", [])
-		if Solver.tabled(card) and not positive.is_empty():
-			masks.append(Solver.report_table(view, card, positive))
+		var blocks: Array = case_data.get("answers", {}).get(card.id, {}).get("blocks", [])
+		if Solver.tabled(card) and (not positive.is_empty() or not blocks.is_empty()):
+			masks.append(Solver.report_table(view, card, positive, blocks))
 	var positions: Dictionary = case_data.get("positions", {})
 	if masks.is_empty() and positions.is_empty():
 		return 1.0

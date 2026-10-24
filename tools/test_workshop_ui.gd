@@ -12,6 +12,16 @@ func _run() -> void:
 	root.add_child(scene)
 	await process_frame
 	scene._load_example(3)
+	scene.focus_card = "survey"
+	scene._refresh_case()
+	var block_slot = scene.find_child("Answer_survey_0", true, false)
+	check(block_slot != null and block_slot.get_item_text(1).begins_with("Someone on "), "Surveyor controls offer a block without naming a resident")
+	block_slot.select(1)
+	block_slot.item_selected.emit(1)
+	await process_frame
+	check(scene.session.case_data.answers.survey.blocks.size() == 1 and scene.session.case_data.answers.survey.positive.is_empty(), "selecting a block preserves an unresolved resident")
+	check(scene.find_child("Answer_survey_0", true, false).selected == 1, "the block answer survives the UI rebuild")
+	scene._load_example(3)
 	var slot = scene.find_child("Answer_dowse_1", true, false)
 	slot.select(4)
 	slot.item_selected.emit(4)

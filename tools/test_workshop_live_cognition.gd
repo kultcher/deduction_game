@@ -81,7 +81,7 @@ func _insight() -> void:
 		for venue in ["private", "meeting", "nomination", "private"]:
 			g._evaluate_deduction(n, g.board[number - 1], 0.6, true, venue)
 			check(_close(beliefs, n.suspicion) and n.workshop_state.theories == theories, "repeated venues cannot sharpen a native theory or compound suspicion")
-		check(n.workshop_state.cache_hit, "unchanged presentations reuse the committed union assessment")
+		check(g._workshop_evaluations[n.id + (":cover" if n.is_shadow else ":good")].cache_hit, "unchanged presentations reuse the committed union assessment")
 		var before = JSON.stringify([n.workshop_state, n.suspicion, n.trust, g.w.rng.state])
 		var preview = g.workshop_preview(number, n.id)
 		var ghost = g.workshop_ghost_preview(number)
@@ -180,7 +180,7 @@ func _cover_and_fallback() -> void:
 	check(evil.shadow.workshop_state.get("enabled", false) and g.workshop_snapshot([number], evil.id).listener.reasoning_mode == "bounded", "evil's cover receives the bounded native profile")
 	check(real_before == [evil.suspicion, evil.intel] and not evil.workshop_state.has("theories"), "cover cognition never changes the real evil mind or supplies evil intelligence")
 	g.new_case(692, 7)
-	check(g.w.npcs.all(func(p): return p.workshop_state.is_empty()) and not g.workshop_effects, "new case clears all prior cognitive memory and resets opt-in")
+	check(g.w.npcs.all(func(p): return p.workshop_state.get("presentations", {}).is_empty() and p.workshop_state.get("discussion", {}).is_empty()) and g.workshop_effects, "new case clears prior presentations and keeps shared evaluation enabled")
 
 func _registration() -> void:
 	var g = _game()

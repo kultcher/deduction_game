@@ -64,7 +64,7 @@ func _live(seed_value: int, size: int) -> void:
 	if evil.shadow != null:
 		var cover_before = _state(g)
 		var cover = g.workshop_snapshot([read], evil.id)
-		check(cover.listener.suspicion == evil.shadow.suspicion and "HIDDEN_INTEL" not in JSON.stringify(cover), "evil assessment receives only its existing cover mind")
+		check(cover.listener.suspicion == preload("res://sim/mind.gd").suspicion_view(evil.shadow) and "HIDDEN_INTEL" not in JSON.stringify(cover), "evil assessment receives only its existing cover mind")
 		check(cover_before == _state(g), "cover capture does not create or sync shadows")
 	check(g.workshop_snapshot([99999], n.id).issues.any(func(i): return i.code == "missing_card"), "absent evidence is reported")
 	check(g.workshop_snapshot([read], "missing").issues.any(func(i): return i.code == "unknown_listener"), "missing listener is reported")

@@ -46,6 +46,7 @@ func _init() -> void:
 
 func _game(sd: int, size: int = 10):
 	var g = Game.new()
+	g.workshop_effects = false # Native mechanics fixtures; shared integration has its own suites.
 	g.log_dir = "user://test_logs"
 	g.new_case(sd, size)
 	return g
@@ -197,6 +198,7 @@ func _warden_doors() -> void:
 
 func _martyr_reluctance() -> void:
 	var g = _game(7106)
+	g.set_workshop_effects(false) # Isolate the unchanged vote formula from evidence.
 	var w = g.w
 	var m = w.npcs.filter(func(x): return not x.is_evil())[0]
 	var t = w.npcs.filter(func(x): return not x.is_evil() and x != m)[0]

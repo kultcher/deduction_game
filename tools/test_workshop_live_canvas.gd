@@ -72,16 +72,19 @@ func _run() -> void:
 	board.version += 1
 	var changed = board.compile(root_id)
 	var revised = Live.file(g, changed, number)
-	check(revised == number and listener.workshop_state.requested == requested, "filing a revision keeps identity and leaves listener beliefs untouched")
+	check(revised > number and g.board[number - 1].superseded_by == revised and listener.workshop_state.requested == requested, "a revision gets a new number, marks its predecessor and leaves listener beliefs untouched")
+	var previous = number
+	number = revised
 	result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
 	check(result.get("workshop", false) and not result.repeated, "changed hypotheses produce a fresh assessment rather than an unchanged reply")
 	check(listener.workshop_state.presentations[str(number)].arguments[0].workshop_case.positions == changed.positions, "the listener's endorsement is replaced by the heard revision")
+	check(not listener.workshop_state.presentations.has(str(previous)), "hearing a revision retires the previous endorsement")
 	board.connect_cards("e:" + trace_id, root_id)
 	var mixed = board.compile(root_id)
 	var status = Live.status(g, mixed)
 	check(not status.ready and not status.blocked and status.issues.any(func(s): return "trace" in s), "mixed trace/reading chain remains usable and clearly requires fallback")
 	check("NOT interpreted" in status.warning, "fallback warning names the lost canvas interpretation")
-	Live.file(g, mixed, number)
+	number = Live.file(g, mixed, number)
 	result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
 	check(not result.get("workshop", false) and g.workshop_deliveries[-1].model == "legacy", "unsupported revised graph actually uses native rules")
 	check(not listener.workshop_state.get("presentations", {}).has(str(number)), "fallback revision retires the prior shared endorsement")
@@ -89,7 +92,7 @@ func _run() -> void:
 	check(listener.ledger.get("arg:workshop:%d" % number, {}).get("weight", -1) == 0.0, "developer withdrawal also retires a fallback canvas contribution")
 	board.unlink("e:" + trace_id, root_id)
 	board.nodes[root_id].positions.clear()
-	Live.file(g, board.compile(root_id), number)
+	number = Live.file(g, board.compile(root_id), number)
 	result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
 	check(result.get("workshop", false), "removing unsupported evidence allows supported interpretation again")
 	check(listener.workshop_state.facts.size() == 1, "fallback recovery retains a single original owner")
@@ -196,7 +199,7 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	g.new_case(693, 10)
 	editor.refresh()
 	check(editor.files.is_empty() and editor.board.links.is_empty() and editor.board.view.people.size() == 10 and not editor.board.nodes.values().any(func(n): return n.kind == "evidence"), "new case clears the graph and starts without transferred evidence")
-	check(not g.workshop_effects and g.workshop_deliveries.is_empty(), "case reset clears experimental switch and presentation feedback")
+	check(g.workshop_effects and g.workshop_deliveries.is_empty(), "case reset retains shared evaluation and clears presentation feedback")
 	editor.queue_free()
 	await process_frame
 
@@ -262,7 +265,7 @@ func _flow() -> void:
 		g.command("sleep")
 	check(g.w.day >= 2 or g.w.game_over, "normal execution and night resolution finish after the canvas presentations")
 	g.new_case(692, 10)
-	check(g.workshop_draft.is_empty() and g.workshop_deliveries.is_empty() and not g.workshop_effects, "restarting the same seed clears all canvas ownership and feedback")
+	check(g.workshop_draft.is_empty() and g.workshop_deliveries.is_empty() and g.workshop_effects, "restarting the same seed clears canvas ownership and feedback while retaining shared evaluation")
 
 func _main_ui() -> void:
 	var main = load("res://ui/main.tscn").instantiate()
@@ -277,7 +280,7 @@ func _main_ui() -> void:
 	check(editor.g == main.g and editor.board.view.get("live", false), "main menu opens the live editor rather than the fixture canvas")
 	check(main.workshop_win.gui_embed_subwindows, "Workshop owns its child dialog layer instead of sharing the outer game window stack")
 	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded() and window.get_parent().get_window() == main.workshop_win), "live answer, results, progress and context windows belong to the Workshop layer")
-	check(not main.g.prediction_spoiled and not main.g.workshop_effects, "opening the live editor does not enable debug spoilers or experimental effects")
+	check(not main.g.prediction_spoiled and main.g.workshop_effects, "opening the live editor preserves shared evaluation without enabling debug spoilers")
 	var number: int = main.g.board[0].n
 	main.case_view.show_card_menu(number, Vector2i(200, 200))
 	main.case_view.card_menu.id_pressed.emit(100)
@@ -300,7 +303,7 @@ func _main_ui() -> void:
 	check(withdrawal.visible and withdrawal.transient and withdrawal.is_embedded() and withdrawal.get_parent().get_window() == main.workshop_win, "dynamically created withdrawal panel also uses the Workshop layer")
 	withdrawal.close_requested.emit()
 	await editor._send("convince %d" % filed_number)
-	check("FALLBACK" in editor.result_output.text and main.g.questions_left == 2, "live screen submits through the main game's command callback and displays actual fallback")
+	check("New shared evaluator" in editor.result_output.text and main.g.questions_left == 2, "live screen submits a home-context case through the main callback and displays shared delivery")
 	check(not editor.progress_window.visible and not editor.presenting, "presentation progress closes and releases the editor after delivery")
 	editor.preview_window.hide()
 	main.seed_box.value = 693

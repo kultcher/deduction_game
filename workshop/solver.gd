@@ -1,6 +1,7 @@
 ## Small exhaustive constraint solver. Receives public evidence only, never hidden truth.
 ## Counts measure compatible assignments, NOT posterior probabilities.
 extends RefCounted
+const C = preload("res://sim/content.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const Roles = preload("res://workshop/role_constraints.gd")
 
@@ -10,6 +11,9 @@ const Profiler = preload("res://workshop/profiler.gd")
 static var universes: Dictionary = {}
 static var report_matches: Dictionary = {}
 static var movement_cache: Dictionary = {}
+static var solve_cache: Dictionary = {}
+static var conflict_cache: Dictionary = {}
+static var reuse_solves = true # Offline parity checks can bypass memoization.
 static var _cached_people = null
 static var _cached_ids: Array = []
 static var _cached_idx: Dictionary = {}
@@ -70,7 +74,7 @@ static func semantic_key(card: Dictionary) -> String:
 			data[key].sort()
 	return JSON.stringify([card.get("kind"), card.get("source"), card.get("role"), card.get("observed_at"), data, card.get("subject"), card.get("block")])
 
-static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictionary = {}) -> Dictionary:
+static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictionary = {}, include_conflicts: bool = true) -> Dictionary:
 	case_data = Graph.compile_case(view, case_data)
 	var cards = selected(view, case_data)
 	if case_data.conclusion.type == "conflict":
@@ -119,7 +123,7 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 	if conclusion.type == "conflict" and (base.worlds.is_empty() or not base.movement_ok):
 		entailment = "forced"
 	var conflicts: Array = []
-	if base.worlds.is_empty() or not base.movement_ok:
+	if include_conflicts and (base.worlds.is_empty() or not base.movement_ok):
 		conflicts = minimal_conflicts(view, cards, knowledge)
 	return {"status": status, "entailment": entailment, "compatible": base.worlds.size(), "supporting": n, "hypothetically_released": cards.filter(func(c): return c not in proposed_cards).map(func(c): return c.id),
 		"proposed": proposed.worlds.size(), "alternative": alternative, "errors": errors,
@@ -127,11 +131,19 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 		"assumptions": assumption_labels(view, cards), "unresolved": unresolved(view, proposed.worlds), "conflicts": conflicts}
 
 static func minimal_conflicts(view: Dictionary, cards: Array, knowledge: Dictionary = {}) -> Array:
+	var inputs = [_query_view(view), cards, _query_knowledge(knowledge)]
+	var key = hash(inputs)
+	if reuse_solves and conflict_cache.has(key) and conflict_cache[key].inputs == inputs:
+		return conflict_cache[key].result
 	# Shrink one conflict, then explore excluding each member to discover other cores.
 	# This avoids enumerating every unrelated subset for a simple alibi conflict.
-	cards = cards.filter(func(c): return c.kind in ["report", "sighting", "alibi"])
+	cards = cards.filter(func(c): return c.kind in ["report", "sighting", "alibi", "totem", "dropped"])
 	var result: Array = []
 	_find_conflicts(view, cards, knowledge, result, {})
+	if reuse_solves:
+		if conflict_cache.size() >= 128:
+			conflict_cache.erase(conflict_cache.keys()[0])
+		conflict_cache[key] = {"inputs": inputs.duplicate(true), "result": result}
 	return result
 
 static func _find_conflicts(view: Dictionary, cards: Array, knowledge: Dictionary, result: Array, visited: Dictionary) -> void:
@@ -157,8 +169,36 @@ static func _find_conflicts(view: Dictionary, cards: Array, knowledge: Dictionar
 
 static func solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}, epoch: String = "", temporal_positions: Array = []) -> Dictionary:
 	var span = Profiler.open("constraint_solve")
+	# Bounded search, per-person theories and diagnostic explanations repeatedly ask
+	# exactly the same question. Cache complete public inputs, including chronology
+	# and private knowledge; never a partial key that could reuse an older night.
+	var inputs = [_query_view(view), cards, positions, answers, _query_knowledge(knowledge), epoch, temporal_positions]
+	var key = hash(inputs)
+	if reuse_solves and solve_cache.has(key) and solve_cache[key].inputs == inputs:
+		Profiler.count("solve_cache_hit")
+		var cached: Dictionary = solve_cache[key].result
+		Profiler.close(span)
+		return cached
 	var result = _solve(view, cards, positions, answers, knowledge, epoch, temporal_positions)
+	if reuse_solves:
+		if solve_cache.size() >= 1024:
+			solve_cache.erase(solve_cache.keys()[0])
+		solve_cache[key] = {"inputs": inputs.duplicate(true), "result": result}
 	Profiler.close(span)
+	return result
+
+## The explicit cards argument already contains the selected receipts. Unselected
+## library cards and attention bookkeeping are not inputs to _solve, roles or routes;
+## retaining them in keys prevented identical scoped/union questions from sharing.
+static func _query_view(view: Dictionary) -> Dictionary:
+	var result = view.duplicate()
+	result.erase("cards")
+	return result
+
+static func _query_knowledge(knowledge: Dictionary) -> Dictionary:
+	var result = knowledge.duplicate()
+	result.erase("own_reports")
+	result.erase("attention_reports")
 	return result
 
 ## Every legal world for this view (cached). Shared by the solve and by CaseEval.
@@ -187,15 +227,17 @@ static func _build_universe(view: Dictionary) -> Array:
 
 ## For one report (or curse event) card: a byte per universe world, 1 where the card's
 ## content holds as a healthy reading from a good source (cached by exact inputs).
-static func report_table(view: Dictionary, card: Dictionary, positive: Array = []) -> PackedByteArray:
+static func report_table(view: Dictionary, card: Dictionary, positive: Array = [], positive_blocks: Array = []) -> PackedByteArray:
 	var universe_key = _universe_key(view)
 	var universe: Array = universe(view)
 	positive = positive.duplicate()
 	positive.sort()
+	positive_blocks = positive_blocks.duplicate()
+	positive_blocks.sort()
 	# Homes affect Surveyor blocks; kind/event distinguish public process cards.
 	# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
 	var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.source,
-		card.get("role", ""), card.observed_at, card.data, positive]
+		card.get("role", ""), card.observed_at, card.data, positive, positive_blocks]
 	var key = hash(inputs)
 	if not report_matches.has(key) or report_matches[key].inputs != inputs:
 		if report_matches.size() > 512:
@@ -213,10 +255,10 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 			var valid: PackedByteArray = valid_table(view, card)
 			var trivial: bool = card.get("role", "") not in CONTENT_ROLES
 			for g in range(rep.size()):
-				answers[g] = 0 if valid[rep[g]] == 0 else (1 if trivial or _report_content(view, universe[rep[g]], card, {"positive": positive}) else 0)
+				answers[g] = 0 if valid[rep[g]] == 0 else (1 if trivial or _report_content(view, universe[rep[g]], card, {"positive": positive, "blocks": positive_blocks}) else 0)
 		else:
 			for g in range(rep.size()):
-				answers[g] = 1 if _report_holds(view, universe[rep[g]], card, {"positive": positive}) else 0
+				answers[g] = 1 if _report_holds(view, universe[rep[g]], card, {"positive": positive, "blocks": positive_blocks}) else 0
 		for i in range(universe.size()):
 			accepted[i] = answers[of[i]]
 		report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
@@ -340,6 +382,12 @@ static func source_valid(view: Dictionary, world: Dictionary, card: Dictionary) 
 	return true
 
 static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}, epoch: String = "", temporal_positions: Array = []) -> Dictionary:
+	if not positions.is_empty() or not temporal_positions.is_empty():
+		# Candidate theories differ only in position filters. Reports, roles and routes
+		# do not read those filters, so compute their common surviving worlds once.
+		var base = solve(view, cards, {}, answers, knowledge, epoch)
+		return {"worlds": _positions(view, base.worlds, positions, epoch, temporal_positions),
+			"movement": base.movement, "movement_ok": base.movement_ok}
 	# Report masks use the universe's array index, including distinct conversion
 	# histories. Keep the worlds themselves unchanged for explanations/checkpoints.
 	var universe: Array = universe(view)
@@ -347,7 +395,7 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 	for card in cards:
 		if not tabled(card):
 			continue
-		tables.append(report_table(view, card, answers.get(card.id, {}).get("positive", [])))
+		tables.append(report_table(view, card, answers.get(card.id, {}).get("positive", []), answers.get(card.id, {}).get("blocks", [])))
 	var worlds: Array = []
 	if tables.is_empty():
 		worlds = universe.duplicate()
@@ -420,6 +468,37 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 	var movement = movement_for(view, cards if view.get("live_activity", false) else movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
 
+static func _positions(view: Dictionary, worlds: Array, positions: Dictionary, epoch: String, temporal: Array) -> Array:
+	if view.get("chronology", {}).has("curse") or not temporal.is_empty():
+		for id in positions:
+			worlds = worlds.filter(func(w): return position_holds(view, w, id, positions[id], epoch))
+		for assignment in temporal:
+			for id in assignment.positions:
+				worlds = worlds.filter(func(w): return position_holds(view, w, id, assignment.positions[id], assignment.at))
+		return worlds
+	var good = 0
+	var evil = 0
+	var marked = -2
+	var other: Array = []
+	for id in positions:
+		var index = person_index(view, id)
+		if index < 0:
+			if positions[id] in ["evil", "marked", "unmarked"]:
+				return []
+			continue
+		match positions[id]:
+			"good": good |= 1 << index
+			"evil": evil |= 1 << index
+			"marked":
+				if marked >= 0 and marked != index:
+					return []
+				marked = index
+			_: other.append(id)
+	worlds = worlds.filter(func(w): return not (w.evil & good) and (w.evil & evil) == evil and (marked < 0 or w.marked == marked))
+	for id in other:
+		worlds = worlds.filter(func(w): return position_holds(view, w, id, positions[id], epoch))
+	return worlds
+
 static func movement_for(view: Dictionary, cards: Array, answers: Dictionary = {}, knowledge: Dictionary = {}) -> Dictionary:
 	if preload("res://workshop/live_activity.gd").available(view):
 		return preload("res://workshop/live_activity.gd").routes(view, cards, answers, knowledge)
@@ -483,7 +562,10 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 	var ans_pos = answer.get("positive", [])
 	var ans_mask: int = 0
 	for id in ans_pos:
-		ans_mask |= (1 << person_index(view, id))
+		var index = person_index(view, id)
+		if index < 0:
+			return false
+		ans_mask |= 1 << index
 	var group_mask: int = 0
 	if card.role == "dowser":
 		for id in d.group:
@@ -492,9 +574,17 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 	var target_count: int = d.count
 	_ensure_people(view)
 	var b_masks: Array = _cached_block_masks.values()
+	var chosen_blocks: Array = answer.get("blocks", [])
+	if not is_surveyor and not chosen_blocks.is_empty():
+		return false
+	for block in chosen_blocks:
+		if not _cached_block_masks.has(block):
+			return false
 	for mark_reads in [false, true]:
 		var pos_mask: int = evil_bits | ((1 << world.marked) if (mark_reads and world.marked >= 0) else 0)
 		if (pos_mask & ans_mask) != ans_mask:
+			continue
+		if not chosen_blocks.all(func(block): return bool(pos_mask & _cached_block_masks[block])):
 			continue
 		var count: int = 0
 		if is_surveyor:
@@ -604,8 +694,9 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			continue
 		var card = card_by_id(view, id)
 		var positive: Array = case_data.answers[id].get("positive", [])
+		var chosen_blocks: Array = case_data.answers[id].get("blocks", [])
 		var maximum: int = (0 if card.data.get("yes") == false else 1) if card.get("role") == "seer" else (1 if card.get("role", "") in ["rumormonger", "clerk", "archivist"] else card.get("data", {}).get("count", 10))
-		if positive.size() > maximum:
+		if positive.size() + chosen_blocks.size() > maximum:
 			errors.append("%s: there are more answers than positive slots." % id)
 		var unique: Array = []
 		for person in positive:
@@ -625,6 +716,12 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			errors.append("%s: the count excludes the Lamplighter." % id)
 		if card.get("role", "") == "surveyor":
 			var blocks: Array = []
+			for block in chosen_blocks:
+				if block not in C.BLOCKS:
+					errors.append("%s: choose a known block." % id)
+				if block in blocks:
+					errors.append("%s: each slot needs a different block." % id)
+				blocks.append(block)
 			for person in positive:
 				var matches: Array = view.people.filter(func(p): return p.id == person)
 				if matches.is_empty():
@@ -633,6 +730,8 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 				if home in blocks:
 					errors.append("%s: each slot needs a different block." % id)
 				blocks.append(home)
+		elif not chosen_blocks.is_empty():
+			errors.append("%s: only Surveyor answers can name blocks." % id)
 		if card.get("role", "") == "rumormonger" and not positive.all(func(p): return p in card.data.pair):
 			errors.append("%s: choose someone in the named pair." % id)
 	return errors

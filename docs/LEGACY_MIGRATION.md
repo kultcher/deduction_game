@@ -33,7 +33,7 @@ Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture) and
    come from the snapshot contract only.
 5. **Determinism:** no new game-RNG draws in evaluation. Same seed and same commands
    give the same game.
-6. **Every phase ends green:** all `tools/test_*.gd` pass on Godot 4.4.1 headless (one
+6. **Every phase ends green:** all `tools/test_*.gd` pass on Godot 4.7.2 headless (one
    known failure on main: `test_social`, "a false Night Watch's night story matches
    their fake report"; don't add to it), plus bot runs (below) recorded in the PR.
 7. **Small commits, one phase or sub-phase each.** Don't delete legacy code for a kind of
@@ -156,6 +156,12 @@ fallback events. Tests: extend `test_workshop_ownership.gd` with a demon-victim 
 and a clipped-contribution case; add a strict-mode test that a case with a totem card
 is blocked with a named reason.
 
+**P0 measurement checkpoint (user, Oct 23):** check whether case #85 now passes in
+the 54875 replay. Record listener agreement, suspicion, vote margins and the actual
+tally. Report a surprising result in either direction; do not tune it. Expectations
+derived from the code are estimates, not measurements. The replay confirms them.
+Q3 and Q6 remain deferred regardless of this result.
+
 ### P1. Finish the player-facing paths (A1–A7)
 
 1. **Revisions** (A7): a revised case is the old case plus new support. Old facts keep
@@ -271,6 +277,15 @@ pressure, disclosure and the vote formula.
 
 ## Decisions for the user (don't settle these in code)
 
+**Confirmed by the user (Oct 23):**
+- **Q1:** public accusations and consensus are social signals, never evidence.
+- **Q2:** a demon kill is strong (95%) evidence of innocence, not proof. Victims'
+  beliefs and credibility must remain revisable.
+- **Q4:** opinions and accusations are not evidence. Hints weakly support a gift
+  claim; refusals weakly support suspicion.
+- **Q5:** strict mode is for testing only; normal play must report any fallback.
+- **Q3 and Q6:** deferred, with the existing values preserved as described below.
+
 **Deferred to a later tuning pass (user, Oct 23): Q3 and Q6.** Until then, port the
 legacy values exactly and don't tune them:
 - **Q3, agreement to action:** keep `Mind._vote_impl`'s formula and `need`
@@ -300,6 +315,10 @@ legacy values exactly and don't tune them:
   urgency term, and `prefers_block`. The 54875 replay fixture records each listener's
   agreement, suspicion and vote margin; check after P0 whether case #85 now passes,
   and treat a surprising answer either way as something to report, not tune.
+  **Measured (Oct 23, see MIGRATION_PROGRESS.md):** it didn't pass (1 yes of 5), and
+  the estimate above was wrong for a reason that isn't tuning: five of nine listeners
+  never considered the two presented cards (attention budget; see "Presented cards
+  dropped by attention").
 
 - **Q1.** Does a public accusation count as evidence, or stay a social signal outside
   belief (DESIGN today)?
