@@ -4,8 +4,9 @@ Updated Oct 24, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
 
 The migration is **in progress**, not finished. P1 is partly implemented; P3
 consensus, public death/silence/Martyr events and Q4 speech/context slices are implemented.
-The remaining P2 and P3 work, P4 and P5
-remain. Q3 and Q6 remain deferred. The Demon-victim rule now supplies finite 95:5
+The remaining P2 and P3 work, most of P4 and P5
+remain. P4's execution-priority input is wired with a fixed zero coefficient.
+Q3 and Q6 remain deferred. The Demon-victim rule now supplies finite 95:5
 innocence evidence; refusals supply weak suspicion and hints weakly support a
 tentative gift-family claim.
 
@@ -537,7 +538,7 @@ including real meeting speech, public acknowledgement, cover minds, source redac
 deduplication and the existing single corroboration draw. Six focused suites pass.
 A frozen full regular run passes **56/58**, with only the two established baseline
 failures. The prior shared Martyr slice also passed the slow trace suite (45 checks).
-The provenance trace run is in progress. Logs: `logs/migration/resume/provenance`.
+The provenance slow trace run passes all 45 checks. Logs: `logs/migration/resume/provenance`.
 
 Paired ordinary town presentations remain fully shared (10 listeners, zero fallback):
 seed 692 **2429 -> 2453 ms**, seed 4242 **2658 -> 2676 ms**. No significant time
@@ -546,6 +547,37 @@ three newly retained `provenance_paths` arrays on named NPC reading receipts; it
 probabilities, dialogue, RNG and all other recorded behavior are identical. This
 is a declared transport change, not a numerical optimization. Anonymous fallback
 timings are not used as performance evidence.
+
+## P4 execution-priority plumbing, zero weight (Codex, Oct 24)
+
+The shared union now exposes a separate provisional action input: the attended
+posterior for each person, including the existing Insight/Confidence theory path.
+This reuses the completed solve; it does not run another solve or read referee
+truth. The output explicitly says it has not been action-tuned. Urgency and action
+threshold calibration remain deferred. Public Martyr proof sets its action input
+to zero as well as its posterior.
+
+Good and cover minds retain this input only while shared ownership is active.
+Disabling assessment, losing capability or refreshing an empty evidence set removes
+it. Vote and nomination plumbing reads the input separately from suspicion and
+crowd pressure, with `SHARED_EXECUTION_PRIORITY_WEIGHT = 0.0` fixed in content.
+Decision traces expose that zero coefficient and the unused input. No Q3 tuning,
+new urgency rule, suspicion adjustment or extra random draw was introduced.
+
+`test_workshop_action.gd` passes 84 checks, including exact vote score, threshold,
+margin and nomination parity at several boundary values, cover ownership, repeat
+and capability-loss behavior. Four related suites pass; the frozen full regular run
+passes **57/59**, with only the two established baseline failures. Slow trace is
+running on the frozen action slice. Logs: `logs/migration/resume/action`.
+
+Paired ten-listener presentations remain fully shared: seed 692 **2377 -> 2267 ms**,
+seed 4242 **2610 -> 2584 ms**. No significant added time. Both recorded behavior
+objects are exactly equal after removing only the newly stored action metadata.
+The paired 54875 replay retains identical agreement, suspicion, vote margins,
+delivery coverage and tally: **1 yes / 5 needed**, nine shared, zero fallback.
+Only command/profile timings differ. P4 nightly baseline solves, public citing
+reasons and bot integration remain; P5 deletion is still gated on the remaining
+replacements and measurements.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 

@@ -372,6 +372,15 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 				prepared.listener.confidence, target, reasoning.considered]))
 			Theory.prepare(prepared.view, question, prepared.listener, reasoning, key)
 	result["theories"] = prepared.listener.theories.duplicate(true)
+	# Expose the attended model's candidate ranking separately from the replaceable
+	# suspicion delta. This is a provisional action input, not an execution decision;
+	# urgency and action tuning remain deferred (Q3), and its consumer weight is zero.
+	var priorities = {}
+	for person in result.effects:
+		var effect: Dictionary = result.effects[person]
+		if effect.has("posterior"):
+			priorities[person] = clampf(float(effect.posterior), 0.0, 1.0)
+	result["action"] = {"execution_priority": priorities, "basis": "attended_posterior", "tuned": false}
 	return result
 
 static func _add(facts: Dictionary, owners: Dictionary, receipt: Dictionary, owner: String) -> void:

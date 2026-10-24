@@ -5,6 +5,10 @@ extends RefCounted
 ## Enable explicitly in regression tests and playtests, never in ordinary play.
 const STRICT_EVALUATOR = false
 
+## Q3 is deferred. Keep shared execution-priority plumbing inactive until the
+## user authorizes action tuning; evidence updates remain independent of this.
+const SHARED_EXECUTION_PRIORITY_WEIGHT = 0.0
+
 const PHASES = ["Morning", "Afternoon", "Evening", "Night"]
 const MORNING = 0
 const AFTERNOON = 1

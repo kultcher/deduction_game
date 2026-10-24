@@ -37,6 +37,7 @@ static func _refresh(g, n, phase: String) -> void:
 		state.requested = {}
 		state.applied = {}
 		state.owned = {}
+		state.erase("action") # An unsupported/disabled refresh cannot retain an action.
 		g._workshop_plans.erase(key)
 		if not state.get("enabled", false):
 			state.issues = ["Shared effects disabled; legacy contributions restored."]
@@ -89,6 +90,10 @@ static func _refresh(g, n, phase: String) -> void:
 		state.theories = proposal.get("theories", state.get("theories", {})).duplicate(true)
 		state.reasoning = proposal.get("reasoning", {}).duplicate(true)
 		state.reading_challenges = proposal.get("reading_challenges", []).duplicate(true)
+		if proposal.get("action", {}).is_empty():
+			state.erase("action")
+		else:
+			state["action"] = proposal.action.duplicate(true)
 		if proposal.get("public_good", []).is_empty():
 			state.erase("public_good")
 		else:

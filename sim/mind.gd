@@ -897,7 +897,18 @@ static func ranked_suspects(w, n, social_pressure: bool = false) -> Array:
 ## The previous crowd weight and read clamp, confined to social action. In
 ## particular, it must never enter reading honesty or the shared world's prior.
 static func action_susp(n, id: String) -> float:
-	return clampf(n.suspicion.get(id, 0.0) + n.consensus_pressure.get(id, 0.0), 0.0, 1.5)
+	var score = clampf(n.suspicion.get(id, 0.0) + n.consensus_pressure.get(id, 0.0), 0.0, 1.5)
+	return score + execution_priority_contribution(n, id) if C.SHARED_EXECUTION_PRIORITY_WEIGHT != 0.0 else score
+
+## Only a current shared solve can supply action inputs. This read is separate
+## from suspicion, source honesty and the world's prior, including on evil covers.
+static func execution_priority(n, id: String) -> float:
+	if not n.workshop_state.get("active", false):
+		return 0.0
+	return clampf(float(n.workshop_state.get("action", {}).get("execution_priority", {}).get(id, 0.0)), 0.0, 1.0)
+
+static func execution_priority_contribution(n, id: String) -> float:
+	return C.SHARED_EXECUTION_PRIORITY_WEIGHT * execution_priority(n, id)
 
 ## The Seer's two picks, by Insight. A sharp Seer usually re-checks their top suspect and
 ## pairs them with someone they haven't looked at yet; once two readings have said "yes"
@@ -1496,7 +1507,8 @@ static func _good_nomination_impl(w, n, m: Dictionary, block: String, trace_id: 
 		if n.cleared.has(t.id):
 			s -= 0.2  # their own sight said this person is no demon
 		w.dlog.decision(n.id, "nomination", "evaluation", s >= thr, {"score": s,
-			"raw_suspicion": susp(n, t.id), "town_pressure": action_susp(n, t.id) - susp(n, t.id), "own_clear_adjustment": -0.2 if n.cleared.has(t.id) else 0.0,
+			"raw_suspicion": susp(n, t.id), "town_pressure": action_susp(n, t.id) - execution_priority_contribution(n, t.id) - susp(n, t.id), "own_clear_adjustment": -0.2 if n.cleared.has(t.id) else 0.0,
+			"shared_execution_priority": execution_priority(n, t.id), "shared_execution_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT,
 			"threshold": thr, "comparison": ">=",
 			"threshold_parts": {"day_base": maxf(0.45, 0.86 - 0.08 * w.day),
 				"confidence": -0.15 * (trait_of(n, "confidence") - 0.5) * 2.0,
@@ -1816,7 +1828,9 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	reconsider(w, v, "thinking it over before the vote")
 	var base = action_susp(v, nominee)
 	var s = base
-	var parts = {"suspicion": snappedf(susp(v, nominee), 0.01), "town_pressure": base - susp(v, nominee)}
+	var parts = {"suspicion": snappedf(susp(v, nominee), 0.01), "town_pressure": base - execution_priority_contribution(v, nominee) - susp(v, nominee)}
+	if C.SHARED_EXECUTION_PRIORITY_WEIGHT != 0.0:
+		parts["shared_execution_priority"] = execution_priority_contribution(v, nominee)
 	if player_yes:
 		parts["player_votes_yes"] = 0.25 * v.trust - 0.05
 	if statement == "defend":
@@ -1838,7 +1852,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		if r > 0.0:
 			parts["martyr_reluctance"] = -snappedf(r, 0.01)
 	for k in parts:
-		if k not in ["suspicion", "town_pressure"]:
+		if k not in ["suspicion", "town_pressure", "shared_execution_priority"]:
 			s += parts[k]
 	var need = 0.5 - 0.12 * (trait_of(v, "confidence") - 0.5) * 2.0 + (0.1 if w.day <= 1 else 0.0) - 0.4 * paranoia(w, v)
 	var yes = s >= need
@@ -1850,6 +1864,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 			"confidence": -0.12 * (trait_of(v, "confidence") - 0.5) * 2.0,
 			"early_day": 0.1 if w.day <= 1 else 0.0, "paranoia": -0.4 * paranoia(w, v)},
 		"trust": v.trust, "block": block, "spare_preference": v.spare_pref.get(nominee, 0.0),
+		"shared_execution_priority": execution_priority(v, nominee), "shared_execution_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT,
 		"reluctance_rounding": "martyr contribution retains existing two-decimal rounding"}, nominee, trace_id)
 	parts["total"] = snappedf(s, 0.01)
 	parts["need"] = snappedf(need, 0.01)
