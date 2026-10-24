@@ -33,7 +33,7 @@ static func roots(cards: Array, board: Array, path: Array = []) -> Dictionary:
 			var nested = roots(children, board, path + [number])
 			result.complete = result.complete and nested.complete
 			result.receipts.merge(nested.receipts)
-		elif (card.get("kind") == "info" and card.get("role") in Assess.ROLES) or (card.get("kind") == "claim" and card.get("role") in Assess.C.GOOD_ROLES) or (card.get("kind") in ["sighting", "alibi"] and card.get("phase", -1) in [2, 3]) or card.get("kind") in ["trace", "vigil", "quiet", "execution", "martyr", "knell"]:
+		elif supported(Evidence.normalize_card(card)):
 			var receipt = Evidence.normalize_card(card)
 			result.receipts[receipt.id] = receipt
 		elif card.get("kind") not in ["claim", "home"]:
@@ -217,7 +217,7 @@ static func supported(receipt: Dictionary) -> bool:
 		if item.get("type") == "reading":
 			return item.get("entry", {}).get("role") in Assess.ROLES and item.entry.role != "medium"
 		return item.get("type") in ["sighting", "home", "guard"] and item.get("night", -1) >= 0
-	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") in ["sighting", "alibi"] and receipt.observed_at.phase in ["night", "evening"]) or receipt.kind in ["trace", "vigil", "quiet", "execution", "martyr", "knell"]
+	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") == "sighting" and receipt.observed_at.phase in ["morning", "afternoon", "evening", "night"]) or (receipt.get("kind") == "alibi" and receipt.observed_at.phase == "night") or receipt.kind in ["conversation", "home", "haunt", "totem", "dropped", "trace", "vigil", "quiet", "execution", "martyr", "knell"]
 
 static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) -> Array:
 	if number in path or path.size() >= 64:

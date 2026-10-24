@@ -20,8 +20,18 @@ static func readiness(g, n, card: Dictionary, targets: Array, direction: String,
 	if not prepared.ready:
 		return {"ready": false, "issues": prepared.issues, "exit_point": "assessment"}
 	var proposals: Dictionary = n.workshop_state.get("presentations", {}).duplicate(true)
+	var withdrawn: Dictionary = n.workshop_state.get("withdrawn", {}).duplicate(true)
+	var ancestor: int = card.get("revises", 0)
+	while ancestor > 0 and ancestor <= g.board.size():
+		for path in proposals.keys():
+			if str(path).begins_with("direct:%d:" % ancestor):
+				proposals.erase(path)
+				withdrawn[path] = true
+		proposals.erase(str(ancestor))
+		withdrawn[str(ancestor)] = true
+		ancestor = g.board[ancestor - 1].get("revises", 0)
 	proposals[_key(card, targets, direction, snapshot)] = snapshot
-	var plan = Shared.prepare(Bridge.capture(g, [], n.id, venue, n), proposals, n.ledger, n.workshop_state.get("withdrawn", {}))
+	var plan = Shared.prepare(Bridge.capture(g, [], n.id, venue, n), proposals, n.ledger, withdrawn)
 	return {"ready": plan.ready, "issues": plan.issues, "exit_point": "union"}
 
 static func _key(card: Dictionary, targets: Array, direction: String, snapshot: Dictionary) -> String:
@@ -34,7 +44,7 @@ static func _key(card: Dictionary, targets: Array, direction: String, snapshot: 
 
 static func _unavailable(g, n, card: Dictionary, point: String, issues: Array) -> Dictionary:
 	Ownership.fallback(g, n, point, issues, card.get("n", 0))
-	if g.strict_evaluator:
+	if g.strict_evaluator or issues.any(func(issue): return "is not evidence" in issue):
 		return {"blocked": true, "lines": ["Cannot present card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(issues))]], "facts": [], "agreement": 0.0}
 	return {}
 
@@ -56,6 +66,20 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	if snapshot.is_empty() or not Assess.prepare(snapshot).ready:
 		return _unavailable(g, n, card, "snapshot", ["Evidence changed after the readiness check."])
 	var state: Dictionary = n.workshop_state
+	var signature = _signature(snapshot)
+	var listener_key = n.id + (":cover" if n.is_shadow else ":good")
+	var repeat_key = listener_key + "|" + signature
+	var cached_repeat: Dictionary = g._workshop_repeats.get(repeat_key, {})
+	var existing: Dictionary = state.get("presentations", {}).get(_key(card, targets, direction, snapshot), {})
+	if state.get("active", false) and not existing.is_empty() and cached_repeat.get("input", "") == _discussion_inputs(n, snapshot) and not (existing.venue == "private" and venue != "private"):
+		Profiler.count("repeat_no_assessment")
+		var result: Dictionary = cached_repeat.result.duplicate(true)
+		var text = "I heard you say that at the meeting. My assessment is unchanged." if existing.venue != "private" else "You've heard this from me already. My assessment is unchanged."
+		result.lines = [Mind.say(n, text)] if speak and not n.silenced else []
+		result.repeated = true
+		result.dialogue.special = text
+		g.w.dlog.trace_event("workshop_repeat", n.id, "", {"card": card.get("n", 0), "venue": venue}, "Reuse an unchanged discussion without evaluating or rewarding it again.")
+		return result
 	var original_ids: Array = snapshot.selected.duplicate()
 	original_ids.sort()
 	var target_ids = targets.duplicate()
@@ -94,7 +118,6 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		state.presentations = previous
 		Mind.recompute_beliefs(g.w, n, " (presentation capability fallback)")
 		return _unavailable(g, n, card, "ownership", state.get("issues", ["Ownership was not activated."]))
-	var listener_key = n.id + (":cover" if n.is_shadow else ":good")
 	var plan: Dictionary = g._workshop_plans[listener_key]
 	# Rebuild against final interval reliability, matching the applied union.
 	plan.input.listener.discounted = n.discounted.duplicate(true)
@@ -116,9 +139,6 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	if assessment.is_empty():
 		return _unavailable(g, n, card, "response", ["The shared response could not be assessed."])
 	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
-	var graph_choices: Dictionary = root.get("workshop_case", {}).duplicate(true)
-	graph_choices.erase("version")
-	var signature = JSON.stringify(Evidence.canonical([root.conclusion, original_ids, graph_choices]))
 	var cognitive_inputs = [plan.prepared.listener.reasoning_mode, plan.prepared.listener.insight,
 		plan.prepared.listener.confidence_mode, plan.prepared.listener.confidence]
 	var inputs = JSON.stringify(Evidence.canonical([state.outside, plan.facts, n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognitive_inputs]))
@@ -178,7 +198,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	if not state.has("discussion"):
 		state.discussion = {}
 	# Trust rewards are part of the new starting inputs on a repeat.
-	state.discussion[signature] = JSON.stringify(Evidence.canonical([state.outside, state.facts, n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognitive_inputs]))
+	state.discussion[signature] = _discussion_inputs(n, snapshot)
 	if speak and not n.silenced:
 		if not state.has("delivered"):
 			state.delivered = {}
@@ -195,8 +215,25 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		"pressure_delta": n.pressure - pressure_before, "requested": state.requested}, "One assessment controls supported presentation and shared belief ownership.")
 	g.w.dlog.add("argument_stance", n.id, root.conclusion.get("a", ""), {"key": signature, "stance": assessment.stance,
 		"evil": false, "repeat": repeated, "model": "shared"})
-	return {"lines": lines, "facts": [], "agreement": assessment.agreement, "repeated": repeated,
+	var result = {"lines": lines, "facts": [], "agreement": assessment.agreement, "repeated": repeated,
 		"dialogue": descriptor, "workshop": true, "assessment": assessment}
+	g._workshop_repeats[repeat_key] = {"input": state.discussion[signature], "result": result.duplicate(true)}
+	return result
+
+static func _signature(snapshot: Dictionary) -> String:
+	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
+	var choices: Dictionary = root.get("workshop_case", {}).duplicate(true)
+	choices.erase("version")
+	var ids: Array = snapshot.selected.duplicate()
+	ids.sort()
+	return JSON.stringify(Evidence.canonical([root.conclusion, ids, choices]))
+
+static func _discussion_inputs(n, snapshot: Dictionary) -> String:
+	var state: Dictionary = n.workshop_state
+	var cognition = [state.get("reasoning_mode", "bounded"), n.traits.get("insight", 0.5),
+		state.get("confidence_mode", "persistence"), n.traits.get("confidence", 0.5)]
+	return JSON.stringify(Evidence.canonical([state.get("outside", n.suspicion), state.get("facts", []),
+		n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognition]))
 
 static func _snapshot(g, n, card: Dictionary, targets: Array, direction: String, venue: String) -> Dictionary:
 	if direction == "deduction":

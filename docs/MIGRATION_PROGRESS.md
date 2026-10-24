@@ -2,9 +2,40 @@
 
 Oct 23, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
 
-The migration is **in progress**, not finished. P1–P5 still need implementation.
-Q3 and Q6 remain deferred. The 95% demon-victim rule and the speech-card rules are
-recorded decisions, not yet migrated behavior.
+The migration is **in progress**, not finished. P1 is partly implemented; P2–P5
+remain. Q3 and Q6 remain deferred. The 95% demon-victim rule and weak hint/refusal
+rules are recorded decisions, not yet migrated behavior.
+
+## P1 first slice
+
+- Canvas revisions receive a new number and mark their predecessor superseded.
+  Filing does not change listeners' beliefs. Hearing the revision retires the old
+  endorsement; unchanged roots keep their full shared weight. A regression compares
+  a revision with first hearing its complete evidence at fixed trust.
+- Unchanged presentations reuse their earlier assessment. They acknowledge a prior
+  private discussion or meeting; the first repeat in a conversation is free. Tests
+  check that no jury/ownership solve, trust reward, pressure or RNG draw occurs.
+- Morning/afternoon sightings and conversations retain their daylight locations and
+  do not become night outings. Evening conversations use the existing evening/trace
+  likelihood for every named participant. Homes and haunts are accepted as context,
+  without manufacturing alignment evidence.
+- A structured totem uses the public material/home mapping and the joint unique-role
+  assignment: a Revenant minion must come from that block. It cannot be explained by
+  the Demon or by a Marked registration.
+- Dropped materials constrain which home-group residents could have walked through
+  the discovery block. Joint alibis can resolve a sole eligible walker; several
+  eligible residents remain alternatives. Distinct drops need distinct walkers,
+  matching the native one-drop-per-walker rule. Personal belongings reserve their
+  known owner; repeated receipts do not create a second item.
+- Opinion and accusation cards are rejected as evidence in ordinary play as well as
+  strict tests. Their underlying observations/readings must be cited instead. The
+  town-consensus suspicion term itself still needs the P3 migration.
+
+Targeted suites cover revision/repeat contracts, location and totem adapters, exact
+root ownership after native receipts are parked, malformed payloads, shared dialogue,
+Insight/Confidence preservation and live UI delivery. Remaining P1 work includes the
+other event cards, hints/refusals, nested case composition, and removing the
+remaining native presentation routes after their replacements are measured.
 
 ## P0 implementation
 
@@ -21,6 +52,9 @@ recorded decisions, not yet migrated behavior.
   allocating all 3^readings combinations. Dense-enumeration parity checks pass.
 - Identical constraint solves and conflict analyses are memoized. Position filters
   share their common report/role/route solve. Semantic checkpoint tests pass.
+- Live assessment defers exhaustive minimal-conflict enumeration: only the explicit
+  diagnostic UI reads those lists. Bounded attention, candidate counts, belief and
+  action results remain the same. Attention/explanation memoization has A/B checks.
 
 P0 is **not signed off**: full validation and bot comparisons are running, and the
 historical case exceeds the five-second presentation budget.
@@ -46,7 +80,9 @@ Measured while P0 was in progress:
 - Most listeners did not accept the headline: agreement ranged from 0 to .757.
   This differs from the legacy playtest's wording and is reported without tuning.
 - Cold presentation cost was initially about 50 seconds. Removing empty private
-  states and reusing solver work reduced it to about 18–19 seconds. Further work is
+  states and reusing solver work reduced it to about 18–19 seconds; removing unused
+  exhaustive diagnostics and reusing attention reduced the latest run to about
+  **8 seconds**. Further work is
   required; the simple probes do not represent this historical case's workload.
 
 The replay writes full agreement, suspicion, vote margins, actual tally, commands,
@@ -76,5 +112,14 @@ tests exercise the new default. Run every suite with
 `python tools/run_gd_tests.py --godot <Godot-console-executable>`; the runner also
 detects printed failures and script errors when a suite exits zero.
 
-P0 bot runs use a frozen source snapshot under `logs/migration/p0/project`. Results
-and comparisons are pending. No post-migration balance claim is made yet.
+The initial P0 batches were stopped after revealing the exhaustive-diagnostic
+performance problem; their partial logs remain under `logs/migration/p0`. The fixed
+ten-person active smoke case (seed 1000) completed in 83 seconds under concurrent
+test load. Full post-change results and comparisons are pending. No post-migration
+balance claim is made yet.
+
+The broad migration run passed 44/47 suites, with the two reproduced baseline suites
+and one stale reading-challenge revision test failing. Updating that test to use the
+new returned card number passed its 57 checks. All 45 suites outside the reproduced
+baseline failures have now passed, including trace parity (45 checks). Subsequent
+targeted checks also pass for dropped cards, exact caching, revisions and the UI.

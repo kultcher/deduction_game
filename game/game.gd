@@ -68,6 +68,7 @@ var workshop_effects = true # shared assessment is the normal presentation path
 ## Opt-in test assertion: unsupported presentations are rejected before any effects.
 var strict_evaluator = C.STRICT_EVALUATOR
 var _workshop_native_submission = false
+var _workshop_repeats: Dictionary = {}
 var _workshop_busy = false
 var _workshop_plans = {}
 var _workshop_evaluations = {}
@@ -184,6 +185,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	_workshop_plans = {}
 	_workshop_evaluations = {}
 	_workshop_responses = {}
+	_workshop_repeats = {}
 	_workshop_native_submission = false
 	board = []
 	confidences = {}
@@ -499,6 +501,10 @@ func workshop_readiness(card: Dictionary, listeners: Array, targets: Array, dire
 
 func _presentation_gate(card: Dictionary, listeners: Array, targets: Array, direction: String, venue: String) -> bool:
 	_workshop_native_submission = false
+	var rejected = _presentation_rejection(card)
+	if rejected != "":
+		_err(rejected)
+		return false
 	var check = workshop_readiness(card, listeners, targets, direction, venue)
 	if check.ready:
 		return true
@@ -512,6 +518,19 @@ func _presentation_gate(card: Dictionary, listeners: Array, targets: Array, dire
 	_workshop_native_submission = true
 	_narr("Shared assessment unavailable. " + reason + " Existing response rules will be used for this submission's entire audience.")
 	return true
+
+func _presentation_rejection(card: Dictionary) -> String:
+	if card.get("superseded_by", 0) > 0:
+		return "Case #%d was superseded by case #%d." % [card.n, card.superseded_by]
+	var speech: Array = []
+	if card.kind == "deduction":
+		var input = workshop_snapshot([card.n])
+		speech = input.evidence.filter(func(e): return e.id in input.selected and e.kind in ["opinion", "accusation"])
+	elif card.kind in ["opinion", "accusation"]:
+		speech = [card]
+	if not speech.is_empty():
+		return "An %s is not evidence. Cite the supporting observations or readings." % speech[0].kind
+	return ""
 
 func set_workshop_effects(on: bool) -> void:
 	if workshop_presenting:
@@ -569,6 +588,9 @@ func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, v
 	return result
 
 func _evaluate_deduction_inner(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
+	var rejected = _presentation_rejection(ded)
+	if rejected != "":
+		return {"blocked": true, "lines": [rejected], "facts": [], "agreement": 0.0}
 	if strict_evaluator:
 		var check = workshop_readiness(ded, [n], [], "deduction", venue)
 		if not check.ready:
@@ -578,6 +600,8 @@ func _evaluate_deduction_inner(n, ded: Dictionary, scale: float, speak: bool = t
 	var snapshot = workshop_snapshot([ded.n], n.id, venue) if workshop_compare else {}
 	var before: Dictionary = n.suspicion.duplicate(true) if workshop_compare else {}
 	var result: Dictionary = Argue.evaluate(w, n, ded, board, scale, speak)
+	if result.get("blocked", false):
+		return result
 	if workshop_effects and not result.get("workshop", false):
 		Mind.recompute_beliefs(w, n, " (shared presentation)")
 		_conflict_pressure(ded, 0.1 if venue == "private" else 0.2, n, true)
@@ -619,6 +643,11 @@ func workshop_canvas_retire(real, ded: Dictionary) -> void:
 	if n == null:
 		return
 	var state: Dictionary = n.workshop_state
+	var ancestor: int = ded.get("revises", 0)
+	while ancestor > 0 and ancestor <= board.size():
+		if state.get("presentations", {}).has(str(ancestor)) or n.ledger.has("arg:workshop:%d" % ancestor):
+			_workshop_retract(ancestor, n.id)
+		ancestor = board[ancestor - 1].get("revises", 0)
 	if not state.has("canvas_versions"):
 		state.canvas_versions = {}
 	var key = str(ded.n)
@@ -1155,7 +1184,8 @@ func _talk_command(verb: String, rest: String) -> void:
 			_conflict_pressure(board[num0 - 1], 0.1, n)
 			r = _evaluate_deduction(n, board[num0 - 1], 1.0)
 			r["facts"] = []
-			Mind.on_question(w, n)
+			if not r.get("repeated", false) or free_repeats >= 1:
+				Mind.on_question(w, n)
 		"press", "confront":
 			var num1 = rest.strip_edges().trim_prefix("#").to_int()
 			if num1 < 1 or num1 > board.size() or board[num1 - 1].get("deleted", false):

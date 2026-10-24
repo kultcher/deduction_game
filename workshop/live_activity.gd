@@ -11,7 +11,7 @@ static func available(view: Dictionary) -> bool:
 	return view.get("live_activity", false)
 
 static func relevant(cards: Array) -> Array:
-	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi"] or (c.kind == "report" and c.role in ["nightwatch", "lamplighter", "veteran"]))
+	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "lamplighter", "veteran"]))
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):
@@ -84,8 +84,10 @@ static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, kno
 	for night_key in nights:
 		var forced = 0
 		var possible = 0
+		var paths: Array = []
 		for i in range(view.people.size()):
 			var options = _paths(view, view.people[i], int(night_key), cards, knowledge)
+			paths.append(options)
 			if options.is_empty():
 				okay = false
 			if not options.is_empty() and options.all(func(path): return not path.is_empty()):
@@ -94,6 +96,19 @@ static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, kno
 				possible |= 1 << i
 			if not options.is_empty() and options.all(func(path): return path.size() == C.BLOCKS.size()) and view.people[i].id not in forced_lamp:
 				forced_lamp.append(view.people[i].id)
+		var drops = {}
+		for card in cards:
+			if card.get("night", -1) != int(night_key) or card.get("quoted", false):
+				continue
+			if card.kind != "dropped" and not card.get("item_drop", false):
+				continue
+			var candidates = 0
+			for i in range(view.people.size()):
+				var person: Dictionary = view.people[i]
+				var matches_owner: bool = person.home == card.data.material if card.kind == "dropped" else person.id == card.subject
+				if matches_owner and paths[i].any(func(path): return card.block in path):
+					candidates |= 1 << i
+			drops[card.get("fact_id", card.id)] = candidates
 		var count_masks: Array = []
 		for mask in range(1 << view.people.size()):
 			if mask & forced != forced or mask & ~possible:
@@ -105,7 +120,7 @@ static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, kno
 				var source: int = view.people.map(func(p): return p.id).find(card.source)
 				if _count(mask & ~(1 << source)) != card.data.count or not answers.get(card.id, {}).get("positive", []).all(func(id): return mask & (1 << view.people.map(func(p): return p.id).find(id))):
 					valid = false
-			if valid:
+			if valid and _drop_owners(drops.values(), mask):
 				count_masks.append(mask)
 		if count_masks.is_empty():
 			okay = false
@@ -120,6 +135,20 @@ static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, kno
 		route_cache.clear()
 	route_cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
+
+## One native walker can drop at most one item per night. Material identifies a
+## home group, never an owner; only the jointly feasible assignments constrain it.
+static func _drop_owners(groups: Array, available: int) -> bool:
+	if groups.is_empty():
+		return true
+	var remaining = groups.duplicate()
+	var candidates: int = remaining.pop_back() & available
+	while candidates:
+		var bit = candidates & -candidates
+		if _drop_owners(remaining, available & ~bit):
+			return true
+		candidates &= ~bit
+	return false
 
 static func _count(mask: int) -> int:
 	var result = 0

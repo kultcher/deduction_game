@@ -16,6 +16,7 @@ func _init() -> void:
 	for id in juror.suspicion:
 		juror.suspicion[id] = 0.0 if id == juror.id else 0.1
 		juror.npc_trust[id] = 1.0
+	_memo_parity(view, c, juror)
 	var outcomes: Array = []
 	for insight in [0.1, 0.5, 0.9]:
 		var clone = juror.duplicate(true)
@@ -207,6 +208,26 @@ func _init() -> void:
 	check(JSON.stringify(Jury.evaluate(view, c, juror.duplicate(true))) == before, "bounded reasoning has no hidden-truth input")
 	print("Workshop reasoning: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
+
+func _memo_parity(view: Dictionary, value: Dictionary, listener: Dictionary) -> void:
+	Jury.Reasoner.reuse_preparations = false
+	Jury.Support.reuse_explanations = false
+	var attention = Jury.Reasoner.prepare(view, value, listener)
+	var explanation = Jury.Support.explain(view, value, listener)
+	Jury.Reasoner.reuse_preparations = true
+	Jury.Support.reuse_explanations = true
+	var cached_attention = Jury.Reasoner.prepare(view, value, listener)
+	var cached_explanation = Jury.Support.explain(view, value, listener)
+	check(attention == cached_attention and explanation == cached_explanation, "attention and explanation caches preserve the uncached decisions and search counts")
+	cached_attention.case.cards.clear()
+	cached_explanation.considered.clear()
+	check(Jury.Reasoner.prepare(view, value, listener) == attention and Jury.Support.explain(view, value, listener) == explanation, "callers cannot mutate cached attention or explanation state")
+	var changed = listener.duplicate(true)
+	changed.insight = 0.9
+	Jury.Support.reuse_explanations = false
+	var reference = Jury.Support.explain(view, value, changed)
+	Jury.Support.reuse_explanations = true
+	check(Jury.Support.explain(view, value, changed) == reference, "changed Insight invalidates the explanation cache without changing its limits")
 
 func check(okay: bool, label: String) -> void:
 	checks += 1

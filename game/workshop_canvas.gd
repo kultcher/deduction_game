@@ -18,6 +18,8 @@ static func view(g) -> Dictionary:
 			activity = Assess.medium_card(receipt, snapshot)
 		if not activity.is_empty():
 			note = "Adapter available · experimental joint activity/trace comparison"
+			if activity.kind in ["context", "location"]:
+				note = "Adapter available · location context; this does not establish guilt"
 		if receipt.kind == "info" and content.get("role") in Assess.ROLES:
 			note = "Reading adapter available · check whole-case support"
 			if not Assess.Domain.gift_time({"role": content.role, "observed_at": receipt.observed_at}):
@@ -109,6 +111,8 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		return -1
 	if previous > 0 and previous <= g.board.size() and g.board[previous - 1].get("deleted", false):
 		previous = 0
+	while previous > 0 and previous <= g.board.size() and g.board[previous - 1].get("superseded_by", 0) > 0:
+		previous = g.board[previous - 1].superseded_by
 	var check = status(g, value)
 	if check.blocked:
 		g.last_error = "\n".join(PackedStringArray(check.issues))
@@ -126,17 +130,12 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 	var card: Dictionary = g.board[number - 1].duplicate(true)
 	card["workshop_case"] = value.duplicate(true)
 	card["text"] = "Case: %s (%d original reports)." % [g.Argue.conclusion_text(g.w, conclusion), roots.numbers.size()]
-	# Stable board number for revisions; listeners keep their old receipt until the
-	# next presentation. Editing a draft never changes anyone's beliefs.
+	# A revision is a new historical receipt. Listeners retain the version they
+	# actually heard until the new card is presented.
 	if previous > 0 and previous <= g.board.size() and g.board[previous - 1].has("workshop_case"):
-		if g.board[previous - 1].workshop_case == value:
-			return previous
-		card.n = previous
-		g.board[previous - 1] = card
-		if number != previous and number > old_size:
-			g.board[number - 1]["deleted"] = true
-		g.w.dlog.add("workshop_canvas_filed", "player", conclusion.get("a", ""), {"card": previous, "revision": true, "case": value, "supports": roots.numbers})
-		return previous
+		card["revises"] = previous
+		g.board[previous - 1]["superseded_by"] = number
+		g.board[previous - 1].text += " (Superseded by case #%d.)" % number
 	# The native filer may have returned a pre-existing flat deduction. Never
 	# overwrite that card or turn another draft into this graph.
 	if number > old_size:

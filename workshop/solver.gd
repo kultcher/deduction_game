@@ -73,7 +73,7 @@ static func semantic_key(card: Dictionary) -> String:
 			data[key].sort()
 	return JSON.stringify([card.get("kind"), card.get("source"), card.get("role"), card.get("observed_at"), data, card.get("subject"), card.get("block")])
 
-static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictionary = {}) -> Dictionary:
+static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictionary = {}, include_conflicts: bool = true) -> Dictionary:
 	case_data = Graph.compile_case(view, case_data)
 	var cards = selected(view, case_data)
 	if case_data.conclusion.type == "conflict":
@@ -122,7 +122,7 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 	if conclusion.type == "conflict" and (base.worlds.is_empty() or not base.movement_ok):
 		entailment = "forced"
 	var conflicts: Array = []
-	if base.worlds.is_empty() or not base.movement_ok:
+	if include_conflicts and (base.worlds.is_empty() or not base.movement_ok):
 		conflicts = minimal_conflicts(view, cards, knowledge)
 	return {"status": status, "entailment": entailment, "compatible": base.worlds.size(), "supporting": n, "hypothetically_released": cards.filter(func(c): return c not in proposed_cards).map(func(c): return c.id),
 		"proposed": proposed.worlds.size(), "alternative": alternative, "errors": errors,
@@ -136,7 +136,7 @@ static func minimal_conflicts(view: Dictionary, cards: Array, knowledge: Diction
 		return conflict_cache[key].result
 	# Shrink one conflict, then explore excluding each member to discover other cores.
 	# This avoids enumerating every unrelated subset for a simple alibi conflict.
-	cards = cards.filter(func(c): return c.kind in ["report", "sighting", "alibi"])
+	cards = cards.filter(func(c): return c.kind in ["report", "sighting", "alibi", "totem", "dropped"])
 	var result: Array = []
 	_find_conflicts(view, cards, knowledge, result, {})
 	if reuse_solves:

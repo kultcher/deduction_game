@@ -3,12 +3,16 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
+const Canvas = preload("res://workshop/canvas_model.gd")
+const LiveCanvas = preload("res://game/workshop_canvas.gd")
+const Profiler = preload("res://workshop/profiler.gd")
 var checks = 0
 var fails = 0
 
 func _init() -> void:
 	_reversible_totals()
 	_strict_submission()
+	_revisions_and_repeats()
 	print("Legacy migration: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -66,7 +70,7 @@ func _strict_submission() -> void:
 	var g = _clean()
 	g.strict_evaluator = true
 	var target = g.w.living_good()[0]
-	var totem = g.add_card({"kind": "totem", "source": "evidence", "subject": [target.id], "block": target.home_block, "day": 1, "phase": 0, "text": "A totem was found."})
+	var totem = g.add_card({"kind": "totem", "source": "evidence", "subject": [target.id], "block": "unknown", "day": 1, "phase": 0, "text": "An incomplete totem receipt."})
 	var ded = g.file_deduction({"type": "evil", "a": target.id}, [totem])
 	var check = g.workshop_readiness(g.board[ded - 1], g.w.living(), [], "deduction", "meeting")
 	check(not check.ready and check.listeners.size() == g.w.living().size(), "readiness checks the entire real audience")
@@ -96,6 +100,68 @@ func _strict_submission() -> void:
 
 func _state(g) -> String:
 	return JSON.stringify([g.w.rng.state, g.w.npcs.map(func(n): return [n.trust, n.pressure, n.suspicion, n.ledger, n.secret_spread, n.workshop_state, n.shadow.suspicion if n.shadow != null else {}])])
+
+func _revision_fixture():
+	var g = _clean()
+	var n = g.w.living_good()[0]
+	n.workshop_state.reasoning_mode = "full"
+	n.workshop_state.confidence_mode = "scale"
+	var people: Array = g.w.npcs.filter(func(p): return p != n)
+	var source = people[0]
+	var target = people[1]
+	var other = people[2]
+	var a = g.add_card({"kind": "info", "source": source.id, "role": "dowser", "day": 1, "phase": 0,
+		"data": {"group": [target.id, other.id], "count": 1}, "text": "One registration in the pair."})
+	var b = g.add_card({"kind": "info", "source": source.id, "role": "dowser", "day": 2, "phase": 0,
+		"data": {"group": [other.id], "count": 0}, "text": "The other person registered clean."})
+	var canvas = Canvas.new(LiveCanvas.view(g))
+	canvas.nodes[canvas.selected].conclusion.target = target.id
+	return {"g": g, "n": n, "target": target, "canvas": canvas,
+		"a": "e:" + Shared.Evidence.normalize_card(g.board[a - 1]).id,
+		"b": "e:" + Shared.Evidence.normalize_card(g.board[b - 1]).id}
+
+func _revisions_and_repeats() -> void:
+	var fixture = _revision_fixture()
+	var g = fixture.g
+	var n = fixture.n
+	var canvas = fixture.canvas
+	canvas.connect_cards(fixture.a, canvas.selected)
+	var original = LiveCanvas.file(g, canvas.compile(canvas.selected))
+	g._evaluate_deduction(n, g.board[original - 1], 1.0, true)
+	var effect: float = n.workshop_state.requested.get(fixture.target.id, 0.0)
+	var beliefs: Dictionary = n.suspicion.duplicate(true)
+	canvas.connect_cards(fixture.b, canvas.selected)
+	var revised = LiveCanvas.file(g, canvas.compile(canvas.selected), original)
+	check(revised > original and g.board[original - 1].superseded_by == revised and g.board[revised - 1].revises == original, "revisions preserve both historical card numbers")
+	check(n.suspicion == beliefs and n.workshop_state.presentations.has(str(original)), "filing alone leaves the listener on the version actually heard")
+	g._evaluate_deduction(n, g.board[revised - 1], 1.0, true)
+	check(n.workshop_state.facts.size() == 2 and n.workshop_state.requested.get(fixture.target.id, 0.0) >= effect, "new corroboration counts in full without demoting the old support")
+	var control = _revision_fixture()
+	control.canvas.connect_cards(control.a, control.canvas.selected)
+	control.canvas.connect_cards(control.b, control.canvas.selected)
+	var fresh = LiveCanvas.file(control.g, control.canvas.compile(control.canvas.selected))
+	control.g._evaluate_deduction(control.n, control.g.board[fresh - 1], 1.0, true)
+	for pair in [[g, n], [control.g, control.n]]:
+		pair[1].trust = 0.7
+		Mind.recompute_beliefs(pair[0].w, pair[1], "fixed trust parity")
+	var equal = true
+	for id in n.workshop_state.requested:
+		equal = equal and absf(n.workshop_state.requested[id] - control.n.workshop_state.requested.get(id, 0.0)) < 0.000001
+	check(equal, "a revised case has the same evidence effect as first hearing its complete support")
+	g._evaluate_deduction(n, g.board[revised - 1], 0.6, true, "meeting")
+	g.state = "talk"
+	g.talk_with = n
+	g.questions_left = 3
+	g.free_repeats = 0
+	var unchanged = _state(g)
+	Profiler.start()
+	var reply = g.command("convince %d" % revised)
+	var profile = Profiler.finish()
+	check("I heard you say that at the meeting" in reply and g.questions_left == 3 and g.free_repeats == 1, "a meeting repeat is acknowledged and free once per conversation")
+	check(profile.counters.values().count(1) > 0 and profile.rows.all(func(row): return row.stage != "joint_effects" and row.stage != "jury"), "an unchanged repeat does not run the evaluator again")
+	check(unchanged == _state(g), "the free repeat changes no beliefs, pressure, trust or RNG")
+	g.command("convince %d" % revised)
+	check(g.questions_left == 2, "a second repeat still costs a question")
 
 func check(ok: bool, label: String) -> void:
 	checks += 1

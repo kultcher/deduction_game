@@ -131,3 +131,8 @@ func _solver_cache_parity(example: Dictionary) -> void:
 	var changed = example.listener.knowledge.duplicate(true)
 	changed.good = example.view.people.map(func(p): return p.id)
 	_check(Solver.solve(example.view, cards, {}, {}, changed).worlds.is_empty(), "solver memo invalidates when listener knowledge changes")
+	var detailed = Solver.analyze(example.view, example.case, example.listener.knowledge)
+	var live = Solver.analyze(example.view, example.case, example.listener.knowledge, false)
+	detailed.erase("conflicts")
+	live.erase("conflicts")
+	_check(detailed == live, "deferring conflict enumeration changes no live assessment result")

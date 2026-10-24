@@ -184,7 +184,7 @@ func _ownership() -> void:
 	var initial: Dictionary = n.workshop_state.requested.duplicate(true)
 	board.add_modifier("e:" + id, "unlikely")
 	var modifier: String = board.selected
-	Live.file(g, board.compile(root_id), filed)
+	filed = Live.file(g, board.compile(root_id), filed)
 	check(n.workshop_state.requested == initial, "editing and filing alone do not change live challenge effects")
 	var response = g._evaluate_deduction(n, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false) and not response.get("reading_challenges", response.get("assessment", {}).get("reading_challenges", [])).is_empty(), "challenge reaches actual shared response")
@@ -193,7 +193,7 @@ func _ownership() -> void:
 	g._evaluate_deduction(n, g.board[filed - 1], 1.0)
 	check(n.workshop_state.requested == challenged, "repeated challenge cannot stack discount")
 	board.remove_modifier(modifier)
-	Live.file(g, board.compile(root_id), filed)
+	filed = Live.file(g, board.compile(root_id), filed)
 	g._evaluate_deduction(n, g.board[filed - 1], 1.0)
 	check(n.workshop_state.requested == initial, "heard revision retracts exclusive challenge and restores original report weight")
 	g.workshop_retract(filed, n.id)

@@ -139,6 +139,14 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 	for card in cards:
 		if card.get("quoted", false):
 			continue
+		if card.kind == "totem":
+			var candidates = 0
+			for id in card.data.candidates:
+				var index: int = ids.find(id)
+				if index >= 0:
+					candidates |= 1 << index
+			if not _assign(assignments, "revenant", candidates & minions):
+				return false
 		if card.kind == "event" and card.get("event") == "martyr":
 			var actor: int = ids.find(card.data.martyr)
 			var saved: int = ids.find(card.data.saved)

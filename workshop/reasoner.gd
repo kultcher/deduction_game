@@ -7,6 +7,8 @@ const Domain = preload("res://workshop/world_domain.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 static var matches: Dictionary = {}
 static var reuse_matches = true # developer A/B switch, not a reasoning-budget change
+static var preparations: Dictionary = {}
+static var reuse_preparations = true
 
 static func profile(insight: float) -> Dictionary:
 	if insight < 0.34:
@@ -16,6 +18,19 @@ static func profile(insight: float) -> Dictionary:
 	return {"name": "High", "cards": 10, "lines": 6, "support": 840, "rivals": 840, "complete": true}
 
 static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
+	var inputs = [view, value, listener.get("reasoning_mode", "full"), listener.get("insight", 0.5),
+		listener.get("npc_trust", {}), listener.get("suspicion", {}), listener.get("knowledge", {})]
+	var key = hash(inputs)
+	if reuse_preparations and preparations.has(key) and preparations[key].inputs == inputs:
+		return preparations[key].result.duplicate(true)
+	var result = _prepare(view, value, listener)
+	if reuse_preparations:
+		if preparations.size() >= 256:
+			preparations.erase(preparations.keys()[0])
+		preparations[key] = {"inputs": inputs.duplicate(true), "result": result.duplicate(true)}
+	return result
+
+static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
 	var full = Graph.compile_case(view, value)
 	if full.conclusion.type == "conflict":
 		var scope = Graph.roots(value, full.get("conflict_scope", []))
