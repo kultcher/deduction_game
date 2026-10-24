@@ -179,7 +179,16 @@ evil"). The first person now gets the same theory path as everyone else. Reading
 challenges and the refresh's `reasoning` come from the attended union. Every
 refresh effect's `reasoning` is `belief_refresh`. The
 refresh no longer builds intermediate-claim or link diagnostics. Replay numbers after
-this commit are the new baseline.
+this commit are the new baseline. In the 54875 replay, agreement, vote margins and
+tally came out identical to 3bad9d5.
+
+Speed effect, measured afterwards (same machine, A/B, profiled #89): neutral, not the
+10–25% Claude estimated. The headline's work was mostly the first person's theory
+(the same 16,800 candidate tests either way); it moved into the per-person loop
+(`consequences` self time +0.8 s, `headline` −0.7 s, total +2%). Interleaved
+replays on a noisy container: meeting entry within noise, other steps 6–12% faster
+or slower depending on the run. The user's run showed 2–8% slower, consistent with
+"no gain". Kept for consistency, not speed.
 
 Measured on the user's machine (replay; main → after 3bad9d5):
 

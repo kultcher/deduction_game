@@ -308,8 +308,9 @@ not suggestions. Each one names what it protects.
   same per-person theory path. It builds no reply, runs no `Solver.analyze`, and makes
   no intermediate-claim or link diagnostics. Don't route the refresh back through
   `Jury.evaluate` or `_assess_target_eval`. (Until Oct 24 it argued a placeholder case,
-  "the first person in the list is evil". That cost a whole headline pass per
-  refresh and gave that one person a differently derived theory.)
+  "the first person in the list is evil", which gave that one person a differently
+  derived theory. Removing it was about speed-neutral: the headline was mostly doing
+  that person's theory work, which now happens in the normal per-person loop.)
 - **Scoped reply** (`Shared.response`): what the listener says about the presented
   case. It passes `{"headline_only": true}`. Its effects are never applied (the refresh
   owns belief changes), so it computes only the headline target's effect. Don't add
