@@ -464,6 +464,21 @@ A ten-listener Day-2 pair measured 3170 ms without the card versus 3394 ms with 
 (+224 ms, about 7%), all shared with zero fallback. This single pair does not show a
 significant new runtime increase. Reports are under `logs/migration/resume/votes`.
 
+## Martyr receipt identity (Codex, Oct 24)
+
+Martyr and saved person are now named transport fields, preserved before the generic
+subject set is sorted. Previously an alphabetically earlier saved person could be
+assigned the Martyr's role. Legacy cards retain their actor-first public ordering;
+new cards name both roles. Reordering a wrapper with explicit roles retains the
+same receipt. The adapter requires a matching public substitution and distinct,
+known participants. It never recovers their roles from hidden NPC state.
+
+The public-evidence suite passes 70 checks, including the reversed-alphabetical
+case and actual strict delivery to every living listener/cover. Martyr/Sexton and
+presentation suites pass. This fixes transport; the native Martyr proof entry is
+not yet migrated. The self/group-routing source also completed all 45 slow trace
+checks, in addition to its active trace-on/off smoke parity.
+
 ## Intermediate bot measurements (frozen `0cfd073`)
 
 These runs precede Q1/Q4 and the bot rejection fix. They are not final-migration

@@ -91,6 +91,11 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 	var observed = stamp(card.get("when", {"day": card.get("day", -1), "phase": card.get("phase", 3 if kind == "info" else -1)}))
 	var content = {"kind": kind, "source": card.get("source", ""),
 		"subjects": card.get("subject", []).duplicate(), "observed_at": observed}
+	if kind == "martyr" and content.subjects.size() == 2:
+		# Public subject order is actor, saved. Preserve those roles before the
+		# generic person set is sorted for stable receipt identity.
+		content["martyr"] = card.get("martyr", content.subjects[0])
+		content["saved"] = card.get("saved", content.subjects[1])
 	content.subjects.sort()
 	for field in FIELDS:
 		if card.has(field):

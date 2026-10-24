@@ -1594,7 +1594,7 @@ func _close_meeting() -> void:
 		var mt = w.by_id[w.meeting["martyr"]["martyr"]]
 		var sv = w.by_id[w.meeting["martyr"]["saved"]]
 		_narr("The meeting closes. As the noose tightens on %s, %s cries out and falls dead. %s is cut down alive: the Martyr has died in their place." % [sv.name, mt.name, sv.name])
-		_facts([{"kind": "martyr", "subject": [mt.id, sv.id], "source": "player", "day": w.day, "phase": C.EVENING,
+		_facts([{"kind": "martyr", "subject": [mt.id, sv.id], "martyr": mt.id, "saved": sv.id, "source": "player", "day": w.day, "phase": C.EVENING,
 			"text": "Day %d: %s died in %s's place at the gallows. Both are proven good." % [w.day, mt.name, sv.name]}])
 	elif ex != "":
 		var n = w.by_id[ex]

@@ -12,6 +12,7 @@ func _init() -> void:
 	_probabilities()
 	_live()
 	_silence()
+	_martyr_roles()
 	print("Public evidence: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -144,6 +145,40 @@ func _game():
 			for id in listener.suspicion:
 				listener.suspicion[id] = 0.8
 	return g
+
+func _martyr_roles() -> void:
+	var g = _game()
+	g.w.day = 2
+	g.w.phase = 2
+	var people: Array = g.w.living_good()
+	people.sort_custom(func(a, b): return a.id < b.id)
+	var actor = people[-1]
+	var saved = people[0]
+	actor.role = "martyr"
+	actor.alive = false
+	var raw = {"kind": "martyr", "source": "player", "subject": [actor.id, saved.id], "day": 2, "phase": 2, "text": "The Martyr dies in another's place"}
+	var number = g.add_card(raw)
+	var receipt = preload("res://workshop/live_evidence.gd").normalize_card(g.board[number - 1])
+	var input = g.workshop_snapshot([], saved.id)
+	var adapted = Assess.activity_card(receipt, input)
+	check(receipt.subjects[0] == saved.id and adapted.get("data", {}).get("martyr") == actor.id and adapted.get("data", {}).get("saved") == saved.id, "sorting the public subject set cannot swap Martyr and saved roles")
+	var reordered = raw.duplicate(true)
+	reordered.subject = [saved.id, actor.id]
+	reordered["martyr"] = actor.id
+	reordered["saved"] = saved.id
+	check(preload("res://workshop/live_evidence.gd").normalize_card(reordered).id == receipt.id, "explicit role labels preserve identity when a wrapper reorders subjects")
+	var unsupported = input.duplicate(true)
+	unsupported.public_events = []
+	check(Assess.activity_card(receipt, unsupported).is_empty(), "a Martyr card cannot invent an unannounced substitution")
+	var invalid = receipt.duplicate(true)
+	invalid.content.saved = actor.id
+	check(Assess.activity_card(invalid, input).is_empty(), "the same person cannot fill both substitution roles")
+	var ded = g.file_deduction({"type": "good", "a": saved.id}, [number])
+	g.strict_evaluator = true
+	for n in g.w.living():
+		var heard = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
+		var listener = n.shadow if n.is_evil() else n
+		check(heard.get("workshop", false) and receipt.id in listener.workshop_state.facts, "a role-preserving Martyr receipt reaches " + n.id)
 
 func _close(a: Dictionary, b: Dictionary) -> bool:
 	for id in a:

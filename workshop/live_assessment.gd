@@ -298,9 +298,11 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 			card["kind"] = "execution"
 			return card
 		if e.kind == "martyr" and e.subjects.size() == 2 and e.subjects[0] != e.subjects[1] and e.subjects.all(func(person): return person in ids):
+			if e.content.get("martyr") not in e.subjects or e.content.get("saved") not in e.subjects or e.content.martyr == e.content.saved or not snapshot.public_events.any(func(event): return event.kind == "martyr" and event.at.day == night and event.get("by") == e.content.martyr and e.content.saved in event.subjects):
+				return {}
 			card["kind"] = "event"
 			card["event"] = "martyr"
-			card["data"] = {"martyr": e.subjects[0], "saved": e.subjects[1]}
+			card["data"] = {"martyr": e.content.martyr, "saved": e.content.saved}
 			return card
 		if e.kind == "knell":
 			card["kind"] = "event"
