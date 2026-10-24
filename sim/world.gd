@@ -863,7 +863,7 @@ func free_turned() -> String:
 			e["shared"] = true  # never repeated
 	for m in npcs:
 		if m != v:
-			v.suspicion[m.id] = minf(v.suspicion.get(m.id, 0.1), 0.25)
+			Mind.adjust(self, v, m.id, minf(Mind.susp(v, m.id), 0.25) - v.suspicion.get(m.id, 0.1), "freed soul", "", false)
 	Mind.hear_claim(self, v, v.id, v.role, 1.5, "own")
 	public_event("curse_lifted", ["town"], "")
 	dlog.add("freed", "world", v.id, {}, "%s is freed from the curse; remembers nothing of their time as evil." % v.name)
@@ -1230,9 +1230,9 @@ func _kill(v) -> void:
 	dlog.add("kill", demon_id, v.id, {"role": v.role, "scene": sid, "trace_block": trace_block, "trace_true": trace_true}, why)
 	for n in npcs:
 		if n.alive and not n.is_evil():
-			n.suspicion[v.id] = 0.0
+			Mind.adjust(self, n, v.id, -n.suspicion.get(v.id, 0.0), "demon victim", "", false)
 		elif n.alive and n.shadow != null:
-			n.shadow.suspicion[v.id] = 0.0  # a good self knows the demon's victims were good
+			Mind.adjust(self, n.shadow, v.id, -n.shadow.suspicion.get(v.id, 0.0), "demon victim", "", false)
 
 # ---------------------------------------------------------------- abilities
 
@@ -1502,8 +1502,8 @@ func _medium_item(m, dead, broken: bool) -> Dictionary:
 		var best = ""
 		var bs = 0.35
 		for k in dead.suspicion:
-			if by_id[k].alive and dead.suspicion[k] > bs:
-				bs = dead.suspicion[k]
+			if by_id[k].alive and Mind.susp(dead, k) > bs:
+				bs = Mind.susp(dead, k)
 				best = k
 		if best != "" and not dead.told_to.has("medium|susp:" + best):
 			dead.told_to["medium|susp:" + best] = true
@@ -1603,7 +1603,7 @@ func snapshot(tag: String) -> void:
 		var sus = {}
 		for k in n.suspicion.keys():
 			if by_id[k].alive:
-				sus[k] = snappedf(n.suspicion[k], 0.01)
+				sus[k] = snappedf(Mind.susp(n, k), 0.01)
 		s[n.id] = {"loc": n.loc, "poisoned": n.poisoned, "trust": snappedf(n.trust, 0.01), "trust_cap": n.trust_cap,
 			"pressure": snappedf(n.pressure, 0.01), "claim": n.claimed_role, "max_tier": n.max_tier, "suspicion": sus}
 	var shadows = {}

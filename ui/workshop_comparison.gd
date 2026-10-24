@@ -158,6 +158,8 @@ static func describe(result: Dictionary) -> String:
 	var proposal: Dictionary = result.proposal
 	var lines = PackedStringArray(["New model: %s · agreement %.3f · %d ms" % [proposal.stance, proposal.agreement, result.elapsed_ms],
 		proposal.response, "", "Evidence strength (not applied to the game):"])
+	if result.has("audience"):
+		lines.append("Every current listener can evaluate this case." if result.audience.ready else "Some listeners cannot evaluate this case:\n• " + "\n• ".join(PackedStringArray(result.audience.issues)))
 	lines.insert(2, "Conditional worlds: %d compatible; %d fit your answers. These are assignments, not odds of guilt." % [proposal.assessment.compatible, proposal.assessment.proposed])
 	for error in proposal.assessment.errors:
 		lines.append("Explanation issue: " + error)

@@ -169,22 +169,6 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var relation: Array = entry.get("rel", [])
 		if not relation.is_empty() and input.evidence.any(func(e): return e.kind in ["info", "claim"] and supported(e) and e.source == relation[0]):
 			issues.append("Unsupported reading shares a source with owned reports: " + eid)
-	for eid in owned:
-		if ledger[eid].get("workshop_clipped", false):
-			issues.append("A legacy contribution was clipped; its reversible baseline is unavailable: " + eid)
-		for i in range(ledger[eid].effects.size()):
-			var effect: Array = ledger[eid].effects[i]
-			if not ordinary(effect[0]):
-				continue
-			for person in input.people:
-				var key = i if effect[0] == person.id else "%d:%s" % [i, person.id]
-				if absf(float(ledger[eid].get("applied", {}).get(key, 0.0))) < 0.000001:
-					continue
-				# Without an outside layer, a saturated legacy target cannot promise
-				# exact reversal. Unrelated cleared people don't block migration.
-				var suspicion: float = input.listener.suspicion.get(person.id, 0.1)
-				if suspicion <= 0.0 or suspicion >= 1.5:
-					issues.append("Saturated legacy beliefs need a reversible baseline before migration: " + eid)
 	if prepared.ready or (facts.is_empty() and issues.is_empty()):
 		# TOTAL learned evidence, not the marginal value of a presentation over private
 		# reports. Self/role/public good knowledge remains; reports move into the union.

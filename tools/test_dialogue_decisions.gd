@@ -65,7 +65,7 @@ func _live() -> void:
 	var board_before = g.board.duplicate(true)
 	var rng_before = w.rng.state
 	var reply = Argue.evaluate(w, n, g.board[dn - 1], g.board, 1.0)
-	_check(reply["dialogue"].get("reason", "") in ["weak", "quality", "source"], "a weak live argument gives a supported reason, not a fabricated role explanation")
+	_check(reply["dialogue"].get("reason", "") in ["weak", "quality", "source"] or (reply.get("workshop", false) and not reply.assessment.response.is_empty() and not reply.dialogue.has("role")), "a weak live argument gives a supported reason, not a fabricated role explanation")
 	_check(w.rng.state == rng_before and g.board == board_before, "good argument speech does not consume RNG or alter evidence")
 	var trace = g.add_card({"kind": "trace", "source": "evidence", "block": "market", "day": 2, "text": "Market trace."})
 	var seen = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "block": "market", "day": 2, "phase": C.EVENING, "text": "Seen on Market."})

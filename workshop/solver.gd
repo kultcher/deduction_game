@@ -10,6 +10,9 @@ const Profiler = preload("res://workshop/profiler.gd")
 static var universes: Dictionary = {}
 static var report_matches: Dictionary = {}
 static var movement_cache: Dictionary = {}
+static var solve_cache: Dictionary = {}
+static var conflict_cache: Dictionary = {}
+static var reuse_solves = true # Offline parity checks can bypass memoization.
 static var _cached_people = null
 static var _cached_ids: Array = []
 static var _cached_idx: Dictionary = {}
@@ -127,11 +130,19 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 		"assumptions": assumption_labels(view, cards), "unresolved": unresolved(view, proposed.worlds), "conflicts": conflicts}
 
 static func minimal_conflicts(view: Dictionary, cards: Array, knowledge: Dictionary = {}) -> Array:
+	var inputs = [_query_view(view), cards, _query_knowledge(knowledge)]
+	var key = hash(inputs)
+	if reuse_solves and conflict_cache.has(key) and conflict_cache[key].inputs == inputs:
+		return conflict_cache[key].result
 	# Shrink one conflict, then explore excluding each member to discover other cores.
 	# This avoids enumerating every unrelated subset for a simple alibi conflict.
 	cards = cards.filter(func(c): return c.kind in ["report", "sighting", "alibi"])
 	var result: Array = []
 	_find_conflicts(view, cards, knowledge, result, {})
+	if reuse_solves:
+		if conflict_cache.size() >= 128:
+			conflict_cache.erase(conflict_cache.keys()[0])
+		conflict_cache[key] = {"inputs": inputs.duplicate(true), "result": result}
 	return result
 
 static func _find_conflicts(view: Dictionary, cards: Array, knowledge: Dictionary, result: Array, visited: Dictionary) -> void:
@@ -157,8 +168,36 @@ static func _find_conflicts(view: Dictionary, cards: Array, knowledge: Dictionar
 
 static func solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}, epoch: String = "", temporal_positions: Array = []) -> Dictionary:
 	var span = Profiler.open("constraint_solve")
+	# Bounded search, per-person theories and diagnostic explanations repeatedly ask
+	# exactly the same question. Cache complete public inputs, including chronology
+	# and private knowledge; never a partial key that could reuse an older night.
+	var inputs = [_query_view(view), cards, positions, answers, _query_knowledge(knowledge), epoch, temporal_positions]
+	var key = hash(inputs)
+	if reuse_solves and solve_cache.has(key) and solve_cache[key].inputs == inputs:
+		Profiler.count("solve_cache_hit")
+		var cached: Dictionary = solve_cache[key].result
+		Profiler.close(span)
+		return cached
 	var result = _solve(view, cards, positions, answers, knowledge, epoch, temporal_positions)
+	if reuse_solves:
+		if solve_cache.size() >= 1024:
+			solve_cache.erase(solve_cache.keys()[0])
+		solve_cache[key] = {"inputs": inputs.duplicate(true), "result": result}
 	Profiler.close(span)
+	return result
+
+## The explicit cards argument already contains the selected receipts. Unselected
+## library cards and attention bookkeeping are not inputs to _solve, roles or routes;
+## retaining them in keys prevented identical scoped/union questions from sharing.
+static func _query_view(view: Dictionary) -> Dictionary:
+	var result = view.duplicate()
+	result.erase("cards")
+	return result
+
+static func _query_knowledge(knowledge: Dictionary) -> Dictionary:
+	var result = knowledge.duplicate()
+	result.erase("own_reports")
+	result.erase("attention_reports")
 	return result
 
 ## Every legal world for this view (cached). Shared by the solve and by CaseEval.
@@ -340,6 +379,12 @@ static func source_valid(view: Dictionary, world: Dictionary, card: Dictionary) 
 	return true
 
 static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, answers: Dictionary = {}, knowledge: Dictionary = {}, epoch: String = "", temporal_positions: Array = []) -> Dictionary:
+	if not positions.is_empty() or not temporal_positions.is_empty():
+		# Candidate theories differ only in position filters. Reports, roles and routes
+		# do not read those filters, so compute their common surviving worlds once.
+		var base = solve(view, cards, {}, answers, knowledge, epoch)
+		return {"worlds": _positions(view, base.worlds, positions, epoch, temporal_positions),
+			"movement": base.movement, "movement_ok": base.movement_ok}
 	# Report masks use the universe's array index, including distinct conversion
 	# histories. Keep the worlds themselves unchanged for explanations/checkpoints.
 	var universe: Array = universe(view)
@@ -419,6 +464,37 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 		worlds = kept
 	var movement = movement_for(view, cards if view.get("live_activity", false) else movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
+
+static func _positions(view: Dictionary, worlds: Array, positions: Dictionary, epoch: String, temporal: Array) -> Array:
+	if view.get("chronology", {}).has("curse") or not temporal.is_empty():
+		for id in positions:
+			worlds = worlds.filter(func(w): return position_holds(view, w, id, positions[id], epoch))
+		for assignment in temporal:
+			for id in assignment.positions:
+				worlds = worlds.filter(func(w): return position_holds(view, w, id, assignment.positions[id], assignment.at))
+		return worlds
+	var good = 0
+	var evil = 0
+	var marked = -2
+	var other: Array = []
+	for id in positions:
+		var index = person_index(view, id)
+		if index < 0:
+			if positions[id] in ["evil", "marked", "unmarked"]:
+				return []
+			continue
+		match positions[id]:
+			"good": good |= 1 << index
+			"evil": evil |= 1 << index
+			"marked":
+				if marked >= 0 and marked != index:
+					return []
+				marked = index
+			_: other.append(id)
+	worlds = worlds.filter(func(w): return not (w.evil & good) and (w.evil & evil) == evil and (marked < 0 or w.marked == marked))
+	for id in other:
+		worlds = worlds.filter(func(w): return position_holds(view, w, id, positions[id], epoch))
+	return worlds
 
 static func movement_for(view: Dictionary, cards: Array, answers: Dictionary = {}, knowledge: Dictionary = {}) -> Dictionary:
 	if preload("res://workshop/live_activity.gd").available(view):

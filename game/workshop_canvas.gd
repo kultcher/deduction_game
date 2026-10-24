@@ -75,10 +75,31 @@ static func status(g, value: Dictionary) -> Dictionary:
 		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	var issues: Array = prepared.issues.duplicate()
+	var audience_ready = true
+	# Reuse the same exact graph for each real listener; capability checks never
+	# evaluate numbers or reveal the listener's private evidence to the player.
+	for real in g.w.living():
+		var n = real.shadow if real.is_evil() else real
+		if n == null:
+			audience_ready = false
+			continue
+		var scoped = snapshot(g, value, n.id)
+		var check = Assess.prepare(scoped)
+		if not check.ready:
+			audience_ready = false
+			continue
+		var proposals: Dictionary = n.workshop_state.get("presentations", {}).duplicate(true)
+		proposals["draft"] = scoped
+		var plan = preload("res://workshop/shared_ledger.gd").prepare(Bridge.capture(g, [], n.id, "private", n), proposals, n.ledger, n.workshop_state.get("withdrawn", {}))
+		if not check.ready or not plan.ready:
+			audience_ready = false
+			for issue in check.issues + plan.issues:
+				if issue not in issues:
+					issues.append(issue)
 	var blocked = not supports(g, value).issues.is_empty() or value.cards.is_empty()
 	if value.cards.is_empty():
 		issues.append("Connect evidence to the selected premise before filing.")
-	return {"ready": prepared.ready and not blocked, "blocked": blocked, "issues": issues,
+	return {"ready": prepared.ready and not blocked, "audience_ready": audience_ready, "blocked": blocked or (g.strict_evaluator and (not prepared.ready or not audience_ready)), "issues": issues,
 		"mode": "shared" if prepared.ready and g.workshop_effects else "legacy",
 		"warning": "Fallback evaluates the headline and original cards using the existing argument system. Canvas answers, assumptions, intermediate claims and link meanings are NOT interpreted by that system."}
 

@@ -29,6 +29,7 @@ func _init() -> void:
 ## A fresh case: listener L (good) and four others.
 func _setup(sd: int) -> Dictionary:
 	var g = Game.new()
+	g.workshop_effects = false # Explicit legacy baseline before testing migration.
 	g.log_dir = "user://test_logs"
 	g.new_case(sd)
 	var w = g.w

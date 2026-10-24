@@ -181,6 +181,7 @@ func _routes() -> void:
 
 func _game(size: int):
 	var g = Game.new()
+	g.workshop_effects = false # This suite compares the native route with diagnostics.
 	g.detailed_logging = false
 	g.new_case(692, size)
 	return g

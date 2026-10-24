@@ -59,7 +59,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			cards.append(activity)
 			continue
 		if e.kind != "info" or e.content.get("role", "") not in ROLES:
-			result.issues.append("Not yet supported: %s %s." % [e.kind, e.content.get("role", "")])
+			result.issues.append("The %s card%s isn't supported yet (%s)." % [e.kind, " (" + str(e.content.get("role")) + ")" if e.content.has("role") else "", e.id])
 			continue
 		var data: Dictionary = e.content.data
 		var ids: Array = snapshot.people.map(func(p): return p.id)

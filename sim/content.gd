@@ -2,6 +2,9 @@
 ## Pure data. Nothing here holds case state.
 extends RefCounted
 
+## Enable explicitly in regression tests and playtests, never in ordinary play.
+const STRICT_EVALUATOR = false
+
 const PHASES = ["Morning", "Afternoon", "Evening", "Night"]
 const MORNING = 0
 const AFTERNOON = 1

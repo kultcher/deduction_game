@@ -196,7 +196,7 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	g.new_case(693, 10)
 	editor.refresh()
 	check(editor.files.is_empty() and editor.board.links.is_empty() and editor.board.view.people.size() == 10 and not editor.board.nodes.values().any(func(n): return n.kind == "evidence"), "new case clears the graph and starts without transferred evidence")
-	check(not g.workshop_effects and g.workshop_deliveries.is_empty(), "case reset clears experimental switch and presentation feedback")
+	check(g.workshop_effects and g.workshop_deliveries.is_empty(), "case reset retains shared evaluation and clears presentation feedback")
 	editor.queue_free()
 	await process_frame
 
@@ -262,7 +262,7 @@ func _flow() -> void:
 		g.command("sleep")
 	check(g.w.day >= 2 or g.w.game_over, "normal execution and night resolution finish after the canvas presentations")
 	g.new_case(692, 10)
-	check(g.workshop_draft.is_empty() and g.workshop_deliveries.is_empty() and not g.workshop_effects, "restarting the same seed clears all canvas ownership and feedback")
+	check(g.workshop_draft.is_empty() and g.workshop_deliveries.is_empty() and g.workshop_effects, "restarting the same seed clears canvas ownership and feedback while retaining shared evaluation")
 
 func _main_ui() -> void:
 	var main = load("res://ui/main.tscn").instantiate()
@@ -277,7 +277,7 @@ func _main_ui() -> void:
 	check(editor.g == main.g and editor.board.view.get("live", false), "main menu opens the live editor rather than the fixture canvas")
 	check(main.workshop_win.gui_embed_subwindows, "Workshop owns its child dialog layer instead of sharing the outer game window stack")
 	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded() and window.get_parent().get_window() == main.workshop_win), "live answer, results, progress and context windows belong to the Workshop layer")
-	check(not main.g.prediction_spoiled and not main.g.workshop_effects, "opening the live editor does not enable debug spoilers or experimental effects")
+	check(not main.g.prediction_spoiled and main.g.workshop_effects, "opening the live editor preserves shared evaluation without enabling debug spoilers")
 	var number: int = main.g.board[0].n
 	main.case_view.show_card_menu(number, Vector2i(200, 200))
 	main.case_view.card_menu.id_pressed.emit(100)

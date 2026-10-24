@@ -54,6 +54,7 @@ var turned = false           # turned evil by the Revenant's curse
 var turned_day = -1
 
 ## Suspicion of each other NPC id (0 = trusting, 1+ = convinced evil).
+## Unclamped totals; use Mind.susp / Mind.suspicion_view when reading beliefs.
 var suspicion = {}
 ## Player-readable reason for the most recent large rise in suspicion, per target.
 var sus_why = {}

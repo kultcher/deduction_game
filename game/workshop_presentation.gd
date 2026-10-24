@@ -8,6 +8,35 @@ const Assess = preload("res://workshop/live_assessment.gd")
 const Mind = preload("res://sim/mind.gd")
 const Argue = preload("res://sim/argue.gd")
 const Profiler = preload("res://workshop/profiler.gd")
+const Ownership = preload("res://game/workshop_ownership.gd")
+
+## Pure capability check against the real listener and the proposed evidence union.
+## Used for the entire audience before a command spends time or discloses secrets.
+static func readiness(g, n, card: Dictionary, targets: Array, direction: String, venue: String) -> Dictionary:
+	var snapshot = _snapshot(g, n, card, targets, direction, venue)
+	if snapshot.is_empty():
+		return {"ready": false, "issues": ["Card #%d is missing, stale, or has no supported target." % card.get("n", 0)], "exit_point": "snapshot"}
+	var prepared = Assess.prepare(snapshot)
+	if not prepared.ready:
+		return {"ready": false, "issues": prepared.issues, "exit_point": "assessment"}
+	var proposals: Dictionary = n.workshop_state.get("presentations", {}).duplicate(true)
+	proposals[_key(card, targets, direction, snapshot)] = snapshot
+	var plan = Shared.prepare(Bridge.capture(g, [], n.id, venue, n), proposals, n.ledger, n.workshop_state.get("withdrawn", {}))
+	return {"ready": plan.ready, "issues": plan.issues, "exit_point": "union"}
+
+static func _key(card: Dictionary, targets: Array, direction: String, snapshot: Dictionary) -> String:
+	var ids: Array = snapshot.selected.duplicate()
+	ids.sort()
+	var people = targets.duplicate()
+	people.sort()
+	var origin = str(card.n) if card.get("n", 0) > 0 else JSON.stringify(ids).sha256_text()
+	return str(card.n) if direction == "deduction" else "direct:%s:%s:%s" % [origin, direction, ",".join(PackedStringArray(people))]
+
+static func _unavailable(g, n, card: Dictionary, point: String, issues: Array) -> Dictionary:
+	Ownership.fallback(g, n, point, issues, card.get("n", 0))
+	if g.strict_evaluator:
+		return {"blocked": true, "lines": ["Cannot present card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(issues))]], "facts": [], "agreement": 0.0}
+	return {}
 
 static func present(g, n, card: Dictionary, targets: Array, direction: String, venue: String, speak: bool) -> Dictionary:
 	var span = Profiler.open("presentation")
@@ -18,11 +47,14 @@ static func present(g, n, card: Dictionary, targets: Array, direction: String, v
 static func _present(g, n, card: Dictionary, targets: Array, direction: String, venue: String, speak: bool) -> Dictionary:
 	if n.is_evil():
 		return {}
+	var capability = readiness(g, n, card, targets, direction, venue)
+	if not capability.ready:
+		return _unavailable(g, n, card, capability.exit_point, capability.issues)
 	if card.has("workshop_case"):
 		g.workshop_canvas_retire(n, card)
 	var snapshot = _snapshot(g, n, card, targets, direction, venue)
 	if snapshot.is_empty() or not Assess.prepare(snapshot).ready:
-		return {}
+		return _unavailable(g, n, card, "snapshot", ["Evidence changed after the readiness check."])
 	var state: Dictionary = n.workshop_state
 	var original_ids: Array = snapshot.selected.duplicate()
 	original_ids.sort()
@@ -36,7 +68,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var current = Bridge.capture(g, [], n.id, venue, n)
 	var proposed = Shared.prepare(current, proposals, n.ledger, state.get("withdrawn", {}))
 	if not proposed.ready:
-		return {}
+		return _unavailable(g, n, card, "proposals", proposed.issues)
 	var earlier: Array = state.get("facts", []).duplicate()
 	var novelty_ids = Shared.endorsed_facts(snapshot, snapshot.root)
 	var headline: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
@@ -61,7 +93,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		# an unsupported endorsement behind when returning to native presentation.
 		state.presentations = previous
 		Mind.recompute_beliefs(g.w, n, " (presentation capability fallback)")
-		return {}
+		return _unavailable(g, n, card, "ownership", state.get("issues", ["Ownership was not activated."]))
 	var listener_key = n.id + (":cover" if n.is_shadow else ":good")
 	var plan: Dictionary = g._workshop_plans[listener_key]
 	# Rebuild against final interval reliability, matching the applied union.
@@ -82,7 +114,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		Profiler.close(response_span)
 		g._workshop_responses[listener_key] = {"input": response_input.duplicate(true), "assessment": assessment}
 	if assessment.is_empty():
-		return {}
+		return _unavailable(g, n, card, "response", ["The shared response could not be assessed."])
 	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
 	var graph_choices: Dictionary = root.get("workshop_case", {}).duplicate(true)
 	graph_choices.erase("version")

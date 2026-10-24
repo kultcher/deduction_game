@@ -10,6 +10,7 @@ var fails = 0
 
 func _init() -> void:
 	var g = Game.new()
+	g.workshop_effects = false # Explicit legacy baseline before testing migration.
 	g.detailed_logging = false
 	g.new_case(692, 7)
 	for p in g.w.npcs:
@@ -92,10 +93,11 @@ func _init() -> void:
 	g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 	Mind.adjust(g.w, n, target.id, 2.0, "independent saturation", "", false)
 	# The shared layer's own vector sits on top of the independent baseline, clamped:
-	# the independent change saturates the baseline, and the combined belief follows.
-	check(is_equal_approx(n.workshop_state.outside[target.id], 1.5) and is_equal_approx(n.suspicion[target.id], clampf(1.5 + n.workshop_state.requested.get(target.id, 0.0), 0.0, 1.5)), "independent changes can saturate the combined belief")
+	# the independent change stays reversible even above the displayed upper bound.
+	check(n.workshop_state.outside[target.id] > 1.5 and is_equal_approx(Mind.susp(n, target.id), 1.5), "independent totals remain unclamped while displayed suspicion saturates")
+	var saturated_baseline: float = n.workshop_state.outside[target.id]
 	g.workshop_retract(ded, n.id)
-	check(is_equal_approx(n.suspicion[target.id], 1.5), "shared retraction preserves independent saturation")
+	check(is_equal_approx(n.suspicion[target.id], saturated_baseline), "shared retraction preserves the entire independent total")
 	# Unsupported chronology must restore one model rather than retain a second layer.
 	n.suspicion = native_before.duplicate(true)
 	n.ledger = {}
@@ -141,6 +143,7 @@ func _init() -> void:
 func _advanced() -> void:
 	for size in [7, 10]:
 		var g = Game.new()
+		g.workshop_effects = false # Explicit legacy baseline before testing migration.
 		g.detailed_logging = false
 		g.new_case(692, size)
 		for person in g.w.npcs:
@@ -221,10 +224,9 @@ func _advanced() -> void:
 				small.applied[key] = 0.001
 			g.set_workshop_effects(true)
 			check(n.workshop_state.active and small.applied.values().all(func(v): return is_zero_approx(v)), "ownership retracts even sub-threshold native remnants exactly")
-			var saturated = n.ledger.duplicate(true)
-			saturated.values()[0].workshop_clipped = true
-			var clipped_plan = Shared.prepare(g.workshop_snapshot([], n.id), {}, saturated)
-			check(not clipped_plan.ready and clipped_plan.issues.any(func(s): return "clipped" in s), "historically clipped native contributions are declined rather than guessed")
+			Mind.adjust(g.w, n, target.id, -3.0, "lower-bound regression", "", false)
+			var unclamped_plan = Shared.prepare(g.workshop_snapshot([], n.id), {}, n.ledger)
+			check(unclamped_plan.ready and is_zero_approx(Mind.susp(n, target.id)), "lower-bound totals no longer block reversible ownership")
 			var wide_input = g.workshop_snapshot([ded], n.id)
 			for i in range(9):
 				var added = Shared.reading(source.id, {"day": i + 3, "phase": 0, "role": "dowser", "data": {"group": [target.id], "count": 1}})
