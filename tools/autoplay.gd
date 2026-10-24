@@ -198,7 +198,18 @@ func _scale_snapshot() -> Dictionary:
 		# Same formula as Mind._good_nomination_impl.
 		var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (Mind.trait_of(n, "confidence") - 0.5) * 2.0 - 0.5 * Mind.paranoia(w, n)
 		npcs.append({"id": n.id, "top": Mind.susp(n, top.id), "top_is_evil": top.is_evil(), "top_action": top_action,
-			"good_mean": _mean(good_vals), "evil": evil, "nomination_threshold": thr, "nomination_headroom": top_action - thr})
+			"good_mean": _mean(good_vals), "evil": evil, "nomination_threshold": thr, "nomination_headroom": top_action - thr,
+			"top3": others.slice(0, 3).map(func(o): return o.id), "top3_evil": others.slice(0, 3).filter(func(o): return o.is_evil()).size()})
+	# Agreement: how far the rest of the good town shares each NPC's suspects.
+	for entry in npcs:
+		var me = w.by_id[entry.id]
+		var peers: Array = npcs.filter(func(o): return o.id != entry.id)
+		var top_id: String = entry.top3[0]
+		var shared_top: Array = peers.filter(func(o): return o.id != top_id).map(func(o): return Mind.susp(w.by_id[o.id], top_id))
+		var overlaps: Array = peers.map(func(o): return entry.top3.filter(func(id): return id in o.top3).size())
+		entry["peers_susp_of_my_top"] = _mean(shared_top)
+		entry["peers_same_top"] = peers.filter(func(o): return o.top3[0] == top_id).size() / maxf(peers.size(), 1.0)
+		entry["top3_overlap"] = _mean(overlaps)
 	return {"day": w.day, "living": w.living().size(), "npcs": npcs}
 
 ## Every good NPC's vote evaluation (score, need) from the ordinary developer log,
@@ -236,7 +247,8 @@ func _print_scale(cases: Array) -> void:
 		for d in c.get("suspicion_days", []):
 			var k: int = d.day
 			if not by_day.has(k):
-				by_day[k] = {"n": 0, "top": 0.0, "top_evil": 0, "good": 0.0, "demon": 0.0, "demon_n": 0, "demon_first": 0, "headroom": 0, "action": 0.0}
+				by_day[k] = {"n": 0, "top": 0.0, "top_evil": 0, "good": 0.0, "demon": 0.0, "demon_n": 0, "demon_first": 0, "headroom": 0, "action": 0.0,
+					"peer_susp": 0.0, "same_top": 0.0, "overlap": 0.0, "top3_evil": 0.0, "demon_top3": 0}
 			var b = by_day[k]
 			for n in d.npcs:
 				b.n += 1
@@ -245,11 +257,16 @@ func _print_scale(cases: Array) -> void:
 				b.good += n.good_mean
 				b.top_evil += 1 if n.top_is_evil else 0
 				b.headroom += 1 if n.nomination_headroom >= 0.0 else 0
+				b.peer_susp += n.peers_susp_of_my_top
+				b.same_top += n.peers_same_top
+				b.overlap += n.top3_overlap
+				b.top3_evil += n.top3_evil
 				for e in n.evil:
 					if e.demon:
 						b.demon += e.susp
 						b.demon_n += 1
 						b.demon_first += 1 if e.rank == 1 else 0
+						b.demon_top3 += 1 if e.rank <= 3 else 0
 	print("\n  SUSPICION SCALE (%s beliefs; good NPCs, end of day)" % ("native" if native else "shared"))
 	print("  day   NPCs  top   top+crowd  mean-good  demon  demon#1  top-is-evil  could-nominate")
 	var days: Array = by_day.keys()
@@ -259,6 +276,13 @@ func _print_scale(cases: Array) -> void:
 		var n = float(maxi(b.n, 1))
 		print("  %3d  %5d  %.3f  %.3f      %.3f      %.3f  %5.0f%%  %8.0f%%  %10.0f%%" % [k, b.n, b.top / n, b.action / n, b.good / n,
 			b.demon / maxf(b.demon_n, 1.0), 100.0 * b.demon_first / maxf(b.demon_n, 1.0), 100.0 * b.top_evil / n, 100.0 * b.headroom / n])
+	print("\n  AGREEMENT (good NPCs, end of day)")
+	print("  day  peers' susp of my top  peers with same top  top-3 overlap (of 3)  evil in my top 3  demon in top 3")
+	for k in days:
+		var b = by_day[k]
+		var n = float(maxi(b.n, 1))
+		print("  %3d  %12.3f  %18.0f%%  %17.2f  %16.2f  %13.0f%%" % [k, b.peer_susp / n, 100.0 * b.same_top / n, b.overlap / n,
+			b.top3_evil / n, 100.0 * b.demon_top3 / maxf(b.demon_n, 1.0)])
 	var votes = {"n": 0, "score": 0.0, "need": 0.0, "yes": 0, "evil_n": 0, "evil_yes": 0, "good_n": 0, "good_yes": 0}
 	for c in cases:
 		for v in c.get("votes", []):
