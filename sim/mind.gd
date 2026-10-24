@@ -128,7 +128,7 @@ static func end_of_day_trust(w) -> void:
 ## Fields copied once, when the shadow is made (a turned NPC's good mind carries over).
 const SHADOW_COPY = ["traits", "trait_base", "work_phases", "haunts", "friends", "rivals",
 	"suspicion", "sus_why", "sus_src", "npc_trust", "ledger", "honesty", "discounted", "believed_roles",
-	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts", "workshop_state"]
+	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts", "workshop_state", "consensus_pressure"]
 const SHADOW_SAME = ["id", "name", "pron", "style", "blurb", "occupation", "work", "home_block", "ring"]
 
 ## Run f(shadow) for evil NPC n inside the shadow context: the shadow's RNG and log in
@@ -892,10 +892,15 @@ static func heard_weight(listener, speaker) -> float:
 
 # ---------------------------------------------------------------- night choices (good)
 
-static func ranked_suspects(w, n) -> Array:
+static func ranked_suspects(w, n, social_pressure: bool = false) -> Array:
 	var c: Array = w.living().filter(func(m): return m != n)
-	c.sort_custom(func(a, b): return susp(n, a.id) > susp(n, b.id))
+	c.sort_custom(func(a, b): return action_susp(n, a.id) > action_susp(n, b.id) if social_pressure else susp(n, a.id) > susp(n, b.id))
 	return c
+
+## The previous crowd weight and read clamp, confined to social action. In
+## particular, it must never enter reading honesty or the shared world's prior.
+static func action_susp(n, id: String) -> float:
+	return clampf(n.suspicion.get(id, 0.0) + n.consensus_pressure.get(id, 0.0), 0.0, 1.5)
 
 ## The Seer's two picks, by Insight. A sharp Seer usually re-checks their top suspect and
 ## pairs them with someone they haven't looked at yet; once two readings have said "yes"
@@ -1395,11 +1400,10 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	lines.append(report["line"])
 	facts.append(report["fact"])
 
-## Peer pressure: what the town's public accusations against target add to a listener's
-## suspicion. Each accuser counts once (their latest stance), older accusations fade, and
+## Peer pressure: what public accusations add to a listener's action score.
+## Each accuser counts once (their latest stance), older accusations fade, and
 ## each further voice adds half as much as the one before, so a chorus can't bury someone.
-## Applied as a difference from what's applied now, like the evidence ledger, but kept out
-## of the ledger: a crowd's opinion isn't evidence against anyone's honesty.
+## The crowd supplies no evidence, source dishonesty or world-prior weight.
 const CONSENSUS_BASE = 0.12
 const CONSENSUS_FADE = 0.6
 const CONSENSUS_CAP = 0.3
@@ -1425,24 +1429,21 @@ static func refresh_consensus(w, l, target: String) -> void:
 	for i in range(vals.size()):
 		want += vals[i] * pow(0.5, i)
 	want = minf(want, CONSENSUS_CAP)
-	var have: float = l.consensus_applied.get(target, 0.0)
+	var have: float = l.consensus_pressure.get(target, 0.0)
 	if absf(want - have) < 0.002:
 		return
-	l.consensus_applied[target] = want
+	l.consensus_pressure[target] = want
 	var what = ("town consensus: %d voice(s) against them" % vals.size()) if want > have else ("town consensus fading (%d older voice(s) against them)" % vals.size())
-	adjust(w, l, target, want - have, what,
-		"several people have spoken against them" if vals.size() > 1 else "%s spoke against them at the meeting" % w.by_id[_first_accuser(w, target, l.id)].name)
-
-static func _first_accuser(w, target: String, not_id: String) -> String:
-	for a in w.stances:
-		if w.stances[a]["target"] == target and a != not_id:
-			return a
-	return target
+	w.dlog.think(l.id, "social_pressure", what, {"target": target, "before": have, "after": want})
 
 static func refresh_all_consensus(w) -> void:
 	var targets = {}
 	for a in w.stances:
 		targets[w.stances[a]["target"]] = true
+	for listener in w.living():
+		var mind = listener.shadow if listener.is_evil() and listener.shadow != null else listener
+		for target in mind.consensus_pressure:
+			targets[target] = true
 	for l in w.living():
 		for t in targets:
 			refresh_consensus(w, l, t)
@@ -1458,25 +1459,25 @@ static func _good_nomination(w, n, m: Dictionary, block: String):
 
 static func _good_nomination_impl(w, n, m: Dictionary, block: String, trace_id: int):
 	var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (trait_of(n, "confidence") - 0.5) * 2.0 - 0.5 * paranoia(w, n)
-	for t in ranked_suspects(w, n):
+	for t in ranked_suspects(w, n, true):
 		if t.id in m["nominated"] or t.id == n.id:
 			w.dlog.decision(n.id, "nomination", "gate", false,
 				{"gate": "already_nominated_or_self"}, t.id, trace_id)
 			continue
-		var s = susp(n, t.id)
+		var s = action_susp(n, t.id)
 		if n.cleared.has(t.id):
 			s -= 0.2  # their own sight said this person is no demon
 		w.dlog.decision(n.id, "nomination", "evaluation", s >= thr, {"score": s,
-			"raw_suspicion": susp(n, t.id), "own_clear_adjustment": -0.2 if n.cleared.has(t.id) else 0.0,
+			"raw_suspicion": susp(n, t.id), "town_pressure": action_susp(n, t.id) - susp(n, t.id), "own_clear_adjustment": -0.2 if n.cleared.has(t.id) else 0.0,
 			"threshold": thr, "comparison": ">=",
 			"threshold_parts": {"day_base": maxf(0.45, 0.86 - 0.08 * w.day),
 				"confidence": -0.15 * (trait_of(n, "confidence") - 0.5) * 2.0,
 				"paranoia": -0.5 * paranoia(w, n)}}, t.id, trace_id)
 		if s < thr:
 			continue
-		if block != "" and susp(n, block) >= s:
+		if block != "" and action_susp(n, block) >= s:
 			w.dlog.decision(n.id, "nomination", "gate", false, {"gate": "prefers_existing_block",
-				"block": block, "block_suspicion": susp(n, block), "candidate_score": s}, t.id, trace_id)
+				"block": block, "block_suspicion": action_susp(n, block), "candidate_score": s}, t.id, trace_id)
 			return null  # content with who is already on the block
 		return {"nominee": t.id, "by": n.id, "score": s,
 			"reason": "suspicion of %s %.2f >= threshold %.2f" % [t.id, s, thr]}
@@ -1785,9 +1786,9 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		var detail = "%s on %s (good self: %s)" % ["YES" if evil_yes else "no", nominee, "yes" if sh_yes else "no"]
 		return evil_yes if evil_override(w, v, "vote", stakes, 0.6, detail) else sh_yes
 	reconsider(w, v, "thinking it over before the vote")
-	var base = susp(v, nominee)
+	var base = action_susp(v, nominee)
 	var s = base
-	var parts = {"suspicion": snappedf(base, 0.01)}
+	var parts = {"suspicion": snappedf(susp(v, nominee), 0.01), "town_pressure": base - susp(v, nominee)}
 	if player_yes:
 		parts["player_votes_yes"] = 0.25 * v.trust - 0.05
 	if statement == "defend":
@@ -1800,7 +1801,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	if v.spare_pref.get(nominee, 0.0) > 0.0:
 		parts["persuaded_to_spare"] = -0.5 * v.spare_pref[nominee]
 	var block: String = w.meeting["block"]
-	if block != "" and block != nominee and susp(v, block) >= base:
+	if block != "" and block != nominee and action_susp(v, block) >= base:
 		parts["prefers_block"] = -0.4
 	if v.role == "martyr" and v.martyr_target == nominee and not v.gift_broken():
 		# They'd die in this one's place: reluctant, unless the case, the pressure or the
@@ -1809,12 +1810,12 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		if r > 0.0:
 			parts["martyr_reluctance"] = -snappedf(r, 0.01)
 	for k in parts:
-		if k != "suspicion":
+		if k not in ["suspicion", "town_pressure"]:
 			s += parts[k]
 	var need = 0.5 - 0.12 * (trait_of(v, "confidence") - 0.5) * 2.0 + (0.1 if w.day <= 1 else 0.0) - 0.4 * paranoia(w, v)
 	var yes = s >= need
 	var exact_parts: Dictionary = parts.duplicate()
-	exact_parts["suspicion"] = base  # scoring starts from the unrounded base
+	exact_parts["suspicion"] = susp(v, nominee) # pressure is reported separately
 	w.dlog.decision(v.id, "vote", "evaluation", yes, {"parts": exact_parts,
 		"score": s, "threshold": need, "comparison": ">=", "margin": s - need,
 		"threshold_parts": {"base": 0.5,

@@ -2639,14 +2639,14 @@ func debug_npc_text(id: String) -> String:
 	var n0 = w.by_id[id]
 	var town = {}
 	for n in w.living_good():
-		if n.id != id and n.consensus_applied.get(id, 0.0) > 0.0:
-			town[n.id] = n.consensus_applied[id]
+		if n.id != id and n.consensus_pressure.get(id, 0.0) > 0.0:
+			town[n.id] = n.consensus_pressure[id]
 	var trust_line = "Trust in you: %.2f%s" % [n0.trust, (" (capped at %.2f)" % n0.trust_cap) if n0.trust_cap < 1.0 else ""]
 	if n0.is_evil():
 		trust_line += " (evil: acted, not felt)"
 	var out = "%s · Pressure: %.2f\nCredited by others: %s\nSuspected by others: %s" % [trust_line, n0.pressure, _spread(hon), _spread(sus)]
 	if not town.is_empty():
-		out += "\n  of which public accusations: %s" % _spread(town)
+		out += "\nSeparate social pressure from public accusations: %s" % _spread(town)
 	if n0.is_evil() and n0.shadow != null:
 		# The shadow self: what this evil NPC would believe if it were the good townsperson it
 		# pretends to be (its public acts default to this; see docs/shadow_self_plan.md).

@@ -73,8 +73,8 @@ var trust_cap = 1.0
 var npc_trust = {}
 ## Scrutiny from accusations and nominations; decays each night.
 var pressure = 0.0
-## Suspicion currently applied from the town's public accusations (Mind.refresh_consensus), per target.
-var consensus_applied = {}
+## Public accusations influence action as social pressure, never evidence or priors.
+var consensus_pressure = {}
 var pressed_today = 0
 var role_guesses = 0        # times the player has asked 'are you the <gift>?' and guessed wrong
 var talked_day = -1      # last day the player had a conversation with them

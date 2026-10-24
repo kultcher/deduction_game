@@ -2,7 +2,8 @@
 
 Updated Oct 24, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
 
-The migration is **in progress**, not finished. P1 is partly implemented; P2–P5
+The migration is **in progress**, not finished. P1 is partly implemented; a P3
+consensus slice is implemented. P2, the remaining P3 work, P4 and P5
 remain. Q3 and Q6 remain deferred. The 95% demon-victim rule and weak hint/refusal
 rules are recorded decisions, not yet migrated behavior.
 
@@ -29,7 +30,7 @@ rules are recorded decisions, not yet migrated behavior.
   known owner; repeated receipts do not create a second item.
 - Opinion and accusation cards are rejected as evidence in ordinary play as well as
   strict tests. Their underlying observations/readings must be cited instead. The
-  town-consensus suspicion term itself still needs the P3 migration.
+  town-consensus term now remains separate social action pressure (P3 slice below).
 
 Targeted suites cover revision/repeat contracts, location and totem adapters, exact
 root ownership after native receipts are parked, malformed payloads, shared dialogue,
@@ -213,6 +214,32 @@ victim rule is still present and must become revisable 95% innocence evidence.
 Card-adapter suite: 57 checks pass. Six targeted suites pass, plus the nested-case
 regression checks. The ordinary seed-692 benchmark retains its exact behavior hash
 and zero fallbacks (2488 ms under four concurrent bot runs).
+
+## Q1: consensus outside evidence (Codex, Oct 24)
+
+The chorus keeps its native weights, cap, fade, hint emphasis and diminishing voices,
+in `consensus_pressure`. It never writes suspicion, ledger entries or source honesty,
+and cannot enter shared world priors. Nomination ranking, existing-block preference
+and the vote's starting score use the bounded raw evidence sum plus that pressure.
+The vote/nomination coefficients and thresholds are unchanged. Debug/trace output
+reports pressure separately; shadow creation preserves it. Withdrawing the final
+stance clears stale pressure.
+
+Eight new checks verify evidence/credibility/RNG isolation, raw-sum clamping, and
+exact vote and nomination equivalence to folding the same pressure into suspicion
+at a fixed state. Seven targeted suites pass; `test_social` retains only its known
+false Night Watch failure. Whole-game outcome checks also pass.
+
+Replay after Q1: nine shared, zero fallbacks, **still 1 yes / 5 needed**. Agreement is
+now Hollis .319, Jory .775, Greta .037, Odette .676, Constance .000, Edda .000,
+Agnes .680, Isolde 1.000, Lian .940. This declared Q1 behaviour change removes crowd
+feedback into source credibility and priors; it is not Q3/Q6 tuning. Suspicion and
+vote margins are saved in `logs/migration/resume/consensus/measurement.json`.
+
+Under four concurrent bot runs: meeting entry 4368 ms, search into meeting 5295 ms,
+presentation 4023 ms, nomination 1097 ms. No significant new presentation cost was
+observed relative to the earlier replay. The bot matrix currently runs on frozen
+`0cfd073` (before this Q1 change), so it will not establish final-migration balance.
 
 ## Performance pass after review (Claude, Oct 24; branch `claude/perf-reuse`, merged)
 
