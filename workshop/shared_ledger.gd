@@ -7,11 +7,15 @@ const Support = preload("res://workshop/support_model.gd")
 const Theory = preload("res://workshop/theory.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 
-static func reading(source: String, entry: Dictionary) -> Dictionary:
+static func reading(source: String, entry: Dictionary, via: String = "", anonymous: bool = false) -> Dictionary:
 	var card = {"kind": "info", "source": source, "role": entry.get("role", ""),
 		"day": entry.get("day", -1), "data": entry.get("data", {}), "text": entry.get("text", "")}
 	if entry.has("phase"):
 		card.phase = entry.phase
+	if via != "":
+		card["via"] = via
+	if anonymous:
+		card["anonymous"] = true
 	return Evidence.normalize_card(card)
 
 ## Exact original receipts, independent of legacy source/night support references.

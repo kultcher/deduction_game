@@ -516,6 +516,37 @@ seven-person town and 3 -> 384 ms for the ten-person town. Before, the proof sta
 native; afterwards all six/nine surviving listeners have shared proof ownership,
 with no capability issues. Reports are under `logs/migration/resume/martyr`.
 
+## P2 reading provenance boundary (Codex, Oct 24)
+
+The unnamed meeting relay previously said "Word reached me from the Seer" while
+putting the referee's exact source identity into the listener's shared receipt.
+Anonymous receipts now contain only the visible teller, gift, date and payload;
+their fact identity is unchanged if the hidden source changes. Portable legacy
+references also redact that private binding. The native compatibility route still
+exists internally and is explicitly logged as a fallback: anonymous identity and
+two-source honesty need their own latent model before this route can migrate.
+
+An actual public "That was me" binds only that teller's anonymous report. Matching
+content from a named speaker alone does not bind it. The named fact retains both
+provenance paths, replaces the unresolved receipt, and acquires one shared owner.
+Acknowledgement adds no weight, trust reward or RNG draw. Named NPC readings retain
+the teller path too; repeated routes do not create new original facts.
+
+`test_workshop_provenance.gd` passes 62 checks across seven- and ten-person towns,
+including real meeting speech, public acknowledgement, cover minds, source redaction,
+deduplication and the existing single corroboration draw. Six focused suites pass.
+A frozen full regular run passes **56/58**, with only the two established baseline
+failures. The prior shared Martyr slice also passed the slow trace suite (45 checks).
+The provenance trace run is in progress. Logs: `logs/migration/resume/provenance`.
+
+Paired ordinary town presentations remain fully shared (10 listeners, zero fallback):
+seed 692 **2429 -> 2453 ms**, seed 4242 **2658 -> 2676 ms**. No significant time
+increase. Seed 692 preserves the exact behavior hash. Seed 4242 differs only in
+three newly retained `provenance_paths` arrays on named NPC reading receipts; its
+probabilities, dialogue, RNG and all other recorded behavior are identical. This
+is a declared transport change, not a numerical optimization. Anonymous fallback
+timings are not used as performance evidence.
+
 ## Intermediate bot measurements (frozen `0cfd073`)
 
 These runs precede Q1/Q4 and the bot rejection fix. They are not final-migration

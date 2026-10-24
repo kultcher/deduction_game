@@ -91,6 +91,10 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 	var observed = stamp(card.get("when", {"day": card.get("day", -1), "phase": card.get("phase", 3 if kind == "info" else -1)}))
 	var content = {"kind": kind, "source": card.get("source", ""),
 		"subjects": card.get("subject", []).duplicate(), "observed_at": observed}
+	if kind == "info" and card.get("anonymous", false):
+		content.source = ""
+		content["anonymous"] = true
+		content["teller"] = card.get("via", "")
 	if kind == "martyr" and content.subjects.size() == 2:
 		# Public subject order is actor, saved. Preserve those roles before the
 		# generic person set is sorted for stable receipt identity.
@@ -140,6 +144,8 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 		"fact_id": id, "incident_ids": incidents, "content": content, "issues": issues, "provenance_paths": [],
 		"text": card.get("text", ""), "provenance": {"original_source": content.source,
 			"via": card.get("via", content.source), "origin_certainty": "legacy_receipt"}}
+	if content.get("anonymous", false):
+		result.provenance.origin_certainty = "anonymous"
 	if not card.get("learned", []).is_empty():
 		result.learned_at = stamp(card.learned[0])
 	# A non-relayed statement's first receipt is its first witnessed report. Relay time

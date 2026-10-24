@@ -38,6 +38,9 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		if e.kind in ["opinion", "accusation"]:
 			result.issues.append("An %s is not evidence. Cite the supporting observations or readings." % e.kind)
 			continue
+		if e.kind == "info" and e.content.get("anonymous", false):
+			result.issues.append("The anonymous %s reading has no identified original source. A named acknowledgement is needed before shared assessment." % C.role_name(e.content.get("role", "")))
+			continue
 		if e.kind == "claim" and e.content.get("role") in C.GOOD_ROLES and e.source in snapshot.people.map(func(p): return p.id) and e.subjects == [e.source]:
 			cards.append({"id": e.id, "fact_id": e.fact_id, "kind": "claim", "source": e.source,
 				"subject": e.source, "role": e.content.role, "data": {}, "observed_at": e.observed_at, "text": e.text})

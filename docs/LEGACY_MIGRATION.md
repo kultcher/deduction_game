@@ -17,6 +17,7 @@ Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture),
 | P3 Demon-victim slice | Q2 implemented as finite 95:5 innocence evidence in the shared posterior, including uncited public deaths. Victims no longer enter hard good knowledge or receive a zero reset. Native compatibility entries are retracted when shared ownership is ready; other event/prior migration remains. |
 | P3 Martyr proof | Automatic public receipt and gift identity, including uncited substitutions; native proof entries parked for good listeners and covers. A public fact clears the reversible baseline exactly. Curse dating, other NPC shares/defences and priors remain. |
 | P2 Psychologist / Q4 slice | Psychologist social readings (including a Medium relay) are shared context for every listener. Opinions, including relayed opinions and private gossip, supply no alignment evidence. Other P2 reading/channel/history work remains. |
+| P2 relay provenance | Named NPC readings retain their teller paths. Unnamed meeting readings redact the hidden original source and explicitly fall back until a public acknowledgement binds that particular telling. A latent anonymous-source assessment remains pending. |
 | P4–P5 | Not started, apart from bot filtering of semantic rejections. Remaining P3 event/share/defence work is pending. |
 
 Psychologist remains metagame/context information for now (user, Oct 24); do not

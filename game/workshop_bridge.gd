@@ -104,8 +104,18 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 			for support in justification.get("supports", []):
 				if support not in supports:
 					supports.append(support.duplicate())
-		input.listener.legacy_evidence.append({"id": entry.get("eid", ""), "kind": entry.meta.kind,
-			"rel": entry.get("rel", []).duplicate(true), "supports": supports})
+		var id: String = entry.get("eid", "")
+		var relation: Array = entry.get("rel", []).duplicate(true)
+		var receipts: Array = entry.meta.get("workshop_receipts", {}).values()
+		if not receipts.is_empty() and receipts.all(func(receipt): return receipt.get("content", {}).get("anonymous", false)):
+			# The native compatibility key contains referee identity. It is not
+			# permitted provenance for an unnamed public report.
+			id = "anonymous:" + str(receipts[0].id)
+			if not relation.is_empty():
+				relation[0] = ""
+			supports = []
+		input.listener.legacy_evidence.append({"id": id, "kind": entry.meta.kind,
+			"rel": relation, "supports": supports})
 	for key in n.history:
 		if str(key).ends_with(":3"):
 			input.listener.own_outings[str(key).trim_suffix(":3")] = n.secret_mod != "sleepwalker" and not str(n.history[key]).begins_with("home")

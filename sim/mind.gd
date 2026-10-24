@@ -724,18 +724,22 @@ static func reconsider(w, n, why: String) -> void:
 
 ## Apply one ability result (own or heard) to a listener's suspicion, through their ledger:
 ## hearing the same reading again (directly, relayed, at the meeting) never stacks.
-static func apply_info(w, listener, source, entry: Dictionary, weight: float) -> void:
+static func apply_info(w, listener, source, entry: Dictionary, weight: float, via: String = "", anonymous: bool = false) -> void:
 	if weight <= 0.01:
 		return
 	if listener.is_evil():
-		shadow_run(w, listener, func(sh): apply_info(w, sh, source, entry, weight))
+		shadow_run(w, listener, func(sh): apply_info(w, sh, source, entry, weight, via, anonymous))
 		return
 	var eid = info_eid(source.id, entry)
 	var fresh = not listener.ledger.has(eid)
 	var effs: Array = _info_effects(w, listener, source, entry, weight, fresh)
 	var receipts: Dictionary = listener.ledger.get(eid, {}).get("meta", {}).get("workshop_receipts", {}).duplicate(true)
-	var receipt = WorkshopLedger.reading(source.id, entry)
-	receipt["heard_in_public"] = entry.get("shared", false) or receipts.get(receipt.id, {}).get("heard_in_public", false)
+	var receipt = WorkshopLedger.reading(source.id, entry, via, anonymous)
+	receipt["heard_in_public"] = anonymous or entry.get("shared", false) or receipts.get(receipt.id, {}).get("heard_in_public", false)
+	var paths: Array = receipts.get(receipt.id, {}).get("provenance_paths", []).duplicate(true)
+	if (via != "" or anonymous or not paths.is_empty()) and receipt.provenance not in paths:
+		paths.append(receipt.provenance.duplicate(true))
+	receipt.provenance_paths = paths
 	receipts[receipt.id] = receipt
 	ledger_hear(w, listener, eid, effs, weight, [source.id, entry["day"], "reading"], {"kind": "reading", "workshop_receipts": receipts})
 
@@ -1207,11 +1211,42 @@ static func relay_reading(w, n, src, e: Dictionary, lines: Array, facts: Array) 
 		"text": "%s says the %s (unnamed) told them: %s." % [n.name, rn, said]})
 	for l in w.living():
 		if l != n and l != src:
-			apply_info(w, l, src, e, C.RELAY_WEIGHT * heard_weight(l, n))
+			apply_info(w, l, src, e, C.RELAY_WEIGHT * heard_weight(l, n), n.id, true)
 	w.dlog.think(n.id, "relay", "Relays %s's private %s reading without naming them." % [src.id, e["role"]], {"src": src.id})
 	if src.alive and not src.silenced and not src.claim_public and w.chance(C.RELAY_CORROBORATE):
 		lines.append(say(src, "That was me."))
+		for l in w.living():
+			if l != n and l != src:
+				acknowledge_reading(w, l, src, e, n.id)
 		_go_public(w, src, lines, facts)
+
+## The source has explicitly said "That was me" in public. Binding this particular
+## anonymous telling is now permitted; unrelated anonymous stories remain unresolved.
+static func acknowledge_reading(w, listener, source, entry: Dictionary, teller: String) -> void:
+	if listener.is_evil():
+		shadow_run(w, listener, func(sh): acknowledge_reading(w, sh, source, entry, teller))
+		return
+	var eid = info_eid(source.id, entry)
+	if not listener.ledger.has(eid):
+		return
+	var meta: Dictionary = listener.ledger[eid].meta
+	var receipts: Dictionary = meta.get("workshop_receipts", {})
+	var anonymous = WorkshopLedger.reading(source.id, entry, teller, true)
+	if not receipts.has(anonymous.id):
+		return
+	var paths: Array = receipts[anonymous.id].get("provenance_paths", []).duplicate(true)
+	receipts.erase(anonymous.id)
+	var named = WorkshopLedger.reading(source.id, entry, teller)
+	named["heard_in_public"] = true
+	named.provenance.origin_certainty = "public_acknowledgement"
+	paths.append(named.provenance.duplicate(true))
+	if receipts.has(named.id):
+		for path in receipts[named.id].get("provenance_paths", []):
+			if path not in paths:
+				paths.append(path.duplicate(true))
+	named.provenance_paths = paths
+	receipts[named.id] = named
+	recompute_beliefs(w, listener, " (reading source publicly acknowledged)")
 
 ## What going public with their gift would cost n right now (higher = more reluctant):
 ## gifts that hide from the demon or keep paying off, fear, privacy; less as the game

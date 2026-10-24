@@ -168,7 +168,7 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 		"reading":
 			var e: Dictionary = item["entry"]
 			var src = w.by_id[item["from"]]
-			Mind.apply_info(w, l, src, e, wgt)
+			Mind.apply_info(w, l, src, e, wgt, s.id)
 			if not l.known_claims.has(src.id):
 				l.known_claims[src.id] = {"role": e["role"], "readings": [], "via": s.id}
 			Mind.hear_claim(w, l, src.id, e["role"], wgt, "relayed")
