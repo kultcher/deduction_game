@@ -387,6 +387,11 @@ not suggestions. Each one names what it protects.
 - `tools/profile_live_presentation.gd`, `tools/profile_case_eval_town.gd` and
   `tools/replay_54875.gd`: stay inside the 5-second whole-town presentation budget,
   with no fallback (see Performance rules).
+- Suspicion scale, same source A/B: `tools/autoplay.gd` with and without `--native`
+  (legacy belief rules), same seeds and `--results`. It prints per-day good-NPC
+  suspicion against the truth (top suspicion, the Demon's suspicion and rank, how many
+  could nominate) and every vote's score against its need; the JSON keeps them per
+  case. This is the input for the Q3 tuning pass.
 - A replay of case 54875's commands as a regression fixture: it records each listener's
   agreement, suspicion and vote margin for case #85. With Q3 and Q6 deferred it doesn't
   assert that a vote passes; the tuning pass will use it.
