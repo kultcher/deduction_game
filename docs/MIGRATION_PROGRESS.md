@@ -5,7 +5,8 @@ Updated Oct 24, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
 The migration is **in progress**, not finished. P1 is partly implemented; P3
 consensus and Q4 opinion/context slices are implemented. The remaining P2 and P3 work, P4 and P5
 remain. Q3 and Q6 remain deferred. The Demon-victim rule now supplies finite 95:5
-innocence evidence; refusals supply weak suspicion. Gift-family hints remain to migrate.
+innocence evidence; refusals supply weak suspicion and hints weakly support a
+tentative gift-family claim.
 
 ## P1 first slice
 
@@ -35,7 +36,7 @@ innocence evidence; refusals supply weak suspicion. Gift-family hints remain to 
 Targeted suites cover revision/repeat contracts, location and totem adapters, exact
 root ownership after native receipts are parked, malformed payloads, shared dialogue,
 Insight/Confidence preservation and live UI delivery. Remaining P1 work includes the
-curse event cards, hints, and removing the
+curse event cards and removing the
 remaining native presentation routes after their replacements are measured.
 
 ## P0 implementation
@@ -368,7 +369,8 @@ The public-evidence suite now passes 60 checks, including exact receipt ownershi
 strict presentation, malformed/unannounced/wrong-date rejection, all listeners and
 covers, and retraction. Roster and card-adapter suites also pass. The combined
 event/cache-fix regular run passes **52/54 suites**, with only the reproduced
-`test_social` and `test_text_ui` failures. The slow trace suite is still running under
+`test_social` and `test_text_ui` failures. The slow trace suite also passes all
+45 checks after the cache fix. These reports are under
 `logs/migration/resume/silence`.
 
 **Added runtime to flag:** a paired ten-person Day-2 probe measured 3434 ms without
@@ -396,6 +398,29 @@ A ten-listener Day-2 pair measured 3357 ms without refusal and 3542 ms with it (
 about 6%), with zero fallback. This pair does not show a significant added cost;
 reports are in `logs/migration/resume/refusals`. Full trace/regular validation will
 be repeated after the hint slice.
+
+## Q4: tentative gift-family hints (Codex, Oct 24)
+
+A structured family hint weakly supports its tentative good-gift claim, using the
+same 1.5 weak-evidence odds ratio. It retains every role in its named package and
+does not choose a role, assert a healthy reading, or establish a night outing.
+Repeated hints from the same person count once. Incompatible family declarations or
+an attended explicit gift declaration outside the family instead weakly undermine
+that claim. Quoted declarations are not silently endorsed. This is ordinary
+testimony; the separate P2 source/accuracy/role-assignment gap remains.
+
+The normalizer preserves package and role alternatives; the adapter validates them
+against public content. The filing guard permits this tentative support for a good
+premise, while its existing rejection of merely restating a complete role claim
+remains. The new hint suite passes 42 checks, including actual strict delivery to
+every seven- and ten-person listener/cover, contradictions, repetitions, malformed
+payloads and withdrawal. Refusal and argument suites also pass. The full regular
+run of the combined speech source is running.
+
+**Added runtime to flag:** one ten-listener Day-2 pair measured 3181 ms without the
+hint versus 3558 ms with it (+377 ms, about 12%), all ten shared with zero fallback.
+The extra report/attention work is included; this is not an isolated evaluator-only
+cost. Reports are under `logs/migration/resume/hints`.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 

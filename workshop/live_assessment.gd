@@ -64,7 +64,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			cards.append(activity)
 			continue
 		if e.kind != "info" or e.content.get("role", "") not in ROLES:
-			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal"]:
+			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint"]:
 				result.issues.append("Incomplete or invalid %s card (%s)." % [e.kind, e.id])
 			else:
 				result.issues.append("The %s card%s isn't supported yet (%s)." % [e.kind, " (" + str(e.content.get("role")) + ")" if e.content.has("role") else "", e.id])
@@ -181,6 +181,15 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 	var card = {"id": e.id, "fact_id": e.fact_id, "source": e.source, "text": e.text,
 		"subject": e.subjects[0] if not e.subjects.is_empty() else "", "subjects": e.subjects.duplicate(),
 		"night": night, "observed_at": e.observed_at, "block": block, "role": "", "data": {}}
+	if e.kind == "hint" and e.source in ids and e.subjects == [e.source] and night >= 0 and e.observed_at.phase != "unknown" and e.content.get("package", "") in C.HINT_PACKAGES:
+		var roles: Array = C.HINT_PACKAGES[e.content.package].roles
+		var stated = e.content.get("roles", roles)
+		if not stated is Array or stated.size() != roles.size() or not stated.all(func(role): return role in roles) or not roles.all(func(role): return role in stated):
+			return {}
+		card["kind"] = "gift_hint"
+		card["night"] = -1 # A family hint does not identify a role or prove activity.
+		card["data"] = {"package": e.content.package, "roles": roles.duplicate()}
+		return card
 	if e.kind == "refusal" and e.source in ids and e.subjects == [e.source] and night >= 0 and e.observed_at.phase != "unknown":
 		if not e.content.get("fear", false) is bool or not e.content.get("withheld", false) is bool or (e.content.get("role", "") != "" and e.content.role not in C.ROLES):
 			return {}

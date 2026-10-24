@@ -1569,6 +1569,11 @@ static func filing_problem(w, c: Dictionary, supports: Array, board: Array, matc
 		or (c["type"] == "secret_mod" and c.get("mod", "") != "delusional")
 	if not positive:
 		return ""
+	# A family hint is deliberately weaker than a complete role claim. Q4 allows
+	# the player to offer that tentative support for innocence; the evaluator
+	# weighs it as fallible speech, rather than declaring a healthy good gift.
+	if c["type"] == "good" and cards.any(func(card): return card.get("kind") == "hint" and card.get("source") == a and card.get("subject", []) == [a] and card.get("package", "") in C.HINT_PACKAGES):
+		return ""
 	for x in cards:
 		var src: String = x.get("source", "")
 		var via: String = x.get("via", "")
