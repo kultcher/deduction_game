@@ -624,7 +624,8 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			continue
 		var is_headline: bool = not headline.is_empty() and id == value.conclusion.target
 		var theory: Dictionary = headline.theory if is_headline else {}
-		var status: String = headline.reasoning.status if not headline.is_empty() else "theory_cached"
+		# A refresh has no headline search; its effects all report the refresh itself.
+		var status: String = headline.reasoning.status if not headline.is_empty() else "belief_refresh"
 		var person_ev: Dictionary = ev
 		if persistence:
 			# A committed listener keeps a working theory per person and reads the
@@ -642,8 +643,6 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 					var clone = baseline.duplicate(true)
 					var reasoning = Support.explain(view, evil_case, clone, Consequences._prepared(view, attention, evil_case, baseline))
 					theory = Theory.prepare(view, evil_case, clone, reasoning, common_key + id)
-					if headline.is_empty():
-						status = reasoning.status
 					for key in clone.get("theories", {}):
 						if key.begins_with(id + "|"):
 							theories[key] = clone.theories[key]

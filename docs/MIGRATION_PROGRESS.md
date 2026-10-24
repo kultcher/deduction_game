@@ -132,7 +132,7 @@ only covers that first vote; the Day 3–4 versions of #85 (four and six reports
 including her "watched the Docks" while seen on the Market) are the stronger test and
 should be added to the fixture.
 
-## Performance pass after review (Claude, Oct 24; untested, branch `claude/perf-reuse`)
+## Performance pass after review (Claude, Oct 24; branch `claude/perf-reuse`, merged)
 
 Profile of the replay's #85 presentation (9.6 s, nine listeners): `explain` 3.7 s self
 (207 calls), `headline` 1.8 s, `consequences` 1.5 s, `listener` 0.9 s, candidate search
@@ -156,6 +156,44 @@ Changes (intended to be exact: same beliefs, replies, theories and RNG):
 - Worth measuring next: `explain`'s own cache had zero hits in the replay, yet each
   call still hashes and deep-copies `[view, value, profile, prepared]`. That may be a
   large part of the 3.7 s self time.
+
+### Second and third passes (Oct 24)
+
+Instrumented profile (Day 1 meeting entry and #89, about 30% profiler overhead):
+movement likelihoods (`LiveActivity.factors`) were the largest single cost (3.2 s and
+4.1 s, 80–120 ms per cache miss), then `CaseEval` (1.6 s and 2.9 s), constraint solves
+and `Solver.analyze`. A meeting ran about 53 jury refreshes, one per statement heard per
+listener. Argon's independent review agreed on the movement model and the refresh,
+and added the cache-key and `unresolved` points.
+
+Exact changes (commit 3bad9d5):
+- `LiveActivity._likelihood`: route lists and per-route products built once per
+  profile, not per habitual block × evening (same arithmetic order).
+- `LiveActivity.factors` and `routes` cache on `movement_inputs()` (movement cards,
+  relayed cards, claimed roles), not the whole card list.
+- `CaseEval._own_counts`: integer state codes. `Solver.unresolved`: one bitmask pass.
+
+Declared behaviour change (commit 12bdf32, agreed with the user): the belief refresh
+uses `Jury.refresh`, with no placeholder headline ("the first person in the list is
+evil"). The first person now gets the same theory path as everyone else. Reading
+challenges and the refresh's `reasoning` come from the attended union. Every
+refresh effect's `reasoning` is `belief_refresh`. The
+refresh no longer builds intermediate-claim or link diagnostics. Replay numbers after
+this commit are the new baseline.
+
+Measured on the user's machine (replay; main → after 3bad9d5):
+
+| Step | Before | After |
+|---|---:|---:|
+| Enter meeting (`ask seen today`) | 8501 ms | 4529 ms |
+| `search` → meeting | 8759 ms | 4964 ms |
+| `present 89` | 6864 ms | 4158 ms |
+| `nominate constance` | ~2015 ms | 1070 ms |
+
+Same result: 9 shared, 0 native listeners; case #85 (filed #89) 1 yes of 5 needed.
+Not done, by decision: batching meeting refreshes (later speakers must react to
+earlier ones). The rules that keep these gains are in LEGACY_MIGRATION.md,
+"Performance rules".
 
 Profiling tools now fail when any listener falls back (`--allow-fallback` reports
 without failing): `profile_live_presentation.gd`, `profile_case_eval_town.gd`,
