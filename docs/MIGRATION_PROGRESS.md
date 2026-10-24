@@ -4,8 +4,8 @@ Updated Oct 24, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
 
 The migration is **in progress**, not finished. P1 is partly implemented; P3
 consensus and Q4 opinion/context slices are implemented. The remaining P2 and P3 work, P4 and P5
-remain. Q3 and Q6 remain deferred. The 95% demon-victim rule and weak hint/refusal
-rules are recorded decisions, not yet migrated behavior.
+remain. Q3 and Q6 remain deferred. The Demon-victim rule now supplies finite 95:5
+innocence evidence; weak hint/refusal rules remain recorded decisions awaiting migration.
 
 ## P1 first slice
 
@@ -301,6 +301,51 @@ behavior hash (2522 ms under concurrent bot runs). Reports are under
 
 The user confirmed Psychologist can remain metagame information. Its existing
 context-only treatment stays; further automatic alignment inference is deferred.
+
+## Q2: finite Demon-victim evidence (Codex, Oct 24)
+
+A public Demon death supplies 95:5 support for innocence (evil odds multiplied by
+1/19). This is evidence strength, not a forced final probability: setup counts,
+private knowledge and counterevidence still matter. The isolated even-odds test
+produces 95% innocence. Neither the public adapter nor the native compatibility
+rules discard a victim from candidate groups, reset their suspicion to zero, or
+declare them incapable of lying. Martyr public knowledge is unchanged.
+
+The world publishes the observation before refreshing listeners. CaseEval includes
+it once per victim, even without a cited death card. The same observation arriving
+through the board cannot add a second factor. Its identity participates in theory
+cache signatures. A temporary native ledger entry uses the same finite odds update
+and existing .45 contribution coefficient; shared ownership parks that entry and
+applies the joint vector. Covers receive the same observation. This replaces the
+former out-of-ledger reset without changing vote formulas or confidence coefficients.
+
+The new public-evidence suite passes 32 checks: isolated probabilities, counterevidence,
+duplicate announcements, all living listeners/covers, reversibility, no evaluation
+RNG, and switching ownership on/off. Existing integration expectations of hard-good
+victims were updated and its 64 checks pass. Psychologist relay neutrality now compares
+against the same public death background, rather than incorrectly expecting the death
+itself to have no effect. The full frozen suite, including trace parity, is running;
+targeted evaluator, belief, integration and ownership checks pass.
+
+Opening replay: original #85/filed #89 still fails **1 yes / 5 needed**, nine shared
+listeners, zero fallback. Jory's agreement .775 -> .812 and suspicion .596 -> .615;
+other agreement changes are small. Full agreements, suspicion, margins and tally
+are recorded in `logs/migration/resume/victims/measurement.json`, not used as tuning
+targets. A ten-person Day-1 probe retains the exact pre-change behavior hash
+`fe6dac94929d65dfbb959d26e2a134b30fb5e6a56fceb990af8bf1a14056765e` (2762 ms).
+
+**Added runtime to flag:** one paired replay under concurrent test/bot load measured
+the first overnight transition 781 -> 1792 ms, the Day-2 meeting/search 6069 -> 6958 ms,
+presentation 4190 -> 4850 ms, and nomination 1140 -> 1271 ms. Refreshing public evidence
+now does real shared work where the reset was constant-time. These are single-pair
+measurements, not an isolated scaling claim; progress continues above five seconds
+as authorized. Reports are under `logs/migration/resume/victims`.
+
+Further P2 audit item: live role compatibility currently treats accepted gift identities
+and some role-bearing report contents as hard constraints before likelihood weighting.
+Per-source honesty/accuracy migration must preserve legal liar/impaired alternatives
+and joint unique-role assignments. The finite death adapter does not solve that
+separate source-channel gap; do not compensate by tuning this replay.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 

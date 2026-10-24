@@ -312,9 +312,8 @@ static func suspicion_view(n) -> Dictionary:
 		result[id] = susp(n, id)
 	return result
 
-static func known_good(w, id: String) -> bool:
-	var t = w.by_id[id]
-	return not t.alive and t.death_cause == "demon"
+static func demon_victim(w, id: String) -> bool:
+	return w.public_log.any(func(event): return event.kind == "demon_death" and id in event.subjects)
 
 # ---------------------------------------------------------------- evidence ledger
 ## Each good NPC keeps a ledger of the evidence and arguments they've taken in, keyed by the
@@ -541,9 +540,9 @@ static func _recompute_beliefs(w, n, note: String) -> void:
 		w.workshop_refresh.call(n, "before")
 	var E: Array = n.ledger.values()
 	var cl = _claimants(E)
-	# Situational credence: the claim of someone the demon killed (so known good) is believed.
+	# Transitional claim credence is finite; a Demon victim can still be lying.
 	var kg = func(e) -> float:
-		return 2.0 if e["meta"].get("kind", "") == "role_claim" and e["meta"].get("how", "") != "own" and known_good(w, e["meta"]["who"]) else 1.0
+		return 1.95 if e["meta"].get("kind", "") == "role_claim" and e["meta"].get("how", "") != "own" and demon_victim(w, e["meta"]["who"]) else 1.0
 	var raw = func(e): return e["weight"] * kg.call(e)
 	var disc_a = _night_doubt(E, raw, n.workshop_state.get("owned", {}))
 	var h_a = {}
@@ -754,7 +753,7 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 		"hearthwitch", "dowser":
 			var nbrs: Array = Gifts.group_of(d)
 			var count: int = d["count"]
-			var others: Array = nbrs.filter(func(i): return i != listener.id and not known_good(w, i))
+			var others: Array = nbrs.filter(func(i): return i != listener.id)
 			var excluded = nbrs.size() - others.size()
 			if count == 0:
 				for i in others:
@@ -771,7 +770,7 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 						"%s reading pointed at %s" % [src_name, "their neighbours" if r == "hearthwitch" else "that crowd"], not own)
 		"seer":
 			var pair: Array = d["pair"]
-			var others: Array = pair.filter(func(i): return i != listener.id and not known_good(w, i))
+			var others: Array = pair.filter(func(i): return i != listener.id)
 			if d["yes"]:
 				var per = 0.45 if others.size() > 1 else 0.85
 				for i in others:
@@ -796,7 +795,7 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 					"%s saw them out at night%s" % [src_bare, " where someone was killed" if sc >= 0.5 else ""], not own)
 		"archivist":
 			var pair: Array = d["pair"]
-			var others: Array = pair.filter(func(i): return i != listener.id and not known_good(w, i))
+			var others: Array = pair.filter(func(i): return i != listener.id)
 			var per = 0.35 if others.size() > 1 else 0.75
 			for i in others:
 				_eff(effs, i, per, tag + ": archivist pair",
@@ -814,7 +813,7 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 		"veteran":
 			# The demon came by way of that block: a little toward those who live there.
 			for m in w.living():
-				if m != listener and m != source and m.home_block == d.get("block", "") and not known_good(w, m.id):
+				if m != listener and m != source and m.home_block == d.get("block", ""):
 					_eff(effs, m.id, 0.12, tag + ": the demon came by way of their block",
 						"the demon came by way of %s, where they live" % C.block_name(d["block"]), not own)
 		"psychologist":

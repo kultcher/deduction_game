@@ -352,6 +352,7 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 	# the Demon (live) or each subject's alignment and Mark (fixtures). Both are fixed
 	# within a class.
 	var movement: Array = Movement.factors(view, cards, case_data)
+	movement.append_array(preload("res://workshop/public_evidence.gd").factors(view))
 	# Supplied test factors (and a challenged home alibi in fixtures): a likelihood ratio
 	# on their target being evil, once any of their routes is among the cards.
 	# Each listener weighs them by how far they credit the route (see _factor_like).

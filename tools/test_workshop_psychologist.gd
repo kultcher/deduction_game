@@ -73,7 +73,10 @@ func _family(size: int) -> void:
 	check(prepared.ready and prepared.view.cards.any(func(c): return c.id in value.cards and c.kind == "context" and c.get("original_source", "") == source.id and not c.has("relay_source")), "a Medium preserves social-reading provenance without inventing an alignment likelihood")
 	if prepared.ready:
 		var ev = CaseEval.evaluate(prepared.view, prepared.case, prepared.listener)
-		check(ev.people.values().all(func(p): return is_equal_approx(p.prior, p.posterior)), "a faithful relay of social preferences still supplies no alignment evidence")
+		var without_social = prepared.case.duplicate(true)
+		without_social.cards = []
+		var public_only = CaseEval.evaluate(prepared.view, without_social, prepared.listener)
+		check(ev.people == public_only.people, "a faithful relay of social preferences adds no alignment evidence beyond the public death")
 
 func check(ok: bool, label: String) -> void:
 	checks += 1

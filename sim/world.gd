@@ -1228,11 +1228,17 @@ func _kill(v) -> void:
 	scenes[sid] = {"name": "%s's cottage" % v.name, "block": v.home_block, "victim": v.id, "day": day,
 		"trace_block": trace_block, "trace_true": trace_true, "why": why, "searched": false}
 	dlog.add("kill", demon_id, v.id, {"role": v.role, "scene": sid, "trace_block": trace_block, "trace_true": trace_true}, why)
+	public_event("demon_death", [v.id], "town")
 	for n in npcs:
-		if n.alive and not n.is_evil():
-			Mind.adjust(self, n, v.id, -n.suspicion.get(v.id, 0.0), "demon victim", "", false)
-		elif n.alive and n.shadow != null:
-			Mind.adjust(self, n.shadow, v.id, -n.shadow.suspicion.get(v.id, 0.0), "demon victim", "", false)
+		if not n.alive:
+			continue
+		var listener = n.shadow if n.is_evil() else n
+		if listener == null:
+			continue
+		var effects: Array = []
+		Mind._eff(effects, v.id, preload("res://workshop/public_evidence.gd").victim_effect(Mind.susp(listener, v.id)),
+			"killed by the Demon: strong evidence of innocence, not a guarantee", "", false)
+		Mind.ledger_hear(self, listener, "demon_death:" + v.id, effects, 1.0, [], {"kind": "demon_death", "victim": v.id})
 
 # ---------------------------------------------------------------- abilities
 

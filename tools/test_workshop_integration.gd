@@ -90,9 +90,9 @@ func _init() -> void:
 		check(nested_result.ready and nested_result.proposal.claims.size() == 2, "nested live deductions retain separately assessed intermediate claims")
 		check(result.proposal.effects.keys().all(func(id): return is_equal_approx(result.proposal.effects[id].requested, nested_result.proposal.effects[id].requested)), "sharing evidence through a live intermediate claim does not multiply its consequences")
 		var cleared = input.duplicate(true)
-		cleared.public_events.append({"kind": "demon_death", "subjects": [target.id], "at": {"day": 0, "phase": "night"}})
+		cleared.public_events.append({"kind": "demon_death", "subjects": [target.id], "at": {"day": 1, "phase": "night"}})
 		var known = Assess.prepare(cleared)
-		check(target.id in known.listener.knowledge.good, "public Demon victims remain private-world constraints even if their death card is not cited")
+		check(target.id not in known.listener.knowledge.good and preload("res://workshop/public_evidence.gd").factors(known.view).any(func(f): return f.target == target.id and f.log2_ratio < 0.0), "uncited public Demon deaths supply finite evidence rather than hard good constraints")
 		cleared.public_events.append({"kind": "martyr", "subjects": [source.id, target.id], "at": {"day": 1, "phase": "evening"}})
 		check(source.id in Assess.prepare(cleared).listener.knowledge.good, "a public Martyr sacrifice preserves its known-good participants")
 		for person in g.w.npcs:

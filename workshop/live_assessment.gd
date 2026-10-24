@@ -493,7 +493,7 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 	var reliability = {}
 	var good: Array = [src.id]
 	for event in snapshot.public_events:
-		if event.kind in ["demon_death", "martyr"]:
+		if event.kind == "martyr":
 			for person in event.subjects:
 				if person not in good and person in snapshot.people.map(func(p): return p.id):
 					good.append(person)

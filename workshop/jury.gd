@@ -897,6 +897,8 @@ static func _objection(view: Dictionary, case_data: Dictionary, listener: Dictio
 
 static func _signature(view: Dictionary, case_data: Dictionary) -> String:
 	var keys: Array = Solver.selected(view, case_data).map(func(c): return Solver.semantic_key(c))
+	for factor in preload("res://workshop/public_evidence.gd").factors(view):
+		keys.append("public:" + factor.target + ":" + str(factor.log2_ratio))
 	keys.sort()
 	var answers = {}
 	for card in Solver.selected(view, case_data):

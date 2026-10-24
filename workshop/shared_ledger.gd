@@ -120,10 +120,14 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			issues.append("Unresolved original reading identity: " + coarse)
 		aliases[coarse] = receipt.id
 	var owned = {}
+	var public_victims = preload("res://workshop/public_evidence.gd").demon_victims(input.public_events, input.people.map(func(p): return p.id))
 	for eid in ledger:
 		var entry: Dictionary = ledger[eid]
 		var meta: Dictionary = entry.get("meta", {})
 		var kind: String = meta.get("kind", "")
+		if kind == "demon_death" and meta.get("victim", "") in public_victims:
+			owned[eid] = true
+			continue
 		if preload("res://workshop/live_protection.gd").owns(entry, prepared.view.get("cards", [])):
 			owned[eid] = true
 			continue
@@ -212,7 +216,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var dimensions: int = Support.dimensions(prepared.view.cards, prepared.listener, prepared.case.reading_challenges) if prepared.view.world_options.get("roles", false) or not prepared.case.reading_challenges.is_empty() else sources.size() + uncertain
 		if Jury.engine == "legacy" and dimensions > 6:
 			issues.append("Shared evidence exceeds the 64-state credibility budget.")
-	return {"ready": issues.is_empty(), "empty": facts.is_empty(), "issues": issues, "owned": owned if issues.is_empty() else {},
+	return {"ready": issues.is_empty(), "empty": facts.is_empty() and preload("res://workshop/public_evidence.gd").factors(prepared.view).is_empty(), "issues": issues, "owned": owned if issues.is_empty() else {},
 		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input,
 		"marked_questions": marked_questions}
 

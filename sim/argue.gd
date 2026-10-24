@@ -997,7 +997,7 @@ static func _expl_weight(w, n, e: Dictionary) -> float:
 			if who == n.id:
 				return 0.0
 			var base = 0.15 + Mind.susp(n, who) * 1.2 - (n.npc_trust.get(who, 0.5) - 0.5) * 0.5
-			if Mind.known_good(w, who):
+			if Mind.demon_victim(w, who):
 				base *= 0.3
 			return maxf(base, 0.02)
 		"misled":

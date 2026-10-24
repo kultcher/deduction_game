@@ -283,6 +283,7 @@ func _test_known_good_claimant() -> void:
 	var alive_s = Mind.susp(L, X)
 	Y.alive = false
 	Y.death_cause = "demon"
+	w.public_event("demon_death", [Y.id], "town")
 	Mind.recompute_beliefs(w, L, "")
 	var dead_s = Mind.susp(L, X)
 	print("14. rival of a living claimant: %.2f; once that claimant is killed by the demon: %.2f" % [alive_s, dead_s])
