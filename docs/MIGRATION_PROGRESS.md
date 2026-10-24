@@ -752,6 +752,32 @@ result does not meet P0 sign-off. It predates Q1/Q4, Q2, event adapters and bot 
 current-source results are still required. Data and per-run script-error status are in
 `logs/migration/resume/adapters/batches`.
 
+## P2 factored channel kernel (Codex, Oct 24; resumed from `1f47867`)
+
+The updated priority is live channel integration and removal of the source-drop
+stopgap. The first verified slice adds `factored_channels.gd` and binary
+sum-product with a compiled arithmetic circuit. Gift/testimony/accuracy/route gates
+are shared; only predicates sharing role holders, gifts or movement constraints
+couple. Independent sources are eliminated independently, not enumerated as
+`3^sources`. A reverse pass obtains every route's accepted-content mass, including
+at zero probabilities. No source is discarded to repair a contradiction.
+
+Three new suites pass **46 checks**, comparing every world's private baseline,
+submitted likelihood and held-content mass with the exact reference at seven/ten
+people (modifier worlds, private evidence, Medium), plus focused competing claims,
+persistent Red Herring, Night Watch/alibi, Lamplighter counts and drop ownership.
+The sum-product suite separately checks 30 independent variables with peak table
+size two. Correlated routes and joint role completion remain intact.
+
+Ten-person seed 692, three sources, 1,368 classes / 15,120 worlds: **460 ms** for
+the factored kernel, same likelihood mass **534.308355478574**, peak local table
+eight rows, game RNG unchanged. An initial generic implementation took 3.3 s;
+profiling removed unnecessary movement factors and an eager linear world lookup
+in each iteration. This is an offline kernel probe, not a live presentation claim.
+Command: `profile_channel_likelihood.gd -- --npcs 10 --sources 3 --classes --factored`.
+Live CaseEval integration and the new bot acceptance criteria are still pending.
+Logs: `logs/migration/live-channels`.
+
 ## Impossible refreshes and the source-drop stopgap (Claude, Oct 24)
 
 **Finding.** Ten-person passive A/B, 50 seeds each, same source (`autoplay.gd` with and

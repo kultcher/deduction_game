@@ -5,6 +5,7 @@ const Game = preload("res://game/game.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const Channels = preload("res://workshop/evidence_channels.gd")
 const Likelihood = preload("res://workshop/channel_likelihood.gd")
+const Factored = preload("res://workshop/factored_channels.gd")
 const Eval = preload("res://workshop/case_eval.gd")
 const Solver = preload("res://workshop/solver.gd")
 
@@ -44,13 +45,15 @@ func _init() -> void:
 	var rng = g.w.rng.state
 	var cc: Dictionary = Eval.compile(prepared.view, cards, prepared.case) if "--classes" in args else {}
 	var start = Time.get_ticks_usec()
-	var result = Likelihood.assess(prepared.view, cards, prepared.listener.knowledge, rates, q, [], true,
+	var result = Factored.assess(prepared.view, cards, prepared.listener.knowledge, rates, q, [],
+		cc.get("rep", PackedInt32Array()), cc.get("count", PackedFloat64Array())) if "--factored" in args else Likelihood.assess(prepared.view, cards, prepared.listener.knowledge, rates, q, [], true,
 		cc.get("rep", PackedInt32Array()), cc.get("count", PackedFloat64Array()))
 	var elapsed = Time.get_ticks_usec() - start
 	var total = 0.0
 	for slot in range(result.post.size()):
 		total += result.post[slot] * (1.0 if cc.is_empty() else cc.count[slot])
 	print(JSON.stringify({"npcs": count, "sources": chosen.size(), "cards": cards.size(), "channels": plan.channels.size(),
-		"states": result.states, "worlds": Solver.universe(prepared.view).size(), "evaluated_classes": result.post.size(), "elapsed_ms": elapsed / 1000.0, "likelihood_mass": total, "issues": result.issues,
+		"kernel": "factored" if "--factored" in args else "reference", "peak_rows": result.get("peak_rows", 0), "states": result.states, "worlds": Solver.universe(prepared.view).size(), "evaluated_classes": result.post.size(), "elapsed_ms": elapsed / 1000.0, "likelihood_mass": total, "issues": result.issues,
+		"timing_us": result.get("timing_us", {}),
 		"rng_unchanged": rng == g.w.rng.state}))
 	quit(0 if result.issues.is_empty() and total > 0.0 and rng == g.w.rng.state else 1)

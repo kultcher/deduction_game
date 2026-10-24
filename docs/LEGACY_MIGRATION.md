@@ -1,8 +1,8 @@
 # Migrating belief evaluation off the legacy rules
 
 Status: in progress (updated Oct 24). Owner: Codex implements, the user reviews.
-Paused at the user's request after the channel-reference checks; see the paused
-checkpoint in MIGRATION_PROGRESS.md. The migration and P0 sign-off remain incomplete.
+Resumed at the user's request against the updated priorities and source `1f47867`.
+The migration and P0 sign-off remain incomplete.
 Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture),
 [playtest_54875_diagnosis.md](playtest_54875_diagnosis.md) (why this matters now),
 [MIGRATION_PROGRESS.md](MIGRATION_PROGRESS.md) (measurements, detail) and the
