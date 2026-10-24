@@ -26,6 +26,48 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	Profiler.close(span)
 	return result
 
+## The shared-union belief refresh: "given everything I hold, how do my suspicions
+## move?" There is no headline claim, so no reply is built and every person,
+## including the first in the list, gets the same per-person theory path. Returns
+## effects, theories (also written to listener), reasoning (the attention used) and
+## reading challenges. CaseEval engine only.
+static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary) -> Dictionary:
+	var span = Profiler.open("jury_refresh")
+	var old: Dictionary = listener.ledger.get(case_data.id, {})
+	var old_effects: Dictionary = old.get("effects", {})
+	if not old.is_empty() and old_effects.is_empty():
+		old_effects = {old.target: {"applied": old.applied}}
+	var before: Dictionary = listener.suspicion.duplicate(true)
+	var baseline = listener.duplicate(true)
+	for person in old_effects:
+		baseline.suspicion[person] = snappedf(baseline.suspicion.get(person, 0.1) - old_effects[person].applied, 0.000000001)
+	baseline.ledger = {}
+	var signature_case = Graph.compile_case(view, case_data)
+	signature_case.conclusion = {"type": "evil", "target": "all", "at": case_data.conclusion.at}
+	var common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
+		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.confidence,
+		baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
+	var consequences = _consequences_eval(view, case_data, baseline, {}, common_key, [], true)
+	var effects = {}
+	for person in view.people:
+		var id: String = person.id
+		if not consequences.effects.has(id):
+			continue
+		var entry: Dictionary = consequences.effects[id].duplicate(true)
+		entry["baseline"] = baseline.suspicion.get(id, 0.1)
+		entry["before"] = snappedf(before.get(id, 0.1), 0.000000001)
+		entry["after"] = snappedf(clampf(entry.baseline + entry.requested, 0.0, 1.5), 0.000000001)
+		entry["applied"] = snappedf(entry.after - entry.baseline, 0.000000001)
+		entry["delta"] = snappedf(entry.after - entry.before, 0.000000001)
+		entry["previous"] = old_effects.get(id, {}).get("applied", 0.0)
+		effects[id] = entry
+		listener.suspicion[id] = entry.after
+	listener.ledger[case_data.id] = {"effects": effects.duplicate(true)}
+	listener.theories = consequences.theories
+	Profiler.close(span)
+	return {"effects": effects, "reasoning": consequences.reasoning, "reading_challenges": consequences.reading_challenges,
+		"effect_rule": consequences.rule}
+
 static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
 	var before: Dictionary = listener.suspicion.duplicate(true)
 	var old: Dictionary = listener.ledger.get(case_data.id, {})
@@ -400,12 +442,8 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			full_case.cards.append(id)
 	# Live belief/attention/action never read the exhaustive minimal-conflict list.
 	# Keep it available to the explicit diagnostic UI, out of every receipt refresh.
-	# context.belief_refresh: the shared-union refresh keeps only effects, theories,
-	# reasoning and reading challenges. The two analyses below feed nothing but the
-	# spoken objection and "conflicting" wording, so a refresh skips them.
-	var refresh: bool = context.get("belief_refresh", false)
-	var assessment = {"status": "skipped"} if refresh else Solver.analyze(view, full_case, knowledge, false)
-	var shared = {"status": "skipped"} if refresh else Solver.analyze(view, case_data, {}, false)
+	var assessment = Solver.analyze(view, full_case, knowledge, false)
+	var shared = Solver.analyze(view, case_data, {}, false)
 	var reasoning = Support.explain(view, original, listener)
 	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
 	if bounded:
@@ -464,7 +502,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 		"conclusion": conclusion.duplicate(true), "signature": signature, "report_acceptance": ev.acceptance.duplicate(true)}
 	var changes = _changes(view, previous.get("case", {}), case_data)
 	listener.case_memory[case_data.id] = {"signature": signature, "input_key": input_key, "version": case_data.version, "cards": case_data.cards.duplicate(), "strength": strength, "case": case_data.duplicate(true)}
-	var objection = "" if refresh else _objection(view, case_data, listener, shared, assessment, best, pattern)
+	var objection = _objection(view, case_data, listener, shared, assessment, best, pattern)
 	var stance = "accept" if best.agreement >= 0.6 else ("partial" if best.agreement >= 0.35 else "reject")
 	var response = _eval_response(view, case_data, best, stance, ev, conflict, repeated)
 	if bounded:
@@ -561,7 +599,9 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 
 ## Effects on everyone from one CaseEval pass over the same attended evidence, plus the
 ## intermediate claims. Same result shape as Consequences.assess.
-static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Dictionary, headline: Dictionary, common_key: String, only: Array = []) -> Dictionary:
+## headline is {} for a belief refresh: no person is special, and refresh skips the
+## intermediate claims and link diagnostics (they only explain a presented case).
+static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Dictionary, headline: Dictionary, common_key: String, only: Array = [], refresh: bool = false) -> Dictionary:
 	var span = Profiler.open("consequences")
 	var attention = Reasoner.prepare(view, value, baseline)
 	var compiled = Graph.compile_case(view, value)
@@ -582,7 +622,9 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		var id: String = person.id
 		if not only.is_empty() and id not in only:
 			continue
-		var theory: Dictionary = headline.theory if id == value.conclusion.target else {}
+		var is_headline: bool = not headline.is_empty() and id == value.conclusion.target
+		var theory: Dictionary = headline.theory if is_headline else {}
+		var status: String = headline.reasoning.status if not headline.is_empty() else "theory_cached"
 		var person_ev: Dictionary = ev
 		if persistence:
 			# A committed listener keeps a working theory per person and reads the
@@ -592,7 +634,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			# The explanation search only feeds Theory.prepare. Skip it when its result
 			# would be unused: the headline's own theory, or a decision Theory already
 			# has (unchanged inputs, or the fixed commitments a scoped reply inherits).
-			if id != value.conclusion.target or value.conclusion.type not in ["evil", "good", "suspicious"]:
+			if not is_headline or value.conclusion.type not in ["evil", "good", "suspicious"]:
 				var known: Dictionary = Theory.cached(view, evil_case, baseline, common_key + id)
 				if not known.is_empty():
 					theory = known
@@ -600,6 +642,8 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 					var clone = baseline.duplicate(true)
 					var reasoning = Support.explain(view, evil_case, clone, Consequences._prepared(view, attention, evil_case, baseline))
 					theory = Theory.prepare(view, evil_case, clone, reasoning, common_key + id)
+					if headline.is_empty():
+						status = reasoning.status
 					for key in clone.get("theories", {}):
 						if key.begins_with(id + "|"):
 							theories[key] = clone.theories[key]
@@ -631,10 +675,10 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"),
 			"protection_signal": protection_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
 			"evil_change": s, "good_change": -s, "prior": odds.prior, "posterior": odds.posterior,
-			"cards": attention.considered.duplicate(), "theory": theory, "reasoning": headline.reasoning.status}
+			"cards": attention.considered.duplicate(), "theory": theory, "reasoning": status}
 	var claims: Array = []
 	var by_id = {}
-	var arguments: Array = Consequences._arguments(view, value)
+	var arguments: Array = [] if refresh else Consequences._arguments(view, value)
 	for argument in arguments:
 		var claim_case = Consequences._scope(view, argument.case, attention.considered)
 		claims.append(_eval_claim(view, argument, claim_case, attention, baseline, eval_listener))
@@ -670,6 +714,9 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 				"evidence_difference": contribution, "exclusive_cards": exclusive, "alternative_remains": remaining, "note": note})
 	Profiler.close(span)
 	return {"effects": effects, "claims": claims, "theories": theories, "considered": attention.considered,
+		"reading_challenges": challenged.results,
+		"reasoning": {"status": "belief_refresh", "profile": attention.profile, "considered": attention.considered.duplicate(),
+			"ignored": attention.ignored.duplicate(), "ignored_lines": attention.ignored_lines.duplicate(), "private_checks": attention.private_checks.duplicate(true)},
 		"rule": "One CaseEval pass over the attended evidence gives every person's change; intermediate claims add no evidence."}
 
 ## One claim (the headline or an intermediate) judged on the attended evidence it cites.

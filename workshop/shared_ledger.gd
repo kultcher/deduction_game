@@ -311,7 +311,8 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 		var previous = maxf(plan.input.listener.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), plan.input.listener.discounted.get(card.source + ":*", 0.0))
 		var route_weight = prepared.listener.reading_reliability[card.id] / (1.0 - previous) if previous < 1.0 else 0.0
 		prepared.listener.reading_reliability[card.id] = route_weight * (1.0 - doubt)
-	var result = Jury.evaluate(prepared.view, prepared.case, prepared.listener, {"belief_refresh": true})
+	# No headline: the union only asks how every suspicion moves (Jury.refresh).
+	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
 	if prepared.listener.get("confidence_mode") == "persistence":
 		# Registration is a separate theory, never an asserted identity or another
 		# suspicion award. Retain questions already considered as evidence changes.
