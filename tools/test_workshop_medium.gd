@@ -126,7 +126,7 @@ func _run() -> void:
 	var sight = Live.Assess.medium_card(Live.Evidence.normalize_card(second), _ghost_input(g, value))
 	check(not sight.is_empty() and sight.kind == "sighting" and sight.night == 1, "Medium sighting inherits the original night and movement logic")
 	var opinion = Live.Evidence.normalize_card({"kind": "info", "source": npc.id, "subject": [], "role": "medium", "day": 2, "phase": 3, "data": {"dead": dead.id, "item": {"type": "suspicion", "about": pair[0]}}, "text": "Unsupported private opinion"})
-	check(not preload("res://workshop/shared_ledger.gd").supported(opinion), "unsupported Medium opinions retain their native owner")
+	check(not preload("res://workshop/shared_ledger.gd").supported(opinion), "Medium opinions remain outside alignment evidence")
 	var independent = _ghost_input(g, value)
 	independent.evidence.append(opinion)
 	independent.private_evidence.append(opinion.id)

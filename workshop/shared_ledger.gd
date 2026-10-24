@@ -166,6 +166,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var entry: Dictionary = ledger[eid]
 		if owned.has(eid) or entry.get("meta", {}).get("kind") != "reading" or entry.get("weight", 0.0) <= 0.01:
 			continue
+		if entry.get("effects", []).is_empty():
+			continue # Opinion/context-only readings have no competing native effect.
 		var relation: Array = entry.get("rel", [])
 		if not relation.is_empty() and input.evidence.any(func(e): return e.kind in ["info", "claim"] and supported(e) and e.source == relation[0]):
 			issues.append("Unsupported reading shares a source with owned reports: " + eid)

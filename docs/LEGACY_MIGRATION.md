@@ -14,7 +14,8 @@ Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture),
 | P1 | Partly done: revisions get new numbers, free repeats, daytime sightings, conversations, home, haunt, totem, dropped items, public death/execution receipts, Surveyor block answers and nested canvas cases; opinion and accusation cards rejected as evidence. Remaining: silence/curse events, hints and refusals, secrets, removing the native presentation routes. |
 | Attention correction | Implemented Oct 24: submitted roots are guaranteed in the applied refresh and scoped reply; background/private reports compete for remaining attention. The opening replay still fails 1 yes / 5 needed, with changed agreement and no fallbacks. Day 3–4 fixture expansion awaits the user's signal. |
 | P3 consensus slice | Q1 implemented: public accusations remain social pressure in votes/nominations, outside evidence, source honesty and world priors. Existing weights, cap, fade and action thresholds retained. |
-| P2, P4–P5 | Not started. Remaining P3 event/share/defence work is pending. |
+| P2 Psychologist / Q4 slice | Psychologist social readings (including a Medium relay) are shared context for every listener. Opinions, including relayed opinions and private gossip, supply no alignment evidence. Other P2 reading/channel/history work remains. |
+| P4–P5 | Not started, apart from bot filtering of semantic rejections. Remaining P3 event/share/defence work is pending. |
 
 ## Terms
 

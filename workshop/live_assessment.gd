@@ -5,7 +5,7 @@ const Jury = preload("res://workshop/jury.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const LedgerAudit = preload("res://workshop/ledger_audit.gd")
 const C = preload("res://sim/content.gd")
-const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton"]
+const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist"]
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
 const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion"]
@@ -47,6 +47,10 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		if e.id not in snapshot.selected and e.kind == "info" and e.content.get("role", "") not in ROLES:
 			continue # Independent unsupported readings keep their native baseline owner.
 		if e.kind == "info" and e.content.get("role") == "medium":
+			if e.content.get("data", {}).get("item", {}).get("type") == "suspicion":
+				if e.id in snapshot.selected:
+					result.issues.append("A relayed opinion is not evidence. Cite the deceased person's supporting observations or readings.")
+				continue
 			var relay = medium_card(e, snapshot)
 			if relay.is_empty():
 				if e.id not in snapshot.selected:
@@ -177,6 +181,12 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 	var card = {"id": e.id, "fact_id": e.fact_id, "source": e.source, "text": e.text,
 		"subject": e.subjects[0] if not e.subjects.is_empty() else "", "subjects": e.subjects.duplicate(),
 		"night": night, "observed_at": e.observed_at, "block": block, "role": "", "data": {}}
+	if e.kind == "info" and e.content.get("role", "") == "psychologist" and reading_valid(e, ids, snapshot.rules.modifier_options):
+		card["kind"] = "context"
+		card["context_kind"] = "psychologist"
+		card["role"] = "psychologist"
+		card["data"] = e.content.data.duplicate(true)
+		return card # Opinions are context, even when the gift reports them accurately.
 	if e.kind in ["home", "haunt"] and e.subjects.size() == 1 and e.subjects[0] in ids:
 		if e.kind == "home" and (block not in C.BLOCKS or snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home != block):
 			return {}
@@ -299,6 +309,11 @@ static func medium_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 	if raw.kind == "info":
 		if not reading_valid(original, snapshot.people.map(func(p): return p.id), snapshot.rules.modifier_options) or not Domain.gift_time({"role": raw.role, "observed_at": original.observed_at}):
 			return {}
+		if raw.role == "psychologist":
+			var context = activity_card(original, snapshot)
+			context.merge({"id": e.id, "fact_id": e.fact_id, "source": e.source, "role": "", "text": e.text,
+				"original_source": dead, "original_role": raw.role, "provenance": e.provenance.duplicate(true)}, true)
+			return context # Relay fidelity supplies no alignment likelihood for an opinion.
 		card = {"kind": "report", "source": dead, "role": raw.role, "data": raw.data, "subject": "", "subjects": original.subjects,
 			"night": original.observed_at.day if original.observed_at.phase == "night" or raw.role in ["martyr", "sexton"] else -1, "observed_at": original.observed_at, "reported_at": original.observed_at}
 	else:
@@ -495,6 +510,8 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 		return false
 	var data: Dictionary = receipt.content.data
 	match receipt.content.role:
+		"psychologist":
+			return receipt.observed_at.phase == "night" and receipt.observed_at.day >= 1 and data.get("subject") in ids and data.subject != receipt.source and data.get("trusts") in ids and data.trusts != data.subject and data.get("suspects") in ids and data.suspects != data.subject
 		"surveyor":
 			return _count_valid(data.get("count"), 4)
 		"nightwatch":

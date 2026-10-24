@@ -18,6 +18,30 @@ const KINDS = ["home", "haunt", "info", "claim", "sighting", "conversation", "vi
 	"trace", "dropped", "totem", "death", "execution", "quiet", "vote", "martyr", "curse",
 	"curse_lifted", "silenced", "knell", "secret", "hint", "refusal", "opinion", "accusation", "case"]
 
+## Raw public cards, including bounded Medium retellings. Hearing an opinion
+## through a gift does not turn it into independent evidence of alignment.
+static func contains_opinion(card: Dictionary, depth: int = 0) -> bool:
+	if card.get("kind", "info") in ["opinion", "accusation"]:
+		return true
+	if depth >= 64 or card.get("role", "") != "medium":
+		return false
+	var data = card.get("data", {})
+	if not data is Dictionary or not data.get("item", {}) is Dictionary:
+		return false
+	var item: Dictionary = data.get("item", {})
+	return item.get("type", "") == "suspicion" or (item.get("type", "") == "reading" and item.get("entry") is Dictionary and contains_opinion(item.entry, depth + 1))
+
+static func social_reading(card: Dictionary, depth: int = 0) -> bool:
+	if card.get("role", "") == "psychologist":
+		return true
+	if depth >= 64 or card.get("role", "") != "medium":
+		return false
+	var data = card.get("data", {})
+	if not data is Dictionary or not data.get("item", {}) is Dictionary:
+		return false
+	var item: Dictionary = data.get("item", {})
+	return item.get("type", "") == "reading" and item.get("entry") is Dictionary and social_reading(item.entry, depth + 1)
+
 static func normalize(input: Dictionary) -> Dictionary:
 	var result = {"format": FORMAT, "case_id": input.case_id, "now": stamp(input.now),
 		"rules": input.rules.duplicate(true), "people": input.people.duplicate(true),

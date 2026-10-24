@@ -2,8 +2,8 @@
 
 Updated Oct 24, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
 
-The migration is **in progress**, not finished. P1 is partly implemented; a P3
-consensus slice is implemented. P2, the remaining P3 work, P4 and P5
+The migration is **in progress**, not finished. P1 is partly implemented; P3
+consensus and Q4 opinion/context slices are implemented. The remaining P2 and P3 work, P4 and P5
 remain. Q3 and Q6 remain deferred. The 95% demon-victim rule and weak hint/refusal
 rules are recorded decisions, not yet migrated behavior.
 
@@ -240,6 +240,56 @@ Under four concurrent bot runs: meeting entry 4368 ms, search into meeting 5295 
 presentation 4023 ms, nomination 1097 ms. No significant new presentation cost was
 observed relative to the earlier replay. The bot matrix currently runs on frozen
 `0cfd073` (before this Q1 change), so it will not establish final-migration balance.
+
+## Q4: opinions and Psychologist context (Codex, Oct 24)
+
+Private opinion gossip retains its conversation/provenance and normal teller bond,
+but creates no suspicion entry. A Medium's relayed distrust and the Psychologist's
+reported trust/suspicion no longer produce guilt by association. The common gift
+summary and native compatibility weights also exclude them from accusation/defence
+strength. Direct, wrapped and nested Medium opinions are rejected before a command
+selects an engine; they cannot exploit ordinary-play fallback. Empty opinion/context
+reading entries do not block ownership of supported evidence from the same source.
+
+Psychologist readings now have a validated context adapter. All original identities,
+timing and social content remain available; the model never queries the subject's
+private trust or suspicion. Every good/cover listener uses the same interpretation
+in seven- and ten-person towns, with no alignment award. A Medium relay retains the
+original source and observation while remaining context. This starts the P2 family
+migration; the other reading families' native branches, channels and temporal
+adapters still need work.
+
+Psychologist suite: 65 checks pass. Social-evidence suite: 19 checks pass. Nine
+targeted suites pass, plus repeated checks of the final compatibility guards.
+The frozen full run (including trace parity) is under `logs/migration/resume/opinions/all`.
+The replay has the **same agreement, suspicion and 1-yes tally as the Q1 run**:
+nine shared, zero fallbacks; presentation 4092 ms versus 4023 ms, nomination 1110 ms
+versus 1097 ms. No significant presentation cost appeared in this slice.
+
+The bot now skips semantically rejected/superseded cards and deductions and gives
+opinions no heuristic alignment score. Before this fix, seed 1060 repeatedly issued
+`tell fenwick 64` for an accusation card until its 600-command guard expired. It
+now finishes on Day 5 with no guard exhaustion. Optional `autoplay.gd --no-trace`
+skips detailed state sidecars while retaining ordinary logs and metrics; a tracing
+on/off run of seed 1060 produces identical result JSON. Presentation profiles and
+replay coverage checks continue to use full tracing.
+
+## Intermediate bot measurements (frozen `0cfd073`)
+
+These runs precede Q1/Q4 and the bot rejection fix. They are not final-migration
+balance results and are not tuning targets. Seeds 1000–1149:
+
+| Town / mode | Good wins | Wrongful / all executions | Evil executed | Completion |
+|---|---:|---:|---:|---|
+| 7 active, original baseline | 42 | 157 / 239 | 82 | 150 complete |
+| 7 active, intermediate | 35 | 116 / 171 | 55 | 149 complete; 1 bot guard |
+| 7 passive, original baseline | 8 | 119 / 147 | 28 | 150 complete |
+| 7 passive, intermediate | 3 | 47 / 62 | 15 | 150 complete |
+
+The incomplete active seed is 1060, fixed as described above. The ten-person rows
+are still running. Fewer executions and fewer good wins are observations, not an
+established causal explanation or a passed balance criterion. Data and per-run
+script-error status are in `logs/migration/resume/adapters/batches`.
 
 ## Performance pass after review (Claude, Oct 24; branch `claude/perf-reuse`, merged)
 

@@ -357,7 +357,9 @@ func _question(card: Dictionary) -> void:
 			_edit())
 		_label(box, "Answers on a card outside this case or line have no effect.", 14, "muted")
 	var role: String = card.get("role", "")
-	if card.kind == "report" and role in ["surveyor", "dowser", "rumormonger", "lamplighter", "clerk", "archivist", "seer"]:
+	if card.kind == "context" and card.get("context_kind", "") == "psychologist":
+		_label(box, "This reports whom someone trusts and suspects. Those opinions do not establish anyone's alignment.", 16, "muted")
+	elif card.kind == "report" and role in ["surveyor", "dowser", "rumormonger", "lamplighter", "clerk", "archivist", "seer"]:
 		var prompt: String = {"surveyor": "Which blocks or residents account for the positives? A positive may be evil or Marked.", "dowser": "Who registered as evil in this reading? Marked is a possible explanation.", "rumormonger": "Which person is Marked in your explanation?", "lamplighter": "Who were the other people out? The Lamplighter is excluded.", "clerk": "If this reading is accurate, who holds the named good gift?", "archivist": "If this reading is accurate, who holds the named minion gift?", "seer": "What explains this Demon reading? A negative reading does not clear minions."}[role]
 		if role == "rumormonger":
 			prompt = "Which person has the named secret (%s) in your explanation?" % card.data.get("secret", "marked")

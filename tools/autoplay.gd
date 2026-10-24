@@ -2,12 +2,13 @@
 ## a human uses, then reports results and writes dev logs.
 ##
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
-##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE]
+##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
 ##
 ## --passive: a control player who does nothing (waits every phase, declines approaches,
 ## never nominates, votes no, sleeps). The town's win rate on its own.
 ##
 ## --transcript prints everything the player would see. Logs go to <log-dir>/case_<seed>.*
+## --no-trace skips detailed state sidecars; ordinary developer logs and metrics remain.
 ## The bot only uses information a player could see, except that it knows which idle NPCs
 ## are at which exact location within a block (to keep it from wasting moves).
 extends SceneTree
@@ -22,6 +23,7 @@ const Metrics = preload("res://game/case_metrics.gd")
 var g
 var transcript = false
 var passive = false
+var trace_enabled = true
 var talked = {}
 var linked_pairs = {}
 var rng = RandomNumberGenerator.new()
@@ -32,6 +34,7 @@ func _init() -> void:
 	var games: int = int(args.get("games", "1"))
 	transcript = args.has("transcript")
 	passive = args.has("passive")
+	trace_enabled = not args.has("no-trace")
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links"]
@@ -80,6 +83,7 @@ func _init() -> void:
 
 func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictionary:
 	g = Game.new()
+	g.detailed_logging = trace_enabled
 	g.log_dir = log_dir.path_join("passive" if passive else "active")
 	rng.seed = seed_v * 7919
 	talked = {}
@@ -204,8 +208,6 @@ func _scores() -> Dictionary:
 						add = (0.6 if src == "player" else 0.3) * sc_n * 2.0
 				"refusal":
 					add = 0.15
-				"accusation", "opinion":
-					add = 0.15
 				"claim":
 					var role: String = c.get("role", "")
 					if role != "none" and not c.get("private", false):
@@ -298,7 +300,7 @@ func _decide() -> String:
 				var best_c = 0
 				var best_v = 0.25
 				for c in g.board:
-					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and not (c["kind"] in ["vote", "secret", "deduction", "conversation", "home", "haunt"]):
+					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and not (c["kind"] in ["vote", "secret", "deduction", "conversation", "home", "haunt"]) and g._presentation_rejection(c) == "":
 						var v: float = Mind.card_strength(w, c, ts[0])
 						if v > best_v:
 							best_v = v
@@ -383,7 +385,7 @@ static func _parse(argv: PackedStringArray) -> Dictionary:
 ## Look for a contradiction among recent cards; file the explanation blaming the most
 ## suspicious person. Returns the deduction card number, or 0.
 func _find_or_file_deduction() -> int:
-	var recent: Array = g.board.filter(func(c): return not (c["kind"] in ["deduction", "home", "haunt"])).slice(-14)
+	var recent: Array = g.board.filter(func(c): return not (c["kind"] in ["deduction", "home", "haunt"]) and g._presentation_rejection(c) == "").slice(-14)
 	var sc = _scores()
 	for i in range(recent.size()):
 		for j in range(i + 1, recent.size()):
@@ -413,6 +415,6 @@ func _find_or_file_deduction() -> int:
 
 func _latest_deduction() -> int:
 	for i in range(g.board.size() - 1, -1, -1):
-		if g.board[i]["kind"] == "deduction":
+		if g.board[i]["kind"] == "deduction" and g._presentation_rejection(g.board[i]) == "":
 			return g.board[i]["n"]
 	return 0

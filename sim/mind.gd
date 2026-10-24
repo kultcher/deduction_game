@@ -818,14 +818,7 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 					_eff(effs, m.id, 0.12, tag + ": the demon came by way of their block",
 						"the demon came by way of %s, where they live" % C.block_name(d["block"]), not own)
 		"psychologist":
-			# Close to someone I suspect: a little rubs off. The reading itself says nothing of good or evil.
-			var subj: String = d.get("subject", "")
-			var tr: String = d.get("trusts", "")
-			if subj != listener.id and tr != listener.id and tr != "" and susp(listener, subj) > 0.5:
-				_eff(effs, tr, 0.1, tag + ": %s, whom I suspect, trusts them most" % subj,
-					"%s, whom I suspect, trusts them most" % (w.by_id[subj].name if w.by_id.has(subj) else subj), not own)
-			if tr != listener.id and subj != listener.id and tr != "" and susp(listener, tr) > 0.5:
-				_eff(effs, subj, 0.1, tag + ": trusts %s, whom I suspect" % tr, "", not own)
+			pass # Accurate knowledge of an opinion does not make it alignment evidence.
 		"medium":
 			# What the dead knew, at a remove: weaker than hearing it from them.
 			var it: Dictionary = d.get("item", {})
@@ -844,8 +837,7 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 						_eff(effs, it["who"], 0.3 * sc2, tag + ": the dead %s saw them out at night (x%.2f)" % [dead, sc2],
 							"the dead saw them out at night", not own)
 				"suspicion":
-					if it["about"] != listener.id:
-						_eff(effs, it["about"], 0.12, tag + ": the dead %s distrusted them" % dead, "", not own)
+					pass # A faithfully relayed opinion remains an opinion (Q4).
 		"clerk":
 			var pair: Array = d["pair"]
 			if listener.id in pair and d["role"] == listener.role and not own:
@@ -2531,6 +2523,8 @@ static func evidence_class(card: Dictionary) -> String:
 
 ## How incriminating a board card is on its own (0..1.4), before credibility and trust.
 static func card_strength(w, card: Dictionary, suspect) -> float:
+	if WorkshopLedger.Evidence.contains_opinion(card) or WorkshopLedger.Evidence.social_reading(card):
+		return 0.0
 	match card.get("kind", ""):
 		"sighting":
 			if card.get("phase", -1) != C.NIGHT:
@@ -2556,8 +2550,6 @@ static func card_strength(w, card: Dictionary, suspect) -> float:
 			return 0.7
 		"home", "haunt":
 			return 0.0
-		"accusation", "opinion":
-			return 0.4
 		"refusal":
 			# Fear is a better reason than none: it softens, but doesn't clear, the silence.
 			return 0.25 if card.get("fear", false) else 0.35
@@ -2640,6 +2632,8 @@ static func card_weight(w, n, suspect, card: Dictionary) -> Dictionary:
 
 ## How strongly a card speaks *for* someone (used when defending a nominee).
 static func defend_strength(card: Dictionary, nominee: String) -> float:
+	if WorkshopLedger.Evidence.contains_opinion(card) or WorkshopLedger.Evidence.social_reading(card):
+		return 0.0
 	var subj: Array = card.get("subject", [])
 	if not (nominee in subj):
 		return 0.1
@@ -2701,7 +2695,7 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	if w.workshop_present.is_valid():
 		var interpreted: Dictionary = w.workshop_present.call(n, card, [suspect.id], "accuse", "private", true)
 		if not interpreted.is_empty():
-			if not interpreted.get("repeated", false):
+			if not interpreted.get("blocked", false) and not interpreted.get("repeated", false):
 				n.player_cases.append({"suspect": suspect.id, "card": card.duplicate(true)})
 			return interpreted
 	if times == 0:

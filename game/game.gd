@@ -525,10 +525,14 @@ func _presentation_rejection(card: Dictionary) -> String:
 	var speech: Array = []
 	if card.kind == "deduction":
 		var input = workshop_snapshot([card.n])
-		speech = input.evidence.filter(func(e): return e.id in input.selected and e.kind in ["opinion", "accusation"])
-	elif card.kind in ["opinion", "accusation"]:
+		for number in input.board_map:
+			if input.board_map[number] in input.selected and WorkshopPresentation.Evidence.contains_opinion(board[int(number) - 1]):
+				speech.append(board[int(number) - 1])
+	elif WorkshopPresentation.Evidence.contains_opinion(card):
 		speech = [card]
 	if not speech.is_empty():
+		if speech[0].kind == "info":
+			return "A relayed opinion is not evidence. Cite the deceased person's supporting observations or readings."
 		return "An %s is not evidence. Cite the supporting observations or readings." % speech[0].kind
 	return ""
 

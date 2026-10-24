@@ -93,7 +93,7 @@ static func gift_time(card: Dictionary) -> bool:
 		return card.observed_at.day >= 1 and card.observed_at.phase in ["evening", "night"]
 	if card.role in ["surveyor", "rumormonger", "clerk", "archivist"]:
 		return card.observed_at.day == 0 and card.observed_at.phase == "night"
-	if card.role in ["seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "medium"]:
+	if card.role in ["seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "psychologist"]:
 		return card.observed_at.day >= 0 and card.observed_at.phase == "night"
 	return card.role == "dowser" and card.observed_at.day >= 1 and card.observed_at.phase in ["morning", "afternoon", "evening"]
 
