@@ -64,7 +64,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			cards.append(activity)
 			continue
 		if e.kind != "info" or e.content.get("role", "") not in ROLES:
-			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced"]:
+			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal"]:
 				result.issues.append("Incomplete or invalid %s card (%s)." % [e.kind, e.id])
 			else:
 				result.issues.append("The %s card%s isn't supported yet (%s)." % [e.kind, " (" + str(e.content.get("role")) + ")" if e.content.has("role") else "", e.id])
@@ -181,6 +181,13 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 	var card = {"id": e.id, "fact_id": e.fact_id, "source": e.source, "text": e.text,
 		"subject": e.subjects[0] if not e.subjects.is_empty() else "", "subjects": e.subjects.duplicate(),
 		"night": night, "observed_at": e.observed_at, "block": block, "role": "", "data": {}}
+	if e.kind == "refusal" and e.source in ids and e.subjects == [e.source] and night >= 0 and e.observed_at.phase != "unknown":
+		if not e.content.get("fear", false) is bool or not e.content.get("withheld", false) is bool or (e.content.get("role", "") != "" and e.content.role not in C.ROLES):
+			return {}
+		card["kind"] = "refusal"
+		card["night"] = -1 # Refusing whereabouts is not an admission of an outing.
+		card["data"] = {"fear": e.content.get("fear", false), "withheld": e.content.get("withheld", false), "role": e.content.get("role", "")}
+		return card
 	if e.kind == "info" and e.content.get("role", "") == "psychologist" and reading_valid(e, ids, snapshot.rules.modifier_options):
 		card["kind"] = "context"
 		card["context_kind"] = "psychologist"

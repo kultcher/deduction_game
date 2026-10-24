@@ -5,7 +5,7 @@ Updated Oct 24, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
 The migration is **in progress**, not finished. P1 is partly implemented; P3
 consensus and Q4 opinion/context slices are implemented. The remaining P2 and P3 work, P4 and P5
 remain. Q3 and Q6 remain deferred. The Demon-victim rule now supplies finite 95:5
-innocence evidence; weak hint/refusal rules remain recorded decisions awaiting migration.
+innocence evidence; refusals supply weak suspicion. Gift-family hints remain to migrate.
 
 ## P1 first slice
 
@@ -35,7 +35,7 @@ innocence evidence; weak hint/refusal rules remain recorded decisions awaiting m
 Targeted suites cover revision/repeat contracts, location and totem adapters, exact
 root ownership after native receipts are parked, malformed payloads, shared dialogue,
 Insight/Confidence preservation and live UI delivery. Remaining P1 work includes the
-curse event cards, hints/refusals, and removing the
+curse event cards, hints, and removing the
 remaining native presentation routes after their replacements are measured.
 
 ## P0 implementation
@@ -375,6 +375,27 @@ event/cache-fix regular run passes **52/54 suites**, with only the reproduced
 silence and 3828 ms with the public event/card (+394 ms, about 11%). Both evaluated
 all ten listeners with zero fallback. This single pair ran under concurrent tests
 and bot load. The opening replay contains no silence and isolates the Q2 cost above.
+
+## Q4: weak refusals (Codex, Oct 24)
+
+A first-person refusal is weak suspicion evidence, not proof of being out or of
+holding/lying about a gift. Its maximum likelihood ratio is 1.5 (the evaluator's
+existing lower threshold for weak evidence); stated fear reduces its log weight by
+the existing native .25/.35 ratio. Poison does not invalidate ordinary speech.
+Repeated reluctance from the same person, across receipts or days, supplies one
+factor at the strongest attended weight. Quoted statements supply none.
+
+Fear, withholding and any named role survive normalization. Invalid speakers,
+subjects, dates, boolean fields and role names produce a named rejection. Exact
+roots, presentation/retraction and native-entry parking use the existing shared
+mechanism. No opinion/accusation route was reopened.
+
+The new suite passes 43 checks, including actual strict presentations to every
+listener/cover in seven- and ten-person towns. Nine targeted regression suites pass.
+A ten-listener Day-2 pair measured 3357 ms without refusal and 3542 ms with it (+185 ms,
+about 6%), with zero fallback. This pair does not show a significant added cost;
+reports are in `logs/migration/resume/refusals`. Full trace/regular validation will
+be repeated after the hint slice.
 
 ## Intermediate bot measurements (frozen `0cfd073`)
 
