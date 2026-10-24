@@ -36,7 +36,7 @@ Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture) and
 6. **Every phase ends green:** all `tools/test_*.gd` pass on Godot 4.4.1 headless (one
    known failure on main: `test_social`, "a false Night Watch's night story matches
    their fake report"; don't add to it), plus bot runs (below) recorded in the PR.
-7. **Small PRs, one phase or sub-phase each.** Don't delete legacy code for a kind of
+7. **Small commits, one phase or sub-phase each.** Don't delete legacy code for a kind of
    evidence until its replacement has shipped and been measured.
 
 ## Inventory: every belief evaluation and where it runs today
