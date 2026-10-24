@@ -31,7 +31,7 @@ static func readiness(g, n, card: Dictionary, targets: Array, direction: String,
 		withdrawn[str(ancestor)] = true
 		ancestor = g.board[ancestor - 1].get("revises", 0)
 	proposals[_key(card, targets, direction, snapshot)] = snapshot
-	var plan = Shared.prepare(Bridge.capture(g, [], n.id, venue, n), proposals, n.ledger, withdrawn)
+	var plan = Shared.prepare(Bridge.capture(g, [], n.id, venue, n), proposals, n.ledger, withdrawn, snapshot.selected)
 	return {"ready": plan.ready, "issues": plan.issues, "exit_point": "union"}
 
 static func _key(card: Dictionary, targets: Array, direction: String, snapshot: Dictionary) -> String:
@@ -90,7 +90,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var proposals: Dictionary = previous.duplicate(true)
 	proposals[key] = snapshot
 	var current = Bridge.capture(g, [], n.id, venue, n)
-	var proposed = Shared.prepare(current, proposals, n.ledger, state.get("withdrawn", {}))
+	var proposed = Shared.prepare(current, proposals, n.ledger, state.get("withdrawn", {}), snapshot.selected)
 	if not proposed.ready:
 		return _unavailable(g, n, card, "proposals", proposed.issues)
 	var earlier: Array = state.get("facts", []).duplicate()
@@ -100,6 +100,8 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		novelty_ids = snapshot.selected
 	var fresh: Array = novelty_ids.filter(func(id): return id not in earlier and not state.get("rewarded_facts", {}).has(id))
 	state.enabled = true
+	var previous_focus: Array = state.get("attention_focus", []).duplicate()
+	state["attention_focus"] = original_ids.duplicate()
 	state.presentations = proposals
 	state.get("withdrawn", {}).erase(key)
 	if not state.has("disclosures"):
@@ -116,13 +118,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		# An interval-derived budget can change during recomputation. Do not leave
 		# an unsupported endorsement behind when returning to native presentation.
 		state.presentations = previous
+		state.attention_focus = previous_focus
 		Mind.recompute_beliefs(g.w, n, " (presentation capability fallback)")
 		return _unavailable(g, n, card, "ownership", state.get("issues", ["Ownership was not activated."]))
 	var plan: Dictionary = g._workshop_plans[listener_key]
 	# Rebuild against final interval reliability, matching the applied union.
 	plan.input.listener.discounted = n.discounted.duplicate(true)
 	plan.input.listener.theories = state.get("theories", {}).duplicate(true)
-	plan = Shared.prepare(plan.input, proposals, n.ledger, state.get("withdrawn", {}))
+	plan = Shared.prepare(plan.input, proposals, n.ledger, state.get("withdrawn", {}), snapshot.selected)
 	var response_input = [plan.prepared, snapshot.arguments, snapshot.root, snapshot.board_map, snapshot.selected,
 		snapshot.evidence.filter(func(e): return e.id in snapshot.selected), state.outside]
 	var cached: Dictionary = g._workshop_responses.get(listener_key, {})
@@ -141,7 +144,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
 	var cognitive_inputs = [plan.prepared.listener.reasoning_mode, plan.prepared.listener.insight,
 		plan.prepared.listener.confidence_mode, plan.prepared.listener.confidence]
-	var inputs = JSON.stringify(Evidence.canonical([state.outside, plan.facts, n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognitive_inputs]))
+	var inputs = _discussion_inputs(n, snapshot)
 	var discussion: Dictionary = state.get("discussion", {})
 	var repeated: bool = discussion.get(signature, "") == inputs
 	var audience = "player" if venue == "private" else "town"
@@ -233,7 +236,7 @@ static func _discussion_inputs(n, snapshot: Dictionary) -> String:
 	var cognition = [state.get("reasoning_mode", "bounded"), n.traits.get("insight", 0.5),
 		state.get("confidence_mode", "persistence"), n.traits.get("confidence", 0.5)]
 	return JSON.stringify(Evidence.canonical([state.get("outside", n.suspicion), state.get("facts", []),
-		n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognition]))
+		state.get("attention_focus", []), n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognition]))
 
 static func _snapshot(g, n, card: Dictionary, targets: Array, direction: String, venue: String) -> Dictionary:
 	if direction == "deduction":

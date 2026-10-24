@@ -397,6 +397,8 @@ static func _explain(view: Dictionary, value: Dictionary, listener: Dictionary, 
 	var considered = attention.case
 	var cards = Solver.selected(view, considered)
 	for id in listener.knowledge.get("own_reports", []):
+		if listener.get("reasoning_mode", "full") == "bounded" and listener.knowledge.has("presented_reports") and id not in attention.considered:
+			continue
 		if listener.get("reasoning_mode", "full") == "bounded" and id not in attention.considered and id not in listener.knowledge.get("attention_reports", listener.knowledge.get("own_reports", [])):
 			continue
 		if not cards.any(func(c): return c.id == id):

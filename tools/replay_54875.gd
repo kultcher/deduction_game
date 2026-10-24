@@ -51,8 +51,12 @@ func _init() -> void:
 			for delivery in g.workshop_deliveries.slice(previous):
 				var real = g.w.by_id[delivery.listener]
 				var n = real.shadow if real.is_evil() else real
+				var response: Dictionary = g._workshop_responses.get(real.id + (":cover" if real.is_evil() else ":good"), {}).get("assessment", {})
+				var reasoning: Dictionary = response.get("reasoning", {})
 				presentation.append({"listener": real.id, "model": delivery.model, "issues": delivery.issues,
-					"suspicion": Mind.susp(n, "constance") if n != null else null})
+					"suspicion": Mind.susp(n, "constance") if n != null else null,
+					"considered": reasoning.get("considered", []), "ignored": reasoning.get("ignored", []),
+					"belief_considered": n.workshop_state.get("reasoning", {}).get("considered", []) if n != null else []})
 	var trace = g.w.dlog.trace_events()
 	var agreement = []
 	var margins = []

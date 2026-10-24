@@ -42,7 +42,7 @@ static func _refresh(g, n, phase: String) -> void:
 			state.issues = ["Shared effects disabled; legacy contributions restored."]
 			return
 		var input = Bridge.capture(g, [], n.id, "private", n)
-		var plan = Shared.prepare(input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}))
+		var plan = Shared.prepare(input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
 		state.issues = plan.issues
 		state.facts = plan.facts
 		state.owners = plan.owners
@@ -59,7 +59,7 @@ static func _refresh(g, n, phase: String) -> void:
 		var plan: Dictionary = g._workshop_plans[key]
 		plan.input.listener.discounted = n.discounted.duplicate(true)
 		plan.input.listener.suspicion = n.suspicion.duplicate(true)
-		plan = Shared.prepare(plan.input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}))
+		plan = Shared.prepare(plan.input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
 		if not plan.ready:
 			state.owned = {}
 			state.issues = plan.issues

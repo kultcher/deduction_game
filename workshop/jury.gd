@@ -352,8 +352,10 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 ## private readings folded into the starting view, and their reading reliability.
 ## Challenges the listener accepts (unlikely / misled / lying) scale the reliability of
 ## the challenged readings and sources.
-static func _eval_listener(listener: Dictionary, own: Array, challenges: Dictionary = {}) -> Dictionary:
+static func _eval_listener(listener: Dictionary, own: Array, challenges: Dictionary = {}, attention: Dictionary = {}) -> Dictionary:
 	var knowledge: Dictionary = listener.get("knowledge", {}).duplicate(true)
+	if listener.get("reasoning_mode", "full") == "bounded" and knowledge.has("presented_reports") and not attention.is_empty():
+		own = own.filter(func(id): return id in attention.considered)
 	knowledge["own_reports"] = own
 	return {"id": listener.get("id", "listener"), "suspicion": listener.get("suspicion", {}),
 		"npc_trust": listener.get("npc_trust", {}), "knowledge": knowledge,
@@ -455,7 +457,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 	var attention = Reasoner.prepare(view, original, listener)
 	var scoped = _eval_case(view, case_data, attention, listener)
 	var challenges = Support.ReadingChallenges.assess(view, attention.case, listener, Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected))
-	var eval_listener = _eval_listener(listener, knowledge.get("own_reports", []), challenges)
+	var eval_listener = _eval_listener(listener, knowledge.get("own_reports", []), challenges, attention)
 	eval_listener["theory_bias"] = theory.bias
 	var ev = CaseEval.evaluate(view, scoped, eval_listener)
 	var agreement: float = clampf(CaseEval.shift(ev.prior, ev.posterior), -1.0, 1.0)
@@ -608,7 +610,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var scoped = _eval_case(view, compiled, attention, baseline)
 	var attended: Array = Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected)
 	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
-	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged)
+	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged, attention)
 	var ev: Dictionary = CaseEval.evaluate(view, scoped, eval_listener)
 	var protection = Protection.assess(view, attended, baseline)
 	# The headline's own fatal check (say, accusing the listener) doesn't void what the

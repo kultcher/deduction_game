@@ -12,7 +12,7 @@ Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture),
 |---|---|
 | P0 | Implemented, not signed off. Unclamped suspicion, fallback logging, whole-audience readiness check before a presentation, readiness in the preview and shared effects on by default all landed. Pending: the bot comparisons, and the presentation budget (now about 4.2 s for #89 in the replay, inside the 5 s budget on the user's machine). |
 | P1 | Partly done: revisions get new numbers, free repeats, daytime sightings, conversations, home, haunt, totem, dropped items, Surveyor block answers; opinion and accusation cards rejected as evidence. Remaining: other event cards, hints and refusals, nested case composition, removing the native presentation routes. |
-| **Next, before more P1** | **Presented cards dropped by attention** (MIGRATION_PROGRESS): the presented case's own cards must always be in a listener's attention; private and background evidence compete for what's left. Then re-measure the 54875 replay and add the Day 3–4 versions of #85 to the fixture (the user will say when). |
+| Attention correction | Implemented Oct 24: submitted roots are guaranteed in the applied refresh and scoped reply; background/private reports compete for remaining attention. The opening replay still fails 1 yes / 5 needed, with changed agreement and no fallbacks. Day 3–4 fixture expansion awaits the user's signal. |
 | P2–P5 | Not started. |
 
 ## Terms
@@ -287,6 +287,9 @@ of those gains were lost once by later work and had to be redone, so these are r
 not suggestions. Each one names what it protects.
 
 **How to measure**
+- Continue migration work even when a presentation exceeds five seconds (user,
+  Oct 24). Five seconds remains a performance target, not a stop condition. Measure
+  against the current checkout and flag change sets that add significant time.
 - Speed only counts with full coverage. `tools/replay_54875.gd` and the profiling tools
   (`profile_live_presentation.gd`, `profile_case_eval_town.gd`,
   `profile_workshop_town.gd`) exit with FAIL if any listener fell back or used native

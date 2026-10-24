@@ -45,7 +45,7 @@ static func ordinary(target: String) -> bool:
 
 ## A presentation is an endorsement path, not an additional copy of its facts.
 ## Removing it removes only roots with no remaining learned/endorsed owner.
-static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dictionary, withdrawn: Dictionary = {}) -> Dictionary:
+static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dictionary, withdrawn: Dictionary = {}, focus: Array = []) -> Dictionary:
 	var input = current.duplicate(true)
 	var facts = {}
 	var owners = {}
@@ -183,6 +183,9 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		# Keep this separate from the private-only subtraction: the union owns the
 		# TOTAL effect, including the listener's own native gift contribution.
 		prepared.listener.knowledge["attention_reports"] = input.private_evidence.filter(func(id): return facts.has(id) and facts[id].source == input.listener.id)
+		if not focus.is_empty():
+			prepared.listener.knowledge["presented_reports"] = focus.filter(func(id): return facts.has(id))
+			prepared.listener.knowledge.presented_reports.sort()
 		# Raw discoveries must not change strength when player trust changes. Player
 		# trust discounts only facts whose sole route is the player's presentation.
 		var player_weight = clampf(0.5 + prepared.listener.trust, 0.0, 1.0)
@@ -273,6 +276,8 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 		if not listener.reading_reliability.has(card.id):
 			listener.reading_reliability[card.id] = scoped.listener.reading_reliability.get(card.id, 1.0)
 	var endorsed = endorsed_facts(snapshot, snapshot.root)
+	listener.knowledge["presented_reports"] = snapshot.selected.duplicate()
+	listener.knowledge.presented_reports.sort()
 	listener.knowledge.own_reports = plan.facts.filter(func(id): return id not in endorsed)
 	if listener.get("reasoning_mode", "full") == "bounded":
 		for id in listener.knowledge.own_reports:

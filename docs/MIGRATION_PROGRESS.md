@@ -1,6 +1,6 @@
 # Legacy migration progress
 
-Oct 23, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
+Updated Oct 24, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
 
 The migration is **in progress**, not finished. P1 is partly implemented; P2–P5
 remain. Q3 and Q6 remain deferred. The 95% demon-victim rule and weak hint/refusal
@@ -56,8 +56,9 @@ remaining native presentation routes after their replacements are measured.
   diagnostic UI reads those lists. Bounded attention, candidate counts, belief and
   action results remain the same. Attention/explanation memoization has A/B checks.
 
-P0 is **not signed off**: full validation and bot comparisons are running, and the
-historical case exceeds the five-second presentation budget.
+P0 is **not signed off**: full post-change bot comparisons remain pending. The latest
+user-measured presentation is within five seconds. The user authorized continued
+migration above that target; report significant runtime increases by change set.
 
 ## 54875 measurement
 
@@ -131,6 +132,46 @@ explains being out) before the presentation. That part is principled. The replay
 only covers that first vote; the Day 3–4 versions of #85 (four and six reports,
 including her "watched the Docks" while seen on the Market) are the stronger test and
 should be added to the fixture.
+
+## Attention correction (Codex, Oct 24)
+
+Starting checkout: `8fe9e1f`, clean. The presented roots now travel explicitly through
+readiness, ownership refresh and scoped reply. Every submitted observation is read,
+even if the submission exceeds the card budget. Private/background cards compete for
+the remaining slots. Insight's line, support and rival limits are unchanged: reading
+an observation does not grant an unattended reasoning connection. An ignored private
+report cannot re-enter through the explanation search or CaseEval's private prior.
+The focus persists with the current discussion and participates in repeat keys.
+
+New attention suite: 11 checks passing. The broad run exposed old attention
+expectations and a repeat-key inconsistency; the corrected cognition, presentation,
+revision/repeat and ownership suites pass. All 46 regular suites outside the two
+known baseline failures passed across the broad run and targeted corrections.
+Fresh starting-checkout
+validation: 45/47 regular suites pass, with the two documented baseline failures;
+the slow trace suite was not included in that baseline run.
+
+Measured opening replay, same commands and coefficients, nine shared listeners and
+zero fallbacks in both runs:
+
+| Listener | Agreement before | Agreement after |
+|---|---:|---:|
+| Jory | .000 reject | .722 accept |
+| Odette | .000 reject | .650 accept |
+| Agnes | .000 reject | .595 partial |
+| Isolde | .000 reject | 1.000 accept |
+
+Other headline agreements remain unchanged. Suspicion of Constance rises for Jory
+(.510 to .633) and Agnes (.180 to .450); the other presentation-end values remain
+unchanged. **The vote still fails 1 yes / 5 needed.** Acceptance is not a measured
+promise that a vote changes. This result is reported without tuning Q3/Q6.
+
+Paired timing under concurrent validation: presentation 4721 to 3574 ms; meeting
+entry 4722 to 5133 ms; search into meeting 5659 to 5655 ms; nomination 1206 to 917 ms.
+This slice did not introduce a significant presentation cost. These timings are
+measurements on this machine, not guaranteed speedups. Reports are preserved under
+`logs/migration/resume/{baseline,attention}`. The replay now records each listener's
+considered/ignored cards as well as the applied refresh's considered cards.
 
 ## Performance pass after review (Claude, Oct 24; branch `claude/perf-reuse`, merged)
 

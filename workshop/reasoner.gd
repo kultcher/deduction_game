@@ -43,6 +43,11 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 				full.cards.append(id)
 	var cards = Solver.selected(view, full)
 	var personal: Array = listener.knowledge.get("attention_reports", listener.knowledge.get("own_reports", []))
+	# The submission is in front of the listener. Insight limits connections and
+	# rival search, not whether these observations are read. Everything else,
+	# including private reports, competes for the remaining card budget.
+	var focused: bool = listener.knowledge.has("presented_reports")
+	var presented: Array = cards.filter(func(c): return c.id in listener.knowledge.get("presented_reports", [])).map(func(c): return c.id)
 	var groups: Array = []
 	var assigned: Array = []
 	for line in value.get("lines", []):
@@ -65,15 +70,17 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 		keep.append_array(groups[i].cards)
 		kept_lines.append_array(groups[i].ids)
 		connections.append(groups[i].key)
-	var ranked: Array = cards.filter(func(c): return c.id in keep and c.id not in personal)
+	var ranked: Array = cards.filter(func(c): return c.id in keep and c.id not in presented and (focused or c.id not in personal))
 	ranked.sort_custom(func(a, b):
 		var x = _salience(a, full.conclusion.target, listener, Domain.live(view))
 		var y = _salience(b, full.conclusion.target, listener, Domain.live(view))
 		return x > y if not is_equal_approx(x, y) else Solver.semantic_key(a) < Solver.semantic_key(b))
-	keep = ranked.slice(0, limits.cards if bounded else ranked.size()).map(func(c): return c.id)
-	for id in personal:
-		if cards.any(func(c): return c.id == id):
-			keep.append(id)
+	var remaining: int = maxi(0, limits.cards - presented.size()) if focused else limits.cards
+	keep = presented + ranked.slice(0, remaining if bounded else ranked.size()).map(func(c): return c.id)
+	if not focused:
+		for id in personal:
+			if cards.any(func(c): return c.id == id):
+				keep.append(id)
 	var raw = value.duplicate(true)
 	raw.cards = keep
 	raw.derived = []
