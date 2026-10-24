@@ -8,30 +8,19 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 		"guardrail": "Commitment changes hypothesis ranking only; source and reading reliability are not changed."}
 	if result.mode != "persistence":
 		return result
-	if Solver.Domain.live(view):
-		# Live minds retain a theory per person. Store a compact deterministic
-		# signature rather than duplicating the entire evidence/belief JSON in each.
-		input_key = input_key.sha256_text()
 	if not listener.has("theories"):
 		listener.theories = {}
+	# A fixed or unchanged decision never reads the reasoning; callers can check
+	# this first (cached) and skip the explanation search entirely.
+	var hit: Dictionary = cached(view, value, listener, input_key)
+	if not hit.is_empty():
+		return hit
+	input_key = _stored_key(view, input_key)
 	var target: String = value.conclusion.target
-	var key: String = target + "|" + value.conclusion.at
-	# Alignment and Marked are different questions. Alignment theories are shared
-	# across accusing and defending the same person, not stored as opposing claims.
-	if value.conclusion.type == "marked":
-		key += "|marked"
-	elif value.conclusion.type in ["demon", "minion"]:
-		key += "|" + value.conclusion.type
-	if value.conclusion.type in ["evil", "good", "suspicious", "marked", "demon", "minion"] and listener.get("fixed_theory_decisions", {}).has(key):
-		return listener.fixed_theory_decisions[key].duplicate(true)
+	var key: String = _key(value)
 	var old: Dictionary = listener.theories.get(key, {}).duplicate(true)
 	result.before = old.get("position", "")
 	result.threshold = 1.0 + 4.0 * listener.confidence
-	if old.get("input_key", "") == input_key:
-		result = old.decision.duplicate(true)
-		if not Solver.Domain.live(view):
-			result.status = "unchanged"
-		return result
 	var candidate: Dictionary = reasoning.support
 	var candidate_score: float = reasoning.support_score
 	var other: Dictionary = reasoning.rival
@@ -80,6 +69,38 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 	listener.theories[key] = {"position": position, "input_key": input_key, "decision": result.duplicate(true),
 		"shortlist": [reasoning.support.duplicate(true), reasoning.rival.duplicate(true)], "epoch": value.conclusion.at}
 	return result
+
+## The decision prepare() would return without reading any reasoning: a fixed
+## decision (a scoped reply uses the union's commitment) or an unchanged input.
+## Empty when prepare() would need the explanation search. Read-only.
+static func cached(view: Dictionary, value: Dictionary, listener: Dictionary, input_key: String) -> Dictionary:
+	if listener.get("confidence_mode", "scale") != "persistence":
+		return {}
+	var key: String = _key(value)
+	if value.conclusion.type in ["evil", "good", "suspicious", "marked", "demon", "minion"] and listener.get("fixed_theory_decisions", {}).has(key):
+		return listener.fixed_theory_decisions[key].duplicate(true)
+	var old: Dictionary = listener.get("theories", {}).get(key, {})
+	if old.get("input_key", "") == _stored_key(view, input_key):
+		var result: Dictionary = old.decision.duplicate(true)
+		if not Solver.Domain.live(view):
+			result.status = "unchanged"
+		return result
+	return {}
+
+## Live minds retain a theory per person. Store a compact deterministic signature
+## rather than duplicating the entire evidence/belief JSON in each.
+static func _stored_key(view: Dictionary, input_key: String) -> String:
+	return input_key.sha256_text() if Solver.Domain.live(view) else input_key
+
+## Alignment and Marked are different questions. Alignment theories are shared
+## across accusing and defending the same person, not stored as opposing claims.
+static func _key(value: Dictionary) -> String:
+	var key: String = value.conclusion.target + "|" + value.conclusion.at
+	if value.conclusion.type == "marked":
+		key += "|marked"
+	elif value.conclusion.type in ["demon", "minion"]:
+		key += "|" + value.conclusion.type
+	return key
 
 static func _position(view: Dictionary, world: Dictionary, target: String, type: String, epoch: String) -> String:
 	if world.is_empty():

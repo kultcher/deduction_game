@@ -132,6 +132,78 @@ only covers that first vote; the Day 3–4 versions of #85 (four and six reports
 including her "watched the Docks" while seen on the Market) are the stronger test and
 should be added to the fixture.
 
+## Performance pass after review (Claude, Oct 24; branch `claude/perf-reuse`, merged)
+
+Profile of the replay's #85 presentation (9.6 s, nine listeners): `explain` 3.7 s self
+(207 calls), `headline` 1.8 s, `consequences` 1.5 s, `listener` 0.9 s, candidate search
+0.7 s, constraint solves 0.5 s. Each listener runs the jury twice (belief refresh 3.3 s,
+scoped reply 5.2 s), and live listeners use `persistence` confidence, so
+`_consequences_eval` ran `Support.explain` for every person in both runs.
+
+Changes (intended to be exact: same beliefs, replies, theories and RNG):
+- `Theory.cached()`: the decision `Theory.prepare` would return without reading any
+  reasoning (a fixed commitment, or unchanged inputs). `prepare` now uses it first.
+- `_consequences_eval` skips `Support.explain` whenever its result is unused: the
+  headline target's own alignment theory (it always used `headline.theory`), and any
+  person whose decision is cached or fixed. Explain is read-only, so skipping it only
+  changes profiler counts and memo-cache contents.
+- The scoped reply (`Shared.response`) passes `{"headline_only": true}`: its effects
+  are never applied (the union from the belief refresh owns them), so only the
+  headline's own effect is computed. Every person already has a fixed decision from
+  the union, so the reply also skips their explanation searches.
+- Not yet done: batching the explanation search across people for the belief refresh
+  itself (bounded budgets make exact parity delicate).
+- Worth measuring next: `explain`'s own cache had zero hits in the replay, yet each
+  call still hashes and deep-copies `[view, value, profile, prepared]`. That may be a
+  large part of the 3.7 s self time.
+
+### Second and third passes (Oct 24)
+
+Instrumented profile (Day 1 meeting entry and #89, about 30% profiler overhead):
+movement likelihoods (`LiveActivity.factors`) were the largest single cost (3.2 s and
+4.1 s, 80–120 ms per cache miss), then `CaseEval` (1.6 s and 2.9 s), constraint solves
+and `Solver.analyze`. A meeting ran about 53 jury refreshes, one per statement heard per
+listener. Argon's independent review agreed on the movement model and the refresh,
+and added the cache-key and `unresolved` points.
+
+Exact changes (commit 3bad9d5):
+- `LiveActivity._likelihood`: route lists and per-route products built once per
+  profile, not per habitual block × evening (same arithmetic order).
+- `LiveActivity.factors` and `routes` cache on `movement_inputs()` (movement cards,
+  relayed cards, claimed roles), not the whole card list.
+- `CaseEval._own_counts`: integer state codes. `Solver.unresolved`: one bitmask pass.
+
+Declared behaviour change (commit 12bdf32, agreed with the user): the belief refresh
+uses `Jury.refresh`, with no placeholder headline ("the first person in the list is
+evil"). The first person now gets the same theory path as everyone else. Reading
+challenges and the refresh's `reasoning` come from the attended union. Every
+refresh effect's `reasoning` is `belief_refresh`. The
+refresh no longer builds intermediate-claim or link diagnostics. Replay numbers after
+this commit are the new baseline.
+
+Measured on the user's machine (replay; main → after 3bad9d5):
+
+| Step | Before | After |
+|---|---:|---:|
+| Enter meeting (`ask seen today`) | 8501 ms | 4529 ms |
+| `search` → meeting | 8759 ms | 4964 ms |
+| `present 89` | 6864 ms | 4158 ms |
+| `nominate constance` | ~2015 ms | 1070 ms |
+
+Same result: 9 shared, 0 native listeners; case #85 (filed #89) 1 yes of 5 needed.
+Not done, by decision: batching meeting refreshes (later speakers must react to
+earlier ones). The rules that keep these gains are in LEGACY_MIGRATION.md,
+"Performance rules".
+
+Profiling tools now fail when any listener falls back (`--allow-fallback` reports
+without failing): `profile_live_presentation.gd`, `profile_case_eval_town.gd`,
+`profile_workshop_town.gd` (new `fallback_listeners` field) and `replay_54875.gd`.
+
+**To verify:** all suites as before (expect the two known failures), the replay's
+`measurement.json` agreement, suspicion, vote margins and tally identical to before
+with lower `elapsed_ms` for `present 89`, and `profile_workshop_town.gd`'s
+`behavior_hash` identical to main's on seeds 692 and 4242.
+
 ## Validation baseline
 
 Untouched commit: `6bce4d4`. Godot 4.7.2 headless, seeds 1000–1149, 150 games per row.

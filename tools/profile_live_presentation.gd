@@ -2,7 +2,9 @@
 ## reading filed as one case and presented to every living listener at a meeting. Reports
 ## how many listeners used the shared assessment, why the rest used native rules, the
 ## wall time, and the slowest profiled stages.
-##   godot --headless --path . --script res://tools/profile_live_presentation.gd -- [--legacy] [--seed N]
+##   godot --headless --path . --script res://tools/profile_live_presentation.gd -- [--legacy] [--seed N] [--allow-fallback]
+## Exits with failure if any listener used native rules: a timing that silently skips the
+## shared evaluator measures less work. --allow-fallback reports it without failing.
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
@@ -19,6 +21,7 @@ func _run() -> void:
 	if "--legacy" in args:
 		Jury.engine = "legacy"
 	var seeds: Array = [692, 4242, 1234, 77]
+	var fell_back: Array = []
 	if "--seed" in args:
 		seeds = [int(args[args.find("--seed") + 1])]
 	print("Engine: %s" % Jury.engine)
@@ -63,7 +66,13 @@ func _run() -> void:
 		var keys = stages.keys()
 		keys.sort_custom(func(a, b): return stages[a] > stages[b])
 		print("seed %d: %d readings; %d shared, %d native %s; %d ms" % [seed_value, reports.size(), shared, native.size(), native, elapsed])
+		if not native.is_empty():
+			fell_back.append("seed %d: %s" % [seed_value, native])
 		for kind in why:
 			print("  native because: %s (%d)" % [kind, why[kind]])
 		print("  slowest: " + ", ".join(PackedStringArray(keys.slice(0, 4).map(func(k): return "%s %.0f ms" % [k, stages[k] / 1000.0]))))
+	if not fell_back.is_empty():
+		print("%s: listeners used native rules, so these timings skip shared work: %s" % ["WARNING" if "--allow-fallback" in args else "FAIL", "; ".join(PackedStringArray(fell_back))])
+		quit(0 if "--allow-fallback" in args else 1)
+		return
 	quit()

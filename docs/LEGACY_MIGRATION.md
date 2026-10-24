@@ -1,8 +1,19 @@
 # Migrating belief evaluation off the legacy rules
 
-Status: plan (Oct 23). Owner: to be implemented by Codex, reviewed by the user.
-Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture) and
-[playtest_54875_diagnosis.md](playtest_54875_diagnosis.md) (why this matters now).
+Status: in progress (updated Oct 24). Owner: Codex implements, the user reviews.
+Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture),
+[playtest_54875_diagnosis.md](playtest_54875_diagnosis.md) (why this matters now),
+[MIGRATION_PROGRESS.md](MIGRATION_PROGRESS.md) (measurements, detail) and the
+**Performance rules** section below before touching anything in `workshop/`.
+
+## Where things stand (Oct 24)
+
+| Phase | State |
+|---|---|
+| P0 | Implemented, not signed off. Unclamped suspicion, fallback logging, whole-audience readiness check before a presentation, readiness in the preview and shared effects on by default all landed. Pending: the bot comparisons, and the presentation budget (now about 4.2 s for #89 in the replay, inside the 5 s budget on the user's machine). |
+| P1 | Partly done: revisions get new numbers, free repeats, daytime sightings, conversations, home, haunt, totem, dropped items, Surveyor block answers; opinion and accusation cards rejected as evidence. Remaining: other event cards, hints and refusals, nested case composition, removing the native presentation routes. |
+| **Next, before more P1** | **Presented cards dropped by attention** (MIGRATION_PROGRESS): the presented case's own cards must always be in a listener's attention; private and background evidence compete for what's left. Then re-measure the 54875 replay and add the Day 3–4 versions of #85 to the fixture (the user will say when). |
+| P2–P5 | Not started. |
 
 ## Terms
 
@@ -33,11 +44,17 @@ Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture) and
    come from the snapshot contract only.
 5. **Determinism:** no new game-RNG draws in evaluation. Same seed and same commands
    give the same game.
-6. **Every phase ends green:** all `tools/test_*.gd` pass on Godot 4.7.2 headless (one
-   known failure on main: `test_social`, "a false Night Watch's night story matches
-   their fake report"; don't add to it), plus bot runs (below) recorded in the PR.
+6. **Every phase ends green:** all `tools/test_*.gd` pass on Godot 4.7.2 headless
+   (`python tools/run_gd_tests.py --godot <exe>`; known failures on main: `test_social`,
+   "a false Night Watch's night story matches their fake report", and `test_text_ui`,
+   two role-hover checks; don't add to them), plus bot runs (below) recorded in the
+   PR. `test_trace` takes about 10 minutes and is skipped by default; run it with
+   `--include-slow` (or by name) before merging and whenever a change touches tracing,
+   logging, determinism or whole-game flow.
 7. **Small commits, one phase or sub-phase each.** Don't delete legacy code for a kind of
    evidence until its replacement has shipped and been measured.
+8. **Follow the performance rules below.** A faster number only counts if every
+   listener was evaluated by the shared model (no fallback, no native rules).
 
 ## Inventory: every belief evaluation and where it runs today
 
@@ -263,14 +280,96 @@ mixture, the per-person loop in `consequences.gd`, the ownership/retraction laye
 (no longer needed when nothing is legacy) and the `workshop_effects` flag. Keep trust,
 pressure, disclosure and the vote formula.
 
+## Performance rules (established Oct 24; don't regress these)
+
+The 54875 replay went from about 50 s to 4–5 s per meeting or presentation. Several
+of those gains were lost once by later work and had to be redone, so these are rules,
+not suggestions. Each one names what it protects.
+
+**How to measure**
+- Speed only counts with full coverage. `tools/replay_54875.gd` and the profiling tools
+  (`profile_live_presentation.gd`, `profile_case_eval_town.gd`,
+  `profile_workshop_town.gd`) exit with FAIL if any listener fell back or used native
+  rules. Don't pass `--allow-fallback` to make a number look better. The concern this
+  guards: an early "fast" build was fast partly because evidence wasn't going through
+  the shared model at all.
+- An optimization is either **exact** (same `measurement.json` agreement, suspicion,
+  vote margins and tally, and the same `behavior_hash` from `profile_workshop_town.gd`
+  on seeds 692 and 4242) or a **declared behaviour change**, agreed with the user and
+  recorded here. Never ship a "speed-up" that silently changes results.
+- Profile with `workshop/profiler.gd` spans before optimizing. Twice, a plausible
+  hotspot turned out to cost almost nothing (explanation-cache hashing; the explanation
+  search's own body), while the real cost sat elsewhere.
+
+**Two jury runs per listener, with different jobs**
+- **Belief refresh** (`Shared.evaluate` → `Jury.refresh`, from
+  `WorkshopOwnership`): "given everything I hold, how do my suspicions move?" It has no
+  headline claim. Every person, including the first in the list, goes through the
+  same per-person theory path. It builds no reply, runs no `Solver.analyze`, and makes
+  no intermediate-claim or link diagnostics. Don't route the refresh back through
+  `Jury.evaluate` or `_assess_target_eval`. (Until Oct 24 it argued a placeholder case,
+  "the first person in the list is evil". That cost a whole headline pass per
+  refresh and gave that one person a differently derived theory.)
+- **Scoped reply** (`Shared.response`): what the listener says about the presented
+  case. It passes `{"headline_only": true}`. Its effects are never applied (the refresh
+  owns belief changes), so it computes only the headline target's effect. Don't add
+  per-person effects or theories to the reply.
+- In persistence mode, `Theory.prepare` checks `Theory.cached()` first. And
+  `_consequences_eval` skips `Support.explain` whenever its result would go unused (the
+  headline's own theory, a cached decision, or the fixed decisions a scoped reply
+  inherits from the refresh).
+
+**Meeting refreshes are one per statement heard, on purpose**
+- Each claim or reading announced at a meeting refreshes every listener's beliefs,
+  about 50 refreshes at a Day 1 meeting. This is intentional: speakers testify in turn,
+  and later speakers decide what to claim, whom to accuse and which reason to cite
+  from beliefs that earlier speakers changed. The user wants the meeting to react, not
+  recite. Don't batch or defer these refreshes without the user's decision. The planned
+  way to hide the cost is pacing: compute a listener's refresh while the previous line
+  of dialogue is on screen.
+
+**Movement model (`workshop/live_activity.gd`), the largest single cost**
+- `_likelihood` builds each night's incident list and the per-route products once per
+  behaviour profile, then sums them for each habitual block in the original order (bit
+  for bit identical to the old nested loops). Keep work that doesn't depend on the
+  habitual block or evening block out of those loops. Its cost grows with nights ×
+  reports × routes, so a slip here grows with game length.
+- `factors()` and `routes()` cache on `movement_inputs()`: the movement-relevant
+  cards, relayed cards and each person's claimed role. Listeners who differ only in
+  other readings (Dowser, Surveyor, Clerk...) share one cache entry. **Correctness
+  hazard:** if you make the movement model read a new kind of card, a new card field,
+  or a new source of a person's role, add it to `movement_inputs()` (and `relevant()`
+  if it's an observation). Otherwise the cache silently returns another listener's
+  result.
+
+**General**
+- Exhaustive minimal-conflict enumeration stays out of live paths (only the explicit
+  diagnostic UI reads it).
+- Cache keys should contain what the computation reads, nothing listener-specific
+  beyond that. Too broad, and every listener misses; too narrow is the hazard above.
+- Prefer integer or bitmask passes over per-world allocation and filter lambdas in
+  per-world loops (see `CaseEval._own_counts`, `Solver.unresolved`).
+
+**Known remaining costs (replay, Oct 24)**
+- About 4.5 s to enter a meeting, 5.0 s for the search-then-meeting step, 4.2 s to
+  present #89 and 1.1 s to nominate. `CaseEval` is about 65 ms a call, and the movement
+  model is still the largest single item.
+- Not yet tried: grouping worlds in `CaseEval.compile` independently of the case's
+  conclusion. This would help the per-claim checks, but each listener's private
+  readings genuinely differ, so it won't remove per-listener misses. It needs a parity
+  proof. Also untried: integer keys in `ReadingChallenges.assess`, which matter only for
+  cases that challenge a reading.
+- Measure scaling on the Day 3–4 replay before deciding the next step.
+
 ## Measuring each phase
 
 - `godot --headless --path . --script res://tools/autoplay.gd -- --seed 1000 --games 150`
   at 7 and 10 townsfolk, active and `--passive`, with `--results` and
   `tools/compare_runs.py` against the previous main. Report good wins, wrongful
   executions, evil hanged, and the "evil off the crowd" tell metric.
-- `tools/profile_live_presentation.gd` and `tools/profile_case_eval_town.gd`: stay
-  inside the 5-second whole-town presentation budget.
+- `tools/profile_live_presentation.gd`, `tools/profile_case_eval_town.gd` and
+  `tools/replay_54875.gd`: stay inside the 5-second whole-town presentation budget,
+  with no fallback (see Performance rules).
 - A replay of case 54875's commands as a regression fixture: it records each listener's
   agreement, suspicion and vote margin for case #85. With Q3 and Q6 deferred it doesn't
   assert that a vote passes; the tuning pass will use it.

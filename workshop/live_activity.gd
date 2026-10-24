@@ -13,6 +13,15 @@ static func available(view: Dictionary) -> bool:
 static func relevant(cards: Array) -> Array:
 	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "lamplighter", "veteran"]))
 
+## Everything routes() and factors() read from a card list: the movement-relevant
+## cards, relayed cards (in order) and each person's claimed role. Two listeners who
+## differ only in other readings (Dowser, Surveyor, Clerk...) share one cache entry.
+static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionary = {}) -> Array:
+	var roles: Array = []
+	for person in view.people:
+		roles.append(role_of(cards, person.id, knowledge))
+	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "lamplighter", "veteran"])), roles]
+
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):
 		return knowledge.get("own_role", "")
@@ -68,7 +77,7 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 	return result
 
 static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, knowledge: Dictionary = {}) -> Dictionary:
-	var input = [view.people, view.get("timeline", {}), cards, answers, knowledge]
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, knowledge), answers, knowledge]
 	var key = hash(input)
 	if route_cache.has(key) and route_cache[key].input == input:
 		return route_cache[key].result
@@ -163,7 +172,7 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	var observations = relevant(cards).filter(func(c): return not c.get("quoted", false) or c.kind == "alibi")
 	if observations.is_empty():
 		return []
-	var input = [view.people, view.get("timeline", {}), cards, value.get("citations", {})]
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards)]
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
@@ -204,27 +213,50 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 		{"kind": "gift", "weight": 0.7 if gift else 0.15}, {"kind": "secret", "weight": 0.1}]
 	if alignment == "good" and role != "" and not gift:
 		profiles = [{"kind": "ordinary", "weight": 0.9}, {"kind": "secret", "weight": 0.1}]
+	# Each night's incident cards, deduplicated once in their original order.
+	var reports_by_night: Array = []
+	for night in nights:
+		var reports: Array = []
+		var incidents: Array = []
+		for card in relevant_cards:
+			if card.night != night:
+				continue
+			var incident: String = "alibi:" + card.subject if card.kind == "alibi" else ("trace:" + str(card.data.get("scene", "")) if card.kind == "trace" else card.id)
+			if incident in incidents:
+				continue
+			incidents.append(incident)
+			reports.append(card)
+		reports_by_night.append(reports)
 	var total = 0.0
 	for profile in profiles:
+		# Path products per night, evening and path. None depend on the habitual
+		# block, so they are built once and summed below in the original order.
+		var tables: Array = []
+		for n in range(nights.size()):
+			var night = nights[n]
+			var paths: Array = _profile_paths(view, person, night, profile.kind, cards)
+			var by_evening: Array = []
+			for evening in C.BLOCKS:
+				var products = PackedFloat64Array()
+				for path in paths:
+					var p: float = path.weight
+					for card in reports_by_night[n]:
+						p *= _observed(card, person.id, evening, path.path, alignment, view, night)
+					products.append(p)
+				by_evening.append(products)
+			tables.append(by_evening)
 		# One latent habitual evening block across every night; repeated identical
 		# material alone does not pretend to be independent confirmation of guilt.
 		for haunt in C.BLOCKS:
 			var weight: float = profile.weight / C.BLOCKS.size()
-			for night in nights:
+			for n in range(nights.size()):
 				var sum = 0.0
-				var reports: Array = relevant_cards.filter(func(c): return c.night == night)
+				var e: int = 0
 				for evening in C.BLOCKS:
 					var evening_p: float = 0.7 if evening == haunt else 0.1
-					for path in _profile_paths(view, person, night, profile.kind, cards):
-						var p: float = path.weight
-						var incidents: Array = []
-						for card in reports:
-							var incident: String = "alibi:" + card.subject if card.kind == "alibi" else ("trace:" + str(card.data.get("scene", "")) if card.kind == "trace" else card.id)
-							if incident in incidents:
-								continue
-							incidents.append(incident)
-							p *= _observed(card, person.id, evening, path.path, alignment, view, night)
+					for p in tables[n][e]:
 						sum += evening_p * p
+					e += 1
 				weight *= sum
 			total += weight
 	return total

@@ -518,15 +518,32 @@ static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Diction
 	# presentations exponentially slower. Byte-vector keys also avoid integer overflow.
 	var codes: Array = []
 	var indices = {}
-	for i in range(n):
-		var code = PackedByteArray()
-		code.resize(own.size())
-		for c in range(own.size()):
-			code[c] = 0 if tables[c][i] == 1 else (1 if valids[c][i] == 1 else 2)
-		if not indices.has(code):
-			indices[code] = codes.size()
-			codes.append(code)
-		of[i] = indices[code]
+	var k: int = own.size()
+	if k <= 39:
+		# Each world's state as one base-3 integer; a byte code is built only the first
+		# time a state appears, so indices and codes keep first-appearance order.
+		for i in range(n):
+			var packed: int = 0
+			for c in range(k):
+				packed = packed * 3 + (0 if tables[c][i] == 1 else (1 if valids[c][i] == 1 else 2))
+			if not indices.has(packed):
+				var code = PackedByteArray()
+				code.resize(k)
+				for c in range(k):
+					code[c] = 0 if tables[c][i] == 1 else (1 if valids[c][i] == 1 else 2)
+				indices[packed] = codes.size()
+				codes.append(code)
+			of[i] = indices[packed]
+	else:
+		for i in range(n):
+			var code = PackedByteArray()
+			code.resize(k)
+			for c in range(k):
+				code[c] = 0 if tables[c][i] == 1 else (1 if valids[c][i] == 1 else 2)
+			if not indices.has(code):
+				indices[code] = codes.size()
+				codes.append(code)
+			of[i] = indices[code]
 	var ns = codes.size()
 	var counts = PackedFloat64Array()
 	counts.resize(cc.team.size() * ns)

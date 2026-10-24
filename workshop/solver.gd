@@ -671,11 +671,18 @@ static func unresolved(view: Dictionary, worlds: Array) -> Array:
 	var result: Array = []
 	if worlds.is_empty():
 		return result
-	for p in view.people:
-		var i: int = view.people.find(p)
-		var evil_count = worlds.filter(func(w): return (w.evil & (1 << i)) != 0).size()
-		if evil_count > 0 and evil_count < worlds.size():
-			result.append(p.id)
+	# A person is unresolved when they are evil in some worlds and good in others.
+	var all_mask: int = (1 << view.people.size()) - 1
+	var any_evil: int = 0
+	var any_good: int = 0
+	for w in worlds:
+		any_evil |= w.evil
+		any_good |= ~w.evil & all_mask
+		if any_evil & any_good == all_mask:
+			break
+	for i in range(view.people.size()):
+		if any_evil & any_good & (1 << i):
+			result.append(view.people[i].id)
 	return result
 
 static func assumption_labels(view: Dictionary, cards: Array) -> Array:

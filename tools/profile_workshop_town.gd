@@ -85,12 +85,20 @@ func _run() -> void:
 	result["stages"] = totals
 	print("Stage totals: ", JSON.stringify(totals))
 	print("Town: %.2f ms; behavior %s" % [result.elapsed_us / 1000.0, result.behavior_hash])
+	# A listener on native rules does none of the shared work, so the timing would
+	# understate the town. Fail unless explicitly allowed.
+	var fallbacks: Array = result.deliveries.filter(func(d): return d.get("model", "") != "shared").map(func(d): return d.get("listener", "?"))
+	result["fallback_listeners"] = fallbacks
 	var path = "res://logs/workshop_profile.json"
 	if "--output" in args:
 		path = args[args.find("--output") + 1]
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path.get_base_dir()))
 	var file = FileAccess.open(path, FileAccess.WRITE)
 	file.store_string(JSON.stringify(result, "\t"))
+	if not fallbacks.is_empty():
+		print("%s: listeners used native rules, so this timing skips shared work: %s" % ["WARNING" if "--allow-fallback" in args else "FAIL", fallbacks])
+		quit(0 if "--allow-fallback" in args else 1)
+		return
 	quit()
 
 func _behavior(g) -> Dictionary:
