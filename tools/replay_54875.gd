@@ -1,5 +1,7 @@
 ## Original playtest opening through case #85's first vote. Measurements, not tuning.
-## godot --headless --path . --script res://tools/replay_54875.gd
+## godot --headless --path . --script res://tools/replay_54875.gd [-- --allow-fallback]
+## Also the Day 2 performance check: fails if any listener of case #85 used native rules
+## or any workshop_fallback event fired, unless --allow-fallback is given.
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Canvas = preload("res://game/workshop_canvas.gd")
@@ -72,4 +74,10 @@ func _init() -> void:
 	for tally in tallies:
 		print("Case #85 vote: %d yes / %d needed; %s" % [tally.data.count, tally.data.threshold, tally.data.outcome])
 	print("Measurement: logs/migration/replay_54875/measurement.json")
+	var native: Array = presentation.filter(func(d): return d.model != "shared").map(func(d): return d.listener)
+	if not native.is_empty() or not result.fallbacks.is_empty():
+		var allowed: bool = "--allow-fallback" in OS.get_cmdline_user_args()
+		print("%s: shared evaluation incomplete (native listeners %s; %d fallback events). The timing skips their work." % ["WARNING" if allowed else "FAIL", native, result.fallbacks.size()])
+		if not allowed:
+			errors.append("fallback")
 	quit(1 if not errors.is_empty() or presentation.is_empty() else 0)

@@ -46,10 +46,16 @@ static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Diction
 	var common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
 		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.confidence,
 		baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
-	var consequences = _consequences_eval(view, case_data, baseline, result, common_key) if modern else Consequences.assess(view, case_data, baseline, _pattern, common_key, result.theory)
+	# context.headline_only: a scoped reply whose effects are never applied (the shared
+	# union owns belief changes). Only the headline target's effect is computed; every
+	# other person's projection, theory and CaseEval re-run is skipped.
+	var only: Array = [case_data.conclusion.target] if context.get("headline_only", false) and view.people.any(func(p): return p.id == case_data.conclusion.target) else []
+	var consequences = _consequences_eval(view, case_data, baseline, result, common_key, only) if modern else Consequences.assess(view, case_data, baseline, _pattern, common_key, result.theory)
 	var effects = {}
 	for person in view.people:
 		var id: String = person.id
+		if not consequences.effects.has(id):
+			continue
 		var entry: Dictionary = consequences.effects[id].duplicate(true)
 		entry["baseline"] = baseline.suspicion.get(id, 0.1)
 		entry["before"] = snappedf(before.get(id, 0.1), 0.000000001)
@@ -551,7 +557,7 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 
 ## Effects on everyone from one CaseEval pass over the same attended evidence, plus the
 ## intermediate claims. Same result shape as Consequences.assess.
-static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Dictionary, headline: Dictionary, common_key: String) -> Dictionary:
+static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Dictionary, headline: Dictionary, common_key: String, only: Array = []) -> Dictionary:
 	var span = Profiler.open("consequences")
 	var attention = Reasoner.prepare(view, value, baseline)
 	var compiled = Graph.compile_case(view, value)
@@ -570,6 +576,8 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var effects = {}
 	for person in view.people:
 		var id: String = person.id
+		if not only.is_empty() and id not in only:
+			continue
 		var theory: Dictionary = headline.theory if id == value.conclusion.target else {}
 		var person_ev: Dictionary = ev
 		if persistence:
@@ -577,13 +585,20 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			# evidence through it (Theory bias), as the headline does.
 			var evil_case: Dictionary = attention.case.duplicate(true)
 			evil_case.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
-			var clone = baseline.duplicate(true)
-			var reasoning = Support.explain(view, evil_case, clone, Consequences._prepared(view, attention, evil_case, baseline))
+			# The explanation search only feeds Theory.prepare. Skip it when its result
+			# would be unused: the headline's own theory, or a decision Theory already
+			# has (unchanged inputs, or the fixed commitments a scoped reply inherits).
 			if id != value.conclusion.target or value.conclusion.type not in ["evil", "good", "suspicious"]:
-				theory = Theory.prepare(view, evil_case, clone, reasoning, common_key + id)
-			for key in clone.get("theories", {}):
-				if key.begins_with(id + "|"):
-					theories[key] = clone.theories[key]
+				var known: Dictionary = Theory.cached(view, evil_case, baseline, common_key + id)
+				if not known.is_empty():
+					theory = known
+				else:
+					var clone = baseline.duplicate(true)
+					var reasoning = Support.explain(view, evil_case, clone, Consequences._prepared(view, attention, evil_case, baseline))
+					theory = Theory.prepare(view, evil_case, clone, reasoning, common_key + id)
+					for key in clone.get("theories", {}):
+						if key.begins_with(id + "|"):
+							theories[key] = clone.theories[key]
 			if not theory.get("bias", {}).is_empty():
 				var biased = eval_listener.duplicate(true)
 				biased["theory_bias"] = theory.bias

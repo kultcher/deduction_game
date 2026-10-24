@@ -5,7 +5,9 @@
 ##   new case      a different premise over a subset of the same readings: the cost of a
 ##                 presentation once its readings' tables exist (built when they arrive)
 ##   repeat        the same case again (everything cached)
-##   godot --headless --path . --script res://tools/profile_case_eval_town.gd -- --seed 692
+##   godot --headless --path . --script res://tools/profile_case_eval_town.gd -- --seed 692 [--allow-fallback]
+## Exits with failure if any listener's case wasn't ready (not evaluated): those listeners
+## add no cost, so the timing would understate the town. --allow-fallback only reports it.
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
@@ -17,6 +19,7 @@ const Solver = preload("res://workshop/solver.gd")
 
 var g
 var seed_value = 692
+var not_ready: Array = []
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -40,6 +43,7 @@ func _town(number: int, listeners: Array) -> Array:
 		capture_us += Time.get_ticks_usec() - t0
 		if not prepared.ready:
 			rows.append("  %s: not ready (%s)" % [n.id, "; ".join(PackedStringArray(prepared.issues))])
+			not_ready.append(n.id)
 			continue
 		t0 = Time.get_ticks_usec()
 		var r = CaseEval.evaluate(prepared.view, prepared.case, prepared.listener)
@@ -83,4 +87,8 @@ func _run() -> void:
 	print("first case (all cold):        prepare %.0f ms, evaluation %.0f ms, %d worlds" % [first[0], first[1], worlds])
 	print("new case, readings known:     prepare %.0f ms, evaluation %.0f ms ('%s is evil', %d readings)" % [second[0], second[1], other.id, subset.size()])
 	print("repeat:                       prepare %.0f ms, evaluation %.0f ms" % [repeat[0], repeat[1]])
+	if not not_ready.is_empty():
+		print("%s: listeners not evaluated, so these timings skip their work: %s" % ["WARNING" if "--allow-fallback" in args else "FAIL", not_ready])
+		quit(0 if "--allow-fallback" in args else 1)
+		return
 	quit()

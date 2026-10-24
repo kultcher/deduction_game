@@ -280,7 +280,10 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 				scoped.case.cards.append(id)
 	if scoped.case.conclusion.type == "conflict":
 		listener.knowledge.own_reports = [] # Test the quoted set, not an unrelated background inconsistency.
-	return Jury.evaluate(view, scoped.case, listener)
+	# The reply's effects are never applied: the union evaluated in the belief refresh
+	# owns them. Reuse its commitments (fixed decisions above) and compute only the
+	# headline's own effect, which the reply text reads.
+	return Jury.evaluate(view, scoped.case, listener, {"headline_only": true})
 
 static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictionary) -> Dictionary:
 	if not plan.ready:
