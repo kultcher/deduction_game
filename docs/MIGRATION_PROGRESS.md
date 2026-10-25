@@ -191,3 +191,33 @@ Existing local Godot config/UID changes are outside these commits.
   the single-fact identity and provenance; claim, curse, ownership and playtest
   regressions pass. The previous final snapshot is retained for comparison; a
   fresh passive chunk will measure this correction too.
+- **Passive chunk after 2–5 (seeds 1000–1009):** shared 2/10 good wins versus
+  the previous 0/10; native remains 3/10. Shared Day-3 same-top 29.7% (previous
+  31.2%; native 35.4%), top-3 overlap 1.33 (1.32; native 1.93), Demon rank 3.97
+  (3.80; native 3.98). Fallbacks 27 -> 0; **0 impossible / 1886 refreshes**,
+  no guards or script errors. No curse fired, so this chunk doesn't measure
+  expanded curse cost. Behaviour acceptance against native is still unmet.
+  Evidence: `batch-235/summary.json`; no outcome-based tuning.
+- **9:** imported the user's actual Day-3 four-report and Day-4 six-report graphs
+  and commands from the archived playtest log. `run_replay_54875.py --stage
+  day3-four|day4-six` keeps exact case fact IDs, positions, answers, disputes and
+  nested links, resolves ancillary citations by original identity/content, and
+  records profiles, judgments, vote margins and impossible refreshes. Extra town
+  nominations before a recorded close are voted no and logged. Current history
+  kills Hollis before the recorded Day-4 conversation; it remains visibly
+  unavailable, then the recorded smithy visit/search is repeated at the evening
+  checkpoint. No phase, death or missing case receipt is fabricated.
+  Six-stage run: 24 shared, 0 native/fallback, **0 impossible / 298 refreshes**;
+  votes Day 2 **3/5**, Day 3 **1/5**, Day 4 **3/4**, all fail. The Day-3 raw
+  Night Watch accusation sharply changes the judgments after an accepted case;
+  report this surprise, do not tune it. Presentations 3531 / 4799 / 4258 ms;
+  these late workloads cost more than the opening. `item-9-six-final` retains
+  measurements and all continuation changes; missing graphs/receipts fail loudly.
+- **Trace suite audit:** its native-argument record test also crashes on the starting
+  `8fa8f13` snapshot: shared presentation intercepts the synthetic native argument,
+  so the expected native decision is absent. That section now explicitly selects
+  native comparison mode; the isolated record/parity checks pass (18 checks).
+  Full trace/parity validation is running; this is a test setup correction.
+  Follow-up `item-9-check` validates the final harness diagnostics. Day-4 held
+  unions contain many more receipts than the filed six, but attention selects at
+  most ten cards here; this fixture does **not** exercise the >16-reading key cliff.

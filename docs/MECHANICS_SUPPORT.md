@@ -223,7 +223,12 @@ model owns the claim: `own_role` "they claim my gift", double-claim bumps and
 
 ## 9. Day 3–4 versions of case #85 in the replay fixture
 
-**When:** when the user says so (previously on hold).
+**Implemented Oct 25 (Codex).** The current request reopened this item. Original
+Day 3/4 graphs and commands came from the user's archived `case_54875.jsonl`.
+Use `run_replay_54875.py --stage day3-four` or `--stage day4-six`. Extra NPC
+nominations and a missed evening visit are resolved with logged ordinary commands;
+case receipts, links and conclusions are preserved. Outcomes are measured.
+See MIGRATION_PROGRESS for the surprising votes and the continuation drift.
 
 **What:** extend `tests/fixtures/playtest_54875_opening.json` and the replay to the
 four- and six-report versions of #85. This is the late-game measurement for speed (the

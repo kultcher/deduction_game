@@ -138,6 +138,7 @@ func _fingerprint(g) -> Dictionary:
 		"board": g.board.duplicate(true), "meeting": g.w.meeting.duplicate(true)}
 
 func _test_parity(sd: int, count: int) -> void:
+	print("TRACE parity starting: seed %d / %d NPCs" % [sd, count])
 	var traced = _fresh(sd, count, true)
 	var control = _fresh(sd, count, false)
 	var identical = _fingerprint(traced) == _fingerprint(control)
@@ -272,6 +273,8 @@ func _test_decision_records() -> void:
 		"class": "concrete", "day": 0, "phase": C.NIGHT, "block": target.home_block, "text": "test sighting"}
 	var ded = {"n": 2, "kind": "deduction", "text": "test suspicion",
 		"conclusion": {"type": "suspicious", "a": target.id}, "supports": [1]}
+	# These records exercise the deliberately retained native argument routes.
+	g.set_workshop_effects(false)
 	Argue.evaluate(w, n, ded, [support], 1.0, false)
 	var argument = _last_decision(w, "argument", "evaluation", n.id)
 	_check(argument["data"]["details"]["route"] == "generic_support",

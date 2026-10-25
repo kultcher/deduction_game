@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--godot", type=Path, required=True)
     parser.add_argument("--project", type=Path, default=Path.cwd())
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--stage", choices=["opening", "day3-four", "day4-six"], default="opening")
     parser.add_argument("--timeout", type=int, default=600)
     args = parser.parse_args()
     output = args.output.resolve()
@@ -23,7 +24,7 @@ def main():
     project = args.project.resolve()
     run = subprocess.run(
         [str(args.godot.resolve()), "--headless", "--path", str(project),
-         "--log-file", str(output / "engine.log"), "--script", "res://tools/replay_54875.gd"],
+         "--log-file", str(output / "engine.log"), "--script", "res://tools/replay_54875.gd", "--", "--stage", args.stage],
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         timeout=args.timeout, env={**os.environ, "APPDATA": str(output / "userdata")},
     )
