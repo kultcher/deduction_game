@@ -1564,6 +1564,13 @@ exact values remain open. The code-derived examples and clarifications are in
     changed reasoning without deleting the underlying evidence. NPCs may retain
     their own view and explain why. Private role guesses remain private.
 
+    > **Session verification 2026-10-25 (B122):** test_workshop_live_canvas verifies heard revision
+    > replacement, endorsement withdrawal without independent ownership, and retained original board
+    > evidence. Propose closure only of the demonstrated player UI/history mechanism. Retention of
+    > independently heard NPC facts needs separate evidence; broader public explanations/NPC stance
+    > design remains skipped. Full default runner: 73/75; only permitted test_social/test_text_ui
+    > failures.
+
     > **Prep B122 (9cb8782; partial; candidate to narrow):**
     > `ui/live_case_workshop.gd::_withdraw_window`, `game/game.gd::workshop_retract`, and
     > `game/workshop_canvas.gd::file` already support withdrawal/revision. Verify UI/ownership first;

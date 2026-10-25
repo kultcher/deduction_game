@@ -99,6 +99,7 @@ func _run() -> void:
 	check(listener.workshop_state.facts.size() == 1, "fallback recovery retains a single original owner")
 	g.workshop_retract(number, listener.id)
 	check(listener.workshop_state.facts.is_empty(), "withdrawal removes the canvas endorsement when it has no independent owner")
+	check(g.board[read - 1].kind == "info" and not g.board[read - 1].get("deleted", false), "withdrawal retains the original evidence on the board")
 	var missing = board.compile(root_id)
 	g.board[read - 1].deleted = true
 	check(Live.status(g, missing).blocked and Live.file(g, missing, number) < 0, "missing original evidence blocks filing instead of silently weakening the case")
