@@ -317,7 +317,7 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 	var people: int = view.people.size()
 	var roles_on: bool = view.get("world_options", {}).get("roles", false)
 	var seer: bool = Solver.Roles.seer_flag(cards)
-	var relay: bool = cards.any(func(c): return c.has("relay_source"))
+	var mediums: int = Solver.Roles.relay_mediums(view.people.map(func(p): return p.id), cards)
 	var k: int = reports.size()
 	var index = {}
 	var team = PackedInt32Array()
@@ -331,7 +331,7 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 	var digits = PackedByteArray()
 	digits.resize(k)
 	var radix: int = int(pow(3, k))
-	var rm_bound: int = (1 << people) * (people + 2) * (people + 2) * ((1 << people) * 2 if relay else 1)
+	var rm_bound: int = (1 << people) * (people + 2) * (people + 2) * ((1 << people) if mediums != 0 else 1)
 	var int_keys: bool = k <= 16 and float(rm_bound) * float(radix) * 4.0 < 9.0e18
 	# Each world's card states as one base-3 code, a card at a time.
 	var codes = PackedInt64Array()
@@ -343,7 +343,7 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 		for i in range(n):
 			codes[i] = codes[i] * 3 + (0 if t[i] == 1 else (1 if v[i] == 1 else 2))
 	var live: bool = Domain.live(view)
-	var rms: PackedInt64Array = _coarse(view, seer, relay) if roles_on else Solver.world_bits(view).evil
+	var rms: PackedInt64Array = _coarse(view, seer, mediums) if roles_on else Solver.world_bits(view).evil
 	if not live:
 		# Fixture universes are small and carry conversion histories: one world per class.
 		rms = PackedInt64Array()
@@ -429,8 +429,8 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 static var _coarse_cache: Dictionary = {}
 
 ## Per universe: each world's role-check mask (Roles.coarse_mask), for these flags.
-static func _coarse(view: Dictionary, seer: bool, relay: bool) -> PackedInt64Array:
-	var key = hash([Solver._universe_key(view), seer, relay])
+static func _coarse(view: Dictionary, seer: bool, mediums: int) -> PackedInt64Array:
+	var key = hash([Solver._universe_key(view), seer, mediums])
 	if _coarse_cache.has(key):
 		return _coarse_cache[key]
 	if _coarse_cache.size() > 16:
@@ -440,7 +440,7 @@ static func _coarse(view: Dictionary, seer: bool, relay: bool) -> PackedInt64Arr
 	var out = PackedInt64Array()
 	out.resize(universe.size())
 	for i in range(universe.size()):
-		out[i] = Solver.Roles.coarse_mask(people, universe[i], seer, relay)
+		out[i] = Solver.Roles.coarse_mask(people, universe[i], seer, mediums)
 	_coarse_cache[key] = out
 	return out
 

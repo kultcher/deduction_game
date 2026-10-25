@@ -17,7 +17,7 @@ static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: D
 		if cache.size() >= 64:
 			cache.clear()
 		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
-	var mask: int = coarse_mask(ids.size(), world, cache[key].seer, cards.any(func(c): return c.has("relay_source")))
+	var mask: int = coarse_mask(ids.size(), world, cache[key].seer, relay_mediums(ids, cards))
 	if not cache[key].results.has(mask):
 		cache[key].results[mask] = _fits_view(view, ids, world, cards, knowledge, answers)
 	return cache[key].results[mask]
@@ -46,27 +46,51 @@ static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledg
 	var entry: Dictionary = cache[key]
 	var results: Dictionary = entry.results
 	var seer: bool = entry.seer
-	var relay: bool = cards.any(func(c): return c.has("relay_source"))
+	var mediums: int = relay_mediums(ids, cards)
 	var routes = null
 	for i in range(universe.size()):
 		var world: Dictionary = universe[i]
-		var mask: int = coarse_mask(ids.size(), world, seer, relay)
+		var mask: int = coarse_mask(ids.size(), world, seer, mediums)
 		if not results.has(mask):
-			# Relays add Medium claims per world before routing: no hoist then.
-			if routes == null and not relay and Activity.available(view):
-				routes = Activity.routes(view, cards, answers, knowledge)
+			# The Medium claims a relay adds are the same in every world that passes the
+			# relay checks (worlds that fail never reach routing), so routes hoist too.
+			if routes == null and Activity.available(view):
+				routes = Activity.routes(view, _routing_cards(cards), answers, knowledge)
 			results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, routes, bluffs)
 		out[i] = 1 if results[mask] else 0
 	return out
 
 ## The parts of a world the role check reads, as one int: fits() gives the same answer
 ## for worlds with the same mask (for the same view, cards and knowledge).
-static func coarse_mask(people: int, world: Dictionary, seer: bool, relay: bool) -> int:
+## mediums: relay_mediums(). A relay only reads whether its Medium is Delusional (the
+## Medium's evil bit is already in the mask), not the other modifier holders: keying on
+## all holders split every class ~12,000 ways in late games.
+static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int) -> int:
 	var n: int = people + 1
 	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if seer else 0)
-	if relay:
-		mask = (mask * (1 << people) + int(world.get("holders", 0))) * 2 + int(world.get("modifier") == "delusional")
+	if mediums != 0:
+		var deluded: int = int(world.get("holders", 0)) & mediums if world.get("modifier", "marked") == "delusional" else 0
+		mask = mask * (1 << people) + deluded
 	return mask
+
+## Bit per Medium named by an unquoted relay card (the people the relay check reads).
+static func relay_mediums(ids: Array, cards: Array) -> int:
+	var bits: int = 0
+	for card in cards:
+		if card.has("relay_source") and not card.get("quoted", false):
+			var medium: int = ids.find(card.relay_source)
+			if medium >= 0:
+				bits |= 1 << medium
+	return bits
+
+## The cards routing reads in a world that passes the relay checks: each unquoted relay
+## adds its Medium's inferred claim, in card order (as _fits_view does).
+static func _routing_cards(cards: Array) -> Array:
+	var out: Array = cards.duplicate()
+	for card in cards:
+		if card.has("relay_source") and not card.get("quoted", false):
+			out.append({"kind": "claim", "source": card.relay_source, "role": "medium", "inferred": true})
+	return out
 
 ## The seer flag fits() keys its memo on.
 static func seer_flag(cards: Array) -> bool:
@@ -75,9 +99,8 @@ static func seer_flag(cards: Array) -> bool:
 ## routes: Activity.routes(view, cards, answers, knowledge) if already computed. It
 ## doesn't depend on the world, so fits_table computes it once for all worlds.
 static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null, bluffs: bool = false) -> bool:
-	cards = cards.duplicate()
 	var visits = {}
-	for card in cards.duplicate():
+	for card in cards:
 		if card.has("relay_source") and not card.get("quoted", false):
 			var medium: int = ids.find(card.relay_source)
 			if medium < 0 or world.evil & (1 << medium) or not preload("res://workshop/world_domain.gd").healthy(view, world, card.relay_source) or not preload("res://workshop/live_history.gd").alive_at_night(view, card.relay_source, card.relay_observed_at.day):
@@ -86,7 +109,7 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 			if visits.has(visit) and visits[visit] != card.relay_observed_at.day:
 				return false
 			visits[visit] = card.relay_observed_at.day
-			cards.append({"kind": "claim", "source": card.relay_source, "role": "medium", "inferred": true})
+	cards = _routing_cards(cards)
 	var sexton_night = -1
 	for card in cards:
 		if card.kind != "report" or card.get("quoted", false):
