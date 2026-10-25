@@ -290,7 +290,7 @@ static func content_sig(view: Dictionary, world: Dictionary) -> int:
 	return int(world.__key)
 
 ## Roles whose report content can fail in a world (the rest only need a valid source).
-const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch"]
+const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch", "warden"]
 
 static var _bits: Dictionary = {}
 
@@ -592,6 +592,8 @@ static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictio
 ## What a report says, given a valid source (see source_valid): does it hold here?
 static func _report_content(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
 	_ensure_people(view)
+	if card.role == "warden":
+		return not view.get("timeline", {}).get("events", []).any(func(event): return event.kind == "demon_death" and event.at.day == card.observed_at.day and card.data.target in event.subjects)
 	if Domain.live(view):
 		if card.role == "nightwatch" and card.data.seen.any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):
 			return false

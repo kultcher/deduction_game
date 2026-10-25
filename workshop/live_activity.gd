@@ -11,7 +11,7 @@ static func available(view: Dictionary) -> bool:
 	return view.get("live_activity", false)
 
 static func relevant(cards: Array) -> Array:
-	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "lamplighter", "veteran"]))
+	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran"]))
 
 ## Everything routes() and factors() read from a card list: the movement-relevant
 ## cards, relayed cards (in order) and each person's claimed role. Two listeners who
@@ -22,7 +22,7 @@ static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionar
 	for person in view.people:
 		var role: String = role_of(cards, person.id, knowledge)
 		roles.append([role, role_hearing(cards, person.id, role)] if weighted else role)
-	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (c.kind == "report" and c.role in ["nightwatch", "lamplighter", "veteran"])), roles]
+	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran"])), roles]
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):
@@ -79,6 +79,8 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 					okay = okay and out and path.back() == card.data.block
 				else:
 					okay = okay and ((card.data.block in path) == (person.id in card.data.seen))
+			elif card.kind == "report" and card.role == "warden" and card.source == person.id:
+				okay = okay and out and path.back() == card.block
 			elif card.kind == "report" and card.role == "lamplighter" and card.source == person.id:
 				okay = okay and path.size() == C.BLOCKS.size()
 			if not okay:
@@ -339,6 +341,8 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 					return 1.0 if not out else 0.0
 				return (0.7 if alignment != "good" else 0.3) if out else 0.9
 		"report":
+			if card.role == "warden" and card.source == person:
+				return 1.0 if out and path.back() == card.block else 0.0
 			if card.role == "nightwatch":
 				if card.source == person:
 					return 1.0 if out and path.back() == card.data.block else 0.0

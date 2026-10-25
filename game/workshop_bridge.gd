@@ -142,6 +142,14 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 			"day": belief.day, "phase": belief.phase, "block": belief.get("block", ""), "loc": belief.get("loc", "")}
 		card["when"] = CardModel.when(card, now.day, now.phase)
 		input.receipts.append({"card": card, "private": true})
+	for key in n.warden_log:
+		var target: String = n.warden_log[key]
+		var night: int = int(key)
+		var residents: Array = input.people.filter(func(p): return p.id == target)
+		if night < 1 or night > now.day or residents.is_empty():
+			continue
+		input.receipts.append({"private": true, "card": {"kind": "sighting", "source": n.id, "subject": [n.id], "guard_claim": target,
+			"block": residents[0].home, "day": night, "phase": C.NIGHT, "text": "My own guard statement."}})
 	# No role/alignment certainty is manufactured from truth or inferred from a gift.
 	input.issues.append({"code": "listener_history_partial", "fact": "", "detail": "Legacy knowledge lacks complete report/learning times and withdrawal receipts; own and known readings are retained."})
 

@@ -149,6 +149,11 @@ binds it to the named source (already implemented).
 
 ## 5. Warden guard statements
 
+**Implemented Oct 25 (Codex).** Public statements and the Warden's own guard
+memory share exact source/door/night receipts. Routes, matching quiet nights and
+the public killed door are judged together; impairment/error remains possible.
+Other listeners never receive the private guard log. Hearthwitch remains benched.
+
 **State:** the one active gift still unsupported outside a Medium relay (B4).
 Hearthwitch is benched; leave it.
 

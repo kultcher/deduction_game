@@ -11,6 +11,7 @@ const REPORT_FIELDS = {
 	"gravedigger": ["executed", "role"], "psychologist": ["subject", "trusts", "suspects"],
 	"veteran": ["attacked", "block"], "martyr": ["target", "chosen", "evil"],
 	"sexton": ["night"],
+	"warden": ["target"],
 }
 const FIELDS = ["block", "loc", "locs", "home", "night", "role", "secret_kind", "fear", "withheld", "package", "roles", "duty_claim", "duty", "vigil", "dropped",
 	"nominee", "by", "yes", "no", "player_yes", "count", "threshold", "outcome", "alive_before", "owner", "material", "crime_night", "scene", "scene_block", "victim", "ward", "guard_claim", "watch_claim"]

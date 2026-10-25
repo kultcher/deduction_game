@@ -12,7 +12,7 @@ static func assess(view: Dictionary, cards: Array, listener: Dictionary) -> Dict
 		if quiet.night in counted:
 			continue
 		counted.append(quiet.night)
-		var claims: Array = cards.filter(func(c): return not c.get("quoted", false) and ((c.kind == "claim" and c.role in ["warden", "veteran"]) or (c.kind == "report" and c.role == "veteran" and c.night == quiet.night)))
+		var claims: Array = cards.filter(func(c): return not c.get("quoted", false) and ((c.kind == "claim" and c.role in ["warden", "veteran"]) or (c.kind == "report" and c.role in ["warden", "veteran"] and c.night == quiet.night)))
 		var people: Array = []
 		for claim in claims:
 			if claim.source not in people:
@@ -43,7 +43,7 @@ static func owns(entry: Dictionary, cards: Array) -> bool:
 	if meta.get("kind") not in ["proof", "quiet_night"]:
 		return false
 	for quiet in cards.filter(func(c): return c.kind == "quiet"):
-		for claim in cards.filter(func(c): return c.kind == "claim" and c.role in ["warden", "veteran"] or c.kind == "report" and c.get("role") == "veteran"):
+		for claim in cards.filter(func(c): return c.kind == "claim" and c.role in ["warden", "veteran"] or c.kind == "report" and c.get("role") in ["warden", "veteran"] and c.night == quiet.night):
 			if entry.get("eid") != "quiet:%d>%s" % [quiet.night, claim.source] or entry.get("rel", []) != [claim.source, -1, "report"]:
 				continue
 			var expected: float = -0.15 if claim.role == "warden" else -0.06

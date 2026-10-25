@@ -5,7 +5,7 @@ const Jury = preload("res://workshop/jury.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const LedgerAudit = preload("res://workshop/ledger_audit.gd")
 const C = preload("res://sim/content.gd")
-const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist"]
+const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "warden", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist"]
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
 const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]
@@ -94,6 +94,8 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	# hearing routes. Keep health keys apart from receipt ids before route weighting.
 	var relayed_origins: Array = cards.filter(func(c): return c.has("relay_source")).map(func(c): return c.logical_origin)
 	for card in cards:
+		if card.kind == "report" and card.get("role") == "warden":
+			card["block"] = snapshot.people.filter(func(p): return p.id == card.data.target)[0].home
 		if card.has("relay_source"):
 			card.accuracy_origin = "health:" + card.logical_origin
 		elif card.kind == "report" and card.id in relayed_origins:
@@ -115,7 +117,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		"timeline": History.from_events(snapshot.public_events)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim"] or c.get("role") in ["nightwatch", "veteran", "lamplighter", "sexton", "martyr"]):
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "sexton", "martyr"]):
 		view["live_activity"] = true
 		view.world_options["roles"] = true
 		view.world_options["identities"] = true
@@ -316,9 +318,12 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 					if event.kind == "demon_death" and event.at.day == night:
 						card.excluded.append_array(event.subjects)
 			if e.content.has("guard_claim"):
-				if e.content.guard_claim not in ids or e.subjects != [e.source] or snapshot.people.filter(func(p): return p.id == e.content.guard_claim)[0].home != block:
+				if e.content.guard_claim not in ids or e.content.guard_claim == e.source or e.subjects != [e.source] or night < 1 or snapshot.people.filter(func(p): return p.id == e.content.guard_claim)[0].home != block:
 					return {}
 				card["guard_claim"] = e.content.guard_claim
+				card["kind"] = "report"
+				card["role"] = "warden"
+				card["data"] = {"target": e.content.guard_claim}
 			if e.content.get("dropped", false) and e.source == "evidence" and e.subjects.size() == 1:
 				card["item_drop"] = true
 			return card
@@ -443,7 +448,7 @@ static func testimony_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 	receipt.content.data = data
 	if not reading_valid(receipt, snapshot.people.map(func(p): return p.id), snapshot.rules.modifier_options):
 		return context
-	if role in ["nightwatch", "lamplighter", "veteran", "martyr", "sexton"]:
+	if role in ["nightwatch", "warden", "lamplighter", "veteran", "martyr", "sexton"]:
 		if role == "nightwatch" and not data.seen.is_empty():
 			context.merge({"kind": "sighting", "subject": data.seen[0], "subjects": data.seen.duplicate(), "night": observed.day, "block": data.block, "hearing_weight": C.RELAY_WEIGHT}, true)
 		return context # No identity/visit/protection proof from an unattributed original.
@@ -684,6 +689,8 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 		return false
 	var data: Dictionary = receipt.content.data
 	match receipt.content.role:
+		"warden":
+			return data.get("target") in ids and data.target != receipt.source and receipt.observed_at.day >= 1 and receipt.observed_at.phase == "night"
 		"psychologist":
 			return receipt.observed_at.phase == "night" and receipt.observed_at.day >= 1 and data.get("subject") in ids and data.subject != receipt.source and data.get("trusts") in ids and data.trusts != data.subject and data.get("suspects") in ids and data.suspects != data.subject
 		"surveyor":

@@ -462,8 +462,9 @@ func _question(card: Dictionary) -> void:
 				if private_errand:
 					support = claims.filter(func(c): return c.id == current.citations.get(key, ""))[0] if claims.any(func(c): return c.id == current.citations.get(key, "")) else {}
 				_label(box, "Cited: %s. This could explain the outing; accuracy and activity are still assumptions." % support.text if not support.is_empty() else "No applicable walking-gift claim is cited; this explanation receives no discount.", 14, "muted")
-	elif card.kind == "report" and role in ["gravedigger", "veteran", "martyr", "sexton"]:
+	elif card.kind == "report" and role in ["warden", "gravedigger", "veteran", "martyr", "sexton"]:
 		var explanation: String = {
+			"warden": "This claims a guard at the named door on that night. Movement, public deaths and quiet nights weigh it together; a quiet night alone does not prove a successful protection.",
 			"gravedigger": "This names the executed person's role at that execution. An evil-role result can also come from a good Marked person. No additional answer is required.",
 			"veteran": "This claims the first survived Demon attack and its approach block. It can constrain the attacker's route if the report is sound. No additional answer is required.",
 			"martyr": "This records a claimed choice; choosing someone does not establish that they are good. Comparing an earlier promise with a later hanging still needs a dated outcome adapter." if card.data.get("chosen", false) else "This claims the chosen person was hanged without substitution. If the gift was healthy, they registered evil; Marked remains an explanation.",

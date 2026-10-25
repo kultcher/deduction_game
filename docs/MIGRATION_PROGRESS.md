@@ -157,3 +157,13 @@ Existing local Godot config/UID changes are outside these commits.
   provenance, Medium, Psychologist and sharing suites pass. Replay: 9 shared,
   0 fallback, 0 impossible / 89, unchanged 3/5; presentation 3108 ms versus the
   preceding valid 3022 ms. Evidence: `logs/mechanics-support/relays`, `item-4`.
+- **5:** Warden door/night statements are structured gift receipts in the existing
+  report and movement tables, including private own guards and verified Medium
+  retellings. A healthy accepted guard cannot have protected that night's publicly
+  killed door; impairment/error still keeps alternatives finite. Matching quiet
+  nights supply bounded support once, with native quiet bonuses parked. Door lookup
+  is hoisted out of movement's inner loops. Warden (9 checks), Medium, relay and
+  live-adapter suites pass. Replay: 9 shared, 0 fallback, 0 impossible / 89, 3/5;
+  present 3063 ms (previous 3108), search 2584 ms. **Flagged vote cost:** 863 ms
+  versus 756 ms (~14%); Warden memories now add dated evidence to refreshes. One
+  noisy measurement, not a precise cost attribution. Evidence: `warden`, `item-5`.
