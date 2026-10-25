@@ -54,6 +54,13 @@ slower and noisier than the user's machine):
 | Soft testimony (`2c29c2d`): an evil source's role declaration is a possible bluff (weight 0.35), good sources' claims stay binding, contradictory routes no longer void worlds; stopgap removed | No impossible refreshes (seed 1005: 0 of 190, was 59). Case #85 3/5 yes (was 2/5). Presenting 8.0 → 5.1 s, nomination 3.7 → 0.9 s |
 | Per-run CaseEval reuse in `Jury` (`4252f60`, exact) | Presenting 5.1 → 3.8 s, identical margins |
 | Meeting refreshes deferred until a listener speaks, flushed when testimony ends | Meeting entry about 2.5 → 0.9 s, search into meeting 5.5 → 2.0 s, same margins |
+| Canvas capability status computed once per command (`3edd6ed`; it already checks the whole audience, so per-listener calls were O(listeners²)) | Presenting 4.1 → 3.2 s, identical margins |
+
+End state on the container (54875 replay): meeting entry 0.9 s, search into meeting
+2.0 s, presenting 3.2 s, nomination 1.0 s, vote 0.6 s (from 6.4 / 12.9 / 8.0 / 3.7 / 1.9).
+Scaled to the user's machine (about 0.7×): roughly 0.6 / 1.4 / 2.2 / 0.7 / 0.4 s. The
+presentation's remaining cost is mostly the scoped reply (about two thirds): one
+CaseEval each for its headline and its root-claim check, plus the explanation search.
 
 **Tried and reverted:** memoising `CaseEval.evaluate` on its whole input (hashing the
 view cost far more than it saved); moving private readings into `own_reports` with no
@@ -63,8 +70,8 @@ restructure; it's parked until the speed budget says it's needed.
 
 **Next, in order:**
 1. A/B bot run on the re-baselined main (user, locally): parity check and agreement.
-2. Reply speed: per-listener setup (about 0.9 s per presentation) and the reply's
-   headline work; then Insight-as-degree and attention for replies only.
+2. Reply speed if needed: build the root claim from the headline instead of a second
+   CaseEval; then Insight-as-degree and attention for replies only.
 3. Words match beliefs (a reply's stance from the same result as the belief).
 4. Confidence stickiness rule.
 5. Q3 tuning (check in first): vote thresholds, a rank-aware vote term.

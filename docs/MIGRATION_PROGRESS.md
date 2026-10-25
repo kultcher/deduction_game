@@ -752,6 +752,26 @@ result does not meet P0 sign-off. It predates Q1/Q4, Q2, event adapters and bot 
 current-source results are still required. Data and per-run script-error status are in
 `logs/migration/resume/adapters/batches`.
 
+## Re-baseline (Claude, Oct 24–25)
+
+Scope, decisions and the change table live in LEGACY_MIGRATION.md ("Re-baseline").
+Summary: scale Confidence for live listeners; soft testimony (evil sources may bluff a
+role, weight 0.35; contradictory routes no longer void worlds) replacing the source-drop
+stopgap; per-run CaseEval reuse in `Jury`; meeting refreshes deferred until a listener
+speaks; canvas status once per command. Container replay: meeting entry 6.4 → 0.9 s,
+search into meeting 12.9 → 2.0 s, presenting 8.0 → 3.2 s, nomination 3.7 → 1.0 s;
+case #85 3 yes / 5 needed (was 2). Seed 1005: no impossible refreshes. Full default
+suite: only the two known failures.
+
+Post-mortem notes (how the migration lost the plot): the founding intent ("NPCs judge
+the player's theory; they don't search for theories") was inverted by a cleanup-shaped
+plan to migrate every belief; realism layers (bounded attention, persistence theories,
+private re-derivation, exact channels) were each locally justified but multiplied cost
+and scattered the town; validation checked faithfulness to spec, not play, until the
+first native/shared bot A/B; performance was fought as symptoms without a stated cost
+model; hand-offs carried steps rather than intent. Guardrails now in the plan: a north
+star, a speed budget, play-level A/B acceptance, intent in hand-offs.
+
 ## Impossible refreshes and the source-drop stopgap (Claude, Oct 24)
 
 **Finding.** Ten-person passive A/B, 50 seeds each, same source (`autoplay.gd` with and
