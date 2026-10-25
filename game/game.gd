@@ -247,12 +247,23 @@ func _home_cards() -> void:
 		add_card({"kind": "home", "subject": [n.id], "block": n.home_block, "source": "town", "class": "concrete",
 			"text": "%s lives on %s." % [n.name, C.block_name(n.home_block)]})
 
+## Canvas capability status for the current command: it already checks the whole
+## audience, so computing it once per listener made a presentation O(listeners^2).
+var _canvas_status_memo: Dictionary = {}
+
+func _canvas_status(value: Dictionary) -> Dictionary:
+	var key = JSON.stringify(value)
+	if not _canvas_status_memo.has(key):
+		_canvas_status_memo[key] = WorkshopCanvas.status(self, value)
+	return _canvas_status_memo[key].duplicate(true)
+
 func command(line: String) -> String:
 	if workshop_presenting:
 		return "A case presentation is still being assessed."
 	var text = line.strip_edges()
 	if text == "":
 		return ""
+	_canvas_status_memo = {}
 	_workshop_native_submission = false
 	events = []
 	if w != null:
@@ -624,7 +635,7 @@ func _evaluate_deduction_inner(n, ded: Dictionary, scale: float, speak: bool = t
 		w.dlog.trace_event("workshop_comparison", n.id, ded.conclusion.get("a", ""), {"comparison": comparison, "input": snapshot},
 			"Read-only proposal beside the actual named presentation model; the comparison itself applies no effects.")
 	if ded.has("workshop_case"):
-		var capability = WorkshopCanvas.status(self, ded.workshop_case)
+		var capability = _canvas_status(ded.workshop_case)
 		var issues: Array = capability.issues.duplicate()
 		if not workshop_effects:
 			issues.append("Experimental reading effects are switched off.")
