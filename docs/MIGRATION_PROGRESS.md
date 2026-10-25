@@ -175,3 +175,13 @@ Existing local Godot config/UID changes are outside these commits.
   0 impossible / 89, unchanged 3/5; present 3236 ms (previous 3063), search 2687 ms
   (2584), nomination 1053 ms (984), vote 872 ms (863). No measured step over 10%
   slower. Evidence: `sightings-final`, `item-6`.
+- **8:** public/relayed role claims enter as stable declaration receipts, with
+  hearing weight. Shared ownership parks both sides of double-claim bumps, legacy
+  claim credence and the separate pressed `own_role` bump. Counterclaims now use a
+  repeat-safe ledger entry; showing the actual rival's claim reaches that branch.
+  Anonymous testimony cannot establish or strengthen the teller's gift declaration.
+  Claim (10 checks), ownership, relay, card-adapter and live suites pass. Replay:
+  9 shared, 0 fallback, 0 impossible / 89, unchanged 3/5; present 3361 ms (3236).
+  **Flagged refresh cost:** search 3563 ms (2687), nomination 1320 ms (1053), vote
+  991 ms (872); public declarations now enter the union. No threshold tuning.
+  Evidence: `claims-final`, `claims-fixed` (ownership/relay only), `item-8`.

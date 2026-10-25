@@ -629,7 +629,7 @@ static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
 	var c: Dictionary = value.conclusion
 	if c.type == "secret_mod" and c.get("mod", "") not in C.SECRET_MOD_LIST:
 		return ["Choose a supported modifier for the secret premise."]
-	if c.type in ["role", "notrole"] and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):
+	if c.type in ["role", "notrole"] and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and not card.get("testimony_only", false) and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):
 		return ["A role-declaration question needs that person's included claim or reading of the named good gift."]
 	if c.type in ["lied", "truthful", "misled", "unreliable"]:
 		var card = Solver.card_by_id(view, c.get("report", ""))

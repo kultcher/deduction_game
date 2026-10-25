@@ -211,6 +211,11 @@ depend on the block).
 
 ## 8. Check: no double counting of role claims
 
+**Implemented Oct 25 (Codex).** Stable declaration receipts own double-claim
+effects and the separate pressed-counterclaim ledger entry. Legacy claim credence
+is parked under shared ownership; native comparison restores it. Tests and the
+opening replay pass, with refresh cost flagged in MIGRATION_PROGRESS.
+
 Soft testimony now handles rival claims (an evil claimant may bluff, weight 0.35 per
 declaration). Confirm that the legacy claim effects are fully parked wherever the shared
 model owns the claim: `own_role` "they claim my gift", double-claim bumps and

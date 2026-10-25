@@ -39,7 +39,7 @@ static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) ->
 static func role_hearing(cards: Array, person: String, role: String) -> float:
 	var strength = 0.0
 	for card in cards:
-		if not card.get("quoted", false) and card.source == person and card.get("role", "") == role and card.kind in ["claim", "report"]:
+		if not card.get("quoted", false) and not card.get("testimony_only", false) and card.source == person and card.get("role", "") == role and card.kind in ["claim", "report"]:
 			strength = maxf(strength, float(card.get("hearing_weight", 1.0)))
 	return strength
 

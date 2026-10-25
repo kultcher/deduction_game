@@ -83,6 +83,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 					_add(facts, owners, receipt, "share:" + eid)
 		if entry.get("meta", {}).get("kind") == "defence" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
 			_add(facts, owners, entry.meta.workshop_card, "defence:" + eid)
+		if entry.get("meta", {}).get("kind") in ["role_claim", "role_counter"] and entry.meta.get("how") != "own" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
+			_add(facts, owners, entry.meta.workshop_card, "claim:" + eid)
 	for key in presentations:
 		var presented: Dictionary = presentations[key]
 		for argument in presented.arguments:
@@ -158,6 +160,9 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var entry: Dictionary = ledger[eid]
 		var meta: Dictionary = entry.get("meta", {})
 		var kind: String = meta.get("kind", "")
+		if kind in ["role_claim", "role_counter"] and (meta.get("how") == "own" or facts.has(meta.get("workshop_card", {}).get("id", ""))):
+			owned[eid] = true # Private role knowledge or one canonical declaration.
+			continue
 		if kind == "shared_case":
 			# Incomplete relays are explicitly excluded by the delivery log. Neither
 			# their wrapper label nor its native +.1 may masquerade as evidence.
@@ -260,6 +265,12 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		for card in prepared.view.cards:
 			adapted[card.id] = card
 		for id in facts:
+			var claim_hearing = -1.0
+			for owner in owners[id]:
+				if owner.begins_with("claim:"):
+					claim_hearing = maxf(claim_hearing, clampf(ledger[owner.trim_prefix("claim:")].weight, 0.0, 1.0))
+			if claim_hearing >= 0.0 and adapted.has(id) and owners[id].all(func(owner): return owner.begins_with("claim:")):
+				adapted[id]["hearing_weight"] = claim_hearing
 			for owner in owners[id]:
 				if owner.begins_with("defence:") and owners[id].size() == 1:
 					var entry: Dictionary = ledger[owner.trim_prefix("defence:")]
@@ -281,6 +292,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			if facts[id].kind not in ["info", "claim"]:
 				continue
 			var weight = player_weight
+			if claim_hearing >= 0.0:
+				weight = claim_hearing
 			if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:")):
 				weight = 1.0
 				var hearing_weight = -1.0

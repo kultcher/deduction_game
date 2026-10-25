@@ -352,14 +352,21 @@ static func hear_claim(w, l, who: String, role: String, weight: float, how: Stri
 	else:
 		_eff(effs, "rivals:%s:%s" % [role, who], 0.6, "%s claims the %s too" % [nm, rn], "they claim a gift %s claims" % nm)
 	_eff(effs, "role:%s:%s" % [who, role], 1.0, "%s claims the %s" % [nm, rn], "", false)
-	ledger_hear(w, l, claim_eid(who, role), effs, weight, [who, -1, "role"], {"kind": "role_claim", "how": how, "role": role, "who": who})
+	var eid: String = claim_eid(who, role)
+	var receipt: Dictionary = l.ledger.get(eid, {}).get("meta", {}).get("workshop_card", {})
+	if receipt.is_empty():
+		receipt = WorkshopLedger.Evidence.normalize_card({"kind": "claim", "source": who, "subject": [who], "role": role, "day": w.day, "phase": w.phase, "text": "%s claims the %s." % [nm, rn]})
+	ledger_hear(w, l, eid, effs, weight, [who, -1, "role"], {"kind": "role_claim", "how": how, "role": role, "who": who, "workshop_card": receipt})
 
 static func claim_eid(who: String, role: String) -> String:
 	return "claim:%s:%s" % [who, role]
 
 ## How much this listener credits who's claim to role (0 = never heard it).
 static func claim_credence(n, who: String, role: String) -> float:
-	var e = n.ledger.get(claim_eid(who, role))
+	var eid: String = claim_eid(who, role)
+	if n.workshop_state.get("owned", {}).has(eid):
+		return 0.0 # Shared role testimony owns the claim's evidence weight.
+	var e = n.ledger.get(eid)
 	return e.get("eff", 0.0) if e != null else 0.0
 
 ## How much a night sighting of someone counts (0..1). Being out at night is only damning
@@ -1940,7 +1947,7 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 	var c: Dictionary = card.get("conclusion", {})
 	var subj: Array = card.get("subject", [])
 	var pair: Array = card.get("data", {}).get("pair", [])
-	var about_me = n.id in subj or c.get("a", "") == n.id or n.id in pair
+	var about_me = n.id in subj or c.get("a", "") == n.id or n.id in pair or (card.get("kind") == "claim" and card.get("source") != n.id and n.claim_public and card.get("role") == n.claimed_role)
 	if not about_me:
 		on_question(w, n)
 		lines.append(say(n, "What has that to do with me?"))
@@ -1977,7 +1984,9 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		var rival = w.by_id[card["source"]]
 		lines.append(say(n, "I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name]))
 		if not n.is_evil():
-			adjust(w, n, rival.id, 0.3, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift", true, "own_role")
+			var receipt: Dictionary = WorkshopLedger.Evidence.normalize_card(card)
+			ledger_hear(w, n, "own_role:" + fact_id(card), [[rival.id, 0.3, true, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift"]], 1.0,
+				[rival.id, -1, "role"], {"kind": "role_counter", "workshop_card": receipt})
 		return _challenged(n, {"lines": lines, "facts": facts}, card)
 	if night >= 0:
 		var r = answer_night(w, n, night)
