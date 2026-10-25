@@ -500,6 +500,29 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
   cannot farm free actions. (Oct 21) [knob]
 
 ### Numbers
+- **Balance pass watchlist: night sightings are too decisive.** (user, Oct 25, after
+  case 22485) The vigil was already on the watchlist as too strong, and "claimed a day
+  role, seen out at night" reads as open-and-shut. In the shared movement model a good
+  person on an ordinary night is out only 5% of the time (claimed non-walking gift: 90%
+  ordinary, 10% secret errand), against the demon heading for the victim's house on
+  kill nights, so one sighting is a large likelihood ratio. Don't fix it by biasing the
+  demon toward night-walking roles: players would learn to suspect night-walkers instead.
+  Levers to try, measured with the bot A/B: a higher ordinary out-rate, more good NPCs
+  with secret errands, softer demon routes (detours; see MECHANICS_SUPPORT item 6), and
+  vigil yield. [decided: tune in the balance pass]
+- **Evil sometimes tells the truth (start by faking it).** (user + Claude, Oct 25) Today
+  a reading from a source who is evil in a world is uninformative there: same weight
+  whether its content holds or not. So a reading that checks out is near-proof its source
+  is good. Make it partial: an evil source's content is true with probability t, noise
+  otherwise. Correct readings then exonerate less (more uncertainty, as in BotC, where
+  evil may tell the truth to build trust); false readings still implicate strongly. Same
+  cost (one per-world factor; no new hidden state). Risk: if t is higher than what the
+  simulated evil actually does, the town partially believes frames, a hidden shift toward
+  evil. So set t from the simulation: measure how often fake readings happen to be true
+  (the grimoire knows) in a bot run, and re-measure whenever evil's reading strategy
+  changes (for example a later "tell the truth strategically" behaviour). Belongs with
+  the balance pass; the bluff weight (0.35) is the analogous number for role claims.
+  [decided: add; t measured, not chosen]
 - **Unlimited Vigil strength.** (DESIGN open question) [watch] 54875: a kept vigil on the
   first kill block caught both walkers there on night 1, then again on night 2; that's a
   two-person demon shortlist on night 1, near a free Seer reading. Options discussed
