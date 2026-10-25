@@ -27,6 +27,9 @@ const Domain = preload("res://workshop/world_domain.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const Movement = preload("res://workshop/movement_model.gd")
+const ChannelKernel = preload("res://workshop/factored_channels.gd")
+const Channels = preload("res://workshop/evidence_channels.gd")
+const SourceModel = preload("res://workshop/support_model.gd")
 
 ## Chance a healthy reading from a good source is wrong anyway (unmodelled impairment).
 ## Kept small: the rules make a good, healthy reading accurate, and the failures the
@@ -96,7 +99,7 @@ static func _index(view: Dictionary) -> Dictionary:
 
 ## Uniform prior over legal worlds, with no private knowledge: the reference listener.
 static func neutral_listener(view: Dictionary) -> Dictionary:
-	return {"id": "", "suspicion": {}, "knowledge": {}, "reading_reliability": {}}
+	return {"id": "", "suspicion": {}, "npc_trust": {}, "knowledge": {}, "reading_reliability": {}}
 
 static var _premise_cache: Dictionary = {}
 
@@ -203,6 +206,8 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	case_data = Graph.compile_case(view, case_data)
 	if case_data.test_factors.is_empty() and not supplied.is_empty():
 		case_data.test_factors = supplied.duplicate(true)
+	if Domain.live(view):
+		return _evaluate_channels(view, case_data, listener)
 	var cards: Array = Solver.selected(view, case_data)
 	var conclusion: Dictionary = case_data.conclusion
 	var knowledge: Dictionary = listener.get("knowledge", {})
@@ -274,14 +279,153 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 
 static var _compiled: Dictionary = {}
 
+## Both belief refresh and scoped reply consume this same correlated posterior.
+## Private evidence supplies the denominator; a public contradiction can select
+## dishonest/impaired channels without voiding the rest of the evidence.
+static func _evaluate_channels(view: Dictionary, value: Dictionary, listener: Dictionary, pivotal: bool = true) -> Dictionary:
+	view = view.duplicate()
+	view.world_options = view.world_options.duplicate()
+	view.world_options.roles = true
+	var cards = Solver.selected(view, value)
+	var knowledge: Dictionary = listener.get("knowledge", {})
+	var own_ids: Array = knowledge.get("own_reports", [])
+	var all_cards = cards.duplicate()
+	for id in own_ids:
+		var card = Solver.card_by_id(view, id)
+		if not card.is_empty() and not all_cards.any(func(c): return c.id == id):
+			all_cards.append(card)
+	var inputs = _channel_inputs(view, all_cards, listener)
+	var cc = compile(view, inputs.cards, value, [], true)
+	var likelihood = ChannelKernel.assess(view, inputs.cards, knowledge, inputs.rates, inputs.q, own_ids, cc.rep, cc.count)
+	var nc: int = cc.rep.size()
+	var base = PackedFloat64Array()
+	var post = PackedFloat64Array()
+	base.resize(nc)
+	post.resize(nc)
+	var teams = _team_prior(view, listener)
+	var tests = _test_like(view, cc, listener, own_ids)
+	var universe: Array = Solver.universe(view)
+	var bias: Dictionary = listener.get("theory_bias", {})
+	var total = 0.0
+	var held = {}
+	for id in likelihood.held:
+		held[id] = 0.0
+	for c in range(nc):
+		var prior: float = teams[cc.team[c]] * cc.count[c]
+		base[c] = prior * likelihood.base[c]
+		var multiplier: float = prior * tests[c]
+		if not bias.is_empty() and Solver.position_holds(view, universe[cc.rep[c]], bias.target, bias.position, value.conclusion.get("at", "")):
+			multiplier *= float(bias.factor)
+		post[c] = multiplier * likelihood.post[c]
+		total += post[c]
+		for id in held:
+			held[id] += multiplier * likelihood.held[id][c]
+	var before = _class_share(cc, base, 1)
+	var after = _class_share(cc, post, 1)
+	var p0: float = before[0] / before[1] if before[1] > 0.0 else 0.0
+	var p1: float = after[0] / after[1] if after[1] > 0.0 else 0.0
+	var lr: float = _odds(p1) / _odds(p0) if p0 > 0.0 and p0 < 1.0 else 1.0
+	var acceptance = {}
+	for id in held:
+		acceptance[id] = held[id] / total if total > 0.0 else 0.0
+	var used: Array = cc.tests.filter(func(f): return _route_credit(view, f, listener, own_ids) > 0.0)
+	var labels: Array = cc.movement + used.map(func(f): return f.label)
+	if not Movement.Live.relevant(all_cards).is_empty():
+		labels.append("Movement / trace: joint live comparison")
+	var people = _people(view, cc, base, post, 1)
+	var result = {"prior": p0, "posterior": p1, "lr": lr, "category": category(lr), "people": people,
+		"impossible": total <= 0.0, "consistent": likelihood.consistent, "acceptance": acceptance,
+		"credence": 1.0, "movement": labels, "factors": cc.factors + used, "rivals": _rivals(view, people, value.conclusion),
+		"theory_fit": 1.0, "model": "source_channels", "channel_states": likelihood.states, "channel_peak_rows": likelihood.peak_rows,
+		"channel_issues": likelihood.issues}
+	for id in cards.filter(func(card): return card.kind == "report").map(func(card): return card.id):
+		result.credence = minf(result.credence, acceptance.get(id, 0.0))
+	if not value.get("positions", {}).is_empty() or not value.get("answers", {}).is_empty():
+		var expanded = PackedFloat64Array()
+		expanded.resize(cc.class_of.size())
+		for i in range(expanded.size()):
+			var c: int = cc.class_of[i]
+			expanded[i] = post[c] / cc.count[c]
+		result.theory_fit = _theory_fit(view, value, cards, expanded)
+	if listener.get("id", "") == "" and pivotal:
+		result["pivotal"] = []
+		if result.category not in ["none", "contradicts"]:
+			for card in cards:
+				var reduced = value.duplicate(true)
+				reduced.cards = value.cards.filter(func(id): return id != card.id)
+				if _rank(_evaluate_channels(view, reduced, listener, false).category) < _rank(result.category):
+					result.pivotal.append(card.id)
+	return result
+
+static func _channel_inputs(view: Dictionary, cards: Array, listener: Dictionary) -> Dictionary:
+	var prepared: Array = cards.duplicate(true)
+	var own: Array = listener.get("knowledge", {}).get("own_reports", [])
+	var rates = {}
+	var q = {}
+	for card in prepared:
+		if card.kind not in ["report", "claim"]:
+			continue
+		var hearing: float = listener.get("channel_hearing", {}).get(card.id, 1.0)
+		if card.kind == "report" and TimeModel.disowned(view, card, listener.get("knowledge", {}).get("known_events", [])):
+			hearing = 0.0
+		# A purported copy of one's own reading is known false when its payload
+		# differs from the actual receipt; this is a failed telling, not poison.
+		if card.kind == "report" and card.source == listener.get("id", ""):
+			for id in own:
+				var received = Solver.card_by_id(view, id)
+				if received.get("role") == card.role and received.get("observed_at") == card.observed_at and received.get("data") != card.data:
+					hearing = 0.0
+		if hearing < 1.0 and not card.has("route_origin"):
+			card["route_origin"] = card.id
+		if card.kind == "report":
+			q[card.get("accuracy_origin", card.get("fact_id", card.id))] = chance_content(view, card)
+		if card.has("route_origin") or card.has("relay_source"):
+			rates["transmission:" + card.id] = hearing
+	var plan = Channels.compile(view, prepared)
+	for channel in plan.channels:
+		if rates.has(channel.key):
+			continue
+		var quality: float = SourceModel.source_quality(listener, channel.source)
+		match channel.kind:
+			"gift_honesty":
+				# Evil cannot honestly hold a claimed good gift. Good can still bluff.
+				var honesty: float = quality * float(listener.get("challenge_sources", {}).get(channel.source, 1.0))
+				rates[channel.key] = {"good": honesty, "evil": 0.0}
+			"testimony_honesty":
+				# Keep room for innocent concealment, including one's own public lie.
+				# The evil alternative uses the native honesty cap (one-half). These
+				# are explicit experimental priors, not measured bot action rates.
+				var honesty: float = minf(quality, 0.95)
+				rates[channel.key] = {"good": honesty, "evil": 0.5 * honesty}
+			"gift_accuracy":
+				var accuracy = 1.0 - (OWN_ERR if channel.source == listener.get("id", "") else DEFAULT_ERR)
+				for card in prepared:
+					var at: Dictionary = card.get("relay_observed_at", {}) if card.get("relay_source") == channel.source else card.get("observed_at", {})
+					if (card.kind != "report" or card.source != channel.source) and card.get("relay_source") != channel.source:
+						continue
+					if at.is_empty() or Channels.window(at) * 4 + 3 != channel.window.from:
+						continue
+					var reliability = 1.0
+					if listener.has("channel_doubt"):
+						var doubt: Dictionary = listener.channel_doubt
+						reliability = 1.0 - maxf(doubt.get("%s:%d" % [channel.source, at.day], 0.0), doubt.get(channel.source + ":*", 0.0))
+					else:
+						reliability = float(listener.get("reading_reliability", {}).get(card.get("accuracy_origin", card.id), listener.get("reading_reliability", {}).get(card.id, 1.0)))
+					if card.source == channel.source:
+						reliability *= float(listener.get("challenge_reports", {}).get(card.id, 1.0))
+					accuracy = minf(accuracy, reliability * (1.0 - (OWN_ERR if card.id in own else DEFAULT_ERR)))
+				rates[channel.key] = {"healthy": accuracy, "impaired": 0.0}
+			"transmission": rates[channel.key] = 1.0
+	return {"cards": prepared, "rates": rates, "q": q}
+
 ## Per presentation: the universe grouped into classes that every listener weighs alike.
 ## A class shares the evil team, what the role check reads, each report card's state
 ## (holds / healthy but wrong / source can't read healthily), the hard event facts and
 ## the premise. Listener-specific work is then per class, not per world.
 ## known: the listener's own readings, which can complete a test factor's route.
-static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known: Array = []) -> Dictionary:
+static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known: Array = [], channel_kernel: bool = false) -> Dictionary:
 	var conclusion: Dictionary = case_data.conclusion
-	var key_input = [Solver._universe_key(view), view.get("timeline", {}), view.people, conclusion, case_data.get("citations", {}), case_data.get("test_factors", []),
+	var key_input = [Solver._universe_key(view), view.get("timeline", {}), view.people, conclusion, case_data.get("citations", {}), case_data.get("test_factors", []), channel_kernel,
 		known.map(func(c): return c.get("fact_id", c.id)) if not case_data.get("test_factors", []).is_empty() else [],
 		cards.map(func(c): return [c.get("fact_id", c.id), c.kind, c.source, c.get("role", ""), c.get("observed_at", {}), c.get("data", {}), c.get("event", ""), c.has("relay_source"), c.get("quoted", false), c.get("block", ""), c.get("night", -1), c.get("subject", ""), c.get("subjects", [])])]
 	var key = hash(key_input)
@@ -353,7 +497,7 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 	# within a class.
 	# Live factors are cached arrays. Extending one in place would contaminate
 	# later people/cases with repeated public-event likelihoods.
-	var movement: Array = Movement.factors(view, cards, case_data).duplicate()
+	var movement: Array = [] if channel_kernel else Movement.factors(view, cards, case_data).duplicate()
 	movement.append_array(preload("res://workshop/public_evidence.gd").factors(view))
 	movement.append_array(preload("res://workshop/speech_evidence.gd").factors(cards))
 	# Supplied test factors (and a challenged home alibi in fixtures): a likelihood ratio
@@ -418,7 +562,7 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 		count[c_id] += 1.0
 		class_of[i] = c_id
 	var out = {"input": key_input, "key": key, "reports": reports, "tables": tables, "valids": valids, "move": move,
-		"movement": movement.map(func(f): return f.label), "factors": movement, "tests": tests, "test_hold": test_hold, "group": group, "group_bits": group_bits, "movement_ok": _movement_ok(view, cards, live),
+		"movement": movement.map(func(f): return f.label), "factors": movement, "tests": tests, "test_hold": test_hold, "group": group, "group_bits": group_bits, "movement_ok": true if channel_kernel else _movement_ok(view, cards, live),
 		"q": reports.map(func(c): return chance_content(view, c)), "team": team, "rep": rep, "count": count,
 		"premise": prem, "dead": is_dead, "states": states, "class_of": class_of, "k": k}
 	_compiled[key] = out

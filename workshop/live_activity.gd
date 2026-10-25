@@ -6,6 +6,8 @@ const C = preload("res://sim/content.gd")
 const History = preload("res://workshop/live_history.gd")
 static var cache = {}
 static var route_cache = {}
+static var profile_cache = {}
+static var reuse_profiles = true # Offline parity/profiling switch only.
 
 static func available(view: Dictionary) -> bool:
 	return view.get("live_activity", false)
@@ -201,6 +203,54 @@ static func score(world: Dictionary, factor: Dictionary) -> float:
 	return result
 
 static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
+	var inputs = profile_inputs(view, cards, person, alignment)
+	var key = hash(inputs)
+	if reuse_profiles and profile_cache.has(key) and profile_cache[key].inputs == inputs:
+		return profile_cache[key].value
+	var value = _uncached_likelihood(view, cards, person, alignment)
+	if reuse_profiles:
+		if profile_cache.size() >= 4096:
+			profile_cache.clear()
+		profile_cache[key] = {"inputs": inputs, "value": value}
+	return value
+
+## The exact inputs read by one person's activity profile. Other people's gift
+## claims and observations which return one in _observed do not affect it. Keep
+## empty-observation nights: their integration and arithmetic order still matter.
+## Receipt names are normalized by first incident within each night, preserving
+## duplicate identity without making a generated predicate index part of a habit.
+static func profile_inputs(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> Array:
+	var nights: Array = []
+	var seen = {}
+	var observations: Array = []
+	for card in relevant(cards):
+		if card.get("night", -1) >= 0 and card.night not in nights:
+			nights.append(card.night)
+		var night = str(card.get("night", -1))
+		if not seen.has(night):
+			seen[night] = []
+		var incident: String = "alibi:" + card.subject if card.kind == "alibi" else ("trace:" + str(card.data.get("scene", "")) if card.kind == "trace" else card.id)
+		if incident in seen[night]:
+			continue
+		seen[night].append(incident)
+		var applies = false
+		match card.kind:
+			"sighting": applies = person.id in card.get("subjects", [card.get("subject", "")]) or card.get("complete", false) and person.id not in card.get("excluded", [])
+			"evening": applies = person.id in card.get("subjects", [card.get("subject", "")])
+			"coverage": applies = person.id not in card.get("excluded", [])
+			"alibi": applies = card.subject == person.id
+			"report": applies = card.role == "nightwatch"
+			"trace": applies = alignment == "demon"
+		if not applies or card.get("quoted", false) and card.kind != "alibi":
+			continue
+		var body = card.duplicate(true)
+		for field in ["id", "fact_id", "accuracy_origin", "logical_origin", "route_origin", "text", "provenance", "provenance_paths", "reported_at", "learned_at", "acquired_day"]:
+			body.erase(field)
+		observations.append(body)
+	var secrets: Array = cards.filter(func(c): return c.kind == "secret_claim" and not c.get("quoted", false) and c.subject == person.id).map(func(c): return c.applies)
+	return [view.people, view.get("timeline", {}), person.id, alignment, role_of(cards, person.id), nights, observations, secrets]
+
+static func _uncached_likelihood(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
 	var relevant_cards = relevant(cards)
 	var nights: Array = []
 	for card in relevant_cards:

@@ -28,6 +28,7 @@ const Gifts = preload("res://sim/gifts.gd")
 const Argue = preload("res://sim/argue.gd")
 const Mind = preload("res://sim/mind.gd")
 const Metrics = preload("res://game/case_metrics.gd")
+const Jury = preload("res://workshop/jury.gd")
 
 var g
 var transcript = false
@@ -96,6 +97,7 @@ func _init() -> void:
 	quit()
 
 func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictionary:
+	Jury.channel_audit = {}
 	g = Game.new()
 	g.detailed_logging = trace_enabled
 	g.log_dir = log_dir.path_join("passive" if passive else "active")
@@ -169,6 +171,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	r["metrics"]["beliefs"] = "native" if native else "shared"
 	r["metrics"]["suspicion_days"] = scale_days
 	r["metrics"]["votes"] = _vote_records()
+	r["metrics"]["channel_audit"] = Jury.channel_audit.duplicate(true)
 	return r
 
 # ---------------------------------------------------------------- suspicion scale
@@ -197,7 +200,7 @@ func _scale_snapshot() -> Dictionary:
 			top_action = maxf(top_action, Mind.action_susp(n, o.id))
 		# Same formula as Mind._good_nomination_impl.
 		var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (Mind.trait_of(n, "confidence") - 0.5) * 2.0 - 0.5 * Mind.paranoia(w, n)
-		npcs.append({"id": n.id, "top": Mind.susp(n, top.id), "top_is_evil": top.is_evil(), "top_action": top_action,
+		npcs.append({"id": n.id, "insight": Mind.trait_of(n, "insight"), "top": Mind.susp(n, top.id), "top_is_evil": top.is_evil(), "top_action": top_action,
 			"good_mean": _mean(good_vals), "evil": evil, "nomination_threshold": thr, "nomination_headroom": top_action - thr,
 			"top3": others.slice(0, 3).map(func(o): return o.id), "top3_evil": others.slice(0, 3).filter(func(o): return o.is_evil()).size()})
 	# Agreement: how far the rest of the good town shares each NPC's suspects.

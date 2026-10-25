@@ -23,6 +23,10 @@ func _init() -> void:
 	check(result.issues.is_empty() and _sum(result.post) > 0.0 and not result.consistent, "duplicate gift claims retain positive likelihood through dishonesty alternatives")
 	check(result.base.size() == Solver.universe(view).size() and Array(result.base).all(func(value): return is_equal_approx(value, 1.0)), "case-only uncertainty integrates out of the private baseline")
 	check(result.acceptance.one > 0.0 and result.acceptance.two > 0.0 and result.acceptance.one < 1.0, "competing reports have finite acceptance without assuming every source truthful")
+	rates["gift_honesty:a"] = {"good": 0.8, "evil": 0.0}
+	var aligned = Model.assess(view, [first, second], {}, rates, q)
+	var aligned_oracle = Oracle.assess(view, [first, second], {}, rates, q)
+	check(_close(aligned.post, aligned_oracle.post) and _close(aligned.base, aligned_oracle.base), "hypothetical alignment-dependent honesty agrees with exact marginalization")
 	var knowledge = {"good": ["b"]}
 	rates["gift_honesty:a"] = 1.0
 	rates["gift_honesty:b"] = 1.0
@@ -121,6 +125,18 @@ func _joint(view: Dictionary) -> void:
 	no.observed_at.day = 2
 	no.night = 2
 	_oracle(view, [seer, no], {}, [], "persistent Red Herring with separate accuracy windows")
+	var first_role = clerk.duplicate(true)
+	var second_role = clerk.duplicate(true)
+	second_role.id = "clerk-seer"
+	second_role.data.role = "seer"
+	var third_role = clerk.duplicate(true)
+	third_role.id = "clerk-watch"
+	third_role.data.role = "nightwatch"
+	_oracle(view, [first_role, second_role, third_role], {}, [], "three-role Hall conflict over two candidate holders")
+	var proof = {"id": "proof", "kind": "event", "event": "martyr", "source": "evidence", "data": {"martyr": "a", "saved": "b"}, "observed_at": at}
+	_oracle(view, [proof, seer], {"public_roles": {"a": "martyr"}, "good": ["a", "b"]}, [], "public Martyr identity across all alignment worlds")
+	var hint = {"id": "hint", "kind": "gift_hint", "source": "d", "subject": "d", "data": {"roles": ["seer", "dowser"]}, "observed_at": at}
+	_oracle(view, [hint, rival], {}, [], "an incompatible declaration remains observed speech when its role identity is dishonest")
 
 func _oracle(view: Dictionary, cards: Array, knowledge: Dictionary, baseline: Array, label: String) -> void:
 	var rates = _rates(Channels.compile(view, cards), 0.73)

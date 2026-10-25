@@ -60,6 +60,8 @@ static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates:
 		if card.id in baseline_ids:
 			private_origins[origin] = true
 	var public_factors = Public.factors(view)
+	var speech_factors = Speech.factors(cards)
+	var private_speech = Speech.factors(cards.filter(func(card): return card.id in baseline_ids))
 	for item in states:
 		var state: PackedByteArray = item.state
 		if not subsets.has(state):
@@ -74,8 +76,11 @@ static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates:
 			var prior = _conditional(view, private_cards, knowledge, cache[key].solves)
 			var factors: Array = solved.factors.duplicate()
 			factors.append_array(public_factors)
+			factors.append_array(speech_factors)
+			var private_factors: Array = prior.factors.duplicate()
+			private_factors.append_array(private_speech)
 			subsets[state.duplicate()] = {"accurate": materialized.accurate, "private_accurate": Channels.materialize(private_plan, state).accurate, "accepted": solved.allowed, "allowed": prior.allowed,
-				"factors": factors, "private_factors": prior.factors}
+				"factors": factors, "private_factors": private_factors}
 		var subset: Dictionary = subsets[state]
 		var accurate = {}
 		for id in subset.accurate:
@@ -108,11 +113,7 @@ static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates:
 					continue
 				var channel: Dictionary = plan.channels[index]
 				var rate = rates[channel.key]
-				var probability: float
-				if rate is Dictionary:
-					probability = float(rate.healthy if Solver.Domain.healthy(view, world, channel.source) else rate.impaired)
-				else:
-					probability = float(rate)
+				var probability: float = Channels.probability(view, world, channel, rate)
 				assert(is_finite(probability) and probability >= 0.0 and probability <= 1.0)
 				weight *= probability if state[index] == 1 else 1.0 - probability
 				if weight == 0.0:
@@ -150,7 +151,6 @@ static func _conditional(view: Dictionary, cards: Array, knowledge: Dictionary, 
 	for world in solved.worlds if solved.movement_ok else []:
 		allowed[world.__i if world.has("__i") else universe.find(world)] = true
 	var factors: Array = Movement.factors(view, cards, {}).duplicate()
-	factors.append_array(Speech.factors(cards))
 	solves[key] = {"cards": cards.duplicate(true), "allowed": allowed, "factors": factors}
 	return solves[key]
 

@@ -10,6 +10,15 @@ const Evidence = preload("res://workshop/live_evidence.gd")
 static func window(at: Dictionary) -> int:
 	return int(at.day) if at.phase == "night" else int(at.day) - 1
 
+## Priors may depend on hypothetical alignment or impairment. These are world
+## alternatives, never facts about the actual source in the running simulation.
+static func probability(view: Dictionary, world: Dictionary, channel: Dictionary, rate) -> float:
+	if not rate is Dictionary:
+		return float(rate)
+	if rate.has("good"):
+		return float(rate.evil if preload("res://workshop/chronology.gd").evil_at(view, world, channel.source, view.alignment_epoch) else rate.good)
+	return float(rate.healthy if preload("res://workshop/world_domain.gd").healthy(view, world, channel.source) else rate.impaired)
+
 static func compile(view: Dictionary, cards: Array) -> Dictionary:
 	var plan = {"channels": [], "statements": [], "issues": []}
 	var indices = {}
@@ -36,9 +45,8 @@ static func compile(view: Dictionary, cards: Array) -> Dictionary:
 			statement.content.append(honesty)
 			if card.kind == "report":
 				statement.content.append(_accuracy(plan, indices, card.source, card.observed_at))
-		elif card.kind == "gift_hint":
-			var scope: String = TimeModel.source_key(view, card).trim_prefix("source:")
-			statement.content.append(_channel(plan, indices, "gift_honesty:" + scope, "gift_honesty", card.source))
+		# A gift-family hint records speech, with its own bounded likelihood. It
+		# never asserts a truthful unique-role identity or a healthy gift result.
 		elif card.kind in ["sighting", "alibi", "evening", "location", "secret_claim"] and card.source not in ["evidence", "player"]:
 			# Whereabouts honesty is independent of gift honesty and gift health.
 			var scope: String = TimeModel.source_key(view, card).trim_prefix("source:")

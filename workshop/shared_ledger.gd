@@ -235,6 +235,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 				if hearing_weight >= 0.0:
 					weight = hearing_weight # Several paths retain the strongest hearing once.
 			prepared.listener.reading_reliability[id] *= weight
+			prepared.listener.channel_hearing[id] = weight
 		# Presentation weights add per-report uncertainty; enforce the budget AFTER
 		# introducing those dimensions as well as during ordinary preparation.
 		var sources = {}
@@ -332,6 +333,7 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 		return {"effects": {}}
 	var prepared: Dictionary = plan.prepared.duplicate(true)
 	prepared.listener.suspicion = suspicion.duplicate(true)
+	prepared.listener.channel_doubt = discounted.duplicate(true)
 	for card in prepared.view.cards:
 		if card.has("relay_source"):
 			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))

@@ -3,6 +3,13 @@
 Status: in progress (updated Oct 24). Owner: Codex implements, the user reviews.
 Resumed at the user's request against the updated priorities and source `1f47867`.
 The migration and P0 sign-off remain incomplete.
+Paused at the user's request after bounded validation: seed 1005 and replay 54875
+completed; the ten-game current-build chunk was called off for untenable runtime
+after two completed games. All validation jobs are stopped. Hold the live channel
+integration open until performance is near control; the current working changes
+are not a finished phase. See MIGRATION_PROGRESS.md.
+Checkpoint branch: `codex/live-channel-validation` (committed/pushed at the user's
+request; migration work remains paused and the prototype is not ready to merge).
 Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture),
 [playtest_54875_diagnosis.md](playtest_54875_diagnosis.md) (why this matters now),
 [MIGRATION_PROGRESS.md](MIGRATION_PROGRESS.md) (measurements, detail) and the
@@ -22,7 +29,7 @@ Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture),
 | P2 Psychologist / Q4 slice | Psychologist social readings (including a Medium relay) are shared context for every listener. Opinions, including relayed opinions and private gossip, supply no alignment evidence. Other P2 reading/channel/history work remains. |
 | P2 relay provenance | Named NPC readings retain their teller paths. Unnamed meeting readings redact the hidden original source and explicitly fall back until a public acknowledgement binds that particular telling. A latent anonymous-source assessment remains pending. |
 | P2 original reading identity | Native and board reading keys use the exact canonical original. Distinct same-day contents/times get separate owners; old records with exact proof remain compatible, ambiguous old records stay explicit. Repeats and weaker duplicate paths do not stack or weaken a fact. |
-| P2 channel foundation | A tested conditional-constraint plan and exact likelihood reference now represent separate gift honesty, poison-window accuracy, testimony honesty and transmission. Compact classes have per-world parity tests. Faithful paths share one original predicate, and repeated declarations supply no extra likelihood. These are not connected to live CaseEval yet; its hard role gate and provisional-conviction path still need replacement together. |
+| P2 channels (paused, not signed off) | The standalone foundation and live prototype are checkpointed on `codex/live-channel-validation`. The prototype replaces the hard report gate, provisional conviction and source-drop retry together. Two completed passive games have zero impossible refreshes in 545 computations; replay #85 passes 5/5 with nine shared listeners. The chunk was called off for runtime after two games, aiming gain is unproven, and spoken acceptance still has inconsistencies. All jobs stopped; hold open, do not merge. |
 | P4–P5 | P4 execution-priority plumbing is implemented with its coefficient fixed at zero while Q3 is deferred. Nightly baseline solves, reasons and bot work remain. P5 deletion has not started. Remaining P3 event/share/defence work is pending. |
 
 Psychologist remains metagame/context information for now (user, Oct 24); do not

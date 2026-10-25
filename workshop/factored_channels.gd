@@ -12,6 +12,7 @@ const Movement = preload("res://workshop/movement_model.gd")
 const Public = preload("res://workshop/public_evidence.gd")
 const Speech = preload("res://workshop/speech_evidence.gd")
 static var cache = {}
+static var audit_shapes = false # Offline profiling only; never affects inference.
 
 static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates: Dictionary, q: Dictionary, baseline_ids: Array = [], representatives: PackedInt32Array = PackedInt32Array(), multiplicity: PackedFloat64Array = PackedFloat64Array(), include_public: bool = true) -> Dictionary:
 	var start = Time.get_ticks_usec()
@@ -22,6 +23,10 @@ static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates:
 			cache.clear()
 		cache[key] = {"input": input.duplicate(true), "graph": _compile(view, cards, knowledge, include_public)}
 	var graph: Dictionary = cache[key].graph
+	var numeric_input = [rates, q, baseline_ids, representatives, multiplicity]
+	var numeric_key = hash(numeric_input)
+	if graph.results.has(numeric_key) and graph.results[numeric_key].input == numeric_input:
+		return graph.results[numeric_key].result
 	var compile_us = Time.get_ticks_usec() - start
 	var value_us = 0
 	var sum_us = 0
@@ -38,6 +43,8 @@ static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates:
 		result.held[id] = held
 	var memo = {}
 	for slot in range(size):
+		if audit_shapes and slot % 200 == 0:
+			print("CHANNEL_EVAL ", slot, "/", size)
 		var index: int = slot if representatives.is_empty() else representatives[slot]
 		var world: Dictionary = universe[index]
 		var value_start = Time.get_ticks_usec()
@@ -76,11 +83,14 @@ static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates:
 	else:
 		var prior = assess(view, cards.filter(func(card): return card.id in baseline_ids), knowledge, rates, q, [], representatives, multiplicity, false)
 		result.base = prior.post
+	if graph.results.size() >= 8:
+		graph.results.clear()
+	graph.results[numeric_key] = {"input": numeric_input.duplicate(true), "result": result}
 	return result
 
 static func _compile(view: Dictionary, cards: Array, knowledge: Dictionary, include_public: bool) -> Dictionary:
 	var plan = Channels.compile(view, cards)
-	var graph = {"issues": plan.issues, "channels": plan.channels, "next": plan.channels.size(), "factors": [], "gates": {}, "facts": [], "originals": {}, "markers": {}, "knowledge": knowledge}
+	var graph = {"issues": plan.issues, "channels": plan.channels, "next": plan.channels.size(), "factors": [], "gates": {}, "facts": [], "originals": {}, "markers": {}, "knowledge": knowledge, "results": {}}
 	if not graph.issues.is_empty():
 		return graph
 	for i in range(plan.channels.size()):
@@ -124,12 +134,62 @@ static func _compile(view: Dictionary, cards: Array, knowledge: Dictionary, incl
 	var public_factors: Array = Public.factors(view)
 	if include_public and not public_factors.is_empty():
 		_add(graph, [], {"kind": "public", "factors": public_factors})
-	var speech: Array = graph.facts.filter(func(f): return f.card.kind in ["gift_hint", "refusal"])
+	# Hints/refusals and incompatible declarations are observed speech. Their
+	# weak likelihood already models fallibility; a dishonest declaration still
+	# happened, so retracting its role constraint must not erase the discrepancy.
+	var speech = Speech.factors(cards)
 	if not speech.is_empty():
-		_conditional(graph, speech, "speech")
+		_add(graph, [], {"kind": "public", "factors": speech})
+	var truthful: Array = graph.facts.filter(func(f): return not f.card.id.begins_with("inferred-lamp:")).map(func(f): return f.card)
+	graph.truthful_possible = (not Solver.Domain.live(view) or Solver.Domain.claims_compatible(truthful, knowledge)) and Solver.movement_for(view, truthful, {}, knowledge).okay
+	_reduce_movement(view, graph)
+	if audit_shapes:
+		print("CHANNEL_SHAPES ", graph.factors.map(func(f): return [f.kind, f.scope.size()]), " FACTS ", cards.map(func(c): return [c.kind, c.get("role", "")]))
 	graph.program = Sum.compile(graph.factors.map(func(factor): return factor.scope))
+	if audit_shapes:
+		print("CHANNEL_PROGRAM ", graph.program.peak, " rows, ", graph.program.steps.size(), " variables")
 	graph.circuit = Sum.circuit(graph.program, graph.factors.map(func(f): return f.values if f.kind == "static" and not f.get("query", false) else null))
+	if audit_shapes:
+		print("CHANNEL_CIRCUIT ", graph.circuit.ops.size(), " operations")
 	return graph
+
+## Conservative route scopes initially include all predicates which can matter.
+## Before elimination, prove which inputs the actual lookup does not read. Reduce
+## over all three activity profiles, never over just the current world's answer.
+static func _reduce_movement(view: Dictionary, graph: Dictionary) -> void:
+	for factor in graph.factors:
+		if factor.kind not in ["activity", "route_counts", "forced_lamp"]:
+			continue
+		if factor.kind == "activity":
+			var i = Solver.person_index(view, factor.person.id)
+			for type in range(3):
+				var world = {"evil": 0 if type == 0 else 1 << i, "demon": i if type == 2 else -1, "marked": -1}
+				_values(view, graph, factor, world, 0, {}, {})
+		else:
+			_values(view, graph, factor, Solver.universe(view)[0], 0, {}, {})
+		for bit in range(factor.scope.size() - 1, -1, -1):
+			var independent = true
+			for table in factor.rows.values():
+				for row in range(table.size()):
+					if table[row] != table[row ^ (1 << bit)]:
+						independent = false
+						break
+				if not independent:
+					break
+			if not independent:
+				continue
+			factor.scope.remove_at(bit)
+			for key in factor.rows:
+				var reduced = PackedFloat64Array()
+				var table: PackedFloat64Array = factor.rows[key]
+				for row in range(table.size()):
+					if row & (1 << bit) == 0:
+						reduced.append(table[row])
+				factor.rows[key] = reduced
+		var first: PackedFloat64Array = factor.rows.values()[0]
+		if factor.rows.values().all(func(table): return table == first) and Array(first).all(func(value): return value == 0.0 or value == 1.0):
+			factor.kind = "static"
+			factor.values = first
 
 static func _add(graph: Dictionary, scope: Array, data: Dictionary) -> int:
 	data["scope"] = scope
@@ -234,27 +294,33 @@ static func _roles(view: Dictionary, graph: Dictionary) -> void:
 		components.append({"facts": combined, "keys": keys})
 	for component in components:
 		_conditional(graph, component.facts, "roles")
+	# Sexton's dormant-night condition links contents of different walking gifts.
+	# It does not couple their identity priors when no Sexton report is present.
+	if graph.facts.any(func(f): return f.card.kind == "report" and f.card.role == "sexton"):
+		var temporal: Array = graph.facts.filter(func(f): return f.card.has("relay_source") or f.card.kind == "report" and f.card.role in ["sexton", "nightwatch", "lamplighter", "medium"])
+		_conditional(graph, temporal, "roles")
 
 static func _role_keys(card: Dictionary) -> Array:
 	if card.get("quoted", false):
 		return []
 	var result: Array = []
-	if card.kind == "claim" or (card.kind == "report" and card.role in ["seer", "clerk", "archivist", "gravedigger", "veteran", "martyr", "sexton", "nightwatch", "lamplighter", "medium"]):
+	if card.kind == "claim":
 		result = ["gift:" + card.role, "holder:" + card.source]
-		if card.kind == "report" and card.role in ["clerk", "archivist", "gravedigger"]:
-			result.append("gift:" + card.data.role)
+	elif card.kind == "report":
+		if card.role in ["clerk", "archivist", "gravedigger"]:
+			result = ["gift:" + card.data.role]
 			for person in card.data.get("pair", [card.data.get("executed", "")]):
 				result.append("holder:" + person)
-		if card.kind == "report" and card.role == "sexton":
-			result.append("night-walk")
+		elif card.role in ["seer", "veteran", "martyr", "sexton"]:
+			# Identity is already implied by the separately gated claim. Contents
+			# share Red Herring/history constraints only with this reader's contents.
+			result = ["content:" + card.source + ":" + card.role]
 	elif card.kind == "totem":
 		result = ["gift:revenant"] + card.data.candidates.map(func(id): return "holder:" + id)
 	elif card.kind == "event" and card.get("event") == "martyr":
 		result = ["gift:martyr", "holder:" + card.data.martyr]
 	if card.has("relay_source"):
-		result.append_array(["gift:medium", "holder:" + card.relay_source, "night-walk"])
-	if card.kind == "report" and card.role in ["nightwatch", "lamplighter", "medium"]:
-		result.append("night-walk")
+		result.append("visits:" + card.relay_source)
 	return result
 
 static func _movement(view: Dictionary, graph: Dictionary) -> void:
@@ -305,7 +371,7 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 		return factor.values
 	if factor.kind == "prior":
 		var rate = rates[factor.channel.key]
-		var p: float = float(rate.healthy if Solver.Domain.healthy(view, world, factor.channel.source) else rate.impaired) if rate is Dictionary else float(rate)
+		var p: float = Channels.probability(view, world, factor.channel, rate)
 		return PackedFloat64Array([1.0 - p, p])
 	if factor.kind == "chance":
 		var chance: float = float(q.get(factor.origin, q.get(factor.card.id, 1.0)))
@@ -321,8 +387,32 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 			if Solver.TimeModel.evil_at(view, world, f.target, f.get("epoch", view.alignment_epoch)):
 				weight *= pow(2.0, float(f.log2_ratio))
 		return PackedFloat64Array([weight])
-	var signature: int = Solver.Roles.coarse_mask(view.people.size(), world, factor.seer, factor.relay) if factor.kind == "roles" else (int(world.evil) * (view.people.size() + 1) + int(world.get("demon", -1)) + 1)
-	if factor.kind in ["forced_lamp", "route_counts", "fixture_movement"]:
+	var signature = int(world.evil) * (view.people.size() + 1) + int(world.get("demon", -1)) + 1
+	if factor.kind == "roles":
+		if not factor.has("world_mask"):
+			var mask = 0
+			var health = 0
+			var demon = false
+			for fact in factor.facts:
+				var card: Dictionary = fact.card
+				var subjects: Array = [card.get("source", ""), card.get("relay_source", "")] + graph.knowledge.get("public_roles", {}).keys()
+				for field in ["pair", "candidates"]:
+					subjects.append_array(card.get("data", {}).get(field, []))
+				for field in ["target", "executed", "martyr", "saved"]:
+					subjects.append(card.get("data", {}).get(field, ""))
+				for id in subjects:
+					var i = Solver.person_index(view, id)
+					if i >= 0:
+						mask |= 1 << i
+				if card.has("relay_source"):
+					health |= 1 << Solver.person_index(view, card.relay_source)
+				demon = demon or card.kind == "totem" or card.get("role") in ["seer", "archivist", "gravedigger", "veteran"]
+			factor.world_mask = mask
+			factor.health_mask = health
+			factor.demon = demon
+		signature = [int(world.evil) & factor.world_mask, world.get("demon", -1) if factor.demon else -1, world.marked if factor.seer else -1,
+			int(world.get("holders", 0)) & factor.health_mask if world.get("modifier") == "delusional" else 0]
+	if factor.kind in ["forced_lamp", "route_counts"]:
 		signature = 0
 	if factor.kind == "activity":
 		var person_index = Solver.person_index(view, factor.person.id)
@@ -383,5 +473,7 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 
 static func _all_hold(view: Dictionary, graph: Dictionary, world: Dictionary, index: int) -> bool:
 	# Diagnostic only, once a positive world is found; rates never enter this check.
+	if not graph.truthful_possible:
+		return false
 	var cards: Array = graph.facts.filter(func(f): return not f.card.id.begins_with("inferred-lamp:")).map(func(f): return f.card)
 	return cards.filter(func(c): return Solver.tabled(c)).all(func(c): return Solver.report_table(view, c)[index] == 1) and (not Solver.Domain.live(view) or Solver.Domain.claims_compatible(cards, graph.knowledge)) and Solver.Roles.fits(view, world, cards, graph.knowledge) and Solver.movement_for(view, cards, {}, graph.knowledge).okay

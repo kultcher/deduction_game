@@ -2,6 +2,14 @@
 
 Updated Oct 24, 2026. Runtime: Godot 4.7.2 (confirmed by the user).
 
+Latest work is the **live channel prototype**, checkpointed on
+`codex/live-channel-validation` and **paused at the user's request**. All validation
+jobs are stopped. It is **not ready to merge**:
+the replay passes 5/5, but the passive chunk was called off after two completed
+games for untenable runtime, aiming gain is unproven, and some spoken replies
+disagree with acceptance. See "P2 factored channel kernel" for the frozen runs
+and current review findings.
+
 The migration is **in progress**, not finished. P1 is partly implemented; P3
 consensus, public death/silence/Martyr events and Q4 speech/context slices are implemented.
 The remaining P2 and P3 work, most of P4 and P5
@@ -754,6 +762,154 @@ current-source results are still required. Data and per-run script-error status 
 
 ## P2 factored channel kernel (Codex, Oct 24; resumed from `1f47867`)
 
+**Current instruction: paused.** The user called off the remaining validation for
+untenable runtime. All jobs are stopped; no implementation or optimization continues.
+The preceding Opus review requested seed 1005, replay 54875 and a ten-game passive
+chunk before deciding whether further speed work is worthwhile. The replay and
+seed 1005 completed; the current-build chunk is explicitly partial. Hold the
+live integration open until runtime is near the control.
+The live changes below are checkpointed on `codex/live-channel-validation` at the
+user's request, together with standalone factored foundation commit `d73be02`.
+This branch preserves the validated local snapshot. Fetch before pushing found
+upstream commit `1c1e195` (attention experiment switch and performance guidance),
+which is not incorporated here; reconcile it before any eventual merge. Committing
+and pushing the checkpoint does not resume migration or authorize a merge.
+
+The working live path now uses the channel posterior for refresh and reply, removes
+`Jury._drop_contradicting_source`, and bypasses the independent-reading provisional
+conviction in live views. Hearing weights and poison-window doubt are separate
+inputs. Known-good sources can lie; one's own public alibi can be false. The report
+honesty prior is conditional on hypothetical alignment (an evil source cannot
+honestly claim a good gift); testimony retains an explicit experimental evil/good
+honesty difference using the native one-half cap. No Q3/Q6 action coefficient or
+threshold has been tuned. Hints/refusals remain observed, weak speech: disbelieving
+a declared role must not erase the fact that incompatible declarations were made.
+
+Focused live integration checks pass **9 checks**. Expanded oracle checks cover
+three-role Hall conflicts and public Martyr identity as well as the original
+fixtures. The regular run was interrupted after its first 14 passing suites to
+switch to the bounded validation requested by the user; this is not a completed
+full-suite validation or phase sign-off.
+
+Pre-optimization seed 1005 completed (ten-person passive) in **500 s**, with **zero
+impossible refreshes out of 283** (High 89, Medium 112, Low 82). Its end-of-day
+samples did not establish better High-Insight aiming: High top suspect evil 5/11,
+Medium 4/8; mean Demon rank 4.55 versus 4.13. This is one game, not the acceptance
+sample. The first replay attempt took **539 s** for search into the meeting and
+was interrupted before its vote; do not report a new replay tally from that run.
+
+Significant live cost regression: the initial ten-listener seed-692 probe took
+**49.3 s**, then **23.8 / 19.1 s** after numerical reuse and smaller role factors,
+versus **3.17 s** on control `1f47867`. A later working version measured **21.2 s**
+under concurrent validation load. No near-control performance claim is made.
+Likelihood reuse excludes per-person theory bias. Further work has added per-person
+activity-profile caching and removes factor inputs only after proving invariance
+across good/minion/Demon profiles; parity/performance still require validation.
+These internal changes have not been merged as a finished live phase.
+
+Performance review to retain for the next implementation turn: per-person theory
+bias stays outside the channel likelihood, and repeated numerical inputs are
+memoized. However, the numerical memo also includes the private baseline IDs and
+ordered representatives; refresh and scoped reply can therefore recompute the same
+submitted likelihood when their denominators or card order differ. Separate reuse
+of submitted likelihoods from private denominators remains to be implemented.
+The common independent-source path still uses the generic executor. A small
+closed-form sum for independent sources, with joint machinery only for coupled
+role/route components, is the next proposed speed work. No further optimization
+is authorized before the current validation-and-pause checkpoint.
+
+Frozen validation inputs and stopped/completed runs: `logs/migration/live-channels`:
+`validation-source.json`, `validation.diff`, `validation-project`,
+`validation-current` (seeds 1000–1009, two workers, 1005 first),
+`validation-control` (same seeds, control `1f47867`, metrics-only Insight annotation),
+and `validation-replay/54875`. The runtime is Godot 4.7.2. Each case writes its own
+status and results immediately. The remaining current-build games were stopped or
+cancelled at the user's request; do not restart or tune outcomes without resuming.
+
+**Frozen seed 1005 validation:** completed without script errors in **448.6 s**,
+versus **163.3 s** on control `1f47867`. Zero impossible refreshes out of **283**
+computed refreshes (High 89, Medium 112, Low 82), including cover minds. The outcome
+is evil winning on day 5, two good executions and no evil executions. End-of-day
+living-good-NPC samples: High top suspect evil **5/11**, mean Demon rank **4.55**;
+Medium **4/8**, rank **4.13**. Control: High **12/17**, rank **4.12**; Medium
+**4/8**, rank **5.38**, evil winning on day 7. These all-days samples differ in
+survival and length; day-one High top accuracy is **1/4 versus control 3/4**, Medium
+**0/2 versus 1/2**. Fixing impossible refreshes has not established an aiming gain
+in this seed. Behavior matches the earlier pre-optimization seed-1005 run.
+
+**Matched passive control:** all ten seeds 1000–1009 on `1f47867` completed without
+script errors or guard exhaustion. Zero good wins; **13 good / 5 evil executions**.
+High-Insight top suspect evil **53/93 (57.0%)**, mean Demon rank **3.67**; Medium
+**54/122 (44.3%)**, rank **4.05**. Day-one High **10/25 (40.0%)**, rank **5.08**;
+Medium **10/34 (29.4%)**, rank **5.06**. Median case runtime **114.2 s**. These
+living-good-NPC snapshots are descriptive, not independent trials or a balance
+sign-off. Compare the current build only with its completed matching seeds below.
+
+**Passive chunk stopped by the user:** current seeds **1000 and 1005** completed
+without script errors or exhausted guards. Seeds **1001 and 1002** were interrupted
+after approximately **25 and 21 minutes**, respectively; six seeds never started.
+The runner and its Godot children were stopped, and a host process check confirmed
+none remained. Status files distinguish cancellation from completion or model errors.
+The ten-game current-build chunk and the plan's 50-game acceptance run are **not
+complete**. No new implementation or optimization followed the validation request.
+
+Across the **two completed current games**, computed refresh audit: **0 impossible
+/ 545** (High 219, Medium 187, Low 139), including cover minds. This is not a trace
+of every cache hit or a proof of zero internal fallback across ten games. Both games
+were evil wins, with **4 good / 0 evil executions**, versus **2 good / 1 evil** in
+the same two control seeds. The completed games do not establish a broad aiming gain.
+
+| Matched seeds 1000 and 1005 | Control `1f47867` | Frozen channel build |
+|---|---:|---:|
+| High top suspect evil, all days | 21/30 (70.0%) | 7/22 (31.8%) |
+| High mean Demon rank, all days (lower is better) | 3.80 | 4.86 |
+| Medium top suspect evil, all days | 8/22 (36.4%) | 6/22 (27.3%) |
+| Medium mean Demon rank, all days | 5.36 | 5.23 |
+| High top suspect evil, day 1 | 4/6 | 1/6 |
+| Medium top suspect evil, day 1 | 1/6 | 0/6 |
+| Seed 1000 runtime | 86.2 s | 713.8 s |
+| Seed 1005 runtime | 163.3 s | 448.6 s |
+
+All-days sample sizes differ because survival and game length differ. First-day
+mean Demon rank improves slightly (High 5.67 -> 5.17, Medium 6.67 -> 6.50) while
+top-suspect accuracy worsens; do not describe all aiming measures as moving together.
+This is a tiny, truncated sample, not a causal or balance conclusion. The passing
+replay and removal of impossible refreshes are specific gains; general aiming,
+speech consistency, performance and full-suite sign-off remain unresolved.
+`validation-summary.json` preserves the partial aggregate, and each seed's folder
+retains status/results. The user subsequently requested committing and pushing this
+checkpoint to **`codex/live-channel-validation`**, including standalone foundation
+`d73be02`. **Do not merge or continue migration automatically.**
+
+**Completed frozen replay validation:** case #85 now files as #89 and reaches
+**5 yes / 5 needed**, versus **2 / 5** on control (filed #90). Nine shared listeners,
+zero native listeners, zero fallbacks, no script errors. This is a measured outcome,
+not a tuning target. Hollis, Odette and Lian now vote yes along with Isolde and Jory.
+Post-presentation Constance suspicion: Hollis .463, Jory .616, Odette .433,
+Agnes .309, Isolde .553, Lian .546. The replay stops at the vote placing Constance
+on the block; it does not establish an eventual execution or game win.
+
+| Replay step | Control `1f47867` | Frozen channel build |
+|---|---:|---:|
+| Search into Day 2 meeting | 11.225 s | 236.795 s |
+| Present original case #85 | 6.731 s | 150.923 s |
+| Nominate Constance | 2.872 s | 53.215 s |
+| Vote no | 1.616 s | 50.602 s |
+
+The current run had concurrent bot validation, so these are not isolated timing
+ratios; the magnitude still rules out any near-control claim. The complete replay
+took 520.8 s. Evidence: `validation-replay/54875/measurement.json` and its stdout.
+
+**Remaining behavioral defect found by validation:** the CaseEval agreement and
+applied refresh now support the case, but bounded-search speech is not fully
+consistent with that output. Jory accepts at .812 and Agnes at .681 while saying
+"I could not follow your explanation through". The contradiction-aware reply works
+for Hollis, Odette, Isolde and Lian. Acceptance criterion 3 is therefore **not met**;
+do not call live integration complete because the vote passes. No speech or theory
+change was made after the user requested validation and pause.
+
+**Historical standalone foundation checkpoint (before live integration):**
+
 The updated priority is live channel integration and removal of the source-drop
 stopgap. The first verified slice adds `factored_channels.gd` and binary
 sum-product with a compiled arithmetic circuit. Gift/testimony/accuracy/route gates
@@ -775,7 +931,8 @@ eight rows, game RNG unchanged. An initial generic implementation took 3.3 s;
 profiling removed unnecessary movement factors and an eager linear world lookup
 in each iteration. This is an offline kernel probe, not a live presentation claim.
 Command: `profile_channel_likelihood.gd -- --npcs 10 --sources 3 --classes --factored`.
-Live CaseEval integration and the new bot acceptance criteria are still pending.
+At that checkpoint, live CaseEval integration and the new bot acceptance criteria
+were still pending; the paused live prototype and its limits are recorded above.
 Logs: `logs/migration/live-channels`.
 
 ## Impossible refreshes and the source-drop stopgap (Claude, Oct 24)
