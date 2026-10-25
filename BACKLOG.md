@@ -13,6 +13,31 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
+- **Case 22485: the Breathstealer stole breath at a distance.** On Day 1 evening Odette
+  silenced Fenwick while she was at home and he was at the chapel. The Breathstealer
+  must share a public location with the target when using the ability (not from home,
+  not across blocks). (user, Oct 25) [decided]
+- **Case 22485: an evil Lamplighter bluff said "home all night".** Constance (evil
+  Revenant, publicly claiming Lamplighter) answered "At home all night" while her bluff
+  says she walks the lamps; Fenwick had also seen her go in on night 0. An NPC claiming
+  a night-walking gift (good, or evil bluffing one) must give whereabouts consistent with
+  the claim, or the claim and the alibi must be chosen together. (user, Oct 25)
+  [decided]
+- **Sleepwalker and Lovers only on roles that are home at night.** Modifiers that send
+  someone out at night (Sleepwalker; Lovers meeting) should only be assigned to holders
+  whose role isn't normally out at night, so a night role never has two reasons to be
+  out. In 22485 the Sleepwalker was Nisha (Veteran). Check the Veteran's night
+  behaviour and the full role list. (user, Oct 25) [decided]
+- **Case 22485: an approach that shares news gives no location card.** Jory approached
+  the player at the town well to share something, but the meeting produced no sighting
+  card for where Jory was then, unlike a normal conversation. Approaches should add the
+  same location card as talking to someone. (user, Oct 25) [decided]
+- **Leftover placeholder in belief-refresh attention.** `Jury.refresh` has no headline,
+  but `Shared.prepare` still gives the union case a placeholder conclusion ("the first
+  person in the list is evil"), and `Reasoner._prepare` ranks cards by salience to that
+  target. So a limited listener's belief budget favours cards about whoever is first in
+  the town list. Use a neutral ranking for refreshes. (Claude, Oct 25) [decided]
+
 - **Case 44814: inconsistent pair-reading defenses.** NPCs can both redirect a
   reading toward the other candidate and declare its source a liar, with separate
   mechanical effects. Choose one explanation, or explicitly frame alternatives
@@ -147,6 +172,37 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 ## 2. Small features and tuning (a day or so each)
 
 ### Deduction types and templates
+- **The premise should matter (with Q3 tuning).** (user + Claude, Oct 25, after case
+  22485) Today a case's premise changes only the reply and a small trust reward. The
+  belief update re-weighs all the listener's evidence with no premise, so "Isolde is
+  evil" with cards pointing at Dorian raises suspicion of Dorian exactly as much as
+  "Dorian is evil" would; the player followed the town's reasoning and the preview to the
+  right answer. Wanted: the town can notice what the player missed, but not solve the
+  case solo or by accident. Proposal:
+  1. Listeners update mainly on what was argued: full weight on the premise target;
+     effects on other people at reduced strength scaled by Insight (a sharp NPC notices
+     "this actually points at Dorian"). Cheap: the per-person effects already exist.
+  2. A wrong premise costs a little trust when the listener's belief says the premise is
+     weak but the evidence points clearly elsewhere ("you're accusing the wrong person"),
+     so the player's later word carries less weight in votes.
+  3. The preview shows qualitative strength for the premise (weak / moderate / strong)
+     and, when the evidence points elsewhere, a hint ("this evidence may say more about
+     someone else") without names or numbers. Naming the other person is left to a sharp
+     NPC's reply.
+
+  Measure with the bot A/B. In 22485 the player's vote and accusation added about +0.2
+  per voter (legacy Q3 values) and flipped three of six good votes; check this doesn't
+  let moderately supported wrong nominations through. [decided: direction; numbers open]
+- **Seen with the silenced: circumstantial suspicion.** (user, Oct 25) Being somewhere
+  with a person who was later breath-stolen should add a little suspicion, enough to
+  reward noticing it, without requiring the player to link every location card. Options:
+  (a) a flat vibes-stage amount for everyone who shared a location with the silenced NPC
+  that day, scaled by how many others were there too. Here NPCs may know the day's
+  comings and goings without seeing them, a deliberate exception to "NPCs only know what
+  they can see". (b) A player-presentable "town comings and goings" card that shares the
+  player's full knowledge of the day's sightings at once. Either fits the vibes stage in
+  "Supporting evidence in a case". It depends on the Breathstealer proximity fix above.
+  [decided: add; option open]
 - **Starting secret-count card.** Generate a public setup card stating how many secrets
   are in town. Decide whether the count means modifier types, holders (Lovers count
   twice), or includes ordinary personal secrets; do not expose assignments. (61251/25923)
