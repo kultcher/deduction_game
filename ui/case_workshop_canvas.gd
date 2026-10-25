@@ -425,8 +425,8 @@ func _context(id: String) -> void:
 	context_menu.add_item("Link to another card", 1)
 	if board.nodes[id].kind == "evidence":
 		var report = _report(board.nodes[id].card)
-		for entry in [[200, "Misled reading", "misled"], [201, "Suspected lie", "lying"], [202, "Unlikely reading", "unlikely"]]:
-			context_menu.add_item("Add modifier: " + entry[1], entry[0])
+		for entry in [[200, "misled (honest but wrong)", "misled"], [201, "lying", "lying"], [202, "unlikely reading", "unlikely"]]:
+			context_menu.add_item("Challenge: " + entry[1], entry[0])
 			context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.has("relay_source") or report.get("support_note", "").begins_with("FALLBACK") or (entry[2] == "unlikely" and report.get("role") != "surveyor"))
 	if board.nodes[id].kind == "modifier":
 		context_menu.add_item("Remove modifier (keep evidence and links)", 203)
@@ -440,8 +440,13 @@ func _context(id: String) -> void:
 		context_menu.add_item("Unlink: " + board.title(other), 10 + i)
 		if board._gift_link(board.nodes[edges[i].from], board.nodes[edges[i].to]):
 			context_menu.add_item(("Use as context: " if edges[i].kind == "explains_outing" else "Use as gift explanation: ") + board.title(other), 1000 + i)
+	_extend_context(id)
 	context_menu.position = Vector2i(get_viewport().get_mouse_position())
 	context_menu.popup()
+
+## Subclasses add their own entries before the menu opens.
+func _extend_context(_id: String) -> void:
+	pass
 
 func _context_action(action: int) -> void:
 	if action in [200, 201, 202]:

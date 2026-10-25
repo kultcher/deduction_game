@@ -1,5 +1,5 @@
 ## Headless smoke test of the UI: builds the scene, plays some commands, opens the case
-## view, links and files a deduction through the panel.
+## view and moves cards into the Case Workshop sheet.
 ##   godot --headless --path . --script res://tools/test_ui.gd
 extends SceneTree
 
@@ -60,10 +60,8 @@ func _init() -> void:
 	for i in range(6):
 		await process_frame
 	cv.set_panel_open("profile", true)
-	cv.set_panel_open("work", true)
-	_check(cv.panels["profile"].get_rect().is_equal_approx(panel_rects["profile"]) and cv.panels["work"].get_rect().is_equal_approx(panel_rects["work"]), "filtered-before-opening tools retain their original dimensions")
+	_check(cv.panels["profile"].get_rect().is_equal_approx(panel_rects["profile"]), "filtered-before-opening tools retain their original dimensions")
 	cv.set_panel_open("profile", false)
-	cv.set_panel_open("work", false)
 	var board_rect: Rect2 = cv.board.get_global_rect()
 	var board_pan: Vector2 = cv.board.pan
 	var board_zoom: float = cv.board.zoom
@@ -84,10 +82,10 @@ func _init() -> void:
 	await process_frame
 	_check(cv.board.get_global_rect().is_equal_approx(board_rect) and cv.board.pan == board_pan and cv.board.zoom == board_zoom,
 		"opening, moving, resizing and minimizing tools preserves the board viewport")
-	cv.set_panel_open("work", true)
-	var floating = cv.panels["work"]
+	cv.set_panel_open("profile", true)
+	var floating = cv.panels["profile"]
 	floating.move_to(Vector2(140, 40))
-	floating.resize_to(Vector2(500, 400))
+	floating.resize_to(Vector2(500, 600))
 	await process_frame
 	var position_before: Vector2 = floating.position
 	var at: Vector2 = floating.global_position + Vector2(60, 20)
@@ -98,35 +96,24 @@ func _init() -> void:
 	await _drag_panel(at, at + Vector2(60, 30))
 	_check(floating.size.is_equal_approx(size_before + Vector2(60, 30)), "dragging the corner resizes the overlay")
 	floating.hide()
+	# The Case Workshop sheet: collapsed to a handle over the board's right edge.
+	var ws = cv.workshop
+	_check(ws.is_collapsed() and ws.covered_width() <= cv.canvas.size.x * 0.06 + 1.0, "the Case Workshop starts as a narrow handle")
+	_check(not cv.panel_buttons.has("work"), "the old Build case builder is gone from the dock")
 	print("case view visible: ", cv.visible, " cards listed: ", cv.card_list.count(), " board items: ", cv.board.lay.get("items", []).size())
 	if cv.card_list.count() >= 2:
-		cv.card_list.select_index(0)
-		cv.card_list.select_index(1)
-		cv._stage(cv.card_list.selected_metas())
-		_check(cv.panels["work"].visible, "staging evidence opens the case builder")
-		var staged_before: Array = cv.selected_cards()
-		cv.set_panel_open("work", false)
-		cv.set_panel_open("work", true)
-		_check(cv.selected_cards() == staged_before, "minimizing and reopening the builder preserves staged evidence")
-		cv.filter_edit.text = "zzz"
-		cv._refresh_cards()
-		print("working set survives filtering: ", cv.selected_cards().size() == 2)
-		cv.filter_edit.text = ""
-		cv._refresh_cards()
-		cv._on_link()
+		cv.card_list.card_activated.emit(cv.card_list._items.filter(func(item): return item.get_metadata(0) is int and g.board[item.get_metadata(0) - 1].kind != "deduction")[0].get_metadata(0))
+		_check(cv.selected_cards().size() == 1 and ws.is_collapsed(), "activating a card list entry adds it to the Workshop without opening the sheet")
+		ws.set_fraction(0.5, true)
 		await process_frame
-		print("link result: ", cv.result_text.text.substr(0, 120))
-		var opts = cv.result_box.get_children().filter(func(c): return c is Button)
-		if opts.size() > 0:
-			opts[0].emit_signal("pressed")
-		else:
-			cv.b_who.select(1)
-			cv._builder_changed()
-		await process_frame
-		print("builder: ", cv.b_because.text, " | ", cv.b_preview.text)
-		cv._on_file()
-		await process_frame
-		print("builder validation: ", cv.b_error.text)
+		_check(absf(ws.fraction - 0.5) < 0.001 and ws.editor.visible, "the sheet opens to half width")
+		ws.set_fraction(0.53, true)
+		_check(absf(ws.fraction - 0.5) < 0.001, "the sheet snaps near half width")
+		ws.set_fraction(0.7, true)
+		_check(absf(ws.fraction - 0.7) < 0.001, "and stays where it's left between snaps")
+		ws.set_fraction(1.0, true)
+		_check(ws.covered_width() == cv.canvas.size.x, "it can cover the whole board")
+		ws.collapse()
 		cv.card_list.select_index(0)
 		cv._hide_selected(true)
 		print("after hide: cards listed ", cv.card_list.count())
@@ -134,7 +121,6 @@ func _init() -> void:
 		print("show hidden: cards listed ", cv.card_list.count())
 		cv._input(_esc())
 		print("escape closes: ", not cv.visible)
-		print("after file: ", cv.result_text.text.substr(0, 140))
 	cv.prof_opt.select(1)
 	cv._refresh_profile()
 	scene.side_filter.text = "square"
@@ -281,29 +267,20 @@ func _init() -> void:
 	context_click.pressed = true
 	context_click.position = it0["rect"].get_center()
 	bv._gui_input(context_click)
-	_check(cv.card_menu.visible and cv._context_card == it0["n"] and _menu_labels(cv.card_menu) == ["Add to Deduction", "Add to Case Workshop", "Hide", "Find Links", "Hints"], "right-clicking a grid card offers deduction, Workshop and evidence actions")
-	cv.card_menu.id_pressed.emit(cv.CardAction.ADD)
-	_check(it0["n"] in cv.staged and cv.panels["work"].visible, "Add to Deduction stages the clicked card")
-	cv.show_card_menu(it0["n"], Vector2i(200, 200))
-	cv.card_menu.id_pressed.emit(cv.CardAction.HINTS)
-	_check("#%d" % it0["n"] in cv.result_text.text, "Hints describe the clicked card")
-	cv.show_card_menu(it0["n"], Vector2i(200, 200))
-	cv.card_menu.id_pressed.emit(cv.CardAction.LINKS)
-	_check("#%d" % it0["n"] in cv.result_text.text, "Find Links searches for the clicked card")
+	_check(cv.card_menu.visible and cv._context_card == it0["n"] and _menu_labels(cv.card_menu) == ["Add to Case Workshop", "Hide"], "right-clicking a grid card offers the Workshop and Hide")
+	cv.card_menu.id_pressed.emit(cv.CardAction.WORKSHOP)
+	_check(it0["n"] in cv.staged, "Add to Case Workshop puts the clicked card in the Workshop")
 	cv.show_card_menu(it0["n"], Vector2i(200, 200))
 	cv.card_menu.id_pressed.emit(cv.CardAction.HIDE)
 	_check(g.board[it0["n"] - 1].get("hidden", false) and not cv.state.apply(g).any(func(c): return c["n"] == it0["n"]), "Hide removes the clicked evidence from normal views")
 	cv.hidden_check.button_pressed = true
 	var hidden_row: TreeItem = cv.card_list._items.filter(func(item): return item.get_metadata(0) == it0["n"])[0]
 	_check(hidden_row.get_custom_color(0).a < 0.5, "shown hidden cards have translucent text in Card List")
-	var staged_row: TreeItem = cv.work_list._items.filter(func(item): return item.get_metadata(0) == it0["n"])[0]
-	_check(staged_row.get_custom_color(0).a < 0.5, "a shown hidden card also stays translucent in the working set")
 	cv.show_card_menu(it0["n"], Vector2i(200, 200))
-	_check(_menu_labels(cv.card_menu) == ["Add to Deduction", "Add to Case Workshop", "Unhide", "Find Links", "Hints"], "hidden cards offer Unhide instead of Hide")
+	_check(_menu_labels(cv.card_menu) == ["Add to Case Workshop", "Unhide"], "hidden cards offer Unhide instead of Hide")
 	cv.card_menu.id_pressed.emit(cv.CardAction.HIDE)
 	_check(not g.board[it0["n"] - 1].get("hidden", false), "Unhide restores the clicked evidence")
 	cv.hidden_check.button_pressed = false
-	cv.set_panel_open("work", false)
 	cv.set_panel_open("profile", false)
 	cv.set_panel_open("cards", true)
 	for i in range(3):
@@ -319,9 +296,15 @@ func _init() -> void:
 	bv.force_drag({"cards": [it0["n"]]}, null)
 	var dd = bv._get_drag_data(it0["rect"].get_center())
 	_check(dd is Dictionary and dd["cards"] == [it0["n"]], "a board card can be dragged out")
-	cv.work_list._drop_data(Vector2.ZERO, dd)
+	cv.workshop.editor.remove_node("e:" + cv.workshop.editor.Live.Evidence.normalize_card(g.board[it0["n"] - 1]).id)
+	cv._refresh_staged()
+	_check(not it0["n"] in cv.staged, "removing a card from the Workshop clears its board mark")
+	_check(cv.workshop._can_drop(Vector2.ZERO, dd), "the Workshop handle accepts dragged board cards")
+	cv.workshop._drop(Vector2.ZERO, dd)
 	bv.get_viewport().gui_cancel_drag()
-	_check(it0["n"] in cv.staged, "dropping it on the working set adds it")
+	cv._refresh_staged()
+	_check(it0["n"] in cv.staged, "dropping it on the Workshop adds it")
+	cv.workshop.editor._undo_remove()
 	var ev_cards: Array = g.board.filter(func(c): return c["kind"] in ["sighting", "alibi", "info", "claim"]).map(func(c): return c["n"])
 	var dn = g.file_deduction({"type": "conflict", "a": "", "group": []}, ev_cards.slice(0, 2)) if ev_cards.size() >= 2 else -1
 	if dn < 0:
@@ -406,8 +389,8 @@ func _init() -> void:
 	cv.visible = false
 	scene.side_list.card_context_requested.emit(it0["n"], Vector2i(200, 200))
 	_check(cv.card_menu.visible and not cv.visible, "town text entries can open the menu while the case board is closed")
-	cv.card_menu.id_pressed.emit(cv.CardAction.ADD)
-	_check(cv.visible and cv.panels["work"].visible, "Add to Deduction from town opens the case builder")
+	cv.card_menu.id_pressed.emit(cv.CardAction.WORKSHOP)
+	_check(cv.visible and not cv.workshop.is_collapsed() and it0["n"] in cv.staged, "Add to Case Workshop from town opens the board with the Workshop out")
 	cv.visible = false
 	# Town screen: the cast list selects people; case notes save as you type.
 	var cl = scene.cast_list

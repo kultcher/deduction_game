@@ -113,11 +113,12 @@ func _run() -> void:
 	var original_day: int = main.g.w.day
 	main._on_more(4)
 	await process_frame
-	check(is_instance_valid(main.workshop_win) and main.workshop_win.visible, "More > Case Workshop opens the standalone experiment")
+	check(main.case_view.visible and not main.case_view.workshop.is_collapsed(), "More > Case Workshop opens the case board with the Workshop sheet out")
 	check(main.g.w == original_world and main.g.w.day == original_day, "opening Workshop preserves the running game's world")
-	main.workshop_win.hide()
+	var editor = main.case_view.workshop.editor
+	main.case_view.workshop.collapse()
 	main._on_more(4)
-	check(main.workshop_win.get_child_count() == 1, "reopening reuses the Workshop and preserves its experiment")
+	check(main.case_view.workshop.editor == editor, "reopening reuses the Workshop and preserves its draft")
 	main.queue_free()
 	await process_frame
 	print("Workshop UI: %d checks, %d failures" % [checks, fails])

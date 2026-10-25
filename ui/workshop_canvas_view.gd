@@ -5,6 +5,8 @@ signal answer_requested(id: String)
 signal link_requested(id: String)
 signal context_requested(id: String)
 signal layout_changed
+signal cards_dropped(numbers: Array)     # board cards dragged onto the Workshop
+signal removal_requested(id: String)     # a card dragged out past the left edge
 const CanvasSkin = preload("res://ui/theme.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
@@ -16,6 +18,7 @@ var hit: Dictionary = {}
 var drag = ""
 var panning = false
 var last_mouse = Vector2.ZERO
+var drag_out = false   # the dragged card is past the left edge: release removes it
 var font: Font = CanvasSkin.serif()
 const WIDTH = 300.0
 
@@ -121,6 +124,9 @@ func _draw() -> void:
 		_draw_card(id, hit[id])
 	if linking != "" and hit.has(linking):
 		draw_line(hit[linking].get_center(), get_local_mouse_position(), Color("f3d484"), 2, true)
+	if drag_out:
+		draw_rect(Rect2(Vector2.ZERO, Vector2(10, size.y)), Color(0.85, 0.3, 0.25, 0.9))
+		draw_string(font, Vector2(18, 30), "Release to remove from the Workshop", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 0.75, 0.7))
 
 func _draw_card(id: String, rect: Rect2) -> void:
 	var node: Dictionary = model.nodes[id]
@@ -172,10 +178,15 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 			return
 		if not event.pressed:
+			var removing: String = drag if drag_out and event.button_index == MOUSE_BUTTON_LEFT else ""
 			if drag != "" or panning:
 				layout_changed.emit()
 			drag = ""
+			drag_out = false
 			panning = false
+			if removing != "":
+				removal_requested.emit(removing)
+			queue_redraw()
 			return
 		last_mouse = event.position
 		var chosen = ""
@@ -208,6 +219,7 @@ func _gui_input(event: InputEvent) -> void:
 			var node: Dictionary = model.nodes[drag]
 			var next = Vector2(node.at[0], node.at[1]) + (event.position - last_mouse) / zoom
 			node.at = [next.x, next.y]
+			drag_out = event.position.x < 0.0
 		last_mouse = event.position
 		queue_redraw()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
@@ -227,3 +239,9 @@ func fit_case(all_evidence: bool = false) -> void:
 		zoom = clampf(minf((size.x - 100) / bounds.size.x, (size.y - 60) / bounds.size.y), 0.35, 1.1)
 		pan = (size - bounds.size * zoom) / 2 - bounds.position * zoom
 	queue_redraw()
+
+func _can_drop_data(_at: Vector2, data) -> bool:
+	return data is Dictionary and data.has("cards")
+
+func _drop_data(_at: Vector2, data) -> void:
+	cards_dropped.emit(data["cards"])

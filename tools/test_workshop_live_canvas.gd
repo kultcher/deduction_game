@@ -277,20 +277,20 @@ func _main_ui() -> void:
 	main.roles_win.hide()
 	main._on_more(4)
 	await process_frame
-	var editor = main.workshop_win.get_child(0)
+	var editor = main.case_view.workshop.editor
 	check(editor.g == main.g and editor.board.view.get("live", false), "main menu opens the live editor rather than the fixture canvas")
-	check(main.workshop_win.gui_embed_subwindows, "Workshop owns its child dialog layer instead of sharing the outer game window stack")
-	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded() and window.get_parent().get_window() == main.workshop_win), "live answer, results, progress and context windows belong to the Workshop layer")
+	check(main.get_window().gui_embed_subwindows, "Workshop dialogs are embedded in the game window")
+	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded()), "live answer, results, progress and context windows are embedded transient dialogs")
 	check(not main.g.prediction_spoiled and main.g.workshop_effects, "opening the live editor preserves shared evaluation without enabling debug spoilers")
 	var number: int = main.g.board[0].n
 	main.case_view.show_card_menu(number, Vector2i(200, 200))
-	main.case_view.card_menu.id_pressed.emit(100)
+	main.case_view.card_menu.id_pressed.emit(main.case_view.CardAction.WORKSHOP)
 	check(editor.board.selected == "e:" + Live.Evidence.normalize_card(main.g.board[number - 1]).id, "case-board context action focuses the same original evidence in the live editor")
 	editor._open_answer(editor.board.selected)
 	await process_frame
-	main.workshop_win.grab_focus()
+	main.get_window().grab_focus()
 	await process_frame
-	check(editor.answer_window.visible and editor.answer_window.get_parent().get_window() == main.workshop_win, "answer panel remains in the Workshop layer when its main window regains focus")
+	check(editor.answer_window.visible, "answer panel stays open when the game window regains focus")
 	editor.answer_window.close_requested.emit()
 	editor.board.connect_cards(editor.board.selected, editor.case_root)
 	editor.board.selected = editor.case_root
@@ -301,7 +301,7 @@ func _main_ui() -> void:
 	var filed_number: int = editor._file()
 	editor._withdraw_window()
 	var withdrawal: Window = editor.get_children().filter(func(child): return child is Window and child.title.begins_with("Developer withdrawal"))[0]
-	check(withdrawal.visible and withdrawal.transient and withdrawal.is_embedded() and withdrawal.get_parent().get_window() == main.workshop_win, "dynamically created withdrawal panel also uses the Workshop layer")
+	check(withdrawal.visible and withdrawal.transient and withdrawal.is_embedded(), "dynamically created withdrawal panel is also an embedded dialog")
 	withdrawal.close_requested.emit()
 	await editor._send("convince %d" % filed_number)
 	check("New shared evaluator" in editor.result_output.text and main.g.questions_left == 2, "live screen submits a home-context case through the main callback and displays shared delivery")
@@ -309,7 +309,7 @@ func _main_ui() -> void:
 	editor.preview_window.hide()
 	main.seed_box.value = 693
 	main._new_case()
-	check(editor.g == main.g and editor.board.links.is_empty() and not main.workshop_win.visible, "new case rebinds and resets the open live editor")
+	check(editor.g == main.g and editor.board.links.is_empty() and main.case_view.workshop.is_collapsed(), "new case rebinds and resets the live editor and collapses the sheet")
 	main.queue_free()
 	await process_frame
 

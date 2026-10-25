@@ -75,14 +75,13 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.roles_win.hide()
-	main._on_more(5)
-	var live_panel = main.workshop_comparison_win.get_child(0)
-	check(live_panel.g == main.g, "main menu opens the inspector against the current live case")
-	main.debug_check.button_pressed = true
-	check("Enable Debug" not in live_panel.output.text, "changing Debug refreshes an already-open inspector")
-	var previous_game = main.g
-	main._new_case()
-	check(main.g != previous_game and live_panel.g == main.g and not main.workshop_comparison_win.visible, "starting a new case detaches old comparison state and hides the inspector")
+	var more_items: Array = []
+	for button in main.find_children("*", "MenuButton", true, false):
+		if button.text.begins_with("More"):
+			var popup: PopupMenu = button.get_popup()
+			for i in range(popup.item_count):
+				more_items.append(popup.get_item_text(i))
+	check(not more_items.any(func(t): return "comparison" in t.to_lower()) and "New case…" in more_items, "the More menu has New case and no Live Workshop comparison")
 	main.queue_free()
 	await process_frame
 	print("Live Workshop UI: %d checks, %d failures" % [checks, fails])

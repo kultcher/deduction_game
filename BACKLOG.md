@@ -1290,6 +1290,12 @@ exact values remain open. The code-derived examples and clarifications are in
 
 
 ### UI
+- **Find Links and Hints inside the Case Workshop.** (user, Oct 25) The case board's
+  right-click Find Links and Hints were removed with the old Build case builder: both
+  were template helpers that wrote into that panel. Bring the idea back in the Workshop
+  as "what connects to this card?" using the shared model (which cards bear on a
+  premise, which would merge into a contradiction), not the old template library.
+  [decided: direction; design open]
 - **Mark circumstantial evidence visually.** (user, Oct 25) Circumstantial or
   vibes-stage case items (co-location with the silenced, demeanour, votes as soft
   evidence, pattern-based support) should look different from hard-logic items:
@@ -1678,6 +1684,17 @@ exact values remain open. The code-derived examples and clarifications are in
   > `ui/dialogue_lab.tscn`, and `tools/dialogue_scenarios.gd`. Keep approved facts/intent IDs stable
   > while varying lines; test semantic facts and repeats rather than identical wording for every speaker.
 
+- **Bot builds Case Workshop cases.** (user + Claude, Oct 25; deferred) The bot ranks
+  suspects with a hand-built heuristic (`autoplay.gd::_scores`, including the legacy
+  night-sighting scale) and builds cases only from two-card template matches
+  (`_find_or_file_deduction`). Proposal: rank suspects by a neutral test juror's
+  posterior over the player's board; build a workshop case against the top suspect
+  greedily (add a supported card when it raises the test juror's strength, try the
+  card answers, cap about 8 cards, once a day); use the juror for nominations, votes
+  and defences. Expect a much stronger bot (near-ideal reader) and slower bot games
+  (about 10-30 test-juror evaluations a day); re-baseline old vs new bot on the same
+  seeds. Then the `link` / `conclude` text commands can be retired with the templates.
+  [deferred]
 - **Bot coverage of the new talk options:** the bot doesn't offer wards or vigils or ask
   about others to learn haunts, so bot runs don't measure them. [decided]
 

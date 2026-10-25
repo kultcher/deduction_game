@@ -182,6 +182,23 @@ func unlink(from: String, to: String) -> void:
 	links = links.filter(func(edge): return edge.from != from or edge.to != to)
 	version += 1
 
+## Take an evidence card off the canvas, with its modifiers and links. The original
+## card stays on the case board; only this canvas copy goes.
+func remove_evidence(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "evidence" or nodes[id].has("merged"):
+		return
+	for key in nodes.keys().filter(func(k): return nodes[k].kind == "modifier" and nodes[k].card == nodes[id].card):
+		remove_modifier(key)
+	links = links.filter(func(edge): return edge.from != id and edge.to != id)
+	for node in nodes.values():
+		if node.kind in ["contradiction", "modifier"]:
+			node.prior_links = node.get("prior_links", []).filter(func(edge): return edge.from != id and edge.to != id)
+	nodes.erase(id)
+	if selected == id or not nodes.has(selected):
+		var premises: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise")
+		selected = premises[0] if not premises.is_empty() else (nodes.keys()[0] if not nodes.is_empty() else "")
+	version += 1
+
 func remove_premise(id: String) -> void:
 	if not nodes.has(id) or nodes[id].kind != "premise":
 		return

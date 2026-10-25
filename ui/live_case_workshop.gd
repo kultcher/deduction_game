@@ -2,13 +2,21 @@
 ## No fixture jury, hidden roles, or fixture movement weights enter this screen.
 extends "res://ui/case_workshop_canvas.gd"
 signal filed
+signal cards_dropped(numbers: Array)
+signal contents_changed
 const Live = preload("res://game/workshop_canvas.gd")
 var g
 var case_world
 var support_label: Label
 var context_label: Label
 var result_output: RichTextLabel
-var effects_toggle: CheckBox
+var debug_menu: MenuButton
+var filed_row: HFlowContainer
+var undo_button: Button
+var _undo: Dictionary = {}
+var _numbers_key = []
+var _numbers: Array = []
+enum DebugItem { EFFECTS, PREVIEW, SUPPORT, WITHDRAW }
 var files: Dictionary = {}
 var execute: Callable
 var progress_window: Window
@@ -73,24 +81,37 @@ func _ready() -> void:
 	add_child(margin)
 	var page = VBoxContainer.new()
 	margin.add_child(page)
-	_label(page, "Make a Case · live evidence", 28, "accent")
+	var title_row = HBoxContainer.new()
+	page.add_child(title_row)
+	var title = _label(title_row, "Case Workshop", 28, "accent")
+	title.tooltip_text = "Build a case: add a premise, bring in cards from the board (double-click or drag them here), link them, answer their questions, then file and present it.\nDrag a card back out to the left, or right-click it, to remove it. Drafts are kept for this case only."
+	title.mouse_filter = Control.MOUSE_FILTER_PASS
+	var title_space = Control.new()
+	title_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(title_space)
+	debug_menu = MenuButton.new()
+	debug_menu.text = "Debug ▾"
+	debug_menu.flat = false
+	debug_menu.tooltip_text = "Developer tools (shown while Debug is on)."
+	var dp: PopupMenu = debug_menu.get_popup()
+	dp.add_check_item("Shared evidence evaluator", DebugItem.EFFECTS)
+	dp.add_item("Preview effectiveness (test juror)", DebugItem.PREVIEW)
+	dp.add_item("Review evaluator support", DebugItem.SUPPORT)
+	dp.add_item("Withdraw endorsement…", DebugItem.WITHDRAW)
+	dp.id_pressed.connect(_debug_action)
+	title_row.add_child(debug_menu)
 	var tools = HFlowContainer.new()
 	page.add_child(tools)
 	premise_person = _option(tools, [])
 	premise_type = _option(tools, premise_names() + ["Supporting evidence (no claim)"])
 	_button(tools, "Add premise", _add_premise)
-	_button(tools, "Refresh evidence", refresh)
 	_button(tools, "Fit case", func(): canvas.fit_case())
-	_button(tools, "All evidence", func(): canvas.fit_case(true))
-	effects_toggle = CheckBox.new()
-	effects_toggle.text = "Shared evidence evaluator"
-	effects_toggle.tooltip_text = "Enabled by default. NPC Insight limits attention and alternative searches; confidence sustains revisable theories. Unsupported evidence reports why the shared assessment is unavailable."
-	effects_toggle.toggled.connect(func(on):
-		g.set_workshop_effects(on)
-		_session_changed())
-	page.add_child(effects_toggle)
+	_button(tools, "All cards", func(): canvas.fit_case(true))
+	undo_button = _button(tools, "Undo remove", _undo_remove)
+	undo_button.disabled = true
 	context_label = _label(page, "", 16)
-	_label(page, "Add cards from the Case Board using Add to Case Workshop · drag cards or empty space · wheel to zoom · Link, then choose a destination. Drafts are kept for this case only.", 14, "muted")
+	filed_row = HFlowContainer.new()
+	page.add_child(filed_row)
 	canvas = CanvasView.new()
 	canvas.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	page.add_child(canvas)
@@ -99,15 +120,14 @@ func _ready() -> void:
 	canvas.link_requested.connect(_begin_link)
 	canvas.context_requested.connect(_context)
 	canvas.layout_changed.connect(_store)
+	canvas.cards_dropped.connect(func(numbers): cards_dropped.emit(numbers))
+	canvas.removal_requested.connect(remove_node)
 	var actions = HFlowContainer.new()
 	page.add_child(actions)
 	selection_label = _label(actions, "", 17)
 	present_button = _button(actions, "Present in current conversation", _present)
 	present_button.name = "PresentLiveCase"
 	_button(actions, "File / update case", _file)
-	_button(actions, "Preview effectiveness", _preview_effectiveness)
-	_button(actions, "Review evaluator support", _support_details)
-	_button(actions, "Withdraw endorsement…", _withdraw_window)
 	support_label = _label(page, "", 15, "accent")
 	support_label.name = "EvaluatorSupport"
 	support_label.custom_minimum_size.y = 75
@@ -181,7 +201,6 @@ func refresh() -> void:
 	premise_person.clear()
 	for person in next_view.people:
 		premise_person.add_item(person.name)
-	effects_toggle.set_pressed_no_signal(g.workshop_effects)
 	_session_changed()
 	if reset:
 		_fit_after_layout()
@@ -228,7 +247,7 @@ func _sync() -> void:
 		for issue in check.issues.slice(0, 3):
 			support_label.text += "\n• " + issue
 		if check.issues.size() > 3:
-			support_label.text += "\n%d more support issues — use Review evaluator support for the full list." % (check.issues.size() - 3)
+			support_label.text += "\n%d more support issues." % (check.issues.size() - 3)
 		if not check.ready or not g.workshop_effects:
 			support_label.text += "\n" + check.warning
 		elif check.get("audience_ready", false):
@@ -240,11 +259,16 @@ func _sync() -> void:
 		support_label.text = "Select a premise to see support for the entire connected case. Card labels describe individual evidence only."
 	context_label.text = "Context: " + g.state + (" · speaking with " + g.talk_with.name if g.state == "talk" and g.talk_with != null else "")
 	present_button.text = "Present privately" if g.state == "talk" else "Take meeting floor" if g.state == "meeting" else "Speak on nomination" if g.state == "nomination" else "Start a conversation or meeting to present"
+	debug_menu.visible = g.debug_overlay
+	var dp: PopupMenu = debug_menu.get_popup()
+	dp.set_item_checked(dp.get_item_index(DebugItem.EFFECTS), g.workshop_effects)
+	_refresh_filed()
 	_store()
 
 func _session_changed() -> void:
 	_sync()
 	canvas.queue_redraw()
+	contents_changed.emit()
 
 func _support_details() -> void:
 	if board.nodes[board.selected].kind != "premise" or board.nodes[board.selected].conclusion.is_empty():
@@ -417,3 +441,100 @@ func _withdraw_window() -> void:
 		status.text = "Endorsement withdrawn for " + g.w.npcs[person.selected].name
 		window.queue_free())
 	window.popup_centered_clamped()
+
+func _debug_action(id: int) -> void:
+	match id:
+		DebugItem.EFFECTS:
+			g.set_workshop_effects(not g.workshop_effects)
+			_session_changed()
+		DebugItem.PREVIEW:
+			_preview_effectiveness()
+		DebugItem.SUPPORT:
+			_support_details()
+		DebugItem.WITHDRAW:
+			_withdraw_window()
+
+## Filed cases, newest last: click one to select its premise on the canvas.
+func _refresh_filed() -> void:
+	if filed_row == null:
+		return
+	for child in filed_row.get_children():
+		child.queue_free()
+	var shown: Array = files.keys().filter(func(id): return board.nodes.has(id) and files[id] > 0)
+	if shown.is_empty():
+		return
+	_label(filed_row, "Filed:", 15, "muted")
+	for id in shown:
+		var key: String = id
+		var b = _button(filed_row, "#%d %s" % [files[id], board.title(id)], func():
+			_select_card(key)
+			canvas.fit_case())
+		b.tooltip_text = "Case #%d. Present it from here, or with `present %d` at the meeting." % [files[id], files[id]]
+		if id == board.selected:
+			b.add_theme_color_override("font_color", WorkshopSkin.color("accent"))
+
+## Remove a card from the canvas (drag out, or right-click). One step of undo.
+func remove_node(id: String) -> void:
+	if board == null or not board.nodes.has(id):
+		return
+	var node: Dictionary = board.nodes[id]
+	var title_text: String = board.title(id)
+	_undo = {"canvas": board.export_data(), "root": case_root, "files": files.duplicate(true)}
+	match node.kind:
+		"evidence":
+			board.remove_evidence(id)
+		"modifier":
+			board.remove_modifier(id)
+		"contradiction":
+			board.unmerge(id)
+		"premise":
+			board.remove_premise(id)
+			files.erase(id)
+	if not board.nodes.has(case_root):
+		case_root = board.selected
+	undo_button.disabled = false
+	_session_changed()
+	status.text = "Removed %s from the Workshop. The original stays on the case board." % title_text
+
+func _undo_remove() -> void:
+	if _undo.is_empty():
+		return
+	var saved: Dictionary = _undo.canvas
+	board.nodes = saved.nodes.duplicate(true)
+	board.links = saved.links.duplicate(true)
+	board.selected = saved.selected
+	board.serial = saved.serial
+	board.version = saved.version + 1
+	case_root = _undo.root
+	files = _undo.files.duplicate(true)
+	_undo = {}
+	undo_button.disabled = true
+	_session_changed()
+	status.text = "Restored."
+
+func _extend_context(id: String) -> void:
+	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "modifier"]:
+		context_menu.add_separator()
+		context_menu.add_item("Remove from Workshop", 204)
+
+func _context_action(action: int) -> void:
+	if action == 204:
+		remove_node(context_id)
+		return
+	super(action)
+
+## Board card numbers whose evidence is on this canvas (cached per canvas version).
+func board_numbers() -> Array:
+	if board == null or g == null:
+		return []
+	var key = [board.version, board.nodes.size(), g.board.size(), case_world == g.w]
+	if key == _numbers_key:
+		return _numbers
+	_numbers_key = key
+	_numbers = []
+	for receipt in g.board:
+		if receipt.kind == "deduction" or receipt.get("deleted", false):
+			continue
+		if board.nodes.has("e:" + Live.Evidence.normalize_card(receipt).id):
+			_numbers.append(receipt.n)
+	return _numbers

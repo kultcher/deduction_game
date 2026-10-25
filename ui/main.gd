@@ -55,8 +55,7 @@ var notes_edit: TextEdit
 var roles_win: Window
 var roles_box: VBoxContainer
 var log_text = LogText.new()
-var workshop_win: Window
-var workshop_comparison_win: Window
+var new_case_confirm: ConfirmationDialog
 
 func _ready() -> void:
 	var bg = ColorRect.new()
@@ -116,13 +115,20 @@ func _ready() -> void:
 	size_opt.set_item_metadata(1, 10)
 	size_opt.tooltip_text = "Town size for the next case: 7 (one minion) or 10 (two minions)."
 	top.add_child(size_opt)
-	_button(top, "New case", _new_case_button)
 	var more = MenuButton.new()
 	more.text = "More ▾"
 	more.flat = false
 	var mp: PopupMenu = more.get_popup()
-	for it in ["Cast (text)", "Timeline (text)", "Card list sidebar", "Write dev log", "Case Workshop", "Live Workshop comparison"]:
-		mp.add_item(it)
+	# Ids are fixed per entry so reordering the menu never changes what an id does.
+	for it in [["New case…", MoreItem.NEW_CASE], ["Cast (text)", MoreItem.CAST], ["Timeline (text)", MoreItem.TIMELINE],
+			["Card list sidebar", MoreItem.SIDEBAR], ["Write dev log", MoreItem.LOG], ["Case Workshop", MoreItem.WORKSHOP]]:
+		mp.add_item(it[0], it[1])
+	new_case_confirm = ConfirmationDialog.new()
+	new_case_confirm.title = "New case"
+	new_case_confirm.dialog_text = "Start a new case? The current case and its board will be lost."
+	new_case_confirm.ok_button_text = "Start new case"
+	new_case_confirm.confirmed.connect(_new_case_button)
+	add_child(new_case_confirm)
 	mp.id_pressed.connect(_on_more)
 	top.add_child(more)
 	debug_check = CheckBox.new()
@@ -130,8 +136,6 @@ func _ready() -> void:
 	debug_check.tooltip_text = "Show what NPCs privately make of each card and person (influence, credibility, suspicion). Turning it on mid-case leaves your identification unscored."
 	debug_check.toggled.connect(func(on):
 		g.set_debug_overlay(on)
-		if is_instance_valid(workshop_comparison_win):
-			workshop_comparison_win.get_child(0).refresh()
 		_refresh_all())
 	top.add_child(debug_check)
 	theory_label = Label.new()
@@ -310,6 +314,7 @@ func _ready() -> void:
 	case_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	case_view.visible = false
 	add_child(case_view)
+	case_view.workshop_execute = _run_workshop
 	case_view.build(mono)
 	case_view.changed.connect(_refresh_side)
 	case_view.notes_requested.connect(_open_notes)
@@ -358,14 +363,6 @@ func _new_case() -> void:
 	meeting_view.set_game(g)
 	if debug_check.button_pressed:
 		g.set_debug_overlay(true)
-	if is_instance_valid(workshop_comparison_win):
-		workshop_comparison_win.get_child(0).g = g
-		workshop_comparison_win.get_child(0).refresh()
-		workshop_comparison_win.hide()
-	if is_instance_valid(workshop_win):
-		workshop_win.get_child(0).g = g
-		workshop_win.get_child(0).refresh()
-		workshop_win.hide()
 	_refresh_all()
 	if is_inside_tree() and show_script_at_start:
 		_open_roles()
@@ -461,53 +458,30 @@ func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
 			c2.add_theme_color_override("font_color", UITheme.color("red").darkened(0.2))
 			col.add_child(c2)
 
-func _on_more(i: int) -> void:
-	if i == 0:
-		_run("cast")
-	elif i == 1:
-		_run("timeline")
-	elif i == 2:
-		side.visible = not side.visible
-	elif i == 3:
-		_run("log")
-	elif i == 4:
-		_open_live_workshop()
-	elif i == 5:
-		if not is_instance_valid(workshop_comparison_win):
-			workshop_comparison_win = Window.new()
-			workshop_comparison_win.title = "Live Workshop comparison · developer inspector"
-			workshop_comparison_win.min_size = Vector2i(850, 600)
-			workshop_comparison_win.size = Vector2i(1100, 820)
-			workshop_comparison_win.close_requested.connect(func(): workshop_comparison_win.hide())
-			add_child(workshop_comparison_win)
-			var inspector = load("res://ui/workshop_comparison.gd").new()
-			inspector.g = g
-			workshop_comparison_win.add_child(inspector)
-		else:
-			workshop_comparison_win.get_child(0).g = g
-			workshop_comparison_win.get_child(0).refresh()
-		workshop_comparison_win.popup_centered()
+enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE }
 
+func _on_more(i: int) -> void:
+	match i:
+		MoreItem.CAST:
+			_run("cast")
+		MoreItem.TIMELINE:
+			_run("timeline")
+		MoreItem.SIDEBAR:
+			side.visible = not side.visible
+		MoreItem.LOG:
+			_run("log")
+		MoreItem.WORKSHOP:
+			_open_live_workshop()
+		MoreItem.NEW_CASE:
+			if g == null or g.w.game_over:
+				_new_case_button()
+			else:
+				new_case_confirm.popup_centered()
+
+## The Case Workshop lives on the case board as a pull-out sheet.
 func _open_live_workshop(number: int = 0) -> void:
-	if not is_instance_valid(workshop_win):
-		workshop_win = Window.new()
-		workshop_win.title = "Case Workshop · live case"
-		workshop_win.min_size = Vector2i(1120, 700)
-		workshop_win.size = Vector2i(1500, 950)
-		workshop_win.close_requested.connect(func(): workshop_win.hide())
-		add_child(workshop_win)
-		var editor = load("res://ui/live_case_workshop.gd").new()
-		editor.g = g
-		editor.execute = _run_workshop
-		editor.filed.connect(_refresh_all)
-		workshop_win.add_child(editor)
-	else:
-		workshop_win.get_child(0).g = g
-		workshop_win.get_child(0).refresh()
-	var editor = workshop_win.get_child(0)
-	if number > 0 and number <= g.board.size() and g.board[number - 1].kind != "deduction":
-		editor.add_evidence(number)
-	workshop_win.popup_centered_ratio(0.95)
+	case_view.refresh()
+	case_view.open_workshop(number)
 
 func _run_workshop(cmd: String, progress: Callable) -> void:
 	_print("\n> " + cmd)
@@ -539,8 +513,8 @@ func _run(cmd: String) -> void:
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()
-	if is_instance_valid(workshop_win) and workshop_win.visible:
-		workshop_win.get_child(0).refresh()
+	if case_view.visible and case_view.workshop != null:
+		case_view.workshop.refresh()
 
 ## Several commands from one click (e.g. walk to someone, then talk to them).
 func _run_seq(cmds: Array) -> void:
