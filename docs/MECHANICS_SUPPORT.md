@@ -1,0 +1,157 @@
+# Mechanics support: evidence the shared judge still can't read
+
+Status: open work list (Oct 25). Owner: Codex, reviewed by the user. Read
+[LEGACY_MIGRATION.md](LEGACY_MIGRATION.md) first, especially the north star, the
+architecture rules and the lessons learned.
+
+**Goal:** every kind of evidence in the game is judged by the shared model, once.
+Anything it can't read is excluded with a stated reason, never silently routed to the
+legacy rules. This is coverage work, not new realism: no new cognitive layers, no new
+hidden state, no exact source-channel models.
+
+## How to work through this list
+
+- **Order:** top to bottom, unless the user says otherwise.
+- **Per item:**
+  - targeted tests;
+  - `tools/replay_54875.gd` with no step more than about 10% slower than before the item,
+    unless the cost is flagged to the user with a reason;
+  - no impossible refreshes (each refresh's trace reasoning records `impossible`).
+- **Per two or three items:** a ten-person passive A/B (`tools/autoplay.gd` with and
+  without `--native`, 10–20 seeds). Report good wins, town agreement and Demon rank
+  against the previous run.
+- **Keep progress notes short:** what changed, what was measured, in a few lines per
+  item, in MIGRATION_PROGRESS.md.
+- **Run the full suite** and `test_trace` (`--include-slow`) at the end of the list or
+  before a merge, not after every item.
+- **Performance rule of thumb:** a card that is a yes/no fact about each world (who's
+  evil, who's the Demon, who holds a modifier, who walked where) is cheap. Anything that
+  needs a new hidden fact multiplies every evaluation; stop and design it with the user.
+
+## 1. Revenant curse histories
+
+**State:** once a curse fires, every case falls back to the legacy rules (inventory
+B10, C8), and `curse` / `curse_lifted` cards are unsupported.
+
+**Intent:** a turned NPC changes alignment mid-game. Evidence from before the turn
+describes the original alignment; evidence after it describes the new one.
+
+**Approach:** design first, with the user. Prefer epoch boundaries that are public
+(the curse event, the vote that triggered it, a freed soul). Use the existing dated
+vote receipts for who voted. If who turned is hidden, at most one small extra fact per
+world (which of the eligible people turned), only once a curse has fired, and only for
+evidence dated across the boundary.
+
+**Performance risk: medium.** That extra fact multiplies worlds by the number of
+eligible people. Keep it out of games with no curse.
+
+## 2. NPC-to-NPC sharing as evidence
+
+**State:** sightings and readings told NPC to NPC (C3), and the player's case relayed
+by an NPC (C5), are legacy ledger entries. Opinions (C4) are already excluded (Q4).
+
+**Intent:** what one NPC tells another becomes a receipt in the listener's evidence,
+with provenance (who told whom), credited by trust in the teller and deduplicated by the
+underlying fact. This is likely the largest remaining cause of the town disagreeing
+(see the agreement numbers in MIGRATION_PROGRESS).
+
+**Performance risk: medium.** Listeners will hold more cards:
+- `CaseEval` cost grows with the number of readings weighed, and past 16 readings its
+  per-world keys switch to a slower form. Measure late-game cost on the Day 3–4 fixture
+  (item 9).
+- Shared sightings feed the movement model. Its cache keys already cover sighting
+  cards, but check `movement_inputs()` if new fields are read.
+
+## 3. Defence moves as claims and challenges
+
+**State:** daily stacking is fixed (stable semantic identities), but the moves still go
+through the legacy route (C2).
+
+**Intent:**
+- a gift reveal becomes a walking-gift claim;
+- a confessed secret becomes a secret card;
+- red herring, misled and lying become challenges to a specific reading;
+- pair_other stays a rival suggestion (speech);
+- a plea is speech, not evidence.
+
+Each is judged once, not re-added every day. Keep each move's legacy strength and the
+trust-in-defender weighting until the Q3/Q6 tuning pass.
+
+**Performance risk: medium. Fix this before challenges become common:**
+`ReadingChallenges.assess` runs a full solve per challenge and builds a string key per
+world. Switch it to per-world integer keys and `Solver.report_table` lookups first.
+
+## 4. Unnamed relays
+
+**State:** "word reached me from the Seer" without a named source is an explicit
+fallback (B3, B8).
+
+**Approach:** treat it as the teller's testimony about a reading, at reduced weight,
+with no model of who the anonymous source might be. A later public "that was me"
+binds it to the named source (already implemented).
+
+**Performance risk: low,** provided it adds no latent-source fact.
+
+## 5. Warden guard statements
+
+**State:** the one active gift still unsupported outside a Medium relay (B4).
+Hearthwitch is benched; leave it.
+
+**Approach:** a guard statement (who, which door, which night) as a protection receipt
+in `live_protection.gd`, combined with quiet nights and the Demon's movement. Each
+world either fits it or doesn't.
+
+**Performance risk: low.**
+
+## 6. One model for night sightings
+
+**State:** the legacy `Mind.night_sighting_scale` (×0.12 away from a death, discounted
+for claimed walkers) and the shared movement model still coexist (B5).
+
+**Intent:**
+- Retire the legacy scaling wherever the shared model owns sightings, and confirm it's
+  parked.
+- Add a small chance that the Demon detours, so an off-route sighting argues strongly,
+  not absolutely, against being the killer.
+- Surface two relationships in previews and replies: "seen elsewhere that night, so
+  probably not the killer", and scattered sightings that corroborate a walking-gift
+  claim. See the BACKLOG items on off-scene night sightings and corroborated walking-gift
+  claims.
+
+**Performance risk: low to medium.** A detour adds a few routes per Demon profile.
+Keep `_likelihood`'s loop structure (no work inside the per-block loops that doesn't
+depend on the block).
+
+## 7. Remove the legacy presentation route for supported evidence
+
+**Intent:** where the shared model supports everything in a presentation, the legacy
+argument route in `Argue.evaluate`, `hear_accusation`, `hear_defence`,
+`hear_group_case` and `_public_case_hear` is no longer reachable. Unsupported cards are
+rejected with a named reason.
+
+**Performance risk: low.** Paths that used to fall back now pay for evaluation, so check
+the replay.
+
+## 8. Check: no double counting of role claims
+
+Soft testimony now handles rival claims (an evil claimant may bluff, weight 0.35 per
+declaration). Confirm that the legacy claim effects are fully parked wherever the shared
+model owns the claim: `own_role` "they claim my gift", double-claim bumps and
+`claim_credence`. Otherwise rival claims are counted twice. Add a regression test.
+
+## 9. Day 3–4 versions of case #85 in the replay fixture
+
+**When:** when the user says so (previously on hold).
+
+**What:** extend `tests/fixtures/playtest_54875_opening.json` and the replay to the
+four- and six-report versions of #85. This is the late-game measurement for speed (the
+readings cliff, movement model growth) and for behaviour.
+
+## Not on this list
+
+These are covered elsewhere:
+- **Re-baseline follow-ups, owned with the user:** Insight as degree, attention for
+  replies only, replies matching beliefs, the Confidence stickiness rule, Q3 tuning
+  (including a rank-aware vote through the execution-priority input).
+- **BACKLOG ideas:** reactive meetings, supporting evidence (votes as soft evidence;
+  a gated vibes stage), Town Hall, two-part traces, a day-killing Demon.
