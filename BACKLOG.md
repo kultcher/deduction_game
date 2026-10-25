@@ -2208,6 +2208,12 @@ exact values remain open. The code-derived examples and clarifications are in
   the player lost (wrong read / missed / never available / failed to persuade). Absorbs
   the removed voting prompt and the Scion credit rule. [open]
 
+  > **Session verification 2026-10-25 (B181):** test_outcomes and test_fixes._summary verify
+  > identification/loss/Martyr/initial-Demon attribution. Propose narrowing, not closing the [open]
+  > scoring design. Exact-gift/confidence design is skipped. Surprise: execution history still reads
+  > final role/alignment, so transition attribution remains unresolved. Full default runner: 73/75;
+  > only permitted test_social/test_text_ui failures.
+
   > **Prep B181 (9cb8782; partial; candidate to narrow):** `game/case_metrics.gd::summarize`/`aggregate`
   > already report identification, minion ID sets, and loss categories; `tools/test_outcomes.gd` covers
   > outcomes. Exact-gift credit, confidence, and Scion/event-time attribution need explicit rules. ID
