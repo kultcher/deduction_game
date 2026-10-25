@@ -167,7 +167,7 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor.board.connect_cards("e:" + report_id, headline)
 	editor.board.selected = headline
 	editor._session_changed()
-	check("NEW EVALUATOR" in editor.support_label.text, "supported reading case has a visible evaluator label")
+	check("SHARED EVALUATOR" in editor.support_label.text, "supported reading case has a visible evaluator label")
 	editor._open_answer("e:" + report_id)
 	check(editor.case_box.get_child_count() > 0, "reading answers open using live people and receipts")
 	editor.answer_window.hide()
@@ -176,7 +176,17 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor.board.connect_cards("e:" + trace_id, headline)
 	editor.board.selected = headline
 	editor._session_changed()
-	check("FALLBACK" in editor.support_label.text and "trace" in editor.support_label.text, "mixed graph warning is visible without running a preview")
+	check("UNSUPPORTED" in editor.support_label.text and "trace" in editor.support_label.text and "blocked in ordinary play" in editor.support_label.text, "mixed graph warning names unsupported evidence and the actual submission behavior")
+	var support_state = JSON.stringify([g.board, g.w.rng.state, g.w.npcs.map(func(n): return [n.trust, n.suspicion, n.ledger])])
+	editor._support_details()
+	check("UNSUPPORTED" in editor.result_output.text and "blocked in ordinary play" in editor.result_output.text and not "Fallback evaluates" in editor.result_output.text, "support review does not advertise a fallback that ordinary submission will block")
+	editor.preview_window.hide()
+	g.workshop_effects = false
+	editor._session_changed()
+	check("EXISTING RULES" in editor.support_label.text and "explicitly selected" in editor.support_label.text, "deliberately disabled shared evaluation stays visibly distinct")
+	g.workshop_effects = true
+	editor._session_changed()
+	check(support_state == JSON.stringify([g.board, g.w.rng.state, g.w.npcs.map(func(n): return [n.trust, n.suspicion, n.ledger])]), "support wording changes no evidence, RNG or beliefs")
 	editor._open_answer("e:" + trace_id)
 	check(editor.case_box.get_child_count() > 0, "unsupported card can be inspected without fixture logic")
 	editor.answer_window.hide()
@@ -304,7 +314,7 @@ func _main_ui() -> void:
 	check(withdrawal.visible and withdrawal.transient and withdrawal.is_embedded() and withdrawal.get_parent().get_window() == main.workshop_win, "dynamically created withdrawal panel also uses the Workshop layer")
 	withdrawal.close_requested.emit()
 	await editor._send("convince %d" % filed_number)
-	check("New shared evaluator" in editor.result_output.text and main.g.questions_left == 2, "live screen submits a home-context case through the main callback and displays shared delivery")
+	check("Shared evaluator" in editor.result_output.text and main.g.questions_left == 2, "live screen submits a home-context case through the main callback and displays shared delivery")
 	check(not editor.progress_window.visible and not editor.presenting, "presentation progress closes and releases the editor after delivery")
 	editor.preview_window.hide()
 	main.seed_box.value = 693

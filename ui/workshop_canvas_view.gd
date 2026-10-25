@@ -44,7 +44,7 @@ func body(id: String) -> Array:
 	var card = Solver.card_by_id(model.view, node.card)
 	var result: Array = [card.text]
 	if card.has("support_note"):
-		result.append(card.support_note)
+		result.append(str(card.support_note).replace("FALLBACK:", "UNSUPPORTED:"))
 	if card.kind == "event" and card.get("event") == "curse":
 		var chosen: Array = node.answers.get(card.id, {}).get("positive", [])
 		result.append("Converted voter: " + ("?" if chosen.is_empty() else Solver.person_name(model.view, chosen[0])))

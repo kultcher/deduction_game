@@ -470,6 +470,14 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
 
 - **From playtest 54875: case-workshop feedback.** [decided]
 
+  > **Session 2026-10-25 (B036): model/warning wording fixed; partial closure proposed.** Shared,
+  > unsupported, and explicitly selected existing-rule modes are distinguished. Unsupported-card
+  > help no longer advertises ordinary fallback presentation or hard-codes obsolete capability
+  > lists. The live support result still decides behavior. Assumption-origin and collateral
+  > explanations remain separate work; no evaluator, ownership, or submission rules changed.
+
+  > Focused UI checks: 2/2. Full runner: 73/75; only the two permitted failures.
+
   > **Prep B036 (9cb8782; partial UI):** `ui/live_case_workshop.gd::_sync` already labels evaluator mode;
   > `_support_details`/`_preview_effectiveness` and `ui/workshop_comparison.gd::describe` expose
   > diagnostics. Check each symptom with a small canvas; assumption origin and collateral warnings are

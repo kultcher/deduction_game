@@ -213,6 +213,13 @@ func _store() -> void:
 	if board != null and case_world == g.w:
 		g.workshop_draft = {"canvas": board.export_data(), "files": files.duplicate(true), "root": case_root}
 
+func _support_warning(check: Dictionary) -> String:
+	if not g.workshop_effects:
+		return "Existing rules are explicitly selected. Canvas answers, assumptions and intermediate claims do not gain shared interpretation in this mode."
+	if not check.ready:
+		return "Unsupported evidence submissions are blocked in ordinary play; they are not silently judged by existing rules. Remove or replace unsupported links. Bare opinions and mercy/protection preferences remain social speech."
+	return "The shared evaluator checks this case. Answers and assumptions are hypotheses, not extra evidence."
+
 func _sync() -> void:
 	if board == null or not board.nodes.has(board.selected):
 		return
@@ -221,16 +228,16 @@ func _sync() -> void:
 	present_button.disabled = board.nodes[board.selected].kind != "premise" or board.nodes[board.selected].get("conclusion", {}).is_empty()
 	if not present_button.disabled:
 		var check = Live.status(g, board.compile(board.selected))
-		var caption = "NEW EVALUATOR · reading logic supported" if check.ready else "FALLBACK · new evaluator cannot fully handle this case"
+		var caption = "SHARED EVALUATOR · case supported" if check.ready else "UNSUPPORTED · shared assessment unavailable"
 		if not g.workshop_effects:
-			caption = "EXISTING RULES · experimental evaluator is switched off"
+			caption = "EXISTING RULES · shared evaluator is switched off"
 		support_label.text = caption
 		for issue in check.issues.slice(0, 3):
 			support_label.text += "\n• " + issue
 		if check.issues.size() > 3:
 			support_label.text += "\n%d more support issues — use Review evaluator support for the full list." % (check.issues.size() - 3)
 		if not check.ready or not g.workshop_effects:
-			support_label.text += "\n" + check.warning
+			support_label.text += "\n" + _support_warning(check)
 		elif check.get("audience_ready", false):
 			support_label.text += "\nEvery current listener can evaluate this case. Answers and assumptions are hypotheses, not extra evidence."
 		else:
@@ -251,13 +258,13 @@ func _support_details() -> void:
 		return
 	var check = Live.status(g, board.compile(board.selected))
 	result_output.text = "Selected case: " + board.title(board.selected)
-	result_output.text += "\nReading interpretation supported." if check.ready else "\nFALLBACK: this case is not fully handled by the new evaluator."
+	result_output.text += "\nSHARED EVALUATOR: this case is supported." if check.ready else "\nUNSUPPORTED: shared assessment is unavailable for this case."
 	if not g.workshop_effects:
-		result_output.text += "\nExperimental reading effects are switched off."
+		result_output.text += "\nEXISTING RULES: the shared evaluator is switched off."
 	for issue in check.issues:
 		result_output.text += "\n• " + issue
-	result_output.text += "\n\n" + check.warning
-	result_output.text += "\n\nSupports reading constraints, night movement and trace comparisons, quiet-night support, and supported single Medium relays. Card labels describe each available interpretation. Old traces without scene metadata, dated Martyr failures, nested relays, and conversion histories still require fallback. Medium cause modifiers need a choice of which source to question. Listener knowledge and workload limits can also require fallback."
+	result_output.text += "\n\n" + _support_warning(check)
+	result_output.text += "\n\nThis review covers the whole connected case and its current audience. Card labels describe individual interpretations; they do not guarantee that every connected case is supported. Review the listed issues before presenting."
 	preview_window.popup_centered_clamped()
 
 func _edit() -> void:
@@ -273,7 +280,7 @@ func _refresh_case() -> void:
 	if node.kind == "evidence":
 		_clear(case_box)
 		var card: Dictionary = _report(node.card)
-		_label(case_box, card.support_note, 17, "accent")
+		_label(case_box, card.support_note.replace("FALLBACK:", "UNSUPPORTED:"), 17, "accent")
 		var editable: bool = (card.kind == "report" and card.role in Live.Assess.ROLES) or card.kind in ["sighting", "secret_claim"] or card.get("context_kind", "") == "psychologist"
 		if editable and not card.support_note.begins_with("FALLBACK"):
 			_question(card)
@@ -282,7 +289,7 @@ func _refresh_case() -> void:
 			_label(case_box, "Link this testimony into your argument. Role claims remain conditional on honesty; sightings and alibi discrepancies are circumstantial.", 16)
 		else:
 			_label(case_box, card.text, 18)
-			_label(case_box, "You can link this card and present the case using existing rules. A live answer/relationship evaluator for this evidence has not been implemented; it contributes no new-model inference.", 16)
+			_label(case_box, "You can inspect this receipt, but it has no supported shared interpretation. Including unsupported evidence blocks an ordinary shared submission; remove it or replace it with supported evidence.", 16)
 		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
 	elif node.kind == "modifier":
 		_clear(case_box)
@@ -386,7 +393,7 @@ func _send(command: String) -> void:
 	presenting = false
 	var lines: Array = []
 	for delivery in g.workshop_deliveries:
-		lines.append("%s · %s" % [delivery.name, "New shared evaluator" if delivery.model == "shared" else "FALLBACK: existing rules"])
+		lines.append("%s · %s" % [delivery.name, "Shared evaluator" if delivery.model == "shared" else "Existing rules (explicit route)"])
 		for issue in delivery.issues:
 			lines.append("  " + issue)
 	if lines.is_empty():
