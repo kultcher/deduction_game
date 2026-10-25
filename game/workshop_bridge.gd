@@ -20,6 +20,8 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 	for event in g.w.public_log:
 		input.public_events.append({"kind": event.kind, "subjects": event.get("subjects", []).duplicate(),
 			"by": event.get("by", ""), "at": {"day": event.day, "phase": "night" if event.kind == "demon_death" else ("evening" if event.kind in ["silenced", "vote"] else "unknown")}})
+		if event.kind in ["curse", "curse_lifted"] and event.has("phase"):
+			input.public_events[-1].at = Evidence.stamp({"day": event.day, "phase": event.phase})
 		if event.kind == "vote":
 			input.public_events[-1]["data"] = {}
 			for field in ["nominee", "nominator", "yes", "no", "player_yes", "count", "threshold", "outcome"]:
@@ -96,6 +98,7 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 		"theories": n.workshop_state.get("theories", {}).duplicate(true),
 		"discounted": n.discounted.duplicate(true), "honesty": n.honesty.duplicate(true),
 		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true), "legacy_evidence": []}
+	input.listener["disowned_reports"] = []
 	for entry in n.ledger.values():
 		if entry.get("meta", {}).get("kind", "") not in ["reading", "arg", "tell"]:
 			continue
@@ -121,6 +124,9 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 			input.listener.own_outings[str(key).trim_suffix(":3")] = n.secret_mod != "sleepwalker" and not str(n.history[key]).begins_with("home")
 	for e in n.info_log:
 		var card = _reading(n.id, e)
+		if e.get("disowned", false):
+			input.listener.disowned_reports.append(Evidence.normalize_card(card).id)
+			continue # Their own withdrawn memory is not firsthand support.
 		input.receipts.append({"card": card, "private": true})
 	for source in n.known_claims:
 		var claim: Dictionary = n.known_claims[source]

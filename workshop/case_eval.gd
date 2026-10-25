@@ -86,6 +86,8 @@ static func _index(view: Dictionary) -> Dictionary:
 	team_of.resize(universe.size())
 	for i in range(universe.size()):
 		var evil: int = universe[i].evil
+		if universe[i].has("converted") and TimeModel.evil_index(view, universe[i], universe[i].converted, "Current alignment"):
+			evil |= 1 << int(universe[i].converted)
 		if not team_idx.has(evil):
 			team_idx[evil] = teams.size()
 			teams.append(evil)
@@ -219,6 +221,17 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	# Per class: prior (team odds, role fits) and the case's likelihood.
 	var team_prior = _team_prior(view, listener)
 	var fits = _class_fits(view, cc, cards, knowledge)
+	if view.get("chronology", {}).has("curse"):
+		fits = fits.duplicate() # Never modify a cached role table.
+		var worlds: Array = Solver.universe(view)
+		for c in range(fits.size()):
+			var world: Dictionary = worlds[cc.rep[c]]
+			for person in knowledge.get("good", []):
+				if TimeModel.evil_at(view, world, person, knowledge.get("good_epoch", view.alignment_epoch)):
+					fits[c] = 0.0
+			for fact in knowledge.get("timed_good", []):
+				if TimeModel.evil_at(view, world, fact.person, fact.at):
+					fits[c] = 0.0
 	var case_like = _class_like(cc, cc.reports.map(func(c): return err_for.call(c)), -1)
 	var own_like = _state_like(view, own, own.map(func(c): return err_for.call(c)), oc.codes)
 	# Live role uniqueness is checked per world in Roles.fits, where an evil claimant may
@@ -334,6 +347,8 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 	digits.resize(k)
 	var radix: int = int(pow(3, k))
 	var rm_bound: int = (1 << people) * (people + 2) * (people + 2) * ((1 << people) * 2 if relay else 1)
+	if view.get("chronology", {}).has("curse"):
+		rm_bound *= people + 1
 	var int_keys: bool = k <= 16 and float(rm_bound) * float(radix) * 4.0 < 9.0e18
 	# Each world's card states as one base-3 code, a card at a time.
 	var codes = PackedInt64Array()
@@ -346,6 +361,10 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 			codes[i] = codes[i] * 3 + (0 if t[i] == 1 else (1 if v[i] == 1 else 2))
 	var live: bool = Domain.live(view)
 	var rms: PackedInt64Array = _coarse(view, seer, relay) if roles_on else Solver.world_bits(view).evil
+	if not roles_on and view.get("chronology", {}).has("curse"):
+		rms = rms.duplicate()
+		for i in range(n):
+			rms[i] = rms[i] * (people + 1) + int(universe[i].converted) + 1
 	if not live:
 		# Fixture universes are small and carry conversion histories: one world per class.
 		rms = PackedInt64Array()

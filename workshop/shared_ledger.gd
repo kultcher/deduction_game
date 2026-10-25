@@ -6,6 +6,7 @@ const Jury = preload("res://workshop/jury.gd")
 const Support = preload("res://workshop/support_model.gd")
 const Theory = preload("res://workshop/theory.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
+const TimeModel = preload("res://workshop/chronology.gd")
 
 static func reading(source: String, entry: Dictionary, via: String = "", anonymous: bool = false) -> Dictionary:
 	var card = {"kind": "info", "source": source, "role": entry.get("role", ""),
@@ -141,6 +142,10 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var entry: Dictionary = ledger[eid]
 		var meta: Dictionary = entry.get("meta", {})
 		var kind: String = meta.get("kind", "")
+		var curse: Dictionary = prepared.view.get("chronology", {}).get("curse", {})
+		if kind == "event" and not curse.is_empty() and eid == "curse:%d" % (int(curse.from) / 4) and entry.get("effects", []).all(func(effect): return effect[0] in curse.yes_voters and is_equal_approx(float(effect[1]), 0.15)):
+			owned[eid] = true
+			continue
 		if kind in ["martyr", "proof"] and input.evidence.any(func(receipt): return receipt.kind == "martyr" and eid == "martyr:%d" % receipt.observed_at.day and not entry.get("effects", []).is_empty() and entry.effects.all(func(effect): return effect[0] in receipt.subjects and is_equal_approx(float(effect[1]), -2.0))):
 			owned[eid] = true
 			continue
@@ -245,7 +250,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var dimensions: int = Support.dimensions(prepared.view.cards, prepared.listener, prepared.case.reading_challenges) if prepared.view.world_options.get("roles", false) or not prepared.case.reading_challenges.is_empty() else sources.size() + uncertain
 		if Jury.engine == "legacy" and dimensions > 6:
 			issues.append("Shared evidence exceeds the 64-state credibility budget.")
-	return {"ready": issues.is_empty(), "empty": facts.is_empty() and preload("res://workshop/public_evidence.gd").factors(prepared.view).is_empty(), "issues": issues, "owned": owned if issues.is_empty() else {},
+	return {"ready": issues.is_empty(), "empty": facts.is_empty() and preload("res://workshop/public_evidence.gd").factors(prepared.view).is_empty() and not prepared.view.get("chronology", {}).has("curse"), "issues": issues, "owned": owned if issues.is_empty() else {},
 		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input,
 		"marked_questions": marked_questions}
 
@@ -354,6 +359,11 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 	# No headline: the union only asks how every suspicion moves (Jury.refresh).
 	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
 	var public_good: Array = preload("res://workshop/public_evidence.gd").known_good(plan.input.public_events, plan.input.people.map(func(p): return p.id))
+	if prepared.view.get("chronology", {}).has("curse"):
+		var curse: Dictionary = prepared.view.chronology.curse
+		var active: bool = TimeModel.tick(plan.input.now) < curse.until
+		var proofs: Array = preload("res://workshop/public_evidence.gd").martyr_receipts(plan.input.public_events, plan.input.people.map(func(p): return p.id))
+		public_good = public_good.filter(func(person): return not active or person not in curse.yes_voters or proofs.any(func(proof): return person in proof.subjects and TimeModel.tick(proof.observed_at) >= curse.from))
 	if not public_good.is_empty():
 		result["public_good"] = public_good
 	# A witnessed proof replaces its old native clear exactly. It is not another

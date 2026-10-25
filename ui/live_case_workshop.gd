@@ -23,6 +23,11 @@ func premise_names() -> Array:
 
 func _premise_details(node: Dictionary) -> void:
 	var conclusion: Dictionary = node.get("conclusion", {})
+	if not conclusion.is_empty() and board.view.get("chronology", {}).has("curse"):
+		var epochs: Array = board.view.chronology.epochs.keys()
+		var epoch = _option(case_box, epochs)
+		epoch.select(epochs.find(conclusion.at))
+		epoch.item_selected.connect(func(i): conclusion.at = epochs[i]; _edit())
 	if conclusion.get("type") == "secret_mod":
 		var kinds: Array = Live.Assess.C.SECRET_MOD_LIST
 		var choice = _option(case_box, kinds.map(func(kind): return Live.Assess.C.secret_name(kind)))

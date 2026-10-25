@@ -173,6 +173,8 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	if observations.is_empty():
 		return []
 	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true)]
+	if view.get("chronology", {}).has("curse"):
+		input.append(view.chronology.curse)
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
@@ -184,6 +186,8 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	var profiles: Array = []
 	for person in view.people:
 		profiles.append({"good": _likelihood(view, checked, person, "good"), "minion": _likelihood(view, checked, person, "minion"), "demon": _likelihood(view, checked, person, "demon")})
+		if view.get("chronology", {}).has("curse"):
+			profiles[-1]["converted"] = _likelihood(view, checked, person, "converted")
 	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
 		"label": "Movement / trace: joint live comparison", "profiles": profiles,
 		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
@@ -197,6 +201,8 @@ static func score(world: Dictionary, factor: Dictionary) -> float:
 	for i in range(factor.profiles.size()):
 		var profile: Dictionary = factor.profiles[i]
 		var type: String = "demon" if world.get("demon", -1) == i else ("minion" if world.evil & (1 << i) else "good")
+		if world.get("converted", -1) == i and profile.has("converted"):
+			type = "converted"
 		result *= maxf(profile[type], 1e-30) / maxf(profile.good, 1e-30)
 	return result
 
@@ -208,10 +214,10 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 			nights.append(card.night)
 	var role = role_of(cards, person.id)
 	var gift: bool = C.ROLES.get(role, {}).get("night_walk", false)
-	var profiles: Array = [{"kind": alignment, "weight": 1.0}] if alignment != "good" else [
+	var profiles: Array = [{"kind": alignment, "weight": 1.0}] if alignment not in ["good", "converted"] else [
 		{"kind": "ordinary", "weight": 0.2 if gift else 0.75},
 		{"kind": "gift", "weight": 0.7 if gift else 0.15}, {"kind": "secret", "weight": 0.1}]
-	if alignment == "good" and role != "" and not gift:
+	if alignment in ["good", "converted"] and role != "" and not gift:
 		profiles = [{"kind": "ordinary", "weight": 0.9}, {"kind": "secret", "weight": 0.1}]
 	# Each night's incident cards, deduplicated once in their original order.
 	var reports_by_night: Array = []
@@ -234,14 +240,18 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 		var tables: Array = []
 		for n in range(nights.size()):
 			var night = nights[n]
-			var paths: Array = _profile_paths(view, person, night, profile.kind, cards)
+			var current: String = alignment
+			if alignment == "converted":
+				var curse: Dictionary = view.chronology.curse
+				current = "minion" if night * 4 + 3 >= curse.from and night * 4 + 3 < curse.until else "good"
+			var paths: Array = _profile_paths(view, person, night, "minion" if alignment == "converted" and current == "minion" else profile.kind, cards)
 			var by_evening: Array = []
 			for evening in C.BLOCKS:
 				var products = PackedFloat64Array()
 				for path in paths:
 					var p: float = path.weight
 					for card in reports_by_night[n]:
-						p *= _observed(card, person.id, evening, path.path, alignment, view, night)
+						p *= _observed(card, person.id, evening, path.path, current, view, night)
 					products.append(p)
 				by_evening.append(products)
 			tables.append(by_evening)

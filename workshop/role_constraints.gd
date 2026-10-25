@@ -66,6 +66,8 @@ static func coarse_mask(people: int, world: Dictionary, seer: bool, relay: bool)
 	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if seer else 0)
 	if relay:
 		mask = (mask * (1 << people) + int(world.get("holders", 0))) * 2 + int(world.get("modifier") == "delusional")
+	if world.has("converted"):
+		mask = mask * n + int(world.converted) + 1
 	return mask
 
 ## The seer flag fits() keys its memo on.
@@ -131,12 +133,12 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 			cards = cards.duplicate()
 			for person in routes.forced_lamp:
 				cards.append({"kind": "claim", "source": person, "role": "lamplighter", "inferred": true})
-	return _fits(ids, world, cards, knowledge, answers, live)
+	return _fits(ids, world, cards, knowledge, answers, live, view)
 
 ## bluffs (live play): in a world where a claim's source is evil, the claim is a bluff:
 ## it occupies no role and constrains nothing. A good source's claim stays binding, so a
 ## contradiction leaves only the worlds where some claimant is lying.
-static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool = false) -> bool:
+static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool = false, view: Dictionary = {}) -> bool:
 	var all: int = (1 << ids.size()) - 1
 	var good: int = all & ~world.evil
 	var demon: int = world.get("demon", -1)
@@ -175,7 +177,11 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 		var source: int = ids.find(card.source)
 		if source < 0:
 			return false
-		if world.evil & (1 << source):
+		var source_evil: bool = (world.evil & (1 << source)) != 0
+		if world.has("converted") and not view.is_empty():
+			var time = preload("res://workshop/chronology.gd")
+			source_evil = time.evil_at(view, world, card.source, time.statement_time(card))
+		if source_evil:
 			if bluffs and not card.get("inferred", false):
 				continue
 			return false
@@ -271,6 +277,8 @@ static func _matching(masks: Array, occupied: int) -> bool:
 ## Per world: BLUFF_WEIGHT for each distinct (source, role) declared by a source who is
 ## evil in that world. Inferred and quoted declarations don't count.
 static func bluff_weights(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
+	if view.get("chronology", {}).has("curse"):
+		return _temporal_bluff_weights(view, universe, cards)
 	var ids: Array = view.people.map(func(p): return p.id)
 	var declared: Array = []  # source bit per distinct declaration
 	var seen = {}
@@ -292,4 +300,20 @@ static func bluff_weights(view: Dictionary, universe: Array, cards: Array) -> Pa
 			if evil & bit:
 				weight *= BLUFF_WEIGHT
 		out[w] = weight
+	return out
+
+static func _temporal_bluff_weights(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
+	var time = preload("res://workshop/chronology.gd")
+	var declarations = {}
+	for card in cards:
+		if card.kind in ["report", "claim"] and not card.get("quoted", false) and not card.get("inferred", false):
+			declarations[time.source_key(view, card) + ":" + card.role] = card
+	var out = PackedFloat64Array()
+	out.resize(universe.size())
+	for i in range(universe.size()):
+		var weight = 1.0
+		for card in declarations.values():
+			if time.evil_at(view, universe[i], card.source, time.statement_time(card)):
+				weight *= BLUFF_WEIGHT
+		out[i] = weight
 	return out

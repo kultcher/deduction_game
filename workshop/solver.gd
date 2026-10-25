@@ -216,6 +216,13 @@ static func _build_universe(view: Dictionary) -> Array:
 	var all_worlds: Array = []
 	if Domain.live(view):
 		all_worlds = Domain.worlds(view)
+		if view.get("chronology", {}).has("curse"):
+			var expanded: Array = []
+			for world in all_worlds:
+				for candidate in TimeModel.expand(view, world):
+					candidate["__i"] = expanded.size()
+					expanded.append(candidate)
+			all_worlds = expanded
 	else:
 		for evil in range(1 << ids.size()):
 			if popcount(evil) == view.evil_count:
@@ -267,6 +274,8 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 ## A world's key without the demon's identity. Report contents and source validity
 ## never read it, so worlds differing only there share one answer. -1: no key.
 static func content_sig(view: Dictionary, world: Dictionary) -> int:
+	if world.has("converted"):
+		return int(world.get("__i", -1)) # Source validity now depends on the turnee.
 	if not world.has("__key"):
 		return -1
 	if world.has("demon"):
@@ -456,6 +465,8 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 		for assignment in temporal_positions:
 			for id in assignment.positions:
 				worlds = worlds.filter(func(w): return position_holds(view, w, id, assignment.positions[id], assignment.at))
+	for fact in knowledge.get("timed_good", []):
+		worlds = worlds.filter(func(w): return not TimeModel.evil_at(view, w, fact.person, fact.at))
 	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
 	if view.get("world_options", {}).get("roles", false):
 		# One role table for the surviving worlds (same answers as fits per world).
@@ -664,7 +675,7 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 		"lied", "truthful":
 			# Existing challenge semantics: evil-reader versus honest-reader
 			# explanations. Impairment is not deliberate dishonesty.
-			var evil: bool = TimeModel.evil_index(view, world, index, conclusion.at)
+			var evil: bool = TimeModel.evil_index(view, world, index, conclusion.get("question_at", conclusion.at))
 			return evil if conclusion.type == "lied" else not evil
 		"misled", "unreliable":
 			var table: PackedByteArray = question_table(view, conclusion)

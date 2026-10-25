@@ -41,10 +41,15 @@ static func view(g) -> Dictionary:
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
 			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; transmission/source modifiers need separate attribution" if activity.has("relay_source") else note
-	return {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
+	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
+	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": "Original alignment",
 		"world_options": {"modifiers": snapshot.rules.modifier_options}, "live": true, "live_activity": true,
 		"timeline": Assess.History.from_events(snapshot.public_events)}
+	if not history.value.is_empty():
+		result["chronology"] = history.value
+		result.alignment_epoch = "Current alignment"
+	return result
 
 ## Resolve exact original facts afresh. Missing/deleted evidence is a blocker, never
 ## permission to file a weaker argument with fewer roots.

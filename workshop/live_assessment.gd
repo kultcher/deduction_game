@@ -25,8 +25,8 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	for issue in snapshot.issues:
 		if issue.code in ["missing_card", "cyclic_argument", "argument_depth", "unknown_listener", "cover_unavailable", "invalid_venue"]:
 			result.issues.append(issue.code + ": " + issue.detail)
-	if snapshot.public_events.any(func(e): return e.kind in ["curse", "curse_lifted"]):
-		result.issues.append("This live case has alignment-transition history that needs a temporal adapter.")
+	var history = History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
+	result.issues.append_array(history.issues)
 	var needed: Array = snapshot.selected.duplicate()
 	for id in snapshot.private_evidence:
 		if id not in needed:
@@ -101,10 +101,14 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	# Supported questions concern original alignment. Advancing the day must not
 	# silently create a fresh theory and discard yesterday's commitment.
 	var epoch: String = "Original alignment"
+	if not history.value.is_empty():
+		epoch = "Current alignment"
 	var view = {"seed": 0, "day": snapshot.now.day, "people": snapshot.people.duplicate(true), "cards": cards,
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": epoch, "history": [],
 		"world_options": {"modifiers": snapshot.rules.modifier_options.duplicate()}, "scope": result.scope,
 		"timeline": History.from_events(snapshot.public_events)}
+	if not history.value.is_empty():
+		view["chronology"] = history.value
 	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim"] or c.get("role") in ["nightwatch", "veteran", "lamplighter", "sexton", "martyr"]):
 		view["live_activity"] = true
 		view.world_options["roles"] = true
@@ -158,7 +162,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			result.case = root.workshop_case.duplicate(true)
 			result.case.id = "live:" + snapshot.case_id
 			result.view = view
-			view.alignment_epoch = "Original alignment"
+			view.alignment_epoch = epoch
 		for argument in snapshot.arguments:
 			var conclusion = argument.conclusion
 			if conclusion.get("type") not in CONCLUSIONS or _target(conclusion) not in snapshot.people.map(func(p): return p.id):
@@ -166,6 +170,10 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		for claim in [result.case] + result.case.get("arguments", []).map(func(a): return a.case):
 			result.issues.append_array(conclusion_issues(view, claim))
 			var c: Dictionary = claim.conclusion
+			if c.type in ["lied", "truthful", "misled", "unreliable"]:
+				var report = Solver.card_by_id(view, c.get("report", ""))
+				if not report.is_empty():
+					c["question_at"] = Solver.TimeModel.statement_time(report)
 			if c.type in ["lied", "misled", "unreliable"] and c.get("report", "") in claim.cards:
 				var id: String = c.report
 				var challenge = {"mode": "lying" if c.type == "lied" else "misled", "supports": claim.cards.filter(func(root): return root != id)}
@@ -237,6 +245,10 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		return card # Public homes / reported haunts describe routes, not guilt.
 	if night < 0:
 		return {}
+	if e.kind in ["curse", "curse_lifted"] and e.source == "player" and snapshot.public_events.any(func(event): return event.kind == e.kind and event.at.day == night):
+		card["kind"] = "context"
+		card["context_kind"] = e.kind
+		return card # The public boundary is applied once to the domain, not as a report.
 	if e.kind == "vote" and e.source == "player" and e.observed_at.phase == "evening" and night >= 1:
 		var content: Dictionary = e.content
 		if content.get("nominee", "") not in ids or content.get("by", "") not in ids + ["player"] or not content.get("yes") is Array or not content.get("no") is Array or not content.get("player_yes") is bool:
@@ -432,7 +444,9 @@ static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 		for field in claim:
 			if field not in fields:
 				issues.append("Unrecognized canvas feature needs a live adapter: " + str(field) + ".")
-		if claim.conclusion.get("type") not in CONCLUSIONS or claim.conclusion.get("target") not in snapshot.people.map(func(p): return p.id) or claim.conclusion.get("at") != "Original alignment":
+		var history = History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
+		var epochs: Array = history.value.get("epochs", {"Original alignment": 0}).keys()
+		if claim.conclusion.get("type") not in CONCLUSIONS or claim.conclusion.get("target") not in snapshot.people.map(func(p): return p.id) or claim.conclusion.get("at") not in epochs:
 			issues.append("Unsupported canvas claim or alignment time.")
 		for line in claim.get("lines", []):
 			if line.get("relation", "supports") not in ["supports", "quotes"] or line.has("test_factor"):
@@ -575,10 +589,14 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 	var reliability = {}
 	var good: Array = [src.id]
 	var public_roles = {}
+	var timed_good: Array = []
+	var cursed: bool = snapshot.public_events.any(func(e): return e.kind == "curse")
 	for receipt in preload("res://workshop/public_evidence.gd").martyr_receipts(snapshot.public_events, snapshot.people.map(func(p): return p.id)):
 		public_roles[receipt.content.martyr] = "martyr"
 		for person in receipt.subjects:
-			if person not in good:
+			if cursed:
+				timed_good.append({"person": person, "at": receipt.observed_at})
+			elif person not in good:
 				good.append(person)
 	for card in cards:
 		reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), src.discounted.get(card.source + ":*", 0.0)) if card.kind == "report" else 1.0
@@ -588,6 +606,8 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 		if card.has("relay_source"):
 			reliability[card.accuracy_origin] = reliability[card.id]
 			reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.relay_source, card.relay_observed_at.day], 0.0), src.discounted.get(card.relay_source + ":*", 0.0))
+		if card.id in src.get("disowned_reports", []):
+			reliability[card.id] = 0.0
 	var result = {"id": src.id, "name": src.name, "trust": src.trust, "confidence": src.confidence,
 		"insight": src.insight, "reasoning_mode": src.get("reasoning_mode", "full"),
 		"confidence_mode": src.get("confidence_mode", "scale"), "theories": src.get("theories", {}).duplicate(true),
@@ -598,6 +618,9 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 		"ledger": {}, "case_memory": {}}
 	if public_roles.is_empty():
 		result.knowledge.erase("public_roles")
+	if cursed:
+		result.knowledge["good_epoch"] = "Current alignment"
+		result.knowledge["timed_good"] = timed_good
 	return result
 
 static func _target(conclusion: Dictionary) -> String:

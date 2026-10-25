@@ -102,3 +102,12 @@ Existing local Godot config/UID changes are outside these commits.
 - **1 design approved by the user:** reuse bounded before/during/restored epochs;
   one hypothetical eligible turnee only after a public curse, with eligibility from
   the public execution vote and alive-at-event history. No curse-state cost otherwise.
+  Implemented the public boundary/eligibility adapter, time-indexed source validity,
+  current versus original premises, restoration and private disowned-memory handling.
+  Movement keeps its habitual-block model, with one additional time-varying profile
+  per person only in curse games. The native curse-voter bump is parked. Missing vote
+  or boundary provenance is explicit. Focused curse, conclusion, public-event and
+  checkpoint suites pass. Non-curse replay: 9 shared, 0 fallback, unchanged 3/5;
+  presenting 2744 ms versus item 0's 2698 ms, meeting search 1682/1647 ms. Expanded
+  cursed-game cost still needs the passive chunk; `logs/mechanics-support/curse-final`
+  and `item-1` retain the evidence.

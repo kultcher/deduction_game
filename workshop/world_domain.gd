@@ -62,7 +62,8 @@ static func worlds(view: Dictionary) -> Array:
 static func key(view: Dictionary, world: Dictionary) -> int:
 	var n: int = view.people.size()
 	var base: int = ((int(world.evil) * (n + 1) + int(world.marked) + 1) * 4 + C.SECRET_MOD_LIST.find(world.modifier)) * (1 << n) + int(world.holders)
-	return base * (n + 1) + world.demon + 1 if world.has("demon") else base
+	base = base * (n + 1) + world.demon + 1 if world.has("demon") else base
+	return base * (n + 1) + world.converted + 1 if world.has("converted") else base
 
 static func claims_compatible(cards: Array, knowledge: Dictionary) -> bool:
 	var sources = {}

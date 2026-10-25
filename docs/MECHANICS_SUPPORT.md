@@ -59,6 +59,12 @@ conclusion type is judged by the legacy rules, visibly: an immediate `[dev]` lin
 
 ## 1. Revenant curse histories
 
+**Implemented Oct 25 (Codex), using the user's approved bounded epoch design.**
+Public execution/vote/activation/restoration receipts supply the boundary. Only a
+curse expands worlds, by eligible original-good voters; no referee turnee is read.
+Original/current premises and reading times stay distinct; native voter bumps are
+parked. Incomplete public histories remain explicit. Measurements in MIGRATION_PROGRESS.
+
 **State:** once a curse fires, every case falls back to the legacy rules (inventory
 B10, C8), and `curse` / `curse_lifted` cards are unsupported.
 
