@@ -233,6 +233,11 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     his last question with no explanation. When the earlier hearing was public, say so
     ("I heard you say that at the meeting"). [decided]
 
+    > **Session verification 2026-10-25 (B014):** test_legacy_migration verifies public-hearing
+    > acknowledgement, one free repeat, no repeated judge work or belief/trust/RNG change, and
+    > second-repeat cost. Propose closure; no repeat accounting changed. Full default runner: 73/75;
+    > only permitted test_social/test_text_ui failures.
+
     > **Prep B014 (9cb8782; partial):** `game/game.gd::_talk_command` already tracks per-conversation
     > `free_repeats`. Explain private/public earlier hearings while preserving the second-repeat cost;
     > migration tests should also confirm a free replay adds no shared effect.
