@@ -706,6 +706,7 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		which.append(c)
 	var live: bool = Domain.live(view)
 	var t: PackedByteArray = Solver.Roles.fits_table(view, reps, cards, knowledge, {}, live)
+	# Only classes that fail the content check need the declaration-only check.
 	var declarations = PackedByteArray()
 	if live and t.has(0) and cards.any(func(card): return card.kind == "report"):
 		var claims: Array = []
@@ -716,7 +717,17 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 				claim.kind = "claim"
 				claim.data = {}
 			claims.append(claim)
-		declarations = Solver.Roles.fits_table(view, reps, claims, knowledge, {}, true)
+		var failed: Array = []
+		var at: PackedInt32Array = PackedInt32Array()
+		for x in range(reps.size()):
+			if t[x] == 0:
+				failed.append(reps[x])
+				at.append(x)
+		var sub: PackedByteArray = Solver.Roles.fits_table(view, failed, claims, knowledge, {}, true)
+		declarations.resize(reps.size())
+		declarations.fill(0)
+		for y in range(at.size()):
+			declarations[at[y]] = sub[y]
 	var weights: PackedFloat64Array = Solver.Roles.bluff_weights(view, reps, cards) if live else PackedFloat64Array()
 	for x in range(which.size()):
 		var content: float = float(t[x])

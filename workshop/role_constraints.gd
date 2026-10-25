@@ -342,12 +342,28 @@ static func _temporal_bluff_weights(view: Dictionary, universe: Array, cards: Ar
 			var key: String = time.source_key(view, card) + ":" + card.role
 			if not declarations.has(key) or float(card.get("hearing_weight", 1.0)) > float(declarations[key].get("hearing_weight", 1.0)):
 				declarations[key] = card
+	# Per declaration, once: the source's index, statement time and factor. A world with
+	# no conversion is evil at every time exactly when its evil bit is set.
+	var ids: Array = view.people.map(func(p): return p.id)
+	var who = PackedInt32Array()
+	var factor = PackedFloat64Array()
+	var times: Array = []
+	for card in declarations.values():
+		who.append(ids.find(card.source))
+		factor.append(lerpf(1.0, BLUFF_WEIGHT, float(card.get("hearing_weight", 1.0))))
+		times.append(time.statement_time(card))
 	var out = PackedFloat64Array()
 	out.resize(universe.size())
 	for i in range(universe.size()):
+		var world: Dictionary = universe[i]
+		var converted: bool = world.has("converted")
+		var evil: int = int(world.evil)
 		var weight = 1.0
-		for card in declarations.values():
-			if time.evil_at(view, universe[i], card.source, time.statement_time(card)):
-				weight *= lerpf(1.0, BLUFF_WEIGHT, float(card.get("hearing_weight", 1.0)))
+		for d in range(who.size()):
+			var j: int = who[d]
+			if j < 0:
+				continue
+			if (evil & (1 << j)) != 0 or (converted and time.evil_index(view, world, j, times[d])):
+				weight *= factor[d]
 		out[i] = weight
 	return out
