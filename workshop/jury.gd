@@ -54,6 +54,11 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary) -> Dictionary:
 	var span = Profiler.open("jury_refresh")
 	_eval_memo = {}
+	# The union has no claim: clear the placeholder target, so attention ranks cards
+	# neutrally and no "you're accusing me" check fires on whoever is first in the list.
+	case_data = case_data.duplicate(true)
+	case_data.conclusion = case_data.conclusion.duplicate()
+	case_data.conclusion.target = ""
 	var old: Dictionary = listener.ledger.get(case_data.id, {})
 	var old_effects: Dictionary = old.get("effects", {})
 	if not old.is_empty() and old_effects.is_empty():

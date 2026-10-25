@@ -67,6 +67,7 @@ func _silenced_speakers() -> void:
 		n.busy_with = ""
 	speaker.loc = "tavern"
 	speaker.traits["gossip"] = 1.0
+	speaker.trust = 0.8 # the fixture's approach needs a trusting speaker; don't rely on the seed
 	speaker.beliefs.append({"kind": "saw", "who": target.id, "block": target.home_block, "day": w.day - 1, "phase": C.NIGHT})
 	speaker.silenced = true
 	var approached = false

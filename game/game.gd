@@ -1140,6 +1140,9 @@ func _approach_command(verb: String, rest: String) -> void:
 			free_repeats = 0
 			w.dlog.add("player_talk", "player", n.id, {"trust": snappedf(n.trust, 0.01), "approach": approach["agenda"]})
 			_narr("You step aside with %s at %s." % [n.name, w.loc_name(loc)])
+			# The same location card a normal visit gives (Case 22485: approaches gave none).
+			_facts([{"kind": "sighting", "subject": [n.id], "block": w.loc_block(loc), "loc": loc, "day": w.day, "phase": w.phase,
+				"source": "player", "text": "You saw %s at %s, day %d %s." % [n.name, w.loc_name(loc), w.day, w.phase_name()]}])
 			var r: Dictionary = Social.approach_open(w, n, approach["agenda"])
 			_lines(r["lines"])
 			_facts(r["facts"])

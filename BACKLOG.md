@@ -13,31 +13,6 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
-- **Case 22485: the Breathstealer stole breath at a distance.** On Day 1 evening Odette
-  silenced Fenwick while she was at home and he was at the chapel. The Breathstealer
-  must share a public location with the target when using the ability (not from home,
-  not across blocks). (user, Oct 25) [decided]
-- **Case 22485: an evil Lamplighter bluff said "home all night".** Constance (evil
-  Revenant, publicly claiming Lamplighter) answered "At home all night" while her bluff
-  says she walks the lamps; Fenwick had also seen her go in on night 0. An NPC claiming
-  a night-walking gift (good, or evil bluffing one) must give whereabouts consistent with
-  the claim, or the claim and the alibi must be chosen together. (user, Oct 25)
-  [decided]
-- **Sleepwalker and Lovers only on roles that are home at night.** Modifiers that send
-  someone out at night (Sleepwalker; Lovers meeting) should only be assigned to holders
-  whose role isn't normally out at night, so a night role never has two reasons to be
-  out. In 22485 the Sleepwalker was Nisha (Veteran). Check the Veteran's night
-  behaviour and the full role list. (user, Oct 25) [decided]
-- **Case 22485: an approach that shares news gives no location card.** Jory approached
-  the player at the town well to share something, but the meeting produced no sighting
-  card for where Jory was then, unlike a normal conversation. Approaches should add the
-  same location card as talking to someone. (user, Oct 25) [decided]
-- **Leftover placeholder in belief-refresh attention.** `Jury.refresh` has no headline,
-  but `Shared.prepare` still gives the union case a placeholder conclusion ("the first
-  person in the list is evil"), and `Reasoner._prepare` ranks cards by salience to that
-  target. So a limited listener's belief budget favours cards about whoever is first in
-  the town list. Use a neutral ranking for refreshes. (Claude, Oct 25) [decided]
-
 - **Case 44814: inconsistent pair-reading defenses.** NPCs can both redirect a
   reading toward the other candidate and declare its source a liar, with separate
   mechanical effects. Choose one explanation, or explicitly frame alternatives
@@ -693,6 +668,12 @@ exact values remain open. The code-derived examples and clarifications are in
   [decided; exact presentation open]
 
 ### UI
+- **Mark circumstantial evidence visually.** (user, Oct 25) Circumstantial or
+  vibes-stage case items (co-location with the silenced, demeanour, votes as soft
+  evidence, pattern-based support) should look different from hard-logic items:
+  readings, sightings and claims the evaluator checks against each possible world. At
+  least a different colour on the board, in the case builder and in the preview, so the
+  player can tell how a case is made up. [decided]
 - **Limited-use tool warnings.** Clearly warn before spending Ward and other
   limited-use abilities; show remaining uses and that spending one is irreversible.
   Current help and some labels already say "once per case", but the generic
@@ -1164,6 +1145,24 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 ---
 
 ## Closed
+
+- **Case 22485 quick fixes (Oct 25, Claude).**
+  - **Breathstealer:** she must be out in a public place to use the ability; the
+    target can be anywhere on the same block (`Evil.breath_target`). In 22485 Odette did
+    it from her house on Chapel Hill.
+  - **Claimed night roles keep their story** (`Mind.answer_night`): someone who claimed
+    Lamplighter, Medium or Warden never answers "home all night" for a night their gift
+    had them out. An evil bluff always tells the duty; a real holder tells it whenever
+    they were actually out, and still says "home" truthfully if they weren't. The "home"
+    branch used to run before the claimed-duty branches.
+  - **Sleepwalker and Lovers** go only to holders whose role isn't a night-walking gift
+    (`World._assign_secret_mod`).
+  - **Approaches give a location card:** accepting an approach adds the same sighting
+    card a normal visit gives.
+  - **Belief refreshes have no placeholder target** (`Jury.refresh` clears it), so
+    attention ranks cards neutrally and no "you're accusing me" check fires on whoever
+    is first in the town list.
+
 
 - **Player-nominated NPCs already defend themselves (verified Oct 21).**
   Player nominations call `Game._defend_pending` before voting, just as NPC

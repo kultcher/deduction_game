@@ -375,6 +375,12 @@ func _assign_secret_mod() -> void:
 	if goods.size() < 2:
 		return
 	var k: String = pick(C.SECRET_MOD_LIST)
+	if k in ["lovers", "sleepwalker"]:
+		# These send their holder out at night: never on a role that is already out at
+		# night, so nobody has two reasons to be out (Case 22485).
+		goods = goods.filter(func(n): return not C.ROLES.get(n.role, {}).get("night_walk", false))
+		if goods.size() < 2:
+			return
 	var a = goods[0]
 	a.secret_mod = k
 	if k == "lovers":

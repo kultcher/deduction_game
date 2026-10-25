@@ -1008,7 +1008,11 @@ static func intel_from_share(w, m, speaker, item: Dictionary) -> void:
 ## The Breathstealer picks whom to silence, among the good on its block (not the same
 ## person twice running). Likelier as the day goes on; the most dangerous voice first.
 static func breath_target(w, bs) -> String:
-	var b: String = bs.home_block if bs.at_home() else w.loc_block(bs.loc)
+	# The Breathstealer must be out in a public place; the target can be anywhere on the
+	# same block (Case 22485: no stealing breath from inside one's own house).
+	if bs.at_home():
+		return ""
+	var b: String = w.loc_block(bs.loc)
 	var cands: Array = w.living_good().filter(func(m): return m.id != bs.breath_last and m.silence_pending < 0 and not m.silenced \
 		and (m.home_block if m.at_home() else w.loc_block(m.loc)) == b)
 	if cands.is_empty():

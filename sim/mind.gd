@@ -2265,17 +2265,10 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(fb), nd]})
 		vantage = fb
 		how = "street"
-	elif not was_out:
-		lines.append(say(n, "At home all night, same as any honest soul."))
-		facts.append(_alibi_home(n, nd))
-		vantage = n.home_block
-	elif n.role == "nightwatch" and n.claimed_role == "nightwatch":
-		vantage = block
-		how = "street"
-		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(block)))
-		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
-			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(block), nd]})
-	elif n.claimed_role in ["lamplighter", "medium"] and (n.claim_public or n.max_tier >= 3) and (n.role == n.claimed_role or n.is_evil()) \
+	# A claimed night-walking gift keeps its story: an evil bluff always tells the duty,
+	# a real holder tells it whenever they were actually out (Case 22485: a claimed
+	# Lamplighter must never say "home all night").
+	elif n.claimed_role in ["lamplighter", "medium"] and (n.claim_public or n.max_tier >= 3) and ((n.role == n.claimed_role and was_out) or n.is_evil()) \
 			and not (n.is_evil() and n.claimed_role == "medium" and _bluff_hearth(w, n, nd) == ""):
 		if n.is_evil() and n.claimed_role == "medium":
 			# Their story puts them at the hearth their fake reading names, not where they were.
@@ -2292,7 +2285,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		lines.append(say(n, duty))
 		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "duty_claim": true, "duty": n.claimed_role,
 			"text": "%s says they were out on %s on night %d (%s)." % [n.name, C.block_name(block), nd, "the lamp route" if n.claimed_role == "lamplighter" else "visiting the dead"]})
-	elif n.claimed_role == "warden" and (n.claim_public or n.max_tier >= 3) and (n.role == "warden" or n.is_evil()):
+	elif n.claimed_role == "warden" and (n.claim_public or n.max_tier >= 3) and ((n.role == "warden" and was_out) or n.is_evil()):
 		# An open Warden says whose door they guarded; an evil one bluffing it invents a door
 		# on the block they were really on (or anyone, if they stayed in).
 		var guarded: String = warden_door(w, n, nd)
@@ -2306,6 +2299,16 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			lines.append(say(n, "At home all night, same as any honest soul."))
 			facts.append(_alibi_home(n, nd))
 			vantage = n.home_block
+	elif not was_out:
+		lines.append(say(n, "At home all night, same as any honest soul."))
+		facts.append(_alibi_home(n, nd))
+		vantage = n.home_block
+	elif n.role == "nightwatch" and n.claimed_role == "nightwatch":
+		vantage = block
+		how = "street"
+		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(block)))
+		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
+			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(block), nd]})
 	else:
 		# Out with something to hide: evil work, a personal secret, or a hidden Night Watch gift.
 		var hiding = "evil work" if n.is_evil() else ("hidden %s gift" % C.role_name(n.role) if C.ROLES[n.role].get("night_walk", false) and n.secret.is_empty() else "secret: %s" % n.secret.get("kind", "?"))
