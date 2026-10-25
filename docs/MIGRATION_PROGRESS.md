@@ -264,3 +264,26 @@ speed acceptance are not signed off: see the A/B table and cost flags above.
 Logs: `full-final`, `trace-final`, `contract-final`, `item-9-check`. Everything is
 committed locally on `codex/case-board-mechanics`; no push or merge was performed.
 The existing user config/UID edits and the dead reference branch remain untouched.
+
+
+## Late-game speed and merge (Claude, Oct 25)
+
+Codex's opening replay never reached the late game. Seed 42 (ten people, passive)
+showed the Day-3 meeting entry at 31 s on main and 95 s on the branch (container).
+Almost all of it was the role check: once a listener held a Medium relay card, the
+role mask keyed on every modifier holder, splitting each class about 12,000 ways and
+recomputing movement routes per world.
+
+| Change | Commit | Effect (container) |
+|---|---|---|
+| Relay masks key on the Medium's evil bit and Delusion only; routes hoisted | `9cb8782` | Seed 42 Day-3 meeting entry 31 s -> 3.9 s (main), 95 s -> 6.5 s (merged) |
+| Merge of `codex/case-board-mechanics` | `0cd2181` | Curse epochs and the relay fix share the mask |
+| Declaration-only role pass on failing classes only; hearsay bluff weights test the evil bit directly | (next commit) | 54875 replay: meeting entry 2.0 -> 1.4 s, search into meeting 4.5 -> 3.5 s, nomination 1.6 -> 1.3 s |
+
+All three are exact: suspicions are identical at every step through Day 4 on seeds
+42, 1005, 3 and 7 (before/after each change).
+
+Still over budget: presenting (about 4.3 s in the container, mostly the scoped reply)
+and search into the meeting (3.5 s; compile cost grew with shared NPC sightings).
+Case #85 now gets 2/5 on Day 2 (was 3/5): that came from `83d0f85` (the neutral
+belief-refresh target, case 22485 fixes), not from this work.
