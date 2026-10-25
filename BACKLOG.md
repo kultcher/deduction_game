@@ -29,6 +29,11 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
   mechanical effects. Choose one explanation, or explicitly frame alternatives
   without awarding both as independent defenses. [decided]
 
+  > **Session verification 2026-10-25 (B001):** Skipped: choosing mutually exclusive pair/challenge
+  > explanations would change defence hearing/belief mechanics, which this session prohibits. Stable
+  > daily keys (B013) are a separate verified closure. Full default runner: 73/75; only permitted
+  > test_social/test_text_ui failures.
+
   > **Prep B001 (9cb8782; open):** `sim/mind.gd::defend_self` can emit pair redirection and lying/misled
   > moves together. Choose a single explanation/hearing policy; extend `tools/test_defence_repeats.gd`
   > with the 44814 pair case before changing strengths.
@@ -209,6 +214,11 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     each meeting (-0.03 and -0.025 per listener each time), while accusations fade about
     0.05 a day. One entry per move per nominee, refreshed and fading like accusations.
     [decided]
+
+    > **Session verification 2026-10-25 (B013):** Native test_defence_repeats and shared
+    > test_mechanics_defences verify stable cross-day identity, strongest complete hearings, and no
+    > repeat stacking. Propose closure of the day-key sub-bug only. Full default runner: 73/75; only
+    > permitted test_social/test_text_ui failures.
 
     > **Prep B013 (9cb8782; partial; stale diagnosis):** `sim/mind.gd::defend_self` now keys
     > person/scope/canonical hash without day. Verify refreshed hearing strength and repeats; the
