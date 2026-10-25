@@ -60,9 +60,13 @@ func _init() -> void:
 	Social._deliver(g.w, s, l, other)
 	check(l.workshop_state.facts.size() == heard + 1, "different same-night contents retain distinct receipt identities")
 	var report = {"role": "surveyor", "day": 0, "phase": 3, "data": {"count": 2}, "text": "Shared reading", "shared": false}
+	var before_reading: int = l.workshop_state.facts.size()
 	Social._deliver(g.w, s, l, {"kind": "reading", "entry": report, "from": s.id, "key": "reading:0:surveyor"})
 	var reading = Shared.reading(s.id, report)
 	check(l.workshop_state.facts.has(reading.id) and l.workshop_state.owned.has(Shared.reading_key(reading)), "NPC reading retains its canonical shared owner")
+	var implied: Dictionary = l.ledger[Mind.claim_eid(s.id, "surveyor")].meta.workshop_card
+	check(l.workshop_state.facts.size() == before_reading + 1 and implied.id == reading.id, "a relayed reading's implied gift claim reuses the same evidence receipt")
+	check(implied.observed_at.day == 0 and implied.provenance.via == s.id, "the implied declaration retains original reading time and teller provenance")
 	var number = g.add_card({"kind": "info", "source": s.id, "role": "surveyor", "subject": [], "day": 0, "phase": 3, "data": {"count": 2}, "text": "Shared reading"})
 	var filed = g.file_deduction({"type": "evil", "a": "constance"}, [number], {}, 0, true)
 	var item = {"kind": "case", "about": "constance", "card": g.board[filed - 1], "from": "player", "key": "case:" + str(filed)}

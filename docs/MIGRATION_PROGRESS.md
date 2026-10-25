@@ -185,3 +185,9 @@ Existing local Godot config/UID changes are outside these commits.
   **Flagged refresh cost:** search 3563 ms (2687), nomination 1320 ms (1053), vote
   991 ms (872); public declarations now enter the union. No threshold tuning.
   Evidence: `claims-final`, `claims-fixed` (ownership/relay only), `item-8`.
+- **8 receipt audit:** the gift claim implied by an NPC-relayed reading now uses
+  that exact original reading receipt, time and teller path. It cannot create a
+  second current-day declaration (especially across a curse). Sharing tests cover
+  the single-fact identity and provenance; claim, curse, ownership and playtest
+  regressions pass. The previous final snapshot is retained for comparison; a
+  fresh passive chunk will measure this correction too.

@@ -338,9 +338,9 @@ static func _eff(effs: Array, target: String, delta: float, why: String, public_
 ## shifts as either claimant's credibility changes. An NPC's knowledge of their own true
 ## gift is a record too (weight 1.5: they *know* a rival is lying). how: public | relayed |
 ## own | told.
-static func hear_claim(w, l, who: String, role: String, weight: float, how: String) -> void:
+static func hear_claim(w, l, who: String, role: String, weight: float, how: String, original: Dictionary = {}) -> void:
 	if l.is_evil():
-		shadow_run(w, l, func(sh): hear_claim(w, sh, who, role, weight, how))
+		shadow_run(w, l, func(sh): hear_claim(w, sh, who, role, weight, how, original))
 		return
 	if not C.ROLES.has(role) or C.ROLES[role]["align"] != "good" or not w.by_id.has(who):
 		return
@@ -353,7 +353,7 @@ static func hear_claim(w, l, who: String, role: String, weight: float, how: Stri
 		_eff(effs, "rivals:%s:%s" % [role, who], 0.6, "%s claims the %s too" % [nm, rn], "they claim a gift %s claims" % nm)
 	_eff(effs, "role:%s:%s" % [who, role], 1.0, "%s claims the %s" % [nm, rn], "", false)
 	var eid: String = claim_eid(who, role)
-	var receipt: Dictionary = l.ledger.get(eid, {}).get("meta", {}).get("workshop_card", {})
+	var receipt: Dictionary = original if not original.is_empty() else l.ledger.get(eid, {}).get("meta", {}).get("workshop_card", {})
 	if receipt.is_empty():
 		receipt = WorkshopLedger.Evidence.normalize_card({"kind": "claim", "source": who, "subject": [who], "role": role, "day": w.day, "phase": w.phase, "text": "%s claims the %s." % [nm, rn]})
 	ledger_hear(w, l, eid, effs, weight, [who, -1, "role"], {"kind": "role_claim", "how": how, "role": role, "who": who, "workshop_card": receipt})
@@ -1113,7 +1113,7 @@ static func reason_status(w, n, t_id: String) -> Dictionary:
 	var out = {"why": why, "kind": "none" if why == "" else "public", "entry": {}, "strength": 0.0}
 	if why == "":
 		return out
-	if src == "own_role":
+	if src == "own_role" or n.ledger.get(src, {}).get("meta", {}).get("kind") == "role_counter":
 		out["kind"] = "public" if n.claim_public else "private"
 		out["strength"] = 0.5
 		return out
