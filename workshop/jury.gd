@@ -612,15 +612,6 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
 	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged, attention)
 	var ev: Dictionary = CaseEval.evaluate(view, scoped, eval_listener)
-	var contradiction: Dictionary = {}
-	if refresh and ev.impossible:
-		# STOPGAP until live source channels (LEGACY_MIGRATION, P2): the hard role and
-		# route gates make one lie void the listener's whole evidence set.
-		var repaired = _drop_contradicting_source(view, scoped, eval_listener, baseline)
-		contradiction = repaired.report
-		if not repaired.ev.is_empty():
-			scoped = repaired.case
-			ev = repaired.ev
 	var protection = Protection.assess(view, attended, baseline)
 	# The headline's own fatal check (say, accusing the listener) doesn't void what the
 	# evidence says about everyone else: each person gets their own direct check.
@@ -725,40 +716,9 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	Profiler.close(span)
 	return {"effects": effects, "claims": claims, "theories": theories, "considered": attention.considered,
 		"reading_challenges": challenged.results,
-		"reasoning": {"status": "belief_refresh", "contradiction": contradiction, "profile": attention.profile, "considered": attention.considered.duplicate(),
+		"reasoning": {"status": "belief_refresh", "impossible": ev.impossible, "profile": attention.profile, "considered": attention.considered.duplicate(),
 			"ignored": attention.ignored.duplicate(), "ignored_lines": attention.ignored_lines.duplicate(), "private_checks": attention.private_checks.duplicate(true)},
 		"rule": "One CaseEval pass over the attended evidence gives every person's change; intermediate claims add no evidence."}
-
-## STOPGAP for impossible belief refreshes. When no world fits the attended evidence,
-## the listener assumes one informant is wrong: it tries leaving out all cards from one
-## other source at a time, least trusted first, and keeps the first consistent set.
-## Never drops the listener's own readings, public events or physical evidence. Adds no
-## suspicion of the dropped source (the channel model will do that properly). Returns
-## {case, ev, report}; ev is {} when no single source resolves it (old behaviour).
-static func _drop_contradicting_source(view: Dictionary, scoped: Dictionary, eval_listener: Dictionary, baseline: Dictionary) -> Dictionary:
-	var self_id: String = baseline.get("id", "")
-	var own: Array = baseline.knowledge.get("attention_reports", []) + baseline.knowledge.get("own_reports", [])
-	var by_source = {}
-	for id in scoped.cards:
-		var card: Dictionary = Solver.card_by_id(view, id)
-		var source: String = card.get("source", "")
-		if card.is_empty() or id in own or source == self_id or not view.people.any(func(p): return p.id == source):
-			continue
-		if not by_source.has(source):
-			by_source[source] = []
-		by_source[source].append(id)
-	var sources: Array = by_source.keys()
-	var trust = func(id): return 0.5 + baseline.trust if id == "player" else baseline.npc_trust.get(id, 0.5)
-	sources.sort_custom(func(a, b): return trust.call(a) < trust.call(b) if not is_equal_approx(trust.call(a), trust.call(b)) else a < b)
-	var tried: Array = []
-	for source in sources:
-		tried.append(source)
-		var trial: Dictionary = scoped.duplicate(true)
-		trial.cards = scoped.cards.filter(func(id): return id not in by_source[source])
-		var ev2: Dictionary = CaseEval.evaluate(view, trial, eval_listener)
-		if not ev2.impossible:
-			return {"case": trial, "ev": ev2, "report": {"dropped_source": source, "dropped_cards": by_source[source].duplicate(), "tried": tried}}
-	return {"case": scoped, "ev": {}, "report": {"unresolved": true, "tried": tried}}
 
 ## One claim (the headline or an intermediate) judged on the attended evidence it cites.
 static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dictionary, attention: Dictionary, baseline: Dictionary, eval_listener: Dictionary) -> Dictionary:
