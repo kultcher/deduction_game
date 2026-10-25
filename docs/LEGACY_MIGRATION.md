@@ -48,6 +48,22 @@ don't extend it. The channel integration is done when:
 4. The live version marginalizes per source given a world, not over every combination of
    source states (the exact reference is 3^sources; use it only as a parity oracle).
 
+**Performance guidance for the live channel kernel (Claude, Oct 24, after Codex's first
+live probe: about 19 s for ten listeners against a 3.2 s control).**
+- Don't merge until the ordinary probes and the 54875 replay are back near the control.
+  A meeting runs about 50 refreshes, so per-refresh cost multiplies.
+- A per-person theory biases the prior over worlds, not the likelihood of the evidence
+  in a world. Compute each world class's channel likelihood once per listener and
+  evidence set, and reuse it for every person's theory, the refresh and the scoped reply.
+  If the per-person loop still reaches the kernel, that is most of the cost.
+- Given a world, an uncoupled source's channel states sum in closed form: cost should be
+  about classes × sources (milliseconds), not hundreds of milliseconds per listener.
+  Special-case independent sources and use the general factor machinery only for the
+  sources a unique-role or joint-route constraint actually couples.
+- Check behaviour before optimizing further (seed 1005, the 54875 replay, a 10-game
+  ten-person passive chunk): if aiming and agreement don't improve, the design needs
+  rethinking more than speed does.
+
 ## Terms
 
 - **Legacy rules:** the native belief code in `sim/mind.gd`, `sim/argue.gd`,

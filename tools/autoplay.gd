@@ -3,7 +3,7 @@
 ##
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
-##         [--native]
+##         [--native] [--no-attention]
 ##
 ## --passive: a control player who does nothing (waits every phase, declines approaches,
 ## never nominates, votes no, sleeps). The town's win rate on its own.
@@ -12,6 +12,9 @@
 ## --no-trace skips detailed state sidecars; ordinary developer logs and metrics remain.
 ## --native runs the legacy belief rules (shared assessment off) on the same source, for
 ## A/B comparisons with identical seeds.
+## --no-attention (experiment): every shared-model listener reads every card it holds;
+## Insight still limits links and the explanation search. Measures how much the card
+## budget scatters the town's beliefs, and what reading everything costs.
 ##
 ## Suspicion scale: at the end of each day (entering night, or the game's end) every
 ## living good NPC's suspicion is summarised against the truth: their top suspicion,
@@ -46,6 +49,8 @@ func _init() -> void:
 	passive = args.has("passive")
 	trace_enabled = not args.has("no-trace")
 	native = args.has("native")
+	if args.has("no-attention"):
+		preload("res://workshop/reasoner.gd").unlimited_cards = true
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links"]
@@ -88,7 +93,7 @@ func _init() -> void:
 			push_error("Cannot write results: " + path)
 			quit(1)
 			return
-		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "beliefs": "native" if native else "shared", "seed_start": first,
+		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "beliefs": "native" if native else "shared", "attention": "unlimited" if args.has("no-attention") else "budgeted", "seed_start": first,
 			"npcs": int(args.get("npcs", "7")), "rng_note": "Same seed matches setup; player actions can change later random draws.",
 			"summary": summary, "cases": case_results}, "\t"))
 		file.close()
