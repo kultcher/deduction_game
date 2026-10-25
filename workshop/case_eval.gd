@@ -448,6 +448,8 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 		"movement": movement.map(func(f): return f.label), "factors": movement, "tests": tests, "test_hold": test_hold, "group": group, "group_bits": group_bits, "movement_ok": _movement_ok(view, cards, live),
 		"q": reports.map(func(c): return chance_content(view, c)), "team": team, "rep": rep, "count": count,
 		"premise": prem, "dead": is_dead, "states": states, "class_of": class_of, "k": k}
+	for factor in movement:
+		out.movement.append_array(factor.get("relationships", []))
 	_compiled[key] = out
 	return out
 

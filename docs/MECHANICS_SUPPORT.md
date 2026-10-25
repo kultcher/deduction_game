@@ -165,6 +165,11 @@ world either fits it or doesn't.
 
 ## 6. One model for night sightings
 
+**Implemented Oct 25 (Codex).** Owned night sightings park the legacy scale.
+Demon routes marginalize a 5% detour allowance without extra worlds. Off-route
+and scattered-walking-gift relationships appear in previews and replies from the
+same movement result. Targeted tests and the opening replay pass; see MIGRATION_PROGRESS.
+
 **State:** the legacy `Mind.night_sighting_scale` (×0.12 away from a death, discounted
 for claimed walkers) and the shared movement model still coexist (B5).
 

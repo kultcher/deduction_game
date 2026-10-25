@@ -6,6 +6,8 @@ const C = preload("res://sim/content.gd")
 const History = preload("res://workshop/live_history.gd")
 static var cache = {}
 static var route_cache = {}
+const DEMON_DETOUR = 0.05
+static var demon_route_cache = {}
 
 static func available(view: Dictionary) -> bool:
 	return view.get("live_activity", false)
@@ -204,6 +206,7 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
 		"label": "Movement / trace: joint live comparison", "profiles": profiles,
 		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
+	result[0]["relationships"] = relationships(view, cards)
 	if cache.size() >= 128:
 		cache.clear()
 	cache[key] = {"input": input.duplicate(true), "result": result}
@@ -316,7 +319,60 @@ static func _profile_paths(view: Dictionary, person: Dictionary, night: int, pro
 		result.append({"path": C.BLOCKS.keys(), "weight": rate * 0.1})
 	for destination in destinations:
 		var path: Array = C.BLOCKS.keys() if profile == "gift" and role_of(cards, person.id) == "lamplighter" else C.route(person.home, destination)
-		result.append({"path": path, "weight": rate * (0.9 if unknown_lamp else 1.0) / maxf(destinations.size(), 1)})
+		var weight: float = rate * (0.9 if unknown_lamp else 1.0) / maxf(destinations.size(), 1)
+		if profile == "demon":
+			for route in demon_routes(person.home, destination):
+				result.append({"path": route.path, "weight": weight * route.weight})
+		else:
+			result.append({"path": path, "weight": weight})
+	return result
+
+## Marginalize a few extra paths, never add a detour variable to the world domain.
+static func demon_routes(home: String, destination: String) -> Array:
+	var key: String = home + ":" + destination
+	if demon_route_cache.has(key):
+		return demon_route_cache[key]
+	var direct: Array = C.route(home, destination)
+	var via: Array = C.BLOCKS.keys().filter(func(block): return block not in direct)
+	var result: Array = [{"path": direct, "weight": 1.0 - DEMON_DETOUR if not via.is_empty() else 1.0}]
+	for block in via:
+		var path: Array = C.route(home, block) + C.route(block, destination).slice(1)
+		result.append({"path": path, "weight": DEMON_DETOUR / via.size()})
+	demon_route_cache[key] = result
+	return result
+
+## Explain relationships already scored by movement; these notes add no factors.
+static func relationships(view: Dictionary, cards: Array) -> Array:
+	var result: Array = []
+	var seen = {}
+	var blocks = {}
+	for card in cards:
+		if card.kind != "sighting" or card.get("quoted", false) or card.get("night", -1) < 1 or card.get("block", "") not in C.BLOCKS:
+			continue
+		for id in card.get("subjects", [card.get("subject", "")]):
+			var people: Array = view.people.filter(func(p): return p.id == id)
+			if people.is_empty():
+				continue
+			var person: Dictionary = people[0]
+			if not blocks.has(id):
+				blocks[id] = []
+			if card.block not in blocks[id]:
+				blocks[id].append(card.block)
+			for event in view.get("timeline", {}).get("events", []):
+				if event.kind != "demon_death" or event.at.day != card.night:
+					continue
+				var victims: Array = view.people.filter(func(p): return p.id in event.subjects)
+				if victims.is_empty() or card.block in C.route(person.home, victims[0].home):
+					continue
+				var key: String = id + ":" + str(card.night)
+				if not seen.has(key):
+					seen[key] = true
+					result.append("Seen elsewhere: %s's sighting on night %d argues strongly against being that night's killer; a Demon detour remains possible." % [person.name, card.night])
+	for id in blocks:
+		var role: String = role_of(cards, id)
+		if blocks[id].size() >= 2 and C.ROLES.get(role, {}).get("night_walk", false):
+			var person: Dictionary = view.people.filter(func(p): return p.id == id)[0]
+			result.append("Scattered sightings: %s's movements fit the claimed %s gift. This is corroboration, not proof of that identity." % [person.name, C.role_name(role)])
 	return result
 
 static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int) -> float:

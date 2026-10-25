@@ -117,9 +117,9 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 		var demon: int = world.get("demon", -1)
 		if demon < 0:
 			return false
-		var path: Array = C.route(view.people[demon].home, view.people[ids.find(card.source)].home)
-		var approach: String = path[path.size() - 2] if path.size() >= 2 else view.people[ids.find(card.source)].home
-		if approach != card.data.block or view.get("timeline", {}).get("events", []).any(func(e): return e.kind == "demon_death" and e.at.day == card.night):
+		var attack_routes: Array = Activity.demon_routes(view.people[demon].home, view.people[ids.find(card.source)].home)
+		var fits_approach: bool = attack_routes.any(func(route): return (route.path[route.path.size() - 2] if route.path.size() >= 2 else view.people[ids.find(card.source)].home) == card.data.block)
+		if not fits_approach or view.get("timeline", {}).get("events", []).any(func(e): return e.kind == "demon_death" and e.at.day == card.night):
 			return false
 	var live: bool = bluffs
 	if Activity.available(view):
@@ -132,6 +132,8 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 		if routes.okay:
 			cards = cards.duplicate()
 			for person in routes.forced_lamp:
+				if world.get("demon", -1) == ids.find(person):
+					continue # The killer may have taken a detour; no forced good-gift proof.
 				cards.append({"kind": "claim", "source": person, "role": "lamplighter", "inferred": true})
 	return _fits(ids, world, cards, knowledge, answers, live, view)
 

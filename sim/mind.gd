@@ -368,6 +368,8 @@ static func claim_credence(n, who: String, role: String) -> float:
 ## Watch, Warden, Lamplighter, Medium) is discounted further, as far as the listener
 ## believes the claim.
 static func night_sighting_scale(w, listener, who: String, block: String, night: int) -> float:
+	# Native compatibility and social pressing only. Shared reading/tell owners
+	# park these legacy effects; live_activity alone judges their alignment evidence.
 	var near_death = false
 	for sid in w.scenes:
 		if w.scenes[sid]["day"] == night and w.scenes[sid]["block"] == block:

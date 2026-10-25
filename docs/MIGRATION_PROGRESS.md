@@ -167,3 +167,11 @@ Existing local Godot config/UID changes are outside these commits.
   present 3063 ms (previous 3108), search 2584 ms. **Flagged vote cost:** 863 ms
   versus 756 ms (~14%); Warden memories now add dated evidence to refreshes. One
   noisy measurement, not a precise cost attribution. Evidence: `warden`, `item-5`.
+- **6:** shared sighting ownership parks the native night/gift scaling. A cached
+  5% Demon detour sum makes off-route sightings strong, finite counterevidence;
+  no new world dimension. Preview and reply notes expose off-route sightings and
+  movements compatible with a walking gift. Route normalization, finite likelihood,
+  ownership, Lamplighter and Veteran/Seer suites pass. Replay: 9 shared, 0 fallback,
+  0 impossible / 89, unchanged 3/5; present 3236 ms (previous 3063), search 2687 ms
+  (2584), nomination 1053 ms (984), vote 872 ms (863). No measured step over 10%
+  slower. Evidence: `sightings-final`, `item-6`.
