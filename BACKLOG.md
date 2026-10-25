@@ -64,6 +64,9 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
   comparison currently preserves the native fallback, with a generator-backed test.
   Found during Oct 22 integration. [open]
 
+  > **Session scope 2026-10-25 (B003):** Skipped [open]: Rumormonger no-result/setup choice remains
+  > unresolved and coordinated evidence handling would reach protected workshop code.
+
   > **Prep B003 (9cb8782; design):** Coordinate `sim/world.gd::_receive_info`'s self-excluding
   > pool/fallback with `workshop/solver.gd::_report_content` and UI. No-result versus setup changes
   > remains undecided; preserve the generator-backed fallback test until that decision.
@@ -92,6 +95,10 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
 - **From playtest 54875** (Oct 23; Claude played, the user drove; full trace analysis in
   [docs/playtest_54875_diagnosis.md](docs/playtest_54875_diagnosis.md)). The evil team
   was identified by Day 3 and the town lost anyway: one execution in six days.
+
+  > **Session scope 2026-10-25 (B005):** The historical 54875 parent is not closed wholesale. Only
+  > its verified sub-bugs are proposed for closure. Changing numerical real-listener
+  > effectiveness/premise previews reaches protected judge behavior and pending preview design.
 
   > **Prep B005 (9cb8782; historical context):** Several child reports are partly resolved.
   > `docs/LEGACY_MIGRATION.md` now specifies a deliberate hybrid; do not read this old diagnosis as a
@@ -141,6 +148,10 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
       much listeners credited his own word after his death, while his suspicion said
       "known good". Decide which one wins. [open]
 
+      > **Session scope 2026-10-25 (B008):** Skipped [open]: choosing how death changes sincerity
+      > versus accuracy is a belief/credence decision; no numbers or protected evaluator paths were
+      > changed.
+
       > **Prep B008 (9cb8782; partial):** Keep sincerity, role plausibility, and accuracy separate in
       > `sim/mind.gd::_honesty`, `_recompute_beliefs`, and `workshop/solver.gd::report_table`.
       > Consolidate with “Demon victims' earlier information”; death must not make poisoned readings
@@ -188,6 +199,10 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     what they earned, new facts count in full, and only an identical re-presentation is a
     repeat. The ledger reason also keeps the first version's text ("2 original reports").
     [decided]
+
+    > **Session scope 2026-10-25 (B011):** Normal shared revision parity is verified with B012. Any
+    > separate disabled/native novelty retuning is skipped because belief/suspicion behavior is
+    > outside this session.
 
     > **Prep B011 (9cb8782; partial):** `game/workshop_canvas.gd::file` and
     > `tools/test_legacy_migration.gd::_revisions_and_repeats` cover preserved support on shared
@@ -262,6 +277,10 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     the same window sighting, behind a new lead-in, and cost a question. Pressing should
     change the story, harden it or stonewall in a new line. [decided]
 
+    > **Session scope 2026-10-25 (B016):** Skipped: a genuinely changed story or disclosure after a
+    > press needs NPC response/cover choices; merely adding another lead-in would not fix this
+    > report. No cover strategy or belief effects were changed.
+
     > **Prep B016 (9cb8782; open):** Follow `sim/mind.gd::press` into `answer_night` and dialogue memory.
     > A fresh lead-in can still wrap an unchanged alibi; test the full transcript and question cost, not
     > just a changed prefix.
@@ -272,6 +291,10 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     walker who discloses after being caught out by a sighting should own the earlier
     story the same way. Her "What it's shown me, I'll keep to myself" also came after
     she had already told the reading (as the window sighting). [decided]
+
+    > **Session scope 2026-10-25 (B017):** The good-walker admission exists and is tested. Remaining
+    > evil-walker admission/withheld-report coherence would change evil cover/disclosure behavior;
+    > skipped under the evil-strategy boundary.
 
     > **Prep B017 (9cb8782; partial):** `sim/mind.gd::_answer_gift_impl` already admits a good walker's
     > stored `lied_nights`. Check sighting-triggered history and evil cover separately;
@@ -345,6 +368,10 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     Constance's two night-1 stories (private "Isolde", public "Jory"); fix together with
     "evil frames should cohere" in section 2. All 45 test scripts were run on the merge
     (Godot 4.4.1 headless); this is the only failure. [decided]
+
+    > **Session scope 2026-10-25 (B021):** The full runner still reports the permitted false Night
+    > Watch consistency failure. Fixing that evil-story behavior is outside this session, so no
+    > strategy or fake reports were changed.
 
     > **Prep B021 (9cb8782; historical test claim):** Current `sim/mind.gd::answer_night` puts claimed
     > walking duties before home; `sim/evil.gd::fake_night_sighting` caches speaker/night. Re-run
@@ -1398,6 +1425,11 @@ exact values remain open. The code-derived examples and clarifications are in
   least a different colour on the board, in the case builder and in the preview, so the
   player can tell how a case is made up. [decided]
 
+  > **Session scope 2026-10-25 (B108):** Skipped: the proposed action-factor/vibes-stage split is
+  > still a listed design decision and is not a reliable existing display classification. Adding
+  > that semantic boundary would require protected evaluator changes; legacy card class is not
+  > substituted for it.
+
   > **Prep B108 (9cb8782; open UI):** `game/card_model.gd`, `game/board_model.gd::layout`,
   > `ui/board_view.gd`, and `ui/card_list.gd` share rendering inputs. Define a visible evidence-class
   > marker with source/time detail; circumstantial is not unsupported, and color alone should not
@@ -1409,6 +1441,9 @@ exact values remain open. The code-derived examples and clarifications are in
   "Ward someone..." and promise paths do not consistently communicate the limit
   before selection/use. Cover direct targeting and promises; distinguish promising
   a tool from actually consuming it. (Oct 21) [decided; warning presentation open]
+
+  > **Session scope 2026-10-25 (B109):** Skipped because warning presentation is explicitly left
+  > open in the original tag; no new promise/consumption confirmation policy is inferred here.
 
   > **Prep B109 (9cb8782; open UI):** `ui/main.gd::_actions_day`/`_offer_picker` expose tools;
   > `game/game.gd::_night_command` spends them. Warn from actual remaining inventory, distinguish
@@ -1437,6 +1472,10 @@ exact values remain open. The code-derived examples and clarifications are in
   no-selection behavior and retain pinned-card/filter consistency.
   (Oct 21) [decided; edge cases open]
 
+  > **Session scope 2026-10-25 (B111):** Skipped: no-selection, pin, and filter edge-case policy
+  > remains explicitly open. Selected-first ordering (B110) is separate and does not implement
+  > hiding.
+
   > **Prep B111 (9cb8782; open; same batch):** Keep hide state in `ui/case_state.gd` and visibility in
   > `game/board_model.gd::layout`. Define empty selection, intersecting filters, and pinned cards on
   > hidden rows; hiding must not remove cards or their links.
@@ -1449,11 +1488,17 @@ exact values remain open. The code-derived examples and clarifications are in
   open. Keep category labels, keyboard navigation, and screen bounds usable.
   (Oct 20) [tentative]
 
+  > **Session scope 2026-10-25 (B112):** Skipped [tentative]: dropdown grouping/threshold/layout
+  > remains an open presentation decision.
+
   > **Prep B112 (9cb8782; open UI):** `ui/main.gd::_list_picker`/`_people_picker` share popup
   > construction. Add columns with keyboard focus, screen-edge fitting, and readable labels; check all
   > helper users before changing common dimensions.
 
 - **"Stayed home" vs "none of your business"** on the sightings/claims boards. [watch]
+
+  > **Session scope 2026-10-25 (B113):** [watch] retained: no behavior change is planned by this
+  > entry. Home testimony and refusal evidence semantics were not altered.
 
   > **Prep B113 (9cb8782; partial data distinction):** `workshop/live_assessment.gd::activity_card`
   > treats refusal as weak context and home claims separately; `sim/argue.gd::assertions` distinguishes
@@ -1463,6 +1508,11 @@ exact values remain open. The code-derived examples and clarifications are in
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main
   view; people who aren't talking or working showing on the map; a wrong role guess
   blocking process of elimination.
+
+  > **Session scope 2026-10-25 (B114):** Existing test_ui covers board pin/hide/unpin and
+  > test_town_ui covers visibility/highlight ownership. Idle visibility follows can_see public-block
+  > rules by code inspection. No exact remaining elimination/visibility defect was established;
+  > leave this historical checklist unresolved rather than redesigning guess or visibility policy.
 
   > **Prep B114 (9cb8782; verify old examples first):** Use `tools/test_board.gd`,
   > `ui/board_view.gd::_gui_input`/`_draw_pinned`, and `game/board_model.gd::layout`. Check
@@ -1476,6 +1526,9 @@ exact values remain open. The code-derived examples and clarifications are in
   one colour per row; richer rows still need custom cells or replacement controls.
   See [the handoff](docs/text_system_handoff.md) for hooks, issues and alternatives.
   [decided: extension deferred; renderer approach open]
+
+  > **Session scope 2026-10-25 (B115):** Skipped: renderer approach is open and the rich-text
+  > extension is deferred; custom Canvas/Tree reflow is beyond a small fix.
 
   > **Prep B115 (9cb8782; open; renderer decision):** `ui/board_view.gd::_draw_card_item` uses custom
   > Canvas drawing/fixed geometry; `ui/card_list.gd` extends Tree. Rich text requires reflow,

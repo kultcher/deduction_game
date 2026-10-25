@@ -7,6 +7,47 @@ not replace the original decisions, tags, priority, or wording. No feature, tuni
 merge, or gameplay batch was performed for this pass. Candidate completion below is
 code evidence, not a newly observed passing playtest.
 
+## Implementation and verification session — 2026-10-25
+
+This later session started from refreshed main `739f366` on the single branch
+`codex/backlog-small-fixes`. The primary checkout's unfinished documentation and
+project/import files were preserved in place; work used an isolated checkout.
+The original preparation snapshot below remains historical context.
+
+Eight bounded fixes were completed in separate commits: attributed cast-list
+hearsay (B002), replacement/tie wording (B004), own-gift refusal wording (B015),
+repeat-aware generic stonewalls (B018), dated/clear UI wording (B020), visible
+revision history (B012), selected rows first (B110), and accurate evaluator-mode/
+unsupported-case warnings (the display portion of B036).
+
+Each item was committed and pushed only after its own full default run of
+`tools/run_gd_tests.py` with Godot 4.7.2. Only the existing `test_social` and
+`test_text_ui` failures were allowed; their failure reasons did not expand.
+The default runner skips `test_trace`; no optional broad gameplay batch was added.
+The candidate table now records runtime-backed closure/narrowing proposals;
+entries and their original decisions remain in place for review, rather than
+being moved to Closed automatically. B014's existing free-repeat fix was also
+verified and proposed for closure.
+
+No protected evaluator/ownership files, voting/nomination formulas, belief or
+suspicion values, or evil strategy were changed. Section-1/UI skips are annotated
+at their entries: open/tentative decisions, protected mechanical changes, and
+unreproduced historical checklists. In particular, pair-defence alternatives,
+evil story/admission consistency, action/vibes semantics, hiding-row edge cases,
+and the deferred renderer remain untouched. The two permitted failing suites
+remain visible, not relabeled as passing.
+
+Surprises and limits: most closure candidates were already implemented on main;
+superseded-card labels and fallback guidance were still missing/stale in the UI.
+Outcome history still reads final role/alignment, so transition-time attribution
+remains a code-backed risk. Existing scoring is verified; its open exact-gift and
+confidence design is not closed. Withdrawal proposals cover demonstrated player
+history/endorsement/board behavior, not unproven broader NPC retention semantics.
+A focused conversation probe also found that native trace links collapse two
+participants into one option because deduplication omits the subject. The full
+linking item remains open despite working shared location evidence. No new model
+dimensions or extra jury/refresh passes were introduced.
+
 ## Snapshot and branch boundaries
 
 - Review base: refreshed `origin/main`, **`9cb87829f3d56072c128bc419869e12c581023ea`**
