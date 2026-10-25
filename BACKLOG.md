@@ -815,6 +815,14 @@ exact values remain open. The code-derived examples and clarifications are in
   held ward leave a mark (a scorched sigil) as physical proof the demon came to that
   door. Feeds the "Protection + quiet night + sighting" template gap. (user, Oct 23)
   [decided]
+- **Reactive meetings: speak up when the last statement concerns you.** (user, Oct 24)
+  After each meeting statement, every listener runs cheap yes/no checks: does it name
+  me, or name a person or role that's part of my private information (my own gift,
+  someone I have a reading about, a claim of my role)? If so, add a situational bonus to
+  the usual disclosure decision, so they may respond on the spot: confirm, contradict,
+  claim, or defend. Uses the existing disclosure checks (privacy, trust, pressure),
+  not a new evaluation, so it's cheap and makes the meeting feel like a conversation.
+  Pairs with pacing refreshes behind dialogue. [decided: add; bonus size open]
 - **Seen at night away from the murder.** (user, Oct 24) Being seen on a block the
   killer couldn't have used is evidence against being the Demon that night. The two
   models disagree today. Legacy `Mind.night_sighting_scale` only ever *raises* suspicion
