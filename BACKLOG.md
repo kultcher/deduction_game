@@ -37,6 +37,13 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
   another NPC should appear as an attributed hearsay claim, distinct from direct or
   public disclosure. Do not silently turn a relay into a direct confirmation. [decided]
 
+  > **Session 2026-10-25 (B002): implemented; closure proposed.** The cast list now
+  > shows player-known relayed claims with a `~` hearsay marker and a tooltip naming
+  > the relayer. Direct/public disclosure takes precedence; hidden NPC knowledge is
+  > not consulted. `test_town_ui` checks attribution, deletion, promotion, and no
+  > mutation of role disclosure, evidence, or RNG. Full runner: 73/75 suites passed;
+  > only the permitted `test_social` and `test_text_ui` failures. Entry retained for review.
+
   > **Prep B002 (9cb8782; open):** `sim/social.gd::answer_about_role` carries `via`;
   > `ui/cast_list.gd::_claimed` reads direct disclosure only. Reuse
   > `ui/profile_panel.gd::_render_entries` history. Check hearsay, direct confirmation, and public

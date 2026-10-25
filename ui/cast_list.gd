@@ -69,6 +69,7 @@ func _draw() -> void:
 		var tx = r.position.x + ROW_H + 12
 		var slot = 24.0
 		var claim = _claimed(n)
+		var relayed = _relayed_claim(n) if not (n.claim_public or n.max_tier >= 3 or n.claimed_role == "none") else {}
 		var gs: String = g.guesses.get(n.id, {}).get("guess", "?")
 		var slot_count = int(claim != "") + int(gs != "?")
 		var slots_x = pr.end.x - 20 - slot_count * (slot + 4)
@@ -79,7 +80,9 @@ func _draw() -> void:
 		draw_string(_font, Vector2(tx, pr.end.y - 12), _fit_text(_sub_line(n), text_w, 13), HORIZONTAL_ALIGNMENT_LEFT, text_w, 13, UITheme.color("paper_dim") if sel else UITheme.color("ink_soft"))
 		var cy = pr.position.y + (pr.size.y - slot) / 2.0
 		if claim != "":
-			_role_mark(claim, Rect2(slots_x, cy, slot, slot), Color.WHITE, sel)
+			_role_mark(claim, Rect2(slots_x, cy, slot, slot), Color(1, 1, 1, 0.65) if not relayed.is_empty() else Color.WHITE, sel)
+			if not relayed.is_empty():
+				draw_string(_font, Vector2(slots_x + slot - 6, cy + slot + 2), "~", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, ink)
 			slots_x += slot + 4
 		if gs != "?":
 			var gr = Rect2(slots_x, cy, slot, slot)
@@ -118,7 +121,28 @@ func _claimed(n) -> String:
 		return n.claimed_role if C.ROLES.has(n.claimed_role) else ""
 	if n.claimed_role == "none":
 		return "none"
-	return ""
+	return _relayed_claim(n).get("role", "")
+
+## Only claims already on the player's board count; NPC private knowledge is not a UI source.
+func _relayed_claim(n) -> Dictionary:
+	for i in range(g.board.size() - 1, -1, -1):
+		var card: Dictionary = g.board[i]
+		if card.get("deleted", false) or card.get("kind", "") != "claim" or card.get("source", "") != n.id:
+			continue
+		var role: String = card.get("role", "")
+		if not C.ROLES.has(role) and role != "none":
+			continue
+		var via: Array = []
+		for disclosure in card.get("learned", []):
+			var speaker: String = disclosure.get("via", "")
+			if speaker != n.id and g.w.by_id.has(speaker) and speaker not in via:
+				via.append(speaker)
+		var speaker: String = card.get("via", "")
+		if speaker != n.id and g.w.by_id.has(speaker) and speaker not in via:
+			via.append(speaker)
+		if not via.is_empty():
+			return {"role": role, "via": via}
+	return {}
 
 func _sub_line(n) -> String:
 	if not n.alive:
@@ -154,4 +178,9 @@ func _get_tooltip(at: Vector2) -> String:
 		return ""
 	var n = g.w.by_id[id]
 	var gs: String = g.guesses.get(id, {}).get("guess", "?")
-	return "%s the %s. %s%s" % [n.name, n.occupation, _sub_line(n), (" · your guess: %s?" % (C.role_name(gs) if C.ROLES.has(gs) else gs)) if gs != "?" else ""]
+	var claim = ""
+	if not (n.claim_public or n.max_tier >= 3 or n.claimed_role == "none"):
+		var relayed = _relayed_claim(n)
+		if not relayed.is_empty():
+			claim = " · ~ hearsay via %s: claims %s" % [", ".join(PackedStringArray(relayed.via.map(func(who): return g.w.by_id[who].name))), C.role_name(relayed.role)]
+	return "%s the %s. %s%s%s" % [n.name, n.occupation, _sub_line(n), claim, (" · your guess: %s?" % (C.role_name(gs) if C.ROLES.has(gs) else gs)) if gs != "?" else ""]

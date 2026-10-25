@@ -36,6 +36,26 @@ func _run() -> void:
 	_check(TraitBars.fill_rect(track, 0.61) != TraitBars.fill_rect(track, 0.75) and TraitBars.fill_rect(track, 0.83) != TraitBars.fill_rect(track, 1), "different scores inside the former bands have different lengths")
 	_check(TraitBars.ROWS[0][2] == "Open Book" and TraitBars.ROWS[0][3] == "Secretive", "privacy labels follow the actual zero-to-one score direction")
 	var cl = scene.cast_list
+	# The town list may show attributed player-known hearsay, never an NPC's private ledger.
+	n.claim_public = false
+	n.max_tier = 0
+	n.claimed_role = "seer"
+	_check(cl._claimed(n) == "", "an undisclosed actual claim is absent from the cast list")
+	var relay = g.add_card({"kind": "claim", "source": n.id, "via": other.id, "subject": [n.id], "role": "seer", "text": "Via a witness: a private Seer claim."})
+	var board_before = JSON.stringify(g.board)
+	var rng_before = g.w.rng.state
+	_check(cl._claimed(n) == "seer" and cl._relayed_claim(n).via == [other.id], "a relayed claim supplies its role and named attribution")
+	cl._rows = [{"rect": Rect2(0, 0, 400, 70), "id": n.id}]
+	_check("hearsay via " + other.name in cl._get_tooltip(Vector2(10, 10)), "the cast tooltip explicitly labels hearsay and its speaker")
+	_check(not n.claim_public and n.max_tier == 0 and JSON.stringify(g.board) == board_before and g.w.rng.state == rng_before, "rendering hearsay neither confirms the role nor changes evidence or RNG")
+	g.board[relay - 1].deleted = true
+	_check(cl._claimed(n) == "", "a deleted hearsay card no longer supplies a claim")
+	g.board[relay - 1].deleted = false
+	n.max_tier = 3
+	n.claimed_role = "clerk"
+	_check(cl._claimed(n) == "clerk" and not "hearsay" in cl._get_tooltip(Vector2(10, 10)), "a direct disclosure takes precedence over an older relay")
+	n.claim_public = true
+	_check(cl._claimed(n) == "clerk", "a public disclosure retains the directly claimed role")
 	g.state = "day"
 	g.moved = false
 	n.loc = "home_" + n.id
