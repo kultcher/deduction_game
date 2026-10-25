@@ -10,12 +10,19 @@ static var reuse_matches = true # developer A/B switch, not a reasoning-budget c
 static var preparations: Dictionary = {}
 static var reuse_preparations = true
 
+static var unlimited_cards = false # developer experiment (autoplay --no-attention): every listener reads every card
+
 static func profile(insight: float) -> Dictionary:
+	var result: Dictionary
 	if insight < 0.34:
-		return {"name": "Low", "cards": 3, "lines": 1, "support": 8, "rivals": 0, "complete": false}
-	if insight < 0.67:
-		return {"name": "Medium", "cards": 5, "lines": 2, "support": 48, "rivals": 16, "complete": false}
-	return {"name": "High", "cards": 10, "lines": 6, "support": 840, "rivals": 840, "complete": true}
+		result = {"name": "Low", "cards": 3, "lines": 1, "support": 8, "rivals": 0, "complete": false}
+	elif insight < 0.67:
+		result = {"name": "Medium", "cards": 5, "lines": 2, "support": 48, "rivals": 16, "complete": false}
+	else:
+		result = {"name": "High", "cards": 10, "lines": 6, "support": 840, "rivals": 840, "complete": true}
+	if unlimited_cards:
+		result.cards = 1000 # links, support and rival budgets are unchanged
+	return result
 
 static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
 	var inputs = [view, value, listener.get("reasoning_mode", "full"), listener.get("insight", 0.5),
