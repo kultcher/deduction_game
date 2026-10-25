@@ -58,6 +58,35 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 	var authored_form = (kind == "conceal" and form == "whereabouts") or (kind == "revise" and form == "reconsideration" and not str(intent.get("argument", "")).is_empty())
 	if authored_form:
 		cue = form
+	# A continuing report belongs to an already-open speaker turn. Suppress fresh
+	# introductions, but still track the delivered event and per-audience repetition.
+	# Relationship labels are caller-approved, not inferred from the report's text.
+	if kind == "report" and context.get("flow_position", "standalone") == "continuation":
+		var relation: String = context.get("flow_relation", "continuation")
+		var connective = ""
+		if relation in ["development", "contrast", "transition", "correction"]:
+			var flow_cue = "flow_" + relation
+			var options: Array = Voices.VOICES[id].get(flow_cue, [])
+			if not options.is_empty():
+				var flow_key = audience + ":" + flow_cue
+				connective = options[int(counts.get(flow_key, 0)) % options.size()]
+				counts[flow_key] = int(counts.get(flow_key, 0)) + 1
+		var parts: Array = []
+		if connective != "":
+			parts.append(connective)
+		parts.append(statement)
+		if audience != "town" and context.get("request_privacy", false):
+			var private_lines: Array = Voices.VOICES[id]["private"]
+			parts.append(private_lines[int(counts.get(audience + ":private", 0)) % private_lines.size()])
+			counts[audience + ":private"] = int(counts.get(audience + ":private", 0)) + 1
+		result["text"] = " ".join(PackedStringArray(parts))
+		result["cue"] = "flow_" + relation
+		result["repeated"] = repeated
+		if not event_id.is_empty():
+			seen[key] = true
+		memory["seen"] = seen
+		memory["counts"] = counts
+		return result
 	var count_key = audience + ":" + cue
 	var choices: Array = Voices.VOICES[id][cue]
 	var extra: String = choices[int(counts.get(count_key, 0)) % choices.size()]
@@ -81,6 +110,83 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 	memory["seen"] = seen
 	memory["counts"] = counts
 	return result
+
+## Compose an uninterrupted NPC turn from already-approved utterances. Nothing here
+## chooses disclosures or infers relationships from content. "preceded" means the caller
+## has already put spoken material (such as a role claim) in the same speaker turn.
+## Each result remains a distinct speech event with its exact statement and event ID.
+static func compose_turn(id: String, intents: Array, context: Dictionary, memory: Dictionary, preceded: bool = false) -> Array:
+	var results: Array = []
+	for i in range(intents.size()):
+		var approved: Dictionary = intents[i]
+		var cues: Dictionary = context.duplicate()
+		cues["flow_position"] = "continuation" if preceded or i > 0 else "opening"
+		cues["flow_relation"] = approved.get("relation", "continuation")
+		# A request for confidentiality belongs at the end of the turn, not after
+		# each individual reading. Standalone compose() retains its existing behavior.
+		cues["request_privacy"] = context.get("request_privacy", false) and i == intents.size() - 1
+		var delivery: Dictionary = approved.duplicate()
+		delivery.erase("relation")
+		results.append(compose(id, delivery, cues, memory))
+	return results
+
+## Immediate exchange continuity is deliberately separate from cross-day delivery memory.
+## Start a fresh scope when a new talk opens, but keep seen reports/decisions intact.
+static func begin_conversation(memory: Dictionary) -> void:
+	memory["conversation"] = {"last_action": "", "last_subject": ""}
+
+## Record only the player's expressed action, never hidden reasons, trust, or alignment.
+## Called after the NPC has actually spoken a reply to the player.
+static func record_exchange(memory: Dictionary, action: String, subject_id: String = "") -> void:
+	var current: Dictionary = memory.get("conversation", {})
+	if current.is_empty():
+		return # A scripted response outside a player conversation has no continuity scope.
+	current["last_action"] = action
+	current["last_subject"] = subject_id
+	memory["conversation"] = current
+
+## Returns a rhetorical relationship, not an assessment of the prior evidence.
+static func exchange_cue(memory: Dictionary, action: String, subject_id: String = "") -> String:
+	var current: Dictionary = memory.get("conversation", {})
+	if current.is_empty():
+		return ""
+	var last_action: String = current.get("last_action", "")
+	var last_subject: String = current.get("last_subject", "")
+	if action == "gift" and last_action == "challenge_gift":
+		return "gift_after_challenge"
+	if action == "opinion" and subject_id != "" and last_subject == subject_id:
+		if last_action == "accusation":
+			return "opinion_after_accusation"
+		if last_action == "opinion":
+			return "opinion_again"
+	return ""
+
+## When an opinion was already refused, a repeated question should not launch
+## the same boilerplate again. This renders the SAME refusal, not a new judgment.
+static func repeated_opinion_refusal(id: String, subject_name: String, cue: String, original: String) -> String:
+	if cue != "opinion_again" or not has_voice(id):
+		return original
+	return str(Voices.VOICES[id].get("conversation_opinion_refusal_again", original)).replace("{subject}", subject_name)
+
+## A full alternate first-reveal sentence, selected only when the underlying
+## disclosure logic has ALREADY approved the gift being named.
+static func gift_reveal(id: String, role_name: String, cue: String) -> String:
+	if cue != "gift_after_challenge" or not has_voice(id):
+		return ""
+	var template: String = Voices.VOICES[id].get("conversation_gift_after_challenge", "")
+	return template.replace("{role}", role_name)
+
+## Prefix an approved opinion after a prior spoken exchange about that SAME
+## person. Never infer a stance from the prose or the subject's real role.
+static func contextualize(id: String, statement: String, cue: String, subject_name: String) -> String:
+	if not has_voice(id):
+		return statement
+	if not cue in ["opinion_after_accusation", "opinion_again"]:
+		return statement
+	var phrase: String = Voices.VOICES[id].get("conversation_" + cue, "")
+	if phrase.is_empty():
+		return statement
+	return phrase.replace("{subject}", subject_name) + " " + statement
 
 ## The simulation has already approved this descriptor. Never pass private decision logs.
 static func decision(id: String, approved: Dictionary, audience: String, memory: Dictionary) -> Dictionary:

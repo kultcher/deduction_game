@@ -114,6 +114,95 @@ Private and meeting delivery are conservatively kept separate; hearing a private
 does not imply the town heard it. The system does not yet propagate a public delivery to
 every listener's memory or normalize equivalent time phrases across days.
 
+## Turn composition (feature branch)
+
+The dialogue composer can now receive an **ordered speaker turn** through
+`Dialogue.compose_turn(id, approved_intents, context, memory, preceded)`. Each intent
+continues to carry an approved, exact factual statement and event ID. `preceded`
+means the caller has already supplied a spoken line in the same uninterrupted turn
+(for example, "I'm the Seer"). An opening report uses existing trust, pressure and
+repetition behavior; continuing reports suppress a fresh "Here is my account" lead-in.
+
+An approved `relation` on a report selects optional authored connective speech:
+`continuation` (the default, **no** connective), `development`, `contrast`,
+`transition`, or `correction`. The caller must explicitly authorize the relation.
+The composer does not read a statement to decide what contrasts or what is true.
+Agnes, Bartholomew and Constance have different connective styles. Non-voiced
+characters continue to use the unchanged approved statements. Confidentiality
+requests appear at most once at the end of a composed turn and never in town speech.
+
+`Mind.info_lines` now uses this path for multiple readings when privately revealing
+a gift and when publicly claiming a reading role at a meeting. The preceding role
+claim is accounted for, so even the *first* reading avoids starting another
+speech. Every report remains a separate speech event, with its original statement
+and fact card; evidence and disclosures are unchanged. Single reports still use
+`info_line` and its established behavior.
+
+The lab offers three new multi-line examples: role reveal with successive readings,
+developing/qualifying an account, and transitions/corrections. Its previews use
+copied dialogue memory, so only "Speak" commits delivery.
+
+**Scope:** this is turn composition, not conversational momentum between separate
+questions, and not a general overhaul of evidence-based rebuttals, excuses,
+social grievances, or offers. The latter need explicit approved responses from
+the NPC logic. In particular, no hidden role, secret or lie status enters
+connective selection.
+
+**Validation:** `tools/test_dialogue.gd` includes turn sequencing, content
+preservation, repeated delivery, confidentiality, default connectives and
+truth-independence checks. Run the commands below before merging. The GitHub
+editing environment used for this branch does not have a Godot executable, so
+these checks have been added but **have not been executed locally**.
+
+## Across-exchange conversational continuity
+
+A private conversation now has a **short-lived interaction scope** independent of
+case-long disclosure/argument memory. The game calls
+`Dialogue.begin_conversation(n.dialogue_memory)` when the player starts a
+conversation or accepts an NPC approach. After the NPC has actually spoken to
+answer a question, the game records only the last **player-expressed action**
+and **named subject** with `Dialogue.record_exchange`. Invalid commands and
+unspoken responses do not create a false preceding act; an unrelated question
+breaks immediate adjacency.
+
+`Dialogue.exchange_cue` currently recognizes a deliberately small set:
+
+- A challenge to an NPC's gift followed by their subsequently approved **first
+  gift reveal**: the usual standalone "I'll trust you" opener becomes an authored
+  acknowledgement of the pressure. This never forces the NPC to disclose a gift;
+  if they still refuse, they continue refusing. Nighttime whereabouts challenges
+  are distinguished from gift challenges.
+- A player accusation against person X followed immediately by asking that same
+  NPC's opinion about X: the opinion acknowledges the accusation, without
+  implying agreement. Questions about different people do not inherit the cue.
+- A second immediate opinion question about the same subject: the NPC recognizes
+  that they were just asked. A second refusal uses a distinct but equally
+  non-disclosing line rather than "It's not my place to say" again.
+
+Agnes, Bartholomew, and Constance have independent authored wording for all
+three contexts. Unvoiced characters keep the prior behavior. No new NPC
+decision rules, suspicion modifiers, evidence cards, or assertion templates are
+introduced; even fabricated reading/role claims are composed from the same
+approved statements as honest claims. This is **immediate adjacency**, not a
+persistent long-term transcript or automatic reasoning about past objections.
+
+The lab now includes three synthetic across-exchange examples. It primes a
+fictional preceding action in preview-only memory, and records the current
+answer only on "Speak". The next preview of that same topic therefore sees
+the newly delivered exchange. Regression checks also exercise the real
+`tell edda <card>` → `ask about edda` → repeat-question path.
+
+### Parallel work boundary
+
+Reviewed Opus's `claude/case-reasoning` at stable commit `8e8f05a`. That branch
+changes case evaluation, argument logic, and parts of `sim/mind.gd` and
+`game/game.gd`. This work does not invoke workshop solvers or read their
+private reasoning. It uses the player's preceding conversational act and
+already-approved replies. File-level overlap exists in the two game scripts,
+so a later merge should reconcile those small entry/response hooks against
+Opus's additional workshop integration and rerun both test suites. Opus's
+branch was **not modified or rebased**.
+
 ## Scope and extensions
 
 This is a writing/behavior prototype, not a complete dialogue rewrite. It does not yet

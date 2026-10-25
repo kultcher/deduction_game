@@ -1076,11 +1076,29 @@ static func _claim_line(n, role: String) -> Dictionary:
 	}
 	return say(n, "%sI am the %s." % [openers.get(n.style, ""), C.role_name(role)])
 
-static func info_line(w, n, e: Dictionary, audience: String = "player") -> Dictionary:
+## Construct the exact public-facing report before a presentation layer touches it.
+static func _info_intent(w, n, e: Dictionary) -> Dictionary:
 	var when = "The night before you arrived" if e["day"] == 0 else "Last night" if e["day"] == w.day - 1 else "On night %d" % e["day"]
 	if e.has("phase"):
 		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
-	return voiced(n, "report", "%s, %s." % [when, e["text"]], info_eid(n.id, e), {"audience": audience})
+	return {"kind": "report", "statement": "%s, %s." % [when, e["text"]], "event_id": info_eid(n.id, e)}
+
+static func info_line(w, n, e: Dictionary, audience: String = "player") -> Dictionary:
+	var approved = _info_intent(w, n, e)
+	return voiced(n, "report", approved["statement"], approved["event_id"], {"audience": audience})
+
+## A batch of readings is one uninterrupted speech turn. Each report remains an
+## independent line and fact; only its introduction/connective is turn-aware.
+static func info_lines(w, n, entries: Array, audience: String = "player", preceded: bool = false) -> Array:
+	var approved: Array = []
+	for e in entries:
+		approved.append(_info_intent(w, n, e))
+	var rendered: Array = Dialogue.compose_turn(n.id, approved,
+		{"audience": audience, "trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, preceded)
+	var lines: Array = []
+	for part in rendered:
+		lines.append(say(n, part["text"]))
+	return lines
 
 static func info_fact(w, n, e: Dictionary) -> Dictionary:
 	var subj: Array = Gifts.subjects(e)
@@ -1362,6 +1380,7 @@ static func _go_public(w, n, lines: Array, facts: Array) -> void:
 			if l != n:
 				hear_claim(w, l, n.id, claim, 0.5, "public")
 	if C.has_readings(n.claimed_role):
+		var shared_this_turn: Array = []
 		for e in n.info_log:
 			if e["shared"] or e.get("disowned", false):
 				continue
@@ -1371,11 +1390,12 @@ static func _go_public(w, n, lines: Array, facts: Array) -> void:
 				weights[x] = reading_strength(e, x)
 			w.public_event("reading", implicated(e), n.id, {"weights": weights})
 			w.public_event("clear", Gifts.clears(e), n.id)
-			lines.append(info_line(w, n, e, "town"))
+			shared_this_turn.append(e)
 			facts.append(info_fact(w, n, e))
 			for l in w.living():
 				if l != n:
 					apply_info(w, l, n, e, heard_weight(l, n))
+		lines.append_array(info_lines(w, n, shared_this_turn, "town", not lines.is_empty()))
 
 static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	if n.silenced:
@@ -1987,19 +2007,25 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 			var receipt: Dictionary = WorkshopLedger.Evidence.normalize_card(card)
 			ledger_hear(w, n, "own_role:" + fact_id(card), [[rival.id, 0.3, true, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift"]], 1.0,
 				[rival.id, -1, "role"], {"kind": "role_counter", "workshop_card": receipt})
-		return _challenged(n, {"lines": lines, "facts": facts}, card)
+		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
+		pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
+		return pressed
 	if night >= 0:
 		var r = answer_night(w, n, night)
 		lines += r["lines"]
 		facts += r["facts"]
-		return _challenged(n, {"lines": lines, "facts": facts}, card)
+		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
+		pressed["dialogue_exchange"] = {"action": "challenge_night", "subject": n.id}
+		return pressed
 	# Their gift: a true naming opens them up; otherwise pressure decides.
 	var bonus = 1 if naming_me and d.get("role", "") == mine else 0
 	var tier = mini(_target_tier(w, n) + bonus, 4)
 	var r2 = answer_gift(w, n, tier)
 	lines += r2["lines"]
 	facts += r2["facts"]
-	return _challenged(n, {"lines": lines, "facts": facts}, card)
+	var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
+	pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
+	return pressed
 
 # ---------------------------------------------------------------- conversation
 
@@ -2148,7 +2174,9 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 	if evil:
 		w.dlog.think(n.id, "lie", "Evil cover: tells the player they are the %s." % role, {"true_role": n.role})
 	if first_time:
-		lines.append(say(n, "I'll trust you with this. I'm the %s." % C.role_name(role)))
+		var reveal_cue: String = Dialogue.exchange_cue(n.dialogue_memory, "gift", n.id)
+		var contextual: String = Dialogue.gift_reveal(n.id, C.role_name(role), reveal_cue)
+		lines.append(say(n, contextual if contextual != "" else "I'll trust you with this. I'm the %s." % C.role_name(role)))
 		if not evil and C.ROLES[role].get("night_walk", false) and not n.lied_nights.is_empty():
 			# The lie they told you about that night, owned now it has a reason.
 			var nights: Array = n.lied_nights.map(func(x): return C.night_name(x))
@@ -2192,8 +2220,8 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 		n.max_tier = 4
 	if evil and not readings.is_empty():
 		w.dlog.think(n.id, "lie", "Evil: recites fabricated %s results." % role)
+	lines.append_array(info_lines(w, n, readings, "player", not lines.is_empty()))
 	for e in readings:
-		lines.append(info_line(w, n, e))
 		facts.append(info_fact(w, n, e))
 	var held = n.info_log.size() - readings.size()
 	if held > 0:
@@ -2573,7 +2601,10 @@ static func answer_opinion(w, n, t) -> Dictionary:
 			{"gate": "gossip_and_pressure_cutoff", "gossip": trait_of(n, "gossip"),
 				"gossip_minimum": 0.2, "pressure": n.pressure, "pressure_override": 0.5}, t.id)
 		w.dlog.think(n.id, "opinion", "Gossip %.2f: won't discuss others." % trait_of(n, "gossip"))
-		lines.append(say(n, "It's not my place to say."))
+		var refused: String = "It's not my place to say."
+		var previous: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
+		refused = Dialogue.repeated_opinion_refusal(n.id, t.name, previous, refused)
+		lines.append(say(n, Dialogue.contextualize(n.id, refused, previous if previous != "opinion_again" else "", t.name)))
 		return {"lines": lines, "facts": facts}
 	# Same pipeline for both alignments: a suspicion level plus an optional grounded reason.
 	var why = ""
@@ -2624,7 +2655,10 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	w.dlog.think(n.id, "lie" if lie else "opinion", "%s opinion of %s: level %.2f, reason: %s." %
 		["Evil cover" if lie else ("Evil (mimicking the town)" if n.is_evil() else "Honest"), t.id, level, why if why != "" else "vibes"])
 	level = shown
-	lines.append(voiced(n, "friend", text, "opinion:" + t.id, {"close": close, "subject": t.name}))
+	var opinion_reply: Dictionary = voiced(n, "friend", text, "opinion:" + t.id, {"close": close, "subject": t.name})
+	var opinion_cue: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
+	opinion_reply["text"] = Dialogue.contextualize(n.id, opinion_reply["text"], opinion_cue, t.name)
+	lines.append(opinion_reply)
 	if level >= 0.5:
 		facts.append({"kind": "opinion", "subject": [t.id], "source": n.id, "text": "%s distrusts %s." % [n.name, t.name]})
 	return {"lines": lines, "facts": facts}
