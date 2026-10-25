@@ -32,7 +32,10 @@ theories.") Check every change against this sentence.
   friend/rival suspicion and paranoia drift.
 - **The rule that keeps it honest:** no piece of evidence is judged by both systems.
   Evidence the judge can't read is excluded with a stated reason, never routed silently
-  to the legacy rules. Remaining coverage gaps are listed in MECHANICS_SUPPORT.md.
+  to the legacy rules. Presentations never fall back: unsupported evidence is blocked
+  with its reason (bare beliefs with no evidence stay social). Every remaining internal
+  fallback is recorded and shown (`fallbacks` command, morning dev line, game summary).
+  Remaining coverage gaps are listed in MECHANICS_SUPPORT.md.
 - **Not doing:** a nightly per-NPC solve, moving priors into the world prior, exact
   per-source channel models, deleting the legacy ledger wholesale. Delete legacy code
   only where the shared model fully replaces it.

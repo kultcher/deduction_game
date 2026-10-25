@@ -39,6 +39,7 @@ var trace_enabled = true
 var native = false
 var talked = {}
 var linked_pairs = {}
+var blocked_cmds = {}
 var rng = RandomNumberGenerator.new()
 
 func _init() -> void:
@@ -67,8 +68,8 @@ func _init() -> void:
 		stats[r["winner"]] += 1
 		for k in keys:
 			stats[k] += r[k]
-		print("case %d: %s wins on day %d | exec good=%d evil=%d | kills=%d | lies=%d | noms=%d | pairs=%d | %s" %
-			[seed_v, r["winner"], r["days"], r["exec_good"], r["exec_evil"], r["kills"], r["lies"], r["nominations"], r["pairs"], r["reason"]])
+		print("case %d: %s wins on day %d | exec good=%d evil=%d | kills=%d | lies=%d | noms=%d | pairs=%d | legacy=%d | %s" %
+			[seed_v, r["winner"], r["days"], r["exec_good"], r["exec_evil"], r["kills"], r["lies"], r["nominations"], r["pairs"], r["metrics"].get("legacy_fallbacks", 0), r["reason"]])
 	if games > 1:
 		var gf = float(games)
 		print("\n%sSUMMARY over %d cases: good %d / evil %d (%.0f%%), avg days %.1f, wrongful executions %.2f/case, evil executed %.2f/case," %
@@ -107,6 +108,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	rng.seed = seed_v * 7919
 	talked = {}
 	linked_pairs = {}
+	blocked_cmds = {}
 	_out(g.new_case(seed_v, npc_count))
 	if native:
 		g.set_workshop_effects(false)
@@ -123,8 +125,13 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 		if not passive and g.state in ["meeting", "nomination", "night"]:
 			_record_theory()
 		var cmd = _decide()
+		if blocked_cmds.has(cmd):
+			cmd = _unblocked(cmd)
 		_out("\n> " + cmd)
-		_out(g.command(cmd))
+		var reply: String = g.command(cmd)
+		_out(reply)
+		if "Cannot present" in reply:
+			blocked_cmds[cmd] = true # never retry a blocked presentation
 	var w = g.w
 	if recorded_day != w.day:
 		scale_days.append(_scale_snapshot())
@@ -174,6 +181,11 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	r["metrics"]["beliefs"] = "native" if native else "shared"
 	r["metrics"]["suspicion_days"] = scale_days
 	r["metrics"]["votes"] = _vote_records()
+	var points = {}
+	for f in g.shared_fallbacks:
+		points[f.point] = points.get(f.point, 0) + 1
+	r["metrics"]["legacy_fallbacks"] = g.shared_fallbacks.size()
+	r["metrics"]["legacy_fallback_points"] = points
 	return r
 
 # ---------------------------------------------------------------- suspicion scale
@@ -304,6 +316,14 @@ func _print_scale(cases: Array) -> void:
 	if votes.n > 0:
 		print("  good NPC votes: %d, mean score %.3f vs need %.3f; yes on evil nominees %d/%d, on good nominees %d/%d" %
 			[votes.n, votes.score / votes.n, votes.need / votes.n, votes.evil_yes, votes.evil_n, votes.good_yes, votes.good_n])
+
+## A safe substitute for a presentation the game already blocked.
+func _unblocked(cmd: String) -> String:
+	if cmd.begins_with("accuse"):
+		return "accuse"
+	if cmd.begins_with("present") or cmd.begins_with("defend"):
+		return "done" if g.town_quiet else "wait"
+	return "ask today"
 
 ## Record the bot's existing heuristic ranking without consulting hidden identities.
 ## This adds no simulation RNG draws and doesn't alter its decisions.

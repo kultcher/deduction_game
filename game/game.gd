@@ -57,6 +57,10 @@ var talk_offered = false
 ## others about them. id -> [location ids].
 var known_haunts = {}
 var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
+# Every time the legacy rules judged something the shared model couldn't read (always
+# recorded, with or without detailed tracing). See the `fallbacks` command.
+var shared_fallbacks: Array = []
+var _fallbacks_reported = 0
 var debug_overlay = false   # show NPCs' hidden credence (spoils identification credit)
 var last_error = ""         # why the last file_deduction was refused
 var log_dir = "user://logs"
@@ -68,6 +72,7 @@ var workshop_effects = true # shared assessment is the normal presentation path
 ## Opt-in test assertion: unsupported presentations are rejected before any effects.
 var strict_evaluator = C.STRICT_EVALUATOR
 var _workshop_native_submission = false
+var _workshop_native_social = false  # a bare belief with no evidence: social speech, not a fallback
 var _workshop_repeats: Dictionary = {}
 var _workshop_busy = false
 var _workshop_plans = {}
@@ -205,6 +210,8 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	talk_offered = false
 	known_haunts = {}
 	fallback_count = 0
+	shared_fallbacks = []
+	_fallbacks_reported = 0
 	show_hidden = false
 	last_error = ""
 	_trace_export_pending = false
@@ -224,7 +231,8 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 		if game == null or game.w != weak_world.get_ref():
 			return {}
 		if not game.workshop_effects or game._workshop_native_submission:
-			WorkshopOwnership.fallback(game, n, "submission", ["The whole audience is using existing response rules for this submission."], card.get("n", 0))
+			if game.workshop_effects and not game._workshop_native_social:
+				WorkshopOwnership.fallback(game, n, "submission", ["The whole audience is using existing response rules for this submission."], card.get("n", 0))
 			return {}
 		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak)
 	w.dlog.begin_action("new_case_presentation")
@@ -516,19 +524,61 @@ func _presentation_gate(card: Dictionary, listeners: Array, targets: Array, dire
 	if rejected != "":
 		_err(rejected)
 		return false
+	_workshop_native_social = false
 	var check = workshop_readiness(card, listeners, targets, direction, venue)
 	if check.ready:
+		return true
+	if not workshop_effects:
+		# The player switched shared effects off: the legacy rules are what they asked for.
+		_workshop_native_submission = true
+		return true
+	if _bare_speech(check.issues):
+		# No evidence at all ("I believe they're not the Demon"): speech, which stays
+		# social and native (like accusing or defending without a card).
+		_workshop_native_submission = true
+		_workshop_native_social = true
+		w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A bare belief with no evidence: native social response.")
+		return true
+	var kinds: Array = _unsupported_conclusions(check.issues)
+	if not kinds.is_empty():
+		# Supported evidence, but a conclusion type the shared model doesn't judge yet
+		# (MECHANICS_SUPPORT item 0). The legacy rules judge it, loudly.
+		for row in check.listeners:
+			if not row.ready:
+				WorkshopOwnership.fallback(self, w.by_id[row.listener], "conclusion_type", row.issues, card.get("n", 0))
+		_workshop_native_submission = true
+		_workshop_native_social = true # already recorded above, once per listener
+		_narr("[dev] The shared model doesn't judge '%s' conclusions yet; the legacy rules judged this one." % ", ".join(PackedStringArray(kinds)))
 		return true
 	for row in check.listeners:
 		if not row.ready:
 			WorkshopOwnership.fallback(self, w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
+	# No legacy route for presentations: an unsupported submission is blocked with its
+	# reason, so a playtest always tests the shared model (user, Oct 25).
 	var reason = "Card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(check.issues))]
-	if strict_evaluator:
-		_err("Cannot present. " + reason)
+	_err("Cannot present. " + reason + " Remove the unsupported card and present the rest.")
+	return false
+
+## Conclusion types named by issues that are only about the conclusion ("Unsupported
+## claim: role"), or [] if any issue is about the evidence itself.
+func _unsupported_conclusions(issues: Array) -> Array:
+	var kinds: Array = []
+	for issue in issues:
+		var text = str(issue)
+		if text.begins_with("Unsupported claim: ") or text.begins_with("Unsupported endorsed claim: "):
+			var kind = text.get_slice(": ", 1)
+			if kind not in kinds:
+				kinds.append(kind)
+		else:
+			return []
+	return kinds
+
+## Issues that only say "there's no evidence here", as opposed to evidence the shared
+## model can't read.
+func _bare_speech(issues: Array) -> bool:
+	if not "No supported reading is presented." in issues:
 		return false
-	_workshop_native_submission = true
-	_narr("Shared assessment unavailable. " + reason + " Existing response rules will be used for this submission's entire audience.")
-	return true
+	return issues.all(func(issue): return issue == "No supported reading is presented." or str(issue).begins_with("Unsupported claim:"))
 
 func _presentation_rejection(card: Dictionary) -> String:
 	if card.get("superseded_by", 0) > 0:
@@ -680,6 +730,9 @@ func _dispatch(text: String) -> void:
 	match verb:
 		"help", "?", "h":
 			_screen(_help())
+			return
+		"fallbacks":
+			_screen(_fallbacks_text())
 			return
 		"look", "l":
 			_look()
@@ -1697,8 +1750,26 @@ func _resolve_night() -> void:
 	_morning_report()
 	_maybe_approach()
 
+## Developer report: what the legacy rules judged because the shared model couldn't.
+func _fallbacks_text() -> String:
+	if shared_fallbacks.is_empty():
+		return "No legacy fallbacks this game: everything was judged by the shared model."
+	var by_point = {}
+	for f in shared_fallbacks:
+		by_point[f.point] = by_point.get(f.point, 0) + 1
+	var out = PackedStringArray(["%d legacy fallbacks this game:" % shared_fallbacks.size()])
+	for point in by_point:
+		out.append("  %s: %d" % [point, by_point[point]])
+	out.append("Most recent:")
+	for f in shared_fallbacks.slice(maxi(0, shared_fallbacks.size() - 10)):
+		out.append("  day %d %s, %s (%s): %s" % [f.day, f.phase, f.listener, f.point, "; ".join(PackedStringArray(f.issues))])
+	return "\n".join(out)
+
 func _morning_report() -> void:
 	_hdr("Day %d, Morning" % w.day)
+	if shared_fallbacks.size() > _fallbacks_reported:
+		_narr("[dev] The legacy rules judged %d thing(s) the shared model couldn't read since the last report. Type 'fallbacks' for details." % (shared_fallbacks.size() - _fallbacks_reported))
+		_fallbacks_reported = shared_fallbacks.size()
 	if w.day > 1 or not w.deaths_last_night.is_empty():
 		if w.deaths_last_night.is_empty():
 			_narr("Dawn breaks. Nobody died in the night.")
@@ -1731,7 +1802,7 @@ func _intro() -> void:
 
 func _help() -> String:
 	return """Commands
-  Anytime : look | map | cast | profile <name> | board [filter] | timeline [filter] | roles | tools | help | log
+  Anytime : look | map | cast | profile <name> | board [filter] | timeline [filter] | roles | tools | help | log | fallbacks
             filters: person, block, location, kind, class, d2 / n1, or any text
   Case    : link <card#> <card#> [card#]  (check for a contradiction)
             conclude <number>  (file an explanation from your last link)
@@ -1941,6 +2012,7 @@ func _ending() -> void:
 	var frozen: Dictionary = prediction_snapshots[-1] if not prediction_snapshots.is_empty() else {}
 	case_summary = CaseMetrics.summarize(w, frozen, prediction_spoiled, board)
 	case_summary["present_fallbacks"] = fallback_count
+	case_summary["legacy_fallbacks"] = shared_fallbacks.size()
 	w.dlog.add("case_summary", "world", "", case_summary, "Frozen pre-outcome identification, town survival, and execution attribution.")
 	if w.winner == "good":
 		_narr("*** VICTORY ***  " + w.end_reason)
