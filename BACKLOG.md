@@ -240,6 +240,13 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     line and the same card (#96): two questions for nothing. A second identical refusal
     should escalate ("I told you already…") or cost no question. [decided]
 
+    > **Session 2026-10-25 (B018): implemented; closure proposed.** Generic voices
+    > now acknowledge a second same-night refusal (“I told you already”), scoped to
+    > its audience and approved statement. Authored voices, question costs, refusal
+    > facts, trust, beliefs, and RNG are unchanged. `test_dialogue` covers repeat,
+    > new-night, other-listener, and unauthorized-context cases. Full runner: 73/75
+    > passed, with only the two permitted failures.
+
     > **Prep B018 (9cb8782; partial):** `sim/mind.gd::whereabouts_refusal` uses dialogue memory, while
     > repeat costs live in `game/game.gd::_talk_command`. Test ask/press/ask sequences; wording variation
     > alone does not fix paying twice for identical information.

@@ -27,6 +27,19 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 	var kind: String = intent.get("kind", "")
 	var statement: String = intent.get("statement", "")
 	var result = {"text": statement, "statement": statement, "voice": id, "intent": kind, "cue": "", "repeated": false}
+	# A generic stonewall still acknowledges an earlier refusal; it does not need a voice pack.
+	if not has_voice(id) and kind == "conceal" and intent.get("form", "") == "whereabouts" and context.get("withholding", false) and not statement.is_empty():
+		var event: String = intent.get("event_id", "")
+		if not event.is_empty():
+			var refusal_key = JSON.stringify([context.get("audience", "player"), kind, event, statement])
+			var refusals: Dictionary = memory.get("seen", {})
+			result.repeated = refusals.has(refusal_key)
+			if result.repeated:
+				result.text = "I told you already: " + statement
+				result.cue = "repeat"
+			refusals[refusal_key] = true
+			memory["seen"] = refusals
+		return result
 	if statement.is_empty() or not has_voice(id) or not kind in INTENTS:
 		return result
 	# These are authorizations from the caller, not deductions made by the renderer.

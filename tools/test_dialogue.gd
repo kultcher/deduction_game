@@ -12,6 +12,7 @@ var fails = 0
 func _init() -> void:
 	_contracts()
 	_memory()
+	_generic_refusals()
 	_flow()
 	_exchange()
 	_live()
@@ -46,6 +47,28 @@ func _contracts() -> void:
 	_check("Between us." in private_line and not "Between us." in public_line, "private request never leaks into meeting speech")
 	var lie_context = {"true": false, "alignment": "evil", "secret": "smuggling"}
 	_check(Dialogue.compose("bart", quoted, lie_context, {})["text"] == Dialogue.compose("bart", quoted, {}, {})["text"], "irrelevant hidden truth cannot affect wording")
+
+func _generic_refusals() -> void:
+	var memory = {}
+	var refusal = Dialogue.whereabouts_intent("whereabouts:1")
+	var first = Dialogue.compose("isolde", refusal, {"withholding": true}, memory)
+	var again = Dialogue.compose("isolde", refusal, {"withholding": true}, memory)
+	_check(first.text == refusal.statement and not first.repeated, "an unvoiced character's first refusal retains the plain wording")
+	_check(again.repeated and again.text.begins_with("I told you already:") and again.statement == first.statement, "a repeated generic stonewall acknowledges the refusal without changing its meaning")
+	var elsewhere = Dialogue.compose("isolde", refusal, {"withholding": true, "audience": "jory"}, memory)
+	_check(not elsewhere.repeated and elsewhere.text == first.text, "a different listener has not heard the private refusal")
+	var next_night = Dialogue.compose("isolde", Dialogue.whereabouts_intent("whereabouts:2"), {"withholding": true}, memory)
+	_check(not next_night.repeated, "a question about another night is not called a repeat")
+	var unapproved = {}
+	_check(Dialogue.compose("isolde", refusal, {}, unapproved).text == first.text and unapproved.is_empty(), "generic delivery cannot invent a refusal authorization")
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(4242)
+	var n = g.w.npcs.filter(func(person): return not Dialogue.has_voice(person.id))[0]
+	var state = JSON.stringify([g.w.rng.state, n.suspicion, n.ledger, n.trust])
+	Mind.whereabouts_refusal(n, 1)
+	Mind.whereabouts_refusal(n, 1)
+	_check(state == JSON.stringify([g.w.rng.state, n.suspicion, n.ledger, n.trust]), "refusal phrasing changes neither RNG nor beliefs/trust")
 
 func _memory() -> void:
 	var memory = {}
