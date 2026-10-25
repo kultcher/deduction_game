@@ -93,7 +93,7 @@ closures and not claims of fresh runtime success.
 | Entries | Evidence on this main | Remaining check / narrower task |
 | --- | --- | --- |
 | B006–B009 saturation baseline | `Mind.adjust` stores an unclamped sum; reads clamp; ownership retracts/replaces. | Recompute/withdrawal parity; do not implement the old victim exemption. |
-| B011–B012 revision identity/strength | `WorkshopCanvas.file` preserves versions; migration suite has revision/repeat assertions. | Exact shared versus native route, newest-first UI labels, old hearing history. |
+| B011–B012 revision identity/strength | `WorkshopCanvas.file` preserves versions; migration suite has revision/repeat assertions. | Exact shared versus native route, newest-first UI labels, old hearing history. **Session verification (Oct 25; base 739f366):** shared revisions equal a fresh hearing of complete support and preserve historical endorsement versions (`test_legacy_migration`, `test_workshop_live_canvas`). Newest-first UI lists now label revision/superseded links (`test_board`). **Propose closure for normal shared delivery and visible history**; explicit disabled/native novelty is not retuned. |
 | B013 daily defence key | `Mind.defend_self` uses scope hash, not day. | Same complete hearing strength and no repeat stacking; alternative choices remain open. |
 | B019 whereabouts/public claim cards | `answer_today`, `add_card`, `_disclose` retain facts/history. | Exact historical examples, date wording, and confidentiality promotion. |
 | B030 watch versus vigil | `_match_pair` contains vigil/watch and omission links. | Exact named-set mismatch and player observation versus NPC claim alternatives. |

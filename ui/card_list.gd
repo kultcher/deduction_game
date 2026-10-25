@@ -55,7 +55,14 @@ static func line_for(c: Dictionary) -> String:
 	if not cb.is_empty():
 		var names: Array = cb.map(func(id): return "you" if id == "player" else _name_of(id))
 		also = "  (also seen by %s)" % ", ".join(PackedStringArray(names))
-	return "#%d  %s · %s%s" % [c["n"], label, c.get("text", ""), also]
+	var history: Array = []
+	if k == "deduction":
+		if int(c.get("revises", 0)) > 0:
+			history.append("revision of #%d" % c.revises)
+		if int(c.get("superseded_by", 0)) > 0:
+			history.append("superseded by #%d" % c.superseded_by)
+	var revision = " (" + "; ".join(PackedStringArray(history)) + ")" if not history.is_empty() else ""
+	return "#%d  %s · %s%s%s" % [c["n"], label, c.get("text", ""), revision, also]
 
 static func _name_of(id: String) -> String:
 	for n in C.CAST:

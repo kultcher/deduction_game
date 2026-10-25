@@ -8,12 +8,14 @@ const CardModel = preload("res://game/card_model.gd")
 const BoardModel = preload("res://game/board_model.gd")
 const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
+const CardList = preload("res://ui/card_list.gd")
 
 var fails = 0
 
 func _init() -> void:
 	_test_canonical_time()
 	_test_merge_disclosures()
+	_test_revision_labels()
 	_test_views_and_markers()
 	_test_layout_rows()
 	_test_layout_real_game()
@@ -164,6 +166,16 @@ func _test_state_filters() -> void:
 	print("all %d, statements %d, places %d" % [all_n, stmt_n, places_n])
 	var total_n: int = g.board.filter(func(x): return not x.get("deleted", false) and x["kind"] != "deduction").size()
 	_check(places_n < total_n and stmt_n < total_n, "each view shows a subset of the cards (%d, %d of %d)" % [places_n, stmt_n, total_n])
+
+func _test_revision_labels() -> void:
+	var middle = {"kind": "deduction", "n": 22, "text": "The same historical case.", "revises": 12, "superseded_by": 31}
+	var before = JSON.stringify(middle)
+	var line = CardList.line_for(middle)
+	_check("revision of #12" in line and "superseded by #31" in line and line.begins_with("#22"), "a historical revision labels both links without changing its card number")
+	_check(JSON.stringify(middle) == before, "revision labels do not rewrite the case or its historical text")
+	var latest = {"kind": "deduction", "n": 31, "text": "The expanded case.", "revises": 22}
+	_check("revision of #22" in CardList.line_for(latest) and not "superseded" in CardList.line_for(latest), "the latest revision names its predecessor without marking itself superseded")
+	_check(not "revision" in CardList.line_for({"kind": "claim", "n": 4, "text": "A plain claim."}), "ordinary evidence is not labeled as a case revision")
 
 func _test_theme_fallback() -> void:
 	var p = UITheme.panel("popup")

@@ -174,6 +174,14 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
   - **A revised case gets a new card number,** so it sorts to the top of the newest-first
     lists; the old version stays, marked superseded. [decided]
 
+    > **Session 2026-10-25 (B012): completed; closure proposed.** Existing filing
+    > already preserves numbers and heard versions. Card List/working-set rows now
+    > label both “revision of #N” and “superseded by #N”; current lists are newest
+    > first. `test_board` checks readable immutable history; `test_legacy_migration`
+    > and `test_workshop_live_canvas` verify preserved strength and heard revisions.
+    > No filing, novelty, belief, or ownership implementation was changed. Focused
+    > checks: 3/3. Full runner: 73/75; only the permitted two failures.
+
     > **Prep B012 (9cb8782; candidate to close):** `game/workshop_canvas.gd::file` allocates a new card
     > with `revises`/`superseded_by`; migration tests assert preserved numbers. Check newest-first lists
     > and labels. Never mutate a version already heard by NPCs.
