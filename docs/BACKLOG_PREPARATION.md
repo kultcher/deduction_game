@@ -131,6 +131,12 @@ can proceed independently; major proposals still require their listed decisions.
 Original entries remain in place. These are code-backed candidates, not automatic
 closures and not claims of fresh runtime success.
 
+**Closed Oct 25 (Claude):** after checking each against the code and tests, B002, B004,
+B006/B007/B009/B010, B011 (normal play), B012, B013, B014, B015, B018, B019, B020 (all but the
+walker "from my window" line), B030, B034, B110 and the toggle part of B036 moved to
+[BACKLOG_COMPLETED.md](../BACKLOG_COMPLETED.md), with the old Closed section. Kept open: B122 (the
+tested withdrawal is the Debug tool, not a player retraction), B181, B200, B008 and the rest of B036.
+
 | Entries | Evidence on this main | Remaining check / narrower task |
 | --- | --- | --- |
 | B006–B009 saturation baseline | `Mind.adjust` stores an unclamped sum; reads clamp; ownership retracts/replaces. | Recompute/withdrawal parity; do not implement the old victim exemption. **Session verification (Oct 25; base 739f366):** Propose closure of B006/B009 and retirement of B007 workaround after exact reversal/shared takeover tests. B008 remains [open] and skipped; no sincerity policy changed. Full default runner: 73/75; only permitted test_social/test_text_ui failures. |
