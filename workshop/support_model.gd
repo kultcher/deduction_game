@@ -547,6 +547,16 @@ static func _comparison(view: Dictionary, worlds: Array, conclusion: Dictionary,
 	return result
 
 static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dictionary, factors: Array, ranks: Dictionary, worlds_id: int = 0) -> Dictionary:
+	if conclusion.type not in ["evil", "good", "suspicious", "marked", "demon", "minion", "conflict"]:
+		var support = 0.0
+		var rival = 0.0
+		for world in worlds:
+			var score: float = world_score(view, world, ranks, factors)
+			if Solver.holds(view, world, conclusion):
+				support = maxf(support, score)
+			else:
+				rival = maxf(rival, score)
+		return {"support": support, "rival": rival}
 	# One set of ranked worlds answers all characters' alignment/Marked questions.
 	# This cache only speeds the full/mixture calculation; bounded searches still
 	# construct their own candidates and never receive unseen public worlds.

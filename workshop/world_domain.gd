@@ -62,13 +62,14 @@ static func worlds(view: Dictionary) -> Array:
 static func key(view: Dictionary, world: Dictionary) -> int:
 	var n: int = view.people.size()
 	var base: int = ((int(world.evil) * (n + 1) + int(world.marked) + 1) * 4 + C.SECRET_MOD_LIST.find(world.modifier)) * (1 << n) + int(world.holders)
-	return base * (n + 1) + world.demon + 1 if world.has("demon") else base
+	base = base * (n + 1) + world.demon + 1 if world.has("demon") else base
+	return base * (n + 1) + world.converted + 1 if world.has("converted") else base
 
 static func claims_compatible(cards: Array, knowledge: Dictionary) -> bool:
 	var sources = {}
 	var roles = {}
 	for card in cards:
-		if card.kind not in ["report", "claim"] or card.get("quoted", false):
+		if card.kind not in ["report", "claim"] or card.get("quoted", false) or card.get("testimony_only", false):
 			continue
 		if sources.has(card.source) and sources[card.source] != card.role:
 			return false
@@ -91,6 +92,8 @@ static func healthy(view: Dictionary, world: Dictionary, source: String) -> bool
 static func gift_time(card: Dictionary) -> bool:
 	if card.role in ["martyr", "sexton"]:
 		return card.observed_at.day >= 1 and card.observed_at.phase in ["evening", "night"]
+	if card.role == "warden":
+		return card.observed_at.day >= 1 and card.observed_at.phase == "night"
 	if card.role in ["surveyor", "rumormonger", "clerk", "archivist"]:
 		return card.observed_at.day == 0 and card.observed_at.phase == "night"
 	if card.role in ["seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "psychologist"]:

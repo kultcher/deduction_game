@@ -21,6 +21,7 @@ var workshop_refresh: Callable
 var defer_beliefs = false
 var pending_beliefs: Array = []
 var workshop_present: Callable
+var workshop_roots: Callable # Read-only resolution of a relayed board case.
 var detailed_logging = true     # debug export only; does not enable the spoiler UI
 var trace_build = ""            # optional caller-supplied git/build identifier
 var trace_tuning = ""           # optional caller-supplied tuning identifier
@@ -206,6 +207,8 @@ func public_event(kind: String, subjects: Array, by: String, data: Dictionary = 
 	if subjects.is_empty():
 		return
 	var e = {"day": day, "kind": kind, "subjects": subjects.duplicate(), "by": by}
+	if kind in ["curse", "curse_lifted"]:
+		e["phase"] = phase # The announced boundary's public clock time.
 	if not data.is_empty():
 		e["data"] = data.duplicate(true)
 	public_log.append(e)

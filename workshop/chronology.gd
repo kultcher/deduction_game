@@ -35,6 +35,8 @@ static func expand(view: Dictionary, world: Dictionary) -> Array:
 			continue
 		var alternative = world.duplicate(true)
 		alternative["converted"] = index
+		if Domain.live(view):
+			alternative["__key"] = Domain.key(view, alternative)
 		result.append(alternative)
 	return result
 
@@ -71,10 +73,13 @@ static func source_key(view: Dictionary, card: Dictionary) -> String:
 		return "source:" + card.source
 	var interval = "ordinary"
 	var curse: Dictionary = view.chronology.get("curse", {})
-	var reported: int = tick(card.get("reported_at", card.observed_at))
+	var reported: int = tick(statement_time(card))
 	if not curse.is_empty():
 		interval = "before" if reported < curse.from else ("during" if reported < curse.until else "restored")
 	return "source:%s:%s" % [card.source, interval]
+
+static func statement_time(card: Dictionary) -> Dictionary:
+	return card.reported_at if card.get("reported_at") is Dictionary else card.get("observed_at", {"day": 0})
 
 static func valid_fault(view: Dictionary, fault) -> bool:
 	if not fault is Dictionary or fault.get("type") != "poisoned" or not fault.get("window") is String:

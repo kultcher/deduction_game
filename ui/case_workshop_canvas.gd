@@ -57,7 +57,7 @@ func _ready() -> void:
 	premise_person = _person_option(tools, "constance")
 	premise_person.custom_minimum_size.x = 140
 	premise_person.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	premise_type = _option(tools, TYPE_NAMES + ["Supporting evidence (no claim)"])
+	premise_type = _option(tools, premise_names() + ["Supporting evidence (no claim)"])
 	premise_type.custom_minimum_size.x = 220
 	premise_type.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_button(tools, "Add", _add_premise).name = "AddPremise"
@@ -223,12 +223,18 @@ func _window_body(window: Window) -> VBoxContainer:
 	scroll.add_child(body)
 	return body
 
+func premise_types() -> Array:
+	return TYPES
+
+func premise_names() -> Array:
+	return TYPE_NAMES
+
 func _add_premise() -> void:
 	if board.nodes.values().filter(func(n): return n.kind == "premise").size() >= 12:
 		status.text = "This experiment supports twelve premise cards."
 		return
 	var at: Vector2 = (canvas.size / 2.0 - canvas.pan) / canvas.zoom
-	board.selected = board.add_premise(session.scenario.public_view.people[premise_person.selected].id, (TYPES + ["support"])[premise_type.selected], at)
+	board.selected = board.add_premise(session.scenario.public_view.people[premise_person.selected].id, (premise_types() + ["support"])[premise_type.selected], at)
 	if not board.nodes[board.selected].conclusion.is_empty():
 		case_root = board.selected
 	_session_changed()

@@ -216,6 +216,13 @@ static func _build_universe(view: Dictionary) -> Array:
 	var all_worlds: Array = []
 	if Domain.live(view):
 		all_worlds = Domain.worlds(view)
+		if view.get("chronology", {}).has("curse"):
+			var expanded: Array = []
+			for world in all_worlds:
+				for candidate in TimeModel.expand(view, world):
+					candidate["__i"] = expanded.size()
+					expanded.append(candidate)
+			all_worlds = expanded
 	else:
 		for evil in range(1 << ids.size()):
 			if popcount(evil) == view.evil_count:
@@ -238,6 +245,8 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 	# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
 	var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.source,
 		card.get("role", ""), card.observed_at, card.data, positive, positive_blocks]
+	if card.get("testimony_only", false):
+		inputs.append([true, card.get("reported_at")])
 	var key = hash(inputs)
 	if not report_matches.has(key) or report_matches[key].inputs != inputs:
 		if report_matches.size() > 512:
@@ -250,6 +259,11 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 		var of: PackedInt32Array = groups.of
 		var answers = PackedByteArray()
 		answers.resize(rep.size())
+		if card.get("testimony_only", false) and card.kind == "report":
+			for i in range(universe.size()):
+				accepted[i] = 1 if source_valid(view, universe[i], card) and _testimony_content(view, universe[i], card) else 0
+			report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
+			return accepted
 		if card.kind == "report":
 			# A valid source (vectorised), then the content where it matters.
 			var valid: PackedByteArray = valid_table(view, card)
@@ -267,6 +281,8 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 ## A world's key without the demon's identity. Report contents and source validity
 ## never read it, so worlds differing only there share one answer. -1: no key.
 static func content_sig(view: Dictionary, world: Dictionary) -> int:
+	if world.has("converted"):
+		return int(world.get("__i", -1)) # Source validity now depends on the turnee.
 	if not world.has("__key"):
 		return -1
 	if world.has("demon"):
@@ -274,7 +290,7 @@ static func content_sig(view: Dictionary, world: Dictionary) -> int:
 	return int(world.__key)
 
 ## Roles whose report content can fail in a world (the rest only need a valid source).
-const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch"]
+const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch", "warden"]
 
 static var _bits: Dictionary = {}
 
@@ -309,6 +325,10 @@ static func valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
 	t.fill(0)
 	if card.kind != "report":
 		t.fill(1)
+		return t
+	if card.get("testimony_only", false):
+		for i in range(universe.size()):
+			t[i] = 1 if source_valid(view, universe[i], card) else 0
 		return t
 	var live: bool = Domain.live(view)
 	# Gift timing and the source being alive don't vary by world.
@@ -372,6 +392,8 @@ static func tabled(card: Dictionary) -> bool:
 static func source_valid(view: Dictionary, world: Dictionary, card: Dictionary) -> bool:
 	if card.kind != "report":
 		return true
+	if card.get("testimony_only", false):
+		return not TimeModel.evil_at(view, world, card.source, TimeModel.statement_time(card))
 	if TimeModel.evil_at(view, world, card.source, card.observed_at):
 		return false
 	if Domain.live(view):
@@ -456,6 +478,8 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 		for assignment in temporal_positions:
 			for id in assignment.positions:
 				worlds = worlds.filter(func(w): return position_holds(view, w, id, assignment.positions[id], assignment.at))
+	for fact in knowledge.get("timed_good", []):
+		worlds = worlds.filter(func(w): return not TimeModel.evil_at(view, w, fact.person, fact.at))
 	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
 	if view.get("world_options", {}).get("roles", false):
 		# One role table for the surviving worlds (same answers as fits per world).
@@ -536,12 +560,40 @@ static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary,
 		return answer.get("positive", []).is_empty() or view.people[world.get("converted", -1)].id in answer.positive
 	if card.kind != "report":
 		return true
+	if card.get("testimony_only", false):
+		return source_valid(view, world, card) and _testimony_content(view, world, card)
 	# An accepted healthy gift assumes a good source at the reading's time.
 	return source_valid(view, world, card) and _report_content(view, world, card, answer)
+
+## Cheap compatibility of the recounted content, with no anonymous role holder.
+## This is weak testimony, not a faithful original reading or a role proof.
+static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictionary) -> bool:
+	_ensure_people(view)
+	var data: Dictionary = card.data
+	var pair = 0
+	for person in data.get("pair", []):
+		pair |= 1 << person_index(view, person)
+	var evil: int = world.evil
+	if world.has("converted") and TimeModel.evil_index(view, world, world.converted, card.observed_at):
+		evil |= 1 << int(world.converted)
+	match card.role:
+		"seer":
+			var demon: bool = world.get("demon", -1) >= 0 and (pair & (1 << int(world.demon))) != 0
+			return demon or (pair & ~evil) != 0 if data.yes else not demon
+		"clerk": return (pair & ~world.evil) != 0
+		"archivist": return (pair & world.evil & ~(1 << int(world.get("demon", -1)))) != 0
+		"gravedigger":
+			var target: int = person_index(view, data.executed)
+			var reads_evil: bool = (world.evil & (1 << target)) != 0 or world.marked == target
+			return reads_evil if Domain.C.ROLES.get(data.role, {}).get("align") == "evil" else (world.evil & (1 << target)) == 0
+		"rumormonger": return world.get("modifier", "marked") == data.secret and (int(world.get("holders", 1 << world.marked)) & pair) != 0
+	return _report_content(view, world, card, {})
 
 ## What a report says, given a valid source (see source_valid): does it hold here?
 static func _report_content(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
 	_ensure_people(view)
+	if card.role == "warden":
+		return not view.get("timeline", {}).get("events", []).any(func(event): return event.kind == "demon_death" and event.at.day == card.observed_at.day and card.data.target in event.subjects)
 	if Domain.live(view):
 		if card.role == "nightwatch" and card.data.seen.any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):
 			return false
@@ -650,10 +702,60 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 		return false
 	match conclusion.type:
 		"demon", "minion": return position_holds(view, world, conclusion.target, conclusion.type, conclusion.at)
+		"notdemon": return not position_holds(view, world, conclusion.target, "demon", conclusion.at)
 		"evil", "suspicious": return TimeModel.evil_index(view, world, index, conclusion.at)
 		"good": return not TimeModel.evil_index(view, world, index, conclusion.at)
 		"marked": return world.marked == index
+		"secret_mod": return world.get("modifier", "marked") == conclusion.get("mod", "") and (int(world.get("holders", 1 << world.marked)) & (1 << index)) != 0
+		"role", "notrole":
+			# A declaration question, not an extra hidden role assignment: the live
+			# adapter requires a cited matching claim. Good declarations are binding;
+			# the existing joint role table weighs whether those claims fit together.
+			var claimed: bool = not TimeModel.evil_index(view, world, index, conclusion.at)
+			return claimed if conclusion.type == "role" else not claimed
+		"lied", "truthful":
+			# Existing challenge semantics: evil-reader versus honest-reader
+			# explanations. Impairment is not deliberate dishonesty.
+			var evil: bool = TimeModel.evil_index(view, world, index, conclusion.get("question_at", conclusion.at))
+			return evil if conclusion.type == "lied" else not evil
+		"misled", "unreliable":
+			var table: PackedByteArray = question_table(view, conclusion)
+			var i: int = world.get("__i", -1)
+			if i < 0:
+				i = universe(view).find(world)
+			return i >= 0 and i < table.size() and table[i] != 0
 	return false
+
+static var question_cache: Dictionary = {}
+
+static func question_inputs(view: Dictionary, conclusion: Dictionary) -> Array:
+	return [conclusion, card_by_id(view, conclusion.get("report", ""))] if conclusion.get("type") in ["misled", "unreliable"] else [conclusion]
+
+## Existing report truth and role tables answer reading questions without adding
+## honesty/source states to the world domain.
+static func question_table(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
+	var input = [_universe_key(view), view.people, view.get("timeline", {}), view.get("live_activity", false), question_inputs(view, conclusion)]
+	var key = hash(input)
+	if question_cache.has(key) and question_cache[key].input == input:
+		return question_cache[key].table
+	var worlds: Array = universe(view)
+	var out = PackedByteArray()
+	out.resize(worlds.size())
+	var report = card_by_id(view, conclusion.get("report", ""))
+	if report.get("kind") == "report":
+		var accepted: PackedByteArray = report_table(view, report)
+		var roles: PackedByteArray = Roles.fits_table(view, worlds, [report], {})
+		var pair: Array = report.get("data", {}).get("pair", []).map(func(id): return person_index(view, id))
+		for i in range(worlds.size()):
+			var wrong: bool = accepted[i] == 0 or roles[i] == 0
+			if conclusion.type == "misled":
+				var registration: bool = report.role == "seer" and report.data.yes and worlds[i].has("demon") and worlds[i].demon not in pair
+				wrong = not TimeModel.evil_at(view, worlds[i], report.source, report.observed_at) and (wrong or registration)
+			out[i] = 1 if wrong else 0
+	if question_cache.size() >= 128:
+		question_cache.clear()
+	question_cache[key] = {"input": input.duplicate(true), "table": out}
+	return out
 
 static func describe_world(view: Dictionary, world: Dictionary, epoch: String = "") -> Dictionary:
 	var ids: Array = person_ids(view)

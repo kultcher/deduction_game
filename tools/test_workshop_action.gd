@@ -48,9 +48,14 @@ func _live(size: int) -> void:
 	check(Mind.execution_priority(observer, source.id) == 0.0, "inactive action reads supply no stale score")
 	g.set_workshop_effects(true)
 	check(observer.workshop_state.active and observer.workshop_state.has("action"), "supported evidence restores its action with ownership")
-	# A capability failure after a valid solve must not leave an old action live.
+	# Anonymous accounts are now weak teller testimony, without a gift identity.
 	Mind.apply_info(g.w, observer, source, reading, 0.25, source.id, true)
-	check(not observer.workshop_state.active and not observer.workshop_state.has("action") and Mind.execution_priority(observer, source.id) == 0.0, "unsupported anonymous provenance clears the previous action")
+	check(observer.workshop_state.active and observer.workshop_state.has("action"), "supported anonymous testimony retains a current shared action")
+	# A genuine capability failure must still remove the previous action.
+	var invalid: Dictionary = reading.duplicate(true)
+	invalid.data.count = 99
+	Mind.apply_info(g.w, observer, source, invalid, 0.5)
+	check(not observer.workshop_state.active and not observer.workshop_state.has("action") and Mind.execution_priority(observer, source.id) == 0.0, "invalid report content clears the previous action")
 	check(Shared.evaluate({"ready": false}, {}, {}).is_empty() and not Shared.evaluate({"ready": true, "empty": true}, {}, {}).has("action"), "failed and evidence-free plans do not manufacture an action")
 
 func _decisions() -> void:

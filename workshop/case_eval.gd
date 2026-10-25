@@ -62,7 +62,7 @@ static var _valid_cache: Dictionary = {}
 
 ## Per world: can this card's source give a healthy reading? (cached per card and universe)
 static func _valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
-	var key = hash([Solver._universe_key(view), card.kind, card.source, card.observed_at, card.get("role", ""), view.get("timeline", {})])
+	var key = hash([Solver._universe_key(view), card.kind, card.source, card.observed_at, card.get("role", ""), view.get("timeline", {}), card.get("testimony_only", false), card.get("reported_at")])
 	if _valid_cache.has(key):
 		return _valid_cache[key]
 	if _valid_cache.size() > 512:
@@ -86,6 +86,8 @@ static func _index(view: Dictionary) -> Dictionary:
 	team_of.resize(universe.size())
 	for i in range(universe.size()):
 		var evil: int = universe[i].evil
+		if universe[i].has("converted") and TimeModel.evil_index(view, universe[i], universe[i].converted, "Current alignment"):
+			evil |= 1 << int(universe[i].converted)
 		if not team_idx.has(evil):
 			team_idx[evil] = teams.size()
 			teams.append(evil)
@@ -101,7 +103,7 @@ static func neutral_listener(view: Dictionary) -> Dictionary:
 static var _premise_cache: Dictionary = {}
 
 static func _premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
-	var key = hash([Solver._universe_key(view), conclusion, view.get("timeline", {})])
+	var key = hash([Solver._universe_key(view), Solver.question_inputs(view, conclusion), view.get("timeline", {})])
 	if _premise_cache.has(key):
 		return _premise_cache[key]
 	if _premise_cache.size() > 256:
@@ -110,6 +112,8 @@ static func _premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByt
 	return _premise_cache[key]
 
 static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
+	if conclusion.type in ["misled", "unreliable"]:
+		return Solver.question_table(view, conclusion)
 	var universe: Array = Solver.universe(view)
 	var m = PackedByteArray()
 	m.resize(universe.size())
@@ -217,6 +221,17 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	# Per class: prior (team odds, role fits) and the case's likelihood.
 	var team_prior = _team_prior(view, listener)
 	var fits = _class_fits(view, cc, cards, knowledge)
+	if view.get("chronology", {}).has("curse"):
+		fits = fits.duplicate() # Never modify a cached role table.
+		var worlds: Array = Solver.universe(view)
+		for c in range(fits.size()):
+			var world: Dictionary = worlds[cc.rep[c]]
+			for person in knowledge.get("good", []):
+				if TimeModel.evil_at(view, world, person, knowledge.get("good_epoch", view.alignment_epoch)):
+					fits[c] = 0.0
+			for fact in knowledge.get("timed_good", []):
+				if TimeModel.evil_at(view, world, fact.person, fact.at):
+					fits[c] = 0.0
 	var case_like = _class_like(cc, cc.reports.map(func(c): return err_for.call(c)), -1)
 	var own_like = _state_like(view, own, own.map(func(c): return err_for.call(c)), oc.codes)
 	# Live role uniqueness is checked per world in Roles.fits, where an evil claimant may
@@ -286,6 +301,10 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 	var key_input = [Solver._universe_key(view), view.get("timeline", {}), view.people, conclusion, case_data.get("citations", {}), case_data.get("test_factors", []),
 		known.map(func(c): return c.get("fact_id", c.id)) if not case_data.get("test_factors", []).is_empty() else [],
 		cards.map(func(c): return [c.get("fact_id", c.id), c.kind, c.source, c.get("role", ""), c.get("observed_at", {}), c.get("data", {}), c.get("event", ""), c.has("relay_source"), c.get("quoted", false), c.get("block", ""), c.get("night", -1), c.get("subject", ""), c.get("subjects", [])])]
+	if cards.any(func(c): return c.has("hearing_weight")):
+		key_input.append(cards.map(func(c): return c.get("hearing_weight", 1.0)))
+	if cards.any(func(c): return c.get("testimony_only", false)):
+		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
 	var key = hash(key_input)
 	if _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]
@@ -332,6 +351,8 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 	digits.resize(k)
 	var radix: int = int(pow(3, k))
 	var rm_bound: int = (1 << people) * (people + 2) * (people + 2) * ((1 << people) if mediums != 0 else 1)
+	if view.get("chronology", {}).has("curse"):
+		rm_bound *= people + 1
 	var int_keys: bool = k <= 16 and float(rm_bound) * float(radix) * 4.0 < 9.0e18
 	# Each world's card states as one base-3 code, a card at a time.
 	var codes = PackedInt64Array()
@@ -344,6 +365,10 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 			codes[i] = codes[i] * 3 + (0 if t[i] == 1 else (1 if v[i] == 1 else 2))
 	var live: bool = Domain.live(view)
 	var rms: PackedInt64Array = _coarse(view, seer, mediums) if roles_on else Solver.world_bits(view).evil
+	if not roles_on and view.get("chronology", {}).has("curse"):
+		rms = rms.duplicate()
+		for i in range(n):
+			rms[i] = rms[i] * (people + 1) + int(universe[i].converted) + 1
 	if not live:
 		# Fixture universes are small and carry conversion histories: one world per class.
 		rms = PackedInt64Array()
@@ -423,6 +448,8 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 		"movement": movement.map(func(f): return f.label), "factors": movement, "tests": tests, "test_hold": test_hold, "group": group, "group_bits": group_bits, "movement_ok": _movement_ok(view, cards, live),
 		"q": reports.map(func(c): return chance_content(view, c)), "team": team, "rep": rep, "count": count,
 		"premise": prem, "dead": is_dead, "states": states, "class_of": class_of, "k": k}
+	for factor in movement:
+		out.movement.append_array(factor.get("relationships", []))
 	_compiled[key] = out
 	return out
 
@@ -679,9 +706,37 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		which.append(c)
 	var live: bool = Domain.live(view)
 	var t: PackedByteArray = Solver.Roles.fits_table(view, reps, cards, knowledge, {}, live)
+	# Only classes that fail the content check need the declaration-only check.
+	var declarations = PackedByteArray()
+	if live and t.has(0) and cards.any(func(card): return card.kind == "report"):
+		var claims: Array = []
+		for card in cards:
+			var claim: Dictionary = card
+			if card.kind == "report":
+				claim = card.duplicate()
+				claim.kind = "claim"
+				claim.data = {}
+			claims.append(claim)
+		var failed: Array = []
+		var at: PackedInt32Array = PackedInt32Array()
+		for x in range(reps.size()):
+			if t[x] == 0:
+				failed.append(reps[x])
+				at.append(x)
+		var sub: PackedByteArray = Solver.Roles.fits_table(view, failed, claims, knowledge, {}, true)
+		declarations.resize(reps.size())
+		declarations.fill(0)
+		for y in range(at.size()):
+			declarations[at[y]] = sub[y]
 	var weights: PackedFloat64Array = Solver.Roles.bluff_weights(view, reps, cards) if live else PackedFloat64Array()
 	for x in range(which.size()):
-		out[which[x]] = float(t[x]) * (weights[x] if live else 1.0)
+		var content: float = float(t[x])
+		if content == 0.0 and not declarations.is_empty() and declarations[x] != 0:
+			# A joint report-content contradiction can be an erroneous reading too.
+			# Identity/public constraints remain hard; never erase the whole view
+			# merely because several claimed Seer results share no exact Red Herring.
+			content = DEFAULT_ERR
+		out[which[x]] = content * (weights[x] if live else 1.0)
 	return out
 
 ## Joint facts about the reports, for one listener:
