@@ -455,6 +455,11 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     (Constance: "I watched the Market and saw Jory"; my vigil saw only Constance and
     Isolde) had no link. A false gift report is the strongest kind of lie.
 
+    > **Session verification 2026-10-25 (B030):** Added the exact named-set mismatch to test_argue:
+    > watcher present, an omitted person, and a different-night control. Propose closure of the
+    > missing link; no judge, doubt, or effect weights changed. Full default runner: 73/75; only
+    > permitted test_social/test_text_ui failures.
+
     > **Prep B030 (9cb8782; candidate to narrow):** `sim/argue.gd::_match_pair` now has vigil/watch and
     > omission branches. Verify the exact named-set mismatch, including a watcher present in the vigil;
     > native choices and shared Night Watch content must agree.

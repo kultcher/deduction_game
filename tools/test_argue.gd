@@ -61,6 +61,12 @@ func _init() -> void:
 	_expect(g, [k7, k1], "watch_omission")
 	_expect(g, [k8, k9], "reading_flip")
 	_expect(g, [k10, k1], "vigil_miss")
+	var named_watch = g.add_card({"kind": "info", "subject": [a, d], "source": d, "day": 1, "role": "nightwatch", "data": {"block": "market", "seen": [a]}, "text": "D watched market n1 and saw A."})
+	var full_vigil = g.add_card({"kind": "sighting", "subject": [d, b], "block": "market", "day": 1, "phase": C.NIGHT, "source": "player", "vigil": true, "text": "My market vigil n1 saw D and B."})
+	var named_matches: Array = g.link_cards([named_watch, full_vigil]).result.matches
+	_check(named_matches.any(func(m): return m.template == "watch_omission") and not named_matches.any(func(m): return m.template == "vigil_watcher"), "a named-set mismatch links without falsely missing the watcher")
+	var next_watch = g.add_card({"kind": "info", "subject": [a, d], "source": d, "day": 2, "role": "nightwatch", "data": {"block": "market", "seen": [a]}, "text": "D watched market n2 and saw A."})
+	_check(not g.link_cards([next_watch, full_vigil]).result.matches.any(func(m): return m.template == "watch_omission"), "different-night watch and vigil reports do not create a same-night omission")
 	_expect(g, [k12, k11], "veteran_died")
 	_expect(g, [k8, k11, k13], "reading_vs_dead")
 	_expect_none(g, [k5, k1], "")
