@@ -196,19 +196,23 @@ func _live() -> void:
 	Mind.Dialogue.begin_conversation(n.dialogue_memory)
 	var claim_card: int = g.add_card({"kind": "claim", "source": target.id, "subject": [target.id],
 		"role": "clerk", "text": "Edda claimed Clerk."})
+	# Dialogue continuity, not evidence judging: on main the shared case judge blocks a
+	# bare claim card, so take the legacy route the player can choose by switching shared
+	# effects off. The spoken accusation is what this check is about.
+	g.workshop_effects = false
 	g.command("tell edda %d" % claim_card)
 	_check(n.dialogue_memory.get("conversation", {}).get("last_action", "") == "accusation" and
 		n.dialogue_memory.get("conversation", {}).get("last_subject", "") == target.id,
 		"live conversation records the spoken accusation target")
 	g.command("ask about edda")
-	_check(g.last_events.any(func(ev): return ev.get("k", "") == "speech" and
-		"About that concern you raised over Edda:" in str(ev.get("text", ""))),
+	_check(g.last_events.any(func(ev): return (ev.get("k", "") == "speech" and
+		"About that concern you raised over Edda:" in str(ev.get("text", "")))),
 		"live opinion answers the previous accusation with relevant context")
 	_check(n.dialogue_memory.get("conversation", {}).get("last_action", "") == "opinion",
 		"live dialogue records the last completed answer")
 	g.command("ask about edda")
-	_check(g.last_events.any(func(ev): return ev.get("k", "") == "speech" and
-		"You're still wondering about Edda" in str(ev.get("text", ""))),
+	_check(g.last_events.any(func(ev): return (ev.get("k", "") == "speech" and
+		"You're still wondering about Edda" in str(ev.get("text", "")))),
 		"same-person followup is different from restarting the topic")
 
 	var readings = [entry, entry.duplicate(true)]
