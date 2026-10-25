@@ -231,6 +231,9 @@ static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledg
 	for id in knowledge.get("good", []):
 		if not Solver.position_holds(view, world, id, "good", knowledge.get("good_epoch", epoch)):
 			return false
+	for fact in knowledge.get("timed_good", []):
+		if TimeModel.evil_at(view, world, fact.person, fact.at):
+			return false
 	for id in positions:
 		if not Solver.position_holds(view, world, id, positions[id], epoch):
 			return false
@@ -282,14 +285,14 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 	if reuse_matches and (not matches.has(key) or matches[key].inputs != inputs):
 		if matches.size() >= 32:
 			matches.clear()
-		var n_worlds = Domain.worlds(view).size()
+		var n_worlds = Solver.universe(view).size()
 		var table = PackedByteArray()
 		table.resize(n_worlds)
 		table.fill(255) # 255 = unknown, 0 = false, 1 = true
 		matches[key] = {"inputs": inputs.duplicate(true), "table": table, "queries": {}}
 	# Repeating the exact bounded query reuses its original result, including
 	# tested counts and exhaustion. No larger budget or other target inherits it.
-	var query_key = JSON.stringify([value.conclusion.type, value.conclusion.target, budget, want])
+	var query_key = JSON.stringify([value.conclusion, budget, want])
 	if reuse_matches and matches[key].queries.has(query_key):
 		Profiler.count("candidate_query_cache_hit")
 		return matches[key].queries[query_key].duplicate(true)
@@ -307,7 +310,7 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 
 	# Enumerate the public legal domain, not worlds filtered by the referee. The
 	# same hard test budget applies, and exhaustion alone can certify a conclusion.
-	for candidate in Domain.worlds(view):
+	for candidate in Solver.universe(view):
 		var holds_val: bool
 		if not has_curse and target_idx >= 0:
 			match type:

@@ -224,5 +224,818 @@
     {
       "command": "vote no"
     }
+  ],
+  "late_stages": [
+    {
+      "id": "day3-four",
+      "day": 3,
+      "reports": 4,
+      "scope": "Original recorded continuation through the Day 3 4-report presentation and vote on Constance. Graphs/commands from case_54875.jsonl (Oct 23, c6ae7a4); outcomes are measured, never asserted. Extra NPC nominations before a recorded close are resolved by voting no and logged separately; no outcome or phase is forced.",
+      "actions": [
+        {
+          "command": "wait",
+          "original_seq": 380
+        },
+        {
+          "command": "defend 48",
+          "original_seq": 384,
+          "card_fact": "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+        },
+        {
+          "command": "vote no",
+          "original_seq": 397
+        },
+        {
+          "command": "wait",
+          "original_seq": 400
+        },
+        {
+          "command": "done",
+          "original_seq": 403
+        },
+        {
+          "command": "vigil market",
+          "original_seq": 426
+        },
+        {
+          "command": "go isolde",
+          "original_seq": 428
+        },
+        {
+          "command": "talk isolde",
+          "original_seq": 431
+        },
+        {
+          "command": "present 88",
+          "original_seq": 436,
+          "card_fact": "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133"
+        },
+        {
+          "command": "ask night",
+          "original_seq": 439
+        },
+        {
+          "command": "ask are lamplighter",
+          "original_seq": 453
+        },
+        {
+          "command": "go scene_jory",
+          "original_seq": 455
+        },
+        {
+          "command": "search",
+          "original_seq": 461
+        },
+        {
+          "command": "go tavern",
+          "original_seq": 464
+        },
+        {
+          "command": "talk lian",
+          "original_seq": 467
+        },
+        {
+          "command": "ask seen yesterday evening",
+          "original_seq": 469
+        },
+        {
+          "command": "ask gift",
+          "original_seq": 472
+        },
+        {
+          "command": "ask about constance",
+          "original_seq": 512
+        },
+        {
+          "file_case": {
+            "answers": {},
+            "argument_root": "p:1",
+            "arguments": [
+              {
+                "case": {
+                  "answers": {},
+                  "cards": [
+                    "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+                    "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+                    "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                    "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                  ],
+                  "challenges": {},
+                  "citations": {},
+                  "conclusion": {
+                    "at": "Original alignment",
+                    "target": "constance",
+                    "type": "evil"
+                  },
+                  "conflict_scope": [],
+                  "derived": [],
+                  "disputes": [
+                    {
+                      "challenged": "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                      "preferred": "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f",
+                      "reports": [
+                        "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                        "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                      ]
+                    }
+                  ],
+                  "faults": {},
+                  "id": "case-1",
+                  "lines": [
+                    {
+                      "answers": {},
+                      "cards": [
+                        "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+                        "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+                        "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                        "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                      ],
+                      "id": "direct",
+                      "label": "Direct supporting evidence",
+                      "positions": {},
+                      "relation": "supports"
+                    }
+                  ],
+                  "positions": {
+                    "constance": "evil",
+                    "dorian": "good",
+                    "edda": "evil",
+                    "isolde": "good"
+                  },
+                  "reading_challenges": {},
+                  "reasons": {},
+                  "temporal_positions": [],
+                  "version": 37
+                },
+                "id": "p:1",
+                "label": "Constance is evil",
+                "parents": [],
+                "without": {}
+              }
+            ],
+            "cards": [
+              "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+              "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+              "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+              "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+            ],
+            "challenges": {},
+            "citations": {},
+            "conclusion": {
+              "at": "Original alignment",
+              "target": "constance",
+              "type": "evil"
+            },
+            "conflict_scope": [],
+            "derived": [],
+            "disputes": [
+              {
+                "challenged": "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                "preferred": "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f",
+                "reports": [
+                  "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                  "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                ]
+              }
+            ],
+            "faults": {},
+            "id": "case-1",
+            "lines": [
+              {
+                "answers": {},
+                "cards": [
+                  "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+                  "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+                  "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                  "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                ],
+                "id": "direct",
+                "label": "Direct supporting evidence",
+                "positions": {},
+                "relation": "supports"
+              }
+            ],
+            "positions": {
+              "constance": "evil",
+              "dorian": "good",
+              "edda": "evil",
+              "isolde": "good"
+            },
+            "reading_challenges": {},
+            "reasons": {},
+            "temporal_positions": [],
+            "version": 37
+          },
+          "revise": true,
+          "expected_day": 3,
+          "original_number": 85,
+          "original_seq": 518
+        },
+        {
+          "command": "present 85",
+          "original_seq": 567
+        },
+        {
+          "command": "nominate constance",
+          "original_seq": 571
+        },
+        {
+          "command": "accuse 119",
+          "original_seq": 576,
+          "card_spec": {
+            "kind": "info",
+            "source": "constance",
+            "role": "nightwatch",
+            "day": 2,
+            "data": {
+              "block": "docks",
+              "seen": [
+                "isolde"
+              ]
+            }
+          }
+        },
+        {
+          "command": "vote yes",
+          "original_seq": 588
+        }
+      ],
+      "settle_extra_nominations": true
+    },
+    {
+      "id": "day4-six",
+      "day": 4,
+      "reports": 6,
+      "scope": "Original recorded continuation through the Day 4 6-report presentation and vote on Constance. Graphs/commands from case_54875.jsonl (Oct 23, c6ae7a4); outcomes are measured, never asserted. Extra NPC nominations before a recorded close are resolved by voting no and logged separately; no outcome or phase is forced. If the recorded private conversation is unavailable and leaves the smithy search a phase early, repeat the recorded smithy visit/search at the filing checkpoint, logging the adjustment.",
+      "actions": [
+        {
+          "command": "wait",
+          "original_seq": 380
+        },
+        {
+          "command": "defend 48",
+          "original_seq": 384,
+          "card_fact": "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+        },
+        {
+          "command": "vote no",
+          "original_seq": 397
+        },
+        {
+          "command": "wait",
+          "original_seq": 400
+        },
+        {
+          "command": "done",
+          "original_seq": 403
+        },
+        {
+          "command": "vigil market",
+          "original_seq": 426
+        },
+        {
+          "command": "go isolde",
+          "original_seq": 428
+        },
+        {
+          "command": "talk isolde",
+          "original_seq": 431
+        },
+        {
+          "command": "present 88",
+          "original_seq": 436,
+          "card_fact": "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133"
+        },
+        {
+          "command": "ask night",
+          "original_seq": 439
+        },
+        {
+          "command": "ask are lamplighter",
+          "original_seq": 453
+        },
+        {
+          "command": "go scene_jory",
+          "original_seq": 455
+        },
+        {
+          "command": "search",
+          "original_seq": 461
+        },
+        {
+          "command": "go tavern",
+          "original_seq": 464
+        },
+        {
+          "command": "talk lian",
+          "original_seq": 467
+        },
+        {
+          "command": "ask seen yesterday evening",
+          "original_seq": 469
+        },
+        {
+          "command": "ask gift",
+          "original_seq": 472
+        },
+        {
+          "command": "ask about constance",
+          "original_seq": 512
+        },
+        {
+          "file_case": {
+            "answers": {},
+            "argument_root": "p:1",
+            "arguments": [
+              {
+                "case": {
+                  "answers": {},
+                  "cards": [
+                    "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+                    "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+                    "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                    "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                  ],
+                  "challenges": {},
+                  "citations": {},
+                  "conclusion": {
+                    "at": "Original alignment",
+                    "target": "constance",
+                    "type": "evil"
+                  },
+                  "conflict_scope": [],
+                  "derived": [],
+                  "disputes": [
+                    {
+                      "challenged": "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                      "preferred": "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f",
+                      "reports": [
+                        "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                        "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                      ]
+                    }
+                  ],
+                  "faults": {},
+                  "id": "case-1",
+                  "lines": [
+                    {
+                      "answers": {},
+                      "cards": [
+                        "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+                        "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+                        "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                        "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                      ],
+                      "id": "direct",
+                      "label": "Direct supporting evidence",
+                      "positions": {},
+                      "relation": "supports"
+                    }
+                  ],
+                  "positions": {
+                    "constance": "evil",
+                    "dorian": "good",
+                    "edda": "evil",
+                    "isolde": "good"
+                  },
+                  "reading_challenges": {},
+                  "reasons": {},
+                  "temporal_positions": [],
+                  "version": 37
+                },
+                "id": "p:1",
+                "label": "Constance is evil",
+                "parents": [],
+                "without": {}
+              }
+            ],
+            "cards": [
+              "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+              "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+              "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+              "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+            ],
+            "challenges": {},
+            "citations": {},
+            "conclusion": {
+              "at": "Original alignment",
+              "target": "constance",
+              "type": "evil"
+            },
+            "conflict_scope": [],
+            "derived": [],
+            "disputes": [
+              {
+                "challenged": "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                "preferred": "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f",
+                "reports": [
+                  "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                  "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                ]
+              }
+            ],
+            "faults": {},
+            "id": "case-1",
+            "lines": [
+              {
+                "answers": {},
+                "cards": [
+                  "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+                  "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+                  "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                  "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                ],
+                "id": "direct",
+                "label": "Direct supporting evidence",
+                "positions": {},
+                "relation": "supports"
+              }
+            ],
+            "positions": {
+              "constance": "evil",
+              "dorian": "good",
+              "edda": "evil",
+              "isolde": "good"
+            },
+            "reading_challenges": {},
+            "reasons": {},
+            "temporal_positions": [],
+            "version": 37
+          },
+          "revise": true,
+          "expected_day": 3,
+          "original_number": 85,
+          "original_seq": 518
+        },
+        {
+          "command": "present 85",
+          "original_seq": 567
+        },
+        {
+          "command": "nominate constance",
+          "original_seq": 571
+        },
+        {
+          "command": "accuse 119",
+          "original_seq": 576,
+          "card_spec": {
+            "kind": "info",
+            "source": "constance",
+            "role": "nightwatch",
+            "day": 2,
+            "data": {
+              "block": "docks",
+              "seen": [
+                "isolde"
+              ]
+            }
+          }
+        },
+        {
+          "command": "vote yes",
+          "original_seq": 588
+        },
+        {
+          "command": "wait",
+          "original_seq": 592
+        },
+        {
+          "command": "done",
+          "original_seq": 599
+        },
+        {
+          "command": "ward isolde",
+          "original_seq": 621
+        },
+        {
+          "command": "go bakery",
+          "original_seq": 623
+        },
+        {
+          "command": "search",
+          "original_seq": 629
+        },
+        {
+          "command": "go hollis",
+          "original_seq": 631
+        },
+        {
+          "command": "talk hollis",
+          "original_seq": 634
+        },
+        {
+          "command": "present 85",
+          "original_seq": 637
+        },
+        {
+          "command": "ask gift",
+          "original_seq": 640
+        },
+        {
+          "command": "ask about constance",
+          "original_seq": 643
+        },
+        {
+          "command": "present 119 against constance",
+          "original_seq": 656,
+          "card_spec": {
+            "kind": "info",
+            "source": "constance",
+            "role": "nightwatch",
+            "day": 2,
+            "data": {
+              "block": "docks",
+              "seen": [
+                "isolde"
+              ]
+            }
+          }
+        },
+        {
+          "command": "go smithy",
+          "original_seq": 658
+        },
+        {
+          "command": "search",
+          "original_seq": 685
+        },
+        {
+          "file_case": {
+            "answers": {
+              "fact:0ca79a4c838092459838ed618c3f3629906b188676cf084e3fda759a0b518333": {
+                "positive": [
+                  "constance",
+                  "edda"
+                ],
+                "slots": [
+                  "constance",
+                  "edda"
+                ]
+              }
+            },
+            "argument_root": "p:1",
+            "arguments": [
+              {
+                "case": {
+                  "answers": {
+                    "fact:0ca79a4c838092459838ed618c3f3629906b188676cf084e3fda759a0b518333": {
+                      "positive": [
+                        "constance",
+                        "edda"
+                      ],
+                      "slots": [
+                        "constance",
+                        "edda"
+                      ]
+                    }
+                  },
+                  "cards": [
+                    "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+                    "fact:0ca79a4c838092459838ed618c3f3629906b188676cf084e3fda759a0b518333",
+                    "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+                    "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                    "fact:b493db27162ff5b722ffd9ac5e03e13882a6f64e2e219965cd03e192ae1aa081",
+                    "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                  ],
+                  "challenges": {},
+                  "citations": {},
+                  "conclusion": {
+                    "at": "Original alignment",
+                    "target": "constance",
+                    "type": "evil"
+                  },
+                  "conflict_scope": [],
+                  "derived": [],
+                  "disputes": [
+                    {
+                      "challenged": "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                      "preferred": "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f",
+                      "reports": [
+                        "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                        "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                      ]
+                    }
+                  ],
+                  "faults": {},
+                  "id": "case-1",
+                  "lines": [
+                    {
+                      "answers": {},
+                      "assumption_sets": [
+                        {
+                          "edda": "evil"
+                        }
+                      ],
+                      "cards": [
+                        "fact:b493db27162ff5b722ffd9ac5e03e13882a6f64e2e219965cd03e192ae1aa081"
+                      ],
+                      "conclusion": {
+                        "at": "Original alignment",
+                        "target": "edda",
+                        "type": "evil"
+                      },
+                      "id": "p:6",
+                      "label": "Edda is evil",
+                      "positions": {},
+                      "relation": "supports"
+                    },
+                    {
+                      "answers": {},
+                      "cards": [
+                        "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+                        "fact:0ca79a4c838092459838ed618c3f3629906b188676cf084e3fda759a0b518333",
+                        "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+                        "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                        "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                      ],
+                      "id": "direct",
+                      "label": "Direct supporting evidence",
+                      "positions": {},
+                      "relation": "supports"
+                    }
+                  ],
+                  "positions": {
+                    "constance": "evil",
+                    "dorian": "good",
+                    "edda": "evil",
+                    "isolde": "good"
+                  },
+                  "reading_challenges": {},
+                  "reasons": {},
+                  "temporal_positions": [],
+                  "version": 56
+                },
+                "id": "p:1",
+                "label": "Constance is evil",
+                "parents": [],
+                "without": {}
+              },
+              {
+                "case": {
+                  "answers": {},
+                  "cards": [
+                    "fact:b493db27162ff5b722ffd9ac5e03e13882a6f64e2e219965cd03e192ae1aa081"
+                  ],
+                  "challenges": {},
+                  "citations": {},
+                  "conclusion": {
+                    "at": "Original alignment",
+                    "target": "edda",
+                    "type": "evil"
+                  },
+                  "conflict_scope": [],
+                  "derived": [],
+                  "disputes": [],
+                  "faults": {},
+                  "id": "case-1",
+                  "lines": [
+                    {
+                      "answers": {},
+                      "cards": [
+                        "fact:b493db27162ff5b722ffd9ac5e03e13882a6f64e2e219965cd03e192ae1aa081"
+                      ],
+                      "id": "direct",
+                      "label": "Direct supporting evidence",
+                      "positions": {},
+                      "relation": "supports"
+                    }
+                  ],
+                  "positions": {
+                    "edda": "evil"
+                  },
+                  "reading_challenges": {},
+                  "reasons": {},
+                  "temporal_positions": [],
+                  "version": 56
+                },
+                "id": "p:6",
+                "label": "Edda is evil",
+                "parents": [
+                  "p:1"
+                ],
+                "without": {
+                  "p:1": [
+                    "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+                    "fact:0ca79a4c838092459838ed618c3f3629906b188676cf084e3fda759a0b518333",
+                    "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+                    "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                    "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                  ]
+                }
+              }
+            ],
+            "cards": [
+              "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+              "fact:0ca79a4c838092459838ed618c3f3629906b188676cf084e3fda759a0b518333",
+              "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+              "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+              "fact:b493db27162ff5b722ffd9ac5e03e13882a6f64e2e219965cd03e192ae1aa081",
+              "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+            ],
+            "challenges": {},
+            "citations": {},
+            "conclusion": {
+              "at": "Original alignment",
+              "target": "constance",
+              "type": "evil"
+            },
+            "conflict_scope": [],
+            "derived": [],
+            "disputes": [
+              {
+                "challenged": "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                "preferred": "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f",
+                "reports": [
+                  "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                  "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                ]
+              }
+            ],
+            "faults": {},
+            "id": "case-1",
+            "lines": [
+              {
+                "answers": {},
+                "assumption_sets": [
+                  {
+                    "edda": "evil"
+                  }
+                ],
+                "cards": [
+                  "fact:b493db27162ff5b722ffd9ac5e03e13882a6f64e2e219965cd03e192ae1aa081"
+                ],
+                "conclusion": {
+                  "at": "Original alignment",
+                  "target": "edda",
+                  "type": "evil"
+                },
+                "id": "p:6",
+                "label": "Edda is evil",
+                "positions": {},
+                "relation": "supports"
+              },
+              {
+                "answers": {},
+                "cards": [
+                  "fact:0a235d09e787d855f49b995054f7381cbef9c5e70ff4a8cdd404972608a81133",
+                  "fact:0ca79a4c838092459838ed618c3f3629906b188676cf084e3fda759a0b518333",
+                  "fact:340a8d3db18dfc431a5d3db90910aa822a38cff92be99c9d636242f3897b53fe",
+                  "fact:7bc603e39e98bf421e8505c87aaccc6b4a911b4c3ea5b1a262a32e0bf0caf2a6",
+                  "fact:f214f5806ae5016121c5d7de22289ab972b4b1cbd6a9677c6ec0b825f1b5e25f"
+                ],
+                "id": "direct",
+                "label": "Direct supporting evidence",
+                "positions": {},
+                "relation": "supports"
+              }
+            ],
+            "positions": {
+              "constance": "evil",
+              "dorian": "good",
+              "edda": "evil",
+              "isolde": "good"
+            },
+            "reading_challenges": {},
+            "reasons": {},
+            "temporal_positions": [],
+            "version": 56
+          },
+          "revise": true,
+          "expected_day": 4,
+          "original_number": 85,
+          "original_seq": 688,
+          "checkpoint_recovery": [
+            "go smithy",
+            "search"
+          ]
+        },
+        {
+          "command": "present 85",
+          "original_seq": 731
+        },
+        {
+          "command": "nominate constance",
+          "original_seq": 735
+        },
+        {
+          "command": "accuse 142",
+          "original_seq": 737,
+          "card_spec": {
+            "kind": "dropped",
+            "source": "evidence",
+            "block": "market",
+            "loc": "smithy",
+            "day": 1,
+            "phase": 3,
+            "material": "square"
+          }
+        },
+        {
+          "command": "vote yes",
+          "original_seq": 748
+        }
+      ],
+      "settle_extra_nominations": true
+    }
   ]
 }

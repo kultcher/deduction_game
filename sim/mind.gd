@@ -338,9 +338,9 @@ static func _eff(effs: Array, target: String, delta: float, why: String, public_
 ## shifts as either claimant's credibility changes. An NPC's knowledge of their own true
 ## gift is a record too (weight 1.5: they *know* a rival is lying). how: public | relayed |
 ## own | told.
-static func hear_claim(w, l, who: String, role: String, weight: float, how: String) -> void:
+static func hear_claim(w, l, who: String, role: String, weight: float, how: String, original: Dictionary = {}) -> void:
 	if l.is_evil():
-		shadow_run(w, l, func(sh): hear_claim(w, sh, who, role, weight, how))
+		shadow_run(w, l, func(sh): hear_claim(w, sh, who, role, weight, how, original))
 		return
 	if not C.ROLES.has(role) or C.ROLES[role]["align"] != "good" or not w.by_id.has(who):
 		return
@@ -352,14 +352,21 @@ static func hear_claim(w, l, who: String, role: String, weight: float, how: Stri
 	else:
 		_eff(effs, "rivals:%s:%s" % [role, who], 0.6, "%s claims the %s too" % [nm, rn], "they claim a gift %s claims" % nm)
 	_eff(effs, "role:%s:%s" % [who, role], 1.0, "%s claims the %s" % [nm, rn], "", false)
-	ledger_hear(w, l, claim_eid(who, role), effs, weight, [who, -1, "role"], {"kind": "role_claim", "how": how, "role": role, "who": who})
+	var eid: String = claim_eid(who, role)
+	var receipt: Dictionary = original if not original.is_empty() else l.ledger.get(eid, {}).get("meta", {}).get("workshop_card", {})
+	if receipt.is_empty():
+		receipt = WorkshopLedger.Evidence.normalize_card({"kind": "claim", "source": who, "subject": [who], "role": role, "day": w.day, "phase": w.phase, "text": "%s claims the %s." % [nm, rn]})
+	ledger_hear(w, l, eid, effs, weight, [who, -1, "role"], {"kind": "role_claim", "how": how, "role": role, "who": who, "workshop_card": receipt})
 
 static func claim_eid(who: String, role: String) -> String:
 	return "claim:%s:%s" % [who, role]
 
 ## How much this listener credits who's claim to role (0 = never heard it).
 static func claim_credence(n, who: String, role: String) -> float:
-	var e = n.ledger.get(claim_eid(who, role))
+	var eid: String = claim_eid(who, role)
+	if n.workshop_state.get("owned", {}).has(eid):
+		return 0.0 # Shared role testimony owns the claim's evidence weight.
+	var e = n.ledger.get(eid)
 	return e.get("eff", 0.0) if e != null else 0.0
 
 ## How much a night sighting of someone counts (0..1). Being out at night is only damning
@@ -368,6 +375,8 @@ static func claim_credence(n, who: String, role: String) -> float:
 ## Watch, Warden, Lamplighter, Medium) is discounted further, as far as the listener
 ## believes the claim.
 static func night_sighting_scale(w, listener, who: String, block: String, night: int) -> float:
+	# Native compatibility and social pressing only. Shared reading/tell owners
+	# park these legacy effects; live_activity alone judges their alignment evidence.
 	var near_death = false
 	for sid in w.scenes:
 		if w.scenes[sid]["day"] == night and w.scenes[sid]["block"] == block:
@@ -1104,7 +1113,7 @@ static func reason_status(w, n, t_id: String) -> Dictionary:
 	var out = {"why": why, "kind": "none" if why == "" else "public", "entry": {}, "strength": 0.0}
 	if why == "":
 		return out
-	if src == "own_role":
+	if src == "own_role" or n.ledger.get(src, {}).get("meta", {}).get("kind") == "role_counter":
 		out["kind"] = "public" if n.claim_public else "private"
 		out["strength"] = 0.5
 		return out
@@ -1779,7 +1788,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 				lines.append(say(d, "%s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name))
 				moves.append("red_herring")
 				effs_by_move["red_herring"] = [[d.id, -0.12, true, "says they're the Seer's red herring", ""]]
-				defence_scopes["red_herring"] = {"type": "red_herring", "source": src_id}
+				defence_scopes["red_herring"] = {"type": "challenge", "mode": "misled", "reading": WorkshopLedger.reading(src_id, rd).id}
 			elif pair.size() == 2 and d.id in pair:
 				var other: String = pair[0] if pair[1] == d.id else pair[1]
 				if w.by_id.has(other) and w.by_id[other].alive:
@@ -1821,8 +1830,19 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 		for l in w.living():
 			if l == d:
 				continue
+			var meta = {"kind": "defence", "move": mv, "scope": scope.duplicate(true), "hearing_scale": 1.0}
+			if scope.type == "gift_claim":
+				meta["workshop_card"] = WorkshopLedger.Evidence.normalize_card({"kind": "claim", "source": d.id, "subject": [d.id], "role": scope.role, "day": w.day, "phase": w.phase, "text": "Walking-gift defence."})
+			elif scope.type == "secret_claim":
+				meta["workshop_card"] = WorkshopLedger.Evidence.normalize_card({"kind": "secret", "source": d.id, "subject": [d.id], "owner": d.id, "secret_kind": scope.kind, "day": w.day, "phase": w.phase, "text": "Confessed errand defence."})
+			else:
+				meta.hearing_scale = 0.0
+				for effect in effects:
+					meta.hearing_scale = maxf(meta.hearing_scale, absf(float(effect[1])))
+			if l.ledger.get(identity, {}).get("meta", {}).has("workshop_card"):
+				meta["workshop_card"] = l.ledger[identity].meta.workshop_card
 			ledger_hear(w, l, identity, effects, strength * (0.5 + 0.5 * l.npc_trust.get(d.id, 0.5)),
-				[d.id, -1, "report"], {"kind": "defence", "move": mv, "scope": scope.duplicate(true)})
+				[d.id, -1, "report"], meta)
 	w.dlog.think(d.id, "defence", "Defends against %s: %s." % [nominator_id, ", ".join(PackedStringArray(moves))], {"moves": moves, "evil": d.is_evil()})
 	return {"lines": lines, "facts": facts, "moves": moves}
 
@@ -1927,7 +1947,7 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 	var c: Dictionary = card.get("conclusion", {})
 	var subj: Array = card.get("subject", [])
 	var pair: Array = card.get("data", {}).get("pair", [])
-	var about_me = n.id in subj or c.get("a", "") == n.id or n.id in pair
+	var about_me = n.id in subj or c.get("a", "") == n.id or n.id in pair or (card.get("kind") == "claim" and card.get("source") != n.id and n.claim_public and card.get("role") == n.claimed_role)
 	if not about_me:
 		on_question(w, n)
 		lines.append(say(n, "What has that to do with me?"))
@@ -1964,7 +1984,9 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		var rival = w.by_id[card["source"]]
 		lines.append(say(n, "I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name]))
 		if not n.is_evil():
-			adjust(w, n, rival.id, 0.3, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift", true, "own_role")
+			var receipt: Dictionary = WorkshopLedger.Evidence.normalize_card(card)
+			ledger_hear(w, n, "own_role:" + fact_id(card), [[rival.id, 0.3, true, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift"]], 1.0,
+				[rival.id, -1, "role"], {"kind": "role_counter", "workshop_card": receipt})
 		return _challenged(n, {"lines": lines, "facts": facts}, card)
 	if night >= 0:
 		var r = answer_night(w, n, night)

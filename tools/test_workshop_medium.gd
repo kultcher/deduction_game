@@ -116,7 +116,8 @@ func _run() -> void:
 	check(board.add_modifier("e:" + id, "lying") != "", "ambiguous relay blame cannot silently accuse the wrong speaker")
 	var alive_input = _ghost_input(g, value)
 	alive_input.public_events = []
-	check(not Live.Assess.prepare(alive_input).ready, "Medium needs public death timing rather than hidden death flags")
+	var unverified = Live.Assess.prepare(alive_input)
+	check(unverified.ready and unverified.view.cards.any(func(c): return c.get("testimony_only", false) and not c.has("relay_source")), "without public death timing the Medium supplies weak teller testimony, not a verified relay")
 	var nested = g.board[number - 1].duplicate(true)
 	nested.data.item.entry.role = "medium"
 	var nested_receipt = Live.Evidence.normalize_card(nested)

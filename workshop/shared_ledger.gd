@@ -6,6 +6,7 @@ const Jury = preload("res://workshop/jury.gd")
 const Support = preload("res://workshop/support_model.gd")
 const Theory = preload("res://workshop/theory.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
+const TimeModel = preload("res://workshop/chronology.gd")
 
 static func reading(source: String, entry: Dictionary, via: String = "", anonymous: bool = false) -> Dictionary:
 	var card = {"kind": "info", "source": source, "role": entry.get("role", ""),
@@ -76,6 +77,14 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 					_add(facts, owners, receipt, "reading:" + eid)
 		if entry.get("meta", {}).get("kind") == "tell" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
 			_add(facts, owners, entry.meta.workshop_card, "testimony:" + eid)
+		if entry.get("meta", {}).get("kind") == "shared_case" and entry.meta.get("workshop_complete", false):
+			for receipt in entry.meta.get("workshop_receipts", {}).values():
+				if supported(receipt):
+					_add(facts, owners, receipt, "share:" + eid)
+		if entry.get("meta", {}).get("kind") == "defence" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
+			_add(facts, owners, entry.meta.workshop_card, "defence:" + eid)
+		if entry.get("meta", {}).get("kind") in ["role_claim", "role_counter"] and entry.meta.get("how") != "own" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
+			_add(facts, owners, entry.meta.workshop_card, "claim:" + eid)
 	for key in presentations:
 		var presented: Dictionary = presentations[key]
 		for argument in presented.arguments:
@@ -107,6 +116,16 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 					_add(facts, owners, receipt, "case:" + str(key))
 				else:
 					quotations[receipt.id] = receipt.duplicate(true)
+	for entry in ledger.values():
+		var meta: Dictionary = entry.get("meta", {})
+		if meta.get("kind") != "defence" or meta.get("scope", {}).get("type") != "challenge":
+			continue
+		var scope: Dictionary = meta.scope
+		if not facts.has(scope.reading):
+			continue # A bare objection cannot invent the report or grounds for it.
+		var hearing: float = clampf(entry.weight * meta.get("hearing_scale", 1.0), 0.0, 1.0)
+		if not reading_challenges.has(scope.reading) or hearing > reading_challenges[scope.reading].get("weight", 1.0):
+			reading_challenges[scope.reading] = {"mode": scope.mode, "weight": hearing, "supports": facts.keys().filter(func(id): return id != scope.reading)}
 	input.evidence = facts.values()
 	input.selected = facts.keys()
 	input.private_evidence = input.private_evidence.filter(func(id): return facts.has(id))
@@ -141,6 +160,21 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var entry: Dictionary = ledger[eid]
 		var meta: Dictionary = entry.get("meta", {})
 		var kind: String = meta.get("kind", "")
+		if kind in ["role_claim", "role_counter"] and (meta.get("how") == "own" or facts.has(meta.get("workshop_card", {}).get("id", ""))):
+			owned[eid] = true # Private role knowledge or one canonical declaration.
+			continue
+		if kind == "shared_case":
+			# Incomplete relays are explicitly excluded by the delivery log. Neither
+			# their wrapper label nor its native +.1 may masquerade as evidence.
+			owned[eid] = true
+			continue
+		if kind == "defence":
+			owned[eid] = true # Claims/challenges are judged above; pleas/rivals are speech.
+			continue
+		var curse: Dictionary = prepared.view.get("chronology", {}).get("curse", {})
+		if kind == "event" and not curse.is_empty() and eid == "curse:%d" % (int(curse.from) / 4) and entry.get("effects", []).all(func(effect): return effect[0] in curse.yes_voters and is_equal_approx(float(effect[1]), 0.15)):
+			owned[eid] = true
+			continue
 		if kind in ["martyr", "proof"] and input.evidence.any(func(receipt): return receipt.kind == "martyr" and eid == "martyr:%d" % receipt.observed_at.day and not entry.get("effects", []).is_empty() and entry.effects.all(func(effect): return effect[0] in receipt.subjects and is_equal_approx(float(effect[1]), -2.0))):
 			owned[eid] = true
 			continue
@@ -153,7 +187,12 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		if kind == "tell" and meta.get("workshop_card", {}).get("kind") == "deduction" and not facts.is_empty():
 			issues.append("Unresolved deduction wrapper in old card testimony: " + eid)
 		var reading_receipts: Dictionary = meta.get("workshop_receipts", {})
-		if kind == "reading" and coarse_aliases.has(eid) and reading_receipts.size() == 1 and reading_receipts.keys()[0] in coarse_aliases[eid]:
+		if kind == "reading" and reading_receipts.values().any(func(receipt): return receipt.get("content", {}).get("anonymous", false)):
+			if reading_receipts.keys().all(func(id): return facts.has(id)):
+				owned[eid] = true # Exact receipt proof; do not infer the redacted source.
+			else:
+				issues.append("An anonymous hearing has an unresolved original receipt.")
+		elif kind == "reading" and coarse_aliases.has(eid) and reading_receipts.size() == 1 and reading_receipts.keys()[0] in coarse_aliases[eid]:
 			# Even an old coarse key is unambiguous when its original receipt was
 			# recorded exactly. Other statements on that day do not erase this proof.
 			owned[eid] = true
@@ -222,10 +261,39 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		# trust discounts only facts whose sole route is the player's presentation.
 		var player_weight = clampf(0.5 + prepared.listener.trust, 0.0, 1.0)
 		prepared.listener.trust = 0.5
+		var adapted = {}
+		for card in prepared.view.cards:
+			adapted[card.id] = card
 		for id in facts:
+			var claim_hearing = -1.0
+			for owner in owners[id]:
+				if owner.begins_with("claim:"):
+					claim_hearing = maxf(claim_hearing, clampf(ledger[owner.trim_prefix("claim:")].weight, 0.0, 1.0))
+			if claim_hearing >= 0.0 and adapted.has(id) and owners[id].all(func(owner): return owner.begins_with("claim:")):
+				adapted[id]["hearing_weight"] = claim_hearing
+			for owner in owners[id]:
+				if owner.begins_with("defence:") and owners[id].size() == 1:
+					var entry: Dictionary = ledger[owner.trim_prefix("defence:")]
+					if adapted.has(id):
+						adapted[id]["hearing_weight"] = clampf(entry.weight * entry.meta.get("hearing_scale", 1.0), 0.0, 1.0)
+			var hearing = 0.0
+			var shared: bool = false
+			for owner in owners[id]:
+				if owner.begins_with("share:") or owner.begins_with("testimony:"):
+					var eid: String = owner.substr(owner.find(":") + 1)
+					if ledger[eid].meta.has("workshop_teller"):
+						shared = true
+						hearing = maxf(hearing, clampf(ledger[eid].weight, 0.0, 1.0))
+			if shared and facts[id].kind == "sighting":
+				if "learned" in owners[id] and facts[id].source == input.listener.id:
+					hearing = 1.0
+				if adapted.has(id):
+					adapted[id]["hearing_weight"] = hearing
 			if facts[id].kind not in ["info", "claim"]:
 				continue
 			var weight = player_weight
+			if claim_hearing >= 0.0:
+				weight = claim_hearing
 			if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:")):
 				weight = 1.0
 				var hearing_weight = -1.0
@@ -234,7 +302,13 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 						hearing_weight = maxf(hearing_weight, clampf(ledger[owner.trim_prefix("reading:")].weight, 0.0, 1.0))
 				if hearing_weight >= 0.0:
 					weight = hearing_weight # Several paths retain the strongest hearing once.
-			prepared.listener.reading_reliability[id] *= weight
+			if shared:
+				weight = maxf(weight if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:") or owner.begins_with("case:")) else 0.0, hearing)
+			var testimony: bool = adapted.get(id, {}).get("testimony_only", false)
+			if testimony:
+				prepared.listener.reading_reliability[id] = minf(prepared.listener.reading_reliability[id], weight)
+			else:
+				prepared.listener.reading_reliability[id] *= weight
 		# Presentation weights add per-report uncertainty; enforce the budget AFTER
 		# introducing those dimensions as well as during ordinary preparation.
 		var sources = {}
@@ -245,16 +319,14 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var dimensions: int = Support.dimensions(prepared.view.cards, prepared.listener, prepared.case.reading_challenges) if prepared.view.world_options.get("roles", false) or not prepared.case.reading_challenges.is_empty() else sources.size() + uncertain
 		if Jury.engine == "legacy" and dimensions > 6:
 			issues.append("Shared evidence exceeds the 64-state credibility budget.")
-	return {"ready": issues.is_empty(), "empty": facts.is_empty() and preload("res://workshop/public_evidence.gd").factors(prepared.view).is_empty(), "issues": issues, "owned": owned if issues.is_empty() else {},
+	return {"ready": issues.is_empty(), "empty": facts.is_empty() and preload("res://workshop/public_evidence.gd").factors(prepared.view).is_empty() and not prepared.view.get("chronology", {}).has("curse"), "issues": issues, "owned": owned if issues.is_empty() else {},
 		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input,
 		"marked_questions": marked_questions}
 
 static func supported(receipt: Dictionary) -> bool:
 	if receipt.get("kind") == "info" and receipt.get("content", {}).get("role") == "medium":
 		var item: Dictionary = receipt.content.get("data", {}).get("item", {})
-		if item.get("type") == "reading":
-			return item.get("entry", {}).get("role") in Assess.ROLES and item.entry.role != "medium"
-		return item.get("type") in ["sighting", "home", "guard"] and item.get("night", -1) >= 0
+		return item.get("type") in ["reading", "sighting", "home", "guard"]
 	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") == "sighting" and receipt.observed_at.phase in ["morning", "afternoon", "evening", "night"]) or (receipt.get("kind") == "alibi" and receipt.observed_at.phase == "night") or receipt.kind in ["conversation", "home", "haunt", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint", "vote"]
 
 static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) -> Array:
@@ -333,6 +405,8 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 	var prepared: Dictionary = plan.prepared.duplicate(true)
 	prepared.listener.suspicion = suspicion.duplicate(true)
 	for card in prepared.view.cards:
+		if card.get("testimony_only", false):
+			continue # The teller's testimony is not a gift that poison can break.
 		if card.has("relay_source"):
 			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
 			var relay_source: String = card.relay_source
@@ -354,6 +428,11 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 	# No headline: the union only asks how every suspicion moves (Jury.refresh).
 	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
 	var public_good: Array = preload("res://workshop/public_evidence.gd").known_good(plan.input.public_events, plan.input.people.map(func(p): return p.id))
+	if prepared.view.get("chronology", {}).has("curse"):
+		var curse: Dictionary = prepared.view.chronology.curse
+		var active: bool = TimeModel.tick(plan.input.now) < curse.until
+		var proofs: Array = preload("res://workshop/public_evidence.gd").martyr_receipts(plan.input.public_events, plan.input.people.map(func(p): return p.id))
+		public_good = public_good.filter(func(person): return not active or person not in curse.yes_voters or proofs.any(func(proof): return person in proof.subjects and TimeModel.tick(proof.observed_at) >= curse.from))
 	if not public_good.is_empty():
 		result["public_good"] = public_good
 	# A witnessed proof replaces its old native clear exactly. It is not another
@@ -404,7 +483,14 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 	return result
 
 static func _add(facts: Dictionary, owners: Dictionary, receipt: Dictionary, owner: String) -> void:
-	facts[receipt.id] = receipt.duplicate(true)
+	if not facts.has(receipt.id):
+		facts[receipt.id] = receipt.duplicate(true)
+	else:
+		for path in receipt.get("provenance_paths", [receipt.get("provenance", {})]):
+			if path not in facts[receipt.id].get("provenance_paths", []):
+				if not facts[receipt.id].has("provenance_paths"):
+					facts[receipt.id]["provenance_paths"] = []
+				facts[receipt.id].provenance_paths.append(path.duplicate(true))
 	if not owners.has(receipt.id):
 		owners[receipt.id] = []
 	if owner not in owners[receipt.id]:

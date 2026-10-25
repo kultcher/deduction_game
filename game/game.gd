@@ -226,6 +226,18 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 		var game = weak_game.get_ref()
 		if game != null and game.w == weak_world.get_ref():
 			WorkshopOwnership.refresh(game, n, phase)
+	w.workshop_roots = func(card):
+		var game = weak_game.get_ref()
+		if game == null or game.w != weak_world.get_ref():
+			return {"complete": false, "receipts": {}}
+		var proof = WorkshopOwnership.Shared.roots([card], game.board)
+		if card.get("kind") == "deduction" and card.get("n", 0) > 0:
+			var captured = game.workshop_snapshot([card.n])
+			var endorsed: Array = WorkshopOwnership.Shared.endorsed_facts(captured, card.n)
+			for id in proof.receipts.keys():
+				if id not in endorsed:
+					proof.receipts.erase(id) # Quoting a conflict is not endorsing its accounts.
+		return proof
 	w.workshop_present = func(n, card, targets, direction, venue, speak):
 		var game = weak_game.get_ref()
 		if game == null or game.w != weak_world.get_ref():
@@ -525,6 +537,13 @@ func _presentation_gate(card: Dictionary, listeners: Array, targets: Array, dire
 		_err(rejected)
 		return false
 	_workshop_native_social = false
+	if card.get("conclusion", {}).get("type", "") in ["protect", "spare"]:
+		# Mechanics-support item 0: a preference is social speech even when the
+		# speaker attaches a card. It is not an unsupported evidence conclusion.
+		_workshop_native_submission = true
+		_workshop_native_social = true
+		w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A protection or mercy preference: native social response.")
+		return true
 	var check = workshop_readiness(card, listeners, targets, direction, venue)
 	if check.ready:
 		return true

@@ -45,8 +45,11 @@ static func factors(view: Dictionary) -> Array:
 	var events: Array = view.get("timeline", {}).get("events", [])
 	var result: Array = []
 	for person in demon_victims(events, view.people.map(func(p): return p.id)):
+		var stamp = view.get("alignment_epoch", "")
+		if view.get("chronology", {}).has("curse"):
+			stamp = events.filter(func(e): return e.kind == "demon_death" and person in e.subjects)[0].at
 		result.append({"target": person, "log2_ratio": log(victim_ratio()) / log(2.0),
-			"epoch": view.get("alignment_epoch", ""), "origin": "public_evidence",
+			"epoch": stamp, "origin": "public_evidence",
 			"key": "demon_death:" + person, "label": "Killed by the Demon: " + person, "cards": []})
 	# Convert the existing -.12 alignment contribution at the native .3 reference
 	# prior to a finite likelihood ratio. Rehearing an event is not a new silence.
@@ -64,7 +67,7 @@ static func factors(view: Dictionary) -> Array:
 				continue
 			seen[key] = true
 			result.append({"target": person, "log2_ratio": log(ratio) / log(2.0),
-				"epoch": view.get("alignment_epoch", ""), "origin": "public_evidence",
+				"epoch": event.at if view.get("chronology", {}).has("curse") else view.get("alignment_epoch", ""), "origin": "public_evidence",
 				"key": key, "label": "Silenced at the meeting: " + person, "cards": []})
 	return result
 

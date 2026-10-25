@@ -1,6 +1,7 @@
 # Mechanics support: evidence the shared judge still can't read
 
-Status: open work list (Oct 25). Owner: Codex, reviewed by the user. Read
+Status: mechanics implemented (Oct 25); behavioural/speed acceptance remains unmet.
+Owner: Codex, reviewed by the user. Read
 [LEGACY_MIGRATION.md](LEGACY_MIGRATION.md) first, especially the north star, the
 architecture rules and the lessons learned.
 
@@ -30,7 +31,15 @@ hidden state, no exact source-channel models.
 
 ## 0. Conclusion types the shared model doesn't judge (top priority)
 
-**State:** the legacy rules accept 18 conclusion types; the shared model accepts 7
+**Implemented Oct 25 (Codex), within the approved fact-only scope.** Not-Demon,
+modifier-holder, cited good-gift declaration, and identified reading questions use
+the shared model, including board controls. Protection/mercy preferences count as
+social speech. Generic innocent-secret and specific Red Herring premises remain
+explicitly unsupported where no existing fact establishes them (user decision);
+no hidden state is added for those questions. Challenge table prerequisite from
+item 3 is implemented. Tests and replay measurements: MIGRATION_PROGRESS.
+
+**Starting state:** the legacy rules accept 18 conclusion types; the shared model accepts 7
 (`evil`, `good`, `demon`, `minion`, `marked`, `suspicious`, `conflict`;
 `LiveAssessment.CONCLUSIONS`). A presentation with supported evidence but another
 conclusion type is judged by the legacy rules, visibly: an immediate `[dev]` line, a
@@ -51,6 +60,12 @@ conclusion type is judged by the legacy rules, visibly: an immediate `[dev]` lin
 
 ## 1. Revenant curse histories
 
+**Implemented Oct 25 (Codex), using the user's approved bounded epoch design.**
+Public execution/vote/activation/restoration receipts supply the boundary. Only a
+curse expands worlds, by eligible original-good voters; no referee turnee is read.
+Original/current premises and reading times stay distinct; native voter bumps are
+parked. Incomplete public histories remain explicit. Measurements in MIGRATION_PROGRESS.
+
 **State:** once a curse fires, every case falls back to the legacy rules (inventory
 B10, C8), and `curse` / `curse_lifted` cards are unsupported.
 
@@ -68,6 +83,11 @@ eligible people. Keep it out of games with no curse.
 
 ## 2. NPC-to-NPC sharing as evidence
 
+**Implemented Oct 25 (Codex).** Canonical reading/sighting receipts and endorsed
+player-case roots retain teller provenance and hearing weight; native wrappers are
+parked. Repeats and additional tellers do not become independent facts. Quoted
+accounts and opinions are not promoted to endorsed evidence. See MIGRATION_PROGRESS.
+
 **State:** sightings and readings told NPC to NPC (C3), and the player's case relayed
 by an NPC (C5), are legacy ledger entries. Opinions (C4) are already excluded (Q4).
 
@@ -84,6 +104,12 @@ underlying fact. This is likely the largest remaining cause of the town disagree
   cards, but check `movement_inputs()` if new fields are read.
 
 ## 3. Defence moves as claims and challenges
+
+**Implemented Oct 25 (Codex), validated in the next passive chunk.** The user clarified
+that legacy strength/regard becomes hearing weight, while the shared posterior
+sets the suspicion change. Native bonuses are parked. Gift/secret claims and
+specific-reading challenges are canonical; pleas/rival suggestions remain speech.
+See MIGRATION_PROGRESS for the report-content hard-gate fix and flagged runtime cost.
 
 **State:** daily stacking is fixed (stable semantic identities), but the moves still go
 through the legacy route (C2).
@@ -104,6 +130,12 @@ world. Switch it to per-world integer keys and `Solver.report_table` lookups fir
 
 ## 4. Unnamed relays, and Medium relays without original evidence
 
+**Implemented Oct 25 (Codex).** Identified tellers supply reduced-weight testimony
+without an anonymous gift holder or a gift claim by the teller. Missing original
+timing/structured content is labelled context rather than inventing evidence or
+falling the whole refresh back. Named acknowledgement and verified Medium routes
+retain their existing exact identity rules. See MIGRATION_PROGRESS.
+
 **State:** "word reached me from the Seer" without a named source is an explicit
 fallback (B3, B8). Bot games also show frequent belief-refresh fallbacks: "Medium relay
 needs supported original evidence, an original observation time, and a publicly
@@ -118,6 +150,11 @@ binds it to the named source (already implemented).
 
 ## 5. Warden guard statements
 
+**Implemented Oct 25 (Codex).** Public statements and the Warden's own guard
+memory share exact source/door/night receipts. Routes, matching quiet nights and
+the public killed door are judged together; impairment/error remains possible.
+Other listeners never receive the private guard log. Hearthwitch remains benched.
+
 **State:** the one active gift still unsupported outside a Medium relay (B4).
 Hearthwitch is benched; leave it.
 
@@ -128,6 +165,11 @@ world either fits it or doesn't.
 **Performance risk: low.**
 
 ## 6. One model for night sightings
+
+**Implemented Oct 25 (Codex).** Owned night sightings park the legacy scale.
+Demon routes marginalize a 5% detour allowance without extra worlds. Off-route
+and scattered-walking-gift relationships appear in previews and replies from the
+same movement result. Targeted tests and the opening replay pass; see MIGRATION_PROGRESS.
 
 **State:** the legacy `Mind.night_sighting_scale` (×0.12 away from a death, discounted
 for claimed walkers) and the shared movement model still coexist (B5).
@@ -170,6 +212,11 @@ depend on the block).
 
 ## 8. Check: no double counting of role claims
 
+**Implemented Oct 25 (Codex).** Stable declaration receipts own double-claim
+effects and the separate pressed-counterclaim ledger entry. Legacy claim credence
+is parked under shared ownership; native comparison restores it. Tests and the
+opening replay pass, with refresh cost flagged in MIGRATION_PROGRESS.
+
 Soft testimony now handles rival claims (an evil claimant may bluff, weight 0.35 per
 declaration). Confirm that the legacy claim effects are fully parked wherever the shared
 model owns the claim: `own_role` "they claim my gift", double-claim bumps and
@@ -177,7 +224,12 @@ model owns the claim: `own_role` "they claim my gift", double-claim bumps and
 
 ## 9. Day 3–4 versions of case #85 in the replay fixture
 
-**When:** when the user says so (previously on hold).
+**Implemented Oct 25 (Codex).** The current request reopened this item. Original
+Day 3/4 graphs and commands came from the user's archived `case_54875.jsonl`.
+Use `run_replay_54875.py --stage day3-four` or `--stage day4-six`. Extra NPC
+nominations and a missed evening visit are resolved with logged ordinary commands;
+case receipts, links and conclusions are preserved. Outcomes are measured.
+See MIGRATION_PROGRESS for the surprising votes and the continuation drift.
 
 **What:** extend `tests/fixtures/playtest_54875_opening.json` and the replay to the
 four- and six-report versions of #85. This is the late-game measurement for speed (the

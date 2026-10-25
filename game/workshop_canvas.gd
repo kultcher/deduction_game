@@ -16,6 +16,10 @@ static func view(g) -> Dictionary:
 		var activity = Assess.activity_card(receipt, snapshot)
 		if receipt.kind == "info" and content.get("role") == "medium":
 			activity = Assess.medium_card(receipt, snapshot)
+			if activity.is_empty():
+				activity = Assess.testimony_card(receipt, snapshot)
+		elif receipt.kind == "info" and content.get("anonymous", false):
+			activity = Assess.testimony_card(receipt, snapshot)
 		if not activity.is_empty():
 			note = "Adapter available · experimental joint activity/trace comparison"
 			if activity.kind in ["context", "location"]:
@@ -41,10 +45,17 @@ static func view(g) -> Dictionary:
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
 			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; transmission/source modifiers need separate attribution" if activity.has("relay_source") else note
-	return {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
+			if activity.get("testimony_only", false):
+				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Weak teller testimony · no original-source identity or gift proof"
+	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
+	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": "Original alignment",
 		"world_options": {"modifiers": snapshot.rules.modifier_options}, "live": true, "live_activity": true,
 		"timeline": Assess.History.from_events(snapshot.public_events)}
+	if not history.value.is_empty():
+		result["chronology"] = history.value
+		result.alignment_epoch = "Current alignment"
+	return result
 
 ## Resolve exact original facts afresh. Missing/deleted evidence is a blocker, never
 ## permission to file a weaker argument with fewer roots.
@@ -64,10 +75,21 @@ static func snapshot(g, value: Dictionary, listener: String = "", venue: String 
 	var input = Bridge.capture(g, roots.numbers, listener, venue)
 	input.root = -1
 	input.arguments = [{"board_number": -1, "supports": roots.numbers,
-		"conclusion": {"type": value.conclusion.type, "a": value.conclusion.target}, "workshop_case": value.duplicate(true)}]
+		"conclusion": native_conclusion(g, value.conclusion), "workshop_case": value.duplicate(true)}]
 	for issue in roots.issues:
 		input.issues.append({"code": "missing_card", "detail": issue})
 	return input
+
+static func native_conclusion(g, conclusion: Dictionary) -> Dictionary:
+	var result = {"type": conclusion.type, "a": conclusion.target}
+	for field in ["role", "mod", "night"]:
+		if conclusion.has(field):
+			result[field] = conclusion[field]
+	if conclusion.has("report"):
+		var reports: Array = g.board.filter(func(c): return c.kind != "deduction" and Evidence.normalize_card(c).id == conclusion.report)
+		if not reports.is_empty():
+			result["card"] = reports[0].n
+	return result
 
 static func status(g, value: Dictionary) -> Dictionary:
 	var input = snapshot(g, value)
@@ -118,7 +140,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		g.last_error = "\n".join(PackedStringArray(check.issues))
 		return -1
 	var roots = supports(g, value)
-	var conclusion = {"type": value.conclusion.type, "a": value.conclusion.target}
+	var conclusion = native_conclusion(g, value.conclusion)
 	if previous > 0 and previous <= g.board.size() and g.board[previous - 1].get("workshop_case", {}) == value:
 		return previous
 	# Build native fallback footing through the ordinary filer, then retain the

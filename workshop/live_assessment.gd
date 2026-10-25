@@ -5,10 +5,10 @@ const Jury = preload("res://workshop/jury.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const LedgerAudit = preload("res://workshop/ledger_audit.gd")
 const C = preload("res://sim/content.gd")
-const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist"]
+const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "warden", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist"]
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
-const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion"]
+const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]
 
 ## mixture_budget: apply the old 2^u mixture's 64-state gate, on the legacy engine only
 ## (CaseEval has no such limit, so no listener falls back to native rules over it).
@@ -25,8 +25,8 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	for issue in snapshot.issues:
 		if issue.code in ["missing_card", "cyclic_argument", "argument_depth", "unknown_listener", "cover_unavailable", "invalid_venue"]:
 			result.issues.append(issue.code + ": " + issue.detail)
-	if snapshot.public_events.any(func(e): return e.kind in ["curse", "curse_lifted"]):
-		result.issues.append("This live case has alignment-transition history that needs a temporal adapter.")
+	var history = History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
+	result.issues.append_array(history.issues)
 	var needed: Array = snapshot.selected.duplicate()
 	for id in snapshot.private_evidence:
 		if id not in needed:
@@ -39,7 +39,11 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			result.issues.append("An %s is not evidence. Cite the supporting observations or readings." % e.kind)
 			continue
 		if e.kind == "info" and e.content.get("anonymous", false):
-			result.issues.append("The anonymous %s reading has no identified original source. A named acknowledgement is needed before shared assessment." % C.role_name(e.content.get("role", "")))
+			var testimony = testimony_card(e, snapshot)
+			if testimony.is_empty():
+				result.issues.append("The unnamed reading needs an identified teller and a structured account.")
+			else:
+				cards.append(testimony)
 			continue
 		if e.kind == "claim" and e.content.get("role") in C.GOOD_ROLES and e.source in snapshot.people.map(func(p): return p.id) and e.subjects == [e.source]:
 			cards.append({"id": e.id, "fact_id": e.fact_id, "kind": "claim", "source": e.source,
@@ -56,9 +60,11 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 				continue
 			var relay = medium_card(e, snapshot)
 			if relay.is_empty():
-				if e.id not in snapshot.selected:
-					continue # Independent unsupported knowledge keeps its native owner.
-				result.issues.append("Medium relay needs supported original evidence, an original observation time, and a publicly deceased source. Nested Medium chains and opinions remain unsupported.")
+				relay = testimony_card(e, snapshot)
+				if relay.is_empty():
+					result.issues.append("Medium account needs a structured non-opinion item and an identified teller.")
+				else:
+					cards.append(relay)
 			else:
 				cards.append(relay)
 			continue
@@ -88,6 +94,8 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	# hearing routes. Keep health keys apart from receipt ids before route weighting.
 	var relayed_origins: Array = cards.filter(func(c): return c.has("relay_source")).map(func(c): return c.logical_origin)
 	for card in cards:
+		if card.kind == "report" and card.get("role") == "warden":
+			card["block"] = snapshot.people.filter(func(p): return p.id == card.data.target)[0].home
 		if card.has("relay_source"):
 			card.accuracy_origin = "health:" + card.logical_origin
 		elif card.kind == "report" and card.id in relayed_origins:
@@ -101,11 +109,15 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	# Supported questions concern original alignment. Advancing the day must not
 	# silently create a fresh theory and discard yesterday's commitment.
 	var epoch: String = "Original alignment"
+	if not history.value.is_empty():
+		epoch = "Current alignment"
 	var view = {"seed": 0, "day": snapshot.now.day, "people": snapshot.people.duplicate(true), "cards": cards,
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": epoch, "history": [],
 		"world_options": {"modifiers": snapshot.rules.modifier_options.duplicate()}, "scope": result.scope,
 		"timeline": History.from_events(snapshot.public_events)}
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim"] or c.get("role") in ["nightwatch", "veteran", "lamplighter", "sexton", "martyr"]):
+	if not history.value.is_empty():
+		view["chronology"] = history.value
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "sexton", "martyr"]):
 		view["live_activity"] = true
 		view.world_options["roles"] = true
 		view.world_options["identities"] = true
@@ -116,7 +128,9 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			result.issues.append("A prior Martyr promise versus a later execution needs a dated outcome/health adapter. The new evaluator does not yet infer failure from that pair; existing rules handle the case.")
 	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch"]):
 		view.world_options["roles"] = true
-	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "minion"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "minion"])):
+	if snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["role", "notrole", "misled", "unreliable"]):
+		view.world_options["roles"] = true
+	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "notdemon", "minion"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "notdemon", "minion"])):
 		view.world_options["identities"] = true
 		view.world_options["roles"] = true
 	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0] if snapshot.arguments.any(func(a): return a.board_number == snapshot.root) else {}
@@ -156,11 +170,23 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			result.case = root.workshop_case.duplicate(true)
 			result.case.id = "live:" + snapshot.case_id
 			result.view = view
-			view.alignment_epoch = "Original alignment"
+			view.alignment_epoch = epoch
 		for argument in snapshot.arguments:
 			var conclusion = argument.conclusion
 			if conclusion.get("type") not in CONCLUSIONS or _target(conclusion) not in snapshot.people.map(func(p): return p.id):
 				result.issues.append("Unsupported claim: " + str(conclusion.get("type", "unknown")))
+		for claim in [result.case] + result.case.get("arguments", []).map(func(a): return a.case):
+			result.issues.append_array(conclusion_issues(view, claim))
+			var c: Dictionary = claim.conclusion
+			if c.type in ["lied", "truthful", "misled", "unreliable"]:
+				var report = Solver.card_by_id(view, c.get("report", ""))
+				if not report.is_empty():
+					c["question_at"] = Solver.TimeModel.statement_time(report)
+			if c.type in ["lied", "misled", "unreliable"] and c.get("report", "") in claim.cards:
+				var id: String = c.report
+				var challenge = {"mode": "lying" if c.type == "lied" else "misled", "supports": claim.cards.filter(func(root): return root != id)}
+				claim.reading_challenges[id] = challenge
+				result.case.reading_challenges[id] = challenge
 		if not snapshot.listener.is_empty():
 			result.listener = _listener(snapshot, cards)
 			if not result.listener.knowledge.get("public_roles", {}).is_empty():
@@ -227,6 +253,10 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		return card # Public homes / reported haunts describe routes, not guilt.
 	if night < 0:
 		return {}
+	if e.kind in ["curse", "curse_lifted"] and e.source == "player" and snapshot.public_events.any(func(event): return event.kind == e.kind and event.at.day == night):
+		card["kind"] = "context"
+		card["context_kind"] = e.kind
+		return card # The public boundary is applied once to the domain, not as a report.
 	if e.kind == "vote" and e.source == "player" and e.observed_at.phase == "evening" and night >= 1:
 		var content: Dictionary = e.content
 		if content.get("nominee", "") not in ids or content.get("by", "") not in ids + ["player"] or not content.get("yes") is Array or not content.get("no") is Array or not content.get("player_yes") is bool:
@@ -288,9 +318,12 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 					if event.kind == "demon_death" and event.at.day == night:
 						card.excluded.append_array(event.subjects)
 			if e.content.has("guard_claim"):
-				if e.content.guard_claim not in ids or e.subjects != [e.source] or snapshot.people.filter(func(p): return p.id == e.content.guard_claim)[0].home != block:
+				if e.content.guard_claim not in ids or e.content.guard_claim == e.source or e.subjects != [e.source] or night < 1 or snapshot.people.filter(func(p): return p.id == e.content.guard_claim)[0].home != block:
 					return {}
 				card["guard_claim"] = e.content.guard_claim
+				card["kind"] = "report"
+				card["role"] = "warden"
+				card["data"] = {"target": e.content.guard_claim}
 			if e.content.get("dropped", false) and e.source == "evidence" and e.subjects.size() == 1:
 				card["item_drop"] = true
 			return card
@@ -381,6 +414,48 @@ static func medium_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		"learned_at": e.learned_at if e.learned_at != null else e.observed_at, "acquired_day": e.observed_at.day}, true)
 	return card
 
+## Unidentified/uncorroborated originals are the teller's fallible account. No
+## unknown gift holder is added to the domain and the teller does not claim that gift.
+static func testimony_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
+	var teller: String = e.content.get("teller", "") if e.content.get("anonymous", false) else e.source
+	if teller not in snapshot.people.map(func(p): return p.id):
+		return {}
+	var role: String = e.content.get("role", "")
+	var data: Dictionary = e.content.get("data", {})
+	var observed: Dictionary = e.observed_at
+	if role == "medium":
+		var item: Dictionary = data.get("item", {})
+		if item.get("type") == "suspicion":
+			return {}
+		if item.get("type") == "reading":
+			var entry: Dictionary = item.get("entry", {})
+			role = entry.get("role", "")
+			data = entry.get("data", {})
+			observed = {"day": int(entry.get("day", -1)), "phase": Evidence.stamp({"day": entry.get("day", -1), "phase": entry.get("phase", 3)}).phase}
+		else:
+			role = ""
+	var context = {"id": e.id, "fact_id": e.fact_id, "source": teller, "kind": "context", "context_kind": "unattributed_report", "role": "", "data": {}, "observed_at": e.observed_at, "text": e.text,
+		"testimony_only": true, "context_note": "Original evidence or observation time is unestablished; this account is context only."}
+	if role == "psychologist":
+		context.context_note = "Relayed opinions are context, not alignment evidence."
+		return context
+	if role not in ROLES or role == "medium" or observed.day < 0 or observed.phase == "unknown":
+		return context
+	var receipt: Dictionary = e.duplicate(true)
+	receipt.source = teller
+	receipt.observed_at = observed
+	receipt.content.role = role
+	receipt.content.data = data
+	if not reading_valid(receipt, snapshot.people.map(func(p): return p.id), snapshot.rules.modifier_options):
+		return context
+	if role in ["nightwatch", "warden", "lamplighter", "veteran", "martyr", "sexton"]:
+		if role == "nightwatch" and not data.seen.is_empty():
+			context.merge({"kind": "sighting", "subject": data.seen[0], "subjects": data.seen.duplicate(), "night": observed.day, "block": data.block, "hearing_weight": C.RELAY_WEIGHT}, true)
+		return context # No identity/visit/protection proof from an unattributed original.
+	context.merge({"kind": "report", "role": role, "data": data.duplicate(true), "night": -1, "observed_at": observed,
+		"reported_at": Solver.TimeModel.statement_time(e), "provenance": e.provenance.duplicate(true)}, true)
+	return context
+
 ## Explicit capability gate: no graph feature may silently disappear when the
 ## restricted live evaluator replaces the native argument path.
 static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
@@ -422,7 +497,9 @@ static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 		for field in claim:
 			if field not in fields:
 				issues.append("Unrecognized canvas feature needs a live adapter: " + str(field) + ".")
-		if claim.conclusion.get("type") not in CONCLUSIONS or claim.conclusion.get("target") not in snapshot.people.map(func(p): return p.id) or claim.conclusion.get("at") != "Original alignment":
+		var history = History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
+		var epochs: Array = history.value.get("epochs", {"Original alignment": 0}).keys()
+		if claim.conclusion.get("type") not in CONCLUSIONS or claim.conclusion.get("target") not in snapshot.people.map(func(p): return p.id) or claim.conclusion.get("at") not in epochs:
 			issues.append("Unsupported canvas claim or alignment time.")
 		for line in claim.get("lines", []):
 			if line.get("relation", "supports") not in ["supports", "quotes"] or line.has("test_factor"):
@@ -492,6 +569,11 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 	var result = Solver.empty_case()
 	result.id = "live:" + snapshot.case_id
 	result.conclusion = {"type": argument.conclusion.get("type", "unsupported"), "target": _target(argument.conclusion), "at": epoch}
+	for field in ["role", "mod", "night"]:
+		if argument.conclusion.has(field):
+			result.conclusion[field] = argument.conclusion[field]
+	if argument.conclusion.has("card"):
+		result.conclusion["report"] = snapshot.board_map.get(str(argument.conclusion.card), "")
 	if argument.board_number in path:
 		return result
 	var direct: Array = []
@@ -534,17 +616,40 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 			"cards": direct, "answers": {}, "positions": {}, "reasons": {}})
 	if result.conclusion.type == "conflict":
 		result.conflict_scope = result.cards.duplicate()
+	if result.conclusion.type in ["lied", "truthful", "misled", "unreliable"]:
+		var reports: Array = snapshot.evidence.filter(func(e): return e.id in result.cards and e.kind == "info" and e.source == result.conclusion.target and (not result.conclusion.has("night") or e.observed_at.day == result.conclusion.night))
+		if result.conclusion.get("report", "") == "" and reports.size() == 1:
+			result.conclusion["report"] = reports[0].id
+		var id: String = result.conclusion.get("report", "")
+		if result.conclusion.type != "truthful" and id != "":
+			result.reading_challenges[id] = {"mode": "lying" if result.conclusion.type == "lied" else "misled", "supports": result.cards.filter(func(root): return root != id)}
 	return result
+
+static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
+	var c: Dictionary = value.conclusion
+	if c.type == "secret_mod" and c.get("mod", "") not in C.SECRET_MOD_LIST:
+		return ["Choose a supported modifier for the secret premise."]
+	if c.type in ["role", "notrole"] and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and not card.get("testimony_only", false) and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):
+		return ["A role-declaration question needs that person's included claim or reading of the named good gift."]
+	if c.type in ["lied", "truthful", "misled", "unreliable"]:
+		var card = Solver.card_by_id(view, c.get("report", ""))
+		if card.get("kind") != "report" or card.source != c.target or card.id not in value.cards or card.has("relay_source") or card.get("testimony_only", false):
+			return ["A reading question needs one identified original report by its target; select the report being questioned."]
+	return []
 
 static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 	var src: Dictionary = snapshot.listener
 	var reliability = {}
 	var good: Array = [src.id]
 	var public_roles = {}
+	var timed_good: Array = []
+	var cursed: bool = snapshot.public_events.any(func(e): return e.kind == "curse")
 	for receipt in preload("res://workshop/public_evidence.gd").martyr_receipts(snapshot.public_events, snapshot.people.map(func(p): return p.id)):
 		public_roles[receipt.content.martyr] = "martyr"
 		for person in receipt.subjects:
-			if person not in good:
+			if cursed:
+				timed_good.append({"person": person, "at": receipt.observed_at})
+			elif person not in good:
 				good.append(person)
 	for card in cards:
 		reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), src.discounted.get(card.source + ":*", 0.0)) if card.kind == "report" else 1.0
@@ -554,6 +659,10 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 		if card.has("relay_source"):
 			reliability[card.accuracy_origin] = reliability[card.id]
 			reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.relay_source, card.relay_observed_at.day], 0.0), src.discounted.get(card.relay_source + ":*", 0.0))
+		if card.id in src.get("disowned_reports", []):
+			reliability[card.id] = 0.0
+		elif card.get("testimony_only", false):
+			reliability[card.id] = C.RELAY_WEIGHT
 	var result = {"id": src.id, "name": src.name, "trust": src.trust, "confidence": src.confidence,
 		"insight": src.insight, "reasoning_mode": src.get("reasoning_mode", "full"),
 		"confidence_mode": src.get("confidence_mode", "scale"), "theories": src.get("theories", {}).duplicate(true),
@@ -564,6 +673,9 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 		"ledger": {}, "case_memory": {}}
 	if public_roles.is_empty():
 		result.knowledge.erase("public_roles")
+	if cursed:
+		result.knowledge["good_epoch"] = "Current alignment"
+		result.knowledge["timed_good"] = timed_good
 	return result
 
 static func _target(conclusion: Dictionary) -> String:
@@ -577,6 +689,8 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 		return false
 	var data: Dictionary = receipt.content.data
 	match receipt.content.role:
+		"warden":
+			return data.get("target") in ids and data.target != receipt.source and receipt.observed_at.day >= 1 and receipt.observed_at.phase == "night"
 		"psychologist":
 			return receipt.observed_at.phase == "night" and receipt.observed_at.day >= 1 and data.get("subject") in ids and data.subject != receipt.source and data.get("trusts") in ids and data.trusts != data.subject and data.get("suspects") in ids and data.suspects != data.subject
 		"surveyor":

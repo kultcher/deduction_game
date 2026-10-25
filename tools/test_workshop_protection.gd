@@ -1,5 +1,6 @@
 extends SceneTree
 const Solver = preload("res://workshop/solver.gd")
+const Activity = preload("res://workshop/live_activity.gd")
 const Protection = preload("res://workshop/live_protection.gd")
 const Ghost = preload("res://workshop/ghost_juror.gd")
 const Game = preload("res://game/game.gd")
@@ -38,7 +39,13 @@ func _mechanics() -> void:
 	var vet = _veteran()
 	check(Solver.Roles.fits(view, world, [vet], {}), "Veteran approach matches candidate Demon route")
 	world.demon = 6
-	check(not Solver.Roles.fits(view, world, [vet], {}), "Veteran approach rejects incompatible Demon home under direct roads")
+	var routes: Array = Activity.demon_routes(view.people[6].home, view.people[0].home)
+	var detour_weight = 0.0
+	for route in routes:
+		var approach: String = route.path[-2] if route.path.size() >= 2 else view.people[0].home
+		if approach == vet.data.block:
+			detour_weight += route.weight
+	check(Solver.Roles.fits(view, world, [vet], {}) and detour_weight > 0 and detour_weight <= Activity.DEMON_DETOUR, "Veteran approach permits an otherwise incompatible home only through the small detour allowance")
 	world.demon = 5
 	check(not Solver.Roles.fits(view, world, [vet, _veteran(2)], {}), "one-use Veteran cannot have two healthy attack reports")
 	view.timeline.events = [{"kind": "demon_death", "subjects": ["g"], "at": {"day": 1}}]

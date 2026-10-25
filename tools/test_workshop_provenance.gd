@@ -41,8 +41,8 @@ func _live(size: int) -> void:
 	Mind.apply_info(g.w, observer, source, entry, 0.25, teller.id, true)
 	var input = g.workshop_snapshot([], observer.id)
 	var plan = Shared.prepare(input, {}, observer.ledger)
-	check(not plan.ready and plan.issues.any(func(issue): return "anonymous" in str(issue)), "an unresolved anonymous reading has an explicit capability failure")
-	check(not observer.workshop_state.active, "unresolved provenance cannot acquire shared ownership using a secret identity")
+	check(plan.ready and plan.prepared.view.cards[0].get("testimony_only", false), "an unresolved anonymous reading is weak teller testimony")
+	check(observer.workshop_state.active and observer.workshop_state.owned.has(eid) and plan.prepared.view.cards[0].source == teller.id, "ownership judges only the known teller, not a hidden original identity")
 	var exported = input.listener.legacy_evidence.filter(func(item): return item.kind == "reading")
 	check(exported.size() == 1 and exported[0].id == "anonymous:" + anonymous.id and exported[0].rel[0] == "" and exported[0].supports.is_empty(), "the portable compatibility reference also redacts hidden source identity")
 	check(input.listener.known_claims.is_empty(), "an anonymous gift-holder does not become a named role claim")
@@ -50,7 +50,7 @@ func _live(size: int) -> void:
 	# Merely hearing the same reading from a named person does not prove that they
 	# were the unnamed person in a previous story.
 	Mind.apply_info(g.w, observer, source, entry, 0.25, source.id)
-	check(observer.ledger[eid].meta.workshop_receipts.size() == 2 and not observer.workshop_state.active, "matching content alone cannot resolve an anonymous telling")
+	check(observer.ledger[eid].meta.workshop_receipts.size() == 2 and observer.workshop_state.active, "matching content alone cannot resolve an anonymous telling; weak and named accounts remain distinct")
 	Mind.acknowledge_reading(g.w, observer, source, entry, teller.id)
 	var receipts: Dictionary = observer.ledger[eid].meta.workshop_receipts
 	var named = Shared.reading(source.id, entry, teller.id)
@@ -81,7 +81,7 @@ func _live(size: int) -> void:
 		if n == source or n == teller:
 			continue
 		var listener = n.shadow if n.is_evil() else n
-		check(not listener.workshop_state.active and listener.ledger[eid].meta.workshop_receipts.has(anonymous.id), "actual unnamed relay uses an explicit fallback for " + n.id)
+		check(listener.workshop_state.active and listener.workshop_state.owned.has(eid) and listener.ledger[eid].meta.workshop_receipts.has(anonymous.id), "actual unnamed relay uses weak shared testimony for " + n.id)
 	# Pick an independent deterministic probe seed for the pre-existing 5% public
 	# acknowledgement. Only that original draw may advance the world's RNG.
 	var probe = RandomNumberGenerator.new()
