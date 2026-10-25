@@ -2398,6 +2398,12 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   the trace (tried: "Odette and Constance talking at the tavern" with the Square trace at
   Hollis's death scene).
 
+  > **Session verification 2026-10-25 (B200):** Both location facts and shared conversation/sighting
+  > parity are verified. A focused probe found that native Argue.check returns only one trace-match
+  > subject: its template-plus-cards dedup key omits the person. Keep the full native linking item
+  > open; only the blanket absence-of-location assertion is disproved. No judge/link behavior
+  > changed. Full default runner: 73/75; only permitted test_social/test_text_ui failures.
+
   > **Prep B200 (9cb8782; candidate to narrow; stale assertion):** `sim/argue.gd::assertions` already
   > emits locations for both conversation participants; `workshop/live_assessment.gd::activity_card`
   > adapts evening conversations as movement evidence. Recheck the exact link/preview example; any
