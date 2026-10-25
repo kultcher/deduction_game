@@ -213,11 +213,54 @@ Existing local Godot config/UID changes are outside these commits.
   report this surprise, do not tune it. Presentations 3531 / 4799 / 4258 ms;
   these late workloads cost more than the opening. `item-9-six-final` retains
   measurements and all continuation changes; missing graphs/receipts fail loudly.
+  Follow-up `item-9-check` validates the final harness diagnostics. Day-4 held
+  unions have 39–55 facts, with at most ten selected cards here; this does **not**
+  exercise the >16-reading key cliff.
 - **Trace suite audit:** its native-argument record test also crashes on the starting
   `8fa8f13` snapshot: shared presentation intercepts the synthetic native argument,
   so the expected native decision is absent. That section now explicitly selects
   native comparison mode; the isolated record/parity checks pass (18 checks).
-  Full trace/parity validation is running; this is a test setup correction.
-  Follow-up `item-9-check` validates the final harness diagnostics. Day-4 held
-  unions contain many more receipts than the filed six, but attention selects at
-  most ten cards here; this fixture does **not** exercise the >16-reading key cliff.
+  Full trace/parity validation subsequently passes (45 checks); this is a test
+  setup correction.
+- **End-of-list checks:** the first full run found two obsolete assertions:
+  anonymous accounts are now supported weak testimony, and Veteran routes now
+  permit a small Demon detour. Updated those checks while retaining genuine
+  capability-failure/action clearing and the detour's probability bound. Both
+  suites pass. The fresh final run passes 73/75 regular suites: only the documented
+  false-Night-Watch (`test_social`) and two role-hover (`test_text_ui`) checks fail.
+  Corrected full `test_trace` passes all 45 checks, including all twelve traced /
+  untraced games. It took about 21.4 minutes. The three ten-person trace sidecars
+  also show 0 impossible / 643 refreshes. Trace now prints slow steps and supports `--parity <seed> <npcs>` for focused
+  retries. The earlier trace exceeded its 20-minute test limit; no pass claimed.
+- **Broader cost flag:** ten-person seed 42, Day-3 meeting entry, **82.9 s** on
+  current mechanics versus **28.4 s** on starting `8fa8f13`. Same command point,
+  with evolving evidence/history; aggregate cost, not isolated attribution to one
+  change. The starting snapshot's profile spends nearly all that step in shared
+  consequences. Speed probes were stopped after collecting these samples; they
+  are not completed-game validation. Evidence: `trace-speed.txt`,
+  `seed42-control.txt` and the starting snapshot's `seed42-profile.json`.
+
+Final passive comparison (10 NPCs, seeds 1000–1009; lower Demon rank is better):
+
+| Snapshot | Good wins | Day-3 same top | Top-3 overlap | Demon rank | Impossible refreshes |
+|---|---:|---:|---:|---:|---:|
+| Starting `8fa8f13`, shared | 0/10 | 31.2% | 1.32 | 3.80 | 39/2100 |
+| After items 2–5, shared | 2/10 | 29.7% | 1.33 | 3.97 | 0/1886 |
+| Final mechanics `85fda4e`, shared | 2/10 | 20.1% | 1.30 | 3.94 | 0/1918 |
+| Final source, native | 3/10 | 35.4% | 1.93 | 3.98 | 0/100 startup events |
+
+All final games finish without script errors or guards; shared fallback count is
+zero. The implied-claim receipt correction preserves this sample's outcomes and
+agreement versus the preceding snapshot. No curse fired in either final chunk.
+Behaviour acceptance against native remains **unmet**, especially agreement; these
+results are reported without tuning. Data and frozen sources:
+`logs/mechanics-support/batch-final-receipts/summary.json` (final),
+`batch-final/summary.json` (before the receipt audit), `batch-235/summary.json`.
+
+**Final state:** requested mechanics items 0–6, 8 and 9 are implemented within the
+approved limits; item 7 remains Opus's work. Mechanical verification is complete,
+with the two documented unrelated regular-suite failures retained. Behaviour and
+speed acceptance are not signed off: see the A/B table and cost flags above.
+Logs: `full-final`, `trace-final`, `contract-final`, `item-9-check`. Everything is
+committed locally on `codex/case-board-mechanics`; no push or merge was performed.
+The existing user config/UID edits and the dead reference branch remain untouched.

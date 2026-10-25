@@ -1,6 +1,7 @@
 # Mechanics support: evidence the shared judge still can't read
 
-Status: open work list (Oct 25). Owner: Codex, reviewed by the user. Read
+Status: mechanics implemented (Oct 25); behavioural/speed acceptance remains unmet.
+Owner: Codex, reviewed by the user. Read
 [LEGACY_MIGRATION.md](LEGACY_MIGRATION.md) first, especially the north star, the
 architecture rules and the lessons learned.
 
@@ -104,7 +105,7 @@ underlying fact. This is likely the largest remaining cause of the town disagree
 
 ## 3. Defence moves as claims and challenges
 
-**Implemented Oct 25 (Codex), pending the next passive chunk.** The user clarified
+**Implemented Oct 25 (Codex), validated in the next passive chunk.** The user clarified
 that legacy strength/regard becomes hearing weight, while the shared posterior
 sets the suspicion change. Native bonuses are parked. Gift/secret claims and
 specific-reading challenges are canonical; pleas/rival suggestions remain speech.

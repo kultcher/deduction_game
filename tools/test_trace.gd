@@ -12,6 +12,17 @@ var fails = 0
 var checks = 0
 
 func _init() -> void:
+	var args = OS.get_cmdline_user_args()
+	if "--parity" in args:
+		var at: int = args.find("--parity")
+		if at + 2 >= args.size():
+			push_error("--parity requires a seed and NPC count")
+			quit(1)
+			return
+		_test_parity(int(args[at + 1]), int(args[at + 2]))
+		print("TRACE selected parity: %d checks, %d failures" % [checks, fails])
+		quit(1 if fails else 0)
+		return
 	_test_diff()
 	_test_trace()
 	_test_decision_records()
@@ -145,14 +156,19 @@ func _test_parity(sd: int, count: int) -> void:
 	var steps = 0
 	while not traced.w.game_over and not control.w.game_over and steps < 400:
 		var cmd = _passive_command(control)
+		var started: int = Time.get_ticks_msec()
 		var a = traced.command(cmd)
 		var b = control.command(cmd)
+		var elapsed: int = Time.get_ticks_msec() - started
+		if elapsed > 5000:
+			print("TRACE parity seed %d / %d NPCs, step %d, day %d, %s: %d ms" % [sd, count, steps, control.w.day, cmd, elapsed])
 		if a != b or _fingerprint(traced) != _fingerprint(control):
 			identical = false
 			break
 		steps += 1
 	_check(identical, "trace on/off parity seed %d, NPCs %d, through step %d" % [sd, count, steps])
 	_check(traced.w.game_over and control.w.game_over, "passive case finishes within smoke-test limit")
+	print("TRACE parity finished: seed %d / %d NPCs, %d steps" % [sd, count, steps])
 
 ## Reconstruct only from checkpoints/deltas. value_change events explain substeps
 ## and must not also be applied to the authoritative state timeline.
