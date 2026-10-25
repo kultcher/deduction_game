@@ -1,0 +1,273 @@
+# Case reasoning: the plan
+
+Status: plan (Oct 23). It supersedes the Case Workshop plan and integration docs. The
+useful findings from those are summarised in [CASE_WORKSHOP_FINDINGS.md](CASE_WORKSHOP_FINDINGS.md).
+
+## Goal
+
+The player builds cases on a **red-string board**: a premise ("Greta is the demon",
+"Constance's readings can't be trusted"), supported by linked evidence cards whose
+questions the player answers. Listeners judge the case quickly enough to feel instant,
+with reasoning that:
+- can see **joint deductions** (Surveyor plus Rumormonger forcing Hollis in seed 692);
+- weighs doubtful sources **granularly** (a sleepwalker's whereabouts "lie" doesn't
+  discredit their Seer readings);
+- leaves NPCs **persuadable and plausibly wrong**, because the player is the detective;
+- lets NPCs reason **beyond the player's framing**, from their own evidence and the
+  rules of the world (the public setup: how many evil, which gifts and modifiers can be
+  in play, how each reading works).
+
+## The board (UI)
+
+**Final verbs:**
+1. **Premises:** a claimed conclusion about a person or about a piece of evidence.
+2. **Cards with inline answers:** a card's question ("who in this Seer pair?") answered
+   on the card itself. Unknown answers stay legal.
+3. **Link:** connects evidence to a premise or to other evidence. Linked statements that
+   contradict merge automatically into a contradiction card, which offers the
+   challenges directly ("one of these is false: which?").
+4. **Challenges** (right-click a card): **unlikely**, **misled** or **lying**. These are
+   attached modifier cards, not contradictions of the card's own answers.
+5. **File case:** turns the premise into a presentable card, which can become a
+   premise in later cases (a day-2 "Constance is unreliable" supports a day-4 case).
+
+**Case strength, shown while building.** The player should see whether the argument
+does what they think it does, without exact numbers. The filed case card, and the
+premise while editing, carries one of:
+- **doesn't support** (the linked evidence doesn't bear on the premise, or contradicts it);
+- **weakly**, **moderately** or **strongly** supports the premise.
+
+It's computed by the same evaluator against a **neutral reference listener**: public
+rules, default trust, no private knowledge. So it describes the case, not any
+particular NPC. A short reason goes with it ("rests on one reading from a single
+source"; "two independent lines agree"). Real listeners may still differ because of
+their trust and private knowledge, and the board's post-presentation colours show that.
+
+**Dropped:** the mock jury, the separate preview window and save/open. They were test
+scaffolding. The fixture canvas and lab scenes go with them once their tests are
+ported.
+
+**UX principles:**
+- Start from a person: pin the suspect and attach cards to them.
+- **Live string colours:** green (fits), red (contradicts), grey (doesn't bear), with a
+  one-line reason.
+- Soft auto-layout, since positions carry no meaning.
+- A tray for new evidence, and clusters collapsed per person, for late game.
+- After presenting, show listeners' responses on the board itself.
+- One board in the long run: the workshop becomes the case board rather than a copy of
+  it.
+
+## Architecture
+
+| Layer | When | Engine |
+|---|---|---|
+| Analysis: role variance, solvability, seed difficulty | Offline, or at case load | Full solver and batch tools |
+| An NPC's own view | Each night (and when private evidence arrives) | One solve on public evidence plus their own knowledge |
+| Judging a presented case | At presentation | One solve on the case's linked cards, likelihood-weighted per listener |
+| Social behaviour (trust, pressure, votes) | As now | The existing ledger and vote formula, fed by the above |
+
+**One evaluation path per gift.** A gift is either fully supported by the new
+interpreter for every listener, or it uses the native rules for every listener. There
+is no per-listener fallback: the same case must not be judged by two engines in one
+meeting.
+
+### The world solve
+
+- **Domain:** alignments plus modifiers (Marked, red herring, …), from the public setup
+  rules (`world_domain.gd`). Movement, traces and timing stay **out of the domain**.
+  They're scored as per-world likelihoods, so the domain stays small as roles are added.
+- **Hard constraints:** `solver.gd` bitmask filtering. It measured 0.11 ms per solve
+  (575 solves, 65 ms total, on the 5,040-world ten-person domain).
+- **One solve per presentation** over the linked cards gives the surviving worlds for
+  joint deductions. One more solve per listener adds their private knowledge.
+
+### Weighing doubtful evidence without the 2^u mixture
+
+Each surviving world gets a weight, the product over cards of:
+- *p* (the card's credibility) if the card holds in that world;
+- (1 − *p*) × q (the chance of that false report) if it doesn't.
+
+With independent errors this is exactly the old exhaustive mixture, at worlds × cards
+cost. Contradictions just make worlds unlikely; no leave-one-out step is needed.
+
+**Correlated errors are handled per source and per channel, not per card:**
+- **Gift honesty** (are their readings knowingly false?) and **gift accuracy** (poisoned,
+  Delusional, misread) are separate factors. Accuracy is scoped to an impairment window,
+  not the source's whole history.
+- **Testimony honesty** (whereabouts, alibis) is another separate factor. Good NPCs lie
+  about whereabouts for innocent reasons: secrets, hidden night-walking gifts, and
+  sleepwalkers who don't even know. Evil's good self blends in the same way. A caught
+  whereabouts lie lowers testimony honesty. It moves gift honesty only a little, and
+  more when the lie is close to a crime or contradicts a claimed gift.
+- A source whose several readings are wrong together shares one factor, so the cost is
+  2^(sources × channels involved) rather than 2^cards. A case rarely involves more
+  than three or four sources.
+- Keep the granularity, and only coarsen it if measurements require. The budget comes
+  from removing the per-person consequence loop, not from collapsing channels.
+
+### What listeners consider (keeping the player the detective)
+
+- **Links are the argument.** A listener combines cards jointly only across links the
+  player drew, plus links within their own evidence. Unlinked cards are weighed alone.
+- **Insight** limits how many links they follow, how many rivals they look at, and
+  whether they notice a contradiction the player didn't merge.
+- **Rivals:** besides the player's theory, a listener scores their own best theory (from
+  their nightly view) and a few nearby variants: swap the accused with the other person
+  in a pair or group, or treat a key reading as misled. Both come from the same
+  weighted surviving worlds, at no extra solve.
+- **Two outputs per listener:** belief (does this make it more likely?) and action (is
+  it enough to act on, given urgency, trust in the player and counterevidence?). Action
+  feeds nominations and votes as an execution-priority term.
+- **Challenges are questions, not settings.** A player's "misled" or "lying" asks the
+  listener to weigh that explanation; supporting cards move it. A listener can agree a
+  report is unreliable while rejecting the charge of lying.
+
+### NPCs' own reasoning (beyond the player's framing)
+
+One solve per NPC each night over the rules of the world (the public setup: evil
+count, possible gifts and modifiers, how each reading constrains the world), public
+evidence, and their private readings, observations and accepted claims. The rules alone
+already rule worlds out, so NPCs can reach conclusions nobody argued to them. That gives their shortlist of worlds and leading
+suspects, through the same Insight limits. It feeds:
+- their own nominations and accusations (with provenance rules intact);
+- the rival theories above;
+- the patterns from playtest 61251: a Seer's record, repeated trace matches.
+
+Evil NPCs run it on their good self (the shadow); the real evil mind is unchanged.
+
+## Kept and dropped from `codex/case-workshop`
+
+- **Keep:** `solver.gd`, `world_domain.gd`, `role_constraints.gd`, `chronology.gd`, the
+  live evidence contract (`Game.workshop_snapshot`, `live_evidence.gd`,
+  `workshop_bridge.gd`), the case graph and canvas model, the shared ledger's
+  ownership and retraction, the checkpoint specimens, and the semantic tests.
+- **Replace:** `support_model.gd`'s 2^u mixture, the per-person loop in
+  `consequences.gd`, the jury and ghost juror (test scaffolding), and the per-listener
+  fallback in the live assessment.
+- **Re-check, then keep or replace:** `reasoner.gd` (bounded attention, now the Insight
+  layer) and `movement_model.gd` / `live_activity.gd` (likelihoods; keep them out of the
+  domain).
+
+## Performance budget
+
+- **Whole-town presentation: up to about 5 seconds is acceptable** (user, Oct 23),
+  since it happens only a handful of times a session. The evaluator alone aims far
+  lower (about 100 ms for ten listeners), so the rest of the live pipeline has room.
+- **Nightly NPC solves:** under 50 ms for the town, off the UI thread if needed.
+- Benchmarks are run commands, not committed JSON. Record headline numbers in this doc.
+
+**Measured (Oct 23, `tools/profile_case_eval_town.gd`, ten-person native setup, 15,120
+live worlds, nine listeners):**
+
+| Seed | First case, all cold | New case, readings known | Repeat |
+|---|---|---|---|
+| 692 | 358 ms | 87 ms | 28 ms |
+| 4242 | 386 ms | 101 ms | 45 ms |
+
+After step 3 added movement, test factors, acceptance and per-person theories, the
+same tool measures 478 / 235 / 50 ms (692) and 675 / 225 / 91 ms (4242): slower, but
+well inside the 5-second allowance.
+
+- "New case, readings known" is the presentation cost once the cited readings have
+  their tables: a new premise and card set, every listener. That's the budget figure,
+  and it's at the line.
+- The cold extra is one-off: universe setup (about 120 ms per game day) and each
+  reading's table (5–55 ms per reading). Both can be built when a reading arrives
+  rather than when it's presented.
+- Snapshot capture and preparation add 13–21 ms for the town.
+- Where it went: per-world work happens once per presentation (`compile`: about
+  25 ms); each listener's work is per class (about 200 classes), plus a role check per
+  class that their own role or outings could change (about 2 ms).
+**Measured live (Oct 23, `tools/profile_live_presentation.gd`: the real game path with
+shared effects on, nine listeners at a meeting):** 1.8–2.6 s on seeds 692, 4242, 1234
+and 77. The legacy engine on the same path, with the same solver speed-ups, takes
+2.9–10.2 s. The slowest stages are now the headline judgment (CaseEval plus the
+reasoner's logic checks) and the solver's diagnostic `analyze` calls.
+
+- **Domain growth** (fifteen-person towns, more modifiers) is the main risk. Measure the
+  domain size per setup, and prune by evidence dependencies before considering C#.
+
+## Foundation pass
+
+**Status (Oct 23):**
+- Step 1: `workshop/case_eval.gd` exists. It has likelihood weighting, prior from
+  suspicion and trust, movement and trace likelihoods, supplied test factors, the
+  strength category with its reason, rivals and pivotal cards. Still to come:
+  per-source honesty channels (today each reading has its own error rate).
+- Step 2: `tools/test_case_eval.gd` prints old versus new for the six specimens and
+  checks the semantics. With movement weighted, the movement specimen now accepts, as
+  v5 does. `tools/test_workshop_checkpoint.gd` pins v5's exact outputs on the legacy
+  engine.
+- Step 3: done; see "Step 3: what changed" below.
+- Step 4: the town timings are in the budget section. The nightly solves aren't built
+  yet.
+
+### Step 3: what changed (Oct 23)
+
+`Jury.evaluate` (behind both `Session.present` and the live shared ledger) now runs on
+CaseEval by default (`Jury.engine = "case_eval"`; `"legacy"` keeps model v5 for
+comparison). For every listener:
+- **Headline:** agreement is how far the case moved the premise toward certainty
+  (`CaseEval.shift`: +1 all the way to yes, -1 all the way to no). Stance thresholds,
+  the suspicion coefficients and the trust and confidence factors are unchanged.
+- **Everyone else:** one CaseEval pass gives each person's change (0.45 × their shift),
+  replacing the per-person loop. Pattern, protection and "lying" challenge routes are
+  kept as before.
+- **Kept as layers on top:** Insight attention (which cards and lines a listener
+  weighs), the reasoner's logic checks (rival found / entailed / provisional, which
+  drive what bounded listeners say), theory persistence (now a bias on the posterior),
+  reading challenges (they scale the challenged reading's reliability), private
+  checks, and the conditional reading of player answers.
+- **Bounded listeners** who looked for no rival, or who checked an entailment, take
+  the case on trust as in v5: conviction is averaged over how many readings they credit
+  (source quality times reading reliability).
+- **Removed:** the 64-state credibility budget and the eight-reading workload gate
+  (legacy only now), so no listener falls back to native rules over the size of the
+  evidence.
+
+**Semantic changes worth knowing:**
+- **Base rates count.** With three evil in ten, every source starts about 30% likely
+  to be evil, and an evil source's reading is treated as chance. A neutral listener is
+  therefore skeptical: the Surveyor + Rumormonger + Dowser deduction on Hollis moves
+  them from 0.30 to about 0.46, while a listener who knows the three sources are good
+  goes to 0.99. Trust in a person halves (full trust) or doubles (none) their odds of
+  being evil. This is a tuning lever if NPCs feel too hard to persuade.
+- **Unmodelled error is small** (`DEFAULT_ERR` 0.01; 0.002 for one's own reading). At
+  0.05, "it was just wrong" explained away any surprising reading.
+- **Reliability 1.0 means no extra doubt**, not certainty; a doubted reading (0.5)
+  still counts for something, and 0 means it says nothing.
+
+**Still per listener (flagged, not changed):** with shared effects switched on, 1–3 of
+nine listeners in the four probe seeds still use native rules. The cause isn't the
+engine: their own earlier native contribution was clipped at 0 or 1.5, so the
+ownership layer can't reverse it exactly and declines to migrate them. These are
+usually the readings' own sources. Fixing it means accepting an approximate reversal
+for clipped contributions. Shared effects are still off by default in play
+(`Game.workshop_effects`).
+
+1. **A new `CaseEval` module:**
+   - input: a case graph plus the snapshot contract plus a listener view;
+   - one solve on the linked cards;
+   - likelihood weights with per-source, per-channel honesty and accuracy;
+   - output: weighted surviving worlds, then belief and action for the premise, the
+     effects on everyone, and rival theories;
+   - a **strength category** for the premise from a neutral reference listener
+     (doesn't support / weakly / moderately / strongly), with a one-line reason.
+2. **Port the checkpoint specimens** as the referee and record where answers differ from
+   model v5, case by case: which differences matter to the player?
+3. **Wire `Session.present` and the live presentation through `CaseEval`** for the
+   supported gifts, removing the per-listener fallback. Unsupported gifts use native
+   rules for every listener.
+4. **Timing tests:** a ten-person presentation and the nightly solves, against the
+   budget.
+5. **Then the UI subtraction** (verbs above, inline answers, live string colours), the
+   nightly NPC views, and the execution-priority term in votes.
+
+## Risks
+
+- **NPCs too astute:** exact joint results only across drawn links and within Insight
+  limits. Validate with three playstyles on the same cases: no guidance, sound guidance
+  and persuasive wrong guidance. Each should give a different outcome.
+- **Honesty granularity versus budget:** measure before collapsing channels.
+- **Domain growth** as roles are added: keep movement and timing as likelihoods.
+- **Two systems during migration:** gate whole gifts, never individual listeners.

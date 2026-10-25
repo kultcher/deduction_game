@@ -97,7 +97,7 @@ static func review_scapegoat(w) -> void:
 	var table = {}
 	for g in w.living_good():
 		var parts = {"momentum": public_heat(w, g)}
-		var sh_vals: Array = team.filter(func(m): return m.shadow != null).map(func(m): return m.shadow.suspicion.get(g.id, 0.1))
+		var sh_vals: Array = team.filter(func(m): return m.shadow != null).map(func(m): return clampf(m.shadow.suspicion.get(g.id, 0.1), 0.0, 1.5))
 		if not sh_vals.is_empty():
 			parts["momentum"] += 0.5 * sh_vals.reduce(func(a, b): return a + b) / sh_vals.size()
 		var fit = 0.0
@@ -675,23 +675,8 @@ static func make_fake_info(w) -> void:
 				for x in w.npcs:
 					if x.is_evil():
 						tb[x.home_block] = true
-				# Mostly a plausible wrong count (no more blocks than the team could cover);
-				# sometimes the truth; now and then a count only a Marked soul could explain,
-				# which can pass for a poisoned or Delusional reading.
-				var team: int = 1 + w.minion_ids.size()
-				var hi: int = mini(team, C.BLOCKS.size())
-				var r_s = w.rng.randf()
-				var cnt: int = tb.size()
-				var kind_s = "the truth"
-				if r_s < 0.6:
-					var opts: Array = range(1, hi + 1).filter(func(x): return x != tb.size())
-					if not opts.is_empty():
-						cnt = w.pick(opts)
-						kind_s = "a plausible wrong count"
-				elif r_s >= 0.85 and team < C.BLOCKS.size():
-					cnt = team + 1
-					kind_s = "a count too high for the team (passes for a poisoned or Delusional reading)"
-				why = "reports %d blocks: %s (true %d)" % [cnt, kind_s, tb.size()]
+				var cnt: int = w.surveyor_result()
+				why = "reports %d blocks: weighted bluff count (true %d)" % [cnt, tb.size()]
 				entry = {"data": {"count": cnt}, "text": "I learned that %d of the four blocks %s an evil resident" % [cnt, "has" if cnt == 1 else "have"]}
 			"rumormonger":
 				if w.day != 0:
@@ -1023,7 +1008,11 @@ static func intel_from_share(w, m, speaker, item: Dictionary) -> void:
 ## The Breathstealer picks whom to silence, among the good on its block (not the same
 ## person twice running). Likelier as the day goes on; the most dangerous voice first.
 static func breath_target(w, bs) -> String:
-	var b: String = bs.home_block if bs.at_home() else w.loc_block(bs.loc)
+	# The Breathstealer must be out in a public place; the target can be anywhere on the
+	# same block (Case 22485: no stealing breath from inside one's own house).
+	if bs.at_home():
+		return ""
+	var b: String = w.loc_block(bs.loc)
 	var cands: Array = w.living_good().filter(func(m): return m.id != bs.breath_last and m.silence_pending < 0 and not m.silenced \
 		and (m.home_block if m.at_home() else w.loc_block(m.loc)) == b)
 	if cands.is_empty():

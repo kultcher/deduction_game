@@ -55,6 +55,8 @@ var notes_edit: TextEdit
 var roles_win: Window
 var roles_box: VBoxContainer
 var log_text = LogText.new()
+var workshop_win: Window
+var workshop_comparison_win: Window
 
 func _ready() -> void:
 	var bg = ColorRect.new()
@@ -119,7 +121,7 @@ func _ready() -> void:
 	more.text = "More ▾"
 	more.flat = false
 	var mp: PopupMenu = more.get_popup()
-	for it in ["Cast (text)", "Timeline (text)", "Card list sidebar", "Write dev log"]:
+	for it in ["Cast (text)", "Timeline (text)", "Card list sidebar", "Write dev log", "Case Workshop", "Live Workshop comparison"]:
 		mp.add_item(it)
 	mp.id_pressed.connect(_on_more)
 	top.add_child(more)
@@ -128,6 +130,8 @@ func _ready() -> void:
 	debug_check.tooltip_text = "Show what NPCs privately make of each card and person (influence, credibility, suspicion). Turning it on mid-case leaves your identification unscored."
 	debug_check.toggled.connect(func(on):
 		g.set_debug_overlay(on)
+		if is_instance_valid(workshop_comparison_win):
+			workshop_comparison_win.get_child(0).refresh()
 		_refresh_all())
 	top.add_child(debug_check)
 	theory_label = Label.new()
@@ -310,6 +314,7 @@ func _ready() -> void:
 	case_view.changed.connect(_refresh_side)
 	case_view.notes_requested.connect(_open_notes)
 	case_view.roles_requested.connect(_open_roles)
+	case_view.workshop_requested.connect(_open_live_workshop)
 
 	_new_case()
 
@@ -337,6 +342,8 @@ func _new_case_button() -> void:
 	_new_case()
 
 func _new_case() -> void:
+	if g != null and g.workshop_presenting:
+		return
 	_case_seed = int(seed_box.value)
 	case_state.select_card(0)
 	g = Game.new()
@@ -351,6 +358,14 @@ func _new_case() -> void:
 	meeting_view.set_game(g)
 	if debug_check.button_pressed:
 		g.set_debug_overlay(true)
+	if is_instance_valid(workshop_comparison_win):
+		workshop_comparison_win.get_child(0).g = g
+		workshop_comparison_win.get_child(0).refresh()
+		workshop_comparison_win.hide()
+	if is_instance_valid(workshop_win):
+		workshop_win.get_child(0).g = g
+		workshop_win.get_child(0).refresh()
+		workshop_win.hide()
 	_refresh_all()
 	if is_inside_tree() and show_script_at_start:
 		_open_roles()
@@ -455,6 +470,51 @@ func _on_more(i: int) -> void:
 		side.visible = not side.visible
 	elif i == 3:
 		_run("log")
+	elif i == 4:
+		_open_live_workshop()
+	elif i == 5:
+		if not is_instance_valid(workshop_comparison_win):
+			workshop_comparison_win = Window.new()
+			workshop_comparison_win.title = "Live Workshop comparison · developer inspector"
+			workshop_comparison_win.min_size = Vector2i(850, 600)
+			workshop_comparison_win.size = Vector2i(1100, 820)
+			workshop_comparison_win.close_requested.connect(func(): workshop_comparison_win.hide())
+			add_child(workshop_comparison_win)
+			var inspector = load("res://ui/workshop_comparison.gd").new()
+			inspector.g = g
+			workshop_comparison_win.add_child(inspector)
+		else:
+			workshop_comparison_win.get_child(0).g = g
+			workshop_comparison_win.get_child(0).refresh()
+		workshop_comparison_win.popup_centered()
+
+func _open_live_workshop(number: int = 0) -> void:
+	if not is_instance_valid(workshop_win):
+		workshop_win = Window.new()
+		workshop_win.title = "Case Workshop · live case"
+		workshop_win.min_size = Vector2i(1120, 700)
+		workshop_win.size = Vector2i(1500, 950)
+		workshop_win.close_requested.connect(func(): workshop_win.hide())
+		add_child(workshop_win)
+		var editor = load("res://ui/live_case_workshop.gd").new()
+		editor.g = g
+		editor.execute = _run_workshop
+		editor.filed.connect(_refresh_all)
+		workshop_win.add_child(editor)
+	else:
+		workshop_win.get_child(0).g = g
+		workshop_win.get_child(0).refresh()
+	var editor = workshop_win.get_child(0)
+	if number > 0 and number <= g.board.size() and g.board[number - 1].kind != "deduction":
+		editor.add_evidence(number)
+	workshop_win.popup_centered_ratio(0.95)
+
+func _run_workshop(cmd: String, progress: Callable) -> void:
+	_print("\n> " + cmd)
+	_print(await g.workshop_command(cmd, progress))
+	if g.state == "talk" and g.talk_with != null:
+		_select_person(g.talk_with.id)
+	_refresh_all()
 
 func _open_notes() -> void:
 	notes_edit.text = g.case_notes
@@ -479,6 +539,8 @@ func _run(cmd: String) -> void:
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()
+	if is_instance_valid(workshop_win) and workshop_win.visible:
+		workshop_win.get_child(0).refresh()
 
 ## Several commands from one click (e.g. walk to someone, then talk to them).
 func _run_seq(cmds: Array) -> void:

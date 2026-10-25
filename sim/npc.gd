@@ -54,6 +54,7 @@ var turned = false           # turned evil by the Revenant's curse
 var turned_day = -1
 
 ## Suspicion of each other NPC id (0 = trusting, 1+ = convinced evil).
+## Unclamped totals; use Mind.susp / Mind.suspicion_view when reading beliefs.
 var suspicion = {}
 ## Player-readable reason for the most recent large rise in suspicion, per target.
 var sus_why = {}
@@ -72,8 +73,8 @@ var trust_cap = 1.0
 var npc_trust = {}
 ## Scrutiny from accusations and nominations; decays each night.
 var pressure = 0.0
-## Suspicion currently applied from the town's public accusations (Mind.refresh_consensus), per target.
-var consensus_applied = {}
+## Public accusations influence action as social pressure, never evidence or priors.
+var consensus_pressure = {}
 var pressed_today = 0
 var role_guesses = 0        # times the player has asked 'are you the <gift>?' and guessed wrong
 var talked_day = -1      # last day the player had a conversation with them
@@ -113,6 +114,9 @@ var believed_roles = {}      # id -> role they've been persuaded someone holds
 var discounted = {}          # derived: "source:night|*" -> doubt in that source's readings (0..0.9)
 ## Evidence ledger (see Mind.ledger_hear): eid -> {effects, weight, rel, applied, meta, times}.
 var ledger = {}
+## Experimental shared reading owner. Separate outside baseline makes its layer
+## retractable even after later independent suspicion changes hit a clamp.
+var workshop_state = {}
 var used_facts = {}          # "fact>target" -> true: evidence already used against target
 var remarks: Array = []      # things they've come round to, to mention to the player
 var trust_at_reconsider = 0.5

@@ -12,6 +12,17 @@ var fails = 0
 var checks = 0
 
 func _init() -> void:
+	var args = OS.get_cmdline_user_args()
+	if "--parity" in args:
+		var at: int = args.find("--parity")
+		if at + 2 >= args.size():
+			push_error("--parity requires a seed and NPC count")
+			quit(1)
+			return
+		_test_parity(int(args[at + 1]), int(args[at + 2]))
+		print("TRACE selected parity: %d checks, %d failures" % [checks, fails])
+		quit(1 if fails else 0)
+		return
 	_test_diff()
 	_test_trace()
 	_test_decision_records()
@@ -138,20 +149,26 @@ func _fingerprint(g) -> Dictionary:
 		"board": g.board.duplicate(true), "meeting": g.w.meeting.duplicate(true)}
 
 func _test_parity(sd: int, count: int) -> void:
+	print("TRACE parity starting: seed %d / %d NPCs" % [sd, count])
 	var traced = _fresh(sd, count, true)
 	var control = _fresh(sd, count, false)
 	var identical = _fingerprint(traced) == _fingerprint(control)
 	var steps = 0
 	while not traced.w.game_over and not control.w.game_over and steps < 400:
 		var cmd = _passive_command(control)
+		var started: int = Time.get_ticks_msec()
 		var a = traced.command(cmd)
 		var b = control.command(cmd)
+		var elapsed: int = Time.get_ticks_msec() - started
+		if elapsed > 5000:
+			print("TRACE parity seed %d / %d NPCs, step %d, day %d, %s: %d ms" % [sd, count, steps, control.w.day, cmd, elapsed])
 		if a != b or _fingerprint(traced) != _fingerprint(control):
 			identical = false
 			break
 		steps += 1
 	_check(identical, "trace on/off parity seed %d, NPCs %d, through step %d" % [sd, count, steps])
 	_check(traced.w.game_over and control.w.game_over, "passive case finishes within smoke-test limit")
+	print("TRACE parity finished: seed %d / %d NPCs, %d steps" % [sd, count, steps])
 
 ## Reconstruct only from checkpoints/deltas. value_change events explain substeps
 ## and must not also be applied to the authoritative state timeline.
@@ -272,6 +289,8 @@ func _test_decision_records() -> void:
 		"class": "concrete", "day": 0, "phase": C.NIGHT, "block": target.home_block, "text": "test sighting"}
 	var ded = {"n": 2, "kind": "deduction", "text": "test suspicion",
 		"conclusion": {"type": "suspicious", "a": target.id}, "supports": [1]}
+	# These records exercise the deliberately retained native argument routes.
+	g.set_workshop_effects(false)
 	Argue.evaluate(w, n, ded, [support], 1.0, false)
 	var argument = _last_decision(w, "argument", "evaluation", n.id)
 	_check(argument["data"]["details"]["route"] == "generic_support",

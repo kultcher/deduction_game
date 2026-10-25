@@ -29,6 +29,7 @@ func _init() -> void:
 ## A fresh case: listener L (good) and four others.
 func _setup(sd: int) -> Dictionary:
 	var g = Game.new()
+	g.workshop_effects = false # Explicit legacy baseline before testing migration.
 	g.log_dir = "user://test_logs"
 	g.new_case(sd)
 	var w = g.w
@@ -282,6 +283,7 @@ func _test_known_good_claimant() -> void:
 	var alive_s = Mind.susp(L, X)
 	Y.alive = false
 	Y.death_cause = "demon"
+	w.public_event("demon_death", [Y.id], "town")
 	Mind.recompute_beliefs(w, L, "")
 	var dead_s = Mind.susp(L, X)
 	print("14. rival of a living claimant: %.2f; once that claimant is killed by the demon: %.2f" % [alive_s, dead_s])

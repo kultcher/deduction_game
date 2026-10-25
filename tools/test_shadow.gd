@@ -113,7 +113,7 @@ func _private_case_reaches_shadow() -> void:
 	var card = {"kind": "sighting", "subject": [t.id], "source": "player", "day": 0, "phase": C.NIGHT, "block": t.home_block,
 		"text": "You saw %s out at night." % t.name, "n": 1}
 	Mind.hear_accusation(w, e, t, card)
-	_check(e.shadow != null and e.shadow.ledger.keys().any(func(k): return k.begins_with("tell:")), "the good self heard the player's private case")
+	_check(e.shadow != null and e.shadow.ledger.keys().any(func(k): return k.begins_with("tell:") or k.begins_with("workshop:tell:")), "the good self heard the player's private case")
 	_check(e.ledger.is_empty(), "the real evil mind still takes nothing from it")
 
 ## Fake Medium readings fit the dead's public record and vary (plan step 4, Oct 19 menu).

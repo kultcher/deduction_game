@@ -2,3 +2,6 @@ logs/
 .godot/
 *.import
 export/
+__pycache__/
+*.pyc
+case_demo.html

@@ -14,6 +14,14 @@ var rng = RandomNumberGenerator.new()
 var seed_value = 0
 var dlog = DevLog.new()
 var shadow_log = DevLog.new()   # legacy stream stays separate; detailed trace merges both
+## Optional application adapter. Empty in simulation-only callers; no UI dependency.
+var workshop_refresh: Callable
+# Meeting testimony defers belief refreshes: a listener is refreshed just before they
+# speak and once when testimony ends (Mind.flush_beliefs), not after every statement.
+var defer_beliefs = false
+var pending_beliefs: Array = []
+var workshop_present: Callable
+var workshop_roots: Callable # Read-only resolution of a relayed board case.
 var detailed_logging = true     # debug export only; does not enable the spoiler UI
 var trace_build = ""            # optional caller-supplied git/build identifier
 var trace_tuning = ""           # optional caller-supplied tuning identifier
@@ -199,6 +207,8 @@ func public_event(kind: String, subjects: Array, by: String, data: Dictionary = 
 	if subjects.is_empty():
 		return
 	var e = {"day": day, "kind": kind, "subjects": subjects.duplicate(), "by": by}
+	if kind in ["curse", "curse_lifted"]:
+		e["phase"] = phase # The announced boundary's public clock time.
 	if not data.is_empty():
 		e["data"] = data.duplicate(true)
 	public_log.append(e)
@@ -368,6 +378,12 @@ func _assign_secret_mod() -> void:
 	if goods.size() < 2:
 		return
 	var k: String = pick(C.SECRET_MOD_LIST)
+	if k in ["lovers", "sleepwalker"]:
+		# These send their holder out at night: never on a role that is already out at
+		# night, so nobody has two reasons to be out (Case 22485).
+		goods = goods.filter(func(n): return not C.ROLES.get(n.role, {}).get("night_walk", false))
+		if goods.size() < 2:
+			return
 	var a = goods[0]
 	a.secret_mod = k
 	if k == "lovers":
@@ -624,11 +640,12 @@ func begin_meeting() -> Array:
 			public_event("silenced", [n.id], "")
 			dlog.add("silenced", "world", n.id, {}, "%s cannot speak at the meeting (the Breathstealer's work)." % n.name)
 			# Evil wanted them quiet: a point in their favour with everyone else.
-			for l in living_good():
-				if l != n:
+			for real in living():
+				var l = real.shadow if real.is_evil() else real
+				if l != null and real != n:
 					var e: Array = []
 					Mind._eff(e, n.id, -0.12, "silenced by the demon's side: they must have been a threat to it")
-					Mind.ledger_hear(self, l, "silenced:%s:%d" % [n.id, day], e, 1.0, [], {"kind": "event"})
+					Mind.ledger_hear(self, l, "silenced:%s:%d" % [n.id, day], e, 1.0, [], {"kind": "silenced", "subject": n.id, "day": day})
 	Mind.refresh_all_consensus(self)  # yesterday's accusations count for less today
 	return Mind.meeting_testimony(self)
 
@@ -715,6 +732,10 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		"threshold": thr, "order": order, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"]}
 	meeting["results"].append(res)
 	meeting["pending"] = {}
+	# An aggregate process receipt is not another hostile act by the nominator.
+	# Individual vote_yes records above retain their existing social meaning.
+	public_event("vote", [nid], "town", {"nominee": nid, "nominator": nm["by"], "yes": yes.duplicate(), "no": no.duplicate(),
+		"player_yes": player_yes, "count": count, "threshold": thr, "outcome": outcome})
 	dlog.add("vote_tally", "world", nid, res)
 	if player_yes:
 		var t = by_id[nid]
@@ -788,13 +809,16 @@ func _martyr_dies(mart, saved, res: Dictionary) -> void:
 	public_event("martyr", [mart.id, saved.id], mart.id)
 	meeting["martyr"] = {"martyr": mart.id, "saved": saved.id}
 	dlog.add("martyr", mart.id, saved.id, {}, "%s (Martyr) dies in %s's place at the gallows. Both proven good." % [mart.name, saved.name])
-	for l in living_good():
+	for real in living():
+		var l = real.shadow if real.is_evil() else real
+		if l == null:
+			continue
 		var e: Array = []
 		for id in [mart.id, saved.id]:
 			if id != l.id:
 				l.cleared[id] = true
 				Mind._eff(e, id, -2.0, "the Martyr died in %s's place: proven good" % saved.id)
-		Mind.ledger_hear(self, l, "martyr:%d" % day, e, 1.0, [], {"kind": "proof"})
+		Mind.ledger_hear(self, l, "martyr:%d" % day, e, 1.0, [], {"kind": "martyr", "day": day})
 	_check_parity()
 
 ## The Revenant hangs with a totem hidden: a good soul who voted for it turns evil, and
@@ -847,6 +871,10 @@ func free_turned() -> String:
 		return ""
 	v.alignment = "good"
 	Mind.shadow_adopt(self, v)  # their good self, kept while turned, is their mind again
+	if v.workshop_state.get("active", false):
+		# A turned mind may never have needed a cover. Retract its shared layer
+		# BEFORE applying the native post-restoration suspicion cap below.
+		Mind.recompute_beliefs(self, v, " (shared ownership before restoration cap)")
 	Mind.shadow_reset(v)
 	v.turned = false
 	v.intel = {}
@@ -856,7 +884,7 @@ func free_turned() -> String:
 			e["shared"] = true  # never repeated
 	for m in npcs:
 		if m != v:
-			v.suspicion[m.id] = minf(v.suspicion.get(m.id, 0.1), 0.25)
+			Mind.adjust(self, v, m.id, minf(Mind.susp(v, m.id), 0.25) - v.suspicion.get(m.id, 0.1), "freed soul", "", false)
 	Mind.hear_claim(self, v, v.id, v.role, 1.5, "own")
 	public_event("curse_lifted", ["town"], "")
 	dlog.add("freed", "world", v.id, {}, "%s is freed from the curse; remembers nothing of their time as evil." % v.name)
@@ -1089,7 +1117,7 @@ func _quiet_night() -> void:
 			Mind._eff(e, pc["who"], -0.15 if pc["role"] == "warden" else -0.06,
 				"nobody died on night %d, and they claim the %s" % [day, C.role_name(pc["role"])])
 			# Scaled live by how credible the claimant is to this listener.
-			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0, [pc["who"], -1, "report"])
+			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0, [pc["who"], -1, "report"], {"kind": "quiet_night", "night": day, "claimant": pc["who"], "role": pc["role"]})
 
 func _night_movement(poison_t: String, kill_t: String, watch, watch_block: String, warden = null, warden_t: String = "",
 		medium = null, medium_t: String = "", lamp = null) -> void:
@@ -1115,9 +1143,7 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 		_walk(medium, by_id[medium_t].home_block, "visiting the home of the dead %s" % by_id[medium_t].name)
 	if lamp:
 		# The lamp route runs through every block; they finish where they started.
-		_walk(lamp, lamp.home_block, "walking the lamp route")
-		lamp.night_path = C.BLOCKS.keys()
-		night_walkers.back()["path"] = lamp.night_path
+		_walk(lamp, lamp.home_block, "walking the lamp route", C.BLOCKS.keys())
 	# The Secret Lovers meet somewhere new each night; the Sleepwalker wanders unknowing.
 	var met = {}
 	for n in living():
@@ -1136,10 +1162,10 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 		n.history[time_key(day, C.NIGHT)] = ("night:" if n.out_last_night else "home:") + n.night_block
 	dlog.add("night_movement", "world", "", {"walkers": night_walkers})
 
-func _walk(n, block: String, why: String) -> void:
+func _walk(n, block: String, why: String, path: Array = []) -> void:
 	n.out_last_night = true
 	n.night_block = block
-	n.night_path = C.route(n.home_block, block)
+	n.night_path = C.route(n.home_block, block) if path.is_empty() else path.duplicate()
 	n.loc = "night:" + block
 	night_walkers.append({"id": n.id, "block": block, "path": n.night_path, "why": why})
 	_maybe_drop(n, why)
@@ -1223,11 +1249,17 @@ func _kill(v) -> void:
 	scenes[sid] = {"name": "%s's cottage" % v.name, "block": v.home_block, "victim": v.id, "day": day,
 		"trace_block": trace_block, "trace_true": trace_true, "why": why, "searched": false}
 	dlog.add("kill", demon_id, v.id, {"role": v.role, "scene": sid, "trace_block": trace_block, "trace_true": trace_true}, why)
+	public_event("demon_death", [v.id], "town")
 	for n in npcs:
-		if n.alive and not n.is_evil():
-			n.suspicion[v.id] = 0.0
-		elif n.alive and n.shadow != null:
-			n.shadow.suspicion[v.id] = 0.0  # a good self knows the demon's victims were good
+		if not n.alive:
+			continue
+		var listener = n.shadow if n.is_evil() else n
+		if listener == null:
+			continue
+		var effects: Array = []
+		Mind._eff(effects, v.id, preload("res://workshop/public_evidence.gd").victim_effect(Mind.susp(listener, v.id)),
+			"killed by the Demon: strong evidence of innocence, not a guarantee", "", false)
+		Mind.ledger_hear(self, listener, "demon_death:" + v.id, effects, 1.0, [], {"kind": "demon_death", "victim": v.id})
 
 # ---------------------------------------------------------------- abilities
 
@@ -1251,6 +1283,16 @@ func _add_info(n, entry: Dictionary, quiet: bool = false) -> void:
 func _other_than(true_v: int, lo: int, hi: int) -> int:
 	var opts: Array = range(lo, hi + 1).filter(func(x): return x != true_v)
 	return pick(opts) if not opts.is_empty() else true_v
+
+## Fabricated/impaired Surveyor counts favor ordinary layouts, retaining tails.
+func surveyor_result(exclude: int = -1) -> int:
+	var options: Array = []
+	for count in range(1, C.BLOCKS.size() + 1):
+		if count == exclude:
+			continue
+		for _i in range(12 if count in [2, 3] else 1):
+			options.append(count)
+	return pick(options)
 
 func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -> void:
 	var r: String = n.role
@@ -1358,7 +1400,7 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 					tb[m.home_block] = true
 			truth = tb.size()
 			if broken:
-				count = _other_than(truth, 1, C.BLOCKS.size())
+				count = surveyor_result(truth)
 			entry = {"data": {"count": count}, "true": count == truth,
 				"text": "I learned that %d of the four blocks %s an evil resident" % [count, "has" if count == 1 else "have"]}
 		"lamplighter":
@@ -1487,8 +1529,8 @@ func _medium_item(m, dead, broken: bool) -> Dictionary:
 		var best = ""
 		var bs = 0.35
 		for k in dead.suspicion:
-			if by_id[k].alive and dead.suspicion[k] > bs:
-				bs = dead.suspicion[k]
+			if by_id[k].alive and Mind.susp(dead, k) > bs:
+				bs = Mind.susp(dead, k)
 				best = k
 		if best != "" and not dead.told_to.has("medium|susp:" + best):
 			dead.told_to["medium|susp:" + best] = true
@@ -1588,7 +1630,7 @@ func snapshot(tag: String) -> void:
 		var sus = {}
 		for k in n.suspicion.keys():
 			if by_id[k].alive:
-				sus[k] = snappedf(n.suspicion[k], 0.01)
+				sus[k] = snappedf(Mind.susp(n, k), 0.01)
 		s[n.id] = {"loc": n.loc, "poisoned": n.poisoned, "trust": snappedf(n.trust, 0.01), "trust_cap": n.trust_cap,
 			"pressure": snappedf(n.pressure, 0.01), "claim": n.claimed_role, "max_tier": n.max_tier, "suspicion": sus}
 	var shadows = {}

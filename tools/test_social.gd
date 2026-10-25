@@ -38,7 +38,7 @@ func _game(sd: int):
 func _goods_except(w, ids: Array) -> Array:
 	return w.living_good().filter(func(x): return not (x.id in ids))
 
-## Five accusers against T: the listener's added suspicion stays under the cap, and the
+## Five accusers against T: the listener's social action pressure stays under the cap, and the
 ## same five accusing again the next meeting adds nothing more.
 func _test_consensus_capped() -> void:
 	var g = _game(7101)
@@ -46,17 +46,18 @@ func _test_consensus_capped() -> void:
 	var goods: Array = w.living_good()
 	var L = goods[0]
 	var T = w.npcs.filter(func(x): return x != L)[0]
-	var before = Mind.susp(L, T.id)
+	var before = L.suspicion.duplicate(true)
 	for a in w.npcs:
 		if a != L and a != T:
 			w.stances[a.id] = {"target": T.id, "day": w.day}
 	Mind.refresh_consensus(w, L, T.id)
-	var once = Mind.susp(L, T.id) - before
+	var once: float = L.consensus_pressure[T.id]
 	Mind.refresh_consensus(w, L, T.id)
-	var twice = Mind.susp(L, T.id) - before
+	var twice: float = L.consensus_pressure[T.id]
 	print("consensus from %d voices: +%.2f, refreshed: +%.2f" % [w.stances.size(), once, twice])
 	_check(once > 0.1 and once <= Mind.CONSENSUS_CAP * 1.5 + 0.001, "a chorus adds a bounded amount")
 	_check(absf(once - twice) < 0.001, "re-accusing doesn't stack")
+	_check(L.suspicion == before, "a chorus changes no evidence belief")
 
 func _test_consensus_fades() -> void:
 	var g = _game(7102)
@@ -66,10 +67,10 @@ func _test_consensus_fades() -> void:
 	var T = others[0]
 	w.stances[others[1].id] = {"target": T.id, "day": w.day}
 	Mind.refresh_consensus(w, L, T.id)
-	var now: float = L.consensus_applied[T.id]
+	var now: float = L.consensus_pressure[T.id]
 	w.day += 2
 	Mind.refresh_consensus(w, L, T.id)
-	var later: float = L.consensus_applied[T.id]
+	var later: float = L.consensus_pressure[T.id]
 	print("one voice: %.3f now, %.3f two days on" % [now, later])
 	_check(later < now * 0.5, "an old accusation counts for less")
 

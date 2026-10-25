@@ -44,7 +44,7 @@ static func implicated(e: Dictionary) -> Array:
 				"sighting":
 					return [it["who"]]
 				"suspicion":
-					return [it["about"]]
+					return [] # Opinions remain opinions when relayed by a gift (Q4).
 	return []
 
 ## People the reading speaks for.

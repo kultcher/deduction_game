@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://dofv7gmukjnob"]
 
-[ext_resource type="Script" path="res://ui/dialogue_lab.gd" id="1"]
+[ext_resource type="Script" uid="uid://cqb4l2mx88731" path="res://ui/dialogue_lab.gd" id="1"]
 
-[node name="DialogueLab" type="Control"]
+[node name="DialogueLab" type="Control" unique_id=30873560]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

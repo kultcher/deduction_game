@@ -2,12 +2,25 @@
 ## a human uses, then reports results and writes dev logs.
 ##
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
-##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE]
+##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
+##         [--native] [--no-attention]
 ##
 ## --passive: a control player who does nothing (waits every phase, declines approaches,
 ## never nominates, votes no, sleeps). The town's win rate on its own.
 ##
 ## --transcript prints everything the player would see. Logs go to <log-dir>/case_<seed>.*
+## --no-trace skips detailed state sidecars; ordinary developer logs and metrics remain.
+## --native runs the legacy belief rules (shared assessment off) on the same source, for
+## A/B comparisons with identical seeds.
+## --no-attention (experiment): every shared-model listener reads every card it holds;
+## Insight still limits links and the explanation search. Measures how much the card
+## budget scatters the town's beliefs, and what reading everything costs.
+##
+## Suspicion scale: at the end of each day (entering night, or the game's end) every
+## living good NPC's suspicion is summarised against the truth: their top suspicion,
+## the Demon's and minions' suspicion and rank, their good-nomination threshold, and
+## every vote's score against its need. Printed per day; stored per case in --results
+## ("suspicion_days", "votes"). Reads state only: no RNG draws, no decisions changed.
 ## The bot only uses information a player could see, except that it knows which idle NPCs
 ## are at which exact location within a block (to keep it from wasting moves).
 extends SceneTree
@@ -22,8 +35,11 @@ const Metrics = preload("res://game/case_metrics.gd")
 var g
 var transcript = false
 var passive = false
+var trace_enabled = true
+var native = false
 var talked = {}
 var linked_pairs = {}
+var blocked_cmds = {}
 var rng = RandomNumberGenerator.new()
 
 func _init() -> void:
@@ -32,22 +48,28 @@ func _init() -> void:
 	var games: int = int(args.get("games", "1"))
 	transcript = args.has("transcript")
 	passive = args.has("passive")
+	trace_enabled = not args.has("no-trace")
+	native = args.has("native")
+	if args.has("no-attention"):
+		preload("res://workshop/reasoner.gd").unlimited_cards = true
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links"]
 	var stats = {"good": 0, "evil": 0}
 	var case_results: Array = []
+	var scale_cases: Array = []
 	for k in keys:
 		stats[k] = 0
 	for i in range(games):
 		var seed_v = first + i
 		var r = _play(seed_v, int(args.get("npcs", "7")), log_dir, args.has("echo-log"))
 		case_results.append(r["metrics"])
+		scale_cases.append(r["metrics"])
 		stats[r["winner"]] += 1
 		for k in keys:
 			stats[k] += r[k]
-		print("case %d: %s wins on day %d | exec good=%d evil=%d | kills=%d | lies=%d | noms=%d | pairs=%d | %s" %
-			[seed_v, r["winner"], r["days"], r["exec_good"], r["exec_evil"], r["kills"], r["lies"], r["nominations"], r["pairs"], r["reason"]])
+		print("case %d: %s wins on day %d | exec good=%d evil=%d | kills=%d | lies=%d | noms=%d | pairs=%d | legacy=%d | %s" %
+			[seed_v, r["winner"], r["days"], r["exec_good"], r["exec_evil"], r["kills"], r["lies"], r["nominations"], r["pairs"], r["metrics"].get("legacy_fallbacks", 0), r["reason"]])
 	if games > 1:
 		var gf = float(games)
 		print("\n%sSUMMARY over %d cases: good %d / evil %d (%.0f%%), avg days %.1f, wrongful executions %.2f/case, evil executed %.2f/case," %
@@ -63,6 +85,7 @@ func _init() -> void:
 		[summary["demon_identified"], summary["minion_identified"], summary["both_identified"], summary["identified_but_lost"], summary["demon_recorded"], summary["complete"]])
 	print("  wrongful executions %d/%d; player's stance: backed %d, opposed %d, mixed %d; good survivors in wins %s" %
 		[summary["executions_good"], summary["executions_total"], summary["wrongful_backed"], summary["wrongful_opposed"], summary["wrongful_mixed"], str(summary["saved_good_surviving_average"])])
+	_print_scale(scale_cases)
 	if args.has("results"):
 		var path = ProjectSettings.globalize_path(args["results"])
 		DirAccess.make_dir_recursive_absolute(path.get_base_dir())
@@ -71,7 +94,7 @@ func _init() -> void:
 			push_error("Cannot write results: " + path)
 			quit(1)
 			return
-		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "seed_start": first,
+		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "beliefs": "native" if native else "shared", "attention": "unlimited" if args.has("no-attention") else "budgeted", "seed_start": first,
 			"npcs": int(args.get("npcs", "7")), "rng_note": "Same seed matches setup; player actions can change later random draws.",
 			"summary": summary, "cases": case_results}, "\t"))
 		file.close()
@@ -80,22 +103,38 @@ func _init() -> void:
 
 func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictionary:
 	g = Game.new()
+	g.detailed_logging = trace_enabled
 	g.log_dir = log_dir.path_join("passive" if passive else "active")
 	rng.seed = seed_v * 7919
 	talked = {}
 	linked_pairs = {}
+	blocked_cmds = {}
 	_out(g.new_case(seed_v, npc_count))
+	if native:
+		g.set_workshop_effects(false)
 	if echo:
 		g.w.dlog.echo = true
 	var guard = 0
+	var scale_days: Array = []
+	var recorded_day = -1
 	while g.state != "over" and guard < 600:
 		guard += 1
+		if g.state == "night" and recorded_day != g.w.day:
+			recorded_day = g.w.day
+			scale_days.append(_scale_snapshot())
 		if not passive and g.state in ["meeting", "nomination", "night"]:
 			_record_theory()
 		var cmd = _decide()
+		if blocked_cmds.has(cmd):
+			cmd = _unblocked(cmd)
 		_out("\n> " + cmd)
-		_out(g.command(cmd))
+		var reply: String = g.command(cmd)
+		_out(reply)
+		if "Cannot present" in reply:
+			blocked_cmds[cmd] = true # never retry a blocked presentation
 	var w = g.w
+	if recorded_day != w.day:
+		scale_days.append(_scale_snapshot())
 	var r = {"winner": w.winner if w.winner != "" else "evil", "days": w.day, "reason": w.end_reason,
 		"exec_good": 0, "exec_evil": 0, "kills": 0, "lies": 0, "nominations": 0, "clemency": 0, "reveals": 0,
 		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0, "deductions": 0, "arguments": 0, "matched_links": 0, "links": 0}
@@ -139,7 +178,152 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	r["metrics"] = g.case_summary.duplicate(true) if not g.case_summary.is_empty() else Metrics.summarize(w, {}, false)
 	r["metrics"]["mode"] = "passive" if passive else "active"
 	r["metrics"]["guard_exhausted"] = guard >= 600 and g.state != "over"
+	r["metrics"]["beliefs"] = "native" if native else "shared"
+	r["metrics"]["suspicion_days"] = scale_days
+	r["metrics"]["votes"] = _vote_records()
+	var points = {}
+	for f in g.shared_fallbacks:
+		points[f.point] = points.get(f.point, 0) + 1
+	r["metrics"]["legacy_fallbacks"] = g.shared_fallbacks.size()
+	r["metrics"]["legacy_fallback_points"] = points
 	return r
+
+# ---------------------------------------------------------------- suspicion scale
+
+## One day's suspicion picture for every living good NPC (real minds only), read
+## against the truth. Uses the same bounded reads the simulation acts on.
+func _scale_snapshot() -> Dictionary:
+	var w = g.w
+	var npcs: Array = []
+	for n in w.living():
+		if n.is_evil():
+			continue
+		var others: Array = w.living().filter(func(o): return o != n)
+		if others.is_empty():
+			continue
+		others.sort_custom(func(a, b): return Mind.susp(n, a.id) > Mind.susp(n, b.id) if Mind.susp(n, a.id) != Mind.susp(n, b.id) else a.id < b.id)
+		var top = others[0]
+		var good_vals: Array = others.filter(func(o): return not o.is_evil()).map(func(o): return Mind.susp(n, o.id))
+		var evil: Array = []
+		for i in range(others.size()):
+			var o = others[i]
+			if o.is_evil():
+				evil.append({"id": o.id, "demon": o.role == "demon", "susp": Mind.susp(n, o.id), "action": Mind.action_susp(n, o.id), "rank": i + 1})
+		var top_action = 0.0
+		for o in others:
+			top_action = maxf(top_action, Mind.action_susp(n, o.id))
+		# Same formula as Mind._good_nomination_impl.
+		var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (Mind.trait_of(n, "confidence") - 0.5) * 2.0 - 0.5 * Mind.paranoia(w, n)
+		npcs.append({"id": n.id, "top": Mind.susp(n, top.id), "top_is_evil": top.is_evil(), "top_action": top_action,
+			"good_mean": _mean(good_vals), "evil": evil, "nomination_threshold": thr, "nomination_headroom": top_action - thr,
+			"top3": others.slice(0, 3).map(func(o): return o.id), "top3_evil": others.slice(0, 3).filter(func(o): return o.is_evil()).size()})
+	# Agreement: how far the rest of the good town shares each NPC's suspects.
+	for entry in npcs:
+		var me = w.by_id[entry.id]
+		var peers: Array = npcs.filter(func(o): return o.id != entry.id)
+		var top_id: String = entry.top3[0]
+		var shared_top: Array = peers.filter(func(o): return o.id != top_id).map(func(o): return Mind.susp(w.by_id[o.id], top_id))
+		var overlaps: Array = peers.map(func(o): return entry.top3.filter(func(id): return id in o.top3).size())
+		entry["peers_susp_of_my_top"] = _mean(shared_top)
+		entry["peers_same_top"] = peers.filter(func(o): return o.top3[0] == top_id).size() / maxf(peers.size(), 1.0)
+		entry["top3_overlap"] = _mean(overlaps)
+	return {"day": w.day, "living": w.living().size(), "npcs": npcs}
+
+## Every good NPC's vote evaluation (score, need) from the ordinary developer log,
+## so it works with --no-trace.
+func _vote_records() -> Array:
+	var out: Array = []
+	var current: String = ""  # votes follow their nomination entry
+	for e in g.w.dlog.entries:
+		if e["type"] == "nomination":
+			current = e.get("target", "")
+			continue
+		if e["type"] != "think" or e["data"].get("topic", "") != "vote" or not e["data"].has("need"):
+			continue
+		var voter = g.w.by_id.get(e["actor"])
+		var nominee = g.w.by_id.get(current)
+		if voter == null or voter.is_evil():
+			continue
+		out.append({"day": e["day"], "voter": e["actor"], "nominee": current,
+			"nominee_evil": nominee != null and nominee.is_evil(), "score": e["data"].get("total", 0.0),
+			"need": e["data"]["need"], "yes": e["data"].get("total", 0.0) >= e["data"]["need"]})
+	return out
+
+func _mean(values: Array) -> float:
+	if values.is_empty():
+		return 0.0
+	var t = 0.0
+	for v in values:
+		t += v
+	return t / values.size()
+
+## Per-day averages over every good NPC in every case.
+func _print_scale(cases: Array) -> void:
+	var by_day = {}
+	for c in cases:
+		for d in c.get("suspicion_days", []):
+			var k: int = d.day
+			if not by_day.has(k):
+				by_day[k] = {"n": 0, "top": 0.0, "top_evil": 0, "good": 0.0, "demon": 0.0, "demon_n": 0, "demon_first": 0, "headroom": 0, "action": 0.0,
+					"peer_susp": 0.0, "same_top": 0.0, "overlap": 0.0, "top3_evil": 0.0, "demon_top3": 0}
+			var b = by_day[k]
+			for n in d.npcs:
+				b.n += 1
+				b.top += n.top
+				b.action += n.top_action
+				b.good += n.good_mean
+				b.top_evil += 1 if n.top_is_evil else 0
+				b.headroom += 1 if n.nomination_headroom >= 0.0 else 0
+				b.peer_susp += n.peers_susp_of_my_top
+				b.same_top += n.peers_same_top
+				b.overlap += n.top3_overlap
+				b.top3_evil += n.top3_evil
+				for e in n.evil:
+					if e.demon:
+						b.demon += e.susp
+						b.demon_n += 1
+						b.demon_first += 1 if e.rank == 1 else 0
+						b.demon_top3 += 1 if e.rank <= 3 else 0
+	print("\n  SUSPICION SCALE (%s beliefs; good NPCs, end of day)" % ("native" if native else "shared"))
+	print("  day   NPCs  top   top+crowd  mean-good  demon  demon#1  top-is-evil  could-nominate")
+	var days: Array = by_day.keys()
+	days.sort()
+	for k in days:
+		var b = by_day[k]
+		var n = float(maxi(b.n, 1))
+		print("  %3d  %5d  %.3f  %.3f      %.3f      %.3f  %5.0f%%  %8.0f%%  %10.0f%%" % [k, b.n, b.top / n, b.action / n, b.good / n,
+			b.demon / maxf(b.demon_n, 1.0), 100.0 * b.demon_first / maxf(b.demon_n, 1.0), 100.0 * b.top_evil / n, 100.0 * b.headroom / n])
+	print("\n  AGREEMENT (good NPCs, end of day)")
+	print("  day  peers' susp of my top  peers with same top  top-3 overlap (of 3)  evil in my top 3  demon in top 3")
+	for k in days:
+		var b = by_day[k]
+		var n = float(maxi(b.n, 1))
+		print("  %3d  %12.3f  %18.0f%%  %17.2f  %16.2f  %13.0f%%" % [k, b.peer_susp / n, 100.0 * b.same_top / n, b.overlap / n,
+			b.top3_evil / n, 100.0 * b.demon_top3 / maxf(b.demon_n, 1.0)])
+	var votes = {"n": 0, "score": 0.0, "need": 0.0, "yes": 0, "evil_n": 0, "evil_yes": 0, "good_n": 0, "good_yes": 0}
+	for c in cases:
+		for v in c.get("votes", []):
+			votes.n += 1
+			votes.score += v.score
+			votes.need += v.need
+			votes.yes += 1 if v.yes else 0
+			if v.nominee_evil:
+				votes.evil_n += 1
+				votes.evil_yes += 1 if v.yes else 0
+			else:
+				votes.good_n += 1
+				votes.good_yes += 1 if v.yes else 0
+	if votes.n > 0:
+		print("  good NPC votes: %d, mean score %.3f vs need %.3f; yes on evil nominees %d/%d, on good nominees %d/%d" %
+			[votes.n, votes.score / votes.n, votes.need / votes.n, votes.evil_yes, votes.evil_n, votes.good_yes, votes.good_n])
+
+## A safe substitute for a presentation the game already blocked.
+func _unblocked(cmd: String) -> String:
+	if cmd.begins_with("accuse"):
+		return "accuse"
+	if cmd.begins_with("present") or cmd.begins_with("defend"):
+		return "done" if g.town_quiet else "wait"
+	return "ask today"
 
 ## Record the bot's existing heuristic ranking without consulting hidden identities.
 ## This adds no simulation RNG draws and doesn't alter its decisions.
@@ -203,8 +387,6 @@ func _scores() -> Dictionary:
 							sc_n = Mind.night_sighting_scale(w, null, subj[0], c.get("block", ""), c.get("day", -1))
 						add = (0.6 if src == "player" else 0.3) * sc_n * 2.0
 				"refusal":
-					add = 0.15
-				"accusation", "opinion":
 					add = 0.15
 				"claim":
 					var role: String = c.get("role", "")
@@ -298,7 +480,7 @@ func _decide() -> String:
 				var best_c = 0
 				var best_v = 0.25
 				for c in g.board:
-					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and not (c["kind"] in ["vote", "secret", "deduction", "conversation", "home", "haunt"]):
+					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and not (c["kind"] in ["vote", "secret", "deduction", "conversation", "home", "haunt"]) and g._presentation_rejection(c) == "":
 						var v: float = Mind.card_strength(w, c, ts[0])
 						if v > best_v:
 							best_v = v
@@ -383,7 +565,7 @@ static func _parse(argv: PackedStringArray) -> Dictionary:
 ## Look for a contradiction among recent cards; file the explanation blaming the most
 ## suspicious person. Returns the deduction card number, or 0.
 func _find_or_file_deduction() -> int:
-	var recent: Array = g.board.filter(func(c): return not (c["kind"] in ["deduction", "home", "haunt"])).slice(-14)
+	var recent: Array = g.board.filter(func(c): return not (c["kind"] in ["deduction", "home", "haunt"]) and g._presentation_rejection(c) == "").slice(-14)
 	var sc = _scores()
 	for i in range(recent.size()):
 		for j in range(i + 1, recent.size()):
@@ -413,6 +595,6 @@ func _find_or_file_deduction() -> int:
 
 func _latest_deduction() -> int:
 	for i in range(g.board.size() - 1, -1, -1):
-		if g.board[i]["kind"] == "deduction":
+		if g.board[i]["kind"] == "deduction" and g._presentation_rejection(g.board[i]) == "":
 			return g.board[i]["n"]
 	return 0

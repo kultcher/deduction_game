@@ -23,11 +23,11 @@ const TRACE_SCHEMA = 1
 const TRACE_FIELDS = ["name", "traits", "role", "alignment", "alive", "death_day",
 	"death_cause", "poisoned", "secret_mod", "lover", "red_herring", "loc",
 	"trust", "trust_cap", "trust_at_reconsider", "npc_trust", "suspicion", "sus_why",
-	"sus_src", "pressure", "consensus_applied", "pressed_today", "role_guesses",
+	"sus_src", "pressure", "consensus_pressure", "pressed_today", "role_guesses",
 	"claimed_role", "claim_public", "max_tier", "told_readings", "secret_known",
 	"secret_spread", "secret_spread_by_npc", "beliefs", "info_log", "known_claims",
 	"known_secrets", "hearsay", "protect_pref", "spare_pref", "believed_roles",
-	"discounted", "honesty", "ledger", "cleared", "used_facts"]
+	"discounted", "honesty", "ledger", "workshop_state", "cleared", "used_facts"]
 var detailed = false
 var stream = "real"
 var trace_path = ""

@@ -41,6 +41,7 @@ func _init() -> void:
 
 func _game(sd: int, size: int = 7):
 	var g = Game.new()
+	g.workshop_effects = false # Isolate role generation and native mechanics during migration.
 	g.log_dir = "user://test_logs"
 	g.new_case(sd, size)
 	return g

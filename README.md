@@ -16,6 +16,10 @@ This README covers running and playing.
 
 ## Running it
 
+**Case Workshop (in progress):** choose **More > Case Workshop** for the red-string case
+board. The reasoning behind it is being rebuilt: see [the plan](docs/CASE_REASONING.md)
+and [the earlier findings](docs/CASE_WORKSHOP_FINDINGS.md).
+
 Requires Godot 4.4+ (tested with 4.4.1).
 
 **In the editor:** open the project and press Play. Pick a town size (7 or 10 townsfolk)

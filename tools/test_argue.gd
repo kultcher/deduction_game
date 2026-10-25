@@ -11,6 +11,7 @@ var fails = 0
 
 func _init() -> void:
 	var g = Game.new()
+	g.workshop_effects = false # Explicit legacy baseline before testing migration.
 	g.log_dir = "user://test_logs"
 	g.new_case(4242)
 	var w = g.w
