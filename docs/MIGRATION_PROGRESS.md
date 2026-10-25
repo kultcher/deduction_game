@@ -146,3 +146,14 @@ Existing local Godot config/UID changes are outside these commits.
   added `run_replay_54875.py` to reject printed script errors, and retained logs under
   `defences-fixed`, `seed1007-after3`, `item-3-fixed` for review. Next passive chunk
   must verify the whole sample; end-of-list full-suite/trace checks remain.
+- **4:** unnamed readings and unverified Medium originals become reduced teller
+  testimony using the existing RELAY_WEIGHT; no latent source/gift assignment.
+  Teller poison does not break ordinary testimony. Identified original readings
+  keep their verified relay path; acknowledgement still binds exact receipts.
+  Missing original time/content, unattributed activity/protection identities and
+  opinions stay explicitly labelled context rather than supplying invented facts.
+  Positive recounted Night Watch observations remain weak sightings. Anonymous
+  compatibility entries are parked only with exact receipt proof. Relay (8 checks),
+  provenance, Medium, Psychologist and sharing suites pass. Replay: 9 shared,
+  0 fallback, 0 impossible / 89, unchanged 3/5; presentation 3108 ms versus the
+  preceding valid 3022 ms. Evidence: `logs/mechanics-support/relays`, `item-4`.

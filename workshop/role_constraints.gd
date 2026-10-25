@@ -77,7 +77,7 @@ static func seer_flag(cards: Array) -> bool:
 ## routes: Activity.routes(view, cards, answers, knowledge) if already computed. It
 ## doesn't depend on the world, so fits_table computes it once for all worlds.
 static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null, bluffs: bool = false) -> bool:
-	cards = cards.duplicate()
+	cards = cards.filter(func(card): return not card.get("testimony_only", false))
 	var visits = {}
 	for card in cards.duplicate():
 		if card.has("relay_source") and not card.get("quoted", false):
@@ -285,7 +285,7 @@ static func bluff_weights(view: Dictionary, universe: Array, cards: Array) -> Pa
 	var declared: Array = []  # source bit per distinct declaration
 	var seen = {}
 	for card in cards:
-		if card.kind not in ["report", "claim"] or card.get("quoted", false) or card.get("inferred", false):
+		if card.kind not in ["report", "claim"] or card.get("quoted", false) or card.get("inferred", false) or card.get("testimony_only", false):
 			continue
 		var i: int = ids.find(card.source)
 		var key: String = card.source + "|" + str(card.get("role", ""))
@@ -308,7 +308,7 @@ static func _temporal_bluff_weights(view: Dictionary, universe: Array, cards: Ar
 	var time = preload("res://workshop/chronology.gd")
 	var declarations = {}
 	for card in cards:
-		if card.kind in ["report", "claim"] and not card.get("quoted", false) and not card.get("inferred", false):
+		if card.kind in ["report", "claim"] and not card.get("quoted", false) and not card.get("inferred", false) and not card.get("testimony_only", false):
 			var key: String = time.source_key(view, card) + ":" + card.role
 			if not declarations.has(key) or float(card.get("hearing_weight", 1.0)) > float(declarations[key].get("hearing_weight", 1.0)):
 				declarations[key] = card

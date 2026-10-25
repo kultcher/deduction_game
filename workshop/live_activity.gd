@@ -30,7 +30,7 @@ static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) ->
 	for card in cards:
 		if card.get("relay_source") == person and not card.get("quoted", false):
 			return "medium"
-		if not card.get("quoted", false) and card.source == person and card.kind in ["claim", "report"]:
+		if not card.get("quoted", false) and not card.get("testimony_only", false) and card.source == person and card.kind in ["claim", "report"]:
 			return card.role
 	return ""
 

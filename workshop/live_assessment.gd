@@ -39,7 +39,11 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			result.issues.append("An %s is not evidence. Cite the supporting observations or readings." % e.kind)
 			continue
 		if e.kind == "info" and e.content.get("anonymous", false):
-			result.issues.append("The anonymous %s reading has no identified original source. A named acknowledgement is needed before shared assessment." % C.role_name(e.content.get("role", "")))
+			var testimony = testimony_card(e, snapshot)
+			if testimony.is_empty():
+				result.issues.append("The unnamed reading needs an identified teller and a structured account.")
+			else:
+				cards.append(testimony)
 			continue
 		if e.kind == "claim" and e.content.get("role") in C.GOOD_ROLES and e.source in snapshot.people.map(func(p): return p.id) and e.subjects == [e.source]:
 			cards.append({"id": e.id, "fact_id": e.fact_id, "kind": "claim", "source": e.source,
@@ -56,9 +60,11 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 				continue
 			var relay = medium_card(e, snapshot)
 			if relay.is_empty():
-				if e.id not in snapshot.selected:
-					continue # Independent unsupported knowledge keeps its native owner.
-				result.issues.append("Medium relay needs supported original evidence, an original observation time, and a publicly deceased source. Nested Medium chains and opinions remain unsupported.")
+				relay = testimony_card(e, snapshot)
+				if relay.is_empty():
+					result.issues.append("Medium account needs a structured non-opinion item and an identified teller.")
+				else:
+					cards.append(relay)
 			else:
 				cards.append(relay)
 			continue
@@ -403,6 +409,48 @@ static func medium_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		"learned_at": e.learned_at if e.learned_at != null else e.observed_at, "acquired_day": e.observed_at.day}, true)
 	return card
 
+## Unidentified/uncorroborated originals are the teller's fallible account. No
+## unknown gift holder is added to the domain and the teller does not claim that gift.
+static func testimony_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
+	var teller: String = e.content.get("teller", "") if e.content.get("anonymous", false) else e.source
+	if teller not in snapshot.people.map(func(p): return p.id):
+		return {}
+	var role: String = e.content.get("role", "")
+	var data: Dictionary = e.content.get("data", {})
+	var observed: Dictionary = e.observed_at
+	if role == "medium":
+		var item: Dictionary = data.get("item", {})
+		if item.get("type") == "suspicion":
+			return {}
+		if item.get("type") == "reading":
+			var entry: Dictionary = item.get("entry", {})
+			role = entry.get("role", "")
+			data = entry.get("data", {})
+			observed = {"day": int(entry.get("day", -1)), "phase": Evidence.stamp({"day": entry.get("day", -1), "phase": entry.get("phase", 3)}).phase}
+		else:
+			role = ""
+	var context = {"id": e.id, "fact_id": e.fact_id, "source": teller, "kind": "context", "context_kind": "unattributed_report", "role": "", "data": {}, "observed_at": e.observed_at, "text": e.text,
+		"testimony_only": true, "context_note": "Original evidence or observation time is unestablished; this account is context only."}
+	if role == "psychologist":
+		context.context_note = "Relayed opinions are context, not alignment evidence."
+		return context
+	if role not in ROLES or role == "medium" or observed.day < 0 or observed.phase == "unknown":
+		return context
+	var receipt: Dictionary = e.duplicate(true)
+	receipt.source = teller
+	receipt.observed_at = observed
+	receipt.content.role = role
+	receipt.content.data = data
+	if not reading_valid(receipt, snapshot.people.map(func(p): return p.id), snapshot.rules.modifier_options):
+		return context
+	if role in ["nightwatch", "lamplighter", "veteran", "martyr", "sexton"]:
+		if role == "nightwatch" and not data.seen.is_empty():
+			context.merge({"kind": "sighting", "subject": data.seen[0], "subjects": data.seen.duplicate(), "night": observed.day, "block": data.block, "hearing_weight": C.RELAY_WEIGHT}, true)
+		return context # No identity/visit/protection proof from an unattributed original.
+	context.merge({"kind": "report", "role": role, "data": data.duplicate(true), "night": -1, "observed_at": observed,
+		"reported_at": Solver.TimeModel.statement_time(e), "provenance": e.provenance.duplicate(true)}, true)
+	return context
+
 ## Explicit capability gate: no graph feature may silently disappear when the
 ## restricted live evaluator replaces the native argument path.
 static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
@@ -580,7 +628,7 @@ static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
 		return ["A role-declaration question needs that person's included claim or reading of the named good gift."]
 	if c.type in ["lied", "truthful", "misled", "unreliable"]:
 		var card = Solver.card_by_id(view, c.get("report", ""))
-		if card.get("kind") != "report" or card.source != c.target or card.id not in value.cards or card.has("relay_source"):
+		if card.get("kind") != "report" or card.source != c.target or card.id not in value.cards or card.has("relay_source") or card.get("testimony_only", false):
 			return ["A reading question needs one identified original report by its target; select the report being questioned."]
 	return []
 
@@ -608,6 +656,8 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 			reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.relay_source, card.relay_observed_at.day], 0.0), src.discounted.get(card.relay_source + ":*", 0.0))
 		if card.id in src.get("disowned_reports", []):
 			reliability[card.id] = 0.0
+		elif card.get("testimony_only", false):
+			reliability[card.id] = C.RELAY_WEIGHT
 	var result = {"id": src.id, "name": src.name, "trust": src.trust, "confidence": src.confidence,
 		"insight": src.insight, "reasoning_mode": src.get("reasoning_mode", "full"),
 		"confidence_mode": src.get("confidence_mode", "scale"), "theories": src.get("theories", {}).duplicate(true),

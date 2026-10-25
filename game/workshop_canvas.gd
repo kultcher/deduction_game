@@ -16,6 +16,10 @@ static func view(g) -> Dictionary:
 		var activity = Assess.activity_card(receipt, snapshot)
 		if receipt.kind == "info" and content.get("role") == "medium":
 			activity = Assess.medium_card(receipt, snapshot)
+			if activity.is_empty():
+				activity = Assess.testimony_card(receipt, snapshot)
+		elif receipt.kind == "info" and content.get("anonymous", false):
+			activity = Assess.testimony_card(receipt, snapshot)
 		if not activity.is_empty():
 			note = "Adapter available · experimental joint activity/trace comparison"
 			if activity.kind in ["context", "location"]:
@@ -41,6 +45,8 @@ static func view(g) -> Dictionary:
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
 			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; transmission/source modifiers need separate attribution" if activity.has("relay_source") else note
+			if activity.get("testimony_only", false):
+				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Weak teller testimony · no original-source identity or gift proof"
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
 	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": "Original alignment",

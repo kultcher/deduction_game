@@ -129,6 +129,12 @@ world. Switch it to per-world integer keys and `Solver.report_table` lookups fir
 
 ## 4. Unnamed relays, and Medium relays without original evidence
 
+**Implemented Oct 25 (Codex).** Identified tellers supply reduced-weight testimony
+without an anonymous gift holder or a gift claim by the teller. Missing original
+timing/structured content is labelled context rather than inventing evidence or
+falling the whole refresh back. Named acknowledgement and verified Medium routes
+retain their existing exact identity rules. See MIGRATION_PROGRESS.
+
 **State:** "word reached me from the Seer" without a named source is an explicit
 fallback (B3, B8). Bot games also show frequent belief-refresh fallbacks: "Medium relay
 needs supported original evidence, an original observation time, and a publicly

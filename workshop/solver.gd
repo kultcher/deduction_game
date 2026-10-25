@@ -245,6 +245,8 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 	# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
 	var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.source,
 		card.get("role", ""), card.observed_at, card.data, positive, positive_blocks]
+	if card.get("testimony_only", false):
+		inputs.append([true, card.get("reported_at")])
 	var key = hash(inputs)
 	if not report_matches.has(key) or report_matches[key].inputs != inputs:
 		if report_matches.size() > 512:
@@ -257,6 +259,11 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 		var of: PackedInt32Array = groups.of
 		var answers = PackedByteArray()
 		answers.resize(rep.size())
+		if card.get("testimony_only", false) and card.kind == "report":
+			for i in range(universe.size()):
+				accepted[i] = 1 if source_valid(view, universe[i], card) and _testimony_content(view, universe[i], card) else 0
+			report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
+			return accepted
 		if card.kind == "report":
 			# A valid source (vectorised), then the content where it matters.
 			var valid: PackedByteArray = valid_table(view, card)
@@ -318,6 +325,10 @@ static func valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
 	t.fill(0)
 	if card.kind != "report":
 		t.fill(1)
+		return t
+	if card.get("testimony_only", false):
+		for i in range(universe.size()):
+			t[i] = 1 if source_valid(view, universe[i], card) else 0
 		return t
 	var live: bool = Domain.live(view)
 	# Gift timing and the source being alive don't vary by world.
@@ -381,6 +392,8 @@ static func tabled(card: Dictionary) -> bool:
 static func source_valid(view: Dictionary, world: Dictionary, card: Dictionary) -> bool:
 	if card.kind != "report":
 		return true
+	if card.get("testimony_only", false):
+		return not TimeModel.evil_at(view, world, card.source, TimeModel.statement_time(card))
 	if TimeModel.evil_at(view, world, card.source, card.observed_at):
 		return false
 	if Domain.live(view):
@@ -547,8 +560,34 @@ static func _report_holds(view: Dictionary, world: Dictionary, card: Dictionary,
 		return answer.get("positive", []).is_empty() or view.people[world.get("converted", -1)].id in answer.positive
 	if card.kind != "report":
 		return true
+	if card.get("testimony_only", false):
+		return source_valid(view, world, card) and _testimony_content(view, world, card)
 	# An accepted healthy gift assumes a good source at the reading's time.
 	return source_valid(view, world, card) and _report_content(view, world, card, answer)
+
+## Cheap compatibility of the recounted content, with no anonymous role holder.
+## This is weak testimony, not a faithful original reading or a role proof.
+static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictionary) -> bool:
+	_ensure_people(view)
+	var data: Dictionary = card.data
+	var pair = 0
+	for person in data.get("pair", []):
+		pair |= 1 << person_index(view, person)
+	var evil: int = world.evil
+	if world.has("converted") and TimeModel.evil_index(view, world, world.converted, card.observed_at):
+		evil |= 1 << int(world.converted)
+	match card.role:
+		"seer":
+			var demon: bool = world.get("demon", -1) >= 0 and (pair & (1 << int(world.demon))) != 0
+			return demon or (pair & ~evil) != 0 if data.yes else not demon
+		"clerk": return (pair & ~world.evil) != 0
+		"archivist": return (pair & world.evil & ~(1 << int(world.get("demon", -1)))) != 0
+		"gravedigger":
+			var target: int = person_index(view, data.executed)
+			var reads_evil: bool = (world.evil & (1 << target)) != 0 or world.marked == target
+			return reads_evil if Domain.C.ROLES.get(data.role, {}).get("align") == "evil" else (world.evil & (1 << target)) == 0
+		"rumormonger": return world.get("modifier", "marked") == data.secret and (int(world.get("holders", 1 << world.marked)) & pair) != 0
+	return _report_content(view, world, card, {})
 
 ## What a report says, given a valid source (see source_valid): does it hold here?
 static func _report_content(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:

@@ -69,7 +69,7 @@ static func claims_compatible(cards: Array, knowledge: Dictionary) -> bool:
 	var sources = {}
 	var roles = {}
 	for card in cards:
-		if card.kind not in ["report", "claim"] or card.get("quoted", false):
+		if card.kind not in ["report", "claim"] or card.get("quoted", false) or card.get("testimony_only", false):
 			continue
 		if sources.has(card.source) and sources[card.source] != card.role:
 			return false

@@ -45,7 +45,7 @@ func _premise_details(node: Dictionary) -> void:
 		choice.item_selected.connect(func(i): conclusion.role = roles[i]; _edit())
 		_label(case_box, "Judges this person's included gift declaration. It does not assign an unclaimed role.", 16)
 	if conclusion.get("type") in ["lied", "truthful", "misled", "unreliable"]:
-		var reports: Array = board.view.cards.filter(func(card): return card.kind == "report" and card.source == conclusion.target and not card.has("relay_source"))
+		var reports: Array = board.view.cards.filter(func(card): return card.kind == "report" and card.source == conclusion.target and not card.has("relay_source") and not card.get("testimony_only", false))
 		var choice = _option(case_box, ["Choose the report being questioned"] + reports.map(func(card): return card.text))
 		choice.select(1 + reports.find(reports.filter(func(card): return card.id == conclusion.get("report", ""))[0]) if reports.any(func(card): return card.id == conclusion.get("report", "")) else 0)
 		choice.item_selected.connect(func(i):

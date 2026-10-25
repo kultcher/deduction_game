@@ -182,7 +182,12 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		if kind == "tell" and meta.get("workshop_card", {}).get("kind") == "deduction" and not facts.is_empty():
 			issues.append("Unresolved deduction wrapper in old card testimony: " + eid)
 		var reading_receipts: Dictionary = meta.get("workshop_receipts", {})
-		if kind == "reading" and coarse_aliases.has(eid) and reading_receipts.size() == 1 and reading_receipts.keys()[0] in coarse_aliases[eid]:
+		if kind == "reading" and reading_receipts.values().any(func(receipt): return receipt.get("content", {}).get("anonymous", false)):
+			if reading_receipts.keys().all(func(id): return facts.has(id)):
+				owned[eid] = true # Exact receipt proof; do not infer the redacted source.
+			else:
+				issues.append("An anonymous hearing has an unresolved original receipt.")
+		elif kind == "reading" and coarse_aliases.has(eid) and reading_receipts.size() == 1 and reading_receipts.keys()[0] in coarse_aliases[eid]:
 			# Even an old coarse key is unambiguous when its original receipt was
 			# recorded exactly. Other statements on that day do not erase this proof.
 			owned[eid] = true
@@ -251,13 +256,15 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		# trust discounts only facts whose sole route is the player's presentation.
 		var player_weight = clampf(0.5 + prepared.listener.trust, 0.0, 1.0)
 		prepared.listener.trust = 0.5
+		var adapted = {}
+		for card in prepared.view.cards:
+			adapted[card.id] = card
 		for id in facts:
 			for owner in owners[id]:
 				if owner.begins_with("defence:") and owners[id].size() == 1:
 					var entry: Dictionary = ledger[owner.trim_prefix("defence:")]
-					for card in prepared.view.cards:
-						if card.id == id:
-							card["hearing_weight"] = clampf(entry.weight * entry.meta.get("hearing_scale", 1.0), 0.0, 1.0)
+					if adapted.has(id):
+						adapted[id]["hearing_weight"] = clampf(entry.weight * entry.meta.get("hearing_scale", 1.0), 0.0, 1.0)
 			var hearing = 0.0
 			var shared: bool = false
 			for owner in owners[id]:
@@ -269,9 +276,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			if shared and facts[id].kind == "sighting":
 				if "learned" in owners[id] and facts[id].source == input.listener.id:
 					hearing = 1.0
-				for card in prepared.view.cards:
-					if card.id == id:
-						card["hearing_weight"] = hearing
+				if adapted.has(id):
+					adapted[id]["hearing_weight"] = hearing
 			if facts[id].kind not in ["info", "claim"]:
 				continue
 			var weight = player_weight
@@ -285,7 +291,11 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 					weight = hearing_weight # Several paths retain the strongest hearing once.
 			if shared:
 				weight = maxf(weight if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:") or owner.begins_with("case:")) else 0.0, hearing)
-			prepared.listener.reading_reliability[id] *= weight
+			var testimony: bool = adapted.get(id, {}).get("testimony_only", false)
+			if testimony:
+				prepared.listener.reading_reliability[id] = minf(prepared.listener.reading_reliability[id], weight)
+			else:
+				prepared.listener.reading_reliability[id] *= weight
 		# Presentation weights add per-report uncertainty; enforce the budget AFTER
 		# introducing those dimensions as well as during ordinary preparation.
 		var sources = {}
@@ -303,9 +313,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 static func supported(receipt: Dictionary) -> bool:
 	if receipt.get("kind") == "info" and receipt.get("content", {}).get("role") == "medium":
 		var item: Dictionary = receipt.content.get("data", {}).get("item", {})
-		if item.get("type") == "reading":
-			return item.get("entry", {}).get("role") in Assess.ROLES and item.entry.role != "medium"
-		return item.get("type") in ["sighting", "home", "guard"] and item.get("night", -1) >= 0
+		return item.get("type") in ["reading", "sighting", "home", "guard"]
 	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") == "sighting" and receipt.observed_at.phase in ["morning", "afternoon", "evening", "night"]) or (receipt.get("kind") == "alibi" and receipt.observed_at.phase == "night") or receipt.kind in ["conversation", "home", "haunt", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint", "vote"]
 
 static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) -> Array:
@@ -384,6 +392,8 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 	var prepared: Dictionary = plan.prepared.duplicate(true)
 	prepared.listener.suspicion = suspicion.duplicate(true)
 	for card in prepared.view.cards:
+		if card.get("testimony_only", false):
+			continue # The teller's testimony is not a gift that poison can break.
 		if card.has("relay_source"):
 			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
 			var relay_source: String = card.relay_source
