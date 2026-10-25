@@ -68,13 +68,16 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				note = "Together these readings exclude the Demon from that pair. A Red Herring or Marked registration can mislead an honest Seer without a broken gift."
 			elif not supported:
 				note = "A Red Herring or Marked registration could mislead an honest Seer. This modifier alone does not establish that explanation."
+		var hearing: float = clampf(float(challenge.get("weight", 1.0)), 0.0, 1.0)
+		accuracy_agreement *= hearing
+		multiplier = 1.0 - hearing * (1.0 - multiplier)
 		var cause_agreement: float = accuracy_agreement
 		if challenge.mode == "lying":
 			# Discrepancy alone does not identify the dishonest source. Disposition
 			# can favor that hypothesis, but cannot create evidence for it.
 			cause_agreement *= 1.0 - quality(listener, report.source)
 			if report.source != listener.id and report.role == listener.knowledge.get("own_role", ""):
-				cause_agreement = 1.0 # firsthand knowledge of a unique gift claim
+				cause_agreement = hearing # firsthand knowledge of a unique gift claim
 				note = "They claim the unique gift I know I hold. Impairment cannot explain that role claim."
 			if report.source in listener.knowledge.good:
 				cause_agreement = 0.0

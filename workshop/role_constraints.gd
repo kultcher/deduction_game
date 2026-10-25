@@ -279,6 +279,8 @@ static func _matching(masks: Array, occupied: int) -> bool:
 static func bluff_weights(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
 	if view.get("chronology", {}).has("curse"):
 		return _temporal_bluff_weights(view, universe, cards)
+	if cards.any(func(c): return c.has("hearing_weight") and c.kind in ["claim", "report"]):
+		return _temporal_bluff_weights(view, universe, cards)
 	var ids: Array = view.people.map(func(p): return p.id)
 	var declared: Array = []  # source bit per distinct declaration
 	var seen = {}
@@ -307,13 +309,15 @@ static func _temporal_bluff_weights(view: Dictionary, universe: Array, cards: Ar
 	var declarations = {}
 	for card in cards:
 		if card.kind in ["report", "claim"] and not card.get("quoted", false) and not card.get("inferred", false):
-			declarations[time.source_key(view, card) + ":" + card.role] = card
+			var key: String = time.source_key(view, card) + ":" + card.role
+			if not declarations.has(key) or float(card.get("hearing_weight", 1.0)) > float(declarations[key].get("hearing_weight", 1.0)):
+				declarations[key] = card
 	var out = PackedFloat64Array()
 	out.resize(universe.size())
 	for i in range(universe.size()):
 		var weight = 1.0
 		for card in declarations.values():
 			if time.evil_at(view, universe[i], card.source, time.statement_time(card)):
-				weight *= BLUFF_WEIGHT
+				weight *= lerpf(1.0, BLUFF_WEIGHT, float(card.get("hearing_weight", 1.0)))
 		out[i] = weight
 	return out

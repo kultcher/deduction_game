@@ -81,6 +81,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			for receipt in entry.meta.get("workshop_receipts", {}).values():
 				if supported(receipt):
 					_add(facts, owners, receipt, "share:" + eid)
+		if entry.get("meta", {}).get("kind") == "defence" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
+			_add(facts, owners, entry.meta.workshop_card, "defence:" + eid)
 	for key in presentations:
 		var presented: Dictionary = presentations[key]
 		for argument in presented.arguments:
@@ -112,6 +114,16 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 					_add(facts, owners, receipt, "case:" + str(key))
 				else:
 					quotations[receipt.id] = receipt.duplicate(true)
+	for entry in ledger.values():
+		var meta: Dictionary = entry.get("meta", {})
+		if meta.get("kind") != "defence" or meta.get("scope", {}).get("type") != "challenge":
+			continue
+		var scope: Dictionary = meta.scope
+		if not facts.has(scope.reading):
+			continue # A bare objection cannot invent the report or grounds for it.
+		var hearing: float = clampf(entry.weight * meta.get("hearing_scale", 1.0), 0.0, 1.0)
+		if not reading_challenges.has(scope.reading) or hearing > reading_challenges[scope.reading].get("weight", 1.0):
+			reading_challenges[scope.reading] = {"mode": scope.mode, "weight": hearing, "supports": facts.keys().filter(func(id): return id != scope.reading)}
 	input.evidence = facts.values()
 	input.selected = facts.keys()
 	input.private_evidence = input.private_evidence.filter(func(id): return facts.has(id))
@@ -150,6 +162,9 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			# Incomplete relays are explicitly excluded by the delivery log. Neither
 			# their wrapper label nor its native +.1 may masquerade as evidence.
 			owned[eid] = true
+			continue
+		if kind == "defence":
+			owned[eid] = true # Claims/challenges are judged above; pleas/rivals are speech.
 			continue
 		var curse: Dictionary = prepared.view.get("chronology", {}).get("curse", {})
 		if kind == "event" and not curse.is_empty() and eid == "curse:%d" % (int(curse.from) / 4) and entry.get("effects", []).all(func(effect): return effect[0] in curse.yes_voters and is_equal_approx(float(effect[1]), 0.15)):
@@ -237,6 +252,12 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var player_weight = clampf(0.5 + prepared.listener.trust, 0.0, 1.0)
 		prepared.listener.trust = 0.5
 		for id in facts:
+			for owner in owners[id]:
+				if owner.begins_with("defence:") and owners[id].size() == 1:
+					var entry: Dictionary = ledger[owner.trim_prefix("defence:")]
+					for card in prepared.view.cards:
+						if card.id == id:
+							card["hearing_weight"] = clampf(entry.weight * entry.meta.get("hearing_scale", 1.0), 0.0, 1.0)
 			var hearing = 0.0
 			var shared: bool = false
 			for owner in owners[id]:

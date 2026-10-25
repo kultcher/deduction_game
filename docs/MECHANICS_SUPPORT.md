@@ -104,6 +104,12 @@ underlying fact. This is likely the largest remaining cause of the town disagree
 
 ## 3. Defence moves as claims and challenges
 
+**Implemented Oct 25 (Codex), pending the next passive chunk.** The user clarified
+that legacy strength/regard becomes hearing weight, while the shared posterior
+sets the suspicion change. Native bonuses are parked. Gift/secret claims and
+specific-reading challenges are canonical; pleas/rival suggestions remain speech.
+See MIGRATION_PROGRESS for the report-content hard-gate fix and flagged runtime cost.
+
 **State:** daily stacking is fixed (stable semantic identities), but the moves still go
 through the legacy route (C2).
 

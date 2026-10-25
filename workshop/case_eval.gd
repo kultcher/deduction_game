@@ -702,9 +702,26 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		which.append(c)
 	var live: bool = Domain.live(view)
 	var t: PackedByteArray = Solver.Roles.fits_table(view, reps, cards, knowledge, {}, live)
+	var declarations = PackedByteArray()
+	if live and t.has(0) and cards.any(func(card): return card.kind == "report"):
+		var claims: Array = []
+		for card in cards:
+			var claim: Dictionary = card
+			if card.kind == "report":
+				claim = card.duplicate()
+				claim.kind = "claim"
+				claim.data = {}
+			claims.append(claim)
+		declarations = Solver.Roles.fits_table(view, reps, claims, knowledge, {}, true)
 	var weights: PackedFloat64Array = Solver.Roles.bluff_weights(view, reps, cards) if live else PackedFloat64Array()
 	for x in range(which.size()):
-		out[which[x]] = float(t[x]) * (weights[x] if live else 1.0)
+		var content: float = float(t[x])
+		if content == 0.0 and not declarations.is_empty() and declarations[x] != 0:
+			# A joint report-content contradiction can be an erroneous reading too.
+			# Identity/public constraints remain hard; never erase the whole view
+			# merely because several claimed Seer results share no exact Red Herring.
+			content = DEFAULT_ERR
+		out[which[x]] = content * (weights[x] if live else 1.0)
 	return out
 
 ## Joint facts about the reports, for one listener:

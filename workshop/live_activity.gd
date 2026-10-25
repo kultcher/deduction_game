@@ -18,8 +18,10 @@ static func relevant(cards: Array) -> Array:
 ## differ only in other readings (Dowser, Surveyor, Clerk...) share one cache entry.
 static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionary = {}, include_context: bool = false) -> Array:
 	var roles: Array = []
+	var weighted: bool = cards.any(func(c): return c.kind in ["claim", "report"] and c.has("hearing_weight"))
 	for person in view.people:
-		roles.append(role_of(cards, person.id, knowledge))
+		var role: String = role_of(cards, person.id, knowledge)
+		roles.append([role, role_hearing(cards, person.id, role)] if weighted else role)
 	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (c.kind == "report" and c.role in ["nightwatch", "lamplighter", "veteran"])), roles]
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
@@ -31,6 +33,13 @@ static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) ->
 		if not card.get("quoted", false) and card.source == person and card.kind in ["claim", "report"]:
 			return card.role
 	return ""
+
+static func role_hearing(cards: Array, person: String, role: String) -> float:
+	var strength = 0.0
+	for card in cards:
+		if not card.get("quoted", false) and card.source == person and card.get("role", "") == role and card.kind in ["claim", "report"]:
+			strength = maxf(strength, float(card.get("hearing_weight", 1.0)))
+	return strength
 
 static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Array, knowledge: Dictionary) -> Array:
 	if not History.alive_at_night(view, person.id, night):
@@ -126,7 +135,7 @@ static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, kno
 				continue
 			var valid = true
 			for card in cards:
-				if card.get("night", -1) != int(night_key) or card.get("quoted", false) or card.get("role") != "lamplighter":
+				if card.kind != "report" or card.get("night", -1) != int(night_key) or card.get("quoted", false) or card.get("role") != "lamplighter":
 					continue
 				var source: int = view.people.map(func(p): return p.id).find(card.source)
 				if _count(mask & ~(1 << source)) != card.data.count or not answers.get(card.id, {}).get("positive", []).all(func(id): return mask & (1 << view.people.map(func(p): return p.id).find(id))):
@@ -221,6 +230,9 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 		{"kind": "gift", "weight": 0.7 if gift else 0.15}, {"kind": "secret", "weight": 0.1}]
 	if alignment in ["good", "converted"] and role != "" and not gift:
 		profiles = [{"kind": "ordinary", "weight": 0.9}, {"kind": "secret", "weight": 0.1}]
+	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.source == person.id and c.has("hearing_weight")):
+		var strength: float = role_hearing(cards, person.id, role)
+		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, 0.2 if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, 0.7 if gift else 0.0, strength)}, {"kind": "secret", "weight": 0.1}]
 	# Each night's incident cards, deduplicated once in their original order.
 	var reports_by_night: Array = []
 	for night in nights:
@@ -276,8 +288,10 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 static func _profile_paths(view: Dictionary, person: Dictionary, night: int, profile: String, cards: Array) -> Array:
 	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
 	var rate: float = rates[profile]
-	if profile == "ordinary" and cards.any(func(c): return c.kind == "secret_claim" and not c.get("quoted", false) and c.subject == person.id and night >= c.applies.from and night <= c.applies.through):
-		rate = rates.secret # Existing private-errand rate, for this claimed night only.
+	if profile == "ordinary":
+		for card in cards:
+			if card.kind == "secret_claim" and not card.get("quoted", false) and card.subject == person.id and night >= card.applies.from and night <= card.applies.through:
+				rate = maxf(rate, lerpf(float(rates.ordinary), float(rates.secret), float(card.get("hearing_weight", 1.0))))
 	if not History.alive_at_night(view, person.id, night):
 		return [{"path": [], "weight": 1.0}]
 	var destinations: Array = C.BLOCKS.keys()

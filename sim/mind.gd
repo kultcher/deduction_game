@@ -1779,7 +1779,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 				lines.append(say(d, "%s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name))
 				moves.append("red_herring")
 				effs_by_move["red_herring"] = [[d.id, -0.12, true, "says they're the Seer's red herring", ""]]
-				defence_scopes["red_herring"] = {"type": "red_herring", "source": src_id}
+				defence_scopes["red_herring"] = {"type": "challenge", "mode": "misled", "reading": WorkshopLedger.reading(src_id, rd).id}
 			elif pair.size() == 2 and d.id in pair:
 				var other: String = pair[0] if pair[1] == d.id else pair[1]
 				if w.by_id.has(other) and w.by_id[other].alive:
@@ -1821,8 +1821,19 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 		for l in w.living():
 			if l == d:
 				continue
+			var meta = {"kind": "defence", "move": mv, "scope": scope.duplicate(true), "hearing_scale": 1.0}
+			if scope.type == "gift_claim":
+				meta["workshop_card"] = WorkshopLedger.Evidence.normalize_card({"kind": "claim", "source": d.id, "subject": [d.id], "role": scope.role, "day": w.day, "phase": w.phase, "text": "Walking-gift defence."})
+			elif scope.type == "secret_claim":
+				meta["workshop_card"] = WorkshopLedger.Evidence.normalize_card({"kind": "secret", "source": d.id, "subject": [d.id], "owner": d.id, "secret_kind": scope.kind, "day": w.day, "phase": w.phase, "text": "Confessed errand defence."})
+			else:
+				meta.hearing_scale = 0.0
+				for effect in effects:
+					meta.hearing_scale = maxf(meta.hearing_scale, absf(float(effect[1])))
+			if l.ledger.get(identity, {}).get("meta", {}).has("workshop_card"):
+				meta["workshop_card"] = l.ledger[identity].meta.workshop_card
 			ledger_hear(w, l, identity, effects, strength * (0.5 + 0.5 * l.npc_trust.get(d.id, 0.5)),
-				[d.id, -1, "report"], {"kind": "defence", "move": mv, "scope": scope.duplicate(true)})
+				[d.id, -1, "report"], meta)
 	w.dlog.think(d.id, "defence", "Defends against %s: %s." % [nominator_id, ", ".join(PackedStringArray(moves))], {"moves": moves, "evil": d.is_evil()})
 	return {"lines": lines, "facts": facts, "moves": moves}
 

@@ -120,3 +120,29 @@ Existing local Godot config/UID changes are outside these commits.
   3/5; presenting 2720 ms versus item 1's 2744 ms, search 1645/1682 ms.
   Evidence: `logs/mechanics-support/sharing`, `item-2`. First passive chunk is frozen
   after items 0–1; item 2's late-game cost will be measured with the next chunk.
+- **First passive chunk (0–1, seeds 1000–1009):** previous shared and new shared
+  both 0/10 good wins, 13 good / 6 evil executions, mean Demon rank 3.80, Day-3 same
+  top suspect 31.2%, top-3 overlap 1.32. Native: 3/10, 14 / 5, rank 3.98, 35.4%,
+  overlap 1.93. No script errors or guards. Shared fallback totals fell 34 -> 27;
+  **39 impossible refreshes in both shared runs** (2100 refreshes each), all in
+  Hollis's Seer cover on seed 1007. No claim of a passed play/refresh criterion.
+  Data: `logs/mechanics-support/batch-01/summary.json`; snapshots and traces retained.
+- **3:** defence gift/secret statements and reading challenges use stable receipts;
+  original magnitude and regard are hearing weights, as clarified by the user.
+  Native defence bonuses are parked; pleas/rival suggestions add no alignment fact.
+  Hearing weights enter movement/claim caches, role-bluff likelihoods and challenges.
+  The chunk exposed a pre-existing hard gate on joint Seer contents: the existing
+  DEFAULT_ERR now keeps erroneous contents finite when role declarations/public
+  constraints still fit. Private/public identity contradictions stay hard. Focused
+  defence, repeat, case-eval, sharing, role and Lamplighter suites pass.
+  Seed 1007: **0 impossible / 99 refreshes**, no script errors, good wins Day 3
+  (previously evil Day 7); this is a measured single-seed change, not a tuning target.
+  Replay retains 9 shared, 0 fallback, 0 impossible / 89, 3/5 vote.
+  **Flagged cost:** valid fixed run search **2342 ms** (previous 1645), present
+  **3022 ms** (2720), nomination 999 ms (684). New defence assessments and the
+  separate declaration/content validation add work; no hidden source-state domain.
+  Earlier item-3 replay attempts printed Lamplighter declaration/count script errors
+  despite exit zero; those timings are invalid. Fixed the report-only count check,
+  added `run_replay_54875.py` to reject printed script errors, and retained logs under
+  `defences-fixed`, `seed1007-after3`, `item-3-fixed` for review. Next passive chunk
+  must verify the whole sample; end-of-list full-suite/trace checks remain.
