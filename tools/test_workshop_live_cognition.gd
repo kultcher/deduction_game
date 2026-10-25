@@ -22,6 +22,8 @@ func _game():
 	g.detailed_logging = false
 	g.new_case(692, 7)
 	for p in g.w.npcs:
+		# This suite tests persistence Confidence, which live play no longer uses by default.
+		p.workshop_state["confidence_mode"] = "persistence"
 		p.info_log = []
 		p.known_claims = {}
 		p.beliefs = []

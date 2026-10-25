@@ -24,14 +24,20 @@ static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: D
 
 ## fits() for every world of a universe, hashing the view and cards once rather than
 ## per world. Same memo as fits(), so the results agree.
-static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}) -> PackedByteArray:
+## Weight of one role declaration (claim, or a reading's implied gift) by a source who
+## is evil in that world: a bluff is possible, but naming this exact role is a choice
+## among several, so a claim still weakly supports its claimant (live play only).
+const BLUFF_WEIGHT = 0.35
+
+## bluffs (live play): evil sources' role declarations constrain nothing; see _fits.
+static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false) -> PackedByteArray:
 	var out = PackedByteArray()
 	out.resize(universe.size())
 	if not view.get("world_options", {}).get("roles", false):
 		out.fill(1)
 		return out
 	var ids: Array = view.people.map(func(p): return p.id)
-	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {})]
+	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
 	var key = hash(input)
 	if not cache.has(key) or cache[key].input != input:
 		if cache.size() >= 64:
@@ -49,7 +55,7 @@ static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledg
 			# Relays add Medium claims per world before routing: no hoist then.
 			if routes == null and not relay and Activity.available(view):
 				routes = Activity.routes(view, cards, answers, knowledge)
-			results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, routes)
+			results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, routes, bluffs)
 		out[i] = 1 if results[mask] else 0
 	return out
 
@@ -68,7 +74,7 @@ static func seer_flag(cards: Array) -> bool:
 
 ## routes: Activity.routes(view, cards, answers, knowledge) if already computed. It
 ## doesn't depend on the world, so fits_table computes it once for all worlds.
-static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null) -> bool:
+static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null, bluffs: bool = false) -> bool:
 	cards = cards.duplicate()
 	var visits = {}
 	for card in cards.duplicate():
@@ -80,7 +86,7 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 			if visits.has(visit) and visits[visit] != card.relay_observed_at.day:
 				return false
 			visits[visit] = card.relay_observed_at.day
-			cards.append({"kind": "claim", "source": card.relay_source, "role": "medium"})
+			cards.append({"kind": "claim", "source": card.relay_source, "role": "medium", "inferred": true})
 	var sexton_night = -1
 	for card in cards:
 		if card.kind != "report" or card.get("quoted", false):
@@ -113,17 +119,24 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 		var approach: String = path[path.size() - 2] if path.size() >= 2 else view.people[ids.find(card.source)].home
 		if approach != card.data.block or view.get("timeline", {}).get("events", []).any(func(e): return e.kind == "demon_death" and e.at.day == card.night):
 			return false
+	var live: bool = bluffs
 	if Activity.available(view):
 		if routes == null:
 			routes = Activity.routes(view, cards, answers, knowledge)
-		if not routes.okay:
+		# Live testimony can be false (an evil fake sighting, a lying alibi): routes that
+		# can't all hold no longer void every world; the movement likelihood weighs them.
+		if not routes.okay and not live:
 			return false
-		cards = cards.duplicate()
-		for person in routes.forced_lamp:
-			cards.append({"kind": "claim", "source": person, "role": "lamplighter"})
-	return _fits(ids, world, cards, knowledge, answers)
+		if routes.okay:
+			cards = cards.duplicate()
+			for person in routes.forced_lamp:
+				cards.append({"kind": "claim", "source": person, "role": "lamplighter", "inferred": true})
+	return _fits(ids, world, cards, knowledge, answers, live)
 
-static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary) -> bool:
+## bluffs (live play): in a world where a claim's source is evil, the claim is a bluff:
+## it occupies no role and constrains nothing. A good source's claim stays binding, so a
+## contradiction leaves only the worlds where some claimant is lying.
+static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool = false) -> bool:
 	var all: int = (1 << ids.size()) - 1
 	var good: int = all & ~world.evil
 	var demon: int = world.get("demon", -1)
@@ -160,7 +173,11 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 		if card.kind not in ["report", "claim"]:
 			continue
 		var source: int = ids.find(card.source)
-		if source < 0 or (world.evil & (1 << source)):
+		if source < 0:
+			return false
+		if world.evil & (1 << source):
+			if bluffs and not card.get("inferred", false):
+				continue
 			return false
 		if not _assign(assignments, card.role, 1 << source):
 			return false
@@ -250,3 +267,29 @@ static func _matching(masks: Array, occupied: int) -> bool:
 			return true
 		available &= ~bit
 	return false
+
+## Per world: BLUFF_WEIGHT for each distinct (source, role) declared by a source who is
+## evil in that world. Inferred and quoted declarations don't count.
+static func bluff_weights(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
+	var ids: Array = view.people.map(func(p): return p.id)
+	var declared: Array = []  # source bit per distinct declaration
+	var seen = {}
+	for card in cards:
+		if card.kind not in ["report", "claim"] or card.get("quoted", false) or card.get("inferred", false):
+			continue
+		var i: int = ids.find(card.source)
+		var key: String = card.source + "|" + str(card.get("role", ""))
+		if i < 0 or seen.has(key):
+			continue
+		seen[key] = true
+		declared.append(1 << i)
+	var out = PackedFloat64Array()
+	out.resize(universe.size())
+	for w in range(universe.size()):
+		var evil: int = universe[w].evil
+		var weight = 1.0
+		for bit in declared:
+			if evil & bit:
+				weight *= BLUFF_WEIGHT
+		out[w] = weight
+	return out

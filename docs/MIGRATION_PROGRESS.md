@@ -752,31 +752,25 @@ result does not meet P0 sign-off. It predates Q1/Q4, Q2, event adapters and bot 
 current-source results are still required. Data and per-run script-error status are in
 `logs/migration/resume/adapters/batches`.
 
-## P2 factored channel kernel (Codex, Oct 24; resumed from `1f47867`)
+## Re-baseline (Claude, Oct 24–25)
 
-The updated priority is live channel integration and removal of the source-drop
-stopgap. The first verified slice adds `factored_channels.gd` and binary
-sum-product with a compiled arithmetic circuit. Gift/testimony/accuracy/route gates
-are shared; only predicates sharing role holders, gifts or movement constraints
-couple. Independent sources are eliminated independently, not enumerated as
-`3^sources`. A reverse pass obtains every route's accepted-content mass, including
-at zero probabilities. No source is discarded to repair a contradiction.
+Scope, decisions and the change table live in LEGACY_MIGRATION.md ("Re-baseline").
+Summary: scale Confidence for live listeners; soft testimony (evil sources may bluff a
+role, weight 0.35; contradictory routes no longer void worlds) replacing the source-drop
+stopgap; per-run CaseEval reuse in `Jury`; meeting refreshes deferred until a listener
+speaks; canvas status once per command. Container replay: meeting entry 6.4 → 0.9 s,
+search into meeting 12.9 → 2.0 s, presenting 8.0 → 3.2 s, nomination 3.7 → 1.0 s;
+case #85 3 yes / 5 needed (was 2). Seed 1005: no impossible refreshes. Full default
+suite: only the two known failures.
 
-Three new suites pass **46 checks**, comparing every world's private baseline,
-submitted likelihood and held-content mass with the exact reference at seven/ten
-people (modifier worlds, private evidence, Medium), plus focused competing claims,
-persistent Red Herring, Night Watch/alibi, Lamplighter counts and drop ownership.
-The sum-product suite separately checks 30 independent variables with peak table
-size two. Correlated routes and joint role completion remain intact.
-
-Ten-person seed 692, three sources, 1,368 classes / 15,120 worlds: **460 ms** for
-the factored kernel, same likelihood mass **534.308355478574**, peak local table
-eight rows, game RNG unchanged. An initial generic implementation took 3.3 s;
-profiling removed unnecessary movement factors and an eager linear world lookup
-in each iteration. This is an offline kernel probe, not a live presentation claim.
-Command: `profile_channel_likelihood.gd -- --npcs 10 --sources 3 --classes --factored`.
-Live CaseEval integration and the new bot acceptance criteria are still pending.
-Logs: `logs/migration/live-channels`.
+Post-mortem notes (how the migration lost the plot): the founding intent ("NPCs judge
+the player's theory; they don't search for theories") was inverted by a cleanup-shaped
+plan to migrate every belief; realism layers (bounded attention, persistence theories,
+private re-derivation, exact channels) were each locally justified but multiplied cost
+and scattered the town; validation checked faithfulness to spec, not play, until the
+first native/shared bot A/B; performance was fought as symptoms without a stated cost
+model; hand-offs carried steps rather than intent. Guardrails now in the plan: a north
+star, a speed budget, play-level A/B acceptance, intent in hand-offs.
 
 ## Impossible refreshes and the source-drop stopgap (Claude, Oct 24)
 

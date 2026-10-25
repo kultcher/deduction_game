@@ -1,12 +1,86 @@
 # Migrating belief evaluation off the legacy rules
 
-Status: in progress (updated Oct 24). Owner: Codex implements, the user reviews.
-Resumed at the user's request against the updated priorities and source `1f47867`.
-The migration and P0 sign-off remain incomplete.
+Status: **re-baselined Oct 24–25** (user + Claude). The full migration is rescoped to a
+deliberate hybrid; read "Re-baseline" first. Owner: Claude for the re-baseline work;
+Codex for later slices once the user hands them over.
 Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture),
-[playtest_54875_diagnosis.md](playtest_54875_diagnosis.md) (why this matters now),
+[playtest_54875_diagnosis.md](playtest_54875_diagnosis.md),
 [MIGRATION_PROGRESS.md](MIGRATION_PROGRESS.md) (measurements, detail) and the
 **Performance rules** section below before touching anything in `workshop/`.
+
+## Re-baseline (Oct 24–25)
+
+**North star (check it on every change):** the engine judges evidence; the town is a
+cheap social simulation around it. "NPCs judge the player's theory; they don't search
+for theories" (BACKLOG, Oct 19–20) was quietly inverted by "migrate every belief
+evaluation", and the realism layers that followed multiplied cost (listeners ×
+refreshes × people × channels) while scattering the town's beliefs. See the
+post-mortem notes in MIGRATION_PROGRESS.
+
+**Scope now: a deliberate hybrid.**
+- One judge for anything that is evidence: presentations, readings, testimony,
+  public events. Evidence the judge can't read is excluded with a stated reason, never
+  judged by both systems.
+- Native and permanent: trust, pressure, fear, paranoia as a mood, crowd pressure
+  (Q1), the vote and nomination formulas (Q3), disclosure, evil strategy.
+- Still to move (it's evidence): defences that are claims or challenges, NPC-to-NPC
+  sightings/readings shares (C3–C5), unowned gift readings, the anonymous-relay and
+  curse fallbacks. These remain the migration's real work.
+- Optional, probably not worth it: priors and paranoia drift into the world prior,
+  the full nightly per-NPC solve (P4.1), deleting the ledger (P5 shrinks to deleting
+  what's fully replaced).
+
+**Decisions (user, Oct 24, Claude's defaults accepted):**
+1. Confidence: no per-person theory loop; live listeners use `scale` Confidence (the
+   legacy `1.4 − 0.8 × confidence` that Q6 kept). A stickiness rule (committed
+   conclusions resist reversal, but yield to clearly strong evidence) comes later.
+2. Insight: differences in degree, not direction (Low follows the shared picture less
+   strongly); attention budgets limit what an NPC can explain in a reply. Not yet built.
+3. Good people may lie about whereabouts at the existing secret-errand rates.
+4. Public = meeting statements, deaths, executions, vote tallies, public claims;
+   private conversations (including the player's) are that listener's private evidence.
+5. Speed budget on the user's machine: meeting entry and presenting about 2 s or less,
+   nominations under 1 s. Speed first, simulation correctness second, until settled.
+6. Parity first (shared good-win rate and town agreement at least native's in the
+   ten-person passive A/B, no impossible refreshes), then a Q3 tuning pass after
+   checking in with the user.
+
+**Done in the re-baseline** (container timings on the 54875 replay; the container is
+slower and noisier than the user's machine):
+
+| Change | Effect |
+|---|---|
+| Live listeners default to `scale` Confidence (`26cbfd4`) | No per-person explanation search / theory / biased CaseEval per refresh. Meeting entry 6.4 → 3.3 s |
+| Soft testimony (`2c29c2d`): an evil source's role declaration is a possible bluff (weight 0.35), good sources' claims stay binding, contradictory routes no longer void worlds; stopgap removed | No impossible refreshes (seed 1005: 0 of 190, was 59). Case #85 3/5 yes (was 2/5). Presenting 8.0 → 5.1 s, nomination 3.7 → 0.9 s |
+| Per-run CaseEval reuse in `Jury` (`4252f60`, exact) | Presenting 5.1 → 3.8 s, identical margins |
+| Meeting refreshes deferred until a listener speaks, flushed when testimony ends | Meeting entry about 2.5 → 0.9 s, search into meeting 5.5 → 2.0 s, same margins |
+| Canvas capability status computed once per command (`3edd6ed`; it already checks the whole audience, so per-listener calls were O(listeners²)) | Presenting 4.1 → 3.2 s, identical margins |
+
+End state on the container (54875 replay): meeting entry 0.9 s, search into meeting
+2.0 s, presenting 3.2 s, nomination 1.0 s, vote 0.6 s (from 6.4 / 12.9 / 8.0 / 3.7 / 1.9).
+Scaled to the user's machine (about 0.7×): roughly 0.6 / 1.4 / 2.2 / 0.7 / 0.4 s. The
+presentation's remaining cost is mostly the scoped reply (about two thirds): one
+CaseEval each for its headline and its root-claim check, plus the explanation search.
+
+**Tried and reverted:** memoising `CaseEval.evaluate` on its whole input (hashing the
+view cost far more than it saved); moving private readings into `own_reports` with no
+card budget plus Insight-as-degree (no speed gain, since the world grouping still wasn't
+shared, and the replay fell to 0/5 yes). A real shared public baseline needs a deeper
+restructure; it's parked until the speed budget says it's needed.
+
+**Next, in order:**
+1. A/B bot run on the re-baselined main (user, locally): parity check and agreement.
+2. Reply speed if needed: build the root claim from the headline instead of a second
+   CaseEval; then Insight-as-degree and attention for replies only.
+3. Words match beliefs (a reply's stance from the same result as the belief).
+4. Confidence stickiness rule.
+5. Q3 tuning (check in first): vote thresholds, a rank-aware vote term.
+6. Remaining evidence migration (see Scope).
+
+**Superseded:** the exact live channel integration (Codex's prototype on
+`codex/live-channel-validation`: replay presentation 151 s vs 6.7 s control). Keep its
+factored kernel and parity tests as an offline reference for the soft-testimony model;
+don't wire it live.
 
 ## Where things stand (Oct 24)
 
@@ -28,41 +102,8 @@ Read first: [CASE_REASONING.md](CASE_REASONING.md) (the target architecture),
 Psychologist remains metagame/context information for now (user, Oct 24); do not
 expand its automatic alignment reasoning.
 
-**Next for Codex (Claude review, Oct 24): live channel integration, with these acceptance
-tests.** Bot A/B runs (`autoplay.gd` with and without `--native`) found that a third or
-more of Medium/High-Insight belief refreshes come back *impossible*: no world fits the
-attended evidence, so `_consequences_eval` zeroes every effect, retracting suspicion the
-evidence had already earned. Two world-independent hard gates in
-`role_constraints.gd` cause it: `routes.okay` (every sighting/alibi taken as true) and
-unique-role claims (an evil bluff of a role a good NPC holds). One lie voids a careful
-listener's whole belief state. Low Insight attends too few cards to hit a contradiction,
-which inverts the Insight ordering. Details and numbers: MIGRATION_PROGRESS, "Impossible
-refreshes". A source-dropping stopgap is in `Jury._drop_contradicting_source`; replace it,
-don't extend it. The channel integration is done when:
-1. No belief refresh is impossible in a 50-game ten-person passive bot run because of a
-   lie: a contradiction is explained by some source lying or being impaired, and makes
-   that source more suspect.
-2. High-Insight NPCs aim at least as well as Medium (top suspect evil, Demon rank).
-3. What a listener says agrees with how far its belief moved (the 54875 replay had
-   Isolde "accept" at 1.00 agreement with Constance's suspicion unchanged at 0.10).
-4. The live version marginalizes per source given a world, not over every combination of
-   source states (the exact reference is 3^sources; use it only as a parity oracle).
-
-**Performance guidance for the live channel kernel (Claude, Oct 24, after Codex's first
-live probe: about 19 s for ten listeners against a 3.2 s control).**
-- Don't merge until the ordinary probes and the 54875 replay are back near the control.
-  A meeting runs about 50 refreshes, so per-refresh cost multiplies.
-- A per-person theory biases the prior over worlds, not the likelihood of the evidence
-  in a world. Compute each world class's channel likelihood once per listener and
-  evidence set, and reuse it for every person's theory, the refresh and the scoped reply.
-  If the per-person loop still reaches the kernel, that is most of the cost.
-- Given a world, an uncoupled source's channel states sum in closed form: cost should be
-  about classes × sources (milliseconds), not hundreds of milliseconds per listener.
-  Special-case independent sources and use the general factor machinery only for the
-  sources a unique-role or joint-route constraint actually couples.
-- Check behaviour before optimizing further (seed 1005, the 54875 replay, a 10-game
-  ten-person passive chunk): if aiming and agreement don't improve, the design needs
-  rethinking more than speed does.
+The exact channel-integration brief and its performance guidance (Oct 24) are
+superseded by the re-baseline above; see MIGRATION_PROGRESS for the record.
 
 ## Terms
 
@@ -372,14 +413,16 @@ not suggestions. Each one names what it protects.
   headline's own theory, a cached decision, or the fixed decisions a scoped reply
   inherits from the refresh).
 
-**Meeting refreshes are one per statement heard, on purpose**
-- Each claim or reading announced at a meeting refreshes every listener's beliefs,
-  about 50 refreshes at a Day 1 meeting. This is intentional: speakers testify in turn,
-  and later speakers decide what to claim, whom to accuse and which reason to cite
-  from beliefs that earlier speakers changed. The user wants the meeting to react, not
-  recite. Don't batch or defer these refreshes without the user's decision. The planned
-  way to hide the cost is pacing: compute a listener's refresh while the previous line
-  of dialogue is on screen.
+**Meeting refreshes: deferred until a listener speaks (re-baseline, Oct 25)**
+- During meeting testimony (`Mind.meeting_testimony`), `World.defer_beliefs` queues each
+  listener's refresh. A speaker is flushed (`Mind.flush_beliefs`) just before their turn,
+  so they react to everything said before them; everyone else is flushed once when
+  testimony ends. This keeps the meeting reactive (the user's requirement) at about a
+  fifth of the refreshes. Not bit-exact: the order in which a refresh records the
+  "last reason that raised suspicion" can differ, which can change cited reasons.
+- Don't go further (one refresh for the whole meeting, or skipping a speaker's flush)
+  without the user's decision. The next step for feel is pacing: run a listener's
+  refresh while the previous line of dialogue is on screen.
 
 **Movement model (`workshop/live_activity.gd`), the largest single cost**
 - `_likelihood` builds each night's incident list and the per-route products once per

@@ -20,7 +20,27 @@ const TimeModel = preload("res://workshop/chronology.gd")
 ## and per-person consequence loop), kept for offline comparison only.
 static var engine: String = "case_eval"
 
+## Within one jury run the view is fixed, so identical (case, listener) evaluations can
+## be reused without hashing the view: the reply scores the same attended case for its
+## headline, its effect and its root claim. Reset at every public entry point.
+static var _eval_memo: Dictionary = {}
+
+static func _case_eval(view: Dictionary, scoped: Dictionary, listener: Dictionary) -> Dictionary:
+	var keyed: Dictionary = listener
+	if listener.has("theory_bias") and listener.theory_bias.is_empty():
+		keyed = listener.duplicate()
+		keyed.erase("theory_bias")
+	var input = [scoped, keyed]
+	var key = hash(input)
+	if _eval_memo.has(key) and _eval_memo[key].input == input:
+		Profiler.count("jury_eval_reuse")
+		return _eval_memo[key].result
+	var result: Dictionary = CaseEval.evaluate(view, scoped, listener)
+	_eval_memo[key] = {"input": input.duplicate(true), "result": result}
+	return result
+
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
+	_eval_memo = {}
 	var span = Profiler.open("jury")
 	var result = _evaluate(view, case_data, listener, context)
 	Profiler.close(span)
@@ -33,6 +53,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 ## reading challenges. CaseEval engine only.
 static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary) -> Dictionary:
 	var span = Profiler.open("jury_refresh")
+	_eval_memo = {}
 	var old: Dictionary = listener.ledger.get(case_data.id, {})
 	var old_effects: Dictionary = old.get("effects", {})
 	if not old.is_empty() and old_effects.is_empty():
@@ -459,7 +480,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 	var challenges = Support.ReadingChallenges.assess(view, attention.case, listener, Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected))
 	var eval_listener = _eval_listener(listener, knowledge.get("own_reports", []), challenges, attention)
 	eval_listener["theory_bias"] = theory.bias
-	var ev = CaseEval.evaluate(view, scoped, eval_listener)
+	var ev = _case_eval(view, scoped, eval_listener)
 	var agreement: float = clampf(CaseEval.shift(ev.prior, ev.posterior), -1.0, 1.0)
 	var contributing: Array = Solver.selected(view, scoped).filter(func(c): return Solver.tabled(c))
 	if bounded and reasoning.status in ["provisional", "entailed_in_attention"] and ev.consistent and conclusion.type != "conflict":
@@ -611,16 +632,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var attended: Array = Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected)
 	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
 	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged, attention)
-	var ev: Dictionary = CaseEval.evaluate(view, scoped, eval_listener)
-	var contradiction: Dictionary = {}
-	if refresh and ev.impossible:
-		# STOPGAP until live source channels (LEGACY_MIGRATION, P2): the hard role and
-		# route gates make one lie void the listener's whole evidence set.
-		var repaired = _drop_contradicting_source(view, scoped, eval_listener, baseline)
-		contradiction = repaired.report
-		if not repaired.ev.is_empty():
-			scoped = repaired.case
-			ev = repaired.ev
+	var ev: Dictionary = _case_eval(view, scoped, eval_listener)
 	var protection = Protection.assess(view, attended, baseline)
 	# The headline's own fatal check (say, accusing the listener) doesn't void what the
 	# evidence says about everyone else: each person gets their own direct check.
@@ -660,7 +672,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			if not theory.get("bias", {}).is_empty():
 				var biased = eval_listener.duplicate(true)
 				biased["theory_bias"] = theory.bias
-				person_ev = CaseEval.evaluate(view, scoped, biased)
+				person_ev = _case_eval(view, scoped, biased)
 		var odds: Dictionary = person_ev.people.get(id, {"prior": 0.0, "posterior": 0.0})
 		var s: float = CaseEval.shift(odds.prior, odds.posterior) if not ev.impossible else 0.0
 		var alignment: float = 0.45 * s
@@ -725,40 +737,9 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	Profiler.close(span)
 	return {"effects": effects, "claims": claims, "theories": theories, "considered": attention.considered,
 		"reading_challenges": challenged.results,
-		"reasoning": {"status": "belief_refresh", "contradiction": contradiction, "profile": attention.profile, "considered": attention.considered.duplicate(),
+		"reasoning": {"status": "belief_refresh", "impossible": ev.impossible, "profile": attention.profile, "considered": attention.considered.duplicate(),
 			"ignored": attention.ignored.duplicate(), "ignored_lines": attention.ignored_lines.duplicate(), "private_checks": attention.private_checks.duplicate(true)},
 		"rule": "One CaseEval pass over the attended evidence gives every person's change; intermediate claims add no evidence."}
-
-## STOPGAP for impossible belief refreshes. When no world fits the attended evidence,
-## the listener assumes one informant is wrong: it tries leaving out all cards from one
-## other source at a time, least trusted first, and keeps the first consistent set.
-## Never drops the listener's own readings, public events or physical evidence. Adds no
-## suspicion of the dropped source (the channel model will do that properly). Returns
-## {case, ev, report}; ev is {} when no single source resolves it (old behaviour).
-static func _drop_contradicting_source(view: Dictionary, scoped: Dictionary, eval_listener: Dictionary, baseline: Dictionary) -> Dictionary:
-	var self_id: String = baseline.get("id", "")
-	var own: Array = baseline.knowledge.get("attention_reports", []) + baseline.knowledge.get("own_reports", [])
-	var by_source = {}
-	for id in scoped.cards:
-		var card: Dictionary = Solver.card_by_id(view, id)
-		var source: String = card.get("source", "")
-		if card.is_empty() or id in own or source == self_id or not view.people.any(func(p): return p.id == source):
-			continue
-		if not by_source.has(source):
-			by_source[source] = []
-		by_source[source].append(id)
-	var sources: Array = by_source.keys()
-	var trust = func(id): return 0.5 + baseline.trust if id == "player" else baseline.npc_trust.get(id, 0.5)
-	sources.sort_custom(func(a, b): return trust.call(a) < trust.call(b) if not is_equal_approx(trust.call(a), trust.call(b)) else a < b)
-	var tried: Array = []
-	for source in sources:
-		tried.append(source)
-		var trial: Dictionary = scoped.duplicate(true)
-		trial.cards = scoped.cards.filter(func(id): return id not in by_source[source])
-		var ev2: Dictionary = CaseEval.evaluate(view, trial, eval_listener)
-		if not ev2.impossible:
-			return {"case": trial, "ev": ev2, "report": {"dropped_source": source, "dropped_cards": by_source[source].duplicate(), "tried": tried}}
-	return {"case": scoped, "ev": {}, "report": {"unresolved": true, "tried": tried}}
 
 ## One claim (the headline or an intermediate) judged on the attended evidence it cites.
 static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dictionary, attention: Dictionary, baseline: Dictionary, eval_listener: Dictionary) -> Dictionary:
@@ -768,7 +749,7 @@ static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dict
 	scoped.cards = scoped.cards.filter(func(id): return id not in checks.rejected and id not in own)
 	if scoped.conclusion.type == "suspicious":
 		scoped.conclusion.type = "evil"
-	var ev = CaseEval.evaluate(view, scoped, eval_listener)
+	var ev = _case_eval(view, scoped, eval_listener)
 	# The logical layer (what follows if the attended reports are sound) is the
 	# reasoner's; how much the listener believes it is CaseEval's.
 	var thought = Support.explain(view, claim_case, baseline, Consequences._prepared(view, attention, claim_case, baseline))

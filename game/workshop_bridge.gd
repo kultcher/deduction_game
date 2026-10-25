@@ -92,7 +92,7 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 		"suspicion": preload("res://sim/mind.gd").suspicion_view(n), "npc_trust": n.npc_trust.duplicate(true),
 		"confidence": n.traits.get("confidence", 0.5), "insight": n.traits.get("insight", 0.5),
 		"reasoning_mode": n.workshop_state.get("reasoning_mode", "bounded"),
-		"confidence_mode": n.workshop_state.get("confidence_mode", "persistence"),
+		"confidence_mode": n.workshop_state.get("confidence_mode", "scale"),
 		"theories": n.workshop_state.get("theories", {}).duplicate(true),
 		"discounted": n.discounted.duplicate(true), "honesty": n.honesty.duplicate(true),
 		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true), "legacy_evidence": []}

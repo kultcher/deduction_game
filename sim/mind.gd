@@ -530,9 +530,29 @@ const HONESTY_CAP = 0.5
 ## Steps 3-5 all use the same final doubt, so undoing a poison argument undoes everything
 ## downstream of it. Only step 2 looks one level back (step 1), by design.
 static func recompute_beliefs(w, n, note: String) -> void:
+	if w.defer_beliefs:
+		if not w.pending_beliefs.any(func(p): return is_same(p[0], n)):
+			w.pending_beliefs.append([n, note])
+		return
 	var span = WorkshopLedgerProfiler.open("belief_refresh")
 	_recompute_beliefs(w, n, note)
 	WorkshopLedgerProfiler.close(span)
+
+## Run deferred refreshes: every pending mind, or only `only` (a speaker about to act).
+static func flush_beliefs(w, only = null) -> void:
+	var keep: Array = []
+	var run: Array = []
+	for p in w.pending_beliefs:
+		if only == null or is_same(p[0], only):
+			run.append(p)
+		else:
+			keep.append(p)
+	w.pending_beliefs = keep
+	var was: bool = w.defer_beliefs
+	w.defer_beliefs = false
+	for p in run:
+		recompute_beliefs(w, p[0], p[1])
+	w.defer_beliefs = was
 
 static func _recompute_beliefs(w, n, note: String) -> void:
 	if n.is_evil():
@@ -988,11 +1008,13 @@ static func warden_target(w, n) -> String:
 static func meeting_testimony(w) -> Array:
 	var out: Array = []
 	var speakers = w.shuffled(w.living())
+	w.defer_beliefs = true
 	for n in speakers:
 		var lines: Array = []
 		var facts: Array = []
 		if n.silenced:
 			continue  # the Breathstealer took their voice
+		flush_beliefs(w, n)  # a speaker reacts to everything said before their turn
 		if not n.claim_public and _public_claim_decision(w, n) != "":
 			_go_public(w, n, lines, facts)
 		elif n.claim_public:
@@ -1003,6 +1025,8 @@ static func meeting_testimony(w) -> Array:
 			facts.append(acc["fact"])
 		if not lines.is_empty():
 			out.append({"who": n.id, "lines": lines, "facts": facts})
+	w.defer_beliefs = false
+	flush_beliefs(w)
 	return out
 
 static func _public_claim_decision(w, n) -> String:

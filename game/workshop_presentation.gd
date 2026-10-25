@@ -249,7 +249,7 @@ static func _signature(snapshot: Dictionary) -> String:
 static func _discussion_inputs(n, snapshot: Dictionary) -> String:
 	var state: Dictionary = n.workshop_state
 	var cognition = [state.get("reasoning_mode", "bounded"), n.traits.get("insight", 0.5),
-		state.get("confidence_mode", "persistence"), n.traits.get("confidence", 0.5)]
+		state.get("confidence_mode", "scale"), n.traits.get("confidence", 0.5)]
 	return JSON.stringify(Evidence.canonical([state.get("outside", n.suspicion), state.get("facts", []),
 		state.get("attention_focus", []), n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognition]))
 

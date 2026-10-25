@@ -219,7 +219,9 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	var fits = _class_fits(view, cc, cards, knowledge)
 	var case_like = _class_like(cc, cc.reports.map(func(c): return err_for.call(c)), -1)
 	var own_like = _state_like(view, own, own.map(func(c): return err_for.call(c)), oc.codes)
-	var compatible: bool = not Domain.live(view) or Domain.claims_compatible(cards, knowledge)
+	# Live role uniqueness is checked per world in Roles.fits, where an evil claimant may
+	# bluff; a global "two people claimed one gift" gate would void every world.
+	var compatible: bool = true
 	var base = PackedFloat64Array()
 	var post = PackedFloat64Array()
 	base.resize(nc * ns)
@@ -647,13 +649,13 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 	var personal = {"self": knowledge.get("self", ""), "own_role": knowledge.get("own_role", ""), "own_outings": knowledge.get("own_outings", {})}
 	if not knowledge.get("public_roles", {}).is_empty():
 		personal["public_roles"] = knowledge.public_roles
-	var neutral_key = hash([cc.key, "neutral"])
+	var neutral_key = hash([cc.key, "neutral", Domain.live(view)])
 	if not _fits_cache.has(neutral_key):
 		_fits_cache[neutral_key] = _fits_over(view, cc, cards, {}, range(nc))
 	var neutral: PackedFloat64Array = _fits_cache[neutral_key]
 	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
 		return neutral
-	var key = hash([cc.key, personal])
+	var key = hash([cc.key, personal, Domain.live(view)])
 	if not _fits_cache.has(key):
 		if _fits_cache.size() > 256:
 			_fits_cache.clear()
@@ -675,9 +677,11 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 	for c in classes:
 		reps.append(universe[cc.rep[c]])
 		which.append(c)
-	var t: PackedByteArray = Solver.Roles.fits_table(view, reps, cards, knowledge)
+	var live: bool = Domain.live(view)
+	var t: PackedByteArray = Solver.Roles.fits_table(view, reps, cards, knowledge, {}, live)
+	var weights: PackedFloat64Array = Solver.Roles.bluff_weights(view, reps, cards) if live else PackedFloat64Array()
 	for x in range(which.size()):
-		out[which[x]] = float(t[x])
+		out[which[x]] = float(t[x]) * (weights[x] if live else 1.0)
 	return out
 
 ## Joint facts about the reports, for one listener:
