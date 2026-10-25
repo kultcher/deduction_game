@@ -453,3 +453,88 @@ func restore(value, session) -> String:
 	version = candidate.version
 	serial = candidate.serial
 	return ""
+
+## One click on an evidence card's answer, as a pure update of that card's answer:
+## kind "pick" (a face), "block" / "resident" (Surveyor), "reg" (Seer registration).
+## Dowser and Surveyor faces cycle ? -> registered -> registered as Marked -> ?.
+func apply_answer(card: Dictionary, previous: Dictionary, kind: String, value: String) -> Dictionary:
+	var answer: Dictionary = previous.duplicate(true)
+	var positive: Array = answer.get("positive", []).duplicate()
+	var marked: Array = answer.get("marked", []).duplicate()
+	var role: String = card.get("role", "")
+	var count: int = 1
+	if card.kind == "report" and role in ["dowser", "lamplighter", "surveyor"]:
+		count = int(card.data.get("count", 0))
+	match kind:
+		"reg":
+			answer["registration"] = value
+		"pick":
+			if role == "dowser":
+				# ? -> registered (evil or Marked) -> registered as Marked -> ?
+				if value not in positive:
+					if positive.size() < count:
+						positive.append(value)
+				elif value not in marked:
+					marked = [value]
+				else:
+					positive.erase(value)
+					marked.erase(value)
+			elif value in positive:
+				positive.erase(value)
+			elif positive.size() < count:
+				positive.append(value)
+			elif count == 1:
+				positive = [value]
+			answer["slots"] = positive.duplicate()
+		"block", "resident":
+			var blocks: Array = answer.get("blocks", []).duplicate()
+			var block: String = value
+			if kind == "resident":
+				for person in view.people:
+					if person.id == value:
+						block = person.home
+			var residents: Array = view.people.filter(func(p): return p.home == block).map(func(p): return p.id)
+			var used: int = blocks.size() + positive.size()
+			if kind == "block":
+				if block in blocks:
+					blocks.erase(block)
+				elif residents.any(func(p): return p in positive):
+					for p in residents:
+						positive.erase(p)
+						marked.erase(p)
+				elif used < count:
+					blocks.append(block)
+			elif value in positive:
+				if value not in marked:
+					marked = [value]
+				else:
+					positive.erase(value)
+					marked.erase(value)
+			else:
+				var had_block: bool = block in blocks or residents.any(func(p): return p in positive)
+				blocks.erase(block)
+				for p in residents:
+					positive.erase(p)
+					marked.erase(p)
+				if had_block or blocks.size() + positive.size() < count:
+					positive.append(value)
+			answer["blocks"] = blocks
+			var keys: Array = C.BLOCKS.keys()
+			if count == 4:
+				answer["slots"] = keys.map(func(b): return ("block:" + b) if b in blocks else _first_of(positive, view.people.filter(func(p): return p.home == b).map(func(p): return p.id)))
+			else:
+				answer["slots"] = blocks.map(func(b): return "block:" + b) + positive
+	marked = marked.filter(func(p): return p in positive)
+	answer["positive"] = positive
+	if marked.is_empty():
+		answer.erase("marked")
+	else:
+		answer["marked"] = marked
+	return answer
+
+
+func _first_of(values: Array, candidates: Array) -> String:
+	for v in values:
+		if v in candidates:
+			return v
+	return ""

@@ -668,6 +668,9 @@ func _detail_label(node: Dictionary) -> Dictionary:
 
 func _field_popup(id: String, field: String) -> void:
 	var node: Dictionary = board.nodes[id]
+	if node.kind != "premise":
+		set_evidence_field(id, field)
+		return
 	board.selected = id
 	field_menu.clear()
 	var values: Array = []
@@ -722,6 +725,17 @@ func _field_chosen(index: int) -> void:
 		return
 	var target: Dictionary = _field_target
 	_field_target = {}
+	if target.field == "why":
+		var node: Dictionary = board.nodes[target.id]
+		var choice: Array = target.values[index]
+		node.reasons[target.key] = choice[0]
+		if choice[1] != "":
+			node.citations[target.key] = choice[1]
+		else:
+			node.citations.erase(target.key)
+		board.selected = target.id
+		_edit()
+		return
 	set_premise_field(target.id, target.field, target.values[index])
 
 ## Run the test juror on every premise with a claim (after a pause in editing).
@@ -740,3 +754,45 @@ func _run_test_juror() -> void:
 		badges[id] = Live.test_juror(g, value)
 	canvas.badges = badges
 	canvas.queue_redraw()
+
+# ------------------------------------------------------------ answers on evidence cards
+
+## A click on an evidence card's answer: "pick:<id>", "block:<b>", "resident:<id>",
+## "reg:<reason>", "why:<id>" (opens a menu), "mode:<challenge>".
+func set_evidence_field(id: String, field: String) -> void:
+	var node: Dictionary = board.nodes[id]
+	var card: Dictionary = _report(node.card)
+	var kind: String = field.get_slice(":", 0)
+	var value: String = field.substr(kind.length() + 1)
+	board.selected = id
+	if kind == "mode":
+		if node.kind == "modifier" and not (value == "unlikely" and card.get("role", "") != "surveyor"):
+			node.mode = value
+			_edit()
+		return
+	if kind == "why":
+		_reason_menu(id, card, value)
+		return
+	node.answers[card.id] = board.apply_answer(card, node.answers.get(card.id, {}), kind, value)
+	_edit()
+
+## Why someone seen at night was out: unexplained, a walking gift (citing their
+## claim), an evil errand, or a private errand (citing their errand claim).
+func _reason_menu(id: String, card: Dictionary, person: String) -> void:
+	field_menu.clear()
+	var key: String = "%s:%d" % [person, card.get("night", -1)]
+	var options: Array = [["unexplained", ""]]
+	field_menu.add_item("? Unexplained", 0)
+	for claim in board.view.cards.filter(func(c): return c.kind == "claim" and c.subject == person):
+		field_menu.add_item("Out on their gift: " + C.role_name(claim.role) + " claim", options.size())
+		options.append(["gift", claim.id])
+	field_menu.add_item("Evil errand", options.size())
+	options.append(["evil", ""])
+	if board.view.get("live_activity", false) or board.view.has("movement_experiment"):
+		for claim in board.view.cards.filter(func(c): return c.kind == "secret_claim" and c.subject == person):
+			field_menu.add_item("Private errand (their own account)", options.size())
+			options.append(["secret", claim.id])
+	_field_target = {"id": id, "field": "why", "values": options, "key": key}
+	field_menu.position = Vector2i(get_viewport().get_mouse_position())
+	field_menu.reset_size()
+	field_menu.popup()

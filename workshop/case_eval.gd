@@ -874,8 +874,9 @@ static func _theory_fit(view: Dictionary, case_data: Dictionary, cards: Array, p
 	for card in cards:
 		var positive: Array = case_data.get("answers", {}).get(card.id, {}).get("positive", [])
 		var blocks: Array = case_data.get("answers", {}).get(card.id, {}).get("blocks", [])
+		var marked: Array = case_data.get("answers", {}).get(card.id, {}).get("marked", [])
 		if Solver.tabled(card) and (not positive.is_empty() or not blocks.is_empty()):
-			masks.append(Solver.report_table(view, card, positive, blocks))
+			masks.append(Solver.report_table(view, card, positive, blocks, marked))
 	var positions: Dictionary = case_data.get("positions", {})
 	if masks.is_empty() and positions.is_empty():
 		return 1.0

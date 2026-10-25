@@ -22,6 +22,7 @@ var last_mouse = Vector2.ZERO
 var drag_out = false   # the dragged card is past the left edge: release removes it
 var fields: Dictionary = {}   # id -> [{rect, field}] clickable fields, in screen space
 var tips: Array = []          # [{rect, text}] tooltips for drawn badges and fields
+var answer_buttons: Dictionary = {}   # id -> screen rect of the card's Details/Assume button
 var badges: Dictionary = {}   # id -> {category, text, reason, ready, issues} from the test juror
 var detail_label: Callable    # (node) -> {text, icon}: the premise's extra field, if any
 const PREMISE_H = 236.0
@@ -90,6 +91,8 @@ func _lines(text_value: String, width: float, fs: int) -> Array:
 func world_rect(id: String) -> Rect2:
 	if model.nodes[id].kind == "premise":
 		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, PREMISE_H + (24.0 if not model.nodes[id].positions.is_empty() else 0.0)))
+	if model.nodes[id].kind in ["evidence", "modifier"] and not _evidence_card(id).is_empty():
+		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, evidence_layout(id).h))
 	var lines = 0
 	for paragraph in body(id):
 		lines += _lines(paragraph, WIDTH - 32, 16).size()
@@ -109,6 +112,7 @@ func _draw() -> void:
 	hit.clear()
 	fields.clear()
 	tips.clear()
+	answer_buttons.clear()
 	for id in model.nodes:
 		if not model.nodes[id].has("merged"):
 			hit[id] = _screen(world_rect(id))
@@ -145,6 +149,9 @@ func _draw_card(id: String, rect: Rect2) -> void:
 	if node.kind == "premise":
 		_draw_premise(id, rect)
 		return
+	if node.kind in ["evidence", "modifier"] and not _evidence_card(id).is_empty():
+		_draw_evidence(id, rect)
+		return
 	var paper = Color("e8dfc8")
 	var header = Color("c4b185")
 	if node.kind == "premise":
@@ -171,6 +178,7 @@ func _draw_card(id: String, rect: Rect2) -> void:
 	var link = _link_rect(rect)
 	draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), answer)
 	draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), link)
+	answer_buttons[id] = answer
 	draw_string(font, answer.position + Vector2(12, 20) * zoom, "Inspect" if node.kind == "contradiction" else "Answer", HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(1, roundi(15 * zoom)), ink)
 	draw_string(font, link.position + Vector2(19, 20) * zoom, "Link", HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(1, roundi(15 * zoom)), ink)
 
@@ -264,6 +272,7 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 				break
 		y += 24.0
 	var answer = _answer_rect(rect)
+	answer_buttons[id] = answer
 	var link = _link_rect(rect)
 	draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), answer)
 	draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), link)
@@ -354,7 +363,7 @@ func _gui_input(event: InputEvent) -> void:
 					field_requested.emit(chosen, f.field)
 					accept_event()
 					return
-			if event.double_click or _answer_rect(hit[chosen]).has_point(event.position):
+			if event.double_click or (answer_buttons.has(chosen) and answer_buttons[chosen].has_point(event.position)):
 				answer_requested.emit(chosen)
 			elif _link_rect(hit[chosen]).has_point(event.position):
 				link_requested.emit(chosen)
@@ -400,3 +409,252 @@ func _get_tooltip(at: Vector2) -> String:
 		if tips[i].rect.has_point(at):
 			return tips[i].text
 	return ""
+
+# ------------------------------------------------------------ evidence cards
+
+const PAIR_ROLES = ["seer", "clerk", "archivist", "rumormonger"]
+const FACE_R = 22.0
+const FACE_STEP = 54.0
+
+func _evidence_card(id: String) -> Dictionary:
+	var node: Dictionary = model.nodes[id]
+	return Solver.card_by_id(model.view, node.card) if node.kind in ["evidence", "modifier"] else {}
+
+func _unsupported(card: Dictionary) -> bool:
+	var note: String = card.get("support_note", "")
+	return note.begins_with("FALLBACK") or note.begins_with("BLOCKED")
+
+func _time_text(card: Dictionary) -> String:
+	var at: Dictionary = card.get("observed_at", {})
+	if at.is_empty():
+		return ""
+	var phase: String = str(at.get("phase", ""))
+	if phase == "night":
+		return "N%d" % int(at.get("day", 0))
+	return "D%d %s" % [int(at.get("day", 0)), phase.substr(0, 1).to_upper() + phase.substr(1, 2)]
+
+func _people_home(block: String) -> Array:
+	return model.view.people.filter(func(p): return p.get("home", "") == block).map(func(p): return p.id)
+
+## What the card asks and how its answer is drawn, in card-local world units:
+## {h, els: [{t: face|tile|chip|label, ...}], details: bool}. Shared by sizing and drawing.
+func evidence_layout(id: String) -> Dictionary:
+	var node: Dictionary = model.nodes[id]
+	var card: Dictionary = _evidence_card(id)
+	var els: Array = []
+	var y: float = 50.0
+	var all_lines: Array = _lines(card.get("text", ""), WIDTH - 32, 14)
+	var text_lines: Array = all_lines.slice(0, 2)
+	if all_lines.size() > 2:
+		text_lines[1] = text_lines[1] + " …"
+	y += text_lines.size() * 18.0 + 6.0
+	var details = false
+	if node.kind == "modifier":
+		y += 4.0
+		var x: float = 16.0
+		for mode in ["misled", "lying", "unlikely"]:
+			var label: String = {"misled": "Misled", "lying": "Lying", "unlikely": "Unlikely"}[mode]
+			var w: float = 84.0
+			var disabled: bool = mode == "unlikely" and card.get("role", "") != "surveyor"
+			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": node.mode == mode, "disabled": disabled, "field": "mode:" + mode,
+				"tip": {"misled": "Honest but wrong: impaired, or a misleading registration.", "lying": "The reader is lying about this result.", "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
+			x += w + 8.0
+		y += 36.0
+		return {"h": y + 44.0, "els": els, "text": text_lines, "details": false}
+	var answer: Dictionary = node.answers.get(card.get("id", ""), {})
+	var positive: Array = answer.get("positive", [])
+	var marked: Array = answer.get("marked", [])
+	var role: String = card.get("role", "")
+	if card.kind == "report" and role in PAIR_ROLES and card.get("data", {}).has("pair"):
+		var pair: Array = card.data.pair
+		var subject: String = ""
+		var icon = null
+		if role == "seer":
+			subject = "Yes: the Demon is in this pair" if card.data.get("yes", false) else "No: no Demon in this pair"
+		elif role == "clerk" or role == "archivist":
+			subject = "One of them is the " + C.role_name(card.data.get("role", ""))
+			icon = CanvasSkin.tex("ui/roles/" + card.data.get("role", ""), 0.05)
+		else:
+			subject = "One of them is " + C.secret_name(card.data.get("secret", "marked"))
+			icon = CanvasSkin.tex("ui/roles/" + card.data.get("secret", "marked"), 0.05)
+		els.append({"t": "label", "at": Vector2(16 + (26 if icon != null else 0), y + 14), "text": subject, "icon": icon})
+		y += 26.0
+		var answerable: bool = role != "seer" or card.data.get("yes", false)
+		var x0: float = WIDTH / 2.0 - (pair.size() - 1) * FACE_STEP * 0.75
+		for i in range(pair.size()):
+			var p: String = pair[i]
+			els.append({"t": "face", "p": p, "at": Vector2(x0 + i * FACE_STEP * 1.5, y + FACE_R + 2), "r": FACE_R,
+				"state": "on" if p in positive else "", "field": "pick:" + p if answerable else "",
+				"tip": Solver.person_name(model.view, p) + (": click to say this one explains the reading" if answerable else "")})
+		y += FACE_R * 2 + 22.0
+		if role == "seer" and card.data.get("yes", false):
+			var x: float = 16.0
+			for reg in [["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"], ["marked", "Marked"]]:
+				var w: float = 58.0 if reg[0] == "" else (64.0 if reg[0] != "red_herring" else 96.0)
+				els.append({"t": "chip", "rect": Rect2(x, y, w, 24), "text": reg[1], "on": answer.get("registration", "") == reg[0], "field": "reg:" + reg[0],
+					"tip": "Why the Seer got a yes: " + {"": "any valid explanation", "demon": "the Demon is the one you picked", "red_herring": "the one you picked is the Red Herring", "marked": "the one you picked is Marked"}[reg[0]]})
+				x += w + 6.0
+			y += 32.0
+	elif card.kind == "report" and role in ["dowser", "lamplighter"]:
+		var group: Array = card.data.get("group", []) if role == "dowser" else model.view.people.map(func(p): return p.id).filter(func(p): return p != card.source)
+		var count: int = int(card.data.get("count", 0))
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": ("%d evil among them" % count) if role == "dowser" else ("%d others out that night" % count)})
+		y += 26.0
+		var per_row: int = 5
+		for i in range(group.size()):
+			var p: String = group[i]
+			var state: String = ("marked" if p in marked else "on") if p in positive else ""
+			els.append({"t": "face", "p": p, "at": Vector2(36 + (i % per_row) * FACE_STEP, y + FACE_R + 2 + (i / per_row) * (FACE_R * 2 + 16)), "r": FACE_R, "state": state,
+				"field": "pick:" + p, "tip": Solver.person_name(model.view, p) + (": click to mark as registering evil; again for \"registered as Marked\"; again to clear" if role == "dowser" else ": click to say they were out")})
+		y += ceili(group.size() / float(per_row)) * (FACE_R * 2 + 16) + 8.0
+	elif card.kind == "report" and role == "surveyor":
+		var count: int = int(card.data.get("count", 0))
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "%d of 4 blocks have an evil resident" % count})
+		y += 26.0
+		var blocks: Array = answer.get("blocks", [])
+		var keys: Array = C.BLOCKS.keys()
+		for i in range(keys.size()):
+			var b: String = keys[i]
+			var residents: Array = _people_home(b)
+			var chosen: bool = b in blocks or residents.any(func(p): return p in positive)
+			var tile = Rect2(12 + (i % 2) * 140, y + (i / 2) * 84, 134, 78)
+			els.append({"t": "tile", "rect": tile, "text": C.block_name(b), "on": chosen, "field": "block:" + b,
+				"tip": C.block_name(b) + ": click to say an evil (or Marked) resident lives here"})
+			for j in range(residents.size()):
+				var p: String = residents[j]
+				els.append({"t": "face", "p": p, "at": tile.position + Vector2(22 + j * 36, 52), "r": 14.0,
+					"state": ("marked" if p in marked else "on") if p in positive else "", "field": "resident:" + p,
+					"tip": Solver.person_name(model.view, p) + ": click to name them as the reason; again for \"registered as Marked\"; again to clear"})
+		y += 172.0
+	elif (card.kind == "report" and role == "nightwatch") or (card.kind == "sighting" and card.get("night", -1) >= 0):
+		var seen: Array = card.data.get("seen", []) if role == "nightwatch" else card.get("subjects", [card.get("subject", "")])
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Why were they out?" if not seen.is_empty() else "Nobody seen"})
+		y += 26.0
+		for i in range(seen.size()):
+			var p: String = seen[i]
+			if p == "":
+				continue
+			var reason: String = node.reasons.get("%s:%d" % [p, card.get("night", -1)], "unexplained")
+			els.append({"t": "face", "p": p, "at": Vector2(36 + (i % 5) * FACE_STEP, y + FACE_R + 2 + (i / 5) * (FACE_R * 2 + 28)), "r": FACE_R,
+				"state": "reason:" + reason, "field": "why:" + p, "tip": Solver.person_name(model.view, p) + ": click to say why they were out"})
+		y += maxf(1.0, ceili(seen.size() / 5.0)) * (FACE_R * 2 + 28) + 6.0
+	elif card.kind == "event" and card.get("event") == "curse":
+		var eligible: Array = card.get("data", {}).get("eligible", [])
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Who turned?"})
+		y += 26.0
+		for i in range(eligible.size()):
+			var p: String = eligible[i]
+			els.append({"t": "face", "p": p, "at": Vector2(36 + (i % 5) * FACE_STEP, y + FACE_R + 2 + (i / 5) * (FACE_R * 2 + 16)), "r": FACE_R,
+				"state": "on" if p in positive else "", "field": "pick:" + p, "tip": Solver.person_name(model.view, p) + ": click if you think they turned"})
+		y += ceili(eligible.size() / 5.0) * (FACE_R * 2 + 16) + 8.0
+	else:
+		details = card.kind == "report" and role in ["warden", "gravedigger", "veteran", "martyr", "sexton"]
+	return {"h": y + 44.0, "els": els, "text": text_lines, "details": details}
+
+func _draw_evidence(id: String, rect: Rect2) -> void:
+	var node: Dictionary = model.nodes[id]
+	var card: Dictionary = _evidence_card(id)
+	var lay: Dictionary = evidence_layout(id)
+	var paper = Color("e8dfc8") if node.kind == "evidence" else Color("e3d6e6")
+	var header = Color("c4b185") if node.kind == "evidence" else Color("a98fb0")
+	var ink = Color("2c2720")
+	var muted = Color("6f6350")
+	draw_style_box(CanvasSkin.flat(paper, Color("f7d988") if id == model.selected or id == linking else Color("665c4c"), 3 if id == model.selected else 1, 6, 0), rect)
+	var head = Rect2(rect.position, Vector2(rect.size.x, 40 * zoom))
+	draw_rect(head, header)
+	var x: float = 10.0
+	if model.view.people.any(func(p): return p.id == card.get("source", "")):
+		_draw_face(card.source, rect.position + Vector2(24, 20) * zoom, 14 * zoom)
+		x = 44.0
+	var role_icon = CanvasSkin.tex("ui/roles/" + card.get("role", ""), 0.05) if card.get("role", "") != "" else null
+	if role_icon != null:
+		draw_texture_rect(role_icon, Rect2(rect.position + Vector2(x, 8) * zoom, Vector2(24, 24) * zoom), false)
+		x += 28.0
+	var title: String = ("Challenge · " if node.kind == "modifier" else "") + model.title(id).trim_prefix("Misled reading").trim_prefix("Suspected lie").trim_prefix("Unlikely reading")
+	if node.kind == "modifier":
+		title = "Challenge"
+	var time_text: String = _time_text(card)
+	var tw: float = font.get_string_size(time_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14 if time_text != "" else 0.0
+	draw_string(font, rect.position + Vector2(x, 26) * zoom, title, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - (x + tw + 14) * zoom, _fs(16), ink)
+	if time_text != "":
+		var chip = Rect2(rect.position + Vector2(WIDTH - tw - 8, 10) * zoom, Vector2(tw, 20) * zoom)
+		draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 8, 0), chip)
+		draw_string(font, chip.position + Vector2(7, 15) * zoom, time_text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(12), ink)
+	tips.append({"rect": head, "text": card.get("text", "") + ("\n" + card.support_note if card.get("support_note", "") != "" else "")})
+	if _unsupported(card):
+		var bad = Rect2(rect.position + Vector2(0, 40) * zoom, Vector2(rect.size.x, 4) * zoom)
+		draw_rect(bad, Color("b55a4c"))
+		var badge = Rect2(rect.position + Vector2(WIDTH - 118, 46) * zoom, Vector2(110, 20) * zoom)
+		draw_style_box(CanvasSkin.flat(Color("b55a4c"), Color("7d3a30"), 1, 8, 0), badge)
+		draw_string(font, badge.position + Vector2(8, 15) * zoom, "Can't be judged", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(12), Color("fbf6ea"))
+		tips.append({"rect": badge, "text": "The shared model can't read this card yet, so a case that uses it can't be presented:\n" + card.get("support_note", "")})
+	var y: float = 50.0
+	for line in lay.text:
+		draw_string(font, rect.position + Vector2(16, y + 12) * zoom, line, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(14), ink)
+		y += 18.0
+	tips.append({"rect": Rect2(rect.position + Vector2(0, 46) * zoom, Vector2(WIDTH, maxf(y - 46, 4)) * zoom), "text": card.get("text", "")})
+	fields[id] = []
+	for el in lay.els:
+		_draw_element(id, rect.position, el)
+	var link = _link_rect(rect)
+	draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), link)
+	draw_string(font, link.position + Vector2(19, 20) * zoom, "Link", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
+	if lay.details:
+		var answer = _answer_rect(rect)
+		answer_buttons[id] = answer
+		draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), answer)
+		draw_string(font, answer.position + Vector2(14, 20) * zoom, "Details", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
+
+func _draw_element(id: String, origin: Vector2, el: Dictionary) -> void:
+	var ink = Color("2c2720")
+	match el.t:
+		"label":
+			if el.get("icon") != null:
+				draw_texture_rect(el.icon, Rect2(origin + (el.at - Vector2(26, 15)) * zoom, Vector2(20, 20) * zoom), false)
+			draw_string(font, origin + el.at * zoom, el.text, HORIZONTAL_ALIGNMENT_LEFT, (WIDTH - el.at.x - 10) * zoom, _fs(14), Color("5a4c38"))
+		"chip":
+			var r = Rect2(origin + el.rect.position * zoom, el.rect.size * zoom)
+			var on: bool = el.get("on", false)
+			var off: bool = el.get("disabled", false)
+			draw_style_box(CanvasSkin.flat(Color("7c5a2e") if on else (Color("e6dccb") if off else Color("f3e9d2")), Color("5c4630"), 1, 10, 0), r)
+			draw_string(font, r.position + Vector2(9, 17) * zoom, el.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(13), Color("fbf6ea") if on else (Color("a89c88") if off else ink))
+			if not off:
+				fields[id].append({"rect": r, "field": el.field})
+			tips.append({"rect": r, "text": el.get("tip", "")})
+		"tile":
+			var r = Rect2(origin + el.rect.position * zoom, el.rect.size * zoom)
+			draw_style_box(CanvasSkin.flat(Color("efd7a6") if el.on else Color("f3e9d2"), Color("b0662f") if el.on else Color("9c8662"), 2 if el.on else 1, 6, 0), r)
+			draw_string(font, r.position + Vector2(8, 18) * zoom, el.text, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 12 * zoom, _fs(13), ink)
+			if el.on:
+				draw_string(font, r.position + Vector2(r.size.x / zoom - 22, 18) * zoom, "✓", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), Color("b0662f"))
+			fields[id].append({"rect": r, "field": el.field})
+			tips.append({"rect": r, "text": el.get("tip", "")})
+		"face":
+			var center: Vector2 = origin + el.at * zoom
+			var radius: float = el.r * zoom
+			var state: String = el.get("state", "")
+			if state == "on":
+				draw_circle(center, radius + 5 * zoom, Color("c0392b"))
+			elif state == "marked":
+				draw_circle(center, radius + 5 * zoom, Color("8e44ad"))
+			_draw_face(el.p, center, radius)
+			var name_text: String = Solver.person_name(model.view, el.p)
+			if el.r >= 18.0:
+				# Small faces (Surveyor tiles) keep their names in the tooltip.
+				var nw: float = font.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x * zoom
+				draw_string(font, center + Vector2(-nw / 2.0, radius + 14 * zoom), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(12), ink)
+			if state == "marked":
+				draw_string(font, center + Vector2(radius * 0.4, -radius * 0.55), "M", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(14), Color("fbf6ea"))
+			if state.begins_with("reason:"):
+				var reason: String = state.trim_prefix("reason:")
+				var tag: String = {"unexplained": "?", "gift": "gift", "evil": "evil", "secret": "errand"}.get(reason, reason)
+				var color: Color = {"unexplained": Color("8a8378"), "gift": Color("3f7f9a"), "evil": Color("c0392b"), "secret": Color("6a8a3a")}.get(reason, Color("8a8378"))
+				var tw: float = font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 10
+				var tr = Rect2(center + Vector2(-tw / 2.0, radius + 18) * Vector2(1, 1) + Vector2(0, 0), Vector2(tw, 16) * zoom)
+				tr.position = center + Vector2(-tw * zoom / 2.0, radius + 18 * zoom)
+				draw_style_box(CanvasSkin.flat(color, color.darkened(0.3), 1, 7, 0), tr)
+				draw_string(font, tr.position + Vector2(5, 12) * zoom, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(11), Color("fbf6ea"))
+			var hit_rect = Rect2(center - Vector2(radius, radius), Vector2(radius, radius) * 2)
+			if el.get("field", "") != "":
+				fields[id].append({"rect": hit_rect, "field": el.field})
+			tips.append({"rect": hit_rect, "text": el.get("tip", name_text)})
