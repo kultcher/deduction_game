@@ -289,6 +289,12 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
 
   - **Missing and duplicate cards.**
 
+    > **Session verification 2026-10-25 (B019):** Verified reticent whereabouts in
+    > test_playtest_regressions and private/relay/public history in test_board. Added dated-sighting
+    > and public-holder confidence checks. Propose closure of the listed card examples; spoken dates
+    > were fixed in B020. No disclosure/trust implementation changed. Full default runner: 73/75;
+    > only permitted test_social/test_text_ui failures.
+
     > **Prep B019 (9cb8782; partial):** `sim/mind.gd::answer_today` emits whereabouts cards;
     > `game/game.gd::add_card`/`_disclose` merge facts and disclosure history. Verify those first two
     > examples as closure candidates; keep dated window reports with chronology/wording work.

@@ -9,6 +9,7 @@ const BoardModel = preload("res://game/board_model.gd")
 const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
 const CardList = preload("res://ui/card_list.gd")
+const Mind = preload("res://sim/mind.gd")
 
 var fails = 0
 
@@ -16,6 +17,7 @@ func _init() -> void:
 	_test_canonical_time()
 	_test_merge_disclosures()
 	_test_revision_labels()
+	_test_dated_observations_and_public_confidence()
 	_test_views_and_markers()
 	_test_layout_rows()
 	_test_selected_row_order()
@@ -167,6 +169,21 @@ func _test_state_filters() -> void:
 	print("all %d, statements %d, places %d" % [all_n, stmt_n, places_n])
 	var total_n: int = g.board.filter(func(x): return not x.get("deleted", false) and x["kind"] != "deduction").size()
 	_check(places_n < total_n and stmt_n < total_n, "each view shows a subset of the cards (%d, %d of %d)" % [places_n, stmt_n, total_n])
+
+func _test_dated_observations_and_public_confidence() -> void:
+	var g = _game(8102)
+	var a = g.w.npcs[0]
+	var b = g.w.npcs[1]
+	var observation = {"kind": "saw", "who": b.id, "block": "market", "how": "window"}
+	var first = g.add_card(Mind.sighting_report(g.w, a, observation, 1).fact)
+	var later = g.add_card(Mind.sighting_report(g.w, a, observation, 2).fact)
+	_check(first != later and g.board[first - 1].when.day == 1 and g.board[later - 1].when.day == 2, "sightings on different nights keep distinct cards and observation times")
+	var claim = g.add_card({"kind": "claim", "source": a.id, "subject": [a.id], "role": "seer", "text": "A private claim for the confidence check."})
+	g.confidences[claim] = a.id
+	a.claim_public = true
+	var trust: float = a.trust
+	g._break_confidences([claim])
+	_check(a.trust == trust and not g.confidences.has(claim), "a holder's public disclosure lifts the old confidence cost")
 
 func _test_revision_labels() -> void:
 	var middle = {"kind": "deduction", "n": 22, "text": "The same historical case.", "revises": 12, "superseded_by": 31}
