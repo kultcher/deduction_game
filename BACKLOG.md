@@ -494,6 +494,11 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
   - **The totem has no adapter:** it should read "a Revenant is in play and lives on
     Chapel Hill", which crossed with an Archivist pair names one person.
 
+    > **Session verification 2026-10-25 (B034):** test_workshop_card_adapters._totem verifies public
+    > home/material candidates and shared delivery. Propose closure of the no-adapter report, not
+    > revelation of the hidden owner. Full default runner: 73/75; only permitted
+    > test_social/test_text_ui failures.
+
     > **Prep B034 (9cb8782; candidate to close):** `workshop/live_assessment.gd::activity_card` now
     > adapts totems; `tools/test_workshop_card_adapters.gd::_totem` checks public home/material
     > candidates and shared presentation. This is conditional role consistency, not hidden-owner
@@ -2294,6 +2299,11 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   Poisoner's visit); a totem found and the people who live where its material is from
   (the Revenant). Needs "silenced" and "totem" facts that templates read. (54875: the
   totem card had no adapter in the case workshop either.)
+
+  > **Session verification 2026-10-25 (B191):** Totem adapter absence is verified resolved (B034).
+  > Current main has expanded conclusion adapters, but not every typed-minion pattern is established
+  > by that test. Broader pattern work requiring workshop changes is skipped. Full default runner:
+  > 73/75; only permitted test_social/test_text_ui failures.
 
   > **Prep B191 (9cb8782; partial; adapter diagnosis stale):**
   > `workshop/live_assessment.gd::activity_card` now adapts silence/totems, but typed-minion conclusions
