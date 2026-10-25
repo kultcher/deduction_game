@@ -100,6 +100,10 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     Constance's night-0 reading named Dorian, so every listener was blocked from the Day 2
     meeting on. This will happen in most games. [decided]
 
+    > **Session verification 2026-10-25 (B006):** Verified test_legacy_migration: saturation no
+    > longer prevents shared ownership. Propose closure of the takeover/saturation failure. Full
+    > default runner: 73/75; only permitted test_social/test_text_ui failures.
+
     > **Prep B006 (9cb8782; candidate to narrow):** `sim/mind.gd::adjust` now stores unclamped sums;
     > `game/workshop_ownership.gd::_refresh` replaces one reversible joint vector. Verify
     > ownership/revision tests first: unsupported cards remain capability gaps, but the original
@@ -117,6 +121,10 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
       on "killed by the demon = good" being certain, which DESIGN says should one day
       be only strong evidence (a demon that kills its own minion); the real fix below
       doesn't.
+
+      > **Session verification 2026-10-25 (B007):** The victim-exemption patch is superseded by
+      > reversible storage. Propose retiring this historical workaround; finite death evidence is
+      > retained. Full default runner: 73/75; only permitted test_social/test_text_ui failures.
 
       > **Prep B007 (9cb8782; superseded proposal):** Do not add this exemption: unclamped storage
       > already addresses reversibility. Death is finite evidence in
@@ -139,6 +147,11 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
       contributions) and clamp only when reading it; then any entry can be removed
       exactly, and the reversibility checks, the "clipped" flag and the fallback can go.
 
+      > **Session verification 2026-10-25 (B009):** Verified exact withdrawal beyond both display
+      > bounds and victim counterevidence. Propose closure of unclamped-storage work; no belief
+      > implementation changed. Full default runner: 73/75; only permitted test_social/test_text_ui
+      > failures.
+
       > **Prep B009 (9cb8782; candidate to close):** `sim/mind.gd::adjust`/`susp` implement unclamped
       > storage and clamped reads. Validate withdrawal/recompute reversibility in
       > `tools/test_legacy_migration.gd`; do not build a second baseline scheme.
@@ -147,6 +160,11 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
       can't take a case, block the submission and say why, in the preview and at
       presentation. Never quietly run the legacy rules instead. `_present` has three
       silent `return {}` exits; until they're gone, log which one fired.
+
+      > **Session verification 2026-10-25 (B010):** test_legacy_migration._strict_submission
+      > verifies blocking without spending the floor/statement or leaking facts. Propose closure of
+      > the core silent-fallback bug; UI wording is covered by B036. Full default runner: 73/75;
+      > only permitted test_social/test_text_ui failures.
 
       > **Prep B010 (9cb8782; partial):** `game/game.gd::_presentation_gate` blocks unsupported normal
       > submissions, with explicit unsupported-conclusion/disabled routes. Audit current
