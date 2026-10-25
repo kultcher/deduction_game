@@ -1363,6 +1363,13 @@ exact values remain open. The code-derived examples and clarifications are in
   both groups and coordinate with all/any/exclusion and timeline layout.
   (Oct 21) [decided]
 
+  > **Session 2026-10-25 (B110): implemented; closure proposed.** Explicit person
+  > and place filters promote their rows through a stable partition; a selected
+  > location promotes its block. No selection restores normal order. Card membership,
+  > cell identities, pins, and any/all filter semantics are unchanged. `test_board`
+  > checks every view and stable groups; `test_ui` checks actual filter wiring.
+  > Focused checks: 2/2. Full runner: 73/75; only the two permitted failures.
+
   > **Prep B110 (9cb8782; open; layout batch):** `ui/case_state.gd::apply` filters cards;
   > `game/board_model.gd::layout` builds rows. Put selected-first ordering in shared row layout with
   > stable ties and pinned anchors; this is not only a list sort.

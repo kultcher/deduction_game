@@ -11,7 +11,8 @@
 ##     cells: {"row|col": [item indexes]}         for stacking and counts
 ##     pinned: [card numbers]                     deductions pinned onto this view (card.pins[view] = world position)
 ##   }
-##   ctx: {day, phase (current), people: [{id, name, alive}], blocks: [ids], rows_by}
+##   ctx: {day, phase (current), people: [{id, name, alive}], blocks: [ids], rows_by,
+##         selected_people: [ids], selected_blocks: [ids]}
 ##
 ## Connections (for strings drawn on hover) come from links(card).
 extends RefCounted
@@ -44,6 +45,12 @@ static func layout(cards: Array, view: String, ctx: Dictionary) -> Dictionary:
 	else:
 		for p in ctx.get("people", []):
 			rows.append({"id": p["id"], "label": p["name"] + ("" if p.get("alive", true) else " †"), "kind": "person"})
+	# Stable partition: explicit filters promote headers without changing card membership.
+	var selected: Array = ctx.get("selected_people", []) if rows_by == "person" else ctx.get("selected_blocks", [])
+	if not selected.is_empty():
+		var promoted: Array = rows.filter(func(row): return row.id in selected)
+		promoted.append_array(rows.filter(func(row): return row.id not in selected))
+		rows = promoted
 	var row_ids = {}
 	for r in rows:
 		row_ids[r["id"]] = true

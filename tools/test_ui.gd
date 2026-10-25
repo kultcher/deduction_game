@@ -47,6 +47,22 @@ func _init() -> void:
 		await process_frame
 	var cv = scene.case_view
 	_check(cv.panels.values().all(func(p): return not p.visible), "case-board tools start minimized")
+	var explicit_person: String = g.w.npcs[2].id
+	for match_all in [false, true]:
+		cv.state.rows_by = "person"
+		cv.state.people = {explicit_person: true}
+		cv.state.match_all = match_all
+		cv.board.rebuild()
+		_check(cv.board.lay.rows[0].id == explicit_person, "the actual board promotes explicit person filters in any/all modes")
+	cv.state.clear()
+	cv.state.rows_by = "place"
+	cv.state.places = {"bakery": true}
+	cv.board.rebuild()
+	_check(cv.board.lay.rows[0].id == C.LOCATIONS.bakery.block, "a selected location promotes its public block row")
+	cv.state.clear()
+	cv.state.match_all = false
+	cv.board.rebuild()
+
 	_check(cv.board.size.is_equal_approx(cv.canvas.size), "the grid fills the canvas without sidebar columns")
 	_check(cv.board.zoom > 1.0, "the initial day view uses the full canvas rather than the hidden control's startup size")
 	_check(not cv.panels["cards"].is_ancestor_of(cv.filter_edit) and not cv.panels["cards"].is_ancestor_of(cv.kind_menu), "shared filters live on the main case screen, outside the card popup")

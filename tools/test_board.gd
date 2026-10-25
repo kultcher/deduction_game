@@ -18,6 +18,7 @@ func _init() -> void:
 	_test_revision_labels()
 	_test_views_and_markers()
 	_test_layout_rows()
+	_test_selected_row_order()
 	_test_layout_real_game()
 	_test_state_filters()
 	_test_theme_fallback()
@@ -176,6 +177,25 @@ func _test_revision_labels() -> void:
 	var latest = {"kind": "deduction", "n": 31, "text": "The expanded case.", "revises": 22}
 	_check("revision of #22" in CardList.line_for(latest) and not "superseded" in CardList.line_for(latest), "the latest revision names its predecessor without marking itself superseded")
 	_check(not "revision" in CardList.line_for({"kind": "claim", "n": 4, "text": "A plain claim."}), "ordinary evidence is not labeled as a case revision")
+
+func _test_selected_row_order() -> void:
+	var g = _game(8103)
+	var ctx = _ctx(g, "person")
+	var ids: Array = ctx.people.map(func(person): return person.id)
+	ctx["selected_people"] = [ids[4], ids[1]] # selection order must not reorder either group
+	for view in ["places", "statements", "process"]:
+		var layout = BoardModel.layout(g.board, view, ctx)
+		var people: Array = layout.rows.filter(func(row): return row.kind == "person").map(func(row): return row.id)
+		_check(people == [ids[1], ids[4]] + ids.filter(func(id): return id not in [ids[1], ids[4]]), "selected person rows lead with stable order in " + view)
+	var place_ctx = _ctx(g)
+	var blocks: Array = place_ctx.blocks
+	place_ctx["selected_blocks"] = [blocks[2]]
+	var before = BoardModel.layout(g.board, "places", _ctx(g))
+	var after = BoardModel.layout(g.board, "places", place_ctx)
+	_check(after.rows[0].id == blocks[2] and after.rows.filter(func(row): return row.kind == "place").map(func(row): return row.id) == [blocks[2]] + blocks.filter(func(id): return id != blocks[2]), "selected place rows lead without shuffling the rest")
+	_check(before.items == after.items and before.cells == after.cells and before.pinned == after.pinned, "row priority changes neither card cells nor pins")
+	place_ctx["selected_blocks"] = []
+	_check(BoardModel.layout(g.board, "places", place_ctx).rows == before.rows, "clearing explicit selection restores ordinary row order")
 
 func _test_theme_fallback() -> void:
 	var p = UITheme.panel("popup")

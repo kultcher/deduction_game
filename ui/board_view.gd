@@ -85,7 +85,8 @@ func rebuild() -> void:
 	cards += g.board.filter(func(c): return c.get("kind", "") == "deduction" and not c.get("deleted", false) and (g.show_hidden or not c.get("hidden", false)) and c.get("pins", {}).has(board_view()))
 	var ctx = {"day": g.w.day, "phase": g._phase_now(), "rows_by": state.rows_by,
 		"people": g.w.npcs.map(func(n): return {"id": n.id, "name": n.name, "alive": n.alive}),
-		"blocks": C.BLOCKS.keys()}
+		"blocks": C.BLOCKS.keys(), "selected_people": state.people.keys(),
+		"selected_blocks": state.places.keys().map(func(key): return key if C.BLOCKS.has(key) else g.w.loc_block(key))}
 	lay = BoardModel.layout(cards, board_view(), ctx)
 	_measure()
 	_schedule_initial_fit()
