@@ -31,6 +31,12 @@ func _init() -> void:
 	g.w.meeting.block = ""
 	_check("empty after a tie" in g.vote_requirement_text() and g.vote_requirement_text().begins_with("%d to put" % (threshold + 2)), "an empty block retains the earlier high count")
 	_check(g.w.rng.state == voter_rng and g.w.meeting.block_count == threshold + 1, "formatting requirements changes neither vote state nor RNG")
+	var old_state: String = g.state
+	g.state = "nomination"
+	scene._refresh_actions()
+	var vote_labels: Array = scene.actions.get_children().filter(func(button): return button is Button).map(func(button): return button.text)
+	_check("Vote to execute" in vote_labels and "Vote to spare" in vote_labels, "both vote buttons name their execution outcome")
+	g.state = old_state
 	g.w.meeting = original_meeting
 	scene.meeting_view.set_game(g)
 	for cmd in ["go tavern", "wait", "go well", "wait", "go tavern", "wait", "wait", "done", "vigil square", "board", "timeline"]:

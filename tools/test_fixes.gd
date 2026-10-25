@@ -19,6 +19,7 @@ func _init() -> void:
 	_roads()
 	_home_cards()
 	_wording()
+	_dated_sighting_wording()
 	_medium_bluff()
 	_warden_doors()
 	_martyr_reluctance()
@@ -123,6 +124,33 @@ func _home_cards() -> void:
 	g.w.by_id[n.id].busy_with = ""
 	var r = g._route_present(n, str(homes[0]["n"]))
 	_check(r.has("flat"), "a home card can't be presented to anyone")
+
+func _dated_sighting_wording() -> void:
+	var g = _game(7102)
+	var speaker = g.w.npcs[0]
+	var target = g.w.npcs[1]
+	var rng = g.w.rng.state
+	for observation in [
+		{"kind": "stayed_in", "how": "window"},
+		{"kind": "saw", "how": "window", "detail": "leaving_home"},
+		{"kind": "saw", "how": "window"},
+		{"kind": "saw", "how": "street"}]:
+		observation["who"] = target.id
+		observation["block"] = "square"
+		var reply = Mind.sighting_report(g.w, speaker, observation, 3)
+		_check("night 3" in reply.line.text and reply.fact.day == 3, "spoken sighting/alibi names the same night as its receipt")
+		if observation.how == "street":
+			_check(not "window" in reply.line.text, "a street sighting is not worded as a window observation")
+	_check(g.w.rng.state == rng, "dating an approved sighting adds no RNG draw")
+	g.state = "day"
+	g.moved = false
+	for n in g.w.living():
+		n.loc = "home_" + n.id
+		n.working = false
+		n.busy_with = ""
+	speaker.loc = "tavern"
+	var overview = g._map()
+	_check("Total out of sight:" in overview and "includes the anonymous counts above" in overview, "overview totals explicitly include rather than add to anonymous counts")
 
 func _wording() -> void:
 	_check(C.natural_nights("Fenwick says they were home on night 0.") == "Fenwick says they were home on the night before you arrived.", "night 0 reads as the night before you arrived")

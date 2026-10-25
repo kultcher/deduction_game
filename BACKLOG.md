@@ -267,6 +267,15 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     [decided]
   - **Wording.** [decided]
 
+    > **Session 2026-10-25 (B020): wording fixed; closure proposed for these lines.**
+    > Spoken sightings name their receipt's night; street reports remain street reports.
+    > Vigil narration says “out on”; overview totals explicitly include the anonymous
+    > counts; the cast says “location unknown”; vote buttons say execute/spare. Guarded
+    > report openings no longer imply a preceding question. No evidence metadata or
+    > decision formulas changed. The allowed failing false-Night-Watch consistency
+    > case is still separate evil-story work and is skipped under this session's rules.
+    > Focused checks: 4/4. Full runner: 73/75; only the two permitted failures.
+
     > **Prep B020 (9cb8782; mixed):** Check `sim/mind.gd::sighting_report`,
     > `ui/main.gd::_refresh_actions`, and `game/game.gd::_show_nomination`. Card dates already exist.
     > Distinguish spoken text, UI labels, and evidence identity; do not change mechanics just to repair

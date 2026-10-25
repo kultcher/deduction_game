@@ -1805,7 +1805,7 @@ func _resolve_night() -> void:
 				"text": "Night %d vigil on %s: nobody moved." % [w.day, C.block_name(vig)]}])
 		else:
 			var names: Array = w.player_vigil_seen.map(func(i): return w.by_id[i].name)
-			_narr("During your vigil you see %s moving through %s." % [", ".join(PackedStringArray(names)), C.block_name(vig)])
+			_narr("During your vigil you see %s out on %s." % [", ".join(PackedStringArray(names)), C.block_name(vig)])
 			_facts([{"kind": "sighting", "subject": w.player_vigil_seen.duplicate(), "block": vig, "source": "player",
 				"day": w.day, "phase": C.NIGHT, "vigil": true, "text": "Night %d vigil: you saw %s on %s." % [w.day, ", ".join(PackedStringArray(names)), C.block_name(vig)]}])
 	w.player_vigil = ""
@@ -1992,7 +1992,7 @@ func _map() -> String:
 	if not at_home.is_empty():
 		out.append("  At home nearby (you can call on them): " + ", ".join(PackedStringArray(at_home)))
 	if unseen > 0:
-		out.append("  %d other%s out of sight (the counts above say where someone is, not who; those at home aren't counted)." % [unseen, "" if unseen == 1 else "s"])
+		out.append("  Total out of sight: %d (includes the anonymous counts above and anyone at home)." % unseen)
 	return "\n".join(out)
 
 func _cast() -> String:

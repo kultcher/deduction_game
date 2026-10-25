@@ -61,7 +61,7 @@ func _run() -> void:
 	n.loc = "home_" + n.id
 	n.working = false
 	n.busy_with = ""
-	_check(cl._sub_line(n) == "at Unknown", "an unseen living townsperson shows at Unknown")
+	_check(cl._sub_line(n) == "location unknown", "an unseen living townsperson has an explicitly unknown location")
 	n.loc = n.work
 	n.working = true
 	_check(cl._sub_line(n).begins_with("at ") and not "Unknown" in cl._sub_line(n), "a visible townsperson shows their location")
@@ -106,7 +106,7 @@ func _run() -> void:
 	g.state = "night"
 	scene._on_map_clicked("npc", n.id)
 	_check(scene._ward_target == n.id and scene.map.selected_npc == other.id, "night ward targeting stays separate from map highlighting")
-	_check(cl._sub_line(n) == "at Unknown", "the night list does not substitute an occupation for an unknown location")
+	_check(cl._sub_line(n) == "location unknown", "the night list does not substitute an occupation for an unknown location")
 	scene._new_case()
 	scene.roles_win.hide()
 	await _settle()

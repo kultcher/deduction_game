@@ -2460,7 +2460,7 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	var who = w.by_id[b["who"]]
 	var bn = C.block_name(b["block"])
 	if b["kind"] == "stayed_in":
-		return {"line": say(n, "From my window, I saw %s go in for the night, and they never came out." % who.name),
+		return {"line": say(n, "From my window on night %d, I saw %s go in for the night, and they never came out." % [nd, who.name]),
 			"fact": {"kind": "alibi", "subject": [who.id], "home": true, "witness": true, "day": nd, "phase": C.NIGHT, "source": n.id, "block": b["block"],
 				"text": "%s says they saw %s go home for the night on night %d and not come out (from their window, %s)." % [n.name, who.name, nd, bn]}}
 	var line = ""
@@ -2468,11 +2468,11 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	if b.get("how", "street") == "window":
 		how = " (from their window)"
 		if b.get("detail", "") == "leaving_home":
-			line = "From my window, I saw %s leave their house that night." % who.name
+			line = "From my window, I saw %s leave their house on night %d." % [who.name, nd]
 		else:
-			line = "From my window, I saw %s out in the street that night." % who.name
+			line = "From my window, I saw %s out in the street on night %d." % [who.name, nd]
 	else:
-		line = "I did see %s out on %s that night." % [who.name, bn]
+		line = "I did see %s out on %s on night %d." % [who.name, bn, nd]
 	return {"line": say(n, line),
 		"fact": {"kind": "sighting", "subject": [who.id], "block": b["block"], "day": nd, "phase": C.NIGHT, "source": n.id, "how": b.get("how", "street"),
 			"text": "%s says they saw %s on %s on night %d%s." % [n.name, who.name, bn, nd, how]}}

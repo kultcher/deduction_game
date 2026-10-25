@@ -150,7 +150,7 @@ func _sub_line(n) -> String:
 			return "died in another's place, day %d" % n.death_day
 		return "killed, night %d" % n.death_day if n.death_cause == "demon" else "executed, day %d" % n.death_day
 	if g.state == "night" or not g.can_see(n):
-		return "at Unknown"
+		return "location unknown"
 	var place = "home" if n.at_home() else g.w.loc_name(n.loc).trim_prefix("the ")
 	return "at " + place
 

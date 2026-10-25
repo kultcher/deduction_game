@@ -690,7 +690,7 @@ func _refresh_actions() -> void:
 			action_title.text = "Vote on %s" % w.by_id[nm["nominee"]].name
 			_map_toggle()
 			_button(actions, "Vote to execute", func(): _run("vote yes"))
-			_button(actions, "Vote against", func(): _run("vote no"))
+			_button(actions, "Vote to spare", func(): _run("vote no"))
 			if not g.statement_used:
 				_button(actions, "Speak against them…", func(): _card_picker("Accuse, citing a card (optional)",
 					func(c): return true, func(num, _x): _run("accuse %d" % num if num > 0 else "accuse"), true))
