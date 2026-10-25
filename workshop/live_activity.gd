@@ -53,6 +53,8 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 				okay = okay and out and path.back() == hearth
 			if card.get("night", -1) != night or card.get("quoted", false):
 				continue
+			if card.kind == "sighting" and card.get("hearing_weight", 1.0) < 1.0:
+				continue # Weakly relayed testimony cannot force a walk or gift identity.
 			if card.kind == "sighting" and person.id in card.get("subjects", [card.get("subject", "")]):
 				okay = okay and out and (card.block == "" or card.block in path)
 				if card.has("guard_claim"):
@@ -308,7 +310,7 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 	match card.kind:
 		"sighting":
 			if person in card.get("subjects", [card.get("subject", "")]):
-				return 1.0 if out and (card.block == "" or card.block in path) else 0.0
+				return 1.0 if out and (card.block == "" or card.block in path) else 1.0 - float(card.get("hearing_weight", 1.0))
 			if card.get("complete", false) and person not in card.get("excluded", []):
 				return 1.0 if card.block not in path else 0.0
 		"evening":

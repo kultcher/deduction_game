@@ -301,6 +301,8 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 	var key_input = [Solver._universe_key(view), view.get("timeline", {}), view.people, conclusion, case_data.get("citations", {}), case_data.get("test_factors", []),
 		known.map(func(c): return c.get("fact_id", c.id)) if not case_data.get("test_factors", []).is_empty() else [],
 		cards.map(func(c): return [c.get("fact_id", c.id), c.kind, c.source, c.get("role", ""), c.get("observed_at", {}), c.get("data", {}), c.get("event", ""), c.has("relay_source"), c.get("quoted", false), c.get("block", ""), c.get("night", -1), c.get("subject", ""), c.get("subjects", [])])]
+	if cards.any(func(c): return c.has("hearing_weight")):
+		key_input.append(cards.map(func(c): return c.get("hearing_weight", 1.0)))
 	var key = hash(key_input)
 	if _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]

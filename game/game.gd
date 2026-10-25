@@ -226,6 +226,18 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 		var game = weak_game.get_ref()
 		if game != null and game.w == weak_world.get_ref():
 			WorkshopOwnership.refresh(game, n, phase)
+	w.workshop_roots = func(card):
+		var game = weak_game.get_ref()
+		if game == null or game.w != weak_world.get_ref():
+			return {"complete": false, "receipts": {}}
+		var proof = WorkshopOwnership.Shared.roots([card], game.board)
+		if card.get("kind") == "deduction" and card.get("n", 0) > 0:
+			var captured = game.workshop_snapshot([card.n])
+			var endorsed: Array = WorkshopOwnership.Shared.endorsed_facts(captured, card.n)
+			for id in proof.receipts.keys():
+				if id not in endorsed:
+					proof.receipts.erase(id) # Quoting a conflict is not endorsing its accounts.
+		return proof
 	w.workshop_present = func(n, card, targets, direction, venue, speak):
 		var game = weak_game.get_ref()
 		if game == null or game.w != weak_world.get_ref():

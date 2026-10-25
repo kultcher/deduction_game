@@ -21,6 +21,7 @@ var workshop_refresh: Callable
 var defer_beliefs = false
 var pending_beliefs: Array = []
 var workshop_present: Callable
+var workshop_roots: Callable # Read-only resolution of a relayed board case.
 var detailed_logging = true     # debug export only; does not enable the spoiler UI
 var trace_build = ""            # optional caller-supplied git/build identifier
 var trace_tuning = ""           # optional caller-supplied tuning identifier

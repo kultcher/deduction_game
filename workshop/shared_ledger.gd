@@ -77,6 +77,10 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 					_add(facts, owners, receipt, "reading:" + eid)
 		if entry.get("meta", {}).get("kind") == "tell" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
 			_add(facts, owners, entry.meta.workshop_card, "testimony:" + eid)
+		if entry.get("meta", {}).get("kind") == "shared_case" and entry.meta.get("workshop_complete", false):
+			for receipt in entry.meta.get("workshop_receipts", {}).values():
+				if supported(receipt):
+					_add(facts, owners, receipt, "share:" + eid)
 	for key in presentations:
 		var presented: Dictionary = presentations[key]
 		for argument in presented.arguments:
@@ -142,6 +146,11 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var entry: Dictionary = ledger[eid]
 		var meta: Dictionary = entry.get("meta", {})
 		var kind: String = meta.get("kind", "")
+		if kind == "shared_case":
+			# Incomplete relays are explicitly excluded by the delivery log. Neither
+			# their wrapper label nor its native +.1 may masquerade as evidence.
+			owned[eid] = true
+			continue
 		var curse: Dictionary = prepared.view.get("chronology", {}).get("curse", {})
 		if kind == "event" and not curse.is_empty() and eid == "curse:%d" % (int(curse.from) / 4) and entry.get("effects", []).all(func(effect): return effect[0] in curse.yes_voters and is_equal_approx(float(effect[1]), 0.15)):
 			owned[eid] = true
@@ -228,6 +237,20 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var player_weight = clampf(0.5 + prepared.listener.trust, 0.0, 1.0)
 		prepared.listener.trust = 0.5
 		for id in facts:
+			var hearing = 0.0
+			var shared: bool = false
+			for owner in owners[id]:
+				if owner.begins_with("share:") or owner.begins_with("testimony:"):
+					var eid: String = owner.substr(owner.find(":") + 1)
+					if ledger[eid].meta.has("workshop_teller"):
+						shared = true
+						hearing = maxf(hearing, clampf(ledger[eid].weight, 0.0, 1.0))
+			if shared and facts[id].kind == "sighting":
+				if "learned" in owners[id] and facts[id].source == input.listener.id:
+					hearing = 1.0
+				for card in prepared.view.cards:
+					if card.id == id:
+						card["hearing_weight"] = hearing
 			if facts[id].kind not in ["info", "claim"]:
 				continue
 			var weight = player_weight
@@ -239,6 +262,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 						hearing_weight = maxf(hearing_weight, clampf(ledger[owner.trim_prefix("reading:")].weight, 0.0, 1.0))
 				if hearing_weight >= 0.0:
 					weight = hearing_weight # Several paths retain the strongest hearing once.
+			if shared:
+				weight = maxf(weight if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:") or owner.begins_with("case:")) else 0.0, hearing)
 			prepared.listener.reading_reliability[id] *= weight
 		# Presentation weights add per-report uncertainty; enforce the budget AFTER
 		# introducing those dimensions as well as during ordinary preparation.
@@ -414,7 +439,14 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 	return result
 
 static func _add(facts: Dictionary, owners: Dictionary, receipt: Dictionary, owner: String) -> void:
-	facts[receipt.id] = receipt.duplicate(true)
+	if not facts.has(receipt.id):
+		facts[receipt.id] = receipt.duplicate(true)
+	else:
+		for path in receipt.get("provenance_paths", [receipt.get("provenance", {})]):
+			if path not in facts[receipt.id].get("provenance_paths", []):
+				if not facts[receipt.id].has("provenance_paths"):
+					facts[receipt.id]["provenance_paths"] = []
+				facts[receipt.id].provenance_paths.append(path.duplicate(true))
 	if not owners.has(receipt.id):
 		owners[receipt.id] = []
 	if owner not in owners[receipt.id]:

@@ -99,8 +99,9 @@ static func _pick_item(w, s, l):
 				"why": Mind.citable_reason(w, s, t.id, "town"), "from": s.id, "key": "opinion:" + t.id}])
 		for c in s.player_cases.slice(-2):
 			var about: String = c["suspect"]
-			if about != l.id and not _told(s, l, "case:" + c["card"]["text"]):
-				cands.append([gos * 0.5, {"kind": "case", "about": about, "card": c["card"], "from": "player", "key": "case:" + c["card"]["text"]}])
+			var key: String = "case:" + str(c.card.get("n", c.card.text))
+			if about != l.id and not _told(s, l, key):
+				cands.append([gos * 0.5, {"kind": "case", "about": about, "card": c["card"], "from": "player", "key": key}])
 	# Things anyone might pass on: what they saw at night, what they've heard, others' secrets.
 	for b in s.beliefs:
 		if b["kind"] == "saw" and b["phase"] == C.NIGHT and b["day"] >= w.day - 2 and b["who"] != l.id and w.by_id[b["who"]].alive:
@@ -180,7 +181,11 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 			var e1: Array = []
 			Mind._eff(e1, item["about"], 0.4 * sc, "heard from %s that %s was out at night (x%.2f)" % [s.id, item["about"], sc],
 				"%s says they were out at night" % s.name)
-			Mind.ledger_hear(w, l, "heard:" + hs["key"], e1, wgt * 2.0, [s.id, item.get("day", -1), "report"])
+			var card = {"kind": "sighting", "source": item.get("from", s.id), "via": s.id, "subject": [item["about"]], "block": item.get("block", ""), "day": item.get("day", -1), "phase": C.NIGHT,
+				"learned": [{"day": w.day, "phase": w.phase, "via": s.id}], "text": desc}
+			var receipt = Mind.WorkshopLedger.Evidence.normalize_card(card)
+			Mind.ledger_hear(w, l, "heard:" + receipt.id, e1, wgt * 2.0, [s.id, item.get("day", -1), "report"],
+				{"kind": "tell", "workshop_card": receipt, "workshop_teller": s.id, "workshop_public": false})
 			l.hearsay.append(hs)
 		"opinion":
 			# Remember the conversation and teller, without turning their conclusion
@@ -190,7 +195,16 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 			var e3: Array = []
 			Mind._eff(e3, item["about"], 0.1, "heard the Demonologist's case against %s via %s" % [item["about"], s.id],
 				"the Demonologist has a case against them")
-			Mind.ledger_hear(w, l, "relayed-case:%s>%s" % [Mind.fact_id(item["card"]), item["about"]], e3, wgt * 2.0)
+			var proof = w.workshop_roots.call(item["card"]) if w.workshop_roots.is_valid() else {"complete": false, "receipts": {}}
+			for receipt in proof.receipts.values():
+				var path = {"via": s.id, "kind": "npc_case", "at": {"day": w.day, "phase": w.phase}}
+				if not receipt.has("provenance_paths"):
+					receipt["provenance_paths"] = []
+				receipt.provenance_paths.append(path)
+			Mind.ledger_hear(w, l, "relayed-case:%s>%s" % [str(item.card.get("n", Mind.fact_id(item.card))), item["about"]], e3, wgt * 2.0, [],
+				{"kind": "shared_case", "workshop_receipts": proof.receipts, "workshop_complete": proof.complete, "workshop_teller": s.id})
+			if not proof.complete:
+				w.dlog.add("evidence_excluded", l.id, item["about"], {"via": s.id}, "Relayed case excluded from shared evidence: its original roots are missing or unsupported.")
 			l.hearsay.append(hs)
 		"secret":
 			var owner = w.by_id[item["about"]]

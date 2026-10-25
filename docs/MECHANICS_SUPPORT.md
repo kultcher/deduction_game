@@ -82,6 +82,11 @@ eligible people. Keep it out of games with no curse.
 
 ## 2. NPC-to-NPC sharing as evidence
 
+**Implemented Oct 25 (Codex).** Canonical reading/sighting receipts and endorsed
+player-case roots retain teller provenance and hearing weight; native wrappers are
+parked. Repeats and additional tellers do not become independent facts. Quoted
+accounts and opinions are not promoted to endorsed evidence. See MIGRATION_PROGRESS.
+
 **State:** sightings and readings told NPC to NPC (C3), and the player's case relayed
 by an NPC (C5), are legacy ledger entries. Opinions (C4) are already excluded (Q4).
 

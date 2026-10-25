@@ -111,3 +111,12 @@ Existing local Godot config/UID changes are outside these commits.
   presenting 2744 ms versus item 0's 2698 ms, meeting search 1682/1647 ms. Expanded
   cursed-game cost still needs the passive chunk; `logs/mechanics-support/curse-final`
   and `item-1` retain the evidence.
+- **2:** NPC sightings now carry original-observer/teller receipts; relayed cases
+  contribute endorsed original roots, not another accusation bonus. Native wrappers
+  are parked, repeat/second-teller paths deduplicate, and hearing weight reaches
+  movement without forcing a walk from weak hearsay. Opinions remain speech.
+  Sharing (11 checks), ownership and factor-cache suites pass; `test_social` retains
+  its one known false-Night-Watch failure. Replay 9 shared, 0 fallback, unchanged
+  3/5; presenting 2720 ms versus item 1's 2744 ms, search 1645/1682 ms.
+  Evidence: `logs/mechanics-support/sharing`, `item-2`. First passive chunk is frozen
+  after items 0–1; item 2's late-game cost will be measured with the next chunk.
