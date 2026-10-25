@@ -28,6 +28,12 @@ func reset() -> void:
 func _default_target() -> String:
 	return "constance" if view.people.any(func(p): return p.id == "constance") else view.people[0].id
 
+## A premise with no person or claim yet: the player fills it in on the card.
+func add_blank_premise(at: Vector2) -> String:
+	var id: String = add_premise("", "support", at)
+	nodes[id]["draft"] = true
+	return id
+
 func add_premise(target: String, type: String, at: Vector2) -> String:
 	serial += 1
 	var id = "p:%d" % serial
@@ -182,6 +188,23 @@ func unlink(from: String, to: String) -> void:
 	links = links.filter(func(edge): return edge.from != from or edge.to != to)
 	version += 1
 
+## Take an evidence card off the canvas, with its modifiers and links. The original
+## card stays on the case board; only this canvas copy goes.
+func remove_evidence(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "evidence" or nodes[id].has("merged"):
+		return
+	for key in nodes.keys().filter(func(k): return nodes[k].kind == "modifier" and nodes[k].card == nodes[id].card):
+		remove_modifier(key)
+	links = links.filter(func(edge): return edge.from != id and edge.to != id)
+	for node in nodes.values():
+		if node.kind in ["contradiction", "modifier"]:
+			node.prior_links = node.get("prior_links", []).filter(func(edge): return edge.from != id and edge.to != id)
+	nodes.erase(id)
+	if selected == id or not nodes.has(selected):
+		var premises: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise")
+		selected = premises[0] if not premises.is_empty() else (nodes.keys()[0] if not nodes.is_empty() else "")
+	version += 1
+
 func remove_premise(id: String) -> void:
 	if not nodes.has(id) or nodes[id].kind != "premise":
 		return
@@ -191,7 +214,7 @@ func remove_premise(id: String) -> void:
 		if node.kind == "contradiction":
 			node.prior_links = node.prior_links.filter(func(edge): return edge.from != id and edge.to != id)
 	var remaining: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise" and not nodes[key].conclusion.is_empty())
-	selected = add_premise(_default_target(), "evil", Vector2(540, 50)) if remaining.is_empty() else remaining[0]
+	selected = add_blank_premise(Vector2(540, 50)) if remaining.is_empty() else remaining[0]
 	version += 1
 
 func compile(root: String, include_arguments: bool = true) -> Dictionary:
@@ -306,14 +329,23 @@ func _evidence(ids: Array) -> Array:
 	result.sort()
 	return result
 
+## How each premise type reads after the person's name (the Workshop's claim menu).
+const PREMISE_TEXT = {"evil": "is evil", "suspicious": "is suspicious", "good": "is good", "marked": "is Marked",
+	"conflict": "these reports conflict", "demon": "is the Demon", "minion": "is a Minion",
+	"notdemon": "is not the Demon", "secret_mod": "has a secret modifier", "role": "holds their claimed gift",
+	"notrole": "is bluffing their claimed gift", "lied": "lied about a reading", "truthful": "told the truth about a reading",
+	"misled": "was misled by a reading", "unreliable": "gave an unreliable reading"}
+
 func title(id: String) -> String:
 	var node: Dictionary = nodes[id]
 	if node.kind == "premise":
+		if node.get("draft", false):
+			return "New premise"
 		if node.conclusion.is_empty():
 			return "Supporting evidence"
 		if node.conclusion.type == "conflict":
 			return "These reports conflict"
-		return "%s is %s" % [Solver.person_name(view, node.conclusion.target), node.conclusion.type]
+		return "%s %s" % [Solver.person_name(view, node.conclusion.target), PREMISE_TEXT.get(node.conclusion.type, "is " + node.conclusion.type)]
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
 	if node.kind == "modifier":
@@ -420,4 +452,89 @@ func restore(value, session) -> String:
 	selected = candidate.selected
 	version = candidate.version
 	serial = candidate.serial
+	return ""
+
+## One click on an evidence card's answer, as a pure update of that card's answer:
+## kind "pick" (a face), "block" / "resident" (Surveyor), "reg" (Seer registration).
+## Dowser and Surveyor faces cycle ? -> registered -> registered as Marked -> ?.
+func apply_answer(card: Dictionary, previous: Dictionary, kind: String, value: String) -> Dictionary:
+	var answer: Dictionary = previous.duplicate(true)
+	var positive: Array = answer.get("positive", []).duplicate()
+	var marked: Array = answer.get("marked", []).duplicate()
+	var role: String = card.get("role", "")
+	var count: int = 1
+	if card.kind == "report" and role in ["dowser", "lamplighter", "surveyor"]:
+		count = int(card.data.get("count", 0))
+	match kind:
+		"reg":
+			answer["registration"] = value
+		"pick":
+			if role == "dowser":
+				# ? -> registered (evil or Marked) -> registered as Marked -> ?
+				if value not in positive:
+					if positive.size() < count:
+						positive.append(value)
+				elif value not in marked:
+					marked = [value]
+				else:
+					positive.erase(value)
+					marked.erase(value)
+			elif value in positive:
+				positive.erase(value)
+			elif positive.size() < count:
+				positive.append(value)
+			elif count == 1:
+				positive = [value]
+			answer["slots"] = positive.duplicate()
+		"block", "resident":
+			var blocks: Array = answer.get("blocks", []).duplicate()
+			var block: String = value
+			if kind == "resident":
+				for person in view.people:
+					if person.id == value:
+						block = person.home
+			var residents: Array = view.people.filter(func(p): return p.home == block).map(func(p): return p.id)
+			var used: int = blocks.size() + positive.size()
+			if kind == "block":
+				if block in blocks:
+					blocks.erase(block)
+				elif residents.any(func(p): return p in positive):
+					for p in residents:
+						positive.erase(p)
+						marked.erase(p)
+				elif used < count:
+					blocks.append(block)
+			elif value in positive:
+				if value not in marked:
+					marked = [value]
+				else:
+					positive.erase(value)
+					marked.erase(value)
+			else:
+				var had_block: bool = block in blocks or residents.any(func(p): return p in positive)
+				blocks.erase(block)
+				for p in residents:
+					positive.erase(p)
+					marked.erase(p)
+				if had_block or blocks.size() + positive.size() < count:
+					positive.append(value)
+			answer["blocks"] = blocks
+			var keys: Array = C.BLOCKS.keys()
+			if count == 4:
+				answer["slots"] = keys.map(func(b): return ("block:" + b) if b in blocks else _first_of(positive, view.people.filter(func(p): return p.home == b).map(func(p): return p.id)))
+			else:
+				answer["slots"] = blocks.map(func(b): return "block:" + b) + positive
+	marked = marked.filter(func(p): return p in positive)
+	answer["positive"] = positive
+	if marked.is_empty():
+		answer.erase("marked")
+	else:
+		answer["marked"] = marked
+	return answer
+
+
+func _first_of(values: Array, candidates: Array) -> String:
+	for v in values:
+		if v in candidates:
+			return v
 	return ""

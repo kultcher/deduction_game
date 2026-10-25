@@ -154,6 +154,9 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	var editor = Editor.new()
 	editor.g = g
 	root.add_child(editor)
+	# A fresh Workshop starts blank; these checks argue the old preset premise.
+	editor.set_premise_field(editor.case_root, "type", "evil")
+	editor.set_premise_field(editor.case_root, "person", editor.board._default_target())
 	await process_frame
 	check(editor.canvas.size.x > 1000 and editor.canvas.size.y > 200, "live editor fills the available window and leaves room for its canvas")
 	check(editor.board.view.live and not editor.board.nodes.values().any(func(n): return n.kind == "evidence"), "opening the live Workshop does not automatically transfer board evidence")
@@ -168,7 +171,7 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor.board.connect_cards("e:" + report_id, headline)
 	editor.board.selected = headline
 	editor._session_changed()
-	check("SHARED EVALUATOR" in editor.support_label.text, "supported reading case has a visible evaluator label")
+	check(editor.support_label.text.begins_with("Ready") or "listeners" in editor.support_label.text, "supported reading case has a visible evaluator label")
 	editor._open_answer("e:" + report_id)
 	check(editor.case_box.get_child_count() > 0, "reading answers open using live people and receipts")
 	editor.answer_window.hide()
@@ -177,14 +180,15 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor.board.connect_cards("e:" + trace_id, headline)
 	editor.board.selected = headline
 	editor._session_changed()
-	check("UNSUPPORTED" in editor.support_label.text and "trace" in editor.support_label.text and "blocked in ordinary play" in editor.support_label.text, "mixed graph warning names unsupported evidence and the actual submission behavior")
+	check("can't be judged" in editor.support_label.text and "trace" in editor.support_label.tooltip_text, "mixed graph warning is visible without running a preview (reasons in the tooltip)")
+	check("blocked in ordinary play" in editor.support_label.tooltip_text, "the tooltip names the actual submission behaviour")
 	var support_state = JSON.stringify([g.board, g.w.rng.state, g.w.npcs.map(func(n): return [n.trust, n.suspicion, n.ledger])])
 	editor._support_details()
 	check("UNSUPPORTED" in editor.result_output.text and "blocked in ordinary play" in editor.result_output.text and not "Fallback evaluates" in editor.result_output.text, "support review does not advertise a fallback that ordinary submission will block")
 	editor.preview_window.hide()
 	g.workshop_effects = false
 	editor._session_changed()
-	check("EXISTING RULES" in editor.support_label.text and "explicitly selected" in editor.support_label.text, "deliberately disabled shared evaluation stays visibly distinct")
+	check(editor.support_label.text.begins_with("Debug") and "explicitly selected" in editor.support_label.tooltip_text, "deliberately disabled shared evaluation stays visibly distinct")
 	g.workshop_effects = true
 	editor._session_changed()
 	check(support_state == JSON.stringify([g.board, g.w.rng.state, g.w.npcs.map(func(n): return [n.trust, n.suspicion, n.ledger])]), "support wording changes no evidence, RNG or beliefs")
@@ -288,20 +292,23 @@ func _main_ui() -> void:
 	main.roles_win.hide()
 	main._on_more(4)
 	await process_frame
-	var editor = main.workshop_win.get_child(0)
+	var editor = main.case_view.workshop.editor
+	# A fresh Workshop starts blank; these checks argue the old preset premise.
+	editor.set_premise_field(editor.case_root, "type", "evil")
+	editor.set_premise_field(editor.case_root, "person", editor.board._default_target())
 	check(editor.g == main.g and editor.board.view.get("live", false), "main menu opens the live editor rather than the fixture canvas")
-	check(main.workshop_win.gui_embed_subwindows, "Workshop owns its child dialog layer instead of sharing the outer game window stack")
-	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded() and window.get_parent().get_window() == main.workshop_win), "live answer, results, progress and context windows belong to the Workshop layer")
+	check(main.get_window().gui_embed_subwindows, "Workshop dialogs are embedded in the game window")
+	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded()), "live answer, results, progress and context windows are embedded transient dialogs")
 	check(not main.g.prediction_spoiled and main.g.workshop_effects, "opening the live editor preserves shared evaluation without enabling debug spoilers")
 	var number: int = main.g.board[0].n
 	main.case_view.show_card_menu(number, Vector2i(200, 200))
-	main.case_view.card_menu.id_pressed.emit(100)
+	main.case_view.card_menu.id_pressed.emit(main.case_view.CardAction.WORKSHOP)
 	check(editor.board.selected == "e:" + Live.Evidence.normalize_card(main.g.board[number - 1]).id, "case-board context action focuses the same original evidence in the live editor")
 	editor._open_answer(editor.board.selected)
 	await process_frame
-	main.workshop_win.grab_focus()
+	main.get_window().grab_focus()
 	await process_frame
-	check(editor.answer_window.visible and editor.answer_window.get_parent().get_window() == main.workshop_win, "answer panel remains in the Workshop layer when its main window regains focus")
+	check(editor.answer_window.visible, "answer panel stays open when the game window regains focus")
 	editor.answer_window.close_requested.emit()
 	editor.board.connect_cards(editor.board.selected, editor.case_root)
 	editor.board.selected = editor.case_root
@@ -312,7 +319,7 @@ func _main_ui() -> void:
 	var filed_number: int = editor._file()
 	editor._withdraw_window()
 	var withdrawal: Window = editor.get_children().filter(func(child): return child is Window and child.title.begins_with("Developer withdrawal"))[0]
-	check(withdrawal.visible and withdrawal.transient and withdrawal.is_embedded() and withdrawal.get_parent().get_window() == main.workshop_win, "dynamically created withdrawal panel also uses the Workshop layer")
+	check(withdrawal.visible and withdrawal.transient and withdrawal.is_embedded(), "dynamically created withdrawal panel is also an embedded dialog")
 	withdrawal.close_requested.emit()
 	await editor._send("convince %d" % filed_number)
 	check("Shared evaluator" in editor.result_output.text and main.g.questions_left == 2, "live screen submits a home-context case through the main callback and displays shared delivery")
@@ -320,7 +327,7 @@ func _main_ui() -> void:
 	editor.preview_window.hide()
 	main.seed_box.value = 693
 	main._new_case()
-	check(editor.g == main.g and editor.board.links.is_empty() and not main.workshop_win.visible, "new case rebinds and resets the open live editor")
+	check(editor.g == main.g and editor.board.links.is_empty() and main.case_view.workshop.is_collapsed(), "new case rebinds and resets the live editor and collapses the sheet")
 	main.queue_free()
 	await process_frame
 

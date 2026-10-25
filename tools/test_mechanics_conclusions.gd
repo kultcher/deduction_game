@@ -66,11 +66,13 @@ func _ui(g, number: int, other: int) -> void:
 	await process_frame
 	editor.add_evidence(number)
 	editor.add_evidence(other)
-	editor.premise_person.select(Solver.person_index(editor.board.view, "greta"))
 	for type in ["secret_mod", "role", "unreliable"]:
-		editor.premise_type.select(editor.premise_types().find(type))
 		editor._add_premise()
 		var id: String = editor.board.selected
+		check(editor.board.nodes[id].get("draft", false), "Add premise adds a blank premise")
+		editor.set_premise_field(id, "type", type)
+		editor.set_premise_field(id, "person", "greta")
+		check(editor.board.nodes[id].conclusion.get("type") == type and editor.board.nodes[id].conclusion.get("target") == "greta", type + " premise is set on the card")
 		for n in [number, other]:
 			editor.board.connect_cards("e:" + Live.Evidence.normalize_card(g.board[n - 1]).id, id)
 		editor._open_answer(id)

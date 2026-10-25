@@ -446,9 +446,17 @@ The meeting's `present` is the same act in public.
   Statements · Filters: About: Agnes"); text filters combine with `+` and exclude with
   `-`. Shared between the grid and the Card List.
 - **Overlays** (minimized by default, movable, resizable, from a bottom-left dock): Card
-  List, Build case, Profile, Notes, Roles. A shared right-click menu on any card offers Add
-  to Deduction, Hide/Unhide, Find Links and Hints (Delete and Unpin for deductions).
-- **Deductions** wait in a fold-up tray under the grid and pin to the board where dropped.
+  List, Profile, Notes, Roles. A shared right-click menu on any card offers Add to Case
+  Workshop and Hide/Unhide (Delete and Unpin for deductions).
+- **The Case Workshop** (`ui/workshop_drawer.gd`, `ui/live_case_workshop.gd`) is a sheet
+  over the board's right edge: a handle by default, free drag with snaps at half and full
+  width. Double-click, drag or right-click adds a card; dragging it back out (or
+  right-click) removes it, with one step of undo. Premises start blank and are edited on
+  the card; evidence answers are clicked on the card (portraits, block tiles, chips); a
+  test juror labels each premise's strength after a pause in editing. Debug tools
+  (shared-evaluator switch, preview, support review) appear while Debug is on.
+- **Deductions** (the older template route) wait in a fold-up tray under the grid and pin
+  to the board where dropped.
 - Conflicts are never auto-marked (space for an optional hint system later).
 - Code: `game/card_model.gd` (times, views, rows, markers), `game/board_model.gd` (layout
   as data), `ui/case_state.gd` (shared view, filters, selection), `ui/board_view.gd`,
@@ -583,8 +591,9 @@ filing. Compatible pairs get a "these fit together" note.
   the cards don't touch the person; sharp NPCs reject that, credulous ones may be swayed.
 - A deduction's class is the weakest of its supports when a template matched; otherwise at
   most circumstantial. A deduction resting on a confessed secret spreads it.
-- "What can this be part of?" and Find Links search for templates from a card; the
-  builder's live "What these cards suggest" panel updates with the working set.
+- The mouse builder (working set, Find Links, Hints) was removed with the Case Workshop
+  sheet; `link` and `conclude` remain as text commands. Bringing "what connects to this
+  card?" back inside the Workshop is on the backlog.
 
 Caution (not a rule): avoid cases where the player believes they're proving something but
 the cards disagree on an invisible technicality. Show the fields a template depends on

@@ -234,17 +234,22 @@ static func _build_universe(view: Dictionary) -> Array:
 
 ## For one report (or curse event) card: a byte per universe world, 1 where the card's
 ## content holds as a healthy reading from a good source (cached by exact inputs).
-static func report_table(view: Dictionary, card: Dictionary, positive: Array = [], positive_blocks: Array = []) -> PackedByteArray:
+## marked: answered "registered because Marked" (Dowser and Surveyor answers only).
+static func report_table(view: Dictionary, card: Dictionary, positive: Array = [], positive_blocks: Array = [], marked: Array = []) -> PackedByteArray:
 	var universe_key = _universe_key(view)
 	var universe: Array = universe(view)
 	positive = positive.duplicate()
 	positive.sort()
 	positive_blocks = positive_blocks.duplicate()
 	positive_blocks.sort()
+	marked = marked.duplicate()
+	marked.sort()
 	# Homes affect Surveyor blocks; kind/event distinguish public process cards.
 	# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
 	var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.source,
 		card.get("role", ""), card.observed_at, card.data, positive, positive_blocks]
+	if not marked.is_empty():
+		inputs.append(marked)
 	if card.get("testimony_only", false):
 		inputs.append([true, card.get("reported_at")])
 	var key = hash(inputs)
@@ -269,10 +274,10 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 			var valid: PackedByteArray = valid_table(view, card)
 			var trivial: bool = card.get("role", "") not in CONTENT_ROLES
 			for g in range(rep.size()):
-				answers[g] = 0 if valid[rep[g]] == 0 else (1 if trivial or _report_content(view, universe[rep[g]], card, {"positive": positive, "blocks": positive_blocks}) else 0)
+				answers[g] = 0 if valid[rep[g]] == 0 else (1 if trivial or _report_content(view, universe[rep[g]], card, {"positive": positive, "blocks": positive_blocks, "marked": marked}) else 0)
 		else:
 			for g in range(rep.size()):
-				answers[g] = 1 if _report_holds(view, universe[rep[g]], card, {"positive": positive, "blocks": positive_blocks}) else 0
+				answers[g] = 1 if _report_holds(view, universe[rep[g]], card, {"positive": positive, "blocks": positive_blocks, "marked": marked}) else 0
 		for i in range(universe.size()):
 			accepted[i] = answers[of[i]]
 		report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
@@ -417,7 +422,7 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 	for card in cards:
 		if not tabled(card):
 			continue
-		tables.append(report_table(view, card, answers.get(card.id, {}).get("positive", []), answers.get(card.id, {}).get("blocks", [])))
+		tables.append(report_table(view, card, answers.get(card.id, {}).get("positive", []), answers.get(card.id, {}).get("blocks", []), answers.get(card.id, {}).get("marked", [])))
 	var worlds: Array = []
 	if tables.is_empty():
 		worlds = universe.duplicate()
@@ -632,7 +637,12 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 	for block in chosen_blocks:
 		if not _cached_block_masks.has(block):
 			return false
-	for mark_reads in [false, true]:
+	# "Registered because Marked": that person is the Marked one and read as evil.
+	var required_marked: Array = answer.get("marked", [])
+	for id in required_marked:
+		if person_index(view, id) != world.marked:
+			return false
+	for mark_reads in ([true] if not required_marked.is_empty() else [false, true]):
 		var pos_mask: int = evil_bits | ((1 << world.marked) if (mark_reads and world.marked >= 0) else 0)
 		if (pos_mask & ans_mask) != ans_mask:
 			continue

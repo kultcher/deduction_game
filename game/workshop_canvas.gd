@@ -165,3 +165,20 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		g.w.dlog.add("workshop_canvas_filed", "player", conclusion.get("a", ""), {"card": number, "revision": false, "case": value, "supports": roots.numbers})
 		return number
 	return g.add_card(card)
+
+## The test juror: public facts and default trust, no private knowledge. Says how well
+## a draft case holds together (CaseEval.strength), or why it can't be judged yet.
+## One evaluation; the Workshop runs it after a pause in editing.
+static func test_juror(g, value: Dictionary) -> Dictionary:
+	var input = snapshot(g, value)
+	input.private_evidence = []
+	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
+	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "honesty": {}, "own_gift": "", "legacy_evidence": []}
+	var prepared = Assess.prepare(input)
+	if not prepared.ready:
+		return {"ready": false, "issues": prepared.issues.duplicate()}
+	var result: Dictionary = preload("res://workshop/case_eval.gd").strength(prepared.view, prepared.case)
+	result["ready"] = true
+	result["issues"] = []
+	return result

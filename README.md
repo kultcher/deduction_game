@@ -49,14 +49,16 @@ the mouse; the typed prompt still works as a fallback.
   about them.
 - **The case board** is a full screen of its own: three views (**Places & sightings**,
   **Statements**, **Process**), pan and zoom, day navigation, filter chips, and red strings
-  between related cards. Overlays from the bottom-left dock (**Card List**, **Build case**,
-  **Profile**, **Notes**, **Roles**) can be moved and resized. Right-click any card to add
-  it to a deduction, hide it, find links or get hints. Deductions wait in a tray under the
-  grid and pin to the board where you drop them.
-- **The Case Workshop** (**More > Case Workshop**) is the red-string board for building
-  a case: a premise, linked evidence cards with their questions answered, challenges
-  (unlikely, misled, lying), a live strength label, then **File case** to get a
-  presentable card. See [Building a case](#how-to-play) below.
+  between related cards. Overlays from the bottom-left dock (**Card List**, **Profile**,
+  **Notes**, **Roles**) can be moved and resized. Right-click a card to add it to the Case
+  Workshop or hide it. Older deductions wait in a tray under the grid and pin to the board
+  where you drop them.
+- **The Case Workshop** slides out from the case board's right edge (drag or click its
+  handle; **More > Case Workshop** opens it). Double-click or drag board cards onto it;
+  drag them back out to remove them. Build a case there: a premise (click its fields to
+  choose who and what), linked evidence cards with their answers clicked on the card,
+  challenges (misled, lying, unlikely), and a test-juror strength label, then **File case**
+  to get a presentable card. See [Building a case](#how-to-play) below.
 - **Debug** shows what NPCs privately make of things (each card's influence on those who've
   heard it; how the town credits and suspects each person). Turning it on mid-case leaves
   your identification unscored.
@@ -220,8 +222,8 @@ should be protected because #9`. Statuses: good, evil, the demon, a gift, lying,
 **misled** (their information was wrong: poisoned or mistaken), misled or lying; with
 "should be": protected, spared. When the cards conflict but you can't say who is wrong,
 **something doesn't add up** (`conclude one of these is misled or lying because #a #b`)
-makes NPCs take those people with a pinch of salt and raises the pressure on them. The
-**Build case** overlay does all of this with the mouse.
+makes NPCs take those people with a pinch of salt and raises the pressure on them. (The
+mouse builder for these was replaced by the Case Workshop.)
 
 **Night.** Most people stay home. Evil goes out to act, and so does anyone whose gift
 chooses a place (Night Watch, the Warden at the door it guards, the Medium, the

@@ -1,5 +1,6 @@
 ## Full-screen case board: filters, card library, the board (ui/board_view.gd), profiles,
-## and the Link / Conclude builder. Reads the game's structured data directly.
+## and the Case Workshop as a pull-out sheet (ui/workshop_drawer.gd). Reads the game's
+## structured data directly.
 extends PanelContainer
 
 signal changed
@@ -18,6 +19,7 @@ const BoardView = preload("res://ui/board_view.gd")
 const DeductionTray = preload("res://ui/deduction_tray.gd")
 const ProfilePanel = preload("res://ui/profile_panel.gd")
 const BoardPanel = preload("res://ui/board_panel.gd")
+const WorkshopDrawer = preload("res://ui/workshop_drawer.gd")
 
 var g
 var mono: Font
@@ -50,20 +52,10 @@ var guess_opt: OptionButton:
 var theory_label: Label
 var conf_opt: OptionButton:
 	get: return profile.conf_opt
-var result_text: RichTextLabel
-var result_box: VBoxContainer
 var hidden_check: CheckBox
-var work_list
-var staged: Array = []        # the working set: card numbers, kept across filters
-var b_who: OptionButton
-var b_verb: OptionButton
-var b_status: OptionButton
-var b_night: OptionButton
-var b_because: Label
-var b_preview: Label
-var b_error: Label
-var pending: Dictionary = {}  # explanation picked from a link: {conclusion, match, id}
-var _setting = false
+var staged: Array = []        # board cards currently in the Case Workshop (marked on the board)
+var workshop                  # ui/workshop_drawer.gd
+var workshop_execute: Callable  # runs a workshop command through the main screen
 var canvas: Control
 var panels: Dictionary = {}
 var panel_buttons: Dictionary = {}
@@ -74,7 +66,7 @@ var filter_bar: HBoxContainer
 var clear_btn: Button
 var card_menu: PopupMenu
 var _context_card = 0
-enum CardAction { ADD, HIDE, LINKS, HINTS, DELETE, UNPIN }
+enum CardAction { HIDE, DELETE, UNPIN, WORKSHOP }
 
 
 func _init() -> void:
@@ -201,7 +193,7 @@ func build(font: Font) -> void:
 	dock.add_theme_constant_override("h_separation", 8)
 	dock.add_theme_constant_override("v_separation", 4)
 	root.add_child(dock)
-	for entry in [["cards", "Card List"], ["work", "Build case"], ["profile", "Profile"]]:
+	for entry in [["cards", "Card List"], ["profile", "Profile"]]:
 		var key: String = entry[0]
 		var toggle = _btn(dock, entry[1], func(): set_panel_open(key, not panels[key].visible))
 		toggle.toggle_mode = true
@@ -223,7 +215,7 @@ func build(font: Font) -> void:
 	card_list = CardList.new()
 	card_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	card_list.custom_minimum_size = Vector2(0, 260)
-	card_list.card_activated.connect(func(num): _stage([num]))
+	card_list.card_activated.connect(add_to_workshop)
 	card_list.card_context_requested.connect(show_card_menu)
 	card_list.selection_changed.connect(func():
 		var sel: Array = card_list.selected_metas()
@@ -232,77 +224,12 @@ func build(font: Font) -> void:
 	card_list.readable(15)
 	lib.add_child(card_list)
 
-	var work_panel = _make_panel("work", "Build case", Vector2(600, 760))
-	var ws: VBoxContainer = work_panel.content
-	ws.add_child(_heading("Working set"))
-	var wl = Label.new()
-	wl.text = "Drag cards here (or double-click them). They're what you link, and the 'because' of a conclusion."
-	wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	wl.add_theme_font_size_override("font_size", 14)
-	wl.add_theme_color_override("font_color", UITheme.color("muted"))
-	ws.add_child(wl)
-	work_list = CardList.new()
-	work_list.custom_minimum_size = Vector2(0, 110)
-	work_list.accept_drops = true
-	work_list.cards_dropped.connect(func(nums): _stage(nums))
-	work_list.card_activated.connect(func(num): _unstage([num]))
-	work_list.card_context_requested.connect(show_card_menu)
-	work_list.add_theme_font_override("font", mono)
-	work_list.add_theme_font_size_override("font_size", 14)
-	ws.add_child(work_list)
-	var wb = HFlowContainer.new()
-	ws.add_child(wb)
-	_btn(wb, "Remove", func(): _unstage(work_list.selected_metas()))
-	_btn(wb, "Clear", func(): _unstage(staged.duplicate()))
-	# What the working set suggests (updates as cards come and go).
-	ws.add_child(_heading("What these cards suggest"))
-	result_box = VBoxContainer.new()
-	result_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ws.add_child(result_box)
-	result_text = RichTextLabel.new()
-	result_text.fit_content = true
-	result_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	result_text.text = "Put one to three cards in the working set to see what they suggest: a contradiction, a corroboration or an inference."
-	result_box.add_child(result_text)
-	ws.add_child(_heading("Conclusion builder"))
-	var brow = HFlowContainer.new()
-	ws.add_child(brow)
-	b_who = OptionButton.new()
-	b_who.item_selected.connect(func(_i):
-		_fill_status()
-		_builder_changed())
-	brow.add_child(b_who)
-	b_verb = _option(brow, ["is", "is not", "should be"], func(_i):
-		_fill_status()
-		_builder_changed())
-	b_status = OptionButton.new()
-	b_status.item_selected.connect(func(_i): _builder_changed())
-	brow.add_child(b_status)
-	b_night = OptionButton.new()
-	b_night.item_selected.connect(func(_i): _builder_changed())
-	brow.add_child(b_night)
-	b_because = Label.new()
-	b_because.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	ws.add_child(b_because)
-	b_preview = Label.new()
-	b_preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	b_preview.add_theme_color_override("font_color", UITheme.color("deduction"))
-	ws.add_child(b_preview)
-	var frow = HBoxContainer.new()
-	ws.add_child(frow)
-	_btn(frow, "File deduction", _on_file)
-	b_error = Label.new()
-	b_error.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	b_error.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b_error.add_theme_color_override("font_color", Color(1, 0.55, 0.5))
-	frow.add_child(b_error)
-
 	board = BoardView.new()
 	canvas.add_child(board)
 	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.move_child(board, 0)
 	board.view_changed.connect(_update_day_label)
-	board.card_activated.connect(func(num): _stage([num]))
+	board.card_activated.connect(add_to_workshop)
 	board.card_context_requested.connect(show_card_menu)
 	board.row_clicked.connect(func(kind, id):
 		state.toggle(state.people if kind == "person" else state.places, id)
@@ -311,10 +238,18 @@ func build(font: Font) -> void:
 			show_profile(id, true))
 	board.person_context_requested.connect(_toggle_profile)
 	tray = DeductionTray.new()
-	tray.card_activated.connect(func(num): _stage([num]))
 	tray.card_context_requested.connect(show_card_menu)
 	root.add_child(tray)
-	board.tooltip_text = "Drag the background to pan; wheel to zoom. Double-click a card to build a case. Open tools from the bottom dock; drag panel titles to move and bottom-right corners to resize."
+	board.tooltip_text = "Drag the background to pan; wheel to zoom. Double-click a card, or drag it onto the Case Workshop on the right, to add it to your case."
+	# The Workshop sheet sits over the board, under the floating panels.
+	workshop = WorkshopDrawer.new()
+	workshop.execute = workshop_execute
+	canvas.add_child(workshop)
+	canvas.move_child(workshop, 1)
+	workshop.filed.connect(func():
+		refresh()
+		changed.emit())
+	workshop.changed.connect(_refresh_staged)
 	state.selection_changed.connect(func():
 		board.queue_redraw()
 		tray.queue_redraw())
@@ -385,12 +320,9 @@ func show_card_menu(num: int, at: Vector2i) -> void:
 	state.select_card(num)
 	var card: Dictionary = g.board[num - 1]
 	card_menu.clear()
-	card_menu.add_item("Add to Deduction", CardAction.ADD)
 	if card.kind != "deduction":
-		card_menu.add_item("Add to Case Workshop", 100)
+		card_menu.add_item("Add to Case Workshop", CardAction.WORKSHOP)
 	card_menu.add_item("Unhide" if card.get("hidden", false) else "Hide", CardAction.HIDE)
-	card_menu.add_item("Find Links", CardAction.LINKS)
-	card_menu.add_item("Hints", CardAction.HINTS)
 	if card.get("kind", "") == "deduction":
 		if card.get("pins", {}).has(board.board_view()):
 			card_menu.add_item("Unpin from board", CardAction.UNPIN)
@@ -403,27 +335,21 @@ func _on_card_action(action: int) -> void:
 	card_menu.hide()
 	if g == null or num < 1 or num > g.board.size() or g.board[num - 1].get("deleted", false):
 		return
-	if action == 100:
-		workshop_requested.emit(num)
-		return
-	if action in [CardAction.ADD, CardAction.LINKS, CardAction.HINTS]:
-		visible = true
 	match action:
-		CardAction.ADD:
-			_stage([num])
+		CardAction.WORKSHOP:
+			if not visible:
+				workshop_requested.emit(num)
+			else:
+				add_to_workshop(num)
 		CardAction.HIDE:
 			_hide_selected(not g.board[num - 1].get("hidden", false), [num])
-		CardAction.LINKS:
-			_find_links(num)
-		CardAction.HINTS:
-			_hint_selected(num)
 		CardAction.DELETE:
 			_delete_selected([num])
 		CardAction.UNPIN:
 			board.unpin(num)
 
 func _layout_panels() -> void:
-	if panels.size() < 3 or canvas.size.x <= 0 or canvas.size.y <= 0:
+	if panels.size() < 2 or canvas.size.x <= 0 or canvas.size.y <= 0:
 		return
 	for panel in panels.values():
 		# Hidden controls are sized before their containers finish the first layout.
@@ -433,7 +359,6 @@ func _layout_panels() -> void:
 		panel.fit_inside()
 	if not _panels_placed:
 		panels["cards"].move_to(Vector2(8, 8))
-		panels["work"].move_to((canvas.size - panels["work"].size) / 2)
 		panels["profile"].move_to(Vector2(canvas.size.x - panels["profile"].size.x - 8, 8))
 
 func _heading(t: String) -> Label:
@@ -482,15 +407,10 @@ func set_game(game) -> void:
 	state.places.clear()
 	state.kinds.clear()
 	state.cell = {}
-	b_who.clear()
 	hidden_check.set_pressed_no_signal(g.show_hidden)
 	for n in g.w.npcs:
-		b_who.add_item(n.name)
-		b_who.set_item_metadata(b_who.item_count - 1, n.id)
 		pp.add_check_item(n.name)
 		pp.set_item_metadata(pp.item_count - 1, n.id)
-	b_who.add_item("One of these people")
-	b_who.set_item_metadata(b_who.item_count - 1, "*group")
 	var lp: PopupMenu = place_menu.get_popup()
 	lp.clear()
 	for b in C.BLOCKS:
@@ -500,6 +420,8 @@ func set_game(game) -> void:
 		lp.add_check_item("    " + C.loc_name(l))
 		lp.set_item_metadata(lp.item_count - 1, l)
 	profile.setup(g, state)
+	workshop.collapse()
+	workshop.set_game(g)
 	_fill_kinds()
 	_sync_menus()
 	refresh()
@@ -516,11 +438,9 @@ func refresh() -> void:
 	theory_label.text = _theory_text()
 	_refresh_cards()
 	_refresh_profile()
-	_fill_nights()
-	_refresh_work()
-	if b_status.item_count == 0:
-		_fill_status()
-	_update_preview()
+	if visible:
+		workshop.refresh()
+	_refresh_staged()
 
 func open_theory() -> void:
 	# Select the existing candidate or leave the ordinary first profile selected.
@@ -682,41 +602,30 @@ func _refresh_chips(shown: int) -> void:
 	if not chips.is_empty():
 		_btn(chip_row, "Clear all", _clear_filters)
 
-## The working set (what Link and the builder use).
+## Cards in the Case Workshop, as board numbers (the board marks them).
 func selected_cards() -> Array:
 	return staged.duplicate()
 
-func _stage(nums: Array) -> void:
-	for x in nums:
-		if not (x in staged):
-			staged.append(x)
-	card_list.deselect_all()
-	_refresh_work()
-	if not nums.is_empty():
-		set_panel_open("work", true)
-
-func _unstage(nums: Array) -> void:
-	staged = staged.filter(func(x): return not (x in nums))
-	_refresh_work()
-
-func _refresh_work() -> void:
-	if work_list == null or g == null:
+## Double-click, drag or the card menu: put a board card into the Case Workshop.
+func add_to_workshop(num: int) -> void:
+	if g == null or num < 1 or num > g.board.size() or g.board[num - 1].kind == "deduction":
 		return
-	staged = staged.filter(func(x): return x >= 1 and x <= g.board.size() and not g.board[x - 1].get("deleted", false))
-	work_list.reset()
-	for x in staged:
-		var c: Dictionary = g.board[x - 1]
-		work_list.add("#%-3d %-10s %s" % [x, c["kind"], c["text"]], x, c["text"],
-			CardList.color_for(c, Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else null))
-	_update_preview()
-	# Live: what the working set suggests, as cards come and go.
-	if result_text != null:
-		if staged.size() >= 1 and staged.size() <= 3:
-			_on_link()
-		else:
-			_clear_results()
-			result_text.text = "Put one to three cards in the working set to see what they suggest." if staged.is_empty() else \
-				"%d cards in the working set: suggestions look at up to three at a time (you can still file a conclusion from all of them)." % staged.size()
+	workshop.add_card(num)
+	_refresh_staged()
+	status_label.text = "Card #%d is in the Case Workshop." % num
+
+## Open the Workshop sheet (at least half width), optionally adding a card.
+func open_workshop(num: int = 0) -> void:
+	visible = true
+	workshop.open(0.5)
+	if num > 0:
+		add_to_workshop(num)
+
+func _refresh_staged() -> void:
+	if workshop == null or workshop.editor == null or g == null:
+		staged = []
+	else:
+		staged = workshop.editor.board_numbers()
 	if board != null:
 		board.queue_redraw()
 
@@ -733,271 +642,30 @@ func _on_save_profile() -> void:
 	refresh()
 	changed.emit()
 
-func _clear_results() -> void:
-	for ch in result_box.get_children():
-		if ch != result_text:
-			ch.queue_free()
-
-func _on_link() -> void:
-	_clear_results()
-	var sel: Array = selected_cards()
-	if sel.size() < 1 or sel.size() > 3:
-		result_text.text = "Put 1 to 3 cards in your working set to link them."
-		return
-	var lk: Dictionary = g.link_cards(sel)
-	var res: Dictionary = lk["result"]
-	if res["matches"].is_empty():
-		var t = "Nothing links cards %s: no conflict, corroboration or inference." % _nums(sel)
-		for r in res["near"].slice(0, 2):
-			t += "\nClose, but " + r
-		t += "\nYou can still build a conclusion from them above: your own inference if they bear on that person, unfounded if not."
-		result_text.text = t
-		return
-	var t2 = ""
-	for m in res["matches"]:
-		t2 += "%s %s\n" % [Argue.RELATION_LEAD[m.get("relation", "contradiction")], m["text"]]
-	result_text.text = t2 + "Possible conclusions (this doesn't say which is true). Pick one to put it in the builder:"
-	var k = 0
-	for o in lk["options"]:
-		k += 1
-		var idx = k
-		var b = _btn(result_box, "%d. %s" % [k, o["expl"]["label"]], func():
-			_use_option(o)
-			g.w.dlog.add("ui_use_option", "player", "", {"option": idx}))
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		b.tooltip_text = o["expl"]["label"]
-
-func _nums(a: Array) -> String:
-	return " ".join(PackedStringArray(a.map(func(x): return "#%d" % x)))
-
-# ---------------------------------------------------------------- builder
-
-func _fill_status() -> void:
-	var verb: String = b_verb.get_item_text(max(0, b_verb.selected))
-	b_status.clear()
-	if b_who.selected >= 0 and b_who.get_item_metadata(b_who.selected) == "*group":
-		# "Something doesn't add up": the people your working set rests on.
-		b_verb.select(0)
-		b_status.add_item("misled or lying (something doesn't add up)")
-		b_status.set_item_metadata(0, "conflict")
-		return
-	var add = func(label: String, meta: String):
-		b_status.add_item(label)
-		b_status.set_item_metadata(b_status.item_count - 1, meta)
-	for pair in Argue.BUILDER[verb]:
-		add.call(pair[0], pair[1])
-	if verb == "is":
-		b_status.add_separator("Misread")
-		for pair in Argue.MISREAD:
-			add.call(pair[0], pair[1])
-	if verb != "should be":
-		b_status.add_separator("Good roles")
-		for r in C.GOOD_ROLES:
-			add.call("the " + C.role_name(r), r)
-		b_status.add_separator("Evil roles")
-		for r in C.MINION_ROLES:
-			add.call("the " + C.role_name(r), r)
-	if verb == "is":
-		b_status.add_separator("Secrets")
-		for pair in Argue.SECRET_CONCLUSIONS:
-			add.call(pair[0], pair[1])
-
-func _fill_nights() -> void:
-	var keep = _meta_int(b_night)
-	b_night.clear()
-	b_night.add_item("(any night)")
-	b_night.set_item_metadata(0, -1)
-	for nt in range(0, g.w.day + 1):
-		b_night.add_item("on the night before you arrived" if nt == 0 else "on night %d" % nt)
-		b_night.set_item_metadata(b_night.item_count - 1, nt)
-	for i in range(b_night.item_count):
-		if b_night.get_item_metadata(i) == keep:
-			b_night.select(i)
-
-func _meta_int(o: OptionButton) -> int:
-	if o == null or o.selected < 0 or o.item_count == 0:
-		return -1
-	return int(o.get_item_metadata(o.selected))
-
-func _builder_changed() -> void:
-	if not _setting:
-		pending = {}
-	_update_preview()
-
-## The conclusion the builder currently describes (empty if incomplete).
-func _built() -> Dictionary:
-	if not pending.is_empty():
-		return pending["conclusion"]
-	if b_who.selected < 0 or b_status.selected < 0:
-		return {}
-	var who: String = b_who.get_item_metadata(b_who.selected)
-	if who == "*group":
-		return Argue.conflict_of(g.w, g.board.filter(func(x): return x["n"] in staged))
-	var verb: String = b_verb.get_item_text(b_verb.selected)
-	var status: String = b_status.get_item_metadata(b_status.selected)
-	var c: Dictionary = Argue.from_builder(who, verb, status, _meta_int(b_night), -1, true)
-	if c.is_empty():
-		return c
-	if c["type"] in ["lied", "unreliable", "truthful"]:
-		for x in selected_cards():
-			if g.board[x - 1].get("source", "") == who:
-				c["card"] = x
-				break
-	return c
-
-func _update_preview() -> void:
-	if b_preview == null or g == null:
-		return
-	var st: String = b_status.get_item_metadata(b_status.selected) if b_status.selected >= 0 else ""
-	b_night.disabled = not pending.is_empty() or not (st in ["misled", "unreliable"])
-	var sel: Array = pending["match"]["cards"] if not pending.is_empty() else selected_cards()
-	b_because.text = "because: " + (_nums(sel) if not sel.is_empty() else "(add the supporting cards to your working set)")
-	var c = _built()
-	if c.is_empty():
-		b_preview.text = ""
-		return
-	var backing = ""
-	if not pending.is_empty():
-		var how = {"contradiction": "a contradiction", "corroboration": "corroboration", "inference": "an inference"}.get(pending["match"].get("relation", "contradiction"), "a contradiction")
-		backing = "  [backed by %s: %s]" % [how, pending["match"]["text"]]
-	b_preview.text = Argue.conclusion_text(g.w, Argue.normalize(c.duplicate())) + backing
-	b_error.text = ""
-
-func _use_option(o: Dictionary) -> void:
-	var c: Dictionary = Argue.normalize(o["expl"]["conclusion"].duplicate())
-	_setting = true
-	for i in range(b_who.item_count):
-		if b_who.get_item_metadata(i) == (c.get("a", "") if c["type"] != "conflict" else "*group"):
-			b_who.select(i)
-	if c["type"] == "conflict":
-		_fill_status()
-		_setting = false
-		pending = {"conclusion": c, "match": o["match"], "id": 0}
-		_update_preview()
-		return
-	var verb = "is"
-	var status: String = c["type"]
-	match c["type"]:
-		"role":
-			status = c["role"]
-		"secret_mod":
-			status = c.get("mod", "")
-		"notrole":
-			verb = "is not"
-			status = c["role"]
-		"notdemon":
-			verb = "is not"
-		"truthful":
-			verb = "is not"
-		"protect", "spare":
-			verb = "should be"
-	for i in range(b_verb.item_count):
-		if b_verb.get_item_text(i) == verb:
-			b_verb.select(i)
-	_fill_status()
-	for i in range(b_status.item_count):
-		if b_status.get_item_metadata(i) == status:
-			b_status.select(i)
-	for i in range(b_night.item_count):
-		if b_night.get_item_metadata(i) == c.get("night", -1):
-			b_night.select(i)
-	_setting = false
-	pending = {"conclusion": c, "match": o["match"], "id": o["expl"]["id"]}
-	_update_preview()
-
-func _on_file() -> void:
-	var n = -1
-	if not pending.is_empty():
-		n = g.file_deduction(pending["conclusion"], pending["match"]["cards"], pending["match"], pending["id"])
-	else:
-		var c = _built()
-		if c.is_empty():
-			b_error.text = "That isn't a complete conclusion."
-			return
-		n = g.file_deduction(c, selected_cards())
-	if n < 0:
-		b_error.text = g.last_error
-		return
-	pending = {}
-	b_error.text = ""
-	_clear_results()
-	result_text.text = "Filed card #%d: %s" % [n, g.board[n - 1]["text"]]
-	staged = []
-	card_list.deselect_all()
-	refresh()
-	changed.emit()
-
-## Teaching helper: what the selected card could be linked with, and what that would show.
-func _hint_selected(num: int = 0) -> void:
-	set_panel_open("work", true)
-	_clear_results()
-	var sel: Array = [num] if num > 0 else card_list.selected_metas().filter(func(x): return x is int and x > 0)
-	if sel.is_empty():
-		result_text.text = "Select a card to see what it could be linked with."
-		return
-	var c: Dictionary = g.board[sel[0] - 1]
-	var hs: Array = Argue.hints_for(c)
-	if hs.is_empty():
-		result_text.text = "Card #%d doesn't take part in any pattern the town recognises (yet)." % sel[0]
-		return
-	var lines = PackedStringArray(["Card #%d could be linked with:" % sel[0]])
-	for h in hs:
-		lines.append("  • %s → %s" % [h[0], h[1]])
-	result_text.text = "\n".join(lines)
-
-## Board hint: cards already on your board that a pattern would connect.
-func _find_links(num: int = 0) -> void:
-	set_panel_open("work", true)
-	_clear_results()
-	var found: Array = g.find_links() if num == 0 else _links_for_card(num)
-	if found.is_empty():
-		result_text.text = "No cards link with card #%d yet." % num if num > 0 else "Nothing among your recent cards links up yet."
-		return
-	var lines = PackedStringArray(["Links for card #%d (put them in the working set to see how):" % num if num > 0 else "These cards connect (put them in the working set to see how):"])
-	for f in found.slice(0, 8):
-		lines.append("  • #%s" % ", #".join(PackedStringArray(f["cards"].map(func(x): return str(x)))))
-	if found.size() > 8:
-		lines.append("  …and %d more." % (found.size() - 8))
-	result_text.text = "\n".join(lines)
-
-func _links_for_card(num: int) -> Array:
-	var found: Array = []
-	var seen = {}
-	for other in g.board:
-		if other["n"] == num or other.get("deleted", false):
-			continue
-		var result: Dictionary = Argue.check(g.w, [g.board[num - 1], other])
-		for m in result["matches"]:
-			var key = str(m["cards"])
-			if not seen.has(key):
-				seen[key] = true
-				found.append({"cards": m["cards"]})
-	return found
-
 func _hide_selected(on: bool, nums: Array = []) -> void:
 	var sel = card_list.selected_metas() if nums.is_empty() else nums
 	if sel.is_empty():
-		result_text.text = "Select cards to %s." % ("hide" if on else "unhide")
+		status_label.text = "Select cards to %s." % ("hide" if on else "unhide")
 		return
 	for x in sel:
 		g.hide_card(x, on)
-	_clear_results()
-	result_text.text = "%s %s.%s" % ["Hid" if on else "Unhid", _nums(sel), " Tick 'Show hidden' to see hidden cards." if on and not g.show_hidden else ""]
+	status_label.text = "%s %s.%s" % ["Hid" if on else "Unhid", _nums(sel), " Tick 'Show hidden' to see hidden cards." if on and not g.show_hidden else ""]
 	card_list.deselect_all()
 	refresh()
 	changed.emit()
 
 func _delete_selected(nums: Array = []) -> void:
-	var candidates: Array = card_list.selected_metas() + work_list.selected_metas() if nums.is_empty() else nums
+	var candidates: Array = card_list.selected_metas() if nums.is_empty() else nums
 	var sel = candidates.filter(func(x): return g.board[x - 1]["kind"] == "deduction")
-	_clear_results()
 	if sel.is_empty():
-		result_text.text = "Select one of your deductions to delete. (Other cards can only be hidden.)"
+		status_label.text = "Select one of your deductions to delete. (Other cards can only be hidden.)"
 		return
 	for x in sel:
 		g.delete_deduction(x)
-	result_text.text = "Deleted deduction %s." % _nums(sel)
+	status_label.text = "Deleted deduction %s." % _nums(sel)
 	card_list.deselect_all()
 	refresh()
 	changed.emit()
+
+func _nums(a: Array) -> String:
+	return ", ".join(PackedStringArray(a.map(func(x): return "#%d" % x)))
