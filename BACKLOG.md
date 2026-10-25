@@ -10,7 +10,8 @@ reach for only if needed. Settled, built and parked items move to **Closed** at 
 (new roles, places, ideas still being shaped) live in role_exploration.md.
 
 <!-- backlog-preparation-start -->
-Preparation notes were added on 2026-10-25 against `origin/main` at `9cb8782`.
+Preparation notes were added on 2026-10-25 against `origin/main` at `9cb8782`, just before the
+mechanics-support merge (`0cd2181`); notes that depended on that work were updated after it.
 **Prep B001–B201** cover every bold active entry (including proposal subpoints).
 They record static code findings and suggested focused checks, not new priorities,
 approved tuning, or freshly measured gameplay results. Original wording/tags remain
@@ -457,8 +458,9 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
 
   > **Prep B037 (9cb8782; open):** Trace `workshop/jury.gd::_consequences_eval` through
   > `sim/mind.gd::action_susp`/`_vote_impl`. Belief, crowd/player pressure, preferred block, and voting
-  > threshold differ. Pair agreement/vote assertions and explanations; Q3 remains disabled pending its
-  > design pass.
+  > threshold differ. Pair agreement/vote assertions and explanations. Q3 is deferred, not disabled: the
+  > legacy vote/nomination formulas (including the player vote/accuse terms) run today; only the
+  > shared execution-priority input sits at weight zero until the design pass. (Claude, after merge)
 
   - **"Accept" is wording, not belief.** Stance comes from agreement (>= 0.6); the belief
     change is agreement × quality × 0.6 at a meeting × novelty, then trust, so agreement
@@ -492,6 +494,15 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     > **Prep B041 (9cb8782; design):** Day/paranoia and Confidence already affect
     > `sim/mind.gd::_vote_impl`'s bar. Set urgency scope alongside rank-aware execution/Martyr urgency;
     > lower bars can also approve moderately supported wrong nominations.
+
+- **Replies must match beliefs.** (Claude, Oct 25; 54875 replay) Jory and Agnes accept
+  case #85 numerically (their suspicion moves as if convinced) while their replies say
+  they couldn't follow it. What an NPC says has to come from the same computation as what
+  it believes (LEGACY_MIGRATION lesson 6). The scoped reply and the belief refresh are
+  separate jury runs with different attention; decide which one owns the stance wording,
+  or derive the reply's stance from the refresh's movement on the premise target.
+  Overlaps "Accept is wording, not belief" above and reply-only Insight budgeting below.
+  Fix before the next playtest is used to judge persuasion. [decided: direction; approach open]
 
 - **From playtest 54875: Insight and Confidence barely shaped reactions.** Every good
   listener's agreement was 0.92–1.0. [open]
@@ -674,9 +685,10 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
   the added haunting uncertainty without undoing independent evidence, and the
   possessed person's identity must stay hidden. (Oct 21) [decided; amounts open]
 
-  > **Prep B055 (9cb8782; open on main; unmerged dependency):** `workshop/live_assessment.gd::prepare`
-  > still rejects curse histories. Review bounded epoch work on `codex/case-board-mechanics` before
-  > duplicating it: public eligible voters and hypothetical epochs, never the hidden turnee.
+  > **Prep B055 (9cb8782; updated after merge `0cd2181`):** Curse epochs are now on main
+  > (`workshop/chronology.gd`; `workshop/live_assessment.gd` handles cursed games): public eligible
+  > voters and hypothetical epochs, never the hidden turnee. Check this entry against that work rather
+  > than building a second version.
 
 - **Secret awareness and bluffing.** Lovers' existing confessions now carry a usable
   secret type and can explain night movement. The same card/interpretation format can
@@ -899,8 +911,8 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
 
   > **Prep B077 (9cb8782; open; time boundary):** `workshop/live_protection.gd::assess` and
   > `sim/world.gd::_martyr_choice` concern different moments. Later poison/execution cannot prove an
-  > earlier promise false without dated support. Review unmerged mechanics timing work before duplicating
-  > it.
+  > earlier promise false without dated support. The merged mechanics work (`0cd2181`) added dated
+  > statement times and Warden guard receipts; build on those rather than duplicating them.
 
 - **NPCs push back on nominations their own information contradicts** (a player-led
   nomination of the true Seer passed 7/8). (DESIGN playtests) [open]
@@ -964,8 +976,8 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
 
   > **Prep B083 (9cb8782; balance dependency):** Rates/routes live in
   > `workshop/live_activity.gd::_profile_paths`/`_paths`, keyed through `movement_inputs`. Group vigils,
-  > detours, and Lamplighter noise. Establish behavioral controls first; review unmerged detours rather
-  > than importing canceled channel machinery.
+  > detours, and Lamplighter noise. Establish behavioral controls first. Demon detours are on main
+  > (`DEMON_DETOUR` = 0.05 in `live_activity.gd`); don't import canceled channel machinery.
 
 - **Evil sometimes tells the truth (start by faking it).** (user + Claude, Oct 25) Today
   a reading from a source who is evil in a world is uninformative there: same weight
@@ -1363,6 +1375,18 @@ exact values remain open. The code-derived examples and clarifications are in
   > links, and pins at several scales.
 
 
+### Performance
+
+- **Presenting and search-into-meeting are still over budget.** (Claude, Oct 25) Budget
+  (user's machine): meeting entry and presenting about 2 s or less, nominations under
+  1 s. After the Oct 25 role-check fixes (container, about 0.7x the user's machine), the
+  54875 replay shows meeting entry 1.4 s and nomination 1.3 s, but search into the
+  meeting 3.5 s and presenting about 4.3 s. Presenting is mostly the scoped reply; the
+  search cost grew with shared NPC sightings (more cards per listener, larger compile).
+  Late games: seed 42's Day-3 meeting entry is 6.5 s, down from 95 s. Profile with
+  `tools/replay_54875.gd` and a late-game probe (seed 42, Days 3 to 4) before adding
+  evidence types; the opening replay alone doesn't reach the late game. [open]
+
 ## 3. Medium features (several days; touch a few systems)
 
 - **Expanded dialogue and trust management** (Oct 20; design candidates, pending
@@ -1503,8 +1527,8 @@ exact values remain open. The code-derived examples and clarifications are in
 
   > **Prep B128 (9cb8782; partial; consolidate):** Own-lie admission exists in
   > `sim/mind.gd::_answer_gift_impl`; `defend_self` owns native moves. Group hidden walkers, caught-lie
-  > motives, and reading challenges; review unmerged mechanics hearing/claim mappings before rebuilding
-  > them.
+  > motives, and reading challenges. The merged mechanics work (`0cd2181`) maps defence moves to claims,
+  > secret cards and reading challenges with hearing weights; extend those, don't rebuild them.
 
 - **Medium relay credibility at both sources.** Audit/fix relayed readings so full
   credence requires trusting both the Medium and the dead source. Current
@@ -1718,10 +1742,11 @@ exact values remain open. The code-derived examples and clarifications are in
   relationship visible in previews and replies. A Minion stays possible. [decided:
   add; strength open]
 
-  > **Prep B152 (9cb8782; partial; unmerged dependency):** Main `workshop/live_activity.gd::_paths` has
-  > direct kill-night Demon routes; native `sim/mind.gd::night_sighting_scale` is nonnegative. Review
-  > unmerged detours first. Distinguish Demon exclusion from possible Minion guilt and surface the same
-  > model in replies.
+  > **Prep B152 (9cb8782; updated after merge `0cd2181`; partial):** `workshop/live_activity.gd` now
+  > gives the Demon a small detour chance (`DEMON_DETOUR` = 0.05), so an off-route sighting argues strongly
+  > but not absolutely against the killer; native `sim/mind.gd::night_sighting_scale` still serves
+  > native-owned paths. Remaining: distinguish Demon exclusion from possible Minion guilt and surface the
+  > same model in replies.
 
 - **Corroborated walking-gift claims.** (user, Oct 24) In a playtest, Odette claimed
   Lamplighter and was seen on several different blocks across the town, which lent her
@@ -1750,7 +1775,7 @@ exact values remain open. The code-derived examples and clarifications are in
   peers' suspicion of each NPC's top suspect), after the impossible-refresh fix, since
   that bug currently zeroes many voters. [decided: measure; design open]
 
-  > **Prep B154 (9cb8782; design; Q3 off):** `sim/mind.gd::_good_nomination_impl` walks rank;
+  > **Prep B154 (9cb8782; design; Q3 deferred):** `sim/mind.gd::_good_nomination_impl` walks rank;
   > `_vote_impl` uses an absolute bar plus `prefers_block`. `sim/content.gd` keeps shared
   > execution-priority weight zero. Decide rank/urgency/premise policy, then test strong first, close
   > second, and wrong moderate cases.
@@ -1954,7 +1979,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > **Prep B171 (9cb8782; design; semantics first):** Generation is
   > `sim/world.gd::_night_movement`/`_walk`/`_maybe_drop`; interpretation is
   > `workshop/live_activity.gd::_paths` and `sim/argue.gd::_match_route`. Settle
-  > origin/detour/destination wording before evidence chains. Main still has direct Demon kill routes.
+  > origin/detour/destination wording before evidence chains. Main now has Demon detours (5%) as well
+  > as direct kill routes (merge `0cd2181`).
 
   - the deferred night-proximity rule for sightings (route from home to the death
     block);
@@ -2128,10 +2154,10 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   do not expose the hidden victim. Deferred to the case-builder/theory work in
   section 4. (Oct 21) [decided; deferred]
 
-  > **Prep B187 (9cb8782; open on main; accepted design):** `workshop/live_assessment.gd::prepare` blocks
-  > live curses; `workshop/chronology.gd` supports fixtures. Review `codex/case-board-mechanics` for
-  > accepted public-voter/one-hypothetical-turnee epochs before rebuilding. Bound growth to curse
-  > histories and keep the actual victim private.
+  > **Prep B187 (9cb8782; updated after merge `0cd2181`; built, verify):** The accepted design
+  > (public eligible voters, one hypothetical turnee, bounded epochs) is on main in
+  > `workshop/chronology.gd` and the live assessment. Candidate to close after a cursed-game playtest and
+  > a passive cost check; growth stays bounded to curse histories and the actual victim stays private.
 
 
 - **Succession breaks earlier clears.** A Seer "no" (or any not-the-demon clear) only
@@ -2159,7 +2185,8 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 - **Evil reading on a proven-good person** (Dowser count, Archivist pair) → Marked.
 
   > **Prep B190 (9cb8782; partial model):** `workshop/world_domain.gd`/`workshop/solver.gd` distinguish
-  > registered evil; `workshop/live_assessment.gd::CONCLUSIONS` is narrower than native labels. A finite
+  > registered evil; `workshop/live_assessment.gd::CONCLUSIONS` now has 15 types (merge `0cd2181`); generic
+  > innocent secrets and a specific Red Herring stay unsupported by decision. A finite
   > clear plus an evil report does not force Marked. Test alternatives before adding builder premises.
 
 - **Minion gifts in templates.** The builder can now conclude "X is the Breathstealer /
@@ -2172,8 +2199,8 @@ but that no link template recognises yet. Add to it whenever a playtest log show
 
   > **Prep B191 (9cb8782; partial; adapter diagnosis stale):**
   > `workshop/live_assessment.gd::activity_card` now adapts silence/totems, but typed-minion conclusions
-  > remain unsupported there. Native labels do not create typed worlds. Coordinate role confirmations and
-  > unmerged mechanics premise support.
+  > remain unsupported there. Native labels do not create typed worlds. Coordinate role confirmations with
+  > the merged role/notrole premises (`0cd2181`).
 
 - **Breathstealer by presence:** someone silenced, and who was on their block that
   evening (the Breathstealer has to be there); over several silencings, the one person

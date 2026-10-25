@@ -16,10 +16,14 @@ code evidence, not a newly observed passing playtest.
 - Local `main` and `origin/main` diverged at review start. No fast-forward was safe;
   this review uses the refreshed remote main containing Claude's latest work, without
   merging, resetting, or reconciling either history.
-- `codex/case-board-mechanics` has unmerged support worth reviewing before duplicating
-  curse epochs, live premises, defence/hearing integration, gossip/claims, detours,
-  or later 54875 replay work. Those features are **not credited as implemented on
-  this main snapshot**. Reconcile and test any desired reuse as a separate change.
+- **Update after review (Claude, Oct 25):** `codex/case-board-mechanics` was merged into
+  main right after this snapshot (`0cd2181`, with speed fixes up to `e20a075`). Curse
+  epochs, the expanded conclusion types, defence/hearing integration, NPC-to-NPC
+  sharing, Warden guard receipts and Demon detours are now **on main**. Notes that
+  depended on them (B037, B055, B077, B083, B128, B152, B154, B171, B187, B190, B191)
+  were updated; other notes were checked against the merged code where they make
+  capability claims. Two entries were added without prep numbers: "Replies must match
+  beliefs" and the Performance entry.
 - `codex/live-channel-validation` stays a dead reference. Its canceled validation and
   per-person latent-channel work are outside this cleanup.
 - [LEGACY_MIGRATION.md](LEGACY_MIGRATION.md) records the current deliberate hybrid;
@@ -38,7 +42,7 @@ callers at once.
 | Card identity, attribution, revisions: B002, B011–B019, B058, B122, B145 | [game/game.gd](../game/game.gd): `add_card`, `_disclose`, `workshop_retract`; [game/workshop_canvas.gd](../game/workshop_canvas.gd): `file`; [game/card_model.gd](../game/card_model.gd) | Observation time differs from disclosure time. Preserve heard versions, original source, relay, and confidentiality history. |
 | Beliefs and evidence ownership: B006–B010, B025–B027, B064–B066, B096, B104 | [game/workshop_ownership.gd](../game/workshop_ownership.gd): `_refresh`; [workshop/shared_ledger.gd](../workshop/shared_ledger.gd): `prepare`, `evaluate`, `endorsed_facts`; [sim/mind.gd](../sim/mind.gd): `adjust`, `_recompute_beliefs`, `_final_weight` | One retractable joint posterior vector. Do not also apply scoped reply effects or an extra template/defence bonus for the same facts. |
 | Fit checks and live capability: B028–B035, B051, B159–B170, B187–B201 | [workshop/live_assessment.gd](../workshop/live_assessment.gd): `prepare`, `activity_card`, `medium_card`; [workshop/solver.gd](../workshop/solver.gd): `report_table`, `_report_content`; [sim/argue.gd](../sim/argue.gd): `assertions`, `_match_pair`, `_match_support` | A label/template, adapter, world constraint, and explanation are four different layers. Check each. |
-| Reply, belief, and execution choice: B022, B037–B042, B060–B068, B123–B124, B154–B169 | [workshop/jury.gd](../workshop/jury.gd): `refresh`, `_assess_target_eval`, `_consequences_eval`; [sim/mind.gd](../sim/mind.gd): `_good_nomination_impl`, `_vote_impl`, `execution_priority_contribution`; [sim/content.gd](../sim/content.gd) | Q3 coefficient is zero; premise salience and relative voting are design changes, not repairs to a missing hook. |
+| Reply, belief, and execution choice: B022, B037–B042, B060–B068, B123–B124, B154–B169, "Replies must match beliefs" | [workshop/jury.gd](../workshop/jury.gd): `refresh`, `_assess_target_eval`, `_consequences_eval`; [sim/mind.gd](../sim/mind.gd): `_good_nomination_impl`, `_vote_impl`, `execution_priority_contribution`; [sim/content.gd](../sim/content.gd) | Legacy vote formulas are live; only the shared execution-priority weight is zero. Premise salience and relative voting are design changes, not repairs to a missing hook. |
 | Dialogue, trust, promises: B014–B020, B045–B053, B069–B079, B087–B100, B116–B146 | [sim/mind.gd](../sim/mind.gd): `press`, `answer_night`, `_answer_gift_impl`, `defend_self`, `set_trust`, `cap_trust`; [sim/social.gd](../sim/social.gd); [sim/dialogue.gd](../sim/dialogue.gd); [game/game.gd](../game/game.gd): `_offer_command`, `_settle_offers` | Define one incident/promise and hearing identity. Wording memory, evidence, fatigue, rapport, source honesty, and caps are not interchangeable. |
 | Movement, physical evidence, protection: B023, B059, B083–B086, B103, B138–B142, B149–B153, B171–B179, B192–B201 | [sim/world.gd](../sim/world.gd): `_night_movement`, `_night_sightings`, `_maybe_drop`, `attack_outcome`; [workshop/live_activity.gd](../workshop/live_activity.gd): `movement_inputs`, `_paths`, `_profile_paths`; [workshop/live_protection.gd](../workshop/live_protection.gd): `assess` | Keep generation, public receipt, fit, cache key, and reply consistent. Unknown whereabouts and no death are not hard exclusions/proven blocked attacks. |
 | Board/UI: B002, B004, B036, B108–B115, B145, B166 | [ui/case_state.gd](../ui/case_state.gd): `apply`; [game/board_model.gd](../game/board_model.gd): `layout`; [ui/board_view.gd](../ui/board_view.gd); [ui/live_case_workshop.gd](../ui/live_case_workshop.gd); [ui/workshop_comparison.gd](../ui/workshop_comparison.gd) | Row filtering/order affects pins and hit geometry. Rich text on the custom Canvas/Tree needs rendering work, not a formatter switch. |
@@ -57,9 +61,10 @@ can proceed independently; major proposals still require their listed decisions.
    promise IDs before apologies, propagated requests, rapport rewards, or repeated
    rebuttal credit. Then consolidate independent instances, traces, and caught lies
    as one aggregation project instead of three coefficient changes.
-3. **Check unmerged support before extending live capability.** Review the mechanics
-   branch's relevant changes against this newer main, especially epochs and hearing
-   weights. Establish adapters/world constraints before widening conclusion menus.
+3. **Build on the merged mechanics support before extending live capability.** Epochs,
+   hearing weights, the new conclusion types and detours are on main (`0cd2181`); extend
+   them rather than adding parallel versions. Establish adapters/world constraints
+   before widening conclusion menus.
    Generic innocent secrets and a particular Seer Red Herring remain unsupported
    where not established; the Psychologist remains context/metagame information.
 4. **Resolve premise/action semantics before vote tuning.** The new premise-salience
@@ -154,9 +159,10 @@ for documentation and small text/layout fixes.
 - Use [tools/profile_live_presentation.gd](../tools/profile_live_presentation.gd) or
   [tools/profile_case_eval_town.gd](../tools/profile_case_eval_town.gd) for changes to
   evaluator keys, new factors, chronology, or meeting refresh scheduling. Record
-  before/after on the same fixtures, including source count and town size. Continue
-  authorized work past five seconds, but flag change sets that add significant time;
-  no new performance claim is made by this preparation pass.
+  before/after on the same fixtures, including source count and town size. The speed
+  budget is the user's: meeting entry and presenting about 2 s or less, nominations
+  under 1 s (on the user's machine). Flag any change set that adds time against it, and
+  measure late games too (seed 42, Days 3 to 4), not only the 54875 opening.
 - Keep actual role/alignment/poison/curse state inside generation, evil strategy, or
   explicitly post-case diagnostics. Listener acceptance uses observed facts, own
   knowledge, and alternatives. In particular, `fake`/`true` generation flags are not
