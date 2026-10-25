@@ -28,6 +28,12 @@ func reset() -> void:
 func _default_target() -> String:
 	return "constance" if view.people.any(func(p): return p.id == "constance") else view.people[0].id
 
+## A premise with no person or claim yet: the player fills it in on the card.
+func add_blank_premise(at: Vector2) -> String:
+	var id: String = add_premise("", "support", at)
+	nodes[id]["draft"] = true
+	return id
+
 func add_premise(target: String, type: String, at: Vector2) -> String:
 	serial += 1
 	var id = "p:%d" % serial
@@ -208,7 +214,7 @@ func remove_premise(id: String) -> void:
 		if node.kind == "contradiction":
 			node.prior_links = node.prior_links.filter(func(edge): return edge.from != id and edge.to != id)
 	var remaining: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise" and not nodes[key].conclusion.is_empty())
-	selected = add_premise(_default_target(), "evil", Vector2(540, 50)) if remaining.is_empty() else remaining[0]
+	selected = add_blank_premise(Vector2(540, 50)) if remaining.is_empty() else remaining[0]
 	version += 1
 
 func compile(root: String, include_arguments: bool = true) -> Dictionary:
@@ -323,14 +329,23 @@ func _evidence(ids: Array) -> Array:
 	result.sort()
 	return result
 
+## How each premise type reads after the person's name (the Workshop's claim menu).
+const PREMISE_TEXT = {"evil": "is evil", "suspicious": "is suspicious", "good": "is good", "marked": "is Marked",
+	"conflict": "these reports conflict", "demon": "is the Demon", "minion": "is a Minion",
+	"notdemon": "is not the Demon", "secret_mod": "has a secret modifier", "role": "holds their claimed gift",
+	"notrole": "is bluffing their claimed gift", "lied": "lied about a reading", "truthful": "told the truth about a reading",
+	"misled": "was misled by a reading", "unreliable": "gave an unreliable reading"}
+
 func title(id: String) -> String:
 	var node: Dictionary = nodes[id]
 	if node.kind == "premise":
+		if node.get("draft", false):
+			return "New premise"
 		if node.conclusion.is_empty():
 			return "Supporting evidence"
 		if node.conclusion.type == "conflict":
 			return "These reports conflict"
-		return "%s is %s" % [Solver.person_name(view, node.conclusion.target), node.conclusion.type]
+		return "%s %s" % [Solver.person_name(view, node.conclusion.target), PREMISE_TEXT.get(node.conclusion.type, "is " + node.conclusion.type)]
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
 	if node.kind == "modifier":

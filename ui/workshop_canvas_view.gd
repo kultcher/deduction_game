@@ -7,6 +7,7 @@ signal context_requested(id: String)
 signal layout_changed
 signal cards_dropped(numbers: Array)     # board cards dragged onto the Workshop
 signal removal_requested(id: String)     # a card dragged out past the left edge
+signal field_requested(id: String, field: String)  # a field on a card was clicked
 const CanvasSkin = preload("res://ui/theme.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
@@ -19,6 +20,13 @@ var drag = ""
 var panning = false
 var last_mouse = Vector2.ZERO
 var drag_out = false   # the dragged card is past the left edge: release removes it
+var fields: Dictionary = {}   # id -> [{rect, field}] clickable fields, in screen space
+var tips: Array = []          # [{rect, text}] tooltips for drawn badges and fields
+var badges: Dictionary = {}   # id -> {category, text, reason, ready, issues} from the test juror
+var detail_label: Callable    # (node) -> {text, icon}: the premise's extra field, if any
+const PREMISE_H = 236.0
+const STRENGTH_COLORS = {"empty": Color("8a8378"), "contradicts": Color("b55a4c"), "none": Color("8a8378"), "weak": Color("c98a3d"), "moderate": Color("c9b03d"), "strong": Color("5f9a55")}
+const STRENGTH_TEXT = {"empty": "No evidence", "contradicts": "Argues against", "none": "Doesn't support", "weak": "Weak", "moderate": "Moderate", "strong": "Strong"}
 var font: Font = CanvasSkin.serif()
 const WIDTH = 300.0
 
@@ -80,6 +88,8 @@ func _lines(text_value: String, width: float, fs: int) -> Array:
 	return lines
 
 func world_rect(id: String) -> Rect2:
+	if model.nodes[id].kind == "premise":
+		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, PREMISE_H + (24.0 if not model.nodes[id].positions.is_empty() else 0.0)))
 	var lines = 0
 	for paragraph in body(id):
 		lines += _lines(paragraph, WIDTH - 32, 16).size()
@@ -97,6 +107,8 @@ func _draw() -> void:
 	if model == null:
 		return
 	hit.clear()
+	fields.clear()
+	tips.clear()
 	for id in model.nodes:
 		if not model.nodes[id].has("merged"):
 			hit[id] = _screen(world_rect(id))
@@ -130,6 +142,9 @@ func _draw() -> void:
 
 func _draw_card(id: String, rect: Rect2) -> void:
 	var node: Dictionary = model.nodes[id]
+	if node.kind == "premise":
+		_draw_premise(id, rect)
+		return
 	var paper = Color("e8dfc8")
 	var header = Color("c4b185")
 	if node.kind == "premise":
@@ -158,6 +173,135 @@ func _draw_card(id: String, rect: Rect2) -> void:
 	draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), link)
 	draw_string(font, answer.position + Vector2(12, 20) * zoom, "Inspect" if node.kind == "contradiction" else "Answer", HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(1, roundi(15 * zoom)), ink)
 	draw_string(font, link.position + Vector2(19, 20) * zoom, "Link", HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(1, roundi(15 * zoom)), ink)
+
+## Premise card: who, what claim, any detail the claim needs, the test juror's
+## strength and whether the case can be judged. Each field is clicked to change it.
+func _draw_premise(id: String, rect: Rect2) -> void:
+	var node: Dictionary = model.nodes[id]
+	var conclusion: Dictionary = node.conclusion
+	var draft: bool = node.get("draft", false)
+	var paper = Color("e4c598")
+	var header = Color("c39154")
+	var ink = Color("2c2720")
+	var muted = Color("6f6350")
+	draw_style_box(CanvasSkin.flat(paper, Color("f7d988") if id == model.selected or id == linking else Color("665c4c"), 3 if id == model.selected else 1, 6, 0), rect)
+	draw_rect(Rect2(rect.position, Vector2(rect.size.x, 38 * zoom)), header)
+	var label: String = "Premise" if draft or not conclusion.is_empty() else "Supporting premise"
+	draw_string(font, rect.position + Vector2(14, 25) * zoom, label, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
+	# Strength chip (test juror) on the header, right-aligned.
+	var badge: Dictionary = badges.get(id, {})
+	if not conclusion.is_empty():
+		var chip_text: String = "…"
+		var chip_color = Color("8a8378")
+		var tip: String = "The test juror (public facts, default trust) is judging this case…"
+		if badge.get("ready", true) == false:
+			chip_text = "Can't judge"
+			chip_color = Color("b55a4c")
+			tip = "The test juror can't judge this case yet:\n• " + "\n• ".join(PackedStringArray(badge.get("issues", []).slice(0, 6)))
+		elif badge.has("category"):
+			chip_text = STRENGTH_TEXT.get(badge.category, badge.category)
+			chip_color = STRENGTH_COLORS.get(badge.category, chip_color)
+			tip = "Test juror: " + badge.get("text", "") + ("\n" + badge.reason if badge.get("reason", "") != "" else "") + "\nPublic facts and default trust: how well the case holds together, not how any one person will react."
+		var cw: float = font.get_string_size(chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 18
+		var chip = Rect2(rect.position + Vector2(rect.size.x - (cw + 10) * zoom, 7 * zoom), Vector2(cw, 24) * zoom)
+		draw_style_box(CanvasSkin.flat(chip_color, chip_color.darkened(0.3), 1, 10, 0), chip)
+		draw_string(font, chip.position + Vector2(9, 17) * zoom, chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(13), Color("fbf6ea"))
+		tips.append({"rect": chip, "text": tip})
+	var rows: Array = []
+	# Who: portrait and name.
+	var shown: Dictionary = node.get("pick", {}) if draft else conclusion
+	var person: String = shown.get("target", "")
+	var who = Rect2(rect.position + Vector2(12, 48) * zoom, Vector2(WIDTH - 24, 58) * zoom)
+	if shown.get("type", "") != "conflict":
+		_field_box(who, id == model.selected)
+		var center: Vector2 = who.position + Vector2(31, 29) * zoom
+		if person != "":
+			_draw_face(person, center, 23 * zoom)
+			draw_string(font, who.position + Vector2(64, 36) * zoom, Solver.person_name(model.view, person), HORIZONTAL_ALIGNMENT_LEFT, who.size.x - 90 * zoom, _fs(19), ink)
+		else:
+			draw_circle(center, 23 * zoom, Color("d8c7a6"))
+			draw_string(font, center + Vector2(-6, 7) * zoom, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(20), muted)
+			draw_string(font, who.position + Vector2(64, 36) * zoom, "Choose a person", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(17), muted)
+		_caret(who)
+		fields[id] = [{"rect": who, "field": "person"}]
+		tips.append({"rect": who, "text": "Who this premise is about. Click to choose."})
+	else:
+		fields[id] = []
+	# What: the claim.
+	var what = Rect2(rect.position + Vector2(12, 114) * zoom, Vector2(WIDTH - 24, 34) * zoom)
+	_field_box(what, false)
+	var picked_type: String = shown.get("type", "")
+	var claim_text: String = ("Choose a claim" if picked_type == "" else model.PREMISE_TEXT.get(picked_type, picked_type)) if draft else ("Supporting evidence (no claim)" if conclusion.is_empty() else model.PREMISE_TEXT.get(conclusion.type, conclusion.type))
+	draw_string(font, what.position + Vector2(12, 23) * zoom, claim_text, HORIZONTAL_ALIGNMENT_LEFT, what.size.x - 40 * zoom, _fs(16), muted if draft and picked_type == "" else ink)
+	_caret(what)
+	fields[id].append({"rect": what, "field": "type"})
+	tips.append({"rect": what, "text": "What you're arguing about them. Click to choose."})
+	# Detail: the gift, modifier, reading or time the claim needs.
+	var detail: Dictionary = detail_label.call(node) if detail_label.is_valid() else {}
+	if not detail.is_empty():
+		var extra = Rect2(rect.position + Vector2(12, 156) * zoom, Vector2(WIDTH - 24, 32) * zoom)
+		_field_box(extra, false)
+		var x: float = 10.0
+		if detail.get("icon") != null:
+			draw_texture_rect(detail.icon, Rect2(extra.position + Vector2(8, 4) * zoom, Vector2(24, 24) * zoom), false)
+			x = 38.0
+		draw_string(font, extra.position + Vector2(x, 22) * zoom, detail.text, HORIZONTAL_ALIGNMENT_LEFT, extra.size.x - (x + 30) * zoom, _fs(15), muted if detail.get("missing", false) else ink)
+		_caret(extra)
+		fields[id].append({"rect": extra, "field": detail.get("field", "detail")})
+		tips.append({"rect": extra, "text": detail.get("tip", "Click to choose.")})
+	# Assumptions: small portraits with their assumed alignment.
+	var y: float = 196.0
+	if not node.positions.is_empty():
+		var ax: float = 16.0
+		for pid in node.positions:
+			var c: Vector2 = rect.position + Vector2(ax + 11, y + 11) * zoom
+			_draw_face(pid, c, 10 * zoom)
+			var mark: String = {"good": "G", "evil": "E", "marked": "M"}.get(node.positions[pid], "?")
+			draw_string(font, c + Vector2(13, 6) * zoom, mark, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(13), ink)
+			tips.append({"rect": Rect2(c - Vector2(11, 11) * zoom, Vector2(36, 22) * zoom), "text": "Assumed %s: %s" % [Solver.person_name(model.view, pid), node.positions[pid]]})
+			ax += 40.0
+			if ax > WIDTH - 40:
+				break
+		y += 24.0
+	var answer = _answer_rect(rect)
+	var link = _link_rect(rect)
+	draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), answer)
+	draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), link)
+	draw_string(font, answer.position + Vector2(9, 20) * zoom, "Assume…", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
+	draw_string(font, link.position + Vector2(19, 20) * zoom, "Link", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
+	tips.append({"rect": answer, "text": "Assumptions for this line of argument: who you take as good, evil or Marked. Hypotheses, not facts."})
+
+func _fs(base: int) -> int:
+	return maxi(1, roundi(base * zoom))
+
+func _field_box(r: Rect2, strong: bool) -> void:
+	draw_style_box(CanvasSkin.flat(Color("f3e9d2"), Color("9c8662") if not strong else Color("7c6440"), 1, 5, 0), r)
+
+func _caret(r: Rect2) -> void:
+	var c = Vector2(r.end.x - 16 * zoom, r.get_center().y)
+	draw_colored_polygon(PackedVector2Array([c + Vector2(-5, -3) * zoom, c + Vector2(5, -3) * zoom, c + Vector2(0, 3) * zoom]), Color("6f6350"))
+
+## A person's face in a circle (portrait art cropped to the face), ringed in their ink.
+func _draw_face(person: String, center: Vector2, radius: float) -> void:
+	var color: Color = C.npc_color(person)
+	draw_circle(center, radius + 2.0, color.darkened(0.3))
+	var tex = CanvasSkin.tex("art/portraits/" + person, 0.25)
+	if tex == null:
+		draw_circle(center, radius, color)
+		var initial: String = Solver.person_name(model.view, person).substr(0, 1)
+		draw_string(font, center + Vector2(-radius * 0.35, radius * 0.35), initial, HORIZONTAL_ALIGNMENT_LEFT, -1, maxi(1, int(radius)), Color("fbf6ea"))
+		return
+	var dims: Vector2 = tex.get_size()
+	var span: float = 1.08 * dims.x
+	var origin = Vector2(0.5 * dims.x, 0.58 * dims.x) - Vector2(span, span) / 2.0
+	var points = PackedVector2Array()
+	var uvs = PackedVector2Array()
+	for i in range(32):
+		var a: float = TAU * i / 32.0
+		var d = Vector2(cos(a), sin(a))
+		points.append(center + d * radius)
+		uvs.append((origin + (d * 0.5 + Vector2(0.5, 0.5)) * span) / dims)
+	draw_polygon(points, PackedColorArray([Color.WHITE]), uvs, tex)
 
 func _answer_rect(rect: Rect2) -> Rect2:
 	return Rect2(rect.position + Vector2(15 * zoom, rect.size.y - 39 * zoom), Vector2(98, 28) * zoom)
@@ -205,6 +349,11 @@ func _gui_input(event: InputEvent) -> void:
 			selected.emit(chosen)
 			if was_linking:
 				return
+			for f in fields.get(chosen, []):
+				if f.rect.has_point(event.position):
+					field_requested.emit(chosen, f.field)
+					accept_event()
+					return
 			if event.double_click or _answer_rect(hit[chosen]).has_point(event.position):
 				answer_requested.emit(chosen)
 			elif _link_rect(hit[chosen]).has_point(event.position):
@@ -245,3 +394,9 @@ func _can_drop_data(_at: Vector2, data) -> bool:
 
 func _drop_data(_at: Vector2, data) -> void:
 	cards_dropped.emit(data["cards"])
+
+func _get_tooltip(at: Vector2) -> String:
+	for i in range(tips.size() - 1, -1, -1):
+		if tips[i].rect.has_point(at):
+			return tips[i].text
+	return ""

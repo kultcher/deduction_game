@@ -128,6 +128,9 @@ func _ui() -> void:
 	var editor = Editor.new()
 	editor.g = g
 	root.add_child(editor)
+	# A fresh Workshop starts blank; these checks argue the old preset premise.
+	editor.set_premise_field(editor.case_root, "type", "evil")
+	editor.set_premise_field(editor.case_root, "person", editor.board._default_target())
 	await process_frame
 
 	var premise: String = editor.board.selected

@@ -153,6 +153,9 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	var editor = Editor.new()
 	editor.g = g
 	root.add_child(editor)
+	# A fresh Workshop starts blank; these checks argue the old preset premise.
+	editor.set_premise_field(editor.case_root, "type", "evil")
+	editor.set_premise_field(editor.case_root, "person", editor.board._default_target())
 	await process_frame
 	check(editor.canvas.size.x > 1000 and editor.canvas.size.y > 200, "live editor fills the available window and leaves room for its canvas")
 	check(editor.board.view.live and not editor.board.nodes.values().any(func(n): return n.kind == "evidence"), "opening the live Workshop does not automatically transfer board evidence")
@@ -167,7 +170,7 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor.board.connect_cards("e:" + report_id, headline)
 	editor.board.selected = headline
 	editor._session_changed()
-	check("NEW EVALUATOR" in editor.support_label.text, "supported reading case has a visible evaluator label")
+	check(editor.support_label.text.begins_with("Ready") or "listeners" in editor.support_label.text, "supported reading case has a visible evaluator label")
 	editor._open_answer("e:" + report_id)
 	check(editor.case_box.get_child_count() > 0, "reading answers open using live people and receipts")
 	editor.answer_window.hide()
@@ -176,7 +179,7 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor.board.connect_cards("e:" + trace_id, headline)
 	editor.board.selected = headline
 	editor._session_changed()
-	check("FALLBACK" in editor.support_label.text and "trace" in editor.support_label.text, "mixed graph warning is visible without running a preview")
+	check("can't be judged" in editor.support_label.text and "trace" in editor.support_label.tooltip_text, "mixed graph warning is visible without running a preview (reasons in the tooltip)")
 	editor._open_answer("e:" + trace_id)
 	check(editor.case_box.get_child_count() > 0, "unsupported card can be inspected without fixture logic")
 	editor.answer_window.hide()
@@ -278,6 +281,9 @@ func _main_ui() -> void:
 	main._on_more(4)
 	await process_frame
 	var editor = main.case_view.workshop.editor
+	# A fresh Workshop starts blank; these checks argue the old preset premise.
+	editor.set_premise_field(editor.case_root, "type", "evil")
+	editor.set_premise_field(editor.case_root, "person", editor.board._default_target())
 	check(editor.g == main.g and editor.board.view.get("live", false), "main menu opens the live editor rather than the fixture canvas")
 	check(main.get_window().gui_embed_subwindows, "Workshop dialogs are embedded in the game window")
 	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded()), "live answer, results, progress and context windows are embedded transient dialogs")
