@@ -11,16 +11,14 @@ sway the town's votes, until the demon's host hangs or the town falls.
 This is a proof of concept built in Godot 4 (GDScript), with a painted town screen and case
 board over a deterministic simulation that also runs headless. The point is to test
 whether the deduction is fun. [DESIGN.md](DESIGN.md) describes how every system works and
-why; [BACKLOG.md](BACKLOG.md) is the to-do list; [TUNING.md](TUNING.md) has the numbers.
+why; [BACKLOG.md](BACKLOG.md) is the to-do list; [TUNING.md](TUNING.md) has the social
+model's numbers (it predates the shared case judge and is updated after the balance
+pass). How presented cases are judged: [docs/LEGACY_MIGRATION.md](docs/LEGACY_MIGRATION.md).
 This README covers running and playing.
 
 ## Running it
 
-**Case Workshop (in progress):** choose **More > Case Workshop** for the red-string case
-board. The reasoning behind it is being rebuilt: see [the plan](docs/CASE_REASONING.md)
-and [the earlier findings](docs/CASE_WORKSHOP_FINDINGS.md).
-
-Requires Godot 4.4+ (tested with 4.4.1).
+Requires Godot 4.7.2 (the version the project and tests use).
 
 **In the editor:** open the project and press Play. Pick a town size (7 or 10 townsfolk)
 beside the case seed in the title bar and press **New case**. Everything can be done with
@@ -55,6 +53,10 @@ the mouse; the typed prompt still works as a fallback.
   **Profile**, **Notes**, **Roles**) can be moved and resized. Right-click any card to add
   it to a deduction, hide it, find links or get hints. Deductions wait in a tray under the
   grid and pin to the board where you drop them.
+- **The Case Workshop** (**More > Case Workshop**) is the red-string board for building
+  a case: a premise, linked evidence cards with their questions answered, challenges
+  (unlikely, misled, lying), a live strength label, then **File case** to get a
+  presentable card. See [Building a case](#how-to-play) below.
 - **Debug** shows what NPCs privately make of things (each card's influence on those who've
   heard it; how the town credits and suspects each person). Turning it on mid-case leaves
   your identification unscored.
@@ -89,11 +91,14 @@ The bot plays through the same command interface a human uses, sees only what a 
 sees, and prints one line per case plus a summary. `--transcript` prints everything the
 player would have seen. `--passive` is the control: a player who does nothing at all
 (waits every phase, declines approaches, never nominates, votes no). Compare it with the
-normal bot on the same seeds to see how much the player's actions matter. Recent runs win
-about a third of 7-townsfolk cases and a sixth to a quarter of 10-townsfolk cases (seeds
-1000–1149); the passive control wins far fewer. The measurements over time are in DESIGN's
-[History and measurements](DESIGN.md#history-and-measurements). Seed-to-seed noise is about
-±3 games per 150.
+normal bot on the same seeds to see how much the player's actions matter. `--native`
+judges evidence with the legacy rules instead of the shared model, the control for A/B
+runs; each game prints per-day suspicion against the truth, town agreement and every
+good vote's score against its need. Chunks of 10 seeds can run in parallel. Measurements
+since the shared judge are in [docs/MIGRATION_PROGRESS.md](docs/MIGRATION_PROGRESS.md);
+the older legacy-rule history is in DESIGN's
+[History and measurements](DESIGN.md#history-and-measurements). Seed-to-seed noise is
+about ±3 games per 150.
 
 To compare the same starting towns and keep machine-readable results:
 
@@ -110,16 +115,18 @@ and night stats. Only completed cases enter outcome rates. Same seeds match the 
 setup; player actions change later random draws, so a reversal alone doesn't prove an
 intervention caused a loss.
 
-**Tests** (each runs headless and prints its results):
+**Tests:** the runner runs every `tools/test_*.gd` suite headless and checks the failure
+text too (some suites print failures but exit 0):
 
 ```sh
-godot --headless --path . --script res://tools/test_beliefs.gd
+python tools/run_gd_tests.py --godot <path to Godot 4.7.2>
+python tools/run_gd_tests.py --godot <exe> --include-slow       # adds test_trace (~20 min)
+python tools/run_gd_tests.py --godot <exe> test_beliefs test_case_eval
 ```
 
-Others: `test_argue`, `test_fixes`, `test_roster`, `test_shadow`, `test_social`,
-`test_outcomes`, `test_board`, `test_ui`, `test_town_ui`, `test_text_ui`,
-`test_text_formatter`, `test_text_terms`, `test_dialogue`, `test_dialogue_decisions`,
-`test_sighting_followup`, `test_trace` (all in `tools/`).
+Known failures: `test_social` (a false Night Watch story) and `test_text_ui` (two
+role-hover checks). **Speed:** `tools/replay_54875.gd` replays a playtest opening with
+timings and a profile.
 
 ## How to play
 
@@ -128,7 +135,7 @@ You get one action per phase. `help` lists every command in the current build.
 
 | When | Commands |
 |---|---|
-| Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `timeline [filter]`, `theory`, `roles`, `tools`, `help`, `log` |
+| Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `timeline [filter]`, `theory`, `roles`, `tools`, `help`, `log`, `fallbacks` (dev: anything the legacy rules judged) |
 | Day phase | `go <place / block / person>`, optionally one more `go` within the same block, then one action: `talk <name>`, `search`, `gossip` (tavern only), `wait` |
 | Talking (3 questions) | `ask gift`, `ask are <gift>`, `ask night`, `ask seen <today / morning / afternoon / evening / yesterday [phase]>`, `ask about <name or gift>`, `ask why`, `present <card#> [for/against <name>]`, `offer ward` / `offer vigil` (free), `bye` |
 | Approached | `accept` (talk now; uses the phase) or `decline` (any other action also declines) |
@@ -193,7 +200,16 @@ which costs no question. `for <name>` / `against <name>` override the reading. `
 `convince`, `tell` and `defend` remain as shortcuts. Using someone's confessed secret
 against them costs their trust; making your case to an evil NPC warns the demon.
 
-**Building a case.** `link` checks 1–3 cards against a library of templates:
+**Building a case.** The main way is the **Case Workshop**: pin a premise ("Greta is the
+Demon", "Constance's readings can't be trusted"), link the evidence cards, answer their
+questions on the card, challenge a card you think is wrong, and watch the strength label
+(doesn't support / weakly / moderately / strongly). File it, then `present` it privately or
+at the meeting. Every listener judges it with the same model, through their own trust,
+suspicion and private knowledge; a case containing evidence the model can't read is
+refused with the reason. DESIGN
+[Cases and how the town judges them](DESIGN.md#cases-and-how-the-town-judges-them).
+
+The older text route still works: `link` checks 1–3 cards against a library of templates:
 contradictions (someone in two places at once, out at night vs. "I was home", two people
 claiming one gift, a reading that flips...), corroborations and inferences (a Seer pair
 where one person is cleared leaves the other). A match lists possible explanations and
@@ -205,15 +221,16 @@ should be protected because #9`. Statuses: good, evil, the demon, a gift, lying,
 "should be": protected, spared. When the cards conflict but you can't say who is wrong,
 **something doesn't add up** (`conclude one of these is misled or lying because #a #b`)
 makes NPCs take those people with a pinch of salt and raises the pressure on them. The
-**Build case** overlay does all of this with the mouse. DESIGN
-[Deductions and arguments](DESIGN.md#deductions-and-arguments) has the full list.
+**Build case** overlay does all of this with the mouse.
 
 **Night.** Most people stay home. Evil goes out to act, and so does anyone whose gift
 chooses a place (Night Watch, the Warden at the door it guards, the Medium, the
 Lamplighter) or whose secret takes them out (Lovers, Sleepwalker). Every block is joined to
 every other, so a walker is seen only on their own block (leaving home) or where they went;
-the Lamplighter walks every block. A vigil shows you who moves through a block. Being seen
-out counts heavily only on the block where someone was killed that night. Walkers
+the Lamplighter walks every block. A vigil shows you who moves through a block. The town
+weighs a night sighting by how well it fits the killer's likely route: seen near the
+murder counts heavily, seen elsewhere argues strongly (not absolutely) against being the
+killer, and scattered sightings can back up a walking gift. Walkers
 sometimes drop something on the way: usually their home block's material, rarely a
 personal item. **Searching** finds what was dropped there (and the Revenant's totem); a
 crime scene gives a trace pointing to where the killer spent the evening.
@@ -256,6 +273,12 @@ sim/evil.gd       evil team AI: plan, bluffs, scapegoat, kill/poison choice, fab
 sim/dialogue.gd, dialogue_voices.gd, dialogue_decisions.gd
                   dialogue composer: words decided statements in a character's voice
 sim/devlog.gd     developer trace (JSONL + text)
+workshop/         the shared case judge: case_eval.gd (possible worlds), jury.gd and
+                  shared_ledger.gd (per-listener runs), role_constraints.gd,
+                  live_activity.gd (night movement), live_assessment.gd (card adapters),
+                  chronology.gd (curse epochs), canvas_model.gd (the board's case model)
+game/workshop_*.gd     bridge between the game and the judge: presentations, belief
+                  ownership (parks legacy ledger entries), the filed canvas
 game/game.gd      command interpreter and case board; emits structured events
 game/card_model.gd     card times, views, rows and markers
 game/board_model.gd    case board layout as data
@@ -263,6 +286,7 @@ game/case_metrics.gd   post-case outcome and identification analysis
 game/recent_sightings.gd  recent sightings an NPC adds when asked their opinion of someone
 ui/main.gd        town screen, title bar, actions and log (ui/main.tscn)
 ui/map_view.gd    painted map            ui/meeting_view.gd  meeting circle
+ui/live_case_workshop.gd  the Case Workshop board
 ui/case_view.gd   full-screen case board, with board_view.gd, case_state.gd,
                   deduction_tray.gd, card_list.gd, board_panel.gd, board_icons.gd
 ui/profile_panel.gd, cast_list.gd, trait_bars.gd, portrait_badge.gd
@@ -274,7 +298,8 @@ ui/theme.gd       papercraft theme      ui/dialogue_lab.gd  dialogue workshop
 tools/cli.gd      terminal frontend      tools/autoplay.gd  bot player / batch runner
 tools/compare_runs.py  paired active/passive comparison
 tools/trace.py    dev-log filter         tools/slice_sheets.py  art sheet slicer
-tools/test_*.gd   headless tests
+tools/test_*.gd   headless tests     tools/run_gd_tests.py  the test runner
+tools/replay_54875.gd  speed replay
 ```
 
 The simulation is deterministic for a given seed and never touches presentation, so it
@@ -299,7 +324,9 @@ Main entry types:
 | `approach`, `approach_declined` | an NPC seeking out the player, with their agenda (news / frame / gossip) |
 | `player_link` | cards the player linked, templates matched and near-miss reasons (unmatched links flag missing templates) |
 | `deduction`, `deduction_refused`, `deduction_deleted` | a deduction the player filed (conclusion, supports, template, unfounded, class), one refused and why, one deleted |
-| `argument` | an NPC weighing a deduction: explanation weights, agreement vs. the best alternative, quality, effect |
+| `argument` | an NPC weighing a deduction by the legacy rules: explanation weights, agreement vs. the best alternative, quality, effect |
+| `workshop_presentation`, `workshop_delivery`, `workshop_ownership` | a case judged by the shared model: per listener, the reasoning, reply and the suspicion vector that replaced legacy entries |
+| `legacy_fallback`, `social_presentation` | something the legacy rules judged (and why); a bare belief taken as social speech |
 | `player_present` | the player taking the meeting floor |
 | `night_sighting` | who glimpsed whom at night |
 | `poison`, `protect`, `protect_failed`, `kill`, `kill_failed` | night actions and outcomes |
