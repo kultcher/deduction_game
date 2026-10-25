@@ -25,6 +25,7 @@ func _init() -> void:
 	_summary()
 	_zag()
 	_no_gift_denial()
+	_own_gift_refusal()
 	_where_were_you()
 	_haunts()
 	_offers()
@@ -243,6 +244,26 @@ func _zag() -> void:
 			if e["type"] == "think" and e["data"].get("topic", "") == "kill_choice" and e["data"].get("zag", false):
 				zags += 1
 	_check(zags >= 1 and zags <= nights * 0.12, "the demon sometimes skips its top three (%d of %d choices)" % [zags, nights])
+
+func _own_gift_refusal() -> void:
+	var declined = 0
+	for sd in range(7310, 7330):
+		var g = _game(sd)
+		var n = g.w.living_good()[0]
+		n.role = "seer"
+		n.claimed_role = ""
+		n.claim_public = false
+		n.max_tier = 0
+		n.trust = 0.0
+		n.traits.gossip = 1.0
+		n.known_claims = {}
+		g.w.public_claims = []
+		var response = Social.answer_about_role(g.w, n, "seer")
+		if response.facts.is_empty():
+			declined += 1
+			_check(response.lines.size() == 1 and response.lines[0].text == "That's not for me to say.", "a holder declining their own gift refuses instead of claiming ignorance")
+			_check(not n.claim_public and n.max_tier < 3, "the refusal does not disclose the holder's role")
+	_check(declined > 0, "the own-gift fixture exercises declined disclosure")
 
 func _no_gift_denial() -> void:
 	var denials = 0

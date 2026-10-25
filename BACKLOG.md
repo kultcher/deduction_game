@@ -206,6 +206,12 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
     lie about their own gift. Use the refusal line ("That's not for me to say"). Dorian,
     day 1. [decided]
 
+    > **Session 2026-10-25 (B015): implemented; closure proposed.** If the existing
+    > disclosure roll declines, the final empty-answer wording refuses rather than
+    > claiming ignorance about the holder's own gift. Chance, knowledge sharing,
+    > question cost, and facts are unchanged; `test_fixes` covers declined disclosures.
+    > Full runner: 73/75 passed, with only the permitted two failures.
+
     > **Prep B015 (9cb8782; open):** The own-holder decline branch in `sim/social.gd::answer_about_role`
     > can fall through to generic ignorance. Use a refusal without disclosing the actual gift; check
     > repeated-question wording too.

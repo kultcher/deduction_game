@@ -434,7 +434,7 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 	elif not willing:
 		w.dlog.think(n.id, "about_role", "Asked about the %s: not willing to share private knowledge." % role)
 	if text == "":
-		text = "I couldn't tell you who the %s is." % rn if willing or n.is_evil() else "That's not for me to say."
+		text = "That's not for me to say." if mine == role or not (willing or n.is_evil()) else "I couldn't tell you who the %s is." % rn
 	lines.append(Mind.say(n, text))
 	return {"lines": lines, "facts": facts}
 
