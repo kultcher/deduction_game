@@ -44,9 +44,8 @@ static func _key(card: Dictionary, targets: Array, direction: String, snapshot: 
 
 static func _unavailable(g, n, card: Dictionary, point: String, issues: Array) -> Dictionary:
 	Ownership.fallback(g, n, point, issues, card.get("n", 0))
-	if g.strict_evaluator or issues.any(func(issue): return "is not evidence" in issue):
-		return {"blocked": true, "lines": ["Cannot present card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(issues))]], "facts": [], "agreement": 0.0}
-	return {}
+	# No legacy route for presentations (user, Oct 25): block with the reason.
+	return {"blocked": true, "lines": ["Cannot present card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(issues))]], "facts": [], "agreement": 0.0}
 
 static func present(g, n, card: Dictionary, targets: Array, direction: String, venue: String, speak: bool) -> Dictionary:
 	var span = Profiler.open("presentation")

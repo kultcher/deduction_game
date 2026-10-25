@@ -75,7 +75,12 @@ func _live() -> void:
 	n.suspicion[target.id] = 0.0
 	n.npc_trust[target.id] = 0.5
 	var alternative = Argue.evaluate(w, n, g.board[trace_ded - 1], g.board, 1.0)
-	_check(alternative["dialogue"].get("reason", "") == "alternative" and "someone else" in alternative["dialogue"].get("alternative", ""), "live trace reply names the alternative actually weighted by the evaluator")
+	if alternative.get("blocked", false):
+		# This fixture's trace card is incomplete; since Oct 25 that is rejected with a
+		# named reason instead of being judged by the legacy rules.
+		_check(" ".join(PackedStringArray(alternative.get("lines", []))).to_lower().contains("trace"), "an incomplete trace card is rejected with a named reason")
+	else:
+		_check(alternative["dialogue"].get("reason", "") == "alternative" and "someone else" in alternative["dialogue"].get("alternative", ""), "live trace reply names the alternative actually weighted by the evaluator")
 	n.dialogue_memory.clear()
 	n.silenced = true
 	var silent = Argue.evaluate(w, n, g.board[dn - 1], g.board, 0.6)

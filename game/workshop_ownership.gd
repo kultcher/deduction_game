@@ -126,6 +126,13 @@ static func _refresh(g, n, phase: String) -> void:
 			"elapsed_ms": Time.get_ticks_msec() - started, "cache_hit": cache_hit}, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
 
 static func fallback(g, n, point: String, issues: Array, card: int = 0) -> void:
+	var entry = {"listener": n.id, "point": point, "issues": issues.duplicate(true), "card": card, "day": g.w.day, "phase": g.w.phase}
+	# Count each distinct fallback once per listener per day, so the totals mean
+	# "things not tested", not "how often a refresh ran".
+	var seen: bool = g.shared_fallbacks.any(func(f): return f.listener == entry.listener and f.point == entry.point and f.issues == entry.issues and f.card == entry.card and f.day == entry.day)
+	if not seen:
+		g.shared_fallbacks.append(entry)
+		g.w.dlog.add("legacy_fallback", n.id, "", entry, "Legacy rules used (%s): %s" % [point, "; ".join(PackedStringArray(issues))])
 	g.w.dlog.trace_event("workshop_fallback", n.id, "", {"listener": n.id,
 		"card": card, "exit_point": point, "issues": issues.duplicate(true)},
 		"Shared evaluation unavailable: " + "; ".join(PackedStringArray(issues)))

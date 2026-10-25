@@ -96,7 +96,8 @@ func _strict_submission() -> void:
 	g.state = "talk"
 	g.questions_left = 3
 	var ordinary = g.command("convince %d" % ded)
-	check("Shared assessment unavailable" in ordinary and g.questions_left == 2, "ordinary play reports the fallback and retains the existing response")
+	# No legacy route for presentations (Oct 25): ordinary play blocks it too, with the reason.
+	check("Cannot present" in ordinary and g.questions_left == 3 and g.shared_fallbacks.size() > 0, "ordinary play blocks an unsupported presentation with its reason and records the fallback")
 
 func _state(g) -> String:
 	return JSON.stringify([g.w.rng.state, g.w.npcs.map(func(n): return [n.trust, n.pressure, n.suspicion, n.ledger, n.secret_spread, n.workshop_state, n.shadow.suspicion if n.shadow != null else {}])])

@@ -28,6 +28,27 @@ hidden state, no exact source-channel models.
   evil, who's the Demon, who holds a modifier, who walked where) is cheap. Anything that
   needs a new hidden fact multiplies every evaluation; stop and design it with the user.
 
+## 0. Conclusion types the shared model doesn't judge (top priority)
+
+**State:** the legacy rules accept 18 conclusion types; the shared model accepts 7
+(`evil`, `good`, `demon`, `minion`, `marked`, `suspicious`, `conflict`;
+`LiveAssessment.CONCLUSIONS`). A presentation with supported evidence but another
+conclusion type is judged by the legacy rules, visibly: an immediate `[dev]` line, a
+`conclusion_type` fallback record, and the morning count. In bot games, `lied`,
+`secret_mod` and `truthful` came up most.
+
+**Suggested mappings,** all on existing world facts, so all cheap:
+- `notdemon` → the `demon` question, negated.
+- `lied`, `truthful`, `misled`, `unreliable` → the existing reading-challenge machinery
+  (lying / misled / unlikely). Fix its speed first (see item 3).
+- `secret_mod`, `secret`, `red_herring` → the modifier facts each world already has
+  (`modifier`, `holders`), as `marked` does.
+- `role`, `notrole` ("X is the Seer") → a role-declaration question: X is good and
+  their claim holds, using the soft-testimony role check. Design it with the user if it
+  needs more than that.
+- `protect`, `spare` → preferences, not evidence. Keep them native as social speech
+  (like bare beliefs) and stop counting them as fallbacks.
+
 ## 1. Revenant curse histories
 
 **State:** once a curse fires, every case falls back to the legacy rules (inventory
@@ -81,10 +102,13 @@ trust-in-defender weighting until the Q3/Q6 tuning pass.
 `ReadingChallenges.assess` runs a full solve per challenge and builds a string key per
 world. Switch it to per-world integer keys and `Solver.report_table` lookups first.
 
-## 4. Unnamed relays
+## 4. Unnamed relays, and Medium relays without original evidence
 
 **State:** "word reached me from the Seer" without a named source is an explicit
-fallback (B3, B8).
+fallback (B3, B8). Bot games also show frequent belief-refresh fallbacks: "Medium relay
+needs supported original evidence, an original observation time, and a publicly
+deceased…". A Medium relay whose original isn't supported pushes the listener's whole
+refresh onto the legacy rules, so this is high-volume; consider moving it up.
 
 **Approach:** treat it as the teller's testimony about a reading, at reduced weight,
 with no model of who the anonymous source might be. A later public "that was me"
@@ -122,15 +146,27 @@ for claimed walkers) and the shared movement model still coexist (B5).
 Keep `_likelihood`'s loop structure (no work inside the per-block loops that doesn't
 depend on the block).
 
-## 7. Remove the legacy presentation route for supported evidence
+## 7. No legacy route for presentations: done (Oct 25, Claude)
 
-**Intent:** where the shared model supports everything in a presentation, the legacy
-argument route in `Argue.evaluate`, `hear_accusation`, `hear_defence`,
-`hear_group_case` and `_public_case_hear` is no longer reachable. Unsupported cards are
-rejected with a named reason.
-
-**Performance risk: low.** Paths that used to fall back now pay for evaluation, so check
-the replay.
+- **Unsupported evidence is blocked:** a presentation containing evidence the shared
+  model can't read is blocked with the reason ("Cannot present. Card #N: …"), in normal
+  play too, not just strict mode. Mid-presentation failures are blocked for that listener.
+- **Unsupported conclusion types** with supported evidence go to the legacy rules,
+  loudly (item 0).
+- **Two more exceptions stay native, by design:**
+  - A bare belief with no evidence ("I believe they're not the Demon") is social speech.
+    It's logged as `social_presentation`, not as a fallback.
+  - With shared effects switched off by the player, the legacy rules are what they asked
+    for.
+- **Every remaining fallback is visible.** This covers belief refreshes and NPC-driven
+  paths. Each one is recorded in the ordinary developer log (`legacy_fallback`),
+  listed by the `fallbacks` command, announced in the next morning report ("[dev] The
+  legacy rules judged N things…"), and counted in each game's summary
+  (`legacy_fallbacks`, also in autoplay's case lines and `--results`). Each distinct
+  fallback counts once per listener per day.
+- **The bot** never retries a presentation the game blocked (it used to loop forever).
+- **Remaining work:** drive the count to zero through the items above. A playtest's
+  `fallbacks` output shows what it didn't test.
 
 ## 8. Check: no double counting of role claims
 
