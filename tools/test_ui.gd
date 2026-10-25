@@ -15,6 +15,24 @@ func _init() -> void:
 	scene.roles_win.hide()
 	scene.show_script_at_start = false
 	var g = scene.g
+	var original_meeting: Dictionary = g.w.meeting.duplicate(true)
+	var voter_rng = g.w.rng.state
+	var threshold: int = g.w.vote_threshold()
+	var nominee = g.w.npcs[0]
+	var previous = g.w.npcs[1]
+	g.w.meeting = {"pending": {"by": "player", "nominee": nominee.id}, "block": "", "block_count": 0, "results": []}
+	_check(g.vote_requirement_text().begins_with("%d votes needed" % threshold), "first nomination text uses the normal minimum")
+	g.w.meeting.block = previous.id
+	g.w.meeting.block_count = threshold + 1
+	var replacement = g.vote_requirement_text()
+	_check(replacement.begins_with("%d to put %s" % [threshold + 2, nominee.name]) and "instead of " + previous.name in replacement and "%d to tie" % (threshold + 1) in replacement, "replacement text names the block and shows winning and tying counts")
+	scene.meeting_view.refresh()
+	_check(scene.meeting_view._vote_hint == replacement, "the meeting view captures the same pre-vote requirements as the prompt")
+	g.w.meeting.block = ""
+	_check("empty after a tie" in g.vote_requirement_text() and g.vote_requirement_text().begins_with("%d to put" % (threshold + 2)), "an empty block retains the earlier high count")
+	_check(g.w.rng.state == voter_rng and g.w.meeting.block_count == threshold + 1, "formatting requirements changes neither vote state nor RNG")
+	g.w.meeting = original_meeting
+	scene.meeting_view.set_game(g)
 	for cmd in ["go tavern", "wait", "go well", "wait", "go tavern", "wait", "wait", "done", "vigil square", "board", "timeline"]:
 		scene._run(cmd)
 	await process_frame

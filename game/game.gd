@@ -1597,6 +1597,18 @@ func _defend_pending() -> void:
 		_line(l)
 	_facts(df["facts"])
 
+## Presentation only: describe the existing threshold/high-water rules without changing voting.
+func vote_requirement_text() -> String:
+	var minimum = w.vote_threshold()
+	var high: int = w.meeting.get("block_count", 0)
+	if high < minimum:
+		return "%d votes needed to put the nominee on the block." % minimum
+	var nominee: String = w.meeting.get("pending", {}).get("nominee", "")
+	var name: String = w.by_id[nominee].name if w.by_id.has(nominee) else "the nominee"
+	var block: String = w.meeting.get("block", "")
+	var replacement = " instead of " + w.by_id[block].name if w.by_id.has(block) else " (the block is empty after a tie)"
+	return "%d to put %s on the block%s; %d to tie (no one will be executed)." % [maxi(minimum, high + 1), name, replacement, high]
+
 func _show_nomination() -> void:
 	state = "nomination"
 	statement_used = false
@@ -1609,7 +1621,7 @@ func _show_nomination() -> void:
 	opts += ". Before voting you may 'defend' or 'accuse', optionally citing a card (one statement)"
 	if w.tools["clemency"] > 0 and nm["by"] != "player":
 		opts += ", or use 'clemency' to spare them"
-	_prompt("Vote on %s (%d needed).%s %s." % [t.name, w.vote_threshold(), blk, opts])
+	_prompt("Vote on %s. %s%s %s." % [t.name, vote_requirement_text(), blk, opts])
 
 func _nomination_command(verb: String, rest: String, progress: Callable = Callable()) -> void:
 	var nm: Dictionary = w.meeting["pending"]

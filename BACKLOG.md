@@ -72,6 +72,13 @@ and the boundary with unmerged mechanics work. The Closed section is unchanged.
   only `vote_threshold()`; voting logic already distinguishes these outcomes.
   (Oct 21) [decided]
 
+  > **Session 2026-10-25 (B004): implemented; closure proposed.** The prompt and
+  > meeting tally share read-only replacement/tie wording, including the empty block
+  > after a tie. The tally captures requirements before counting and wraps inside
+  > the panel. `test_ui` checks initial, replacement, post-tie, and unchanged state/RNG.
+  > Voting and nomination formulas are unchanged. Full runner: 73/75 passed, with
+  > only the permitted `test_social` and `test_text_ui` failures.
+
   > **Prep B004 (9cb8782; open):** `sim/world.gd::vote_pending` retains `block_count` even after a tie
   > empties the block. Share replacement-count logic between `game/game.gd::_show_nomination` and
   > `ui/meeting_view.gd::_draw_tally`; check initial, replacement, tie, and post-tie votes.

@@ -19,6 +19,7 @@ var g
 var _res: Dictionary = {}    # the vote being shown (or last shown)
 var _seen_results = 0
 var _pending_key = ""
+var _vote_hint = ""   # captured before the count: never infer it from the final result
 var _t = -1.0                # hand position in seats along the order; -1 = idle
 var _counted = 0             # how many seats along the order have been counted
 var _offset = {}             # id -> current step (-1 back .. +1 in)
@@ -36,6 +37,7 @@ func set_game(game) -> void:
 	_res = {}
 	_seen_results = 0
 	_pending_key = ""
+	_vote_hint = ""
 	_t = -1.0
 	_counted = 0
 	_offset = {}
@@ -59,6 +61,7 @@ func refresh() -> void:
 	var pend: Dictionary = m.get("pending", {})
 	var pk = "" if pend.is_empty() else "%s>%s" % [pend.get("by", ""), pend.get("nominee", "")]
 	if pk != "" and pk != _pending_key:
+		_vote_hint = g.vote_requirement_text()
 		_res = {}
 		_reset_steps()
 		_t = -1.0
@@ -303,14 +306,14 @@ func _draw_tally() -> void:
 	var m: Dictionary = g.w.meeting
 	var fs = 17
 	var lines: Array = []
-	var thr = g.w.vote_threshold()
 	if not _res.is_empty() and _res.has("order"):
 		var count = 0
 		for j in range(_counted):
 			var o: String = _res["order"][j]
 			if (o == "player" and _res["player_yes"]) or o in _res["yes"]:
 				count += 1
-		lines.append("Votes to execute: %d   (need %d)" % [count, _res["threshold"]])
+		lines.append("Votes to execute: %d" % count)
+		lines.append(_vote_hint if _vote_hint != "" else "Minimum votes: %d" % _res["threshold"])
 		if not animating():
 			lines.append({"on_block": "%s goes on the block." % g.w.by_id[_res["nominee"]].name,
 				"tie": "A tie with the block: nobody is on the block.",
@@ -319,7 +322,7 @@ func _draw_tally() -> void:
 		else:
 			lines.append("Counting... (click to finish)")
 	else:
-		lines.append("Votes needed: %d of %d" % [thr, g.w.voter_count()])
+		lines.append(g.vote_requirement_text())
 	var blk: String = m.get("block", "")
 	if animating():
 		pass  # don't give the count away before the hand gets there
@@ -327,13 +330,14 @@ func _draw_tally() -> void:
 		lines.append("On the block: %s (%d)" % [g.w.by_id[blk].name, m.get("block_count", 0)])
 	elif m.get("block_count", 0) > 0:
 		lines.append("Block empty after a tie at %d" % m["block_count"])
-	# One strip along the bottom edge, clear of the ring.
-	var txt = "   ·   ".join(PackedStringArray(lines.filter(func(x): return x != "")))
-	var tw = _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 28
-	var r = Rect2((size.x - tw) / 2.0, size.y - fs * 1.7 - 6, tw, fs * 1.7)
+	# Wrap explanatory counts inside the panel instead of clipping a long one-line strip.
+	var txt = "\n".join(PackedStringArray(lines.filter(func(x): return x != "")))
+	var width = maxf(1.0, size.x - 44.0)
+	var height = _font.get_multiline_string_size(txt, HORIZONTAL_ALIGNMENT_CENTER, width, fs).y
+	var r = Rect2(14, size.y - height - 18, width + 16, height + 12)
 	draw_rect(r, Color(0.07, 0.09, 0.14, 0.85))
 	draw_rect(r, UITheme.color("border").darkened(0.2), false, 1.0)
-	draw_string(_font, Vector2(r.position.x + 14, r.position.y + fs * 1.2), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UITheme.color("accent"))
+	draw_multiline_string(_font, r.position + Vector2(8, fs + 6), txt, HORIZONTAL_ALIGNMENT_CENTER, width, fs, -1, UITheme.color("accent"))
 
 # ---------------------------------------------------------------- input
 
