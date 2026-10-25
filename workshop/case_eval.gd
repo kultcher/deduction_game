@@ -101,7 +101,7 @@ static func neutral_listener(view: Dictionary) -> Dictionary:
 static var _premise_cache: Dictionary = {}
 
 static func _premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
-	var key = hash([Solver._universe_key(view), conclusion, view.get("timeline", {})])
+	var key = hash([Solver._universe_key(view), Solver.question_inputs(view, conclusion), view.get("timeline", {})])
 	if _premise_cache.has(key):
 		return _premise_cache[key]
 	if _premise_cache.size() > 256:
@@ -110,6 +110,8 @@ static func _premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByt
 	return _premise_cache[key]
 
 static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
+	if conclusion.type in ["misled", "unreliable"]:
+		return Solver.question_table(view, conclusion)
 	var universe: Array = Solver.universe(view)
 	var m = PackedByteArray()
 	m.resize(universe.size())

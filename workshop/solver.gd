@@ -650,10 +650,60 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 		return false
 	match conclusion.type:
 		"demon", "minion": return position_holds(view, world, conclusion.target, conclusion.type, conclusion.at)
+		"notdemon": return not position_holds(view, world, conclusion.target, "demon", conclusion.at)
 		"evil", "suspicious": return TimeModel.evil_index(view, world, index, conclusion.at)
 		"good": return not TimeModel.evil_index(view, world, index, conclusion.at)
 		"marked": return world.marked == index
+		"secret_mod": return world.get("modifier", "marked") == conclusion.get("mod", "") and (int(world.get("holders", 1 << world.marked)) & (1 << index)) != 0
+		"role", "notrole":
+			# A declaration question, not an extra hidden role assignment: the live
+			# adapter requires a cited matching claim. Good declarations are binding;
+			# the existing joint role table weighs whether those claims fit together.
+			var claimed: bool = not TimeModel.evil_index(view, world, index, conclusion.at)
+			return claimed if conclusion.type == "role" else not claimed
+		"lied", "truthful":
+			# Existing challenge semantics: evil-reader versus honest-reader
+			# explanations. Impairment is not deliberate dishonesty.
+			var evil: bool = TimeModel.evil_index(view, world, index, conclusion.at)
+			return evil if conclusion.type == "lied" else not evil
+		"misled", "unreliable":
+			var table: PackedByteArray = question_table(view, conclusion)
+			var i: int = world.get("__i", -1)
+			if i < 0:
+				i = universe(view).find(world)
+			return i >= 0 and i < table.size() and table[i] != 0
 	return false
+
+static var question_cache: Dictionary = {}
+
+static func question_inputs(view: Dictionary, conclusion: Dictionary) -> Array:
+	return [conclusion, card_by_id(view, conclusion.get("report", ""))] if conclusion.get("type") in ["misled", "unreliable"] else [conclusion]
+
+## Existing report truth and role tables answer reading questions without adding
+## honesty/source states to the world domain.
+static func question_table(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
+	var input = [_universe_key(view), view.people, view.get("timeline", {}), view.get("live_activity", false), question_inputs(view, conclusion)]
+	var key = hash(input)
+	if question_cache.has(key) and question_cache[key].input == input:
+		return question_cache[key].table
+	var worlds: Array = universe(view)
+	var out = PackedByteArray()
+	out.resize(worlds.size())
+	var report = card_by_id(view, conclusion.get("report", ""))
+	if report.get("kind") == "report":
+		var accepted: PackedByteArray = report_table(view, report)
+		var roles: PackedByteArray = Roles.fits_table(view, worlds, [report], {})
+		var pair: Array = report.get("data", {}).get("pair", []).map(func(id): return person_index(view, id))
+		for i in range(worlds.size()):
+			var wrong: bool = accepted[i] == 0 or roles[i] == 0
+			if conclusion.type == "misled":
+				var registration: bool = report.role == "seer" and report.data.yes and worlds[i].has("demon") and worlds[i].demon not in pair
+				wrong = not TimeModel.evil_at(view, worlds[i], report.source, report.observed_at) and (wrong or registration)
+			out[i] = 1 if wrong else 0
+	if question_cache.size() >= 128:
+		question_cache.clear()
+	question_cache[key] = {"input": input.duplicate(true), "table": out}
+	return out
 
 static func describe_world(view: Dictionary, world: Dictionary, epoch: String = "") -> Dictionary:
 	var ids: Array = person_ids(view)

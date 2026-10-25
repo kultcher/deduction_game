@@ -70,6 +70,11 @@ func _init() -> void:
 	var result = {"seed": 54875, "npcs": 10, "scope": fixture.scope, "errors": errors, "commands": commands,
 		"filed_number": filed, "presentation": presentation, "agreement": agreement, "vote_margins": margins, "profile": profile,
 		"tallies": tallies, "fallbacks": trace.filter(func(e): return e.type == "workshop_fallback")}
+	var refreshes: Array = trace.filter(func(e): return e.type == "workshop_ownership")
+	result["refreshes"] = refreshes.size()
+	result["impossible_refreshes"] = refreshes.filter(func(e): return e.data.get("reasoning", {}).get("impossible", false))
+	if not result.impossible_refreshes.is_empty():
+		errors.append("impossible belief refresh")
 	DirAccess.make_dir_recursive_absolute("res://logs/migration/replay_54875")
 	var out = FileAccess.open("res://logs/migration/replay_54875/measurement.json", FileAccess.WRITE)
 	out.store_string(JSON.stringify(result, "\t"))

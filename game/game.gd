@@ -525,6 +525,13 @@ func _presentation_gate(card: Dictionary, listeners: Array, targets: Array, dire
 		_err(rejected)
 		return false
 	_workshop_native_social = false
+	if card.get("conclusion", {}).get("type", "") in ["protect", "spare"]:
+		# Mechanics-support item 0: a preference is social speech even when the
+		# speaker attaches a card. It is not an unsupported evidence conclusion.
+		_workshop_native_submission = true
+		_workshop_native_social = true
+		w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A protection or mercy preference: native social response.")
+		return true
 	var check = workshop_readiness(card, listeners, targets, direction, venue)
 	if check.ready:
 		return true

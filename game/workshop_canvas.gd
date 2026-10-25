@@ -64,10 +64,21 @@ static func snapshot(g, value: Dictionary, listener: String = "", venue: String 
 	var input = Bridge.capture(g, roots.numbers, listener, venue)
 	input.root = -1
 	input.arguments = [{"board_number": -1, "supports": roots.numbers,
-		"conclusion": {"type": value.conclusion.type, "a": value.conclusion.target}, "workshop_case": value.duplicate(true)}]
+		"conclusion": native_conclusion(g, value.conclusion), "workshop_case": value.duplicate(true)}]
 	for issue in roots.issues:
 		input.issues.append({"code": "missing_card", "detail": issue})
 	return input
+
+static func native_conclusion(g, conclusion: Dictionary) -> Dictionary:
+	var result = {"type": conclusion.type, "a": conclusion.target}
+	for field in ["role", "mod", "night"]:
+		if conclusion.has(field):
+			result[field] = conclusion[field]
+	if conclusion.has("report"):
+		var reports: Array = g.board.filter(func(c): return c.kind != "deduction" and Evidence.normalize_card(c).id == conclusion.report)
+		if not reports.is_empty():
+			result["card"] = reports[0].n
+	return result
 
 static func status(g, value: Dictionary) -> Dictionary:
 	var input = snapshot(g, value)
@@ -118,7 +129,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		g.last_error = "\n".join(PackedStringArray(check.issues))
 		return -1
 	var roots = supports(g, value)
-	var conclusion = {"type": value.conclusion.type, "a": value.conclusion.target}
+	var conclusion = native_conclusion(g, value.conclusion)
 	if previous > 0 and previous <= g.board.size() and g.board[previous - 1].get("workshop_case", {}) == value:
 		return previous
 	# Build native fallback footing through the ordinary filer, then retain the

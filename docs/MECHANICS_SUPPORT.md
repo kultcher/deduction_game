@@ -30,7 +30,15 @@ hidden state, no exact source-channel models.
 
 ## 0. Conclusion types the shared model doesn't judge (top priority)
 
-**State:** the legacy rules accept 18 conclusion types; the shared model accepts 7
+**Implemented Oct 25 (Codex), within the approved fact-only scope.** Not-Demon,
+modifier-holder, cited good-gift declaration, and identified reading questions use
+the shared model, including board controls. Protection/mercy preferences count as
+social speech. Generic innocent-secret and specific Red Herring premises remain
+explicitly unsupported where no existing fact establishes them (user decision);
+no hidden state is added for those questions. Challenge table prerequisite from
+item 3 is implemented. Tests and replay measurements: MIGRATION_PROGRESS.
+
+**Starting state:** the legacy rules accept 18 conclusion types; the shared model accepts 7
 (`evil`, `good`, `demon`, `minion`, `marked`, `suspicious`, `conflict`;
 `LiveAssessment.CONCLUSIONS`). A presentation with supported evidence but another
 conclusion type is judged by the legacy rules, visibly: an immediate `[dev]` line, a

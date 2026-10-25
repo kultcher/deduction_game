@@ -79,3 +79,26 @@ Legacy baseline (commit `6bce4d4`, seeds 1000–1149, 150 games per row):
 - Day 3–4 versions of case #85 in the replay fixture (late-game cost and behaviour).
 - Reply/belief coherence: in the replay, Jory and Agnes accept the case numerically while
   saying they couldn't follow it.
+
+## Mechanics support (Codex, Oct 25)
+
+Branch `codex/case-board-mechanics`, based on current local main `8fa8f13`.
+`codex/live-channel-validation` remains a dead reference; item 7 belongs to Opus.
+Existing local Godot config/UID changes are outside these commits.
+
+- **0, plus 3's challenge prerequisite:** added not-Demon, modifier-holder,
+  cited good-gift declaration and identified reading questions to the shared judge
+  and live board controls. Protection/mercy preferences are social speech, not
+  fallback. Generic innocent-secret and specific Red Herring premises remain explicit
+  unsupported questions where no existing fact establishes them (user decision).
+  Reading questions use the existing evil-reader/impairment explanations, not new
+  hidden honesty states. A role question needs the person's included declaration.
+  Challenge counting now shares its baseline and uses integer keys/report/role
+  tables; parity against the prior counting routine passes. Targeted conclusion,
+  challenge, nested-case and ownership checks cover live delivery and UI filing.
+  Replay: 9 shared, 0 fallback, **0 impossible / 89 refreshes**, unchanged 3/5 vote;
+  presentation **2698 ms** versus baseline **2695 ms**, meeting search 1647/1601 ms.
+  Evidence: `logs/mechanics-support/baseline`, `item-0-final` and targeted-suite logs.
+- **1 design approved by the user:** reuse bounded before/during/restored epochs;
+  one hypothetical eligible turnee only after a public curse, with eligibility from
+  the public execution vote and alive-at-event history. No curse-state cost otherwise.

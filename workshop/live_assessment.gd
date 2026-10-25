@@ -8,7 +8,7 @@ const C = preload("res://sim/content.gd")
 const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist"]
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
-const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion"]
+const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]
 
 ## mixture_budget: apply the old 2^u mixture's 64-state gate, on the legacy engine only
 ## (CaseEval has no such limit, so no listener falls back to native rules over it).
@@ -116,7 +116,9 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			result.issues.append("A prior Martyr promise versus a later execution needs a dated outcome/health adapter. The new evaluator does not yet infer failure from that pair; existing rules handle the case.")
 	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch"]):
 		view.world_options["roles"] = true
-	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "minion"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "minion"])):
+	if snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["role", "notrole", "misled", "unreliable"]):
+		view.world_options["roles"] = true
+	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "notdemon", "minion"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "notdemon", "minion"])):
 		view.world_options["identities"] = true
 		view.world_options["roles"] = true
 	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0] if snapshot.arguments.any(func(a): return a.board_number == snapshot.root) else {}
@@ -161,6 +163,14 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			var conclusion = argument.conclusion
 			if conclusion.get("type") not in CONCLUSIONS or _target(conclusion) not in snapshot.people.map(func(p): return p.id):
 				result.issues.append("Unsupported claim: " + str(conclusion.get("type", "unknown")))
+		for claim in [result.case] + result.case.get("arguments", []).map(func(a): return a.case):
+			result.issues.append_array(conclusion_issues(view, claim))
+			var c: Dictionary = claim.conclusion
+			if c.type in ["lied", "misled", "unreliable"] and c.get("report", "") in claim.cards:
+				var id: String = c.report
+				var challenge = {"mode": "lying" if c.type == "lied" else "misled", "supports": claim.cards.filter(func(root): return root != id)}
+				claim.reading_challenges[id] = challenge
+				result.case.reading_challenges[id] = challenge
 		if not snapshot.listener.is_empty():
 			result.listener = _listener(snapshot, cards)
 			if not result.listener.knowledge.get("public_roles", {}).is_empty():
@@ -492,6 +502,11 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 	var result = Solver.empty_case()
 	result.id = "live:" + snapshot.case_id
 	result.conclusion = {"type": argument.conclusion.get("type", "unsupported"), "target": _target(argument.conclusion), "at": epoch}
+	for field in ["role", "mod", "night"]:
+		if argument.conclusion.has(field):
+			result.conclusion[field] = argument.conclusion[field]
+	if argument.conclusion.has("card"):
+		result.conclusion["report"] = snapshot.board_map.get(str(argument.conclusion.card), "")
 	if argument.board_number in path:
 		return result
 	var direct: Array = []
@@ -534,7 +549,26 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 			"cards": direct, "answers": {}, "positions": {}, "reasons": {}})
 	if result.conclusion.type == "conflict":
 		result.conflict_scope = result.cards.duplicate()
+	if result.conclusion.type in ["lied", "truthful", "misled", "unreliable"]:
+		var reports: Array = snapshot.evidence.filter(func(e): return e.id in result.cards and e.kind == "info" and e.source == result.conclusion.target and (not result.conclusion.has("night") or e.observed_at.day == result.conclusion.night))
+		if result.conclusion.get("report", "") == "" and reports.size() == 1:
+			result.conclusion["report"] = reports[0].id
+		var id: String = result.conclusion.get("report", "")
+		if result.conclusion.type != "truthful" and id != "":
+			result.reading_challenges[id] = {"mode": "lying" if result.conclusion.type == "lied" else "misled", "supports": result.cards.filter(func(root): return root != id)}
 	return result
+
+static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
+	var c: Dictionary = value.conclusion
+	if c.type == "secret_mod" and c.get("mod", "") not in C.SECRET_MOD_LIST:
+		return ["Choose a supported modifier for the secret premise."]
+	if c.type in ["role", "notrole"] and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):
+		return ["A role-declaration question needs that person's included claim or reading of the named good gift."]
+	if c.type in ["lied", "truthful", "misled", "unreliable"]:
+		var card = Solver.card_by_id(view, c.get("report", ""))
+		if card.get("kind") != "report" or card.source != c.target or card.id not in value.cards or card.has("relay_source"):
+			return ["A reading question needs one identified original report by its target; select the report being questioned."]
+	return []
 
 static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 	var src: Dictionary = snapshot.listener

@@ -15,6 +15,42 @@ var progress_window: Window
 var progress_label: Label
 var presenting = false
 
+func premise_types() -> Array:
+	return TYPES + ["notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]
+
+func premise_names() -> Array:
+	return TYPE_NAMES + ["is not the Demon", "has a secret modifier", "holds their claimed gift", "is bluffing their claimed gift", "lied about a reading", "did not lie about a reading", "was misled by a reading", "gave an unreliable reading"]
+
+func _premise_details(node: Dictionary) -> void:
+	var conclusion: Dictionary = node.get("conclusion", {})
+	if conclusion.get("type") == "secret_mod":
+		var kinds: Array = Live.Assess.C.SECRET_MOD_LIST
+		var choice = _option(case_box, kinds.map(func(kind): return Live.Assess.C.secret_name(kind)))
+		if not conclusion.has("mod"):
+			conclusion["mod"] = kinds[0]
+		choice.select(kinds.find(conclusion.mod))
+		choice.item_selected.connect(func(i): conclusion.mod = kinds[i]; _edit())
+	if conclusion.get("type") in ["role", "notrole"]:
+		var roles: Array = Live.Assess.C.GOOD_ROLES
+		var choice = _option(case_box, roles.map(func(role): return Live.Assess.C.role_name(role)))
+		if not conclusion.has("role"):
+			var claims: Array = board.view.cards.filter(func(card): return card.source == conclusion.target and card.get("role", "") in roles)
+			conclusion["role"] = claims[0].role if not claims.is_empty() else roles[0]
+		choice.select(roles.find(conclusion.role))
+		choice.item_selected.connect(func(i): conclusion.role = roles[i]; _edit())
+		_label(case_box, "Judges this person's included gift declaration. It does not assign an unclaimed role.", 16)
+	if conclusion.get("type") in ["lied", "truthful", "misled", "unreliable"]:
+		var reports: Array = board.view.cards.filter(func(card): return card.kind == "report" and card.source == conclusion.target and not card.has("relay_source"))
+		var choice = _option(case_box, ["Choose the report being questioned"] + reports.map(func(card): return card.text))
+		choice.select(1 + reports.find(reports.filter(func(card): return card.id == conclusion.get("report", ""))[0]) if reports.any(func(card): return card.id == conclusion.get("report", "")) else 0)
+		choice.item_selected.connect(func(i):
+			if i == 0:
+				conclusion.erase("report")
+			else:
+				conclusion["report"] = reports[i - 1].id
+			_edit())
+		_label(case_box, "Link that original report and the grounds for questioning it. Lying and impairment remain different explanations.", 16)
+
 func _ready() -> void:
 	_configure_subwindows()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -36,7 +72,7 @@ func _ready() -> void:
 	var tools = HFlowContainer.new()
 	page.add_child(tools)
 	premise_person = _option(tools, [])
-	premise_type = _option(tools, TYPE_NAMES + ["Supporting evidence (no claim)"])
+	premise_type = _option(tools, premise_names() + ["Supporting evidence (no claim)"])
 	_button(tools, "Add premise", _add_premise)
 	_button(tools, "Refresh evidence", refresh)
 	_button(tools, "Fit case", func(): canvas.fit_case())
@@ -263,6 +299,7 @@ func _refresh_case() -> void:
 		_clear(case_box)
 		_label(case_box, board.title(answer_id), 22)
 		_label(case_box, "Assumed identities in this line. These are hypotheses, not facts the jury must accept.", 16)
+		_premise_details(node)
 		for person in board.view.people:
 			var row = HBoxContainer.new()
 			case_box.add_child(row)
