@@ -862,7 +862,7 @@ exact values remain open. The code-derived examples and clarifications are in
   - **Observable actions go in the evaluator as soft evidence:** votes, nominations,
     who defended whom, tie-breaks. "Voted to execute someone who is good in this world"
     needs only each world's evil mask, so it adds no hidden dimension (cheap; see
-    Performance rules in docs/LEGACY_MIGRATION.md). Each action is a likelihood factor:
+    Architecture rules in docs/LEGACY_MIGRATION.md). Each action is a likelihood factor:
     the rate at which evil and good players take it against good targets, measured
     from bot runs, not hand-set. The interaction the user wants ("if the case raises my
     suspicion, her votes against people I trust count more") then follows from the
