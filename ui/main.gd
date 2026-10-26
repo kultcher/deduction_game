@@ -6,6 +6,7 @@ extends Control
 
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
+const Mind = preload("res://sim/mind.gd")
 const CaseView = preload("res://ui/case_view.gd")
 const CardList = preload("res://ui/card_list.gd")
 const MapView = preload("res://ui/map_view.gd")
@@ -639,8 +640,17 @@ func _refresh_actions() -> void:
 			_actions_day(w)
 		"approach":
 			action_title.text = ("%s wants a word." % g.approach["npc"].name) if g.approach.has("npc") else "Someone wants a word."
-			_button(actions, "Hear them out (uses this phase)", func(): _run("accept"))
-			_button(actions, "Wave them off", func(): _run("decline"))
+			match g.approach.get("agenda", ""):
+				"protect":
+					var pk: String = Mind.protection_kind(w, g.approach["npc"])
+					_button(actions, "Promise it: %s (free)" % ("your ward on their door" if pk == "ward" else "a vigil tonight"), func(): _run("yes"))
+					_button(actions, "Say no", func(): _run("no"))
+				"divulge":
+					_button(actions, "Keep talking (uses this phase)", func(): _run("accept"))
+					_button(actions, "Go on your way", func(): _run("decline"))
+				_:
+					_button(actions, "Hear them out (uses this phase)", func(): _run("accept"))
+					_button(actions, "Wave them off", func(): _run("decline"))
 		"talk":
 			_actions_talk(w)
 		"meeting":
@@ -736,6 +746,13 @@ func _actions_day(w) -> void:
 func _actions_talk(w) -> void:
 	var n = g.talk_with
 	action_title.text = "Talking with %s · %d question%s left" % [n.name, g.questions_left, "" if g.questions_left == 1 else "s"]
+	if not g.pending_request.is_empty():
+		var rq: Dictionary = g.pending_request
+		var ask: String = "Promise to keep it quiet" if rq["kind"] == "confidence" else (
+			"Promise your ward on their door" if rq.get("what", "") == "ward" else "Promise a vigil on %s tonight" % C.block_name(n.home_block))
+		_button(actions, ask + " (free)", func(): _run("yes"), C.npc_color(n.id))
+		_button(actions, "Say no (free)", func(): _run("no"))
+		_hint("Anything else you do counts as no.")
 	var gb = _button(actions, "Ask about %s's gift…  ▸" % n.name, func(): pass)
 	gb.pressed.connect(func(): _ask_gift_picker(gb))
 	var ob = _button(actions, "Offer…  ▸", func(): pass)
@@ -744,6 +761,10 @@ func _actions_talk(w) -> void:
 	wb.pressed.connect(func(): _ask_when_picker(wb))
 	var ab = _button(actions, "Ask about others…  ▸", func(): pass)
 	ab.pressed.connect(func(): _ask_about_picker(ab))
+	var asks: Dictionary = {"seer": "check", "warden": "guard", "nightwatch": "watch"}
+	if (n.max_tier >= 3 or n.claim_public) and asks.has(n.claimed_role) and w.phase != C.NIGHT:
+		var rb = _button(actions, "Ask them to use their gift tonight…  ▸", func(): pass)
+		rb.pressed.connect(func(): _gift_request_picker(rb, n.claimed_role, asks[n.claimed_role]))
 	for k in n.hints:
 		if w.by_id[k].alive:
 			# They hinted at a private reason at the meeting: ask them for it.
@@ -841,7 +862,36 @@ func _offer_picker(anchor: Control) -> void:
 	vb.disabled = g.offer.has("vigil")
 	if not g.offer.is_empty():
 		_hint_into(v, "You've promised tonight: %s." % g.offer_text())
+	var open: Array = Mind.open_grievances(n)
+	if not open.is_empty():
+		var col = _column("Apologise for… (uses a question)")
+		for i in range(open.size()):
+			var idx: int = i + 1
+			_button(col, Game.grievance_text(open[i]), func():
+				popup.hide()
+				_run("apologise %d" % idx))
+		var h = HBoxContainer.new()
+		h.add_theme_constant_override("separation", 16)
+		h.add_child(v)
+		h.add_child(col)
+		_show_popup(h, anchor)
+		return
 	_show_popup(v, anchor)
+
+## "Ask them to use their gift tonight…": whom a Seer looks at (one or two), whom a Warden
+## guards, which block a Night Watch watches. Costs a question.
+func _gift_request_picker(anchor: Control, role: String, verb: String) -> void:
+	var n = g.talk_with
+	var items: Array = []
+	if role == "nightwatch":
+		for b in C.BLOCKS.keys():
+			items.append([C.block_name(b), "ask watch " + b, null])
+	else:
+		for m in g.w.living():
+			if m != n:
+				items.append([m.name, "ask %s %s" % [verb, m.id], C.npc_color(m.id)])
+	var title = {"seer": "Ask %s to look at… (a question; for a pair, type 'ask check A, B')", "warden": "Ask %s to guard…", "nightwatch": "Ask %s to watch…"}[role] % n.name
+	_list_picker(anchor, title, items)
 
 ## "Ask where they were and who they saw…": a time to ask about.
 func _ask_when_picker(anchor: Control) -> void:

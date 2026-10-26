@@ -295,6 +295,11 @@ static func approach_candidate(w):
 			if gs > s:
 				s = gs
 				a = "gossip"
+		if wants_protection(w, n):
+			var ps = n.trust + 0.5 * (1.0 - trait_of(n, "composure")) - 0.4
+			if ps > s:
+				s = ps
+				a = "protect"
 		s += w.rng.randf() * 0.2
 		if s > best_s:
 			best_s = s
@@ -304,6 +309,26 @@ static func approach_candidate(w):
 		return null
 	w.dlog.think(best.id, "approach", "Seeks out the Demonologist (agenda: %s, score %.2f)." % [agenda, best_s], {"agenda": agenda})
 	return {"npc": best, "agenda": agenda}
+
+## Afraid, trusting the player enough, and the player doesn't yet know their gift: they may
+## come asking for a ward or a vigil (see Mind.protection_kind for who asks for which).
+static func wants_protection(w, n) -> bool:
+	if n.claim_public or n.max_tier >= 3 or n.protect_lock or n.request_day == w.day or n.trust < 0.45:
+		return false
+	if Mind.protection_kind(w, n) == "":
+		return false
+	return Mind._afraid(w, n)
+
+## A free line as they approach, naming what they want to talk about.
+static func approach_teaser(w, n, agenda: String) -> Dictionary:
+	match agenda:
+		"news", "frame":
+			return Mind.say(n, "It's about my gift. I've learned something you should hear.")
+		"gossip":
+			return Mind.say(n, "I've heard something about one of our neighbours.")
+		"protect":
+			return Mind.protection_line(n, Mind.protection_kind(w, n))
+	return Mind.say(n, "Demonologist, a word?")
 
 ## What they open with once the player accepts. Returns {lines, facts}.
 static func approach_open(w, n, agenda: String) -> Dictionary:

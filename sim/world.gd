@@ -771,6 +771,7 @@ func execute(id: String, res: Dictionary) -> void:
 	n.death_day = day
 	n.death_cause = "executed"
 	n.loc = "dead"
+	_bereave(n)
 	executed_today = id
 	executions.append({"day": day, "id": id, "nominator": res.get("by", ""), "yes": res.get("yes", []),
 		"player_yes": res.get("player_yes", false), "player_nominated": res.get("by", "") == "player"})
@@ -802,6 +803,7 @@ func _martyr_dies(mart, saved, res: Dictionary) -> void:
 	mart.death_day = day
 	mart.death_cause = "martyr"
 	mart.loc = "dead"
+	_bereave(mart)
 	mart.gift_used = true
 	executed_today = ""
 	executions.append({"day": day, "id": mart.id, "saved": saved.id, "martyr": true, "nominator": res.get("by", ""),
@@ -903,6 +905,21 @@ func _scion_rises(sc) -> void:
 	_check_parity()
 
 ## Those who trusted the executed resent whoever pushed for it (shifting allegiances).
+## A Lover's death leaves the other withdrawn for the rest of the case: Privacy to the top,
+## Gossip to the bottom, harder to read. Visible in their profile, so it's a clue.
+func _bereave(dead) -> void:
+	if dead.secret_mod != "lovers" or dead.lover == "" or not by_id.has(dead.lover):
+		return
+	var survivor = by_id[dead.lover]
+	if not survivor.alive or survivor.withdrawn_since != "":
+		return
+	survivor.traits["privacy"] = 1.0
+	survivor.traits["gossip"] = 0.0
+	survivor.traits["composure"] = minf(1.0, survivor.traits.get("composure", 0.5) + 0.3)
+	survivor.withdrawn_since = dead.id
+	dlog.add("bereaved", survivor.id, dead.id, {"traits": survivor.traits.duplicate()},
+		"%s withdraws after %s's death (Lovers)." % [survivor.name, dead.name])
+
 func _grief(ex, res: Dictionary) -> void:
 	if ex.id == demon_id:
 		return  # the town was right; nobody mourns the demon
@@ -1227,6 +1244,7 @@ func _kill(v) -> void:
 	v.death_day = day
 	v.death_cause = "demon"
 	v.loc = "dead"
+	_bereave(v)
 	deaths_last_night.append(v.id)
 	var d = demon()
 	var ev_loc: String = d.history.get(time_key(day, C.EVENING), "home:" + d.home_block)

@@ -53,6 +53,13 @@ var ward_log = {}           # night -> who you warded
 ## your night work.
 var offer = {}
 var talk_offered = false
+## Something the person you're talking to asked of you (free to answer): {kind, npc, ...}
+## kind "confidence" (keep it quiet) or "protect" (a ward or vigil tonight).
+var pending_request = {}
+## Promised their gift once you'd kept a ward/vigil promise: id -> true until tonight settles.
+var protect_pending = {}
+## Kept that promise: they come to tell you the next day, at no cost. [ids]
+var divulge_due: Array = []
 ## Where people go when they're not working: unknown at the start; you learn it by asking
 ## others about them. id -> [location ids].
 var known_haunts = {}
@@ -133,7 +140,9 @@ func _break_confidences(nums: Array) -> void:
 		confidences.erase(num)
 		if not n.alive or n.claim_public:
 			continue
-		Mind.set_trust(w, n, n.trust - 0.15, "the Demonologist broke my confidence (card #%d) at the meeting" % num)
+		# 0.05 for the open, 0.15 typical, 0.25 for the very private.
+		var loss: float = 0.05 + 0.2 * n.traits.get("privacy", 0.5)
+		Mind.set_trust(w, n, n.trust - loss, "the Demonologist broke my confidence (card #%d) at the meeting" % num)
 		w.dlog.add("player_confidence_broken", "player", n.id, {"card": num})
 		_narr("%s stiffens. You promised to keep that between you." % n.name)
 
@@ -1135,18 +1144,60 @@ func _end_phase(talked_id: String) -> void:
 # ---------------------------------------------------------------- approaches
 
 func _maybe_approach() -> void:
+	if _maybe_divulge():
+		return
 	var c = Social.approach_candidate(w)
 	if c == null:
 		return
+	var n = c["npc"]
+	if c["agenda"] == "protect" and _promised_to(n):
+		return
 	approach = c
 	state = "approach"
-	var n = c["npc"]
 	w.dlog.add("approach", n.id, "player", {"agenda": c["agenda"]})
-	_narr("%s the %s approaches you. \"Demonologist, a word?\"" % [n.name, n.occupation])
-	_prompt("'accept' (talk now; it uses this phase's action) or 'decline'.")
+	_narr("%s the %s approaches you." % [n.name, n.occupation])
+	_line(Mind.say(n, "Demonologist, a word?"))
+	_line(Social.approach_teaser(w, n, c["agenda"]))
+	if c["agenda"] == "protect":
+		n.request_day = w.day
+		_prompt("'yes' (promise it; free) or 'no'.")
+	else:
+		_prompt("'accept' (talk now; it uses this phase's action) or 'decline'.")
+
+## Have you already promised them your ward or a vigil tonight?
+func _promised_to(n) -> bool:
+	return offer.get("ward", "") == n.id or offer.get("vigil", {}).has(n.id)
+
+## Someone you kept your word to finds you, as they said they would: they tell you their gift
+## (and readings, if they'd usually share them) for free. Talking on is optional.
+func _maybe_divulge() -> bool:
+	for id in divulge_due.duplicate():
+		var n = w.by_id[id]
+		if not n.alive:
+			divulge_due.erase(id)
+			n.protect_lock = false
+			continue
+		if not n.available() or n.silenced:
+			continue
+		divulge_due.erase(id)
+		n.protect_lock = false
+		approach = {"npc": n, "agenda": "divulge"}
+		state = "approach"
+		w.dlog.add("approach", n.id, "player", {"agenda": "divulge"})
+		_narr("%s the %s finds you, as they promised." % [n.name, n.occupation])
+		_line(Mind.say(n, "You kept your word. Now I'll keep mine."))
+		var r: Dictionary = Mind.keep_request(w, n, 4 if n.trust >= 0.6 else 3)
+		_lines(r["lines"])
+		_facts(r["facts"])
+		_prompt("(That cost you nothing.) 'accept' to keep talking (uses this phase's action) or 'decline'.")
+		return true
+	return false
 
 func _approach_command(verb: String, rest: String) -> void:
 	var n = approach["npc"]
+	if approach["agenda"] == "protect":
+		_protect_approach_answer(n, verb, rest)
+		return
 	match verb:
 		"accept", "yes", "y", "talk":
 			state = "talk"
@@ -1164,9 +1215,10 @@ func _approach_command(verb: String, rest: String) -> void:
 			# The same location card a normal visit gives (Case 22485: approaches gave none).
 			_facts([{"kind": "sighting", "subject": [n.id], "block": w.loc_block(loc), "loc": loc, "day": w.day, "phase": w.phase,
 				"source": "player", "text": "You saw %s at %s, day %d %s." % [n.name, w.loc_name(loc), w.day, w.phase_name()]}])
-			var r: Dictionary = Social.approach_open(w, n, approach["agenda"])
-			_lines(r["lines"])
-			_facts(r["facts"])
+			if approach["agenda"] != "divulge":  # they've already told you
+				var r: Dictionary = Social.approach_open(w, n, approach["agenda"])
+				_lines(r["lines"])
+				_facts(r["facts"])
 			_prompt("(3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift> | ask why (after a hint) | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)")
 		"decline", "no", "n":
 			state = "day"
@@ -1179,6 +1231,48 @@ func _approach_command(verb: String, rest: String) -> void:
 			w.dlog.add("approach_declined", "player", n.id, {"implicit": true})
 			_narr("You wave %s off for now." % n.name)
 			_day_command(verb, rest)
+
+## "Watch over me tonight, and I'll tell you": free to answer, nothing else follows.
+func _protect_approach_answer(n, verb: String, rest: String) -> void:
+	match verb:
+		"yes", "y", "accept", "promise", "agree":
+			state = "day"
+			_grant_protection(n, approach["what"] if approach.has("what") else Mind.protection_kind(w, n))
+			_prompt("Where will you spend the %s? ('go <place | block | person>')" % w.phase_name().to_lower())
+		"no", "n", "decline", "refuse":
+			state = "day"
+			w.dlog.add("protection_declined", "player", n.id)
+			_line(Mind.say(n, "I see. I'll manage."))
+			_prompt("Where will you spend the %s? ('go <place | block | person>')" % w.phase_name().to_lower())
+		_:
+			state = "day"
+			w.dlog.add("protection_declined", "player", n.id, {"implicit": true})
+			_narr("You leave %s's request unanswered." % n.name)
+			_day_command(verb, rest)
+
+## Yes to a request for protection: the usual promise, then either they tell you now (a
+## trust x Composure roll) or once you've kept your word.
+func _grant_protection(n, what: String) -> void:
+	if what == "ward" and (w.tools["ward"] <= 0 or offer.has("ward")):
+		what = "vigil" if Mind.protection_kind(w, n) == "vigil" else ""
+	if what == "":
+		_narr("You've nothing left to promise %s tonight." % n.name)
+		return
+	if not _promised_to(n):
+		_offer_command(n, what, true)
+	var p: float = clampf(n.trust * n.traits.get("composure", 0.5) * 1.6, 0.05, 0.85)
+	var now: bool = w.rng.randf() < p
+	w.dlog.decision(n.id, "protection_disclosure", "outcome", now, {"trust": n.trust,
+		"composure": n.traits.get("composure", 0.5), "p": snappedf(p, 0.01)})
+	if now:
+		_line(Mind.say(n, "Then I'll trust you now."))
+		var r: Dictionary = Mind.keep_request(w, n, 3)
+		_lines(r["lines"])
+		_facts(r["facts"])
+	else:
+		protect_pending[n.id] = true
+		n.protect_lock = true
+		_line(Mind.say(n, "Keep your word tonight, and I'll find you tomorrow and tell you everything."))
 
 func _phase_header() -> void:
 	_hdr("Day %d, %s" % [w.day, w.phase_name()])
@@ -1223,6 +1317,16 @@ func _remember_dialogue_exchange(n, verb: String, rest: String, response: Dictio
 func _talk_command(verb: String, rest: String) -> void:
 	var n = talk_with
 	var r = {}
+	if not pending_request.is_empty():
+		if _answer_request(n, verb, rest):
+			return
+	if verb in ["apologise", "apologize", "sorry"]:
+		var gi: int = rest.strip_edges().to_int() - 1 if rest.strip_edges().is_valid_int() else 0
+		r = Mind.apologise(w, n, gi)
+		if r.has("error"):
+			_err("Apologise for what? %s" % _grievance_menu(n))
+			return
+		verb = "apologise"
 	if n.silenced and verb in ["ask", "a", "tell", "t", "present", "accuse", "show", "press"]:
 		_narr("%s opens their mouth, but no sound comes. They can't speak (until tomorrow evening)." % n.name)
 		return
@@ -1273,7 +1377,12 @@ func _talk_command(verb: String, rest: String) -> void:
 					else:
 						r = Mind.answer_opinion(w, n, t)
 						_maybe_tell_haunts(n, t, r)
+						_maybe_tell_trait(n, t, r)
 						RecentSightings.append_to(w, n, t, r, board)
+				"check", "look", "guard", "watch":
+					r = _gift_request(n, topic, " ".join(p.slice(1)))
+					if r.is_empty():
+						return
 				"are", "if", "is":
 					# "ask are you the seer" / "ask if seer": a guess at their own gift.
 					var words: Array = Array(p.slice(1)).filter(func(x): return not (x.to_lower() in ["you", "the", "a", "an", "they", "are"]))
@@ -1370,6 +1479,8 @@ func _talk_command(verb: String, rest: String) -> void:
 		"offer", "promise":
 			_offer_command(n, rest.strip_edges().to_lower())
 			return
+		"apologise":
+			pass  # answered above
 		"bye", "leave", "done":
 			if questions_left == 3 and free_repeats == 0 and not talk_approached and not talk_offered:
 				# Nothing asked yet: you think better of it, and the phase isn't spent.
@@ -1395,7 +1506,16 @@ func _talk_command(verb: String, rest: String) -> void:
 		questions_left -= 1
 	_lines(r["lines"])
 	_facts(r["facts"])
+	for note in r.get("narration", []):
+		_narr(note)
 	_remember_dialogue_exchange(n, verb, rest, r)
+	if r.has("request") and not (r["request"]["kind"] == "protect" and _promised_to(n)):
+		pending_request = r["request"]
+		w.dlog.add("npc_request", n.id, "player", {"kind": pending_request["kind"]})
+		var what: String = "keep it quiet" if pending_request["kind"] == "confidence" else ("ward their door" if pending_request["what"] == "ward" else "keep a vigil on %s" % C.block_name(n.home_block))
+		_prompt("(They ask you to %s. 'yes' or 'no': answering is free.)" % what)
+		if questions_left <= 0:
+			return  # the answer closes the conversation
 	if repeat:
 		_prompt("(No question used. %d question%s left)" % [questions_left, "" if questions_left == 1 else "s"])
 		return
@@ -1405,9 +1525,97 @@ func _talk_command(verb: String, rest: String) -> void:
 	else:
 		_prompt("(%d question%s left)" % [questions_left, "" if questions_left == 1 else "s"])
 
+## Yes or no to what they just asked of you (free). Any other command is a no, and goes ahead.
+## Returns true when the command was the answer.
+func _answer_request(n, verb: String, rest: String) -> bool:
+	var rq: Dictionary = pending_request
+	pending_request = {}
+	if questions_left <= 0:
+		# That was their last question: answer, then the conversation ends.
+		_answer_request_now(n, rq, verb, rest)
+		if talk_with != null:
+			_narr("%s has other things to do." % n.name)
+			_close_conversation()
+		return true
+	return _answer_request_now(n, rq, verb, rest)
+
+func _answer_request_now(n, rq: Dictionary, verb: String, rest: String) -> bool:
+	var yes: bool = verb in ["yes", "y", "agree", "accept"] or (verb == "promise" and rest.strip_edges() == "")
+	var no: bool = verb in ["no", "n", "refuse", "decline"]
+	w.dlog.add("npc_request_answer", "player", n.id, {"kind": rq["kind"], "yes": yes, "implicit": not (yes or no)})
+	if not yes:
+		var d: Dictionary = rq.get("decline", {"lines": [], "facts": []})
+		_lines(d["lines"])
+		_facts(d["facts"])
+		if no:
+			_prompt("(No question used. %d question%s left)" % [questions_left, "" if questions_left == 1 else "s"])
+		return no
+	match rq["kind"]:
+		"confidence":
+			_narr("You promise to keep it between you for now.")
+			var r: Dictionary = Mind.keep_request(w, n, rq["tier"])
+			for f in r["facts"]:
+				if not f.get("silent", false) and not n.claim_public:
+					f["confidential"] = n.id
+			_lines(r["lines"])
+			_facts(r["facts"])
+		"protect":
+			_grant_protection(n, rq["what"])
+			return true  # _offer_command already showed the question count
+	_prompt("(No question used. %d question%s left)" % [questions_left, "" if questions_left == 1 else "s"])
+	return true
+
+## "ask check <name>[, <name>]" (a Seer), "ask guard <name>" (a Warden), "ask watch <block>"
+## (a Night Watch): ask someone who told you their gift to use it that way tonight.
+## {} after an error.
+func _gift_request(n, topic: String, target: String) -> Dictionary:
+	var role: String = {"check": "seer", "look": "seer", "guard": "warden", "watch": "nightwatch"}[topic]
+	var told: bool = (n.max_tier >= 3 or n.claim_public) and n.claimed_role == role
+	if not told:
+		_err("%s hasn't told you they're the %s." % [n.name, C.role_name(role)])
+		return {}
+	var targets: Array = []
+	if role == "nightwatch":
+		var b: String = find_block(target)
+		if b == "":
+			_err("Watch which block?")
+			return {}
+		targets = [b]
+	else:
+		for nm in target.replace(" and ", ",").split(","):
+			var t = find_npc(nm.strip_edges())
+			if t == null or not t.alive or t == n:
+				_err("Ask them to %s whom?" % ("look at" if role == "seer" else "guard"))
+				return {}
+			if not (t.id in targets):
+				targets.append(t.id)
+		if targets.is_empty() or targets.size() > (2 if role == "seer" else 1):
+			_err("A Seer looks at one or two people; a Warden guards one.")
+			return {}
+	if w.phase == C.NIGHT:
+		_err("It's too late to ask for tonight.")
+		return {}
+	return Mind.consider_gift_request(w, n, role, targets)
+
+## The incidents you could apologise for, for error text and menus.
+func _grievance_menu(n) -> String:
+	var open: Array = Mind.open_grievances(n)
+	if open.is_empty():
+		return "(Nothing you've done to them needs an apology.)"
+	var items: Array = []
+	for i in range(open.size()):
+		items.append("%d: %s" % [i + 1, grievance_text(open[i])])
+	return "('apologise <number>': %s)" % "; ".join(PackedStringArray(items))
+
+## A grievance as the player would say it ("for guessing my gift wrong").
+static func grievance_text(g: Dictionary) -> String:
+	var why: String = g["why"].trim_prefix("the Demonologist ")
+	return "day %d, %s" % [g["day"], why]
+
 ## "offer ward" / "offer vigil": promise your ward on their door, or a vigil on their block,
 ## tonight. Costs no question. A little trust now, more if you keep it, a lot lost if not.
-func _offer_command(n, what: String) -> void:
+## requested: they asked for it (no thanks line: they've their own to say).
+func _offer_command(n, what: String, requested: bool = false) -> void:
 	match what:
 		"ward":
 			if w.tools["ward"] <= 0:
@@ -1429,12 +1637,14 @@ func _offer_command(n, what: String) -> void:
 		_:
 			_err("Offer what? ('offer ward' or 'offer vigil')")
 			return
-	talk_offered = true
-	_line(Mind.say(n, "That's good of you. I'll sleep a little easier."))
+	talk_offered = talk_offered or state == "talk"
+	if not requested:
+		_line(Mind.say(n, "That's good of you. I'll sleep a little easier."))
 	Mind.Dialogue.record_exchange(n.dialogue_memory, "other")
 	Mind.set_trust(w, n, n.trust + 0.03, "the Demonologist offered to watch over me tonight")
-	w.dlog.add("player_offer", "player", n.id, {"what": what, "block": n.home_block})
-	_prompt("(No question used. %d question%s left)" % [questions_left, "" if questions_left == 1 else "s"])
+	w.dlog.add("player_offer", "player", n.id, {"what": what, "block": n.home_block, "requested": requested})
+	if state == "talk":
+		_prompt("(No question used. %d question%s left)" % [questions_left, "" if questions_left == 1 else "s"])
 
 ## What you've promised tonight, for the menus.
 func offer_text() -> String:
@@ -1459,9 +1669,15 @@ func _settle_offers() -> void:
 		if p[1]:
 			Mind.set_trust(w, n, n.trust + 0.06, "the Demonologist kept their word (%s)" % p[2])
 			_narr("You keep your word to %s." % n.name)
+			n.fear_eased = true  # less afraid to say what they are, from now on
+			if protect_pending.has(n.id) and not (n.id in divulge_due):
+				divulge_due.append(n.id)
 		else:
 			Mind.set_trust(w, n, n.trust - 0.15, "the Demonologist broke their word (%s)" % p[2])
 			_narr("You break your word to %s. They'll know by morning." % n.name)
+			n.fear_eased = false  # and the fear comes back
+			n.protect_lock = false
+		protect_pending.erase(n.id)
 		w.dlog.add("player_offer_settled", "player", n.id, {"what": p[2], "kept": p[1]})
 	offer = {}
 
@@ -1484,6 +1700,48 @@ func _maybe_tell_haunts(n, t, r: Dictionary) -> void:
 	r["facts"].append({"kind": "haunt", "subject": [t.id], "source": n.id, "locs": tell.duplicate(),
 		"text": "%s says %s often goes to %s when not working." % [n.name, t.name, " and ".join(PackedStringArray(names))]})
 	w.dlog.add("player_learns_haunts", n.id, t.id, {"locs": tell})
+
+## Asked about someone, a talker may also say what that person is like: one trait,
+## unlocking its bar in the profile. Friends know any trait; anyone else only the
+## observable ones. The wording follows how the speaker feels about them.
+const OBSERVABLE_TRAITS = ["privacy", "gossip", "confidence", "composure"]
+const TRAIT_WORDS = {
+	"privacy": {"low": ["an open book", "an open book about their own affairs", "someone who can't keep a thing to themselves"],
+		"mid": ["willing to share when it suits them", "willing to share about themselves when it suits them", "careful what they share about themselves"],
+		"high": ["private, and keeps their own counsel", "someone who keeps their own affairs close", "secretive"]},
+	"gossip": {"low": ["discreet", "someone who keeps out of other people's business", "close-mouthed about everyone"],
+		"mid": ["happy to pass on news if you ask", "willing to pass on news if asked", "someone who'll talk if you ask"],
+		"high": ["always the first to know the news", "someone who loves passing on what they've heard", "a terrible gossip"]},
+	"confidence": {"low": ["careful, and thinks twice", "someone who second-guesses themselves", "a pushover"],
+		"mid": ["steady in their views", "fairly firm in their views", "set in their ways, now and then"],
+		"high": ["principled", "sure of themselves and hard to budge", "pigheaded"]},
+	"composure": {"low": ["honest, and wears their heart on their sleeve", "someone who wears every feeling on their face", "jumpy"],
+		"mid": ["level-headed enough", "fairly level-headed", "hard to read some days"],
+		"high": ["steady as a rock", "someone who gives nothing away", "cold as a fish"]},
+	"insight": {"low": ["trusting", "easily swayed by a good speech", "gullible"],
+		"mid": ["no fool", "someone who wants a reason before they're convinced", "no fool, I'll grant"],
+		"high": ["sharp, and hard to fool", "sharp and hard to fool", "too clever by half"]},
+}
+
+func _maybe_tell_trait(n, t, r: Dictionary) -> void:
+	if n.silenced or (n.traits.get("gossip", 0.5) < 0.2 and n.pressure < 0.5):
+		return  # the same gate as the opinion itself
+	var friend: bool = t.id in n.friends
+	var rival: bool = t.id in n.rivals
+	var allowed: Array = (Mind.C.TRAITS if friend else OBSERVABLE_TRAITS).filter(func(k): return not t.revealed_traits.has(k))
+	if allowed.is_empty():
+		return
+	var p = clampf(0.1 + 0.35 * n.traits.get("gossip", 0.5) + 0.3 * (n.trust - 0.5) + (0.15 if friend else 0.0), 0.0, 0.6)
+	if w.rng.randf() >= p:
+		return
+	var key: String = w.pick(allowed)
+	var tier: String = Mind.C.tier(t.traits[key])
+	var words: String = TRAIT_WORDS[key][tier][0 if friend else (2 if rival else 1)]
+	var line: String = ("I'll say this for %s: they're %s." if friend else ("%s is %s, if you ask me." if rival else "From what I've seen, %s is %s.")) % [t.name, words]
+	t.revealed_traits[key] = tier
+	r["lines"].append(Mind.say(n, line))
+	r["narration"] = r.get("narration", []) + ["(You learn %s's %s: %s.)" % [t.name, key.capitalize(), tier]]
+	w.dlog.add("trait_reveal", n.id, t.id, {"trait": key, "tier": tier, "value": t.traits[key], "via": n.id, "friend": friend, "rival": rival})
 
 ## Board hint: pairs of cards (among the most recent) that a template would recognise,
 ## so you know a link is there to be made. Doesn't say what it shows.
@@ -1508,6 +1766,7 @@ func known_haunt_names(id: String) -> String:
 
 func _close_conversation() -> void:
 	var n = talk_with
+	pending_request = {}
 	for t in Mind.end_conversation(w, n):
 		_narr(t)
 	state = "day"
@@ -2876,6 +3135,8 @@ func profile_data(id: String) -> Dictionary:
 	var n = w.by_id[id]
 	var claim = _claim_text(n)
 	var status = "alive" if n.alive else _death_text(n)
+	if n.alive and n.withdrawn_since != "" and w.by_id.has(n.withdrawn_since):
+		status = "alive; withdrawn since %s's death" % w.by_id[n.withdrawn_since].name
 	# Discovery still gates each trait; the visual uses its actual score once learned.
 	var traits = {}
 	for key in n.revealed_traits:

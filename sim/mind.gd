@@ -93,8 +93,59 @@ static func set_trust(w, n, value: float, why: String) -> void:
 		"from": old, "requested_to": value, "to": n.trust, "cap": n.trust_cap}, why)
 	if absf(n.trust - old) >= 0.01:
 		w.dlog.add("trust", n.id, "player", {"from": snappedf(old, 0.01), "to": snappedf(n.trust, 0.01), "cap": n.trust_cap}, why)
+	if old - n.trust >= 0.03 and not why.begins_with("apology"):
+		_record_grievance(w, n, old - n.trust, why)
 	if absf(n.trust - n.trust_at_reconsider) >= 0.1:
 		reconsider(w, n, why)
+
+## A player action that cost trust, kept so the player can apologise for it once.
+## The same kind of incident on the same day is one incident (e.g. pressing questions).
+static func _record_grievance(w, n, drop: float, why: String) -> void:
+	var key: String = "%d:%s" % [w.day, RegEx.create_from_string("[0-9]+").sub(why, "#", true)]
+	for g in n.grievances:
+		if g["key"] == key and not g["apologised"]:
+			g["drop"] += drop
+			g["serious"] = g["drop"] >= SERIOUS_GRIEVANCE
+			return
+	var evidence: bool = "evidence" in why or "argued against me" in why or "spoke against me" in why
+	n.grievances.append({"key": key, "why": why, "drop": drop, "day": w.day,
+		"serious": drop >= SERIOUS_GRIEVANCE, "evidence": evidence, "apologised": false})
+
+const SERIOUS_GRIEVANCE = 0.12
+
+## The incidents the player could still apologise for (most recent first).
+static func open_grievances(n) -> Array:
+	var out: Array = n.grievances.filter(func(g): return not g["apologised"])
+	out.reverse()
+	return out
+
+## Apologise for one incident: once each. Repairs half the trust lost for a minor incident,
+## a quarter for a serious one; a sharp (high-Insight) listener forgives less when the player
+## acted on evidence against them, since the apology doesn't change what the player thinks.
+## No suspicion is withdrawn, and trust caps still hold.
+static func apologise(w, n, index: int) -> Dictionary:
+	var open: Array = open_grievances(n)
+	if index < 0 or index >= open.size():
+		return {"lines": [], "facts": [], "error": "Apologise for what?"}
+	var g: Dictionary = open[index]
+	g["apologised"] = true
+	var share: float = 0.25 if g["serious"] else 0.5
+	var ins: float = trait_of(n, "insight")
+	if g["evidence"]:
+		share *= 1.0 - clampf((ins - 0.4) * 1.2, 0.0, 0.6)
+	var repair: float = g["drop"] * share
+	w.dlog.decision(n.id, "apology", "outcome", snappedf(repair, 0.01), {"incident": g["why"],
+		"drop": snappedf(g["drop"], 0.01), "serious": g["serious"], "evidence": g["evidence"],
+		"insight": ins, "share": snappedf(share, 0.01)})
+	set_trust(w, n, n.trust + repair, "apology: " + g["why"])
+	var line: String
+	if repair >= 0.05:
+		line = "Well. I appreciate you saying so."
+	elif g["evidence"] and ins >= 0.6:
+		line = "Sorry for it, are you? You'd do the same again, I think."
+	else:
+		line = "Hm. Words are cheap, but I heard you."
+	return {"lines": [say(n, line)], "facts": []}
 
 static func cap_trust(w, n, cap: float, why: String) -> void:
 	if cap < n.trust_cap:
@@ -948,6 +999,15 @@ static func execution_priority_contribution(n, id: String) -> float:
 ## is more random and doesn't build on what they've seen.
 static func seer_picks(w, n) -> Array:
 	var ranked = ranked_suspects(w, n)
+	var asked: Array = requested_targets(w, n, "seer")
+	if not asked.is_empty():
+		var pair: Array = asked.slice(0, 2)
+		if pair.size() < 2:
+			var rest: Array = ranked.filter(func(m): return not (m.id in pair))
+			if not rest.is_empty():
+				pair.append(rest[0].id)
+		w.dlog.think(n.id, "seer_pick", "Seer: looks where the Demonologist asked.", {"pair": pair, "requested": asked})
+		return pair
 	var ins = trait_of(n, "insight")
 	var pair: Array = []
 	var why = ""
@@ -981,7 +1041,75 @@ static func seer_picks(w, n) -> Array:
 	w.dlog.think(n.id, "seer_pick", "Seer: " + why + ".", {"pair": ids})
 	return ids
 
+## An agreed player request for tonight's use of their gift ([] if none, or if it's stale).
+static func requested_targets(w, n, role: String) -> Array:
+	var rq: Dictionary = n.gift_request
+	if rq.get("night", -1) != w.day or rq.get("role", "") != role:
+		return []
+	return rq.get("targets", [])
+
+## The player asks someone who told them their gift to use it a particular way tonight:
+## a Seer to look at one or two people, a Warden to guard someone, a Night Watch to watch a
+## block. They agree, refuse, or say what they'd rather do, by trust, how they feel about the
+## target and what they'd have done anyway. An agreed request replaces tonight's pick only.
+## Evil bluffers answer the same way and fake the result.
+static func consider_gift_request(w, n, role: String, targets: Array) -> Dictionary:
+	on_question(w, n)
+	var ranked: Array = ranked_suspects(w, n)
+	var top: String = ranked[0].id if not ranked.is_empty() else ""
+	var parts = {"trust": (n.trust - 0.5) * 2.0, "base": 0.2}
+	match role:
+		"seer":
+			if top in targets:
+				parts["already_wondering"] = 0.3
+			for t in targets:
+				if n.npc_trust.get(t, 0.5) >= 0.7:
+					parts["doubting_a_friend"] = -0.25
+			var checked = {}
+			for e in n.info_log:
+				if e.get("role", "") == "seer":
+					for pid in e["data"]["pair"]:
+						checked[pid] = true
+			if targets.all(func(t): return checked.has(t)):
+				parts["already_looked"] = -0.3
+		"warden":
+			var t: String = targets[0]
+			parts["cares_for_them"] = (n.npc_trust.get(t, 0.5) - 0.5) * 1.0
+			parts["suspects_them"] = -susp(n, t) * 1.0
+		"nightwatch":
+			if top != "" and w.by_id[top].home_block == targets[0]:
+				parts["already_wondering"] = 0.3
+	var named: String = _request_target_text(w, role, targets)
+	var yes: bool = decide(w, n, "gift_request", parts, "Use the %s tonight as the Demonologist asks (%s)?" % [C.role_name(role), named])
+	if yes:
+		n.gift_request = {"night": w.day, "role": role, "targets": targets.duplicate()}
+		w.dlog.add("gift_request_agreed", "player", n.id, {"role": role, "targets": targets})
+		var lines = {"seer": "All right. Tonight I'll look at %s.", "warden": "Very well. I'll stand at %s's door tonight.",
+			"nightwatch": "I'll keep my watch over %s tonight, then."}
+		return {"lines": [say(n, lines[role] % named)], "facts": [], "agreed": true}
+	w.dlog.add("gift_request_refused", "player", n.id, {"role": role, "targets": targets})
+	var counter: String = ""
+	if n.trust >= 0.35 and top != "" and not (top in targets):
+		match role:
+			"seer":
+				counter = "I'd sooner look at %s." % w.by_id[top].name
+			"nightwatch":
+				if w.by_id[top].home_block != targets[0]:
+					counter = "I'd sooner watch %s." % C.block_name(w.by_id[top].home_block)
+	if counter != "":
+		return {"lines": [say(n, "No. " + counter)], "facts": [], "agreed": false}
+	return {"lines": [say(n, "My gift's mine to use as I see fit.")], "facts": [], "agreed": false}
+
+static func _request_target_text(w, role: String, targets: Array) -> String:
+	if role == "nightwatch":
+		return C.block_name(targets[0])
+	return " and ".join(PackedStringArray(targets.map(func(t): return w.by_id[t].name)))
+
 static func watch_block(w, n) -> String:
+	var asked: Array = requested_targets(w, n, "nightwatch")
+	if not asked.is_empty():
+		w.dlog.think(n.id, "watch_pick", "Night Watch watches the block the Demonologist asked for.", {"block": asked[0]})
+		return asked[0]
 	var ranked = ranked_suspects(w, n)
 	var b = ""
 	if w.day == 0 or ranked.is_empty():
@@ -992,6 +1120,10 @@ static func watch_block(w, n) -> String:
 	return b
 
 static func warden_target(w, n) -> String:
+	var asked: Array = requested_targets(w, n, "warden")
+	if not asked.is_empty() and w.by_id[asked[0]].alive:
+		w.dlog.think(n.id, "warden_pick", "Guards whom the Demonologist asked.", {"pick": asked[0]})
+		return asked[0]
 	var best = ""
 	var best_s = -99.0
 	var scores = {}
@@ -1059,6 +1191,8 @@ static func _public_claim_decision(w, n) -> String:
 		parts["martyr_chosen"] = 0.4  # coming out as the Martyr protects their choice by deterrence
 	if w.living().size() <= 4:
 		parts["few_left"] = 0.8
+	if n.protect_lock and not (n.id in w.meeting.get("nominated", []) or n.pressure >= 0.7):
+		parts["promised_player_first"] = -0.6  # they've promised the Demonologist first
 	var why = ("Evil cover: publicly claim bluff %s?" % role) if n.is_evil() else ("Publicly reveal true role %s?" % role)
 	if decide(w, n, "claim", parts, why):
 		if n.is_evil():
@@ -2107,7 +2241,67 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 static func _afraid(w, n) -> bool:
 	var dead = w.npcs.filter(func(x): return not x.alive and x.death_cause == "demon").size()
 	var p = 0.15 + 0.1 * dead + 0.25 * (1.0 - trait_of(n, "composure"))
+	if n.fear_eased:
+		p *= 0.5  # the Demonologist kept their word to watch over them
 	return float(absi(hash(n.id + ":" + str(w.day))) % 1000) / 1000.0 < p
+
+## What protection a frightened NPC would ask the player for: "vigil" (watch their block),
+## "ward" (a sigil on their door), or "" (none). An evil NPC who walks at night (the Demon,
+## the Poisoner) never asks for a vigil that would see them go out, unless the gift they
+## bluff walks at night too; they ask for the ward instead, if it's still to give.
+static func protection_kind(w, n) -> String:
+	if n.is_evil():
+		var walks: bool = n.role == "demon" or C.ROLES[n.role].get("night_walk", false)
+		var bluff: String = w.evil_plan["bluffs"].get(n.id, "")
+		if walks and not (bluff != "" and C.ROLES[bluff].get("night_walk", false)):
+			return "ward" if w.tools.get("ward", 0) > 0 else ""
+	return "vigil"
+
+static func protection_line(n, kind: String) -> Dictionary:
+	if kind == "ward":
+		return say(n, "Put your ward on my door tonight, and I'll tell you what I am. I can't say it otherwise.")
+	return say(n, "Watch over %s tonight, and I'll tell you what I am. I daren't otherwise." % C.block_name(n.home_block))
+
+## Where the fear refusal would come, a frightened NPC who trusts the player enough may ask
+## for protection instead. One request a day; {} when they don't ask. Hearing and answering
+## it is free; "decline" carries what they'd have said instead.
+static func _protection_request(w, n, refusal: Dictionary) -> Dictionary:
+	if n.request_day == w.day or n.claim_public or n.protect_lock or n.trust < 0.45:
+		return {}
+	var kind: String = protection_kind(w, n)
+	if kind == "":
+		return {}
+	var p: float = clampf(0.35 + (n.trust - 0.45) * 1.5, 0.0, 0.85)
+	var asks: bool = w.chance(p)
+	w.dlog.decision(n.id, "protection_request", "outcome", asks, {"trust": n.trust, "p": snappedf(p, 0.01), "kind": kind})
+	if not asks:
+		return {}
+	n.request_day = w.day
+	return {"kind": "protect", "npc": n.id, "what": kind, "line": protection_line(n, kind),
+		"decline": {"lines": [say(n, "Then I'll keep it to myself. I'm sorry.")], "facts": [refusal]}}
+
+## Where they'd keep something back (not out of fear, and not because trust fell), a nervous
+## NPC may offer it on condition the player keeps it quiet for now. tier: what they'd tell.
+static func _confidence_request(w, n, tier: int, refusal: Dictionary) -> Dictionary:
+	if n.request_day == w.day or n.claim_public or n.trust < 0.4:
+		return {}
+	var p: float = clampf(0.15 + (n.trust - 0.5) * 0.8 + (0.5 - trait_of(n, "composure")) * 0.5, 0.0, 0.5)
+	var asks: bool = w.chance(p)
+	w.dlog.decision(n.id, "confidence_request", "outcome", asks, {"trust": n.trust,
+		"composure": trait_of(n, "composure"), "p": snappedf(p, 0.01), "tier": tier})
+	if not asks:
+		return {}
+	n.request_day = w.day
+	return {"kind": "confidence", "npc": n.id, "tier": tier,
+		"line": say(n, "I'll tell you, but only if you promise not to reveal it yet."),
+		"decline": {"lines": [say(n, "Then it stays with me.")], "facts": [refusal]}}
+
+## A promised answer, once the player agrees: what answer_gift would say at that tier, without
+## costing a question (the question was spent asking).
+static func keep_request(w, n, tier: int) -> Dictionary:
+	var r: Dictionary = answer_gift(w, n, tier)
+	n.pressed_today = maxi(n.pressed_today - 1, 0)
+	return r
 
 static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 	var id = w.dlog.decision(n.id, "gift_disclosure", "start", null,
@@ -2148,13 +2342,23 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 			facts.append({"kind": "claim", "subject": [n.id], "role": "none", "source": n.id, "private": true,
 				"text": "%s told you privately they have no gift." % n.name})
 		elif _afraid(w, n):
+			var refusal = {"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "fear": true,
+				"text": "%s won't say whether they have a gift: afraid it would make them the demon's next mark." % n.name}
+			var ask: Dictionary = _protection_request(w, n, refusal)
+			if not ask.is_empty():
+				n.max_tier = maxi(n.max_tier, 1)
+				return {"lines": [ask["line"]], "facts": [], "request": ask}
 			lines.append(say(n, "If I say what I am, I'll be dead by morning. Ask me again when it's safer."))
-			facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "fear": true,
-				"text": "%s won't say whether they have a gift: afraid it would make them the demon's next mark." % n.name})
+			facts.append(refusal)
 		else:
+			var refusal = {"kind": "refusal", "subject": [n.id], "source": n.id, "private": true,
+				"text": "%s refused to say whether they have a gift." % n.name}
+			var ask: Dictionary = _confidence_request(w, n, 3, refusal)
+			if not ask.is_empty():
+				n.max_tier = maxi(n.max_tier, 1)
+				return {"lines": [ask["line"]], "facts": [], "request": ask}
 			lines.append(say(n, "Whether I have a gift is my own business."))
-			facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "private": true,
-				"text": "%s refused to say whether they have a gift." % n.name})
+			facts.append(refusal)
 		n.max_tier = maxi(n.max_tier, 1)
 		return {"lines": lines, "facts": facts}
 	if tier == 2:
@@ -2225,16 +2429,26 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 		facts.append(info_fact(w, n, e))
 	var held = n.info_log.size() - readings.size()
 	if held > 0:
+		var afraid: bool = _afraid(w, n)
+		# One card per person and gift (the same refusal again adds nothing new).
+		var refusal = {"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "withheld": true, "role": role, "fear": afraid,
+			"text": "%s claims the %s but won't share what it has shown them." % [n.name, C.role_name(role)]}
+		var ask: Dictionary = {}
 		if withholding:
 			lines.append(say(n, "I've told you what I knew before. The rest I'll keep, for now."))
 			w.dlog.think(n.id, "withhold", "Trust fell; withholding %d newer reading(s) from the player." % held)
-		elif _afraid(w, n):
-			lines.append(say(n, "If word gets round what %s, I'll be dead by morning. Not yet." % ("the rest of my readings show" if not readings.is_empty() else "my gift has shown me")))
+		elif afraid:
+			ask = _protection_request(w, n, refusal)
+			if ask.is_empty():
+				lines.append(say(n, "If word gets round what %s, I'll be dead by morning. Not yet." % ("the rest of my readings show" if not readings.is_empty() else "my gift has shown me")))
 		else:
-			lines.append(say(n, "What it's shown me, I'll keep to myself for now."))
-		# One card per person and gift (the same refusal again adds nothing new).
-		facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "withheld": true, "role": role, "fear": _afraid(w, n),
-			"text": "%s claims the %s but won't share what it has shown them." % [n.name, C.role_name(role)]})
+			ask = _confidence_request(w, n, 4, refusal)
+			if ask.is_empty():
+				lines.append(say(n, "What it's shown me, I'll keep to myself for now."))
+		if not ask.is_empty():
+			lines.append(ask["line"])
+			return {"lines": lines, "facts": facts, "request": ask}
+		facts.append(refusal)
 	elif n.info_log.is_empty():
 		lines.append(say(n, "It hasn't shown me anything yet."))
 	return {"lines": lines, "facts": facts}

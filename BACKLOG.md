@@ -138,6 +138,14 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
     > `tools/test_social.gd` before calling this a current failure. The cited engine/results are old; no
     > suite was run for this preparation.
 
+- **Fear barely changes from day to day.** `Mind._afraid` rolls on `hash(id + ":" + day)`, but
+  Godot's string hash changes only in its low digits when the last character changes, so the
+  roll is near-constant for a person across the whole case (e.g. 0.066, 0.067, 0.068 on days
+  0-2). "Ask me again when it's safer" is effectively never true. Fix: mix the hash (e.g.
+  `hash(str(hash(id)) + ":" + str(day))` or a seeded RNG per person and day). Changes
+  trajectories, so do it with the balance pass. (Oct 25, found building protection requests)
+  [needs decision: fix now or with the balance pass]
+
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -706,6 +714,9 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
 - **Offering protection eases fear.** Someone you've offered your ward or a vigil (and
   kept your word to) should be less afraid to say what they are. (96773) [decided]
 
+  > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** one feature with "The fearful ask for protection". A kept
+  > ward/vigil promise halves the fear term in that NPC's disclosure for the rest of the case.
+
   > **Prep B069 (9cb8782; open; promise overlap):** `game/game.gd::_offer_command`/`_settle_offers` track
   > promises. Base fear relief on what the NPC heard, keyed once per promise; an offer neither spends a
   > ward nor proves a successful save.
@@ -722,6 +733,17 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
 - **The fearful ask for protection.** NPCs afraid their gift makes them a target appeal
   to the Demonologist (a ward, a vigil) and/or the Warden for protection, instead of
   only clamming up. Ties into offers easing fear. (Oct 19) [decided]
+
+  > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** asking is free to hear and answer (yes becomes the usual
+  > vigil/ward promise); no conversation lock-in. In conversation, where they'd give the fear
+  > refusal, they may ask instead. A trust x Composure roll decides whether they tell their gift on
+  > the promise alone; otherwise the next day, after the promise is kept, they approach the player
+  > for free to tell at least their gift (readings if their usual willingness allows). While a
+  > promise is pending, their public-claim roll is harder unless they're under serious pressure (a
+  > nomination). Broken promise: the existing trust loss, and the fear returns. Evil uses the same
+  > flow as cover, except evil that walks at night (Demon, Poisoner) never asks for a vigil unless
+  > it bluffs a night-walking gift. Gossip/frame approaches become a free teaser; following up
+  > spends the phase as before.
 
   > **Prep B071 (9cb8782; open):** Add bounded requests through meeting/approach dialogue, reusing
   > `game/game.gd::_offer_command` settlement. Keep requests based on perceived danger; do not reveal
@@ -1331,6 +1353,11 @@ exact values remain open. The code-derived examples and clarifications are in
     recover gradually through later conduct. An apology for treatment need not
     require falsely withdrawing an ongoing suspicion.
 
+    > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** incidents are the reasons already recorded on that
+    > NPC's trust drops. Once per incident: repairs half the trust lost for a minor incident, a quarter
+    > for a serious one; a high-Insight NPC forgives less when the player had evidence against what they
+    > did. No suspicion is withdrawn; permanent caps hold.
+
     > **Prep B117 (9cb8782; design):** `sim/mind.gd::set_trust`/`cap_trust` and
     > `game/game.gd::_settle_offers` lack a general apology incident ledger. Record perceived
     > harm/responsibility/repair once; a positive delta cannot restore a permanently lowered ceiling
@@ -1344,6 +1371,12 @@ exact values remain open. The code-derived examples and clarifications are in
     or a counterproposal. (Target relationship added Oct 21.) Offer the same dialogue to evil
     bluffers, who can lie about compliance/results, so requests do not verify roles.
     Exact trait interactions remain open.
+
+    > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** Seer (check a person or pair), Warden (guard
+    > someone), Night Watch (watch a block), asked of someone who claimed the gift to the player. Costs a
+    > question; private only (asking at the meeting waits for the meeting-flow work). Agree, refuse or
+    > counter-propose from trust, the target relationship and their own preference; an agreed request
+    > replaces their pick for that night only. Evil bluffers get the same surface and fake results.
 
     > **Prep B118 (9cb8782; design):** Use `game/game.gd::_offer_command`, `sim/world.gd::_receive_info`,
     > and `sim/evil.gd::make_fake_info`. Keep heard/accepted/acted/reported states separate. Hidden
@@ -1420,6 +1453,12 @@ exact values remain open. The code-derived examples and clarifications are in
     negotiation tree or multiple branching confidentiality terms; coordinate with
     existing confidence/secret-keeping rules rather than awarding duplicate credit.
 
+    > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** an NPC request, not a player offer. Asked something they'd
+    > withhold, a nervous NPC may say "I'll tell you, but only if you promise not to reveal it yet." Yes
+    > or no is free. Cards from that answer are confidential; using one at a meeting breaks the promise.
+    > One penalty for all confidential cards (including "ask why"): 0.05 + 0.2 x Privacy (0.05 open,
+    > 0.15 typical, 0.25 very private). The promise lapses when they go public. Private use stays allowed.
+
     > **Prep B125 (9cb8782; design):** `game/game.gd::_disclose`/`_break_confidences` and
     > `sim/mind.gd::end_of_day_trust` already handle confidence consequences. Add one explicit
     > promise/settlement identity; avoid duplicate daily reward/loss for the same protected disclosure.
@@ -1434,6 +1473,11 @@ exact values remain open. The code-derived examples and clarifications are in
   can reasonably know and how often this occurs. Coordinate with public
   friends/rivals and haunt disclosure; do not reveal hidden relationships.
   (Oct 21) [decided; discovery rules open]
+
+  > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** opinion answers sometimes reveal one trait,
+  > unlocking its bar in the profile. Friends can reveal any trait; others only the observable ones
+  > (Privacy, Gossip, Confidence, Composure). Wording follows the relationship (friend "principled",
+  > rival "pigheaded").
 
   > **Prep B126 (9cb8782; open):** `sim/mind.gd::reveal_trait` and profile rendering supply the target
   > surface; `sim/mind.gd::answer_opinion` is a possible route. Define speaker knowledge before numeric
@@ -1553,6 +1597,11 @@ exact values remain open. The code-derived examples and clarifications are in
 - **Lovers downside:** when one dies, the other becomes withdrawn: Privacy to max,
   Gossip to min, and whichever other shifts hurt the player most (e.g. Composure up so
   they're harder to read). Visible, so the player can notice the change. [decided]
+
+  > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** Lovers only (the friends version is tabled): Privacy max, Gossip
+  > min, Composure up, with a profile note. Revealing the Lovers this way is acceptable.
+  > 
+  > [knob] Evil could fake a bereavement withdrawal; a balance knob, not planned.
 
   > **Prep B139 (9cb8782; open; distinguish grief):** `sim/world.gd::_grief` applies resentment/caps but
   > does not generally maximize Privacy/minimize Gossip. Decide persistent traits and visibility
