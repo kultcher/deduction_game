@@ -1638,7 +1638,7 @@ func _offer_command(n, what: String, requested: bool = false) -> void:
 				_err("You've already promised your ward tonight to %s." % w.by_id[offer["ward"]].name)
 				return
 			offer["ward"] = n.id
-			_narr("You promise %s your ward: a sigil on their door tonight." % n.name)
+			_narr("You promise %s your ward: a sigil on their door tonight. Promising does not spend your ward; keeping the promise does (%d left, once per case)." % [n.name, w.tools["ward"]])
 		"vigil":
 			var vg: Dictionary = offer.get("vigil", {})
 			if vg.has(n.id):

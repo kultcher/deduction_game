@@ -672,7 +672,7 @@ func _refresh_actions() -> void:
 			match g.approach.get("agenda", ""):
 				"protect":
 					var pk: String = Mind.protection_kind(w, g.approach["npc"])
-					_button(actions, "Promise it: %s (free)" % ("your ward on their door" if pk == "ward" else "a vigil tonight"), func(): _run("yes"))
+					_button(actions, "Promise it: %s (free)" % ("your ward on their door (%s; promise does not spend it)" % _ward_remaining() if pk == "ward" else "a vigil tonight"), func(): _run("yes"))
 					_button(actions, "Say no", func(): _run("no"))
 				"divulge":
 					_button(actions, "Keep talking (uses this phase)", func(): _run("accept"))
@@ -716,7 +716,7 @@ func _refresh_actions() -> void:
 			# Tonight's promises first, so keeping your word is one click.
 			if g.offer.has("ward") and w.tools["ward"] > 0:
 				var wid: String = g.offer["ward"]
-				_button(actions, "Keep your word: ward %s's door" % w.by_id[wid].name, func(): _run("ward " + wid), C.npc_color(wid))
+				_button(actions, "Keep your word: ward %s's door (%s)" % [w.by_id[wid].name, _ward_remaining()], func(): _confirm_ward(wid), C.npc_color(wid))
 			var vblocks = {}
 			for id in g.offer.get("vigil", {}):
 				vblocks[g.offer["vigil"][id]] = true
@@ -727,12 +727,12 @@ func _refresh_actions() -> void:
 			if map.selected_block != "":
 				_button(actions, "Keep vigil on %s" % C.block_name(map.selected_block), func(): _run("vigil " + map.selected_block))
 			if _ward_target != "" and w.tools["ward"] > 0 and w.by_id[_ward_target].alive:
-				_button(actions, "Ward %s's door (once per case)" % w.by_id[_ward_target].name, func(): _run("ward " + _ward_target), C.npc_color(_ward_target))
+				_button(actions, "Ward %s's door (%s)" % [w.by_id[_ward_target].name, _ward_remaining()], func(): _confirm_ward(_ward_target), C.npc_color(_ward_target))
 			var vig = _button(actions, "Keep vigil on…", func(): pass)
 			vig.pressed.connect(func(): _list_picker(vig, "Watch which block?", C.BLOCKS.keys().map(func(b): return [C.block_name(b), "vigil " + b, null])))
 			if w.tools["ward"] > 0:
-				var wd = _button(actions, "Ward someone…", func(): pass)
-				wd.pressed.connect(func(): _people_picker(wd, "Ward whom?", func(id): _run("ward " + id), func(n): return n.alive))
+				var wd = _button(actions, "Ward someone… (%s)" % _ward_remaining(), func(): pass)
+				wd.pressed.connect(func(): _people_picker(wd, "Ward whom?", func(id): _confirm_ward(id), func(n): return n.alive))
 			_button(actions, "Sleep", func(): _run("sleep"))
 			_hint("Tip: click a block or a person on the map to pick them.")
 		"over":
@@ -778,7 +778,7 @@ func _actions_talk(w) -> void:
 	if not g.pending_request.is_empty():
 		var rq: Dictionary = g.pending_request
 		var ask: String = "Promise to keep it quiet" if rq["kind"] == "confidence" else (
-			"Promise your ward on their door" if rq.get("what", "") == "ward" else "Promise a vigil on %s tonight" % C.block_name(n.home_block))
+			"Promise your ward on their door (%s; promise does not spend it)" % _ward_remaining() if rq.get("what", "") == "ward" else "Promise a vigil on %s tonight" % C.block_name(n.home_block))
 		_button(actions, ask + " (free)", func(): _run("yes"), C.npc_color(n.id))
 		_button(actions, "Say no (free)", func(): _run("no"))
 		_hint("Anything else you do counts as no.")
@@ -876,12 +876,27 @@ func _ask_gift_picker(anchor: Control) -> void:
 	_show_popup(h, anchor)
 
 ## "Offer…": your ward on their door tonight, or a vigil on their block.
+func _ward_remaining() -> String:
+	return "%d left, once per case" % g.w.tools["ward"]
+
+func _confirm_ward(id: String) -> ConfirmationDialog:
+	var dialog = ConfirmationDialog.new()
+	dialog.dialog_text = "This spends your only ward. Ward %s?" % g.w.by_id[id].name
+	add_child(dialog)
+	dialog.confirmed.connect(func():
+		_run("ward " + id)
+		dialog.queue_free(), CONNECT_ONE_SHOT)
+	dialog.canceled.connect(dialog.queue_free, CONNECT_ONE_SHOT)
+	dialog.popup_centered()
+	return dialog
+
 func _offer_picker(anchor: Control) -> void:
 	var n = g.talk_with
 	var v = _column("Offer %s…" % n.name)
-	var wb = _button(v, "my ward on your door tonight", func():
+	var wb = _button(v, "my ward on your door tonight (%s; promise only)" % _ward_remaining(), func():
 		popup.hide()
 		_run("offer ward"))
+	wb.tooltip_text = "Promising does not spend your ward; keeping the promise does."
 	wb.disabled = g.w.tools["ward"] <= 0 or g.offer.has("ward")
 	if g.w.tools["ward"] <= 0:
 		wb.tooltip_text = "Your ward is spent (once per case)."

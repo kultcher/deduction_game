@@ -725,6 +725,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > directly from the UI asks for confirmation ("This spends your only ward. Ward X?"); the typed command
   > goes straight through. Promise text says a promise doesn't spend the ward; keeping it does.
 
+  > **Implemented (Codex batch 3):** Every Ward UI path shows remaining uses, direct UI targeting asks the specified confirmation, and typed commands stay immediate. Promise wording distinguishes offering from spending. Focused checks cover labels, cancel, promises and typed consumption.
+
 - **Hide Unselected.** Add a case-board toggle to hide rows not explicitly selected
   by the active person/place filters. Keep this distinct from hiding evidence cards,
   showing hidden cards, and the currently focused card/profile; define the

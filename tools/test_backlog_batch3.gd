@@ -22,6 +22,7 @@ func fresh(count: int = 10):
 func run():
 	await headlines()
 	await setup_counts()
+	await ward_warnings()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -118,3 +119,27 @@ func setup_counts():
 		check(summary.text == expected[count], "script summary uses setup counts and one secret, including Lovers")
 		check(JSON.stringify(main.g.board) == board and main.g.w.rng.state == rng, "script summary creates no card and consumes no RNG")
 	main.free()
+
+func ward_warnings():
+	var scene = load("res://ui/main.tscn").instantiate()
+	scene.show_script_at_start = false
+	root.add_child(scene)
+	var g = scene.g
+	var person = g.w.living_good()[0]
+	g.events = []
+	g._offer_command(person, "ward")
+	check(g.w.tools.ward == 1 and g.offer.ward == person.id and Game.render(g.events).contains("Promising does not spend your ward; keeping the promise does"), "ward promises explain the limit and do not consume the tool")
+	g.state = "night"
+	scene._ward_target = person.id
+	scene._refresh_actions()
+	await process_frame
+	var buttons: Array = scene.actions.get_children().filter(func(n): return n is Button and "ward" in n.text.to_lower())
+	check(buttons.size() >= 3 and buttons.all(func(b): return "1 left, once per case" in b.text), "every direct-night Ward button displays the remaining limit")
+	var dialog = scene._confirm_ward(person.id)
+	check(dialog.dialog_text == "This spends your only ward. Ward %s?" % person.name and g.w.tools.ward == 1, "direct UI warding asks for confirmation before spending")
+	dialog.canceled.emit()
+	await process_frame
+	check(g.w.tools.ward == 1 and g.state == "night", "canceling a ward confirmation spends nothing")
+	var output = g.command("ward " + person.id)
+	check(g.w.tools.ward == 0 and g.ward_log.has(1) and "You chalk a warding sigil" in output, "typed ward commands go straight through and consume exactly one use")
+	scene.free()
