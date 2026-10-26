@@ -113,9 +113,15 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
 
 
   - **Wording: a claimed walker's sighting told "from my window".** [decided]
+    > **Ready for Codex (Oct 25):** wording only, in `Evil` fake sightings (around line 888): a
+    > claimed walker tells a sighting as seen while out on their duty, and every fake sighting
+    > names its night like real ones do. No change to who evil frames or when.
     A claimed Night Watch says "I watched the Market…" and then "I saw them … from my
     window": a walker's sighting should be told as seen while out.
     (The other wording lines in this entry were fixed Oct 25; see BACKLOG_COMPLETED.md.)
+  - **`tools/test_text_ui.gd` fails on main (two role-hover checks).** Known failure since
+    at least Oct 24. Find whether the checks or the UI are wrong; fix the test if it's stale,
+    or the hover if it's a real bug, and report which. [decided] (Ready for Codex, Oct 25.)
   - **`tools/test_social.gd` fails on main:** "a false Night Watch's night story matches
     their fake report (20 cases)". It passes on `claude/case-reasoning` and fails on main
     since the 61251/25923 pass, so the merge carries it. It's the same family as
@@ -505,6 +511,11 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   Do not create incriminating opinion evidence solely from neutrality.
   (Oct 21) [decided; boundaries/wording open]
 
+  > **Decided (user, Oct 25); ready for Codex:** in `Mind.answer_opinion`'s 0.25-0.45 band, keep the existing
+  > "something's off" roll; when it doesn't fire, say "seems all right" below 0.35 and "I'm not sure
+  > what to think of X yet" from 0.35. Wording only: no change to levels, the roll, what's logged or
+  > any evidence (opinions aren't evidence). Same for good and evil.
+
   > **Prep B052 (9cb8782; open):** `sim/mind.gd::answer_opinion` currently chooses reassuring/suspicious
   > wording after willingness gates. Add a neutral perceived state; test uncertainty and middle suspicion
   > without exposing hidden alignment or turning an opinion into evidence.
@@ -516,6 +527,13 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   should not be the only signal. Coordinate with apologies and vote-resistance
   feedback. (Oct 21) [decided; delivery/frequency open]
 
+  > **Decided (user, Oct 25); ready for Codex:** when an NPC's trust in the player is low (below 0.35) and
+  > they refuse the player something (gift, opinion, whereabouts), add one line citing the player
+  > action that cost the most trust that they remember (from the reasons already passed to
+  > `Mind.set_trust`: a wrong guess, a broken promise, a nominated friend...). At most once per NPC
+  > per day. Only the player's own actions are cited, so nothing hidden leaks; evil uses the same
+  > rule. Wording only: no new trust change.
+
   > **Prep B053 (9cb8782; open feedback):** `sim/mind.gd::_vote_impl`, `word_factor`, and `card_weight`
   > already use player trust. Surface relevant resistance through dialogue; distinguish distrust of
   > testimony from dislike of execution. Explaining an existing penalty should not create a new one.
@@ -526,6 +544,15 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   unvisited dead person; a same-day tie favors Demon victims, so the requested
   restriction is not implemented. Coordinate with the existing director-driven
   visit proposal and keep misleading results possible. (Oct 21) [decided]
+
+  > **Decided (user, Oct 25); ready for Codex:** eligible hearths are Demon victims only. On a night with no
+  > unvisited Demon victim, the Medium revisits the most recent Demon victim's hearth (so a real
+  > Medium still walks every night after the first kill, as the movement model expects) and learns
+  > something new if that person still has unrevealed information; otherwise "nothing they hadn't
+  > already told us". Before any Demon kill, no visit (as today). Update the gift text, `World._medium_choice`,
+  > `World._medium_item` and the fake Medium (`Evil._fake_medium_item`) so fakes only name Demon
+  > victims too. Tests: executed dead never visited; revisit when none are unvisited; a revisit can
+  > still surface an untold reading; fakes match.
 
   > **Prep B054 (9cb8782; open):** `sim/world.gd::_medium_choice` considers all unvisited dead, sorted by
   > recency with same-day Demon-victim preference. Apply the eligibility decision to fake Medium paths
@@ -1027,6 +1054,12 @@ exact values remain open. The code-derived examples and clarifications are in
   status. Track which relationships the player has learned; avoid duplicate reveals.
   Add conversational wording and useful attribution. [decided; sharing rates open]
 
+  > **Decided (user, Oct 25); ready for Codex:** a profile note only, no board card (the shared model can't
+  > read relationship cards). Every rolled friendship and rivalry counts as public town knowledge;
+  > Lovers stay secret. Learned the same way and at the same chance as haunts, when the player asks
+  > someone about a person, and attributed ("Agnes says Hollis and Merrin are close"). Track what
+  > the player has learned; no duplicate reveals; never show trust scores.
+
   > **Prep B097 (9cb8782; open):** `sim/world.gd::_assign_relationships` stores true relationships, not
   > player knowledge. Add attributed learned facts alongside `sim/mind.gd::reveal_trait`/social
   > disclosures; never render private bond scores or hidden Lovers directly from setup arrays.
@@ -1057,6 +1090,11 @@ exact values remain open. The code-derived examples and clarifications are in
   their patience without revealing whether a particular bluff/guess is true. Keep
   conversation slots, daily fatigue, and the across-days wrong-guess counter distinct.
   [decided; warning cadence open]
+
+  > **Decided (user, Oct 25); ready for Codex:** on the second wrong guess to the same NPC, the reply is the
+  > patience warning ("You're grasping at straws, and I'm running out of patience."); from the
+  > third, the existing "Why do you keep asking me that?". Wording only: costs and counters
+  > unchanged, and the warning never confirms or denies the guess.
 
   > **Prep B100 (9cb8782; partial):** `sim/social.gd::answer_is_role` already counts wrong guesses and
   > gives a generic repeat response. Add anticipatory patience wording without confirming a guess;
@@ -1158,6 +1196,13 @@ exact values remain open. The code-derived examples and clarifications are in
   readings, sightings and claims the evaluator checks against each possible world. At
   least a different colour on the board, in the case builder and in the preview, so the
   player can tell how a case is made up. [decided]
+
+  > **Decided (user, Oct 25); ready for Codex:** circumstantial means the cards the shared model treats as
+  > context that can't establish guilt alone: those whose live adapter is `context` or `location`
+  > (`game/workshop_canvas.gd::view` already labels them "location context; this does not establish
+  > guilt"). Everything else the model reads is hard logic. Mark them with a shape, not only a
+  > colour: a dashed border plus a small "context" tag, on the board, in the Card List and on
+  > Workshop cards, with a tooltip explaining it. Reads the existing adapter result; no judge change.
 
   > **Session scope 2026-10-25 (B108):** Skipped: the proposed action-factor/vibes-stage split is
   > still a listed design decision and is not a reliable existing display classification. Adding
@@ -1590,6 +1635,11 @@ exact values remain open. The code-derived examples and clarifications are in
   peeks at `w.dropped` when deciding to search), so bot win rates say nothing about
   physical evidence. Teach it to read traces and drops, and stop the peek, to measure
   what evidence is worth. [decided]
+
+  > **Decided (user, Oct 25); ready for Codex:** this pass, remove only the hidden `w.dropped` peek in
+  > `tools/autoplay.gd::_decide`: the bot searches crime scenes as now and otherwise only on public
+  > grounds. Teaching it to read traces and drops stays open. Note in the commit that bot baselines
+  > may shift.
 
   > **Prep B148 (9cb8782; open; confirmed oracle):** `tools/autoplay.gd::_decide` peeks at
   > `w.dropped.has(g.loc)`; `_scores` uses hand weights. Remove the hidden-presence peek and add public
@@ -2188,6 +2238,10 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   count as location sightings today, so the best evening alibis on the board can't touch
   the trace (tried: "Odette and Constance talking at the tavern" with the Square trace at
   Hollis's death scene).
+
+  > **Ready for Codex (Oct 25):** fix the native dedup found below: `Argue.check`'s
+  > template-plus-cards key omits the subject, so a trace match against two people in one
+  > conversation offers only one. Include the subject in the key; test two participants on one card.
 
   > **Session verification 2026-10-25 (B200):** Both location facts and shared conversation/sighting
   > parity are verified. A focused probe found that native Argue.check returns only one trace-match
