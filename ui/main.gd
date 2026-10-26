@@ -8,6 +8,7 @@ const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const CaseView = preload("res://ui/case_view.gd")
 const CardList = preload("res://ui/card_list.gd")
+const EvidenceContext = preload("res://ui/evidence_context.gd")
 const MapView = preload("res://ui/map_view.gd")
 const MeetingView = preload("res://ui/meeting_view.gd")
 const CaseState = preload("res://ui/case_state.gd")
@@ -919,6 +920,7 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 	v.add_child(lst)
 	var fill = func():
 		lst.reset()
+		lst.context_numbers = EvidenceContext.numbers(g)
 		var cs: Array = g.filter_cards(f.text)
 		cs.reverse()  # newest first
 		for c in cs:
@@ -973,6 +975,7 @@ func _refresh_side() -> void:
 	if not g.w.game_over:
 		theory_label.text += " — Record your demon guess before voting; it costs no time."
 	side_list.reset()
+	side_list.context_numbers = EvidenceContext.numbers(g)
 	var cards: Array = g.filter_cards(side_filter.text)
 	cards.reverse()
 	for c in cards.slice(0, 60):

@@ -1225,7 +1225,7 @@ exact values remain open. The code-derived examples and clarifications are in
   least a different colour on the board, in the case builder and in the preview, so the
   player can tell how a case is made up. [decided]
 
-  > **Decided (user, Oct 25); ready for Codex:** circumstantial means the cards the shared model treats as
+  > **Decided (user, Oct 25); implemented in Codex batch 2:** circumstantial means the cards the shared model treats as
   > context that can't establish guilt alone: those whose live adapter is `context` or `location`
   > (`game/workshop_canvas.gd::view` already labels them "location context; this does not establish
   > guilt"). Everything else the model reads is hard logic. Mark them with a shape, not only a
@@ -1241,6 +1241,11 @@ exact values remain open. The code-derived examples and clarifications are in
   > `ui/board_view.gd`, and `ui/card_list.gd` share rendering inputs. Define a visible evidence-class
   > marker with source/time detail; circumstantial is not unsupported, and color alone should not
   > communicate the distinction.
+
+  > **Batch 2 verification:** `ui/evidence_context.gd` reads the existing live adapter result.
+  > Board cards/dots, all Card Lists and Workshop evidence cards show dashed borders, a
+  > context tag and an explanatory tooltip. Classification is built once per library refresh;
+  > evidence identities, judge inputs and simulation randomness are unchanged.
 
 - **Limited-use tool warnings.** Clearly warn before spending Ward and other
   limited-use abilities; show remaining uses and that spending one is irreversible.

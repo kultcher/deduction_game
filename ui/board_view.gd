@@ -20,6 +20,7 @@ const CardModel = preload("res://game/card_model.gd")
 const BoardModel = preload("res://game/board_model.gd")
 const UITheme = preload("res://ui/theme.gd")
 const Icons = preload("res://ui/board_icons.gd")
+const EvidenceContext = preload("res://ui/evidence_context.gd")
 
 const HEAD_W = 132.0     # row labels (screen pixels, not zoomed)
 const HEAD_H = 34.0      # time labels
@@ -45,6 +46,7 @@ var col_x = {}                   # col key -> world x
 var world_size = Vector2.ZERO
 var _items: Array = []           # drawn items: {rect (screen), n, item index, pinned}
 var _row_hits: Array = []        # {rect, row}
+var context_numbers: Dictionary = {}
 var _hover = 0                   # card number under the mouse
 var _panning = false
 var _moving_pin = 0
@@ -81,6 +83,7 @@ func board_view() -> String:
 func rebuild() -> void:
 	if g == null:
 		return
+	context_numbers = EvidenceContext.numbers(g)
 	var cards: Array = state.apply(g)
 	cards += g.board.filter(func(c): return c.get("kind", "") == "deduction" and not c.get("deleted", false) and (g.show_hidden or not c.get("hidden", false)) and c.get("pins", {}).has(board_view()))
 	var ctx = {"day": g.w.day, "phase": g._phase_now(), "rows_by": state.rows_by,
@@ -349,6 +352,9 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 			if seal != null:
 				var ss = 18.0 * zoom
 				draw_texture_rect(seal, Rect2(r.end - Vector2(ss + 4 * zoom, ss + 4 * zoom), Vector2(ss, ss)), false, fade)
+	if context_numbers.has(n):
+		EvidenceContext.draw_border(self, r, _ink * fade)
+		EvidenceContext.draw_tag(self, r, _font, _ink * fade, zoom)
 	if selected or hovered:
 		draw_rect(r.grow(2), UITheme.color("string") if selected else UITheme.color("accent"), false, 2.0)
 	if n in _staged():
@@ -418,7 +424,7 @@ func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 		var fs = int(clampf(15 * zoom, 7, 30))
 		draw_string(_font, c + Vector2(-rad, fs * 0.35), initial, HORIZONTAL_ALIGNMENT_CENTER, rad * 2, fs,
 			UITheme.color("ink") * fade if mark != "hollow" else col_c)
-		if _lod() >= 2:
+		if _lod() >= 2 and not context_numbers.has(n):
 			var card: Dictionary = g.board[n - 1]
 			var where = C.loc_name(card["loc"]).trim_prefix("the ") if C.LOCATIONS.has(card.get("loc", "")) else ""
 			var lab = g.w.by_id[who].name if state.rows_by == "place" else (where if where != "" else C.block_name(card.get("block", "")))
@@ -426,6 +432,9 @@ func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 				lab = "home"
 			var lw = (DOT + 6.0) * zoom
 			draw_string(_font, c + Vector2(-lw / 2, rad + 11 * zoom), lab, HORIZONTAL_ALIGNMENT_CENTER, lw, int(clampf(8 * zoom, 7, 16)), UITheme.color("text") * fade)
+	if context_numbers.has(n):
+		EvidenceContext.draw_border(self, hit, UITheme.color("text") * fade)
+		EvidenceContext.draw_tag(self, Rect2(hit.position + Vector2(-3, DOT) * zoom, Vector2(DOT + 6, 16) * zoom), _font, _ink * fade, zoom)
 	if n == state.selected_card or n == _hover:
 		draw_arc(c, rad + 4 * zoom, 0, TAU, 28, UITheme.color("string") if n == state.selected_card else UITheme.color("accent"), 2.0)
 
@@ -648,6 +657,8 @@ func _get_tooltip(at: Vector2) -> String:
 		return ""
 	var card: Dictionary = g.board[h["n"] - 1]
 	var t = "#%d  %s" % [card["n"], card.get("text", "")]
+	if context_numbers.has(card.n):
+		t += "\n" + EvidenceContext.EXPLANATION
 	var heard = _heard_line(card)
 	if heard != "":
 		t += "\n" + heard
