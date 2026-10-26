@@ -52,6 +52,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
     > the meeting). A good person who really was home stands firm with a new line. Evil gets a new line with
     > the same cover facts (wording only; no change to cover choices).
 
+    > **Implemented (Codex batch 3):** Caught good gift walkers disclose through the existing gift/admission path. Home accounts, evil cover and refusals receive fresh deterministic wording; personal-secret and Sleepwalker choices remain unchanged (confirmed in chat). Paired checks preserve facts, fatigue, trust and RNG for wording-only cases. Broader evil Night Watch consistency stays open.
+
   - **The owned lie didn't follow the disclosure.** Constance said "home" twice, then
     claimed Night Watch one question later without "So yes: I was out…". The admission
     fires only after a "you lied" deduction, not after a pressing sighting card. A

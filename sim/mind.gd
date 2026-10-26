@@ -2217,7 +2217,7 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
 		return pressed
 	if night >= 0:
-		var r = answer_night(w, n, night)
+		var r = _answer_pressed_night(w, n, night)
 		lines += r["lines"]
 		facts += r["facts"]
 		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
@@ -2232,6 +2232,66 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 	var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 	pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
 	return pressed
+
+## Only a known gift outing collapses disclosure. Personal errands and unaware
+## Sleepwalkers keep the existing choices, including all their original RNG draws.
+static func _gift_outing(w, n, night: int) -> bool:
+	if n.is_evil() or n.secret_mod == "sleepwalker" or not C.ROLES[n.role].get("night_walk", false): return false
+	if not str(n.history.get(w.time_key(night, C.NIGHT), "home")).begins_with("night:"): return false
+	if night == w.day - 1:
+		for walker in w.night_walkers:
+			if walker.id == n.id:
+				return not str(walker.why).begins_with("secret:") and not str(walker.why).begins_with("sleepwalking")
+	if n.role == "warden" and n.warden_log.has(str(night)): return true
+	if n.info_log.any(func(e): return e.get("role", "") == n.role and e.get("day", -1) == night): return true
+	return n.secret.is_empty()
+
+static func _answer_pressed_night(w, n, night: int) -> Dictionary:
+	if not n.claim_public and n.max_tier < 3 and _gift_outing(w, n, night):
+		if night not in n.lied_nights: n.lied_nights.append(night)
+		# The existing gift answer owns the admission, claim, reading willingness,
+		# question fatigue and the "So yes: I was out..." line, exactly once.
+		return answer_gift(w, n, 3)
+	var response = answer_night(w, n, night)
+	var variants: Dictionary = n.dialogue_memory.get("pressed_nights", {})
+	var count: int = variants.get(str(night), 0)
+	variants[str(night)] = count + 1
+	n.dialogue_memory["pressed_nights"] = variants
+	var alternate = count % 2 == 1
+	var when = C.night_name(night)
+	if when.begins_with("night"): when = "on " + when
+	var text = ""
+	for fact in response.facts:
+		if fact.get("kind", "") == "alibi" and fact.get("source", "") == n.id and n.id in fact.get("subject", []):
+			text = ("That sighting doesn't change where I was: at home %s." if alternate else "I was at home %s. I stand by that account.") % when
+			break
+		if fact.get("kind", "") == "secret" and fact.get("owner", "") == n.id:
+			text = ("I wasn't there on evil business. I %s. Keep that between us." if alternate else "All right: I %s. That's why I was out; please keep it quiet.") % n.secret.get("me", n.secret["text"])
+			break
+		if fact.get("kind", "") == "refusal" and fact.get("source", "") == n.id:
+			text = "I've nothing more to say about that night." if alternate else "That sighting doesn't give you the right to demand my whereabouts."
+			break
+		if fact.get("kind", "") == "info" and fact.get("role", "") == "warden":
+			var door: String = fact.data.target
+			text = ("I stand by it: I guarded %s's door %s." if alternate else "My duty was at %s's door %s. That is still my account.") % [w.by_id[door].name, when]
+			break
+		if fact.get("watch_claim", false):
+			text = ("I was keeping watch on %s %s; my account stands." if alternate else "My watch took me through %s %s. That's where I was.") % [C.block_name(fact.block), when]
+			break
+		if fact.get("duty_claim", false):
+			if fact.get("duty", "") == "lamplighter":
+				text = ("My lamp route still accounts for my being out %s." if alternate else "I was out on my lamp route %s. I haven't changed that account.") % when
+			else:
+				var dead = _hearth_dead(w, n, night)
+				var hearth = "%s's hearth" % dead.name if dead != null else "the dead"
+				text = ("My account stands: I was visiting %s %s." if alternate else "My gift took me to %s %s. That is still my account.") % [hearth, when]
+			break
+	if text != "":
+		for line in response.lines:
+			if line is Dictionary and line.get("speaker", "") == n.id:
+				line.text = text
+				break
+	return response
 
 # ---------------------------------------------------------------- conversation
 

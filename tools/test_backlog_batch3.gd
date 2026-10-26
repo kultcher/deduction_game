@@ -31,6 +31,7 @@ func run():
 	ward_evidence()
 	bot_options()
 	last_words()
+	pressed_nights()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -429,3 +430,75 @@ func last_words():
 		var snapshot = JSON.stringify([w.executions, g.events, w.rng.state])
 		g._close_meeting()
 		check(JSON.stringify([w.executions, g.events, w.rng.state]) == snapshot, "closing a meeting twice cannot repeat death, aftermath or last words")
+
+func before_press_night(w, n, card):
+	# Original night branch with composure fixed to 1: no nerves variant draw.
+	var strength = clampf(Mind.card_strength(w, card, n), 0.3, 1.0)
+	w.rng.randf()
+	n.pressure += 0.35 * strength
+	if not n.is_evil(): Mind.set_trust(w, n, n.trust - (0.03 + 0.06 * Mind.trait_of(n, "privacy")), "the Demonologist pressed me with evidence")
+	return Mind.answer_night(w, n, card.day)
+
+func pressed_nights():
+	for mode in ["home", "personal", "sleepwalker", "seer", "nightwatch", "warden", "lamplighter", "medium"]:
+		for seed_value in [1, 2, 3, 4]:
+			var a = fresh()
+			var b = fresh()
+			var evil = mode in ["seer", "nightwatch", "warden", "lamplighter", "medium"]
+			var na = a.w.minion() if evil else a.w.living_good()[0]
+			var nb = b.w.by_id[na.id]
+			var card = {"kind": "sighting", "subject": [na.id], "source": "player", "block": "market", "day": 1, "phase": C.NIGHT, "text": "A conflicting night sighting"}
+			for pair in [[a, na], [b, nb]]:
+				var g = pair[0]
+				var n = pair[1]
+				g.w.day = 2
+				g.w.night_walkers = []
+				n.traits.composure = 1.0
+				n.traits.gossip = 0.0
+				n.pressure = 0.0
+				n.pressed_today = 0
+				n.max_tier = 0
+				n.claim_public = false
+				n.claimed_role = mode if evil else ""
+				n.secret_mod = "sleepwalker" if mode == "sleepwalker" else ""
+				n.secret = {"kind": "gambling", "text": "gambles at night", "me": "go gambling"} if mode == "personal" else {}
+				n.beliefs = []
+				n.history[g.w.time_key(1, C.NIGHT)] = ("home:" if mode == "home" else "night:") + n.home_block
+				if not evil: n.role = "clerk"
+				else: g.w.evil_plan.bluffs[n.id] = mode
+				g.w.rng.seed = seed_value
+			var before = before_press_night(a.w, na, card)
+			var after = Mind.press(b.w, nb, card)
+			check(JSON.stringify(before.facts) == JSON.stringify(after.facts), "press wording preserves home/secret/sleepwalker/evil cover facts")
+			check(a.w.rng.state == b.w.rng.state and na.pressed_today == nb.pressed_today and na.trust == nb.trust, "wording-only press keeps original RNG, fatigue and trust")
+			check(before.lines[0].text != after.lines[0].text, "pressing does not replay the original alibi or refusal sentence")
+	var g = fresh()
+	var n = g.w.living_good()[0]
+	g.w.day = 2
+	g.w.night_walkers = []
+	n.role = "nightwatch"
+	n.claimed_role = ""
+	n.max_tier = 0
+	n.claim_public = false
+	n.secret = {}
+	n.secret_mod = ""
+	n.traits.privacy = 1.0
+	n.trust = 0.1
+	n.history[g.w.time_key(1, C.NIGHT)] = "night:market"
+	n.lied_nights = [1]
+	var card = {"kind": "sighting", "subject": [n.id], "source": "player", "block": "market", "day": 1, "phase": C.NIGHT, "text": "The player's vigil caught them out"}
+	var reply = Mind.press(g.w, n, card)
+	check(n.claimed_role == "nightwatch" and n.max_tier >= 3 and reply.facts.any(func(f): return f.kind == "claim" and f.role == "nightwatch"), "a caught hidden good walker reveals their gift despite low ordinary willingness")
+	check(reply.lines.any(func(line): return line is Dictionary and "So yes: I was out" in line.text) and n.lied_nights.is_empty(), "the same disclosure owns the earlier lie with the existing admission line")
+	check(not reply.facts.any(func(f): return f.kind == "alibi"), "a revealed walker does not restate the false home account")
+	var home = fresh()
+	var h = home.w.living_good()[0]
+	h.role = "clerk"
+	h.secret = {}
+	h.secret_mod = ""
+	h.traits.composure = 1.0
+	h.traits.gossip = 0.0
+	card.subject = [h.id]
+	var first = Mind.press(home.w, h, card)
+	var second = Mind.press(home.w, h, card)
+	check(first.lines[0].text != second.lines[0].text, "successive firm home replies also vary without new random draws")
