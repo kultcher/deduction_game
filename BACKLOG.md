@@ -23,6 +23,10 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   mechanical effects. Choose one explanation, or explicitly frame alternatives
   without awarding both as independent defenses. [decided]
 
+  > **Decided (user, Oct 26); Claude batch:** one incident, one hearing: the NPC picks the explanation that best fits
+  > what it knows (redirect to the other person, or the source is lying); the other, if said at all,
+  > is wording only.
+
 - **Rumormonger as the sole modifier holder.** The gift excludes its own holder from
   its candidate pool. When a healthy Rumormonger is the sole Marked or Sleepwalker,
   the current fallback produces an arbitrary false pair/secret instead of useful
@@ -32,6 +36,10 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   comparison currently preserves the native fallback, with a generator-backed test.
   Found during Oct 22 integration. [open]
 
+  > **Decided (user, Oct 26); Claude batch:** a setup rule: the secret is never given to the Rumormonger unless it's
+  > Lovers (which always involve someone else); the solver's world domain learns the rule. No
+  > "no result" reading.
+
 - **From playtest 54875** (Oct 23; Claude played, the user drove; full trace analysis in
   [docs/playtest_54875_diagnosis.md](docs/playtest_54875_diagnosis.md)). The evil team
   was identified by Day 3 and the town lost anyway: one execution in six days.
@@ -40,6 +48,10 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
     against Dorian (Constance's frame that he was out on night 0) still lowered how
     much listeners credited his own word after his death, while his suspicion said
     "known good". Decide which one wins. [open]
+
+    > **Decided (user, Oct 26); Claude batch:** death settles sincerity: a known-good victim wasn't lying, so
+    > evidence against them no longer lowers how far their word is credited. Accuracy stays doubtable
+    > (poisoned readings). A consistency fix, no new numbers.
 
   - **A press with a sighting replayed the alibi word for word.** `present 48` to
     Constance (my vigil, against her "home") repeated "Home. Where else would I be?" and
@@ -159,6 +171,12 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   - **A claimed day gift but seen out at night** (Greta claimed Dowser after Isolde saw
     her on the Docks) is a reasonable suspicion pattern.
 
+  > **Decided (user, Oct 26); Claude batch:** a gift reading against an alibi offers both explanations
+  > (alibi false / report false; your own vigil stays an observation); one person's two accounts of the
+  > same night link as a conflict; "claimed a day gift, seen out at night" becomes a recognised pattern.
+  > "Killed by the Demon, so credit the victim's alibi" needs a weight: left for the balance pass.
+  > Surveyor answers (blocks and residents) are already built (Workshop overhaul, Oct 25).
+
 - **From playtest 54875: case-workshop feedback.** [decided]
 
   > **Session 2026-10-25 (B036): model/warning wording fixed; partial closure proposed.** Shared,
@@ -185,6 +203,9 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
     sat mid-text; make it the headline and highlight the card.
   - "Assume Edda: evil" appeared on the premise without the player adding it. Show where
     each assumption came from (the board, a derived inference, the private guess).
+
+  > **Decided (user, Oct 26); Claude batch:** all six bullets, presentation only. Deferred: saying what a card is
+  > offered for (it changes how evidence counts).
 
 ### NPC behaviour
 - **From playtest 54875: agreement has to reach the vote.** Six or seven good NPCs said
@@ -217,6 +238,10 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   or derive the reply's stance from the refresh's movement on the premise target.
   Overlaps "Accept is wording, not belief" above and reply-only Insight budgeting below.
   Fix before the next playtest is used to judge persuasion. [decided: direction; approach open]
+
+  > **Decided (user, Oct 26); Claude batch:** the spoken stance comes from the belief refresh itself (how far
+  > the target actually moved); the scoped reply only supplies the reasons. No belief changes, only
+  > what they say.
 
 - **From playtest 54875: Insight and Confidence barely shaped reactions.** Every good
   listener's agreement was 0.92–1.0. [open]
@@ -278,6 +303,11 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   through one gift (an Archivist or Rumormonger pair) shouldn't be undercut by invented
   night walks aimed at someone else. (user, Oct 23) [open]
 
+  > **Decided (user, Oct 26); Claude batch:** one night-story per evil member per night, shared by private answers,
+  > public readings and frames; old reports are never rewritten. Natural cracks remain (a changed
+  > scapegoat; teammates covering a night separately). A bug fix, not tuning. Fixes the `test_social`
+  > failure (section 1).
+
 - **"I've been known to sleepwalk."** (user + Claude, Oct 26) An excuse for being seen out at
   night, open to both the real Sleepwalker and evil bluffers. Cheap for the shared model: worlds already
   enumerate the modifier and its holder, so the claim is a mask over existing worlds (true if they're the
@@ -286,6 +316,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   liar (one secret per case). Needs a shared-model adapter, so Claude builds it. [decided; Claude]
   - **Lovers as an excuse** ("I was with X"): evil pairing two of its own is a two-for-one; pairing
     with a good person only works if real Lovers sometimes leave each other out to dry. Parked. [open]
+
+  > **Decided (user, Oct 26); Claude batch:** build after Codex batch 3 (it overlaps last words and pressing).
 
 - **Case 44814: asking about an already disclosed gift.** Currently "are you the X?"
   repeats confirmation and consumes a question, without requesting withheld results;
@@ -689,12 +721,24 @@ exact values remain open. The code-derived examples and clarifications are in
   [decided; exact presentation open]
 
 ### UI
+- **Case board visuals.** (user, Oct 26) The board cards are crowded: on a small card the text runs
+  into the "heard" line, the type and source icons stack in one corner, and the Codex "context" tag
+  sits on the edge. Rework card sizing, text fitting and where badges go (a badge strip or corner
+  slots) before adding more markers. Badges waiting on it: "shared with you privately" and "in
+  confidence" (hook built: `CardModel.disclosure_scope`/`shared_privately`/`badges`, Oct 26; nothing
+  draws them yet) and the context tag. Coordinate with "Card zoom and text extension" in
+  BACKLOG_POLISH.md. [decided: needed; design open]
+
 - **Find Links and Hints inside the Case Workshop.** (user, Oct 25) The case board's
   right-click Find Links and Hints were removed with the old Build case builder: both
   were template helpers that wrote into that panel. Bring the idea back in the Workshop
   as "what connects to this card?" using the shared model (which cards bear on a
   premise, which would merge into a contradiction), not the old template library.
   [decided: direction; design open]
+
+  > **Decided (user, Oct 26); Claude batch:** a "Connections" button on a Workshop card, on demand (no live cost):
+  > up to 5 board cards bearing on the same premise, ranked by how far each would move it, contradicting
+  > ones marked; one click adds a card.
 - **Headline notices.** (user, Oct 26) Milestones that get lost in the text window, shown as a
   short headline over the game, one at a time from a queue. Text only for now (flair is in
   BACKLOG_POLISH.md). [decided]
@@ -757,6 +801,15 @@ exact values remain open. The code-derived examples and clarifications are in
   Late games: seed 42's Day-3 meeting entry is 6.5 s, down from 95 s. Profile with
   `tools/replay_54875.gd` and a late-game probe (seed 42, Days 3 to 4) before adding
   evidence types; the opening replay alone doesn't reach the late game. [open]
+
+  > **Decided (user, Oct 26); Claude batch:** results stay identical throughout. (1) Stream the meeting: show
+  > testimony speaker by speaker and compute the next speaker's refresh while the current lines are up
+  > (vote rounds the same way); no threads, no change to event order. (2) Background thread for the
+  > dawn refreshes (while the morning report and headlines play) and the evening-chat refreshes (while
+  > the meeting opens): the solver uses no RNG and caches by exact inputs, so a background result is
+  > either exactly what the main thread would compute or discarded; needs thread-safe solver caches.
+  > (3) Cheaper refreshes if still needed. Measured Oct 26 (seed 42, day 3): meeting entry 6.5 s = 2.0 s
+  > evening-chat refreshes + 4.4 s testimony (10 refreshes); vote rounds 1.4-2.6 s; dawn 2.8 s.
 
 ## 3. Medium features (several days; touch a few systems)
 
@@ -886,8 +939,6 @@ exact values remain open. The code-derived examples and clarifications are in
 - **Throw a teammate under the bus:** a pressured minion distances themselves from the
   demon; the demon goes along with town conclusions to build trust. (DESIGN) [open]
 
-- **Claims/reveals timeline** next to the location timeline. (DESIGN) [open]
-
 - **Bot builds Case Workshop cases.** (user + Claude, Oct 25; deferred) The bot ranks
   suspects with a hand-built heuristic (`autoplay.gd::_scores`, including the legacy
   night-sighting scale) and builds cases only from two-card template matches
@@ -927,6 +978,10 @@ exact values remain open. The code-derived examples and clarifications are in
   > every living NPC and +0.15 with the protectee; privately, +0.05 with the listener (+0.15 if it's the
   > protectee). Once per sigil, caps hold, evil reacts the same. No adapter for the shared model in this
   > batch (Claude adds it; the card is context until then).
+
+  > **Decided (user, Oct 26); Claude batch:** the shared-model side (after Codex's cards): a held ward counts as a
+  > Demon attack at that door that night, with the same route reasoning as a murder. No new weights.
+  > Fills the "Protection + quiet night + sighting" template gap.
 
 - **Reactive meetings: speak up when the last statement concerns you.** (user, Oct 24)
   After each meeting statement, every listener runs cheap yes/no checks: does it name

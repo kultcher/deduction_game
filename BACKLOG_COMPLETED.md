@@ -3,6 +3,16 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Closed Oct 26, 2026
+
+<!-- was in 3. Medium features -->
+- **Claims/reveals timeline** next to the location timeline. (DESIGN) [open]
+
+  > **Closed (user + Claude, Oct 26):** already covered by the case board's Statements view (claims,
+  > hints, refusals, home claims, opinions, accusations per person over time). The one gap, telling
+  > a claim told only to you from a public one, has a hook (`CardModel.disclosure_scope`) and waits on
+  > "Case board visuals" in BACKLOG.md.
+
 ## Built Oct 25, 2026 (NPC interactions and Codex batch 2)
 
 Built on `npc/interactions` (Claude) and `codex/backlog-batch-2` (Codex), both merged into main on

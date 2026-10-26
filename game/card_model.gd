@@ -33,6 +33,31 @@ const VIEW_KINDS = {
 ## someone else): repeats add a disclosure to the existing card instead of a new card.
 const MERGE_KINDS = ["claim", "info", "sighting", "alibi"]
 
+## How what a card says reached you, for the case-board visuals rework. Scaffolding only:
+## no view reads it yet (BACKLOG.md "Case board visuals"; the badge layout comes first).
+##   "private": told to you one-to-one (a conversation, an approach); nobody has said it
+##              to the town yet, as far as you've heard.
+##   "public":  you heard it at a meeting (said to everyone), at least once.
+##   "":        your own observations and setup facts (nobody told you).
+static func disclosure_scope(card: Dictionary) -> String:
+	var told: Array = card.get("learned", []).filter(func(d): return d.get("via", "") not in ["", "player", "town"])
+	if told.is_empty():
+		return ""
+	return "public" if told.any(func(d): return d.get("public", false)) else "private"
+
+static func shared_privately(card: Dictionary) -> bool:
+	return disclosure_scope(card) == "private"
+
+## Badge ids a card would carry, in display order. Scaffolding: the board doesn't draw
+## these yet. confidential: card numbers you promised to keep quiet (Game.confidences).
+static func badges(card: Dictionary, confidential: Dictionary = {}) -> Array:
+	var out: Array = []
+	if shared_privately(card):
+		out.append("private")
+	if confidential.has(card.get("n", 0)):
+		out.append("confidential")
+	return out
+
 static func view_of(card: Dictionary) -> String:
 	var k: String = card.get("kind", "")
 	if k == "deduction":

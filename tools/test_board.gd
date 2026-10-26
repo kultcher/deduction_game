@@ -24,6 +24,7 @@ func _init() -> void:
 	_test_layout_real_game()
 	_test_state_filters()
 	_test_theme_fallback()
+	_test_private_scope_hook()
 	print("FAILURES: %d" % fails)
 	quit()
 
@@ -218,6 +219,24 @@ func _test_theme_fallback() -> void:
 	var p = UITheme.panel("popup")
 	_check(p is StyleBoxFlat, "without art, panels keep the flat look")
 	_check(UITheme.make() is Theme, "a theme builds with no art present")
+
+## Scaffolding for the case-board visuals rework: the hook exists; no view draws it yet.
+func _test_private_scope_hook() -> void:
+	var g = _game(4242)
+	var n = g.w.living_good()[0]
+	g.state = "talk"
+	var num: int = g.add_card({"kind": "claim", "subject": [n.id], "role": "seer", "source": n.id, "private": true,
+		"text": "%s told you privately they are the Seer." % n.name})
+	var card: Dictionary = g.board[num - 1]
+	_check(CardModel.shared_privately(card) and CardModel.badges(card) == ["private"], "a claim told one-to-one is private")
+	g.confidences[num] = n.id
+	_check(CardModel.badges(card, g.confidences) == ["private", "confidential"], "and confidential once you've promised")
+	g.state = "meeting"
+	g.add_card({"kind": "claim", "subject": [n.id], "role": "seer", "source": n.id,
+		"text": "%s claims to be the Seer." % n.name})
+	_check(CardModel.disclosure_scope(card) == "public", "said to the town later: public (one card, two disclosures)")
+	var own: Dictionary = g.board[0]
+	_check(CardModel.disclosure_scope(own) == "", "your own observations and setup facts have no scope")
 
 func _check(ok: bool, what: String) -> void:
 	print(("PASS " if ok else "FAIL ") + what)
