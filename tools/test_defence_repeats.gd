@@ -87,22 +87,50 @@ func _challenges(size: int) -> void:
 	var reading = {"day": 0, "role": "seer", "data": {"pair": [d.id, other.id], "yes": true}, "text": "One reads as the Demon", "shared": true}
 	source.info_log = [reading]
 	Mind.apply_info(w, source, source, reading, 1.0)
+	# One incident, one hearing (Oct 26): "it's the other one" and "the reading is wrong"
+	# can't both be offered. They point at the other when they suspect them more...
+	d.suspicion[other.id] = 0.6
+	d.suspicion[source.id] = 0.2
 	var first = Mind.defend_self(w, d, source.id)
-	check("pair_other" in first.moves and "lying" in first.moves, "a named pair produces the expected rival and lying challenge")
+	check("pair_other" in first.moves and not ("lying" in first.moves) and not ("misled" in first.moves), "suspecting the other more, a named pair gets the rival explanation only")
 	var once = observer.suspicion.duplicate(true)
 	w.day += 1
 	Mind.defend_self(w, d, source.id)
-	check(observer.suspicion == once and _defences(observer).size() == 2, "the same rival and challenge do not stack on the next day")
-	var challenges = _defences(observer).filter(func(entry): return entry.meta.scope.type == "challenge")
-	check(challenges.size() == 1 and challenges[0].meta.scope.reading == Shared.reading(source.id, reading).id, "a challenge is bound to the exact original reading")
-	source.ledger[Mind.info_eid(source.id, reading)].weight = 0.0
-	var new_reading = reading.duplicate(true)
+	check(observer.suspicion == once and _defences(observer).size() == 1, "the same rival does not stack on the next day")
+	# ...and challenge the reading when they trust the other more than the source.
+	var g2 = _game(size)
+	var w2 = g2.w
+	var source2 = w2.living_good()[0]
+	var d2 = w2.living_good()[1]
+	var observer2 = w2.living_good()[2]
+	var other2 = w2.living_good()[3]
+	d2.role = "surveyor"
+	d2.secret = {}
+	d2.traits.confidence = 0.7
+	source2.role = "seer"
+	source2.claimed_role = "seer"
+	source2.claim_public = true
+	var reading2 = {"day": 0, "role": "seer", "data": {"pair": [d2.id, other2.id], "yes": true}, "text": "One reads as the Demon", "shared": true}
+	source2.info_log = [reading2]
+	Mind.apply_info(w2, source2, source2, reading2, 1.0)
+	d2.suspicion[other2.id] = 0.1
+	d2.suspicion[source2.id] = 0.5
+	var second = Mind.defend_self(w2, d2, source2.id)
+	check("lying" in second.moves and not ("pair_other" in second.moves), "trusting the other more, a confident nominee says the reading is a lie, and only that")
+	var once2 = observer2.suspicion.duplicate(true)
+	w2.day += 1
+	Mind.defend_self(w2, d2, source2.id)
+	check(observer2.suspicion == once2 and _defences(observer2).size() == 1, "the same challenge does not stack on the next day")
+	var challenges = _defences(observer2).filter(func(entry): return entry.meta.scope.type == "challenge")
+	check(challenges.size() == 1 and challenges[0].meta.scope.reading == Shared.reading(source2.id, reading2).id, "a challenge is bound to the exact original reading")
+	source2.ledger[Mind.info_eid(source2.id, reading2)].weight = 0.0
+	var new_reading = reading2.duplicate(true)
 	new_reading.day = 1
-	source.info_log = [new_reading]
-	Mind.apply_info(w, source, source, new_reading, 1.0)
-	Mind.defend_self(w, d, source.id)
-	challenges = _defences(observer).filter(func(entry): return entry.meta.scope.type == "challenge")
-	check(_defences(observer).size() == 3 and challenges.size() == 2 and challenges.any(func(entry): return entry.meta.scope.reading == Shared.reading(source.id, new_reading).id), "a genuinely different original report has a distinct challenge, while the repeated rival keeps one owner")
+	source2.info_log = [new_reading]
+	Mind.apply_info(w2, source2, source2, new_reading, 1.0)
+	Mind.defend_self(w2, d2, source2.id)
+	challenges = _defences(observer2).filter(func(entry): return entry.meta.scope.type == "challenge")
+	check(challenges.size() == 2 and challenges.any(func(entry): return entry.meta.scope.reading == Shared.reading(source2.id, new_reading).id), "a genuinely different original report has a distinct challenge")
 
 func _plea(size: int) -> void:
 	var g = _game(size)

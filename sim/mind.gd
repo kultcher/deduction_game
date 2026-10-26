@@ -2011,13 +2011,18 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 				effs_by_move["red_herring"] = [[d.id, -0.12, true, "says they're the Seer's red herring", ""]]
 				defence_scopes["red_herring"] = {"type": "challenge", "mode": "misled", "reading": WorkshopLedger.reading(src_id, rd).id}
 			elif pair.size() == 2 and d.id in pair:
+				# One incident, one hearing: "it's the other one" accepts the reading, "the
+				# reading is wrong" rejects it, so never both. Point at the other only when
+				# that's what they believe (good: they suspect the other at least as much as
+				# the source; evil: the other isn't a teammate); otherwise challenge it below.
 				var other: String = pair[0] if pair[1] == d.id else pair[1]
-				if w.by_id.has(other) and w.by_id[other].alive:
+				var fits: bool = (not Evil.is_teammate(w, d, other)) if d.is_evil() else susp(d, other) >= susp(d, src_id)
+				if fits and w.by_id.has(other) and w.by_id[other].alive:
 					lines.append(say(d, "One of the two, %s said. It isn't me, so look at %s." % [src.name, w.by_id[other].name]))
 					moves.append("pair_other")
 					effs_by_move["pair_other"] = [[d.id, -0.06, true, "points at the other one in the pair", ""], [other, 0.06, true, "%s says it's the other one in the pair" % d.name, ""]]
 					defence_scopes["pair_other"] = {"type": "rival", "source": src_id, "other": other}
-			if moves.size() < 2 and not ("red_herring" in moves):
+			if moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves):
 				if trait_of(d, "confidence") > 0.6:
 					lines.append(say(d, "Then %s is lying, and you should ask yourselves why." % src.name))
 					moves.append("lying")
