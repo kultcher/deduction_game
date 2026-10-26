@@ -26,6 +26,7 @@ func run():
 	hide_rows()
 	repeated_role_gift()
 	private_gift_terms()
+	totem_signpost()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -223,3 +224,14 @@ func private_gift_terms():
 				var expected = 4 if openness > 0.75 else (3 if openness > 0.45 else (2 if openness > 0.15 else 1))
 				check(Mind._target_tier(g.w, n) == expected, "private tier applies only the approved gift terms under public-roll conditions")
 				check(g.w.rng.state == probe.state, "gift-type tuning retains exactly one jitter draw")
+
+func totem_signpost():
+	var g = fresh()
+	g.w.totem = {"loc": "well", "material": "market", "day": 1, "owner": g.w.minion().id}
+	g.events = []
+	var rng = g.w.rng.state
+	g.loc = "well"
+	g._search()
+	check(g.board.any(func(c): return c.kind == "totem" and "will seek a new hiding place" in c.text), "totem-burned receipt warns of a new hiding place")
+	check(g.events.any(func(e): return e.k == "headline" and e.kind == "totem" and "will seek a new hiding place" in e.subtitle), "totem warning also appears as a headline")
+	check(g.w.totem.is_empty() and g.w.rng.state == rng, "totem signpost preserves burn behavior and RNG")

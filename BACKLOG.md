@@ -927,6 +927,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > **Decided (user, Oct 26); Codex batch 3:** signpost only: the totem-burned receipt adds that the
   > Revenant's spirit "will seek a new hiding place". Balance stays open. Also gets a headline notice.
 
+  > **Implemented (Codex batch 3):** The burned-totem log, receipt and headline warn that the spirit will seek a new hiding place. Search/burn state and RNG are unchanged in focused checks; replacement balance stays open.
+
 - **The ward as evidence, and a visible save.** Your ward isn't a card today, and a ward
   that stops an attack leaves no sign. Make the ward a card (who, door, night) and let a
   held ward leave a mark (a scorched sigil) as physical proof the demon came to that

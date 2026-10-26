@@ -1111,10 +1111,10 @@ func _search() -> void:
 	var tt: Dictionary = w.find_totem(l)
 	if not tt.is_empty():
 		var mat: String = C.BLOCKS[tt["material"]]["trace"]
-		_narr("Wedged out of sight at %s you find a crude totem of bone and twine, caked with %s. It reeks of the grave. You burn it." % [w.loc_name(l), mat])
-		_headline("totem", "A Revenant's totem is burned")
+		_narr("Wedged out of sight at %s you find a crude totem of bone and twine, caked with %s. It reeks of the grave. You burn it. The Revenant's spirit will seek a new hiding place." % [w.loc_name(l), mat])
+		_headline("totem", "A Revenant's totem is burned", "Its spirit will seek a new hiding place.")
 		_facts([{"kind": "totem", "subject": [], "block": tt["material"], "loc": l, "source": "evidence", "day": w.day, "phase": w.phase,
-			"text": "A Revenant's totem, hidden at %s and found on day %d, caked with %s (from %s)." % [w.loc_name(l), w.day, mat, C.block_name(tt["material"])]}])
+			"text": "A Revenant's totem, hidden at %s and found on day %d, caked with %s (from %s). The Revenant's spirit will seek a new hiding place." % [w.loc_name(l), w.day, mat, C.block_name(tt["material"])]}])
 		if tt.get("freed", "") != "":
 			_narr("As it burns, you feel the curse on the town lift. Whoever it turned is themselves again.")
 			_facts([{"kind": "curse_lifted", "subject": [], "source": "player", "day": w.day, "phase": w.phase,
