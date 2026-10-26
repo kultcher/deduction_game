@@ -2277,7 +2277,7 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   the trace (tried: "Odette and Constance talking at the tavern" with the Square trace at
   Hollis's death scene).
 
-  > **Ready for Codex (Oct 25):** fix the native dedup found below: `Argue.check`'s
+  > **Implemented in Codex batch 2 (Oct 25):** fix the native dedup found below: `Argue.check`'s
   > template-plus-cards key omits the subject, so a trace match against two people in one
   > conversation offers only one. Include the subject in the key; test two participants on one card.
 
@@ -2291,6 +2291,11 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   > emits locations for both conversation participants; `workshop/live_assessment.gd::activity_card`
   > adapts evening conversations as movement evidence. Recheck the exact link/preview example; any
   > remaining gap is a specific route/UI issue.
+
+  > **Batch 2 verification:** the native key now includes the subject. One conversation
+  > combined with one trace offers both participants, while duplicate matches for the same
+  > person still collapse. Focused checks cover both input orders and a repeated receipt.
+  > The wider trace-linking/preview item remains open; no evidence weights changed.
 
 - **Protection + quiet night + sighting** (user, Oct 23). [decided]
 
