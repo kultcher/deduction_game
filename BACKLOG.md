@@ -737,6 +737,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > rows matching any of them. Pinned cards on hidden rows stay visible. Hiding never removes cards or links.
   > (Selected-first ordering is already built: B110, BACKLOG_COMPLETED.md.)
 
+  > **Implemented (Codex batch 3):** The row-only toggle reuses B110 selection/order exactly (confirmed in chat): people filters for person rows, places for place rows. It disables without that row selection, ORs selected rows, and preserves pins, cards and links. Focused layout/UI checks cover these cases.
+
 - **Long dropdowns in columns.** Once a dropdown exceeds roughly eight options,
   consider multiple columns: at most eight options per column for an uncategorized
   list, or columns grouped by existing categories. Example: the deduction planner's

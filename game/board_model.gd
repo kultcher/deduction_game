@@ -51,6 +51,9 @@ static func layout(cards: Array, view: String, ctx: Dictionary) -> Dictionary:
 		var promoted: Array = rows.filter(func(row): return row.id in selected)
 		promoted.append_array(rows.filter(func(row): return row.id not in selected))
 		rows = promoted
+	var hide_rows: bool = ctx.get("hide_unselected", false) and not selected.is_empty()
+	if hide_rows:
+		rows = rows.filter(func(row): return row.id in selected)
 	var row_ids = {}
 	for r in rows:
 		row_ids[r["id"]] = true
@@ -83,13 +86,13 @@ static func layout(cards: Array, view: String, ctx: Dictionary) -> Dictionary:
 				mark = "nominated" if r2 == card.get("nominee", "") else "voted_yes"
 			_add(items, cells, card["n"], r2, CardModel.time_key(t), mark, r2)
 			need_town = need_town or r2 == "town"
-	if need_town and not row_ids.has("town"):
+	if need_town and not hide_rows and not row_ids.has("town"):
 		rows.append({"id": "town", "label": "Town", "kind": "town"})
 	# Drop items whose row or column isn't on the board (a dead block id, a future slot).
 	var kept: Array = []
 	var cells2 = {}
 	for it in items:
-		if (row_ids.has(it["row"]) or it["row"] == "town") and col_keys.has(it["col"]):
+		if (row_ids.has(it["row"]) or (it["row"] == "town" and not hide_rows)) and col_keys.has(it["col"]):
 			var ck = "%s|%s" % [it["row"], it["col"]]
 			if not cells2.has(ck):
 				cells2[ck] = []

@@ -43,6 +43,7 @@ var card_list
 var board                     # ui/board_view.gd
 var tray                      # ui/deduction_tray.gd
 var view_tabs: Array = []
+var hide_unselected: CheckBox
 var rows_btn: Button
 var day_label: Label
 var profile                   # ui/profile_panel.gd
@@ -148,6 +149,12 @@ func build(font: Font) -> void:
 		state.rows_by = "person" if state.rows_by == "place" else "place"
 		state.changed.emit())
 	rows_btn.tooltip_text = "Places & sightings: arrange by place or person."
+	hide_unselected = CheckBox.new()
+	hide_unselected.text = "Hide Unselected"
+	hide_unselected.toggled.connect(func(on):
+		state.hide_unselected = on
+		_refresh_board())
+	filters.add_child(hide_unselected)
 	clear_btn = _btn(filters, "Clear filters", _clear_filters)
 	clear_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 2, 4, 6))
 	clear_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.color("paper").lightened(0.1), UITheme.color("border"), 2, 4, 6))
@@ -579,6 +586,11 @@ func _refresh_board() -> void:
 		b.set_pressed_no_signal(b.get_meta("view") == board.board_view())
 	rows_btn.text = "Rows: " + ("places" if state.rows_by == "place" else "people")
 	rows_btn.visible = board.board_view() == "places"
+	var people_rows = board.board_view() != "places" or state.rows_by == "person"
+	var selected: Dictionary = state.people if people_rows else state.places
+	hide_unselected.disabled = selected.is_empty()
+	hide_unselected.set_pressed_no_signal(state.hide_unselected)
+	hide_unselected.tooltip_text = ("Select people filters first." if people_rows else "Select place filters first.") if selected.is_empty() else "Show rows matching any selected filter. Pinned cards remain visible."
 	board.rebuild()
 	tray.queue_redraw()
 	_update_day_label()

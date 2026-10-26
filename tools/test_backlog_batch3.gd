@@ -23,6 +23,7 @@ func run():
 	await headlines()
 	await setup_counts()
 	await ward_warnings()
+	hide_rows()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -142,4 +143,29 @@ func ward_warnings():
 	check(g.w.tools.ward == 1 and g.state == "night", "canceling a ward confirmation spends nothing")
 	var output = g.command("ward " + person.id)
 	check(g.w.tools.ward == 0 and g.ward_log.has(1) and "You chalk a warding sigil" in output, "typed ward commands go straight through and consume exactly one use")
+	scene.free()
+
+func hide_rows():
+	var Layout = preload("res://game/board_model.gd")
+	var cards = [{"n": 1, "kind": "sighting", "source": "player", "subject": ["a", "b"], "block": "square", "day": 1, "phase": 0}, {"n": 2, "kind": "deduction", "supports": [1], "pins": {"places": Vector2(500, 500)}}]
+	var original = JSON.stringify(cards)
+	var ctx = {"day": 1, "phase": 0, "blocks": C.BLOCKS.keys(), "people": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}], "rows_by": "place", "selected_blocks": ["square", "hill"], "hide_unselected": true}
+	var hidden = Layout.layout(cards, "places", ctx)
+	check(hidden.rows.map(func(row): return row.id) == ["square", "hill"], "several explicit row filters are ORed with existing selected-first order")
+	check(hidden.pinned == [2] and JSON.stringify(cards) == original, "hiding rows preserves pins, cards and links")
+	ctx.selected_blocks = []
+	check(Layout.layout(cards, "places", ctx).rows.size() == 4, "no active row selection leaves every row visible")
+	ctx.rows_by = "person"
+	ctx.selected_people = ["b"]
+	hidden = Layout.layout(cards, "places", ctx)
+	check(hidden.rows.size() == 1 and hidden.rows[0].id == "b" and hidden.items.size() == 1, "person rows reuse the existing person selection rule")
+	var scene = load("res://ui/main.tscn").instantiate()
+	scene.show_script_at_start = false
+	root.add_child(scene)
+	var cv = scene.case_view
+	cv._refresh_board()
+	check(cv.hide_unselected.disabled and cv.hide_unselected.tooltip_text != "", "hide toggle is disabled and explained without a current row selection")
+	scene.case_state.places.square = true
+	cv._refresh_board()
+	check(not cv.hide_unselected.disabled, "an explicit place filter enables place-row hiding")
 	scene.free()
