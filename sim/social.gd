@@ -466,4 +466,6 @@ static func answer_is_role(w, n, role: String) -> Dictionary:
 		Mind.set_trust(w, n, n.trust - cost, "the Demonologist guessed my gift wrong (%s; %d wrong so far)" % [role, n.role_guesses])
 		w.dlog.think(n.id, "about_role", "Asked if they are the %s (wrong): gives the usual non-answer." % role)
 	var line = "Why do you keep asking me that?" if n.role_guesses >= 3 else "What my gift is, I'll keep to myself."
+	if n.role_guesses == 2:
+		line = "You're grasping at straws, and I'm running out of patience."
 	return {"lines": [Mind.say(n, line)], "facts": []}

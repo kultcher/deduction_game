@@ -16,6 +16,7 @@ func _run() -> void:
 	_neutral_opinion()
 	_distrust()
 	_relationships()
+	_role_guess_warning()
 	print("Batch 2: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func fresh():
@@ -254,3 +255,23 @@ func _relationships() -> void:
 	var public_before = JSON.stringify(g.w.town_relationships)
 	g.w.npcs[0].friends.append(g.w.npcs[1].id)
 	check(JSON.stringify(g.w.town_relationships) == public_before, "public setup bonds do not alias secret-modifiable friendship arrays")
+
+func _role_guess_warning() -> void:
+	var g = fresh()
+	for n in [g.w.living_good()[0], g.w.minion()]:
+		var mine: String = g.w.evil_plan.bluffs[n.id] if n.is_evil() else n.role
+		var wrong: String = "seer" if mine != "seer" else "warden"
+		n.trust = 0.8
+		n.trust_cap = 1.0
+		n.max_tier = 0
+		n.claim_public = false
+		n.role_guesses = 0
+		for i in range(1, 4):
+			n.pressed_today = 0 # Isolate the existing per-wrong-guess cost.
+			var before: float = n.trust
+			var state = g.w.rng.state
+			var reply = Social.answer_is_role(g.w, n, wrong)
+			var expected = "What my gift is, I'll keep to myself." if i == 1 else ("You're grasping at straws, and I'm running out of patience." if i == 2 else "Why do you keep asking me that?")
+			check(reply.lines[0].text == expected and reply.facts.is_empty(), "first/second/third guess cadence is noncommittal for both alignments")
+			check(n.role_guesses == i and is_equal_approx(before - n.trust, 0.02 * i), "warning preserves the wrong-guess counter and existing cost")
+			check(g.w.rng.state == state, "wrong-guess wording introduces no random choice")

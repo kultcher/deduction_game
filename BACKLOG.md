@@ -1115,7 +1115,7 @@ exact values remain open. The code-derived examples and clarifications are in
   conversation slots, daily fatigue, and the across-days wrong-guess counter distinct.
   [decided; warning cadence open]
 
-  > **Decided (user, Oct 25); ready for Codex:** on the second wrong guess to the same NPC, the reply is the
+  > **Decided (user, Oct 25); implemented in Codex batch 2:** on the second wrong guess to the same NPC, the reply is the
   > patience warning ("You're grasping at straws, and I'm running out of patience."); from the
   > third, the existing "Why do you keep asking me that?". Wording only: costs and counters
   > unchanged, and the warning never confirms or denies the guess.
@@ -1123,6 +1123,10 @@ exact values remain open. The code-derived examples and clarifications are in
   > **Prep B100 (9cb8782; partial):** `sim/social.gd::answer_is_role` already counts wrong guesses and
   > gives a generic repeat response. Add anticipatory patience wording without confirming a guess;
   > distinguish slots/fatigue from this counter and private `game/game.gd::set_guess` guesses.
+
+  > **Batch 2 verification:** the second-guess non-answer warns about patience; first and
+  > third-onward replies, costs and counters retain their existing behavior. Focused checks
+  > cover both alignments, all three replies, unchanged costs, facts and RNG.
 
 - **Track incrimination versus a suspected misread explanation?** Evaluate a separate
   representation for "a Seer yes implicates this person, but I favor red herring or
