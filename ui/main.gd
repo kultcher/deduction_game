@@ -552,6 +552,14 @@ func _stream_meeting() -> void:
 	if case_view.visible and case_view.workshop != null:
 		case_view.workshop.refresh()
 
+## Finish a streamed meeting at once (tests and scripted clicks that can't wait).
+func finish_streaming() -> void:
+	while g != null and g.meeting_streaming():
+		var text: String = g.testimony_step()
+		if text != "":
+			_print(text)
+	_refresh_all()
+
 var _last_phase_key = ""
 
 func _refresh_all() -> void:
