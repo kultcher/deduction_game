@@ -644,6 +644,9 @@ func begin_meeting() -> Array:
 ## then Mind.testimony_start / testimony_step.
 func open_meeting() -> void:
 	set_log_time()
+	# Hold belief refreshes from here until each speaker's turn (or the end of the
+	# testimony): one refresh per mind instead of one now and another a moment later.
+	defer_beliefs = true
 	executed_today = ""
 	meeting = {"block": "", "block_count": 0, "nominated": [], "nominators": [], "results": [], "pending": {}}
 	meeting["accusations"] = []
