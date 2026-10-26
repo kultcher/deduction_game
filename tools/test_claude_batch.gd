@@ -5,11 +5,13 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Presentation = preload("res://game/workshop_presentation.gd")
+const Evil = preload("res://sim/evil.gd")
 var fails = 0
 var checks = 0
 
 func _init() -> void:
 	_stance_from_belief()
+	_one_night_story()
 	print("Claude batch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -51,3 +53,35 @@ func _stance_from_belief() -> void:
 	_check(said == "I'd already taken that into account.", "a retold case they'd already weighed: says so (%s)" % said)
 	said = Presentation._belief_stance_text(g, n, "conflict", t.id, 0.2, "accept", "Those accounts cannot all be accurate.")
 	_check(said == "Those accounts cannot all be accurate.", "conflicts are left alone")
+
+## One story per evil member per night: a made-up sighting repeats that night's fake watch
+## report, never someone else (Constance, 54875).
+func _one_night_story() -> void:
+	var same = 0
+	var other_block_quiet = 0
+	var tried = 0
+	for sd in range(4410, 4430):
+		var g = _game(sd)
+		var w = g.w
+		var m = w.minion()
+		var goods: Array = w.living_good()
+		var x = goods[0]
+		var block: String = m.home_block
+		m.info_log.append({"day": 1, "role": "nightwatch", "fake": true, "shared": false, "true": false,
+			"data": {"block": block, "seen": [x.id]}, "text": "I watched it: I saw %s pass by" % x.name})
+		w.day = 2
+		tried += 1
+		var r = Evil.fake_night_sighting(w, m, 1)
+		if r != null and r["who"] == x.id:
+			same += 1
+		var away: String = C_other(block)
+		if Evil.fake_night_sighting(w, m, 1, away, "street") == null:
+			other_block_quiet += 1
+	_check(same == tried, "a window sighting repeats the member's own watch report for that night (%d/%d)" % [same, tried])
+	_check(other_block_quiet == tried, "and nothing is invented on another block")
+
+func C_other(block: String) -> String:
+	for b in preload("res://sim/content.gd").BLOCKS:
+		if b != block:
+			return b
+	return block
