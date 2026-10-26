@@ -861,6 +861,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > and they name their top suspect (evil: the scapegoat, via the existing plan). Nothing reveals
   > alignment. The claim is an ordinary public claim card; execution and aftermath happen exactly once.
 
+  > **Implemented (Codex batch 3):** After Martyr substitution is decided, the actual condemned speaks before death: true gift or existing bluff as an ordinary public claim, then top suspect or existing scapegoat. Silenced NPCs only try to speak (confirmed in chat). Readings remain withheld. Focused outcome tests verify ordering, substitution, silence and one-time execution/aftermath.
+
 - **Meeting and vote talk** (returns with the rebuttal work). Votes are silent for now;
   PR #3's vote explanations were removed. When vote talk comes back: evil voters must
   draw from the same spread of reasons as good ones (in PR #3 they all said "the case is

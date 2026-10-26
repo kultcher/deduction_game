@@ -30,6 +30,7 @@ func run():
 	await column_menus()
 	ward_evidence()
 	bot_options()
+	last_words()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -377,3 +378,54 @@ func bot_options():
 		var command = Bot.new_talk_option(g, {})
 		check(command.begins_with("ask guard " if role == "warden" else "ask watch "), "bot covers each other supported gift request")
 		check(Bot.new_action_kind(g, command) == ("request_guard" if role == "warden" else "request_watch"), "run-summary classification counts each gift action")
+
+func last_words():
+	for mode in ["good", "evil", "silenced", "martyr"]:
+		var g = fresh()
+		var w = g.w
+		var goods: Array = w.living_good()
+		var condemned = w.minion() if mode == "evil" else goods[0]
+		var saved = goods[1]
+		var suspect = goods[2]
+		# Isolate public-claim effects from unrelated gift aftermath in these fixtures.
+		for n in goods:
+			n.role = "clerk"
+			n.secret_mod = ""
+			n.secret = {}
+		condemned.claim_public = false
+		condemned.max_tier = 0
+		condemned.suspicion = {suspect.id: 1.0}
+		condemned.workshop_state = {}
+		condemned.info_log = [{"role": "clerk", "day": 0, "shared": false, "data": {"pair": [saved.id, suspect.id], "role": "seer"}, "text": "withheld reading"}]
+		if mode == "evil": w.evil_plan.scapegoat = suspect.id
+		if mode == "silenced": condemned.silenced = true
+		var nominee = saved if mode == "martyr" else condemned
+		if mode == "martyr":
+			condemned.role = "martyr"
+			condemned.martyr_target = saved.id
+		w.phase = C.EVENING
+		g.state = "meeting"
+		w.meeting = {"block": nominee.id, "results": [{"nominee": nominee.id, "by": "player", "yes": [], "player_yes": false}], "nominators": [], "nominated": []}
+		g.events = []
+		var alive_before = w.living().size()
+		g._close_meeting()
+		var speech: Array = g.events.filter(func(e): return e.k == "speech" and e.speaker == condemned.id)
+		check(w.living().size() == alive_before - 1 and w.executions.size() == 1 and not condemned.alive, "one actual condemned death and execution record after substitution")
+		check(saved.alive if mode == "martyr" else true, "the substituted nominee survives")
+		if mode == "silenced":
+			check(speech.is_empty() and g.events.any(func(e): return e.k == "narration" and "tries to speak" in e.text), "silenced condemned get narration but no spoken words or gift revelation")
+			check(not condemned.claim_public, "silence never publishes the hidden gift")
+		else:
+			var claim: String = w.evil_plan.bluffs[condemned.id] if condemned.is_evil() else condemned.role
+			check(speech.size() == 2 and C.role_name(claim) in speech[0].text and suspect.name in speech[1].text, "last words give true gift/bluff and top suspect without alignment")
+			check(g.board.any(func(c): return c.kind == "claim" and c.source == condemned.id and c.role == claim and c.learned.any(func(d): return d.public)), "last-word claim is an ordinary public board receipt")
+			check(not condemned.info_log[0].shared, "last words do not disclose an extra reading backlog")
+			var claim_pos = -1
+			var death_pos = -1
+			for i in range(g.events.size()):
+				if g.events[i].k == "speech" and g.events[i].speaker == condemned.id and claim_pos < 0: claim_pos = i
+				if g.events[i].k == "headline" and g.events[i].kind in ["execution", "martyr"]: death_pos = i
+			check(claim_pos >= 0 and death_pos > claim_pos, "last words precede the actual execution or Martyr aftermath")
+		var snapshot = JSON.stringify([w.executions, g.events, w.rng.state])
+		g._close_meeting()
+		check(JSON.stringify([w.executions, g.events, w.rng.state]) == snapshot, "closing a meeting twice cannot repeat death, aftermath or last words")

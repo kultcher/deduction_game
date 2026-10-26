@@ -2027,13 +2027,19 @@ func _after_vote() -> void:
 	state = "meeting"
 	_prompt("%s'wait' for the town." % ("" if "player" in w.meeting["nominators"] else "'nominate <name>', or "))
 
+func _last_words(n) -> void:
+	var response = Mind.last_words(w, n)
+	_lines(response.lines)
+	_facts(response.facts)
+
 func _close_meeting() -> void:
+	if w.meeting.get("closed", false): return
 	var frozen = capture_prediction("before_execution", {"on_block": w.meeting["block"]})
 	if w.meeting["block"] != "":
 		w.dlog.add("player_execution_context", "player", w.meeting["block"], {"prediction_id": frozen["id"],
 			"known_cards": board.filter(func(c): return not c.get("deleted", false)).map(func(c): return c["n"])},
 			"Evidence and private theory available before execution; no automatic judgement of whether a mistake was reasonable.")
-	var ex = w.end_meeting()
+	var ex = w.end_meeting(_last_words)
 	if ex != "" and w.meeting.has("martyr"):
 		var mt = w.by_id[w.meeting["martyr"]["martyr"]]
 		var sv = w.by_id[w.meeting["martyr"]["saved"]]

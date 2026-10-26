@@ -1547,7 +1547,7 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 ## Come out with their gift at the meeting (if not already) and share their unshared
 ## readings with the town. Adds the lines and cards; shared by the claim step and the
 ## reveal tier of an accusation.
-static func _go_public(w, n, lines: Array, facts: Array) -> void:
+static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = true) -> void:
 	if not n.claim_public:
 		var claim: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 		n.claimed_role = claim
@@ -1560,7 +1560,7 @@ static func _go_public(w, n, lines: Array, facts: Array) -> void:
 		for l in w.living():
 			if l != n:
 				hear_claim(w, l, n.id, claim, 0.5, "public")
-	if C.has_readings(n.claimed_role):
+	if share_readings and C.has_readings(n.claimed_role):
 		var shared_this_turn: Array = []
 		for e in n.info_log:
 			if e["shared"] or e.get("disowned", false):
@@ -1577,6 +1577,31 @@ static func _go_public(w, n, lines: Array, facts: Array) -> void:
 				if l != n:
 					apply_info(w, l, n, e, heard_weight(l, n))
 		lines.append_array(info_lines(w, n, shared_this_turn, "town", not lines.is_empty()))
+
+## Last words are a claim and a spoken suspicion, not a fresh evidence argument.
+## Reuse ordinary public claiming without adding the speaker's reading backlog.
+static func last_words(w, n) -> Dictionary:
+	if n.silenced:
+		return {"lines": ["%s tries to speak, but no sound comes. Their voice is still stolen." % n.name], "facts": []}
+	var lines: Array = []
+	var facts: Array = []
+	var claim: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	if n.claim_public and n.claimed_role != claim:
+		n.claim_public = false # With nothing to hide, correct their earlier claim.
+	_go_public(w, n, lines, facts, false)
+	if lines.is_empty():
+		lines.append(_claim_line(n, claim))
+		facts.append({"kind": "claim", "subject": [n.id], "role": claim, "source": n.id,
+			"text": "%s publicly claims to be the %s." % [n.name, C.role_name(claim)]})
+	var suspect = ""
+	if n.is_evil():
+		suspect = w.evil_plan.get("scapegoat", "")
+	else:
+		var ranked: Array = ranked_suspects(w, n)
+		if not ranked.is_empty(): suspect = ranked[0].id
+	if suspect != "" and w.by_id.has(suspect):
+		lines.append(say(n, "I still suspect %s." % w.by_id[suspect].name))
+	return {"lines": lines, "facts": facts}
 
 static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	if n.silenced:
