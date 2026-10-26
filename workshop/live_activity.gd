@@ -309,7 +309,7 @@ static func _profile_paths(view: Dictionary, person: Dictionary, night: int, pro
 		if destinations.is_empty():
 			rate = 0.0
 	if profile == "demon":
-		var scenes: Array = view.get("timeline", {}).get("events", []).filter(func(e): return e.kind == "demon_death" and e.at.day == night)
+		var scenes: Array = view.get("timeline", {}).get("events", []).filter(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == night)
 		if not scenes.is_empty():
 			var victim: String = scenes[0].subjects[0]
 			destinations = view.people.filter(func(p): return p.id == victim).map(func(p): return p.home)
@@ -359,7 +359,7 @@ static func relationships(view: Dictionary, cards: Array) -> Array:
 			if card.block not in blocks[id]:
 				blocks[id].append(card.block)
 			for event in view.get("timeline", {}).get("events", []):
-				if event.kind != "demon_death" or event.at.day != card.night:
+				if event.kind not in ["demon_death", "demon_attack"] or event.at.day != card.night:
 					continue
 				var victims: Array = view.people.filter(func(p): return p.id in event.subjects)
 				if victims.is_empty() or card.block in C.route(person.home, victims[0].home):

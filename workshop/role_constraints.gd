@@ -153,7 +153,7 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 	if sexton_night >= 0:
 		if view.people.filter(func(p): return preload("res://workshop/live_history.gd").alive_at_night(view, p.id, sexton_night)).size() >= 5:
 			return false
-		if view.get("timeline", {}).get("events", []).any(func(e): return e.kind == "demon_death" and e.at.day == sexton_night):
+		if view.get("timeline", {}).get("events", []).any(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == sexton_night):
 			return false
 		for card in cards:
 			if card.get("quoted", false):
@@ -170,7 +170,7 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 			return false
 		var attack_routes: Array = Activity.demon_routes(view.people[demon].home, view.people[ids.find(card.source)].home)
 		var fits_approach: bool = attack_routes.any(func(route): return (route.path[route.path.size() - 2] if route.path.size() >= 2 else view.people[ids.find(card.source)].home) == card.data.block)
-		if not fits_approach or view.get("timeline", {}).get("events", []).any(func(e): return e.kind == "demon_death" and e.at.day == card.night):
+		if not fits_approach or view.get("timeline", {}).get("events", []).any(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == card.night):
 			return false
 	var live: bool = bluffs
 	if Activity.available(view):

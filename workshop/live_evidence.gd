@@ -14,10 +14,10 @@ const REPORT_FIELDS = {
 	"warden": ["target"],
 }
 const FIELDS = ["block", "loc", "locs", "home", "night", "role", "secret_kind", "fear", "withheld", "package", "roles", "duty_claim", "duty", "vigil", "dropped",
-	"nominee", "by", "yes", "no", "player_yes", "count", "threshold", "outcome", "alive_before", "owner", "material", "crime_night", "scene", "scene_block", "victim", "ward", "guard_claim", "watch_claim"]
+	"nominee", "by", "yes", "no", "player_yes", "count", "threshold", "outcome", "alive_before", "owner", "material", "crime_night", "scene", "scene_block", "victim", "ward", "guard_claim", "watch_claim", "target"]
 const KINDS = ["home", "haunt", "info", "claim", "sighting", "conversation", "vigil", "alibi",
 	"trace", "dropped", "totem", "death", "execution", "quiet", "vote", "martyr", "curse",
-	"curse_lifted", "silenced", "knell", "secret", "hint", "refusal", "opinion", "accusation", "case"]
+	"curse_lifted", "silenced", "knell", "secret", "hint", "refusal", "opinion", "accusation", "case", "ward", "scorched_sigil"]
 
 ## Raw public cards, including bounded Medium retellings. Hearing an opinion
 ## through a gift does not turn it into independent evidence of alignment.

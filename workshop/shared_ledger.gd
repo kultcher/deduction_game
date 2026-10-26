@@ -327,7 +327,7 @@ static func supported(receipt: Dictionary) -> bool:
 	if receipt.get("kind") == "info" and receipt.get("content", {}).get("role") == "medium":
 		var item: Dictionary = receipt.content.get("data", {}).get("item", {})
 		return item.get("type") in ["reading", "sighting", "home", "guard"]
-	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") == "sighting" and receipt.observed_at.phase in ["morning", "afternoon", "evening", "night"]) or (receipt.get("kind") == "alibi" and receipt.observed_at.phase == "night") or receipt.kind in ["conversation", "home", "haunt", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint", "vote"]
+	return (receipt.get("kind") == "info" and receipt.get("content", {}).get("role") in Assess.ROLES) or (receipt.get("kind") == "claim" and receipt.content.get("role") in Assess.C.GOOD_ROLES) or (receipt.get("kind") == "sighting" and receipt.observed_at.phase in ["morning", "afternoon", "evening", "night"]) or (receipt.get("kind") == "alibi" and receipt.observed_at.phase == "night") or receipt.kind in ["conversation", "home", "haunt", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint", "vote", "ward", "scorched_sigil"]
 
 static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) -> Array:
 	if number in path or path.size() >= 64:
