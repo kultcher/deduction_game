@@ -2642,7 +2642,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 			text = "I can't put my finger on it, but something's off about %s." % t.name
 			shown = 0.5
 		else:
-			text = "%s seems all right to me." % t.name
+			text = ("%s seems all right to me." % t.name) if level < 0.35 else ("I don't really know %s that well." % t.name)
 	elif level < 0.8:
 		text = "I have my doubts about %s." % t.name
 	else:

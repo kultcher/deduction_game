@@ -515,7 +515,7 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   Do not create incriminating opinion evidence solely from neutrality.
   (Oct 21) [decided; boundaries/wording open]
 
-  > **Decided (user, Oct 25); ready for Codex:** in `Mind.answer_opinion`'s 0.25-0.45 band, keep the existing
+  > **Decided (user, Oct 25); implemented in Codex batch 2:** in `Mind.answer_opinion`'s 0.25-0.45 band, keep the existing
   > "something's off" roll; when it doesn't fire, say "seems all right" below 0.35 and "I'm not sure
   > what to think of X yet" from 0.35. Wording only: no change to levels, the roll, what's logged or
   > any evidence (opinions aren't evidence). Same for good and evil.
@@ -523,6 +523,10 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   > **Prep B052 (9cb8782; open):** `sim/mind.gd::answer_opinion` currently chooses reassuring/suspicious
   > wording after willingness gates. Add a neutral perceived state; test uncertainty and middle suspicion
   > without exposing hidden alignment or turning an opinion into evidence.
+
+  > **Batch 2 verification:** the non-suspicious reply now says "I don't really know X that well"
+  > from 0.35, per the user clarification. Both alignments retain the original roll, levels and facts;
+  > focused boundary/RNG checks cover 0.34, 0.35 and 0.44.
 
 - **Explain distrust of the player.** Good and evil NPCs with low player trust should
   be able to say so and, where remembered, cite the reasons: misguided executions,

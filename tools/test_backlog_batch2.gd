@@ -13,6 +13,7 @@ func _init() -> void:
 func _run() -> void:
 	_walker_wording()
 	_medium_hearths()
+	_neutral_opinion()
 	print("Batch 2: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func fresh():
@@ -86,3 +87,51 @@ func _medium_hearths() -> void:
 		if entries.size() == 1:
 			visited.append(entries[0].data.dead)
 	check(visited == [recent.id, older.id, recent.id], "fake hearth sequence matches real eligibility and revisits")
+
+func _neutral_opinion() -> void:
+	var g = fresh()
+	var w = g.w
+	var n = w.living_good()[0]
+	var t = w.living_good()[1]
+	n.traits.gossip = 1.0
+	n.traits.insight = 1.0
+	n.npc_trust[t.id] = 0.5
+	n.workshop_state = {}
+	# Find both outcomes of the original roll, then exercise the boundary with
+	# identical RNG states. Wording must not alter the draw, level or facts.
+	var calm_state: int = 0
+	var off_state: int = 0
+	var probe = RandomNumberGenerator.new()
+	for seed_value in range(1, 100):
+		probe.seed = seed_value
+		var before: int = probe.state
+		if probe.randf() >= 0.2:
+			calm_state = before
+		else:
+			off_state = before
+		if calm_state != 0 and off_state != 0:
+			break
+	for alignment in ["good", "evil"]:
+		n.alignment = alignment
+		w.evil_plan.scapegoat = w.living_good().back().id
+		if n.is_evil():
+			Mind.shadow_run(w, n, func(sh): sh.workshop_state = {})
+		for level in [0.34, 0.35, 0.44]:
+			n.suspicion[t.id] = level
+			if n.is_evil():
+				n.shadow.suspicion[t.id] = level
+			for state in [calm_state, off_state]:
+				n.pressed_today = 0
+				n.dialogue_memory = {}
+				w.rng.state = state
+				probe.state = state
+				probe.randf()
+				var reply = Mind.answer_opinion(w, n, t)
+				var text: String = reply.lines[0].text
+				check(w.rng.state == probe.state, "neutral wording preserves the original opinion RNG")
+				check(Mind.susp(n, t.id) == level, "neutral wording preserves the underlying level")
+				if state == off_state:
+					check("something's off" in text and reply.facts.size() == 1, "existing suspicious-roll outcome is unchanged")
+				else:
+					check(("seems all right" in text) if level < 0.35 else ("don't really know %s that well" % t.name) in text, "neutral boundary uses the approved wording for either alignment")
+					check(reply.facts.is_empty(), "a neutral or reassuring opinion creates no incriminating fact")
