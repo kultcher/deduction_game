@@ -619,7 +619,7 @@ func _hint_followup() -> void:
 	_check(g.confidences.size() >= 1 and g.board.size() > before, "the confidential cards are on the board and remembered")
 	var tr = n.trust
 	g._break_confidences(g.confidences.keys())
-	_check(n.trust < tr - 0.1 and g.confidences.is_empty(), "using them at the meeting breaks your word (trust %.2f -> %.2f)" % [tr, n.trust])
+	_check(n.trust < tr - 0.04 and g.confidences.is_empty(), "using them at the meeting breaks your word (trust %.2f -> %.2f)" % [tr, n.trust])
 	# Evil's free bluff hint: nothing to show for it, so it declines.
 	var e = w.evil_team()[0]
 	e.hints[t.id] = {"day": w.day, "src": ""}

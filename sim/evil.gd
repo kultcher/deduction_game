@@ -667,6 +667,12 @@ static func make_fake_info(w) -> void:
 			mate = n  # alone: "clear a teammate" options fall back to clearing themself
 		var entry = {}
 		var why = ""
+		# An agreed player request for tonight (as Mind.requested_targets; no Mind here).
+		var rq: Dictionary = n.gift_request
+		var asked: Array = rq.get("targets", []) if rq.get("night", -1) == w.day and rq.get("role", "") == bluff else []
+		if bluff == "warden" and not asked.is_empty():
+			# Agreed to guard someone for the Demonologist: that's the door they'll name.
+			n.warden_log[str(w.day)] = asked[0]
 		match bluff:
 			"surveyor":
 				if w.day != 0:
@@ -745,7 +751,17 @@ static func make_fake_info(w) -> void:
 				var others_s: Array = goods.filter(func(x): return x != s and x != mate.id)
 				var others_m: Array = goods.filter(func(x): return x != mate.id and x != s)
 				var late = w.living().size() <= 5
-				if w.by_id[s].alive and (w.day % 2 == 1 or w.day == 0 or late) and not others_s.is_empty():
+				if not asked.is_empty():
+					# Looked where the Demonologist asked: a 'yes' only frames the scapegoat.
+					pair = asked.slice(0, 2)
+					if pair.size() < 2:
+						var fill: Array = goods.filter(func(x): return not (x in pair) and x != mate.id)
+						if fill.is_empty():
+							continue
+						pair.append(w.pick(fill))
+					yes = s in pair
+					why = "looks where asked (%s); %s" % [str(asked), "frames the scapegoat" if yes else "a harmless 'no'"]
+				elif w.by_id[s].alive and (w.day % 2 == 1 or w.day == 0 or late) and not others_s.is_empty():
 					pair = [s, w.pick(others_s)]
 					yes = true
 					why = "frames scapegoat %s with a 'yes'" % s
@@ -761,14 +777,14 @@ static func make_fake_info(w) -> void:
 				entry = {"data": {"pair": pair, "yes": yes},
 					"text": "I looked at %s: %s" % [w._names(pair), "one of them reads as the demon" if yes else "neither is the demon"]}
 			"nightwatch":
-				var block: String = w.by_id[s].home_block
+				var block: String = asked[0] if not asked.is_empty() else w.by_id[s].home_block
 				var seen: Array = []
 				for k in n.intel:
 					var it: Dictionary = n.intel[k]
 					if it["kind"] == "walker" and it.get("night", -1) == w.day and it.get("block", "") == block and w.by_id[it["about"]].alive:
 						if not (it["about"] in seen):
 							seen.append(it["about"])
-				if not (s in seen) and w.day >= 1:
+				if not (s in seen) and w.day >= 1 and w.by_id[s].home_block == block:
 					seen.append(s)
 					why = "watches scapegoat's block; adds fake sighting of %s to true ones" % s
 				else:

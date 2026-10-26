@@ -37,6 +37,14 @@ var rivals: Array = []
 var secret = {}          # personal reason to be out at night (good NPCs only), may be empty
 var secret_mod = ""      # secret modifier on top of their gift: delusional | marked | lovers | sleepwalker
 var lover = ""           # Secret Lovers: the other lover's id
+var withdrawn_since = ""   # the Lover whose death left them withdrawn (visible in the profile)
+
+## The player relationship beyond trust.
+var fear_eased = false       # the player kept a ward/vigil promise to them: fear term halved
+var protect_lock = false     # promised to tell the player their gift once protected: slower to go public
+var request_day = -1         # day they last asked the player for something (one request a day)
+var grievances: Array = []   # player actions that cost trust: {key, why, drop, day, serious, evidence, apologised}
+var gift_request = {}        # an agreed player request for tonight: {night, role, target|pair|block}
 
 ## Gift state.
 var vet_used = false         # Veteran: survived their one attack
