@@ -11,6 +11,9 @@ func _init() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	# Headless windows start at 64x64; use the real UI's layout before hit testing.
+	root.size = Vector2i(1920, 1080)
+	root.content_scale_size = root.size
 	await _log()
 	var scene = load("res://ui/main.tscn").instantiate()
 	root.add_child(scene)
@@ -47,7 +50,9 @@ func _run() -> void:
 	var evil_at = _hint_point(profile.body, C.ROLES["poisoner"]["desc"])
 	_check(seer_at.x >= 0 and evil_at.x >= 0, "good and evil role words inside a card link both expose their own tooltips")
 	if seer_at.x >= 0:
+		_check(Rect2(Vector2.ZERO, Vector2(root.size)).has_point(profile.body.global_position + seer_at), "the role interaction point lies inside the actual viewport")
 		await _move(profile.body.global_position + seer_at)
+		_check(profile.body.get_local_mouse_position().distance_to(seer_at) < 1.0, "synthetic motion updates the pointer used by rich-text hover")
 		_check(profile._hovered_card == number, "hovering a role hint retains the enclosing card target")
 		await _click(profile.body.global_position + seer_at, MOUSE_BUTTON_RIGHT)
 		_check(scene.case_view.card_menu.visible and scene.case_view._context_card == number, "right-clicking the role text opens the enclosing card's actions")
@@ -110,19 +115,21 @@ func _settle() -> void:
 func _move(at: Vector2) -> void:
 	var motion = InputEventMouseMotion.new()
 	motion.position = at
-	root.push_input(motion, true)
+	motion.global_position = at
+	Input.parse_input_event(motion)
 	await _settle()
 
 func _click(at: Vector2, button: int) -> void:
 	await _move(at)
 	var event = InputEventMouseButton.new()
 	event.position = at
+	event.global_position = at
 	event.button_index = button
 	event.pressed = true
-	root.push_input(event, true)
+	Input.parse_input_event(event)
 	await process_frame
 	event.pressed = false
-	root.push_input(event, true)
+	Input.parse_input_event(event)
 	await _settle()
 
 func _check(ok: bool, label: String) -> void:

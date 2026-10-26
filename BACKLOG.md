@@ -125,7 +125,13 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
     (The other wording lines in this entry were fixed Oct 25; see BACKLOG_COMPLETED.md.)
   - **`tools/test_text_ui.gd` fails on main (two role-hover checks).** Known failure since
     at least Oct 24. Find whether the checks or the UI are wrong; fix the test if it's stale,
-    or the hover if it's a real bug, and report which. [decided] (Ready for Codex, Oct 25.)
+    or the hover if it's a real bug, and report which. [decided] (Implemented in Codex batch 2, Oct 25.)
+
+    > **Batch 2 verification:** stale headless fixture, not a UI hover bug. The old test laid out
+    > the profile around x=1395 in a 64x64 viewport, and `Viewport.push_input` left the hover
+    > pointer at (0, 0). Use a 1920x1080 viewport and `Input.parse_input_event` with real pointer
+    > coordinates. All original assertions remain, plus viewport/pointer checks; the suite passes.
+    > Full default runs require `test_text_ui` green from this item onward.
   - **`tools/test_social.gd` fails on main:** "a false Night Watch's night story matches
     their fake report (20 cases)". It passes on `claude/case-reasoning` and fails on main
     since the 61251/25923 pass, so the merge carries it. It's the same family as
