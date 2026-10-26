@@ -48,6 +48,7 @@ var prediction_snapshots: Array = []
 var prediction_spoiled = false
 var case_summary: Dictionary = {}
 var show_hidden = false     # include cards the player has hidden
+var sigil_heard = {} # Receipt number -> listener IDs; trust rewards are once per NPC per sigil.
 var ward_log = {}           # night -> who you warded
 ## Promises for tonight: {"ward": id, "vigil": {id: block}}. Kept or broken when you choose
 ## your night work.
@@ -225,6 +226,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	last_link = {}
 	log_paths = []
 	ward_log = {}
+	sigil_heard = {}
 	offer = {}
 	talk_offered = false
 	known_haunts = {}
@@ -1339,10 +1341,17 @@ func _talk_command(verb: String, rest: String) -> void:
 			_err("Apologise for what? %s" % _grievance_menu(n))
 			return
 		verb = "apologise"
+	if verb in ["present", "show", "case"]:
+		var context_card = _ward_context_card(rest)
+		if not context_card.is_empty():
+			r = _show_ward_context(context_card, [n])
+			verb = "ward_context"
 	if n.silenced and verb in ["ask", "a", "tell", "t", "present", "accuse", "show", "press"]:
 		_narr("%s opens their mouth, but no sound comes. They can't speak (until tomorrow evening)." % n.name)
 		return
 	match verb:
+		"ward_context":
+			pass
 		"ask", "a":
 			var p = rest.split(" ", false)
 			var topic = p[0].to_lower() if p.size() > 0 else ""
@@ -2077,6 +2086,8 @@ func _night_command(verb: String, rest: String) -> void:
 			ward_log[w.day] = n.id
 			w.player_vigil = ""
 			_narr("You chalk a warding sigil on %s's door." % n.name)
+			_facts([{"kind": "ward", "source": "player", "subject": [n.id], "target": n.id, "loc": "home_" + n.id, "block": n.home_block, "night": w.day, "day": w.day, "phase": C.NIGHT, "private": true,
+				"text": "Night %d: you spent your ward on %s's door on %s." % [w.day, n.name, C.block_name(n.home_block)]}])
 			_resolve_night()
 		"vigil", "watch":
 			var b = find_block(rest)
@@ -2168,6 +2179,9 @@ func _morning_report() -> void:
 			var held = "Your ward held at %s's door last night." % w.by_id[save.target].name
 			_narr(held)
 			_headline("ward", held)
+			var saved = w.by_id[save.target]
+			_facts([{"kind": "scorched_sigil", "source": "evidence", "subject": [saved.id], "target": saved.id, "loc": "home_" + saved.id, "block": saved.home_block, "night": save.night, "day": save.night, "phase": C.NIGHT, "private": true,
+				"text": "You alone found a scorched sigil on %s's door on %s: the Demon came to that door on night %d and your ward held." % [saved.name, C.block_name(saved.home_block), save.night]}])
 	_screen(_map())
 	_card_workers()
 	_card_conversations()
@@ -2868,9 +2882,42 @@ func delete_deduction(num: int) -> String:
 	return "Deduction #%d deleted." % num
 
 ## Present a deduction to the whole meeting (once per meeting).
+## Context receipts are shown directly, without a shared-model adapter or numeric
+## evidence effect. Claude owns that adapter; this only delivers the approved trust.
+func _ward_context_card(rest: String) -> Dictionary:
+	var parts = rest.strip_edges().split(" ", false)
+	if parts.size() != 1: return {}
+	var num = parts[0].trim_prefix("#").to_int()
+	if num < 1 or num > board.size(): return {}
+	var card: Dictionary = board[num - 1]
+	return card if not card.get("deleted", false) and card.kind in ["ward", "scorched_sigil"] else {}
+
+func _show_ward_context(card: Dictionary, listeners: Array) -> Dictionary:
+	var public_show = state in ["meeting", "nomination"]
+	if public_show:
+		card["private"] = false
+		_disclose(card, _disclosure(card))
+	var rewarded: Array = []
+	if card.kind == "scorched_sigil":
+		var heard: Array = sigil_heard.get(card.n, [])
+		for listener in listeners:
+			if not listener.alive or listener.id in heard: continue
+			heard.append(listener.id)
+			rewarded.append(listener.id)
+			var bonus = 0.05 + (0.15 if listener.id == card.target else 0.0)
+			Mind.set_trust(w, listener, listener.trust + bonus, "the Demonologist showed a scorched ward sigil")
+		sigil_heard[card.n] = heard
+	w.dlog.add("player_ward_context", "player", card.get("target", ""), {"card": card.n, "listeners": listeners.map(func(n): return n.id), "rewarded": rewarded, "public": public_show})
+	return {"lines": ["You show %s: %s" % ["the town" if public_show else ", ".join(PackedStringArray(listeners.map(func(n): return n.name))), card.text]], "facts": []}
+
 func _present_deduction(rest: String, progress: Callable = Callable()) -> void:
 	if presented_today:
 		_err("You've already had the floor today.")
+		return
+	var context_card = _ward_context_card(rest)
+	if not context_card.is_empty():
+		presented_today = true
+		_lines(_show_ward_context(context_card, w.living()).lines)
 		return
 	var num = rest.strip_edges().trim_prefix("#").to_int()
 	if num < 1 or num > board.size() or board[num - 1]["kind"] != "deduction" or board[num - 1].get("deleted", false):

@@ -944,6 +944,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > protectee). Once per sigil, caps hold, evil reacts the same. No adapter for the shared model in this
   > batch (Claude adds it; the card is context until then).
 
+  > **Implemented (Codex batch 3):** Ward spending records person, door and night; an actual stopped attack yields a private next-morning sigil. Presentations reward each NPC once per sigil (confirmed in chat), +0.05 normally or +0.20 total for the protectee, with caps and equal evil handling. Cards are UI context only; no shared-model adapter or evidence numbers were added. Tests cover an actual save, private-then-public repeats, silent/evil listeners, caps and reset.
+
 - **Reactive meetings: speak up when the last statement concerns you.** (user, Oct 24)
   After each meeting statement, every listener runs cheap yes/no checks: does it name
   me, or name a person or role that's part of my private information (my own gift,

@@ -28,6 +28,7 @@ func run():
 	private_gift_terms()
 	totem_signpost()
 	await column_menus()
+	ward_evidence()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -290,3 +291,48 @@ func column_menus():
 	check(balanced.get_children().map(func(col): return col.get_children().filter(func(n): return n is Button).size()) == [6, 6, 5], "handcrafted pickers also split evenly into eight-option columns")
 	picker.free()
 	balanced.free()
+
+func ward_evidence():
+	var g = fresh()
+	var target = g.w.living_good()[0]
+	for n in g.w.living_good():
+		n.role = "clerk"
+		n.secret_mod = ""
+		if n != target:
+			for i in range(20): g.w.evil_plan.failed.append(n.id)
+	g.state = "night"
+	g.command("ward " + target.id)
+	var spent: Array = g.board.filter(func(c): return c.kind == "ward")
+	var sigils: Array = g.board.filter(func(c): return c.kind == "scorched_sigil")
+	check(spent.size() == 1 and spent[0].target == target.id and spent[0].loc == "home_" + target.id and spent[0].night == 1, "spending a ward records protectee, door and night")
+	check(g.w.ward_saves.any(func(save): return save.target == target.id and save.night == 1) and sigils.size() == 1, "an actual blocked attack leaves one scorched-sigil card next morning")
+	if sigils.is_empty(): return
+	var sigil: Dictionary = sigils[0]
+	check(sigil.private and not sigil.learned.any(func(d): return d.public), "the newly found sigil is player-only")
+	var other = g.w.minion()
+	for n in g.w.living():
+		n.trust_cap = 1.0
+		n.trust = 0.3
+	g.state = "talk"
+	g.talk_with = other
+	g.questions_left = 3
+	other.silenced = true
+	var deliveries = g.workshop_deliveries.size()
+	g.command("present %d" % sigil.n)
+	check(is_equal_approx(other.trust, 0.35) and g.questions_left == 2, "private showing rewards even an evil/silenced listener and costs one question")
+	g.command("present %d" % sigil.n)
+	check(is_equal_approx(other.trust, 0.35), "repeated private showing cannot reward the same listener twice")
+	g.state = "meeting"
+	g.presented_today = false
+	g.command("present %d" % sigil.n)
+	check(is_equal_approx(target.trust, 0.5) and is_equal_approx(other.trust, 0.35), "meeting showing grants protectee +0.20 total and skips previously rewarded listeners")
+	check(g.w.living().all(func(n): return n == target or is_equal_approx(n.trust, 0.35)), "every other living NPC receives +0.05 irrespective of alignment")
+	check(g.presented_today and sigil.learned.any(func(d): return d.public) and not sigil.private, "meeting showing consumes the normal floor and makes the receipt public")
+	check(g.workshop_deliveries.size() == deliveries, "showing protection context does not invent a shared-model adapter")
+	var second = g.add_card({"kind": "scorched_sigil", "subject": [other.id], "source": "evidence", "target": other.id, "text": "Another distinct sigil", "private": true})
+	other.trust = 0.49
+	other.trust_cap = 0.5
+	g._show_ward_context(g.board[second - 1], [other])
+	check(is_equal_approx(other.trust, 0.5), "sigil trust honors existing caps")
+	g.new_case(4242, 10)
+	check(g.sigil_heard.is_empty(), "new cases reset per-sigil reward ownership")
