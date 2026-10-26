@@ -66,7 +66,7 @@ func _init() -> void:
 		rumors.role = "rumormonger"
 		rumors.data = {"pair": [n.id, target.id], "secret": "lovers"}
 		var compatible = Solver.solve(prepared.view, [rumors]).worlds
-		check(not compatible.is_empty() and compatible.any(func(w): return w.modifier == "lovers" and w.marked == -1) and compatible.all(func(w): return w.modifier == "lovers" or w.holders == 1 << prepared.view.people.map(func(p): return p.id).find(source.id)), "Rumormonger permits Lovers and the native self-holder fallback without assuming one Marked")
+		check(not compatible.is_empty() and compatible.any(func(w): return w.modifier == "lovers" and w.marked == -1) and compatible.all(func(w): return w.modifier == "lovers"), "Rumormonger permits Lovers without assuming one Marked (and never a self-held secret: setup rule)")
 		var double = report.duplicate(true)
 		double.source = target.id
 		check(Solver.solve(prepared.view, [report, double]).worlds.is_empty(), "two different healthy Surveyors cannot both hold a unique gift")
@@ -115,18 +115,23 @@ func _init() -> void:
 	print("Workshop integration: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
+## Setup rule (Oct 26): the Rumormonger never holds the secret alone, so a healthy one
+## always has someone real to name, and the model rules out the self-held world.
 func _rumormonger_fallback() -> void:
+	var never = true
+	var seen = 0
+	for sd in range(200, 260):
+		var g = Game.new()
+		g.detailed_logging = false
+		g.new_case(sd, 7 if sd % 2 == 0 else 10)
+		for n in g.w.npcs:
+			if n.role == "rumormonger":
+				seen += 1
+				if n.secret_mod not in ["", "lovers"]:
+					never = false
+	check(never and seen > 5, "setup never gives the Rumormonger a secret it would hold alone (%d cases)" % seen)
 	var g = _game(7)
 	var source = g.w.living_good()[0]
-	for n in g.w.npcs:
-		n.secret_mod = ""
-	source.role = "rumormonger"
-	source.secret_mod = "marked"
-	source.poisoned = false
-	g.w.day = 0
-	g.w.phase = C.NIGHT
-	g.w._receive_info(source, "")
-	var report: Dictionary = source.info_log[-1]
 	var people: Array = g.w.npcs.map(func(n): return {"id": n.id, "name": n.name, "home": n.home_block})
 	var evil = 0
 	for i in range(people.size()):
@@ -134,9 +139,10 @@ func _rumormonger_fallback() -> void:
 			evil |= 1 << i
 	var view = {"people": people, "evil_count": 2, "alignment_epoch": "now", "world_options": {"modifiers": C.SECRET_MOD_LIST}}
 	var index: int = people.map(func(n): return n.id).find(source.id)
+	var other: String = g.w.living_good()[1].id
 	var world = {"evil": evil, "marked": index, "modifier": "marked", "holders": 1 << index}
-	var card = {"kind": "report", "source": source.id, "role": "rumormonger", "observed_at": {"day": g.w.day, "phase": "night"}, "data": report.data}
-	check(not report["true"] and Solver._report_holds(view, world, card, {}), "actual healthy self-Marked Rumormonger fallback remains a legal live explanation")
+	var card = {"kind": "report", "source": source.id, "role": "rumormonger", "observed_at": {"day": 0, "phase": "night"}, "data": {"pair": [other, g.w.living_good()[2].id], "secret": "marked"}}
+	check(not Solver._report_holds(view, world, card, {}), "a world where the Rumormonger holds the secret alone can't produce its report")
 
 func _audit() -> void:
 	var input = {"evidence": [], "listener": {"legacy_evidence": [

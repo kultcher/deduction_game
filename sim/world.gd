@@ -379,6 +379,12 @@ func _assign_secret_mod() -> void:
 	if goods.size() < 2:
 		return
 	var k: String = pick(C.SECRET_MOD_LIST)
+	if k != "lovers":
+		# The Rumormonger's gift can't name its own holder, so it never holds the secret
+		# alone (Lovers always involve someone else). The shared model knows the rule.
+		goods = goods.filter(func(n): return n.role != "rumormonger")
+		if goods.size() < 2:
+			return
 	if k in ["lovers", "sleepwalker"]:
 		# These send their holder out at night: never on a role that is already out at
 		# night, so nobody has two reasons to be out (Case 22485).

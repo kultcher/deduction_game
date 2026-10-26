@@ -102,11 +102,11 @@ static func gift_time(card: Dictionary) -> bool:
 
 static func rumor(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
 	var source: int = _person_index(view, card.source)
-	# The native gift excludes itself. With no other modifier holder, even a healthy
-	# Rumormonger receives an arbitrary pair/secret fallback. Keep that legal world;
-	# it cannot establish the reported pair or secret type.
+	# Setup rule (Oct 26): the Rumormonger never holds the secret alone (its gift can't
+	# name itself), so a world where the source is the only holder can't produce a
+	# healthy report.
 	if source >= 0 and (world.holders & ~(1 << source)) == 0:
-		return card.data.secret in C.SECRET_MOD_LIST and card.data.pair.all(func(id): return id != card.source) and answer.get("positive", []).is_empty()
+		return false
 	if world.modifier != card.data.secret:
 		return false
 	var pair_mask: int = 0
