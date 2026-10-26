@@ -1073,7 +1073,7 @@ exact values remain open. The code-derived examples and clarifications are in
   status. Track which relationships the player has learned; avoid duplicate reveals.
   Add conversational wording and useful attribution. [decided; sharing rates open]
 
-  > **Decided (user, Oct 25); ready for Codex:** a profile note only, no board card (the shared model can't
+  > **Decided (user, Oct 25); implemented in Codex batch 2:** a profile note only, no board card (the shared model can't
   > read relationship cards). Every rolled friendship and rivalry counts as public town knowledge;
   > Lovers stay secret. Learned the same way and at the same chance as haunts, when the player asks
   > someone about a person, and attributed ("Agnes says Hollis and Merrin are close"). Track what
@@ -1082,6 +1082,11 @@ exact values remain open. The code-derived examples and clarifications are in
   > **Prep B097 (9cb8782; open):** `sim/world.gd::_assign_relationships` stores true relationships, not
   > player knowledge. Add attributed learned facts alongside `sim/mind.gd::reveal_trait`/social
   > disclosures; never render private bond scores or hidden Lovers directly from setup arrays.
+
+  > **Batch 2 verification:** public setup bonds are captured before secret Lovers can add a
+  > friendship. Asking about a person uses the haunt disclosure chance and records attributed
+  > notes on both profiles, once per bond, with no cards or trust scores. Focused checks cover
+  > chance, attribution, duplicate prevention, reset and secret-added bond exclusion.
 
 - **Ward promises should outrank vigil promises.** Increase the relative value of a
   fulfilled ward promise; add substantial plausible-success credit for a kept ward

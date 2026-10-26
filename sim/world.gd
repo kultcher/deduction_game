@@ -45,6 +45,7 @@ var executed_today = ""
 var executions: Array = []          # {day, id, nominator, yes, player_yes, player_nominated}
 var night_walkers: Array = []       # last night: {id, block, path, why}
 var dropped = {}                    # location -> [{night, material (block), owner, who, why}] not yet found
+var town_relationships: Array = [] # Rolled public bonds, captured before secret Lovers add a friendship.
 var public_claims: Array = []       # {day, who, role}
 var stances = {}                    # accuser id -> {target, day}: their latest public accusation
 var totem = {}                      # the Revenant's hidden totem: {loc, day, owner} or {}
@@ -420,6 +421,17 @@ func _assign_relationships() -> void:
 			if f:
 				n.friends.append(f.id)
 				f.friends.append(n.id)
+
+	# Keep public setup bonds distinct from friendships added by secret modifiers.
+	town_relationships = []
+	for i in range(npcs.size()):
+		for j in range(i + 1, npcs.size()):
+			var a = npcs[i]
+			var b = npcs[j]
+			if b.id in a.friends:
+				town_relationships.append({"kind": "friend", "people": [a.id, b.id]})
+			elif b.id in a.rivals:
+				town_relationships.append({"kind": "rival", "people": [a.id, b.id]})
 
 ## Personal reasons to be out at night (flavour, separate from the secret modifier).
 func _assign_secrets() -> void:

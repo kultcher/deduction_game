@@ -347,6 +347,8 @@ func _render_page(id: String, p: Dictionary) -> void:
 				_append_profile("\nOff work, often at %s." % p["haunts"], {"kinds": ["person"]})
 			else:
 				_append_profile("\nWhere they go off work: nobody's told you yet. Ask around.")
+			for relationship in p.get("relationships", []):
+				_append_profile("\n" + relationship, {"kinds": ["person"]})
 			for x in p["named"]:
 				_append_profile("\nReadings say: " + x)
 			if g.debug_overlay:

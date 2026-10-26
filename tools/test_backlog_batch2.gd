@@ -15,6 +15,7 @@ func _run() -> void:
 	_medium_hearths()
 	_neutral_opinion()
 	_distrust()
+	_relationships()
 	print("Batch 2: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func fresh():
@@ -195,3 +196,61 @@ func _distrust() -> void:
 		n.trust = 0.1
 		Mind.set_trust(w, n, -0.7, "the Demonologist nominated me")
 		check(is_equal_approx(n.distrust_memory.loss, 0.1), "memory measures actual clamped trust loss")
+
+func _relationships() -> void:
+	var g = fresh()
+	var w = g.w
+	var people: Array = w.living_good()
+	var source = people[0]
+	var a = people[1]
+	var b = people[2]
+	var c = people[3]
+	var hidden_lover = people[4]
+	check(not w.town_relationships.is_empty() and g.known_relationships.is_empty(), "rolled bonds exist but start undiscovered")
+	w.town_relationships = [{"kind": "friend", "people": [a.id, b.id]}, {"kind": "rival", "people": [a.id, c.id]}]
+	# Secret modifiers can add a friendship after public bonds were captured.
+	a.friends.append(hidden_lover.id)
+	a.lover = hidden_lover.id
+	hidden_lover.lover = a.id
+	a.secret_mod = "lovers"
+	source.traits.gossip = 1.0
+	source.trust = 1.0
+	var probe = RandomNumberGenerator.new()
+	var reveal_state: int = 0
+	var skip_state: int = 0
+	for seed_value in range(1, 100):
+		probe.seed = seed_value
+		var before = probe.state
+		var roll = probe.randf()
+		if roll < 0.9 * 0.4:
+			reveal_state = before
+		elif roll >= 0.9:
+			skip_state = before
+		if reveal_state != 0 and skip_state != 0:
+			break
+	var r = {"lines": [], "facts": []}
+	w.rng.state = skip_state
+	g._maybe_tell_relationships(source, a, r)
+	check(g.known_relationships.is_empty() and r.lines.is_empty(), "haunt-equivalent chance can withhold relationship notes")
+	w.rng.state = reveal_state
+	probe.state = reveal_state
+	probe.randf()
+	var board_before = JSON.stringify(g.board)
+	g._maybe_tell_relationships(source, a, r)
+	check(g.known_relationships.size() == 2 and w.rng.state == probe.state, "haunt-equivalent all-notes roll reveals both public bonds with one draw")
+	check(r.facts.is_empty() and JSON.stringify(g.board) == board_before, "relationship learning creates profile notes and no evidence")
+	var notes: Array = g.profile_data(a.id).relationships
+	check(notes.size() == 2 and notes.all(func(text): return text.begins_with(source.name + " says ")), "profile notes retain their attributed source")
+	check(g.profile_data(b.id).relationships.size() == 1 and g.profile_data(c.id).relationships.size() == 1, "a learned bond appears on both participants' profiles")
+	check(g.profile_data(hidden_lover.id).relationships.is_empty() and not hidden_lover.name in str(notes), "a secret-added Lover friendship is not disclosed")
+	var state = w.rng.state
+	g._maybe_tell_relationships(source, b, r)
+	g._maybe_tell_relationships(source, a, r)
+	check(r.lines.size() == 2 and w.rng.state == state, "reverse and repeated questions cannot rediscover a known bond")
+	g.new_case(4242, 10)
+	check(g.known_relationships.is_empty(), "a new case resets learned relationship notes")
+	# Re-run only public setup, then apply a secret modifier: the snapshot must
+	# retain exactly the rolled bonds despite subsequent secret friendship edits.
+	var public_before = JSON.stringify(g.w.town_relationships)
+	g.w.npcs[0].friends.append(g.w.npcs[1].id)
+	check(JSON.stringify(g.w.town_relationships) == public_before, "public setup bonds do not alias secret-modifiable friendship arrays")
