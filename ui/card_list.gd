@@ -58,7 +58,7 @@ func _context_input(ev: InputEvent) -> void:
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
 
-const KIND_LABELS = {"info": "Reading", "deduction": "Theory", "alibi": "Alibi", "home": "Home", "haunt": "Haunt",
+const KIND_LABELS = {"ward": "Ward", "scorched_sigil": "Scorched sigil", "info": "Reading", "deduction": "Theory", "alibi": "Alibi", "home": "Home", "haunt": "Haunt",
 	"conversation": "Talk", "accusation": "Accusation", "case": "Case"}
 
 ## Easier to read than the raw card: a proportional font, more space between rows.

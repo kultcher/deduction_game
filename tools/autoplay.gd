@@ -32,6 +32,9 @@ const Argue = preload("res://sim/argue.gd")
 const Mind = preload("res://sim/mind.gd")
 const Metrics = preload("res://game/case_metrics.gd")
 
+const NEW_ACTIONS = ["offer_ward", "offer_vigil", "ask_person", "answer_confidence", "answer_protection", "apologise", "request_check", "request_guard", "request_watch", "keep_ward", "keep_vigil"]
+var talk_policy_used = {}
+var new_talk_counts = {}
 var g
 var transcript = false
 var passive = false
@@ -55,6 +58,7 @@ func _init() -> void:
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links"]
+	keys.append_array(NEW_ACTIONS)
 	var stats = {"good": 0, "evil": 0}
 	var case_results: Array = []
 	var scale_cases: Array = []
@@ -80,6 +84,7 @@ func _init() -> void:
 			[stats["shares"] / gf, stats["evil_shares"] / gf, stats["approaches"] / gf])
 		print("  links %.1f/case (%.1f matched), deductions %.1f/case, NPC argument evaluations %.1f/case" %
 			[stats["links"] / gf, stats["matched_links"] / gf, stats["deductions"] / gf, stats["arguments"] / gf])
+	print("  New talk actions: " + ", ".join(PackedStringArray(NEW_ACTIONS.map(func(key): return "%s=%d" % [key, stats[key]]))))
 	var summary = Metrics.aggregate(case_results)
 	print("  identification: demon %d, minion %d, both %d; identified but lost %d; eligible recorded theories %d/%d" %
 		[summary["demon_identified"], summary["minion_identified"], summary["both_identified"], summary["identified_but_lost"], summary["demon_recorded"], summary["complete"]])
@@ -109,6 +114,9 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	talked = {}
 	linked_pairs = {}
 	blocked_cmds = {}
+	talk_policy_used = {}
+	new_talk_counts = {}
+	for key in NEW_ACTIONS: new_talk_counts[key] = 0
 	_out(g.new_case(seed_v, npc_count))
 	if native:
 		g.set_workshop_effects(false)
@@ -128,7 +136,10 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 		if blocked_cmds.has(cmd):
 			cmd = _unblocked(cmd)
 		_out("\n> " + cmd)
+		var action_kind = new_action_kind(g, cmd)
 		var reply: String = g.command(cmd)
+		if action_kind != "" and not g.last_events.any(func(e): return e.k == "error"):
+			new_talk_counts[action_kind] += 1
 		_out(reply)
 		if "Cannot present" in reply:
 			blocked_cmds[cmd] = true # never retry a blocked presentation
@@ -138,6 +149,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	var r = {"winner": w.winner if w.winner != "" else "evil", "days": w.day, "reason": w.end_reason,
 		"exec_good": 0, "exec_evil": 0, "kills": 0, "lies": 0, "nominations": 0, "clemency": 0, "reveals": 0,
 		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0, "deductions": 0, "arguments": 0, "matched_links": 0, "links": 0}
+	for key in NEW_ACTIONS: r[key] = new_talk_counts[key]
 	for e in w.executions:
 		if w.by_id[e["id"]].is_evil():
 			r["exec_evil"] += 1
@@ -176,6 +188,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	if g.log_paths.is_empty():
 		g.command("log")
 	r["metrics"] = g.case_summary.duplicate(true) if not g.case_summary.is_empty() else Metrics.summarize(w, {}, false)
+	r["metrics"]["new_talk_actions"] = new_talk_counts.duplicate()
 	r["metrics"]["mode"] = "passive" if passive else "active"
 	r["metrics"]["guard_exhausted"] = guard >= 600 and g.state != "over"
 	r["metrics"]["beliefs"] = "native" if native else "shared"
@@ -418,6 +431,62 @@ func _top_suspect():
 			best = n
 	return [best, best_s]
 
+## Public UI knowledge only. Deterministic simple rules avoid repeated free-action loops.
+static func new_talk_option(game, used: Dictionary) -> String:
+	if game.state == "approach" and game.approach.get("agenda", "") == "protect":
+		var kind: String = game.approach.get("what", "vigil")
+		return "yes" if game.offer.is_empty() and (kind != "ward" or game.w.tools.ward > 0) else "no"
+	if game.state != "talk" or game.talk_with == null: return ""
+	var n = game.talk_with
+	if n.silenced: return ""
+	if not game.pending_request.is_empty():
+		if game.pending_request.kind == "confidence": return "yes"
+		var kind: String = game.pending_request.get("what", "vigil")
+		return "yes" if game.offer.is_empty() and (kind != "ward" or game.w.tools.ward > 0) else "no"
+	var prefix = "%s:%d:" % [n.id, game.w.day]
+	if not Mind.open_grievances(n).is_empty() and not used.has(prefix + "apology"):
+		used[prefix + "apology"] = true
+		return "apologise 1"
+	var known: bool = n.claim_public or n.max_tier >= 3
+	var role: String = n.claimed_role if known else ""
+	if game.offer.is_empty() and not used.has(prefix + "offer"):
+		used[prefix + "offer"] = true
+		return "offer ward" if game.w.tools.ward > 0 and role in C.INFO_ROLES else "offer vigil"
+	if game.questions_left <= 0: return ""
+	var others: Array = game.w.living().filter(func(person): return person != n)
+	if others.is_empty(): return ""
+	if game.questions_left <= 2 and role in ["seer", "warden", "nightwatch"] and not used.has(prefix + "gift_request"):
+		used[prefix + "gift_request"] = true
+		if role == "nightwatch": return "ask watch " + others[0].home_block
+		return ("ask check " if role == "seer" else "ask guard ") + others[0].id
+	if game.questions_left == 1 and not used.has(prefix + "person"):
+		used[prefix + "person"] = true
+		return "ask about " + others[0].id
+	return ""
+
+static func new_night_option(game) -> String:
+	var ward: String = game.offer.get("ward", "")
+	if ward != "" and game.w.tools.ward > 0 and game.w.by_id[ward].alive: return "ward " + ward
+	for id in game.offer.get("vigil", {}):
+		if game.w.by_id[id].alive: return "vigil " + game.offer.vigil[id]
+	return ""
+
+static func new_action_kind(game, command: String) -> String:
+	if command == "offer ward": return "offer_ward"
+	if command == "offer vigil": return "offer_vigil"
+	if command.begins_with("apologise "): return "apologise"
+	for verb in ["check", "guard", "watch"]:
+		if command.begins_with("ask " + verb + " "): return "request_" + verb
+	if command.begins_with("ask about ") and game.find_npc(command.trim_prefix("ask about "), true) != null: return "ask_person"
+	if command in ["yes", "no", "accept", "decline"]:
+		if game.state == "approach" and game.approach.get("agenda") == "protect": return "answer_protection"
+		if game.state == "talk" and not game.pending_request.is_empty():
+			return "answer_confidence" if game.pending_request.kind == "confidence" else "answer_protection"
+	if game.state == "night":
+		if command == "ward " + str(game.offer.get("ward", "")): return "keep_ward"
+		if command.begins_with("vigil ") and command.trim_prefix("vigil ") in game.offer.get("vigil", {}).values(): return "keep_vigil"
+	return ""
+
 func _decide() -> String:
 	var w = g.w
 	if passive:
@@ -435,6 +504,8 @@ func _decide() -> String:
 			"night":
 				return "sleep"
 		return "look"
+	var new_option = new_talk_option(g, talk_policy_used)
+	if new_option != "": return new_option
 	match g.state:
 		"approach":
 			return "accept" if rng.randf() < 0.7 else "decline"
@@ -518,6 +589,8 @@ func _decide() -> String:
 				return "clemency"
 			return "vote yes" if s >= 0.5 else "vote no"
 		"night":
+			var promised = new_night_option(g)
+			if promised != "": return promised
 			var sc = _scores()
 			if w.tools["ward"] > 0 and w.day >= 2 and rng.randf() < 0.5:
 				var cands: Array = w.living().filter(func(n): return n.claim_public and n.claimed_role in C.INFO_ROLES)

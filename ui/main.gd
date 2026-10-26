@@ -59,7 +59,15 @@ var roles_box: VBoxContainer
 var log_text = LogText.new()
 var new_case_confirm: ConfirmationDialog
 
+var headlines
+
+func _consume_headlines() -> void:
+	for event in g.last_events:
+		if event.k == "headline":
+			headlines.enqueue(event)
+
 func _ready() -> void:
+	preload("res://ui/column_menus.gd").watch(self)
 	var bg = ColorRect.new()
 	bg.color = UITheme.color("bg")
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -323,6 +331,11 @@ func _ready() -> void:
 	case_view.roles_requested.connect(_open_roles)
 	case_view.workshop_requested.connect(_open_live_workshop)
 
+	var headline_layer = CanvasLayer.new()
+	headline_layer.layer = 30
+	add_child(headline_layer)
+	headlines = preload("res://ui/headline_overlay.gd").new()
+	headline_layer.add_child(headlines)
 	_new_case()
 
 func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
@@ -354,8 +367,10 @@ func _new_case() -> void:
 	_case_seed = int(seed_box.value)
 	case_state.select_card(0)
 	g = Game.new()
+	headlines.clear()
 	out.clear()
 	_print(g.new_case(int(seed_box.value), int(size_opt.get_item_metadata(size_opt.selected))))
+	_consume_headlines()
 	case_view.set_game(g)
 	profile.setup(g, case_state)
 	cast_list.setup(g)
@@ -395,8 +410,14 @@ func _make_window(title: String, sz: Vector2i) -> Array:
 
 ## The roles list (the script, as in Clocktower): the town's gifts on the left; the demon's
 ## side and the secrets on the right. Each with its icon, what it does, and who has claimed it.
+static func setup_summary(count: int) -> String:
+	# Setup rules count secrets, not holders; a pair of Lovers is one secret.
+	var rules: Dictionary = C.SETUPS.get(count, {"town": count - 2, "minions": 1, "secrets": 1})
+	return "Good: %d gifted townsfolk / %d secret%s · Evil: %d minion%s / 1 demon" % [rules.town, rules.secrets, "" if rules.secrets == 1 else "s", rules.minions, "" if rules.minions == 1 else "s"]
+
 func _open_roles() -> void:
 	for ch in roles_box.get_children():
+		roles_box.remove_child(ch)
 		ch.queue_free()
 	var cols = HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 18)
@@ -411,6 +432,12 @@ func _open_roles() -> void:
 	_roles_group(left, "Gifts of the town", C.GOOD_ROLES)
 	_roles_group(right, "The demon's side: the demon and %d minion%s" % [g.w.minion_ids.size(), "" if g.w.minion_ids.size() == 1 else "s"], C.EVIL_ROLES)
 	_roles_group(right, "Secrets: one in play, on top of a gift", C.SECRET_MOD_LIST)
+	var summary = Label.new()
+	summary.name = "SetupSummary"
+	summary.text = setup_summary(g.w.n_npcs)
+	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	summary.add_theme_color_override("font_color", UITheme.color("ink"))
+	roles_box.add_child(summary)
 	if not roles_win.visible:
 		roles_win.popup_centered()
 
@@ -488,6 +515,7 @@ func _open_live_workshop(number: int = 0) -> void:
 func _run_workshop(cmd: String, progress: Callable) -> void:
 	_print("\n> " + cmd)
 	_print(await g.workshop_command(cmd, progress))
+	_consume_headlines()
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()
@@ -512,6 +540,7 @@ func _on_submit(text: String) -> void:
 func _run(cmd: String) -> void:
 	_print("\n> " + cmd)
 	_print(g.command(cmd))
+	_consume_headlines()
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()
@@ -644,7 +673,7 @@ func _refresh_actions() -> void:
 			match g.approach.get("agenda", ""):
 				"protect":
 					var pk: String = Mind.protection_kind(w, g.approach["npc"])
-					_button(actions, "Promise it: %s (free)" % ("your ward on their door" if pk == "ward" else "a vigil tonight"), func(): _run("yes"))
+					_button(actions, "Promise it: %s (free)" % ("your ward on their door (%s; promise does not spend it)" % _ward_remaining() if pk == "ward" else "a vigil tonight"), func(): _run("yes"))
 					_button(actions, "Say no", func(): _run("no"))
 				"divulge":
 					_button(actions, "Keep talking (uses this phase)", func(): _run("accept"))
@@ -656,6 +685,8 @@ func _refresh_actions() -> void:
 			_actions_talk(w)
 		"meeting":
 			action_title.text = "Day %d: the town meeting" % w.day
+			if not g.presented_today and g.board.any(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false)):
+				_button(actions, "Show your ward or scorched sigil…", func(): _card_picker("Show the town a protection receipt", func(c): return c.kind in ["ward", "scorched_sigil"], func(num, _x): _run("present %d" % num), false))
 			_map_toggle()
 			_button(actions, "Let the town speak (wait)", func(): _run("wait"))
 			if not g.presented_today:
@@ -688,7 +719,7 @@ func _refresh_actions() -> void:
 			# Tonight's promises first, so keeping your word is one click.
 			if g.offer.has("ward") and w.tools["ward"] > 0:
 				var wid: String = g.offer["ward"]
-				_button(actions, "Keep your word: ward %s's door" % w.by_id[wid].name, func(): _run("ward " + wid), C.npc_color(wid))
+				_button(actions, "Keep your word: ward %s's door (%s)" % [w.by_id[wid].name, _ward_remaining()], func(): _confirm_ward(wid), C.npc_color(wid))
 			var vblocks = {}
 			for id in g.offer.get("vigil", {}):
 				vblocks[g.offer["vigil"][id]] = true
@@ -699,12 +730,12 @@ func _refresh_actions() -> void:
 			if map.selected_block != "":
 				_button(actions, "Keep vigil on %s" % C.block_name(map.selected_block), func(): _run("vigil " + map.selected_block))
 			if _ward_target != "" and w.tools["ward"] > 0 and w.by_id[_ward_target].alive:
-				_button(actions, "Ward %s's door (once per case)" % w.by_id[_ward_target].name, func(): _run("ward " + _ward_target), C.npc_color(_ward_target))
+				_button(actions, "Ward %s's door (%s)" % [w.by_id[_ward_target].name, _ward_remaining()], func(): _confirm_ward(_ward_target), C.npc_color(_ward_target))
 			var vig = _button(actions, "Keep vigil on…", func(): pass)
 			vig.pressed.connect(func(): _list_picker(vig, "Watch which block?", C.BLOCKS.keys().map(func(b): return [C.block_name(b), "vigil " + b, null])))
 			if w.tools["ward"] > 0:
-				var wd = _button(actions, "Ward someone…", func(): pass)
-				wd.pressed.connect(func(): _people_picker(wd, "Ward whom?", func(id): _run("ward " + id), func(n): return n.alive))
+				var wd = _button(actions, "Ward someone… (%s)" % _ward_remaining(), func(): pass)
+				wd.pressed.connect(func(): _people_picker(wd, "Ward whom?", func(id): _confirm_ward(id), func(n): return n.alive))
 			_button(actions, "Sleep", func(): _run("sleep"))
 			_hint("Tip: click a block or a person on the map to pick them.")
 		"over":
@@ -750,7 +781,7 @@ func _actions_talk(w) -> void:
 	if not g.pending_request.is_empty():
 		var rq: Dictionary = g.pending_request
 		var ask: String = "Promise to keep it quiet" if rq["kind"] == "confidence" else (
-			"Promise your ward on their door" if rq.get("what", "") == "ward" else "Promise a vigil on %s tonight" % C.block_name(n.home_block))
+			"Promise your ward on their door (%s; promise does not spend it)" % _ward_remaining() if rq.get("what", "") == "ward" else "Promise a vigil on %s tonight" % C.block_name(n.home_block))
 		_button(actions, ask + " (free)", func(): _run("yes"), C.npc_color(n.id))
 		_button(actions, "Say no (free)", func(): _run("no"))
 		_hint("Anything else you do counts as no.")
@@ -799,6 +830,10 @@ func _show_popup(content: Control, anchor: Control) -> void:
 		content.queue_free()
 		return
 	_popup_anchor = anchor
+	var original_content = content
+	content = preload("res://ui/column_menus.gd").balance(content)
+	if content != original_content:
+		original_content.queue_free()
 	for ch in popup.get_children():
 		ch.queue_free()
 	# Every menu gets its own close button (Esc works too).
@@ -816,10 +851,8 @@ func _show_popup(content: Control, anchor: Control) -> void:
 	wrap.add_child(bar)
 	wrap.add_child(content)
 	content = wrap
-	popup.add_child(content)
 	var pos = Vector2i(anchor.get_screen_position()) + Vector2i(0, int(anchor.size.y)) if anchor != null else Vector2i(get_viewport_rect().size / 2.0)
-	popup.popup(Rect2i(pos, Vector2i(10, 10)))
-	popup.reset_size()
+	preload("res://ui/column_menus.gd").fit_picker(popup, content, pos)
 
 func _column(title: String) -> VBoxContainer:
 	var v = VBoxContainer.new()
@@ -848,12 +881,27 @@ func _ask_gift_picker(anchor: Control) -> void:
 	_show_popup(h, anchor)
 
 ## "Offer…": your ward on their door tonight, or a vigil on their block.
+func _ward_remaining() -> String:
+	return "%d left, once per case" % g.w.tools["ward"]
+
+func _confirm_ward(id: String) -> ConfirmationDialog:
+	var dialog = ConfirmationDialog.new()
+	dialog.dialog_text = "This spends your only ward. Ward %s?" % g.w.by_id[id].name
+	add_child(dialog)
+	dialog.confirmed.connect(func():
+		_run("ward " + id)
+		dialog.queue_free(), CONNECT_ONE_SHOT)
+	dialog.canceled.connect(dialog.queue_free, CONNECT_ONE_SHOT)
+	dialog.popup_centered()
+	return dialog
+
 func _offer_picker(anchor: Control) -> void:
 	var n = g.talk_with
 	var v = _column("Offer %s…" % n.name)
-	var wb = _button(v, "my ward on your door tonight", func():
+	var wb = _button(v, "my ward on your door tonight (%s; promise only)" % _ward_remaining(), func():
 		popup.hide()
 		_run("offer ward"))
+	wb.tooltip_text = "Promising does not spend your ward; keeping the promise does."
 	wb.disabled = g.w.tools["ward"] <= 0 or g.offer.has("ward")
 	if g.w.tools["ward"] <= 0:
 		wb.tooltip_text = "Your ward is spent (once per case)."

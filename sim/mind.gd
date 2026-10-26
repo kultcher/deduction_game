@@ -1547,7 +1547,7 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 ## Come out with their gift at the meeting (if not already) and share their unshared
 ## readings with the town. Adds the lines and cards; shared by the claim step and the
 ## reveal tier of an accusation.
-static func _go_public(w, n, lines: Array, facts: Array) -> void:
+static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = true) -> void:
 	if not n.claim_public:
 		var claim: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 		n.claimed_role = claim
@@ -1560,7 +1560,7 @@ static func _go_public(w, n, lines: Array, facts: Array) -> void:
 		for l in w.living():
 			if l != n:
 				hear_claim(w, l, n.id, claim, 0.5, "public")
-	if C.has_readings(n.claimed_role):
+	if share_readings and C.has_readings(n.claimed_role):
 		var shared_this_turn: Array = []
 		for e in n.info_log:
 			if e["shared"] or e.get("disowned", false):
@@ -1577,6 +1577,31 @@ static func _go_public(w, n, lines: Array, facts: Array) -> void:
 				if l != n:
 					apply_info(w, l, n, e, heard_weight(l, n))
 		lines.append_array(info_lines(w, n, shared_this_turn, "town", not lines.is_empty()))
+
+## Last words are a claim and a spoken suspicion, not a fresh evidence argument.
+## Reuse ordinary public claiming without adding the speaker's reading backlog.
+static func last_words(w, n) -> Dictionary:
+	if n.silenced:
+		return {"lines": ["%s tries to speak, but no sound comes. Their voice is still stolen." % n.name], "facts": []}
+	var lines: Array = []
+	var facts: Array = []
+	var claim: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	if n.claim_public and n.claimed_role != claim:
+		n.claim_public = false # With nothing to hide, correct their earlier claim.
+	_go_public(w, n, lines, facts, false)
+	if lines.is_empty():
+		lines.append(_claim_line(n, claim))
+		facts.append({"kind": "claim", "subject": [n.id], "role": claim, "source": n.id,
+			"text": "%s publicly claims to be the %s." % [n.name, C.role_name(claim)]})
+	var suspect = ""
+	if n.is_evil():
+		suspect = w.evil_plan.get("scapegoat", "")
+	else:
+		var ranked: Array = ranked_suspects(w, n)
+		if not ranked.is_empty(): suspect = ranked[0].id
+	if suspect != "" and w.by_id.has(suspect):
+		lines.append(say(n, "I still suspect %s." % w.by_id[suspect].name))
+	return {"lines": lines, "facts": facts}
 
 static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	if n.silenced:
@@ -2192,7 +2217,7 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
 		return pressed
 	if night >= 0:
-		var r = answer_night(w, n, night)
+		var r = _answer_pressed_night(w, n, night)
 		lines += r["lines"]
 		facts += r["facts"]
 		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
@@ -2207,6 +2232,66 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 	var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 	pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
 	return pressed
+
+## Only a known gift outing collapses disclosure. Personal errands and unaware
+## Sleepwalkers keep the existing choices, including all their original RNG draws.
+static func _gift_outing(w, n, night: int) -> bool:
+	if n.is_evil() or n.secret_mod == "sleepwalker" or not C.ROLES[n.role].get("night_walk", false): return false
+	if not str(n.history.get(w.time_key(night, C.NIGHT), "home")).begins_with("night:"): return false
+	if night == w.day - 1:
+		for walker in w.night_walkers:
+			if walker.id == n.id:
+				return not str(walker.why).begins_with("secret:") and not str(walker.why).begins_with("sleepwalking")
+	if n.role == "warden" and n.warden_log.has(str(night)): return true
+	if n.info_log.any(func(e): return e.get("role", "") == n.role and e.get("day", -1) == night): return true
+	return n.secret.is_empty()
+
+static func _answer_pressed_night(w, n, night: int) -> Dictionary:
+	if not n.claim_public and n.max_tier < 3 and _gift_outing(w, n, night):
+		if night not in n.lied_nights: n.lied_nights.append(night)
+		# The existing gift answer owns the admission, claim, reading willingness,
+		# question fatigue and the "So yes: I was out..." line, exactly once.
+		return answer_gift(w, n, 3)
+	var response = answer_night(w, n, night)
+	var variants: Dictionary = n.dialogue_memory.get("pressed_nights", {})
+	var count: int = variants.get(str(night), 0)
+	variants[str(night)] = count + 1
+	n.dialogue_memory["pressed_nights"] = variants
+	var alternate = count % 2 == 1
+	var when = C.night_name(night)
+	if when.begins_with("night"): when = "on " + when
+	var text = ""
+	for fact in response.facts:
+		if fact.get("kind", "") == "alibi" and fact.get("source", "") == n.id and n.id in fact.get("subject", []):
+			text = ("That sighting doesn't change where I was: at home %s." if alternate else "I was at home %s. I stand by that account.") % when
+			break
+		if fact.get("kind", "") == "secret" and fact.get("owner", "") == n.id:
+			text = ("I wasn't there on evil business. I %s. Keep that between us." if alternate else "All right: I %s. That's why I was out; please keep it quiet.") % n.secret.get("me", n.secret["text"])
+			break
+		if fact.get("kind", "") == "refusal" and fact.get("source", "") == n.id:
+			text = "I've nothing more to say about that night." if alternate else "That sighting doesn't give you the right to demand my whereabouts."
+			break
+		if fact.get("kind", "") == "info" and fact.get("role", "") == "warden":
+			var door: String = fact.data.target
+			text = ("I stand by it: I guarded %s's door %s." if alternate else "My duty was at %s's door %s. That is still my account.") % [w.by_id[door].name, when]
+			break
+		if fact.get("watch_claim", false):
+			text = ("I was keeping watch on %s %s; my account stands." if alternate else "My watch took me through %s %s. That's where I was.") % [C.block_name(fact.block), when]
+			break
+		if fact.get("duty_claim", false):
+			if fact.get("duty", "") == "lamplighter":
+				text = ("My lamp route still accounts for my being out %s." if alternate else "I was out on my lamp route %s. I haven't changed that account.") % when
+			else:
+				var dead = _hearth_dead(w, n, night)
+				var hearth = "%s's hearth" % dead.name if dead != null else "the dead"
+				text = ("My account stands: I was visiting %s %s." if alternate else "My gift took me to %s %s. That is still my account.") % [hearth, when]
+			break
+	if text != "":
+		for line in response.lines:
+			if line is Dictionary and line.get("speaker", "") == n.id:
+				line.text = text
+				break
+	return response
 
 # ---------------------------------------------------------------- conversation
 
@@ -2264,6 +2349,16 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 	var jitter = w.rng.randf_range(-0.2, 0.2)
 	var openness = (1.0 - trait_of(n, "privacy")) * 1.0 + n.trust * 1.2 + n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")) \
 		+ 0.1 * (w.day - 1) - 0.72 + jitter
+	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	var gift_terms = {}
+	if C.ROLES[role]["kind"] != "info":
+		gift_terms["hides_from_demon"] = -0.5
+	if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"] and w.day <= 2:
+		gift_terms["gift_keeps_giving"] = -0.4
+	elif role in C.START_ROLES:
+		gift_terms["one_shot_gift"] = 0.3
+	for value in gift_terms.values():
+		openness += value
 	var t = 1
 	if openness > 0.75:
 		t = 4
@@ -2274,7 +2369,7 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 	w.dlog.decision(n.id, "gift_disclosure", "tier", t, {"openness": openness,
 		"parts": {"privacy": (1.0 - trait_of(n, "privacy")) * 1.0, "trust": n.trust * 1.2,
 			"pressure": n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")),
-			"day": 0.1 * (w.day - 1), "base": -0.72, "jitter": jitter},
+			"day": 0.1 * (w.day - 1), "base": -0.72, "jitter": jitter}.merged(gift_terms),
 		"thresholds": [{"above": 0.75, "tier": 4}, {"above": 0.45, "tier": 3},
 			{"above": 0.15, "tier": 2}, {"otherwise": 1}], "comparison": ">"}, "", trace_id)
 	w.dlog.think(n.id, "disclosure", "Disclosure tier %d (openness %.2f; privacy %.2f, trust %.2f, pressure %.2f)." %

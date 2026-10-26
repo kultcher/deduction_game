@@ -64,6 +64,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
     > the meeting). A good person who really was home stands firm with a new line. Evil gets a new line with
     > the same cover facts (wording only; no change to cover choices).
 
+    > **Implemented (Codex batch 3):** Caught good gift walkers disclose through the existing gift/admission path. Home accounts, evil cover and refusals receive fresh deterministic wording; personal-secret and Sleepwalker choices remain unchanged (confirmed in chat). Paired checks preserve facts, fatigue, trust and RNG for wording-only cases. Broader evil Night Watch consistency stays open.
+
   - **The owned lie didn't follow the disclosure.** Constance said "home" twice, then
     claimed Night Watch one question later without "So yes: I was out…". The admission
     fires only after a "you lied" deduction, not after a pressing sighting card. A
@@ -126,6 +128,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > "Good: 5 gifted townsfolk / 1 secret · Evil: 1 minion / 1 demon" (7 townsfolk) and
   > "Good: 7 gifted townsfolk / 1 secret · Evil: 2 minions / 1 demon" (10). Counts come from the setup
   > rules, not the assignments. No board card, nothing for the shared model.
+
+  > **Implemented (Codex batch 3):** The roles window ends with the specified good/secret/minion/demon counts from C.SETUPS. Lovers count as one secret; no assignments, board cards or shared-model data are used. Focused checks cover both town sizes and unchanged cards/RNG.
 
 - **One evaluation path for generic and structured cases.** In 25923, vigil sighting
   #86 + death #87 (Nisha at Merrin's murder block that night) had no template, while
@@ -329,6 +333,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > you they're the X is treated as "ask gift": same cost and rules, readings if they're willing. Not counted
   > as a wrong guess.
 
+  > **Implemented (Codex batch 3):** Matching an already disclosed role routes directly to ask gift before fatigue is counted. Public/private and good/evil parity tests cover full replies, readings, trust, fatigue, wrong-guess count and RNG.
+
 - **Case 44814: readings after role disclosure.** Once a gift is officially claimed,
   ordinarily share available readings unless trust is very low. Current public
   disclosure guarantees only tier 3 (the role), so fresh readings can remain withheld
@@ -346,6 +352,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > openness) the same gift-type terms the public-claim roll has: `one_shot_gift` +0.3, `gift_keeps_giving`
   > -0.4 (repeating info gifts, day <= 2), `hides_from_demon` -0.5 (non-info gifts), with the same conditions.
   > Drop "the player hears it first" for now. Approved disclosure tuning (user).
+
+  > **Implemented (Codex batch 3):** Private openness adds only the approved +0.3 one-shot, -0.4 early repeating-info and -0.5 non-info terms under the public-roll conditions. All existing base terms, thresholds and the single jitter draw remain; focused good/evil role/day checks verify them.
 
 - **Follow-up after a false alibi is established.** The initial good-NPC response can
   concede "Fine, I was out. Doesn't mean I was doing anything wrong." Later add
@@ -754,6 +762,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > - nominations and "now on the block" (amber); executions (crimson); the Martyr dying in someone's
   >   place; a curse taking hold (purple); a totem burned (green); your ward holding; the case ending.
 
+  > **Implemented (Codex batch 3):** Game events feed a mouse-transparent queue; click-through skip, queue catch-up, claim-safe text, and settings overrides are covered by focused checks. Presentation defaults were approved in chat. Original log rendering and RNG stay unchanged; baseline and headline-only replay measurements are retained in logs/batch3.
+
 - **Limited-use tool warnings.** Clearly warn before spending Ward and other
   limited-use abilities; show remaining uses and that spending one is irreversible.
   Current help and some labels already say "once per case", but the generic
@@ -765,6 +775,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > directly from the UI asks for confirmation ("This spends your only ward. Ward X?"); the typed command
   > goes straight through. Promise text says a promise doesn't spend the ward; keeping it does.
 
+  > **Implemented (Codex batch 3):** Every Ward UI path shows remaining uses, direct UI targeting asks the specified confirmation, and typed commands stay immediate. Promise wording distinguishes offering from spending. Focused checks cover labels, cancel, promises and typed consumption.
+
 - **Hide Unselected.** Add a case-board toggle to hide rows not explicitly selected
   by the active person/place filters. Keep this distinct from hiding evidence cards,
   showing hidden cards, and the currently focused card/profile; define the
@@ -774,6 +786,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > **Decided (user, Oct 26); Codex batch 3:** nothing selected: the toggle is disabled (with a tooltip). Several filters: show
   > rows matching any of them. Pinned cards on hidden rows stay visible. Hiding never removes cards or links.
   > (Selected-first ordering is already built: B110, BACKLOG_COMPLETED.md.)
+
+  > **Implemented (Codex batch 3):** The row-only toggle reuses B110 selection/order exactly (confirmed in chat): people filters for person rows, places for place rows. It disables without that row selection, ORs selected rows, and preserves pins, cards and links. Focused layout/UI checks cover these cases.
 
 - **Long dropdowns in columns.** Once a dropdown exceeds roughly eight options,
   consider multiple columns: at most eight options per column for an uncategorized
@@ -785,6 +799,8 @@ exact values remain open. The code-derived examples and clarifications are in
 
   > **Decided (user, Oct 26); Codex batch 3:** at most 8 options per column; group by the existing categories where there
   > are any, otherwise split evenly. Keep labels, keyboard navigation and screen bounds usable.
+
+  > **Implemented (Codex batch 3):** Shared menu presentation keeps native IDs, indices, metadata and callbacks. Existing categories are retained; uncategorized groups split evenly with at most eight options per column. Both native dropdowns and handcrafted pickers fit in a scrolling screen-bounded popup. Focused checks cover grouping, disabled choices, arrows, bounds and selection parity.
 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main
   view; people who aren't talking or working showing on the map; a wrong role guess
@@ -900,6 +916,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > and they name their top suspect (evil: the scapegoat, via the existing plan). Nothing reveals
   > alignment. The claim is an ordinary public claim card; execution and aftermath happen exactly once.
 
+  > **Implemented (Codex batch 3):** After Martyr substitution is decided, the actual condemned speaks before death: true gift or existing bluff as an ordinary public claim, then top suspect or existing scapegoat. Silenced NPCs only try to speak (confirmed in chat). Readings remain withheld. Focused outcome tests verify ordering, substitution, silence and one-time execution/aftermath.
+
 - **Meeting and vote talk** (returns with the rebuttal work). Votes are silent for now;
   PR #3's vote explanations were removed. When vote talk comes back: evil voters must
   draw from the same spread of reasons as good ones (in PR #3 they all said "the case is
@@ -957,6 +975,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > traits, relationships), answers NPC requests (confidence, protection), apologises and makes gift requests,
   > with simple rules, and its run summary counts each. `tools/` only; note that bot baselines shift.
 
+  > **Implemented (Codex batch 3):** tools/autoplay.gd adds public-knowledge rules for offers, request answers, apologies, asking about people and gift requests, and keeps protection promises at night. Each new action is counted in printed/JSON summaries. Focused policy checks and a seed-4242 smoke game pass without guard exhaustion. Bot baselines will shift.
+
 - **The Revenant can hide a new totem each day.** Burning a totem doesn't make the
   Revenant safe to hang for good: in 54875 the totem burned on Day 4, a new one was
   hidden Day 5, Edda was hanged with it and Isolde turned. When a totem burns, signpost
@@ -965,6 +985,8 @@ exact values remain open. The code-derived examples and clarifications are in
 
   > **Decided (user, Oct 26); Codex batch 3:** signpost only: the totem-burned receipt adds that the
   > Revenant's spirit "will seek a new hiding place". Balance stays open. Also gets a headline notice.
+
+  > **Implemented (Codex batch 3):** The burned-totem log, receipt and headline warn that the spirit will seek a new hiding place. Search/burn state and RNG are unchanged in focused checks; replacement balance stays open.
 
 - **The ward as evidence, and a visible save.** Your ward isn't a card today, and a ward
   that stops an attack leaves no sign. Make the ward a card (who, door, night) and let a
@@ -982,6 +1004,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > **Decided (user, Oct 26); Claude batch:** the shared-model side (after Codex's cards): a held ward counts as a
   > Demon attack at that door that night, with the same route reasoning as a murder. No new weights.
   > Fills the "Protection + quiet night + sighting" template gap.
+
+  > **Implemented (Codex batch 3):** Ward spending records person, door and night; an actual stopped attack yields a private next-morning sigil. Presentations reward each NPC once per sigil (confirmed in chat), +0.05 normally or +0.20 total for the protectee, with caps and equal evil handling. Cards are UI context only; no shared-model adapter or evidence numbers were added. Tests cover an actual save, private-then-public repeats, silent/evil listeners, caps and reset.
 
 - **Reactive meetings: speak up when the last statement concerns you.** (user, Oct 24)
   After each meeting statement, every listener runs cheap yes/no checks: does it name

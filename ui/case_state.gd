@@ -11,6 +11,7 @@ const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
 
 var view = "places"       # "places" | "statements" | "process" | "all" (the list only)
+var hide_unselected = false # Row visibility only; never edits card/link membership.
 var rows_by = "place"     # Places view rows: "place" | "person"
 var text = ""
 var kinds = {}            # ticked kinds (OR within the list)

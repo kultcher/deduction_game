@@ -48,6 +48,7 @@ var prediction_snapshots: Array = []
 var prediction_spoiled = false
 var case_summary: Dictionary = {}
 var show_hidden = false     # include cards the player has hidden
+var sigil_heard = {} # Receipt number -> listener IDs; trust rewards are once per NPC per sigil.
 var ward_log = {}           # night -> who you warded
 ## Promises for tonight: {"ward": id, "vigil": {id: block}}. Kept or broken when you choose
 ## your night work.
@@ -103,8 +104,15 @@ func _ev(e: Dictionary) -> void:
 		e["text"] = C.natural_nights(e["text"])
 	events.append(e)
 
+func _headline(kind: String, text: String, subtitle: String = "") -> void:
+	_ev({"k": "headline", "kind": kind, "text": text, "subtitle": subtitle})
+
 func _hdr(t: String) -> void:
 	_ev({"k": "header", "text": t})
+	if t.begins_with("Night "):
+		_headline("nightfall", "Night %d Falls" % w.day)
+	elif t.begins_with("Day "):
+		_headline("dawn" if t.ends_with(", Morning") else "phase", "Day %d Dawns" % w.day if t.ends_with(", Morning") else t)
 
 func _narr(t: String) -> void:
 	_ev({"k": "narration", "text": t})
@@ -161,6 +169,8 @@ static func render(evs: Array) -> String:
 	var lines = PackedStringArray()
 	var pending: Array = []
 	for e in evs:
+		if e["k"] == "headline":
+			continue # UI side channel; never flush/reorder the existing log or card tags.
 		if e["k"] == "card":
 			if not (e["n"] in pending):
 				pending.append(e["n"])
@@ -216,6 +226,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	last_link = {}
 	log_paths = []
 	ward_log = {}
+	sigil_heard = {}
 	offer = {}
 	talk_offered = false
 	known_haunts = {}
@@ -1102,9 +1113,10 @@ func _search() -> void:
 	var tt: Dictionary = w.find_totem(l)
 	if not tt.is_empty():
 		var mat: String = C.BLOCKS[tt["material"]]["trace"]
-		_narr("Wedged out of sight at %s you find a crude totem of bone and twine, caked with %s. It reeks of the grave. You burn it." % [w.loc_name(l), mat])
+		_narr("Wedged out of sight at %s you find a crude totem of bone and twine, caked with %s. It reeks of the grave. You burn it. The Revenant's spirit will seek a new hiding place." % [w.loc_name(l), mat])
+		_headline("totem", "A Revenant's totem is burned", "Its spirit will seek a new hiding place.")
 		_facts([{"kind": "totem", "subject": [], "block": tt["material"], "loc": l, "source": "evidence", "day": w.day, "phase": w.phase,
-			"text": "A Revenant's totem, hidden at %s and found on day %d, caked with %s (from %s)." % [w.loc_name(l), w.day, mat, C.block_name(tt["material"])]}])
+			"text": "A Revenant's totem, hidden at %s and found on day %d, caked with %s (from %s). The Revenant's spirit will seek a new hiding place." % [w.loc_name(l), w.day, mat, C.block_name(tt["material"])]}])
 		if tt.get("freed", "") != "":
 			_narr("As it burns, you feel the curse on the town lift. Whoever it turned is themselves again.")
 			_facts([{"kind": "curse_lifted", "subject": [], "source": "player", "day": w.day, "phase": w.phase,
@@ -1329,10 +1341,17 @@ func _talk_command(verb: String, rest: String) -> void:
 			_err("Apologise for what? %s" % _grievance_menu(n))
 			return
 		verb = "apologise"
+	if verb in ["present", "show", "case"]:
+		var context_card = _ward_context_card(rest)
+		if not context_card.is_empty():
+			r = _show_ward_context(context_card, [n])
+			verb = "ward_context"
 	if n.silenced and verb in ["ask", "a", "tell", "t", "present", "accuse", "show", "press"]:
 		_narr("%s opens their mouth, but no sound comes. They can't speak (until tomorrow evening)." % n.name)
 		return
 	match verb:
+		"ward_context":
+			pass
 		"ask", "a":
 			var p = rest.split(" ", false)
 			var topic = p[0].to_lower() if p.size() > 0 else ""
@@ -1628,7 +1647,7 @@ func _offer_command(n, what: String, requested: bool = false) -> void:
 				_err("You've already promised your ward tonight to %s." % w.by_id[offer["ward"]].name)
 				return
 			offer["ward"] = n.id
-			_narr("You promise %s your ward: a sigil on their door tonight." % n.name)
+			_narr("You promise %s your ward: a sigil on their door tonight. Promising does not spend your ward; keeping the promise does (%d left, once per case)." % [n.name, w.tools["ward"]])
 		"vigil":
 			var vg: Dictionary = offer.get("vigil", {})
 			if vg.has(n.id):
@@ -1904,6 +1923,7 @@ func _show_nomination() -> void:
 	statement_used = false
 	var nm: Dictionary = w.meeting["pending"]
 	var t = w.by_id[nm["nominee"]]
+	_headline("nomination", "%s nominates %s" % ["You" if nm["by"] == "player" else w.by_id[nm["by"]].name, t.name])
 	var blk = ""
 	if w.meeting["block"] != "":
 		blk = " %s is on the block with %d votes." % [w.by_id[w.meeting["block"]].name, w.meeting["block_count"]]
@@ -1989,6 +2009,7 @@ func _nomination_command(verb: String, rest: String, progress: Callable = Callab
 			match res["outcome"]:
 				"on_block":
 					_narr("%s is now on the block." % t.name)
+					_headline("block", "%s is now on the block" % t.name)
 				"tie":
 					_narr("That ties the count on the block. Nobody is on the block now.")
 				"short_of_block":
@@ -2006,27 +2027,36 @@ func _after_vote() -> void:
 	state = "meeting"
 	_prompt("%s'wait' for the town." % ("" if "player" in w.meeting["nominators"] else "'nominate <name>', or "))
 
+func _last_words(n) -> void:
+	var response = Mind.last_words(w, n)
+	_lines(response.lines)
+	_facts(response.facts)
+
 func _close_meeting() -> void:
+	if w.meeting.get("closed", false): return
 	var frozen = capture_prediction("before_execution", {"on_block": w.meeting["block"]})
 	if w.meeting["block"] != "":
 		w.dlog.add("player_execution_context", "player", w.meeting["block"], {"prediction_id": frozen["id"],
 			"known_cards": board.filter(func(c): return not c.get("deleted", false)).map(func(c): return c["n"])},
 			"Evidence and private theory available before execution; no automatic judgement of whether a mistake was reasonable.")
-	var ex = w.end_meeting()
+	var ex = w.end_meeting(_last_words)
 	if ex != "" and w.meeting.has("martyr"):
 		var mt = w.by_id[w.meeting["martyr"]["martyr"]]
 		var sv = w.by_id[w.meeting["martyr"]["saved"]]
 		_narr("The meeting closes. As the noose tightens on %s, %s cries out and falls dead. %s is cut down alive: the Martyr has died in their place." % [sv.name, mt.name, sv.name])
+		_headline("martyr", "%s dies in %s's place" % [mt.name, sv.name])
 		_facts([{"kind": "martyr", "subject": [mt.id, sv.id], "martyr": mt.id, "saved": sv.id, "source": "player", "day": w.day, "phase": C.EVENING,
 			"text": "Day %d: %s died in %s's place at the gallows. Both are proven good." % [w.day, mt.name, sv.name]}])
 	elif ex != "":
 		var n = w.by_id[ex]
 		_narr("The meeting closes. %s is hanged at dusk." % n.name)
+		_headline("execution", "%s is hanged at dusk" % n.name)
 		# How many were alive at the hanging: with five or more, a Scion could have taken over.
 		_facts([{"kind": "execution", "subject": [ex], "source": "player", "day": w.day, "phase": C.EVENING, "alive_before": w.living().size() + 1,
 			"text": "%s was executed on day %d." % [n.name, w.day]}])
 		if w.meeting.get("curse", false):
 			_narr("As %s swings, a cold wind moans through Hollowmere. A curse has taken one of those who voted to hang them: someone among you has turned." % n.name)
+			_headline("curse", "A Revenant's curse takes hold", "One of the voters has turned.")
 			_facts([{"kind": "curse", "subject": [ex], "source": "player", "day": w.day, "phase": C.EVENING,
 				"text": "Day %d: as %s was hanged, a Revenant's curse turned one of those who voted for it. Find its totem to break the curse." % [w.day, n.name]}])
 	else:
@@ -2062,6 +2092,8 @@ func _night_command(verb: String, rest: String) -> void:
 			ward_log[w.day] = n.id
 			w.player_vigil = ""
 			_narr("You chalk a warding sigil on %s's door." % n.name)
+			_facts([{"kind": "ward", "source": "player", "subject": [n.id], "target": n.id, "loc": "home_" + n.id, "block": n.home_block, "night": w.day, "day": w.day, "phase": C.NIGHT, "private": true,
+				"text": "Night %d: you spent your ward on %s's door on %s." % [w.day, n.name, C.block_name(n.home_block)]}])
 			_resolve_night()
 		"vigil", "watch":
 			var b = find_block(rest)
@@ -2132,6 +2164,7 @@ func _morning_report() -> void:
 	if w.day > 1 or not w.deaths_last_night.is_empty():
 		if w.deaths_last_night.is_empty():
 			_narr("Dawn breaks. Nobody died in the night.")
+			_headline("quiet", "No one died in the night")
 			var nq = w.day - 1
 			if nq >= 1:
 				var wd: String = ward_log.get(nq, "")
@@ -2139,10 +2172,22 @@ func _morning_report() -> void:
 					"text": "Nobody died on night %d%s." % [nq, (" (you had warded %s)" % w.by_id[wd].name) if wd != "" else ""]}])
 		for id in w.deaths_last_night:
 			var v = w.by_id[id]
+			var death_title: String = v.name
+			if v.claimed_role in C.ROLES and (v.claim_public or v.max_tier >= 3):
+				death_title = "%s, who %s the %s, died in the night" % [v.name, "claimed to be" if v.claim_public else "told you they were", C.role_name(v.claimed_role)]
+			_headline("death", death_title, "A Demon hides among %d remaining townsfolk" % w.living().size())
 			_narr("Dawn breaks over a body: %s the %s was killed in the night. Their cottage on %s is now a crime scene." %
 				[v.name, v.occupation, C.block_name(v.home_block)])
 			_facts([{"kind": "death", "subject": [id], "block": v.home_block, "source": "player", "night": w.day - 1,
 				"text": "%s was killed by the demon on night %d (home on %s)." % [v.name, w.day - 1, C.block_name(v.home_block)]}])
+	for save in w.ward_saves:
+		if save.night == w.day - 1:
+			var held = "Your ward held at %s's door last night." % w.by_id[save.target].name
+			_narr(held)
+			_headline("ward", held)
+			var saved = w.by_id[save.target]
+			_facts([{"kind": "scorched_sigil", "source": "evidence", "subject": [saved.id], "target": saved.id, "loc": "home_" + saved.id, "block": saved.home_block, "night": save.night, "day": save.night, "phase": C.NIGHT, "private": true,
+				"text": "You alone found a scorched sigil on %s's door on %s: the Demon came to that door on night %d and your ward held." % [saved.name, C.block_name(saved.home_block), save.night]}])
 	_screen(_map())
 	_card_workers()
 	_card_conversations()
@@ -2368,6 +2413,7 @@ func _board(filter: String) -> String:
 	return "\n".join(out)
 
 func _ending() -> void:
+	_headline("ending", "Victory" if w.winner == "good" else "Defeat", w.end_reason)
 	var frozen: Dictionary = prediction_snapshots[-1] if not prediction_snapshots.is_empty() else {}
 	case_summary = CaseMetrics.summarize(w, frozen, prediction_spoiled, board)
 	case_summary["present_fallbacks"] = fallback_count
@@ -2842,9 +2888,42 @@ func delete_deduction(num: int) -> String:
 	return "Deduction #%d deleted." % num
 
 ## Present a deduction to the whole meeting (once per meeting).
+## Context receipts are shown directly, without a shared-model adapter or numeric
+## evidence effect. Claude owns that adapter; this only delivers the approved trust.
+func _ward_context_card(rest: String) -> Dictionary:
+	var parts = rest.strip_edges().split(" ", false)
+	if parts.size() != 1: return {}
+	var num = parts[0].trim_prefix("#").to_int()
+	if num < 1 or num > board.size(): return {}
+	var card: Dictionary = board[num - 1]
+	return card if not card.get("deleted", false) and card.kind in ["ward", "scorched_sigil"] else {}
+
+func _show_ward_context(card: Dictionary, listeners: Array) -> Dictionary:
+	var public_show = state in ["meeting", "nomination"]
+	if public_show:
+		card["private"] = false
+		_disclose(card, _disclosure(card))
+	var rewarded: Array = []
+	if card.kind == "scorched_sigil":
+		var heard: Array = sigil_heard.get(card.n, [])
+		for listener in listeners:
+			if not listener.alive or listener.id in heard: continue
+			heard.append(listener.id)
+			rewarded.append(listener.id)
+			var bonus = 0.05 + (0.15 if listener.id == card.target else 0.0)
+			Mind.set_trust(w, listener, listener.trust + bonus, "the Demonologist showed a scorched ward sigil")
+		sigil_heard[card.n] = heard
+	w.dlog.add("player_ward_context", "player", card.get("target", ""), {"card": card.n, "listeners": listeners.map(func(n): return n.id), "rewarded": rewarded, "public": public_show})
+	return {"lines": ["You show %s: %s" % ["the town" if public_show else ", ".join(PackedStringArray(listeners.map(func(n): return n.name))), card.text]], "facts": []}
+
 func _present_deduction(rest: String, progress: Callable = Callable()) -> void:
 	if presented_today:
 		_err("You've already had the floor today.")
+		return
+	var context_card = _ward_context_card(rest)
+	if not context_card.is_empty():
+		presented_today = true
+		_lines(_show_ward_context(context_card, w.living()).lines)
 		return
 	var num = rest.strip_edges().trim_prefix("#").to_int()
 	if num < 1 or num > board.size() or board[num - 1]["kind"] != "deduction" or board[num - 1].get("deleted", false):

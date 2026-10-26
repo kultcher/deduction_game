@@ -1,11 +1,11 @@
 ## Presentation of the live adapter's existing context/location classification.
-## No evaluator runs here, and native evidence classes are not reinterpreted.
+## Ward/sigil are explicitly context pending Claude's adapter (batch 3). No evaluator runs here.
 extends RefCounted
 const Live = preload("res://game/workshop_canvas.gd")
 const EXPLANATION = "Context: background or location information. This card cannot establish guilt on its own."
 
 static func is_context(adapter: Dictionary) -> bool:
-	return adapter.get("kind", "") in ["context", "location"]
+	return adapter.get("kind", "") in ["context", "location", "ward", "scorched_sigil"]
 
 ## Once per library refresh, never once per card or draw frame.
 static func numbers(g) -> Dictionary:

@@ -62,6 +62,7 @@ var meeting = {}
 ## Player tools and night choices.
 var tools = {"ward": 1, "clemency": 1}
 var player_ward = ""
+var ward_saves: Array = [] # Player-only aftermath, recorded only when their sigil stops an attack.
 var player_vigil = ""
 var player_vigil_seen: Array = []
 var player_loc = ""
@@ -756,7 +757,9 @@ func vote_pending(player_yes: bool) -> Dictionary:
 	return res
 
 ## Close the meeting: whoever is on the block is executed.
-func end_meeting() -> String:
+func end_meeting(last_words: Callable = Callable()) -> String:
+	if meeting.get("closed", false): return ""
+	meeting["closed"] = true
 	set_log_time()
 	var b: String = meeting["block"]
 	if b == "":
@@ -766,17 +769,22 @@ func end_meeting() -> String:
 	for r in meeting["results"]:
 		if r["nominee"] == b:
 			res = r
-	execute(b, res)
+	execute(b, res, last_words)
 	return b
 
-func execute(id: String, res: Dictionary) -> void:
+func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> void:
 	var n = by_id[id]
+	if not n.alive: return
 	var alive_before = living().size()
 	# The Martyr dies in the place of a good soul they chose.
 	var mart = living_with_role("martyr")
 	# The Martyr's gift reads the nominee like any other: a Marked soul may read as evil.
 	var reads_evil = mart != null and mart.martyr_target == id and registers_evil(n)
-	if mart != null and mart != n and mart.martyr_target == id and not reads_evil and not mart.gift_broken():
+	var substituted = mart != null and mart != n and mart.martyr_target == id and not reads_evil and not mart.gift_broken()
+	# The substitution decision is final before the actual condemned person speaks.
+	if last_words.is_valid():
+		last_words.call(mart if substituted else n)
+	if substituted:
 		_martyr_dies(mart, n, res)
 		return
 	n.alive = false
@@ -1045,6 +1053,8 @@ func resolve_night() -> void:
 		if outcome == "killed":
 			_kill(v)
 		else:
+			if outcome == "protected_player":
+				ward_saves.append({"target": kill_t, "night": day})
 			dlog.add("kill_failed", demon_id, kill_t, {"why": outcome}, "The demon's attack on %s failed (%s)." % [v.name, outcome])
 			if outcome == "veteran":
 				_veteran_survives(v)
