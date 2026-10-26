@@ -1669,7 +1669,7 @@ exact values remain open. The code-derived examples and clarifications are in
   physical evidence. Teach it to read traces and drops, and stop the peek, to measure
   what evidence is worth. [decided]
 
-  > **Decided (user, Oct 25); ready for Codex:** this pass, remove only the hidden `w.dropped` peek in
+  > **Decided (user, Oct 25); implemented in Codex batch 2:** this pass, remove only the hidden `w.dropped` peek in
   > `tools/autoplay.gd::_decide`: the bot searches crime scenes as now and otherwise only on public
   > grounds. Teaching it to read traces and drops stays open. Note in the commit that bot baselines
   > may shift.
@@ -1678,6 +1678,11 @@ exact values remain open. The code-derived examples and clarifications are in
   > `w.dropped.has(g.loc)`; `_scores` uses hand weights. Remove the hidden-presence peek and add public
   > trace/material reasoning before treating bot outcomes as physical-evidence balance measurements.
 
+
+  > **Batch 2 verification:** removed only the hidden drop-presence check in `_decide`; public
+  > crime-scene searches and the ordinary search/wait roll remain. Bot baselines may shift,
+  > including RNG consumption where a hidden drop previously short-circuited the roll.
+  > Teaching trace/drop interpretation remains open; no balance claim is made.
 
 - **The Revenant can hide a new totem each day.** Burning a totem doesn't make the
   Revenant safe to hang for good: in 54875 the totem burned on Day 4, a new one was
