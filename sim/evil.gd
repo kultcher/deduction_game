@@ -852,15 +852,34 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 	if not cache.has(key):
 		var s: String = w.evil_plan["scapegoat"]
 		var result = null
-		if s != n.id and w.by_id[s].alive and nd >= 1 and w.chance(0.5):
+		# One story per member per night: a made-up watch report for this night already says
+		# who passed where, so a sighting can only repeat it (Constance, 54875: "I saw Isolde"
+		# privately, "I saw Jory" in her Night Watch reading for the same night).
+		var watch: Dictionary = _own_fake_reading(n, nd, "nightwatch")
+		if not watch.is_empty():
+			var seen: Array = watch.get("data", {}).get("seen", []).filter(func(x): return x != n.id and w.by_id.has(x))
+			if watch["data"].get("block", "") == vantage and not seen.is_empty():
+				var who: String = s if s in seen else seen[0]
+				result = {"kind": "saw", "who": who, "loc": "", "block": vantage, "day": nd, "phase": C.NIGHT, "how": how, "detail": "street"}
+				w.dlog.think(n.id, "lie", "Evil: tells the night-%d sighting of %s from its own fake watch report." % [nd, who], {"lie": true})
+			cache[key] = result if result != null else false
+		elif s != n.id and w.by_id[s].alive and nd >= 1 and w.chance(0.5):
 			var detail = "leaving_home" if (how == "window" and w.by_id[s].home_block == vantage and w.chance(0.5)) else "street"
 			result = {"kind": "saw", "who": s, "loc": "", "block": vantage, "day": nd, "phase": C.NIGHT, "how": how, "detail": detail}
 			w.dlog.think(n.id, "lie", "Evil: invents a night sighting of scapegoat %s on %s (%s)." % [s, vantage, "from their window" if how == "window" else "while out"], {"lie": true})
-		cache[key] = result if result != null else false
+		if not cache.has(key):
+			cache[key] = result if result != null else false
 	var r = cache[key]
 	if not (r is Dictionary) or r["block"] != vantage:
 		return null
 	return r
+
+## This member's own made-up reading of the given gift for night nd ({} if none).
+static func _own_fake_reading(n, nd: int, role: String) -> Dictionary:
+	for e in n.info_log:
+		if e.get("fake", false) and e.get("role", "") == role and e.get("day", -1) == nd:
+			return e
+	return {}
 
 static func fake_gossip(w, speaker):
 	var s: String = w.evil_plan["scapegoat"]

@@ -54,6 +54,10 @@ var ward_log = {}           # night -> who you warded
 ## your night work.
 var offer = {}
 var talk_offered = false
+## The UI streams the meeting's testimony (testimony_step) instead of computing it all at
+## once; headless/text play leaves this off and gets the whole meeting in one command.
+var stream_meeting = false
+var _testimony = {}   # streamed testimony in progress (Mind.testimony_start state)
 ## Something the person you're talking to asked of you (free to answer): {kind, npc, ...}
 ## kind "confidence" (keep it quiet) or "protect" (a ward or vigil tonight).
 var pending_request = {}
@@ -227,6 +231,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	log_paths = []
 	ward_log = {}
 	sigil_heard = {}
+	_testimony = {}
 	offer = {}
 	talk_offered = false
 	known_haunts = {}
@@ -302,6 +307,8 @@ func _canvas_status(value: Dictionary) -> Dictionary:
 func command(line: String) -> String:
 	if workshop_presenting:
 		return "A case presentation is still being assessed."
+	if meeting_streaming():
+		return "The town is still speaking."
 	var text = line.strip_edges()
 	if text == "":
 		return ""
@@ -1830,17 +1837,49 @@ func _start_meeting() -> void:
 	town_quiet = false
 	presented_today = false
 	_hdr("Day %d: the town meeting" % w.day)
-	var testimony: Array = w.begin_meeting()
+	w.open_meeting()
 	for sid in w.meeting.get("silenced", []):
 		var sn = w.by_id[sid]
 		_narr("%s rises to speak, but no sound comes. Their voice has been stolen; they can still vote." % sn.name)
 		_facts([{"kind": "silenced", "subject": [sid], "source": "player", "day": w.day, "phase": C.EVENING,
 			"text": "Day %d: %s could not speak at the meeting (silenced; can still vote)." % [w.day, sn.name]}])
-	if testimony.is_empty():
-		_narr("Nobody has much to say tonight.")
-	for t in testimony:
+	_testimony = Mind.testimony_start(w)
+	_testimony["spoken"] = 0
+	if stream_meeting:
+		return  # the UI calls testimony_step() until it's done
+	while not _testimony.is_empty():
+		_testimony_turn()
+
+## The meeting's testimony, streamed: true while the town is still speaking.
+func meeting_streaming() -> bool:
+	return not _testimony.is_empty()
+
+## Streamed meeting: the next speaker (or a waiting belief refresh), as rendered text.
+## Same order of work as an unstreamed meeting, so the outcome is identical.
+func testimony_step() -> String:
+	if _testimony.is_empty():
+		return ""
+	events = []
+	w.set_log_time()
+	w.dlog.begin_action("meeting_testimony", {"speaker": _testimony["i"]})
+	_testimony_turn()
+	return _finish_command("testimony", "testimony")
+
+func _testimony_turn() -> void:
+	var t: Dictionary = Mind.testimony_step(w, _testimony)
+	if not t.get("lines", []).is_empty():
+		_testimony["spoken"] += 1
 		_lines(t["lines"])
 		_facts(t["facts"])
+	if not _testimony["done"]:
+		return
+	var spoken: int = _testimony["spoken"]
+	_testimony = {}
+	if spoken == 0:
+		_narr("Nobody has much to say tonight.")
+	_meeting_opened()
+
+func _meeting_opened() -> void:
 	_narr("")
 	_narr(theory_status())
 	_prompt("Before voting, record or update your private demon guess in a profile or with 'guess <name> demon'. A case can end at this meeting; guessing is optional and costs no time.")

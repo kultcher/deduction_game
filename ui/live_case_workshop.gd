@@ -5,6 +5,7 @@ signal filed
 signal cards_dropped(numbers: Array)
 signal contents_changed
 const Live = preload("res://game/workshop_canvas.gd")
+const WorkshopSolver = preload("res://workshop/solver.gd")
 var g
 var case_world
 var support_label: Label
@@ -19,6 +20,7 @@ var _numbers: Array = []
 var field_menu: PopupMenu
 var _field_target: Dictionary = {}     # {id, field, values}
 var juror_timer: Timer
+var _last_juror: Dictionary = {}   # premise id -> {cards, lr}: to say why adding a card weakened it
 enum DebugItem { EFFECTS, PREVIEW, SUPPORT, WITHDRAW }
 var files: Dictionary = {}
 var execute: Callable
@@ -353,9 +355,18 @@ func _refresh_case() -> void:
 		option.item_selected.connect(func(i): node.mode = ["misled", "lying", "unlikely"][i]; _edit())
 	elif node.kind == "contradiction":
 		_clear(case_box)
-		_label(case_box, "The sighting challenges the home alibi. Both originals are retained; this is circumstantial evidence, not proof of evil.", 18, "accent")
+		var doubtable: bool = board.report_doubtable(answer_id)
+		_label(case_box, ("The report challenges the home alibi: one of them is false. As linked, the alibi is the false one; a report is someone's word, so you can doubt it instead." if doubtable
+			else "The sighting challenges the home alibi. Both originals are retained; this is circumstantial evidence, not proof of evil."), 18, "accent")
 		for child in node.children:
 			_label(case_box, _report(board.nodes[child].card).text, 17)
+		if doubtable:
+			_button(case_box, "Doubt the report instead (suspected lie)", func():
+				var why: String = board.doubt_report(answer_id)
+				answer_window.hide()
+				_session_changed()
+				if why != "":
+					status.text = why)
 		_button(case_box, "Restore separate cards", func(): board.unmerge(answer_id); answer_window.hide(); _session_changed())
 	else:
 		# Reuse identity choices, but never display a fixture solver verdict for
@@ -364,6 +375,11 @@ func _refresh_case() -> void:
 		_label(case_box, board.title(answer_id), 22)
 		_label(case_box, "Assumed identities in this line. These are hypotheses, not facts the jury must accept.", 16)
 		_premise_details(node)
+		if not node.get("conclusion", {}).is_empty():
+			var premise_id: String = answer_id
+			var found = VBoxContainer.new()
+			_button(case_box, "Connections: board cards that bear on this…", func(): _show_connections(premise_id, found))
+			case_box.add_child(found)
 		for person in board.view.people:
 			var row = HBoxContainer.new()
 			case_box.add_child(row)
@@ -759,9 +775,82 @@ func _run_test_juror() -> void:
 		if value.cards.is_empty():
 			badges[id] = {"ready": true, "category": "empty", "text": "No evidence is linked to this premise yet.", "reason": "Link cards to it to build the case."}
 			continue
-		badges[id] = Live.test_juror(g, value)
+		var badge: Dictionary = Live.test_juror(g, value)
+		if badge.get("ready", false):
+			_explain_change(id, value, badge)
+			_idle_assumptions(node, value, badge)
+		badges[id] = badge
 	canvas.badges = badges
+	var clashing: Dictionary = {}
+	for id in badges:
+		for card in badges[id].get("clashing", []):
+			clashing[card] = true
+	canvas.clashing = clashing
 	canvas.queue_redraw()
+
+## "Connections": up to five board cards that would move this premise most (one click adds
+## a card and links it). Runs on demand: one test-juror pass per candidate.
+func _show_connections(premise: String, box: VBoxContainer) -> void:
+	_clear(box)
+	_label(box, "Looking through the board…", 15)
+	await get_tree().process_frame
+	var found: Array = Live.connections(g, board.compile(premise))
+	_clear(box)
+	if found.is_empty():
+		_label(box, "No other card on the board moves this premise.", 15)
+		return
+	for c in found:
+		var row = HBoxContainer.new()
+		box.add_child(row)
+		var number: int = c.number
+		var card_id: String = c.id
+		_button(row, "Add", func():
+			add_evidence(number)
+			board.connect_cards("e:" + card_id, premise)
+			_session_changed()
+			_show_connections(premise, box))
+		var text: Label = _label(row, "#%d %s (%s)" % [number, c.text, "strengthens it" if c.helps else "argues against it"], 15)
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		if not c.helps:
+			text.add_theme_color_override("font_color", Color("c0392b"))
+
+## Adding one card made the case weaker: say which card and who else it brings in, and
+## what kind of card would explain their part.
+func _explain_change(id: String, value: Dictionary, badge: Dictionary) -> void:
+	var before: Dictionary = _last_juror.get(id, {})
+	_last_juror[id] = {"cards": value.cards.duplicate(), "lr": badge.get("lr", 1.0)}
+	if before.is_empty():
+		return
+	var added: Array = value.cards.filter(func(c): return c not in before.cards)
+	if added.size() != 1 or before.cards.any(func(c): return c not in value.cards):
+		return
+	var lr: float = badge.get("lr", 1.0)
+	if lr >= before.lr * 0.8 or before.lr <= 1.0:
+		return
+	var card: Dictionary = _report(added[0])
+	var target: String = value.conclusion.get("target", "")
+	var others: Array = []
+	for who in card.get("subjects", [card.get("subject", "")]) + card.get("data", {}).get("seen", []) + card.get("data", {}).get("pair", []):
+		if who is String and who != "" and who != target and who not in others and board.view.people.any(func(p): return p.id == who):
+			others.append(who)
+	var note: String = "Adding \"%s\" weakened this." % card.get("text", "that card")
+	if not others.is_empty():
+		var names: Array = others.map(func(who): return WorkshopSolver.person_name(board.view, who))
+		note += " It also involves %s, and nothing here explains their part; a gift claim or an alibi of theirs could." % " and ".join(PackedStringArray(names))
+	badge["change"] = note
+
+## Assumptions on this premise that change nothing in the test juror's view.
+func _idle_assumptions(node: Dictionary, value: Dictionary, badge: Dictionary) -> void:
+	var idle: Array = []
+	for person in node.get("positions", {}):
+		var without: Dictionary = value.duplicate(true)
+		without.positions.erase(person)
+		var r: Dictionary = Live.test_juror(g, without)
+		if r.get("ready", false) and absf(log(maxf(r.get("lr", 1.0), 0.000001)) - log(maxf(badge.get("lr", 1.0), 0.000001))) < 0.02:
+			idle.append(person)
+	if not idle.is_empty():
+		badge["idle"] = idle
 
 # ------------------------------------------------------------ answers on evidence cards
 

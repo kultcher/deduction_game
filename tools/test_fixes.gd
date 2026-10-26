@@ -732,6 +732,8 @@ func _defence_moves() -> void:
 	seer.applied_info = 0
 	Mind.update_from_own_info(w2)
 	var bo = lis.suspicion[o.id]
+	d2.suspicion[o.id] = 0.6   # they suspect the other more than the Seer (Oct 26: one explanation)
+	d2.suspicion[seer.id] = 0.1
 	var df2 = Mind.defend_self(w2, d2, seer.id)
 	_check("pair_other" in df2["moves"], "named in a Seer's pair, they point at the other (%s)" % str(df2["moves"]))
 	_check(lis.suspicion[o.id] > bo, "some suspicion moves to the other name (%.2f -> %.2f)" % [bo, lis.suspicion[o.id]])

@@ -97,7 +97,7 @@ func headlines():
 	cfg.set_value("headline.dawn", "size", 51)
 	cfg.set_value("headline.dawn", "duration", 1.7)
 	cfg.set_value("headline.dawn", "colour", "#123456")
-	var path = "res://logs/batch3/headline-test.cfg"
+	var path = "user://headline-test.cfg"  # res://logs/ may not exist on a fresh checkout
 	cfg.save(path)
 	overlay.load_styles(path)
 	check(overlay.styles.dawn.size == 51 and overlay.styles.dawn.duration == 1.7 and overlay.styles.dawn.colour == Color("123456"), "settings override each style field from the shared defaults table")

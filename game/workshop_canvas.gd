@@ -178,7 +178,112 @@ static func test_juror(g, value: Dictionary) -> Dictionary:
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"ready": false, "issues": prepared.issues.duplicate()}
-	var result: Dictionary = preload("res://workshop/case_eval.gd").strength(prepared.view, prepared.case)
+	var CaseEval = preload("res://workshop/case_eval.gd")
+	var ev: Dictionary = CaseEval.evaluate(prepared.view, prepared.case)
+	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
+	feedback(prepared.view, prepared.case, ev, result)
 	return result
+
+## The test juror's notes beyond its strength chip: the clash headline and clashing
+## cards when the case can't hold, and who it would mostly raise suspicion of.
+static func feedback(view: Dictionary, case_data: Dictionary, ev: Dictionary, result: Dictionary) -> void:
+	var Solver = preload("res://workshop/solver.gd")
+	var target: String = case_data.conclusion.get("target", "")
+	if ev.impossible:
+		# The real diagnosis goes first: with the player's own choices (answers, doubts,
+		# assumptions), the cards can't all hold. Point at the cards that clash.
+		var chose: bool = not case_data.answers.is_empty() or not case_data.get("reading_challenges", {}).is_empty() or not case_data.positions.is_empty() or not case_data.get("disputes", []).is_empty()
+		result["headline"] = "Your chosen explanation doesn't fit: with it, these cards can't all be true." if chose else "These cards can't all be true together; something here is false."
+		var cards: Array = Solver.selected(view, case_data)
+		var cores: Array = Solver.minimal_conflicts(view, cards)
+		if not cores.is_empty():
+			result["clashing"] = cores[0]
+		else:
+			# The cards clash only under the player's choices: point at the chosen ones.
+			var chosen: Array = case_data.answers.keys() + case_data.get("reading_challenges", {}).keys()
+			for dispute in case_data.get("disputes", []):
+				chosen.append_array(dispute.reports)
+			for card in cards:
+				if card.get("source", "") in case_data.positions or card.get("subject", "") in case_data.positions:
+					chosen.append(card.id)
+			var unique: Array = []
+			for id in chosen:
+				if id not in unique:
+					unique.append(id)
+			result["clashing"] = unique
+	# Collateral: who this case would mostly raise suspicion of, if not the subject.
+	if case_data.conclusion.get("type", "") in ["evil", "demon", "minion", "suspicious"] and ev.has("people"):
+		var people: Dictionary = ev.people
+		var own: float = people.get(target, {}).get("posterior", 0.0) - people.get(target, {}).get("prior", 0.0)
+		var top = ""
+		var top_rise = 0.05
+		for id in people:
+			var rise: float = people[id].posterior - people[id].prior
+			if id != target and rise > top_rise and rise > own:
+				top = id
+				top_rise = rise
+		if top != "":
+			result["raises"] = top
+			result["raises_text"] = "If presented, this mostly raises suspicion of %s." % Solver.person_name(view, top)
+
+## "Connections" (Find Links, rebuilt on the shared model): board cards not yet in this
+## case that bear on its premise, ranked by how far each would move the test juror, up
+## to limit. On demand only: one test-juror run per candidate. Candidates mention someone
+## the case is about (its subject, or anyone on its cards). Each entry: {number, id, text,
+## move (log likelihood-ratio change), helps}.
+static func connections(g, value: Dictionary, limit: int = 5, budget: int = 20) -> Array:
+	var base: float = 1.0
+	if not value.cards.is_empty():
+		var r: Dictionary = test_juror(g, value)
+		if not r.get("ready", false):
+			return []
+		base = r.get("lr", 1.0)
+	var people: Dictionary = {}
+	var target: String = value.conclusion.get("target", "")
+	if target != "":
+		people[target] = true
+	var known: Array = []
+	for card in g.board:
+		if card.kind == "deduction" or card.get("deleted", false):
+			continue
+		var id: String = Evidence.normalize_card(card).id
+		if id in value.cards:
+			known.append(id)
+			for who in _mentions(card):
+				people[who] = true
+	var candidates: Array = []
+	for i in range(g.board.size() - 1, -1, -1):
+		var card: Dictionary = g.board[i]
+		if card.kind in ["deduction", "home"] or card.get("deleted", false):
+			continue
+		var id: String = Evidence.normalize_card(card).id
+		if id in value.cards or id in candidates.map(func(c): return c.id):
+			continue
+		if _mentions(card).any(func(who): return people.has(who)):
+			candidates.append({"number": card.n, "id": id, "text": card.get("text", "")})
+		if candidates.size() >= budget:
+			break
+	var out: Array = []
+	for c in candidates:
+		var with_card: Dictionary = value.duplicate(true)
+		with_card.cards.append(c.id)
+		var r: Dictionary = test_juror(g, with_card)
+		if not r.get("ready", false):
+			continue
+		var move: float = log(maxf(r.get("lr", 1.0), 0.000001)) - log(maxf(base, 0.000001))
+		if absf(move) < 0.01:
+			continue
+		c["move"] = move
+		c["helps"] = move > 0.0
+		out.append(c)
+	out.sort_custom(func(a, b): return absf(a.move) > absf(b.move))
+	return out.slice(0, limit)
+
+static func _mentions(card: Dictionary) -> Array:
+	var out: Array = []
+	for who in card.get("subject", []) + [card.get("source", ""), card.get("owner", "")] + card.get("data", {}).get("seen", []) + card.get("data", {}).get("pair", []) + card.get("data", {}).get("group", []):
+		if who is String and who != "" and who not in ["player", "town"] and who not in out:
+			out.append(who)
+	return out

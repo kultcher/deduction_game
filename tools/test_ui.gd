@@ -41,6 +41,7 @@ func _init() -> void:
 	scene.meeting_view.set_game(g)
 	for cmd in ["go tavern", "wait", "go well", "wait", "go tavern", "wait", "wait", "done", "vigil square", "board", "timeline"]:
 		scene._run(cmd)
+		scene.finish_streaming()
 	await process_frame
 	scene._open_case_view()
 	for i in range(3):
@@ -186,6 +187,7 @@ func _init() -> void:
 	g.capture_prediction("before_night")
 	g.w._finish("evil", "UI test")
 	scene._run("look")
+	scene.finish_streaming()
 	_check(cv.guess_opt.disabled and cv.conf_opt.disabled and "Final theory" in cv.theory_label.text, "post-case theory controls are frozen")
 	# Mouse-driven play: map clicks and the action panel.
 	scene.seed_box.value = 22111
@@ -209,7 +211,9 @@ func _init() -> void:
 		and labels.has("Ask about others…  ▸") and labels.has("Present a card…"), "talk panel has the new top-level buttons (%s)" % str(labels))
 	_check(not labels.any(func(x): return "seen around" in x), "the generic 'who have you seen' question is gone")
 	scene._run("bye")
+	scene.finish_streaming()
 	scene._run("wait")
+	scene.finish_streaming()
 	await process_frame
 	# Coloured log: speech lines carry the speaker's colour.
 	var speech_spans = scene.log_text.formatter.format_text("Hello there.", {"speaker_id": t.id})
@@ -220,16 +224,20 @@ func _init() -> void:
 		match g.state:
 			"day":
 				scene._run("go tavern" if not g.moved else "wait")
+				scene.finish_streaming()
 			"meeting":
 				if not meet_checked and not "player" in g.w.meeting["nominators"]:
 					scene._run("nominate " + g.w.living()[1].id)
+					scene.finish_streaming()
 				else:
 					scene._run("done" if g.town_quiet else "wait")
+					scene.finish_streaming()
 			"nomination":
 				var first = not meet_checked
 				if first:
 					_check(scene.meeting_view.visible and not scene.map.visible, "the meeting circle replaces the map")
 				scene._run("vote no")
+				scene.finish_streaming()
 				if first:
 					meet_checked = true
 					var res: Dictionary = g.w.meeting["results"].back()
@@ -239,8 +247,10 @@ func _init() -> void:
 					_check(not scene.meeting_view.animating() and scene.meeting_view._target.size() == res["order"].size(), "finishing the count marks every voter")
 			"approach":
 				scene._run("decline")
+				scene.finish_streaming()
 			"night":
 				scene._run("sleep")
+				scene.finish_streaming()
 	_check(meet_checked, "a nomination came up to check the meeting view")
 	cv = scene.case_view
 	cv.set_game(g)
@@ -458,6 +468,11 @@ func _init() -> void:
 	await process_frame
 	_check(g.debug_overlay and g.prediction_spoiled, "debug overlay spoils identification credit")
 	_check("Credited by others" in scene.side_profile.get_parsed_text(), "profile shows credibility across the town")
+	# Make sure at least one card has been heard (how much the town talked depends on the
+	# case's setup; this check is about the readout, not the talk).
+	var heard_card: Dictionary = g.board.filter(func(c): return c.kind != "deduction")[0]
+	var listener = g.w.living_good()[0]
+	g.Mind.ledger_hear(g.w, listener, g.Mind.fact_id(heard_card), [[g.w.living()[1].id, 0.05, false, "test", ""]], 1.0)
 	var shown = 0
 	for c in g.board:
 		if g.debug_card_text(c) != "":

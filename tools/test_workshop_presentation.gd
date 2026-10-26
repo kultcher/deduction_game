@@ -56,7 +56,8 @@ func _direct_and_migration() -> void:
 	var baseline = n.suspicion.duplicate(true)
 	n.pressed_today = 0
 	var result = Mind.hear_defence(g.w, n, target, g.board[card - 1])
-	check(result.get("workshop", false) and result.dialogue.stance == result.assessment.stance, "direct defence dialogue uses the applied model's assessment")
+	# The voiced stance follows the belief refresh (Oct 26): a retold report moves nothing.
+	check(result.get("workshop", false) and (result.dialogue.stance == result.assessment.stance or result.dialogue.special.contains("already")), "direct defence dialogue uses the applied model's assessment (or says it already knew)")
 	check(_close(baseline, n.suspicion), "retelling the same directly learned report adds no second effect")
 	var ded = g.file_deduction({"type": "good", "a": target.id}, [card])
 	var trust = n.trust

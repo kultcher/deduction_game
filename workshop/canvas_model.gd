@@ -184,6 +184,28 @@ func unmerge(id: String) -> void:
 	selected = group.children[0]
 	version += 1
 
+## A contradiction whose observation is a gift report (a claim, not something you saw)
+## can be read the other way: the report is the false one. True when that's on offer.
+func report_doubtable(id: String) -> bool:
+	if not nodes.has(id) or nodes[id].kind != "contradiction":
+		return false
+	var report = Solver.card_by_id(view, nodes[id].dispute.preferred)
+	return report.get("kind", "") == "report" and not report.has("relay_source") and not report.get("testimony_only", false)
+
+## The other explanation for an alibi against a gift report: the report is false. Splits
+## the contradiction back into its two cards and puts a "suspected lie" on the report,
+## keeping the links. Returns "" or why not.
+func doubt_report(id: String) -> String:
+	if not report_doubtable(id):
+		return "Only a gift report can be doubted this way."
+	var preferred: String = nodes[id].dispute.preferred
+	var report_node = ""
+	for child in nodes[id].children:
+		if nodes[child].card == preferred:
+			report_node = child
+	unmerge(id)
+	return add_modifier(report_node, "lying")
+
 func unlink(from: String, to: String) -> void:
 	links = links.filter(func(edge): return edge.from != from or edge.to != to)
 	version += 1

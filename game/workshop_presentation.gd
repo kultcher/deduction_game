@@ -110,6 +110,9 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			state.disclosures[id] = {"player": true, "public": false}
 		if venue != "private":
 			state.disclosures[id].public = true
+	# What they say follows what the case did to their belief (see _belief_stance_text).
+	var stance_subject: String = headline.conclusion.get("a", "")
+	var stance_before: float = n.suspicion.get(stance_subject, 0.1)
 	var initial_span = Profiler.open("initial_refresh")
 	Mind.recompute_beliefs(g.w, n, " (interpreted presentation)")
 	Profiler.close(initial_span)
@@ -179,6 +182,11 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			var scoped: Array = assessment.claims.filter(func(c): return c.conclusion.target == target and c.conclusion.type == root.conclusion.type)
 			var agreement: float = scoped[0].agreement if not scoped.is_empty() else assessment.agreement
 			Mind.ledger_hear(g.w, n, eid, [[target, sign_value, true, "Presented original report", ""]], maxf(0.0, agreement), Mind.support_ref(card), meta)
+	var voiced_stance: String = assessment.stance
+	if not repeated and text == assessment.response and stance_subject != "" and g.w.by_id.has(stance_subject):
+		text = _belief_stance_text(g, n, headline.conclusion.type, stance_subject, stance_before, assessment.stance, text, fresh.is_empty())
+		if headline.conclusion.type in ["evil", "demon", "minion", "suspicious", "good", "marked"]:
+			voiced_stance = belief_stance(headline.conclusion.type, stance_before, n.suspicion.get(stance_subject, 0.1))
 	if not state.has("rewarded_facts"):
 		state.rewarded_facts = {}
 	for id in snapshot.selected:
@@ -220,7 +228,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		if not state.has("delivered"):
 			state.delivered = {}
 		state.delivered[delivery_key] = state.discussion[signature]
-	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": assessment.stance,
+	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": voiced_stance,
 		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": text}
 	var lines: Array = [Mind.say(n, text)] if speak and not n.silenced else []
 	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
@@ -230,12 +238,75 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		"reasoning": assessment.reasoning, "theory": assessment.theory, "cognition": cognitive_inputs,
 		"quoted": state.get("quoted", []), "trust_before": trust_before, "trust_after": n.trust,
 		"pressure_delta": n.pressure - pressure_before, "requested": state.requested}, "One assessment controls supported presentation and shared belief ownership.")
-	g.w.dlog.add("argument_stance", n.id, root.conclusion.get("a", ""), {"key": signature, "stance": assessment.stance,
+	g.w.dlog.add("argument_stance", n.id, root.conclusion.get("a", ""), {"key": signature, "stance": voiced_stance, "scoped_stance": assessment.stance,
 		"evil": false, "repeat": repeated, "model": "shared"})
 	var result = {"lines": lines, "facts": [], "agreement": assessment.agreement, "repeated": repeated,
 		"dialogue": descriptor, "workshop": true, "assessment": assessment}
 	g._workshop_repeats[repeat_key] = {"input": state.discussion[signature], "result": result.duplicate(true)}
 	return result
+
+## Replies must match beliefs (BACKLOG, decided Oct 26). The scoped reply and the belief
+## refresh are separate assessments with different attention, so a listener could say
+## "I couldn't follow it" while their suspicion moved as if convinced (54875). The stance
+## they voice now comes from how far the refresh actually moved the subject; the scoped
+## reply only supplies the reasons. Nothing here changes a belief, only the words.
+const STANCE_MOVE = {"accept": 0.06, "partial": 0.02}   # suspicion moved toward the claim
+const STANCE_RANK = {"reject": 0, "partial": 1, "accept": 2}
+## Scoped openings that only state a stance (dropped when the belief says otherwise). Any
+## other opening is a reason, and stays.
+const STANCE_ONLY = [
+	"Taken together, those reports convince me.",
+	"Those reports convince me, though another explanation is still possible.",
+	"That moves me, but the reports also allow another explanation.",
+	"I can see that possibility, but it doesn't settle much for me.",
+	"I can see that possibility, but the reports also allow another explanation.",
+	"Those reports don't change my view of that.",
+	"These observations make your explanation convincing to me, though an alternative remains logically possible.",
+	"Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation.",
+	"I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation.",
+	"The supplied evidence weighs against that conclusion.",
+]
+
+static func belief_stance(kind: String, before: float, after: float) -> String:
+	var toward: float = (before - after) if kind in ["good", "marked"] else (after - before)
+	if toward >= STANCE_MOVE.accept:
+		return "accept"
+	return "partial" if toward >= STANCE_MOVE.partial else "reject"
+
+static func _belief_stance_text(g, n, kind: String, subject: String, before: float, scoped: String, text: String, nothing_new: bool = false) -> String:
+	if kind not in ["evil", "demon", "minion", "suspicious", "good", "marked"]:
+		return text  # conflicts and the like say nothing about one person's alignment
+	var after: float = n.suspicion.get(subject, 0.1)
+	var believed: String = belief_stance(kind, before, after)
+	g.w.dlog.trace_event("stance_from_belief", n.id, subject, {"kind": kind, "before": before, "after": after,
+		"scoped": scoped, "believed": believed}, "The voiced stance follows the belief refresh; the scoped reply gives the reasons.")
+	if believed == scoped:
+		return text
+	var reasons: String = text
+	for lead in STANCE_ONLY:
+		if reasons.begins_with(lead):
+			reasons = reasons.substr(lead.length()).strip_edges()
+			break
+	var name: String = g.w.by_id[subject].name
+	var lead: String
+	match believed:
+		"accept":
+			lead = "it does change how I see %s." % name
+		"partial":
+			lead = "it moves me a little on %s." % name
+		_:
+			var already: bool = before <= 0.15 if kind in ["good", "marked"] else before >= 0.7
+			if nothing_new:
+				lead = "I'd already taken that into account."
+			elif already:
+				lead = "I'd already come to that about %s." % name
+			else:
+				lead = "it doesn't change my mind about %s." % name
+	if reasons == "":
+		return lead[0].to_upper() + lead.substr(1) if believed != "reject" or lead.begins_with("I'd") else "It holds together, but " + lead
+	if STANCE_RANK[believed] > STANCE_RANK[scoped]:
+		return reasons + " Even so, " + lead
+	return reasons + (" " + lead if lead.begins_with("I'd") else " So " + lead)
 
 static func _signature(snapshot: Dictionary) -> String:
 	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]

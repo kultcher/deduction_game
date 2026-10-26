@@ -266,6 +266,14 @@ func _test_fake_watch_story() -> void:
 		m.info_log.append({"day": 1, "role": "nightwatch", "fake": true, "shared": false, "true": false,
 			"data": {"block": "hill", "seen": [goods[0].id]}, "text": "I watched Chapel Hill: I saw %s pass by" % goods[0].name})
 		m.traits["gossip"] = 0.9
+		# Undisclosed, the watch result is withheld (never contradicted)...
+		var held = Mind.answer_night(w, m, 1)
+		var held_txt = " ".join(PackedStringArray(held["lines"].map(func(l): return l["text"])))
+		if not ("not ready to share" in held_txt) or "I saw nobody" in held_txt:
+			bad += 1
+			print("  withheld wrongly: ", held_txt)
+		# ...and once told, the night story names exactly who the report names.
+		m.told_readings = m.info_log.size()
 		var r = Mind.answer_night(w, m, 1)
 		var txt = " ".join(PackedStringArray(r["lines"].map(func(l): return l["text"])))
 		tried += 1

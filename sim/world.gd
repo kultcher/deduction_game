@@ -380,6 +380,12 @@ func _assign_secret_mod() -> void:
 	if goods.size() < 2:
 		return
 	var k: String = pick(C.SECRET_MOD_LIST)
+	if k != "lovers":
+		# The Rumormonger's gift can't name its own holder, so it never holds the secret
+		# alone (Lovers always involve someone else). The shared model knows the rule.
+		goods = goods.filter(func(n): return n.role != "rumormonger")
+		if goods.size() < 2:
+			return
 	if k in ["lovers", "sleepwalker"]:
 		# These send their holder out at night: never on a role that is already out at
 		# night, so nobody has two reasons to be out (Case 22485).
@@ -638,7 +644,16 @@ func end_day_phase(talked_id: String = "") -> bool:
 # ---------------------------------------------------------------- town meeting
 
 func begin_meeting() -> Array:
+	open_meeting()
+	return Mind.meeting_testimony(self)
+
+## Everything before the testimony (begin_meeting without it), for a streamed meeting:
+## then Mind.testimony_start / testimony_step.
+func open_meeting() -> void:
 	set_log_time()
+	# Hold belief refreshes from here until each speaker's turn (or the end of the
+	# testimony): one refresh per mind instead of one now and another a moment later.
+	defer_beliefs = true
 	executed_today = ""
 	meeting = {"block": "", "block_count": 0, "nominated": [], "nominators": [], "results": [], "pending": {}}
 	meeting["accusations"] = []
@@ -660,7 +675,6 @@ func begin_meeting() -> Array:
 					Mind._eff(e, n.id, -0.12, "silenced by the demon's side: they must have been a threat to it")
 					Mind.ledger_hear(self, l, "silenced:%s:%d" % [n.id, day], e, 1.0, [], {"kind": "silenced", "subject": n.id, "day": day})
 	Mind.refresh_all_consensus(self)  # yesterday's accusations count for less today
-	return Mind.meeting_testimony(self)
 
 func can_nominate(by: String, nominee: String) -> String:
 	if not by_id.has(nominee) or not by_id[nominee].alive:

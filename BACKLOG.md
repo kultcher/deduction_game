@@ -27,6 +27,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > what it knows (redirect to the other person, or the source is lying); the other, if said at all,
   > is wording only.
 
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** one hearing per incident (`Mind.defend_self`).
+
 - **Rumormonger as the sole modifier holder.** The gift excludes its own holder from
   its candidate pool. When a healthy Rumormonger is the sole Marked or Sleepwalker,
   the current fallback produces an arbitrary false pair/secret instead of useful
@@ -40,6 +42,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > Lovers (which always involve someone else); the solver's world domain learns the rule. No
   > "no result" reading.
 
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** `World._assign_secret_mod` and `WorldDomain.rumor`.
+
 - **From playtest 54875** (Oct 23; Claude played, the user drove; full trace analysis in
   [docs/playtest_54875_diagnosis.md](docs/playtest_54875_diagnosis.md)). The evil team
   was identified by Day 3 and the town lost anyway: one execution in six days.
@@ -52,6 +56,9 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
     > **Decided (user, Oct 26); Claude batch:** death settles sincerity: a known-good victim wasn't lying, so
     > evidence against them no longer lowers how far their word is credited. Accuracy stays doubtable
     > (poisoned readings). A consistency fix, no new numbers.
+
+    > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** Demon victims are exempt from honesty discounts (`Mind._honesty`
+    > `settled`).
 
   - **A press with a sighting replayed the alibi word for word.** `present 48` to
     Constance (my vigil, against her "home") repeated "Home. Where else would I be?" and
@@ -81,6 +88,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
     Constance's two night-1 stories (private "Isolde", public "Jory"); fix together with
     "evil frames should cohere" in section 2. All 45 test scripts were run on the merge
     (Godot 4.4.1 headless); this is the only failure. [decided]
+
+    > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** fixed with "evil frames should cohere".
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -181,6 +190,12 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > "Killed by the Demon, so credit the victim's alibi" needs a weight: left for the balance pass.
   > Surveyor answers (blocks and residents) are already built (Workshop overhaul, Oct 25).
 
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** 'Doubt the report instead' on an alibi-vs-report
+  > contradiction (`CanvasModel.doubt_report`); someone's own walking report against their own home alibi
+  > links as a contradiction (`CaseGraph.valid_dispute`; the model reads it honestly: a hidden good Night
+  > Watch lies about being home too). 'Claimed a day gift, seen out at night' was already weighed by the
+  > movement model in live games.
+
 - **From playtest 54875: case-workshop feedback.** [decided]
 
   > **Session 2026-10-25 (B036): model/warning wording fixed; partial closure proposed.** Shared,
@@ -210,6 +225,11 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
 
   > **Decided (user, Oct 26); Claude batch:** all six bullets, presentation only. Deferred: saying what a card is
   > offered for (it changes how evidence counts).
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** clash headline and red-outlined clashing cards,
+  > collateral ("mostly raises suspicion of X"), the weakening card named with who it brings in, idle
+  > assumptions, and assumption origins (`WorkshopCanvas.feedback`, `LiveCaseWorkshop._explain_change`,
+  > `_idle_assumptions`).
 
 ### NPC behaviour
 - **From playtest 54875: agreement has to reach the vote.** Six or seven good NPCs said
@@ -246,6 +266,10 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > **Decided (user, Oct 26); Claude batch:** the spoken stance comes from the belief refresh itself (how far
   > the target actually moved); the scoped reply only supplies the reasons. No belief changes, only
   > what they say.
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** `WorkshopPresentation._belief_stance_text`: the voiced
+  > stance follows how far the refresh moved the subject (0.06 toward the claim: accept; 0.02: partly);
+  > the scoped reasons stay; a retold case says it was already taken into account.
 
 - **From playtest 54875: Insight and Confidence barely shaped reactions.** Every good
   listener's agreement was 0.92–1.0. [open]
@@ -311,6 +335,10 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > public readings and frames; old reports are never rewritten. Natural cracks remain (a changed
   > scapegoat; teammates covering a night separately). A bug fix, not tuning. Fixes the `test_social`
   > failure (section 1).
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** an evil member's made-up night sighting repeats that
+  > night's own fake watch report (`Evil.fake_night_sighting`). test_social passes (its check predated the
+  > watch-result disclosure gate).
 
 - **"I've been known to sleepwalk."** (user + Claude, Oct 26) An excuse for being seen out at
   night, open to both the real Sleepwalker and evil bluffers. Cheap for the shared model: worlds already
@@ -747,6 +775,9 @@ exact values remain open. The code-derived examples and clarifications are in
   > **Decided (user, Oct 26); Claude batch:** a "Connections" button on a Workshop card, on demand (no live cost):
   > up to 5 board cards bearing on the same premise, ranked by how far each would move it, contradicting
   > ones marked; one click adds a card.
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** `WorkshopCanvas.connections` and the Connections
+  > button in a premise's details.
 - **Headline notices.** (user, Oct 26) Milestones that get lost in the text window, shown as a
   short headline over the game, one at a time from a queue. Text only for now (flair is in
   BACKLOG_POLISH.md). [decided]
@@ -826,6 +857,16 @@ exact values remain open. The code-derived examples and clarifications are in
   > either exactly what the main thread would compute or discarded; needs thread-safe solver caches.
   > (3) Cheaper refreshes if still needed. Measured Oct 26 (seed 42, day 3): meeting entry 6.5 s = 2.0 s
   > evening-chat refreshes + 4.4 s testimony (10 refreshes); vote rounds 1.4-2.6 s; dawn 2.8 s.
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** the meeting streams speaker by speaker in the UI
+  > (`Mind.testimony_step`, `Game.testimony_step`; identical results, `tools/test_meeting_stream.gd`), and
+  > refreshes are held from the meeting's opening to each speaker's turn (seed 42 day 3: 17 refreshes ->
+  > 11, 5.9 s -> 4.5 s; five full games identical). Holding the night's refreshes the same way changed one
+  > game in five for one refresh saved, so it was dropped. Background thread: not done. The solver keeps
+  > about 45 static caches and id counters, so running it off the main thread needs a thread-safety pass
+  > first; and the dawn work can't overlap reading the morning without deferring refreshes past the
+  > point where the morning reads beliefs (not identical). Still open: vote rounds (1.2-2.6 s each),
+  > presenting (about 4.9 s on the 54875 replay), dawn (about 2.7 s).
 
 ## 3. Medium features (several days; touch a few systems)
 

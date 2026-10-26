@@ -25,6 +25,7 @@ var fields: Dictionary = {}   # id -> [{rect, field}] clickable fields, in scree
 var tips: Array = []          # [{rect, text}] tooltips for drawn badges and fields
 var answer_buttons: Dictionary = {}   # id -> screen rect of the card's Details/Assume button
 var badges: Dictionary = {}   # id -> {category, text, reason, ready, issues} from the test juror
+var clashing: Dictionary = {} # card ids the test juror says clash with the chosen explanation
 var detail_label: Callable    # (node) -> {text, icon}: the premise's extra field, if any
 const PREMISE_H = 236.0
 const STRENGTH_COLORS = {"empty": Color("8a8378"), "contradicts": Color("b55a4c"), "none": Color("8a8378"), "weak": Color("c98a3d"), "moderate": Color("c9b03d"), "strong": Color("5f9a55")}
@@ -45,13 +46,25 @@ func body(id: String) -> Array:
 		var result: Array = ["%d incoming connections" % count, "Select this premise to present its case."]
 		if (model.view.has("chronology") or model.view.get("live", false)) and not node.conclusion.is_empty():
 			result.append("At: " + node.conclusion.at)
+		# Where each assumption comes from: this premise (yours), or a supporting premise.
 		for person in node.positions:
-			result.append("Assume %s: %s" % [Solver.person_name(model.view, person), node.positions[person]])
+			result.append("Assume %s: %s (yours)" % [Solver.person_name(model.view, person), node.positions[person]])
+		if not node.conclusion.is_empty():
+			var shown: Dictionary = node.positions.duplicate()
+			for line in model.compile(id).get("lines", []):
+				for positions in [line.get("positions", {})] + line.get("assumption_sets", []):
+					for person in positions:
+						if not shown.has(person):
+							shown[person] = positions[person]
+							result.append("Assume %s: %s (from \"%s\")" % [Solver.person_name(model.view, person), positions[person], line.label])
 		return result
 	if node.kind == "contradiction":
 		var home = Solver.card_by_id(model.view, node.dispute.challenged)
 		var observation = Solver.card_by_id(model.view, node.dispute.preferred)
-		return [home.text, observation.text, "If the observation is accurate, the home alibi is false.", "Circumstantial; does not prove evil."]
+		var lines: Array = [home.text, observation.text, "If the observation is accurate, the home alibi is false.", "Circumstantial; does not prove evil."]
+		if model.report_doubtable(id):
+			lines.append("Or the report is false: Inspect to doubt it instead.")
+		return lines
 	if node.kind == "modifier":
 		return [Solver.card_by_id(model.view, node.card).text, "Player hypothesis: " + node.mode, "Link supporting evidence here. The jury may reject your explanation."]
 	var card = Solver.card_by_id(model.view, node.card)
@@ -210,7 +223,20 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 		elif badge.has("category"):
 			chip_text = STRENGTH_TEXT.get(badge.category, badge.category)
 			chip_color = STRENGTH_COLORS.get(badge.category, chip_color)
-			tip = "Test juror: " + badge.get("text", "") + ("\n" + badge.reason if badge.get("reason", "") != "" else "") + "\nPublic facts and default trust: how well the case holds together, not how any one person will react."
+			var notes: Array = []
+			if badge.get("headline", "") != "":
+				chip_text = "Doesn't fit"
+				chip_color = Color("b55a4c")
+				notes.append(badge.headline + " The clashing cards are outlined in red.")
+			notes.append("Test juror: " + badge.get("text", "") + ("\n" + badge.reason if badge.get("reason", "") != "" else ""))
+			if badge.get("change", "") != "":
+				notes.append(badge.change)
+			if badge.get("raises_text", "") != "":
+				notes.append(badge.raises_text)
+			for who in badge.get("idle", []):
+				notes.append("Assuming %s %s isn't changing anything in this case." % [Solver.person_name(model.view, who), node.positions.get(who, "")])
+			notes.append("Public facts and default trust: how well the case holds together, not how any one person will react.")
+			tip = "\n".join(PackedStringArray(notes))
 		var cw: float = font.get_string_size(chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 18
 		var chip = Rect2(rect.position + Vector2(rect.size.x - (cw + 10) * zoom, 7 * zoom), Vector2(cw, 24) * zoom)
 		draw_style_box(CanvasSkin.flat(chip_color, chip_color.darkened(0.3), 1, 10, 0), chip)
@@ -565,6 +591,8 @@ func _draw_evidence(id: String, rect: Rect2) -> void:
 	var ink = Color("2c2720")
 	var muted = Color("6f6350")
 	draw_style_box(CanvasSkin.flat(paper, Color("f7d988") if id == model.selected or id == linking else Color("665c4c"), 0 if EvidenceContext.is_context(card) else (3 if id == model.selected else 1), 6, 0), rect)
+	if clashing.has(card.get("id", "")):
+		draw_rect(rect.grow(4 * zoom), Color("c0392b"), false, 3.0 * zoom)
 	var head = Rect2(rect.position, Vector2(rect.size.x, 40 * zoom))
 	draw_rect(head, header)
 	var x: float = 10.0

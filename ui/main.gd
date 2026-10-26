@@ -362,12 +362,13 @@ func _new_case_button() -> void:
 	_new_case()
 
 func _new_case() -> void:
-	if g != null and g.workshop_presenting:
+	if g != null and (g.workshop_presenting or g.meeting_streaming()):
 		return
 	_case_seed = int(seed_box.value)
 	case_state.select_card(0)
 	g = Game.new()
 	headlines.clear()
+	g.stream_meeting = true
 	out.clear()
 	_print(g.new_case(int(seed_box.value), int(size_opt.get_item_metadata(size_opt.selected))))
 	_consume_headlines()
@@ -541,6 +542,9 @@ func _run(cmd: String) -> void:
 	_print("\n> " + cmd)
 	_print(g.command(cmd))
 	_consume_headlines()
+	if g.meeting_streaming():
+		_stream_meeting()
+		return
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()
@@ -552,8 +556,40 @@ func _run_seq(cmds: Array) -> void:
 	for c in cmds:
 		var before = g.state
 		_run(c)
+		if g.meeting_streaming():
+			break
 		if g.state == "over" or (before == g.state and g.last_events.any(func(e): return e.get("k", "") == "error")):
 			break
+
+## The meeting's testimony, one speaker at a time: each speaker's lines show while the next
+## is worked out. Actions wait until the town has spoken.
+const STREAM_GAP = 0.15   # seconds between speakers, at least (the work itself takes longer)
+
+func _stream_meeting() -> void:
+	_refresh_all()
+	while g.meeting_streaming():
+		await get_tree().process_frame
+		var started: int = Time.get_ticks_msec()
+		var text: String = g.testimony_step()
+		if text != "":
+			_print(text)
+		_consume_headlines()
+		meeting_view.refresh()
+		var left: float = STREAM_GAP - (Time.get_ticks_msec() - started) / 1000.0
+		if left > 0.0:
+			await get_tree().create_timer(left).timeout
+	_refresh_all()
+	if case_view.visible and case_view.workshop != null:
+		case_view.workshop.refresh()
+
+## Finish a streamed meeting at once (tests and scripted clicks that can't wait).
+func finish_streaming() -> void:
+	while g != null and g.meeting_streaming():
+		var text: String = g.testimony_step()
+		if text != "":
+			_print(text)
+		_consume_headlines()
+	_refresh_all()
 
 var _last_phase_key = ""
 
@@ -665,6 +701,10 @@ func _refresh_actions() -> void:
 	if g == null:
 		return
 	var w = g.w
+	if g.meeting_streaming():
+		action_title.text = "Day %d: the town meeting" % w.day
+		_hint("The town is speaking…")
+		return
 	match g.state:
 		"day":
 			_actions_day(w)
