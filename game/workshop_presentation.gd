@@ -184,7 +184,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			Mind.ledger_hear(g.w, n, eid, [[target, sign_value, true, "Presented original report", ""]], maxf(0.0, agreement), Mind.support_ref(card), meta)
 	var voiced_stance: String = assessment.stance
 	if not repeated and text == assessment.response and stance_subject != "" and g.w.by_id.has(stance_subject):
-		text = _belief_stance_text(g, n, headline.conclusion.type, stance_subject, stance_before, assessment.stance, text)
+		text = _belief_stance_text(g, n, headline.conclusion.type, stance_subject, stance_before, assessment.stance, text, fresh.is_empty())
 		if headline.conclusion.type in ["evil", "demon", "minion", "suspicious", "good", "marked"]:
 			voiced_stance = belief_stance(headline.conclusion.type, stance_before, n.suspicion.get(stance_subject, 0.1))
 	if not state.has("rewarded_facts"):
@@ -273,7 +273,7 @@ static func belief_stance(kind: String, before: float, after: float) -> String:
 		return "accept"
 	return "partial" if toward >= STANCE_MOVE.partial else "reject"
 
-static func _belief_stance_text(g, n, kind: String, subject: String, before: float, scoped: String, text: String) -> String:
+static func _belief_stance_text(g, n, kind: String, subject: String, before: float, scoped: String, text: String, nothing_new: bool = false) -> String:
 	if kind not in ["evil", "demon", "minion", "suspicious", "good", "marked"]:
 		return text  # conflicts and the like say nothing about one person's alignment
 	var after: float = n.suspicion.get(subject, 0.1)
@@ -296,7 +296,12 @@ static func _belief_stance_text(g, n, kind: String, subject: String, before: flo
 			lead = "it moves me a little on %s." % name
 		_:
 			var already: bool = before <= 0.15 if kind in ["good", "marked"] else before >= 0.7
-			lead = ("I'd already come to that about %s." % name) if already else ("it doesn't change my mind about %s." % name)
+			if nothing_new:
+				lead = "I'd already taken that into account."
+			elif already:
+				lead = "I'd already come to that about %s." % name
+			else:
+				lead = "it doesn't change my mind about %s." % name
 	if reasons == "":
 		return lead[0].to_upper() + lead.substr(1) if believed != "reject" or lead.begins_with("I'd") else "It holds together, but " + lead
 	if STANCE_RANK[believed] > STANCE_RANK[scoped]:

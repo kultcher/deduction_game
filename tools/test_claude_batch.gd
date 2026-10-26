@@ -46,5 +46,8 @@ func _stance_from_belief() -> void:
 	n.suspicion[t.id] = 0.3
 	said = Presentation._belief_stance_text(g, n, "evil", t.id, 0.2, "accept", "Taken together, those reports convince me.")
 	_check(said == "Taken together, those reports convince me.", "when words and belief agree, the reply is unchanged")
+	n.suspicion[t.id] = 0.2
+	said = Presentation._belief_stance_text(g, n, "evil", t.id, 0.2, "accept", "Taken together, those reports convince me.", true)
+	_check(said == "I'd already taken that into account.", "a retold case they'd already weighed: says so (%s)" % said)
 	said = Presentation._belief_stance_text(g, n, "conflict", t.id, 0.2, "accept", "Those accounts cannot all be accurate.")
 	_check(said == "Those accounts cannot all be accurate.", "conflicts are left alone")
