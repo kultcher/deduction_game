@@ -113,9 +113,13 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
 
 
   - **Wording: a claimed walker's sighting told "from my window".** [decided]
-    > **Ready for Codex (Oct 25):** wording only, in `Evil` fake sightings (around line 888): a
+    > **Implemented (Codex batch 2, Oct 25):** wording only, in `Evil` fake sightings (around line 888): a
     > claimed walker tells a sighting as seen while out on their duty, and every fake sighting
     > names its night like real ones do. No change to who evil frames or when.
+    > **Batch 2 item 2:** `Evil.bluff_reason` dates fake-sighting reasons and uses
+    > duty wording for an already claimed walker. Cached sightings, available frames,
+    > their selection and RNG use are unchanged; focused regression checks cover each.
+
     A claimed Night Watch says "I watched the Market…" and then "I saw them … from my
     window": a walker's sighting should be told as seen while out.
     (The other wording lines in this entry were fixed Oct 25; see BACKLOG_COMPLETED.md.)

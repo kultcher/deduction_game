@@ -885,7 +885,12 @@ static func bluff_reason(w, n, t) -> String:
 	for k in w.evil_plan["fake_sightings"]:
 		var fs = w.evil_plan["fake_sightings"][k]
 		if fs is Dictionary and fs["who"] == t.id and k.begins_with(n.id + ":"):
-			opts.append("I saw them out in the street from my window at night" if fs.get("how", "window") == "window" else "I saw them out on %s at night" % C.block_name(fs["block"]))
+			var night: int = int(fs.get("day", k.get_slice(":", 1)))
+			var walking_claim: bool = C.ROLES.get(n.claimed_role, {}).get("night_walk", false)
+			if walking_claim:
+				opts.append("I saw them out on %s on night %d, while I was out on my duty" % [C.block_name(fs["block"]), night])
+			else:
+				opts.append("I saw them out in the street from my window on night %d" % night if fs.get("how", "window") == "window" else "I saw them out on %s on night %d" % [C.block_name(fs["block"]), night])
 	if opts.is_empty():
 		return ""
 	return w.pick(opts)
