@@ -17,7 +17,7 @@ static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: D
 		if cache.size() >= 64:
 			cache.clear()
 		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
-	var mask: int = coarse_mask(ids.size(), world, cache[key].seer, relay_mediums(ids, cards))
+	var mask: int = coarse_mask(ids.size(), world, cache[key].seer, relay_mediums(ids, cards), sleepwalk_claimants(ids, cards))
 	if not cache[key].results.has(mask):
 		cache[key].results[mask] = _fits_view(view, ids, world, cards, knowledge, answers)
 	return cache[key].results[mask]
@@ -47,10 +47,11 @@ static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledg
 	var results: Dictionary = entry.results
 	var seer: bool = entry.seer
 	var mediums: int = relay_mediums(ids, cards)
+	var walkers: int = sleepwalk_claimants(ids, cards)
 	var routes = null
 	for i in range(universe.size()):
 		var world: Dictionary = universe[i]
-		var mask: int = coarse_mask(ids.size(), world, seer, mediums)
+		var mask: int = coarse_mask(ids.size(), world, seer, mediums, walkers)
 		if not results.has(mask):
 			# The Medium claims a relay adds are the same in every world that passes the
 			# relay checks (worlds that fail never reach routing), so routes hoist too.
@@ -65,15 +66,30 @@ static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledg
 ## mediums: relay_mediums(). A relay only reads whether its Medium is Delusional (the
 ## Medium's evil bit is already in the mask), not the other modifier holders: keying on
 ## all holders split every class ~12,000 ways in late games.
-static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int) -> int:
+## walkers: sleepwalk_claimants(). A "known to sleepwalk" claim reads only whether its
+## claimants are the Sleepwalker, so only their bits join the mask (0 when nobody claims).
+static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> int:
 	var n: int = people + 1
 	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if seer else 0)
 	if mediums != 0:
 		var deluded: int = int(world.get("holders", 0)) & mediums if world.get("modifier", "marked") == "delusional" else 0
 		mask = mask * (1 << people) + deluded
+	if walkers != 0:
+		var asleep: int = int(world.get("holders", 0)) & walkers if world.get("modifier", "marked") == "sleepwalker" else 0
+		mask = mask * (1 << people) + asleep
 	if world.has("converted"):
 		mask = mask * n + int(world.converted) + 1
 	return mask
+
+## Bit per person who said they've been known to sleepwalk (unquoted secret claims).
+static func sleepwalk_claimants(ids: Array, cards: Array) -> int:
+	var bits: int = 0
+	for card in cards:
+		if card.get("kind", "") == "secret_claim" and card.get("data", {}).get("secret_kind", "") == "sleepwalker" and not card.get("quoted", false):
+			var i: int = ids.find(card.get("subject", ""))
+			if i >= 0:
+				bits |= 1 << i
+	return bits
 
 ## Bit per Medium named by an unquoted relay card (the people the relay check reads).
 static func relay_mediums(ids: Array, cards: Array) -> int:
@@ -106,6 +122,13 @@ static func seer_flag(cards: Array) -> bool:
 ## doesn't depend on the world, so fits_table computes it once for all worlds.
 static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null, bluffs: bool = false) -> bool:
 	cards = _live_cards(cards)
+	# "I've been known to sleepwalk": true of the one Sleepwalker; anyone else saying it
+	# is evil and lying. (Two claimants: at least one is evil.)
+	var walkers: int = sleepwalk_claimants(ids, cards)
+	if walkers != 0:
+		var asleep: int = int(world.get("holders", 0)) if world.get("modifier", "marked") == "sleepwalker" else 0
+		if walkers & ~int(world.evil) & ~asleep:
+			return false
 	var visits = {}
 	for card in cards:
 		if card.has("relay_source") and not card.get("quoted", false):

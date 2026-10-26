@@ -2017,6 +2017,16 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 			moves.append("secret")
 			effs_by_move["secret"] = [[d.id, -minf(0.3, out_weight), true, "excused: a personal secret", ""]]
 			defence_scopes["secret"] = {"type": "secret_claim", "owner": d.id, "kind": d.secret.get("kind", "")}
+	# 2b. "I've been known to sleepwalk": the real Sleepwalker (who can't know they were
+	# out, only that they've walked before) or an evil bluffer whose cover needs it.
+	if moves.is_empty() and not out_items.is_empty():
+		var excuse: Dictionary = sleepwalk_excuse(w, d, "the meeting")
+		if not excuse.is_empty():
+			lines.append(excuse["line"])
+			facts.append(excuse["fact"])
+			moves.append("sleepwalk")
+			effs_by_move["sleepwalk"] = [[d.id, -minf(0.3, out_weight), true, "excused: says they sleepwalk", ""]]
+			defence_scopes["sleepwalk"] = {"type": "secret_claim", "owner": d.id, "kind": "sleepwalker"}
 	# 3. Against a reading that names them.
 	if moves.size() < 2:
 		var rd = {}
@@ -2279,6 +2289,32 @@ static func _gift_outing(w, n, night: int) -> bool:
 	if n.info_log.any(func(e): return e.get("role", "") == n.role and e.get("day", -1) == night): return true
 	return n.secret.is_empty()
 
+## "I've been known to sleepwalk." Offered under pressure (pressed with a sighting, or
+## defending against a nomination) by the real Sleepwalker, who can't know they were out
+## but knows they've walked before, and by an evil member whose bluffed gift doesn't
+## already explain being out. One Sleepwalker per case, so evil won't say it once someone
+## else has. Returns {line, fact} or {}.
+static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
+	if n.silenced:
+		return {}
+	var others: bool = w.sleepwalk_claims.any(func(id): return id != n.id)
+	if n.is_evil():
+		var bluff: String = w.evil_plan["bluffs"].get(n.id, "")
+		if others or (bluff != "" and C.ROLES[bluff].get("night_walk", false)) or n.claim_public and C.ROLES.get(n.claimed_role, {}).get("night_walk", false):
+			return {}
+		if not (n.id in w.sleepwalk_claims) and not decide(w, n, "sleepwalk_bluff", {"base": -0.1, "pressure": n.pressure * 0.5},
+				"Evil: explain being seen out by claiming to sleepwalk?"):
+			return {}
+		w.dlog.think(n.id, "lie", "Evil: says they sleepwalk to explain being seen out.", {"lie": true})
+	elif n.secret_mod != "sleepwalker":
+		return {}
+	if not (n.id in w.sleepwalk_claims):
+		w.sleepwalk_claims.append(n.id)
+	var line = say(n, "I don't remember going out. But I've been known to sleepwalk.")
+	return {"line": line, "fact": {"kind": "secret", "subject": [n.id], "owner": n.id, "source": n.id,
+		"secret_kind": "sleepwalker", "mod": "sleepwalker",
+		"text": "%s says they've been known to sleepwalk (at %s)." % [n.name, where]}}
+
 static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	if not n.claim_public and n.max_tier < 3 and _gift_outing(w, n, night):
 		if night not in n.lied_nights: n.lied_nights.append(night)
@@ -2324,6 +2360,14 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 			if line is Dictionary and line.get("speaker", "") == n.id:
 				line.text = text
 				break
+	# Pressed with a sighting, they may offer the sleepwalking explanation (they were seen
+	# out, whatever they remember).
+	var stood_by_home: bool = response.facts.any(func(f): return f.get("kind", "") == "alibi" and f.get("source", "") == n.id)
+	if stood_by_home and str(n.history.get(w.time_key(night, C.NIGHT), "")).begins_with("night:"):
+		var excuse: Dictionary = sleepwalk_excuse(w, n, "night %d" % night)
+		if not excuse.is_empty():
+			response.lines.append(excuse["line"])
+			response.facts.append(excuse["fact"])
 	return response
 
 # ---------------------------------------------------------------- conversation

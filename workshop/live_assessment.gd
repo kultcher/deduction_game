@@ -235,7 +235,7 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["data"] = e.content.data.duplicate(true)
 		return card # Opinions are context, even when the gift reports them accurately.
 	if e.kind == "secret" and e.source in ids and e.subjects.size() == 1 and e.subjects[0] in ids and e.content.get("owner", "") == e.subjects[0]:
-		if e.content.get("secret_kind", "") not in C.SECRETS.map(func(secret): return secret.kind) + ["lover"] or e.observed_at.day < 0 or e.observed_at.phase == "unknown" or (block != "" and block not in C.BLOCKS):
+		if e.content.get("secret_kind", "") not in C.SECRETS.map(func(secret): return secret.kind) + ["lover", "sleepwalker"] or e.observed_at.day < 0 or e.observed_at.phase == "unknown" or (block != "" and block not in C.BLOCKS):
 			return {}
 		card["kind"] = "secret_claim"
 		card["night"] = -1 # Confessing an explanation does not prove an outing.

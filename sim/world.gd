@@ -63,6 +63,7 @@ var meeting = {}
 var tools = {"ward": 1, "clemency": 1}
 var player_ward = ""
 var ward_saves: Array = [] # Player-only aftermath, recorded only when their sigil stops an attack.
+var sleepwalk_claims: Array = [] # who has said "I've been known to sleepwalk" (to anyone)
 var player_vigil = ""
 var player_vigil_seen: Array = []
 var player_loc = ""

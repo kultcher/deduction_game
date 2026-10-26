@@ -20,6 +20,7 @@ func _init() -> void:
 	_alibi_against_report()
 	_test_juror_feedback()
 	_connections()
+	_sleepwalk_excuse()
 	print("Claude batch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -190,3 +191,41 @@ func _connections() -> void:
 		if absf(found[i].move) > absf(found[i - 1].move):
 			sorted = false
 	_check(sorted and found.size() <= 5, "ranked by how far each moves it, at most five")
+
+## "I've been known to sleepwalk": the real Sleepwalker and evil bluffers may say it; the
+## shared model reads it as true of the one Sleepwalker, or a lie by evil.
+func _sleepwalk_excuse() -> void:
+	var g = _game(4450)
+	var w = g.w
+	var goods: Array = w.living_good()
+	var sleeper = goods[0]
+	var plain = goods[1]
+	for n in w.npcs:
+		n.secret_mod = ""
+	sleeper.secret_mod = "sleepwalker"
+	_check(not Mind.sleepwalk_excuse(w, sleeper, "the meeting").is_empty(), "the real Sleepwalker can say they've been known to sleepwalk")
+	_check(Mind.sleepwalk_excuse(w, plain, "the meeting").is_empty(), "an ordinary good townsperson doesn't")
+	var e = w.evil_team()[0]
+	w.evil_plan["bluffs"][e.id] = "nightwatch"
+	_check(Mind.sleepwalk_excuse(w, e, "the meeting").is_empty(), "evil with a night-walking bluff has no need of it")
+	w.evil_plan["bluffs"][e.id] = "clerk"
+	_check(Mind.sleepwalk_excuse(w, e, "the meeting").is_empty(), "and evil won't say it once someone else has (one Sleepwalker per case)")
+	# The model: one claim from a good person means they're the Sleepwalker; two claims
+	# mean at least one claimant is evil.
+	w.day = 2
+	g.add_card({"kind": "secret", "subject": [sleeper.id], "owner": sleeper.id, "source": sleeper.id, "secret_kind": "sleepwalker", "mod": "sleepwalker", "day": 1, "phase": 2, "text": "%s says they've been known to sleepwalk." % sleeper.name})
+	g.add_card({"kind": "secret", "subject": [plain.id], "owner": plain.id, "source": plain.id, "secret_kind": "sleepwalker", "mod": "sleepwalker", "day": 1, "phase": 2, "text": "%s says they've been known to sleepwalk." % plain.name})
+	var view = Live.view(g)
+	var claims: Array = view.cards.filter(func(c): return c.kind == "secret_claim")
+	_check(claims.size() == 2, "the claims reach the shared model as secret claims")
+	# As Assess.prepare sets it up for a case that cites a secret claim.
+	view["live_activity"] = true
+	view.world_options["roles"] = true
+	view.world_options["identities"] = true
+	var one: Array = Solver.solve(view, [claims[0]]).worlds
+	var ids: Array = view.people.map(func(p): return p.id)
+	var a: int = ids.find(claims[0].subject)
+	var b: int = ids.find(claims[1].subject)
+	_check(not one.is_empty() and one.all(func(x): return (x.evil & (1 << a)) or (x.modifier == "sleepwalker" and x.holders & (1 << a))), "one claim: the claimant is the Sleepwalker or evil")
+	var both: Array = Solver.solve(view, claims).worlds
+	_check(not both.is_empty() and both.all(func(x): return (x.evil & (1 << a)) or (x.evil & (1 << b))), "two claims: at least one claimant is evil")
