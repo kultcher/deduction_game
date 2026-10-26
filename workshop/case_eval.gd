@@ -221,6 +221,10 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	# Per class: prior (team odds, role fits) and the case's likelihood.
 	var team_prior = _team_prior(view, listener)
 	var fits = _class_fits(view, cc, cards, knowledge)
+	# The "before" side of the case: role knowledge without the case's own cards. Role-
+	# based readings (Seer, Archivist, Clerk...) act through the role check; applied to
+	# both sides they cancel, and the reading never moved anyone (playtest 37291).
+	var fits_before = _class_fits(view, cc, [], knowledge)
 	if view.get("chronology", {}).has("curse"):
 		fits = fits.duplicate() # Never modify a cached role table.
 		var worlds: Array = Solver.universe(view)
@@ -253,7 +257,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 		for o in range(ns):
 			var k = c * ns + o
 			var b: float = counts[k] * w0 * own_like[o]
-			base[k] = b
+			base[k] = counts[k] * team_prior[team[c]] * fits_before[c] * own_like[o] if compatible else 0.0
 			post[k] = b * case_like[c] * move[c] * test_like[c]
 	# A listener holding a theory reads the evidence through it (Theory bias): worlds
 	# that fit their theory count for more after the case.
@@ -677,13 +681,14 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 	var personal = {"self": knowledge.get("self", ""), "own_role": knowledge.get("own_role", ""), "own_outings": knowledge.get("own_outings", {})}
 	if not knowledge.get("public_roles", {}).is_empty():
 		personal["public_roles"] = knowledge.public_roles
-	var neutral_key = hash([cc.key, "neutral", Domain.live(view)])
+	var bare: bool = cards.is_empty() # the "before" side: no case cards (see evaluate)
+	var neutral_key = hash([cc.key, "neutral", Domain.live(view), bare])
 	if not _fits_cache.has(neutral_key):
 		_fits_cache[neutral_key] = _fits_over(view, cc, cards, {}, range(nc))
 	var neutral: PackedFloat64Array = _fits_cache[neutral_key]
 	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
 		return neutral
-	var key = hash([cc.key, personal, Domain.live(view)])
+	var key = hash([cc.key, personal, Domain.live(view), bare])
 	if not _fits_cache.has(key):
 		if _fits_cache.size() > 256:
 			_fits_cache.clear()
