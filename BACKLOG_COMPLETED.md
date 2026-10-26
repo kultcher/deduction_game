@@ -3,6 +3,296 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Oct 26, 2026 (Codex batch 3 and Claude batch)
+
+Built on `codex/backlog-batch-3` (Codex), `claude/batch-oct26` and `claude/sleepwalk-ward` (Claude), all merged
+into main on Oct 26 after review. Full suite at merge: 82/82 suites, plus test_trace. Partly-built entries stay in
+BACKLOG.md with notes (meeting speed, Workshop links/feedback, the sleepwalk excuse with its open Lovers part,
+the totem balance, the evil-walker side of owned lies).
+
+<!-- was in UI -->
+- **Headline notices.** (user, Oct 26) Milestones that get lost in the text window, shown as a
+  short headline over the game, one at a time from a queue. Text only for now (flair is in
+  BACKLOG_POLISH.md). [decided]
+
+  > **Decided (user, Oct 26); Codex batch 3:** the game emits a `headline` event next to the usual
+  > log line; a mouse-transparent overlay plays a queue, one at a time; a click skips; with more than
+  > two waiting, durations shorten; never blocks input. Styles (size, colour, duration per kind) in one
+  > table that `user://settings.cfg` can override (no settings screen yet). Notices:
+  > - dawn ("Day 4 Dawns", big, ~2.5 s, gold); nightfall (big, blue); other phase changes (small, ~1.2 s);
+  > - each death at dawn: "<name>, who claimed to be the <gift>, died in the night" (public claim) or
+  >   "who told you they were the <gift>" (private), or the name only; subtitle "A Demon hides among
+  >   N remaining townsfolk" (red); "No one died in the night" on a quiet night;
+  > - nominations and "now on the block" (amber); executions (crimson); the Martyr dying in someone's
+  >   place; a curse taking hold (purple); a totem burned (green); your ward holding; the case ending.
+
+  > **Implemented (Codex batch 3):** Game events feed a mouse-transparent queue; click-through skip, queue catch-up, claim-safe text, and settings overrides are covered by focused checks. Presentation defaults were approved in chat. Original log rendering and RNG stay unchanged; baseline and headline-only replay measurements are retained in logs/batch3.
+
+<!-- was in Deduction types and templates -->
+- **Starting secret-count card.** Generate a public setup card stating how many secrets
+  are in town. Decide whether the count means modifier types, holders (Lovers count
+  twice), or includes ordinary personal secrets; do not expose assignments. (61251/25923)
+  [decided: card; count definition open]
+
+  > **Decided (user, Oct 26); Codex batch 3:** don't reveal the nature of the secrets. Add one line at the bottom of the
+  > script (the roles window, `ui/main.gd::_open_roles`, which already gives the minion count and "one
+  > in play" for secrets), counting secrets, not people (Lovers are one secret, two people):
+  > "Good: 5 gifted townsfolk / 1 secret · Evil: 1 minion / 1 demon" (7 townsfolk) and
+  > "Good: 7 gifted townsfolk / 1 secret · Evil: 2 minions / 1 demon" (10). Counts come from the setup
+  > rules, not the assignments. No board card, nothing for the shared model.
+
+  > **Implemented (Codex batch 3):** The roles window ends with the specified good/secret/minion/demon counts from C.SETUPS. Lovers count as one secret; no assignments, board cards or shared-model data are used. Focused checks cover both town sizes and unchanged cards/RNG.
+
+<!-- was in UI -->
+- **Limited-use tool warnings.** Clearly warn before spending Ward and other
+  limited-use abilities; show remaining uses and that spending one is irreversible.
+  Current help and some labels already say "once per case", but the generic
+  "Ward someone..." and promise paths do not consistently communicate the limit
+  before selection/use. Cover direct targeting and promises; distinguish promising
+  a tool from actually consuming it. (Oct 21) [decided; warning presentation open]
+
+  > **Decided (user, Oct 26); Codex batch 3:** every Ward button shows what's left ("1 left, once per case"). Warding someone
+  > directly from the UI asks for confirmation ("This spends your only ward. Ward X?"); the typed command
+  > goes straight through. Promise text says a promise doesn't spend the ward; keeping it does.
+
+  > **Implemented (Codex batch 3):** Every Ward UI path shows remaining uses, direct UI targeting asks the specified confirmation, and typed commands stay immediate. Promise wording distinguishes offering from spending. Focused checks cover labels, cancel, promises and typed consumption.
+
+<!-- was in UI -->
+- **Hide Unselected.** Add a case-board toggle to hide rows not explicitly selected
+  by the active person/place filters. Keep this distinct from hiding evidence cards,
+  showing hidden cards, and the currently focused card/profile; define the
+  no-selection behavior and retain pinned-card/filter consistency.
+  (Oct 21) [decided; edge cases open]
+
+  > **Decided (user, Oct 26); Codex batch 3:** nothing selected: the toggle is disabled (with a tooltip). Several filters: show
+  > rows matching any of them. Pinned cards on hidden rows stay visible. Hiding never removes cards or links.
+  > (Selected-first ordering is already built: B110, BACKLOG_COMPLETED.md.)
+
+  > **Implemented (Codex batch 3):** The row-only toggle reuses B110 selection/order exactly (confirmed in chat): people filters for person rows, places for place rows. It disables without that row selection, ORs selected rows, and preserves pins, cards and links. Focused layout/UI checks cover these cases.
+
+<!-- was in UI -->
+- **Long dropdowns in columns.** Once a dropdown exceeds roughly eight options,
+  consider multiple columns: at most eight options per column for an uncategorized
+  list, or columns grouped by existing categories. Example: the deduction planner's
+  "is the <blank>" selector has about twenty options across roughly four categories.
+  Prefer meaningful existing groups where available; exact threshold/layout remains
+  open. Keep category labels, keyboard navigation, and screen bounds usable.
+  (Oct 20) [tentative]
+
+  > **Decided (user, Oct 26); Codex batch 3:** at most 8 options per column; group by the existing categories where there
+  > are any, otherwise split evenly. Keep labels, keyboard navigation and screen bounds usable.
+
+  > **Implemented (Codex batch 3):** Shared menu presentation keeps native IDs, indices, metadata and callbacks. Existing categories are retained; uncategorized groups split evenly with at most eight options per column. Both native dropdowns and handcrafted pickers fit in a scrolling screen-bounded popup. Focused checks cover grouping, disabled choices, arrows, bounds and selection parity.
+
+<!-- was in 3. Medium features (several days; touch a few systems) -->
+- **Last words.** A condemned NPC gets some final words before the hanging (flavour). (Oct 19) [decided]
+
+  > **Decided (user, Oct 26); Codex batch 3:** one or two lines before the hanging (after Martyr substitution, so whoever actually
+  > hangs speaks). With nothing left to hide they may claim a gift: good their true gift, evil their bluff;
+  > and they name their top suspect (evil: the scapegoat, via the existing plan). Nothing reveals
+  > alignment. The claim is an ordinary public claim card; execution and aftermath happen exactly once.
+
+  > **Implemented (Codex batch 3):** After Martyr substitution is decided, the actual condemned speaks before death: true gift or existing bluff as an ordinary public claim, then top suspect or existing scapegoat. Silenced NPCs only try to speak (confirmed in chat). Readings remain withheld. Focused outcome tests verify ordering, substitution, silence and one-time execution/aftermath.
+
+<!-- was in 3. Medium features (several days; touch a few systems) -->
+- **Bot coverage of the new talk options:** the bot doesn't offer wards or vigils or ask
+  about others to learn haunts, so bot runs don't measure them. [decided]
+
+  > **Decided (user, Oct 26); Codex batch 3:** the bot offers wards/vigils, asks about others (haunts,
+  > traits, relationships), answers NPC requests (confidence, protection), apologises and makes gift requests,
+  > with simple rules, and its run summary counts each. `tools/` only; note that bot baselines shift.
+
+  > **Implemented (Codex batch 3):** tools/autoplay.gd adds public-knowledge rules for offers, request answers, apologies, asking about people and gift requests, and keeps protection promises at night. Each new action is counted in printed/JSON summaries. Focused policy checks and a seed-4242 smoke game pass without guard exhaustion. Bot baselines will shift.
+
+<!-- was in 3. Medium features (several days; touch a few systems) -->
+- **The ward as evidence, and a visible save.** Your ward isn't a card today, and a ward
+  that stops an attack leaves no sign. Make the ward a card (who, door, night) and let a
+  held ward leave a mark (a scorched sigil) as physical proof the demon came to that
+  door. Feeds the "Protection + quiet night + sighting" template gap. (user, Oct 23)
+  [decided]
+
+  > **Decided (user, Oct 26); Codex batch 3:** spending your ward makes a card (who, which door, which
+  > night). If it stops an attack, the next morning you alone find a scorched sigil: a card saying the Demon
+  > came to that door that night (player-only until shown). Presenting it: at the meeting, +0.05 trust with
+  > every living NPC and +0.15 with the protectee; privately, +0.05 with the listener (+0.15 if it's the
+  > protectee). Once per sigil, caps hold, evil reacts the same. No adapter for the shared model in this
+  > batch (Claude adds it; the card is context until then).
+
+  > **Decided (user, Oct 26); Claude batch:** the shared-model side (after Codex's cards): a held ward counts as a
+  > Demon attack at that door that night, with the same route reasoning as a murder. No new weights.
+  > Fills the "Protection + quiet night + sighting" template gap.
+
+  > **Implemented (Codex batch 3):** Ward spending records person, door and night; an actual stopped attack yields a private next-morning sigil. Presentations reward each NPC once per sigil (confirmed in chat), +0.05 normally or +0.20 total for the protectee, with caps and equal evil handling. Cards are UI context only; no shared-model adapter or evidence numbers were added. Tests cover an actual save, private-then-public repeats, silent/evil listeners, caps and reset.
+
+  > **Built (Claude, Oct 26):** the sigil becomes a Demon attack on the shared view's timeline (routes as for a murder; knell and Veteran nights checked); the ward receipt is context.
+
+<!-- was in NPC behaviour -->
+- **Case 44814: asking about an already disclosed gift.** Currently "are you the X?"
+  repeats confirmation and consumes a question, without requesting withheld results;
+  a profile role guess is private bookkeeping only. Decide whether the dialogue
+  question should offer a useful route to the withheld readings or clearer feedback
+  about asking for them. No automatic extra disclosure from recording a guess. [open]
+
+  > **Decided (user, Oct 26); Codex batch 3:** "are you the X?" when they've already told
+  > you they're the X is treated as "ask gift": same cost and rules, readings if they're willing. Not counted
+  > as a wrong guess.
+
+  > **Implemented (Codex batch 3):** Matching an already disclosed role routes directly to ask gift before fatigue is counted. Public/private and good/evil parity tests cover full replies, readings, trust, fatigue, wrong-guess count and RNG.
+
+<!-- was in NPC behaviour -->
+- **Case 44814: readings after role disclosure.** Once a gift is officially claimed,
+  ordinarily share available readings unless trust is very low. Current public
+  disclosure guarantees only tier 3 (the role), so fresh readings can remain withheld
+  at ordinary trust and then be announced publicly moments later. Preserve valid
+  privacy/provenance boundaries when changing the policy. [decided; tuning open]
+  54875: nobody reached the readings tier (openness > 0.75) all case, so every private
+  claim (Edda, Constance, Isolde, Lian) came with "I'll keep what it's shown me to
+  myself". Edda told the player that, then announced the reading at the meeting an hour
+  later: the gift-type terms (`one_shot_gift` +0.3, `hides_from_demon`) exist only in the
+  public claim roll, not in the private disclosure roll. Give the private roll the same
+  terms, and if an NPC will announce something anyway, the player who asked hears it
+  first.
+
+  > **Decided (user, Oct 26); Codex batch 3:** give the private disclosure roll (`_target_tier`'s
+  > openness) the same gift-type terms the public-claim roll has: `one_shot_gift` +0.3, `gift_keeps_giving`
+  > -0.4 (repeating info gifts, day <= 2), `hides_from_demon` -0.5 (non-info gifts), with the same conditions.
+  > Drop "the player hears it first" for now. Approved disclosure tuning (user).
+
+  > **Implemented (Codex batch 3):** Private openness adds only the approved +0.3 one-shot, -0.4 early repeating-info and -0.5 non-info terms under the public-roll conditions. All existing base terms, thresholds and the single jitter draw remain; focused good/evil role/day checks verify them.
+
+<!-- was in 1. Bugs and quick fixes (hours, low risk) -->
+- **A press with a sighting replayed the alibi word for word.** `present 48` to
+  Constance (my vigil, against her "home") repeated "Home. Where else would I be?" and
+  the same window sighting, behind a new lead-in, and cost a question. Pressing should
+  change the story, harden it or stonewall in a new line. [decided]
+
+  > **Decided (user, Oct 26); Codex batch 3, one item with the next two entries:** pressed with a sighting that contradicts
+  > their alibi, nobody repeats the alibi word for word. A good person secretly out on gift business admits
+  > it and tells their gift with the owned-lie line ("So yes: I was out…"; the reveal cost collapses, as at
+  > the meeting). A good person who really was home stands firm with a new line. Evil gets a new line with
+  > the same cover facts (wording only; no change to cover choices).
+
+  > **Implemented (Codex batch 3):** Caught good gift walkers disclose through the existing gift/admission path. Home accounts, evil cover and refusals receive fresh deterministic wording; personal-secret and Sleepwalker choices remain unchanged (confirmed in chat). Paired checks preserve facts, fatigue, trust and RNG for wording-only cases. Broader evil Night Watch consistency stays open.
+
+<!-- was in NPC behaviour -->
+- **Replies must match beliefs.** (Claude, Oct 25; 54875 replay) Jory and Agnes accept
+  case #85 numerically (their suspicion moves as if convinced) while their replies say
+  they couldn't follow it. What an NPC says has to come from the same computation as what
+  it believes (LEGACY_MIGRATION lesson 6). The scoped reply and the belief refresh are
+  separate jury runs with different attention; decide which one owns the stance wording,
+  or derive the reply's stance from the refresh's movement on the premise target.
+  Overlaps "Accept is wording, not belief" above and reply-only Insight budgeting below.
+  Fix before the next playtest is used to judge persuasion. [decided: direction; approach open]
+
+  > **Decided (user, Oct 26); Claude batch:** the spoken stance comes from the belief refresh itself (how far
+  > the target actually moved); the scoped reply only supplies the reasons. No belief changes, only
+  > what they say.
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** `WorkshopPresentation._belief_stance_text`: the voiced
+  > stance follows how far the refresh moved the subject (0.06 toward the claim: accept; 0.02: partly);
+  > the scoped reasons stay; a retold case says it was already taken into account.
+
+<!-- was in NPC behaviour -->
+- **From playtest 54875: evil frames should cohere.** Constance's private night-1 story
+  ("I saw Isolde", from the alibi-hiding window sighting) and her public Night Watch
+  reading ("I saw Jory") came from separate generators and conflicted; that crack is
+  what unravelled her. Decide whether it's a deliberate crack or should come from one
+  plan per scapegoat per night that every bluff draws from. Likewise a side frame
+  through one gift (an Archivist or Rumormonger pair) shouldn't be undercut by invented
+  night walks aimed at someone else. (user, Oct 23) [open]
+
+  > **Decided (user, Oct 26); Claude batch:** one night-story per evil member per night, shared by private answers,
+  > public readings and frames; old reports are never rewritten. Natural cracks remain (a changed
+  > scapegoat; teammates covering a night separately). A bug fix, not tuning. Fixes the `test_social`
+  > failure (section 1).
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** an evil member's made-up night sighting repeats that
+  > night's own fake watch report (`Evil.fake_night_sighting`). test_social passes (its check predated the
+  > watch-result disclosure gate).
+
+<!-- was in 1. Bugs and quick fixes (hours, low risk) -->
+- **Case 44814: inconsistent pair-reading defenses.** NPCs can both redirect a
+  reading toward the other candidate and declare its source a liar, with separate
+  mechanical effects. Choose one explanation, or explicitly frame alternatives
+  without awarding both as independent defenses. [decided]
+
+  > **Decided (user, Oct 26); Claude batch:** one incident, one hearing: the NPC picks the explanation that best fits
+  > what it knows (redirect to the other person, or the source is lying); the other, if said at all,
+  > is wording only.
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** one hearing per incident (`Mind.defend_self`).
+
+<!-- was in 1. Bugs and quick fixes (hours, low risk) -->
+- **Related inconsistency:** legacy honesty doesn't exempt demon victims. Evidence
+  against Dorian (Constance's frame that he was out on night 0) still lowered how
+  much listeners credited his own word after his death, while his suspicion said
+  "known good". Decide which one wins. [open]
+
+  > **Decided (user, Oct 26); Claude batch:** death settles sincerity: a known-good victim wasn't lying, so
+  > evidence against them no longer lowers how far their word is credited. Accuracy stays doubtable
+  > (poisoned readings). A consistency fix, no new numbers.
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** Demon victims are exempt from honesty discounts (`Mind._honesty`
+  > `settled`).
+
+<!-- was in 1. Bugs and quick fixes (hours, low risk) -->
+- **Rumormonger as the sole modifier holder.** The gift excludes its own holder from
+  its candidate pool. When a healthy Rumormonger is the sole Marked or Sleepwalker,
+  the current fallback produces an arbitrary false pair/secret instead of useful
+  information. Decide whether it should explicitly report no valid result or whether
+  setup/gift rules should change. This needs coordinated reading/UI/belief handling;
+  do not silently assume a healthy report always identifies someone else. The live
+  comparison currently preserves the native fallback, with a generator-backed test.
+  Found during Oct 22 integration. [open]
+
+  > **Decided (user, Oct 26); Claude batch:** a setup rule: the secret is never given to the Rumormonger unless it's
+  > Lovers (which always involve someone else); the solver's world domain learns the rule. No
+  > "no result" reading.
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** `World._assign_secret_mod` and `WorldDomain.rumor`.
+
+<!-- was in UI -->
+- **Find Links and Hints inside the Case Workshop.** (user, Oct 25) The case board's
+  right-click Find Links and Hints were removed with the old Build case builder: both
+  were template helpers that wrote into that panel. Bring the idea back in the Workshop
+  as "what connects to this card?" using the shared model (which cards bear on a
+  premise, which would merge into a contradiction), not the old template library.
+  [decided: direction; design open]
+
+  > **Decided (user, Oct 26); Claude batch:** a "Connections" button on a Workshop card, on demand (no live cost):
+  > up to 5 board cards bearing on the same premise, ranked by how far each would move it, contradicting
+  > ones marked; one click adds a card.
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** `WorkshopCanvas.connections` and the Connections
+  > button in a premise's details.
+
+<!-- was in 1. Bugs and quick fixes (hours, low risk) -->
+- **`tools/test_social.gd` fails on main:** "a false Night Watch's night story matches
+  their fake report (20 cases)". It passes on `claude/case-reasoning` and fails on main
+  since the 61251/25923 pass, so the merge carries it. It's the same family as
+  Constance's two night-1 stories (private "Isolde", public "Jory"); fix together with
+  "evil frames should cohere" in section 2. All 45 test scripts were run on the merge
+  (Godot 4.4.1 headless); this is the only failure. [decided]
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** fixed with "evil frames should cohere".
+
+<!-- was in Template gaps (NYI) -->
+- **Protection + quiet night + sighting** (user, Oct 23). [decided]
+
+  - Ward + "nobody died that night" + someone seen out on the warded block (Night Watch
+    report, window sighting, vigil) → strong evidence that walker was the demon at the
+    door. The same shape for a Warden (its statement of whose door it guarded, or a claim
+    plus a quiet night) and a Veteran (claim + quiet night, or its "came by way of"
+    report). Explanations to keep: another walker with an innocent reason (Lovers,
+    Sleepwalker, a walking gift), the demon held back, a false protection claim.
+  - Today the quiet-night template covers Warden/Veteran claims only, with "your ward" as
+    a rival explanation; the ward itself is not a card (section 3).
+  - Re-weigh if a day-killing demon is added (section 4).
+
+---
+
+  > **Built (Claude, Oct 26):** via the scorched sigil (see "The ward as evidence" in BACKLOG_COMPLETED.md).
+
 ## Closed Oct 26, 2026
 
 <!-- was in 3. Medium features -->
