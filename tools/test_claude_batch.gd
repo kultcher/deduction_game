@@ -22,6 +22,7 @@ func _init() -> void:
 	_connections()
 	_sleepwalk_excuse()
 	_sigil_is_an_attack()
+	_evil_subject_never_accepts()
 	print("Claude batch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -260,3 +261,18 @@ func _sigil_is_an_attack() -> void:
 	_check(with_sigil.get("ready", false), "a case citing the sigil can be judged (%s)" % str(with_sigil.get("issues", [])))
 	_check(with_sigil.get("lr", 1.0) > without.get("lr", 1.0) * 1.1, "seen near the attacked door that night weighs more with the sigil (%.2f -> %.2f)" % [without.get("lr", 1.0), with_sigil.get("lr", 1.0)])
 	_check(preload("res://ui/evidence_context.gd").numbers(g).has(g.board.filter(func(c): return c.kind == "ward")[0].n), "the spent-ward receipt is context")
+
+## The evil subject of a case against them never accepts it, whatever the conclusion says
+## ("is a minion" read as not accusing, so Agnes said "Yes, I follow you", 37291).
+func _evil_subject_never_accepts() -> void:
+	var accepted = 0
+	var tried = 0
+	for sd in range(4470, 4490):
+		var g = _game(sd)
+		var e = g.w.evil_team()[0]
+		for type in ["minion", "evil", "demon"]:
+			var mask: Dictionary = preload("res://sim/argue.gd")._evil_mask(g.w, e, {"type": type, "a": e.id}, 0, false)
+			tried += 1
+			if mask.get("stance", "") == "accept":
+				accepted += 1
+	_check(accepted == 0, "an evil subject never accepts a case against themselves (%d of %d)" % [accepted, tried])

@@ -30,7 +30,7 @@ const MISREAD = [["Marked", "marked"], ["the Seer's red herring", "red_herring"]
 ## Secrets that can be concluded (Marked sits under Misread).
 const SECRET_CONCLUSIONS = [["Delusional", "delusional"], ["a Secret Lover", "lovers"], ["a Sleepwalker", "sleepwalker"]]
 ## Conclusions that speak against someone (as opposed to for them).
-const ACCUSING = ["evil", "demon", "lied", "notrole", "unreliable", "suspicious"]
+const ACCUSING = ["evil", "demon", "minion", "lied", "notrole", "unreliable", "suspicious"]
 
 ## What each kind of fact can be linked with, for the "what can this be part of?" helper:
 ## fact type -> [[what the other piece would be, what it shows]]. Teaching text, not logic;
