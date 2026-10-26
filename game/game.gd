@@ -63,6 +63,7 @@ var divulge_due: Array = []
 ## Where people go when they're not working: unknown at the start; you learn it by asking
 ## others about them. id -> [location ids].
 var known_haunts = {}
+var known_relationships = {} # Public town bonds actually learned, with their source.
 var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
 # Every time the legacy rules judged something the shared model couldn't read (always
 # recorded, with or without detailed tracing). See the `fallbacks` command.
@@ -218,6 +219,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	offer = {}
 	talk_offered = false
 	known_haunts = {}
+	known_relationships = {}
 	fallback_count = 0
 	shared_fallbacks = []
 	_fallbacks_reported = 0
@@ -1378,6 +1380,7 @@ func _talk_command(verb: String, rest: String) -> void:
 						r = Mind.answer_opinion(w, n, t)
 						_maybe_tell_haunts(n, t, r)
 						_maybe_tell_trait(n, t, r)
+						_maybe_tell_relationships(n, t, r)
 						RecentSightings.append_to(w, n, t, r, board)
 				"check", "look", "guard", "watch":
 					r = _gift_request(n, topic, " ".join(p.slice(1)))
@@ -1742,6 +1745,34 @@ func _maybe_tell_trait(n, t, r: Dictionary) -> void:
 	r["lines"].append(Mind.say(n, line))
 	r["narration"] = r.get("narration", []) + ["(You learn %s's %s: %s.)" % [t.name, key.capitalize(), tier]]
 	w.dlog.add("trait_reveal", n.id, t.id, {"trait": key, "tier": tier, "value": t.traits[key], "via": n.id, "friend": friend, "rival": rival})
+
+## Town bonds use the haunt disclosure chance, but remain attributed profile notes.
+## No relationship card or hidden Lover/private trust information is generated.
+func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
+	if not t.alive or n.silenced:
+		return
+	var unknown: Array = []
+	for bond in w.town_relationships:
+		var key = bond.kind + ":" + ":".join(PackedStringArray(bond.people))
+		if t.id in bond.people and not known_relationships.has(key):
+			unknown.append({"key": key, "bond": bond})
+	if unknown.is_empty():
+		return
+	var p = clampf(0.15 + 0.55 * n.traits.get("gossip", 0.5) + 0.5 * (n.trust - 0.5), 0.0, 0.9)
+	var roll = w.rng.randf()
+	if roll >= p:
+		return
+	var tell: Array = unknown if roll < p * 0.4 else [unknown[0]]
+	for entry in tell:
+		var bond: Dictionary = entry.bond
+		var text = "%s and %s %s." % [w.by_id[bond.people[0]].name, w.by_id[bond.people[1]].name,
+			"are close" if bond.kind == "friend" else "don't get along"]
+		known_relationships[entry.key] = {"kind": bond.kind, "people": bond.people.duplicate(), "source": n.id, "text": n.name + " says " + text}
+		r.lines.append(Mind.say(n, text))
+		w.dlog.add("player_learns_relationship", n.id, t.id, {"kind": bond.kind, "people": bond.people})
+
+func known_relationship_notes(id: String) -> Array:
+	return known_relationships.values().filter(func(b): return id in b.people).map(func(b): return b.text)
 
 ## Board hint: pairs of cards (among the most recent) that a template would recognise,
 ## so you know a link is there to be made. Doesn't say what it shows.
@@ -3143,7 +3174,7 @@ func profile_data(id: String) -> Dictionary:
 		if n.traits.has(key):
 			traits[key] = n.traits[key]
 	return {"id": id, "name": n.name, "occupation": n.occupation, "blurb": n.blurb, "work": "%s at %s" % [C.phase_list(n.work_phases), w.loc_name(n.work)],
-		"haunts": known_haunt_names(id),
+		"haunts": known_haunt_names(id), "relationships": known_relationship_notes(id),
 		"home": C.block_name(n.home_block), "status": status, "traits": traits, "claim": claim,
 		"guess": guesses.get(id, {}), "note": notes.get(id, ""), "cards": filter_cards(id).map(func(c): return c["n"]),
 		"named": named_in(id)}

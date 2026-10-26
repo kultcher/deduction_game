@@ -45,6 +45,7 @@ var executed_today = ""
 var executions: Array = []          # {day, id, nominator, yes, player_yes, player_nominated}
 var night_walkers: Array = []       # last night: {id, block, path, why}
 var dropped = {}                    # location -> [{night, material (block), owner, who, why}] not yet found
+var town_relationships: Array = [] # Rolled public bonds, captured before secret Lovers add a friendship.
 var public_claims: Array = []       # {day, who, role}
 var stances = {}                    # accuser id -> {target, day}: their latest public accusation
 var totem = {}                      # the Revenant's hidden totem: {loc, day, owner} or {}
@@ -420,6 +421,17 @@ func _assign_relationships() -> void:
 			if f:
 				n.friends.append(f.id)
 				f.friends.append(n.id)
+
+	# Keep public setup bonds distinct from friendships added by secret modifiers.
+	town_relationships = []
+	for i in range(npcs.size()):
+		for j in range(i + 1, npcs.size()):
+			var a = npcs[i]
+			var b = npcs[j]
+			if b.id in a.friends:
+				town_relationships.append({"kind": "friend", "people": [a.id, b.id]})
+			elif b.id in a.rivals:
+				town_relationships.append({"kind": "rival", "people": [a.id, b.id]})
 
 ## Personal reasons to be out at night (flavour, separate from the secret modifier).
 func _assign_secrets() -> void:
@@ -1110,15 +1122,18 @@ func _martyr_choice(mart) -> void:
 	_add_info(mart, {"data": {"target": best, "chosen": true}, "true": not mart.gift_broken(),
 		"text": "I have given my life over for %s, should the town ever hang them" % by_id[best].name})
 
-## The Medium visits the most recent dead they haven't visited (demon victims first).
+## Public hearth eligibility: Demon victims only; revisit the latest after all are visited.
 func _medium_choice(m) -> String:
-	var dead: Array = npcs.filter(func(x): return not x.alive and not (x.id in m.medium_visited))
+	var dead: Array = npcs.filter(func(x): return not x.alive and x.death_cause == "demon")
 	if dead.is_empty():
 		return ""
-	dead.sort_custom(func(a, b): return a.death_day > b.death_day or (a.death_day == b.death_day and a.death_cause == "demon"))
-	m.medium_visited.append(dead[0].id)
-	dlog.think(m.id, "medium_pick", "Medium visits %s's home." % dead[0].id)
-	return dead[0].id
+	dead.sort_custom(func(a, b): return a.death_day > b.death_day)
+	var unvisited: Array = dead.filter(func(x): return x.id not in m.medium_visited)
+	var chosen = unvisited[0] if not unvisited.is_empty() else dead[0]
+	if chosen.id not in m.medium_visited:
+		m.medium_visited.append(chosen.id)
+	dlog.think(m.id, "medium_pick", "Medium visits %s's home." % chosen.id)
+	return chosen.id
 
 ## Nobody died: a point in favour of whoever publicly claims to protect (Warden) or to be
 ## unkillable (Veteran). Evil can claim these too, so it's evidence, not proof.
@@ -1553,11 +1568,8 @@ func _medium_item(m, dead, broken: bool) -> Dictionary:
 		if best != "" and not dead.told_to.has("medium|susp:" + best):
 			dead.told_to["medium|susp:" + best] = true
 			return {"type": "suspicion", "about": best}
-	# They had shared all they knew: the hearth has nothing new.
-	if dead.info_log.any(func(e): return e.get("shared", false)):
-		return {"type": "nothing", "lie": false}
-	var nd = maxi(0, dead.death_day - (1 if dead.death_cause == "demon" else 0))
-	return {"type": "home", "night": nd, "block": dead.home_block, "lie": dead.is_evil()}
+	# No untold knowledge remains. A revisit must not invent or repeat a home alibi.
+	return {"type": "nothing", "lie": false}
 
 func _medium_text(dead, it: Dictionary) -> String:
 	match it["type"]:

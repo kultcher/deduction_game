@@ -329,11 +329,11 @@ static func check(w, cards: Array) -> Dictionary:
 			matches.append(m2)
 	for m3 in _match_groups(w, asserts):
 		matches.append(m3)
-	# Deduplicate by template + cards.
+	# Deduplicate by template + cards + subject: one receipt can place several people.
 	var seen = {}
 	var uniq: Array = []
 	for m in matches:
-		var key = m["template"] + ":" + str(m["cards"])
+		var key = m["template"] + ":" + str(m["cards"]) + ":" + str(m["subject"])
 		if seen.has(key):
 			continue
 		seen[key] = true

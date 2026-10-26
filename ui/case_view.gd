@@ -11,6 +11,7 @@ signal workshop_requested(number: int)
 const C = preload("res://sim/content.gd")
 const Argue = preload("res://sim/argue.gd")
 const CardList = preload("res://ui/card_list.gd")
+const EvidenceContext = preload("res://ui/evidence_context.gd")
 const Metrics = preload("res://game/case_metrics.gd")
 const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
@@ -536,6 +537,7 @@ func _visible_cards() -> Array:
 func _refresh_cards() -> void:
 	var keep: Array = card_list.selected_metas()
 	card_list.reset()
+	card_list.context_numbers = EvidenceContext.numbers(g)
 	var vis: Array = _visible_cards()
 	_refresh_chips(vis.size())
 	# Newest first, like the other card lists (the start-of-case home cards end up last).

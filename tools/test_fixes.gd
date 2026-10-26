@@ -176,6 +176,7 @@ func _medium_bluff() -> void:
 	var dead = w.npcs.filter(func(x): return not x.is_evil() and x != ev and x.home_block != "docks")[0]
 	dead.alive = false
 	dead.death_day = 1
+	dead.death_cause = "demon"
 	ev.claimed_role = "medium"
 	ev.claim_public = true
 	ev.info_log.append({"day": 2, "role": "medium", "fake": true, "data": {"dead": dead.id, "item": {}}, "text": "x"})
@@ -193,8 +194,10 @@ func _medium_bluff() -> void:
 	var goods: Array = w2.npcs.filter(func(x): return not x.is_evil())
 	goods[0].alive = false
 	goods[0].death_day = 1
+	goods[0].death_cause = "demon"
 	goods[1].alive = false
 	goods[1].death_day = 2
+	goods[1].death_cause = "demon"
 	var seen: Array = []
 	for d in [2, 3, 4]:
 		w2.day = d
@@ -202,7 +205,7 @@ func _medium_bluff() -> void:
 		for e in mate.info_log:
 			if e.get("role", "") == "medium" and e.get("day", -1) == d:
 				seen.append(e["data"]["dead"])
-	_check(seen.size() >= 2 and seen[0] == goods[1].id and seen[1] == goods[0].id and seen.size() == 2, "fake Medium readings: most recent dead first, each once (%s)" % str(seen))
+	_check(seen == [goods[1].id, goods[0].id, goods[1].id], "fake Medium readings: Demon victims first, then revisit the most recent (%s)" % str(seen))
 
 func _warden_doors() -> void:
 	var g = _game(7105)

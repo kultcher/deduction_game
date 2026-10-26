@@ -113,15 +113,25 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
 
 
   - **Wording: a claimed walker's sighting told "from my window".** [decided]
-    > **Ready for Codex (Oct 25):** wording only, in `Evil` fake sightings (around line 888): a
+    > **Implemented (Codex batch 2, Oct 25):** wording only, in `Evil` fake sightings (around line 888): a
     > claimed walker tells a sighting as seen while out on their duty, and every fake sighting
     > names its night like real ones do. No change to who evil frames or when.
+    > **Batch 2 item 2:** `Evil.bluff_reason` dates fake-sighting reasons and uses
+    > duty wording for an already claimed walker. Cached sightings, available frames,
+    > their selection and RNG use are unchanged; focused regression checks cover each.
+
     A claimed Night Watch says "I watched the Market…" and then "I saw them … from my
     window": a walker's sighting should be told as seen while out.
     (The other wording lines in this entry were fixed Oct 25; see BACKLOG_COMPLETED.md.)
   - **`tools/test_text_ui.gd` fails on main (two role-hover checks).** Known failure since
     at least Oct 24. Find whether the checks or the UI are wrong; fix the test if it's stale,
-    or the hover if it's a real bug, and report which. [decided] (Ready for Codex, Oct 25.)
+    or the hover if it's a real bug, and report which. [decided] (Implemented in Codex batch 2, Oct 25.)
+
+    > **Batch 2 verification:** stale headless fixture, not a UI hover bug. The old test laid out
+    > the profile around x=1395 in a 64x64 viewport, and `Viewport.push_input` left the hover
+    > pointer at (0, 0). Use a 1920x1080 viewport and `Input.parse_input_event` with real pointer
+    > coordinates. All original assertions remain, plus viewport/pointer checks; the suite passes.
+    > Full default runs require `test_text_ui` green from this item onward.
   - **`tools/test_social.gd` fails on main:** "a false Night Watch's night story matches
     their fake report (20 cases)". It passes on `claude/case-reasoning` and fails on main
     since the 61251/25923 pass, so the merge carries it. It's the same family as
@@ -137,15 +147,6 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
     > walking duties before home; `sim/evil.gd::fake_night_sighting` caches speaker/night. Re-run
     > `tools/test_social.gd` before calling this a current failure. The cited engine/results are old; no
     > suite was run for this preparation.
-
-- **Fear barely changes from day to day.** `Mind._afraid` rolls on `hash(id + ":" + day)`, but
-  Godot's string hash changes only in its low digits when the last character changes, so the
-  roll is near-constant for a person across the whole case (e.g. 0.066, 0.067, 0.068 on days
-  0-2). "Ask me again when it's safer" is effectively never true. Fix: mix the hash (e.g.
-  `hash(str(hash(id)) + ":" + str(day))` or a seeded RNG per person and day). Changes
-  trajectories, so do it with the balance pass. (Oct 25, found building protection requests)
-  [needs decision: fix now or with the balance pass]
-
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -512,60 +513,6 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   > Extend evidence-family support with adapter/solver checks rather than bypassing unsupported gifts at
   > submission.
 
-- **A genuinely neutral opinion.** Add "I'm not sure what to think" between trust
-  and suspicion for both good and evil NPCs. `answer_opinion` has several suspicion
-  bands, but its middle replies still choose between "seems all right" and
-  "something's off"; distinguish uncertainty from a refusal or a veiled accusation.
-  Do not create incriminating opinion evidence solely from neutrality.
-  (Oct 21) [decided; boundaries/wording open]
-
-  > **Decided (user, Oct 25); ready for Codex:** in `Mind.answer_opinion`'s 0.25-0.45 band, keep the existing
-  > "something's off" roll; when it doesn't fire, say "seems all right" below 0.35 and "I'm not sure
-  > what to think of X yet" from 0.35. Wording only: no change to levels, the roll, what's logged or
-  > any evidence (opinions aren't evidence). Same for good and evil.
-
-  > **Prep B052 (9cb8782; open):** `sim/mind.gd::answer_opinion` currently chooses reassuring/suspicious
-  > wording after willingness gates. Add a neutral perceived state; test uncertainty and middle suspicion
-  > without exposing hidden alignment or turning an opinion into evidence.
-
-- **Explain distrust of the player.** Good and evil NPCs with low player trust should
-  be able to say so and, where remembered, cite the reasons: misguided executions,
-  accusations, nominations, votes or broken confidences/promises. Use their known
-  history and beliefs, with the same presentation options for evil; a refusal alone
-  should not be the only signal. Coordinate with apologies and vote-resistance
-  feedback. (Oct 21) [decided; delivery/frequency open]
-
-  > **Decided (user, Oct 25); ready for Codex:** when an NPC's trust in the player is low (below 0.35) and
-  > they refuse the player something (gift, opinion, whereabouts), add one line citing the player
-  > action that cost the most trust that they remember (from the reasons already passed to
-  > `Mind.set_trust`: a wrong guess, a broken promise, a nominated friend...). At most once per NPC
-  > per day. Only the player's own actions are cited, so nothing hidden leaks; evil uses the same
-  > rule. Wording only: no new trust change.
-
-  > **Prep B053 (9cb8782; open feedback):** `sim/mind.gd::_vote_impl`, `word_factor`, and `card_weight`
-  > already use player trust. Surface relevant resistance through dialogue; distinguish distrust of
-  > testimony from dislike of execution. Explaining an existing penalty should not create a new one.
-
-- **Medium visits only Demon victims.** Restrict the gift's eligible dead to people
-  killed by the Demon, and update role descriptions, dialogue, target selection
-  and real/fake report consistency. Current `_medium_choice` considers every
-  unvisited dead person; a same-day tie favors Demon victims, so the requested
-  restriction is not implemented. Coordinate with the existing director-driven
-  visit proposal and keep misleading results possible. (Oct 21) [decided]
-
-  > **Decided (user, Oct 25); ready for Codex:** eligible hearths are Demon victims only. On a night with no
-  > unvisited Demon victim, the Medium revisits the most recent Demon victim's hearth (so a real
-  > Medium still walks every night after the first kill, as the movement model expects) and learns
-  > something new if that person still has unrevealed information; otherwise "nothing they hadn't
-  > already told us". Before any Demon kill, no visit (as today). Update the gift text, `World._medium_choice`,
-  > `World._medium_item` and the fake Medium (`Evil._fake_medium_item`) so fakes only name Demon
-  > victims too. Tests: executed dead never visited; revisit when none are unvisited; a revisit can
-  > still surface an untold reading; fakes match.
-
-  > **Prep B054 (9cb8782; open):** `sim/world.gd::_medium_choice` considers all unvisited dead, sorted by
-  > recency with same-day Demon-victim preference. Apply the eligibility decision to fake Medium paths
-  > too; test executed dead, equal-day ordering, and exhausted eligible hearths.
-
 - **Revenant revelation and reversible town uncertainty.** A publicly recognized
   haunting should establish the executed Revenant as evil and add a small global
   suspicion/uncertainty response to "anyone could be possessed." Current curse
@@ -711,16 +658,6 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
     > failed-nomination consequences. Use `_vote_impl`'s score parts to distinguish nominator trust,
     > nominee trust, crowd pressure, and evidence in any new reproduction.
 
-- **Offering protection eases fear.** Someone you've offered your ward or a vigil (and
-  kept your word to) should be less afraid to say what they are. (96773) [decided]
-
-  > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** one feature with "The fearful ask for protection". A kept
-  > ward/vigil promise halves the fear term in that NPC's disclosure for the rest of the case.
-
-  > **Prep B069 (9cb8782; open; promise overlap):** `game/game.gd::_offer_command`/`_settle_offers` track
-  > promises. Base fear relief on what the NPC heard, keyed once per promise; an offer neither spends a
-  > ward nor proves a successful save.
-
 - **Backing a strong case builds trust.** Nominating or voting for someone the town
   strongly suspects (and who turns out evil, or is widely believed so) earns a little
   trust from the NPCs who agree. It's what makes throwing a teammate under the bus pay
@@ -729,25 +666,6 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   > **Prep B070 (9cb8782; design):** `sim/mind.gd::hear_accusation`/`_vote_impl` are social entry points.
   > Define recipient and accepted-evidence credit; prevent rapport farming by repeated cases and never
   > use the simulator's true verdict to decide NPC gratitude.
-
-- **The fearful ask for protection.** NPCs afraid their gift makes them a target appeal
-  to the Demonologist (a ward, a vigil) and/or the Warden for protection, instead of
-  only clamming up. Ties into offers easing fear. (Oct 19) [decided]
-
-  > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** asking is free to hear and answer (yes becomes the usual
-  > vigil/ward promise); no conversation lock-in. In conversation, where they'd give the fear
-  > refusal, they may ask instead. A trust x Composure roll decides whether they tell their gift on
-  > the promise alone; otherwise the next day, after the promise is kept, they approach the player
-  > for free to tell at least their gift (readings if their usual willingness allows). While a
-  > promise is pending, their public-claim roll is harder unless they're under serious pressure (a
-  > nomination). Broken promise: the existing trust loss, and the fear returns. Evil uses the same
-  > flow as cover, except evil that walks at night (Demon, Poisoner) never asks for a vigil unless
-  > it bluffs a night-walking gift. Gossip/frame approaches become a free teaser; following up
-  > spends the phase as before.
-
-  > **Prep B071 (9cb8782; open):** Add bounded requests through meeting/approach dialogue, reusing
-  > `game/game.gd::_offer_command` settlement. Keep requests based on perceived danger; do not reveal
-  > secret targets or real gifts just to make the request available.
 
 - **More talk in town, especially in bigger towns.** 96773 (10 townsfolk, 4 days): 7
   conversations, 7 shares; three conversations passed nothing on, and one pair swapped
@@ -1070,22 +988,6 @@ exact values remain open. The code-derived examples and clarifications are in
   > `workshop/reasoner.gd::_prepare` intersect here. Define conviction before a global Confidence change;
   > preserve reinforcement, firsthand knowledge, and exact retraction across native/shared ownership.
 
-- **Town knowledge of friends and rivals.** NPCs should know other people's public
-  friendships/rivalries and sometimes disclose them in the same style as haunt
-  locations. Separate that knowledge from exact private trust scores and hidden Lover
-  status. Track which relationships the player has learned; avoid duplicate reveals.
-  Add conversational wording and useful attribution. [decided; sharing rates open]
-
-  > **Decided (user, Oct 25); ready for Codex:** a profile note only, no board card (the shared model can't
-  > read relationship cards). Every rolled friendship and rivalry counts as public town knowledge;
-  > Lovers stay secret. Learned the same way and at the same chance as haunts, when the player asks
-  > someone about a person, and attributed ("Agnes says Hollis and Merrin are close"). Track what
-  > the player has learned; no duplicate reveals; never show trust scores.
-
-  > **Prep B097 (9cb8782; open):** `sim/world.gd::_assign_relationships` stores true relationships, not
-  > player knowledge. Add attributed learned facts alongside `sim/mind.gd::reveal_trait`/social
-  > disclosures; never render private bond scores or hidden Lovers directly from setup arrays.
-
 - **Ward promises should outrank vigil promises.** Increase the relative value of a
   fulfilled ward promise; add substantial plausible-success credit for a kept ward
   followed by a deathless night. Warden/Veteran intervention remains an alternative,
@@ -1105,22 +1007,6 @@ exact values remain open. The code-derived examples and clarifications are in
   > **Prep B099 (9cb8782; design):** Audit `sim/mind.gd::end_of_day_trust`/`cap_trust` and
   > `game/game.gd::_break_confidences` together. Resolve recovery with apologies/confidentiality. Give
   > repeated nightly rewards and breaches explicit identities before tuning amounts.
-
-- **Warn about repeated role guessing.** Before the player continues the escalating
-  wrong-guess/patience spiral, have the NPC say something like "Clearly you're just
-  grasping at straws, and I'm running out of patience." Make the warning communicate
-  their patience without revealing whether a particular bluff/guess is true. Keep
-  conversation slots, daily fatigue, and the across-days wrong-guess counter distinct.
-  [decided; warning cadence open]
-
-  > **Decided (user, Oct 25); ready for Codex:** on the second wrong guess to the same NPC, the reply is the
-  > patience warning ("You're grasping at straws, and I'm running out of patience."); from the
-  > third, the existing "Why do you keep asking me that?". Wording only: costs and counters
-  > unchanged, and the warning never confirms or denies the guess.
-
-  > **Prep B100 (9cb8782; partial):** `sim/social.gd::answer_is_role` already counts wrong guesses and
-  > gives a generic repeat response. Add anticipatory patience wording without confirming a guess;
-  > distinguish slots/fatigue from this counter and private `game/game.gd::set_guess` guesses.
 
 - **Track incrimination versus a suspected misread explanation?** Evaluate a separate
   representation for "a Seer yes implicates this person, but I favor red herring or
@@ -1212,30 +1098,6 @@ exact values remain open. The code-derived examples and clarifications are in
   as "what connects to this card?" using the shared model (which cards bear on a
   premise, which would merge into a contradiction), not the old template library.
   [decided: direction; design open]
-- **Mark circumstantial evidence visually.** (user, Oct 25) Circumstantial or
-  vibes-stage case items (co-location with the silenced, demeanour, votes as soft
-  evidence, pattern-based support) should look different from hard-logic items:
-  readings, sightings and claims the evaluator checks against each possible world. At
-  least a different colour on the board, in the case builder and in the preview, so the
-  player can tell how a case is made up. [decided]
-
-  > **Decided (user, Oct 25); ready for Codex:** circumstantial means the cards the shared model treats as
-  > context that can't establish guilt alone: those whose live adapter is `context` or `location`
-  > (`game/workshop_canvas.gd::view` already labels them "location context; this does not establish
-  > guilt"). Everything else the model reads is hard logic. Mark them with a shape, not only a
-  > colour: a dashed border plus a small "context" tag, on the board, in the Card List and on
-  > Workshop cards, with a tooltip explaining it. Reads the existing adapter result; no judge change.
-
-  > **Session scope 2026-10-25 (B108):** Skipped: the proposed action-factor/vibes-stage split is
-  > still a listed design decision and is not a reliable existing display classification. Adding
-  > that semantic boundary would require protected evaluator changes; legacy card class is not
-  > substituted for it.
-
-  > **Prep B108 (9cb8782; open UI):** `game/card_model.gd`, `game/board_model.gd::layout`,
-  > `ui/board_view.gd`, and `ui/card_list.gd` share rendering inputs. Define a visible evidence-class
-  > marker with source/time detail; circumstantial is not unsupported, and color alone should not
-  > communicate the distinction.
-
 - **Limited-use tool warnings.** Clearly warn before spending Ward and other
   limited-use abilities; show remaining uses and that spending one is irreversible.
   Current help and some labels already say "once per case", but the generic
@@ -1335,53 +1197,32 @@ exact values remain open. The code-derived examples and clarifications are in
 
 ## 3. Medium features (several days; touch a few systems)
 
+- **Evidence-reading bot.** The bot ignores traces and dropped materials entirely (and
+  peeks at `w.dropped` when deciding to search), so bot win rates say nothing about
+  physical evidence. Teach it to read traces and drops, and stop the peek, to measure
+  what evidence is worth. [decided]
+
+  > **Decided (user, Oct 25); implemented in Codex batch 2:** this pass, remove only the hidden `w.dropped` peek in
+  > `tools/autoplay.gd::_decide`: the bot searches crime scenes as now and otherwise only on public
+  > grounds. Teaching it to read traces and drops stays open. Note in the commit that bot baselines
+  > may shift.
+
+  > **Prep B148 (9cb8782; open; confirmed oracle):** `tools/autoplay.gd::_decide` peeks at
+  > `w.dropped.has(g.loc)`; `_scores` uses hand weights. Remove the hidden-presence peek and add public
+  > trace/material reasoning before treating bot outcomes as physical-evidence balance measurements.
+
+
+  > **Batch 2 verification:** removed only the hidden drop-presence check in `_decide`; public
+  > crime-scene searches and the ordinary search/wait roll remain. Bot baselines may shift,
+  > including RNG consumption where a hidden drop previously short-circuited the roll.
+  > Teaching trace/drop interpretation remains open; no balance claim is made.
+
 - **Expanded dialogue and trust management** (Oct 20; design candidates, pending
   the unified retuning proposal). [tentative]
 
   > **Prep B116 (9cb8782; tentative package):** These children share incident IDs, promises, and
   > public/private knowledge. Define those contracts before adding actions to `ui/main.gd::_offer_picker`
   > or `game/game.gd::_talk_command`. No tuning values are approved by these notes.
-
-  - **Apologize for a specific incident:** add Apology under the existing Offer...
-    dialogue menu. Cover accusations, nominations against them, votes against them,
-    contributing to a loved one's execution, exposed confidence and broken promises.
-    (Menu placement and vote/loved-one examples added Oct 21.) Scale forgiveness by actual
-    harm/danger (a failed nomination versus nearly being executed), the evidence
-    available at the time, and responsibility taken. Insight can recognize either
-    an understandable mistake or ignored contradictions; it is not automatic
-    forgiveness. Allow partial repair once per incident; serious trust caps may
-    recover gradually through later conduct. An apology for treatment need not
-    require falsely withdrawing an ongoing suspicion.
-
-    > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** incidents are the reasons already recorded on that
-    > NPC's trust drops. Once per incident: repairs half the trust lost for a minor incident, a quarter
-    > for a serious one; a high-Insight NPC forgives less when the player had evidence against what they
-    > did. No suspicion is withdrawn; permanent caps hold.
-
-    > **Prep B117 (9cb8782; design):** `sim/mind.gd::set_trust`/`cap_trust` and
-    > `game/game.gd::_settle_offers` lack a general apology incident ledger. Record perceived
-    > harm/responsibility/repair once; a positive delta cannot restore a permanently lowered ceiling
-    > without a recovery policy.
-
-  - **Suggest actions based on claimed role:** ask a Warden to protect a person, a
-    Seer to check a person/pair, or a Night Watch to watch a block. Track request,
-    response/commitment, intended action, actual action, and follow-up separately.
-    Trust, Confidence, Composure, danger, competing priorities, and the NPC's
-    relationship with the requested target can affect compliance; allow refusal
-    or a counterproposal. (Target relationship added Oct 21.) Offer the same dialogue to evil
-    bluffers, who can lie about compliance/results, so requests do not verify roles.
-    Exact trait interactions remain open.
-
-    > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** Seer (check a person or pair), Warden (guard
-    > someone), Night Watch (watch a block), asked of someone who claimed the gift to the player. Costs a
-    > question; private only (asking at the meeting waits for the meeting-flow work). Agree, refuse or
-    > counter-propose from trust, the target relationship and their own preference; an agreed request
-    > replaces their pick for that night only. Evil bluffers get the same surface and fake results.
-
-    > **Prep B118 (9cb8782; design):** Use `game/game.gd::_offer_command`, `sim/world.gd::_receive_info`,
-    > and `sim/evil.gd::make_fake_info`. Keep heard/accepted/acted/reported states separate. Hidden
-    > actual compliance must not become a dialogue role-verification oracle; bluffers need the same
-    > request surface.
 
   - **General requests can spread through town chats:** "Someone should check Nisha"
     or "Someone should watch the Wharf," without outing a gift-holder. Distinguish
@@ -1447,41 +1288,6 @@ exact values remain open. The code-derived examples and clarifications are in
     > **Prep B124 (9cb8782; design):** `sim/mind.gd::execution_priority` is a zero-weight extension
     > point; `game/game.gd::_parse_conclusion` is proposition-based. Define information-seeking purpose
     > separately so proposing an execution does not itself assert evil or raise suspicion.
-
-  - **Promise confidentiality:** one straightforward promise option that can support
-    private disclosure, with consequences for keeping or breaking it. Avoid a
-    negotiation tree or multiple branching confidentiality terms; coordinate with
-    existing confidence/secret-keeping rules rather than awarding duplicate credit.
-
-    > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** an NPC request, not a player offer. Asked something they'd
-    > withhold, a nervous NPC may say "I'll tell you, but only if you promise not to reveal it yet." Yes
-    > or no is free. Cards from that answer are confidential; using one at a meeting breaks the promise.
-    > One penalty for all confidential cards (including "ask why"): 0.05 + 0.2 x Privacy (0.05 open,
-    > 0.15 typical, 0.25 very private). The promise lapses when they go public. Private use stays allowed.
-
-    > **Prep B125 (9cb8782; design):** `game/game.gd::_disclose`/`_break_confidences` and
-    > `sim/mind.gd::end_of_day_trust` already handle confidence consequences. Add one explicit
-    > promise/settlement identity; avoid duplicate daily reward/loss for the same protected disclosure.
-
-
-- **Learn personality through other NPCs.** Asking about someone can reveal one of
-  that person's traits and unlock its actual score in their profile, using the
-  existing learned-trait presentation. Example: Agnes calls Bartholomew stubborn,
-  revealing Confidence. Filter descriptions through the speaker's relationship:
-  a confident friend is "principled", a rival "pigheaded". Separate the revealed
-  trait/score from that subjective wording, and define which traits the speaker
-  can reasonably know and how often this occurs. Coordinate with public
-  friends/rivals and haunt disclosure; do not reveal hidden relationships.
-  (Oct 21) [decided; discovery rules open]
-
-  > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** opinion answers sometimes reveal one trait,
-  > unlocking its bar in the profile. Friends can reveal any trait; others only the observable ones
-  > (Privacy, Gossip, Confidence, Composure). Wording follows the relationship (friend "principled",
-  > rival "pigheaded").
-
-  > **Prep B126 (9cb8782; open):** `sim/mind.gd::reveal_trait` and profile rendering supply the target
-  > surface; `sim/mind.gd::answer_opinion` is a possible route. Define speaker knowledge before numeric
-  > trait reveals; subjective wording must not expose private bonds/Lovers.
 
 - **NPCs voice doubt about their own readings.** Detect apparently inconsistent
   results, such as repeated Seer checks of the same pair changing yes/no, and let
@@ -1594,19 +1400,6 @@ exact values remain open. The code-derived examples and clarifications are in
   > `sim/social.gd::_pick_item` lacks a general physical-evidence inventory. Define discovery receipts,
   > provenance, and cost before NPC searches; retelling a discovery is not a second observation.
 
-- **Lovers downside:** when one dies, the other becomes withdrawn: Privacy to max,
-  Gossip to min, and whichever other shifts hurt the player most (e.g. Composure up so
-  they're harder to read). Visible, so the player can notice the change. [decided]
-
-  > **Decided (user, Oct 25); built (Claude, branch npc/interactions; move to BACKLOG_COMPLETED on merge):** Lovers only (the friends version is tabled): Privacy max, Gossip
-  > min, Composure up, with a profile note. Revealing the Lovers this way is acceptable.
-  > 
-  > [knob] Evil could fake a bereavement withdrawal; a balance knob, not planned.
-
-  > **Prep B139 (9cb8782; open; distinguish grief):** `sim/world.gd::_grief` applies resentment/caps but
-  > does not generally maximize Privacy/minimize Gossip. Decide persistent traits and visibility
-  > separately; a visible bereavement shift should be a clue, not guaranteed hidden-Lover verification.
-
 - **Ways to discover and confront secrets:** sightings that don't fit, confidants,
   personal items, a "you have a secret" card used as leverage. (DESIGN) [open]
 
@@ -1679,21 +1472,6 @@ exact values remain open. The code-derived examples and clarifications are in
   > **Prep B147 (9cb8782; open prerequisite):** `tools/autoplay.gd::_decide` does not cover the whole
   > talk/offer toolbox. Add observable decision coverage/counters before using bot outcomes to measure
   > those features; passive runs do not exercise active offers/haunts.
-
-- **Evidence-reading bot.** The bot ignores traces and dropped materials entirely (and
-  peeks at `w.dropped` when deciding to search), so bot win rates say nothing about
-  physical evidence. Teach it to read traces and drops, and stop the peek, to measure
-  what evidence is worth. [decided]
-
-  > **Decided (user, Oct 25); ready for Codex:** this pass, remove only the hidden `w.dropped` peek in
-  > `tools/autoplay.gd::_decide`: the bot searches crime scenes as now and otherwise only on public
-  > grounds. Teaching it to read traces and drops stays open. Note in the commit that bot baselines
-  > may shift.
-
-  > **Prep B148 (9cb8782; open; confirmed oracle):** `tools/autoplay.gd::_decide` peeks at
-  > `w.dropped.has(g.loc)`; `_scores` uses hand weights. Remove the hidden-presence peek and add public
-  > trace/material reasoning before treating bot outcomes as physical-evidence balance measurements.
-
 
 - **The Revenant can hide a new totem each day.** Burning a totem doesn't make the
   Revenant safe to hang for good: in 54875 the totem burned on Day 4, a new one was
@@ -2288,7 +2066,7 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   the trace (tried: "Odette and Constance talking at the tavern" with the Square trace at
   Hollis's death scene).
 
-  > **Ready for Codex (Oct 25):** fix the native dedup found below: `Argue.check`'s
+  > **Implemented in Codex batch 2 (Oct 25):** fix the native dedup found below: `Argue.check`'s
   > template-plus-cards key omits the subject, so a trace match against two people in one
   > conversation offers only one. Include the subject in the key; test two participants on one card.
 
@@ -2302,6 +2080,11 @@ but that no link template recognises yet. Add to it whenever a playtest log show
   > emits locations for both conversation participants; `workshop/live_assessment.gd::activity_card`
   > adapts evening conversations as movement evidence. Recheck the exact link/preview example; any
   > remaining gap is a specific route/UI issue.
+
+  > **Batch 2 verification:** the native key now includes the subject. One conversation
+  > combined with one trace offers both participants, while duplicate matches for the same
+  > person still collapse. Focused checks cover both input orders and a repeated receipt.
+  > The wider trace-linking/preview item remains open; no evidence weights changed.
 
 - **Protection + quiet night + sighting** (user, Oct 23). [decided]
 

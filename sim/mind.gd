@@ -89,6 +89,10 @@ static func decide(w, n, topic: String, parts: Dictionary, why: String) -> bool:
 static func set_trust(w, n, value: float, why: String) -> void:
 	var old: float = n.trust
 	n.trust = clampf(value, 0.0, n.trust_cap)
+	var action = _trust_action(w, why)
+	var loss: float = old - n.trust
+	if action != "" and loss > float(n.distrust_memory.get("loss", 0.0)):
+		n.distrust_memory = {"loss": loss, "action": action}
 	w.dlog.trace_event("value_change", n.id, "player", {"quantity": "trust",
 		"from": old, "requested_to": value, "to": n.trust, "cap": n.trust_cap}, why)
 	if absf(n.trust - old) >= 0.01:
@@ -146,6 +150,49 @@ static func apologise(w, n, index: int) -> Dictionary:
 	else:
 		line = "Hm. Words are cheap, but I heard you."
 	return {"lines": [say(n, line)], "facts": []}
+
+## Only translate known player actions. Never quote arbitrary reasoning strings:
+## those can contain private role, alignment or secret information.
+static func _trust_action(w, why: String) -> String:
+	var actions = {
+		"the Demonologist nominated me": "You nominated me.",
+		"the Demonologist voted to hang me": "You voted to hang me.",
+		"the Demonologist overruled my nomination": "You overruled my nomination.",
+		"the Demonologist spoke against my nomination": "You spoke against my nomination.",
+		"the Demonologist spoke against me": "You spoke against me.",
+		"the Demonologist spread my secret": "You spread what I told you in confidence.",
+		"the Demonologist pressed me with evidence": "You pressed me with evidence."}
+	if actions.has(why):
+		return actions[why]
+	if why.begins_with("the Demonologist guessed my gift wrong ("):
+		return "You kept guessing at my gift."
+	if why.begins_with("the Demonologist broke my confidence (card #"):
+		return "You broke my confidence at the meeting."
+	if why.begins_with("the Demonologist broke their word ("):
+		return "You broke your promise to me."
+	if why.begins_with("pressed with ") and why.ends_with(" questions today"):
+		return "You kept pressing me with questions."
+	var named_actions = {
+		"grief: the Demonologist nominated ": "You nominated %s.",
+		"grief: the Demonologist voted to hang ": "You voted to hang %s.",
+		"the Demonologist backed hanging ": "You backed hanging %s.",
+		"player accused ": "You accused %s.",
+		"the Demonologist spared ": "You spared %s."}
+	for prefix in named_actions:
+		if why.begins_with(prefix):
+			var person: String = why.trim_prefix(prefix).get_slice(",", 0)
+			if w.by_id.has(person):
+				return named_actions[prefix] % w.by_id[person].name
+	return ""
+
+## A refusal can explain distrust once per day, without affecting its decision,
+## facts, RNG or trust. The same safe action vocabulary serves both alignments.
+static func _append_distrust(w, n, lines: Array) -> void:
+	if n.trust >= 0.35 or n.distrust_explained_day == w.day:
+		return
+	n.distrust_explained_day = w.day
+	var action: String = n.distrust_memory.get("action", "")
+	lines.append(say(n, ("I don't trust you. " + action) if action != "" else "You're an outsider, I'm not sure I can trust you."))
 
 static func cap_trust(w, n, cap: float, why: String) -> void:
 	if cap < n.trust_cap:
@@ -2238,12 +2285,28 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 ## Fear as a reason for silence ("I'll be dead by morning"): more likely as the bodies pile
 ## up and for the skittish. Fixed per person and day (no game RNG), and the same chance for
 ## evil hiding behind a bluffed gift as for good, so it isn't a tell.
-static func _afraid(w, n) -> bool:
-	var dead = w.npcs.filter(func(x): return not x.alive and x.death_cause == "demon").size()
-	var p = 0.15 + 0.1 * dead + 0.25 * (1.0 - trait_of(n, "composure"))
+## Too afraid to say what they are (the Demon's next mark)? Steadier people are less afraid.
+## Pressure works against fear: keep withholding and they risk being hanged on suspicion.
+## So does paranoia, here in its sense of the town opening up as the dead pile up.
+## A kept ward/vigil promise halves what's left. One roll per person per day.
+static func fear_chance(w, n) -> float:
+	var p: float = 0.2 + 0.3 * (1.0 - trait_of(n, "composure")) - 0.5 * n.pressure - paranoia(w, n)
 	if n.fear_eased:
 		p *= 0.5  # the Demonologist kept their word to watch over them
-	return float(absi(hash(n.id + ":" + str(w.day))) % 1000) / 1000.0 < p
+	return clampf(p, 0.0, 0.85)
+
+static func _afraid(w, n) -> bool:
+	return _day_roll(n.id, w.day, 0x5EA4) < fear_chance(w, n)
+
+## A deterministic roll in [0, 1) for this person and day (no RNG used, so asking twice in
+## a day gets the same answer). Integer mixing: string hashes of "id:day" barely change
+## from one day to the next.
+static func _day_roll(id: String, day: int, salt: int) -> float:
+	var x: int = (hash(id) ^ (day * 0x9E3779B1) ^ salt) & 0xFFFFFFFF
+	x = ((x ^ (x >> 16)) * 0x45D9F3B) & 0xFFFFFFFF
+	x = ((x ^ (x >> 16)) * 0x45D9F3B) & 0xFFFFFFFF
+	x = x ^ (x >> 16)
+	return float(x & 0xFFFF) / 65536.0
 
 ## What protection a frightened NPC would ask the player for: "vigil" (watch their block),
 ## "ward" (a sigil on their door), or "" (none). An evil NPC who walks at night (the Demon,
@@ -2308,6 +2371,8 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 		{"force_tier": force_tier, "prior_tier": n.max_tier, "public": n.claim_public,
 			"trust": n.trust, "pressure": n.pressure, "questions_today": n.pressed_today})
 	var result = _answer_gift_impl(w, n, force_tier, id)
+	if result.facts.any(func(f): return f.get("kind", "") == "refusal"):
+		_append_distrust(w, n, result.lines)
 	w.dlog.decision(n.id, "gift_disclosure", "outcome", result["facts"],
 		{"final_tier": n.max_tier, "told_readings": n.told_readings,
 			"role_claim": n.claimed_role, "public": n.claim_public}, "", id)
@@ -2603,6 +2668,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			else:
 				w.dlog.think(n.id, "stonewall", "Hiding (%s): refuses to say where they were." % hiding)
 				lines.append(whereabouts_refusal(n, nd))
+				_append_distrust(w, n, lines)
 				facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "day": nd, "phase": C.NIGHT,
 					"text": "%s refused to say where they were on night %d." % [n.name, nd]})
 	var limit = _gossip_share(w, n, "share_sightings")
@@ -2819,6 +2885,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 		var previous: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
 		refused = Dialogue.repeated_opinion_refusal(n.id, t.name, previous, refused)
 		lines.append(say(n, Dialogue.contextualize(n.id, refused, previous if previous != "opinion_again" else "", t.name)))
+		_append_distrust(w, n, lines)
 		return {"lines": lines, "facts": facts}
 	# Same pipeline for both alignments: a suspicion level plus an optional grounded reason.
 	var why = ""
@@ -2856,7 +2923,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 			text = "I can't put my finger on it, but something's off about %s." % t.name
 			shown = 0.5
 		else:
-			text = "%s seems all right to me." % t.name
+			text = ("%s seems all right to me." % t.name) if level < 0.35 else ("I don't really know %s that well." % t.name)
 	elif level < 0.8:
 		text = "I have my doubts about %s." % t.name
 	else:
