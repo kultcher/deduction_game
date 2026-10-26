@@ -920,6 +920,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > traits, relationships), answers NPC requests (confidence, protection), apologises and makes gift requests,
   > with simple rules, and its run summary counts each. `tools/` only; note that bot baselines shift.
 
+  > **Implemented (Codex batch 3):** tools/autoplay.gd adds public-knowledge rules for offers, request answers, apologies, asking about people and gift requests, and keeps protection promises at night. Each new action is counted in printed/JSON summaries. Focused policy checks and a seed-4242 smoke game pass without guard exhaustion. Bot baselines will shift.
+
 - **The Revenant can hide a new totem each day.** Burning a totem doesn't make the
   Revenant safe to hang for good: in 54875 the totem burned on Day 4, a new one was
   hidden Day 5, Edda was hanged with it and Isolde turned. When a totem burns, signpost

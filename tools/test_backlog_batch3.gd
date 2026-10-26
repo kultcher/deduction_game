@@ -29,6 +29,7 @@ func run():
 	totem_signpost()
 	await column_menus()
 	ward_evidence()
+	bot_options()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -336,3 +337,43 @@ func ward_evidence():
 	check(is_equal_approx(other.trust, 0.5), "sigil trust honors existing caps")
 	g.new_case(4242, 10)
 	check(g.sigil_heard.is_empty(), "new cases reset per-sigil reward ownership")
+
+func bot_options():
+	var Bot = preload("res://tools/autoplay.gd")
+	var g = fresh()
+	var n = g.w.living_good()[0]
+	g.state = "talk"
+	g.talk_with = n
+	g.questions_left = 2
+	n.max_tier = 3
+	n.claimed_role = "seer"
+	var used = {}
+	check(Bot.new_talk_option(g, used) == "offer ward", "bot offers an available ward to a known info claimant")
+	g.offer = {"ward": n.id}
+	check(Bot.new_night_option(g) == "ward " + n.id, "bot keeps its ward promise before ordinary night choices")
+	check(Bot.new_talk_option(g, used).begins_with("ask check "), "bot requests a disclosed Seer's gift")
+	check(Bot.new_talk_option(g, used) == "", "bot does not repeat a free offer or gift request")
+	g.questions_left = 1
+	check(Bot.new_talk_option(g, used).begins_with("ask about "), "bot asks about another person to learn haunts, traits and relationships")
+	g.pending_request = {"kind": "confidence"}
+	check(Bot.new_talk_option(g, used) == "yes" and Bot.new_action_kind(g, "yes") == "answer_confidence", "bot answers and counts confidence requests")
+	g.pending_request = {"kind": "protect", "what": "ward"}
+	check(Bot.new_talk_option(g, used) == "no", "bot answers protection requests without promising a second incompatible action")
+	g.offer = {}
+	check(Bot.new_talk_option(g, used) == "yes" and Bot.new_action_kind(g, "yes") == "answer_protection", "bot accepts and counts feasible protection requests")
+	g.pending_request = {}
+	n.grievances = [{"apologised": false}]
+	check(Bot.new_talk_option(g, {}) == "apologise 1", "bot apologises for a player-visible grievance")
+	n.grievances = []
+	n.max_tier = 0
+	n.claim_public = false
+	check(Bot.new_talk_option(g, {}) == "offer vigil", "hidden role assignments do not influence the bot's protection offer")
+	g.offer = {"vigil": {n.id: n.home_block}}
+	check(Bot.new_night_option(g) == "vigil " + n.home_block, "bot keeps a vigil promise")
+	for role in ["warden", "nightwatch"]:
+		n.claimed_role = role
+		n.max_tier = 3
+		g.questions_left = 2
+		var command = Bot.new_talk_option(g, {})
+		check(command.begins_with("ask guard " if role == "warden" else "ask watch "), "bot covers each other supported gift request")
+		check(Bot.new_action_kind(g, command) == ("request_guard" if role == "warden" else "request_watch"), "run-summary classification counts each gift action")
