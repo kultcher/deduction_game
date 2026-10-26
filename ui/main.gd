@@ -67,6 +67,7 @@ func _consume_headlines() -> void:
 			headlines.enqueue(event)
 
 func _ready() -> void:
+	preload("res://ui/column_menus.gd").watch(self)
 	var bg = ColorRect.new()
 	bg.color = UITheme.color("bg")
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -827,6 +828,10 @@ func _show_popup(content: Control, anchor: Control) -> void:
 		content.queue_free()
 		return
 	_popup_anchor = anchor
+	var original_content = content
+	content = preload("res://ui/column_menus.gd").balance(content)
+	if content != original_content:
+		original_content.queue_free()
 	for ch in popup.get_children():
 		ch.queue_free()
 	# Every menu gets its own close button (Esc works too).
@@ -844,10 +849,8 @@ func _show_popup(content: Control, anchor: Control) -> void:
 	wrap.add_child(bar)
 	wrap.add_child(content)
 	content = wrap
-	popup.add_child(content)
 	var pos = Vector2i(anchor.get_screen_position()) + Vector2i(0, int(anchor.size.y)) if anchor != null else Vector2i(get_viewport_rect().size / 2.0)
-	popup.popup(Rect2i(pos, Vector2i(10, 10)))
-	popup.reset_size()
+	preload("res://ui/column_menus.gd").fit_picker(popup, content, pos)
 
 func _column(title: String) -> VBoxContainer:
 	var v = VBoxContainer.new()

@@ -23,10 +23,11 @@ func run():
 	await headlines()
 	await setup_counts()
 	await ward_warnings()
-	hide_rows()
+	await hide_rows()
 	repeated_role_gift()
 	private_gift_terms()
 	totem_signpost()
+	await column_menus()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -122,6 +123,7 @@ func setup_counts():
 		var summary = main.roles_box.get_node("SetupSummary")
 		check(summary.text == expected[count], "script summary uses setup counts and one secret, including Lovers")
 		check(JSON.stringify(main.g.board) == board and main.g.w.rng.state == rng, "script summary creates no card and consumes no RNG")
+	for i in range(3): await process_frame
 	main.free()
 
 func ward_warnings():
@@ -146,6 +148,7 @@ func ward_warnings():
 	check(g.w.tools.ward == 1 and g.state == "night", "canceling a ward confirmation spends nothing")
 	var output = g.command("ward " + person.id)
 	check(g.w.tools.ward == 0 and g.ward_log.has(1) and "You chalk a warding sigil" in output, "typed ward commands go straight through and consume exactly one use")
+	for i in range(3): await process_frame
 	scene.free()
 
 func hide_rows():
@@ -171,6 +174,7 @@ func hide_rows():
 	scene.case_state.places.square = true
 	cv._refresh_board()
 	check(not cv.hide_unselected.disabled, "an explicit place filter enables place-row hiding")
+	for i in range(3): await process_frame
 	scene.free()
 
 func repeated_role_gift():
@@ -235,3 +239,54 @@ func totem_signpost():
 	check(g.board.any(func(c): return c.kind == "totem" and "will seek a new hiding place" in c.text), "totem-burned receipt warns of a new hiding place")
 	check(g.events.any(func(e): return e.k == "headline" and e.kind == "totem" and "will seek a new hiding place" in e.subtitle), "totem warning also appears as a headline")
 	check(g.w.totem.is_empty() and g.w.rng.state == rng, "totem signpost preserves burn behavior and RNG")
+
+func column_menus():
+	var Columns = preload("res://ui/column_menus.gd")
+	var option = OptionButton.new()
+	for i in range(19):
+		option.add_item("Choice %d" % i)
+		option.set_item_metadata(i, "value:%d" % i)
+	option.set_item_disabled(3, true)
+	root.add_child(option)
+	Columns.bind(option.get_popup())
+	var chosen: Array = []
+	option.item_selected.connect(func(index): chosen.append(index))
+	option.show_popup()
+	for i in range(4): await process_frame
+	var popup = option.get_popup().get_meta("column_popup", null)
+	check(is_instance_valid(popup) and popup.visible and not option.get_popup().visible, "long native dropdown opens a column presentation")
+	var groups = Columns.groups(option.get_popup())
+	check(groups.map(func(group): return group.indices.size()) == [7, 6, 6], "uncategorized options split evenly with at most eight per column")
+	var buttons = popup.find_children("*", "Button", true, false).filter(func(b): return b.has_meta("menu_index"))
+	check(buttons.size() == 19 and buttons.filter(func(b): return b.get_meta("menu_index") == 3)[0].disabled, "column menus preserve every option and disabled state")
+	var focused = popup.gui_get_focus_owner()
+	var key = InputEventKey.new()
+	key.keycode = KEY_RIGHT
+	key.pressed = true
+	key.window_id = popup.get_window_id()
+	Input.parse_input_event(key)
+	await process_frame
+	check(popup.gui_get_focus_owner() != null and popup.gui_get_focus_owner() != focused, "arrow keys move focus across columns")
+	var bounds = Rect2i(Vector2i.ZERO if root.gui_embed_subwindows else root.position, root.size)
+	check(bounds.encloses(Rect2i(popup.position, popup.size)), "the column popup stays within the containing screen area")
+	buttons.filter(func(b): return b.get_meta("menu_index") == 12)[0].pressed.emit()
+	check(option.selected == 12 and chosen == [12] and option.get_item_metadata(12) == "value:12", "column choice keeps the native index, metadata and callback exactly once")
+	await process_frame
+	option.free()
+	var menu = PopupMenu.new()
+	menu.add_separator("Existing category")
+	for i in range(11): menu.add_item(str(i), i + 100)
+	menu.add_separator("Other category")
+	for i in range(5): menu.add_item(str(i), i + 200)
+	groups = Columns.groups(menu)
+	check(groups.size() == 3 and groups[0].title == "Existing category" and groups[1].title == "Existing category" and groups[2].title == "Other category", "existing menu categories are retained when a category spans columns")
+	menu.free()
+	var picker = VBoxContainer.new()
+	var label = Label.new()
+	label.text = "People"
+	picker.add_child(label)
+	for i in range(17): picker.add_child(Button.new())
+	var balanced = Columns.balance(picker)
+	check(balanced.get_children().map(func(col): return col.get_children().filter(func(n): return n is Button).size()) == [6, 6, 5], "handcrafted pickers also split evenly into eight-option columns")
+	picker.free()
+	balanced.free()

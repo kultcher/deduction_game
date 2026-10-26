@@ -754,6 +754,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > **Decided (user, Oct 26); Codex batch 3:** at most 8 options per column; group by the existing categories where there
   > are any, otherwise split evenly. Keep labels, keyboard navigation and screen bounds usable.
 
+  > **Implemented (Codex batch 3):** Shared menu presentation keeps native IDs, indices, metadata and callbacks. Existing categories are retained; uncategorized groups split evenly with at most eight options per column. Both native dropdowns and handcrafted pickers fit in a scrolling screen-bounded popup. Focused checks cover grouping, disabled choices, arrows, bounds and selection parity.
+
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main
   view; people who aren't talking or working showing on the map; a wrong role guess
   blocking process of elimination.

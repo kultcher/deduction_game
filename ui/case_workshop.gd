@@ -29,6 +29,7 @@ var active_line = ""
 var reasoning_comparisons: Dictionary = {}
 
 func _ready() -> void:
+	preload("res://ui/column_menus.gd").watch(self)
 	theme = WorkshopSkin.make()
 	# A restrained, readable variation of the main game's dark paper palette.
 	theme.default_font_size = 17
