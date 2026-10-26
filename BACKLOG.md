@@ -710,6 +710,8 @@ exact values remain open. The code-derived examples and clarifications are in
   > - nominations and "now on the block" (amber); executions (crimson); the Martyr dying in someone's
   >   place; a curse taking hold (purple); a totem burned (green); your ward holding; the case ending.
 
+  > **Implemented (Codex batch 3):** Game events feed a mouse-transparent queue; click-through skip, queue catch-up, claim-safe text, and settings overrides are covered by focused checks. Presentation defaults were approved in chat. Original log rendering and RNG stay unchanged; baseline and headline-only replay measurements are retained in logs/batch3.
+
 - **Limited-use tool warnings.** Clearly warn before spending Ward and other
   limited-use abilities; show remaining uses and that spending one is irreversible.
   Current help and some labels already say "once per case", but the generic

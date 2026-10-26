@@ -62,6 +62,7 @@ var meeting = {}
 ## Player tools and night choices.
 var tools = {"ward": 1, "clemency": 1}
 var player_ward = ""
+var ward_saves: Array = [] # Player-only aftermath, recorded only when their sigil stops an attack.
 var player_vigil = ""
 var player_vigil_seen: Array = []
 var player_loc = ""
@@ -1045,6 +1046,8 @@ func resolve_night() -> void:
 		if outcome == "killed":
 			_kill(v)
 		else:
+			if outcome == "protected_player":
+				ward_saves.append({"target": kill_t, "night": day})
 			dlog.add("kill_failed", demon_id, kill_t, {"why": outcome}, "The demon's attack on %s failed (%s)." % [v.name, outcome])
 			if outcome == "veteran":
 				_veteran_survives(v)

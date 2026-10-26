@@ -59,6 +59,13 @@ var roles_box: VBoxContainer
 var log_text = LogText.new()
 var new_case_confirm: ConfirmationDialog
 
+var headlines
+
+func _consume_headlines() -> void:
+	for event in g.last_events:
+		if event.k == "headline":
+			headlines.enqueue(event)
+
 func _ready() -> void:
 	var bg = ColorRect.new()
 	bg.color = UITheme.color("bg")
@@ -323,6 +330,11 @@ func _ready() -> void:
 	case_view.roles_requested.connect(_open_roles)
 	case_view.workshop_requested.connect(_open_live_workshop)
 
+	var headline_layer = CanvasLayer.new()
+	headline_layer.layer = 30
+	add_child(headline_layer)
+	headlines = preload("res://ui/headline_overlay.gd").new()
+	headline_layer.add_child(headlines)
 	_new_case()
 
 func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
@@ -354,8 +366,10 @@ func _new_case() -> void:
 	_case_seed = int(seed_box.value)
 	case_state.select_card(0)
 	g = Game.new()
+	headlines.clear()
 	out.clear()
 	_print(g.new_case(int(seed_box.value), int(size_opt.get_item_metadata(size_opt.selected))))
+	_consume_headlines()
 	case_view.set_game(g)
 	profile.setup(g, case_state)
 	cast_list.setup(g)
@@ -488,6 +502,7 @@ func _open_live_workshop(number: int = 0) -> void:
 func _run_workshop(cmd: String, progress: Callable) -> void:
 	_print("\n> " + cmd)
 	_print(await g.workshop_command(cmd, progress))
+	_consume_headlines()
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()
@@ -512,6 +527,7 @@ func _on_submit(text: String) -> void:
 func _run(cmd: String) -> void:
 	_print("\n> " + cmd)
 	_print(g.command(cmd))
+	_consume_headlines()
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()

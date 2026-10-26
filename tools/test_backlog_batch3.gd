@@ -1,0 +1,97 @@
+extends SceneTree
+const Game = preload("res://game/game.gd")
+const C = preload("res://sim/content.gd")
+const Mind = preload("res://sim/mind.gd")
+const Social = preload("res://sim/social.gd")
+const Overlay = preload("res://ui/headline_overlay.gd")
+var checks = 0
+var fails = 0
+func _init():
+	call_deferred("run")
+func check(ok: bool, text: String):
+	checks += 1
+	if not ok:
+		fails += 1
+		print("FAIL ", text)
+func fresh(count: int = 10):
+	var g = Game.new()
+	g.detailed_logging = false
+	g.log_dir = "user://batch3_tests"
+	g.new_case(4242, count)
+	return g
+func run():
+	await headlines()
+	print("Batch 3: %d checks, %d failures" % [checks, fails])
+	quit(1 if fails else 0)
+func headlines():
+	var g = fresh()
+	var rng = g.w.rng.state
+	g._headline("dawn", "Day 1 Dawns")
+	check(g.w.rng.state == rng, "headline emission does not advance RNG")
+	var events = [{"k": "narration", "text": "Original line."}, {"k": "card", "n": 1}, {"k": "headline", "text": "Notice"}, {"k": "card", "n": 2}]
+	check(Game.render(events) == "Original line.  [case board: #1, #2]", "headline side-channel preserves exact text/card-tag rendering")
+	var victim = g.w.npcs[0]
+	victim.alive = false
+	g.w.deaths_last_night = [victim.id]
+	g.w.day = 2
+	for public_claim in [false, true]:
+		victim.claimed_role = "seer"
+		victim.max_tier = 3
+		victim.claim_public = public_claim
+		g.events = []
+		g._morning_report()
+		var notices = g.events.filter(func(e): return e.k == "headline" and e.kind == "death")
+		check(notices.size() == 1 and ("claimed to be" if public_claim else "told you they were") in notices[0].text and "Seer" in notices[0].text, "death notice uses only the player's public/private claim knowledge")
+		check(notices[0].subtitle == "A Demon hides among 9 remaining townsfolk", "death subtitle reports living count")
+	victim.max_tier = 0
+	victim.claim_public = false
+	g.events = []
+	g._morning_report()
+	check(g.events.any(func(e): return e.k == "headline" and e.kind == "death" and e.text == victim.name), "unknown gift death reveals only the name")
+	root.size = Vector2i(1200, 800)
+	root.content_scale_size = root.size
+	var button = Button.new()
+	button.position = Vector2(10, 10)
+	button.size = Vector2(100, 50)
+	button.text = "Target"
+	root.add_child(button)
+	var clicks = [0]
+	button.pressed.connect(func(): clicks[0] += 1)
+	var overlay = Overlay.new()
+	root.add_child(overlay)
+	overlay.set_process(false)
+	for i in range(5): overlay.enqueue({"kind": "dawn", "text": str(i)})
+	check(overlay.current.text == "0" and overlay.pending.size() == 4, "notices play one at a time in order")
+	var left = overlay.remaining
+	overlay._process(0.25)
+	check(is_equal_approx(left - overlay.remaining, 0.5), "more than two waiting notices shorten display time")
+	var motion = InputEventMouseMotion.new()
+	motion.position = Vector2(30, 30)
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	for i in range(3): await process_frame
+	var click = InputEventMouseButton.new()
+	click.position = motion.position
+	click.global_position = motion.position
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	Input.parse_input_event(click)
+	await process_frame
+	click.pressed = false
+	Input.parse_input_event(click)
+	await process_frame
+	check(clicks[0] == 1 and overlay.current.text == "1", "a click skips a notice and still activates its ordinary target")
+	check(overlay.mouse_filter == Control.MOUSE_FILTER_IGNORE and overlay.title.mouse_filter == Control.MOUSE_FILTER_IGNORE, "overlay and text cannot intercept input")
+	var cfg = ConfigFile.new()
+	cfg.set_value("headline.dawn", "size", 51)
+	cfg.set_value("headline.dawn", "duration", 1.7)
+	cfg.set_value("headline.dawn", "colour", "#123456")
+	var path = "res://logs/batch3/headline-test.cfg"
+	cfg.save(path)
+	overlay.load_styles(path)
+	check(overlay.styles.dawn.size == 51 and overlay.styles.dawn.duration == 1.7 and overlay.styles.dawn.colour == Color("123456"), "settings override each style field from the shared defaults table")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	overlay.clear()
+	check(overlay.current.is_empty() and overlay.pending.is_empty() and not overlay.visible, "case reset clears every notice")
+	overlay.free()
+	button.free()

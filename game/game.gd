@@ -103,8 +103,15 @@ func _ev(e: Dictionary) -> void:
 		e["text"] = C.natural_nights(e["text"])
 	events.append(e)
 
+func _headline(kind: String, text: String, subtitle: String = "") -> void:
+	_ev({"k": "headline", "kind": kind, "text": text, "subtitle": subtitle})
+
 func _hdr(t: String) -> void:
 	_ev({"k": "header", "text": t})
+	if t.begins_with("Night "):
+		_headline("nightfall", "Night %d Falls" % w.day)
+	elif t.begins_with("Day "):
+		_headline("dawn" if t.ends_with(", Morning") else "phase", "Day %d Dawns" % w.day if t.ends_with(", Morning") else t)
 
 func _narr(t: String) -> void:
 	_ev({"k": "narration", "text": t})
@@ -161,6 +168,8 @@ static func render(evs: Array) -> String:
 	var lines = PackedStringArray()
 	var pending: Array = []
 	for e in evs:
+		if e["k"] == "headline":
+			continue # UI side channel; never flush/reorder the existing log or card tags.
 		if e["k"] == "card":
 			if not (e["n"] in pending):
 				pending.append(e["n"])
@@ -1103,6 +1112,7 @@ func _search() -> void:
 	if not tt.is_empty():
 		var mat: String = C.BLOCKS[tt["material"]]["trace"]
 		_narr("Wedged out of sight at %s you find a crude totem of bone and twine, caked with %s. It reeks of the grave. You burn it." % [w.loc_name(l), mat])
+		_headline("totem", "A Revenant's totem is burned")
 		_facts([{"kind": "totem", "subject": [], "block": tt["material"], "loc": l, "source": "evidence", "day": w.day, "phase": w.phase,
 			"text": "A Revenant's totem, hidden at %s and found on day %d, caked with %s (from %s)." % [w.loc_name(l), w.day, mat, C.block_name(tt["material"])]}])
 		if tt.get("freed", "") != "":
@@ -1904,6 +1914,7 @@ func _show_nomination() -> void:
 	statement_used = false
 	var nm: Dictionary = w.meeting["pending"]
 	var t = w.by_id[nm["nominee"]]
+	_headline("nomination", "%s nominates %s" % ["You" if nm["by"] == "player" else w.by_id[nm["by"]].name, t.name])
 	var blk = ""
 	if w.meeting["block"] != "":
 		blk = " %s is on the block with %d votes." % [w.by_id[w.meeting["block"]].name, w.meeting["block_count"]]
@@ -1989,6 +2000,7 @@ func _nomination_command(verb: String, rest: String, progress: Callable = Callab
 			match res["outcome"]:
 				"on_block":
 					_narr("%s is now on the block." % t.name)
+					_headline("block", "%s is now on the block" % t.name)
 				"tie":
 					_narr("That ties the count on the block. Nobody is on the block now.")
 				"short_of_block":
@@ -2017,16 +2029,19 @@ func _close_meeting() -> void:
 		var mt = w.by_id[w.meeting["martyr"]["martyr"]]
 		var sv = w.by_id[w.meeting["martyr"]["saved"]]
 		_narr("The meeting closes. As the noose tightens on %s, %s cries out and falls dead. %s is cut down alive: the Martyr has died in their place." % [sv.name, mt.name, sv.name])
+		_headline("martyr", "%s dies in %s's place" % [mt.name, sv.name])
 		_facts([{"kind": "martyr", "subject": [mt.id, sv.id], "martyr": mt.id, "saved": sv.id, "source": "player", "day": w.day, "phase": C.EVENING,
 			"text": "Day %d: %s died in %s's place at the gallows. Both are proven good." % [w.day, mt.name, sv.name]}])
 	elif ex != "":
 		var n = w.by_id[ex]
 		_narr("The meeting closes. %s is hanged at dusk." % n.name)
+		_headline("execution", "%s is hanged at dusk" % n.name)
 		# How many were alive at the hanging: with five or more, a Scion could have taken over.
 		_facts([{"kind": "execution", "subject": [ex], "source": "player", "day": w.day, "phase": C.EVENING, "alive_before": w.living().size() + 1,
 			"text": "%s was executed on day %d." % [n.name, w.day]}])
 		if w.meeting.get("curse", false):
 			_narr("As %s swings, a cold wind moans through Hollowmere. A curse has taken one of those who voted to hang them: someone among you has turned." % n.name)
+			_headline("curse", "A Revenant's curse takes hold", "One of the voters has turned.")
 			_facts([{"kind": "curse", "subject": [ex], "source": "player", "day": w.day, "phase": C.EVENING,
 				"text": "Day %d: as %s was hanged, a Revenant's curse turned one of those who voted for it. Find its totem to break the curse." % [w.day, n.name]}])
 	else:
@@ -2132,6 +2147,7 @@ func _morning_report() -> void:
 	if w.day > 1 or not w.deaths_last_night.is_empty():
 		if w.deaths_last_night.is_empty():
 			_narr("Dawn breaks. Nobody died in the night.")
+			_headline("quiet", "No one died in the night")
 			var nq = w.day - 1
 			if nq >= 1:
 				var wd: String = ward_log.get(nq, "")
@@ -2139,10 +2155,19 @@ func _morning_report() -> void:
 					"text": "Nobody died on night %d%s." % [nq, (" (you had warded %s)" % w.by_id[wd].name) if wd != "" else ""]}])
 		for id in w.deaths_last_night:
 			var v = w.by_id[id]
+			var death_title: String = v.name
+			if v.claimed_role in C.ROLES and (v.claim_public or v.max_tier >= 3):
+				death_title = "%s, who %s the %s, died in the night" % [v.name, "claimed to be" if v.claim_public else "told you they were", C.role_name(v.claimed_role)]
+			_headline("death", death_title, "A Demon hides among %d remaining townsfolk" % w.living().size())
 			_narr("Dawn breaks over a body: %s the %s was killed in the night. Their cottage on %s is now a crime scene." %
 				[v.name, v.occupation, C.block_name(v.home_block)])
 			_facts([{"kind": "death", "subject": [id], "block": v.home_block, "source": "player", "night": w.day - 1,
 				"text": "%s was killed by the demon on night %d (home on %s)." % [v.name, w.day - 1, C.block_name(v.home_block)]}])
+	for save in w.ward_saves:
+		if save.night == w.day - 1:
+			var held = "Your ward held at %s's door last night." % w.by_id[save.target].name
+			_narr(held)
+			_headline("ward", held)
 	_screen(_map())
 	_card_workers()
 	_card_conversations()
@@ -2368,6 +2393,7 @@ func _board(filter: String) -> String:
 	return "\n".join(out)
 
 func _ending() -> void:
+	_headline("ending", "Victory" if w.winner == "good" else "Defeat", w.end_reason)
 	var frozen: Dictionary = prediction_snapshots[-1] if not prediction_snapshots.is_empty() else {}
 	case_summary = CaseMetrics.summarize(w, frozen, prediction_spoiled, board)
 	case_summary["present_fallbacks"] = fallback_count
