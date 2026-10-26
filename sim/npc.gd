@@ -119,6 +119,9 @@ var ledger = {}
 var workshop_state = {}
 var used_facts = {}          # "fact>target" -> true: evidence already used against target
 var remarks: Array = []      # things they've come round to, to mention to the player
+# Presentation only: strongest remembered player action, never a hidden-state reason.
+var distrust_memory = {}
+var distrust_explained_day = -1
 var trust_at_reconsider = 0.5
 var honesty = {}             # derived: id -> how far they credit that person's word (from evidence)
 ## Evil only: what this member knows (own observations and what they were told).

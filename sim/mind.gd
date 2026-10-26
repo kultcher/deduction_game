@@ -89,12 +89,59 @@ static func decide(w, n, topic: String, parts: Dictionary, why: String) -> bool:
 static func set_trust(w, n, value: float, why: String) -> void:
 	var old: float = n.trust
 	n.trust = clampf(value, 0.0, n.trust_cap)
+	var action = _trust_action(w, why)
+	var loss: float = old - n.trust
+	if action != "" and loss > float(n.distrust_memory.get("loss", 0.0)):
+		n.distrust_memory = {"loss": loss, "action": action}
 	w.dlog.trace_event("value_change", n.id, "player", {"quantity": "trust",
 		"from": old, "requested_to": value, "to": n.trust, "cap": n.trust_cap}, why)
 	if absf(n.trust - old) >= 0.01:
 		w.dlog.add("trust", n.id, "player", {"from": snappedf(old, 0.01), "to": snappedf(n.trust, 0.01), "cap": n.trust_cap}, why)
 	if absf(n.trust - n.trust_at_reconsider) >= 0.1:
 		reconsider(w, n, why)
+
+## Only translate known player actions. Never quote arbitrary reasoning strings:
+## those can contain private role, alignment or secret information.
+static func _trust_action(w, why: String) -> String:
+	var actions = {
+		"the Demonologist nominated me": "You nominated me.",
+		"the Demonologist voted to hang me": "You voted to hang me.",
+		"the Demonologist overruled my nomination": "You overruled my nomination.",
+		"the Demonologist spoke against my nomination": "You spoke against my nomination.",
+		"the Demonologist spoke against me": "You spoke against me.",
+		"the Demonologist spread my secret": "You spread what I told you in confidence.",
+		"the Demonologist pressed me with evidence": "You pressed me with evidence."}
+	if actions.has(why):
+		return actions[why]
+	if why.begins_with("the Demonologist guessed my gift wrong ("):
+		return "You kept guessing at my gift."
+	if why.begins_with("the Demonologist broke my confidence (card #"):
+		return "You broke my confidence at the meeting."
+	if why.begins_with("the Demonologist broke their word ("):
+		return "You broke your promise to me."
+	if why.begins_with("pressed with ") and why.ends_with(" questions today"):
+		return "You kept pressing me with questions."
+	var named_actions = {
+		"grief: the Demonologist nominated ": "You nominated %s.",
+		"grief: the Demonologist voted to hang ": "You voted to hang %s.",
+		"the Demonologist backed hanging ": "You backed hanging %s.",
+		"player accused ": "You accused %s.",
+		"the Demonologist spared ": "You spared %s."}
+	for prefix in named_actions:
+		if why.begins_with(prefix):
+			var person: String = why.trim_prefix(prefix).get_slice(",", 0)
+			if w.by_id.has(person):
+				return named_actions[prefix] % w.by_id[person].name
+	return ""
+
+## A refusal can explain distrust once per day, without affecting its decision,
+## facts, RNG or trust. The same safe action vocabulary serves both alignments.
+static func _append_distrust(w, n, lines: Array) -> void:
+	if n.trust >= 0.35 or n.distrust_explained_day == w.day:
+		return
+	n.distrust_explained_day = w.day
+	var action: String = n.distrust_memory.get("action", "")
+	lines.append(say(n, ("I don't trust you. " + action) if action != "" else "You're an outsider, I'm not sure I can trust you."))
 
 static func cap_trust(w, n, cap: float, why: String) -> void:
 	if cap < n.trust_cap:
@@ -2114,6 +2161,8 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 		{"force_tier": force_tier, "prior_tier": n.max_tier, "public": n.claim_public,
 			"trust": n.trust, "pressure": n.pressure, "questions_today": n.pressed_today})
 	var result = _answer_gift_impl(w, n, force_tier, id)
+	if result.facts.any(func(f): return f.get("kind", "") == "refusal"):
+		_append_distrust(w, n, result.lines)
 	w.dlog.decision(n.id, "gift_disclosure", "outcome", result["facts"],
 		{"final_tier": n.max_tier, "told_readings": n.told_readings,
 			"role_claim": n.claimed_role, "public": n.claim_public}, "", id)
@@ -2389,6 +2438,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			else:
 				w.dlog.think(n.id, "stonewall", "Hiding (%s): refuses to say where they were." % hiding)
 				lines.append(whereabouts_refusal(n, nd))
+				_append_distrust(w, n, lines)
 				facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "day": nd, "phase": C.NIGHT,
 					"text": "%s refused to say where they were on night %d." % [n.name, nd]})
 	var limit = _gossip_share(w, n, "share_sightings")
@@ -2605,6 +2655,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 		var previous: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
 		refused = Dialogue.repeated_opinion_refusal(n.id, t.name, previous, refused)
 		lines.append(say(n, Dialogue.contextualize(n.id, refused, previous if previous != "opinion_again" else "", t.name)))
+		_append_distrust(w, n, lines)
 		return {"lines": lines, "facts": facts}
 	# Same pipeline for both alignments: a suspicion level plus an optional grounded reason.
 	var why = ""

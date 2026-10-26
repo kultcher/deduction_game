@@ -14,6 +14,7 @@ func _run() -> void:
 	_walker_wording()
 	_medium_hearths()
 	_neutral_opinion()
+	_distrust()
 	print("Batch 2: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func fresh():
@@ -135,3 +136,62 @@ func _neutral_opinion() -> void:
 				else:
 					check(("seems all right" in text) if level < 0.35 else ("don't really know %s that well" % t.name) in text, "neutral boundary uses the approved wording for either alignment")
 					check(reply.facts.is_empty(), "a neutral or reassuring opinion creates no incriminating fact")
+
+func _distrust() -> void:
+	var g = fresh()
+	var w = g.w
+	var t = w.living_good()[1]
+	for n in [w.living_good()[0], w.minion()]:
+		n.trust = 0.9
+		n.trust_cap = 1.0
+		Mind.set_trust(w, n, 0.8, "the Demonologist guessed my gift wrong (seer; 1 wrong so far)")
+		Mind.set_trust(w, n, 0.6, "the Demonologist broke their word (ward)")
+		Mind.set_trust(w, n, 0.59, "the Demonologist nominated me")
+		Mind.set_trust(w, n, 0.1, "private hidden role or alignment reason")
+		check(n.distrust_memory.action == "You broke your promise to me.", "largest actual, quotable loss is remembered for both alignments")
+		n.traits.gossip = 0.0
+		n.pressed_today = 0
+		var state = w.rng.state
+		var trust: float = n.trust
+		var reply = Mind.answer_opinion(w, n, t)
+		check(reply.lines.size() == 2 and "You broke your promise to me." in reply.lines[1].text, "an opinion refusal explains the strongest remembered action")
+		check(reply.facts.is_empty() and n.trust == trust and w.rng.state == state, "explanation changes neither facts, trust nor RNG")
+		n.traits.privacy = 1.0
+		n.max_tier = 0
+		n.claim_public = false
+		n.pressed_today = 0
+		var gift = Mind.answer_gift(w, n)
+		check(gift.lines.size() == 1, "a second refusal in another topic does not repeat the daily explanation")
+		w.day += 1
+		n.pressed_today = 0
+		gift = Mind.answer_gift(w, n)
+		check(gift.lines.size() == 2 and "promise" in gift.lines[1].text, "a gift refusal may explain again the next day")
+		n.distrust_memory = {}
+		n.distrust_explained_day = -1
+		n.pressed_today = 0
+		n.secret_mod = ""
+		n.secret = {}
+		n.claimed_role = ""
+		n.beliefs = []
+		n.history[w.time_key(1, C.NIGHT)] = "night:market"
+		n.traits.confidence = 0.0
+		var stonewalled = false
+		for seed_value in range(1, 50):
+			n.distrust_explained_day = -1
+			n.pressed_today = 0
+			w.rng.seed = seed_value
+			var night = Mind.answer_night(w, n, 1)
+			if night.facts.any(func(f): return f.kind == "refusal"):
+				stonewalled = true
+				check(night.lines.any(func(line): return line is Dictionary and line.text == "You're an outsider, I'm not sure I can trust you."), "a whereabouts refusal uses the safe outsider fallback")
+				break
+		check(stonewalled, "whereabouts fixture exercises a refusal for both alignments")
+		var lines: Array = []
+		n.trust = 0.35
+		n.distrust_explained_day = -1
+		Mind._append_distrust(w, n, lines)
+		check(lines.is_empty() and n.distrust_explained_day == -1, "the low-trust boundary is strictly below 0.35")
+		# A clamped request to lose 0.8 from 0.1 must record only 0.1 lost.
+		n.trust = 0.1
+		Mind.set_trust(w, n, -0.7, "the Demonologist nominated me")
+		check(is_equal_approx(n.distrust_memory.loss, 0.1), "memory measures actual clamped trust loss")

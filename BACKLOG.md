@@ -535,7 +535,7 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   should not be the only signal. Coordinate with apologies and vote-resistance
   feedback. (Oct 21) [decided; delivery/frequency open]
 
-  > **Decided (user, Oct 25); ready for Codex:** when an NPC's trust in the player is low (below 0.35) and
+  > **Decided (user, Oct 25); implemented in Codex batch 2:** when an NPC's trust in the player is low (below 0.35) and
   > they refuse the player something (gift, opinion, whereabouts), add one line citing the player
   > action that cost the most trust that they remember (from the reasons already passed to
   > `Mind.set_trust`: a wrong guess, a broken promise, a nominated friend...). At most once per NPC
@@ -545,6 +545,11 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   > **Prep B053 (9cb8782; open feedback):** `sim/mind.gd::_vote_impl`, `word_factor`, and `card_weight`
   > already use player trust. Surface relevant resistance through dialogue; distinguish distrust of
   > testimony from dislike of execution. Explaining an existing penalty should not create a new one.
+
+  > **Batch 2 verification:** presentation memory records the strongest actual trust loss for a
+  > recognized player action. Gift/opinion/night refusals explain it at most once per NPC/day,
+  > using safe action wording or the outsider fallback; no arbitrary private reason is quoted.
+  > Focused tests cover both alignments, clamping, all three refusal paths and the daily limit.
 
 - **Medium visits only Demon victims.** Restrict the gift's eligible dead to people
   killed by the Demon, and update role descriptions, dialogue, target selection
