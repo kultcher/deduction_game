@@ -24,6 +24,7 @@ func run():
 	await setup_counts()
 	await ward_warnings()
 	hide_rows()
+	repeated_role_gift()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -169,3 +170,31 @@ func hide_rows():
 	cv._refresh_board()
 	check(not cv.hide_unselected.disabled, "an explicit place filter enables place-row hiding")
 	scene.free()
+
+func repeated_role_gift():
+	for evil in [false, true]:
+		for public in [false, true]:
+			var a = fresh()
+			var b = fresh()
+			var na = a.w.minion() if evil else a.w.living_good()[0]
+			var nb = b.w.by_id[na.id]
+			for pair in [[a, na], [b, nb]]:
+				var g = pair[0]
+				var n = pair[1]
+				g.w.day = 3
+				n.max_tier = 3
+				n.claim_public = public
+				n.claimed_role = "seer"
+				if evil: g.w.evil_plan.bluffs[n.id] = "seer"
+				else: n.role = "seer"
+				n.trust = 0.9
+				n.traits.privacy = 0.0
+				n.pressed_today = 3
+				n.role_guesses = 2
+				var others: Array = g.w.npcs.filter(func(x): return x != n).map(func(x): return x.id)
+				n.info_log = [{"role": "seer", "day": 1, "data": {"pair": others.slice(0, 2), "yes": false}, "text": "neither was the Demon", "shared": false}]
+			var direct = Mind.answer_gift(a.w, na)
+			var repeated = Social.answer_is_role(b.w, nb, "seer")
+			check(JSON.stringify(direct) == JSON.stringify(repeated), "already disclosed matching role question gives exactly the ask-gift response")
+			check(na.pressed_today == nb.pressed_today and na.trust == nb.trust and a.w.rng.state == b.w.rng.state and nb.role_guesses == 2, "matching question preserves gift cost/fatigue/RNG and is never a wrong guess")
+			check(repeated.facts.any(func(f): return f.kind == "info"), "willing matching-role answers include previously withheld readings")

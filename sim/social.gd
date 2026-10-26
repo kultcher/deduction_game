@@ -468,14 +468,15 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 ## the list doesn't pay). Wrong, or unwilling, they give the same non-answer either way, so
 ## a guess never eliminates anyone, and each wrong guess costs a little more trust.
 static func answer_is_role(w, n, role: String) -> Dictionary:
+	# Route before on_question: gift answers own both fatigue and disclosure.
+	if (n.claim_public or n.max_tier >= 3) and n.claimed_role == role:
+		return Mind.answer_gift(w, n)
 	Mind.on_question(w, n)
 	var rn = C.role_name(role)
 	var mine: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	var said: bool = n.claim_public or n.max_tier >= 3
 	if said:
 		var claimed: String = n.claimed_role
-		if claimed == role:
-			return {"lines": [Mind.say(n, "I am. I've said as much.")], "facts": []}
 		return {"lines": [Mind.say(n, "No. I told you: I'm the %s." % C.role_name(claimed) if C.ROLES.has(claimed) else "No.")], "facts": []}
 	if mine == role:
 		var first = n.role_guesses == 0

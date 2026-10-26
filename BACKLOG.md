@@ -299,6 +299,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > you they're the X is treated as "ask gift": same cost and rules, readings if they're willing. Not counted
   > as a wrong guess.
 
+  > **Implemented (Codex batch 3):** Matching an already disclosed role routes directly to ask gift before fatigue is counted. Public/private and good/evil parity tests cover full replies, readings, trust, fatigue, wrong-guess count and RNG.
+
 - **Case 44814: readings after role disclosure.** Once a gift is officially claimed,
   ordinarily share available readings unless trust is very low. Current public
   disclosure guarantees only tier 3 (the role), so fresh readings can remain withheld
