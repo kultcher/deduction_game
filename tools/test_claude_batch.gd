@@ -6,6 +6,10 @@ const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Presentation = preload("res://game/workshop_presentation.gd")
 const Evil = preload("res://sim/evil.gd")
+const Live = preload("res://game/workshop_canvas.gd")
+const Solver = preload("res://workshop/solver.gd")
+const CanvasModel = preload("res://workshop/canvas_model.gd")
+const C = preload("res://sim/content.gd")
 var fails = 0
 var checks = 0
 
@@ -13,6 +17,7 @@ func _init() -> void:
 	_stance_from_belief()
 	_one_night_story()
 	_victims_were_sincere()
+	_alibi_against_report()
 	print("Claude batch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -101,3 +106,35 @@ func _victims_were_sincere() -> void:
 	w.public_event("demon_death", [victim.id], "")
 	Mind.recompute_beliefs(w, listener, "")
 	_check(alive_honesty < 1.0 and listener.honesty.get(victim.id, 1.0) == 1.0, "evidence against someone discounts their word (%.2f) until the Demon kills them (%.2f)" % [alive_honesty, listener.honesty.get(victim.id, 1.0)])
+
+## A gift reading against an alibi offers both explanations: the alibi is false (as
+## linked) or the report is (a suspected lie). One person's own report against their own
+## "I was home" links the same way (54875).
+func _alibi_against_report() -> void:
+	var g = _game(692)
+	var goods: Array = g.w.living_good()
+	var watcher = goods[1]
+	var seen = goods[2]
+	var block: String = seen.home_block
+	g.w.day = 2
+	g.add_card({"kind": "alibi", "subject": [seen.id], "home": true, "day": 1, "phase": C.NIGHT, "source": seen.id, "block": seen.home_block, "text": "%s says they were home on night 1." % seen.name})
+	g.add_card({"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": block, "seen": [seen.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, seen.name]})
+	g.add_card({"kind": "alibi", "subject": [watcher.id], "home": true, "day": 1, "phase": C.NIGHT, "source": watcher.id, "block": watcher.home_block, "text": "%s says they were home on night 1." % watcher.name})
+	var view = Live.view(g)
+	var model = CanvasModel.new(view)
+	var alibi = _node(model, view, func(c): return c.kind == "alibi" and c.subject == seen.id)
+	var own_alibi = _node(model, view, func(c): return c.kind == "alibi" and c.subject == watcher.id)
+	var report = _node(model, view, func(c): return c.kind == "report" and c.source == watcher.id)
+	_check(model.connect_cards(report, alibi) == "" and model.nodes[model.selected].kind == "contradiction", "a watch report against an alibi links as a contradiction")
+	var contradiction: String = model.selected
+	_check(model.report_doubtable(contradiction), "and, the report being someone's word, it can be doubted instead")
+	_check(model.doubt_report(contradiction) == "" and model.nodes[model.selected].kind == "modifier" and model.nodes[model.selected].mode == "lying", "doubting it puts a suspected lie on the report")
+	_check(not model.nodes[alibi].has("merged") and not model.nodes[report].has("merged"), "and restores the two cards")
+	_check(model.connect_cards(report, own_alibi) == "" and model.nodes[model.selected].kind == "contradiction", "one person's own watch report against their own 'home' links as a contradiction too")
+
+func _node(model, view, pick: Callable) -> String:
+	for id in model.nodes:
+		var nd = model.nodes[id]
+		if nd.kind == "evidence" and pick.call(Solver.card_by_id(view, nd.card)):
+			return id
+	return ""

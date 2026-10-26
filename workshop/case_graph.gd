@@ -147,7 +147,15 @@ static func valid_dispute(view: Dictionary, dispute) -> bool:
 		return false
 	var home = find_card(view, dispute.challenged)
 	var out = find_card(view, dispute.preferred)
-	return not home.is_empty() and not out.is_empty() and home.kind == "alibi" and home.get("night", -1) >= 0 and home.get("night", -1) == out.get("night", -2) and ((out.kind == "sighting" and home.subject in out.get("subjects", [out.subject])) or (out.kind == "report" and out.get("role", "") == "nightwatch" and home.subject in out.data.seen))
+	if home.is_empty() or out.is_empty() or home.kind != "alibi" or home.get("night", -1) < 0 or home.get("night", -1) != out.get("night", -2):
+		return false
+	if out.kind == "sighting" and home.subject in out.get("subjects", [out.subject]):
+		return true
+	if out.kind == "report" and out.get("role", "") == "nightwatch" and home.subject in out.data.seen:
+		return true
+	# One person's two accounts of one night (54875): "I was home" and their own report of
+	# a gift that took them out that night can't both be true.
+	return out.kind == "report" and out.get("source", "") == home.subject and C.ROLES.get(out.get("role", ""), {}).get("night_walk", false)
 
 static func roots(value: Dictionary, ids: Array) -> Array:
 	var result: Array = []

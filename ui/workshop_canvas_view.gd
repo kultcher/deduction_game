@@ -51,7 +51,10 @@ func body(id: String) -> Array:
 	if node.kind == "contradiction":
 		var home = Solver.card_by_id(model.view, node.dispute.challenged)
 		var observation = Solver.card_by_id(model.view, node.dispute.preferred)
-		return [home.text, observation.text, "If the observation is accurate, the home alibi is false.", "Circumstantial; does not prove evil."]
+		var lines: Array = [home.text, observation.text, "If the observation is accurate, the home alibi is false.", "Circumstantial; does not prove evil."]
+		if model.report_doubtable(id):
+			lines.append("Or the report is false: Inspect to doubt it instead.")
+		return lines
 	if node.kind == "modifier":
 		return [Solver.card_by_id(model.view, node.card).text, "Player hypothesis: " + node.mode, "Link supporting evidence here. The jury may reject your explanation."]
 	var card = Solver.card_by_id(model.view, node.card)

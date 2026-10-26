@@ -353,9 +353,18 @@ func _refresh_case() -> void:
 		option.item_selected.connect(func(i): node.mode = ["misled", "lying", "unlikely"][i]; _edit())
 	elif node.kind == "contradiction":
 		_clear(case_box)
-		_label(case_box, "The sighting challenges the home alibi. Both originals are retained; this is circumstantial evidence, not proof of evil.", 18, "accent")
+		var doubtable: bool = board.report_doubtable(answer_id)
+		_label(case_box, ("The report challenges the home alibi: one of them is false. As linked, the alibi is the false one; a report is someone's word, so you can doubt it instead." if doubtable
+			else "The sighting challenges the home alibi. Both originals are retained; this is circumstantial evidence, not proof of evil."), 18, "accent")
 		for child in node.children:
 			_label(case_box, _report(board.nodes[child].card).text, 17)
+		if doubtable:
+			_button(case_box, "Doubt the report instead (suspected lie)", func():
+				var why: String = board.doubt_report(answer_id)
+				answer_window.hide()
+				_session_changed()
+				if why != "":
+					status.text = why)
 		_button(case_box, "Restore separate cards", func(): board.unmerge(answer_id); answer_window.hide(); _session_changed())
 	else:
 		# Reuse identity choices, but never display a fixture solver verdict for
