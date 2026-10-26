@@ -319,6 +319,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > -0.4 (repeating info gifts, day <= 2), `hides_from_demon` -0.5 (non-info gifts), with the same conditions.
   > Drop "the player hears it first" for now. Approved disclosure tuning (user).
 
+  > **Implemented (Codex batch 3):** Private openness adds only the approved +0.3 one-shot, -0.4 early repeating-info and -0.5 non-info terms under the public-roll conditions. All existing base terms, thresholds and the single jitter draw remain; focused good/evil role/day checks verify them.
+
 - **Follow-up after a false alibi is established.** The initial good-NPC response can
   concede "Fine, I was out. Doesn't mean I was doing anything wrong." Later add
   pressure checks and possible forced revelation of the hidden gift/secret, with

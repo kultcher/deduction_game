@@ -25,6 +25,7 @@ func run():
 	await ward_warnings()
 	hide_rows()
 	repeated_role_gift()
+	private_gift_terms()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -198,3 +199,27 @@ func repeated_role_gift():
 			check(JSON.stringify(direct) == JSON.stringify(repeated), "already disclosed matching role question gives exactly the ask-gift response")
 			check(na.pressed_today == nb.pressed_today and na.trust == nb.trust and a.w.rng.state == b.w.rng.state and nb.role_guesses == 2, "matching question preserves gift cost/fatigue/RNG and is never a wrong guess")
 			check(repeated.facts.any(func(f): return f.kind == "info"), "willing matching-role answers include previously withheld readings")
+
+func private_gift_terms():
+	var g = fresh()
+	for n in [g.w.living_good()[0], g.w.minion()]:
+		for role in [C.START_ROLES[0], "seer", "warden", "martyr"]:
+			if n.is_evil(): g.w.evil_plan.bluffs[n.id] = role
+			else: n.role = role
+			n.traits.privacy = 0.5
+			n.traits.composure = 0.5
+			n.trust = 0.5
+			n.pressure = 0.0
+			n.martyr_target = g.w.npcs.back().id
+			for day in [1, 2, 3]:
+				g.w.day = day
+				var probe = RandomNumberGenerator.new()
+				probe.state = g.w.rng.state
+				var jitter = probe.randf_range(-0.2, 0.2)
+				var openness = 0.5 + 0.5 * 1.2 + 0.1 * (day - 1) - 0.72 + jitter
+				if C.ROLES[role].kind != "info": openness -= 0.5
+				if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"] and day <= 2: openness -= 0.4
+				elif role in C.START_ROLES: openness += 0.3
+				var expected = 4 if openness > 0.75 else (3 if openness > 0.45 else (2 if openness > 0.15 else 1))
+				check(Mind._target_tier(g.w, n) == expected, "private tier applies only the approved gift terms under public-roll conditions")
+				check(g.w.rng.state == probe.state, "gift-type tuning retains exactly one jitter draw")

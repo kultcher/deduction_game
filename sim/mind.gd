@@ -2264,6 +2264,16 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 	var jitter = w.rng.randf_range(-0.2, 0.2)
 	var openness = (1.0 - trait_of(n, "privacy")) * 1.0 + n.trust * 1.2 + n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")) \
 		+ 0.1 * (w.day - 1) - 0.72 + jitter
+	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	var gift_terms = {}
+	if C.ROLES[role]["kind"] != "info":
+		gift_terms["hides_from_demon"] = -0.5
+	if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"] and w.day <= 2:
+		gift_terms["gift_keeps_giving"] = -0.4
+	elif role in C.START_ROLES:
+		gift_terms["one_shot_gift"] = 0.3
+	for value in gift_terms.values():
+		openness += value
 	var t = 1
 	if openness > 0.75:
 		t = 4
@@ -2274,7 +2284,7 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 	w.dlog.decision(n.id, "gift_disclosure", "tier", t, {"openness": openness,
 		"parts": {"privacy": (1.0 - trait_of(n, "privacy")) * 1.0, "trust": n.trust * 1.2,
 			"pressure": n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")),
-			"day": 0.1 * (w.day - 1), "base": -0.72, "jitter": jitter},
+			"day": 0.1 * (w.day - 1), "base": -0.72, "jitter": jitter}.merged(gift_terms),
 		"thresholds": [{"above": 0.75, "tier": 4}, {"above": 0.45, "tier": 3},
 			{"above": 0.15, "tier": 2}, {"otherwise": 1}], "comparison": ">"}, "", trace_id)
 	w.dlog.think(n.id, "disclosure", "Disclosure tier %d (openness %.2f; privacy %.2f, trust %.2f, pressure %.2f)." %
