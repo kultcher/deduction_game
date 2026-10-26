@@ -637,6 +637,12 @@ func end_day_phase(talked_id: String = "") -> bool:
 # ---------------------------------------------------------------- town meeting
 
 func begin_meeting() -> Array:
+	open_meeting()
+	return Mind.meeting_testimony(self)
+
+## Everything before the testimony (begin_meeting without it), for a streamed meeting:
+## then Mind.testimony_start / testimony_step.
+func open_meeting() -> void:
 	set_log_time()
 	executed_today = ""
 	meeting = {"block": "", "block_count": 0, "nominated": [], "nominators": [], "results": [], "pending": {}}
@@ -659,7 +665,6 @@ func begin_meeting() -> Array:
 					Mind._eff(e, n.id, -0.12, "silenced by the demon's side: they must have been a threat to it")
 					Mind.ledger_hear(self, l, "silenced:%s:%d" % [n.id, day], e, 1.0, [], {"kind": "silenced", "subject": n.id, "day": day})
 	Mind.refresh_all_consensus(self)  # yesterday's accusations count for less today
-	return Mind.meeting_testimony(self)
 
 func can_nominate(by: String, nominee: String) -> String:
 	if not by_id.has(nominee) or not by_id[nominee].alive:

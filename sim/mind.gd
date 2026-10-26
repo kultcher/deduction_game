@@ -1195,13 +1195,30 @@ static func warden_target(w, n) -> String:
 ## Public testimony before nominations. Returns Array of {who, lines, facts}.
 static func meeting_testimony(w) -> Array:
 	var out: Array = []
-	var speakers = w.shuffled(w.living())
+	var st: Dictionary = testimony_start(w)
+	while not st["done"]:
+		var turn: Dictionary = testimony_step(w, st)
+		if not turn.get("lines", []).is_empty():
+			out.append(turn)
+	return out
+
+## The same testimony one step at a time, so the UI can show each speaker while the next
+## one is worked out. Running every step in a row is exactly meeting_testimony.
+static func testimony_start(w) -> Dictionary:
 	w.defer_beliefs = true
-	for n in speakers:
-		var lines: Array = []
-		var facts: Array = []
+	return {"speakers": w.shuffled(w.living()), "i": 0, "done": false}
+
+## One step: the next speaker's turn ({who, lines, facts}; lines may be empty), or once
+## everyone has spoken, one of the belief refreshes still waiting ({}). Sets st.done after
+## the last one.
+static func testimony_step(w, st: Dictionary) -> Dictionary:
+	while st["i"] < st["speakers"].size():
+		var n = st["speakers"][st["i"]]
+		st["i"] += 1
 		if n.silenced:
 			continue  # the Breathstealer took their voice
+		var lines: Array = []
+		var facts: Array = []
 		flush_beliefs(w, n)  # a speaker reacts to everything said before their turn
 		if not n.claim_public and _public_claim_decision(w, n) != "":
 			_go_public(w, n, lines, facts)
@@ -1211,11 +1228,14 @@ static func meeting_testimony(w) -> Array:
 		if acc != null:
 			lines.append(acc["line"])
 			facts.append(acc["fact"])
-		if not lines.is_empty():
-			out.append({"who": n.id, "lines": lines, "facts": facts})
-	w.defer_beliefs = false
-	flush_beliefs(w)
-	return out
+		return {"who": n.id, "lines": lines, "facts": facts}
+	# Everyone has spoken: the remaining refreshes, one mind per step, in queue order.
+	if not w.pending_beliefs.is_empty():
+		flush_beliefs(w, w.pending_beliefs[0][0])
+	if w.pending_beliefs.is_empty():
+		w.defer_beliefs = false
+		st["done"] = true
+	return {}
 
 static func _public_claim_decision(w, n) -> String:
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
