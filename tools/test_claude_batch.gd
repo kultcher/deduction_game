@@ -12,6 +12,7 @@ var checks = 0
 func _init() -> void:
 	_stance_from_belief()
 	_one_night_story()
+	_victims_were_sincere()
 	print("Claude batch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -85,3 +86,18 @@ func C_other(block: String) -> String:
 		if b != block:
 			return b
 	return block
+
+## A Demon victim was good: evidence against them stops discounting their word.
+func _victims_were_sincere() -> void:
+	var g = _game(4431)
+	var w = g.w
+	var goods: Array = w.living_good()
+	var listener = goods[0]
+	var victim = goods[1]
+	Mind.ledger_hear(w, listener, "test:frame", [[victim.id, 0.4, false, "seen out on the kill night", ""]], 1.0)
+	var alive_honesty: float = listener.honesty.get(victim.id, 1.0)
+	victim.alive = false
+	victim.death_cause = "demon"
+	w.public_event("demon_death", [victim.id], "")
+	Mind.recompute_beliefs(w, listener, "")
+	_check(alive_honesty < 1.0 and listener.honesty.get(victim.id, 1.0) == 1.0, "evidence against someone discounts their word (%.2f) until the Demon kills them (%.2f)" % [alive_honesty, listener.honesty.get(victim.id, 1.0)])

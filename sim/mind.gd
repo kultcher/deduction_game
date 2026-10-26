@@ -675,14 +675,20 @@ static func _recompute_beliefs(w, n, note: String) -> void:
 	var raw = func(e): return e["weight"] * kg.call(e)
 	var disc_a = _night_doubt(E, raw, n.workshop_state.get("owned", {}))
 	var h_a = {}
-	var h_a1 = _honesty(n, E, disc_a, {}, raw, cl)
-	h_a = _honesty(n, E, disc_a, h_a1, raw, cl)
+	# A Demon victim was good: whatever was said against them, they weren't lying (their
+	# readings can still have been wrong, which is reading doubt, not honesty).
+	var settled = {}
+	for m in w.npcs:
+		if not m.alive and demon_victim(w, m.id):
+			settled[m.id] = true
+	var h_a1 = _honesty(n, E, disc_a, {}, raw, cl, settled)
+	h_a = _honesty(n, E, disc_a, h_a1, raw, cl, settled)
 	var wf = {}
 	for e in E:
 		wf[e["eid"]] = _final_weight(n, e, disc_a, h_a) * kg.call(e)
 	var final_w = func(e): return wf[e["eid"]]
 	var disc = _night_doubt(E, final_w, n.workshop_state.get("owned", {}))
-	var h = _honesty(n, E, disc, _honesty(n, E, disc, {}, final_w, cl), final_w, cl)
+	var h = _honesty(n, E, disc, _honesty(n, E, disc, {}, final_w, cl, settled), final_w, cl, settled)
 	# Log notable changes in doubt and honesty (derived values, kept for display).
 	for k in disc:
 		if absf(disc[k] - n.discounted.get(k, 0.0)) >= 0.05:
@@ -746,7 +752,7 @@ static func _night_doubt(E: Array, weight_of: Callable, owned: Dictionary = {}) 
 ## counts at its weight (weight_of), adjusted by doubt about the particular reading (the
 ## listener's own readings included) and, in the second pass, by the honesty of whoever gave
 ## it. Never by suspicion (which includes vibes and grudges), never by its previous value.
-static func _honesty(n, E: Array, disc: Dictionary, prev: Dictionary, weight_of: Callable, cl: Dictionary = {}) -> Dictionary:
+static func _honesty(n, E: Array, disc: Dictionary, prev: Dictionary, weight_of: Callable, cl: Dictionary = {}, settled: Dictionary = {}) -> Dictionary:
 	var grounds = {}
 	for e in E:
 		var rp = _rel(e)
@@ -764,6 +770,8 @@ static func _honesty(n, E: Array, disc: Dictionary, prev: Dictionary, weight_of:
 				grounds[t] = grounds.get(t, 0.0) + f[1] * wgt * r
 	var out = {}
 	for t in grounds:
+		if settled.has(t):
+			continue  # sincerity settled by their death (see _recompute_beliefs)
 		out[t] = 1.0 - clampf(HONESTY_K * maxf(0.0, grounds[t]), 0.0, HONESTY_CAP)
 	return out
 
