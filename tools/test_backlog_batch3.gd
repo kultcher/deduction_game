@@ -469,8 +469,14 @@ func pressed_nights():
 				g.w.rng.seed = seed_value
 			var before = before_press_night(a.w, na, card)
 			var after = Mind.press(b.w, nb, card)
-			check(JSON.stringify(before.facts) == JSON.stringify(after.facts), "press wording preserves home/secret/sleepwalker/evil cover facts")
-			check(a.w.rng.state == b.w.rng.state and na.pressed_today == nb.pressed_today and na.trust == nb.trust, "wording-only press keeps original RNG, fatigue and trust")
+			# Oct 26 (Claude): pressed with a sighting, the Sleepwalker (and evil whose bluff
+			# doesn't explain being out) may add "I've been known to sleepwalk" (an extra
+			# secret fact; evil rolls for it). Everything else stays wording only.
+			var excuse_facts: Array = after.facts.filter(func(f): return f.get("secret_kind", "") == "sleepwalker")
+			var kept_facts: Array = after.facts.filter(func(f): return f.get("secret_kind", "") != "sleepwalker")
+			check(JSON.stringify(before.facts) == JSON.stringify(kept_facts) and (mode == "sleepwalker") == (excuse_facts.size() == 1 and mode == "sleepwalker") , "press wording preserves home/secret/sleepwalker/evil cover facts")
+			var may_roll: bool = evil and not C.ROLES[mode].get("night_walk", false)
+			check((a.w.rng.state == b.w.rng.state or may_roll) and na.pressed_today == nb.pressed_today and na.trust == nb.trust, "wording-only press keeps original RNG, fatigue and trust")
 			check(before.lines[0].text != after.lines[0].text, "pressing does not replay the original alibi or refusal sentence")
 	var g = fresh()
 	var n = g.w.living_good()[0]

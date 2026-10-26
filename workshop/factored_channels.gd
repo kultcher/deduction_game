@@ -206,7 +206,8 @@ static func _selected(facts: Array, scope: Array, row: int) -> Array:
 
 static func _conditional(graph: Dictionary, facts: Array, kind: String, extra: Dictionary = {}) -> Dictionary:
 	var cards: Array = facts.map(func(f): return f.card)
-	var factor = {"kind": kind, "facts": facts, "rows": {}, "seer": Solver.Roles.seer_flag(cards), "relay": cards.any(func(c): return c.has("relay_source"))}
+	var factor = {"kind": kind, "facts": facts, "rows": {}, "seer": Solver.Roles.seer_flag(cards), "relay": cards.any(func(c): return c.has("relay_source")),
+		"walker_ids": cards.filter(func(c): return c.get("kind", "") == "secret_claim" and c.get("data", {}).get("secret_kind", "") == "sleepwalker" and not c.get("quoted", false)).map(func(c): return c.subject)}
 	factor.merge(extra)
 	_add(graph, _scope(facts), factor)
 	return factor
@@ -321,7 +322,13 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 			if Solver.TimeModel.evil_at(view, world, f.target, f.get("epoch", view.alignment_epoch)):
 				weight *= pow(2.0, float(f.log2_ratio))
 		return PackedFloat64Array([weight])
-	var signature: int = Solver.Roles.coarse_mask(view.people.size(), world, factor.seer, factor.relay) if factor.kind == "roles" else (int(world.evil) * (view.people.size() + 1) + int(world.get("demon", -1)) + 1)
+	var walkers: int = 0
+	if factor.kind == "roles" and not factor.get("walker_ids", []).is_empty():
+		for id in factor.walker_ids:
+			var i: int = Solver.person_index(view, id)
+			if i >= 0:
+				walkers |= 1 << i
+	var signature: int = Solver.Roles.coarse_mask(view.people.size(), world, factor.seer, factor.relay, walkers) if factor.kind == "roles" else (int(world.evil) * (view.people.size() + 1) + int(world.get("demon", -1)) + 1)
 	if factor.kind in ["forced_lamp", "route_counts", "fixture_movement"]:
 		signature = 0
 	if factor.kind == "activity":

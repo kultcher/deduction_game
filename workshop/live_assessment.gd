@@ -117,7 +117,10 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		"timeline": History.from_events(snapshot.public_events)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "sexton", "martyr"]):
+	for card in cards:
+		if card.kind == "attack":
+			view.timeline.events.append({"kind": "demon_attack", "subjects": [card.data.target], "at": {"day": card.night, "phase": "night"}, "by": ""})
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim", "attack"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "sexton", "martyr"]):
 		view["live_activity"] = true
 		view.world_options["roles"] = true
 		view.world_options["identities"] = true
@@ -235,7 +238,7 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["data"] = e.content.data.duplicate(true)
 		return card # Opinions are context, even when the gift reports them accurately.
 	if e.kind == "secret" and e.source in ids and e.subjects.size() == 1 and e.subjects[0] in ids and e.content.get("owner", "") == e.subjects[0]:
-		if e.content.get("secret_kind", "") not in C.SECRETS.map(func(secret): return secret.kind) + ["lover"] or e.observed_at.day < 0 or e.observed_at.phase == "unknown" or (block != "" and block not in C.BLOCKS):
+		if e.content.get("secret_kind", "") not in C.SECRETS.map(func(secret): return secret.kind) + ["lover", "sleepwalker"] or e.observed_at.day < 0 or e.observed_at.phase == "unknown" or (block != "" and block not in C.BLOCKS):
 			return {}
 		card["kind"] = "secret_claim"
 		card["night"] = -1 # Confessing an explanation does not prove an outing.
@@ -327,6 +330,19 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 			if e.content.get("dropped", false) and e.source == "evidence" and e.subjects.size() == 1:
 				card["item_drop"] = true
 			return card
+	# A scorched sigil: the Demon came to that door that night and the player's ward held.
+	# Read like a murder for routes (the Demon went to the target's home); see the view's
+	# timeline below. The spent-ward receipt itself is context.
+	if e.kind == "scorched_sigil" and e.source == "evidence" and night >= 1 and e.subjects.size() == 1 and e.subjects[0] in ids:
+		if block != "" and block != snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home:
+			return {}
+		card["kind"] = "attack"
+		card["data"] = {"target": e.subjects[0]}
+		return card
+	if e.kind == "ward" and e.source == "player" and e.subjects.size() == 1 and e.subjects[0] in ids:
+		card["kind"] = "context"
+		card["context_kind"] = "ward"
+		return card
 	if e.kind == "quiet" and e.source == "player" and e.observed_at.phase == "night" and night >= 1:
 		card["kind"] = "quiet"
 		card["ward"] = e.content.get("ward", "")

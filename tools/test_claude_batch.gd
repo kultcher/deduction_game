@@ -20,6 +20,8 @@ func _init() -> void:
 	_alibi_against_report()
 	_test_juror_feedback()
 	_connections()
+	_sleepwalk_excuse()
+	_sigil_is_an_attack()
 	print("Claude batch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -190,3 +192,71 @@ func _connections() -> void:
 		if absf(found[i].move) > absf(found[i - 1].move):
 			sorted = false
 	_check(sorted and found.size() <= 5, "ranked by how far each moves it, at most five")
+
+## "I've been known to sleepwalk": the real Sleepwalker and evil bluffers may say it; the
+## shared model reads it as true of the one Sleepwalker, or a lie by evil.
+func _sleepwalk_excuse() -> void:
+	var g = _game(4450)
+	var w = g.w
+	var goods: Array = w.living_good()
+	var sleeper = goods[0]
+	var plain = goods[1]
+	for n in w.npcs:
+		n.secret_mod = ""
+	sleeper.secret_mod = "sleepwalker"
+	_check(not Mind.sleepwalk_excuse(w, sleeper, "the meeting").is_empty(), "the real Sleepwalker can say they've been known to sleepwalk")
+	_check(Mind.sleepwalk_excuse(w, plain, "the meeting").is_empty(), "an ordinary good townsperson doesn't")
+	var e = w.evil_team()[0]
+	w.evil_plan["bluffs"][e.id] = "nightwatch"
+	_check(Mind.sleepwalk_excuse(w, e, "the meeting").is_empty(), "evil with a night-walking bluff has no need of it")
+	w.evil_plan["bluffs"][e.id] = "clerk"
+	_check(Mind.sleepwalk_excuse(w, e, "the meeting").is_empty(), "and evil won't say it once someone else has (one Sleepwalker per case)")
+	# The model: one claim from a good person means they're the Sleepwalker; two claims
+	# mean at least one claimant is evil.
+	w.day = 2
+	g.add_card({"kind": "secret", "subject": [sleeper.id], "owner": sleeper.id, "source": sleeper.id, "secret_kind": "sleepwalker", "mod": "sleepwalker", "day": 1, "phase": 2, "text": "%s says they've been known to sleepwalk." % sleeper.name})
+	g.add_card({"kind": "secret", "subject": [plain.id], "owner": plain.id, "source": plain.id, "secret_kind": "sleepwalker", "mod": "sleepwalker", "day": 1, "phase": 2, "text": "%s says they've been known to sleepwalk." % plain.name})
+	var view = Live.view(g)
+	var claims: Array = view.cards.filter(func(c): return c.kind == "secret_claim")
+	_check(claims.size() == 2, "the claims reach the shared model as secret claims")
+	# As Assess.prepare sets it up for a case that cites a secret claim.
+	view["live_activity"] = true
+	view.world_options["roles"] = true
+	view.world_options["identities"] = true
+	var one: Array = Solver.solve(view, [claims[0]]).worlds
+	var ids: Array = view.people.map(func(p): return p.id)
+	var a: int = ids.find(claims[0].subject)
+	var b: int = ids.find(claims[1].subject)
+	_check(not one.is_empty() and one.all(func(x): return (x.evil & (1 << a)) or (x.modifier == "sleepwalker" and x.holders & (1 << a))), "one claim: the claimant is the Sleepwalker or evil")
+	var both: Array = Solver.solve(view, claims).worlds
+	_check(not both.is_empty() and both.all(func(x): return (x.evil & (1 << a)) or (x.evil & (1 << b))), "two claims: at least one claimant is evil")
+
+## A scorched sigil reads like a murder for routes: the Demon went to that door that night.
+## A sighting on the way there counts against whoever was seen; without the sigil, a quiet
+## night says nothing about where the Demon went.
+func _sigil_is_an_attack() -> void:
+	var g = _game(4460)
+	var w = g.w
+	var demon = w.by_id[w.demon_id]
+	var target = null
+	for n in w.living_good():
+		if n.home_block != demon.home_block:
+			target = n
+			break
+	w.day = 2
+	g.add_card({"kind": "ward", "source": "player", "subject": [target.id], "target": target.id, "loc": "home_" + target.id, "block": target.home_block, "night": 1, "day": 1, "phase": C.NIGHT, "private": true, "text": "Night 1: you spent your ward on %s's door." % target.name})
+	var seen_n: int = g.add_card({"kind": "sighting", "subject": [demon.id], "block": target.home_block, "source": "player", "day": 1, "phase": C.NIGHT, "vigil": true, "text": "Night 1 vigil: you saw %s on %s." % [demon.name, C.block_name(target.home_block)]})
+	var sigil_n: int = g.add_card({"kind": "scorched_sigil", "source": "evidence", "subject": [target.id], "target": target.id, "loc": "home_" + target.id, "block": target.home_block, "night": 1, "day": 1, "phase": C.NIGHT, "private": true, "text": "You alone found a scorched sigil on %s's door: the Demon came on night 1." % target.name})
+	var view = Live.view(g)
+	var model = CanvasModel.new(view)
+	var seen = _node(model, view, func(c): return c.get("text", "").begins_with("Night 1 vigil"))
+	var sigil = _node(model, view, func(c): return c.get("text", "").begins_with("You alone found"))
+	_check(seen != "" and sigil != "", "the sigil and the ward reach the Workshop (%s, %s)" % [seen, sigil])
+	var premise = model.add_premise(demon.id, "evil", Vector2(0, 0))
+	model.connect_cards(seen, premise)
+	var without = Live.test_juror(g, model.compile(premise))
+	model.connect_cards(sigil, premise)
+	var with_sigil = Live.test_juror(g, model.compile(premise))
+	_check(with_sigil.get("ready", false), "a case citing the sigil can be judged (%s)" % str(with_sigil.get("issues", [])))
+	_check(with_sigil.get("lr", 1.0) > without.get("lr", 1.0) * 1.1, "seen near the attacked door that night weighs more with the sigil (%.2f -> %.2f)" % [without.get("lr", 1.0), with_sigil.get("lr", 1.0)])
+	_check(preload("res://ui/evidence_context.gd").numbers(g).has(g.board.filter(func(c): return c.kind == "ward")[0].n), "the spent-ward receipt is context")
