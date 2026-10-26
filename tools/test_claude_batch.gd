@@ -19,6 +19,7 @@ func _init() -> void:
 	_victims_were_sincere()
 	_alibi_against_report()
 	_test_juror_feedback()
+	_connections()
 	print("Claude batch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -167,3 +168,25 @@ func _test_juror_feedback() -> void:
 	Live.feedback(view, value, {"impossible": false, "people": {goods[1].id: {"prior": 0.3, "posterior": 0.6}, other: {"prior": 0.3, "posterior": 0.4}}}, plain)
 	_check(not plain.has("headline") and not plain.has("raises"), "a case that holds and mostly moves its subject has no such notes")
 
+
+## Connections: board cards that bear on a premise, ranked by how far they'd move it.
+func _connections() -> void:
+	var g = _game(692)
+	var goods: Array = g.w.living_good()
+	var watcher = goods[1]
+	var seen = goods[2]
+	g.w.day = 2
+	g.add_card({"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": seen.home_block, "seen": [seen.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, seen.name]})
+	var alibi_n: int = g.add_card({"kind": "alibi", "subject": [seen.id], "home": true, "day": 1, "phase": C.NIGHT, "source": seen.id, "block": seen.home_block, "text": "%s says they were home on night 1." % seen.name})
+	var view = Live.view(g)
+	var model = CanvasModel.new(view)
+	var report = _node(model, view, func(c): return c.kind == "report" and c.source == watcher.id)
+	var premise = model.add_premise(seen.id, "evil", Vector2(0, 0))
+	model.connect_cards(report, premise)
+	var found: Array = Live.connections(g, model.compile(premise))
+	_check(found.any(func(c): return c.number == alibi_n), "Connections finds the alibi that bears on the premise (%s)" % str(found.map(func(c): return [c.number, snappedf(c.move, 0.01)])))
+	var sorted = true
+	for i in range(1, found.size()):
+		if absf(found[i].move) > absf(found[i - 1].move):
+			sorted = false
+	_check(sorted and found.size() <= 5, "ranked by how far each moves it, at most five")

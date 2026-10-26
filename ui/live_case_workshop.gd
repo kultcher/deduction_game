@@ -375,6 +375,11 @@ func _refresh_case() -> void:
 		_label(case_box, board.title(answer_id), 22)
 		_label(case_box, "Assumed identities in this line. These are hypotheses, not facts the jury must accept.", 16)
 		_premise_details(node)
+		if not node.get("conclusion", {}).is_empty():
+			var premise_id: String = answer_id
+			var found = VBoxContainer.new()
+			_button(case_box, "Connections: board cards that bear on this…", func(): _show_connections(premise_id, found))
+			case_box.add_child(found)
 		for person in board.view.people:
 			var row = HBoxContainer.new()
 			case_box.add_child(row)
@@ -782,6 +787,33 @@ func _run_test_juror() -> void:
 			clashing[card] = true
 	canvas.clashing = clashing
 	canvas.queue_redraw()
+
+## "Connections": up to five board cards that would move this premise most (one click adds
+## a card and links it). Runs on demand: one test-juror pass per candidate.
+func _show_connections(premise: String, box: VBoxContainer) -> void:
+	_clear(box)
+	_label(box, "Looking through the board…", 15)
+	await get_tree().process_frame
+	var found: Array = Live.connections(g, board.compile(premise))
+	_clear(box)
+	if found.is_empty():
+		_label(box, "No other card on the board moves this premise.", 15)
+		return
+	for c in found:
+		var row = HBoxContainer.new()
+		box.add_child(row)
+		var number: int = c.number
+		var card_id: String = c.id
+		_button(row, "Add", func():
+			add_evidence(number)
+			board.connect_cards("e:" + card_id, premise)
+			_session_changed()
+			_show_connections(premise, box))
+		var text: Label = _label(row, "#%d %s (%s)" % [number, c.text, "strengthens it" if c.helps else "argues against it"], 15)
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		if not c.helps:
+			text.add_theme_color_override("font_color", Color("c0392b"))
 
 ## Adding one card made the case weaker: say which card and who else it brings in, and
 ## what kind of card would explain their part.
