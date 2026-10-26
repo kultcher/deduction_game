@@ -144,6 +144,8 @@ static func review_scapegoat(w) -> void:
 ##   public stance, or that they were home.
 ## Framing (anything that points at the good) isn't every night: after the first, about half.
 static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
+	if dd.alive or dd.death_cause != "demon":
+		return {} # Public hearth eligibility only; fabrication choices below are unchanged.
 	var night = maxi(0, dd.death_day - 1)
 	var sg = w.by_id[s]
 	if w.chance(C.MEDIUM_USELESS_CHANCE):
@@ -691,14 +693,16 @@ static func make_fake_info(w) -> void:
 				why = "guesses a plausible count of walkers (%d)" % cnt
 				entry = {"data": {"count": cnt}, "text": "walking the lamps, I counted %d other%s out" % [cnt, "" if cnt == 1 else "s"]}
 			"medium":
-				# Like the real Medium: each of the dead once, the most recent first.
-				var dead: Array = w.npcs.filter(func(x): return not x.alive and not x.is_evil() and not (x.id in n.medium_visited))
-				if dead.is_empty() or w.day == 0 or not w.by_id[s].alive:
+				# Match the real Medium's public hearth eligibility and revisit policy.
+				if w.day == 0 or not w.by_id[s].alive:
 					continue
-				dead.sort_custom(func(a, b): return a.death_day > b.death_day)
-				var dd = dead[0]
-				n.medium_visited.append(dd.id)
+				var dead_id: String = w._medium_choice(n)
+				if dead_id == "":
+					continue
+				var dd = w.by_id[dead_id]
 				var fk = _fake_medium_item(w, n, dd, s)
+				if fk.is_empty():
+					continue
 				var it: Dictionary = fk["item"]
 				why = fk["why"]
 				entry = {"data": {"dead": dd.id, "item": it}, "text": w._medium_text(dd, it)}

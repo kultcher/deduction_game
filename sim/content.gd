@@ -209,7 +209,7 @@ const ROLES = {
 	"martyr": {"name": "Martyr", "align": "good", "kind": "protect",
 		"desc": "Once per case, secretly chooses someone. If they are later executed while good, the Martyr dies in their place."},
 	"medium": {"name": "Medium", "align": "good", "kind": "info", "night_walk": true,
-		"desc": "Each night, visits the home of a dead person and learns something they knew but never said in public."},
+		"desc": "Each night after the first Demon kill, visits an unvisited Demon victim's hearth, or revisits the most recent victim. Learns something they knew but never shared, if anything new remains."},
 	"nightwatch": {"name": "Night Watch", "align": "good", "kind": "info", "night_walk": true,
 		"desc": "Each night, watches one block and learns who moved through it. Is out on that block."},
 	"psychologist": {"name": "Psychologist", "align": "good", "kind": "info",

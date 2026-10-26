@@ -549,7 +549,7 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   restriction is not implemented. Coordinate with the existing director-driven
   visit proposal and keep misleading results possible. (Oct 21) [decided]
 
-  > **Decided (user, Oct 25); ready for Codex:** eligible hearths are Demon victims only. On a night with no
+  > **Decided (user, Oct 25); implemented in Codex batch 2:** eligible hearths are Demon victims only. On a night with no
   > unvisited Demon victim, the Medium revisits the most recent Demon victim's hearth (so a real
   > Medium still walks every night after the first kill, as the movement model expects) and learns
   > something new if that person still has unrevealed information; otherwise "nothing they hadn't
@@ -561,6 +561,12 @@ and the boundary with unmerged mechanics work. Verified closures from Oct 25 are
   > **Prep B054 (9cb8782; open):** `sim/world.gd::_medium_choice` considers all unvisited dead, sorted by
   > recency with same-day Demon-victim preference. Apply the eligibility decision to fake Medium paths
   > too; test executed dead, equal-day ordering, and exhausted eligible hearths.
+
+  > **Batch 2 item 1:** real and fake visits share public Demon-victim eligibility,
+  > visit unvisited hearths first, then revisit the latest. Untold readings still surface;
+  > exhausted hearths report nothing new. Fake-hearth eligibility was explicitly authorized
+  > in chat; fabrication/frame weights remain unchanged. The role description and old
+  > once-only fixture now reflect the approved revisit policy.
 
 - **Revenant revelation and reversible town uncertainty.** A publicly recognized
   haunting should establish the executed Revenant as evil and add a small global
