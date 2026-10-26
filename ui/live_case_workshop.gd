@@ -5,6 +5,7 @@ signal filed
 signal cards_dropped(numbers: Array)
 signal contents_changed
 const Live = preload("res://game/workshop_canvas.gd")
+const WorkshopSolver = preload("res://workshop/solver.gd")
 var g
 var case_world
 var support_label: Label
@@ -19,6 +20,7 @@ var _numbers: Array = []
 var field_menu: PopupMenu
 var _field_target: Dictionary = {}     # {id, field, values}
 var juror_timer: Timer
+var _last_juror: Dictionary = {}   # premise id -> {cards, lr}: to say why adding a card weakened it
 enum DebugItem { EFFECTS, PREVIEW, SUPPORT, WITHDRAW }
 var files: Dictionary = {}
 var execute: Callable
@@ -768,9 +770,55 @@ func _run_test_juror() -> void:
 		if value.cards.is_empty():
 			badges[id] = {"ready": true, "category": "empty", "text": "No evidence is linked to this premise yet.", "reason": "Link cards to it to build the case."}
 			continue
-		badges[id] = Live.test_juror(g, value)
+		var badge: Dictionary = Live.test_juror(g, value)
+		if badge.get("ready", false):
+			_explain_change(id, value, badge)
+			_idle_assumptions(node, value, badge)
+		badges[id] = badge
 	canvas.badges = badges
+	var clashing: Dictionary = {}
+	for id in badges:
+		for card in badges[id].get("clashing", []):
+			clashing[card] = true
+	canvas.clashing = clashing
 	canvas.queue_redraw()
+
+## Adding one card made the case weaker: say which card and who else it brings in, and
+## what kind of card would explain their part.
+func _explain_change(id: String, value: Dictionary, badge: Dictionary) -> void:
+	var before: Dictionary = _last_juror.get(id, {})
+	_last_juror[id] = {"cards": value.cards.duplicate(), "lr": badge.get("lr", 1.0)}
+	if before.is_empty():
+		return
+	var added: Array = value.cards.filter(func(c): return c not in before.cards)
+	if added.size() != 1 or before.cards.any(func(c): return c not in value.cards):
+		return
+	var lr: float = badge.get("lr", 1.0)
+	if lr >= before.lr * 0.8 or before.lr <= 1.0:
+		return
+	var card: Dictionary = _report(added[0])
+	var target: String = value.conclusion.get("target", "")
+	var others: Array = []
+	for who in card.get("subjects", [card.get("subject", "")]) + card.get("data", {}).get("seen", []) + card.get("data", {}).get("pair", []):
+		if who is String and who != "" and who != target and who not in others and board.view.people.any(func(p): return p.id == who):
+			others.append(who)
+	var note: String = "Adding \"%s\" weakened this." % card.get("text", "that card")
+	if not others.is_empty():
+		var names: Array = others.map(func(who): return WorkshopSolver.person_name(board.view, who))
+		note += " It also involves %s, and nothing here explains their part; a gift claim or an alibi of theirs could." % " and ".join(PackedStringArray(names))
+	badge["change"] = note
+
+## Assumptions on this premise that change nothing in the test juror's view.
+func _idle_assumptions(node: Dictionary, value: Dictionary, badge: Dictionary) -> void:
+	var idle: Array = []
+	for person in node.get("positions", {}):
+		var without: Dictionary = value.duplicate(true)
+		without.positions.erase(person)
+		var r: Dictionary = Live.test_juror(g, without)
+		if r.get("ready", false) and absf(log(maxf(r.get("lr", 1.0), 0.000001)) - log(maxf(badge.get("lr", 1.0), 0.000001))) < 0.02:
+			idle.append(person)
+	if not idle.is_empty():
+		badge["idle"] = idle
 
 # ------------------------------------------------------------ answers on evidence cards
 

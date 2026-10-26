@@ -18,6 +18,7 @@ func _init() -> void:
 	_one_night_story()
 	_victims_were_sincere()
 	_alibi_against_report()
+	_test_juror_feedback()
 	print("Claude batch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -138,3 +139,31 @@ func _node(model, view, pick: Callable) -> String:
 		if nd.kind == "evidence" and pick.call(Solver.card_by_id(view, nd.card)):
 			return id
 	return ""
+
+## The test juror leads with "your explanation doesn't fit" and names the clashing cards;
+## it also says who a case would mostly raise suspicion of, if not its subject.
+func _test_juror_feedback() -> void:
+	var g = _game(692)
+	var goods: Array = g.w.living_good()
+	var source = goods[0]
+	g.w.day = 2
+	g.add_card({"kind": "info", "source": source.id, "role": "surveyor", "day": 0, "phase": 3,
+		"data": {"count": 0}, "text": "%s surveyed the town: no block has an evil resident" % source.name})
+	var view = Live.view(g)
+	var model = CanvasModel.new(view)
+	var reading = _node(model, view, func(c): return c.kind == "report" and c.source == source.id)
+	var premise = model.add_premise(goods[1].id, "evil", Vector2(0, 0))
+	model.connect_cards(reading, premise)
+	var value = model.compile(premise)
+	var card_id: String = model.nodes[reading].card
+	value.answers[card_id] = {"positive": [], "blocks": []}
+	var other: String = goods[2].id
+	var result = {}
+	Live.feedback(view, value, {"impossible": true, "people": {goods[1].id: {"prior": 0.3, "posterior": 0.32}, other: {"prior": 0.3, "posterior": 0.5}}}, result)
+	_check(result.get("headline", "").begins_with("Your chosen explanation doesn't fit"), "a clash under your own choices is the headline (%s)" % result.get("headline", ""))
+	_check(card_id in result.get("clashing", []), "and the card you answered is outlined")
+	_check(result.get("raises", "") == other, "a case that mostly raises someone else says so (%s)" % result.get("raises_text", ""))
+	var plain = {}
+	Live.feedback(view, value, {"impossible": false, "people": {goods[1].id: {"prior": 0.3, "posterior": 0.6}, other: {"prior": 0.3, "posterior": 0.4}}}, plain)
+	_check(not plain.has("headline") and not plain.has("raises"), "a case that holds and mostly moves its subject has no such notes")
+

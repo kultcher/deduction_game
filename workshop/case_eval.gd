@@ -927,7 +927,10 @@ static func _rank(cat: String) -> int:
 ## The case-strength label for the board: the neutral reference listener's category plus a
 ## one-line reason. Describes the case, not any particular NPC.
 static func strength(view: Dictionary, case_data: Dictionary) -> Dictionary:
-	var r = evaluate(view, case_data)
+	return strength_from(evaluate(view, case_data))
+
+## strength() from an evaluation already in hand.
+static func strength_from(r: Dictionary) -> Dictionary:
 	var reason = ""
 	if r.impossible:
 		reason = "These cards can't all be true together; something here is false."

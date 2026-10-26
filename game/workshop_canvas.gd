@@ -178,7 +178,52 @@ static func test_juror(g, value: Dictionary) -> Dictionary:
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"ready": false, "issues": prepared.issues.duplicate()}
-	var result: Dictionary = preload("res://workshop/case_eval.gd").strength(prepared.view, prepared.case)
+	var CaseEval = preload("res://workshop/case_eval.gd")
+	var ev: Dictionary = CaseEval.evaluate(prepared.view, prepared.case)
+	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
+	feedback(prepared.view, prepared.case, ev, result)
 	return result
+
+## The test juror's notes beyond its strength chip: the clash headline and clashing
+## cards when the case can't hold, and who it would mostly raise suspicion of.
+static func feedback(view: Dictionary, case_data: Dictionary, ev: Dictionary, result: Dictionary) -> void:
+	var Solver = preload("res://workshop/solver.gd")
+	var target: String = case_data.conclusion.get("target", "")
+	if ev.impossible:
+		# The real diagnosis goes first: with the player's own choices (answers, doubts,
+		# assumptions), the cards can't all hold. Point at the cards that clash.
+		var chose: bool = not case_data.answers.is_empty() or not case_data.get("reading_challenges", {}).is_empty() or not case_data.positions.is_empty() or not case_data.get("disputes", []).is_empty()
+		result["headline"] = "Your chosen explanation doesn't fit: with it, these cards can't all be true." if chose else "These cards can't all be true together; something here is false."
+		var cards: Array = Solver.selected(view, case_data)
+		var cores: Array = Solver.minimal_conflicts(view, cards)
+		if not cores.is_empty():
+			result["clashing"] = cores[0]
+		else:
+			# The cards clash only under the player's choices: point at the chosen ones.
+			var chosen: Array = case_data.answers.keys() + case_data.get("reading_challenges", {}).keys()
+			for dispute in case_data.get("disputes", []):
+				chosen.append_array(dispute.reports)
+			for card in cards:
+				if card.get("source", "") in case_data.positions or card.get("subject", "") in case_data.positions:
+					chosen.append(card.id)
+			var unique: Array = []
+			for id in chosen:
+				if id not in unique:
+					unique.append(id)
+			result["clashing"] = unique
+	# Collateral: who this case would mostly raise suspicion of, if not the subject.
+	if case_data.conclusion.get("type", "") in ["evil", "demon", "minion", "suspicious"] and ev.has("people"):
+		var people: Dictionary = ev.people
+		var own: float = people.get(target, {}).get("posterior", 0.0) - people.get(target, {}).get("prior", 0.0)
+		var top = ""
+		var top_rise = 0.05
+		for id in people:
+			var rise: float = people[id].posterior - people[id].prior
+			if id != target and rise > top_rise and rise > own:
+				top = id
+				top_rise = rise
+		if top != "":
+			result["raises"] = top
+			result["raises_text"] = "If presented, this mostly raises suspicion of %s." % Solver.person_name(view, top)
