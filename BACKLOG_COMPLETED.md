@@ -10,6 +10,30 @@ Oct 25 after review. Full suite at merge: 78/79 suites passed, the one failure b
 `test_social`; `test_text_ui` now passes. New suites: `test_npc_interactions`, `test_backlog_batch2`,
 `test_evidence_context`.
 
+<!-- was in 1. Bugs and quick fixes (playtest 54875) -->
+- **Wording: a claimed walker's sighting told "from my window".** [decided]
+  > **Implemented (Codex batch 2, Oct 25):** wording only, in `Evil` fake sightings (around line 888): a
+  > claimed walker tells a sighting as seen while out on their duty, and every fake sighting
+  > names its night like real ones do. No change to who evil frames or when.
+  > **Batch 2 item 2:** `Evil.bluff_reason` dates fake-sighting reasons and uses
+  > duty wording for an already claimed walker. Cached sightings, available frames,
+  > their selection and RNG use are unchanged; focused regression checks cover each.
+
+  A claimed Night Watch says "I watched the Market…" and then "I saw them … from my
+  window": a walker's sighting should be told as seen while out.
+  (The other wording lines in this entry were fixed Oct 25; see BACKLOG_COMPLETED.md.)
+
+<!-- was in 1. Bugs and quick fixes (playtest 54875) -->
+- **`tools/test_text_ui.gd` fails on main (two role-hover checks).** Known failure since
+  at least Oct 24. Find whether the checks or the UI are wrong; fix the test if it's stale,
+  or the hover if it's a real bug, and report which. [decided] (Implemented in Codex batch 2, Oct 25.)
+
+  > **Batch 2 verification:** stale headless fixture, not a UI hover bug. The old test laid out
+  > the profile around x=1395 in a 64x64 viewport, and `Viewport.push_input` left the hover
+  > pointer at (0, 0). Use a 1920x1080 viewport and `Input.parse_input_event` with real pointer
+  > coordinates. All original assertions remain, plus viewport/pointer checks; the suite passes.
+  > Full default runs require `test_text_ui` green from this item onward.
+
 <!-- was in 1. Bugs and quick fixes (hours, low risk) -->
 - **Fear barely changes from day to day.** `Mind._afraid` rolls on `hash(id + ":" + day)`, but
   Godot's string hash changes only in its low digits when the last character changes, so the
