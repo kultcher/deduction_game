@@ -115,6 +115,8 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
   > "Good: 7 gifted townsfolk / 1 secret · Evil: 2 minions / 1 demon" (10). Counts come from the setup
   > rules, not the assignments. No board card, nothing for the shared model.
 
+  > **Implemented (Codex batch 3):** The roles window ends with the specified good/secret/minion/demon counts from C.SETUPS. Lovers count as one secret; no assignments, board cards or shared-model data are used. Focused checks cover both town sizes and unchanged cards/RNG.
+
 - **One evaluation path for generic and structured cases.** In 25923, vigil sighting
   #86 + death #87 (Nisha at Merrin's murder block that night) had no template, while
   the generic support sum capped at 1.0 agreement. `trace_match` is specifically an

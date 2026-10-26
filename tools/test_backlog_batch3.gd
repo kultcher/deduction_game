@@ -21,6 +21,7 @@ func fresh(count: int = 10):
 	return g
 func run():
 	await headlines()
+	await setup_counts()
 	print("Batch 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func headlines():
@@ -95,3 +96,25 @@ func headlines():
 	check(overlay.current.is_empty() and overlay.pending.is_empty() and not overlay.visible, "case reset clears every notice")
 	overlay.free()
 	button.free()
+
+func setup_counts():
+	root.size = Vector2i(1920, 1080)
+	root.content_scale_size = root.size
+	var main = load("res://ui/main.tscn").instantiate()
+	main.show_script_at_start = false
+	root.add_child(main)
+	var expected = {7: "Good: 5 gifted townsfolk / 1 secret · Evil: 1 minion / 1 demon", 10: "Good: 7 gifted townsfolk / 1 secret · Evil: 2 minions / 1 demon"}
+	for count in [7, 10]:
+		main.g = fresh(count)
+		var board = JSON.stringify(main.g.board)
+		var rng = main.g.w.rng.state
+		# Even an inconsistent hidden assignment cannot influence the public count.
+		main.g.w.minion_ids = []
+		for n in main.g.w.npcs:
+			n.secret_mod = "lovers"
+		main._open_roles()
+		await process_frame
+		var summary = main.roles_box.get_node("SetupSummary")
+		check(summary.text == expected[count], "script summary uses setup counts and one secret, including Lovers")
+		check(JSON.stringify(main.g.board) == board and main.g.w.rng.state == rng, "script summary creates no card and consumes no RNG")
+	main.free()

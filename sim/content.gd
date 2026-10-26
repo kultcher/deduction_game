@@ -252,7 +252,7 @@ const INFO_ROLES = ["archivist", "clerk", "dowser", "gravedigger", "hearthwitch"
 const START_ROLES = ["archivist", "clerk", "surveyor", "rumormonger"]
 const IDENTIFIER_ROLES = ["seer", "dowser", "gravedigger"]
 ## Case sizes: townsfolk (one carries the secret), minions, demon.
-const SETUPS = {7: {"town": 5, "minions": 1}, 10: {"town": 7, "minions": 2}}
+const SETUPS = {7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "secrets": 1}}
 
 ## Gifts with something to tell: readings, or a one-off result (Veteran attacked, Martyr's
 ## choice, Martyr's grim confirmation).

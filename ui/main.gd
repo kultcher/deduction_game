@@ -409,8 +409,14 @@ func _make_window(title: String, sz: Vector2i) -> Array:
 
 ## The roles list (the script, as in Clocktower): the town's gifts on the left; the demon's
 ## side and the secrets on the right. Each with its icon, what it does, and who has claimed it.
+static func setup_summary(count: int) -> String:
+	# Setup rules count secrets, not holders; a pair of Lovers is one secret.
+	var rules: Dictionary = C.SETUPS.get(count, {"town": count - 2, "minions": 1, "secrets": 1})
+	return "Good: %d gifted townsfolk / %d secret%s · Evil: %d minion%s / 1 demon" % [rules.town, rules.secrets, "" if rules.secrets == 1 else "s", rules.minions, "" if rules.minions == 1 else "s"]
+
 func _open_roles() -> void:
 	for ch in roles_box.get_children():
+		roles_box.remove_child(ch)
 		ch.queue_free()
 	var cols = HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 18)
@@ -425,6 +431,12 @@ func _open_roles() -> void:
 	_roles_group(left, "Gifts of the town", C.GOOD_ROLES)
 	_roles_group(right, "The demon's side: the demon and %d minion%s" % [g.w.minion_ids.size(), "" if g.w.minion_ids.size() == 1 else "s"], C.EVIL_ROLES)
 	_roles_group(right, "Secrets: one in play, on top of a gift", C.SECRET_MOD_LIST)
+	var summary = Label.new()
+	summary.name = "SetupSummary"
+	summary.text = setup_summary(g.w.n_npcs)
+	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	summary.add_theme_color_override("font_color", UITheme.color("ink"))
+	roles_box.add_child(summary)
 	if not roles_win.visible:
 		roles_win.popup_centered()
 
