@@ -48,7 +48,7 @@ func run():
 	root.add_child(list)
 	var marked = list.add(CardList.line_for(g.board[psych - 1]), psych, "Original tooltip")
 	var hard = list.add(CardList.line_for(g.board[claim - 1]), claim, "Claim tooltip")
-	check(marked.get_text(0).begins_with("[context] ") and Context.EXPLANATION in marked.get_tooltip_text(0), "Card List rows have a context tag and explanation")
+	check(marked.get_text(0) == CardList.line_for(g.board[psych - 1]) and Context.EXPLANATION in marked.get_tooltip_text(0), "Card List rows retain ordinary text with background classification in the tooltip")
 	check(not "[context]" in hard.get_text(0) and hard.get_tooltip_text(0) == "Claim tooltip", "hard-logic rows retain their text and tooltip")
 	var state = CaseState.new()
 	state.view = "statements"
@@ -59,15 +59,15 @@ func run():
 	board.fit_day(1)
 	await settle()
 	check(board.context_numbers == numbers, "board classification matches the library")
-	check(list.get_node("ContextBorders").mouse_filter == Control.MOUSE_FILTER_IGNORE, "list borders preserve ordinary mouse hit targets")
+	check(not list.has_node("ContextBorders"), "list has no dashed-border overlay and retains ordinary mouse hit targets")
 	var cards: Array = board._items.filter(func(item): return item.n == psych)
-	check(not cards.is_empty() and Context.EXPLANATION in board._get_tooltip(cards[0].rect.get_center()), "a drawn board card explains its context marker")
+	check(not cards.is_empty() and Context.EXPLANATION in board._get_tooltip(cards[0].rect.get_center()), "a drawn board card retains its background-information tooltip")
 	state.view = "places"
 	board.rebuild()
 	board.fit_day(2)
 	await settle()
 	var dots: Array = board._items.filter(func(item): return item.n == location)
-	check(not dots.is_empty() and Context.EXPLANATION in board._get_tooltip(dots[0].rect.get_center()), "a drawn location dot explains its context marker")
+	check(not dots.is_empty() and Context.EXPLANATION in board._get_tooltip(dots[0].rect.get_center()), "a drawn location dot retains its background-information tooltip")
 	var view = Context.Live.view(g)
 	var model = Canvas.new(view)
 	var id: String = Context.Live.Evidence.normalize_card(g.board[psych - 1]).id

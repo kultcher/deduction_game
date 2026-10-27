@@ -18,19 +18,3 @@ static func numbers(g) -> Dictionary:
 		if is_context(adapter) and originals.has(adapter.id):
 			result[originals[adapter.id]] = true
 	return result
-
-static func draw_border(canvas: CanvasItem, rect: Rect2, color: Color, width: float = 1.2) -> void:
-	var r = rect.grow(-1.0)
-	var corners = [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
-	for i in range(4):
-		canvas.draw_dashed_line(corners[i], corners[(i + 1) % 4], color, width, 5.0)
-
-static func draw_tag(canvas: CanvasItem, rect: Rect2, font: Font, ink: Color, scale: float = 1.0) -> void:
-	var fs = clampi(roundi(10 * scale), 1, 14)
-	var size = font.get_string_size("context", HORIZONTAL_ALIGNMENT_LEFT, -1, fs) + Vector2(4, 2)
-	if size.x > rect.size.x - 2:
-		fs = maxi(1, floori(fs * maxf(rect.size.x - 2, 1) / size.x))
-		size = font.get_string_size("context", HORIZONTAL_ALIGNMENT_LEFT, -1, fs) + Vector2(4, 2)
-	var tag = Rect2(rect.end - size - Vector2(1, 1), size)
-	canvas.draw_rect(tag, Color("e8dfc8"))
-	canvas.draw_string(font, tag.position + Vector2(2, size.y - 3), "context", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)

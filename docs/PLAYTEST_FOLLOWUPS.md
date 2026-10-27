@@ -26,3 +26,12 @@ Disabled checkboxes now use the same empty stylebox as enabled checkboxes instea
 of inheriting a paper Button plaque with different content margins. Disabled text
 uses the board's muted colour. Filtering and the no-selection disabled rule remain
 unchanged; the theme correction also keeps other disabled checkboxes consistent.
+
+## Card labels and outlines
+
+Removed visible `context` tags, list prefixes and dashed overlays from the board,
+card lists and Workshop canvas. Location dots show their ordinary person/place
+labels, and Workshop cards retain normal solid selection borders. Adapter-based
+classification survives in explanatory tooltips; evidence, receipt identity and
+selection/hit areas are unchanged. The context UI regression suite now checks the
+requested ordinary row text and absence of the decorative overlay.
