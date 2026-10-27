@@ -2602,9 +2602,9 @@ func _lies() -> String:
 		if e["type"] == "think" and topic == "lie":
 			out.append("  D%d %-9s %-12s %s" % [e["day"], e["phase"], w.by_id[e["actor"]].name, e["reason"]])
 		elif e["type"] == "info" and not e["data"].get("true", true):
-			out.append("  N%d %-9s %-12s false reading: %s (%s)" % [e["day"], "", w.by_id[e["actor"]].name, e["data"]["text"], e["data"].get("why", "?")])
+			out.append("  N%d %-9s %-12s false reading: %s (%s)" % [e["day"], "", w.by_id[e["actor"]].name, e["data"]["text"], World.false_reading_reason(e["data"])])
 		elif e["type"] == "fake_info":
-			out.append("  N%d %-9s %-12s fabricated: %s (%s)" % [e["day"], "", w.by_id[e["actor"]].name, e["data"]["text"], e["data"].get("why", "")])
+			out.append("  N%d %-9s %-12s fabricated: %s (%s)" % [e["day"], "", w.by_id[e["actor"]].name, e["data"]["text"], World.false_reading_reason(e["data"].merged({"fake": true}))])
 	return "\n".join(out)
 
 func _write_logs() -> String:

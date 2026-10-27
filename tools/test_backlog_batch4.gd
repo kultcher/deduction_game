@@ -41,6 +41,7 @@ func run():
 	night_home_listing()
 	grimoire_modifiers()
 	count_reason_names()
+	false_reading_causes()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -829,3 +830,31 @@ func count_reason_names():
 		var heard = Mind._info_effects(g.w, listener, source, impossible, 1.0, true)
 		check(heard.size() == 1 and heard[0][1] == 0.5 and (role + " count impossible") in heard[0][3], "impossible-count reason also names its actual gift: " + role)
 	check(g.w.rng.state == rng, "reason wording consumes no RNG")
+
+func false_reading_causes():
+	var g = fresh()
+	var n = g.w.living_good()[0]
+	n.role = "medium"
+	n.secret_mod = ""
+	n.poisoned = false
+	var rng = g.w.rng.state
+	for explicit in ["red herring Agnes", "Marked reads as evil", "evil fabrication: cover"]:
+		var entry = {"text": "diagnostic false result", "data": {}, "true": false, "why": explicit}
+		g.w._add_info(n, entry)
+		check(n.info_log[-1].why == explicit and g.w.dlog.entries[-1].data.why == explicit, "stored and exported false reading preserve explicit cause: " + explicit)
+	for impaired in ["poisoned", "delusional"]:
+		n.poisoned = impaired == "poisoned"
+		n.secret_mod = "delusional" if impaired == "delusional" else ""
+		g.w._add_info(n, {"text": "diagnostic false result", "data": {}, "true": false})
+		check(n.info_log[-1].why == impaired, "current impairment is recorded at creation: " + impaired)
+	n.secret_mod = ""
+	n.poisoned = false
+	g.w._add_info(n, {"text": "relayed fake", "data": {"item": {"type": "reading", "lie": true, "entry": {"fake": true, "why": "evil fabrication: cover"}}}, "true": false})
+	check("evil fabrication relayed from the dead" in n.info_log[-1].why and "cover" in n.info_log[-1].why, "healthy Medium records the fabricated relay's provenance")
+	g.w._add_info(n, {"text": "unknown false path", "data": {}, "true": false, "why": "?"})
+	check(n.info_log[-1].why.begins_with("fallback:") and not n.info_log[-1]["true"], "unrecorded cause is explicit fallback without changing truth status")
+	g.w.dlog.add("info", n.id, "", {"text": "old missing reason", "true": false, "why": "?"})
+	g.w.dlog.add("fake_info", n.id, "", {"text": "old fake reason"})
+	var output = g._lies()
+	check(not "(?)" in output and "cause was not recorded" in output and "old fake reason (evil fabrication)" in output, "lies summary handles older missing causes without inventing past impairment")
+	check(g.w.rng.state == rng, "diagnostic cause annotation consumes no random draws")

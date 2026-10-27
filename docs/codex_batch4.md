@@ -167,6 +167,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 22. **Every false reading carries a cause.** No `why: ?` in the lies list: where a reading is false
     (`true: false`), record why (poisoned, delusional, red herring, Marked, evil fabrication, fallback).
+   - **Implemented (Codex batch 4, set 3):** False results preserve their creation-time cause, including a healthy Medium relaying an evil fabrication. Missing causes receive an explicit diagnostic fallback; old lies entries get the same display fallback. Truth flags, reports, RNG and evil fake generation are unchanged. Exact-string expectations changed: none.
+
 23. **Check dropped personal items are findable.** Fenwick's item at the wharf (37291 seq 466) was never
     found. Confirm `search` at that location finds it; if it can't, report why (don't change search
     odds).
