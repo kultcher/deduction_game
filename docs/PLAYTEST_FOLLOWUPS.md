@@ -43,3 +43,11 @@ text and title-only notices. Defaults are five seconds, three for phase changes 
 seven for endings. More than two queued notices still accelerate, with a three-real-
 second floor for defaults; shorter explicit settings overrides remain effective.
 Click-to-skip and mouse-transparent input behavior remain covered by batch-3 tests.
+
+## Ward fulfils a vigil promise
+
+A ward spent on that NPC's door that night now fulfils their vigil promise, including
+the existing fear relief and promised disclosure. It does not fulfil neighbours'
+promises or count a ward from another night. When both offers to one NPC are covered
+by that ward, settlement awards the existing kept-promise benefit once. No trust
+amounts or tool costs changed. Focused checks cover boundaries and repeated settlement.

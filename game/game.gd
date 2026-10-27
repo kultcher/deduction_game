@@ -1746,7 +1746,11 @@ func _settle_offers() -> void:
 	if offer.has("ward"):
 		promised.append([offer["ward"], ward_log.get(w.day, "") == offer["ward"], "ward"])
 	for id in offer.get("vigil", {}):
-		promised.append([id, w.player_vigil == offer["vigil"][id], "vigil"])
+		var warded: bool = ward_log.get(w.day, "") == id
+		# A ward on their own door fulfils the protection promised by a vigil.
+		# When both were promised, the kept ward above already settles it once.
+		if warded and offer.get("ward", "") == id: continue
+		promised.append([id, warded or w.player_vigil == offer["vigil"][id], "vigil"])
 	for p in promised:
 		var n = w.by_id[p[0]]
 		if not n.alive:

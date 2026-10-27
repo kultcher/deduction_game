@@ -26,6 +26,7 @@ func run():
 	await menus()
 	checkbox_skin()
 	await headlines()
+	ward_promise()
 	print("Playtest follow-ups: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func picker(title: String, count: int):
@@ -134,3 +135,38 @@ func headlines():
 	await settle()
 	check(not overlay.subtitle.visible and absf(overlay.title.get_global_rect().get_center().y - root.size.y / 2.0) <= 1.0, "a headline without a subtitle centers its visible text")
 	overlay.free()
+
+func ward_promise():
+	var g = fresh()
+	var w = g.w
+	var n = w.living_good()[0]
+	var neighbour = w.living_good()[1]
+	n.home_block = "square"
+	neighbour.home_block = "square"
+	w.player_vigil = "market"
+	w.day = 2
+	for person in [n, neighbour]: person.trust = 0.5
+	g.offer = {"vigil": {n.id: "square", neighbour.id: "square"}}
+	g.protect_pending[n.id] = true
+	g.ward_log[w.day] = n.id
+	var rng = w.rng.state
+	g._settle_offers()
+	check(is_equal_approx(n.trust, 0.56) and n.fear_eased and n.id in g.divulge_due, "a ward on the promised person's door keeps their vigil promise and promised disclosure")
+	check(is_equal_approx(neighbour.trust, 0.35) and not neighbour.fear_eased, "a ward does not fulfil another resident's vigil promise")
+	check(g.offer.is_empty() and g.protect_pending.is_empty() and w.rng.state == rng, "settlement clears obligations without RNG draws")
+	g._settle_offers()
+	check(is_equal_approx(n.trust, 0.56), "settlement rewards only once")
+	n.trust = 0.5
+	g.offer = {"ward": n.id, "vigil": {n.id: "square"}}
+	g._settle_offers()
+	check(is_equal_approx(n.trust, 0.56), "a ward satisfying both offers to one NPC does not pay twice")
+	n.trust = 0.5
+	g.offer = {"vigil": {n.id: "square"}}
+	g.ward_log = {w.day - 1: n.id}
+	g._settle_offers()
+	check(is_equal_approx(n.trust, 0.35), "yesterday's ward does not keep tonight's promise")
+	n.trust = 0.5
+	w.player_vigil = "square"
+	g.offer = {"vigil": {n.id: "square"}}
+	g._settle_offers()
+	check(is_equal_approx(n.trust, 0.56), "ordinary promised vigils retain their reward")
