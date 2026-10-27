@@ -955,12 +955,14 @@ func _day_command(verb: String, rest: String) -> void:
 				elif w.loc_block(l) != w.loc_block(loc):
 					_err("You can only move within %s now (one free move per phase)." % C.block_name(w.loc_block(loc)))
 				else:
+					_warn_busy_visit(sought)
 					free_move_used = true
 					loc = l
 					w.player_loc = l
 					w.dlog.add("player_move", "player", "", {"loc": l, "free_move": true})
 					_observe()
 				return
+			_warn_busy_visit(sought)
 			moved = true
 			free_move_used = false
 			loc = l
@@ -1040,6 +1042,10 @@ func _day_command(verb: String, rest: String) -> void:
 			_end_phase("")
 		_:
 			_err("You can't do that now. Type 'help'.")
+
+func _warn_busy_visit(n) -> void:
+	if n != null and n.busy_with != "":
+		_narr("%s is busy talking with %s; you can visit, but they cannot talk to you yet." % [n.name, w.by_id[n.busy_with].name])
 
 func _who_here(l: String) -> String:
 	var here: Array = w.npcs_at(l)

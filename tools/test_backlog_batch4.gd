@@ -35,6 +35,7 @@ func run():
 	approach_arrival()
 	await inspect_then_talk()
 	direct_night_willingness()
+	busy_visit_warning()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -720,3 +721,30 @@ func inspect_then_talk():
 	check(g.state == "day" and not g.moved and g.talk_with == null, "the existing command sequence still stops on a failed walk")
 	for i in range(3): await process_frame
 	scene.free()
+
+func busy_visit_warning():
+	var g = fresh()
+	var n = g.w.living()[0]
+	var other = g.w.living()[1]
+	n.loc = n.work
+	n.working = true
+	n.busy_with = other.id
+	other.loc = n.loc
+	other.busy_with = n.id
+	g.state = "day"
+	g.moved = false
+	var row = preload("res://ui/cast_list.gd").new()
+	row.setup(g)
+	check("busy talking" in row._sub_line(n), "visible cast row warns that someone is busy before choosing to walk")
+	check(row._fit_text(row._sub_line(n), 80.0, 13).begins_with("busy"), "busy warning remains visible when role badges leave a narrow cast row")
+	var phase = g.w.phase
+	var rng = g.w.rng.state
+	var output = g.command("go " + n.id)
+	check("busy talking with " + other.name in output and "Present:" in output, "go names the busy partner and retains the normal arrival")
+	check(g.moved and g.loc == n.loc and g.state == "day" and g.w.phase == phase and g.w.rng.state == rng, "busy warning changes no movement, phase or RNG rules")
+	n.loc = "home:" + n.home_block
+	n.working = false
+	g.moved = false
+	g.loc = ""
+	check(row._sub_line(n) == "location unknown", "busy status does not disclose a hidden location")
+	row.free()

@@ -152,7 +152,7 @@ func _sub_line(n) -> String:
 	if g.state == "night" or not g.can_see(n):
 		return "location unknown"
 	var place = "home" if n.at_home() else g.w.loc_name(n.loc).trim_prefix("the ")
-	return "at " + place
+	return ("busy talking · " if n.busy_with != "" else "") + "at " + place
 
 func _row_at(p: Vector2) -> String:
 	for r in _rows:

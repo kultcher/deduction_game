@@ -140,6 +140,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 15. **Warn before walking to someone busy.** Show "busy" on the cast row and in the `go` result when the
     person is in a conversation (`busy_with`).
+   - **Implemented (Codex batch 4, set 3):** Visible cast rows show busy talking, and a successful go to a busy person names their partner before the ordinary arrival. Hidden locations retain their existing privacy. Movement, time and RNG rules are unchanged. Exact-string expectations changed: none.
+
 16. **Help text.** Add the newer actions: offer/apologise, promise yes/no, ask them to use their gift
     (`ask check/guard/watch`), `ask about <gift>` ("heard of a…"), presenting a ward or sigil.
 17. **`ask check agnes isolde` without a comma** should work like `ask check agnes, isolde`.
