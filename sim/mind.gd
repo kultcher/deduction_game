@@ -2544,6 +2544,7 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 			"trust": n.trust, "pressure": n.pressure, "questions_today": n.pressed_today})
 	var result = _answer_gift_impl(w, n, force_tier, id)
 	if result.facts.any(func(f): return f.get("kind", "") == "refusal"):
+		result["refusal_line"] = result.lines.size() - 1
 		_append_distrust(w, n, result.lines)
 	w.dlog.decision(n.id, "gift_disclosure", "outcome", result["facts"],
 		{"final_tier": n.max_tier, "told_readings": n.told_readings,

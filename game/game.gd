@@ -1335,6 +1335,36 @@ func _remember_dialogue_exchange(n, verb: String, rest: String, response: Dictio
 			subject = person.id
 	Mind.Dialogue.record_exchange(n.dialogue_memory, action, subject)
 
+## A repeated refusal only saves a player question slot. Keep the original NPC
+## fatigue, trust, role-guess counters and disclosure/request RNG exactly intact.
+func _repeat_refusal(n, response: Dictionary) -> void:
+	if response.has("request") or not response.has("refusal_ask") or int(response.get("refusal_line", -1)) < 0:
+		return
+	var conversation: Dictionary = n.dialogue_memory.get("conversation", {})
+	if conversation.is_empty(): return
+	var previous: Dictionary = conversation.get("refusals", {})
+	var key: String = response.refusal_ask
+	var signature = JSON.stringify(response.get("facts", []))
+	var old: Dictionary = previous.get(key, {})
+	var count: int = int(old.get("count", 0)) + 1 if old.get("signature", "") == signature else 0
+	previous[key] = {"signature": signature, "count": count}
+	conversation["refusals"] = previous
+	if count == 0: return
+	response["repeated"] = true
+	var line: Dictionary = response.lines[response.refusal_line]
+	if key.begins_with("are:"):
+		# Retain both existing patience warnings verbatim, but vary the response.
+		line.text += " My answer hasn't changed." if count % 2 == 1 else " I've already given you my answer."
+	else:
+		var refused: Array = response.facts.filter(func(f): return f.get("kind", "") == "refusal")
+		var fact: Dictionary = refused[0] if not refused.is_empty() else {}
+		if fact.get("withheld", false):
+			line.text = "Those readings are still staying with me." if count % 2 == 1 else "I've not agreed to share any more readings."
+		elif fact.get("fear", false):
+			line.text = "I'm still afraid to name it. Ask me when it's safer." if count % 2 == 1 else "Naming my gift still feels too dangerous. Not yet."
+		else:
+			line.text = "You've had my answer about my gift. I won't tell you more." if count % 2 == 1 else "I'm still keeping my gift to myself."
+
 func _talk_command(verb: String, rest: String) -> void:
 	var n = talk_with
 	var r = {}
@@ -1365,6 +1395,7 @@ func _talk_command(verb: String, rest: String) -> void:
 			match topic:
 				"gift", "role", "info", "learned":
 					r = Mind.answer_gift(w, n)
+					r["refusal_ask"] = "gift"
 				"night", "lastnight":
 					r = Mind.answer_night(w, n)
 				"today", "seen", "yesterday", "morning", "afternoon", "evening":
@@ -1419,7 +1450,9 @@ func _talk_command(verb: String, rest: String) -> void:
 					if grole == "":
 						_err("Ask if they are which gift? ('ask are seer')")
 						return
+					var already_told = (n.max_tier >= 3 or n.claim_public) and n.claimed_role == grole
 					r = Social.answer_is_role(w, n, grole)
+					r["refusal_ask"] = "gift" if already_told else "are:" + grole
 				_:
 					_err("Ask: gift | night | today | are <gift> | about <name or gift>")
 					return
@@ -1526,6 +1559,7 @@ func _talk_command(verb: String, rest: String) -> void:
 			_err("In conversation: ask gift | ask night | ask today | ask seen <morning|afternoon|evening|yesterday [phase]> | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | bye")
 			return
 	# Something they've already heard from you: they say so, and it costs no question.
+	_repeat_refusal(n, r)
 	var repeat: bool = r.get("repeated", false)
 	if repeat and free_repeats >= 1:
 		repeat = false  # once is a slip; after that it's wasting their time

@@ -57,6 +57,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
      routes a matching disclosed role to `answer_gift` (batch 3). Don't break either. Refusals can now
      also become requests: `_answer_gift_impl` may return `r.request` (confidence or protection) in place
      of a refusal. A request isn't a refusal; leave that path alone.
+   - **Implemented (Codex batch 4, set 1):** Repeated gift and undisclosed-role refusals vary their wording and share the existing single free player question per conversation. NPC fatigue, role guesses, trust costs, request handling and RNG remain intact, including the second wrong-guess warning. Exact-string expectations changed: none.
+
 3. **`ask why` only where it works.** It answers only a withheld meeting hint (`n.hints`). Remove it
    from the generic text help and from the in-conversation prompt string, and show it only when the NPC
    has a hint for someone alive (the UI button already does this). Vary "I've nothing more to tell you".

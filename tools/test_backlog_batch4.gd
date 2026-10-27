@@ -21,6 +21,7 @@ func check(ok: bool, message: String):
 		print("FAIL: ", message)
 func run():
 	refusal_privacy()
+	repeated_refusals()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -139,3 +140,59 @@ func refusal_privacy():
 	state = w.rng.state
 	var unaware = Mind.answer_night(w, sleeper, 1)
 	check(unaware.facts.any(func(f): return f.kind == "alibi" and f.home) and w.rng.state == state, "an unaware Sleepwalker retains their unchanged home-account branch and RNG")
+
+func talk_fixture(g, n):
+	g.state = "talk"
+	g.talk_with = n
+	g.questions_left = 3
+	g.free_repeats = 0
+	n.role = "warden"
+	n.max_tier = 0
+	n.claimed_role = ""
+	n.claim_public = false
+	n.silenced = false
+	n.traits.privacy = 1.0
+	n.traits.composure = 1.0
+	n.trust = 0.5
+	n.trust_cap = 1.0
+	n.pressure = 0.0
+	n.request_day = g.w.day # Keep requests as a separately tested path.
+	Mind.Dialogue.begin_conversation(n.dialogue_memory)
+func repeated_refusals():
+	var a = fresh()
+	var b = fresh()
+	var na = a.w.living_good()[0]
+	var nb = b.w.by_id[na.id]
+	talk_fixture(a, na)
+	talk_fixture(b, nb)
+	na.pressed_today = 3
+	nb.pressed_today = 3
+	var first = a.command("ask gift")
+	Mind.answer_gift(b.w, nb)
+	var second = a.command("ask gift")
+	Mind.answer_gift(b.w, nb)
+	check(a.questions_left == 2 and a.free_repeats == 1 and "No question used" in second, "second identical gift refusal uses the existing one free-repeat slot")
+	check(first != second and "You've had my answer" in second or "still afraid" in second, "the repeated gift refusal has a different line")
+	check(na.pressed_today == nb.pressed_today and na.trust == nb.trust and a.w.rng.state == b.w.rng.state, "the free slot does not waive NPC fatigue/trust or alter disclosure RNG")
+	a.command("ask gift")
+	check(a.questions_left == 1 and a.free_repeats == 1, "later repeats cost a question after the single free repeat")
+	Mind.Dialogue.begin_conversation(na.dialogue_memory)
+	a.questions_left = 3
+	a.free_repeats = 0
+	a.command("ask gift")
+	check(a.questions_left == 2 and a.free_repeats == 0, "refusal repeat memory resets for a new conversation")
+	var g = fresh()
+	var n = g.w.living_good()[0]
+	talk_fixture(g, n)
+	n.pressed_today = 0
+	n.role_guesses = 0
+	g.command("ask are seer")
+	var warning = g.command("ask are seer")
+	check(g.questions_left == 2 and n.role_guesses == 2 and "grasping at straws" in warning, "same wrong-role refusal saves the slot while preserving the second-guess warning and counter")
+	check(is_equal_approx(n.trust, 0.44), "both original wrong-guess trust costs still apply")
+	g.command("ask are medium")
+	check(g.questions_left == 1, "a different role question is not an identical refusal")
+	var request = {"request": {"kind": "confidence"}, "refusal_ask": "gift", "refusal_line": 0, "lines": [Mind.say(n, "Promise first")], "facts": []}
+	var original = JSON.stringify(request)
+	g._repeat_refusal(n, request)
+	check(JSON.stringify(request) == original, "confidence/protection requests never enter refusal-repeat handling")
