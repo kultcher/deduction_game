@@ -33,6 +33,81 @@ flair) lives in [BACKLOG_POLISH.md](BACKLOG_POLISH.md).
 
 ## 2. Small features and tuning (a day or so each)
 
+
+### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)
+
+These seven items are deliberately deferred from `codex/playtest-ui-followups`.
+The UI, promise settlement, approach fatigue, relationship sourcing, Martyr wording
+and public-sighting delivery fixes are separate work; none of these deferred items
+is implied complete by those changes.
+
+- **Conversation sightings should also cover location sightings.** (78148 / 77388)
+  An automatic card seeing two people talking already places both at that location.
+  Visiting it in the same day/phase should not create redundant solo sighting cards.
+  Audit `Game._card_conversations`, `_observe`, `core_keys` and receipt adapters.
+  Suppress only the same player's same-person, same-exact-location, same-day/phase
+  duplicate; block-level keys alone conflate different places. Preserve the talk
+  relationship, independent witnesses, new phases and evidence provenance. [decided; deferred]
+
+- **A whereabouts contradiction gets an irrelevant gift refusal.** (78148, event 563,
+  `present 124`, Kiran) Presenting "Kiran is suspicious" from alibi/vigil evidence
+  produced "Whether I have a gift is my own business." Carry the dated contradiction
+  through `Game._present_interpretation` / `Mind.press` so a knowing walker who
+  withholds their purpose can say "Fine, I was out last night, but what I was doing
+  is my own business." Keep distinct responses for truly home, unaware Sleepwalkers,
+  and evil cover; don't force hidden-state admissions or change evil strategy.
+  This is beyond the existing direct-sighting press wording fix. [decided; deferred]
+
+- **Demon detours exist in inference but not actual movement.** (77388, event 991,
+  `present 174`, and later presentations) `World._night_movement` / `_walk` use
+  `Content.route`; `LiveActivity.demon_routes` adds `DEMON_DETOUR = 0.05`, and
+  `relationships` tells listeners that a Demon detour is possible. Reconcile the
+  evaluator with actual mechanics, including the explanatory dialogue. This overlaps
+  the older soft-route/detour proposals below: those proposals do not authorize
+  changing live movement here. Decide which system is authoritative before building;
+  compare inference, votes, RNG and timings on fixed replays. [open; deferred]
+
+- **Challenge a Night Watch report using a conflicting player vigil.** (78148 / 77388)
+  Let the player target the particular dated report as lying or misled with a vigil
+  as grounds. Existing `CanvasModel.add_modifier`, `ReadingChallenges` and movement
+  rules partly support this: first reproduce the full UI-to-listener path rather
+  than adding a second challenge system. Same night and block, complete versus
+  incidental coverage, the watcher excluding themselves and vigil survivors matter.
+  Preserve trust in player testimony; contradiction alone does not establish which
+  source lied, or that impairment caused it. Check repeated presentations and cost.
+  [decided: capability; evaluator details deferred]
+
+- **Challenge a Warden's particular failed protection claim.** (77388)
+  Target "On Night X I protected <NPC>" against that night's public Demon death,
+  supporting the explanation that Jory was a real good Warden whose gift failed.
+  `Solver._report_content` already checks same-night Demon death, and report
+  modifiers already exist: trace why the exact statement/challenge isn't usable.
+  Separate an honest guard attempt from effective protection. **User clarification
+  (Oct 27): lying about this failed Warden protection implies the speaker is evil;
+  a good Warden would not fabricate this account and can only be misled.** This is
+  specific to this claim, not a general rule that every good NPC statement is true.
+  Allow an honest impaired Warden; neither failure nor a misled accusation proves
+  poisoning or alignment. Audit dated health, source identity, and challenge effects.
+  [decided: capability and lying implication; evaluator work deferred]
+
+- **Martyr non-substitution must retain alternative explanations.** (78148)
+  An executed choice dying while the claimed Martyr survives must not fully confirm
+  that choice as evil. Weigh delusional Martyr, poisoned Martyr, bluffing evil Martyr,
+  and a Marked executed person, alongside an evil executed choice. Audit the existing
+  "Martyr promise versus later hanging" entry and live/native paths together; bind
+  the choice, execution and health to their dates, using public knowledge only.
+  The clarified Martyr dialogue is wording only, not this inference fix. Tests should
+  isolate every explanation and avoid double counting the same failure. [decided; deferred]
+
+- **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27)
+  Audit current choice policy (the user suspects evil often chooses evil; unverified).
+  Make choosing a good person, helping execute them and claiming non-substitution
+  as evidence against them an active scapegoat route. Depends on the non-substitution
+  reasoning above so listeners can entertain bluff/impairment/Marked alternatives.
+  This is an evil-strategy change: design and measure separately; no new strategy
+  or choice-policy change is authorized in the current UI/fix pass. [decided: direction; deferred]
+
+
 ### Deduction types and templates
 - **The premise should matter (with Q3 tuning).** (user + Claude, Oct 25, after case
   22485) Today a case's premise changes only the reply and a small trust reward. The
