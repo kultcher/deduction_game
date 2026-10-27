@@ -15,6 +15,8 @@ is yours to explain.
 
 **Set-1 baseline observation:** untouched main `193b636` reproduced `test_workshop_protection` failing "disabling shared model restores native quiet-night credit" (81/82). The user authorized this exact baseline exception; evaluator/toggle code remains out of scope.
 
+**Set-2 validation observation:** items 8–14 pass 361 focused checks, all 45 trace checks, and 82/83 full suites with only the same approved protection exception. The 54875 replay completes with 9 shared / 0 native listeners and no protocol errors. Its unchanged two-report case now receives 2 yes / 5 needed rather than 5 / 5. A frozen before/after comparison around item 10 confirms the change (case-board number 83 to 94) and a meeting-entry cost increase from 1850 to 2692 ms; presentation is 3154 to 3399 ms in that pair. No replay command exceeds five seconds. The outcome and added time are reported without tuning; bot baselines will shift.
+
 ## Out of scope (Claude is doing these)
 
 Do not touch them, even where an item below sits next to them:
@@ -92,9 +94,9 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
    - Gotcha: the meeting testimony now streams (`Mind.testimony_step`, `Game.testimony_step`): add the
      line in `Mind._go_public`'s callers inside the step, not after the meeting.
 
-### Meetings
-
    - **Implemented (Codex batch 4, set 2):** Confidence requests and private hint disclosures remember the request for privacy. Each actual first public disclosure announces the change within its speaker turn, including claim, accusation and relay routes. Claim/readings effects, confidence exemption and RNG are unchanged. Exact-string expectations changed: none.
+
+### Meetings
 
 9. **No empty nomination cases.** "Case against agnes: ." appeared (NPC nominations, 37291 and 1002).
    When the nominator has no reason to cite, they say so plainly ("I don't trust them, and I can't
@@ -114,26 +116,28 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
       Use the existing sighting fact shape from `Mind.sighting_report` so the shared model can read it
       (don't invent a new card kind). Evil members don't volunteer true sightings of teammates (same
       rule as `answer_night`).
-   - **Implemented (Codex batch 4, set 2):** Approved gate: Gossip + Confidence >= 1.2 - paranoia; eligible direct reports use a 95 percent willingness roll replacing the Gossip cutoff/count and trusted-friend omission, as the user clarified. Existing privacy, cover, teammate and reading-disclosure protections remain. Both good and evil witnesses volunteer compatible observations from any past night, with evil teammate exclusions. Town and private telling identities are separate; accusation reports also mark town telling. Ordinary sighting facts and streamed testimony are reused without new strength numbers or fake generation. Bot baselines will shift. test_social fixes its willing-report fixture seed; assertions remain unchanged. Exact-string expectations changed: none.
+    - **Implemented (Codex batch 4, set 2):** Approved gate: Gossip + Confidence >= 1.2 - paranoia; eligible direct reports use a 95 percent willingness roll replacing the Gossip cutoff/count and trusted-friend omission, as the user clarified. Existing privacy, cover, teammate and reading-disclosure protections remain. Both good and evil witnesses volunteer compatible observations from any past night, with evil teammate exclusions. Town and private telling identities are separate; accusation reports also mark town telling. Ordinary sighting facts and streamed testimony are reused without new strength numbers or fake generation. Bot baselines will shift. test_social fixes its willing-report fixture seed; assertions remain unchanged. Exact-string expectations changed: none.
 
 11. **Explain the vote count.** One line in help that the player's vote counts ("of 11" with ten
     townsfolk).
-   - **Implemented (Codex batch 4, set 2):** Help explicitly explains that ten living townsfolk plus the player means eleven voters. The existing voter count and all vote/nomination formulas are unchanged. Exact-string expectations changed: none.
+    - **Implemented (Codex batch 4, set 2):** Help explicitly explains that ten living townsfolk plus the player means eleven voters. The existing voter count and all vote/nomination formulas are unchanged. Exact-string expectations changed: none.
 
 12. **Which night is the Demon's free night.** Say it in the Roles text and the first night prompt: the
     Demon doesn't kill on the night before you arrive (night 0) and kills from night 1.
 
-### UI and text interface
+    - **Implemented (Codex batch 4, set 2):** The graphical and typed Roles views and first night prompt share one explanation: night 0 has no Demon kill; killing starts on night 1. Later night prompts stay brief. Text only; resolution rules and RNG are unchanged. Exact-string expectations changed: none.
 
-   - **Implemented (Codex batch 4, set 2):** The graphical and typed Roles views and first night prompt share one explanation: night 0 has no Demon kill; killing starts on night 1. Later night prompts stay brief. Text only; resolution rules and RNG are unchanged. Exact-string expectations changed: none.
+### UI and text interface
 
 13. **Approaches: say where.** Accepting an approach moves the player; print the same arrival block as
     `go` ("Present: …"), and name the place in the approach line before accepting.
-   - **Implemented (Codex batch 4, set 2):** Approach invitations name the place before acceptance. Accepting reuses the ordinary visit observer, showing the same arrival, Present list and visible-person cards as go, while preserving approach question, movement and phase rules. Declining still leaves location and time unchanged. Exact-string expectations changed: none.
+    - **Implemented (Codex batch 4, set 2):** Approach invitations name the place before acceptance. Accepting reuses the ordinary visit observer, showing the same arrival, Present list and visible-person cards as go, while preserving approach question, movement and phase rules. Declining still leaves location and time unchanged. Exact-string expectations changed: none.
 
 14. **Looking isn't talking.** Clicking a portrait started a conversation and spent the phase. Make a
     single click select or inspect (profile), and talking an explicit action (button or double click).
     - Gotcha: `test_ui.gd` clicks portraits; update its expectations, and keep `_run_seq` working.
+    - **Implemented (Codex batch 4, set 2):** Map portraits now inspect profiles without moving, spending a phase or starting conversation. The inspected visible person has an explicit Talk action using the existing go/talk sequence. Townsfolk-owned highlighting and night ward targeting retain their separate behavior; map hints and day instructions explain inspection. Sequence error-stop behavior remains covered. Exact-string expectations changed: test_ui: map click inspects without moving; a separate Talk button starts the conversation.
+
 15. **Warn before walking to someone busy.** Show "busy" on the cast row and in the `go` result when the
     person is in a conversation (`busy_with`).
 16. **Help text.** Add the newer actions: offer/apologise, promise yes/no, ask them to use their gift

@@ -202,9 +202,15 @@ func _init() -> void:
 		if not n.at_home() and n.busy_with == "" and g.can_see(n):
 			t = n
 			break
+	var inspected_phase = g.w.phase
 	scene._on_map_clicked("npc", t.id)
 	await process_frame
-	_check(g.state == "talk" and g.talk_with == t, "clicking a person walks over and starts talking")
+	_check(g.state == "day" and not g.moved and g.w.phase == inspected_phase and scene.profile.current() == t.id, "clicking a person inspects without moving or spending the phase")
+	var talk_button = scene.actions.get_children().filter(func(b): return b is Button and not b.is_queued_for_deletion() and b.text == "Talk to " + t.name)
+	_check(talk_button.size() == 1, "inspecting a visible person offers an explicit Talk action")
+	talk_button[0].pressed.emit()
+	await process_frame
+	_check(g.state == "talk" and g.talk_with == t, "the explicit Talk action walks over and starts talking")
 	_check(scene.map.zoom_block == g.w.loc_block(g.loc), "the map zooms to your block")
 	var labels: Array = scene.actions.get_children().filter(func(c): return c is Button).map(func(b): return b.text)
 	_check(labels.has("Ask about %s's gift…  ▸" % t.name) and labels.has("Offer…  ▸") and labels.has("Ask where they were and who they saw…  ▸") \

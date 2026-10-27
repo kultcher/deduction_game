@@ -388,7 +388,7 @@ func _draw_people(font) -> void:
 				draw_string(font, Vector2(foot.x - step / 2.0 - 4, foot.y + lfs + 2 + (lfs if (i % 2 == 1 and members.size() > 2) else 0)), n.name, HORIZONTAL_ALIGNMENT_CENTER, step + 8, lfs, C.npc_color(n.id))
 			var hint = ""
 			if g.state == "day":
-				hint = "busy talking" if n.busy_with != "" else ("click to talk" if not n.at_home() else "click to call on them")
+				hint = "busy talking; click to inspect their profile" if n.busy_with != "" else "click to inspect their profile"
 			elif g.state == "night":
 				hint = "click to choose them for your ward" if g.w.tools["ward"] > 0 else ""
 			_hits.push_front({"rect": rr, "kind": "npc", "id": n.id, "label": "%s the %s" % [n.name, n.occupation], "hint": hint})

@@ -649,7 +649,7 @@ func _on_town_person_clicked(id: String) -> void:
 	map.refresh()
 	if g.state == "night":
 		_ward_target = selected
-		_refresh_actions()
+	if g.state in ["day", "night"]: _refresh_actions()
 
 # ---------------------------------------------------------------- coloured log
 
@@ -666,6 +666,7 @@ func _swatch(c: Color) -> ImageTexture:
 func _on_map_clicked(kind: String, id: String) -> void:
 	if kind == "npc":
 		_select_person(id)
+		if g.state == "day": _refresh_actions()
 		if g.state == "night":
 			_ward_target = id
 	match g.state:
@@ -687,14 +688,7 @@ func _on_map_clicked(kind: String, id: String) -> void:
 						_run("go " + id)
 					else:
 						_print("(%s is in, but you've already chosen where to spend this phase.)" % hn.name)
-				"npc":
-					var n = w.by_id[id]
-					var cmds: Array = []
-					if not g.moved:
-						cmds.append("go " + id)
-					if n.busy_with == "":
-						cmds.append("talk " + id)
-					_run_seq(cmds)
+
 		"night":
 			_refresh_actions()
 	map.refresh()
@@ -791,10 +785,22 @@ func _refresh_actions() -> void:
 			_button(actions, "Show who told whom what", func(): _run("grimoire talk"))
 			_button(actions, "New case", _new_case_button)
 
+## Portraits inspect; this explicit action owns the existing go/talk sequence.
+func _talk_to_person(id: String) -> void:
+	if g.state != "day": return
+	var cmds: Array = []
+	if not g.moved: cmds.append("go " + id)
+	cmds.append("talk " + id)
+	_run_seq(cmds)
+
 func _actions_day(w) -> void:
 	if not g.moved:
 		action_title.text = "Day %d, %s: where will you go?" % [w.day, C.PHASES[w.phase].to_lower()]
-		_hint("Click a block to look closer, then a place or a person. Clicking a person walks you to them and starts a conversation.")
+		_hint("Click a block to look closer or a person to inspect their profile. Choose Talk to start a conversation.")
+		var selected = w.by_id.get(_side_person_id())
+		if selected != null and selected.alive and g.can_see(selected):
+			var talk = _button(actions, "Talk to %s" % selected.name, func(): _talk_to_person(selected.id), C.npc_color(selected.id))
+			talk.disabled = selected.busy_with != ""
 		_button(actions, "Wait (let the %s pass)" % C.PHASES[w.phase].to_lower(), func(): _run("wait"))
 		return
 	action_title.text = "%s, %s" % [w.loc_name(g.loc).capitalize(), C.PHASES[w.phase].to_lower()]

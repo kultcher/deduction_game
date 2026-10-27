@@ -33,6 +33,7 @@ func run():
 	vote_help()
 	await demon_night_wording()
 	approach_arrival()
+	await inspect_then_talk()
 	direct_night_willingness()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -678,3 +679,44 @@ func approach_arrival():
 	var old_phase = due.w.phase
 	due.command("decline")
 	check(due.loc == old_loc and due.w.phase == old_phase, "declining an approach still does not move or spend the phase")
+
+func inspect_then_talk():
+	root.size = Vector2i(1920, 1080)
+	var scene = load("res://ui/main.tscn").instantiate()
+	scene.show_script_at_start = false
+	root.add_child(scene)
+	var g = fresh()
+	scene.g = g
+	scene.map.set_game(g)
+	scene.cast_list.setup(g)
+	scene.profile.setup(g, scene.case_state)
+	scene.case_view.set_game(g)
+	scene.meeting_view.set_game(g)
+	g.state = "day"
+	g.moved = false
+	var n = g.w.living_good()[0]
+	n.loc = n.work
+	n.working = true
+	n.busy_with = ""
+	var phase = g.w.phase
+	var loc = g.loc
+	var rng = g.w.rng.state
+	var cards = g.board.size()
+	scene._on_map_clicked("npc", n.id)
+	check(g.state == "day" and not g.moved and g.w.phase == phase and g.loc == loc and g.w.rng.state == rng and g.board.size() == cards, "map portrait inspection spends no movement, action, question, card or RNG")
+	check(scene.profile.current() == n.id and scene.map.selected_npc == "" and scene.cast_list.selected == "", "map portrait inspection shows the profile while preserving townsfolk-owned highlighting")
+	scene._on_town_person_clicked(n.id)
+	scene._on_town_person_clicked(n.id)
+	check(g.state == "day" and not g.moved and g.w.rng.state == rng, "cast portrait selection also stays informational")
+	var buttons = scene.actions.get_children().filter(func(b): return b is Button and not b.is_queued_for_deletion() and b.text == "Talk to " + n.name)
+	check(buttons.size() == 1, "selected visible person offers an explicit Talk button")
+	buttons[0].pressed.emit()
+	check(g.state == "talk" and g.talk_with == n and g.questions_left == 3 and g.w.phase == phase, "explicit Talk uses the preserved go/talk command sequence")
+	scene._run("bye")
+	check(g.w.phase == phase, "leaving an untouched explicit conversation retains the existing free exit")
+	g.moved = false
+	g.state = "day"
+	scene._run_seq(["go nowhere_known", "talk " + n.id])
+	check(g.state == "day" and not g.moved and g.talk_with == null, "the existing command sequence still stops on a failed walk")
+	for i in range(3): await process_frame
+	scene.free()
