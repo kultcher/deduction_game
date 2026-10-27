@@ -68,3 +68,12 @@ were hanged and I still stand: they must have been evil or my gift failed."
 Only wording changed: the original report data/truth, generation conditions,
 substitution rules and inference remain unchanged. Both reasoning and evil
 scapegoat strategy are explicitly deferred in BACKLOG.md.
+
+## Relationship sourcing
+
+The existing profile section is retained. Explicit closeness in opinion replies and
+"<name> is my friend" accusation replies now carry structured disclosure metadata;
+the game records only emitted speech as an attributed profile note for both people.
+Existing friend/rival disclosures deduplicate regardless of pair order, and dead
+people can be named. Generic distrust does not imply rivalry; hidden town bonds,
+Lovers, NPC trust and suspicion are never scanned to fill the profile.

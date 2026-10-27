@@ -29,6 +29,7 @@ func run():
 	ward_promise()
 	approach_fatigue()
 	martyr_wording()
+	spoken_relationships()
 	print("Playtest follow-ups: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func picker(title: String, count: int):
@@ -248,3 +249,35 @@ func martyr_wording():
 	var report: Dictionary = martyr.info_log[0]
 	check(report.text == "As the Martyr, I chose %s. They were hanged and I still stand: they must have been evil or my gift failed" % target.name, "the Martyr explicitly identifies their choice and qualifies their interpretation")
 	check(report.data == {"target": target.id, "evil": true} and report["true"] and w.rng.state == rng, "wording changes no report truth, effects or RNG")
+
+func spoken_relationships():
+	var g = fresh()
+	var w = g.w
+	var n = w.living_good()[0]
+	var t = w.living_good()[1]
+	g.known_relationships = {}
+	n.npc_trust[t.id] = 0.9
+	n.suspicion[t.id] = 0.0
+	var reply = Mind.answer_opinion(w, n, t)
+	var rng = w.rng.state
+	var cards = JSON.stringify(g.board)
+	g._lines(reply.lines)
+	check(g.known_relationships.size() == 1 and g.known_relationship_notes(n.id) == g.known_relationship_notes(t.id), "explicit closeness in an opinion populates both profiles")
+	var note: Dictionary = g.known_relationships.values()[0]
+	check(note.kind == "friend" and note.source == n.id and str(note.text).contains(n.name), "spoken friendship remains an attributed claim")
+	g._lines(reply.lines)
+	check(g.known_relationships.size() == 1 and w.rng.state == rng and JSON.stringify(g.board) == cards, "repeated disclosure neither duplicates notes nor adds cards, beliefs or RNG")
+	g.known_relationships = {}
+	t.alive = false
+	var line = Mind.say(n, "%s is my friend. You'll need more than that." % t.name)
+	line["relationship"] = {"kind": "friend", "people": [n.id, t.id]}
+	g._line(line)
+	check(not g.known_relationship_notes(t.id).is_empty(), "an explicit bond to a dead NPC can still be learned")
+	g.known_relationships = {}
+	g._line(Mind.say(n, "I have my doubts about %s." % t.name))
+	check(g.known_relationships.is_empty(), "distrust is not silently promoted to a rival relationship")
+	for kind in ["friend", "rival"]:
+		g.known_relationships = {"existing": {"kind": kind, "people": [t.id, n.id], "source": n.id, "text": "Earlier attributed disclosure"}}
+		line.relationship = {"kind": kind, "people": [n.id, t.id]}
+		g._line(line)
+		check(g.known_relationships.size() == 1 and g.known_relationships.existing.text == "Earlier attributed disclosure", "existing attributed bonds deduplicate independently of pair order")

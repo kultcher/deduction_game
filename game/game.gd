@@ -135,6 +135,7 @@ func _screen(t: String) -> void:
 
 func _line(x) -> void:
 	if x is Dictionary:
+		_remember_spoken_relationship(x)
 		_ev({"k": "speech", "speaker": x["speaker"], "name": x["name"], "text": x["text"]})
 	else:
 		_narr(str(x))
@@ -1870,6 +1871,23 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 		known_relationships[entry.key] = {"kind": bond.kind, "people": bond.people.duplicate(), "source": n.id, "text": note}
 		r.lines.append(Mind.say(n, text))
 		w.dlog.add("player_learns_relationship", n.id, t.id, {"kind": bond.kind, "people": bond.people})
+
+## Authored speech can explicitly disclose a bond outside "ask about". Record only
+## that disclosure, never infer from suspicion, actual bonds, or hidden Lover state.
+func _remember_spoken_relationship(line: Dictionary) -> void:
+	var bond: Dictionary = line.get("relationship", {})
+	var people: Array = bond.get("people", [])
+	var source: String = line.get("speaker", "")
+	if bond.get("kind", "") not in ["friend", "rival"] or people.size() != 2 or people[0] == people[1] or source not in people or not people.all(func(id): return w.by_id.has(id)):
+		return
+	for known in known_relationships.values():
+		if known.kind == bond.kind and people.all(func(id): return id in known.people): return
+	people = people.duplicate()
+	people.sort()
+	var key = bond.kind + ":" + ":".join(PackedStringArray(people))
+	known_relationships[key] = {"kind": bond.kind, "people": people, "source": source,
+		"text": w.by_id[source].name + ' says "' + line.text + '"'}
+	w.dlog.add("player_learns_relationship", source, people[1] if people[0] == source else people[0], {"kind": bond.kind, "people": people, "how": "explicit speech"})
 
 func known_relationship_notes(id: String) -> Array:
 	return known_relationships.values().filter(func(b): return id in b.people).map(func(b): return b.text)
