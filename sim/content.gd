@@ -2,6 +2,7 @@
 ## Pure data. Nothing here holds case state.
 extends RefCounted
 
+const RoleRegistry = preload("res://sim/role_registry.gd")
 
 const DEMON_NIGHT_RULE = "The Demon does not kill on the night before you arrive. It kills from night 1."
 ## Enable explicitly in regression tests and playtests, never in ordinary play.
@@ -356,11 +357,20 @@ static func loc_block(l: String) -> String:
 		return LOCATIONS[l]["block"]
 	return ""
 
+static func role_def(r: String):
+	return RoleRegistry.get_def(r)
+
+static func has_role_def(r: String) -> bool:
+	return RoleRegistry.has_def(r)
+
 static func role_name(r: String) -> String:
 	if r == "" or r == "none":
 		return "no gift"
 	if SECRET_MODS.has(r):
 		return SECRET_MODS[r]["name"]
+	var rdef = role_def(r)
+	if rdef != null:
+		return rdef.display_name
 	return ROLES[r]["name"] if ROLES.has(r) else r
 
 static func package_of(r: String) -> String:

@@ -23,9 +23,11 @@ static func group_of(d: Dictionary) -> Array:
 ## People the reading points toward evil.
 static func implicated(e: Dictionary) -> Array:
 	var d: Dictionary = e.get("data", {})
-	match e.get("role", ""):
-		"seer":
-			return d["pair"] if d.get("yes", false) else []
+	var role: String = e.get("role", "")
+	var rdef = C.role_def(role)
+	if rdef != null:
+		return rdef.implicated(d)
+	match role:
 		"hearthwitch", "dowser":
 			return group_of(d) if d.get("count", 0) > 0 else []
 		"archivist":
@@ -50,9 +52,11 @@ static func implicated(e: Dictionary) -> Array:
 ## People the reading speaks for.
 static func clears(e: Dictionary) -> Array:
 	var d: Dictionary = e.get("data", {})
-	match e.get("role", ""):
-		"seer":
-			return [] if d.get("yes", false) else d.get("pair", [])
+	var role: String = e.get("role", "")
+	var rdef = C.role_def(role)
+	if rdef != null:
+		return rdef.clears(d)
+	match role:
 		"hearthwitch", "dowser":
 			return group_of(d) if d.get("count", 0) == 0 else []
 		"clerk", "rumormonger":
@@ -90,9 +94,10 @@ static func _names(ids: Array, nm: Callable) -> String:
 
 ## A one-line summary for the board (names via nm: id -> display name).
 static func short_text(role: String, d: Dictionary, src: String, nm: Callable) -> String:
+	var rdef = C.role_def(role)
+	if rdef != null:
+		return rdef.short_text(d, src, nm)
 	match role:
-		"seer":
-			return "%s Seer: %s → %s" % [src, _names(d.get("pair", []), nm), "YES" if d.get("yes", false) else "no"]
 		"hearthwitch", "dowser":
 			return "%s %s: %d evil of %s" % [src, C.role_name(role), d.get("count", 0), _names(group_of(d), nm)]
 		"nightwatch":
