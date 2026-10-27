@@ -40,6 +40,7 @@ func run():
 	seer_space_targets()
 	night_home_listing()
 	grimoire_modifiers()
+	count_reason_names()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -814,3 +815,17 @@ func grimoire_modifiers():
 	n.secret_mod = ""
 	check(not Array(g._grimoire().split("\n")).filter(func(line): return line.strip_edges().begins_with(n.name + " "))[0].contains("secret modifier:"), "no invented modifier is printed for an unmodified NPC")
 	check(g.w.rng.state == rng and g.state == "day", "developer summary formatting does not change the game")
+
+func count_reason_names():
+	var g = fresh()
+	var source = g.w.living_good()[0]
+	var listener = g.w.living_good()[1]
+	var rng = g.w.rng.state
+	for role in ["hearthwitch", "dowser"]:
+		var zero = {"role": role, "data": {"group": [listener.id], "count": 0}}
+		var own = Mind._info_effects(g.w, source, source, zero, 1.0, true)
+		check(own.size() == 1 and own[0][1] == -0.25 and own[0][3] == "own info: " + role + " count 0", "own zero-count reason names its actual gift without changing strength: " + role)
+		var impossible = {"role": role, "data": {"group": [listener.id], "count": 1}}
+		var heard = Mind._info_effects(g.w, listener, source, impossible, 1.0, true)
+		check(heard.size() == 1 and heard[0][1] == 0.5 and (role + " count impossible") in heard[0][3], "impossible-count reason also names its actual gift: " + role)
+	check(g.w.rng.state == rng, "reason wording consumes no RNG")

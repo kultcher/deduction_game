@@ -163,6 +163,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 21. **Stale role name in a reason string:** `own info: hearthwitch count 0` should name the Dowser (find
     the reason text in `Mind`'s own-info effects).
+   - **Implemented (Codex batch 4, set 3):** Shared Hearthwitch/Dowser zero-count and impossible-count explanations now name the reading's actual gift. Effects, strengths, ledger identities and RNG are unchanged. Exact-string expectations changed: none.
+
 22. **Every false reading carries a cause.** No `why: ?` in the lies list: where a reading is false
     (`true: false`), record why (poisoned, delusional, red herring, Marked, evil fabrication, fallback).
 23. **Check dropped personal items are findable.** Fenwick's item at the wharf (37291 seq 466) was never

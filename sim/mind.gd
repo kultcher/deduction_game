@@ -900,13 +900,13 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 			var excluded = nbrs.size() - others.size()
 			if count == 0:
 				for i in others:
-					_eff(effs, i, -0.25, tag + ": hearthwitch count 0", "", not own)
+					_eff(effs, i, -0.25, tag + ": %s count 0" % r, "", not own)
 			else:
 				var per = 0.35 * count
 				if excluded > 0:
 					per = 0.7 * count
 				if count > others.size() and not own:
-					_eff(effs, source.id, 0.5, tag + ": hearthwitch count impossible from my view",
+					_eff(effs, source.id, 0.5, tag + ": %s count impossible from my view" % r,
 						"%s reading about the lane can't be right" % src_name)
 				for i in others:
 					_eff(effs, i, per, tag + ": %s count %d" % [r, count],
