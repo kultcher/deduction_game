@@ -46,6 +46,8 @@ var selected_npc = ""        # persistent highlight owned by the townsfolk panel
 var selected_block = ""
 var _hits: Array = []        # [{rect (screen), kind, id, label, hint}]
 var _hover: Dictionary = {}
+var _label_obstacles: Array = [] # Screen-space signs/accepted names, rebuilt per draw.
+var _name_labels: Array = [] # Visible name rectangles, also used by layout checks.
 var _scale = 1.0
 var _offset = Vector2.ZERO
 
@@ -179,10 +181,13 @@ func _sign(font, text: String, center: Vector2, fs: int, active: bool = false) -
 		draw_rect(r, UITheme.color("paper"))
 	draw_string(font, Vector2(r.position.x, r.position.y + h * 0.68), text, HORIZONTAL_ALIGNMENT_CENTER, w, fs,
 		UITheme.color("paper") if active else UITheme.color("ink"))
+	_label_obstacles.append(r)
 	return r
 
 func _draw() -> void:
 	_hits = []
+	_label_obstacles.clear()
+	_name_labels.clear()
 	if g == null:
 		draw_rect(Rect2(Vector2.ZERO, size), UITheme.color("bg"))
 		return
@@ -292,6 +297,8 @@ func _draw() -> void:
 	if night:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.1, 0.25))
 	_draw_selection_marks()
+	# Reserve the back control before placing names (it is painted afterwards).
+	if zoom_block != "": _label_obstacles.append(Rect2(0, 0, 150, 46))
 	# People.
 	_draw_people(font)
 	# Zoomed in: dim everything outside the block in view.
@@ -383,15 +390,40 @@ func _draw_people(font) -> void:
 			if n.id == selected_npc:
 				draw_rect(rr.grow(3), C.npc_color(n.id), false, 3.0)
 				draw_rect(rr.grow(1), Color(1, 1, 1, 0.9), false, 1.5)
-			if zoom_block != "":
+			var person_block: String = n.home_block if night or n.at_home() else w.loc_block(n.loc)
+			if zoom_block != "" and person_block == zoom_block:
 				var lfs = lf if members.size() <= 2 else maxi(11, int(lf * 0.85))
-				draw_string(font, Vector2(foot.x - step / 2.0 - 4, foot.y + lfs + 2 + (lfs if (i % 2 == 1 and members.size() > 2) else 0)), n.name, HORIZONTAL_ALIGNMENT_CENTER, step + 8, lfs, C.npc_color(n.id))
+				var width: float = font.get_string_size(n.name, HORIZONTAL_ALIGNMENT_LEFT, -1, lfs).x + 8
+				var desired = Rect2(Vector2(foot.x - width / 2.0, foot.y + 2 + (lfs if (i % 2 == 1 and members.size() > 2) else 0)), Vector2(width, lfs + 5))
+				var label_bounds = Rect2(Vector2(4, 4), size - Vector2(8, 40))
+				if BLOCK_RECTS.has(zoom_block): label_bounds = label_bounds.intersection(_r(BLOCK_RECTS[zoom_block]).grow(-4))
+				var label = name_label_rect(desired, _label_obstacles, label_bounds)
+				_label_obstacles.append(label)
+				_name_labels.append({"id": n.id, "rect": label})
+				draw_string(font, label.position + Vector2(0, lfs), n.name, HORIZONTAL_ALIGNMENT_CENTER, label.size.x, lfs, C.npc_color(n.id))
 			var hint = ""
 			if g.state == "day":
 				hint = "busy talking; click to inspect their profile" if n.busy_with != "" else "click to inspect their profile"
 			elif g.state == "night":
 				hint = "click to choose them for your ward" if g.w.tools["ward"] > 0 else ""
 			_hits.push_front({"rect": rr, "kind": "npc", "id": n.id, "label": "%s the %s" % [n.name, n.occupation], "hint": hint})
+
+## Search nearest rows first, then columns, keeping names off place signs and
+## preceding names. This uses screen geometry only; portraits/hit targets stay put.
+static func name_label_rect(desired: Rect2, obstacles: Array, bounds: Rect2) -> Rect2:
+	var width = minf(desired.size.x, bounds.size.x)
+	var start = Vector2(clampf(desired.position.x, bounds.position.x, bounds.end.x - width), clampf(desired.position.y, bounds.position.y, bounds.end.y - desired.size.y))
+	var step = desired.size.y + 4.0
+	var rows = int(ceil(bounds.size.y / step))
+	var columns = int(ceil(bounds.size.x / (width + 4.0)))
+	for distance in range(rows + columns + 1):
+		for column in range(-mini(distance, columns), mini(distance, columns) + 1):
+			var row = distance - absi(column)
+			for direction in ([1] if row == 0 else [1, -1]):
+				var candidate = Rect2(start + Vector2(column * (width + 4.0), row * direction * step), Vector2(width, desired.size.y))
+				if bounds.encloses(candidate) and not obstacles.any(func(r): return r.grow(2).intersects(candidate)):
+					return candidate
+	return Rect2(start, Vector2(width, desired.size.y)) # Extremely crowded/tiny view: retain the name.
 
 # ---------------------------------------------------------------- input
 

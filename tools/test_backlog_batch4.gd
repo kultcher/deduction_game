@@ -43,6 +43,7 @@ func run():
 	count_reason_names()
 	false_reading_causes()
 	dropped_item_search()
+	await presentation_options()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -894,3 +895,126 @@ func dropped_item_search():
 	g.w.dropped["wharf"] = [item.duplicate(true)]
 	g._search()
 	check(not g.w.dropped.has("wharf"), "an owner's death does not make an unfound stored item inaccessible")
+
+func _roles_rows(node) -> int:
+	var count = 0
+	if node is TextureRect and node.custom_minimum_size == Vector2(34, 34): count += 1
+	for child in node.get_children(): count += _roles_rows(child)
+	return count
+
+func presentation_options():
+	var scene = load("res://ui/main.tscn").instantiate()
+	scene.show_script_at_start = false
+	root.add_child(scene)
+	await process_frame
+	await process_frame
+	scene.roles_win.hide()
+	scene.seed_box.value = 4242
+	for index in range(scene.size_opt.item_count):
+		if scene.size_opt.get_item_metadata(index) == 10: scene.size_opt.select(index)
+	scene._new_case()
+	var g = scene.g
+	var rng = g.w.rng.state
+	var phase = g.w.phase
+	var cards = JSON.stringify(g.board)
+	var roles_count = C.GOOD_ROLES.size() + C.EVIL_ROLES.size() + C.SECRET_MOD_LIST.size()
+	scene._open_roles()
+	var content = scene.roles_content
+	check(not scene.roles_pinned and scene.roles_win.visible and not scene.roles_dock.visible, "Roles starts as the existing movable window")
+	scene.roles_pin.button_pressed = true
+	check(scene.roles_pinned and scene.roles_dock.visible and not scene.roles_win.visible and content.get_parent() == scene.roles_dock, "pin moves the same Roles content beside the town profile")
+	check(scene.roles_box.get_child(0) is VBoxContainer and _roles_rows(scene.roles_box) == roles_count, "pinned Roles has all gifts and secrets in one scrollable column")
+	var summary = scene.roles_box.find_child("SetupSummary", true, false)
+	check(summary != null and summary.text == scene.setup_summary(g.w.n_npcs), "pinned Roles retains rule-based setup counts")
+	var n = g.w.npcs[0]
+	n.claimed_role = "seer"
+	n.max_tier = 3
+	scene._refresh_all()
+	check(scene._roles_signature == scene._roles_state_key() and _roles_rows(scene.roles_box) == roles_count, "pinned Roles refreshes the same existing claim content without duplicating rows")
+	# Keep the fixture-only disclosure out of the observational comparison.
+	n.claimed_role = ""
+	n.max_tier = 0
+	scene._open_case_view()
+	scene._open_roles()
+	check(scene.roles_pinned and scene.roles_win.visible and content.get_parent() == scene.roles_window_box, "case-board Roles can still open the shared window while retaining the pin preference")
+	scene.case_view.hide()
+	check(scene.roles_dock.visible and content.get_parent() == scene.roles_dock and not scene.roles_win.visible, "returning to town restores the pinned Roles panel")
+	scene._hide_roles()
+	check(not scene.roles_showing and not scene.roles_dock.visible, "Hide closes the pinned reference without changing its session preference")
+	scene.case_view.show()
+	scene.case_view.hide()
+	check(not scene.roles_dock.visible, "screen changes do not reopen a panel the player hid")
+	scene._open_roles()
+	scene.roles_pin.button_pressed = false
+	check(not scene.roles_pinned and scene.roles_win.visible and content.get_parent() == scene.roles_window_box and scene.roles_box.get_child(0) is HBoxContainer, "unpin restores the existing two-column Roles window")
+	check(g.w.rng.state == rng and g.w.phase == phase and JSON.stringify(g.board) == cards, "Roles layout, navigation and toggles change no game data or RNG")
+	var fresh_scene = load("res://ui/main.tscn").instantiate()
+	check(not fresh_scene.roles_pinned, "pin preference is session-only and defaults off in a new UI")
+	fresh_scene.free()
+	n.revealed_traits.clear()
+	scene._select_person(n.id)
+	scene.profile.bars.reset_observations()
+	scene.profile.refresh()
+	n.revealed_traits.insight = C.tier(n.traits.insight)
+	scene.profile.refresh()
+	check(scene.profile.bars.flashes.has("insight") and scene.profile.bars.revealed.insight == n.traits.insight, "actual profile refresh flashes the newly learned score, not undisclosed traits")
+	var bars = preload("res://ui/trait_bars.gd").new()
+	bars.show_traits({"privacy": 0.8}, "agnes")
+	check(bars.flashes.is_empty(), "first profile display does not flash already known traits")
+	bars.show_traits({"privacy": 0.8, "insight": 0.4}, "agnes")
+	check(bars.flashes == {"insight": 1.0}, "only the newly learned trait starts its one-second flash")
+	bars._process(0.6)
+	bars.show_traits({"privacy": 0.8, "insight": 0.4}, "agnes")
+	check(is_equal_approx(bars.flashes.insight, 0.4), "refreshing the same known traits does not restart the flash")
+	bars._process(0.41)
+	check(bars.flashes.is_empty() and not bars.is_processing(), "trait flash expires after one second and stops processing")
+	bars.show_traits({"gossip": 0.5}, "isolde")
+	check(bars.flashes.is_empty(), "switching people does not present old knowledge as a new discovery")
+	bars.reset_observations()
+	bars.show_traits({"gossip": 0.5, "privacy": 0.7}, "isolde")
+	check(bars.flashes.is_empty(), "new case binding resets trait flash observations")
+	bars.free()
+	var Map = preload("res://ui/map_view.gd")
+	var bounds = Rect2(0, 0, 500, 300)
+	var wanted = Rect2(200, 120, 80, 20)
+	var obstacles: Array = [wanted.grow(3)]
+	var placed = Map.name_label_rect(wanted, obstacles, bounds)
+	check(bounds.encloses(placed) and not obstacles[0].intersects(placed) and placed.size == wanted.size, "map name moves clear of a place sign while staying in bounds")
+	obstacles.append(placed)
+	var next = Map.name_label_rect(wanted, obstacles, bounds)
+	check(not obstacles.any(func(r): return r.intersects(next)), "map name placement also avoids preceding names")
+	check(next == Map.name_label_rect(wanted, obstacles, bounds), "map label offsets are deterministic")
+	check(bounds.encloses(Map.name_label_rect(Rect2(-20, 290, 80, 20), [], bounds)), "map name placement handles view edges")
+	# Real rendered map layout with an intentionally crowded public location.
+	scene.roles_win.hide()
+	g.state = "day"
+	g.moved = true
+	g.loc = "tavern"
+	g.w.player_loc = "tavern"
+	for person in g.w.living():
+		person.loc = "tavern"
+		person.working = true
+	scene.map.zoom_block = g.w.loc_block("tavern")
+	scene.map.refresh()
+	await process_frame
+	await process_frame
+	check(scene.map._name_labels.size() == g.w.living().size(), "crowded zoomed map retains every visible person's name")
+	for name in scene.map._name_labels:
+		check(scene.map._r(scene.map.BLOCK_RECTS[scene.map.zoom_block]).encloses(name.rect), "rendered name stays inside the undimmed zoomed block: " + name.id)
+		check(not scene.map._label_obstacles.any(func(r): return r != name.rect and r.intersects(name.rect)), "rendered name stays clear of place signs and other names: " + name.id)
+	var elsewhere = g.w.living()[-1]
+	elsewhere.loc = "wharf"
+	scene.map.refresh()
+	await process_frame
+	await process_frame
+	check(not scene.map._name_labels.any(func(label): return label.id == elsewhere.id), "layout never pulls a name from another block into the zoomed street")
+	check(scene.map._name_labels.size() == g.w.living().size() - 1, "the viewed block retains all its residents after another person leaves")
+	check(g.w.rng.state == rng and g.w.phase == phase, "flash timers and rendered label layout consume no game RNG or time")
+	scene._set_roles_pinned(true)
+	for index in range(scene.size_opt.item_count):
+		if scene.size_opt.get_item_metadata(index) == 7: scene.size_opt.select(index)
+	scene._new_case()
+	check(scene.roles_pinned and scene.roles_dock.visible and scene.roles_content.get_parent() == scene.roles_dock, "new case retains this session's visible pin preference")
+	check(scene.roles_box.find_child("SetupSummary", true, false).text == scene.setup_summary(7), "new case updates pinned setup counts from its new setup rules")
+	check(scene.profile.bars.flashes.is_empty(), "new case does not replay previous trait discovery flashes")
+	scene.free()

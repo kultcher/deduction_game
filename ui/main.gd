@@ -56,6 +56,13 @@ var notes_win: Window
 var notes_edit: TextEdit
 var roles_win: Window
 var roles_box: VBoxContainer
+var roles_pinned = false # Session preference; never saved with game/settings.
+var roles_showing = false
+var _roles_signature = ""
+var roles_dock: PanelContainer
+var roles_content: VBoxContainer
+var roles_window_box: VBoxContainer
+var roles_pin: CheckBox
 var log_text = LogText.new()
 var new_case_confirm: ConfirmationDialog
 
@@ -205,6 +212,11 @@ func _ready() -> void:
 		case_view.board.fit_selection())
 	profile.card_context_requested.connect(func(n, at): case_view.show_card_menu(n, at))
 	upper.add_child(profile)
+	roles_dock = PanelContainer.new()
+	roles_dock.custom_minimum_size.x = 360
+	roles_dock.add_theme_stylebox_override("panel", UITheme.panel("paper"))
+	roles_dock.hide()
+	upper.add_child(roles_dock)
 
 	var lower = HBoxContainer.new()
 	lower.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -303,10 +315,25 @@ func _ready() -> void:
 	nv.add_child(notes_edit)
 	var rwin = _make_window("The script: what may be in play", Vector2i(1120, 960))
 	roles_win = rwin[0]
+	roles_window_box = rwin[1]
+	roles_content = VBoxContainer.new()
+	roles_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	roles_window_box.add_child(roles_content)
+	var role_controls = HBoxContainer.new()
+	roles_content.add_child(role_controls)
+	roles_pin = CheckBox.new()
+	roles_pin.text = "Pin as side panel"
+	for colour in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+		roles_pin.add_theme_color_override(colour, UITheme.color("ink"))
+	roles_pin.tooltip_text = "Keep Roles beside the town profile for this session. From the case board, Roles still opens as a window."
+	roles_pin.toggled.connect(_set_roles_pinned)
+	role_controls.add_child(roles_pin)
+	_button(role_controls, "Hide", _hide_roles)
+	roles_win.close_requested.connect(_hide_roles)
 	var rsc = ScrollContainer.new()
 	rsc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	rsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	rwin[1].add_child(rsc)
+	roles_content.add_child(rsc)
 	roles_box = VBoxContainer.new()
 	roles_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	roles_box.add_theme_constant_override("separation", 8)
@@ -329,6 +356,9 @@ func _ready() -> void:
 	case_view.changed.connect(_refresh_side)
 	case_view.notes_requested.connect(_open_notes)
 	case_view.roles_requested.connect(_open_roles)
+	case_view.visibility_changed.connect(func():
+		if not case_view.visible and roles_pinned and roles_showing:
+			_open_roles())
 	case_view.workshop_requested.connect(_open_live_workshop)
 
 	var headline_layer = CanvasLayer.new()
@@ -416,11 +446,40 @@ static func setup_summary(count: int) -> String:
 	var rules: Dictionary = C.SETUPS.get(count, {"town": count - 2, "minions": 1, "secrets": 1})
 	return "Good: %d gifted townsfolk / %d secret%s · Evil: %d minion%s / 1 demon" % [rules.town, rules.secrets, "" if rules.secrets == 1 else "s", rules.minions, "" if rules.minions == 1 else "s"]
 
+func _set_roles_pinned(on: bool) -> void:
+	roles_pinned = on
+	roles_pin.set_pressed_no_signal(on)
+	_open_roles()
+
+func _hide_roles() -> void:
+	roles_showing = false
+	roles_win.hide()
+	if roles_pinned and roles_content.get_parent() != roles_dock:
+		roles_content.reparent(roles_dock)
+		_build_roles(true)
+	roles_dock.hide()
+
 func _open_roles() -> void:
+	roles_showing = true
+	var embedded: bool = roles_pinned and not case_view.visible
+	var host = roles_dock if embedded else roles_window_box
+	if roles_content.get_parent() != host: roles_content.reparent(host)
+	_build_roles(embedded)
+	roles_dock.visible = embedded
+	if embedded:
+		roles_win.hide()
+	elif not roles_win.visible:
+		roles_win.popup_centered()
+
+func _roles_state_key() -> String:
+	return JSON.stringify([g.w.n_npcs, g.w.minion_ids.size(), g.w.npcs.map(func(n): return [n.id, n.claimed_role, n.max_tier >= 3, n.claim_public])])
+
+func _build_roles(embedded: bool) -> void:
+	_roles_signature = _roles_state_key()
 	for ch in roles_box.get_children():
 		roles_box.remove_child(ch)
 		ch.queue_free()
-	var cols = HBoxContainer.new()
+	var cols: BoxContainer = VBoxContainer.new() if embedded else HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 18)
 	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	roles_box.add_child(cols)
@@ -445,8 +504,6 @@ func _open_roles() -> void:
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	summary.add_theme_color_override("font_color", UITheme.color("ink"))
 	roles_box.add_child(summary)
-	if not roles_win.visible:
-		roles_win.popup_centered()
 
 func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
 	var ink = UITheme.color("ink")
@@ -600,6 +657,8 @@ func finish_streaming() -> void:
 var _last_phase_key = ""
 
 func _refresh_all() -> void:
+	if roles_pinned and roles_showing and _roles_signature != _roles_state_key():
+		_build_roles(roles_content.get_parent() == roles_dock)
 	# The map follows you: zoom to your block once you've moved; back out for a new phase.
 	var key = "%d:%d:%s" % [g.w.day, g.w.phase, g.state if g.state in ["night", "meeting", "nomination", "over"] else "day"]
 	if key != _last_phase_key:

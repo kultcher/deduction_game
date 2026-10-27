@@ -210,6 +210,7 @@ func setup(game, st) -> void:
 	state = st
 	if person_opt == null:
 		build()
+	bars.reset_observations()
 	_setting = true
 	person_opt.clear()
 	for n in g.w.npcs:
@@ -327,7 +328,7 @@ func refresh() -> void:
 	_setting = false
 	_render_page(id, p)
 	bars.visible = tab == 0
-	bars.show_traits(p["traits"])
+	bars.show_traits(p["traits"], id)
 
 func _append_profile(text: String, context: Dictionary = {}) -> void:
 	var style = {"surface": "paper", "icon_size": 18}
