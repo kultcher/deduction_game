@@ -17,6 +17,8 @@ is yours to explain.
 
 **Set-2 validation observation:** items 8–14 pass 361 focused checks, all 45 trace checks, and 82/83 full suites with only the same approved protection exception. The 54875 replay completes with 9 shared / 0 native listeners and no protocol errors. Its unchanged two-report case now receives 2 yes / 5 needed rather than 5 / 5. A frozen before/after comparison around item 10 confirms the change (case-board number 83 to 94) and a meeting-entry cost increase from 1850 to 2692 ms; presentation is 3154 to 3399 ms in that pair. No replay command exceeds five seconds. The outcome and added time are reported without tuning; bot baselines will shift.
 
+**Set-3 validation observation:** items 15–18 and 20–23 are implemented; item 19 awaits the presentation choice above. Final focused checks: 424 passed. Full suite including slow trace: 83/84, with only the approved protection baseline exception; all six trace pairs passed. The original 54875 result remains 2 yes / 5 needed, with identical listener assessments and vote margins and no fallbacks. See [set-3 report](BATCH4_SET3_REPORT.md) and the [item-10 performance/revert reference](BATCH4_ITEM10_REFERENCE.md).
+
 ## Out of scope (Claude is doing these)
 
 Do not touch them, even where an item below sits next to them:
@@ -154,6 +156,7 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 19. Lower priority if time allows: Roles window as a side panel option; offset name labels that overlap
     place labels on the block map; briefly highlight a trait bar when you learn that trait.
+    - **Pending presentation decision (Codex batch 4, set 3):** The user has been asked to approve a session-only Pin as side panel toggle beside the profile, collision-aware map-name offsets, and a one-second new-trait flash using existing colours. These unspecified presentation choices remain held under the spec rule below; the other eight set-3 items are implemented.
 
 ### Logging and the developer case summary
 
