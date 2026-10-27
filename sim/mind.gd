@@ -1229,9 +1229,9 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		var facts: Array = []
 		flush_beliefs(w, n)  # a speaker reacts to everything said before their turn
 		if not n.claim_public and _public_claim_decision(w, n) != "":
-			_go_public(w, n, lines, facts)
+			_public_disclosure(w, n, lines, facts)
 		elif n.claim_public:
-			_go_public(w, n, lines, facts)  # already out: share any new readings
+			_public_disclosure(w, n, lines, facts)  # already out: share any new readings
 		var acc = _public_accusation(w, n, lines, facts)
 		if acc != null:
 			lines.append(acc["line"])
@@ -1448,6 +1448,7 @@ static func answer_hint(w, n) -> Dictionary:
 	lines.append_array(r["lines"])
 	var facts: Array = r["facts"]
 	if not n.claim_public:
+		n.dialogue_memory["confidence_requested"] = true
 		lines.append(say(n, "But keep this between us. Don't bring it up at the meeting; not yet."))
 		for f in facts:
 			if f.get("source", "") == n.id and f.get("kind", "") in ["info", "claim"]:
@@ -1496,7 +1497,7 @@ static func relay_reading(w, n, src, e: Dictionary, lines: Array, facts: Array) 
 		for l in w.living():
 			if l != n and l != src:
 				acknowledge_reading(w, l, src, e, n.id)
-		_go_public(w, src, lines, facts)
+		_public_disclosure(w, src, lines, facts)
 
 ## The source has explicitly said "That was me" in public. Binding this particular
 ## anonymous telling is now permitted; unrelated anonymous stories remain unresolved.
@@ -1577,6 +1578,14 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 		return {"tier": "reveal", "why": rs["why"], "entry": rs["entry"]}
 	return {"tier": "hint", "why": ""}
 
+## Called at the actual disclosure, including inside a streamed speaker's turn.
+## The promise itself still lapses through Game._break_confidences as before.
+static func _public_disclosure(w, n, lines: Array, facts: Array, share_readings: bool = true) -> void:
+	if not n.claim_public and n.dialogue_memory.get("confidence_requested", false):
+		lines.append(say(n, "I've decided the town should hear it."))
+		n.dialogue_memory.erase("confidence_requested")
+	_go_public(w, n, lines, facts, share_readings)
+
 ## Come out with their gift at the meeting (if not already) and share their unshared
 ## readings with the town. Adds the lines and cards; shared by the claim step and the
 ## reveal tier of an accusation.
@@ -1621,7 +1630,7 @@ static func last_words(w, n) -> Dictionary:
 	var claim: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	if n.claim_public and n.claimed_role != claim:
 		n.claim_public = false # With nothing to hide, correct their earlier claim.
-	_go_public(w, n, lines, facts, false)
+	_public_disclosure(w, n, lines, facts, false)
 	if lines.is_empty():
 		lines.append(_claim_line(n, claim))
 		facts.append({"kind": "claim", "subject": [n.id], "role": claim, "source": n.id,
@@ -1673,7 +1682,7 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	else:
 		var tier = _accuse_tier(w, n, t, s2)
 		if tier["tier"] == "reveal":
-			_go_public(w, n, lines, facts)
+			_public_disclosure(w, n, lines, facts)
 		elif tier["tier"] == "relay":
 			relay_reading(w, n, tier["src"], tier["entry"], lines, facts)
 		hint = tier["tier"] == "hint"
@@ -1955,7 +1964,7 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 		for k in cost:
 			parts["cost_" + k] = -cost[k]
 		if decide(w, n, "reveal_to_nominate", parts, "Bring out what points at %s (%s) to back the nomination?" % [t.id, top["why"]]):
-			_go_public(w, n, lines, facts)
+			_public_disclosure(w, n, lines, facts)
 		else:
 			n.hints[t.id] = {"day": w.day, "src": top["eid"]}
 			lines.append(say(n, "And I have another reason I'm not ready to share yet."))
@@ -2006,7 +2015,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 			parts["cost_" + k] = -reveal_cost(w, d)[k]
 		if d.claim_public or decide(w, d, "defence_reveal", parts, "Explain being out with my gift (%s)?" % role):
 			if not d.claim_public:
-				_go_public(w, d, lines, facts)
+				_public_disclosure(w, d, lines, facts)
 			lines.append(say(d, "I was out because I'm the %s. That's what you saw." % C.role_name(role)))
 			moves.append("reveal")
 			effs_by_move["reveal"] = [[d.id, -minf(0.35, out_weight), true, "excused: out at night as the %s" % C.role_name(role), ""]]
@@ -2532,6 +2541,7 @@ static func _confidence_request(w, n, tier: int, refusal: Dictionary) -> Diction
 	if not asks:
 		return {}
 	n.request_day = w.day
+	n.dialogue_memory["confidence_requested"] = true
 	return {"kind": "confidence", "npc": n.id, "tier": tier,
 		"line": say(n, "I'll tell you, but only if you promise not to reveal it yet."),
 		"decline": {"lines": [say(n, "Then it stays with me.")], "facts": [refusal]}}

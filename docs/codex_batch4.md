@@ -94,6 +94,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 ### Meetings
 
+   - **Implemented (Codex batch 4, set 2):** Confidence requests and private hint disclosures remember the request for privacy. Each actual first public disclosure announces the change within its speaker turn, including claim, accusation and relay routes. Claim/readings effects, confidence exemption and RNG are unchanged. Exact-string expectations changed: none.
+
 9. **No empty nomination cases.** "Case against agnes: ." appeared (NPC nominations, 37291 and 1002).
    When the nominator has no reason to cite, they say so plainly ("I don't trust them, and I can't
    say better than that"). Find where `Mind.nomination_case`/`case_against` build the text. Wording

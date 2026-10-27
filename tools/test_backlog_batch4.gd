@@ -27,6 +27,7 @@ func run():
 	compact_answers()
 	co_present_sightings()
 	first_person_notes()
+	confidence_public_notice()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -406,3 +407,53 @@ func first_person_notes():
 			g._maybe_tell_trait(n, n, reply)
 			check(reply.lines.size() == 1 and reply.lines[0].text.begins_with("I'd call myself ") and not n.name in reply.lines[0].text and not "their" in reply.lines[0].text and not "themselves" in reply.lines[0].text, "self-trait wording uses first person")
 			check(n.revealed_traits[key] == C.tier(n.traits[key]) and w.rng.state == probe.state and reply.facts.is_empty(), "self-trait phrasing retains the selected trait, learning and exact RNG draws")
+
+func confidence_public_notice():
+	var a = fresh()
+	var b = fresh()
+	var na = a.w.living_good()[0]
+	var nb = b.w.by_id[na.id]
+	na.request_day = -1
+	na.trust = 0.9
+	na.traits.composure = 0.0
+	var asked = false
+	for seed_value in range(1, 100):
+		a.w.rng.seed = seed_value
+		var rq = Mind._confidence_request(a.w, na, 3, {})
+		if not rq.is_empty():
+			asked = true
+			break
+	check(asked and na.dialogue_memory.get("confidence_requested", false), "a spoken confidence request records that the NPC asked for privacy")
+	for n in [na, nb]:
+		n.role = "clerk"
+		n.info_log = []
+		n.claim_public = false
+		n.claimed_role = "clerk"
+		Mind.Dialogue.begin_conversation(n.dialogue_memory)
+	var lines: Array = []
+	var facts: Array = []
+	var original_lines: Array = []
+	var original_facts: Array = []
+	b.w.rng.state = a.w.rng.state
+	Mind._public_disclosure(a.w, na, lines, facts)
+	Mind._go_public(b.w, nb, original_lines, original_facts)
+	check(lines[0].text == "I've decided the town should hear it." and lines.slice(1) == original_lines, "the public notice precedes the unchanged original claim")
+	check(facts == original_facts and a.w.rng.state == b.w.rng.state, "confidence release adds no cards or RNG draws")
+	var count = lines.size()
+	Mind._public_disclosure(a.w, na, lines, facts)
+	check(lines.size() == count, "later public refreshes do not repeat the confidence notice")
+	a.confidences[999] = na.id
+	var trust = na.trust
+	a._break_confidences([999])
+	check(na.trust == trust and not a.confidences.has(999), "the existing public-claim exemption still releases the player's confidence")
+	var g = fresh()
+	var n = g.w.living_good()[0]
+	g.w.day = 20
+	n.role = "clerk"
+	n.info_log = []
+	n.claim_public = false
+	n.traits.privacy = 0.0
+	n.dialogue_memory["confidence_requested"] = true
+	var st = {"speakers": [n], "i": 0, "done": false}
+	var turn = Mind.testimony_step(g.w, st)
+	check(n.claim_public and turn.lines.any(func(line): return line.text == "I've decided the town should hear it."), "confidence release arrives within the speaker's streamed testimony step")
