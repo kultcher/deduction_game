@@ -30,6 +30,7 @@ func run():
 	confidence_public_notice()
 	empty_nomination_cases()
 	volunteered_sightings()
+	vote_help()
 	direct_night_willingness()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -607,3 +608,9 @@ func direct_night_willingness():
 	w.rng.state = willing_state()
 	var all = Mind.answer_night(w, n, 2)
 	check(all.facts.filter(func(f): return f.kind == "sighting").size() == 6, "approved direct willingness replaces both the Gossip count/cutoff and trusted-friend omission")
+
+func vote_help():
+	var g = fresh()
+	var rng = g.w.rng.state
+	check("11 voters, including you" in g._help() and g.w.voter_count() == 11, "help explains the existing player-inclusive voter count")
+	check(g.w.rng.state == rng, "vote help changes no RNG or voting rules")

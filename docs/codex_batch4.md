@@ -118,6 +118,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 11. **Explain the vote count.** One line in help that the player's vote counts ("of 11" with ten
     townsfolk).
+   - **Implemented (Codex batch 4, set 2):** Help explicitly explains that ten living townsfolk plus the player means eleven voters. The existing voter count and all vote/nomination formulas are unchanged. Exact-string expectations changed: none.
+
 12. **Which night is the Demon's free night.** Say it in the Roles text and the first night prompt: the
     Demon doesn't kill on the night before you arrive (night 0) and kills from night 1.
 

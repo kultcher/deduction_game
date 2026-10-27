@@ -2317,6 +2317,7 @@ func _help() -> String:
   Approach: someone may ask for a word at the start of a phase: accept (uses the phase) | decline
   Night   : ward <name> (once per case) | vigil <block> | sleep
 Each day phase (morning, afternoon, evening) allows one action. A conversation allows 3 questions.
+Your vote counts too: with ten living townsfolk there are 11 voters, including you.
 Workers can always be found at work during their shift. Others may be busy talking with each other.
 Nominations go one at a time: the highest vote that reaches %d (half the voters) puts someone on the
 block; a later nomination needs more votes to replace them, and a tie clears the block.
