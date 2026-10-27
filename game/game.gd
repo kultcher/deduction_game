@@ -1961,6 +1961,11 @@ func _testimony_turn() -> void:
 	var t: Dictionary = Mind.testimony_step(w, _testimony)
 	if not t.get("lines", []).is_empty():
 		_testimony["spoken"] += 1
+		# Board cards are player knowledge. Give listeners the spoken report before
+		# the next speaker reacts; both streamed and immediate meetings use this turn.
+		var speaker = w.by_id[t.who]
+		for fact in t.get("facts", []):
+			Social.deliver_public_sighting(w, speaker, fact)
 		_lines(t["lines"])
 		_facts(t["facts"])
 	if not _testimony["done"]:

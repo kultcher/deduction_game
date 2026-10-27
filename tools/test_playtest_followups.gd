@@ -3,6 +3,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const C = preload("res://sim/content.gd")
+const Social = preload("res://sim/social.gd")
 const Columns = preload("res://ui/column_menus.gd")
 const UITheme = preload("res://ui/theme.gd")
 var checks = 0
@@ -30,6 +31,7 @@ func run():
 	approach_fatigue()
 	martyr_wording()
 	spoken_relationships()
+	public_sightings()
 	print("Playtest follow-ups: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func picker(title: String, count: int):
@@ -281,3 +283,68 @@ func spoken_relationships():
 		line.relationship = {"kind": kind, "people": [n.id, t.id]}
 		g._line(line)
 		check(g.known_relationships.size() == 1 and g.known_relationships.existing.text == "Earlier attributed disclosure", "existing attributed bonds deduplicate independently of pair order")
+
+func public_sightings():
+	var g = fresh()
+	var w = g.w
+	w.day = 3
+	w.phase = C.EVENING
+	w.open_meeting()
+	var speaker = w.living_good()[0]
+	var target = w.living_good()[1]
+	var dead = w.living_good().back()
+	dead.alive = false
+	for n in w.npcs:
+		n.ledger = {}
+		n.heard = {}
+		n.hearsay = []
+		n.info_log = []
+		n.beliefs = []
+		n.known_claims = {}
+		n.claim_public = true
+		n.claimed_role = "clerk"
+		n.max_tier = 4
+		n.shadow = null
+		for id in n.suspicion: n.suspicion[id] = 0.1
+		for id in n.npc_trust: n.npc_trust[id] = 0.5
+		if not n.is_evil(): n.role = "clerk"
+	speaker.home_block = "square"
+	speaker.traits.gossip = 0.6
+	speaker.traits.confidence = 0.6
+	speaker.traits.composure = 0.0
+	speaker.secret_mod = ""
+	var seen = {"kind": "saw", "who": target.id, "block": "square", "day": 1, "phase": C.NIGHT, "how": "window"}
+	speaker.beliefs = [seen]
+	w.defer_beliefs = true
+	g._testimony = {"speakers": [speaker], "i": 0, "done": false, "spoken": 0}
+	g._testimony_turn()
+	var sightings = g.board.filter(func(card): return card.kind == "sighting" and card.source == speaker.id and card.day == 1 and card.subject == [target.id])
+	check(sightings.size() == 1, "the actual testimony turn files the volunteered sighting once")
+	if sightings.is_empty(): return
+	var receipt = Mind.WorkshopLedger.Evidence.normalize_card(sightings[0])
+	var eid: String = "heard:" + receipt.id
+	for listener in w.living():
+		if listener == speaker: continue
+		var mind = listener.shadow if listener.is_evil() else listener
+		check(mind != null and mind.ledger.has(eid), "living %s hears the exact public receipt without player presentation" % listener.id)
+		if mind == null or not mind.ledger.has(eid): continue
+		var entry: Dictionary = mind.ledger[eid]
+		check(entry.meta.workshop_public and entry.meta.workshop_teller == speaker.id and entry.meta.workshop_card.source == speaker.id and entry.meta.workshop_card.observed_at == {"day": 1, "phase": "night"}, "public hearing retains source, observed night and public provenance")
+		check(is_equal_approx(entry.weight, 0.75) and is_equal_approx(mind.npc_trust[speaker.id], 0.5), "ordinary hearing weight is reused without private-chat trust bonus")
+		check(mind.hearsay.any(func(item): return item.kind == "sighting" and item.about == target.id and item.from == speaker.id), "listeners retain the attributed report for later conversation")
+	check(not dead.ledger.has(eid) and not speaker.ledger.has(eid), "dead NPCs and the speaker do not receive a secondhand self-report")
+	var rng = w.rng.state
+	var lines: Array = []
+	var facts: Array = []
+	Mind._volunteer_night_sightings(w, speaker, lines, facts)
+	check(facts.is_empty() and w.rng.state == rng, "a public sighting stays told-to-town and is not volunteered twice")
+	var listener = w.living_good()[2]
+	var count = listener.ledger.size()
+	var weight: float = listener.ledger[eid].weight
+	Social.deliver_public_sighting(w, speaker, sightings[0])
+	check(listener.ledger.size() == count and listener.ledger[eid].weight == weight and w.rng.state == rng, "repeated delivery reuses the receipt and never stacks weight or consumes RNG")
+	Mind.flush_beliefs(w, listener)
+	check(listener.workshop_state.get("owned", {}).has(eid), "shared-model ownership includes the sighting before the player presents anything")
+	check(listener.ledger[eid].applied.values().all(func(value): return is_zero_approx(value)), "shared ownership parks the duplicate native effect")
+	w.pending_beliefs = []
+	w.defer_beliefs = false

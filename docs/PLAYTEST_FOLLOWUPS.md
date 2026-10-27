@@ -77,3 +77,15 @@ the game records only emitted speech as an attributed profile note for both peop
 Existing friend/rival disclosures deduplicate regardless of pair order, and dead
 people can be named. Generic distrust does not imply rivalry; hidden town bonds,
 Lovers, NPC trust and suspicion are never scanned to fill the profile.
+
+## PR #25: volunteered sightings reach listeners
+
+Every ordinary night-sighting fact actually spoken in `Game._testimony_turn` now
+passes through `Social._deliver` for each other living listener before the next
+speaker reacts. This also covers sightings cited in accusations. Good listeners
+receive the existing trust-weighted sighting ledger entry, attributed hearsay and
+heard/told bookkeeping. Evil receives its existing intel and its good self hears
+the report. The exact player-facing receipt identifies the same fact in the shared
+model; repeat hearing replaces weight rather than stacking effects. Public delivery
+adds no RNG and does not award the private-conversation +0.02 trust benefit.
+No disclosure gates, hearing coefficients, vote formulas or evil policies changed.
