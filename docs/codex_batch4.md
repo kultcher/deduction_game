@@ -84,6 +84,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 7. **First person about oneself.** Relationship notes and trait reveals said "Agnes and Edda are close"
    from Edda. When the speaker is one of the pair, say "Agnes and I are close" (or skip it). See
    `Game._maybe_tell_relationships` and `Game._maybe_tell_trait`.
+   - **Implemented (Codex batch 4, set 1):** A speaker in a town bond says the other person and I, with quoted attribution in profile notes. Self-trait commentary also uses first person. Original bond identities, trait learning, probabilities and exact RNG draws remain unchanged; third-party wording is retained. Exact-string expectations changed: none.
+
 8. **"Keep this between us", then public at the meeting.** When an NPC who asked you to keep a confidence
    goes public, give them a line that marks the change ("I've decided the town should hear it."). The
    confidence already lapses when they go public (`_break_confidences` checks `claim_public`).

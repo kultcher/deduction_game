@@ -1805,6 +1805,10 @@ func _maybe_tell_trait(n, t, r: Dictionary) -> void:
 	var tier: String = Mind.C.tier(t.traits[key])
 	var words: String = TRAIT_WORDS[key][tier][0 if friend else (2 if rival else 1)]
 	var line: String = ("I'll say this for %s: they're %s." if friend else ("%s is %s, if you ask me." if rival else "From what I've seen, %s is %s.")) % [t.name, words]
+	if n == t:
+		# Keep the selected trait, its learning and the existing rolls; only person changes.
+		var own_words: String = TRAIT_WORDS[key][tier][1].replace("themselves", "myself").replace("their", "my").replace("them", "me").replace("they've", "I've").replace("they're", "I'm")
+		line = "I'd call myself %s." % own_words
 	t.revealed_traits[key] = tier
 	r["lines"].append(Mind.say(n, line))
 	r["narration"] = r.get("narration", []) + ["(You learn %s's %s: %s.)" % [t.name, key.capitalize(), tier]]
@@ -1831,7 +1835,12 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 		var bond: Dictionary = entry.bond
 		var text = "%s and %s %s." % [w.by_id[bond.people[0]].name, w.by_id[bond.people[1]].name,
 			"are close" if bond.kind == "friend" else "don't get along"]
-		known_relationships[entry.key] = {"kind": bond.kind, "people": bond.people.duplicate(), "source": n.id, "text": n.name + " says " + text}
+		var note = n.name + " says " + text
+		if n.id in bond.people:
+			var other: String = bond.people[1] if bond.people[0] == n.id else bond.people[0]
+			text = "%s and I %s." % [w.by_id[other].name, "are close" if bond.kind == "friend" else "don't get along"]
+			note = n.name + ' says "' + text + '"'
+		known_relationships[entry.key] = {"kind": bond.kind, "people": bond.people.duplicate(), "source": n.id, "text": note}
 		r.lines.append(Mind.say(n, text))
 		w.dlog.add("player_learns_relationship", n.id, t.id, {"kind": bond.kind, "people": bond.people})
 

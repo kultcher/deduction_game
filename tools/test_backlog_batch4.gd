@@ -26,6 +26,7 @@ func run():
 	await readings_ask()
 	compact_answers()
 	co_present_sightings()
+	first_person_notes()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -348,3 +349,60 @@ func co_present_sightings():
 	reply = {"lines": [], "facts": []}
 	preload("res://game/recent_sightings.gd").append_to(w, n, b, reply, [])
 	check(reply.facts.size() == 1 and reply.facts[0].subject == [b.id], "person-specific followups retain a same-block sighting elsewhere")
+
+func first_person_notes():
+	var g = fresh()
+	var w = g.w
+	var n = w.living_good()[0]
+	var t = w.living_good()[1]
+	var other = w.living_good()[2]
+	n.traits.gossip = 1.0
+	n.trust = 1.0
+	var probe = RandomNumberGenerator.new()
+	var reveal_state: int = 0
+	for seed_value in range(1, 100):
+		probe.seed = seed_value
+		var before = probe.state
+		if probe.randf() < 0.1:
+			reveal_state = before
+			break
+	for kind in ["friend", "rival"]:
+		for order in [[n.id, t.id], [t.id, n.id]]:
+			w.town_relationships = [{"kind": kind, "people": order}]
+			g.known_relationships = {}
+			w.rng.state = reveal_state
+			probe.state = reveal_state
+			probe.randf()
+			var reply = {"lines": [], "facts": []}
+			g._maybe_tell_relationships(n, t, reply)
+			var expected = t.name + (" and I are close." if kind == "friend" else " and I don't get along.")
+			check(reply.lines.size() == 1 and reply.lines[0].text == expected, "both pair orders and bond kinds use first person about the speaker")
+			var note = g.known_relationships.values()[0]
+			check(note.text == n.name + ' says "' + expected + '"' and note.source == n.id and note.people == order and reply.facts.is_empty(), "first-person profile note retains attribution and original bond identity without cards")
+			check(w.rng.state == probe.state, "first-person relationship wording keeps the original single roll")
+			g._maybe_tell_relationships(n, t, reply)
+			check(w.rng.state == probe.state and reply.lines.size() == 1, "known first-person bonds do not repeat or roll again")
+	w.town_relationships = [{"kind": "friend", "people": [t.id, other.id]}]
+	g.known_relationships = {}
+	w.rng.state = reveal_state
+	var third = {"lines": [], "facts": []}
+	g._maybe_tell_relationships(n, t, third)
+	check(third.lines[0].text == "%s and %s are close." % [t.name, other.name], "third-party relationship wording stays unchanged")
+	n.friends = []
+	n.rivals = []
+	n.pressure = 1.0 # Allow self-trait replies even when exercising low gossip.
+	for key in g.OBSERVABLE_TRAITS:
+		for tier in [0.0, 0.5, 1.0]:
+			n.traits.gossip = 1.0
+			n.traits[key] = tier
+			n.revealed_traits = {}
+			for known in C.TRAITS:
+				if known != key: n.revealed_traits[known] = "mid"
+			w.rng.state = reveal_state
+			probe.state = reveal_state
+			probe.randf()
+			probe.randi_range(0, 0)
+			var reply = {"lines": [], "facts": []}
+			g._maybe_tell_trait(n, n, reply)
+			check(reply.lines.size() == 1 and reply.lines[0].text.begins_with("I'd call myself ") and not n.name in reply.lines[0].text and not "their" in reply.lines[0].text and not "themselves" in reply.lines[0].text, "self-trait wording uses first person")
+			check(n.revealed_traits[key] == C.tier(n.traits[key]) and w.rng.state == probe.state and reply.facts.is_empty(), "self-trait phrasing retains the selected trait, learning and exact RNG draws")
