@@ -125,6 +125,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 ### UI and text interface
 
+   - **Implemented (Codex batch 4, set 2):** The graphical and typed Roles views and first night prompt share one explanation: night 0 has no Demon kill; killing starts on night 1. Later night prompts stay brief. Text only; resolution rules and RNG are unchanged. Exact-string expectations changed: none.
+
 13. **Approaches: say where.** Accepting an approach moves the player; print the same arrival block as
     `go` ("Present: …"), and name the place in the approach line before accepting.
 14. **Looking isn't talking.** Clicking a portrait started a conversation and spent the phase. Make a

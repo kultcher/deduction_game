@@ -432,6 +432,12 @@ func _open_roles() -> void:
 		cols.add_child(c)
 	_roles_group(left, "Gifts of the town", C.GOOD_ROLES)
 	_roles_group(right, "The demon's side: the demon and %d minion%s" % [g.w.minion_ids.size(), "" if g.w.minion_ids.size() == 1 else "s"], C.EVIL_ROLES)
+	var night_rule = Label.new()
+	night_rule.name = "DemonNightRule"
+	night_rule.text = C.DEMON_NIGHT_RULE
+	night_rule.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	night_rule.add_theme_color_override("font_color", UITheme.color("ink"))
+	right.add_child(night_rule)
 	_roles_group(right, "Secrets: one in play, on top of a gift", C.SECRET_MOD_LIST)
 	var summary = Label.new()
 	summary.name = "SetupSummary"

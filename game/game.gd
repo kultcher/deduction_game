@@ -2156,6 +2156,7 @@ func _close_meeting() -> void:
 				_narr(t)
 	state = "night"
 	_hdr("Night %d" % w.day)
+	if w.day == 1: _narr(C.DEMON_NIGHT_RULE)
 	var opts = "'vigil <block>' (watch a block)"
 	if w.tools["ward"] > 0:
 		opts = "'ward <name>' (shield them from the demon, once per case), " + opts
@@ -2479,6 +2480,7 @@ func _script() -> String:
 	out.append("Hint families: " + "; ".join(fams) + ".")
 	out.append("Evil: the Demon, and %d of these minions:" % w.minion_ids.size())
 	out.append("  %-12s %s" % ["Demon", C.ROLES["demon"]["desc"]])
+	out.append(C.DEMON_NIGHT_RULE)
 	for r in C.MINION_ROLES:
 		out.append("  %-12s %s" % [C.role_name(r), C.ROLES[r]["desc"]])
 	out.append("Secrets (one in play, laid on a townsfolk on top of their gift):")

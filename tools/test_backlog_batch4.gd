@@ -31,6 +31,7 @@ func run():
 	empty_nomination_cases()
 	volunteered_sightings()
 	vote_help()
+	await demon_night_wording()
 	direct_night_willingness()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -614,3 +615,25 @@ func vote_help():
 	var rng = g.w.rng.state
 	check("11 voters, including you" in g._help() and g.w.voter_count() == 11, "help explains the existing player-inclusive voter count")
 	check(g.w.rng.state == rng, "vote help changes no RNG or voting rules")
+
+func demon_night_wording():
+	var scene = load("res://ui/main.tscn").instantiate()
+	scene.show_script_at_start = false
+	root.add_child(scene)
+	var g = fresh()
+	scene.g = g
+	var rng = g.w.rng.state
+	scene._open_roles()
+	var labels = scene.roles_box.find_children("DemonNightRule", "Label", true, false)
+	check(labels.size() == 1 and labels[0].text == C.DEMON_NIGHT_RULE and C.DEMON_NIGHT_RULE in g._script(), "both graphical and typed Roles state the night-0 and night-1 rule")
+	check(g.w.rng.state == rng, "Roles wording does not advance RNG")
+	for day in [1, 2]:
+		g.w.day = day
+		g.state = "meeting"
+		g.w.meeting = {"block": ""}
+		g.events = []
+		g._close_meeting()
+		var text = Game.render(g.events)
+		check((C.DEMON_NIGHT_RULE in text) == (day == 1) and g.state == "night", "the explanatory line appears at the first night prompt only")
+	for i in range(3): await process_frame
+	scene.free()
