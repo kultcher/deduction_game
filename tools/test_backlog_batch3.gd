@@ -75,7 +75,7 @@ func headlines():
 	check(overlay.current.text == "0" and overlay.pending.size() == 4, "notices play one at a time in order")
 	var left = overlay.remaining
 	overlay._process(0.25)
-	check(is_equal_approx(left - overlay.remaining, 0.5), "more than two waiting notices shorten display time")
+	check(is_equal_approx(left - overlay.remaining, 0.25 * minf(2.0, overlay.styles.dawn.duration / 3.0)), "more than two waiting notices shorten display time")
 	var motion = InputEventMouseMotion.new()
 	motion.position = Vector2(30, 30)
 	motion.global_position = motion.position

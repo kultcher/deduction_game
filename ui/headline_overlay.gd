@@ -1,20 +1,20 @@
 ## Nonmodal presentation only. Settings overrides: [headline.dawn], size=44,
-## colour=Color(1, .8, .3, 1), duration=2.5 (and the same keys for every kind).
+## colour=Color(1, .8, .3, 1), duration=5.0 (and the same keys for every kind).
 extends Control
 const DEFAULT_STYLES = {
-	"dawn": {"size": 44, "colour": Color("e9bc55"), "duration": 2.5},
-	"nightfall": {"size": 44, "colour": Color("8dbaf1"), "duration": 2.5},
-	"phase": {"size": 26, "colour": Color("e9bc55"), "duration": 1.2},
-	"death": {"size": 36, "colour": Color("ec7373"), "duration": 2.5},
-	"quiet": {"size": 36, "colour": Color("91cfa4"), "duration": 2.5},
-	"nomination": {"size": 32, "colour": Color("eeb55d"), "duration": 2.0},
-	"block": {"size": 32, "colour": Color("eeb55d"), "duration": 2.0},
-	"execution": {"size": 40, "colour": Color("e65065"), "duration": 2.5},
-	"martyr": {"size": 40, "colour": Color("e9bc55"), "duration": 2.5},
-	"curse": {"size": 40, "colour": Color("c493eb"), "duration": 2.5},
-	"totem": {"size": 36, "colour": Color("91cfa4"), "duration": 2.5},
-	"ward": {"size": 36, "colour": Color("91cfa4"), "duration": 2.5},
-	"ending": {"size": 44, "colour": Color("e9bc55"), "duration": 4.0}}
+	"dawn": {"size": 44, "colour": Color("e9bc55"), "duration": 5.0},
+	"nightfall": {"size": 44, "colour": Color("8dbaf1"), "duration": 5.0},
+	"phase": {"size": 26, "colour": Color("e9bc55"), "duration": 3.0},
+	"death": {"size": 36, "colour": Color("ec7373"), "duration": 5.0},
+	"quiet": {"size": 36, "colour": Color("91cfa4"), "duration": 5.0},
+	"nomination": {"size": 32, "colour": Color("eeb55d"), "duration": 5.0},
+	"block": {"size": 32, "colour": Color("eeb55d"), "duration": 5.0},
+	"execution": {"size": 40, "colour": Color("e65065"), "duration": 5.0},
+	"martyr": {"size": 40, "colour": Color("e9bc55"), "duration": 5.0},
+	"curse": {"size": 40, "colour": Color("c493eb"), "duration": 5.0},
+	"totem": {"size": 36, "colour": Color("91cfa4"), "duration": 5.0},
+	"ward": {"size": 36, "colour": Color("91cfa4"), "duration": 5.0},
+	"ending": {"size": 44, "colour": Color("e9bc55"), "duration": 7.0}}
 var styles: Dictionary = DEFAULT_STYLES.duplicate(true)
 var pending: Array = []
 var current: Dictionary = {}
@@ -28,8 +28,8 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	load_styles()
 	var box = VBoxContainer.new()
-	box.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	box.offset_top = 100
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.offset_left = 35
 	box.offset_right = -35
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -88,13 +88,18 @@ func skip() -> void:
 	title.add_theme_font_size_override("font_size", style.size)
 	title.add_theme_color_override("font_color", style.colour)
 	subtitle.text = current.get("subtitle", "")
+	subtitle.visible = not subtitle.text.is_empty()
 	subtitle.add_theme_color_override("font_color", style.colour)
 	visible = true
 
 func _process(delta: float) -> void:
 	if current.is_empty():
 		return
-	remaining -= delta * (2.0 if pending.size() > 2 else 1.0)
+	var duration: float = styles.get(current.get("kind", "phase"), styles.phase).duration
+	# Keep the queue moving, but give a default notice at least three real seconds.
+	# Shorter explicit settings overrides remain shorter.
+	var speed = minf(2.0, maxf(1.0, duration / 3.0)) if pending.size() > 2 else 1.0
+	remaining -= delta * speed
 	if remaining <= 0.0:
 		skip()
 

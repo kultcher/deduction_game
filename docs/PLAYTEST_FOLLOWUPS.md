@@ -35,3 +35,11 @@ labels, and Workshop cards retain normal solid selection borders. Adapter-based
 classification survives in explanatory tooltips; evidence, receipt identity and
 selection/hit areas are unchanged. The context UI regression suite now checks the
 requested ordinary row text and absence of the decorative overlay.
+
+## Headline placement and duration
+
+The title/subtitle block is centered horizontally and vertically, including wrapped
+text and title-only notices. Defaults are five seconds, three for phase changes and
+seven for endings. More than two queued notices still accelerate, with a three-real-
+second floor for defaults; shorter explicit settings overrides remain effective.
+Click-to-skip and mouse-transparent input behavior remain covered by batch-3 tests.

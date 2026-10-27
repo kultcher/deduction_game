@@ -25,6 +25,7 @@ func settle():
 func run():
 	await menus()
 	checkbox_skin()
+	await headlines()
 	print("Playtest follow-ups: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func picker(title: String, count: int):
@@ -105,3 +106,31 @@ func checkbox_skin():
 	var theme = UITheme.make()
 	check(theme.get_stylebox("normal", "CheckBox") is StyleBoxEmpty and theme.get_stylebox("disabled", "CheckBox") is StyleBoxEmpty, "disabled Hide Unselected uses the same checkbox layout, not inherited plaque padding")
 	check(theme.get_color("font_disabled_color", "CheckBox") == UITheme.color("muted"), "disabled checkbox text stays legible on the board")
+
+func headlines():
+	root.size = Vector2i(1280, 720)
+	root.content_scale_size = root.size
+	var overlay = preload("res://ui/headline_overlay.gd").new()
+	root.add_child(overlay)
+	overlay.set_process(false)
+	overlay.load_styles("user://no-such-headline-settings.cfg")
+	check(overlay.styles.dawn.duration == 5.0 and overlay.styles.phase.duration == 3.0 and overlay.styles.ending.duration == 7.0, "headline defaults use approved longer durations")
+	for extent in [Vector2i(1280, 720), Vector2i(640, 480)]:
+		root.size = extent
+		root.content_scale_size = extent
+		overlay.clear()
+		overlay.enqueue({"kind": "death", "text": "A longer headline that wraps when the screen becomes narrow", "subtitle": "A second line"})
+		await settle()
+		var combined = overlay.title.get_global_rect().merge(overlay.subtitle.get_global_rect())
+		check(combined.get_center().distance_to(Vector2(extent) / 2.0) <= 1.0, "wrapped title and subtitle are centered together in both dimensions")
+	overlay.clear()
+	for i in range(5): overlay.enqueue({"kind": "dawn", "text": str(i)})
+	overlay._process(2.9)
+	check(overlay.current.text == "0", "a crowded queue gives each ordinary notice at least three seconds")
+	overlay._process(0.11)
+	check(overlay.current.text == "1", "crowded notices still advance faster than five seconds")
+	overlay.clear()
+	overlay.enqueue({"kind": "phase", "text": "Afternoon"})
+	await settle()
+	check(not overlay.subtitle.visible and absf(overlay.title.get_global_rect().get_center().y - root.size.y / 2.0) <= 1.0, "a headline without a subtitle centers its visible text")
+	overlay.free()
