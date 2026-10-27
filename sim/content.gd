@@ -2,6 +2,8 @@
 ## Pure data. Nothing here holds case state.
 extends RefCounted
 
+
+const DEMON_NIGHT_RULE = "The Demon does not kill on the night before you arrive. It kills from night 1."
 ## Enable explicitly in regression tests and playtests, never in ordinary play.
 const STRICT_EVALUATOR = false
 

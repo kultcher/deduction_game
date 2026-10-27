@@ -274,6 +274,8 @@ func _test_fake_watch_story() -> void:
 			print("  withheld wrongly: ", held_txt)
 		# ...and once told, the night story names exactly who the report names.
 		m.told_readings = m.info_log.size()
+		# Exercise the willing branch here; batch 4 separately checks the 95% refusal rate.
+		w.rng.seed = 1
 		var r = Mind.answer_night(w, m, 1)
 		var txt = " ".join(PackedStringArray(r["lines"].map(func(l): return l["text"])))
 		tried += 1
@@ -289,16 +291,19 @@ func _test_ask_seen() -> void:
 	var n = w.living_good()[0]
 	var x = w.living_good()[1]
 	var y = w.living_good()[2]
+	w.player_loc = "tavern"
+	x.loc = "tavern"
+	y.loc = "smithy"
 	n.traits["gossip"] = 1.0
 	n.beliefs = [
 		{"kind": "saw", "who": x.id, "loc": "tavern", "block": "square", "day": 1, "phase": 0, "with": ""},
 		{"kind": "saw", "who": y.id, "loc": "smithy", "block": "market", "day": 1, "phase": 0, "with": ""}]
-	var r1 = Mind.answer_today(w, n, "", "square")
+	var r1 = Mind.answer_today(w, n, "", "tavern")
 	var t1 = r1["lines"][0]["text"]
 	_check(not (x.name in t1) and y.name in t1, "people beside you this phase are left out (%s)" % t1)
 	n.beliefs.append({"kind": "saw", "who": x.id, "loc": "well", "block": "square", "day": 0, "phase": 2, "with": ""})
 	w.day = 1
-	var r2 = Mind.answer_today(w, n, "yesterday", "square")
+	var r2 = Mind.answer_today(w, n, "yesterday", "tavern")
 	_check(x.name in r2["lines"][0]["text"] and not (y.name in r2["lines"][0]["text"]), "ask seen yesterday reaches back a day")
 	var r3 = Mind.answer_today(w, n, "morning", "")
 	_check(y.name in r3["lines"][0]["text"], "ask seen morning names who was seen this morning")

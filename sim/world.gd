@@ -1409,11 +1409,28 @@ func _add_info(n, entry: Dictionary, quiet: bool = false) -> void:
 		entry["true"] = true
 	if n.gift_broken() and entry.get("why", "") == "":
 		entry["why"] = ("poisoned" if n.poisoned else "delusional")
+	if not entry["true"]:
+		entry["why"] = false_reading_reason(entry)
 	if phase != C.NIGHT:
 		entry["phase"] = phase
 	n.info_log.append(entry)
 	dlog.add("info", n.id, "", entry, "%s (%s) learns: %s%s" % [n.name, n.role, entry["text"],
-		"" if entry["true"] else "  [FALSE: %s]" % entry.get("why", "?")])
+		"" if entry["true"] else "  [FALSE: %s]" % false_reading_reason(entry)])
+
+## Diagnostic provenance only: never infer a cause from today's role/health for an
+## old reading. Keep explicit causes; identify a known fabricated relay or be honest
+## that the producing path failed to record its cause.
+static func false_reading_reason(entry: Dictionary) -> String:
+	var recorded = str(entry.get("why", "")).strip_edges()
+	if recorded != "" and recorded != "?": return recorded
+	if entry.get("fake", false): return "evil fabrication"
+	if entry.get("role", "") == "medium":
+		var item: Dictionary = entry.get("data", {}).get("item", {})
+		var inner: Dictionary = item.get("entry", {})
+		if inner.get("fake", false):
+			return "evil fabrication relayed from the dead: " + false_reading_reason(inner)
+		if item.get("lie", false): return "evil fabrication relayed from the dead"
+	return "fallback: false reading; cause was not recorded"
 
 ## Arbitrary result for a broken gift: any value in range other than the true one.
 func _other_than(true_v: int, lo: int, hi: int) -> int:

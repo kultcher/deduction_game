@@ -1,0 +1,22 @@
+{
+  "source": "case_37291.jsonl, original developer event 466",
+  "case": {
+    "seed": 37291,
+    "npcs": 10
+  },
+  "event": {
+    "actor": "fenwick",
+    "data": {
+      "loc": "wharf",
+      "material": "docks",
+      "night": 3,
+      "owned": true
+    },
+    "day": 3,
+    "phase": "Night",
+    "reason": "Fenwick dropped a personal item at the wharf while hunting Jory.",
+    "seq": 466,
+    "target": "",
+    "type": "dropped"
+  }
+}

@@ -5,6 +5,7 @@ const World = preload("res://sim/world.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const DevLog = preload("res://sim/devlog.gd")
+const C = preload("res://sim/content.gd")
 const RollWindow = preload("res://ui/decision_window.gd")
 var failures = 0
 var checks = 0
@@ -24,6 +25,7 @@ func _init() -> void:
 	await _window()
 	await _main_ui()
 	await _parity()
+	_batch4_decisions()
 	print("DECISION INSPECTOR: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 
@@ -162,8 +164,12 @@ func _main_ui() -> void:
 	scene.debug_check.button_pressed = true
 	scene.roll_button.pressed.emit()
 	_check(scene.roll_button.visible and scene.roll_window.visible and scene.g.prediction_spoiled and scene.g.w.rng.state == state, "Debug opens inspector without RNG and preserves unscored identification rule")
+	scene._set_roles_pinned(true)
+	_check(scene.roles_dock.visible and scene.roll_window.visible and scene.g.w.rng.state == state, "pinned Roles and live inspector coexist without changing game RNG")
+	scene._new_case()
+	_check(scene.roles_pinned and scene.g.debug_overlay and scene.roll_window.feed == scene.g.decision_feed and not scene.g.decision_feed.records.is_empty(), "new case preserves pin/debug preferences and binds the inspector to fresh setup checks")
 	scene.debug_check.button_pressed = false
-	_check(not scene.roll_window.visible and not scene.g.decision_feed.enabled, "turning Debug off hides inspector and stops collection")
+	_check(not scene.roll_window.visible and not scene.g.decision_feed.enabled and scene.roles_dock.visible, "turning Debug off stops capture while keeping the independently pinned Roles panel")
 	scene.queue_free()
 	await process_frame
 
@@ -220,3 +226,108 @@ func _parity() -> void:
 	on.new_case(42, 7)
 	_check(on.decision_feed != old and on.decision_feed.records.size() < Feed.LIMIT and on.decision_feed.enabled, "new cases start a fresh bounded observer while retaining Debug preference")
 	await process_frame
+
+## The merged batch must keep its approved filters and draw order while exposing
+## new decision points to the inspector. Deliberately use low Gossip and a friend.
+func _batch4_decisions() -> void:
+	var on = Game.new()
+	var off = Game.new()
+	on.debug_overlay = true
+	for g in [on, off]:
+		g.detailed_logging = false
+		g.log_dir = "user://decision_inspector_tests"
+		g.new_case(4242, 10)
+		var w = g.w
+		var n = w.living_good()[0]
+		var t = w.living_good()[1]
+		w.day = 3
+		w.set_log_time()
+		n.role = "clerk"
+		n.secret_mod = ""
+		n.claimed_role = ""
+		n.silenced = false
+		n.home_block = "square"
+		n.history[w.time_key(2, C.NIGHT)] = "home:square"
+		n.traits.gossip = 0.0
+		n.traits.composure = 0.0
+		n.npc_trust[t.id] = 0.95
+		n.beliefs = [{"kind": "saw", "who": t.id, "block": "square", "day": 2, "phase": C.NIGHT, "how": "window"}]
+	var probe = RandomNumberGenerator.new()
+	for expected in [true, false]:
+		var initial = 0
+		var draw = 0.0
+		for seed_value in range(1, 1000):
+			probe.seed = seed_value
+			initial = probe.state
+			draw = probe.randf()
+			if (draw < 0.95) == expected: break
+		on.decision_feed.clear()
+		var replies: Array = []
+		for g in [on, off]:
+			g.w.rng.state = initial
+			g.w.dlog.begin_action("command", {"cmd": "ask night"})
+			replies.append(Mind.answer_night(g.w, g.w.living_good()[0], 2))
+			g.w.dlog.end_action()
+		_check(replies[0] == replies[1] and _fingerprint(on) == _fingerprint(off), "batch-4 direct report response/state is identical with inspector on/off: " + str(expected))
+		_check(on.w.rng.state == probe.state and off.w.rng.state == probe.state, "95 percent willingness remains the sole draw; old friend/Gossip filters stay removed")
+		var rows = on.decision_feed.records.filter(func(e): return e.kind == "direct_night_sightings")
+		_check(rows.size() == 1 and rows[0].details.draw == draw and rows[0].details.threshold == 0.95 and rows[0].result == expected and rows[0].estimate.chance == 0.95, "inspector displays the exact new willingness draw, cutoff, outcome and chance")
+		_check(rows[0].trigger == "ask night" and rows[0].stats.eligible_sightings == 1 and off.decision_feed.records.is_empty(), "new willingness row retains command/input context and stays disabled in control")
+		_check(on.w.living_good()[0].told_to == off.w.living_good()[0].told_to and on.w.living_good()[0].dialogue_memory == off.w.living_good()[0].dialogue_memory, "private telling/account bookkeeping is identical with capture enabled")
+	# No RNG in voluntary testimony; its percentage must stay N/A.
+	for eligible in [true, false]:
+		on.decision_feed.clear()
+		var replies: Array = []
+		var before_rng = on.w.rng.state
+		for g in [on, off]:
+			var n = g.w.living_good()[0]
+			n.traits.gossip = 0.6 if eligible else 0.1
+			n.traits.confidence = 0.6 if eligible else 0.1
+			n.told_to = {}
+			var lines: Array = []
+			var facts: Array = []
+			Mind._volunteer_night_sightings(g.w, n, lines, facts)
+			replies.append({"lines": lines, "facts": facts})
+		_check(replies[0] == replies[1] and _fingerprint(on) == _fingerprint(off) and on.w.rng.state == before_rng, "volunteering threshold and facts preserve on/off parity without RNG: " + str(eligible))
+		var row: Dictionary = on.decision_feed.records.filter(func(e): return e.kind == "volunteer_night_sightings")[0]
+		_check(row.result == eligible and row.estimate.type == "deterministic" and row.stats.gossip == (0.6 if eligible else 0.1) and row.details.threshold == 1.2, "inspector shows raw volunteering stats and threshold without inventing a probability")
+
+	# Refusing whereabouts can expose an off-home sighting only through the
+	# existing privacy-slip draw; capture must show that exact sample too.
+	var captured = false
+	for seed_value in range(1, 60):
+		on.decision_feed.clear()
+		var replies: Array = []
+		for g in [on, off]:
+			var w = g.w
+			var n = w.minion()
+			var t = w.living_good()[0]
+			w.day = 2
+			w.set_log_time()
+			n.home_block = "square"
+			n.history[w.time_key(1, C.NIGHT)] = "night:market"
+			n.claimed_role = ""
+			n.claim_public = false
+			n.info_log = []
+			n.secret_mod = ""
+			n.traits.gossip = 1.0
+			n.traits.confidence = 0.0
+			n.traits.privacy = 1.0
+			n.traits.composure = 0.0
+			n.trust = 0.5
+			n.pressure = 0.0
+			n.pressed_today = 0
+			n.dialogue_memory = {}
+			n.beliefs = [{"kind": "saw", "who": t.id, "block": "market", "day": 1, "phase": C.NIGHT, "how": "street"}]
+			w.rng.seed = seed_value
+			replies.append(Mind.answer_night(w, n, 1))
+		var rows = on.decision_feed.records.filter(func(e): return e.kind == "refused_whereabouts_slip")
+		if rows.is_empty(): continue
+		probe.seed = seed_value
+		probe.randf() # Existing lie/stonewall draw comes before the slip.
+		var sample = probe.randf()
+		_check(rows.size() == 1 and rows[0].details.draw == sample and rows[0].details.threshold == 0.25 and rows[0].estimate.chance == 0.25, "inspector reuses the original refused-whereabouts slip sample and cutoff")
+		_check(replies[0] == replies[1] and _fingerprint(on) == _fingerprint(off), "refused-whereabouts response, privacy and RNG match with capture enabled")
+		captured = true
+		break
+	_check(captured, "integration fixture reaches the batch-4 refusal-slip path")

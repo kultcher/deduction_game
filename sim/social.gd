@@ -502,4 +502,4 @@ static func answer_is_role(w, n, role: String) -> Dictionary:
 	var line = "Why do you keep asking me that?" if n.role_guesses >= 3 else "What my gift is, I'll keep to myself."
 	if n.role_guesses == 2:
 		line = "You're grasping at straws, and I'm running out of patience."
-	return {"lines": [Mind.say(n, line)], "facts": []}
+	return {"lines": [Mind.say(n, line)], "facts": [], "refusal_line": 0}

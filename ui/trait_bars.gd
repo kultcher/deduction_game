@@ -15,14 +15,45 @@ const ROWS = [
 const ROW_H = 36.0
 
 var revealed = {}   # learned trait -> score in [0, 1]
+const FLASH_SECONDS = 1.0
+var flashes: Dictionary = {} # trait -> seconds left; presentation time only.
+var _person = ""
+var _observed = false
 
 func _init() -> void:
 	custom_minimum_size = Vector2(0, ROW_H * ROWS.size() + 4)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_process(false)
 
-func show_traits(t: Dictionary) -> void:
-	revealed = t.duplicate()
+func reset_observations() -> void:
+	revealed = {}
+	flashes.clear()
+	_person = ""
+	_observed = false
+	set_process(false)
 	queue_redraw()
+
+func show_traits(t: Dictionary, person: String = "") -> void:
+	if person != _person:
+		flashes.clear()
+		_observed = false
+		_person = person
+	if _observed:
+		for key in t:
+			if not revealed.has(key): flashes[key] = FLASH_SECONDS
+	for key in flashes.keys():
+		if not t.has(key): flashes.erase(key)
+	revealed = t.duplicate()
+	_observed = true
+	set_process(not flashes.is_empty())
+	queue_redraw()
+
+func _process(delta: float) -> void:
+	for key in flashes.keys():
+		flashes[key] -= delta
+		if flashes[key] <= 0: flashes.erase(key)
+	queue_redraw()
+	set_process(not flashes.is_empty())
 
 static func fill_rect(track: Rect2, value: float) -> Rect2:
 	var middle = track.get_center().x
@@ -54,3 +85,6 @@ func _draw() -> void:
 		else:
 			draw_string(font, Vector2(bar.position.x, bar.position.y + 12), "?", HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, fs, soft)
 		draw_rect(bar, col, false, 2.0)
+		if flashes.has(r[0]):
+			var glow = Color(col, clampf(flashes[r[0]] / FLASH_SECONDS, 0.0, 1.0))
+			draw_rect(bar.grow(4), glow, false, 3.0)
