@@ -291,7 +291,7 @@ func column_menus():
 	picker.add_child(label)
 	for i in range(17): picker.add_child(Button.new())
 	var balanced = Columns.balance(picker)
-	check(balanced.get_children().map(func(col): return col.get_children().filter(func(n): return n is Button).size()) == [6, 6, 5], "handcrafted pickers also split evenly into eight-option columns")
+	check(balanced.get_child(1).get_children().map(func(col): return col.get_children().filter(func(n): return n is Button).size()) == [6, 6, 5], "handcrafted pickers also split evenly into eight-option columns")
 	picker.free()
 	balanced.free()
 
