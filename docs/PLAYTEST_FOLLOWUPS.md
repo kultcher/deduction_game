@@ -133,8 +133,28 @@ run delivered one sighting to nine living listeners and flushed nine deferred mi
 0.734 ms enqueue / **386.979 ms including refresh** on the first sample; 0.728 ms /
 **25.601 ms** on a second equivalent, cache-warm sample. These are two small-case
 samples, not a town-size bound or a benchmark of the changed historical replay.
-The full trace parity run contains commands up to **8.776 s** (seed 42, Day 4
-meeting entry); they completed and
-are retained in the logs. UI presentation changes do not add synchronous evaluator
-work. Deferred belief refresh and existing caches remain in use; no performance
-or gameplay tuning was included.
+**Timing correction (Oct 27):** `test_trace._test_parity` times the traced
+`command()` and the untraced `command()` together. Its **8.776 s** line for seed 42,
+10 NPCs, step 29, Day 4 meeting entry is a **two-execution total**, not the duration
+of one command. Individual execution times were not recorded; dividing by two
+would not recover them reliably because tracing and cache state differ.
+
+That meeting contains **one newly delivered ordinary sighting**: Lian reports seeing
+Agnes outside on Night 3, first cited in the public accusation. There are six real
+NPC delivery events (Merrin, Fenwick, Dorian, Agnes, Bartholomew and Greta) and one
+additional hearing by Bartholomew's good self. The ordinary report is not seven
+independent sightings. Other reading/Medium reports in the meeting use their
+existing hearing paths.
+
+The same seed/count/step/command took **8.530 s combined** in the prior
+`logs/batch4-integration/full/test_trace.txt` run, and **8.839 s combined** in
+`logs/batch4-set3/final-full/test_trace.txt`. The current 8.776 s is 246 ms (2.9%)
+above the former and below the latter. These historical samples do **not** establish
+a new performance jump or isolate the cost of public delivery. The saved before
+and after Day 4 meeting transcripts are identical; listener knowledge can differ.
+Current artifacts are `logs/playtest-followups/full/test_trace.txt` and its
+`userdata/Godot/app_userdata/Demonologist (text prototype)/test_trace_logs/` sidecars.
+
+UI presentation changes do not add synchronous evaluator work. Deferred belief
+refresh and existing caches remain in use; no performance or gameplay tuning was
+included. The small isolated delivery probe above is separate from this comparison.
