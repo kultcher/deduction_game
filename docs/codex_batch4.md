@@ -100,6 +100,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
    When the nominator has no reason to cite, they say so plainly ("I don't trust them, and I can't
    say better than that"). Find where `Mind.nomination_case`/`case_against` build the text. Wording
    only: no change to who nominates or why.
+   - **Implemented (Codex batch 4, set 2):** Nominators with no citable ledger reasons say that they cannot explain their distrust better. The debug case description also names the absence of reasons. Existing grounded recaps, nomination selection, evidence and RNG are unchanged. Exact-string expectations changed: none.
+
 10. **Night sightings volunteered at the meeting** (user decision, Oct 26). A good NPC who saw someone
     out at night and hasn't told the town may bring it up during testimony. Check: Gossip plus
     Confidence against a threshold that drops as `Mind.paranoia` rises. Any past night counts, not just

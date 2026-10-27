@@ -1953,7 +1953,10 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 	var relays: Array = items.filter(func(x): return x["kind"] == "relay")
 	if priv.is_empty() and not relays.is_empty():
 		relay_reading(w, n, relays[0]["src"], relays[0]["entry"], lines, facts)
-	w.dlog.think(n.id, "nomination_case", "Case against %s: %s." % [t.id, ", ".join(PackedStringArray(items.map(func(x): return "%s (%s, %.2f)" % [x["why"], x["kind"], x["contrib"]])))], {"items": items.map(func(x): return {"eid": x["eid"], "kind": x["kind"]})})
+	var description = ", ".join(PackedStringArray(items.map(func(x): return "%s (%s, %.2f)" % [x["why"], x["kind"], x["contrib"]])))
+	w.dlog.think(n.id, "nomination_case", "Case against %s: %s." % [t.id, description if description != "" else "no citable reasons on record"], {"items": items.map(func(x): return {"eid": x["eid"], "kind": x["kind"]})})
+	if items.is_empty():
+		lines.append(say(n, "I don't trust %s, and I can't say better than that." % t.name))
 	if not recap.is_empty():
 		lines.append(say(n, "Remember: %s." % "; and ".join(PackedStringArray(recap.slice(0, 2)))))
 	if not priv.is_empty():

@@ -28,6 +28,7 @@ func run():
 	co_present_sightings()
 	first_person_notes()
 	confidence_public_notice()
+	empty_nomination_cases()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -457,3 +458,20 @@ func confidence_public_notice():
 	var st = {"speakers": [n], "i": 0, "done": false}
 	var turn = Mind.testimony_step(g.w, st)
 	check(n.claim_public and turn.lines.any(func(line): return line.text == "I've decided the town should hear it."), "confidence release arrives within the speaker's streamed testimony step")
+
+func empty_nomination_cases():
+	var g = fresh()
+	var w = g.w
+	var t = w.living_good()[1]
+	for n in [w.living_good()[0], w.minion()]:
+		n.ledger = {}
+		n.shadow = null
+		var state = w.rng.state
+		var reply = Mind.nomination_case(w, n, t, "")
+		check(reply.lines.size() == 1 and reply.lines[0].text == "I don't trust %s, and I can't say better than that." % t.name, "an empty good or evil nomination gives a plain spoken fallback")
+		check(reply.facts.is_empty() and w.rng.state == state, "empty-case wording adds no evidence or RNG draws")
+		n.ledger = {"public": {"eid": "public", "effects": [[t.id, 0, 0, 0, "a public account"]], "applied": {0: 0.2}}}
+		var recap = Mind.nomination_case(w, n, t, "")
+		check(recap.lines.size() == 1 and recap.lines[0].text == "Remember: a public account.", "a grounded public reason keeps its original recap")
+		var already = Mind.nomination_case(w, n, t, "a public account")
+		check(already.lines.is_empty() and already.facts.is_empty() and w.rng.state == state, "an already-cited grounded reason stays silent rather than becoming an empty-case fallback")
