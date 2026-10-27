@@ -60,3 +60,11 @@ before speaking, so its optional continuation also starts fresh. Declines preser
 the old count. No old trust loss is repaired, no wrong-guess counter is reset, and
 fresh questioning still accrues normal fatigue. Paired fresh/tired fixtures verify
 matching post-accept trust and RNG for each agenda, including evil framing.
+
+## Martyr explanation
+
+The existing non-substitution report now says "As the Martyr, I chose <name>. They
+were hanged and I still stand: they must have been evil or my gift failed."
+Only wording changed: the original report data/truth, generation conditions,
+substitution rules and inference remain unchanged. Both reasoning and evil
+scapegoat strategy are explicitly deferred in BACKLOG.md.

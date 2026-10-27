@@ -28,6 +28,7 @@ func run():
 	await headlines()
 	ward_promise()
 	approach_fatigue()
+	martyr_wording()
 	print("Playtest follow-ups: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func picker(title: String, count: int):
@@ -226,3 +227,24 @@ func approach_fatigue():
 	check(n.trust >= before, "promised disclosure adds no old question-fatigue trust penalty")
 	g._approach_command("accept", "")
 	check(g.questions_left == 3 and n.pressed_today == 0, "continuing a promised disclosure has a fresh question allowance")
+
+func martyr_wording():
+	var g = fresh()
+	var w = g.w
+	var martyr = w.living_good()[0]
+	var target = w.minion()
+	for n in w.npcs:
+		if not n.is_evil(): n.role = "clerk"
+		n.secret_mod = ""
+		if n != martyr: n.martyr_target = ""
+	martyr.role = "martyr"
+	martyr.poisoned = false
+	martyr.martyr_target = target.id
+	martyr.info_log = []
+	w.day = 2
+	var rng = w.rng.state
+	w.execute(target.id, {"by": "player", "yes": []})
+	check(martyr.alive and not target.alive and martyr.info_log.size() == 1, "the original non-substitution outcome and report generation remain intact")
+	var report: Dictionary = martyr.info_log[0]
+	check(report.text == "As the Martyr, I chose %s. They were hanged and I still stand: they must have been evil or my gift failed" % target.name, "the Martyr explicitly identifies their choice and qualifies their interpretation")
+	check(report.data == {"target": target.id, "evil": true} and report["true"] and w.rng.state == rng, "wording changes no report truth, effects or RNG")
