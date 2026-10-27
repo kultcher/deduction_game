@@ -13,6 +13,8 @@ Expected baseline on `main`: `python3 tools/run_gd_tests.py --godot <godot>` giv
 passing**, and `test_trace` (slow, `--include-slow`) passes. Every failure you see after your changes
 is yours to explain.
 
+**Set-1 baseline observation:** untouched main `193b636` reproduced `test_workshop_protection` failing "disabling shared model restores native quiet-night credit" (81/82). The user authorized this exact baseline exception; evaluator/toggle code remains out of scope.
+
 ## Out of scope (Claude is doing these)
 
 Do not touch them, even where an item below sits next to them:
@@ -46,6 +48,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
      the same where behaviour doesn't change, so existing seeds don't drift.
      `Mind._answer_pressed_night` (batch 3) rewrites the first spoken line after a press: check that it
      still finds the right line.
+   - **Implemented (Codex batch 4, set 1):** Only selected off-home sightings after a whereabouts refusal use the existing slip roll and explicit slip wording. Home-street observations and non-refusal, claimed-walker, Sleepwalker and gossip-zero paths retain their RNG behavior. Focused checks cover withholding, slips, fake-watch payloads and pressed responses. Exact-string expectations changed: none.
+
 2. **Repeated refusals: no question charged, a different line.** A second identical refusal to the same
    ask in one conversation costs no question (the same free-repeat rule as `free_repeats` in
    `Game._talk_command`) and uses a varied line. Covers `ask gift` and the not-yet-told `ask are <gift>`.

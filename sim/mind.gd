@@ -2757,6 +2757,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	var block = where.substr(where.find(":") + 1)
 	# Where they say they were: what their sightings must be told from. "" = not saying.
 	var vantage = ""
+	var refused_whereabouts = false
 	var how = "window"
 	if n.is_evil() and n.claimed_role == "nightwatch" and w.evil_plan["fake_watch"].has(str(nd)):
 		var fb: String = w.evil_plan["fake_watch"][str(nd)]
@@ -2839,6 +2840,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				vantage = n.home_block
 			else:
 				w.dlog.think(n.id, "stonewall", "Hiding (%s): refuses to say where they were." % hiding)
+				refused_whereabouts = true
 				lines.append(whereabouts_refusal(n, nd))
 				_append_distrust(w, n, lines)
 				facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "day": nd, "phase": C.NIGHT,
@@ -2886,10 +2888,31 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		return {"lines": lines, "facts": facts}
 	if watch_story.is_empty():
 		reported = reported.slice(0, limit)
+	var slips: Array = []
+	if refused_whereabouts:
+		var safe: Array = []
+		for observation in reported:
+			if observation.get("block", "") != n.home_block:
+				# Same slip mechanic as an account contradicted by an observation.
+				# Only selected refusal sightings reach this new roll; other branches
+				# and gossip-zero answers consume exactly their former random draws.
+				var slip = 0.25 * (1.0 - trait_of(n, "composure")) + 0.15 * n.pressure
+				if w.rng.randf() >= slip:
+					w.dlog.think(n.id, "omit", "Withholds seeing %s on %s after refusing whereabouts." % [observation.who, observation.block])
+					continue
+				slips.append(observation)
+				w.dlog.think(n.id, "slip", "Lets slip seeing %s on %s after refusing whereabouts (p=%.2f)." % [observation.who, observation.block, slip])
+			safe.append(observation)
+		reported = safe
 	if reported.is_empty() and not (was_out and not n.is_evil()):
 		lines.append(say(n, "I saw nobody."))
 	for b in reported:
 		var r = sighting_report(w, n, b, nd)
+		if b in slips:
+			var who: String = w.by_id[b.who].name
+			var detail = "go in for the night" if b.kind == "stayed_in" else ("leave their house" if b.get("detail", "") == "leaving_home" else "out")
+			var end = ", and they never came out" if b.kind == "stayed_in" else ""
+			r.line.text = "…though I did see %s %s on %s on night %d%s, not that I was there." % [who, detail, C.block_name(b.block), nd, end]
 		lines.append(r["line"])
 		facts.append(r["fact"])
 	return {"lines": lines, "facts": facts}
