@@ -434,10 +434,10 @@ func _assign_roles() -> void:
 		k += 1
 	var evil_count = 1 + mins.size()
 	bluffs = shuffled(C.GOOD_ROLES.filter(func(r): return not role_in_play(r))).slice(0, maxi(3, evil_count + 1))
-	var seer = npc_with_role("seer")
-	if seer:
-		var cands = npcs.filter(func(m): return m != seer and not m.is_evil())
-		seer.red_herring = pick(cands).id
+	for n in npcs:
+		var rdef = C.role_def(n.role)
+		if rdef != null:
+			rdef.setup_world(self, n)
 
 ## One secret modifier per case, on a townsfolk (the Lovers take two), on top of their gift.
 func _assign_secret_mod() -> void:
@@ -1243,13 +1243,16 @@ func _medium_choice(m) -> String:
 func _quiet_night() -> void:
 	dlog.add("quiet_night", "world", "", {"night": day}, "Nobody died on night %d." % day)
 	for pc in public_claims:
-		if not (pc["role"] in ["warden", "veteran"]) or not by_id[pc["who"]].alive:
+		var qdef = C.role_def(pc["role"])
+		var causes_quiet: bool = qdef.can_cause_quiet_night if qdef != null else (pc["role"] in ["warden", "veteran"])
+		if not causes_quiet or not by_id[pc["who"]].alive:
 			continue
+		var q_eff: float = qdef.quiet_night_effect if qdef != null else (-0.15 if pc["role"] == "warden" else -0.06)
 		for l in living_good():
 			if l.id == pc["who"]:
 				continue
 			var e: Array = []
-			Mind._eff(e, pc["who"], -0.15 if pc["role"] == "warden" else -0.06,
+			Mind._eff(e, pc["who"], q_eff,
 				"nobody died on night %d, and they claim the %s" % [day, C.role_name(pc["role"])])
 			# Scaled live by how credible the claimant is to this listener.
 			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0, [pc["who"], -1, "report"], {"kind": "quiet_night", "night": day, "claimant": pc["who"], "role": pc["role"]})
@@ -1456,149 +1459,139 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 		return
 	var broken: bool = n.gift_broken()
 	var entry = {}
-	match r:
-		"hearthwitch":
-			var nb = living_neighbours(n)
-			var ids: Array = nb.map(func(m): return m.id)
-			var count = nb.filter(func(m): return registers_evil(m)).size()
-			var reported = count
-			if broken:
-				reported = _other_than(count, 0, nb.size())
-			entry = {"data": {"nbrs": ids, "count": reported}, "true": reported == count,
-				"text": "I sensed that %d of my neighbours (%s) %s evil" % [reported, _names(ids), "is" if reported == 1 else "are"]}
-		"seer":
-			var pair: Array = Mind.seer_picks(self, n)
-			var yes = false
-			var true_yes = false
-			for pid in pair:
-				if pid == n.red_herring or registers_demon(by_id[pid]):
-					yes = true
-				if pid == demon_id:
-					true_yes = true
-			var reported_yes = yes
-			if broken:
-				reported_yes = chance(0.5)
-			entry = {"data": {"pair": pair, "yes": reported_yes}, "true": reported_yes == true_yes,
-				"text": "I looked at %s: %s" % [_names(pair), "one of them reads as the demon" if reported_yes else "neither is the demon"]}
-			if yes and not true_yes and not broken:
-				entry["why"] = "red herring %s" % n.red_herring if n.red_herring in pair else "a Marked soul read as the demon"
-		"nightwatch":
-			if watch_block == "":
-				return  # didn't go out (the knell)
-			var seen: Array = []
-			for wk in night_walkers:
-				if watch_block in wk.get("path", [wk["block"]]) and wk["id"] != n.id:
-					seen.append(wk["id"])
-			var real = seen.duplicate()
-			if broken:
-				seen = []
-				var innocent = pick(living().filter(func(m): return m != n and not (m.id in real)))
-				if innocent:
-					seen.append(innocent.id)
-			entry = {"data": {"block": watch_block, "seen": seen}, "true": seen == real,
-				"text": "I watched %s: %s" % [C.block_name(watch_block),
-					("I saw " + _names(seen) + " pass by") if not seen.is_empty() else "nobody stirred"]}
-		"archivist":
-			var mid: String = pick(minion_ids)
-			var mrole: String = by_id[mid].role
-			var other = pick(npcs.filter(func(m): return m != n and m.id != mid))
-			var pair = shuffled([mid, other.id])
-			var ok = true
-			if broken:
-				var goods = npcs.filter(func(m): return m != n and not m.is_evil())
-				pair = shuffled(goods).slice(0, 2).map(func(m): return m.id)
-				mrole = pick(C.MINION_ROLES)
-				ok = false
-			entry = {"data": {"pair": pair, "role": mrole}, "true": ok,
-				"text": "I learned that one of %s is the %s" % [_names(pair), C.role_name(mrole)]}
-		"clerk":
-			var targets = npcs.filter(func(m): return m != n and not m.is_evil())
-			var t = pick(targets)
-			var other = pick(npcs.filter(func(m): return m != n and m != t))
-			var role: String = t.role
-			var ok = true
-			if broken:
-				role = pick(C.GOOD_ROLES.filter(func(x): return x != t.role and x != other.role and x != "clerk"))
-				ok = false
-			var pair = shuffled([t.id, other.id])
-			entry = {"data": {"pair": pair, "role": role}, "true": ok,
-				"text": "I learned that one of %s is the %s" % [_names(pair), C.role_name(role)]}
-		"rumormonger":
-			var holders: Array = npcs.filter(func(m): return m != n and m.secret_mod != "")
-			var ok = true
-			var pair: Array = []
-			var sk = ""
-			if holders.is_empty() or broken:
-				var plain = npcs.filter(func(m): return m != n and m.secret_mod == "")
-				pair = shuffled(plain).slice(0, 2).map(func(m): return m.id)
-				sk = pick(C.SECRET_MOD_LIST)
-				ok = false
-			else:
-				var h = pick(holders)
-				sk = h.secret_mod
-				var other = pick(npcs.filter(func(m): return m != n and m != h))
-				pair = shuffled([h.id, other.id])
-			entry = {"data": {"pair": pair, "secret": sk}, "true": ok,
-				"text": "I heard that one of %s is %s" % [_names(pair), _secret_phrase(sk)]}
-		"surveyor":
-			var blocks = {}
-			for m in npcs:
-				if registers_evil(m):
-					blocks[m.home_block] = true
-			var count = blocks.size()
-			var truth = 0
-			var tb = {}
-			for m in npcs:
-				if m.is_evil():
-					tb[m.home_block] = true
-			truth = tb.size()
-			if broken:
-				count = surveyor_result(truth)
-			entry = {"data": {"count": count}, "true": count == truth,
-				"text": "I learned that %d of the four blocks %s an evil resident" % [count, "has" if count == 1 else "have"]}
-		"lamplighter":
-			if lamp != n:
-				return
-			var count = night_walkers.filter(func(wk): return wk["id"] != n.id).size()
-			var truth = count
-			if broken:
-				count = _other_than(truth, 0, maxi(3, living().size() - 1))
-			entry = {"data": {"count": count}, "true": count == truth,
-				"text": "walking the lamps, I counted %d other%s out" % [count, "" if count == 1 else "s"]}
-		"medium":
-			if medium_t == "":
-				return
-			var item = _medium_item(n, by_id[medium_t], broken)
-			entry = {"data": {"dead": medium_t, "item": item}, "true": not broken and not item.get("lie", false),
-				"text": _medium_text(by_id[medium_t], item)}
-		"psychologist":
-			var talked: Array = n.talked_today.filter(func(i): return by_id[i].alive and i != n.id)
-			if talked.is_empty():
-				return
-			var subj = by_id[pick(talked)]
-			var res = _psych_read(subj)
-			var ok = true
-			if broken:
-				var others: Array = living().filter(func(m): return m != subj).map(func(m): return m.id)
-				res = {"trusts": pick(others), "suspects": pick(others)}
-				ok = false
-			entry = {"data": {"subject": subj.id, "trusts": res["trusts"], "suspects": res["suspects"]}, "true": ok,
-				"text": "I read %s: they trust %s most, and suspect %s most" % [subj.name, by_id[res["trusts"]].name, by_id[res["suspects"]].name]}
-		"gravedigger":
-			if executed_today == "":
-				return
-			var ex = by_id[executed_today]
-			var role: String = ex.role
-			if ex.secret_mod == "marked" and chance(0.3):
-				role = pick(C.EVIL_ROLES)
-				entry["why"] = "Marked reads as evil"
-			if broken:
-				role = pick(C.ROLES.keys().filter(func(x): return x != ex.role and x != "demon" and x != "hearthwitch"))
-			entry["data"] = {"executed": ex.id, "role": role}
-			entry["true"] = role == ex.role
-			entry["text"] = "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(role)]
-		_:
+	var rdef = C.role_def(r)
+	if rdef != null:
+		entry = rdef.generate_reading(self, n, {"watch_block": watch_block, "medium_t": medium_t, "lamp": lamp}, Mind)
+		if entry.is_empty():
 			return
+	else:
+		match r:
+			"hearthwitch":
+				var nb = living_neighbours(n)
+				var ids: Array = nb.map(func(m): return m.id)
+				var count = nb.filter(func(m): return registers_evil(m)).size()
+				var reported = count
+				if broken:
+					reported = _other_than(count, 0, nb.size())
+				entry = {"data": {"nbrs": ids, "count": reported}, "true": reported == count,
+					"text": "I sensed that %d of my neighbours (%s) %s evil" % [reported, _names(ids), "is" if reported == 1 else "are"]}
+			"nightwatch":
+				if watch_block == "":
+					return  # didn't go out (the knell)
+				var seen: Array = []
+				for wk in night_walkers:
+					if watch_block in wk.get("path", [wk["block"]]) and wk["id"] != n.id:
+						seen.append(wk["id"])
+				var real = seen.duplicate()
+				if broken:
+					seen = []
+					var innocent = pick(living().filter(func(m): return m != n and not (m.id in real)))
+					if innocent:
+						seen.append(innocent.id)
+				entry = {"data": {"block": watch_block, "seen": seen}, "true": seen == real,
+					"text": "I watched %s: %s" % [C.block_name(watch_block),
+						("I saw " + _names(seen) + " pass by") if not seen.is_empty() else "nobody stirred"]}
+			"archivist":
+				var mid: String = pick(minion_ids)
+				var mrole: String = by_id[mid].role
+				var other = pick(npcs.filter(func(m): return m != n and m.id != mid))
+				var pair = shuffled([mid, other.id])
+				var ok = true
+				if broken:
+					var goods = npcs.filter(func(m): return m != n and not m.is_evil())
+					pair = shuffled(goods).slice(0, 2).map(func(m): return m.id)
+					mrole = pick(C.MINION_ROLES)
+					ok = false
+				entry = {"data": {"pair": pair, "role": mrole}, "true": ok,
+					"text": "I learned that one of %s is the %s" % [_names(pair), C.role_name(mrole)]}
+			"clerk":
+				var targets = npcs.filter(func(m): return m != n and not m.is_evil())
+				var t = pick(targets)
+				var other = pick(npcs.filter(func(m): return m != n and m != t))
+				var role: String = t.role
+				var ok = true
+				if broken:
+					role = pick(C.GOOD_ROLES.filter(func(x): return x != t.role and x != other.role and x != "clerk"))
+					ok = false
+				var pair = shuffled([t.id, other.id])
+				entry = {"data": {"pair": pair, "role": role}, "true": ok,
+					"text": "I learned that one of %s is the %s" % [_names(pair), C.role_name(role)]}
+			"rumormonger":
+				var holders: Array = npcs.filter(func(m): return m != n and m.secret_mod != "")
+				var ok = true
+				var pair: Array = []
+				var sk = ""
+				if holders.is_empty() or broken:
+					var plain = npcs.filter(func(m): return m != n and m.secret_mod == "")
+					pair = shuffled(plain).slice(0, 2).map(func(m): return m.id)
+					sk = pick(C.SECRET_MOD_LIST)
+					ok = false
+				else:
+					var h = pick(holders)
+					sk = h.secret_mod
+					var other = pick(npcs.filter(func(m): return m != n and m != h))
+					pair = shuffled([h.id, other.id])
+				entry = {"data": {"pair": pair, "secret": sk}, "true": ok,
+					"text": "I heard that one of %s is %s" % [_names(pair), _secret_phrase(sk)]}
+			"surveyor":
+				var blocks = {}
+				for m in npcs:
+					if registers_evil(m):
+						blocks[m.home_block] = true
+				var count = blocks.size()
+				var truth = 0
+				var tb = {}
+				for m in npcs:
+					if m.is_evil():
+						tb[m.home_block] = true
+				truth = tb.size()
+				if broken:
+					count = surveyor_result(truth)
+				entry = {"data": {"count": count}, "true": count == truth,
+					"text": "I learned that %d of the four blocks %s an evil resident" % [count, "has" if count == 1 else "have"]}
+			"lamplighter":
+				if lamp != n:
+					return
+				var count = night_walkers.filter(func(wk): return wk["id"] != n.id).size()
+				var truth = count
+				if broken:
+					count = _other_than(truth, 0, maxi(3, living().size() - 1))
+				entry = {"data": {"count": count}, "true": count == truth,
+					"text": "walking the lamps, I counted %d other%s out" % [count, "" if count == 1 else "s"]}
+			"medium":
+				if medium_t == "":
+					return
+				var item = _medium_item(n, by_id[medium_t], broken)
+				entry = {"data": {"dead": medium_t, "item": item}, "true": not broken and not item.get("lie", false),
+					"text": _medium_text(by_id[medium_t], item)}
+			"psychologist":
+				var talked: Array = n.talked_today.filter(func(i): return by_id[i].alive and i != n.id)
+				if talked.is_empty():
+					return
+				var subj = by_id[pick(talked)]
+				var res = _psych_read(subj)
+				var ok = true
+				if broken:
+					var others: Array = living().filter(func(m): return m != subj).map(func(m): return m.id)
+					res = {"trusts": pick(others), "suspects": pick(others)}
+					ok = false
+				entry = {"data": {"subject": subj.id, "trusts": res["trusts"], "suspects": res["suspects"]}, "true": ok,
+					"text": "I read %s: they trust %s most, and suspect %s most" % [subj.name, by_id[res["trusts"]].name, by_id[res["suspects"]].name]}
+			"gravedigger":
+				if executed_today == "":
+					return
+				var ex = by_id[executed_today]
+				var role: String = ex.role
+				if ex.secret_mod == "marked" and chance(0.3):
+					role = pick(C.EVIL_ROLES)
+					entry["why"] = "Marked reads as evil"
+				if broken:
+					role = pick(C.ROLES.keys().filter(func(x): return x != ex.role and x != "demon" and x != "hearthwitch"))
+				entry["data"] = {"executed": ex.id, "role": role}
+				entry["true"] = role == ex.role
+				entry["text"] = "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(role)]
+			_:
+				return
 	if broken:
 		entry["why"] = "%s" % ("poisoned" if n.poisoned else "delusional")
 	_add_info(n, entry)

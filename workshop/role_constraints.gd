@@ -6,12 +6,15 @@ static var cache: Dictionary = {}
 static var reuse = true
 
 static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary = {}) -> bool:
+	return fit_weight(view, world, cards, knowledge, answers) > 0.0
+
+static func fit_weight(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false) -> float:
 	if not view.get("world_options", {}).get("roles", false):
-		return true
+		return 1.0
 	var ids: Array = view.people.map(func(p): return p.id)
 	if not reuse:
-		return _fits_view(view, ids, world, cards, knowledge, answers)
-	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {})]
+		return _fits_view(view, ids, world, cards, knowledge, answers, null, bluffs)
+	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
 	var key = hash(input)
 	if not cache.has(key) or cache[key].input != input:
 		if cache.size() >= 64:
@@ -19,22 +22,30 @@ static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: D
 		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
 	var mask: int = coarse_mask(ids.size(), world, cache[key].seer, relay_mediums(ids, cards), sleepwalk_claimants(ids, cards))
 	if not cache[key].results.has(mask):
-		cache[key].results[mask] = _fits_view(view, ids, world, cards, knowledge, answers)
-	return cache[key].results[mask]
+		cache[key].results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, null, bluffs)
+	return float(cache[key].results[mask])
 
 ## fits() for every world of a universe, hashing the view and cards once rather than
 ## per world. Same memo as fits(), so the results agree.
 ## Weight of one role declaration (claim, or a reading's implied gift) by a source who
 ## is evil in that world: a bluff is possible, but naming this exact role is a choice
 ## among several, so a claim still weakly supports its claimant (live play only).
-const BLUFF_WEIGHT = 0.35
+const BLUFF_WEIGHT = 0.92
 
 ## bluffs (live play): evil sources' role declarations constrain nothing; see _fits.
 static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false) -> PackedByteArray:
+	var weights: PackedFloat64Array = fits_weights(view, universe, cards, knowledge, answers, bluffs)
 	var out = PackedByteArray()
+	out.resize(weights.size())
+	for i in range(weights.size()):
+		out[i] = 1 if weights[i] > 0.0 else 0
+	return out
+
+static func fits_weights(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false) -> PackedFloat64Array:
+	var out = PackedFloat64Array()
 	out.resize(universe.size())
 	if not view.get("world_options", {}).get("roles", false):
-		out.fill(1)
+		out.fill(1.0)
 		return out
 	var ids: Array = view.people.map(func(p): return p.id)
 	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
@@ -58,7 +69,7 @@ static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledg
 			if routes == null and Activity.available(view):
 				routes = Activity.routes(view, _routing_cards(_live_cards(cards)), answers, knowledge)
 			results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, routes, bluffs)
-		out[i] = 1 if results[mask] else 0
+		out[i] = float(results[mask])
 	return out
 
 ## The parts of a world the role check reads, as one int: fits() gives the same answer
@@ -120,7 +131,7 @@ static func seer_flag(cards: Array) -> bool:
 
 ## routes: Activity.routes(view, cards, answers, knowledge) if already computed. It
 ## doesn't depend on the world, so fits_table computes it once for all worlds.
-static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null, bluffs: bool = false) -> bool:
+static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null, bluffs: bool = false) -> float:
 	cards = _live_cards(cards)
 	# "I've been known to sleepwalk": true of the one Sleepwalker; anyone else saying it
 	# is evil and lying. (Two claimants: at least one is evil.)
@@ -128,16 +139,16 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 	if walkers != 0:
 		var asleep: int = int(world.get("holders", 0)) if world.get("modifier", "marked") == "sleepwalker" else 0
 		if walkers & ~int(world.evil) & ~asleep:
-			return false
+			return 0.0
 	var visits = {}
 	for card in cards:
 		if card.has("relay_source") and not card.get("quoted", false):
 			var medium: int = ids.find(card.relay_source)
 			if medium < 0 or world.evil & (1 << medium) or not preload("res://workshop/world_domain.gd").healthy(view, world, card.relay_source) or not preload("res://workshop/live_history.gd").alive_at_night(view, card.relay_source, card.relay_observed_at.day):
-				return false
+				return 0.0
 			var visit: String = card.relay_source + ":" + card.source
 			if visits.has(visit) and visits[visit] != card.relay_observed_at.day:
-				return false
+				return 0.0
 			visits[visit] = card.relay_observed_at.day
 	cards = _routing_cards(cards)
 	var sexton_night = -1
@@ -145,33 +156,33 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 		if card.kind != "report" or card.get("quoted", false):
 			continue
 		if card.role == "martyr" and card.data.get("evil", false) and not preload("res://workshop/live_history.gd").executed(view, card.data.target, card.observed_at.day):
-			return false
+			return 0.0
 		if card.role == "sexton":
 			if sexton_night >= 0 and sexton_night != card.data.night:
-				return false
+				return 0.0
 			sexton_night = card.data.night
 	if sexton_night >= 0:
 		if view.people.filter(func(p): return preload("res://workshop/live_history.gd").alive_at_night(view, p.id, sexton_night)).size() >= 5:
-			return false
+			return 0.0
 		if view.get("timeline", {}).get("events", []).any(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == sexton_night):
-			return false
+			return 0.0
 		for card in cards:
 			if card.get("quoted", false):
 				continue
 			if card.kind == "report" and card.role in ["nightwatch", "lamplighter", "medium"] and card.get("night", -1) == sexton_night:
-				return false
+				return 0.0
 			if card.has("relay_source") and card.relay_observed_at.day == sexton_night:
-				return false
+				return 0.0
 	for card in cards:
 		if card.get("role") != "veteran" or card.kind != "report" or card.get("quoted", false):
 			continue
 		var demon: int = world.get("demon", -1)
 		if demon < 0:
-			return false
+			return 0.0
 		var attack_routes: Array = Activity.demon_routes(view.people[demon].home, view.people[ids.find(card.source)].home)
 		var fits_approach: bool = attack_routes.any(func(route): return (route.path[route.path.size() - 2] if route.path.size() >= 2 else view.people[ids.find(card.source)].home) == card.data.block)
 		if not fits_approach or view.get("timeline", {}).get("events", []).any(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == card.night):
-			return false
+			return 0.0
 	var live: bool = bluffs
 	if Activity.available(view):
 		if routes == null:
@@ -179,7 +190,7 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 		# Live testimony can be false (an evil fake sighting, a lying alibi): routes that
 		# can't all hold no longer void every world; the movement likelihood weighs them.
 		if not routes.okay and not live:
-			return false
+			return 0.0
 		if routes.okay:
 			cards = cards.duplicate()
 			for person in routes.forced_lamp:
@@ -191,7 +202,7 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 ## bluffs (live play): in a world where a claim's source is evil, the claim is a bluff:
 ## it occupies no role and constrains nothing. A good source's claim stays binding, so a
 ## contradiction leaves only the worlds where some claimant is lying.
-static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool = false, view: Dictionary = {}) -> bool:
+static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool = false, view: Dictionary = {}) -> float:
 	var all: int = (1 << ids.size()) - 1
 	var good: int = all & ~world.evil
 	var demon: int = world.get("demon", -1)
@@ -204,11 +215,12 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 		var index: int = ids.find(person)
 		var role: String = knowledge.public_roles[person]
 		if index < 0 or world.evil & (1 << index) or not _assign(assignments, role, 1 << index):
-			return false
+			return 0.0
 	var seer = ""
+	var seer_source = -1
+	var seer_readings: Array = []
 	var veteran_night = -1
 	var martyr_target = ""
-	var rh: int = good
 	for card in cards:
 		if card.get("quoted", false):
 			continue
@@ -219,17 +231,17 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 				if index >= 0:
 					candidates |= 1 << index
 			if not _assign(assignments, "revenant", candidates & minions):
-				return false
+				return 0.0
 		if card.kind == "event" and card.get("event") == "martyr":
 			var actor: int = ids.find(card.data.martyr)
 			var saved: int = ids.find(card.data.saved)
 			if actor < 0 or saved < 0 or world.evil & ((1 << actor) | (1 << saved)) or not _assign(assignments, "martyr", 1 << actor):
-				return false
+				return 0.0
 		if card.kind not in ["report", "claim"]:
 			continue
 		var source: int = ids.find(card.source)
 		if source < 0:
-			return false
+			return 0.0
 		var source_evil: bool = (world.evil & (1 << source)) != 0
 		if world.has("converted") and not view.is_empty():
 			var time = preload("res://workshop/chronology.gd")
@@ -237,46 +249,46 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 		if source_evil:
 			if bluffs and not card.get("inferred", false):
 				continue
-			return false
+			return 0.0
 		if not _assign(assignments, card.role, 1 << source):
-			return false
+			return 0.0
 		if card.kind == "claim":
 			continue
 		var pair_mask = 0
 		for person in card.data.get("pair", []):
 			var i: int = ids.find(person)
 			if i < 0:
-				return false
+				return 0.0
 			pair_mask |= 1 << i
 		var answer: Dictionary = answers.get(card.id, {})
 		var selected = 0
 		for person in answer.get("positive", []):
 			var i: int = ids.find(person)
 			if i < 0:
-				return false
+				return 0.0
 			selected |= 1 << i
 		if card.role in ["clerk", "archivist"]:
 			var candidates: int = pair_mask & (good if card.role == "clerk" else minions)
 			if selected != 0:
 				candidates &= selected
 			if not _assign(assignments, card.data.role, candidates):
-				return false
+				return 0.0
 		elif card.role == "veteran":
 			if veteran_night >= 0 and veteran_night != card.night:
-				return false
+				return 0.0
 			veteran_night = card.night
 		elif card.role == "martyr":
 			if martyr_target != "" and martyr_target != card.data.target:
-				return false
+				return 0.0
 			martyr_target = card.data.target
 			if card.data.get("evil", false):
 				var target: int = ids.find(card.data.target)
 				if target < 0 or not (world.evil & (1 << target)) and world.marked != target:
-					return false
+					return 0.0
 		elif card.role == "gravedigger":
 			var target: int = ids.find(card.data.executed)
 			if target < 0:
-				return false
+				return 0.0
 			var read_role: String = card.data.role
 			var evil_role: bool = C.ROLES.get(read_role, {}).get("align") == "evil"
 			# Marked can receive any evil-role result without actually holding it.
@@ -284,30 +296,75 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 				continue
 			var candidates: int = (1 << demon) if read_role == "demon" and demon >= 0 else (minions if evil_role else good)
 			if not _assign(assignments, read_role, (1 << target) & candidates):
-				return false
+				return 0.0
 		elif card.role == "seer":
 			if seer != "" and seer != card.source:
-				return false
+				return 0.0
 			seer = card.source
-			rh &= ~(1 << source) # native setup excludes the Seer
-			if not card.data.yes:
-				if demon >= 0 and pair_mask & (1 << demon):
-					return false
-				rh &= ~pair_mask
-				continue
+			seer_source = source
 			var ping: int = selected if selected != 0 else pair_mask
 			var reason: String = answer.get("registration", "")
-			var demon_ok: bool = demon >= 0 and (ping & (1 << demon)) != 0
-			var marked_ok: bool = world.marked >= 0 and (ping & (1 << world.marked)) != 0
-			if reason == "demon" and not demon_ok:
-				return false
-			if reason == "marked" and not marked_ok:
-				return false
-			if reason == "red_herring" or (reason == "" and not demon_ok and not marked_ok):
-				rh &= ping
-	if seer != "" and rh == 0:
-		return false
-	return _matching(assignments.values(), 0)
+			seer_readings.append({"yes": bool(card.data.yes), "pair": pair_mask, "ping": ping, "reason": reason})
+	var seer_weight: float = 1.0
+	if seer != "":
+		seer_weight = _seer_rh_weight(good & ~(1 << seer_source), demon, int(world.marked), seer_readings)
+		if seer_weight <= 0.0:
+			return 0.0
+	return seer_weight if _matching(assignments.values(), 0) else 0.0
+
+## Average over every eligible Red Herring candidate r in G of the product of each
+## Seer reading's probability in this world (Marked rolls 50% independently per reading).
+static func _seer_rh_weight(candidates_mask: int, demon: int, marked: int, readings: Array) -> float:
+	if candidates_mask == 0:
+		return 0.0
+	var demon_bit: int = (1 << demon) if demon >= 0 else 0
+	var marked_bit: int = (1 << marked) if marked >= 0 else 0
+	var total_weight: float = 0.0
+	var n_candidates: int = 0
+	var pool: int = candidates_mask
+	while pool != 0:
+		var r_bit: int = pool & -pool
+		pool &= ~r_bit
+		n_candidates += 1
+		var w: float = 1.0
+		for reading in readings:
+			var pair: int = reading.pair
+			if not reading.yes:
+				if (pair & demon_bit) != 0 or (pair & r_bit) != 0:
+					w = 0.0
+					break
+				if (pair & marked_bit) != 0:
+					w *= 0.5
+			else:
+				var ping: int = reading.ping
+				var reason: String = reading.reason
+				var demon_in: bool = (ping & demon_bit) != 0
+				var rh_in: bool = (ping & r_bit) != 0
+				var marked_in: bool = (ping & marked_bit) != 0
+				if reason == "demon":
+					if not demon_in:
+						w = 0.0
+						break
+				elif reason == "red_herring":
+					if not rh_in:
+						w = 0.0
+						break
+				elif reason == "marked":
+					if not marked_in:
+						w = 0.0
+						break
+					if not demon_in and not rh_in:
+						w *= 0.5
+				else:
+					if demon_in or rh_in:
+						pass
+					elif marked_in:
+						w *= 0.5
+					else:
+						w = 0.0
+						break
+		total_weight += w
+	return total_weight / float(n_candidates) if n_candidates > 0 else 0.0
 
 static func _assign(assignments: Dictionary, role: String, candidates: int) -> bool:
 	if assignments.has(role):

@@ -346,7 +346,14 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 		var weight = 1.0
 		match factor.kind:
 			"roles":
-				weight = 1.0 if (not Solver.Domain.live(view) or Solver.Domain.claims_compatible(selected, graph.knowledge)) and Solver.Roles.fits(plain, world, selected, graph.knowledge) else 0.0
+				var live_roles: bool = Solver.Domain.live(view)
+				if not live_roles or Solver.Domain.claims_compatible(selected, graph.knowledge):
+					weight = Solver.Roles.fit_weight(plain, world, selected, graph.knowledge, {}, live_roles)
+					if weight > 0.0 and live_roles:
+						weight *= Solver.Roles.bluff_weights(plain, [world], selected)[0]
+				else:
+					weight = 0.0
+
 			"fixture_movement":
 				weight = 1.0 if Solver.movement_for(view, selected, {}, graph.knowledge).okay else 0.0
 				for f in Movement.factors(view, selected, {}):

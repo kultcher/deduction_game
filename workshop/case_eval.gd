@@ -711,10 +711,10 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		reps.append(universe[cc.rep[c]])
 		which.append(c)
 	var live: bool = Domain.live(view)
-	var t: PackedByteArray = Solver.Roles.fits_table(view, reps, cards, knowledge, {}, live)
+	var t: PackedFloat64Array = Solver.Roles.fits_weights(view, reps, cards, knowledge, {}, live)
 	# Only classes that fail the content check need the declaration-only check.
 	var declarations = PackedByteArray()
-	if live and t.has(0) and cards.any(func(card): return card.kind == "report"):
+	if live and t.has(0.0) and cards.any(func(card): return card.kind == "report"):
 		var claims: Array = []
 		for card in cards:
 			var claim: Dictionary = card
@@ -726,7 +726,7 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		var failed: Array = []
 		var at: PackedInt32Array = PackedInt32Array()
 		for x in range(reps.size()):
-			if t[x] == 0:
+			if t[x] == 0.0:
 				failed.append(reps[x])
 				at.append(x)
 		var sub: PackedByteArray = Solver.Roles.fits_table(view, failed, claims, knowledge, {}, true)
@@ -735,13 +735,30 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		for y in range(at.size()):
 			declarations[at[y]] = sub[y]
 	var weights: PackedFloat64Array = Solver.Roles.bluff_weights(view, reps, cards) if live else PackedFloat64Array()
+	var relayed_seers: Array = cards.filter(func(card): return card.kind == "report" and card.get("role", "") == "seer" and card.get("testimony_only", false) and not card.get("quoted", false))
+	var ids: Array = Solver.person_ids(view)
+	var all_mask: int = (1 << ids.size()) - 1
 	for x in range(which.size()):
-		var content: float = float(t[x])
+		var content: float = t[x]
 		if content == 0.0 and not declarations.is_empty() and declarations[x] != 0:
 			# A joint report-content contradiction can be an erroneous reading too.
 			# Identity/public constraints remain hard; never erase the whole view
 			# merely because several claimed Seer results share no exact Red Herring.
 			content = DEFAULT_ERR
+		if content > 0.0 and not relayed_seers.is_empty():
+			var w_rep: Dictionary = reps[x]
+			var rel_readings: Array = []
+			for rc in relayed_seers:
+				if Solver.source_valid(view, w_rep, rc):
+					var p_mask = 0
+					for person in rc.data.get("pair", []):
+						var idx: int = ids.find(person)
+						if idx >= 0:
+							p_mask |= 1 << idx
+					rel_readings.append({"yes": bool(rc.data.yes), "pair": p_mask, "ping": p_mask, "reason": ""})
+			if not rel_readings.is_empty():
+				var rh_w: float = Solver.Roles._seer_rh_weight(all_mask & ~int(w_rep.evil), int(w_rep.get("demon", -1)), int(w_rep.marked), rel_readings)
+				content *= rh_w if rh_w > 0.0 else DEFAULT_ERR
 		out[which[x]] = content * (weights[x] if live else 1.0)
 	return out
 
