@@ -89,3 +89,52 @@ the report. The exact player-facing receipt identifies the same fact in the shar
 model; repeat hearing replaces weight rather than stacking effects. Public delivery
 adds no RNG and does not award the private-conversation +0.02 trust benefit.
 No disclosure gates, hearing coefficients, vote formulas or evil policies changed.
+
+## Validation (Godot 4.7.2)
+
+- Main baseline: 83/84 ordinary suites passed; only the approved quiet-night-credit
+  failure in `test_workshop_protection`.
+- Full combined run: `python tools/run_gd_tests.py --godot
+  logs/runtime/Godot_v4.7.2-stable_win64_console.exe --include-slow`:
+  **85/86 suites passed**. The only failure remains exactly "disabling shared model
+  restores native quiet-night credit" (1 of 22 protection checks). No new exception.
+- `test_trace`: 45 checks, zero failures across all six complete-case trace pairs.
+  `test_meeting_stream`: parity for 42, 7104 and 54875. Social, text UI and the
+  decision inspector pass.
+- Final focused run after the scaled-window fix: 5/5 suites passed (`test_ui`,
+  `test_town_ui`, `test_text_ui`, batch 3 and `test_playtest_followups`); the new
+  follow-up suite passes **94 checks**. The full run's earlier follow-up invocation
+  passed its then-current 93 checks; the final run adds the scaled-window regression.
+- Rendered inspection: wide/narrow/scaled dialogue pickers, enabled/disabled board
+  checkbox, card dots and centered headline. Screenshots are local ignored artifacts
+  under `logs/playtest-followups/`, not simulation fixtures.
+- Scope audit: no edits to `workshop/`, `game/workshop_*.gd` or `sim/evil.gd`.
+  Vote/nomination formulas, disclosure/volunteering gates, movement/target choices,
+  and existing hearing coefficients are unchanged. Wording/relationship recording
+  adds no RNG; paired approach fixtures preserve the original decision draws.
+
+### Replay and cost observations
+
+Before public-sighting delivery, the original 54875 replay completes: filed #94,
+9 shared listeners, no fallback/errors, **2 yes / 5 needed**. Sum of command times
+was 9.759 s; Day 2 meeting entry 2.442 s; presentation 3.182 s (one headless sample).
+
+With public delivery, the strict replay stops before the original `present 48`:
+**"Original evidence is absent for present 48"**. In the later conversation,
+Constance says "I saw nobody" rather than supplying the historical Dorian sighting;
+Isolde's earlier response differs too. Public hearing now changes NPC knowledge and
+subsequent game/RNG trajectories. No report was injected, no behavior tuned, and no
+post-change vote/presentation timing is claimed. This replay needs a separately
+reviewed continuation if it is to remain a complete comparison fixture.
+
+The public-sighting delivery change is the cost risk in this pass: more held evidence
+requires additional shared-model work. A separate fixed-input probe after the full
+run delivered one sighting to nine living listeners and flushed nine deferred minds:
+0.734 ms enqueue / **386.979 ms including refresh** on the first sample; 0.728 ms /
+**25.601 ms** on a second equivalent, cache-warm sample. These are two small-case
+samples, not a town-size bound or a benchmark of the changed historical replay.
+The full trace parity run contains commands up to **8.776 s** (seed 42, Day 4
+meeting entry); they completed and
+are retained in the logs. UI presentation changes do not add synchronous evaluator
+work. Deferred belief refresh and existing caches remain in use; no performance
+or gameplay tuning was included.
