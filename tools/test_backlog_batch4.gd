@@ -22,6 +22,7 @@ func check(ok: bool, message: String):
 func run():
 	refusal_privacy()
 	repeated_refusals()
+	hint_options()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -196,3 +197,19 @@ func repeated_refusals():
 	var original = JSON.stringify(request)
 	g._repeat_refusal(n, request)
 	check(JSON.stringify(request) == original, "confidence/protection requests never enter refusal-repeat handling")
+
+func hint_options():
+	var g = fresh()
+	var n = g.w.living_good()[0]
+	var t = g.w.living_good()[1]
+	n.hints = {}
+	check(not Mind.has_live_hint(g.w, n) and not "ask why" in g._talk_options(n) and not "ask why" in g._help(), "generic help and conversation options omit ask why without a live hint")
+	n.hints[t.id] = {"day": g.w.day}
+	check(Mind.has_live_hint(g.w, n) and "ask why" in g._talk_options(n), "conversation advertises ask why for a living hinted target")
+	t.alive = false
+	check(not Mind.has_live_hint(g.w, n) and not "ask why" in g._talk_options(n), "a dead hinted target does not advertise ask why")
+	var state = g.w.rng.state
+	var first = Mind.answer_hint(g.w, n)
+	var second = Mind.answer_hint(g.w, n)
+	check(first.lines[0].text != second.lines[0].text and first.facts.is_empty() and second.facts.is_empty(), "no-target hint replies vary without producing cards")
+	check(g.w.rng.state == state, "varied no-target hint wording adds no RNG draws")

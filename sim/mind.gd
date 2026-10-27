@@ -1409,6 +1409,9 @@ static func _unshared_fake_on(n, t_id: String) -> Dictionary:
 ## disclosure), and if their gift isn't public they ask you to keep it to yourself: the
 ## cards come back marked confidential, and using them at the meeting breaks your word.
 ## Returns {lines, facts}.
+static func has_live_hint(w, n) -> bool:
+	return n.hints.keys().any(func(k): return w.by_id.has(k) and w.by_id[k].alive)
+
 static func answer_hint(w, n) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
@@ -1420,7 +1423,9 @@ static func answer_hint(w, n) -> Dictionary:
 			target = k
 	if target == "":
 		w.dlog.decision(n.id, "hint_followup", "gate", false, {"gate": "no_living_hinted_target"})
-		lines.append(say(n, "I've nothing more to tell you."))
+		var count: int = n.dialogue_memory.get("empty_hint_replies", 0)
+		n.dialogue_memory["empty_hint_replies"] = count + 1
+		lines.append(say(n, "I've nothing more to tell you." if count % 2 == 0 else "I've no further reason to give you."))
 		return {"lines": lines, "facts": []}
 	var t = w.by_id[target]
 	var has_reason = _unshared_fake_on(n, target) != {} if n.is_evil() else reason_status(w, n, target)["kind"] in ["private", "player"]

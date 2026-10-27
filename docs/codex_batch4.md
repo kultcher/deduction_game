@@ -62,6 +62,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 3. **`ask why` only where it works.** It answers only a withheld meeting hint (`n.hints`). Remove it
    from the generic text help and from the in-conversation prompt string, and show it only when the NPC
    has a hint for someone alive (the UI button already does this). Vary "I've nothing more to tell you".
+   - **Implemented (Codex batch 4, set 1):** Conversation prompts advertise ask why only for a living hinted target; generic help already omitted it. Empty followups alternate wording without new RNG draws. Existing live-hint decisions and the UI gate are unchanged. Exact-string expectations changed: none.
+
 4. **"Ask about your readings" once a gift is told.** After someone has told you their gift (`max_tier >=
    3` or `claim_public`), relabel the UI's gift ask "Ask about their readings" and drop the
    re-confirmation line ("As you know, I'm the X") when there are readings to give. Same underlying

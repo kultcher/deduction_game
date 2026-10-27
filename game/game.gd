@@ -1014,7 +1014,7 @@ func _day_command(verb: String, rest: String) -> void:
 				var said: String = n.remarks.pop_front()
 				w.dlog.think(n.id, "reconsider", "Tells the player they've come round to %s." % said)
 				_lines([Mind.reconsideration_line(n, said)])
-			_narr("You draw %s aside. (3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift> | ask why (after a hint) | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)" % n.name)
+			_narr("You draw %s aside. %s" % [n.name, _talk_options(n)])
 		"search", "s":
 			if not moved:
 				_err("First choose where to spend this phase ('go <place>').")
@@ -1240,7 +1240,7 @@ func _approach_command(verb: String, rest: String) -> void:
 				var r: Dictionary = Social.approach_open(w, n, approach["agenda"])
 				_lines(r["lines"])
 				_facts(r["facts"])
-			_prompt("(3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift> | ask why (after a hint) | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)")
+			_prompt(_talk_options(n))
 		"decline", "no", "n":
 			state = "day"
 			w.dlog.add("approach_declined", "player", n.id)
@@ -1334,6 +1334,10 @@ func _remember_dialogue_exchange(n, verb: String, rest: String, response: Dictio
 			action = "accusation"
 			subject = person.id
 	Mind.Dialogue.record_exchange(n.dialogue_memory, action, subject)
+
+func _talk_options(n) -> String:
+	var why = " | ask why" if Mind.has_live_hint(w, n) else ""
+	return "(3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift>%s | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)" % why
 
 ## A repeated refusal only saves a player question slot. Keep the original NPC
 ## fatigue, trust, role-guess counters and disclosure/request RNG exactly intact.
