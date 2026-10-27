@@ -25,6 +25,7 @@ func run():
 	hint_options()
 	await readings_ask()
 	compact_answers()
+	co_present_sightings()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -312,3 +313,38 @@ func compact_answers():
 		n.beliefs.append({"kind": "saw", "who": others[0].id, "loc": "well", "block": "square", "day": 2, "phase": ph})
 	preload("res://game/recent_sightings.gd").append_to(w, n, others[0], reply, [])
 	check(reply.lines.size() == 2 and reply.facts.size() == 2 and "morning" in reply.lines[1].text and "afternoon" in reply.lines[1].text, "opinion followup sightings share a line without losing either dated card")
+
+func co_present_sightings():
+	var g = fresh()
+	var w = g.w
+	var n = w.living_good()[0]
+	var a = w.living_good()[1]
+	var b = w.living_good()[2]
+	var c = w.living_good()[3]
+	w.day = 2
+	w.phase = C.AFTERNOON
+	w.player_loc = "tavern"
+	n.loc = "tavern"
+	a.loc = "tavern"
+	b.loc = "well" # Same block, different place.
+	c.loc = "smithy"
+	n.traits.gossip = 1.0
+	n.traits.insight = 1.0
+	n.pressure = 0.0
+	n.beliefs = [
+		{"kind": "saw", "who": a.id, "day": 2, "phase": C.MORNING, "loc": "well", "block": "square", "with": ""},
+		{"kind": "saw", "who": a.id, "day": 2, "phase": C.AFTERNOON, "loc": "tavern", "block": "square", "with": ""},
+		{"kind": "saw", "who": b.id, "day": 2, "phase": C.AFTERNOON, "loc": "well", "block": "square", "with": ""},
+		{"kind": "saw", "who": c.id, "day": 2, "phase": C.AFTERNOON, "loc": "smithy", "block": "market", "with": a.id}]
+	var state = w.rng.state
+	var day = Mind.answer_today(w, n, "", w.player_loc)
+	check(not day.facts.any(func(f): return a.id in f.subject and f.phase == C.AFTERNOON), "current sightings and conversation partners beside the player are omitted")
+	check(day.facts.any(func(f): return f.subject == [a.id] and f.phase == C.MORNING), "an older sighting of a person beside the player survives")
+	check(day.facts.any(func(f): return f.subject == [b.id]) and day.facts.any(func(f): return f.subject == [c.id]), "same-block other places and independent sightings of a conversation partner survive")
+	check(w.rng.state == state, "co-presence filtering adds no RNG draws")
+	var reply = {"lines": [], "facts": []}
+	preload("res://game/recent_sightings.gd").append_to(w, n, a, reply, [])
+	check(reply.facts.size() == 1 and reply.facts[0].phase == C.MORNING, "person-specific followups omit only the current co-present sighting")
+	reply = {"lines": [], "facts": []}
+	preload("res://game/recent_sightings.gd").append_to(w, n, b, reply, [])
+	check(reply.facts.size() == 1 and reply.facts[0].subject == [b.id], "person-specific followups retain a same-block sighting elsewhere")

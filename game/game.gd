@@ -1422,7 +1422,7 @@ func _talk_command(verb: String, rest: String) -> void:
 						_err("It isn't the %s yet." % frame)
 						return
 					else:
-						r = Mind.answer_today(w, n, frame, w.loc_block(loc), seen_pairs())
+						r = Mind.answer_today(w, n, frame, loc, seen_pairs())
 				"why", "reason", "hint":
 					r = Mind.answer_hint(w, n)
 				"about", "opinion":

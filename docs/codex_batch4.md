@@ -79,6 +79,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 6. **No news of people standing in front of you.** Drop current-phase sightings of anyone at the
    player's location ("I saw Agnes at the chapel this evening" with Agnes there).
+   - **Implemented (Codex batch 4, set 1):** Current-phase sightings and conversation partners at the player exact location are omitted in day and person-specific replies. Older observations, other places on the same block and independent sightings remain eligible. test_social now sets exact co-location in its existing fixture; assertions are unchanged. Exact-string expectations changed: none.
+
 7. **First person about oneself.** Relationship notes and trait reveals said "Agnes and Edda are close"
    from Edda. When the speaker is one of the pair, say "Agnes and I are close" (or skip it). See
    `Game._maybe_tell_relationships` and `Game._maybe_tell_trait`.

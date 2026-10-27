@@ -20,7 +20,7 @@ static func append_to(w, speaker, target, reply: Dictionary, board: Array) -> vo
 	var now: int = w.day * 4 + w.phase
 	candidates = candidates.filter(func(b):
 		var age: int = now - (int(b.get("day", -1)) * 4 + int(b.get("phase", -1)))
-		return age >= 0 and age < 3)
+		return age >= 0 and age < 3 and not Mind.sighting_is_here(w, b, target.id))
 	candidates.sort_custom(func(a, b): return a["day"] * 4 + a["phase"] > b["day"] * 4 + b["phase"])
 	var groups: Array = []
 	var frames = {}

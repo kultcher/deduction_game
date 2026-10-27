@@ -2995,8 +2995,15 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 		"fact": {"kind": "sighting", "subject": [who.id], "block": b["block"], "day": nd, "phase": C.NIGHT, "source": n.id, "how": b.get("how", "street"),
 			"text": "%s says they saw %s on %s on night %d%s." % [n.name, who.name, bn, nd, how]}}
 
+## Only observations from this phase are redundant when the named person is
+## visibly beside the player now. Older memories and other spots on the block matter.
+static func sighting_is_here(w, b: Dictionary, who: String, near_loc: String = "") -> bool:
+	var here: String = near_loc if near_loc != "" else w.player_loc
+	return here != "" and b.get("day", -1) == w.day and b.get("phase", -1) == w.phase \
+		and w.by_id.has(who) and w.by_id[who].loc == here
+
 ## Who they've seen around by day. when: "" (recently: today and yesterday), "morning",
-## "afternoon", "evening" (today) or "yesterday". near_block: where the player is right now;
+## "afternoon", "evening" (today) or "yesterday". near_loc: the exact place where the player is right now;
 ## people seen there this phase are left out (you can see them yourself), and memory reaches
 ## further back instead.
 ## "Where were you, and who did you see?" for a daytime frame: "" (earlier today, up to
@@ -3004,7 +3011,7 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 ## morning" / "yesterday afternoon" / "yesterday evening". They say where they were
 ## (daytime whereabouts are open to anyone's eyes), then who they saw: as many as their
 ## memory (Insight) holds and their Gossip lets them share.
-static func answer_today(w, n, when: String = "", near_block: String = "", seen_pairs: Dictionary = {}) -> Dictionary:
+static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pairs: Dictionary = {}) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
 	var facts: Array = []
@@ -3050,7 +3057,7 @@ static func answer_today(w, n, when: String = "", near_block: String = "", seen_
 	# Memory: they recall only their most recent few sightings (more with Insight), one per person.
 	var memory = 2 + int(round(trait_of(n, "insight") * 4.0))
 	var before: Array = n.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] != C.NIGHT and in_frame.call(b))
-	var seen: Array = before.filter(func(b): return near_block == "" or not (b["day"] == w.day and b["phase"] == w.phase and b.get("block", "") == near_block))
+	var seen: Array = before.filter(func(b): return not sighting_is_here(w, b, b["who"], near_loc))
 	if seen.is_empty() and not before.is_empty():
 		lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + "Nobody but who you can see around you for yourself."))
 		return {"lines": lines, "facts": facts}
@@ -3080,9 +3087,10 @@ static func answer_today(w, n, when: String = "", near_block: String = "", seen_
 		var when_s = "%s %s" % ["yesterday" if b["day"] < w.day else "this", C.PHASES[b["phase"]].to_lower()]
 		var where: String = w.loc_name(b["loc"]) if b["loc"] != "" else C.block_name(b["block"])
 		var tag = (" (%s)" % when_s) if phases.size() > 1 else ""
-		if b.get("with", "") != "":
-			named["%s:%d:%d" % [b["with"], b["day"], b["phase"]]] = true
 		var partner: String = b.get("with", "")
+		if partner != "" and sighting_is_here(w, b, partner, near_loc): partner = ""
+		if partner != "":
+			named["%s:%d:%d" % [partner, b["day"], b["phase"]]] = true
 		if partner != "" and w.by_id.has(partner) and not (n.is_evil() and Evil.is_teammate(w, n, partner)):
 			var pn = w.by_id[partner]
 			var pair = [who.id, partner]
