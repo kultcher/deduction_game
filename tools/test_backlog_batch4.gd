@@ -24,6 +24,7 @@ func run():
 	repeated_refusals()
 	hint_options()
 	await readings_ask()
+	compact_answers()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -261,3 +262,53 @@ func readings_ask():
 	check(first.lines.any(func(line): return "Warden" in line.text), "first gift disclosure still names the gift even with work to report")
 	for i in range(3): await process_frame
 	scene.free()
+
+func compact_answers():
+	var g = fresh()
+	var w = g.w
+	var n = w.living_good()[0]
+	var others = w.npcs.filter(func(t): return t != n)
+	n.role = "clerk"
+	n.secret = {}
+	n.secret_mod = ""
+	n.claimed_role = ""
+	n.home_block = "square"
+	n.traits.gossip = 1.0
+	n.traits.insight = 1.0
+	n.pressure = 0.0
+	w.day = 2
+	n.history[w.time_key(1, C.NIGHT)] = "home:square"
+	n.beliefs = []
+	var expected: Array = [Mind._alibi_home(n, 1)]
+	for i in range(4):
+		var b = {"kind": "saw" if i < 2 else "stayed_in", "who": others[i].id, "block": "square", "day": 1, "phase": C.NIGHT, "how": "window"}
+		n.beliefs.append(b)
+		expected.append(Mind.sighting_report(w, n, b, 1).fact)
+	var state = w.rng.state
+	var night = Mind.answer_night(w, n, 1)
+	check(night.facts == expected and w.rng.state == state, "condensed night replies preserve every original fact and RNG state")
+	check(night.lines.size() == 3 and night.lines[1].text.contains(others[0].name + " and " + others[1].name) and night.lines[2].text.contains(others[2].name + " and " + others[3].name), "night observations merge names and keep one line per kind")
+	n.loc = "tavern"
+	w.phase = C.AFTERNOON
+	n.beliefs = []
+	for i in range(3):
+		n.beliefs.append({"kind": "saw", "who": others[i].id, "loc": "smithy" if i < 2 else "well", "block": "market" if i < 2 else "square", "day": 2, "phase": C.MORNING, "with": ""})
+	var day = Mind.answer_today(w, n, "morning")
+	check(day.facts.size() == 3 and day.facts.all(func(f): return f.kind == "sighting" and f.day == 2 and f.phase == C.MORNING), "day condensation retains all selected sighting cards")
+	check(day.lines.size() == 1 and (others[1].name + " and " + others[0].name) in day.lines[0].text and "well" in day.lines[0].text, "day sightings group people by place while retaining other places")
+	n.role = "seer"
+	n.claimed_role = "seer"
+	n.max_tier = 3
+	n.info_log = []
+	for nd in [0, 1]:
+		n.info_log.append({"role": "seer", "day": nd, "shared": true, "text": "neither was the Demon", "data": {"pair": [others[0].id, others[1].id], "yes": false}})
+	var gift = Mind.answer_gift(w, n, 4)
+	var infos = gift.facts.filter(func(f): return f.kind == "info")
+	check(gift.lines.size() == 1 and infos == n.info_log.map(func(e): return Mind.info_fact(w, n, e)), "private readings occupy one line but preserve each full reading card")
+	check("The night before you arrived" in gift.lines[0].text and "Last night" in gift.lines[0].text, "condensed readings retain their separate dates")
+	var reply = {"lines": [Mind.say(n, "An opinion.")], "facts": []}
+	n.beliefs = []
+	for ph in [C.MORNING, C.AFTERNOON]:
+		n.beliefs.append({"kind": "saw", "who": others[0].id, "loc": "well", "block": "square", "day": 2, "phase": ph})
+	preload("res://game/recent_sightings.gd").append_to(w, n, others[0], reply, [])
+	check(reply.lines.size() == 2 and reply.facts.size() == 2 and "morning" in reply.lines[1].text and "afternoon" in reply.lines[1].text, "opinion followup sightings share a line without losing either dated card")

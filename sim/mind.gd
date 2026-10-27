@@ -2669,7 +2669,9 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 	if evil and not readings.is_empty():
 		w.dlog.think(n.id, "lie", "Evil: recites fabricated %s results." % role)
 	if not first_time and not readings.is_empty(): lines.pop_front()
-	lines.append_array(info_lines(w, n, readings, "player", not lines.is_empty()))
+	var reports = info_lines(w, n, readings, "player", not lines.is_empty())
+	if not reports.is_empty():
+		lines.append(say(n, " ".join(PackedStringArray(reports.map(func(line): return line.text)))))
 	for e in readings:
 		facts.append(info_fact(w, n, e))
 	var held = n.info_log.size() - readings.size()
@@ -2914,6 +2916,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		reported = safe
 	if reported.is_empty() and not (was_out and not n.is_evil()):
 		lines.append(say(n, "I saw nobody."))
+	var groups: Array = []
 	for b in reported:
 		var r = sighting_report(w, n, b, nd)
 		if b in slips:
@@ -2921,8 +2924,9 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			var detail = "go in for the night" if b.kind == "stayed_in" else ("leave their house" if b.get("detail", "") == "leaving_home" else "out")
 			var end = ", and they never came out" if b.kind == "stayed_in" else ""
 			r.line.text = "…though I did see %s %s on %s on night %d%s, not that I was there." % [who, detail, C.block_name(b.block), nd, end]
-		lines.append(r["line"])
+		_add_observation(groups, r.fact.kind, r.line.text, w.by_id[b.who].name)
 		facts.append(r["fact"])
+	for text in _observation_texts(groups): lines.append(say(n, text))
 	return {"lines": lines, "facts": facts}
 
 ## A reading the player already heard, privately or at a meeting.
@@ -2936,6 +2940,37 @@ static func _fake_watch_entry(n, nd: int) -> Dictionary:
 		if e.get("fake", false) and e.get("role", "") == "nightwatch" and e.get("day", -1) == nd:
 			return e
 	return {}
+
+## Presentation only: group names with identical predicates, then put each kind on
+## one spoken line. Callers still create every fact through their original path.
+static func _spoken_list(items: Array) -> String:
+	if items.size() < 3: return " and ".join(PackedStringArray(items))
+	return ", ".join(PackedStringArray(items.slice(0, -1))) + ", and " + items[-1]
+
+static func _add_observation(groups: Array, kind: String, text: String, name: String) -> void:
+	var at = text.find(name)
+	assert(at >= 0)
+	var before = text.substr(0, at)
+	var after = text.substr(at + name.length()).trim_suffix(".")
+	for group in groups:
+		if group.kind == kind and group.before == before and group.after == after:
+			group.names.append(name)
+			return
+	groups.append({"kind": kind, "before": before, "after": after, "names": [name]})
+
+static func _observation_texts(groups: Array) -> Array:
+	var kinds = {}
+	for group in groups:
+		if not kinds.has(group.kind): kinds[group.kind] = {}
+		if not kinds[group.kind].has(group.before): kinds[group.kind][group.before] = []
+		kinds[group.kind][group.before].append(_spoken_list(group.names) + group.after)
+	var result: Array = []
+	for prefixes in kinds.values():
+		var sentences: Array = []
+		for before in prefixes:
+			sentences.append(before + _spoken_list(prefixes[before]) + ".")
+		result.append(" ".join(PackedStringArray(sentences)))
+	return result
 
 ## One night sighting (or a neighbour seen going in for the night), as said and as a card.
 ## From a window, they can only speak for their own street.
@@ -3060,16 +3095,16 @@ static func answer_today(w, n, when: String = "", near_block: String = "", seen_
 				conv["silent"] = true
 				facts.append(conv)
 				continue
-			parts.append("%s at %s, talking with %s%s" % [who.name, where, pn.name, tag])
+			_add_observation(parts, "sighting", "%s at %s, talking with %s%s." % [who.name, where, pn.name, tag], who.name)
 			facts.append(conv)
 		else:
-			parts.append("%s at %s%s" % [who.name, where, tag])
+			_add_observation(parts, "sighting", "%s at %s%s." % [who.name, where, tag], who.name)
 		facts.append({"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": b["phase"], "source": n.id,
 			"text": "%s saw %s on %s, day %d %s." % [n.name, who.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
 	if parts.is_empty():
 		lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + "Nobody you didn't see for yourself."))
 		return {"lines": lines, "facts": facts}
-	var seen_s = "; ".join(PackedStringArray(parts))
+	var seen_s: String = _observation_texts(parts)[0].trim_suffix(".")
 	lines.append(say(n, ("%s, and saw %s." % [was_s, seen_s]) if was_s != "" else ("Let me think. %s." % seen_s)))
 	return {"lines": lines, "facts": facts}
 

@@ -75,6 +75,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
    one line per kind. Every card (fact) is still produced.
    - Gotcha: cards are made from `facts`, not lines; change lines only. `tools/test_text_ui.gd` and
      several dialogue tests match exact strings: update those expectations, and say which in the commit.
+   - **Implemented (Codex batch 4, set 1):** Sightings group people with the same place, time and provenance into shared clauses, with one spoken line per observation kind. Day replies retain conversation partners; private reading reports and recent-sighting followups share lines while every original fact and report date remains intact. Public testimony composition is unchanged. Exact-string expectations changed: none.
+
 6. **No news of people standing in front of you.** Drop current-phase sightings of anyone at the
    player's location ("I saw Agnes at the chapel this evening" with Agnes there).
 7. **First person about oneself.** Relationship notes and trait reveals said "Agnes and Edda are close"

@@ -22,6 +22,7 @@ static func append_to(w, speaker, target, reply: Dictionary, board: Array) -> vo
 		var age: int = now - (int(b.get("day", -1)) * 4 + int(b.get("phase", -1)))
 		return age >= 0 and age < 3)
 	candidates.sort_custom(func(a, b): return a["day"] * 4 + a["phase"] > b["day"] * 4 + b["phase"])
+	var groups: Array = []
 	var frames = {}
 	for b in candidates:
 		var key: int = b["day"] * 4 + b["phase"]
@@ -31,17 +32,18 @@ static func append_to(w, speaker, target, reply: Dictionary, board: Array) -> vo
 		if b["phase"] == C.NIGHT:
 			var report = Mind.sighting_report(w, speaker, b, b["day"])
 			report["line"]["text"] = "On %s: %s" % [C.night_name(b["day"]), report["line"]["text"]]
-			reply["lines"].append(report["line"])
+			Mind._add_observation(groups, report.fact.kind, report.line.text, target.name)
 			reply["facts"].append(report["fact"])
 		else:
 			var place: String = w.loc_name(b["loc"]) if b.get("loc", "") != "" else C.block_name(b["block"])
 			var when_s: String = "%s %s" % ["this" if b["day"] == w.day else "yesterday", C.PHASES[b["phase"]].to_lower()]
-			reply["lines"].append(Mind.say(speaker, "I saw %s at %s %s." % [target.name, place, when_s]))
+			Mind._add_observation(groups, "sighting", "I saw %s at %s %s." % [target.name, place, when_s], target.name)
 			reply["facts"].append({"kind": "sighting", "subject": [target.id], "block": b["block"], "loc": b.get("loc", ""),
 				"day": b["day"], "phase": b["phase"], "source": speaker.id,
 				"text": "%s saw %s on %s, day %d %s." % [speaker.name, target.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
 		if frames.size() >= limit:
 			break
+	for text in Mind._observation_texts(groups): reply.lines.append(Mind.say(speaker, text))
 
 static func _night_candidates(w, speaker, target, board: Array) -> Array:
 	var result: Array = []
