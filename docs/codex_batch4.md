@@ -159,6 +159,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 20. **The developer case summary (grimoire) shows the secret modifier**, not only the personal secret:
     print `secret_mod` (Marked was missing in 37291).
+   - **Implemented (Codex batch 4, set 3):** Each grimoire row includes its secret modifier by display name alongside the independent personal secret. Marked, Delusional, Secret Lovers and Sleepwalker are covered; formatting is read-only. Exact-string expectations changed: none.
+
 21. **Stale role name in a reason string:** `own info: hearthwitch count 0` should name the Dowser (find
     the reason text in `Mind`'s own-info effects).
 22. **Every false reading carries a cause.** No `why: ?` in the lies list: where a reading is false

@@ -39,6 +39,7 @@ func run():
 	new_actions_help()
 	seer_space_targets()
 	night_home_listing()
+	grimoire_modifiers()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -799,3 +800,17 @@ func night_home_listing():
 		check(summary.count(living.name) == 1, "night map's living home resident listed once: " + living.name)
 	check(not dead.name in summary and n.name in summary, "night planning list matches map home markers without leaking hidden walks or including the dead")
 	check(summary in g.command("look") and g.w.rng.state == rng and g.state == "night", "night look repeats the same home list without changing RNG or night work")
+
+func grimoire_modifiers():
+	var g = fresh()
+	var n = g.w.living_good()[0]
+	n.secret = {"kind": "test", "text": "keeps a private diary"}
+	var rng = g.w.rng.state
+	for mod in C.SECRET_MOD_LIST:
+		n.secret_mod = mod
+		var lines = Array(g._grimoire().split("\n"))
+		var row = lines.filter(func(line): return line.strip_edges().begins_with(n.name + " "))[0]
+		check("secret modifier: " + C.secret_name(mod) in row and "keeps a private diary" in row, "grimoire shows personal secret and modifier together: " + mod)
+	n.secret_mod = ""
+	check(not Array(g._grimoire().split("\n")).filter(func(line): return line.strip_edges().begins_with(n.name + " "))[0].contains("secret modifier:"), "no invented modifier is printed for an unmodified NPC")
+	check(g.w.rng.state == rng and g.state == "day", "developer summary formatting does not change the game")

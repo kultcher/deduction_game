@@ -2556,6 +2556,8 @@ func _grimoire() -> String:
 			extra.append("evil's scapegoat")
 		if not n.secret.is_empty():
 			extra.append("secret: " + n.secret["text"])
+		if n.secret_mod != "":
+			extra.append("secret modifier: " + C.secret_name(n.secret_mod))
 		if not poisoned.is_empty():
 			extra.append("poisoned nights " + ",".join(PackedStringArray(poisoned)))
 		if n.red_herring != "":
