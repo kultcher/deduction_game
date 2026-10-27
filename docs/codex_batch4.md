@@ -173,6 +173,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
     found. Confirm `search` at that location finds it; if it can't, report why (don't change search
     odds).
 
+   - **Implemented (Codex batch 4, set 3):** Verified original case 37291 event 466: Fenwick drops an owned item at the wharf on night 3; the original log records no wharf search. A recorded-event fixture verifies ordinary go/search finds the existing dated evidence, wrong-location searches retain it, repeat searches do not duplicate it and owner death does not hide it. No production search or odds change was needed. Exact-string expectations changed: none.
+
 ## Test expectations
 
 - Baseline `main`: 82/82 plus `test_trace`.
