@@ -1222,6 +1222,7 @@ func _maybe_divulge() -> bool:
 		w.dlog.add("approach", n.id, "player", {"agenda": "divulge"})
 		_narr("%s the %s finds you at %s, as they promised." % [n.name, n.occupation, w.loc_name(n.loc)])
 		_line(Mind.say(n, "You kept your word. Now I'll keep mine."))
+		n.pressed_today = 0  # They initiated this free disclosure, not another interrogation.
 		var r: Dictionary = Mind.keep_request(w, n, 4 if n.trust >= 0.6 else 3)
 		_lines(r["lines"])
 		_facts(r["facts"])
@@ -1236,6 +1237,7 @@ func _approach_command(verb: String, rest: String) -> void:
 		return
 	match verb:
 		"accept", "yes", "y", "talk":
+			n.pressed_today = 0  # A new conversation they chose to initiate.
 			state = "talk"
 			moved = true
 			free_move_used = true
@@ -1271,6 +1273,7 @@ func _approach_command(verb: String, rest: String) -> void:
 func _protect_approach_answer(n, verb: String, rest: String) -> void:
 	match verb:
 		"yes", "y", "accept", "promise", "agree":
+			n.pressed_today = 0  # Includes protection requests and their free disclosure.
 			state = "day"
 			_grant_protection(n, approach["what"] if approach.has("what") else Mind.protection_kind(w, n))
 			_prompt("Where will you spend the %s? ('go <place | block | person>')" % w.phase_name().to_lower())

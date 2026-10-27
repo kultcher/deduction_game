@@ -51,3 +51,12 @@ the existing fear relief and promised disclosure. It does not fulfil neighbours'
 promises or count a ward from another night. When both offers to one NPC are covered
 by that ward, settlement awards the existing kept-promise benefit once. No trust
 amounts or tool costs changed. Focused checks cover boundaries and repeated settlement.
+
+## NPC-initiated approach fatigue
+
+Accepting news, gossip, framing or protection approaches clears that NPC's accumulated
+question count before the opening response. A promised free disclosure clears it
+before speaking, so its optional continuation also starts fresh. Declines preserve
+the old count. No old trust loss is repaired, no wrong-guess counter is reset, and
+fresh questioning still accrues normal fatigue. Paired fresh/tired fixtures verify
+matching post-accept trust and RNG for each agenda, including evil framing.

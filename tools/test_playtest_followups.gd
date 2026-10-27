@@ -27,6 +27,7 @@ func run():
 	checkbox_skin()
 	await headlines()
 	ward_promise()
+	approach_fatigue()
 	print("Playtest follow-ups: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func picker(title: String, count: int):
@@ -170,3 +171,58 @@ func ward_promise():
 	g.offer = {"vigil": {n.id: "square"}}
 	g._settle_offers()
 	check(is_equal_approx(n.trust, 0.56), "ordinary promised vigils retain their reward")
+
+func approach_fixture(g, evil: bool):
+	var n = g.w.minion() if evil else g.w.living_good()[0]
+	g.w.day = 3
+	n.loc = n.work
+	n.busy_with = ""
+	n.silenced = false
+	n.trust = 0.5
+	n.claim_public = false
+	n.claimed_role = ""
+	n.max_tier = 0
+	n.info_log = []
+	n.role_guesses = 2
+	if evil: g.w.evil_plan.bluffs[n.id] = "clerk"
+	else: n.role = "clerk"
+	g.state = "approach"
+	return n
+func approach_fatigue():
+	for agenda in ["news", "gossip", "frame", "protect"]:
+		var a = fresh()
+		var b = fresh()
+		var n = approach_fixture(a, agenda == "frame")
+		var control = approach_fixture(b, agenda == "frame")
+		n.pressed_today = 8
+		control.pressed_today = 0
+		a.approach = {"npc": n, "agenda": agenda, "what": "ward"}
+		b.approach = {"npc": control, "agenda": agenda, "what": "ward"}
+		var rng = a.w.rng.state
+		a._approach_command("accept", "")
+		b._approach_command("accept", "")
+		check(n.pressed_today == 0 and n.trust == control.trust, "accepted %s approach starts with no accumulated question fatigue" % agenda)
+		check(a.w.rng.state == b.w.rng.state and n.role_guesses == 2, "approach reset changes neither existing rolls nor wrong guesses")
+		var before = n.trust
+		for i in range(3): Mind.on_question(a.w, n)
+		check(n.trust == before, "three follow-up questions are free of old fatigue")
+		Mind.on_question(a.w, n)
+		check(n.trust < before, "new fatigue still applies after the fresh allowance")
+	var g = fresh()
+	var n = approach_fixture(g, false)
+	n.pressed_today = 8
+	g.approach = {"npc": n, "agenda": "news"}
+	g._approach_command("decline", "")
+	check(n.pressed_today == 8, "declining a news approach does not reset fatigue")
+	g.state = "approach"
+	g.approach = {"npc": n, "agenda": "protect", "what": "ward"}
+	g._approach_command("decline", "")
+	check(n.pressed_today == 8, "declining a protection request does not reset fatigue")
+	g.state = "day"
+	g.divulge_due = [n.id]
+	var before = n.trust
+	var divulged = g._maybe_divulge()
+	check(divulged and n.pressed_today == 0, "promised free disclosure itself resets fatigue before its opening answer (delivered %s, fatigue %d)" % [divulged, n.pressed_today])
+	check(n.trust >= before, "promised disclosure adds no old question-fatigue trust penalty")
+	g._approach_command("accept", "")
+	check(g.questions_left == 3 and n.pressed_today == 0, "continuing a promised disclosure has a fresh question allowance")
