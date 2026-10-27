@@ -75,7 +75,7 @@ func headlines():
 	check(overlay.current.text == "0" and overlay.pending.size() == 4, "notices play one at a time in order")
 	var left = overlay.remaining
 	overlay._process(0.25)
-	check(is_equal_approx(left - overlay.remaining, 0.5), "more than two waiting notices shorten display time")
+	check(is_equal_approx(left - overlay.remaining, 0.25 * minf(2.0, overlay.styles.dawn.duration / 3.0)), "more than two waiting notices shorten display time")
 	var motion = InputEventMouseMotion.new()
 	motion.position = Vector2(30, 30)
 	motion.global_position = motion.position
@@ -291,7 +291,7 @@ func column_menus():
 	picker.add_child(label)
 	for i in range(17): picker.add_child(Button.new())
 	var balanced = Columns.balance(picker)
-	check(balanced.get_children().map(func(col): return col.get_children().filter(func(n): return n is Button).size()) == [6, 6, 5], "handcrafted pickers also split evenly into eight-option columns")
+	check(balanced.get_child(1).get_children().map(func(col): return col.get_children().filter(func(n): return n is Button).size()) == [6, 6, 5], "handcrafted pickers also split evenly into eight-option columns")
 	picker.free()
 	balanced.free()
 

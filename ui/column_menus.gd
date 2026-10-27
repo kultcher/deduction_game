@@ -82,14 +82,23 @@ static func show_columns(menu: PopupMenu) -> void:
 	scroll.add_child(row)
 	var columns: Array = []
 	var all: Array = []
+	var section_rows = {}
 	for group in groups(menu):
 		var column = VBoxContainer.new()
 		column.name = "Options"
-		row.add_child(column)
-		if group.title != "":
-			var label = Label.new()
-			label.text = group.title
-			column.add_child(label)
+		# A section heading spans its columns, rather than repeating above each.
+		if not section_rows.has(group.title):
+			var section = VBoxContainer.new()
+			row.add_child(section)
+			if group.title != "":
+				var label = Label.new()
+				label.text = group.title
+				section.add_child(label)
+			var options = HBoxContainer.new()
+			options.add_theme_constant_override("separation", 12)
+			section.add_child(options)
+			section_rows[group.title] = options
+		section_rows[group.title].add_child(column)
 		var buttons: Array = []
 		for index in group.indices:
 			var button = Button.new()
@@ -128,13 +137,7 @@ static func show_columns(menu: PopupMenu) -> void:
 	popup.window_input.connect(func(event):
 		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 			popup.hide())
-	var bounds = Rect2i(Vector2i.ZERO if owner.gui_embed_subwindows else owner.position, owner.size)
-	var wanted = row.get_combined_minimum_size() + Vector2(20, 20)
-	var extent = Vector2i(mini(int(wanted.x), maxi(40, bounds.size.x - 24)), mini(int(wanted.y), maxi(40, bounds.size.y - 24)))
-	scroll.custom_minimum_size = Vector2(extent - Vector2i(12, 12))
-	at.x = clampi(at.x, bounds.position.x, maxi(bounds.position.x, bounds.end.x - extent.x))
-	at.y = clampi(at.y, bounds.position.y, maxi(bounds.position.y, bounds.end.y - extent.y))
-	popup.popup(Rect2i(at, extent))
+	_fit_popup(popup, scroll, row, at)
 	for button in all:
 		if button.get_meta("menu_index") == focused:
 			button.grab_focus()
@@ -173,31 +176,47 @@ static func balance(content: Control) -> Control:
 	var buttons: Array = content.get_children().filter(func(n): return n is Button)
 	var others: Array = content.get_children().filter(func(n): return not n is Button)
 	if buttons.size() <= LIMIT or others.size() > 1 or (others.size() == 1 and not others[0] is Label): return content
+	var section = VBoxContainer.new()
+	if not others.is_empty():
+		content.remove_child(others[0])
+		section.add_child(others[0])
 	var row = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
+	section.add_child(row)
 	var count = ceili(buttons.size() / float(LIMIT))
 	var offset = 0
 	for col in range(count):
 		var box = VBoxContainer.new()
 		row.add_child(box)
-		if not others.is_empty(): box.add_child(others[0].duplicate())
 		var size = ceili((buttons.size() - offset) / float(count - col))
 		for button in buttons.slice(offset, offset + size):
 			content.remove_child(button)
 			box.add_child(button)
 		offset += size
-	return row
+	return section
 
 static func fit_picker(popup: PopupPanel, content: Control, at: Vector2i) -> void:
-	var owner = popup.get_parent().get_window()
-	var bounds = Rect2i(Vector2i.ZERO if owner.gui_embed_subwindows else owner.position, owner.size)
 	var scroll = ScrollContainer.new()
 	scroll.follow_focus = true
-	scroll.add_child(content)
-	var wanted = content.get_combined_minimum_size() + Vector2(20, 20)
-	var extent = Vector2i(mini(int(wanted.x), maxi(40, bounds.size.x - 24)), mini(int(wanted.y), maxi(40, bounds.size.y - 24)))
-	scroll.custom_minimum_size = Vector2(extent - Vector2i(12, 12))
 	popup.add_child(scroll)
-	at.x = clampi(at.x, bounds.position.x, maxi(bounds.position.x, bounds.end.x - extent.x))
-	at.y = clampi(at.y, bounds.position.y, maxi(bounds.position.y, bounds.end.y - extent.y))
-	popup.popup(Rect2i(at, extent))
+	scroll.add_child(content)
+	_fit_popup(popup, scroll, content, at)
+
+static func _fit_popup(popup: PopupPanel, scroll: ScrollContainer, content: Control, at: Vector2i) -> void:
+	# Measure after joining the tree: theme and nested-container minimums settle
+	# asynchronously. A previous picker must not constrain this one's window.
+	var fit = func():
+		if not is_instance_valid(popup) or not is_instance_valid(content): return
+		var owner = popup.get_parent().get_window()
+		var bounds = Rect2i(Vector2i.ZERO, Vector2i(owner.get_visible_rect().size)) if owner.gui_embed_subwindows else Rect2i(owner.position, owner.size)
+		var margin = popup.get_theme_stylebox("panel").get_minimum_size()
+		var wanted = content.get_combined_minimum_size() + margin + Vector2(16, 16)
+		var limit = Vector2i(maxi(40, bounds.size.x - 24), maxi(40, bounds.size.y - 24))
+		var extent = Vector2i(mini(ceili(wanted.x), limit.x), mini(ceili(wanted.y), limit.y))
+		popup.min_size = Vector2i.ZERO
+		scroll.custom_minimum_size = Vector2(extent) - margin
+		popup.max_size = limit
+		var position = Vector2i(clampi(at.x, bounds.position.x + 12, maxi(bounds.position.x + 12, bounds.end.x - extent.x - 12)),
+			clampi(at.y, bounds.position.y + 12, maxi(bounds.position.y + 12, bounds.end.y - extent.y - 12)))
+		popup.popup(Rect2i(position, extent))
+	fit.call_deferred()

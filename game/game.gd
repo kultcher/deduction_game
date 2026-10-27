@@ -135,6 +135,7 @@ func _screen(t: String) -> void:
 
 func _line(x) -> void:
 	if x is Dictionary:
+		_remember_spoken_relationship(x)
 		_ev({"k": "speech", "speaker": x["speaker"], "name": x["name"], "text": x["text"]})
 	else:
 		_narr(str(x))
@@ -1222,6 +1223,7 @@ func _maybe_divulge() -> bool:
 		w.dlog.add("approach", n.id, "player", {"agenda": "divulge"})
 		_narr("%s the %s finds you at %s, as they promised." % [n.name, n.occupation, w.loc_name(n.loc)])
 		_line(Mind.say(n, "You kept your word. Now I'll keep mine."))
+		n.pressed_today = 0  # They initiated this free disclosure, not another interrogation.
 		var r: Dictionary = Mind.keep_request(w, n, 4 if n.trust >= 0.6 else 3)
 		_lines(r["lines"])
 		_facts(r["facts"])
@@ -1236,6 +1238,7 @@ func _approach_command(verb: String, rest: String) -> void:
 		return
 	match verb:
 		"accept", "yes", "y", "talk":
+			n.pressed_today = 0  # A new conversation they chose to initiate.
 			state = "talk"
 			moved = true
 			free_move_used = true
@@ -1271,6 +1274,7 @@ func _approach_command(verb: String, rest: String) -> void:
 func _protect_approach_answer(n, verb: String, rest: String) -> void:
 	match verb:
 		"yes", "y", "accept", "promise", "agree":
+			n.pressed_today = 0  # Includes protection requests and their free disclosure.
 			state = "day"
 			_grant_protection(n, approach["what"] if approach.has("what") else Mind.protection_kind(w, n))
 			_prompt("Where will you spend the %s? ('go <place | block | person>')" % w.phase_name().to_lower())
@@ -1746,7 +1750,11 @@ func _settle_offers() -> void:
 	if offer.has("ward"):
 		promised.append([offer["ward"], ward_log.get(w.day, "") == offer["ward"], "ward"])
 	for id in offer.get("vigil", {}):
-		promised.append([id, w.player_vigil == offer["vigil"][id], "vigil"])
+		var warded: bool = ward_log.get(w.day, "") == id
+		# A ward on their own door fulfils the protection promised by a vigil.
+		# When both were promised, the kept ward above already settles it once.
+		if warded and offer.get("ward", "") == id: continue
+		promised.append([id, warded or w.player_vigil == offer["vigil"][id], "vigil"])
 	for p in promised:
 		var n = w.by_id[p[0]]
 		if not n.alive:
@@ -1864,6 +1872,23 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 		r.lines.append(Mind.say(n, text))
 		w.dlog.add("player_learns_relationship", n.id, t.id, {"kind": bond.kind, "people": bond.people})
 
+## Authored speech can explicitly disclose a bond outside "ask about". Record only
+## that disclosure, never infer from suspicion, actual bonds, or hidden Lover state.
+func _remember_spoken_relationship(line: Dictionary) -> void:
+	var bond: Dictionary = line.get("relationship", {})
+	var people: Array = bond.get("people", [])
+	var source: String = line.get("speaker", "")
+	if bond.get("kind", "") not in ["friend", "rival"] or people.size() != 2 or people[0] == people[1] or source not in people or not people.all(func(id): return w.by_id.has(id)):
+		return
+	for known in known_relationships.values():
+		if known.kind == bond.kind and people.all(func(id): return id in known.people): return
+	people = people.duplicate()
+	people.sort()
+	var key = bond.kind + ":" + ":".join(PackedStringArray(people))
+	known_relationships[key] = {"kind": bond.kind, "people": people, "source": source,
+		"text": w.by_id[source].name + ' says "' + line.text + '"'}
+	w.dlog.add("player_learns_relationship", source, people[1] if people[0] == source else people[0], {"kind": bond.kind, "people": people, "how": "explicit speech"})
+
 func known_relationship_notes(id: String) -> Array:
 	return known_relationships.values().filter(func(b): return id in b.people).map(func(b): return b.text)
 
@@ -1936,6 +1961,11 @@ func _testimony_turn() -> void:
 	var t: Dictionary = Mind.testimony_step(w, _testimony)
 	if not t.get("lines", []).is_empty():
 		_testimony["spoken"] += 1
+		# Board cards are player knowledge. Give listeners the spoken report before
+		# the next speaker reacts; both streamed and immediate meetings use this turn.
+		var speaker = w.by_id[t.who]
+		for fact in t.get("facts", []):
+			Social.deliver_public_sighting(w, speaker, fact)
 		_lines(t["lines"])
 		_facts(t["facts"])
 	if not _testimony["done"]:

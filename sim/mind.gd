@@ -3272,6 +3272,8 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	var opinion_reply: Dictionary = voiced(n, "friend", text, "opinion:" + t.id, {"close": close, "subject": t.name})
 	var opinion_cue: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
 	opinion_reply["text"] = Dialogue.contextualize(n.id, opinion_reply["text"], opinion_cue, t.name)
+	if close:
+		opinion_reply["relationship"] = {"kind": "friend", "people": [n.id, t.id]}
 	lines.append(opinion_reply)
 	if level >= 0.5:
 		facts.append({"kind": "opinion", "subject": [t.id], "source": n.id, "text": "%s distrusts %s." % [n.name, t.name]})
@@ -3496,7 +3498,9 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	elif relevance < 0.3:
 		lines.append(say(n, "I don't see what that has to do with %s." % suspect.name))
 	elif bond > 0.65 and delta < 0.1:
-		lines.append(say(n, "%s is my friend. You'll need more than that." % suspect.name))
+		var friendship = say(n, "%s is my friend. You'll need more than that." % suspect.name)
+		friendship["relationship"] = {"kind": "friend", "people": [n.id, suspect.id]}
+		lines.append(friendship)
 	elif cls == "speech" and ins >= 0.67 and delta < 0.1:
 		lines.append(say(n, "That's only talk. Show me something real."))
 	elif nv >= 0.8:

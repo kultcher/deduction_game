@@ -10,26 +10,6 @@ const EvidenceContext = preload("res://ui/evidence_context.gd")
 var context_numbers: Dictionary = {}
 var accept_drops = false
 
-# A mouse-transparent overlay follows the Tree's own row layout and scrolling.
-# Text stays in ordinary wrapping Tree cells, preserving selection and hit areas.
-class ContextBorders extends Control:
-	var list
-	func _draw() -> void:
-		for item in list._items:
-			if list.context_numbers.has(item.get_metadata(0)):
-				EvidenceContext.draw_border(self, list.get_item_area_rect(item, 0), list.get_theme_color("font_color"))
-
-func _ready() -> void:
-	var borders = ContextBorders.new()
-	borders.list = self
-	borders.name = "ContextBorders"
-	borders.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	borders.clip_contents = true
-	add_child(borders)
-	borders.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	draw.connect(borders.queue_redraw)
-
-
 var _root: TreeItem
 var _items: Array = []
 
@@ -113,7 +93,7 @@ func reset() -> void:
 func add(text: String, meta, tip: String = "", color = null) -> TreeItem:
 	var it = create_item(_root)
 	var context: bool = context_numbers.has(meta)
-	it.set_text(0, ("[context] " if context else "") + text)
+	it.set_text(0, text)
 	if context:
 		tip += ("\n" if tip != "" else "") + EvidenceContext.EXPLANATION
 	it.set_metadata(0, meta)

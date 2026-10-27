@@ -590,7 +590,7 @@ func _draw_evidence(id: String, rect: Rect2) -> void:
 	var header = Color("c4b185") if node.kind == "evidence" else Color("a98fb0")
 	var ink = Color("2c2720")
 	var muted = Color("6f6350")
-	draw_style_box(CanvasSkin.flat(paper, Color("f7d988") if id == model.selected or id == linking else Color("665c4c"), 0 if EvidenceContext.is_context(card) else (3 if id == model.selected else 1), 6, 0), rect)
+	draw_style_box(CanvasSkin.flat(paper, Color("f7d988") if id == model.selected or id == linking else Color("665c4c"), 3 if id == model.selected else 1, 6, 0), rect)
 	if clashing.has(card.get("id", "")):
 		draw_rect(rect.grow(4 * zoom), Color("c0392b"), false, 3.0 * zoom)
 	var head = Rect2(rect.position, Vector2(rect.size.x, 40 * zoom))
@@ -639,9 +639,6 @@ func _draw_evidence(id: String, rect: Rect2) -> void:
 		draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), answer)
 		draw_string(font, answer.position + Vector2(14, 20) * zoom, "Details", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
 
-	if EvidenceContext.is_context(card):
-		EvidenceContext.draw_border(self, rect, Color("8c6b1f") if id == model.selected or id == linking else ink, 2.0 if id == model.selected else 1.2)
-		EvidenceContext.draw_tag(self, Rect2(rect.position + Vector2(10 * zoom, rect.size.y - 34 * zoom), Vector2(70, 20) * zoom), font, ink, zoom)
 
 func _draw_element(id: String, origin: Vector2, el: Dictionary) -> void:
 	var ink = Color("2c2720")

@@ -966,6 +966,7 @@ func _show_popup(content: Control, anchor: Control) -> void:
 	if content != original_content:
 		original_content.queue_free()
 	for ch in popup.get_children():
+		popup.remove_child(ch)
 		ch.queue_free()
 	# Every menu gets its own close button (Esc works too).
 	var wrap = VBoxContainer.new()
@@ -982,7 +983,11 @@ func _show_popup(content: Control, anchor: Control) -> void:
 	wrap.add_child(bar)
 	wrap.add_child(content)
 	content = wrap
-	var pos = Vector2i(anchor.get_screen_position()) + Vector2i(0, int(anchor.size.y)) if anchor != null else Vector2i(get_viewport_rect().size / 2.0)
+	var pos = Vector2i(get_viewport_rect().size / 2.0)
+	if anchor != null:
+		# Embedded popup positions are in logical viewport units, not screen pixels.
+		var origin = anchor.global_position if anchor.get_window().gui_embed_subwindows else anchor.get_screen_position()
+		pos = Vector2i(origin) + Vector2i(0, int(anchor.size.y))
 	preload("res://ui/column_menus.gd").fit_picker(popup, content, pos)
 
 func _column(title: String) -> VBoxContainer:

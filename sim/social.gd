@@ -146,7 +146,24 @@ static func _pick_item(w, s, l):
 	w.observe_weighted(s, "npc_share", cands, "nothing", observed_draw, {"privacy": priv, "gossip": gos, "trust_in_listener": bond, "pressure": s.pressure}, l.id, 0.3)
 	return null
 
-static func _deliver(w, s, l, item: Dictionary) -> void:
+## Public ordinary sightings use the same hearing/receipt path as private shares.
+## The speaker has already chosen what to say; delivery adds no decision or RNG.
+static func deliver_public_sighting(w, speaker, fact: Dictionary) -> void:
+	if fact.get("kind", "") != "sighting" or fact.get("phase", -1) != C.NIGHT or fact.get("source", "") != speaker.id or fact.get("subject", []).size() != 1:
+		return
+	var who: String = fact.subject[0]
+	if who == speaker.id or not w.by_id.has(who): return
+	var item = {"kind": "sighting", "about": who, "block": fact.get("block", ""), "day": fact.get("day", -1),
+		"from": speaker.id, "key": "sighting:%s:%d" % [who, fact.get("day", -1)]}
+	for listener in w.living():
+		if listener == speaker: continue
+		_deliver(w, speaker, listener, item, true, fact)
+		# The real evil mind receives its usual intel; its good self must hear the
+		# public evidence too, through the same receipt path and its own ledger.
+		if listener.is_evil():
+			Mind.shadow_run(w, listener, func(sh): _deliver(w, speaker, sh, item, true, fact))
+
+static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: Dictionary = {}) -> void:
 	_mark(s, l, item["key"])
 	var lie: bool = item.get("lie", false)
 	var desc = _describe(w, s, item)
@@ -186,9 +203,13 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 				"%s says they were out at night" % s.name)
 			var card = {"kind": "sighting", "source": item.get("from", s.id), "via": s.id, "subject": [item["about"]], "block": item.get("block", ""), "day": item.get("day", -1), "phase": C.NIGHT,
 				"learned": [{"day": w.day, "phase": w.phase, "via": s.id}], "text": desc}
+			if not original.is_empty():
+				card = original.duplicate(true)
+				card["via"] = s.id
+				card["learned"] = [{"day": w.day, "phase": w.phase, "via": s.id, "public": public}]
 			var receipt = Mind.WorkshopLedger.Evidence.normalize_card(card)
 			Mind.ledger_hear(w, l, "heard:" + receipt.id, e1, wgt * 2.0, [s.id, item.get("day", -1), "report"],
-				{"kind": "tell", "workshop_card": receipt, "workshop_teller": s.id, "workshop_public": false})
+				{"kind": "tell", "workshop_card": receipt, "workshop_teller": s.id, "workshop_public": public})
 			l.hearsay.append(hs)
 		"opinion":
 			# Remember the conversation and teller, without turning their conclusion
@@ -214,7 +235,8 @@ static func _deliver(w, s, l, item: Dictionary) -> void:
 			l.known_secrets[owner.id] = s.id
 			if owner != s:
 				owner.secret_spread_by_npc = true
-	l.npc_trust[s.id] = clampf(l.npc_trust.get(s.id, 0.5) + 0.02, 0.0, 1.0)
+	if not public:
+		l.npc_trust[s.id] = clampf(l.npc_trust.get(s.id, 0.5) + 0.02, 0.0, 1.0)
 
 static func _describe(w, s, item: Dictionary) -> String:
 	var src = item.get("from", "")
