@@ -463,6 +463,7 @@ static func choose_kill_target(w) -> String:
 	var d = w.demon()
 	var plan: Dictionary = w.evil_plan
 	var scores = {}
+	var observed = {}
 	var best = ""
 	var best_s = -99.0
 	var warden_claimed = false
@@ -522,23 +523,27 @@ static func choose_kill_target(w) -> String:
 				profile += _public_threat(w, n)[k]
 			if profile > 0.0:
 				parts["caution_low_profile"] = snappedf(-caution * minf(profile, 4.0) * 0.7, 0.01)
-		parts["noise"] = snappedf(w.rng.randf() * 0.8, 0.01)
+		var noise_draw = w.rng.randf()
+		parts["noise"] = snappedf(noise_draw * 0.8, 0.01)
 		var total = 0.0
 		for k in parts:
 			total += parts[k]
+		if w.dlog.live_feed != null and w.dlog.live_feed.enabled:
+			observed[n.id] = {"score": total, "raw_draw": noise_draw, "noise": parts["noise"], "parts": parts.duplicate()}
 		scores[n.id] = {"total": snappedf(total, 0.01), "parts": parts}
 		if total > best_s:
 			best_s = total
 			best = n.id
+	w.observe_ranked(d, "kill_ranking", observed, best, 0.8)
 	# Now and then the demon does something nobody would predict: it passes over its top
 	# three and takes someone else.
 	var zag = false
-	if w.rng.randf() < 0.03 and scores.size() > 3:
+	if w.decision_roll(d, "unpredictable_kill", 0.03) and scores.size() > 3:
 		var order: Array = scores.keys()
 		order.sort_custom(func(x, y): return scores[x]["total"] > scores[y]["total"])
 		var rest: Array = order.slice(3).filter(func(x): return scores[x]["total"] > -5.0)
 		if not rest.is_empty():
-			best = rest[w.rng.randi_range(0, rest.size() - 1)]
+			best = w.decision_pick(d, "unpredictable_kill_target", rest)
 			best_s = scores[best]["total"]
 			zag = true
 	w.dlog.think(d.id, "kill_choice", "Demon targets %s (score %.2f)%s." % [best, best_s, " (an unpredictable choice: skipped its top three)" if zag else ""], {"scores": scores, "caution": plan.get("caution", 0.0), "zag": zag})
@@ -601,6 +606,7 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 		if w.by_id[id].alive and not (id in wardens):
 			wardens.append(id)
 	var scores = {}
+	var observed = {}
 	var best = ""
 	var best_s = -99.0
 	for n in w.living_good():
@@ -617,14 +623,18 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 			parts["known_threat"] = known
 		if n.id in wardens and kt != null:
 			parts["disable_warden"] = 2.5 if (kt.claim_public and kt.claimed_role in C.INFO_ROLES) else 1.2
-		parts["noise"] = snappedf(w.rng.randf() * 1.5, 0.01)
+		var noise_draw = w.rng.randf()
+		parts["noise"] = snappedf(noise_draw * 1.5, 0.01)
 		var total = 0.0
 		for k in parts:
 			total += parts[k]
+		if w.dlog.live_feed != null and w.dlog.live_feed.enabled:
+			observed[n.id] = {"score": total, "raw_draw": noise_draw, "noise": parts["noise"], "parts": parts.duplicate()}
 		scores[n.id] = {"total": snappedf(total, 0.01), "parts": parts}
 		if total > best_s:
 			best_s = total
 			best = n.id
+	w.observe_ranked(m, "poison_ranking", observed, best, 1.5)
 	w.dlog.think(m.id, "poison_choice", "Poisoner targets %s (score %.2f)%s." % [best, best_s,
 		" (blind guess on the first night)" if w.day == 0 else ""], {"scores": scores})
 	return best
@@ -883,7 +893,7 @@ static func _own_fake_reading(n, nd: int, role: String) -> Dictionary:
 
 static func fake_gossip(w, speaker):
 	var s: String = w.evil_plan["scapegoat"]
-	if s == "" or not w.by_id[s].alive or not w.chance(0.6):
+	if s == "" or not w.by_id[s].alive or not w.decision_roll(speaker, "spread_false_gossip", 0.6, {}, s):
 		return null
 	var block: String = w.by_id[s].home_block
 	for sid in w.scenes:
@@ -904,7 +914,7 @@ static func cite(w, n, why: String) -> String:
 		return ""
 	if why.begins_with("my own") and not n.claim_public:
 		return ""  # citing it would give away a gift they haven't claimed
-	if w.rng.randf() < 0.5 * (1.0 - n.traits.get("insight", 0.5)):
+	if w.decision_roll(n, "careless_bluff_reason", 0.5 * (1.0 - n.traits.get("insight", 0.5)), {"insight": n.traits.get("insight", 0.5)}):
 		return ""
 	return why
 
@@ -949,6 +959,7 @@ static func evil_nomination(w, n):
 		return null
 	var avg = public_heat(w, w.by_id[s])
 	var bold = n.traits.get("confidence", 0.5)
+	w.observe_decision(n, "evil_nomination", avg >= 0.45 - 0.15 * bold, {"score": avg, "threshold": 0.45 - 0.15 * bold, "comparison": ">=", "inputs": {"confidence": bold, "public_heat": avg}}, s)
 	if avg >= 0.45 - 0.15 * bold:
 		return {"nominee": s, "by": n.id, "score": avg + 0.2,
 			"reason": "Evil: public heat on scapegoat %s is %.2f; pushes the nomination." % [s, avg]}
@@ -962,13 +973,13 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool =
 	var yes = false
 	var why = ""
 	var nom_n = w.by_id[nominee]
-	if nom_n.role == "revenant" and nom_n.is_evil() and not w.totem.is_empty() and w.chance(0.55):
+	if nom_n.role == "revenant" and nom_n.is_evil() and not w.totem.is_empty() and w.decision_roll(v, "vote_revenant_curse", 0.55, {}, nominee):
 		# A hanged Revenant with a totem hidden curses the town: let it hang.
 		yes = true
 		why = "The Revenant's totem is hidden: its hanging will turn one of the town."
 	elif is_teammate(w, v, nominee):
 		var have = yes_so_far + (1 if player_yes else 0)  # counted so far, without me
-		if v.id == w.demon_id and block == v.id and have + 1 == bc and have + 1 >= thr and w.chance(0.4 + 0.5 * v.traits.get("confidence", 0.5)):
+		if v.id == w.demon_id and block == v.id and have + 1 == bc and have + 1 >= thr and w.decision_roll(v, "vote_to_tie", 0.4 + 0.5 * v.traits.get("confidence", 0.5), {"confidence": v.traits.get("confidence", 0.5)}, nominee):
 			# On the block myself: one more vote ties the count and clears the block.
 			yes = true
 			why = "Demon on the block votes for own minion: %d votes ties the block's %d and clears it." % [have + 1, bc]
@@ -987,7 +998,7 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool =
 		yes = true
 		why = "Joins a likely-winning vote against a good NPC."
 	else:
-		yes = w.chance(0.35 + 0.2 * v.traits.get("confidence", 0.5))
+		yes = w.decision_roll(v, "vote_to_look_natural", 0.35 + 0.2 * v.traits.get("confidence", 0.5), {"confidence": v.traits.get("confidence", 0.5)}, nominee)
 		why = "Coin-flip vote on a good NPC to look natural."
 	w.dlog.think(v.id, "vote", "%s on %s. %s" % ["YES" if yes else "no", nominee, why], {"evil": true})
 	return yes
@@ -1064,6 +1075,7 @@ static func breath_target(w, bs) -> String:
 	var best = ""
 	var best_s = -99.0
 	var scores = {}
+	var observed = {}
 	for n in cands:
 		var parts = _public_threat(w, n)
 		var hostile = public_hostility(w, n)
@@ -1072,16 +1084,20 @@ static func breath_target(w, bs) -> String:
 		var known = intel_threat(bs, n.id)
 		if known > 0.0:
 			parts["known_threat"] = known
-		parts["noise"] = snappedf(w.rng.randf() * 1.0, 0.01)
+		var noise_draw = w.rng.randf()
+		parts["noise"] = snappedf(noise_draw * 1.0, 0.01)
 		var total = 0.0
 		for k in parts:
 			total += parts[k]
+		if w.dlog.live_feed != null and w.dlog.live_feed.enabled:
+			observed[n.id] = {"score": total, "raw_draw": noise_draw, "noise": parts["noise"], "parts": parts.duplicate()}
 		scores[n.id] = snappedf(total, 0.01)
 		if total > best_s:
 			best_s = total
 			best = n.id
+	w.observe_ranked(bs, "silence_ranking", observed, best, 1.0)
 	var p = [0.3, 0.5, 1.0][w.phase] if best_s > 1.0 else [0.15, 0.3, 0.7][w.phase]
-	if not w.chance(p):
+	if not w.decision_roll(bs, "silence_this_phase", p, {"best_target_score": best_s}, best):
 		w.dlog.think(bs.id, "breath_choice", "Breathstealer holds off this phase (best %s, %.2f)." % [best, best_s], {"scores": scores})
 		return ""
 	w.dlog.think(bs.id, "breath_choice", "Breathstealer silences %s (score %.2f)." % [best, best_s], {"scores": scores})
@@ -1089,4 +1105,4 @@ static func breath_target(w, bs) -> String:
 
 ## Whether the Revenant hides its totem here and now (it will by evening).
 static func place_totem_now(w, rv) -> bool:
-	return w.chance([0.45, 0.6, 1.0][w.phase])
+	return w.decision_roll(rv, "place_totem_now", [0.45, 0.6, 1.0][w.phase])

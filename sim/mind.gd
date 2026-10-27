@@ -325,7 +325,7 @@ static func evil_override(w, n, act: String, stakes: float, deviation: float, de
 	var yes = stakes - cost > caution
 	w.dlog.decision(n.id, "evil_override", "evaluation", yes, {"act": act, "detail": detail,
 		"stakes": stakes, "deviation": deviation, "exposure": exposure, "exposure_parts": exp_parts,
-		"cost": cost, "caution": caution, "score": stakes - cost, "comparison": ">"})
+		"cost": cost, "caution": caution, "score": stakes - cost, "threshold": caution, "comparison": ">"})
 	w.dlog.think(n.id, "override", "%s %s: %s (stakes %.2f - exposure cost %.2f vs caution %.2f)." %
 		["Breaks cover on" if yes else "Keeps cover on", act, detail, stakes, cost, caution],
 		{"act": act, "stakes": snappedf(stakes, 0.01), "cost": snappedf(cost, 0.01), "caution": snappedf(caution, 0.01), "exposure": exp_parts, "override": yes})
@@ -1078,7 +1078,7 @@ static func seer_picks(w, n) -> Array:
 	if w.day == 0 or ranked.size() < 3:
 		pair = w.shuffled(ranked).slice(0, 2)
 		why = "first look: two at random"
-	elif w.rng.randf() >= 0.3 + 0.5 * ins:
+	elif not w.decision_roll(n, "seer_focused_look", 0.3 + 0.5 * ins, {"insight": ins}):
 		pair = w.shuffled(ranked).slice(0, 2)
 		why = "a scattered look (insight %.2f): two at random" % ins
 	elif ins >= 0.6 and yes_on.get(ranked[0].id, 0) >= 2 and fresh.size() >= 2:
@@ -1090,7 +1090,7 @@ static func seer_picks(w, n) -> Array:
 			var fr: Array = others.filter(func(m): return not checked.has(m.id))
 			if not fr.is_empty():
 				others = fr
-		pair = [ranked[0], w.pick(others)]
+		pair = [ranked[0], w.decision_pick(n, "seer_second_target", others, {"insight": ins})]
 		why = "top suspect plus %s (insight %.2f)" % ["someone unchecked" if ins >= 0.6 else "one other", ins]
 	var ids: Array = pair.map(func(m): return m.id)
 	w.dlog.think(n.id, "seer_pick", "Seer: " + why + ".", {"pair": ids})
@@ -1168,7 +1168,7 @@ static func watch_block(w, n) -> String:
 	var ranked = ranked_suspects(w, n)
 	var b = ""
 	if w.day == 0 or ranked.is_empty():
-		b = w.pick(C.BLOCKS.keys())
+		b = w.decision_pick(n, "watch_block", C.BLOCKS.keys())
 	else:
 		b = ranked[0].home_block
 	w.dlog.think(n.id, "watch_pick", "Night Watch watches the block of their top suspect's home.", {"block": b})
@@ -1182,19 +1182,25 @@ static func warden_target(w, n) -> String:
 	var best = ""
 	var best_s = -99.0
 	var scores = {}
+	var observed = {}
 	for m in w.living():
 		if m == n:
 			continue
-		var s: float = w.rng.randf() * 0.3
+		var noise_draw = w.rng.randf()
+		var noise: float = noise_draw * 0.3
+		var s: float = noise
 		if m.claim_public and m.claimed_role in C.INFO_ROLES:
 			s += 1.0 - susp(n, m.id)
 		s += (n.npc_trust.get(m.id, 0.5) - 0.5) * 0.8
 		s -= susp(n, m.id) * 0.5
 		s += n.protect_pref.get(m.id, 0.0) * 1.2
+		if w.dlog.live_feed != null and w.dlog.live_feed.enabled:
+			observed[m.id] = {"score": s, "raw_draw": noise_draw, "noise": noise, "parts": {"target_score_before_noise": s - noise}, "inputs": {"target_trust": n.npc_trust.get(m.id, 0.5), "target_suspicion": susp(n, m.id), "protection_preference": n.protect_pref.get(m.id, 0.0), "target_info_claim": m.claim_public and m.claimed_role in C.INFO_ROLES}}
 		scores[m.id] = snappedf(s, 0.01)
 		if s > best_s:
 			best_s = s
 			best = m.id
+	w.observe_ranked(n, "warden_target", observed, best, 0.3)
 	w.dlog.think(n.id, "warden_pick", "Protects whoever scores highest (trusted info claimants, trusted people).", {"scores": scores, "pick": best})
 	return best
 
@@ -1224,6 +1230,7 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		var n = st["speakers"][st["i"]]
 		st["i"] += 1
 		if n.silenced:
+			w.observe_decision(n, "meeting_testimony", false, {"gate": "silenced; no testimony or roll"})
 			continue  # the Breathstealer took their voice
 		var lines: Array = []
 		var facts: Array = []
@@ -1454,7 +1461,7 @@ static func answer_hint(w, n) -> Dictionary:
 ## me a day or two") is no tell: a cautious good NPC stalls as often as an evil one with
 ## nothing behind its hint.
 static func _hint_decline(w, n, t) -> Dictionary:
-	if w.chance(0.5):
+	if w.decision_roll(n, "hint_decline_wording", 0.5):
 		return say(n, "Not yet. Give me a day or two, and watch %s." % t.name)
 	return say(n, "I said I'm not ready, and I'm not. Ask me again another time.")
 
@@ -1486,7 +1493,7 @@ static func relay_reading(w, n, src, e: Dictionary, lines: Array, facts: Array) 
 		if l != n and l != src:
 			apply_info(w, l, src, e, C.RELAY_WEIGHT * heard_weight(l, n), n.id, true)
 	w.dlog.think(n.id, "relay", "Relays %s's private %s reading without naming them." % [src.id, e["role"]], {"src": src.id})
-	if src.alive and not src.silenced and not src.claim_public and w.chance(C.RELAY_CORROBORATE):
+	if src.alive and not src.silenced and not src.claim_public and w.decision_roll(src, "corroborate_relay", C.RELAY_CORROBORATE, {}, n.id):
 		lines.append(say(src, "That was me."))
 		for l in w.living():
 			if l != n and l != src:
@@ -1662,7 +1669,7 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		# fake one ready that points at the target, or (sometimes) none yet, as a free bluff
 		# they'll decline to back up if asked.
 		var bluff: String = w.evil_plan["bluffs"].get(n.id, "")
-		if why == "" and C.has_readings(bluff) and (_unshared_fake_on(n, t.id) != {} or w.chance(C.EVIL_HINT_CHANCE)):
+		if why == "" and C.has_readings(bluff) and (_unshared_fake_on(n, t.id) != {} or w.decision_roll(n, "hint_without_reading", C.EVIL_HINT_CHANCE, {}, t.id)):
 			hint = true
 		w.dlog.think(n.id, "lie", "Evil: publicly accuses scapegoat %s, citing: %s." % [t.id, "a hinted private reason" if hint else why if why != "" else "vibes"])
 	else:
@@ -2193,6 +2200,8 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	exact_parts["suspicion"] = susp(v, nominee) # pressure is reported separately
 	w.dlog.decision(v.id, "vote", "evaluation", yes, {"parts": exact_parts,
 		"score": s, "threshold": need, "comparison": ">=", "margin": s - need,
+		"inputs": {"confidence": trait_of(v, "confidence"), "composure": trait_of(v, "composure"),
+			"paranoia": paranoia(w, v), "trust": v.trust, "trust_in_nominee": v.npc_trust.get(nominee, 0.5), "suspicion": susp(v, nominee)},
 		"threshold_parts": {"base": 0.5,
 			"confidence": -0.12 * (trait_of(v, "confidence") - 0.5) * 2.0,
 			"early_day": 0.1 if w.day <= 1 else 0.0, "paranoia": -0.4 * paranoia(w, v)},
@@ -2240,7 +2249,7 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 	var mine: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	var hiding = n.is_evil() or (night >= 0 and not n.secret.is_empty()) or (night < 0 and n.max_tier < 3 and not n.claim_public and C.ROLES[mine]["kind"] != "evil")
 	var p_nerves = (0.6 if hiding else 0.2) * (1.0 - trait_of(n, "composure")) * strength
-	var nervous = w.rng.randf() < p_nerves
+	var nervous = w.decision_roll(n, "pressed_nerves", p_nerves, {"composure": trait_of(n, "composure"), "evidence_strength": strength, "hiding": hiding})
 	w.dlog.think(n.id, "pressed", "Pressed with '%s' (strength %.2f; hiding %s; nerves p=%.2f -> %s)." %
 		[card.get("text", ""), strength, str(hiding), p_nerves, str(nervous)], {"night": night, "naming_me": naming_me, "counter": counter})
 	n.pressure += 0.35 * strength
@@ -2380,7 +2389,7 @@ static func on_question(w, n) -> void:
 
 ## Attitude cue on greeting, shown only if their composure lets it slip.
 static func greeting_cue(w, n) -> String:
-	if w.rng.randf() > (1.0 - trait_of(n, "composure")) * 0.9:
+	if not w.decision_roll(n, "greeting_attitude_visible", (1.0 - trait_of(n, "composure")) * 0.9, {"composure": trait_of(n, "composure")}, "", "<="):
 		w.dlog.think(n.id, "cue", "Composure hides their attitude (trust %.2f)." % n.trust)
 		return ""
 	var t: float = n.trust
@@ -2405,7 +2414,7 @@ static func end_conversation(w, n) -> Array:
 	var t = reveal_trait(w, n)
 	if t != "":
 		out.append(t)
-	if w.rng.randf() < 0.6 * (1.0 - trait_of(n, "composure")):
+	if w.decision_roll(n, "extra_trait_reveal", 0.6 * (1.0 - trait_of(n, "composure")), {"composure": trait_of(n, "composure")}):
 		var t2 = reveal_trait(w, n)
 		if t2 != "":
 			out.append(t2)
@@ -2415,7 +2424,7 @@ static func reveal_trait(w, n) -> String:
 	var hidden: Array = C.TRAITS.filter(func(t): return not n.revealed_traits.has(t))
 	if hidden.is_empty():
 		return ""
-	var t: String = w.pick(hidden)
+	var t: String = w.decision_pick(n, "revealed_trait", hidden)
 	var tier: String = C.tier(n.traits[t])
 	n.revealed_traits[t] = tier
 	w.dlog.add("trait_reveal", "player", n.id, {"trait": t, "tier": tier, "value": n.traits[t]})
@@ -2447,7 +2456,7 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 		"parts": {"privacy": (1.0 - trait_of(n, "privacy")) * 1.0, "trust": n.trust * 1.2,
 			"pressure": n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")),
 			"day": 0.1 * (w.day - 1), "base": -0.72, "jitter": jitter}.merged(gift_terms),
-		"thresholds": [{"above": 0.75, "tier": 4}, {"above": 0.45, "tier": 3},
+		"jitter_min": -0.2, "jitter_max": 0.2, "thresholds": [{"above": 0.75, "tier": 4}, {"above": 0.45, "tier": 3},
 			{"above": 0.15, "tier": 2}, {"otherwise": 1}], "comparison": ">"}, "", trace_id)
 	w.dlog.think(n.id, "disclosure", "Disclosure tier %d (openness %.2f; privacy %.2f, trust %.2f, pressure %.2f)." %
 		[t, openness, trait_of(n, "privacy"), n.trust, n.pressure], {"tier": t})
@@ -2468,7 +2477,11 @@ static func fear_chance(w, n) -> float:
 	return clampf(p, 0.0, 0.85)
 
 static func _afraid(w, n) -> bool:
-	return _day_roll(n.id, w.day, 0x5EA4) < fear_chance(w, n)
+	var draw = _day_roll(n.id, w.day, 0x5EA4)
+	var p = fear_chance(w, n)
+	var yes = draw < p
+	w.observe_decision(n, "afraid_to_disclose", yes, {"mechanism": "fixed daily sample (not a fresh RNG draw)", "inputs": {"composure": trait_of(n, "composure"), "pressure": n.pressure, "paranoia": paranoia(w, n), "fear_eased": n.fear_eased}, "probability": p, "draw": draw, "threshold": p, "comparison": "<"})
+	return yes
 
 ## A deterministic roll in [0, 1) for this person and day (no RNG used, so asking twice in
 ## a day gets the same answer). Integer mixing: string hashes of "id:day" barely change
@@ -2502,12 +2515,13 @@ static func protection_line(n, kind: String) -> Dictionary:
 ## it is free; "decline" carries what they'd have said instead.
 static func _protection_request(w, n, refusal: Dictionary) -> Dictionary:
 	if n.request_day == w.day or n.claim_public or n.protect_lock or n.trust < 0.45:
+		w.observe_decision(n, "protection_request", false, {"gate": "request already made today, claim public, promised protection, or trust < 0.45", "inputs": {"trust": n.trust, "request_day": n.request_day, "day": w.day, "claim_public": n.claim_public, "protect_lock": n.protect_lock}})
 		return {}
 	var kind: String = protection_kind(w, n)
 	if kind == "":
 		return {}
 	var p: float = clampf(0.35 + (n.trust - 0.45) * 1.5, 0.0, 0.85)
-	var asks: bool = w.chance(p)
+	var asks: bool = w.decision_roll(n, "protection_request", p, {"trust": n.trust})
 	w.dlog.decision(n.id, "protection_request", "outcome", asks, {"trust": n.trust, "p": snappedf(p, 0.01), "kind": kind})
 	if not asks:
 		return {}
@@ -2519,9 +2533,10 @@ static func _protection_request(w, n, refusal: Dictionary) -> Dictionary:
 ## NPC may offer it on condition the player keeps it quiet for now. tier: what they'd tell.
 static func _confidence_request(w, n, tier: int, refusal: Dictionary) -> Dictionary:
 	if n.request_day == w.day or n.claim_public or n.trust < 0.4:
+		w.observe_decision(n, "confidence_request", false, {"gate": "request already made today, claim public, or trust < 0.4", "inputs": {"trust": n.trust, "request_day": n.request_day, "day": w.day, "claim_public": n.claim_public, "protect_lock": n.protect_lock}})
 		return {}
 	var p: float = clampf(0.15 + (n.trust - 0.5) * 0.8 + (0.5 - trait_of(n, "composure")) * 0.5, 0.0, 0.5)
-	var asks: bool = w.chance(p)
+	var asks: bool = w.decision_roll(n, "confidence_request", p, {"trust": n.trust, "composure": trait_of(n, "composure")})
 	w.dlog.decision(n.id, "confidence_request", "outcome", asks, {"trust": n.trust,
 		"composure": trait_of(n, "composure"), "p": snappedf(p, 0.01), "tier": tier})
 	if not asks:
@@ -2716,7 +2731,7 @@ static func warden_door(w, n, nd: int) -> String:
 	var cands: Array = w.living().filter(func(m): return m != n and (not was_out or m.home_block == block))
 	if cands.is_empty():
 		cands = w.living().filter(func(m): return m != n)
-	var guarded = cands[w.rng.randi_range(0, cands.size() - 1)].id if not cands.is_empty() else ""
+	var guarded = w.decision_pick(n, "bluffed_guard_door", cands).id if not cands.is_empty() else ""
 	n.warden_log[str(nd)] = guarded
 	w.dlog.think(n.id, "lie", "Evil bluffing Warden: claims to have guarded %s on night %d." % [guarded, nd], {"lie": true})
 	return guarded
@@ -2856,14 +2871,14 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		if n.is_evil() and Evil.is_teammate(w, n, b["who"]) and b["kind"] == "saw":
 			w.dlog.think(n.id, "lie", "Evil: omits seeing teammate %s at night." % b["who"])
 			continue
-		if b["kind"] == "saw" and n.npc_trust.get(b["who"], 0.5) > 0.7 and w.rng.randf() < 0.6:
+		if b["kind"] == "saw" and n.npc_trust.get(b["who"], 0.5) > 0.7 and w.decision_roll(n, "omit_trusted_sighting", 0.6, {"trust_in_person": n.npc_trust.get(b["who"], 0.5)}, b["who"]):
 			w.dlog.think(n.id, "omit", "Leaves out seeing %s, whom they trust." % b["who"])
 			continue
 		if vantage != "" and b["block"] != vantage:
 			# Seen from somewhere they say they weren't: telling it would give the lie away.
 			# Most keep quiet; a rattled few let it slip.
 			var slip = 0.25 * (1.0 - trait_of(n, "composure")) + 0.15 * n.pressure
-			if w.rng.randf() >= slip:
+			if not w.decision_roll(n, "whereabouts_slip", slip, {"composure": trait_of(n, "composure"), "pressure": n.pressure}, b["who"]):
 				w.dlog.think(n.id, "omit", "Leaves out seeing %s on %s: they say they were on %s." % [b["who"], b["block"], vantage])
 				continue
 			w.dlog.think(n.id, "slip", "Lets slip seeing %s on %s, though they say they were on %s (p=%.2f)." % [b["who"], b["block"], vantage, slip])
@@ -3091,7 +3106,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	if level < 0.25:
 		text = "I trust %s." % t.name
 	elif level < 0.45:
-		if w.rng.randf() < 0.6 - 0.4 * trait_of(n, "insight") + paranoia(w, n):
+		if w.decision_roll(n, "neutral_opinion_suspicion", 0.6 - 0.4 * trait_of(n, "insight") + paranoia(w, n), {"insight": trait_of(n, "insight"), "paranoia": paranoia(w, n)}, t.id):
 			text = "I can't put my finger on it, but something's off about %s." % t.name
 			shown = 0.5
 		else:
@@ -3381,6 +3396,7 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		return {"lines": lines, "facts": [], "repeated": repeated, "workshop": shared_self}
 	if n.is_evil():
 		var r = w.rng.randf()
+		w.observe_decision(n, "defence_reply", r < (0.6 if who.is_evil() else 0.7), {"probability": 0.6 if who.is_evil() else 0.7, "draw": r, "comparison": "<", "inputs": {}}, who.id)
 		if who.is_evil():
 			lines.append(say(n, "Fair enough. I'll think better of %s." % who.name if r < 0.6 else "Maybe. I'll keep an open mind about %s." % who.name))
 		else:
@@ -3427,7 +3443,7 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 		for x in group:
 			if x.is_evil():
 				Evil.add_intel(w, n, "player_suspects", x.id, 0.0, "the Demonologist thinks it's one of %s" % gname)
-		lines.append(say(n, "Maybe. I'll keep an eye on them both." if w.rng.randf() < 0.6 else "That... does look bad for one of them."))
+		lines.append(say(n, "Maybe. I'll keep an eye on them both." if w.decision_roll(n, "group_defence_reply", 0.6) else "That... does look bad for one of them."))
 		var gr = shadow_eval(w, n, func(sh): return hear_group_case(w, sh, group, card)) if C.SHADOW_SELF and (not (n in group) or n.workshop_state.get("enabled", false)) else null
 		if gr != null:
 			var mates = group.filter(func(x): return Evil.is_teammate(w, n, x.id))
@@ -3511,12 +3527,17 @@ static func gossip(w) -> Dictionary:
 	for x in weights:
 		total += x
 	var r: float = w.rng.randf() * total
+	var observed_draw = r
 	var speaker = present[0]
 	for i in range(present.size()):
 		r -= weights[i]
 		if r <= 0:
 			speaker = present[i]
 			break
+	if w.dlog.live_feed != null and w.dlog.live_feed.enabled:
+		var speaker_weights = {}
+		for i in range(present.size()): speaker_weights[present[i].id] = weights[i]
+		w.observe_decision(speaker, "gossip_speaker", speaker.name, {"weights": speaker_weights, "selected": speaker.id, "draw": observed_draw, "comparison": "cumulative weights", "inputs": {"gossip": trait_of(speaker, "gossip")}})
 	if speaker.is_evil():
 		var fake = Evil.fake_gossip(w, speaker)
 		if fake != null:
