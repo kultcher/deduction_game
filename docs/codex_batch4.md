@@ -144,6 +144,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 16. **Help text.** Add the newer actions: offer/apologise, promise yes/no, ask them to use their gift
     (`ask check/guard/watch`), `ask about <gift>` ("heard of a…"), presenting a ward or sigil.
+   - **Implemented (Codex batch 4, set 3):** Help lists apologies, free yes/no answers to pending confidence or protection requests, gift-use requests, heard-of-a-gift questions and private/meeting ward or sigil presentation. Existing offer documentation and command rules are retained. Exact-string expectations changed: none.
+
 17. **`ask check agnes isolde` without a comma** should work like `ask check agnes, isolde`.
 18. **Night: who's home.** A line at night listing who is home on each block (what the map shows).
 19. Lower priority if time allows: Roles window as a side panel option; offset name labels that overlap

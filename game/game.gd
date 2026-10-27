@@ -2312,12 +2312,18 @@ func _help() -> String:
   Day     : go <place | block | person>   (then one free move within the same block)
             then one action: talk <name> | search | gossip (tavern) | wait
   Talking : ask gift | ask night | ask seen <today | morning | afternoon | evening | yesterday [phase]>
-            ask are <gift> | ask about <name or gift> (may share haunts and recent sightings) | bye
+            ask are <gift> | ask about <name> (haunts and recent sightings) | bye
+            ask about <gift> ("Have you heard of a ...?")
+            ask check <name>[, <name>] | ask guard <name> | ask watch <block>
+              (ask someone who disclosed that gift to use it on these targets tonight)
+            apologise <number> (repair one of the grievances listed in their profile)
+            yes | no (answer a pending request for confidence or protection; promising is free)
             offer ward | offer vigil  (promise your ward on their door, or a vigil on their block, tonight;
               costs no question; keep it and they'll trust you more, break it and they'll trust you less)
             present <card#> [for|against <name>]   (uses a question) - about them: you press them
               to answer it; a deduction: you argue it; a card about someone else: a case against
               them ('for' to speak up for them). Shortcuts: press, convince, tell, defend
+            present <ward or scorched-sigil card#> (show that receipt privately or at the meeting)
   Meeting : present <deduction#> (once) | nominate <name> | wait | done (close, once the town is quiet)
   Voting  : defend [card#] | accuse [card#] (one statement) | clemency (once per case) | vote yes | vote no
   Approach: someone may ask for a word at the start of a phase: accept (uses the phase) | decline

@@ -36,6 +36,7 @@ func run():
 	await inspect_then_talk()
 	direct_night_willingness()
 	busy_visit_warning()
+	new_actions_help()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -748,3 +749,12 @@ func busy_visit_warning():
 	g.loc = ""
 	check(row._sub_line(n) == "location unknown", "busy status does not disclose a hidden location")
 	row.free()
+
+func new_actions_help():
+	var g = fresh()
+	var rng = g.w.rng.state
+	var text = g._help()
+	for action in ["offer ward", "offer vigil", "apologise <number>", "yes | no", "ask check <name>", "ask guard <name>", "ask watch <block>", "ask about <gift>", "ward or scorched-sigil card#"]:
+		check(action in text, "help documents newer action: " + action)
+	check("pending request" in text and "disclosed that gift" in text and "privately or at the meeting" in text, "help explains the action contexts")
+	check(g.w.rng.state == rng and g.state == "day", "help is read-only")
