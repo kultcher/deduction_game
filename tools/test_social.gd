@@ -274,6 +274,8 @@ func _test_fake_watch_story() -> void:
 			print("  withheld wrongly: ", held_txt)
 		# ...and once told, the night story names exactly who the report names.
 		m.told_readings = m.info_log.size()
+		# Exercise the willing branch here; batch 4 separately checks the 95% refusal rate.
+		w.rng.seed = 1
 		var r = Mind.answer_night(w, m, 1)
 		var txt = " ".join(PackedStringArray(r["lines"].map(func(l): return l["text"])))
 		tried += 1

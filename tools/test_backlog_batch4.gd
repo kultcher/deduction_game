@@ -29,6 +29,8 @@ func run():
 	first_person_notes()
 	confidence_public_notice()
 	empty_nomination_cases()
+	volunteered_sightings()
+	direct_night_willingness()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -63,8 +65,8 @@ func refusal_privacy():
 		probe.randf() # Existing lie/stonewall decision.
 		var reply = Mind.answer_night(w, n, 1)
 		if not reply.facts.any(func(f): return f.kind == "refusal"): continue
-		probe.randf() # One new slip roll for the selected non-home observation.
-		check(w.rng.state == probe.state, "refusal adds only the required slip draw")
+		if probe.randf() < 0.25: probe.randf() # Approved willingness roll only after a successful privacy slip.
+		check(w.rng.state == probe.state, "refusal adds only the required privacy and eligible-report willingness draws")
 		var observations: Array = reply.facts.filter(func(f): return f.kind == "sighting")
 		if observations.is_empty():
 			blocked = true
@@ -95,7 +97,8 @@ func refusal_privacy():
 		probe.randf()
 		var reply = Mind.answer_night(w, n, 1)
 		if reply.facts.any(func(f): return f.kind == "refusal"):
-			check(reply.facts.any(func(f): return f.kind == "sighting" and f.block == "square") and w.rng.state == probe.state, "a home-street report remains available without a new random draw")
+			if probe.randf() >= 0.95: continue
+			check(reply.facts.any(func(f): return f.kind == "sighting" and f.block == "square") and w.rng.state == probe.state, "a home-street report needs only the approved willingness roll, not a privacy roll")
 			break
 	# Claimed-walker fake watch reports retain their original branch and RNG.
 	n.claimed_role = "nightwatch"
@@ -104,9 +107,13 @@ func refusal_privacy():
 	n.info_log = [{"role": "nightwatch", "day": 1, "shared": true, "fake": true, "data": {"block": "market", "seen": [target.id]}, "text": "A cached watch"}]
 	w.evil_plan.fake_watch["1"] = "market"
 	n.pressed_today = 0
-	var state = w.rng.state
+	w.rng.state = willing_state()
+	var watch_probe = RandomNumberGenerator.new()
+	watch_probe.state = w.rng.state
+	watch_probe.randf()
+	var state = watch_probe.state
 	var watch = Mind.answer_night(w, n, 1)
-	check(watch.facts.any(func(f): return f.kind == "sighting" and target.id in f.subject and f.block == "market") and w.rng.state == state, "claimed Night Watch cover remains intact without refusal filtering or extra RNG")
+	check(watch.facts.any(func(f): return f.kind == "sighting" and target.id in f.subject and f.block == "market") and w.rng.state == state, "claimed Night Watch cover remains intact with only its approved willingness roll")
 
 	# Even an existing fake watch payload is filtered if THIS answer stonewalls.
 	w.evil_plan.fake_watch.erase("1")
@@ -134,7 +141,8 @@ func refusal_privacy():
 		probe.randf()
 		var reply = Mind.answer_night(w, n, 1)
 		if reply.facts.any(func(f): return f.kind == "refusal"):
-			check(w.rng.state == probe.state and not reply.facts.any(func(f): return f.kind == "sighting"), "gossip-zero refusals do not roll slips for sightings they won't share")
+			if probe.randf() < 0.25: probe.randf()
+			check(w.rng.state == probe.state and (not reply.facts.any(func(f): return f.kind == "sighting") or reply.lines.any(func(line): return "not that I was there" in line.text)), "low Gossip no longer vetoes direct answers, but the existing privacy slip gate still applies")
 			break
 	var sleeper = w.living_good()[1]
 	sleeper.role = "clerk"
@@ -288,7 +296,11 @@ func compact_answers():
 		var b = {"kind": "saw" if i < 2 else "stayed_in", "who": others[i].id, "block": "square", "day": 1, "phase": C.NIGHT, "how": "window"}
 		n.beliefs.append(b)
 		expected.append(Mind.sighting_report(w, n, b, 1).fact)
-	var state = w.rng.state
+	w.rng.state = willing_state()
+	var night_probe = RandomNumberGenerator.new()
+	night_probe.state = w.rng.state
+	night_probe.randf()
+	var state = night_probe.state
 	var night = Mind.answer_night(w, n, 1)
 	check(night.facts == expected and w.rng.state == state, "condensed night replies preserve every original fact and RNG state")
 	check(night.lines.size() == 3 and night.lines[1].text.contains(others[0].name + " and " + others[1].name) and night.lines[2].text.contains(others[2].name + " and " + others[3].name), "night observations merge names and keep one line per kind")
@@ -475,3 +487,123 @@ func empty_nomination_cases():
 		check(recap.lines.size() == 1 and recap.lines[0].text == "Remember: a public account.", "a grounded public reason keeps its original recap")
 		var already = Mind.nomination_case(w, n, t, "a public account")
 		check(already.lines.is_empty() and already.facts.is_empty() and w.rng.state == state, "an already-cited grounded reason stays silent rather than becoming an empty-case fallback")
+
+func volunteered_sightings():
+	var g = fresh()
+	var w = g.w
+	var n = w.living_good()[0]
+	var t = w.living_good()[1]
+	w.day = 5
+	for person in w.npcs: person.alive = true
+	n.home_block = "square"
+	n.secret_mod = ""
+	n.traits.gossip = 0.6
+	n.traits.confidence = 0.6
+	n.traits.composure = 0.0
+	n.claimed_role = ""
+	n.max_tier = 0
+	n.claim_public = false
+	n.told_to = {}
+	n.beliefs = [{"kind": "saw", "who": t.id, "block": "square", "day": 2, "phase": C.NIGHT, "how": "window"}]
+	n.told_to["player|saw:%s:2" % t.id] = true
+	var lines: Array = []
+	var facts: Array = []
+	var state = w.rng.state
+	Mind._volunteer_night_sightings(w, n, lines, facts)
+	check(facts == [Mind.sighting_report(w, n, n.beliefs[0], 2).fact] and "night 2" in lines[0].text, "a privately told old-night sighting becomes the same ordinary public sighting card")
+	check(w.rng.state == state and n.told_to.has(Mind._town_sighting_key(n, n.beliefs[0])), "volunteering uses the deterministic approved gate and records town identity")
+	Mind._volunteer_night_sightings(w, n, lines, facts)
+	check(facts.size() == 1, "a night sighting is volunteered to the town only once")
+	n.told_to = {}
+	n.traits.gossip = 0.55
+	lines = []
+	facts = []
+	Mind._volunteer_night_sightings(w, n, lines, facts)
+	check(facts.is_empty(), "a score below the calm-town threshold keeps the sighting private")
+	w.living_good().back().alive = false
+	Mind._volunteer_night_sightings(w, n, lines, facts)
+	check(facts.size() == 1, "paranoia lowers the volunteering threshold as approved")
+	n.told_to = {}
+	n.silenced = true
+	facts = []
+	Mind._volunteer_night_sightings(w, n, lines, facts)
+	check(facts.is_empty(), "a silenced witness cannot volunteer")
+	n.silenced = false
+	var away = n.beliefs[0].duplicate(true)
+	away.block = "market"
+	away.how = "street"
+	n.history[w.time_key(2, C.NIGHT)] = "night:market"
+	check(not Mind._public_sighting_allowed(w, n, away), "volunteering does not expose an undisclosed walk")
+	n.role = "lamplighter"
+	n.claimed_role = "lamplighter"
+	n.max_tier = 3
+	check(Mind._public_sighting_allowed(w, n, away), "an already disclosed walker may volunteer a sighting consistent with their duty")
+	n.dialogue_memory["night_accounts"] = {"2": {"kind": "alibi", "home": true, "block": "square"}}
+	check(not Mind._public_sighting_allowed(w, n, away), "volunteering cannot contradict an existing home account")
+	n.dialogue_memory.erase("night_accounts")
+	n.claimed_role = "nightwatch"
+	n.role = "nightwatch"
+	n.info_log = [{"role": "nightwatch", "day": 2, "shared": false, "data": {"block": "market", "seen": [t.id]}, "text": "a watch"}]
+	n.told_readings = 0
+	check(not Mind._public_sighting_allowed(w, n, away), "volunteering cannot bypass a withheld Night Watch reading")
+	var evil = w.minion()
+	evil.home_block = "square"
+	evil.claimed_role = ""
+	evil.secret_mod = ""
+	evil.traits.gossip = 1.0
+	evil.traits.confidence = 1.0
+	evil.beliefs = [n.beliefs[0], {"kind": "saw", "who": w.demon().id, "block": "square", "day": 2, "phase": C.NIGHT, "how": "window"}]
+	facts = []
+	lines = []
+	Mind._volunteer_night_sightings(w, evil, lines, facts)
+	check(facts.size() == 1 and facts[0].subject == [t.id], "evil witnesses volunteer compatible true sightings but exclude teammates")
+	check(not Mind._public_sighting_allowed(w, evil, away), "an evil volunteer cannot expose an off-home observation without a compatible cover")
+
+func willing_state() -> int:
+	var probe = RandomNumberGenerator.new()
+	for seed_value in range(1, 100):
+		probe.seed = seed_value
+		var state = probe.state
+		if probe.randf() < 0.95: return state
+	return 0
+
+func direct_night_willingness():
+	var g = fresh()
+	var w = g.w
+	var n = w.living_good()[0]
+	var t = w.living_good()[1]
+	w.day = 3
+	n.role = "clerk"
+	n.secret_mod = ""
+	n.claimed_role = ""
+	n.home_block = "square"
+	n.history[w.time_key(2, C.NIGHT)] = "home:square"
+	n.traits.gossip = 0.0
+	n.npc_trust[t.id] = 0.95
+	n.beliefs = [{"kind": "saw", "who": t.id, "block": "square", "day": 2, "phase": C.NIGHT, "how": "window"}]
+	var told = 0
+	var withheld = 0
+	var probe = RandomNumberGenerator.new()
+	for seed_value in range(1, 201):
+		n.pressed_today = 0
+		n.pressure = 0.0
+		w.rng.seed = seed_value
+		probe.state = w.rng.state
+		var expected = probe.randf() < 0.95
+		var reply = Mind.answer_night(w, n, 2)
+		var shared = reply.facts.any(func(f): return f.kind == "sighting" and f.subject == [t.id])
+		check(shared == expected and w.rng.state == probe.state, "an eligible direct answer uses exactly the approved 95 percent willingness draw")
+		if shared: told += 1
+		else:
+			withheld += 1
+			check(reply.lines.any(func(line): return "not ready to discuss" in line.text), "unwilling direct answers refuse instead of falsely claiming to have seen nobody")
+	check(told > 180 and withheld > 0 and n.told_to.has("player|saw:%s:2" % t.id), "near-certain direct sharing still has a refusal outcome and records player telling")
+	n.beliefs = []
+	for person in w.npcs.filter(func(other): return other != n).slice(0, 6):
+		n.npc_trust[person.id] = 0.95
+		n.beliefs.append({"kind": "saw", "who": person.id, "block": "square", "day": 2, "phase": C.NIGHT, "how": "window"})
+	n.pressure = 0.0
+	n.pressed_today = 0
+	w.rng.state = willing_state()
+	var all = Mind.answer_night(w, n, 2)
+	check(all.facts.filter(func(f): return f.kind == "sighting").size() == 6, "approved direct willingness replaces both the Gossip count/cutoff and trusted-friend omission")

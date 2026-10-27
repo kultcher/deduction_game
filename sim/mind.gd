@@ -1236,6 +1236,7 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		if acc != null:
 			lines.append(acc["line"])
 			facts.append(acc["fact"])
+		_volunteer_night_sightings(w, n, lines, facts)
 		return {"who": n.id, "lines": lines, "facts": facts}
 	# Everyone has spoken: the remaining refreshes, one mind per step, in queue order.
 	if not w.pending_beliefs.is_empty():
@@ -1244,6 +1245,56 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		w.defer_beliefs = false
 		st["done"] = true
 	return {}
+
+## A volunteer never invents a cover or reveals an undisclosed walk. Reuse the
+## known account and walking-gift/reading constraints used by private followups.
+static func _public_sighting_allowed(w, n, b: Dictionary) -> bool:
+	if n.secret_mod == "sleepwalker": return false
+	if n.is_evil() and Evil.is_teammate(w, n, b.who): return false
+	if n.claimed_role == "nightwatch":
+		for e in n.info_log:
+			if e.get("role", "") == "nightwatch" and e.get("day", -1) == b.day and not reading_disclosed(n, e): return false
+		if n.is_evil():
+			var story = _fake_watch_entry(n, b.day)
+			return not story.is_empty() and b.block == story.data.block and b.who in story.data.get("seen", [])
+	var account: Dictionary = n.dialogue_memory.get("night_accounts", {}).get(str(b.day), {})
+	if account.get("kind", "") == "refusal": return b.block == n.home_block
+	if account.get("kind", "") == "alibi" and account.get("home", false):
+		return b.get("how", "street") == "window" and b.block == n.home_block
+	if account.get("block", b.block) != b.block: return false
+	if b.get("how", "street") == "window": return b.block == n.home_block
+	var where: String = n.history.get(w.time_key(b.day, C.NIGHT), "home:" + n.home_block)
+	if not n.is_evil() and n.secret_known:
+		return where == "night:" + b.block
+	if not (n.claim_public or n.max_tier >= 3) or not C.ROLES.get(n.claimed_role, {}).get("night_walk", false): return false
+	if not n.is_evil(): return n.role == n.claimed_role and where == "night:" + b.block
+	match n.claimed_role:
+		"medium": return _bluff_hearth(w, n, b.day) == b.block
+		"warden":
+			var guarded: String = n.warden_log.get(str(b.day), "")
+			return w.by_id.has(guarded) and w.by_id[guarded].home_block == b.block
+		"lamplighter": return b.block == (where.trim_prefix("night:") if where.begins_with("night:") else n.home_block)
+	return false
+
+static func _town_sighting_key(n, b: Dictionary) -> String:
+	return "town|sighting:%s:%s:%d:%d:%s" % [n.id, b.who, b.day, C.NIGHT, b.block]
+
+static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void:
+	if n.silenced: return
+	var score = trait_of(n, "gossip") + trait_of(n, "confidence")
+	var threshold = 1.2 - paranoia(w, n)
+	if score < threshold: return
+	var groups: Array = []
+	for b in n.beliefs:
+		if b.get("kind", "") != "saw" or b.get("phase", -1) != C.NIGHT or b.get("day", -1) < 0 or b.day >= w.day or not w.by_id.has(b.get("who", "")): continue
+		if n.told_to.has(_town_sighting_key(n, b)) or not _public_sighting_allowed(w, n, b): continue
+		var report = sighting_report(w, n, b, b.day)
+		n.told_to[_town_sighting_key(n, b)] = true
+		var text = "On %s: %s" % [C.night_name(b.day), report.line.text]
+		_add_observation(groups, "sighting", text, w.by_id[b.who].name)
+		facts.append(report.fact)
+		w.dlog.add("volunteer_sighting", n.id, b.who, {"night": b.day, "block": b.block, "score": score, "threshold": threshold})
+	for text in _observation_texts(groups): lines.append(say(n, text))
 
 static func _public_claim_decision(w, n) -> String:
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
@@ -1737,6 +1788,8 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	if candidates.is_empty():
 		return
 	var seen: Dictionary = candidates[0]
+	if n.told_to.has(_town_sighting_key(n, seen)): return
+	n.told_to[_town_sighting_key(n, seen)] = true
 	var report = sighting_report(w, n, seen, seen["day"])
 	report["line"]["text"] = "On %s: %s" % [C.night_name(seen["day"]), report["line"]["text"]]
 	lines.append(report["line"])
@@ -2868,7 +2921,9 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				_append_distrust(w, n, lines)
 				facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "day": nd, "phase": C.NIGHT,
 					"text": "%s refused to say where they were on night %d." % [n.name, nd]})
-	var limit = _gossip_share(w, n, "share_sightings")
+	var accounts: Dictionary = n.dialogue_memory.get("night_accounts", {})
+	accounts[str(nd)] = facts[0].duplicate(true)
+	n.dialogue_memory["night_accounts"] = accounts
 	# Asking for whereabouts must not disclose a watch result the gift question withheld.
 	if n.claimed_role == "nightwatch":
 		for e in n.info_log:
@@ -2880,9 +2935,6 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	for b in seen:
 		if n.is_evil() and Evil.is_teammate(w, n, b["who"]) and b["kind"] == "saw":
 			w.dlog.think(n.id, "lie", "Evil: omits seeing teammate %s at night." % b["who"])
-			continue
-		if b["kind"] == "saw" and n.npc_trust.get(b["who"], 0.5) > 0.7 and w.rng.randf() < 0.6:
-			w.dlog.think(n.id, "omit", "Leaves out seeing %s, whom they trust." % b["who"])
 			continue
 		if vantage != "" and b["block"] != vantage:
 			# Seen from somewhere they say they weren't: telling it would give the lie away.
@@ -2906,19 +2958,14 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		var fake = Evil.fake_night_sighting(w, n, nd, vantage, how)
 		if fake != null:
 			reported.append(fake)
-	if limit == 0 and not reported.is_empty():
-		lines.append(say(n, "As for anyone else, that's none of my business."))
-		return {"lines": lines, "facts": facts}
-	if watch_story.is_empty():
-		reported = reported.slice(0, limit)
 	var slips: Array = []
 	if refused_whereabouts:
 		var safe: Array = []
 		for observation in reported:
 			if observation.get("block", "") != n.home_block:
 				# Same slip mechanic as an account contradicted by an observation.
-				# Only selected refusal sightings reach this new roll; other branches
-				# and gossip-zero answers consume exactly their former random draws.
+				# Discretionary Gossip/friend filters have been replaced by the
+				# direct-answer willingness roll; the privacy gate still applies.
 				var slip = 0.25 * (1.0 - trait_of(n, "composure")) + 0.15 * n.pressure
 				if w.rng.randf() >= slip:
 					w.dlog.think(n.id, "omit", "Withholds seeing %s on %s after refusing whereabouts." % [observation.who, observation.block])
@@ -2927,6 +2974,12 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				w.dlog.think(n.id, "slip", "Lets slip seeing %s on %s after refusing whereabouts (p=%.2f)." % [observation.who, observation.block, slip])
 			safe.append(observation)
 		reported = safe
+	if not reported.is_empty():
+		var shares = w.chance(0.95)
+		w.dlog.decision(n.id, "direct_night_sightings", "outcome", shares, {"p": 0.95, "eligible": reported.size()})
+		if not shares:
+			lines.append(say(n, "I'm not ready to discuss who I saw."))
+			return {"lines": lines, "facts": facts}
 	if reported.is_empty() and not (was_out and not n.is_evil()):
 		lines.append(say(n, "I saw nobody."))
 	var groups: Array = []
@@ -2939,6 +2992,8 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			r.line.text = "…though I did see %s %s on %s on night %d%s, not that I was there." % [who, detail, C.block_name(b.block), nd, end]
 		_add_observation(groups, r.fact.kind, r.line.text, w.by_id[b.who].name)
 		facts.append(r["fact"])
+		n.told_to["player|saw:%s:%d" % [b.who, nd]] = true
+		n.told_to["player|" + fact_id(r.fact)] = true
 	for text in _observation_texts(groups): lines.append(say(n, text))
 	return {"lines": lines, "facts": facts}
 

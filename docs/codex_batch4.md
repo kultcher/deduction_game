@@ -114,6 +114,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
       Use the existing sighting fact shape from `Mind.sighting_report` so the shared model can read it
       (don't invent a new card kind). Evil members don't volunteer true sightings of teammates (same
       rule as `answer_night`).
+   - **Implemented (Codex batch 4, set 2):** Approved gate: Gossip + Confidence >= 1.2 - paranoia; eligible direct reports use a 95 percent willingness roll replacing the Gossip cutoff/count and trusted-friend omission, as the user clarified. Existing privacy, cover, teammate and reading-disclosure protections remain. Both good and evil witnesses volunteer compatible observations from any past night, with evil teammate exclusions. Town and private telling identities are separate; accusation reports also mark town telling. Ordinary sighting facts and streamed testimony are reused without new strength numbers or fake generation. Bot baselines will shift. test_social fixes its willing-report fixture seed; assertions remain unchanged. Exact-string expectations changed: none.
+
 11. **Explain the vote count.** One line in help that the player's vote counts ("of 11" with ten
     townsfolk).
 12. **Which night is the Demon's free night.** Say it in the Roles text and the first night prompt: the
