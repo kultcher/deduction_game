@@ -2646,6 +2646,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 				doors.append("%s at %s's door" % [C.night_name(nd), w.by_id[gd].name])
 				facts.append(_guard_fact(w, n, nd, gd))
 		if not doors.is_empty():
+			if not first_time: lines.pop_front() # Skip reconfirmation when there is work to report.
 			var said: String = "; ".join(PackedStringArray(doors))
 			lines.append(say(n, "I keep watch over one door each night: %s." % (said[0].to_upper() + said.substr(1))))
 			n.max_tier = maxi(n.max_tier, tier)
@@ -2667,6 +2668,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 		n.max_tier = 4
 	if evil and not readings.is_empty():
 		w.dlog.think(n.id, "lie", "Evil: recites fabricated %s results." % role)
+	if not first_time and not readings.is_empty(): lines.pop_front()
 	lines.append_array(info_lines(w, n, readings, "player", not lines.is_empty()))
 	for e in readings:
 		facts.append(info_fact(w, n, e))

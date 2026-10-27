@@ -68,6 +68,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
    3` or `claim_public`), relabel the UI's gift ask "Ask about their readings" and drop the
    re-confirmation line ("As you know, I'm the X") when there are readings to give. Same underlying
    `ask gift` and cost.
+   - **Implemented (Codex batch 4, set 1):** Private and public gift disclosure relabel both gift-ask UI controls as readings. Delivered readings or Warden door accounts omit the redundant confirmation; first disclosures, empty histories, all claim/readings cards and existing ask costs remain intact. Exact-string expectations changed: none.
+
 5. **Shorter answers without losing anything.** Answers ran to 5–6 lines. Condense, don't cut: merge
    several sightings into one sentence ("I saw Greta and Kiran on the Market, and Odette at the well"),
    one line per kind. Every card (fact) is still produced.

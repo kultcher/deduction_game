@@ -23,6 +23,7 @@ func run():
 	refusal_privacy()
 	repeated_refusals()
 	hint_options()
+	await readings_ask()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -213,3 +214,50 @@ func hint_options():
 	var second = Mind.answer_hint(g.w, n)
 	check(first.lines[0].text != second.lines[0].text and first.facts.is_empty() and second.facts.is_empty(), "no-target hint replies vary without producing cards")
 	check(g.w.rng.state == state, "varied no-target hint wording adds no RNG draws")
+
+func readings_ask():
+	var scene = load("res://ui/main.tscn").instantiate()
+	scene.show_script_at_start = false
+	root.add_child(scene)
+	var g = fresh()
+	scene.g = g
+	var n = g.w.living_good()[0]
+	talk_fixture(g, n)
+	for status in [0, 1, 2]:
+		n.max_tier = 3 if status == 1 else 0
+		n.claim_public = status == 2
+		scene._refresh_actions()
+		await process_frame
+		var buttons = scene.actions.get_children().filter(func(b): return b is Button and not b.is_queued_for_deletion())
+		var text: String = buttons[0].text
+		check(("readings" in text) == (status != 0), "gift action label follows private or public disclosure")
+		scene._ask_gift_picker(buttons[0])
+		var choices = scene.popup.find_children("*", "Button", true, false)
+		check(choices.any(func(b): return b.text == ("about their readings" if status != 0 else "about their gift")), "gift picker keeps its ask-gift command behind the matching readings label")
+		scene.popup.hide()
+	for evil in [false, true]:
+		n = g.w.minion() if evil else g.w.living_good()[0]
+		n.role = "seer" if not evil else n.role
+		if evil: g.w.evil_plan.bluffs[n.id] = "seer"
+		n.max_tier = 3
+		n.claimed_role = "seer"
+		n.claim_public = false
+		n.info_log = [{"role": "seer", "day": 0, "shared": false, "text": "neither was the Demon", "data": {"pair": [g.w.npcs[-1].id, g.w.npcs[-2].id], "yes": false}}]
+		var reply = Mind.answer_gift(g.w, n, 4)
+		check(reply.facts.any(func(f): return f.kind == "claim") and reply.facts.any(func(f): return f.kind == "info") and not reply.lines.any(func(line): return "As you know" in line.text), "known good or evil gift gives readings and claim card without reconfirmation")
+		n.info_log = []
+		reply = Mind.answer_gift(g.w, n, 4)
+		check(reply.lines.any(func(line): return "As you know" in line.text) and reply.lines.any(func(line): return "anything yet" in line.text), "empty reading history retains the gift confirmation")
+	n = g.w.living_good()[0]
+	n.role = "warden"
+	n.claimed_role = "warden"
+	n.max_tier = 3
+	n.warden_log = {"0": g.w.npcs[-1].id}
+	var guarded = Mind.answer_gift(g.w, n, 4)
+	check(guarded.facts.any(func(f): return f.has("guard_claim")) and not guarded.lines.any(func(line): return "As you know" in line.text), "known Warden reports doors without reconfirmation")
+	n.max_tier = 0
+	n.claim_public = false
+	var first = Mind.answer_gift(g.w, n, 4)
+	check(first.lines.any(func(line): return "Warden" in line.text), "first gift disclosure still names the gift even with work to report")
+	for i in range(3): await process_frame
+	scene.free()

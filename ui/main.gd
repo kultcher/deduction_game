@@ -825,7 +825,7 @@ func _actions_talk(w) -> void:
 		_button(actions, ask + " (free)", func(): _run("yes"), C.npc_color(n.id))
 		_button(actions, "Say no (free)", func(): _run("no"))
 		_hint("Anything else you do counts as no.")
-	var gb = _button(actions, "Ask about %s's gift…  ▸" % n.name, func(): pass)
+	var gb = _button(actions, "Ask about their readings…  ▸" if n.max_tier >= 3 or n.claim_public else "Ask about %s's gift…  ▸" % n.name, func(): pass)
 	gb.pressed.connect(func(): _ask_gift_picker(gb))
 	var ob = _button(actions, "Offer…  ▸", func(): pass)
 	ob.pressed.connect(func(): _offer_picker(ob))
@@ -908,7 +908,7 @@ func _ask_gift_picker(anchor: Control) -> void:
 	var h = HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
 	var qs = _column("Ask %s…" % n.name)
-	_button(qs, "about their gift", func():
+	_button(qs, "about their readings" if n.max_tier >= 3 or n.claim_public else "about their gift", func():
 		popup.hide()
 		_run("ask gift"))
 	h.add_child(qs)
