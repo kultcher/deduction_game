@@ -37,6 +37,7 @@ func run():
 	direct_night_willingness()
 	busy_visit_warning()
 	new_actions_help()
+	seer_space_targets()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -758,3 +759,26 @@ func new_actions_help():
 		check(action in text, "help documents newer action: " + action)
 	check("pending request" in text and "disclosed that gift" in text and "privately or at the meeting" in text, "help explains the action contexts")
 	check(g.w.rng.state == rng and g.state == "day", "help is read-only")
+
+func seer_space_targets():
+	var control_rng = -1
+	var control_response = {}
+	var control_request = {}
+	for separator in [", ", " ", " and "]:
+		var g = fresh()
+		var n = g.w.living_good()[0]
+		n.role = "seer"
+		n.claimed_role = "seer"
+		n.max_tier = 3
+		n.trust = 1.0
+		var others = g.w.living().filter(func(m): return m != n)
+		g.w.rng.seed = 9102
+		var r = g._gift_request(n, "check", others[0].id + separator + others[1].id)
+		if separator == ", ":
+			control_rng = g.w.rng.state
+			control_response = r
+			control_request = n.gift_request.duplicate(true)
+		else:
+			check(r == control_response and n.gift_request == control_request and g.w.rng.state == control_rng, "Seer request separator preserves targets, response and exact draw: " + separator)
+		var rng = g.w.rng.state
+		check(g._gift_request(n, "check", "unknown_name " + others[0].id).is_empty() and g.w.rng.state == rng, "invalid Seer names are rejected before any roll")

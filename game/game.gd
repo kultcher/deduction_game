@@ -1654,7 +1654,10 @@ func _gift_request(n, topic: String, target: String) -> Dictionary:
 			return {}
 		targets = [b]
 	else:
-		for nm in target.replace(" and ", ",").split(","):
+		var names = target.replace(" and ", ",").split(",")
+		if role == "seer" and not target.contains(",") and not target.contains(" and "):
+			names = target.split(" ", false)
+		for nm in names:
 			var t = find_npc(nm.strip_edges())
 			if t == null or not t.alive or t == n:
 				_err("Ask them to %s whom?" % ("look at" if role == "seer" else "guard"))
@@ -2314,9 +2317,9 @@ func _help() -> String:
   Talking : ask gift | ask night | ask seen <today | morning | afternoon | evening | yesterday [phase]>
             ask are <gift> | ask about <name> (haunts and recent sightings) | bye
             ask about <gift> ("Have you heard of a ...?")
-            ask check <name>[, <name>] | ask guard <name> | ask watch <block>
+            ask check <name> [<name>] (comma or and also accepted) | ask guard <name> | ask watch <block>
               (ask someone who disclosed that gift to use it on these targets tonight)
-            apologise <number> (repair one of the grievances listed in their profile)
+            apologise <number> (repair a grievance; enter apologise alone to list them)
             yes | no (answer a pending request for confidence or protection; promising is free)
             offer ward | offer vigil  (promise your ward on their door, or a vigil on their block, tonight;
               costs no question; keep it and they'll trust you more, break it and they'll trust you less)

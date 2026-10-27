@@ -147,6 +147,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
    - **Implemented (Codex batch 4, set 3):** Help lists apologies, free yes/no answers to pending confidence or protection requests, gift-use requests, heard-of-a-gift questions and private/meeting ward or sigil presentation. Existing offer documentation and command rules are retained. Exact-string expectations changed: none.
 
 17. **`ask check agnes isolde` without a comma** should work like `ask check agnes, isolde`.
+   - **Implemented (Codex batch 4, set 3):** Seer requests accept whitespace between names as well as comma or and, retaining the same target validation, decision and RNG draws. Warden parsing is unchanged. Help shows the new syntax and points apologies at the existing numbered command menu. Exact-string expectations changed: none.
+
 18. **Night: who's home.** A line at night listing who is home on each block (what the map shows).
 19. Lower priority if time allows: Roles window as a side panel option; offset name labels that overlap
     place labels on the block map; briefly highlight a trait bar when you learn that trait.
