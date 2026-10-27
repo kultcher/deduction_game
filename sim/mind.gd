@@ -2771,7 +2771,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		lines.append(say(n, duty))
 		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "duty_claim": true, "duty": n.claimed_role,
 			"text": "%s says they were out on %s on night %d (%s)." % [n.name, C.block_name(block), nd, "the lamp route" if n.claimed_role == "lamplighter" else "visiting the dead"]})
-	elif C.has_role_def(n.claimed_role) and not C.role_def(n.claimed_role).night_duty_alibi(w, n, nd, was_out, block, _mind(), C.block_name).is_empty():
+	elif C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, nd, was_out):
 		var duty_res: Dictionary = C.role_def(n.claimed_role).night_duty_alibi(w, n, nd, was_out, block, _mind(), C.block_name)
 		lines.append(duty_res["line"])
 		facts.append(duty_res["fact"])

@@ -168,6 +168,11 @@ func answer_gift_custom(_w, _n, _first_time: bool, _tier: int, _lines: Array, _f
 	return {}
 
 
+## Whether this role overrides `Mind.answer_night` when claimed.
+func uses_night_duty_alibi(_w, _n, _nd: int, _was_out: bool) -> bool:
+	return false
+
+
 ## Optional custom handler for `Mind.answer_night` when claiming this role.
 ## Returns {} if this role does not override night whereabouts alibis.
 func night_duty_alibi(_w, _n, _nd: int, _was_out: bool, _block: String, _mind, _block_name_fn: Callable) -> Dictionary:

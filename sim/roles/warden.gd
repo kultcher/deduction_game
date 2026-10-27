@@ -131,8 +131,12 @@ func answer_gift_custom(w, n, first_time: bool, tier: int, lines: Array, facts: 
 	return {}
 
 
+func uses_night_duty_alibi(_w, n, _nd: int, was_out: bool) -> bool:
+	return (n.claim_public or n.max_tier >= 3) and ((n.role == "warden" and was_out) or n.is_evil())
+
+
 func night_duty_alibi(w, n, nd: int, was_out: bool, _block: String, mind, block_name_fn: Callable) -> Dictionary:
-	if not ((n.claim_public or n.max_tier >= 3) and ((n.role == "warden" and was_out) or n.is_evil())):
+	if not uses_night_duty_alibi(w, n, nd, was_out):
 		return {}
 	var guarded: String = warden_door(w, n, nd)
 	if guarded != "" and w.by_id.has(guarded):
