@@ -74,6 +74,9 @@ var fallback_count = 0      # times 'present' couldn't tell what a card was mean
 # recorded, with or without detailed tracing). See the `fallbacks` command.
 var shared_fallbacks: Array = []
 var _fallbacks_reported = 0
+const DecisionFeed = preload("res://sim/decision_feed.gd")
+var decision_feed = DecisionFeed.new()
+
 var debug_overlay = false   # show NPCs' hidden credence (spoils identification credit)
 var last_error = ""         # why the last file_deduction was refused
 var log_dir = "user://logs"
@@ -242,11 +245,17 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	show_hidden = false
 	last_error = ""
 	_trace_export_pending = false
+	var console_rolls: bool = decision_feed.console
+	decision_feed = DecisionFeed.new()
+	decision_feed.enabled = debug_overlay
+	decision_feed.console = console_rolls
 	w = World.new()
+	w.attach_decision_feed(decision_feed)
 	w.detailed_logging = detailed_logging
 	w.trace_build = trace_build
 	w.trace_tuning = trace_tuning
 	w.setup(seed_in, npc_count)
+	if debug_overlay: set_debug_overlay(true)
 	var weak_game = weakref(self)
 	var weak_world = weakref(w)
 	w.workshop_refresh = func(n, phase):
@@ -1287,7 +1296,7 @@ func _grant_protection(n, what: String) -> void:
 	if not _promised_to(n):
 		_offer_command(n, what, true)
 	var p: float = clampf(n.trust * n.traits.get("composure", 0.5) * 1.6, 0.05, 0.85)
-	var now: bool = w.rng.randf() < p
+	var now: bool = w.decision_roll(n, "protection_disclosure", p, {"trust": n.trust, "composure": n.traits.get("composure", 0.5)})
 	w.dlog.decision(n.id, "protection_disclosure", "outcome", now, {"trust": n.trust,
 		"composure": n.traits.get("composure", 0.5), "p": snappedf(p, 0.01)})
 	if now:
@@ -1393,6 +1402,7 @@ func _talk_command(verb: String, rest: String) -> void:
 			r = _show_ward_context(context_card, [n])
 			verb = "ward_context"
 	if n.silenced and verb in ["ask", "a", "tell", "t", "present", "accuse", "show", "press"]:
+		w.observe_decision(n, "conversation", false, {"gate": "silenced; cannot answer; no roll"})
 		_narr("%s opens their mouth, but no sound comes. They can't speak (until tomorrow evening)." % n.name)
 		return
 	match verb:
@@ -1766,6 +1776,7 @@ func _maybe_tell_haunts(n, t, r: Dictionary) -> void:
 		return
 	var p = clampf(0.15 + 0.55 * n.traits.get("gossip", 0.5) + 0.5 * (n.trust - 0.5), 0.0, 0.9)
 	var roll = w.rng.randf()
+	w.observe_decision(n, "share_haunts", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * 0.4, "one": p}, "outcome_chances": {"all": p * 0.4, "one": p * 0.6, "none": 1.0 - p}}, t.id)
 	if roll >= p:
 		return
 	var tell: Array = unknown if roll < p * 0.4 else [unknown[0]]
@@ -1807,9 +1818,9 @@ func _maybe_tell_trait(n, t, r: Dictionary) -> void:
 	if allowed.is_empty():
 		return
 	var p = clampf(0.1 + 0.35 * n.traits.get("gossip", 0.5) + 0.3 * (n.trust - 0.5) + (0.15 if friend else 0.0), 0.0, 0.6)
-	if w.rng.randf() >= p:
+	if not w.decision_roll(n, "share_observed_trait", p, {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust, "friend": friend}, t.id):
 		return
-	var key: String = w.pick(allowed)
+	var key: String = w.decision_pick(n, "shared_trait_choice", allowed, {}, t.id)
 	var tier: String = Mind.C.tier(t.traits[key])
 	var words: String = TRAIT_WORDS[key][tier][0 if friend else (2 if rival else 1)]
 	var line: String = ("I'll say this for %s: they're %s." if friend else ("%s is %s, if you ask me." if rival else "From what I've seen, %s is %s.")) % [t.name, words]
@@ -1836,6 +1847,7 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 		return
 	var p = clampf(0.15 + 0.55 * n.traits.get("gossip", 0.5) + 0.5 * (n.trust - 0.5), 0.0, 0.9)
 	var roll = w.rng.randf()
+	w.observe_decision(n, "share_relationships", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * 0.4, "one": p}, "outcome_chances": {"all": p * 0.4, "one": p * 0.6, "none": 1.0 - p}}, t.id)
 	if roll >= p:
 		return
 	var tell: Array = unknown if roll < p * 0.4 else [unknown[0]]
@@ -2158,7 +2170,7 @@ func _close_meeting() -> void:
 	if w.game_over:
 		return
 	for m in w.living():
-		if w.rng.randf() < 0.35 * (1.0 - m.traits["composure"]):
+		if w.decision_roll(m, "post_meeting_trait", 0.35 * (1.0 - m.traits["composure"]), {"composure": m.traits["composure"]}):
 			var t = Mind.reveal_trait(w, m)
 			if t != "":
 				_narr(t)
@@ -3230,7 +3242,8 @@ func _outcome_text() -> String:
 ## a case marks identification as unscored (like opening the grimoire).
 func set_debug_overlay(on: bool) -> void:
 	debug_overlay = on
-	if on and not w.game_over and not prediction_spoiled:
+	decision_feed.enabled = on
+	if on and w != null and not w.game_over and not prediction_spoiled:
 		prediction_spoiled = true
 		w.dlog.add("prediction_spoiled", "player", "", {}, "Turned on the debug overlay during the case; identification credit disabled.")
 

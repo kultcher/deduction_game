@@ -93,6 +93,70 @@ func pick(arr: Array):
 func chance(p: float) -> bool:
 	return rng.randf() < p
 
+## The original single draw and comparison, with an observational decision record.
+func decision_roll(n, topic: String, p: float, inputs: Dictionary = {}, target: String = "", comparison: String = "<") -> bool:
+	var draw = rng.randf()
+	var yes = draw <= p if comparison == "<=" else draw < p
+	if dlog.live_feed != null and dlog.live_feed.enabled:
+		dlog.decision(n.id if n != null else "world", topic, "roll", yes,
+			{"mechanism": "probability", "inputs": inputs, "probability": p, "threshold": p, "draw": draw, "comparison": comparison}, target)
+	return yes
+
+func decision_pick(n, topic: String, options: Array, inputs: Dictionary = {}, target: String = ""):
+	if options.is_empty(): return null
+	var index = rng.randi_range(0, options.size() - 1)
+	if dlog.live_feed != null and dlog.live_feed.enabled:
+		var weights = {}
+		var labels = {}
+		for i in range(options.size()):
+			weights[str(i)] = 1.0
+			labels[str(i)] = str(options[i].name) if options[i] is Object else str(options[i])
+		dlog.decision(n.id if n != null else "world", topic, "roll", labels[str(index)],
+			{"mechanism": "uniform choice", "weights": weights, "choices": labels, "selected": str(index), "draw": index, "inputs": inputs}, target)
+	return options[index]
+
+func observe_decision(n, topic: String, result, details: Dictionary, target: String = "") -> void:
+	if dlog.live_feed != null and dlog.live_feed.enabled:
+		dlog.decision(n.id if n != null else "world", topic, "evaluation", result, details, target)
+
+func observe_weighted(n, topic: String, candidates: Array, selected: String, draw: float, inputs: Dictionary, target: String, none_weight: float = 0.0) -> void:
+	if dlog.live_feed == null or not dlog.live_feed.enabled: return
+	var weights = {"nothing": none_weight}
+	for c in candidates:
+		var key: String = c[1].get("key", c[1].get("kind", "option"))
+		weights[key] = weights.get(key, 0.0) + maxf(float(c[0]), 0.0)
+	dlog.decision(n.id, topic, "roll", selected, {"mechanism": "weighted choice", "weights": weights,
+		"selected": selected, "draw": draw, "comparison": "cumulative weights", "inputs": inputs}, target)
+
+func observe_ranked(n, topic: String, candidates: Dictionary, selected: String, noise_max: float) -> void:
+	if dlog.live_feed == null or not dlog.live_feed.enabled: return
+	for id in candidates:
+		var threshold = -INF
+		for other in candidates:
+			if other != id: threshold = maxf(threshold, float(candidates[other].score))
+		var c: Dictionary = candidates[id]
+		if candidates.size() == 1:
+			observe_decision(n, topic, id == selected, {"gate": "only eligible candidate; no competing threshold", "score": c.score,
+				"draw": c.get("raw_draw", c.noise), "noise": c.noise, "parts": c.get("parts", {})}, id)
+			continue
+		observe_decision(n, topic, id == selected, {"score": c.score, "threshold": threshold,
+			"comparison": ">", "draw": c.get("raw_draw", c.noise), "noise": c.noise, "noise_min": 0.0, "noise_max": noise_max,
+			"parts": c.get("parts", {}), "inputs": c.get("inputs", {}), "note": "Local chance against the other OBSERVED scores; not the full strategy likelihood"}, id)
+
+func attach_decision_feed(feed) -> void:
+	dlog.live_feed = feed
+	shadow_log.live_feed = feed
+	var weak_world = weakref(self)
+	feed.resolve_actor = func(id, source):
+		var world = weak_world.get_ref()
+		if world == null: return {"name": id, "stats": {}}
+		var n = world.by_id.get(id)
+		if n == null: return {"name": "Town" if id == "world" else id, "stats": {}}
+		if source == "shadow" and n.shadow != null: n = n.shadow
+		var stats: Dictionary = n.traits.duplicate()
+		stats.merge({"trust": n.trust, "pressure": n.pressure, "day": world.day, "paranoia": Mind.paranoia(world, n)})
+		return {"name": n.name, "stats": stats}
+
 func npc(id: String):
 	return by_id.get(id)
 
@@ -557,7 +621,7 @@ func _pre_pair() -> void:
 		var cands = _idle_pairable()
 		if cands.size() < 2 or player_options().size() - 2 < 3:
 			break
-		if not chance(0.65):
+		if not decision_roll(null, "pre_phase_conversation", 0.65):
 			break
 		var pr = _choose_pair(cands)
 		if pr.is_empty():
@@ -577,12 +641,26 @@ func _choose_pair(cands: Array) -> Array:
 	if options.is_empty():
 		return best
 	var r = rng.randf() * total
+	var observed_draw = r
 	for o in options:
 		r -= o[2]
 		if r <= 0:
+			_observe_pair_choice(options, o, observed_draw)
 			return [o[0], o[1]]
 	var last = options[options.size() - 1]
+	_observe_pair_choice(options, last, observed_draw)
 	return [last[0], last[1]]
+
+func _observe_pair_choice(options: Array, selected: Array, draw: float) -> void:
+	if dlog.live_feed == null or not dlog.live_feed.enabled: return
+	var weights = {}
+	var inputs = {}
+	for o in options:
+		var key: String = o[0].name + " + " + o[1].name
+		weights[key] = o[2]
+		inputs[key] = {"trust_a_to_b": o[0].npc_trust.get(o[1].id, 0.5), "trust_b_to_a": o[1].npc_trust.get(o[0].id, 0.5)}
+	observe_decision(selected[0], "conversation_partner", selected[1].name, {"weights": weights,
+		"selected": selected[0].name + " + " + selected[1].name, "draw": draw, "comparison": "cumulative weights", "inputs": inputs}, selected[1].id)
 
 func _make_pair(a, b, when: String) -> void:
 	if when == "pre":
@@ -614,7 +692,7 @@ func _post_pair(talked_id: String) -> void:
 		if pr.is_empty():
 			continue
 		var p = 0.4 * pair_weight(pr[0], pr[1])
-		if chance(p):
+		if decision_roll(pr[0], "post_phase_conversation", p, {"pair_weight": p / 0.4}, pr[1].id):
 			_make_pair(pr[0], pr[1], "post")
 
 func _day_sightings() -> void:

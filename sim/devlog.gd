@@ -16,6 +16,8 @@ var entries: Array = []
 var _seq = 0
 var day = 0
 var phase = "Setup"
+var live_feed = null
+
 var echo = false  # print each entry to stdout as it is logged
 
 # Detailed trace is a separate, versioned sidecar. Legacy entries and text stay intact.
@@ -56,6 +58,8 @@ func trace_event(type: String, actor: String = "", target: String = "", data: Di
 ## Structured decision records are explanatory; they never mutate replay state.
 ## Reuse the returned id across start/gate/evaluation/outcome records.
 func decision(actor: String, kind: String, stage: String, result, details: Dictionary = {}, target: String = "", decision_id: int = 0) -> int:
+	if live_feed != null and live_feed.enabled:
+		live_feed.observe(actor, kind, stage, result, details, target, stream, day, phase)
 	if not detailed:
 		return 0
 	if decision_id == 0:
@@ -66,6 +70,7 @@ func decision(actor: String, kind: String, stage: String, result, details: Dicti
 	return decision_id
 
 func begin_action(label: String, data: Dictionary = {}) -> void:
+	if live_feed != null: live_feed.begin_action(label, data)
 	if not detailed:
 		return
 	# Commands are not nested. End any incomplete diagnostic scope explicitly.
@@ -163,6 +168,8 @@ func add(type: String, actor: String = "", target: String = "", data: Dictionary
 
 ## NPC reasoning snapshot. topic examples: "claim", "lie", "vote", "suspicion", "kill_choice".
 func think(npc_id: String, topic: String, reason: String, data: Dictionary = {}) -> void:
+	if live_feed != null and live_feed.enabled and topic in ["seer_pick", "watch_pick", "warden_pick", "kill_choice", "poison_choice", "breath_choice", "nominate"]:
+		live_feed.observe(npc_id, topic, "final choice", reason, data.merged({"gate": "Final choice; preceding rows explain its checks. No additional draw here."}), "", stream, day, phase)
 	var d = data.duplicate()
 	d["topic"] = topic
 	add("think", npc_id, "", d, reason)

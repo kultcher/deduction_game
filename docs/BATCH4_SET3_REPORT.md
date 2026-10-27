@@ -1,6 +1,6 @@
 # Batch 4, set 3: implementation and validation
 
-Branch: `codex/backlog-batch-4`, continuing from set-2 head `d55119c`; main base `193b636`. Nine feature/verification commits, one per implemented item, plus the item-10 reference and validation reports. The final narrow-row correction was folded into item 15; commit IDs below are the final IDs. No merge. The separate decision-inspector branch is unchanged.
+Branch: `codex/backlog-batch-4`, continuing from set-2 head `d55119c`; original main base `193b636`. PR #25 is now reconciled with main `f4383a7`; see [combined inspector validation](BATCH4_INTEGRATION.md). Nine feature/verification commits, one per implemented item, plus the item-10 reference and validation reports. The final narrow-row correction was folded into item 15; commit IDs below are the final IDs. No merge. The separate decision-inspector branch is unchanged.
 
 ## Item 10 performance and revert note
 

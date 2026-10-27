@@ -19,6 +19,8 @@ is yours to explain.
 
 **Set-3 validation observation:** all items 15–23 are implemented, including the user-approved item-19 presentation choices. Final focused checks: 474 passed. Full suite including slow trace: 83/84, with only the approved protection baseline exception; all six trace pairs passed. The original 54875 result remains 2 yes / 5 needed with identical listener assessments and vote margins and no fallbacks. See [set-3 report](BATCH4_SET3_REPORT.md) and the [item-10 performance/revert reference](BATCH4_ITEM10_REFERENCE.md).
 
+**Reconciled with main:** PR #25 includes main `f4383a7` and its live decision inspector. Integration validation: 474 batch checks, 68 inspector checks, and 84/85 full suites including all six trace pairs; only the approved protection baseline fails. The approved item-10 filtering/draw order and original 2/5 replay result are preserved with capture off/on. See [integration report](BATCH4_INTEGRATION.md).
+
 ## Out of scope (Claude is doing these)
 
 Do not touch them, even where an item below sits next to them:

@@ -137,10 +137,13 @@ static func _pick_item(w, s, l):
 	for c in cands:
 		total += maxf(c[0], 0.0)
 	var r2 = w.rng.randf() * total
+	var observed_draw = r2
 	for c in cands:
 		r2 -= maxf(c[0], 0.0)
 		if r2 <= 0:
+			w.observe_weighted(s, "npc_share", cands, c[1]["key"], observed_draw, {"privacy": priv, "gossip": gos, "trust_in_listener": bond, "pressure": s.pressure}, l.id, 0.3)
 			return c[1]
+	w.observe_weighted(s, "npc_share", cands, "nothing", observed_draw, {"privacy": priv, "gossip": gos, "trust_in_listener": bond, "pressure": s.pressure}, l.id, 0.3)
 	return null
 
 static func _deliver(w, s, l, item: Dictionary) -> void:
@@ -241,7 +244,7 @@ static func tavern_whispers(w) -> void:
 		for j in range(i + 1, here.size()):
 			var d = here[i]
 			var m = here[j]
-			if Evil.unshared_intel(d, m) + Evil.unshared_intel(m, d) > 0 and w.chance(0.5):
+			if Evil.unshared_intel(d, m) + Evil.unshared_intel(m, d) > 0 and w.decision_roll(d, "whisper_intelligence", 0.5, {}, m.id):
 				Evil.share_intel(w, d, m, "whisper in the crowded tavern")
 
 # ---------------------------------------------------------------- paranoia
@@ -260,7 +263,7 @@ static func paranoia_drift(w) -> void:
 
 ## Pick an NPC who wants a word with the player at the start of a phase, or null.
 static func approach_candidate(w):
-	if not w.chance(0.4):
+	if not w.decision_roll(null, "approach_this_phase", 0.4):
 		return null
 	var best = null
 	var best_s = 0.0
@@ -300,13 +303,18 @@ static func approach_candidate(w):
 			if ps > s:
 				s = ps
 				a = "protect"
-		s += w.rng.randf() * 0.2
+		var noise_draw = w.rng.randf()
+		var noise: float = noise_draw * 0.2
+		s += noise
+		w.observe_decision(n, "approach_score", s >= 0.35, {"inputs": {"gossip": gos, "privacy": trait_of(n, "privacy"), "trust": n.trust, "composure": trait_of(n, "composure")}, "score": s, "threshold": 0.35, "comparison": ">=", "draw": noise_draw, "noise": noise, "noise_min": 0.0, "noise_max": 0.2, "agenda": a, "note": "Threshold chance excludes competing NPCs; highest score chooses the approach"})
 		if s > best_s:
 			best_s = s
 			best = n
 			agenda = a
 	if best == null or best_s < 0.35:
+		w.observe_decision(best, "approach_selection", false, {"gate": "no eligible NPC cleared the approach threshold", "score": best_s, "threshold": 0.35, "comparison": ">="})
 		return null
+	w.observe_decision(best, "approach_selection", agenda, {"score": best_s, "threshold": 0.35, "comparison": ">=", "gate": "highest eligible score selected; no extra draw"})
 	w.dlog.think(best.id, "approach", "Seeks out the Demonologist (agenda: %s, score %.2f)." % [agenda, best_s], {"agenda": agenda})
 	return {"npc": best, "agenda": agenda}
 
@@ -384,7 +392,7 @@ static func gossip_item(w, n) -> Dictionary:
 			continue
 		var owner: String = it[1]
 		var o = w.by_id[owner]
-		if w.chance(0.5 + 0.3 * trait_of(n, "gossip")):
+		if w.decision_roll(n, "approach_gossip_direct", 0.5 + 0.3 * trait_of(n, "gossip"), {"gossip": trait_of(n, "gossip")}):
 			n.told_to["player|secret:" + owner] = true
 			w.dlog.think(n.id, "gossip", "Tells the player %s's secret (heard via %s)." % [owner, n.known_secrets[owner]])
 			o.secret_spread_by_npc = true
@@ -428,7 +436,7 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 	# own up (likelier the more they trust you). Otherwise they answer like anyone else.
 	if mine == role:
 		var p = 0.15 + 0.2 * n.trust
-		var out = w.rng.randf() < p
+		var out = w.decision_roll(n, "own_up_to_gift", p, {"trust": n.trust})
 		w.dlog.think(n.id, "about_role", "Asked who holds their own gift (%s): owns up? -> %s (p=%.2f)." % [role, "yes" if out else "no", p])
 		if out:
 			n.pressed_today -= 1  # answer_gift counts the question again
@@ -480,7 +488,7 @@ static func answer_is_role(w, n, role: String) -> Dictionary:
 		return {"lines": [Mind.say(n, "No. I told you: I'm the %s." % C.role_name(claimed) if C.ROLES.has(claimed) else "No.")], "facts": []}
 	if mine == role:
 		var first = n.role_guesses == 0
-		var tier: int = Mind._target_tier(w, n) + (1 if first and w.rng.randf() < 0.5 else 0)
+		var tier: int = Mind._target_tier(w, n) + (1 if first and w.decision_roll(n, "correct_role_guess_bonus", 0.5) else 0)
 		w.dlog.think(n.id, "about_role", "Asked if they are the %s (right): disclosure tier %d%s." % [role, tier,
 			"" if first else " (no bonus: you guessed wrong before)"])
 		if tier >= 2:

@@ -41,6 +41,8 @@ var mono: SystemFont
 var history: Array = []
 var hist_i = 0
 var theory_label: Label
+var roll_window
+var roll_button: Button
 var debug_check: CheckBox
 var day_icon: TextureRect
 var day_label: Label
@@ -153,8 +155,22 @@ func _ready() -> void:
 	debug_check.tooltip_text = "Show what NPCs privately make of each card and person (influence, credibility, suspicion). Turning it on mid-case leaves your identification unscored."
 	debug_check.toggled.connect(func(on):
 		g.set_debug_overlay(on)
+		roll_button.visible = on
+		if not on: roll_window.hide()
 		_refresh_all())
 	top.add_child(debug_check)
+	roll_window = preload("res://ui/decision_window.gd").new()
+	roll_window.theme = theme
+	add_child(roll_window)
+	roll_button = Button.new()
+	roll_button.text = "Rolls"
+	roll_button.tooltip_text = "Live NPC decisions: stats, sampled draws, thresholds and chance estimates"
+	roll_button.visible = false
+	roll_button.pressed.connect(func():
+		if g.debug_overlay:
+			roll_window._refresh()
+			roll_window.popup_centered())
+	top.add_child(roll_button)
 	theory_label = Label.new()
 	theory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	theory_label.add_theme_color_override("font_color", UITheme.color("muted"))
@@ -397,6 +413,8 @@ func _new_case() -> void:
 	_case_seed = int(seed_box.value)
 	case_state.select_card(0)
 	g = Game.new()
+	g.debug_overlay = debug_check.button_pressed
+	g.decision_feed.console = roll_window.mirror.button_pressed
 	headlines.clear()
 	g.stream_meeting = true
 	out.clear()
@@ -411,6 +429,8 @@ func _new_case() -> void:
 	meeting_view.set_game(g)
 	if debug_check.button_pressed:
 		g.set_debug_overlay(true)
+	roll_window.set_feed(g.decision_feed)
+	roll_button.visible = debug_check.button_pressed
 	_refresh_all()
 	if is_inside_tree() and show_script_at_start:
 		_open_roles()
