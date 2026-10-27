@@ -2164,6 +2164,7 @@ func _close_meeting() -> void:
 				_narr(t)
 	state = "night"
 	_hdr("Night %d" % w.day)
+	_narr(_night_homes())
 	if w.day == 1: _narr(C.DEMON_NIGHT_RULE)
 	var opts = "'vigil <block>' (watch a block)"
 	if w.tools["ward"] > 0:
@@ -2171,6 +2172,15 @@ func _close_meeting() -> void:
 	_prompt("Choose your night work: %s, or 'sleep'." % opts)
 
 # ---------------------------------------------------------------- night
+
+## Match the night-planning map: living townsfolk are shown at their homes.
+## Night excursions have not resolved yet; this reveals no hidden walking result.
+func _night_homes() -> String:
+	var blocks: Array = []
+	for block in C.BLOCKS:
+		var names: Array = w.living().filter(func(n): return n.home_block == block).map(func(n): return n.name)
+		blocks.append("%s: %s" % [C.block_name(block), ", ".join(PackedStringArray(names)) if not names.is_empty() else "nobody"])
+	return "At home tonight — " + "; ".join(PackedStringArray(blocks)) + "."
 
 func _night_command(verb: String, rest: String) -> void:
 	match verb:
@@ -2353,6 +2363,7 @@ func _look() -> void:
 		"nomination":
 			_show_nomination()
 		"night":
+			_narr(_night_homes())
 			_narr("Night falls. %svigil <block> | sleep" % ("ward <name> | " if w.tools["ward"] > 0 else ""))
 		_:
 			_narr("The case is over.")

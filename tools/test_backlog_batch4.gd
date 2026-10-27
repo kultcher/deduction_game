@@ -38,6 +38,7 @@ func run():
 	busy_visit_warning()
 	new_actions_help()
 	seer_space_targets()
+	night_home_listing()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func refusal_privacy():
@@ -782,3 +783,19 @@ func seer_space_targets():
 			check(r == control_response and n.gift_request == control_request and g.w.rng.state == control_rng, "Seer request separator preserves targets, response and exact draw: " + separator)
 		var rng = g.w.rng.state
 		check(g._gift_request(n, "check", "unknown_name " + others[0].id).is_empty() and g.w.rng.state == rng, "invalid Seer names are rejected before any roll")
+
+func night_home_listing():
+	var g = fresh()
+	g.state = "night"
+	var dead = g.w.npcs[0]
+	dead.alive = false
+	var n = g.w.living()[0]
+	n.loc = "night:" + n.home_block
+	var rng = g.w.rng.state
+	var summary = g._night_homes()
+	for block in C.BLOCKS:
+		check(C.block_name(block) + ":" in summary, "night list includes block " + block)
+	for living in g.w.living():
+		check(summary.count(living.name) == 1, "night map's living home resident listed once: " + living.name)
+	check(not dead.name in summary and n.name in summary, "night planning list matches map home markers without leaking hidden walks or including the dead")
+	check(summary in g.command("look") and g.w.rng.state == rng and g.state == "night", "night look repeats the same home list without changing RNG or night work")

@@ -150,6 +150,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
    - **Implemented (Codex batch 4, set 3):** Seer requests accept whitespace between names as well as comma or and, retaining the same target validation, decision and RNG draws. Warden parsing is unchanged. Help shows the new syntax and points apologies at the existing numbered command menu. Exact-string expectations changed: none.
 
 18. **Night: who's home.** A line at night listing who is home on each block (what the map shows).
+   - **Implemented (Codex batch 4, set 3):** Night entry and night look list every living townsfolk's home by block, matching the existing night-planning map. The list uses home markers rather than hidden resolved excursions; no phase, RNG or visibility rules change. Exact-string expectations changed: none.
+
 19. Lower priority if time allows: Roles window as a side panel option; offset name labels that overlap
     place labels on the block map; briefly highlight a trait bar when you learn that trait.
 
