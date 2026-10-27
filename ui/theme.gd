@@ -193,7 +193,8 @@ static func make(mono: Font = null) -> Theme:
 	th.set_color("font_hover_color", "CheckBox", color("accent"))
 	th.set_color("font_pressed_color", "CheckBox", color("accent"))
 	th.set_color("font_hover_pressed_color", "CheckBox", color("accent"))
-	for st in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+	th.set_color("font_disabled_color", "CheckBox", color("muted"))
+	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
 		th.set_stylebox(st, "CheckBox", StyleBoxEmpty.new())
 	th.set_color("font_color", "Label", text)
 	# Text fields: cream with a gold edge.

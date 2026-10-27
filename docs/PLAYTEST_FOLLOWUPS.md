@@ -19,3 +19,10 @@ Native option indices, callbacks, disabled states and keyboard neighbours surviv
 Embedded popups and anchors use logical viewport coordinates, including a physical
 1600×1200 window stretched from an 800×600 viewport (a reproduced clipping case).
 The batch-3 column-count assertion follows the new shared heading container.
+
+## Hide Unselected checkbox
+
+Disabled checkboxes now use the same empty stylebox as enabled checkboxes instead
+of inheriting a paper Button plaque with different content margins. Disabled text
+uses the board's muted colour. Filtering and the no-selection disabled rule remain
+unchanged; the theme correction also keeps other disabled checkboxes consistent.

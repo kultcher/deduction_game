@@ -24,6 +24,7 @@ func settle():
 	for i in range(5): await process_frame
 func run():
 	await menus()
+	checkbox_skin()
 	print("Playtest follow-ups: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func picker(title: String, count: int):
@@ -99,3 +100,8 @@ func menus():
 	native.hide()
 	await settle()
 	host.free()
+
+func checkbox_skin():
+	var theme = UITheme.make()
+	check(theme.get_stylebox("normal", "CheckBox") is StyleBoxEmpty and theme.get_stylebox("disabled", "CheckBox") is StyleBoxEmpty, "disabled Hide Unselected uses the same checkbox layout, not inherited plaque padding")
+	check(theme.get_color("font_disabled_color", "CheckBox") == UITheme.color("muted"), "disabled checkbox text stays legible on the board")
