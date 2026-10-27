@@ -32,6 +32,7 @@ func run():
 	volunteered_sightings()
 	vote_help()
 	await demon_night_wording()
+	approach_arrival()
 	direct_night_willingness()
 	print("Batch 4: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -637,3 +638,43 @@ func demon_night_wording():
 		check((C.DEMON_NIGHT_RULE in text) == (day == 1) and g.state == "night", "the explanatory line appears at the first night prompt only")
 	for i in range(3): await process_frame
 	scene.free()
+
+func approach_arrival():
+	var g = fresh()
+	var control = fresh()
+	var n = g.w.living_good()[0]
+	var companion = g.w.living_good()[1]
+	for game in [g, control]:
+		for person in game.w.npcs:
+			person.loc = "home_" + person.id
+			person.busy_with = ""
+		game.w.by_id[n.id].loc = "tavern"
+		game.w.by_id[companion.id].loc = "tavern"
+		game.state = "day"
+		game.moved = false
+	g.approach = {"npc": n, "agenda": "divulge"}
+	g.state = "approach"
+	var phase = g.w.phase
+	var rng = g.w.rng.state
+	var output = g.command("accept")
+	control.command("go tavern")
+	var arrival = control.last_events.filter(func(e): return e.k == "narration").map(func(e): return e.text)
+	check(arrival.all(func(text): return text in output) and ("Present: " in output) and companion.name in output, "acceptance prints the ordinary go arrival block including other people")
+	check(g.state == "talk" and g.talk_with == n and g.loc == "tavern" and g.w.player_loc == "tavern" and g.free_move_used and g.questions_left == 3, "approach acceptance retains its conversation and movement rules")
+	check(g.w.phase == phase and g.w.rng.state == rng, "arrival narration adds no phase advance or RNG draws")
+	var expected = control.board.filter(func(c): return c.get("loc", "") == "tavern" and c.kind == "sighting").map(func(c): return Mind.fact_id(c))
+	var actual = g.board.filter(func(c): return c.get("loc", "") == "tavern" and c.kind == "sighting").map(func(c): return Mind.fact_id(c))
+	check(expected == actual, "approach and ordinary visit produce the same visible-person sighting identities")
+	var due = fresh()
+	var source = due.w.living_good()[0]
+	source.loc = "tavern"
+	source.busy_with = ""
+	source.silenced = false
+	source.role = "clerk"
+	due.divulge_due = [source.id]
+	due.events = []
+	check(due._maybe_divulge() and Game.render(due.events).contains("finds you at " + due.w.loc_name(source.loc)), "a promised approach names the meeting place before acceptance")
+	var old_loc = due.loc
+	var old_phase = due.w.phase
+	due.command("decline")
+	check(due.loc == old_loc and due.w.phase == old_phase, "declining an approach still does not move or spend the phase")

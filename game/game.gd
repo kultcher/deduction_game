@@ -1176,7 +1176,7 @@ func _maybe_approach() -> void:
 	approach = c
 	state = "approach"
 	w.dlog.add("approach", n.id, "player", {"agenda": c["agenda"]})
-	_narr("%s the %s approaches you." % [n.name, n.occupation])
+	_narr("%s the %s approaches you at %s." % [n.name, n.occupation, w.loc_name(n.loc)])
 	_line(Mind.say(n, "Demonologist, a word?"))
 	_line(Social.approach_teaser(w, n, c["agenda"]))
 	if c["agenda"] == "protect":
@@ -1205,7 +1205,7 @@ func _maybe_divulge() -> bool:
 		approach = {"npc": n, "agenda": "divulge"}
 		state = "approach"
 		w.dlog.add("approach", n.id, "player", {"agenda": "divulge"})
-		_narr("%s the %s finds you, as they promised." % [n.name, n.occupation])
+		_narr("%s the %s finds you at %s, as they promised." % [n.name, n.occupation, w.loc_name(n.loc)])
 		_line(Mind.say(n, "You kept your word. Now I'll keep mine."))
 		var r: Dictionary = Mind.keep_request(w, n, 4 if n.trust >= 0.6 else 3)
 		_lines(r["lines"])
@@ -1233,9 +1233,8 @@ func _approach_command(verb: String, rest: String) -> void:
 			free_repeats = 0
 			w.dlog.add("player_talk", "player", n.id, {"trust": snappedf(n.trust, 0.01), "approach": approach["agenda"]})
 			_narr("You step aside with %s at %s." % [n.name, w.loc_name(loc)])
-			# The same location card a normal visit gives (Case 22485: approaches gave none).
-			_facts([{"kind": "sighting", "subject": [n.id], "block": w.loc_block(loc), "loc": loc, "day": w.day, "phase": w.phase,
-				"source": "player", "text": "You saw %s at %s, day %d %s." % [n.name, w.loc_name(loc), w.day, w.phase_name()]}])
+			# Identical arrival, visible people and observations to an ordinary visit.
+			_observe()
 			if approach["agenda"] != "divulge":  # they've already told you
 				var r: Dictionary = Social.approach_open(w, n, approach["agenda"])
 				_lines(r["lines"])

@@ -129,6 +129,8 @@ Each item: what to build, then the gotchas. One commit per item, with focused ch
 
 13. **Approaches: say where.** Accepting an approach moves the player; print the same arrival block as
     `go` ("Present: …"), and name the place in the approach line before accepting.
+   - **Implemented (Codex batch 4, set 2):** Approach invitations name the place before acceptance. Accepting reuses the ordinary visit observer, showing the same arrival, Present list and visible-person cards as go, while preserving approach question, movement and phase rules. Declining still leaves location and time unchanged. Exact-string expectations changed: none.
+
 14. **Looking isn't talking.** Clicking a portrait started a conversation and spent the phase. Make a
     single click select or inspect (profile), and talking an explicit action (button or double click).
     - Gotcha: `test_ui.gd` clicks portraits; update its expectations, and keep `_run_seq` working.
