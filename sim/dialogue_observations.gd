@@ -45,4 +45,3 @@ static func add(groups: Array, kind: String, scene: Dictionary, subject: String,
 static func spoken_list(items: Array) -> String:
 	if items.size() < 3: return " and ".join(PackedStringArray(items))
 	return ", ".join(PackedStringArray(items.slice(0, -1))) + ", and " + items[-1]
-
