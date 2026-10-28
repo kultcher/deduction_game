@@ -448,7 +448,7 @@ func _assign_secret_mod() -> void:
 	if k != "lovers":
 		# The Rumormonger's gift can't name its own holder, so it never holds the secret
 		# alone (Lovers always involve someone else). The shared model knows the rule.
-		goods = goods.filter(func(n): return n.role != "rumormonger")
+		goods = goods.filter(func(n): return not C.role_def(n.role).cannot_hold_solo_secret)
 		if goods.size() < 2:
 			return
 	if k in ["lovers", "sleepwalker"]:
@@ -604,9 +604,10 @@ func player_options() -> Array:
 ## Weight for two NPCs choosing to talk: driven by mutual trust.
 func pair_weight(a, b) -> float:
 	var t: float = (a.npc_trust.get(b.id, 0.5) + b.npc_trust.get(a.id, 0.5)) / 2.0
-	var nudge = 0.0
-	if (a.role == "psychologist" and not a.is_evil()) or (b.role == "psychologist" and not b.is_evil()):
-		nudge = 0.5  # the Psychologist seeks people out: their gift needs a conversation
+	var nudge: float = maxf(
+		C.role_def(a.role).conversation_nudge if not a.is_evil() else 0.0,
+		C.role_def(b.role).conversation_nudge if not b.is_evil() else 0.0
+	)
 	if a.silenced or b.silenced:
 		return 0.02
 	return clampf((t - 0.3) * 2.0 + Social.news_bonus(self, a, b) + nudge, 0.02, 2.0)
@@ -871,9 +872,8 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 	var alive_before = living().size()
 	# The Martyr dies in the place of a good soul they chose.
 	var mart = living_with_role("martyr")
-	# The Martyr's gift reads the nominee like any other: a Marked soul may read as evil.
-	var reads_evil = mart != null and mart.martyr_target == id and registers_evil(n)
-	var substituted = mart != null and mart != n and mart.martyr_target == id and not reads_evil and not mart.gift_broken()
+	var mart_def = C.role_def("martyr")
+	var substituted: bool = mart_def.can_substitute_execution(self, mart, id)
 	# The substitution decision is final before the actual condemned person speaks.
 	if last_words.is_valid():
 		last_words.call(mart if substituted else n)
@@ -891,18 +891,11 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 	dlog.add("execution", "world", id, {"role": n.role, "align": n.alignment},
 		"%s (%s) executed by town vote." % [n.name, n.role])
 	_grief(n, res)
-	if mart != null and mart.martyr_target == id and reads_evil and not mart.gift_broken():
-		# Hanged, and the Martyr still stands: their chosen was evil.
-		var info = {"data": {"target": id, "evil": true}, "true": n.is_evil(),
-			"text": "As the Martyr, I chose %s. They were hanged and I still stand: they must have been evil or my gift failed" % n.name}
-		if not n.is_evil():
-			info["why"] = "Marked reads as evil"
-		_add_info(mart, info)
-	if n.role == "revenant":
-		_revenant_curse(n, res)
+	mart_def.on_chosen_executed(self, mart, n)
+	C.role_def(n.role).on_executed(self, n, res, Mind)
 	if id == demon_id:
 		var sc = living_with_role("scion")
-		if sc != null and alive_before >= 5 and not sc.gift_broken():
+		if C.role_def("scion").can_promote_to_demon(sc, alive_before):
 			_scion_rises(sc)
 		else:
 			_finish("good", "The demon's host was executed.")
@@ -912,57 +905,12 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 ## The Martyr falls dead as the noose tightens; the nominee lives. Everyone sees it: both
 ## are proven good.
 func _martyr_dies(mart, saved, res: Dictionary) -> void:
-	mart.alive = false
-	mart.death_day = day
-	mart.death_cause = "martyr"
-	mart.loc = "dead"
-	_bereave(mart)
-	mart.gift_used = true
-	executed_today = ""
-	executions.append({"day": day, "id": mart.id, "saved": saved.id, "martyr": true, "nominator": res.get("by", ""),
-		"yes": res.get("yes", []), "player_yes": res.get("player_yes", false), "player_nominated": res.get("by", "") == "player"})
-	public_event("martyr", [mart.id, saved.id], mart.id)
-	meeting["martyr"] = {"martyr": mart.id, "saved": saved.id}
-	dlog.add("martyr", mart.id, saved.id, {}, "%s (Martyr) dies in %s's place at the gallows. Both proven good." % [mart.name, saved.name])
-	for real in living():
-		var l = real.shadow if real.is_evil() else real
-		if l == null:
-			continue
-		var e: Array = []
-		for id in [mart.id, saved.id]:
-			if id != l.id:
-				l.cleared[id] = true
-				Mind._eff(e, id, -2.0, "the Martyr died in %s's place: proven good" % saved.id)
-		Mind.ledger_hear(self, l, "martyr:%d" % day, e, 1.0, [], {"kind": "martyr", "day": day})
-	_check_parity()
+	C.role_def("martyr").on_substitute_execution(self, mart, saved, res, Mind)
 
 ## The Revenant hangs with a totem hidden: a good soul who voted for it turns evil, and
 ## the town is warned (not told who).
 func _revenant_curse(rv, res: Dictionary) -> void:
-	if totem.is_empty():
-		dlog.add("curse_fizzles", rv.id, "", {}, "The Revenant hangs with no totem in play: no curse.")
-		return
-	if rv.gift_broken():
-		dlog.add("curse_fizzles", rv.id, "", {}, "The Revenant was poisoned: the curse fails.")
-		return
-	var cands: Array = res.get("yes", []).map(func(i): return by_id[i]).filter(func(m): return m.alive and not m.is_evil())
-	if cands.is_empty():
-		dlog.add("curse_fizzles", rv.id, "", {}, "No good soul voted to hang the Revenant: the curse finds nobody.")
-		return
-	var v = pick(cands)
-	turn_evil(v, "the Revenant's curse")
-	curse = {"victim": v.id, "day": day, "totem": totem.duplicate()}
-	# Someone who voted to hang it has turned: each good yes-voter is a little suspect to the rest.
-	var voters: Array = res.get("yes", []).filter(func(i): return by_id[i].alive)
-	for l in living_good():
-		var e: Array = []
-		for i in voters:
-			if i != l.id:
-				Mind._eff(e, i, 0.15, "voted to hang the Revenant; the curse turned one of those voters")
-		if not e.is_empty():
-			Mind.ledger_hear(self, l, "curse:%d" % day, e, 1.0, [], {"kind": "event"})
-	public_event("curse", [rv.id], rv.id)
-	meeting["curse"] = true
+	C.role_def("revenant").on_executed(self, rv, res, Mind)
 
 func turn_evil(v, why: String) -> void:
 	v.alignment = "evil"
@@ -1007,15 +955,7 @@ func free_turned() -> String:
 
 ## The demon hangs with five or more alive: the Scion takes its place.
 func _scion_rises(sc) -> void:
-	var old = demon_id
-	sc.role = "demon"
-	demon_id = sc.id
-	scion_rose = sc.id
-	minion_ids.erase(sc.id)
-	if minion_id == sc.id and not minion_ids.is_empty():
-		minion_id = minion_ids[0]
-	dlog.add("scion", sc.id, old, {}, "The demon is hanged, but %s, the Scion, becomes the demon." % sc.name)
-	_check_parity()
+	C.role_def("scion").promote_to_demon(self, sc)
 
 ## Those who trusted the executed resent whoever pushed for it (shifting allegiances).
 ## A Lover's death leaves the other withdrawn for the rest of the case: Privacy to the top,
@@ -1149,8 +1089,8 @@ func resolve_night() -> void:
 			if outcome == "protected_player":
 				ward_saves.append({"target": kill_t, "night": day})
 			dlog.add("kill_failed", demon_id, kill_t, {"why": outcome}, "The demon's attack on %s failed (%s)." % [v.name, outcome])
-			if outcome == "veteran":
-				_veteran_survives(v)
+			if C.has_role_def(outcome):
+				C.role_def(outcome).on_survive_attack(self, v)
 
 	if day >= 1 and deaths_last_night.is_empty():
 		_quiet_night()
@@ -1172,8 +1112,8 @@ func resolve_night() -> void:
 ## What happens when the demon attacks someone: the Veteran survives their first attack;
 ## a guarded door holds.
 func attack_outcome(v, protected: Dictionary) -> String:
-	if v.role == "veteran" and not v.is_evil() and not v.gift_broken() and not v.vet_used:
-		return "veteran"
+	if C.role_def(v.role).survives_demon_attack(v):
+		return v.role
 	if protected.has(v.id):
 		return "protected_" + protected[v.id]
 	return "killed"
@@ -1488,28 +1428,10 @@ func _medium_text(dead, it: Dictionary) -> String:
 ## Gifts that work in the daytime: the Dowser reads a crowd; the Breathstealer silences;
 ## the Revenant hides a totem.
 func _day_gifts() -> void:
-	var dw = living_with_role("dowser")
-	if dw != null and not dw.is_evil() and dw.dowsed_day != day:
-		var dw_entry: Dictionary = C.role_def("dowser").generate_reading(self, dw, {"day_phase": true}, Mind)
-		if not dw_entry.is_empty():
-			_add_info(dw, dw_entry)
-			Mind.update_from_own_info(self)
-	var bs = living_with_role("breathstealer")
-	if bs != null and bs.is_evil() and bs.breath_day != day:
-		var tgt = Evil.breath_target(self, bs)
-		if tgt != "":
-			bs.breath_day = day
-			bs.breath_last = tgt
-			if bs.gift_broken():
-				dlog.add("breath_failed", bs.id, tgt, {}, "%s tries to steal %s's breath, but is poisoned." % [bs.name, by_id[tgt].name])
-			else:
-				by_id[tgt].silence_pending = day
-				dlog.add("breath", bs.id, tgt, {"loc": bs.loc}, "%s steals %s's breath: silent from this evening's meeting." % [bs.name, by_id[tgt].name])
-	var rv = living_with_role("revenant")
-	if rv != null and rv.is_evil() and totem.is_empty() and not totem_at_dawn and C.LOCATIONS.has(rv.loc):
-		if Evil.place_totem_now(self, rv):
-			totem = {"loc": rv.loc, "day": day, "owner": rv.id, "material": rv.home_block}
-			dlog.add("totem", rv.id, "", totem, "%s hides a totem at %s." % [rv.name, C.loc_name(rv.loc)])
+	for role_id in ["dowser", "breathstealer", "revenant"]:
+		var holder = living_with_role(role_id)
+		if holder != null:
+			C.role_def(role_id).run_day_gift(self, holder, Mind, Evil)
 
 ## The player searches a location: a hidden totem is found and destroyed. Returns the
 ## totem (with "freed": id of anyone released from the curse), or {}.

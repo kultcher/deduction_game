@@ -23,11 +23,19 @@ var minion: bool = false
 # Reading shape & solver metadata
 # Shapes: "GROUP_COUNT", "ROLE_AT_SITE", "PING", "ROLE_IN_GROUP", "SECRET_PAIR", "SOCIAL_PAIR", "NIGHT_ROUTE", "NIGHT_EVENT", "NONE"
 var shape: String = "NONE"
+var produces_readings: bool = false
 var marked_registers: bool = false
 var red_herring_registers: bool = false
 var can_cause_quiet_night: bool = false
 var quiet_night_effect: float = 0.0
 var requires_execution: bool = false
+
+# World & evil AI declarative metadata
+var cannot_hold_solo_secret: bool = false
+var conversation_nudge: float = 0.0
+var hard_to_kill: bool = false
+var public_threat_bonus: float = 0.0
+var public_threat_key: String = ""
 
 # ROLE_IN_GROUP shape parameters:
 # - role_group_key: "pair" (2-person array in data["pair"]) or "executed" (1-person id in data["executed"])
@@ -75,6 +83,10 @@ func to_role_dict() -> Dictionary:
 	if minion:
 		out["minion"] = true
 	return out
+
+
+func has_readings() -> bool:
+	return kind == "info" or produces_readings
 
 
 static func group_of(d: Dictionary) -> Array:
@@ -183,10 +195,15 @@ func info_effects(_w, _listener, _source, _entry: Dictionary, _weight: float, _f
 	return []
 
 
-# ---------------------------------------------------------------- night choices & requests (mind.gd / world.gd / evil.gd)
+# ---------------------------------------------------------------- night choices, day gifts & world events (mind.gd / world.gd / evil.gd)
 
 ## World setup hook called at case creation when this role is in play.
 func setup_world(_w, _holder) -> void:
+	pass
+
+
+## Daytime gift execution hook called in `World._day_gifts()`.
+func run_day_gift(_w, _holder, _mind, _evil) -> void:
 	pass
 
 
@@ -224,7 +241,12 @@ func on_evil_agreed_request(_w, _n, _asked: Array) -> void:
 	pass
 
 
-## Hook called when a Veteran survives their first demon attack.
+## Whether a good holder `v` survives a demon attack through their own gift (`World.attack_outcome`).
+func survives_demon_attack(_v) -> bool:
+	return false
+
+
+## Hook called when a holder survives a demon attack (`World._veteran_survives`).
 func on_survive_attack(_w, _v) -> void:
 	pass
 
@@ -232,6 +254,41 @@ func on_survive_attack(_w, _v) -> void:
 ## Hook called when the Sexton considers tolling the death knell in the evening.
 func try_knell(_w, _sx, _mind) -> bool:
 	return false
+
+
+## Whether `holder` substitutes for `target_id` at the gallows (`World.execute`).
+func can_substitute_execution(_w, _holder, _target_id: String) -> bool:
+	return false
+
+
+## Execute gallows substitution when `holder` dies in `saved`'s place (`World._martyr_dies`).
+func on_substitute_execution(_w, _holder, _saved, _res: Dictionary, _mind) -> void:
+	pass
+
+
+## Hook called on a living Martyr when someone is executed without substitution (`World.execute`).
+func on_chosen_executed(_w, _holder, _executed_npc) -> void:
+	pass
+
+
+## Hook called when a holder of this role is executed (`World.execute`, e.g. Revenant curse).
+func on_executed(_w, _n, _res: Dictionary, _mind) -> void:
+	pass
+
+
+## Whether an evil teammate `v` should vote to let `nom_n` hang (`Evil.evil_vote`, e.g. Revenant with totem).
+func should_evil_vote_to_hang(_w, _nom_n, _v) -> bool:
+	return false
+
+
+## Whether `holder` rises to replace an executed Demon (`World.execute`, e.g. Scion).
+func can_promote_to_demon(_holder, _alive_before: int) -> bool:
+	return false
+
+
+## Promote `holder` to Demon (`World._scion_rises`).
+func promote_to_demon(_w, _holder) -> void:
+	pass
 
 
 # ---------------------------------------------------------------- alibis, sightings & gift answers (mind.gd)

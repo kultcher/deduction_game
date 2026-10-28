@@ -341,3 +341,13 @@ func _test_final_roles_hooks() -> void:
 	martyr.claim_public = true
 	martyr.claimed_role = "martyr"
 	_check(not Evil.gift_live_tonight(w, sexton) and not Evil.gift_live_tonight(w, vet) and Evil.gift_live_tonight(w, martyr), "gift_live_tonight matches Veteran/Sexton (false) and Martyr on day >= 1 (true)")
+
+	# 4. World, Evil & Content RoleDef hooks (Item 5)
+	for rid in C.ROLES.keys():
+		_check(C.has_readings(rid) == (rid in C.INFO_ROLES or rid in ["veteran", "martyr"]), "C.has_readings('%s') matches RoleDef.has_readings()" % rid)
+		_check(C.is_minion(rid) == C.ROLES[rid].get("minion", false), "C.is_minion('%s') matches RoleDef.minion" % rid)
+	_check(C.role_def("rumormonger").cannot_hold_solo_secret, "Rumormonger RoleDef marks cannot_hold_solo_secret")
+	_check(is_equal_approx(C.role_def("psychologist").conversation_nudge, 0.5), "Psychologist RoleDef sets conversation_nudge = 0.5")
+	_check(C.role_def("warden").hard_to_kill and C.role_def("veteran").hard_to_kill, "Warden and Veteran RoleDefs set hard_to_kill")
+	_check(C.role_def("seer").public_threat_key == "seer" and is_equal_approx(C.role_def("seer").public_threat_bonus, 1.0), "Seer RoleDef sets public_threat_bonus")
+	_check(C.role_def("martyr").can_substitute_execution(w, martyr, vet.id), "Martyr RoleDef can_substitute_execution validates good chosen target")

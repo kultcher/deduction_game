@@ -260,9 +260,15 @@ const SETUPS = {7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "min
 ## Gifts with something to tell: readings, or a one-off result (Veteran attacked, Martyr's
 ## choice, Martyr's grim confirmation).
 static func has_readings(r: String) -> bool:
+	var rdef = role_def(r)
+	if rdef != null:
+		return rdef.has_readings()
 	return r in INFO_ROLES or r in ["veteran", "martyr"]
 
 static func is_minion(r: String) -> bool:
+	var rdef = role_def(r)
+	if rdef != null:
+		return rdef.minion
 	return ROLES.get(r, {}).get("minion", false)
 
 ## Secret modifiers: one per case, laid on a townsfolk (two for the Lovers), on top of

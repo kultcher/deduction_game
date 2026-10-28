@@ -48,6 +48,14 @@ func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh
 	return effs
 
 
+func run_day_gift(w, dw, mind, _evil) -> void:
+	if not dw.is_evil() and dw.dowsed_day != w.day:
+		var dw_entry: Dictionary = generate_reading(w, dw, {"day_phase": true}, mind)
+		if not dw_entry.is_empty():
+			w._add_info(dw, dw_entry)
+			mind.update_from_own_info(w)
+
+
 func generate_reading(w, dw, ctx: Dictionary, _mind) -> Dictionary:
 	if not ctx.get("day_phase", false):
 		return {}

@@ -71,7 +71,7 @@ static func _pick_scapegoat(w, why: String) -> void:
 				s += 1.0  # seen out at night: easier to frame
 		if w.demon().npc_trust.get(g.id, 0.5) < 0.4:
 			s += 0.5
-		if g.claim_public and g.claimed_role in ["veteran", "warden"]:
+		if g.claim_public and C.has_role_def(g.claimed_role) and C.role_def(g.claimed_role).hard_to_kill:
 			s += 0.2  # claims a gift the demon can't kill through: better hanged
 		if s > best_s:
 			best_s = s
@@ -361,8 +361,9 @@ static func _public_threat(w, n) -> Dictionary:
 	var parts = {}
 	if n.claim_public and n.claimed_role in C.INFO_ROLES:
 		parts["info_claim"] = 3.0
-		if n.claimed_role == "seer":
-			parts["seer"] = 1.0
+		var cdef = C.role_def(n.claimed_role)
+		if cdef != null and cdef.public_threat_bonus != 0.0 and cdef.public_threat_key != "":
+			parts[cdef.public_threat_key] = cdef.public_threat_bonus
 	for e in n.info_log:
 		if e["shared"] and info_implicates(w, e):
 			parts["implicates_us"] = 2.0
@@ -725,7 +726,7 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool =
 	var yes = false
 	var why = ""
 	var nom_n = w.by_id[nominee]
-	if nom_n.role == "revenant" and nom_n.is_evil() and not w.totem.is_empty() and w.decision_roll(v, "vote_revenant_curse", 0.55, {}, nominee):
+	if C.role_def(nom_n.role).should_evil_vote_to_hang(w, nom_n, v):
 		# A hanged Revenant with a totem hidden curses the town: let it hang.
 		yes = true
 		why = "The Revenant's totem is hidden: its hanging will turn one of the town."
@@ -815,46 +816,8 @@ static func intel_from_share(w, m, speaker, item: Dictionary) -> void:
 ## The Breathstealer picks whom to silence, among the good on its block (not the same
 ## person twice running). Likelier as the day goes on; the most dangerous voice first.
 static func breath_target(w, bs) -> String:
-	# The Breathstealer must be out in a public place; the target can be anywhere on the
-	# same block (Case 22485: no stealing breath from inside one's own house).
-	if bs.at_home():
-		return ""
-	var b: String = w.loc_block(bs.loc)
-	var cands: Array = w.living_good().filter(func(m): return m.id != bs.breath_last and m.silence_pending < 0 and not m.silenced \
-		and (m.home_block if m.at_home() else w.loc_block(m.loc)) == b)
-	if cands.is_empty():
-		return ""
-	var best = ""
-	var best_s = -99.0
-	var scores = {}
-	var observed = {}
-	for n in cands:
-		var parts = _public_threat(w, n)
-		var hostile = public_hostility(w, n)
-		if hostile > 0.0:
-			parts["publicly_against_us"] = hostile
-		var known = intel_threat(bs, n.id)
-		if known > 0.0:
-			parts["known_threat"] = known
-		var noise_draw = w.rng.randf()
-		parts["noise"] = snappedf(noise_draw * 1.0, 0.01)
-		var total = 0.0
-		for k in parts:
-			total += parts[k]
-		if w.dlog.live_feed != null and w.dlog.live_feed.enabled:
-			observed[n.id] = {"score": total, "raw_draw": noise_draw, "noise": parts["noise"], "parts": parts.duplicate()}
-		scores[n.id] = snappedf(total, 0.01)
-		if total > best_s:
-			best_s = total
-			best = n.id
-	w.observe_ranked(bs, "silence_ranking", observed, best, 1.0)
-	var p = [0.3, 0.5, 1.0][w.phase] if best_s > 1.0 else [0.15, 0.3, 0.7][w.phase]
-	if not w.decision_roll(bs, "silence_this_phase", p, {"best_target_score": best_s}, best):
-		w.dlog.think(bs.id, "breath_choice", "Breathstealer holds off this phase (best %s, %.2f)." % [best, best_s], {"scores": scores})
-		return ""
-	w.dlog.think(bs.id, "breath_choice", "Breathstealer silences %s (score %.2f)." % [best, best_s], {"scores": scores})
-	return best
+	return C.role_def("breathstealer").breath_target(w, bs, load("res://sim/evil.gd"))
 
 ## Whether the Revenant hides its totem here and now (it will by evening).
 static func place_totem_now(w, rv) -> bool:
-	return w.decision_roll(rv, "place_totem_now", [0.45, 0.6, 1.0][w.phase])
+	return C.role_def("revenant").place_totem_now(w, rv)

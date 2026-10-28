@@ -12,8 +12,10 @@ func _init() -> void:
 	kind = "passive"
 	desc = "The first time the demon attacks the Veteran, they survive and learn the last block the attacker came through."
 	shape = "NIGHT_EVENT"
+	produces_readings = true
 	can_cause_quiet_night = true
 	quiet_night_effect = -0.06
+	hard_to_kill = true
 
 
 func gift_live_tonight(_w, _n) -> bool:
@@ -35,6 +37,10 @@ func info_effects(w, listener, source, entry: Dictionary, weight: float, _fresh:
 			mind._eff(effs, m.id, 0.12, tag + ": the demon came by way of their block",
 				"the demon came by way of %s, where they live" % content().block_name(d["block"]), not own)
 	return effs
+
+
+func survives_demon_attack(v) -> bool:
+	return not v.is_evil() and not v.gift_broken() and not v.vet_used
 
 
 func on_survive_attack(w, v) -> void:

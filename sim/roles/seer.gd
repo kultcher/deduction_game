@@ -14,6 +14,8 @@ func _init() -> void:
 	shape = "PING"
 	marked_registers = true
 	red_herring_registers = true
+	public_threat_bonus = 1.0
+	public_threat_key = "seer"
 	request_agree_line = "All right. Tonight I'll look at %s."
 
 

@@ -13,6 +13,7 @@ func _init() -> void:
 	kind = "protect"
 	desc = "Once per case, secretly chooses someone. If they are later executed while good, the Martyr dies in their place."
 	shape = "NIGHT_EVENT"
+	produces_readings = true
 	marked_registers = true
 
 
@@ -71,6 +72,59 @@ func pick_targets(w, mart, mind):
 		"text": "I have given my life over for %s, should the town ever hang them" % w.by_id[best].name,
 	})
 	return best
+
+
+func can_substitute_execution(w, mart, target_id: String) -> bool:
+	if mart == null or mart.id == target_id or mart.martyr_target != target_id:
+		return false
+	return not w.registers_evil(w.by_id[target_id]) and not mart.gift_broken()
+
+
+func on_substitute_execution(w, mart, saved, res: Dictionary, mind) -> void:
+	mart.alive = false
+	mart.death_day = w.day
+	mart.death_cause = "martyr"
+	mart.loc = "dead"
+	w._bereave(mart)
+	mart.gift_used = true
+	w.executed_today = ""
+	w.executions.append({
+		"day": w.day,
+		"id": mart.id,
+		"saved": saved.id,
+		"martyr": true,
+		"nominator": res.get("by", ""),
+		"yes": res.get("yes", []),
+		"player_yes": res.get("player_yes", false),
+		"player_nominated": res.get("by", "") == "player",
+	})
+	w.public_event("martyr", [mart.id, saved.id], mart.id)
+	w.meeting["martyr"] = {"martyr": mart.id, "saved": saved.id}
+	w.dlog.add("martyr", mart.id, saved.id, {}, "%s (Martyr) dies in %s's place at the gallows. Both proven good." % [mart.name, saved.name])
+	for real in w.living():
+		var l = real.shadow if real.is_evil() else real
+		if l == null:
+			continue
+		var e: Array = []
+		for pid in [mart.id, saved.id]:
+			if pid != l.id:
+				l.cleared[pid] = true
+				mind._eff(e, pid, -2.0, "the Martyr died in %s's place: proven good" % saved.id)
+		mind.ledger_hear(w, l, "martyr:%d" % w.day, e, 1.0, [], {"kind": "martyr", "day": w.day})
+	w._check_parity()
+
+
+func on_chosen_executed(w, mart, executed_npc) -> void:
+	if mart != null and mart.martyr_target == executed_npc.id and w.registers_evil(executed_npc) and not mart.gift_broken():
+		# Hanged, and the Martyr still stands: their chosen was evil.
+		var info: Dictionary = {
+			"data": {"target": executed_npc.id, "evil": true},
+			"true": executed_npc.is_evil(),
+			"text": "As the Martyr, I chose %s. They were hanged and I still stand: they must have been evil or my gift failed" % executed_npc.name,
+		}
+		if not executed_npc.is_evil():
+			info["why"] = "Marked reads as evil"
+		w._add_info(mart, info)
 
 
 func generate_bluff_reading(w, n, plan: Dictionary, _s: String, mate, _asked: Array) -> Dictionary:

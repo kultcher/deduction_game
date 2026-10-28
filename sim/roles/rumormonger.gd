@@ -12,6 +12,7 @@ func _init() -> void:
 	first_night = true
 	desc = "Starts knowing that one of two people carries a particular secret."
 	shape = "SECRET_PAIR"
+	cannot_hold_solo_secret = true
 
 
 func clears(d: Dictionary) -> Array:

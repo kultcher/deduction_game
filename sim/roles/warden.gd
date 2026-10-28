@@ -16,6 +16,7 @@ func _init() -> void:
 	shape = "NIGHT_EVENT"
 	can_cause_quiet_night = true
 	quiet_night_effect = -0.15
+	hard_to_kill = true
 	request_agree_line = "Very well. I'll stand at %s's door tonight."
 
 
