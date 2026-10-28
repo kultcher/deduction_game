@@ -14,8 +14,10 @@ func _init() -> void:
 	_memory()
 	_generic_refusals()
 	_flow()
+	_presence()
 	_exchange()
 	_live()
+	_live_presence()
 	call_deferred("_lab")
 
 func _contracts() -> void:
@@ -87,13 +89,16 @@ func _flow() -> void:
 		for id in Fixtures.IDS:
 			var memory = {}
 			var baseline = scenario["parts"].duplicate(true)
-			var parts = Dialogue.compose_turn(id, scenario["parts"], {"audience": "player"}, memory, scenario.get("preceded", false))
+			var approved = Fixtures.flow_parts(id, scenario)
+			var context: Dictionary = scenario.get("context", {}).duplicate(true)
+			context["audience"] = "player"
+			var parts = Dialogue.compose_turn(id, approved, context, memory, scenario.get("preceded", false))
 			_check(parts.size() == baseline.size() and baseline == scenario["parts"], "turn keeps all approved utterances and source descriptors unchanged")
 			for i in range(parts.size()):
-				_check(parts[i]["statement"] == baseline[i]["statement"] and baseline[i]["statement"] in parts[i]["text"], "flow never alters an approved fact or fabricated report")
+				_check(parts[i]["statement"] == baseline[i]["statement"] and (Dialogue.Observations.valid_presence(approved[i]) or baseline[i]["statement"] in parts[i]["text"]), "flow keeps canonical facts; only bounded presence forms rephrase speech")
 				if i > 0 or scenario.get("preceded", false):
 					_check(not parts[i]["text"].begins_with(Dialogue.Voices.VOICES[id]["report"][0]) and not parts[i]["text"].begins_with(Dialogue.Voices.VOICES[id]["report"][1]), "continuations suppress new report openings")
-			var next = Dialogue.compose_turn(id, scenario["parts"], {"audience": "player"}, memory, scenario.get("preceded", false))
+			var next = Dialogue.compose_turn(id, approved, context, memory, scenario.get("preceded", false))
 			_check(next.all(func(p): return p["repeated"]), "turn delivery retains per-event repetition tracking")
 	var unknown_memory = {}
 	var fallback = Dialogue.compose_turn("edda", Fixtures.FLOW_SCENARIOS[0]["parts"], {}, unknown_memory, true)
@@ -109,6 +114,128 @@ func _flow() -> void:
 	var truthful = Dialogue.compose_turn("bart", fixture["parts"], {"audience": "player", "true": true}, {}, true)
 	var fabricated = Dialogue.compose_turn("bart", fixture["parts"], {"audience": "player", "true": false, "alignment": "evil"}, {}, true)
 	_check(truthful == fabricated, "flow presentation cannot distinguish real from fabricated accounts")
+
+func _presence() -> void:
+	var expected = {
+		"agnes": "Oh, yes. I did see Jory at the tavern yesterday evening. Fenwick was there too.",
+		"bart": "Right. Saw Jory at the tavern yesterday evening. Fenwick too.",
+		"constance": "As I recall, Jory was at the tavern yesterday evening. Fenwick was there as well.",
+	}
+	for id in Fixtures.IDS:
+		var approved = Fixtures.flow_parts(id, Fixtures.FLOW_SCENARIOS[1])
+		var before = approved.duplicate(true)
+		var memory = {}
+		var parts = Dialogue.compose_turn(id, approved, {"speech_act": "answer"}, memory)
+		_check(_turn_text(parts) == expected[id], "concise shared-scene answer matches %s's authored example" % id)
+		_check(approved == before and parts.size() == 2 and parts[1].statement == approved[1].statement and parts[1].event_id == approved[1].event_id, "shortened narration retains each canonical statement and event identity")
+		_check(parts[1].cue == "flow_same_scene", "like statements bypass development filler")
+		var again = Dialogue.compose_turn(id, approved, {"speech_act": "answer"}, memory)
+		_check(again.all(func(p): return p.repeated) and again[0].cue == "repeat", "every member of a shared scene has listener-specific repetition history")
+		_check(Dialogue.compose_turn(id, approved, {"speech_act": "answer", "audience": "other"}, memory).all(func(p): return not p.repeated), "another listener has not heard either scene member")
+		var volunteered = Dialogue.compose_turn(id, approved, {"speech_act": "volunteer"}, {})
+		_check(volunteered[0].cue == "report_volunteer" and volunteered[0].text != parts[0].text and volunteered[1].text == parts[1].text, "volunteering has its own opening, preserving shared facts")
+		for act in ["answer", "volunteer"]:
+			var pressed = Dialogue.compose_turn(id, approved, {"speech_act": act, "pressure": 1.0, "warm": true}, {})
+			var warm = Dialogue.compose_turn(id, approved, {"speech_act": act, "warm": true}, {})
+			_check(pressed[0].cue == "pressure_" + act and warm[0].cue == "report_" + act + "_warm" and pressed[1].text == parts[1].text, "pressure precedes optional warmth; neither changes scene content")
+		var honest = Dialogue.compose_turn(id, approved, {"speech_act": "answer", "true": true}, {})
+		var lie = Dialogue.compose_turn(id, approved, {"speech_act": "answer", "true": false, "alignment": "evil", "secret": "hidden"}, {})
+		_check(honest == lie, "identical honest and fabricated scene claims have identical speech")
+		# A separate turn cannot inherit 'there', even with the same memory.
+		var single = Dialogue.compose_turn(id, [approved[1]], {"speech_act": "answer"}, memory)
+		_check("tavern yesterday evening" in single[0].text and single[0].cue != "flow_same_scene", "shared referents never persist across speaker turns")
+	var base = Fixtures.flow_parts("agnes", Fixtures.FLOW_SCENARIOS[1])
+	for change in [{"place_id": "loc:well"}, {"day": 1}, {"phase": 1}, {"source": "greta"}, {"how": "hearsay"}, {"predicate": "departure"}]:
+		var changed = base.duplicate(true)
+		changed[1].observation.scene.merge(change, true)
+		_check(Dialogue.compose_turn("agnes", changed, {"speech_act": "answer"}, {})[1].cue != "flow_same_scene", "distinct/unsupported provenance prevents elision: " + str(change))
+	for field in ["source", "place_id", "day", "phase", "how", "predicate"]:
+		var missing = base.duplicate(true)
+		missing[1].observation.scene.erase(field)
+		_check(Dialogue.compose_turn("agnes", missing, {}, {})[1].text.contains(missing[1].statement), "missing provenance keeps the exact statement: " + field)
+	for relation in ["contrast", "correction", "transition"]:
+		var related = base.duplicate(true)
+		related[1].relation = relation
+		_check(Dialogue.compose_turn("agnes", related, {}, {})[1].cue == "flow_" + relation, "explicit rhetorical relationship blocks grouping: " + relation)
+	var unstructured = base.duplicate(true)
+	unstructured[1].erase("form")
+	_check(unstructured[1].statement in Dialogue.compose_turn("agnes", unstructured, {}, {})[1].text, "similar prose without an approved form is never parsed")
+	var qualified = base.duplicate(true)
+	qualified[1].statement = "Greta said she might have seen Fenwick at the tavern yesterday evening."
+	_check(qualified[1].statement in Dialogue.compose_turn("agnes", qualified, {}, {})[1].text, "changed attribution or uncertainty fails closed to the complete canonical sentence")
+	for malformed in [null, "not a descriptor", {"scene": "not a scene"}]:
+		var broken = base.duplicate(true)
+		broken[1].observation = malformed
+		_check(broken[1].statement in Dialogue.compose_turn("agnes", broken, {}, {})[1].text, "malformed presence data retains the full approved sentence")
+	var changed_time = base.duplicate(true)
+	changed_time[1].observation.scene.day = 1
+	var history = {}
+	Dialogue.compose_turn("agnes", base, {}, history)
+	_check(not Dialogue.compose_turn("agnes", changed_time, {}, history)[1].repeated, "changed semantic provenance is never mislabeled as the same delivered report")
+	var duplicate = [base[0], base[0].duplicate(true)]
+	_check(Dialogue.compose_turn("agnes", duplicate, {}, {})[1].cue != "flow_same_scene", "a repeated subject is not described as an additional person")
+	var interrupted = [base[0], {"kind": "report", "statement": "A separate matter."}, base[1]]
+	_check(Dialogue.compose_turn("agnes", interrupted, {}, {})[2].cue != "flow_same_scene", "intervening statements break scene adjacency")
+	var three = base.duplicate(true)
+	three.append(Dialogue.Observations.presence("agnes", "edda", "Edda", "loc:tavern", 2, 2, "the tavern", "yesterday evening"))
+	_check(Dialogue.compose_turn("agnes", three, {}, {})[2].text == "Edda was there too.", "three people can share the same explicit scene")
+	_check(Dialogue.compose_turn("edda", base, {}, {}).all(func(p): return p.text == p.statement), "unvoiced speakers retain canonical fallback")
+
+func _turn_text(parts: Array) -> String:
+	return " ".join(PackedStringArray(parts.map(func(p): return p.text)))
+
+func _live_presence() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	_case_with(g, ["agnes", "jory", "fenwick"])
+	var w = g.w
+	var n = w.by_id.agnes
+	w.day = 3
+	w.phase = C.MORNING
+	n.alignment = "good"
+	n.traits.gossip = 1.0
+	n.traits.insight = 1.0
+	n.trust = 0.5
+	n.pressure = 0.0
+	n.pressed_today = 0
+	n.history.clear()
+	n.beliefs = []
+	n.dialogue_memory.clear()
+	for who in ["fenwick", "jory"]:
+		n.beliefs.append({"kind": "saw", "who": who, "loc": "tavern", "block": "square", "day": 2, "phase": C.EVENING, "with": ""})
+	var beliefs = n.beliefs.duplicate(true)
+	var rng = w.rng.state
+	var suspicion = n.suspicion.duplicate(true)
+	var reply = Mind.answer_today(w, n, "yesterday evening")
+	_check(reply.lines.size() == 1 and "Oh, yes. I did see Jory at" in reply.lines[0].text and reply.lines[0].text.ends_with("Fenwick was there too."), "real daytime answer uses semantic grouping and question delivery")
+	var expected: Array = []
+	for who in ["jory", "fenwick"]:
+		expected.append({"kind": "sighting", "subject": [who], "block": "square", "day": 2, "phase": C.EVENING, "source": n.id,
+			"text": "%s saw %s on %s, day 2 Evening." % [n.name, w.by_id[who].name, C.block_name("square")]})
+	_check(reply.facts == expected, "condensed live scene retains exact separate dated sighting facts and ordering")
+	_check(n.beliefs == beliefs and n.suspicion == suspicion and w.rng.state == rng, "semantic narration consumes no RNG and changes no observation or suspicion")
+	var cards: Array = reply.facts.map(func(f): return g.add_card(f))
+	_check(cards.size() == 2 and cards[0] != cards[1] and g.board[cards[0] - 1].subject == ["jory"] and g.board[cards[1] - 1].subject == ["fenwick"], "shared speech still creates two independent case cards")
+	# Same visible scene and approved disclosures have the same voice for evil.
+	n.alignment = "evil"
+	w.by_id.jory.alignment = "good"
+	w.by_id.fenwick.alignment = "good"
+	n.dialogue_memory.clear()
+	var fabricated = Mind.answer_today(w, n, "yesterday evening")
+	_check(fabricated.lines == reply.lines and fabricated.facts == reply.facts, "live evil presentation uses the same approved scene and factual cards")
+	# Identical display labels at different locations are insufficient provenance.
+	var groups: Array = []
+	for location in ["loc:a", "loc:b"]:
+		Dialogue.Observations.add(groups, "sighting", {"source": n.id, "place_id": location, "day": 2, "phase": 2, "how": "direct", "predicate": "presence"},
+			"Jory", "I saw ", " at the tavern yesterday evening.")
+	_check(groups.size() == 2, "legacy observation packing uses explicit scene identity even when prose matches")
+	var incomplete: Array = []
+	for subject in ["Jory", "Fenwick"]:
+		Dialogue.Observations.add(incomplete, "sighting", {"source": n.id, "place_id": "loc:tavern"}, subject, "I saw ", " at the tavern.")
+	_check(incomplete.size() == 2, "missing observation time never authorizes slot grouping")
+	# The subject's name may occur in the authored location/time too.
+	var collision = Dialogue.Observations.presence("agnes", "jory", "Jory", "loc:jory", 2, 2, "Jory's shop", "yesterday evening")
+	_check(Dialogue.compose_turn("agnes", [collision], {"speech_act": "answer"}, {})[0].text == "Oh, yes. I did see Jory at Jory's shop yesterday evening.", "slot rendering never searches for a subject name inside arbitrary text")
 
 func _exchange() -> void:
 	for id in Fixtures.IDS:
@@ -285,6 +412,22 @@ func _lab() -> void:
 		lab.scenario_opt.select(flow_start + i)
 		lab._refresh(false)
 		_check(lab.last_results["bart"]["parts"].size() == Fixtures.FLOW_SCENARIOS[i]["parts"].size(), "workshop renders full speaker turn %d" % i)
+	lab.scenario_opt.select(flow_start + 1)
+	lab.audience_opt.select(0)
+	lab.speech_act_opt.select(1)
+	lab._refresh(false)
+	_check(lab.last_results.agnes.text == "Oh, yes. I did see Jory at the tavern yesterday evening. Fenwick was there too.", "lab displays the concise authored answer as one paragraph")
+	var preview_memory = lab.memories.duplicate(true)
+	lab.speech_act_opt.select(2)
+	lab.warmth_check.button_pressed = true
+	lab._refresh(false)
+	_check(lab.last_results.agnes.parts[0].cue == "report_volunteer_warm" and lab.memories == preview_memory, "speech-act and warmth controls preview without recording delivery")
+	lab.pressure_check.button_pressed = true
+	lab._refresh(false)
+	_check(lab.last_results.agnes.parts[0].cue == "pressure_volunteer", "lab pressure overrides warmth within the selected speech act")
+	lab.pressure_check.button_pressed = false
+	lab.warmth_check.button_pressed = false
+	lab.speech_act_opt.select(0)
 	var exchange_start: int = flow_start + Fixtures.FLOW_SCENARIOS.size()
 	for i in range(Fixtures.EXCHANGE_SCENARIOS.size()):
 		lab.scenario_opt.select(exchange_start + i)

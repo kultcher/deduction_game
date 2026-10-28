@@ -10,6 +10,8 @@ const ThemeSkin = preload("res://ui/theme.gd")
 var scenario_opt: OptionButton
 var trust_opt: OptionButton
 var audience_opt: OptionButton
+var speech_act_opt: OptionButton
+var warmth_check: CheckBox
 var pressure_check: CheckBox
 var relationship_check: CheckBox
 var private_check: CheckBox
@@ -51,11 +53,14 @@ func _ready() -> void:
 	trust_opt.item_selected.connect(func(_i): _refresh(false))
 	audience_opt = _option(selectors, "Audience", ["Player privately", "Town meeting", "Another listener"])
 	audience_opt.item_selected.connect(func(_i): _refresh(false))
+	speech_act_opt = _option(selectors, "Speech act", ["Scenario default", "Answering a question", "Volunteering information"])
+	speech_act_opt.item_selected.connect(func(_i): _refresh(false))
 	var toggles = HFlowContainer.new()
 	body.add_child(toggles)
 	pressure_check = _check(toggles, "Under pressure", false)
 	relationship_check = _check(toggles, "Friendship is established", true)
 	private_check = _check(toggles, "Requests confidentiality", false)
+	warmth_check = _check(toggles, "Warm delivery", false)
 	note = _label(body, "", 18)
 	core = _label(body, "", 22)
 	core.add_theme_color_override("font_color", ThemeSkin.color("accent"))
@@ -89,7 +94,7 @@ func _ready() -> void:
 	reset.text = "Reset conversation memory"
 	reset.pressed.connect(reset_memory)
 	actions.add_child(reset)
-	_label(body, "Changing controls previews the next line or entire turn. Speak records delivery; previews never consume memory.\nFlow examples keep all approved statements verbatim. Trust and pressure affect opening reports. Relationship cues are explicit; confidentiality applies only to private reports.", 17)
+	_label(body, "Changing controls previews the next line or entire turn. Speak records delivery; previews never consume memory.\nCanonical statements stay intact. Explicit shared scene/time slots allow concise speech. Speech act, pressure and optional warmth affect the opening; confidentiality applies only in private.", 17)
 	_refresh(false)
 
 func _label(parent: Node, text_value: String, font_size: int) -> Label:
@@ -125,13 +130,13 @@ func reset_memory() -> void:
 	_refresh(false)
 
 func _flow_render(id: String, scenario: Dictionary, context: Dictionary, memory: Dictionary) -> Dictionary:
-	var parts: Array = Dialogue.compose_turn(id, scenario["parts"], context, memory, scenario.get("preceded", false))
+	var parts: Array = Dialogue.compose_turn(id, Fixtures.flow_parts(id, scenario), context, memory, scenario.get("preceded", false))
 	var spoken: Array = []
 	if not str(scenario.get("lead_in", "")).is_empty():
 		spoken.append(scenario["lead_in"])
 	for part in parts:
 		spoken.append(part["text"])
-	return {"text": "\n\n".join(PackedStringArray(spoken)), "intent": "turn",
+	return {"text": " ".join(PackedStringArray(spoken)), "intent": "turn",
 		"parts": parts, "cue": " / ".join(PackedStringArray(parts.map(func(p): return p["cue"]))),
 		"repeated": parts.any(func(p): return p["repeated"])}
 
@@ -174,6 +179,8 @@ func _refresh(deliver: bool) -> void:
 	context["audience"] = ["player", "town", "other_listener"][audience_opt.selected]
 	context["close"] = relationship_check.button_pressed
 	context["request_privacy"] = private_check.button_pressed
+	if speech_act_opt.selected > 0: context["speech_act"] = ["", "answer", "volunteer"][speech_act_opt.selected]
+	context["warm"] = warmth_check.button_pressed
 	note.text = scenario["note"]
 	if is_flow:
 		core.text = "Approved statements:\n" + "\n".join(PackedStringArray(scenario["parts"].map(func(p): return p["statement"])))

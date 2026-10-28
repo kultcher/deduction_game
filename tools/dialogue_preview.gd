@@ -17,6 +17,14 @@ func _init() -> void:
 			Fixtures.prime(id, scenario, context["audience"], memory)
 			var result = Dialogue.compose(id, scenario, context, memory)
 			print("%s: %s" % [cast["name"], result["text"]])
+	for scenario in Fixtures.FLOW_SCENARIOS:
+		print("\n--- %s ---" % scenario.title)
+		for id in Fixtures.IDS:
+			var context: Dictionary = scenario.get("context", {}).duplicate(true)
+			var parts = Dialogue.compose_turn(id, Fixtures.flow_parts(id, scenario), context, {}, scenario.get("preceded", false))
+			var spoken: Array = parts.map(func(p): return p.text)
+			if scenario.has("lead_in"): spoken.push_front(scenario.lead_in)
+			print("%s: %s" % [id.capitalize(), " ".join(PackedStringArray(spoken))])
 	print("\n--- Same fact, listener memory ---")
 	var memory = {}
 	for audience in ["player", "player", "town", "agnes"]:

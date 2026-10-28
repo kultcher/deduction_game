@@ -15,6 +15,7 @@ const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
+const Observations = preload("res://sim/dialogue_observations.gd")
 
 static func _mind():
 	return load("res://sim/mind.gd")
@@ -1210,11 +1211,10 @@ static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void
 		if n.told_to.has(_town_sighting_key(n, b)) or not _public_sighting_allowed(w, n, b): continue
 		var report = sighting_report(w, n, b, b.day)
 		n.told_to[_town_sighting_key(n, b)] = true
-		var text = "On %s: %s" % [C.night_name(b.day), report.line.text]
-		_add_observation(groups, "sighting", text, w.by_id[b.who].name)
+		_add_observation(groups, report.observation)
 		facts.append(report.fact)
 		w.dlog.add("volunteer_sighting", n.id, b.who, {"night": b.day, "block": b.block, "score": score, "threshold": threshold})
-	for text in _observation_texts(groups): lines.append(say(n, text))
+	lines.append_array(_observation_lines(n, groups, "town", "volunteer", not lines.is_empty()))
 
 static func _public_claim_decision(w, n) -> String:
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
@@ -1263,18 +1263,18 @@ static func _info_intent(w, n, e: Dictionary) -> Dictionary:
 		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
 	return {"kind": "report", "statement": "%s, %s." % [when, e["text"]], "event_id": info_eid(n.id, e)}
 
-static func info_line(w, n, e: Dictionary, audience: String = "player") -> Dictionary:
+static func info_line(w, n, e: Dictionary, audience: String = "player", speech_act: String = "answer") -> Dictionary:
 	var approved = _info_intent(w, n, e)
-	return voiced(n, "report", approved["statement"], approved["event_id"], {"audience": audience})
+	return voiced(n, "report", approved["statement"], approved["event_id"], {"audience": audience, "speech_act": speech_act})
 
 ## A batch of readings is one uninterrupted speech turn. Each report remains an
 ## independent line and fact; only its introduction/connective is turn-aware.
-static func info_lines(w, n, entries: Array, audience: String = "player", preceded: bool = false) -> Array:
+static func info_lines(w, n, entries: Array, audience: String = "player", preceded: bool = false, speech_act: String = "answer") -> Array:
 	var approved: Array = []
 	for e in entries:
 		approved.append(_info_intent(w, n, e))
 	var rendered: Array = Dialogue.compose_turn(n.id, approved,
-		{"audience": audience, "trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, preceded)
+		{"audience": audience, "speech_act": speech_act, "trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, preceded)
 	var lines: Array = []
 	for part in rendered:
 		lines.append(say(n, part["text"]))
@@ -1590,7 +1590,7 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 			for l in w.living():
 				if l != n:
 					apply_info(w, l, n, e, heard_weight(l, n))
-		lines.append_array(info_lines(w, n, shared_this_turn, "town", not lines.is_empty()))
+		lines.append_array(info_lines(w, n, shared_this_turn, "town", not lines.is_empty(), "volunteer"))
 
 ## Last words are a claim and a spoken suspicion, not a fresh evidence argument.
 ## Reuse ordinary public claiming without adding the speaker's reading backlog.
@@ -2890,11 +2890,14 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			var detail = "go in for the night" if b.kind == "stayed_in" else ("leave their house" if b.get("detail", "") == "leaving_home" else "out")
 			var end = ", and they never came out" if b.kind == "stayed_in" else ""
 			r.line.text = "…though I did see %s %s on %s on night %d%s, not that I was there." % [who, detail, C.block_name(b.block), nd, end]
-		_add_observation(groups, r.fact.kind, r.line.text, w.by_id[b.who].name)
+			r.observation.before = "…though I did see "
+			r.observation.after = " %s on %s on night %d%s, not that I was there." % [detail, C.block_name(b.block), nd, end]
+			r.observation.scene["slip"] = true
+		_add_observation(groups, r.observation)
 		facts.append(r["fact"])
 		n.told_to["player|saw:%s:%d" % [b.who, nd]] = true
 		n.told_to["player|" + fact_id(r.fact)] = true
-	for text in _observation_texts(groups): lines.append(say(n, text))
+	lines.append_array(_observation_lines(n, groups, "player", "answer", not lines.is_empty()))
 	return {"lines": lines, "facts": facts}
 
 ## A reading the player already heard, privately or at a meeting.
@@ -2909,36 +2912,30 @@ static func _fake_watch_entry(n, nd: int) -> Dictionary:
 			return e
 	return {}
 
-## Presentation only: group names with identical predicates, then put each kind on
-## one spoken line. Callers still create every fact through their original path.
-static func _spoken_list(items: Array) -> String:
-	if items.size() < 3: return " and ".join(PackedStringArray(items))
-	return ", ".join(PackedStringArray(items.slice(0, -1))) + ", and " + items[-1]
+## Explicit provenance and authored slots replace name-searching in arbitrary prose.
+static func _observation_scene(n, b: Dictionary, day: int) -> Dictionary:
+	return {"source": n.id, "place_id": b.get("loc", ""), "block": b.get("block", ""),
+		"day": day, "phase": b.get("phase", C.NIGHT), "how": b.get("how", "street"),
+		"predicate": b.get("kind", ""), "detail": b.get("detail", ""), "partner": b.get("with", "")}
 
-static func _add_observation(groups: Array, kind: String, text: String, name: String) -> void:
-	var at = text.find(name)
-	assert(at >= 0)
-	var before = text.substr(0, at)
-	var after = text.substr(at + name.length()).trim_suffix(".")
+static func _add_observation(groups: Array, observation: Dictionary) -> void:
+	Observations.add(groups, observation.kind, observation.scene, observation.subject, observation.before, observation.after)
+
+static func _observation_lines(n, groups: Array, audience: String, speech_act: String, preceded: bool) -> Array:
+	var intents: Array = []
 	for group in groups:
-		if group.kind == kind and group.before == before and group.after == after:
-			group.names.append(name)
-			return
-	groups.append({"kind": kind, "before": before, "after": after, "names": [name]})
-
-static func _observation_texts(groups: Array) -> Array:
+		var statement: String = group.before + Observations.spoken_list(group.names) + group.after
+		intents.append({"kind": "report", "statement": statement, "event_id": JSON.stringify([group.scene, group.names])})
+	var rendered = Dialogue.compose_turn(n.id, intents, {"audience": audience, "speech_act": speech_act,
+		"trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, preceded)
+	# Keep the established one-line-per-fact-kind presentation; cards stay separate.
 	var kinds = {}
-	for group in groups:
-		if not kinds.has(group.kind): kinds[group.kind] = {}
-		if not kinds[group.kind].has(group.before): kinds[group.kind][group.before] = []
-		kinds[group.kind][group.before].append(_spoken_list(group.names) + group.after)
-	var result: Array = []
-	for prefixes in kinds.values():
-		var sentences: Array = []
-		for before in prefixes:
-			sentences.append(before + _spoken_list(prefixes[before]) + ".")
-		result.append(" ".join(PackedStringArray(sentences)))
-	return result
+	for i in range(groups.size()):
+		if not kinds.has(groups[i].kind): kinds[groups[i].kind] = []
+		kinds[groups[i].kind].append(rendered[i].text)
+	var lines: Array = []
+	for texts in kinds.values(): lines.append(say(n, " ".join(PackedStringArray(texts))))
+	return lines
 
 ## One night sighting (or a neighbour seen going in for the night), as said and as a card.
 ## From a window, they can only speak for their own street.
@@ -2947,19 +2944,26 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	var bn = C.block_name(b["block"])
 	if b["kind"] == "stayed_in":
 		return {"line": say(n, "From my window on night %d, I saw %s go in for the night, and they never came out." % [nd, who.name]),
+			"observation": {"kind": "alibi", "subject": who.name, "scene": _observation_scene(n, b, nd),
+				"before": "From my window on night %d, I saw " % nd, "after": " go in for the night, and they never came out."},
 			"fact": {"kind": "alibi", "subject": [who.id], "home": true, "witness": true, "day": nd, "phase": C.NIGHT, "source": n.id, "block": b["block"],
 				"text": "%s says they saw %s go home for the night on night %d and not come out (from their window, %s)." % [n.name, who.name, nd, bn]}}
-	var line = ""
+	var before = ""
+	var after = ""
 	var how = ""
 	if b.get("how", "street") == "window":
 		how = " (from their window)"
 		if b.get("detail", "") == "leaving_home":
-			line = "From my window, I saw %s leave their house on night %d." % [who.name, nd]
+			before = "From my window, I saw "
+			after = " leave their house on night %d." % nd
 		else:
-			line = "From my window, I saw %s out in the street on night %d." % [who.name, nd]
+			before = "From my window, I saw "
+			after = " out in the street on night %d." % nd
 	else:
-		line = "I did see %s out on %s on night %d." % [who.name, bn, nd]
-	return {"line": say(n, line),
+		before = "I did see "
+		after = " out on %s on night %d." % [bn, nd]
+	return {"line": say(n, before + who.name + after),
+		"observation": {"kind": "sighting", "subject": who.name, "scene": _observation_scene(n, b, nd), "before": before, "after": after},
 		"fact": {"kind": "sighting", "subject": [who.id], "block": b["block"], "day": nd, "phase": C.NIGHT, "source": n.id, "how": b.get("how", "street"),
 			"text": "%s says they saw %s on %s on night %d%s." % [n.name, who.name, bn, nd, how]}}
 
@@ -3054,7 +3058,6 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 		var who = w.by_id[b["who"]]
 		var when_s = "%s %s" % ["yesterday" if b["day"] < w.day else "this", C.PHASES[b["phase"]].to_lower()]
 		var where: String = w.loc_name(b["loc"]) if b["loc"] != "" else C.block_name(b["block"])
-		var tag = (" (%s)" % when_s) if phases.size() > 1 else ""
 		var partner: String = b.get("with", "")
 		if partner != "" and sighting_is_here(w, b, partner, near_loc): partner = ""
 		if partner != "":
@@ -3071,17 +3074,23 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 				conv["silent"] = true
 				facts.append(conv)
 				continue
-			_add_observation(parts, "sighting", "%s at %s, talking with %s%s." % [who.name, where, pn.name, tag], who.name)
+			# A witnessed conversation is its own approved predicate. It must never
+			# become mere co-presence or an invented shared arrival/departure.
+			parts.append({"kind": "report", "event_id": fact_id(conv),
+				"statement": "I saw %s at %s, talking with %s, %s." % [who.name, where, pn.name, when_s]})
 			facts.append(conv)
 		else:
-			_add_observation(parts, "sighting", "%s at %s%s." % [who.name, where, tag], who.name)
+			var place_id: String = "loc:" + b["loc"] if b["loc"] != "" else "block:" + b["block"]
+			parts.append(Observations.presence(n.id, who.id, who.name, place_id, b["day"], b["phase"], where, when_s))
 		facts.append({"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": b["phase"], "source": n.id,
 			"text": "%s saw %s on %s, day %d %s." % [n.name, who.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
 	if parts.is_empty():
 		lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + "Nobody you didn't see for yourself."))
 		return {"lines": lines, "facts": facts}
-	var seen_s: String = _observation_texts(parts)[0].trim_suffix(".")
-	lines.append(say(n, ("%s, and saw %s." % [was_s, seen_s]) if was_s != "" else ("Let me think. %s." % seen_s)))
+	var reports = Dialogue.compose_turn(n.id, parts, {"audience": "player", "speech_act": "answer",
+		"trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, was_s != "")
+	var spoken: String = " ".join(PackedStringArray(reports.map(func(r): return r.text)))
+	lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + spoken))
 	return {"lines": lines, "facts": facts}
 
 static func answer_opinion(w, n, t) -> Dictionary:

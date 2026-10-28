@@ -36,7 +36,9 @@ whether a situation occurs. The workshop is the reliable way to hear every examp
 - **Bartholomew:** economical and blunt, without becoming magically more certain.
 - **Constance:** formal and exacting, drawing attention to accounts and interpretation.
 
-Reporting preserves the approved statement verbatim and changes the delivery around it.
+Ordinary reports preserve the approved statement verbatim and change delivery around it.
+The bounded direct-presence form described below retains the canonical statement while
+allowing authored speech and shared-scene elision.
 The two bounded forms for refusing whereabouts and revising a belief have authored
 sentence structures as well. For example, on reconsidering the same argument:
 
@@ -102,7 +104,12 @@ acknowledges a repeat, a new audience, or a changed assessment. Keep the flag on
 response producers when extending private interactions.
 
 Reporting chooses one opening in this priority: repeated delivery to this listener,
-high pressure (>= 0.8), low trust (< 0.3), ordinary report. Trust/pressure select tone only.
+high pressure (>= 0.8), low trust (< 0.3), ordinary report. Explicit `speech_act` values
+`answer` and `volunteer` select separate authored openings within those tones. Audience
+does not determine the speech act: a private speaker can volunteer, and a town speaker
+can answer. An explicit `warm: true` selects a warmer ordinary opening; pressure,
+guarded delivery, and repetition take priority. Warmth is optional presentation context,
+not a deduction from friendship or hidden state. Trust/pressure select tone only.
 Relationship and reconsideration cues cannot be replaced by mood. The optional request
 for confidentiality is available to callers and demonstrated in the lab, but is not
 automatically inferred from a reading being private.
@@ -114,7 +121,7 @@ Private and meeting delivery are conservatively kept separate; hearing a private
 does not imply the town heard it. The system does not yet propagate a public delivery to
 every listener's memory or normalize equivalent time phrases across days.
 
-## Turn composition (feature branch)
+## Turn composition
 
 The dialogue composer can now receive an **ordered speaker turn** through
 `Dialogue.compose_turn(id, approved_intents, context, memory, preceded)`. Each intent
@@ -138,8 +145,8 @@ speech. Every report remains a separate speech event, with its original statemen
 and fact card; evidence and disclosures are unchanged. Single reports still use
 `info_line` and its established behavior.
 
-The lab offers three new multi-line examples: role reveal with successive readings,
-developing/qualifying an account, and transitions/corrections. Its previews use
+The lab offers three multi-line examples: role reveal with successive readings,
+two people sharing a scene, and transitions/corrections. Its previews use
 copied dialogue memory, so only "Speak" commits delivery.
 
 **Scope:** this is turn composition, not conversational momentum between separate
@@ -148,11 +155,59 @@ social grievances, or offers. The latter need explicit approved responses from
 the NPC logic. In particular, no hidden role, secret or lie status enters
 connective selection.
 
-**Validation:** `tools/test_dialogue.gd` includes turn sequencing, content
-preservation, repeated delivery, confidentiality, default connectives and
-truth-independence checks. Run the commands below before merging. The GitHub
-editing environment used for this branch does not have a Godot executable, so
-these checks have been added but **have not been executed locally**.
+`tools/test_dialogue.gd` covers turn sequencing, content preservation, repeated
+delivery, confidentiality, explicit connectives and truth-independent phrasing.
+
+### Semantic grouping of direct presence
+
+Once disclosure is approved, construct a bounded intent with
+`Dialogue.Observations.presence(source_id, subject_id, subject_name, place_id,
+day, phase, place_label, time_label)`. It carries an immutable canonical sentence,
+stable event ID, subject slots and an explicit scene:
+
+```gdscript
+{"source": "agnes", "place_id": "loc:tavern", "day": 2, "phase": 2,
+ "how": "direct", "predicate": "presence"}
+```
+
+Use `loc:` and `block:` prefixes so a named venue cannot be mistaken for its whole
+neighborhood. Numeric day/phase establishes identity; display time alone never does.
+Two **adjacent** presence reports in one speaker turn may share their place/time
+wording only when the complete scene, display labels and direct observation method
+match, their subjects differ, and their relation is continuation or development.
+The three baseline voices answer the synthetic tavern example as follows:
+
+- Agnes: "Oh, yes. I did see Jory at the tavern yesterday evening. Fenwick was there too."
+- Bart: "Right. Saw Jory at the tavern yesterday evening. Fenwick too."
+- Constance: "As I recall, Jory was at the tavern yesterday evening. Fenwick was there as well."
+
+The result still contains one entry per approved intent, with its original `statement`
+and `event_id`. Each member enters listener-specific repetition history; a separate
+turn starts with a complete place/time reference. No arrival, departure, shared
+journey or conversation is inferred from co-presence. This initial form covers direct
+daytime presence only. Missing, malformed or unsupported provenance, uncertainty,
+hearsay, modified canonical prose, repeated subjects, intervening statements and
+explicit contrast/correction/transition prevent elision. Plain strings are never parsed
+to discover scene relationships. Unvoiced characters retain canonical statements.
+
+`Mind.answer_today` builds these descriptors **after** its existing recall, gossip,
+teammate, visible-pair and disclosure filters. Witnessed conversations retain their
+separate, complete predicate. Self-whereabouts narration remains the start of that
+answer when present. Night reports, stayed-home observations, window departures,
+whereabouts slips and opinion followups now group using explicit scene keys and
+authored before/after slots instead of searching prose for character names. Their
+source, block, time, method, predicate and qualifications must match. Their original
+fact dictionaries, order and card creation paths remain intact.
+
+Live reading answers explicitly use `speech_act: answer`; public meeting readings
+and volunteered night sightings use `volunteer`. The `info_line` / `info_lines`
+helpers also accept an explicit speech act for other callers. No solver, belief,
+truth, disclosure gate, question cost, or gameplay RNG rule is changed.
+
+The lab's **Speech act** selector and **Warm delivery** toggle combine with the
+existing pressure/trust/audience controls. The shared scene appears as one paragraph;
+canonical source statements remain visible above it. `tools/dialogue_preview.gd`
+also prints the complete flow fixtures, including these three exact examples.
 
 ## Across-exchange conversational continuity
 
@@ -194,14 +249,17 @@ the newly delivered exchange. Regression checks also exercise the real
 
 ### Parallel work boundary
 
-Reviewed Opus's `claude/case-reasoning` at stable commit `8e8f05a`. That branch
-changes case evaluation, argument logic, and parts of `sim/mind.gd` and
-`game/game.gd`. This work does not invoke workshop solvers or read their
-private reasoning. It uses the player's preceding conversational act and
-already-approved replies. File-level overlap exists in the two game scripts,
-so a later merge should reconcile those small entry/response hooks against
-Opus's additional workshop integration and rerun both test suites. Opus's
-branch was **not modified or rebased**.
+The original turn-flow work reviewed Opus's `claude/case-reasoning` at stable
+commit `8e8f05a` and identified overlapping presentation hooks in `sim/mind.gd`
+and `game/game.gd`. It used already-approved replies and the player's expressed
+actions, without reading private solver reasoning or modifying Opus's branch.
+
+For the semantic-grouping followup, PR #19 was already merged. The existing
+`feat/dialogue-turn-flow` branch was fast-forwarded to current main `cc53a1c`, which
+already contains `8e8f05a` and the later case-reasoning integration. The remote
+`claude/case-reasoning` branch is no longer advertised. Changes here touch presentation
+hooks in `sim/mind.gd` and `game/recent_sightings.gd`; workshop evaluation, role
+definitions and game command handling are unchanged.
 
 ## Scope and extensions
 
@@ -224,6 +282,32 @@ beliefs or evidence.
 
 ## Validation
 
+Semantic-grouping followup, October 27, 2026: Godot **4.7.2** imported the project
+without parse/compile errors. All **12/12** relevant suites passed through
+`tools/run_gd_tests.py` (which checks printed failures as well as exit codes):
+
+```sh
+python tools/run_gd_tests.py --godot <godot-executable> \
+  test_dialogue test_dialogue_decisions test_backlog_batch4 test_npc_interactions \
+  test_fixes test_sighting_followup test_meeting_stream test_board \
+  test_workshop_card_answers test_workshop_presentation test_case_eval test_role_def_poc
+```
+
+The final provenance guard was separately rechecked with `test_dialogue` and
+`test_backlog_batch4`. The printable preview reproduces all three requested examples
+exactly. Tests cover malformed/missing provenance, different scenes and times,
+uncertainty/attribution, duplicates and turn boundaries, pressure/warmth precedence,
+preview-only memory, live honest/evil accounts, unchanged facts/RNG and separate case
+cards. The meeting suite verifies streamed/batched testimony, cards, beliefs and trust
+agree for seeds 42, 7104 and 54875 over three meetings each.
+
+`test_backlog_batch4` passes all 474 checks but emits shutdown resource-leak diagnostics.
+Running that suite against the unchanged `cc53a1c` snapshot reproduces the same RID and
+ObjectDB leak counts. This followup does not claim a fresh whole-game A/B balance run;
+the older experiment below belongs to the earlier prototype.
+
+For focused iteration:
+
 ```sh
 godot --headless --path . --script res://tools/test_dialogue.gd
 godot --headless --path . --script res://tools/test_dialogue_decisions.gd
@@ -236,7 +320,8 @@ hooks, new-case reset, and the workshop's controls/memory behavior. Decision che
 the actual argument/command/vote paths, repeat costs, competing explanations, silent
 evaluation, latest spoken stance, silence, and correspondence between speech and votes.
 
-The existing social, beliefs, arguments, outcomes, board and UI suites were also run.
+Earlier prototype validation (before the semantic-grouping followup): the existing
+social, beliefs, arguments, outcomes, board and UI suites were also run.
 All assertions passed. The existing UI test emits a drag-state diagnostic and a font
 resource leak at shutdown on both the base and this branch; neither originates in the
 new workshop, whose headless test completes without those errors.
