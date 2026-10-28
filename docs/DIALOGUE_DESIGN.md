@@ -40,6 +40,8 @@ This is the **creative and behavioral specification** for dialogue. It does not 
 
 *Anti-example:* Do not freely render “I saw Fenwick **stroll past the fountain on his way home**” from a fact that only supports a sighting on the Square. The walking action, fountain, and destination are extra information. Likewise, “surely she was on an honest errand” must remain unmistakably *Isolde's hope*, not an alibi.
 
+**Permitted color vs. forbidden facts**: Idiomatic expressions of an already-approved state (saying “in my own bed” or “asleep like a stone” when the approved payload is a routine home alibi) and timeless character epithets (Fenwick noting Constance's stiff posture or Agnes's warm smile) are legal Atmosphere, provided they are bound to the speaker's voice or target's static identity and cannot be mistaken for a tracked night action, route, or witness corroboration.
+
 ## 3. Dialogue pipeline and data boundary
 
 Recommended conceptual flow:
@@ -78,7 +80,7 @@ For authoring purposes, each character has these axes:
 - **Serious mode:** which habitual flourish drops away or changes when a *supported* emotionally consequential event occurs.
 - **Restraint:** what would turn the character into a gimmick or introduce unauthorized meaning.
 
-**Baseline principle:** a characteristic line should often be no longer than its generic equivalent. Interesting syntax is more durable than mandatory introductory flourishes.
+**Baseline principle**: Because the shared text renderer highlights names, places, and roles with color, bolding, and inline icons, voices do not need to be compressed to the length of a generic fallback line to remain scanable. While terse characters (Bartholomew, Jory, Lian) compress, expansive characters (Fenwick, Hollis, Constance, Dorian, Merrin, Kiran, Nisha) should be allowed the clause length required to express their cognitive structure—provided the extra words are syntactic architecture rather than repetitive prefix filler.
 
 ## 5. Fifteen-character voice bible
 
