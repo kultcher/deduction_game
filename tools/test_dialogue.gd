@@ -416,6 +416,18 @@ func _lab() -> void:
 	root.add_child(lab)
 	await process_frame
 	_check(lab.last_results.size() == 3 and lab.memories["agnes"].is_empty(), "comparison scene shows all voices without recording previews")
+	var cast_ids: Array = C.CAST.map(func(person): return person.id)
+	_check(lab.sketch_outputs.size() == 15 and cast_ids.all(func(id): return lab.sketch_outputs.has(id)), "calibration includes every actual cast ID, including all twelve draft voices")
+	_check(cast_ids.filter(func(id): return Dialogue.has_voice(id)) == Fixtures.IDS, "editorial sketches do not register unfinished voices in live gameplay")
+	var sketch_memory = lab.memories.duplicate(true)
+	for i in range(lab.sketch_data.scenarios.size()):
+		lab.sketch_opt.select(i)
+		lab._refresh_sketches()
+		var scenario: Dictionary = lab.sketch_data.scenarios[i]
+		_check(scenario.statement in lab.sketch_core.text and cast_ids.all(func(id): return not lab.sketch_outputs[id].text.is_empty()), "all fifteen calibration cards render with their approved meaning: " + scenario.key)
+		if scenario.key in ["report", "challenged_report"]:
+			_check(cast_ids.all(func(id): return ["rowan", "tavern", "yesterday evening"].all(func(slot): return slot in lab.sketch_outputs[id].text.to_lower())), "calibration reports retain the same subject, place and time")
+	_check(lab.memories == sketch_memory, "browsing draft voices records no delivered speech or conversation history")
 	lab._refresh(true)
 	lab._refresh(true)
 	_check(lab.last_results["agnes"]["repeated"], "Speak/ask again records listener history")

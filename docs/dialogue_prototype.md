@@ -40,6 +40,14 @@ preconditions/API repairs, not changes to role behavior.
 
 ## Try it
 
+For the remaining twelve voices, start with
+[the first writing-pass review sheet](DIALOGUE_VOICE_SKETCHES.md). The scene below
+also has a **Voice calibration — first writing pass** section comparing all fifteen
+on four basic chunks. These are fixed editorial samples; changing them never enables
+a new live voice or records delivered dialogue. The comparison controls above that
+section still apply to the original three-voice composer only. The editable fixture
+source is `tools/dialogue_voice_sketches.json`; `dialogue_preview.gd` prints it too.
+
 Open `ui/dialogue_lab.tscn` in Godot and **Run Current Scene (F6)**. Or run:
 
 ```sh

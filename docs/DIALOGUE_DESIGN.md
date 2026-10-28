@@ -384,6 +384,13 @@ serious-event reactions and relationship interplay remain authoring targets.
 Pressure alone does not activate grief or a new serious mode. Do not pass a design
 sketch off as a live simulation hook merely because its prose appears in this file.
 
+The first editorial expansion is now available in
+[DIALOGUE_VOICE_SKETCHES.md](DIALOGUE_VOICE_SKETCHES.md) and the lab's **Voice calibration**
+section: gift refusal, routine alibi, firsthand report and the same report under doubt
+for all fifteen speakers. The twelve new voices are review samples only, with one
+version per situation; they are not registered as complete live voice packs. Review
+their ordinary short lines and collision groups before expanding variants or hooks.
+
 As documented in `docs/dialogue_prototype.md` and current `sim/` files:
 
 - Agnes, Bart, and Constance have authored presentation for the original report/challenge/friendship/conceal/reconsider intents, plus approved argument/nomination decisions.

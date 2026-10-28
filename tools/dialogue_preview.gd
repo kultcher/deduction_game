@@ -30,4 +30,10 @@ func _init() -> void:
 	for audience in ["player", "player", "town", "agnes"]:
 		var result = Dialogue.compose("bart", Fixtures.SCENARIOS[0], {"audience": audience}, memory)
 		print("To %s [%s]: %s" % [audience, result["cue"], result["text"]])
+	var sketches = preload("res://tools/dialogue_voice_sketches.gd").read()
+	print("\n--- Voice calibration: editorial drafts, not live voices ---")
+	for scenario in sketches.scenarios:
+		print("\n%s | Player: %s\nApproved meaning: %s" % [scenario.title, scenario.prompt, scenario.statement])
+		for cast in C.CAST:
+			print("%s: %s" % [cast.name, sketches.voices[cast.id][scenario.key]])
 	quit()

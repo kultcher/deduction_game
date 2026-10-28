@@ -6,6 +6,7 @@ const Voices = preload("res://sim/dialogue_voices.gd")
 const Fixtures = preload("res://tools/dialogue_scenarios.gd")
 const C = preload("res://sim/content.gd")
 const ThemeSkin = preload("res://ui/theme.gd")
+const Sketches = preload("res://tools/dialogue_voice_sketches.gd")
 
 var scenario_opt: OptionButton
 var trust_opt: OptionButton
@@ -21,6 +22,10 @@ var outputs = {}
 var cues = {}
 var memories = {}
 var last_results = {}
+var sketch_opt: OptionButton
+var sketch_core: Label
+var sketch_outputs = {}
+var sketch_data: Dictionary
 
 func _ready() -> void:
 	theme = ThemeSkin.make()
@@ -96,6 +101,39 @@ func _ready() -> void:
 	actions.add_child(reset)
 	_label(body, "Changing controls previews the next line or entire turn. Speak records delivery; previews never consume memory.\nCanonical statements stay intact. Explicit shared scene/time slots allow concise speech. Speech act, pressure and optional warmth affect the opening; confidentiality applies only in private.", 17)
 	_refresh(false)
+	_build_voice_sketches(body)
+
+func _build_voice_sketches(body: VBoxContainer) -> void:
+	sketch_data = Sketches.read()
+	_label(body, "Voice calibration — first writing pass", 30)
+	_label(body, "Fifteen speakers, four fixed situations. The new twelve are drafts for review; they are not enabled in play. Controls above apply only to the three-voice prototype.", 18)
+	sketch_opt = _option(body, "Compare a basic chunk", sketch_data.scenarios.map(func(s): return s.title))
+	sketch_opt.item_selected.connect(func(_i): _refresh_sketches())
+	sketch_core = _label(body, "", 20)
+	var grid = GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 18)
+	body.add_child(grid)
+	for cast in C.CAST:
+		var id: String = cast.id
+		var panel = PanelContainer.new()
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		panel.add_theme_stylebox_override("panel", ThemeSkin.flat(ThemeSkin.color("panel"), C.npc_color(id), 2, 8, 20))
+		grid.add_child(panel)
+		var card = VBoxContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		panel.add_child(card)
+		_label(card, cast.name + (" — reference" if id in Fixtures.IDS else " — draft"), 24)
+		_label(card, sketch_data.voices[id].direction, 16)
+		sketch_outputs[id] = _label(card, "", 22)
+	_refresh_sketches()
+
+func _refresh_sketches() -> void:
+	var scenario: Dictionary = sketch_data.scenarios[sketch_opt.selected]
+	sketch_core.text = "Player: " + scenario.prompt + "\nApproved meaning: " + scenario.statement + "\n" + scenario.note
+	for id in sketch_outputs:
+		sketch_outputs[id].text = sketch_data.voices[id][scenario.key]
 
 func _label(parent: Node, text_value: String, font_size: int) -> Label:
 	var label = Label.new()
