@@ -392,7 +392,7 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 		matches[key] = {"inputs": inputs.duplicate(true), "table": table, "queries": {}}
 	# Repeating the exact bounded query reuses its original result, including
 	# tested counts and exhaustion. No larger budget or other target inherits it.
-	var query_key = JSON.stringify([value.conclusion, budget, want, seed_evil])
+	var query_key = JSON.stringify([value.conclusion, budget, want, seed_evil, listener.get("suspicion", {})])
 	if reuse_matches and matches[key].queries.has(query_key):
 		Profiler.count("candidate_query_cache_hit")
 		return matches[key].queries[query_key].duplicate(true)

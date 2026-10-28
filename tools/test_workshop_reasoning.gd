@@ -229,6 +229,24 @@ func _memo_parity(view: Dictionary, value: Dictionary, listener: Dictionary) -> 
 	var reference = Jury.Support.explain(view, value, changed)
 	Jury.Support.reuse_explanations = true
 	check(Jury.Support.explain(view, value, changed) == reference, "changed Insight invalidates the explanation cache without changing its limits")
+	var p_people: Array = []
+	for pid in ["a", "b", "c", "d", "e"]:
+		p_people.append({"id": pid, "name": pid, "home": "square"})
+	var p_view = {"people": p_people, "evil_count": 2, "alignment_epoch": "Original alignment",
+		"world_options": {"roles": true, "identities": true, "modifiers": ["marked"]},
+		"timeline": {"executions": {"1": ["d"]}}}
+	var gd_card = {"id": "gd", "kind": "report", "source": "a", "role": "gravedigger", "night": 1, "observed_at": {"day": 1, "phase": "night"}, "data": {"executed": "d", "role": "poisoner"}}
+	var p_case = {"conclusion": {"type": "evil", "target": "b", "at": "Original alignment"}, "positions": {}, "answers": {}, "temporal_positions": []}
+	var l_d = {"knowledge": {"good": ["a"]}, "suspicion": {"b": 0.1, "c": 0.1, "d": 1.0, "e": 0.1}}
+	var l_c = {"knowledge": {"good": ["a"]}, "suspicion": {"b": 0.1, "c": 1.0, "d": 0.1, "e": 0.1}}
+	Jury.Reasoner.matches.clear()
+	Jury.Reasoner.reuse_matches = true
+	var warm_d = Jury.Reasoner._find_live(p_view, [gd_card], p_case, l_d, 1, true, {}, {})
+	var cached_c = Jury.Reasoner._find_live(p_view, [gd_card], p_case, l_c, 1, true, {}, {})
+	Jury.Reasoner.reuse_matches = false
+	var uncached_c = Jury.Reasoner._find_live(p_view, [gd_card], p_case, l_c, 1, true, {}, {})
+	Jury.Reasoner.reuse_matches = true
+	check(not warm_d.world.is_empty() and cached_c.world == uncached_c.world, "bounded live query cache keys on listener suspicion so candidate-order changes do not collide")
 
 func check(okay: bool, label: String) -> void:
 	checks += 1

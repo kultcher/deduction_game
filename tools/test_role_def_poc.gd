@@ -138,7 +138,7 @@ func _test_role_in_group_hooks() -> void:
 	g.new_case(9103, 7)
 	var w = g.w
 	var goods: Array = w.living_good()
-	var evils: Array = w.living_evil()
+	var evils: Array = w.evil_team()
 	var clerk = goods[0]
 	var arch = goods[1]
 	var grave = goods[2]
@@ -171,8 +171,10 @@ func _test_role_in_group_hooks() -> void:
 	_check(clerk_r.get("data", {}).get("pair", []).size() == 2 and C.ROLES.get(clerk_r["data"].get("role", ""), {}).get("align") == "good", "Clerk generate_reading produces valid good role pair")
 
 	var arch_r: Dictionary = C.role_def("archivist").generate_reading(w, arch, {"poisoned": false}, Mind)
-	_check(arch_r.get("data", {}).get("pair", []).size() == 2 and C.ROLES.get(arch_r["data"].get("role", ""), {}).get("kind") == "minion", "Archivist generate_reading produces valid minion role pair")
+	_check(arch_r.get("data", {}).get("pair", []).size() == 2 and C.ROLES.get(arch_r["data"].get("role", ""), {}).get("minion", false), "Archivist generate_reading produces valid minion role pair")
 
+	grave.claim_public = true
+	grave.claimed_role = "gravedigger"
 	w.executed_today = ""
 	_check(not Evil.gift_live_tonight(w, grave) and C.role_def("gravedigger").generate_reading(w, grave, {}, Mind).is_empty(), "Gravedigger is inactive when no one was executed today")
 	w.executed_today = subject_good.id
@@ -389,3 +391,27 @@ func _test_final_roles_hooks() -> void:
 	_check(g.GameBoard != null and g.GamePresentation != null, "Game preloads GameBoard and GamePresentation modules")
 	_check(g.filter_cards("") == g.GameBoard.filter_cards(g, ""), "Game.filter_cards forwards identically to GameBoard.filter_cards")
 	_check(g.timeline_data() == g.GameBoard.timeline_data(g), "Game.timeline_data forwards identically to GameBoard.timeline_data")
+
+	# 8. Codex review regressions: raw-data card/defend strength & single Martyr registration roll
+	_check(is_equal_approx(C.role_def("dowser").card_strength({"group": [vet.id, sexton.id], "count": 1, "block": vet.home_block}, vet.id), 0.6), "Dowser card_strength accepts raw data dict and returns 0.6 for implicated member")
+	_check(is_equal_approx(C.role_def("martyr").card_strength({"target": vet.id, "evil": true}, vet.id), 0.6), "Martyr evil-outcome card_strength accepts raw data dict and returns 0.6")
+	_check(is_equal_approx(C.role_def("gravedigger").defend_strength({"executed": vet.id, "role": "warden"}, vet.id), 0.5), "Gravedigger good-role defend_strength accepts raw data dict and returns 0.5")
+	_check(is_equal_approx(C.role_def("rumormonger").defend_strength({"pair": [vet.id, sexton.id], "secret": "marked"}, vet.id), 0.5), "Rumormonger defend_strength accepts raw data dict and returns 0.5")
+	_check(is_equal_approx(C.role_def("archivist").defend_strength({"pair": [vet.id, sexton.id], "role": "poisoner"}, vet.id), 0.15), "Non-clearing RoleDef.defend_strength preserves 0.15 fallback")
+
+	var m_def = C.role_def("martyr")
+	vet.secret_mod = "marked"
+	martyr.martyr_target = vet.id
+	martyr.poisoned = false
+	var probe_rng = RandomNumberGenerator.new()
+	probe_rng.seed = 3
+	w.rng.state = probe_rng.state
+	var expected_one_draw = RandomNumberGenerator.new()
+	expected_one_draw.state = probe_rng.state
+	var first_draw_evil: bool = expected_one_draw.randf() < 0.5
+	var before_logs: int = martyr.info_log.size()
+	var sub_ok: bool = m_def.can_substitute_execution(w, martyr, vet.id)
+	if not sub_ok:
+		m_def.on_chosen_executed(w, martyr, vet)
+	_check(w.rng.state == expected_one_draw.state, "Martyr execution consumes exactly one RNG draw for a Marked target across substitution + post-execution hooks")
+	_check(sub_ok == (not first_draw_evil) and (sub_ok or martyr.info_log.size() == before_logs + 1), "Martyr non-substitution on Marked target reuses first draw and records confirmation reading")

@@ -91,10 +91,15 @@ func pick_targets(w, mart, mind):
 	return best
 
 
+var _last_reads_target: String = ""
+var _last_reads_evil: bool = false
+
+
 func can_substitute_execution(w, mart, target_id: String) -> bool:
-	if mart == null or mart.id == target_id or mart.martyr_target != target_id:
-		return false
-	return not w.registers_evil(w.by_id[target_id]) and not mart.gift_broken()
+	var mart_chosen: bool = mart != null and mart.martyr_target == target_id
+	_last_reads_target = target_id if mart_chosen else ""
+	_last_reads_evil = w.registers_evil(w.by_id[target_id]) if mart_chosen else false
+	return mart_chosen and mart.id != target_id and not _last_reads_evil and not mart.gift_broken()
 
 
 func on_substitute_execution(w, mart, saved, res: Dictionary, mind) -> void:
@@ -132,7 +137,10 @@ func on_substitute_execution(w, mart, saved, res: Dictionary, mind) -> void:
 
 
 func on_chosen_executed(w, mart, executed_npc) -> void:
-	if mart != null and mart.martyr_target == executed_npc.id and w.registers_evil(executed_npc) and not mart.gift_broken():
+	var mart_chosen: bool = mart != null and mart.martyr_target == executed_npc.id
+	var reads_evil: bool = _last_reads_evil if _last_reads_target == executed_npc.id else (w.registers_evil(executed_npc) if mart_chosen else false)
+	_last_reads_target = ""
+	if mart_chosen and reads_evil and not mart.gift_broken():
 		# Hanged, and the Martyr still stands: their chosen was evil.
 		var info: Dictionary = {
 			"data": {"target": executed_npc.id, "evil": true},

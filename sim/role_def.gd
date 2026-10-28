@@ -201,16 +201,16 @@ func reading_strength(d: Dictionary, t_id: String) -> float:
 
 ## How strongly a board `info` card speaks against `suspect_id` (0..1).
 func card_strength(d: Dictionary, suspect_id: String) -> float:
-	if suspect_id in implicated({"role": id, "data": d}):
+	if suspect_id in implicated(d):
 		return 0.6
 	return 0.0
 
 
 ## How strongly a board `info` card speaks for `nominee` (0..1).
 func defend_strength(d: Dictionary, nominee: String) -> float:
-	if nominee in clears({"role": id, "data": d}):
+	if nominee in clears(d):
 		return 0.5
-	return 0.0
+	return 0.15
 
 
 ## Native suspicion effects (`[[who_id, delta, can_cite, internal_tag, spoken_reason], ...]`)
