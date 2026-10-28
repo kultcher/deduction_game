@@ -77,3 +77,7 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_n
 		"vantage": block,
 		"how": "street",
 	}
+
+
+func pressed_night_line(_w, _n, _fact: Dictionary, _night: int, when: String, alternate: bool, _block_name_fn: Callable) -> String:
+	return ("My lamp route still accounts for my being out %s." if alternate else "I was out on my lamp route %s. I haven't changed that account.") % when

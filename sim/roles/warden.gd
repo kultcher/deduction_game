@@ -16,6 +16,8 @@ func _init() -> void:
 	shape = "NIGHT_EVENT"
 	can_cause_quiet_night = true
 	quiet_night_effect = -0.15
+	quiet_night_claim_weight = 0.06
+	min_gift_day = 1
 	hard_to_kill = true
 	request_agree_line = "Very well. I'll stand at %s's door tonight."
 
@@ -156,3 +158,10 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, _block: String, mind, block_
 		"vantage": n.home_block,
 		"how": "window",
 	}
+
+
+func pressed_night_line(w, _n, fact: Dictionary, _night: int, when: String, alternate: bool, _block_name_fn: Callable) -> String:
+	var door: String = fact.get("data", {}).get("target", fact.get("guard_claim", ""))
+	if door != "" and w.by_id.has(door):
+		return ("I stand by it: I guarded %s's door %s." if alternate else "My duty was at %s's door %s. That is still my account.") % [w.by_id[door].name, when]
+	return ""

@@ -1,19 +1,18 @@
-## Base class for role descriptors and role-specific simulation hooks.
+## Base class for modularized Role definitions in Demonologist.
 ##
-## Architecture boundary:
+## Architecture:
 ## - `sim/` (cold/warm paths: once per night, dialogue turn, or reading heard) calls
 ##   method hooks on RoleDef subclasses (`sim/roles/<role>.gd`).
 ## - `workshop/` (hot 5,040-world bitmask loops) reads declarative shape fields
 ##   (`shape`, `marked_registers`, `red_herring_registers`, `role_group_key`,
-##   `role_target_pool`, `site_mode`, `site_group_key`, `count_mode`, etc.) without
-##   per-world virtual dispatch.
+##   `role_target_pool`, `site_mode`, `site_group_key`, `count_mode`, etc.) once outside the loop.
 extends RefCounted
 
 # Core identity & script metadata (mirrors C.ROLES dictionary entries)
 var id: String = ""
 var display_name: String = ""
-var align: String = "good"
-var kind: String = "info"
+var align: String = "good"        # "good" | "evil"
+var kind: String = "info"         # "info" | "protect" | "passive" | "evil"
 var desc: String = ""
 var first_night: bool = false
 var night_walk: bool = false
@@ -28,7 +27,11 @@ var marked_registers: bool = false
 var red_herring_registers: bool = false
 var can_cause_quiet_night: bool = false
 var quiet_night_effect: float = 0.0
+var quiet_night_claim_weight: float = 0.0
+var quiet_night_once: bool = false
 var requires_execution: bool = false
+var evening_or_night: bool = false
+var min_gift_day: int = 0
 
 # World & evil AI declarative metadata
 var cannot_hold_solo_secret: bool = false
@@ -87,6 +90,26 @@ func to_role_dict() -> Dictionary:
 
 func has_readings() -> bool:
 	return kind == "info" or produces_readings
+
+
+func is_ongoing_info() -> bool:
+	return kind == "info" and not first_night and not requires_execution
+
+
+func names_good_role_in_pair() -> bool:
+	return shape == "ROLE_IN_GROUP" and role_group_key == "pair" and role_target_pool == "good"
+
+
+func is_valid_gift_time(observed_at: Dictionary) -> bool:
+	if id == "hearthwitch" or align != "good":
+		return false
+	if evening_or_night:
+		return observed_at.day >= min_gift_day and observed_at.phase in ["evening", "night"]
+	if day:
+		return observed_at.day >= min_gift_day and observed_at.phase in ["morning", "afternoon", "evening"]
+	if first_night:
+		return observed_at.day == 0 and observed_at.phase == "night"
+	return observed_at.day >= min_gift_day and observed_at.phase == "night"
 
 
 static func group_of(d: Dictionary) -> Array:
@@ -151,14 +174,14 @@ func clears(d: Dictionary) -> Array:
 	return []
 
 
-## One-line summary for the board (override per role or use shape default).
+## One-line summary for the case board and logs.
 func short_text(_d: Dictionary, src: String, _nm: Callable) -> String:
 	return "%s %s reading" % [src, display_name]
 
 
 # ---------------------------------------------------------------- belief & social weights (mind.gd)
 
-## How strongly one reading points at t_id (0..1) when deciding what to cite or disclose.
+## How strongly an NPC's own reading implicates `t_id` (0..1) when deciding whether to reveal.
 func reading_strength(d: Dictionary, t_id: String) -> float:
 	match shape:
 		"PING":
@@ -176,23 +199,63 @@ func reading_strength(d: Dictionary, t_id: String) -> float:
 	return 0.3
 
 
-## How incriminating a board info card is on its own (0..1.4), before credibility and trust.
+## How strongly a board `info` card speaks against `suspect_id` (0..1).
 func card_strength(d: Dictionary, suspect_id: String) -> float:
-	if suspect_id in implicated(d):
+	if suspect_id in implicated({"role": id, "data": d}):
 		return 0.6
 	return 0.0
 
 
-## How strongly an info card speaks *for* a nominee during defence.
+## How strongly a board `info` card speaks for `nominee` (0..1).
 func defend_strength(d: Dictionary, nominee: String) -> float:
-	if nominee in clears(d):
+	if nominee in clears({"role": id, "data": d}):
 		return 0.5
-	return 0.15
+	return 0.0
 
 
-## Belief effects when `listener` hears `entry` from `source`.
+## Native suspicion effects (`[[who_id, delta, can_cite, internal_tag, spoken_reason], ...]`)
+## when `listener` hears `entry` from `source`. May also apply side-effects (e.g. `listener.cleared`,
+## `Mind.set_trust` on Gravedigger confirmation).
 func info_effects(_w, _listener, _source, _entry: Dictionary, _weight: float, _fresh: bool, _mind) -> Array:
 	return []
+
+
+## Role-specific terms when `n` decides whether to publicly claim this role at a meeting (`Mind._public_claim_decision`).
+func score_public_claim(w, _n, parts: Dictionary) -> void:
+	if kind != "info":
+		parts["hides_from_demon"] = -0.5
+	if is_ongoing_info() and w.day <= 2:
+		parts["gift_keeps_giving"] = -0.4
+	elif first_night:
+		parts["one_shot_gift"] = 0.3
+
+
+## Role-specific terms when `n` weighs the cost of revealing their gift (`Mind.reveal_cost`).
+func score_reveal_cost(w, _n, parts: Dictionary) -> void:
+	if kind != "info":
+		parts["hides_from_demon"] = 0.5
+	if is_ongoing_info() and w.day <= 2:
+		parts["gift_keeps_giving"] = 0.4
+
+
+## Role-specific terms when `n` computes their gift disclosure tier (`Mind._target_tier`).
+func score_disclosure_tier(w, _n, gift_terms: Dictionary) -> void:
+	if kind != "info":
+		gift_terms["hides_from_demon"] = -0.5
+	if is_ongoing_info() and w.day <= 2:
+		gift_terms["gift_keeps_giving"] = -0.4
+	elif first_night:
+		gift_terms["one_shot_gift"] = 0.3
+
+
+## Role-specific vote reluctance when `v` votes on `nominee` (`Mind._vote_impl`, e.g. Martyr).
+func score_vote_reluctance(_w, _v, _nominee: String, _base: float, _panic: float, _parts: Dictionary) -> void:
+	pass
+
+
+## Role-specific reading defence when `d` defends against a reading `rd` by `src` (`Mind.defend`, e.g. Seer red herring).
+func try_reading_defence(_w, _d, _src, _src_id: String, _rd: Dictionary, _mind, _workshop_ledger) -> Dictionary:
+	return {}
 
 
 # ---------------------------------------------------------------- night choices, day gifts & world events (mind.gd / world.gd / evil.gd)
@@ -221,22 +284,32 @@ func pick_targets(_w, _n, _mind):
 	return null
 
 
-## Adjust decision parts when the player asks `n` to use this gift on `targets` tonight.
+## Score modifiers for `Mind.consider_gift_request` when the player asks `n` to use their gift on `targets`.
 func score_gift_request(_w, _n, _targets: Array, _top: String, _parts: Dictionary, _mind) -> void:
 	pass
 
 
-## Optional counter-proposal line when `n` refuses the player's gift request but trusts them.
+## Counter-proposal line when `n` refuses the player's gift request because they prefer `top`.
 func counter_gift_request(_w, _n, _targets: Array, _top: String) -> String:
 	return ""
 
 
-## Format target names for player gift requests.
+## Format `targets` for the player's gift request prompt/response.
 func request_target_text(w, targets: Array, _block_name_fn: Callable) -> String:
 	return " and ".join(PackedStringArray(targets.map(func(t): return w.by_id[t].name)))
 
 
-## Hook called in Evil.make_fake_info when an evil bluffer has an agreed player request tonight.
+## Generate a night/day reading entry (`{data, true, text, why?}`) for a good holder `n`.
+func generate_reading(_w, _n, _ctx: Dictionary, _mind) -> Dictionary:
+	return {}
+
+
+## Generate a fabricated bluff reading entry (`{entry: {data, text}, why: String}`) for an evil bluffer `n`.
+func generate_bluff_reading(_w, _n, _plan: Dictionary, _s: String, _mate, _asked: Array) -> Dictionary:
+	return {}
+
+
+## Hook called in `Evil.make_fake_info` when an evil bluffer has agreed to a player gift request.
 func on_evil_agreed_request(_w, _n, _asked: Array) -> void:
 	pass
 
@@ -298,39 +371,44 @@ func has_gift_outing(_n, _night: int) -> bool:
 	return false
 
 
-## Whether an evil bluffer claiming this role can volunteer a night sighting `b`.
+## Pre-gate check in `Mind._public_sighting_allowed` before standard night-account checks.
+## Returns 0 for no pre-gate, 1 to allow immediately, or -1 to disallow immediately.
+func check_public_sighting_pregate(_w, _n, _b: Dictionary, _mind) -> int:
+	return 0
+
+
+## Whether an evil bluffer claiming this role can publicly volunteer sighting `b` at a meeting.
 func public_sighting_allowed(_w, _n, _b: Dictionary) -> bool:
 	return false
 
 
-## Optional custom handler for `Mind.answer_gift` (returns {} to use standard reading disclosure).
+## Custom tier-4 gift answer (e.g. Warden reporting guarded doors instead of info_log readings).
+## Returns `{}` if standard `info_log` reading disclosure should run, or `{"lines": ..., "facts": ...}` if handled.
 func answer_gift_custom(_w, _n, _first_time: bool, _tier: int, _lines: Array, _facts: Array, _mind, _night_name_fn: Callable, _block_name_fn: Callable) -> Dictionary:
 	return {}
 
 
-## Whether this role overrides `Mind.answer_night` when claimed.
+## Whether a claimant of this role uses their night-duty alibi on night `nd`.
 func uses_night_duty_alibi(_w, _n, _nd: int, _was_out: bool) -> bool:
 	return false
 
 
-## Optional custom handler for `Mind.answer_night` when claiming this role.
-## Returns {} if this role does not override night whereabouts alibis.
+## Night-whereabouts alibi for a claimant of this role on night `nd`.
+## Returns `{"handled": true, "line": Dictionary, "fact": Dictionary, "vantage": String, "how": String}` or `{}`.
 func night_duty_alibi(_w, _n, _nd: int, _was_out: bool, _block: String, _mind, _block_name_fn: Callable) -> Dictionary:
 	return {}
 
 
-# ---------------------------------------------------------------- reading generation & bluffs (world.gd / evil.gd)
+## If non-empty, withholds night sightings in `Mind.answer_night` with the returned spoken line (e.g. undisclosed Night Watch report).
+func withholds_night_sightings(_n, _nd: int, _mind) -> String:
+	return ""
 
-## Produce tonight's real reading entry for `n` in `World._receive_info` ({} if none).
-func generate_reading(_w, _n, _ctx: Dictionary, _mind) -> Dictionary:
+
+## Optional override for `reported` night sightings in `Mind.answer_night` (e.g. evil Night Watch matching fake watch report).
+func override_night_sightings(_w, _n, _nd: int) -> Dictionary:
 	return {}
 
 
-## Produce tonight's fake reading entry and devlog reason `{"entry": ..., "why": ...}` in `Evil.make_fake_info`.
-func generate_bluff_reading(_w, _n, _plan: Dictionary, _scapegoat: String, _mate, _asked: Array) -> Dictionary:
-	return {}
-
-
-## Produce a fake Medium relay item `{"entry": ..., "why": ..., "frames": bool}` for a dead holder `dd`.
-func fake_medium_reading(_w, _n, _dd, _s: String, _sg, _d, _goods: Array, _other: Callable, _e: Dictionary, _demon_implicated: bool) -> Dictionary:
-	return {}
+## Pressed-night reconfirmation line for a duty/guard/watch fact in `Mind._answer_pressed_night`.
+func pressed_night_line(_w, _n, _fact: Dictionary, _night: int, _when: String, _alternate: bool, _block_name_fn: Callable) -> String:
+	return ""

@@ -61,6 +61,19 @@ func info_effects(_w, listener, source, entry: Dictionary, weight: float, fresh:
 	return effs
 
 
+func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, workshop_ledger) -> Dictionary:
+	var pings: int = src.info_log.filter(func(e): return e.get("shared", false) and e.get("role", "") == "seer" and e["data"].get("yes", false) and d.id in e["data"].get("pair", [])).size()
+	if pings >= 2:
+		return {
+			"handled": true,
+			"move": "red_herring",
+			"line": mind.say(d, "%s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name),
+			"effs": [[d.id, -0.12, true, "says they're the Seer's red herring", ""]],
+			"scope": {"type": "challenge", "mode": "misled", "reading": workshop_ledger.reading(src_id, rd).id},
+		}
+	return {}
+
+
 ## The Seer's two picks, by Insight. A sharp Seer usually re-checks their top suspect and
 ## pairs them with someone they haven't looked at yet; once two readings have said "yes"
 ## with that suspect in them, it's settled as far as sight can tell, so they spend their

@@ -129,3 +129,78 @@ func fake_medium_reading(_w, _n, dd, s: String, sg, _d, _goods: Array, _other: C
 	e["data"] = {"block": dd.home_block, "seen": [s]}
 	e["text"] = "I watched %s: I saw %s pass by" % [content().block_name(dd.home_block), sg.name]
 	return {"entry": e, "why": "the dead Night Watch %s saw scapegoat %s on their last watch" % [dd.id, s], "frames": true}
+
+
+## An evil member's made-up Night Watch report for night `nd`, or `{}`.
+func fake_watch_entry(n, nd: int) -> Dictionary:
+	for e in n.info_log:
+		if e.get("fake", false) and e.get("role", "") == "nightwatch" and e.get("day", -1) == nd:
+			return e
+	return {}
+
+
+func check_public_sighting_pregate(_w, n, b: Dictionary, mind) -> int:
+	for e in n.info_log:
+		if e.get("role", "") == "nightwatch" and e.get("day", -1) == b.day and not mind.reading_disclosed(n, e):
+			return -1
+	if n.is_evil():
+		var story: Dictionary = fake_watch_entry(n, b.day)
+		return 1 if (not story.is_empty() and b.block == story.data.block and b.who in story.data.get("seen", [])) else -1
+	return 0
+
+
+func uses_night_duty_alibi(w, n, nd: int, was_out: bool) -> bool:
+	if n.is_evil():
+		return w.evil_plan["fake_watch"].has(str(nd))
+	return was_out and n.role == "nightwatch" and n.claimed_role == "nightwatch"
+
+
+func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_name_fn: Callable) -> Dictionary:
+	if not uses_night_duty_alibi(w, n, nd, was_out):
+		return {}
+	var watch_b: String = block
+	if n.is_evil():
+		watch_b = w.evil_plan["fake_watch"][str(nd)]
+		var where: String = n.history.get(w.time_key(nd, 3), "home:" + n.home_block)
+		w.dlog.think(n.id, "lie", "Evil bluffing Night Watch: claims to have watched %s (actually %s)." % [watch_b, where], {"lie": true})
+	return {
+		"handled": true,
+		"line": mind.say(n, "Keeping watch over %s, as is my duty." % block_name_fn.call(watch_b)),
+		"fact": {
+			"kind": "sighting",
+			"subject": [n.id],
+			"block": watch_b,
+			"day": nd,
+			"phase": 3,
+			"source": n.id,
+			"watch_claim": true,
+			"text": "%s says they kept watch on %s on night %d." % [n.name, block_name_fn.call(watch_b), nd],
+		},
+		"vantage": watch_b,
+		"how": "street",
+	}
+
+
+func withholds_night_sightings(n, nd: int, mind) -> String:
+	for e in n.info_log:
+		if e.get("role", "") == "nightwatch" and e.get("day", -1) == nd and not mind.reading_disclosed(n, e):
+			return "Where I kept watch is one thing. Who I saw there, I'm not ready to share."
+	return ""
+
+
+func override_night_sightings(w, n, nd: int) -> Dictionary:
+	if not n.is_evil():
+		return {}
+	var watch_story: Dictionary = fake_watch_entry(n, nd)
+	if watch_story.is_empty():
+		return {}
+	var reported: Array = []
+	for x in watch_story["data"].get("seen", []):
+		if x != n.id and w.by_id.has(x):
+			reported.append({"kind": "saw", "who": x, "loc": "", "block": watch_story["data"]["block"], "day": nd, "phase": 3, "how": "street", "detail": "street"})
+	w.dlog.think(n.id, "lie", "Evil bluffing Night Watch: night-%d sightings match the fake watch report (%s)." % [nd, ", ".join(PackedStringArray(watch_story["data"].get("seen", [])))])
+	return {"handled": true, "reported": reported}
+
+
+func pressed_night_line(_w, _n, fact: Dictionary, _night: int, when: String, alternate: bool, block_name_fn: Callable) -> String:
+	return ("I was keeping watch on %s %s; my account stands." if alternate else "My watch took me through %s %s. That's where I was.") % [block_name_fn.call(fact.block), when]

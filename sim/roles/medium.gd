@@ -249,3 +249,9 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_n
 		"vantage": block,
 		"how": "street",
 	}
+
+
+func pressed_night_line(w, n, _fact: Dictionary, night: int, when: String, alternate: bool, _block_name_fn: Callable) -> String:
+	var dead = hearth_dead(w, n, night)
+	var hearth: String = "%s's hearth" % dead.name if dead != null else "the dead"
+	return ("My account stands: I was visiting %s %s." if alternate else "My gift took me to %s %s. That is still my account.") % [hearth, when]

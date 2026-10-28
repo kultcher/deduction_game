@@ -1043,12 +1043,10 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 static func _public_sighting_allowed(w, n, b: Dictionary) -> bool:
 	if n.secret_mod == "sleepwalker": return false
 	if n.is_evil() and Evil.is_teammate(w, n, b.who): return false
-	if n.claimed_role == "nightwatch":
-		for e in n.info_log:
-			if e.get("role", "") == "nightwatch" and e.get("day", -1) == b.day and not reading_disclosed(n, e): return false
-		if n.is_evil():
-			var story = _fake_watch_entry(n, b.day)
-			return not story.is_empty() and b.block == story.data.block and b.who in story.data.get("seen", [])
+	var pre_def = C.role_def(n.claimed_role)
+	if pre_def != null:
+		var pre_gate: int = pre_def.check_public_sighting_pregate(w, n, b, _mind())
+		if pre_gate != 0: return pre_gate > 0
 	var account: Dictionary = n.dialogue_memory.get("night_accounts", {}).get(str(b.day), {})
 	if account.get("kind", "") == "refusal": return b.block == n.home_block
 	if account.get("kind", "") == "alibi" and account.get("home", false):
@@ -1098,16 +1096,9 @@ static func _public_claim_decision(w, n) -> String:
 		"pressure": n.pressure * 0.8 * (1.0 - 0.5 * trait_of(n, "composure")),
 		"base": -0.35,
 	}
-	if kind != "info":
-		parts["hides_from_demon"] = -0.5
 	# Gifts that pay off night after night are worth protecting early; one-shot first-night
 	# gifts have less to lose by coming out.
-	if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"] and w.day <= 2:
-		parts["gift_keeps_giving"] = -0.4
-	elif role in C.START_ROLES:
-		parts["one_shot_gift"] = 0.3
-	elif role == "martyr" and not n.is_evil() and n.martyr_target != "":
-		parts["martyr_chosen"] = 0.4  # coming out as the Martyr protects their choice by deterrence
+	C.role_def(role).score_public_claim(w, n, parts)
 	if w.living().size() <= 4:
 		parts["few_left"] = 0.8
 	if n.protect_lock and not (n.id in w.meeting.get("nominated", []) or n.pressure >= 0.7):
@@ -1367,10 +1358,7 @@ static func reveal_cost(w, n) -> Dictionary:
 		return {}
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	var parts = {"privacy": (trait_of(n, "privacy") - 0.5) * 0.8, "base": 0.2}
-	if C.ROLES[role]["kind"] != "info":
-		parts["hides_from_demon"] = 0.5
-	if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"] and w.day <= 2:
-		parts["gift_keeps_giving"] = 0.4
+	C.role_def(role).score_reveal_cost(w, n, parts)
 	if _afraid(w, n):
 		parts["afraid"] = 0.35
 	parts["day"] = -0.12 * (w.day - 1)
@@ -1898,12 +1886,14 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 			var dd: Dictionary = rd.get("data", {})
 			var pair: Array = dd.get("pair", [])
 			var src = w.by_id[src_id]
-			var pings = src.info_log.filter(func(e): return e.get("shared", false) and e.get("role", "") == "seer" and e["data"].get("yes", false) and d.id in e["data"].get("pair", [])).size()
-			if rd["role"] == "seer" and pings >= 2:
-				lines.append(say(d, "%s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name))
-				moves.append("red_herring")
-				effs_by_move["red_herring"] = [[d.id, -0.12, true, "says they're the Seer's red herring", ""]]
-				defence_scopes["red_herring"] = {"type": "challenge", "mode": "misled", "reading": WorkshopLedger.reading(src_id, rd).id}
+			var rdef_rd = C.role_def(rd.get("role", ""))
+			var custom_def: Dictionary = rdef_rd.try_reading_defence(w, d, src, src_id, rd, _mind(), WorkshopLedger) if rdef_rd != null else {}
+			if custom_def.get("handled", false):
+				var mv_name: String = custom_def["move"]
+				lines.append(custom_def["line"])
+				moves.append(mv_name)
+				effs_by_move[mv_name] = custom_def["effs"]
+				defence_scopes[mv_name] = custom_def["scope"]
 			elif pair.size() == 2 and d.id in pair:
 				# One incident, one hearing: "it's the other one" accepts the reading, "the
 				# reading is wrong" rejects it, so never both. Point at the other only when
@@ -2029,12 +2019,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	var block: String = w.meeting["block"]
 	if block != "" and block != nominee and action_susp(v, block) >= base:
 		parts["prefers_block"] = -0.4
-	if v.role == "martyr" and v.martyr_target == nominee and not v.gift_broken():
-		# They'd die in this one's place: reluctant, unless the case, the pressure or the
-		# panic is overwhelming.
-		var r = 0.6 - 0.4 * paranoia(w, v) - 0.3 * v.pressure - 0.4 * maxf(0.0, base - 0.8)
-		if r > 0.0:
-			parts["martyr_reluctance"] = -snappedf(r, 0.01)
+	C.role_def(v.role).score_vote_reluctance(w, v, nominee, base, paranoia(w, v), parts)
 	for k in parts:
 		if k not in ["suspicion", "town_pressure", "shared_execution_priority"]:
 			s += parts[k]
@@ -2084,7 +2069,7 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		for x in card.get("support_cards", []):
 			if x.get("phase", -1) == C.NIGHT:
 				night = x.get("day", -1)
-	var naming_me = kind == "info" and card.get("role", "") == "clerk" and n.id in pair  # "one of you two is the X"
+	var naming_me = kind == "info" and C.has_role_def(card.get("role", "")) and C.role_def(card.get("role", "")).names_good_role_in_pair() and n.id in pair  # "one of you two is the X"
 	var counter = kind == "claim" and card.get("source", "") != n.id and n.claim_public and card.get("role", "") == n.claimed_role
 	var strength = 0.6 if kind == "deduction" else clampf(card_strength(w, card, n), 0.3, 1.0)
 	if naming_me:
@@ -2194,21 +2179,11 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 		if fact.get("kind", "") == "refusal" and fact.get("source", "") == n.id:
 			text = "I've nothing more to say about that night." if alternate else "That sighting doesn't give you the right to demand my whereabouts."
 			break
-		if fact.get("kind", "") == "info" and fact.get("role", "") == "warden":
-			var door: String = fact.data.target
-			text = ("I stand by it: I guarded %s's door %s." if alternate else "My duty was at %s's door %s. That is still my account.") % [w.by_id[door].name, when]
-			break
-		if fact.get("watch_claim", false):
-			text = ("I was keeping watch on %s %s; my account stands." if alternate else "My watch took me through %s %s. That's where I was.") % [C.block_name(fact.block), when]
-			break
-		if fact.get("duty_claim", false):
-			if fact.get("duty", "") == "lamplighter":
-				text = ("My lamp route still accounts for my being out %s." if alternate else "I was out on my lamp route %s. I haven't changed that account.") % when
-			else:
-				var dead = _hearth_dead(w, n, night)
-				var hearth = "%s's hearth" % dead.name if dead != null else "the dead"
-				text = ("My account stands: I was visiting %s %s." if alternate else "My gift took me to %s %s. That is still my account.") % [hearth, when]
-			break
+		var f_role: String = fact.get("role", "") if fact.get("kind", "") == "info" else ("nightwatch" if fact.get("watch_claim", false) else (fact.get("duty", "") if fact.get("duty_claim", false) else ""))
+		if f_role != "" and C.has_role_def(f_role):
+			text = C.role_def(f_role).pressed_night_line(w, n, fact, night, when, alternate, C.block_name)
+			if text != "":
+				break
 	if text != "":
 		for line in response.lines:
 			if line is Dictionary and line.get("speaker", "") == n.id:
@@ -2282,12 +2257,7 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 		+ 0.1 * (w.day - 1) - 0.72 + jitter
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	var gift_terms = {}
-	if C.ROLES[role]["kind"] != "info":
-		gift_terms["hides_from_demon"] = -0.5
-	if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"] and w.day <= 2:
-		gift_terms["gift_keeps_giving"] = -0.4
-	elif role in C.START_ROLES:
-		gift_terms["one_shot_gift"] = 0.3
+	C.role_def(role).score_disclosure_tier(w, n, gift_terms)
 	for value in gift_terms.values():
 		openness += value
 	var t = 1
@@ -2597,18 +2567,10 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	var vantage = ""
 	var refused_whereabouts = false
 	var how = "window"
-	if n.is_evil() and n.claimed_role == "nightwatch" and w.evil_plan["fake_watch"].has(str(nd)):
-		var fb: String = w.evil_plan["fake_watch"][str(nd)]
-		w.dlog.think(n.id, "lie", "Evil bluffing Night Watch: claims to have watched %s (actually %s)." % [fb, where], {"lie": true})
-		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(fb)))
-		facts.append({"kind": "sighting", "subject": [n.id], "block": fb, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
-			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(fb), nd]})
-		vantage = fb
-		how = "street"
 	# A claimed night-walking gift keeps its story: an evil bluff always tells the duty,
 	# a real holder tells it whenever they were actually out (Case 22485: a claimed
 	# Lamplighter must never say "home all night").
-	elif C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, nd, was_out):
+	if C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, nd, was_out):
 		var duty_res: Dictionary = C.role_def(n.claimed_role).night_duty_alibi(w, n, nd, was_out, block, _mind(), C.block_name)
 		lines.append(duty_res["line"])
 		facts.append(duty_res["fact"])
@@ -2618,12 +2580,6 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		lines.append(say(n, "At home all night, same as any honest soul."))
 		facts.append(_alibi_home(n, nd))
 		vantage = n.home_block
-	elif n.role == "nightwatch" and n.claimed_role == "nightwatch":
-		vantage = block
-		how = "street"
-		lines.append(say(n, "Keeping watch over %s, as is my duty." % C.block_name(block)))
-		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "watch_claim": true,
-			"text": "%s says they kept watch on %s on night %d." % [n.name, C.block_name(block), nd]})
 	else:
 		# Out with something to hide: evil work, a personal secret, or a hidden Night Watch gift.
 		var hiding = "evil work" if n.is_evil() else ("hidden %s gift" % C.role_name(n.role) if C.ROLES[n.role].get("night_walk", false) and n.secret.is_empty() else "secret: %s" % n.secret.get("kind", "?"))
@@ -2662,11 +2618,11 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	accounts[str(nd)] = facts[0].duplicate(true)
 	n.dialogue_memory["night_accounts"] = accounts
 	# Asking for whereabouts must not disclose a watch result the gift question withheld.
-	if n.claimed_role == "nightwatch":
-		for e in n.info_log:
-			if e.get("role", "") == "nightwatch" and e.get("day", -1) == nd and not reading_disclosed(n, e):
-				lines.append(say(n, "Where I kept watch is one thing. Who I saw there, I'm not ready to share."))
-				return {"lines": lines, "facts": facts}
+	if C.has_role_def(n.claimed_role):
+		var withhold_msg: String = C.role_def(n.claimed_role).withholds_night_sightings(n, nd, _mind())
+		if withhold_msg != "":
+			lines.append(say(n, withhold_msg))
+			return {"lines": lines, "facts": facts}
 	var seen: Array = n.beliefs.filter(func(b): return b["kind"] in ["saw", "stayed_in"] and b["day"] == nd and b["phase"] == C.NIGHT)
 	var reported: Array = []
 	for b in seen:
@@ -2682,15 +2638,9 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				continue
 			w.dlog.think(n.id, "slip", "Lets slip seeing %s on %s, though they say they were on %s (p=%.2f)." % [b["who"], b["block"], vantage, slip])
 		reported.append(b)
-	var watch_story = _fake_watch_entry(n, nd) if n.is_evil() and n.claimed_role == "nightwatch" else {}
-	if not watch_story.is_empty():
-		# A false Night Watch tells the same story as their made-up watch report: exactly
-		# who they "saw" pass on the block they "watched", nothing more, nothing less.
-		reported = []
-		for x in watch_story["data"].get("seen", []):
-			if x != n.id and w.by_id.has(x):
-				reported.append({"kind": "saw", "who": x, "loc": "", "block": watch_story["data"]["block"], "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"})
-		w.dlog.think(n.id, "lie", "Evil bluffing Night Watch: night-%d sightings match the fake watch report (%s)." % [nd, ", ".join(PackedStringArray(watch_story["data"].get("seen", [])))])
+	var ov_sight: Dictionary = C.role_def(n.claimed_role).override_night_sightings(w, n, nd) if C.has_role_def(n.claimed_role) else {}
+	if ov_sight.get("handled", false):
+		reported = ov_sight["reported"]
 	elif n.is_evil() and vantage != "":
 		var fake = Evil.fake_night_sighting(w, n, nd, vantage, how)
 		if fake != null:
@@ -2741,10 +2691,7 @@ static func reading_disclosed(n, entry: Dictionary) -> bool:
 
 ## An evil member's made-up Night Watch report for night nd, or {}.
 static func _fake_watch_entry(n, nd: int) -> Dictionary:
-	for e in n.info_log:
-		if e.get("fake", false) and e.get("role", "") == "nightwatch" and e.get("day", -1) == nd:
-			return e
-	return {}
+	return C.role_def("nightwatch").fake_watch_entry(n, nd)
 
 ## Presentation only: group names with identical predicates, then put each kind on
 ## one spoken line. Callers still create every fact through their original path.

@@ -16,6 +16,7 @@ func _init() -> void:
 	site_mode = "group_count"
 	site_group_key = "group"
 	marked_registers = true
+	min_gift_day = 1
 
 
 func short_text(d: Dictionary, src: String, nm: Callable) -> String:

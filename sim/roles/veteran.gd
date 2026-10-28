@@ -15,6 +15,8 @@ func _init() -> void:
 	produces_readings = true
 	can_cause_quiet_night = true
 	quiet_night_effect = -0.06
+	quiet_night_claim_weight = 0.025
+	quiet_night_once = true
 	hard_to_kill = true
 
 

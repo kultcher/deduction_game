@@ -1141,10 +1141,9 @@ func _quiet_night() -> void:
 	dlog.add("quiet_night", "world", "", {"night": day}, "Nobody died on night %d." % day)
 	for pc in public_claims:
 		var qdef = C.role_def(pc["role"])
-		var causes_quiet: bool = qdef.can_cause_quiet_night if qdef != null else (pc["role"] in ["warden", "veteran"])
-		if not causes_quiet or not by_id[pc["who"]].alive:
+		if qdef == null or not qdef.can_cause_quiet_night or not by_id[pc["who"]].alive:
 			continue
-		var q_eff: float = qdef.quiet_night_effect if qdef != null else (-0.15 if pc["role"] == "warden" else -0.06)
+		var q_eff: float = qdef.quiet_night_effect
 		for l in living_good():
 			if l.id == pc["who"]:
 				continue
@@ -1324,7 +1323,8 @@ static func false_reading_reason(entry: Dictionary) -> String:
 	var recorded = str(entry.get("why", "")).strip_edges()
 	if recorded != "" and recorded != "?": return recorded
 	if entry.get("fake", false): return "evil fabrication"
-	if entry.get("role", "") == "medium":
+	var rdef_fr = C.role_def(entry.get("role", ""))
+	if rdef_fr != null and rdef_fr.shape == "ROLE_AT_SITE" and rdef_fr.site_mode == "hearth_relay":
 		var item: Dictionary = entry.get("data", {}).get("item", {})
 		var inner: Dictionary = item.get("entry", {})
 		if inner.get("fake", false):

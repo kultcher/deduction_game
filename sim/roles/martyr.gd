@@ -15,10 +15,27 @@ func _init() -> void:
 	shape = "NIGHT_EVENT"
 	produces_readings = true
 	marked_registers = true
+	evening_or_night = true
+	min_gift_day = 1
 
 
 func gift_live_tonight(w, _n) -> bool:
 	return w.day >= 1 # poison lasts through tomorrow's hanging
+
+
+func score_public_claim(w, n, parts: Dictionary) -> void:
+	super.score_public_claim(w, n, parts)
+	if not n.is_evil() and n.martyr_target != "":
+		parts["martyr_chosen"] = 0.4 # coming out as the Martyr protects their choice by deterrence
+
+
+func score_vote_reluctance(_w, v, nominee: String, base: float, panic: float, parts: Dictionary) -> void:
+	if v.martyr_target == nominee and not v.gift_broken():
+		# They'd die in this one's place: reluctant, unless the case, the pressure or the
+		# panic is overwhelming.
+		var r: float = 0.6 - 0.4 * panic - 0.3 * v.pressure - 0.4 * maxf(0.0, base - 0.8)
+		if r > 0.0:
+			parts["martyr_reluctance"] = -snappedf(r, 0.01)
 
 
 func implicated(d: Dictionary) -> Array:

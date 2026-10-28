@@ -29,7 +29,13 @@ func _give(w, n, role: String) -> void:
 	var holder = w.npc_with_role(role)
 	if holder != null and holder != n:
 		holder.role = n.role
+		holder.info_log.clear()
+		holder.ledger.clear()
+		holder.history.clear()
 	n.role = role
+	n.info_log.clear()
+	n.ledger.clear()
+	n.history.clear()
 
 
 func _init() -> void:
@@ -198,9 +204,9 @@ func _test_role_at_site_hooks() -> void:
 	_give(w, medium, "medium")
 
 	# 1. Dowser ROLE_AT_SITE group_count reading
-	dowser.loc = ""
-	victim.loc = ""
-	other.loc = ""
+	dowser.loc = "home"
+	victim.loc = "home"
+	other.loc = "home"
 	victim.home_block = dowser.home_block
 	other.home_block = dowser.home_block
 	w.day = 1
@@ -287,7 +293,7 @@ func _test_count_and_route_hooks() -> void:
 
 	# 4. Workshop solver & live assessment for Surveyor, Lamplighter, Night Watch
 	var s_card = g.add_card({"kind": "info", "source": surv.id, "role": "surveyor", "day": 0, "data": surv_r["data"], "subject": [], "text": surv_r["text"]})
-	var l_card = g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "data": lamp_r["data"], "subject": [], "text": lamp_r["text"]})
+	var l_card = g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 0, "data": lamp_r["data"], "subject": [], "text": lamp_r["text"]})
 	var w_card = g.add_card({"kind": "info", "source": watch.id, "role": "nightwatch", "day": 1, "data": watch_r["data"], "subject": [walker.id], "text": watch_r["text"]})
 	var snap = g.workshop_snapshot([s_card, l_card, w_card], surv.id)
 	var prep = Assess.prepare(snap)
@@ -351,3 +357,24 @@ func _test_final_roles_hooks() -> void:
 	_check(C.role_def("warden").hard_to_kill and C.role_def("veteran").hard_to_kill, "Warden and Veteran RoleDefs set hard_to_kill")
 	_check(C.role_def("seer").public_threat_key == "seer" and is_equal_approx(C.role_def("seer").public_threat_bonus, 1.0), "Seer RoleDef sets public_threat_bonus")
 	_check(C.role_def("martyr").can_substitute_execution(w, martyr, vet.id), "Martyr RoleDef can_substitute_execution validates good chosen target")
+
+	# 5. Mind disclosure, alibis, press, defence & Domain.gift_time hooks (Parts 1-3)
+	w.day = 1
+	var seer_claim_parts: Dictionary = {}
+	C.role_def("seer").score_public_claim(w, rumor, seer_claim_parts)
+	_check(is_equal_approx(seer_claim_parts.get("gift_keeps_giving", 0.0), -0.4), "Ongoing info RoleDef sets gift_keeps_giving = -0.4 on early days")
+	var clerk_claim_parts: Dictionary = {}
+	C.role_def("clerk").score_public_claim(w, rumor, clerk_claim_parts)
+	_check(is_equal_approx(clerk_claim_parts.get("one_shot_gift", 0.0), 0.3), "First-night RoleDef sets one_shot_gift = 0.3")
+	var martyr_claim_parts: Dictionary = {}
+	C.role_def("martyr").score_public_claim(w, martyr, martyr_claim_parts)
+	_check(is_equal_approx(martyr_claim_parts.get("hides_from_demon", 0.0), -0.5) and is_equal_approx(martyr_claim_parts.get("martyr_chosen", 0.0), 0.4), "Martyr RoleDef sets hides_from_demon and martyr_chosen when target is chosen")
+	var vote_parts: Dictionary = {}
+	martyr.pressure = 0.0
+	C.role_def("martyr").score_vote_reluctance(w, martyr, vet.id, 0.5, 0.0, vote_parts)
+	_check(vote_parts.get("martyr_reluctance", 0.0) < 0.0, "Martyr RoleDef score_vote_reluctance adds negative vote reluctance on chosen target")
+	_check(C.role_def("clerk").names_good_role_in_pair() and not C.role_def("archivist").names_good_role_in_pair(), "Clerk RoleDef names_good_role_in_pair is true only for good pair ROLE_IN_GROUP")
+	_check("keeping watch" in C.role_def("nightwatch").pressed_night_line(w, rumor, {"block": rumor.home_block}, 1, "on night 1", true, C.block_name), "Night Watch RoleDef formats pressed_night_line")
+	_check(Domain.gift_time({"role": "dowser", "observed_at": {"day": 1, "phase": "morning"}}) and not Domain.gift_time({"role": "dowser", "observed_at": {"day": 1, "phase": "night"}}), "Domain.gift_time delegates Dowser day-only timing to RoleDef")
+	_check(Domain.gift_time({"role": "surveyor", "observed_at": {"day": 0, "phase": "night"}}) and not Domain.gift_time({"role": "surveyor", "observed_at": {"day": 1, "phase": "night"}}), "Domain.gift_time delegates Surveyor first-night timing to RoleDef")
+	_check(Domain.gift_time({"role": "martyr", "observed_at": {"day": 1, "phase": "evening"}}) and not Domain.gift_time({"role": "martyr", "observed_at": {"day": 0, "phase": "night"}}), "Domain.gift_time delegates Martyr evening/night day>=1 timing to RoleDef")

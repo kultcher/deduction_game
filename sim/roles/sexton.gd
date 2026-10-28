@@ -12,6 +12,8 @@ func _init() -> void:
 	kind = "protect"
 	desc = "Once per case, with fewer than five alive, may toll the death knell in the evening: that night, no gift that needs walking abroad works."
 	shape = "NIGHT_EVENT"
+	evening_or_night = true
+	min_gift_day = 1
 
 
 func gift_live_tonight(_w, _n) -> bool:
