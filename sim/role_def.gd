@@ -5,7 +5,7 @@
 ##   method hooks on RoleDef subclasses (`sim/roles/<role>.gd`).
 ## - `workshop/` (hot 5,040-world bitmask loops) reads declarative shape fields
 ##   (`shape`, `marked_registers`, `red_herring_registers`, `role_group_key`,
-##   `role_target_pool`, etc.) without per-world virtual dispatch.
+##   `role_target_pool`, `site_mode`, `site_group_key`, etc.) without per-world virtual dispatch.
 extends RefCounted
 
 # Core identity & script metadata (mirrors C.ROLES dictionary entries)
@@ -20,7 +20,7 @@ var day: bool = false
 var minion: bool = false
 
 # Reading shape & solver metadata
-# Shapes: "GROUP_COUNT", "PING", "ROLE_IN_GROUP", "NIGHT_ROUTE", "NIGHT_EVENT", "NONE"
+# Shapes: "GROUP_COUNT", "ROLE_AT_SITE", "PING", "ROLE_IN_GROUP", "NIGHT_ROUTE", "NIGHT_EVENT", "NONE"
 var shape: String = "NONE"
 var marked_registers: bool = false
 var red_herring_registers: bool = false
@@ -33,6 +33,13 @@ var requires_execution: bool = false
 # - role_target_pool: "good" (Clerk), "minion" (Archivist), "demon", or "any" (Gravedigger)
 var role_group_key: String = "pair"
 var role_target_pool: String = "good"
+
+# ROLE_AT_SITE shape parameters:
+# - site_mode: "group_count" (Dowser: crowd on a block; Hearthwitch: living lane neighbours)
+#              or "hearth_relay" (Medium: visits a dead victim's hearth and relays one item)
+# - site_group_key: "group" (Dowser) or "nbrs" (Hearthwitch)
+var site_mode: String = "group_count"
+var site_group_key: String = "group"
 
 # Player gift-request agreement template ("" if role does not take night requests)
 var request_agree_line: String = ""
@@ -85,8 +92,9 @@ func implicated(d: Dictionary) -> Array:
 	match shape:
 		"PING":
 			return d.get("pair", []) if d.get("yes", false) else []
-		"GROUP_COUNT":
-			return group_of(d) if d.get("count", 0) > 0 else []
+		"GROUP_COUNT", "ROLE_AT_SITE":
+			if site_mode == "group_count":
+				return group_of(d) if d.get("count", 0) > 0 else []
 		"ROLE_IN_GROUP":
 			if role_target_pool in ["minion", "demon"]:
 				return _role_group_list(d)
@@ -104,8 +112,9 @@ func clears(d: Dictionary) -> Array:
 	match shape:
 		"PING":
 			return [] if d.get("yes", false) else d.get("pair", [])
-		"GROUP_COUNT":
-			return group_of(d) if d.get("count", 0) == 0 else []
+		"GROUP_COUNT", "ROLE_AT_SITE":
+			if site_mode == "group_count":
+				return group_of(d) if d.get("count", 0) == 0 else []
 		"ROLE_IN_GROUP":
 			if role_target_pool == "good":
 				return _role_group_list(d)
@@ -128,9 +137,10 @@ func reading_strength(d: Dictionary, t_id: String) -> float:
 	match shape:
 		"PING":
 			return 0.9 if d.get("yes", false) else 0.0
-		"GROUP_COUNT":
-			var g: Array = group_of(d)
-			return clampf(0.9 * d.get("count", 0) / maxf(1.0, g.size()), 0.0, 0.8) if t_id in g else 0.0
+		"GROUP_COUNT", "ROLE_AT_SITE":
+			if site_mode == "group_count":
+				var g: Array = group_of(d)
+				return clampf(0.9 * d.get("count", 0) / maxf(1.0, g.size()), 0.0, 0.8) if t_id in g else 0.0
 		"NIGHT_ROUTE":
 			return 0.35
 	return 0.3

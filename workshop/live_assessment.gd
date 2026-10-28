@@ -720,6 +720,9 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 				return data.get("role") in C.MINION_ROLES
 			_:
 				return data.get("role") in C.ROLES
+	elif rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count":
+		var grp = data.get(rdef.site_group_key)
+		return _group_valid(grp, ids) and _count_valid(data.get("count"), grp.size())
 	match receipt.content.role:
 		"warden":
 			return data.get("target") in ids and data.target != receipt.source and receipt.observed_at.day >= 1 and receipt.observed_at.phase == "night"
@@ -737,8 +740,6 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 			return data.get("target") in ids and data.target != receipt.source and ((data.get("chosen") == true and not data.get("evil", false)) or (data.get("evil") == true and not data.get("chosen", false)))
 		"sexton":
 			return _count_valid(data.get("night"), receipt.observed_at.day) and data.night == receipt.observed_at.day and data.night >= 1
-		"dowser":
-			return _group_valid(data.get("group"), ids) and _count_valid(data.get("count"), data.get("group", []).size())
 		"seer":
 			if not _group_valid(data.get("pair"), ids) or data.pair.size() != 2 or receipt.source in data.pair:
 				return false

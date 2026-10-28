@@ -1,4 +1,4 @@
-## Test suite for the RoleDef / RoleRegistry system (Seer, Warden, and ROLE_IN_GROUP: Clerk, Archivist, Gravedigger).
+## Test suite for the RoleDef / RoleRegistry system (Seer, Warden, ROLE_IN_GROUP: Clerk/Archivist/Gravedigger, and ROLE_AT_SITE: Dowser/Hearthwitch/Medium).
 ##   godot --headless --path . --script res://tools/test_role_def_poc.gd
 extends SceneTree
 
@@ -7,7 +7,10 @@ const C = preload("res://sim/content.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
-const Live = preload("res://workshop/live_integration.gd")
+const Assess = preload("res://workshop/live_assessment.gd")
+const Solver = preload("res://workshop/solver.gd")
+const Domain = preload("res://workshop/world_domain.gd")
+const Live = preload("res://game/workshop_canvas.gd")
 
 var checks = 0
 var fails = 0
@@ -34,6 +37,7 @@ func _init() -> void:
 	_test_seer_hooks()
 	_test_warden_hooks()
 	_test_role_in_group_hooks()
+	_test_role_at_site_hooks()
 	print("RoleDef PoC: %d checks; failures: %d" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -44,14 +48,20 @@ func _test_registry_and_metadata() -> void:
 	var clerk_def = C.role_def("clerk")
 	var arch_def = C.role_def("archivist")
 	var grave_def = C.role_def("gravedigger")
+	var dowser_def = C.role_def("dowser")
+	var hearth_def = C.role_def("hearthwitch")
+	var medium_def = C.role_def("medium")
 	_check(seer_def != null and seer_def.shape == "PING" and seer_def.marked_registers and seer_def.red_herring_registers, "Seer RoleDef registered with PING shape and registration flags")
 	_check(warden_def != null and warden_def.shape == "NIGHT_EVENT" and warden_def.night_walk and warden_def.can_cause_quiet_night, "Warden RoleDef registered with NIGHT_EVENT shape and protection flags")
 	_check(clerk_def != null and clerk_def.shape == "ROLE_IN_GROUP" and clerk_def.role_group_key == "pair" and clerk_def.role_target_pool == "good" and clerk_def.first_night, "Clerk RoleDef registered with ROLE_IN_GROUP shape and good pair metadata")
 	_check(arch_def != null and arch_def.shape == "ROLE_IN_GROUP" and arch_def.role_group_key == "pair" and arch_def.role_target_pool == "minion" and arch_def.first_night, "Archivist RoleDef registered with ROLE_IN_GROUP shape and minion pair metadata")
 	_check(grave_def != null and grave_def.shape == "ROLE_IN_GROUP" and grave_def.role_group_key == "executed" and grave_def.role_target_pool == "any" and grave_def.marked_registers and grave_def.requires_execution, "Gravedigger RoleDef registered with ROLE_IN_GROUP shape and executed metadata")
-	for rid in ["seer", "warden", "clerk", "archivist", "gravedigger"]:
+	_check(dowser_def != null and dowser_def.shape == "ROLE_AT_SITE" and dowser_def.site_mode == "group_count" and dowser_def.site_group_key == "group" and dowser_def.day and dowser_def.marked_registers, "Dowser RoleDef registered with ROLE_AT_SITE group_count metadata")
+	_check(hearth_def != null and hearth_def.shape == "ROLE_AT_SITE" and hearth_def.site_mode == "group_count" and hearth_def.site_group_key == "nbrs" and hearth_def.marked_registers, "Hearthwitch RoleDef registered with ROLE_AT_SITE group_count metadata")
+	_check(medium_def != null and medium_def.shape == "ROLE_AT_SITE" and medium_def.site_mode == "hearth_relay" and medium_def.night_walk, "Medium RoleDef registered with ROLE_AT_SITE hearth_relay metadata")
+	for rid in ["seer", "warden", "clerk", "archivist", "gravedigger", "dowser", "hearthwitch", "medium"]:
 		_check(C.role_def(rid).to_role_dict() == C.ROLES[rid], "%s RoleDef.to_role_dict() matches C.ROLES['%s'] exactly" % [rid, rid])
-	_check(C.role_def("dowser") == null, "Unmigrated role returns null from C.role_def() for incremental fallback")
+	_check(C.role_def("surveyor") == null, "Unmigrated role returns null from C.role_def() for incremental fallback")
 
 
 func _test_seer_hooks() -> void:
@@ -164,10 +174,66 @@ func _test_role_in_group_hooks() -> void:
 	_check(grave_r.get("data", {}).get("executed", "") == subject_good.id and grave_r.get("data", {}).get("role", "") == subject_good.role, "Gravedigger generate_reading reports true role of executed person")
 
 	# 3. Workshop solver & live assessment integration for ROLE_IN_GROUP
-	clerk.info_log.append({"role": "clerk", "day": 0, "data": clerk_r["data"], "text": clerk_r["text"]})
-	arch.info_log.append({"role": "archivist", "day": 0, "data": arch_r["data"], "text": arch_r["text"]})
-	grave.info_log.append({"role": "gravedigger", "day": 1, "data": grave_r["data"], "text": grave_r["text"]})
-	for holder in [clerk, arch, grave]:
-		var prep = Live.Assess.prepare(w, holder)
-		var fits = Live.Solver.Roles.fits_table(prep["problem"], prep["domains"], [holder.id])
-		_check(fits.get(holder.id, {}).get(holder.role, false), "Workshop solver/assessment validates %s ROLE_IN_GROUP reading" % holder.role)
+	var c_card = g.add_card({"kind": "info", "source": clerk.id, "role": "clerk", "day": 0, "data": clerk_r["data"], "subject": [], "text": clerk_r["text"]})
+	var a_card = g.add_card({"kind": "info", "source": arch.id, "role": "archivist", "day": 0, "data": arch_r["data"], "subject": [], "text": arch_r["text"]})
+	var snap = g.workshop_snapshot([c_card, a_card], clerk.id)
+	var prep = Assess.prepare(snap)
+	var solved = Solver.solve(prep.view, prep.view.cards).worlds
+	_check(not solved.is_empty(), "Workshop solver/assessment validates Clerk and Archivist ROLE_IN_GROUP readings")
+
+
+func _test_role_at_site_hooks() -> void:
+	var g = Game.new()
+	g.workshop_effects = false
+	g.log_dir = "user://test_logs"
+	g.new_case(9104, 7)
+	var w = g.w
+	var goods: Array = w.living_good()
+	var dowser = goods[0]
+	var medium = goods[1]
+	var victim = goods[2]
+	var other = goods[3]
+	_give(w, dowser, "dowser")
+	_give(w, medium, "medium")
+
+	# 1. Dowser ROLE_AT_SITE group_count reading
+	dowser.loc = ""
+	victim.loc = ""
+	other.loc = ""
+	victim.home_block = dowser.home_block
+	other.home_block = dowser.home_block
+	w.day = 1
+	var dw_r: Dictionary = C.role_def("dowser").generate_reading(w, dowser, {"day_phase": true}, Mind)
+	_check(dw_r.get("data", {}).get("group", []).size() >= 2 and dw_r.get("data", {}).get("block", "") == dowser.home_block, "Dowser generate_reading reads crowd on block during day phase")
+	_check(C.role_def("dowser").generate_reading(w, dowser, {}, Mind).is_empty(), "Dowser generate_reading is a no-op during night _receive_info")
+	var dw_zero = {"role": "dowser", "day": 1, "data": {"group": [victim.id, other.id], "count": 0, "block": dowser.home_block}}
+	var dw_one = {"role": "dowser", "day": 1, "data": {"group": [victim.id, other.id], "count": 1, "block": dowser.home_block}}
+	_check(Gifts.implicated(dw_zero).is_empty() and Gifts.clears(dw_zero) == [victim.id, other.id], "Dowser count 0 clears group via ROLE_AT_SITE shape")
+	_check(Gifts.implicated(dw_one) == [victim.id, other.id] and Gifts.clears(dw_one).is_empty(), "Dowser count > 0 implicates group via ROLE_AT_SITE shape")
+
+	var dw_card = g.add_card({"kind": "info", "source": dowser.id, "role": "dowser", "day": 1, "phase": C.MORNING, "data": dw_zero["data"], "subject": [victim.id, other.id], "text": "on %s I sensed 0 evil" % C.block_name(dowser.home_block)})
+	var dw_snap = g.workshop_snapshot([dw_card], dowser.id)
+	var dw_prep = Assess.prepare(dw_snap)
+	_check( not Solver.solve(dw_prep.view, dw_prep.view.cards).worlds.is_empty(), "Workshop solver/assessment validates Dowser ROLE_AT_SITE group_count reading")
+
+	# 2. Medium ROLE_AT_SITE hearth_relay reading
+	victim.alive = false
+	victim.death_cause = "demon"
+	victim.death_day = 1
+	victim.info_log = [{"role": "seer", "day": 0, "shared": false, "fake": false, "data": {"pair": [dowser.id, other.id], "yes": false}, "text": "I looked at %s and %s: neither is the demon" % [dowser.name, other.name]}]
+	var picked_dead: String = w._medium_choice(medium)
+	_check(picked_dead == victim.id, "Medium pick_targets selects unvisited demon victim")
+	var med_r: Dictionary = C.role_def("medium").generate_reading(w, medium, {"medium_t": picked_dead}, Mind)
+	_check(med_r.get("data", {}).get("dead", "") == victim.id and med_r.get("data", {}).get("item", {}).get("type", "") == "reading", "Medium generate_reading relays unshared reading from dead victim")
+	var med_entry = {"role": "medium", "day": 1, "data": med_r["data"], "text": med_r["text"]}
+	_check(Gifts.clears(med_entry) == [dowser.id, other.id] and Gifts.implicated(med_entry).is_empty(), "Medium implicated/clears delegates to relayed reading")
+	var med_effs: Array = C.role_def("medium").info_effects(w, medium, medium, med_entry, 1.0, true, Mind)
+	_check(med_effs.size() == 2 and is_equal_approx(med_effs[0][1], -0.25 * 0.6), "Medium info_effects scales relayed reading effects by 0.6")
+
+	medium.info_log.append(med_entry)
+	medium.claimed_role = "medium"
+	medium.claim_public = true
+	medium.history[w.time_key(1, C.NIGHT)] = "night:" + victim.home_block
+	w.day = 2
+	var med_night: Dictionary = Mind.answer_night(w, medium, 1)
+	_check(med_night["facts"].size() >= 1 and med_night["facts"][0].get("duty", "") == "medium", "Medium night_duty_alibi reports visiting victim's hearth")

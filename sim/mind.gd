@@ -899,24 +899,6 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 	var src_bare: String = "I" if own else source.name
 	var tag = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
 	match r:
-		"hearthwitch", "dowser":
-			var nbrs: Array = Gifts.group_of(d)
-			var count: int = d["count"]
-			var others: Array = nbrs.filter(func(i): return i != listener.id)
-			var excluded = nbrs.size() - others.size()
-			if count == 0:
-				for i in others:
-					_eff(effs, i, -0.25, tag + ": %s count 0" % r, "", not own)
-			else:
-				var per = 0.35 * count
-				if excluded > 0:
-					per = 0.7 * count
-				if count > others.size() and not own:
-					_eff(effs, source.id, 0.5, tag + ": %s count impossible from my view" % r,
-						"%s reading about the lane can't be right" % src_name)
-				for i in others:
-					_eff(effs, i, per, tag + ": %s count %d" % [r, count],
-						"%s reading pointed at %s" % [src_name, "their neighbours" if r == "hearthwitch" else "that crowd"], not own)
 		"nightwatch":
 			var seen: Array = d["seen"]
 			for i in seen:
@@ -947,25 +929,6 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 						"the demon came by way of %s, where they live" % C.block_name(d["block"]), not own)
 		"psychologist":
 			pass # Accurate knowledge of an opinion does not make it alignment evidence.
-		"medium":
-			# What the dead knew, at a remove: weaker than hearing it from them.
-			var it: Dictionary = d.get("item", {})
-			var dead: String = d.get("dead", "")
-			match it.get("type", ""):
-				"reading":
-					var inner: Dictionary = it["entry"]
-					var dn = w.by_id.get(dead)
-					if dn != null:
-						for ef in _info_effects(w, listener, dn, inner, weight, false):
-							ef[1] = ef[1] * 0.6
-							effs.append(ef)
-				"sighting":
-					if it["who"] != listener.id:
-						var sc2 = night_sighting_scale(w, listener, it["who"], it.get("block", ""), it.get("night", -1))
-						_eff(effs, it["who"], 0.3 * sc2, tag + ": the dead %s saw them out at night (x%.2f)" % [dead, sc2],
-							"the dead saw them out at night", not own)
-				"suspicion":
-					pass # A faithfully relayed opinion remains an opinion (Q4).
 	return effs
 
 static func update_from_own_info(w) -> void:
@@ -1154,7 +1117,6 @@ static func _public_sighting_allowed(w, n, b: Dictionary) -> bool:
 	if cdef != null:
 		return cdef.public_sighting_allowed(w, n, b)
 	match n.claimed_role:
-		"medium": return _bluff_hearth(w, n, b.day) == b.block
 		"lamplighter": return b.block == (where.trim_prefix("night:") if where.begins_with("night:") else n.home_block)
 	return false
 
@@ -1323,13 +1285,8 @@ static func reading_strength(e: Dictionary, t_id: String) -> float:
 	match e.get("role", ""):
 		"martyr":
 			return 0.9 if d.get("evil", false) else 0.0
-		"dowser", "hearthwitch":
-			var g: Array = Gifts.group_of(d)
-			return clampf(0.9 * d.get("count", 0) / maxf(1.0, g.size()), 0.0, 0.8) if t_id in g else 0.0
 		"nightwatch":
 			return 0.35
-		"medium":
-			return 0.5
 	return 0.3
 
 ## Evil: an unshared fake reading of theirs that points at t, or {}.
@@ -2675,17 +2632,11 @@ static func _guard_fact(w, n, nd: int, guarded: String) -> Dictionary:
 
 ## Whose hearth a Medium's reading (real, or an evil bluff's fake) for night nd names.
 static func _hearth_dead(w, n, nd: int):
-	for e in n.info_log:
-		if e.get("role", "") == "medium" and e.get("day", -1) == nd and (e.get("fake", false) == n.is_evil()):
-			var dead = w.by_id.get(e.get("data", {}).get("dead", ""))
-			if dead != null:
-				return dead
-	return null
+	return C.role_def("medium").hearth_dead(w, n, nd)
 
 ## The block of the hearth an evil Medium bluff's fake reading for night nd names ("" if none).
 static func _bluff_hearth(w, n, nd: int) -> String:
-	var dead = _hearth_dead(w, n, nd)
-	return dead.home_block if dead != null and n.is_evil() else ""
+	return C.role_def("medium").bluff_hearth(w, n, nd)
 
 static func _alibi_home(n, nd: int) -> Dictionary:
 	return {"kind": "alibi", "subject": [n.id], "home": true, "day": nd, "phase": C.NIGHT, "source": n.id, "block": n.home_block,
@@ -2717,23 +2668,15 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	# A claimed night-walking gift keeps its story: an evil bluff always tells the duty,
 	# a real holder tells it whenever they were actually out (Case 22485: a claimed
 	# Lamplighter must never say "home all night").
-	elif n.claimed_role in ["lamplighter", "medium"] and (n.claim_public or n.max_tier >= 3) and ((n.role == n.claimed_role and was_out) or n.is_evil()) \
-			and not (n.is_evil() and n.claimed_role == "medium" and _bluff_hearth(w, n, nd) == ""):
-		if n.is_evil() and n.claimed_role == "medium":
-			# Their story puts them at the hearth their fake reading names, not where they were.
-			block = _bluff_hearth(w, n, nd)
-			w.dlog.think(n.id, "lie", "Evil bluffing Medium: claims to have sat at a hearth on %s on night %d." % [block, nd], {"lie": true})
-		elif n.is_evil():
+	elif n.claimed_role == "lamplighter" and (n.claim_public or n.max_tier >= 3) and ((n.role == "lamplighter" and was_out) or n.is_evil()):
+		if n.is_evil():
 			block = block if was_out else n.home_block
 			w.dlog.think(n.id, "lie", "Evil bluffing %s: claims their gift took them out on night %d." % [n.claimed_role, nd], {"lie": true})
 		vantage = block
 		how = "street"
-		var hearth = _hearth_dead(w, n, nd)
-		var duty = "Walking the lamp route, as I do every night." if n.claimed_role == "lamplighter" else \
-			("Communing with the dead at %s's hearth, as my gift asks." % hearth.name if hearth != null else "Communing with the dead, as my gift asks.")
-		lines.append(say(n, duty))
-		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "duty_claim": true, "duty": n.claimed_role,
-			"text": "%s says they were out on %s on night %d (%s)." % [n.name, C.block_name(block), nd, "the lamp route" if n.claimed_role == "lamplighter" else "visiting the dead"]})
+		lines.append(say(n, "Walking the lamp route, as I do every night."))
+		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "duty_claim": true, "duty": "lamplighter",
+			"text": "%s says they were out on %s on night %d (the lamp route)." % [n.name, C.block_name(block), nd]})
 	elif C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, nd, was_out):
 		var duty_res: Dictionary = C.role_def(n.claimed_role).night_duty_alibi(w, n, nd, was_out, block, _mind(), C.block_name)
 		lines.append(duty_res["line"])
@@ -3150,8 +3093,6 @@ static func card_strength(w, card: Dictionary, suspect) -> float:
 			if rdef != null:
 				return rdef.card_strength(d, suspect.id)
 			match card.get("role", ""):
-				"hearthwitch":
-					return 0.5 * d.get("count", 0)
 				"nightwatch":
 					return 1.0 if suspect.id in d.get("seen", []) else 0.0
 			if suspect.id in Gifts.implicated(card):
@@ -3262,8 +3203,6 @@ static func defend_strength(card: Dictionary, nominee: String) -> float:
 			if rdef != null:
 				return rdef.defend_strength(d, nominee)
 			match card.get("role", ""):
-				"hearthwitch":
-					return 0.6 if d.get("count", 0) == 0 else 0.0
 				"nightwatch":
 					return 0.0
 			if nominee in Gifts.clears(card):

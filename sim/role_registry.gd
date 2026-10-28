@@ -1,8 +1,8 @@
-## Registry of migrated RoleDef instances.
+## Central registry of RoleDef instances.
 ##
 ## Roles registered here delegate their simulation, AI, and reading-shape hooks to
-## their `sim/roles/<role>.gd` script. Unmigrated roles return `null` from `get_def()`
-## so callers can fall back incrementally during migration.
+## `sim/roles/<role>.gd`. Unregistered roles fall back to legacy match blocks until
+## migrated, allowing incremental verification.
 extends RefCounted
 
 const SeerDef = preload("res://sim/roles/seer.gd")
@@ -10,25 +10,31 @@ const WardenDef = preload("res://sim/roles/warden.gd")
 const ClerkDef = preload("res://sim/roles/clerk.gd")
 const ArchivistDef = preload("res://sim/roles/archivist.gd")
 const GravediggerDef = preload("res://sim/roles/gravedigger.gd")
+const DowserDef = preload("res://sim/roles/dowser.gd")
+const HearthwitchDef = preload("res://sim/roles/hearthwitch.gd")
+const MediumDef = preload("res://sim/roles/medium.gd")
 
 static var _defs: Dictionary = {}
+static var _initialized: bool = false
 
 
 static func _ensure_init() -> void:
-	if not _defs.is_empty():
+	if _initialized:
 		return
-	for inst in [SeerDef.new(), WardenDef.new(), ClerkDef.new(), ArchivistDef.new(), GravediggerDef.new()]:
-		_defs[inst.id] = inst
+	_initialized = true
+	for script in [SeerDef, WardenDef, ClerkDef, ArchivistDef, GravediggerDef, DowserDef, HearthwitchDef, MediumDef]:
+		var def = script.new()
+		_defs[def.id] = def
 
 
-static func has_def(role: String) -> bool:
+static func get_def(role_id: String):
 	_ensure_init()
-	return _defs.has(role)
+	return _defs.get(role_id, null)
 
 
-static func get_def(role: String):
+static func has_def(role_id: String) -> bool:
 	_ensure_init()
-	return _defs.get(role, null)
+	return _defs.has(role_id)
 
 
 static func all_defs() -> Dictionary:

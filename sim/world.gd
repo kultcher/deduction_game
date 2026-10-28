@@ -1227,16 +1227,7 @@ func _martyr_choice(mart) -> void:
 
 ## Public hearth eligibility: Demon victims only; revisit the latest after all are visited.
 func _medium_choice(m) -> String:
-	var dead: Array = npcs.filter(func(x): return not x.alive and x.death_cause == "demon")
-	if dead.is_empty():
-		return ""
-	dead.sort_custom(func(a, b): return a.death_day > b.death_day)
-	var unvisited: Array = dead.filter(func(x): return x.id not in m.medium_visited)
-	var chosen = unvisited[0] if not unvisited.is_empty() else dead[0]
-	if chosen.id not in m.medium_visited:
-		m.medium_visited.append(chosen.id)
-	dlog.think(m.id, "medium_pick", "Medium visits %s's home." % chosen.id)
-	return chosen.id
+	return C.role_def("medium").pick_targets(self, m, Mind)
 
 ## Nobody died: a point in favour of whoever publicly claims to protect (Warden) or to be
 ## unkillable (Veteran). Evil can claim these too, so it's evidence, not proof.
@@ -1466,15 +1457,6 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 			return
 	else:
 		match r:
-			"hearthwitch":
-				var nb = living_neighbours(n)
-				var ids: Array = nb.map(func(m): return m.id)
-				var count = nb.filter(func(m): return registers_evil(m)).size()
-				var reported = count
-				if broken:
-					reported = _other_than(count, 0, nb.size())
-				entry = {"data": {"nbrs": ids, "count": reported}, "true": reported == count,
-					"text": "I sensed that %d of my neighbours (%s) %s evil" % [reported, _names(ids), "is" if reported == 1 else "are"]}
 			"nightwatch":
 				if watch_block == "":
 					return  # didn't go out (the knell)
@@ -1533,12 +1515,6 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 					count = _other_than(truth, 0, maxi(3, living().size() - 1))
 				entry = {"data": {"count": count}, "true": count == truth,
 					"text": "walking the lamps, I counted %d other%s out" % [count, "" if count == 1 else "s"]}
-			"medium":
-				if medium_t == "":
-					return
-				var item = _medium_item(n, by_id[medium_t], broken)
-				entry = {"data": {"dead": medium_t, "item": item}, "true": not broken and not item.get("lie", false),
-					"text": _medium_text(by_id[medium_t], item)}
 			"psychologist":
 				var talked: Array = n.talked_today.filter(func(i): return by_id[i].alive and i != n.id)
 				if talked.is_empty():
@@ -1610,55 +1586,10 @@ func _psych_read(subj) -> Dictionary:
 ## strongest suspicion; else where they were their last night. The evil dead give what
 ## their cover story would have said.
 func _medium_item(m, dead, broken: bool) -> Dictionary:
-	if broken:
-		var who = pick(living().filter(func(x): return x != m))
-		return {"type": "sighting", "who": who.id, "block": who.home_block, "night": maxi(0, dead.death_day - 1), "lie": true}
-	for e in dead.info_log:
-		if not e.get("shared", false) and not e.get("disowned", false) and C.ROLES.get(e.get("role", ""), {}).get("kind", "") == "info":
-			e["shared"] = true
-			return {"type": "reading", "entry": e.duplicate(true), "lie": e.get("fake", false)}
-	for b in dead.beliefs:
-		if b["kind"] == "saw" and b["phase"] == C.NIGHT and by_id.has(b["who"]) and not dead.told_to.has("medium|" + b["who"]):
-			if dead.is_evil() and by_id[b["who"]].is_evil():
-				continue
-			dead.told_to["medium|" + b["who"]] = true
-			return {"type": "sighting", "who": b["who"], "block": b["block"], "night": b["day"]}
-	# A Warden's doors: whom they guarded, night by night (never said aloud).
-	for k in dead.warden_log:
-		if not dead.told_to.has("medium|guard:" + str(k)) and by_id.has(dead.warden_log[k]):
-			dead.told_to["medium|guard:" + str(k)] = true
-			return {"type": "guard", "who": dead.warden_log[k], "night": int(k), "lie": dead.is_evil()}
-	if dead.is_evil():
-		var sg: String = evil_plan.get("scapegoat", "")
-		if sg != "" and by_id[sg].alive and not dead.told_to.has("medium|cover"):
-			dead.told_to["medium|cover"] = true
-			return {"type": "suspicion", "about": sg, "lie": true}
-	else:
-		var best = ""
-		var bs = 0.35
-		for k in dead.suspicion:
-			if by_id[k].alive and Mind.susp(dead, k) > bs:
-				bs = Mind.susp(dead, k)
-				best = k
-		if best != "" and not dead.told_to.has("medium|susp:" + best):
-			dead.told_to["medium|susp:" + best] = true
-			return {"type": "suspicion", "about": best}
-	# No untold knowledge remains. A revisit must not invent or repeat a home alibi.
-	return {"type": "nothing", "lie": false}
+	return C.role_def("medium").medium_item(self, m, dead, broken, Mind)
 
 func _medium_text(dead, it: Dictionary) -> String:
-	match it["type"]:
-		"reading":
-			return "communing with the dead at %s's hearth, I heard what they never told us: %s" % [dead.name, C.third_person(it["entry"]["text"])]
-		"sighting":
-			return "communing with the dead at %s's hearth, I learned they saw %s out on %s on night %d" % [dead.name, by_id[it["who"]].name, C.block_name(it["block"]), it["night"]]
-		"suspicion":
-			return "communing with the dead at %s's hearth, I felt their distrust of %s" % [dead.name, by_id[it["about"]].name]
-		"nothing":
-			return "communing with the dead at %s's hearth, I learned nothing they hadn't already told us" % dead.name
-		"guard":
-			return "communing with the dead at %s's hearth, I learned they stood guard at %s's door on %s" % [dead.name, by_id[it["who"]].name, C.night_name(it["night"])]
-	return "communing with the dead at %s's hearth, I learned only that they were home on their last night" % dead.name
+	return C.role_def("medium").medium_text(self, dead, it)
 
 # ---------------------------------------------------------------- day gifts
 
@@ -1667,20 +1598,9 @@ func _medium_text(dead, it: Dictionary) -> String:
 func _day_gifts() -> void:
 	var dw = living_with_role("dowser")
 	if dw != null and not dw.is_evil() and dw.dowsed_day != day:
-		var b: String = dw.home_block if dw.at_home() else loc_block(dw.loc)
-		var others: Array = living().filter(func(m): return m != dw and (m.home_block if m.at_home() else loc_block(m.loc)) == b)
-		if others.size() >= 2:
-			dw.dowsed_day = day
-			var ids: Array = others.map(func(m): return m.id)
-			var count = others.filter(func(m): return registers_evil(m)).size()
-			var truth = others.filter(func(m): return m.is_evil()).size()
-			var dwhy = ""
-			if dw.gift_broken():
-				count = _other_than(truth, 0, others.size())
-			elif count != truth:
-				dwhy = "a Marked soul read as evil"
-			_add_info(dw, {"data": {"group": ids, "count": count, "block": b}, "true": count == truth, "why": dwhy,
-				"text": "on %s I sensed %d evil among %s" % [C.block_name(b), count, _names(ids)]})
+		var dw_entry: Dictionary = C.role_def("dowser").generate_reading(self, dw, {"day_phase": true}, Mind)
+		if not dw_entry.is_empty():
+			_add_info(dw, dw_entry)
 			Mind.update_from_own_info(self)
 	var bs = living_with_role("breathstealer")
 	if bs != null and bs.is_evil() and bs.breath_day != day:

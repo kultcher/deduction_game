@@ -629,8 +629,9 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 			return false
 		ans_mask |= 1 << index
 	var group_mask: int = 0
-	if card.role == "dowser":
-		for id in d.group:
+	var rdef = C.role_def(card.role)
+	if rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count":
+		for id in d.get(rdef.site_group_key, []):
 			group_mask |= (1 << person_index(view, id))
 	var is_surveyor: bool = card.role == "surveyor"
 	var target_count: int = d.count
@@ -830,7 +831,8 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			if person in unique:
 				errors.append("%s: the same person fills two slots." % id)
 			unique.append(person)
-		if card.get("role", "") == "dowser" and not positive.all(func(p): return p in card.data.group):
+		var cdef = C.role_def(card.get("role", ""))
+		if cdef != null and cdef.shape == "ROLE_AT_SITE" and cdef.site_mode == "group_count" and not positive.all(func(p): return p in card.data.get(cdef.site_group_key, [])):
 			errors.append("%s: choose people in this reading's group." % id)
 		if card.get("role", "") in ["clerk", "archivist", "seer"] and not positive.all(func(p): return p in card.data.pair):
 			errors.append("%s: choose a person in this reading's pair." % id)
