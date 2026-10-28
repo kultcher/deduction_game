@@ -206,7 +206,8 @@ static func _selected(facts: Array, scope: Array, row: int) -> Array:
 
 static func _conditional(graph: Dictionary, facts: Array, kind: String, extra: Dictionary = {}) -> Dictionary:
 	var cards: Array = facts.map(func(f): return f.card)
-	var factor = {"kind": kind, "facts": facts, "rows": {}, "seer": Solver.Roles.seer_flag(cards), "relay": cards.any(func(c): return c.has("relay_source")),
+	var factor = {"kind": kind, "facts": facts, "rows": {}, "seer": Solver.Roles.seer_flag(cards),
+		"relay_ids": cards.filter(func(c): return c.has("relay_source") and not c.get("quoted", false)).map(func(c): return c.relay_source),
 		"walker_ids": cards.filter(func(c): return c.get("kind", "") == "secret_claim" and c.get("data", {}).get("secret_kind", "") == "sleepwalker" and not c.get("quoted", false)).map(func(c): return c.subject)}
 	factor.merge(extra)
 	_add(graph, _scope(facts), factor)
@@ -328,7 +329,13 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 			var i: int = Solver.person_index(view, id)
 			if i >= 0:
 				walkers |= 1 << i
-	var signature: int = Solver.Roles.coarse_mask(view.people.size(), world, factor.seer, factor.relay, walkers) if factor.kind == "roles" else (int(world.evil) * (view.people.size() + 1) + int(world.get("demon", -1)) + 1)
+	var mediums: int = 0
+	if factor.kind == "roles" and not factor.get("relay_ids", []).is_empty():
+		for id in factor.relay_ids:
+			var i: int = Solver.person_index(view, id)
+			if i >= 0:
+				mediums |= 1 << i
+	var signature: int = Solver.Roles.coarse_mask(view.people.size(), world, factor.seer, mediums, walkers) if factor.kind == "roles" else (int(world.evil) * (view.people.size() + 1) + int(world.get("demon", -1)) + 1)
 	if factor.kind in ["forced_lamp", "route_counts", "fixture_movement"]:
 		signature = 0
 	if factor.kind == "activity":
@@ -346,13 +353,7 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 		var weight = 1.0
 		match factor.kind:
 			"roles":
-				var live_roles: bool = Solver.Domain.live(view)
-				if not live_roles or Solver.Domain.claims_compatible(selected, graph.knowledge):
-					weight = Solver.Roles.fit_weight(plain, world, selected, graph.knowledge, {}, live_roles)
-					if weight > 0.0 and live_roles:
-						weight *= Solver.Roles.bluff_weights(plain, [world], selected)[0]
-				else:
-					weight = 0.0
+				weight = 1.0 if (not Solver.Domain.live(view) or Solver.Domain.claims_compatible(selected, graph.knowledge)) and Solver.Roles.fits(plain, world, selected, graph.knowledge) else 0.0
 
 			"fixture_movement":
 				weight = 1.0 if Solver.movement_for(view, selected, {}, graph.knowledge).okay else 0.0

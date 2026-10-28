@@ -26,7 +26,7 @@ func gift_live_tonight(w, _n) -> bool:
 func score_public_claim(w, n, parts: Dictionary) -> void:
 	super.score_public_claim(w, n, parts)
 	if not n.is_evil() and n.martyr_target != "":
-		parts["martyr_chosen"] = 0.4 # coming out as the Martyr protects their choice by deterrence
+		parts["martyr_chosen"] = Tuning.Roles.MARTYR.claim_chosen_bonus # coming out as the Martyr protects their choice by deterrence
 
 
 func score_vote_reluctance(_w, v, nominee: String, base: float, panic: float, parts: Dictionary) -> void:
@@ -53,7 +53,7 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 
 
 func reading_strength(d: Dictionary, _t_id: String) -> float:
-	return 0.9 if d.get("evil", false) else 0.0
+	return Tuning.Roles.MARTYR.reading_strength_evil if d.get("evil", false) else 0.0
 
 
 func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
@@ -62,9 +62,9 @@ func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh
 	var own: bool = source == listener
 	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
 	if d.get("chosen", false) and d["target"] != listener.id:
-		mind._eff(effs, d["target"], -0.2, tag + ": the Martyr would die for them", "", not own)
+		mind._eff(effs, d["target"], Tuning.Roles.MARTYR.eff_chosen_good, tag + ": the Martyr would die for them", "", not own)
 	elif d.get("evil", false) and d["target"] != listener.id:
-		mind._eff(effs, d["target"], 1.0, tag + ": hanged and the Martyr lived: evil", "", false)
+		mind._eff(effs, d["target"], Tuning.Roles.MARTYR.eff_hanged_evil, tag + ": hanged and the Martyr lived: evil", "", false)
 	return effs
 
 
@@ -78,7 +78,7 @@ func pick_targets(w, mart, mind):
 		if t > best_t:
 			best_t = t
 			best = m.id
-	if best == "" or best_t < 0.62:
+	if best == "" or best_t < Tuning.Roles.MARTYR.pick_min_score:
 		w.dlog.think(mart.id, "martyr_pick", "Martyr: nobody trusted enough yet (best %s at %.2f; needs 0.62)." % [best, best_t])
 		return ""
 	mart.martyr_target = best
@@ -91,10 +91,15 @@ func pick_targets(w, mart, mind):
 	return best
 
 
+var _last_reads_target: String = ""
+var _last_reads_evil: bool = false
+
+
 func can_substitute_execution(w, mart, target_id: String) -> bool:
-	if mart == null or mart.id == target_id or mart.martyr_target != target_id:
-		return false
-	return not w.registers_evil(w.by_id[target_id]) and not mart.gift_broken()
+	var mart_chosen: bool = mart != null and mart.martyr_target == target_id
+	_last_reads_target = target_id if mart_chosen else ""
+	_last_reads_evil = w.registers_evil(w.by_id[target_id]) if mart_chosen else false
+	return mart_chosen and mart.id != target_id and not _last_reads_evil and not mart.gift_broken()
 
 
 func on_substitute_execution(w, mart, saved, res: Dictionary, mind) -> void:
@@ -126,13 +131,16 @@ func on_substitute_execution(w, mart, saved, res: Dictionary, mind) -> void:
 		for pid in [mart.id, saved.id]:
 			if pid != l.id:
 				l.cleared[pid] = true
-				mind._eff(e, pid, -2.0, "the Martyr died in %s's place: proven good" % saved.id)
+				mind._eff(e, pid, Tuning.Roles.MARTYR.substitute_clear_eff, "the Martyr died in %s's place: proven good" % saved.id)
 		mind.ledger_hear(w, l, "martyr:%d" % w.day, e, 1.0, [], {"kind": "martyr", "day": w.day})
 	w._check_parity()
 
 
 func on_chosen_executed(w, mart, executed_npc) -> void:
-	if mart != null and mart.martyr_target == executed_npc.id and w.registers_evil(executed_npc) and not mart.gift_broken():
+	var mart_chosen: bool = mart != null and mart.martyr_target == executed_npc.id
+	var reads_evil: bool = _last_reads_evil if _last_reads_target == executed_npc.id else (w.registers_evil(executed_npc) if mart_chosen else false)
+	_last_reads_target = ""
+	if mart_chosen and reads_evil and not mart.gift_broken():
 		# Hanged, and the Martyr still stands: their chosen was evil.
 		var info: Dictionary = {
 			"data": {"target": executed_npc.id, "evil": true},

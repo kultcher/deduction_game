@@ -49,7 +49,7 @@ func breath_target(w, bs, evil) -> String:
 			best_s = total
 			best = n.id
 	w.observe_ranked(bs, "silence_ranking", observed, best, 1.0)
-	var p: float = [0.3, 0.5, 1.0][w.phase] if best_s > 1.0 else [0.15, 0.3, 0.7][w.phase]
+	var p: float = Tuning.Roles.BREATHSTEALER.phase_probs_high[w.phase] if best_s > Tuning.Roles.BREATHSTEALER.high_score_threshold else Tuning.Roles.BREATHSTEALER.phase_probs_low[w.phase]
 	if not w.decision_roll(bs, "silence_this_phase", p, {"best_target_score": best_s}, best):
 		w.dlog.think(bs.id, "breath_choice", "Breathstealer holds off this phase (best %s, %.2f)." % [best, best_s], {"scores": scores})
 		return ""

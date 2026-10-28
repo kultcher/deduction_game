@@ -1,5 +1,6 @@
 ## Deterministic, bounded hypothesis testing. Never consumes the referee's worlds.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
@@ -14,12 +15,12 @@ static var unlimited_cards = false # developer experiment (autoplay --no-attenti
 
 static func profile(insight: float) -> Dictionary:
 	var result: Dictionary
-	if insight < 0.34:
-		result = {"name": "Low", "cards": 3, "lines": 1, "support": 8, "rivals": 0, "complete": false}
-	elif insight < 0.67:
-		result = {"name": "Medium", "cards": 5, "lines": 2, "support": 48, "rivals": 16, "complete": false}
+	if insight < Tuning.Workshop.INSIGHT_LOW_CUTOFF:
+		result = Tuning.Workshop.PROFILE_LOW.duplicate()
+	elif insight < Tuning.Workshop.INSIGHT_MEDIUM_CUTOFF:
+		result = Tuning.Workshop.PROFILE_MEDIUM.duplicate()
 	else:
-		result = {"name": "High", "cards": 10, "lines": 6, "support": 840, "rivals": 840, "complete": true}
+		result = Tuning.Workshop.PROFILE_HIGH.duplicate()
 	if unlimited_cards:
 		result.cards = 1000 # links, support and rival budgets are unchanged
 	return result
@@ -49,6 +50,7 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 			if id not in full.cards:
 				full.cards.append(id)
 	var cards = Solver.selected(view, full)
+	var all_card_ids: Array = cards.map(func(c): return c.id)
 	var personal: Array = listener.knowledge.get("attention_reports", listener.knowledge.get("own_reports", []))
 	# The submission is in front of the listener. Insight limits connections and
 	# rival search, not whether these observations are read. Everything else,
@@ -62,6 +64,10 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 			var roots = Graph.roots(value, line.cards).filter(func(id): return id in full.cards)
 			if roots.is_empty():
 				continue
+			for r_id in roots.duplicate():
+				for partner_id in _linked_counterparts(view, full, r_id, all_card_ids):
+					if partner_id not in roots:
+						roots.append(partner_id)
 			assigned.append_array(roots)
 			_add_group(view, groups, line.id, roots, full.conclusion.target, listener)
 	var bg_ids: Array = listener.knowledge.get("own_reports", []) if focused and not value.get("lines", []).is_empty() else []
@@ -87,8 +93,17 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 	keep = presented + ranked.slice(0, remaining if bounded else ranked.size()).map(func(c): return c.id)
 	if not focused:
 		for id in personal:
-			if cards.any(func(c): return c.id == id):
+			if cards.any(func(c): return c.id == id) and id not in keep:
 				keep.append(id)
+	# Never attend to a challenged report, disputed alibi, or explained outing while
+	# dropping the linked card that disproves or explains it.
+	var idx_k: int = 0
+	while idx_k < keep.size():
+		var c_id: String = keep[idx_k]
+		for partner_id in _linked_counterparts(view, full, c_id, all_card_ids):
+			if partner_id not in keep:
+				keep.append(partner_id)
+		idx_k += 1
 	var raw = value.duplicate(true)
 	raw.cards = keep
 	raw.derived = []
@@ -105,6 +120,41 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 		"ignored_lines": value.get("lines", []).filter(func(line): return line.relation == "supports" and line.id not in kept_lines).map(func(line): return line.id),
 		"private_reports": personal.duplicate(),
 		"private_checks": direct_checks(view, full, listener.knowledge)}
+
+## Cards explicitly linked to disprove, challenge, or explain `card_id` stay bound to it
+## so bounded attention cannot read a challenged claim while dropping its counter-evidence.
+static func _linked_counterparts(view: Dictionary, full: Dictionary, card_id: String, available_ids: Array) -> Array:
+	var result: Array = []
+	var challenges: Dictionary = full.get("reading_challenges", {})
+	if challenges.has(card_id):
+		for sup_id in challenges[card_id].get("supports", []):
+			if sup_id in available_ids and sup_id not in result:
+				result.append(sup_id)
+	for challenged_id in challenges:
+		if card_id in challenges[challenged_id].get("supports", []) and challenged_id in available_ids and challenged_id not in result:
+			result.append(challenged_id)
+	for dispute in full.get("disputes", []):
+		var reports: Array = dispute.get("reports", [])
+		if card_id in reports:
+			for other_id in reports:
+				if other_id != card_id and other_id in available_ids and other_id not in result:
+					result.append(other_id)
+	var citations: Dictionary = full.get("citations", {})
+	if not citations.is_empty():
+		var card: Dictionary = Solver.card_by_id(view, card_id)
+		var night: int = int(card.get("night", -1))
+		if night >= 0:
+			var subjects: Array = []
+			if card.get("kind", "") == "sighting":
+				subjects = card.get("subjects", [card.get("subject", "")])
+			elif card.get("kind", "") == "report" and card.get("role", "") == "nightwatch":
+				subjects = card.get("data", {}).get("seen", [])
+			for subj in subjects:
+				var key = "%s:%d" % [subj, night]
+				var claim_id: String = citations.get(key, "")
+				if claim_id != "" and claim_id in available_ids and claim_id not in result:
+					result.append(claim_id)
+	return result
 
 static func _add_group(view: Dictionary, groups: Array, id: String, roots: Array, target: String, listener: Dictionary) -> void:
 	var facts: Array = roots.map(func(root): return Solver.semantic_key(Solver.card_by_id(view, root)))
@@ -301,7 +351,10 @@ static func _swaps(view: Dictionary, cards: Array, case_data: Dictionary, listen
 	var evil: Array = ids.filter(func(id): return seed.evil & (1 << ids.find(id)))
 	var good: Array = ids.filter(func(id): return not seed.evil & (1 << ids.find(id)))
 	evil.sort_custom(func(a, b): return a == case_data.conclusion.target if a == case_data.conclusion.target or b == case_data.conclusion.target else a < b)
-	good.sort_custom(func(a, b): return a == ids[seed.marked] if a == ids[seed.marked] or b == ids[seed.marked] else a < b)
+	# Test single-variable swaps (where Marked stays fixed) before coupled 2-variable
+	# Evil <-> Marked swaps so Low Insight catches simple pair rivals while deeper
+	# coupled role-swaps require Medium/High Insight.
+	good.sort_custom(func(a, b): return b == ids[seed.marked] if a == ids[seed.marked] or b == ids[seed.marked] else a < b)
 	var tested = 0
 	var movement = Solver.movement_for(view, cards, {}, listener.knowledge)
 	for outgoing in evil:
@@ -340,7 +393,7 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 		matches[key] = {"inputs": inputs.duplicate(true), "table": table, "queries": {}}
 	# Repeating the exact bounded query reuses its original result, including
 	# tested counts and exhaustion. No larger budget or other target inherits it.
-	var query_key = JSON.stringify([value.conclusion, budget, want, seed_evil])
+	var query_key = JSON.stringify([value.conclusion, budget, want, seed_evil, listener.get("suspicion", {})])
 	if reuse_matches and matches[key].queries.has(query_key):
 		Profiler.count("candidate_query_cache_hit")
 		return matches[key].queries[query_key].duplicate(true)
@@ -352,7 +405,7 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 	# independent of the candidate's alignment/modifier assignment.
 	var claims_ok: bool = Domain.claims_compatible(cards, listener.knowledge)
 	if not claims_ok:
-		return _finish_live(key, query_key, {}, 0, true, 0, 0)
+		return _finish_live(key, query_key, {}, 0, seed_evil == 0, 0, 0)
 
 	var candidates: Array = _ordered_live_candidates(view, cards, value, listener, want, positions, answers, seed_evil)
 	for candidate in candidates:
@@ -371,7 +424,7 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 				table[c_idx] = 1 if fits else 0
 		if fits:
 			return _finish_live(key, query_key, candidate, tested, false, hits, misses)
-	return _finish_live(key, query_key, {}, tested, true, hits, misses)
+	return _finish_live(key, query_key, {}, tested, seed_evil == 0, hits, misses)
 
 static func _ordered_live_candidates(view: Dictionary, cards: Array, value: Dictionary, listener: Dictionary, want: bool, positions: Dictionary, answers: Dictionary, seed_evil: int) -> Array:
 	var universe: Array = Solver.universe(view)

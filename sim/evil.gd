@@ -3,6 +3,7 @@
 ## Every decision is logged with its reasoning.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Gifts = preload("res://sim/gifts.gd")
 
@@ -282,7 +283,7 @@ static func gather_night_intel(w) -> void:
 ## discounts its own team's contributions: it knows those aren't the town's view.
 ## Readings count by how strongly they point at t (a Seer "yes" more than one of four in a
 ## Dowser's crowd); public clears cool it; older talk fades (HEAT_FADE a day).
-const HEAT_FADE = 0.75
+const HEAT_FADE = Tuning.Evil.HEAT_FADE
 static func public_heat(w, t) -> float:
 	var h = 0.15
 	for e in w.public_log:
@@ -332,7 +333,7 @@ static func exposure(w, n) -> Dictionary:
 ## toward sowing chaos (their "evil id").
 static func caution(w, n) -> float:
 	if n.id == w.demon_id:
-		return maxf(0.45, C.EVIL_CAUTION_DEMON - 0.03 * (w.day - 1))
+		return maxf(Tuning.Evil.DEMON_CAUTION_FLOOR, C.EVIL_CAUTION_DEMON - Tuning.Evil.DEMON_CAUTION_DRIFT * (w.day - 1))
 	return maxf(C.MINION_CAUTION_FLOOR, C.EVIL_CAUTION_MINION - C.MINION_ID_DRIFT * maxi(0, w.day - 2))
 
 ## What a teammate's life is worth to the team: the demon's is the game.
@@ -360,13 +361,13 @@ static func info_implicates(w, e: Dictionary) -> bool:
 static func _public_threat(w, n) -> Dictionary:
 	var parts = {}
 	if n.claim_public and n.claimed_role in C.INFO_ROLES:
-		parts["info_claim"] = 3.0
+		parts["info_claim"] = Tuning.Evil.KILL_INFO_CLAIM
 		var cdef = C.role_def(n.claimed_role)
 		if cdef != null and cdef.public_threat_bonus != 0.0 and cdef.public_threat_key != "":
 			parts[cdef.public_threat_key] = cdef.public_threat_bonus
 	for e in n.info_log:
 		if e["shared"] and info_implicates(w, e):
-			parts["implicates_us"] = 2.0
+			parts["implicates_us"] = Tuning.Evil.KILL_IMPLICATES_US
 	return parts
 
 static func choose_kill_target(w) -> String:
@@ -385,10 +386,10 @@ static func choose_kill_target(w) -> String:
 		var parts = _public_threat(w, n)
 		if parts.has("info_claim") and C.ROLES.get(n.claimed_role, {}).get("first_night", false) and w.day >= 1:
 			# Their start knowledge is already out: less of a threat than a gift that keeps reporting.
-			parts["info_claim"] = 1.0
+			parts["info_claim"] = Tuning.Evil.KILL_SPENT_INFO_CLAIM
 		var hostile = public_hostility(w, n)
 		if hostile > 0.0:
-			parts["publicly_against_us"] = snappedf(hostile * 0.8, 0.01)
+			parts["publicly_against_us"] = snappedf(hostile * Tuning.Evil.KILL_HOSTILITY_SCALE, 0.01)
 		var known = intel_threat(d, n.id)
 		if known > 0.0:
 			parts["known_threat"] = known
@@ -397,19 +398,19 @@ static func choose_kill_target(w) -> String:
 			if m != n and m.home_block == n.home_block:
 				alone = false
 		if alone:
-			parts["lives_alone"] = 0.7
+			parts["lives_alone"] = Tuning.Evil.KILL_LIVES_ALONE
 		match plan["mood"]:
 			"vengeful":
 				if d.npc_trust.get(n.id, 0.5) < 0.4:
-					parts["mood_vengeful"] = 1.5
+					parts["mood_vengeful"] = Tuning.Evil.KILL_VENGEFUL_BONUS
 			"cunning":
 				var s = w.by_id[plan["scapegoat"]]
 				if n.home_block == s.home_block:
-					parts["mood_cunning_frame"] = 1.5
+					parts["mood_cunning_frame"] = Tuning.Evil.KILL_CUNNING_BONUS
 			"hungry":
-				parts["mood_hungry"] = snappedf(w.rng.randf() * 2.0, 0.01)
+				parts["mood_hungry"] = snappedf(w.rng.randf() * Tuning.Evil.KILL_HUNGRY_MAX, 0.01)
 		if n.id == plan["scapegoat"] and w.living().size() > 4:
-			parts["keep_scapegoat"] = -4.0
+			parts["keep_scapegoat"] = Tuning.Evil.KILL_KEEP_SCAPEGOAT
 		var fails: int = plan["failed"].filter(func(x): return x == n.id).size()
 		var vet = believed_veteran(w, n)
 		var poisoner_up = w.living_with_role("poisoner") != null
@@ -449,7 +450,7 @@ static func choose_kill_target(w) -> String:
 	# Now and then the demon does something nobody would predict: it passes over its top
 	# three and takes someone else.
 	var zag = false
-	if w.decision_roll(d, "unpredictable_kill", 0.03) and scores.size() > 3:
+	if w.decision_roll(d, "unpredictable_kill", Tuning.Evil.KILL_UNPREDICTABLE_CHANCE) and scores.size() > 3:
 		var order: Array = scores.keys()
 		order.sort_custom(func(x, y): return scores[x]["total"] > scores[y]["total"])
 		var rest: Array = order.slice(3).filter(func(x): return scores[x]["total"] > -5.0)
@@ -516,15 +517,15 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 			continue
 		var parts = _public_threat(w, n)
 		if not gift_live_tonight(w, n):
-			parts["gift_spent"] = -3.5  # poisoning them tonight would change nothing
+			parts["gift_spent"] = Tuning.Evil.POISON_GIFT_SPENT  # poisoning them tonight would change nothing
 		var hostile = public_hostility(w, n)
 		if hostile > 0.0:
-			parts["publicly_against_us"] = snappedf(hostile * 0.6, 0.01)
+			parts["publicly_against_us"] = snappedf(hostile * Tuning.Evil.POISON_HOSTILITY_SCALE, 0.01)
 		var known = intel_threat(m, n.id)
 		if known > 0.0:
 			parts["known_threat"] = known
 		if n.id in wardens and kt != null:
-			parts["disable_warden"] = 2.5 if (kt.claim_public and kt.claimed_role in C.INFO_ROLES) else 1.2
+			parts["disable_warden"] = Tuning.Evil.POISON_WARDEN_INFO if (kt.claim_public and kt.claimed_role in C.INFO_ROLES) else Tuning.Evil.POISON_WARDEN_OTHER
 		var noise_draw = w.rng.randf()
 		parts["noise"] = snappedf(noise_draw * 1.5, 0.01)
 		var total = 0.0

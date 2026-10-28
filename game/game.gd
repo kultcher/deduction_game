@@ -28,6 +28,8 @@ const GamePresentation = preload("res://game/game_presentation.gd")
 var w
 var state = "day"          # day | approach | talk | meeting | nomination | night | over
 var approach = {}          # pending approach: {npc, agenda}
+var approached_id = ""     # npc who approached at the start of this phase
+var approached_loc = ""    # location named in that approach
 var moved = false          # has the player chosen a location this phase
 var free_move_used = false
 var loc = ""
@@ -273,6 +275,8 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	set_workshop_effects(workshop_effects)
 	state = "day"
 	moved = false
+	approached_id = ""
+	approached_loc = ""
 	events = []
 	_intro()
 	_morning_report()
@@ -613,6 +617,9 @@ func _dispatch(text: String) -> void:
 func unseen_at(l: String) -> int:
 	return w.npcs_at(l).filter(func(n): return not n.at_home() and not can_see(n)).size()
 
+func unseen_at_ui(l: String) -> int:
+	return w.npcs_at(l).filter(func(n): return not n.at_home() and not can_see_ui(n)).size()
+
 func can_see(n) -> bool:
 	if not n.alive:
 		return false
@@ -621,6 +628,15 @@ func can_see(n) -> bool:
 	if not n.at_home() and (n.working or n.busy_with != ""):
 		return true
 	return moved and w.loc_block(n.loc) == w.loc_block(loc)
+
+func can_see_ui(n) -> bool:
+	if can_see(n):
+		return true
+	if not n.alive or state == "night" or n.at_home():
+		return false
+	if state == "approach" and approach.get("npc") == n:
+		return true
+	return n.id == approached_id and n.loc == approached_loc
 
 ## Who the player can see at a location (a home shows only its owner, if in).
 func _present(l: String) -> Array:
@@ -885,6 +901,8 @@ func _end_phase(talked_id: String) -> void:
 	free_move_used = false
 	loc = ""
 	w.player_loc = ""
+	approached_id = ""
+	approached_loc = ""
 	if w.end_day_phase(talked_id):
 		_phase_header()
 		_maybe_approach()
@@ -894,6 +912,8 @@ func _end_phase(talked_id: String) -> void:
 # ---------------------------------------------------------------- approaches
 
 func _maybe_approach() -> void:
+	approached_id = ""
+	approached_loc = ""
 	if _maybe_divulge():
 		return
 	var c = Social.approach_candidate(w)
@@ -903,6 +923,8 @@ func _maybe_approach() -> void:
 	if c["agenda"] == "protect" and _promised_to(n):
 		return
 	approach = c
+	approached_id = n.id
+	approached_loc = n.loc
 	state = "approach"
 	w.dlog.add("approach", n.id, "player", {"agenda": c["agenda"]})
 	_narr("%s the %s approaches you at %s." % [n.name, n.occupation, w.loc_name(n.loc)])
@@ -932,6 +954,8 @@ func _maybe_divulge() -> bool:
 		divulge_due.erase(id)
 		n.protect_lock = false
 		approach = {"npc": n, "agenda": "divulge"}
+		approached_id = n.id
+		approached_loc = n.loc
 		state = "approach"
 		w.dlog.add("approach", n.id, "player", {"agenda": "divulge"})
 		_narr("%s the %s finds you at %s, as they promised." % [n.name, n.occupation, w.loc_name(n.loc)])
@@ -1706,10 +1730,11 @@ func _meeting_command(verb: String, rest: String) -> void:
 			if not _next_npc_nomination():
 				town_quiet = true
 				_narr("No one else rises to nominate.")
+				var pres = "" if presented_today else "'present <deduction#>', "
 				if "player" in w.meeting["nominators"]:
-					_prompt("'done' to close the meeting.")
+					_prompt("%s'done' to close the meeting." % pres)
 				else:
-					_prompt("'nominate <name>', or 'done' to close the meeting.")
+					_prompt("%s'nominate <name>', or 'done' to close the meeting." % pres)
 		"done", "pass", "close":
 			if not town_quiet:
 				_err("Let the town have its say first ('wait').")
@@ -1862,7 +1887,8 @@ func _nomination_command(verb: String, rest: String, progress: Callable = Callab
 
 func _after_vote() -> void:
 	state = "meeting"
-	_prompt("%s'wait' for the town." % ("" if "player" in w.meeting["nominators"] else "'nominate <name>', or "))
+	var pres = "" if presented_today else "'present <deduction#>', "
+	_prompt("%s%s'wait' for the town." % [pres, "" if "player" in w.meeting["nominators"] else "'nominate <name>', or "])
 
 func _last_words(n) -> void:
 	var response = Mind.last_words(w, n)

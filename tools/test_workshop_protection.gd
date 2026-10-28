@@ -87,6 +87,8 @@ func _circumstantial() -> void:
 
 func _live() -> void:
 	var g = Game.new()
+	# Capture a native baseline before enabling shared ownership below.
+	g.workshop_effects = false
 	g.new_case(692, 7)
 	g.w.dlog.detailed = false
 	var claimant = g.w.npcs[0]
@@ -106,6 +108,7 @@ func _live() -> void:
 	Mind._eff(effects, claimant.id, -0.15, "Quiet-night native protection credit")
 	Mind.ledger_hear(g.w, listener, eid, effects, 1.0, [claimant.id, -1, "report"], {"kind": "proof"})
 	var native: float = listener.suspicion[claimant.id]
+	var native_applied: Dictionary = listener.ledger[eid].applied.duplicate(true)
 	var board = Canvas.new(Live.view(g))
 	var root: String = board.selected
 	board.nodes[root].conclusion = {"type": "good", "target": claimant.id, "at": "Original alignment"}
@@ -124,7 +127,11 @@ func _live() -> void:
 	response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 	check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, "quiet-night repeat is stable")
 	g.set_workshop_effects(false)
-	check(is_equal_approx(listener.suspicion[claimant.id], native), "disabling shared model restores native quiet-night credit")
+	check(not listener.workshop_state.get("active", false) and listener.workshop_state.get("owned", {}).is_empty() and listener.ledger[eid].applied == native_applied, "disabling shared model restores exact native quiet-night credit")
+	# Disabling also restores the presented argument's native contribution. Withdraw
+	# that separate argument before comparing the whole suspicion vector to baseline.
+	g.workshop_retract(filed, listener.id)
+	check(is_equal_approx(listener.suspicion[claimant.id], native), "withdrawing the argument after disabling restores the native-only baseline")
 	var veteran = g.add_card({"kind": "info", "source": claimant.id, "subject": [], "role": "veteran", "day": 1, "phase": 3, "data": {"attacked": 1, "block": "market"}, "text": "Veteran attack report"})
 	var fresh = Canvas.new(Live.view(g))
 	fresh.nodes[fresh.selected].conclusion.target = claimant.id

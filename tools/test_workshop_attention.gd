@@ -14,7 +14,8 @@ func _init() -> void:
 	var value = Solver.empty_case()
 	value.cards = ["survey", "rumor", "dowse", "watch1", "watch2"]
 	value.lines = [
-		{"id": "readings", "label": "Readings", "relation": "supports", "cards": ["survey", "rumor", "dowse"], "positions": {}, "answers": {}},
+		{"id": "readings_a", "label": "Readings A", "relation": "supports", "cards": ["survey", "rumor"], "positions": {}, "answers": {}},
+		{"id": "readings_b", "label": "Readings B", "relation": "supports", "cards": ["dowse"], "positions": {}, "answers": {}},
 		{"id": "movement", "label": "Movement", "relation": "supports", "cards": ["watch1", "watch2"], "positions": {}, "answers": {}, "test_factor": {"target": "constance", "log2_ratio": 1.0}}]
 	var listener = session.baseline[3].duplicate(true)
 	listener.reasoning_mode = "bounded"
@@ -24,7 +25,7 @@ func _init() -> void:
 	listener.knowledge["attention_reports"] = listener.knowledge.own_reports.duplicate()
 	var attention = Jury.Reasoner.prepare(view, value, listener)
 	check(["watch1", "watch2"].all(func(id): return id in attention.considered), "low Insight always reads both submitted observations")
-	check(attention.considered.size() == 3 and not attention.ignored.is_empty(), "private and background cards compete for the remaining slot")
+	check(attention.considered.size() == 4 and not attention.ignored.is_empty(), "private and background cards compete for the remaining slots")
 	check("movement" in attention.ignored_lines and attention.case.test_factors.is_empty(), "reading a card does not grant an unattended reasoning connection")
 	var explanation = Jury.Support.explain(view, value, listener)
 	check(not explanation.accepted.any(func(id): return id in attention.ignored), "explanation search cannot silently restore ignored private reports")
@@ -33,7 +34,18 @@ func _init() -> void:
 	listener.knowledge.presented_reports = value.cards.duplicate()
 	attention = Jury.Reasoner.prepare(view, value, listener)
 	check(value.cards.all(func(id): return id in attention.considered), "a submission larger than the card budget is still read in full")
-	check(attention.limits.support == 8 and attention.limits.rivals == 0 and attention.ignored_lines.size() == 1, "guaranteed cards do not increase link or candidate budgets")
+	check(attention.limits.support == 12 and attention.limits.rivals == 3 and attention.ignored_lines.size() == 1, "guaranteed cards do not increase link or candidate budgets")
+	# Counter-evidence linked to challenge a kept card is never dropped out of attention.
+	var challenged_case = value.duplicate(true)
+	challenged_case.reading_challenges = {"survey": {"mode": "lying", "supports": ["dowse"]}}
+	var unfocused = listener.duplicate(true)
+	unfocused.knowledge.erase("presented_reports")
+	unfocused.knowledge.own_reports = []
+	unfocused.knowledge.attention_reports = []
+	challenged_case.cards = ["survey", "rumor", "watch1", "watch2", "lamp1", "dowse"]
+	challenged_case.lines = []
+	var paired_att = Jury.Reasoner.prepare(view, challenged_case, unfocused)
+	check("survey" in paired_att.considered and "dowse" in paired_att.considered, "a card linked to challenge a kept report is retained alongside it")
 	_live()
 	print("Presented attention: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

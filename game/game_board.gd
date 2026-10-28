@@ -5,6 +5,7 @@
 ## UI panels (`ui/`) and test suites can continue calling `g.<fn>(...)` unchanged.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const Argue = preload("res://sim/argue.gd")
@@ -22,7 +23,7 @@ static func _break_confidences(g, nums: Array) -> void:
 		if not n.alive or n.claim_public:
 			continue
 		# 0.05 for the open, 0.15 typical, 0.25 for the very private.
-		var loss: float = 0.05 + 0.2 * n.traits.get("privacy", 0.5)
+		var loss: float = Tuning.Trust.CONFIDENCE_BROKEN_BASE + Tuning.Trust.CONFIDENCE_BROKEN_PRIVACY * n.traits.get("privacy", 0.5)
 		Mind.set_trust(g.w, n, n.trust - loss, "the Demonologist broke my confidence (card #%d) at the meeting" % num)
 		g.w.dlog.add("player_confidence_broken", "player", n.id, {"card": num})
 		g._narr("%s stiffens. You promised to keep that between you." % n.name)

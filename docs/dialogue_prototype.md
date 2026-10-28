@@ -47,6 +47,8 @@ on four basic chunks. These are fixed editorial samples; changing them never ena
 a new live voice or records delivered dialogue. The comparison controls above that
 section still apply to the original three-voice composer only. The editable fixture
 source is `tools/dialogue_voice_sketches.json`; `dialogue_preview.gd` prints it too.
+The review sheet incorporates later editorial revisions from main; the lab fixtures
+remain the earlier calibration samples and have not yet been synchronized to them.
 
 Open `ui/dialogue_lab.tscn` in Godot and **Run Current Scene (F6)**. Or run:
 

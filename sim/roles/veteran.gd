@@ -14,8 +14,8 @@ func _init() -> void:
 	shape = "NIGHT_EVENT"
 	produces_readings = true
 	can_cause_quiet_night = true
-	quiet_night_effect = -0.06
-	quiet_night_claim_weight = 0.025
+	quiet_night_effect = Tuning.Roles.VETERAN.quiet_night_effect
+	quiet_night_claim_weight = Tuning.Roles.VETERAN.quiet_night_claim_weight
 	quiet_night_once = true
 	hard_to_kill = true
 
@@ -36,7 +36,7 @@ func info_effects(w, listener, source, entry: Dictionary, weight: float, _fresh:
 	# The demon came by way of that block: a little toward those who live there.
 	for m in w.living():
 		if m != listener and m != source and m.home_block == d.get("block", ""):
-			mind._eff(effs, m.id, 0.12, tag + ": the demon came by way of their block",
+			mind._eff(effs, m.id, Tuning.Roles.VETERAN.eff_attacker_block, tag + ": the demon came by way of their block",
 				"the demon came by way of %s, where they live" % content().block_name(d["block"]), not own)
 	return effs
 

@@ -43,8 +43,9 @@ func _alibis() -> void:
 		var h: String = "e:" + Live.Evidence.normalize_card(g.board[home - 1]).id
 		board.connect_cards(h, root)
 		check(board.connect_cards(h if reverse else v, v if reverse else h) == "", "either direction connects")
-		var merged: String = board.selected
-		check(board.nodes[merged].kind == "contradiction", "second vigil subject merges with matching alibi")
+		var merged: String = board.nodes[v].get("merged", "")
+		check(board.nodes.get(merged, {}).get("kind", "") == "contradiction", "second vigil subject merges with matching alibi")
+		check(board.selected == root, "merging already-linked evidence keeps the premise selected")
 		board.connect_cards(merged, root)
 		var value = board.compile(root)
 		check(value.cards.size() == 2 and value.disputes.size() == 1, "both receipts survive even when the alibi was already linked to the premise")
@@ -66,7 +67,7 @@ func _alibis() -> void:
 		g._evaluate_deduction(n, g.board[filed - 1], 1.0)
 		check(n.workshop_state.requested == applied, "repeated alibi challenge does not stack")
 		board.unmerge(merged)
-		check(board.nodes.has(v) and board.nodes.has(h), "unmerge restores both originals")
+		check(board.nodes.has(v) and board.nodes.has(h) and not board.nodes[v].has("merged") and not board.nodes[h].has("merged"), "unmerge restores both originals as visible evidence")
 	n.secret_mod = "sleepwalker"
 	check(g.workshop_snapshot([], n.id).listener.own_outings.get("1") == false, "live adapter cannot give a Sleepwalker knowledge of an unremembered outing")
 

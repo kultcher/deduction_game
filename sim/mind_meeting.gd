@@ -7,6 +7,7 @@
 extends RefCounted
 
 const WorkshopLedger = preload("res://workshop/shared_ledger.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
@@ -101,7 +102,7 @@ static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void
 	if n.silenced: return
 	var score = trait_of(n, "gossip") + trait_of(n, "confidence")
 	var panic = paranoia(w, n)
-	var threshold = 1.2 - panic
+	var threshold = Tuning.Meeting.VOLUNTEER_SIGHTING_BASE - panic
 	w.observe_decision(n, "volunteer_night_sightings", score >= threshold, {"score": score, "threshold": threshold, "comparison": ">=",
 		"inputs": {"gossip": trait_of(n, "gossip"), "confidence": trait_of(n, "confidence"), "paranoia": panic, "composure": trait_of(n, "composure")},
 		"threshold_parts": {"base": 1.2, "paranoia": -panic}, "gate": "Gossip + Confidence threshold; eligible untold sightings still require disclosure/cover checks; no random draw"})
@@ -419,11 +420,15 @@ static func last_words(w, n) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
 	var claim: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	var already_claimed: bool = n.claim_public and n.claimed_role == claim
 	if n.claim_public and n.claimed_role != claim:
 		n.claim_public = false # With nothing to hide, correct their earlier claim.
 	_public_disclosure(w, n, lines, facts, false)
 	if lines.is_empty():
-		lines.append(_claim_line(n, claim))
+		if already_claimed:
+			lines.append(say(n, "As I've said, I am the %s." % C.role_name(claim)))
+		else:
+			lines.append(_claim_line(n, claim))
 		facts.append({"kind": "claim", "subject": [n.id], "role": claim, "source": n.id,
 			"text": "%s publicly claims to be the %s." % [n.name, C.role_name(claim)]})
 	var suspect = ""
@@ -531,7 +536,9 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	if n.told_to.has(_town_sighting_key(n, seen)): return
 	n.told_to[_town_sighting_key(n, seen)] = true
 	var report = sighting_report(w, n, seen, seen["day"])
-	report["line"]["text"] = "On %s: %s" % [C.night_name(seen["day"]), report["line"]["text"]]
+	var night_label: String = C.night_name(seen["day"])
+	if not (night_label in report["line"]["text"] or ("night %d" % seen["day"]) in report["line"]["text"]):
+		report["line"]["text"] = "On %s: %s" % [night_label, report["line"]["text"]]
 	lines.append(report["line"])
 	facts.append(report["fact"])
 
@@ -539,10 +546,10 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 ## Each accuser counts once (their latest stance), older accusations fade, and
 ## each further voice adds half as much as the one before, so a chorus can't bury someone.
 ## The crowd supplies no evidence, source dishonesty or world-prior weight.
-const CONSENSUS_BASE = 0.12
-const CONSENSUS_FADE = 0.6
-const CONSENSUS_CAP = 0.3
-const CONSENSUS_HINT = 1.15  # "I have a reason, but I'm not ready to share it": a little more than a bare accusation
+const CONSENSUS_BASE = Tuning.Meeting.CONSENSUS_BASE
+const CONSENSUS_FADE = Tuning.Meeting.CONSENSUS_FADE
+const CONSENSUS_CAP = Tuning.Meeting.CONSENSUS_CAP
+const CONSENSUS_HINT = Tuning.Meeting.CONSENSUS_HINT  # "I have a reason, but I'm not ready to share it": a little more than a bare accusation
 
 static func refresh_consensus(w, l, target: String) -> void:
 	if l.is_evil():
@@ -593,7 +600,7 @@ static func _good_nomination(w, n, m: Dictionary, block: String):
 	return result
 
 static func _good_nomination_impl(w, n, m: Dictionary, block: String, trace_id: int):
-	var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (trait_of(n, "confidence") - 0.5) * 2.0 - 0.5 * paranoia(w, n)
+	var thr: float = maxf(Tuning.Meeting.NOMINATION_FLOOR, Tuning.Meeting.NOMINATION_BASE - Tuning.Meeting.NOMINATION_DAY_SLOPE * w.day) - Tuning.Meeting.NOMINATION_CONFIDENCE_SCALE * (trait_of(n, "confidence") - 0.5) * 2.0 - Tuning.Meeting.NOMINATION_PARANOIA_SCALE * paranoia(w, n)
 	for t in ranked_suspects(w, n, true):
 		if t.id in m["nominated"] or t.id == n.id:
 			w.dlog.decision(n.id, "nomination", "gate", false,
@@ -994,7 +1001,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	for k in parts:
 		if k not in ["suspicion", "town_pressure", "shared_execution_priority"]:
 			s += parts[k]
-	var need = 0.5 - 0.12 * (trait_of(v, "confidence") - 0.5) * 2.0 + (0.1 if w.day <= 1 else 0.0) - 0.4 * paranoia(w, v)
+	var need = Tuning.Meeting.VOTE_BASE_NEED - Tuning.Meeting.VOTE_CONFIDENCE_SCALE * (trait_of(v, "confidence") - 0.5) * 2.0 + (Tuning.Meeting.VOTE_DAY1_PENALTY if w.day <= 1 else 0.0) - Tuning.Meeting.VOTE_PARANOIA_WEIGHT * paranoia(w, v)
 	var yes = s >= need
 	var exact_parts: Dictionary = parts.duplicate()
 	exact_parts["suspicion"] = susp(v, nominee) # pressure is reported separately

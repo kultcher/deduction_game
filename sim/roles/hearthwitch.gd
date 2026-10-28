@@ -22,11 +22,11 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 
 
 func card_strength(d: Dictionary, _suspect_id: String) -> float:
-	return 0.5 * d.get("count", 0)
+	return Tuning.Roles.HEARTHWITCH.card_strength_per_evil * d.get("count", 0)
 
 
 func defend_strength(d: Dictionary, _nominee: String) -> float:
-	return 0.6 if d.get("count", 0) == 0 else 0.0
+	return Tuning.Roles.HEARTHWITCH.defend_strength_zero if d.get("count", 0) == 0 else 0.0
 
 
 func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
@@ -41,13 +41,13 @@ func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh
 	var excluded: int = nbrs.size() - others.size()
 	if count == 0:
 		for i in others:
-			mind._eff(effs, i, -0.25, tag + ": hearthwitch count 0", "", not own)
+			mind._eff(effs, i, Tuning.Roles.HEARTHWITCH.eff_zero, tag + ": hearthwitch count 0", "", not own)
 	else:
-		var per: float = 0.35 * count
+		var per: float = Tuning.Roles.HEARTHWITCH.eff_per_evil * count
 		if excluded > 0:
-			per = 0.7 * count
+			per = Tuning.Roles.HEARTHWITCH.eff_per_evil_excluded * count
 		if count > others.size() and not own:
-			mind._eff(effs, source.id, 0.5, tag + ": hearthwitch count impossible from my view",
+			mind._eff(effs, source.id, Tuning.Roles.HEARTHWITCH.eff_impossible_source, tag + ": hearthwitch count impossible from my view",
 				"%s reading about the lane can't be right" % src_name)
 		for i in others:
 			mind._eff(effs, i, per, tag + ": hearthwitch count %d" % count,

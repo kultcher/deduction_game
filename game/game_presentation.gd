@@ -7,6 +7,7 @@
 ## UI panels (`ui/`) and test suites can continue calling `g.<fn>(...)` unchanged.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const Argue = preload("res://sim/argue.gd")
@@ -415,7 +416,7 @@ static func _show_ward_context(g, card: Dictionary, listeners: Array) -> Diction
 				continue
 			heard.append(listener.id)
 			rewarded.append(listener.id)
-			var bonus: float = 0.05 + (0.15 if listener.id == card.target else 0.0)
+			var bonus: float = Tuning.Trust.WARD_SIGIL_BONUS + (Tuning.Trust.WARD_SIGIL_TARGET_BONUS if listener.id == card.target else 0.0)
 			Mind.set_trust(g.w, listener, listener.trust + bonus, "the Demonologist showed a scorched ward sigil")
 		g.sigil_heard[card.n] = heard
 	g.w.dlog.add("player_ward_context", "player", card.get("target", ""), {"card": card.n, "listeners": listeners.map(func(n): return n.id), "rewarded": rewarded, "public": public_show})

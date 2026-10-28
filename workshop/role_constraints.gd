@@ -1,5 +1,6 @@
 ## Joint role completions and a persistent Red Herring, without full permutations.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Activity = preload("res://workshop/live_activity.gd")
 static var cache: Dictionary = {}
@@ -30,7 +31,7 @@ static func fit_weight(view: Dictionary, world: Dictionary, cards: Array, knowle
 ## Weight of one role declaration (claim, or a reading's implied gift) by a source who
 ## is evil in that world: a bluff is possible, but naming this exact role is a choice
 ## among several, so a claim still weakly supports its claimant (live play only).
-const BLUFF_WEIGHT = 0.92
+const BLUFF_WEIGHT = Tuning.Workshop.BLUFF_WEIGHT
 
 ## bluffs (live play): evil sources' role declarations constrain nothing; see _fits.
 static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false) -> PackedByteArray:

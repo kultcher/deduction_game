@@ -10,6 +10,7 @@ const Evil = preload("res://sim/evil.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Domain = preload("res://workshop/world_domain.gd")
+const Reasoner = preload("res://workshop/reasoner.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 
 var checks = 0
@@ -173,10 +174,9 @@ func _test_role_in_group_hooks() -> void:
 	var arch_r: Dictionary = C.role_def("archivist").generate_reading(w, arch, {"poisoned": false}, Mind)
 	_check(arch_r.get("data", {}).get("pair", []).size() == 2 and C.ROLES.get(arch_r["data"].get("role", ""), {}).get("minion", false), "Archivist generate_reading produces valid minion role pair")
 
-	w.executed_today = ""
-	# The evil target selector only uses role-specific timing for public claimants.
-	grave.claimed_role = "gravedigger"
 	grave.claim_public = true
+	grave.claimed_role = "gravedigger"
+	w.executed_today = ""
 	_check(not Evil.gift_live_tonight(w, grave) and C.role_def("gravedigger").generate_reading(w, grave, {}, Mind).is_empty(), "Gravedigger is inactive when no one was executed today")
 	w.executed_today = subject_good.id
 	_check(Evil.gift_live_tonight(w, grave), "Gravedigger is live tonight when someone was executed today")
@@ -392,3 +392,37 @@ func _test_final_roles_hooks() -> void:
 	_check(g.GameBoard != null and g.GamePresentation != null, "Game preloads GameBoard and GamePresentation modules")
 	_check(g.filter_cards("") == g.GameBoard.filter_cards(g, ""), "Game.filter_cards forwards identically to GameBoard.filter_cards")
 	_check(g.timeline_data() == g.GameBoard.timeline_data(g), "Game.timeline_data forwards identically to GameBoard.timeline_data")
+
+	# 8. Codex review regressions: raw-data card/defend strength & single Martyr registration roll
+	_check(is_equal_approx(C.role_def("dowser").card_strength({"group": [vet.id, sexton.id], "count": 1, "block": vet.home_block}, vet.id), 0.6), "Dowser card_strength accepts raw data dict and returns 0.6 for implicated member")
+	_check(is_equal_approx(C.role_def("martyr").card_strength({"target": vet.id, "evil": true}, vet.id), 0.6), "Martyr evil-outcome card_strength accepts raw data dict and returns 0.6")
+	_check(is_equal_approx(C.role_def("gravedigger").defend_strength({"executed": vet.id, "role": "warden"}, vet.id), 0.5), "Gravedigger good-role defend_strength accepts raw data dict and returns 0.5")
+	_check(is_equal_approx(C.role_def("rumormonger").defend_strength({"pair": [vet.id, sexton.id], "secret": "marked"}, vet.id), 0.5), "Rumormonger defend_strength accepts raw data dict and returns 0.5")
+	_check(is_equal_approx(C.role_def("archivist").defend_strength({"pair": [vet.id, sexton.id], "role": "poisoner"}, vet.id), 0.15), "Non-clearing RoleDef.defend_strength preserves 0.15 fallback")
+
+	var m_def = C.role_def("martyr")
+	vet.secret_mod = "marked"
+	martyr.martyr_target = vet.id
+	martyr.poisoned = false
+	var probe_rng = RandomNumberGenerator.new()
+	probe_rng.seed = 3
+	w.rng.state = probe_rng.state
+	var expected_one_draw = RandomNumberGenerator.new()
+	expected_one_draw.state = probe_rng.state
+	var first_draw_evil: bool = expected_one_draw.randf() < 0.5
+	var before_logs: int = martyr.info_log.size()
+	var sub_ok: bool = m_def.can_substitute_execution(w, martyr, vet.id)
+	if not sub_ok:
+		m_def.on_chosen_executed(w, martyr, vet)
+	_check(w.rng.state == expected_one_draw.state, "Martyr execution consumes exactly one RNG draw for a Marked target across substitution + post-execution hooks")
+	_check(sub_ok == (not first_draw_evil) and (sub_ok or martyr.info_log.size() == before_logs + 1), "Martyr non-substitution on Marked target reuses first draw and records confirmation reading")
+
+	# 9. Centralized Tuning (sim/tuning.gd) checks
+	var Tuning = C.Tuning
+	_check(Tuning != null, "C.Tuning preloads sim/tuning.gd")
+	_check(C.SETUPS == Tuning.Setup.SETUPS and C.SHADOW_SELF == Tuning.Setup.SHADOW_SELF, "C.SETUPS and C.SHADOW_SELF alias Tuning.Setup")
+	_check(is_equal_approx(Mind.SERIOUS_GRIEVANCE, Tuning.Trust.SERIOUS_GRIEVANCE) and is_equal_approx(Mind.HONESTY_K, Tuning.Mind.HONESTY_K), "Mind constants alias Tuning.Trust and Tuning.Mind")
+	_check(is_equal_approx(Mind.CONSENSUS_BASE, Tuning.Meeting.CONSENSUS_BASE) and is_equal_approx(C.DEFENCE_ROPE, Tuning.Meeting.DEFENCE_ROPE), "Meeting constants alias Tuning.Meeting")
+	_check(is_equal_approx(C.EVIL_CAUTION_DEMON, Tuning.Evil.EVIL_CAUTION_DEMON) and is_equal_approx(Evil.HEAT_FADE, Tuning.Evil.HEAT_FADE), "Evil constants alias Tuning.Evil")
+	_check(is_equal_approx(C.role_def("seer").public_threat_bonus, Tuning.Roles.SEER.public_threat_bonus) and is_equal_approx(C.role_def("warden").quiet_night_effect, Tuning.Roles.WARDEN.quiet_night_effect), "RoleDefs read per-role tuning from Tuning.Roles")
+	_check(Reasoner.profile(0.2).cards == Tuning.Workshop.PROFILE_LOW.cards and Reasoner.profile(0.5).rivals == Tuning.Workshop.PROFILE_MEDIUM.rivals and Reasoner.profile(0.8).support == Tuning.Workshop.PROFILE_HIGH.support, "Reasoner.profile reads Low/Medium/High profiles from Tuning.Workshop")

@@ -1,5 +1,6 @@
 ## A defeasible partial theory, separate from certainty and source credibility.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const Solver = preload("res://workshop/solver.gd")
 
 static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, reasoning: Dictionary, input_key: String) -> Dictionary:
@@ -20,7 +21,7 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 	var key: String = _key(value)
 	var old: Dictionary = listener.theories.get(key, {}).duplicate(true)
 	result.before = old.get("position", "")
-	result.threshold = 1.0 + 4.0 * listener.confidence
+	result.threshold = Tuning.Workshop.THEORY_THRESHOLD_BASE + Tuning.Workshop.THEORY_THRESHOLD_SLOPE * listener.confidence
 	var candidate: Dictionary = reasoning.support
 	var candidate_score: float = reasoning.support_score
 	var other: Dictionary = reasoning.rival
@@ -59,7 +60,7 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary, r
 	result.position = position
 	result.status = status
 	if apply_bias and position in ["evil", "good", "marked", "unmarked"]:
-		result.bias = {"target": target, "position": position, "factor": pow(3.0, listener.confidence)}
+		result.bias = {"target": target, "position": position, "factor": pow(Tuning.Workshop.THEORY_BIAS_BASE, listener.confidence)}
 	result.note = {"adopted": "I have a provisional working theory; other explanations can remain possible.",
 		"retained": "I am holding my earlier theory. The new comparison has not outweighed that commitment.",
 		"revised": "The contrary evidence changed my working theory.",
