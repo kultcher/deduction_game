@@ -872,8 +872,13 @@ func _refresh_actions() -> void:
 ## Portraits inspect; this explicit action owns the existing go/talk sequence.
 func _talk_to_person(id: String) -> void:
 	if g.state != "day": return
+	var n = g.w.by_id.get(id)
+	if n == null or not g.can_see_ui(n): return
 	var cmds: Array = []
-	if not g.moved: cmds.append("go " + id)
+	if not g.moved:
+		# An approach discloses a destination even before ordinary block visibility.
+		var destination: String = id if g.can_see(n) else g.approached_loc
+		cmds.append("go " + destination)
 	cmds.append("talk " + id)
 	_run_seq(cmds)
 

@@ -515,6 +515,7 @@ func _init() -> void:
 	scene._new_case_button()
 	_check(scene.g.w.seed_value == 4242, "a typed seed is kept by New case")
 	scene.size_opt.select(0)
+	await _approach_talk(scene)
 	scene.queue_free()
 	await process_frame
 	await process_frame
@@ -589,3 +590,38 @@ func _drag_panel(start: Vector2, finish: Vector2) -> void:
 	press.global_position = finish
 	root.push_input(press, true)
 	await process_frame
+
+## Exercise the actual action button after a declined approach, not just visibility.
+func _approach_talk(scene) -> void:
+	scene.seed_box.value = 25923
+	scene._new_case()
+	await process_frame
+	var g = scene.g
+	var n = g.w.living_good()[0]
+	n.loc = "chapel"
+	n.working = false
+	n.busy_with = ""
+	g.moved = false
+	g.state = "approach"
+	g.approach = {"npc": n, "agenda": "gossip"}
+	g.approached_id = n.id
+	g.approached_loc = n.loc
+	g.command("decline")
+	_check(not g.can_see(n) and g.can_see_ui(n), "declined approach discloses its location without changing simulation visibility")
+	scene._select_person(n.id)
+	scene._refresh_actions()
+	await process_frame
+	var talk: Array = scene.actions.get_children().filter(func(button): return button is Button and button.text == "Talk to " + n.name)
+	_check(talk.size() == 1, "the disclosed approach has one real Talk button")
+	if not talk.is_empty():
+		talk[0].pressed.emit()
+		for i in range(4):
+			await process_frame
+		_check(g.state == "talk" and g.talk_with == n and g.loc == "chapel" and g.moved, "Talk travels to the announced location and starts the ordinary conversation")
+	g.state = "day"
+	g.moved = false
+	g.loc = ""
+	n.loc = "bakery" # An old approach must not disclose a later destination.
+	scene._talk_to_person(n.id)
+	await process_frame
+	_check(g.state == "day" and not g.moved and g.loc == "", "an expired approach location cannot make the action follow an unseen NPC")
