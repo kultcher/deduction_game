@@ -24,7 +24,7 @@ func _init() -> void:
 		outcomes.append(Jury.evaluate(view, c, clone))
 		print("%s: %s; agreement %.3f; checked %d worlds" % [outcomes[-1].reasoning.profile, outcomes[-1].reasoning.status, outcomes[-1].agreement, outcomes[-1].reasoning.tested])
 	check(outcomes[0].shared_assessment == outcomes[1].shared_assessment and outcomes[1].shared_assessment == outcomes[2].shared_assessment, "Insight leaves the complete referee answer unchanged")
-	check(outcomes[0].reasoning.status == "provisional" and outcomes[0].reasoning.rivals_tested == 0, "Low Insight provisionally accepts a checked explanation without a rival search")
+	check(outcomes[0].reasoning.status == "provisional" and outcomes[0].reasoning.rivals_tested <= Jury.Reasoner.profile(0.1).rivals, "Low Insight provisionally accepts a checked explanation when its brief rival check finds no counterexample")
 	check(not outcomes[0].objection.contains("An alternative still fits") and not outcomes[0].objection.contains("Nisha"), "spoken low-Insight objections cannot leak the referee's unseen Nisha alternative")
 	check(outcomes[0].stance == "accept" and outcomes[0].shared_assessment.entailment == "possible", "trusted coherent case can convince a low-Insight juror without being mislabeled proved")
 	check(outcomes[1].reasoning.status == "rival_found" and outcomes[2].reasoning.status == "rival_found", "Medium and High find the Nisha rival")
@@ -52,16 +52,17 @@ func _init() -> void:
 	var small_mind = juror.duplicate(true)
 	small_mind.insight = 0.1
 	var limited = Jury.evaluate(view, large, small_mind)
-	check(not limited.reasoning.ignored.is_empty() and limited.reasoning.considered.filter(func(id): return id not in limited.reasoning.private_reports).size() <= 3, "oversized case exposes the evidence not attended to")
+	check(not limited.reasoning.ignored.is_empty() and limited.reasoning.considered.filter(func(id): return id not in limited.reasoning.private_reports).size() <= Jury.Reasoner.profile(0.1).cards, "oversized case exposes the evidence not attended to")
 	check(limited.reasoning.private_reports.size() == 2, "own gift reports remain available outside the attention budget")
 	var joined = c.duplicate(true)
 	joined.cards.append_array(["watch1", "watch2"])
-	joined.lines = [{"id": "readings", "label": "Readings", "relation": "supports", "cards": ["survey", "rumor", "dowse"], "positions": {}, "answers": {}},
+	joined.lines = [{"id": "readings_a", "label": "Readings A", "relation": "supports", "cards": ["survey", "rumor"], "positions": {}, "answers": {}},
+		{"id": "readings_b", "label": "Readings B", "relation": "supports", "cards": ["dowse"], "positions": {}, "answers": {}},
 		{"id": "movement", "label": "Movement", "relation": "supports", "cards": ["watch1", "watch2"], "positions": {}, "answers": {}, "test_factor": {"target": "constance", "log2_ratio": 1.0}}]
 	var missed_connection = Jury.evaluate(view, joined, small_mind.duplicate(true))
 	check(missed_connection.reasoning.ignored_lines.has("movement") and missed_connection.support_model.factors.is_empty(), "a juror can know the sightings but miss connecting their line to the readings")
 	var hidden_mistake = joined.duplicate(true)
-	hidden_mistake.lines[1].positions = {"hollis": "good"}
+	hidden_mistake.lines[2].positions = {"hollis": "good"}
 	var missed_mistake = Jury.evaluate(view, hidden_mistake, small_mind.duplicate(true))
 	check(missed_mistake.assessment.proposed == 0 and missed_mistake.agreement > 0 and missed_mistake.reasoning.status == "provisional", "an unattended contradiction cannot veto bounded conviction through the full referee")
 	var movement_case = joined.duplicate(true)

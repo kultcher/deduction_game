@@ -342,7 +342,7 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 		elif best.weight < 0:
 			response = "The evidence I considered weighs against this conclusion; my search was limited."
 		elif not reasoning.support.is_empty() and reasoning.status == "provisional":
-			if reasoning.get("rivals_tested", 0) > 0:
+			if reasoning.get("rivals_tested", 0) > 3:
 				response = "Your explanation fits what I considered, and none of the alternatives I checked held up." if stance == "accept" else "I found your explanation coherent, though I am not yet convinced by its support."
 			else:
 				response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
@@ -444,7 +444,7 @@ static func _provisional(view: Dictionary, conclusion: Dictionary, ev: Dictionar
 		dist = next
 	var scale: float = 2.0 * ratio / (1.0 + ratio)
 	var single_card_base: float = maxf(0.3, minf(0.76, CaseEval.shift(ev.prior, ev.posterior))) if cards.size() == 1 else 0.3
-	var multi_card_base: float = 0.85 if rivals_tested > 0 else 0.76
+	var multi_card_base: float = 0.85 if rivals_tested > 3 else 0.76
 	var conviction = 0.0
 	for n in range(1, dist.size()):
 		conviction += dist[n] * (1.0 if entailed and n == cards.size() else minf(0.95, (multi_card_base if n >= 2 else single_card_base) * scale))
@@ -564,7 +564,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 		elif best.weight < 0:
 			response = "The evidence I considered weighs against this conclusion; my search was limited."
 		elif not reasoning.support.is_empty() and reasoning.status == "provisional":
-			if reasoning.get("rivals_tested", 0) > 0:
+			if reasoning.get("rivals_tested", 0) > 3:
 				response = "Your explanation fits what I considered, and none of the alternatives I checked held up." if stance == "accept" else "I found your explanation coherent, though I am not yet convinced by its support."
 			else:
 				response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
