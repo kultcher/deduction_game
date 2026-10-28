@@ -64,7 +64,8 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 				continue
 			assigned.append_array(roots)
 			_add_group(view, groups, line.id, roots, full.conclusion.target, listener)
-	var unassigned: Array = cards.filter(func(c): return c.id not in assigned).map(func(c): return c.id)
+	var bg_ids: Array = listener.knowledge.get("own_reports", []) if focused and not value.get("lines", []).is_empty() else []
+	var unassigned: Array = cards.filter(func(c): return c.id not in assigned and c.id not in bg_ids).map(func(c): return c.id)
 	if not unassigned.is_empty():
 		_add_group(view, groups, "", unassigned, full.conclusion.target, listener)
 	groups.sort_custom(func(a, b): return a.score > b.score if not is_equal_approx(a.score, b.score) else a.key < b.key)
@@ -77,7 +78,7 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 		keep.append_array(groups[i].cards)
 		kept_lines.append_array(groups[i].ids)
 		connections.append(groups[i].key)
-	var ranked: Array = cards.filter(func(c): return c.id in keep and c.id not in presented and (focused or c.id not in personal))
+	var ranked: Array = cards.filter(func(c): return (c.id in keep or c.id in bg_ids) and c.id not in presented and (focused or c.id not in personal))
 	ranked.sort_custom(func(a, b):
 		var x = _salience(a, full.conclusion.target, listener, Domain.live(view))
 		var y = _salience(b, full.conclusion.target, listener, Domain.live(view))
@@ -225,6 +226,53 @@ static func _candidate_priority(id: String, target: String, cards: Array, listen
 		score += 10.0 if evil_target else -10.0
 	return score
 
+static func _live_person_priority(id: String, is_target: bool, cards: Array, listener: Dictionary, want: bool, type: String) -> float:
+	var score: float = listener.suspicion.get(id, 0.1)
+	for card in cards:
+		if card.get("quoted", false):
+			continue
+		if card.kind == "report":
+			var role: String = card.get("role", "")
+			var d: Dictionary = card.get("data", {})
+			if role in ["dowser", "hearthwitch"] and id in d.get("group", d.get("nbrs", [])):
+				score += 2.0 if int(d.get("count", 0)) > 0 else -2.0
+			elif role == "seer" and id in d.get("pair", []):
+				score += 2.0 if d.get("yes", false) else -2.0
+			elif role == "archivist" and id in d.get("pair", []):
+				score += 2.0
+			elif role == "clerk" and id in d.get("pair", []):
+				score -= 1.5
+			elif role == "nightwatch" and id in d.get("seen", []):
+				score += 1.5
+		elif card.kind == "sighting" and id in card.get("subjects", [card.get("subject", "")]):
+			score += 1.5
+	var evil_target: bool = want if type in ["evil", "suspicious", "demon", "minion"] else not want
+	if is_target:
+		score += 10.0 if evil_target else -10.0
+	return score
+
+static func _variant_priority(candidate: Dictionary, target_idx: int, want: bool, type: String, pos_marked_mask: int, pos_demon_mask: int, neg_demon_mask: int) -> float:
+	var s: float = 0.0
+	var m: int = int(candidate.marked)
+	if m >= 0:
+		if (pos_marked_mask & (1 << m)) != 0:
+			s += 4.0
+		if type == "marked" and ((m == target_idx) == want):
+			s += 4.0
+	else:
+		s += 1.0
+	var d: int = int(candidate.get("demon", -1))
+	if d >= 0:
+		if (pos_demon_mask & (1 << d)) != 0:
+			s += 4.0
+		if (neg_demon_mask & (1 << d)) != 0:
+			s -= 4.0
+		if type == "demon" and ((d == target_idx) == want):
+			s += 4.0
+		elif type == "minion" and ((d != target_idx) == want):
+			s += 2.0
+	return s
+
 static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, positions: Dictionary, answers: Dictionary, epoch: String = "", temporal_positions: Array = [], claims_checked: bool = false) -> bool:
 	if not claims_checked and Domain.live(view) and not Domain.claims_compatible(cards, knowledge):
 		return false
@@ -248,7 +296,7 @@ static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledg
 
 static func _swaps(view: Dictionary, cards: Array, case_data: Dictionary, listener: Dictionary, seed: Dictionary, budget: int) -> Dictionary:
 	if Domain.live(view):
-		return _find_live(view, cards, case_data, listener, budget, false, {}, {})
+		return _find_live(view, cards, case_data, listener, budget, false, {}, {}, int(seed.get("evil", 0)))
 	var ids: Array = Solver.person_ids(view)
 	var evil: Array = ids.filter(func(id): return seed.evil & (1 << ids.find(id)))
 	var good: Array = ids.filter(func(id): return not seed.evil & (1 << ids.find(id)))
@@ -274,7 +322,7 @@ static func _swaps(view: Dictionary, cards: Array, case_data: Dictionary, listen
 				return {"world": candidate, "tested": tested, "exhausted": false}
 	return {"world": {}, "tested": tested, "exhausted": false} # swaps are never an exhaustive proof
 
-static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listener: Dictionary, budget: int, want: bool, positions: Dictionary, answers: Dictionary) -> Dictionary:
+static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listener: Dictionary, budget: int, want: bool, positions: Dictionary, answers: Dictionary, seed_evil: int = 0) -> Dictionary:
 	var tested = 0
 	# A candidate's constraint check is independent of which person's alignment
 	# is being queried. Reuse only checks the search actually elects to perform:
@@ -292,36 +340,22 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 		matches[key] = {"inputs": inputs.duplicate(true), "table": table, "queries": {}}
 	# Repeating the exact bounded query reuses its original result, including
 	# tested counts and exhaustion. No larger budget or other target inherits it.
-	var query_key = JSON.stringify([value.conclusion, budget, want])
+	var query_key = JSON.stringify([value.conclusion, budget, want, seed_evil])
 	if reuse_matches and matches[key].queries.has(query_key):
 		Profiler.count("candidate_query_cache_hit")
 		return matches[key].queries[query_key].duplicate(true)
 	var table: PackedByteArray = matches[key].table if reuse_matches else PackedByteArray()
 	var use_table: bool = reuse_matches and not table.is_empty()
-	var target_idx: int = Solver.person_index(view, value.conclusion.target)
-	var type: String = value.conclusion.type
-	var has_curse: bool = view.get("chronology", {}).has("curse")
-	var target_bit: int = (1 << target_idx) if target_idx >= 0 else 0
 	var hits = 0
 	var misses = 0
 	# Role ownership is a property of the selected reports and private knowledge,
 	# independent of the candidate's alignment/modifier assignment.
 	var claims_ok: bool = Domain.claims_compatible(cards, listener.knowledge)
+	if not claims_ok:
+		return _finish_live(key, query_key, {}, 0, true, 0, 0)
 
-	# Enumerate the public legal domain, not worlds filtered by the referee. The
-	# same hard test budget applies, and exhaustion alone can certify a conclusion.
-	for candidate in Solver.universe(view):
-		var holds_val: bool
-		if not has_curse and target_idx >= 0:
-			match type:
-				"evil", "suspicious": holds_val = (candidate.evil & target_bit) != 0
-				"good": holds_val = (candidate.evil & target_bit) == 0
-				"marked": holds_val = candidate.marked == target_idx
-				_: holds_val = Solver.holds(view, candidate, value.conclusion)
-		else:
-			holds_val = Solver.holds(view, candidate, value.conclusion)
-		if holds_val != want:
-			continue
+	var candidates: Array = _ordered_live_candidates(view, cards, value, listener, want, positions, answers, seed_evil)
+	for candidate in candidates:
 		if tested >= budget:
 			return _finish_live(key, query_key, {}, tested, false, hits, misses)
 		tested += 1
@@ -338,6 +372,242 @@ static func _find_live(view: Dictionary, cards: Array, value: Dictionary, listen
 		if fits:
 			return _finish_live(key, query_key, candidate, tested, false, hits, misses)
 	return _finish_live(key, query_key, {}, tested, true, hits, misses)
+
+static func _ordered_live_candidates(view: Dictionary, cards: Array, value: Dictionary, listener: Dictionary, want: bool, positions: Dictionary, answers: Dictionary, seed_evil: int) -> Array:
+	var universe: Array = Solver.universe(view)
+	if universe.is_empty():
+		return []
+	var ids: Array = Solver.person_ids(view)
+	var n_people: int = ids.size()
+	var target_idx: int = Solver.person_index(view, value.conclusion.target)
+	var type: String = value.conclusion.type
+	var has_curse: bool = view.get("chronology", {}).has("curse")
+	var target_bit: int = (1 << target_idx) if target_idx >= 0 else 0
+	var plain: bool = not has_curse and value.get("temporal_positions", []).is_empty()
+	var must_be_good: int = 0
+	var must_be_evil: int = 0
+	var no_delusion_mask: int = 0
+	var marked_req: int = -2
+	var unmarked_mask: int = 0
+	var demon_req: int = -2
+	var not_demon_mask: int = 0
+	var req_modifier: String = ""
+	var rumor_checks: Array = []
+	var pos_marked_mask: int = 0
+	var pos_demon_mask: int = 0
+	var neg_demon_mask: int = 0
+	if plain:
+		for id in listener.knowledge.get("good", []):
+			var idx: int = Solver.person_index(view, id)
+			if idx >= 0:
+				must_be_good |= (1 << idx)
+		for id in positions:
+			var idx: int = Solver.person_index(view, id)
+			var pos_val: String = positions[id]
+			if idx < 0:
+				if pos_val in ["evil", "marked", "unmarked", "demon", "minion"]:
+					return []
+				continue
+			match pos_val:
+				"good":
+					must_be_good |= (1 << idx)
+				"evil":
+					must_be_evil |= (1 << idx)
+				"marked":
+					if marked_req >= 0 and marked_req != idx:
+						return []
+					marked_req = idx
+				"unmarked":
+					unmarked_mask |= (1 << idx)
+				"demon":
+					if demon_req >= 0 and demon_req != idx:
+						return []
+					demon_req = idx
+					must_be_evil |= (1 << idx)
+				"minion":
+					must_be_evil |= (1 << idx)
+					not_demon_mask |= (1 << idx)
+		for card in cards:
+			if card.get("quoted", false):
+				continue
+			if card.kind == "report":
+				var src_idx: int = Solver.person_index(view, card.source)
+				if src_idx >= 0:
+					must_be_good |= (1 << src_idx)
+					if not card.get("testimony_only", false):
+						no_delusion_mask |= (1 << src_idx)
+				var role: String = card.get("role", "")
+				var d: Dictionary = card.get("data", {})
+				if role in ["dowser", "hearthwitch"] and int(d.get("count", 0)) > 0:
+					for pid in d.get("group", d.get("nbrs", [])):
+						var pidx: int = Solver.person_index(view, pid)
+						if pidx >= 0:
+							pos_marked_mask |= (1 << pidx)
+				elif role == "seer":
+					for pid in d.get("pair", []):
+						var pidx: int = Solver.person_index(view, pid)
+						if pidx >= 0:
+							if d.get("yes", false):
+								pos_demon_mask |= (1 << pidx)
+								pos_marked_mask |= (1 << pidx)
+							else:
+								neg_demon_mask |= (1 << pidx)
+				elif role == "archivist":
+					for pid in d.get("pair", []):
+						var pidx: int = Solver.person_index(view, pid)
+						if pidx >= 0:
+							neg_demon_mask |= (1 << pidx)
+				elif role == "nightwatch":
+					for pid in d.get("seen", []):
+						var pidx: int = Solver.person_index(view, pid)
+						if pidx >= 0:
+							pos_demon_mask |= (1 << pidx)
+				elif role == "rumormonger" and not card.get("testimony_only", false):
+					var sec: String = d.get("secret", "marked")
+					if req_modifier != "" and req_modifier != sec:
+						return []
+					req_modifier = sec
+					var pair_mask: int = 0
+					for pid in d.get("pair", []):
+						var pidx: int = Solver.person_index(view, pid)
+						if pidx >= 0:
+							pair_mask |= (1 << pidx)
+							pos_marked_mask |= (1 << pidx)
+					var ans_mask: int = 0
+					for pid in answers.get(card.id, {}).get("positive", []):
+						var pidx: int = Solver.person_index(view, pid)
+						if pidx >= 0:
+							ans_mask |= (1 << pidx)
+					rumor_checks.append({"source": src_idx, "pair": pair_mask, "ans": ans_mask})
+			elif card.kind == "sighting":
+				for pid in card.get("subjects", [card.get("subject", "")]):
+					var pidx: int = Solver.person_index(view, pid)
+					if pidx >= 0:
+						pos_demon_mask |= (1 << pidx)
+		if (must_be_good & must_be_evil) != 0:
+			return []
+		if marked_req >= 0 and ((must_be_evil & (1 << marked_req)) != 0 or (unmarked_mask & (1 << marked_req)) != 0):
+			return []
+		if demon_req >= 0 and ((must_be_good & (1 << demon_req)) != 0 or (not_demon_mask & (1 << demon_req)) != 0):
+			return []
+	var needs_demon: bool = type in ["demon", "notdemon", "minion", "misled", "unreliable"] or demon_req >= 0 or not_demon_mask != 0 or view.get("live_activity", false)
+	var needs_marked: bool = type in ["marked", "misled", "unreliable"] or marked_req >= 0 or unmarked_mask != 0
+	var needs_holders: bool = type == "secret_mod" or (req_modifier != "" and req_modifier != "marked")
+	for card in cards:
+		var role: String = card.get("role", "")
+		if role in ["seer", "archivist", "gravedigger"] or card.get("kind", "") == "totem" or card.get("testimony_only", false):
+			needs_demon = true
+		if role in ["seer", "dowser", "surveyor", "rumormonger", "martyr", "gravedigger"] or card.get("testimony_only", false):
+			needs_marked = true
+		if role == "rumormonger" and card.get("data", {}).get("secret", "marked") != "marked":
+			needs_holders = true
+	var mediums: int = Solver.Roles.relay_mediums(ids, cards)
+	var walkers: int = Solver.Roles.sleepwalk_claimants(ids, cards)
+	var bits: Dictionary = Solver.world_bits(view)
+	var evil_arr: PackedInt64Array = bits.evil
+	var deluded_arr: PackedInt64Array = bits.deluded
+	var fast_holds: bool = not has_curse and target_idx >= 0 and type in ["evil", "suspicious", "good"]
+	var want_evil_bit: bool = (want if type != "good" else not want) if fast_holds else false
+	var seen_eq: Dictionary = {}
+	var by_team: Dictionary = {}
+	var team_order: Array = []
+	var n1: int = n_people + 2
+	var holder_mult: int = (1 << (n_people + 3)) if (needs_holders or mediums != 0 or walkers != 0) else 1
+	for i in range(universe.size()):
+		var evil_bits: int = evil_arr[i]
+		if fast_holds:
+			if ((evil_bits & target_bit) != 0) != want_evil_bit:
+				continue
+		if plain:
+			if (evil_bits & must_be_good) != 0 or (evil_bits & must_be_evil) != must_be_evil:
+				continue
+			if no_delusion_mask != 0 and (deluded_arr[i] & no_delusion_mask) != 0:
+				continue
+		var candidate: Dictionary = universe[i]
+		if not fast_holds:
+			var holds_val: bool
+			if not has_curse and target_idx >= 0 and type == "marked":
+				holds_val = candidate.marked == target_idx
+			else:
+				holds_val = Solver.holds(view, candidate, value.conclusion)
+			if holds_val != want:
+				continue
+		var mod_str: String = candidate.get("modifier", "marked")
+		var holders_bits: int = int(candidate.get("holders", (1 << candidate.marked) if candidate.marked >= 0 else 0))
+		if plain:
+			if marked_req >= 0 and candidate.marked != marked_req:
+				continue
+			if unmarked_mask != 0 and candidate.marked >= 0 and (unmarked_mask & (1 << candidate.marked)) != 0:
+				continue
+			var d_idx: int = int(candidate.get("demon", -1))
+			if demon_req >= 0 and d_idx != demon_req:
+				continue
+			if not_demon_mask != 0 and d_idx >= 0 and (not_demon_mask & (1 << d_idx)) != 0:
+				continue
+			if req_modifier != "" and mod_str != req_modifier:
+				continue
+			var rumor_ok: bool = true
+			for rm in rumor_checks:
+				if (rm.source >= 0 and (holders_bits & ~(1 << rm.source)) == 0) or (holders_bits & rm.pair) == 0 or (rm.ans != 0 and (holders_bits & rm.ans) != rm.ans):
+					rumor_ok = false
+					break
+			if not rumor_ok:
+				continue
+		var conv_part: int = int(candidate.get("converted", -1)) if has_curse else -1
+		var demon_part: int = int(candidate.get("demon", -1)) if needs_demon else -1
+		var marked_part: int = int(candidate.marked) if needs_marked else -1
+		var holder_part: int = 0
+		if needs_holders:
+			holder_part = (Solver.C.SECRET_MOD_LIST.find(mod_str) + 1) * (1 << n_people) + holders_bits
+		elif mediums != 0 and mod_str == "delusional" and (holders_bits & mediums) != 0:
+			holder_part = (1 << n_people) + (holders_bits & mediums)
+		elif walkers != 0 and mod_str == "sleepwalker" and (holders_bits & walkers) != 0:
+			holder_part = (2 << n_people) + (holders_bits & walkers)
+		var eq_key: int = (((evil_bits * n1 + conv_part + 1) * n1 + demon_part + 1) * n1 + marked_part + 1) * holder_mult + holder_part
+		if seen_eq.has(eq_key):
+			continue
+		seen_eq[eq_key] = true
+		var team_key: int = evil_bits * n1 + conv_part + 1
+		if not by_team.has(team_key):
+			by_team[team_key] = []
+			team_order.append({"key": team_key, "evil": evil_bits})
+		by_team[team_key].append(candidate)
+	if team_order.is_empty():
+		return []
+	var person_scores = PackedFloat64Array()
+	person_scores.resize(n_people)
+	for i in range(n_people):
+		person_scores[i] = _live_person_priority(ids[i], target_idx == i, cards, listener, want, type)
+	for entry in team_order:
+		var t_evil: int = entry.evil
+		var s: float = 0.0
+		for i in range(n_people):
+			if t_evil & (1 << i):
+				s += person_scores[i]
+		if seed_evil != 0 and Solver.popcount(t_evil ^ seed_evil) == 2:
+			s += 100.0
+		entry["score"] = s
+		var bucket: Array = by_team[entry.key]
+		if bucket.size() > 1 and (pos_marked_mask != 0 or pos_demon_mask != 0 or neg_demon_mask != 0 or needs_marked or needs_demon):
+			bucket.sort_custom(func(a, b):
+				var va = _variant_priority(a, target_idx, want, type, pos_marked_mask, pos_demon_mask, neg_demon_mask)
+				var vb = _variant_priority(b, target_idx, want, type, pos_marked_mask, pos_demon_mask, neg_demon_mask)
+				return va > vb if not is_equal_approx(va, vb) else int(a.get("__i", 0)) < int(b.get("__i", 0)))
+	team_order.sort_custom(func(a, b):
+		return a.score > b.score if not is_equal_approx(a.score, b.score) else a.key < b.key)
+	var ordered: Array = []
+	var round_idx: int = 0
+	var active_teams: int = team_order.size()
+	while active_teams > 0:
+		active_teams = 0
+		for entry in team_order:
+			var bucket: Array = by_team[entry.key]
+			if round_idx < bucket.size():
+				ordered.append(bucket[round_idx])
+				if round_idx + 1 < bucket.size():
+					active_teams += 1
+		round_idx += 1
+	return ordered
 
 static func _finish_live(key: int, query_key: String, world: Dictionary, tested: int, exhausted: bool, hits: int, misses: int) -> Dictionary:
 	# Instrumentation stays outside the candidate loop, including when disabled.

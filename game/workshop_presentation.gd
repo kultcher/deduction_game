@@ -264,6 +264,8 @@ const STANCE_ONLY = [
 	"These observations make your explanation convincing to me, though an alternative remains logically possible.",
 	"Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation.",
 	"I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation.",
+	"Your explanation fits what I considered, and none of the alternatives I checked held up.",
+	"I found your explanation coherent, though I am not yet convinced by its support.",
 	"The supplied evidence weighs against that conclusion.",
 ]
 
