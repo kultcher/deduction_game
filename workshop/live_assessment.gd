@@ -727,23 +727,24 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 		return _count_valid(data.get("count"), 4 if rdef.count_mode == "blocks" else (ids.size() - 1))
 	elif rdef != null and rdef.shape == "NIGHT_ROUTE":
 		return data.get("block") in C.BLOCKS and data.get("seen") is Array and (data.seen.is_empty() or _group_valid(data.seen, ids)) and receipt.source not in data.seen
+	elif rdef != null and rdef.shape == "PING":
+		if not _group_valid(data.get("pair"), ids) or data.pair.size() != 2 or receipt.source in data.pair:
+			return false
+		return data.get("yes") is bool
+	elif rdef != null and rdef.shape == "SECRET_PAIR":
+		return _group_valid(data.get("pair"), ids) and data.get("pair", []).size() == 2 and data.get("secret") in modifiers
+	elif rdef != null and rdef.shape == "SOCIAL_PAIR":
+		return receipt.observed_at.phase == "night" and receipt.observed_at.day >= 1 and data.get("subject") in ids and data.subject != receipt.source and data.get("trusts") in ids and data.trusts != data.subject and data.get("suspects") in ids and data.suspects != data.subject
 	match receipt.content.role:
 		"warden":
 			return data.get("target") in ids and data.target != receipt.source and receipt.observed_at.day >= 1 and receipt.observed_at.phase == "night"
-		"psychologist":
-			return receipt.observed_at.phase == "night" and receipt.observed_at.day >= 1 and data.get("subject") in ids and data.subject != receipt.source and data.get("trusts") in ids and data.trusts != data.subject and data.get("suspects") in ids and data.suspects != data.subject
 		"veteran":
 			return _count_valid(data.get("attacked"), receipt.observed_at.day) and data.attacked == receipt.observed_at.day and data.attacked >= 1 and data.get("block") in C.BLOCKS
 		"martyr":
 			return data.get("target") in ids and data.target != receipt.source and ((data.get("chosen") == true and not data.get("evil", false)) or (data.get("evil") == true and not data.get("chosen", false)))
 		"sexton":
 			return _count_valid(data.get("night"), receipt.observed_at.day) and data.night == receipt.observed_at.day and data.night >= 1
-		"seer":
-			if not _group_valid(data.get("pair"), ids) or data.pair.size() != 2 or receipt.source in data.pair:
-				return false
-			return data.get("yes") is bool
-		_:
-			return _group_valid(data.get("pair"), ids) and data.get("pair", []).size() == 2 and data.get("secret") in modifiers
+	return false
 
 static func _group_valid(value, ids: Array) -> bool:
 	if not value is Array or value.is_empty():

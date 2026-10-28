@@ -592,11 +592,11 @@ static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictio
 			_:
 				var reads_evil: bool = (world.evil & group_mask) != 0 or (rdef.marked_registers and world.marked >= 0 and (group_mask & (1 << world.marked)) != 0)
 				return reads_evil if Domain.C.ROLES.get(data.role, {}).get("align") == "evil" else (world.evil & group_mask) == 0
-	match card.role:
-		"seer":
-			var demon: bool = world.get("demon", -1) >= 0 and (pair & (1 << int(world.demon))) != 0
-			return demon or (pair & ~evil) != 0 if data.yes else not demon
-		"rumormonger": return world.get("modifier", "marked") == data.secret and (int(world.get("holders", 1 << world.marked)) & pair) != 0
+	if rdef != null and rdef.shape == "PING":
+		var demon: bool = world.get("demon", -1) >= 0 and (pair & (1 << int(world.demon))) != 0
+		return demon or (pair & ~evil) != 0 if data.yes else not demon
+	if rdef != null and rdef.shape == "SECRET_PAIR":
+		return world.get("modifier", "marked") == data.secret and (int(world.get("holders", 1 << world.marked)) & pair) != 0
 	return _report_content(view, world, card, {})
 
 ## What a report says, given a valid source (see source_valid): does it hold here?

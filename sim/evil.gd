@@ -209,21 +209,10 @@ static func _fake_dead_reading(w, n, dd, role: String, s: String, night: int) ->
 		var c = goods.filter(func(x): return not (x.id in not_ids))
 		return w.pick(c) if not c.is_empty() else null
 	var d = w.by_id[w.demon_id] if w.by_id.has(w.demon_id) else null
-	var team_mates: Array = mates(w, n).filter(func(x): return x.alive)
 	var e = {"role": role, "day": night, "fake": true}
 	var rdef = C.role_def(role)
 	if rdef != null:
 		return rdef.fake_medium_reading(w, n, dd, s, sg, d, goods, other, e, _demon_implicated(w))
-	match role:
-		"psychologist":
-			var subj = other.call([s])
-			var tr = w.pick(team_mates) if not team_mates.is_empty() else null
-			if subj == null or tr == null:
-				return {}
-			var sus_id: String = s if w.chance(0.6) else (other.call([subj.id]).id if other.call([subj.id]) != null else s)
-			e["data"] = {"subject": subj.id, "trusts": tr.id, "suspects": sus_id}
-			e["text"] = "I read %s: they trust %s most, and suspect %s most" % [subj.name, tr.name, w.by_id[sus_id].name]
-			return {"entry": e, "why": "the dead Psychologist %s 'read' trust in %s" % [dd.id, tr.id], "frames": true}
 	return {}
 
 static func ensure_scapegoat(w) -> void:
@@ -494,19 +483,9 @@ static func gift_live_tonight(w, n) -> bool:
 	if not n.claim_public:
 		return true
 	var r: String = n.claimed_role
-	if not C.ROLES.has(r):
-		return true
 	var rdef = C.role_def(r)
 	if rdef != null:
 		return rdef.gift_live_tonight(w, n)
-	if C.ROLES[r].get("first_night", false):
-		return w.day == 0
-	if r == "veteran":
-		return false  # only worth it as part of an attack (see poison_for_kill)
-	if r == "martyr":
-		return w.day >= 1  # poison lasts through tomorrow's hanging
-	if r == "sexton":
-		return false  # the knell is tolled in the evening, after tonight's poison has worn off
 	return true
 
 static func choose_poison_target(w, exclude: String = "") -> String:
@@ -605,45 +584,14 @@ static func make_fake_info(w) -> void:
 		var rq: Dictionary = n.gift_request
 		var asked: Array = rq.get("targets", []) if rq.get("night", -1) == w.day and rq.get("role", "") == bluff else []
 		var bdef = C.role_def(bluff)
-		if bdef != null:
-			bdef.on_evil_agreed_request(w, n, asked)
-			if bdef.kind != "info":
-				continue
-			var gen: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
-			if gen.is_empty():
-				continue
-			entry = gen["entry"]
-			why = gen["why"]
-		else:
-			match bluff:
-				"rumormonger":
-					if w.day != 0:
-						continue
-					var other = w.pick(w.living_good().filter(func(x): return x.id != s))
-					var pair = w.shuffled([mate.id, other.id])
-					var sk: String = w.pick(C.SECRET_MOD_LIST)
-					why = "lends teammate %s a harmless secret" % mate.id
-					entry = {"data": {"pair": pair, "secret": sk}, "text": "I heard that one of %s is %s" % [w._names(pair), w._secret_phrase(sk)]}
-				"psychologist":
-					var talked: Array = n.talked_today.filter(func(i): return w.by_id[i].alive and i != s)
-					if talked.is_empty() or not w.by_id[s].alive:
-						continue
-					var subj: String = talked[w.rng.randi_range(0, talked.size() - 1)]
-					var tr = w.pick(w.living().filter(func(x): return x.id != subj and x.id != s))
-					if tr == null:
-						continue
-					why = "says %s suspects scapegoat %s most" % [subj, s]
-					entry = {"data": {"subject": subj, "trusts": tr.id, "suspects": s},
-						"text": "I read %s: they trust %s most, and suspect %s most" % [w.by_id[subj].name, tr.name, w.by_id[s].name]}
-				"martyr":
-					if w.day == 0 or plan.has("martyr_bluff_" + n.id):
-						continue
-					plan["martyr_bluff_" + n.id] = true
-					var tgt = mate if mate != n else w.pick(w.living_good())
-					why = "'chooses' %s, vouching for them" % tgt.id
-					entry = {"data": {"target": tgt.id, "chosen": true}, "text": "I have given my life over for %s, should the town ever hang them" % tgt.name}
-				_:
-					continue
+		if bdef == null:
+			continue
+		bdef.on_evil_agreed_request(w, n, asked)
+		var gen: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
+		if gen.is_empty():
+			continue
+		entry = gen["entry"]
+		why = gen["why"]
 		entry["day"] = w.day
 		entry["role"] = bluff
 		entry["shared"] = false

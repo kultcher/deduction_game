@@ -1181,49 +1181,15 @@ func attack_outcome(v, protected: Dictionary) -> String:
 ## Whether the Sexton tolls tonight, and whether it works (a broken gift tolls for nothing).
 func _sexton_knell() -> bool:
 	var sx = living_with_role("sexton")
-	if sx == null or sx.is_evil() or sx.gift_used or day < 1 or living().size() >= 5:
-		return false
-	var toll = Mind.decide(self, sx, "sexton_toll", {"few_left": 0.35, "deaths": 0.1 * npcs.filter(func(m): return not m.alive).size(),
-		"base": 0.0}, "Toll the death knell tonight (fewer than five alive)?")
-	if not toll:
-		return false
-	sx.gift_used = true
-	knell_night = day
-	public_event("knell", [sx.id], sx.id)
-	if sx.gift_broken():
-		dlog.add("knell", sx.id, "", {"works": false}, "%s tolls the death knell, but their gift is broken: nothing stops tonight." % sx.name)
-		knell_night = -1
-		return false
-	dlog.add("knell", sx.id, "", {"works": true}, "%s tolls the death knell: no gift that walks abroad works tonight." % sx.name)
-	_add_info(sx, {"data": {"night": day}, "true": true, "text": "I tolled the death knell on night %d" % day}, true)
-	return true
+	return C.role_def("sexton").try_knell(self, sx, Mind)
 
 ## The Veteran survives their one attack and learns the last block the attacker came through.
 func _veteran_survives(v) -> void:
-	v.vet_used = true
-	var path: Array = demon().night_path
-	var from: String = path[path.size() - 2] if path.size() >= 2 else v.home_block
-	_add_info(v, {"data": {"attacked": day, "block": from}, "true": true,
-		"text": "the demon came for me on night %d and I lived; it came by way of %s" % [day, C.block_name(from)]})
+	C.role_def("veteran").on_survive_attack(self, v)
 
 ## The Martyr chooses once, only someone they trust well.
 func _martyr_choice(mart) -> void:
-	var best = ""
-	var best_t = 0.0
-	for m in living():
-		if m == mart:
-			continue
-		var t: float = mart.npc_trust.get(m.id, 0.5) - Mind.susp(mart, m.id) * 0.5 + mart.protect_pref.get(m.id, 0.0) * 0.5
-		if t > best_t:
-			best_t = t
-			best = m.id
-	if best == "" or best_t < 0.62:
-		dlog.think(mart.id, "martyr_pick", "Martyr: nobody trusted enough yet (best %s at %.2f; needs 0.62)." % [best, best_t])
-		return
-	mart.martyr_target = best
-	dlog.add("martyr_choice", mart.id, best, {"score": snappedf(best_t, 0.01)}, "%s (Martyr) secretly chooses %s." % [mart.name, by_id[best].name])
-	_add_info(mart, {"data": {"target": best, "chosen": true}, "true": not mart.gift_broken(),
-		"text": "I have given my life over for %s, should the town ever hang them" % by_id[best].name})
+	C.role_def("martyr").pick_targets(self, mart, Mind)
 
 ## Public hearth eligibility: Demon victims only; revisit the latest after all are visited.
 func _medium_choice(m) -> String:
@@ -1451,44 +1417,11 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 	var broken: bool = n.gift_broken()
 	var entry = {}
 	var rdef = C.role_def(r)
-	if rdef != null:
-		entry = rdef.generate_reading(self, n, {"watch_block": watch_block, "medium_t": medium_t, "lamp": lamp}, Mind)
-		if entry.is_empty():
-			return
-	else:
-		match r:
-			"rumormonger":
-				var holders: Array = npcs.filter(func(m): return m != n and m.secret_mod != "")
-				var ok = true
-				var pair: Array = []
-				var sk = ""
-				if holders.is_empty() or broken:
-					var plain = npcs.filter(func(m): return m != n and m.secret_mod == "")
-					pair = shuffled(plain).slice(0, 2).map(func(m): return m.id)
-					sk = pick(C.SECRET_MOD_LIST)
-					ok = false
-				else:
-					var h = pick(holders)
-					sk = h.secret_mod
-					var other = pick(npcs.filter(func(m): return m != n and m != h))
-					pair = shuffled([h.id, other.id])
-				entry = {"data": {"pair": pair, "secret": sk}, "true": ok,
-					"text": "I heard that one of %s is %s" % [_names(pair), _secret_phrase(sk)]}
-			"psychologist":
-				var talked: Array = n.talked_today.filter(func(i): return by_id[i].alive and i != n.id)
-				if talked.is_empty():
-					return
-				var subj = by_id[pick(talked)]
-				var res = _psych_read(subj)
-				var ok = true
-				if broken:
-					var others: Array = living().filter(func(m): return m != subj).map(func(m): return m.id)
-					res = {"trusts": pick(others), "suspects": pick(others)}
-					ok = false
-				entry = {"data": {"subject": subj.id, "trusts": res["trusts"], "suspects": res["suspects"]}, "true": ok,
-					"text": "I read %s: they trust %s most, and suspect %s most" % [subj.name, by_id[res["trusts"]].name, by_id[res["suspects"]].name]}
-			_:
-				return
+	if rdef == null:
+		return
+	entry = rdef.generate_reading(self, n, {"watch_block": watch_block, "medium_t": medium_t, "lamp": lamp}, Mind)
+	if entry.is_empty():
+		return
 	if broken:
 		entry["why"] = "%s" % ("poisoned" if n.poisoned else "delusional")
 	_add_info(n, entry)

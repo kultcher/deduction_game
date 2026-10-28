@@ -894,29 +894,6 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 	var rdef = C.role_def(r)
 	if rdef != null:
 		return rdef.info_effects(w, listener, source, entry, weight, fresh, _mind())
-	var own = source == listener
-	var src_name: String = "my own" if own else source.name + "'s"
-	var src_bare: String = "I" if own else source.name
-	var tag = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	match r:
-		"rumormonger":
-			# Secret-holders are good, so "one of these two carries a secret" speaks for both a little.
-			for i in d["pair"]:
-				if i != listener.id:
-					_eff(effs, i, -0.12, tag + ": rumormonger pair probably good", "", not own)
-		"martyr":
-			if d.get("chosen", false) and d["target"] != listener.id:
-				_eff(effs, d["target"], -0.2, tag + ": the Martyr would die for them", "", not own)
-			elif d.get("evil", false) and d["target"] != listener.id:
-				_eff(effs, d["target"], 1.0, tag + ": hanged and the Martyr lived: evil", "", false)
-		"veteran":
-			# The demon came by way of that block: a little toward those who live there.
-			for m in w.living():
-				if m != listener and m != source and m.home_block == d.get("block", ""):
-					_eff(effs, m.id, 0.12, tag + ": the demon came by way of their block",
-						"the demon came by way of %s, where they live" % C.block_name(d["block"]), not own)
-		"psychologist":
-			pass # Accurate knowledge of an opinion does not make it alignment evidence.
 	return effs
 
 static func update_from_own_info(w) -> void:
@@ -1250,9 +1227,6 @@ static func reading_strength(e: Dictionary, t_id: String) -> float:
 	var rdef = C.role_def(e.get("role", ""))
 	if rdef != null:
 		return rdef.reading_strength(d, t_id)
-	match e.get("role", ""):
-		"martyr":
-			return 0.9 if d.get("evil", false) else 0.0
 	return 0.3
 
 ## Evil: an unshared fake reading of theirs that points at t, or {}.

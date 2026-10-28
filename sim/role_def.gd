@@ -21,7 +21,7 @@ var day: bool = false
 var minion: bool = false
 
 # Reading shape & solver metadata
-# Shapes: "GROUP_COUNT", "ROLE_AT_SITE", "PING", "ROLE_IN_GROUP", "NIGHT_ROUTE", "NIGHT_EVENT", "NONE"
+# Shapes: "GROUP_COUNT", "ROLE_AT_SITE", "PING", "ROLE_IN_GROUP", "SECRET_PAIR", "SOCIAL_PAIR", "NIGHT_ROUTE", "NIGHT_EVENT", "NONE"
 var shape: String = "NONE"
 var marked_registers: bool = false
 var red_herring_registers: bool = false
@@ -121,6 +121,8 @@ func clears(d: Dictionary) -> Array:
 	match shape:
 		"PING":
 			return [] if d.get("yes", false) else d.get("pair", [])
+		"SECRET_PAIR":
+			return d.get("pair", [])
 		"GROUP_COUNT":
 			if count_mode == "group":
 				return group_of(d) if d.get("count", 0) == 0 else []
@@ -220,6 +222,16 @@ func request_target_text(w, targets: Array, _block_name_fn: Callable) -> String:
 ## Hook called in Evil.make_fake_info when an evil bluffer has an agreed player request tonight.
 func on_evil_agreed_request(_w, _n, _asked: Array) -> void:
 	pass
+
+
+## Hook called when a Veteran survives their first demon attack.
+func on_survive_attack(_w, _v) -> void:
+	pass
+
+
+## Hook called when the Sexton considers tolling the death knell in the evening.
+func try_knell(_w, _sx, _mind) -> bool:
+	return false
 
 
 # ---------------------------------------------------------------- alibis, sightings & gift answers (mind.gd)

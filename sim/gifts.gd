@@ -27,9 +27,6 @@ static func implicated(e: Dictionary) -> Array:
 	var rdef = C.role_def(role)
 	if rdef != null:
 		return rdef.implicated(d)
-	match role:
-		"martyr":
-			return [d["target"]] if d.get("evil", false) else []
 	return []
 
 ## People the reading speaks for.
@@ -39,11 +36,6 @@ static func clears(e: Dictionary) -> Array:
 	var rdef = C.role_def(role)
 	if rdef != null:
 		return rdef.clears(d)
-	match role:
-		"rumormonger":
-			return d.get("pair", [])
-		"martyr":
-			return [d["target"]] if d.get("chosen", false) else []
 	return []
 
 ## Everyone the reading names.
@@ -72,15 +64,4 @@ static func short_text(role: String, d: Dictionary, src: String, nm: Callable) -
 	var rdef = C.role_def(role)
 	if rdef != null:
 		return rdef.short_text(d, src, nm)
-	match role:
-		"rumormonger":
-			return "%s Rumormonger: %s in %s" % [src, C.secret_name(d.get("secret", "")), _names(d.get("pair", []), nm)]
-		"psychologist":
-			return "%s Psychologist: %s trusts %s, suspects %s" % [src, nm.call(d.get("subject", "")), nm.call(d.get("trusts", "")), nm.call(d.get("suspects", ""))]
-		"veteran":
-			return "%s Veteran: attacked, from %s" % [src, C.block_name(d.get("block", ""))]
-		"martyr":
-			if d.get("evil", false):
-				return "%s Martyr: %s was evil" % [src, nm.call(d.get("target", ""))]
-			return "%s Martyr: chose %s" % [src, nm.call(d.get("target", ""))]
 	return "%s %s reading" % [src, C.role_name(role)]

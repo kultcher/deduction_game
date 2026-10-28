@@ -1,4 +1,4 @@
-## Test suite for the RoleDef / RoleRegistry system (Seer, Warden, ROLE_IN_GROUP: Clerk/Archivist/Gravedigger, ROLE_AT_SITE: Dowser/Hearthwitch/Medium, and Count/Route: Surveyor/Lamplighter/Night Watch).
+## Test suite for the complete RoleDef / RoleRegistry system (all 21 roles in C.ROLES).
 ##   godot --headless --path . --script res://tools/test_role_def_poc.gd
 extends SceneTree
 
@@ -39,36 +39,30 @@ func _init() -> void:
 	_test_role_in_group_hooks()
 	_test_role_at_site_hooks()
 	_test_count_and_route_hooks()
+	_test_final_roles_hooks()
 	print("RoleDef PoC: %d checks; failures: %d" % [checks, fails])
 	quit(1 if fails else 0)
 
 
 func _test_registry_and_metadata() -> void:
-	var seer_def = C.role_def("seer")
-	var warden_def = C.role_def("warden")
-	var clerk_def = C.role_def("clerk")
-	var arch_def = C.role_def("archivist")
-	var grave_def = C.role_def("gravedigger")
-	var dowser_def = C.role_def("dowser")
-	var hearth_def = C.role_def("hearthwitch")
-	var medium_def = C.role_def("medium")
-	var surv_def = C.role_def("surveyor")
-	var lamp_def = C.role_def("lamplighter")
-	var watch_def = C.role_def("nightwatch")
-	_check(seer_def != null and seer_def.shape == "PING" and seer_def.marked_registers and seer_def.red_herring_registers, "Seer RoleDef registered with PING shape and registration flags")
-	_check(warden_def != null and warden_def.shape == "NIGHT_EVENT" and warden_def.night_walk and warden_def.can_cause_quiet_night, "Warden RoleDef registered with NIGHT_EVENT shape and protection flags")
-	_check(clerk_def != null and clerk_def.shape == "ROLE_IN_GROUP" and clerk_def.role_group_key == "pair" and clerk_def.role_target_pool == "good" and clerk_def.first_night, "Clerk RoleDef registered with ROLE_IN_GROUP shape and good pair metadata")
-	_check(arch_def != null and arch_def.shape == "ROLE_IN_GROUP" and arch_def.role_group_key == "pair" and arch_def.role_target_pool == "minion" and arch_def.first_night, "Archivist RoleDef registered with ROLE_IN_GROUP shape and minion pair metadata")
-	_check(grave_def != null and grave_def.shape == "ROLE_IN_GROUP" and grave_def.role_group_key == "executed" and grave_def.role_target_pool == "any" and grave_def.marked_registers and grave_def.requires_execution, "Gravedigger RoleDef registered with ROLE_IN_GROUP shape and executed metadata")
-	_check(dowser_def != null and dowser_def.shape == "ROLE_AT_SITE" and dowser_def.site_mode == "group_count" and dowser_def.site_group_key == "group" and dowser_def.day and dowser_def.marked_registers, "Dowser RoleDef registered with ROLE_AT_SITE group_count metadata")
-	_check(hearth_def != null and hearth_def.shape == "ROLE_AT_SITE" and hearth_def.site_mode == "group_count" and hearth_def.site_group_key == "nbrs" and hearth_def.marked_registers, "Hearthwitch RoleDef registered with ROLE_AT_SITE group_count metadata")
-	_check(medium_def != null and medium_def.shape == "ROLE_AT_SITE" and medium_def.site_mode == "hearth_relay" and medium_def.night_walk, "Medium RoleDef registered with ROLE_AT_SITE hearth_relay metadata")
-	_check(surv_def != null and surv_def.shape == "GROUP_COUNT" and surv_def.count_mode == "blocks" and surv_def.first_night and surv_def.marked_registers, "Surveyor RoleDef registered with GROUP_COUNT blocks metadata")
-	_check(lamp_def != null and lamp_def.shape == "GROUP_COUNT" and lamp_def.count_mode == "walkers" and lamp_def.night_walk, "Lamplighter RoleDef registered with GROUP_COUNT walkers metadata")
-	_check(watch_def != null and watch_def.shape == "NIGHT_ROUTE" and watch_def.night_walk, "Night Watch RoleDef registered with NIGHT_ROUTE metadata")
-	for rid in ["seer", "warden", "clerk", "archivist", "gravedigger", "dowser", "hearthwitch", "medium", "surveyor", "lamplighter", "nightwatch"]:
-		_check(C.role_def(rid).to_role_dict() == C.ROLES[rid], "%s RoleDef.to_role_dict() matches C.ROLES['%s'] exactly" % [rid, rid])
-	_check(C.role_def("rumormonger") == null, "Unmigrated role returns null from C.role_def() for incremental fallback")
+	_check(C.role_def("seer").shape == "PING" and C.role_def("seer").marked_registers and C.role_def("seer").red_herring_registers, "Seer RoleDef registered with PING shape and registration flags")
+	_check(C.role_def("warden").shape == "NIGHT_EVENT" and C.role_def("warden").night_walk and C.role_def("warden").can_cause_quiet_night, "Warden RoleDef registered with NIGHT_EVENT shape and protection flags")
+	_check(C.role_def("clerk").shape == "ROLE_IN_GROUP" and C.role_def("clerk").role_group_key == "pair" and C.role_def("clerk").role_target_pool == "good" and C.role_def("clerk").first_night, "Clerk RoleDef registered with ROLE_IN_GROUP shape and good pair metadata")
+	_check(C.role_def("archivist").shape == "ROLE_IN_GROUP" and C.role_def("archivist").role_group_key == "pair" and C.role_def("archivist").role_target_pool == "minion" and C.role_def("archivist").first_night, "Archivist RoleDef registered with ROLE_IN_GROUP shape and minion pair metadata")
+	_check(C.role_def("gravedigger").shape == "ROLE_IN_GROUP" and C.role_def("gravedigger").role_group_key == "executed" and C.role_def("gravedigger").role_target_pool == "any" and C.role_def("gravedigger").marked_registers and C.role_def("gravedigger").requires_execution, "Gravedigger RoleDef registered with ROLE_IN_GROUP shape and executed metadata")
+	_check(C.role_def("dowser").shape == "ROLE_AT_SITE" and C.role_def("dowser").site_mode == "group_count" and C.role_def("dowser").site_group_key == "group" and C.role_def("dowser").day and C.role_def("dowser").marked_registers, "Dowser RoleDef registered with ROLE_AT_SITE group_count metadata")
+	_check(C.role_def("hearthwitch").shape == "ROLE_AT_SITE" and C.role_def("hearthwitch").site_mode == "group_count" and C.role_def("hearthwitch").site_group_key == "nbrs" and C.role_def("hearthwitch").marked_registers, "Hearthwitch RoleDef registered with ROLE_AT_SITE group_count metadata")
+	_check(C.role_def("medium").shape == "ROLE_AT_SITE" and C.role_def("medium").site_mode == "hearth_relay" and C.role_def("medium").night_walk, "Medium RoleDef registered with ROLE_AT_SITE hearth_relay metadata")
+	_check(C.role_def("surveyor").shape == "GROUP_COUNT" and C.role_def("surveyor").count_mode == "blocks" and C.role_def("surveyor").first_night and C.role_def("surveyor").marked_registers, "Surveyor RoleDef registered with GROUP_COUNT blocks metadata")
+	_check(C.role_def("lamplighter").shape == "GROUP_COUNT" and C.role_def("lamplighter").count_mode == "walkers" and C.role_def("lamplighter").night_walk, "Lamplighter RoleDef registered with GROUP_COUNT walkers metadata")
+	_check(C.role_def("nightwatch").shape == "NIGHT_ROUTE" and C.role_def("nightwatch").night_walk, "Night Watch RoleDef registered with NIGHT_ROUTE metadata")
+	_check(C.role_def("rumormonger").shape == "SECRET_PAIR" and C.role_def("rumormonger").first_night, "Rumormonger RoleDef registered with SECRET_PAIR metadata")
+	_check(C.role_def("psychologist").shape == "SOCIAL_PAIR", "Psychologist RoleDef registered with SOCIAL_PAIR metadata")
+	_check(C.role_def("veteran").shape == "NIGHT_EVENT" and C.role_def("veteran").can_cause_quiet_night and is_equal_approx(C.role_def("veteran").quiet_night_effect, -0.06), "Veteran RoleDef registered with NIGHT_EVENT quiet night metadata")
+	_check(C.role_def("martyr").shape == "NIGHT_EVENT" and C.role_def("martyr").marked_registers, "Martyr RoleDef registered with NIGHT_EVENT metadata")
+	_check(C.role_def("sexton").shape == "NIGHT_EVENT", "Sexton RoleDef registered with NIGHT_EVENT metadata")
+	for rid in C.ROLES.keys():
+		_check(C.role_def(rid) != null and C.role_def(rid).to_role_dict() == C.ROLES[rid], "%s RoleDef.to_role_dict() matches C.ROLES['%s'] exactly" % [rid, rid])
 
 
 func _test_seer_hooks() -> void:
@@ -298,3 +292,52 @@ func _test_count_and_route_hooks() -> void:
 	var snap = g.workshop_snapshot([s_card, l_card, w_card], surv.id)
 	var prep = Assess.prepare(snap)
 	_check(not Solver.solve(prep.view, prep.view.cards).worlds.is_empty(), "Workshop solver/assessment validates Surveyor, Lamplighter, and Night Watch readings")
+
+
+func _test_final_roles_hooks() -> void:
+	var g = Game.new()
+	g.workshop_effects = false
+	g.log_dir = "user://test_logs"
+	g.new_case(9106, 7)
+	var w = g.w
+	var goods: Array = w.living_good()
+	var rumor = goods[0]
+	var psych = goods[1]
+	var vet = goods[2]
+	var martyr = goods[3]
+	var sexton = goods[4]
+	_give(w, rumor, "rumormonger")
+	_give(w, psych, "psychologist")
+	_give(w, vet, "veteran")
+	_give(w, martyr, "martyr")
+	_give(w, sexton, "sexton")
+
+	# 1. Rumormonger (SECRET_PAIR)
+	var rumor_r: Dictionary = C.role_def("rumormonger").generate_reading(w, rumor, {}, Mind)
+	_check(rumor_r.get("data", {}).get("pair", []).size() == 2 and rumor_r.get("data", {}).get("secret", "") in C.SECRET_MOD_LIST, "Rumormonger generate_reading produces valid secret pair")
+	var rumor_entry = {"role": "rumormonger", "day": 0, "data": rumor_r["data"], "text": rumor_r["text"]}
+	_check(Gifts.clears(rumor_entry) == rumor_r["data"]["pair"] and Gifts.implicated(rumor_entry).is_empty(), "Rumormonger SECRET_PAIR clears both members of the pair")
+
+	# 2. Psychologist (SOCIAL_PAIR)
+	psych.talked_today = [vet.id]
+	var psych_r: Dictionary = C.role_def("psychologist").generate_reading(w, psych, {}, Mind)
+	_check(psych_r.get("data", {}).get("subject", "") == vet.id and psych_r.get("data", {}).has("trusts") and psych_r.get("data", {}).has("suspects"), "Psychologist generate_reading reads talked subject's trust and suspicion")
+
+	# 3. Veteran, Martyr, Sexton (NIGHT_EVENT)
+	w.day = 1
+	w.demon().night_path = [w.demon().home_block, vet.home_block]
+	w._veteran_survives(vet)
+	_check(vet.vet_used and not vet.info_log.is_empty() and vet.info_log[-1]["data"].get("block", "") == w.demon().home_block, "Veteran on_survive_attack logs attacker approach block")
+
+	martyr.npc_trust[vet.id] = 0.9
+	martyr.suspicion[vet.id] = 0.0
+	w._martyr_choice(martyr)
+	_check(martyr.martyr_target == vet.id and not martyr.info_log.is_empty() and Gifts.clears(martyr.info_log[-1]) == [vet.id], "Martyr pick_targets chooses trusted townsperson and clears them")
+
+	sexton.claim_public = true
+	sexton.claimed_role = "sexton"
+	vet.claim_public = true
+	vet.claimed_role = "veteran"
+	martyr.claim_public = true
+	martyr.claimed_role = "martyr"
+	_check(not Evil.gift_live_tonight(w, sexton) and not Evil.gift_live_tonight(w, vet) and Evil.gift_live_tonight(w, martyr), "gift_live_tonight matches Veteran/Sexton (false) and Martyr on day >= 1 (true)")
