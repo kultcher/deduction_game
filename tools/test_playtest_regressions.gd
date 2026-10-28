@@ -17,6 +17,10 @@ func _init() -> void:
 	_public_sighting()
 	_survival()
 	_own_role()
+	_meeting_sighting_prefix_and_gallows()
+	_public_hearsay_and_self_gossip()
+	_approach_ui_visibility()
+	_workshop_merge_order_of_operations()
 	print("PLAYTEST REGRESSION FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -178,3 +182,74 @@ func _own_role() -> void:
 	n.history[g.w.time_key(1, C.NIGHT)] = "night:docks"
 	var on_way: String = C.route(n.home_block, "docks")[0]
 	_check(Argue._knows_false(g.w, n, {"t": "out", "who": n.id, "night": 1, "block": on_way}) == -1, "own knowledge recognizes sightings along the route, not just the destination")
+
+func _meeting_sighting_prefix_and_gallows() -> void:
+	var g = _game()
+	var w = g.w
+	var n = w.living_good()[0]
+	var target = w.living_good()[1]
+	var b = {"kind": "saw", "who": target.id, "day": 1, "phase": C.NIGHT, "block": "docks", "how": "visit", "detail": "street"}
+	var report = Mind.sighting_report(w, n, b, 1)
+	var lines: Array = []
+	var facts: Array = []
+	n.beliefs.append(b)
+	w.day = 2
+	Mind._public_disclosure(w, n, lines, facts, false)
+	_check(not lines.any(func(l): return "On night 1: On night 1" in l.get("text", "")), "meeting sighting disclosure does not duplicate On night X prefix")
+	n.claim_public = true
+	n.claimed_role = n.role
+	n.info_log.clear()
+	n.beliefs.clear()
+	var gallows: Dictionary = Mind.gallows_speech(w, n)
+	_check(gallows["lines"].size() >= 1 and gallows["lines"][0]["text"].begins_with("As I've said, I am the "), "gallows speech acknowledges an already-public role claim")
+
+func _public_hearsay_and_self_gossip() -> void:
+	var g = _game()
+	var w = g.w
+	var s = w.living_good()[0]
+	var l = w.living_good()[1]
+	var b = {"kind": "saw", "who": l.id, "day": 1, "phase": C.NIGHT, "block": "docks", "how": "window", "detail": "street"}
+	Mind.Social.deliver_public_sighting(w, s, b)
+	_check(l.hearsay.all(func(h): return h.get("public", false)), "publicly delivered meeting sightings are marked public in listener hearsay")
+	_check(Mind.Social._gossip_items(w, l).is_empty(), "NPCs do not approach to gossip about public meeting sightings or sightings of themselves")
+
+func _approach_ui_visibility() -> void:
+	var g = _game()
+	var w = g.w
+	var n = w.living_good()[0]
+	n.loc = "chapel"
+	n.working = false
+	n.busy_with = ""
+	g.moved = false
+	g.state = "approach"
+	g.approach = {"npc": n, "agenda": "gossip"}
+	g.approached_id = n.id
+	g.approached_loc = n.loc
+	_check(not g.can_see(n) and g.can_see_ui(n), "approaching NPC is visible in UI without breaking simulation can_see")
+	g.command("decline")
+	_check(g.state == "day" and g.can_see_ui(n), "declined approach NPC remains visible at their stated location for that phase")
+
+func _workshop_merge_order_of_operations() -> void:
+	var g = _game()
+	var target = g.w.demon()
+	var c_alibi = g.add_card({"kind": "alibi", "subject": [target.id], "source": target.id, "day": 2, "phase": C.NIGHT, "claimed": "home:" + target.home_block, "text": "%s says they stayed home on night 2." % target.name})
+	var c_sight = g.add_card({"kind": "sighting", "subject": [target.id], "source": "player", "day": 2, "phase": C.NIGHT, "block": "docks", "text": "You saw %s on the Docks on night 2." % target.name})
+	var CM = load("res://workshop/canvas_model.gd")
+	var m1 = CM.new(g)
+	var p1 = m1.add_premise({"type": "evil", "a": target.id}, Vector2.ZERO)
+	var a1 = m1.add_evidence("c%d" % c_alibi, Vector2.ZERO)
+	var s1 = m1.add_evidence("c%d" % c_sight, Vector2.ZERO)
+	m1.connect_cards(a1, s1)
+	var merged1 = m1.selected
+	m1.connect_cards(merged1, p1)
+	var comp1 = m1.compile(p1)
+	var m2 = CM.new(g)
+	var p2 = m2.add_premise({"type": "evil", "a": target.id}, Vector2.ZERO)
+	var a2 = m2.add_evidence("c%d" % c_alibi, Vector2.ZERO)
+	var s2 = m2.add_evidence("c%d" % c_sight, Vector2.ZERO)
+	m2.connect_cards(a2, p2)
+	m2.connect_cards(s2, p2)
+	var err = m2.connect_cards(a2, s2)
+	var comp2 = m2.compile(p2)
+	_check(err == "" and m2.selected == p2, "merging two cards already linked to a premise succeeds and keeps the premise selected")
+	_check(comp1.disputes.size() == 1 and comp2.disputes.size() == 1 and comp1.reasons == comp2.reasons, "merging after linking to a premise compiles identically to merging before linking")

@@ -116,7 +116,7 @@ static func _pick_item(w, s, l):
 					scene = 0.4
 			cands.append([gos * 0.8 + scene, {"kind": "sighting", "about": b["who"], "block": b["block"], "day": b["day"], "from": s.id, "key": key2}])
 	for h in s.hearsay.slice(-4):
-		if h["from"] == l.id or h.get("about", "") == l.id or h["kind"] == "secret":
+		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] == "secret":
 			continue
 		if s.is_evil() and h.get("about", "") != "" and w.by_id[h["about"]].is_evil():
 			continue
@@ -185,6 +185,7 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 	hs["via"] = s.id
 	hs["day_heard"] = w.day
 	hs["key"] = item["key"].trim_prefix("relay:")
+	hs["public"] = public
 	match item["kind"]:
 		"reading":
 			var e: Dictionary = item["entry"]
@@ -394,11 +395,19 @@ static func _gossip_items(w, n) -> Array:
 			out.append(["secret", owner])
 	for i in range(n.hearsay.size() - 1, -1, -1):
 		var h: Dictionary = n.hearsay[i]
-		if n.told_to.has("player|hs:%d" % i):
+		if n.told_to.has("player|hs:%d" % i) or h.get("public", false) or h.get("about", "") == n.id:
 			continue
 		if h["kind"] == "reading" and w.by_id.has(h["from"]) and not h["entry"].get("shared", false):
+			var src = w.by_id[h["from"]]
+			if Mind.reading_disclosed(src, h["entry"]):
+				continue
 			out.append(["hearsay", i])
 		elif h["kind"] == "sighting" and w.by_id.has(h["about"]):
+			var src = w.by_id.get(h["from"])
+			var town_key = "town|sighting:%s:%s:%d:%d:%s" % [h.get("from", ""), h["about"], h.get("day", -1), C.NIGHT, h.get("block", "")]
+			var player_key = "player|saw:%s:%d" % [h["about"], h.get("day", -1)]
+			if (src != null and (src.told_to.has(town_key) or src.told_to.has(player_key))) or n.told_to.has(player_key):
+				continue
 			out.append(["hearsay", i])
 	return out
 

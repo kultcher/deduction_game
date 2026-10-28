@@ -31,7 +31,9 @@ static func append_to(w, speaker, target, reply: Dictionary, board: Array) -> vo
 		frames[key] = true
 		if b["phase"] == C.NIGHT:
 			var report = Mind.sighting_report(w, speaker, b, b["day"])
-			report["line"]["text"] = "On %s: %s" % [C.night_name(b["day"]), report["line"]["text"]]
+			var night_label: String = C.night_name(b["day"])
+			if not (night_label in report["line"]["text"] or ("night %d" % b["day"]) in report["line"]["text"]):
+				report["line"]["text"] = "On %s: %s" % [night_label, report["line"]["text"]]
 			Mind._add_observation(groups, report.fact.kind, report.line.text, target.name)
 			reply["facts"].append(report["fact"])
 		else:

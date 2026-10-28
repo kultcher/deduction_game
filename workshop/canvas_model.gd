@@ -68,20 +68,22 @@ func _reaches(from: String, to: String, seen: Array = []) -> bool:
 func connect_cards(from: String, to: String) -> String:
 	if not nodes.has(from) or not nodes.has(to) or from == to or nodes[from].has("merged") or nodes[to].has("merged"):
 		return "Choose two different visible cards."
-	if _reaches(to, from):
-		return "That link would create a circular argument."
-	if links.any(func(edge): return edge.from == from and edge.to == to):
-		return "These cards are already linked."
+	if nodes[from].kind == "premise" and nodes[to].kind != "premise":
+		var swap = from
+		from = to
+		to = swap
 	var a: Dictionary = nodes[from]
 	var b: Dictionary = nodes[to]
 	if a.kind == "evidence" and b.kind == "evidence":
 		for pair in [[a, b], [b, a]]:
 			var dispute = {"reports": [pair[0].card, pair[1].card], "challenged": pair[0].card, "preferred": pair[1].card}
 			if Graph.valid_dispute(view, dispute):
-				if _reaches(from, to):
-					return "Unlink the existing path before merging these accounts."
 				_merge(from, to, dispute)
 				return ""
+	if _reaches(to, from):
+		return "That link would create a circular argument."
+	if links.any(func(edge): return edge.from == from and edge.to == to):
+		return "These cards are already linked."
 	var relation = "supports"
 	if a.kind == "evidence" and b.kind == "evidence":
 		relation = "read_together"
@@ -157,12 +159,22 @@ func _merge(a: String, b: String, dispute: Dictionary) -> void:
 	nodes[id] = {"id": id, "kind": "contradiction", "at": [x, y], "children": [a, b], "dispute": dispute, "prior_links": prior}
 	nodes[a]["merged"] = id
 	nodes[b]["merged"] = id
+	var linked_premise = ""
 	for edge in prior:
 		var source: String = id if edge.from in [a, b] else edge.from
 		var destination: String = id if edge.to in [a, b] else edge.to
-		if source != destination and not links.any(func(e): return e.from == source and e.to == destination):
-			links.append({"from": source, "to": destination, "kind": edge.kind})
-	selected = id
+		if source == destination:
+			continue
+		if nodes.get(source, {}).get("kind", "") == "premise" and nodes.get(destination, {}).get("kind", "") != "premise":
+			var swap = source
+			source = destination
+			destination = swap
+		var kind: String = "supports" if (source == id or destination == id) and (nodes.get(source, {}).get("kind", "") == "premise" or nodes.get(destination, {}).get("kind", "") == "premise") else edge.kind
+		if not _reaches(destination, source) and not links.any(func(e): return e.from == source and e.to == destination):
+			links.append({"from": source, "to": destination, "kind": kind})
+			if source == id and nodes.get(destination, {}).get("kind", "") == "premise" and linked_premise == "":
+				linked_premise = destination
+	selected = linked_premise if linked_premise != "" else id
 	version += 1
 
 func unmerge(id: String) -> void:
@@ -273,8 +285,17 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 		var node: Dictionary = nodes[id]
 		if node.kind == "evidence":
 			result.answers.merge(node.answers.duplicate(true), true)
-			result.reasons.merge(node.reasons.duplicate(true), true)
-			result.citations.merge(node.citations.duplicate(true), true)
+			if not node.has("merged"):
+				result.reasons.merge(node.reasons.duplicate(true), true)
+				result.citations.merge(node.citations.duplicate(true), true)
+			else:
+				for key in node.reasons:
+					var reason: String = node.reasons[key]
+					var cited: String = node.citations.get(key, "")
+					if reason == "evil" or (reason in ["gift", "secret"] and cited in result.cards):
+						result.reasons[key] = reason
+						if cited != "":
+							result.citations[key] = cited
 			result.faults = Graph.combine_faults(result.faults, node.get("faults", {}))
 		elif node.kind == "contradiction":
 			result.disputes.append(node.dispute.duplicate(true))
@@ -290,7 +311,7 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 		if node.kind == "premise" and not node.positions.is_empty() and node.conclusion.get("at", result.conclusion.at) != result.conclusion.at:
 			result.temporal_positions.append({"at": node.conclusion.at, "positions": node.positions.duplicate(true)})
 	for edge in links:
-		if edge.kind == "explains_outing" and edge.from in all and edge.to in all:
+		if edge.kind == "explains_outing" and edge.from in all and edge.to in all and nodes[edge.from].has("card") and nodes[edge.to].has("card"):
 			var claim = Solver.card_by_id(view, nodes[edge.from].card)
 			var observation = Solver.card_by_id(view, nodes[edge.to].card)
 			var key = "%s:%d" % [claim.subject, observation.night]

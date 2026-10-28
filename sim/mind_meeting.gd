@@ -112,7 +112,8 @@ static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void
 		if n.told_to.has(_town_sighting_key(n, b)) or not _public_sighting_allowed(w, n, b): continue
 		var report = sighting_report(w, n, b, b.day)
 		n.told_to[_town_sighting_key(n, b)] = true
-		var text = "On %s: %s" % [C.night_name(b.day), report.line.text]
+		var night_label: String = C.night_name(b.day)
+		var text: String = report.line.text if (night_label in report.line.text or ("night %d" % b.day) in report.line.text) else ("On %s: %s" % [night_label, report.line.text])
 		_add_observation(groups, "sighting", text, w.by_id[b.who].name)
 		facts.append(report.fact)
 		w.dlog.add("volunteer_sighting", n.id, b.who, {"night": b.day, "block": b.block, "score": score, "threshold": threshold})
@@ -420,11 +421,15 @@ static func last_words(w, n) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
 	var claim: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	var already_claimed: bool = n.claim_public and n.claimed_role == claim
 	if n.claim_public and n.claimed_role != claim:
 		n.claim_public = false # With nothing to hide, correct their earlier claim.
 	_public_disclosure(w, n, lines, facts, false)
 	if lines.is_empty():
-		lines.append(_claim_line(n, claim))
+		if already_claimed:
+			lines.append(say(n, "As I've said, I am the %s." % C.role_name(claim)))
+		else:
+			lines.append(_claim_line(n, claim))
 		facts.append({"kind": "claim", "subject": [n.id], "role": claim, "source": n.id,
 			"text": "%s publicly claims to be the %s." % [n.name, C.role_name(claim)]})
 	var suspect = ""
@@ -532,7 +537,9 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	if n.told_to.has(_town_sighting_key(n, seen)): return
 	n.told_to[_town_sighting_key(n, seen)] = true
 	var report = sighting_report(w, n, seen, seen["day"])
-	report["line"]["text"] = "On %s: %s" % [C.night_name(seen["day"]), report["line"]["text"]]
+	var night_label: String = C.night_name(seen["day"])
+	if not (night_label in report["line"]["text"] or ("night %d" % seen["day"]) in report["line"]["text"]):
+		report["line"]["text"] = "On %s: %s" % [night_label, report["line"]["text"]]
 	lines.append(report["line"])
 	facts.append(report["fact"])
 

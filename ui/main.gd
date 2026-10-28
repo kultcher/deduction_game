@@ -524,6 +524,9 @@ func _build_roles(embedded: bool) -> void:
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	summary.add_theme_color_override("font_color", UITheme.color("ink"))
 	roles_box.add_child(summary)
+	var bottom_pad = Control.new()
+	bottom_pad.custom_minimum_size = Vector2(0, 12)
+	roles_box.add_child(bottom_pad)
 
 func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
 	var ink = UITheme.color("ink")
@@ -752,6 +755,8 @@ func _on_map_clicked(kind: String, id: String) -> void:
 		"day":
 			var w = g.w
 			match kind:
+				"block", "back":
+					_refresh_actions()
 				"location", "scene":
 					if not g.moved:
 						_run("go " + id)
@@ -877,9 +882,19 @@ func _actions_day(w) -> void:
 		action_title.text = "Day %d, %s: where will you go?" % [w.day, C.PHASES[w.phase].to_lower()]
 		_hint("Click a block to look closer or a person to inspect their profile. Choose Talk to start a conversation.")
 		var selected = w.by_id.get(_side_person_id())
-		if selected != null and selected.alive and g.can_see(selected):
+		if selected != null and selected.alive and g.can_see_ui(selected):
 			var talk = _button(actions, "Talk to %s" % selected.name, func(): _talk_to_person(selected.id), C.npc_color(selected.id))
 			talk.disabled = selected.busy_with != ""
+		if map.zoom_block != "" and C.BLOCKS.has(map.zoom_block):
+			for l in C.LOCATIONS:
+				if C.LOCATIONS[l]["block"] != map.zoom_block:
+					continue
+				var loc_id: String = l
+				_button(actions, "Go to %s" % w.loc_name(loc_id), func(): _run("go " + loc_id))
+			for sid in w.scenes:
+				if w.scenes[sid].get("block", "") == map.zoom_block:
+					var scene_id: String = sid
+					_button(actions, "Go to %s (crime scene)" % w.scenes[scene_id]["name"], func(): _run("go " + scene_id))
 		_button(actions, "Wait (let the %s pass)" % C.PHASES[w.phase].to_lower(), func(): _run("wait"))
 		return
 	action_title.text = "%s, %s" % [w.loc_name(g.loc).capitalize(), C.PHASES[w.phase].to_lower()]
