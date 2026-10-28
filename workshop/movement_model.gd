@@ -1,6 +1,7 @@
 ## Bounded generative experiment. Hypotheses persist across nights; observations
 ## of one incident are conjoined, not multiplied as independent outings.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Live = preload("res://workshop/live_activity.gd")
 static var cache: Dictionary = {}
@@ -69,7 +70,7 @@ static func likelihood(view: Dictionary, cards: Array, subject: String, evil: bo
 			for night in nights:
 				var reports: Array = cards.filter(func(c): return c.night == night)
 				var night_p = 0.0
-				var out_rate: float = {"hunt": 1.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}[profile.kind]
+				var out_rate: float = Tuning.Workshop.NIGHT_OUT_RATES[profile.kind]
 				var eligible: Array = rules.gift_destinations[subject][str(int(night))]
 				if profile.kind == "gift" and eligible.is_empty():
 					out_rate = 0.0
@@ -83,7 +84,7 @@ static func likelihood(view: Dictionary, cards: Array, subject: String, evil: bo
 						var home: String = view.people.filter(func(p0): return p0.id == subject)[0].home
 						var path: Array = C.route(home, destination) if out else []
 						var route_p: float = (out_rate if out else 1.0 - out_rate) * dest_p
-						var incident = _incident(profile.kind, haunt, rules.get("haunt_visit", 0.7), out, path, reports)
+						var incident = _incident(profile.kind, haunt, rules.get("haunt_visit", Tuning.Workshop.HAUNT_VISIT_RATE), out, path, reports)
 						night_p += route_p * incident
 				p *= night_p
 			total += p

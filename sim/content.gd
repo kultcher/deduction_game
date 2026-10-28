@@ -2,6 +2,7 @@
 ## Pure data. Nothing here holds case state.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const RoleRegistry = preload("res://sim/role_registry.gd")
 
 const DEMON_NIGHT_RULE = "The Demon does not kill on the night before you arrive. It kills from night 1."
@@ -10,7 +11,7 @@ const STRICT_EVALUATOR = false
 
 ## Q3 is deferred. Keep shared execution-priority plumbing inactive until the
 ## user authorizes action tuning; evidence updates remain independent of this.
-const SHARED_EXECUTION_PRIORITY_WEIGHT = 0.0
+const SHARED_EXECUTION_PRIORITY_WEIGHT = Tuning.Setup.SHARED_EXECUTION_PRIORITY_WEIGHT
 
 const PHASES = ["Morning", "Afternoon", "Evening", "Night"]
 const MORNING = 0
@@ -255,14 +256,20 @@ const INFO_ROLES = ["archivist", "clerk", "dowser", "gravedigger", "hearthwitch"
 const START_ROLES = ["archivist", "clerk", "surveyor", "rumormonger"]
 const IDENTIFIER_ROLES = ["seer", "dowser", "gravedigger"]
 ## Case sizes: townsfolk (one carries the secret), minions, demon.
-const SETUPS = {7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "secrets": 1}}
+const SETUPS = Tuning.Setup.SETUPS
 
 ## Gifts with something to tell: readings, or a one-off result (Veteran attacked, Martyr's
 ## choice, Martyr's grim confirmation).
 static func has_readings(r: String) -> bool:
+	var rdef = role_def(r)
+	if rdef != null:
+		return rdef.has_readings()
 	return r in INFO_ROLES or r in ["veteran", "martyr"]
 
 static func is_minion(r: String) -> bool:
+	var rdef = role_def(r)
+	if rdef != null:
+		return rdef.minion
 	return ROLES.get(r, {}).get("minion", false)
 
 ## Secret modifiers: one per case, laid on a townsfolk (two for the Lovers), on top of
@@ -305,39 +312,39 @@ const DEMON_MOODS = ["vengeful", "cunning", "hungry"]
 ## secret modifiers in play these put too many innocents out at night.
 ## Tuning knob: may a cautious NPC deny having any gift ("I'm only the baker")? Off: evil
 ## almost never bluffed it, so a denial was close to proof of good.
-const ALLOW_NO_GIFT_DENIAL = false
+const ALLOW_NO_GIFT_DENIAL = Tuning.Setup.ALLOW_NO_GIFT_DENIAL
 ## Shadow good self for evil NPCs (docs/shadow_self_plan.md). Step 1: built and fed, but
 ## nothing reads it, so switching it off must not change a single case.
-const SHADOW_SELF = true
+const SHADOW_SELF = Tuning.Setup.SHADOW_SELF
 ## How firmly the shadow holds evil's own fake readings, relative to a townsperson's own
 ## reading (1.0): firmer, but still open to "my gift was poisoned".
-const SHADOW_OWN_READING_WEIGHT = 1.2
+const SHADOW_OWN_READING_WEIGHT = Tuning.Mind.SHADOW_OWN_READING_WEIGHT
 ## Evil accusing with nothing it can cite sometimes hints at a "private reason" instead:
 ## unverifiable, so a free bluff, and it keeps the hint from being a tell of good.
-const EVIL_HINT_CHANCE = 0.3
+const EVIL_HINT_CHANCE = Tuning.Evil.EVIL_HINT_CHANCE
 ## How often a fake Medium gives only something empty (the dead were home, or saw someone
 ## out on their own block), so it isn't always conveniently damning. Real Mediums come up
 ## empty on their own, when the dead had nothing left to tell.
-const MEDIUM_USELESS_CHANCE = 0.15
+const MEDIUM_USELESS_CHANCE = Tuning.Evil.MEDIUM_USELESS_CHANCE
 ## Night order: readings before the demon's kill, so a victim keeps their last reading
 ## (for a Medium to find). false = the BotC order (kill first).
-const INFO_BEFORE_KILL = true
+const INFO_BEFORE_KILL = Tuning.Setup.INFO_BEFORE_KILL
 ## A reading passed on at the meeting without naming its source ("Word reached me from the
 ## Seer"): gossip, much weaker than the claim; and how often the source then steps forward.
-const RELAY_WEIGHT = 0.3
-const RELAY_CORROBORATE = 0.05
+const RELAY_WEIGHT = Tuning.Meeting.RELAY_WEIGHT
+const RELAY_CORROBORATE = Tuning.Meeting.RELAY_CORROBORATE
 ## The defence (meeting-flow step 2): how hard the rope pushes a nominee to reveal a gift
 ## that explains being out, and how much "they're lying" rubs off on the accuser.
-const DEFENCE_MOVES = true   # false: the old one-line protest
-const DEFENCE_ROPE = 1.1
-const DEFENCE_LIE_BLOWBACK = 0.02
+const DEFENCE_MOVES = Tuning.Setup.DEFENCE_MOVES   # false: the old one-line protest
+const DEFENCE_ROPE = Tuning.Meeting.DEFENCE_ROPE
+const DEFENCE_LIE_BLOWBACK = Tuning.Meeting.DEFENCE_LIE_BLOWBACK
 ## Shadow self step 2: evil breaks cover (overrides what its good self would do) only when
 ## stakes - exposure cost > caution. Minions' caution drifts down each day after day 2.
-const EVIL_CAUTION_DEMON = 0.8
-const EVIL_CAUTION_MINION = 0.7
-const MINION_ID_DRIFT = 0.08
-const MINION_CAUTION_FLOOR = 0.25
-const USE_FLAVOR_SECRETS = false
+const EVIL_CAUTION_DEMON = Tuning.Evil.EVIL_CAUTION_DEMON
+const EVIL_CAUTION_MINION = Tuning.Evil.EVIL_CAUTION_MINION
+const MINION_ID_DRIFT = Tuning.Evil.MINION_ID_DRIFT
+const MINION_CAUTION_FLOOR = Tuning.Evil.MINION_CAUTION_FLOOR
+const USE_FLAVOR_SECRETS = Tuning.Setup.USE_FLAVOR_SECRETS
 const SECRETS = [
 	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "me": "can't sleep, so I walk to the chapel to pray", "dest": "hill"},
 	{"kind": "smuggling", "text": "trades contraband with river smugglers at the docks", "me": "trade contraband with the river smugglers at the docks", "dest": "docks"},

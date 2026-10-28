@@ -3,6 +3,7 @@
 ## Every decision is logged with its reasoning.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Gifts = preload("res://sim/gifts.gd")
 
@@ -71,7 +72,7 @@ static func _pick_scapegoat(w, why: String) -> void:
 				s += 1.0  # seen out at night: easier to frame
 		if w.demon().npc_trust.get(g.id, 0.5) < 0.4:
 			s += 0.5
-		if g.claim_public and g.claimed_role in ["veteran", "warden"]:
+		if g.claim_public and C.has_role_def(g.claimed_role) and C.role_def(g.claimed_role).hard_to_kill:
 			s += 0.2  # claims a gift the demon can't kill through: better hanged
 		if s > best_s:
 			best_s = s
@@ -209,81 +210,10 @@ static func _fake_dead_reading(w, n, dd, role: String, s: String, night: int) ->
 		var c = goods.filter(func(x): return not (x.id in not_ids))
 		return w.pick(c) if not c.is_empty() else null
 	var d = w.by_id[w.demon_id] if w.by_id.has(w.demon_id) else null
-	var team_mates: Array = mates(w, n).filter(func(x): return x.alive)
 	var e = {"role": role, "day": night, "fake": true}
 	var rdef = C.role_def(role)
 	if rdef != null:
 		return rdef.fake_medium_reading(w, n, dd, s, sg, d, goods, other, e, _demon_implicated(w))
-	match role:
-		"nightwatch":
-			e["data"] = {"block": dd.home_block, "seen": [s]}
-			e["text"] = "I watched %s: I saw %s pass by" % [C.block_name(dd.home_block), sg.name]
-			return {"entry": e, "why": "the dead Night Watch %s saw scapegoat %s on their last watch" % [dd.id, s], "frames": true}
-		"dowser", "hearthwitch":
-			if d != null and d.alive and _demon_implicated(w) and w.chance(0.5):
-				var near: Array = goods.filter(func(x): return x.home_block == d.home_block).slice(0, 2)
-				var grp: Array = [d.id] + near.map(func(x): return x.id)
-				if grp.size() >= 2:
-					e["data"] = {"group": grp, "count": 0, "block": d.home_block}
-					e["text"] = "on %s I sensed 0 evil among %s" % [C.block_name(d.home_block), w._names(grp)]
-					return {"entry": e, "why": "the dead Dowser %s 'found no evil' with the demon %s" % [dd.id, d.id], "frames": false}
-			var near2: Array = goods.filter(func(x): return x != sg and x.home_block == sg.home_block).slice(0, 2)
-			var grp2: Array = [s] + near2.map(func(x): return x.id)
-			if grp2.size() < 2:
-				return {}
-			e["data"] = {"group": grp2, "count": 1, "block": sg.home_block}
-			e["text"] = "on %s I sensed 1 evil among %s" % [C.block_name(sg.home_block), w._names(grp2)]
-			return {"entry": e, "why": "the dead Dowser %s sensed evil around scapegoat %s" % [dd.id, s], "frames": true}
-		"gravedigger":
-			var read: Array = dd.info_log.filter(func(x): return x.get("role", "") == "gravedigger").map(func(x): return x["data"].get("executed", ""))
-			var hanged: Array = w.npcs.filter(func(x): return not x.alive and x.death_cause == "executed" and not (x.id in read) and x != dd)
-			if hanged.is_empty():
-				return {}
-			var ex = hanged[0]
-			var rl = ""
-			if ex.is_evil():
-				rl = w.evil_plan["bluffs"].get(ex.id, "")  # a hanged teammate was who they claimed
-				if rl == "":
-					return {}
-			else:
-				# A good hanged soul "was a minion": sometimes one that isn't even in the game.
-				# Never the Breathstealer unless there is one: its silences would give it away.
-				var pool: Array = C.MINION_ROLES.filter(func(m): return m != "breathstealer" or w.living_with_role("breathstealer") != null)
-				rl = w.pick(pool)
-			e["data"] = {"executed": ex.id, "role": rl}
-			e["text"] = "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(rl)]
-			return {"entry": e, "why": "the dead Gravedigger %s 'learned' %s was the %s" % [dd.id, ex.id, rl], "frames": not ex.is_evil()}
-		"psychologist":
-			var subj = other.call([s])
-			var tr = w.pick(team_mates) if not team_mates.is_empty() else null
-			if subj == null or tr == null:
-				return {}
-			var sus_id: String = s if w.chance(0.6) else (other.call([subj.id]).id if other.call([subj.id]) != null else s)
-			e["data"] = {"subject": subj.id, "trusts": tr.id, "suspects": sus_id}
-			e["text"] = "I read %s: they trust %s most, and suspect %s most" % [subj.name, tr.name, w.by_id[sus_id].name]
-			return {"entry": e, "why": "the dead Psychologist %s 'read' trust in %s" % [dd.id, tr.id], "frames": true}
-		"clerk":
-			# Back a teammate's bluff.
-			var claimed: Array = team_mates.filter(func(x): return x.claim_public and C.ROLES.get(x.claimed_role, {}).get("align", "") == "good")
-			if claimed.is_empty():
-				return {}
-			var m = w.pick(claimed)
-			var o3 = other.call([])
-			if o3 == null:
-				return {}
-			var pair: Array = w.shuffled([m.id, o3.id])
-			e["data"] = {"pair": pair, "role": m.claimed_role}
-			e["text"] = "I learned that one of %s is the %s" % [w._names(pair), C.role_name(m.claimed_role)]
-			return {"entry": e, "why": "the dead Clerk %s 'backs' %s's claim" % [dd.id, m.id], "frames": false}
-		"archivist":
-			var o4 = other.call([s])
-			if o4 == null:
-				return {}
-			var pair2: Array = w.shuffled([s, o4.id])
-			var mr: String = w.pick(C.MINION_ROLES.filter(func(x): return x != "breathstealer" or w.living_with_role("breathstealer") != null))
-			e["data"] = {"pair": pair2, "role": mr}
-			e["text"] = "I learned that one of %s is the %s" % [w._names(pair2), C.role_name(mr)]
-			return {"entry": e, "why": "the dead Archivist %s 'named' scapegoat %s as a minion" % [dd.id, s], "frames": true}
 	return {}
 
 static func ensure_scapegoat(w) -> void:
@@ -353,7 +283,7 @@ static func gather_night_intel(w) -> void:
 ## discounts its own team's contributions: it knows those aren't the town's view.
 ## Readings count by how strongly they point at t (a Seer "yes" more than one of four in a
 ## Dowser's crowd); public clears cool it; older talk fades (HEAT_FADE a day).
-const HEAT_FADE = 0.75
+const HEAT_FADE = Tuning.Evil.HEAT_FADE
 static func public_heat(w, t) -> float:
 	var h = 0.15
 	for e in w.public_log:
@@ -403,7 +333,7 @@ static func exposure(w, n) -> Dictionary:
 ## toward sowing chaos (their "evil id").
 static func caution(w, n) -> float:
 	if n.id == w.demon_id:
-		return maxf(0.45, C.EVIL_CAUTION_DEMON - 0.03 * (w.day - 1))
+		return maxf(Tuning.Evil.DEMON_CAUTION_FLOOR, C.EVIL_CAUTION_DEMON - Tuning.Evil.DEMON_CAUTION_DRIFT * (w.day - 1))
 	return maxf(C.MINION_CAUTION_FLOOR, C.EVIL_CAUTION_MINION - C.MINION_ID_DRIFT * maxi(0, w.day - 2))
 
 ## What a teammate's life is worth to the team: the demon's is the game.
@@ -431,12 +361,13 @@ static func info_implicates(w, e: Dictionary) -> bool:
 static func _public_threat(w, n) -> Dictionary:
 	var parts = {}
 	if n.claim_public and n.claimed_role in C.INFO_ROLES:
-		parts["info_claim"] = 3.0
-		if n.claimed_role == "seer":
-			parts["seer"] = 1.0
+		parts["info_claim"] = Tuning.Evil.KILL_INFO_CLAIM
+		var cdef = C.role_def(n.claimed_role)
+		if cdef != null and cdef.public_threat_bonus != 0.0 and cdef.public_threat_key != "":
+			parts[cdef.public_threat_key] = cdef.public_threat_bonus
 	for e in n.info_log:
 		if e["shared"] and info_implicates(w, e):
-			parts["implicates_us"] = 2.0
+			parts["implicates_us"] = Tuning.Evil.KILL_IMPLICATES_US
 	return parts
 
 static func choose_kill_target(w) -> String:
@@ -455,10 +386,10 @@ static func choose_kill_target(w) -> String:
 		var parts = _public_threat(w, n)
 		if parts.has("info_claim") and C.ROLES.get(n.claimed_role, {}).get("first_night", false) and w.day >= 1:
 			# Their start knowledge is already out: less of a threat than a gift that keeps reporting.
-			parts["info_claim"] = 1.0
+			parts["info_claim"] = Tuning.Evil.KILL_SPENT_INFO_CLAIM
 		var hostile = public_hostility(w, n)
 		if hostile > 0.0:
-			parts["publicly_against_us"] = snappedf(hostile * 0.8, 0.01)
+			parts["publicly_against_us"] = snappedf(hostile * Tuning.Evil.KILL_HOSTILITY_SCALE, 0.01)
 		var known = intel_threat(d, n.id)
 		if known > 0.0:
 			parts["known_threat"] = known
@@ -467,19 +398,19 @@ static func choose_kill_target(w) -> String:
 			if m != n and m.home_block == n.home_block:
 				alone = false
 		if alone:
-			parts["lives_alone"] = 0.7
+			parts["lives_alone"] = Tuning.Evil.KILL_LIVES_ALONE
 		match plan["mood"]:
 			"vengeful":
 				if d.npc_trust.get(n.id, 0.5) < 0.4:
-					parts["mood_vengeful"] = 1.5
+					parts["mood_vengeful"] = Tuning.Evil.KILL_VENGEFUL_BONUS
 			"cunning":
 				var s = w.by_id[plan["scapegoat"]]
 				if n.home_block == s.home_block:
-					parts["mood_cunning_frame"] = 1.5
+					parts["mood_cunning_frame"] = Tuning.Evil.KILL_CUNNING_BONUS
 			"hungry":
-				parts["mood_hungry"] = snappedf(w.rng.randf() * 2.0, 0.01)
+				parts["mood_hungry"] = snappedf(w.rng.randf() * Tuning.Evil.KILL_HUNGRY_MAX, 0.01)
 		if n.id == plan["scapegoat"] and w.living().size() > 4:
-			parts["keep_scapegoat"] = -4.0
+			parts["keep_scapegoat"] = Tuning.Evil.KILL_KEEP_SCAPEGOAT
 		var fails: int = plan["failed"].filter(func(x): return x == n.id).size()
 		var vet = believed_veteran(w, n)
 		var poisoner_up = w.living_with_role("poisoner") != null
@@ -519,7 +450,7 @@ static func choose_kill_target(w) -> String:
 	# Now and then the demon does something nobody would predict: it passes over its top
 	# three and takes someone else.
 	var zag = false
-	if w.decision_roll(d, "unpredictable_kill", 0.03) and scores.size() > 3:
+	if w.decision_roll(d, "unpredictable_kill", Tuning.Evil.KILL_UNPREDICTABLE_CHANCE) and scores.size() > 3:
 		var order: Array = scores.keys()
 		order.sort_custom(func(x, y): return scores[x]["total"] > scores[y]["total"])
 		var rest: Array = order.slice(3).filter(func(x): return scores[x]["total"] > -5.0)
@@ -554,18 +485,9 @@ static func gift_live_tonight(w, n) -> bool:
 	if not n.claim_public:
 		return true
 	var r: String = n.claimed_role
-	if not C.ROLES.has(r):
-		return true
-	if C.ROLES[r].get("first_night", false):
-		return w.day == 0
-	if r == "gravedigger":
-		return w.executed_today != ""
-	if r == "veteran":
-		return false  # only worth it as part of an attack (see poison_for_kill)
-	if r == "martyr":
-		return w.day >= 1  # poison lasts through tomorrow's hanging
-	if r == "sexton":
-		return false  # the knell is tolled in the evening, after tonight's poison has worn off
+	var rdef = C.role_def(r)
+	if rdef != null:
+		return rdef.gift_live_tonight(w, n)
 	return true
 
 static func choose_poison_target(w, exclude: String = "") -> String:
@@ -595,15 +517,15 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 			continue
 		var parts = _public_threat(w, n)
 		if not gift_live_tonight(w, n):
-			parts["gift_spent"] = -3.5  # poisoning them tonight would change nothing
+			parts["gift_spent"] = Tuning.Evil.POISON_GIFT_SPENT  # poisoning them tonight would change nothing
 		var hostile = public_hostility(w, n)
 		if hostile > 0.0:
-			parts["publicly_against_us"] = snappedf(hostile * 0.6, 0.01)
+			parts["publicly_against_us"] = snappedf(hostile * Tuning.Evil.POISON_HOSTILITY_SCALE, 0.01)
 		var known = intel_threat(m, n.id)
 		if known > 0.0:
 			parts["known_threat"] = known
 		if n.id in wardens and kt != null:
-			parts["disable_warden"] = 2.5 if (kt.claim_public and kt.claimed_role in C.INFO_ROLES) else 1.2
+			parts["disable_warden"] = Tuning.Evil.POISON_WARDEN_INFO if (kt.claim_public and kt.claimed_role in C.INFO_ROLES) else Tuning.Evil.POISON_WARDEN_OTHER
 		var noise_draw = w.rng.randf()
 		parts["noise"] = snappedf(noise_draw * 1.5, 0.01)
 		var total = 0.0
@@ -664,136 +586,14 @@ static func make_fake_info(w) -> void:
 		var rq: Dictionary = n.gift_request
 		var asked: Array = rq.get("targets", []) if rq.get("night", -1) == w.day and rq.get("role", "") == bluff else []
 		var bdef = C.role_def(bluff)
-		if bdef != null:
-			bdef.on_evil_agreed_request(w, n, asked)
-			if bdef.kind != "info":
-				continue
-			var gen: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
-			if gen.is_empty():
-				continue
-			entry = gen["entry"]
-			why = gen["why"]
-		else:
-			match bluff:
-				"surveyor":
-					if w.day != 0:
-						continue
-					var tb = {}
-					for x in w.npcs:
-						if x.is_evil():
-							tb[x.home_block] = true
-					var cnt: int = w.surveyor_result()
-					why = "reports %d blocks: weighted bluff count (true %d)" % [cnt, tb.size()]
-					entry = {"data": {"count": cnt}, "text": "I learned that %d of the four blocks %s an evil resident" % [cnt, "has" if cnt == 1 else "have"]}
-				"rumormonger":
-					if w.day != 0:
-						continue
-					var other = w.pick(w.living_good().filter(func(x): return x.id != s))
-					var pair = w.shuffled([mate.id, other.id])
-					var sk: String = w.pick(C.SECRET_MOD_LIST)
-					why = "lends teammate %s a harmless secret" % mate.id
-					entry = {"data": {"pair": pair, "secret": sk}, "text": "I heard that one of %s is %s" % [w._names(pair), w._secret_phrase(sk)]}
-				"lamplighter":
-					var cnt: int = clampi(w.night_walkers.size() + w.pick([-1, 0, 1]), 0, w.living().size() - 1)
-					why = "guesses a plausible count of walkers (%d)" % cnt
-					entry = {"data": {"count": cnt}, "text": "walking the lamps, I counted %d other%s out" % [cnt, "" if cnt == 1 else "s"]}
-				"medium":
-					# Match the real Medium's public hearth eligibility and revisit policy.
-					if w.day == 0 or not w.by_id[s].alive:
-						continue
-					var dead_id: String = w._medium_choice(n)
-					if dead_id == "":
-						continue
-					var dd = w.by_id[dead_id]
-					var fk = _fake_medium_item(w, n, dd, s)
-					if fk.is_empty():
-						continue
-					var it: Dictionary = fk["item"]
-					why = fk["why"]
-					entry = {"data": {"dead": dd.id, "item": it}, "text": w._medium_text(dd, it)}
-				"psychologist":
-					var talked: Array = n.talked_today.filter(func(i): return w.by_id[i].alive and i != s)
-					if talked.is_empty() or not w.by_id[s].alive:
-						continue
-					var subj: String = talked[w.rng.randi_range(0, talked.size() - 1)]
-					var tr = w.pick(w.living().filter(func(x): return x.id != subj and x.id != s))
-					if tr == null:
-						continue
-					why = "says %s suspects scapegoat %s most" % [subj, s]
-					entry = {"data": {"subject": subj, "trusts": tr.id, "suspects": s},
-						"text": "I read %s: they trust %s most, and suspect %s most" % [w.by_id[subj].name, tr.name, w.by_id[s].name]}
-				"martyr":
-					if w.day == 0 or plan.has("martyr_bluff_" + n.id):
-						continue
-					plan["martyr_bluff_" + n.id] = true
-					var tgt = mate if mate != n else w.pick(w.living_good())
-					why = "'chooses' %s, vouching for them" % tgt.id
-					entry = {"data": {"target": tgt.id, "chosen": true}, "text": "I have given my life over for %s, should the town ever hang them" % tgt.name}
-				"hearthwitch":
-					var nbrs: Array = w.living_neighbours(n).map(func(x): return x.id)
-					var count = 0
-					if s in nbrs:
-						count = 1
-						why = "frames scapegoat %s as an evil neighbour" % s
-					else:
-						var framable: Array = nbrs.filter(func(x): return not w.by_id[x].is_evil())
-						if not framable.is_empty() and w.day >= 1 and w.chance(0.3):
-							count = 1
-							why = "frames a good neighbour"
-						else:
-							why = "reports 0 to clear neighbours (incl. any teammate)"
-					entry = {"data": {"nbrs": nbrs, "count": count},
-						"text": "I sensed that %d of my neighbours (%s) %s evil" % [count, w._names(nbrs), "is" if count == 1 else "are"]}
-				"nightwatch":
-					var block: String = asked[0] if not asked.is_empty() else w.by_id[s].home_block
-					var seen: Array = []
-					for k in n.intel:
-						var it: Dictionary = n.intel[k]
-						if it["kind"] == "walker" and it.get("night", -1) == w.day and it.get("block", "") == block and w.by_id[it["about"]].alive:
-							if not (it["about"] in seen):
-								seen.append(it["about"])
-					if not (s in seen) and w.day >= 1 and w.by_id[s].home_block == block:
-						seen.append(s)
-						why = "watches scapegoat's block; adds fake sighting of %s to true ones" % s
-					else:
-						why = "reports walkers it knows of on scapegoat's block, hiding teammates"
-					plan["fake_watch"][str(w.day)] = block
-					entry = {"data": {"block": block, "seen": seen},
-						"text": "I watched %s: %s" % [C.block_name(block),
-							("I saw " + w._names(seen) + " pass by") if not seen.is_empty() else "nobody stirred"]}
-				"archivist":
-					if w.day != 0:
-						continue
-					var other = w.pick(w.living_good().filter(func(x): return x.id != s))
-					var pair = w.shuffled([s, other.id])
-					var mr: String = w.by_id[w.pick(w.minion_ids)].role
-					why = "names scapegoat %s as a possible %s" % [s, mr]
-					entry = {"data": {"pair": pair, "role": mr}, "text": "I learned that one of %s is the %s" % [w._names(pair), C.role_name(mr)]}
-				"clerk":
-					if w.day != 0:
-						continue
-					var other = w.pick(w.living_good())
-					var role: String = plan["bluffs"].get(mate.id, w.pick(C.GOOD_ROLES))
-					var pair = w.shuffled([mate.id, other.id])
-					why = "vouches for teammate %s as the %s" % [mate.id, role]
-					entry = {"data": {"pair": pair, "role": role}, "text": "I learned that one of %s is the %s" % [w._names(pair), C.role_name(role)]}
-				"gravedigger":
-					if w.executed_today == "":
-						continue
-					var ex = w.by_id[w.executed_today]
-					var role = ""
-					if ex.is_evil():
-						role = plan["bluffs"][ex.id]
-						why = "covers executed teammate as their bluff %s" % role
-					elif ex.claimed_role != "" and ex.claimed_role != "none":
-						role = ex.claimed_role
-						why = "confirms executed good NPC's own claim (safe)"
-					else:
-						role = w.pick(C.GOOD_ROLES)
-						why = "guesses a good role for executed NPC"
-					entry = {"data": {"executed": ex.id, "role": role}, "text": "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(role)]}
-				_:
-					continue
+		if bdef == null:
+			continue
+		bdef.on_evil_agreed_request(w, n, asked)
+		var gen: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
+		if gen.is_empty():
+			continue
+		entry = gen["entry"]
+		why = gen["why"]
 		entry["day"] = w.day
 		entry["role"] = bluff
 		entry["shared"] = false
@@ -927,7 +727,7 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool =
 	var yes = false
 	var why = ""
 	var nom_n = w.by_id[nominee]
-	if nom_n.role == "revenant" and nom_n.is_evil() and not w.totem.is_empty() and w.decision_roll(v, "vote_revenant_curse", 0.55, {}, nominee):
+	if C.role_def(nom_n.role).should_evil_vote_to_hang(w, nom_n, v):
 		# A hanged Revenant with a totem hidden curses the town: let it hang.
 		yes = true
 		why = "The Revenant's totem is hidden: its hanging will turn one of the town."
@@ -1017,46 +817,8 @@ static func intel_from_share(w, m, speaker, item: Dictionary) -> void:
 ## The Breathstealer picks whom to silence, among the good on its block (not the same
 ## person twice running). Likelier as the day goes on; the most dangerous voice first.
 static func breath_target(w, bs) -> String:
-	# The Breathstealer must be out in a public place; the target can be anywhere on the
-	# same block (Case 22485: no stealing breath from inside one's own house).
-	if bs.at_home():
-		return ""
-	var b: String = w.loc_block(bs.loc)
-	var cands: Array = w.living_good().filter(func(m): return m.id != bs.breath_last and m.silence_pending < 0 and not m.silenced \
-		and (m.home_block if m.at_home() else w.loc_block(m.loc)) == b)
-	if cands.is_empty():
-		return ""
-	var best = ""
-	var best_s = -99.0
-	var scores = {}
-	var observed = {}
-	for n in cands:
-		var parts = _public_threat(w, n)
-		var hostile = public_hostility(w, n)
-		if hostile > 0.0:
-			parts["publicly_against_us"] = hostile
-		var known = intel_threat(bs, n.id)
-		if known > 0.0:
-			parts["known_threat"] = known
-		var noise_draw = w.rng.randf()
-		parts["noise"] = snappedf(noise_draw * 1.0, 0.01)
-		var total = 0.0
-		for k in parts:
-			total += parts[k]
-		if w.dlog.live_feed != null and w.dlog.live_feed.enabled:
-			observed[n.id] = {"score": total, "raw_draw": noise_draw, "noise": parts["noise"], "parts": parts.duplicate()}
-		scores[n.id] = snappedf(total, 0.01)
-		if total > best_s:
-			best_s = total
-			best = n.id
-	w.observe_ranked(bs, "silence_ranking", observed, best, 1.0)
-	var p = [0.3, 0.5, 1.0][w.phase] if best_s > 1.0 else [0.15, 0.3, 0.7][w.phase]
-	if not w.decision_roll(bs, "silence_this_phase", p, {"best_target_score": best_s}, best):
-		w.dlog.think(bs.id, "breath_choice", "Breathstealer holds off this phase (best %s, %.2f)." % [best, best_s], {"scores": scores})
-		return ""
-	w.dlog.think(bs.id, "breath_choice", "Breathstealer silences %s (score %.2f)." % [best, best_s], {"scores": scores})
-	return best
+	return C.role_def("breathstealer").breath_target(w, bs, load("res://sim/evil.gd"))
 
 ## Whether the Revenant hides its totem here and now (it will by evening).
 static func place_totem_now(w, rv) -> bool:
-	return w.decision_roll(rv, "place_totem_now", [0.45, 0.6, 1.0][w.phase])
+	return C.role_def("revenant").place_totem_now(w, rv)

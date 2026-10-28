@@ -117,7 +117,7 @@ static func panel(name: String = "panel") -> StyleBox:
 			return flat(color("popup"), color("border"), 1, 4, 10)
 		"paper":
 			# A framed sheet of paper (profile, notes): the ornate frame if we have it.
-			var f = nine("ui/frame_wide", 200, [34, 34, 34, 34], [30, 28, 30, 28])
+			var f = nine("ui/frame_wide", 200, [34, 34, 34, 34], [30, 28, 30, 34])
 			return f if f != null else flat(color("paper"), color("border"), 2, 6, 14)
 		"titled":
 			var t = nine("ui/frame_titled", 320, [30, 46, 30, 30], [20, 42, 20, 18])

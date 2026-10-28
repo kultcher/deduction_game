@@ -110,6 +110,7 @@ func _run() -> void:
 	deleted.connect_cards("e:vigil1", "e:alibi1")
 	deleted.remove_premise(disposable)
 	check(Model.new(board.view).restore(JSON.parse_string(JSON.stringify(deleted.export_data())), s) == "", "removing a premise also cleans merged originals' retained link references")
+	_merged_gift_links(s)
 	await _ui()
 	print("Workshop canvas: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -199,3 +200,26 @@ func check(okay: bool, label: String) -> void:
 	else:
 		fails += 1
 		push_error("FAIL: " + label)
+
+func _merged_gift_links(session) -> void:
+	for before_merge in [false, true]:
+		for reverse in [false, true]:
+			var board = Model.new(session.scenario.public_view)
+			var premise: String = board.selected
+			board.connect_cards("e:vigil1", premise)
+			if before_merge:
+				board.connect_cards("e:gift_claim", "e:vigil1")
+			board.connect_cards("e:alibi1" if reverse else "e:vigil1", "e:vigil1" if reverse else "e:alibi1")
+			var merged: String = board.nodes["e:vigil1"].merged
+			if not before_merge:
+				check(board.connect_cards("e:gift_claim", merged) == "", "gift claim can explain the original sighting inside a contradiction")
+			var value = board.compile(premise)
+			check(value.reasons.get("constance:1") == "gift" and value.citations.get("constance:1") == "gift_claim", "merge retains the original gift citation in either link order and drag direction")
+			check(session.validate_case(value) == "", "gift-explained contradiction compiles to a valid case")
+			var restored = Model.new(board.view)
+			var error: String = restored.restore(JSON.parse_string(JSON.stringify(board.export_data())), session)
+			check(error == "" and restored.compile(premise) == value, "gift-explained contradiction survives Save/Open: " + error)
+			restored.unmerge(merged)
+			check(restored.compile(premise).citations.get("constance:1") == "gift_claim", "unmerge retains gift links made before or after the merge")
+			restored.unlink("e:gift_claim", "e:vigil1")
+			check(not restored.compile(premise).citations.has("constance:1"), "unlinking the restored gift edge retracts its explanation")

@@ -22,10 +22,14 @@ const WorkshopGhost = preload("res://workshop/ghost_juror.gd")
 const WorkshopAssessment = preload("res://workshop/live_assessment.gd")
 const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
 const WorkshopProfiler = preload("res://workshop/profiler.gd")
+const GameBoard = preload("res://game/game_board.gd")
+const GamePresentation = preload("res://game/game_presentation.gd")
 
 var w
 var state = "day"          # day | approach | talk | meeting | nomination | night | over
 var approach = {}          # pending approach: {npc, agenda}
+var approached_id = ""     # npc who approached at the start of this phase
+var approached_loc = ""    # location named in that approach
 var moved = false          # has the player chosen a location this phase
 var free_move_used = false
 var loc = ""
@@ -150,28 +154,10 @@ var confidences = {}
 ## Using a confidential card at the meeting breaks your word to whoever told you: a trust
 ## blow (like a broken offer), unless they've since gone public themselves.
 func _break_confidences(nums: Array) -> void:
-	for num in nums:
-		if not confidences.has(num):
-			continue
-		var n = w.by_id[confidences[num]]
-		confidences.erase(num)
-		if not n.alive or n.claim_public:
-			continue
-		# 0.05 for the open, 0.15 typical, 0.25 for the very private.
-		var loss: float = 0.05 + 0.2 * n.traits.get("privacy", 0.5)
-		Mind.set_trust(w, n, n.trust - loss, "the Demonologist broke my confidence (card #%d) at the meeting" % num)
-		w.dlog.add("player_confidence_broken", "player", n.id, {"card": num})
-		_narr("%s stiffens. You promised to keep that between you." % n.name)
+	GameBoard._break_confidences(self, nums)
 
 func _facts(facts: Array) -> void:
-	for f in facts:
-		if f.get("silent", false):
-			_silent_corroboration(f)
-			continue
-		var num = add_card(f)
-		if f.get("confidential", "") != "":
-			confidences[num] = f["confidential"]
-		_ev({"k": "card", "n": num})
+	GameBoard._facts(self, facts)
 
 static func render(evs: Array) -> String:
 	var lines = PackedStringArray()
@@ -289,6 +275,8 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	set_workshop_effects(workshop_effects)
 	state = "day"
 	moved = false
+	approached_id = ""
+	approached_loc = ""
 	events = []
 	_intro()
 	_morning_report()
@@ -298,21 +286,14 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 ## Where everyone lives is common knowledge: one card per resident, so arguments about
 ## where someone could have walked at night can cite it.
 func _home_cards() -> void:
-	var people: Array = w.npcs.duplicate()
-	people.sort_custom(func(a, b): return a.name < b.name)
-	for n in people:
-		add_card({"kind": "home", "subject": [n.id], "block": n.home_block, "source": "town", "class": "concrete",
-			"text": "%s lives on %s." % [n.name, C.block_name(n.home_block)]})
+	GameBoard._home_cards(self)
 
 ## Canvas capability status for the current command: it already checks the whole
 ## audience, so computing it once per listener made a presentation O(listeners^2).
 var _canvas_status_memo: Dictionary = {}
 
 func _canvas_status(value: Dictionary) -> Dictionary:
-	var key = JSON.stringify(value)
-	if not _canvas_status_memo.has(key):
-		_canvas_status_memo[key] = WorkshopCanvas.status(self, value)
-	return _canvas_status_memo[key].duplicate(true)
+	return GamePresentation._canvas_status(self, value)
 
 func command(line: String) -> String:
 	if workshop_presenting:
@@ -426,37 +407,7 @@ func find_block(token: String) -> String:
 	return ""
 
 func add_card(fact: Dictionary) -> int:
-	if fact.has("text"):
-		fact = fact.duplicate()
-		fact["text"] = C.natural_nights(fact["text"])
-	var key: String = fact.get("text", "")
-	var disc = _disclosure(fact)
-	if _card_keys.has(key):
-		_disclose(board[_card_keys[key] - 1], disc)
-		return _card_keys[key]
-	# The same fact reaching you again (told privately, then publicly; relayed by someone
-	# else) is one card with another disclosure, not a second card.
-	var fk = Mind.fact_id(fact) if fact.get("kind", "") in CardModel.MERGE_KINDS else ""
-	if fk != "" and _fact_keys.has(fk):
-		var n0: int = _fact_keys[fk]
-		_disclose(board[n0 - 1], disc)
-		_card_keys[key] = n0
-		return n0
-	var card = fact.duplicate()
-	card["n"] = board.size() + 1
-	if not card.has("day"):
-		card["day"] = w.day
-	if not card.has("class"):
-		card["class"] = Mind.evidence_class(card)
-	card["when"] = CardModel.when(card, w.day, _phase_now())
-	card["learned"] = [disc]
-	card["view"] = CardModel.view_of(card)
-	board.append(card)
-	_card_keys[key] = card["n"]
-	if fk != "":
-		_fact_keys[fk] = card["n"]
-	_link_corroboration(card)
-	return card["n"]
+	return GameBoard.add_card(self, fact)
 
 # ---------------------------------------------------------------- corroboration
 
@@ -464,320 +415,86 @@ func add_card(fact: Dictionary) -> int:
 ## person it places, and "these two talked" for a conversation. Two cards from different
 ## sources that share a key back each other up.
 static func core_keys(card: Dictionary) -> Array:
-	var k: String = card.get("kind", "")
-	if not (k in ["sighting", "conversation"]):
-		return []
-	var out: Array = []
-	var subj: Array = card.get("subject", [])
-	for who in subj:
-		out.append("at:%s|%d|%d|%s" % [who, card.get("day", -1), card.get("phase", -1), card.get("block", "")])
-	if k == "conversation" and subj.size() == 2:
-		var pr = subj.duplicate()
-		pr.sort()
-		out.append("talk:%s|%d|%d" % [",".join(PackedStringArray(pr)), card.get("day", -1), card.get("phase", -1)])
-	return out
+	return GameBoard.core_keys(card)
 
 func _corroborate(card: Dictionary, src: String) -> void:
-	if src == "" or src == card.get("source", "") or src in card.get("subject", []):
-		return
-	var cb: Array = card.get("corroborated_by", [])
-	if not (src in cb):
-		cb.append(src)
-	card["corroborated_by"] = cb
+	GameBoard._corroborate(card, src)
 
 func _link_corroboration(card: Dictionary) -> void:
-	var mine: Array = core_keys(card)
-	if mine.is_empty():
-		return
-	for other in board:
-		if other == card or other.get("deleted", false) or other.get("source", "") == card.get("source", ""):
-			continue
-		var theirs: Array = core_keys(other)
-		if theirs.any(func(x): return x in mine):
-			_corroborate(other, card.get("source", ""))
-			_corroborate(card, other.get("source", ""))
+	GameBoard._link_corroboration(self, card)
 
 ## Cards you've already got for a conversation (for "don't tell me what I saw myself").
 func seen_pairs() -> Dictionary:
-	var out = {}
-	for c in board:
-		if c.get("kind", "") == "conversation" and c.get("source", "") == "player":
-			for k in core_keys(c):
-				if k.begins_with("talk:"):
-					out[k] = c["n"]
-	return out
+	return GameBoard.seen_pairs(self)
 
 ## A fact an NPC passes over in silence because you saw it yourself: no new card, they're
 ## just recorded as backing yours.
 func _silent_corroboration(f: Dictionary) -> void:
-	var keys: Array = core_keys(f)
-	for c in board:
-		if c.get("deleted", false):
-			continue
-		if core_keys(c).any(func(x): return x in keys):
-			_corroborate(c, f.get("source", ""))
+	GameBoard._silent_corroboration(self, f)
 
 ## The current time slot as the board counts it (the meeting and the night belong to the
 ## evening and night of the day they're in).
 func _phase_now() -> int:
-	return C.NIGHT if state == "night" else w.phase
+	return GameBoard._phase_now(self)
 
 ## When, how and from whom you heard this fact (public = at a town meeting).
 func _disclosure(fact: Dictionary) -> Dictionary:
-	var via: String = fact.get("via", fact.get("source", ""))
-	return {"day": w.day, "phase": _phase_now(), "via": via, "public": state in ["meeting", "nomination"]}
+	return GameBoard._disclosure(self, fact)
 
 func _disclose(card: Dictionary, disc: Dictionary) -> void:
-	var ls: Array = card.get("learned", [])
-	for d in ls:
-		if d["day"] == disc["day"] and d["phase"] == disc["phase"] and d["via"] == disc["via"] and d["public"] == disc["public"]:
-			return
-	ls.append(disc)
-	card["learned"] = ls
+	GameBoard._disclose(card, disc)
 
 ## Read-only integration boundary. No NPC effects, time costs or Workshop fixture truth.
 func workshop_snapshot(numbers: Array, listener_id: String = "", venue: String = "private") -> Dictionary:
-	return WorkshopBridge.capture(self, numbers, listener_id, venue)
+	return GamePresentation.workshop_snapshot(self, numbers, listener_id, venue)
 
 func workshop_preview(number: int, listener_id: String, venue: String = "private") -> Dictionary:
-	return WorkshopAssessment.evaluate(workshop_snapshot([number], listener_id, venue))
+	return GamePresentation.workshop_preview(self, number, listener_id, venue)
 
 func workshop_ghost_preview(number: int) -> Dictionary:
-	var result = WorkshopGhost.live(workshop_snapshot([number]))
-	if number > 0 and number <= board.size():
-		result["audience"] = workshop_readiness(board[number - 1], w.living(), [], "deduction", "meeting")
-	return result
+	return GamePresentation.workshop_ghost_preview(self, number)
 
 ## Read-only and exhaustive: one unavailable listener blocks the whole test-mode
 ## submission. A preview may display only capability reasons, never private facts.
 func workshop_readiness(card: Dictionary, listeners: Array, targets: Array, direction: String, venue: String) -> Dictionary:
-	var result = {"ready": true, "listeners": [], "issues": []}
-	for real in listeners:
-		var n = real.shadow if real.is_evil() else real
-		var check: Dictionary
-		if not workshop_effects:
-			check = {"ready": false, "issues": ["Shared effects are disabled."], "exit_point": "disabled"}
-		elif n == null:
-			check = {"ready": false, "issues": ["Listener assessment is not available yet."], "exit_point": "listener"}
-		else:
-			check = WorkshopPresentation.readiness(self, n, card, targets, direction, venue)
-		result.listeners.append({"listener": real.id, "ready": check.ready, "issues": check.issues, "exit_point": check.exit_point})
-		if not check.ready:
-			result.ready = false
-			for issue in check.issues:
-				if issue not in result.issues:
-					result.issues.append(issue)
-	return result
+	return GamePresentation.workshop_readiness(self, card, listeners, targets, direction, venue)
 
 func _presentation_gate(card: Dictionary, listeners: Array, targets: Array, direction: String, venue: String) -> bool:
-	_workshop_native_submission = false
-	var rejected = _presentation_rejection(card)
-	if rejected != "":
-		_err(rejected)
-		return false
-	_workshop_native_social = false
-	if card.get("conclusion", {}).get("type", "") in ["protect", "spare"]:
-		# Mechanics-support item 0: a preference is social speech even when the
-		# speaker attaches a card. It is not an unsupported evidence conclusion.
-		_workshop_native_submission = true
-		_workshop_native_social = true
-		w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A protection or mercy preference: native social response.")
-		return true
-	var check = workshop_readiness(card, listeners, targets, direction, venue)
-	if check.ready:
-		return true
-	if not workshop_effects:
-		# The player switched shared effects off: the legacy rules are what they asked for.
-		_workshop_native_submission = true
-		return true
-	if _bare_speech(check.issues):
-		# No evidence at all ("I believe they're not the Demon"): speech, which stays
-		# social and native (like accusing or defending without a card).
-		_workshop_native_submission = true
-		_workshop_native_social = true
-		w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A bare belief with no evidence: native social response.")
-		return true
-	var kinds: Array = _unsupported_conclusions(check.issues)
-	if not kinds.is_empty():
-		# Supported evidence, but a conclusion type the shared model doesn't judge yet
-		# (MECHANICS_SUPPORT item 0). The legacy rules judge it, loudly.
-		for row in check.listeners:
-			if not row.ready:
-				WorkshopOwnership.fallback(self, w.by_id[row.listener], "conclusion_type", row.issues, card.get("n", 0))
-		_workshop_native_submission = true
-		_workshop_native_social = true # already recorded above, once per listener
-		_narr("[dev] The shared model doesn't judge '%s' conclusions yet; the legacy rules judged this one." % ", ".join(PackedStringArray(kinds)))
-		return true
-	for row in check.listeners:
-		if not row.ready:
-			WorkshopOwnership.fallback(self, w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
-	# No legacy route for presentations: an unsupported submission is blocked with its
-	# reason, so a playtest always tests the shared model (user, Oct 25).
-	var reason = "Card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(check.issues))]
-	_err("Cannot present. " + reason + " Remove the unsupported card and present the rest.")
-	return false
+	return GamePresentation._presentation_gate(self, card, listeners, targets, direction, venue)
 
 ## Conclusion types named by issues that are only about the conclusion ("Unsupported
 ## claim: role"), or [] if any issue is about the evidence itself.
 func _unsupported_conclusions(issues: Array) -> Array:
-	var kinds: Array = []
-	for issue in issues:
-		var text = str(issue)
-		if text.begins_with("Unsupported claim: ") or text.begins_with("Unsupported endorsed claim: "):
-			var kind = text.get_slice(": ", 1)
-			if kind not in kinds:
-				kinds.append(kind)
-		else:
-			return []
-	return kinds
+	return GamePresentation._unsupported_conclusions(issues)
 
 ## Issues that only say "there's no evidence here", as opposed to evidence the shared
 ## model can't read.
 func _bare_speech(issues: Array) -> bool:
-	if not "No supported reading is presented." in issues:
-		return false
-	return issues.all(func(issue): return issue == "No supported reading is presented." or str(issue).begins_with("Unsupported claim:"))
+	return GamePresentation._bare_speech(issues)
 
 func _presentation_rejection(card: Dictionary) -> String:
-	if card.get("superseded_by", 0) > 0:
-		return "Case #%d was superseded by case #%d." % [card.n, card.superseded_by]
-	var speech: Array = []
-	if card.kind == "deduction":
-		var input = workshop_snapshot([card.n])
-		for number in input.board_map:
-			if input.board_map[number] in input.selected and WorkshopPresentation.Evidence.contains_opinion(board[int(number) - 1]):
-				speech.append(board[int(number) - 1])
-	elif WorkshopPresentation.Evidence.contains_opinion(card):
-		speech = [card]
-	if not speech.is_empty():
-		if speech[0].kind == "info":
-			return "A relayed opinion is not evidence. Cite the deceased person's supporting observations or readings."
-		return "An %s is not evidence. Cite the supporting observations or readings." % speech[0].kind
-	return ""
+	return GamePresentation._presentation_rejection(self, card)
 
 func set_workshop_effects(on: bool) -> void:
-	if workshop_presenting:
-		return
-	workshop_effects = on
-	for real in w.npcs:
-		var minds: Array = [real]
-		if real.shadow != null:
-			minds.append(real.shadow)
-		for n in minds:
-			if n.is_evil():
-				# Preserve a turned good mind's reversible layer until its cover
-				# is created or it is restored. Never run inference on real evil.
-				n.workshop_state["enabled"] = on
-				continue
-			n.workshop_state["enabled"] = on
-			Mind.recompute_beliefs(w, n, " (shared ownership toggled)")
+	GamePresentation.set_workshop_effects(self, on)
 
 func workshop_retract(number: int, listener_id: String) -> void:
-	if workshop_presenting:
-		# Internal revision retirement is part of the same presentation, so it
-		# goes through the private helper; external withdrawal waits its turn.
-		return
-	_workshop_retract(number, listener_id)
+	GamePresentation.workshop_retract(self, number, listener_id)
 
 func _workshop_retract(number: int, listener_id: String) -> void:
-	var real = w.by_id.get(listener_id)
-	if real == null:
-		return
-	var n = real.shadow if real.is_evil() else real
-	if n == null:
-		return
-	var paths: Array = [str(number)]
-	for key in n.workshop_state.get("presentations", {}):
-		if str(key).begins_with("direct:%d:" % number):
-			paths.append(key)
-	if not n.workshop_state.has("withdrawn"):
-		n.workshop_state.withdrawn = {}
-	for key in paths:
-		n.workshop_state.get("presentations", {}).erase(key)
-		n.workshop_state.withdrawn[key] = true
-	if number > 0 and number <= board.size() and board[number - 1].has("workshop_case"):
-		var entry: Dictionary = n.ledger.get("arg:workshop:%d" % number, {})
-		if not entry.is_empty():
-			entry.weight = 0.0
-			entry.justs = []
-			entry.meta = {"kind": "retired_workshop"}
-	Mind.recompute_beliefs(w, n, " (case endorsement withdrawn)")
+	GamePresentation._workshop_retract(self, number, listener_id)
 
 ## All three deduction venues share receipt ownership and optional comparison.
 func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
-	var span = WorkshopProfiler.open("listener", n.id)
-	var result = _evaluate_deduction_inner(n, ded, scale, speak, venue)
-	WorkshopProfiler.close(span)
-	return result
+	return GamePresentation._evaluate_deduction(self, n, ded, scale, speak, venue)
 
 func _evaluate_deduction_inner(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
-	var rejected = _presentation_rejection(ded)
-	if rejected != "":
-		return {"blocked": true, "lines": [rejected], "facts": [], "agreement": 0.0}
-	if strict_evaluator:
-		var check = workshop_readiness(ded, [n], [], "deduction", venue)
-		if not check.ready:
-			return {"blocked": true, "lines": ["Cannot present: " + "; ".join(PackedStringArray(check.issues))], "facts": [], "agreement": 0.0}
-	if ded.has("workshop_case"):
-		workshop_canvas_retire(n, ded)
-	var snapshot = workshop_snapshot([ded.n], n.id, venue) if workshop_compare else {}
-	var before: Dictionary = n.suspicion.duplicate(true) if workshop_compare else {}
-	var result: Dictionary = Argue.evaluate(w, n, ded, board, scale, speak)
-	if result.get("blocked", false):
-		return result
-	if workshop_effects and not result.get("workshop", false):
-		Mind.recompute_beliefs(w, n, " (shared presentation)")
-		_conflict_pressure(ded, 0.1 if venue == "private" else 0.2, n, true)
-	if workshop_compare:
-		var comparison = WorkshopAssessment.evaluate(snapshot)
-		comparison.listener = n.id
-		comparison["card"] = ded.n
-		comparison["venue"] = venue
-		comparison["actual"] = {"model": "shared" if result.get("workshop", false) else "legacy",
-			"agreement": result.get("agreement", 0.0), "before": before, "after": n.suspicion.duplicate(true)}
-		if not result.get("workshop", false):
-			comparison["legacy"] = comparison.actual.duplicate(true)
-		workshop_comparisons.append(comparison)
-		if workshop_comparisons.size() > 24:
-			workshop_comparisons.pop_front()
-		w.dlog.trace_event("workshop_comparison", n.id, ded.conclusion.get("a", ""), {"comparison": comparison, "input": snapshot},
-			"Read-only proposal beside the actual named presentation model; the comparison itself applies no effects.")
-	if ded.has("workshop_case"):
-		var capability = _canvas_status(ded.workshop_case)
-		var issues: Array = capability.issues.duplicate()
-		if not workshop_effects:
-			issues.append("Experimental reading effects are switched off.")
-		elif not result.get("workshop", false) and issues.is_empty():
-			issues.append("This listener could not use the shared assessment; existing response rules were used.")
-		workshop_deliveries.append({"listener": n.id, "name": n.name, "card": ded.n, "venue": venue,
-			"model": "shared" if result.get("workshop", false) else "legacy", "issues": issues})
-		w.dlog.trace_event("workshop_delivery", n.id, ded.conclusion.get("a", ""), workshop_deliveries[-1],
-			"Actual live-canvas presentation model and player-safe fallback feedback.")
-		if workshop_deliveries.size() > 100:
-			workshop_deliveries.pop_front()
-	return result
+	return GamePresentation._evaluate_deduction_inner(self, n, ded, scale, speak, venue)
 
 ## Canvas revisions replace this listener's previous endorsement only when heard.
 ## Keep a dedicated native ledger entry so other filed arguments are untouched.
 func workshop_canvas_retire(real, ded: Dictionary) -> void:
-	if ded.n < 1 or ded.n > board.size() or board[ded.n - 1].get("workshop_case", {}) != ded.workshop_case:
-		return # An old relayed wrapper cannot retract a newer heard revision.
-	var n = real.shadow if real.is_evil() else real
-	if n == null:
-		return
-	var state: Dictionary = n.workshop_state
-	var ancestor: int = ded.get("revises", 0)
-	while ancestor > 0 and ancestor <= board.size():
-		if state.get("presentations", {}).has(str(ancestor)) or n.ledger.has("arg:workshop:%d" % ancestor):
-			_workshop_retract(ancestor, n.id)
-		ancestor = board[ancestor - 1].get("revises", 0)
-	if not state.has("canvas_versions"):
-		state.canvas_versions = {}
-	var key = str(ded.n)
-	var signature = JSON.stringify(ded.workshop_case)
-	if state.canvas_versions.get(key, signature) != signature:
-		_workshop_retract(ded.n, n.id)
-	state.canvas_versions[key] = signature
+	GamePresentation.workshop_canvas_retire(self, real, ded)
 
 # ---------------------------------------------------------------- dispatch
 
@@ -900,6 +617,9 @@ func _dispatch(text: String) -> void:
 func unseen_at(l: String) -> int:
 	return w.npcs_at(l).filter(func(n): return not n.at_home() and not can_see(n)).size()
 
+func unseen_at_ui(l: String) -> int:
+	return w.npcs_at(l).filter(func(n): return not n.at_home() and not can_see_ui(n)).size()
+
 func can_see(n) -> bool:
 	if not n.alive:
 		return false
@@ -908,6 +628,15 @@ func can_see(n) -> bool:
 	if not n.at_home() and (n.working or n.busy_with != ""):
 		return true
 	return moved and w.loc_block(n.loc) == w.loc_block(loc)
+
+func can_see_ui(n) -> bool:
+	if can_see(n):
+		return true
+	if not n.alive or state == "night" or n.at_home():
+		return false
+	if state == "approach" and approach.get("npc") == n:
+		return true
+	return n.id == approached_id and n.loc == approached_loc
 
 ## Who the player can see at a location (a home shows only its owner, if in).
 func _present(l: String) -> Array:
@@ -1172,6 +901,8 @@ func _end_phase(talked_id: String) -> void:
 	free_move_used = false
 	loc = ""
 	w.player_loc = ""
+	approached_id = ""
+	approached_loc = ""
 	if w.end_day_phase(talked_id):
 		_phase_header()
 		_maybe_approach()
@@ -1181,6 +912,8 @@ func _end_phase(talked_id: String) -> void:
 # ---------------------------------------------------------------- approaches
 
 func _maybe_approach() -> void:
+	approached_id = ""
+	approached_loc = ""
 	if _maybe_divulge():
 		return
 	var c = Social.approach_candidate(w)
@@ -1190,6 +923,8 @@ func _maybe_approach() -> void:
 	if c["agenda"] == "protect" and _promised_to(n):
 		return
 	approach = c
+	approached_id = n.id
+	approached_loc = n.loc
 	state = "approach"
 	w.dlog.add("approach", n.id, "player", {"agenda": c["agenda"]})
 	_narr("%s the %s approaches you at %s." % [n.name, n.occupation, w.loc_name(n.loc)])
@@ -1219,6 +954,8 @@ func _maybe_divulge() -> bool:
 		divulge_due.erase(id)
 		n.protect_lock = false
 		approach = {"npc": n, "agenda": "divulge"}
+		approached_id = n.id
+		approached_loc = n.loc
 		state = "approach"
 		w.dlog.add("approach", n.id, "player", {"agenda": "divulge"})
 		_narr("%s the %s finds you at %s, as they promised." % [n.name, n.occupation, w.loc_name(n.loc)])
@@ -1895,19 +1632,7 @@ func known_relationship_notes(id: String) -> Array:
 ## Board hint: pairs of cards (among the most recent) that a template would recognise,
 ## so you know a link is there to be made. Doesn't say what it shows.
 func find_links(limit: int = 40) -> Array:
-	var pool: Array = board.filter(func(c): return not c.get("deleted", false) and not (c["kind"] in ["home", "haunt"]))
-	pool = pool.slice(maxi(0, pool.size() - limit))
-	var found: Array = []
-	var seen = {}
-	for i in range(pool.size()):
-		for j in range(i + 1, pool.size()):
-			var res: Dictionary = Argue.check(w, [pool[i], pool[j]])
-			for m in res["matches"]:
-				var key = str(m["cards"])
-				if not seen.has(key):
-					seen[key] = true
-					found.append({"cards": m["cards"], "relation": m.get("relation", "contradiction")})
-	return found
+	return GameBoard.find_links(self, limit)
 
 ## Haunts you've been told about, as place names.
 func known_haunt_names(id: String) -> String:
@@ -2005,10 +1730,11 @@ func _meeting_command(verb: String, rest: String) -> void:
 			if not _next_npc_nomination():
 				town_quiet = true
 				_narr("No one else rises to nominate.")
+				var pres = "" if presented_today else "'present <deduction#>', "
 				if "player" in w.meeting["nominators"]:
-					_prompt("'done' to close the meeting.")
+					_prompt("%s'done' to close the meeting." % pres)
 				else:
-					_prompt("'nominate <name>', or 'done' to close the meeting.")
+					_prompt("%s'nominate <name>', or 'done' to close the meeting." % pres)
 		"done", "pass", "close":
 			if not town_quiet:
 				_err("Let the town have its say first ('wait').")
@@ -2161,7 +1887,8 @@ func _nomination_command(verb: String, rest: String, progress: Callable = Callab
 
 func _after_vote() -> void:
 	state = "meeting"
-	_prompt("%s'wait' for the town." % ("" if "player" in w.meeting["nominators"] else "'nominate <name>', or "))
+	var pres = "" if presented_today else "'present <deduction#>', "
+	_prompt("%s%s'wait' for the town." % [pres, "" if "player" in w.meeting["nominators"] else "'nominate <name>', or "])
 
 func _last_words(n) -> void:
 	var response = Mind.last_words(w, n)
@@ -2666,276 +2393,30 @@ func _write_logs() -> String:
 ## a person (by, about or via), a block or place, a kind or class, d2 / n1 (a day or a
 ## night), "night" / "day", or any text.
 func filter_cards(filter: String) -> Array:
-	var f = filter.strip_edges().to_lower()
-	var base: Array = board.filter(func(c): return not c.get("deleted", false) and (show_hidden or not c.get("hidden", false)))
-	if f == "":
-		return base
-	var terms: Array = Array(f.split("+", false)).map(func(x): return x.strip_edges()).filter(func(x): return x != "")
-	var out: Array = base
-	for t in terms:
-		out = _filter_term(out, t)
-	return out
+	return GameBoard.filter_cards(self, filter)
 
 func _filter_term(cards: Array, f: String) -> Array:
-	# "-sighting" (or any term with a leading minus) leaves those cards out.
-	if f.begins_with("-") and f.length() > 1:
-		var drop: Array = _filter_term(cards, f.substr(1)).map(func(c): return c["n"])
-		return cards.filter(func(c): return not (c["n"] in drop))
-	var blk = find_block(f)
-	var lc = find_location(f) if blk == "" else ""
-	var person = find_npc(f, true)
-	var out: Array = []
-	for c in cards:
-		var ok = false
-		var is_night = c.get("phase", -1) == C.NIGHT or c["kind"] in ["vigil", "alibi"] or (c.get("when", {}).get("phase", -1) == C.NIGHT)
-		if c["kind"] == f or c.get("class", "") == f:
-			ok = true
-		elif f in ["night", "nights"]:
-			ok = is_night
-		elif f in ["day", "daytime"]:
-			ok = not is_night and c.get("phase", -1) >= 0
-		elif person != null and (person.id in c.get("subject", []) or c.get("source", "") == person.id or c.get("via", "") == person.id or person.id in CardModel.about(c)):
-			ok = true
-		elif blk != "" and (c.get("block", "") == blk or w.loc_block(c.get("loc", "")) == blk):
-			ok = true
-		elif lc != "" and c.get("loc", "") == lc:
-			ok = true
-		elif f.length() >= 2 and f[0] in ["d", "n"] and f.substr(1).is_valid_int():
-			var num = f.substr(1).to_int()
-			ok = c.get("day", -99) == num and ((f[0] == "n") == is_night)
-		elif f in c["text"].to_lower():
-			ok = true
-		if ok:
-			out.append(c)
-	return out
+	return GameBoard._filter_term(self, cards, f)
 
 ## Link cards: run the contradiction templates. Returns the check result and remembers it.
 func link_cards(nums: Array) -> Dictionary:
-	var cards: Array = []
-	for x in nums:
-		if x >= 1 and x <= board.size():
-			cards.append(board[x - 1])
-	var res: Dictionary = Argue.check(w, cards)
-	var options: Array = []
-	for m in res["matches"]:
-		if m.get("relation", "contradiction") == "contradiction":
-			var grp: Array = Argue.group_of(w, cards.filter(func(x): return x["n"] in m["cards"]))
-			if grp.size() >= 2:
-				var cc = {"type": "conflict", "a": "", "group": grp}
-				options.append({"match": m, "expl": {"id": 0, "kind": "conflict", "blame": "", "conclusion": cc,
-					"label": "Something doesn't add up (no explanation chosen): one of %s is misled or lying" % Argue._names(w, grp)}})
-		for e in m["explanations"]:
-			# Alternatives the town weighs, but that nothing in these cards supports, aren't
-			# offered for filing.
-			if not e.get("rival_only", false):
-				options.append({"match": m, "expl": e})
-	last_link = {"cards": nums.duplicate(), "result": res, "options": options}
-	w.dlog.add("player_link", "player", "", {"cards": nums, "matches": res["matches"].map(func(m): return m["template"]),
-		"near": res["near"]}, "matched" if not res["matches"].is_empty() else "no template matched (flag for template work)")
-	return last_link
+	return GameBoard.link_cards(self, nums)
 
 ## File a deduction card. conclusion: {type, a, role?, night?, card?}. Returns the card
 ## number, or -1 if refused (reason in last_error).
 func file_deduction(conclusion: Dictionary, supports: Array, match_info: Dictionary = {}, chosen: int = 0, workshop_filing: bool = false) -> int:
-	conclusion = Argue.normalize(conclusion.duplicate())
-	var cards: Array = board.filter(func(x): return x["n"] in supports)
-	# The same conclusion from the same cards gets the same footing however it was built:
-	# if a template among the supports offers this conclusion, use it.
-	if conclusion.get("type", "") == "conflict":
-		if conclusion.get("group", []).is_empty():
-			conclusion["group"] = Argue.group_of(w, cards)
-		if match_info.is_empty():
-			for m in Argue.check(w, cards)["matches"]:
-				if m.get("relation", "contradiction") == "contradiction":
-					match_info = m
-					chosen = 0
-					break
-	elif match_info.is_empty() and not supports.is_empty():
-		for m in Argue.check(w, cards)["matches"]:
-			for e in m["explanations"]:
-				if Argue.conclusion_key(Argue.normalize(e["conclusion"].duplicate())) == Argue.conclusion_key(conclusion):
-					match_info = m
-					chosen = e["id"]
-					break
-			if not match_info.is_empty():
-				break
-	last_error = Argue.filing_problem(w, conclusion, supports, board, not match_info.is_empty())
-	if last_error != "":
-		w.dlog.add("deduction_refused", "player", conclusion.get("a", ""), {"conclusion": conclusion, "supports": supports}, last_error)
-		return -1
-	var rank = {"speech": 0, "circumstantial": 1, "concrete": 2}
-	var cls = "concrete"
-	for x in supports:
-		var cc: String = board[x - 1].get("class", "circumstantial")
-		if rank.get(cc, 1) < rank[cls]:
-			cls = cc
-	if match_info.is_empty() and rank[cls] > 1:
-		cls = "circumstantial"  # an inference is never stronger than circumstantial on its own
-	# Unfounded = the cards don't actually bear on the person (not merely "no template").
-	var unfounded = match_info.is_empty() and not Argue.bears_on(w, conclusion, cards)
-	var basis = ""
-	if not match_info.is_empty():
-		basis = " (from #%s: %s)" % [", #".join(PackedStringArray(match_info["cards"].map(func(x): return str(x)))), match_info["text"]]
-	else:
-		basis = " (because #%s%s)" % [", #".join(PackedStringArray(supports.map(func(x): return str(x)))), "; unfounded" if unfounded else "; your inference"]
-	var subj: Array = conclusion.get("group", []).duplicate() if conclusion.get("type", "") == "conflict" else ([conclusion["a"]] if conclusion.has("a") else [])
-	var near = ""
-	if unfounded:
-		var nr: Array = Argue.check(w, cards)["near"]
-		if not nr.is_empty():
-			near = nr[0]
-	var card = {"kind": "deduction", "subject": subj, "source": "player", "class": cls, "conclusion": conclusion,
-		"supports": supports.duplicate(), "template": match_info.get("template", ""), "explanations": match_info.get("explanations", []),
-		"chosen": chosen, "unfounded": unfounded, "near": near, "relation": match_info.get("relation", ""),
-		"text": "Deduction: %s%s [basis: %s]." % [Argue.conclusion_text(w, conclusion), basis, cls]}
-	if workshop_filing:
-		card.text += " [Workshop filing %d]" % (board.size() + 1)
-	var n = add_card(card)
-	w.dlog.add("deduction", "player", conclusion.get("a", ""), {"card": n, "conclusion": conclusion, "supports": supports,
-		"template": card["template"], "unfounded": unfounded, "class": cls}, card["text"])
-	return n
+	return GameBoard.file_deduction(self, conclusion, supports, match_info, chosen, workshop_filing)
 
 ## Parse "conclude <name> <is | is not | should be> <status> [night N] [about #N] [because <#> ...]".
 ## Status: good, evil, the demon, a gift, lying, misled, misled or lying, protected, spared.
 func _parse_conclusion(rest: String) -> Dictionary:
-	var usage = "Usage: conclude <name> <is | is not | should be> <status> [night N] [because <card#> ...]. Status: good, evil, the demon, a gift (seer, poisoner...), lying, misled, misled or lying, suspicious, hiding a secret, Marked, the Seer's red herring, Delusional, a Secret Lover, a Sleepwalker; should be protected / spared."
-	var text = " " + rest.to_lower().strip_edges() + " "
-	var supports: Array = []
-	var bi = text.find(" because ")
-	if bi >= 0:
-		for q in text.substr(bi + 9).split(" ", false):
-			var num = q.trim_prefix("#").to_int()
-			if num >= 1 and num <= board.size() and not board[num - 1].get("deleted", false):
-				supports.append(num)
-		text = text.substr(0, bi + 1)
-	var night = -1
-	var ni = text.find(" night ")
-	if ni >= 0:
-		var after = text.substr(ni + 7).split(" ", false)
-		if after.size() > 0 and after[0].is_valid_int():
-			night = after[0].to_int()
-		text = text.substr(0, ni + 1)
-		if text.ends_with(" on "):
-			text = text.substr(0, text.length() - 3)
-	var card = -1
-	var ai = text.find(" about #")
-	if ai >= 0:
-		card = text.substr(ai + 8).split(" ", false)[0].to_int()
-		text = text.substr(0, ai + 1)
-	var words = text.split(" ", false)
-	if words.size() < 3:
-		return {"error": usage}
-	var group_lead = 0
-	if words[0] in ["someone", "somebody"]:
-		group_lead = 1
-	elif words.size() > 3 and words[0] == "one" and words[1] == "of" and words[2] in ["these", "them", "those"]:
-		group_lead = 3
-	if group_lead > 0:
-		if supports.is_empty() and not last_link.is_empty():
-			supports = last_link["cards"].duplicate()
-		var tail = " ".join(words.slice(group_lead)).strip_edges()
-		if not (tail in ["is misled or lying", "are misled or lying", "is lying or misled", "doesn't add up", "is wrong"]):
-			return {"error": "For a group, say: conclude one of these is misled or lying because <cards>."}
-		var gcards: Array = board.filter(func(x): return x["n"] in supports)
-		return {"conclusion": Argue.conflict_of(w, gcards), "supports": supports}
-	var who = find_npc(words[0], true)
-	if who == null:
-		return {"error": "Who is '%s'?" % words[0]}
-	var verb = ""
-	var rest_i = 1
-	if words[1] == "should" and words.size() > 2 and words[2] == "be":
-		verb = "should be"
-		rest_i = 3
-	elif words[1] in ["isnt", "isn't"] or (words[1] == "is" and words.size() > 2 and words[2] == "not"):
-		verb = "is not"
-		rest_i = 2 if words[1] != "is" else 3
-	elif words[1] == "is":
-		verb = "is"
-		rest_i = 2
-	else:
-		return {"error": usage}
-	var status = " ".join(words.slice(rest_i)).strip_edges().trim_prefix("the ").strip_edges()
-	if status == "demon":
-		status = "the demon"
-	if status in ["spared", "spared from execution"]:
-		status = "spared from execution"
-	var role = find_role(status)
-	if role != "" and role != "demon":
-		status = role
-	match status:
-		"a secret", "hiding a secret", "a secret (innocent)":
-			status = "hiding a secret"
-		"red herring", "the red herring", "the seer's red herring", "a red herring":
-			status = "the Seer's red herring"
-		"a lover", "a secret lover", "lover", "lovers":
-			status = "a Secret Lover"
-		"a sleepwalker", "sleepwalker":
-			status = "a Sleepwalker"
-	var c = Argue.from_builder(who.id, verb, status, night, card)
-	if c.is_empty():
-		return {"error": "'%s %s' isn't something you can conclude. %s" % [verb, status, usage]}
-	if supports.is_empty() and not last_link.is_empty():
-		supports = last_link["cards"].duplicate()
-	if c["type"] in ["lied", "unreliable", "truthful"] and not c.has("card"):
-		for x in supports:
-			if board[x - 1].get("source", "") == who.id:
-				c["card"] = x
-				break
-	return {"conclusion": c, "supports": supports}
+	return GameBoard._parse_conclusion(self, rest)
 
 func _link_command(rest: String) -> void:
-	var nums: Array = []
-	for q in rest.split(" ", false):
-		var num = q.trim_prefix("#").to_int()
-		if num >= 1 and num <= board.size() and not (num in nums):
-			nums.append(num)
-	if nums.size() < 1 or nums.size() > 3:
-		_err("Usage: link <card#> <card#> [card#]   (1-3 cards; see 'board')")
-		return
-	var lk = link_cards(nums)
-	var res: Dictionary = lk["result"]
-	if res["matches"].is_empty():
-		_narr("Nothing links those cards: no conflict, corroboration or inference the town would recognise.")
-		for r in res["near"].slice(0, 2):
-			_narr("  Close, but " + r)
-		_prompt("You can still argue from them: 'conclude <name> is <status> because <cards>'. If the cards bear on that person it's your own inference; if not, it's unfounded.")
-		return
-	for m in res["matches"]:
-		_narr("%s %s" % [Argue.RELATION_LEAD[m.get("relation", "contradiction")], m["text"]])
-	var k = 0
-	for o in lk["options"]:
-		k += 1
-		_narr("  %d. %s" % [k, o["expl"]["label"]])
-	_prompt("'conclude <number>' to file the explanation you believe, or write your own: 'conclude <name> is <status> because <cards>'.")
+	GameBoard._link_command(self, rest)
 
 func _conclude_command(rest: String) -> void:
-	var r = rest.strip_edges()
-	if r.is_valid_int() and not last_link.is_empty():
-		var k = r.to_int()
-		var opts: Array = last_link["options"]
-		if k < 1 or k > opts.size():
-			_err("Pick one of the numbered explanations from your last 'link'.")
-			return
-		var o: Dictionary = opts[k - 1]
-		var n = file_deduction(o["expl"]["conclusion"], o["match"]["cards"], o["match"], o["expl"]["id"])
-		if n < 0:
-			_err(last_error)
-			return
-		_narr("Filed.")
-		_ev({"k": "card", "n": n})
-		return
-	var p = _parse_conclusion(r)
-	if p.has("error"):
-		_err(p["error"])
-		return
-	var n2 = file_deduction(p["conclusion"], p["supports"])
-	if n2 < 0:
-		_err(last_error)
-		return
-	var d2: Dictionary = board[n2 - 1]
-	_narr("Filed%s." % (" (unfounded: those cards don't bear on them)" if d2["unfounded"] else
-		(" (backed by: %s)" % d2["template"]) if d2["template"] != "" else " (your inference)"))
-	_ev({"k": "card", "n": n2})
+	GameBoard._conclude_command(self, rest)
 
 ## "present <card#> [for|against <name>]" in conversation: work out what the player means.
 ## About the listener -> press them. A deduction -> argue it. A plain card about others ->
@@ -2943,231 +2424,50 @@ func _conclude_command(rest: String) -> void:
 ## Seer "no" clears), split across everyone it names. for/against is only an override; if
 ## the card has no direction of its own, it falls flat (logged as a fallback).
 func _route_present(n, rest: String) -> Dictionary:
-	var p = rest.strip_edges().split(" ", false)
-	if p.is_empty():
-		return {"error": "Present which card? ('present <card#>')"}
-	var num = p[0].trim_prefix("#").to_int()
-	if num < 1 or num > board.size() or board[num - 1].get("deleted", false):
-		return {"error": "No such card on your board."}
-	var card: Dictionary = board[num - 1]
-	if card["kind"] in ["home", "haunt"]:
-		return {"flat": "Where %s lives or idles is nothing to put to anyone." % w.by_id[card["subject"][0]].name}
-	var dir = ""
-	var who = null
-	if p.size() >= 3 and p[1].to_lower() in ["for", "against", "about"]:
-		dir = p[1].to_lower()
-		who = find_npc(p[2], true)
-		if who == null:
-			return {"error": "Who is '%s'?" % p[2]}
-	# An explicit supportive statement is not a demand that the listener explain
-	# themselves, whether the cited card is a claim or one of the player's deductions.
-	if who == n and dir == "for":
-		return {"verb": "defend", "rest": "%s %d" % [n.id, num], "note": "You speak up for %s." % n.name}
-	if card["kind"] == "deduction":
-		var cc: Dictionary = Argue.normalize(card["conclusion"].duplicate())
-		if cc.get("a", "") == n.id and not (cc["type"] in ["misled", "unreliable"]):
-			return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
-		return {"verb": "convince", "rest": str(num), "note": "You argue it to %s." % n.name}
-	var subj: Array = card.get("subject", []).duplicate()
-	for x in card.get("data", {}).get("pair", []):
-		if not (x in subj):
-			subj.append(x)
-	if who == null and (n.id in subj or card.get("owner", "") == n.id):
-		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
-	if who == n and dir != "for":
-		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
-	var targets: Array = [who.id] if who != null else subj.filter(func(x): return x != n.id and x != card.get("source", "") and w.by_id.has(x) and w.by_id[x].alive)
-	if targets.is_empty():
-		return _present_fallback(n, num, "the card isn't about anyone living")
-	if dir == "":
-		var inc = 0.0
-		var dfn = 0.0
-		for x in targets:
-			inc = maxf(inc, Mind.card_strength(w, card, w.by_id[x]))
-			if card.get("kind", "") == "sighting" and card.get("phase", -1) == C.NIGHT:
-				inc = maxf(inc, 0.45)  # its direction is plain even when it's weak (far from any death)
-			dfn = maxf(dfn, Mind.defend_strength(card, x))
-		if inc >= 0.4 and inc > dfn:
-			dir = "against"
-		elif dfn >= 0.4 and dfn > inc:
-			dir = "for"
-		else:
-			return _present_fallback(n, num, "no clear direction (incriminating %.2f, clearing %.2f)" % [inc, dfn])
-	var names = Argue._names(w, targets)
-	var ids = ",".join(PackedStringArray(targets))
-	if dir == "for":
-		return {"verb": "defend", "rest": "%s %d" % [ids, num], "note": "You speak up for %s." % names}
-	return {"verb": "tell", "rest": "%s %d" % [ids, num], "note": ("You make your case against %s." if targets.size() == 1 else "You point out it implicates one of %s.") % names}
+	return GamePresentation._route_present(self, n, rest)
 
 ## The card has no direction of its own: it falls flat, costs no question, and is logged
 ## so we can see which cards keep landing here.
 func _present_fallback(n, num: int, why: String) -> Dictionary:
-	fallback_count += 1
-	w.dlog.add("present_fallback", "player", n.id, {"card": num, "kind": board[num - 1]["kind"], "why": why},
-		"present couldn't tell what the card was meant to prove (%s)" % why)
-	return {"verb": "", "rest": "", "note": "", "flat": "%s: \"I'm not sure what you're trying to prove.\" (You can say 'present %d for <name>' or 'against <name>'.)" % [n.name, num]}
+	return GamePresentation._present_fallback(self, n, num, why)
 
 ## "Something doesn't add up" puts the people involved under scrutiny: publicly, all of
 ## them; privately, only the listener if they're one of them.
 func _conflict_pressure(ded: Dictionary, amount: float, listener, fallback: bool = false) -> void:
-	if workshop_effects and not fallback:
-		return # The supported assessment owns scrutiny; unsupported paths retain native behavior.
-	var c: Dictionary = ded.get("conclusion", {})
-	if c.get("type", "") != "conflict":
-		return
-	for id in c.get("group", []):
-		var m = w.by_id[id]
-		if not m.alive or (listener != null and m != listener):
-			continue
-		m.pressure += amount
-		w.dlog.think(m.id, "pressed", "Under scrutiny: the Demonologist says something doesn't add up (pressure +%.2f -> %.2f)." % [amount, m.pressure])
+	GamePresentation._conflict_pressure(self, ded, amount, listener, fallback)
 
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
 func _secrets_used(ded: Dictionary, depth: int = 0) -> void:
-	for x in ded.get("supports", []):
-		var c: Dictionary = board[x - 1]
-		if c["kind"] == "secret":
-			Mind._secret_used(w, c)
-		elif c["kind"] == "deduction" and depth < 3:
-			_secrets_used(c, depth + 1)
+	GamePresentation._secrets_used(self, ded, depth)
 
 ## Hide a card from views (any card), or delete one of your own deductions.
 func hide_card(num: int, on: bool) -> String:
-	if num < 1 or num > board.size() or board[num - 1].get("deleted", false):
-		return "No such card."
-	board[num - 1]["hidden"] = on
-	return "Card #%d %s." % [num, "hidden ('showhidden' to see hidden cards)" if on else "shown again"]
+	return GameBoard.hide_card(self, num, on)
 
 func delete_deduction(num: int) -> String:
-	if num < 1 or num > board.size() or board[num - 1]["kind"] != "deduction" or board[num - 1].get("deleted", false):
-		return "You can only delete your own deductions."
-	board[num - 1]["deleted"] = true
-	w.dlog.add("deduction_deleted", "player", "", {"card": num})
-	return "Deduction #%d deleted." % num
+	return GameBoard.delete_deduction(self, num)
 
 ## Present a deduction to the whole meeting (once per meeting).
 ## Context receipts are shown directly, without a shared-model adapter or numeric
 ## evidence effect. Claude owns that adapter; this only delivers the approved trust.
 func _ward_context_card(rest: String) -> Dictionary:
-	var parts = rest.strip_edges().split(" ", false)
-	if parts.size() != 1: return {}
-	var num = parts[0].trim_prefix("#").to_int()
-	if num < 1 or num > board.size(): return {}
-	var card: Dictionary = board[num - 1]
-	return card if not card.get("deleted", false) and card.kind in ["ward", "scorched_sigil"] else {}
+	return GamePresentation._ward_context_card(self, rest)
 
 func _show_ward_context(card: Dictionary, listeners: Array) -> Dictionary:
-	var public_show = state in ["meeting", "nomination"]
-	if public_show:
-		card["private"] = false
-		_disclose(card, _disclosure(card))
-	var rewarded: Array = []
-	if card.kind == "scorched_sigil":
-		var heard: Array = sigil_heard.get(card.n, [])
-		for listener in listeners:
-			if not listener.alive or listener.id in heard: continue
-			heard.append(listener.id)
-			rewarded.append(listener.id)
-			var bonus = 0.05 + (0.15 if listener.id == card.target else 0.0)
-			Mind.set_trust(w, listener, listener.trust + bonus, "the Demonologist showed a scorched ward sigil")
-		sigil_heard[card.n] = heard
-	w.dlog.add("player_ward_context", "player", card.get("target", ""), {"card": card.n, "listeners": listeners.map(func(n): return n.id), "rewarded": rewarded, "public": public_show})
-	return {"lines": ["You show %s: %s" % ["the town" if public_show else ", ".join(PackedStringArray(listeners.map(func(n): return n.name))), card.text]], "facts": []}
+	return GamePresentation._show_ward_context(self, card, listeners)
 
 func _present_deduction(rest: String, progress: Callable = Callable()) -> void:
-	if presented_today:
-		_err("You've already had the floor today.")
-		return
-	var context_card = _ward_context_card(rest)
-	if not context_card.is_empty():
-		presented_today = true
-		_lines(_show_ward_context(context_card, w.living()).lines)
-		return
-	var num = rest.strip_edges().trim_prefix("#").to_int()
-	if num < 1 or num > board.size() or board[num - 1]["kind"] != "deduction" or board[num - 1].get("deleted", false):
-		_err("Present which deduction? ('present <card#>'; file one with 'link' and 'conclude')")
-		return
-	var ded: Dictionary = board[num - 1]
-	if not _presentation_gate(ded, w.living(), [], "deduction", "meeting"):
-		return
-	presented_today = true
-	_narr("You take the floor: %s" % ded["text"])
-	w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
-	_break_confidences([num] + Array(ded.get("supports", [])))
-	_secrets_used(ded)
-	_conflict_pressure(ded, 0.2, null)
-	for n in w.living():
-		if progress.is_valid():
-			await progress.call(n.name)
-		var r: Dictionary = _evaluate_deduction(n, ded, 0.6, true, "meeting")
-		_lines(r["lines"])
+	await GamePresentation._present_deduction(self, rest, progress)
 
 ## Timeline: who was where, by phase, from your board. * = you saw it, ~ = heard.
 func timeline_data(filter: String = "") -> Dictionary:
-	var cols: Array = [{"label": "N0", "day": 0, "phase": C.NIGHT}]
-	for d in range(1, w.day + 1):
-		for p in [C.MORNING, C.AFTERNOON, C.EVENING, C.NIGHT]:
-			if d == w.day and p > w.phase and state != "night":
-				break
-			cols.append({"label": ("N%d" % d) if p == C.NIGHT else "D%d%s" % [d, C.PHASES[p].substr(0, 1)], "day": d, "phase": p})
-	var cards: Array = filter_cards(filter) if filter != "" else board
-	var rows = {}
-	for n in w.npcs:
-		rows[n.id] = {}
-	for c in cards:
-		for a in Argue.assertions(c):
-			var who: String = a.get("who", "")
-			if not rows.has(who):
-				continue
-			var key = ""
-			var val = ""
-			match a["t"]:
-				"at":
-					key = "%d:%d" % [a["day"], a["phase"]]
-					val = _abbr(a["block"])
-				"out":
-					key = "%d:%d" % [a["night"], C.NIGHT]
-					val = _abbr(a["block"])
-				"home":
-					key = "%d:%d" % [a["night"], C.NIGHT]
-					val = "hm"
-				"killed":
-					key = "%d:%d" % [a["night"], C.NIGHT]
-					val = "XX"
-				_:
-					continue
-			var confirmed = a.get("src", "") == "player"
-			if not rows[who].has(key):
-				rows[who][key] = []
-			rows[who][key].append({"val": val, "confirmed": confirmed, "card": c["n"]})
-	return {"cols": cols, "rows": rows}
+	return GameBoard.timeline_data(self, filter)
 
 func _abbr(b: String) -> String:
-	return {"square": "Sq", "market": "Mk", "docks": "Dk", "hill": "Hl"}.get(b, "??")
+	return GameBoard._abbr(b)
 
 func _timeline(filter: String) -> String:
-	var td = timeline_data(filter)
-	var out = PackedStringArray()
-	var head = "%-12s" % ""
-	for col in td["cols"]:
-		head += "%-7s" % col["label"]
-	out.append(head)
-	for n in w.npcs:
-		var line = "%-12s" % (n.name if n.alive else n.name + "†")
-		for col in td["cols"]:
-			var key = "%d:%d" % [col["day"], col["phase"]]
-			var cell = ""
-			var vals: Array = td["rows"][n.id].get(key, [])
-			var shown = {}
-			for v in vals:
-				var tag = v["val"] + ("" if v["confirmed"] else "~")
-				if not shown.has(tag):
-					shown[tag] = true
-					cell += ("/" if cell != "" else "") + tag
-			line += "%-7s" % (cell if cell != "" else ".")
-		out.append(line)
-	out.append("Sq Square, Mk Market, Dk Docks, Hl Chapel Hill, hm home, XX killed. No mark = you saw it; ~ = someone told you.")
-	return "\n".join(out)
+	return GameBoard._timeline(self, filter)
 
 func set_note(id: String, text: String) -> void:
 	notes[id] = text

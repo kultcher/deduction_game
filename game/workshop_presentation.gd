@@ -1,6 +1,7 @@
 ## One supported presentation path: assessment, parked legacy receipt, social response.
 ## Runs only on a good mind (including evil's cover). No actual evil intelligence enters.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -169,7 +170,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	if direction == "deduction":
 		var supports: Array = g.board.filter(func(c): return c.n in card.supports)
 		var park_span = Profiler.open("park_native")
-		Argue._apply(g.w, n, card, supports, maxf(0.0, assessment.agreement) * (1.0 if venue == "private" else 0.5 if venue == "nomination" else 0.6), g.board)
+		Argue._apply(g.w, n, card, supports, maxf(0.0, assessment.agreement) * Tuning.Workshop.VENUE_MULTS.get(venue, 0.6), g.board)
 		Profiler.close(park_span)
 	else:
 		for target in targets:
@@ -203,14 +204,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		if already:
 			text = "You've told me that already. Thank you."
 		elif Mind.defend_strength(card, n.id) >= 0.2:
-			Mind.set_trust(g.w, n, n.trust + 0.03, "the Demonologist spoke up for me")
+			Mind.set_trust(g.w, n, n.trust + Tuning.Trust.SELF_SUPPORT_BONUS, "the Demonologist spoke up for me")
 			Mind.recompute_beliefs(g.w, n, " (self-support rapport)")
 			text = "Thank you for believing me."
 		else:
 			text = "I appreciate the support, but I'm not sure that explains it."
 	elif assessment.agreement >= 0.6 and not fresh.is_empty() and not repeated:
 		var reward_span = Profiler.open("trust_reward")
-		Mind.set_trust(g.w, n, n.trust + 0.02, "the presented reports support the argument")
+		Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PRESENTATION_REWARD, "the presented reports support the argument")
 		Mind.recompute_beliefs(g.w, n, " (presentation trust reward)")
 		Profiler.close(reward_span)
 	if root.conclusion.type == "conflict" and assessment.agreement >= 0.6 and not repeated:
@@ -264,6 +265,8 @@ const STANCE_ONLY = [
 	"These observations make your explanation convincing to me, though an alternative remains logically possible.",
 	"Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation.",
 	"I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation.",
+	"Your explanation fits what I considered, and none of the alternatives I checked held up.",
+	"I found your explanation coherent, though I am not yet convinced by its support.",
 	"The supplied evidence weighs against that conclusion.",
 ]
 

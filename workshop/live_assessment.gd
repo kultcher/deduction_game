@@ -704,35 +704,47 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 	if receipt.kind != "info" or receipt.content.get("role") not in ROLES or receipt.source not in ids or receipt.observed_at.day < 0 or receipt.observed_at.phase == "unknown":
 		return false
 	var data: Dictionary = receipt.content.data
+	var rdef = C.role_def(receipt.content.role)
+	if rdef != null and rdef.shape == "ROLE_IN_GROUP":
+		if rdef.role_group_key == "pair":
+			if not _group_valid(data.get("pair"), ids) or data.pair.size() != 2 or receipt.source in data.pair:
+				return false
+		else:
+			var target_id = data.get(rdef.role_group_key)
+			if not (target_id in ids and target_id != receipt.source):
+				return false
+		match rdef.role_target_pool:
+			"good":
+				return data.get("role") in C.GOOD_ROLES
+			"minion":
+				return data.get("role") in C.MINION_ROLES
+			_:
+				return data.get("role") in C.ROLES
+	elif rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count":
+		var grp = data.get(rdef.site_group_key)
+		return _group_valid(grp, ids) and _count_valid(data.get("count"), grp.size())
+	elif rdef != null and rdef.shape == "GROUP_COUNT":
+		return _count_valid(data.get("count"), 4 if rdef.count_mode == "blocks" else (ids.size() - 1))
+	elif rdef != null and rdef.shape == "NIGHT_ROUTE":
+		return data.get("block") in C.BLOCKS and data.get("seen") is Array and (data.seen.is_empty() or _group_valid(data.seen, ids)) and receipt.source not in data.seen
+	elif rdef != null and rdef.shape == "PING":
+		if not _group_valid(data.get("pair"), ids) or data.pair.size() != 2 or receipt.source in data.pair:
+			return false
+		return data.get("yes") is bool
+	elif rdef != null and rdef.shape == "SECRET_PAIR":
+		return _group_valid(data.get("pair"), ids) and data.get("pair", []).size() == 2 and data.get("secret") in modifiers
+	elif rdef != null and rdef.shape == "SOCIAL_PAIR":
+		return receipt.observed_at.phase == "night" and receipt.observed_at.day >= 1 and data.get("subject") in ids and data.subject != receipt.source and data.get("trusts") in ids and data.trusts != data.subject and data.get("suspects") in ids and data.suspects != data.subject
 	match receipt.content.role:
 		"warden":
 			return data.get("target") in ids and data.target != receipt.source and receipt.observed_at.day >= 1 and receipt.observed_at.phase == "night"
-		"psychologist":
-			return receipt.observed_at.phase == "night" and receipt.observed_at.day >= 1 and data.get("subject") in ids and data.subject != receipt.source and data.get("trusts") in ids and data.trusts != data.subject and data.get("suspects") in ids and data.suspects != data.subject
-		"surveyor":
-			return _count_valid(data.get("count"), 4)
-		"nightwatch":
-			return data.get("block") in C.BLOCKS and data.get("seen") is Array and (data.seen.is_empty() or _group_valid(data.seen, ids)) and receipt.source not in data.seen
-		"gravedigger":
-			return data.get("executed") in ids and data.executed != receipt.source and data.get("role") in C.ROLES
 		"veteran":
 			return _count_valid(data.get("attacked"), receipt.observed_at.day) and data.attacked == receipt.observed_at.day and data.attacked >= 1 and data.get("block") in C.BLOCKS
-		"lamplighter":
-			return _count_valid(data.get("count"), ids.size() - 1)
 		"martyr":
 			return data.get("target") in ids and data.target != receipt.source and ((data.get("chosen") == true and not data.get("evil", false)) or (data.get("evil") == true and not data.get("chosen", false)))
 		"sexton":
 			return _count_valid(data.get("night"), receipt.observed_at.day) and data.night == receipt.observed_at.day and data.night >= 1
-		"dowser":
-			return _group_valid(data.get("group"), ids) and _count_valid(data.get("count"), data.get("group", []).size())
-		"clerk", "archivist", "seer":
-			if not _group_valid(data.get("pair"), ids) or data.pair.size() != 2 or receipt.source in data.pair:
-				return false
-			if receipt.content.role == "seer":
-				return data.get("yes") is bool
-			return data.get("role") in (C.GOOD_ROLES if receipt.content.role == "clerk" else C.MINION_ROLES)
-		_:
-			return _group_valid(data.get("pair"), ids) and data.get("pair", []).size() == 2 and data.get("secret") in modifiers
+	return false
 
 static func _group_valid(value, ids: Array) -> bool:
 	if not value is Array or value.is_empty():

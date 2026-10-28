@@ -14,6 +14,8 @@ func _init() -> void:
 	shape = "PING"
 	marked_registers = true
 	red_herring_registers = true
+	public_threat_bonus = Tuning.Roles.SEER.public_threat_bonus
+	public_threat_key = "seer"
 	request_agree_line = "All right. Tonight I'll look at %s."
 
 
@@ -27,15 +29,15 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 
 
 func reading_strength(d: Dictionary, _t_id: String) -> float:
-	return 0.9 if d.get("yes", false) else 0.0
+	return Tuning.Roles.SEER.reading_strength_yes if d.get("yes", false) else 0.0
 
 
 func card_strength(d: Dictionary, _suspect_id: String) -> float:
-	return 1.0 if d.get("yes", false) else 0.0
+	return Tuning.Roles.SEER.card_strength_yes if d.get("yes", false) else 0.0
 
 
 func defend_strength(d: Dictionary, _nominee: String) -> float:
-	return 0.0 if d.get("yes", false) else 0.8
+	return 0.0 if d.get("yes", false) else Tuning.Roles.SEER.defend_strength_no
 
 
 func info_effects(_w, listener, source, entry: Dictionary, weight: float, fresh: bool, mind) -> Array:
@@ -47,16 +49,29 @@ func info_effects(_w, listener, source, entry: Dictionary, weight: float, fresh:
 	var pair: Array = d["pair"]
 	var others: Array = pair.filter(func(i): return i != listener.id)
 	if d["yes"]:
-		var per: float = 0.45 if others.size() > 1 else 0.85
+		var per: float = Tuning.Roles.SEER.eff_yes_pair if others.size() > 1 else Tuning.Roles.SEER.eff_yes_solo
 		for i in others:
 			mind._eff(effs, i, per, tag + ": seer yes",
 				"%s sight said one of them is the demon" % src_name, not own)
 	else:
 		for i in others:
-			mind._eff(effs, i, (-0.45 if own else -0.3), tag + ": seer no", "", not own)
+			mind._eff(effs, i, (Tuning.Roles.SEER.eff_no_own if own else Tuning.Roles.SEER.eff_no_heard), tag + ": seer no", "", not own)
 			if own and fresh:
 				listener.cleared[i] = true
 	return effs
+
+
+func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, workshop_ledger) -> Dictionary:
+	var pings: int = src.info_log.filter(func(e): return e.get("shared", false) and e.get("role", "") == "seer" and e["data"].get("yes", false) and d.id in e["data"].get("pair", [])).size()
+	if pings >= 2:
+		return {
+			"handled": true,
+			"move": "red_herring",
+			"line": mind.say(d, "%s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name),
+			"effs": [[d.id, Tuning.Roles.SEER.red_herring_defence_eff, true, "says they're the Seer's red herring", ""]],
+			"scope": {"type": "challenge", "mode": "misled", "reading": workshop_ledger.reading(src_id, rd).id},
+		}
+	return {}
 
 
 ## The Seer's two picks, by Insight. A sharp Seer usually re-checks their top suspect and
@@ -110,17 +125,17 @@ func pick_targets(w, n, mind):
 
 func score_gift_request(_w, n, targets: Array, top: String, parts: Dictionary, _mind) -> void:
 	if top in targets:
-		parts["already_wondering"] = 0.3
+		parts["already_wondering"] = Tuning.Roles.SEER.req_already_wondering
 	for t in targets:
 		if n.npc_trust.get(t, 0.5) >= 0.7:
-			parts["doubting_a_friend"] = -0.25
+			parts["doubting_a_friend"] = Tuning.Roles.SEER.req_doubting_friend
 	var checked = {}
 	for e in n.info_log:
 		if e.get("role", "") == "seer":
 			for pid in e["data"]["pair"]:
 				checked[pid] = true
 	if targets.all(func(t): return checked.has(t)):
-		parts["already_looked"] = -0.3
+		parts["already_looked"] = Tuning.Roles.SEER.req_already_looked
 
 
 func counter_gift_request(w, _n, _targets: Array, top: String) -> String:

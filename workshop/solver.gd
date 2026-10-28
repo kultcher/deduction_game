@@ -581,17 +581,22 @@ static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictio
 	var evil: int = world.evil
 	if world.has("converted") and TimeModel.evil_index(view, world, world.converted, card.observed_at):
 		evil |= 1 << int(world.converted)
-	match card.role:
-		"seer":
-			var demon: bool = world.get("demon", -1) >= 0 and (pair & (1 << int(world.demon))) != 0
-			return demon or (pair & ~evil) != 0 if data.yes else not demon
-		"clerk": return (pair & ~world.evil) != 0
-		"archivist": return (pair & world.evil & ~(1 << int(world.get("demon", -1)))) != 0
-		"gravedigger":
-			var target: int = person_index(view, data.executed)
-			var reads_evil: bool = (world.evil & (1 << target)) != 0 or world.marked == target
-			return reads_evil if Domain.C.ROLES.get(data.role, {}).get("align") == "evil" else (world.evil & (1 << target)) == 0
-		"rumormonger": return world.get("modifier", "marked") == data.secret and (int(world.get("holders", 1 << world.marked)) & pair) != 0
+	var rdef = C.role_def(card.role)
+	if rdef != null and rdef.shape == "ROLE_IN_GROUP":
+		var group_mask: int = pair if rdef.role_group_key == "pair" else (1 << person_index(view, data.get(rdef.role_group_key, "")))
+		match rdef.role_target_pool:
+			"good":
+				return (group_mask & ~world.evil) != 0
+			"minion":
+				return (group_mask & world.evil & ~(1 << int(world.get("demon", -1)))) != 0
+			_:
+				var reads_evil: bool = (world.evil & group_mask) != 0 or (rdef.marked_registers and world.marked >= 0 and (group_mask & (1 << world.marked)) != 0)
+				return reads_evil if Domain.C.ROLES.get(data.role, {}).get("align") == "evil" else (world.evil & group_mask) == 0
+	if rdef != null and rdef.shape == "PING":
+		var demon: bool = world.get("demon", -1) >= 0 and (pair & (1 << int(world.demon))) != 0
+		return demon or (pair & ~evil) != 0 if data.yes else not demon
+	if rdef != null and rdef.shape == "SECRET_PAIR":
+		return world.get("modifier", "marked") == data.secret and (int(world.get("holders", 1 << world.marked)) & pair) != 0
 	return _report_content(view, world, card, {})
 
 ## What a report says, given a valid source (see source_valid): does it hold here?
@@ -599,8 +604,9 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 	_ensure_people(view)
 	if card.role == "warden":
 		return not view.get("timeline", {}).get("events", []).any(func(event): return event.kind == "demon_death" and event.at.day == card.observed_at.day and card.data.target in event.subjects)
+	var rdef = C.role_def(card.role)
 	if Domain.live(view):
-		if card.role == "nightwatch" and card.data.seen.any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):
+		if rdef != null and rdef.shape == "NIGHT_ROUTE" and card.data.seen.any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):
 			return false
 		if card.role == "rumormonger":
 			return Domain.rumor(view, world, card, answer)
@@ -609,7 +615,9 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 		var marked: int = world.marked
 		var marked_id: String = _cached_ids[marked] if marked >= 0 and marked < _cached_ids.size() else ""
 		return marked_id in d.pair and (answer.get("positive", []).is_empty() or marked_id in answer.positive)
-	if card.role not in ["surveyor", "dowser"]:
+	var is_site_group: bool = rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count" and rdef.site_group_key == "group"
+	var is_surveyor: bool = rdef != null and rdef.shape == "GROUP_COUNT" and rdef.count_mode == "blocks"
+	if not is_site_group and not is_surveyor:
 		return true
 	# A Marked person may register either way, independently for each reading.
 	var evil_bits: int = world.evil
@@ -624,10 +632,9 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 			return false
 		ans_mask |= 1 << index
 	var group_mask: int = 0
-	if card.role == "dowser":
-		for id in d.group:
+	if is_site_group:
+		for id in d.get(rdef.site_group_key, []):
 			group_mask |= (1 << person_index(view, id))
-	var is_surveyor: bool = card.role == "surveyor"
 	var target_count: int = d.count
 	_ensure_people(view)
 	var b_masks: Array = _cached_block_masks.values()
@@ -825,15 +832,16 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			if person in unique:
 				errors.append("%s: the same person fills two slots." % id)
 			unique.append(person)
-		if card.get("role", "") == "dowser" and not positive.all(func(p): return p in card.data.group):
+		var cdef = C.role_def(card.get("role", ""))
+		if cdef != null and cdef.shape == "ROLE_AT_SITE" and cdef.site_mode == "group_count" and not positive.all(func(p): return p in card.data.get(cdef.site_group_key, [])):
 			errors.append("%s: choose people in this reading's group." % id)
 		if card.get("role", "") in ["clerk", "archivist", "seer"] and not positive.all(func(p): return p in card.data.pair):
 			errors.append("%s: choose a person in this reading's pair." % id)
 		if card.get("role") == "seer" and case_data.answers[id].get("registration", "") not in ["", "demon", "marked", "red_herring"]:
 			errors.append("%s: choose a valid registration explanation." % id)
-		if card.get("role", "") == "lamplighter" and card.source in positive:
+		if cdef != null and cdef.shape == "GROUP_COUNT" and cdef.count_mode == "walkers" and card.source in positive:
 			errors.append("%s: the count excludes the Lamplighter." % id)
-		if card.get("role", "") == "surveyor":
+		if cdef != null and cdef.shape == "GROUP_COUNT" and cdef.count_mode == "blocks":
 			var blocks: Array = []
 			for block in chosen_blocks:
 				if block not in C.BLOCKS:

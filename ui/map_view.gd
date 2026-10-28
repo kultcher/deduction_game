@@ -170,7 +170,7 @@ func _draw_art(tex, rect: Rect2, mode: String = "contain", tint: Color = Color.W
 	draw_texture_rect(tex, r, false, tint)
 	return r
 
-func _sign(font, text: String, center: Vector2, fs: int, active: bool = false) -> Rect2:
+func _sign(font, text: String, center: Vector2, fs: int, active: bool = false, is_obstacle: bool = true) -> Rect2:
 	var w = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + fs * 1.6
 	var h = fs * 1.9
 	var r = Rect2(center - Vector2(w / 2.0, h / 2.0), Vector2(w, h))
@@ -181,7 +181,8 @@ func _sign(font, text: String, center: Vector2, fs: int, active: bool = false) -
 		draw_rect(r, UITheme.color("paper"))
 	draw_string(font, Vector2(r.position.x, r.position.y + h * 0.68), text, HORIZONTAL_ALIGNMENT_CENTER, w, fs,
 		UITheme.color("paper") if active else UITheme.color("ink"))
-	_label_obstacles.append(r)
+	if is_obstacle:
+		_label_obstacles.append(r)
 	return r
 
 func _draw() -> void:
@@ -219,6 +220,7 @@ func _draw() -> void:
 			var mid: Vector2 = pts[1] if pts.size() > 2 else (pts[0] + pts[1]) / 2.0
 			mid += Vector2(18, -10)
 			_draw_art(lamp, _r(Rect2(mid - Vector2(10, 48), Vector2(20, 48))), "contain", Color(1, 1, 1) if not night else Color(1, 0.95, 0.75))
+	var unseen_badges: Array = []
 	# Blocks.
 	for b in BLOCK_RECTS:
 		var R: Rect2 = _r(BLOCK_RECTS[b])
@@ -244,22 +246,18 @@ func _draw() -> void:
 			var here_l = g.moved and g.loc == l and not night
 			var sign_r = drawn
 			if zoom_block != "" or _scale > 0.9:
-				sign_r = _sign(font, C.loc_name(l).trim_prefix("the ").capitalize(), Vector2(drawn.get_center().x, drawn.end.y - 4), _fs(11), here_l)
+				sign_r = _sign(font, C.loc_name(l).trim_prefix("the ").capitalize(), Vector2(drawn.get_center().x, drawn.end.y - 4), _fs(11), here_l, false)
 			elif here_l:
 				draw_rect(drawn.grow(2), UITheme.color("accent"), false, 2.0)
 			# Someone's there you can't see yet: a count, not a name.
-			var unseen = g.unseen_at(l) if g.state in ["day", "talk", "approach"] else 0
+			var unseen = g.unseen_at_ui(l) if g.state in ["day", "talk", "approach"] else 0
 			if unseen > 0:
-				var bc = Vector2(sign_r.end.x + 2, sign_r.position.y + 2)
-				var br = maxf(9.0, 11.0 * _scale)
-				draw_circle(bc, br, UITheme.color("red"))
-				draw_arc(bc, br, 0, TAU, 20, UITheme.color("border"), 1.5)
-				draw_string(font, Vector2(bc.x - br, bc.y + br * 0.4), "+%d" % unseen, HORIZONTAL_ALIGNMENT_CENTER, br * 2.0, int(br * 1.1), UITheme.color("paper"))
+				unseen_badges.append({"center": Vector2(sign_r.end.x + 6, sign_r.position.y - 2), "count": unseen})
 			if zoom_block != "":
 				var hint = "Click to spend the phase here" if not g.moved else ("Click to step over (free move)" if not g.free_move_used and w.loc_block(g.loc) == b and g.loc != l else "")
 				if g.state != "day":
 					hint = ""
-				var un = g.unseen_at(l)
+				var un = g.unseen_at_ui(l)
 				var lbl = C.loc_name(l) + ((" (%d more there you can't see from here)" % un) if un > 0 else "")
 				_hits.append({"rect": LR, "kind": "location", "id": l, "label": lbl, "hint": hint})
 		# Homes (and crime scenes): small cottages with the owner's colour on the door.
@@ -301,6 +299,13 @@ func _draw() -> void:
 	if zoom_block != "": _label_obstacles.append(Rect2(0, 0, 150, 46))
 	# People.
 	_draw_people(font)
+	# Draw unseen (+N) location badges above standees so they are never tucked behind sprites.
+	for bdg in unseen_badges:
+		var bc: Vector2 = bdg["center"]
+		var br = maxf(9.0, 11.0 * _scale)
+		draw_circle(bc, br, UITheme.color("red"))
+		draw_arc(bc, br, 0, TAU, 20, UITheme.color("border"), 1.5)
+		draw_string(font, Vector2(bc.x - br, bc.y + br * 0.4), "+%d" % bdg["count"], HORIZONTAL_ALIGNMENT_CENTER, br * 2.0, int(br * 1.1), UITheme.color("paper"))
 	# Zoomed in: dim everything outside the block in view.
 	if zoom_block != "" and BLOCK_RECTS.has(zoom_block):
 		var Z: Rect2 = _r(BLOCK_RECTS[zoom_block])
@@ -343,7 +348,7 @@ func _draw_people(font) -> void:
 	var groups = {}  # virtual rect key -> [npc]
 	var rects = {}
 	for n in w.living():
-		if not g.can_see(n):
+		if not g.can_see_ui(n):
 			continue  # out of sight until the player is on their block
 		var rect: Rect2
 		if night or n.at_home():
@@ -400,6 +405,7 @@ func _draw_people(font) -> void:
 				var label = name_label_rect(desired, _label_obstacles, label_bounds)
 				_label_obstacles.append(label)
 				_name_labels.append({"id": n.id, "rect": label})
+				draw_style_box(UITheme.flat(Color(0.06, 0.07, 0.1, 0.82), Color(0.25, 0.22, 0.18, 0.65), 1, 4, 2), label)
 				draw_string(font, label.position + Vector2(0, lfs), n.name, HORIZONTAL_ALIGNMENT_CENTER, label.size.x, lfs, C.npc_color(n.id))
 			var hint = ""
 			if g.state == "day":
@@ -443,6 +449,7 @@ func _gui_input(ev: InputEvent) -> void:
 		if ev.button_index == MOUSE_BUTTON_RIGHT and zoom_block != "":
 			zoom_block = ""
 			queue_redraw()
+			clicked.emit("back", "")
 			return
 		if ev.button_index != MOUSE_BUTTON_LEFT:
 			return
@@ -453,6 +460,7 @@ func _gui_input(ev: InputEvent) -> void:
 			"back":
 				zoom_block = ""
 				queue_redraw()
+				clicked.emit("back", "")
 			"block":
 				if g.state == "night":
 					selected_block = h["id"]

@@ -15,7 +15,10 @@ func _init() -> void:
 	desc = "Each night, guards one other person's door against the demon."
 	shape = "NIGHT_EVENT"
 	can_cause_quiet_night = true
-	quiet_night_effect = -0.15
+	quiet_night_effect = Tuning.Roles.WARDEN.quiet_night_effect
+	quiet_night_claim_weight = Tuning.Roles.WARDEN.quiet_night_claim_weight
+	min_gift_day = 1
+	hard_to_kill = true
 	request_agree_line = "Very well. I'll stand at %s's door tonight."
 
 
@@ -33,13 +36,13 @@ func pick_targets(w, n, mind):
 		if m == n:
 			continue
 		var noise_draw: float = w.rng.randf()
-		var noise: float = noise_draw * 0.3
+		var noise: float = noise_draw * Tuning.Roles.WARDEN.pick_noise
 		var s: float = noise
 		if m.claim_public and m.claimed_role in mind.C.INFO_ROLES:
 			s += 1.0 - mind.susp(n, m.id)
-		s += (n.npc_trust.get(m.id, 0.5) - 0.5) * 0.8
-		s -= mind.susp(n, m.id) * 0.5
-		s += n.protect_pref.get(m.id, 0.0) * 1.2
+		s += (n.npc_trust.get(m.id, 0.5) - 0.5) * Tuning.Roles.WARDEN.pick_trust_scale
+		s -= mind.susp(n, m.id) * Tuning.Roles.WARDEN.pick_susp_scale
+		s += n.protect_pref.get(m.id, 0.0) * Tuning.Roles.WARDEN.pick_pref_scale
 		if w.dlog.live_feed != null and w.dlog.live_feed.enabled:
 			observed[m.id] = {
 				"score": s,
@@ -155,3 +158,10 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, _block: String, mind, block_
 		"vantage": n.home_block,
 		"how": "window",
 	}
+
+
+func pressed_night_line(w, _n, fact: Dictionary, _night: int, when: String, alternate: bool, _block_name_fn: Callable) -> String:
+	var door: String = fact.get("data", {}).get("target", fact.get("guard_claim", ""))
+	if door != "" and w.by_id.has(door):
+		return ("I stand by it: I guarded %s's door %s." if alternate else "My duty was at %s's door %s. That is still my account.") % [w.by_id[door].name, when]
+	return ""
