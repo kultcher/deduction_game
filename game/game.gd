@@ -1935,7 +1935,7 @@ func _close_meeting() -> void:
 	_hdr("Night %d" % w.day)
 	_narr(_night_homes())
 	if w.day == 1: _narr(C.DEMON_NIGHT_RULE)
-	var opts = "'vigil <block>' (watch a block)"
+	var opts = "'vigil <block>' (watch for activity arriving on a block)"
 	if w.tools["ward"] > 0:
 		opts = "'ward <name>' (shield them from the demon, once per case), " + opts
 	_prompt("Choose your night work: %s, or 'sleep'." % opts)
@@ -1996,9 +1996,9 @@ func _resolve_night() -> void:
 				"text": "Night %d: the Sexton tolled the death knell (no gift that walks abroad should work)." % w.day}])
 	if vig != "":
 		if w.player_vigil_seen.is_empty():
-			_narr("Nobody moves through %s all night." % C.block_name(vig))
+			_narr("Nobody comes to %s all night." % C.block_name(vig))
 			_facts([{"kind": "vigil", "subject": [], "block": vig, "source": "player", "day": w.day, "phase": C.NIGHT,
-				"text": "Night %d vigil on %s: nobody moved." % [w.day, C.block_name(vig)]}])
+				"text": "Night %d vigil on %s: nobody came to %s." % [w.day, C.block_name(vig), C.block_name(vig)]}])
 		else:
 			var names: Array = w.player_vigil_seen.map(func(i): return w.by_id[i].name)
 			_narr("During your vigil you see %s out on %s." % [", ".join(PackedStringArray(names)), C.block_name(vig)])

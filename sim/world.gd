@@ -1243,7 +1243,7 @@ func _night_sightings() -> void:
 				var detail = "leaving_home" if (how == "window" and where == wn.home_block) else "street"
 				o.beliefs.append({"kind": "saw", "who": wn.id, "loc": "", "block": where, "day": day, "phase": C.NIGHT, "how": how, "detail": detail})
 				dlog.add("night_sighting", o.id, wn.id, {"block": where}, "%s glimpsed %s on %s at night." % [o.name, wn.name, C.block_name(where)])
-		if player_vigil != "" and player_vigil in path and wn.alive:
+		if player_vigil != "" and C.vigil_sees_path(player_vigil, path) and wn.alive:
 			player_vigil_seen.append(wn.id)
 	# Neighbours at home sometimes notice each other going in for the night and not coming
 	# out again: a (true, if weak) alibi for those who stayed in.

@@ -24,6 +24,7 @@ func _init() -> void:
 	_public_hearsay_and_self_gossip()
 	_approach_ui_visibility()
 	_workshop_merge_order_of_operations()
+	_vigil_destination_only()
 	print("PLAYTEST REGRESSION FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -281,3 +282,26 @@ func _workshop_merge_order_of_operations() -> void:
 	var comp2 = m2.compile(p2)
 	_check(err == "" and m2.selected == p2, "merging two cards already linked to a premise succeeds and keeps the premise selected")
 	_check(comp1.cards == comp2.cards and comp1.disputes.size() == 1 and comp1.disputes == comp2.disputes and comp1.reasons == comp2.reasons, "merge-before-link and merge-after-link preserve the same evidence and interpretation")
+
+func _vigil_destination_only() -> void:
+	var g = _game()
+	var w = g.w
+	var a = w.npcs[0]
+	var b = w.npcs[1]
+	var lamp = w.npcs[2]
+	a.home_block = "docks"
+	b.home_block = "market"
+	lamp.home_block = "square"
+	w.night_walkers = [
+		{"id": a.id, "block": "hill", "path": ["docks", "hill"], "why": "leaving docks for hill"},
+		{"id": b.id, "block": "docks", "path": ["market", "docks"], "why": "arriving on docks"},
+		{"id": lamp.id, "block": "square", "path": C.BLOCKS.keys(), "why": "walking the lamp route"},
+	]
+	w.player_vigil = "docks"
+	w._night_sightings()
+	_check(not (a.id in w.player_vigil_seen) and (b.id in w.player_vigil_seen) and (lamp.id in w.player_vigil_seen),
+		"player vigil spots destination visitors and the Lamplighter, not residents leaving for another block")
+	var watch_def = C.role_def("nightwatch")
+	var watch_reading: Dictionary = watch_def.generate_reading(w, w.npcs[3], {"watch_block": "docks"}, Mind)
+	_check(a.id in watch_reading["data"]["seen"] and b.id in watch_reading["data"]["seen"],
+		"Night Watch still sees both departing residents and arriving visitors on the watched block")

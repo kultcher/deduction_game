@@ -109,7 +109,7 @@ static func _incident(kind: String, haunt: String, haunt_visit: float, out: bool
 					var block: String = card.get("block", card.data.get("block", ""))
 					incident *= 1.0 if out and (block == "" or block in path) else 0.0
 				"coverage":
-					var detection: float = card.data.detection if out and card.block in path else 0.0
+					var detection: float = card.data.detection if out and C.vigil_sees_path(card.block, path) else 0.0
 					incident *= detection if card.data.seen else 1.0 - detection
 				"evening": incident *= 1.0 if card.block == evening else 0.0
 				"alibi":
