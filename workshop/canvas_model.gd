@@ -87,8 +87,8 @@ func connect_cards(from: String, to: String) -> String:
 	var relation = "supports"
 	if a.kind == "evidence" and b.kind == "evidence":
 		relation = "read_together"
-		if _gift_link(a, b):
-			relation = "explains_outing"
+	if _gift_link(a, b):
+		relation = "explains_outing"
 	links.append({"from": from, "to": to, "kind": relation})
 	version += 1
 	return ""
@@ -137,14 +137,30 @@ func remove_modifier(id: String) -> void:
 	version += 1
 
 func _gift_link(a: Dictionary, b: Dictionary) -> bool:
-	if a.kind != "evidence" or b.kind != "evidence":
-		return false
+	return not _gift_observations(a, b).is_empty()
+
+## A composite keeps the original sighting's identity for gift explanations.
+## The same resolution is used when connecting, compiling and restoring its edge.
+func _gift_observations(a: Dictionary, b: Dictionary) -> Array:
+	if a.kind != "evidence":
+		return []
 	var claim = Solver.card_by_id(view, a.card)
-	var observation = Solver.card_by_id(view, b.card)
-	if claim.kind != "claim" or observation.get("night", -1) < 1 or not (observation.kind == "sighting" or (observation.kind == "report" and observation.role == "nightwatch")):
-		return false
-	var choices = {"citations": {"%s:%d" % [claim.subject, observation.night]: claim.id}}
-	return claim.subject in observation.get("data", {}).get("seen", [observation.get("subject", "")]) and not Graph.valid_citation(view, choices, claim.subject, observation.night).is_empty()
+	if claim.get("kind", "") != "claim":
+		return []
+	var candidates: Array = b.children.map(func(id): return nodes[id]) if b.kind == "contradiction" else [b]
+	var result: Array = []
+	for node in candidates:
+		if node.kind != "evidence":
+			continue
+		var observation = Solver.card_by_id(view, node.card)
+		var night: int = observation.get("night", -1)
+		if night < 1 or not (observation.kind == "sighting" or (observation.kind == "report" and observation.role == "nightwatch")):
+			continue
+		var choices = {"citations": {"%s:%d" % [claim.subject, night]: claim.id}}
+		if claim.subject in observation.get("data", {}).get("seen", observation.get("subjects", [observation.get("subject", "")])) and not Graph.valid_citation(view, choices, claim.subject, night).is_empty():
+			result.append(observation)
+	return result
+
 
 func _merge(a: String, b: String, dispute: Dictionary) -> void:
 	serial += 1
@@ -181,6 +197,7 @@ func unmerge(id: String) -> void:
 	if not nodes.has(id) or nodes[id].kind != "contradiction":
 		return
 	var group: Dictionary = nodes[id]
+	var incoming: Array = links.filter(func(edge): return edge.to == id)
 	var outgoing: Array = links.filter(func(edge): return edge.from == id)
 	links = links.filter(func(edge): return edge.from != id and edge.to != id)
 	for child in group.children:
@@ -189,6 +206,13 @@ func unmerge(id: String) -> void:
 	for edge in group.prior_links:
 		if not links.has(edge):
 			links.append(edge)
+	# Retain incoming links added after the merge as well as the original links.
+	for edge in incoming:
+		for child in group.children:
+			if edge.kind == "explains_outing" and not _gift_link(nodes[edge.from], nodes[child]):
+				continue
+			if not _reaches(child, edge.from) and not links.any(func(e): return e.from == edge.from and e.to == child):
+				links.append({"from": edge.from, "to": child, "kind": edge.kind})
 	for edge in outgoing:
 		for child in group.children:
 			if not links.any(func(e): return e.from == child and e.to == edge.to):
@@ -311,13 +335,13 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 		if node.kind == "premise" and not node.positions.is_empty() and node.conclusion.get("at", result.conclusion.at) != result.conclusion.at:
 			result.temporal_positions.append({"at": node.conclusion.at, "positions": node.positions.duplicate(true)})
 	for edge in links:
-		if edge.kind == "explains_outing" and edge.from in all and edge.to in all and nodes[edge.from].has("card") and nodes[edge.to].has("card"):
+		if edge.kind == "explains_outing" and edge.from in all and edge.to in all:
 			var claim = Solver.card_by_id(view, nodes[edge.from].card)
-			var observation = Solver.card_by_id(view, nodes[edge.to].card)
-			var key = "%s:%d" % [claim.subject, observation.night]
-			if not result.reasons.has(key):
-				result.reasons[key] = "gift"
-				result.citations[key] = claim.id
+			for observation in _gift_observations(nodes[edge.from], nodes[edge.to]):
+				var key = "%s:%d" % [claim.subject, observation.night]
+				if not result.reasons.has(key):
+					result.reasons[key] = "gift"
+					result.citations[key] = claim.id
 	if result.conclusion.type == "conflict":
 		result.conflict_scope = result.cards.duplicate()
 		result.disputes = [] # Ask whether contents conflict; do not resolve one first.
