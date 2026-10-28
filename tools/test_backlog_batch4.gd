@@ -324,7 +324,7 @@ func compact_answers():
 		n.beliefs.append({"kind": "saw", "who": others[i].id, "loc": "smithy" if i < 2 else "well", "block": "market" if i < 2 else "square", "day": 2, "phase": C.MORNING, "with": ""})
 	var day = Mind.answer_today(w, n, "morning")
 	check(day.facts.size() == 3 and day.facts.all(func(f): return f.kind == "sighting" and f.day == 2 and f.phase == C.MORNING), "day condensation retains all selected sighting cards")
-	check(day.lines.size() == 1 and (others[1].name + " and " + others[0].name) in day.lines[0].text and "well" in day.lines[0].text, "day sightings group people by place while retaining other places")
+	check(day.lines.size() == 1 and others.slice(0, 3).all(func(person): return person.name in day.lines[0].text) and "well" in day.lines[0].text and "smith" in day.lines[0].text and "this morning" in day.lines[0].text, "day narration keeps each selected person, place and time in one line")
 	n.role = "seer"
 	n.claimed_role = "seer"
 	n.max_tier = 3

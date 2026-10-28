@@ -141,7 +141,7 @@ Low-energy contempt for theatrics; uses literalism and velvet-edged sarcasm to k
 - **The same report under doubt:** “I do not give testimony lightly, Demonologist. I saw Rowan at the tavern yesterday evening; if you mean to impugn my word, state your grounds.”
 
 Part 2: Fenwick’s Target-Specific Epithet Table: 15-character lookup table designed so that none of the flourishes imply an action, route, or mood on that specific day—they only reference timeless character traits:
-Target  Fenwick's Optional Flourish 
+Target  Fenwick's Optional Flourish
 ("...none other than {Name}—{epithet}!")
 Agnes   "why, I'd know that kindly smile from ten paces"
 Bartholomew "looking as chatty as a gravestone, God love him"

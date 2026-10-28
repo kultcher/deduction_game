@@ -113,12 +113,10 @@ static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void
 		if n.told_to.has(_town_sighting_key(n, b)) or not _public_sighting_allowed(w, n, b): continue
 		var report = sighting_report(w, n, b, b.day)
 		n.told_to[_town_sighting_key(n, b)] = true
-		var night_label: String = C.night_name(b.day)
-		var text: String = report.line.text if (night_label in report.line.text or ("night %d" % b.day) in report.line.text) else ("On %s: %s" % [night_label, report.line.text])
-		_add_observation(groups, "sighting", text, w.by_id[b.who].name)
+		_add_observation(groups, report.observation)
 		facts.append(report.fact)
 		w.dlog.add("volunteer_sighting", n.id, b.who, {"night": b.day, "block": b.block, "score": score, "threshold": threshold})
-	for text in _observation_texts(groups): lines.append(say(n, text))
+	lines.append_array(_observation_lines(n, groups, "town", "volunteer", not lines.is_empty()))
 
 static func _public_claim_decision(w, n) -> String:
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
@@ -160,18 +158,18 @@ static func _info_intent(w, n, e: Dictionary) -> Dictionary:
 		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
 	return {"kind": "report", "statement": "%s, %s." % [when, e["text"]], "event_id": info_eid(n.id, e)}
 
-static func info_line(w, n, e: Dictionary, audience: String = "player") -> Dictionary:
+static func info_line(w, n, e: Dictionary, audience: String = "player", speech_act: String = "answer") -> Dictionary:
 	var approved = _info_intent(w, n, e)
-	return voiced(n, "report", approved["statement"], approved["event_id"], {"audience": audience})
+	return voiced(n, "report", approved["statement"], approved["event_id"], {"audience": audience, "speech_act": speech_act})
 
 ## A batch of readings is one uninterrupted speech turn. Each report remains an
 ## independent line and fact; only its introduction/connective is turn-aware.
-static func info_lines(w, n, entries: Array, audience: String = "player", preceded: bool = false) -> Array:
+static func info_lines(w, n, entries: Array, audience: String = "player", preceded: bool = false, speech_act: String = "answer") -> Array:
 	var approved: Array = []
 	for e in entries:
 		approved.append(_info_intent(w, n, e))
 	var rendered: Array = Dialogue.compose_turn(n.id, approved,
-		{"audience": audience, "trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, preceded)
+		{"audience": audience, "speech_act": speech_act, "trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, preceded)
 	var lines: Array = []
 	for part in rendered:
 		lines.append(say(n, part["text"]))
@@ -412,7 +410,7 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 			for l in w.living():
 				if l != n:
 					apply_info(w, l, n, e, heard_weight(l, n))
-		lines.append_array(info_lines(w, n, shared_this_turn, "town", not lines.is_empty()))
+		lines.append_array(info_lines(w, n, shared_this_turn, "town", not lines.is_empty(), "volunteer"))
 
 ## Last words are a claim and a spoken suspicion, not a fresh evidence argument.
 ## Reuse ordinary public claiming without adding the speaker's reading backlog.
@@ -1024,14 +1022,14 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 
 # ---------------------------------------------------------------- Mind delegates
 
-static func _add_observation(groups: Array, kind: String, text: String, name: String) -> void:
-	_mind()._add_observation(groups, kind, text, name)
+static func _add_observation(groups: Array, observation: Dictionary) -> void:
+	_mind()._add_observation(groups, observation)
 
 static func _afraid(w, n) -> bool:
 	return _mind()._afraid(w, n)
 
-static func _observation_texts(groups: Array) -> Array:
-	return _mind()._observation_texts(groups)
+static func _observation_lines(n, groups: Array, audience: String, speech_act: String, preceded: bool) -> Array:
+	return _mind()._observation_lines(n, groups, audience, speech_act, preceded)
 
 static func action_susp(n, id: String) -> float:
 	return _mind().action_susp(n, id)

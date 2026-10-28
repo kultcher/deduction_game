@@ -31,21 +31,19 @@ static func append_to(w, speaker, target, reply: Dictionary, board: Array) -> vo
 		frames[key] = true
 		if b["phase"] == C.NIGHT:
 			var report = Mind.sighting_report(w, speaker, b, b["day"])
-			var night_label: String = C.night_name(b["day"])
-			if not (night_label in report["line"]["text"] or ("night %d" % b["day"]) in report["line"]["text"]):
-				report["line"]["text"] = "On %s: %s" % [night_label, report["line"]["text"]]
-			Mind._add_observation(groups, report.fact.kind, report.line.text, target.name)
+			Mind._add_observation(groups, report.observation)
 			reply["facts"].append(report["fact"])
 		else:
 			var place: String = w.loc_name(b["loc"]) if b.get("loc", "") != "" else C.block_name(b["block"])
 			var when_s: String = "%s %s" % ["this" if b["day"] == w.day else "yesterday", C.PHASES[b["phase"]].to_lower()]
-			Mind._add_observation(groups, "sighting", "I saw %s at %s %s." % [target.name, place, when_s], target.name)
+			Mind._add_observation(groups, {"kind": "sighting", "scene": Mind._observation_scene(speaker, b, b.day),
+				"subject": target.name, "before": "I saw ", "after": " at %s %s." % [place, when_s]})
 			reply["facts"].append({"kind": "sighting", "subject": [target.id], "block": b["block"], "loc": b.get("loc", ""),
 				"day": b["day"], "phase": b["phase"], "source": speaker.id,
 				"text": "%s saw %s on %s, day %d %s." % [speaker.name, target.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
 		if frames.size() >= limit:
 			break
-	for text in Mind._observation_texts(groups): reply.lines.append(Mind.say(speaker, text))
+	reply.lines.append_array(Mind._observation_lines(speaker, groups, "player", "answer", true))
 
 static func _night_candidates(w, speaker, target, board: Array) -> Array:
 	var result: Array = []

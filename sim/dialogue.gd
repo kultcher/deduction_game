@@ -1,5 +1,6 @@
 ## A bounded dialogue composer. Call only AFTER the simulation chooses what to disclose.
-## statement is the already-approved factual sentence, retained verbatim (including lies).
+## statement is the already-approved factual sentence, retained as canonical content.
+## Explicit presence slots permit bounded rephrasing/elision (including lies).
 ## Two bounded forms can phrase a refusal or reconsideration using authored equivalents;
 ## their canonical statement is constructed here and never changes the underlying facts.
 ## Context contains public/expressed delivery cues, never hidden truth or a whole world/NPC.
@@ -8,6 +9,8 @@ extends RefCounted
 
 const Decisions = preload("res://sim/dialogue_decisions.gd")
 const Voices = preload("res://sim/dialogue_voices.gd")
+const Observations = preload("res://sim/dialogue_observations.gd")
+const Contract = preload("res://sim/dialogue_contract.gd")
 const INTENTS = ["report", "doubted", "friend", "conceal", "revise"]
 
 static func has_voice(id: String) -> bool:	return Voices.VOICES.has(id)
@@ -21,11 +24,15 @@ static func reconsideration_intent(argument: String) -> Dictionary:
 		"statement": "I didn't put much stock in %s. After all that's happened since... perhaps I should have." % argument}
 
 static func compose(id: String, intent: Dictionary, context: Dictionary, memory: Dictionary) -> Dictionary:
+	var delivery = Contract.context(context)
+	return Contract.attach(_compose(id, intent, delivery, memory), intent, delivery)
+
+static func _compose(id: String, intent: Dictionary, context: Dictionary, memory: Dictionary) -> Dictionary:
 	if intent.get("kind", "") in ["argument", "nomination"] and context.get("decided", false):
 		return decision(id, intent, context.get("audience", "player"), memory)
 	var kind: String = intent.get("kind", "")
 	var statement: String = intent.get("statement", "")
-	var result = {"text": statement, "statement": statement, "voice": id, "intent": kind, "cue": "", "repeated": false}
+	var result = {"text": statement, "statement": statement, "event_id": intent.get("event_id", ""), "voice": id, "intent": kind, "cue": "", "repeated": false}
 	# A generic stonewall still acknowledges an earlier refusal; it does not need a voice pack.
 	if not has_voice(id) and kind == "conceal" and intent.get("form", "") == "whereabouts" and context.get("withholding", false) and not statement.is_empty():
 		var event: String = intent.get("event_id", "")
@@ -53,7 +60,9 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 	var audience: String = context.get("audience", "player")
 	var event_id: String = intent.get("event_id", "")
 	# Include exact content: a changed account is never described as a repetition.
-	var key = JSON.stringify([audience, kind, event_id, statement])
+	var identity: Array = [audience, kind, event_id, statement]
+	if intent.get("form", "") == "presence": identity.append(intent.get("observation", {}))
+	var key = JSON.stringify(identity)
 	var seen: Dictionary = memory.get("seen", {})
 	var repeated = not event_id.is_empty() and seen.has(key)
 	var cue = kind
@@ -65,7 +74,18 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 			cue = "pressure"
 		elif context.get("trust", 0.5) < 0.3:
 			cue = "guarded"
+		# The caller identifies the speech act; audience alone is not a question.
+		var act: String = context.get("speech_act", "")
+		if act in ["answer", "volunteer"] and cue != "repeat":
+			cue = ("report" if cue == "report" else cue) + "_" + act
+			if cue == "report_" + act and context.get("warm", false): cue += "_warm"
 	var counts: Dictionary = memory.get("counts", {})
+	var spoken = statement
+	if Observations.valid_presence(intent) and intent.observation.scene.source == id:
+		var observation: Dictionary = intent.observation
+		var template: String = Voices.VOICES[id]["presence_more" if context.get("shared_presence", false) else "presence_first"]
+		# One formatting operation: inserted display names cannot become new slots.
+		spoken = template % ([observation.subject] if context.get("shared_presence", false) else [observation.subject, observation.place, observation.time])
 	var form: String = intent.get("form", "")
 	var authored_form = (kind == "conceal" and form == "whereabouts") or (kind == "revise" and form == "reconsideration" and not str(intent.get("argument", "")).is_empty())
 	if authored_form:
@@ -74,7 +94,7 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 	# introductions, but still track the delivered event and per-audience repetition.
 	# Relationship labels are caller-approved, not inferred from the report's text.
 	if kind == "report" and context.get("flow_position", "standalone") == "continuation":
-		var relation: String = context.get("flow_relation", "continuation")
+		var relation: String = context.get("flow_relation", "independent")
 		var connective = ""
 		if relation in ["development", "contrast", "transition", "correction"]:
 			var flow_cue = "flow_" + relation
@@ -86,7 +106,7 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 		var parts: Array = []
 		if connective != "":
 			parts.append(connective)
-		parts.append(statement)
+		parts.append(spoken)
 		if audience != "town" and context.get("request_privacy", false):
 			var private_lines: Array = Voices.VOICES[id]["private"]
 			parts.append(private_lines[int(counts.get(audience + ":private", 0)) % private_lines.size()])
@@ -104,7 +124,7 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 	var extra: String = choices[int(counts.get(count_key, 0)) % choices.size()]
 	# Single replacement, not general string formatting of player/evidence text.
 	extra = extra.replace("{subject}", str(context.get("subject", "")))
-	var chunks: Array = [extra, statement]
+	var chunks: Array = [extra, spoken]
 	if authored_form:
 		chunks = [extra.replace("{argument}", str(intent.get("argument", "")))]
 	elif kind == "friend":
@@ -129,17 +149,29 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 ## Each result remains a distinct speech event with its exact statement and event ID.
 static func compose_turn(id: String, intents: Array, context: Dictionary, memory: Dictionary, preceded: bool = false) -> Array:
 	var results: Array = []
+	var previous: Dictionary = {}
+	var subjects: Array = []
 	for i in range(intents.size()):
 		var approved: Dictionary = intents[i]
 		var cues: Dictionary = context.duplicate()
 		cues["flow_position"] = "continuation" if preceded or i > 0 else "opening"
-		cues["flow_relation"] = approved.get("relation", "continuation")
+		cues["flow_relation"] = approved.get("relation", "independent")
+		# Only adjacent, caller-approved direct presence claims with identical
+		# scene/time/source/predicate may share a referent. Never cross a contrast,
+		# correction, repeated subject, unstructured line, or separate speaker turn.
+		var shared = Observations.same_presence(previous, approved) and cues["flow_relation"] in ["independent", "continuation", "development"]
+		if shared and approved.observation.subject_id in subjects: shared = false
+		if not shared: subjects = []
+		cues["shared_presence"] = shared
+		if shared: cues["flow_relation"] = "same_scene"
+		if Observations.valid_presence(approved): subjects.append(approved.observation.subject_id)
 		# A request for confidentiality belongs at the end of the turn, not after
 		# each individual reading. Standalone compose() retains its existing behavior.
 		cues["request_privacy"] = context.get("request_privacy", false) and i == intents.size() - 1
 		var delivery: Dictionary = approved.duplicate()
 		delivery.erase("relation")
 		results.append(compose(id, delivery, cues, memory))
+		previous = approved
 	return results
 
 ## Immediate exchange continuity is deliberately separate from cross-day delivery memory.
@@ -202,4 +234,4 @@ static func contextualize(id: String, statement: String, cue: String, subject_na
 
 ## The simulation has already approved this descriptor. Never pass private decision logs.
 static func decision(id: String, approved: Dictionary, audience: String, memory: Dictionary) -> Dictionary:
-	return Decisions.render(id, approved, audience, memory)
+	return Contract.attach(Decisions.render(id, approved, audience, memory), approved, {"audience": audience})

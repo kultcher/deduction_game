@@ -1026,11 +1026,11 @@ static func _claim_line(n, role: String) -> Dictionary:
 static func _info_intent(w, n, e: Dictionary) -> Dictionary:
 	return MindMeeting._info_intent(w, n, e)
 
-static func info_line(w, n, e: Dictionary, audience: String = "player") -> Dictionary:
-	return MindMeeting.info_line(w, n, e, audience)
+static func info_line(w, n, e: Dictionary, audience: String = "player", speech_act: String = "answer") -> Dictionary:
+	return MindMeeting.info_line(w, n, e, audience, speech_act)
 
-static func info_lines(w, n, entries: Array, audience: String = "player", preceded: bool = false) -> Array:
-	return MindMeeting.info_lines(w, n, entries, audience, preceded)
+static func info_lines(w, n, entries: Array, audience: String = "player", preceded: bool = false, speech_act: String = "answer") -> Array:
+	return MindMeeting.info_lines(w, n, entries, audience, preceded, speech_act)
 
 static func info_fact(w, n, e: Dictionary) -> Dictionary:
 	return MindMeeting.info_fact(w, n, e)
@@ -1213,13 +1213,13 @@ static func _fake_watch_entry(n, nd: int) -> Dictionary:
 	return MindDialogue._fake_watch_entry(n, nd)
 
 static func _spoken_list(items: Array) -> String:
-	return MindDialogue._spoken_list(items)
+	return Dialogue.Observations.spoken_list(items)
 
-static func _add_observation(groups: Array, kind: String, text: String, name: String) -> void:
-	MindDialogue._add_observation(groups, kind, text, name)
+static func _add_observation(groups: Array, observation: Dictionary) -> void:
+	MindDialogue._add_observation(groups, observation)
 
-static func _observation_texts(groups: Array) -> Array:
-	return MindDialogue._observation_texts(groups)
+static func _observation_lines(n, groups: Array, audience: String, speech_act: String, preceded: bool) -> Array:
+	return MindDialogue._observation_lines(n, groups, audience, speech_act, preceded)
 
 static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	return MindDialogue.sighting_report(w, n, b, nd)
@@ -1656,3 +1656,6 @@ static func gossip(w) -> Dictionary:
 		return {"lines": ["You overhear %s muttering that %s can't be trusted%s." % [speaker.name, t.name, tail]],
 			"facts": [{"kind": "opinion", "subject": [t.id], "source": speaker.id, "text": "Gossip: %s distrusts %s." % [speaker.name, t.name]}]}
 	return {"lines": ["You overhear %s complaining about the price of bread. Nothing useful." % speaker.name], "facts": []}
+
+static func _observation_scene(n, b: Dictionary, day: int) -> Dictionary:
+	return MindDialogue._observation_scene(n, b, day)

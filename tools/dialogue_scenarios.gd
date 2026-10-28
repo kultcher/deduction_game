@@ -213,12 +213,16 @@ const FLOW_SCENARIOS = [
 		],
 	},
 	{
-		"title": "Developing and qualifying a thought",
-		"note": "The relationship between sentences is approved explicitly; the renderer does not decide that a statement is contradictory.",
+		"title": "Two people at the same place and time",
+		"note": "Explicit direct-presence descriptors share source, scene and time. Each canonical report remains separate; nothing says they arrived together. Compare answering a question with volunteering this account.",
+		"context": {"speech_act": "answer"},
 		"parts": [
-			{"kind": "report", "event_id": "flow:account:0", "statement": "I saw Jory near the square."},
-			{"kind": "report", "event_id": "flow:account:1", "relation": "development", "statement": "I saw Fenwick there as well."},
-			{"kind": "report", "event_id": "flow:account:2", "relation": "contrast", "statement": "I could not tell whether they arrived together."},
+			{"kind": "report", "form": "presence", "event_id": "flow:account:0", "statement": "I saw Jory at the tavern yesterday evening.",
+				"observation": {"subject_id": "jory", "subject": "Jory", "place": "the tavern", "time": "yesterday evening",
+					"scene": {"source": "agnes", "place_id": "loc:tavern", "day": 2, "phase": 2, "how": "direct", "predicate": "presence"}}},
+			{"kind": "report", "form": "presence", "event_id": "flow:account:1", "relation": "development", "statement": "I saw Fenwick at the tavern yesterday evening.",
+				"observation": {"subject_id": "fenwick", "subject": "Fenwick", "place": "the tavern", "time": "yesterday evening",
+					"scene": {"source": "agnes", "place_id": "loc:tavern", "day": 2, "phase": 2, "how": "direct", "predicate": "presence"}}},
 		],
 	},
 	{
@@ -231,6 +235,14 @@ const FLOW_SCENARIOS = [
 		],
 	},
 ]
+
+## Fixtures compare different speakers describing their own identical synthetic scene.
+## Supply source identity explicitly, never infer it from a name in the sentence.
+static func flow_parts(id: String, scenario: Dictionary) -> Array:
+	var parts: Array = scenario["parts"].duplicate(true)
+	for part in parts:
+		if part.get("form", "") == "presence": part.observation.scene.source = id
+	return parts
 
 ## Synthetic sequences across *separate* player/NPC exchanges. The player's
 ## immediately preceding spoken act is supplied explicitly; it is not inferred.

@@ -1,0 +1,140 @@
+{
+  "status": "Editorial sketches only; not enabled in live dialogue.",
+  "scenarios": [
+    {
+      "key": "gift_refusal",
+      "title": "Gift refusal",
+      "prompt": "What is your gift?",
+      "statement": "I will not disclose my gift.",
+      "note": "The decision is to refuse. No role, reason for secrecy, or promise to reveal later is supplied."
+    },
+    {
+      "key": "alibi",
+      "title": "Routine alibi",
+      "prompt": "Where were you last night?",
+      "statement": "I stayed home all last night.",
+      "note": "A claimed alibi, not certified truth. No sleeping, visitors, activity, or independent proof is supplied."
+    },
+    {
+      "key": "report",
+      "title": "Firsthand report",
+      "prompt": "Who did you see yesterday evening?",
+      "statement": "I saw Rowan at the tavern yesterday evening.",
+      "note": "Rowan is a fictional visitor used for calibration, so nobody reports seeing themselves. No route, action, motive, companion, or finer time is supplied."
+    },
+    {
+      "key": "challenged_report",
+      "title": "The same report under doubt",
+      "prompt": "I don't believe that account.",
+      "statement": "I saw Rowan at the tavern yesterday evening.",
+      "note": "The player has expressed doubt. The speaker maintains the same account; no new proof, certainty change, or counter-accusation is authorized."
+    }
+  ],
+  "voices": {
+    "agnes": {
+      "direction": "Invites understanding; warmth without an affectionate address on every line.",
+      "gift_refusal": "I'm keeping that to myself, love. I hope you'll understand.",
+      "alibi": "I was home all last night. Nothing more to tell you there.",
+      "report": "Oh, yes. I did see Rowan at the tavern yesterday evening.",
+      "challenged_report": "All right, let's talk it through. I saw Rowan at the tavern yesterday evening. What troubles you about that?"
+    },
+    "bart": {
+      "direction": "States the minimum and stops; no habitual counterattack.",
+      "gift_refusal": "That's mine to know.",
+      "alibi": "Home. All night.",
+      "report": "Saw Rowan at the tavern yesterday evening.",
+      "challenged_report": "Rowan. Tavern. Yesterday evening. That's my account."
+    },
+    "constance": {
+      "direction": "Considers the propriety of the inquiry and the responsibility of an assertion.",
+      "gift_refusal": "I shall not disclose my gift merely because you ask.",
+      "alibi": "I remained at home throughout last night.",
+      "report": "As I recall, Rowan was at the tavern yesterday evening.",
+      "challenged_report": "I stand by my account: I saw Rowan at the tavern yesterday evening. If you object, state your grounds."
+    },
+    "dorian": {
+      "direction": "Worries about how his words sound, without becoming uncertain of the observation.",
+      "gift_refusal": "I'd rather not say. That sounds evasive. Sorry, but I'm still not saying.",
+      "alibi": "Home all last night. I know how convenient that sounds, but it's what happened.",
+      "report": "I saw Rowan at the tavern yesterday evening. That's all I meant to say.",
+      "challenged_report": "Have I explained it badly? I saw Rowan at the tavern yesterday evening. No, that was clear enough. I stand by it."
+    },
+    "edda": {
+      "direction": "Grounds the exchange in a plain answer; occasional understatement, no ornamental folk sayings.",
+      "gift_refusal": "I'm keeping my gift to myself. We can still talk.",
+      "alibi": "Home all last night. Nothing complicated about it.",
+      "report": "Rowan was at the tavern yesterday evening. Saw them myself.",
+      "challenged_report": "I saw Rowan at the tavern yesterday evening. Worrying at the answer won't change it."
+    },
+    "fenwick": {
+      "direction": "Enjoys delivering the reveal; the performance stays shorter than a story and supplies no scenery.",
+      "gift_refusal": "Ah, you'd have me give the whole tale away. My gift stays with me.",
+      "alibi": "My grand adventure last night? Home, the whole night. A poor tale, I grant you.",
+      "report": "And who should I see at the tavern yesterday evening? Rowan.",
+      "challenged_report": "You wound me! Rowan, at the tavern yesterday evening. I saw them, whatever you think of the telling."
+    },
+    "greta": {
+      "direction": "Tests the questioner's entitlement; sharper than Bart, focused on trust rather than efficiency.",
+      "gift_refusal": "Why do you need to know? My gift stays my business.",
+      "alibi": "Home all last night. That's your answer.",
+      "report": "Rowan. I saw them at the tavern yesterday evening.",
+      "challenged_report": "I saw Rowan at the tavern yesterday evening. Are you questioning what I saw, or just questioning me?"
+    },
+    "hollis": {
+      "direction": "Examines scope and definitions; precision never invents a finer location or time.",
+      "gift_refusal": "I understand the question. I am declining to answer it.",
+      "alibi": "At home throughout last night. Throughout is the relevant part.",
+      "report": "I saw Rowan at the tavern yesterday evening. An observation, you understand, not an explanation.",
+      "challenged_report": "I saw Rowan at the tavern yesterday evening. Your doubt is an objection to the account, but not yet a reason to revise it."
+    },
+    "isolde": {
+      "direction": "Fears what testimony may do to someone; cushions the consequence, not the fact.",
+      "gift_refusal": "Please, let me keep my gift to myself.",
+      "alibi": "I stayed home all last night. Please believe me.",
+      "report": "I saw Rowan at the tavern yesterday evening. Please, don't take that as an accusation.",
+      "challenged_report": "I don't want to argue. But I did see Rowan at the tavern yesterday evening. Please don't ask me to take that back."
+    },
+    "jory": {
+      "direction": "Short bursts reach for the next useful question; eagerness rather than Bart's closure.",
+      "gift_refusal": "Not saying what my gift is. Something else?",
+      "alibi": "Stayed home. All last night.",
+      "report": "Rowan. Tavern, yesterday evening. Saw them. Anything else?",
+      "challenged_report": "But I saw Rowan! Tavern. Yesterday evening. Which bit do you want again?"
+    },
+    "kiran": {
+      "direction": "Turns the question back with an easy smile; protects his own affairs without inventing a reason.",
+      "gift_refusal": "Straight to my gift? You do skip the pleasantries. I'll keep that one to myself.",
+      "alibi": "Home all last night. You were hoping for a better story, weren't you?",
+      "report": "Rowan was at the tavern yesterday evening. I saw them. There, a question I can oblige you on.",
+      "challenged_report": "You did ask for my account. Must it pass an audition? I saw Rowan at the tavern yesterday evening."
+    },
+    "lian": {
+      "direction": "Brevity is practical triage; redirects toward a useful check rather than testing personal submission.",
+      "gift_refusal": "Not sharing my gift. Ask what I can verify.",
+      "alibi": "Home all last night. What else needs checking?",
+      "report": "Rowan was at the tavern yesterday evening. That's what I saw.",
+      "challenged_report": "I saw Rowan at the tavern yesterday evening. Tell me what needs checking; repeating it won't help."
+    },
+    "merrin": {
+      "direction": "Dramatizes the burden of the conversation, then lands on the concrete detail; no prophetic facts.",
+      "gift_refusal": "Must we drag every private thing into the light? My gift is staying private.",
+      "alibi": "Home, all last night! A terribly dull account. I cling to its dullness.",
+      "report": "Oh, I dread what you'll make of this. I saw Rowan at the tavern yesterday evening.",
+      "challenged_report": "Now I must defend my own eyes as well? Rowan, the tavern, yesterday evening. I saw them."
+    },
+    "nisha": {
+      "direction": "Separates the contested premise from the rest; no deductions beyond the supplied account.",
+      "gift_refusal": "I won't disclose my gift. What question does that leave you with?",
+      "alibi": "I stayed home all last night. That is my account; it isn't independent confirmation.",
+      "report": "I saw Rowan at the tavern yesterday evening. Keep the sighting separate from what it might mean.",
+      "challenged_report": "I saw Rowan at the tavern yesterday evening. Which part do you dispute: the person, the place, or the time?"
+    },
+    "odette": {
+      "direction": "Literal independence with dry understatement; withholding approval rather than cross-examining.",
+      "gift_refusal": "My gift is staying private. I'm sure the question will survive unanswered.",
+      "alibi": "At home all last night. I appreciate that it's a terribly dull answer.",
+      "report": "I saw Rowan at the tavern yesterday evening. Make of it what you will.",
+      "challenged_report": "I saw Rowan at the tavern yesterday evening. I can't offer you a more agreeable recollection."
+    }
+  }
+}

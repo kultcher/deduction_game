@@ -1,7 +1,7 @@
 # Demonologist — Core Dialogue Design
 
 **Status:** Agreed design direction; implementation reference, not a claim that every feature below is built.  
-**Updated:** 2026-10-27  
+**Updated:** 2026-10-28
 **Suggested repository location:** `docs/DIALOGUE_DESIGN.md`
 
 > **Core premise:** A character's voice is principally *how they process and present a thought*, not a vocabulary filter pasted over interchangeable text. The simulation decides what may be said; the dialogue system decides how that approved content sounds.
@@ -16,6 +16,10 @@ This is the **creative and behavioral specification** for dialogue. It does not 
 - `sim/content.gd` remains authoritative on the current cast IDs, pronouns, baseline traits, and the fact that occupations/roles/alignment can change each case.
 - `docs/dialogue_prototype.md` describes the existing implemented composer and dialogue laboratory, including its current limits.
 - `sim/dialogue.gd`, `sim/dialogue_voices.gd`, and `sim/dialogue_decisions.gd` are the current implementation surfaces. Nothing in this design document implies they already implement the entire voice bible.
+- `sim/dialogue_contract.gd` defines the shared presentation boundary and output metadata;
+  `sim/dialogue_observations.gd` defines bounded direct-presence slots and scene identity.
+  Simulation-facing conversation and meeting adapters live in `sim/mind_dialogue.gd`
+  and `sim/mind_meeting.gd`; `sim/mind.gd` retains compatibility forwarding methods.
 
 **Do not couple a character's voice to guilt, role, hidden knowledge, or an outcome the simulation has not approved.** A good and evil version of the same character should be able to say the same permitted words with the same voice.
 
@@ -353,6 +357,41 @@ These are **style sketches** for a voice-comparison lab, not assertions about an
 ## 10. Implementation strategy (proposed, not yet all built)
 
 ### Existing foundation to preserve
+
+The dialogue feature branch now integrates `bounded-reasoning-fix` at `526d756`.
+Its extracted conversation/meeting modules and role-definition hooks remain the
+simulation authority. The semantic-join changes have been ported into those modules,
+without restoring the former monolithic implementations in `mind.gd`.
+
+All public composer paths (ordinary reports, bounded forms, unvoiced fallback and
+resolved decisions) retain an independent, deeply copied `canonical` payload plus
+`audience`, `speech_act` and `relation` metadata. Existing `statement`, `event_id`
+and `repeated` fields remain available where supplied. The shared context boundary
+accepts only recognized delivery fields; hidden alignment, truth flags and secrets
+are not expression cues. This is an incremental extension of the existing composer,
+not another dialogue pipeline.
+
+Implemented discourse currently distinguishes `answer` / `volunteer`, optional
+warmth, pressure/guarded delivery and audience-specific repetition. An unspecified
+relation is `independent` (no connector); legacy `continuation` remains a silent
+alias. Direct daytime presence reports may share wording only with matching explicit
+source, venue/block identity, numeric day/phase, observation mode and predicate.
+Canonical reports and case cards remain separate. Qualification, changed provenance
+or unsupported forms retain their full approved statements. This does not imply
+shared travel, a joint arrival or precise simultaneity.
+
+The implemented voice baseline remains Agnes, Bart and Constance. The remaining
+twelve profiles below, broad sentence architectures, subjective interpretation,
+serious-event reactions and relationship interplay remain authoring targets.
+Pressure alone does not activate grief or a new serious mode. Do not pass a design
+sketch off as a live simulation hook merely because its prose appears in this file.
+
+The first editorial expansion is now available in
+[DIALOGUE_VOICE_SKETCHES.md](DIALOGUE_VOICE_SKETCHES.md) and the lab's **Voice calibration**
+section: gift refusal, routine alibi, firsthand report and the same report under doubt
+for all fifteen speakers. The twelve new voices are review samples only, with one
+version per situation; they are not registered as complete live voice packs. Review
+their ordinary short lines and collision groups before expanding variants or hooks.
 
 As documented in `docs/dialogue_prototype.md` and current `sim/` files:
 

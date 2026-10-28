@@ -139,7 +139,7 @@ func _test_role_in_group_hooks() -> void:
 	g.new_case(9103, 7)
 	var w = g.w
 	var goods: Array = w.living_good()
-	var evils: Array = w.evil_team()
+	var evils: Array = w.living().filter(func(person): return person.is_evil())
 	var clerk = goods[0]
 	var arch = goods[1]
 	var grave = goods[2]
