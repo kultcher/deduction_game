@@ -311,6 +311,11 @@ func generate_bluff_reading(_w, _n, _plan: Dictionary, _s: String, _mate, _asked
 	return {}
 
 
+## Generate a fabricated dead victim's reading for an evil Medium bluff (`Evil._fake_dead_reading`).
+func fake_medium_reading(_w, _n, _dd, _s: String, _sg, _d, _goods: Array, _other: Callable, _e: Dictionary, _demon_implicated: bool) -> Dictionary:
+	return {}
+
+
 ## Hook called in `Evil.make_fake_info` when an evil bluffer has agreed to a player gift request.
 func on_evil_agreed_request(_w, _n, _asked: Array) -> void:
 	pass

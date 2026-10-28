@@ -591,9 +591,11 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			response += " The linked observation challenges the home alibi; it does not by itself prove evil."
 		if repeated:
 			response = "That is the same case; I made the same checks. Repeating it adds no new reason."
+	var target_prefix: String = (Solver.person_name(view, target) + "'s ") if target != "" else ""
 	for note in ev.movement:
 		if note.begins_with("Seen elsewhere:") or note.begins_with("Scattered sightings:"):
-			response += " " + note
+			if target_prefix == "" or note.contains(": " + target_prefix):
+				response += " " + note
 	if not reasoning.private_checks.objections.is_empty():
 		objection = " ".join(PackedStringArray(reasoning.private_checks.objections))
 	if theory.mode == "persistence" and not repeated:
