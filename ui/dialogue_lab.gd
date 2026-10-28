@@ -46,7 +46,7 @@ func _ready() -> void:
 	body.add_theme_constant_override("separation", 18)
 	scroll.add_child(body)
 	_label(body, "Dialogue workshop", 32)
-	_label(body, "Three voices, standalone situations and full speaker turns. Synthetic examples; no live case or hidden roles are loaded.", 18)
+	_label(body, "Fifteen voices, standalone situations and full speaker turns. Synthetic examples; no live case or hidden roles are loaded.", 18)
 	var selectors = HFlowContainer.new()
 	selectors.add_theme_constant_override("h_separation", 18)
 	body.add_child(selectors)
@@ -69,8 +69,10 @@ func _ready() -> void:
 	note = _label(body, "", 18)
 	core = _label(body, "", 22)
 	core.add_theme_color_override("font_color", ThemeSkin.color("accent"))
-	var columns = HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 18)
+	var columns = GridContainer.new()
+	columns.columns = 3
+	columns.add_theme_constant_override("h_separation", 18)
+	columns.add_theme_constant_override("v_separation", 18)
 	body.add_child(columns)
 	for id in Fixtures.IDS:
 		memories[id] = {}
@@ -106,7 +108,7 @@ func _ready() -> void:
 func _build_voice_sketches(body: VBoxContainer) -> void:
 	sketch_data = Sketches.read()
 	_label(body, "Voice calibration — first writing pass", 30)
-	_label(body, "Fifteen speakers, four fixed situations. The new twelve are drafts for review; they are not enabled in play. Controls above apply only to the three-voice prototype.", 18)
+	_label(body, "Fifteen speakers, four fixed calibration situations from the polished reference sheet.", 18)
 	sketch_opt = _option(body, "Compare a basic chunk", sketch_data.scenarios.map(func(s): return s.title))
 	sketch_opt.item_selected.connect(func(_i): _refresh_sketches())
 	sketch_core = _label(body, "", 20)

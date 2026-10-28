@@ -34,9 +34,9 @@ func _contracts() -> void:
 			elif scenario["kind"] == "revise":
 				_check(scenario["argument"] in result["text"], "reconsideration names the exact argument")
 			_check(not "{" in result["text"], "no unresolved template slots")
-		_check(distinct.size() == 3, "three distinct voices for " + scenario["kind"])
+		_check(distinct.size() == Fixtures.IDS.size(), "all fifteen voices are distinct for " + scenario["kind"] + ":" + str(scenario.get("title", "")))
 	var unknown = {}
-	_check(Dialogue.compose("edda", Fixtures.SCENARIOS[0], {}, unknown)["text"] == Fixtures.SCENARIOS[0]["statement"] and unknown.is_empty(), "unimplemented characters keep their original wording and memory")
+	_check(Dialogue.compose("unvoiced_npc", Fixtures.SCENARIOS[0], {}, unknown)["text"] == Fixtures.SCENARIOS[0]["statement"] and unknown.is_empty(), "unimplemented characters keep their original wording and memory")
 	for i in range(1, 5):
 		var scenario: Dictionary = Fixtures.SCENARIOS[i]
 		var memory = {}
@@ -57,7 +57,7 @@ func _delivery_boundary() -> void:
 	var context = {"audience": "town", "speech_act": "answer", "truth": false, "alignment": "evil", "secret": "hidden"}
 	var cleaned = Dialogue.Contract.context(context)
 	_check(cleaned == {"audience": "town", "speech_act": "answer"}, "delivery boundary admits public discourse cues and drops hidden context")
-	for id in ["agnes", "edda"]:
+	for id in ["agnes", "unvoiced_npc"]:
 		var rendered = Dialogue.compose(id, approved, context, {})
 		_check(rendered.canonical == approved and rendered.audience == "town" and rendered.speech_act == "answer", "voiced and fallback paths expose the same independent canonical payload")
 		rendered.canonical.observation.scene.day = 99
@@ -72,24 +72,26 @@ func _delivery_boundary() -> void:
 func _generic_refusals() -> void:
 	var memory = {}
 	var refusal = Dialogue.whereabouts_intent("whereabouts:1")
-	var first = Dialogue.compose("isolde", refusal, {"withholding": true}, memory)
-	var again = Dialogue.compose("isolde", refusal, {"withholding": true}, memory)
+	var first = Dialogue.compose("unvoiced_npc", refusal, {"withholding": true}, memory)
+	var again = Dialogue.compose("unvoiced_npc", refusal, {"withholding": true}, memory)
 	_check(first.text == refusal.statement and not first.repeated, "an unvoiced character's first refusal retains the plain wording")
 	_check(again.repeated and again.text.begins_with("I told you already:") and again.statement == first.statement, "a repeated generic stonewall acknowledges the refusal without changing its meaning")
-	var elsewhere = Dialogue.compose("isolde", refusal, {"withholding": true, "audience": "jory"}, memory)
+	var elsewhere = Dialogue.compose("unvoiced_npc", refusal, {"withholding": true, "audience": "jory"}, memory)
 	_check(not elsewhere.repeated and elsewhere.text == first.text, "a different listener has not heard the private refusal")
-	var next_night = Dialogue.compose("isolde", Dialogue.whereabouts_intent("whereabouts:2"), {"withholding": true}, memory)
+	var next_night = Dialogue.compose("unvoiced_npc", Dialogue.whereabouts_intent("whereabouts:2"), {"withholding": true}, memory)
 	_check(not next_night.repeated, "a question about another night is not called a repeat")
 	var unapproved = {}
-	_check(Dialogue.compose("isolde", refusal, {}, unapproved).text == first.text and unapproved.is_empty(), "generic delivery cannot invent a refusal authorization")
+	_check(Dialogue.compose("unvoiced_npc", refusal, {}, unapproved).text == first.text and unapproved.is_empty(), "generic delivery cannot invent a refusal authorization")
 	var g = Game.new()
 	g.detailed_logging = false
 	g.new_case(4242)
-	var n = g.w.npcs.filter(func(person): return not Dialogue.has_voice(person.id))[0]
+	var n = g.w.npcs[0]
 	var state = JSON.stringify([g.w.rng.state, n.suspicion, n.ledger, n.trust])
 	Mind.whereabouts_refusal(n, 1)
 	Mind.whereabouts_refusal(n, 1)
-	_check(state == JSON.stringify([g.w.rng.state, n.suspicion, n.ledger, n.trust]), "refusal phrasing changes neither RNG nor beliefs/trust")
+	Mind.gift_refusal(n)
+	Mind.home_alibi(g.w, n, 1)
+	_check(state == JSON.stringify([g.w.rng.state, n.suspicion, n.ledger, n.trust]), "refusal and alibi phrasing changes neither RNG nor beliefs/trust")
 
 func _memory() -> void:
 	var memory = {}
@@ -120,7 +122,7 @@ func _flow() -> void:
 			var next = Dialogue.compose_turn(id, approved, context, memory, scenario.get("preceded", false))
 			_check(next.all(func(p): return p["repeated"]), "turn delivery retains per-event repetition tracking")
 	var unknown_memory = {}
-	var fallback = Dialogue.compose_turn("edda", Fixtures.FLOW_SCENARIOS[0]["parts"], {}, unknown_memory, true)
+	var fallback = Dialogue.compose_turn("unvoiced_npc", Fixtures.FLOW_SCENARIOS[0]["parts"], {}, unknown_memory, true)
 	_check(fallback.all(func(p): return p["text"] == p["statement"]) and unknown_memory.is_empty(), "unvoiced characters keep literal statements and no dialogue memory")
 	var partial = Fixtures.FLOW_SCENARIOS[1]["parts"]
 	var ctx = {"audience": "player", "request_privacy": true}
@@ -139,6 +141,18 @@ func _presence() -> void:
 		"agnes": "Oh, yes. I did see Jory at the tavern yesterday evening. Fenwick was there too.",
 		"bart": "Right. Saw Jory at the tavern yesterday evening. Fenwick too.",
 		"constance": "As I recall, Jory was at the tavern yesterday evening. Fenwick was there as well.",
+		"dorian": "Um, yes— I saw Jory at the tavern yesterday evening—I mean, I happened to be there, not that I was keeping tabs on anyone. And Fenwick was there too, if that matters.",
+		"edda": "Let's see now. I saw Jory at the tavern yesterday evening, plain as day. Fenwick was right there too.",
+		"fenwick": "Picture the scene: Who should grace my line of sight but Jory at the tavern yesterday evening—halfway to tomorrow before today's even finished! And Fenwick was there to complete the picture.",
+		"greta": "If you're keeping a tally: I saw Jory at the tavern yesterday evening. Make of it what you want. Saw Fenwick there too.",
+		"hollis": "To be precise: I observed Jory at the tavern yesterday evening—'observed' in the strict visual sense, you understand. I likewise noted Fenwick there.",
+		"isolde": "If it helps, I did see Jory at the tavern yesterday evening, though I'd hate for a simple sighting to bring them any trouble. Fenwick was there as well, harmlessly enough.",
+		"jory": "Easy! Jory—at the tavern yesterday evening. Saw them myself. Fenwick too, same place.",
+		"kiran": "Now there's a question I can oblige you on: Jory was at the tavern yesterday evening—I saw them myself. And Fenwick was gracing the place as well.",
+		"lian": "Short version: Jory was at the tavern yesterday evening. Saw them myself. Fenwick was there too.",
+		"merrin": "Oh, I dread what grim conclusion you'll draw from this, truly I do— I saw Jory at the tavern yesterday evening. And Fenwick was there in the gathering gloom as well!",
+		"nisha": "One verified observation: I saw Jory at the tavern yesterday evening. Keep the sighting separate from what it implies. Fenwick was also present.",
+		"odette": "Brace yourself: Jory was at the tavern yesterday evening. I saw them myself—utterly scandalous, I'm sure. Fenwick was there as well.",
 	}
 	for id in Fixtures.IDS:
 		var approved = Fixtures.flow_parts(id, Fixtures.FLOW_SCENARIOS[1])
@@ -198,7 +212,7 @@ func _presence() -> void:
 	var three = base.duplicate(true)
 	three.append(Dialogue.Observations.presence("agnes", "edda", "Edda", "loc:tavern", 2, 2, "the tavern", "yesterday evening"))
 	_check(Dialogue.compose_turn("agnes", three, {}, {})[2].text == "Edda was there too.", "three people can share the same explicit scene")
-	_check(Dialogue.compose_turn("edda", base, {}, {}).all(func(p): return p.text == p.statement), "unvoiced speakers retain canonical fallback")
+	_check(Dialogue.compose_turn("unvoiced_npc", base, {}, {}).all(func(p): return p.text == p.statement), "unvoiced speakers retain canonical fallback")
 
 func _turn_text(parts: Array) -> String:
 	return " ".join(PackedStringArray(parts.map(func(p): return p.text)))
@@ -286,7 +300,7 @@ func _exchange() -> void:
 	var fallback = {}
 	Dialogue.begin_conversation(fallback)
 	Dialogue.record_exchange(fallback, "accusation", "edda")
-	_check(Dialogue.contextualize("fenwick", "I suspect Edda.", Dialogue.exchange_cue(fallback, "opinion", "edda"), "Edda") == "I suspect Edda.", "other NPCs retain unvoiced fallback")
+	_check(Dialogue.contextualize("unvoiced_npc", "I suspect Edda.", Dialogue.exchange_cue(fallback, "opinion", "edda"), "Edda") == "I suspect Edda.", "other NPCs retain unvoiced fallback")
 	var missing = {}
 	Dialogue.record_exchange(missing, "accusation", "edda")
 	_check(missing.is_empty(), "unscoped scripted speech cannot create phantom conversation history")
@@ -415,7 +429,7 @@ func _lab() -> void:
 	var lab = load("res://ui/dialogue_lab.tscn").instantiate()
 	root.add_child(lab)
 	await process_frame
-	_check(lab.last_results.size() == 3 and lab.memories["agnes"].is_empty(), "comparison scene shows all voices without recording previews")
+	_check(lab.last_results.size() == Fixtures.IDS.size() and lab.memories["agnes"].is_empty(), "comparison scene shows all voices without recording previews")
 	var cast_ids: Array = C.CAST.map(func(person): return person.id)
 	_check(lab.sketch_outputs.size() == 15 and cast_ids.all(func(id): return lab.sketch_outputs.has(id)), "calibration includes every actual cast ID, including all twelve draft voices")
 	_check(cast_ids.filter(func(id): return Dialogue.has_voice(id)) == Fixtures.IDS, "editorial sketches do not register unfinished voices in live gameplay")

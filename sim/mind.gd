@@ -46,6 +46,18 @@ static func whereabouts_refusal(n, nd: int) -> Dictionary:
 	var rendered = Dialogue.compose(n.id, Dialogue.whereabouts_intent("whereabouts:%d" % nd), {"withholding": true}, n.dialogue_memory)
 	return say(n, rendered["text"])
 
+static func gift_refusal(n) -> Dictionary:
+	var rendered = Dialogue.compose(n.id, Dialogue.gift_refusal_intent("gift_refusal"), {"withholding": true}, n.dialogue_memory)
+	return say(n, rendered["text"])
+
+static func home_alibi(w, n, nd: int) -> Dictionary:
+	var when_label = "last night"
+	if w != null and nd != w.day - 1:
+		var nm: String = C.night_name(nd)
+		when_label = ("on " + nm) if nm.begins_with("night") else nm
+	var rendered = Dialogue.compose(n.id, Dialogue.alibi_intent("alibi:%d" % nd, when_label), {"audience": "player", "speech_act": "answer", "trust": n.trust, "pressure": n.pressure}, n.dialogue_memory)
+	return say(n, rendered["text"])
+
 ## Keep every fact and narration intact; only the first spoken response is rephrased.
 static func _challenged(n, response: Dictionary, card: Dictionary) -> Dictionary:
 	for i in range(response["lines"].size()):

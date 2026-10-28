@@ -2,7 +2,7 @@
 ## They are not events from a real case, and do not reveal actual cast assignments.
 extends RefCounted
 
-const IDS = ["agnes", "bart", "constance"]
+const IDS = ["agnes", "bart", "constance", "dorian", "edda", "fenwick", "greta", "hollis", "isolde", "jory", "kiran", "lian", "merrin", "nisha", "odette"]
 const SCENARIOS = [
 	{
 		"title": "Reporting information", "kind": "report", "event_id": "reading:seer:2",
@@ -194,6 +194,27 @@ const SCENARIOS = [
 			"decided": true
 		},
 		"note": "The target and citation were already chosen by the simulation."
+	},
+	{
+		"title": "Refusing a gift",
+		"kind": "conceal",
+		"form": "gift_refusal",
+		"event_id": "gift_refusal",
+		"statement": "Whether I have a gift is my own business.",
+		"context": {
+			"withholding": true
+		},
+		"note": "The simulation has chosen a tier-1 gift refusal. No role, reason for secrecy, or promise to reveal later is supplied."
+	},
+	{
+		"title": "Routine night alibi",
+		"kind": "alibi",
+		"form": "alibi",
+		"event_id": "alibi:1",
+		"when": "last night",
+		"statement": "At home all night, same as any honest soul.",
+		"context": {},
+		"note": "A claimed home alibi (honest or fabricated). The composer receives the approved home account, never hidden alignment or sleepwalking state."
 	},
 ]
 
