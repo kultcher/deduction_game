@@ -10,8 +10,7 @@ const Decisions = preload("res://sim/dialogue_decisions.gd")
 const Voices = preload("res://sim/dialogue_voices.gd")
 const INTENTS = ["report", "doubted", "friend", "conceal", "revise"]
 
-static func has_voice(id: String) -> bool:
-	return Voices.VOICES.has(id)
+static func has_voice(id: String) -> bool:	return Voices.VOICES.has(id)
 
 static func whereabouts_intent(event_id: String) -> Dictionary:
 	return {"kind": "conceal", "form": "whereabouts", "event_id": event_id,

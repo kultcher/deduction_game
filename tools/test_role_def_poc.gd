@@ -378,3 +378,9 @@ func _test_final_roles_hooks() -> void:
 	_check(Domain.gift_time({"role": "dowser", "observed_at": {"day": 1, "phase": "morning"}}) and not Domain.gift_time({"role": "dowser", "observed_at": {"day": 1, "phase": "night"}}), "Domain.gift_time delegates Dowser day-only timing to RoleDef")
 	_check(Domain.gift_time({"role": "surveyor", "observed_at": {"day": 0, "phase": "night"}}) and not Domain.gift_time({"role": "surveyor", "observed_at": {"day": 1, "phase": "night"}}), "Domain.gift_time delegates Surveyor first-night timing to RoleDef")
 	_check(Domain.gift_time({"role": "martyr", "observed_at": {"day": 1, "phase": "evening"}}) and not Domain.gift_time({"role": "martyr", "observed_at": {"day": 0, "phase": "night"}}), "Domain.gift_time delegates Martyr evening/night day>=1 timing to RoleDef")
+
+	# 6. MindMeeting & MindDialogue module extraction checks
+	_check(Mind.MindMeeting != null and Mind.MindDialogue != null, "Mind preloads MindMeeting and MindDialogue modules")
+	_check(Mind.reveal_cost(w, rumor) == Mind.MindMeeting.reveal_cost(w, rumor), "Mind.reveal_cost forwards identically to MindMeeting.reveal_cost")
+	_check(Mind.fear_chance(w, rumor) == Mind.MindDialogue.fear_chance(w, rumor), "Mind.fear_chance forwards identically to MindDialogue.fear_chance")
+	_check(Mind.protection_kind(w, rumor) == Mind.MindDialogue.protection_kind(w, rumor), "Mind.protection_kind forwards identically to MindDialogue.protection_kind")
