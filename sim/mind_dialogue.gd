@@ -468,7 +468,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 			if not ask.is_empty():
 				n.max_tier = maxi(n.max_tier, 1)
 				return {"lines": [ask["line"]], "facts": [], "request": ask}
-			lines.append(say(n, "Whether I have a gift is my own business."))
+			lines.append(gift_refusal(n))
 			facts.append(refusal)
 		n.max_tier = maxi(n.max_tier, 1)
 		return {"lines": lines, "facts": facts}
@@ -619,7 +619,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		vantage = duty_res["vantage"]
 		how = duty_res["how"]
 	elif not was_out:
-		lines.append(say(n, "At home all night, same as any honest soul."))
+		lines.append(home_alibi(w, n, nd))
 		facts.append(_alibi_home(n, nd))
 		vantage = n.home_block
 	else:
@@ -648,7 +648,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				w.dlog.think(n.id, "lie", "Hiding (%s): was on %s, claims to have been home." % [hiding, block], {"lie": true})
 				if not n.is_evil() and not (nd in n.lied_nights):
 					n.lied_nights.append(nd)
-				lines.append(say(n, "Home. Where else would I be?"))
+				lines.append(home_alibi(w, n, nd))
 				facts.append(_alibi_home(n, nd))
 				vantage = n.home_block
 			else:
@@ -1036,6 +1036,12 @@ static func voiced(n, kind: String, statement: String, event_id: String = "", co
 
 static func whereabouts_refusal(n, nd: int) -> Dictionary:
 	return _mind().whereabouts_refusal(n, nd)
+
+static func gift_refusal(n) -> Dictionary:
+	return _mind().gift_refusal(n)
+
+static func home_alibi(w, n, nd: int) -> Dictionary:
+	return _mind().home_alibi(w, n, nd)
 
 static func _observation_scene(n, b: Dictionary, day: int) -> Dictionary:
 	return {"source": n.id, "place_id": b.get("loc", ""), "block": b.get("block", ""),

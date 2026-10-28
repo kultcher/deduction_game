@@ -153,7 +153,7 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, _block: String, mind, block_
 		}
 	return {
 		"handled": true,
-		"line": mind.say(n, "At home all night, same as any honest soul."),
+		"line": mind.home_alibi(w, n, nd),
 		"fact": mind._alibi_home(n, nd),
 		"vantage": n.home_block,
 		"how": "window",

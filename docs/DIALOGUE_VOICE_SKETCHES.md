@@ -51,7 +51,7 @@ Weighs definitions, scope, and epistemic categories; pedantically qualifies *how
 
 - **Gift refusal:** “A perfectly lucid and reasonable inquiry—which I shall, upon reflection, decline to answer. My gift remains my own affair.”
 - **Routine alibi:** “At home for the entirety of last night. 'Entirety' being the operative term, mind you—not a partial sojourn. Do record that accurately.”
-- **Firsthand report:** “I observed Rowan at the tavern yesterday evening—'observed' in the strict visual sense, you understand, as opposed to meresecondhand inference.”
+- **Firsthand report:** “I observed Rowan at the tavern yesterday evening—'observed' in the strict visual sense, you understand, as opposed to mere secondhand inference.”
 - **The same report under doubt:** “I observed Rowan at the tavern yesterday evening. Your skepticism is a fascinating rhetorical posture, of course, but hardly a sufficient ground for revising an empirical fact.”
 - **Accusation response:** “A novel hypothesis. Entirely unsupported by the sequence of events, mind you, but novel nonetheless.”
 
@@ -96,7 +96,7 @@ Approaches conversation as crisis triage; strips social padding and demands to k
 
 Frames everyday exchanges as portents of doom before landing squarely on the concrete fact; high theatricality with zero fabricated evidence.
 
-- **Gift refusal:** “Must we drag every private mercy into thepitiless light? No—my gift stays with me, thank you!”
+- **Gift refusal:** “Must we drag every private mercy into the pitiless light? No—my gift stays with me, thank you!”
 - **Routine alibi:** “Shut inside my home the whole wretched night, thank providence! For all the good four walls do against the dark, I certainly wasn't about to test my luck outside!”
 - **Firsthand report:** “Oh, I dread what grim conclusion you'll draw from this, truly I do—but I saw Rowan at the tavern yesterday evening.”
 - **The same report under doubt:** “Heaven help us, now my own eyes are put on trial! I saw Rowan at the tavern yesterday evening—would that I hadn't, if this is the thanks I get!”

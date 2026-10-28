@@ -1,7 +1,7 @@
 ## A bounded dialogue composer. Call only AFTER the simulation chooses what to disclose.
 ## statement is the already-approved factual sentence, retained as canonical content.
 ## Explicit presence slots permit bounded rephrasing/elision (including lies).
-## Two bounded forms can phrase a refusal or reconsideration using authored equivalents;
+## Bounded forms can phrase a refusal, routine alibi, or reconsideration using authored equivalents;
 ## their canonical statement is constructed here and never changes the underlying facts.
 ## Context contains public/expressed delivery cues, never hidden truth or a whole world/NPC.
 ## memory is owned by one NPC, scoped to the case and listener; no gameplay RNG is used.
@@ -11,13 +11,21 @@ const Decisions = preload("res://sim/dialogue_decisions.gd")
 const Voices = preload("res://sim/dialogue_voices.gd")
 const Observations = preload("res://sim/dialogue_observations.gd")
 const Contract = preload("res://sim/dialogue_contract.gd")
-const INTENTS = ["report", "doubted", "friend", "conceal", "revise"]
+const INTENTS = ["report", "doubted", "friend", "conceal", "revise", "alibi"]
 
 static func has_voice(id: String) -> bool:	return Voices.VOICES.has(id)
 
 static func whereabouts_intent(event_id: String) -> Dictionary:
 	return {"kind": "conceal", "form": "whereabouts", "event_id": event_id,
 		"statement": "Where I go at night is my own business."}
+
+static func gift_refusal_intent(event_id: String = "gift_refusal") -> Dictionary:
+	return {"kind": "conceal", "form": "gift_refusal", "event_id": event_id,
+		"statement": "Whether I have a gift is my own business."}
+
+static func alibi_intent(event_id: String = "alibi:1", when: String = "last night") -> Dictionary:
+	return {"kind": "alibi", "form": "alibi", "event_id": event_id, "when": when,
+		"statement": "At home all night, same as any honest soul."}
 
 static func reconsideration_intent(argument: String) -> Dictionary:
 	return {"kind": "revise", "form": "reconsideration", "event_id": "reconsider:" + argument, "argument": argument,
@@ -34,7 +42,7 @@ static func _compose(id: String, intent: Dictionary, context: Dictionary, memory
 	var statement: String = intent.get("statement", "")
 	var result = {"text": statement, "statement": statement, "event_id": intent.get("event_id", ""), "voice": id, "intent": kind, "cue": "", "repeated": false}
 	# A generic stonewall still acknowledges an earlier refusal; it does not need a voice pack.
-	if not has_voice(id) and kind == "conceal" and intent.get("form", "") == "whereabouts" and context.get("withholding", false) and not statement.is_empty():
+	if not has_voice(id) and kind == "conceal" and intent.get("form", "") in ["whereabouts", "gift_refusal"] and context.get("withholding", false) and not statement.is_empty():
 		var event: String = intent.get("event_id", "")
 		if not event.is_empty():
 			var refusal_key = JSON.stringify([context.get("audience", "player"), kind, event, statement])
@@ -56,6 +64,8 @@ static func _compose(id: String, intent: Dictionary, context: Dictionary, memory
 	if kind == "conceal" and not context.get("withholding", false):
 		return result
 	if kind == "revise" and not context.get("reconsidered", false):
+		return result
+	if kind == "alibi" and intent.get("form", "") != "alibi":
 		return result
 	var audience: String = context.get("audience", "player")
 	var event_id: String = intent.get("event_id", "")
@@ -83,11 +93,19 @@ static func _compose(id: String, intent: Dictionary, context: Dictionary, memory
 	var spoken = statement
 	if Observations.valid_presence(intent) and intent.observation.scene.source == id:
 		var observation: Dictionary = intent.observation
-		var template: String = Voices.VOICES[id]["presence_more" if context.get("shared_presence", false) else "presence_first"]
+		var shared_scene: bool = context.get("shared_presence", false)
+		var template: String = Voices.VOICES[id]["presence_more" if shared_scene else "presence_first"]
 		# One formatting operation: inserted display names cannot become new slots.
-		spoken = template % ([observation.subject] if context.get("shared_presence", false) else [observation.subject, observation.place, observation.time])
+		if shared_scene:
+			spoken = template % [observation.subject]
+		elif Voices.VOICES[id].has("target_epithets") and template.count("%s") == 4:
+			var epithets: Dictionary = Voices.VOICES[id]["target_epithets"]
+			var epithet: String = str(epithets.get(observation.subject_id, "clear as the nose on your face"))
+			spoken = template % [observation.subject, observation.place, observation.time, epithet]
+		else:
+			spoken = template % [observation.subject, observation.place, observation.time]
 	var form: String = intent.get("form", "")
-	var authored_form = (kind == "conceal" and form == "whereabouts") or (kind == "revise" and form == "reconsideration" and not str(intent.get("argument", "")).is_empty())
+	var authored_form = (kind == "conceal" and form in ["whereabouts", "gift_refusal"]) or (kind == "alibi" and form == "alibi") or (kind == "revise" and form == "reconsideration" and not str(intent.get("argument", "")).is_empty())
 	if authored_form:
 		cue = form
 	# A continuing report belongs to an already-open speaker turn. Suppress fresh
@@ -126,7 +144,11 @@ static func _compose(id: String, intent: Dictionary, context: Dictionary, memory
 	extra = extra.replace("{subject}", str(context.get("subject", "")))
 	var chunks: Array = [extra, spoken]
 	if authored_form:
-		chunks = [extra.replace("{argument}", str(intent.get("argument", "")))]
+		var rendered_form: String = extra.replace("{argument}", str(intent.get("argument", "")))
+		var when_label: String = str(intent.get("when", "last night"))
+		if form == "alibi" and when_label != "" and when_label != "last night":
+			rendered_form = rendered_form.replace("last night", when_label)
+		chunks = [rendered_form]
 	elif kind == "friend":
 		chunks = [statement, extra]
 	# Confidentiality must be requested explicitly and only in private conversation.
