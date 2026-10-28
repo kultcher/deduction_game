@@ -899,18 +899,6 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 	var src_bare: String = "I" if own else source.name
 	var tag = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
 	match r:
-		"nightwatch":
-			var seen: Array = d["seen"]
-			for i in seen:
-				if i == listener.id:
-					var where: String = listener.history.get(w.time_key(entry["day"], C.NIGHT), "")
-					if where.begins_with("home") and not own:
-						_eff(effs, source.id, 0.45, tag + ": claims to have seen me out, but I was home",
-							"%s claims to have seen me out at night, which is a lie" % src_bare)
-					continue
-				var sc = night_sighting_scale(w, listener, i, d["block"], entry["day"])
-				_eff(effs, i, 0.5 * sc, tag + ": seen out at night (x%.2f: %s)" % [sc, "near a death" if sc >= 0.99 else "nowhere near a death" if sc > 0.1 else "discounted"],
-					"%s saw them out at night%s" % [src_bare, " where someone was killed" if sc >= 0.5 else ""], not own)
 		"rumormonger":
 			# Secret-holders are good, so "one of these two carries a secret" speaks for both a little.
 			for i in d["pair"]:
@@ -997,47 +985,29 @@ static func consider_gift_request(w, n, role: String, targets: Array) -> Diction
 	var rdef = C.role_def(role)
 	if rdef != null:
 		rdef.score_gift_request(w, n, targets, top, parts, _mind())
-	else:
-		match role:
-			"nightwatch":
-				if top != "" and w.by_id[top].home_block == targets[0]:
-					parts["already_wondering"] = 0.3
 	var named: String = _request_target_text(w, role, targets)
 	var yes: bool = decide(w, n, "gift_request", parts, "Use the %s tonight as the Demonologist asks (%s)?" % [C.role_name(role), named])
 	if yes:
 		n.gift_request = {"night": w.day, "role": role, "targets": targets.duplicate()}
 		w.dlog.add("gift_request_agreed", "player", n.id, {"role": role, "targets": targets})
-		var agree_tpl: String = rdef.request_agree_line if rdef != null and rdef.request_agree_line != "" else {"nightwatch": "I'll keep my watch over %s tonight, then."}.get(role, "")
+		var agree_tpl: String = rdef.request_agree_line if rdef != null and rdef.request_agree_line != "" else ""
 		return {"lines": [say(n, agree_tpl % named)], "facts": [], "agreed": true}
 	w.dlog.add("gift_request_refused", "player", n.id, {"role": role, "targets": targets})
 	var counter: String = ""
-	if n.trust >= 0.35 and top != "" and not (top in targets):
-		if rdef != null:
-			counter = rdef.counter_gift_request(w, n, targets, top)
-		elif role == "nightwatch" and w.by_id[top].home_block != targets[0]:
-			counter = "I'd sooner watch %s." % C.block_name(w.by_id[top].home_block)
+	if n.trust >= 0.35 and top != "" and not (top in targets) and rdef != null:
+		counter = rdef.counter_gift_request(w, n, targets, top)
 	if counter != "":
 		return {"lines": [say(n, "No. " + counter)], "facts": [], "agreed": false}
 	return {"lines": [say(n, "My gift's mine to use as I see fit.")], "facts": [], "agreed": false}
 
 static func _request_target_text(w, role: String, targets: Array) -> String:
-	if role == "nightwatch":
-		return C.block_name(targets[0])
+	var rdef = C.role_def(role)
+	if rdef != null:
+		return rdef.request_target_text(w, targets, C.block_name)
 	return " and ".join(PackedStringArray(targets.map(func(t): return w.by_id[t].name)))
 
 static func watch_block(w, n) -> String:
-	var asked: Array = requested_targets(w, n, "nightwatch")
-	if not asked.is_empty():
-		w.dlog.think(n.id, "watch_pick", "Night Watch watches the block the Demonologist asked for.", {"block": asked[0]})
-		return asked[0]
-	var ranked = ranked_suspects(w, n)
-	var b = ""
-	if w.day == 0 or ranked.is_empty():
-		b = w.decision_pick(n, "watch_block", C.BLOCKS.keys())
-	else:
-		b = ranked[0].home_block
-	w.dlog.think(n.id, "watch_pick", "Night Watch watches the block of their top suspect's home.", {"block": b})
-	return b
+	return C.role_def("nightwatch").pick_targets(w, n, _mind())
 
 static func warden_target(w, n) -> String:
 	return C.role_def("warden").pick_targets(w, n, _mind())
@@ -1116,8 +1086,6 @@ static func _public_sighting_allowed(w, n, b: Dictionary) -> bool:
 	var cdef = C.role_def(n.claimed_role)
 	if cdef != null:
 		return cdef.public_sighting_allowed(w, n, b)
-	match n.claimed_role:
-		"lamplighter": return b.block == (where.trim_prefix("night:") if where.begins_with("night:") else n.home_block)
 	return false
 
 static func _town_sighting_key(n, b: Dictionary) -> String:
@@ -1285,8 +1253,6 @@ static func reading_strength(e: Dictionary, t_id: String) -> float:
 	match e.get("role", ""):
 		"martyr":
 			return 0.9 if d.get("evil", false) else 0.0
-		"nightwatch":
-			return 0.35
 	return 0.3
 
 ## Evil: an unshared fake reading of theirs that points at t, or {}.
@@ -2668,15 +2634,6 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	# A claimed night-walking gift keeps its story: an evil bluff always tells the duty,
 	# a real holder tells it whenever they were actually out (Case 22485: a claimed
 	# Lamplighter must never say "home all night").
-	elif n.claimed_role == "lamplighter" and (n.claim_public or n.max_tier >= 3) and ((n.role == "lamplighter" and was_out) or n.is_evil()):
-		if n.is_evil():
-			block = block if was_out else n.home_block
-			w.dlog.think(n.id, "lie", "Evil bluffing %s: claims their gift took them out on night %d." % [n.claimed_role, nd], {"lie": true})
-		vantage = block
-		how = "street"
-		lines.append(say(n, "Walking the lamp route, as I do every night."))
-		facts.append({"kind": "sighting", "subject": [n.id], "block": block, "day": nd, "phase": C.NIGHT, "source": n.id, "duty_claim": true, "duty": "lamplighter",
-			"text": "%s says they were out on %s on night %d (the lamp route)." % [n.name, C.block_name(block), nd]})
 	elif C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, nd, was_out):
 		var duty_res: Dictionary = C.role_def(n.claimed_role).night_duty_alibi(w, n, nd, was_out, block, _mind(), C.block_name)
 		lines.append(duty_res["line"])
@@ -3092,9 +3049,6 @@ static func card_strength(w, card: Dictionary, suspect) -> float:
 			var rdef = C.role_def(card.get("role", ""))
 			if rdef != null:
 				return rdef.card_strength(d, suspect.id)
-			match card.get("role", ""):
-				"nightwatch":
-					return 1.0 if suspect.id in d.get("seen", []) else 0.0
 			if suspect.id in Gifts.implicated(card):
 				return 0.6
 			return 0.0
@@ -3202,9 +3156,6 @@ static func defend_strength(card: Dictionary, nominee: String) -> float:
 			var rdef = C.role_def(card.get("role", ""))
 			if rdef != null:
 				return rdef.defend_strength(d, nominee)
-			match card.get("role", ""):
-				"nightwatch":
-					return 0.0
 			if nominee in Gifts.clears(card):
 				return 0.5
 		"claim":

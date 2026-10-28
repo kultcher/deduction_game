@@ -5,7 +5,8 @@
 ##   method hooks on RoleDef subclasses (`sim/roles/<role>.gd`).
 ## - `workshop/` (hot 5,040-world bitmask loops) reads declarative shape fields
 ##   (`shape`, `marked_registers`, `red_herring_registers`, `role_group_key`,
-##   `role_target_pool`, `site_mode`, `site_group_key`, etc.) without per-world virtual dispatch.
+##   `role_target_pool`, `site_mode`, `site_group_key`, `count_mode`, etc.) without
+##   per-world virtual dispatch.
 extends RefCounted
 
 # Core identity & script metadata (mirrors C.ROLES dictionary entries)
@@ -40,6 +41,11 @@ var role_target_pool: String = "good"
 # - site_group_key: "group" (Dowser) or "nbrs" (Hearthwitch)
 var site_mode: String = "group_count"
 var site_group_key: String = "group"
+
+# GROUP_COUNT shape parameters:
+# - count_mode: "group" (subset in group/nbrs), "blocks" (Surveyor: blocks with evil resident),
+#               or "walkers" (Lamplighter: other people out at night)
+var count_mode: String = "group"
 
 # Player gift-request agreement template ("" if role does not take night requests)
 var request_agree_line: String = ""
@@ -92,7 +98,10 @@ func implicated(d: Dictionary) -> Array:
 	match shape:
 		"PING":
 			return d.get("pair", []) if d.get("yes", false) else []
-		"GROUP_COUNT", "ROLE_AT_SITE":
+		"GROUP_COUNT":
+			if count_mode == "group":
+				return group_of(d) if d.get("count", 0) > 0 else []
+		"ROLE_AT_SITE":
 			if site_mode == "group_count":
 				return group_of(d) if d.get("count", 0) > 0 else []
 		"ROLE_IN_GROUP":
@@ -112,7 +121,10 @@ func clears(d: Dictionary) -> Array:
 	match shape:
 		"PING":
 			return [] if d.get("yes", false) else d.get("pair", [])
-		"GROUP_COUNT", "ROLE_AT_SITE":
+		"GROUP_COUNT":
+			if count_mode == "group":
+				return group_of(d) if d.get("count", 0) == 0 else []
+		"ROLE_AT_SITE":
 			if site_mode == "group_count":
 				return group_of(d) if d.get("count", 0) == 0 else []
 		"ROLE_IN_GROUP":
@@ -137,7 +149,11 @@ func reading_strength(d: Dictionary, t_id: String) -> float:
 	match shape:
 		"PING":
 			return 0.9 if d.get("yes", false) else 0.0
-		"GROUP_COUNT", "ROLE_AT_SITE":
+		"GROUP_COUNT":
+			if count_mode == "group":
+				var g: Array = group_of(d)
+				return clampf(0.9 * d.get("count", 0) / maxf(1.0, g.size()), 0.0, 0.8) if t_id in g else 0.0
+		"ROLE_AT_SITE":
 			if site_mode == "group_count":
 				var g: Array = group_of(d)
 				return clampf(0.9 * d.get("count", 0) / maxf(1.0, g.size()), 0.0, 0.8) if t_id in g else 0.0

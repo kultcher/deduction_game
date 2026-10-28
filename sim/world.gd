@@ -1457,22 +1457,6 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 			return
 	else:
 		match r:
-			"nightwatch":
-				if watch_block == "":
-					return  # didn't go out (the knell)
-				var seen: Array = []
-				for wk in night_walkers:
-					if watch_block in wk.get("path", [wk["block"]]) and wk["id"] != n.id:
-						seen.append(wk["id"])
-				var real = seen.duplicate()
-				if broken:
-					seen = []
-					var innocent = pick(living().filter(func(m): return m != n and not (m.id in real)))
-					if innocent:
-						seen.append(innocent.id)
-				entry = {"data": {"block": watch_block, "seen": seen}, "true": seen == real,
-					"text": "I watched %s: %s" % [C.block_name(watch_block),
-						("I saw " + _names(seen) + " pass by") if not seen.is_empty() else "nobody stirred"]}
 			"rumormonger":
 				var holders: Array = npcs.filter(func(m): return m != n and m.secret_mod != "")
 				var ok = true
@@ -1490,31 +1474,6 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 					pair = shuffled([h.id, other.id])
 				entry = {"data": {"pair": pair, "secret": sk}, "true": ok,
 					"text": "I heard that one of %s is %s" % [_names(pair), _secret_phrase(sk)]}
-			"surveyor":
-				var blocks = {}
-				for m in npcs:
-					if registers_evil(m):
-						blocks[m.home_block] = true
-				var count = blocks.size()
-				var truth = 0
-				var tb = {}
-				for m in npcs:
-					if m.is_evil():
-						tb[m.home_block] = true
-				truth = tb.size()
-				if broken:
-					count = surveyor_result(truth)
-				entry = {"data": {"count": count}, "true": count == truth,
-					"text": "I learned that %d of the four blocks %s an evil resident" % [count, "has" if count == 1 else "have"]}
-			"lamplighter":
-				if lamp != n:
-					return
-				var count = night_walkers.filter(func(wk): return wk["id"] != n.id).size()
-				var truth = count
-				if broken:
-					count = _other_than(truth, 0, maxi(3, living().size() - 1))
-				entry = {"data": {"count": count}, "true": count == truth,
-					"text": "walking the lamps, I counted %d other%s out" % [count, "" if count == 1 else "s"]}
 			"psychologist":
 				var talked: Array = n.talked_today.filter(func(i): return by_id[i].alive and i != n.id)
 				if talked.is_empty():

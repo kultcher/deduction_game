@@ -215,10 +215,6 @@ static func _fake_dead_reading(w, n, dd, role: String, s: String, night: int) ->
 	if rdef != null:
 		return rdef.fake_medium_reading(w, n, dd, s, sg, d, goods, other, e, _demon_implicated(w))
 	match role:
-		"nightwatch":
-			e["data"] = {"block": dd.home_block, "seen": [s]}
-			e["text"] = "I watched %s: I saw %s pass by" % [C.block_name(dd.home_block), sg.name]
-			return {"entry": e, "why": "the dead Night Watch %s saw scapegoat %s on their last watch" % [dd.id, s], "frames": true}
 		"psychologist":
 			var subj = other.call([s])
 			var tr = w.pick(team_mates) if not team_mates.is_empty() else null
@@ -620,16 +616,6 @@ static func make_fake_info(w) -> void:
 			why = gen["why"]
 		else:
 			match bluff:
-				"surveyor":
-					if w.day != 0:
-						continue
-					var tb = {}
-					for x in w.npcs:
-						if x.is_evil():
-							tb[x.home_block] = true
-					var cnt: int = w.surveyor_result()
-					why = "reports %d blocks: weighted bluff count (true %d)" % [cnt, tb.size()]
-					entry = {"data": {"count": cnt}, "text": "I learned that %d of the four blocks %s an evil resident" % [cnt, "has" if cnt == 1 else "have"]}
 				"rumormonger":
 					if w.day != 0:
 						continue
@@ -638,10 +624,6 @@ static func make_fake_info(w) -> void:
 					var sk: String = w.pick(C.SECRET_MOD_LIST)
 					why = "lends teammate %s a harmless secret" % mate.id
 					entry = {"data": {"pair": pair, "secret": sk}, "text": "I heard that one of %s is %s" % [w._names(pair), w._secret_phrase(sk)]}
-				"lamplighter":
-					var cnt: int = clampi(w.night_walkers.size() + w.pick([-1, 0, 1]), 0, w.living().size() - 1)
-					why = "guesses a plausible count of walkers (%d)" % cnt
-					entry = {"data": {"count": cnt}, "text": "walking the lamps, I counted %d other%s out" % [cnt, "" if cnt == 1 else "s"]}
 				"psychologist":
 					var talked: Array = n.talked_today.filter(func(i): return w.by_id[i].alive and i != s)
 					if talked.is_empty() or not w.by_id[s].alive:
@@ -660,23 +642,6 @@ static func make_fake_info(w) -> void:
 					var tgt = mate if mate != n else w.pick(w.living_good())
 					why = "'chooses' %s, vouching for them" % tgt.id
 					entry = {"data": {"target": tgt.id, "chosen": true}, "text": "I have given my life over for %s, should the town ever hang them" % tgt.name}
-				"nightwatch":
-					var block: String = asked[0] if not asked.is_empty() else w.by_id[s].home_block
-					var seen: Array = []
-					for k in n.intel:
-						var it: Dictionary = n.intel[k]
-						if it["kind"] == "walker" and it.get("night", -1) == w.day and it.get("block", "") == block and w.by_id[it["about"]].alive:
-							if not (it["about"] in seen):
-								seen.append(it["about"])
-					if not (s in seen) and w.day >= 1 and w.by_id[s].home_block == block:
-						seen.append(s)
-						why = "watches scapegoat's block; adds fake sighting of %s to true ones" % s
-					else:
-						why = "reports walkers it knows of on scapegoat's block, hiding teammates"
-					plan["fake_watch"][str(w.day)] = block
-					entry = {"data": {"block": block, "seen": seen},
-						"text": "I watched %s: %s" % [C.block_name(block),
-							("I saw " + w._names(seen) + " pass by") if not seen.is_empty() else "nobody stirred"]}
 				_:
 					continue
 		entry["day"] = w.day

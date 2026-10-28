@@ -28,8 +28,6 @@ static func implicated(e: Dictionary) -> Array:
 	if rdef != null:
 		return rdef.implicated(d)
 	match role:
-		"nightwatch":
-			return d.get("seen", [])
 		"martyr":
 			return [d["target"]] if d.get("evil", false) else []
 	return []
@@ -75,14 +73,8 @@ static func short_text(role: String, d: Dictionary, src: String, nm: Callable) -
 	if rdef != null:
 		return rdef.short_text(d, src, nm)
 	match role:
-		"nightwatch":
-			return "%s Watch %s: %s" % [src, C.block_name(d.get("block", "")), ", ".join(PackedStringArray(d.get("seen", []).map(nm))) if not d.get("seen", []).is_empty() else "nobody"]
 		"rumormonger":
 			return "%s Rumormonger: %s in %s" % [src, C.secret_name(d.get("secret", "")), _names(d.get("pair", []), nm)]
-		"surveyor":
-			return "%s Surveyor: %d block%s with evil" % [src, d.get("count", 0), "" if d.get("count", 0) == 1 else "s"]
-		"lamplighter":
-			return "%s Lamplighter: %d others out" % [src, d.get("count", 0)]
 		"psychologist":
 			return "%s Psychologist: %s trusts %s, suspects %s" % [src, nm.call(d.get("subject", "")), nm.call(d.get("trusts", "")), nm.call(d.get("suspects", ""))]
 		"veteran":

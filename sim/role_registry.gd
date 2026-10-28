@@ -13,6 +13,9 @@ const GravediggerDef = preload("res://sim/roles/gravedigger.gd")
 const DowserDef = preload("res://sim/roles/dowser.gd")
 const HearthwitchDef = preload("res://sim/roles/hearthwitch.gd")
 const MediumDef = preload("res://sim/roles/medium.gd")
+const SurveyorDef = preload("res://sim/roles/surveyor.gd")
+const LamplighterDef = preload("res://sim/roles/lamplighter.gd")
+const NightWatchDef = preload("res://sim/roles/nightwatch.gd")
 
 static var _defs: Dictionary = {}
 static var _initialized: bool = false
@@ -22,7 +25,12 @@ static func _ensure_init() -> void:
 	if _initialized:
 		return
 	_initialized = true
-	for script in [SeerDef, WardenDef, ClerkDef, ArchivistDef, GravediggerDef, DowserDef, HearthwitchDef, MediumDef]:
+	for script in [
+		SeerDef, WardenDef,
+		ClerkDef, ArchivistDef, GravediggerDef,
+		DowserDef, HearthwitchDef, MediumDef,
+		SurveyorDef, LamplighterDef, NightWatchDef,
+	]:
 		var def = script.new()
 		_defs[def.id] = def
 

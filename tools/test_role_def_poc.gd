@@ -1,4 +1,4 @@
-## Test suite for the RoleDef / RoleRegistry system (Seer, Warden, ROLE_IN_GROUP: Clerk/Archivist/Gravedigger, and ROLE_AT_SITE: Dowser/Hearthwitch/Medium).
+## Test suite for the RoleDef / RoleRegistry system (Seer, Warden, ROLE_IN_GROUP: Clerk/Archivist/Gravedigger, ROLE_AT_SITE: Dowser/Hearthwitch/Medium, and Count/Route: Surveyor/Lamplighter/Night Watch).
 ##   godot --headless --path . --script res://tools/test_role_def_poc.gd
 extends SceneTree
 
@@ -38,6 +38,7 @@ func _init() -> void:
 	_test_warden_hooks()
 	_test_role_in_group_hooks()
 	_test_role_at_site_hooks()
+	_test_count_and_route_hooks()
 	print("RoleDef PoC: %d checks; failures: %d" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -51,6 +52,9 @@ func _test_registry_and_metadata() -> void:
 	var dowser_def = C.role_def("dowser")
 	var hearth_def = C.role_def("hearthwitch")
 	var medium_def = C.role_def("medium")
+	var surv_def = C.role_def("surveyor")
+	var lamp_def = C.role_def("lamplighter")
+	var watch_def = C.role_def("nightwatch")
 	_check(seer_def != null and seer_def.shape == "PING" and seer_def.marked_registers and seer_def.red_herring_registers, "Seer RoleDef registered with PING shape and registration flags")
 	_check(warden_def != null and warden_def.shape == "NIGHT_EVENT" and warden_def.night_walk and warden_def.can_cause_quiet_night, "Warden RoleDef registered with NIGHT_EVENT shape and protection flags")
 	_check(clerk_def != null and clerk_def.shape == "ROLE_IN_GROUP" and clerk_def.role_group_key == "pair" and clerk_def.role_target_pool == "good" and clerk_def.first_night, "Clerk RoleDef registered with ROLE_IN_GROUP shape and good pair metadata")
@@ -59,9 +63,12 @@ func _test_registry_and_metadata() -> void:
 	_check(dowser_def != null and dowser_def.shape == "ROLE_AT_SITE" and dowser_def.site_mode == "group_count" and dowser_def.site_group_key == "group" and dowser_def.day and dowser_def.marked_registers, "Dowser RoleDef registered with ROLE_AT_SITE group_count metadata")
 	_check(hearth_def != null and hearth_def.shape == "ROLE_AT_SITE" and hearth_def.site_mode == "group_count" and hearth_def.site_group_key == "nbrs" and hearth_def.marked_registers, "Hearthwitch RoleDef registered with ROLE_AT_SITE group_count metadata")
 	_check(medium_def != null and medium_def.shape == "ROLE_AT_SITE" and medium_def.site_mode == "hearth_relay" and medium_def.night_walk, "Medium RoleDef registered with ROLE_AT_SITE hearth_relay metadata")
-	for rid in ["seer", "warden", "clerk", "archivist", "gravedigger", "dowser", "hearthwitch", "medium"]:
+	_check(surv_def != null and surv_def.shape == "GROUP_COUNT" and surv_def.count_mode == "blocks" and surv_def.first_night and surv_def.marked_registers, "Surveyor RoleDef registered with GROUP_COUNT blocks metadata")
+	_check(lamp_def != null and lamp_def.shape == "GROUP_COUNT" and lamp_def.count_mode == "walkers" and lamp_def.night_walk, "Lamplighter RoleDef registered with GROUP_COUNT walkers metadata")
+	_check(watch_def != null and watch_def.shape == "NIGHT_ROUTE" and watch_def.night_walk, "Night Watch RoleDef registered with NIGHT_ROUTE metadata")
+	for rid in ["seer", "warden", "clerk", "archivist", "gravedigger", "dowser", "hearthwitch", "medium", "surveyor", "lamplighter", "nightwatch"]:
 		_check(C.role_def(rid).to_role_dict() == C.ROLES[rid], "%s RoleDef.to_role_dict() matches C.ROLES['%s'] exactly" % [rid, rid])
-	_check(C.role_def("surveyor") == null, "Unmigrated role returns null from C.role_def() for incremental fallback")
+	_check(C.role_def("rumormonger") == null, "Unmigrated role returns null from C.role_def() for incremental fallback")
 
 
 func _test_seer_hooks() -> void:
@@ -214,7 +221,7 @@ func _test_role_at_site_hooks() -> void:
 	var dw_card = g.add_card({"kind": "info", "source": dowser.id, "role": "dowser", "day": 1, "phase": C.MORNING, "data": dw_zero["data"], "subject": [victim.id, other.id], "text": "on %s I sensed 0 evil" % C.block_name(dowser.home_block)})
 	var dw_snap = g.workshop_snapshot([dw_card], dowser.id)
 	var dw_prep = Assess.prepare(dw_snap)
-	_check( not Solver.solve(dw_prep.view, dw_prep.view.cards).worlds.is_empty(), "Workshop solver/assessment validates Dowser ROLE_AT_SITE group_count reading")
+	_check(not Solver.solve(dw_prep.view, dw_prep.view.cards).worlds.is_empty(), "Workshop solver/assessment validates Dowser ROLE_AT_SITE group_count reading")
 
 	# 2. Medium ROLE_AT_SITE hearth_relay reading
 	victim.alive = false
@@ -228,7 +235,7 @@ func _test_role_at_site_hooks() -> void:
 	var med_entry = {"role": "medium", "day": 1, "data": med_r["data"], "text": med_r["text"]}
 	_check(Gifts.clears(med_entry) == [dowser.id, other.id] and Gifts.implicated(med_entry).is_empty(), "Medium implicated/clears delegates to relayed reading")
 	var med_effs: Array = C.role_def("medium").info_effects(w, medium, medium, med_entry, 1.0, true, Mind)
-	_check(med_effs.size() == 2 and is_equal_approx(med_effs[0][1], -0.25 * 0.6), "Medium info_effects scales relayed reading effects by 0.6")
+	_check(med_effs.size() == 2 and is_equal_approx(med_effs[0][1], -0.3 * 0.6), "Medium info_effects scales relayed reading effects by 0.6")
 
 	medium.info_log.append(med_entry)
 	medium.claimed_role = "medium"
@@ -237,3 +244,57 @@ func _test_role_at_site_hooks() -> void:
 	w.day = 2
 	var med_night: Dictionary = Mind.answer_night(w, medium, 1)
 	_check(med_night["facts"].size() >= 1 and med_night["facts"][0].get("duty", "") == "medium", "Medium night_duty_alibi reports visiting victim's hearth")
+
+
+func _test_count_and_route_hooks() -> void:
+	var g = Game.new()
+	g.workshop_effects = false
+	g.log_dir = "user://test_logs"
+	g.new_case(9105, 7)
+	var w = g.w
+	var goods: Array = w.living_good()
+	var surv = goods[0]
+	var lamp = goods[1]
+	var watch = goods[2]
+	var walker = goods[3]
+	_give(w, surv, "surveyor")
+	_give(w, lamp, "lamplighter")
+	_give(w, watch, "nightwatch")
+	var name_fn = func(id): return w.by_id[id].name
+
+	# 1. Surveyor (GROUP_COUNT blocks)
+	var surv_r: Dictionary = C.role_def("surveyor").generate_reading(w, surv, {}, Mind)
+	_check(surv_r.get("data", {}).get("count", -1) >= 1 and surv_r.get("data", {}).get("count", -1) <= 4, "Surveyor generate_reading counts blocks with evil residents")
+	var surv_entry = {"role": "surveyor", "day": 0, "data": surv_r["data"], "text": surv_r["text"]}
+	_check(Gifts.implicated(surv_entry).is_empty() and Gifts.clears(surv_entry).is_empty(), "Surveyor reading implicates and clears nobody directly")
+	_check("Surveyor:" in Gifts.short_text("surveyor", surv_r["data"], surv.name, name_fn), "Surveyor short_text formats block count")
+
+	# 2. Lamplighter (GROUP_COUNT walkers)
+	w.night_walkers = [{"id": lamp.id, "block": lamp.home_block, "path": [lamp.home_block]}, {"id": walker.id, "block": walker.home_block, "path": [walker.home_block]}]
+	var lamp_r: Dictionary = C.role_def("lamplighter").generate_reading(w, lamp, {"lamp": lamp}, Mind)
+	_check(lamp_r.get("data", {}).get("count", -1) == 1, "Lamplighter generate_reading counts other night walkers")
+	lamp.claimed_role = "lamplighter"
+	lamp.claim_public = true
+	lamp.history[w.time_key(1, C.NIGHT)] = "night:" + lamp.home_block
+	w.day = 2
+	var lamp_night: Dictionary = Mind.answer_night(w, lamp, 1)
+	_check(lamp_night["facts"].size() >= 1 and lamp_night["facts"][0].get("duty", "") == "lamplighter", "Lamplighter night_duty_alibi reports walking the lamp route")
+
+	# 3. Night Watch (NIGHT_ROUTE)
+	w.day = 1
+	watch.trust = 0.95
+	var target_block: String = walker.home_block
+	var req = Mind.consider_gift_request(w, watch, "nightwatch", [target_block])
+	_check(req.get("agreed", false) and Mind.watch_block(w, watch) == target_block, "Night Watch RoleDef agrees to watch requested block and picks it")
+	var watch_r: Dictionary = C.role_def("nightwatch").generate_reading(w, watch, {"watch_block": target_block}, Mind)
+	_check(watch_r.get("data", {}).get("block", "") == target_block and walker.id in watch_r.get("data", {}).get("seen", []), "Night Watch generate_reading records walkers on watched block")
+	var watch_entry = {"role": "nightwatch", "day": 1, "data": watch_r["data"], "text": watch_r["text"]}
+	_check(Gifts.implicated(watch_entry) == [walker.id] and Gifts.clears(watch_entry).is_empty(), "Night Watch NIGHT_ROUTE shape implicates seen walkers")
+
+	# 4. Workshop solver & live assessment for Surveyor, Lamplighter, Night Watch
+	var s_card = g.add_card({"kind": "info", "source": surv.id, "role": "surveyor", "day": 0, "data": surv_r["data"], "subject": [], "text": surv_r["text"]})
+	var l_card = g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "data": lamp_r["data"], "subject": [], "text": lamp_r["text"]})
+	var w_card = g.add_card({"kind": "info", "source": watch.id, "role": "nightwatch", "day": 1, "data": watch_r["data"], "subject": [walker.id], "text": watch_r["text"]})
+	var snap = g.workshop_snapshot([s_card, l_card, w_card], surv.id)
+	var prep = Assess.prepare(snap)
+	_check(not Solver.solve(prep.view, prep.view.cards).worlds.is_empty(), "Workshop solver/assessment validates Surveyor, Lamplighter, and Night Watch readings")
