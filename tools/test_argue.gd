@@ -61,6 +61,17 @@ func _init() -> void:
 	_expect(g, [k7, k1], "watch_omission")
 	_expect(g, [k8, k9], "reading_flip")
 	_expect(g, [k10, k1], "vigil_miss")
+	# A home-block sighting may be a departure, but a stated destination or
+	# Lamplighter duty is covered even when the speaker lives on that block.
+	w.by_id[a].home_block = "market"
+	var home_vigil = g.add_card({"kind": "vigil", "subject": [], "block": "market", "day": 5, "phase": C.NIGHT, "source": "player", "text": "Market vigil night 5 saw nobody."})
+	var departure = g.add_card({"kind": "sighting", "subject": [a], "block": "market", "day": 5, "phase": C.NIGHT, "source": b, "text": "A was seen on Market."})
+	var duty = g.add_card({"kind": "sighting", "subject": [a], "block": "market", "day": 5, "phase": C.NIGHT, "source": a, "duty_claim": "medium", "duty": "medium", "text": "A visited Market on duty."})
+	var lamp_duty = g.add_card({"kind": "sighting", "subject": [a], "block": "market", "day": 5, "phase": C.NIGHT, "source": a, "duty_claim": "lamplighter", "duty": "lamplighter", "text": "A walked the lamp route."})
+	_expect_none(g, [home_vigil, departure], "leaving")
+	_expect(g, [home_vigil, duty], "vigil_miss")
+	_expect(g, [home_vigil, lamp_duty], "vigil_miss")
+	w.by_id[a].home_block = "hill"
 	var named_watch = g.add_card({"kind": "info", "subject": [a, d], "source": d, "day": 1, "role": "nightwatch", "data": {"block": "market", "seen": [a]}, "text": "D watched market n1 and saw A."})
 	var full_vigil = g.add_card({"kind": "sighting", "subject": [d, b], "block": "market", "day": 1, "phase": C.NIGHT, "source": "player", "vigil": true, "text": "My market vigil n1 saw D and B."})
 	var named_matches: Array = g.link_cards([named_watch, full_vigil]).result.matches

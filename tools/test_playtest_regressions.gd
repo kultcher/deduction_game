@@ -362,5 +362,5 @@ func _multi_subject_vigil_no_collateral_note() -> void:
 	var p = m.add_premise(target.id, "evil", Vector2.ZERO)
 	m.connect_cards("e:" + Live.Evidence.normalize_card(g.board[vig - 1]).id, p)
 	var listener = w.living_good()[2]
-	var eval_res: Dictionary = preload("res://workshop/jury.gd").evaluate(view, m.compile(p), {"id": listener.id, "name": listener.name, "trust": 0.5, "confidence": 0.5, "insight": 0.9, "reasoning_mode": "bounded", "suspicion": {}, "npc_trust": {}, "ledger": {}, "case_memory": {}, "knowledge": {"self": listener.id, "good": [listener.id], "own_role": listener.role, "own_reports": [], "own_outings": {}}})
-	_check(not eval_res.get("response", "").contains(bystander.name + "'s sighting"), "multi-subject vigil card does not append Seen elsewhere notes for bystanders unrelated to the case target")
+	var eval_res: Dictionary = preload("res://workshop/jury.gd").evaluate(view, m.compile(p), {"id": listener.id, "name": listener.name, "trust": 0.5, "confidence": 0.5, "insight": 0.9, "reasoning_mode": "bounded", "suspicion": {}, "npc_trust": {}, "reading_reliability": {}, "theories": {}, "ledger": {}, "case_memory": {}, "knowledge": {"self": listener.id, "good": [listener.id], "own_role": listener.role, "own_reports": [], "own_outings": {}}})
+	_check(not eval_res.get("response", "").is_empty() and not eval_res.response.contains(bystander.name + "'s sighting"), "multi-subject vigil card produces a response without Seen elsewhere notes for unrelated bystanders")
