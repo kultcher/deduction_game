@@ -1,6 +1,7 @@
 ## One frozen evidence set, several consequences. Claims are questions to
 ## assess, never additional reports. All projections use the same attention set.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const Support = preload("res://workshop/support_model.gd")
@@ -195,4 +196,4 @@ static func _arguments(view: Dictionary, value: Dictionary) -> Array:
 	return result
 
 static func _stance(agreement: float) -> String:
-	return "accept" if agreement >= 0.6 else ("partial" if agreement >= 0.35 else "reject")
+	return "accept" if agreement >= Tuning.Workshop.STANCE_ACCEPT else ("partial" if agreement >= Tuning.Workshop.STANCE_PARTIAL else "reject")

@@ -10,6 +10,7 @@ const Evil = preload("res://sim/evil.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Domain = preload("res://workshop/world_domain.gd")
+const Reasoner = preload("res://workshop/reasoner.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 
 var checks = 0
@@ -415,3 +416,13 @@ func _test_final_roles_hooks() -> void:
 		m_def.on_chosen_executed(w, martyr, vet)
 	_check(w.rng.state == expected_one_draw.state, "Martyr execution consumes exactly one RNG draw for a Marked target across substitution + post-execution hooks")
 	_check(sub_ok == (not first_draw_evil) and (sub_ok or martyr.info_log.size() == before_logs + 1), "Martyr non-substitution on Marked target reuses first draw and records confirmation reading")
+
+	# 9. Centralized Tuning (sim/tuning.gd) checks
+	var Tuning = C.Tuning
+	_check(Tuning != null, "C.Tuning preloads sim/tuning.gd")
+	_check(C.SETUPS == Tuning.Setup.SETUPS and C.SHADOW_SELF == Tuning.Setup.SHADOW_SELF, "C.SETUPS and C.SHADOW_SELF alias Tuning.Setup")
+	_check(is_equal_approx(Mind.SERIOUS_GRIEVANCE, Tuning.Trust.SERIOUS_GRIEVANCE) and is_equal_approx(Mind.HONESTY_K, Tuning.Mind.HONESTY_K), "Mind constants alias Tuning.Trust and Tuning.Mind")
+	_check(is_equal_approx(Mind.CONSENSUS_BASE, Tuning.Meeting.CONSENSUS_BASE) and is_equal_approx(C.DEFENCE_ROPE, Tuning.Meeting.DEFENCE_ROPE), "Meeting constants alias Tuning.Meeting")
+	_check(is_equal_approx(C.EVIL_CAUTION_DEMON, Tuning.Evil.EVIL_CAUTION_DEMON) and is_equal_approx(Evil.HEAT_FADE, Tuning.Evil.HEAT_FADE), "Evil constants alias Tuning.Evil")
+	_check(is_equal_approx(C.role_def("seer").public_threat_bonus, Tuning.Roles.SEER.public_threat_bonus) and is_equal_approx(C.role_def("warden").quiet_night_effect, Tuning.Roles.WARDEN.quiet_night_effect), "RoleDefs read per-role tuning from Tuning.Roles")
+	_check(Reasoner.profile(0.2).cards == Tuning.Workshop.PROFILE_LOW.cards and Reasoner.profile(0.5).rivals == Tuning.Workshop.PROFILE_MEDIUM.rivals and Reasoner.profile(0.8).support == Tuning.Workshop.PROFILE_HIGH.support, "Reasoner.profile reads Low/Medium/High profiles from Tuning.Workshop")

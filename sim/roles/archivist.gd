@@ -23,11 +23,11 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 
 func reading_strength(d: Dictionary, _t_id: String) -> float:
 	var r: String = d.get("role", "")
-	return (0.6 if r == "demon" else 0.4) if content().ROLES.get(r, {}).get("align", "good") == "evil" else 0.15
+	return (Tuning.Roles.ARCHIVIST.reading_strength_demon if r == "demon" else Tuning.Roles.ARCHIVIST.reading_strength_evil) if content().ROLES.get(r, {}).get("align", "good") == "evil" else Tuning.Roles.ARCHIVIST.reading_strength_good
 
 
 func card_strength(_d: Dictionary, _suspect_id: String) -> float:
-	return 0.8
+	return Tuning.Roles.ARCHIVIST.card_strength
 
 
 func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
@@ -38,7 +38,7 @@ func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh
 	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
 	var pair: Array = d["pair"]
 	var others: Array = pair.filter(func(i): return i != listener.id)
-	var per: float = 0.35 if others.size() > 1 else 0.75
+	var per: float = Tuning.Roles.ARCHIVIST.eff_pair if others.size() > 1 else Tuning.Roles.ARCHIVIST.eff_solo
 	var rn: String = content().role_name(d.get("role", "poisoner"))
 	for i in others:
 		mind._eff(effs, i, per, tag + ": archivist pair",

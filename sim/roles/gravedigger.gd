@@ -23,7 +23,7 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 
 
 func card_strength(_d: Dictionary, _suspect_id: String) -> float:
-	return 0.3
+	return Tuning.Roles.GRAVEDIGGER.card_strength
 
 
 func info_effects(w, listener, source, entry: Dictionary, weight: float, fresh: bool, mind) -> Array:
@@ -36,12 +36,12 @@ func info_effects(w, listener, source, entry: Dictionary, weight: float, fresh: 
 	if ex.id != listener.id:
 		# "X was evil" (or good) is evidence about X like any other; X's credibility
 		# follows from it in recompute_beliefs, not from a role-specific rule.
-		mind._eff(effs, ex.id, 1.0 if not ex_good else -0.4, tag + ": %s was the %s" % [ex.id, d["role"]], "", false)
+		mind._eff(effs, ex.id, Tuning.Roles.GRAVEDIGGER.eff_executed_evil if not ex_good else Tuning.Roles.GRAVEDIGGER.eff_executed_good, tag + ": %s was the %s" % [ex.id, d["role"]], "", false)
 	for e in w.executions:
 		if e["id"] == ex.id:
 			var nom: String = e["nominator"]
 			if nom != "" and nom != "player":
-				mind._eff(effs, nom, (0.25 if ex_good else -0.2),
+				mind._eff(effs, nom, (Tuning.Roles.GRAVEDIGGER.eff_nominator_of_good if ex_good else Tuning.Roles.GRAVEDIGGER.eff_nominator_of_evil),
 					tag + ": nominator of %s, who was %s" % [ex.id, d["role"]],
 					"they pushed to hang %s, who was innocent" % ex.name)
 			if fresh and not own and weight > 0.2 and (e["player_nominated"] or e["player_yes"]):
@@ -61,7 +61,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var ex = w.by_id[w.executed_today]
 	var role: String = ex.role
 	var entry: Dictionary = {}
-	if ex.secret_mod == "marked" and w.chance(0.3):
+	if ex.secret_mod == "marked" and w.chance(Tuning.Roles.GRAVEDIGGER.marked_evil_chance):
 		role = w.pick(C.EVIL_ROLES)
 		entry["why"] = "Marked reads as evil"
 	if broken:

@@ -2,11 +2,12 @@
 ## Public receipts only. One joint factor consumes each night's trace once, even
 ## when it is linked to several suspects. Activity profiles persist across nights.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const History = preload("res://workshop/live_history.gd")
 static var cache = {}
 static var route_cache = {}
-const DEMON_DETOUR = 0.05
+const DEMON_DETOUR = Tuning.Workshop.DEMON_DETOUR
 static var demon_route_cache = {}
 
 static func available(view: Dictionary) -> bool:

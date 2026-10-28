@@ -22,11 +22,11 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 
 
 func card_strength(d: Dictionary, suspect_id: String) -> float:
-	return 1.0 if suspect_id in d.get("seen", []) else 0.0
+	return Tuning.Roles.NIGHTWATCH.card_strength_seen if suspect_id in d.get("seen", []) else 0.0
 
 
 func defend_strength(_d: Dictionary, _nominee: String) -> float:
-	return 0.0
+	return Tuning.Roles.NIGHTWATCH.defend_strength
 
 
 func info_effects(w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
@@ -40,11 +40,11 @@ func info_effects(w, listener, source, entry: Dictionary, weight: float, _fresh:
 		if i == listener.id:
 			var where: String = listener.history.get(w.time_key(entry["day"], 3), "")
 			if where.begins_with("home") and not own:
-				mind._eff(effs, source.id, 0.45, tag + ": claims to have seen me out, but I was home",
+				mind._eff(effs, source.id, Tuning.Roles.NIGHTWATCH.eff_lied_about_listener, tag + ": claims to have seen me out, but I was home",
 					"%s claims to have seen me out at night, which is a lie" % src_bare)
 			continue
 		var sc: float = mind.night_sighting_scale(w, listener, i, d["block"], entry["day"])
-		mind._eff(effs, i, 0.5 * sc, tag + ": seen out at night (x%.2f: %s)" % [sc, "near a death" if sc >= 0.99 else "nowhere near a death" if sc > 0.1 else "discounted"],
+		mind._eff(effs, i, Tuning.Roles.NIGHTWATCH.eff_seen_out * sc, tag + ": seen out at night (x%.2f: %s)" % [sc, "near a death" if sc >= 0.99 else "nowhere near a death" if sc > 0.1 else "discounted"],
 			"%s saw them out at night%s" % [src_bare, " where someone was killed" if sc >= 0.5 else ""], not own)
 	return effs
 
@@ -66,7 +66,7 @@ func pick_targets(w, n, mind):
 
 func score_gift_request(w, _n, targets: Array, top: String, parts: Dictionary, _mind) -> void:
 	if top != "" and w.by_id[top].home_block == targets[0]:
-		parts["already_wondering"] = 0.3
+		parts["already_wondering"] = Tuning.Roles.NIGHTWATCH.req_already_wondering
 
 
 func counter_gift_request(w, _n, targets: Array, top: String) -> String:

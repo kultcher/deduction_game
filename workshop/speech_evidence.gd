@@ -1,9 +1,11 @@
 ## Ordinary speech is fallible context, never a healthy-gift assertion.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
+
 ## The existing evaluator's lower threshold for weak evidence. Fear preserves
 ## the native .25/.35 relative reduction, without treating fear as exoneration.
-const REFUSAL_LR = 1.5
+const REFUSAL_LR = Tuning.Workshop.REFUSAL_LR
 
 static func factors(cards: Array) -> Array:
 	var by_person = {}

@@ -69,7 +69,7 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 
 
 func reading_strength(_d: Dictionary, _t_id: String) -> float:
-	return 0.5
+	return Tuning.Roles.MEDIUM.reading_strength
 
 
 func info_effects(w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
@@ -85,12 +85,12 @@ func info_effects(w, listener, source, entry: Dictionary, weight: float, _fresh:
 			var dn = w.by_id.get(dead)
 			if dn != null:
 				for ef in mind._info_effects(w, listener, dn, inner, weight, false):
-					ef[1] = ef[1] * 0.6
+					ef[1] = ef[1] * Tuning.Roles.MEDIUM.relay_reading_scale
 					effs.append(ef)
 		"sighting":
 			if it["who"] != listener.id:
 				var sc2: float = mind.night_sighting_scale(w, listener, it["who"], it.get("block", ""), it.get("night", -1))
-				mind._eff(effs, it["who"], 0.3 * sc2, tag + ": the dead %s saw them out at night (x%.2f)" % [dead, sc2],
+				mind._eff(effs, it["who"], Tuning.Roles.MEDIUM.eff_dead_sighting * sc2, tag + ": the dead %s saw them out at night (x%.2f)" % [dead, sc2],
 					"the dead saw them out at night", not own)
 		"suspicion":
 			pass # A faithfully relayed opinion remains an opinion (Q4).
@@ -139,7 +139,7 @@ func medium_item(w, m, dead, broken: bool, mind) -> Dictionary:
 			return {"type": "suspicion", "about": sg, "lie": true}
 	else:
 		var best = ""
-		var bs = 0.35
+		var bs = Tuning.Roles.MEDIUM.dead_suspicion_min
 		for k in dead.suspicion:
 			if w.by_id[k].alive and mind.susp(dead, k) > bs:
 				bs = mind.susp(dead, k)

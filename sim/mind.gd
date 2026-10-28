@@ -11,6 +11,7 @@ extends RefCounted
 const WorkshopLedger = preload("res://workshop/shared_ledger.gd")
 const WorkshopLedgerProfiler = preload("res://workshop/profiler.gd")
 
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
@@ -60,7 +61,7 @@ static func trait_of(n, t: String) -> float:
 ## Effective paranoia (rises with the dead; composure dampens).
 static func paranoia(w, n) -> float:
 	var dead = w.npcs.filter(func(m): return not m.alive).size()
-	return 0.07 * dead * (1.0 - 0.6 * trait_of(n, "composure"))
+	return Tuning.Mind.PARANOIA_PER_DEAD * dead * (1.0 - Tuning.Mind.PARANOIA_COMPOSURE_DAMP * trait_of(n, "composure"))
 
 static func implicated(e: Dictionary) -> Array:
 	return Gifts.implicated(e)
@@ -74,7 +75,7 @@ static func decide(w, n, topic: String, parts: Dictionary, why: String) -> bool:
 	var total = 0.0
 	for k in parts:
 		total += parts[k]
-	var p = sigmoid(total * 4.0)
+	var p = sigmoid(total * Tuning.Mind.SIGMOID_SLOPE)
 	var r = w.rng.randf()
 	var yes = r < p
 	var d = {}
@@ -102,9 +103,9 @@ static func set_trust(w, n, value: float, why: String) -> void:
 		"from": old, "requested_to": value, "to": n.trust, "cap": n.trust_cap}, why)
 	if absf(n.trust - old) >= 0.01:
 		w.dlog.add("trust", n.id, "player", {"from": snappedf(old, 0.01), "to": snappedf(n.trust, 0.01), "cap": n.trust_cap}, why)
-	if old - n.trust >= 0.03 and not why.begins_with("apology"):
+	if old - n.trust >= Tuning.Trust.GRIEVANCE_MIN_DROP and not why.begins_with("apology"):
 		_record_grievance(w, n, old - n.trust, why)
-	if absf(n.trust - n.trust_at_reconsider) >= 0.1:
+	if absf(n.trust - n.trust_at_reconsider) >= Tuning.Mind.RECONSIDER_TRUST_DELTA:
 		reconsider(w, n, why)
 
 ## A player action that cost trust, kept so the player can apologise for it once.
@@ -120,7 +121,7 @@ static func _record_grievance(w, n, drop: float, why: String) -> void:
 	n.grievances.append({"key": key, "why": why, "drop": drop, "day": w.day,
 		"serious": drop >= SERIOUS_GRIEVANCE, "evidence": evidence, "apologised": false})
 
-const SERIOUS_GRIEVANCE = 0.12
+const SERIOUS_GRIEVANCE = Tuning.Trust.SERIOUS_GRIEVANCE
 
 ## The incidents the player could still apologise for (most recent first).
 static func open_grievances(n) -> Array:
@@ -138,7 +139,7 @@ static func apologise(w, n, index: int) -> Dictionary:
 		return {"lines": [], "facts": [], "error": "Apologise for what?"}
 	var g: Dictionary = open[index]
 	g["apologised"] = true
-	var share: float = 0.25 if g["serious"] else 0.5
+	var share: float = Tuning.Trust.APOLOGY_SHARE_SERIOUS if g["serious"] else Tuning.Trust.APOLOGY_SHARE_MINOR
 	var ins: float = trait_of(n, "insight")
 	if g["evidence"]:
 		share *= 1.0 - clampf((ins - 0.4) * 1.2, 0.0, 0.6)
@@ -212,9 +213,9 @@ static func cap_trust(w, n, cap: float, why: String) -> void:
 static func end_of_day_trust(w) -> void:
 	for n in w.living():
 		if n.secret_known and not n.secret_spread:
-			var bonus = 0.03 + 0.04 * trait_of(n, "privacy")
+			var bonus = Tuning.Trust.SECRET_KEPT_BASE + Tuning.Trust.SECRET_KEPT_PRIVACY_SCALE * trait_of(n, "privacy")
 			if n.secret_spread_by_npc:
-				bonus *= 0.4
+				bonus *= Tuning.Trust.SECRET_KEPT_RUMOR_MULT
 			set_trust(w, n, n.trust + bonus, "the Demonologist kept my secret today%s" % (" (though others are talking)" if n.secret_spread_by_npc else ""))
 
 # ---------------------------------------------------------------- shadow self
@@ -385,7 +386,7 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 	if target_id == listener.id or not listener.suspicion.has(target_id):
 		return
 	if conf_scaled:
-		delta *= 1.4 - 0.8 * trait_of(listener, "confidence")
+		delta *= Tuning.Mind.CONFIDENCE_SCALE_BASE - Tuning.Mind.CONFIDENCE_SCALE_SLOPE * trait_of(listener, "confidence")
 	var old: float = listener.suspicion[target_id]
 	var nv = old + delta
 	if listener.workshop_state.get("active", false):
@@ -408,7 +409,7 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 static func susp(n, target_id: String) -> float:
 	if n.workshop_state.get("active", false) and target_id in n.workshop_state.get("public_good", []):
 		return 0.0
-	return clampf(n.suspicion.get(target_id, 0.0), 0.0, 1.5)
+	return clampf(n.suspicion.get(target_id, 0.0), 0.0, Tuning.Mind.MAX_SUSPICION)
 
 ## The stored vector is an exact, reversible sum. Consumers see bounded beliefs.
 static func suspicion_view(n) -> Dictionary:
@@ -625,8 +626,8 @@ static func _merge_workshop_roots(old: Dictionary, value: Dictionary) -> Diction
 	return result
 
 # Credibility (honesty) tuning: how far evidence of evil discounts what someone says.
-const HONESTY_K = 0.8
-const HONESTY_CAP = 0.5
+const HONESTY_K = Tuning.Mind.HONESTY_K
+const HONESTY_CAP = Tuning.Mind.HONESTY_CAP
 
 ## Recompute everything the ledger implies, from scratch, from the underlying inputs: each
 ## entry's original strength, the player's arguments (each justification separately) and
@@ -832,7 +833,7 @@ static func reconsider(w, n, why: String) -> void:
 			recompute_beliefs(w, n, " (shared evidence reconsidered: %s)" % why)
 		return
 	n.trust_at_reconsider = n.trust
-	var rate = 1.0 - 0.6 * trait_of(n, "confidence")
+	var rate = 1.0 - Tuning.Mind.RECONSIDER_CONFIDENCE_DAMP * trait_of(n, "confidence")
 	for e in n.ledger.values():
 		var m: Dictionary = e["meta"]
 		if not m.has("base"):
@@ -1292,12 +1293,12 @@ static func _secret_used(w, card: Dictionary) -> void:
 	var p = trait_of(owner, "privacy")
 	var first = not owner.secret_spread
 	owner.secret_spread = true
-	var loss = 0.08 + 0.4 * p
-	set_trust(w, owner, owner.trust - (loss if first else loss * 0.4), "the Demonologist spread my secret")
+	var loss = Tuning.Trust.SECRET_SPREAD_BASE + Tuning.Trust.SECRET_SPREAD_PRIVACY * p
+	set_trust(w, owner, owner.trust - (loss if first else loss * Tuning.Trust.SECRET_SPREAD_REPEAT_MULT), "the Demonologist spread my secret")
 	if p >= 0.67:
-		cap_trust(w, owner, 0.3, "the Demonologist spread my secret (very private person)")
+		cap_trust(w, owner, Tuning.Trust.SECRET_CAP_HIGH_PRIVACY, "the Demonologist spread my secret (very private person)")
 	elif p >= 0.34:
-		cap_trust(w, owner, 0.6, "the Demonologist spread my secret")
+		cap_trust(w, owner, Tuning.Trust.SECRET_CAP_MID_PRIVACY, "the Demonologist spread my secret")
 
 ## How much a card weighs with one listener, against or for one suspect. Counts as a hearing
 ## (diminishing returns per card per listener).

@@ -22,6 +22,7 @@
 ## appears in a case. tools/profile_case_eval_town.gd measures the town.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const Graph = preload("res://workshop/case_graph.gd")
@@ -32,13 +33,13 @@ const Movement = preload("res://workshop/movement_model.gd")
 ## Kept small: the rules make a good, healthy reading accurate, and the failures the
 ## rules allow (evil, Delusional, Marked registering) are in the worlds themselves. A
 ## larger value lets "it was just wrong" explain away any surprising reading.
-const DEFAULT_ERR = 0.01
+const DEFAULT_ERR = Tuning.Workshop.DEFAULT_ERR
 ## The same for the listener's own reading: they know what they saw.
-const OWN_ERR = 0.002
+const OWN_ERR = Tuning.Workshop.OWN_ERR
 ## Likelihood-ratio thresholds for the case-strength categories (neutral listener).
-const LR_WEAK = 1.5
-const LR_MODERATE = 3.0
-const LR_STRONG = 10.0
+const LR_WEAK = Tuning.Workshop.LR_WEAK
+const LR_MODERATE = Tuning.Workshop.LR_MODERATE
+const LR_STRONG = Tuning.Workshop.LR_STRONG
 
 ## Chance of this report's content arising by chance: roughly one over the number of
 ## different things the gift could have said.

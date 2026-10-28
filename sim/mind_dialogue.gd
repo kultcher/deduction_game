@@ -8,6 +8,7 @@
 extends RefCounted
 
 const WorkshopLedger = preload("res://workshop/shared_ledger.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
@@ -117,11 +118,11 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 	# Hiding something this card touches?
 	var mine: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	var hiding = n.is_evil() or (night >= 0 and not n.secret.is_empty()) or (night < 0 and n.max_tier < 3 and not n.claim_public and C.ROLES[mine]["kind"] != "evil")
-	var p_nerves = (0.6 if hiding else 0.2) * (1.0 - trait_of(n, "composure")) * strength
+	var p_nerves = (Tuning.Dialogue.PRESS_NERVES_HIDING if hiding else Tuning.Dialogue.PRESS_NERVES_HONEST) * (1.0 - trait_of(n, "composure")) * strength
 	var nervous = w.decision_roll(n, "pressed_nerves", p_nerves, {"composure": trait_of(n, "composure"), "evidence_strength": strength, "hiding": hiding})
 	w.dlog.think(n.id, "pressed", "Pressed with '%s' (strength %.2f; hiding %s; nerves p=%.2f -> %s)." %
 		[card.get("text", ""), strength, str(hiding), p_nerves, str(nervous)], {"night": night, "naming_me": naming_me, "counter": counter})
-	n.pressure += 0.35 * strength
+	n.pressure += Tuning.Dialogue.PRESS_PRESSURE_GAIN * strength
 	if not naming_me and not n.is_evil():
 		set_trust(w, n, n.trust - (0.03 + 0.06 * trait_of(n, "privacy")), "the Demonologist pressed me with evidence")
 	if nervous:
@@ -292,20 +293,20 @@ static func reveal_trait(w, n) -> String:
 
 ## Disclosure tier the NPC is willing to reach right now (1..4).
 static func _target_tier(w, n, trace_id: int = 0) -> int:
-	var jitter = w.rng.randf_range(-0.2, 0.2)
+	var jitter = w.rng.randf_range(-Tuning.Dialogue.OPENNESS_JITTER, Tuning.Dialogue.OPENNESS_JITTER)
 	var openness = (1.0 - trait_of(n, "privacy")) * 1.0 + n.trust * 1.2 + n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")) \
-		+ 0.1 * (w.day - 1) - 0.72 + jitter
+		+ 0.1 * (w.day - 1) + Tuning.Dialogue.OPENNESS_BASE_OFFSET + jitter
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	var gift_terms = {}
 	C.role_def(role).score_disclosure_tier(w, n, gift_terms)
 	for value in gift_terms.values():
 		openness += value
 	var t = 1
-	if openness > 0.75:
+	if openness > Tuning.Dialogue.TIER_FULL:
 		t = 4
-	elif openness > 0.45:
+	elif openness > Tuning.Dialogue.TIER_PARTIAL:
 		t = 3
-	elif openness > 0.15:
+	elif openness > Tuning.Dialogue.TIER_VAGUE:
 		t = 2
 	w.dlog.decision(n.id, "gift_disclosure", "tier", t, {"openness": openness,
 		"parts": {"privacy": (1.0 - trait_of(n, "privacy")) * 1.0, "trust": n.trust * 1.2,
@@ -326,10 +327,10 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 ## So does paranoia, here in its sense of the town opening up as the dead pile up.
 ## A kept ward/vigil promise halves what's left. One roll per person per day.
 static func fear_chance(w, n) -> float:
-	var p: float = 0.2 + 0.3 * (1.0 - trait_of(n, "composure")) - 0.5 * n.pressure - paranoia(w, n)
+	var p: float = Tuning.Dialogue.FEAR_BASE + Tuning.Dialogue.FEAR_COMPOSURE_SCALE * (1.0 - trait_of(n, "composure")) - Tuning.Dialogue.FEAR_PRESSURE_SCALE * n.pressure - paranoia(w, n)
 	if n.fear_eased:
-		p *= 0.5  # the Demonologist kept their word to watch over them
-	return clampf(p, 0.0, 0.85)
+		p *= Tuning.Dialogue.FEAR_EASED_MULT  # the Demonologist kept their word to watch over them
+	return clampf(p, 0.0, Tuning.Dialogue.FEAR_CAP)
 
 static func _afraid(w, n) -> bool:
 	var draw = _day_roll(n.id, w.day, 0x5EA4)

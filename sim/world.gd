@@ -3,6 +3,7 @@
 ## produced by game.gd from the facts this class exposes.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const NPC = preload("res://sim/npc.gd")
 const DevLog = preload("res://sim/devlog.gd")
@@ -189,12 +190,12 @@ func living_with_role(r: String):
 func registers_evil(n) -> bool:
 	if n.is_evil():
 		return true
-	return n.secret_mod == "marked" and chance(0.5)
+	return n.secret_mod == "marked" and chance(Tuning.Setup.MARKED_EVIL_CHANCE)
 
 func registers_demon(n) -> bool:
 	if n.id == demon_id:
 		return true
-	return n.secret_mod == "marked" and chance(0.5)
+	return n.secret_mod == "marked" and chance(Tuning.Setup.MARKED_DEMON_CHANCE)
 
 func npc_with_role(r: String):
 	for n in npcs:
@@ -352,7 +353,7 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 		n.occupation = occ["title"]
 		n.work = occ["work"]
 		n.work_phases = occ["shifts"].duplicate()
-		if chance(0.3):
+		if chance(Tuning.Setup.EXTRA_WORK_SHIFT_CHANCE):
 			var extra = pick([0, 1, 2].filter(func(p): return not (p in n.work_phases)))
 			n.work_phases.append(extra)
 			n.work_phases.sort()
@@ -373,27 +374,27 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 		for m in npcs:
 			if m == n:
 				continue
-			var s = 0.1
-			var t = 0.5 + rng.randf_range(-0.05, 0.05)
+			var s = Tuning.Setup.INITIAL_SUSPICION_BASE
+			var t = Tuning.Setup.INITIAL_TRUST_BASE + rng.randf_range(-Tuning.Setup.INITIAL_TRUST_JITTER, Tuning.Setup.INITIAL_TRUST_JITTER)
 			if m.id in n.rivals:
-				s += 0.15
-				t -= 0.25
+				s += Tuning.Setup.INITIAL_SUSPICION_RIVAL
+				t += Tuning.Setup.INITIAL_TRUST_RIVAL
 			if m.id in n.friends:
-				s -= 0.1
-				t += 0.25
+				s += Tuning.Setup.INITIAL_SUSPICION_FRIEND
+				t += Tuning.Setup.INITIAL_TRUST_FRIEND
 			n.suspicion[m.id] = s
 			n.npc_trust[m.id] = snappedf(t, 0.01)
-		n.trust = clampf(0.3 + 0.25 * (1.0 - n.traits["privacy"]) + rng.randf_range(-0.05, 0.1), 0.1, 0.9)
+		n.trust = clampf(Tuning.Setup.PLAYER_TRUST_BASE + Tuning.Setup.PLAYER_TRUST_OPENNESS_SCALE * (1.0 - n.traits["privacy"]) + rng.randf_range(Tuning.Setup.PLAYER_TRUST_JITTER_MIN, Tuning.Setup.PLAYER_TRUST_JITTER_MAX), Tuning.Setup.PLAYER_TRUST_MIN, Tuning.Setup.PLAYER_TRUST_MAX)
 		n.trust_at_reconsider = n.trust
 		if n.secret_mod == "lovers" and n.lover != "":
-			n.npc_trust[n.lover] = 0.9
+			n.npc_trust[n.lover] = Tuning.Setup.INITIAL_TRUST_LOVER
 			n.suspicion[n.lover] = 0.0
 
 	# Each good NPC knows their own gift: a firsthand record that counts against anyone
 	# who claims it falsely.
 	for n in npcs:
 		if not n.is_evil():
-			Mind.hear_claim(self, n, n.id, n.role, 1.5, "own")
+			Mind.hear_claim(self, n, n.id, n.role, Tuning.Setup.OWN_ROLE_CLAIM_WEIGHT, "own")
 	evil_plan = Evil.make_plan(self)
 	_log_grimoire()
 	trace_capture("initial_setup", true)
@@ -480,10 +481,10 @@ func _assign_relationships() -> void:
 			var a = npcs[i]
 			var b = npcs[j]
 			var r = rng.randf()
-			if r < 0.2:
+			if r < Tuning.Setup.FRIEND_PAIR_CUTOFF:
 				a.friends.append(b.id)
 				b.friends.append(a.id)
-			elif r < 0.32:
+			elif r < Tuning.Setup.RIVAL_PAIR_CUTOFF:
 				a.rivals.append(b.id)
 				b.rivals.append(a.id)
 	for n in npcs:
@@ -692,8 +693,8 @@ func _post_pair(talked_id: String) -> void:
 		var pr = _choose_pair(group)
 		if pr.is_empty():
 			continue
-		var p = 0.4 * pair_weight(pr[0], pr[1])
-		if decision_roll(pr[0], "post_phase_conversation", p, {"pair_weight": p / 0.4}, pr[1].id):
+		var p = Tuning.Setup.POST_PHASE_PAIR_MULT * pair_weight(pr[0], pr[1])
+		if decision_roll(pr[0], "post_phase_conversation", p, {"pair_weight": p / Tuning.Setup.POST_PHASE_PAIR_MULT}, pr[1].id):
 			_make_pair(pr[0], pr[1], "post")
 
 func _day_sightings() -> void:
@@ -1022,7 +1023,7 @@ func resolve_night() -> void:
 		n.poisoned = false
 		n.pressed_today = 0
 		n.busy_with = ""
-		n.pressure = n.pressure * 0.6
+		n.pressure = n.pressure * Tuning.Setup.NIGHT_PRESSURE_DECAY
 	Mind.end_of_day_trust(self)
 
 	# The Sexton's knell (evening, fewer than five alive, once): no gift that walks abroad works.
@@ -1187,10 +1188,10 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 				x.secret["dest"] = spot
 				_walk(x, spot, "secret: meeting %s" % by_id[x.lover].name)
 				met[x.id] = true
-		elif n.secret_mod == "sleepwalker" and not n.out_last_night and chance(0.5):
+		elif n.secret_mod == "sleepwalker" and not n.out_last_night and chance(Tuning.Setup.SLEEPWALK_CHANCE):
 			_walk(n, pick(C.BLOCKS.keys()), "sleepwalking (doesn't know it)")
 	for n in living_good():
-		if not n.secret.is_empty() and n.secret.get("kind", "") != "lover" and not n.out_last_night and chance(0.55):
+		if not n.secret.is_empty() and n.secret.get("kind", "") != "lover" and not n.out_last_night and chance(Tuning.Setup.FLAVOR_SECRET_WALK_CHANCE):
 			_walk(n, n.secret["dest"], "secret: " + n.secret["kind"])
 	for n in living():
 		n.history[time_key(day, C.NIGHT)] = ("night:" if n.out_last_night else "home:") + n.night_block
@@ -1207,12 +1208,12 @@ func _walk(n, block: String, why: String, path: Array = []) -> void:
 ## Something a night walker may leave behind somewhere along their route: usually a
 ## material from their own home block (mud, chalk, soot, straw); rarely something of theirs.
 func _maybe_drop(n, why: String) -> void:
-	var p = 0.35 if n.id == demon_id else 0.15
+	var p = Tuning.Setup.DROP_CHANCE_DEMON if n.id == demon_id else Tuning.Setup.DROP_CHANCE_WALKER
 	if not chance(p):
 		return
 	var blk: String = pick(n.night_path)
 	var l: String = pick(C.LOCATIONS.keys().filter(func(x): return C.LOCATIONS[x]["block"] == blk))
-	var owned = chance(0.12)
+	var owned = chance(Tuning.Setup.DROP_OWNED_CHANCE)
 	var item = {"night": day, "material": n.home_block, "owner": n.id if owned else "", "who": n.id, "why": why}
 	if not dropped.has(l):
 		dropped[l] = []
@@ -1272,7 +1273,7 @@ func _kill(v) -> void:
 	# A misleading trace has a cause: someone else passed the cottage that night and left
 	# traces from where *they* spent the evening.
 	var passers: Array = night_walkers.filter(func(wk): return wk["id"] != demon_id and wk["id"] != v.id and v.home_block in wk.get("path", [wk["block"]]))
-	if not passers.is_empty() and chance(0.4):
+	if not passers.is_empty() and chance(Tuning.Setup.MISLEADING_TRACE_CHANCE):
 		var wk: Dictionary = pick(passers)
 		var o = by_id[wk["id"]]
 		var o_block: String = loc_block(o.history.get(time_key(day, C.EVENING), "home:" + o.home_block))

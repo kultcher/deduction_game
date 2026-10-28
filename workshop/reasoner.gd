@@ -1,5 +1,6 @@
 ## Deterministic, bounded hypothesis testing. Never consumes the referee's worlds.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
@@ -14,12 +15,12 @@ static var unlimited_cards = false # developer experiment (autoplay --no-attenti
 
 static func profile(insight: float) -> Dictionary:
 	var result: Dictionary
-	if insight < 0.34:
-		result = {"name": "Low", "cards": 4, "lines": 2, "support": 12, "rivals": 3, "complete": false}
-	elif insight < 0.67:
-		result = {"name": "Medium", "cards": 8, "lines": 3, "support": 24, "rivals": 9, "complete": false}
+	if insight < Tuning.Workshop.INSIGHT_LOW_CUTOFF:
+		result = Tuning.Workshop.PROFILE_LOW.duplicate()
+	elif insight < Tuning.Workshop.INSIGHT_MEDIUM_CUTOFF:
+		result = Tuning.Workshop.PROFILE_MEDIUM.duplicate()
 	else:
-		result = {"name": "High", "cards": 12, "lines": 4, "support": 48, "rivals": 27, "complete": true}
+		result = Tuning.Workshop.PROFILE_HIGH.duplicate()
 	if unlimited_cards:
 		result.cards = 1000 # links, support and rival budgets are unchanged
 	return result

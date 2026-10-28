@@ -15,7 +15,7 @@ func _init() -> void:
 
 ## Whether the Revenant hides its totem here and now (it will by evening).
 func place_totem_now(w, rv) -> bool:
-	return w.decision_roll(rv, "place_totem_now", [0.45, 0.6, 1.0][w.phase])
+	return w.decision_roll(rv, "place_totem_now", Tuning.Roles.REVENANT.place_totem_probs[w.phase])
 
 
 func run_day_gift(w, rv, _mind, _evil) -> void:
@@ -47,7 +47,7 @@ func on_executed(w, rv, res: Dictionary, mind) -> void:
 		var e: Array = []
 		for i in voters:
 			if i != l.id:
-				mind._eff(e, i, 0.15, "voted to hang the Revenant; the curse turned one of those voters")
+				mind._eff(e, i, Tuning.Roles.REVENANT.curse_voter_eff, "voted to hang the Revenant; the curse turned one of those voters")
 		if not e.is_empty():
 			mind.ledger_hear(w, l, "curse:%d" % w.day, e, 1.0, [], {"kind": "event"})
 	w.public_event("curse", [rv.id], rv.id)
@@ -55,4 +55,4 @@ func on_executed(w, rv, res: Dictionary, mind) -> void:
 
 
 func should_evil_vote_to_hang(w, nom_n, v) -> bool:
-	return nom_n.is_evil() and not w.totem.is_empty() and w.decision_roll(v, "vote_revenant_curse", 0.55, {}, nom_n.id)
+	return nom_n.is_evil() and not w.totem.is_empty() and w.decision_roll(v, "vote_revenant_curse", Tuning.Roles.REVENANT.evil_vote_hang_prob, {}, nom_n.id)

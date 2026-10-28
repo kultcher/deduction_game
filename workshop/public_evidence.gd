@@ -1,8 +1,9 @@
 ## Public observations and witnessed facts. No referee state is read.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 
-const DEMON_VICTIM_GOOD = 0.95
+const DEMON_VICTIM_GOOD = Tuning.Workshop.DEMON_VICTIM_GOOD
 
 static func martyr_receipts(events: Array, ids: Array) -> Array:
 	var receipts = {}

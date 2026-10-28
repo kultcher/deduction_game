@@ -12,7 +12,7 @@ func _init() -> void:
 	kind = "info"
 	desc = "Each night, picks someone they talked with that day and learns whom that person trusts and suspects most."
 	shape = "SOCIAL_PAIR"
-	conversation_nudge = 0.5
+	conversation_nudge = Tuning.Roles.PSYCHOLOGIST.conversation_nudge
 
 
 func short_text(d: Dictionary, src: String, nm: Callable) -> String:

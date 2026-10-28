@@ -35,13 +35,13 @@ func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh
 	var excluded: int = nbrs.size() - others.size()
 	if count == 0:
 		for i in others:
-			mind._eff(effs, i, -0.25, tag + ": dowser count 0", "", not own)
+			mind._eff(effs, i, Tuning.Roles.DOWSER.eff_zero, tag + ": dowser count 0", "", not own)
 	else:
-		var per: float = 0.35 * count
+		var per: float = Tuning.Roles.DOWSER.eff_per_evil * count
 		if excluded > 0:
-			per = 0.7 * count
+			per = Tuning.Roles.DOWSER.eff_per_evil_excluded * count
 		if count > others.size() and not own:
-			mind._eff(effs, source.id, 0.5, tag + ": dowser count impossible from my view",
+			mind._eff(effs, source.id, Tuning.Roles.DOWSER.eff_impossible_source, tag + ": dowser count impossible from my view",
 				"%s reading about the lane can't be right" % src_name)
 		for i in others:
 			mind._eff(effs, i, per, tag + ": dowser count %d" % count,

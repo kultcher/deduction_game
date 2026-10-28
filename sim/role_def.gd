@@ -8,6 +8,8 @@
 ##   `role_target_pool`, `site_mode`, `site_group_key`, `count_mode`, etc.) once outside the loop.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
+
 # Core identity & script metadata (mirrors C.ROLES dictionary entries)
 var id: String = ""
 var display_name: String = ""
@@ -185,32 +187,32 @@ func short_text(_d: Dictionary, src: String, _nm: Callable) -> String:
 func reading_strength(d: Dictionary, t_id: String) -> float:
 	match shape:
 		"PING":
-			return 0.9 if d.get("yes", false) else 0.0
+			return Tuning.Roles.PING_YES_READING_STRENGTH if d.get("yes", false) else 0.0
 		"GROUP_COUNT":
 			if count_mode == "group":
 				var g: Array = group_of(d)
-				return clampf(0.9 * d.get("count", 0) / maxf(1.0, g.size()), 0.0, 0.8) if t_id in g else 0.0
+				return clampf(Tuning.Roles.GROUP_READING_STRENGTH_SCALE * d.get("count", 0) / maxf(1.0, g.size()), 0.0, Tuning.Roles.GROUP_READING_STRENGTH_CAP) if t_id in g else 0.0
 		"ROLE_AT_SITE":
 			if site_mode == "group_count":
 				var g: Array = group_of(d)
-				return clampf(0.9 * d.get("count", 0) / maxf(1.0, g.size()), 0.0, 0.8) if t_id in g else 0.0
+				return clampf(Tuning.Roles.GROUP_READING_STRENGTH_SCALE * d.get("count", 0) / maxf(1.0, g.size()), 0.0, Tuning.Roles.GROUP_READING_STRENGTH_CAP) if t_id in g else 0.0
 		"NIGHT_ROUTE":
-			return 0.35
-	return 0.3
+			return Tuning.Roles.NIGHT_ROUTE_READING_STRENGTH
+	return Tuning.Roles.DEFAULT_READING_STRENGTH
 
 
 ## How strongly a board `info` card speaks against `suspect_id` (0..1).
 func card_strength(d: Dictionary, suspect_id: String) -> float:
 	if suspect_id in implicated(d):
-		return 0.6
+		return Tuning.Roles.DEFAULT_CARD_STRENGTH
 	return 0.0
 
 
 ## How strongly a board `info` card speaks for `nominee` (0..1).
 func defend_strength(d: Dictionary, nominee: String) -> float:
 	if nominee in clears(d):
-		return 0.5
-	return 0.15
+		return Tuning.Roles.DEFAULT_DEFEND_STRENGTH
+	return Tuning.Roles.FALLBACK_DEFEND_STRENGTH
 
 
 ## Native suspicion effects (`[[who_id, delta, can_cite, internal_tag, spoken_reason], ...]`)
@@ -223,29 +225,29 @@ func info_effects(_w, _listener, _source, _entry: Dictionary, _weight: float, _f
 ## Role-specific terms when `n` decides whether to publicly claim this role at a meeting (`Mind._public_claim_decision`).
 func score_public_claim(w, _n, parts: Dictionary) -> void:
 	if kind != "info":
-		parts["hides_from_demon"] = -0.5
+		parts["hides_from_demon"] = Tuning.Roles.HIDE_FROM_DEMON_CLAIM
 	if is_ongoing_info() and w.day <= 2:
-		parts["gift_keeps_giving"] = -0.4
+		parts["gift_keeps_giving"] = Tuning.Roles.ONGOING_INFO_EARLY_CLAIM
 	elif first_night:
-		parts["one_shot_gift"] = 0.3
+		parts["one_shot_gift"] = Tuning.Roles.ONE_SHOT_GIFT_CLAIM
 
 
 ## Role-specific terms when `n` weighs the cost of revealing their gift (`Mind.reveal_cost`).
 func score_reveal_cost(w, _n, parts: Dictionary) -> void:
 	if kind != "info":
-		parts["hides_from_demon"] = 0.5
+		parts["hides_from_demon"] = -Tuning.Roles.HIDE_FROM_DEMON_CLAIM
 	if is_ongoing_info() and w.day <= 2:
-		parts["gift_keeps_giving"] = 0.4
+		parts["gift_keeps_giving"] = -Tuning.Roles.ONGOING_INFO_EARLY_CLAIM
 
 
 ## Role-specific terms when `n` computes their gift disclosure tier (`Mind._target_tier`).
 func score_disclosure_tier(w, _n, gift_terms: Dictionary) -> void:
 	if kind != "info":
-		gift_terms["hides_from_demon"] = -0.5
+		gift_terms["hides_from_demon"] = Tuning.Roles.HIDE_FROM_DEMON_CLAIM
 	if is_ongoing_info() and w.day <= 2:
-		gift_terms["gift_keeps_giving"] = -0.4
+		gift_terms["gift_keeps_giving"] = Tuning.Roles.ONGOING_INFO_EARLY_CLAIM
 	elif first_night:
-		gift_terms["one_shot_gift"] = 0.3
+		gift_terms["one_shot_gift"] = Tuning.Roles.ONE_SHOT_GIFT_CLAIM
 
 
 ## Role-specific vote reluctance when `v` votes on `nominee` (`Mind._vote_impl`, e.g. Martyr).

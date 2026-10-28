@@ -26,7 +26,7 @@ func gift_live_tonight(w, _n) -> bool:
 func score_public_claim(w, n, parts: Dictionary) -> void:
 	super.score_public_claim(w, n, parts)
 	if not n.is_evil() and n.martyr_target != "":
-		parts["martyr_chosen"] = 0.4 # coming out as the Martyr protects their choice by deterrence
+		parts["martyr_chosen"] = Tuning.Roles.MARTYR.claim_chosen_bonus # coming out as the Martyr protects their choice by deterrence
 
 
 func score_vote_reluctance(_w, v, nominee: String, base: float, panic: float, parts: Dictionary) -> void:
@@ -53,7 +53,7 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 
 
 func reading_strength(d: Dictionary, _t_id: String) -> float:
-	return 0.9 if d.get("evil", false) else 0.0
+	return Tuning.Roles.MARTYR.reading_strength_evil if d.get("evil", false) else 0.0
 
 
 func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
@@ -62,9 +62,9 @@ func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh
 	var own: bool = source == listener
 	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
 	if d.get("chosen", false) and d["target"] != listener.id:
-		mind._eff(effs, d["target"], -0.2, tag + ": the Martyr would die for them", "", not own)
+		mind._eff(effs, d["target"], Tuning.Roles.MARTYR.eff_chosen_good, tag + ": the Martyr would die for them", "", not own)
 	elif d.get("evil", false) and d["target"] != listener.id:
-		mind._eff(effs, d["target"], 1.0, tag + ": hanged and the Martyr lived: evil", "", false)
+		mind._eff(effs, d["target"], Tuning.Roles.MARTYR.eff_hanged_evil, tag + ": hanged and the Martyr lived: evil", "", false)
 	return effs
 
 
@@ -78,7 +78,7 @@ func pick_targets(w, mart, mind):
 		if t > best_t:
 			best_t = t
 			best = m.id
-	if best == "" or best_t < 0.62:
+	if best == "" or best_t < Tuning.Roles.MARTYR.pick_min_score:
 		w.dlog.think(mart.id, "martyr_pick", "Martyr: nobody trusted enough yet (best %s at %.2f; needs 0.62)." % [best, best_t])
 		return ""
 	mart.martyr_target = best
@@ -131,7 +131,7 @@ func on_substitute_execution(w, mart, saved, res: Dictionary, mind) -> void:
 		for pid in [mart.id, saved.id]:
 			if pid != l.id:
 				l.cleared[pid] = true
-				mind._eff(e, pid, -2.0, "the Martyr died in %s's place: proven good" % saved.id)
+				mind._eff(e, pid, Tuning.Roles.MARTYR.substitute_clear_eff, "the Martyr died in %s's place: proven good" % saved.id)
 		mind.ledger_hear(w, l, "martyr:%d" % w.day, e, 1.0, [], {"kind": "martyr", "day": w.day})
 	w._check_parity()
 

@@ -22,7 +22,7 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 
 
 func defend_strength(_d: Dictionary, _nominee: String) -> float:
-	return 0.5
+	return Tuning.Roles.CLERK.defend_strength
 
 
 func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
@@ -32,10 +32,10 @@ func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh
 	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
 	var pair: Array = d["pair"]
 	if listener.id in pair and d["role"] == listener.role and not own:
-		mind._eff(effs, source.id, -0.3, tag + ": clerk correctly named my role")
+		mind._eff(effs, source.id, Tuning.Roles.CLERK.eff_named_listener, tag + ": clerk correctly named my role")
 	for i in pair:
 		if i != listener.id:
-			mind._eff(effs, i, -0.15, tag + ": clerk pair probably good", "", not own)
+			mind._eff(effs, i, Tuning.Roles.CLERK.eff_pair_good, tag + ": clerk pair probably good", "", not own)
 	return effs
 
 

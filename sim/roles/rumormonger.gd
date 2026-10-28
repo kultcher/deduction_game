@@ -31,7 +31,7 @@ func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh
 	# Secret-holders are good, so "one of these two carries a secret" speaks for both a little.
 	for i in d["pair"]:
 		if i != listener.id:
-			mind._eff(effs, i, -0.12, tag + ": rumormonger pair probably good", "", not own)
+			mind._eff(effs, i, Tuning.Roles.RUMORMONGER.eff_pair_good, tag + ": rumormonger pair probably good", "", not own)
 	return effs
 
 

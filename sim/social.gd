@@ -5,6 +5,7 @@
 ## whether it was true, and who it came from originally.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -133,7 +134,7 @@ static func _pick_item(w, s, l):
 		cands.append([gos * 0.4 * (1.3 - trait_of(s, "composure")), {"kind": "secret", "about": owner, "from": owner, "key": "secret:" + owner, "relay": true}])
 	if cands.is_empty():
 		return null
-	var total = 0.3  # chance they just talk about the weather
+	var total = Tuning.Social.IDLE_CHAT_WEIGHT  # chance they just talk about the weather
 	for c in cands:
 		total += maxf(c[0], 0.0)
 	var r2 = w.rng.randf() * total
@@ -178,7 +179,7 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 		return
 	# Repeats are handled by the listener's ledger (same reading never stacks).
 	# The teller's credibility is applied live by the listener's ledger (rel = the source).
-	var wgt = clampf(0.75 * l.npc_trust.get(s.id, 0.5), 0.0, 0.55)
+	var wgt = clampf(Tuning.Social.HEARSAY_TRUST_SCALE * l.npc_trust.get(s.id, 0.5), 0.0, Tuning.Social.HEARSAY_WEIGHT_CAP)
 	var times: int = l.heard.get(item["key"].trim_prefix("relay:"), 0)
 	l.heard[item["key"].trim_prefix("relay:")] = times + 1
 	var hs = item.duplicate()
@@ -279,14 +280,14 @@ static func paranoia_drift(w) -> void:
 			continue
 		for m in w.living():
 			if m != n and not n.cleared.has(m.id):
-				Mind.adjust(w, n, m.id, 0.06 * p, "paranoia drift", "", false)
+				Mind.adjust(w, n, m.id, Tuning.Social.PARANOIA_DRIFT_RATE * p, "paranoia drift", "", false)
 		w.dlog.think(n.id, "paranoia", "Paranoia %.2f: everyone left alive looks a little more suspect." % p)
 
 # ---------------------------------------------------------------- approaches
 
 ## Pick an NPC who wants a word with the player at the start of a phase, or null.
 static func approach_candidate(w):
-	if not w.decision_roll(null, "approach_this_phase", 0.4):
+	if not w.decision_roll(null, "approach_this_phase", Tuning.Social.APPROACH_PHASE_CHANCE):
 		return null
 	var best = null
 	var best_s = 0.0
@@ -327,14 +328,14 @@ static func approach_candidate(w):
 				s = ps
 				a = "protect"
 		var noise_draw = w.rng.randf()
-		var noise: float = noise_draw * 0.2
+		var noise: float = noise_draw * Tuning.Social.APPROACH_NOISE
 		s += noise
-		w.observe_decision(n, "approach_score", s >= 0.35, {"inputs": {"gossip": gos, "privacy": trait_of(n, "privacy"), "trust": n.trust, "composure": trait_of(n, "composure")}, "score": s, "threshold": 0.35, "comparison": ">=", "draw": noise_draw, "noise": noise, "noise_min": 0.0, "noise_max": 0.2, "agenda": a, "note": "Threshold chance excludes competing NPCs; highest score chooses the approach"})
+		w.observe_decision(n, "approach_score", s >= Tuning.Social.APPROACH_SCORE_THRESHOLD, {"inputs": {"gossip": gos, "privacy": trait_of(n, "privacy"), "trust": n.trust, "composure": trait_of(n, "composure")}, "score": s, "threshold": Tuning.Social.APPROACH_SCORE_THRESHOLD, "comparison": ">=", "draw": noise_draw, "noise": noise, "noise_min": 0.0, "noise_max": Tuning.Social.APPROACH_NOISE, "agenda": a, "note": "Threshold chance excludes competing NPCs; highest score chooses the approach"})
 		if s > best_s:
 			best_s = s
 			best = n
 			agenda = a
-	if best == null or best_s < 0.35:
+	if best == null or best_s < Tuning.Social.APPROACH_SCORE_THRESHOLD:
 		w.observe_decision(best, "approach_selection", false, {"gate": "no eligible NPC cleared the approach threshold", "score": best_s, "threshold": 0.35, "comparison": ">="})
 		return null
 	w.observe_decision(best, "approach_selection", agenda, {"score": best_s, "threshold": 0.35, "comparison": ">=", "gate": "highest eligible score selected; no extra draw"})
@@ -344,7 +345,7 @@ static func approach_candidate(w):
 ## Afraid, trusting the player enough, and the player doesn't yet know their gift: they may
 ## come asking for a ward or a vigil (see Mind.protection_kind for who asks for which).
 static func wants_protection(w, n) -> bool:
-	if n.claim_public or n.max_tier >= 3 or n.protect_lock or n.request_day == w.day or n.trust < 0.45:
+	if n.claim_public or n.max_tier >= 3 or n.protect_lock or n.request_day == w.day or n.trust < Tuning.Social.PROTECTION_MIN_TRUST:
 		return false
 	if Mind.protection_kind(w, n) == "":
 		return false

@@ -24,8 +24,8 @@ func try_knell(w, sx, mind) -> bool:
 	if sx == null or sx.is_evil() or sx.gift_used or w.day < 1 or w.living().size() >= 5:
 		return false
 	var toll: bool = mind.decide(w, sx, "sexton_toll", {
-		"few_left": 0.35,
-		"deaths": 0.1 * w.npcs.filter(func(m): return not m.alive).size(),
+		"few_left": Tuning.Roles.SEXTON.toll_few_left,
+		"deaths": Tuning.Roles.SEXTON.toll_per_dead * w.npcs.filter(func(m): return not m.alive).size(),
 		"base": 0.0,
 	}, "Toll the death knell tonight (fewer than five alive)?")
 	if not toll:
