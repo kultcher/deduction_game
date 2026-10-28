@@ -10,10 +10,10 @@ extends RefCounted
 const Decisions = preload("res://sim/dialogue_decisions.gd")
 const Voices = preload("res://sim/dialogue_voices.gd")
 const Observations = preload("res://sim/dialogue_observations.gd")
+const Contract = preload("res://sim/dialogue_contract.gd")
 const INTENTS = ["report", "doubted", "friend", "conceal", "revise"]
 
-static func has_voice(id: String) -> bool:
-	return Voices.VOICES.has(id)
+static func has_voice(id: String) -> bool:	return Voices.VOICES.has(id)
 
 static func whereabouts_intent(event_id: String) -> Dictionary:
 	return {"kind": "conceal", "form": "whereabouts", "event_id": event_id,
@@ -24,6 +24,10 @@ static func reconsideration_intent(argument: String) -> Dictionary:
 		"statement": "I didn't put much stock in %s. After all that's happened since... perhaps I should have." % argument}
 
 static func compose(id: String, intent: Dictionary, context: Dictionary, memory: Dictionary) -> Dictionary:
+	var delivery = Contract.context(context)
+	return Contract.attach(_compose(id, intent, delivery, memory), intent, delivery)
+
+static func _compose(id: String, intent: Dictionary, context: Dictionary, memory: Dictionary) -> Dictionary:
 	if intent.get("kind", "") in ["argument", "nomination"] and context.get("decided", false):
 		return decision(id, intent, context.get("audience", "player"), memory)
 	var kind: String = intent.get("kind", "")
@@ -90,7 +94,7 @@ static func compose(id: String, intent: Dictionary, context: Dictionary, memory:
 	# introductions, but still track the delivered event and per-audience repetition.
 	# Relationship labels are caller-approved, not inferred from the report's text.
 	if kind == "report" and context.get("flow_position", "standalone") == "continuation":
-		var relation: String = context.get("flow_relation", "continuation")
+		var relation: String = context.get("flow_relation", "independent")
 		var connective = ""
 		if relation in ["development", "contrast", "transition", "correction"]:
 			var flow_cue = "flow_" + relation
@@ -151,11 +155,11 @@ static func compose_turn(id: String, intents: Array, context: Dictionary, memory
 		var approved: Dictionary = intents[i]
 		var cues: Dictionary = context.duplicate()
 		cues["flow_position"] = "continuation" if preceded or i > 0 else "opening"
-		cues["flow_relation"] = approved.get("relation", "continuation")
+		cues["flow_relation"] = approved.get("relation", "independent")
 		# Only adjacent, caller-approved direct presence claims with identical
 		# scene/time/source/predicate may share a referent. Never cross a contrast,
 		# correction, repeated subject, unstructured line, or separate speaker turn.
-		var shared = Observations.same_presence(previous, approved) and cues["flow_relation"] in ["continuation", "development"]
+		var shared = Observations.same_presence(previous, approved) and cues["flow_relation"] in ["independent", "continuation", "development"]
 		if shared and approved.observation.subject_id in subjects: shared = false
 		if not shared: subjects = []
 		cues["shared_presence"] = shared
@@ -230,4 +234,4 @@ static func contextualize(id: String, statement: String, cue: String, subject_na
 
 ## The simulation has already approved this descriptor. Never pass private decision logs.
 static func decision(id: String, approved: Dictionary, audience: String, memory: Dictionary) -> Dictionary:
-	return Decisions.render(id, approved, audience, memory)
+	return Contract.attach(Decisions.render(id, approved, audience, memory), approved, {"audience": audience})

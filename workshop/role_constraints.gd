@@ -267,11 +267,32 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 			if i < 0:
 				return 0.0
 			selected |= 1 << i
-		if card.role in ["clerk", "archivist"]:
-			var candidates: int = pair_mask & (good if card.role == "clerk" else minions)
-			if selected != 0:
-				candidates &= selected
-			if not _assign(assignments, card.data.role, candidates):
+		var rdef = C.role_def(card.role)
+		if rdef != null and rdef.shape == "ROLE_IN_GROUP":
+			var group_mask: int = 0
+			if rdef.role_group_key == "pair":
+				group_mask = pair_mask
+				if selected != 0:
+					group_mask &= selected
+			else:
+				var target: int = ids.find(card.data.get(rdef.role_group_key, ""))
+				if target < 0:
+					return 0.0
+				group_mask = 1 << target
+			var read_role: String = card.data.role
+			var evil_role: bool = C.ROLES.get(read_role, {}).get("align") == "evil"
+			# Marked can receive any evil-role result without actually holding it.
+			if rdef.marked_registers and evil_role and world.marked >= 0 and (group_mask & (1 << world.marked)) != 0:
+				continue
+			var pool_mask: int = good
+			match rdef.role_target_pool:
+				"minion":
+					pool_mask = minions
+				"demon":
+					pool_mask = (1 << demon) if demon >= 0 else 0
+				"any":
+					pool_mask = (1 << demon) if read_role == "demon" and demon >= 0 else (minions if evil_role else good)
+			if not _assign(assignments, read_role, group_mask & pool_mask):
 				return 0.0
 		elif card.role == "veteran":
 			if veteran_night >= 0 and veteran_night != card.night:
@@ -285,18 +306,6 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 				var target: int = ids.find(card.data.target)
 				if target < 0 or not (world.evil & (1 << target)) and world.marked != target:
 					return 0.0
-		elif card.role == "gravedigger":
-			var target: int = ids.find(card.data.executed)
-			if target < 0:
-				return 0.0
-			var read_role: String = card.data.role
-			var evil_role: bool = C.ROLES.get(read_role, {}).get("align") == "evil"
-			# Marked can receive any evil-role result without actually holding it.
-			if evil_role and world.marked == target:
-				continue
-			var candidates: int = (1 << demon) if read_role == "demon" and demon >= 0 else (minions if evil_role else good)
-			if not _assign(assignments, read_role, (1 << target) & candidates):
-				return 0.0
 		elif card.role == "seer":
 			if seer != "" and seer != card.source:
 				return 0.0

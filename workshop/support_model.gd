@@ -266,7 +266,7 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 			_add_atom(atoms, known_key, 0.0)
 			required.append(known_key)
 		var source_key: String = TimeModel.source_key(view, card)
-		_add_atom(atoms, source_key, (1.0 if Solver.Domain.live(view) and card.source == "evidence" else source_quality(listener, card.source)) * objections.sources.get(card.source, 1.0))
+		_add_atom(atoms, source_key, (1.0 if Solver.Domain.live(view) and card.source == "evidence" else source_quality(listener, c_source(card))) * objections.sources.get(card.source, 1.0))
 		required.append(source_key)
 		if card.has("relay_source"):
 			var relay_key: String = "source:" + card.relay_source
@@ -358,6 +358,9 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 		shared.plan = plan
 	return plan
 
+static func c_source(card: Dictionary) -> String:
+	return card.source
+
 static func _contributing(view: Dictionary, active: Array) -> Array:
 	var result: Array = []
 	var originals: Array = []
@@ -409,10 +412,32 @@ static func _explain(view: Dictionary, value: Dictionary, listener: Dictionary, 
 		limits.support = Solver.Domain.worlds(view).size()
 		limits.rivals = limits.support
 	var result = Reasoner.search(view, considered, accepted, listener, limits)
+	if result.support.is_empty() and considered.conclusion.type != "conflict":
+		var own_ids: Array = listener.knowledge.get("own_reports", [])
+		var core_accepted: Array = accepted.filter(func(c): return c.id not in own_ids or c.source == listener.id)
+		if not core_accepted.is_empty() and core_accepted.size() < accepted.size():
+			var core_result = Reasoner.search(view, considered, core_accepted, listener, limits)
+			if not core_result.support.is_empty():
+				result = core_result
+				accepted = core_accepted
+		if result.support.is_empty() and not result.get("local_conflict", []).is_empty():
+			var conflict_ids: Array = result.local_conflict
+			var challenged_cards: Array = []
+			for c in accepted:
+				if c.kind == "alibi" and c.id in conflict_ids:
+					var q = c.duplicate(true)
+					q["quoted"] = true
+					challenged_cards.append(q)
+				else:
+					challenged_cards.append(c)
+			var challenged_result = Reasoner.search(view, considered, challenged_cards, listener, limits)
+			if not challenged_result.support.is_empty():
+				result = challenged_result
+				accepted = challenged_cards
 	result.merge(attention)
 	result.erase("case")
 	result["accepted"] = accepted.map(func(c): return c.id)
-	result["doubted"] = cards.filter(func(c): return c not in accepted).map(func(c): return c.id)
+	result["doubted"] = cards.filter(func(c): return not accepted.any(func(a): return a.id == c.id)).map(func(c): return c.id)
 	var factors: Array = considered.test_factors.filter(func(f): return f.routes.any(func(route): return route.all(func(id): return accepted.any(func(c): return Solver.semantic_key(c) == Solver.semantic_key(Solver.card_by_id(view, id))))))
 	factors.append_array(Movement.factors(view, accepted, considered))
 	for factor in factors:

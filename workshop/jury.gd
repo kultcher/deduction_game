@@ -335,10 +335,17 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 			response = reasoning.private_checks.objections[0]
 		elif conclusion.type == "conflict":
 			response = "The accounts I considered cannot all be accurate. That does not identify anyone as evil." if best.agreement > 0 else "I have not established a conflict among the accounts I considered."
+		elif best.kind == "pattern" and best.weight > 0:
+			response = "That gives me a reason to be suspicious, though it does not establish evil."
+		elif best.kind == "conditional":
+			response = "That follows if I grant your extra choices. You still need to establish those choices."
 		elif best.weight < 0:
 			response = "The evidence I considered weighs against this conclusion; my search was limited."
 		elif not reasoning.support.is_empty() and reasoning.status == "provisional":
-			response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
+			if reasoning.get("rivals_tested", 0) > 0:
+				response = "Your explanation fits what I considered, and none of the alternatives I checked held up." if stance == "accept" else "I found your explanation coherent, though I am not yet convinced by its support."
+			else:
+				response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
 		elif reasoning.status == "rival_found":
 			var alternative = Solver.describe_world(view, reasoning.rival, conclusion.at)
 			response = "I checked another explanation and it also fits: %s evil; %s Marked. I cannot settle it from this alone." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, alternative.marked)]
@@ -348,9 +355,14 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 				response = "I checked another explanation that also fits, but the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible."
 		elif reasoning.status == "entailed_in_attention":
 			response = "The reports I considered force this if they are accurate."
+		elif reasoning.status == "inconsistent":
+			response = "Those reports can't all be right together, so I'm weighing which of them to doubt." if best.weight > 0 else "The accounts I considered conflict with each other, and do not establish that conclusion."
+		elif reasoning.status == "counterexample_found" and reasoning.get("support_exhausted", false):
+			response = "The reports I considered point away from that conclusion."
 		else:
 			response = "I could not follow your explanation through within what I considered. That does not prove it wrong."
-		if not reasoning.ignored.is_empty() or not reasoning.ignored_lines.is_empty():
+		var ignored_presented: bool = reasoning.ignored.any(func(id): return id in listener.knowledge.get("presented_reports", reasoning.ignored))
+		if ignored_presented or not reasoning.ignored_lines.is_empty():
 			response += " I did not combine all the evidence in this case."
 		if repeated:
 			response = "That is the same case; I made the same checks. Repeating it adds no new reason."
@@ -395,9 +407,12 @@ static func _eval_listener(listener: Dictionary, own: Array, challenges: Diction
 ## move them.
 ## entailed: the listener checked that the attended reports force the conclusion, so
 ## with every reading credible they're fully convinced.
-static func _provisional(view: Dictionary, conclusion: Dictionary, ev: Dictionary, cards: Array, listener: Dictionary, eval_listener: Dictionary, entailed: bool = false) -> float:
+static func _provisional(view: Dictionary, conclusion: Dictionary, ev: Dictionary, cards: Array, listener: Dictionary, eval_listener: Dictionary, entailed: bool = false, rivals_tested: int = 0) -> float:
 	var ratio: float = Support._direct_ratio(ev.factors.filter(func(f): return not f.get("joint_live", false)), conclusion)
 	if cards.is_empty():
+		if ev.factors.any(func(f): return f.get("joint_live", false)):
+			var shift_val: float = clampf(CaseEval.shift(ev.prior, ev.posterior), -1.0, 1.0)
+			return shift_val * (2.0 * ratio / (1.0 + ratio)) if not is_equal_approx(ratio, 1.0) else shift_val
 		return (2.0 if Movement.available(view) else 0.16) * (ratio / (1.0 + ratio) - 0.5)
 	# Each source is credible with its quality; each of its readings, with that reading's
 	# own reliability. Conviction is v5's for however many readings survive (two or
@@ -428,9 +443,11 @@ static func _provisional(view: Dictionary, conclusion: Dictionary, ev: Dictionar
 				next[a + b] += dist[a] * quality * inner[b]
 		dist = next
 	var scale: float = 2.0 * ratio / (1.0 + ratio)
+	var single_card_base: float = maxf(0.3, minf(0.76, CaseEval.shift(ev.prior, ev.posterior))) if cards.size() == 1 else 0.3
+	var multi_card_base: float = 0.85 if rivals_tested > 0 else 0.76
 	var conviction = 0.0
 	for n in range(1, dist.size()):
-		conviction += dist[n] * (1.0 if entailed and n == cards.size() else minf(0.95, (0.76 if n >= 2 else 0.3) * scale))
+		conviction += dist[n] * (1.0 if entailed and n == cards.size() else minf(0.95, (multi_card_base if n >= 2 else single_card_base) * scale))
 	return conviction
 
 ## The cards a listener weighs for this case: their attention set (Insight limits it for
@@ -489,7 +506,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 	var agreement: float = clampf(CaseEval.shift(ev.prior, ev.posterior), -1.0, 1.0)
 	var contributing: Array = Solver.selected(view, scoped).filter(func(c): return Solver.tabled(c))
 	if bounded and reasoning.status in ["provisional", "entailed_in_attention"] and ev.consistent and conclusion.type in ["evil", "good", "suspicious", "marked", "demon", "minion"]:
-		agreement = clampf(_provisional(view, conclusion, ev, contributing, listener, eval_listener, reasoning.status == "entailed_in_attention"), -1.0, 1.0)
+		agreement = clampf(_provisional(view, conclusion, ev, contributing, listener, eval_listener, reasoning.status == "entailed_in_attention", int(reasoning.get("rivals_tested", 0))), -1.0, 1.0)
 	var pattern = _pattern(view, case_data, listener)
 	if bounded:
 		# Outings count only if the listener attended to them.
@@ -540,10 +557,17 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			response = reasoning.private_checks.objections[0]
 		elif conclusion.type == "conflict":
 			response = "The accounts I considered cannot all be accurate. That does not identify anyone as evil." if best.agreement > 0 else "I have not established a conflict among the accounts I considered."
+		elif best.kind == "pattern" and best.weight > 0:
+			response = "That gives me a reason to be suspicious, though it does not establish evil."
+		elif best.kind == "conditional":
+			response = "That follows if I grant your extra choices. You still need to establish those choices."
 		elif best.weight < 0:
 			response = "The evidence I considered weighs against this conclusion; my search was limited."
 		elif not reasoning.support.is_empty() and reasoning.status == "provisional":
-			response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
+			if reasoning.get("rivals_tested", 0) > 0:
+				response = "Your explanation fits what I considered, and none of the alternatives I checked held up." if stance == "accept" else "I found your explanation coherent, though I am not yet convinced by its support."
+			else:
+				response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
 		elif reasoning.status == "rival_found":
 			var alternative = Solver.describe_world(view, reasoning.rival, conclusion.at)
 			response = "I checked another explanation and it also fits: %s evil; %s Marked." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, alternative.marked)]
@@ -553,9 +577,14 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 				response += " Even so, the evidence favors your explanation." if ev.movement.is_empty() else " Even so, the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible."
 		elif reasoning.status == "entailed_in_attention":
 			response = "The reports I considered force this if they are accurate."
+		elif reasoning.status == "inconsistent":
+			response = "Those reports can't all be right together, so I'm weighing which of them to doubt." if best.weight > 0 else "The accounts I considered conflict with each other, and do not establish that conclusion."
+		elif reasoning.status == "counterexample_found" and reasoning.get("support_exhausted", false):
+			response = "The reports I considered point away from that conclusion."
 		elif reasoning.status != "provisional":
 			response = "I could not follow your explanation through within what I considered. That does not prove it wrong."
-		if not reasoning.ignored.is_empty() or not reasoning.ignored_lines.is_empty():
+		var ignored_presented: bool = reasoning.ignored.any(func(id): return id in listener.knowledge.get("presented_reports", reasoning.ignored))
+		if ignored_presented or not reasoning.ignored_lines.is_empty():
 			response += " I did not combine all the evidence in this case."
 		if ev.movement.any(func(label): return label.begins_with("Challenged home alibi")):
 			response += " The linked observation challenges the home alibi; it does not by itself prove evil."

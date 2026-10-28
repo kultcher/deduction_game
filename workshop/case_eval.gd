@@ -44,17 +44,19 @@ const LR_STRONG = 10.0
 ## different things the gift could have said.
 static func chance_content(view: Dictionary, card: Dictionary) -> float:
 	var d: Dictionary = card.get("data", {})
-	match card.get("role", ""):
-		"surveyor":
-			var blocks = {}
-			for p in view.people:
-				blocks[p.home] = true
-			return 1.0 / float(blocks.size() + 1)
-		"dowser", "hearthwitch":
+	var rdef = Solver.C.role_def(card.get("role", ""))
+	if rdef != null:
+		if rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count":
 			return 1.0 / float(d.get("group", []).size() + 1)
-		"lamplighter":
-			return 1.0 / float(view.people.size())
-		"nightwatch":
+		if rdef.shape == "GROUP_COUNT":
+			if rdef.count_mode == "blocks":
+				var blocks = {}
+				for p in view.people:
+					blocks[p.home] = true
+				return 1.0 / float(blocks.size() + 1)
+			if rdef.count_mode == "walkers":
+				return 1.0 / float(view.people.size())
+		if rdef.shape == "NIGHT_ROUTE":
 			return 0.25
 	return 0.5
 

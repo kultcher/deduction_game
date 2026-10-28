@@ -11,6 +11,7 @@ var fails = 0
 
 func _init() -> void:
 	_contracts()
+	_delivery_boundary()
 	_memory()
 	_generic_refusals()
 	_flow()
@@ -49,6 +50,24 @@ func _contracts() -> void:
 	_check("Between us." in private_line and not "Between us." in public_line, "private request never leaks into meeting speech")
 	var lie_context = {"true": false, "alignment": "evil", "secret": "smuggling"}
 	_check(Dialogue.compose("bart", quoted, lie_context, {})["text"] == Dialogue.compose("bart", quoted, {}, {})["text"], "irrelevant hidden truth cannot affect wording")
+
+func _delivery_boundary() -> void:
+	var approved = Dialogue.Observations.presence("agnes", "jory", "Jory", "loc:tavern", 2, 2, "the tavern", "yesterday evening")
+	var original = approved.duplicate(true)
+	var context = {"audience": "town", "speech_act": "answer", "truth": false, "alignment": "evil", "secret": "hidden"}
+	var cleaned = Dialogue.Contract.context(context)
+	_check(cleaned == {"audience": "town", "speech_act": "answer"}, "delivery boundary admits public discourse cues and drops hidden context")
+	for id in ["agnes", "edda"]:
+		var rendered = Dialogue.compose(id, approved, context, {})
+		_check(rendered.canonical == approved and rendered.audience == "town" and rendered.speech_act == "answer", "voiced and fallback paths expose the same independent canonical payload")
+		rendered.canonical.observation.scene.day = 99
+		_check(approved == original, "consumer changes to output metadata cannot mutate approved inputs")
+	var decision: Dictionary = Fixtures.SCENARIOS[5].duplicate(true)
+	var result = Dialogue.decision("agnes", decision, "town", {})
+	_check(result.canonical.facts == decision.facts and result.canonical.stance == decision.stance and result.audience == "town", "resolved decisions retain the supplied stance, evidence IDs and audience")
+	var plain = Dialogue.compose_turn("agnes", [{"kind": "report", "statement": "First."}, {"kind": "report", "statement": "Second."}], {}, {})
+	_check(plain[1].relation == "independent" and plain[1].text == "Second.", "unspecified discourse is independent and adds no connective")
+	_check(Dialogue.Contract.context({"speech_act": "secret_truth", "flow_relation": "therefore_guilty"}) == {"flow_relation": "independent"}, "unsupported discourse values never authorize inferred meaning")
 
 func _generic_refusals() -> void:
 	var memory = {}

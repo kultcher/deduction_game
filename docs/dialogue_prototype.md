@@ -6,6 +6,38 @@ explanations were removed on Oct 18: voting is silent until the meeting/rebuttal
 characters use generic decision lines and retain their previous wording at the original
 five hooks. This phase extends the merged implementation rather than replacing it.
 
+## Current integration structure
+
+Updated October 28, 2026 against `bounded-reasoning-fix` (`526d756`).
+`docs/DIALOGUE_DESIGN.md` is the creative direction; this document records implemented
+behavior. The three established voices remain the authored baseline.
+
+- `sim/mind_dialogue.gd` owns private questions, approved daytime/night observations
+  and conversation responses; existing role-definition disclosure hooks are preserved.
+- `sim/mind_meeting.gd` owns public disclosure/readings and volunteered night sightings.
+- `sim/mind.gd` keeps forwarding methods for existing callers rather than duplicate
+  implementations of these behaviors.
+- `sim/dialogue_contract.gd` filters delivery context to recognized public fields and
+  attaches copied canonical payload, audience, speech act and relation to reports,
+  bounded forms, fallback and resolved-decision results. Downstream evidence continues
+  using the original simulation facts, never speech text.
+- The default relation is `independent`, with no filler. `continuation` is retained as
+  a silent compatibility alias; safe scene joins still require explicit provenance.
+
+No full fifteen-voice expansion, new interpretation/reaction layer or serious-event
+activation is implied. Those design targets require separately authored content and
+simulation-approved event context. Existing pressure/warmth cues remain tone only.
+
+Integration validation: Godot 4.7.2 import passed. Eleven relevant suites passed:
+`test_dialogue`, `test_dialogue_decisions`, `test_role_def_poc`, `test_case_eval`,
+`test_backlog_batch4`, `test_npc_interactions`, `test_sighting_followup`,
+`test_workshop_card_answers`, `test_fixes`, `test_board`, and `test_workshop_presentation`.
+The role suite needed three fixture corrections exposed by the incoming branch:
+select living evil NPCs through `living()`, check the `minion` metadata flag rather
+than a nonexistent role kind, and establish a public Gravedigger claim before testing
+the public-claim timing gate. Its final rerun passed all 148 checks. These are test
+preconditions/API repairs, not changes to role behavior.
+
 ## Try it
 
 Open `ui/dialogue_lab.tscn` in Godot and **Run Current Scene (F6)**. Or run:
@@ -131,7 +163,7 @@ means the caller has already supplied a spoken line in the same uninterrupted tu
 repetition behavior; continuing reports suppress a fresh "Here is my account" lead-in.
 
 An approved `relation` on a report selects optional authored connective speech:
-`continuation` (the default, **no** connective), `development`, `contrast`,
+`independent` (the default, **no** connective), `continuation` (silent legacy alias), `development`, `contrast`,
 `transition`, or `correction`. The caller must explicitly authorize the relation.
 The composer does not read a statement to decide what contrasts or what is true.
 Agnes, Bartholomew and Constance have different connective styles. Non-voiced
@@ -174,7 +206,7 @@ Use `loc:` and `block:` prefixes so a named venue cannot be mistaken for its who
 neighborhood. Numeric day/phase establishes identity; display time alone never does.
 Two **adjacent** presence reports in one speaker turn may share their place/time
 wording only when the complete scene, display labels and direct observation method
-match, their subjects differ, and their relation is continuation or development.
+match, their subjects differ, and their relation is independent, continuation or development.
 The three baseline voices answer the synthetic tavern example as follows:
 
 - Agnes: "Oh, yes. I did see Jory at the tavern yesterday evening. Fenwick was there too."

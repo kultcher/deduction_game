@@ -27,26 +27,6 @@ static func implicated(e: Dictionary) -> Array:
 	var rdef = C.role_def(role)
 	if rdef != null:
 		return rdef.implicated(d)
-	match role:
-		"hearthwitch", "dowser":
-			return group_of(d) if d.get("count", 0) > 0 else []
-		"archivist":
-			return d.get("pair", [])
-		"nightwatch":
-			return d.get("seen", [])
-		"gravedigger":
-			return [d["executed"]] if C.ROLES.get(d.get("role", ""), {}).get("align", "good") == "evil" else []
-		"martyr":
-			return [d["target"]] if d.get("evil", false) else []
-		"medium":
-			var it: Dictionary = d.get("item", {})
-			match it.get("type", ""):
-				"reading":
-					return implicated(it["entry"])
-				"sighting":
-					return [it["who"]]
-				"suspicion":
-					return [] # Opinions remain opinions when relayed by a gift (Q4).
 	return []
 
 ## People the reading speaks for.
@@ -56,19 +36,6 @@ static func clears(e: Dictionary) -> Array:
 	var rdef = C.role_def(role)
 	if rdef != null:
 		return rdef.clears(d)
-	match role:
-		"hearthwitch", "dowser":
-			return group_of(d) if d.get("count", 0) == 0 else []
-		"clerk", "rumormonger":
-			return d.get("pair", [])
-		"gravedigger":
-			return [d["executed"]] if C.ROLES.get(d.get("role", ""), {}).get("align", "good") == "good" else []
-		"martyr":
-			return [d["target"]] if d.get("chosen", false) else []
-		"medium":
-			var it: Dictionary = d.get("item", {})
-			if it.get("type", "") == "reading":
-				return clears(it["entry"])
 	return []
 
 ## Everyone the reading names.
@@ -97,44 +64,4 @@ static func short_text(role: String, d: Dictionary, src: String, nm: Callable) -
 	var rdef = C.role_def(role)
 	if rdef != null:
 		return rdef.short_text(d, src, nm)
-	match role:
-		"hearthwitch", "dowser":
-			return "%s %s: %d evil of %s" % [src, C.role_name(role), d.get("count", 0), _names(group_of(d), nm)]
-		"nightwatch":
-			return "%s Watch %s: %s" % [src, C.block_name(d.get("block", "")), ", ".join(PackedStringArray(d.get("seen", []).map(nm))) if not d.get("seen", []).is_empty() else "nobody"]
-		"archivist":
-			return "%s Archivist: %s in %s" % [src, C.role_name(d.get("role", "poisoner")), _names(d.get("pair", []), nm)]
-		"clerk":
-			return "%s Clerk: %s in %s" % [src, C.role_name(d.get("role", "")), _names(d.get("pair", []), nm)]
-		"rumormonger":
-			return "%s Rumormonger: %s in %s" % [src, C.secret_name(d.get("secret", "")), _names(d.get("pair", []), nm)]
-		"gravedigger":
-			return "%s Gravedigger: %s was %s" % [src, nm.call(d.get("executed", "")), C.role_name(d.get("role", ""))]
-		"surveyor":
-			return "%s Surveyor: %d block%s with evil" % [src, d.get("count", 0), "" if d.get("count", 0) == 1 else "s"]
-		"lamplighter":
-			return "%s Lamplighter: %d others out" % [src, d.get("count", 0)]
-		"psychologist":
-			return "%s Psychologist: %s trusts %s, suspects %s" % [src, nm.call(d.get("subject", "")), nm.call(d.get("trusts", "")), nm.call(d.get("suspects", ""))]
-		"veteran":
-			return "%s Veteran: attacked, from %s" % [src, C.block_name(d.get("block", ""))]
-		"martyr":
-			if d.get("evil", false):
-				return "%s Martyr: %s was evil" % [src, nm.call(d.get("target", ""))]
-			return "%s Martyr: chose %s" % [src, nm.call(d.get("target", ""))]
-		"medium":
-			var it: Dictionary = d.get("item", {})
-			var dead: String = nm.call(d.get("dead", ""))
-			match it.get("type", ""):
-				"reading":
-					return "%s Medium (%s): %s" % [src, dead, short_text(it["entry"]["role"], it["entry"]["data"], dead, nm)]
-				"sighting":
-					return "%s Medium: %s saw %s out" % [src, dead, nm.call(it.get("who", ""))]
-				"suspicion":
-					return "%s Medium: %s suspected %s" % [src, dead, nm.call(it.get("about", ""))]
-				"home":
-					return "%s Medium: %s was home on night %d" % [src, dead, it.get("night", 0)]
-				"guard":
-					return "%s Medium: %s guarded %s's door on night %d" % [src, dead, nm.call(it.get("who", "")), it.get("night", 0)]
-			return "%s Medium: %s had nothing to tell" % [src, dead]
 	return "%s %s reading" % [src, C.role_name(role)]
