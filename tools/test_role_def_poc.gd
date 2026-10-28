@@ -384,3 +384,8 @@ func _test_final_roles_hooks() -> void:
 	_check(Mind.reveal_cost(w, rumor) == Mind.MindMeeting.reveal_cost(w, rumor), "Mind.reveal_cost forwards identically to MindMeeting.reveal_cost")
 	_check(Mind.fear_chance(w, rumor) == Mind.MindDialogue.fear_chance(w, rumor), "Mind.fear_chance forwards identically to MindDialogue.fear_chance")
 	_check(Mind.protection_kind(w, rumor) == Mind.MindDialogue.protection_kind(w, rumor), "Mind.protection_kind forwards identically to MindDialogue.protection_kind")
+
+	# 7. GameBoard & GamePresentation module extraction checks
+	_check(g.GameBoard != null and g.GamePresentation != null, "Game preloads GameBoard and GamePresentation modules")
+	_check(g.filter_cards("") == g.GameBoard.filter_cards(g, ""), "Game.filter_cards forwards identically to GameBoard.filter_cards")
+	_check(g.timeline_data() == g.GameBoard.timeline_data(g), "Game.timeline_data forwards identically to GameBoard.timeline_data")
