@@ -130,6 +130,7 @@ func _draw() -> void:
 	for id in model.nodes:
 		if not model.nodes[id].has("merged"):
 			hit[id] = _screen(world_rect(id))
+	var link_labels: Array = []
 	for edge in model.links:
 		if not hit.has(edge.from) or not hit.has(edge.to):
 			continue
@@ -147,11 +148,18 @@ func _draw() -> void:
 		var direction = (end - points[23]).normalized()
 		draw_colored_polygon(PackedVector2Array([end, end - direction * 10 + direction.orthogonal() * 5, end - direction * 10 - direction.orthogonal() * 5]), color)
 		if edge.kind == "explains_outing":
-			draw_string(font, points[12], "could explain outing", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
+			link_labels.append({"at": points[12], "text": "could explain outing", "fs": 14, "color": color})
 		elif edge.kind == "read_together":
-			draw_string(font, points[12], "read together", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, color)
+			link_labels.append({"at": points[12], "text": "read together", "fs": 13, "color": color})
 	for id in hit:
 		_draw_card(id, hit[id])
+	for lbl in link_labels:
+		var lfs: int = int(lbl["fs"])
+		var lw: float = font.get_string_size(lbl["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, lfs).x + 12.0
+		var lh: float = lfs + 6.0
+		var lrect = Rect2(lbl["at"] - Vector2(lw / 2.0, lh / 2.0), Vector2(lw, lh))
+		draw_style_box(CanvasSkin.flat(Color(0.09, 0.12, 0.16, 0.9), lbl["color"].darkened(0.35), 1, 6, 0), lrect)
+		draw_string(font, Vector2(lrect.position.x + 6.0, lrect.position.y + lfs + 1.0), lbl["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, lfs, lbl["color"])
 	if linking != "" and hit.has(linking):
 		draw_line(hit[linking].get_center(), get_local_mouse_position(), Color("f3d484"), 2, true)
 	if drag_out:
@@ -475,9 +483,12 @@ func evidence_layout(id: String) -> Dictionary:
 	var els: Array = []
 	var y: float = 50.0
 	var all_lines: Array = _lines(card.get("text", ""), WIDTH - 32, 14)
-	var text_lines: Array = all_lines.slice(0, 2)
-	if all_lines.size() > 2:
-		text_lines[1] = text_lines[1] + " …"
+	var text_lines: Array = all_lines.slice(0, 3)
+	if all_lines.size() > 3:
+		var last: String = text_lines[2]
+		while last != "" and font.get_string_size(last + " …", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x > WIDTH - 32:
+			last = last.substr(0, last.length() - 1).strip_edges(false, true)
+		text_lines[2] = last + " …"
 	y += text_lines.size() * 18.0 + 6.0
 	var details = false
 	if node.kind == "modifier":

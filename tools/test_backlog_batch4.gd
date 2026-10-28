@@ -101,6 +101,7 @@ func refusal_privacy():
 	check(blocked and slipped and pressed, "privacy fixture covers withholding, slips and pressed refusals")
 	# Own-street observations don't reveal an extra location or require a new roll.
 	for seed_value in range(1, 50):
+		n.dialogue_memory = {}
 		n.pressed_today = 0
 		n.pressure = 0.0
 		n.beliefs = [{"kind": "saw", "who": target.id, "block": "square", "day": 1, "phase": C.NIGHT, "how": "window"}]
@@ -146,6 +147,7 @@ func refusal_privacy():
 	n.traits.gossip = 0.0
 	n.beliefs = [{"kind": "saw", "who": target.id, "block": "market", "day": 1, "phase": C.NIGHT, "how": "street"}]
 	for seed_value in range(1, 60):
+		n.dialogue_memory = {}
 		n.pressed_today = 0
 		n.pressure = 0.0
 		w.rng.seed = seed_value

@@ -752,10 +752,13 @@ static func _match_pair(w, a: Dictionary, b: Dictionary, near: Array):
 			near.append("cards #%d and #%d are about different nights (%d vs %d)." % [a["card"], b["card"], a["night"], b["night"]])
 		elif a["night"] == b["night"]:
 			near.append("card #%d is about %s, but card #%d is about %s." % [a["card"], C.block_name(a["block"]), b["card"], C.block_name(b["block"])])
-	# Your vigil saw everyone who moved through a block.
+	# Your vigil saw everyone whose night destination was that block (or who walked the lamp route).
 	if ta == "vigil" and tb == "out" and a["block"] == b["block"] and a["night"] == b["night"] and not (b["who"] in a["seen"]) and _is_npc(w, b["src"]):
-		return _mk(w, "vigil_miss", "Your vigil on %s on night %d saw no sign of %s, but card #%d puts them there." %
-			[C.block_name(a["block"]), a["night"], _nm(w, b["who"]), b["card"]], cards, [_lied(w, b["src"], b["card"])], b["who"], [a, b])
+		if w.by_id.has(b["who"]) and w.by_id[b["who"]].home_block == a["block"] and not b.get("dest", false) and not b.get("lamp", false):
+			near.append("a vigil on %s watches for activity arriving on that block; %s lives there and could have been glimpsed leaving for another block." % [C.block_name(a["block"]), _nm(w, b["who"])])
+		else:
+			return _mk(w, "vigil_miss", "Your vigil on %s on night %d saw no sign of %s, but card #%d puts them there." %
+				[C.block_name(a["block"]), a["night"], _nm(w, b["who"]), b["card"]], cards, [_lied(w, b["src"], b["card"])], b["who"], [a, b])
 	if ta == "vigil" and tb == "watch" and a["block"] == b["block"] and a["night"] == b["night"]:
 		var missing: Array = a["seen"].filter(func(x): return x != b["who"] and not (x in b["seen"]))
 		if not (b["who"] in a["seen"]):

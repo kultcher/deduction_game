@@ -69,6 +69,12 @@ static func third_person(text: String) -> String:
 		out = re.sub(out, pair[1], true)
 	return out
 
+## A player vigil on `block` spots walkers whose destination is `block` (or the
+## Lamplighter making the full four-block tour), not residents merely leaving `block`
+## for another quarter. Night Watch still sees all traffic (`block in path`).
+static func vigil_sees_path(block: String, path: Array) -> bool:
+	return not path.is_empty() and (path.back() == block or path.size() == BLOCKS.size())
+
 static func route(a: String, b: String) -> Array:
 	if a == b:
 		return [a]

@@ -640,7 +640,9 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				"secret_kind": n.secret.get("kind", ""), "mod": "lovers" if n.secret.get("kind", "") == "lover" else "",
 				"text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]})
 		else:
-			var bold = decide(w, n, "lie_or_stonewall", {"confidence": (trait_of(n, "confidence") - 0.5) * 1.5,
+			var prior_account: Dictionary = n.dialogue_memory.get("night_accounts", {}).get(str(nd), {})
+			var prior_kind: String = prior_account.get("kind", "")
+			var bold: bool = (prior_kind == "alibi") if prior_kind in ["alibi", "refusal"] else decide(w, n, "lie_or_stonewall", {"confidence": (trait_of(n, "confidence") - 0.5) * 1.5,
 				"privacy_stonewalls": -(trait_of(n, "privacy") - 0.5) * 0.6}, "Hiding (%s): lie outright rather than stonewall?" % hiding)
 			if bold:
 				w.dlog.think(n.id, "lie", "Hiding (%s): was on %s, claims to have been home." % [hiding, block], {"lie": true})

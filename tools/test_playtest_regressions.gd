@@ -24,6 +24,10 @@ func _init() -> void:
 	_public_hearsay_and_self_gossip()
 	_approach_ui_visibility()
 	_workshop_merge_order_of_operations()
+	_vigil_destination_only()
+	_medium_fake_dead_reading_fallback()
+	_consistent_night_account_on_press()
+	_multi_subject_vigil_no_collateral_note()
 	print("PLAYTEST REGRESSION FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 
@@ -281,3 +285,82 @@ func _workshop_merge_order_of_operations() -> void:
 	var comp2 = m2.compile(p2)
 	_check(err == "" and m2.selected == p2, "merging two cards already linked to a premise succeeds and keeps the premise selected")
 	_check(comp1.cards == comp2.cards and comp1.disputes.size() == 1 and comp1.disputes == comp2.disputes and comp1.reasons == comp2.reasons, "merge-before-link and merge-after-link preserve the same evidence and interpretation")
+
+func _vigil_destination_only() -> void:
+	var g = _game()
+	var w = g.w
+	var a = w.npcs[0]
+	var b = w.npcs[1]
+	var lamp = w.npcs[2]
+	a.home_block = "docks"
+	b.home_block = "market"
+	lamp.home_block = "square"
+	w.night_walkers = [
+		{"id": a.id, "block": "hill", "path": ["docks", "hill"], "why": "leaving docks for hill"},
+		{"id": b.id, "block": "docks", "path": ["market", "docks"], "why": "arriving on docks"},
+		{"id": lamp.id, "block": "square", "path": C.BLOCKS.keys(), "why": "walking the lamp route"},
+	]
+	w.player_vigil = "docks"
+	w._night_sightings()
+	_check(not (a.id in w.player_vigil_seen) and (b.id in w.player_vigil_seen) and (lamp.id in w.player_vigil_seen),
+		"player vigil spots destination visitors and the Lamplighter, not residents leaving for another block")
+	var watch_def = C.role_def("nightwatch")
+	var watch_reading: Dictionary = watch_def.generate_reading(w, w.npcs[3], {"watch_block": "docks"}, Mind)
+	_check(a.id in watch_reading["data"]["seen"] and b.id in watch_reading["data"]["seen"],
+		"Night Watch still sees both departing residents and arriving visitors on the watched block")
+
+func _medium_fake_dead_reading_fallback() -> void:
+	var g = _game()
+	var w = g.w
+	var evil_npc = w.demon()
+	var dd = w.living_good()[0]
+	var sg = w.living_good()[1]
+	w.evil_plan["scapegoat"] = sg.id
+	var ok = true
+	for role in ["surveyor", "rumormonger", "lamplighter", "veteran", "martyr"]:
+		var res: Dictionary = Mind.Evil._fake_dead_reading(w, evil_npc, dd, role, sg.id, 1)
+		if not res.is_empty():
+			ok = false
+	_check(ok, "Evil._fake_dead_reading safely returns {} for roles without custom fabricated Medium relays")
+
+func _consistent_night_account_on_press() -> void:
+	var g = _game()
+	var w = g.w
+	var evil_npc = w.demon()
+	w.day = 2
+	evil_npc.claimed_role = ""
+	evil_npc.history[w.time_key(1, C.NIGHT)] = "night:docks"
+	var card = {"kind": "sighting", "subject": [evil_npc.id], "source": "player", "block": "docks", "day": 1, "phase": C.NIGHT, "text": "Seen on the Docks."}
+	evil_npc.traits["confidence"] = 1.0
+	evil_npc.traits["privacy"] = 0.0
+	evil_npc.dialogue_memory.clear()
+	var r1 = Mind.answer_night(w, evil_npc, 1)
+	evil_npc.traits["confidence"] = 0.0
+	evil_npc.traits["privacy"] = 1.0
+	var p1 = Mind.press(w, evil_npc, card)
+	_check(r1["facts"][0]["kind"] == "alibi" and p1["facts"][0]["kind"] == "alibi", "an NPC who gave a home alibi on ask night stands by it when pressed instead of flipping to a refusal")
+	evil_npc.dialogue_memory.clear()
+	var r2 = Mind.answer_night(w, evil_npc, 1)
+	evil_npc.traits["confidence"] = 1.0
+	evil_npc.traits["privacy"] = 0.0
+	var p2 = Mind.press(w, evil_npc, card)
+	_check(r2["facts"][0]["kind"] == "refusal" and p2["facts"][0]["kind"] == "refusal", "an NPC who refused whereabouts on ask night stands by the refusal when pressed instead of claiming a prior home account")
+
+func _multi_subject_vigil_no_collateral_note() -> void:
+	var g = _game()
+	var w = g.w
+	var target = w.demon()
+	var bystander = w.living_good()[0]
+	var victim = w.living_good()[1]
+	target.home_block = "docks"
+	bystander.home_block = "market"
+	victim.home_block = "hill"
+	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": "hill", "text": "Killed on hill"})
+	var vig = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id, bystander.id], "day": 1, "phase": C.NIGHT, "block": "docks", "vigil": true, "text": "Night 1 vigil: saw both on the Docks."})
+	var view: Dictionary = Live.view(g)
+	var m = Canvas.new(view)
+	var p = m.add_premise(target.id, "evil", Vector2.ZERO)
+	m.connect_cards("e:" + Live.Evidence.normalize_card(g.board[vig - 1]).id, p)
+	var listener = w.living_good()[2]
+	var eval_res: Dictionary = preload("res://workshop/jury.gd").evaluate(view, m.compile(p), {"id": listener.id, "name": listener.name, "trust": 0.5, "confidence": 0.5, "insight": 0.9, "reasoning_mode": "bounded", "suspicion": {}, "npc_trust": {}, "reading_reliability": {}, "theories": {}, "ledger": {}, "case_memory": {}, "knowledge": {"self": listener.id, "good": [listener.id], "own_role": listener.role, "own_reports": [], "own_outings": {}}})
+	_check(not eval_res.get("response", "").is_empty() and not eval_res.response.contains(bystander.name + "'s sighting"), "multi-subject vigil card produces a response without Seen elsewhere notes for unrelated bystanders")

@@ -68,15 +68,15 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 			if card.kind == "sighting" and card.get("hearing_weight", 1.0) < 1.0:
 				continue # Weakly relayed testimony cannot force a walk or gift identity.
 			if card.kind == "sighting" and person.id in card.get("subjects", [card.get("subject", "")]):
-				okay = okay and out and (card.block == "" or card.block in path)
+				okay = okay and out and (card.block == "" or (C.vigil_sees_path(card.block, path) if card.get("complete", false) else card.block in path))
 				if card.has("guard_claim"):
 					okay = okay and out and path.back() == card.block
 			elif card.kind == "sighting" and card.get("complete", false) and person.id not in card.get("excluded", []):
-				okay = okay and card.block not in path
+				okay = okay and not C.vigil_sees_path(card.block, path)
 			elif card.kind == "alibi" and card.subject == person.id:
 				okay = okay and not out
 			elif card.kind == "coverage" and person.id not in card.get("excluded", []):
-				okay = okay and card.block not in path
+				okay = okay and not C.vigil_sees_path(card.block, path)
 			elif card.kind == "report" and card.role == "nightwatch":
 				if card.source == person.id:
 					okay = okay and out and path.back() == card.data.block
@@ -383,15 +383,16 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 	match card.kind:
 		"sighting":
 			if person in card.get("subjects", [card.get("subject", "")]):
-				return 1.0 if out and (card.block == "" or card.block in path) else 1.0 - float(card.get("hearing_weight", 1.0))
+				var matches_block: bool = card.block == "" or (C.vigil_sees_path(card.block, path) if card.get("complete", false) else card.block in path)
+				return 1.0 if out and matches_block else 1.0 - float(card.get("hearing_weight", 1.0))
 			if card.get("complete", false) and person not in card.get("excluded", []):
-				return 1.0 if card.block not in path else 0.0
+				return 1.0 if not C.vigil_sees_path(card.block, path) else 0.0
 		"evening":
 			if person in card.get("subjects", [card.get("subject", "")]):
 				return 1.0 if card.block == evening else 0.0
 		"coverage":
 			if person not in card.get("excluded", []):
-				return 1.0 if card.block not in path else 0.0
+				return 1.0 if not C.vigil_sees_path(card.block, path) else 0.0
 		"alibi":
 			if card.subject == person:
 				if not card.get("quoted", false):
