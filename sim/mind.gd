@@ -929,13 +929,6 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 				var sc = night_sighting_scale(w, listener, i, d["block"], entry["day"])
 				_eff(effs, i, 0.5 * sc, tag + ": seen out at night (x%.2f: %s)" % [sc, "near a death" if sc >= 0.99 else "nowhere near a death" if sc > 0.1 else "discounted"],
 					"%s saw them out at night%s" % [src_bare, " where someone was killed" if sc >= 0.5 else ""], not own)
-		"archivist":
-			var pair: Array = d["pair"]
-			var others: Array = pair.filter(func(i): return i != listener.id)
-			var per = 0.35 if others.size() > 1 else 0.75
-			for i in others:
-				_eff(effs, i, per, tag + ": archivist pair",
-					"%s records tie them to the %s" % [src_name, C.role_name(d.get("role", "poisoner"))], not own)
 		"rumormonger":
 			# Secret-holders are good, so "one of these two carries a secret" speaks for both a little.
 			for i in d["pair"]:
@@ -973,33 +966,6 @@ static func _info_effects(w, listener, source, entry: Dictionary, weight: float,
 							"the dead saw them out at night", not own)
 				"suspicion":
 					pass # A faithfully relayed opinion remains an opinion (Q4).
-		"clerk":
-			var pair: Array = d["pair"]
-			if listener.id in pair and d["role"] == listener.role and not own:
-				_eff(effs, source.id, -0.3, tag + ": clerk correctly named my role")
-			for i in pair:
-				if i != listener.id:
-					_eff(effs, i, -0.15, tag + ": clerk pair probably good", "", not own)
-		"gravedigger":
-			var ex = w.by_id[d["executed"]]
-			var ex_good: bool = C.ROLES[d["role"]]["align"] == "good"
-			if ex.id != listener.id:
-				# "X was evil" (or good) is evidence about X like any other; X's credibility
-				# follows from it in recompute_beliefs, not from a role-specific rule.
-				_eff(effs, ex.id, 1.0 if not ex_good else -0.4, tag + ": %s was the %s" % [ex.id, d["role"]], "", false)
-			for e in w.executions:
-				if e["id"] == ex.id:
-					var nom: String = e["nominator"]
-					if nom != "" and nom != "player":
-						_eff(effs, nom, (0.25 if ex_good else -0.2),
-							tag + ": nominator of %s, who was %s" % [ex.id, d["role"]],
-							"they pushed to hang %s, who was innocent" % ex.name)
-					if fresh and not own and weight > 0.2 and (e["player_nominated"] or e["player_yes"]):
-						if ex_good:
-							set_trust(w, listener, listener.trust - 0.06, "the Demonologist backed hanging %s, an innocent" % ex.id)
-						else:
-							set_trust(w, listener, listener.trust + 0.08 + 0.06 * trait_of(listener, "insight"),
-								"the Demonologist was proven right about %s" % ex.id)
 	return effs
 
 static func update_from_own_info(w) -> void:
@@ -1360,9 +1326,6 @@ static func reading_strength(e: Dictionary, t_id: String) -> float:
 		"dowser", "hearthwitch":
 			var g: Array = Gifts.group_of(d)
 			return clampf(0.9 * d.get("count", 0) / maxf(1.0, g.size()), 0.0, 0.8) if t_id in g else 0.0
-		"archivist":
-			var r: String = d.get("role", "")
-			return (0.6 if r == "demon" else 0.4) if C.ROLES.get(r, {}).get("align", "good") == "evil" else 0.15
 		"nightwatch":
 			return 0.35
 		"medium":
@@ -3189,12 +3152,8 @@ static func card_strength(w, card: Dictionary, suspect) -> float:
 			match card.get("role", ""):
 				"hearthwitch":
 					return 0.5 * d.get("count", 0)
-				"archivist":
-					return 0.8
 				"nightwatch":
 					return 1.0 if suspect.id in d.get("seen", []) else 0.0
-				"gravedigger":
-					return 0.3
 			if suspect.id in Gifts.implicated(card):
 				return 0.6
 			return 0.0
@@ -3305,8 +3264,6 @@ static func defend_strength(card: Dictionary, nominee: String) -> float:
 			match card.get("role", ""):
 				"hearthwitch":
 					return 0.6 if d.get("count", 0) == 0 else 0.0
-				"clerk":
-					return 0.5
 				"nightwatch":
 					return 0.0
 			if nominee in Gifts.clears(card):

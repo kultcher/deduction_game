@@ -7,6 +7,9 @@ extends RefCounted
 
 const SeerDef = preload("res://sim/roles/seer.gd")
 const WardenDef = preload("res://sim/roles/warden.gd")
+const ClerkDef = preload("res://sim/roles/clerk.gd")
+const ArchivistDef = preload("res://sim/roles/archivist.gd")
+const GravediggerDef = preload("res://sim/roles/gravedigger.gd")
 
 static var _defs: Dictionary = {}
 
@@ -14,7 +17,7 @@ static var _defs: Dictionary = {}
 static func _ensure_init() -> void:
 	if not _defs.is_empty():
 		return
-	for inst in [SeerDef.new(), WardenDef.new()]:
+	for inst in [SeerDef.new(), WardenDef.new(), ClerkDef.new(), ArchivistDef.new(), GravediggerDef.new()]:
 		_defs[inst.id] = inst
 
 

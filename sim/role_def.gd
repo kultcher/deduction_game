@@ -4,7 +4,8 @@
 ## - `sim/` (cold/warm paths: once per night, dialogue turn, or reading heard) calls
 ##   method hooks on RoleDef subclasses (`sim/roles/<role>.gd`).
 ## - `workshop/` (hot 5,040-world bitmask loops) reads declarative shape fields
-##   (`shape`, `marked_registers`, `red_herring_registers`, etc.) once outside the loop.
+##   (`shape`, `marked_registers`, `red_herring_registers`, `role_group_key`,
+##   `role_target_pool`, etc.) without per-world virtual dispatch.
 extends RefCounted
 
 # Core identity & script metadata (mirrors C.ROLES dictionary entries)
@@ -25,9 +26,24 @@ var marked_registers: bool = false
 var red_herring_registers: bool = false
 var can_cause_quiet_night: bool = false
 var quiet_night_effect: float = 0.0
+var requires_execution: bool = false
+
+# ROLE_IN_GROUP shape parameters:
+# - role_group_key: "pair" (2-person array in data["pair"]) or "executed" (1-person id in data["executed"])
+# - role_target_pool: "good" (Clerk), "minion" (Archivist), "demon", or "any" (Gravedigger)
+var role_group_key: String = "pair"
+var role_target_pool: String = "good"
 
 # Player gift-request agreement template ("" if role does not take night requests)
 var request_agree_line: String = ""
+
+static var _content_script
+
+
+static func content():
+	if _content_script == null:
+		_content_script = load("res://sim/content.gd")
+	return _content_script
 
 
 func to_role_dict() -> Dictionary:
@@ -56,6 +72,12 @@ static func _names(ids: Array, nm: Callable) -> String:
 	return " / ".join(PackedStringArray(ids.map(nm)))
 
 
+func _role_group_list(d: Dictionary) -> Array:
+	if role_group_key == "pair":
+		return d.get("pair", [])
+	return [d[role_group_key]] if d.has(role_group_key) else []
+
+
 # ---------------------------------------------------------------- reading semantics (gifts.gd)
 
 ## People the reading points toward evil (shape-driven default; override for bespoke roles).
@@ -65,6 +87,13 @@ func implicated(d: Dictionary) -> Array:
 			return d.get("pair", []) if d.get("yes", false) else []
 		"GROUP_COUNT":
 			return group_of(d) if d.get("count", 0) > 0 else []
+		"ROLE_IN_GROUP":
+			if role_target_pool in ["minion", "demon"]:
+				return _role_group_list(d)
+			if role_target_pool == "good":
+				return []
+			var r_align: String = content().ROLES.get(d.get("role", ""), {}).get("align", "good")
+			return _role_group_list(d) if r_align == "evil" else []
 		"NIGHT_ROUTE":
 			return d.get("seen", [])
 	return []
@@ -77,6 +106,13 @@ func clears(d: Dictionary) -> Array:
 			return [] if d.get("yes", false) else d.get("pair", [])
 		"GROUP_COUNT":
 			return group_of(d) if d.get("count", 0) == 0 else []
+		"ROLE_IN_GROUP":
+			if role_target_pool == "good":
+				return _role_group_list(d)
+			if role_target_pool in ["minion", "demon"]:
+				return []
+			var r_align: String = content().ROLES.get(d.get("role", ""), {}).get("align", "good")
+			return _role_group_list(d) if r_align == "good" else []
 	return []
 
 
@@ -119,11 +155,20 @@ func info_effects(_w, _listener, _source, _entry: Dictionary, _weight: float, _f
 	return []
 
 
-# ---------------------------------------------------------------- night choices & requests (mind.gd / world.gd)
+# ---------------------------------------------------------------- night choices & requests (mind.gd / world.gd / evil.gd)
 
 ## World setup hook called at case creation when this role is in play.
 func setup_world(_w, _holder) -> void:
 	pass
+
+
+## Whether poisoning a public claimant of this role tonight would stop anything (`Evil.gift_live_tonight`).
+func gift_live_tonight(w, _n) -> bool:
+	if first_night:
+		return w.day == 0
+	if requires_execution:
+		return w.executed_today != ""
+	return true
 
 
 ## Night or day target selection hook for good holders.

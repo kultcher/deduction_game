@@ -234,25 +234,6 @@ static func _fake_dead_reading(w, n, dd, role: String, s: String, night: int) ->
 			e["data"] = {"group": grp2, "count": 1, "block": sg.home_block}
 			e["text"] = "on %s I sensed 1 evil among %s" % [C.block_name(sg.home_block), w._names(grp2)]
 			return {"entry": e, "why": "the dead Dowser %s sensed evil around scapegoat %s" % [dd.id, s], "frames": true}
-		"gravedigger":
-			var read: Array = dd.info_log.filter(func(x): return x.get("role", "") == "gravedigger").map(func(x): return x["data"].get("executed", ""))
-			var hanged: Array = w.npcs.filter(func(x): return not x.alive and x.death_cause == "executed" and not (x.id in read) and x != dd)
-			if hanged.is_empty():
-				return {}
-			var ex = hanged[0]
-			var rl = ""
-			if ex.is_evil():
-				rl = w.evil_plan["bluffs"].get(ex.id, "")  # a hanged teammate was who they claimed
-				if rl == "":
-					return {}
-			else:
-				# A good hanged soul "was a minion": sometimes one that isn't even in the game.
-				# Never the Breathstealer unless there is one: its silences would give it away.
-				var pool: Array = C.MINION_ROLES.filter(func(m): return m != "breathstealer" or w.living_with_role("breathstealer") != null)
-				rl = w.pick(pool)
-			e["data"] = {"executed": ex.id, "role": rl}
-			e["text"] = "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(rl)]
-			return {"entry": e, "why": "the dead Gravedigger %s 'learned' %s was the %s" % [dd.id, ex.id, rl], "frames": not ex.is_evil()}
 		"psychologist":
 			var subj = other.call([s])
 			var tr = w.pick(team_mates) if not team_mates.is_empty() else null
@@ -262,28 +243,6 @@ static func _fake_dead_reading(w, n, dd, role: String, s: String, night: int) ->
 			e["data"] = {"subject": subj.id, "trusts": tr.id, "suspects": sus_id}
 			e["text"] = "I read %s: they trust %s most, and suspect %s most" % [subj.name, tr.name, w.by_id[sus_id].name]
 			return {"entry": e, "why": "the dead Psychologist %s 'read' trust in %s" % [dd.id, tr.id], "frames": true}
-		"clerk":
-			# Back a teammate's bluff.
-			var claimed: Array = team_mates.filter(func(x): return x.claim_public and C.ROLES.get(x.claimed_role, {}).get("align", "") == "good")
-			if claimed.is_empty():
-				return {}
-			var m = w.pick(claimed)
-			var o3 = other.call([])
-			if o3 == null:
-				return {}
-			var pair: Array = w.shuffled([m.id, o3.id])
-			e["data"] = {"pair": pair, "role": m.claimed_role}
-			e["text"] = "I learned that one of %s is the %s" % [w._names(pair), C.role_name(m.claimed_role)]
-			return {"entry": e, "why": "the dead Clerk %s 'backs' %s's claim" % [dd.id, m.id], "frames": false}
-		"archivist":
-			var o4 = other.call([s])
-			if o4 == null:
-				return {}
-			var pair2: Array = w.shuffled([s, o4.id])
-			var mr: String = w.pick(C.MINION_ROLES.filter(func(x): return x != "breathstealer" or w.living_with_role("breathstealer") != null))
-			e["data"] = {"pair": pair2, "role": mr}
-			e["text"] = "I learned that one of %s is the %s" % [w._names(pair2), C.role_name(mr)]
-			return {"entry": e, "why": "the dead Archivist %s 'named' scapegoat %s as a minion" % [dd.id, s], "frames": true}
 	return {}
 
 static func ensure_scapegoat(w) -> void:
@@ -556,10 +515,11 @@ static func gift_live_tonight(w, n) -> bool:
 	var r: String = n.claimed_role
 	if not C.ROLES.has(r):
 		return true
+	var rdef = C.role_def(r)
+	if rdef != null:
+		return rdef.gift_live_tonight(w, n)
 	if C.ROLES[r].get("first_night", false):
 		return w.day == 0
-	if r == "gravedigger":
-		return w.executed_today != ""
 	if r == "veteran":
 		return false  # only worth it as part of an attack (see poison_for_kill)
 	if r == "martyr":
@@ -761,37 +721,6 @@ static func make_fake_info(w) -> void:
 					entry = {"data": {"block": block, "seen": seen},
 						"text": "I watched %s: %s" % [C.block_name(block),
 							("I saw " + w._names(seen) + " pass by") if not seen.is_empty() else "nobody stirred"]}
-				"archivist":
-					if w.day != 0:
-						continue
-					var other = w.pick(w.living_good().filter(func(x): return x.id != s))
-					var pair = w.shuffled([s, other.id])
-					var mr: String = w.by_id[w.pick(w.minion_ids)].role
-					why = "names scapegoat %s as a possible %s" % [s, mr]
-					entry = {"data": {"pair": pair, "role": mr}, "text": "I learned that one of %s is the %s" % [w._names(pair), C.role_name(mr)]}
-				"clerk":
-					if w.day != 0:
-						continue
-					var other = w.pick(w.living_good())
-					var role: String = plan["bluffs"].get(mate.id, w.pick(C.GOOD_ROLES))
-					var pair = w.shuffled([mate.id, other.id])
-					why = "vouches for teammate %s as the %s" % [mate.id, role]
-					entry = {"data": {"pair": pair, "role": role}, "text": "I learned that one of %s is the %s" % [w._names(pair), C.role_name(role)]}
-				"gravedigger":
-					if w.executed_today == "":
-						continue
-					var ex = w.by_id[w.executed_today]
-					var role = ""
-					if ex.is_evil():
-						role = plan["bluffs"][ex.id]
-						why = "covers executed teammate as their bluff %s" % role
-					elif ex.claimed_role != "" and ex.claimed_role != "none":
-						role = ex.claimed_role
-						why = "confirms executed good NPC's own claim (safe)"
-					else:
-						role = w.pick(C.GOOD_ROLES)
-						why = "guesses a good role for executed NPC"
-					entry = {"data": {"executed": ex.id, "role": role}, "text": "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(role)]}
 				_:
 					continue
 		entry["day"] = w.day

@@ -581,16 +581,21 @@ static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictio
 	var evil: int = world.evil
 	if world.has("converted") and TimeModel.evil_index(view, world, world.converted, card.observed_at):
 		evil |= 1 << int(world.converted)
+	var rdef = C.role_def(card.role)
+	if rdef != null and rdef.shape == "ROLE_IN_GROUP":
+		var group_mask: int = pair if rdef.role_group_key == "pair" else (1 << person_index(view, data.get(rdef.role_group_key, "")))
+		match rdef.role_target_pool:
+			"good":
+				return (group_mask & ~world.evil) != 0
+			"minion":
+				return (group_mask & world.evil & ~(1 << int(world.get("demon", -1)))) != 0
+			_:
+				var reads_evil: bool = (world.evil & group_mask) != 0 or (rdef.marked_registers and world.marked >= 0 and (group_mask & (1 << world.marked)) != 0)
+				return reads_evil if Domain.C.ROLES.get(data.role, {}).get("align") == "evil" else (world.evil & group_mask) == 0
 	match card.role:
 		"seer":
 			var demon: bool = world.get("demon", -1) >= 0 and (pair & (1 << int(world.demon))) != 0
 			return demon or (pair & ~evil) != 0 if data.yes else not demon
-		"clerk": return (pair & ~world.evil) != 0
-		"archivist": return (pair & world.evil & ~(1 << int(world.get("demon", -1)))) != 0
-		"gravedigger":
-			var target: int = person_index(view, data.executed)
-			var reads_evil: bool = (world.evil & (1 << target)) != 0 or world.marked == target
-			return reads_evil if Domain.C.ROLES.get(data.role, {}).get("align") == "evil" else (world.evil & (1 << target)) == 0
 		"rumormonger": return world.get("modifier", "marked") == data.secret and (int(world.get("holders", 1 << world.marked)) & pair) != 0
 	return _report_content(view, world, card, {})
 

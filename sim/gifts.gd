@@ -30,12 +30,8 @@ static func implicated(e: Dictionary) -> Array:
 	match role:
 		"hearthwitch", "dowser":
 			return group_of(d) if d.get("count", 0) > 0 else []
-		"archivist":
-			return d.get("pair", [])
 		"nightwatch":
 			return d.get("seen", [])
-		"gravedigger":
-			return [d["executed"]] if C.ROLES.get(d.get("role", ""), {}).get("align", "good") == "evil" else []
 		"martyr":
 			return [d["target"]] if d.get("evil", false) else []
 		"medium":
@@ -59,10 +55,8 @@ static func clears(e: Dictionary) -> Array:
 	match role:
 		"hearthwitch", "dowser":
 			return group_of(d) if d.get("count", 0) == 0 else []
-		"clerk", "rumormonger":
+		"rumormonger":
 			return d.get("pair", [])
-		"gravedigger":
-			return [d["executed"]] if C.ROLES.get(d.get("role", ""), {}).get("align", "good") == "good" else []
 		"martyr":
 			return [d["target"]] if d.get("chosen", false) else []
 		"medium":
@@ -102,14 +96,8 @@ static func short_text(role: String, d: Dictionary, src: String, nm: Callable) -
 			return "%s %s: %d evil of %s" % [src, C.role_name(role), d.get("count", 0), _names(group_of(d), nm)]
 		"nightwatch":
 			return "%s Watch %s: %s" % [src, C.block_name(d.get("block", "")), ", ".join(PackedStringArray(d.get("seen", []).map(nm))) if not d.get("seen", []).is_empty() else "nobody"]
-		"archivist":
-			return "%s Archivist: %s in %s" % [src, C.role_name(d.get("role", "poisoner")), _names(d.get("pair", []), nm)]
-		"clerk":
-			return "%s Clerk: %s in %s" % [src, C.role_name(d.get("role", "")), _names(d.get("pair", []), nm)]
 		"rumormonger":
 			return "%s Rumormonger: %s in %s" % [src, C.secret_name(d.get("secret", "")), _names(d.get("pair", []), nm)]
-		"gravedigger":
-			return "%s Gravedigger: %s was %s" % [src, nm.call(d.get("executed", "")), C.role_name(d.get("role", ""))]
 		"surveyor":
 			return "%s Surveyor: %d block%s with evil" % [src, d.get("count", 0), "" if d.get("count", 0) == 1 else "s"]
 		"lamplighter":

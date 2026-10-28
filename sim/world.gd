@@ -1491,31 +1491,6 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 				entry = {"data": {"block": watch_block, "seen": seen}, "true": seen == real,
 					"text": "I watched %s: %s" % [C.block_name(watch_block),
 						("I saw " + _names(seen) + " pass by") if not seen.is_empty() else "nobody stirred"]}
-			"archivist":
-				var mid: String = pick(minion_ids)
-				var mrole: String = by_id[mid].role
-				var other = pick(npcs.filter(func(m): return m != n and m.id != mid))
-				var pair = shuffled([mid, other.id])
-				var ok = true
-				if broken:
-					var goods = npcs.filter(func(m): return m != n and not m.is_evil())
-					pair = shuffled(goods).slice(0, 2).map(func(m): return m.id)
-					mrole = pick(C.MINION_ROLES)
-					ok = false
-				entry = {"data": {"pair": pair, "role": mrole}, "true": ok,
-					"text": "I learned that one of %s is the %s" % [_names(pair), C.role_name(mrole)]}
-			"clerk":
-				var targets = npcs.filter(func(m): return m != n and not m.is_evil())
-				var t = pick(targets)
-				var other = pick(npcs.filter(func(m): return m != n and m != t))
-				var role: String = t.role
-				var ok = true
-				if broken:
-					role = pick(C.GOOD_ROLES.filter(func(x): return x != t.role and x != other.role and x != "clerk"))
-					ok = false
-				var pair = shuffled([t.id, other.id])
-				entry = {"data": {"pair": pair, "role": role}, "true": ok,
-					"text": "I learned that one of %s is the %s" % [_names(pair), C.role_name(role)]}
 			"rumormonger":
 				var holders: Array = npcs.filter(func(m): return m != n and m.secret_mod != "")
 				var ok = true
@@ -1577,19 +1552,6 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 					ok = false
 				entry = {"data": {"subject": subj.id, "trusts": res["trusts"], "suspects": res["suspects"]}, "true": ok,
 					"text": "I read %s: they trust %s most, and suspect %s most" % [subj.name, by_id[res["trusts"]].name, by_id[res["suspects"]].name]}
-			"gravedigger":
-				if executed_today == "":
-					return
-				var ex = by_id[executed_today]
-				var role: String = ex.role
-				if ex.secret_mod == "marked" and chance(0.3):
-					role = pick(C.EVIL_ROLES)
-					entry["why"] = "Marked reads as evil"
-				if broken:
-					role = pick(C.ROLES.keys().filter(func(x): return x != ex.role and x != "demon" and x != "hearthwitch"))
-				entry["data"] = {"executed": ex.id, "role": role}
-				entry["true"] = role == ex.role
-				entry["text"] = "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(role)]
 			_:
 				return
 	if broken:
