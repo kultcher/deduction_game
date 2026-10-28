@@ -7,6 +7,9 @@ const Mind = preload("res://sim/mind.gd")
 const Argue = preload("res://sim/argue.gd")
 const Recent = preload("res://game/recent_sightings.gd")
 const C = preload("res://sim/content.gd")
+const Social = preload("res://sim/social.gd")
+const Canvas = preload("res://workshop/canvas_model.gd")
+const Live = preload("res://game/workshop_canvas.gd")
 var fails = 0
 
 func _init() -> void:
@@ -188,30 +191,57 @@ func _meeting_sighting_prefix_and_gallows() -> void:
 	var w = g.w
 	var n = w.living_good()[0]
 	var target = w.living_good()[1]
-	var b = {"kind": "saw", "who": target.id, "day": 1, "phase": C.NIGHT, "block": "docks", "how": "visit", "detail": "street"}
-	var report = Mind.sighting_report(w, n, b, 1)
+	var b = {"kind": "saw", "who": target.id, "day": 1, "phase": C.NIGHT, "block": n.home_block, "how": "window", "detail": "street"}
 	var lines: Array = []
 	var facts: Array = []
-	n.beliefs.append(b)
+	n.secret_mod = ""
+	n.silenced = false
+	n.traits.gossip = 1.0
+	n.traits.confidence = 1.0
+	n.beliefs = [b]
+	n.told_to.clear()
 	w.day = 2
-	Mind._public_disclosure(w, n, lines, facts, false)
-	_check(not lines.any(func(l): return "On night 1: On night 1" in l.get("text", "")), "meeting sighting disclosure does not duplicate On night X prefix")
-	n.claim_public = true
+	w.phase = C.MORNING
+	var rng_state = w.rng.state
+	Mind._volunteer_night_sightings(w, n, lines, facts)
+	_check(facts.size() == 1 and lines.size() == 1 and lines[0].text.count("night 1") == 1, "actual volunteered sighting says the night exactly once")
+	_check(w.rng.state == rng_state, "formatting a volunteered night sighting adds no RNG draw")
+	# The person-specific recent-sightings path has its own date-prefix handling.
+	n.role = "lamplighter"
 	n.claimed_role = n.role
+	n.claim_public = true
+	var recent = {"lines": [], "facts": []}
+	Recent.append_to(w, n, target, recent, [])
+	_check(recent.facts.size() == 1 and recent.lines.size() == 1 and recent.lines[0].text.count("night 1") == 1, "actual recent night sighting says the night exactly once")
 	n.info_log.clear()
 	n.beliefs.clear()
-	var gallows: Dictionary = Mind.gallows_speech(w, n)
-	_check(gallows["lines"].size() >= 1 and gallows["lines"][0]["text"].begins_with("As I've said, I am the "), "gallows speech acknowledges an already-public role claim")
+	var gallows: Dictionary = Mind.last_words(w, n)
+	_check(gallows["lines"].size() >= 1 and gallows["lines"][0]["text"].begins_with("As I've said, I am the "), "last words acknowledge an already-public role claim")
 
 func _public_hearsay_and_self_gossip() -> void:
 	var g = _game()
 	var w = g.w
 	var s = w.living_good()[0]
 	var l = w.living_good()[1]
-	var b = {"kind": "saw", "who": l.id, "day": 1, "phase": C.NIGHT, "block": "docks", "how": "window", "detail": "street"}
-	Mind.Social.deliver_public_sighting(w, s, b)
-	_check(l.hearsay.all(func(h): return h.get("public", false)), "publicly delivered meeting sightings are marked public in listener hearsay")
-	_check(Mind.Social._gossip_items(w, l).is_empty(), "NPCs do not approach to gossip about public meeting sightings or sightings of themselves")
+	var target = w.living_good()[2]
+	l.hearsay.clear()
+	l.known_secrets.clear()
+	l.told_to.clear()
+	var fact = {"kind": "sighting", "source": s.id, "subject": [target.id], "day": 1, "phase": C.NIGHT, "block": "docks", "text": "A public night sighting."}
+	var rng_state = w.rng.state
+	Social.deliver_public_sighting(w, s, fact)
+	_check(not l.hearsay.is_empty() and l.hearsay.all(func(h): return h.get("public", false)), "public delivery creates nonempty hearsay marked public")
+	_check(Social._gossip_items(w, l).is_empty(), "public meeting sightings are excluded from player gossip")
+	_check(w.rng.state == rng_state, "public sighting delivery adds no RNG draw")
+	var private_report = l.hearsay[0].duplicate(true)
+	private_report["public"] = false
+	l.hearsay = [private_report]
+	_check(not Social._gossip_items(w, l).is_empty(), "an undisclosed private sighting remains available for gossip")
+	s.told_to["player|saw:%s:1" % target.id] = true
+	_check(Social._gossip_items(w, l).is_empty(), "the source's already-disclosed sighting is not gossip news")
+	private_report.about = l.id
+	_check(Social._gossip_items(w, l).is_empty(), "a private sighting about the teller is not self-incriminating gossip")
+
 
 func _approach_ui_visibility() -> void:
 	var g = _game()
@@ -234,22 +264,20 @@ func _workshop_merge_order_of_operations() -> void:
 	var target = g.w.demon()
 	var c_alibi = g.add_card({"kind": "alibi", "subject": [target.id], "source": target.id, "day": 2, "phase": C.NIGHT, "claimed": "home:" + target.home_block, "text": "%s says they stayed home on night 2." % target.name})
 	var c_sight = g.add_card({"kind": "sighting", "subject": [target.id], "source": "player", "day": 2, "phase": C.NIGHT, "block": "docks", "text": "You saw %s on the Docks on night 2." % target.name})
-	var CM = load("res://workshop/canvas_model.gd")
-	var m1 = CM.new(g)
-	var p1 = m1.add_premise({"type": "evil", "a": target.id}, Vector2.ZERO)
-	var a1 = m1.add_evidence("c%d" % c_alibi, Vector2.ZERO)
-	var s1 = m1.add_evidence("c%d" % c_sight, Vector2.ZERO)
-	m1.connect_cards(a1, s1)
-	var merged1 = m1.selected
+	var view: Dictionary = Live.view(g)
+	var alibi: String = "e:" + Live.Evidence.normalize_card(g.board[c_alibi - 1]).id
+	var sight: String = "e:" + Live.Evidence.normalize_card(g.board[c_sight - 1]).id
+	var m1 = Canvas.new(view)
+	var p1 = m1.add_premise(target.id, "evil", Vector2.ZERO)
+	m1.connect_cards(alibi, sight)
+	var merged1: String = m1.selected
 	m1.connect_cards(merged1, p1)
 	var comp1 = m1.compile(p1)
-	var m2 = CM.new(g)
-	var p2 = m2.add_premise({"type": "evil", "a": target.id}, Vector2.ZERO)
-	var a2 = m2.add_evidence("c%d" % c_alibi, Vector2.ZERO)
-	var s2 = m2.add_evidence("c%d" % c_sight, Vector2.ZERO)
-	m2.connect_cards(a2, p2)
-	m2.connect_cards(s2, p2)
-	var err = m2.connect_cards(a2, s2)
+	var m2 = Canvas.new(view)
+	var p2 = m2.add_premise(target.id, "evil", Vector2.ZERO)
+	m2.connect_cards(alibi, p2)
+	m2.connect_cards(sight, p2)
+	var err = m2.connect_cards(alibi, sight)
 	var comp2 = m2.compile(p2)
 	_check(err == "" and m2.selected == p2, "merging two cards already linked to a premise succeeds and keeps the premise selected")
-	_check(comp1.disputes.size() == 1 and comp2.disputes.size() == 1 and comp1.reasons == comp2.reasons, "merging after linking to a premise compiles identically to merging before linking")
+	_check(comp1.cards == comp2.cards and comp1.disputes.size() == 1 and comp1.disputes == comp2.disputes and comp1.reasons == comp2.reasons, "merge-before-link and merge-after-link preserve the same evidence and interpretation")
