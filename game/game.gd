@@ -928,7 +928,7 @@ func _maybe_approach() -> void:
 	state = "approach"
 	w.dlog.add("approach", n.id, "player", {"agenda": c["agenda"]})
 	_narr("%s the %s approaches you at %s." % [n.name, n.occupation, w.loc_name(n.loc)])
-	_line(Mind.say(n, "Demonologist, a word?"))
+	_line(Mind.say(n, "[PH] Demonologist, a word?"))
 	_line(Social.approach_teaser(w, n, c["agenda"]))
 	if c["agenda"] == "protect":
 		n.request_day = w.day
@@ -959,7 +959,7 @@ func _maybe_divulge() -> bool:
 		state = "approach"
 		w.dlog.add("approach", n.id, "player", {"agenda": "divulge"})
 		_narr("%s the %s finds you at %s, as they promised." % [n.name, n.occupation, w.loc_name(n.loc)])
-		_line(Mind.say(n, "You kept your word. Now I'll keep mine."))
+		_line(Mind.say_voiced(n, "protect_kept_word", "You kept your word. Now I'll keep mine."))
 		n.pressed_today = 0  # They initiated this free disclosure, not another interrogation.
 		var r: Dictionary = Mind.keep_request(w, n, 4 if n.trust >= 0.6 else 3)
 		_lines(r["lines"])
@@ -1018,7 +1018,7 @@ func _protect_approach_answer(n, verb: String, rest: String) -> void:
 		"no", "n", "decline", "refuse":
 			state = "day"
 			w.dlog.add("protection_declined", "player", n.id)
-			_line(Mind.say(n, "I see. I'll manage."))
+			_line(Mind.say_voiced(n, "request_declined", "I see. I'll manage."))
 			_prompt("Where will you spend the %s? ('go <place | block | person>')" % w.phase_name().to_lower())
 		_:
 			state = "day"
@@ -1041,14 +1041,14 @@ func _grant_protection(n, what: String) -> void:
 	w.dlog.decision(n.id, "protection_disclosure", "outcome", now, {"trust": n.trust,
 		"composure": n.traits.get("composure", 0.5), "p": snappedf(p, 0.01)})
 	if now:
-		_line(Mind.say(n, "Then I'll trust you now."))
+		_line(Mind.say(n, "[PH] Then I'll trust you now."))
 		var r: Dictionary = Mind.keep_request(w, n, 3)
 		_lines(r["lines"])
 		_facts(r["facts"])
 	else:
 		protect_pending[n.id] = true
 		n.protect_lock = true
-		_line(Mind.say(n, "Keep your word tonight, and I'll find you tomorrow and tell you everything."))
+		_line(Mind.say_voiced(n, "protect_wait_tomorrow", "Keep your word tonight, and I'll find you tomorrow and tell you everything."))
 
 func _phase_header() -> void:
 	_hdr("Day %d, %s" % [w.day, w.phase_name()])
@@ -1113,16 +1113,16 @@ func _repeat_refusal(n, response: Dictionary) -> void:
 	var line: Dictionary = response.lines[response.refusal_line]
 	if key.begins_with("are:"):
 		# Retain both existing patience warnings verbatim, but vary the response.
-		line.text += " My answer hasn't changed." if count % 2 == 1 else " I've already given you my answer."
+		line.text += " [PH] My answer hasn't changed." if count % 2 == 1 else " [PH] I've already given you my answer."
 	else:
 		var refused: Array = response.facts.filter(func(f): return f.get("kind", "") == "refusal")
 		var fact: Dictionary = refused[0] if not refused.is_empty() else {}
 		if fact.get("withheld", false):
-			line.text = "Those readings are still staying with me." if count % 2 == 1 else "I've not agreed to share any more readings."
+			line.text = "[PH] Those readings are still staying with me." if count % 2 == 1 else "[PH] I've not agreed to share any more readings."
 		elif fact.get("fear", false):
-			line.text = "I'm still afraid to name it. Ask me when it's safer." if count % 2 == 1 else "Naming my gift still feels too dangerous. Not yet."
+			line.text = "[PH] I'm still afraid to name it. Ask me when it's safer." if count % 2 == 1 else "[PH] Naming my gift still feels too dangerous. Not yet."
 		else:
-			line.text = "You've had my answer about my gift. I won't tell you more." if count % 2 == 1 else "I'm still keeping my gift to myself."
+			line.text = "[PH] You've had my answer about my gift. I won't tell you more." if count % 2 == 1 else "[PH] I'm still keeping my gift to myself."
 
 func _talk_command(verb: String, rest: String) -> void:
 	var n = talk_with
@@ -1527,7 +1527,7 @@ func _maybe_tell_haunts(n, t, r: Dictionary) -> void:
 	var tell: Array = unknown if roll < p * 0.4 else [unknown[0]]
 	var names: Array = tell.map(func(x): return w.loc_name(x))
 	known_haunts[t.id] = known_haunts.get(t.id, []) + tell
-	r["lines"].append(Mind.say(n, "When %s isn't working, you'll often find them at %s." % [t.name, " or ".join(PackedStringArray(names))]))
+	r["lines"].append(Mind.say(n, "[PH] When %s isn't working, you'll often find them at %s." % [t.name, " or ".join(PackedStringArray(names))]))
 	r["facts"].append({"kind": "haunt", "subject": [t.id], "source": n.id, "locs": tell.duplicate(),
 		"text": "%s says %s often goes to %s when not working." % [n.name, t.name, " and ".join(PackedStringArray(names))]})
 	w.dlog.add("player_learns_haunts", n.id, t.id, {"locs": tell})
@@ -1574,7 +1574,7 @@ func _maybe_tell_trait(n, t, r: Dictionary) -> void:
 		var own_words: String = TRAIT_WORDS[key][tier][1].replace("themselves", "myself").replace("their", "my").replace("them", "me").replace("they've", "I've").replace("they're", "I'm")
 		line = "I'd call myself %s." % own_words
 	t.revealed_traits[key] = tier
-	r["lines"].append(Mind.say(n, line))
+	r["lines"].append(Mind.say(n, "[PH] " + line))
 	r["narration"] = r.get("narration", []) + ["(You learn %s's %s: %s.)" % [t.name, key.capitalize(), tier]]
 	w.dlog.add("trait_reveal", n.id, t.id, {"trait": key, "tier": tier, "value": t.traits[key], "via": n.id, "friend": friend, "rival": rival})
 
@@ -1606,7 +1606,7 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 			text = "%s and I %s." % [w.by_id[other].name, "are close" if bond.kind == "friend" else "don't get along"]
 			note = n.name + ' says "' + text + '"'
 		known_relationships[entry.key] = {"kind": bond.kind, "people": bond.people.duplicate(), "source": n.id, "text": note}
-		r.lines.append(Mind.say(n, text))
+		r.lines.append(Mind.say(n, "[PH] " + text))
 		w.dlog.add("player_learns_relationship", n.id, t.id, {"kind": bond.kind, "people": bond.people})
 
 ## Authored speech can explicitly disclose a bond outside "ask about". Record only

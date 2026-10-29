@@ -5,27 +5,36 @@ Drafts for editorial review and implementation, following `docs/DIALOGUE_DESIGN.
 These five categories target the **highest-frequency generic strings** active in live play after the baseline pass:
 
 1. **Role Disclosures & Owning Earlier Lies** (`sim/mind_dialogue.gd:494, 498`, `sim/mind_meeting.gd:144`)
+
 2. **Core Opinion Spectrum on a Townsperson** (`sim/mind_dialogue.gd:943–956`)
+
 3. **Execution Self-Defence on the Block** (`sim/mind_meeting.gd:822–945`)
+
 4. **Trust Economy: Protection Offers, Distrust Callouts & Apologies** (`game/game.gd:1468`, `sim/mind.gd:152–202`)
+
 5. **Role-Guess Pushback & Hint Stalling** (`sim/social.gd:534–536`, `sim/mind_dialogue.gd:81–84`)
 
 All lines obey the strict simulation boundary:
 
 * **Zero alignment or truth leakage:** Honest townsfolk and evil bluffers use the exact same templates when executing the same conversational move.
+
 * **No assumed sequence of events:** Generic defence, disclosure, and apology lines work cleanly whether triggered by a bare nomination, a multi-card Workshop case, or an early Day 1 question.
+
 * **Preserved slot semantics:** `{role}`, `{subject}`, `{source}`, `{nights}`, and `{action}` carry the exact simulation-approved names or incident strings.
+
 * **No forced stuttering:** Nervousness is expressed through clause structure (Dorian's recursive self-audit, Isolde's relational cushioning, Merrin's theatrical escalation) rather than repetitive `"I-I"` prefixes.
 
 ## Category 1: Role Disclosures & Owning Earlier Lies
 
 * **Private first reveal (`private_reveal`):** Replaces `"I'll trust you with this. I'm the {role}."` when the NPC reaches Tier 3+ in private without an immediately preceding challenge.
+
 * **Public meeting claim (`public_claim`):** Replaces the 5 style-bucket prefixes (`"I-I suppose I have to say it. I am the {role}."`, etc.) when coming out at a town meeting.
+
 * **Owning an earlier whereabouts lie (`own_night_lie`):** Replaces `"So yes: I was out {nights}, whatever I told you. I wasn't ready to tell you why."` when a good night-walking role discloses after previously claiming to be home.
 
 | Speaker | Private First Reveal (`{role}`) | Public Meeting Claim (`{role}`) | Owning an Earlier Night Lie (`{nights}`) |
 | ----- | ----- | ----- | ----- |
-| **Agnes** | “Come sit close, love—I'll trust you with this. I'm the {role}.” | “I'll not keep secrets from my neighbors when we're in such need. I am the {role}.” | “So yes, dear: I was out {nights}, whatever I told you before. I simply wasn't ready to say why.” |
+| **Agnes** | “Come sit close, love—I'll trust you with this. I'm the {role}.” | “I'll not keep secrets from my neighbors when we're in such need. I am the {role}.” | “So yes: I was out {nights}, whatever I told you before. I simply wasn't ready to say why.” |
 | **Bartholomew** | “You've proved steady enough. I'm the {role}.” | “No sense hiding it longer. I am the {role}.” | “Aye, I was out {nights}. Lied to keep my work quiet. Now you know.” |
 | **Constance** | “You have conducted this inquiry properly, so I shall be candid: I am the {role}.” | “In the interest of the town and proper order, I shall be plain: I am the {role}.” | “I must therefore amend my earlier account: I was abroad {nights}, as my duty required, before I judged it prudent to say so.” |
 | **Dorian** | “Okay, look—I've been going back and forth on whether to say this, but I trust you. I'm the {role}.” | “I know everyone's going to read into my timing here, sorry, but I can't hold it back anymore: I am the {role}.” | “Which means—yes, I was out {nights}, and I know I said I was home! Sorry, I wasn't lying to be wicked, I just couldn't explain the gift yet!” |
@@ -46,15 +55,20 @@ All lines obey the strict simulation boundary:
 In `MindDialogue.answer_opinion` (`sim/mind_dialogue.gd:943–956`), the simulation resolves a numeric suspicion level (`shown`) and an optional citable reason (`{reason}`). When `level >= 0.45`, the simulation appends either `{reason}`, the held-reason notice (`held`), or a vibes tail (`vibes`).
 
 * **Trusting (`< 0.25`):** Replaces `"I trust {subject}."`
+
 * **Seems Fine (`< 0.35`, pass):** Replaces `"{subject} seems all right to me."`
+
 * **Unfamiliar / Neutral (`0.35–0.45`, pass):** Replaces `"I don't really know {subject} that well."`
+
 * **Vibes Unease (`< 0.45`, suspicion roll):** Replaces `"I can't put my finger on it, but something's off about {subject}."`
+
 * **Moderate Doubt (`0.45–0.80`):** Replaces `"I have my doubts about {subject}."` (followed by `{reason}` or the speaker's held/vibes tail).
+
 * **Strong Accusation (`>= 0.80`):** Replaces `"If you ask me, {subject} is the one."` with character-specific accusation phrasing (followed by `{reason}` or the speaker's held/vibes tail).
 
 | Speaker | Trusting (`< 0.25`) | Seems Fine (`< 0.35`) | Unfamiliar / Neutral (`0.35–0.45`) | Vibes Unease (Roll) | Moderate Doubt (`0.45–0.80`) | Strong Accusation (`>= 0.80`) |
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| **Agnes** | “I trust {subject}, love.” | “{subject} seems all right to me, dear.” | “I don't really know {subject} well enough to say, love.” | “I can't quite put my finger on it, dear, but something's off about {subject}.” | “It troubles me to say so, but I have my doubts about {subject}.” | “God forgive me for saying it aloud, love, but I fear the fiend among us is {subject}.” |
+| **Agnes** | “I trust {subject} wholeheartedly.” | “{subject} seems all right to me, dear.” | “I don't really know {subject} well enough to say.” | “I can't quite put my finger on it, but something's off about {subject}.” | “It troubles me to say so, but I have my doubts about {subject}.” | “God forgive me for saying it aloud, love, but I fear the fiend among us is {subject}.” |
 | **Bartholomew** | “I trust {subject}.” | “{subject} seems all right to me.” | “Don't really know {subject} that well.” | “Can't put my finger on it, but something's off about {subject}.” | “I have my doubts about {subject}.” | “If you ask me, {subject} is the one.” |
 | **Constance** | “I have every confidence in {subject}'s character.” | “{subject} seems all right to me; I have observed nothing improper.” | “I do not really know {subject} well enough to pronounce judgment.” | “I cannot put my finger on the exact irregularity, but something's off about {subject}.” | “I must confess I have my doubts about {subject}.” | “In my considered judgment, the guilt lies with {subject}.” |
 | **Dorian** | “I actually really trust {subject}—if that's worth anything.” | “{subject} seems all right to me, as far as I can tell.” | “Sorry, I don't really know {subject} that well—I keep to myself a lot.” | “I know this sounds paranoid, and I can't put my finger on it, but something's off about {subject}.” | “I hate pointing fingers, really, but I have my doubts about {subject}.” | “I'm terrified of being wrong about this, but if you ask me: it's {subject}. They're the demon, I mean to say.” |
@@ -75,14 +89,18 @@ In `MindDialogue.answer_opinion` (`sim/mind_dialogue.gd:943–956`), the simulat
 When a townsperson is nominated at the evening meeting, `game.gd` prints their initial reaction (`MindMeeting.defence_line`), followed by their chosen defence move(s) in `MindMeeting.defend_self`:
 
 * **Initial reaction (`defence_line`):** Generic response to being put on the block (works whether nominated with a detailed case or a bare nomination).
+
 * **Walking-gift excuse (`defence_reveal`):** Replaces `"I was out because I'm the {role}. That's what you saw."` (phrased to cover any night-out evidence, whether a witness sighting, trace, or prior admission).
+
 * **Counter-accusing a reading source (`defence_lying`):** Replaces `"Then {source} is lying, and you should ask yourselves why."`
+
 * **Suggesting a reading was poisoned/delusional (`defence_misled`):** Replaces `"{source}'s gift could have been turned. It's happened before."`
+
 * **Desperation plea (`defence_desperation`):** Replaces `"I don't know what's going on, but I know I'm not evil."` (phrased without assuming any specific sequence of clues).
 
 | Speaker | Opening Reaction (`defence_line`) | Walking-Gift Excuse (`{role}`) | Source is Lying (`{source}`) | Source's Gift Misled (`{source}`) | Desperation Plea |
 | ----- | ----- | ----- | ----- | ----- | ----- |
-| **Agnes** | “Wait a moment, neighbors—let's not lose our heads. Whatever you think I've done, I've never harmed anyone in my life.” | “I was out in the dark because I'm the {role}, dears. That's all there was to it.” | “It breaks my heart to say it, but {source} is lying to you—ask yourselves why.” | “{source}'s gift could have been turned in the night, love. We know the fiend can twist a reading.” | “I don't know what's brought suspicion to my door, neighbors, but you know me—I'm not evil.” |
+| **Agnes** | “Wait a moment, neighbors—let's not lose our heads. Whatever you think I've done, I've never harmed anyone in my life.” | “I was out in the dark because I'm the {role}. That's all there was to it.” | “It breaks my heart to say it, but {source} is lying to you—ask yourselves why.” | “{source}'s gift could have been turned in the night, love. We know the fiend can twist a reading.” | “I don't know what's brought suspicion to my door, neighbors, but you know me—I'm not evil.” |
 | **Bartholomew** | “You've got the wrong man on the block.” | “I was out because I'm the {role}. Simple as that.” | “Then {source} is lying. Ask yourselves why.” | “{source}'s gift could have been turned. Wouldn't be the first time.” | “Don't know what's going on, but I'm not evil.” |
 | **Constance** | “I protest this nomination. I have done nothing to warrant the rope.” | “I was abroad at night because I am the {role}, discharging my proper duty.” | “If {source} makes that claim against me, then {source} is lying, and you ought to examine their motive.” | “Consider whether {source}'s gift was corrupted—even an honest sight may be turned.” | “Whatever suspicions have been raised here, my conscience is clean: I am not evil.” |
 | **Dorian** | “Wait—me? No, hold on, I know I always look guilty, but I haven't done anything wrong!” | “I was only out at night because I'm the {role}! I wasn't doing anything wrong, I swear!” | “Then {source} is lying! I don't know how to say it any plainer—ask why they're framing me!” | “Couldn't {source}'s gift have been turned or poisoned? Because I know what I am, and that reading is wrong!” | “I know I'm defending myself terribly, sorry, and I don't know what's going on, but I know I'm not evil!” |
@@ -101,12 +119,14 @@ When a townsperson is nominated at the evening meeting, `game.gd` prints their i
 ## Category 4: Trust Economy — Offers, Distrust Callouts & Apologies
 
 * **Ward / Vigil Offer Appreciation (`offer_thanks`):** Replaces `"That's good of you. I'll sleep a little easier."` (`game/game.gd:1468`) when the player offers unprompted protection.
+
 * **Distrust Explanation on Refusal (`distrust_action` / `distrust_outsider`):** Replaces `"I don't trust you. {action}"` and `"You're an outsider, I'm not sure I can trust you."` (`sim/mind.gd:201`), where `{action}` is a complete sentence like `"You broke your promise to me."` or `"You nominated me."`
+
 * **Apology Responses (`apology_accept` / `apology_skeptical` / `apology_grudging`):** Replaces the 3 forgiveness tiers in `Mind.apologise` (`sim/mind.gd:152–157`).
 
 | Speaker | Ward / Vigil Offer Thanks | Distrust Callout (`{action}` / Outsider Fallback) | Apology: Accepted (`>= 0.05`) | Apology: Skeptical (`ins >= 0.6`) | Apology: Grudging (`< 0.05`) |
 | ----- | ----- | ----- | ----- | ----- | ----- |
-| **Agnes** | “Bless you for that, love. I'll sleep a little easier tonight.” | “It's hard to trust you after what happened, dear. {action}” / “You're an outsider to us, love, and I'm not sure I can trust you yet.” | “Well, thank you for saying so, dear. Let's put it behind us.” | “Sorry for it, are you, love? Only I suspect you'd do the very same again.” | “Hm. Kind words are easy, dear, but I heard you.” |
+| **Agnes** | “Bless you for that, love. I'll sleep a little easier tonight.” | “It's hard to trust you after what happened. {action}” / “You're an outsider to us, and I'm not sure I can trust you yet.” | “Well, thank you for saying so, dear. Let's put it behind us.” | “Sorry for it, are you? Only I suspect you'd do the very same again.” | “Hm. Kind words are easy, but I heard you.” |
 | **Bartholomew** | “Obliged. I'll sleep easier for it.” | “I don't trust you. {action}” / “You're an outsider, I'm not sure I can trust you.” | “Fair enough. Appreciate you owning it.” | “Sorry for it, are you? You'd do the same again, I reckon.” | “Hm. Words are cheap, but I heard you.” |
 | **Constance** | “That is a conscientious offer, Demonologist. I shall rest easier for it.” | “You have given me little cause to trust you. {action}” / “You are an outsider to this parish, and I am not yet sure I can trust you.” | “An acknowledgment of error is the proper first step. I accept your apology.” | “You express regret now, yet I suspect you would act no differently given the same pretext.” | “Words are easily offered after the fact, though I note the gesture.” |
 | **Dorian** | “Oh—really? Thank you! Honestly, I'll sleep a lot easier knowing someone's watching out.” | “Sorry, it's just hard to trust you right now! {action}” / “You're an outsider, sorry, and I'm not sure I can trust you yet.” | “Oh—thank you for saying that, really. I appreciate you clearing the air.” | “I mean, thank you for apologizing, though you still suspect me, don't you? You'd probably do it again.” | “Um, okay. Saying sorry is easy enough, I guess, but I heard you.” |
@@ -125,16 +145,22 @@ When a townsperson is nominated at the evening meeting, `game.gd` prints their i
 ## Category 5: Role-Guess Pushback & Hint Follow-Up Stalling
 
 * **Direct Role-Guess Pushback (`ask are <role>` in `sim/social.gd:534–536`):**
+
   * **1st wrong/unwilling guess (`guess_1`):** Replaces `"What my gift is, I'll keep to myself."`
+
   * **2nd wrong guess (`guess_2`):** Replaces `"You're grasping at straws, and I'm running out of patience."` *(Preserves `"grasping at straws"` for `tools/test_backlog_batch4.gd:219`!)*
+
   * **3rd+ wrong guess (`guess_3`):** Replaces `"Why do you keep asking me that?"`
+
 * **Hint Follow-Up Stalling (`ask why` in `sim/mind_dialogue.gd:81–84`):**
+
   * **Watch target (`hint_stall_watch`):** Replaces `"Not yet. Give me a day or two, and watch {subject}."`
+
   * **Not ready (`hint_stall_wait`):** Replaces `"I said I'm not ready, and I'm not. Ask me again another time."`
 
 | Speaker | 1st Role Guess Refusal (`guess_1`) | 2nd Wrong Guess Warning (`guess_2`) | 3rd+ Guess Frustration (`guess_3`) | Hint Stall: Watch `{subject}` | Hint Stall: Not Ready |
 | ----- | ----- | ----- | ----- | ----- | ----- |
-| **Agnes** | “Now, love, what my gift is, I'll keep to myself.” | “You're grasping at straws, dear, and even my patience is wearing thin.” | “Why do you keep rattling off guesses at me like that, love?” | “Not just yet, dear. Give me a day or two, and keep an eye on {subject}.” | “I told you I wasn't ready to share that, love, and I'm still not. Ask me another time.” |
+| **Agnes** | “What my gift is, I'll keep to myself for now.” | “You're grasping at straws, dear, and even my patience is wearing thin.” | “Why do you keep rattling off guesses at me like that?” | “Not just yet, dear. Give me a day or two, and keep an eye on {subject}.” | “I told you I wasn't ready to share that, and I'm still not. Ask me another time.” |
 | **Bartholomew** | “What my gift is, I'll keep to myself.” | “You're grasping at straws, and I'm running out of patience.” | “Why do you keep asking me that?” | “Not yet. Give me a day or two, and watch {subject}.” | “Said I'm not ready, and I'm not. Ask another time.” |
 | **Constance** | “I shall not be drawn out by guessing games; what my gift is, I shall keep to myself.” | “You are grasping at straws, Demonologist, and exhausting my patience.” | “Why do you persist in putting random conjectures to me?” | “Not at this hour. Allow me a day or two, and observe {subject}'s conduct.” | “I stated that I was not prepared to disclose my grounds, and that remains so.” |
 | **Dorian** | “Um, nice try, sorry, but what my gift is, I'll keep to myself.” | “Look, you're just grasping at straws now, and it's making me really nervous!” | “Why do you keep firing random role guesses at me like that?!” | “Not yet—sorry, if I say more I'll mess it up! Give me a day or two, and watch {subject}.” | “I said I wasn't ready to explain, sorry, and I'm really still not! Ask me later.” |

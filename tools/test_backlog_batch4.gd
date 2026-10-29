@@ -96,7 +96,7 @@ func refusal_privacy():
 			var answer = Mind.press(w, n, card)
 			if answer.facts.any(func(f): return f.kind == "refusal"):
 				pressed = true
-				check(answer.lines[0].text in ["That sighting doesn't give you the right to demand my whereabouts.", "I've nothing more to say about that night."] or "sighting" in answer.lines[0].text, "pressed-night rewriting still targets the first refusal line")
+				check(answer.lines[0].get("statement", answer.lines[0].text.trim_prefix("[PH] ")) in ["That sighting doesn't give you the right to demand my whereabouts.", "I've nothing more to say about that night."] or "sighting" in answer.lines[0].text, "pressed-night rewriting still targets the first refusal line")
 		if blocked and slipped and pressed: break
 	check(blocked and slipped and pressed, "privacy fixture covers withholding, slips and pressed refusals")
 	# Own-street observations don't reveal an extra location or require a new roll.
@@ -272,17 +272,17 @@ func readings_ask():
 		n.claim_public = false
 		n.info_log = [{"role": "seer", "day": 0, "shared": false, "text": "neither was the Demon", "data": {"pair": [g.w.npcs[-1].id, g.w.npcs[-2].id], "yes": false}}]
 		var reply = Mind.answer_gift(g.w, n, 4)
-		check(reply.facts.any(func(f): return f.kind == "claim") and reply.facts.any(func(f): return f.kind == "info") and not reply.lines.any(func(line): return "As you know" in line.text), "known good or evil gift gives readings and claim card without reconfirmation")
+		check(reply.facts.any(func(f): return f.kind == "claim") and reply.facts.any(func(f): return f.kind == "info") and not reply.lines.any(func(line): return "As you know" in line.get("statement", line.text)), "known good or evil gift gives readings and claim card without reconfirmation")
 		n.info_log = []
 		reply = Mind.answer_gift(g.w, n, 4)
-		check(reply.lines.any(func(line): return "As you know" in line.text) and reply.lines.any(func(line): return "anything yet" in line.text), "empty reading history retains the gift confirmation")
+		check(reply.lines.any(func(line): return "As you know" in line.get("statement", line.text)) and reply.lines.any(func(line): return "anything yet" in line.get("statement", line.text)), "empty reading history retains the gift confirmation")
 	n = g.w.living_good()[0]
 	n.role = "warden"
 	n.claimed_role = "warden"
 	n.max_tier = 3
 	n.warden_log = {"0": g.w.npcs[-1].id}
 	var guarded = Mind.answer_gift(g.w, n, 4)
-	check(guarded.facts.any(func(f): return f.has("guard_claim")) and not guarded.lines.any(func(line): return "As you know" in line.text), "known Warden reports doors without reconfirmation")
+	check(guarded.facts.any(func(f): return f.has("guard_claim")) and not guarded.lines.any(func(line): return "As you know" in line.get("statement", line.text)), "known Warden reports doors without reconfirmation")
 	n.max_tier = 0
 	n.claim_public = false
 	var first = Mind.answer_gift(g.w, n, 4)
@@ -405,7 +405,7 @@ func first_person_notes():
 			var reply = {"lines": [], "facts": []}
 			g._maybe_tell_relationships(n, t, reply)
 			var expected = t.name + (" and I are close." if kind == "friend" else " and I don't get along.")
-			check(reply.lines.size() == 1 and reply.lines[0].text == expected, "both pair orders and bond kinds use first person about the speaker")
+			check(reply.lines.size() == 1 and reply.lines[0].text.trim_prefix("[PH] ") == expected, "both pair orders and bond kinds use first person about the speaker")
 			var note = g.known_relationships.values()[0]
 			check(note.text == n.name + ' says "' + expected + '"' and note.source == n.id and note.people == order and reply.facts.is_empty(), "first-person profile note retains attribution and original bond identity without cards")
 			check(w.rng.state == probe.state, "first-person relationship wording keeps the original single roll")
@@ -416,7 +416,7 @@ func first_person_notes():
 	w.rng.state = reveal_state
 	var third = {"lines": [], "facts": []}
 	g._maybe_tell_relationships(n, t, third)
-	check(third.lines[0].text == "%s and %s are close." % [t.name, other.name], "third-party relationship wording stays unchanged")
+	check(third.lines[0].text.trim_prefix("[PH] ") == "%s and %s are close." % [t.name, other.name], "third-party relationship wording stays unchanged")
 	n.friends = []
 	n.rivals = []
 	n.pressure = 1.0 # Allow self-trait replies even when exercising low gossip.
@@ -433,7 +433,7 @@ func first_person_notes():
 			probe.randi_range(0, 0)
 			var reply = {"lines": [], "facts": []}
 			g._maybe_tell_trait(n, n, reply)
-			check(reply.lines.size() == 1 and reply.lines[0].text.begins_with("I'd call myself ") and not n.name in reply.lines[0].text and not "their" in reply.lines[0].text and not "themselves" in reply.lines[0].text, "self-trait wording uses first person")
+			check(reply.lines.size() == 1 and reply.lines[0].text.trim_prefix("[PH] ").begins_with("I'd call myself ") and not n.name in reply.lines[0].text and not "their" in reply.lines[0].text and not "themselves" in reply.lines[0].text, "self-trait wording uses first person")
 			check(n.revealed_traits[key] == C.tier(n.traits[key]) and w.rng.state == probe.state and reply.facts.is_empty(), "self-trait phrasing retains the selected trait, learning and exact RNG draws")
 
 func confidence_public_notice():
@@ -465,7 +465,7 @@ func confidence_public_notice():
 	b.w.rng.state = a.w.rng.state
 	Mind._public_disclosure(a.w, na, lines, facts)
 	Mind._go_public(b.w, nb, original_lines, original_facts)
-	check(lines[0].text == "I've decided the town should hear it." and lines.slice(1) == original_lines, "the public notice precedes the unchanged original claim")
+	check(lines[0].get("statement", lines[0].text) == "I've decided the town should hear it." and lines.slice(1) == original_lines, "the public notice precedes the unchanged original claim")
 	check(facts == original_facts and a.w.rng.state == b.w.rng.state, "confidence release adds no cards or RNG draws")
 	var count = lines.size()
 	Mind._public_disclosure(a.w, na, lines, facts)
@@ -484,7 +484,7 @@ func confidence_public_notice():
 	n.dialogue_memory["confidence_requested"] = true
 	var st = {"speakers": [n], "i": 0, "done": false}
 	var turn = Mind.testimony_step(g.w, st)
-	check(n.claim_public and turn.lines.any(func(line): return line.text == "I've decided the town should hear it."), "confidence release arrives within the speaker's streamed testimony step")
+	check(n.claim_public and turn.lines.any(func(line): return line.get("statement", line.text) == "I've decided the town should hear it."), "confidence release arrives within the speaker's streamed testimony step")
 
 func empty_nomination_cases():
 	var g = fresh()
@@ -495,11 +495,11 @@ func empty_nomination_cases():
 		n.shadow = null
 		var state = w.rng.state
 		var reply = Mind.nomination_case(w, n, t, "")
-		check(reply.lines.size() == 1 and reply.lines[0].text == "I don't trust %s, and I can't say better than that." % t.name, "an empty good or evil nomination gives a plain spoken fallback")
+		check(reply.lines.size() == 1 and reply.lines[0].text.trim_prefix("[PH] ") == "I don't trust %s, and I can't say better than that." % t.name, "an empty good or evil nomination gives a plain spoken fallback")
 		check(reply.facts.is_empty() and w.rng.state == state, "empty-case wording adds no evidence or RNG draws")
 		n.ledger = {"public": {"eid": "public", "effects": [[t.id, 0, 0, 0, "a public account"]], "applied": {0: 0.2}}}
 		var recap = Mind.nomination_case(w, n, t, "")
-		check(recap.lines.size() == 1 and recap.lines[0].text == "Remember: a public account.", "a grounded public reason keeps its original recap")
+		check(recap.lines.size() == 1 and recap.lines[0].text.trim_prefix("[PH] ") == "Remember: a public account.", "a grounded public reason keeps its original recap")
 		var already = Mind.nomination_case(w, n, t, "a public account")
 		check(already.lines.is_empty() and already.facts.is_empty() and w.rng.state == state, "an already-cited grounded reason stays silent rather than becoming an empty-case fallback")
 

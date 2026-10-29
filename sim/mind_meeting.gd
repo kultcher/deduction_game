@@ -281,7 +281,7 @@ static func _heard_reading(w, n, eid: String) -> Dictionary:
 static func relay_reading(w, n, src, e: Dictionary, lines: Array, facts: Array) -> void:
 	var rn = C.role_name(e["role"])
 	var said = C.third_person(e["text"])
-	lines.append(say(n, "Word reached me from the %s: %s." % [rn, said]))
+	lines.append(say(n, "[PH] Word reached me from the %s: %s." % [rn, said]))
 	facts.append({"kind": "accusation", "subject": Gifts.implicated(e), "source": n.id, "relay": true, "role": e["role"],
 		"text": "%s says the %s (unnamed) told them: %s." % [n.name, rn, said]})
 	for l in w.living():
@@ -289,7 +289,7 @@ static func relay_reading(w, n, src, e: Dictionary, lines: Array, facts: Array) 
 			apply_info(w, l, src, e, C.RELAY_WEIGHT * heard_weight(l, n), n.id, true)
 	w.dlog.think(n.id, "relay", "Relays %s's private %s reading without naming them." % [src.id, e["role"]], {"src": src.id})
 	if src.alive and not src.silenced and not src.claim_public and w.decision_roll(src, "corroborate_relay", C.RELAY_CORROBORATE, {}, n.id):
-		lines.append(say(src, "That was me."))
+		lines.append(say_voiced(src, "relay_claim_authorship", "That was me."))
 		for l in w.living():
 			if l != n and l != src:
 				acknowledge_reading(w, l, src, e, n.id)
@@ -375,7 +375,7 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 ## The promise itself still lapses through Game._break_confidences as before.
 static func _public_disclosure(w, n, lines: Array, facts: Array, share_readings: bool = true) -> void:
 	if not n.claim_public and n.dialogue_memory.get("confidence_requested", false):
-		lines.append(say(n, "I've decided the town should hear it."))
+		lines.append(say_voiced(n, "release_confidence_public", "I've decided the town should hear it."))
 		n.dialogue_memory.erase("confidence_requested")
 	_go_public(w, n, lines, facts, share_readings)
 
@@ -427,7 +427,7 @@ static func last_words(w, n) -> Dictionary:
 	_public_disclosure(w, n, lines, facts, false)
 	if lines.is_empty():
 		if already_claimed:
-			lines.append(say(n, "As I've said, I am the %s." % C.role_name(claim)))
+			lines.append(say_voiced(n, "gallows_confirm_role", "As I've said, I am the %s." % C.role_name(claim), {"role": C.role_name(claim)}))
 		else:
 			lines.append(_claim_line(n, claim))
 		facts.append({"kind": "claim", "subject": [n.id], "role": claim, "source": n.id,
@@ -439,7 +439,7 @@ static func last_words(w, n) -> Dictionary:
 		var ranked: Array = ranked_suspects(w, n)
 		if not ranked.is_empty(): suspect = ranked[0].id
 	if suspect != "" and w.by_id.has(suspect) and w.by_id[suspect].alive and suspect != n.id:
-		lines.append(say(n, "I still suspect %s." % w.by_id[suspect].name))
+		lines.append(say_voiced(n, "gallows_parting_suspect", "I still suspect %s." % w.by_id[suspect].name, {"suspect": w.by_id[suspect].name}))
 	return {"lines": lines, "facts": facts}
 
 static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
@@ -506,13 +506,15 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		# their own (their reading, what they saw) are worth adding.
 		var first = w.by_id[earlier[0]["by"]]
 		var own = why.begins_with("my own") or why.begins_with("I ")
-		var extra = " I have my own reason, but I'm not ready to share it yet." if hint else ((" " + why[0].to_upper() + why.substr(1) + ".") if own else "")
-		line = say(n, "I agree with %s about %s.%s" % [first.name, t.name, extra])
+		var extra = " [PH] I have my own reason, but I'm not ready to share it yet." if hint else ((" " + why[0].to_upper() + why.substr(1) + ".") if own else "")
+		var canonical_agree = "I agree with %s about %s.%s" % [first.name, t.name, extra.replace("[PH] ", "")]
+		var voiced_agree = Dialogue.voice_line(n.id, "meeting_agree_accuse", "I agree with %s about %s." % [first.name, t.name], {"accuser": first.name, "target": t.name}) + extra
+		line = {"speaker": n.id, "name": n.name, "text": voiced_agree, "statement": canonical_agree}
 	elif hint:
-		line = say(n, "I have a reason to suspect %s, but I'm not ready to share it yet." % t.name)
+		line = say_voiced(n, "meeting_accuse_hint", "I have a reason to suspect %s, but I'm not ready to share it yet." % t.name, {"target": t.name})
 	else:
 		var tail = (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else " Something's off about them."
-		line = say(n, "I don't trust %s.%s" % [t.name, tail])
+		line = say(n, "[PH] I don't trust %s.%s" % [t.name, tail])
 	if w.meeting.has("accusations"):
 		w.meeting["accusations"].append({"by": n.id, "target": t.id})
 	var text = ("%s publicly accused %s, hinting at a private reason they won't share yet." if hint else "%s publicly accused %s.") % [n.name, t.name]
@@ -757,9 +759,9 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 	var description = ", ".join(PackedStringArray(items.map(func(x): return "%s (%s, %.2f)" % [x["why"], x["kind"], x["contrib"]])))
 	w.dlog.think(n.id, "nomination_case", "Case against %s: %s." % [t.id, description if description != "" else "no citable reasons on record"], {"items": items.map(func(x): return {"eid": x["eid"], "kind": x["kind"]})})
 	if items.is_empty():
-		lines.append(say(n, "I don't trust %s, and I can't say better than that." % t.name))
+		lines.append(say(n, "[PH] I don't trust %s, and I can't say better than that." % t.name))
 	if not recap.is_empty():
-		lines.append(say(n, "Remember: %s." % "; and ".join(PackedStringArray(recap.slice(0, 2)))))
+		lines.append(say(n, "[PH] Remember: %s." % "; and ".join(PackedStringArray(recap.slice(0, 2)))))
 	if not priv.is_empty():
 		var top: Dictionary = priv[0]
 		var cost = reveal_cost(w, n)
@@ -771,7 +773,7 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 			_public_disclosure(w, n, lines, facts)
 		else:
 			n.hints[t.id] = {"day": w.day, "src": top["eid"]}
-			lines.append(say(n, "And I have another reason I'm not ready to share yet."))
+			lines.append(say(n, "[PH] And I have another reason I'm not ready to share yet."))
 			facts.append({"kind": "accusation", "subject": [t.id], "source": n.id, "hint": true,
 				"text": "%s nominated %s, hinting at a private reason they won't share yet." % [n.name, t.name]})
 	return {"lines": lines, "facts": facts}
@@ -828,7 +830,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 	if moves.is_empty() and not out_items.is_empty() and not d.is_evil() and not d.secret.is_empty():
 		if decide(w, d, "defence_confess", {"facing_the_rope": 0.5, "privacy": (0.4 - trait_of(d, "privacy")) * 1.0}, "Confess my secret to explain being out?"):
 			d.secret_known = true
-			lines.append(say(d, "I wasn't out for anything wicked. I %s." % d.secret.get("me", d.secret.get("text", ""))))
+			lines.append(say_voiced(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % d.secret.get("me", d.secret.get("text", "")), {"secret": d.secret.get("me", d.secret.get("text", ""))}))
 			facts.append({"kind": "secret", "subject": [d.id], "owner": d.id, "source": d.id,
 				"secret_kind": d.secret.get("kind", ""), "mod": "lovers" if d.secret.get("kind", "") == "lover" else "",
 				"text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]})
@@ -881,7 +883,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 				var other: String = pair[0] if pair[1] == d.id else pair[1]
 				var fits: bool = (not Evil.is_teammate(w, d, other)) if d.is_evil() else susp(d, other) >= susp(d, src_id)
 				if fits and w.by_id.has(other) and w.by_id[other].alive:
-					lines.append(say(d, "One of the two, %s said. It isn't me, so look at %s." % [src.name, w.by_id[other].name]))
+					lines.append(say(d, "[PH] One of the two, %s said. It isn't me, so look at %s." % [src.name, w.by_id[other].name]))
 					moves.append("pair_other")
 					effs_by_move["pair_other"] = [[d.id, -0.06, true, "points at the other one in the pair", ""], [other, 0.06, true, "%s says it's the other one in the pair" % d.name, ""]]
 					defence_scopes["pair_other"] = {"type": "rival", "source": src_id, "other": other}
@@ -899,7 +901,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 	# 4. Nothing to show: fear, or the desperation play.
 	if moves.is_empty():
 		if _afraid(w, d) and not d.claim_public:
-			lines.append(say(d, "If I say what I am, I'll be dead by morning. But I'm not what you think."))
+			lines.append(say(d, "[PH] If I say what I am, I'll be dead by morning. But I'm not what you think."))
 			moves.append("fear")
 		else:
 			lines.append(say_voiced(d, "defence_desperation", "I don't know what's going on, but I know I'm not evil."))

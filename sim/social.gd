@@ -355,12 +355,12 @@ static func wants_protection(w, n) -> bool:
 static func approach_teaser(w, n, agenda: String) -> Dictionary:
 	match agenda:
 		"news", "frame":
-			return Mind.say(n, "It's about my gift. I've learned something you should hear.")
+			return Mind.say(n, "[PH] It's about my gift. I've learned something you should hear.")
 		"gossip":
-			return Mind.say(n, "I've heard something about one of our neighbours.")
+			return Mind.say(n, "[PH] I've heard something about one of our neighbours.")
 		"protect":
 			return Mind.protection_line(n, Mind.protection_kind(w, n))
-	return Mind.say(n, "Demonologist, a word?")
+	return Mind.say(n, "[PH] Demonologist, a word?")
 
 ## What they open with once the player accepts. Returns {lines, facts}.
 static func approach_open(w, n, agenda: String) -> Dictionary:
@@ -370,18 +370,18 @@ static func approach_open(w, n, agenda: String) -> Dictionary:
 		"news", "frame":
 			var r: Dictionary = Mind.answer_gift(w, n, 4)
 			n.pressed_today -= 1
-			lines.append(Mind.say(n, "I've been meaning to find you."))
+			lines.append(Mind.say(n, "[PH] I've been meaning to find you."))
 			lines += r["lines"]
 			facts += r["facts"]
 			if agenda == "frame":
 				var sg = w.by_id[w.evil_plan["scapegoat"]]
 				var why = Evil.cite(w, n, Evil.bluff_reason(w, n, sg))
 				w.dlog.think(n.id, "lie", "Evil: approaches the player to push scapegoat %s." % sg.id)
-				lines.append(Mind.say(n, "And keep an eye on %s. %s" % [sg.name,
+				lines.append(Mind.say(n, "[PH] And keep an eye on %s. %s" % [sg.name,
 					(why[0].to_upper() + why.substr(1) + ".") if why != "" else "Something's off about them."]))
 				facts.append({"kind": "opinion", "subject": [sg.id], "source": n.id, "text": "%s warned you about %s." % [n.name, sg.name]})
 		"gossip":
-			lines.append(Mind.say(n, "You'll want to hear this."))
+			lines.append(Mind.say(n, "[PH] You'll want to hear this."))
 			var g = gossip_item(w, n)
 			lines += g["lines"]
 			facts += g["facts"]
@@ -428,7 +428,7 @@ static func gossip_item(w, n) -> Dictionary:
 			n.told_to["player|secret:" + owner] = true
 			w.dlog.think(n.id, "gossip", "Tells the player %s's secret (heard via %s)." % [owner, n.known_secrets[owner]])
 			o.secret_spread_by_npc = true
-			return {"lines": [Mind.say(n, "Between you and me, %s %s. That's why they're about at night." % [o.name, o.secret["text"]])],
+			return {"lines": [Mind.say(n, "[PH] Between you and me, %s %s. That's why they're about at night." % [o.name, o.secret["text"]])],
 				"facts": [{"kind": "secret", "subject": [owner], "owner": owner, "source": n.id, "via": n.known_secrets[owner],
 					"secret_kind": o.secret.get("kind", ""), "mod": "lovers" if o.secret.get("kind", "") == "lover" else "",
 					"text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, o.secret["text"]]}]}
@@ -444,14 +444,14 @@ static func gossip_item(w, n) -> Dictionary:
 			var f = Mind.info_fact(w, src, e)
 			f["via"] = n.id
 			f["text"] = "Via %s: " % n.name + f["text"]
-			return {"lines": [Mind.say(n, "%s told me their gift is %s, and that %s." % [src.name, C.role_name(e["role"]), C.third_person(e["text"])])], "facts": [f]}
+			return {"lines": [Mind.say(n, "[PH] %s told me their gift is %s, and that %s." % [src.name, C.role_name(e["role"]), C.third_person(e["text"])])], "facts": [f]}
 		if h["kind"] == "sighting":
 			var who = w.by_id[h["about"]]
 			var by = w.by_id[h["from"]].name if w.by_id.has(h["from"]) else "someone"
-			return {"lines": [Mind.say(n, "%s says %s was out on %s on night %d." % [by, who.name, C.block_name(h["block"]), h["day"]])],
+			return {"lines": [Mind.say(n, "[PH] %s says %s was out on %s on night %d." % [by, who.name, C.block_name(h["block"]), h["day"]])],
 				"facts": [{"kind": "sighting", "subject": [who.id], "block": h["block"], "day": h["day"], "phase": C.NIGHT, "source": h["from"], "via": n.id,
 					"text": "Via %s: %s saw %s on %s on night %d." % [n.name, by, who.name, C.block_name(h["block"]), h["day"]]}]}
-	return {"lines": [Mind.say(n, "...Well, I thought I had something. The price of bread, mostly.")], "facts": []}
+	return {"lines": [Mind.say(n, "[PH] ...Well, I thought I had something. The price of bread, mostly.")], "facts": []}
 
 # ---------------------------------------------------------------- asking about a role
 
@@ -462,7 +462,7 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 	var rn = C.role_name(role)
 	var mine: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	if mine == role and (n.claim_public or n.max_tier >= 3):
-		lines.append(Mind.say(n, "That would be me."))
+		lines.append(Mind.say_voiced(n, "role_query_self", "That would be me."))
 		return {"lines": lines, "facts": facts}
 	# A general question about the town, but it touches their own gift: a small chance they
 	# own up (likelier the more they trust you). Otherwise they answer like anyone else.
@@ -499,8 +499,12 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 	elif not willing:
 		w.dlog.think(n.id, "about_role", "Asked about the %s: not willing to share private knowledge." % role)
 	if text == "":
-		text = "That's not for me to say." if mine == role or not (willing or n.is_evil()) else "I couldn't tell you who the %s is." % rn
-	lines.append(Mind.say(n, text))
+		if mine == role or not (willing or n.is_evil()):
+			lines.append(Mind.say_voiced(n, "role_query_refuse", "That's not for me to say."))
+		else:
+			lines.append(Mind.say_voiced(n, "role_query_unknown", "I couldn't tell you who the %s is." % rn, {"role": rn}))
+	else:
+		lines.append(Mind.say(n, "[PH] " + text))
 	return {"lines": lines, "facts": facts}
 
 ## "Are you the <gift>?": a direct guess at the listener's own gift. Right, they own up a
@@ -517,7 +521,7 @@ static func answer_is_role(w, n, role: String) -> Dictionary:
 	var said: bool = n.claim_public or n.max_tier >= 3
 	if said:
 		var claimed: String = n.claimed_role
-		return {"lines": [Mind.say(n, "No. I told you: I'm the %s." % C.role_name(claimed) if C.ROLES.has(claimed) else "No.")], "facts": []}
+		return {"lines": [Mind.say(n, "[PH] No. I told you: I'm the %s." % C.role_name(claimed) if C.ROLES.has(claimed) else "[PH] No.")], "facts": []}
 	if mine == role:
 		var first = n.role_guesses == 0
 		var tier: int = Mind._target_tier(w, n) + (1 if first and w.decision_roll(n, "correct_role_guess_bonus", 0.5) else 0)

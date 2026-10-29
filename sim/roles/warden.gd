@@ -19,7 +19,7 @@ func _init() -> void:
 	quiet_night_claim_weight = Tuning.Roles.WARDEN.quiet_night_claim_weight
 	min_gift_day = 1
 	hard_to_kill = true
-	request_agree_line = "Very well. I'll stand at %s's door tonight."
+	request_agree_line = "[PH] Very well. I'll stand at %s's door tonight."
 
 
 ## Pick whom the Warden guards tonight (trusted info claimants, trusted people).
@@ -128,7 +128,7 @@ func answer_gift_custom(w, n, first_time: bool, tier: int, lines: Array, facts: 
 		if not first_time:
 			lines.pop_front() # Skip reconfirmation when there is work to report.
 		var said: String = "; ".join(PackedStringArray(doors))
-		lines.append(mind.say(n, "I keep watch over one door each night: %s." % (said[0].to_upper() + said.substr(1))))
+		lines.append(mind.say(n, "[PH] I keep watch over one door each night: %s." % (said[0].to_upper() + said.substr(1))))
 		n.max_tier = maxi(n.max_tier, tier)
 		return {"lines": lines, "facts": facts}
 	return {}
@@ -146,7 +146,7 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, _block: String, mind, block_
 		var gb: String = w.by_id[guarded].home_block
 		return {
 			"handled": true,
-			"line": mind.say(n, "Standing guard at %s's door, as my gift asks." % w.by_id[guarded].name),
+			"line": mind.say(n, "[PH] Standing guard at %s's door, as my gift asks." % w.by_id[guarded].name),
 			"fact": guard_fact(w, n, nd, guarded, block_name_fn),
 			"vantage": gb,
 			"how": "street",

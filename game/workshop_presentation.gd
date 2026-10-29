@@ -75,7 +75,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		Profiler.count("repeat_no_assessment")
 		var result: Dictionary = cached_repeat.result.duplicate(true)
 		var text = "I heard you say that at the meeting. My assessment is unchanged." if existing.venue != "private" else "You've heard this from me already. My assessment is unchanged."
-		result.lines = [Mind.say(n, text)] if speak and not n.silenced else []
+		result.lines = [Mind.say(n, "[PH] " + text)] if speak and not n.silenced else []
 		result.repeated = true
 		result.dialogue.special = text
 		g.w.dlog.trace_event("workshop_repeat", n.id, "", {"card": card.get("n", 0), "venue": venue}, "Reuse an unchanged discussion without evaluating or rewarding it again.")
@@ -153,11 +153,15 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var audience = "player" if venue == "private" else "town"
 	var delivery_key = signature + "|" + audience
 	var text: String = assessment.response
+	var trapped_out: bool = false
+	var trapped_canonical: String = ""
 	if not repeated and not n.is_shadow and n.secret_mod != "sleepwalker":
 		for dispute in snapshot.arguments[0].get("workshop_case", {}).get("disputes", []):
 			var alibis: Array = snapshot.evidence.filter(func(e): return e.id == dispute.challenged and n.id in e.subjects)
 			if not alibis.is_empty() and str(n.history.get(g.w.time_key(alibis[0].observed_at.day, 3), "")).begins_with("night:") and dispute.preferred in assessment.reasoning.considered:
-				text = "Fine, I was out. Doesn't mean I was doing anything wrong."
+				trapped_canonical = "Fine, I was out. Doesn't mean I was doing anything wrong."
+				text = Mind.Dialogue.voice_line(n.id, "trapped_night_out", trapped_canonical)
+				trapped_out = true
 				break
 	if repeated and state.get("delivered", {}).get(delivery_key, "") == inputs:
 		text = "Those are the same reports. My assessment is unchanged."
@@ -231,7 +235,8 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		state.delivered[delivery_key] = state.discussion[signature]
 	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": voiced_stance,
 		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": text}
-	var lines: Array = [Mind.say(n, text)] if speak and not n.silenced else []
+	var spoken_line: Dictionary = Mind.say_voiced(n, "trapped_night_out", trapped_canonical) if trapped_out else Mind.say(n, "[PH] " + text)
+	var lines: Array = [spoken_line] if speak and not n.silenced else []
 	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
 		{"venue": venue, "key": key, "agreement": assessment.agreement, "stance": assessment.stance,
 		"reading_challenges": assessment.get("reading_challenges", []),

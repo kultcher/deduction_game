@@ -67,7 +67,7 @@ func _direct_and_migration() -> void:
 	var bad = g.file_deduction({"type": "evil", "a": target.id}, [card])
 	var rejected = g._evaluate_deduction(n, g.board[bad - 1], 1.0, true)
 	check(rejected.get("workshop", false) and rejected.dialogue.stance == "reject", "an accusation contradicted by the report is rejected by the new model")
-	check(rejected.lines[0].text == rejected.dialogue.special and _close(baseline, n.suspicion), "spoken rejection and collateral exoneration derive from the same reports")
+	check(rejected.lines[0].text.trim_prefix("[PH] ") == rejected.dialogue.special and _close(baseline, n.suspicion), "spoken rejection and collateral exoneration derive from the same reports")
 	n.pressed_today = 0
 	var cited = Mind.hear_accusation(g.w, n, target, g.board[ded - 1])
 	check(cited.get("workshop", false) and n.workshop_state.active, "citing a deduction as a card follows original evidence instead of promoting its label")
