@@ -80,8 +80,8 @@ static func answer_hint(w, n) -> Dictionary:
 ## nothing behind its hint.
 static func _hint_decline(w, n, t) -> Dictionary:
 	if w.decision_roll(n, "hint_decline_wording", 0.5):
-		return say(n, "Not yet. Give me a day or two, and watch %s." % t.name)
-	return say(n, "I said I'm not ready, and I'm not. Ask me again another time.")
+		return say_voiced(n, "hint_stall_watch", "Not yet. Give me a day or two, and watch %s." % t.name, {"subject": t.name})
+	return say_voiced(n, "hint_stall_wait", "I said I'm not ready, and I'm not. Ask me again another time.")
 
 
 # ---------------------------------------------------------------- pressing
@@ -491,11 +491,15 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 	if first_time:
 		var reveal_cue: String = Dialogue.exchange_cue(n.dialogue_memory, "gift", n.id)
 		var contextual: String = Dialogue.gift_reveal(n.id, C.role_name(role), reveal_cue)
-		lines.append(say(n, contextual if contextual != "" else "I'll trust you with this. I'm the %s." % C.role_name(role)))
+		if contextual != "":
+			lines.append(say(n, contextual))
+		else:
+			lines.append(say_voiced(n, "private_reveal", "I'll trust you with this. I'm the %s." % C.role_name(role), {"role": C.role_name(role)}))
 		if not evil and C.ROLES[role].get("night_walk", false) and not n.lied_nights.is_empty():
 			# The lie they told you about that night, owned now it has a reason.
 			var nights: Array = n.lied_nights.map(func(x): return C.night_name(x))
-			lines.append(say(n, "So yes: I was out %s, whatever I told you. I wasn't ready to tell you why." % " and ".join(PackedStringArray(nights.map(func(x): return ("on " + x) if x.begins_with("night") else x)))))
+			var nights_str: String = " and ".join(PackedStringArray(nights.map(func(x): return ("on " + x) if x.begins_with("night") else x)))
+			lines.append(say_voiced(n, "own_night_lie", "So yes: I was out %s, whatever I told you. I wasn't ready to tell you why." % nights_str, {"nights": nights_str}))
 			w.dlog.think(n.id, "admit", "Owns the whereabouts lie(s) now the gift is out: nights %s." % str(n.lied_nights))
 			n.lied_nights.clear()
 	else:
@@ -942,20 +946,30 @@ static func answer_opinion(w, n, t) -> Dictionary:
 		held = why == "" and reason_status(w, n, t.id)["kind"] == "private"
 	why = Evil.cite(w, n, why)
 	var shown = level
+	var opinion_key = ""
 	if level < 0.25:
 		text = "I trust %s." % t.name
+		opinion_key = "opinion_trust"
 	elif level < 0.45:
 		if w.decision_roll(n, "neutral_opinion_suspicion", 0.6 - 0.4 * trait_of(n, "insight") + paranoia(w, n), {"insight": trait_of(n, "insight"), "paranoia": paranoia(w, n)}, t.id):
 			text = "I can't put my finger on it, but something's off about %s." % t.name
+			opinion_key = "opinion_vibes"
 			shown = 0.5
 		else:
 			text = ("%s seems all right to me." % t.name) if level < 0.35 else ("I don't really know %s that well." % t.name)
+			opinion_key = "opinion_fine" if level < 0.35 else "opinion_unfamiliar"
 	elif level < 0.8:
 		text = "I have my doubts about %s." % t.name
+		opinion_key = "opinion_doubt"
 	else:
 		text = "If you ask me, %s is the one." % t.name
+		opinion_key = "opinion_accuse"
+	var canonical_opinion: String = text
+	text = Dialogue.voice_line(n.id, opinion_key, text, {"subject": t.name})
 	if level >= 0.45:
-		text += (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else (" I have my reasons, but I'm not ready to say." if held else " Something's off about them.")
+		var opinion_tail: String = (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else (" I have my reasons, but I'm not ready to say." if held else " Something's off about them.")
+		text += opinion_tail
+		canonical_opinion += opinion_tail
 	var close = n.npc_trust.get(t.id, 0.5) > 0.7 and not (n.is_evil() and t.id == w.evil_plan["scapegoat"])
 	if close and not Dialogue.has_voice(n.id):
 		text += " We're close, mind."
@@ -965,6 +979,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	var opinion_reply: Dictionary = voiced(n, "friend", text, "opinion:" + t.id, {"close": close, "subject": t.name})
 	var opinion_cue: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
 	opinion_reply["text"] = Dialogue.contextualize(n.id, opinion_reply["text"], opinion_cue, t.name)
+	opinion_reply["statement"] = canonical_opinion
 	if close:
 		opinion_reply["relationship"] = {"kind": "friend", "people": [n.id, t.id]}
 	lines.append(opinion_reply)
@@ -1018,6 +1033,9 @@ static func reveal_cost(w, n) -> Dictionary:
 
 static func say(n, text: String) -> Dictionary:
 	return _mind().say(n, text)
+
+static func say_voiced(n, key: String, fallback: String, slots: Dictionary = {}) -> Dictionary:
+	return _mind().say_voiced(n, key, fallback, slots)
 
 static func set_trust(w, n, value: float, why: String) -> void:
 	_mind().set_trust(w, n, value, why)

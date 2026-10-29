@@ -149,7 +149,8 @@ static func _claim_line(n, role: String) -> Dictionary:
 		"nervous": "I-I suppose I have to say it. ",
 		"plain": "Here's the truth of it. ",
 	}
-	return say(n, "%sI am the %s." % [openers.get(n.style, ""), C.role_name(role)])
+	var fallback = "%sI am the %s." % [openers.get(n.style, ""), C.role_name(role)]
+	return say_voiced(n, "public_claim", fallback, {"role": C.role_name(role)})
 
 ## Construct the exact public-facing report before a presentation layer touches it.
 static func _info_intent(w, n, e: Dictionary) -> Dictionary:
@@ -819,7 +820,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 		if d.claim_public or decide(w, d, "defence_reveal", parts, "Explain being out with my gift (%s)?" % role):
 			if not d.claim_public:
 				_public_disclosure(w, d, lines, facts)
-			lines.append(say(d, "I was out because I'm the %s. That's what you saw." % C.role_name(role)))
+			lines.append(say_voiced(d, "defence_reveal", "I was out because I'm the %s. That's what you saw." % C.role_name(role), {"role": C.role_name(role)}))
 			moves.append("reveal")
 			effs_by_move["reveal"] = [[d.id, -minf(0.35, out_weight), true, "excused: out at night as the %s" % C.role_name(role), ""]]
 			defence_scopes["reveal"] = {"type": "gift_claim", "role": role}
@@ -886,12 +887,12 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 					defence_scopes["pair_other"] = {"type": "rival", "source": src_id, "other": other}
 			if moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves):
 				if trait_of(d, "confidence") > 0.6:
-					lines.append(say(d, "Then %s is lying, and you should ask yourselves why." % src.name))
+					lines.append(say_voiced(d, "defence_lying", "Then %s is lying, and you should ask yourselves why." % src.name, {"source": src.name}))
 					moves.append("lying")
 					effs_by_move["lying"] = [[d.id, -0.05, true, "says the reading against them is a lie", ""], [src_id, C.DEFENCE_LIE_BLOWBACK, true, "%s says they lied" % d.name, ""]]
 					defence_scopes["lying"] = {"type": "challenge", "mode": "lying", "reading": WorkshopLedger.reading(src_id, rd).id}
 				else:
-					lines.append(say(d, "%s's gift could have been turned. It's happened before." % src.name))
+					lines.append(say_voiced(d, "defence_misled", "%s's gift could have been turned. It's happened before." % src.name, {"source": src.name}))
 					moves.append("misled")
 					effs_by_move["misled"] = [[d.id, -0.06, true, "says the reading against them was misled", ""]]
 					defence_scopes["misled"] = {"type": "challenge", "mode": "misled", "reading": WorkshopLedger.reading(src_id, rd).id}
@@ -901,7 +902,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 			lines.append(say(d, "If I say what I am, I'll be dead by morning. But I'm not what you think."))
 			moves.append("fear")
 		else:
-			lines.append(say(d, "I don't know what's going on, but I know I'm not evil."))
+			lines.append(say_voiced(d, "defence_desperation", "I don't know what's going on, but I know I'm not evil."))
 			moves.append("desperation")
 		effs_by_move[moves[0]] = [[d.id, -0.02, true, "pleads innocence", ""]]
 		defence_scopes[moves[0]] = {"type": "plea"}
@@ -938,11 +939,12 @@ static func defence_line(w, n) -> Dictionary:
 	if n.silenced:
 		return {"speaker": n.id, "name": n.name, "text": "...", "silent": true}
 	var c = trait_of(n, "confidence")
+	var fallback = "You've got the wrong person."
 	if c > 0.66:
-		return say(n, "This is madness, and you all know it.")
-	if c < 0.34:
-		return say(n, "P-please. I've done nothing.")
-	return say(n, "You've got the wrong person.")
+		fallback = "This is madness, and you all know it."
+	elif c < 0.34:
+		fallback = "P-please. I've done nothing."
+	return say_voiced(n, "defence_line", fallback)
 
 ## One NPC's vote on a nomination. statement: "", "defend" or "accuse" (the player's).
 static func vote(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int) -> bool:
@@ -1084,6 +1086,9 @@ static func reconsider(w, n, why: String) -> void:
 
 static func say(n, text: String) -> Dictionary:
 	return _mind().say(n, text)
+
+static func say_voiced(n, key: String, fallback: String, slots: Dictionary = {}) -> Dictionary:
+	return _mind().say_voiced(n, key, fallback, slots)
 
 static func shadow_eval(w, n, f: Callable):
 	return _mind().shadow_eval(w, n, f)

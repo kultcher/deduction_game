@@ -17,6 +17,7 @@ func _init() -> void:
 	_flow()
 	_presence()
 	_exchange()
+	_batch2_voices()
 	_live()
 	_live_presence()
 	call_deferred("_lab")
@@ -304,6 +305,47 @@ func _exchange() -> void:
 	var missing = {}
 	Dialogue.record_exchange(missing, "accusation", "edda")
 	_check(missing.is_empty(), "unscoped scripted speech cannot create phantom conversation history")
+
+func _batch2_voices() -> void:
+	var slot_specs = {
+		"private_reveal": {"role": "Seer"},
+		"public_claim": {"role": "Seer"},
+		"own_night_lie": {"nights": "on night 1"},
+		"opinion_trust": {"subject": "Edda"},
+		"opinion_fine": {"subject": "Edda"},
+		"opinion_unfamiliar": {"subject": "Edda"},
+		"opinion_vibes": {"subject": "Edda"},
+		"opinion_doubt": {"subject": "Edda"},
+		"opinion_accuse": {"subject": "Edda"},
+		"defence_line": {},
+		"defence_reveal": {"role": "Lamplighter"},
+		"defence_lying": {"source": "Hollis"},
+		"defence_misled": {"source": "Hollis"},
+		"defence_desperation": {},
+		"offer_thanks": {},
+		"distrust_action": {"action": "You broke your promise to me."},
+		"distrust_outsider": {},
+		"apology_accept": {},
+		"apology_skeptical": {},
+		"apology_grudging": {},
+		"guess_1": {},
+		"guess_2": {},
+		"guess_3": {},
+		"hint_stall_watch": {"subject": "Edda"},
+		"hint_stall_wait": {},
+	}
+	for key in slot_specs:
+		var slots: Dictionary = slot_specs[key]
+		var seen_lines = {}
+		for id in Fixtures.IDS:
+			var rendered = Dialogue.voice_line(id, key, "FALLBACK", slots)
+			_check(rendered != "FALLBACK" and rendered != "" and not "{" in rendered, "%s/%s resolves cleanly without leftover slots" % [id, key])
+			for slot_val in slots.values():
+				_check(str(slot_val) in rendered, "%s/%s preserves slot value %s" % [id, key, str(slot_val)])
+			if key == "guess_2":
+				_check("grasping at straws" in rendered, "%s/guess_2 retains required test phrase" % id)
+			seen_lines[rendered] = true
+		_check(Dialogue.voice_line("unvoiced_npc", key, "FALLBACK", slots) == "FALLBACK", "unvoiced fallback preserved for " + key)
 
 func _live() -> void:
 	var g = Game.new()

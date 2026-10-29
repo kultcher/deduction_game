@@ -254,6 +254,19 @@ static func contextualize(id: String, statement: String, cue: String, subject_na
 		return statement
 	return phrase.replace("{subject}", subject_name) + " " + statement
 
+## Render a bounded single-slot or slotless voice line while preserving the canonical statement.
+## Never accesses world/NPC state or RNG; returns fallback verbatim for unvoiced IDs.
+static func voice_line(id: String, key: String, fallback: String, slots: Dictionary = {}) -> String:
+	if not has_voice(id):
+		return fallback
+	var template: String = str(Voices.VOICES[id].get(key, ""))
+	if template.is_empty():
+		return fallback
+	var out: String = template
+	for slot in slots:
+		out = out.replace("{" + str(slot) + "}", str(slots[slot]))
+	return out
+
 ## The simulation has already approved this descriptor. Never pass private decision logs.
 static func decision(id: String, approved: Dictionary, audience: String, memory: Dictionary) -> Dictionary:
 	return Contract.attach(Decisions.render(id, approved, audience, memory), approved, {"audience": audience})

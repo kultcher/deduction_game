@@ -194,7 +194,7 @@ func _test_role_fishing() -> void:
 	m.traits["privacy"] = 1.0
 	m.role_guesses = 1  # no first-right-guess bonus: this holder is simply unwilling
 	var r2 = Social.answer_is_role(w, m, m.role)
-	_check(r2["facts"].is_empty() and r2["lines"][0]["text"] == "What my gift is, I'll keep to myself.", "an unwilling holder gives the same non-answer")
+	_check(r2["facts"].is_empty() and r2["lines"][0].get("statement", r2["lines"][0]["text"]) == "What my gift is, I'll keep to myself.", "an unwilling holder gives the same non-answer")
 
 ## At home, a sighting is told from the window; a neighbour seen staying in is an alibi.
 func _test_window_wording() -> void:

@@ -495,7 +495,7 @@ func pressed_nights():
 	var card = {"kind": "sighting", "subject": [n.id], "source": "player", "block": "market", "day": 1, "phase": C.NIGHT, "text": "The player's vigil caught them out"}
 	var reply = Mind.press(g.w, n, card)
 	check(n.claimed_role == "nightwatch" and n.max_tier >= 3 and reply.facts.any(func(f): return f.kind == "claim" and f.role == "nightwatch"), "a caught hidden good walker reveals their gift despite low ordinary willingness")
-	check(reply.lines.any(func(line): return line is Dictionary and "So yes: I was out" in line.text) and n.lied_nights.is_empty(), "the same disclosure owns the earlier lie with the existing admission line")
+	check(reply.lines.any(func(line): return line is Dictionary and "So yes: I was out" in line.get("statement", line.text) and "on night 1" in line.text) and n.lied_nights.is_empty(), "the same disclosure owns the earlier lie with the existing admission line")
 	check(not reply.facts.any(func(f): return f.kind == "alibi"), "a revealed walker does not restate the false home account")
 	var home = fresh()
 	var h = home.w.living_good()[0]

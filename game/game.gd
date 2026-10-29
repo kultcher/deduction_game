@@ -1465,7 +1465,7 @@ func _offer_command(n, what: String, requested: bool = false) -> void:
 			return
 	talk_offered = talk_offered or state == "talk"
 	if not requested:
-		_line(Mind.say(n, "That's good of you. I'll sleep a little easier."))
+		_line(Mind.say_voiced(n, "offer_thanks", "That's good of you. I'll sleep a little easier."))
 	Mind.Dialogue.record_exchange(n.dialogue_memory, "other")
 	Mind.set_trust(w, n, n.trust + 0.03, "the Demonologist offered to watch over me tonight")
 	w.dlog.add("player_offer", "player", n.id, {"what": what, "block": n.home_block, "requested": requested})
