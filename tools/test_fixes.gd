@@ -117,13 +117,12 @@ func _roads() -> void:
 
 func _home_cards() -> void:
 	var g = _game(7101)
-	var homes: Array = g.board.filter(func(c): return c["kind"] == "home")
-	_check(homes.size() == g.w.npcs.size(), "one home card per resident at the start")
-	_check(homes.all(func(c): return g.w.by_id[c["subject"][0]].home_block == c["block"]), "home cards say where each person really lives")
-	var n = g.w.npcs[0]
-	g.w.by_id[n.id].busy_with = ""
-	var r = g._route_present(n, str(homes[0]["n"]))
-	_check(r.has("flat"), "a home card can't be presented to anyone")
+	var board_homes: Array = g.board.filter(func(c): return c["kind"] == "home")
+	var homes: Array = g.profile_receipts.filter(func(c): return c["kind"] == "home")
+	var works: Array = g.profile_receipts.filter(func(c): return c["kind"] == "work")
+	_check(board_homes.is_empty(), "main case board starts free of home-card clutter")
+	_check(homes.size() == g.w.npcs.size() and works.size() == g.w.npcs.size(), "one hidden home and work profile receipt per resident at the start")
+	_check(homes.all(func(c): return g.w.by_id[c["subject"][0]].home_block == c["block"]), "home profile receipts say where each person really lives")
 
 func _dated_sighting_wording() -> void:
 	var g = _game(7102)
@@ -363,7 +362,7 @@ func _haunts() -> void:
 		if told:
 			break
 	_check(told and g.known_haunts[t.id].all(func(x): return x in t.haunts), "asking a chatty, trusting person about someone can reveal their haunts")
-	_check(g.board.any(func(c): return c["kind"] == "haunt" and c["subject"] == [t.id]), "a revealed haunt is a card")
+	_check(g.profile_receipts.any(func(c): return c["kind"] == "haunt" and c["subject"] == [t.id]) and not g.board.any(func(c): return c["kind"] == "haunt"), "a revealed haunt creates a hidden profile receipt without cluttering the main board")
 	_check(g.profile_data(t.id)["haunts"] != "", "the profile shows haunts once you've been told")
 
 func _offers() -> void:

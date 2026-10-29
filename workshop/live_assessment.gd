@@ -73,7 +73,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			cards.append(activity)
 			continue
 		if e.kind != "info" or e.content.get("role", "") not in ROLES:
-			if e.kind in ["home", "haunt", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint", "vote"]:
+			if e.kind in ["home", "work", "haunt", "trait", "bond", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint", "vote"]:
 				result.issues.append("Incomplete or invalid %s card (%s)." % [e.kind, e.id])
 			else:
 				result.issues.append("The %s card%s isn't supported yet (%s)." % [e.kind, " (" + str(e.content.get("role")) + ")" if e.content.has("role") else "", e.id])
@@ -245,15 +245,26 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["applies"] = {"from": night if e.observed_at.phase == "night" else 0, "through": night if e.observed_at.phase == "night" else snapshot.now.day}
 		card["data"] = {"secret_kind": e.content.secret_kind}
 		return card
-	if e.kind in ["home", "haunt"] and e.subjects.size() == 1 and e.subjects[0] in ids:
+	if e.kind in ["home", "work", "haunt", "trait"] and e.subjects.size() == 1 and e.subjects[0] in ids:
 		if e.kind == "home" and (block not in C.BLOCKS or snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home != block):
 			return {}
+		if e.kind == "work" and (e.content.get("loc", "") not in C.LOCATIONS or block not in C.BLOCKS or C.loc_block(e.content.get("loc", "")) != block):
+			return {}
 		if e.kind == "haunt" and (not e.content.get("locs") is Array or e.content.locs.is_empty() or not e.content.locs.all(func(loc): return loc in C.LOCATIONS)):
+			return {}
+		if e.kind == "trait" and (e.content.get("trait", "") not in C.TRAITS or e.content.get("tier", "") not in ["low", "mid", "high"]):
 			return {}
 		card["kind"] = "context"
 		card["context_kind"] = e.kind
 		card["data"] = e.content.duplicate(true)
-		return card # Public homes / reported haunts describe routes, not guilt.
+		return card # Profile receipts supply factual context for traces and cases, not solo guilt.
+	if e.kind == "bond" and e.subjects.size() == 2 and e.subjects[0] != e.subjects[1] and e.subjects.all(func(s): return s in ids):
+		if e.content.get("bond_kind", "") not in ["friend", "rival"]:
+			return {}
+		card["kind"] = "context"
+		card["context_kind"] = "bond"
+		card["data"] = e.content.duplicate(true)
+		return card
 	if night < 0:
 		return {}
 	if e.kind in ["curse", "curse_lifted"] and e.source == "player" and snapshot.public_events.any(func(event): return event.kind == e.kind and event.at.day == night):

@@ -552,6 +552,16 @@ static func fact_id(card: Dictionary) -> String:
 			return WorkshopLedger.Evidence.reading_key(WorkshopLedger.Evidence.normalize_card(card))
 		"sighting", "vigil", "alibi", "secret":
 			return "%s:%s:%s:%d:%d:%s" % [k, card.get("source", ""), ss, card.get("day", -1), card.get("phase", -1), card.get("block", "")]
+		"home":
+			return "home:%s:%s" % [ss, card.get("block", "")]
+		"work":
+			return "work:%s:%s" % [ss, card.get("loc", "")]
+		"haunt":
+			return "haunt:%s:%s" % [ss, ",".join(PackedStringArray(card.get("locs", [card.get("loc", "")])))]
+		"trait":
+			return "trait:%s:%s:%s:%s" % [ss, card.get("trait", ""), card.get("tier", ""), "bereaved" if card.get("withdrawn", false) else "base"]
+		"bond":
+			return "bond:%s:%s" % [card.get("bond_kind", ""), ss]
 		"trace":
 			return "trace:%s:%d" % [card.get("block", ""), card.get("day", -1)]
 		"claim":
@@ -1288,7 +1298,7 @@ static func card_strength(w, card: Dictionary, suspect) -> float:
 			return 0.0
 		"trace":
 			return 0.7
-		"home", "haunt":
+		"home", "work", "haunt", "trait", "bond":
 			return 0.0
 		"refusal":
 			# Fear is a better reason than none: it softens, but doesn't clear, the silence.

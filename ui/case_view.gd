@@ -269,6 +269,7 @@ func build(font: Font) -> void:
 	profile.custom_minimum_size = Vector2(300, 0)
 	profile.build()
 	profile.card_context_requested.connect(show_card_menu)
+	profile.profile_workshop_requested.connect(func(pid: String, facet: String): open_workshop_profile(pid, facet))
 	profile.changed.connect(func():
 		theory_label.text = _theory_text()
 		changed.emit())
@@ -634,6 +635,14 @@ func open_workshop(num: int = 0) -> void:
 	workshop.open(0.5)
 	if num > 0:
 		add_to_workshop(num)
+
+func open_workshop_profile(person_id: String, facet: String = "home_work") -> void:
+	visible = true
+	workshop.open(0.5)
+	workshop.add_profile_info(person_id, facet)
+	_refresh_staged()
+	if g != null and g.w.by_id.has(person_id):
+		status_label.text = "%s's Profile is in the Case Workshop." % g.w.by_id[person_id].name
 
 func _refresh_staged() -> void:
 	if workshop == null or workshop.editor == null or g == null:

@@ -110,11 +110,14 @@ func _ready() -> void:
 	# Kept off-screen for callers that still set a person/type before _add_premise.
 	premise_person = OptionButton.new()
 	premise_type = OptionButton.new()
-	for name_value in premise_names() + ["Supporting evidence (no claim)"]:
+	for name_value in premise_names():
 		premise_type.add_item(name_value)
 	premise_type.select(-1)
 	var add_button = _button(tools, "Add premise", _add_premise)
 	add_button.tooltip_text = "Adds a blank premise. Click its fields to choose who and what you're arguing."
+	var add_profile_btn = _button(tools, "Add Townsfolk Profile Info", _open_add_profile_menu)
+	add_profile_btn.name = "AddProfileInfo"
+	add_profile_btn.tooltip_text = "Adds a townsfolk profile card with selectable Home & Work, Haunts, Personality, and Bonds facets."
 
 	_button(tools, "Fit case", func(): canvas.fit_case())
 	_button(tools, "All cards", func(): canvas.fit_case(true))
@@ -218,8 +221,13 @@ func refresh() -> void:
 		case_root = g.workshop_draft.get("root", board.selected)
 	# Retain missing transferred originals; they block filing until unlinked.
 	# Refreshing the library must never add new evidence copies to the canvas.
+	var referenced_profile_ids = {}
+	for node in board.nodes.values():
+		if node.get("kind") == "profile_info":
+			for rid in node.get("receipt_ids", []):
+				referenced_profile_ids[rid] = true
 	for old in board.view.cards:
-		if board.nodes.has("e:" + old.id) and not next_view.cards.any(func(c): return c.id == old.id):
+		if (board.nodes.has("e:" + old.id) or referenced_profile_ids.has(old.id)) and not next_view.cards.any(func(c): return c.id == old.id):
 			var missing: Dictionary = old.duplicate(true)
 			missing.support_note = "BLOCKED: original evidence is missing or changed"
 			next_view.cards.append(missing)
@@ -233,6 +241,38 @@ func refresh() -> void:
 	_session_changed()
 	if reset:
 		_fit_after_layout()
+
+func _open_add_profile_menu() -> void:
+	if board == null or board.view.people.is_empty():
+		return
+	field_menu.clear()
+	var values: Array = []
+	for person in board.view.people:
+		var face = WorkshopSkin.tex("art/portraits/" + person.id, 0.08)
+		var dead: bool = g != null and g.w.by_id.has(person.id) and not g.w.by_id[person.id].alive
+		var text: String = person.name + (" (dead)" if dead else "")
+		if face != null:
+			field_menu.add_icon_item(face, text, values.size())
+		else:
+			field_menu.add_item(text, values.size())
+		values.append(person.id)
+	_field_target = {"id": "", "field": "new_profile_person", "values": values}
+	field_menu.position = Vector2i(get_viewport().get_mouse_position())
+	field_menu.reset_size()
+	field_menu.popup()
+
+func add_profile_info(person_id: String, facet: String = "home_work") -> String:
+	if g == null:
+		return ""
+	refresh()
+	var at: Vector2 = (canvas.size / 2.0 - canvas.pan) / maxf(canvas.zoom, 0.1) - Vector2(150, 90)
+	if canvas.size.x <= 10.0:
+		var idx: int = board.nodes.values().filter(func(n): return n.kind in ["evidence", "profile_info"]).size()
+		at = Vector2(60.0 + (idx % 4) * 320.0, 400.0 + (idx / 4) * 300.0)
+	var id: String = board.add_profile_info(person_id, [facet] if facet != "" else ["home_work"], at)
+	_session_changed()
+	canvas.fit_case(true)
+	return id
 
 func add_evidence(number: int) -> void:
 	if number < 1 or number > g.board.size():
@@ -344,6 +384,28 @@ func _refresh_case() -> void:
 		else:
 			_label(case_box, card.text, 18)
 			_label(case_box, "You can inspect this receipt, but it has no supported shared interpretation. Including unsupported evidence blocks an ordinary shared submission; remove it or replace it with supported evidence.", 16)
+		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
+	elif node.kind == "profile_info":
+		_clear(case_box)
+		_label(case_box, board.title(answer_id), 22, "accent")
+		_label(case_box, "Select which unlocked profile categories to cite in this case. Newly learned haunts or traits stay out of already-filed cases until you update and re-file.", 16)
+		var info: Dictionary = board.view.get("profile_facets", {}).get(node.get("person", ""), {})
+		for f in board.PROFILE_FACETS:
+			var fdata: Dictionary = info.get(f, {})
+			var cb = CheckBox.new()
+			cb.text = "%s — %s" % [board.PROFILE_FACET_NAMES[f], fdata.get("summary", "Unknown")]
+			cb.button_pressed = f in node.get("facets", [])
+			cb.disabled = not fdata.get("unlocked", false)
+			var facet_key: String = f
+			cb.toggled.connect(func(_on):
+				board.toggle_profile_facet(answer_id, facet_key)
+				_edit())
+			case_box.add_child(cb)
+		var available_ids: Array = board._resolve_profile_receipts(node.get("person", ""), node.get("facets", []))
+		if available_ids != node.get("receipt_ids", []):
+			_button(case_box, "Include newly learned profile details", func():
+				board.sync_profile_node(answer_id)
+				_edit())
 		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
 	elif node.kind == "modifier":
 		_clear(case_box)
@@ -534,6 +596,8 @@ func remove_node(id: String) -> void:
 	match node.kind:
 		"evidence":
 			board.remove_evidence(id)
+		"profile_info":
+			board.remove_profile_info(id)
 		"modifier":
 			board.remove_modifier(id)
 		"contradiction":
@@ -564,7 +628,7 @@ func _undo_remove() -> void:
 	status.text = "Restored."
 
 func _extend_context(id: String) -> void:
-	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "modifier"]:
+	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "profile_info", "modifier"]:
 		context_menu.add_separator()
 		context_menu.add_item("Remove from Workshop", 204)
 
@@ -692,6 +756,33 @@ func _detail_label(node: Dictionary) -> Dictionary:
 
 func _field_popup(id: String, field: String) -> void:
 	var node: Dictionary = board.nodes[id]
+	if node.kind == "profile_info":
+		if field == "profile_person":
+			board.selected = id
+			field_menu.clear()
+			var p_values: Array = []
+			for person in board.view.people:
+				var face = WorkshopSkin.tex("art/portraits/" + person.id, 0.08)
+				var dead: bool = g != null and g.w.by_id.has(person.id) and not g.w.by_id[person.id].alive
+				var p_text: String = person.name + (" (dead)" if dead else "")
+				if face != null:
+					field_menu.add_icon_item(face, p_text, p_values.size())
+				else:
+					field_menu.add_item(p_text, p_values.size())
+				p_values.append(person.id)
+			_field_target = {"id": id, "field": "profile_person", "values": p_values}
+			_sync()
+			canvas.queue_redraw()
+			field_menu.position = Vector2i(get_viewport().get_mouse_position())
+			field_menu.reset_size()
+			field_menu.popup()
+		elif field.begins_with("facet:"):
+			board.toggle_profile_facet(id, field.trim_prefix("facet:"))
+			_edit()
+		elif field == "sync_profile":
+			board.sync_profile_node(id)
+			_edit()
+		return
 	if node.kind != "premise":
 		set_evidence_field(id, field)
 		return
@@ -710,9 +801,9 @@ func _field_popup(id: String, field: String) -> void:
 					field_menu.add_item(text, values.size())
 				values.append(person.id)
 		"type":
-			var types: Array = premise_types() + ["support"]
+			var types: Array = premise_types()
 			for i in range(types.size()):
-				field_menu.add_item(board.PREMISE_TEXT.get(types[i], "Supporting evidence (no claim)"), values.size())
+				field_menu.add_item(board.PREMISE_TEXT.get(types[i], types[i]), values.size())
 				values.append(types[i])
 		"role":
 			for role in C.GOOD_ROLES:
@@ -749,6 +840,13 @@ func _field_chosen(index: int) -> void:
 		return
 	var target: Dictionary = _field_target
 	_field_target = {}
+	if target.field == "new_profile_person":
+		add_profile_info(target.values[index], "home_work")
+		return
+	if target.field == "profile_person":
+		board.set_profile_person(target.id, target.values[index])
+		_edit()
+		return
 	if target.field == "why":
 		var node: Dictionary = board.nodes[target.id]
 		var choice: Array = target.values[index]

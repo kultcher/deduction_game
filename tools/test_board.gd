@@ -140,7 +140,7 @@ func _test_layout_real_game() -> void:
 
 func _test_state_filters() -> void:
 	var g = _game(8105)
-	for cmd in ["go tavern", "talk %s" % g.w.npcs[0].id, "ask night", "ask today", "go well", "wait", "go tavern", "wait"]:
+	for cmd in ["go tavern", "talk %s" % g.w.npcs[0].id, "ask night", "ask today", "ask gift", "go well", "wait", "go tavern", "wait"]:
 		g.command(cmd)
 	var st = CaseState.new()
 	var all_n: int = st.apply(g).size()

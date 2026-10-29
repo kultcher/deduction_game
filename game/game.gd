@@ -37,8 +37,11 @@ var talk_with = null
 var questions_left = 0
 var free_repeats = 0       # repeats this conversation that cost no question (one allowed)
 var board: Array = []
+var profile_receipts: Array = []
 var _card_keys = {}
 var _fact_keys = {}      # Mind.fact_id -> card number, for facts that can reach you twice
+var _profile_card_keys = {}
+var _profile_fact_keys = {}
 var case_notes = ""       # the player's free-form notes on the case
 var town_quiet = false     # the town has had its say since the last nomination (allows 'done')
 var talk_approached = false  # this conversation began with them approaching you (it costs the phase)
@@ -207,9 +210,12 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	_workshop_repeats = {}
 	_workshop_native_submission = false
 	board = []
+	profile_receipts = []
 	confidences = {}
 	_card_keys = {}
 	_fact_keys = {}
+	_profile_card_keys = {}
+	_profile_fact_keys = {}
 	case_notes = ""
 	notes = {}
 	guesses = {}
@@ -253,7 +259,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 		var game = weak_game.get_ref()
 		if game == null or game.w != weak_world.get_ref():
 			return {"complete": false, "receipts": {}}
-		var proof = WorkshopOwnership.Shared.roots([card], game.board)
+		var proof = WorkshopOwnership.Shared.roots([card], game.all_receipts())
 		if card.get("kind") == "deduction" and card.get("n", 0) > 0:
 			var captured = game.workshop_snapshot([card.n])
 			var endorsed: Array = WorkshopOwnership.Shared.endorsed_facts(captured, card.n)
@@ -408,6 +414,33 @@ func find_block(token: String) -> String:
 
 func add_card(fact: Dictionary) -> int:
 	return GameBoard.add_card(self, fact)
+
+func add_profile_receipt(fact: Dictionary) -> int:
+	return GameBoard.add_profile_receipt(self, fact)
+
+func receipt_by_number(num: int) -> Dictionary:
+	return GameBoard.receipt_by_number(self, num)
+
+func all_receipts() -> Array:
+	return GameBoard.all_receipts(self)
+
+func profile_receipts_for(id: String, facet: String = "") -> Array:
+	return GameBoard.profile_receipts_for(self, id, facet)
+
+func _record_trait_receipt(target, key: String, tier: String, source_id: String) -> int:
+	var withdrawn: bool = target.withdrawn_since != ""
+	var suffix: String = " (withdrawn after bereavement)" if withdrawn else ""
+	return add_profile_receipt({"kind": "trait", "subject": [target.id], "source": source_id,
+		"trait": key, "tier": tier, "withdrawn": withdrawn, "day": w.day, "phase": _phase_now(),
+		"class": "circumstantial", "text": "%s's %s: %s%s." % [target.name, key, tier, suffix]})
+
+func sync_bereaved_traits(target, source_id: String = "player") -> void:
+	if target == null or target.withdrawn_since == "":
+		return
+	for key in target.revealed_traits.keys():
+		var current_tier: String = C.tier(target.traits.get(key, 0.5))
+		target.revealed_traits[key] = current_tier
+		_record_trait_receipt(target, key, current_tier, source_id)
 
 # ---------------------------------------------------------------- corroboration
 
@@ -1528,8 +1561,10 @@ func _maybe_tell_haunts(n, t, r: Dictionary) -> void:
 	var names: Array = tell.map(func(x): return w.loc_name(x))
 	known_haunts[t.id] = known_haunts.get(t.id, []) + tell
 	r["lines"].append(Mind.say(n, "[PH] When %s isn't working, you'll often find them at %s." % [t.name, " or ".join(PackedStringArray(names))]))
-	r["facts"].append({"kind": "haunt", "subject": [t.id], "source": n.id, "locs": tell.duplicate(),
-		"text": "%s says %s often goes to %s when not working." % [n.name, t.name, " and ".join(PackedStringArray(names))]})
+	for loc_id in tell:
+		add_profile_receipt({"kind": "haunt", "subject": [t.id], "source": n.id, "loc": loc_id, "locs": [loc_id],
+			"block": w.loc_block(loc_id), "day": w.day, "phase": _phase_now(), "class": "circumstantial",
+			"text": "%s says %s often goes to %s when not working." % [n.name, t.name, w.loc_name(loc_id)]})
 	w.dlog.add("player_learns_haunts", n.id, t.id, {"locs": tell})
 
 ## Asked about someone, a talker may also say what that person is like: one trait,
@@ -1574,6 +1609,7 @@ func _maybe_tell_trait(n, t, r: Dictionary) -> void:
 		var own_words: String = TRAIT_WORDS[key][tier][1].replace("themselves", "myself").replace("their", "my").replace("them", "me").replace("they've", "I've").replace("they're", "I'm")
 		line = "I'd call myself %s." % own_words
 	t.revealed_traits[key] = tier
+	_record_trait_receipt(t, key, tier, n.id)
 	r["lines"].append(Mind.say(n, "[PH] " + line))
 	r["narration"] = r.get("narration", []) + ["(You learn %s's %s: %s.)" % [t.name, key.capitalize(), tier]]
 	w.dlog.add("trait_reveal", n.id, t.id, {"trait": key, "tier": tier, "value": t.traits[key], "via": n.id, "friend": friend, "rival": rival})
@@ -1606,6 +1642,10 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 			text = "%s and I %s." % [w.by_id[other].name, "are close" if bond.kind == "friend" else "don't get along"]
 			note = n.name + ' says "' + text + '"'
 		known_relationships[entry.key] = {"kind": bond.kind, "people": bond.people.duplicate(), "source": n.id, "text": note}
+		var bond_people: Array = bond.people.duplicate()
+		bond_people.sort()
+		add_profile_receipt({"kind": "bond", "subject": bond_people, "bond_kind": bond.kind, "source": n.id,
+			"day": w.day, "phase": _phase_now(), "class": "circumstantial", "text": note})
 		r.lines.append(Mind.say(n, "[PH] " + text))
 		w.dlog.add("player_learns_relationship", n.id, t.id, {"kind": bond.kind, "people": bond.people})
 
@@ -1624,6 +1664,8 @@ func _remember_spoken_relationship(line: Dictionary) -> void:
 	var key = bond.kind + ":" + ":".join(PackedStringArray(people))
 	known_relationships[key] = {"kind": bond.kind, "people": people, "source": source,
 		"text": w.by_id[source].name + ' says "' + line.text + '"'}
+	add_profile_receipt({"kind": "bond", "subject": people.duplicate(), "bond_kind": bond.kind, "source": source,
+		"day": w.day, "phase": _phase_now(), "class": "circumstantial", "text": known_relationships[key].text})
 	w.dlog.add("player_learns_relationship", source, people[1] if people[0] == source else people[0], {"kind": bond.kind, "people": people, "how": "explicit speech"})
 
 func known_relationship_notes(id: String) -> Array:
@@ -1641,8 +1683,14 @@ func known_haunt_names(id: String) -> String:
 func _close_conversation() -> void:
 	var n = talk_with
 	pending_request = {}
+	var before_traits: Dictionary = n.revealed_traits.duplicate() if n != null else {}
 	for t in Mind.end_conversation(w, n):
 		_narr(t)
+	if n != null:
+		for key in n.revealed_traits:
+			if not before_traits.has(key):
+				_record_trait_receipt(n, key, n.revealed_traits[key], "player")
+		sync_bereaved_traits(n, "player")
 	state = "day"
 	talk_with = null
 	_end_phase(n.id)

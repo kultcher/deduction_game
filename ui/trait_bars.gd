@@ -2,6 +2,8 @@
 ## their value. Unlearned traits remain an empty track with a question mark.
 extends Control
 
+signal workshop_requested(at_screen: Vector2i, context_menu: bool)
+
 const UITheme = preload("res://ui/theme.gd")
 
 ## [trait, label, left extreme (0), right extreme (1), colour]
@@ -22,8 +24,22 @@ var _observed = false
 
 func _init() -> void:
 	custom_minimum_size = Vector2(0, ROW_H * ROWS.size() + 4)
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	tooltip_text = "Revealed personality traits: double-click or right-click to add to Case Workshop."
 	set_process(false)
+
+func _gui_input(ev: InputEvent) -> void:
+	if not (ev is InputEventMouseButton and ev.pressed) or revealed.is_empty():
+		return
+	var row_idx: int = int(floor(ev.position.y / ROW_H))
+	if row_idx < 0 or row_idx >= ROWS.size() or not revealed.has(ROWS[row_idx][0]):
+		return
+	if ev.button_index == MOUSE_BUTTON_LEFT and ev.double_click:
+		workshop_requested.emit(Vector2i(get_screen_transform() * ev.position), false)
+		accept_event()
+	elif ev.button_index == MOUSE_BUTTON_RIGHT:
+		workshop_requested.emit(Vector2i(get_screen_transform() * ev.position), true)
+		accept_event()
 
 func reset_observations() -> void:
 	revealed = {}

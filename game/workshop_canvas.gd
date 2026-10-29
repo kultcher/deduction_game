@@ -6,6 +6,10 @@ const Assess = preload("res://workshop/live_assessment.gd")
 
 static func view(g) -> Dictionary:
 	var numbers: Array = g.board.filter(func(c): return not c.get("deleted", false) and c.kind != "deduction").map(func(c): return c.n)
+	var profile_ids = {}
+	for pr in g.profile_receipts:
+		numbers.append(pr.n)
+		profile_ids[Evidence.normalize_card(pr).id] = true
 	var snapshot = Bridge.capture(g, numbers)
 	var cards: Array = []
 	for receipt in snapshot.evidence:
@@ -41,7 +45,7 @@ static func view(g) -> Dictionary:
 			"reported_at": receipt.reported_at if receipt.reported_at != null else {"day": "?"},
 			"learned_at": receipt.learned_at if receipt.learned_at != null else {"day": "?"},
 			"acquired_day": receipt.learned_at.day if receipt.learned_at != null else snapshot.now.day,
-			"text": receipt.text, "support_note": note})
+			"text": receipt.text, "support_note": note, "profile_receipt": profile_ids.has(receipt.id)})
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
 			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; transmission/source modifiers need separate attribution" if activity.has("relay_source") else note
@@ -49,6 +53,7 @@ static func view(g) -> Dictionary:
 				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Weak teller testimony · no original-source identity or gift proof"
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
 	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
+		"profile_facets": _profile_facets(g),
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": "Original alignment",
 		"world_options": {"modifiers": snapshot.rules.modifier_options}, "live": true, "live_activity": true,
 		"timeline": Assess.History.from_events(snapshot.public_events)}
@@ -59,11 +64,57 @@ static func view(g) -> Dictionary:
 
 ## Resolve exact original facts afresh. Missing/deleted evidence is a blocker, never
 ## permission to file a weaker argument with fewer roots.
+static func _profile_facets(g) -> Dictionary:
+	var out = {}
+	var C = Assess.C
+	for n in g.w.npcs:
+		var hw_recs: Array = g.profile_receipts_for(n.id, "home_work")
+		var haunt_recs: Array = g.profile_receipts_for(n.id, "haunts")
+		var trait_recs: Array = g.profile_receipts_for(n.id, "personality")
+		var bond_recs: Array = g.profile_receipts_for(n.id, "bonds")
+		var haunt_names: Array = haunt_recs.map(func(c): return g.w.loc_name(c.get("loc", c.get("locs", [""])[0])))
+		var latest_traits = {}
+		for c in trait_recs:
+			latest_traits[c.get("trait", "")] = c.get("tier", "?") + (" (bereaved)" if c.get("withdrawn", false) else "")
+		var trait_parts: Array = []
+		for k in C.TRAITS:
+			if latest_traits.has(k):
+				trait_parts.append("%s: %s" % [k.capitalize(), latest_traits[k]])
+		var bond_parts: Array = []
+		for c in bond_recs:
+			var others: Array = c.get("subject", []).filter(func(pid): return pid != n.id)
+			if not others.is_empty() and g.w.by_id.has(others[0]):
+				bond_parts.append("%s with %s" % ["Close" if c.get("bond_kind") == "friend" else "At odds", g.w.by_id[others[0]].name])
+		out[n.id] = {
+			"home_work": {
+				"unlocked": not hw_recs.is_empty(),
+				"summary": "Lives on %s · %s (%s at %s)" % [C.block_name(n.home_block), n.occupation.capitalize(), C.phase_list(n.work_phases), g.w.loc_name(n.work)],
+				"receipt_ids": hw_recs.map(func(c): return Evidence.normalize_card(c).id),
+			},
+			"haunts": {
+				"unlocked": not haunt_recs.is_empty(),
+				"summary": ("Often at " + ", ".join(PackedStringArray(haunt_names)) + (" (1 of 2 known)" if haunt_recs.size() < 2 else " (both known)")) if not haunt_recs.is_empty() else "Unknown (ask around town)",
+				"receipt_ids": haunt_recs.map(func(c): return Evidence.normalize_card(c).id),
+			},
+			"personality": {
+				"unlocked": not trait_recs.is_empty(),
+				"summary": ", ".join(PackedStringArray(trait_parts)) if not trait_parts.is_empty() else "Unobserved (talk or ask around)",
+				"receipt_ids": trait_recs.map(func(c): return Evidence.normalize_card(c).id),
+			},
+			"bonds": {
+				"unlocked": not bond_recs.is_empty(),
+				"summary": ", ".join(PackedStringArray(bond_parts)) if not bond_parts.is_empty() else "None learned yet",
+				"receipt_ids": bond_recs.map(func(c): return Evidence.normalize_card(c).id),
+			},
+		}
+	return out
+
 static func supports(g, value: Dictionary) -> Dictionary:
 	var numbers: Array = []
 	var missing: Array = []
+	var pool: Array = g.all_receipts()
 	for id in value.cards:
-		var matches: Array = g.board.filter(func(c): return c.kind != "deduction" and not c.get("deleted", false) and Evidence.normalize_card(c).id == id)
+		var matches: Array = pool.filter(func(c): return c.kind != "deduction" and not c.get("deleted", false) and Evidence.normalize_card(c).id == id)
 		if matches.is_empty():
 			missing.append("Missing or changed original evidence: " + id)
 		else:

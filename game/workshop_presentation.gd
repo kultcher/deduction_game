@@ -174,9 +174,9 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	# Keep a compatible native contribution parked underneath the owner. It can be
 	# restored on fallback/disable; its agreement comes from this assessment too.
 	if direction == "deduction":
-		var supports: Array = g.board.filter(func(c): return c.n in card.supports)
+		var supports: Array = g.all_receipts().filter(func(c): return c.n in card.supports)
 		var park_span = Profiler.open("park_native")
-		Argue._apply(g.w, n, card, supports, maxf(0.0, assessment.agreement) * Tuning.Workshop.VENUE_MULTS.get(venue, 0.6), g.board)
+		Argue._apply(g.w, n, card, supports, maxf(0.0, assessment.agreement) * Tuning.Workshop.VENUE_MULTS.get(venue, 0.6), g.all_receipts())
 		Profiler.close(park_span)
 	else:
 		for target in targets:
@@ -184,8 +184,8 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			var eid = "workshop:tell:%s:%s" % [key, target]
 			var meta = {"kind": "tell", "workshop_card": Evidence.normalize_card(card), "text": card.get("text", "")}
 			if card.get("kind") == "deduction":
-				meta = {"kind": "arg", "workshop_conclusion": root.conclusion.type, "workshop_roots": Shared.roots([card], g.board),
-					"workshop_case": key, "supports": Argue.support_refs([card], g.board)}
+				meta = {"kind": "arg", "workshop_conclusion": root.conclusion.type, "workshop_roots": Shared.roots([card], g.all_receipts()),
+					"workshop_case": key, "supports": Argue.support_refs([card], g.all_receipts())}
 			var scoped: Array = assessment.claims.filter(func(c): return c.conclusion.target == target and c.conclusion.type == root.conclusion.type)
 			var agreement: float = scoped[0].agreement if not scoped.is_empty() else assessment.agreement
 			Mind.ledger_hear(g.w, n, eid, [[target, sign_value, true, "Presented original report", ""]], maxf(0.0, agreement), Mind.support_ref(card), meta)

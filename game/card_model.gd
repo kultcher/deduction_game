@@ -31,7 +31,7 @@ const VIEW_KINDS = {
 
 ## Facts that can reach you more than once (told privately, then publicly; relayed by
 ## someone else): repeats add a disclosure to the existing card instead of a new card.
-const MERGE_KINDS = ["claim", "info", "sighting", "alibi"]
+const MERGE_KINDS = ["claim", "info", "sighting", "alibi", "home", "work", "haunt", "trait", "bond"]
 
 ## How what a card says reached you, for the case-board visuals rework. Scaffolding only:
 ## no view reads it yet (BACKLOG.md "Case board visuals"; the badge layout comes first).
