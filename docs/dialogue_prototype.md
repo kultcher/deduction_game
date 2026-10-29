@@ -52,6 +52,13 @@ remain the earlier calibration samples and have not yet been synchronized to the
 
 Open `ui/dialogue_lab.tscn` in Godot and **Run Current Scene (F6)**. Or run:
 
+The **Open VN portrait preview** button shows the current scenario in an
+experimental full-screen dialogue view. Choose Agnes, Bartholomew, or Constance
+to compare their large portraits and current lines. **Speak / ask again** uses
+the lab's existing delivery behavior; **Back to dialogue lab** returns to the
+scenario controls. The blurred Square is a sample backdrop for this lab, not
+the live town map or meeting.
+
 ```sh
 godot --path . res://ui/dialogue_lab.tscn
 ```
