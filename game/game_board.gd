@@ -387,7 +387,8 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, match_inf
 	if match_info.is_empty() and rank[cls] > 1:
 		cls = "circumstantial" # an inference is never stronger than circumstantial on its own
 	# Unfounded = the cards don't actually bear on the person (not merely "no template").
-	var unfounded: bool = match_info.is_empty() and not Argue.bears_on(g.w, conclusion, cards)
+	var active_pool: Array = pool.filter(func(x): return not x.get("deleted", false))
+	var unfounded: bool = match_info.is_empty() and not Argue.bears_on(g.w, conclusion, cards, active_pool)
 	var basis = ""
 	if not match_info.is_empty():
 		basis = " (from #%s: %s)" % [", #".join(PackedStringArray(match_info["cards"].map(func(x): return str(x)))), match_info["text"]]

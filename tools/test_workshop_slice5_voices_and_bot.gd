@@ -57,6 +57,7 @@ func _init() -> void:
 	_test_all_15_voices_slice5_keys()
 	_test_live_voiced_trace_and_hub_delivery()
 	_test_autoplay_workshop_and_hub_builder()
+	_test_bears_on_trace_no_hidden_truth_leak()
 	if fails == 0:
 		print("test_workshop_slice5_voices_and_bot: ALL %d CHECKS PASSED" % checks)
 		quit(0)
@@ -180,8 +181,52 @@ func _test_autoplay_workshop_and_hub_builder() -> void:
 	var built_s1: Dictionary = BotWorkshop.build_and_file_case(g, sc, false, sigs_s1, last_s1)
 	_check(int(built_s1.card) > 0 and not built_s1.used_hub and g.board[int(built_s1.card) - 1].get("workshop_case", {}).get("circumstantial", []).is_empty(), "BotWorkshop builds clean Stage-1-only Workshop case when include_hub is false")
 
-	# Full mode (with Hub): files valid Workshop case attaching Breathstealer proximity Circumstantial Hub
+	# Also add a public failed vote where suspect voted yes to hang cleared_other so adapted vote cards are tested too
+	g.w.public_event("vote", [cleared_other.id], "town", {"nominee": cleared_other.id, "nominator": suspect.id, "yes": [suspect.id], "no": [silenced_p.id], "player_yes": false, "count": 1, "threshold": 4, "outcome": "fails"})
+	var vote_num: int = g.add_card({"kind": "vote", "source": "player", "subject": [suspect.id, cleared_other.id], "day": 2, "phase": C.EVENING, "nominee": cleared_other.id, "by": suspect.id, "yes": [suspect.id], "no": [silenced_p.id], "player_yes": false, "count": 1, "threshold": 4, "outcome": "fails", "text": "Vote tally"})
+
+	# Full mode (with Hub): files valid Workshop case attaching adapted silenced + conversation + vote cards in hub
 	var sigs_full: Dictionary = {}
 	var last_full: Dictionary = {}
 	var built_full: Dictionary = BotWorkshop.build_and_file_case(g, sc, true, sigs_full, last_full)
-	_check(int(built_full.card) > 0 and built_full.used_hub and not g.board[int(built_full.card) - 1].get("workshop_case", {}).get("circumstantial", []).is_empty(), "BotWorkshop attaches verified Circumstantial Evidence Hub when Stage 1 grounding and Stage 2 incidents align")
+	var full_hubs: Array = g.board[int(built_full.card) - 1].get("workshop_case", {}).get("circumstantial", []) if int(built_full.card) > 0 else []
+	_check(int(built_full.card) > 0 and built_full.used_hub and not full_hubs.is_empty(), "BotWorkshop attaches verified Circumstantial Evidence Hub when Stage 1 grounding and Stage 2 incidents align")
+	if not full_hubs.is_empty():
+		var hub_cards: Array = full_hubs[0].get("cards", [])
+		var vote_cid: String = WorkshopCanvas.Evidence.normalize_card(g.board[vote_num - 1]).id
+		_check(hub_cards.size() >= 3 and vote_cid in hub_cards, "BotWorkshop.select_circumstantial_cards selects adapted silenced, conversation, and vote cards via view.timeline.events")
+
+func _test_bears_on_trace_no_hidden_truth_leak() -> void:
+	var g = _game(2504, 7)
+	var secret_match = g.w.living_good()[0]
+	var secret_miss = g.w.living_good()[1]
+	var victim = g.w.living_good()[2]
+	# Both suspects work at the Chapel (outside trace); secret_match secretly haunts the Bakery, secret_miss does not.
+	secret_match.work = "chapel"
+	secret_match.haunts = ["bakery", "mill"]
+	secret_miss.work = "chapel"
+	secret_miss.haunts = ["well", "graveyard"]
+	# Sync initial work profile receipts to Chapel for both so player holds identical discovered receipts for both.
+	for pr in g.profile_receipts:
+		if pr.get("kind", "") == "work" and (secret_match.id in pr.get("subject", []) or secret_miss.id in pr.get("subject", [])):
+			pr["loc"] = "chapel"
+			pr["block"] = C.LOCATIONS["chapel"]["block"]
+	var tnum: int = g.add_card({
+		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
+		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
+		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
+		"locs": ["bakery", "tavern"], "item_label": "a brass farthing",
+		"text": "Scene trace: brass farthing (the Bakery or the Tavern).",
+	})
+	var pool_before: Array = g.all_receipts()
+	_check(g.Argue.trace_fit_from_receipts(secret_match.id, g.board[tnum - 1], pool_before) == "unknown" and g.Argue.trace_fit_from_receipts(secret_miss.id, g.board[tnum - 1], pool_before) == "unknown", "undiscovered haunts stay in unknown state for both secret-match and secret-miss suspects")
+	var d_match: int = g.file_deduction({"type": "demon", "a": secret_match.id}, [tnum])
+	var d_miss: int = g.file_deduction({"type": "demon", "a": secret_miss.id}, [tnum])
+	_check(d_match > 0 and d_miss > 0 and g.board[d_match - 1]["unfounded"] == g.board[d_miss - 1]["unfounded"] and not g.board[d_miss - 1]["unfounded"], "filing conclude <suspect> because <trace> never leaks undiscovered haunts via unfounded flag")
+
+	# Once both non-matching haunts of secret_miss are learned, relevance flips to contradicts (unfounded = true).
+	g.add_profile_receipt({"kind": "haunt", "subject": [secret_miss.id], "loc": "well", "locs": ["well"], "source": "town", "day": 1, "phase": 0, "text": "Haunt 1"})
+	g.add_profile_receipt({"kind": "haunt", "subject": [secret_miss.id], "loc": "graveyard", "locs": ["graveyard"], "source": "town", "day": 1, "phase": 0, "text": "Haunt 2"})
+	_check(g.Argue.trace_fit_from_receipts(secret_miss.id, g.board[tnum - 1], g.all_receipts()) == "contradicts", "learning all contradicting work + haunts resolves trace_fit_from_receipts to contradicts")
+	var d_ruled_out: int = g.file_deduction({"type": "evil", "a": secret_miss.id}, [tnum])
+	_check(d_ruled_out > 0 and g.board[d_ruled_out - 1]["unfounded"], "deduction from trace becomes unfounded once discovered profile receipts rule out all prongs")

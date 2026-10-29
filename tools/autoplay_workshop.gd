@@ -78,7 +78,7 @@ static func build_and_file_case(g, sc: Dictionary, include_hub: bool, filed_sigs
 			var cid: String = c.id
 			var ckind: String = c.get("kind", "")
 			var subjs: Array = c.get("subjects", [])
-			if ckind == "death":
+			if ckind == "death" or (ckind == "context" and c.get("context_kind", "") == "death"):
 				stage1_ids.append(cid)
 			elif ckind == "report":
 				var role: String = c.get("role", "")
@@ -179,39 +179,100 @@ static func build_and_file_case(g, sc: Dictionary, include_hub: bool, filed_sigs
 			return {"card": filed_num, "used_hub": attached_hub and not final_compiled.get("circumstantial", []).is_empty()}
 	return {"card": 0, "used_hub": false}
 
+static func _person_home(view: Dictionary, pid: String) -> String:
+	for p in view.get("people", []):
+		if p.get("id", "") == pid:
+			return str(p.get("home", ""))
+	return ""
+
 static func select_circumstantial_cards(view: Dictionary, all_cards: Array, target_id: String, sc: Dictionary, disputes: Array) -> Array:
 	var candidate_ids: Array = []
-	var silenced_days: Dictionary = {}
-	for ev in view.get("timeline", []):
+	var silenced_by_day: Dictionary = {}
+	for ev in view.get("timeline", {}).get("events", []):
 		if ev.get("kind", "") == "silenced":
-			for s in ev.get("subjects", []):
-				silenced_days["%s:%d" % [s, int(ev.get("day", -1))]] = true
+			var ev_day: int = int(ev.get("at", {}).get("day", -1))
+			if ev_day >= 1:
+				if not silenced_by_day.has(ev_day):
+					silenced_by_day[ev_day] = []
+				for s in ev.get("subjects", []):
+					if s not in silenced_by_day[ev_day]:
+						silenced_by_day[ev_day].append(s)
+	for c in all_cards:
+		if c.get("kind", "") == "context" and c.get("context_kind", "") == "silenced":
+			var s_day: int = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+			var s_subj: String = str(c.get("subject", ""))
+			if s_day >= 1 and s_subj != "":
+				if not silenced_by_day.has(s_day):
+					silenced_by_day[s_day] = []
+				if s_subj not in silenced_by_day[s_day]:
+					silenced_by_day[s_day].append(s_subj)
+	var block_presence: Dictionary = {}
+	for c in all_cards:
+		if c.get("kind", "") in ["location", "evening"] and c.get("block", "") != "":
+			var bday: int = int(c.get("day", c.get("observed_at", {}).get("day", -1)))
+			var bphase: String = str(c.get("observed_at", {}).get("phase", ""))
+			if bday >= 1:
+				var bkey = "%d:%s:%s" % [bday, bphase, c.block]
+				if not block_presence.has(bkey):
+					block_presence[bkey] = []
+				for who in c.get("subjects", [c.get("subject", "")]):
+					if who != "" and who not in block_presence[bkey]:
+						block_presence[bkey].append(who)
+	var disputed_alibis: Dictionary = {}
+	for d in disputes:
+		var ch_id: String = str(d.get("challenged", ""))
+		if ch_id != "":
+			disputed_alibis[ch_id] = true
 	for c in all_cards:
 		if c.get("profile_receipt", false):
 			continue
 		var ckind: String = c.get("kind", "")
-		var subjs: Array = c.get("subjects", [])
-		var cday: int = int(c.get("observed_at", {}).get("day", -1))
-		if ckind == "silenced" and target_id not in subjs:
-			var v_id: String = subjs[0] if not subjs.is_empty() else ""
-			var has_prox: bool = all_cards.any(func(o): return o.get("kind", "") == "conversation" and int(o.get("observed_at", {}).get("day", -2)) == cday and target_id in o.get("subjects", []) and v_id in o.get("subjects", []))
-			if has_prox:
+		var ctx: String = c.get("context_kind", "")
+		var subjs: Array = c.get("subjects", [c.get("subject", "")]).filter(func(x): return x != "")
+		var cday: int = int(c.get("day", c.get("observed_at", {}).get("day", c.get("night", -1))))
+		if ckind == "context" and ctx == "silenced" and target_id not in subjs:
+			var has_prox: bool = all_cards.any(func(o):
+				if o.get("kind", "") not in ["location", "evening"]:
+					return false
+				var oday: int = int(o.get("day", o.get("observed_at", {}).get("day", -2)))
+				var osubjs: Array = o.get("subjects", [o.get("subject", "")])
+				return oday == cday and target_id in osubjs)
+			if has_prox and c.id not in candidate_ids:
 				candidate_ids.append(c.id)
-		elif ckind == "conversation" and target_id in subjs:
-			for other in subjs:
-				if other == target_id:
+		elif ckind in ["location", "evening"] and target_id in subjs:
+			var phase_str: String = str(c.get("observed_at", {}).get("phase", ""))
+			var blk: String = str(c.get("block", ""))
+			var matched_loc: bool = false
+			for sv in silenced_by_day.get(cday, []):
+				if sv == target_id:
 					continue
-				if silenced_days.has("%s:%d" % [other, cday]) or sc.get(other, 0.0) >= 0.7:
-					if c.id not in candidate_ids:
-						candidate_ids.append(c.id)
-		elif ckind == "vote" and target_id in subjs:
-			var nom: String = str(c.get("data", {}).get("nominee", ""))
-			var yes_list: Array = c.get("data", {}).get("yes", [])
-			var by_who: String = str(c.get("data", {}).get("nominator", c.get("data", {}).get("by", "")))
-			if nom != "" and nom != target_id and sc.get(nom, 0.0) <= -0.15 and (by_who == target_id or target_id in yes_list):
+				var direct_pair: bool = sv in subjs
+				var same_slot: bool = sv in block_presence.get("%d:%s:%s" % [cday, phase_str, blk], [])
+				var home_match: bool = blk != "" and blk == _person_home(view, sv)
+				if direct_pair or same_slot or home_match:
+					matched_loc = true
+					break
+			if not matched_loc and c.get("orig_kind", "") == "conversation":
+				for other in subjs:
+					if other != target_id and sc.get(other, 0.0) >= 0.7:
+						matched_loc = true
+						break
+			if matched_loc and c.id not in candidate_ids:
 				candidate_ids.append(c.id)
+		elif ckind == "context" and ctx == "vote":
+			var vdata: Dictionary = c.get("data", {})
+			var nom: String = str(vdata.get("nominee", ""))
+			var yes_list: Array = vdata.get("yes", [])
+			var by_who: String = str(vdata.get("nominator", vdata.get("by", "")))
+			if nom != "" and nom != target_id and sc.get(nom, 0.0) <= -0.15 and (by_who == target_id or target_id in yes_list):
+				if c.id not in candidate_ids:
+					candidate_ids.append(c.id)
 		elif ckind == "refusal" and target_id in subjs:
-			candidate_ids.append(c.id)
+			if c.id not in candidate_ids:
+				candidate_ids.append(c.id)
+		elif ckind == "alibi" and target_id in subjs and disputed_alibis.has(c.id):
+			if c.id not in candidate_ids:
+				candidate_ids.append(c.id)
 	var check_ids: Array = candidate_ids.duplicate()
 	for f in ["bonds", "personality"]:
 		for rid in view.get("profile_facets", {}).get(target_id, {}).get(f, {}).get("receipt_ids", []):
