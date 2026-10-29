@@ -651,7 +651,7 @@ func restore(value, session) -> String:
 				return "Invalid evidence copy."
 			evidence.append(n.card)
 			var choices = Solver.empty_case()
-			choices.conclusion.at = view.alignment_epoch
+			choices.conclusion = {"type": "evil", "target": candidate._default_target(), "at": view.alignment_epoch}
 			choices.cards = [n.card]
 			choices.answers = n.answers
 			choices.reasons = n.reasons
@@ -663,7 +663,7 @@ func restore(value, session) -> String:
 			if not n.get("conclusion") is Dictionary or not n.get("positions") is Dictionary:
 				return "Invalid premise."
 			var choices = Solver.empty_case()
-			choices.conclusion.at = view.alignment_epoch
+			choices.conclusion = {"type": "evil", "target": candidate._default_target(), "at": view.alignment_epoch}
 			choices.positions = n.positions
 			if not n.conclusion.is_empty():
 				choices.conclusion = n.conclusion

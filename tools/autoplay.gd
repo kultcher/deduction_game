@@ -243,12 +243,18 @@ func _scale_snapshot() -> Dictionary:
 			if o.is_evil():
 				evil.append({"id": o.id, "demon": o.role == "demon", "susp": Mind.susp(n, o.id), "action": Mind.action_susp(n, o.id), "rank": i + 1})
 		var top_action = 0.0
+		var top_nom_score = -1.0
 		for o in others:
-			top_action = maxf(top_action, Mind.action_susp(n, o.id))
-		# Same formula as Mind._good_nomination_impl.
+			var act: float = Mind.action_susp(n, o.id)
+			top_action = maxf(top_action, act)
+			var own_clear: float = Tuning.Meeting.NOMINATION_OWN_CLEAR_RELIEF if n.cleared.has(o.id) else 0.0
+			var cooloff: float = Mind.nomination_cooloff(w, n.id, o.id)
+			top_nom_score = maxf(top_nom_score, act - own_clear - cooloff)
+		# Same adjusted nomination score and eligibility as Mind._good_nomination_impl / next_nomination.
 		var thr: float = maxf(Tuning.Meeting.NOMINATION_FLOOR, Tuning.Meeting.NOMINATION_BASE - Tuning.Meeting.NOMINATION_DAY_SLOPE * w.day) - Tuning.Meeting.NOMINATION_CONFIDENCE_SCALE * (Mind.trait_of(n, "confidence") - 0.5) * 2.0 - Tuning.Meeting.NOMINATION_PARANOIA_SCALE * Mind.paranoia(w, n)
-		npcs.append({"id": n.id, "top": Mind.susp(n, top.id), "top_is_evil": top.is_evil(), "top_action": top_action,
-			"good_mean": _mean(good_vals), "evil": evil, "nomination_threshold": thr, "nomination_headroom": top_action - thr,
+		var headroom: float = (top_nom_score - thr) if not n.silenced else -1.0
+		npcs.append({"id": n.id, "top": Mind.susp(n, top.id), "top_is_evil": top.is_evil(), "top_action": top_action, "top_nom_score": maxf(0.0, top_nom_score),
+			"good_mean": _mean(good_vals), "evil": evil, "nomination_threshold": thr, "nomination_headroom": headroom,
 			"top3": others.slice(0, 3).map(func(o): return o.id), "top3_evil": others.slice(0, 3).filter(func(o): return o.is_evil()).size()})
 	# Agreement: how far the rest of the good town shares each NPC's suspects.
 	for entry in npcs:

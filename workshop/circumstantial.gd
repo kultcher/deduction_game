@@ -15,24 +15,31 @@ const TARGET_CAP = Tuning.Workshop.CIRCUMSTANTIAL_TARGET_CAP
 const GATE_REF = Tuning.Workshop.CIRCUMSTANTIAL_GATE_REF
 const SMEAR_MIN = Tuning.Workshop.CIRCUMSTANTIAL_SMEAR_MIN
 const SMEAR_MAX = Tuning.Workshop.CIRCUMSTANTIAL_SMEAR_MAX
+const REFUSAL_FEAR_DISCOUNT: float = 0.25 / 0.35
+const STAGE1_NOISE_FLOOR: float = 0.01
 const ACCUSATORY_TYPES = ["evil", "demon", "minion", "suspicious"]
 
 
-static func _passive_survivor_floor(view: Dictionary, stage1_requested: Dictionary, listener_id: String, known_good: Array) -> float:
+static func _passive_survivor_floor(view: Dictionary, stage1_requested: Dictionary, listener_id: String, known_good: Array, target_id: String = "") -> float:
 	var victims: Array = _demon_victims(view)
 	var sil_map: Dictionary = _silenced_by_day(view, view.get("cards", []))
 	var silenced_ids: Dictionary = {}
 	for d in sil_map:
 		for s in sil_map[d]:
 			silenced_ids[s] = true
-	var vals: Array = []
+	var peer_vals: Array = []
+	var all_vals: Array = []
 	for p in view.get("people", []):
 		var pid: String = str(p.get("id", ""))
 		if pid == "" or pid == listener_id or not p.get("alive", true):
 			continue
 		if pid in known_good or pid in victims or silenced_ids.has(pid):
 			continue
-		vals.append(float(stage1_requested.get(pid, 0.0)))
+		var v: float = float(stage1_requested.get(pid, 0.0))
+		all_vals.append(v)
+		if pid != target_id:
+			peer_vals.append(v)
+	var vals: Array = peer_vals if not peer_vals.is_empty() else all_vals
 	if vals.is_empty():
 		return 0.0
 	var lo: float = vals[0]
@@ -42,20 +49,13 @@ static func _passive_survivor_floor(view: Dictionary, stage1_requested: Dictiona
 		hi = maxf(hi, v)
 	if vals.size() >= 2 and (hi - lo) < 0.002:
 		return maxf(0.0, hi)
-	return minf(maxf(0.0, lo), 0.06)
+	return maxf(0.0, lo)
 
 
 static func stage1_gate(specific_stage1: float, outside_suspicion: float) -> float:
-	var s1: float = maxf(0.0, specific_stage1)
+	var s1: float = maxf(0.0, specific_stage1 - STAGE1_NOISE_FLOOR)
 	var prior_above: float = maxf(0.0, outside_suspicion - 0.15)
 	return clampf((s1 + 0.35 * prior_above) / GATE_REF, 0.0, 1.0)
-
-
-static func _person_home(view: Dictionary, pid: String) -> String:
-	for p in view.get("people", []):
-		if p.id == pid:
-			return p.get("home", "")
-	return ""
 
 
 static func _silenced_by_day(view: Dictionary, cards: Array) -> Dictionary:
@@ -99,7 +99,8 @@ static func extract_hub_incidents(
 	post_stage1_susp: Dictionary,
 	npc_trust: Dictionary,
 	known_good: Array = [],
-	disputes: Array = []
+	_disputes: Array = [],
+	active_card_ids: Array = []
 ) -> Dictionary:
 	var hub_cards: Array = []
 	for cid in hub_card_ids:
@@ -107,18 +108,36 @@ static func extract_hub_incidents(
 		if not found.is_empty():
 			hub_cards.append(found)
 	var all_cards: Array = view.get("cards", [])
-	var silenced_map: Dictionary = _silenced_by_day(view, all_cards)
+	var active_cards: Array = all_cards if active_card_ids.is_empty() else all_cards.filter(func(c): return c.id in active_card_ids)
+	var silenced_map: Dictionary = _silenced_by_day(view, active_cards)
 	var victims: Array = _demon_victims(view)
 	var incidents: Dictionary = {}
 	var matched_cards: Dictionary = {}
+	var target_relevant: Dictionary = {}
+	var stage1_bearing: Dictionary = {}
 
-	# Pre-index daytime/evening block sightings across view.cards for same-block silencing checks
+	# Index active structured traces so Stage 2 never double-dips on context already backing a Stage 1 trace.
+	var conn_trace_victims: Dictionary = {}
+	var quarter_trace_evenings: Dictionary = {}
+	for tc in active_cards:
+		if tc.get("kind", "") == "trace":
+			var tdata: Dictionary = tc.get("data", {})
+			var tfam: String = str(tdata.get("family", ""))
+			if tfam == "connection" and str(tdata.get("victim", "")) != "":
+				conn_trace_victims[str(tdata.get("victim", ""))] = true
+			elif tfam == "quarter":
+				var qday: int = int(tc.get("night", -1))
+				var qev: String = str(tdata.get("evening_block", ""))
+				if qday >= 1 and qev != "":
+					quarter_trace_evenings["%d:%s" % [qday, qev]] = true
+
+	# Pre-index public daytime/evening block sightings across active cards for same-slot silencing checks.
 	var block_presence: Dictionary = {}
-	for c in all_cards:
+	for c in active_cards:
 		if c.get("kind", "") in ["location", "evening"] and c.get("block", "") != "":
 			var cday: int = int(c.get("day", c.get("observed_at", {}).get("day", -1)))
 			var cphase: String = str(c.get("observed_at", {}).get("phase", ""))
-			if cday >= 1:
+			if cday >= 1 and cphase != "":
 				var bkey = "%d:%s:%s" % [cday, cphase, c.block]
 				if not block_presence.has(bkey):
 					block_presence[bkey] = []
@@ -126,48 +145,63 @@ static func extract_hub_incidents(
 					if who != "" and who not in block_presence[bkey]:
 						block_presence[bkey].append(who)
 
-	var disputed_alibis: Dictionary = {}
-	for d in disputes:
-		var ch_id: String = str(d.get("challenged", ""))
-		if ch_id != "":
-			disputed_alibis[ch_id] = true
-
 	for c in hub_cards:
 		var cid: String = c.id
 		var kind: String = c.get("kind", "")
 		var ctx: String = c.get("context_kind", "")
 		var subjs: Array = c.get("subjects", [c.get("subject", "")]).filter(func(x): return x != "")
+		if target in subjs:
+			target_relevant[cid] = true
 
-		# 1. Silenced card itself can pair with another hub card on that day
+		# 1. Silenced card itself pairs with a qualifying public proximity card on that day.
 		if kind == "context" and ctx == "silenced":
 			var s_day: int = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
-			if hub_cards.any(func(o): return o.get("kind", "") in ["location", "evening"] and int(o.get("day", o.get("observed_at", {}).get("day", -1))) == s_day and target in o.get("subjects", [o.get("subject", "")])):
+			var s_victim: String = str(c.get("subject", ""))
+			if s_victim != "" and s_victim != target and hub_cards.any(func(o):
+				if o.get("kind", "") not in ["location", "evening"]:
+					return false
+				var oday: int = int(o.get("day", o.get("observed_at", {}).get("day", -1)))
+				var ophase: String = str(o.get("observed_at", {}).get("phase", ""))
+				var oblk: String = str(o.get("block", ""))
+				var osubjs: Array = o.get("subjects", [o.get("subject", "")])
+				if oday != s_day or target not in osubjs:
+					return false
+				return s_victim in osubjs or s_victim in block_presence.get("%d:%s:%s" % [oday, ophase, oblk], [])):
 				matched_cards[cid] = true
+				target_relevant[cid] = true
 
-		# 2. Breathstealer daytime/evening proximity + Suspicious association
+		# 2. Breathstealer public proximity + Talking with suspected evil (`suspicious_association`).
 		if kind in ["location", "evening"] and target in subjs:
 			var day_num: int = int(c.get("day", c.get("observed_at", {}).get("day", -1)))
 			var phase_str: String = str(c.get("observed_at", {}).get("phase", ""))
 			var blk: String = str(c.get("block", ""))
-			for sv in silenced_map.get(day_num, []):
-				if sv == target:
-					continue
-				var direct_pair: bool = sv in subjs
-				var same_slot: bool = sv in block_presence.get("%d:%s:%s" % [day_num, phase_str, blk], [])
-				var home_match: bool = blk != "" and blk == _person_home(view, sv)
-				if direct_pair or same_slot or home_match:
-					var sv_good: float = 1.0 if sv in known_good else clampf(1.0 - float(post_stage1_susp.get(sv, 0.1)), 0.1, 1.0)
-					var prox_scale: float = 1.0 if direct_pair else (0.9 if same_slot else 0.8)
-					var ikey = "breath_prox:%s:%d" % [target, day_num]
-					var val: float = INCIDENT_MAX * prox_scale * sv_good
-					if val > incidents.get(ikey, {}).get("raw", 0.0):
-						incidents[ikey] = {
-							"key": ikey,
-							"family": "breathstealer_proximity",
-							"raw": val,
-							"label": "Seen near %s on Day %d before they were silenced" % [Solver.person_name(view, sv), day_num],
-						}
-					matched_cards[cid] = true
+			var backs_quarter_trace: bool = (kind == "evening" and quarter_trace_evenings.has("%d:%s" % [day_num, blk]))
+			if backs_quarter_trace:
+				stage1_bearing[cid] = true
+			else:
+				for sv in silenced_map.get(day_num, []):
+					if sv == target:
+						continue
+					var direct_pair: bool = sv in subjs
+					var same_slot: bool = blk != "" and phase_str != "" and sv in block_presence.get("%d:%s:%s" % [day_num, phase_str, blk], [])
+					if direct_pair or same_slot:
+						var sv_good: float = 1.0 if sv in known_good else clampf(1.0 - float(post_stage1_susp.get(sv, 0.1)), 0.1, 1.0)
+						var prox_scale: float = 1.0 if direct_pair else 0.9
+						var ikey = "breath_prox:%s:%d" % [target, day_num]
+						var val: float = INCIDENT_MAX * prox_scale * sv_good
+						if val > incidents.get(ikey, {}).get("raw", 0.0):
+							var prox_label: String = (
+								"Spoke with %s on Day %d before they were silenced" % [Solver.person_name(view, sv), day_num]
+								if direct_pair
+								else "Seen on %s in the same %s slot as %s on Day %d before they were silenced" % [C.block_name(blk), phase_str, Solver.person_name(view, sv), day_num]
+							)
+							incidents[ikey] = {
+								"key": ikey,
+								"family": "breathstealer_proximity",
+								"raw": val,
+								"label": prox_label,
+							}
+						matched_cards[cid] = true
 			if c.get("orig_kind", "") == "conversation" and subjs.size() == 2:
 				var partner: String = subjs[0] if subjs[1] == target else subjs[1]
 				var p_susp: float = float(post_stage1_susp.get(partner, 0.1))
@@ -180,15 +214,17 @@ static func extract_hub_incidents(
 							"key": akey,
 							"family": "suspicious_association",
 							"raw": aval,
-							"label": "Conferred privately with suspected %s" % Solver.person_name(view, partner),
+							"label": "Seen talking with suspected %s" % Solver.person_name(view, partner),
 						}
 					matched_cards[cid] = true
 
-		# 3. Profile bonds: friend of suspected person OR rival of murder victim
+		# 3. Profile bonds: friend of suspected person OR rival of murder victim (unless backing a connection trace).
 		if kind == "context" and ctx == "bond" and subjs.size() == 2 and target in subjs:
 			var other: String = subjs[0] if subjs[1] == target else subjs[1]
 			var bkind: String = str(c.get("data", {}).get("bond_kind", ""))
-			if bkind == "friend":
+			if conn_trace_victims.has(other):
+				stage1_bearing[cid] = true
+			elif bkind == "friend":
 				var o_susp: float = float(post_stage1_susp.get(other, 0.1))
 				if other not in known_good and o_susp >= 0.32:
 					var bfit: float = clampf((o_susp - 0.28) / 0.35, 0.2, 1.0)
@@ -215,7 +251,7 @@ static func extract_hub_incidents(
 					}
 				matched_cards[cid] = true
 
-		# 4. Hostile vote or nomination against someone the listener trusts / knows is good
+		# 4. Hostile vote or nomination against someone the listener trusts / knows is good.
 		if kind == "context" and ctx == "vote":
 			var vdata: Dictionary = c.get("data", {})
 			var nominee: String = str(vdata.get("nominee", ""))
@@ -223,6 +259,7 @@ static func extract_hub_incidents(
 			var yes_list: Array = vdata.get("yes", [])
 			var vday: int = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
 			if nominee != "" and nominee != target and (nominator == target or target in yes_list):
+				target_relevant[cid] = true
 				var nom_susp: float = float(post_stage1_susp.get(nominee, 0.1))
 				var nom_trust: float = float(npc_trust.get(nominee, 0.5))
 				if nominee in known_good or (nom_susp <= 0.28 and nom_trust >= 0.45):
@@ -239,24 +276,19 @@ static func extract_hub_incidents(
 						}
 					matched_cards[cid] = true
 
-		# 5. Demeanor / evasiveness tells (refusal, disputed alibi, or low-composure / high-privacy trait)
-		if kind == "refusal" and c.get("subject", "") == target:
+		# 5. Demeanor / evasiveness tells (Stage 2-only fear-discounted refusal, or low-composure / high-privacy trait).
+		# Contradicted night alibis are strictly Stage 1 movement evidence and never double-score here.
+		if kind == "refusal" and c.get("subject", "") == target and not c.get("quoted", false):
 			var dkey = "demeanor_tell:" + target
-			incidents[dkey] = {
-				"key": dkey,
-				"family": "demeanor_tell",
-				"raw": INCIDENT_MAX,
-				"label": "Evasive refusal to account for whereabouts",
-			}
-			matched_cards[cid] = true
-		elif kind == "alibi" and c.get("subject", "") == target and (disputed_alibis.has(cid) or hub_cards.any(func(o): return o.get("kind", "") == "sighting" and o.get("night", -1) == c.get("night", -2) and target in o.get("subjects", [o.get("subject", "")]))):
-			var dkey2 = "demeanor_tell:" + target
-			incidents[dkey2] = {
-				"key": dkey2,
-				"family": "demeanor_tell",
-				"raw": INCIDENT_MAX,
-				"label": "Caught in a contradicted night alibi",
-			}
+			var is_fear: bool = bool(c.get("data", {}).get("fear", false))
+			var rval_ref: float = INCIDENT_MAX * REFUSAL_FEAR_DISCOUNT if is_fear else INCIDENT_MAX
+			if rval_ref > incidents.get(dkey, {}).get("raw", 0.0):
+				incidents[dkey] = {
+					"key": dkey,
+					"family": "demeanor_tell",
+					"raw": rval_ref,
+					"label": "Fearful refusal to account for whereabouts" if is_fear else "Evasive refusal to account for whereabouts",
+				}
 			matched_cards[cid] = true
 		elif kind == "context" and ctx == "trait" and c.get("subject", "") == target:
 			var tr_name: String = str(c.get("data", {}).get("trait", ""))
@@ -273,24 +305,29 @@ static func extract_hub_incidents(
 					}
 				matched_cards[cid] = true
 
-	# Logical Stage-1 cards wired through the hub (reports, traces, night sightings, home/work/haunt context for traces)
-	# are valid Stage-1 material rather than smear padding when they bear on the case.
-	var stage1_bearing: Dictionary = {}
+	# Logical Stage-1 cards wired through the hub (reports, traces, night sightings, contradicted alibis,
+	# death receipts, and home/work/haunt context for traces) are valid Stage-1 material rather than smear padding.
 	for c in hub_cards:
 		if c.get("kind", "") in ["report", "trace", "sighting", "alibi", "coverage", "totem", "dropped", "claim", "secret_claim", "gift_hint"]:
 			stage1_bearing[c.id] = true
-		elif c.get("kind", "") == "context" and c.get("context_kind", "") in ["home", "work", "haunt"] and c.get("subject", "") == target and all_cards.any(func(tc): return tc.get("kind", "") == "trace"):
+		elif c.get("kind", "") == "context" and c.get("context_kind", "") == "death":
+			stage1_bearing[c.id] = true
+		elif c.get("kind", "") == "context" and c.get("context_kind", "") in ["home", "work", "haunt"] and c.get("subject", "") == target and active_cards.any(func(tc): return tc.get("kind", "") == "trace"):
 			stage1_bearing[c.id] = true
 
 	var unmatched: Array = []
+	var unrelated: Array = []
 	for c in hub_cards:
 		if not matched_cards.has(c.id) and not stage1_bearing.has(c.id):
 			unmatched.append(c.id)
+			if not target_relevant.has(c.id):
+				unrelated.append(c.id)
 
 	return {
 		"incidents": incidents,
 		"matched_cards": matched_cards.keys(),
 		"unmatched_cards": unmatched,
+		"unrelated_cards": unrelated,
 	}
 
 
@@ -306,7 +343,8 @@ static func evaluate_union(
 	listener_id: String,
 	public_good: Array = [],
 	listener_knowledge: Dictionary = {},
-	disputes: Array = []
+	disputes: Array = [],
+	active_card_ids: Array = []
 ) -> Dictionary:
 	var requested: Dictionary = {}
 	var by_target_incidents: Dictionary = {}
@@ -332,16 +370,16 @@ static func evaluate_union(
 			if cid not in grouped[t]:
 				grouped[t].append(cid)
 
-	var passive_floor: float = _passive_survivor_floor(view, stage1_requested, listener_id, known_good)
 	var trust_mult: float = clampf(0.5 + listener_trust, 0.5, 1.25)
 	for t in grouped:
+		var passive_floor: float = _passive_survivor_floor(view, stage1_requested, listener_id, known_good, t)
 		var spec_s1: float = maxf(0.0, float(stage1_requested.get(t, 0.0)) - passive_floor)
 		var gate: float = stage1_gate(spec_s1, float(outside_suspicion.get(t, 0.1)))
 		if gate <= 0.0:
 			requested[t] = 0.0
 			by_target_incidents[t] = []
 			continue
-		var extracted: Dictionary = extract_hub_incidents(view, grouped[t], t, post_stage1_susp, npc_trust, known_good, disputes)
+		var extracted: Dictionary = extract_hub_incidents(view, grouped[t], t, post_stage1_susp, npc_trust, known_good, disputes, active_card_ids)
 		var total = 0.0
 		var items: Array = []
 		var keys: Array = extracted.incidents.keys()
@@ -382,7 +420,8 @@ static func evaluate_case(view: Dictionary, value: Dictionary, baseline: Diction
 		str(baseline.get("id", "")),
 		[],
 		baseline.get("knowledge", {}),
-		value.get("disputes", [])
+		value.get("disputes", []),
+		value.get("cards", [])
 	)
 
 
@@ -400,7 +439,6 @@ static func evaluate_smear_backlash(
 ) -> Dictionary:
 	if hubs.is_empty():
 		return {"penalty": 0.0, "reason": ""}
-	var passive_floor: float = _passive_survivor_floor(view, stage1_requested, listener_id, known_good)
 	var penalty = 0.0
 	var reason = ""
 	for hub in hubs:
@@ -408,14 +446,16 @@ static func evaluate_smear_backlash(
 		var ptype: String = str(hub.get("type", "evil"))
 		if t == "" or ptype not in ACCUSATORY_TYPES:
 			continue
+		var passive_floor: float = _passive_survivor_floor(view, stage1_requested, listener_id, known_good, t)
 		var s1: float = maxf(0.0, float(stage1_requested.get(t, 0.0)) - passive_floor)
 		var gate: float = stage1_gate(s1, float(outside_suspicion.get(t, 0.1)))
 		var extracted: Dictionary = extract_hub_incidents(view, hub.get("cards", []), t, post_stage1_susp, npc_trust, known_good, disputes)
 		var unmatched_n: int = extracted.unmatched_cards.size()
+		var unrelated_n: int = extracted.get("unrelated_cards", []).size()
 		var inc_n: int = extracted.incidents.size()
 		var friend_bonus: float = 0.005 if float(npc_trust.get(t, 0.5)) >= 0.65 or t == listener_id or t in known_good else 0.0
-		if inc_n == 0 and unmatched_n > 0 and s1 < 0.02:
-			penalty = maxf(penalty, clampf(SMEAR_MIN * float(unmatched_n) + friend_bonus, SMEAR_MIN, SMEAR_MAX))
+		if unrelated_n > 0 and (inc_n == 0 or s1 < 0.02):
+			penalty = maxf(penalty, clampf(SMEAR_MIN * float(unrelated_n) + friend_bonus, SMEAR_MIN, SMEAR_MAX))
 			reason = "ungrounded_hub_padding"
 		elif gate <= 0.0 and (inc_n > 0 or unmatched_n > 0):
 			penalty = maxf(penalty, clampf(SMEAR_MIN + friend_bonus, SMEAR_MIN, SMEAR_MAX))

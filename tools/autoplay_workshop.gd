@@ -179,12 +179,6 @@ static func build_and_file_case(g, sc: Dictionary, include_hub: bool, filed_sigs
 			return {"card": filed_num, "used_hub": attached_hub and not final_compiled.get("circumstantial", []).is_empty()}
 	return {"card": 0, "used_hub": false}
 
-static func _person_home(view: Dictionary, pid: String) -> String:
-	for p in view.get("people", []):
-		if p.get("id", "") == pid:
-			return str(p.get("home", ""))
-	return ""
-
 static func select_circumstantial_cards(view: Dictionary, all_cards: Array, target_id: String, sc: Dictionary, disputes: Array) -> Array:
 	var candidate_ids: Array = []
 	var silenced_by_day: Dictionary = {}
@@ -211,18 +205,13 @@ static func select_circumstantial_cards(view: Dictionary, all_cards: Array, targ
 		if c.get("kind", "") in ["location", "evening"] and c.get("block", "") != "":
 			var bday: int = int(c.get("day", c.get("observed_at", {}).get("day", -1)))
 			var bphase: String = str(c.get("observed_at", {}).get("phase", ""))
-			if bday >= 1:
+			if bday >= 1 and bphase != "":
 				var bkey = "%d:%s:%s" % [bday, bphase, c.block]
 				if not block_presence.has(bkey):
 					block_presence[bkey] = []
 				for who in c.get("subjects", [c.get("subject", "")]):
 					if who != "" and who not in block_presence[bkey]:
 						block_presence[bkey].append(who)
-	var disputed_alibis: Dictionary = {}
-	for d in disputes:
-		var ch_id: String = str(d.get("challenged", ""))
-		if ch_id != "":
-			disputed_alibis[ch_id] = true
 	for c in all_cards:
 		if c.get("profile_receipt", false):
 			continue
@@ -231,12 +220,17 @@ static func select_circumstantial_cards(view: Dictionary, all_cards: Array, targ
 		var subjs: Array = c.get("subjects", [c.get("subject", "")]).filter(func(x): return x != "")
 		var cday: int = int(c.get("day", c.get("observed_at", {}).get("day", c.get("night", -1))))
 		if ckind == "context" and ctx == "silenced" and target_id not in subjs:
-			var has_prox: bool = all_cards.any(func(o):
+			var s_victim: String = subjs[0] if not subjs.is_empty() else ""
+			var has_prox: bool = s_victim != "" and all_cards.any(func(o):
 				if o.get("kind", "") not in ["location", "evening"]:
 					return false
 				var oday: int = int(o.get("day", o.get("observed_at", {}).get("day", -2)))
+				var ophase: String = str(o.get("observed_at", {}).get("phase", ""))
+				var oblk: String = str(o.get("block", ""))
 				var osubjs: Array = o.get("subjects", [o.get("subject", "")])
-				return oday == cday and target_id in osubjs)
+				if oday != cday or target_id not in osubjs:
+					return false
+				return s_victim in osubjs or (oblk != "" and ophase != "" and s_victim in block_presence.get("%d:%s:%s" % [oday, ophase, oblk], [])))
 			if has_prox and c.id not in candidate_ids:
 				candidate_ids.append(c.id)
 		elif ckind in ["location", "evening"] and target_id in subjs:
@@ -247,9 +241,8 @@ static func select_circumstantial_cards(view: Dictionary, all_cards: Array, targ
 				if sv == target_id:
 					continue
 				var direct_pair: bool = sv in subjs
-				var same_slot: bool = sv in block_presence.get("%d:%s:%s" % [cday, phase_str, blk], [])
-				var home_match: bool = blk != "" and blk == _person_home(view, sv)
-				if direct_pair or same_slot or home_match:
+				var same_slot: bool = blk != "" and phase_str != "" and sv in block_presence.get("%d:%s:%s" % [cday, phase_str, blk], [])
+				if direct_pair or same_slot:
 					matched_loc = true
 					break
 			if not matched_loc and c.get("orig_kind", "") == "conversation":
@@ -268,9 +261,6 @@ static func select_circumstantial_cards(view: Dictionary, all_cards: Array, targ
 				if c.id not in candidate_ids:
 					candidate_ids.append(c.id)
 		elif ckind == "refusal" and target_id in subjs:
-			if c.id not in candidate_ids:
-				candidate_ids.append(c.id)
-		elif ckind == "alibi" and target_id in subjs and disputed_alibis.has(c.id):
 			if c.id not in candidate_ids:
 				candidate_ids.append(c.id)
 	var check_ids: Array = candidate_ids.duplicate()

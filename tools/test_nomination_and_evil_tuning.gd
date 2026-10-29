@@ -102,20 +102,25 @@ func _test_failed_vote_cooloff_pivot_and_endgame_taper() -> void:
 	var pivot_nom = Mind._good_nomination(w, nominator, w.meeting, "")
 	_check(pivot_nom != null and pivot_nom["nominee"] == target_b.id, "nominator on cooloff for #1 suspect pivots cleanly to viable #2 suspect")
 
-	# Close 4/5 vote gives minimal cooloff (0.28 * 0.2 = 0.056), allowing re-push at 0.62 (>= 0.55 + 0.056)
-	nominator.suspicion[target_b.id] = 0.1
+	# Cooloff expires after 1 day: on Day 3 (with no Day 2 vote), Day 1's flop returns 0.0.
+	w.day = 3
+	_check(is_zero_approx(Mind.nomination_cooloff(w, nominator.id, target_a.id)), "failed-vote cooloff applies only to the next day's meeting")
+
+	# Record a close 4/5 near-miss on Day 3, then advance to Day 4 (yesterday == 3):
+	# minimal cooloff (0.28 * 0.2 = 0.056) allows re-push at 0.53 (>= 0.45 + 0.056).
 	w.public_event("vote", [target_a.id], "town", {
 		"nominee": target_a.id, "nominator": nominator.id,
 		"yes": [nominator.id], "no": [], "player_yes": false,
 		"count": 4, "threshold": 5, "outcome": "fails",
 	})
+	w.day = 4
+	w.meeting = {"block": "", "nominated": []}
+	nominator.suspicion[target_b.id] = 0.1
+	nominator.suspicion[target_a.id] = 0.53
 	var retry_nom = Mind._good_nomination(w, nominator, w.meeting, "")
-	_check(retry_nom != null and retry_nom["nominee"] == target_a.id, "after a close 4/5 near-miss, nominator is willing to try again the next day")
+	_check(retry_nom != null and retry_nom["nominee"] == target_a.id, "after a close 4/5 near-miss yesterday, nominator is willing to try again today")
 
-	# Cooloff expires after 1 day (on Day 3, a Day 1 flop returns 0.0) and vanishes at <= 4 living
-	w.day = 3
-	_check(is_zero_approx(Mind.nomination_cooloff(w, nominator.id, target_a.id)), "failed-vote cooloff applies only to the next day's meeting")
-	w.day = 2
+	# Endgame (<= 4 living) disables nomination cooloff completely even on the very next day.
 	var alive_list: Array = w.living()
 	for i in range(4, alive_list.size()):
 		alive_list[i].alive = false

@@ -124,7 +124,7 @@ static func _compile(view: Dictionary, cards: Array, knowledge: Dictionary, incl
 	var public_factors: Array = Public.factors(view)
 	if include_public and not public_factors.is_empty():
 		_add(graph, [], {"kind": "public", "factors": public_factors})
-	var speech: Array = graph.facts.filter(func(f): return f.card.kind in ["gift_hint", "refusal"])
+	var speech: Array = graph.facts.filter(func(f): return f.card.kind == "gift_hint")
 	if not speech.is_empty():
 		_conditional(graph, speech, "speech")
 	graph.program = Sum.compile(graph.factors.map(func(factor): return factor.scope))

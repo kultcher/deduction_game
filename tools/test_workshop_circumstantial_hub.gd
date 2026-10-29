@@ -41,6 +41,7 @@ func _game(seed_val: int = 2404, size: int = 7):
 func _init() -> void:
 	_test_canvas_hub_orphan_and_restore()
 	_test_stage1_preserved_through_hub_and_stage2_gated()
+	_test_association_alibi_boundary_and_trace_guards()
 	_test_union_dedup_cap_and_retraction()
 	_test_native_adjust_preserves_stage2_layer()
 	_test_smear_backlash()
@@ -53,29 +54,38 @@ func _init() -> void:
 		quit(1)
 
 func _test_canvas_hub_orphan_and_restore() -> void:
+	# Find a 7-player seed without "constance" so CanvasModel.restore proves roster independence.
 	var g = _game(2401, 7)
+	for sd in range(2401, 2450):
+		g = _game(sd, 7)
+		if not g.w.npcs.any(func(p): return p.id == "constance"):
+			break
+	var target_id: String = g.w.npcs[0].id
+	var ref_num: int = g.add_card({"kind": "refusal", "source": target_id, "subject": [target_id], "day": 1, "phase": C.NIGHT, "fear": false, "withheld": true, "text": "Refused night account"})
+	var ref_cid: String = WorkshopCanvas.Evidence.normalize_card(g.board[ref_num - 1]).id
 	var view: Dictionary = WorkshopCanvas.view(g)
+	_check(not view.people.any(func(p): return p.id == "constance"), "precondition: restore fixture omits constance from cast")
 	var model = CanvasModel.new(view)
 	var hub_id: String = model.add_circumstantial_hub(Vector2(300, 260))
 	_check(model.nodes.has(hub_id) and model.nodes[hub_id].kind == "circumstantial", "CanvasModel adds circumstantial hub node")
 	_check(model.hub_premise_targets(hub_id).is_empty(), "unlinked circumstantial hub reports empty premise targets (Needs a premise)")
 	var prem_id: String = model.nodes.keys().filter(func(k): return model.nodes[k].kind == "premise")[0]
-	var target_id: String = g.w.npcs[0].id
 	model.nodes[prem_id].conclusion = {"type": "evil", "target": target_id, "at": view.alignment_epoch}
 	var pnode: String = model.add_profile_info(target_id, ["home_work"])
 	# Clicking Link from hub -> profile_info auto-orients profile_info -> hub!
 	var err_auto: String = model.connect_cards(hub_id, pnode)
 	_check(err_auto == "" and model.links.any(func(e): return e.from == pnode and e.to == hub_id), "connect_cards auto-orients supporting cards into circumstantial hub")
+	model.connect_cards("e:" + ref_cid, hub_id)
 	var err_prem: String = model.connect_cards(hub_id, prem_id)
 	_check(err_prem == "" and prem_id in model.hub_premise_targets(hub_id), "linked circumstantial hub resolves its target premise")
 	var compiled: Dictionary = model.compile(prem_id)
 	_check(compiled.has("circumstantial") and compiled.circumstantial.size() == 1 and not compiled.cards.is_empty(), "compiled premise retains both Stage 1 cards and Stage 2 circumstantial hub descriptor")
-	# Export & restore
+	# Export & restore without constance in cast
 	var session = preload("res://workshop/session.gd").new()
 	session.scenario = {"public_view": view}
 	var copy = CanvasModel.new(view)
 	var r_err: String = copy.restore(model.export_data(), session)
-	_check(r_err == "" and copy.nodes.has(hub_id), "CanvasModel.restore validates circumstantial hub nodes cleanly")
+	_check(r_err == "" and copy.nodes.has(hub_id) and copy.nodes.has("e:" + ref_cid), "CanvasModel.restore validates evidence and circumstantial hub nodes without constance in cast")
 	# Removing hub clears active and contradiction prior_links
 	model.remove_circumstantial(hub_id)
 	_check(not model.nodes.has(hub_id) and not model.links.any(func(e): return e.from == hub_id or e.to == hub_id), "remove_circumstantial removes hub and cleans links")
@@ -90,9 +100,12 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	g.w.phase = C.EVENING
 	target.work = "bakery"
 	target.haunts = ["tavern", "mill"]
+	victim.alive = false
 	# Public murder + Breathstealer silence on Day 1
 	g.w.public_event("demon_death", [victim.id], "town")
 	g.w.public_event("silenced", [silenced_p.id], "town")
+	listener.workshop_state["enabled"] = true
+	Mind.recompute_beliefs(g.w, listener, "seed public baseline")
 	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
 	var sil_num: int = g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced at meeting"})
 	var conv_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
@@ -120,7 +133,6 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	g.workshop_retract(filed_v, listener.id)
 
 	# 2) Stage 1 trace + profile wired alongside Stage 2 Breathstealer proximity hub:
-	# Compare Stage 1 only vs Stage 1 + Hub (and verify Stage 1 trace routed THROUGH the hub keeps full Stage 1 weight!)
 	var s1_board = CanvasModel.new(view)
 	var root_s1: String = s1_board.selected
 	s1_board.nodes[root_s1].conclusion = {"type": "evil", "target": target.id, "at": view.alignment_epoch}
@@ -140,7 +152,6 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	var root_s2: String = s2_board.selected
 	s2_board.nodes[root_s2].conclusion = {"type": "evil", "target": target.id, "at": view.alignment_epoch}
 	var hub_s2: String = s2_board.add_circumstantial_hub()
-	# Wire trace + profile + Breathstealer proximity ALL through the hub to test Sol's channel-routing rule!
 	s2_board.connect_cards("e:" + tr_id, hub_s2)
 	s2_board.connect_cards("e:" + dt_id, hub_s2)
 	var p_s2: String = s2_board.add_profile_info(target.id, ["home_work"])
@@ -153,8 +164,86 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	g._evaluate_deduction(listener, g.board[filed_s2 - 1], 1.0, false)
 	var hub_s1_req: float = float(listener.workshop_state.requested.get(target.id, 0.0))
 	var hub_s2_app: float = float(listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))
+	var hub_incs: Array = listener.workshop_state.get("circumstantial_incidents", {}).get(target.id, [])
 	_check(is_equal_approx(hub_s1_req, s1_req), "routing Stage 1 trace/profile evidence through a Circumstantial Hub preserves exact Stage 1 weight")
 	_check(hub_s2_app > 0.0 and hub_s2_app <= Tuning.Workshop.CIRCUMSTANTIAL_INCIDENT_MAX + 1e-6 and listener.suspicion[target.id] > s1_susp, "qualifying Breathstealer proximity adds bounded Stage 2 suspicion (<= +0.015) on top of Stage 1")
+	_check(hub_incs.size() == 1 and str(hub_incs[0].get("label", "")).begins_with("Spoke with "), "direct conversation before silence uses accurate Spoke-with label")
+
+func _test_association_alibi_boundary_and_trace_guards() -> void:
+	var g = _game(2407, 7)
+	var skeptical_listener = g.w.living_good()[0]
+	var trusting_listener = g.w.living_good()[1]
+	var target = g.w.living_good()[2]
+	var partner = g.w.living_good()[3]
+	var victim = g.w.living_good()[4]
+	g.w.day = 1
+	g.w.phase = C.EVENING
+	target.work = "bakery"
+	victim.alive = false
+	g.w.public_event("demon_death", [victim.id], "town")
+	for l in [skeptical_listener, trusting_listener]:
+		l.trust = 0.65
+		l.workshop_state["enabled"] = true
+		Mind.recompute_beliefs(g.w, l, "seed baseline")
+	# Skeptical listener already suspects `partner`; trusting listener thinks `partner` is good!
+	Mind.adjust(g.w, skeptical_listener, partner.id, 0.45, "prior suspicion on partner", "", false)
+	trusting_listener.workshop_state.outside[partner.id] = 0.08
+	trusting_listener.suspicion[partner.id] = 0.08
+
+	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
+	var trace_num: int = g.add_card({
+		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
+		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
+		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
+		"locs": ["bakery", "tavern"], "item_label": "a grease-darkened brass farthing",
+		"text": "Scene trace: farthing (the Bakery or the Tavern).",
+	})
+	var talk_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, partner.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.AFTERNOON, "text": "Saw target talking to partner"})
+	var alibi_num: int = g.add_card({"kind": "alibi", "source": target.id, "subject": [target.id], "day": 1, "phase": C.NIGHT, "text": "Claimed stayed home Night 1"})
+	var sight_num: int = g.add_card({"kind": "sighting", "source": "evidence", "subject": [target.id], "block": victim.home_block, "day": 1, "phase": C.NIGHT, "text": "Seen out Night 1"})
+	var view: Dictionary = WorkshopCanvas.view(g)
+
+	# 1) "Talking with suspected evil": sways skeptical_listener (> 0), leaves trusting_listener at 0 Stage 2 with zero trust loss!
+	var board = CanvasModel.new(view)
+	var root: String = board.selected
+	board.nodes[root].conclusion = {"type": "evil", "target": target.id, "at": view.alignment_epoch}
+	var hub: String = board.add_circumstantial_hub()
+	for num in [death_num, trace_num, talk_num, alibi_num, sight_num]:
+		board.connect_cards("e:" + WorkshopCanvas.Evidence.normalize_card(g.board[num - 1]).id, hub)
+	var pnode: String = board.add_profile_info(target.id, ["home_work"])
+	board.connect_cards(pnode, hub)
+	board.connect_cards(hub, root)
+	var filed: int = WorkshopCanvas.file(g, board.compile(root))
+	var trust_before: float = trusting_listener.trust
+	g._evaluate_deduction(skeptical_listener, g.board[filed - 1], 1.0, true)
+	g._evaluate_deduction(trusting_listener, g.board[filed - 1], 1.0, true)
+	var skep_s2: float = float(skeptical_listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))
+	var trust_s2: float = float(trusting_listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))
+	var skep_incs: Array = skeptical_listener.workshop_state.get("circumstantial_incidents", {}).get(target.id, [])
+	_check(skep_s2 > 0.0 and skep_incs.size() == 1 and skep_incs[0].get("family", "") == "suspicious_association", "talking with suspected evil adds Stage 2 sway for listeners who suspect the partner, while contradicted alibi stays Stage 1 only")
+	_check(is_zero_approx(trust_s2) and trusting_listener.trust >= trust_before - 1e-6, "listeners who think the conversation partner is good add 0 Stage 2 sway and apply zero smear backlash")
+
+	# 2) Home-block sighting without public co-sighting does NOT fabricate Breathstealer proximity,
+	# and rival bond already backing a Stage 1 `connection` trace does NOT double-dip in Stage 2!
+	var sil_victim = partner
+	g.w.public_event("silenced", [sil_victim.id], "town")
+	var home_only_sight: int = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "block": sil_victim.home_block, "day": 1, "phase": C.MORNING, "text": "Seen alone on silenced person's home block"})
+	var conn_trace: int = g.add_card({
+		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
+		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
+		"trace_family": "connection", "trace_subtype": "grudge", "trace_slot": 0, "scene_trace_count": 1,
+		"victim_block": victim.home_block, "item_label": "two overturned pewter cups",
+		"text": "Scene trace: victim connection.",
+	})
+	var bond_rec: int = g.add_profile_receipt({"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": trusting_listener.id, "day": 1, "phase": 0, "text": "Rival of victim"})
+	var view2: Dictionary = WorkshopCanvas.view(g)
+	var check_ids: Array = [
+		WorkshopCanvas.Evidence.normalize_card(g.board[home_only_sight - 1]).id,
+		WorkshopCanvas.Evidence.normalize_card(g.board[conn_trace - 1]).id,
+		WorkshopCanvas.Evidence.normalize_card(g.profile_receipts[-bond_rec - 10001]).id,
+	]
+	var ext_guard: Dictionary = Circumstantial.extract_hub_incidents(view2, check_ids, target.id, trusting_listener.suspicion, trusting_listener.npc_trust, [], [], check_ids)
+	_check(ext_guard.incidents.is_empty(), "home-block-only sighting and connection-trace-backed rivalry never fabricate or double-count Stage 2 incidents")
 
 func _test_union_dedup_cap_and_retraction() -> void:
 	var g = _game(2403, 7)
@@ -166,14 +255,19 @@ func _test_union_dedup_cap_and_retraction() -> void:
 	g.w.day = 2
 	g.w.phase = C.EVENING
 	target.work = "bakery"
-	# Give listener high suspicion on accomplice and high trust / low suspicion on trusted_ally
-	listener.suspicion[accomplice.id] = 0.65
-	listener.npc_trust[trusted_ally.id] = 0.85
-	listener.suspicion[trusted_ally.id] = 0.08
-	# Seed 4 distinct qualifying incidents (Breathstealer prox, accomplice conversation, hostile vote against trusted_ally, rivalry with murder victim + refusal)
+	victim.alive = false
+	# Seed public events first, then establish the listener's active Workshop baseline!
 	g.w.public_event("demon_death", [victim.id], "town")
 	g.w.public_event("silenced", [trusted_ally.id], "town")
 	g.w.public_event("vote", [trusted_ally.id], "town", {"nominee": trusted_ally.id, "nominator": target.id, "yes": [target.id, accomplice.id], "no": [listener.id], "player_yes": false, "count": 2, "threshold": 4, "outcome": "fails"})
+	listener.npc_trust[trusted_ally.id] = 0.85
+	listener.workshop_state["enabled"] = true
+	Mind.recompute_beliefs(g.w, listener, "seed baseline with public events")
+	# Give listener high suspicion on accomplice and low suspicion on trusted_ally in outside baseline
+	Mind.adjust(g.w, listener, accomplice.id, 0.50, "suspect accomplice", "", false)
+	Mind.adjust(g.w, listener, trusted_ally.id, -0.05, "trust ally", "", false)
+	Mind.recompute_beliefs(g.w, listener, "lock pre-case baseline")
+
 	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
 	var trace_num: int = g.add_card({
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
@@ -225,7 +319,7 @@ func _test_union_dedup_cap_and_retraction() -> void:
 	Mind.recompute_beliefs(g.w, listener, "idempotence check")
 	_check(is_equal_approx(listener.suspicion[target.id], susp_snapshot), "belief refresh retracts Stage 2 before Stage 1 so vibes never compound into priors")
 
-	# Retracting both cases restores exact baseline suspicion!
+	# Retracting both cases restores exact post-public-event baseline suspicion!
 	g.workshop_retract(filed1, listener.id)
 	g.workshop_retract(filed2, listener.id)
 	_check(is_zero_approx(float(listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))) and is_equal_approx(listener.suspicion[target.id], baseline_before), "withdrawing cases fully retracts Stage 2 circumstantial suspicion")
@@ -233,6 +327,7 @@ func _test_union_dedup_cap_and_retraction() -> void:
 func _test_native_adjust_preserves_stage2_layer() -> void:
 	var g = _game(2406, 7)
 	var listener = g.w.living_good()[0]
+	var control_listener = g.w.living_good()[4]
 	var target = g.w.living_good()[1]
 	var silenced_p = g.w.living_good()[2]
 	var victim = g.w.living_good()[3]
@@ -240,8 +335,17 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 	g.w.phase = C.EVENING
 	target.work = "bakery"
 	target.haunts = ["tavern", "mill"]
+	victim.alive = false
+	# Align listener and control_listener traits/trust so control_listener gives exact no-case reference after grief_delta
+	control_listener.traits = listener.traits.duplicate(true)
+	control_listener.trust = listener.trust
+	control_listener.npc_trust = listener.npc_trust.duplicate(true)
 	g.w.public_event("demon_death", [victim.id], "town")
 	g.w.public_event("silenced", [silenced_p.id], "town")
+	for l in [listener, control_listener]:
+		l.workshop_state["enabled"] = true
+		Mind.recompute_beliefs(g.w, l, "seed public baseline")
+	var outside_before: float = float(listener.workshop_state.outside[target.id])
 	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
 	var sil_num: int = g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced at meeting"})
 	var conv_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
@@ -253,7 +357,6 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 		"text": "Scene trace: farthing (the Bakery or the Tavern).",
 	})
 	var view: Dictionary = WorkshopCanvas.view(g)
-	var baseline_before: float = listener.suspicion[target.id]
 	var board = CanvasModel.new(view)
 	var root: String = board.selected
 	board.nodes[root].conclusion = {"type": "evil", "target": target.id, "at": view.alignment_epoch}
@@ -266,18 +369,21 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 	board.connect_cards(hub, root)
 	var filed: int = WorkshopCanvas.file(g, board.compile(root))
 	g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
-	var s1_req: float = float(listener.workshop_state.requested.get(target.id, 0.0))
 	var s2_req: float = float(listener.workshop_state.get("circumstantial_requested", {}).get(target.id, 0.0))
 	_check(s2_req > 0.0, "precondition: listener holds nonzero Stage 2 circumstantial suspicion before native adjust")
 	var pre_adjust_susp: float = listener.suspicion[target.id]
 	var grief_delta: float = 0.12
 	Mind.adjust(g.w, listener, target.id, grief_delta, "execution grief test", "", false)
+	Mind.adjust(g.w, control_listener, target.id, grief_delta, "execution grief test", "", false)
 	_check(is_equal_approx(listener.suspicion[target.id], pre_adjust_susp + grief_delta), "Mind.adjust preserves both Stage 1 and Stage 2 layers immediately")
-	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), baseline_before + grief_delta), "Mind.adjust advances state.outside by exact native delta")
+	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), outside_before + grief_delta), "Mind.adjust advances state.outside by exact native delta")
 	Mind.recompute_beliefs(g.w, listener, "post-adjust refresh check")
-	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), baseline_before + grief_delta) and is_equal_approx(listener.suspicion[target.id], baseline_before + grief_delta + s1_req + float(listener.workshop_state.get("circumstantial_requested", {}).get(target.id, 0.0))), "ownership refresh after Mind.adjust does not subtract Stage 2 contribution from outside baseline")
+	Mind.recompute_beliefs(g.w, control_listener, "post-adjust control refresh")
+	var s1_after: float = float(listener.workshop_state.requested.get(target.id, 0.0))
+	var s2_after: float = float(listener.workshop_state.get("circumstantial_requested", {}).get(target.id, 0.0))
+	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), outside_before + grief_delta) and is_equal_approx(listener.suspicion[target.id], outside_before + grief_delta + s1_after + s2_after), "ownership refresh after Mind.adjust does not subtract Stage 2 contribution from outside baseline")
 	g.workshop_retract(filed, listener.id)
-	_check(is_equal_approx(listener.suspicion[target.id], baseline_before + grief_delta), "withdrawing case after Mind.adjust restores exact baseline plus native delta")
+	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), outside_before + grief_delta) and is_equal_approx(listener.suspicion[target.id], control_listener.suspicion[target.id]), "withdrawing case after Mind.adjust restores exact post-grief baseline")
 
 func _test_smear_backlash() -> void:
 	var g = _game(2404, 7)
