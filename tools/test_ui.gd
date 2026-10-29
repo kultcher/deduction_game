@@ -212,7 +212,7 @@ func _init() -> void:
 	await process_frame
 	_check(g.state == "talk" and g.talk_with == t, "the explicit Talk action walks over and starts talking")
 	_check(scene.map.zoom_block == g.w.loc_block(g.loc), "the map zooms to your block")
-	var labels: Array = scene.actions.get_children().filter(func(c): return c is Button).map(func(b): return b.text)
+	var labels: Array = scene.conversation_view.controls.get_children().filter(func(c): return c is Button).map(func(b): return b.text)
 	_check(labels.has("Ask about %s's gift…  ▸" % t.name) and labels.has("Offer…  ▸") and labels.has("Ask where they were and who they saw…  ▸") \
 		and labels.has("Ask about others…  ▸") and labels.has("Present a card…"), "talk panel has the new top-level buttons (%s)" % str(labels))
 	_check(not labels.any(func(x): return "seen around" in x), "the generic 'who have you seen' question is gone")
@@ -241,7 +241,7 @@ func _init() -> void:
 			"nomination":
 				var first = not meet_checked
 				if first:
-					_check(scene.meeting_view.visible and not scene.map.visible, "the meeting circle replaces the map")
+					_check(scene.meeting_view.visible and not scene.map.is_visible_in_tree(), "the meeting circle replaces the map")
 				scene._run("vote no")
 				scene.finish_streaming()
 				if first:
