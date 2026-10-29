@@ -458,7 +458,8 @@ func _own_lies() -> void:
 	n.max_tier = 0
 	var r2 = Mind.answer_gift(w, n, 3)
 	var txt = " ".join(PackedStringArray(r2["lines"].filter(func(l): return l is Dictionary).map(func(l): return l["text"])))
-	_check("I was out" in txt and "wasn't ready to tell you why" in txt, "disclosing the gift, they own the earlier lie (%s)" % txt)
+	var stmts = " ".join(PackedStringArray(r2["lines"].filter(func(l): return l is Dictionary).map(func(l): return str(l.get("statement", l["text"])))))
+	_check("I was out" in stmts and "wasn't ready to tell you why" in stmts and "on night 2" in txt, "disclosing the gift, they own the earlier lie (%s)" % txt)
 
 func _corroboration() -> void:
 	var g = _game(7130)

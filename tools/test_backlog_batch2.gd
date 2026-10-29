@@ -137,7 +137,7 @@ func _neutral_opinion() -> void:
 				if state == off_state:
 					check("something's off" in text and reply.facts.size() == 1, "existing suspicious-roll outcome is unchanged")
 				else:
-					check(("seems all right" in text) if level < 0.35 else ("don't really know %s that well" % t.name) in text, "neutral boundary uses the approved wording for either alignment")
+					check(("seems all right" in text) if level < 0.35 else (("don't really know %s" % t.name.to_lower()) in text.to_lower() or ("do not really know %s" % t.name.to_lower()) in text.to_lower()), "neutral boundary uses the approved wording for either alignment")
 					check(reply.facts.is_empty(), "a neutral or reassuring opinion creates no incriminating fact")
 
 func _distrust() -> void:
@@ -186,7 +186,7 @@ func _distrust() -> void:
 			var night = Mind.answer_night(w, n, 1)
 			if night.facts.any(func(f): return f.kind == "refusal"):
 				stonewalled = true
-				check(night.lines.any(func(line): return line is Dictionary and line.text == "You're an outsider, I'm not sure I can trust you."), "a whereabouts refusal uses the safe outsider fallback")
+				check(night.lines.any(func(line): return line is Dictionary and line.get("statement", line.text) == "You're an outsider, I'm not sure I can trust you." and "outsider" in line.text.to_lower() and "trust you" in line.text.to_lower()), "a whereabouts refusal uses the safe outsider fallback")
 				break
 		check(stonewalled, "whereabouts fixture exercises a refusal for both alignments")
 		var lines: Array = []
@@ -273,7 +273,7 @@ func _role_guess_warning() -> void:
 			var state = g.w.rng.state
 			var reply = Social.answer_is_role(g.w, n, wrong)
 			var expected = "What my gift is, I'll keep to myself." if i == 1 else ("You're grasping at straws, and I'm running out of patience." if i == 2 else "Why do you keep asking me that?")
-			check(reply.lines[0].text == expected and reply.facts.is_empty(), "first/second/third guess cadence is noncommittal for both alignments")
+			check(reply.lines[0].get("statement", reply.lines[0].text) == expected and reply.lines[0].text != "" and reply.facts.is_empty(), "first/second/third guess cadence is noncommittal for both alignments")
 			check(n.role_guesses == i and is_equal_approx(before - n.trust, 0.02 * i), "warning preserves the wrong-guess counter and existing cost")
 			check(g.w.rng.state == state, "wrong-guess wording introduces no random choice")
 

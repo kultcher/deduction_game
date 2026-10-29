@@ -27,6 +27,9 @@ static func _mind():
 static func say(n, text: String) -> Dictionary:
 	return {"speaker": n.id, "name": n.name, "text": text}
 
+static func say_voiced(n, key: String, fallback: String, slots: Dictionary = {}) -> Dictionary:
+	return {"speaker": n.id, "name": n.name, "text": Dialogue.voice_line(n.id, key, fallback, slots), "statement": fallback}
+
 ## Small presentation boundary: approve content first, then supply only delivery cues.
 static func voiced(n, kind: String, statement: String, event_id: String = "", context: Dictionary = {}) -> Dictionary:
 	var cues = context.duplicate()
@@ -161,13 +164,17 @@ static func apologise(w, n, index: int) -> Dictionary:
 		"insight": ins, "share": snappedf(share, 0.01)})
 	set_trust(w, n, n.trust + repair, "apology: " + g["why"])
 	var line: String
+	var apology_key: String
 	if repair >= 0.05:
 		line = "Well. I appreciate you saying so."
+		apology_key = "apology_accept"
 	elif g["evidence"] and ins >= 0.6:
 		line = "Sorry for it, are you? You'd do the same again, I think."
+		apology_key = "apology_skeptical"
 	else:
 		line = "Hm. Words are cheap, but I heard you."
-	return {"lines": [say(n, line)], "facts": []}
+		apology_key = "apology_grudging"
+	return {"lines": [say_voiced(n, apology_key, line)], "facts": []}
 
 ## Only translate known player actions. Never quote arbitrary reasoning strings:
 ## those can contain private role, alignment or secret information.
@@ -210,7 +217,10 @@ static func _append_distrust(w, n, lines: Array) -> void:
 		return
 	n.distrust_explained_day = w.day
 	var action: String = n.distrust_memory.get("action", "")
-	lines.append(say(n, ("I don't trust you. " + action) if action != "" else "You're an outsider, I'm not sure I can trust you."))
+	if action != "":
+		lines.append(say_voiced(n, "distrust_action", "I don't trust you. " + action, {"action": action}))
+	else:
+		lines.append(say_voiced(n, "distrust_outsider", "You're an outsider, I'm not sure I can trust you."))
 
 static func cap_trust(w, n, cap: float, why: String) -> void:
 	if cap < n.trust_cap:
