@@ -1,0 +1,25 @@
+# Constance expression exploration
+
+Harsh v2 was generated with the built-in image tool from harsh v1. Prompt: Edit the supplied Constance visual-novel portrait: make only a small, deliberate change to her eyes. Narrow the eyelids slightly and focus her gaze so she reads more purposeful, discerning and quietly certain of her judgment. Maintain her restrained, composed demeanor, a hint of satisfaction, not angry or suspicious of deception; keep her mouth, facial identity, features, proportions, gaze direction, hair, jewelry, pose, embroidered purple outfit, crop, scale, papercraft art style and colors unchanged. Preserve the genuine transparent background. No text or added objects.
+
+Generated with the built-in image tool from `../portraits_vn_poc/constance-vn-poc-v1.png`. Experimental art; not integrated into gameplay. Each image uses the following prompt:
+
+## warm
+
+Edit the supplied reference into a different expression and restrained pose for Constance in a visual novel. Preserve exact identity, age, face shape, features, gray streaked dark updo, skin tone, gold and purple earrings, purple brooch, ivory ruffled collar, purple embroidered outfit, colors, consistent scale, waist-up framing, placement and illustrated textured papercraft style. She is a composed, formal and demanding woman; keep her recognizable and dignified. Allow only slight changes to head angle and shoulders. Match the original 1024x1536 vertical framing for smoothly switching portraits in-game. Transparent background with real alpha, no text, extra objects, frame, or base. Do not switch to monochrome, photorealism, or heavy crosshatching.
+WARM: She is pleasantly surprised that something has met her demanding expectations; a small restrained but sincere smile, slightly softened eyes, subtly tilted head toward the listener and less tension in shoulders. Also suitable for sincere gratitude and fondness; no broad grin.
+
+## harsh
+
+Edit the supplied reference into a different expression and restrained pose for Constance in a visual novel. Preserve exact identity, age, face shape, features, gray streaked dark updo, skin tone, gold and purple earrings, purple brooch, ivory ruffled collar, purple embroidered outfit, colors, consistent scale, waist-up framing, placement and illustrated textured papercraft style. She is a composed, formal and demanding woman; keep her recognizable and dignified. Allow only slight changes to head angle and shoulders. Match the original 1024x1536 vertical framing for smoothly switching portraits in-game. Transparent background with real alpha, no text, extra objects, frame, or base. Do not switch to monochrome, photorealism, or heavy crosshatching.
+HARSH: Purposeful, direct confidence in her beliefs, not anger. A steady judging gaze, chin slightly raised, squared shoulders and tiny knowing half-smile, with only a subtle hint of satisfaction at having been proven right. Suitable for serious accusation.
+
+## worried
+
+Edit the supplied reference into a different expression and restrained pose for Constance in a visual novel. Preserve exact identity, age, face shape, features, gray streaked dark updo, skin tone, gold and purple earrings, purple brooch, ivory ruffled collar, purple embroidered outfit, colors, consistent scale, waist-up framing, placement and illustrated textured papercraft style. She is a composed, formal and demanding woman; keep her recognizable and dignified. Allow only slight changes to head angle and shoulders. Match the original 1024x1536 vertical framing for smoothly switching portraits in-game. Transparent background with real alpha, no text, extra objects, frame, or base. Do not switch to monochrome, photorealism, or heavy crosshatching.
+WORRIED: She is being judged and struggles to conceal her scorn for the people judging her, but that judgment has unsettled her. Subtle tension at the mouth and eyes, slightly lifted inner brow, a more defensive head position and shoulders drawn inward slightly, maintaining dignity. It should read as guarded stress rather than anger or guilt.
+
+## sorrowful
+
+Edit the supplied reference into a different expression and restrained pose for Constance in a visual novel. Preserve exact identity, age, face shape, features, gray streaked dark updo, skin tone, gold and purple earrings, purple brooch, ivory ruffled collar, purple embroidered outfit, colors, consistent scale, waist-up framing, placement and illustrated textured papercraft style. She is a composed, formal and demanding woman; keep her recognizable and dignified. Allow only slight changes to head angle and shoulders. Match the original 1024x1536 vertical framing for smoothly switching portraits in-game. Transparent background with real alpha, no text, extra objects, frame, or base. Do not switch to monochrome, photorealism, or heavy crosshatching.
+SORROWFUL: British stiff upper lip: she remains dignified and composed but grief and stress show gently in her eyes and corners of her mouth. Slight downward tilt of the head and the smallest slump of the shoulders, quiet sadness without overt tears, exaggerated frown, or melodrama.
