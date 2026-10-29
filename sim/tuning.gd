@@ -344,13 +344,15 @@ class Meeting:
 	const DEFENCE_MISLED_RELIEF = -0.06
 	const DEFENCE_PLEA_RELIEF = -0.02
 
-	## Nomination threshold
-	const NOMINATION_BASE = 0.86
-	const NOMINATION_DAY_SLOPE = 0.08
-	const NOMINATION_FLOOR = 0.45
-	const NOMINATION_CONFIDENCE_SCALE = 0.15
+	## Nomination threshold & failed-vote cooloff
+	const NOMINATION_BASE = 0.65
+	const NOMINATION_DAY_SLOPE = 0.05
+	const NOMINATION_FLOOR = 0.40
+	const NOMINATION_CONFIDENCE_SCALE = 0.20
 	const NOMINATION_PARANOIA_SCALE = 0.5
 	const NOMINATION_OWN_CLEAR_RELIEF = 0.2
+	const NOMINATION_COOLOFF_SELF = 0.28
+	const NOMINATION_COOLOFF_ROOM = 0.10
 
 	## Voting threshold
 	const VOTE_BASE_NEED = 0.5
@@ -395,6 +397,10 @@ class Evil:
 	const DEMON_CAUTION_FLOOR = 0.45
 	const DEMON_CAUTION_DRIFT = 0.03
 	const HEAT_FADE = 0.75
+	const EVIL_NOMINATION_BASE_HEAT = 0.42
+	const EVIL_NOMINATION_CONFIDENCE_SCALE = 0.16
+	const EVIL_POCKET_FRAME_BONUS = 0.16
+	const EVIL_WALKER_INTEL_BONUS = 0.08
 
 	## Demon kill target scoring
 	const KILL_INFO_CLAIM = 3.0

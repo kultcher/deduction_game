@@ -27,6 +27,7 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const Argue = preload("res://sim/argue.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -245,7 +246,7 @@ func _scale_snapshot() -> Dictionary:
 		for o in others:
 			top_action = maxf(top_action, Mind.action_susp(n, o.id))
 		# Same formula as Mind._good_nomination_impl.
-		var thr: float = maxf(0.45, 0.86 - 0.08 * w.day) - 0.15 * (Mind.trait_of(n, "confidence") - 0.5) * 2.0 - 0.5 * Mind.paranoia(w, n)
+		var thr: float = maxf(Tuning.Meeting.NOMINATION_FLOOR, Tuning.Meeting.NOMINATION_BASE - Tuning.Meeting.NOMINATION_DAY_SLOPE * w.day) - Tuning.Meeting.NOMINATION_CONFIDENCE_SCALE * (Mind.trait_of(n, "confidence") - 0.5) * 2.0 - Tuning.Meeting.NOMINATION_PARANOIA_SCALE * Mind.paranoia(w, n)
 		npcs.append({"id": n.id, "top": Mind.susp(n, top.id), "top_is_evil": top.is_evil(), "top_action": top_action,
 			"good_mean": _mean(good_vals), "evil": evil, "nomination_threshold": thr, "nomination_headroom": top_action - thr,
 			"top3": others.slice(0, 3).map(func(o): return o.id), "top3_evil": others.slice(0, 3).filter(func(o): return o.is_evil()).size()})

@@ -1128,6 +1128,9 @@ static func refresh_consensus(w, l, target: String) -> void:
 static func refresh_all_consensus(w) -> void:
 	MindMeeting.refresh_all_consensus(w)
 
+static func nomination_cooloff(w, nominator_id: String, target_id: String) -> float:
+	return MindMeeting.nomination_cooloff(w, nominator_id, target_id)
+
 static func _good_nomination(w, n, m: Dictionary, block: String):
 	return MindMeeting._good_nomination(w, n, m, block)
 

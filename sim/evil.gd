@@ -116,6 +116,9 @@ static func review_scapegoat(w) -> void:
 				clears += 0.3 * pow(HEAT_FADE, w.day - e["day"])
 		if clears > 0.0:
 			parts["dead_end"] = -clears
+		var flop_cooloff: float = vote_cooloff(w, "", g.id)
+		if flop_cooloff > 0.0:
+			parts["failed_vote"] = -flop_cooloff
 		if g.id == cur:
 			var accused = w.public_log.filter(func(e): return e["kind"] == "accusation" and g.id in e["subjects"] and w.by_id.has(e["by"]) and w.by_id[e["by"]].is_evil()).size()
 			parts["keep"] = 0.25 + 0.15 * accused
@@ -698,6 +701,61 @@ static func bluff_reason(w, n, t) -> String:
 		return ""
 	return w.pick(opts)
 
+## Total public heat in the meeting room, including Evil's own shared readings and accusations
+## (the good town cannot distinguish Evil's public setup from genuine town talk).
+static func room_heat(w, t) -> float:
+	var h = 0.15
+	for e in w.public_log:
+		if t.id in e["subjects"]:
+			h += _heat_of(e, t.id) * pow(HEAT_FADE, w.day - e["day"])
+	return clampf(h, 0.0, 1.0)
+
+## Failed-vote cooloff from yesterday's tally, matching MindMeeting.nomination_cooloff.
+static func vote_cooloff(w, nominator_id: String, target_id: String) -> float:
+	if w.day <= 1:
+		return 0.0
+	var living_count: int = w.living().size()
+	if living_count <= 4:
+		return 0.0
+	var urgency_mult: float = 0.5 if (living_count == 5 or (w.max_days > 0 and w.day >= w.max_days - 1)) else 1.0
+	for i in range(w.public_log.size() - 1, -1, -1):
+		var ev: Dictionary = w.public_log[i]
+		if ev.get("kind", "") != "vote" or int(ev.get("day", -1)) != w.day - 1:
+			continue
+		var d: Dictionary = ev.get("data", {})
+		if str(d.get("nominee", "")) != target_id:
+			continue
+		var count: int = int(d.get("count", 0))
+		var thr: int = maxi(int(d.get("threshold", 1)), 1)
+		if count >= thr:
+			return 0.0
+		var shortfall: float = clampf(float(thr - count) / float(thr), 0.0, 1.0)
+		var prev_by: String = str(d.get("nominator", ""))
+		var scale: float = Tuning.Meeting.NOMINATION_COOLOFF_SELF if (nominator_id != "" and prev_by == nominator_id) else Tuning.Meeting.NOMINATION_COOLOFF_ROOM
+		return scale * shortfall * urgency_mult
+	return 0.0
+
+## How ready Evil is to press a nomination on scapegoat `t`: counts all public talk in the room
+## (including Evil's own setup), plus unshared fake readings/sightings or walker intel held in
+## pocket to drop during `nomination_case`, minus yesterday's failed-vote cooloff.
+static func scapegoat_readiness(w, n, t) -> Dictionary:
+	var room: float = room_heat(w, t)
+	var pocket: float = 0.0
+	var has_unshared_fake: bool = n.info_log.any(func(e): return e.get("fake", false) and not e.get("shared", false) and t.id in Gifts.implicated(e))
+	var has_fake_sighting: bool = false
+	for k in w.evil_plan.get("fake_sightings", {}):
+		var fs = w.evil_plan["fake_sightings"][k]
+		if k.begins_with(n.id + ":") and fs is Dictionary and fs.get("who", "") == t.id:
+			has_fake_sighting = true
+			break
+	if has_unshared_fake or has_fake_sighting:
+		pocket += Tuning.Evil.EVIL_POCKET_FRAME_BONUS
+	if n.intel.values().any(func(it): return it.get("kind", "") == "walker" and it.get("about", "") == t.id):
+		pocket += Tuning.Evil.EVIL_WALKER_INTEL_BONUS
+	var cooloff: float = vote_cooloff(w, n.id, t.id)
+	var score: float = clampf(room + pocket - cooloff, 0.0, 1.2)
+	return {"score": score, "room_heat": room, "pocket_ammo": pocket, "cooloff": cooloff}
+
 ## What the town seems to think of someone, judged from public events; evil mimics this.
 static func town_view(w, t) -> float:
 	return public_heat(w, t)
@@ -711,13 +769,15 @@ static func evil_nomination(w, n):
 	if m["block"] != "" and not w.by_id[m["block"]].is_evil():
 		w.dlog.think(n.id, "nominate", "Evil: a good NPC (%s) is already on the block; no need to nominate." % m["block"])
 		return null
-	var avg = public_heat(w, w.by_id[s])
-	var bold = n.traits.get("confidence", 0.5)
-	w.observe_decision(n, "evil_nomination", avg >= 0.45 - 0.15 * bold, {"score": avg, "threshold": 0.45 - 0.15 * bold, "comparison": ">=", "inputs": {"confidence": bold, "public_heat": avg}}, s)
-	if avg >= 0.45 - 0.15 * bold:
+	var ready_info: Dictionary = scapegoat_readiness(w, n, w.by_id[s])
+	var avg: float = ready_info["score"]
+	var bold: float = n.traits.get("confidence", 0.5)
+	var thr: float = Tuning.Evil.EVIL_NOMINATION_BASE_HEAT - Tuning.Evil.EVIL_NOMINATION_CONFIDENCE_SCALE * bold
+	w.observe_decision(n, "evil_nomination", avg >= thr, {"score": avg, "threshold": thr, "comparison": ">=", "inputs": {"confidence": bold, "room_heat": ready_info["room_heat"], "pocket_ammo": ready_info["pocket_ammo"], "cooloff": ready_info["cooloff"]}}, s)
+	if avg >= thr:
 		return {"nominee": s, "by": n.id, "score": avg + 0.2,
-			"reason": "Evil: public heat on scapegoat %s is %.2f; pushes the nomination." % [s, avg]}
-	w.dlog.think(n.id, "nominate", "Evil: public heat on scapegoat %s only %.2f; waits." % [s, avg])
+			"reason": "Evil: scapegoat readiness on %s is %.2f (room %.2f, pocket %.2f, cooloff -%.2f); pushes the nomination." % [s, avg, ready_info["room_heat"], ready_info["pocket_ammo"], ready_info["cooloff"]]}
+	w.dlog.think(n.id, "nominate", "Evil: scapegoat readiness on %s only %.2f (need %.2f); waits." % [s, avg, thr])
 	return null
 
 static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool = false) -> bool:

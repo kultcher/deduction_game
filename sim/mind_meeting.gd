@@ -602,23 +602,63 @@ static func _good_nomination(w, n, m: Dictionary, block: String):
 	w.dlog.decision(n.id, "nomination", "outcome", result, {}, "", id)
 	return result
 
+## Action-only cooloff after a failed vote yesterday, scaled by vote shortfall against threshold.
+## Leaves underlying suspicion and yes/no vote evaluations untouched, and tapers out in endgame.
+static func nomination_cooloff(w, nominator_id: String, target_id: String) -> float:
+	if w.day <= 1:
+		return 0.0
+	var living_count: int = w.living().size()
+	if living_count <= 4:
+		return 0.0
+	var urgency_mult: float = 0.5 if (living_count == 5 or (w.max_days > 0 and w.day >= w.max_days - 1)) else 1.0
+	for i in range(w.public_log.size() - 1, -1, -1):
+		var ev: Dictionary = w.public_log[i]
+		if ev.get("kind", "") != "vote" or int(ev.get("day", -1)) != w.day - 1:
+			continue
+		var d: Dictionary = ev.get("data", {})
+		if str(d.get("nominee", "")) != target_id:
+			continue
+		var count: int = int(d.get("count", 0))
+		var thr: int = maxi(int(d.get("threshold", 1)), 1)
+		if count >= thr:
+			return 0.0
+		var shortfall: float = clampf(float(thr - count) / float(thr), 0.0, 1.0)
+		var prev_by: String = str(d.get("nominator", ""))
+		var scale: float = Tuning.Meeting.NOMINATION_COOLOFF_SELF if (nominator_id != "" and prev_by == nominator_id) else Tuning.Meeting.NOMINATION_COOLOFF_ROOM
+		return scale * shortfall * urgency_mult
+	return 0.0
+
+static func _nomination_action_score(w, n, target_id: String) -> float:
+	var s: float = action_susp(n, target_id)
+	if n.cleared.has(target_id):
+		s -= Tuning.Meeting.NOMINATION_OWN_CLEAR_RELIEF
+	s -= nomination_cooloff(w, n.id, target_id)
+	return s
+
 static func _good_nomination_impl(w, n, m: Dictionary, block: String, trace_id: int):
-	var thr: float = maxf(Tuning.Meeting.NOMINATION_FLOOR, Tuning.Meeting.NOMINATION_BASE - Tuning.Meeting.NOMINATION_DAY_SLOPE * w.day) - Tuning.Meeting.NOMINATION_CONFIDENCE_SCALE * (trait_of(n, "confidence") - 0.5) * 2.0 - Tuning.Meeting.NOMINATION_PARANOIA_SCALE * paranoia(w, n)
-	for t in ranked_suspects(w, n, true):
+	var day_base: float = maxf(Tuning.Meeting.NOMINATION_FLOOR, Tuning.Meeting.NOMINATION_BASE - Tuning.Meeting.NOMINATION_DAY_SLOPE * w.day)
+	var conf_term: float = -Tuning.Meeting.NOMINATION_CONFIDENCE_SCALE * (trait_of(n, "confidence") - 0.5) * 2.0
+	var para_term: float = -Tuning.Meeting.NOMINATION_PARANOIA_SCALE * paranoia(w, n)
+	var thr: float = day_base + conf_term + para_term
+	var candidates: Array = ranked_suspects(w, n, true)
+	candidates.sort_custom(func(a, b):
+		var sa: float = _nomination_action_score(w, n, a.id)
+		var sb: float = _nomination_action_score(w, n, b.id)
+		return sa > sb if not is_equal_approx(sa, sb) else a.id < b.id)
+	for t in candidates:
 		if t.id in m["nominated"] or t.id == n.id:
 			w.dlog.decision(n.id, "nomination", "gate", false,
 				{"gate": "already_nominated_or_self"}, t.id, trace_id)
 			continue
-		var s = action_susp(n, t.id)
-		if n.cleared.has(t.id):
-			s -= 0.2  # their own sight said this person is no demon
+		var cooloff: float = nomination_cooloff(w, n.id, t.id)
+		var clear_adj: float = -Tuning.Meeting.NOMINATION_OWN_CLEAR_RELIEF if n.cleared.has(t.id) else 0.0
+		var s: float = action_susp(n, t.id) + clear_adj - cooloff
 		w.dlog.decision(n.id, "nomination", "evaluation", s >= thr, {"score": s,
-			"raw_suspicion": susp(n, t.id), "town_pressure": action_susp(n, t.id) - execution_priority_contribution(n, t.id) - susp(n, t.id), "own_clear_adjustment": -0.2 if n.cleared.has(t.id) else 0.0,
+			"raw_suspicion": susp(n, t.id), "town_pressure": action_susp(n, t.id) - execution_priority_contribution(n, t.id) - susp(n, t.id),
+			"own_clear_adjustment": clear_adj, "nomination_cooloff": -cooloff,
 			"shared_execution_priority": execution_priority(n, t.id), "shared_execution_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT,
 			"threshold": thr, "comparison": ">=",
-			"threshold_parts": {"day_base": maxf(0.45, 0.86 - 0.08 * w.day),
-				"confidence": -0.15 * (trait_of(n, "confidence") - 0.5) * 2.0,
-				"paranoia": -0.5 * paranoia(w, n)}}, t.id, trace_id)
+			"threshold_parts": {"day_base": day_base, "confidence": conf_term, "paranoia": para_term}}, t.id, trace_id)
 		if s < thr:
 			continue
 		if block != "" and action_susp(n, block) >= s:
@@ -651,7 +691,8 @@ static func _evil_nomination(w, n, m: Dictionary, block: String):
 	if ev == null:
 		return null
 	var sg = w.by_id[ev["nominee"]]
-	if evil_override(w, n, "nomination", 0.4 + Evil.public_heat(w, sg), 0.5, "push scapegoat %s (good self wouldn't nominate)" % sg.id):
+	var sg_ready: float = Evil.scapegoat_readiness(w, n, sg)["score"]
+	if evil_override(w, n, "nomination", 0.45 + sg_ready, 0.5, "push scapegoat %s (good self wouldn't nominate)" % sg.id):
 		return ev
 	return null
 
