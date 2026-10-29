@@ -87,7 +87,7 @@ func _silenced_speakers() -> void:
 func _victim_trace() -> void:
 	var victim_excluded = true
 	var demon_always_matches = true
-	var passer_recorded = false
+	var extra_passer_spawned = false
 	for seed_v in range(7140, 7170):
 		var g = _game(seed_v)
 		var w = g.w
@@ -96,17 +96,18 @@ func _victim_trace() -> void:
 		w.night_walkers = [{"id": victim.id, "block": victim.home_block, "path": [victim.home_block], "why": "keeping watch"}]
 		w._kill(victim)
 		var sc1: Dictionary = w.scenes["scene_" + victim.id]
-		victim_excluded = victim_excluded and (victim.id not in sc1.get("passer_ids", []))
+		victim_excluded = victim_excluded and sc1["traces"].size() == 1 and (victim.id not in sc1.get("passer_ids", []))
 		demon_always_matches = demon_always_matches and w.actor_fits_trace_truth(d, sc1["traces"][0])
 		var next_victim = w.living_good()[0]
 		var passer = w.living_good()[1]
 		w.night_walkers = [{"id": passer.id, "block": next_victim.home_block, "path": [next_victim.home_block], "why": "passing by"}]
 		w._kill(next_victim)
 		var sc2: Dictionary = w.scenes["scene_" + next_victim.id]
-		passer_recorded = passer_recorded or (passer.id in sc2.get("passer_ids", []))
-		demon_always_matches = demon_always_matches and w.actor_fits_trace_truth(d, sc2["traces"][0])
-	_check(victim_excluded, "a victim's own night walk is never counted among scene passers")
-	_check(demon_always_matches and passer_recorded, "every generated scene trace fits the Demon while recording non-victim passers")
+		demon_always_matches = demon_always_matches and sc2["traces"].any(func(t): return w.actor_fits_trace_truth(d, t))
+		if sc2["traces"].size() == 2 and sc2["traces"].any(func(t): return w.actor_fits_trace_truth(passer, t)):
+			extra_passer_spawned = true
+	_check(victim_excluded, "a victim's own night walk never spawns a second passer trace at their cottage")
+	_check(demon_always_matches and extra_passer_spawned, "Demon trace is always present and eligible passers can add a second trace")
 
 func _roads() -> void:
 	var direct = true

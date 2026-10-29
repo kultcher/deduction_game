@@ -1344,16 +1344,17 @@ func _build_locations_trace(actor, v, slot: int, used_keys: Dictionary, prev_loc
 	var scene_prose: String
 	var card_text: String
 	if is_scent:
-		scene_prose = "Near the body a faint smell of %s clings to the latch, common to people who spend time around %s." % [label, places]
-		card_text = "Trace at %s's death scene: a lingering scent of %s suggests someone tied to %s." % [v.name, label, places]
+		scene_prose = "Near the body, a distinct scent of %s clings to the threshold; you smell that on folk who frequent %s." % [label, places]
+		card_text = "At %s's scene: scent of %s (%s)." % [v.name, label, places]
 	else:
-		scene_prose = "Near the body you find %s, the sort associated with people who work or linger around %s." % [label, places]
-		card_text = "Trace at %s's death scene: %s suggests someone tied to %s." % [v.name, label, places]
+		scene_prose = "Near the body, caught by the threshold, lies %s; folk carry those around %s." % [label, places]
+		card_text = "At %s's scene: %s (%s)." % [v.name, label, places]
 	return {
 		"trace_family": "locations",
 		"trace_subtype": "scent" if is_scent else "token",
 		"trace_key": "locations:" + ":".join(PackedStringArray(chosen)),
 		"trace_slot": slot,
+		"scene_trace_count": 1,
 		"day": day,
 		"victim": v.id,
 		"locs": chosen.duplicate(),
@@ -1378,20 +1379,22 @@ func _build_quarter_trace(actor, v, slot: int, used_keys: Dictionary) -> Diction
 	var chosen_pair: Array = pick(fresh if not fresh.is_empty() else pairs)
 	var hb: String = chosen_pair[0]
 	var eb: String = chosen_pair[1]
-	var h_mat: String = C.BLOCKS[hb]["trace"]
+	var h_tok: String = C.QUARTER_TOKENS.get(hb, C.BLOCKS[hb]["trace"])
 	var e_mat: String = C.BLOCKS[eb]["trace"]
+	var item_lbl: String = "%s dusted with %s" % [h_tok, e_mat]
 	return {
 		"trace_family": "quarter",
 		"trace_subtype": "home_or_evening",
 		"trace_key": "quarter:%s:%s:%d" % [hb, eb, day],
 		"trace_slot": slot,
+		"scene_trace_count": 1,
 		"day": day,
 		"victim": v.id,
 		"home_block": hb,
 		"evening_block": eb,
-		"item_label": "%s and %s" % [h_mat, e_mat],
-		"scene_prose": "Near the threshold you find traces of %s and %s, suggesting someone who either lives on %s or spent the evening of day %d on %s." % [h_mat, e_mat, C.block_name(hb), day, C.block_name(eb)],
-		"card_text": "Trace at %s's death scene: residue suggests someone who either lives on %s or spent the evening of day %d on %s." % [v.name, C.block_name(hb), day, C.block_name(eb)],
+		"item_label": item_lbl,
+		"scene_prose": "Near the body lies %s, pointing to someone who lives on %s or spent day %d's evening on %s." % [item_lbl, C.block_name(hb), day, C.block_name(eb)],
+		"card_text": "At %s's scene: %s (lives on %s or D%d evening on %s)." % [v.name, h_tok, C.block_name(hb), day, C.block_name(eb)],
 		"actor": actor.id,
 	}
 
@@ -1401,12 +1404,13 @@ func _build_connection_trace(actor, v, slot: int) -> Dictionary:
 		"trace_subtype": "victim_tie",
 		"trace_key": "connection:%s:%d" % [v.id, day],
 		"trace_slot": slot,
+		"scene_trace_count": 1,
 		"day": day,
 		"victim": v.id,
 		"victim_block": v.home_block,
-		"item_label": "unforced latch",
-		"scene_prose": "The latch at %s's cottage shows no sign of forcing; signs inside suggest someone living on %s, linked by a known bond to %s, or seen with them on day %d." % [v.name, C.block_name(v.home_block), v.name, day],
-		"card_text": "Trace at %s's death scene: unforced entry suggests someone living on %s, linked by a known bond to %s, or seen with them on day %d." % [v.name, C.block_name(v.home_block), v.name, day],
+		"item_label": "two pewter cups and an unforced bolt",
+		"scene_prose": "Near the body, two pewter cups sit by the hearth and the door-bolt was drawn from within, pointing to a %s neighbour, a bond with %s, or day-%d company." % [C.block_name(v.home_block), v.name, day],
+		"card_text": "At %s's scene: unforced bolt & two cups (%s resident, bond, or D%d company)." % [v.name, C.block_name(v.home_block), day],
 		"actor": actor.id,
 	}
 
@@ -1422,11 +1426,11 @@ func build_actor_trace(actor, v, slot: int = 0) -> Dictionary:
 	var family_options: Array = []
 	var loc_w: float = Tuning.Setup.TRACE_LOCATIONS_BASE_WEIGHT * (Tuning.Setup.TRACE_FRESH_FAMILY_WEIGHT if not seen_families.has("locations") else 1.0)
 	family_options.append({"family": "locations", "weight": loc_w})
-	var q_w: float = 1.0 * (Tuning.Setup.TRACE_FRESH_FAMILY_WEIGHT if not seen_families.has("quarter") else 1.0)
+	var q_w: float = Tuning.Setup.TRACE_QUARTER_BASE_WEIGHT * (Tuning.Setup.TRACE_FRESH_FAMILY_WEIGHT if not seen_families.has("quarter") else 1.0)
 	family_options.append({"family": "quarter", "weight": q_w})
 	var conn_key: String = "connection:%s:%d" % [v.id, day]
 	if not used_keys.has(conn_key) and (actor.home_block == v.home_block or _has_public_bond(actor.id, v.id) or _shared_daytime_loc(actor, v, day)):
-		var c_w: float = 1.0 * (Tuning.Setup.TRACE_FRESH_FAMILY_WEIGHT if not seen_families.has("connection") else 1.0)
+		var c_w: float = Tuning.Setup.TRACE_CONNECTION_BASE_WEIGHT * (Tuning.Setup.TRACE_FRESH_FAMILY_WEIGHT if not seen_families.has("connection") else 1.0)
 		family_options.append({"family": "connection", "weight": c_w})
 	var total_w = 0.0
 	for opt in family_options:
@@ -1461,13 +1465,37 @@ func _kill(v) -> void:
 	var demon_trace: Dictionary = build_actor_trace(d, v, 0)
 	case_traces.append(demon_trace.duplicate(true))
 	var traces: Array = [demon_trace]
+	var passer_actor_id: String = ""
+	if not passers.is_empty() and chance(Tuning.Setup.EXTRA_TRACE_CHANCE):
+		var wk: Dictionary = pick(passers)
+		var passer = by_id[wk["id"]]
+		passer_actor_id = passer.id
+		var passer_trace: Dictionary = build_actor_trace(passer, v, 1)
+		case_traces.append(passer_trace.duplicate(true))
+		if chance(0.5):
+			traces = [passer_trace, demon_trace]
+		else:
+			traces = [demon_trace, passer_trace]
+	for idx in range(traces.size()):
+		traces[idx]["trace_slot"] = idx
+		traces[idx]["scene_trace_count"] = traces.size()
+		if idx == 1:
+			var ptxt: String = str(traces[idx].get("scene_prose", ""))
+			if ptxt.begins_with("Near the body, "):
+				traces[idx]["scene_prose"] = "A second detail catches your eye: " + ptxt.trim_prefix("Near the body, ")
+			elif ptxt.begins_with("Near the body "):
+				traces[idx]["scene_prose"] = "A second detail catches your eye: you also notice " + ptxt.trim_prefix("Near the body ")
 	var why = "Scene trace (%s / %s) generated from %s." % [demon_trace.trace_family, demon_trace.trace_subtype, d.name]
+	if passer_actor_id != "":
+		why += " Extra trace added by passing night-walker %s." % by_id[passer_actor_id].name
 	var sid = "scene_" + v.id
 	scenes[sid] = {"name": "%s's cottage" % v.name, "block": v.home_block, "victim": v.id, "day": day,
 		"trace_block": true_block, "trace_true": true, "traces": traces, "trace": demon_trace,
-		"passer_ids": passers.map(func(wk): return wk["id"]), "why": why, "searched": false}
+		"passer_ids": passers.map(func(wk): return wk["id"]), "passer_trace_actor": passer_actor_id,
+		"why": why, "searched": false}
 	dlog.add("kill", demon_id, v.id, {"role": v.role, "scene": sid, "trace_family": demon_trace.trace_family,
-		"trace_subtype": demon_trace.trace_subtype, "trace_key": demon_trace.trace_key, "trace_true": true}, why)
+		"trace_subtype": demon_trace.trace_subtype, "trace_key": demon_trace.trace_key,
+		"trace_count": traces.size(), "passer_trace_actor": passer_actor_id, "trace_true": true}, why)
 	public_event("demon_death", [v.id], "town")
 	for n in npcs:
 		if not n.alive:

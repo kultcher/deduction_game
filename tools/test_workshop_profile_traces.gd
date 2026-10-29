@@ -73,6 +73,8 @@ func _test_200_seed_feasibility_and_nonsubset() -> void:
 	_check(zero_dup_keys and zero_subset_pairs, "trace generator never repeats clue keys or rolls subset/superset location sets across 3 murders")
 	var ratio: float = float(token_n) / maxf(float(token_n + scent_n), 1.0)
 	_check(ratio > 0.55 and ratio < 0.79, "location traces blend ~67% 2-spot tokens and ~33% 3-spot scents")
+	_check(token_n + scent_n >= 390, "locations family (tokens & scents) forms the ~75% primary backbone of crime-scene traces")
+	_check(C.TRACE_TOKENS.size() == 28 and C.TRACE_SCENTS.size() == 56, "all 28 2-spot trade tokens and all 56 3-spot scents are bespoke")
 
 func _test_three_valued_3_to_1_solver_and_summary() -> void:
 	var g = _game(1402, 7)

@@ -349,35 +349,87 @@ static func trace_summary(g, value: Dictionary) -> Dictionary:
 	var struct_traces: Array = cited_cards.filter(func(c): return c.kind == "trace" and c.get("data", {}).has("family"))
 	if struct_traces.is_empty():
 		return {"has_traces": false}
+	# Group cited structured traces by scene so two-trace scenes evaluate as (Killer / Passer) pairs.
+	var scenes_map: Dictionary = {}
+	var scene_order: Array = []
+	for tc in struct_traces:
+		var sc_id: String = str(tc.data.get("scene", tc.id))
+		if not scenes_map.has(sc_id):
+			scenes_map[sc_id] = []
+			scene_order.append(sc_id)
+		scenes_map[sc_id].append(tc)
 	var compatible: Array = []
 	var unresolved: Array = []
 	var contradicted: Array = []
 	for p in prepared.view.people:
 		if not p.get("alive", true):
 			continue
-		var any_contra = false
+		var scene_contra = false
 		var missing_notes: Array = []
-		for tc in struct_traces:
-			var ev: Dictionary = Activity.evaluate_trace_for_person(prepared.view, cited_cards, tc, p.id)
-			if ev.state == "contradicts":
-				any_contra = true
-			elif ev.state == "unknown" and ev.missing != "" and ev.missing not in missing_notes:
-				missing_notes.append(ev.missing)
-		if any_contra:
+		for sc_id in scene_order:
+			var group: Array = scenes_map[sc_id]
+			if group.size() >= 2:
+				var e0: Dictionary = Activity.evaluate_trace_for_person(prepared.view, cited_cards, group[0], p.id)
+				var e1: Dictionary = Activity.evaluate_trace_for_person(prepared.view, cited_cards, group[1], p.id)
+				if e0.state == "contradicts" and e1.state == "contradicts":
+					scene_contra = true
+				elif e0.state != "matches" and e1.state != "matches":
+					for evx in [e0, e1]:
+						if evx.state == "unknown" and evx.missing != "" and evx.missing not in missing_notes:
+							missing_notes.append(evx.missing)
+			else:
+				var ev: Dictionary = Activity.evaluate_trace_for_person(prepared.view, cited_cards, group[0], p.id)
+				if ev.state == "contradicts":
+					scene_contra = true
+				elif ev.state == "unknown" and ev.missing != "" and ev.missing not in missing_notes:
+					missing_notes.append(ev.missing)
+		if scene_contra:
 			contradicted.append(p.name)
 		elif not missing_notes.is_empty():
 			unresolved.append("%s (%s)" % [p.name, "; ".join(PackedStringArray(missing_notes))])
 		else:
 			compatible.append(p.name)
+	var pairing_lines: Array = []
+	for sc_id in scene_order:
+		var group: Array = scenes_map[sc_id]
+		var t0: Dictionary = group[0]
+		var total_at_scene: int = int(t0.data.get("scene_trace_count", group.size()))
+		if group.size() == 1 and total_at_scene >= 2:
+			pairing_lines.append("• Two-trace scene note: only 1 of 2 traces from this cottage is linked (50% passer chance until paired).")
+		elif group.size() >= 2:
+			var t1: Dictionary = group[1]
+			var night: int = int(t0.get("night", 1))
+			var sblock: String = str(t0.data.get("scene_block", ""))
+			var victim_id: String = str(t0.data.get("victim", ""))
+			var sighted_walkers: Array = []
+			for p in prepared.view.people:
+				if p.id == victim_id:
+					continue
+				if Activity.crossing_probability(prepared.view, cited_cards, p, night, "good", sblock) >= 0.75:
+					sighted_walkers.append(p)
+			if not sighted_walkers.is_empty():
+				for wk in sighted_walkers:
+					var w_e0: String = Activity.evaluate_trace_for_person(prepared.view, cited_cards, t0, wk.id).state
+					var w_e1: String = Activity.evaluate_trace_for_person(prepared.view, cited_cards, t1, wk.id).state
+					if w_e1 == "matches" and w_e0 == "contradicts":
+						pairing_lines.append("• Scene pairing: %s (sighted walker) accounts for trace 2, focusing trace 1 on the killer." % wk.name)
+					elif w_e0 == "matches" and w_e1 == "contradicts":
+						pairing_lines.append("• Scene pairing: %s (sighted walker) accounts for trace 1, focusing trace 2 on the killer." % wk.name)
+					elif w_e0 == "matches" and w_e1 == "matches":
+						pairing_lines.append("• Scene pairing: %s (sighted walker) fits both traces; either trace could still be the killer's." % wk.name)
+			else:
+				pairing_lines.append("• Two-trace scene: 1 trace is the killer's and 1 is a passing night-walker's (link sightings or Watch reports on %s to separate them)." % Assess.C.block_name(sblock))
 	var lines: Array = ["Trace narrowing across living townsfolk (%d cited trace%s):" % [struct_traces.size(), "s" if struct_traces.size() > 1 else ""]]
-	lines.append("• Fits all cited traces: " + (", ".join(PackedStringArray(compatible)) if not compatible.is_empty() else "none confirmed yet"))
+	lines.append("• Fits cited scene trace(s): " + (", ".join(PackedStringArray(compatible)) if not compatible.is_empty() else "none confirmed yet"))
 	lines.append("• Unresolved (missing info): " + (", ".join(PackedStringArray(unresolved)) if not unresolved.is_empty() else "none"))
 	lines.append("• Pushed against (3:1): " + (", ".join(PackedStringArray(contradicted)) if not contradicted.is_empty() else "none"))
+	lines.append_array(pairing_lines)
 	return {
 		"has_traces": true,
 		"compatible": compatible,
 		"unresolved": unresolved,
 		"contradicted": contradicted,
+		"pairings": pairing_lines,
 		"text": "\n".join(PackedStringArray(lines)),
 	}
 

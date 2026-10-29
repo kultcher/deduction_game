@@ -205,9 +205,10 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 		profiles.append({"good": _likelihood(view, checked, person, "good"), "minion": _likelihood(view, checked, person, "minion"), "demon": _likelihood(view, checked, person, "demon")})
 		if view.get("chronology", {}).has("curse"):
 			profiles[-1]["converted"] = _likelihood(view, checked, person, "converted")
+	var scene_tables: Array = _build_scene_tables(view, checked)
 	var scion_splits: Array = _scion_succession_splits(view, checked, profiles)
 	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
-		"label": "Movement / trace: joint live comparison", "profiles": profiles, "scion_splits": scion_splits,
+		"label": "Movement / trace: joint live comparison", "profiles": profiles, "scene_tables": scene_tables, "scion_splits": scion_splits,
 		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
 	result[0]["relationships"] = relationships(view, cards)
 	if cache.size() >= 128:
@@ -215,7 +216,46 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
 
-static func _base_score(world: Dictionary, profiles: Array, demon_idx: int) -> float:
+static func _passer_expected_weight(world: Dictionary, st: Dictionary, trace_weights: Array, demon_idx: int) -> float:
+	var eps: float = Tuning.Setup.TRACE_PASSER_PRIOR_FLOOR
+	var num: float = eps * Tuning.Setup.TRACE_UNKNOWN_WEIGHT
+	var den: float = eps
+	var n_people: int = trace_weights.size()
+	for j in range(n_people):
+		if j == demon_idx or j == st.victim_idx:
+			continue
+		var cp: float
+		if world.get("converted", -1) == j and not st.cross_converted.is_empty():
+			cp = float(st.cross_converted[j])
+		elif (world.evil & (1 << j)) != 0:
+			cp = float(st.cross_minion[j])
+		else:
+			cp = float(st.cross_good[j])
+		if cp > 0.0:
+			num += cp * float(trace_weights[j])
+			den += cp
+	return num / maxf(den, 1e-12)
+
+static func _scene_score(world: Dictionary, scene_tables: Array, demon_idx: int) -> float:
+	if demon_idx < 0 or scene_tables.is_empty():
+		return 1.0
+	var total = 1.0
+	for st in scene_tables:
+		var w1_d: float = float(st.w1[demon_idx])
+		if st.two_cited:
+			var w2_d: float = float(st.w2[demon_idx])
+			var ep2: float = _passer_expected_weight(world, st, st.w2, demon_idx)
+			var ep1: float = _passer_expected_weight(world, st, st.w1, demon_idx)
+			total *= 0.5 * (w1_d * ep2 + w2_d * ep1)
+		elif st.scene_trace_count >= 2:
+			# Only 1 of 2 traces from a two-trace scene was cited: 50% killer, 50% passer.
+			var ep_single: float = _passer_expected_weight(world, st, st.w1, demon_idx)
+			total *= 0.5 * w1_d + 0.5 * ep_single
+		else:
+			total *= w1_d
+	return total
+
+static func _base_score(world: Dictionary, profiles: Array, demon_idx: int, scene_tables: Array = []) -> float:
 	var result = 1.0
 	for i in range(profiles.size()):
 		var profile: Dictionary = profiles[i]
@@ -223,18 +263,20 @@ static func _base_score(world: Dictionary, profiles: Array, demon_idx: int) -> f
 		if world.get("converted", -1) == i and profile.has("converted"):
 			type = "converted"
 		result *= maxf(profile[type], 1e-30) / maxf(profile.good, 1e-30)
+	result *= _scene_score(world, scene_tables, demon_idx)
 	return result
 
 static func score(world: Dictionary, factor: Dictionary) -> float:
 	var d_idx: int = world.get("demon", -1)
-	var direct: float = _base_score(world, factor.profiles, d_idx)
+	var scene_tables: Array = factor.get("scene_tables", [])
+	var direct: float = _base_score(world, factor.profiles, d_idx, scene_tables)
 	for split in factor.get("scion_splits", []):
 		var exec_idx: int = split.executed_idx
 		if d_idx >= 0 and exec_idx != d_idx and (world.evil & (1 << exec_idx)) != 0 and split.alive_demon_mask & (1 << d_idx):
 			# Scion succession possible: either d_idx was always Demon, or exec_idx was Demon
 			# up to exec_day and d_idx rose as Scion afterward.
-			var pre_s: float = _base_score(world, split.pre_profiles, exec_idx)
-			var post_s: float = _base_score(world, split.post_profiles, d_idx)
+			var pre_s: float = _base_score(world, split.pre_profiles, exec_idx, split.get("pre_scenes", []))
+			var post_s: float = _base_score(world, split.post_profiles, d_idx, split.get("post_scenes", []))
 			return 0.5 * direct + 0.5 * (pre_s * post_s)
 	return direct
 
@@ -424,10 +466,116 @@ static func _scion_succession_splits(view: Dictionary, cards: Array, full_profil
 				alive_mask |= (1 << i)
 			pre_profiles.append({"good": _likelihood(view, pre_cards, p, "good"), "minion": _likelihood(view, pre_cards, p, "minion"), "demon": _likelihood(view, pre_cards, p, "demon")})
 			post_profiles.append({"good": _likelihood(view, post_cards, p, "good"), "minion": _likelihood(view, post_cards, p, "minion"), "demon": _likelihood(view, post_cards, p, "demon")})
+		var pre_scenes: Array = _build_scene_tables(view, pre_cards)
+		var post_scenes: Array = _build_scene_tables(view, post_cards)
 		for exec_id in execs[day_str]:
 			var idx: int = view.people.map(func(p): return p.id).find(exec_id)
 			if idx >= 0:
-				out.append({"exec_day": exec_day, "executed_idx": idx, "alive_demon_mask": alive_mask, "pre_profiles": pre_profiles, "post_profiles": post_profiles})
+				out.append({"exec_day": exec_day, "executed_idx": idx, "alive_demon_mask": alive_mask, "pre_profiles": pre_profiles, "post_profiles": post_profiles, "pre_scenes": pre_scenes, "post_scenes": post_scenes})
+	return out
+
+## Normalized probability in [0, 1] that `person` walked across `scene_block` on `night`
+## given non-trace movement observations in `cards` under `alignment`.
+static func crossing_probability(view: Dictionary, cards: Array, person: Dictionary, night: int, alignment: String, scene_block: String) -> float:
+	if not History.alive_at_night(view, person.id, night) or scene_block == "":
+		return 0.0
+	var role: String = role_of(cards, person.id)
+	var gift: bool = C.ROLES.get(role, {}).get("night_walk", false)
+	var profiles: Array = [{"kind": alignment, "weight": 1.0}] if alignment not in ["good", "converted"] else [
+		{"kind": "ordinary", "weight": 0.2 if gift else 0.75},
+		{"kind": "gift", "weight": 0.7 if gift else 0.15}, {"kind": "secret", "weight": 0.1}]
+	if alignment in ["good", "converted"] and role != "" and not gift:
+		profiles = [{"kind": "ordinary", "weight": 0.9}, {"kind": "secret", "weight": 0.1}]
+	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.source == person.id and c.has("hearing_weight")):
+		var strength: float = role_hearing(cards, person.id, role)
+		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, 0.2 if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, 0.7 if gift else 0.0, strength)}, {"kind": "secret", "weight": 0.1}]
+	var night_obs: Array = []
+	var seen_inc: Array = []
+	for c in relevant(cards):
+		if c.get("night", -1) != night or c.kind == "trace" or (c.get("quoted", false) and c.kind != "alibi"):
+			continue
+		var inc: String = "alibi:" + c.subject if c.kind == "alibi" else c.id
+		if inc not in seen_inc:
+			seen_inc.append(inc)
+			night_obs.append(c)
+	var current: String = alignment
+	if alignment == "converted" and view.get("chronology", {}).has("curse"):
+		var curse: Dictionary = view.chronology.curse
+		current = "minion" if night * 4 + 3 >= curse.from and night * 4 + 3 < curse.until else "good"
+	var num_cross: float = 0.0
+	var den_all: float = 0.0
+	for prof in profiles:
+		var pkind: String = "minion" if alignment == "converted" and current == "minion" else prof.kind
+		var paths: Array = _profile_paths(view, person, night, pkind, cards)
+		for evening in C.BLOCKS:
+			var ev_p: float = 0.25
+			for path_entry in paths:
+				var w_p: float = float(prof.weight) * ev_p * float(path_entry.weight)
+				for obs in night_obs:
+					w_p *= _observed(obs, person.id, evening, path_entry.path, current, view, night, cards)
+				den_all += w_p
+				if not path_entry.path.is_empty() and scene_block in path_entry.path:
+					num_cross += w_p
+	if den_all <= 1e-20:
+		return 0.0
+	return clampf(num_cross / den_all, 0.0, 1.0)
+
+static func _build_scene_tables(view: Dictionary, cards: Array) -> Array:
+	var by_scene: Dictionary = {}
+	var scene_order: Array = []
+	for c in cards:
+		if c.get("quoted", false) or c.kind != "trace" or not c.get("data", {}).has("family"):
+			continue
+		var sc_id: String = str(c.data.get("scene", ""))
+		if sc_id == "":
+			continue
+		var slot: int = int(c.data.get("slot", 0))
+		if not by_scene.has(sc_id):
+			by_scene[sc_id] = {}
+			scene_order.append(sc_id)
+		if not by_scene[sc_id].has(slot):
+			by_scene[sc_id][slot] = c
+	var out: Array = []
+	var has_curse: bool = view.get("chronology", {}).has("curse")
+	for sc_id in scene_order:
+		var slot_map: Dictionary = by_scene[sc_id]
+		var slots: Array = slot_map.keys()
+		slots.sort()
+		var t1: Dictionary = slot_map[slots[0]]
+		var two_cited: bool = slots.size() >= 2
+		var t2: Dictionary = slot_map[slots[1]] if two_cited else {}
+		var night: int = int(t1.get("night", 1))
+		var scene_block: String = str(t1.data.get("scene_block", ""))
+		var victim_id: String = str(t1.data.get("victim", ""))
+		var victim_idx: int = view.people.map(func(p): return p.id).find(victim_id)
+		var scene_trace_count: int = maxi(slots.size(), int(t1.data.get("scene_trace_count", 1)))
+		var w1: Array = []
+		var w2: Array = []
+		var cross_good: Array = []
+		var cross_minion: Array = []
+		var cross_converted: Array = []
+		for p in view.people:
+			w1.append(evaluate_trace_for_person(view, cards, t1, p.id).weight)
+			if two_cited:
+				w2.append(evaluate_trace_for_person(view, cards, t2, p.id).weight)
+			if two_cited or scene_trace_count >= 2:
+				cross_good.append(crossing_probability(view, cards, p, night, "good", scene_block))
+				cross_minion.append(crossing_probability(view, cards, p, night, "minion", scene_block))
+				if has_curse:
+					cross_converted.append(crossing_probability(view, cards, p, night, "converted", scene_block))
+		out.append({
+			"scene": sc_id,
+			"night": night,
+			"scene_block": scene_block,
+			"victim_idx": victim_idx,
+			"scene_trace_count": scene_trace_count,
+			"two_cited": two_cited,
+			"w1": w1,
+			"w2": w2,
+			"cross_good": cross_good,
+			"cross_minion": cross_minion,
+			"cross_converted": cross_converted,
+		})
 	return out
 
 ## Three-valued evaluation of a structured trace against ONLY the receipts present in `cards`.
@@ -575,7 +723,7 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 		"trace":
 			if alignment == "demon":
 				if card.get("data", {}).has("family"):
-					return evaluate_trace_for_person(view, all_cards, card, person).weight
+					return 1.0 # Scored jointly per scene in _scene_score (single & two-trace aware).
 				# Legacy block-material fixture formula (retained for existing movement tests).
 				return (0.6 if card.data.material == evening else 0.0) + 0.4 / C.BLOCKS.size()
 	return 1.0

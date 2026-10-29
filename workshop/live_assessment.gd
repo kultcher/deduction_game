@@ -403,6 +403,7 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 					"family": fam,
 					"subtype": e.content.get("trace_subtype", ""),
 					"slot": int(e.content.get("trace_slot", 0)),
+					"scene_trace_count": maxi(1, int(e.content.get("scene_trace_count", 1))),
 					"trace_key": e.content.get("trace_key", ""),
 					"locs": e.content.get("locs", []).duplicate(),
 					"home_block": e.content.get("trace_home_block", ""),

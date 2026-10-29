@@ -912,6 +912,7 @@ func _search() -> void:
 				"trace_family": tr.get("trace_family", ""),
 				"trace_subtype": tr.get("trace_subtype", ""),
 				"trace_slot": int(tr.get("trace_slot", 0)),
+				"scene_trace_count": int(tr.get("scene_trace_count", scene_traces.size())),
 				"trace_key": tr.get("trace_key", ""),
 				"locs": tr.get("locs", []).duplicate(),
 				"trace_home_block": tr.get("home_block", ""),
