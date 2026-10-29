@@ -117,7 +117,8 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 		"text": "Scene trace: farthing (the Bakery or the Tavern).",
 	})
 	var view: Dictionary = WorkshopCanvas.view(g)
-	# 1) Pure vibes without Stage 1 grounding: gate == 0 -> zero Stage 2 suspicion!
+	# 1) Isolate the grounding contract from live movement/public-event inference.
+	# A conversation can itself alter Stage 1, so filing it is not a zero-grounding fixture.
 	var vibes_only = CanvasModel.new(view)
 	var root_v: String = vibes_only.selected
 	vibes_only.nodes[root_v].conclusion = {"type": "evil", "target": target.id, "at": view.alignment_epoch}
@@ -129,7 +130,14 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	var filed_v: int = WorkshopCanvas.file(g, vibes_only.compile(root_v))
 	_check(filed_v > 0, "vibes-only hub case files cleanly")
 	g._evaluate_deduction(listener, g.board[filed_v - 1], 1.0, false)
-	_check(is_zero_approx(float(listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))), "Stage 2 vibes alone cannot carry a case without Stage 1 grounding")
+	var prepared: Dictionary = WorkshopCanvas.Assess.prepare(g.workshop_snapshot([sil_num, conv_num], listener.id))
+	var uniform_s1: Dictionary = {}
+	var outside: Dictionary = {}
+	for p in prepared.view.people:
+		uniform_s1[p.id] = 0.08
+		outside[p.id] = 0.1
+	var ungrounded: Dictionary = Circumstantial.evaluate_union(prepared.view, vibes_only.compile(root_v).circumstantial, outside, uniform_s1, listener.suspicion, listener.npc_trust, listener.trust, listener.id)
+	_check(is_zero_approx(float(ungrounded.requested.get(target.id, 0.0))), "uniform passive Stage 1 redistribution cannot ground Stage 2 vibes")
 	g.workshop_retract(filed_v, listener.id)
 
 	# 2) Stage 1 trace + profile wired alongside Stage 2 Breathstealer proximity hub:
@@ -266,6 +274,9 @@ func _test_union_dedup_cap_and_retraction() -> void:
 	# Give listener high suspicion on accomplice and low suspicion on trusted_ally in outside baseline
 	Mind.adjust(g.w, listener, accomplice.id, 0.50, "suspect accomplice", "", false)
 	Mind.adjust(g.w, listener, trusted_ally.id, -0.05, "trust ally", "", false)
+	# This test isolates the union cap/deduplication, with an explicitly open prior gate.
+	Mind.adjust(g.w, listener, target.id, 0.35, "ground the cap fixture", "", false)
+	listener.trust = 0.75
 	Mind.recompute_beliefs(g.w, listener, "lock pre-case baseline")
 
 	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})

@@ -36,9 +36,11 @@ func _probabilities() -> void:
 	var post_s1 = {"a": 0.18, "b": 0.1, "c": 0.1, "d": 0.1}
 	var s2_unafraid: float = float(Circumstantial.evaluate_union(view, hubs, outside, s1_grounded, post_s1, {}, 0.75, "b").requested.get("a", 0.0))
 	check(is_equal_approx(s2_unafraid, Tuning.Workshop.CIRCUMSTANTIAL_INCIDENT_MAX), "an unafraid refusal supplies bounded Stage 2 circumstantial suspicion (+0.015 max)")
+	check(Circumstantial.extract_hub_incidents(view, [card.id], "a", post_s1, {}).incidents["demeanor_tell:a"].label == "Refusal to share information", "refusal explanation does not invent withheld whereabouts")
 	card.data.fear = true
 	var s2_afraid: float = float(Circumstantial.evaluate_union(view, hubs, outside, s1_grounded, post_s1, {}, 0.75, "b").requested.get("a", 0.0))
 	check(s2_afraid > 0.0 and s2_afraid < s2_unafraid and is_equal_approx(s2_afraid, s2_unafraid * (0.25 / 0.35)), "fear preserves the 0.25/0.35 relative discount in Stage 2 without clearing the teller")
+	check(Circumstantial.extract_hub_incidents(view, [card.id], "a", post_s1, {}).incidents["demeanor_tell:a"].label == "Fearful refusal to share information", "fear explanation preserves uncertainty about which information was withheld")
 	var repeat = card.duplicate(true)
 	repeat.id = "next-day-refusal"
 	repeat.observed_at.day = 2

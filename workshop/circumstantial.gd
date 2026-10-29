@@ -287,7 +287,8 @@ static func extract_hub_incidents(
 					"key": dkey,
 					"family": "demeanor_tell",
 					"raw": rval_ref,
-					"label": "Fearful refusal to account for whereabouts" if is_fear else "Evasive refusal to account for whereabouts",
+					"discount": REFUSAL_FEAR_DISCOUNT if is_fear else 1.0,
+					"label": "Fearful refusal to share information" if is_fear else "Refusal to share information",
 				}
 			matched_cards[cid] = true
 		elif kind == "context" and ctx == "trait" and c.get("subject", "") == target:
@@ -386,7 +387,10 @@ static func evaluate_union(
 		keys.sort()
 		for k in keys:
 			var item: Dictionary = extracted.incidents[k]
-			var delta: float = clampf(float(item.raw) * gate * trust_mult, 0.0, INCIDENT_MAX)
+			# Fear discounts the incident's ceiling too, preserving its relative
+			# reduction when trust would otherwise saturate the ordinary cap.
+			var ceiling: float = INCIDENT_MAX * float(item.get("discount", 1.0))
+			var delta: float = clampf(float(item.raw) * gate * trust_mult, 0.0, ceiling)
 			if delta > 0.0:
 				total += delta
 				items.append({"key": k, "family": item.family, "applied": delta, "label": item.label})

@@ -250,7 +250,8 @@ func _scale_snapshot() -> Dictionary:
 			var own_clear: float = Tuning.Meeting.NOMINATION_OWN_CLEAR_RELIEF if n.cleared.has(o.id) else 0.0
 			var cooloff: float = Mind.nomination_cooloff(w, n.id, o.id)
 			top_nom_score = maxf(top_nom_score, act - own_clear - cooloff)
-		# Same adjusted nomination score and eligibility as Mind._good_nomination_impl / next_nomination.
+		# End-of-day score readiness, including cooloff and own-clear relief.
+		# Meeting eligibility (already nominated, current block) is deliberately not replayed here.
 		var thr: float = maxf(Tuning.Meeting.NOMINATION_FLOOR, Tuning.Meeting.NOMINATION_BASE - Tuning.Meeting.NOMINATION_DAY_SLOPE * w.day) - Tuning.Meeting.NOMINATION_CONFIDENCE_SCALE * (Mind.trait_of(n, "confidence") - 0.5) * 2.0 - Tuning.Meeting.NOMINATION_PARANOIA_SCALE * Mind.paranoia(w, n)
 		var headroom: float = (top_nom_score - thr) if not n.silenced else -1.0
 		npcs.append({"id": n.id, "top": Mind.susp(n, top.id), "top_is_evil": top.is_evil(), "top_action": top_action, "top_nom_score": maxf(0.0, top_nom_score),
@@ -324,7 +325,7 @@ func _print_scale(cases: Array) -> void:
 						b.demon_first += 1 if e.rank == 1 else 0
 						b.demon_top3 += 1 if e.rank <= 3 else 0
 	print("\n  SUSPICION SCALE (%s beliefs; good NPCs, end of day)" % ("native" if native else "shared"))
-	print("  day   NPCs  top   top+crowd  mean-good  demon  demon#1  top-is-evil  could-nominate")
+	print("  day   NPCs  top   top+crowd  mean-good  demon  demon#1  top-is-evil  score-ready")
 	var days: Array = by_day.keys()
 	days.sort()
 	for k in days:
