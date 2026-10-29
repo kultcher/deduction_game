@@ -438,6 +438,9 @@ func _refresh_case() -> void:
 		_label(case_box, "Assumed identities in this line. These are hypotheses, not facts the jury must accept.", 16)
 		_premise_details(node)
 		if not node.get("conclusion", {}).is_empty():
+			var tsum: Dictionary = Live.trace_summary(g, board.compile(answer_id))
+			if tsum.get("has_traces", false):
+				_label(case_box, tsum.text, 16, "accent")
 			var premise_id: String = answer_id
 			var found = VBoxContainer.new()
 			_button(case_box, "Connections: board cards that bear on this…", func(): _show_connections(premise_id, found))
@@ -481,8 +484,12 @@ func _preview_effectiveness() -> void:
 	result_output.text = "Calculating neutral reference response…"
 	preview_window.popup_centered_clamped()
 	await get_tree().process_frame
+	var compiled_case: Dictionary = board.compile(board.selected)
 	var result = Ghost.live(input)
 	result_output.text = ComparisonText.describe(result)
+	var tsum: Dictionary = Live.trace_summary(g, compiled_case)
+	if tsum.get("has_traces", false):
+		result_output.text += "\n\n" + tsum.text
 	var readiness = Live.status(g, board.compile(board.selected))
 	result_output.text += "\n\nEvery current listener can evaluate this case." if readiness.get("audience_ready", false) else "\n\nSome listeners cannot evaluate this case:\n• " + "\n• ".join(PackedStringArray(readiness.issues))
 	if not result.ready:

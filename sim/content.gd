@@ -109,6 +109,90 @@ const LOCATIONS = {
 	"graveyard": {"name": "the graveyard", "block": "hill"},
 }
 
+## 28 bespoke 2-location trade tokens / residues (keys sorted alphabetically: "a:b").
+const TRACE_TOKENS = {
+	"bakery:chapel": "a crumb of unleavened altar-bread",
+	"bakery:graveyard": "a pinch of coarse hearth-ash and dark loam",
+	"bakery:mill": "a dusting of fine bolted wheat-flour",
+	"bakery:smithy": "a flake of kiln-charred coal clinker",
+	"bakery:tavern": "a grease-darkened brass farthing",
+	"bakery:well": "a damp linen dough-cloth thread",
+	"bakery:wharf": "a crusted grain-sack tally tag",
+	"chapel:graveyard": "a scraping of beeswax and yew-resin",
+	"chapel:mill": "a twist of tithe-sack hemp",
+	"chapel:smithy": "a bent wrought-iron candle spike",
+	"chapel:tavern": "a stub of cheap dipped tallow",
+	"chapel:well": "a chip of scrubbed whitewash mortar",
+	"chapel:wharf": "a salt-stained brass collection token",
+	"graveyard:mill": "a burr of dried burdock and chaff",
+	"graveyard:smithy": "an oxidized iron spade-rivet",
+	"graveyard:tavern": "a shard of dark green bottle-glass",
+	"graveyard:well": "a clump of slick lichen and wet clay",
+	"graveyard:wharf": "a frayed strand of tarred hemp rope",
+	"mill:smithy": "a smear of axle-grease and iron filings",
+	"mill:tavern": "a spilled husk of malted barley",
+	"mill:well": "a splinter of water-swollen oak stave",
+	"mill:wharf": "a loop of tarred sack-twine",
+	"smithy:tavern": "a blackened horseshoe nail",
+	"smithy:well": "a flake of quenched iron scale",
+	"smithy:wharf": "a corroded copper boat-rivet",
+	"tavern:well": "a ring of wet cork and cooper's pitch",
+	"tavern:wharf": "a tarnished copper dock-tally",
+	"well:wharf": "a snarl of wet reed and hemp cordage",
+}
+
+## Curated 3-location lingering scents plus per-location scent notes for all 56 triples.
+const TRACE_SCENTS = {
+	"bakery:smithy:tavern": "hearth-smoke and scorched ash",
+	"bakery:mill:tavern": "warm yeast and sour mash",
+	"chapel:graveyard:well": "damp stone, moss, and cold iron",
+	"mill:well:wharf": "river damp and wet timber",
+	"chapel:graveyard:tavern": "snuffed tallow and damp wool",
+	"smithy:tavern:wharf": "coal-tar and stale ale",
+	"bakery:chapel:tavern": "warm tallow and spiced crust",
+	"bakery:mill:wharf": "milled grain and river brine",
+	"chapel:smithy:well": "wet slate and hot iron",
+	"graveyard:mill:wharf": "turned earth and wet hemp",
+	"bakery:smithy:well": "quenched ash and warm dough",
+	"chapel:tavern:well": "candle-smoke and wet stone",
+}
+
+const LOC_SCENT_NOTES = {
+	"bakery": "warm yeast",
+	"chapel": "beeswax incense",
+	"graveyard": "damp yew and loam",
+	"mill": "crushed grain",
+	"smithy": "coal-smoke",
+	"tavern": "spilled ale",
+	"well": "wet stone",
+	"wharf": "brine and tar",
+}
+
+static func loc_list_or(locs: Array) -> String:
+	var names: Array = locs.map(func(l): return LOCATIONS[l]["name"] if LOCATIONS.has(l) else str(l))
+	if names.is_empty():
+		return ""
+	if names.size() == 1:
+		return names[0]
+	if names.size() == 2:
+		return "%s or %s" % [names[0], names[1]]
+	return "%s, or %s" % [", ".join(PackedStringArray(names.slice(0, names.size() - 1))), names[-1]]
+
+static func trace_token_label(locs: Array) -> String:
+	var sorted_locs: Array = locs.duplicate()
+	sorted_locs.sort()
+	var key: String = ":".join(PackedStringArray(sorted_locs))
+	return TRACE_TOKENS.get(key, "a worn trade token")
+
+static func trace_scent_label(locs: Array) -> String:
+	var sorted_locs: Array = locs.duplicate()
+	sorted_locs.sort()
+	var key: String = ":".join(PackedStringArray(sorted_locs))
+	if TRACE_SCENTS.has(key):
+		return TRACE_SCENTS[key]
+	var notes: Array = sorted_locs.slice(0, 2).map(func(l): return LOC_SCENT_NOTES.get(l, l))
+	return " and ".join(PackedStringArray(notes))
+
 ## shifts: day phases this occupation always works (at least one). Known to the player.
 const OCCUPATIONS = {
 	"innkeeper": {"title": "innkeeper", "work": "tavern", "shifts": [2]},

@@ -34,6 +34,7 @@ func _run() -> void:
 	_test_immutable_filing_on_new_haunt()
 	_test_bereavement_dated_traits()
 	_test_profile_node_person_swap_and_restore()
+	_test_remove_profile_info_clears_contradiction_prior_links()
 	await _test_live_editor_dropdown_and_shortcuts()
 	print("Profile receipts: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -121,6 +122,30 @@ func _test_profile_node_person_swap_and_restore() -> void:
 	var copy = CanvasModel.new(view)
 	var err: String = copy.restore(model.export_data(), sess)
 	_check(err == "" and copy.nodes.has(pid), "canvas export/restore validates profile_info nodes cleanly")
+
+func _test_remove_profile_info_clears_contradiction_prior_links() -> void:
+	var g = _game(692, 7)
+	var a = g.w.npcs[0]
+	var b = g.w.npcs[1]
+	var alibi_n: int = g.add_card({"kind": "alibi", "source": a.id, "subject": [a.id], "day": 1, "phase": C.NIGHT, "block": a.home_block, "text": "%s says they stayed home on night 1." % a.name})
+	var sight_n: int = g.add_card({"kind": "sighting", "source": b.id, "subject": [a.id], "day": 1, "phase": C.NIGHT, "block": "square" if a.home_block != "square" else "market", "text": "%s saw %s out on night 1." % [b.name, a.name]})
+	var view: Dictionary = WorkshopCanvas.view(g)
+	var model = CanvasModel.new(view)
+	var prem: String = model.selected
+	model.nodes[prem].conclusion = {"type": "suspicious", "target": a.id, "at": view.alignment_epoch}
+	var alibi_id: String = "e:" + WorkshopCanvas.Evidence.normalize_card(g.board[alibi_n - 1]).id
+	var sight_id: String = "e:" + WorkshopCanvas.Evidence.normalize_card(g.board[sight_n - 1]).id
+	var pnode: String = model.add_profile_info(a.id, ["home_work"])
+	model.connect_cards(pnode, alibi_id)
+	model.connect_cards(alibi_id, prem)
+	var merge_err: String = model.connect_cards(alibi_id, sight_id)
+	var contra_ids: Array = model.nodes.keys().filter(func(k): return model.nodes[k].kind == "contradiction")
+	_check(merge_err == "" and contra_ids.size() == 1, "alibi and night sighting merge into a contradiction")
+	model.remove_profile_info(pnode)
+	model.unmerge(contra_ids[0])
+	_check(not model.links.any(func(e): return e.from == pnode or e.to == pnode), "unmerging contradiction never restores saved prior_links to a deleted profile_info node")
+	var compiled: Dictionary = model.compile(prem)
+	_check(not compiled.cards.is_empty(), "compiling case succeeds cleanly after removing profile_info and unmerging")
 
 func _test_live_editor_dropdown_and_shortcuts() -> void:
 	var g = _game(692, 7)

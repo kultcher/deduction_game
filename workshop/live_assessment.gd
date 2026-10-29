@@ -321,6 +321,10 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 			return {}
 		card["kind"] = "evening" if e.observed_at.phase == "evening" else "location"
 		card["night"] = night if card.kind == "evening" else -1
+		card["day"] = night
+		card["orig_kind"] = e.kind
+		if e.content.get("loc", "") in C.LOCATIONS:
+			card["loc"] = e.content.loc
 		return card
 	if e.kind in ["sighting", "alibi"] and not e.subjects.is_empty() and e.subjects.all(func(id): return id in ids):
 		if e.observed_at.phase == "night" or (e.kind == "sighting" and e.observed_at.phase == "evening" and block in C.BLOCKS):
@@ -380,11 +384,40 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 			if event.kind == "demon_death" and event.at.day == night:
 				card.excluded.append_array(event.subjects)
 		return card
-	if e.kind == "trace" and e.source == "evidence" and e.content.get("crime_night") == night and e.content.get("material") in C.BLOCKS and e.content.get("scene_block") in C.BLOCKS and e.content.get("victim") in ids and e.content.get("scene", "") != "":
+	if e.kind == "trace" and e.source == "evidence" and e.content.get("crime_night") == night and e.content.get("scene_block") in C.BLOCKS and e.content.get("victim") in ids and e.content.get("scene", "") != "":
 		if snapshot.public_events.any(func(event): return event.kind == "demon_death" and event.at.day == night and e.content.victim in event.subjects) and snapshot.people.filter(func(p): return p.id == e.content.victim)[0].home == e.content.scene_block:
-			card["kind"] = "trace"
-			card["data"] = {"material": e.content.material, "scene_block": e.content.scene_block, "victim": e.content.victim, "scene": e.content.scene}
-			return card
+			var fam: String = e.content.get("trace_family", "")
+			if fam in ["locations", "quarter", "connection"]:
+				if fam == "locations":
+					var tlocs = e.content.get("locs", [])
+					if not (tlocs is Array) or tlocs.size() < 2 or tlocs.size() > 3 or not tlocs.all(func(l): return l in C.LOCATIONS):
+						return {}
+				elif fam == "quarter":
+					if e.content.get("trace_home_block", "") not in C.BLOCKS or e.content.get("trace_evening_block", "") not in C.BLOCKS:
+						return {}
+				elif fam == "connection":
+					if e.content.get("victim_block", e.content.scene_block) not in C.BLOCKS:
+						return {}
+				card["kind"] = "trace"
+				card["data"] = {
+					"family": fam,
+					"subtype": e.content.get("trace_subtype", ""),
+					"slot": int(e.content.get("trace_slot", 0)),
+					"trace_key": e.content.get("trace_key", ""),
+					"locs": e.content.get("locs", []).duplicate(),
+					"home_block": e.content.get("trace_home_block", ""),
+					"evening_block": e.content.get("trace_evening_block", ""),
+					"victim": e.content.victim,
+					"victim_block": e.content.get("victim_block", e.content.scene_block),
+					"scene_block": e.content.scene_block,
+					"scene": e.content.scene,
+					"item_label": e.content.get("item_label", ""),
+				}
+				return card
+			if e.content.get("material") in C.BLOCKS:
+				card["kind"] = "trace"
+				card["data"] = {"material": e.content.material, "scene_block": e.content.scene_block, "victim": e.content.victim, "scene": e.content.scene}
+				return card
 	return {}
 
 static func medium_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:

@@ -563,6 +563,8 @@ static func fact_id(card: Dictionary) -> String:
 		"bond":
 			return "bond:%s:%s" % [card.get("bond_kind", ""), ss]
 		"trace":
+			if card.get("scene", "") != "" and (card.has("trace_slot") or card.get("trace_family", "") != ""):
+				return "trace:%s:%d" % [card.get("scene", ""), int(card.get("trace_slot", 0))]
 			return "trace:%s:%d" % [card.get("block", ""), card.get("day", -1)]
 		"claim":
 			return "claim:%s:%s" % [card.get("source", ""), card.get("role", "")]
@@ -1163,6 +1165,9 @@ static func _hint_decline(w, n, t) -> Dictionary:
 static func press(w, n, card: Dictionary) -> Dictionary:
 	return MindDialogue.press(w, n, card)
 
+static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dictionary:
+	return MindDialogue.react_to_trace(w, n, card, known_haunts)
+
 static func _gift_outing(w, n, night: int) -> bool:
 	return MindDialogue._gift_outing(w, n, night)
 
@@ -1367,7 +1372,11 @@ static func card_weight(w, n, suspect, card: Dictionary) -> Dictionary:
 		cred = 0.75  # their credibility is applied live by the ledger (rel below)
 		cred_why = "source %s" % src
 	if card.get("kind", "") == "trace":
-		relevance = 1.0 if suspect.home_block == card.get("block", "") or w.loc_block(suspect.work) == card.get("block", "") else 0.3
+		if card.get("trace_family", "") != "":
+			var tr_check = {"trace_family": card.get("trace_family", ""), "locs": card.get("locs", []), "home_block": card.get("trace_home_block", ""), "evening_block": card.get("trace_evening_block", ""), "victim": card.get("victim", ""), "day": card.get("day", -1)}
+			relevance = 0.85 if w.actor_fits_trace_truth(suspect, tr_check) else 0.25
+		else:
+			relevance = 1.0 if suspect.home_block == card.get("block", "") or w.loc_block(suspect.work) == card.get("block", "") else 0.3
 	var cls = evidence_class(card)
 	var ins = trait_of(n, "insight")
 	var class_w = {"speech": lerpf(1.0, 0.2, ins), "circumstantial": lerpf(1.0, 0.6, ins), "concrete": 1.0}[cls]

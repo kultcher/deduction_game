@@ -884,13 +884,43 @@ func _search() -> void:
 			_narr("You go over the scene again. Nothing new.")
 			return
 		sc["searched"] = true
-		var tb: String = sc["trace_block"]
-		_narr("Near the body you find %s. Whoever did this most likely spent the evening of day %d on %s." % [C.BLOCKS[tb]["trace"], sc["day"], C.block_name(tb)])
-		w.dlog.add("player_search", "player", sc["victim"], {"trace_block": tb, "trace_true": sc["trace_true"]}, sc["why"])
-		_facts([{"kind": "trace", "subject": [], "block": tb, "source": "evidence", "day": sc["day"], "phase": C.EVENING,
-			"scene": l, "scene_block": sc.block, "victim": sc.victim, "crime_night": sc.day, "material": tb,
-			"text": "Trace at %s's death scene: the killer most likely spent the evening of day %d on %s." %
-				[w.by_id[sc["victim"]].name, sc["day"], C.block_name(tb)]}])
+		var scene_traces: Array = sc.get("traces", [])
+		if scene_traces.is_empty():
+			var tb: String = sc.get("trace_block", sc["block"])
+			_narr("Near the body you find %s. Whoever did this most likely spent the evening of day %d on %s." % [C.BLOCKS[tb]["trace"], sc["day"], C.block_name(tb)])
+			w.dlog.add("player_search", "player", sc["victim"], {"trace_block": tb, "trace_true": sc.get("trace_true", true)}, sc.get("why", ""))
+			_facts([{"kind": "trace", "subject": [], "block": tb, "source": "evidence", "day": sc["day"], "phase": C.EVENING,
+				"scene": l, "scene_block": sc.block, "victim": sc.victim, "crime_night": sc.day, "material": tb,
+				"text": "Trace at %s's death scene: the killer most likely spent the evening of day %d on %s." %
+					[w.by_id[sc["victim"]].name, sc["day"], C.block_name(tb)]}])
+			return
+		var new_cards: Array = []
+		for tr in scene_traces:
+			_narr(tr.get("scene_prose", ""))
+			new_cards.append({
+				"kind": "trace",
+				"subject": [],
+				"block": sc["block"],
+				"source": "evidence",
+				"day": sc["day"],
+				"phase": C.EVENING,
+				"scene": l,
+				"scene_block": sc["block"],
+				"victim": sc["victim"],
+				"victim_block": tr.get("victim_block", sc["block"]),
+				"crime_night": sc["day"],
+				"trace_family": tr.get("trace_family", ""),
+				"trace_subtype": tr.get("trace_subtype", ""),
+				"trace_slot": int(tr.get("trace_slot", 0)),
+				"trace_key": tr.get("trace_key", ""),
+				"locs": tr.get("locs", []).duplicate(),
+				"trace_home_block": tr.get("home_block", ""),
+				"trace_evening_block": tr.get("evening_block", ""),
+				"item_label": tr.get("item_label", ""),
+				"text": tr.get("card_text", ""),
+			})
+		w.dlog.add("player_search", "player", sc["victim"], {"traces": scene_traces.map(func(t): return t.get("trace_key", "")), "trace_true": sc.get("trace_true", true)}, sc.get("why", ""))
+		_facts(new_cards)
 		return
 	if l.begins_with("home_"):
 		_narr("You can't search someone's home from their doorstep.")
@@ -1273,6 +1303,20 @@ func _talk_command(verb: String, rest: String) -> void:
 			r["facts"] = []
 			if not r.get("repeated", false) or free_repeats >= 1:
 				Mind.on_question(w, n)
+		"trace_ask":
+			var numt = rest.strip_edges().trim_prefix("#").to_int()
+			if numt < 1 or numt > board.size() or board[numt - 1].get("deleted", false) or board[numt - 1].get("kind", "") != "trace":
+				_err("Show which trace card?")
+				return
+			r = Mind.react_to_trace(w, n, board[numt - 1], known_haunts)
+			for ph in r.get("profile_haunts", []):
+				var pid: String = ph.subject
+				var loc_id: String = ph.loc
+				if not (loc_id in known_haunts.get(pid, [])):
+					known_haunts[pid] = known_haunts.get(pid, []) + [loc_id]
+				add_profile_receipt({"kind": "haunt", "subject": [pid], "source": n.id, "loc": loc_id, "locs": [loc_id],
+					"block": w.loc_block(loc_id), "day": w.day, "phase": _phase_now(), "class": "circumstantial",
+					"text": "%s says %s often goes to %s when not working." % [n.name, w.by_id[pid].name, w.loc_name(loc_id)]})
 		"press", "confront":
 			var num1 = rest.strip_edges().trim_prefix("#").to_int()
 			if num1 < 1 or num1 > board.size() or board[num1 - 1].get("deleted", false):
@@ -1280,7 +1324,7 @@ func _talk_command(verb: String, rest: String) -> void:
 				return
 			var pc: Dictionary = board[num1 - 1].duplicate()
 			if pc["kind"] == "deduction":
-				pc["support_cards"] = board.filter(func(x): return x["n"] in pc["supports"])
+				pc["support_cards"] = all_receipts().filter(func(x): return x["n"] in pc["supports"])
 				_secrets_used(pc)
 			r = Mind.press(w, n, pc)
 		"defend", "vouch":

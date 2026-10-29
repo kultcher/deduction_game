@@ -332,6 +332,55 @@ static func connections(g, value: Dictionary, limit: int = 5, budget: int = 20) 
 	out.sort_custom(func(a, b): return absf(a.move) > absf(b.move))
 	return out.slice(0, limit)
 
+## Listener-independent investigative breakdown of how the cited traces + profile/sighting
+## receipts in `value` narrow the townsfolk, without revealing listener persuasion.
+static func trace_summary(g, value: Dictionary) -> Dictionary:
+	var input = snapshot(g, value)
+	input.private_evidence = []
+	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
+	input.listener = {"id": "ghost", "name": "Trace check", "trust": 0.5, "confidence": 0.5,
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "honesty": {}, "own_gift": "", "legacy_evidence": []}
+	var prepared = Assess.prepare(input)
+	if not prepared.ready:
+		return {"has_traces": false}
+	var Solver = preload("res://workshop/solver.gd")
+	var Activity = preload("res://workshop/live_activity.gd")
+	var cited_cards: Array = Solver.selected(prepared.view, prepared.case)
+	var struct_traces: Array = cited_cards.filter(func(c): return c.kind == "trace" and c.get("data", {}).has("family"))
+	if struct_traces.is_empty():
+		return {"has_traces": false}
+	var compatible: Array = []
+	var unresolved: Array = []
+	var contradicted: Array = []
+	for p in prepared.view.people:
+		if not p.get("alive", true):
+			continue
+		var any_contra = false
+		var missing_notes: Array = []
+		for tc in struct_traces:
+			var ev: Dictionary = Activity.evaluate_trace_for_person(prepared.view, cited_cards, tc, p.id)
+			if ev.state == "contradicts":
+				any_contra = true
+			elif ev.state == "unknown" and ev.missing != "" and ev.missing not in missing_notes:
+				missing_notes.append(ev.missing)
+		if any_contra:
+			contradicted.append(p.name)
+		elif not missing_notes.is_empty():
+			unresolved.append("%s (%s)" % [p.name, "; ".join(PackedStringArray(missing_notes))])
+		else:
+			compatible.append(p.name)
+	var lines: Array = ["Trace narrowing across living townsfolk (%d cited trace%s):" % [struct_traces.size(), "s" if struct_traces.size() > 1 else ""]]
+	lines.append("• Fits all cited traces: " + (", ".join(PackedStringArray(compatible)) if not compatible.is_empty() else "none confirmed yet"))
+	lines.append("• Unresolved (missing info): " + (", ".join(PackedStringArray(unresolved)) if not unresolved.is_empty() else "none"))
+	lines.append("• Pushed against (3:1): " + (", ".join(PackedStringArray(contradicted)) if not contradicted.is_empty() else "none"))
+	return {
+		"has_traces": true,
+		"compatible": compatible,
+		"unresolved": unresolved,
+		"contradicted": contradicted,
+		"text": "\n".join(PackedStringArray(lines)),
+	}
+
 static func _mentions(card: Dictionary) -> Array:
 	var out: Array = []
 	for who in card.get("subject", []) + [card.get("source", ""), card.get("owner", "")] + card.get("data", {}).get("seen", []) + card.get("data", {}).get("pair", []) + card.get("data", {}).get("group", []):

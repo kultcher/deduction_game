@@ -331,6 +331,8 @@ static func _route_present(g, n, rest: String) -> Dictionary:
 		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
 	if who == n and dir != "for":
 		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
+	if who == null and card.get("kind", "") == "trace" and card.get("trace_family", "") != "":
+		return {"verb": "trace_ask", "rest": str(num), "note": "You ask %s what they make of the scene trace." % n.name}
 	var targets: Array = [who.id] if who != null else subj.filter(func(x): return x != n.id and x != card.get("source", "") and g.w.by_id.has(x) and g.w.by_id[x].alive)
 	if targets.is_empty():
 		return _present_fallback(g, n, num, "the card isn't about anyone living")

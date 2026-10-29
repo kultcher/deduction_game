@@ -228,14 +228,23 @@ func _calibration() -> void:
 	killer.history[native.time_key(2, C.EVENING)] = "bakery"
 	passer.history[native.time_key(2, C.EVENING)] = "chapel"
 	native.night_walkers = [{"id": passer.id, "block": "square", "path": ["square"], "why": "calibration"}]
-	var wrong = 0
+	var demon_fit_count = 0
+	var token_count = 0
+	var loc_count = 0
 	var demon_items = 0
 	var good_items = 0
+	killer.work = "bakery"
+	killer.haunts = ["tavern", "mill"]
 	for i in range(10000):
 		victim.alive = true
 		native.deaths_last_night.clear()
+		native.case_traces.clear()
 		native._kill(victim)
-		wrong += int(native.scenes["scene_agnes"].trace_block == "hill")
+		var tr: Dictionary = native.scenes["scene_agnes"]["traces"][0]
+		demon_fit_count += int(native.actor_fits_trace_truth(killer, tr))
+		if tr.trace_family == "locations":
+			loc_count += 1
+			token_count += int(tr.trace_subtype == "token")
 		native.dropped.clear()
 		native._maybe_drop(killer, "calibration")
 		for dropped in native.dropped.values():
@@ -244,7 +253,7 @@ func _calibration() -> void:
 		native._maybe_drop(passer, "calibration")
 		for dropped in native.dropped.values():
 			good_items += int(dropped[0].owner == passer.id)
-	check(absf(wrong / 10000.0 - 0.4) < 0.02, "10,000 actual kill-generator samples match the eligible-passer conditional")
+	check(demon_fit_count == 10000 and loc_count > 3000 and absf(float(token_count) / float(loc_count) - Tuning.Setup.TRACE_TOKEN_PROB) < 0.03, "10,000 kill-generator samples always fit the Demon and match the 67/33 token-to-scent split")
 	check(absf(demon_items / 10000.0 - 0.042) < 0.007 and absf(good_items / 10000.0 - 0.018) < 0.005, "actual drop-generator samples match the conditional 4.2/1.8 percent mechanism, before route/location search")
 
 func _ui() -> void:

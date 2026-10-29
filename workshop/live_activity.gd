@@ -25,7 +25,8 @@ static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionar
 	for person in view.people:
 		var role: String = role_of(cards, person.id, knowledge)
 		roles.append([role, role_hearing(cards, person.id, role)] if weighted else role)
-	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran"])), roles]
+	var has_struct_trace: bool = include_context and cards.any(func(x): return x.kind == "trace" and x.get("data", {}).has("family"))
+	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran"])), roles]
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):
@@ -204,8 +205,9 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 		profiles.append({"good": _likelihood(view, checked, person, "good"), "minion": _likelihood(view, checked, person, "minion"), "demon": _likelihood(view, checked, person, "demon")})
 		if view.get("chronology", {}).has("curse"):
 			profiles[-1]["converted"] = _likelihood(view, checked, person, "converted")
+	var scion_splits: Array = _scion_succession_splits(view, checked, profiles)
 	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
-		"label": "Movement / trace: joint live comparison", "profiles": profiles,
+		"label": "Movement / trace: joint live comparison", "profiles": profiles, "scion_splits": scion_splits,
 		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
 	result[0]["relationships"] = relationships(view, cards)
 	if cache.size() >= 128:
@@ -213,15 +215,28 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
 
-static func score(world: Dictionary, factor: Dictionary) -> float:
+static func _base_score(world: Dictionary, profiles: Array, demon_idx: int) -> float:
 	var result = 1.0
-	for i in range(factor.profiles.size()):
-		var profile: Dictionary = factor.profiles[i]
-		var type: String = "demon" if world.get("demon", -1) == i else ("minion" if world.evil & (1 << i) else "good")
+	for i in range(profiles.size()):
+		var profile: Dictionary = profiles[i]
+		var type: String = "demon" if demon_idx == i else ("minion" if world.evil & (1 << i) else "good")
 		if world.get("converted", -1) == i and profile.has("converted"):
 			type = "converted"
 		result *= maxf(profile[type], 1e-30) / maxf(profile.good, 1e-30)
 	return result
+
+static func score(world: Dictionary, factor: Dictionary) -> float:
+	var d_idx: int = world.get("demon", -1)
+	var direct: float = _base_score(world, factor.profiles, d_idx)
+	for split in factor.get("scion_splits", []):
+		var exec_idx: int = split.executed_idx
+		if d_idx >= 0 and exec_idx != d_idx and (world.evil & (1 << exec_idx)) != 0 and split.alive_demon_mask & (1 << d_idx):
+			# Scion succession possible: either d_idx was always Demon, or exec_idx was Demon
+			# up to exec_day and d_idx rose as Scion afterward.
+			var pre_s: float = _base_score(world, split.pre_profiles, exec_idx)
+			var post_s: float = _base_score(world, split.post_profiles, d_idx)
+			return 0.5 * direct + 0.5 * (pre_s * post_s)
+	return direct
 
 static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
 	var relevant_cards = relevant(cards)
@@ -247,7 +262,7 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 		for card in relevant_cards:
 			if card.night != night:
 				continue
-			var incident: String = "alibi:" + card.subject if card.kind == "alibi" else ("trace:" + str(card.data.get("scene", "")) if card.kind == "trace" else card.id)
+			var incident: String = "alibi:" + card.subject if card.kind == "alibi" else (("trace:%s:%d" % [str(card.data.get("scene", "")), int(card.data.get("slot", 0))]) if card.kind == "trace" else card.id)
 			if incident in incidents:
 				continue
 			incidents.append(incident)
@@ -271,7 +286,7 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 				for path in paths:
 					var p: float = path.weight
 					for card in reports_by_night[n]:
-						p *= _observed(card, person.id, evening, path.path, current, view, night)
+						p *= _observed(card, person.id, evening, path.path, current, view, night, cards)
 					products.append(p)
 				by_evening.append(products)
 			tables.append(by_evening)
@@ -376,7 +391,159 @@ static func relationships(view: Dictionary, cards: Array) -> Array:
 			result.append("Scattered sightings: %s's movements fit the claimed %s gift. This is corroboration, not proof of that identity." % [person.name, C.role_name(role)])
 	return result
 
-static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int) -> float:
+static func _scion_succession_splits(view: Dictionary, cards: Array, full_profiles: Array) -> Array:
+	var out: Array = []
+	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
+	if execs.is_empty():
+		return out
+	var nights: Array = []
+	for c in relevant(cards):
+		if c.get("night", -1) >= 1 and c.night not in nights:
+			nights.append(c.night)
+	if nights.is_empty():
+		return out
+	for day_str in execs:
+		var exec_day: int = int(day_str)
+		if not nights.any(func(n): return n <= exec_day):
+			continue
+		# Check how many townsfolk + Demonologist were alive entering that execution evening
+		var alive_before: int = 0
+		for p in view.people:
+			if view.get("timeline", {}).get("death_ticks", {}).get(p.id, 2147483647) >= exec_day * 4 + 2:
+				alive_before += 1
+		if alive_before < 5:
+			continue
+		var pre_cards: Array = cards.filter(func(c): return c.get("night", -1) < 1 or c.night <= exec_day)
+		var post_cards: Array = cards.filter(func(c): return c.get("night", -1) < 1 or c.night > exec_day)
+		var pre_profiles: Array = []
+		var post_profiles: Array = []
+		var alive_mask: int = 0
+		for i in range(view.people.size()):
+			var p: Dictionary = view.people[i]
+			if History.alive_at_night(view, p.id, exec_day + 1):
+				alive_mask |= (1 << i)
+			pre_profiles.append({"good": _likelihood(view, pre_cards, p, "good"), "minion": _likelihood(view, pre_cards, p, "minion"), "demon": _likelihood(view, pre_cards, p, "demon")})
+			post_profiles.append({"good": _likelihood(view, post_cards, p, "good"), "minion": _likelihood(view, post_cards, p, "minion"), "demon": _likelihood(view, post_cards, p, "demon")})
+		for exec_id in execs[day_str]:
+			var idx: int = view.people.map(func(p): return p.id).find(exec_id)
+			if idx >= 0:
+				out.append({"exec_day": exec_day, "executed_idx": idx, "alive_demon_mask": alive_mask, "pre_profiles": pre_profiles, "post_profiles": post_profiles})
+	return out
+
+## Three-valued evaluation of a structured trace against ONLY the receipts present in `cards`.
+## Returns {"state": "matches" | "unknown" | "contradicts", "weight": float, "missing": String, "reason": String}.
+static func evaluate_trace_for_person(view: Dictionary, cards: Array, trace_card: Dictionary, person_id: String) -> Dictionary:
+	var d: Dictionary = trace_card.get("data", {})
+	var fam: String = d.get("family", "")
+	var night: int = int(trace_card.get("night", d.get("day", -1)))
+	var match_w: float = Tuning.Setup.TRACE_MATCH_WEIGHT
+	var unk_w: float = Tuning.Setup.TRACE_UNKNOWN_WEIGHT
+	var contra_w: float = Tuning.Setup.TRACE_CONTRADICT_WEIGHT
+	if fam == "locations":
+		var locs: Array = d.get("locs", [])
+		var work_loc: String = ""
+		var haunts: Array = []
+		for c in cards:
+			if c.get("quoted", false) or c.get("kind", "") != "context":
+				continue
+			if c.get("subject", "") != person_id:
+				continue
+			if c.get("context_kind", "") == "work":
+				work_loc = c.get("data", {}).get("loc", "")
+			elif c.get("context_kind", "") == "haunt":
+				for hl in c.get("data", {}).get("locs", [c.get("data", {}).get("loc", "")]):
+					if hl != "" and hl not in haunts:
+						haunts.append(hl)
+		if work_loc != "" and work_loc in locs:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "works at " + C.LOCATIONS.get(work_loc, {}).get("name", work_loc)}
+		for hl in haunts:
+			if hl in locs:
+				return {"state": "matches", "weight": match_w, "missing": "", "reason": "frequents " + C.LOCATIONS.get(hl, {}).get("name", hl)}
+		if work_loc != "" and haunts.size() >= 2:
+			return {"state": "contradicts", "weight": contra_w, "missing": "", "reason": "work and both haunts outside trace"}
+		var missing_parts: Array = []
+		if work_loc == "":
+			missing_parts.append("work uncited")
+		if haunts.size() < 2:
+			missing_parts.append("%d haunt%s unknown/uncited" % [2 - haunts.size(), "s" if 2 - haunts.size() > 1 else ""])
+		return {"state": "unknown", "weight": unk_w, "missing": ", ".join(PackedStringArray(missing_parts)), "reason": ""}
+	elif fam == "quarter":
+		var hb: String = d.get("home_block", "")
+		var eb: String = d.get("evening_block", "")
+		var cited_home: String = ""
+		var evening_blocks: Array = []
+		for c in cards:
+			if c.get("quoted", false):
+				continue
+			if c.get("kind", "") == "context" and c.get("subject", "") == person_id:
+				if c.get("context_kind", "") == "home":
+					cited_home = c.get("block", c.get("data", {}).get("block", ""))
+				elif c.get("context_kind", "") == "work":
+					var phases: Array = c.get("data", {}).get("work_phases", [])
+					var wloc: String = c.get("data", {}).get("loc", "")
+					if C.EVENING in phases and C.LOCATIONS.has(wloc):
+						var wb: String = C.LOCATIONS[wloc]["block"]
+						if wb not in evening_blocks:
+							evening_blocks.append(wb)
+			elif c.get("kind", "") == "evening" and c.get("night", -1) == night and person_id in c.get("subjects", [c.get("subject", "")]):
+				var sb: String = c.get("block", "")
+				if sb != "" and sb not in evening_blocks:
+					evening_blocks.append(sb)
+		if cited_home != "" and cited_home == hb:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "lives on " + C.block_name(hb)}
+		if eb in evening_blocks:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "on %s on evening %d" % [C.block_name(eb), night]}
+		if cited_home != "" and cited_home != hb and not evening_blocks.is_empty() and not (eb in evening_blocks):
+			return {"state": "contradicts", "weight": contra_w, "missing": "", "reason": "lives elsewhere and spent evening %d off %s" % [night, C.block_name(eb)]}
+		var q_missing: Array = []
+		if cited_home == "":
+			q_missing.append("home uncited")
+		if evening_blocks.is_empty():
+			q_missing.append("evening %d unknown" % night)
+		return {"state": "unknown", "weight": unk_w, "missing": ", ".join(PackedStringArray(q_missing)), "reason": ""}
+	elif fam == "connection":
+		var victim: String = d.get("victim", "")
+		var vblock: String = d.get("victim_block", d.get("scene_block", ""))
+		var cited_home: String = ""
+		var has_bond: bool = false
+		var shared_day: bool = false
+		var victim_day_locs = {}
+		var person_day_phases = {}
+		for c in cards:
+			if c.get("quoted", false):
+				continue
+			if c.get("kind", "") == "context":
+				if c.get("context_kind", "") == "home" and c.get("subject", "") == person_id:
+					cited_home = c.get("block", c.get("data", {}).get("block", ""))
+				elif c.get("context_kind", "") == "bond":
+					var subs: Array = c.get("subjects", [])
+					if person_id in subs and victim in subs:
+						has_bond = true
+			elif c.get("kind", "") in ["location", "evening"] and int(c.get("day", c.get("night", -1))) == night:
+				var subs2: Array = c.get("subjects", [c.get("subject", "")])
+				if person_id in subs2 and victim in subs2:
+					shared_day = true
+				var ph_name: String = str(c.get("observed_at", {}).get("phase", ""))
+				var cloc: String = c.get("loc", "")
+				if victim in subs2 and cloc != "" and ph_name != "":
+					victim_day_locs[ph_name] = cloc
+				if person_id in subs2 and ph_name != "":
+					person_day_phases[ph_name] = cloc if cloc != "" else ("block:" + c.get("block", ""))
+		for ph_k in victim_day_locs:
+			if person_day_phases.get(ph_k, "") == victim_day_locs[ph_k]:
+				shared_day = true
+		if has_bond:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "known bond with victim"}
+		if cited_home != "" and cited_home == vblock:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "lives on " + C.block_name(vblock)}
+		if shared_day:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "crossed paths on day %d" % night}
+		if cited_home != "" and cited_home != vblock and person_day_phases.size() >= 2:
+			return {"state": "contradicts", "weight": Tuning.Setup.TRACE_CONNECTION_MISS_WEIGHT, "missing": "", "reason": "no cited bond, home, or day-%d overlap" % night}
+		return {"state": "unknown", "weight": unk_w, "missing": "bonds or day-%d overlap unresolved" % night, "reason": ""}
+	return {"state": "unknown", "weight": 1.0, "missing": "", "reason": ""}
+
+static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int, all_cards: Array = []) -> float:
 	if card.get("quoted", false) and card.kind != "alibi":
 		return 1.0
 	var out: bool = not path.is_empty()
@@ -407,7 +574,8 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				return 1.0 if ((card.data.block in path) == (person in card.data.seen)) else 0.0
 		"trace":
 			if alignment == "demon":
-				# The generator is 60% killer-evening material when passers exist.
-				# Unknown public passers use a uniform background, never the referee list.
+				if card.get("data", {}).has("family"):
+					return evaluate_trace_for_person(view, all_cards, card, person).weight
+				# Legacy block-material fixture formula (retained for existing movement tests).
 				return (0.6 if card.data.material == evening else 0.0) + 0.4 / C.BLOCKS.size()
 	return 1.0

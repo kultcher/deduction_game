@@ -142,6 +142,9 @@ func remove_profile_info(id: String) -> void:
 	if not nodes.has(id) or nodes[id].kind != "profile_info":
 		return
 	links = links.filter(func(edge): return edge.from != id and edge.to != id)
+	for node in nodes.values():
+		if node.kind in ["contradiction", "modifier"]:
+			node.prior_links = node.get("prior_links", []).filter(func(edge): return edge.from != id and edge.to != id)
 	nodes.erase(id)
 	if selected == id or not nodes.has(selected):
 		var premises: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise")
@@ -307,7 +310,7 @@ func unmerge(id: String) -> void:
 		nodes[child].erase("merged")
 	nodes.erase(id)
 	for edge in group.prior_links:
-		if not links.has(edge):
+		if nodes.has(edge.from) and nodes.has(edge.to) and not links.has(edge):
 			links.append(edge)
 	# Retain incoming links added after the merge as well as the original links.
 	for edge in incoming:

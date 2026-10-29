@@ -85,27 +85,28 @@ func _silenced_speakers() -> void:
 	_check(not Mind.gossip(w)["facts"].is_empty(), "an NPC can supply tavern gossip again once silence ends")
 
 func _victim_trace() -> void:
-	var all_true = true
-	var other_passers_can_mislead = false
+	var victim_excluded = true
+	var demon_always_matches = true
+	var passer_recorded = false
 	for seed_v in range(7140, 7170):
 		var g = _game(seed_v)
 		var w = g.w
 		var victim = w.living_good()[0]
 		var d = w.demon()
-		var other_block: String = C.BLOCKS.keys().filter(func(b): return b != d.home_block)[0]
-		d.history[w.time_key(w.day, C.EVENING)] = "home:" + d.home_block
-		victim.history[w.time_key(w.day, C.EVENING)] = "home:" + other_block
 		w.night_walkers = [{"id": victim.id, "block": victim.home_block, "path": [victim.home_block], "why": "keeping watch"}]
 		w._kill(victim)
-		all_true = all_true and w.scenes["scene_" + victim.id]["trace_true"]
+		var sc1: Dictionary = w.scenes["scene_" + victim.id]
+		victim_excluded = victim_excluded and (victim.id not in sc1.get("passer_ids", []))
+		demon_always_matches = demon_always_matches and w.actor_fits_trace_truth(d, sc1["traces"][0])
 		var next_victim = w.living_good()[0]
 		var passer = w.living_good()[1]
-		passer.history[w.time_key(w.day, C.EVENING)] = "home:" + other_block
 		w.night_walkers = [{"id": passer.id, "block": next_victim.home_block, "path": [next_victim.home_block], "why": "passing by"}]
 		w._kill(next_victim)
-		other_passers_can_mislead = other_passers_can_mislead or not w.scenes["scene_" + next_victim.id]["trace_true"]
-	_check(all_true, "a victim's own night walk cannot create a misleading trace at their cottage")
-	_check(other_passers_can_mislead, "other passers can still leave misleading traces")
+		var sc2: Dictionary = w.scenes["scene_" + next_victim.id]
+		passer_recorded = passer_recorded or (passer.id in sc2.get("passer_ids", []))
+		demon_always_matches = demon_always_matches and w.actor_fits_trace_truth(d, sc2["traces"][0])
+	_check(victim_excluded, "a victim's own night walk is never counted among scene passers")
+	_check(demon_always_matches and passer_recorded, "every generated scene trace fits the Demon while recording non-victim passers")
 
 func _roads() -> void:
 	var direct = true

@@ -33,8 +33,13 @@ static func demon_evidence(w, board: Array) -> Dictionary:
 			continue
 		if _points_at(w, c.get("kind", ""), c.get("role", ""), c.get("data", {}), c.get("subject", []), c.get("phase", -1), d):
 			on_board.append(c["n"])
-		elif c.get("kind", "") == "trace" and c.get("block", "") == w.loc_block(dn.history.get(w.time_key(c.get("day", -1), 2), "home:" + dn.home_block)):
-			on_board.append(c["n"])
+		elif c.get("kind", "") == "trace":
+			if c.get("trace_family", "") != "":
+				var tr_check = {"trace_family": c.get("trace_family", ""), "locs": c.get("locs", []), "home_block": c.get("trace_home_block", ""), "evening_block": c.get("trace_evening_block", ""), "victim": c.get("victim", ""), "day": c.get("day", -1)}
+				if w.actor_fits_trace_truth(dn, tr_check):
+					on_board.append(c["n"])
+			elif c.get("block", "") == w.loc_block(dn.history.get(w.time_key(c.get("day", -1), 2), "home:" + dn.home_block)):
+				on_board.append(c["n"])
 	var reachable: Array = []
 	for n in w.npcs:
 		if n.is_evil():

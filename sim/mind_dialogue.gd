@@ -96,7 +96,8 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 	var c: Dictionary = card.get("conclusion", {})
 	var subj: Array = card.get("subject", [])
 	var pair: Array = card.get("data", {}).get("pair", [])
-	var about_me = n.id in subj or c.get("a", "") == n.id or n.id in pair or (card.get("kind") == "claim" and card.get("source") != n.id and n.claim_public and card.get("role") == n.claimed_role)
+	var trace_fits_me: bool = card.get("kind") == "trace" and card.get("trace_family", "") != "" and w.actor_fits_trace_truth(n, {"trace_family": card.get("trace_family", ""), "locs": card.get("locs", []), "home_block": card.get("trace_home_block", ""), "evening_block": card.get("trace_evening_block", ""), "victim": card.get("victim", ""), "day": card.get("day", -1)})
+	var about_me = trace_fits_me or n.id in subj or c.get("a", "") == n.id or n.id in pair or (card.get("kind") == "claim" and card.get("source") != n.id and n.claim_public and card.get("role") == n.claimed_role)
 	if not about_me:
 		on_question(w, n)
 		lines.append(say(n, "[PH] What has that to do with me?"))
@@ -146,6 +147,21 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 		pressed["dialogue_exchange"] = {"action": "challenge_night", "subject": n.id}
 		return pressed
+	if kind == "trace" and card.get("trace_family", "") != "":
+		var tr_reply: Dictionary = react_to_trace(w, n, card, {}, true)
+		lines += tr_reply["lines"]
+		facts += tr_reply["facts"]
+		var pressed_tr: Dictionary = _challenged(n, {"lines": lines, "facts": facts, "profile_haunts": tr_reply.get("profile_haunts", [])}, card)
+		pressed_tr["dialogue_exchange"] = {"action": "challenge_trace", "subject": n.id}
+		return pressed_tr
+	if kind == "deduction":
+		var trace_supports: Array = card.get("support_cards", []).filter(func(sc): return sc.get("kind", "") == "trace")
+		if trace_supports.size() >= 2:
+			on_question(w, n)
+			lines.append(say(n, "[PH] You're stringing scraps from half the village together to hang me. Anyone walking that road in the dark could have tracked those in or left them to frame me."))
+			var pressed_multi: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
+			pressed_multi["dialogue_exchange"] = {"action": "challenge_trace_case", "subject": n.id}
+			return pressed_multi
 	# Their gift: a true naming opens them up; otherwise pressure decides.
 	var bonus = 1 if naming_me and d.get("role", "") == mine else 0
 	var tier = mini(_target_tier(w, n) + bonus, 4)
@@ -1092,3 +1108,78 @@ static func _observation_lines(n, groups: Array, audience: String, speech_act: S
 	var lines: Array = []
 	for texts in kinds.values(): lines.append(say(n, " ".join(PackedStringArray(texts))))
 	return lines
+
+
+## Deterministic reaction when shown or pressed with a structured crime-scene trace.
+## Minions never volunteer their Demon when suggesting someone else who fits a prong,
+## and any haunt pointer reveals only a true town haunt via profile_haunts (never lying about haunts).
+static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}, already_counted: bool = false) -> Dictionary:
+	if not already_counted:
+		on_question(w, n)
+	var lines: Array = []
+	var profile_haunts: Array = []
+	var tr_check = {
+		"trace_family": card.get("trace_family", ""),
+		"locs": card.get("locs", []),
+		"home_block": card.get("trace_home_block", ""),
+		"evening_block": card.get("trace_evening_block", ""),
+		"victim": card.get("victim", ""),
+		"day": card.get("day", -1),
+	}
+	var fits_me: bool = w.actor_fits_trace_truth(n, tr_check)
+	var is_minion: bool = n.is_evil() and n.id != w.demon_id
+	# Pick a deterministic deflection pointer if willing (gossip + trust) or deflecting off oneself.
+	var share_score: float = 0.35 * trait_of(n, "gossip") + 0.45 * n.trust + (0.20 if fits_me else 0.0)
+	var pointer_target = null
+	var pointer_loc: String = ""
+	var pointer_is_haunt: bool = false
+	if share_score >= 0.38:
+		var candidates: Array = w.living().filter(func(o):
+			if o.id == n.id or o.id == card.get("victim", ""):
+				return false
+			if is_minion and o.id == w.demon_id:
+				return false
+			return w.actor_fits_trace_truth(o, tr_check))
+		# Rank candidates deterministically by listener suspicion (or cover suspicion for evil).
+		candidates.sort_custom(func(a, b):
+			var sa: float = _mind().susp(n.shadow if n.is_evil() and n.shadow != null else n, a.id)
+			var sb: float = _mind().susp(n.shadow if n.is_evil() and n.shadow != null else n, b.id)
+			if not is_equal_approx(sa, sb):
+				return sa > sb
+			return a.id < b.id)
+		if not candidates.is_empty():
+			pointer_target = candidates[0]
+			if card.get("trace_family", "") == "locations":
+				var locs: Array = card.get("locs", [])
+				if pointer_target.work in locs:
+					pointer_loc = pointer_target.work
+				else:
+					for h in pointer_target.haunts:
+						if h in locs:
+							pointer_loc = h
+							pointer_is_haunt = true
+							break
+	if fits_me:
+		match card.get("trace_family", ""):
+			"locations":
+				var places: String = C.loc_list_or(card.get("locs", []))
+				lines.append(say(n, "[PH] Plenty of us pass through %s every week. Finding %s hardly pins a murder on me." % [places, card.get("item_label", "that")]))
+			"quarter":
+				lines.append(say(n, "[PH] Half the village either lives on %s or walks %s by evening. That's thin ground to accuse me on." % [C.block_name(card.get("trace_home_block", "square")), C.block_name(card.get("trace_evening_block", "square"))]))
+			"connection":
+				var vname: String = w.by_id[card.get("victim", "")].name if w.by_id.has(card.get("victim", "")) else "them"
+				lines.append(say(n, "[PH] Knowing %s or living near their lane doesn't make me a killer." % vname))
+	else:
+		lines.append(say(n, "[PH] That doesn't point to my habits, at least."))
+	if pointer_target != null:
+		if pointer_loc != "" and pointer_is_haunt:
+			lines.append(say(n, "[PH] If you're checking %s, look to %s; they often spend their free hours there." % [w.loc_name(pointer_loc), pointer_target.name]))
+			profile_haunts.append({"subject": pointer_target.id, "loc": pointer_loc})
+		elif pointer_loc != "":
+			lines.append(say(n, "[PH] %s works at %s; that fits this trace as well as anyone." % [pointer_target.name, w.loc_name(pointer_loc)]))
+		elif card.get("trace_family", "") == "quarter" and pointer_target.home_block == card.get("trace_home_block", ""):
+			lines.append(say(n, "[PH] %s lives over on %s, if you're following that trail." % [pointer_target.name, C.block_name(pointer_target.home_block)]))
+		elif card.get("trace_family", "") == "connection":
+			lines.append(say(n, "[PH] %s had ties around that cottage as well, if you're asking around." % pointer_target.name))
+	w.dlog.add("trace_reaction", n.id, pointer_target.id if pointer_target != null else "", {"card": card.get("n", 0), "fits_self": fits_me, "minion_guarded": is_minion, "haunt_shared": pointer_loc if pointer_is_haunt else ""})
+	return {"lines": lines, "facts": [], "profile_haunts": profile_haunts}

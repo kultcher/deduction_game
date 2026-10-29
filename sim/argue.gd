@@ -219,8 +219,25 @@ static func assertions(card: Dictionary) -> Array:
 					out.append({"t": "believed_evil", "who": d["executed"], "eid": "", "src": src, "card": n})
 		"death":
 			out.append({"t": "killed", "who": subj[0], "night": card.get("night", day - 1), "src": src, "card": n})
+		"home":
+			if not subj.is_empty():
+				out.append({"t": "profile_home", "who": subj[0], "block": card.get("block", ""), "src": src, "card": n})
+		"work":
+			if not subj.is_empty():
+				out.append({"t": "profile_spot", "who": subj[0], "loc": card.get("loc", ""), "src": src, "card": n})
+		"haunt":
+			if not subj.is_empty():
+				for hloc in card.get("locs", [card.get("loc", "")]):
+					if hloc != "":
+						out.append({"t": "profile_spot", "who": subj[0], "loc": hloc, "src": src, "card": n})
+		"bond":
+			if subj.size() == 2:
+				out.append({"t": "profile_bond", "people": subj.duplicate(), "src": src, "card": n})
 		"trace":
-			out.append({"t": "trace", "block": card.get("block", ""), "day": day, "src": src, "card": n})
+			if card.get("trace_family", "") != "":
+				out.append({"t": "trace_struct", "family": card.get("trace_family", ""), "locs": card.get("locs", []), "home_block": card.get("trace_home_block", ""), "evening_block": card.get("trace_evening_block", ""), "victim": card.get("victim", ""), "victim_block": card.get("victim_block", card.get("block", "")), "day": day, "src": src, "card": n})
+			else:
+				out.append({"t": "trace", "block": card.get("block", ""), "day": day, "src": src, "card": n})
 		"dropped":
 			out.append({"t": "dropped", "material": card.get("material", ""), "block": card.get("block", ""), "night": day, "src": src, "card": n})
 		"conversation":
@@ -598,6 +615,41 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 			b["who"], [])
 		m4["relation"] = "inference"
 		return m4
+	if ta == "trace_struct" or tb == "trace_struct":
+		var tr_a: Dictionary = a if ta == "trace_struct" else b
+		var oth: Dictionary = b if ta == "trace_struct" else a
+		var ot: String = oth["t"]
+		var fam: String = tr_a["family"]
+		if fam == "locations" and ot == "profile_spot" and oth["loc"] in tr_a["locs"]:
+			var ml = _mk(w, "trace_match", "The scene trace points to %s, and %s frequents %s." %
+				[C.loc_list_or(tr_a["locs"]), _nm(w, oth["who"]), w.loc_name(oth["loc"])], cards,
+				[_accuse(w, oth["who"], "demon", "%s is the demon" % _nm(w, oth["who"])),
+				_clear(w, oth["who"], {"type": "notdemon"}, "%s is not the demon: someone else tied to %s left the trace" % [_nm(w, oth["who"]), C.loc_list_or(tr_a["locs"])])],
+				oth["who"], [])
+			ml["relation"] = "inference"
+			return ml
+		if fam == "quarter" and ((ot == "profile_home" and oth["block"] == tr_a["home_block"]) or (ot == "at" and oth["day"] == tr_a["day"] and oth["phase"] == C.EVENING and oth["block"] == tr_a["evening_block"])):
+			var mq = _mk(w, "trace_match", "The scene trace matches %s's quarter or evening whereabouts." % _nm(w, oth["who"]), cards,
+				[_accuse(w, oth["who"], "demon", "%s is the demon" % _nm(w, oth["who"])),
+				_clear(w, oth["who"], {"type": "notdemon"}, "%s is not the demon: someone else matching that quarter left the trace" % _nm(w, oth["who"]))],
+				oth["who"], [])
+			mq["relation"] = "inference"
+			return mq
+		if fam == "connection":
+			var c_who = ""
+			if ot == "profile_home" and oth["block"] == tr_a["victim_block"]:
+				c_who = oth["who"]
+			elif ot == "profile_bond" and tr_a["victim"] in oth["people"]:
+				c_who = oth["people"][0] if oth["people"][1] == tr_a["victim"] else oth["people"][1]
+			elif ot == "talked" and oth["day"] == tr_a["day"] and (oth["a"] == tr_a["victim"] or oth["b"] == tr_a["victim"]):
+				c_who = oth["b"] if oth["a"] == tr_a["victim"] else oth["a"]
+			if c_who != "":
+				var mc = _mk(w, "trace_match", "The unforced-entry trace connects %s to %s." % [_nm(w, c_who), _nm(w, tr_a["victim"])], cards,
+					[_accuse(w, c_who, "demon", "%s is the demon" % _nm(w, c_who)),
+					_clear(w, c_who, {"type": "notdemon"}, "%s is not the demon: someone else connected to %s left the trace" % [_nm(w, c_who), _nm(w, tr_a["victim"])])],
+					c_who, [])
+				mc["relation"] = "inference"
+				return mc
 	return null
 
 ## Templates over several cards at once.
@@ -1550,7 +1602,11 @@ static func bears_on(w, c: Dictionary, cards: Array) -> bool:
 			return true
 		if x.get("kind", "") == "trace" and w.by_id.has(a):
 			var t = w.by_id[a]
-			if x.get("block", "") == t.home_block or x.get("block", "") == w.loc_block(t.work):
+			if x.get("trace_family", "") != "":
+				var tr_check = {"trace_family": x.get("trace_family", ""), "locs": x.get("locs", []), "home_block": x.get("trace_home_block", ""), "evening_block": x.get("trace_evening_block", ""), "victim": x.get("victim", ""), "day": x.get("day", -1)}
+				if w.actor_fits_trace_truth(t, tr_check):
+					return true
+			elif x.get("block", "") == t.home_block or x.get("block", "") == w.loc_block(t.work):
 				return true
 	return false
 
