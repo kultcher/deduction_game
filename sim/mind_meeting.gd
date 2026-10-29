@@ -199,7 +199,7 @@ static func reason_status(w, n, t_id: String) -> Dictionary:
 	var why: String = n.sus_why.get(t_id, "")
 	var src: String = n.sus_src.get(t_id, "")
 	if n.workshop_state.get("active", false):
-		var joint_strength: float = n.workshop_state.get("requested", {}).get(t_id, 0.0)
+		var joint_strength: float = float(n.workshop_state.get("requested", {}).get(t_id, 0.0)) + float(n.workshop_state.get("circumstantial_requested", {}).get(t_id, 0.0))
 		if joint_strength >= 0.15:
 			return {"why": "the reports considered together point toward them", "kind": n.workshop_state.get("reason_visibility", "shared_private"), "entry": {}, "strength": joint_strength}
 		if n.workshop_state.get("owned", {}).has(src):

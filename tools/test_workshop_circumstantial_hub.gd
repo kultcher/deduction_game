@@ -42,6 +42,7 @@ func _init() -> void:
 	_test_canvas_hub_orphan_and_restore()
 	_test_stage1_preserved_through_hub_and_stage2_gated()
 	_test_union_dedup_cap_and_retraction()
+	_test_native_adjust_preserves_stage2_layer()
 	_test_smear_backlash()
 	await _test_live_workshop_ui_hub()
 	if fails == 0:
@@ -228,6 +229,55 @@ func _test_union_dedup_cap_and_retraction() -> void:
 	g.workshop_retract(filed1, listener.id)
 	g.workshop_retract(filed2, listener.id)
 	_check(is_zero_approx(float(listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))) and is_equal_approx(listener.suspicion[target.id], baseline_before), "withdrawing cases fully retracts Stage 2 circumstantial suspicion")
+
+func _test_native_adjust_preserves_stage2_layer() -> void:
+	var g = _game(2406, 7)
+	var listener = g.w.living_good()[0]
+	var target = g.w.living_good()[1]
+	var silenced_p = g.w.living_good()[2]
+	var victim = g.w.living_good()[3]
+	g.w.day = 1
+	g.w.phase = C.EVENING
+	target.work = "bakery"
+	target.haunts = ["tavern", "mill"]
+	g.w.public_event("demon_death", [victim.id], "town")
+	g.w.public_event("silenced", [silenced_p.id], "town")
+	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
+	var sil_num: int = g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced at meeting"})
+	var conv_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
+	var trace_num: int = g.add_card({
+		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
+		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
+		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
+		"locs": ["bakery", "tavern"], "item_label": "a grease-darkened brass farthing",
+		"text": "Scene trace: farthing (the Bakery or the Tavern).",
+	})
+	var view: Dictionary = WorkshopCanvas.view(g)
+	var baseline_before: float = listener.suspicion[target.id]
+	var board = CanvasModel.new(view)
+	var root: String = board.selected
+	board.nodes[root].conclusion = {"type": "evil", "target": target.id, "at": view.alignment_epoch}
+	var hub: String = board.add_circumstantial_hub()
+	for num in [death_num, trace_num, sil_num, conv_num]:
+		var cid: String = WorkshopCanvas.Evidence.normalize_card(g.board[num - 1]).id
+		board.connect_cards("e:" + cid, hub)
+	var pnode: String = board.add_profile_info(target.id, ["home_work"])
+	board.connect_cards(pnode, hub)
+	board.connect_cards(hub, root)
+	var filed: int = WorkshopCanvas.file(g, board.compile(root))
+	g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
+	var s1_req: float = float(listener.workshop_state.requested.get(target.id, 0.0))
+	var s2_req: float = float(listener.workshop_state.get("circumstantial_requested", {}).get(target.id, 0.0))
+	_check(s2_req > 0.0, "precondition: listener holds nonzero Stage 2 circumstantial suspicion before native adjust")
+	var pre_adjust_susp: float = listener.suspicion[target.id]
+	var grief_delta: float = 0.12
+	Mind.adjust(g.w, listener, target.id, grief_delta, "execution grief test", "", false)
+	_check(is_equal_approx(listener.suspicion[target.id], pre_adjust_susp + grief_delta), "Mind.adjust preserves both Stage 1 and Stage 2 layers immediately")
+	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), baseline_before + grief_delta), "Mind.adjust advances state.outside by exact native delta")
+	Mind.recompute_beliefs(g.w, listener, "post-adjust refresh check")
+	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), baseline_before + grief_delta) and is_equal_approx(listener.suspicion[target.id], baseline_before + grief_delta + s1_req + float(listener.workshop_state.get("circumstantial_requested", {}).get(target.id, 0.0))), "ownership refresh after Mind.adjust does not subtract Stage 2 contribution from outside baseline")
+	g.workshop_retract(filed, listener.id)
+	_check(is_equal_approx(listener.suspicion[target.id], baseline_before + grief_delta), "withdrawing case after Mind.adjust restores exact baseline plus native delta")
 
 func _test_smear_backlash() -> void:
 	var g = _game(2404, 7)

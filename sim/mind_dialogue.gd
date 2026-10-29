@@ -158,7 +158,7 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		var trace_supports: Array = card.get("support_cards", []).filter(func(sc): return sc.get("kind", "") == "trace")
 		if trace_supports.size() >= 2:
 			on_question(w, n)
-			lines.append(say(n, "[PH] You're stringing scraps from half the village together to hang me. Anyone walking that road in the dark could have tracked those in or left them to frame me."))
+			lines.append(say_voiced(n, "pressed_multi_trace_case", "You're stringing scraps from half the village together to hang me. Anyone walking that road in the dark could have tracked those in or left them to frame me."))
 			var pressed_multi: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 			pressed_multi["dialogue_exchange"] = {"action": "challenge_trace_case", "subject": n.id}
 			return pressed_multi
@@ -1170,23 +1170,29 @@ static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}
 		match card.get("trace_family", ""):
 			"locations":
 				var places: String = C.loc_list_or(card.get("locs", []))
-				lines.append(say(n, "[PH] Plenty of us pass through %s every week. Finding %s hardly pins a murder on me." % [places, card.get("item_label", "that")]))
+				var item_lbl: String = card.get("item_label", "that")
+				lines.append(say_voiced(n, "trace_fit_locations", "Plenty of us pass through %s every week. Finding %s hardly pins a murder on me." % [places, item_lbl], {"places": places, "item": item_lbl}))
 			"quarter":
-				lines.append(say(n, "[PH] Half the village either lives on %s or walks %s by evening. That's thin ground to accuse me on." % [C.block_name(card.get("trace_home_block", "square")), C.block_name(card.get("trace_evening_block", "square"))]))
+				var hb_lbl: String = C.block_name(card.get("trace_home_block", "square"))
+				var eb_lbl: String = C.block_name(card.get("trace_evening_block", "square"))
+				lines.append(say_voiced(n, "trace_fit_quarter", "Half the village either lives on %s or walks %s by evening. That's thin ground to accuse me on." % [hb_lbl, eb_lbl], {"home_block": hb_lbl, "evening_block": eb_lbl}))
 			"connection":
 				var vname: String = w.by_id[card.get("victim", "")].name if w.by_id.has(card.get("victim", "")) else "them"
-				lines.append(say(n, "[PH] Knowing %s or living near their lane doesn't make me a killer." % vname))
+				lines.append(say_voiced(n, "trace_fit_connection", "Knowing %s or living near their lane doesn't make me a killer." % vname, {"victim": vname}))
 	else:
-		lines.append(say(n, "[PH] That doesn't point to my habits, at least."))
+		lines.append(say_voiced(n, "trace_not_me", "That doesn't point to my habits, at least."))
 	if pointer_target != null:
 		if pointer_loc != "" and pointer_is_haunt:
-			lines.append(say(n, "[PH] If you're checking %s, look to %s; they often spend their free hours there." % [w.loc_name(pointer_loc), pointer_target.name]))
+			var h_loc_lbl: String = w.loc_name(pointer_loc)
+			lines.append(say_voiced(n, "trace_point_haunt", "If you're checking %s, look to %s; they often spend their free hours there." % [h_loc_lbl, pointer_target.name], {"loc": h_loc_lbl, "target": pointer_target.name}))
 			profile_haunts.append({"subject": pointer_target.id, "loc": pointer_loc})
 		elif pointer_loc != "":
-			lines.append(say(n, "[PH] %s works at %s; that fits this trace as well as anyone." % [pointer_target.name, w.loc_name(pointer_loc)]))
+			var w_loc_lbl: String = w.loc_name(pointer_loc)
+			lines.append(say_voiced(n, "trace_point_work", "%s works at %s; that fits this trace as well as anyone." % [pointer_target.name, w_loc_lbl], {"loc": w_loc_lbl, "target": pointer_target.name}))
 		elif card.get("trace_family", "") == "quarter" and pointer_target.home_block == card.get("trace_home_block", ""):
-			lines.append(say(n, "[PH] %s lives over on %s, if you're following that trail." % [pointer_target.name, C.block_name(pointer_target.home_block)]))
+			var q_blk_lbl: String = C.block_name(pointer_target.home_block)
+			lines.append(say_voiced(n, "trace_point_quarter", "%s lives over on %s, if you're following that trail." % [pointer_target.name, q_blk_lbl], {"block": q_blk_lbl, "target": pointer_target.name}))
 		elif card.get("trace_family", "") == "connection":
-			lines.append(say(n, "[PH] %s had ties around that cottage as well, if you're asking around." % pointer_target.name))
+			lines.append(say_voiced(n, "trace_point_connection", "%s had ties around that cottage as well, if you're asking around." % pointer_target.name, {"target": pointer_target.name}))
 	w.dlog.add("trace_reaction", n.id, pointer_target.id if pointer_target != null else "", {"card": card.get("n", 0), "fits_self": fits_me, "minion_guarded": is_minion, "haunt_shared": pointer_loc if pointer_is_haunt else ""})
 	return {"lines": lines, "facts": [], "profile_haunts": profile_haunts}

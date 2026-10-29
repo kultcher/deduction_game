@@ -420,8 +420,12 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 		var outside: float = state.outside.get(target_id, old)
 		outside += delta
 		state.outside[target_id] = outside
-		nv = outside + state.requested.get(target_id, 0.0)
-		state.applied[target_id] = nv - outside
+		var stage1_req: float = state.requested.get(target_id, 0.0)
+		var stage2_req: float = state.get("circumstantial_requested", {}).get(target_id, 0.0)
+		nv = outside + stage1_req + stage2_req
+		state.applied[target_id] = (outside + stage1_req) - outside
+		if state.get("circumstantial_requested", {}).has(target_id):
+			state.circumstantial_applied[target_id] = nv - (outside + stage1_req)
 	listener.suspicion[target_id] = nv
 	w.dlog.trace_event("value_change", listener.id, target_id, {"quantity": "suspicion",
 		"from": old, "to": nv, "requested_delta": delta, "applied_delta": nv - old,

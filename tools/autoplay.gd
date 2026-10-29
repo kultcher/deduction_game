@@ -31,6 +31,7 @@ const Gifts = preload("res://sim/gifts.gd")
 const Argue = preload("res://sim/argue.gd")
 const Mind = preload("res://sim/mind.gd")
 const Metrics = preload("res://game/case_metrics.gd")
+const BotWorkshop = preload("res://tools/autoplay_workshop.gd")
 
 const NEW_ACTIONS = ["offer_ward", "offer_vigil", "ask_person", "answer_confidence", "answer_protection", "apologise", "request_check", "request_guard", "request_watch", "keep_ward", "keep_vigil"]
 var talk_policy_used = {}
@@ -40,9 +41,16 @@ var transcript = false
 var passive = false
 var trace_enabled = true
 var native = false
+var no_workshop_cases = false
+var no_hub = false
 var talked = {}
 var linked_pairs = {}
 var blocked_cmds = {}
+var probed_traces = {}
+var filed_workshop_sigs = {}
+var last_workshop_case_by_target = {}
+var workshop_cases_filed: int = 0
+var hub_cases_filed: int = 0
 var rng = RandomNumberGenerator.new()
 
 func _init() -> void:
@@ -53,11 +61,14 @@ func _init() -> void:
 	passive = args.has("passive")
 	trace_enabled = not args.has("no-trace")
 	native = args.has("native")
+	no_workshop_cases = args.has("no-workshop-cases")
+	no_hub = args.has("no-hub")
 	if args.has("no-attention"):
 		preload("res://workshop/reasoner.gd").unlimited_cards = true
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
-		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links"]
+		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links",
+		"workshop_cases", "hub_cases"]
 	keys.append_array(NEW_ACTIONS)
 	var stats = {"good": 0, "evil": 0}
 	var case_results: Array = []
@@ -82,8 +93,8 @@ func _init() -> void:
 			[stats["nominations"] / gf, stats["reveals"] / gf, stats["max_tier4"] / gf, stats["pairs"] / gf, stats["lies"] / gf, stats["guards"]])
 		print("  NPC shares %.1f/case, evil intel pools %.1f/case, approaches %.1f/case" %
 			[stats["shares"] / gf, stats["evil_shares"] / gf, stats["approaches"] / gf])
-		print("  links %.1f/case (%.1f matched), deductions %.1f/case, NPC argument evaluations %.1f/case" %
-			[stats["links"] / gf, stats["matched_links"] / gf, stats["deductions"] / gf, stats["arguments"] / gf])
+		print("  links %.1f/case (%.1f matched), deductions %.1f/case (workshop %.1f, hub %.1f), NPC argument evaluations %.1f/case" %
+			[stats["links"] / gf, stats["matched_links"] / gf, stats["deductions"] / gf, stats["workshop_cases"] / gf, stats["hub_cases"] / gf, stats["arguments"] / gf])
 	print("  New talk actions: " + ", ".join(PackedStringArray(NEW_ACTIONS.map(func(key): return "%s=%d" % [key, stats[key]]))))
 	var summary = Metrics.aggregate(case_results)
 	print("  identification: demon %d, minion %d, both %d; identified but lost %d; eligible recorded theories %d/%d" %
@@ -99,7 +110,7 @@ func _init() -> void:
 			push_error("Cannot write results: " + path)
 			quit(1)
 			return
-		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "beliefs": "native" if native else "shared", "attention": "unlimited" if args.has("no-attention") else "budgeted", "seed_start": first,
+		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "beliefs": "native" if native else "shared", "workshop_cases": not (native or no_workshop_cases), "circumstantial_hub": not (native or no_workshop_cases or no_hub), "attention": "unlimited" if args.has("no-attention") else "budgeted", "seed_start": first,
 			"npcs": int(args.get("npcs", "7")), "rng_note": "Same seed matches setup; player actions can change later random draws.",
 			"summary": summary, "cases": case_results}, "\t"))
 		file.close()
@@ -114,6 +125,11 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	talked = {}
 	linked_pairs = {}
 	blocked_cmds = {}
+	probed_traces = {}
+	filed_workshop_sigs = {}
+	last_workshop_case_by_target = {}
+	workshop_cases_filed = 0
+	hub_cases_filed = 0
 	talk_policy_used = {}
 	new_talk_counts = {}
 	for key in NEW_ACTIONS: new_talk_counts[key] = 0
@@ -148,7 +164,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 		scale_days.append(_scale_snapshot())
 	var r = {"winner": w.winner if w.winner != "" else "evil", "days": w.day, "reason": w.end_reason,
 		"exec_good": 0, "exec_evil": 0, "kills": 0, "lies": 0, "nominations": 0, "clemency": 0, "reveals": 0,
-		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0, "deductions": 0, "arguments": 0, "matched_links": 0, "links": 0}
+		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0, "deductions": 0, "arguments": 0, "matched_links": 0, "links": 0,
+		"workshop_cases": workshop_cases_filed, "hub_cases": hub_cases_filed}
 	for key in NEW_ACTIONS: r[key] = new_talk_counts[key]
 	for e in w.executions:
 		if w.by_id[e["id"]].is_evil():
@@ -199,6 +216,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 		points[f.point] = points.get(f.point, 0) + 1
 	r["metrics"]["legacy_fallbacks"] = g.shared_fallbacks.size()
 	r["metrics"]["legacy_fallback_points"] = points
+	r["metrics"]["workshop_cases"] = workshop_cases_filed
+	r["metrics"]["hub_cases"] = hub_cases_filed
 	return r
 
 # ---------------------------------------------------------------- suspicion scale
@@ -416,6 +435,7 @@ func _scores() -> Dictionary:
 				for i in claims[role]:
 					nsc[i] += 1.0
 		sc = nsc
+	BotWorkshop.apply_trace_and_profile_scores(g, sc)
 	for n in w.npcs:
 		if not n.alive and n.death_cause == "demon":
 			sc[n.id] = -9.0
@@ -541,10 +561,15 @@ func _decide() -> String:
 			if asked == 1:
 				# The talk menu asks about one stretch of time: last night, today, or yesterday.
 				return "ask night" if rng.randf() < 0.5 else ("ask seen yesterday" if w.day > 1 and rng.randf() < 0.5 else "ask today")
-			if asked == 2 and rng.randf() < 0.5:
-				var dd = _latest_deduction()
-				if dd > 0:
-					return "convince %d" % dd
+			if asked == 2:
+				var tr_num: int = BotWorkshop.unprobed_trace_for(g, n.id, probed_traces)
+				if tr_num > 0 and rng.randf() < 0.45:
+					probed_traces["%s:%d" % [n.id, tr_num]] = true
+					return "present %d" % tr_num
+				if rng.randf() < 0.5:
+					var dd = _latest_deduction()
+					if dd > 0:
+						return "convince %d" % dd
 			var ts = _top_suspect()
 			if ts[0] != null and ts[1] >= 0.8 and ts[0] != n:
 				# Use the strongest card against them.
@@ -638,8 +663,15 @@ static func _parse(argv: PackedStringArray) -> Dictionary:
 ## Look for a contradiction among recent cards; file the explanation blaming the most
 ## suspicious person. Returns the deduction card number, or 0.
 func _find_or_file_deduction() -> int:
-	var recent: Array = g.board.filter(func(c): return not (c["kind"] in ["deduction", "home", "haunt"]) and g._presentation_rejection(c) == "").slice(-14)
 	var sc = _scores()
+	if not native and not no_workshop_cases and g.workshop_effects:
+		var built: Dictionary = BotWorkshop.build_and_file_case(g, sc, not no_hub, filed_workshop_sigs, last_workshop_case_by_target)
+		if int(built.get("card", 0)) > 0:
+			workshop_cases_filed += 1
+			if built.get("used_hub", false):
+				hub_cases_filed += 1
+			return int(built.card)
+	var recent: Array = g.board.filter(func(c): return not (c["kind"] in ["deduction", "home", "haunt"]) and g._presentation_rejection(c) == "").slice(-14)
 	for i in range(recent.size()):
 		for j in range(i + 1, recent.size()):
 			var key = "%d:%d" % [recent[i]["n"], recent[j]["n"]]
