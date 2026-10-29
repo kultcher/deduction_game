@@ -9,6 +9,7 @@ const Model = preload("res://workshop/canvas_model.gd")
 const World = preload("res://sim/world.gd")
 const NPC = preload("res://sim/npc.gd")
 const C = preload("res://sim/content.gd")
+const Tuning = preload("res://sim/tuning.gd")
 var checks = 0
 var fails = 0
 

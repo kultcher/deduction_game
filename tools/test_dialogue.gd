@@ -12,6 +12,7 @@ var fails = 0
 func _init() -> void:
 	_contracts()
 	_delivery_boundary()
+	_challenged_metadata()
 	_memory()
 	_generic_refusals()
 	_flow()
@@ -70,6 +71,27 @@ func _delivery_boundary() -> void:
 	var plain = Dialogue.compose_turn("agnes", [{"kind": "report", "statement": "First."}, {"kind": "report", "statement": "Second."}], {}, {})
 	_check(plain[1].relation == "independent" and plain[1].text == "Second.", "unspecified discourse is independent and adds no connective")
 	_check(Dialogue.Contract.context({"speech_act": "secret_truth", "flow_relation": "therefore_guilty"}) == {"flow_relation": "independent"}, "unsupported discourse values never authorize inferred meaning")
+
+func _challenged_metadata() -> void:
+	var n = preload("res://sim/npc.gd").new()
+	n.id = "merrin"
+	n.name = "Merrin"
+	var statement = "That sighting doesn't give you the right to demand my whereabouts."
+	var response = {"lines": ["Merrin looks away.", {
+		"speaker": n.id, "name": n.name, "text": "Hound me if you must; my private steps remain my own.",
+		"statement": statement, "event_id": "refusal:1", "audience": "player", "speech_act": "answer", "relation": "independent",
+		"canonical": {"kind": "conceal", "statement": statement, "event_id": "refusal:1"}},
+		{"speaker": n.id, "name": n.name, "text": "I saw nobody."}],
+		"facts": [{"kind": "refusal", "source": n.id, "subject": [n.id], "day": 1, "phase": C.NIGHT}]}
+	var before: Dictionary = response.duplicate(true)
+	var original_line: Dictionary = response.lines[1]
+	var result: Dictionary = Mind._challenged(n, response, {"kind": "sighting", "subject": [n.id], "source": "player", "day": 1, "phase": C.NIGHT, "block": "market"})
+	_check(result.lines[1].statement == statement and result.lines[1].canonical == before.lines[1].canonical, "challenged delivery preserves the approved statement and canonical event")
+	_check(result.lines[1].text != before.lines[1].text, "challenged delivery still rephrases the first spoken response")
+	var without_rephrasing: Dictionary = result.duplicate(true)
+	without_rephrasing.lines[1].text = before.lines[1].text
+	_check(without_rephrasing == before, "challenged delivery preserves all other metadata, narration, later speech and evidence facts")
+	_check(original_line == before.lines[1], "challenged delivery does not rewrite a shared original speech event")
 
 func _generic_refusals() -> void:
 	var memory = {}

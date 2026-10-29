@@ -4,6 +4,7 @@
 extends SceneTree
 
 const C = preload("res://sim/content.gd")
+const CardModel = preload("res://game/card_model.gd")
 const Icons = preload("res://ui/board_icons.gd")
 var fails = 0
 

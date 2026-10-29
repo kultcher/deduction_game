@@ -66,7 +66,11 @@ static func _challenged(n, response: Dictionary, card: Dictionary) -> Dictionary
 	for i in range(response["lines"].size()):
 		var line = response["lines"][i]
 		if line is Dictionary and line.get("speaker", "") == n.id:
-			response["lines"][i] = voiced(n, "doubted", line["text"], fact_id(card), {"challenged": true})
+			# Rephrasing changes delivery only. Keep the approved statement and any
+			# canonical payload/provenance attached to the original speech event.
+			var rephrased: Dictionary = line.duplicate(true)
+			rephrased["text"] = voiced(n, "doubted", line["text"], fact_id(card), {"challenged": true})["text"]
+			response["lines"][i] = rephrased
 			break
 	return response
 
@@ -1165,8 +1169,8 @@ static func _hint_decline(w, n, t) -> Dictionary:
 static func press(w, n, card: Dictionary) -> Dictionary:
 	return MindDialogue.press(w, n, card)
 
-static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dictionary:
-	return MindDialogue.react_to_trace(w, n, card, known_haunts)
+static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}, already_counted: bool = false) -> Dictionary:
+	return MindDialogue.react_to_trace(w, n, card, known_haunts, already_counted)
 
 static func _gift_outing(w, n, night: int) -> bool:
 	return MindDialogue._gift_outing(w, n, night)

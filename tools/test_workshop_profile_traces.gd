@@ -155,10 +155,10 @@ func _test_scion_epoch_safety() -> void:
 	# Night 1 trace matches 'a' (executed Day 1 with >=5 alive) and contradicts 'b' (surviving Scion).
 	var cards: Array = [
 		{"id": "tr1", "kind": "trace", "source": "evidence", "night": 1, "subject": "", "data": {"family": "locations", "locs": ["bakery", "tavern"], "scene": "scene_g", "scene_block": "square", "slot": 0}},
-		{"id": "wa", "kind": "context", "context_kind": "work", "subject": "a", "data": {"loc": "bakery"}},
-		{"id": "wb", "kind": "context", "context_kind": "work", "subject": "b", "data": {"loc": "chapel"}},
-		{"id": "hb1", "kind": "context", "context_kind": "haunt", "subject": "b", "data": {"locs": ["mill"]}},
-		{"id": "hb2", "kind": "context", "context_kind": "haunt", "subject": "b", "data": {"locs": ["well"]}},
+		{"id": "wa", "kind": "context", "source": "town", "context_kind": "work", "subject": "a", "data": {"loc": "bakery"}},
+		{"id": "wb", "kind": "context", "source": "town", "context_kind": "work", "subject": "b", "data": {"loc": "chapel"}},
+		{"id": "hb1", "kind": "context", "source": "town", "context_kind": "haunt", "subject": "b", "data": {"locs": ["mill"]}},
+		{"id": "hb2", "kind": "context", "source": "town", "context_kind": "haunt", "subject": "b", "data": {"locs": ["well"]}},
 	]
 	var factor: Dictionary = Activity.factors(view, cards, {})[0]
 	# World where evil = {a(0), b(1)} and current demon = b(1) (Scion after 'a' hanged) vs evil = {c(2), b(1)} where neither hanged on Day 1.
@@ -192,7 +192,8 @@ func _test_npc_trace_reactions_and_minion_guard() -> void:
 	var m_reply: Dictionary = Mind.react_to_trace(w, minion, trace_card, {}, true)
 	var named_demon: bool = m_reply.get("profile_haunts", []).any(func(ph): return ph.subject == demon.id) or " ".join(PackedStringArray(m_reply.lines.map(func(l): return l.text if l is Dictionary else str(l)))).contains(demon.name)
 	_check(not named_demon, "Minion trace reaction never volunteers their Demon as a deflection suspect")
-	_check(m_reply.get("profile_haunts", []).any(func(ph): return ph.subject == townie.id and ph.loc == "tavern"), "Minion deflects onto a truthful haunt of a non-Demon townsperson")
+	var pointers: Array = m_reply.get("profile_haunts", [])
+	_check(not pointers.is_empty() and pointers.all(func(ph): return ph.subject not in [demon.id, minion.id, victim.id] and w.by_id.has(ph.subject) and w.by_id[ph.subject].alive and ph.loc in w.by_id[ph.subject].haunts and ph.loc in trace_card.locs), "Minion deflects onto truthful matching haunts of eligible non-Demon townsfolk")
 	# Also test multi-trace deduction pressed against townie triggers forceful frame-up denial
 	var trace2 = trace_card.duplicate(true)
 	trace2["n"] = 2
