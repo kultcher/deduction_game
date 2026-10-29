@@ -155,12 +155,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var text: String = assessment.response
 	var trapped_out: bool = false
 	var trapped_canonical: String = ""
+	var trapped_voiced: String = ""
 	if not repeated and not n.is_shadow and n.secret_mod != "sleepwalker":
 		for dispute in snapshot.arguments[0].get("workshop_case", {}).get("disputes", []):
 			var alibis: Array = snapshot.evidence.filter(func(e): return e.id == dispute.challenged and n.id in e.subjects)
 			if not alibis.is_empty() and str(n.history.get(g.w.time_key(alibis[0].observed_at.day, 3), "")).begins_with("night:") and dispute.preferred in assessment.reasoning.considered:
 				trapped_canonical = "Fine, I was out. Doesn't mean I was doing anything wrong."
-				text = Mind.Dialogue.voice_line(n.id, "trapped_night_out", trapped_canonical)
+				trapped_voiced = Mind.Dialogue.voice_line(n.id, "trapped_night_out", trapped_canonical)
+				text = trapped_voiced
 				trapped_out = true
 				break
 	if repeated and state.get("delivered", {}).get(delivery_key, "") == inputs:
@@ -235,7 +237,9 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		state.delivered[delivery_key] = state.discussion[signature]
 	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": voiced_stance,
 		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": text}
-	var spoken_line: Dictionary = Mind.say_voiced(n, "trapped_night_out", trapped_canonical) if trapped_out else Mind.say(n, "[PH] " + text)
+	var spoken_line: Dictionary = Mind.say(n, text if trapped_out else "[PH] " + text)
+	if trapped_out and text.begins_with(trapped_voiced):
+		spoken_line["statement"] = trapped_canonical + text.substr(trapped_voiced.length())
 	var lines: Array = [spoken_line] if speak and not n.silenced else []
 	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
 		{"venue": venue, "key": key, "agreement": assessment.agreement, "stance": assessment.stance,

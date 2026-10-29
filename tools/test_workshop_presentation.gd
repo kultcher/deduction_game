@@ -3,6 +3,8 @@ const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Presentation = preload("res://game/workshop_presentation.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
+const LiveCanvas = preload("res://game/workshop_canvas.gd")
+const Canvas = preload("res://workshop/canvas_model.gd")
 var checks = 0
 var fails = 0
 
@@ -14,6 +16,7 @@ func _init() -> void:
 	_intermediate()
 	_private_reasons()
 	_self_support_paths()
+	_trapped_group_response()
 	print("Workshop presentation: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -41,6 +44,31 @@ func _game():
 func _reading(g, source, role: String, day: int, data: Dictionary) -> int:
 	return g.add_card({"kind": "info", "source": source.id, "role": role, "day": day, "phase": 3 if day == 0 else 0,
 		"data": data, "text": "%s's %s report at %d: %s" % [source.name, role, day, JSON.stringify(data)]})
+
+func _trapped_group_response() -> void:
+	var g = _game()
+	var n = g.w.living_good()[0]
+	var others = g.w.npcs.filter(func(p): return p != n)
+	var block = "market" if n.home_block != "market" else "docks"
+	n.history[g.w.time_key(1, 3)] = "night:" + block
+	var alibi = g.add_card({"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": 3, "home": true, "text": "I stayed home."})
+	var sight = g.add_card({"kind": "sighting", "subject": [n.id], "source": "player", "day": 1, "phase": 3, "block": block, "text": "Seen away from home."})
+	var canvas = Canvas.new(LiveCanvas.view(g))
+	var root: String = canvas.add_premise(n.id, "evil", Vector2.ZERO)
+	var a: String = "e:" + Evidence.normalize_card(g.board[alibi - 1]).id
+	var b: String = "e:" + Evidence.normalize_card(g.board[sight - 1]).id
+	canvas.connect_cards(a, b)
+	canvas.connect_cards(canvas.selected, root)
+	var number: int = LiveCanvas.file(g, canvas.compile(root))
+	check(number > 0, "challenged home alibi can be filed for a group presentation")
+	if number <= 0: return
+	g.set_workshop_effects(true)
+	var result: Dictionary = Presentation.present(g, n, g.board[number - 1], [others[0].id, others[1].id], "accuse", "private", true)
+	check(result.get("workshop", false), "challenged alibi is supported in group presentation")
+	if not result.get("workshop", false): return
+	var expected: String = Mind.Dialogue.voice_line(n.id, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong.")
+	check(result.dialogue.special.begins_with(expected) and ("About " + others[1].name + ":") in result.dialogue.special, "group response includes the voiced admission and the second target assessment")
+	check(result.lines.size() == 1 and result.lines[0].text == result.dialogue.special, "spoken group response retains the complete assessed response")
 
 func _direct_and_migration() -> void:
 	var g = _game()
