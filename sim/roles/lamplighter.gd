@@ -62,7 +62,7 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_n
 		w.dlog.think(n.id, "lie", "Evil bluffing %s: claims their gift took them out on night %d." % [n.claimed_role, nd], {"lie": true})
 	return {
 		"handled": true,
-		"line": mind.say(n, "Walking the lamp route, as I do every night."),
+		"line": mind.say(n, "[PH] Walking the lamp route, as I do every night."),
 		"fact": {
 			"kind": "sighting",
 			"subject": [n.id],

@@ -18,6 +18,7 @@ func _init() -> void:
 	_presence()
 	_exchange()
 	_batch2_voices()
+	_batch3_voices()
 	_live()
 	_live_presence()
 	call_deferred("_lab")
@@ -345,6 +346,49 @@ func _batch2_voices() -> void:
 			if key == "guess_2":
 				_check("grasping at straws" in rendered, "%s/guess_2 retains required test phrase" % id)
 			seen_lines[rendered] = true
+		_check(Dialogue.voice_line("unvoiced_npc", key, "FALLBACK", slots) == "FALLBACK", "unvoiced fallback preserved for " + key)
+
+func _batch3_voices() -> void:
+	var slot_specs = {
+		"fear_gift_refusal": {},
+		"request_ward": {},
+		"request_vigil": {"block": "the Square"},
+		"request_confidence": {},
+		"request_declined": {},
+		"protect_wait_tomorrow": {},
+		"protect_kept_word": {},
+		"trapped_night_out": {},
+		"sleepwalk_excuse": {},
+		"confess_secret_private": {"secret": "go gambling"},
+		"confess_secret_public": {"secret": "go gambling"},
+		"pressed_home_stand": {"when": "on night 1"},
+		"pressed_refusal_stand": {},
+		"repeat_gift_confirm": {"role": "Seer"},
+		"passive_gift_note": {},
+		"empty_readings": {},
+		"withhold_readings_privacy": {},
+		"withhold_readings_trust": {},
+		"role_query_self": {},
+		"role_query_unknown": {"role": "Seer"},
+		"role_query_refuse": {},
+		"gift_req_counter": {"counter": "I'd sooner look at Edda."},
+		"gift_req_refuse": {},
+		"meeting_agree_accuse": {"accuser": "Hollis", "target": "Edda"},
+		"meeting_accuse_hint": {"target": "Edda"},
+		"relay_claim_authorship": {},
+		"release_confidence_public": {},
+		"gallows_confirm_role": {"role": "Seer"},
+		"gallows_parting_suspect": {"suspect": "Edda"},
+	}
+	for key in slot_specs:
+		var slots: Dictionary = slot_specs[key]
+		for id in Fixtures.IDS:
+			var rendered = Dialogue.voice_line(id, key, "FALLBACK", slots)
+			_check(rendered != "FALLBACK" and rendered != "" and not "{" in rendered, "%s/%s resolves cleanly without leftover slots" % [id, key])
+			for slot_val in slots.values():
+				_check(str(slot_val) in rendered, "%s/%s preserves slot value %s" % [id, key, str(slot_val)])
+			if key == "fear_gift_refusal":
+				_check(not "safer" in rendered.to_lower(), "%s/fear_gift_refusal avoids 'safer' wording" % id)
 		_check(Dialogue.voice_line("unvoiced_npc", key, "FALLBACK", slots) == "FALLBACK", "unvoiced fallback preserved for " + key)
 
 func _live() -> void:

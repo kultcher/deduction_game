@@ -292,7 +292,7 @@ func _own_gift_refusal() -> void:
 		var response = Social.answer_about_role(g.w, n, "seer")
 		if response.facts.is_empty():
 			declined += 1
-			_check(response.lines.size() == 1 and response.lines[0].text == "That's not for me to say.", "a holder declining their own gift refuses instead of claiming ignorance")
+			_check(response.lines.size() == 1 and response.lines[0].get("statement", response.lines[0].text) == "That's not for me to say.", "a holder declining their own gift refuses instead of claiming ignorance")
 			_check(not n.claim_public and n.max_tier < 3, "the refusal does not disclose the holder's role")
 	_check(declined > 0, "the own-gift fixture exercises declined disclosure")
 

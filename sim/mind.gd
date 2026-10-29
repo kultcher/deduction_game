@@ -999,8 +999,8 @@ static func consider_gift_request(w, n, role: String, targets: Array) -> Diction
 	if n.trust >= 0.35 and top != "" and not (top in targets) and rdef != null:
 		counter = rdef.counter_gift_request(w, n, targets, top)
 	if counter != "":
-		return {"lines": [say(n, "No. " + counter)], "facts": [], "agreed": false}
-	return {"lines": [say(n, "My gift's mine to use as I see fit.")], "facts": [], "agreed": false}
+		return {"lines": [say_voiced(n, "gift_req_counter", "No. " + counter, {"counter": counter})], "facts": [], "agreed": false}
+	return {"lines": [say_voiced(n, "gift_req_refuse", "My gift's mine to use as I see fit.")], "facts": [], "agreed": false}
 
 static func _request_target_text(w, role: String, targets: Array) -> String:
 	var rdef = C.role_def(role)
@@ -1454,25 +1454,25 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	var nv = susp(n, suspect.id)
 	w.dlog.think(n.id, "persuaded", "Accusation moved suspicion of %s from %.2f to %.2f." % [suspect.id, old, nv])
 	if times > 0:
-		lines.append(say(n, "You've told me that already."))
+		lines.append(say(n, "[PH] You've told me that already."))
 	elif suspect == n:
-		lines.append(say(n, "Me? That's madness."))
+		lines.append(say(n, "[PH] Me? That's madness."))
 	elif strength < 0.3 and suspect.id in cw["subj"]:
-		lines.append(say(n, "That proves nothing against %s." % suspect.name))
+		lines.append(say(n, "[PH] That proves nothing against %s." % suspect.name))
 	elif relevance < 0.3:
-		lines.append(say(n, "I don't see what that has to do with %s." % suspect.name))
+		lines.append(say(n, "[PH] I don't see what that has to do with %s." % suspect.name))
 	elif bond > 0.65 and delta < 0.1:
-		var friendship = say(n, "%s is my friend. You'll need more than that." % suspect.name)
+		var friendship = say(n, "[PH] %s is my friend. You'll need more than that." % suspect.name)
 		friendship["relationship"] = {"kind": "friend", "people": [n.id, suspect.id]}
 		lines.append(friendship)
 	elif cls == "speech" and ins >= 0.67 and delta < 0.1:
-		lines.append(say(n, "That's only talk. Show me something real."))
+		lines.append(say(n, "[PH] That's only talk. Show me something real."))
 	elif nv >= 0.8:
-		lines.append(say(n, "You're right. I'll not trust %s again." % suspect.name))
+		lines.append(say(n, "[PH] You're right. I'll not trust %s again." % suspect.name))
 	elif delta >= 0.15:
-		lines.append(say(n, "That... does look bad for %s." % suspect.name))
+		lines.append(say(n, "[PH] That... does look bad for %s." % suspect.name))
 	else:
-		lines.append(say(n, "Maybe. I'll keep an eye on %s." % suspect.name))
+		lines.append(say(n, "[PH] Maybe. I'll keep an eye on %s." % suspect.name))
 	if old >= 0.5 and times == 0:
 		set_trust(w, n, n.trust + 0.05 * (1.0 - 0.5 * ins), "the Demonologist agrees with me about %s" % suspect.id)
 	elif delta >= 0.1:
@@ -1501,20 +1501,20 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		var repeated: bool = n.heard.has(key)
 		n.heard[key] = n.heard.get(key, 0) + 1
 		if repeated:
-			lines.append(say(n, "You've told me that already. Thank you."))
+			lines.append(say(n, "[PH] You've told me that already. Thank you."))
 		elif defend_strength(card, n.id) >= 0.2:
 			set_trust(w, n, n.trust + 0.03, "the Demonologist spoke up for me")
-			lines.append(say(n, "Thank you for believing me."))
+			lines.append(say(n, "[PH] Thank you for believing me."))
 		else:
-			lines.append(say(n, "I appreciate the support, but I'm not sure that explains it."))
+			lines.append(say(n, "[PH] I appreciate the support, but I'm not sure that explains it."))
 		return {"lines": lines, "facts": [], "repeated": repeated, "workshop": shared_self}
 	if n.is_evil():
 		var r = w.rng.randf()
 		w.observe_decision(n, "defence_reply", r < (0.6 if who.is_evil() else 0.7), {"probability": 0.6 if who.is_evil() else 0.7, "draw": r, "comparison": "<", "inputs": {}}, who.id)
 		if who.is_evil():
-			lines.append(say(n, "Fair enough. I'll think better of %s." % who.name if r < 0.6 else "Maybe. I'll keep an open mind about %s." % who.name))
+			lines.append(say(n, "[PH] Fair enough. I'll think better of %s." % who.name if r < 0.6 else "[PH] Maybe. I'll keep an open mind about %s." % who.name))
 		else:
-			lines.append(say(n, "Maybe. I'll keep an open mind about %s." % who.name if r < 0.7 else "That doesn't clear %s." % who.name))
+			lines.append(say(n, "[PH] Maybe. I'll keep an open mind about %s." % who.name if r < 0.7 else "[PH] That doesn't clear %s." % who.name))
 		var dr = shadow_eval(w, n, func(sh): return hear_defence(w, sh, whos, card)) if C.SHADOW_SELF and (not (n in group) or n.workshop_state.get("enabled", false)) else null
 		if dr != null:
 			# Evil would rather a good person stay suspect: worth more if they're a threat.
@@ -1538,13 +1538,13 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		h["times"] = maxi(h["times"], hx["times"])
 		h["gain"] += hx["gain"]
 	if h["times"] > 0:
-		lines.append(say(n, "You've told me that already."))
+		lines.append(say(n, "[PH] You've told me that already."))
 	elif strength < 0.2:
-		lines.append(say(n, "That doesn't clear %s." % gname))
+		lines.append(say(n, "[PH] That doesn't clear %s." % gname))
 	elif h["gain"] >= 0.12:
-		lines.append(say(n, "Fair enough. I'll think better of %s." % gname))
+		lines.append(say(n, "[PH] Fair enough. I'll think better of %s." % gname))
 	else:
-		lines.append(say(n, "Maybe. I'll keep an open mind about %s." % gname))
+		lines.append(say(n, "[PH] Maybe. I'll keep an open mind about %s." % gname))
 	return {"lines": lines, "facts": [], "repeated": h["times"] > 0}
 
 ## A card that implicates one of several people (a Seer "yes" on two): the case is split
@@ -1557,7 +1557,7 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 		for x in group:
 			if x.is_evil():
 				Evil.add_intel(w, n, "player_suspects", x.id, 0.0, "the Demonologist thinks it's one of %s" % gname)
-		lines.append(say(n, "Maybe. I'll keep an eye on them both." if w.decision_roll(n, "group_defence_reply", 0.6) else "That... does look bad for one of them."))
+		lines.append(say(n, "[PH] Maybe. I'll keep an eye on them both." if w.decision_roll(n, "group_defence_reply", 0.6) else "[PH] That... does look bad for one of them."))
 		var gr = shadow_eval(w, n, func(sh): return hear_group_case(w, sh, group, card)) if C.SHADOW_SELF and (not (n in group) or n.workshop_state.get("enabled", false)) else null
 		if gr != null:
 			var mates = group.filter(func(x): return Evil.is_teammate(w, n, x.id))
@@ -1584,11 +1584,11 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 		gain += h["gain"]
 		times = maxi(times, h["times"])
 	if times > 0:
-		lines.append(say(n, "You've told me that already."))
+		lines.append(say(n, "[PH] You've told me that already."))
 	elif gain >= 0.12:
-		lines.append(say(n, "That... does look bad for one of them."))
+		lines.append(say(n, "[PH] That... does look bad for one of them."))
 	else:
-		lines.append(say(n, "Maybe. I'll keep an eye on them both."))
+		lines.append(say(n, "[PH] Maybe. I'll keep an eye on them both."))
 	return {"lines": lines, "facts": [], "repeated": times > 0}
 
 ## A card-backed public statement on a nomination: every voter weighs it (more weakly than

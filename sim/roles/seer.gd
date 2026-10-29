@@ -16,7 +16,7 @@ func _init() -> void:
 	red_herring_registers = true
 	public_threat_bonus = Tuning.Roles.SEER.public_threat_bonus
 	public_threat_key = "seer"
-	request_agree_line = "All right. Tonight I'll look at %s."
+	request_agree_line = "[PH] All right. Tonight I'll look at %s."
 
 
 func setup_world(w, holder) -> void:
@@ -67,7 +67,7 @@ func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, works
 		return {
 			"handled": true,
 			"move": "red_herring",
-			"line": mind.say(d, "%s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name),
+			"line": mind.say(d, "[PH] %s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name),
 			"effs": [[d.id, Tuning.Roles.SEER.red_herring_defence_eff, true, "says they're the Seer's red herring", ""]],
 			"scope": {"type": "challenge", "mode": "misled", "reading": workshop_ledger.reading(src_id, rd).id},
 		}

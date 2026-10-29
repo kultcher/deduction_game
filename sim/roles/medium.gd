@@ -234,7 +234,7 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_n
 	var duty: String = "Communing with the dead at %s's hearth, as my gift asks." % hearth.name if hearth != null else "Communing with the dead, as my gift asks."
 	return {
 		"handled": true,
-		"line": mind.say(n, duty),
+		"line": mind.say(n, "[PH] " + duty),
 		"fact": {
 			"kind": "sighting",
 			"subject": [n.id],

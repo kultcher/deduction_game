@@ -777,22 +777,22 @@ static func evil_hear_accusation(w, n, suspect, card: Dictionary, relevance: flo
 	var r = w.rng.randf()
 	var strength: float = relevance
 	if times > 0:
-		lines.append(say(n, "You've told me that already."))
+		lines.append(say(n, "[PH] You've told me that already."))
 	elif suspect == n:
-		lines.append(say(n, "Me? That's madness."))
+		lines.append(say(n, "[PH] Me? That's madness."))
 	elif relevance < 0.3:
-		lines.append(say(n, "I don't see what that has to do with %s." % suspect.name))
+		lines.append(say(n, "[PH] I don't see what that has to do with %s." % suspect.name))
 	elif serves < 0.5:
 		if card.get("kind", "") in ["claim", "hint", "refusal", "opinion", "accusation", "alibi"] and r < 0.5:
-			lines.append(say(n, "That's only talk. Show me something real."))
+			lines.append(say(n, "[PH] That's only talk. Show me something real."))
 		else:
-			lines.append(say(n, "Maybe. I'll keep an eye on %s." % suspect.name))
+			lines.append(say(n, "[PH] Maybe. I'll keep an eye on %s." % suspect.name))
 	elif strength >= 0.9 and r < 0.35:
-		lines.append(say(n, "You're right. I'll not trust %s again." % suspect.name))
+		lines.append(say(n, "[PH] You're right. I'll not trust %s again." % suspect.name))
 	elif r < 0.7:
-		lines.append(say(n, "That... does look bad for %s." % suspect.name))
+		lines.append(say(n, "[PH] That... does look bad for %s." % suspect.name))
 	else:
-		lines.append(say(n, "Maybe. I'll keep an eye on %s." % suspect.name))
+		lines.append(say(n, "[PH] Maybe. I'll keep an eye on %s." % suspect.name))
 	return {"lines": lines, "facts": [], "repeated": times > 0}
 
 ## An evil NPC learns from what a good NPC told them in conversation.

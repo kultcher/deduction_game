@@ -44,7 +44,7 @@ static func answer_hint(w, n) -> Dictionary:
 		w.dlog.decision(n.id, "hint_followup", "gate", false, {"gate": "no_living_hinted_target"})
 		var count: int = n.dialogue_memory.get("empty_hint_replies", 0)
 		n.dialogue_memory["empty_hint_replies"] = count + 1
-		lines.append(say(n, "I've nothing more to tell you." if count % 2 == 0 else "I've no further reason to give you."))
+		lines.append(say(n, "[PH] I've nothing more to tell you." if count % 2 == 0 else "[PH] I've no further reason to give you."))
 		return {"lines": lines, "facts": []}
 	var t = w.by_id[target]
 	var has_reason = _unshared_fake_on(n, target) != {} if n.is_evil() else reason_status(w, n, target)["kind"] in ["private", "player"]
@@ -63,12 +63,12 @@ static func answer_hint(w, n) -> Dictionary:
 		lines.append(_hint_decline(w, n, t))
 		return {"lines": lines, "facts": []}
 	var r = answer_gift(w, n, 4)
-	lines.append(say(n, "All right. You asked, so here's why I suspect %s." % t.name))
+	lines.append(say(n, "[PH] All right. You asked, so here's why I suspect %s." % t.name))
 	lines.append_array(r["lines"])
 	var facts: Array = r["facts"]
 	if not n.claim_public:
 		n.dialogue_memory["confidence_requested"] = true
-		lines.append(say(n, "But keep this between us. Don't bring it up at the meeting; not yet."))
+		lines.append(say(n, "[PH] But keep this between us. Don't bring it up at the meeting; not yet."))
 		for f in facts:
 			if f.get("source", "") == n.id and f.get("kind", "") in ["info", "claim"]:
 				f["confidential"] = n.id
@@ -99,7 +99,7 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 	var about_me = n.id in subj or c.get("a", "") == n.id or n.id in pair or (card.get("kind") == "claim" and card.get("source") != n.id and n.claim_public and card.get("role") == n.claimed_role)
 	if not about_me:
 		on_question(w, n)
-		lines.append(say(n, "What has that to do with me?"))
+		lines.append(say(n, "[PH] What has that to do with me?"))
 		return {"lines": lines, "facts": facts}
 	var kind: String = card.get("kind", "")
 	var d: Dictionary = card.get("data", {})
@@ -131,7 +131,7 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 	if counter:
 		on_question(w, n)
 		var rival = w.by_id[card["source"]]
-		lines.append(say(n, "I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name]))
+		lines.append(say(n, "[PH] I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name]))
 		if not n.is_evil():
 			var receipt: Dictionary = WorkshopLedger.Evidence.normalize_card(card)
 			ledger_hear(w, n, "own_role:" + fact_id(card), [[rival.id, 0.3, true, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift"]], 1.0,
@@ -191,7 +191,7 @@ static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
 		return {}
 	if not (n.id in w.sleepwalk_claims):
 		w.sleepwalk_claims.append(n.id)
-	var line = say(n, "I don't remember going out. But I've been known to sleepwalk.")
+	var line = say_voiced(n, "sleepwalk_excuse", "I don't remember going out. But I've been known to sleepwalk.")
 	return {"line": line, "fact": {"kind": "secret", "subject": [n.id], "owner": n.id, "source": n.id,
 		"secret_kind": "sleepwalker", "mod": "sleepwalker",
 		"text": "%s says they've been known to sleepwalk (at %s)." % [n.name, where]}}
@@ -211,25 +211,32 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	var when = C.night_name(night)
 	if when.begins_with("night"): when = "on " + when
 	var text = ""
+	var statement = ""
 	for fact in response.facts:
 		if fact.get("kind", "") == "alibi" and fact.get("source", "") == n.id and n.id in fact.get("subject", []):
-			text = ("That sighting doesn't change where I was: at home %s." if alternate else "I was at home %s. I stand by that account.") % when
+			statement = ("That sighting doesn't change where I was: at home %s." if alternate else "I was at home %s. I stand by that account.") % when
+			text = ("[PH] " + statement) if alternate else Dialogue.voice_line(n.id, "pressed_home_stand", statement, {"when": when})
 			break
 		if fact.get("kind", "") == "secret" and fact.get("owner", "") == n.id:
-			text = ("I wasn't there on evil business. I %s. Keep that between us." if alternate else "All right: I %s. That's why I was out; please keep it quiet.") % n.secret.get("me", n.secret["text"])
+			var sec_me: String = n.secret.get("me", n.secret["text"])
+			statement = ("I wasn't there on evil business. I %s. Keep that between us." if alternate else "All right: I %s. That's why I was out; please keep it quiet.") % sec_me
+			text = ("[PH] " + statement) if alternate else Dialogue.voice_line(n.id, "confess_secret_private", statement, {"secret": sec_me})
 			break
 		if fact.get("kind", "") == "refusal" and fact.get("source", "") == n.id:
-			text = "I've nothing more to say about that night." if alternate else "That sighting doesn't give you the right to demand my whereabouts."
+			statement = "I've nothing more to say about that night." if alternate else "That sighting doesn't give you the right to demand my whereabouts."
+			text = ("[PH] " + statement) if alternate else Dialogue.voice_line(n.id, "pressed_refusal_stand", statement)
 			break
 		var f_role: String = fact.get("role", "") if fact.get("kind", "") == "info" else ("nightwatch" if fact.get("watch_claim", false) else (fact.get("duty", "") if fact.get("duty_claim", false) else ""))
 		if f_role != "" and C.has_role_def(f_role):
-			text = C.role_def(f_role).pressed_night_line(w, n, fact, night, when, alternate, C.block_name)
-			if text != "":
+			statement = C.role_def(f_role).pressed_night_line(w, n, fact, night, when, alternate, C.block_name)
+			if statement != "":
+				text = "[PH] " + statement
 				break
 	if text != "":
 		for line in response.lines:
 			if line is Dictionary and line.get("speaker", "") == n.id:
 				line.text = text
+				line["statement"] = statement
 				break
 	# Pressed with a sighting, they may offer the sleepwalking explanation (they were seen
 	# out, whatever they remember).
@@ -257,13 +264,13 @@ static func greeting_cue(w, n) -> String:
 	var t: float = n.trust
 	var cue = ""
 	if t < 0.3:
-		cue = "%s eyes you warily. \"What do you want now?\"" % n.name
+		cue = "%s eyes you warily. \"[PH] What do you want now?\"" % n.name
 	elif t < 0.5:
 		cue = "%s gives you a guarded nod." % n.name
 	elif t < 0.7:
 		cue = "%s greets you civilly enough." % n.name
 	else:
-		cue = "%s brightens when they see you. \"Ah, Demonologist. Sit.\"" % n.name
+		cue = "%s brightens when they see you. \"[PH] Ah, Demonologist. Sit.\"" % n.name
 	w.dlog.think(n.id, "cue", "Shows attitude cue for trust %.2f." % t)
 	return cue
 
@@ -364,8 +371,9 @@ static func protection_kind(w, n) -> String:
 
 static func protection_line(n, kind: String) -> Dictionary:
 	if kind == "ward":
-		return say(n, "Put your ward on my door tonight, and I'll tell you what I am. I can't say it otherwise.")
-	return say(n, "Watch over %s tonight, and I'll tell you what I am. I daren't otherwise." % C.block_name(n.home_block))
+		return say_voiced(n, "request_ward", "Put your ward on my door tonight, and I'll tell you what I am. I can't say it otherwise.")
+	var blk_name = C.block_name(n.home_block)
+	return say_voiced(n, "request_vigil", "Watch over %s tonight, and I'll tell you what I am. I daren't otherwise." % blk_name, {"block": blk_name})
 
 ## Where the fear refusal would come, a frightened NPC who trusts the player enough may ask
 ## for protection instead. One request a day; {} when they don't ask. Hearing and answering
@@ -384,7 +392,7 @@ static func _protection_request(w, n, refusal: Dictionary) -> Dictionary:
 		return {}
 	n.request_day = w.day
 	return {"kind": "protect", "npc": n.id, "what": kind, "line": protection_line(n, kind),
-		"decline": {"lines": [say(n, "Then I'll keep it to myself. I'm sorry.")], "facts": [refusal]}}
+		"decline": {"lines": [say_voiced(n, "request_declined", "Then I'll keep it to myself. I'm sorry.")], "facts": [refusal]}}
 
 ## Where they'd keep something back (not out of fear, and not because trust fell), a nervous
 ## NPC may offer it on condition the player keeps it quiet for now. tier: what they'd tell.
@@ -401,8 +409,8 @@ static func _confidence_request(w, n, tier: int, refusal: Dictionary) -> Diction
 	n.request_day = w.day
 	n.dialogue_memory["confidence_requested"] = true
 	return {"kind": "confidence", "npc": n.id, "tier": tier,
-		"line": say(n, "I'll tell you, but only if you promise not to reveal it yet."),
-		"decline": {"lines": [say(n, "Then it stays with me.")], "facts": [refusal]}}
+		"line": say_voiced(n, "request_confidence", "I'll tell you, but only if you promise not to reveal it yet."),
+		"decline": {"lines": [say_voiced(n, "request_declined", "Then it stays with me.")], "facts": [refusal]}}
 
 ## A promised answer, once the player agrees: what answer_gift would say at that tier, without
 ## costing a question (the question was spent asking).
@@ -449,7 +457,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 			else:
 				w.dlog.think(n.id, "lie", "Evil: denies having a gift.", {"lie": true})
 			n.claimed_role = "none"
-			lines.append(say(n, "A gift? No, nothing like that. I'm only the %s." % n.occupation))
+			lines.append(say(n, "[PH] A gift? No, nothing like that. I'm only the %s." % n.occupation))
 			facts.append({"kind": "claim", "subject": [n.id], "role": "none", "source": n.id, "private": true,
 				"text": "%s told you privately they have no gift." % n.name})
 		elif _afraid(w, n):
@@ -459,7 +467,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 			if not ask.is_empty():
 				n.max_tier = maxi(n.max_tier, 1)
 				return {"lines": [ask["line"]], "facts": [], "request": ask}
-			lines.append(say(n, "If I say what I am, I'll be dead by morning. Ask me again when it's safer."))
+			lines.append(say_voiced(n, "fear_gift_refusal", "If I say what I am, I'll be dead by morning. Ask me again when it's safer."))
 			facts.append(refusal)
 		else:
 			var refusal = {"kind": "refusal", "subject": [n.id], "source": n.id, "private": true,
@@ -476,7 +484,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 		var pk: String = C.package_of(role)
 		if evil:
 			w.dlog.think(n.id, "lie", "Evil: gives a hint matching bluff %s." % role, {"lie": true})
-		lines.append(say(n, C.HINT_PACKAGES[pk]["text"] + " That's all I'll say."))
+		lines.append(say(n, "[PH] " + C.HINT_PACKAGES[pk]["text"] + " That's all I'll say."))
 		facts.append({"kind": "hint", "subject": [n.id], "source": n.id, "private": true, "package": pk,
 			"roles": C.HINT_PACKAGES[pk]["roles"],
 			"text": "%s hinted at %s (%s)." % [n.name, C.HINT_PACKAGES[pk]["name"],
@@ -503,7 +511,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 			w.dlog.think(n.id, "admit", "Owns the whereabouts lie(s) now the gift is out: nights %s." % str(n.lied_nights))
 			n.lied_nights.clear()
 	else:
-		lines.append(say(n, "As you know, I'm the %s." % C.role_name(role)))
+		lines.append(say_voiced(n, "repeat_gift_confirm", "As you know, I'm the %s." % C.role_name(role), {"role": C.role_name(role)}))
 	facts.append({"kind": "claim", "subject": [n.id], "role": role, "source": n.id, "private": not n.claim_public,
 		"text": "%s %s the %s." % [n.name, "claims to be" if n.claim_public else "told you privately they are", C.role_name(role)]})
 	if first_time:
@@ -515,7 +523,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 		if not custom.is_empty():
 			return custom
 	if not C.has_readings(role):
-		lines.append(say(n, "My gift doesn't tell me things. It only does what it does."))
+		lines.append(say_voiced(n, "passive_gift_note", "My gift doesn't tell me things. It only does what it does."))
 		n.max_tier = maxi(n.max_tier, tier)
 		return {"lines": lines, "facts": facts}
 	# Readings: public ones are always repeated; private ones need tier 4.
@@ -545,22 +553,22 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 			"text": "%s claims the %s but won't share what it has shown them." % [n.name, C.role_name(role)]}
 		var ask: Dictionary = {}
 		if withholding:
-			lines.append(say(n, "I've told you what I knew before. The rest I'll keep, for now."))
+			lines.append(say_voiced(n, "withhold_readings_trust", "I've told you what I knew before. The rest I'll keep, for now."))
 			w.dlog.think(n.id, "withhold", "Trust fell; withholding %d newer reading(s) from the player." % held)
 		elif afraid:
 			ask = _protection_request(w, n, refusal)
 			if ask.is_empty():
-				lines.append(say(n, "If word gets round what %s, I'll be dead by morning. Not yet." % ("the rest of my readings show" if not readings.is_empty() else "my gift has shown me")))
+				lines.append(say(n, "[PH] If word gets round what %s, I'll be dead by morning. Not yet." % ("the rest of my readings show" if not readings.is_empty() else "my gift has shown me")))
 		else:
 			ask = _confidence_request(w, n, 4, refusal)
 			if ask.is_empty():
-				lines.append(say(n, "What it's shown me, I'll keep to myself for now."))
+				lines.append(say_voiced(n, "withhold_readings_privacy", "What it's shown me, I'll keep to myself for now."))
 		if not ask.is_empty():
 			lines.append(ask["line"])
 			return {"lines": lines, "facts": facts, "request": ask}
 		facts.append(refusal)
 	elif n.info_log.is_empty():
-		lines.append(say(n, "It hasn't shown me anything yet."))
+		lines.append(say_voiced(n, "empty_readings", "It hasn't shown me anything yet."))
 	return {"lines": lines, "facts": facts}
 
 ## Sharing what they saw of others is gated by Gossip (and loosened by pressure).
@@ -637,7 +645,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				"Confess personal secret (%s)?" % n.secret.get("kind", "?"))
 		if confess:
 			n.secret_known = true
-			lines.append(say(n, "...I wasn't home. I %s. Please, keep it quiet." % n.secret.get("me", n.secret["text"])))
+			lines.append(say_voiced(n, "confess_secret_private", "...I wasn't home. I %s. Please, keep it quiet." % n.secret.get("me", n.secret["text"]), {"secret": n.secret.get("me", n.secret["text"])}))
 			vantage = block
 			how = "street"
 			facts.append({"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
@@ -669,7 +677,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	if C.has_role_def(n.claimed_role):
 		var withhold_msg: String = C.role_def(n.claimed_role).withholds_night_sightings(n, nd, _mind())
 		if withhold_msg != "":
-			lines.append(say(n, withhold_msg))
+			lines.append(say(n, "[PH] " + withhold_msg))
 			return {"lines": lines, "facts": facts}
 	var seen: Array = n.beliefs.filter(func(b): return b["kind"] in ["saw", "stayed_in"] and b["day"] == nd and b["phase"] == C.NIGHT)
 	var reported: Array = []
@@ -713,10 +721,10 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		var shares = w.decision_roll(n, "direct_night_sightings", 0.95, {"eligible_sightings": reported.size()})
 		w.dlog.decision(n.id, "direct_night_sightings", "outcome", shares, {"p": 0.95, "eligible": reported.size()})
 		if not shares:
-			lines.append(say(n, "I'm not ready to discuss who I saw."))
+			lines.append(say(n, "[PH] I'm not ready to discuss who I saw."))
 			return {"lines": lines, "facts": facts}
 	if reported.is_empty() and not (was_out and not n.is_evil()):
-		lines.append(say(n, "I saw nobody."))
+		lines.append(say(n, "[PH] I saw nobody."))
 	var groups: Array = []
 	for b in reported:
 		var r = sighting_report(w, n, b, nd)
@@ -750,7 +758,7 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	var who = w.by_id[b["who"]]
 	var bn = C.block_name(b["block"])
 	if b["kind"] == "stayed_in":
-		return {"line": say(n, "From my window on night %d, I saw %s go in for the night, and they never came out." % [nd, who.name]),
+		return {"line": say(n, "[PH] From my window on night %d, I saw %s go in for the night, and they never came out." % [nd, who.name]),
 			"observation": {"kind": "alibi", "subject": who.name, "scene": _observation_scene(n, b, nd),
 				"before": "From my window on night %d, I saw " % nd, "after": " go in for the night, and they never came out."},
 			"fact": {"kind": "alibi", "subject": [who.id], "home": true, "witness": true, "day": nd, "phase": C.NIGHT, "source": n.id, "block": b["block"],
@@ -769,7 +777,7 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	else:
 		before = "I did see "
 		after = " out on %s on night %d." % [bn, nd]
-	return {"line": say(n, before + who.name + after),
+	return {"line": say(n, "[PH] " + before + who.name + after),
 		"observation": {"kind": "sighting", "subject": who.name, "scene": _observation_scene(n, b, nd), "before": before, "after": after},
 		"fact": {"kind": "sighting", "subject": [who.id], "block": b["block"], "day": nd, "phase": C.NIGHT, "source": n.id, "how": b.get("how", "street"),
 			"text": "%s says they saw %s on %s on night %d%s." % [n.name, who.name, bn, nd, how]}}
@@ -831,14 +839,14 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 		was_s = was_s[0].to_upper() + was_s.substr(1)
 	var limit = _gossip_share(w, n, "share_sightings")
 	if limit == 0:
-		lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + "Who else goes where is none of my business."))
+		lines.append(say(n, "[PH] " + ((was_s + ". ") if was_s != "" else "") + "Who else goes where is none of my business."))
 		return {"lines": lines, "facts": facts}
 	# Memory: they recall only their most recent few sightings (more with Insight), one per person.
 	var memory = 2 + int(round(trait_of(n, "insight") * 4.0))
 	var before: Array = n.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] != C.NIGHT and in_frame.call(b))
 	var seen: Array = before.filter(func(b): return not sighting_is_here(w, b, b["who"], near_loc))
 	if seen.is_empty() and not before.is_empty():
-		lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + "Nobody but who you can see around you for yourself."))
+		lines.append(say(n, "[PH] " + ((was_s + ". ") if was_s != "" else "") + "Nobody but who you can see around you for yourself."))
 		return {"lines": lines, "facts": facts}
 	var recalled: Array = []
 	var people = {}
@@ -853,7 +861,7 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 		if recalled.size() >= memory:
 			break
 	if recalled.is_empty():
-		lines.append(say(n, (was_s + ", and saw nobody worth mentioning.") if was_s != "" else "Nobody worth mentioning."))
+		lines.append(say(n, "[PH] " + ((was_s + ", and saw nobody worth mentioning.") if was_s != "" else "Nobody worth mentioning.")))
 		return {"lines": lines, "facts": facts}
 	w.dlog.think(n.id, "share_sightings", "Recalls %d recent sighting(s) (memory %d from insight), shares up to %d (gossip)." %
 		[recalled.size(), memory, limit])
@@ -892,7 +900,7 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 		facts.append({"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": b["phase"], "source": n.id,
 			"text": "%s saw %s on %s, day %d %s." % [n.name, who.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
 	if parts.is_empty():
-		lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + "Nobody you didn't see for yourself."))
+		lines.append(say(n, "[PH] " + ((was_s + ". ") if was_s != "" else "") + "Nobody you didn't see for yourself."))
 		return {"lines": lines, "facts": facts}
 	var reports = Dialogue.compose_turn(n.id, parts, {"audience": "player", "speech_act": "answer",
 		"trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, was_s != "")
@@ -911,7 +919,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 			{"gate": "gossip_and_pressure_cutoff", "gossip": trait_of(n, "gossip"),
 				"gossip_minimum": 0.2, "pressure": n.pressure, "pressure_override": 0.5}, t.id)
 		w.dlog.think(n.id, "opinion", "Gossip %.2f: won't discuss others." % trait_of(n, "gossip"))
-		var refused: String = "It's not my place to say."
+		var refused: String = "[PH] It's not my place to say."
 		var previous: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
 		refused = Dialogue.repeated_opinion_refusal(n.id, t.name, previous, refused)
 		lines.append(say(n, Dialogue.contextualize(n.id, refused, previous if previous != "opinion_again" else "", t.name)))

@@ -220,7 +220,7 @@ func _meeting_sighting_prefix_and_gallows() -> void:
 	n.info_log.clear()
 	n.beliefs.clear()
 	var gallows: Dictionary = Mind.last_words(w, n)
-	_check(gallows["lines"].size() >= 1 and gallows["lines"][0]["text"].begins_with("As I've said, I am the "), "last words acknowledge an already-public role claim")
+	_check(gallows["lines"].size() >= 1 and gallows["lines"][0].get("statement", gallows["lines"][0]["text"]).begins_with("As I've said, I am the "), "last words acknowledge an already-public role claim")
 
 func _public_hearsay_and_self_gossip() -> void:
 	var g = _game()

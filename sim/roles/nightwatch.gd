@@ -12,7 +12,7 @@ func _init() -> void:
 	night_walk = true
 	desc = "Each night, watches one block and learns who moved through it. Is out on that block."
 	shape = "NIGHT_ROUTE"
-	request_agree_line = "I'll keep my watch over %s tonight, then."
+	request_agree_line = "[PH] I'll keep my watch over %s tonight, then."
 
 
 func short_text(d: Dictionary, src: String, nm: Callable) -> String:
@@ -165,7 +165,7 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_n
 		w.dlog.think(n.id, "lie", "Evil bluffing Night Watch: claims to have watched %s (actually %s)." % [watch_b, where], {"lie": true})
 	return {
 		"handled": true,
-		"line": mind.say(n, "Keeping watch over %s, as is my duty." % block_name_fn.call(watch_b)),
+		"line": mind.say(n, "[PH] Keeping watch over %s, as is my duty." % block_name_fn.call(watch_b)),
 		"fact": {
 			"kind": "sighting",
 			"subject": [n.id],
