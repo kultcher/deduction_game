@@ -553,11 +553,18 @@ static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 		# attention still excludes them. Flag the missing joint interpretation.
 		if argument.case.get("disputes", []).is_empty():
 			issues.append("Embedded conflict questions need a live quoted-evidence assessment adapter; present the conflict as its own headline to use the new evaluator.")
-	var fields: Array = Solver.empty_case().keys() + ["arguments", "argument_root"]
+	var fields: Array = Solver.empty_case().keys() + ["arguments", "argument_root", "circumstantial"]
 	for claim in claims:
 		for field in claim:
 			if field not in fields:
 				issues.append("Unrecognized canvas feature needs a live adapter: " + str(field) + ".")
+		for hub in claim.get("circumstantial", []):
+			if not hub is Dictionary or not hub.get("cards") is Array or hub.cards.is_empty():
+				issues.append("Link at least one supporting card into the Circumstantial Evidence hub, or remove the empty hub.")
+			elif str(hub.get("type", "")) not in ["evil", "demon", "minion", "suspicious"] or str(hub.get("target", "")) == "":
+				issues.append("Circumstantial Evidence hubs support accusatory premises (evil, Demon, Minion, or suspicious).")
+			elif not hub.cards.all(func(cid): return cid in value.cards):
+				issues.append("Circumstantial Evidence hub references missing root cards.")
 		var history = History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
 		var epochs: Array = history.value.get("epochs", {"Original alignment": 0}).keys()
 		if claim.conclusion.get("type") not in CONCLUSIONS or claim.conclusion.get("target") not in snapshot.people.map(func(p): return p.id) or claim.conclusion.get("at") not in epochs:

@@ -107,6 +107,8 @@ func world_rect(id: String) -> Rect2:
 		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, PREMISE_H + (24.0 if not model.nodes[id].positions.is_empty() else 0.0)))
 	if model.nodes[id].kind == "profile_info":
 		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, profile_layout(id).h))
+	if model.nodes[id].kind == "circumstantial":
+		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, circumstantial_layout(id).h))
 	if model.nodes[id].kind in ["evidence", "modifier"] and not _evidence_card(id).is_empty():
 		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, evidence_layout(id).h))
 	var lines = 0
@@ -175,6 +177,9 @@ func _draw_card(id: String, rect: Rect2) -> void:
 		return
 	if node.kind == "profile_info":
 		_draw_profile_info(id, rect)
+		return
+	if node.kind == "circumstantial":
+		_draw_circumstantial(id, rect)
 		return
 	if node.kind in ["evidence", "modifier"] and not _evidence_card(id).is_empty():
 		_draw_evidence(id, rect)
@@ -666,6 +671,54 @@ func _draw_profile_info(id: String, rect: Rect2) -> void:
 	draw_string(font, answer.position + Vector2(14, 20) * zoom, "Details", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
 	var link = _link_rect(rect)
 	draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 3, 0), link)
+	draw_string(font, link.position + Vector2(19, 20) * zoom, "Link", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
+
+func circumstantial_layout(id: String) -> Dictionary:
+	var incoming: Array = model.links.filter(func(e): return e.to == id and model.nodes.has(e.from)).map(func(e): return e.from)
+	var lines: Array = []
+	if incoming.is_empty():
+		lines.append("Link sightings, conversations, votes, or profile bonds/traits here.")
+		lines.append("Then link this hub into an accusatory Premise.")
+	else:
+		for src_id in incoming.slice(0, 3):
+			lines.append("• " + model.title(src_id))
+		if incoming.size() > 3:
+			lines.append("+ %d more linked item(s)" % (incoming.size() - 3))
+	var wrapped: Array = []
+	for row in lines:
+		for ln in _lines(row, WIDTH - 32, 13).slice(0, 2):
+			wrapped.append(ln)
+	var h: float = 54.0 + wrapped.size() * 17.0 + 48.0
+	return {"h": h, "lines": wrapped, "incoming_count": incoming.size()}
+
+func _draw_circumstantial(id: String, rect: Rect2) -> void:
+	var lay: Dictionary = circumstantial_layout(id)
+	var paper = Color("cde0dc")
+	var header = Color("7ea69f")
+	var ink = Color("1f2d2b")
+	draw_style_box(CanvasSkin.flat(paper, Color("f7d988") if id == model.selected or id == linking else Color("52736d"), 3 if id == model.selected else 1, 6, 0), rect)
+	var head = Rect2(rect.position, Vector2(rect.size.x, 40 * zoom))
+	draw_rect(head, header)
+	var orphan: bool = model.hub_premise_targets(id).is_empty()
+	var chip_text: String = "Needs a premise" if orphan else ("Stage 2 · %d" % lay.incoming_count)
+	var chip_col: Color = Color("c98a3d") if orphan else Color("3e665f")
+	var cw: float = font.get_string_size(chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14.0
+	draw_string(font, rect.position + Vector2(12, 25) * zoom, "Circumstantial Hub", HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - (cw + 22) * zoom, _fs(15), ink)
+	var chip = Rect2(rect.position + Vector2(WIDTH - cw - 8, 9) * zoom, Vector2(cw, 22) * zoom)
+	draw_style_box(CanvasSkin.flat(chip_col, chip_col.darkened(0.25), 1, 9, 0), chip)
+	draw_string(font, chip.position + Vector2(7, 16) * zoom, chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(12), Color("fbf6ea"))
+	tips.append({"rect": chip, "text": "Link this hub into an accusatory Premise card so its supporting material is evaluated." if orphan else "Connected to a Premise: logical cards keep full Stage 1 weight; social framing adds up to +0.015 per incident (+0.045 cap)."})
+	var y: float = 54.0
+	for ln in lay.lines:
+		draw_string(font, rect.position + Vector2(16, y + 11) * zoom, ln, HORIZONTAL_ALIGNMENT_LEFT, (WIDTH - 32) * zoom, _fs(13), ink)
+		y += 17.0
+	fields[id] = []
+	var answer = _answer_rect(rect)
+	answer_buttons[id] = answer
+	draw_style_box(CanvasSkin.flat(Color("e6f0ee"), Color("5b7f79"), 1, 3, 0), answer)
+	draw_string(font, answer.position + Vector2(14, 20) * zoom, "Details", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
+	var link = _link_rect(rect)
+	draw_style_box(CanvasSkin.flat(Color("e6f0ee"), Color("5b7f79"), 1, 3, 0), link)
 	draw_string(font, link.position + Vector2(19, 20) * zoom, "Link", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
 
 func _draw_evidence(id: String, rect: Rect2) -> void:

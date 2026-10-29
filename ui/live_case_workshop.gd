@@ -118,6 +118,9 @@ func _ready() -> void:
 	var add_profile_btn = _button(tools, "Add Townsfolk Profile Info", _open_add_profile_menu)
 	add_profile_btn.name = "AddProfileInfo"
 	add_profile_btn.tooltip_text = "Adds a townsfolk profile card with selectable Home & Work, Haunts, Personality, and Bonds facets."
+	var add_circ_btn = _button(tools, "Add Circumstantial Evidence", add_circumstantial_hub)
+	add_circ_btn.name = "AddCircumstantialHub"
+	add_circ_btn.tooltip_text = "Adds a Stage 2 Circumstantial Evidence hub (+0.015 max per incident, +0.045 cap per suspect) to group social framing and impressions under a Premise."
 
 	_button(tools, "Fit case", func(): canvas.fit_case())
 	_button(tools, "All cards", func(): canvas.fit_case(true))
@@ -267,9 +270,22 @@ func add_profile_info(person_id: String, facet: String = "home_work") -> String:
 	refresh()
 	var at: Vector2 = (canvas.size / 2.0 - canvas.pan) / maxf(canvas.zoom, 0.1) - Vector2(150, 90)
 	if canvas.size.x <= 10.0:
-		var idx: int = board.nodes.values().filter(func(n): return n.kind in ["evidence", "profile_info"]).size()
+		var idx: int = board.nodes.values().filter(func(n): return n.kind in ["evidence", "profile_info", "circumstantial"]).size()
 		at = Vector2(60.0 + (idx % 4) * 320.0, 400.0 + (idx / 4) * 300.0)
 	var id: String = board.add_profile_info(person_id, [facet] if facet != "" else ["home_work"], at)
+	_session_changed()
+	canvas.fit_case(true)
+	return id
+
+func add_circumstantial_hub() -> String:
+	if g == null:
+		return ""
+	refresh()
+	var at: Vector2 = (canvas.size / 2.0 - canvas.pan) / maxf(canvas.zoom, 0.1) - Vector2(150, 90)
+	if canvas.size.x <= 10.0:
+		var idx: int = board.nodes.values().filter(func(n): return n.kind in ["evidence", "profile_info", "circumstantial"]).size()
+		at = Vector2(60.0 + (idx % 4) * 320.0, 260.0 + (idx / 4) * 260.0)
+	var id: String = board.add_circumstantial_hub(at)
 	_session_changed()
 	canvas.fit_case(true)
 	return id
@@ -407,6 +423,20 @@ func _refresh_case() -> void:
 				board.sync_profile_node(answer_id)
 				_edit())
 		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
+	elif node.kind == "circumstantial":
+		_clear(case_box)
+		_label(case_box, board.title(answer_id), 22, "accent")
+		_label(case_box, "Organize supporting impressions (Breathstealer daytime proximity, suspicious associations, votes against trusted townsfolk, victim rivalries, or evasiveness) under an accusatory Premise. Logical cards wired through this hub still receive full Stage 1 evaluation; Stage 2 adds up to +0.015 per incident (+0.045 cap per suspect) when backed by Stage 1 grounds.", 16)
+		var targets: Array = board.hub_premise_targets(answer_id)
+		if targets.is_empty():
+			_label(case_box, "Status: Needs a premise. Click Link on this hub and connect it to an accusatory Premise card.", 16, "muted")
+		else:
+			for pid in targets:
+				_label(case_box, "Connected to: " + board.title(pid), 16, "accent")
+				var csum: Dictionary = Live.circumstantial_summary(g, board.compile(pid))
+				if csum.get("has_hub", false):
+					_label(case_box, csum.text, 15)
+		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
 	elif node.kind == "modifier":
 		_clear(case_box)
 		_label(case_box, board.title(answer_id), 22)
@@ -438,9 +468,13 @@ func _refresh_case() -> void:
 		_label(case_box, "Assumed identities in this line. These are hypotheses, not facts the jury must accept.", 16)
 		_premise_details(node)
 		if not node.get("conclusion", {}).is_empty():
-			var tsum: Dictionary = Live.trace_summary(g, board.compile(answer_id))
+			var compiled_prem: Dictionary = board.compile(answer_id)
+			var tsum: Dictionary = Live.trace_summary(g, compiled_prem)
 			if tsum.get("has_traces", false):
 				_label(case_box, tsum.text, 16, "accent")
+			var csum_p: Dictionary = Live.circumstantial_summary(g, compiled_prem)
+			if csum_p.get("has_hub", false):
+				_label(case_box, csum_p.text, 16, "accent")
 			var premise_id: String = answer_id
 			var found = VBoxContainer.new()
 			_button(case_box, "Connections: board cards that bear on this…", func(): _show_connections(premise_id, found))
@@ -490,6 +524,9 @@ func _preview_effectiveness() -> void:
 	var tsum: Dictionary = Live.trace_summary(g, compiled_case)
 	if tsum.get("has_traces", false):
 		result_output.text += "\n\n" + tsum.text
+	var csum_prev: Dictionary = Live.circumstantial_summary(g, compiled_case)
+	if csum_prev.get("has_hub", false):
+		result_output.text += "\n\n" + csum_prev.text
 	var readiness = Live.status(g, board.compile(board.selected))
 	result_output.text += "\n\nEvery current listener can evaluate this case." if readiness.get("audience_ready", false) else "\n\nSome listeners cannot evaluate this case:\n• " + "\n• ".join(PackedStringArray(readiness.issues))
 	if not result.ready:
@@ -605,6 +642,8 @@ func remove_node(id: String) -> void:
 			board.remove_evidence(id)
 		"profile_info":
 			board.remove_profile_info(id)
+		"circumstantial":
+			board.remove_circumstantial(id)
 		"modifier":
 			board.remove_modifier(id)
 		"contradiction":
@@ -635,7 +674,7 @@ func _undo_remove() -> void:
 	status.text = "Restored."
 
 func _extend_context(id: String) -> void:
-	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "profile_info", "modifier"]:
+	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "profile_info", "circumstantial", "modifier"]:
 		context_menu.add_separator()
 		context_menu.add_item("Remove from Workshop", 204)
 

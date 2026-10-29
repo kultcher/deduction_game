@@ -63,6 +63,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	var issues: Array = []
 	var marked_questions: Array = []
 	var disputes: Array = []
+	var circumstantial_hubs: Array = []
 	var reading_challenges = {}
 	for receipt in preload("res://workshop/public_evidence.gd").martyr_receipts(input.public_events, input.people.map(func(p): return p.id)):
 		_add(facts, owners, receipt, "public")
@@ -86,6 +87,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		if entry.get("meta", {}).get("kind") in ["role_claim", "role_counter"] and entry.meta.get("how") != "own" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
 			_add(facts, owners, entry.meta.workshop_card, "claim:" + eid)
 	for key in presentations:
+		if withdrawn.has(key) or withdrawn.has(str(key)):
+			continue
 		var presented: Dictionary = presentations[key]
 		for argument in presented.arguments:
 			for id in argument.get("workshop_case", {}).get("reading_challenges", {}):
@@ -97,6 +100,10 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			for dispute in argument.get("workshop_case", {}).get("disputes", []):
 				if dispute not in disputes:
 					disputes.append(dispute.duplicate(true))
+			for chub in argument.get("workshop_case", {}).get("circumstantial", []):
+				var hcopy: Dictionary = chub.duplicate(true)
+				hcopy["presentation_key"] = str(key)
+				circumstantial_hubs.append(hcopy)
 			if argument.conclusion.get("type") == "marked":
 				var target: String = Assess._target(argument.conclusion)
 				if target not in marked_questions:
@@ -319,9 +326,9 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var dimensions: int = Support.dimensions(prepared.view.cards, prepared.listener, prepared.case.reading_challenges) if prepared.view.world_options.get("roles", false) or not prepared.case.reading_challenges.is_empty() else sources.size() + uncertain
 		if Jury.engine == "legacy" and dimensions > 6:
 			issues.append("Shared evidence exceeds the 64-state credibility budget.")
-	return {"ready": issues.is_empty(), "empty": facts.is_empty() and preload("res://workshop/public_evidence.gd").factors(prepared.view).is_empty() and not prepared.view.get("chronology", {}).has("curse"), "issues": issues, "owned": owned if issues.is_empty() else {},
+	return {"ready": issues.is_empty(), "empty": facts.is_empty() and circumstantial_hubs.is_empty() and preload("res://workshop/public_evidence.gd").factors(prepared.view).is_empty() and not prepared.view.get("chronology", {}).has("curse"), "issues": issues, "owned": owned if issues.is_empty() else {},
 		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input,
-		"marked_questions": marked_questions}
+		"marked_questions": marked_questions, "circumstantial_hubs": circumstantial_hubs}
 
 static func supported(receipt: Dictionary) -> bool:
 	if receipt.get("kind") == "info" and receipt.get("content", {}).get("role") == "medium":

@@ -90,7 +90,7 @@ static func _hint_decline(w, n, t) -> Dictionary:
 ## pressure on them (which loosens tongues and secrets) and asks them to answer it: where
 ## they were that night, or what their gift really is. Anyone with something to hide may
 ## show nerves, and so, less often, may an innocent who's simply rattled.
-static func press(w, n, card: Dictionary) -> Dictionary:
+static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
 	var c: Dictionary = card.get("conclusion", {})
@@ -148,7 +148,7 @@ static func press(w, n, card: Dictionary) -> Dictionary:
 		pressed["dialogue_exchange"] = {"action": "challenge_night", "subject": n.id}
 		return pressed
 	if kind == "trace" and card.get("trace_family", "") != "":
-		var tr_reply: Dictionary = react_to_trace(w, n, card, {}, true)
+		var tr_reply: Dictionary = react_to_trace(w, n, card, known_haunts, true)
 		lines += tr_reply["lines"]
 		facts += tr_reply["facts"]
 		var pressed_tr: Dictionary = _challenged(n, {"lines": lines, "facts": facts, "profile_haunts": tr_reply.get("profile_haunts", [])}, card)
@@ -1154,11 +1154,18 @@ static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}
 				if pointer_target.work in locs:
 					pointer_loc = pointer_target.work
 				else:
+					var already: Array = known_haunts.get(pointer_target.id, [])
 					for h in pointer_target.haunts:
-						if h in locs:
+						if h in locs and not (h in already):
 							pointer_loc = h
 							pointer_is_haunt = true
 							break
+					if pointer_loc == "":
+						for h in pointer_target.haunts:
+							if h in locs:
+								pointer_loc = h
+								pointer_is_haunt = true
+								break
 	if fits_me:
 		match card.get("trace_family", ""):
 			"locations":

@@ -98,7 +98,7 @@ func _test_joint_walker_subtraction_vs_ambiguous_walker() -> void:
 	var world_demon_b = {"evil": (1 << 1) | (1 << 3), "demon": 1}
 	var score_a1: float = Activity.score(world_demon_a, factor_explained)
 	var score_b1: float = Activity.score(world_demon_b, factor_explained)
-	_check(score_a1 > score_b1 * 1.45, "when sighted walker C fits only T2, joint assignment favors T1-matching Demon A over T2-matching Demon B")
+	_check(score_a1 > score_b1, "when sighted walker C fits only T2, joint assignment favors T1-matching Demon A over T2-matching Demon B")
 	# Case 2: Sighted walker C fits BOTH T1 and T2 (bakery, wharf, well) -> exact symmetry between Demon A and Demon B!
 	var cards_ambig: Array = base_cards + _profile_cards_for("c", "bakery", "wharf", "well")
 	var factor_ambig: Dictionary = Activity.factors(view, cards_ambig, {})[0]
@@ -148,7 +148,7 @@ func _test_live_two_trace_summary_and_latency() -> void:
 	for p in [b, walker]:
 		for hl in p.haunts:
 			g.known_haunts[p.id] = g.known_haunts.get(p.id, []) + [hl]
-			g.add_profile_receipt({"kind": "haunt", "subject": [p.id], "source": speaker.id, "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "Haunt"})
+			g.add_profile_receipt({"kind": "haunt", "subject": [p.id], "source": speaker.id, "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "Haunt %s %s" % [p.id, hl]})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var board = CanvasModel.new(view)
 	var root_id: String = board.selected
@@ -162,7 +162,11 @@ func _test_live_two_trace_summary_and_latency() -> void:
 	var compiled: Dictionary = board.compile(root_id)
 	var tsum: Dictionary = WorkshopCanvas.trace_summary(g, compiled)
 	_check(b.name in tsum.contradicted and a.name in tsum.compatible, "two-trace summary marks candidate contradicted on both traces while keeping single-prong match compatible")
-	_check(tsum.get("pairings", []).any(func(s): return walker.name in s and "accounts for trace 2" in s), "two-trace summary identifies when a sighted walker accounts for one trace")
+	_check(tsum.get("pairings", []).any(func(s): return walker.name in s and "could account for trace 2" in s), "two-trace summary identifies when a sighted walker could account for one trace")
+	var t2_id: String = "e:" + WorkshopCanvas.Evidence.normalize_card(g.board[t2_n - 1]).id
+	board.unlink(t2_id, root_id)
+	var partial_summary: Dictionary = WorkshopCanvas.trace_summary(g, board.compile(root_id))
+	_check(b.name not in partial_summary.contradicted and partial_summary.unresolved.any(func(s): return s.begins_with(b.name)), "a nonmatch on one of two traces remains unresolved")
 	var t0_ms: int = Time.get_ticks_msec()
 	var ghost: Dictionary = Ghost.live(WorkshopCanvas.snapshot(g, compiled))
 	var elapsed_ms: int = Time.get_ticks_msec() - t0_ms

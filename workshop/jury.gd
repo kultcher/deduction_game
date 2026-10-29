@@ -14,6 +14,7 @@ const Movement = preload("res://workshop/movement_model.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Protection = preload("res://workshop/live_protection.gd")
+const Circumstantial = preload("res://workshop/circumstantial.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 
 ## Which engine judges cases (docs/CASE_REASONING.md): "case_eval" (likelihood-weighted
@@ -734,10 +735,20 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		if invalid or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict":
 			net_weight = 0.0
 		effects[id] = {"requested": net_weight * (0.5 + baseline.trust) * confidence, "alignment_signal": alignment, "pattern_signal": circumstantial,
+			"circumstantial_signal": 0.0, "circumstantial_incidents": [],
 			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"),
 			"protection_signal": protection_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
 			"evil_change": s, "good_change": -s, "prior": odds.prior, "posterior": odds.posterior,
 			"cards": attention.considered.duplicate(), "theory": theory, "reasoning": status}
+	if not refresh and not value.get("circumstantial", []).is_empty():
+		var circ_preview: Dictionary = Circumstantial.evaluate_case(view, value, baseline, effects)
+		for cid_t in circ_preview.get("requested", {}):
+			if effects.has(cid_t):
+				var c_sig: float = float(circ_preview.requested[cid_t])
+				effects[cid_t]["circumstantial_signal"] = c_sig
+				effects[cid_t]["circumstantial_incidents"] = circ_preview.get("incidents", {}).get(cid_t, [])
+				if only.is_empty():
+					effects[cid_t]["requested"] += c_sig
 	var claims: Array = []
 	var by_id = {}
 	var arguments: Array = [] if refresh else Consequences._arguments(view, value)
@@ -991,7 +1002,7 @@ static func _signature(view: Dictionary, case_data: Dictionary) -> String:
 			if atom not in timed:
 				timed.append(atom)
 	timed.sort_custom(func(a, b): return JSON.stringify(a) < JSON.stringify(b))
-	var signature = JSON.stringify(_canonical([keys, case_data.positions, answers, case_data.reasons, citations, scope, case_data.get("challenges", {}), factors, case_data.conclusion, case_data.get("graph_errors", []), case_data.get("faults", {}), timed]))
+	var signature = JSON.stringify(_canonical([keys, case_data.positions, answers, case_data.reasons, citations, scope, case_data.get("challenges", {}), factors, case_data.conclusion, case_data.get("graph_errors", []), case_data.get("faults", {}), timed, case_data.get("circumstantial", [])]))
 	return signature if case_data.get("reading_challenges", {}).is_empty() else signature + JSON.stringify(_canonical(case_data.reading_challenges))
 
 static func _canonical(value):

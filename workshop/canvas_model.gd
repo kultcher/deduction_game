@@ -151,6 +151,48 @@ func remove_profile_info(id: String) -> void:
 		selected = premises[0] if not premises.is_empty() else (nodes.keys()[0] if not nodes.is_empty() else "")
 	version += 1
 
+func add_circumstantial_hub(at: Vector2 = Vector2(360, 260)) -> String:
+	serial += 1
+	var id = "ch:%d" % serial
+	while nodes.has(id):
+		serial += 1
+		id = "ch:%d" % serial
+	nodes[id] = {"id": id, "kind": "circumstantial", "at": [at.x, at.y]}
+	selected = id
+	version += 1
+	return id
+
+func remove_circumstantial(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "circumstantial":
+		return
+	links = links.filter(func(edge): return edge.from != id and edge.to != id)
+	for node in nodes.values():
+		if node.kind in ["contradiction", "modifier"]:
+			node.prior_links = node.get("prior_links", []).filter(func(edge): return edge.from != id and edge.to != id)
+	nodes.erase(id)
+	if selected == id or not nodes.has(selected):
+		var premises: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise")
+		selected = premises[0] if not premises.is_empty() else (nodes.keys()[0] if not nodes.is_empty() else "")
+	version += 1
+
+func hub_premise_targets(id: String, seen: Array = []) -> Array:
+	if id in seen or not nodes.has(id):
+		return []
+	var visited: Array = seen + [id]
+	var out: Array = []
+	for edge in links:
+		if edge.from != id or not nodes.has(edge.to):
+			continue
+		var dest: Dictionary = nodes[edge.to]
+		if dest.kind == "premise" and not dest.get("draft", false) and not dest.get("conclusion", {}).is_empty():
+			if edge.to not in out:
+				out.append(edge.to)
+		elif dest.kind in ["circumstantial", "premise"]:
+			for p_id in hub_premise_targets(edge.to, visited):
+				if p_id not in out:
+					out.append(p_id)
+	return out
+
 func ancestors(id: String, seen: Array = []) -> Array:
 	var result: Array = seen.duplicate()
 	if id in result or not nodes.has(id):
@@ -178,6 +220,10 @@ func connect_cards(from: String, to: String) -> String:
 		var swap = from
 		from = to
 		to = swap
+	elif nodes[from].kind == "circumstantial" and nodes[to].kind in ["evidence", "profile_info", "contradiction", "modifier"]:
+		var swap_c = from
+		from = to
+		to = swap_c
 	var a: Dictionary = nodes[from]
 	var b: Dictionary = nodes[to]
 	if a.kind == "evidence" and b.kind == "evidence":
@@ -448,6 +494,25 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 				if not result.reasons.has(key):
 					result.reasons[key] = "gift"
 					result.citations[key] = claim.id
+	var hub_entries: Array = []
+	for id in all:
+		if nodes[id].kind == "circumstantial":
+			var hub_cards: Array = _evidence(ancestors(id))
+			var prem_ids: Array = hub_premise_targets(id).filter(func(pid): return pid in all)
+			if prem_ids.is_empty():
+				prem_ids = [root]
+			for pid in prem_ids:
+				var pconc: Dictionary = nodes[pid].get("conclusion", {})
+				hub_entries.append({
+					"id": id,
+					"premise": pid,
+					"target": pconc.get("target", ""),
+					"type": pconc.get("type", ""),
+					"cards": hub_cards.duplicate(),
+				})
+	if not hub_entries.is_empty():
+		hub_entries.sort_custom(func(a, b): return str(a.id) + ":" + str(a.premise) < str(b.id) + ":" + str(b.premise))
+		result["circumstantial"] = hub_entries
 	if result.conclusion.type == "conflict":
 		result.conflict_scope = result.cards.duplicate()
 		result.disputes = [] # Ask whether contents conflict; do not resolve one first.
@@ -529,6 +594,8 @@ func title(id: String) -> String:
 		return {"misled": "Misled reading", "lying": "Suspected lie", "unlikely": "Unlikely reading"}[node.mode]
 	if node.kind == "profile_info":
 		return "%s's Profile" % Solver.person_name(view, node.get("person", ""))
+	if node.kind == "circumstantial":
+		return "Circumstantial Evidence"
 	var card = Solver.card_by_id(view, node.card)
 	if card.has("relay_source"):
 		return "Medium relay · " + (C.role_name(card.role) if card.get("role", "") != "" else card.kind.capitalize())
@@ -577,7 +644,7 @@ func restore(value, session) -> String:
 	var evidence: Array = []
 	for id in candidate.nodes:
 		var n = candidate.nodes[id]
-		if not id is String or not n is Dictionary or n.get("id") != id or n.get("kind") not in ["evidence", "profile_info", "premise", "contradiction", "modifier"] or not n.get("at") is Array or n.at.size() != 2 or not n.at.all(func(x): return (x is float or x is int) and is_finite(float(x)) and absf(float(x)) <= 100000):
+		if not id is String or not n is Dictionary or n.get("id") != id or n.get("kind") not in ["evidence", "profile_info", "circumstantial", "premise", "contradiction", "modifier"] or not n.get("at") is Array or n.at.size() != 2 or not n.at.all(func(x): return (x is float or x is int) and is_finite(float(x)) and absf(float(x)) <= 100000):
 			return "Invalid canvas card or position."
 		if n.kind == "evidence":
 			if not n.get("card") is String or n.card in evidence or Solver.card_by_id(view, n.card).is_empty() or not n.get("answers") is Dictionary or not n.get("reasons") is Dictionary or not n.get("citations") is Dictionary:
@@ -605,6 +672,9 @@ func restore(value, session) -> String:
 		elif n.kind == "profile_info":
 			if not n.get("person") is String or not view.people.any(func(p): return p.id == n.person) or not n.get("facets") is Array or not n.facets.all(func(f): return f in PROFILE_FACETS) or not n.get("receipt_ids") is Array or not n.receipt_ids.all(func(rid): return rid is String and not Solver.card_by_id(view, rid).is_empty()):
 				return "Invalid profile info card."
+		elif n.kind == "circumstantial":
+			if n.keys().any(func(k): return k not in ["id", "kind", "at"]):
+				return "Invalid circumstantial hub."
 		elif n.kind == "modifier":
 			if not preload("res://workshop/reading_challenges.gd").valid(view, n.get("card", ""), {"mode": n.get("mode"), "supports": []}):
 				return "Invalid reading modifier."

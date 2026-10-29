@@ -459,6 +459,13 @@ class Workshop:
 	const STANCE_ACCEPT = 0.6
 	const STANCE_PARTIAL = 0.35
 
+	## Stage 2 Circumstantial Evidence Hub (`workshop/circumstantial.gd`)
+	const CIRCUMSTANTIAL_INCIDENT_MAX = 0.015
+	const CIRCUMSTANTIAL_TARGET_CAP = 0.045
+	const CIRCUMSTANTIAL_GATE_REF = 0.06
+	const CIRCUMSTANTIAL_SMEAR_MIN = 0.005
+	const CIRCUMSTANTIAL_SMEAR_MAX = 0.015
+
 	## Theory persistence (`workshop/theory.gd`)
 	const THEORY_BIAS_BASE = 3.0
 	const THEORY_THRESHOLD_BASE = 1.0

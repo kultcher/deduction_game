@@ -274,7 +274,7 @@ static func score(world: Dictionary, factor: Dictionary) -> float:
 		var exec_idx: int = split.executed_idx
 		if d_idx >= 0 and exec_idx != d_idx and (world.evil & (1 << exec_idx)) != 0 and split.alive_demon_mask & (1 << d_idx):
 			# Scion succession possible: either d_idx was always Demon, or exec_idx was Demon
-			# up to exec_day and d_idx rose as Scion afterward.
+			# on nights < exec_day and d_idx rose as Scion before night exec_day.
 			var pre_s: float = _base_score(world, split.pre_profiles, exec_idx, split.get("pre_scenes", []))
 			var post_s: float = _base_score(world, split.post_profiles, d_idx, split.get("post_scenes", []))
 			return 0.5 * direct + 0.5 * (pre_s * post_s)
@@ -440,29 +440,30 @@ static func _scion_succession_splits(view: Dictionary, cards: Array, full_profil
 		return out
 	var nights: Array = []
 	for c in relevant(cards):
-		if c.get("night", -1) >= 1 and c.night not in nights:
+		if c.get("night", -1) >= 0 and c.night not in nights:
 			nights.append(c.night)
 	if nights.is_empty():
 		return out
 	for day_str in execs:
 		var exec_day: int = int(day_str)
-		if not nights.any(func(n): return n <= exec_day):
+		# Execution happens at Day exec_day Evening (tick exec_day*4 + 2), promoting the Scion
+		# BEFORE Night exec_day (tick exec_day*4 + 3). Pre-takeover nights are strictly < exec_day.
+		if not nights.any(func(n): return n < exec_day):
 			continue
-		# Check how many townsfolk + Demonologist were alive entering that execution evening
 		var alive_before: int = 0
 		for p in view.people:
 			if view.get("timeline", {}).get("death_ticks", {}).get(p.id, 2147483647) >= exec_day * 4 + 2:
 				alive_before += 1
 		if alive_before < 5:
 			continue
-		var pre_cards: Array = cards.filter(func(c): return c.get("night", -1) < 1 or c.night <= exec_day)
-		var post_cards: Array = cards.filter(func(c): return c.get("night", -1) < 1 or c.night > exec_day)
+		var pre_cards: Array = cards.filter(func(c): return c.get("night", -1) < 0 or c.night < exec_day)
+		var post_cards: Array = cards.filter(func(c): return c.get("night", -1) < 0 or c.night >= exec_day)
 		var pre_profiles: Array = []
 		var post_profiles: Array = []
 		var alive_mask: int = 0
 		for i in range(view.people.size()):
 			var p: Dictionary = view.people[i]
-			if History.alive_at_night(view, p.id, exec_day + 1):
+			if History.alive_at_night(view, p.id, exec_day):
 				alive_mask |= (1 << i)
 			pre_profiles.append({"good": _likelihood(view, pre_cards, p, "good"), "minion": _likelihood(view, pre_cards, p, "minion"), "demon": _likelihood(view, pre_cards, p, "demon")})
 			post_profiles.append({"good": _likelihood(view, post_cards, p, "good"), "minion": _likelihood(view, post_cards, p, "minion"), "demon": _likelihood(view, post_cards, p, "demon")})

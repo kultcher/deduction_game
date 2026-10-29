@@ -10,6 +10,7 @@ const Mind = preload("res://sim/mind.gd")
 const Argue = preload("res://sim/argue.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 const Ownership = preload("res://game/workshop_ownership.gd")
+const Circumstantial = preload("res://workshop/circumstantial.gd")
 
 ## Pure capability check against the real listener and the proposed evidence union.
 ## Used for the entire audience before a command spends time or discloses secrets.
@@ -220,6 +221,32 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PRESENTATION_REWARD, "the presented reports support the argument")
 		Mind.recompute_beliefs(g.w, n, " (presentation trust reward)")
 		Profiler.close(reward_span)
+	var presented_hubs: Array = root.get("workshop_case", {}).get("circumstantial", [])
+	if not presented_hubs.is_empty() and not self_support and not repeated:
+		var post_s1_view: Dictionary = {}
+		for pid in state.outside:
+			post_s1_view[pid] = clampf(float(state.outside[pid]) + float(state.requested.get(pid, 0.0)), 0.0, 1.5)
+		var smear: Dictionary = Circumstantial.evaluate_smear_backlash(
+			plan.prepared.view,
+			presented_hubs,
+			state.outside,
+			state.requested,
+			post_s1_view,
+			n.npc_trust,
+			n.id,
+			state.get("public_good", []),
+			root.get("workshop_case", {}).get("disputes", [])
+		)
+		if smear.penalty > 0.0:
+			if not state.has("smear_penalized"):
+				state.smear_penalized = {}
+			if not state.smear_penalized.has(signature):
+				state.smear_penalized[signature] = true
+				Mind.set_trust(g.w, n, n.trust - smear.penalty, "the Demonologist padded a case with thin circumstantial smears")
+				Mind.recompute_beliefs(g.w, n, " (circumstantial smear backlash)")
+			text += " Thin guilt-by-association doesn't make a case for me."
+		elif stance_subject != "" and float(state.get("circumstantial_applied", {}).get(stance_subject, 0.0)) > 0.0 and g.w.by_id.has(stance_subject):
+			text += " Taken with the rest of your case, those surrounding circumstances make %s harder to wave away." % g.w.by_id[stance_subject].name
 	if root.conclusion.type == "conflict" and assessment.agreement >= 0.6 and not repeated:
 		if not state.has("scrutinized"):
 			state.scrutinized = {}

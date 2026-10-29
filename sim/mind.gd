@@ -1166,8 +1166,8 @@ static func answer_hint(w, n) -> Dictionary:
 static func _hint_decline(w, n, t) -> Dictionary:
 	return MindDialogue._hint_decline(w, n, t)
 
-static func press(w, n, card: Dictionary) -> Dictionary:
-	return MindDialogue.press(w, n, card)
+static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dictionary:
+	return MindDialogue.press(w, n, card, known_haunts)
 
 static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}, already_counted: bool = false) -> Dictionary:
 	return MindDialogue.react_to_trace(w, n, card, known_haunts, already_counted)

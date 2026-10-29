@@ -379,7 +379,11 @@ static func trace_summary(g, value: Dictionary) -> Dictionary:
 							missing_notes.append(evx.missing)
 			else:
 				var ev: Dictionary = Activity.evaluate_trace_for_person(prepared.view, cited_cards, group[0], p.id)
-				if ev.state == "contradicts":
+				if int(group[0].data.get("scene_trace_count", 1)) >= 2 and ev.state != "matches":
+					var note = "other scene trace uncited"
+					if note not in missing_notes:
+						missing_notes.append(note)
+				elif ev.state == "contradicts":
 					scene_contra = true
 				elif ev.state == "unknown" and ev.missing != "" and ev.missing not in missing_notes:
 					missing_notes.append(ev.missing)
@@ -412,11 +416,11 @@ static func trace_summary(g, value: Dictionary) -> Dictionary:
 					var w_e0: String = Activity.evaluate_trace_for_person(prepared.view, cited_cards, t0, wk.id).state
 					var w_e1: String = Activity.evaluate_trace_for_person(prepared.view, cited_cards, t1, wk.id).state
 					if w_e1 == "matches" and w_e0 == "contradicts":
-						pairing_lines.append("• Scene pairing: %s (sighted walker) accounts for trace 2, focusing trace 1 on the killer." % wk.name)
+						pairing_lines.append("• Scene pairing: %s (possible walker) could account for trace 2, leaving trace 1 as a possible killer trace." % wk.name)
 					elif w_e0 == "matches" and w_e1 == "contradicts":
-						pairing_lines.append("• Scene pairing: %s (sighted walker) accounts for trace 1, focusing trace 2 on the killer." % wk.name)
+						pairing_lines.append("• Scene pairing: %s (possible walker) could account for trace 1, leaving trace 2 as a possible killer trace." % wk.name)
 					elif w_e0 == "matches" and w_e1 == "matches":
-						pairing_lines.append("• Scene pairing: %s (sighted walker) fits both traces; either trace could still be the killer's." % wk.name)
+						pairing_lines.append("• Scene pairing: %s (possible walker) fits both traces; either trace could still be the killer's." % wk.name)
 			else:
 				pairing_lines.append("• Two-trace scene: 1 trace is the killer's and 1 is a passing night-walker's (link sightings or Watch reports on %s to separate them)." % Assess.C.block_name(sblock))
 	var lines: Array = ["Trace narrowing across living townsfolk (%d cited trace%s):" % [struct_traces.size(), "s" if struct_traces.size() > 1 else ""]]
@@ -430,6 +434,45 @@ static func trace_summary(g, value: Dictionary) -> Dictionary:
 		"unresolved": unresolved,
 		"contradicted": contradicted,
 		"pairings": pairing_lines,
+		"text": "\n".join(PackedStringArray(lines)),
+	}
+
+## Player-facing summary of Stage 2 Circumstantial Evidence hubs compiled in `value`.
+static func circumstantial_summary(g, value: Dictionary) -> Dictionary:
+	var hubs: Array = value.get("circumstantial", [])
+	if hubs.is_empty():
+		return {"has_hub": false}
+	var input = snapshot(g, value)
+	input.private_evidence = []
+	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
+	input.listener = {"id": "ghost", "name": "Hub check", "trust": 0.5, "confidence": 0.5,
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "honesty": {}, "own_gift": "", "legacy_evidence": []}
+	var prepared = Assess.prepare(input)
+	if not prepared.ready:
+		return {"has_hub": false}
+	var Circumstantial = preload("res://workshop/circumstantial.gd")
+	var Ghost = preload("res://workshop/ghost_juror.gd")
+	var ghost: Dictionary = Ghost.live(input)
+	var lines: Array = ["Circumstantial Evidence Hub (Stage 2 social framing, max +0.015/incident, +0.045 cap):"]
+	var total_incidents: int = 0
+	for hub in hubs:
+		var t: String = str(hub.get("target", ""))
+		var tname: String = g.w.by_id[t].name if g.w.by_id.has(t) else t
+		var post_susp: Dictionary = {}
+		for p in prepared.view.people:
+			post_susp[p.id] = float(ghost.get("proposal", {}).get("effects", {}).get(p.id, {}).get("after", 0.1)) if ghost.get("ready", false) else 0.1
+		var default_trust: Dictionary = {}
+		for p in prepared.view.people:
+			default_trust[p.id] = 0.5
+		var extracted: Dictionary = Circumstantial.extract_hub_incidents(prepared.view, hub.get("cards", []), t, post_susp, default_trust, [], value.get("disputes", []))
+		for k in extracted.incidents:
+			total_incidents += 1
+			lines.append("• %s: %s" % [tname, extracted.incidents[k].label])
+		if extracted.incidents.is_empty():
+			lines.append("• %s: listener-dependent (depends on each listener's trust/suspicions and Stage 1 case strength; avoid unrelated padding)." % tname)
+	return {
+		"has_hub": true,
+		"incident_count": total_incidents,
 		"text": "\n".join(PackedStringArray(lines)),
 	}
 

@@ -1310,14 +1310,6 @@ func _talk_command(verb: String, rest: String) -> void:
 				_err("Show which trace card?")
 				return
 			r = Mind.react_to_trace(w, n, board[numt - 1], known_haunts)
-			for ph in r.get("profile_haunts", []):
-				var pid: String = ph.subject
-				var loc_id: String = ph.loc
-				if not (loc_id in known_haunts.get(pid, [])):
-					known_haunts[pid] = known_haunts.get(pid, []) + [loc_id]
-				add_profile_receipt({"kind": "haunt", "subject": [pid], "source": n.id, "loc": loc_id, "locs": [loc_id],
-					"block": w.loc_block(loc_id), "day": w.day, "phase": _phase_now(), "class": "circumstantial",
-					"text": "%s says %s often goes to %s when not working." % [n.name, w.by_id[pid].name, w.loc_name(loc_id)]})
 		"press", "confront":
 			var num1 = rest.strip_edges().trim_prefix("#").to_int()
 			if num1 < 1 or num1 > board.size() or board[num1 - 1].get("deleted", false):
@@ -1327,7 +1319,7 @@ func _talk_command(verb: String, rest: String) -> void:
 			if pc["kind"] == "deduction":
 				pc["support_cards"] = all_receipts().filter(func(x): return x["n"] in pc["supports"])
 				_secrets_used(pc)
-			r = Mind.press(w, n, pc)
+			r = Mind.press(w, n, pc, known_haunts)
 		"defend", "vouch":
 			var pd = rest.split(" ", false)
 			var numd = pd[pd.size() - 1].trim_prefix("#").to_int() if pd.size() >= 2 else 0
@@ -1407,6 +1399,7 @@ func _talk_command(verb: String, rest: String) -> void:
 		questions_left -= 1
 	_lines(r["lines"])
 	_facts(r["facts"])
+	_record_trace_profile_haunts(n, r)
 	for note in r.get("narration", []):
 		_narr(note)
 	_remember_dialogue_exchange(n, verb, rest, r)
@@ -1428,6 +1421,18 @@ func _talk_command(verb: String, rest: String) -> void:
 
 ## Yes or no to what they just asked of you (free). Any other command is a no, and goes ahead.
 ## Returns true when the command was the answer.
+func _record_trace_profile_haunts(speaker, r: Dictionary) -> void:
+	for ph in r.get("profile_haunts", []):
+		var pid: String = ph.get("subject", "")
+		var loc_id: String = ph.get("loc", "")
+		if pid == "" or loc_id == "" or not w.by_id.has(pid):
+			continue
+		if not (loc_id in known_haunts.get(pid, [])):
+			known_haunts[pid] = known_haunts.get(pid, []) + [loc_id]
+		add_profile_receipt({"kind": "haunt", "subject": [pid], "source": speaker.id, "loc": loc_id, "locs": [loc_id],
+			"block": w.loc_block(loc_id), "day": w.day, "phase": _phase_now(), "class": "circumstantial",
+			"text": "%s says %s often goes to %s when not working." % [speaker.name, w.by_id[pid].name, w.loc_name(loc_id)]})
+
 func _answer_request(n, verb: String, rest: String) -> bool:
 	var rq: Dictionary = pending_request
 	pending_request = {}

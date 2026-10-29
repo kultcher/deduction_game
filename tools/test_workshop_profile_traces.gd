@@ -53,7 +53,8 @@ func _test_200_seed_feasibility_and_nonsubset() -> void:
 			w.day = step + 1
 			var v = victims[step]
 			w._kill(v)
-			var tr: Dictionary = w.scenes["scene_" + v.id]["traces"][0]
+			# Scene traces are shuffled; the first card may belong to a passer.
+			var tr: Dictionary = w.scenes["scene_" + v.id]["trace"]
 			total_traces += 1
 			if not w.actor_fits_trace_truth(d, tr):
 				all_fit_demon = false
@@ -136,7 +137,7 @@ func _test_three_valued_3_to_1_solver_and_summary() -> void:
 func _test_scion_epoch_safety() -> void:
 	var people: Array = []
 	for id in ["a", "b", "c", "d", "e", "f", "g"]:
-		people.append({"id": id, "name": id, "home": "square", "alive": id not in ["g", "a"]})
+		people.append({"id": id, "name": id, "home": "square", "alive": id not in ["g", "a", "f"]})
 	var view = {
 		"people": people,
 		"cards": [],
@@ -144,29 +145,37 @@ func _test_scion_epoch_safety() -> void:
 		"alignment_epoch": "Original alignment",
 		"live_activity": true,
 		"timeline": {
-			"executions": {"1": ["a"]},
-			"deaths": {"g": 2, "a": 1},
-			"death_ticks": {"g": 7, "a": 6},
+			"executions": {"2": ["a"]},
+			"deaths": {"g": 2, "a": 2, "f": 3},
+			"death_ticks": {"g": 7, "a": 10, "f": 11},
 			"events": [
 				{"kind": "demon_death", "subjects": ["g"], "at": {"day": 1}},
-				{"kind": "execution", "subjects": ["a"], "at": {"day": 1}},
+				{"kind": "execution", "subjects": ["a"], "at": {"day": 2}},
+				{"kind": "demon_death", "subjects": ["f"], "at": {"day": 2}},
 			],
 		},
 		"world_options": {"roles": true, "identities": true, "modifiers": ["marked"]},
 	}
-	# Night 1 trace matches 'a' (executed Day 1 with >=5 alive) and contradicts 'b' (surviving Scion).
-	var cards: Array = [
-		{"id": "tr1", "kind": "trace", "source": "evidence", "night": 1, "subject": "", "data": {"family": "locations", "locs": ["bakery", "tavern"], "scene": "scene_g", "scene_block": "square", "slot": 0}},
+	# Night 1 (before Day 2 execution) matches 'a'; Night 2 (execution day's night, AFTER Scion 'b' took over!) matches 'c' and contradicts 'b'.
+	var pre_cards: Array = [
+		{"id": "tr1", "kind": "trace", "source": "evidence", "night": 1, "subject": "", "data": {"family": "locations", "locs": ["bakery", "tavern"], "scene": "scene_g", "scene_block": "square", "slot": 0, "scene_trace_count": 1}},
 		{"id": "wa", "kind": "context", "source": "town", "context_kind": "work", "subject": "a", "data": {"loc": "bakery"}},
 		{"id": "wb", "kind": "context", "source": "town", "context_kind": "work", "subject": "b", "data": {"loc": "chapel"}},
 		{"id": "hb1", "kind": "context", "source": "town", "context_kind": "haunt", "subject": "b", "data": {"locs": ["mill"]}},
 		{"id": "hb2", "kind": "context", "source": "town", "context_kind": "haunt", "subject": "b", "data": {"locs": ["well"]}},
 	]
-	var factor: Dictionary = Activity.factors(view, cards, {})[0]
-	# World where evil = {a(0), b(1)} and current demon = b(1) (Scion after 'a' hanged) vs evil = {c(2), b(1)} where neither hanged on Day 1.
+	var factor_pre: Dictionary = Activity.factors(view, pre_cards, {})[0]
 	var scion_world = {"evil": (1 << 0) | (1 << 1), "demon": 1}
 	var non_scion_world = {"evil": (1 << 2) | (1 << 1), "demon": 1}
-	_check(Activity.score(scion_world, factor) > Activity.score(non_scion_world, factor), "Scion succession split credits pre-execution Night 1 trace match on hanged original Demon")
+	_check(Activity.score(scion_world, factor_pre) > Activity.score(non_scion_world, factor_pre), "Scion succession split credits pre-execution Night 1 (< exec_day) trace match on hanged original Demon")
+	# Execution day's own night (Night 2 == exec_day) belongs to the promoted Scion ('b'), NEVER hanged 'a'.
+	var exec_night_cards: Array = pre_cards + [
+		{"id": "tr2", "kind": "trace", "source": "evidence", "night": 2, "subject": "", "data": {"family": "locations", "locs": ["bakery", "tavern"], "scene": "scene_f", "scene_block": "square", "slot": 0, "scene_trace_count": 1}},
+		{"id": "wc", "kind": "context", "source": "town", "context_kind": "work", "subject": "c", "data": {"loc": "bakery"}},
+	]
+	var factor_both: Dictionary = Activity.factors(view, exec_night_cards, {})[0]
+	var c_demon_world = {"evil": (1 << 0) | (1 << 2), "demon": 2}
+	_check(Activity.score(c_demon_world, factor_both) > Activity.score(scion_world, factor_both), "Execution day's night (night == exec_day) is evaluated against the surviving Scion rather than the Demon hanged earlier that evening")
 
 func _test_npc_trace_reactions_and_minion_guard() -> void:
 	var g = _game(1505, 7)
@@ -203,3 +212,29 @@ func _test_npc_trace_reactions_and_minion_guard() -> void:
 	var p_reply: Dictionary = Mind.press(w, townie, ded)
 	var joined: String = " ".join(PackedStringArray(p_reply.lines.map(func(l): return l.text if l is Dictionary else str(l))))
 	_check(joined.contains("frame") or joined.contains("stringing scraps"), "pressing an NPC with a multi-trace deduction triggers the forceful frame-up denial")
+	# Pressing with a single structured trace card in live conversation saves disclosed haunts to known_haunts and profile_receipts.
+	var g_press = _game(1505, 7)
+	var speaker = g_press.w.living_good()[0]
+	var target_p = g_press.w.living_good()[1]
+	var vic_p = g_press.w.living_good()[2]
+	speaker.work = "bakery"
+	speaker.haunts = ["mill", "well"]
+	speaker.trust = 0.9
+	speaker.traits["gossip"] = 0.95
+	target_p.work = "chapel"
+	target_p.haunts = ["tavern", "graveyard"]
+	for other in g_press.w.npcs:
+		if other not in [speaker, target_p]:
+			other.work = "smithy"
+			other.haunts = ["wharf", "well"]
+	var tnum: int = g_press.add_card({
+		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
+		"victim": vic_p.id, "scene": "scene_" + vic_p.id, "scene_block": vic_p.home_block,
+		"trace_family": "locations", "trace_subtype": "token", "locs": ["bakery", "tavern"],
+		"item_label": "a grease-darkened brass farthing", "text": "Scene trace: farthing (the Bakery or the Tavern).",
+	})
+	g_press.state = "talk"
+	g_press.talk_with = speaker
+	g_press.questions_left = 3
+	g_press.command("press %d" % tnum)
+	_check("tavern" in g_press.known_haunts.get(target_p.id, []) and not g_press.profile_receipts_for(target_p.id, "haunts").is_empty(), "pressing with a trace card persists any disclosed haunt to known_haunts and profile_receipts")
