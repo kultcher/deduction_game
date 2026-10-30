@@ -1,5 +1,6 @@
 extends SceneTree
 const Game = preload("res://game/game.gd")
+const Speech = preload("res://tools/speech.gd")
 const Mind = preload("res://sim/mind.gd")
 const Presentation = preload("res://game/workshop_presentation.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
@@ -68,7 +69,7 @@ func _trapped_group_response() -> void:
 	if not result.get("workshop", false): return
 	var expected: String = Mind.Dialogue.voice_line(n.id, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong.")
 	check(result.dialogue.special.begins_with(expected) and ("About " + others[1].name + ":") in result.dialogue.special, "group response includes the voiced admission and the second target assessment")
-	check(result.lines.size() == 1 and result.lines[0].text == result.dialogue.special, "spoken group response retains the complete assessed response")
+	check(result.lines.size() == 1 and Speech.shown(result.lines[0]) == result.dialogue.special, "spoken group response retains the complete assessed response")
 
 func _direct_and_migration() -> void:
 	var g = _game()
@@ -95,7 +96,7 @@ func _direct_and_migration() -> void:
 	var bad = g.file_deduction({"type": "evil", "a": target.id}, [card])
 	var rejected = g._evaluate_deduction(n, g.board[bad - 1], 1.0, true)
 	check(rejected.get("workshop", false) and rejected.dialogue.stance == "reject", "an accusation contradicted by the report is rejected by the new model")
-	check(rejected.lines[0].text.trim_prefix("[PH] ") == rejected.dialogue.special and _close(baseline, n.suspicion), "spoken rejection and collateral exoneration derive from the same reports")
+	check(Speech.said(rejected.lines[0]) == rejected.dialogue.special and _close(baseline, n.suspicion), "spoken rejection and collateral exoneration derive from the same reports")
 	n.pressed_today = 0
 	var cited = Mind.hear_accusation(g.w, n, target, g.board[ded - 1])
 	check(cited.get("workshop", false) and n.workshop_state.active, "citing a deduction as a card follows original evidence instead of promoting its label")

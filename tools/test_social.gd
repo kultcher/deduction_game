@@ -4,6 +4,7 @@
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
+const Speech = preload("res://tools/speech.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const Social = preload("res://sim/social.gd")
@@ -206,7 +207,7 @@ func _test_window_wording() -> void:
 	var r1 = Mind.sighting_report(w, o, {"kind": "saw", "who": x.id, "block": o.home_block, "how": "window", "detail": "street"}, 1)
 	var r2 = Mind.sighting_report(w, o, {"kind": "stayed_in", "who": x.id, "block": o.home_block, "how": "window"}, 1)
 	print("  %s\n  %s" % [r1["line"]["text"], r2["line"]["text"]])
-	_check(r1["line"]["text"].trim_prefix("[PH] ").begins_with("From my window"), "a sighting from home says so")
+	_check(Speech.said(r1["line"]).begins_with("From my window"), "a sighting from home says so")
 	_check(r2["fact"]["kind"] == "alibi" and r2["fact"]["subject"] == [x.id] and r2["fact"]["source"] == o.id, "a neighbour staying in becomes a witness alibi card")
 
 ## Evil's invented sighting is told from where they say they were.

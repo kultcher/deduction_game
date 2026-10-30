@@ -144,7 +144,8 @@ func _screen(t: String) -> void:
 func _line(x) -> void:
 	if x is Dictionary:
 		_remember_spoken_relationship(x)
-		_ev({"k": "speech", "speaker": x["speaker"], "name": x["name"], "text": x["text"]})
+		# The unvoiced statement rides along for logs and tests; the UI shows the text.
+		_ev({"k": "speech", "speaker": x["speaker"], "name": x["name"], "text": x["text"], "statement": x.get("statement", x["text"])})
 	else:
 		_narr(str(x))
 
