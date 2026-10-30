@@ -251,6 +251,8 @@ static func _repay_limit(g: Dictionary) -> float:
 static func fade_slights(w, n) -> void:
 	var back := 0.0
 	for g in n.grievances:
+		if str(g.get("why", "")).begins_with("grief"):
+			continue  # grief doesn't fade with time (an apology can still address it)
 		var room: float = _repay_limit(g) - float(g.get("repaired", 0.0))
 		if room <= 0.0:
 			continue
@@ -288,7 +290,7 @@ static func end_of_day_trust(w) -> void:
 ## Fields copied once, when the shadow is made (a turned NPC's good mind carries over).
 const SHADOW_COPY = ["traits", "trait_base", "work_phases", "haunts", "friends", "rivals",
 	"suspicion", "sus_why", "sus_src", "npc_trust", "ledger", "honesty", "discounted", "believed_roles",
-	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts", "workshop_state", "consensus_pressure"]
+	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts", "workshop_state", "consensus_pressure", "claim_record"]
 const SHADOW_SAME = ["id", "name", "pron", "style", "blurb", "occupation", "work", "home_block", "ring"]
 
 ## Run f(shadow) for evil NPC n inside the shadow context: the shadow's RNG and log in
@@ -321,6 +323,7 @@ static func _make_shadow(w, n):
 		s.set(f, n.get(f))
 	for f in SHADOW_COPY:
 		s.set(f, n.get(f).duplicate(true))
+	s.credibility = n.credibility  # the player's track record carries over (a Revenant turn included)
 	s.alignment = "good"
 	s.is_shadow = true
 	var bluff: String = w.evil_plan["bluffs"].get(n.id, "")
@@ -340,11 +343,13 @@ static func _make_shadow(w, n):
 ## made while out (killing, poisoning, guarding a teammate) stay out: a good self would
 ## have been at home.
 static func _shadow_sync(w, n, s) -> void:
-	for f in ["alive", "death_day", "loc", "working", "busy_with", "silenced", "trust", "trust_cap",
+	for f in ["alive", "death_day", "loc", "working", "busy_with", "silenced", "trust", "trust_cap", "credibility",
 			"pressure", "claimed_role", "claim_public", "max_tier", "told_readings", "night_block", "out_last_night"]:
 		s.set(f, n.get(f))
 	for k in n.npc_trust:
 		s.npc_trust[k] = n.npc_trust[k]
+	for k in n.claim_record:
+		s.claim_record[k] = n.claim_record[k].duplicate(true)
 	s.history = n.history.duplicate()
 	var seen: Dictionary = n.shadow_seen
 	while seen["beliefs"] < n.beliefs.size():

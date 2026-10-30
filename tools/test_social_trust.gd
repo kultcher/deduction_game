@@ -72,5 +72,19 @@ func _init():
 	listener.credibility = 0.5
 	Credibility.dawn(g2)
 	_check(is_equal_approx(listener.credibility, 0.5), "with no claims, credibility doesn't move")
+	# Codex review (Oct 30): grief doesn't fade; the cover mind keeps the track record; a
+	# private Workshop presentation's tell is the player's word.
+	var mourner = w.living_good()[2]
+	mourner.trust = 0.6
+	Mind.set_trust(w, mourner, 0.4, "grief: the Demonologist nominated someone I trusted")
+	for i in range(4):
+		Mind.fade_slights(w, mourner)
+	_check(absf(mourner.trust - 0.4) < 0.001, "grief doesn't fade with time (%.3f)" % mourner.trust)
+	var turn = w.living_good()[3]
+	turn.credibility = 0.8
+	Credibility.record(turn, "evil", w.living_good()[4].id, 2)
+	var cover = Mind._make_shadow(w, turn)
+	_check(is_equal_approx(cover.credibility, 0.8) and cover.claim_record.size() == 1, "a cover mind keeps credibility and the claim record")
+	_check(Credibility.players_word("workshop:tell:abc:def") and Credibility.players_word("tell:x>y") and not Credibility.players_word("info:jory:0:seer:x"), "presentation tells count as the player's word; the NPC's own readings don't")
 	print("Social trust: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

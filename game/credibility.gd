@@ -13,7 +13,12 @@ const Bridge = preload("res://game/workshop_bridge.gd")
 const EVIL_LEANING = ["evil", "demon", "minion", "suspicious"]
 const GOOD_LEANING = ["good"]
 ## Ledger entries that carry the player's word rather than the NPC's own evidence.
-const PLAYER_WORD = ["tell:", "for:", "arg:"]
+const PLAYER_WORD = ["tell:", "for:", "arg:", "workshop:tell:"]
+
+## Does this ledger entry carry the player's word (a told card, an argument, a private
+## Workshop presentation's tell), rather than the NPC's own evidence?
+static func players_word(eid: String) -> bool:
+	return PLAYER_WORD.any(func(p): return eid.begins_with(p))
 
 ## The player argued `type` about `target` to `n` (a presented case, a nomination, an
 ## accusation). Only alignment conclusions count; the latest per target stands.
@@ -62,7 +67,7 @@ static func _agreement(g, n):
 	input.listener.suspicion = outside.duplicate(true)
 	var ledger = {}
 	for eid in n.ledger:
-		if not PLAYER_WORD.any(func(p): return str(eid).begins_with(p)):
+		if not players_word(str(eid)):
 			ledger[eid] = n.ledger[eid]
 	var plan = Shared.prepare(input, {}, ledger, st.get("withdrawn", {}), st.get("attention_focus", []))
 	if not plan.ready:
