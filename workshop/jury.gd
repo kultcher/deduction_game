@@ -721,7 +721,11 @@ static func _card_trust(card: Dictionary, listener: Dictionary, player_tells: bo
 	var me: String = listener.get("id", "")
 	var source: String = str(card.get("source", ""))
 	var t: float = _trust_in(source, listener)
-	var teller: String = str(card.get("relay_source", card.get("via", "")))
+	# The hearing route: a Medium's relay, else the normalized provenance (LiveEvidence puts
+	# the NPC teller of a relayed reading in provenance.via; it equals the source otherwise).
+	var provenance = card.get("provenance", {})
+	var via: String = str(provenance.get("via", "")) if provenance is Dictionary else ""
+	var teller: String = str(card.get("relay_source", card.get("via", via)))
 	if teller != "" and teller != source:
 		t = 0.5 * (t + _trust_in(teller, listener))
 	elif player_tells and source != me and source != "player" and listener.get("npc_trust", {}).has(source):
@@ -817,7 +821,9 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		# the full model weighs. It only ever raises, and fades out with Insight.
 		var headline_signal: float = _headline(view, attended, id, odds.prior, baseline, eval_listener, not refresh) if not ev.impossible else 0.0
 		var dull: float = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(baseline.get("insight", 0.5)), 0.0, 1.0))
-		if headline_signal > alignment:
+		# Only a strong evil reading about this person blends in: with no headline the model's
+		# own effect (including any clearing) stands unchanged.
+		if headline_signal > 0.0 and headline_signal > alignment:
 			alignment += dull * (headline_signal - alignment)
 		var circumstantial = 0.0
 		if not Movement.available(view):

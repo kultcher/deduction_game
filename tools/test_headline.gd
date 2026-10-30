@@ -5,6 +5,7 @@ const Game = preload("res://game/game.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Caches = preload("res://workshop/caches.gd")
+const Jury = preload("res://workshop/jury.gd")
 
 var checks = 0
 var fails = 0
@@ -49,6 +50,23 @@ func _init():
 		# strong in the model), so a dull holder moves at least as far, never less.
 		_check(steps[0.1] >= steps[0.9] - 0.000001, "%s: a dull holder moves at least as far as a sharp one (%+.3f vs %+.3f)" % [role, steps[0.1], steps[0.9]])
 		_check(steps[0.9] > 0.0, "%s: a sharp holder still moves toward the named people" % role)
+	# Clearing evidence has no headline, so Insight must not weaken it (Codex review, PR #40).
+	holder.role = "seer"
+	holder.info_log = [{"role": "seer", "day": 0, "phase": 3, "data": {"pair": [good[0], good[1]], "yes": false}, "true": true, "text": "seer no"}]
+	var clear_steps = {}
+	for insight in [0.1, 0.9]:
+		holder.traits.insight = insight
+		Caches.clear_all()
+		var effects = _own_view(g, holder)
+		clear_steps[insight] = float(effects[good[0]].requested) + float(effects[good[1]].requested)
+	_check(absf(clear_steps[0.1] - clear_steps[0.9]) < 0.000001, "a Seer 'no' clears the same whatever the holder's Insight (%+.3f vs %+.3f)" % [clear_steps[0.1], clear_steps[0.9]])
+	# A reading relayed by another NPC averages trust in the source and the teller, read from
+	# the normalized provenance (Codex review, PR #39).
+	var listener = {"id": "l", "trust": 0.5, "npc_trust": {"a": 1.0, "b": 0.0}}
+	var relayed = {"kind": "report", "source": "a", "provenance": {"original_source": "a", "via": "b"}}
+	var direct = {"kind": "report", "source": "a", "provenance": {"original_source": "a", "via": "a"}}
+	_check(is_equal_approx(Jury._card_trust(relayed, listener, false), 0.5), "a relayed reading averages the source and the teller")
+	_check(is_equal_approx(Jury._card_trust(direct, listener, false), 1.0), "a reading heard from its source uses that source alone")
 	print("Headline: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
