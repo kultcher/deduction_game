@@ -441,6 +441,14 @@ class Workshop:
 	## relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a
 	## probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x).
 	const PRIOR_K = 1.5
+	## Headline reading (`Jury._headline`): how far a listener takes a strong evil reading at
+	## its word, on top of the full model. Effect = model + HEADLINE_WEIGHT * (1 - Insight) *
+	## (headline - model) where the headline is higher. The per-role values are the chance
+	## each named person is evil "if the reading is simply true" (1.0 = full share).
+	const HEADLINE_WEIGHT = 1.0
+	const HEADLINE_SEER = 1.0       # "one of A/B is the Demon": each 1/2
+	const HEADLINE_ARCHIVIST = 1.0  # "one of A/B holds <evil role>": each 1/2
+	const HEADLINE_DOWSER = 1.0     # "c of these n read as evil": each c/n
 
 	## Role constraints, movement & public/speech evidence (`workshop/*.gd`)
 	const BLUFF_WEIGHT = 0.92
