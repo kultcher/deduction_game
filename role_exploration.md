@@ -165,3 +165,6 @@ Sexton idea - can ring the bell whenever - minion (and demon non-kill?) abilitie
 - Clean up pass-through pointers with true references
 - Fix the fucking privacy double dip and gossip hard-line
 - Figure out how the tavern actually works lol
+- Add a thing to show player when presenting a card is a repeat
+- Check about various things fading over time
+- Readd ability for NPCs to judge their own info as misled (evil should be able to do this too)
