@@ -88,3 +88,80 @@ Exploratory mechanics (not planned; directions to try):
 1. Watchtower (or a belfry, something in-town): spend a phase there to see who is at every public spot. Morning and afternoon only (too dark in the evening), so it never sees the evening whereabouts that kill traces use. Questionable value: the map already shows counts at unseen spots. Revisit after the night movement/trace model is settled. [exploratory]
 2. More roads: **trying it (Oct 18).** Every block now has a road to every other (Market–Docks and Chapel Hill–Docks added). Nobody passes *through* a block, so a walker is seen only on their home block or their destination, and a Square vigil no longer catches through-traffic. The exception is the Lamplighter, whose route passes every block: anyone seen on two blocks away from home is now either lying, lied about, or the Lamplighter, which may make the gift too easy to confirm. Watch for that. Before: the Square was the only pass-through block (4 of 12 routes).
 
+
+
+
+Role or building idea: learn out of play roles (census?)
+Vigilante - secret? Kills their highest sus target, if they target demon they die instead
+Stalker - follows someone around?
+Bully - forces votes
+Arrester - puts someone under house arrest
+Constabulary - Building action - locks someone down for the day
+Reporter? - asks questions like the player?
+Muddler - Mishears overheard information
+
+Tavern - At evening, spend an action: You learn 3 things that were said to others
+Town Hall - Spend an action - You learn two roles, only one of which is in play.
+Apothecary - You learn if anyone has been poisoned?
+
+New evidence system - home/haunt, workplace, evening? (see Gemini convo)
+Gifts:
+- learn 1 role that passed by your house
+- learn 3: one norm, one has secret, one minion
+- each day, visit a block, learn how many people there share an alignment
+- each night, learn if you crossed paths with Demon today
+- each night, visit someone's house. You learn their role. If you visit an evil player, you lose this ability instead.
+
+Demon that passes a death-curse through talking - passes from person to person
+OR: pukka-like who poisons people he shares location with
+Demon who visits people's homes during the day and plants a deathtrap
+
+What should gossip do?
+Animated "Grim Reveal" sequence
+Learn 2 role that is dreamer
+Dreamer that sees what *role* passed by their house
+
+
+Evil coordination:
+- overlapping scapegoating (Archivist ping and Seer ping)
+- Should we track if NPC breaks "promise" to player?
+
+- SECRET IDEA: Rear-window style "night watcher" who always sees someone at night but often gets it wr
+
+Role: you start knowing 3 roles. Each night, choose a person. You learn if thry are one of those roles 
+
+Surveyor buff: start: choose 2 blocks, learn how many evils total
+Vet change: instead of location, drops 2 traces?
+
+Demon: kill. The person they most trust?/most suspect? Is poisoned until the next night (timing)
+
+Lamplighter: Count sometimes disagrees with reports. Potential balance concern. Flavor: Something about their identities being cast in shadow.
+
+Case: 82305 - D1 meeting - "Agnes is evil" is less supported than "Agnes is a minion"
+
+Day 4 - Evils didn't vote for Hollis to lift from demon
+
+Did try and bus their minion though, neat!
+- Fenwick telling on himself as part of the Lovers
+- mediums acting the same night of a murder
+- searching a location can reveal who has it as a haunt
+- Don't need full verbose trust/friendship claims on profile
+
+vigil on a person works, but not a window sighting
+- a lot of immediate responses to pressing by saying "I don't trust you because you pressed me"
+
+Daywalker demon - curses someone they pass during the day, at night manifests in their house (so it leaves evidence)
+
+Demon shroud idea - If a good townsfolk is executed and more than X good (plus player) voted yes, demon gains shroud.
+
+Sexton idea - can ring the bell whenever - minion (and demon non-kill?) abilities don't work that night/the next day
++25m
+
+- Fix readings things scaling with player trust
+- Add: learn haunts by repeated sightings (how unlikely is that?) or searching that haunt
+- Possibly cap gossips
+- Finish legacy purge
+- Finish(?) role def logic moves
+- Clean up pass-through pointers with true references
+- Fix the fucking privacy double dip and gossip hard-line
+- Figure out how the tavern actually works lol
