@@ -319,7 +319,9 @@ func _intermediate() -> void:
 		n.sus_why.constance = "old argument"
 		n.sus_src.constance = n.workshop_state.owned.keys()[0]
 		g.workshop_retract(parent, n.id)
-		check(Mind.reason_status(g.w, n, "constance").why == "", "withdrawn shared evidence cannot leave an owned legacy accusation as the stated reason")
+		# Her own Dowser reading still implicates Constance after the case is withdrawn
+		# (Oct 30 fixture), so a fresh shared reason may remain; the withdrawn one may not.
+		check(Mind.reason_status(g.w, n, "constance").why != "old argument", "withdrawn shared evidence cannot leave an owned legacy accusation as the stated reason")
 
 func _private_reasons() -> void:
 	var g = _game()

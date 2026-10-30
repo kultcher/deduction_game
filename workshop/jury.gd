@@ -661,6 +661,45 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 		response += " The supplied test factor changes which remaining explanation I favor; it does not prove it."
 	return response
 
+## The headline of the strong evil signals about one person, on the alignment scale
+## (0.45 * CaseEval.shift): what the readings literally say, taken as true, with each
+## reading discounted by how far the listener trusts its source (_card_trust) and by any
+## doubt they hold about that reading (CaseEval.reading_error: impairment, challenges).
+## Seer "yes": one of the pair is the Demon (each 1/2). Archivist: one of the pair holds
+## the named evil role (each 1/2). Dowser: count of the group read as evil (each count/n).
+## Several readings combine as independent chances (noisy-or). Only raises suspicion.
+static func _headline(view: Dictionary, cards: Array, person: String, prior: float, listener: Dictionary, eval_listener: Dictionary, player_tells: bool) -> float:
+	var own_ids: Array = eval_listener.get("knowledge", {}).get("own_reports", [])
+	var miss: float = 1.0
+	for card in cards:
+		if card.get("kind", "") != "report" or card.get("quoted", false):
+			continue
+		var p: float = _headline_chance(card, person)
+		if p > 0.0:
+			var credence: float = 1.0 - CaseEval.reading_error(view, card, eval_listener, own_ids)
+			miss *= 1.0 - clampf(p * credence * _card_trust(card, listener, player_tells), 0.0, 1.0)
+	var implied: float = 1.0 - miss
+	if implied <= prior:
+		return 0.0
+	return 0.45 * CaseEval.shift(prior, implied)
+
+static func _headline_chance(card: Dictionary, person: String) -> float:
+	var data = card.get("data", {})
+	if not data is Dictionary:
+		return 0.0
+	match card.get("role", ""):
+		"seer":
+			if data.get("yes", false) and person in data.get("pair", []):
+				return Tuning.Workshop.HEADLINE_SEER / float(maxi(data.pair.size(), 1))
+		"archivist":
+			if person in data.get("pair", []):
+				return Tuning.Workshop.HEADLINE_ARCHIVIST / float(maxi(data.pair.size(), 1))
+		"dowser":
+			var group: Array = data.get("group", [])
+			if person in group and int(data.get("count", 0)) > 0:
+				return Tuning.Workshop.HEADLINE_DOWSER * float(data.count) / float(group.size())
+	return 0.0
+
 ## How far the listener trusts the sources behind the evidence about one person (Oct 30,
 ## user): the belief step scales by (0.5 + this) instead of by trust in the player.
 ## Per card: the listener's own evidence 1.0; public facts (no personal source) 1.0; the
@@ -773,6 +812,13 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		var odds: Dictionary = person_ev.people.get(id, {"prior": 0.0, "posterior": 0.0})
 		var s: float = CaseEval.shift(odds.prior, odds.posterior) if not ev.impossible else 0.0
 		var alignment: float = 0.45 * s
+		# Headline reading (Oct 30): a duller listener takes a strong evil signal at its word
+		# ("one of Kiran or Fenwick is the Demon") and skips the subtler counter-explanations
+		# the full model weighs. It only ever raises, and fades out with Insight.
+		var headline_signal: float = _headline(view, attended, id, odds.prior, baseline, eval_listener, not refresh) if not ev.impossible else 0.0
+		var dull: float = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(baseline.get("insight", 0.5)), 0.0, 1.0))
+		if headline_signal > alignment:
+			alignment += dull * (headline_signal - alignment)
 		var circumstantial = 0.0
 		if not Movement.available(view):
 			var pattern_case = attention.case.duplicate(true)
@@ -794,7 +840,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		effects[id] = {"requested": net_weight * (0.5 + source_trust) * confidence, "source_trust": source_trust, "alignment_signal": alignment, "pattern_signal": circumstantial,
 			"circumstantial_signal": 0.0, "circumstantial_incidents": [],
 			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"),
-			"protection_signal": protection_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
+			"protection_signal": protection_signal, "headline_signal": headline_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
 			"evil_change": s, "good_change": -s, "prior": odds.prior, "posterior": odds.posterior,
 			"cards": attention.considered.duplicate(), "theory": theory, "reasoning": status}
 	if not refresh and not value.get("circumstantial", []).is_empty():
