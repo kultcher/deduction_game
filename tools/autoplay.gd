@@ -256,7 +256,8 @@ func _scale_snapshot() -> Dictionary:
 		var headroom: float = (top_nom_score - thr) if not n.silenced else -1.0
 		npcs.append({"id": n.id, "top": Mind.susp(n, top.id), "top_is_evil": top.is_evil(), "top_action": top_action, "top_nom_score": maxf(0.0, top_nom_score),
 			"good_mean": _mean(good_vals), "evil": evil, "nomination_threshold": thr, "nomination_headroom": headroom,
-			"top3": others.slice(0, 3).map(func(o): return o.id), "top3_evil": others.slice(0, 3).filter(func(o): return o.is_evil()).size()})
+			"top3": others.slice(0, 3).map(func(o): return o.id), "top3_evil": others.slice(0, 3).filter(func(o): return o.is_evil()).size(),
+			"rapport": n.trust, "credibility": n.credibility})
 	# Agreement: how far the rest of the good town shares each NPC's suspects.
 	for entry in npcs:
 		var me = w.by_id[entry.id]
