@@ -144,8 +144,9 @@ static func _presentation_rejection(g, card: Dictionary) -> String:
 	if card.kind == "deduction":
 		var input: Dictionary = workshop_snapshot(g, [card.n])
 		for number in input.board_map:
-			if input.board_map[number] in input.selected and WorkshopPresentation.Evidence.contains_opinion(g.board[int(number) - 1]):
-				speech.append(g.board[int(number) - 1])
+			var rec: Dictionary = g.receipt_by_number(int(number))
+			if not rec.is_empty() and input.board_map[number] in input.selected and WorkshopPresentation.Evidence.contains_opinion(rec):
+				speech.append(rec)
 	elif WorkshopPresentation.Evidence.contains_opinion(card):
 		speech = [card]
 	if not speech.is_empty():
@@ -226,7 +227,7 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 		workshop_canvas_retire(g, n, ded)
 	var snapshot: Dictionary = workshop_snapshot(g, [ded.n], n.id, venue) if g.workshop_compare else {}
 	var before: Dictionary = n.suspicion.duplicate(true) if g.workshop_compare else {}
-	var result: Dictionary = Argue.evaluate(g.w, n, ded, g.board, scale, speak)
+	var result: Dictionary = Argue.evaluate(g.w, n, ded, g.all_receipts(), scale, speak)
 	if result.get("blocked", false):
 		return result
 	if g.workshop_effects and not result.get("workshop", false):
@@ -330,6 +331,8 @@ static func _route_present(g, n, rest: String) -> Dictionary:
 		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
 	if who == n and dir != "for":
 		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
+	if who == null and card.get("kind", "") == "trace" and card.get("trace_family", "") != "":
+		return {"verb": "trace_ask", "rest": str(num), "note": "You ask %s what they make of the scene trace." % n.name}
 	var targets: Array = [who.id] if who != null else subj.filter(func(x): return x != n.id and x != card.get("source", "") and g.w.by_id.has(x) and g.w.by_id[x].alive)
 	if targets.is_empty():
 		return _present_fallback(g, n, num, "the card isn't about anyone living")
@@ -382,7 +385,9 @@ static func _conflict_pressure(g, ded: Dictionary, amount: float, listener, fall
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
 static func _secrets_used(g, ded: Dictionary, depth: int = 0) -> void:
 	for x in ded.get("supports", []):
-		var c: Dictionary = g.board[x - 1]
+		var c: Dictionary = g.receipt_by_number(x)
+		if c.is_empty():
+			continue
 		if c["kind"] == "secret":
 			Mind._secret_used(g.w, c)
 		elif c["kind"] == "deduction" and depth < 3:

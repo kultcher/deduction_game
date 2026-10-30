@@ -4,6 +4,7 @@
 extends SceneTree
 
 const C = preload("res://sim/content.gd")
+const CardModel = preload("res://game/card_model.gd")
 const Icons = preload("res://ui/board_icons.gd")
 var fails = 0
 
@@ -501,11 +502,12 @@ func _init() -> void:
 	await process_frame
 	_check(scene.case_view.visible and scene.case_state.selected_card == 1, "a card number in the log opens it on the case board")
 	# ...even when the board is on another view: it switches to the card's view.
-	scene.case_state.set_view("places")
+	var expected_view: String = CardModel.view_of(scene.g.board[0])
+	scene.case_state.set_view("process" if expected_view != "process" else "statements")
 	scene.case_view.visible = false
-	scene.out.meta_clicked.emit("card:1")   # card #1 is a home card (Statements)
+	scene.out.meta_clicked.emit("card:1")
 	await process_frame
-	_check(scene.case_state.view == "statements" and 1 in scene.case_state.apply(scene.g).map(func(c): return c["n"]), "clicking a card from the log switches the board to the card's view")
+	_check(scene.case_state.view == expected_view and 1 in scene.case_state.apply(scene.g).map(func(c): return c["n"]), "clicking a card from the log switches the board to the card's view")
 	scene.case_view.visible = false
 	# New case from the button picks a fresh seed (unless you typed one).
 	var s0 = int(scene.seed_box.value)

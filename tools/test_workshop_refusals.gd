@@ -4,6 +4,8 @@ const Live = preload("res://game/workshop_canvas.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Eval = preload("res://workshop/case_eval.gd")
 const Speech = preload("res://workshop/speech_evidence.gd")
+const Circumstantial = preload("res://workshop/circumstantial.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Mind = preload("res://sim/mind.gd")
 var checks = 0
 var fails = 0
@@ -27,22 +29,31 @@ func _probabilities() -> void:
 	var before = Eval.evaluate(view, value)
 	value.cards = [card.id]
 	var after = Eval.evaluate(view, value)
-	check(after.posterior > before.posterior and after.posterior < 0.7, "a refusal supplies weak suspicion, never certainty")
+	check(is_equal_approx(after.posterior, before.posterior) and Speech.factors([card]).is_empty(), "refusals are Stage 2 only and add zero Stage 1 posterior shift")
+	var hubs = [{"target": "a", "type": "evil", "cards": [card.id]}]
+	var outside = {"a": 0.1, "b": 0.1, "c": 0.1, "d": 0.1}
+	var s1_grounded = {"a": 0.08, "b": 0.0, "c": 0.0, "d": 0.0}
+	var post_s1 = {"a": 0.18, "b": 0.1, "c": 0.1, "d": 0.1}
+	var s2_unafraid: float = float(Circumstantial.evaluate_union(view, hubs, outside, s1_grounded, post_s1, {}, 0.75, "b").requested.get("a", 0.0))
+	check(is_equal_approx(s2_unafraid, Tuning.Workshop.CIRCUMSTANTIAL_INCIDENT_MAX), "an unafraid refusal supplies bounded Stage 2 circumstantial suspicion (+0.015 max)")
+	check(Circumstantial.extract_hub_incidents(view, [card.id], "a", post_s1, {}).incidents["demeanor_tell:a"].label == "Refusal to share information", "refusal explanation does not invent withheld whereabouts")
 	card.data.fear = true
-	var afraid = Eval.evaluate(view, value)
-	check(afraid.posterior > before.posterior and afraid.posterior < after.posterior, "fear reduces the refusal signal without clearing the teller")
+	var s2_afraid: float = float(Circumstantial.evaluate_union(view, hubs, outside, s1_grounded, post_s1, {}, 0.75, "b").requested.get("a", 0.0))
+	check(s2_afraid > 0.0 and s2_afraid < s2_unafraid and is_equal_approx(s2_afraid, s2_unafraid * (0.25 / 0.35)), "fear preserves the 0.25/0.35 relative discount in Stage 2 without clearing the teller")
+	check(Circumstantial.extract_hub_incidents(view, [card.id], "a", post_s1, {}).incidents["demeanor_tell:a"].label == "Fearful refusal to share information", "fear explanation preserves uncertainty about which information was withheld")
 	var repeat = card.duplicate(true)
 	repeat.id = "next-day-refusal"
 	repeat.observed_at.day = 2
 	view.cards.append(repeat)
-	value.cards.append(repeat.id)
-	check(Eval.evaluate(view, value).people == afraid.people, "a person's repeated reluctance does not stack across days")
+	hubs[0].cards.append(repeat.id)
+	var s2_repeat: float = float(Circumstantial.evaluate_union(view, hubs, outside, s1_grounded, post_s1, {}, 0.75, "b").requested.get("a", 0.0))
+	check(is_equal_approx(s2_repeat, s2_afraid), "a person's repeated reluctance does not stack across days in Stage 2")
 	repeat.data.fear = false
-	check(Eval.evaluate(view, value).people == after.people, "mixed refusals use the strongest observation once")
+	var s2_mixed: float = float(Circumstantial.evaluate_union(view, hubs, outside, s1_grounded, post_s1, {}, 0.75, "b").requested.get("a", 0.0))
+	check(is_equal_approx(s2_mixed, s2_unafraid), "mixed refusals use the strongest observation once")
 	var quoted = repeat.duplicate(true)
 	quoted["quoted"] = true
-	check(Speech.factors([quoted]).is_empty(), "quoting a refusal does not endorse it as suspicion evidence")
-	check(Speech.factors([card, repeat]).size() == 1, "distinct wrappers retain one reluctance factor")
+	check(Circumstantial.extract_hub_incidents({"people": people, "cards": [quoted]}, [quoted.id], "a", post_s1, {}).incidents.is_empty(), "quoting a refusal does not endorse it as Stage 2 suspicion evidence")
 
 func _live(size: int) -> void:
 	var g = Game.new()

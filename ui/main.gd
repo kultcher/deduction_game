@@ -238,6 +238,9 @@ func _ready() -> void:
 		case_state.select_card(n)
 		case_view.board.fit_selection())
 	profile.card_context_requested.connect(func(n, at): case_view.show_card_menu(n, at))
+	profile.profile_workshop_requested.connect(func(pid: String, facet: String):
+		_open_case_view()
+		case_view.open_workshop_profile(pid, facet))
 	upper.add_child(profile)
 	roles_dock = PanelContainer.new()
 	roles_dock.custom_minimum_size.x = 360

@@ -219,8 +219,25 @@ static func assertions(card: Dictionary) -> Array:
 					out.append({"t": "believed_evil", "who": d["executed"], "eid": "", "src": src, "card": n})
 		"death":
 			out.append({"t": "killed", "who": subj[0], "night": card.get("night", day - 1), "src": src, "card": n})
+		"home":
+			if not subj.is_empty():
+				out.append({"t": "profile_home", "who": subj[0], "block": card.get("block", ""), "src": src, "card": n})
+		"work":
+			if not subj.is_empty():
+				out.append({"t": "profile_spot", "who": subj[0], "loc": card.get("loc", ""), "src": src, "card": n})
+		"haunt":
+			if not subj.is_empty():
+				for hloc in card.get("locs", [card.get("loc", "")]):
+					if hloc != "":
+						out.append({"t": "profile_spot", "who": subj[0], "loc": hloc, "src": src, "card": n})
+		"bond":
+			if subj.size() == 2:
+				out.append({"t": "profile_bond", "people": subj.duplicate(), "src": src, "card": n})
 		"trace":
-			out.append({"t": "trace", "block": card.get("block", ""), "day": day, "src": src, "card": n})
+			if card.get("trace_family", "") != "":
+				out.append({"t": "trace_struct", "family": card.get("trace_family", ""), "locs": card.get("locs", []), "home_block": card.get("trace_home_block", ""), "evening_block": card.get("trace_evening_block", ""), "victim": card.get("victim", ""), "victim_block": card.get("victim_block", card.get("block", "")), "day": day, "src": src, "card": n})
+			else:
+				out.append({"t": "trace", "block": card.get("block", ""), "day": day, "src": src, "card": n})
 		"dropped":
 			out.append({"t": "dropped", "material": card.get("material", ""), "block": card.get("block", ""), "night": day, "src": src, "card": n})
 		"conversation":
@@ -598,6 +615,41 @@ static func _match_support(w, a: Dictionary, b: Dictionary, killed: Dictionary):
 			b["who"], [])
 		m4["relation"] = "inference"
 		return m4
+	if ta == "trace_struct" or tb == "trace_struct":
+		var tr_a: Dictionary = a if ta == "trace_struct" else b
+		var oth: Dictionary = b if ta == "trace_struct" else a
+		var ot: String = oth["t"]
+		var fam: String = tr_a["family"]
+		if fam == "locations" and ot == "profile_spot" and oth["loc"] in tr_a["locs"]:
+			var ml = _mk(w, "trace_match", "The scene trace points to %s, and %s frequents %s." %
+				[C.loc_list_or(tr_a["locs"]), _nm(w, oth["who"]), w.loc_name(oth["loc"])], cards,
+				[_accuse(w, oth["who"], "demon", "%s is the demon" % _nm(w, oth["who"])),
+				_clear(w, oth["who"], {"type": "notdemon"}, "%s is not the demon: someone else tied to %s left the trace" % [_nm(w, oth["who"]), C.loc_list_or(tr_a["locs"])])],
+				oth["who"], [])
+			ml["relation"] = "inference"
+			return ml
+		if fam == "quarter" and ((ot == "profile_home" and oth["block"] == tr_a["home_block"]) or (ot == "at" and oth["day"] == tr_a["day"] and oth["phase"] == C.EVENING and oth["block"] == tr_a["evening_block"])):
+			var mq = _mk(w, "trace_match", "The scene trace matches %s's quarter or evening whereabouts." % _nm(w, oth["who"]), cards,
+				[_accuse(w, oth["who"], "demon", "%s is the demon" % _nm(w, oth["who"])),
+				_clear(w, oth["who"], {"type": "notdemon"}, "%s is not the demon: someone else matching that quarter left the trace" % _nm(w, oth["who"]))],
+				oth["who"], [])
+			mq["relation"] = "inference"
+			return mq
+		if fam == "connection":
+			var c_who = ""
+			if ot == "profile_home" and oth["block"] == tr_a["victim_block"]:
+				c_who = oth["who"]
+			elif ot == "profile_bond" and tr_a["victim"] in oth["people"]:
+				c_who = oth["people"][0] if oth["people"][1] == tr_a["victim"] else oth["people"][1]
+			elif ot == "talked" and oth["day"] == tr_a["day"] and (oth["a"] == tr_a["victim"] or oth["b"] == tr_a["victim"]):
+				c_who = oth["b"] if oth["a"] == tr_a["victim"] else oth["a"]
+			if c_who != "":
+				var mc = _mk(w, "trace_match", "The unforced-entry trace connects %s to %s." % [_nm(w, c_who), _nm(w, tr_a["victim"])], cards,
+					[_accuse(w, c_who, "demon", "%s is the demon" % _nm(w, c_who)),
+					_clear(w, c_who, {"type": "notdemon"}, "%s is not the demon: someone else connected to %s left the trace" % [_nm(w, c_who), _nm(w, tr_a["victim"])])],
+					c_who, [])
+				mc["relation"] = "inference"
+				return mc
 	return null
 
 ## Templates over several cards at once.
@@ -1540,17 +1592,133 @@ static func _evil_mask(w, n, c: Dictionary, times: int, seen: bool) -> Dictionar
 
 # ---------------------------------------------------------------- filing checks
 
+## Three-valued trace relevance from ONLY discovered board/profile receipts (`matches` | `unknown` | `contradicts`).
+## Never consults hidden NPC haunts, unobserved history, or unlearned relationships.
+static func trace_fit_from_receipts(person_id: String, trace_card: Dictionary, receipts: Array) -> String:
+	var fam: String = str(trace_card.get("trace_family", ""))
+	var night: int = int(trace_card.get("crime_night", trace_card.get("day", -1)))
+	if fam == "locations":
+		var locs: Array = trace_card.get("locs", [])
+		var work_loc: String = ""
+		var haunts: Array = []
+		for r in receipts:
+			if r.get("deleted", false) or person_id not in r.get("subject", []):
+				continue
+			var rkind: String = str(r.get("kind", ""))
+			if rkind == "work":
+				work_loc = str(r.get("loc", ""))
+			elif rkind == "haunt":
+				for hl in r.get("locs", [r.get("loc", "")]):
+					if hl != "" and hl not in haunts:
+						haunts.append(hl)
+		if work_loc != "" and work_loc in locs:
+			return "matches"
+		for hl in haunts:
+			if hl in locs:
+				return "matches"
+		if work_loc != "" and haunts.size() >= 2:
+			return "contradicts"
+		return "unknown"
+	elif fam == "quarter":
+		var hb: String = str(trace_card.get("trace_home_block", ""))
+		var eb: String = str(trace_card.get("trace_evening_block", ""))
+		var known_home: String = ""
+		var evening_blocks: Array = []
+		for r in receipts:
+			if r.get("deleted", false):
+				continue
+			var rkind: String = str(r.get("kind", ""))
+			var subjs: Array = r.get("subject", [])
+			if person_id in subjs:
+				if rkind == "home":
+					known_home = str(r.get("block", ""))
+				elif rkind == "work":
+					var phases: Array = r.get("work_phases", [])
+					var wloc: String = str(r.get("loc", ""))
+					if C.EVENING in phases and C.LOCATIONS.has(wloc):
+						var wb: String = str(C.LOCATIONS[wloc]["block"])
+						if wb not in evening_blocks:
+							evening_blocks.append(wb)
+				elif rkind in ["sighting", "conversation"] and int(r.get("day", -2)) == night and int(r.get("phase", -1)) == C.EVENING:
+					var sb: String = str(r.get("block", ""))
+					if sb != "" and sb not in evening_blocks:
+						evening_blocks.append(sb)
+		if known_home != "" and known_home == hb:
+			return "matches"
+		if eb != "" and eb in evening_blocks:
+			return "matches"
+		if known_home != "" and known_home != hb and not evening_blocks.is_empty() and eb not in evening_blocks:
+			return "contradicts"
+		return "unknown"
+	elif fam == "connection":
+		var victim: String = str(trace_card.get("victim", ""))
+		var vblock: String = str(trace_card.get("scene_block", ""))
+		var known_home: String = ""
+		var has_bond: bool = false
+		var shared_day: bool = false
+		var victim_day_locs: Dictionary = {}
+		var person_day_phases: Dictionary = {}
+		for r in receipts:
+			if r.get("deleted", false):
+				continue
+			var rkind: String = str(r.get("kind", ""))
+			var subjs: Array = r.get("subject", [])
+			if rkind == "home":
+				if person_id in subjs:
+					known_home = str(r.get("block", ""))
+				if vblock == "" and victim != "" and victim in subjs:
+					vblock = str(r.get("block", ""))
+			elif rkind == "bond" and person_id in subjs and victim != "" and victim in subjs:
+				has_bond = true
+			elif rkind in ["sighting", "conversation"] and int(r.get("day", -2)) == night and int(r.get("phase", -1)) in [C.MORNING, C.AFTERNOON, C.EVENING]:
+				if person_id in subjs and victim != "" and victim in subjs:
+					shared_day = true
+				var ph: int = int(r.get("phase", -1))
+				var rloc: String = str(r.get("loc", ""))
+				if victim != "" and victim in subjs and rloc != "":
+					victim_day_locs[ph] = rloc
+				if person_id in subjs:
+					person_day_phases[ph] = rloc if rloc != "" else ("block:" + str(r.get("block", "")))
+		for ph_k in victim_day_locs:
+			if person_day_phases.get(ph_k, "") == victim_day_locs[ph_k]:
+				shared_day = true
+		if has_bond or (known_home != "" and vblock != "" and known_home == vblock) or shared_day:
+			return "matches"
+		if known_home != "" and vblock != "" and known_home != vblock and person_day_phases.size() >= 2:
+			return "contradicts"
+		return "unknown"
+	# Legacy block-only trace cards: check discovered home/work receipts only.
+	var blk: String = str(trace_card.get("block", ""))
+	if blk == "":
+		return "unknown"
+	var l_home: String = ""
+	var l_work_blk: String = ""
+	for r in receipts:
+		if r.get("deleted", false) or person_id not in r.get("subject", []):
+			continue
+		if r.get("kind", "") == "home":
+			l_home = str(r.get("block", ""))
+		elif r.get("kind", "") == "work":
+			var wloc2: String = str(r.get("loc", ""))
+			l_work_blk = str(C.LOCATIONS[wloc2]["block"]) if C.LOCATIONS.has(wloc2) else str(r.get("block", ""))
+	if (l_home != "" and l_home == blk) or (l_work_blk != "" and l_work_blk == blk):
+		return "matches"
+	if l_home != "" and l_work_blk != "":
+		return "contradicts"
+	return "unknown"
+
 ## Do these cards actually say something about the conclusion's subject?
-static func bears_on(w, c: Dictionary, cards: Array) -> bool:
+## Uses only discovered `known_receipts` (falling back to `cards`) so filing never leaks hidden truth.
+static func bears_on(w, c: Dictionary, cards: Array, known_receipts: Array = []) -> bool:
 	if c.get("type", "") == "conflict":
 		return c.get("group", []).size() >= 2
 	var a: String = c.get("a", "")
+	var pool: Array = known_receipts if not known_receipts.is_empty() else cards
 	for x in cards:
 		if a in x.get("subject", []) or x.get("source", "") == a or a in x.get("data", {}).get("pair", []):
 			return true
 		if x.get("kind", "") == "trace" and w.by_id.has(a):
-			var t = w.by_id[a]
-			if x.get("block", "") == t.home_block or x.get("block", "") == w.loc_block(t.work):
+			if trace_fit_from_receipts(a, x, pool) != "contradicts":
 				return true
 	return false
 

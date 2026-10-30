@@ -9,6 +9,7 @@ extends VBoxContainer
 signal changed                # guess or notes saved
 signal card_clicked(num)
 signal card_context_requested(num, at)
+signal profile_workshop_requested(person_id: String, facet: String)
 signal person_changed(id)
 
 const C = preload("res://sim/content.gd")
@@ -40,6 +41,9 @@ var tab = 0
 var _setting = false
 var compact = false   # the town screen's narrower column: smaller portrait
 var _hovered_card = 0
+var _hovered_profile: Dictionary = {}   # {person, facet}
+var _profile_menu: PopupMenu
+var _menu_profile: Dictionary = {}
 var formatter = Formatter.new()
 var renderer = Renderer.new()
 
@@ -177,7 +181,19 @@ func build() -> void:
 	var pv = VBoxContainer.new()
 	pv.add_theme_constant_override("separation", 6)
 	page.add_child(pv)
+	_profile_menu = PopupMenu.new()
+	_profile_menu.id_pressed.connect(func(_id):
+		if not _menu_profile.is_empty():
+			profile_workshop_requested.emit(_menu_profile.person, _menu_profile.facet))
+	add_child(_profile_menu)
 	bars = TraitBars.new()
+	bars.workshop_requested.connect(func(at_pos: Vector2i, as_menu: bool):
+		if current() == "":
+			return
+		if as_menu:
+			_open_profile_menu({"person": current(), "facet": "personality"}, at_pos)
+		else:
+			profile_workshop_requested.emit(current(), "personality"))
 	pv.add_child(bars)
 	body = FormattedTextLabel.new()
 	body.bbcode_enabled = true
@@ -186,12 +202,27 @@ func build() -> void:
 	body.context_menu_enabled = false
 	body.meta_hover_started.connect(func(meta):
 		var value = str(meta)
-		_hovered_card = value.substr(5).to_int() if value.begins_with("card:") else 0)
-	body.meta_hover_ended.connect(func(_meta): _hovered_card = 0)
+		_hovered_card = value.substr(5).to_int() if value.begins_with("card:") else 0
+		if value.begins_with("profile:"):
+			var parts = value.split(":")
+			if parts.size() >= 3:
+				_hovered_profile = {"person": parts[1], "facet": parts[2]}
+		else:
+			_hovered_profile = {})
+	body.meta_hover_ended.connect(func(_meta):
+		_hovered_card = 0
+		_hovered_profile = {})
 	body.gui_input.connect(func(ev):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_RIGHT and _hovered_card > 0:
-			card_context_requested.emit(_hovered_card, Vector2i(body.get_screen_transform() * ev.position))
-			body.accept_event())
+		if ev is InputEventMouseButton and ev.pressed:
+			if ev.button_index == MOUSE_BUTTON_RIGHT and _hovered_card > 0:
+				card_context_requested.emit(_hovered_card, Vector2i(body.get_screen_transform() * ev.position))
+				body.accept_event()
+			elif ev.button_index == MOUSE_BUTTON_RIGHT and not _hovered_profile.is_empty():
+				_open_profile_menu(_hovered_profile.duplicate(), Vector2i(body.get_screen_transform() * ev.position))
+				body.accept_event()
+			elif ev.button_index == MOUSE_BUTTON_LEFT and ev.double_click and not _hovered_profile.is_empty():
+				profile_workshop_requested.emit(_hovered_profile.person, _hovered_profile.facet)
+				body.accept_event())
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.custom_minimum_size = Vector2(0, 140 if compact else 200)
 	body.add_theme_font_size_override("normal_font_size", 16)
@@ -274,8 +305,16 @@ func _save_guess() -> void:
 	g.set_guess(current(), guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt))
 	changed.emit()
 
+func _open_profile_menu(target: Dictionary, at: Vector2i) -> void:
+	_menu_profile = target
+	var label: String = {"home_work": "Home & Work", "haunts": "Haunts", "personality": "Personality", "bonds": "Bonds"}.get(target.get("facet", ""), "Profile")
+	_profile_menu.clear()
+	_profile_menu.add_item("Add to Case Workshop (%s)" % label, 1)
+	_profile_menu.popup(Rect2i(at, Vector2i.ZERO))
+
 func refresh() -> void:
 	_hovered_card = 0
+	_hovered_profile = {}
 	if g == null or person_opt == null:
 		return
 	var id = current()
@@ -343,13 +382,22 @@ func _render_page(id: String, p: Dictionary) -> void:
 			body.push_italics()
 			_append_profile("%s." % (bl[0].to_upper() + bl.substr(1)), {"kinds": ["person"]})
 			body.pop()
-			_append_profile("\nWorks %s; lives on %s." % [p["work"], p["home"]], {"kinds": ["person"]})
+			body.append_text("\n")
+			body.push_meta("profile:%s:home_work" % id)
+			_append_profile("Works %s; lives on %s." % [p["work"], p["home"]], {"kinds": ["person"]})
+			body.pop()
 			if p.get("haunts", "") != "":
-				_append_profile("\nOff work, often at %s." % p["haunts"], {"kinds": ["person"]})
+				body.append_text("\n")
+				body.push_meta("profile:%s:haunts" % id)
+				_append_profile("Off work, often at %s." % p["haunts"], {"kinds": ["person"]})
+				body.pop()
 			else:
 				_append_profile("\nWhere they go off work: nobody's told you yet. Ask around.")
 			for relationship in p.get("relationships", []):
-				_append_profile("\n" + relationship, {"kinds": ["person"]})
+				body.append_text("\n")
+				body.push_meta("profile:%s:bonds" % id)
+				_append_profile(relationship, {"kinds": ["person"]})
+				body.pop()
 			for x in p["named"]:
 				_append_profile("\nReadings say: " + x)
 			if g.debug_overlay:

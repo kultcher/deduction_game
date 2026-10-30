@@ -140,8 +140,12 @@ func _test_layout_real_game() -> void:
 
 func _test_state_filters() -> void:
 	var g = _game(8105)
-	for cmd in ["go tavern", "talk %s" % g.w.npcs[0].id, "ask night", "ask today", "go well", "wait", "go tavern", "wait"]:
+	for cmd in ["go tavern", "talk %s" % g.w.npcs[0].id, "ask night", "ask today", "ask gift", "go well", "wait", "go tavern", "wait"]:
 		g.command(cmd)
+	# Homes now live in profiles; explicitly supply a statement rather than
+	# depending on a conversation with an NPC who may not be at the tavern.
+	g.add_card({"kind": "claim", "subject": [g.w.npcs[0].id], "source": g.w.npcs[0].id,
+		"role": "seer", "text": "A gift claim for the board-filter fixture."})
 	var st = CaseState.new()
 	var all_n: int = st.apply(g).size()
 	st.set_view("statements")

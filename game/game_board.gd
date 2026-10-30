@@ -40,20 +40,97 @@ static func _facts(g, facts: Array) -> void:
 		g._ev({"k": "card", "n": num})
 
 
-## Where everyone lives is common knowledge: one card per resident, so arguments about
-## where someone could have walked at night can cite it.
+## Public setup facts (where everyone lives and works) mint hidden profile receipts
+## rather than main-board cards, keeping the Case Board uncluttered while Workshop
+## Profile Info nodes cite exact normalized original receipts.
 static func _home_cards(g) -> void:
 	var people: Array = g.w.npcs.duplicate()
 	people.sort_custom(func(a, b): return a.name < b.name)
 	for n in people:
-		add_card(g, {
+		add_profile_receipt(g, {
 			"kind": "home",
 			"subject": [n.id],
 			"block": n.home_block,
+			"day": 0,
+			"phase": 0,
 			"source": "town",
 			"class": "concrete",
 			"text": "%s lives on %s." % [n.name, C.block_name(n.home_block)],
 		})
+		add_profile_receipt(g, {
+			"kind": "work",
+			"subject": [n.id],
+			"loc": n.work,
+			"block": g.w.loc_block(n.work),
+			"work_phases": n.work_phases.duplicate(),
+			"occupation": n.occupation,
+			"day": 0,
+			"phase": 0,
+			"source": "town",
+			"class": "concrete",
+			"text": "%s works %s at %s." % [n.name, C.phase_list(n.work_phases), g.w.loc_name(n.work)],
+		})
+
+
+static func add_profile_receipt(g, fact: Dictionary) -> int:
+	if fact.has("text"):
+		fact = fact.duplicate()
+		fact["text"] = C.natural_nights(fact["text"])
+	var key: String = fact.get("text", "")
+	var disc: Dictionary = _disclosure(g, fact)
+	if fact.get("source", "") == "town":
+		disc = {"day": 0, "phase": 0, "via": "town", "public": true}
+	const PROFILE_RECEIPT_BASE = 10000
+	if g._profile_card_keys.has(key):
+		var existing_num: int = g._profile_card_keys[key]
+		_disclose(g.profile_receipts[-existing_num - PROFILE_RECEIPT_BASE - 1], disc)
+		return existing_num
+	var fk: String = Mind.fact_id(fact) if fact.get("kind", "") in CardModel.MERGE_KINDS else ""
+	if fk != "" and g._profile_fact_keys.has(fk):
+		var n0: int = g._profile_fact_keys[fk]
+		_disclose(g.profile_receipts[-n0 - PROFILE_RECEIPT_BASE - 1], disc)
+		g._profile_card_keys[key] = n0
+		return n0
+	var card: Dictionary = fact.duplicate()
+	card["n"] = -(PROFILE_RECEIPT_BASE + g.profile_receipts.size() + 1)
+	if not card.has("day"):
+		card["day"] = g.w.day
+	if not card.has("class"):
+		card["class"] = Mind.evidence_class(card)
+	card["when"] = CardModel.when(card, g.w.day, _phase_now(g))
+	card["learned"] = [disc]
+	card["view"] = "profile"
+	card["profile_receipt"] = true
+	g.profile_receipts.append(card)
+	g._profile_card_keys[key] = card["n"]
+	if fk != "":
+		g._profile_fact_keys[fk] = card["n"]
+	return card["n"]
+
+
+static func receipt_by_number(g, num: int) -> Dictionary:
+	const PROFILE_RECEIPT_BASE = 10000
+	if num >= 1 and num <= g.board.size():
+		return g.board[num - 1]
+	var idx: int = -num - PROFILE_RECEIPT_BASE - 1
+	if idx >= 0 and idx < g.profile_receipts.size():
+		return g.profile_receipts[idx]
+	return {}
+
+
+static func all_receipts(g) -> Array:
+	return g.board + g.profile_receipts
+
+
+static func profile_receipts_for(g, id: String, facet: String = "") -> Array:
+	var allowed_kinds: Array = {
+		"": ["home", "work", "haunt", "trait", "bond"],
+		"home_work": ["home", "work"],
+		"haunts": ["haunt"],
+		"personality": ["trait"],
+		"bonds": ["bond"],
+	}.get(facet, [])
+	return g.profile_receipts.filter(func(c): return c.get("kind", "") in allowed_kinds and id in c.get("subject", []))
 
 
 static func add_card(g, fact: Dictionary) -> int:
@@ -274,7 +351,8 @@ static func link_cards(g, nums: Array) -> Dictionary:
 ## number, or -1 if refused (reason in last_error).
 static func file_deduction(g, conclusion: Dictionary, supports: Array, match_info: Dictionary = {}, chosen: int = 0, workshop_filing: bool = false) -> int:
 	conclusion = Argue.normalize(conclusion.duplicate())
-	var cards: Array = g.board.filter(func(x): return x["n"] in supports)
+	var pool: Array = all_receipts(g)
+	var cards: Array = pool.filter(func(x): return x["n"] in supports and not x.get("deleted", false))
 	# The same conclusion from the same cards gets the same footing however it was built:
 	# if a template among the supports offers this conclusion, use it.
 	if conclusion.get("type", "") == "conflict":
@@ -295,25 +373,28 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, match_inf
 					break
 			if not match_info.is_empty():
 				break
-	g.last_error = Argue.filing_problem(g.w, conclusion, supports, g.board, not match_info.is_empty())
+	g.last_error = Argue.filing_problem(g.w, conclusion, supports, pool, not match_info.is_empty())
 	if g.last_error != "":
 		g.w.dlog.add("deduction_refused", "player", conclusion.get("a", ""), {"conclusion": conclusion, "supports": supports}, g.last_error)
 		return -1
 	var rank = {"speech": 0, "circumstantial": 1, "concrete": 2}
 	var cls = "concrete"
 	for x in supports:
-		var cc: String = g.board[x - 1].get("class", "circumstantial")
+		var rec: Dictionary = receipt_by_number(g, x)
+		var cc: String = rec.get("class", "circumstantial")
 		if rank.get(cc, 1) < rank[cls]:
 			cls = cc
 	if match_info.is_empty() and rank[cls] > 1:
 		cls = "circumstantial" # an inference is never stronger than circumstantial on its own
 	# Unfounded = the cards don't actually bear on the person (not merely "no template").
-	var unfounded: bool = match_info.is_empty() and not Argue.bears_on(g.w, conclusion, cards)
+	var active_pool: Array = pool.filter(func(x): return not x.get("deleted", false))
+	var unfounded: bool = match_info.is_empty() and not Argue.bears_on(g.w, conclusion, cards, active_pool)
 	var basis = ""
 	if not match_info.is_empty():
 		basis = " (from #%s: %s)" % [", #".join(PackedStringArray(match_info["cards"].map(func(x): return str(x)))), match_info["text"]]
 	else:
-		basis = " (because #%s%s)" % [", #".join(PackedStringArray(supports.map(func(x): return str(x)))), "; unfounded" if unfounded else "; your inference"]
+		var labels: Array = supports.map(func(x): return ("P%d" % (-x - 10000)) if x <= -10000 else ("#%d" % x))
+		basis = " (because %s%s)" % [", ".join(PackedStringArray(labels)), "; unfounded" if unfounded else "; your inference"]
 	var subj: Array = conclusion.get("group", []).duplicate() if conclusion.get("type", "") == "conflict" else ([conclusion["a"]] if conclusion.has("a") else [])
 	var near = ""
 	if unfounded:

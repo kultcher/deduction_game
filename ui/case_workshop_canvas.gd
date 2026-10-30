@@ -57,7 +57,7 @@ func _ready() -> void:
 	premise_person = _person_option(tools, "constance")
 	premise_person.custom_minimum_size.x = 140
 	premise_person.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	premise_type = _option(tools, premise_names() + ["Supporting evidence (no claim)"])
+	premise_type = _option(tools, premise_names())
 	premise_type.custom_minimum_size.x = 220
 	premise_type.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_button(tools, "Add", _add_premise).name = "AddPremise"

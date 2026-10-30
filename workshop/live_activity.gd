@@ -25,7 +25,8 @@ static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionar
 	for person in view.people:
 		var role: String = role_of(cards, person.id, knowledge)
 		roles.append([role, role_hearing(cards, person.id, role)] if weighted else role)
-	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran"])), roles]
+	var has_struct_trace: bool = include_context and cards.any(func(x): return x.kind == "trace" and x.get("data", {}).has("family"))
+	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran"])), roles]
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):
@@ -204,8 +205,10 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 		profiles.append({"good": _likelihood(view, checked, person, "good"), "minion": _likelihood(view, checked, person, "minion"), "demon": _likelihood(view, checked, person, "demon")})
 		if view.get("chronology", {}).has("curse"):
 			profiles[-1]["converted"] = _likelihood(view, checked, person, "converted")
+	var scene_tables: Array = _build_scene_tables(view, checked)
+	var scion_splits: Array = _scion_succession_splits(view, checked, profiles)
 	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
-		"label": "Movement / trace: joint live comparison", "profiles": profiles,
+		"label": "Movement / trace: joint live comparison", "profiles": profiles, "scene_tables": scene_tables, "scion_splits": scion_splits,
 		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
 	result[0]["relationships"] = relationships(view, cards)
 	if cache.size() >= 128:
@@ -213,15 +216,69 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
 
-static func score(world: Dictionary, factor: Dictionary) -> float:
+static func _passer_expected_weight(world: Dictionary, st: Dictionary, trace_weights: Array, demon_idx: int) -> float:
+	var eps: float = Tuning.Setup.TRACE_PASSER_PRIOR_FLOOR
+	var num: float = eps * Tuning.Setup.TRACE_UNKNOWN_WEIGHT
+	var den: float = eps
+	var n_people: int = trace_weights.size()
+	for j in range(n_people):
+		if j == demon_idx or j == st.victim_idx:
+			continue
+		var cp: float
+		if world.get("converted", -1) == j and not st.cross_converted.is_empty():
+			cp = float(st.cross_converted[j])
+		elif (world.evil & (1 << j)) != 0:
+			cp = float(st.cross_minion[j])
+		else:
+			cp = float(st.cross_good[j])
+		if cp > 0.0:
+			num += cp * float(trace_weights[j])
+			den += cp
+	return num / maxf(den, 1e-12)
+
+static func _scene_score(world: Dictionary, scene_tables: Array, demon_idx: int) -> float:
+	if demon_idx < 0 or scene_tables.is_empty():
+		return 1.0
+	var total = 1.0
+	for st in scene_tables:
+		var w1_d: float = float(st.w1[demon_idx])
+		if st.two_cited:
+			var w2_d: float = float(st.w2[demon_idx])
+			var ep2: float = _passer_expected_weight(world, st, st.w2, demon_idx)
+			var ep1: float = _passer_expected_weight(world, st, st.w1, demon_idx)
+			total *= 0.5 * (w1_d * ep2 + w2_d * ep1)
+		elif st.scene_trace_count >= 2:
+			# Only 1 of 2 traces from a two-trace scene was cited: 50% killer, 50% passer.
+			var ep_single: float = _passer_expected_weight(world, st, st.w1, demon_idx)
+			total *= 0.5 * w1_d + 0.5 * ep_single
+		else:
+			total *= w1_d
+	return total
+
+static func _base_score(world: Dictionary, profiles: Array, demon_idx: int, scene_tables: Array = []) -> float:
 	var result = 1.0
-	for i in range(factor.profiles.size()):
-		var profile: Dictionary = factor.profiles[i]
-		var type: String = "demon" if world.get("demon", -1) == i else ("minion" if world.evil & (1 << i) else "good")
+	for i in range(profiles.size()):
+		var profile: Dictionary = profiles[i]
+		var type: String = "demon" if demon_idx == i else ("minion" if world.evil & (1 << i) else "good")
 		if world.get("converted", -1) == i and profile.has("converted"):
 			type = "converted"
 		result *= maxf(profile[type], 1e-30) / maxf(profile.good, 1e-30)
+	result *= _scene_score(world, scene_tables, demon_idx)
 	return result
+
+static func score(world: Dictionary, factor: Dictionary) -> float:
+	var d_idx: int = world.get("demon", -1)
+	var scene_tables: Array = factor.get("scene_tables", [])
+	var direct: float = _base_score(world, factor.profiles, d_idx, scene_tables)
+	for split in factor.get("scion_splits", []):
+		var exec_idx: int = split.executed_idx
+		if d_idx >= 0 and exec_idx != d_idx and (world.evil & (1 << exec_idx)) != 0 and split.alive_demon_mask & (1 << d_idx):
+			# Scion succession possible: either d_idx was always Demon, or exec_idx was Demon
+			# on nights < exec_day and d_idx rose as Scion before night exec_day.
+			var pre_s: float = _base_score(world, split.pre_profiles, exec_idx, split.get("pre_scenes", []))
+			var post_s: float = _base_score(world, split.post_profiles, d_idx, split.get("post_scenes", []))
+			return 0.5 * direct + 0.5 * (pre_s * post_s)
+	return direct
 
 static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
 	var relevant_cards = relevant(cards)
@@ -247,7 +304,7 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 		for card in relevant_cards:
 			if card.night != night:
 				continue
-			var incident: String = "alibi:" + card.subject if card.kind == "alibi" else ("trace:" + str(card.data.get("scene", "")) if card.kind == "trace" else card.id)
+			var incident: String = "alibi:" + card.subject if card.kind == "alibi" else (("trace:%s:%d" % [str(card.data.get("scene", "")), int(card.data.get("slot", 0))]) if card.kind == "trace" else card.id)
 			if incident in incidents:
 				continue
 			incidents.append(incident)
@@ -271,7 +328,7 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 				for path in paths:
 					var p: float = path.weight
 					for card in reports_by_night[n]:
-						p *= _observed(card, person.id, evening, path.path, current, view, night)
+						p *= _observed(card, person.id, evening, path.path, current, view, night, cards)
 					products.append(p)
 				by_evening.append(products)
 			tables.append(by_evening)
@@ -376,7 +433,266 @@ static func relationships(view: Dictionary, cards: Array) -> Array:
 			result.append("Scattered sightings: %s's movements fit the claimed %s gift. This is corroboration, not proof of that identity." % [person.name, C.role_name(role)])
 	return result
 
-static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int) -> float:
+static func _scion_succession_splits(view: Dictionary, cards: Array, full_profiles: Array) -> Array:
+	var out: Array = []
+	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
+	if execs.is_empty():
+		return out
+	var nights: Array = []
+	for c in relevant(cards):
+		if c.get("night", -1) >= 0 and c.night not in nights:
+			nights.append(c.night)
+	if nights.is_empty():
+		return out
+	for day_str in execs:
+		var exec_day: int = int(day_str)
+		# Execution happens at Day exec_day Evening (tick exec_day*4 + 2), promoting the Scion
+		# BEFORE Night exec_day (tick exec_day*4 + 3). Pre-takeover nights are strictly < exec_day.
+		if not nights.any(func(n): return n < exec_day):
+			continue
+		var alive_before: int = 0
+		for p in view.people:
+			if view.get("timeline", {}).get("death_ticks", {}).get(p.id, 2147483647) >= exec_day * 4 + 2:
+				alive_before += 1
+		if alive_before < 5:
+			continue
+		var pre_cards: Array = cards.filter(func(c): return c.get("night", -1) < 0 or c.night < exec_day)
+		var post_cards: Array = cards.filter(func(c): return c.get("night", -1) < 0 or c.night >= exec_day)
+		var pre_profiles: Array = []
+		var post_profiles: Array = []
+		var alive_mask: int = 0
+		for i in range(view.people.size()):
+			var p: Dictionary = view.people[i]
+			if History.alive_at_night(view, p.id, exec_day):
+				alive_mask |= (1 << i)
+			pre_profiles.append({"good": _likelihood(view, pre_cards, p, "good"), "minion": _likelihood(view, pre_cards, p, "minion"), "demon": _likelihood(view, pre_cards, p, "demon")})
+			post_profiles.append({"good": _likelihood(view, post_cards, p, "good"), "minion": _likelihood(view, post_cards, p, "minion"), "demon": _likelihood(view, post_cards, p, "demon")})
+		var pre_scenes: Array = _build_scene_tables(view, pre_cards)
+		var post_scenes: Array = _build_scene_tables(view, post_cards)
+		for exec_id in execs[day_str]:
+			var idx: int = view.people.map(func(p): return p.id).find(exec_id)
+			if idx >= 0:
+				out.append({"exec_day": exec_day, "executed_idx": idx, "alive_demon_mask": alive_mask, "pre_profiles": pre_profiles, "post_profiles": post_profiles, "pre_scenes": pre_scenes, "post_scenes": post_scenes})
+	return out
+
+## Normalized probability in [0, 1] that `person` walked across `scene_block` on `night`
+## given non-trace movement observations in `cards` under `alignment`.
+static func crossing_probability(view: Dictionary, cards: Array, person: Dictionary, night: int, alignment: String, scene_block: String) -> float:
+	if not History.alive_at_night(view, person.id, night) or scene_block == "":
+		return 0.0
+	var role: String = role_of(cards, person.id)
+	var gift: bool = C.ROLES.get(role, {}).get("night_walk", false)
+	var profiles: Array = [{"kind": alignment, "weight": 1.0}] if alignment not in ["good", "converted"] else [
+		{"kind": "ordinary", "weight": 0.2 if gift else 0.75},
+		{"kind": "gift", "weight": 0.7 if gift else 0.15}, {"kind": "secret", "weight": 0.1}]
+	if alignment in ["good", "converted"] and role != "" and not gift:
+		profiles = [{"kind": "ordinary", "weight": 0.9}, {"kind": "secret", "weight": 0.1}]
+	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.source == person.id and c.has("hearing_weight")):
+		var strength: float = role_hearing(cards, person.id, role)
+		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, 0.2 if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, 0.7 if gift else 0.0, strength)}, {"kind": "secret", "weight": 0.1}]
+	var night_obs: Array = []
+	var seen_inc: Array = []
+	for c in relevant(cards):
+		if c.get("night", -1) != night or c.kind == "trace" or (c.get("quoted", false) and c.kind != "alibi"):
+			continue
+		var inc: String = "alibi:" + c.subject if c.kind == "alibi" else c.id
+		if inc not in seen_inc:
+			seen_inc.append(inc)
+			night_obs.append(c)
+	var current: String = alignment
+	if alignment == "converted" and view.get("chronology", {}).has("curse"):
+		var curse: Dictionary = view.chronology.curse
+		current = "minion" if night * 4 + 3 >= curse.from and night * 4 + 3 < curse.until else "good"
+	var num_cross: float = 0.0
+	var den_all: float = 0.0
+	for prof in profiles:
+		var pkind: String = "minion" if alignment == "converted" and current == "minion" else prof.kind
+		var paths: Array = _profile_paths(view, person, night, pkind, cards)
+		for evening in C.BLOCKS:
+			var ev_p: float = 0.25
+			for path_entry in paths:
+				var w_p: float = float(prof.weight) * ev_p * float(path_entry.weight)
+				for obs in night_obs:
+					w_p *= _observed(obs, person.id, evening, path_entry.path, current, view, night, cards)
+				den_all += w_p
+				if not path_entry.path.is_empty() and scene_block in path_entry.path:
+					num_cross += w_p
+	if den_all <= 1e-20:
+		return 0.0
+	return clampf(num_cross / den_all, 0.0, 1.0)
+
+static func _build_scene_tables(view: Dictionary, cards: Array) -> Array:
+	var by_scene: Dictionary = {}
+	var scene_order: Array = []
+	for c in cards:
+		if c.get("quoted", false) or c.kind != "trace" or not c.get("data", {}).has("family"):
+			continue
+		var sc_id: String = str(c.data.get("scene", ""))
+		if sc_id == "":
+			continue
+		var slot: int = int(c.data.get("slot", 0))
+		if not by_scene.has(sc_id):
+			by_scene[sc_id] = {}
+			scene_order.append(sc_id)
+		if not by_scene[sc_id].has(slot):
+			by_scene[sc_id][slot] = c
+	var out: Array = []
+	var has_curse: bool = view.get("chronology", {}).has("curse")
+	for sc_id in scene_order:
+		var slot_map: Dictionary = by_scene[sc_id]
+		var slots: Array = slot_map.keys()
+		slots.sort()
+		var t1: Dictionary = slot_map[slots[0]]
+		var two_cited: bool = slots.size() >= 2
+		var t2: Dictionary = slot_map[slots[1]] if two_cited else {}
+		var night: int = int(t1.get("night", 1))
+		var scene_block: String = str(t1.data.get("scene_block", ""))
+		var victim_id: String = str(t1.data.get("victim", ""))
+		var victim_idx: int = view.people.map(func(p): return p.id).find(victim_id)
+		var scene_trace_count: int = maxi(slots.size(), int(t1.data.get("scene_trace_count", 1)))
+		var w1: Array = []
+		var w2: Array = []
+		var cross_good: Array = []
+		var cross_minion: Array = []
+		var cross_converted: Array = []
+		for p in view.people:
+			w1.append(evaluate_trace_for_person(view, cards, t1, p.id).weight)
+			if two_cited:
+				w2.append(evaluate_trace_for_person(view, cards, t2, p.id).weight)
+			if two_cited or scene_trace_count >= 2:
+				cross_good.append(crossing_probability(view, cards, p, night, "good", scene_block))
+				cross_minion.append(crossing_probability(view, cards, p, night, "minion", scene_block))
+				if has_curse:
+					cross_converted.append(crossing_probability(view, cards, p, night, "converted", scene_block))
+		out.append({
+			"scene": sc_id,
+			"night": night,
+			"scene_block": scene_block,
+			"victim_idx": victim_idx,
+			"scene_trace_count": scene_trace_count,
+			"two_cited": two_cited,
+			"w1": w1,
+			"w2": w2,
+			"cross_good": cross_good,
+			"cross_minion": cross_minion,
+			"cross_converted": cross_converted,
+		})
+	return out
+
+## Three-valued evaluation of a structured trace against ONLY the receipts present in `cards`.
+## Returns {"state": "matches" | "unknown" | "contradicts", "weight": float, "missing": String, "reason": String}.
+static func evaluate_trace_for_person(view: Dictionary, cards: Array, trace_card: Dictionary, person_id: String) -> Dictionary:
+	var d: Dictionary = trace_card.get("data", {})
+	var fam: String = d.get("family", "")
+	var night: int = int(trace_card.get("night", d.get("day", -1)))
+	var match_w: float = Tuning.Setup.TRACE_MATCH_WEIGHT
+	var unk_w: float = Tuning.Setup.TRACE_UNKNOWN_WEIGHT
+	var contra_w: float = Tuning.Setup.TRACE_CONTRADICT_WEIGHT
+	if fam == "locations":
+		var locs: Array = d.get("locs", [])
+		var work_loc: String = ""
+		var haunts: Array = []
+		for c in cards:
+			if c.get("quoted", false) or c.get("kind", "") != "context":
+				continue
+			if c.get("subject", "") != person_id:
+				continue
+			if c.get("context_kind", "") == "work":
+				work_loc = c.get("data", {}).get("loc", "")
+			elif c.get("context_kind", "") == "haunt":
+				for hl in c.get("data", {}).get("locs", [c.get("data", {}).get("loc", "")]):
+					if hl != "" and hl not in haunts:
+						haunts.append(hl)
+		if work_loc != "" and work_loc in locs:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "works at " + C.LOCATIONS.get(work_loc, {}).get("name", work_loc)}
+		for hl in haunts:
+			if hl in locs:
+				return {"state": "matches", "weight": match_w, "missing": "", "reason": "frequents " + C.LOCATIONS.get(hl, {}).get("name", hl)}
+		if work_loc != "" and haunts.size() >= 2:
+			return {"state": "contradicts", "weight": contra_w, "missing": "", "reason": "work and both haunts outside trace"}
+		var missing_parts: Array = []
+		if work_loc == "":
+			missing_parts.append("work uncited")
+		if haunts.size() < 2:
+			missing_parts.append("%d haunt%s unknown/uncited" % [2 - haunts.size(), "s" if 2 - haunts.size() > 1 else ""])
+		return {"state": "unknown", "weight": unk_w, "missing": ", ".join(PackedStringArray(missing_parts)), "reason": ""}
+	elif fam == "quarter":
+		var hb: String = d.get("home_block", "")
+		var eb: String = d.get("evening_block", "")
+		var cited_home: String = ""
+		var evening_blocks: Array = []
+		for c in cards:
+			if c.get("quoted", false):
+				continue
+			if c.get("kind", "") == "context" and c.get("subject", "") == person_id:
+				if c.get("context_kind", "") == "home":
+					cited_home = c.get("block", c.get("data", {}).get("block", ""))
+				elif c.get("context_kind", "") == "work":
+					var phases: Array = c.get("data", {}).get("work_phases", [])
+					var wloc: String = c.get("data", {}).get("loc", "")
+					if C.EVENING in phases and C.LOCATIONS.has(wloc):
+						var wb: String = C.LOCATIONS[wloc]["block"]
+						if wb not in evening_blocks:
+							evening_blocks.append(wb)
+			elif c.get("kind", "") == "evening" and c.get("night", -1) == night and person_id in c.get("subjects", [c.get("subject", "")]):
+				var sb: String = c.get("block", "")
+				if sb != "" and sb not in evening_blocks:
+					evening_blocks.append(sb)
+		if cited_home != "" and cited_home == hb:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "lives on " + C.block_name(hb)}
+		if eb in evening_blocks:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "on %s on evening %d" % [C.block_name(eb), night]}
+		if cited_home != "" and cited_home != hb and not evening_blocks.is_empty() and not (eb in evening_blocks):
+			return {"state": "contradicts", "weight": contra_w, "missing": "", "reason": "lives elsewhere and spent evening %d off %s" % [night, C.block_name(eb)]}
+		var q_missing: Array = []
+		if cited_home == "":
+			q_missing.append("home uncited")
+		if evening_blocks.is_empty():
+			q_missing.append("evening %d unknown" % night)
+		return {"state": "unknown", "weight": unk_w, "missing": ", ".join(PackedStringArray(q_missing)), "reason": ""}
+	elif fam == "connection":
+		var victim: String = d.get("victim", "")
+		var vblock: String = d.get("victim_block", d.get("scene_block", ""))
+		var cited_home: String = ""
+		var has_bond: bool = false
+		var shared_day: bool = false
+		var victim_day_locs = {}
+		var person_day_phases = {}
+		for c in cards:
+			if c.get("quoted", false):
+				continue
+			if c.get("kind", "") == "context":
+				if c.get("context_kind", "") == "home" and c.get("subject", "") == person_id:
+					cited_home = c.get("block", c.get("data", {}).get("block", ""))
+				elif c.get("context_kind", "") == "bond":
+					var subs: Array = c.get("subjects", [])
+					if person_id in subs and victim in subs:
+						has_bond = true
+			elif c.get("kind", "") in ["location", "evening"] and int(c.get("day", c.get("night", -1))) == night:
+				var subs2: Array = c.get("subjects", [c.get("subject", "")])
+				if person_id in subs2 and victim in subs2:
+					shared_day = true
+				var ph_name: String = str(c.get("observed_at", {}).get("phase", ""))
+				var cloc: String = c.get("loc", "")
+				if victim in subs2 and cloc != "" and ph_name != "":
+					victim_day_locs[ph_name] = cloc
+				if person_id in subs2 and ph_name != "":
+					person_day_phases[ph_name] = cloc if cloc != "" else ("block:" + c.get("block", ""))
+		for ph_k in victim_day_locs:
+			if person_day_phases.get(ph_k, "") == victim_day_locs[ph_k]:
+				shared_day = true
+		if has_bond:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "known bond with victim"}
+		if cited_home != "" and cited_home == vblock:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "lives on " + C.block_name(vblock)}
+		if shared_day:
+			return {"state": "matches", "weight": match_w, "missing": "", "reason": "crossed paths on day %d" % night}
+		if cited_home != "" and cited_home != vblock and person_day_phases.size() >= 2:
+			return {"state": "contradicts", "weight": Tuning.Setup.TRACE_CONNECTION_MISS_WEIGHT, "missing": "", "reason": "no cited bond, home, or day-%d overlap" % night}
+		return {"state": "unknown", "weight": unk_w, "missing": "bonds or day-%d overlap unresolved" % night, "reason": ""}
+	return {"state": "unknown", "weight": 1.0, "missing": "", "reason": ""}
+
+static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int, all_cards: Array = []) -> float:
 	if card.get("quoted", false) and card.kind != "alibi":
 		return 1.0
 	var out: bool = not path.is_empty()
@@ -407,7 +723,8 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				return 1.0 if ((card.data.block in path) == (person in card.data.seen)) else 0.0
 		"trace":
 			if alignment == "demon":
-				# The generator is 60% killer-evening material when passers exist.
-				# Unknown public passers use a uniform background, never the referee list.
+				if card.get("data", {}).has("family"):
+					return 1.0 # Scored jointly per scene in _scene_score (single & two-trace aware).
+				# Legacy block-material fixture formula (retained for existing movement tests).
 				return (0.6 if card.data.material == evening else 0.0) + 0.4 / C.BLOCKS.size()
 	return 1.0

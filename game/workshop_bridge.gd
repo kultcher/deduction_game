@@ -41,12 +41,12 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 			input.public_events.append({"kind": "martyr", "subjects": card.subject.duplicate(), "by": card.get("martyr", card.subject[0]), "at": Evidence.stamp(card.get("when", {}))})
 	var numbers: Array = []
 	for number in selected:
-		_collect(g.board, number, numbers, input.arguments, input.issues, [])
+		_collect(g, number, numbers, input.arguments, input.issues, [])
 		if input.root == 0:
 			input.root = number
 	for number in numbers:
-		var card: Dictionary = g.board[number - 1]
-		if card.get("kind") != "deduction":
+		var card: Dictionary = g.receipt_by_number(number)
+		if not card.is_empty() and card.get("kind") != "deduction":
 			input.selected.append(number)
 			input.receipts.append({"card": card, "private": false})
 	if listener_id != "":
@@ -63,11 +63,15 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 				_listener(input, n, now)
 	return Evidence.normalize(input)
 
-static func _collect(board: Array, number, numbers: Array, arguments: Array, issues: Array, path: Array) -> void:
+static func _collect(g, number, numbers: Array, arguments: Array, issues: Array, path: Array) -> void:
 	if path.size() >= 64:
 		issues.append({"code": "argument_depth", "fact": str(number), "detail": "The live adapter's deduction-depth limit was reached."})
 		return
-	if not number is int or number <= 0 or number > board.size() or board[number - 1].get("deleted", false):
+	if not number is int or number == 0:
+		issues.append({"code": "missing_card", "fact": str(number), "detail": "Selected evidence is absent or deleted."})
+		return
+	var card: Dictionary = g.receipt_by_number(number)
+	if card.is_empty() or card.get("deleted", false):
 		issues.append({"code": "missing_card", "fact": str(number), "detail": "Selected evidence is absent or deleted."})
 		return
 	if number in path:
@@ -76,7 +80,6 @@ static func _collect(board: Array, number, numbers: Array, arguments: Array, iss
 	if number in numbers:
 		return
 	numbers.append(number)
-	var card: Dictionary = board[number - 1]
 	if card.get("kind") == "deduction":
 		var conclusion = {}
 		for key in ["type", "a", "b", "role", "night", "mod", "group", "card"]:
@@ -87,7 +90,7 @@ static func _collect(board: Array, number, numbers: Array, arguments: Array, iss
 		if card.has("workshop_case"):
 			arguments[-1]["workshop_case"] = card.workshop_case.duplicate(true)
 		for support in card.get("supports", []):
-			_collect(board, support, numbers, arguments, issues, path + [number])
+			_collect(g, support, numbers, arguments, issues, path + [number])
 
 static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 	input["listener"] = {"id": n.id, "name": n.name, "trust": n.trust, "own_gift": n.role,

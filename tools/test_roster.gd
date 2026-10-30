@@ -239,6 +239,7 @@ func _test_breathstealer() -> void:
 	var testimony: Array = w.begin_meeting()
 	_check(t.silenced and testimony.all(func(x): return x["who"] != t.id), "a silenced person says nothing at the meeting")
 	_check(Mind.defence_line(w, t).get("silent", false), "...not even in their own defence")
+	t.loc = "tavern"
 	bs.breath_last = t.id
 	var picked_again = 0
 	for i in range(30):
@@ -248,6 +249,17 @@ func _test_breathstealer() -> void:
 		if Evil.breath_target(w, bs) == t.id:
 			picked_again += 1
 	_check(picked_again == 0, "never the same person twice running")
+	bs.breath_last = ""
+	var saved_locs: Dictionary = {}
+	for m in w.living_good():
+		saved_locs[m.id] = m.loc
+		m.loc = "home:" + m.home_block
+	t.home_block = C.loc_block("tavern")
+	t.loc = "home:" + t.home_block
+	bs.loc = "tavern"
+	_check(Evil.breath_target(w, bs) == "", "Breathstealer cannot target someone inside their home")
+	for m in w.living_good():
+		m.loc = saved_locs[m.id]
 	w.day = 3
 	w.phase = C.EVENING
 	t.silenced = true

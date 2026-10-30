@@ -117,6 +117,24 @@ func add_card(number: int) -> void:
 	if is_collapsed():
 		_pulse()
 
+func add_profile_info(person_id: String, facet: String = "home_work") -> void:
+	if g == null or editor == null:
+		return
+	editor.add_profile_info(person_id, facet)
+	_flash = 1.0
+	handle.queue_redraw()
+	if is_collapsed():
+		_pulse()
+
+func add_circumstantial_hub() -> void:
+	if g == null or editor == null:
+		return
+	editor.add_circumstantial_hub()
+	_flash = 1.0
+	handle.queue_redraw()
+	if is_collapsed():
+		_pulse()
+
 func _pulse() -> void:
 	var tween = create_tween()
 	tween.tween_method(func(v): _flash = v; handle.queue_redraw(), 1.0, 0.0, 0.9)

@@ -41,6 +41,7 @@ var evil_plan = {}
 
 ## Dynamic locations (crime scenes). id -> {name, block, victim, day, trace_block, trace_true, why, searched}
 var scenes = {}
+var case_traces: Array = []         # canonical trace records rolled so far in this case
 var deaths_last_night: Array = []
 var executed_today = ""
 var executions: Array = []          # {day, id, nominator, yes, player_yes, player_nominated}
@@ -1257,6 +1258,199 @@ func _night_sightings() -> void:
 	if player_vigil != "":
 		dlog.add("player_vigil", "player", "", {"block": player_vigil, "seen": player_vigil_seen})
 
+func _has_public_bond(a_id: String, b_id: String) -> bool:
+	for rel in town_relationships:
+		if a_id in rel.get("people", []) and b_id in rel.get("people", []):
+			return true
+	return false
+
+func _shared_daytime_loc(a, b, check_day: int) -> bool:
+	for ph in [C.MORNING, C.AFTERNOON, C.EVENING]:
+		var la: String = str(a.history.get(time_key(check_day, ph), ""))
+		var lb: String = str(b.history.get(time_key(check_day, ph), ""))
+		if la != "" and la == lb and not la.begins_with("home:"):
+			return true
+	return false
+
+func actor_fits_trace_truth(actor, tr: Dictionary) -> bool:
+	match tr.get("trace_family", ""):
+		"locations":
+			var locs: Array = tr.get("locs", [])
+			if actor.work in locs:
+				return true
+			return actor.haunts.any(func(h): return h in locs)
+		"quarter":
+			var ev_loc: String = actor.history.get(time_key(int(tr.get("day", day)), C.EVENING), "home:" + actor.home_block)
+			return actor.home_block == tr.get("home_block", "") or loc_block(ev_loc) == tr.get("evening_block", "")
+		"connection":
+			var v_id: String = tr.get("victim", "")
+			var v = by_id.get(v_id)
+			if v == null:
+				return false
+			return actor.home_block == v.home_block or _has_public_bond(actor.id, v_id) or _shared_daytime_loc(actor, v, int(tr.get("day", day)))
+	return false
+
+func _loc_subsets_of_size(all_locs: Array, k: int) -> Array:
+	var out: Array = []
+	var m: int = all_locs.size()
+	if k == 2:
+		for i in range(m):
+			for j in range(i + 1, m):
+				out.append([all_locs[i], all_locs[j]])
+	elif k == 3:
+		for i in range(m):
+			for j in range(i + 1, m):
+				for r in range(j + 1, m):
+					out.append([all_locs[i], all_locs[j], all_locs[r]])
+	return out
+
+func _is_subset_or_superset(a: Array, b: Array) -> bool:
+	return a.all(func(x): return x in b) or b.all(func(x): return x in a)
+
+func _build_locations_trace(actor, v, slot: int, used_keys: Dictionary, prev_loc_sets: Array) -> Dictionary:
+	var all_locs: Array = C.LOCATIONS.keys()
+	all_locs.sort()
+	var actor_spots: Array = [actor.work] + actor.haunts
+	var want_scent: bool = not chance(Tuning.Setup.TRACE_TOKEN_PROB)
+	var k: int = 3 if want_scent else 2
+	var candidates: Array = []
+	for comb in _loc_subsets_of_size(all_locs, k):
+		if not comb.any(func(l): return l in actor_spots):
+			continue
+		var tkey: String = "locations:" + ":".join(PackedStringArray(comb))
+		if used_keys.has(tkey):
+			continue
+		candidates.append(comb)
+	if candidates.is_empty():
+		var alt_k: int = 2 if k == 3 else 3
+		for comb in _loc_subsets_of_size(all_locs, alt_k):
+			if comb.any(func(l): return l in actor_spots):
+				candidates.append(comb)
+	var non_subset: Array = candidates.filter(func(comb): return prev_loc_sets.all(func(prev): return not _is_subset_or_superset(comb, prev)))
+	var pool: Array = non_subset if not non_subset.is_empty() else candidates
+	var low_overlap: Array = pool.filter(func(comb): return prev_loc_sets.all(func(prev): return comb.filter(func(x): return x in prev).size() <= 1))
+	if not low_overlap.is_empty():
+		pool = low_overlap
+	# Prefer candidates whose cast match count lands near ~70% of the town (6..8 of 10, 4..6 of 7).
+	var target_lo: int = maxi(3, int(floor(npcs.size() * 0.6)))
+	var target_hi: int = maxi(target_lo + 1, int(ceil(npcs.size() * 0.85)))
+	var in_band: Array = pool.filter(func(comb):
+		var cnt: int = npcs.filter(func(p): return p.work in comb or p.haunts.any(func(h): return h in comb)).size()
+		return cnt >= target_lo and cnt <= target_hi)
+	var chosen: Array = pick(in_band if not in_band.is_empty() else pool)
+	var is_scent: bool = chosen.size() == 3
+	var label: String = C.trace_scent_label(chosen) if is_scent else C.trace_token_label(chosen)
+	var places: String = C.loc_list_or(chosen)
+	var scene_prose: String
+	var card_text: String
+	if is_scent:
+		scene_prose = "Near the body, a distinct scent of %s clings to the threshold; you smell that on folk who frequent %s." % [label, places]
+		card_text = "At %s's scene: scent of %s (%s)." % [v.name, label, places]
+	else:
+		scene_prose = "Near the body, caught by the threshold, lies %s; folk carry those around %s." % [label, places]
+		card_text = "At %s's scene: %s (%s)." % [v.name, label, places]
+	return {
+		"trace_family": "locations",
+		"trace_subtype": "scent" if is_scent else "token",
+		"trace_key": "locations:" + ":".join(PackedStringArray(chosen)),
+		"trace_slot": slot,
+		"scene_trace_count": 1,
+		"day": day,
+		"victim": v.id,
+		"locs": chosen.duplicate(),
+		"item_label": label,
+		"scene_prose": scene_prose,
+		"card_text": card_text,
+		"actor": actor.id,
+	}
+
+func _build_quarter_trace(actor, v, slot: int, used_keys: Dictionary) -> Dictionary:
+	var ev_loc: String = actor.history.get(time_key(day, C.EVENING), "home:" + actor.home_block)
+	var ev_block: String = loc_block(ev_loc)
+	var pairs: Array = []
+	if ev_block != actor.home_block:
+		pairs.append([actor.home_block, ev_block])
+	else:
+		for other_b in C.BLOCKS.keys():
+			if other_b != actor.home_block:
+				pairs.append([actor.home_block, other_b])
+				pairs.append([other_b, ev_block])
+	var fresh: Array = pairs.filter(func(pr): return not used_keys.has("quarter:%s:%s:%d" % [pr[0], pr[1], day]))
+	var chosen_pair: Array = pick(fresh if not fresh.is_empty() else pairs)
+	var hb: String = chosen_pair[0]
+	var eb: String = chosen_pair[1]
+	var h_tok: String = C.QUARTER_TOKENS.get(hb, C.BLOCKS[hb]["trace"])
+	var e_mat: String = C.BLOCKS[eb]["trace"]
+	var item_lbl: String = "%s dusted with %s" % [h_tok, e_mat]
+	return {
+		"trace_family": "quarter",
+		"trace_subtype": "home_or_evening",
+		"trace_key": "quarter:%s:%s:%d" % [hb, eb, day],
+		"trace_slot": slot,
+		"scene_trace_count": 1,
+		"day": day,
+		"victim": v.id,
+		"home_block": hb,
+		"evening_block": eb,
+		"item_label": item_lbl,
+		"scene_prose": "Near the body lies %s, pointing to someone who lives on %s or spent day %d's evening on %s." % [item_lbl, C.block_name(hb), day, C.block_name(eb)],
+		"card_text": "At %s's scene: %s (lives on %s or D%d evening on %s)." % [v.name, h_tok, C.block_name(hb), day, C.block_name(eb)],
+		"actor": actor.id,
+	}
+
+func _build_connection_trace(actor, v, slot: int) -> Dictionary:
+	return {
+		"trace_family": "connection",
+		"trace_subtype": "victim_tie",
+		"trace_key": "connection:%s:%d" % [v.id, day],
+		"trace_slot": slot,
+		"scene_trace_count": 1,
+		"day": day,
+		"victim": v.id,
+		"victim_block": v.home_block,
+		"item_label": "two pewter cups and an unforced bolt",
+		"scene_prose": "Near the body, two pewter cups sit by the hearth and the door-bolt was drawn from within, pointing to a %s neighbour, a bond with %s, or day-%d company." % [C.block_name(v.home_block), v.name, day],
+		"card_text": "At %s's scene: unforced bolt & two cups (%s resident, bond, or D%d company)." % [v.name, C.block_name(v.home_block), day],
+		"actor": actor.id,
+	}
+
+func build_actor_trace(actor, v, slot: int = 0) -> Dictionary:
+	var used_keys = {}
+	var seen_families = {}
+	var prev_loc_sets: Array = []
+	for prev in case_traces:
+		used_keys[prev.get("trace_key", "")] = true
+		seen_families[prev.get("trace_family", "")] = true
+		if prev.get("trace_family", "") == "locations":
+			prev_loc_sets.append(prev.get("locs", []))
+	var family_options: Array = []
+	var loc_w: float = Tuning.Setup.TRACE_LOCATIONS_BASE_WEIGHT * (Tuning.Setup.TRACE_FRESH_FAMILY_WEIGHT if not seen_families.has("locations") else 1.0)
+	family_options.append({"family": "locations", "weight": loc_w})
+	var q_w: float = Tuning.Setup.TRACE_QUARTER_BASE_WEIGHT * (Tuning.Setup.TRACE_FRESH_FAMILY_WEIGHT if not seen_families.has("quarter") else 1.0)
+	family_options.append({"family": "quarter", "weight": q_w})
+	var conn_key: String = "connection:%s:%d" % [v.id, day]
+	if not used_keys.has(conn_key) and (actor.home_block == v.home_block or _has_public_bond(actor.id, v.id) or _shared_daytime_loc(actor, v, day)):
+		var c_w: float = Tuning.Setup.TRACE_CONNECTION_BASE_WEIGHT * (Tuning.Setup.TRACE_FRESH_FAMILY_WEIGHT if not seen_families.has("connection") else 1.0)
+		family_options.append({"family": "connection", "weight": c_w})
+	var total_w = 0.0
+	for opt in family_options:
+		total_w += float(opt.weight)
+	var roll: float = rng.randf() * total_w
+	var chosen_family: String = family_options[-1].family
+	var acc = 0.0
+	for opt in family_options:
+		acc += float(opt.weight)
+		if roll <= acc:
+			chosen_family = opt.family
+			break
+	match chosen_family:
+		"quarter":
+			return _build_quarter_trace(actor, v, slot, used_keys)
+		"connection":
+			return _build_connection_trace(actor, v, slot)
+		_:
+			return _build_locations_trace(actor, v, slot, used_keys, prev_loc_sets)
+
 func _kill(v) -> void:
 	v.alive = false
 	v.death_day = day
@@ -1267,24 +1461,41 @@ func _kill(v) -> void:
 	var d = demon()
 	var ev_loc: String = d.history.get(time_key(day, C.EVENING), "home:" + d.home_block)
 	var true_block: String = loc_block(ev_loc)
-	var trace_block = true_block
-	var trace_true = true
-	var why = "Trace matches where the demon spent the evening (%s)." % true_block
-	# A misleading trace has a cause: someone else passed the cottage that night and left
-	# traces from where *they* spent the evening.
 	var passers: Array = night_walkers.filter(func(wk): return wk["id"] != demon_id and wk["id"] != v.id and v.home_block in wk.get("path", [wk["block"]]))
-	if not passers.is_empty() and chance(Tuning.Setup.MISLEADING_TRACE_CHANCE):
+	var demon_trace: Dictionary = build_actor_trace(d, v, 0)
+	case_traces.append(demon_trace.duplicate(true))
+	var traces: Array = [demon_trace]
+	var passer_actor_id: String = ""
+	if not passers.is_empty() and chance(Tuning.Setup.EXTRA_TRACE_CHANCE):
 		var wk: Dictionary = pick(passers)
-		var o = by_id[wk["id"]]
-		var o_block: String = loc_block(o.history.get(time_key(day, C.EVENING), "home:" + o.home_block))
-		if o_block != true_block:
-			trace_true = false
-			trace_block = o_block
-			why = "Misleading trace: %s passed the cottage that night (%s) and left traces from their evening on %s; the demon spent the evening on %s." % [o.name, wk["why"], o_block, true_block]
+		var passer = by_id[wk["id"]]
+		passer_actor_id = passer.id
+		var passer_trace: Dictionary = build_actor_trace(passer, v, 1)
+		case_traces.append(passer_trace.duplicate(true))
+		if chance(0.5):
+			traces = [passer_trace, demon_trace]
+		else:
+			traces = [demon_trace, passer_trace]
+	for idx in range(traces.size()):
+		traces[idx]["trace_slot"] = idx
+		traces[idx]["scene_trace_count"] = traces.size()
+		if idx == 1:
+			var ptxt: String = str(traces[idx].get("scene_prose", ""))
+			if ptxt.begins_with("Near the body, "):
+				traces[idx]["scene_prose"] = "A second detail catches your eye: " + ptxt.trim_prefix("Near the body, ")
+			elif ptxt.begins_with("Near the body "):
+				traces[idx]["scene_prose"] = "A second detail catches your eye: you also notice " + ptxt.trim_prefix("Near the body ")
+	var why = "Scene trace (%s / %s) generated from %s." % [demon_trace.trace_family, demon_trace.trace_subtype, d.name]
+	if passer_actor_id != "":
+		why += " Extra trace added by passing night-walker %s." % by_id[passer_actor_id].name
 	var sid = "scene_" + v.id
 	scenes[sid] = {"name": "%s's cottage" % v.name, "block": v.home_block, "victim": v.id, "day": day,
-		"trace_block": trace_block, "trace_true": trace_true, "why": why, "searched": false}
-	dlog.add("kill", demon_id, v.id, {"role": v.role, "scene": sid, "trace_block": trace_block, "trace_true": trace_true}, why)
+		"trace_block": true_block, "trace_true": true, "traces": traces, "trace": demon_trace,
+		"passer_ids": passers.map(func(wk): return wk["id"]), "passer_trace_actor": passer_actor_id,
+		"why": why, "searched": false}
+	dlog.add("kill", demon_id, v.id, {"role": v.role, "scene": sid, "trace_family": demon_trace.trace_family,
+		"trace_subtype": demon_trace.trace_subtype, "trace_key": demon_trace.trace_key,
+		"trace_count": traces.size(), "passer_trace_actor": passer_actor_id, "trace_true": true}, why)
 	public_event("demon_death", [v.id], "town")
 	for n in npcs:
 		if not n.alive:

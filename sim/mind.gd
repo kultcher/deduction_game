@@ -66,7 +66,11 @@ static func _challenged(n, response: Dictionary, card: Dictionary) -> Dictionary
 	for i in range(response["lines"].size()):
 		var line = response["lines"][i]
 		if line is Dictionary and line.get("speaker", "") == n.id:
-			response["lines"][i] = voiced(n, "doubted", line["text"], fact_id(card), {"challenged": true})
+			# Rephrasing changes delivery only. Keep the approved statement and any
+			# canonical payload/provenance attached to the original speech event.
+			var rephrased: Dictionary = line.duplicate(true)
+			rephrased["text"] = voiced(n, "doubted", line["text"], fact_id(card), {"challenged": true})["text"]
+			response["lines"][i] = rephrased
 			break
 	return response
 
@@ -416,8 +420,12 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 		var outside: float = state.outside.get(target_id, old)
 		outside += delta
 		state.outside[target_id] = outside
-		nv = outside + state.requested.get(target_id, 0.0)
-		state.applied[target_id] = nv - outside
+		var stage1_req: float = state.requested.get(target_id, 0.0)
+		var stage2_req: float = state.get("circumstantial_requested", {}).get(target_id, 0.0)
+		nv = outside + stage1_req + stage2_req
+		state.applied[target_id] = (outside + stage1_req) - outside
+		if state.get("circumstantial_requested", {}).has(target_id):
+			state.circumstantial_applied[target_id] = nv - (outside + stage1_req)
 	listener.suspicion[target_id] = nv
 	w.dlog.trace_event("value_change", listener.id, target_id, {"quantity": "suspicion",
 		"from": old, "to": nv, "requested_delta": delta, "applied_delta": nv - old,
@@ -552,7 +560,19 @@ static func fact_id(card: Dictionary) -> String:
 			return WorkshopLedger.Evidence.reading_key(WorkshopLedger.Evidence.normalize_card(card))
 		"sighting", "vigil", "alibi", "secret":
 			return "%s:%s:%s:%d:%d:%s" % [k, card.get("source", ""), ss, card.get("day", -1), card.get("phase", -1), card.get("block", "")]
+		"home":
+			return "home:%s:%s" % [ss, card.get("block", "")]
+		"work":
+			return "work:%s:%s" % [ss, card.get("loc", "")]
+		"haunt":
+			return "haunt:%s:%s" % [ss, ",".join(PackedStringArray(card.get("locs", [card.get("loc", "")])))]
+		"trait":
+			return "trait:%s:%s:%s:%s" % [ss, card.get("trait", ""), card.get("tier", ""), "bereaved" if card.get("withdrawn", false) else "base"]
+		"bond":
+			return "bond:%s:%s" % [card.get("bond_kind", ""), ss]
 		"trace":
+			if card.get("scene", "") != "" and (card.has("trace_slot") or card.get("trace_family", "") != ""):
+				return "trace:%s:%d" % [card.get("scene", ""), int(card.get("trace_slot", 0))]
 			return "trace:%s:%d" % [card.get("block", ""), card.get("day", -1)]
 		"claim":
 			return "claim:%s:%s" % [card.get("source", ""), card.get("role", "")]
@@ -1108,6 +1128,9 @@ static func refresh_consensus(w, l, target: String) -> void:
 static func refresh_all_consensus(w) -> void:
 	MindMeeting.refresh_all_consensus(w)
 
+static func nomination_cooloff(w, nominator_id: String, target_id: String) -> float:
+	return MindMeeting.nomination_cooloff(w, nominator_id, target_id)
+
 static func _good_nomination(w, n, m: Dictionary, block: String):
 	return MindMeeting._good_nomination(w, n, m, block)
 
@@ -1150,8 +1173,11 @@ static func answer_hint(w, n) -> Dictionary:
 static func _hint_decline(w, n, t) -> Dictionary:
 	return MindDialogue._hint_decline(w, n, t)
 
-static func press(w, n, card: Dictionary) -> Dictionary:
-	return MindDialogue.press(w, n, card)
+static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dictionary:
+	return MindDialogue.press(w, n, card, known_haunts)
+
+static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}, already_counted: bool = false) -> Dictionary:
+	return MindDialogue.react_to_trace(w, n, card, known_haunts, already_counted)
 
 static func _gift_outing(w, n, night: int) -> bool:
 	return MindDialogue._gift_outing(w, n, night)
@@ -1288,7 +1314,7 @@ static func card_strength(w, card: Dictionary, suspect) -> float:
 			return 0.0
 		"trace":
 			return 0.7
-		"home", "haunt":
+		"home", "work", "haunt", "trait", "bond":
 			return 0.0
 		"refusal":
 			# Fear is a better reason than none: it softens, but doesn't clear, the silence.
@@ -1357,7 +1383,11 @@ static func card_weight(w, n, suspect, card: Dictionary) -> Dictionary:
 		cred = 0.75  # their credibility is applied live by the ledger (rel below)
 		cred_why = "source %s" % src
 	if card.get("kind", "") == "trace":
-		relevance = 1.0 if suspect.home_block == card.get("block", "") or w.loc_block(suspect.work) == card.get("block", "") else 0.3
+		if card.get("trace_family", "") != "":
+			var tr_check = {"trace_family": card.get("trace_family", ""), "locs": card.get("locs", []), "home_block": card.get("trace_home_block", ""), "evening_block": card.get("trace_evening_block", ""), "victim": card.get("victim", ""), "day": card.get("day", -1)}
+			relevance = 0.85 if w.actor_fits_trace_truth(suspect, tr_check) else 0.25
+		else:
+			relevance = 1.0 if suspect.home_block == card.get("block", "") or w.loc_block(suspect.work) == card.get("block", "") else 0.3
 	var cls = evidence_class(card)
 	var ins = trait_of(n, "insight")
 	var class_w = {"speech": lerpf(1.0, 0.2, ins), "circumstantial": lerpf(1.0, 0.6, ins), "concrete": 1.0}[cls]

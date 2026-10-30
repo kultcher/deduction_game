@@ -6,6 +6,10 @@ const Assess = preload("res://workshop/live_assessment.gd")
 
 static func view(g) -> Dictionary:
 	var numbers: Array = g.board.filter(func(c): return not c.get("deleted", false) and c.kind != "deduction").map(func(c): return c.n)
+	var profile_ids = {}
+	for pr in g.profile_receipts:
+		numbers.append(pr.n)
+		profile_ids[Evidence.normalize_card(pr).id] = true
 	var snapshot = Bridge.capture(g, numbers)
 	var cards: Array = []
 	for receipt in snapshot.evidence:
@@ -41,7 +45,7 @@ static func view(g) -> Dictionary:
 			"reported_at": receipt.reported_at if receipt.reported_at != null else {"day": "?"},
 			"learned_at": receipt.learned_at if receipt.learned_at != null else {"day": "?"},
 			"acquired_day": receipt.learned_at.day if receipt.learned_at != null else snapshot.now.day,
-			"text": receipt.text, "support_note": note})
+			"text": receipt.text, "support_note": note, "profile_receipt": profile_ids.has(receipt.id)})
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
 			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; transmission/source modifiers need separate attribution" if activity.has("relay_source") else note
@@ -49,6 +53,7 @@ static func view(g) -> Dictionary:
 				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Weak teller testimony · no original-source identity or gift proof"
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
 	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
+		"profile_facets": _profile_facets(g),
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": "Original alignment",
 		"world_options": {"modifiers": snapshot.rules.modifier_options}, "live": true, "live_activity": true,
 		"timeline": Assess.History.from_events(snapshot.public_events)}
@@ -59,11 +64,57 @@ static func view(g) -> Dictionary:
 
 ## Resolve exact original facts afresh. Missing/deleted evidence is a blocker, never
 ## permission to file a weaker argument with fewer roots.
+static func _profile_facets(g) -> Dictionary:
+	var out = {}
+	var C = Assess.C
+	for n in g.w.npcs:
+		var hw_recs: Array = g.profile_receipts_for(n.id, "home_work")
+		var haunt_recs: Array = g.profile_receipts_for(n.id, "haunts")
+		var trait_recs: Array = g.profile_receipts_for(n.id, "personality")
+		var bond_recs: Array = g.profile_receipts_for(n.id, "bonds")
+		var haunt_names: Array = haunt_recs.map(func(c): return g.w.loc_name(c.get("loc", c.get("locs", [""])[0])))
+		var latest_traits = {}
+		for c in trait_recs:
+			latest_traits[c.get("trait", "")] = c.get("tier", "?") + (" (bereaved)" if c.get("withdrawn", false) else "")
+		var trait_parts: Array = []
+		for k in C.TRAITS:
+			if latest_traits.has(k):
+				trait_parts.append("%s: %s" % [k.capitalize(), latest_traits[k]])
+		var bond_parts: Array = []
+		for c in bond_recs:
+			var others: Array = c.get("subject", []).filter(func(pid): return pid != n.id)
+			if not others.is_empty() and g.w.by_id.has(others[0]):
+				bond_parts.append("%s with %s" % ["Close" if c.get("bond_kind") == "friend" else "At odds", g.w.by_id[others[0]].name])
+		out[n.id] = {
+			"home_work": {
+				"unlocked": not hw_recs.is_empty(),
+				"summary": "Lives on %s · %s (%s at %s)" % [C.block_name(n.home_block), n.occupation.capitalize(), C.phase_list(n.work_phases), g.w.loc_name(n.work)],
+				"receipt_ids": hw_recs.map(func(c): return Evidence.normalize_card(c).id),
+			},
+			"haunts": {
+				"unlocked": not haunt_recs.is_empty(),
+				"summary": ("Often at " + ", ".join(PackedStringArray(haunt_names)) + (" (1 of 2 known)" if haunt_recs.size() < 2 else " (both known)")) if not haunt_recs.is_empty() else "Unknown (ask around town)",
+				"receipt_ids": haunt_recs.map(func(c): return Evidence.normalize_card(c).id),
+			},
+			"personality": {
+				"unlocked": not trait_recs.is_empty(),
+				"summary": ", ".join(PackedStringArray(trait_parts)) if not trait_parts.is_empty() else "Unobserved (talk or ask around)",
+				"receipt_ids": trait_recs.map(func(c): return Evidence.normalize_card(c).id),
+			},
+			"bonds": {
+				"unlocked": not bond_recs.is_empty(),
+				"summary": ", ".join(PackedStringArray(bond_parts)) if not bond_parts.is_empty() else "None learned yet",
+				"receipt_ids": bond_recs.map(func(c): return Evidence.normalize_card(c).id),
+			},
+		}
+	return out
+
 static func supports(g, value: Dictionary) -> Dictionary:
 	var numbers: Array = []
 	var missing: Array = []
+	var pool: Array = g.all_receipts()
 	for id in value.cards:
-		var matches: Array = g.board.filter(func(c): return c.kind != "deduction" and not c.get("deleted", false) and Evidence.normalize_card(c).id == id)
+		var matches: Array = pool.filter(func(c): return c.kind != "deduction" and not c.get("deleted", false) and Evidence.normalize_card(c).id == id)
 		if matches.is_empty():
 			missing.append("Missing or changed original evidence: " + id)
 		else:
@@ -280,6 +331,150 @@ static func connections(g, value: Dictionary, limit: int = 5, budget: int = 20) 
 		out.append(c)
 	out.sort_custom(func(a, b): return absf(a.move) > absf(b.move))
 	return out.slice(0, limit)
+
+## Listener-independent investigative breakdown of how the cited traces + profile/sighting
+## receipts in `value` narrow the townsfolk, without revealing listener persuasion.
+static func trace_summary(g, value: Dictionary) -> Dictionary:
+	var input = snapshot(g, value)
+	input.private_evidence = []
+	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
+	input.listener = {"id": "ghost", "name": "Trace check", "trust": 0.5, "confidence": 0.5,
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "honesty": {}, "own_gift": "", "legacy_evidence": []}
+	var prepared = Assess.prepare(input)
+	if not prepared.ready:
+		return {"has_traces": false}
+	var Solver = preload("res://workshop/solver.gd")
+	var Activity = preload("res://workshop/live_activity.gd")
+	var cited_cards: Array = Solver.selected(prepared.view, prepared.case)
+	var struct_traces: Array = cited_cards.filter(func(c): return c.kind == "trace" and c.get("data", {}).has("family"))
+	if struct_traces.is_empty():
+		return {"has_traces": false}
+	# Group cited structured traces by scene so two-trace scenes evaluate as (Killer / Passer) pairs.
+	var scenes_map: Dictionary = {}
+	var scene_order: Array = []
+	for tc in struct_traces:
+		var sc_id: String = str(tc.data.get("scene", tc.id))
+		if not scenes_map.has(sc_id):
+			scenes_map[sc_id] = []
+			scene_order.append(sc_id)
+		scenes_map[sc_id].append(tc)
+	var compatible: Array = []
+	var unresolved: Array = []
+	var contradicted: Array = []
+	for p in prepared.view.people:
+		if not p.get("alive", true):
+			continue
+		var scene_contra = false
+		var missing_notes: Array = []
+		for sc_id in scene_order:
+			var group: Array = scenes_map[sc_id]
+			if group.size() >= 2:
+				var e0: Dictionary = Activity.evaluate_trace_for_person(prepared.view, cited_cards, group[0], p.id)
+				var e1: Dictionary = Activity.evaluate_trace_for_person(prepared.view, cited_cards, group[1], p.id)
+				if e0.state == "contradicts" and e1.state == "contradicts":
+					scene_contra = true
+				elif e0.state != "matches" and e1.state != "matches":
+					for evx in [e0, e1]:
+						if evx.state == "unknown" and evx.missing != "" and evx.missing not in missing_notes:
+							missing_notes.append(evx.missing)
+			else:
+				var ev: Dictionary = Activity.evaluate_trace_for_person(prepared.view, cited_cards, group[0], p.id)
+				if int(group[0].data.get("scene_trace_count", 1)) >= 2 and ev.state != "matches":
+					var note = "other scene trace uncited"
+					if note not in missing_notes:
+						missing_notes.append(note)
+				elif ev.state == "contradicts":
+					scene_contra = true
+				elif ev.state == "unknown" and ev.missing != "" and ev.missing not in missing_notes:
+					missing_notes.append(ev.missing)
+		if scene_contra:
+			contradicted.append(p.name)
+		elif not missing_notes.is_empty():
+			unresolved.append("%s (%s)" % [p.name, "; ".join(PackedStringArray(missing_notes))])
+		else:
+			compatible.append(p.name)
+	var pairing_lines: Array = []
+	for sc_id in scene_order:
+		var group: Array = scenes_map[sc_id]
+		var t0: Dictionary = group[0]
+		var total_at_scene: int = int(t0.data.get("scene_trace_count", group.size()))
+		if group.size() == 1 and total_at_scene >= 2:
+			pairing_lines.append("• Two-trace scene note: only 1 of 2 traces from this cottage is linked (50% passer chance until paired).")
+		elif group.size() >= 2:
+			var t1: Dictionary = group[1]
+			var night: int = int(t0.get("night", 1))
+			var sblock: String = str(t0.data.get("scene_block", ""))
+			var victim_id: String = str(t0.data.get("victim", ""))
+			var sighted_walkers: Array = []
+			for p in prepared.view.people:
+				if p.id == victim_id:
+					continue
+				if Activity.crossing_probability(prepared.view, cited_cards, p, night, "good", sblock) >= 0.75:
+					sighted_walkers.append(p)
+			if not sighted_walkers.is_empty():
+				for wk in sighted_walkers:
+					var w_e0: String = Activity.evaluate_trace_for_person(prepared.view, cited_cards, t0, wk.id).state
+					var w_e1: String = Activity.evaluate_trace_for_person(prepared.view, cited_cards, t1, wk.id).state
+					if w_e1 == "matches" and w_e0 == "contradicts":
+						pairing_lines.append("• Scene pairing: %s (possible walker) could account for trace 2, leaving trace 1 as a possible killer trace." % wk.name)
+					elif w_e0 == "matches" and w_e1 == "contradicts":
+						pairing_lines.append("• Scene pairing: %s (possible walker) could account for trace 1, leaving trace 2 as a possible killer trace." % wk.name)
+					elif w_e0 == "matches" and w_e1 == "matches":
+						pairing_lines.append("• Scene pairing: %s (possible walker) fits both traces; either trace could still be the killer's." % wk.name)
+			else:
+				pairing_lines.append("• Two-trace scene: 1 trace is the killer's and 1 is a passing night-walker's (link sightings or Watch reports on %s to separate them)." % Assess.C.block_name(sblock))
+	var lines: Array = ["Trace narrowing across living townsfolk (%d cited trace%s):" % [struct_traces.size(), "s" if struct_traces.size() > 1 else ""]]
+	lines.append("• Fits cited scene trace(s): " + (", ".join(PackedStringArray(compatible)) if not compatible.is_empty() else "none confirmed yet"))
+	lines.append("• Unresolved (missing info): " + (", ".join(PackedStringArray(unresolved)) if not unresolved.is_empty() else "none"))
+	lines.append("• Pushed against (3:1): " + (", ".join(PackedStringArray(contradicted)) if not contradicted.is_empty() else "none"))
+	lines.append_array(pairing_lines)
+	return {
+		"has_traces": true,
+		"compatible": compatible,
+		"unresolved": unresolved,
+		"contradicted": contradicted,
+		"pairings": pairing_lines,
+		"text": "\n".join(PackedStringArray(lines)),
+	}
+
+## Player-facing summary of Stage 2 Circumstantial Evidence hubs compiled in `value`.
+static func circumstantial_summary(g, value: Dictionary) -> Dictionary:
+	var hubs: Array = value.get("circumstantial", [])
+	if hubs.is_empty():
+		return {"has_hub": false}
+	var input = snapshot(g, value)
+	input.private_evidence = []
+	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
+	input.listener = {"id": "ghost", "name": "Hub check", "trust": 0.5, "confidence": 0.5,
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "honesty": {}, "own_gift": "", "legacy_evidence": []}
+	var prepared = Assess.prepare(input)
+	if not prepared.ready:
+		return {"has_hub": false}
+	var Circumstantial = preload("res://workshop/circumstantial.gd")
+	var Ghost = preload("res://workshop/ghost_juror.gd")
+	var ghost: Dictionary = Ghost.live(input)
+	var lines: Array = ["Circumstantial Evidence Hub (Stage 2 social framing, max +0.015/incident, +0.045 cap):"]
+	var total_incidents: int = 0
+	for hub in hubs:
+		var t: String = str(hub.get("target", ""))
+		var tname: String = g.w.by_id[t].name if g.w.by_id.has(t) else t
+		var post_susp: Dictionary = {}
+		for p in prepared.view.people:
+			post_susp[p.id] = float(ghost.get("proposal", {}).get("effects", {}).get(p.id, {}).get("after", 0.1)) if ghost.get("ready", false) else 0.1
+		var default_trust: Dictionary = {}
+		for p in prepared.view.people:
+			default_trust[p.id] = 0.5
+		var extracted: Dictionary = Circumstantial.extract_hub_incidents(prepared.view, hub.get("cards", []), t, post_susp, default_trust, [], value.get("disputes", []))
+		for k in extracted.incidents:
+			total_incidents += 1
+			lines.append("• %s: %s" % [tname, extracted.incidents[k].label])
+		if extracted.incidents.is_empty():
+			lines.append("• %s: listener-dependent (depends on each listener's trust/suspicions and Stage 1 case strength; avoid unrelated padding)." % tname)
+	return {
+		"has_hub": true,
+		"incident_count": total_incidents,
+		"text": "\n".join(PackedStringArray(lines)),
+	}
 
 static func _mentions(card: Dictionary) -> Array:
 	var out: Array = []

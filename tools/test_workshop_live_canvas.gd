@@ -32,7 +32,16 @@ func _run() -> void:
 	var rng: int = g.w.rng.state
 	var view = Live.view(g)
 	check(g.w.rng.state == rng, "building the live library does not advance the world RNG")
-	check(view.cards.size() == g.board.filter(func(c): return c.kind != "deduction" and not c.get("deleted", false)).size(), "all real board evidence, including unsupported cards, appears in the live library")
+	var board_ids: Array = g.board.filter(func(c): return c.kind != "deduction" and not c.get("deleted", false)).map(func(c): return Live.Evidence.normalize_card(c).id)
+	var library_board_ids: Array = view.cards.filter(func(c): return not c.get("profile_receipt", false)).map(func(c): return c.id)
+	board_ids.sort()
+	library_board_ids.sort()
+	check(library_board_ids == board_ids, "all real board evidence, including unsupported cards, appears in the live library")
+	var profile_ids: Array = g.profile_receipts.map(func(c): return Live.Evidence.normalize_card(c).id)
+	var library_profile_ids: Array = view.cards.filter(func(c): return c.get("profile_receipt", false)).map(func(c): return c.id)
+	profile_ids.sort()
+	library_profile_ids.sort()
+	check(library_profile_ids == profile_ids, "hidden profile receipts remain separately identified in the live library")
 	check(not JSON.stringify(view).contains("true_role") and not view.has("truth"), "the live canvas contains player receipts rather than hidden roles")
 	var board = Canvas.new(view)
 	var root_id: String = board.selected

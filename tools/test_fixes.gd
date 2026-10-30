@@ -85,27 +85,29 @@ func _silenced_speakers() -> void:
 	_check(not Mind.gossip(w)["facts"].is_empty(), "an NPC can supply tavern gossip again once silence ends")
 
 func _victim_trace() -> void:
-	var all_true = true
-	var other_passers_can_mislead = false
+	var victim_excluded = true
+	var demon_always_matches = true
+	var extra_passer_spawned = false
 	for seed_v in range(7140, 7170):
 		var g = _game(seed_v)
 		var w = g.w
 		var victim = w.living_good()[0]
 		var d = w.demon()
-		var other_block: String = C.BLOCKS.keys().filter(func(b): return b != d.home_block)[0]
-		d.history[w.time_key(w.day, C.EVENING)] = "home:" + d.home_block
-		victim.history[w.time_key(w.day, C.EVENING)] = "home:" + other_block
 		w.night_walkers = [{"id": victim.id, "block": victim.home_block, "path": [victim.home_block], "why": "keeping watch"}]
 		w._kill(victim)
-		all_true = all_true and w.scenes["scene_" + victim.id]["trace_true"]
+		var sc1: Dictionary = w.scenes["scene_" + victim.id]
+		victim_excluded = victim_excluded and sc1["traces"].size() == 1 and (victim.id not in sc1.get("passer_ids", []))
+		demon_always_matches = demon_always_matches and w.actor_fits_trace_truth(d, sc1["traces"][0])
 		var next_victim = w.living_good()[0]
 		var passer = w.living_good()[1]
-		passer.history[w.time_key(w.day, C.EVENING)] = "home:" + other_block
 		w.night_walkers = [{"id": passer.id, "block": next_victim.home_block, "path": [next_victim.home_block], "why": "passing by"}]
 		w._kill(next_victim)
-		other_passers_can_mislead = other_passers_can_mislead or not w.scenes["scene_" + next_victim.id]["trace_true"]
-	_check(all_true, "a victim's own night walk cannot create a misleading trace at their cottage")
-	_check(other_passers_can_mislead, "other passers can still leave misleading traces")
+		var sc2: Dictionary = w.scenes["scene_" + next_victim.id]
+		demon_always_matches = demon_always_matches and sc2["traces"].any(func(t): return w.actor_fits_trace_truth(d, t))
+		if sc2["traces"].size() == 2 and sc2["traces"].any(func(t): return w.actor_fits_trace_truth(passer, t)):
+			extra_passer_spawned = true
+	_check(victim_excluded, "a victim's own night walk never spawns a second passer trace at their cottage")
+	_check(demon_always_matches and extra_passer_spawned, "Demon trace is always present and eligible passers can add a second trace")
 
 func _roads() -> void:
 	var direct = true
@@ -117,13 +119,12 @@ func _roads() -> void:
 
 func _home_cards() -> void:
 	var g = _game(7101)
-	var homes: Array = g.board.filter(func(c): return c["kind"] == "home")
-	_check(homes.size() == g.w.npcs.size(), "one home card per resident at the start")
-	_check(homes.all(func(c): return g.w.by_id[c["subject"][0]].home_block == c["block"]), "home cards say where each person really lives")
-	var n = g.w.npcs[0]
-	g.w.by_id[n.id].busy_with = ""
-	var r = g._route_present(n, str(homes[0]["n"]))
-	_check(r.has("flat"), "a home card can't be presented to anyone")
+	var board_homes: Array = g.board.filter(func(c): return c["kind"] == "home")
+	var homes: Array = g.profile_receipts.filter(func(c): return c["kind"] == "home")
+	var works: Array = g.profile_receipts.filter(func(c): return c["kind"] == "work")
+	_check(board_homes.is_empty(), "main case board starts free of home-card clutter")
+	_check(homes.size() == g.w.npcs.size() and works.size() == g.w.npcs.size(), "one hidden home and work profile receipt per resident at the start")
+	_check(homes.all(func(c): return g.w.by_id[c["subject"][0]].home_block == c["block"]), "home profile receipts say where each person really lives")
 
 func _dated_sighting_wording() -> void:
 	var g = _game(7102)
@@ -363,7 +364,7 @@ func _haunts() -> void:
 		if told:
 			break
 	_check(told and g.known_haunts[t.id].all(func(x): return x in t.haunts), "asking a chatty, trusting person about someone can reveal their haunts")
-	_check(g.board.any(func(c): return c["kind"] == "haunt" and c["subject"] == [t.id]), "a revealed haunt is a card")
+	_check(g.profile_receipts.any(func(c): return c["kind"] == "haunt" and c["subject"] == [t.id]) and not g.board.any(func(c): return c["kind"] == "haunt"), "a revealed haunt creates a hidden profile receipt without cluttering the main board")
 	_check(g.profile_data(t.id)["haunts"] != "", "the profile shows haunts once you've been told")
 
 func _offers() -> void:

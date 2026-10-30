@@ -4,6 +4,7 @@ const Shared = preload("res://workshop/shared_ledger.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Mind = preload("res://sim/mind.gd")
 const Profiler = preload("res://workshop/profiler.gd")
+const Circumstantial = preload("res://workshop/circumstantial.gd")
 
 static func refresh(g, n, phase: String) -> void:
 	var span = Profiler.open("ownership_" + phase)
@@ -22,7 +23,7 @@ static func _refresh(g, n, phase: String) -> void:
 			for id in state.outside:
 				# Preserve direct native assignments too (ordinary adjustments go
 				# through Mind.adjust and already maintain the outside layer).
-				var expected: float = state.outside[id] + state.requested.get(id, 0.0)
+				var expected: float = state.outside[id] + state.requested.get(id, 0.0) + state.get("circumstantial_requested", {}).get(id, 0.0)
 				var before: float = n.suspicion.get(id, expected)
 				var external_change: float = before - expected
 				# Preserve the exact stored baseline when nothing changed. Adding
@@ -36,6 +37,9 @@ static func _refresh(g, n, phase: String) -> void:
 		state.active = false
 		state.requested = {}
 		state.applied = {}
+		state.circumstantial_requested = {}
+		state.circumstantial_applied = {}
+		state.circumstantial_incidents = {}
 		state.owned = {}
 		state.erase("action") # An unsupported/disabled refresh cannot retain an action.
 		g._workshop_plans.erase(key)
@@ -118,6 +122,42 @@ static func _refresh(g, n, phase: String) -> void:
 				g.w.dlog.trace_event("value_change", n.id, id, {"quantity": "suspicion", "from": old,
 					"to": n.suspicion[id], "requested_delta": desired, "applied_delta": state.applied[id],
 				"ledger_id": "workshop:shared"}, "Shared original reading evidence")
+		# Stage 2 Circumstantial Evidence Hub: evaluated once on the frozen post-Stage-1
+		# snapshot and stored in its own separately retractable ownership vector.
+		state.circumstantial_requested = {}
+		state.circumstantial_applied = {}
+		state.circumstantial_incidents = {}
+		var chubs: Array = plan.get("circumstantial_hubs", [])
+		if not chubs.is_empty():
+			var post_stage1: Dictionary = {}
+			for pid in n.suspicion:
+				post_stage1[pid] = clampf(float(n.suspicion[pid]), 0.0, 1.5)
+			var stage2: Dictionary = Circumstantial.evaluate_union(
+				plan.prepared.view,
+				chubs,
+				state.outside,
+				state.requested,
+				post_stage1,
+				n.npc_trust,
+				n.trust,
+				n.id,
+				state.get("public_good", []),
+				plan.prepared.listener.knowledge,
+				plan.prepared.case.get("disputes", [])
+			)
+			state.circumstantial_incidents = stage2.get("incidents", {}).duplicate(true)
+			for id in stage2.get("requested", {}):
+				if id == n.id or not n.suspicion.has(id):
+					continue
+				var c_des: float = float(stage2.requested[id])
+				state.circumstantial_requested[id] = c_des
+				var old_c: float = n.suspicion[id]
+				n.suspicion[id] = old_c + c_des
+				state.circumstantial_applied[id] = n.suspicion[id] - old_c
+				if not is_zero_approx(state.circumstantial_applied[id]):
+					g.w.dlog.trace_event("value_change", n.id, id, {"quantity": "suspicion", "from": old_c,
+						"to": n.suspicion[id], "requested_delta": c_des, "applied_delta": state.circumstantial_applied[id],
+						"ledger_id": "workshop:circumstantial"}, "Stage 2 circumstantial hub")
 		state.active = true
 		g.w.dlog.trace_event("workshop_ownership", n.id, "", {"owned": state.owned, "facts": state.facts,
 			"owners": state.owners, "requested": state.requested, "applied": state.applied,

@@ -37,8 +37,11 @@ var talk_with = null
 var questions_left = 0
 var free_repeats = 0       # repeats this conversation that cost no question (one allowed)
 var board: Array = []
+var profile_receipts: Array = []
 var _card_keys = {}
 var _fact_keys = {}      # Mind.fact_id -> card number, for facts that can reach you twice
+var _profile_card_keys = {}
+var _profile_fact_keys = {}
 var case_notes = ""       # the player's free-form notes on the case
 var town_quiet = false     # the town has had its say since the last nomination (allows 'done')
 var talk_approached = false  # this conversation began with them approaching you (it costs the phase)
@@ -207,9 +210,12 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	_workshop_repeats = {}
 	_workshop_native_submission = false
 	board = []
+	profile_receipts = []
 	confidences = {}
 	_card_keys = {}
 	_fact_keys = {}
+	_profile_card_keys = {}
+	_profile_fact_keys = {}
 	case_notes = ""
 	notes = {}
 	guesses = {}
@@ -253,7 +259,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 		var game = weak_game.get_ref()
 		if game == null or game.w != weak_world.get_ref():
 			return {"complete": false, "receipts": {}}
-		var proof = WorkshopOwnership.Shared.roots([card], game.board)
+		var proof = WorkshopOwnership.Shared.roots([card], game.all_receipts())
 		if card.get("kind") == "deduction" and card.get("n", 0) > 0:
 			var captured = game.workshop_snapshot([card.n])
 			var endorsed: Array = WorkshopOwnership.Shared.endorsed_facts(captured, card.n)
@@ -408,6 +414,33 @@ func find_block(token: String) -> String:
 
 func add_card(fact: Dictionary) -> int:
 	return GameBoard.add_card(self, fact)
+
+func add_profile_receipt(fact: Dictionary) -> int:
+	return GameBoard.add_profile_receipt(self, fact)
+
+func receipt_by_number(num: int) -> Dictionary:
+	return GameBoard.receipt_by_number(self, num)
+
+func all_receipts() -> Array:
+	return GameBoard.all_receipts(self)
+
+func profile_receipts_for(id: String, facet: String = "") -> Array:
+	return GameBoard.profile_receipts_for(self, id, facet)
+
+func _record_trait_receipt(target, key: String, tier: String, source_id: String) -> int:
+	var withdrawn: bool = target.withdrawn_since != ""
+	var suffix: String = " (withdrawn after bereavement)" if withdrawn else ""
+	return add_profile_receipt({"kind": "trait", "subject": [target.id], "source": source_id,
+		"trait": key, "tier": tier, "withdrawn": withdrawn, "day": w.day, "phase": _phase_now(),
+		"class": "circumstantial", "text": "%s's %s: %s%s." % [target.name, key, tier, suffix]})
+
+func sync_bereaved_traits(target, source_id: String = "player") -> void:
+	if target == null or target.withdrawn_since == "":
+		return
+	for key in target.revealed_traits.keys():
+		var current_tier: String = C.tier(target.traits.get(key, 0.5))
+		target.revealed_traits[key] = current_tier
+		_record_trait_receipt(target, key, current_tier, source_id)
 
 # ---------------------------------------------------------------- corroboration
 
@@ -851,13 +884,44 @@ func _search() -> void:
 			_narr("You go over the scene again. Nothing new.")
 			return
 		sc["searched"] = true
-		var tb: String = sc["trace_block"]
-		_narr("Near the body you find %s. Whoever did this most likely spent the evening of day %d on %s." % [C.BLOCKS[tb]["trace"], sc["day"], C.block_name(tb)])
-		w.dlog.add("player_search", "player", sc["victim"], {"trace_block": tb, "trace_true": sc["trace_true"]}, sc["why"])
-		_facts([{"kind": "trace", "subject": [], "block": tb, "source": "evidence", "day": sc["day"], "phase": C.EVENING,
-			"scene": l, "scene_block": sc.block, "victim": sc.victim, "crime_night": sc.day, "material": tb,
-			"text": "Trace at %s's death scene: the killer most likely spent the evening of day %d on %s." %
-				[w.by_id[sc["victim"]].name, sc["day"], C.block_name(tb)]}])
+		var scene_traces: Array = sc.get("traces", [])
+		if scene_traces.is_empty():
+			var tb: String = sc.get("trace_block", sc["block"])
+			_narr("Near the body you find %s. Whoever did this most likely spent the evening of day %d on %s." % [C.BLOCKS[tb]["trace"], sc["day"], C.block_name(tb)])
+			w.dlog.add("player_search", "player", sc["victim"], {"trace_block": tb, "trace_true": sc.get("trace_true", true)}, sc.get("why", ""))
+			_facts([{"kind": "trace", "subject": [], "block": tb, "source": "evidence", "day": sc["day"], "phase": C.EVENING,
+				"scene": l, "scene_block": sc.block, "victim": sc.victim, "crime_night": sc.day, "material": tb,
+				"text": "Trace at %s's death scene: the killer most likely spent the evening of day %d on %s." %
+					[w.by_id[sc["victim"]].name, sc["day"], C.block_name(tb)]}])
+			return
+		var new_cards: Array = []
+		for tr in scene_traces:
+			_narr(tr.get("scene_prose", ""))
+			new_cards.append({
+				"kind": "trace",
+				"subject": [],
+				"block": sc["block"],
+				"source": "evidence",
+				"day": sc["day"],
+				"phase": C.EVENING,
+				"scene": l,
+				"scene_block": sc["block"],
+				"victim": sc["victim"],
+				"victim_block": tr.get("victim_block", sc["block"]),
+				"crime_night": sc["day"],
+				"trace_family": tr.get("trace_family", ""),
+				"trace_subtype": tr.get("trace_subtype", ""),
+				"trace_slot": int(tr.get("trace_slot", 0)),
+				"scene_trace_count": int(tr.get("scene_trace_count", scene_traces.size())),
+				"trace_key": tr.get("trace_key", ""),
+				"locs": tr.get("locs", []).duplicate(),
+				"trace_home_block": tr.get("home_block", ""),
+				"trace_evening_block": tr.get("evening_block", ""),
+				"item_label": tr.get("item_label", ""),
+				"text": tr.get("card_text", ""),
+			})
+		w.dlog.add("player_search", "player", sc["victim"], {"traces": scene_traces.map(func(t): return t.get("trace_key", "")), "trace_true": sc.get("trace_true", true)}, sc.get("why", ""))
+		_facts(new_cards)
 		return
 	if l.begins_with("home_"):
 		_narr("You can't search someone's home from their doorstep.")
@@ -1240,6 +1304,12 @@ func _talk_command(verb: String, rest: String) -> void:
 			r["facts"] = []
 			if not r.get("repeated", false) or free_repeats >= 1:
 				Mind.on_question(w, n)
+		"trace_ask":
+			var numt = rest.strip_edges().trim_prefix("#").to_int()
+			if numt < 1 or numt > board.size() or board[numt - 1].get("deleted", false) or board[numt - 1].get("kind", "") != "trace":
+				_err("Show which trace card?")
+				return
+			r = Mind.react_to_trace(w, n, board[numt - 1], known_haunts)
 		"press", "confront":
 			var num1 = rest.strip_edges().trim_prefix("#").to_int()
 			if num1 < 1 or num1 > board.size() or board[num1 - 1].get("deleted", false):
@@ -1247,9 +1317,9 @@ func _talk_command(verb: String, rest: String) -> void:
 				return
 			var pc: Dictionary = board[num1 - 1].duplicate()
 			if pc["kind"] == "deduction":
-				pc["support_cards"] = board.filter(func(x): return x["n"] in pc["supports"])
+				pc["support_cards"] = all_receipts().filter(func(x): return x["n"] in pc["supports"])
 				_secrets_used(pc)
-			r = Mind.press(w, n, pc)
+			r = Mind.press(w, n, pc, known_haunts)
 		"defend", "vouch":
 			var pd = rest.split(" ", false)
 			var numd = pd[pd.size() - 1].trim_prefix("#").to_int() if pd.size() >= 2 else 0
@@ -1329,6 +1399,7 @@ func _talk_command(verb: String, rest: String) -> void:
 		questions_left -= 1
 	_lines(r["lines"])
 	_facts(r["facts"])
+	_record_trace_profile_haunts(n, r)
 	for note in r.get("narration", []):
 		_narr(note)
 	_remember_dialogue_exchange(n, verb, rest, r)
@@ -1350,6 +1421,18 @@ func _talk_command(verb: String, rest: String) -> void:
 
 ## Yes or no to what they just asked of you (free). Any other command is a no, and goes ahead.
 ## Returns true when the command was the answer.
+func _record_trace_profile_haunts(speaker, r: Dictionary) -> void:
+	for ph in r.get("profile_haunts", []):
+		var pid: String = ph.get("subject", "")
+		var loc_id: String = ph.get("loc", "")
+		if pid == "" or loc_id == "" or not w.by_id.has(pid):
+			continue
+		if not (loc_id in known_haunts.get(pid, [])):
+			known_haunts[pid] = known_haunts.get(pid, []) + [loc_id]
+		add_profile_receipt({"kind": "haunt", "subject": [pid], "source": speaker.id, "loc": loc_id, "locs": [loc_id],
+			"block": w.loc_block(loc_id), "day": w.day, "phase": _phase_now(), "class": "circumstantial",
+			"text": "%s says %s often goes to %s when not working." % [speaker.name, w.by_id[pid].name, w.loc_name(loc_id)]})
+
 func _answer_request(n, verb: String, rest: String) -> bool:
 	var rq: Dictionary = pending_request
 	pending_request = {}
@@ -1528,8 +1611,10 @@ func _maybe_tell_haunts(n, t, r: Dictionary) -> void:
 	var names: Array = tell.map(func(x): return w.loc_name(x))
 	known_haunts[t.id] = known_haunts.get(t.id, []) + tell
 	r["lines"].append(Mind.say(n, "[PH] When %s isn't working, you'll often find them at %s." % [t.name, " or ".join(PackedStringArray(names))]))
-	r["facts"].append({"kind": "haunt", "subject": [t.id], "source": n.id, "locs": tell.duplicate(),
-		"text": "%s says %s often goes to %s when not working." % [n.name, t.name, " and ".join(PackedStringArray(names))]})
+	for loc_id in tell:
+		add_profile_receipt({"kind": "haunt", "subject": [t.id], "source": n.id, "loc": loc_id, "locs": [loc_id],
+			"block": w.loc_block(loc_id), "day": w.day, "phase": _phase_now(), "class": "circumstantial",
+			"text": "%s says %s often goes to %s when not working." % [n.name, t.name, w.loc_name(loc_id)]})
 	w.dlog.add("player_learns_haunts", n.id, t.id, {"locs": tell})
 
 ## Asked about someone, a talker may also say what that person is like: one trait,
@@ -1574,6 +1659,7 @@ func _maybe_tell_trait(n, t, r: Dictionary) -> void:
 		var own_words: String = TRAIT_WORDS[key][tier][1].replace("themselves", "myself").replace("their", "my").replace("them", "me").replace("they've", "I've").replace("they're", "I'm")
 		line = "I'd call myself %s." % own_words
 	t.revealed_traits[key] = tier
+	_record_trait_receipt(t, key, tier, n.id)
 	r["lines"].append(Mind.say(n, "[PH] " + line))
 	r["narration"] = r.get("narration", []) + ["(You learn %s's %s: %s.)" % [t.name, key.capitalize(), tier]]
 	w.dlog.add("trait_reveal", n.id, t.id, {"trait": key, "tier": tier, "value": t.traits[key], "via": n.id, "friend": friend, "rival": rival})
@@ -1606,6 +1692,10 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 			text = "%s and I %s." % [w.by_id[other].name, "are close" if bond.kind == "friend" else "don't get along"]
 			note = n.name + ' says "' + text + '"'
 		known_relationships[entry.key] = {"kind": bond.kind, "people": bond.people.duplicate(), "source": n.id, "text": note}
+		var bond_people: Array = bond.people.duplicate()
+		bond_people.sort()
+		add_profile_receipt({"kind": "bond", "subject": bond_people, "bond_kind": bond.kind, "source": n.id,
+			"day": w.day, "phase": _phase_now(), "class": "circumstantial", "text": note})
 		r.lines.append(Mind.say(n, "[PH] " + text))
 		w.dlog.add("player_learns_relationship", n.id, t.id, {"kind": bond.kind, "people": bond.people})
 
@@ -1624,6 +1714,8 @@ func _remember_spoken_relationship(line: Dictionary) -> void:
 	var key = bond.kind + ":" + ":".join(PackedStringArray(people))
 	known_relationships[key] = {"kind": bond.kind, "people": people, "source": source,
 		"text": w.by_id[source].name + ' says "' + line.text + '"'}
+	add_profile_receipt({"kind": "bond", "subject": people.duplicate(), "bond_kind": bond.kind, "source": source,
+		"day": w.day, "phase": _phase_now(), "class": "circumstantial", "text": known_relationships[key].text})
 	w.dlog.add("player_learns_relationship", source, people[1] if people[0] == source else people[0], {"kind": bond.kind, "people": people, "how": "explicit speech"})
 
 func known_relationship_notes(id: String) -> Array:
@@ -1641,8 +1733,14 @@ func known_haunt_names(id: String) -> String:
 func _close_conversation() -> void:
 	var n = talk_with
 	pending_request = {}
+	var before_traits: Dictionary = n.revealed_traits.duplicate() if n != null else {}
 	for t in Mind.end_conversation(w, n):
 		_narr(t)
+	if n != null:
+		for key in n.revealed_traits:
+			if not before_traits.has(key):
+				_record_trait_receipt(n, key, n.revealed_traits[key], "player")
+		sync_bereaved_traits(n, "player")
 	state = "day"
 	talk_with = null
 	_end_phase(n.id)

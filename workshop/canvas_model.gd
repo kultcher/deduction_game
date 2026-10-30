@@ -3,6 +3,8 @@ extends RefCounted
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const C = preload("res://sim/content.gd")
+const PROFILE_FACETS = ["home_work", "haunts", "personality", "bonds"]
+const PROFILE_FACET_NAMES = {"home_work": "Home & Work", "haunts": "Haunts", "personality": "Personality", "bonds": "Bonds"}
 var view: Dictionary
 var nodes: Dictionary = {}
 var links: Array = []
@@ -19,10 +21,14 @@ func reset() -> void:
 	links.clear()
 	serial = 0
 	version += 1
+	var idx = 0
 	for i in range(view.cards.size()):
 		var card: Dictionary = view.cards[i]
+		if card.get("profile_receipt", false):
+			continue
 		nodes["e:" + card.id] = {"id": "e:" + card.id, "kind": "evidence", "card": card.id,
-			"at": [60.0 + (i % 4) * 320.0, 400.0 + (i / 4) * 300.0], "answers": {}, "reasons": {}, "citations": {}}
+			"at": [60.0 + (idx % 4) * 320.0, 400.0 + (idx / 4) * 300.0], "answers": {}, "reasons": {}, "citations": {}}
+		idx += 1
 	selected = add_premise(_default_target(), "evil", Vector2(540, 50))
 
 func _default_target() -> String:
@@ -44,6 +50,148 @@ func add_premise(target: String, type: String, at: Vector2) -> String:
 		"conclusion": {} if type == "support" else {"type": type, "target": target, "at": view.alignment_epoch}}
 	version += 1
 	return id
+
+func _unlocked_facets(person: String) -> Dictionary:
+	return view.get("profile_facets", {}).get(person, {})
+
+func _resolve_profile_receipts(person: String, facets: Array) -> Array:
+	var info: Dictionary = _unlocked_facets(person)
+	var out: Array = []
+	for f in PROFILE_FACETS:
+		if f in facets and info.get(f, {}).get("unlocked", false):
+			for rid in info[f].get("receipt_ids", []):
+				if rid not in out:
+					out.append(rid)
+	return out
+
+func add_profile_info(person: String, initial_facets: Array = ["home_work"], at: Vector2 = Vector2(200, 360)) -> String:
+	if person == "" or not view.people.any(func(p): return p.id == person):
+		person = _default_target()
+	var info: Dictionary = _unlocked_facets(person)
+	for key in nodes:
+		var existing: Dictionary = nodes[key]
+		if existing.kind == "profile_info" and existing.get("person", "") == person and not existing.has("merged"):
+			var merged_facets: Array = existing.get("facets", []).duplicate()
+			for f in initial_facets:
+				if f in PROFILE_FACETS and (info.is_empty() or info.get(f, {}).get("unlocked", false)) and f not in merged_facets:
+					merged_facets.append(f)
+			if merged_facets.is_empty() and (info.is_empty() or info.get("home_work", {}).get("unlocked", false)):
+				merged_facets.append("home_work")
+			existing["facets"] = merged_facets
+			existing["receipt_ids"] = _resolve_profile_receipts(person, merged_facets)
+			selected = key
+			version += 1
+			return key
+	var clean_facets: Array = []
+	for f in initial_facets:
+		if f in PROFILE_FACETS and (info.is_empty() or info.get(f, {}).get("unlocked", false)) and f not in clean_facets:
+			clean_facets.append(f)
+	if clean_facets.is_empty() and (info.is_empty() or info.get("home_work", {}).get("unlocked", false)):
+		clean_facets.append("home_work")
+	serial += 1
+	var id = "pi:%d" % serial
+	while nodes.has(id):
+		serial += 1
+		id = "pi:%d" % serial
+	nodes[id] = {"id": id, "kind": "profile_info", "person": person, "facets": clean_facets,
+		"receipt_ids": _resolve_profile_receipts(person, clean_facets), "at": [at.x, at.y]}
+	selected = id
+	version += 1
+	return id
+
+func set_profile_person(id: String, person: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "profile_info" or not view.people.any(func(p): return p.id == person):
+		return
+	var node: Dictionary = nodes[id]
+	node["person"] = person
+	var info: Dictionary = _unlocked_facets(person)
+	var kept: Array = node.get("facets", []).filter(func(f): return info.is_empty() or info.get(f, {}).get("unlocked", false))
+	if kept.is_empty() and (info.is_empty() or info.get("home_work", {}).get("unlocked", false)):
+		kept = ["home_work"]
+	node["facets"] = kept
+	node["receipt_ids"] = _resolve_profile_receipts(person, kept)
+	selected = id
+	version += 1
+
+func toggle_profile_facet(id: String, facet: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "profile_info" or facet not in PROFILE_FACETS:
+		return
+	var node: Dictionary = nodes[id]
+	var info: Dictionary = _unlocked_facets(node.get("person", ""))
+	if not info.is_empty() and not info.get(facet, {}).get("unlocked", false):
+		return
+	var facets: Array = node.get("facets", []).duplicate()
+	if facet in facets:
+		if facets.size() > 1:
+			facets.erase(facet)
+	else:
+		facets.append(facet)
+	node["facets"] = facets
+	node["receipt_ids"] = _resolve_profile_receipts(node.get("person", ""), facets)
+	selected = id
+	version += 1
+
+func sync_profile_node(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "profile_info":
+		return
+	var node: Dictionary = nodes[id]
+	node["receipt_ids"] = _resolve_profile_receipts(node.get("person", ""), node.get("facets", []))
+	version += 1
+
+func remove_profile_info(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "profile_info":
+		return
+	links = links.filter(func(edge): return edge.from != id and edge.to != id)
+	for node in nodes.values():
+		if node.kind in ["contradiction", "modifier"]:
+			node.prior_links = node.get("prior_links", []).filter(func(edge): return edge.from != id and edge.to != id)
+	nodes.erase(id)
+	if selected == id or not nodes.has(selected):
+		var premises: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise")
+		selected = premises[0] if not premises.is_empty() else (nodes.keys()[0] if not nodes.is_empty() else "")
+	version += 1
+
+func add_circumstantial_hub(at: Vector2 = Vector2(360, 260)) -> String:
+	serial += 1
+	var id = "ch:%d" % serial
+	while nodes.has(id):
+		serial += 1
+		id = "ch:%d" % serial
+	nodes[id] = {"id": id, "kind": "circumstantial", "at": [at.x, at.y]}
+	selected = id
+	version += 1
+	return id
+
+func remove_circumstantial(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "circumstantial":
+		return
+	links = links.filter(func(edge): return edge.from != id and edge.to != id)
+	for node in nodes.values():
+		if node.kind in ["contradiction", "modifier"]:
+			node.prior_links = node.get("prior_links", []).filter(func(edge): return edge.from != id and edge.to != id)
+	nodes.erase(id)
+	if selected == id or not nodes.has(selected):
+		var premises: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise")
+		selected = premises[0] if not premises.is_empty() else (nodes.keys()[0] if not nodes.is_empty() else "")
+	version += 1
+
+func hub_premise_targets(id: String, seen: Array = []) -> Array:
+	if id in seen or not nodes.has(id):
+		return []
+	var visited: Array = seen + [id]
+	var out: Array = []
+	for edge in links:
+		if edge.from != id or not nodes.has(edge.to):
+			continue
+		var dest: Dictionary = nodes[edge.to]
+		if dest.kind == "premise" and not dest.get("draft", false) and not dest.get("conclusion", {}).is_empty():
+			if edge.to not in out:
+				out.append(edge.to)
+		elif dest.kind in ["circumstantial", "premise"]:
+			for p_id in hub_premise_targets(edge.to, visited):
+				if p_id not in out:
+					out.append(p_id)
+	return out
 
 func ancestors(id: String, seen: Array = []) -> Array:
 	var result: Array = seen.duplicate()
@@ -72,6 +220,10 @@ func connect_cards(from: String, to: String) -> String:
 		var swap = from
 		from = to
 		to = swap
+	elif nodes[from].kind == "circumstantial" and nodes[to].kind in ["evidence", "profile_info", "contradiction", "modifier"]:
+		var swap_c = from
+		from = to
+		to = swap_c
 	var a: Dictionary = nodes[from]
 	var b: Dictionary = nodes[to]
 	if a.kind == "evidence" and b.kind == "evidence":
@@ -85,7 +237,7 @@ func connect_cards(from: String, to: String) -> String:
 	if links.any(func(edge): return edge.from == from and edge.to == to):
 		return "These cards are already linked."
 	var relation = "supports"
-	if a.kind == "evidence" and b.kind == "evidence":
+	if a.kind in ["evidence", "profile_info"] and b.kind in ["evidence", "profile_info"]:
 		relation = "read_together"
 	if _gift_link(a, b):
 		relation = "explains_outing"
@@ -204,7 +356,7 @@ func unmerge(id: String) -> void:
 		nodes[child].erase("merged")
 	nodes.erase(id)
 	for edge in group.prior_links:
-		if not links.has(edge):
+		if nodes.has(edge.from) and nodes.has(edge.to) and not links.has(edge):
 			links.append(edge)
 	# Retain incoming links added after the merge as well as the original links.
 	for edge in incoming:
@@ -342,6 +494,25 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 				if not result.reasons.has(key):
 					result.reasons[key] = "gift"
 					result.citations[key] = claim.id
+	var hub_entries: Array = []
+	for id in all:
+		if nodes[id].kind == "circumstantial":
+			var hub_cards: Array = _evidence(ancestors(id))
+			var prem_ids: Array = hub_premise_targets(id).filter(func(pid): return pid in all)
+			if prem_ids.is_empty():
+				prem_ids = [root]
+			for pid in prem_ids:
+				var pconc: Dictionary = nodes[pid].get("conclusion", {})
+				hub_entries.append({
+					"id": id,
+					"premise": pid,
+					"target": pconc.get("target", ""),
+					"type": pconc.get("type", ""),
+					"cards": hub_cards.duplicate(),
+				})
+	if not hub_entries.is_empty():
+		hub_entries.sort_custom(func(a, b): return str(a.id) + ":" + str(a.premise) < str(b.id) + ":" + str(b.premise))
+		result["circumstantial"] = hub_entries
 	if result.conclusion.type == "conflict":
 		result.conflict_scope = result.cards.duplicate()
 		result.disputes = [] # Ask whether contents conflict; do not resolve one first.
@@ -393,6 +564,10 @@ func _evidence(ids: Array) -> Array:
 	for id in ids:
 		if nodes[id].kind == "evidence" and nodes[id].card not in result:
 			result.append(nodes[id].card)
+		elif nodes[id].kind == "profile_info":
+			for rid in nodes[id].get("receipt_ids", []):
+				if rid not in result:
+					result.append(rid)
 	result.sort()
 	return result
 
@@ -417,6 +592,10 @@ func title(id: String) -> String:
 		return "Contradicted home alibi"
 	if node.kind == "modifier":
 		return {"misled": "Misled reading", "lying": "Suspected lie", "unlikely": "Unlikely reading"}[node.mode]
+	if node.kind == "profile_info":
+		return "%s's Profile" % Solver.person_name(view, node.get("person", ""))
+	if node.kind == "circumstantial":
+		return "Circumstantial Evidence"
 	var card = Solver.card_by_id(view, node.card)
 	if card.has("relay_source"):
 		return "Medium relay · " + (C.role_name(card.role) if card.get("role", "") != "" else card.kind.capitalize())
@@ -465,14 +644,14 @@ func restore(value, session) -> String:
 	var evidence: Array = []
 	for id in candidate.nodes:
 		var n = candidate.nodes[id]
-		if not id is String or not n is Dictionary or n.get("id") != id or n.get("kind") not in ["evidence", "premise", "contradiction", "modifier"] or not n.get("at") is Array or n.at.size() != 2 or not n.at.all(func(x): return (x is float or x is int) and is_finite(float(x)) and absf(float(x)) <= 100000):
+		if not id is String or not n is Dictionary or n.get("id") != id or n.get("kind") not in ["evidence", "profile_info", "circumstantial", "premise", "contradiction", "modifier"] or not n.get("at") is Array or n.at.size() != 2 or not n.at.all(func(x): return (x is float or x is int) and is_finite(float(x)) and absf(float(x)) <= 100000):
 			return "Invalid canvas card or position."
 		if n.kind == "evidence":
 			if not n.get("card") is String or n.card in evidence or Solver.card_by_id(view, n.card).is_empty() or not n.get("answers") is Dictionary or not n.get("reasons") is Dictionary or not n.get("citations") is Dictionary:
 				return "Invalid evidence copy."
 			evidence.append(n.card)
 			var choices = Solver.empty_case()
-			choices.conclusion.at = view.alignment_epoch
+			choices.conclusion = {"type": "evil", "target": candidate._default_target(), "at": view.alignment_epoch}
 			choices.cards = [n.card]
 			choices.answers = n.answers
 			choices.reasons = n.reasons
@@ -484,12 +663,18 @@ func restore(value, session) -> String:
 			if not n.get("conclusion") is Dictionary or not n.get("positions") is Dictionary:
 				return "Invalid premise."
 			var choices = Solver.empty_case()
-			choices.conclusion.at = view.alignment_epoch
+			choices.conclusion = {"type": "evil", "target": candidate._default_target(), "at": view.alignment_epoch}
 			choices.positions = n.positions
 			if not n.conclusion.is_empty():
 				choices.conclusion = n.conclusion
 			if session.validate_case(choices) != "":
 				return "Invalid premise choices."
+		elif n.kind == "profile_info":
+			if not n.get("person") is String or not view.people.any(func(p): return p.id == n.person) or not n.get("facets") is Array or not n.facets.all(func(f): return f in PROFILE_FACETS) or not n.get("receipt_ids") is Array or not n.receipt_ids.all(func(rid): return rid is String and not Solver.card_by_id(view, rid).is_empty()):
+				return "Invalid profile info card."
+		elif n.kind == "circumstantial":
+			if n.keys().any(func(k): return k not in ["id", "kind", "at"]):
+				return "Invalid circumstantial hub."
 		elif n.kind == "modifier":
 			if not preload("res://workshop/reading_challenges.gd").valid(view, n.get("card", ""), {"mode": n.get("mode"), "supports": []}):
 				return "Invalid reading modifier."

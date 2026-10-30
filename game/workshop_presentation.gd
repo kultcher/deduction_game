@@ -10,6 +10,7 @@ const Mind = preload("res://sim/mind.gd")
 const Argue = preload("res://sim/argue.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 const Ownership = preload("res://game/workshop_ownership.gd")
+const Circumstantial = preload("res://workshop/circumstantial.gd")
 
 ## Pure capability check against the real listener and the proposed evidence union.
 ## Used for the entire audience before a command spends time or discloses secrets.
@@ -174,9 +175,9 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	# Keep a compatible native contribution parked underneath the owner. It can be
 	# restored on fallback/disable; its agreement comes from this assessment too.
 	if direction == "deduction":
-		var supports: Array = g.board.filter(func(c): return c.n in card.supports)
+		var supports: Array = g.all_receipts().filter(func(c): return c.n in card.supports)
 		var park_span = Profiler.open("park_native")
-		Argue._apply(g.w, n, card, supports, maxf(0.0, assessment.agreement) * Tuning.Workshop.VENUE_MULTS.get(venue, 0.6), g.board)
+		Argue._apply(g.w, n, card, supports, maxf(0.0, assessment.agreement) * Tuning.Workshop.VENUE_MULTS.get(venue, 0.6), g.all_receipts())
 		Profiler.close(park_span)
 	else:
 		for target in targets:
@@ -184,8 +185,8 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			var eid = "workshop:tell:%s:%s" % [key, target]
 			var meta = {"kind": "tell", "workshop_card": Evidence.normalize_card(card), "text": card.get("text", "")}
 			if card.get("kind") == "deduction":
-				meta = {"kind": "arg", "workshop_conclusion": root.conclusion.type, "workshop_roots": Shared.roots([card], g.board),
-					"workshop_case": key, "supports": Argue.support_refs([card], g.board)}
+				meta = {"kind": "arg", "workshop_conclusion": root.conclusion.type, "workshop_roots": Shared.roots([card], g.all_receipts()),
+					"workshop_case": key, "supports": Argue.support_refs([card], g.all_receipts())}
 			var scoped: Array = assessment.claims.filter(func(c): return c.conclusion.target == target and c.conclusion.type == root.conclusion.type)
 			var agreement: float = scoped[0].agreement if not scoped.is_empty() else assessment.agreement
 			Mind.ledger_hear(g.w, n, eid, [[target, sign_value, true, "Presented original report", ""]], maxf(0.0, agreement), Mind.support_ref(card), meta)
@@ -220,6 +221,41 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PRESENTATION_REWARD, "the presented reports support the argument")
 		Mind.recompute_beliefs(g.w, n, " (presentation trust reward)")
 		Profiler.close(reward_span)
+	var presented_hubs: Array = root.get("workshop_case", {}).get("circumstantial", [])
+	var hub_canonical_tail: String = ""
+	var hub_voiced_tail: String = ""
+	if not presented_hubs.is_empty() and not self_support and not repeated:
+		var post_s1_view: Dictionary = {}
+		for pid in state.outside:
+			post_s1_view[pid] = clampf(float(state.outside[pid]) + float(state.requested.get(pid, 0.0)), 0.0, 1.5)
+		var smear: Dictionary = Circumstantial.evaluate_smear_backlash(
+			plan.prepared.view,
+			presented_hubs,
+			state.outside,
+			state.requested,
+			post_s1_view,
+			n.npc_trust,
+			n.id,
+			state.get("public_good", []),
+			root.get("workshop_case", {}).get("disputes", [])
+		)
+		if smear.penalty > 0.0:
+			if not state.has("smear_penalized"):
+				state.smear_penalized = {}
+			if not state.smear_penalized.has(signature):
+				state.smear_penalized[signature] = true
+				Mind.set_trust(g.w, n, n.trust - smear.penalty, "the Demonologist padded a case with thin circumstantial smears")
+				Mind.recompute_beliefs(g.w, n, " (circumstantial smear backlash)")
+			var smear_fb: String = "Thin guilt-by-association doesn't make a case for me."
+			hub_canonical_tail = " " + smear_fb
+			hub_voiced_tail = " " + Mind.Dialogue.voice_line(n.id, "circumstantial_smear_pushback", smear_fb)
+			text += hub_voiced_tail
+		elif stance_subject != "" and float(state.get("circumstantial_applied", {}).get(stance_subject, 0.0)) > 0.0 and g.w.by_id.has(stance_subject):
+			var s_name: String = g.w.by_id[stance_subject].name
+			var hub_fb: String = "Taken with the rest of your case, those surrounding circumstances make %s harder to wave away." % s_name
+			hub_canonical_tail = " " + hub_fb
+			hub_voiced_tail = " " + Mind.Dialogue.voice_line(n.id, "circumstantial_hub_landed", "Taken with the rest of your case, those surrounding circumstances make {target} harder to wave away.", {"target": s_name})
+			text += hub_voiced_tail
 	if root.conclusion.type == "conflict" and assessment.agreement >= 0.6 and not repeated:
 		if not state.has("scrutinized"):
 			state.scrutinized = {}
@@ -237,9 +273,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		state.delivered[delivery_key] = state.discussion[signature]
 	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": voiced_stance,
 		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": text}
-	var spoken_line: Dictionary = Mind.say(n, text if trapped_out else "[PH] " + text)
-	if trapped_out and text.begins_with(trapped_voiced):
-		spoken_line["statement"] = trapped_canonical + text.substr(trapped_voiced.length())
+	var base_canonical: String = text
+	if hub_voiced_tail != "" and base_canonical.ends_with(hub_voiced_tail):
+		base_canonical = base_canonical.substr(0, base_canonical.length() - hub_voiced_tail.length()) + hub_canonical_tail
+	if trapped_out and base_canonical.begins_with(trapped_voiced):
+		base_canonical = trapped_canonical + base_canonical.substr(trapped_voiced.length())
+	var spoken_line: Dictionary = Mind.say(n, text if (trapped_out or hub_voiced_tail != "") else "[PH] " + text)
+	if trapped_out or hub_voiced_tail != "":
+		spoken_line["statement"] = base_canonical
 	var lines: Array = [spoken_line] if speak and not n.silenced else []
 	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
 		{"venue": venue, "key": key, "agreement": assessment.agreement, "stance": assessment.stance,
@@ -247,7 +288,8 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		"repeated": repeated, "fresh": fresh, "claims": assessment.claims, "response": text,
 		"reasoning": assessment.reasoning, "theory": assessment.theory, "cognition": cognitive_inputs,
 		"quoted": state.get("quoted", []), "trust_before": trust_before, "trust_after": n.trust,
-		"pressure_delta": n.pressure - pressure_before, "requested": state.requested}, "One assessment controls supported presentation and shared belief ownership.")
+		"pressure_delta": n.pressure - pressure_before, "requested": state.requested,
+		"circumstantial_requested": state.get("circumstantial_requested", {})}, "One assessment controls supported presentation and shared belief ownership.")
 	g.w.dlog.add("argument_stance", n.id, root.conclusion.get("a", ""), {"key": signature, "stance": voiced_stance, "scoped_stance": assessment.stance,
 		"evil": false, "repeat": repeated, "model": "shared"})
 	var result = {"lines": lines, "facts": [], "agreement": assessment.agreement, "repeated": repeated,
