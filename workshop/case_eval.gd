@@ -646,10 +646,12 @@ static func _team_prior(view: Dictionary, listener: Dictionary) -> PackedFloat64
 	var ids: Array = Solver.person_ids(view)
 	var odds: Array = []
 	for id in ids:
-		var sv: float = clampf(float(listener.get("suspicion", {}).get(id, 0.3)), 0.02, 0.98)
+		var raw: float = float(listener.get("suspicion", {}).get(id, 0.3))
+		var sv: float = clampf(raw, 0.02, 0.98)
 		# Trust in a person halves (full trust) or doubles (none) their odds of evil.
 		var trust: float = float(listener.get("npc_trust", {}).get(id, 0.5))
-		odds.append(sv / (1.0 - sv) * pow(2.0, -2.0 * (clampf(trust, 0.0, 1.0) - 0.5)))
+		var base: float = sv / (1.0 - sv) if prior_k < 0.0 else exp(prior_k * clampf(raw, 0.0, 1.5))
+		odds.append(base * pow(2.0, -2.0 * (clampf(trust, 0.0, 1.0) - 0.5)))
 	var good_mask = 0
 	for id in listener.get("knowledge", {}).get("good", []):
 		var idx = ids.find(id)
@@ -670,6 +672,9 @@ static func _team_prior(view: Dictionary, listener: Dictionary) -> PackedFloat64
 	return team_prior
 
 static var _fits_cache: Dictionary = {}
+## Prior odds = exp(prior_k * suspicion) (Tuning.Workshop.PRIOR_K). Probes may override it;
+## a negative value restores the old mapping (suspicion read as a probability) for comparison.
+static var prior_k: float = Tuning.Workshop.PRIOR_K
 
 ## Role assignment per class (live views): one check per class representative, since
 ## a class shares everything the role check reads. A listener's own role and outings only

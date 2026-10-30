@@ -1,6 +1,7 @@
 ## Playtest 37291 follow-ups, seven items per review set.
 extends SceneTree
 const Game = preload("res://game/game.gd")
+const Speech = preload("res://tools/speech.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
 const C = preload("res://sim/content.gd")
@@ -256,9 +257,14 @@ func readings_ask():
 		n.claim_public = status == 2
 		scene._refresh_actions()
 		await process_frame
-		var buttons = scene.actions.get_children().filter(func(b): return b is Button and not b.is_queued_for_deletion())
-		var text: String = buttons[0].text
-		check(("readings" in text) == (status != 0), "gift action label follows private or public disclosure")
+		# Find the gift ask by its label, not its position: since the daytime conversation
+		# view (Oct 28) the talk actions sit in its controls, behind a "Look at the map" toggle.
+		var pool: Array = scene.actions.get_children() + scene.conversation_view.controls.get_children()
+		var buttons = pool.filter(func(b): return b is Button and not b.is_queued_for_deletion() and (b.text.begins_with("Ask about their readings") or b.text.ends_with("'s gift…  ▸")))
+		var text: String = buttons[0].text if not buttons.is_empty() else ""
+		check(("readings" in text) == (status != 0) and text != "", "gift action label follows private or public disclosure")
+		if buttons.is_empty():
+			continue
 		scene._ask_gift_picker(buttons[0])
 		var choices = scene.popup.find_children("*", "Button", true, false)
 		check(choices.any(func(b): return b.text == ("about their readings" if status != 0 else "about their gift")), "gift picker keeps its ask-gift command behind the matching readings label")
@@ -336,7 +342,7 @@ func compact_answers():
 	var gift = Mind.answer_gift(w, n, 4)
 	var infos = gift.facts.filter(func(f): return f.kind == "info")
 	check(gift.lines.size() == 1 and infos == n.info_log.map(func(e): return Mind.info_fact(w, n, e)), "private readings occupy one line but preserve each full reading card")
-	check("The night before you arrived" in gift.lines[0].text and "Last night" in gift.lines[0].text, "condensed readings retain their separate dates")
+	check("The night before you arrived" in Speech.said(gift.lines[0]) and "Last night" in Speech.said(gift.lines[0]), "condensed readings retain their separate dates")
 	var reply = {"lines": [Mind.say(n, "An opinion.")], "facts": []}
 	n.beliefs = []
 	for ph in [C.MORNING, C.AFTERNOON]:
@@ -405,7 +411,7 @@ func first_person_notes():
 			var reply = {"lines": [], "facts": []}
 			g._maybe_tell_relationships(n, t, reply)
 			var expected = t.name + (" and I are close." if kind == "friend" else " and I don't get along.")
-			check(reply.lines.size() == 1 and reply.lines[0].text.trim_prefix("[PH] ") == expected, "both pair orders and bond kinds use first person about the speaker")
+			check(reply.lines.size() == 1 and Speech.said(reply.lines[0]) == expected, "both pair orders and bond kinds use first person about the speaker")
 			var note = g.known_relationships.values()[0]
 			check(note.text == n.name + ' says "' + expected + '"' and note.source == n.id and note.people == order and reply.facts.is_empty(), "first-person profile note retains attribution and original bond identity without cards")
 			check(w.rng.state == probe.state, "first-person relationship wording keeps the original single roll")
@@ -416,7 +422,7 @@ func first_person_notes():
 	w.rng.state = reveal_state
 	var third = {"lines": [], "facts": []}
 	g._maybe_tell_relationships(n, t, third)
-	check(third.lines[0].text.trim_prefix("[PH] ") == "%s and %s are close." % [t.name, other.name], "third-party relationship wording stays unchanged")
+	check(Speech.said(third.lines[0]) == "%s and %s are close." % [t.name, other.name], "third-party relationship wording stays unchanged")
 	n.friends = []
 	n.rivals = []
 	n.pressure = 1.0 # Allow self-trait replies even when exercising low gossip.
@@ -433,7 +439,7 @@ func first_person_notes():
 			probe.randi_range(0, 0)
 			var reply = {"lines": [], "facts": []}
 			g._maybe_tell_trait(n, n, reply)
-			check(reply.lines.size() == 1 and reply.lines[0].text.trim_prefix("[PH] ").begins_with("I'd call myself ") and not n.name in reply.lines[0].text and not "their" in reply.lines[0].text and not "themselves" in reply.lines[0].text, "self-trait wording uses first person")
+			check(reply.lines.size() == 1 and Speech.said(reply.lines[0]).begins_with("I'd call myself ") and not n.name in Speech.said(reply.lines[0]) and not "their" in Speech.said(reply.lines[0]) and not "themselves" in Speech.said(reply.lines[0]), "self-trait wording uses first person")
 			check(n.revealed_traits[key] == C.tier(n.traits[key]) and w.rng.state == probe.state and reply.facts.is_empty(), "self-trait phrasing retains the selected trait, learning and exact RNG draws")
 
 func confidence_public_notice():
@@ -495,11 +501,11 @@ func empty_nomination_cases():
 		n.shadow = null
 		var state = w.rng.state
 		var reply = Mind.nomination_case(w, n, t, "")
-		check(reply.lines.size() == 1 and reply.lines[0].text.trim_prefix("[PH] ") == "I don't trust %s, and I can't say better than that." % t.name, "an empty good or evil nomination gives a plain spoken fallback")
+		check(reply.lines.size() == 1 and Speech.said(reply.lines[0]) == "I don't trust %s, and I can't say better than that." % t.name, "an empty good or evil nomination gives a plain spoken fallback")
 		check(reply.facts.is_empty() and w.rng.state == state, "empty-case wording adds no evidence or RNG draws")
 		n.ledger = {"public": {"eid": "public", "effects": [[t.id, 0, 0, 0, "a public account"]], "applied": {0: 0.2}}}
 		var recap = Mind.nomination_case(w, n, t, "")
-		check(recap.lines.size() == 1 and recap.lines[0].text.trim_prefix("[PH] ") == "Remember: a public account.", "a grounded public reason keeps its original recap")
+		check(recap.lines.size() == 1 and Speech.said(recap.lines[0]) == "Remember: a public account.", "a grounded public reason keeps its original recap")
 		var already = Mind.nomination_case(w, n, t, "a public account")
 		check(already.lines.is_empty() and already.facts.is_empty() and w.rng.state == state, "an already-cited grounded reason stays silent rather than becoming an empty-case fallback")
 

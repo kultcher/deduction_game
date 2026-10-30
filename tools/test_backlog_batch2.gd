@@ -1,6 +1,7 @@
 ## Focused regressions for the ten approved Oct-25 backlog decisions.
 extends SceneTree
 const Game = preload("res://game/game.gd")
+const Speech = preload("res://tools/speech.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
 const Evil = preload("res://sim/evil.gd")
@@ -157,7 +158,7 @@ func _distrust() -> void:
 		var state = w.rng.state
 		var trust: float = n.trust
 		var reply = Mind.answer_opinion(w, n, t)
-		check(reply.lines.size() == 2 and "You broke your promise to me." in reply.lines[1].text, "an opinion refusal explains the strongest remembered action")
+		check(reply.lines.size() == 2 and "You broke your promise to me." in Speech.said(reply.lines[1]), "an opinion refusal explains the strongest remembered action")
 		check(reply.facts.is_empty() and n.trust == trust and w.rng.state == state, "explanation changes neither facts, trust nor RNG")
 		n.traits.privacy = 1.0
 		n.max_tier = 0

@@ -1,5 +1,6 @@
 extends SceneTree
 const Game = preload("res://game/game.gd")
+const Speech = preload("res://tools/speech.gd")
 const Mind = preload("res://sim/mind.gd")
 const Presentation = preload("res://game/workshop_presentation.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
@@ -68,7 +69,7 @@ func _trapped_group_response() -> void:
 	if not result.get("workshop", false): return
 	var expected: String = Mind.Dialogue.voice_line(n.id, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong.")
 	check(result.dialogue.special.begins_with(expected) and ("About " + others[1].name + ":") in result.dialogue.special, "group response includes the voiced admission and the second target assessment")
-	check(result.lines.size() == 1 and result.lines[0].text == result.dialogue.special, "spoken group response retains the complete assessed response")
+	check(result.lines.size() == 1 and Speech.shown(result.lines[0]) == result.dialogue.special, "spoken group response retains the complete assessed response")
 
 func _direct_and_migration() -> void:
 	var g = _game()
@@ -95,7 +96,7 @@ func _direct_and_migration() -> void:
 	var bad = g.file_deduction({"type": "evil", "a": target.id}, [card])
 	var rejected = g._evaluate_deduction(n, g.board[bad - 1], 1.0, true)
 	check(rejected.get("workshop", false) and rejected.dialogue.stance == "reject", "an accusation contradicted by the report is rejected by the new model")
-	check(rejected.lines[0].text.trim_prefix("[PH] ") == rejected.dialogue.special and _close(baseline, n.suspicion), "spoken rejection and collateral exoneration derive from the same reports")
+	check(Speech.said(rejected.lines[0]) == rejected.dialogue.special and _close(baseline, n.suspicion), "spoken rejection and collateral exoneration derive from the same reports")
 	n.pressed_today = 0
 	var cited = Mind.hear_accusation(g.w, n, target, g.board[ded - 1])
 	check(cited.get("workshop", false) and n.workshop_state.active, "citing a deduction as a card follows original evidence instead of promoting its label")
@@ -273,7 +274,12 @@ func _intermediate() -> void:
 		p.ledger = {}
 	var n = g.w.by_id.odette
 	n.alignment = "good"
-	n.role = "warden"
+	# The listener is the Dowser (Oct 30). This used to be Fenwick's reading, trusted only
+	# because suspicion 0.0 read as near-proven good. Under the relative prior a 4-of-4
+	# count from an unvetted source is better explained by a lie (likelihood 0.2) than by
+	# the whole evil team plus the Marked standing in one group, so the listener's own
+	# reading carries the case instead, as the intermediate-claim check intends.
+	n.role = "dowser"
 	n.trust = 0.7
 	for id in n.suspicion:
 		n.suspicion[id] = 0.3
@@ -282,7 +288,9 @@ func _intermediate() -> void:
 		n.suspicion[id] = 0.0
 	var survey = _reading(g, g.w.by_id.bart, "surveyor", 0, {"count": 4})
 	var rumor = _reading(g, g.w.by_id.merrin, "rumormonger", 0, {"pair": ["nisha", "constance"], "secret": "marked"})
-	var dowse = _reading(g, g.w.by_id.fenwick, "dowser", 1, {"group": ["hollis", "lian", "nisha", "constance"], "count": 4})
+	var own_dowse = {"role": "dowser", "day": 1, "phase": 0, "data": {"group": ["hollis", "lian", "nisha", "constance"], "count": 4}}
+	n.info_log.append(own_dowse)
+	var dowse = _reading(g, n, "dowser", 1, own_dowse.data)
 	var child = g.file_deduction({"type": "evil", "a": "hollis"}, [rumor, dowse])
 	var parent = g.file_deduction({"type": "evil", "a": "constance"}, [survey, child])
 	g.set_workshop_effects(true)
@@ -292,7 +300,9 @@ func _intermediate() -> void:
 	check(result.get("workshop", false), "a multi-line ten-person case uses the new presentation path")
 	if result.get("workshop", false):
 		var accepted = result.assessment.claims.filter(func(c): return c.conclusion.target == "hollis")
-		check(not accepted.is_empty() and accepted[0].stance == "accept", "the listener can accept an intermediate alignment claim")
+		# Partial is the honest ceiling here (Oct 30): the count says three of the four are
+		# evil and one is the Marked, and Hollis is the Marked unless Merrin's rumour holds.
+		check(not accepted.is_empty() and accepted[0].stance in ["accept", "partial"] and n.workshop_state.get("requested", {}).get("hollis", 0.0) >= 0.3, "the listener can take up an intermediate alignment claim")
 		check(result.dialogue.stance != "accept" and "Hollis" in result.dialogue.special, "the reply acknowledges Hollis while retaining uncertainty about Constance")
 		check(n.workshop_state.requested.get("hollis", 0.0) > 0, "the acknowledged collateral claim has an actual shared belief effect")
 		check(Mind.citable_reason(g.w, n, "hollis", "player") != "" and Mind.citable_reason(g.w, n, "hollis", "town") == "", "joint reasons from a private presentation are citable to that audience only")
@@ -309,7 +319,9 @@ func _intermediate() -> void:
 		n.sus_why.constance = "old argument"
 		n.sus_src.constance = n.workshop_state.owned.keys()[0]
 		g.workshop_retract(parent, n.id)
-		check(Mind.reason_status(g.w, n, "constance").why == "", "withdrawn shared evidence cannot leave an owned legacy accusation as the stated reason")
+		# Her own Dowser reading still implicates Constance after the case is withdrawn
+		# (Oct 30 fixture), so a fresh shared reason may remain; the withdrawn one may not.
+		check(Mind.reason_status(g.w, n, "constance").why != "old argument", "withdrawn shared evidence cannot leave an owned legacy accusation as the stated reason")
 
 func _private_reasons() -> void:
 	var g = _game()

@@ -3,6 +3,7 @@
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
+const Speech = preload("res://tools/speech.gd")
 const Argue = preload("res://sim/argue.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -221,7 +222,7 @@ func _init() -> void:
 	if not pz.is_empty():
 		var P = pz[0]
 		var r0 = Mind.press(w, P, g.board[k1 - 1])
-		_check(r0["lines"][0]["text"].trim_prefix("[PH] ").begins_with("What has that"), "pressing with an unrelated card")
+		_check(Speech.said(r0["lines"][0]).begins_with("What has that"), "pressing with an unrelated card")
 		var ksp = g.add_card({"kind": "sighting", "subject": [P.id], "block": "docks", "day": 1, "phase": C.NIGHT, "source": c, "text": "C saw P on docks n1"})
 		var p0 = P.pressure
 		var r1 = Mind.press(w, P, g.board[ksp - 1])

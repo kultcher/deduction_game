@@ -5,6 +5,7 @@
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
+const Speech = preload("res://tools/speech.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const C = preload("res://sim/content.gd")
@@ -338,10 +339,10 @@ func _where_were_you() -> void:
 	n.traits["gossip"] = 0.9
 	_talk_to(g, n)
 	var r = Mind.answer_today(w, n, "yesterday afternoon")
-	var t: String = r["lines"][0]["text"]
+	var t: String = Speech.said(r["lines"][0])
 	_check(t.begins_with("Yesterday afternoon I was "), "a timeframe answer starts with where they were (%s)" % t)
 	g.command("ask seen yesterday morning")
-	_check(g.last_events.any(func(e): return e["k"] == "speech" and "Yesterday morning I was" in e["text"]), "'ask seen yesterday morning' works as a command")
+	_check(g.last_events.any(func(e): return e["k"] == "speech" and "Yesterday morning I was" in Speech.said(e)), "'ask seen yesterday morning' works as a command")
 
 func _haunts() -> void:
 	var g = _game(7111)
@@ -492,7 +493,7 @@ func _corroboration() -> void:
 	w.day = 1
 	w.phase = 1
 	var r = Mind.answer_today(w, n, "morning", "", seen)
-	var t: String = r["lines"][0]["text"]
+	var t: String = Speech.said(r["lines"][0])
 	_check(not (w.by_id[x].name + " at") in t, "a pair you saw yourself isn't repeated to you (%s)" % t)
 	_check(r["facts"].any(func(f): return f.get("silent", false)), "...but it's kept as silent backing")
 	g._facts(r["facts"])
