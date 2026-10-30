@@ -256,9 +256,14 @@ func readings_ask():
 		n.claim_public = status == 2
 		scene._refresh_actions()
 		await process_frame
-		var buttons = scene.actions.get_children().filter(func(b): return b is Button and not b.is_queued_for_deletion())
-		var text: String = buttons[0].text
-		check(("readings" in text) == (status != 0), "gift action label follows private or public disclosure")
+		# Find the gift ask by its label, not its position: since the daytime conversation
+		# view (Oct 28) the talk actions sit in its controls, behind a "Look at the map" toggle.
+		var pool: Array = scene.actions.get_children() + scene.conversation_view.controls.get_children()
+		var buttons = pool.filter(func(b): return b is Button and not b.is_queued_for_deletion() and (b.text.begins_with("Ask about their readings") or b.text.ends_with("'s gift…  ▸")))
+		var text: String = buttons[0].text if not buttons.is_empty() else ""
+		check(("readings" in text) == (status != 0) and text != "", "gift action label follows private or public disclosure")
+		if buttons.is_empty():
+			continue
 		scene._ask_gift_picker(buttons[0])
 		var choices = scene.popup.find_children("*", "Button", true, false)
 		check(choices.any(func(b): return b.text == ("about their readings" if status != 0 else "about their gift")), "gift picker keeps its ask-gift command behind the matching readings label")

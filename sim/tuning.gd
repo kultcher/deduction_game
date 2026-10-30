@@ -76,7 +76,7 @@ class Setup:
 	const TRACE_TOKEN_PROB = 0.67
 	const TRACE_LOCATIONS_BASE_WEIGHT = 3.5
 	const TRACE_QUARTER_BASE_WEIGHT = 0.65
-	const TRACE_CONNECTION_BASE_WEIGHT = 0.65
+	const TRACE_CONNECTION_BASE_WEIGHT = 0.0   # 0 = connection traces never drawn (user, Oct 30)
 	const TRACE_FRESH_FAMILY_WEIGHT = 1.25
 	const EXTRA_TRACE_CHANCE = 0.45
 	const TRACE_MATCH_WEIGHT = 3.0
@@ -437,6 +437,10 @@ class Workshop:
 	const LR_WEAK = 1.5
 	const LR_MODERATE = 3.0
 	const LR_STRONG = 10.0
+	## Listener prior (`CaseEval._team_prior`): odds of evil = exp(PRIOR_K * suspicion), a
+	## relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a
+	## probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x).
+	const PRIOR_K = 1.5
 
 	## Role constraints, movement & public/speech evidence (`workshop/*.gd`)
 	const BLUFF_WEIGHT = 0.92

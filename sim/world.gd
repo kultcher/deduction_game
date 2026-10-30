@@ -1431,7 +1431,8 @@ func build_actor_trace(actor, v, slot: int = 0) -> Dictionary:
 	var conn_key: String = "connection:%s:%d" % [v.id, day]
 	if not used_keys.has(conn_key) and (actor.home_block == v.home_block or _has_public_bond(actor.id, v.id) or _shared_daytime_loc(actor, v, day)):
 		var c_w: float = Tuning.Setup.TRACE_CONNECTION_BASE_WEIGHT * (Tuning.Setup.TRACE_FRESH_FAMILY_WEIGHT if not seen_families.has("connection") else 1.0)
-		family_options.append({"family": "connection", "weight": c_w})
+		if c_w > 0.0:
+			family_options.append({"family": "connection", "weight": c_w})
 	var total_w = 0.0
 	for opt in family_options:
 		total_w += float(opt.weight)

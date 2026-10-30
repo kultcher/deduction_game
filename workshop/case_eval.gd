@@ -672,9 +672,9 @@ static func _team_prior(view: Dictionary, listener: Dictionary) -> PackedFloat64
 	return team_prior
 
 static var _fits_cache: Dictionary = {}
-## Experiment (Oct 30): negative = suspicion read as a probability (current); otherwise prior
-## odds = exp(prior_k * suspicion), a relative nudge. Not wired to gameplay.
-static var prior_k: float = -1.0
+## Prior odds = exp(prior_k * suspicion) (Tuning.Workshop.PRIOR_K). Probes may override it;
+## a negative value restores the old mapping (suspicion read as a probability) for comparison.
+static var prior_k: float = Tuning.Workshop.PRIOR_K
 
 ## Role assignment per class (live views): one check per class representative, since
 ## a class shares everything the role check reads. A listener's own role and outings only
