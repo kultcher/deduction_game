@@ -274,7 +274,12 @@ func _intermediate() -> void:
 		p.ledger = {}
 	var n = g.w.by_id.odette
 	n.alignment = "good"
-	n.role = "warden"
+	# The listener is the Dowser (Oct 30). This used to be Fenwick's reading, trusted only
+	# because suspicion 0.0 read as near-proven good. Under the relative prior a 4-of-4
+	# count from an unvetted source is better explained by a lie (likelihood 0.2) than by
+	# the whole evil team plus the Marked standing in one group, so the listener's own
+	# reading carries the case instead, as the intermediate-claim check intends.
+	n.role = "dowser"
 	n.trust = 0.7
 	for id in n.suspicion:
 		n.suspicion[id] = 0.3
@@ -283,7 +288,9 @@ func _intermediate() -> void:
 		n.suspicion[id] = 0.0
 	var survey = _reading(g, g.w.by_id.bart, "surveyor", 0, {"count": 4})
 	var rumor = _reading(g, g.w.by_id.merrin, "rumormonger", 0, {"pair": ["nisha", "constance"], "secret": "marked"})
-	var dowse = _reading(g, g.w.by_id.fenwick, "dowser", 1, {"group": ["hollis", "lian", "nisha", "constance"], "count": 4})
+	var own_dowse = {"role": "dowser", "day": 1, "phase": 0, "data": {"group": ["hollis", "lian", "nisha", "constance"], "count": 4}}
+	n.info_log.append(own_dowse)
+	var dowse = _reading(g, n, "dowser", 1, own_dowse.data)
 	var child = g.file_deduction({"type": "evil", "a": "hollis"}, [rumor, dowse])
 	var parent = g.file_deduction({"type": "evil", "a": "constance"}, [survey, child])
 	g.set_workshop_effects(true)
@@ -293,7 +300,9 @@ func _intermediate() -> void:
 	check(result.get("workshop", false), "a multi-line ten-person case uses the new presentation path")
 	if result.get("workshop", false):
 		var accepted = result.assessment.claims.filter(func(c): return c.conclusion.target == "hollis")
-		check(not accepted.is_empty() and accepted[0].stance == "accept", "the listener can accept an intermediate alignment claim")
+		# Partial is the honest ceiling here (Oct 30): the count says three of the four are
+		# evil and one is the Marked, and Hollis is the Marked unless Merrin's rumour holds.
+		check(not accepted.is_empty() and accepted[0].stance in ["accept", "partial"] and n.workshop_state.get("requested", {}).get("hollis", 0.0) >= 0.3, "the listener can take up an intermediate alignment claim")
 		check(result.dialogue.stance != "accept" and "Hollis" in result.dialogue.special, "the reply acknowledges Hollis while retaining uncertainty about Constance")
 		check(n.workshop_state.requested.get("hollis", 0.0) > 0, "the acknowledged collateral claim has an actual shared belief effect")
 		check(Mind.citable_reason(g.w, n, "hollis", "player") != "" and Mind.citable_reason(g.w, n, "hollis", "town") == "", "joint reasons from a private presentation are citable to that audience only")

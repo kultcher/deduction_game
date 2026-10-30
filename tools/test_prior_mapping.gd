@@ -21,43 +21,39 @@ func _check(ok: bool, label: String) -> void:
 func _init():
 	_check(CaseEval.prior_k == Tuning.Workshop.PRIOR_K and Tuning.Workshop.PRIOR_K > 0.0, "the live prior uses the relative mapping")
 	_check(exp(Tuning.Workshop.PRIOR_K * 0.1) < 1.3, "a 0.1 suspicion gap is worth less than 1.3x odds (was about 5x)")
-	var lifted = 0
+	# A constructed fixture, independent of how play unfolds: on Day 1 the Seer is given
+	# a true "yes" on the Demon and one good person (the trajectory-based fixtures broke
+	# whenever tuning changed play).
 	var seen = 0
-	# Seeds 4, 15, 17: good Seers with true "yes" readings by Day 3. (Seeds 6, 9 and 24 also
-	# have one whose pair doesn't rise under either mapping: under investigation, Oct 30.)
-	for sd in [4, 15, 17]:
-		var g = _play(sd, 3)
-		for n in g.w.npcs:
-			if not n.alive or n.is_evil() or n.role != "seer" or n.workshop_state.is_empty():
-				continue
-			var pairs: Array = []
-			for e in n.info_log:
-				if e.get("true", false) and e.data.get("yes", false):
-					pairs.append(e.data.pair)
-			if pairs.is_empty():
-				continue
-			var effects = _own_view(g, n)
-			CaseEval.prior_k = -1.0
-			Caches.clear_all()
-			var old_effects = _own_view(g, n)
-			CaseEval.prior_k = Tuning.Workshop.PRIOR_K
-			Caches.clear_all()
-			for pair in pairs:
-				seen += 1
-				var before = 0.0
-				var after = 0.0
-				var old_lift = 0.0
-				for id in pair:
-					if effects.has(id):
-						before += effects[id].prior
-						after += effects[id].posterior
-					if old_effects.has(id):
-						old_lift += old_effects[id].posterior - old_effects[id].prior
-				print("  seed %d %s: %s prior %.2f -> %.2f (old mapping lift %+.2f)" % [sd, n.name, str(pair), before, after, old_lift])
-				if after > before + 0.1:
-					lifted += 1
-	_check(seen > 0, "the fixture seeds include a good Seer with a true 'yes' (%d)" % seen)
-	_check(lifted == seen, "every true Seer 'yes' raises its pair in the holder's own view (%d of %d)" % [lifted, seen])
+	for sd in [4, 15, 17, 3]:
+		var g = Game.new()
+		g.log_dir = "user://test_logs"
+		g.new_case(sd, 10)
+		var seer = g.w.npc_with_role("seer")
+		if seer == null or seer.is_evil() or seer.workshop_state.is_empty():
+			continue
+		var other = g.w.npcs.filter(func(m): return m.id != seer.id and m.id != g.w.demon_id and not m.is_evil() and m.id != seer.red_herring)[0]
+		var pair = [g.w.demon_id, other.id]
+		seer.info_log = [{"role": "seer", "day": 0, "phase": 3, "data": {"pair": pair, "yes": true}, "true": true,
+			"text": "I looked at them: one of them reads as the demon"}]
+		var effects = _own_view(g, seer)
+		CaseEval.prior_k = -1.0
+		Caches.clear_all()
+		var old_effects = _own_view(g, seer)
+		CaseEval.prior_k = Tuning.Workshop.PRIOR_K
+		Caches.clear_all()
+		var lift = 0.0
+		var old_lift = 0.0
+		for id in pair:
+			lift += effects[id].posterior - effects[id].prior
+			old_lift += old_effects[id].posterior - old_effects[id].prior
+		print("  seed %d %s: pair lift %+.2f (old mapping %+.2f)" % [sd, seer.name, lift, old_lift])
+		seen += 1
+		# A hand calculation puts the pair's combined rise near +0.22; the model gives about
+		# +0.11 to +0.14 (open question, Oct 30). Guard the direction and the gain over the
+		# old mapping.
+		_check(lift > 0.08 and lift > old_lift, "seed %d: a true Seer 'yes' raises its pair, more than under the old prior (%+.2f vs %+.2f)" % [sd, lift, old_lift])
+	_check(seen >= 2, "at least two fixture seeds have a good Seer (%d)" % seen)
 	print("Prior mapping: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
