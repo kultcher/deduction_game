@@ -26,6 +26,7 @@ var sketch_opt: OptionButton
 var sketch_core: Label
 var sketch_outputs = {}
 var sketch_data: Dictionary
+var vn_preview
 
 func _ready() -> void:
 	theme = ThemeSkin.make()
@@ -69,6 +70,10 @@ func _ready() -> void:
 	note = _label(body, "", 18)
 	core = _label(body, "", 22)
 	core.add_theme_color_override("font_color", ThemeSkin.color("accent"))
+	var preview_button = Button.new()
+	preview_button.text = "Open VN portrait preview"
+	preview_button.pressed.connect(_open_vn_preview)
+	body.add_child(preview_button)
 	var columns = GridContainer.new()
 	columns.columns = 3
 	columns.add_theme_constant_override("h_separation", 18)
@@ -104,6 +109,12 @@ func _ready() -> void:
 	_label(body, "Changing controls previews the next line or entire turn. Speak records delivery; previews never consume memory.\nCanonical statements stay intact. Explicit shared scene/time slots allow concise speech. Speech act, pressure and optional warmth affect the opening; confidentiality applies only in private.", 17)
 	_refresh(false)
 	_build_voice_sketches(body)
+	vn_preview = preload("res://ui/dialogue_vn_preview.gd").new()
+	add_child(vn_preview)
+	vn_preview.speak_requested.connect(func(): _refresh(true))
+
+func _open_vn_preview() -> void:
+	vn_preview.show_results(last_results)
 
 func _build_voice_sketches(body: VBoxContainer) -> void:
 	sketch_data = Sketches.read()
@@ -239,3 +250,5 @@ func _refresh(deliver: bool) -> void:
 		outputs[id].text = result["text"]
 		cues[id].text = "%s · %s" % ["Delivered" if deliver else "Preview", result["cue"] if result["cue"] != "" else "unchanged fallback"]
 		last_results[id] = result
+	if vn_preview != null and vn_preview.visible:
+		vn_preview.show_results(last_results)

@@ -33,8 +33,12 @@ var side_profile: RichTextLabel:
 var case_view
 var case_state = CaseState.new()   # view, filters and selection shared by every panel
 var map
+var map_stage: Control
+var conversation_view
+var conversation_show_map = false
+var conversation_finished = false
 var meeting_view
-var actions: VBoxContainer
+var actions: Container
 var action_title: Label
 var popup: PopupPanel
 var mono: SystemFont
@@ -185,11 +189,18 @@ func _ready() -> void:
 	upper.size_flags_stretch_ratio = 1.25
 	upper.add_theme_constant_override("separation", 10)
 	body.add_child(upper)
+	map_stage = Control.new()
+	map_stage.custom_minimum_size = Vector2(500, 300)
+	map_stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_stage.clip_contents = true
+	upper.add_child(map_stage)
 	map = MapView.new()
-	map.custom_minimum_size = Vector2(500, 300)
-	map.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	map.clicked.connect(_on_map_clicked)
-	upper.add_child(map)
+	map_stage.add_child(map)
+	conversation_view = preload("res://ui/day_conversation_view.gd").new()
+	conversation_view.visible = false
+	map_stage.add_child(conversation_view)
 	# While the town meets, the meeting circle takes the map's place.
 	meeting_view = MeetingView.new()
 	meeting_view.custom_minimum_size = Vector2(500, 300)
@@ -413,6 +424,8 @@ func _new_case_button() -> void:
 func _new_case() -> void:
 	if g != null and (g.workshop_presenting or g.meeting_streaming()):
 		return
+	conversation_finished = false
+	conversation_show_map = false
 	_case_seed = int(seed_box.value)
 	case_state.select_card(0)
 	g = Game.new()
@@ -603,9 +616,14 @@ func _open_live_workshop(number: int = 0) -> void:
 	case_view.open_workshop(number)
 
 func _run_workshop(cmd: String, progress: Callable) -> void:
+	if conversation_finished:
+		return
+	var previous_state = g.state
 	_print("\n> " + cmd)
 	_print(await g.workshop_command(cmd, progress))
-	_consume_headlines()
+	_capture_conversation(previous_state, cmd)
+	if not conversation_finished:
+		_consume_headlines()
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()
@@ -628,10 +646,15 @@ func _on_submit(text: String) -> void:
 	_run(t)
 
 func _run(cmd: String) -> void:
+	if conversation_finished:
+		return
+	var previous_state = g.state
 	_print("\n> " + cmd)
 	_print(g.command(cmd))
-	_consume_headlines()
-	if g.meeting_streaming():
+	_capture_conversation(previous_state, cmd)
+	if not conversation_finished:
+		_consume_headlines()
+	if g.meeting_streaming() and not conversation_finished:
 		_stream_meeting()
 		return
 	if g.state == "talk" and g.talk_with != null:
@@ -639,6 +662,27 @@ func _run(cmd: String) -> void:
 	_refresh_all()
 	if case_view.visible and case_view.workshop != null:
 		case_view.workshop.refresh()
+
+func _capture_conversation(previous_state: String, cmd: String) -> void:
+	if g.state == "talk" and g.talk_with != null:
+		if previous_state != "talk" or conversation_view.person_id != g.talk_with.id:
+			conversation_show_map = false
+			conversation_view.begin(g.talk_with.id, g.talk_with.name)
+		conversation_view.consume(g.last_events)
+	elif previous_state == "talk":
+		conversation_view.consume(g.last_events)
+		var verb = cmd.strip_edges().get_slice(" ", 0).to_lower()
+		if not verb in ["bye", "leave", "done"]:
+			conversation_finished = true
+			conversation_show_map = false
+
+func _leave_finished_conversation() -> void:
+	conversation_finished = false
+	_consume_headlines()
+	if g.meeting_streaming():
+		_stream_meeting()
+	else:
+		_refresh_all()
 
 ## Several commands from one click (e.g. walk to someone, then talk to them).
 func _run_seq(cmds: Array) -> void:
@@ -699,8 +743,10 @@ func _refresh_all() -> void:
 	if not meeting or (g.state == "nomination" and _last_state != "nomination") or (g.state == "meeting" and _last_state == "nomination"):
 		meeting_show_map = false  # a vote starting (or being counted) brings the circle back
 	_last_state = g.state
-	map.visible = not meeting or meeting_show_map
-	meeting_view.visible = meeting and not meeting_show_map
+	map_stage.visible = conversation_finished or not meeting or meeting_show_map
+	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map)
+	meeting_view.visible = meeting and not meeting_show_map and not conversation_finished
+	input.editable = not conversation_finished
 	if meeting:
 		meeting_view.refresh()
 	else:
@@ -784,10 +830,18 @@ func _on_map_clicked(kind: String, id: String) -> void:
 
 func _refresh_actions() -> void:
 	for ch in actions.get_children():
+		actions.remove_child(ch)
+		ch.queue_free()
+	for ch in conversation_view.controls.get_children():
+		conversation_view.controls.remove_child(ch)
 		ch.queue_free()
 	if g == null:
 		return
 	var w = g.w
+	if conversation_finished:
+		action_title.text = "Conversation finished"
+		_button(conversation_view.controls, "Leave conversation", _leave_finished_conversation)
+		return
 	if g.meeting_streaming():
 		action_title.text = "Day %d: the town meeting" % w.day
 		_hint("The town is speaking…")
@@ -809,7 +863,16 @@ func _refresh_actions() -> void:
 					_button(actions, "Hear them out (uses this phase)", func(): _run("accept"))
 					_button(actions, "Wave them off", func(): _run("decline"))
 		"talk":
-			_actions_talk(w)
+			_button(actions, "Look at conversation" if conversation_show_map else "Look at the map", func():
+				conversation_show_map = not conversation_show_map
+				_refresh_all())
+			if conversation_show_map:
+				_actions_talk(w)
+			else:
+				var lower_actions = actions
+				actions = conversation_view.controls
+				_actions_talk(w)
+				actions = lower_actions
 		"meeting":
 			action_title.text = "Day %d: the town meeting" % w.day
 			if not g.presented_today and g.board.any(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false)):

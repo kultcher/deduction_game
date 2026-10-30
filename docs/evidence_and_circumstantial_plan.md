@@ -1,146 +1,149 @@
 # Evidence Rework & Circumstantial Hub Plan
 
-**Status:** All 5 slices + Stage 1/Stage 2 boundary & Codex fixes implemented (`docs/evidence_and_circumstantial_plan.md`), ready for playtest and 150-seed balance sweep.
+**Status:** Ready for focused vertical-slice prototype (`docs/evidence_and_circumstantial_plan.md`).
 **Target Engine:** Godot 4.7.2 (GDScript).
 
-This plan specifies two connected investigation and persuasion reworks for **Demonologist**, incorporating findings from the 200-seed feasibility audit, the 20,000-seed token/scent combinatorics sweep, Slice 2-5 playtest and Codex review feedback, and live Workshop code audits:
+This plan specifies two connected investigation and persuasion reworks for **Demonologist**, incorporating findings from the 200-seed feasibility audit and live Workshop code review:
 
-1. **Multi-Category Crime-Scene Traces & Hidden Profile Receipts**: Replacing deterministic evening-block traces (`World._kill`) and main-board `"home"` / `"haunt"` clutter with a soft-worded (`3:1` LR) physical trace generator featuring **28 tactile 2-spot Trade Tokens and 56 bespoke 3-spot Lingering Scents (`67% / 33%` mix with a non-subset guard)** alongside tangible Quarter tokens and domestic Victim-Connection staging, hidden immutable profile receipts (`g.profile_receipts`), three-valued profile evaluation (`matches / contradicts / unknown`), additive passer second traces with joint `(T1, T2)` / `(T2, T1)` scene evaluation, exact Scion pre/post-execution night splits, and persistent haunt recording across both bare and pressed trace confrontations.
-
-2. **Circumstantial Evidence Hub (Stage 2 "Mob Mentality" Vibes)**: Adding a dedicated patina/sea-slate Workshop hub node (`+0.015` max per qualifying incident, `+0.045` global cap per listener/target across all active cases) that lets players push fence-sitters over the vote threshold using listener-dependent social framing while routing hard logical/movement evidence (including contradicted night alibis) exclusively through Stage 1, scoring testimony refusals (with the `0.25 / 0.35` fear discount) exclusively in Stage 2, preserving both Stage 1 and Stage 2 owned layers across native suspicion adjustments (`Mind.adjust`), and keeping `"is suspicious"` on standard Premise cards for the upcoming *Premises Matter* pass.
+1. **Multi-Category Crime-Scene Traces & Hidden Profile Receipts**: Replacing deterministic evening-block traces (`World._kill`) and main-board `"home"` / `"haunt"` clutter with a soft-worded (`3:1` LR) physical trace generator, hidden immutable profile receipts (`g.profile_receipts`), three-valued profile evaluation (`matches / contradicts / unknown`), joint two-trace scene evaluation, and a player-facing candidate narrowing summary.
+2. **Circumstantial Evidence Hub (Stage 2 "Mob Mentality" Vibes)**: Adding a dedicated patina/sea-slate Workshop hub node (`+0.015` max per qualifying incident, `+0.045` global cap per listener/target across all active cases) that lets players push fence-sitters over the vote threshold using biased social framing while keeping `"is suspicious"` on standard Premise cards for the upcoming *Premises Matter* pass.
 
 It absorbs or resolves these `BACKLOG.md` items:
-
-* *Night movement and trace model* (fixing the evening-shift Demon vulnerability and retiring main-board `"home"` and `"haunt"` cards);
-
-* *The Lamplighter contaminates vigils and traces* (turning passer trace overlap into a joint two-trace assignment puzzle);
-
-* *Repeated trace matches add up* (compounding independent multi-night trace likelihoods in `CaseEval`);
-
-* *Supporting evidence in a case: logical where possible, vibes where not* (separating Stage 1 world-filtering evidence from Stage 2 listener-biased social framing).
+- *Night movement and trace model* (fixing the evening-shift Demon vulnerability and retiring main-board `"home"` and `"haunt"` cards);
+- *The Lamplighter contaminates vigils and traces* (turning passer trace overlap into a joint two-trace assignment puzzle);
+- *Repeated trace matches add up* (compounding independent multi-night trace likelihoods in `CaseEval`);
+- *Supporting evidence in a case: logical where possible, vibes where not* (separating Stage 1 world-filtering evidence from Stage 2 listener-biased social framing).
 
 ## 1. Settled Design & Calibration Decisions
 
-* **Tactile Trade Tokens & Lingering Scents as the Primary Trace Backbone (`~75%` of Crime Scenes).** Setting `TRACE_LOCATIONS_BASE_WEIGHT = 3.5` (vs. `0.65` each for `quarter` and `connection`, with a `1.25x` fresh-family nudge) ensures **`~72-78%` of crime scenes produce tangible Trade Tokens or Lingering Scents**, while `quarter` and `connection` use concrete physical objects and domestic staging (`QUARTER_TOKENS`, drawn bolts, two pewter cups).
-
-* **Complete Bespoke Catalog (`28` Trade Tokens + `56` Lingering Scents) & Concise 3-Line Card Copy.** All 28 location pairs map to concrete pocket/trade objects and all 56 location triples map to cohesive shared scents, formatted concisely so 3-line Workshop canvas nodes display the full item/scent and all associated places without truncating.
-
-* **`67%` 2-Spot Trade Tokens / `33%` 3-Spot Lingering Scents with a Non-Subset Guard.** Blending `67%` 2-spot tokens with `33%` 3-spot scents and banning subset/superset location sets hits **`7.28` left after 1 clue**, **`5.31` left after 2 clues**, and **`3.90` left after 3 clues**, while both Demon and passer traces draw from the same `2:1` ratio so clue width never leaks killer vs. passer identity.
-
-* **Additive Passer Confound with Joint `(T1, T2)` / `(T2, T1)` Evaluation.** When non-victim night-walkers cross `v.home_block`, `World._kill` rolls `EXTRA_TRACE_CHANCE` (`0.45`) to generate a second non-duplicate, non-subset trace from a passing walker alongside the Demon's trace, shuffles their presentation order (`50/50`), and assigns `trace_slot = 0, 1` and `scene_trace_count` *after* shuffling. Citing 1 of 2 cards blends `0.5 * w(d, T1) + 0.5 * E_pass(T1)` (cherry-pick guard), whereas citing both `(T1, T2)` scores `0.5 * (w(d, T1) * E_pass(T2) + w(d, T2) * E_pass(T1))`.
-
-* **Exact Scion Succession Timing, Pressed-Trace Haunt Persistence & Breathstealer Public-Only Rule.**
-
-  * **Scion Epoch Boundary (`workshop/live_activity.gd`)**: Because `World.execute` runs at Day `exec_day` Evening (`tick = exec_day * 4 + 2`) and promotes the Scion via `_scion_rises` *before* `resolve_night()` runs Night `exec_day` (`tick = exec_day * 4 + 3`), pre-takeover nights belonging to the hanged original Demon are strictly `0 <= night < exec_day`, while post-takeover nights belonging to the Scion start on **that execution day's night** (`night >= exec_day`), with `alive_demon_mask` checking `History.alive_at_night(view, p.id, exec_day)`.
-
-  * **Trace Confrontation Haunt Saving (`game/game.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`)**: `Mind.press` forwards `known_haunts` into `react_to_trace` (preferring not-yet-known matching haunts when deflecting), and `Game._talk_command` persists `r.get("profile_haunts", [])` into both `known_haunts` and `add_profile_receipt({"kind": "haunt", ...})` across all conversation verbs (`trace_ask`, `press`, and `confront`).
-
-  * **Breathstealer Public-Location Constraint (`sim/roles/breathstealer.gd`, `workshop/circumstantial.gd`)**: Neither the Breathstealer nor their target may be inside a private home (`not bs.at_home()` and `not m.at_home()`). Stage 2 Breathstealer proximity therefore requires either a witnessed daytime conversation with the silenced victim or witnessed public sightings placing both on the same block in the same daytime slot, never a home-block assumption.
-
-* **Dedicated `"Add Circumstantial Evidence"` Hub, Clean Stage 1 / Stage 2 Split & Native Adjustment Preservation (Slices 4-5).**
-
-  * **Strict Stage 1 vs. Stage 2 Evidence Boundary**:
-    * **Contradicted Night Alibis -> Stage 1 Only**: Caught night-alibi contradictions (`alibi` + night `sighting` or `disputes`) are hard logical movement evidence (`2.33:1` in `LiveActivity`) and award `0.0` in Stage 2 even if wired through a Circumstantial Hub.
-    * **Refusals -> Stage 2 Only (with `0.25 / 0.35` Fear Discount)**: Because good townsfolk have legitimate reasons to withhold testimony in a social deduction game, `SpeechEvidence.factors` emits zero Stage 1 weight for `refusal` cards; instead, Stage 2 scores `refusal` on `target` at `INCIDENT_MAX` (`+0.015`) when unafraid and `INCIDENT_MAX * (0.25 / 0.35)` (`~+0.0107`) when `fear` is `true`, taking `maxf` across days so repeated reluctance never stacks.
-    * **Trace-Context Non-Double-Dip Guards**: Profile `rival` bonds already backing a cited `connection` trace on the same victim and `evening` sightings already backing a cited `quarter` trace on that evening block stay in Stage 1 (`3:1`) without paying a second Stage 2 bonus.
-
-  * **Evidence-Driven Channel Routing**: Cards wired into a `"circumstantial"` hub still flow into `result.cards` so Stage 1 (`CaseEval` / `LiveActivity` / `SpeechEvidence`) evaluates logical and movement evidence identically regardless of how the player wires the canvas. Players never lose Stage 1 credit by organizing supporting material through the hub.
-
-  * **Patina / Sea-Slate Hub Node (`#cde0dc` / `#7ea69f`)**: Displays a `"Needs a premise"` chip when unlinked, validates non-empty inputs and accusatory target premises (`evil`, `demon`, `minion`, `suspicious`) when compiled, and supports roster-independent JSON export/restore (`CanvasModel.restore`), undo, and context-menu removal.
-
-  * **Stage 2 Union Evaluation (`+0.015` Incident Max, `+0.045` Target Cap)**: Evaluated once on the frozen post-Stage-1 snapshot (never iterating, never feeding Stage 1 priors), gated by specific Stage 1 grounding above town-wide public-event survivor redistribution (`gate = clampf((maxf(0.0, specific_stage1 - 0.01) + 0.35 * maxf(0.0, outside - 0.15)) / 0.06, 0.0, 1.0)`), deduplicated across all active cases per `(listener, target, incident_key)`, and stored in a separately retractable `workshop_state.circumstantial_requested` / `circumstantial_applied` vector.
-
-  * **Stage 2 Preservation Across Native Adjustments (`sim/mind.gd`, `sim/mind_meeting.gd`)**: `Mind.adjust` rebuilds active Workshop listeners' stored suspicion as `outside + state.requested.get(target_id, 0.0) + state.get("circumstantial_requested", {}).get(target_id, 0.0)` so native suspicion deltas (such as execution grief or social shifts) never drop the active Stage 2 layer or corrupt `state.outside` on the next ownership refresh, and `MindMeeting.reason_status` includes `circumstantial_requested` when checking whether an NPC's combined Workshop case reaches public-reason strength.
-
-  * **Semantic Smear Backlash (`-0.005` to `-0.015`)**: Presenting a hub padded with unrelated non-target cards or pure vibes without Stage 1 backing (`gate == 0.0`) triggers a one-time trust penalty (`-0.005` to `-0.015`) per presentation signature, whereas genuine target-involving social reads (such as `"talking with suspected evil"`) simply yield `0.0` sway with zero backlash on listeners who think the conversation partner is good.
-
-* **15-Cast Voice Pass & Workshop-Capable Autoplay Harness (Slice 5).**
-
-  * **Bespoke 15-Cast Voices (`sim/dialogue_voices.gd`, `sim/mind_dialogue.gd`, `game/workshop_presentation.gd`)**: All `[PH]` trace reaction, haunt/work/quarter/connection deflection, multi-trace frame-up denial, and Stage 2 Circumstantial Hub addendum lines (`trace_fit_locations`, `trace_fit_quarter`, `trace_fit_connection`, `trace_not_me`, `trace_point_haunt`, `trace_point_work`, `trace_point_quarter`, `trace_point_connection`, `pressed_multi_trace_case`, `circumstantial_hub_landed`, and `circumstantial_smear_pushback`) are promoted across all 15 cast voices while preserving canonical `statement` metadata.
-
-  * **Workshop-Capable Autoplay Bot & Adjusted Readiness Metrics (`tools/autoplay.gd`, `tools/autoplay_workshop.gd`)**: `_scores()` incorporates structured crime-scene traces and discovered profile receipts (`work`, `haunts`, `home`, `bonds`), `_scale_snapshot()` measures end-of-day `score-ready` against adjusted nomination scores (`action_susp - own_clear - nomination_cooloff` on non-silenced minds; meeting-specific eligibility is not replayed), and `_build_workshop_case()` assembles full `CanvasModel` cases pairing Stage 1 reports, two-trace scenes, night-walker sightings, `Townsfolk Profile Info` nodes, and verified Stage 2 `Circumstantial Evidence` hubs (with `--no-workshop-cases` and `--no-hub` flags for controlled 150-seed A/B sweeps).
+- **Soft-worded `3:1` crime-scene traces across three physical/relational families (no forensic `demeanor`).** Physical crime scenes draw from **`locations`** (2-spot Work/Haunt), **`quarter`** (single unified Home-or-Evening block rule), and **conditional `connection`** (entered into the roll pool only when the killer actually shares a public bond, home block, or daytime location encounter with the victim, guaranteeing 100% generator feasibility across all town sizes and pairings). `demeanor` (personality traits) is excluded from forensic crime scenes so latch marks never pretend to prove `Composure`; observable traits and nerves remain usable in Stage 2 social arguments.
+- **Ban duplicate clues, not whole families, to avoid passer meta-leaks.** Strict family exhaustion across nights would reveal which trace at a two-trace scene belongs to a passer whenever an earlier family reappears. Instead, `World._kill` bans repeating the **exact same clue predicate** within a case and biases toward fresh families (`3.0x` weight on unrolled families vs. `1.0x` on previously seen families), keeping two-trace attribution genuinely ambiguous.
+- **Additive passer confound ("chance for extra, always the Demon's") with joint evaluation.** Remove the silent 40% overwrite in `World._kill`. When non-victim night-walkers cross the murder block, a roll (`Tuning.Setup.EXTRA_TRACE_CHANCE`, `0.45`) adds a second trace generated from one passing walker alongside the Demon's trace (shuffled order, distinct `fact_id` per slot `trace:<scene>:<slot>`). Rather than granting a flat subtraction bonus, the Workshop evaluator scores both joint assignments (`Demon -> T1, Passer -> T2` and `Demon -> T2, Passer -> T1`) under existing walker route, role, and credibility checks.
+- **Prototype trace discrimination at `3:1` LR with soft wording.** Single-trace matching vs. contradicted Demon candidates start at a **`3:1` likelihood ratio** (comparing `1.5:1`, `2:1`, `3:1`, and `4:1` in bot A/B runs), paired with explicitly probabilistic wording (*"Residue near the threshold suggests someone tied to..."* rather than deterministic exclusion) and an explicit **Scion succession boundary** (a trace speaks only to who committed *that night's* murder, matching `chronology.gd` epochs rather than automatically transferring to a post-execution successor).
+- **Hidden immutable Profile Receipts (`g.profile_receipts`) instead of main-board cards.** Learning a profile fact (`home`, `work`, a `haunt`, a dated `trait` tier, or a `bond`) creates a standard normalized receipt in `g.profile_receipts` with its own stable `id`, `source`, and `when` timestamp, bypassing `g.board` so the main Case Board stays clean. A **Townsfolk Profile Info** node in the Workshop indexes and cites the specific unlocked receipts selected when the case is filed: learning a second haunt later (or `_bereave` mutating a Lover's `Privacy`/`Gossip`/`Composure` mid-case) adds new dated receipts without silently mutating already-filed arguments.
+- **Three-valued profile evaluation (`matches / contradicts / unknown`).** Knowing one of an NPC's two haunts (`Mill`) does *not* prove their second haunt isn't `Bakery`, and having no disclosed bond does *not* prove two people aren't close. Cited profile receipts evaluate to **`matches`** (`3:1` weight), **`contradicts`** (`1:1` baseline only when all slots for that category are accounted for, e.g. `work` + both `haunts` known), or **`unknown`** (neutral, preserving baseline prior weight).
+- **Player-facing candidate summary without spoiling persuasion.** In the Case Workshop, combining traces and cited Profile/Sighting evidence displays a crisp investigative breakdown (**Compatible**, **Unresolved / Missing Info**, **Contradicted**, plus viable killer/passer pairings on two-trace scenes) while keeping listener persuasion uncertain because townsfolk hold private beliefs, relationships, and varying `Insight`.
+- **Keep `"is suspicious"` on standard Premise cards; add dedicated `"Add Circumstantial Evidence"` hub.** Standard gold Premise cards retain `"is suspicious"` (`"suspicious"`) for the upcoming *Premises Matter* pass (`-suspicion`, `+pressure` relative to `"evil"`), removing only `"Supporting evidence (no claim)"`. The patina/sea-slate Circumstantial Hub (`#cde0dc` / `#7ea69f`, with an amber `"Needs a premise"` orphan badge) applies final post-modifier nudges up to **`+0.015` per qualifying incident** and **`+0.045` combined per listener/target across all active cases/hubs** (`1.0, 0.8, 0.6, 0.4, 0.2` diminishing weights), saturating in the real fence-sitter zone (`~0.35` target suspicion, `~0.55` player trust) and scaled down by `Insight` (`1.0x` at low Insight to `0.4x` at high Insight). Simply failing to persuade costs **`0` trust**; backlash (`-0.005 to -0.015`, keyed by semantic presentation identity) triggers only when pushing implausible/stretched links or smearing someone the listener actively trusts.
 
 ## 2. Updated Code Touchpoints
 
-| Area | Files & Functions | Status & Change |
-| ----- | ----- | ----- |
-| **Hidden profile receipts & UI** | `game/game.gd`, `game/game_board.gd`, `ui/profile_panel.gd`, `ui/trait_bars.gd`, `workshop/canvas_model.gd`, `ui/live_case_workshop.gd` | **Landed (Slices 1-2 + Codex Fix)**: `g.profile_receipts` (`-10001..`), retired main-board `"home"`/`"haunt"` cards, `Townsfolk Profile Info` node, `prior_links` cleanup on deletion, roster-independent `CanvasModel.restore`. |
-| **Token/Scent flavor, passer 2nd trace & Breathstealer** | `sim/content.gd`, `sim/tuning.gd`, `sim/world.gd` (`_kill`), `sim/roles/breathstealer.gd`, `sim/mind_dialogue.gd`, `sim/argue.gd` | **Landed (Slices 3-5 + Codex Fixes)**: 28 `TRACE_TOKENS`, 56 `TRACE_SCENTS`, `~75%` `locations` weight, `EXTRA_TRACE_CHANCE` (`0.45`) shuffled 2nd passer trace, public-location-only Breathstealer targeting (`not m.at_home()`), discovered-receipt-only `Argue.trace_fit_from_receipts`, and pressed-trace `profile_haunts` persistence. |
-| **Joint `(T1, T2)` scene solver & Scion timing** | `workshop/live_assessment.gd`, `workshop/live_activity.gd`, `game/workshop_canvas.gd` | **Landed (Slices 3-4)**: Scene-level joint factor (`L_scene`), `crossing_probability`, walker-pairing summary, and exact Scion succession night split (`night < exec_day` vs. `night >= exec_day`). |
-| **Stage 2 circumstantial hub, refusals & ownership** | `workshop/circumstantial.gd`, `workshop/speech_evidence.gd`, `workshop/factored_channels.gd`, `workshop/canvas_model.gd`, `workshop/live_assessment.gd`, `workshop/shared_ledger.gd`, `workshop/jury.gd`, `game/workshop_ownership.gd`, `game/workshop_presentation.gd`, `game/workshop_canvas.gd`, `sim/mind.gd`, `sim/mind_meeting.gd`, `ui/live_case_workshop.gd`, `ui/workshop_canvas_view.gd`, `ui/workshop_drawer.gd` | **Landed (Slices 4-5 + Boundary Pass)**: Patina/sea-slate `"circumstantial"` hub node, Stage 2-only fear-discounted refusals (`0.25 / 0.35`), Stage 1-only contradicted night alibis, audience-dependent `"talking with suspected evil"`, trace-context non-double-dip guards, union-level `+0.015 / +0.045` evaluation, retractable ownership vector preserved across `Mind.adjust`, and smear backlash. |
-| **15-cast voice pass & balance sweep** | `sim/dialogue_voices.gd`, `sim/mind_dialogue.gd`, `game/workshop_presentation.gd`, `tools/autoplay.gd`, `tools/autoplay_workshop.gd`, `tools/test_workshop_slice5_voices_and_bot.gd` | **Landed (Slice 5 + Codex Fixes)**: 11 bespoke trace/hub voice keys across all 15 cast voices, adjusted nomination score readiness (`score-ready`), adapted-card hub selector (`autoplay_workshop.gd`), and `tools/test_workshop_slice5_voices_and_bot.gd`. |
+| Area | Files & Functions | Planned Change |
+| :--- | :--- | :--- |
+| **Hidden profile receipts** | `game/game.gd`, `game/game_board.gd`, `game/workshop_bridge.gd`, `game/workshop_canvas.gd`, `workshop/shared_ledger.gd`, `workshop/live_evidence.gd` | Retire `_home_cards` on `g.board` and `"haunt"` appends to `r["facts"]`. Store immutable `home`, `work`, `haunt`, dated `trait`, and `bond` receipts in `g.profile_receipts` (negative receipt numbers `-1, -2, ...` so they never collide with `1..N` board numbers), resolved alongside `g.board` in `WorkshopCanvas.supports`, `Bridge.capture`, and `SharedLedger.roots`. |
+| **Profile UI & Workshop node** | `ui/profile_panel.gd`, `ui/trait_bars.gd`, `workshop/canvas_model.gd`, `ui/live_case_workshop.gd`, `ui/workshop_canvas_view.gd` | Add double-click and right-click (`Add to Case Workshop`) metadata links on Tab 0 (`Home & Work`, `Haunts`, `Bonds`) and `TraitBars` (`Personality`). Add `"Add Townsfolk Profile Info"` button, inline person switcher, 3px character-ink header accent, and receipt-backed facet chips. Remove `"Supporting evidence (no claim)"` from Premise dropdowns while keeping `"suspicious"`. |
+| **Trace generator & identity** | `sim/world.gd` (`_kill`), `sim/mind.gd` (`fact_id`), `sim/tuning.gd` | Implement 100%-feasible `locations`, unified `quarter`, and conditional `connection` trace builders with soft probabilistic phrasing, non-duplicate clue history, weighted family draws, and `EXTRA_TRACE_CHANCE` (`0.45`) second passer trace. Key `fact_id` as `trace:<scene>:<slot>` so two-trace scenes never alias. |
+| **Joint trace solver & preview** | `workshop/live_assessment.gd`, `workshop/live_activity.gd`, `workshop/case_eval.gd`, `game/workshop_canvas.gd` | Deduplicate by `trace:<scene>:<slot>`; evaluate `matches / contradicts / unknown` (`3:1` LR) from cited receipts only (never generator `match_ids`), scoped to the murder night's Demon epoch (Scion-safe). Score two-trace scenes across both `(T1, T2)` and `(T2, T1)` walker assignments, and expose Compatible / Unresolved / Contradicted candidate lists to the Workshop UI. |
+| **Stage 2 circumstantial hub** | `workshop/canvas_model.gd`, `workshop/consequences.gd`, `game/workshop_ownership.gd`, `game/workshop_presentation.gd` | Add patina/sea-slate `"circumstantial"` hub node + `"Needs a premise"` orphan badge, strict eligibility criteria (neutral sightings score `0`), union-level semantic deduplication across all active presentations (`+0.015` item max, `+0.045` target cap, final applied), retractable `workshop_state.circumstantial_applied` vector, and semantic-keyed smear backlash (`-0.005` to `-0.015`). |
+| **NPC reactions & disclosure** | `game/game.gd`, `sim/mind_dialogue.gd`, `sim/evil.gd`, `sim/dialogue_voices.gd` | Add deterministic simulation-approved haunt/prong disclosure helper (not the random `_maybe_tell_haunts` roll) for NPC deflection pointers, single-trace brush-offs, multi-trace frame-up denials, and minion Demon-protection prong selection. |
 
-## 3. Joint Two-Trace Scene Math & Scion Boundary (Slices 3-4)
+## 3. Hidden Profile Receipts & Three-Valued Contract
 
-For each murder scene `S` on `night` (`victim` at `scene_block`):
+### 3.1 Receipt Lifecycle (`g.profile_receipts`)
+- Each entry in `g.profile_receipts` uses the exact same dictionary contract as a `g.board` card, assigned a stable negative slot `n = -(g.profile_receipts.size() + 1)` so `WorkshopBridge._collect`, `WorkshopCanvas.supports`, and `SharedLedger.roots` can pass integer references in `supports: Array` without shifting or colliding with `1..N` board card numbers:
+  - **`home` & `work` (minted at `new_case` setup, `day = 0, phase = 0`, `source = "town"`)**:
+    - `{"kind": "home", "subject": [n.id], "block": n.home_block, "source": "town", "day": 0, "phase": 0, "text": "%s lives on %s." % [n.name, C.block_name(n.home_block)]}`
+    - `{"kind": "work", "subject": [n.id], "loc": n.work, "block": w.loc_block(n.work), "work_phases": n.work_phases.duplicate(), "occupation": n.occupation, "source": "town", "day": 0, "phase": 0, "text": "%s works %s at %s." % [n.name, C.phase_list(n.work_phases), w.loc_name(n.work)]}`
+  - **`haunt` (minted per newly learned location in `_maybe_tell_haunts` or deterministic deflection disclosure)**:
+    - One receipt per individual haunt location `loc_id` (`{"kind": "haunt", "subject": [t.id], "loc": loc_id, "block": w.loc_block(loc_id), "source": speaker.id, "day": w.day, "phase": _phase_now(), ...}`). Splitting each haunt into its own atomic receipt means filing a case when 1 haunt is known snapshots *only* that 1 receipt; learning the 2nd haunt later mints a new receipt available in drafts without mutating the earlier filed case!
+  - **`trait` (minted on trait reveal in `_maybe_tell_trait` / conversation end, dated to `when`)**:
+    - `{"kind": "trait", "subject": [t.id], "trait": key, "tier": tier, "withdrawn": t.withdrawn_since != "", "source": speaker_or_player, "day": w.day, "phase": _phase_now(), ...}`. If `_bereave` later alters `privacy`, `gossip`, or `composure`, a later observation mints a new dated receipt rather than overwriting the earlier historical record.
+  - **`bond` (minted in `_maybe_tell_relationships` and `_remember_spoken_relationship`)**:
+    - `{"kind": "bond", "subject": people.duplicate(), "bond_kind": bond.kind, "source": source, "day": w.day, "phase": _phase_now(), ...}`.
 
-1. **Per-Person Route Crossing Probability (`cross_prob[j][align]`)**:
+### 3.2 Workshop Profile Node (`kind = "profile_info"`)
+- Node schema on `CanvasModel`:
+  `{"id": "pi:%d" % serial, "kind": "profile_info", "person": npc_id, "facets": ["home_work"], "receipt_ids": [...], "at": [x, y]}`
+- Whenever the player toggles a facet chip (`Home & Work`, `Haunts`, `Personality`, `Bonds`) or swaps `person` in the draft editor, `CanvasModel` refreshes `receipt_ids` to the normalized IDs of the currently unlocked `g.profile_receipts` matching `(person, facets)`.
+- Once filed via `WorkshopCanvas.file`, those exact `receipt_ids` are frozen into `card.workshop_case.cards`, preserving historical immutability.
 
-   * Under `LiveActivity._profile_paths` and `_observed` (excluding scene traces so movement is never double-counted), compute for each `j != victim` and `align in {"good", "minion", "converted"}` the normalized probability `cross_prob[j][align] in [0.0, 1.0]` that `j` walked a valid night path containing `scene_block` on `night`.
+### 3.3 Three-Valued Evaluation (`matches / contradicts / unknown`)
+For any trace predicate `T` and candidate `X`, the evaluator inspects **only the receipts included in the active Workshop case / listener view** (never hidden `NPC` fields or generator `match_ids`):
+- **`locations` (`loc_a` or `loc_b` via Work or Haunt)**:
+  - `matches`: Cited `work` receipt or cited `haunt` receipt for `X` is in `{loc_a, loc_b}`.
+  - `contradicts`: Cited `work` receipt for `X` is not in `{loc_a, loc_b}` **AND** `X` has **2 distinct cited `haunt` receipts**, neither in `{loc_a, loc_b}` (since every townsperson has 1 workplace and 2 haunts).
+  - `unknown`: Fewer than 2 `haunt` receipts are cited and nothing cited matches yet.
+- **`quarter` (`home_block == B_home` OR `evening_block(night) == B_ev`)**:
+  - `matches`: Cited `home` receipt has `block == B_home`, OR a cited/accepted `evening` sighting on `night` places `X` on `B_ev`.
+  - `contradicts`: Cited `home` receipt has `block != B_home` **AND** a cited/accepted `evening` sighting on `night` places `X` on a block `!= B_ev` (or `X`'s cited `work` shift forces `X` onto another block that evening).
+  - `unknown`: `home_block != B_home` and `X`'s evening block on `night` is unestablished.
+- **`connection` (Bond with `victim`, `home_block == victim.home_block`, or daytime encounter with `victim` on `day`)**:
+  - `matches`: Cited `bond` receipt links `X` and `victim`, OR cited `home` receipt puts `X` on `victim.home_block`, OR cited daytime `sighting`/`conversation` pairs `X` and `victim` on `day`.
+  - `unknown` / soft non-match: Because undisclosed bonds or unseen daytime overlaps can exist, absence of a positive match when `home_block != victim.home_block` applies only a partial non-match discount (`1.5:1` instead of full `3:1`) unless full daytime whereabouts rule out an encounter.
 
-2. **Expected Passer Trace Weight (`E_pass(T, world, d)`)**:
+## 4. Joint Scene Trace Model & Candidate Readout
 
-   * Given world `(evil, d)`, let `Z = eps + sum_{j != d, victim} cross_prob[j][align_j]` (`eps = 0.05`) and `E_pass(T, world, d) = (eps * 1.6 + sum_{j != d, victim} cross_prob[j][align_j] * w_match(j, T)) / Z`.
+### 4.1 100%-Feasible Trace Generation (`World._kill`)
+- **Eligible families for `(actor, victim)`**:
+  - `locations`: Always eligible (`1,800 / 1,800` valid in audit). Picks `1` spot from `[actor.work] + actor.haunts` and `1` decoy spot from the remaining 7 town locations, preferring decoys whose cast match count lands in `[6, 8]` at 10 NPCs (`[4, 5]` at 7 NPCs), with graceful fallback to the closest match count if none hits the band.
+  - `quarter`: Always eligible. Single canonical predicate: *"Mud and residue near the threshold suggest someone who either lives on `<B_home>` or spent yesterday evening on `<B_ev>`."* (When `loc_block(actor_ev) == actor.home_block`, pick a second block `B_decoy != actor.home_block` and randomly assign `(B_home, B_ev)` as `(actor.home_block, B_decoy)` or `(B_decoy, actor_ev)` so the single predicate always holds.)
+  - `connection`: Eligible **only when** `actor` actually has a public bond with `victim` (`w.town_relationships`), lives on `victim.home_block`, or shared a location with `victim` on `day`. When eligible, pairs `bond(X, victim)` with `home_block == victim.home_block` (or daytime overlap with `victim`).
+- **Selection without replacement of exact clues**: Filter out any candidate clue whose canonical `(family, prongs)` key already spawned earlier in the case; weight families not yet used by the Demon at `3.0x` vs. `1.0x` for previously used families.
 
-3. **Scene Likelihood Factor (`L_scene(world, d)`)**:
+### 4.2 `3:1` Likelihoods, Joint Two-Trace Assignments & Scion Epoch
+- **Murderer identity (`killer_idx`)**: In `CaseEval` / `LiveActivity`, a trace on `crime_night` binds to whoever was the Demon **on `crime_night`** (`TimeModel` original Demon before any Scion promotion, or current Demon if no `>= 5`-alive Demon execution intervened).
+- **Single-trace scene (`T1`)**: Relative Demon weight for candidate `d` is `w_match(d, T1)` where `matches -> 3.0`, `unknown -> 1.6`, `contradicts -> 1.0` (giving an exact **`3:1`** ratio between matching and contradicted candidates, and keeping unknown-profile candidates near the prior average).
+- **Two-trace scene (`T1, T2`)**:
+  - Let `W_pass` be the plausibility-weighted match score of non-Demon night-walkers on `scene_block` for trace `T` (combining any cited/credited walker `w != d` whose route crosses `scene_block` with a baseline unattributed-passer background weight).
+  - Joint scene likelihood for Demon candidate `d` averages both assignments:
+    `L(d | T1, T2) = 0.5 * (w_match(d, T1) * W_pass(T2, d) + w_match(d, T2) * W_pass(T1, d))`
+  - Notice how naturally this behaves: if Constance (Night Watch on `scene_block`) matches *only* `T2`, `W_pass(T2, d)` rises and `T1` cleanly focuses on `d`; if Constance matches *both* `T1` and `T2`, both assignments rise symmetrically without falsely pretending we know which clue Constance left; and explaining a passer restores single-trace `3:1` sharpness rather than inventing an artificial `11:1` spike.
 
-   * Single-trace scene: `w_match(d, T1)`.
+### 4.3 Player-Facing Candidate Narrowing Summary
+- On the Workshop canvas / preview panel (`WorkshopCanvas.trace_summary`), compute and display a deterministic, listener-independent summary of what the **currently linked Trace + Profile + Sighting cards** establish across the town:
+  - **Fits all cited traces**: list of names;
+  - **Unresolved (missing haunts, whereabouts, or bonds)**: list of names + what info is missing;
+  - **Pushed against by cited profiles**: list of names (and on two-trace scenes, both viable `Killer / Passer` assignments).
+- Listener agreement percentages are **never** shown up front before presenting; social buy-in stays uncertain.
 
-   * Two-trace scene with 1 trace cited: `0.5 * w_match(d, T1) + 0.5 * E_pass(T1, world, d)`.
+## 5. Stage 2 Circumstantial Evidence Hub Calibration
 
-   * Two-trace scene with both traces cited: `0.5 * (w_match(d, T1) * E_pass(T2, world, d) + w_match(d, T2) * E_pass(T1, world, d))`.
+### 5.1 Eligibility Criteria (Strict Relevance)
+A card wired into a patina/sea-slate `"circumstantial"` hub (`#cde0dc` / `#7ea69f`) supporting an accusing Premise on `target` qualifies **only** if it represents a genuinely suggestive incident (ordinary daytime sightings or neutral chatter score **`0.0`**):
+1. **Hostile political action by `target`**: `vote` where `target` voted YES on `other` (or NO on a confirmed/hanged evil `other`), or `accusation` / `opinion` by `target` attacking `other`.
+2. **Suspicious association or proximity**: `conversation` or off-work `sighting` pairing `target` with a proven-evil NPC or with a townsperson silenced that day (`Breathstealer` proximity), or uncorroborated `refusal` / `withheld` reading by `target`.
+3. **Contradicted / nervous behaviour**: caught whereabouts/alibi discrepancy or logged low-Composure pressure tell not already scored in Stage 1 on the same target.
 
-4. **Scion Succession Epoch Split**:
+### 5.2 Final Post-Modifier Numbers & Global Union Cap
+Evaluated once across the **union of all active endorsed circumstantial incidents** held by listener `L` against `target` (preventing multi-hub or multi-case stacking, and skipping any `fact_id` already owned by Stage 1 alignment/movement factors):
+- **Receptiveness (`0..1`)**:
+  - `trust_ramp = clampf((L.trust - 0.15) / 0.40, 0.0, 1.0)` *(reaches `1.0` at `0.55` player trust)*
+  - `susp_ramp = clampf((S_target - 0.08) / 0.27, 0.0, 1.0)` *(reaches `1.0` at `0.35` target suspicion, right in the fence-sitter zone)*
+  - `insight_scale = lerpf(1.0, 0.4, Mind.trait_of(L, "insight"))`
+- **Relational Multiplier (`rel_mod` in `[0.0, 1.0]`)**:
+  - Hostile act against `other`: `clampf(0.55 + 0.65 * (L.npc_trust.get(other, 0.5) - 0.5) - 0.55 * Mind.susp(L, other), 0.0, 1.0)`.
+  - Association with / defence of `other`: `clampf(0.25 + 0.85 * Mind.susp(L, other), 0.0, 1.0)`.
+  - Solo refusal / silence proximity: `0.75`.
+- **Final Applied Delta (No Post-Scaling by Confidence or Venue)**:
+  - Each incident's score is `0.015 * trust_ramp * susp_ramp * insight_scale * rel_mod` (hard ceiling **`+0.015`** per incident, reduced to `0.006` at max `Insight`).
+  - Sort qualifying incidents strongest-first, apply weights **`[1.0, 0.8, 0.6, 0.4, 0.2]`**, and clamp the sum to **`+0.045`** total across all active cases for `(L, target)`.
+  - Stored on `L.workshop_state.circumstantial_applied[target]` and retracted cleanly before every refresh, withdrawal, or shared-model toggle.
+- **Selective Framing & Smear Backlash**:
+  - Listeners judge only what they know; omitting an innocent explanation is a valid social gamble unless the listener independently knows the omitted clear.
+  - Simply finding a plausible circumstantial point unconvincing costs **`0` trust**.
+  - Backlash (`-0.005 to -0.015`, keyed by semantic `(target, incident_fact_ids)` so moving canvas nodes never re-triggers it) applies **only** when: (a) `L == target` (being piled on to their face), (b) the player attaches ineligible/irrelevant filler cards (`rel_mod == 0.0`), or (c) `S_target < 0.12` while `L.npc_trust.get(target, 0.5) >= 0.65` (muckraking against someone `L` actively trusts with zero real grounds).
 
-   * For an execution on `exec_day` with `alive_before >= 5`, `pre_cards` covers `night < exec_day` (scored with `exec_idx` as original Demon) and `post_cards` covers `night >= exec_day` including the execution day's own night (scored with surviving `d_idx` as promoted Scion).
+## 6. Vertical-Slice Rollout & Validation Plan
 
-## 4. Stage 2 Circumstantial Evidence Hub Specification (Slices 4-5 + Boundary Pass)
+Because headless Godot tests (`tools/run_gd_tests.py`) run locally and on PR review, we build and verify in **five vertical slices**, stopping after Slice 1 to confirm green tests before layering trace RNG changes:
 
-1. **Qualifying Incident Families (`workshop/circumstantial.gd`)**:
+1. **Slice 1 (Foundation): Hidden Profile Receipts, Board Cleanup & Workshop Profile Node**
+   - Implement `g.profile_receipts` (`home`, `work`, atomic `haunt`, dated `trait`, `bond`), retire main-board `"home"` and `"haunt"` cards, and extend `WorkshopCanvas.supports`, `WorkshopBridge.capture`, `SharedLedger.roots`, and `LiveEvidence` to resolve negative profile receipt numbers alongside `g.board`.
+   - Add Profile Panel / `TraitBars` double-click & right-click shortcuts, the `"Add Townsfolk Profile Info"` Workshop button/node (parchment + portrait + inline person switcher + character accent + unlocked facet chips), and remove `"Supporting evidence (no claim)"` from Premise dropdowns (retaining `"suspicious"`).
+   - Update `test_fixes.gd` and `test_ui.gd` for retired main-board `"home"`/`"haunt"` cards and add `tools/test_workshop_profile_receipts.gd` (testing receipt immutability across later haunt reveals and Lover `_bereave` trait shifts).
+   - **Stop & Run Tests** (`test_workshop_profile_receipts`, `test_fixes`, `test_ui`, `test_town_ui`, `test_board`, `replay_54875`).
 
-   * **Breathstealer Public Proximity (`breath_prox:<target>:<day>`)**: Public `silenced` event on `day` for `victim != target` paired with a witnessed daytime `conversation` with `victim` (`"Spoke with..."`) or witnessed public sightings placing `target` and `victim` on the same block in the same daytime slot (`"Seen on <block> in the same <phase> slot..."`), weighted by `1.0 - post_stage1_susp(victim)`. Because the Breathstealer cannot target anyone inside their home (`not m.at_home()`), mere presence on a silenced victim's home block without a public co-sighting never qualifies. Evening sightings already corroborating a cited `quarter` trace on that evening block stay Stage 1 only.
+2. **Slice 2: Single-Trace Multi-Category Generator (`3:1`), Solver Adapter & Candidate Summary**
+   - Implement `locations`, unified `quarter`, and conditional `connection` in `World._kill` (single trace first, banning duplicate predicates, soft probabilistic wording), `trace:<scene>:<slot>` identities, `matches / contradicts / unknown` (`3:1` LR, Scion-safe epoch), and the Workshop Compatible / Unresolved / Contradicted candidate readout.
+   - Add deterministic simulation-approved NPC deflection disclosures and minion Demon-protection guardrails (`[PH]` strings).
+   - **Stop & Run Tests** (200-seed generator feasibility check + `test_workshop_profile_traces` + `test_npc_interactions`).
 
-   * **Suspicious Association / Talking with Suspected Evil (`assoc:<target>:<partner>`)**: Daytime/evening `conversation` or `friend` profile bond between `target` and `partner != target` where the listener already suspects `partner` (`post_stage1_susp(partner) >= 0.32`), judged strictly by the listener's beliefs about `partner` rather than `target`. Listeners who think `partner` is good (`< 0.32` or `known_good`) award `0.0` sway without treating the genuine `target` conversation as unrelated smear padding.
+3. **Slice 3: Additive Passer Second Trace & Joint `(T1, T2)` / `(T2, T1)` Scene Model**
+   - Enable `EXTRA_TRACE_CHANCE` (`0.45`) second passer trace in `World._kill` and joint two-trace walker assignment in `LiveActivity` / `CaseEval` + two-trace pairing preview.
+   - **Stop & Run Tests** (ambiguous-walker tests where Night Watch matches one vs. both clues + `profile_case_eval_town.gd` latency check).
 
-   * **Hostile Vote or Nomination Against Trusted Soul (`hostile_vote:<target>:<day>:<nominee>`)**: Public `vote` receipt where `target` nominated or voted yes against `nominee != target` whom the listener considers proven good or strongly trusted (`post_stage1_susp(nominee) <= 0.28` and `npc_trust(nominee) >= 0.45`).
+4. **Slice 4: Circumstantial Evidence Hub & Retractable Stage 2 Vibes**
+   - Add `"Add Circumstantial Evidence"` patina/sea-slate hub node + `"Needs a premise"` badge, strict incident eligibility, union-level `+0.015 / +0.045` evaluation, `workshop_ownership.gd` retraction, and semantic smear backlash.
+   - **Stop & Run Tests** (`test_workshop_circumstantial` covering neutral-card zeroing, duplicate hubs/cases, withdrawal, and rival baseline safety).
 
-   * **Victim Rivalry (`victim_rival:<target>:<victim>`)**: Profile `rival` bond between `target` and a public `demon_death` `victim`, weighted by `1.0 - post_stage1_susp(victim)`, skipped whenever the case already cites a Stage 1 `connection` trace for `victim`.
-
-   * **Demeanor / Evasiveness Tell (`demeanor_tell:<target>`)**: Stage 2-only `refusal` receipt on `target` (`INCIDENT_MAX` when unafraid, discounted by `0.25 / 0.35` when `fear` is `true`, non-stacking across days) or `trait` receipt showing `low` Composure / `high` Privacy when paired with Stage 1 scrutiny. Contradicted night alibis remain strictly Stage 1 (`LiveActivity`).
-
-2. **Stage 1 Grounding Gate, Caps & Retractable Ownership**:
-
-   * **Single-Pass Gate**: Subtracts town-wide passive survivor redistribution (`passive_floor` across living non-cleared peers with no arbitrary `0.06` ceiling and a `0.01` geometry-jitter deadband) so public deaths and silences alone never unlock vibes: `gate = clampf((maxf(0.0, specific_stage1 - 0.01) + 0.35 * maxf(0.0, outside - 0.15)) / 0.06, 0.0, 1.0)`.
-
-   * **Caps**: Each distinct `(target, incident_key)` across the listener's active non-withdrawn presentations contributes at most `+0.015`, and the union sum per `(listener, target)` is capped at `+0.045` (zeroed if `target` is the listener or `known_good`).
-
-   * **Retractable Storage & Native Delta Safety**: `WorkshopOwnership` retracts both `state.requested` and `state.circumstantial_requested` in `phase == "before"` before Stage 1 `CaseEval` runs, `Mind.adjust` preserves `outside + requested + circumstantial_requested` whenever a native suspicion adjustment lands while Workshop ownership is active, and `workshop_retract` or `set_workshop_effects(false)` cleanly restores the exact pre-case baseline plus intervening external deltas.
-
-3. **Semantic Smear Backlash**:
-
-   * Presenting a hub that pads the case with unrelated non-target cards (`specific_stage1 < 0.02` or zero qualifying incidents) or pushes pure vibes (`gate == 0.0`) applies a one-time trust penalty in `[-0.015, -0.005]` (`CIRCUMSTANTIAL_SMEAR_MIN` to `CIRCUMSTANTIAL_SMEAR_MAX`) keyed by presentation signature.
-
-## 5. 150-Seed Balance Sweep Commands (Slice 5)
-
-Run these headless commands in Godot 4.7.2 to compare passive baseline, Stage-1-only Workshop cases (`--no-hub`), and full Stage 1 + Stage 2 Circumstantial Hub play across identical 150-seed sequences:
-
-* **Passive town baseline**:
-  `godot --headless --path . --script res://tools/autoplay.gd -- --seed 1 --games 150 --npcs 7 --passive --no-trace --results logs/sweep_passive.json`
-
-* **Active bot (Stage 1 Workshop + Traces + Profiles, no Circumstantial Hub)**:
-  `godot --headless --path . --script res://tools/autoplay.gd -- --seed 1 --games 150 --npcs 7 --no-hub --no-trace --results logs/sweep_stage1.json`
-
-* **Active bot (Full Stage 1 Workshop + Stage 2 Circumstantial Hub)**:
-  `godot --headless --path . --script res://tools/autoplay.gd -- --seed 1 --games 150 --npcs 7 --no-trace --results logs/sweep_full.json`
-
-## 6. Vertical-Slice Rollout Status
-
-1. **Slice 1 (Landed)**: Hidden Profile Receipts (`g.profile_receipts`), Board Cleanup & Workshop `Townsfolk Profile Info` Node.
-
-2. **Slice 2 (Landed)**: Single-Trace Token/Scent Generator (`3:1`), Three-Valued Solver, Candidate Summary, NPC Trace Deflections & Codex Test/Metadata Fixes.
-
-3. **Slice 3 (Landed)**: Upgraded Token/Scent Flavor (`28` tactile tokens + `56` bespoke scents + `~75%` `locations` weight + concise 3-line card text) + Additive Passer Second Trace (`0.45`) + Joint `(T1, T2)` / `(T2, T1)` Scene Solver & Two-Trace Pairing Readout.
-
-4. **Slice 4 (Landed)**: Scion Succession Timing Fix + Pressed-Trace Haunt Persistence Fix + Circumstantial Evidence Hub & Retractable Stage 2 Vibes (`+0.015 / +0.045`, smear backlash, `tools/test_workshop_circumstantial_hub.gd`).
-
-5. **Slice 5 + Tuning & Codex Pass (Landed)**: `Mind.adjust` Stage 2 Layer Preservation Fix + 15-Cast Voice Promotion + Nomination/Cooloff/Evil Readiness Tuning + Stage 2-Only Fear-Discounted Refusals + Stage 1-Only Contradicted Alibis + Public-Only Breathstealer Targeting + Discovered-Receipt-Only `Argue` Trace Checks + Roster-Independent `CanvasModel.restore`.
+5. **Slice 5: 15-Cast Voice Promotion, Autoplay Bot & 150-Seed Balance Sweep**
+   - Replace `[PH]` trace/circumstantial lines with 15-character voiced variants in `sim/dialogue_voices.gd`, teach `tools/autoplay.gd` to cite profile receipts with traces, and compare `1.5:1 / 2:1 / 3:1` trace weights across 150 paired seeds (recording living candidate counts, wrongful executions, trust losses, and presentation latency).

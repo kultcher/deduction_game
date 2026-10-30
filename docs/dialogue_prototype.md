@@ -52,6 +52,20 @@ remain the earlier calibration samples and have not yet been synchronized to the
 
 Open `ui/dialogue_lab.tscn` in Godot and **Run Current Scene (F6)**. Or run:
 
+The **Open VN portrait preview** button shows the current scenario in an
+experimental full-screen dialogue view. Choose Agnes, Bartholomew, or Constance
+to compare their large portraits and current lines. **Speak / ask again** uses
+the lab's existing delivery behavior; **Back to dialogue lab** returns to the
+scenario controls. The blurred Square is a sample backdrop for this lab, not
+the live town map or meeting.
+
+Constance's expression selector offers baseline, warm, harsh, worried, and
+sorrowful portraits. Use **Cross-fade** to compare a 0.15-second transition
+with a direct cut. The selector is a manual visual experiment, not an inference
+from dialogue or alignment. Text reveals at 90 characters per second;
+**Show all text** completes it immediately. A newly delivered line restarts
+the reveal, while changing expressions leaves the current text alone.
+
 ```sh
 godot --path . res://ui/dialogue_lab.tscn
 ```
