@@ -93,7 +93,8 @@ static func _collect(g, number, numbers: Array, arguments: Array, issues: Array,
 			_collect(g, support, numbers, arguments, issues, path + [number])
 
 static func _listener(input: Dictionary, n, now: Dictionary) -> void:
-	input["listener"] = {"id": n.id, "name": n.name, "trust": n.trust, "own_gift": n.role,
+	# "trust" is how far the shared model takes the player's word: credibility, not rapport.
+	input["listener"] = {"id": n.id, "name": n.name, "trust": n.credibility, "rapport": n.trust, "own_gift": n.role,
 		"suspicion": preload("res://sim/mind.gd").suspicion_view(n), "npc_trust": n.npc_trust.duplicate(true),
 		"confidence": n.traits.get("confidence", 0.5), "insight": n.traits.get("insight", 0.5),
 		"reasoning_mode": n.workshop_state.get("reasoning_mode", "bounded"),

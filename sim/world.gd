@@ -389,7 +389,6 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 		n.trust_at_reconsider = n.trust
 		if n.secret_mod == "lovers" and n.lover != "":
 			n.npc_trust[n.lover] = Tuning.Setup.INITIAL_TRUST_LOVER
-			n.suspicion[n.lover] = 0.0
 
 	# Each good NPC knows their own gift: a firsthand record that counts against anyone
 	# who claims it falsely.
@@ -1666,7 +1665,6 @@ func start_new_day() -> void:
 		_finish("evil", "Time ran out: the demon survived %d days." % max_days)
 		return
 	dlog.set_time(day, "Morning")
-	Social.paranoia_drift(self)
 	if C.SHADOW_SELF:
 		Evil.review_scapegoat(self)
 	start_phase()

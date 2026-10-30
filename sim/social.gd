@@ -273,15 +273,9 @@ static func tavern_whispers(w) -> void:
 
 # ---------------------------------------------------------------- paranoia
 
-static func paranoia_drift(w) -> void:
-	for n in w.living_good():
-		var p = Mind.paranoia(w, n)
-		if p <= 0.0:
-			continue
-		for m in w.living():
-			if m != n and not n.cleared.has(m.id):
-				Mind.adjust(w, n, m.id, Tuning.Social.PARANOIA_DRIFT_RATE * p, "paranoia drift", "", false)
-		w.dlog.think(n.id, "paranoia", "Paranoia %.2f: everyone left alive looks a little more suspect." % p)
+## Paranoia drift (a nightly flat rise in everyone's suspicion) was removed Oct 30: under the
+## relative listener prior it carried no information. Urgency now lowers the vote bar
+## (Tuning.Meeting.VOTE_URGENCY_PER_DEATH).
 
 # ---------------------------------------------------------------- approaches
 

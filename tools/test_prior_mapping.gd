@@ -36,6 +36,12 @@ func _init():
 		var pair = [g.w.demon_id, other.id]
 		seer.info_log = [{"role": "seer", "day": 0, "phase": 3, "data": {"pair": pair, "yes": true}, "true": true,
 			"text": "I looked at them: one of them reads as the demon"}]
+		# Uneven starting suspicion, as the cast's friend/rival seeds once made it (0.0 vs 0.1),
+		# so the old mapping's over-reading of small gaps shows.
+		var k := 0
+		for id in seer.workshop_state.get("outside", {}):
+			seer.workshop_state.outside[id] = 0.0 if k % 2 == 0 else 0.1
+			k += 1
 		var effects = _own_view(g, seer)
 		CaseEval.prior_k = -1.0
 		Caches.clear_all()

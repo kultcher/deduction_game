@@ -124,6 +124,8 @@ static func set_trust(w, n, value: float, why: String) -> void:
 		w.dlog.add("trust", n.id, "player", {"from": snappedf(old, 0.01), "to": snappedf(n.trust, 0.01), "cap": n.trust_cap}, why)
 	if old - n.trust >= Tuning.Trust.GRIEVANCE_MIN_DROP and not why.begins_with("apology"):
 		_record_grievance(w, n, old - n.trust, why)
+	elif old - n.trust > 0.0 and not why.begins_with("apology") and not why.begins_with("grief"):
+		n.friction += old - n.trust  # small slights fade overnight (fade_slights)
 	if absf(n.trust - n.trust_at_reconsider) >= Tuning.Mind.RECONSIDER_TRUST_DELTA:
 		reconsider(w, n, why)
 
@@ -138,7 +140,7 @@ static func _record_grievance(w, n, drop: float, why: String) -> void:
 			return
 	var evidence: bool = "evidence" in why or "argued against me" in why or "spoke against me" in why
 	n.grievances.append({"key": key, "why": why, "drop": drop, "day": w.day,
-		"serious": drop >= SERIOUS_GRIEVANCE, "evidence": evidence, "apologised": false})
+		"serious": drop >= SERIOUS_GRIEVANCE, "evidence": evidence, "apologised": false, "repaired": 0.0})
 
 const SERIOUS_GRIEVANCE = Tuning.Trust.SERIOUS_GRIEVANCE
 
@@ -163,6 +165,9 @@ static func apologise(w, n, index: int) -> Dictionary:
 	if g["evidence"]:
 		share *= 1.0 - clampf((ins - 0.4) * 1.2, 0.0, 0.6)
 	var repair: float = g["drop"] * share
+	# Fading may already have repaid part of it; together they never exceed the limit.
+	repair = minf(repair, maxf(0.0, _repay_limit(g) - float(g.get("repaired", 0.0))))
+	g["repaired"] = float(g.get("repaired", 0.0)) + repair
 	w.dlog.decision(n.id, "apology", "outcome", snappedf(repair, 0.01), {"incident": g["why"],
 		"drop": snappedf(g["drop"], 0.01), "serious": g["serious"], "evidence": g["evidence"],
 		"insight": ins, "share": snappedf(share, 0.01)})
@@ -236,7 +241,32 @@ static func cap_trust(w, n, cap: float, why: String) -> void:
 			set_trust(w, n, cap, why)
 
 ## End of each day: bonus for keeping a confessed secret.
+## How much of a grievance can ever be repaid (by fading and apology together).
+static func _repay_limit(g: Dictionary) -> float:
+	return float(g["drop"]) * (Tuning.Trust.SERIOUS_FADE_LIMIT if g.get("serious", false) else 1.0)
+
+## Past slights fade (Oct 30, docs/social_trust_pass.md): each night every grievance gives
+## back GRIEVANCE_FADE of its drop up to its limit, and so does the small-slight friction.
+## Grief and trust caps are untouched (set_trust still clamps to trust_cap).
+static func fade_slights(w, n) -> void:
+	var back := 0.0
+	for g in n.grievances:
+		var room: float = _repay_limit(g) - float(g.get("repaired", 0.0))
+		if room <= 0.0:
+			continue
+		var step: float = minf(room, float(g["drop"]) * Tuning.Trust.GRIEVANCE_FADE)
+		g["repaired"] = float(g.get("repaired", 0.0)) + step
+		back += step
+	if n.friction > 0.0:
+		var f: float = n.friction * Tuning.Trust.GRIEVANCE_FADE if n.friction > 0.002 else n.friction
+		n.friction -= f
+		back += f
+	if back > 0.0005:
+		set_trust(w, n, n.trust + back, "time softens past slights")
+
 static func end_of_day_trust(w) -> void:
+	for n in w.living():
+		fade_slights(w, n)
 	for n in w.living():
 		if n.secret_known and not n.secret_spread:
 			var bonus = Tuning.Trust.SECRET_KEPT_BASE + Tuning.Trust.SECRET_KEPT_PRIVACY_SCALE * trait_of(n, "privacy")
@@ -884,14 +914,14 @@ static func reconsider(w, n, why: String) -> void:
 		var nw = cur
 		var js: Array = e.get("justs", [])
 		if js.is_empty():
-			var want: float = m["base"] * (0.5 + n.trust)
+			var want: float = m["base"] * (0.5 + n.credibility)
 			if absf(want - cur) < 0.02:
 				continue
 			nw = cur + (want - cur) * rate
 		else:
 			nw = 0.0
 			for jj in js:
-				var wj: float = jj["base"] * (0.5 + n.trust)
+				var wj: float = jj["base"] * (0.5 + n.credibility)
 				jj["weight"] = jj["weight"] + (wj - jj["weight"]) * rate
 				nw = maxf(nw, jj["weight"])
 			if absf(nw - cur) < 0.02:
@@ -1350,11 +1380,11 @@ static func _secret_used(w, card: Dictionary) -> void:
 
 ## How much a card weighs with one listener, against or for one suspect. Counts as a hearing
 ## (diminishing returns per card per listener).
-## How much the listener takes your word on a card: 0.5 + their trust in you, unless it's
+## How much the listener takes your word on a card: 0.5 + your credibility with them, unless it's
 ## something you saw that a witness they believe saw too, in which case the witness carries
 ## it ("Dorian saw it as well").
 static func word_factor(w, n, card: Dictionary) -> float:
-	var f = 0.5 + n.trust
+	var f = 0.5 + n.credibility
 	if card.get("source", "") != "player":
 		return f
 	for c in card.get("corroborated_by", []):
@@ -1564,7 +1594,7 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		var base: float = 0.3 * cw["cred"] * cw["class_w"] * st * (0.35 if n.ledger.has(cw["key"]) else 1.0) / group.size()
 		var effs: Array = []
 		_eff(effs, x.id, -1.0, "the Demonologist spoke for them, citing '%s'" % cw["key"])
-		var hx = ledger_hear(w, n, "for:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), cw["rel"], _tell_meta(card, base))
+		var hx = ledger_hear(w, n, "for:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.credibility), cw["rel"], _tell_meta(card, base))
 		h["times"] = maxi(h["times"], hx["times"])
 		h["gain"] += hx["gain"]
 	if h["times"] > 0:
@@ -1609,7 +1639,7 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 		var base: float = 0.35 * cw["cred"] * card_strength(w, card, x) * cw["class_w"] * known / group.size()
 		var effs: Array = []
 		_eff(effs, x.id, 1.0, "player's case that one of %s is guilty, citing '%s'" % [gname, cw["key"]], "the Demonologist made a case against them")
-		var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.trust), cw["rel"], _tell_meta(card, base))
+		var h = ledger_hear(w, n, "tell:%s>%s" % [cw["key"], x.id], effs, base * (0.5 + n.credibility), cw["rel"], _tell_meta(card, base))
 		n.used_facts[cw["key"] + ">" + x.id] = true
 		gain += h["gain"]
 		times = maxi(times, h["times"])

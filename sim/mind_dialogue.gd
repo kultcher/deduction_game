@@ -587,15 +587,10 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 		lines.append(say_voiced(n, "empty_readings", "It hasn't shown me anything yet."))
 	return {"lines": lines, "facts": facts}
 
-## Sharing what they saw of others is gated by Gossip (and loosened by pressure).
+## How much they share of what they saw of others: Gossip (and pressure) set the count.
 static func _gossip_share(w, n, topic: String) -> int:
+	# No Gossip cutoff (Oct 30): the least talkative still share one thing.
 	var g = trait_of(n, "gossip")
-	if g < 0.2 and n.pressure < 0.5:
-		w.dlog.decision(n.id, "gossip_share", "gate", 0, {"gate": "gossip_and_pressure_cutoff",
-			"topic": topic, "gossip": g, "gossip_minimum": 0.2,
-			"pressure": n.pressure, "pressure_override": 0.5})
-		w.dlog.think(n.id, topic, "Gossip %.2f: none of my business (pressure %.2f)." % [g, n.pressure])
-		return 0
 	var count = 1 + int(round((g + n.pressure * 0.5) * 3.0))
 	w.dlog.decision(n.id, "gossip_share", "outcome", count,
 		{"topic": topic, "gossip": g, "pressure": n.pressure})

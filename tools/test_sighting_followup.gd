@@ -104,7 +104,8 @@ func _recent() -> void:
 	_check(_report(g, speaker, target)["facts"].size() == 3, "multiple observations in one frame do not repeat that frame")
 	speaker.traits["gossip"] = 0.0
 	speaker.pressure = 0.0
-	_check(_report(g, speaker, target)["facts"].is_empty(), "a private speaker may withhold the extra sightings")
+	# No Gossip cutoff since Oct 30: the least talkative share one thing, not nothing.
+	_check(_report(g, speaker, target)["facts"].size() <= 1, "a private speaker shares at most one of the extra sightings")
 	speaker.traits["gossip"] = 1.0
 	speaker.silenced = true
 	_check(_report(g, speaker, target)["facts"].is_empty(), "silenced people cannot add reports")

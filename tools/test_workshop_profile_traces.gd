@@ -194,6 +194,11 @@ func _test_npc_trace_reactions_and_minion_guard() -> void:
 	minion.haunts = ["graveyard", "well"]
 	minion.trust = 0.85
 	minion.traits["gossip"] = 0.9
+	# The deflection ranks candidates by the minion's (cover) suspicion. Since Oct 30 bonds
+	# no longer seed suspicion, so make the townie the obvious pick, as the seeds used to.
+	for mind in [minion, minion.shadow]:
+		if mind != null:
+			mind.suspicion[townie.id] = 0.6
 	var trace_card = {
 		"n": 1, "kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING,
 		"victim": victim.id, "trace_family": "locations", "trace_subtype": "token",

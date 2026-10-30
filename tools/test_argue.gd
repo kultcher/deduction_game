@@ -179,13 +179,15 @@ func _init() -> void:
 		var after = Mind.susp(L2, b)
 		print("doubted-then-heard reading moved suspicion of B by %.2f (reliability %.2f)" % [after - before, Mind.reliability(L2, d, 1)])
 		_check(Mind.reliability(L2, d, 1) < 1.0, "doubt recorded before hearing the reading")
-		# Trust rises: the earlier argument is re-weighed.
+		# Credibility rises: the earlier argument is re-weighed (the reconsideration still
+		# fires on a rapport change; the weight follows credibility since Oct 30).
 		var wt0: float = L.ledger["arg:" + Argue.conclusion_key({"type": "evil", "a": a})]["weight"]
-		var tr0: float = L.trust
+		var tr0: float = L.credibility
+		L.credibility = minf(L.credibility + 0.3, 0.9)
 		Mind.set_trust(w, L, minf(L.trust + 0.3, L.trust_cap), "test")
 		var wt1: float = L.ledger["arg:" + Argue.conclusion_key({"type": "evil", "a": a})]["weight"]
 		# (Re-weighing skips changes under 0.02, so a very light argument may not visibly move.)
-		_check(wt1 > wt0 or L.trust - tr0 < 0.05 or wt0 * (L.trust - tr0) < 0.03, "argument re-weighed after trust rises (%.2f -> %.2f; trust %.2f -> %.2f)" % [wt0, wt1, tr0, L.trust])
+		_check(wt1 > wt0 or L.credibility - tr0 < 0.05 or wt0 * (L.credibility - tr0) < 0.03, "argument re-weighed after credibility rises (%.2f -> %.2f; credibility %.2f -> %.2f)" % [wt0, wt1, tr0, L.credibility])
 	# Evil replies use the shared lines.
 	var ev = w.demon()
 	var okl = true

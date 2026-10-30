@@ -83,6 +83,7 @@ var shared_fallbacks: Array = []
 var _fallbacks_reported = 0
 const DecisionFeed = preload("res://sim/decision_feed.gd")
 const WorkshopCaches = preload("res://workshop/caches.gd")
+const Credibility = preload("res://game/credibility.gd")
 var decision_feed = DecisionFeed.new()
 
 var debug_overlay = false   # show NPCs' hidden credence (spoils identification credit)
@@ -1824,6 +1825,7 @@ func _meeting_command(verb: String, rest: String) -> void:
 				_err(why)
 				return
 			w.open_nomination("player", n.id)
+			Credibility.record_public(self, "evil", n.id)
 			town_quiet = false
 			_narr("You stand and nominate %s." % n.name)
 			_defend_pending()
@@ -1916,6 +1918,7 @@ func _nomination_command(verb: String, rest: String, progress: Callable = Callab
 			if not card.is_empty() and not _presentation_gate(card, w.living().filter(func(v): return v != t), [t.id], "deduction" if card.kind == "deduction" else verb, "nomination"):
 				return
 			statement_used = true
+			Credibility.record_public(self, "evil" if verb == "accuse" else "good", t.id)
 			nm["statement"] = verb
 			if not card.is_empty():
 				_narr("You lay card #%d before the town: %s" % [card["n"], card["text"]])
@@ -2114,6 +2117,7 @@ func _resolve_night() -> void:
 		return
 	state = "day"
 	moved = false
+	Credibility.dawn(self)
 	_morning_report()
 	_maybe_approach()
 
@@ -2439,7 +2443,7 @@ func _grimoire() -> String:
 		for t in C.TRAITS:
 			traits.append("%s %s" % [t.substr(0, 4), C.tier(n.traits[t])])
 		out.append("  %-12s %-11s %-5s %s" % [n.name, C.role_name(n.role), n.alignment.to_upper(), "; ".join(extra)])
-		out.append("  %-12s traits: %s; trust in you %.2f" % ["", ", ".join(traits), n.trust])
+		out.append("  %-12s traits: %s; rapport %.2f, credibility %.2f" % ["", ", ".join(traits), n.trust, n.credibility])
 	out.append("Demon temperament: %s." % w.evil_plan["mood"])
 	out.append("Type 'grimoire lies' to see every lie and false reading with its reason, or 'grimoire talk' for who told whom what.")
 	return "\n".join(out)

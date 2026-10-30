@@ -39,8 +39,9 @@ class Setup:
 
 	## Initial NPC-to-NPC suspicion & trust priors
 	const INITIAL_SUSPICION_BASE = 0.1
-	const INITIAL_SUSPICION_RIVAL = 0.15
-	const INITIAL_SUSPICION_FRIEND = -0.1
+	# Bonds live in npc_trust only (Oct 30, docs/social_trust_pass.md): no suspicion offset.
+	const INITIAL_SUSPICION_RIVAL = 0.0
+	const INITIAL_SUSPICION_FRIEND = 0.0
 	const INITIAL_TRUST_BASE = 0.5
 	const INITIAL_TRUST_JITTER = 0.05
 	const INITIAL_TRUST_RIVAL = -0.25
@@ -48,8 +49,9 @@ class Setup:
 	const INITIAL_TRUST_LOVER = 0.9
 
 	## Initial NPC-to-Player trust prior
-	const PLAYER_TRUST_BASE = 0.3
-	const PLAYER_TRUST_OPENNESS_SCALE = 0.25
+	# Starting rapport no longer depends on Privacy (Oct 30): the old mean at privacy 0.5.
+	const PLAYER_TRUST_BASE = 0.425
+	const PLAYER_TRUST_OPENNESS_SCALE = 0.0
 	const PLAYER_TRUST_JITTER_MIN = -0.05
 	const PLAYER_TRUST_JITTER_MAX = 0.1
 	const PLAYER_TRUST_MIN = 0.1
@@ -268,6 +270,18 @@ class Trust:
 	const GRIEVANCE_MIN_DROP = 0.03
 	const APOLOGY_SHARE_SERIOUS = 0.25
 	const APOLOGY_SHARE_MINOR = 0.5
+	## Fading slights (Oct 30): each night a grievance recovers this share of its drop;
+	## serious ones only up to SERIOUS_FADE_LIMIT of it (an apology's repair counts toward
+	## the same limit). Drops too small to be grievances collect as friction, same rate.
+	const GRIEVANCE_FADE = 0.25
+	const SERIOUS_FADE_LIMIT = 0.5
+	## Credibility (Oct 30): how much the player's word counts, from their track record.
+	## target = 0.5 + CRED_SPAN * mean agreement; moves CRED_STEP of the way each dawn.
+	const CREDIBILITY_START = 0.5
+	const CRED_SPAN = 0.4
+	const CRED_STEP = 0.5
+	const CRED_MIN = 0.1
+	const CRED_MAX = 0.9
 	const DISTRUST_EXPLAIN_THRESHOLD = 0.35
 
 	## Overnight secret-keeping recovery
@@ -310,7 +324,7 @@ class Social:
 	const SHARE_TRUST_BUMP = 0.02
 	const TAVERN_WHISPER_MIN_CROWD = 4
 	const TAVERN_WHISPER_CHANCE = 0.5
-	const PARANOIA_DRIFT_RATE = 0.06
+	const PARANOIA_DRIFT_RATE = 0.06  # unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH)
 	const APPROACH_PHASE_CHANCE = 0.4
 	const APPROACH_SCORE_THRESHOLD = 0.35
 	const APPROACH_NOISE = 0.2
@@ -359,6 +373,8 @@ class Meeting:
 	const VOTE_CONFIDENCE_SCALE = 0.12
 	const VOTE_DAY1_PENALTY = 0.1
 	const VOTE_PARANOIA_WEIGHT = 0.4
+	## Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it.
+	const VOTE_URGENCY_PER_DEATH = 0.02
 
 
 # ---------------------------------------------------------------- 7. One-on-One Dialogue, Pressing & Disclosure

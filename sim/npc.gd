@@ -43,7 +43,8 @@ var withdrawn_since = ""   # the Lover whose death left them withdrawn (visible 
 var fear_eased = false       # the player kept a ward/vigil promise to them: fear term halved
 var protect_lock = false     # promised to tell the player their gift once protected: slower to go public
 var request_day = -1         # day they last asked the player for something (one request a day)
-var grievances: Array = []   # player actions that cost trust: {key, why, drop, day, serious, evidence, apologised}
+var grievances: Array = []   # player actions that cost trust: {key, why, drop, day, serious, evidence, apologised, repaired}
+var friction = 0.0           # rapport lost to slights too small to be grievances; fades nightly
 var gift_request = {}        # an agreed player request for tonight: {night, role, target|pair|block}
 
 ## Gift state.
@@ -74,8 +75,14 @@ var sus_src = {}
 var hints = {}
 var applied_info = 0
 
-## Trust in the player, 0..1, capped by trust_cap (lowered by serious betrayals).
+## Rapport with the player, 0..1, capped by trust_cap (lowered by serious betrayals):
+## how they feel about you. Governs disclosure, requests and confidences.
 var trust = 0.5
+## Credibility of the player, 0.1..0.9: how much your word counts, from your track record
+## (game/credibility.gd). Used wherever your evidence, votes or stance are weighed.
+var credibility = 0.5
+## Conclusions the player argued to them: target id -> {type: "evil"|"good", day}.
+var claim_record = {}
 var trust_cap = 1.0
 ## Trust in each other NPC, 0..1 (0.5 neutral). Replaces the old loyalty trait.
 var npc_trust = {}

@@ -708,14 +708,29 @@ static func _headline_chance(card: Dictionary, person: String) -> float:
 ## testimony teller, or the player presenting what someone else said). The cards that
 ## mention the person are averaged; with none, every attended card is.
 static func _source_trust(cards: Array, person: String, listener: Dictionary, player_tells: bool) -> float:
-	var about: Array = cards.filter(func(c): return person in _mentions(c))
-	var pool: Array = about if not about.is_empty() else cards
+	# Only cards that are someone's word (readings, testimony, sightings, claims) carry a
+	# source to trust; public records, traces and profile facts don't, and neither do the
+	# player's circumstantial observations (so a hub's vibes never change Stage 1).
+	var spoken: Array = cards.filter(func(c): return _spoken(c))
+	var about: Array = spoken.filter(func(c): return person in _mentions(c))
+	var pool: Array = about if not about.is_empty() else spoken
 	if pool.is_empty():
 		return clampf(float(listener.get("trust", 0.5)), 0.0, 1.0) if player_tells else 1.0
 	var total := 0.0
 	for card in pool:
 		total += _card_trust(card, listener, player_tells)
 	return total / pool.size()
+
+const SPOKEN_KINDS = ["report", "sighting", "alibi", "claim", "context", "testimony"]
+
+## Someone's word, as opposed to a record: a "context" card counts only when it carries an
+## unattributed account (a teller's testimony), not when it re-cites a public record such
+## as a silence (citing what's already public must not change how it weighs).
+static func _spoken(card: Dictionary) -> bool:
+	var kind: String = card.get("kind", "")
+	if kind not in SPOKEN_KINDS:
+		return false
+	return kind != "context" or card.get("context_kind", "") == "unattributed_report"
 
 static func _card_trust(card: Dictionary, listener: Dictionary, player_tells: bool) -> float:
 	var me: String = listener.get("id", "")
@@ -770,6 +785,9 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var compiled = Graph.compile_case(view, value)
 	var scoped = _eval_case(view, compiled, attention, baseline)
 	var attended: Array = Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected)
+	# Source trust and headlines read everything the listener holds, not just what this run
+	# attends to, so re-presenting held evidence (which shifts attention) can't move them.
+	var held: Array = Solver.selected(view, value).filter(func(c): return c.id not in attention.private_checks.rejected)
 	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
 	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged, attention)
 	var ev: Dictionary = _case_eval(view, scoped, eval_listener)
@@ -819,7 +837,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		# Headline reading (Oct 30): a duller listener takes a strong evil signal at its word
 		# ("one of Kiran or Fenwick is the Demon") and skips the subtler counter-explanations
 		# the full model weighs. It only ever raises, and fades out with Insight.
-		var headline_signal: float = _headline(view, attended, id, odds.prior, baseline, eval_listener, not refresh) if not ev.impossible else 0.0
+		var headline_signal: float = _headline(view, held, id, odds.prior, baseline, eval_listener, not refresh) if not ev.impossible else 0.0
 		var dull: float = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(baseline.get("insight", 0.5)), 0.0, 1.0))
 		# Only a strong evil reading about this person blends in: with no headline the model's
 		# own effect (including any clearing) stands unchanged.
@@ -842,7 +860,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
 		if invalid or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict":
 			net_weight = 0.0
-		var source_trust: float = _source_trust(attended, id, baseline, not refresh)
+		var source_trust: float = _source_trust(held, id, baseline, not refresh)
 		effects[id] = {"requested": net_weight * (0.5 + source_trust) * confidence, "source_trust": source_trust, "alignment_signal": alignment, "pattern_signal": circumstantial,
 			"circumstantial_signal": 0.0, "circumstantial_incidents": [],
 			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"),

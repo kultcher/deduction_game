@@ -208,7 +208,7 @@ func _claim_routes() -> void:
 	n.known_claims = {}
 	n.ledger = {}
 	n.role = "veteran"
-	n.trust = 0.0
+	n.credibility = 0.0  # how far the player's word counts (credibility since Oct 30)
 	var filed = Live.file(g, board.compile(root_id))
 	var snapshot = g.workshop_snapshot([filed], n.id)
 	snapshot.listener.discounted[pair[0] + ":*"] = 1.0

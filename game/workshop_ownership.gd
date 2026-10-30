@@ -139,7 +139,7 @@ static func _refresh(g, n, phase: String) -> void:
 				state.requested,
 				post_stage1,
 				n.npc_trust,
-				n.trust,
+				n.credibility,
 				n.id,
 				state.get("public_good", []),
 				plan.prepared.listener.knowledge,
