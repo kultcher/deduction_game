@@ -661,6 +661,62 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 		response += " The supplied test factor changes which remaining explanation I favor; it does not prove it."
 	return response
 
+## How far the listener trusts the sources behind the evidence about one person (Oct 30,
+## user): the belief step scales by (0.5 + this) instead of by trust in the player.
+## Per card: the listener's own evidence 1.0; public facts (no personal source) 1.0; the
+## player's own reports, trust in the player; an NPC's, the listener's trust in them.
+## Second-hand evidence averages the original source and the teller (a Medium's relay, a
+## testimony teller, or the player presenting what someone else said). The cards that
+## mention the person are averaged; with none, every attended card is.
+static func _source_trust(cards: Array, person: String, listener: Dictionary, player_tells: bool) -> float:
+	var about: Array = cards.filter(func(c): return person in _mentions(c))
+	var pool: Array = about if not about.is_empty() else cards
+	if pool.is_empty():
+		return clampf(float(listener.get("trust", 0.5)), 0.0, 1.0) if player_tells else 1.0
+	var total := 0.0
+	for card in pool:
+		total += _card_trust(card, listener, player_tells)
+	return total / pool.size()
+
+static func _card_trust(card: Dictionary, listener: Dictionary, player_tells: bool) -> float:
+	var me: String = listener.get("id", "")
+	var source: String = str(card.get("source", ""))
+	var t: float = _trust_in(source, listener)
+	var teller: String = str(card.get("relay_source", card.get("via", "")))
+	if teller != "" and teller != source:
+		t = 0.5 * (t + _trust_in(teller, listener))
+	elif player_tells and source != me and source != "player" and listener.get("npc_trust", {}).has(source):
+		# Presented by the player: heard through them, not from the source directly.
+		t = 0.5 * (t + _trust_in("player", listener))
+	return t
+
+static func _trust_in(who: String, listener: Dictionary) -> float:
+	if who == "" or who == listener.get("id", "") or who == "town":
+		return 1.0
+	if who == "player":
+		return clampf(float(listener.get("trust", 0.5)), 0.0, 1.0)
+	var trusts: Dictionary = listener.get("npc_trust", {})
+	return clampf(float(trusts.get(who, 0.5)), 0.0, 1.0) if trusts.has(who) else 1.0
+
+## People a card speaks about (subjects, pairs, groups, people seen).
+static func _mentions(card: Dictionary) -> Array:
+	var out: Array = []
+	for key in ["subject", "subjects", "target", "who"]:
+		var v = card.get(key)
+		if v is Array:
+			out.append_array(v)
+		elif v is String and v != "":
+			out.append(v)
+	var data = card.get("data", {})
+	if data is Dictionary:
+		for key in ["pair", "group", "seen", "nbrs", "target", "chosen", "executed", "guarded"]:
+			var v = data.get(key)
+			if v is Array:
+				out.append_array(v)
+			elif v is String and v != "":
+				out.append(v)
+	return out
+
 ## Effects on everyone from one CaseEval pass over the same attended evidence, plus the
 ## intermediate claims. Same result shape as Consequences.assess.
 ## headline is {} for a belief refresh: no person is special, and refresh skips the
@@ -734,7 +790,8 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
 		if invalid or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict":
 			net_weight = 0.0
-		effects[id] = {"requested": net_weight * (0.5 + baseline.trust) * confidence, "alignment_signal": alignment, "pattern_signal": circumstantial,
+		var source_trust: float = _source_trust(attended, id, baseline, not refresh)
+		effects[id] = {"requested": net_weight * (0.5 + source_trust) * confidence, "source_trust": source_trust, "alignment_signal": alignment, "pattern_signal": circumstantial,
 			"circumstantial_signal": 0.0, "circumstantial_incidents": [],
 			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"),
 			"protection_signal": protection_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
