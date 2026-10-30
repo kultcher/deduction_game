@@ -82,6 +82,7 @@ var fallback_count = 0      # times 'present' couldn't tell what a card was mean
 var shared_fallbacks: Array = []
 var _fallbacks_reported = 0
 const DecisionFeed = preload("res://sim/decision_feed.gd")
+const WorkshopCaches = preload("res://workshop/caches.gd")
 var decision_feed = DecisionFeed.new()
 
 var debug_overlay = false   # show NPCs' hidden credence (spoils identification credit)
@@ -201,6 +202,8 @@ static func render(evs: Array) -> String:
 func new_case(seed_in: int, npc_count: int = 7) -> String:
 	if workshop_presenting:
 		return "A case presentation is still being assessed."
+	# Each case starts from empty shared-model memo tables (and picks up tuning changes).
+	WorkshopCaches.clear_all()
 	workshop_draft = {}
 	workshop_deliveries = []
 	workshop_comparisons = []
