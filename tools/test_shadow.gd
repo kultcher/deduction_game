@@ -129,6 +129,7 @@ func _fake_medium() -> void:
 	var sg = goods.filter(func(x): return x.home_block != dd.home_block)[0]
 	dd.alive = false
 	dd.death_day = 2
+	w.day = 3 # Medium information precedes the kill; this corpse must predate tonight.
 	dd.death_cause = "demon"
 	dd.claim_public = true
 	dd.claimed_role = "nightwatch"

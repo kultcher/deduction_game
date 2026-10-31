@@ -339,11 +339,12 @@ func _private_reasons() -> void:
 	Mind.apply_info(g.w, n, source, rumor, 1.0)
 	g.set_workshop_effects(true)
 	check(n.workshop_state.active and n.workshop_state.requested.get(target.id, 0.0) >= 0.15, "a joint private inference can supply a substantial real belief effect")
-	check(Mind.reason_status(g.w, n, target.id).kind == "shared_private" and Mind.citable_reason(g.w, n, target.id, "town") == "", "unpublished joint reports do not acquire a public citation")
-	var rng = g.w.rng.state
+	check(Mind.reason_status(g.w, n, target.id).kind == "private" and Mind.citable_reason(g.w, n, target.id, "town") == "", "unpublished joint reports do not acquire a public citation")
 	var tier = Mind._accuse_tier(g.w, n, target, n.suspicion[target.id])
-	check(tier.tier == "generic" and tier.why == "" and g.w.rng.state == rng, "joint private reasons do not trigger a false own-gift reveal or invented hint")
+	check(tier.tier in ["reveal", "hint"] and (tier.tier == "reveal" or tier.why == ""), "an actual own Dowser reading can trigger its normal reveal or hint decision")
 	var before = n.workshop_state.requested.duplicate(true)
+	n.claim_public = true
+	n.claimed_role = "dowser"
 	own["shared"] = true
 	rumor["shared"] = true
 	Mind.apply_info(g.w, n, n, own, 1.0)

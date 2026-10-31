@@ -79,6 +79,9 @@ func _test_phase1_1_meeting_reasons_and_defence_non_leak() -> void:
 	seer.role = "seer"
 	seer.claimed_role = ""
 	seer.claim_public = false
+	seer.ledger.clear()
+	seer.workshop_state.clear()
+	seer.workshop_state["enabled"] = true
 	seer.info_log = []
 	seer.applied_info = 0
 	var rd = {"day": 1, "role": "seer", "data": {"pair": [nom.id, other.id], "yes": true}, "true": true, "shared": false, "text": "between %s and %s, one reads as the Demon" % [nom.name, other.name]}
@@ -156,10 +159,24 @@ func _test_phase1_4_daytime_dowser_bluff_and_medium_n1_timing() -> void:
 	evil_actor.dowsed_day = -1
 	g.w.day = 2
 	g.w.phase = C.MORNING
+	for p in g.w.living():
+		p.loc = "tavern"
 	Evil.make_day_fake_info(g.w)
 	Mind.update_from_own_info(g.w)
 	var dowser_fakes: Array = evil_actor.info_log.filter(func(e): return e.get("fake", false) and e.get("role", "") == "dowser")
 	_check(dowser_fakes.size() == 1 and int(dowser_fakes[0].get("phase", -1)) == C.MORNING, "Evil Dowser bluffer fabricates a daytime crowd reading during _day_gifts")
+
+	var dw = C.role_def("dowser")
+	var local_ids: Array = g.w.living().filter(func(p): return p != evil_actor).map(func(p): return p.id)
+	_check(dowser_fakes[0].data.group == local_ids, "Dowser bluff includes the complete co-located crowd")
+	g.w.day = 3
+	evil_actor.loc = "chapel"
+	_check(dw.generate_bluff_reading(g.w, evil_actor, {}, local_ids[0], null, local_ids).is_empty(), "remote requested targets cannot trigger a Dowser bluff without a local crowd")
+	for id in local_ids.slice(0, 2):
+		g.w.by_id[id].loc = "chapel"
+	var local_bluff: Dictionary = dw.generate_bluff_reading(g.w, evil_actor, {}, local_ids[-1], null, local_ids)
+	_check(not local_bluff.is_empty() and local_bluff.entry.data.group == local_ids.slice(0, 2) and local_bluff.entry.data.block == g.w.loc_block("chapel"), "Dowser bluff never imports remote targets or companions into its crowd")
+	_check(dw.generate_bluff_reading(g.w, evil_actor, {}, "", null, []).is_empty(), "Dowser bluff fires only once per eligible day")
 
 	# Medium N1 timing check: victim killed on Night 1 (death_day == 1) cannot be read by Evil Medium on Night 1.
 	var g2 = Game.new()
@@ -237,7 +254,7 @@ func _test_phase1_6_compiled_trace_chain_speed_and_boundaries() -> void:
 	# Unlock full profile for match_p and contra_p, leave unk_p's haunts undiscovered!
 	for p in [match_p, contra_p]:
 		for hl in p.haunts:
-			g.add_profile_receipt({"kind": "haunt", "subject": [p.id], "source": "town", "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "Haunt"})
+			g.add_profile_receipt({"kind": "haunt", "subject": [p.id], "source": "town", "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "%s haunts %s" % [p.id, hl]})
 
 	w.day = 2
 	v1.alive = false
@@ -282,6 +299,20 @@ func _test_phase1_6_compiled_trace_chain_speed_and_boundaries() -> void:
 	_check(effs[match_p.id].posterior > effs[unk_p.id].posterior and effs[unk_p.id].posterior > effs[contra_p.id].posterior, "compiled trace_chain preserves matches > unknown > contradicts ordering")
 	_check(effs[contra_p.id].posterior > 0.05, "contradicting trace_chain only lowers Demon candidacy and never clears someone of being a Minion")
 
+	# Same raw cards with different discovered-profile weights must miss both caches.
+	var changed: Dictionary = compiled.duplicate(true)
+	var person_ids: Array = view.people.map(func(p): return p.id)
+	var mi: int = person_ids.find(match_p.id)
+	var ci: int = person_ids.find(contra_p.id)
+	for ta in changed.trace_assessments:
+		ta.digest = (str(ta.digest) + "changed-profile").sha256_text()
+		for scene in ta.scenes:
+			var old: float = scene.w1[mi]
+			scene.w1[mi] = scene.w1[ci]
+			scene.w1[ci] = old
+	var updated: Dictionary = Ghost.live(WorkshopCanvas.snapshot(g, changed))
+	_check(updated.ready and updated.proposal.effects[match_p.id].posterior < effs[match_p.id].posterior and updated.proposal.effects[contra_p.id].posterior > effs[contra_p.id].posterior, "changed compiled profile weights invalidate preview and evaluator caches with identical raw cards")
+
 	# Also link raw t1_id directly alongside trace_chain to verify zero double-counting!
 	model.connect_cards("e:" + t1_id, root_id)
 	var compiled_dup: Dictionary = model.compile(root_id)
@@ -305,6 +336,11 @@ func _run_receipt_level_ablation_probe() -> Array:
 	var a = g.w.living_good()[1]
 	var b = g.w.living_good()[2]
 	holder.role = "seer"
+	holder.claimed_role = ""
+	holder.claim_public = false
+	holder.ledger.clear()
+	holder.workshop_state.clear()
+	holder.workshop_state["enabled"] = true
 	holder.info_log = [{"day": 1, "role": "seer", "data": {"pair": [a.id, b.id], "yes": true}, "true": true, "shared": false, "text": "between %s and %s, one reads as the Demon" % [a.name, b.name]}]
 	holder.applied_info = 0
 	Mind.update_from_own_info(g.w)

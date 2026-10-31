@@ -81,60 +81,22 @@ func generate_reading(w, dw, ctx: Dictionary, _mind) -> Dictionary:
 	}
 
 
-func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, asked: Array) -> Dictionary:
+## A bluff changes the count, while keeping the same eligibility and complete local
+## crowd as a real Dowser. Target requests cannot manufacture a remote crowd.
+func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: Array) -> Dictionary:
 	if w.day < min_gift_day or n.dowsed_day == w.day:
 		return {}
-	var C = content()
 	var blk: String = n.home_block if n.at_home() else w.loc_block(n.loc)
-	var others_here: Array = w.living().filter(func(m): return m != n and (m.home_block if m.at_home() else w.loc_block(m.loc)) == blk)
-	var goods: Array = w.living_good().filter(func(m): return m != n)
-	if goods.size() < 2:
+	var others: Array = w.living().filter(func(m): return m != n and (m.home_block if m.at_home() else w.loc_block(m.loc)) == blk)
+	if others.size() < 2:
 		return {}
-	var d = w.by_id.get(w.demon_id)
-	var demon_hot: bool = w.public_log.any(func(ev): return ev.get("kind", "") == "reading" and w.demon_id in ev.get("subjects", []))
-	var valid_asked: Array = asked.filter(func(aid): return aid != n.id and w.by_id.has(aid) and w.by_id[aid].alive)
-	if valid_asked.size() >= 2:
-		n.dowsed_day = w.day
-		var cnt_a: int = 1 if (s in valid_asked and not valid_asked.any(func(aid): return w.by_id[aid].is_evil())) else 0
-		var blk_a: String = w.by_id[valid_asked[0]].home_block if w.by_id[valid_asked[0]].at_home() else w.loc_block(w.by_id[valid_asked[0]].loc)
-		return {
-			"entry": {"data": {"group": valid_asked, "count": cnt_a, "block": blk_a}, "text": "on %s I sensed %d evil among %s" % [C.block_name(blk_a), cnt_a, w._names(valid_asked)]},
-			"why": "answers requested crowd check on %s" % w._names(valid_asked),
-		}
-	if demon_hot and d != null and d.alive and d != n and w.chance(0.45):
-		var d_blk: String = d.home_block if d.at_home() else w.loc_block(d.loc)
-		var companions: Array = goods.filter(func(x): return (x.home_block if x.at_home() else w.loc_block(x.loc)) == d_blk)
-		if companions.is_empty():
-			companions = goods.slice(0, 2)
-		var clear_grp: Array = [d.id] + companions.slice(0, 2).map(func(x): return x.id)
-		if clear_grp.size() >= 2:
-			n.dowsed_day = w.day
-			return {
-				"entry": {"data": {"group": clear_grp, "count": 0, "block": d_blk}, "text": "on %s I sensed 0 evil among %s" % [C.block_name(d_blk), w._names(clear_grp)]},
-				"why": "clears demon %s in a quiet crowd" % d.id,
-			}
-	var sg = w.by_id.get(s) if (s != "" and s != n.id) else null
-	if sg != null and sg.alive:
-		var sg_blk: String = sg.home_block if sg.at_home() else w.loc_block(sg.loc)
-		var same_blk_goods: Array = goods.filter(func(x): return x != sg and (x.home_block if x.at_home() else w.loc_block(x.loc)) == sg_blk)
-		if same_blk_goods.is_empty():
-			same_blk_goods = goods.filter(func(x): return x != sg)
-		if not same_blk_goods.is_empty():
-			var frame_grp: Array = [sg.id] + same_blk_goods.slice(0, 2).map(func(x): return x.id)
-			n.dowsed_day = w.day
-			return {
-				"entry": {"data": {"group": frame_grp, "count": 1, "block": sg_blk}, "text": "on %s I sensed 1 evil among %s" % [C.block_name(sg_blk), w._names(frame_grp)]},
-				"why": "frames scapegoat %s in crowd on %s" % [sg.id, sg_blk],
-			}
-	if others_here.size() >= 2:
-		var fallback_ids: Array = others_here.slice(0, 3).map(func(m): return m.id)
-		var fb_cnt: int = 0 if fallback_ids.any(func(i): return w.by_id[i].is_evil()) else 1
-		n.dowsed_day = w.day
-		return {
-			"entry": {"data": {"group": fallback_ids, "count": fb_cnt, "block": blk}, "text": "on %s I sensed %d evil among %s" % [C.block_name(blk), fb_cnt, w._names(fallback_ids)]},
-			"why": "fabricates local crowd count on %s" % blk,
-		}
-	return {}
+	var ids: Array = others.map(func(m): return m.id)
+	var count: int = 0 if others.any(func(m): return m.is_evil()) else (1 if s in ids else others.filter(func(m): return m.is_evil()).size())
+	n.dowsed_day = w.day
+	return {
+		"entry": {"data": {"group": ids, "count": count, "block": blk}, "text": "on %s I sensed %d evil among %s" % [content().block_name(blk), count, w._names(ids)]},
+		"why": "fabricates count for the complete local crowd on %s" % blk,
+	}
 
 
 func fake_medium_reading(w, _n, dd, s: String, sg, d, goods: Array, _other: Callable, e: Dictionary, demon_implicated: bool) -> Dictionary:
