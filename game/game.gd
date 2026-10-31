@@ -146,7 +146,11 @@ func _line(x) -> void:
 	if x is Dictionary:
 		_remember_spoken_relationship(x)
 		# The unvoiced statement rides along for logs and tests; the UI shows the text.
-		_ev({"k": "speech", "speaker": x["speaker"], "name": x["name"], "text": x["text"], "statement": x.get("statement", x["text"])})
+		var event = {"k": "speech", "speaker": x["speaker"], "name": x["name"], "text": x["text"], "statement": x.get("statement", x["text"])}
+		if x.has("expression"):
+			event["expression"] = x["expression"]
+			event["expression_strength"] = x.get("expression_strength", 1)
+		_ev(event)
 	else:
 		_narr(str(x))
 

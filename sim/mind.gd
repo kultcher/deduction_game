@@ -28,7 +28,23 @@ static func say(n, text: String) -> Dictionary:
 	return {"speaker": n.id, "name": n.name, "text": text}
 
 static func say_voiced(n, key: String, fallback: String, slots: Dictionary = {}) -> Dictionary:
-	return {"speaker": n.id, "name": n.name, "text": Dialogue.voice_line(n.id, key, fallback, slots), "statement": fallback}
+	var line = {"speaker": n.id, "name": n.name, "text": Dialogue.voice_line(n.id, key, fallback, slots), "statement": fallback}
+	# Curated from the actual voiced wording. Unlisted deliveries stay neutral.
+	# These cues do not inspect alignment, secrets, decisions, or truthfulness.
+	var cues = {
+		"apology_accept": {"agnes": "warm", "dorian": "warm", "fenwick": "warm", "isolde": "warm", "jory": "warm", "merrin": "warm"},
+		"distrust_action": {"greta": "harsh", "jory": "harsh", "lian": "harsh", "merrin": "harsh", "isolde": "concerned"},
+		"fear_gift_refusal": {"dorian": "concerned", "isolde": "concerned", "jory": "concerned", "merrin": "concerned"},
+		"request_ward": {"dorian": "concerned", "isolde": "concerned"},
+		"request_vigil": {"isolde": "concerned"},
+		"pressed_multi_trace_case": {"dorian": "harsh", "jory": "harsh", "merrin": "harsh"},
+	}
+	var expression: String = cues.get(key, {}).get(n.id, "")
+	if expression != "" and Dialogue.has_voice(n.id):
+		line["expression"] = expression
+		# Warm acceptance is a gentle cue; explicit alarm or rebuke is stronger.
+		line["expression_strength"] = 1 if expression == "warm" else 2
+	return line
 
 ## Small presentation boundary: approve content first, then supply only delivery cues.
 static func voiced(n, kind: String, statement: String, event_id: String = "", context: Dictionary = {}) -> Dictionary:

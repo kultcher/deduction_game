@@ -1,5 +1,6 @@
 extends SceneTree
 const C = preload("res://sim/content.gd")
+const Mind = preload("res://sim/mind.gd")
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -46,6 +47,55 @@ func _run() -> void:
 	assert(not view.previous_portrait.visible)
 	view.begin(n.id, n.name)
 	assert(view.portrait.texture == neutral and not view.previous_portrait.visible)
+	assert(view.speech.visible_characters == -1 and not view.reveal_hint.visible)
+	# A fresh response reveals at the lab pace, pauses over the map, and can be skipped.
+	view.consume([{"k": "speech", "speaker": n.id, "text": "A long enough response for the reveal to be observed clearly."}])
+	assert(view.speech.visible_characters == 0 and view.reveal_hint.visible)
+	view._process(0.1)
+	assert(view.speech.visible_characters == 9)
+	view.hide()
+	view._process(1.0)
+	assert(view.speech.visible_characters == 9)
+	view.show()
+	var click = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	view._on_dialogue_input(click)
+	assert(view.speech.visible_characters == -1 and not view.reveal_hint.visible)
+	view.consume([{"k": "speech", "speaker": n.id, "text": "A different answer arrives."}])
+	assert(view.speech.visible_characters == 0 and view.reveal_hint.visible)
+	view._process(10.0)
+	assert(view.speech.visible_characters == view.reveal_total and not view.reveal_hint.visible)
+	view.begin(n.id, n.name)
+	# Curated cues follow spoken delivery, including through the real event boundary.
+	var speaker_data = {"id": "isolde", "name": "Isolde"}
+	var fearful: Dictionary = Mind.say_voiced(speaker_data, "fear_gift_refusal", "fallback")
+	var practical: Dictionary = Mind.say_voiced({"id": "hollis", "name": "Hollis"}, "fear_gift_refusal", "fallback")
+	assert(fearful.get("expression") == "concerned")
+	var same_words_other_alignment: Dictionary = Mind.say_voiced({"id": "isolde", "name": "Isolde", "alignment": "evil"}, "fear_gift_refusal", "fallback")
+	assert(same_words_other_alignment.text == fearful.text and same_words_other_alignment.expression == fearful.expression)
+	assert(not practical.has("expression"))
+	assert(not Mind.say_voiced(speaker_data, "request_confidence", "fallback").has("expression"))
+	var before_events: Array = g.events.duplicate()
+	g.events.clear()
+	g._line(fearful)
+	assert(g.events.size() == 1 and g.events[0].get("expression") == "concerned")
+	view.begin("isolde", "Isolde")
+	view.consume(g.events)
+	assert(view.portrait.texture == view._expression_texture("isolde", "concerned"))
+	view.consume([{"k": "speech", "speaker": "isolde", "text": "Thank you.", "expression": "warm", "expression_strength": 1},
+		{"k": "speech", "speaker": "isolde", "text": "I'm frightened.", "expression": "concerned", "expression_strength": 2},
+		{"k": "speech", "speaker": "bart", "text": "Other speaker", "expression": "harsh", "expression_strength": 9}])
+	assert(view.portrait.texture == view._expression_texture("isolde", "concerned"))
+	view.consume([{"k": "speech", "speaker": "isolde", "text": "I was afraid.", "expression": "concerned", "expression_strength": 2},
+		{"k": "speech", "speaker": "isolde", "text": "I won't stand for it.", "expression": "harsh", "expression_strength": 2}])
+	assert(view.portrait.texture == view._expression_texture("isolde", "harsh"))
+	view.consume([{"k": "narration", "text": "No speech"}])
+	assert(view.portrait.texture == view._expression_texture("isolde", "harsh"))
+	view.consume([{"k": "speech", "speaker": "isolde", "text": "That's not for me to say."}])
+	assert(view.portrait.texture == view._expression_texture("isolde", "neutral"))
+	g.events = before_events
+	view.begin(n.id, n.name)
 	assert(scene.conversation_view.controls.get_children().any(func(c): return c is Button and c.text == "Leave"))
 	var buttons = scene.actions.get_children().filter(func(c): return c is Button and c.text == "Look at the map")
 	assert(buttons.size() == 1)

@@ -32,6 +32,7 @@ const CONSTANCE_EXPRESSIONS = {
 	"sorrowful": "res://assets/art/portrait_expression_poc/constance-sorrowful-v1.png",
 }
 const FADE_SECONDS = 0.15
+const REVEAL_PER_SECOND = 90.0
 
 var formatter = Formatter.new()
 var renderer = Renderer.new()
@@ -40,6 +41,9 @@ var previous_portrait: TextureRect
 var portrait_tween: Tween
 var speaker: Label
 var speech: RichTextLabel
+var reveal_hint: Label
+var reveal_position = 0.0
+var reveal_total = 0
 var controls: HFlowContainer
 var person_id = ""
 var lines: Array = []
@@ -97,6 +101,7 @@ void fragment() {
 	style.set_corner_radius_all(10)
 	style.set_content_margin_all(14)
 	bubble.add_theme_stylebox_override("panel", style)
+	bubble.gui_input.connect(_on_dialogue_input)
 	add_child(bubble)
 	var content = VBoxContainer.new()
 	content.add_theme_constant_override("separation", 8)
@@ -108,7 +113,14 @@ void fragment() {
 	speech.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	speech.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	speech.scroll_active = true
+	speech.gui_input.connect(_on_dialogue_input)
 	content.add_child(speech)
+	reveal_hint = Label.new()
+	reveal_hint.text = "Click dialogue to show all"
+	reveal_hint.add_theme_font_size_override("font_size", 14)
+	reveal_hint.add_theme_color_override("font_color", Color("795b42"))
+	reveal_hint.mouse_filter = Control.MOUSE_FILTER_PASS
+	content.add_child(reveal_hint)
 	var control_scroll = ScrollContainer.new()
 	control_scroll.anchor_left = 0.47
 	control_scroll.anchor_top = 0.71
@@ -166,11 +178,19 @@ func _stop_portrait_fade() -> void:
 
 func consume(events: Array) -> void:
 	var spoken: Array = []
+	var expression = "neutral"
+	var strength = 0
 	for event in events:
 		if event.get("k") == "speech" and event.get("speaker") == person_id:
 			spoken.append(str(event.get("text", "")))
+			var cue: String = event.get("expression", "")
+			var cue_strength = int(event.get("expression_strength", 1))
+			if cue in EXPRESSIONS and cue != "neutral" and cue_strength > 0 and cue_strength >= strength:
+				expression = cue
+				strength = cue_strength
 	if not spoken.is_empty():
 		lines = spoken
+		set_expression(expression)
 		_render()
 
 func _render() -> void:
@@ -178,3 +198,26 @@ func _render() -> void:
 	var text = "\n\n".join(PackedStringArray(lines)) if not lines.is_empty() else "Choose a question to begin."
 	renderer.append_to(speech, formatter.format_text(text, {
 		"surface": "paper", "speaker_id": person_id, "font_size": 20, "icon_size": 20}))
+	reveal_total = speech.get_total_character_count()
+	reveal_position = 0.0
+	if lines.is_empty():
+		reveal_all()
+	else:
+		speech.visible_characters = 0
+		reveal_hint.visible = reveal_total > 0
+
+func _process(delta: float) -> void:
+	if is_visible_in_tree() and speech != null and speech.visible_characters >= 0 and speech.visible_characters < reveal_total:
+		reveal_position = minf(float(reveal_total), reveal_position + delta * REVEAL_PER_SECOND)
+		speech.visible_characters = int(reveal_position)
+		if speech.visible_characters >= reveal_total:
+			reveal_hint.hide()
+
+func reveal_all() -> void:
+	reveal_position = float(reveal_total)
+	speech.visible_characters = -1
+	reveal_hint.hide()
+
+func _on_dialogue_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		reveal_all()
