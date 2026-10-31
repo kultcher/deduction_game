@@ -36,6 +36,22 @@ func _run() -> void:
 	assert(scene.conversation_view.visible)
 	assert(scene.conversation_view.person_id == n.id)
 	assert(scene.conversation_view.portrait.texture != null)
+	# Pending requests must not place a wrapping hint in a row of choice buttons.
+	g.pending_request = {"kind": "confidence"}
+	scene._refresh_actions()
+	await process_frame
+	await process_frame
+	var choice_view = scene.conversation_view
+	assert(choice_view.action_hint.visible and choice_view.action_hint.text == "Anything else you do counts as no.")
+	assert(choice_view.action_hint.get_parent() != choice_view.controls)
+	assert(choice_view.action_hint.size.x > 150)
+	var choice_buttons = choice_view.controls.get_children().filter(func(c): return c is Button)
+	assert(choice_buttons.size() >= 2)
+	for button in choice_buttons:
+		assert(button.size.y < 100)
+	g.pending_request = {}
+	scene._refresh_actions()
+	assert(not choice_view.action_hint.visible)
 	var view = scene.conversation_view
 	var neutral: Texture2D = view.portrait.texture
 	view.set_expression("warm")

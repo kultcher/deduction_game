@@ -45,6 +45,7 @@ var reveal_hint: Label
 var reveal_position = 0.0
 var reveal_total = 0
 var controls: HFlowContainer
+var action_hint: Label
 var person_id = ""
 var lines: Array = []
 
@@ -128,11 +129,24 @@ void fragment() {
 	control_scroll.anchor_bottom = 0.99
 	control_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	add_child(control_scroll)
+	var action_content = VBoxContainer.new()
+	action_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control_scroll.add_child(action_content)
+	action_hint = Label.new()
+	action_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	action_hint.add_theme_font_size_override("font_size", 15)
+	action_hint.add_theme_color_override("font_color", Color(0.65, 0.65, 0.7))
+	action_hint.hide()
+	action_content.add_child(action_hint)
 	controls = HFlowContainer.new()
 	controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	controls.add_theme_constant_override("h_separation", 6)
 	controls.add_theme_constant_override("v_separation", 5)
-	control_scroll.add_child(controls)
+	action_content.add_child(controls)
+
+func set_action_hint(text: String) -> void:
+	action_hint.text = text
+	action_hint.visible = not text.is_empty()
 
 func begin(id: String, name: String) -> void:
 	person_id = id

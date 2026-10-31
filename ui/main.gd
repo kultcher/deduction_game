@@ -829,6 +829,7 @@ func _on_map_clicked(kind: String, id: String) -> void:
 # ---------------------------------------------------------------- action panel
 
 func _refresh_actions() -> void:
+	conversation_view.set_action_hint("")
 	for ch in actions.get_children():
 		actions.remove_child(ch)
 		ch.queue_free()
@@ -1030,6 +1031,9 @@ func _map_toggle() -> void:
 		_refresh_all())
 
 func _hint(t: String) -> void:
+	if actions == conversation_view.controls:
+		conversation_view.set_action_hint(t)
+		return
 	var l = Label.new()
 	l.text = t
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
