@@ -98,8 +98,8 @@ func info_effects(w, listener, source, entry: Dictionary, weight: float, _fresh:
 
 
 ## Public hearth eligibility: Demon victims only; revisit the latest after all are visited.
-func pick_targets(w, m, _mind):
-	var dead: Array = w.npcs.filter(func(x): return not x.alive and x.death_cause == "demon")
+func pick_targets(w, m, _mind, before_day: int = -1):
+	var dead: Array = w.npcs.filter(func(x): return not x.alive and x.death_cause == "demon" and (before_day < 0 or x.death_day < before_day))
 	if dead.is_empty():
 		return ""
 	dead.sort_custom(func(a, b): return a.death_day > b.death_day)
@@ -182,10 +182,11 @@ func generate_reading(w, n, ctx: Dictionary, mind) -> Dictionary:
 
 
 func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: Array) -> Dictionary:
-	# Match the real Medium's public hearth eligibility and revisit policy.
+	# Match the real Medium's public hearth eligibility and revisit policy (INFO_BEFORE_KILL).
 	if w.day == 0 or not w.by_id[s].alive:
 		return {}
-	var dead_id: String = pick_targets(w, n, null)
+	var cutoff_day: int = w.day if content().INFO_BEFORE_KILL else -1
+	var dead_id: String = pick_targets(w, n, null, cutoff_day)
 	if dead_id == "":
 		return {}
 	var dd = w.by_id[dead_id]

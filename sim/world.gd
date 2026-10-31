@@ -312,21 +312,27 @@ func vote_threshold() -> int:
 
 # ---------------------------------------------------------------- setup
 
-func setup(seed_in: int, npc_count: int = 7) -> void:
+func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable()) -> void:
 	seed_value = seed_in
 	rng.seed = seed_in
 	n_npcs = npc_count
 	max_days = 6 if npc_count < 10 else 8
 	day = 0
 	phase = C.NIGHT
+	var build_id: String = trace_build if trace_build != "" else str(ProjectSettings.get_setting("application/config/version", "dev"))
+	var tuning_id: String = trace_tuning if trace_tuning != "" else Tuning.fingerprint()
+	trace_build = build_id
+	trace_tuning = tuning_id
 	dlog.configure_trace(detailed_logging)
 	shadow_log.configure_trace(detailed_logging, dlog.trace_context(), "shadow")
 	dlog.set_time(0, "Setup")
-	dlog.begin_action("setup", {"seed": seed_in, "npcs": npc_count})
+	dlog.begin_action("setup", {"seed": seed_in, "npcs": npc_count, "build": build_id, "tuning": tuning_id})
 	dlog.trace_event("trace_header", "world", "", {"seed": seed_in, "npcs": npc_count,
-		"engine": Engine.get_version_info(), "build": trace_build, "tuning": trace_tuning,
+		"engine": Engine.get_version_info(), "build": build_id, "tuning": tuning_id,
+		"shared_execution_priority_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT,
 		"coverage": "milestone_2_state_and_structured_decisions"})
-	dlog.add("case_start", "world", "", {"seed": seed_in, "npcs": npc_count})
+	dlog.add("case_start", "world", "", {"seed": seed_in, "npcs": npc_count, "build": build_id,
+		"tuning": tuning_id, "shared_execution_priority_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT})
 
 	var cast = shuffled(C.CAST).slice(0, npc_count)
 	var occs = shuffled(C.OCCUPATIONS.keys()).slice(0, npc_count)
@@ -398,6 +404,8 @@ func setup(seed_in: int, npc_count: int = 7) -> void:
 	evil_plan = Evil.make_plan(self)
 	_log_grimoire()
 	trace_capture("initial_setup", true)
+	if on_cast_ready.is_valid():
+		on_cast_ready.call(self)
 
 	resolve_night()
 	day = 1
@@ -900,9 +908,9 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 		"player_yes": res.get("player_yes", false), "player_nominated": res.get("by", "") == "player"})
 	dlog.add("execution", "world", id, {"role": n.role, "align": n.alignment},
 		"%s (%s) executed by town vote." % [n.name, n.role])
-	_grief(n, res)
 	mart_def.on_chosen_executed(self, mart, n)
 	C.role_def(n.role).on_executed(self, n, res, Mind)
+	_grief(n, res)
 	if id == demon_id:
 		var sc = living_with_role("scion")
 		if C.role_def("scion").can_promote_to_demon(sc, alive_before):
@@ -986,6 +994,8 @@ func _bereave(dead) -> void:
 func _grief(ex, res: Dictionary) -> void:
 	if ex.id == demon_id:
 		return  # the town was right; nobody mourns the demon
+	if public_log.any(func(ev): return ev.get("kind", "") == "curse" and ex.id in ev.get("subjects", [])):
+		return  # the Revenant's curse erupted publicly at the gallows; nobody mourns proven evil
 	for f in living_good():
 		var t: float = f.npc_trust.get(ex.id, 0.5)
 		if t < 0.62:
@@ -1681,6 +1691,9 @@ func _day_gifts() -> void:
 		var holder = living_with_role(role_id)
 		if holder != null:
 			C.role_def(role_id).run_day_gift(self, holder, Mind, Evil)
+	if day >= 1:
+		Evil.make_day_fake_info(self)
+		Mind.update_from_own_info(self)
 
 ## The player searches a location: a hidden totem is found and destroyed. Returns the
 ## totem (with "freed": id of anyone released from the curse), or {}.

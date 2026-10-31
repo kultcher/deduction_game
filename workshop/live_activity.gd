@@ -189,7 +189,8 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	var observations = relevant(cards).filter(func(c): return not c.get("quoted", false) or c.kind == "alibi")
 	if observations.is_empty():
 		return []
-	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true)]
+	var tc_digests: Array = view.get("trace_assessments", []).map(func(ta): return str(ta.get("digest", "")))
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests]
 	if view.get("chronology", {}).has("curse"):
 		input.append(view.chronology.curse)
 	var key = hash(input)
@@ -522,13 +523,61 @@ static func crossing_probability(view: Dictionary, cards: Array, person: Diction
 	return clampf(num_cross / den_all, 0.0, 1.0)
 
 static func _build_scene_tables(view: Dictionary, cards: Array) -> Array:
+	var out: Array = []
+	var has_curse: bool = view.get("chronology", {}).has("curse")
+	var people_ids: Array = view.people.map(func(p): return p.id)
+	var compiled_by_scene: Dictionary = {}
+	var compiled_order: Array = []
+	for ta in view.get("trace_assessments", []):
+		if not ta is Dictionary:
+			continue
+		for cs in ta.get("scenes", []):
+			var sc_key: String = str(cs.get("scene", ""))
+			if sc_key == "":
+				continue
+			# Only evaluate scenes whose selected trace is actually attended in `cards`.
+			var sel_id: String = str(cs.get("selected_trace_id", ""))
+			if sel_id != "" and not cards.any(func(c): return not c.get("quoted", false) and c.id == sel_id):
+				continue
+			if not compiled_by_scene.has(sc_key):
+				compiled_order.append(sc_key)
+			compiled_by_scene[sc_key] = cs
+	for sc_key in compiled_order:
+		var cs: Dictionary = compiled_by_scene[sc_key]
+		var c_night: int = int(cs.get("night", 1))
+		var c_block: String = str(cs.get("scene_block", ""))
+		var c_victim_idx: int = people_ids.find(str(cs.get("victim_id", "")))
+		var c_two: bool = bool(cs.get("two_cited", false)) and cs.get("w2", []).size() == view.people.size()
+		var c_count: int = maxi(2 if c_two else 1, int(cs.get("scene_trace_count", 1)))
+		var c_good: Array = []
+		var c_minion: Array = []
+		var c_conv: Array = []
+		if c_two or c_count >= 2:
+			for p in view.people:
+				c_good.append(crossing_probability(view, cards, p, c_night, "good", c_block))
+				c_minion.append(crossing_probability(view, cards, p, c_night, "minion", c_block))
+				if has_curse:
+					c_conv.append(crossing_probability(view, cards, p, c_night, "converted", c_block))
+		out.append({
+			"scene": sc_key,
+			"night": c_night,
+			"scene_block": c_block,
+			"victim_idx": c_victim_idx,
+			"scene_trace_count": c_count,
+			"two_cited": c_two,
+			"w1": cs.get("w1", []).duplicate(),
+			"w2": cs.get("w2", []).duplicate() if c_two else [],
+			"cross_good": c_good,
+			"cross_minion": c_minion,
+			"cross_converted": c_conv,
+		})
 	var by_scene: Dictionary = {}
 	var scene_order: Array = []
 	for c in cards:
 		if c.get("quoted", false) or c.kind != "trace" or not c.get("data", {}).has("family"):
 			continue
 		var sc_id: String = str(c.data.get("scene", ""))
-		if sc_id == "":
+		if sc_id == "" or compiled_by_scene.has(sc_id):
 			continue
 		var slot: int = int(c.data.get("slot", 0))
 		if not by_scene.has(sc_id):
@@ -536,8 +585,6 @@ static func _build_scene_tables(view: Dictionary, cards: Array) -> Array:
 			scene_order.append(sc_id)
 		if not by_scene[sc_id].has(slot):
 			by_scene[sc_id][slot] = c
-	var out: Array = []
-	var has_curse: bool = view.get("chronology", {}).has("curse")
 	for sc_id in scene_order:
 		var slot_map: Dictionary = by_scene[sc_id]
 		var slots: Array = slot_map.keys()

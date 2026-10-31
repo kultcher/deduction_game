@@ -33,6 +33,12 @@ func info_effects(w, listener, source, entry: Dictionary, weight: float, fresh: 
 	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
 	var ex = w.by_id[d["executed"]]
 	var ex_good: bool = content().ROLES[d["role"]]["align"] == "good"
+	var proven_revenant: bool = w.public_log.any(func(ev): return ev.get("kind", "") == "curse" and ex.id in ev.get("subjects", []))
+	if proven_revenant and d["role"] != "revenant" and not own:
+		mind._eff(effs, source.id, Tuning.Roles.DOWSER.eff_impossible_source,
+			tag + ": claims %s was %s despite public Revenant curse" % [ex.id, d["role"]],
+			"%s claimed %s was the %s after the Revenant's curse proved what they were" % [source.name, ex.name, content().role_name(d["role"])])
+		return effs
 	if ex.id != listener.id:
 		# "X was evil" (or good) is evidence about X like any other; X's credibility
 		# follows from it in recompute_beliefs, not from a role-specific rule.

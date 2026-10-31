@@ -3,8 +3,11 @@
 ## `WorkshopCanvas.view(g)` (`view.people`, `view.cards`, `view.profile_facets`, `view.timeline`).
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Solver = preload("res://workshop/solver.gd")
+
+static var _compiled_cache: Dictionary = {}
 
 
 ## Build the N-column by (1 or 2)-row murder-night trace matrix and Scion execution dividers.
@@ -422,6 +425,7 @@ static func bundle_for_workshop(view: Dictionary, selected_by_night: Dictionary)
 	for n_int in nights:
 		serialized_map[str(n_int)] = clean_sel[n_int]
 
+	var assessment: Dictionary = compile_assessment(view, clean_sel)
 	return {
 		"selected_by_night": serialized_map,
 		"nights": nights,
@@ -429,4 +433,117 @@ static func bundle_for_workshop(view: Dictionary, selected_by_night: Dictionary)
 		"sibling_trace_ids": sibling_ids,
 		"death_ids": death_ids,
 		"receipt_ids": profile_receipt_ids,
+		"assessment": assessment,
 	}
+
+
+static func _person_trace_weight(prof: Dictionary, locs: Array) -> float:
+	var match_w: float = Tuning.Setup.TRACE_MATCH_WEIGHT
+	var unk_w: float = Tuning.Setup.TRACE_UNKNOWN_WEIGHT
+	var contra_w: float = Tuning.Setup.TRACE_CONTRADICT_WEIGHT
+	if prof.work_loc != "" and prof.work_loc in locs:
+		return match_w
+	for hl in prof.known_haunts:
+		if hl in locs:
+			return match_w
+	if prof.full_profile:
+		return contra_w
+	return unk_w
+
+
+## Compile selected traces and currently discovered profiles into one reusable, SHA-256-cached
+## assessment shared across all listeners. Unknown haunts remain unknown (`TRACE_UNKNOWN_WEIGHT`),
+## Demon candidacy stays distinct from Minion candidacy, and covered scenes never double-count.
+static func compile_assessment(view: Dictionary, selected_by_night: Dictionary) -> Dictionary:
+	var matrix: Dictionary = build_matrix(view)
+	var clean_sel: Dictionary = normalize_selection(matrix, selected_by_night)
+	if clean_sel.is_empty():
+		return {}
+	var profiles: Dictionary = discovered_profiles(view)
+	var deaths: Dictionary = _death_records(view)
+	var people_order: Array = view.get("people", []).map(func(p): return str(p.get("id", "")))
+	var prof_sig: Array = []
+	for pid in people_order:
+		var pf: Dictionary = profiles.get(pid, {"work_loc": "", "known_haunts": [], "unknown_slots": 3})
+		var sorted_h: Array = pf.known_haunts.duplicate()
+		sorted_h.sort()
+		prof_sig.append([pid, pf.work_loc, sorted_h])
+	var sel_nights: Array = clean_sel.keys()
+	sel_nights.sort()
+	var sel_sig: Array = []
+	for n_int in sel_nights:
+		sel_sig.append([int(n_int), str(clean_sel[n_int])])
+	var trace_sig: Array = []
+	for col in matrix.columns:
+		if clean_sel.has(int(col.night)):
+			trace_sig.append([int(col.night), col.scene, col.rows.map(func(r): return [r.id, r.locs, r.scene_trace_count])])
+	var digest: String = JSON.stringify([sel_sig, prof_sig, deaths, matrix.scion_dividers, trace_sig]).sha256_text()
+	if _compiled_cache.has(digest):
+		return _compiled_cache[digest].duplicate(true)
+
+	var eval_res: Dictionary = evaluate_selection(view, clean_sel)
+	var people_summary: Dictionary = {}
+	for entry in eval_res.all_entries:
+		people_summary[entry.id] = {
+			"state": entry.fit,
+			"unknown_slots": int(entry.unknown_slots),
+			"full_profile": bool(entry.full_profile),
+		}
+	for victim in eval_res.excluded_victims:
+		people_summary[victim.id] = {"state": "victim", "unknown_slots": 0, "full_profile": true}
+
+	var scenes: Array = []
+	var covered_trace_ids: Array = []
+	var serialized_sel: Dictionary = {}
+	for col in matrix.columns:
+		var n_int: int = int(col.night)
+		if not clean_sel.has(n_int):
+			continue
+		var picked_id: String = str(clean_sel[n_int])
+		serialized_sel[str(n_int)] = picked_id
+		var primary: Dictionary = {}
+		var sibling: Dictionary = {}
+		for r in col.rows:
+			if str(r.id) == picked_id:
+				primary = r
+			elif sibling.is_empty():
+				sibling = r
+		if primary.is_empty():
+			continue
+		if primary.id not in covered_trace_ids:
+			covered_trace_ids.append(primary.id)
+		var two_cited: bool = not sibling.is_empty()
+		if two_cited and sibling.id not in covered_trace_ids:
+			covered_trace_ids.append(sibling.id)
+		var w1: Array = []
+		var w2: Array = []
+		for pid in people_order:
+			var pf2: Dictionary = profiles[pid]
+			w1.append(_person_trace_weight(pf2, primary.locs))
+			if two_cited:
+				w2.append(_person_trace_weight(pf2, sibling.locs))
+		scenes.append({
+			"scene": str(primary.scene),
+			"night": n_int,
+			"scene_block": str(primary.scene_block),
+			"victim_id": str(primary.victim_id),
+			"scene_trace_count": maxi(2 if two_cited else 1, int(primary.scene_trace_count)),
+			"two_cited": two_cited,
+			"selected_trace_id": str(primary.id),
+			"sibling_trace_id": str(sibling.get("id", "")) if two_cited else "",
+			"w1": w1,
+			"w2": w2,
+		})
+
+	var compiled = {
+		"digest": digest,
+		"selected_by_night": serialized_sel,
+		"covered_trace_ids": covered_trace_ids,
+		"scion_dividers": matrix.scion_dividers.duplicate(true),
+		"scenes": scenes,
+		"people": people_summary,
+	}
+	if _compiled_cache.size() >= 128:
+		_compiled_cache.clear()
+	_compiled_cache[digest] = compiled.duplicate(true)
+	return compiled

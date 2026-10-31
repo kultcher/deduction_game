@@ -256,8 +256,23 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	w.detailed_logging = detailed_logging
 	w.trace_build = trace_build
 	w.trace_tuning = trace_tuning
-	w.setup(seed_in, npc_count)
+	w.setup(seed_in, npc_count, func(_world): _attach_workshop_world())
 	if debug_overlay: set_debug_overlay(true)
+	w.dlog.begin_action("new_case_presentation")
+	w.dlog.trace_event("game_config", "world", "", {"workshop_effects": workshop_effects, "strict_evaluator": strict_evaluator})
+	state = "day"
+	moved = false
+	approached_id = ""
+	approached_loc = ""
+	events = []
+	_intro()
+	_morning_report()
+	_maybe_approach()
+	return _finish_command("new_case", "")
+
+## Where everyone lives is common knowledge: one card per resident, so arguments about
+## where someone could have walked at night can cite it.
+func _attach_workshop_world() -> void:
 	var weak_game = weakref(self)
 	var weak_world = weakref(w)
 	w.workshop_refresh = func(n, phase):
@@ -285,21 +300,12 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 				WorkshopOwnership.fallback(game, n, "submission", ["The whole audience is using existing response rules for this submission."], card.get("n", 0))
 			return {}
 		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak)
-	w.dlog.begin_action("new_case_presentation")
 	_home_cards()
-	set_workshop_effects(workshop_effects)
-	state = "day"
-	moved = false
-	approached_id = ""
-	approached_loc = ""
-	events = []
-	_intro()
-	_morning_report()
-	_maybe_approach()
-	return _finish_command("new_case", "")
+	for real in w.npcs:
+		real.workshop_state["enabled"] = workshop_effects
+		if real.shadow != null:
+			real.shadow.workshop_state["enabled"] = workshop_effects
 
-## Where everyone lives is common knowledge: one card per resident, so arguments about
-## where someone could have walked at night can cite it.
 func _home_cards() -> void:
 	GameBoard._home_cards(self)
 
@@ -1871,6 +1877,7 @@ func _next_npc_nomination() -> bool:
 	if nm == null:
 		return false
 	w.open_nomination(nm["by"], nm["nominee"], nm["reason"])
+	w.meeting["pending"]["case_facts"] = nm.get("case_facts", []).duplicate(true)
 	town_quiet = false
 	_line(nm["speech"])
 	for l in nm.get("case_lines", []):
@@ -1886,7 +1893,7 @@ func _defend_pending() -> void:
 	if not C.DEFENCE_MOVES:
 		_line(Mind.defence_line(w, w.by_id[nm["nominee"]]))
 		return
-	var df = Mind.defend_self(w, w.by_id[nm["nominee"]], nm["by"])
+	var df = Mind.defend_self(w, w.by_id[nm["nominee"]], nm["by"], nm.get("case_facts", []))
 	for l in df["lines"]:
 		_line(l)
 	_facts(df["facts"])

@@ -150,6 +150,8 @@ static func review_scapegoat(w) -> void:
 static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 	if dd.alive or dd.death_cause != "demon":
 		return {} # Public hearth eligibility only; fabrication choices below are unchanged.
+	if C.INFO_BEFORE_KILL and dd.death_day >= w.day:
+		return {} # Real Mediums act before tonight's kill; never read tonight's fresh victim.
 	var night = maxi(0, dd.death_day - 1)
 	var sg = w.by_id[s]
 	if w.chance(C.MEDIUM_USELESS_CHANCE):
@@ -573,6 +575,12 @@ static func note_kill_result(w, target: String, outcome: String) -> void:
 # ---------------------------------------------------------------- fabricated info
 
 static func make_fake_info(w) -> void:
+	_make_fake_info_for_phase(w, false)
+
+static func make_day_fake_info(w) -> void:
+	_make_fake_info_for_phase(w, true)
+
+static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 	ensure_scapegoat(w)
 	var plan: Dictionary = w.evil_plan
 	var s: String = plan["scapegoat"]
@@ -580,6 +588,9 @@ static func make_fake_info(w) -> void:
 		if not plan["bluffs"].has(n.id):
 			continue
 		var bluff: String = plan["bluffs"][n.id]
+		var is_day_role: bool = C.ROLES.get(bluff, {}).get("day", false)
+		if is_day_role != day_only:
+			continue
 		var mate = mate(w, n)
 		if mate == null:
 			mate = n  # alone: "clear a teammate" options fall back to clearing themself
@@ -598,6 +609,8 @@ static func make_fake_info(w) -> void:
 		entry = gen["entry"]
 		why = gen["why"]
 		entry["day"] = w.day
+		if day_only and w.phase != C.NIGHT:
+			entry["phase"] = w.phase
 		entry["role"] = bluff
 		entry["shared"] = false
 		entry["true"] = false

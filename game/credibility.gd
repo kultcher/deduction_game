@@ -52,9 +52,17 @@ static func dawn(g) -> void:
 			continue
 		var target: float = 0.5 + Tuning.Trust.CRED_SPAN * float(agreement)
 		var value: float = clampf(mind.credibility + (target - mind.credibility) * Tuning.Trust.CRED_STEP, Tuning.Trust.CRED_MIN, Tuning.Trust.CRED_MAX)
+		var old_cred: float = mind.credibility
 		g.w.dlog.trace_event("value_change", n.id, "player", {"quantity": "credibility",
-			"from": mind.credibility, "to": value, "agreement": agreement, "claims": mind.claim_record.size()},
+			"from": old_cred, "to": value, "agreement": agreement, "claims": mind.claim_record.size()},
 			"Track record: the player's claims against my own evidence")
+		if absf(value - old_cred) >= 0.005:
+			g.w.dlog.add("credibility", n.id, "player", {
+				"from": snappedf(old_cred, 0.01),
+				"to": snappedf(value, 0.01),
+				"agreement": snappedf(float(agreement), 0.01),
+				"claims": mind.claim_record.size(),
+			}, "Track record: the player's claims against my own evidence")
 		mind.credibility = value
 		n.credibility = value
 

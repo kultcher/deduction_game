@@ -175,6 +175,16 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			result.case.id = "live:" + snapshot.case_id
 			result.view = view
 			view.alignment_epoch = epoch
+		var merged_ta: Array = []
+		var seen_ta: Dictionary = {}
+		for arg_item in [root] + snapshot.arguments:
+			for ta_entry in arg_item.get("workshop_case", {}).get("trace_assessments", []):
+				var ta_dig: String = str(ta_entry.get("digest", "")) if ta_entry is Dictionary else ""
+				if ta_dig != "" and not seen_ta.has(ta_dig):
+					seen_ta[ta_dig] = true
+					merged_ta.append(ta_entry.duplicate(true))
+		if not merged_ta.is_empty():
+			view["trace_assessments"] = merged_ta
 		for argument in snapshot.arguments:
 			var conclusion = argument.conclusion
 			if conclusion.get("type") not in CONCLUSIONS or _target(conclusion) not in snapshot.people.map(func(p): return p.id):
@@ -556,11 +566,14 @@ static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 		# attention still excludes them. Flag the missing joint interpretation.
 		if argument.case.get("disputes", []).is_empty():
 			issues.append("Embedded conflict questions need a live quoted-evidence assessment adapter; present the conflict as its own headline to use the new evaluator.")
-	var fields: Array = Solver.empty_case().keys() + ["arguments", "argument_root", "circumstantial"]
+	var fields: Array = Solver.empty_case().keys() + ["arguments", "argument_root", "circumstantial", "trace_assessments"]
 	for claim in claims:
 		for field in claim:
 			if field not in fields:
 				issues.append("Unrecognized canvas feature needs a live adapter: " + str(field) + ".")
+		for ta in claim.get("trace_assessments", []):
+			if not ta is Dictionary or str(ta.get("digest", "")) == "" or not ta.get("scenes") is Array:
+				issues.append("Invalid compiled trace chain assessment.")
 		for hub in claim.get("circumstantial", []):
 			if not hub is Dictionary or not hub.get("cards") is Array or hub.cards.is_empty():
 				issues.append("Link at least one supporting card into the Circumstantial Evidence hub, or remove the empty hub.")
