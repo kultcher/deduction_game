@@ -266,7 +266,7 @@ static func _movement(view: Dictionary, graph: Dictionary) -> void:
 	if not Activity.available(view):
 		_conditional(graph, movement_facts, "fixture_movement")
 		return
-	var coupled: bool = movement_facts.any(func(f): return f.card.kind == "dropped" or f.card.get("item_drop", false) or f.card.get("role") == "lamplighter" and f.card.kind == "report")
+	var coupled: bool = movement_facts.any(func(f): return f.card.kind == "dropped" or f.card.get("item_drop", false) or f.card.get("role") == "lamplighter" and f.card.kind == "report" and not f.card.get("duty_only", false))
 	if coupled:
 		_conditional(graph, movement_facts, "route_counts")
 	for person in view.people:
@@ -293,7 +293,7 @@ static func _affects(card: Dictionary, person: String) -> bool:
 	if card.kind == "claim":
 		return card.source == person
 	if card.kind == "report":
-		return card.role == "nightwatch" or card.role in ["lamplighter", "veteran"] and card.source == person
+		return (card.role == "nightwatch" and (not card.get("duty_only", false) or card.source == person)) or (card.role in ["lamplighter", "veteran", "medium"] and card.source == person)
 	if card.kind in ["coverage", "trace"]:
 		return true
 	if card.kind == "sighting":
@@ -373,12 +373,14 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 				var forced_lamp = false
 				var checked = selected.duplicate()
 				var okay = true
-				var counts = Activity.routes(view, selected) if factor.get("coupled", false) else {}
+				var counts = Activity.routes(view, selected, {}, {}, false) if factor.get("coupled", false) else {}
 				for night in nights:
 					var paths = Activity._paths(view, factor.person, int(night), selected, graph.knowledge)
 					okay = okay and not paths.is_empty()
 					forced_lamp = forced_lamp or not paths.is_empty() and paths.all(func(path): return path.size() == 4)
-					var out: bool = factor.person.id in counts.get("nights", {}).get(night, {}).get("forced_out", []) if not counts.is_empty() else not paths.is_empty() and paths.all(func(path): return not path.is_empty())
+					# Likelihood inference must use the same fallible-report routes as Activity.factors.
+					var likelihood_paths = Activity._paths(view, factor.person, int(night), selected, {}, false)
+					var out: bool = factor.person.id in counts.get("nights", {}).get(night, {}).get("forced_out", []) if not counts.is_empty() else not likelihood_paths.is_empty() and likelihood_paths.all(func(path): return not path.is_empty())
 					if out:
 						checked.append({"id": "inferred-out:%s:%s" % [factor.person.id, night], "kind": "sighting", "source": "evidence", "subject": factor.person.id, "subjects": [factor.person.id], "block": "", "night": int(night)})
 				if factor.kind == "forced_lamp":

@@ -802,6 +802,10 @@ func clemency() -> void:
 		if n == spared:
 			Mind.set_trust(self, n, n.trust + 0.15, "the Demonologist spared me")
 			continue
+		if n.id == nm["by"]:
+			var nom_drop: float = 0.10 if (not n.is_evil() and Mind.susp(n, spared.id) > 0.6) else 0.08
+			Mind.set_trust(self, n, n.trust - nom_drop, "the Demonologist overruled my nomination")
+			continue
 		if n.is_evil():
 			continue
 		var s = Mind.susp(n, spared.id)
@@ -809,9 +813,6 @@ func clemency() -> void:
 			Mind.set_trust(self, n, n.trust + 0.06, "the Demonologist spared %s, whom I trust" % spared.id)
 		elif s > 0.6:
 			Mind.set_trust(self, n, n.trust - 0.1, "the Demonologist spared %s, whom I suspect" % spared.id)
-	if nm["by"] != "player":
-		var nom = by_id[nm["by"]]
-		Mind.set_trust(self, nom, nom.trust - 0.08, "the Demonologist overruled my nomination")
 	meeting["pending"] = {}
 
 ## Count the votes on the pending nomination and update who is on the block.
@@ -1173,6 +1174,13 @@ func _warden_credit(warden, target: String) -> void:
 	if warden == null or warden.is_evil() or not by_id.has(target) or not by_id[target].alive:
 		return
 	var alternatives: int = public_claims.filter(func(pc): return pc["role"] == "veteran" and pc["who"] != warden.id and by_id[pc["who"]].alive).size()
+	if knell_night == day or public_log.any(func(ev): return ev.get("kind", "") == "knell" and int(ev.get("day", ev.get("at", {}).get("day", -1))) == day):
+		alternatives += 1
+	var known_ward: bool = (player_ward != "" and (player_ward == warden.id or warden.ledger.has("ward:%d" % day))) or public_log.any(func(ev): return ev.get("kind", "") in ["ward", "scorched_sigil"] and int(ev.get("day", ev.get("at", {}).get("day", -1))) == day)
+	if not known_ward and player_ward != "":
+		known_ward = dlog.entries.any(func(e): return e["type"] == "player_offer" and e["day"] == day and e["target"] == warden.id and e["data"].get("what", "") == "ward" and player_ward == warden.id)
+	if known_ward:
+		alternatives += 1
 	var belief: float = 1.0 / float(1 + alternatives)
 	if belief < Tuning.Roles.WARDEN_SAVE_BELIEF_MIN:
 		return

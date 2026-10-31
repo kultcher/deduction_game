@@ -96,15 +96,25 @@ static func night_stats(w) -> Dictionary:
 	out["warden_hit_rate"] = float(out["blocked_warden"]) / out["warden_protects"] if out["warden_protects"] > 0 else null
 	return out
 
-static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = []) -> Dictionary:
+static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = [], snapshots: Array = []) -> Dictionary:
 	var guesses: Dictionary = snapshot.get("guesses", {})
 	var demon_guesses = named_guesses(guesses, "demon")
 	var m_guesses = minion_guesses(guesses)
 	var eligible = not spoiled and not snapshot.is_empty()
-	# Credit goes for naming the demon the case started with (if a Scion took over, the
-	# single demon guess can't name both).
+	# Credit goes for naming the active Demon, the original Demon, or having frozen a
+	# pre-execution Demon guess on the original Demon when they were hung before Scion takeover.
 	var first: String = w.first_demon_id if w.first_demon_id != "" else w.demon_id
-	var demon_correct = eligible and demon_guesses == [first]
+	var pre_scion_hit: bool = false
+	if eligible and first != "" and w.executions.any(func(ex): return ex.get("id", "") == first and not ex.get("martyr", false)):
+		for snap in snapshots:
+			if snap.get("spoiled", false):
+				continue
+			var ctx: Dictionary = snap.get("context", {})
+			if (snap.get("reason", "") == "before_execution" and ctx.get("on_block", "") == first) or (snap.get("reason", "") == "before_vote" and ctx.get("nominee", "") == first):
+				if named_guesses(snap.get("guesses", {}), "demon") == [first]:
+					pre_scion_hit = true
+					break
+	var demon_correct = eligible and (demon_guesses == [w.demon_id] or demon_guesses == [first] or pre_scion_hit)
 	var true_minions: Array = w.minion_ids.duplicate()
 	true_minions.sort()
 	var minion_correct = eligible and m_guesses == true_minions

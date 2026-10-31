@@ -121,7 +121,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	for card in cards:
 		if card.kind == "attack":
 			view.timeline.events.append({"kind": "demon_attack", "subjects": [card.data.target], "at": {"day": card.night, "phase": "night"}, "by": ""})
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim", "attack"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "sexton", "martyr"]):
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim", "attack"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "medium", "sexton", "martyr"]):
 		view["live_activity"] = true
 		view.world_options["roles"] = true
 		view.world_options["identities"] = true
@@ -355,6 +355,23 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 				card["data"] = {"target": e.content.guard_claim}
 				if e.content.get("save_claim", false):
 					card.data["saved"] = true  # the Warden takes the quiet night as their save
+			elif e.content.get("watch_claim", false):
+				if e.subjects != [e.source] or block not in C.BLOCKS or night < 0:
+					return {}
+				card["watch_claim"] = true
+				card["duty_only"] = true
+				card["kind"] = "report"
+				card["role"] = "nightwatch"
+				card["data"] = {"block": block, "seen": []}
+			elif e.content.get("duty_claim", false) and str(e.content.get("duty", "")) in ["medium", "lamplighter"]:
+				var duty_role: String = str(e.content.duty)
+				if e.subjects != [e.source] or block not in C.BLOCKS or night < (1 if duty_role == "medium" else 0):
+					return {}
+				card["duty_claim"] = true
+				card["duty_only"] = true
+				card["kind"] = "report"
+				card["role"] = duty_role
+				card["data"] = {"block": block}
 			if e.content.get("dropped", false) and e.source == "evidence" and e.subjects.size() == 1:
 				card["item_drop"] = true
 			return card

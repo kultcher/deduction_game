@@ -130,10 +130,11 @@ static func _public_claim_decision(w, n) -> String:
 	# Gifts that pay off night after night are worth protecting early; one-shot first-night
 	# gifts have less to lose by coming out.
 	C.role_def(role).score_public_claim(w, n, parts)
+	if n.protect_lock and not (n.id in w.meeting.get("nominated", []) or n.pressure >= 0.7 or w.living().size() <= 4):
+		w.observe_decision(n, "claim", false, {"gate": "protect_lock_promised_player_first"})
+		return ""  # promised to tell the Demonologist first once protected
 	if w.living().size() <= 4:
 		parts["few_left"] = 0.8
-	if n.protect_lock and not (n.id in w.meeting.get("nominated", []) or n.pressure >= 0.7):
-		parts["promised_player_first"] = -0.6  # they've promised the Demonologist first
 	var why = ("Evil cover: publicly claim bluff %s?" % role) if n.is_evil() else ("Publicly reveal true role %s?" % role)
 	if decide(w, n, "claim", parts, why):
 		if n.is_evil():

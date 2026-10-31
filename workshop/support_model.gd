@@ -245,7 +245,7 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	# A role assertion alone supplies no alignment constraint. Avoid enumerating
 	# irrelevant reliability dimensions for optional claims with no test factor.
 	cards = cards.filter(func(c): return c.kind != "claim" or view.get("world_options", {}).get("roles", false) or c.id in factor_refs)
-	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and (c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (Solver.Domain.live(view) and c.role in ["nightwatch", "gravedigger", "veteran", "lamplighter", "martyr", "sexton"])))
+	var presented_reading: bool = cards.any(func(c): return c.kind == "report" and (c.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (Solver.Domain.live(view) and c.role in ["nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton"])))
 	for id in listener.knowledge.get("own_reports", []):
 		if bounded and id not in attention.considered and id not in listener.knowledge.get("attention_reports", listener.knowledge.get("own_reports", [])):
 			continue
@@ -365,7 +365,7 @@ static func _contributing(view: Dictionary, active: Array) -> Array:
 	var result: Array = []
 	var originals: Array = []
 	for card in active:
-		if card.kind != "report" or not (card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (Solver.Domain.live(view) and card.role in ["nightwatch", "gravedigger", "veteran", "lamplighter", "martyr", "sexton"])):
+		if card.kind != "report" or not (card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (Solver.Domain.live(view) and card.role in ["nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton"])):
 			continue
 		var original: String = card.get("logical_origin", Solver.semantic_key(card))
 		if original not in originals:

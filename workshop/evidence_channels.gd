@@ -72,9 +72,13 @@ static func compile(view: Dictionary, cards: Array) -> Dictionary:
 ## to the copied original. Payload fields used by the solver are retained.
 static func _body(card: Dictionary) -> Dictionary:
 	if card.kind == "report":
-		return {"kind": "report", "source": card.source, "role": card.role,
-			"data": Evidence.report_data(card.role, card.data), "observed_at": card.observed_at.duplicate(true),
+		var out_body = {"kind": "report", "source": card.source, "role": card.role,
+			"data": card.data.duplicate(true) if card.get("duty_only", false) else Evidence.report_data(card.role, card.data),
+			"observed_at": card.observed_at.duplicate(true),
 			"night": card.get("night", card.observed_at.day if card.observed_at.phase == "night" else -1)}
+		if card.get("duty_only", false):
+			out_body["duty_only"] = true
+		return out_body
 	var body = card.duplicate(true)
 	for field in ["id", "fact_id", "accuracy_origin", "logical_origin", "route_origin", "relay_source", "relay_role", "relay_observed_at", "acquired_day", "learned_at", "reported_at", "text", "provenance", "provenance_paths", "disclosures"]:
 		body.erase(field)

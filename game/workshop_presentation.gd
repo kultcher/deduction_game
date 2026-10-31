@@ -192,9 +192,12 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			Mind.ledger_hear(g.w, n, eid, [[target, sign_value, true, "Presented original report", ""]], maxf(0.0, agreement), Mind.support_ref(card), meta)
 	var voiced_stance: String = assessment.stance
 	if not repeated and text == assessment.response and stance_subject != "" and g.w.by_id.has(stance_subject):
+		var after_susp: float = n.suspicion.get(stance_subject, 0.1)
+		var already_aligned: bool = stance_before <= 0.15 if headline.conclusion.type in ["good", "marked"] else stance_before >= 0.48
 		text = _belief_stance_text(g, n, headline.conclusion.type, stance_subject, stance_before, assessment.stance, text, fresh.is_empty())
 		if headline.conclusion.type in ["evil", "demon", "minion", "suspicious", "good", "marked"]:
-			voiced_stance = belief_stance(headline.conclusion.type, stance_before, n.suspicion.get(stance_subject, 0.1))
+			var b_stance: String = belief_stance(headline.conclusion.type, stance_before, after_susp)
+			voiced_stance = assessment.stance if (b_stance == "reject" and (fresh.is_empty() or already_aligned) and assessment.stance == "accept") else b_stance
 	if not state.has("rewarded_facts"):
 		state.rewarded_facts = {}
 	for id in snapshot.selected:
@@ -319,6 +322,12 @@ const STANCE_ONLY = [
 	"Your explanation fits what I considered, and none of the alternatives I checked held up.",
 	"I found your explanation coherent, though I am not yet convinced by its support.",
 	"The supplied evidence weighs against that conclusion.",
+	"The evidence I considered weighs against this conclusion; my search was limited.",
+	"The reports I considered point away from that conclusion.",
+	"The accounts I considered conflict with each other, and do not establish that conclusion.",
+	"I checked another explanation that also fits, but the movement evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
+	"I checked another explanation that also fits, but the trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
+	"I checked another explanation that also fits, but the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
 ]
 
 static func belief_stance(kind: String, before: float, after: float) -> String:
@@ -337,10 +346,19 @@ static func _belief_stance_text(g, n, kind: String, subject: String, before: flo
 	if believed == scoped:
 		return text
 	var reasons: String = text
-	for lead in STANCE_ONLY:
-		if reasons.begins_with(lead):
-			reasons = reasons.substr(lead.length()).strip_edges()
+	for lead_s in STANCE_ONLY:
+		if reasons.begins_with(lead_s):
+			reasons = reasons.substr(lead_s.length()).strip_edges()
 			break
+	if believed == "reject":
+		for accept_tail in [
+			" Even so, the evidence favors your explanation.",
+			" Even so, the movement evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
+			" Even so, the trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
+			" Even so, the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
+		]:
+			reasons = reasons.replace(accept_tail, "")
+		reasons = reasons.strip_edges()
 	var name: String = g.w.by_id[subject].name
 	var lead: String
 	match believed:
@@ -349,7 +367,7 @@ static func _belief_stance_text(g, n, kind: String, subject: String, before: flo
 		"partial":
 			lead = "it moves me a little on %s." % name
 		_:
-			var already: bool = before <= 0.15 if kind in ["good", "marked"] else before >= 0.7
+			var already: bool = before <= 0.15 if kind in ["good", "marked"] else before >= 0.48
 			if nothing_new:
 				lead = "I'd already taken that into account."
 			elif already:

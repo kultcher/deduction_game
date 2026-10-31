@@ -3,7 +3,7 @@
 extends RefCounted
 
 const CONTEXT_FIELDS = ["audience", "speech_act", "trust", "pressure", "warm", "close", "subject",
-	"challenged", "withholding", "reconsidered", "decided", "request_privacy",
+	"challenged", "visual", "withholding", "reconsidered", "decided", "request_privacy",
 	"flow_position", "flow_relation", "shared_presence"]
 const PAYLOAD_FIELDS = ["kind", "form", "event_id", "statement", "observation", "argument", "when",
 	"key", "claim", "stance", "facts", "reason", "alternative", "source", "preferred",

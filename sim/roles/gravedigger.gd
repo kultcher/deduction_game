@@ -50,9 +50,13 @@ func info_effects(w, listener, source, entry: Dictionary, weight: float, fresh: 
 				mind._eff(effs, nom, (Tuning.Roles.GRAVEDIGGER.eff_nominator_of_good if ex_good else Tuning.Roles.GRAVEDIGGER.eff_nominator_of_evil),
 					tag + ": nominator of %s, who was %s" % [ex.id, d["role"]],
 					"they pushed to hang %s, who was innocent" % ex.name)
-			if fresh and not own and weight > 0.2 and (e["player_nominated"] or e["player_yes"]):
+			var rel_gd: float = mind.reliability(listener, source.id, int(entry.get("day", -1)), "reading")
+			var trusts_gd: bool = mind.susp(listener, source.id) < 0.40 and rel_gd >= 0.55 and listener.npc_trust.get(source.id, 0.5) >= 0.45
+			if fresh and not own and weight > 0.2 and trusts_gd and (e["player_nominated"] or e["player_yes"]):
 				if ex_good:
-					mind.set_trust(w, listener, listener.trust - 0.06, "the Demonologist backed hanging %s, an innocent" % ex.id)
+					# Execution accuracy is tracked by Credibility.dawn; personal Rapport only drops for close personal bonds.
+					if ex.id in listener.friends or ex.id == listener.lover:
+						mind.set_trust(w, listener, listener.trust - 0.06, "the Demonologist backed hanging %s, an innocent friend" % ex.id)
 				else:
 					mind.set_trust(w, listener, listener.trust + 0.08 + 0.06 * mind.trait_of(listener, "insight"),
 						"the Demonologist was proven right about %s" % ex.id)

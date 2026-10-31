@@ -65,7 +65,7 @@ static var _valid_cache: Dictionary = {}
 
 ## Per world: can this card's source give a healthy reading? (cached per card and universe)
 static func _valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
-	var key = hash([Solver._universe_key(view), card.kind, card.source, card.observed_at, card.get("role", ""), view.get("timeline", {}), card.get("testimony_only", false), card.get("reported_at")])
+	var key = hash([Solver._universe_key(view), card.kind, card.source, card.observed_at, card.get("role", ""), view.get("timeline", {}), card.get("testimony_only", false), card.get("reported_at"), card.get("duty_only", false)])
 	if _valid_cache.has(key):
 		return _valid_cache[key]
 	if _valid_cache.size() > 512:
@@ -307,7 +307,7 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 	var conclusion: Dictionary = case_data.conclusion
 	var key_input = [view.get("trace_assessments", []), Solver._universe_key(view), view.get("timeline", {}), view.people, conclusion, case_data.get("citations", {}), case_data.get("test_factors", []),
 		known.map(func(c): return c.get("fact_id", c.id)) if not case_data.get("test_factors", []).is_empty() else [],
-		cards.map(func(c): return [c.get("fact_id", c.id), c.kind, c.source, c.get("role", ""), c.get("observed_at", {}), c.get("data", {}), c.get("event", ""), c.has("relay_source"), c.get("quoted", false), c.get("block", ""), c.get("night", -1), c.get("subject", ""), c.get("subjects", [])])]
+		cards.map(func(c): return [c.get("fact_id", c.id), c.kind, c.source, c.get("role", ""), c.get("observed_at", {}), c.get("data", {}), c.get("event", ""), c.has("relay_source"), c.get("quoted", false), c.get("block", ""), c.get("night", -1), c.get("subject", ""), c.get("subjects", []), c.get("duty_only", false)])]
 	if cards.any(func(c): return c.has("hearing_weight")):
 		key_input.append(cards.map(func(c): return c.get("hearing_weight", 1.0)))
 	if cards.any(func(c): return c.get("testimony_only", false)):

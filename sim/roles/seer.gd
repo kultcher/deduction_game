@@ -95,9 +95,14 @@ func pick_targets(w, n, mind):
 	var pair: Array = []
 	var why = ""
 	var checked = {}
+	var seen_pairs = {}
 	var yes_on = {}
 	for e in n.info_log:
 		if e.get("role", "") == "seer":
+			var ep: Array = e["data"]["pair"].duplicate()
+			ep.sort()
+			if ep.size() == 2:
+				seen_pairs["%s:%s" % [ep[0], ep[1]]] = true
 			for pid in e["data"]["pair"]:
 				checked[pid] = true
 				if e["data"]["yes"]:
@@ -107,8 +112,19 @@ func pick_targets(w, n, mind):
 		pair = w.shuffled(ranked).slice(0, 2)
 		why = "first look: two at random"
 	elif not w.decision_roll(n, "seer_focused_look", 0.3 + 0.5 * ins, {"insight": ins}):
-		pair = w.shuffled(ranked).slice(0, 2)
-		why = "a scattered look (insight %.2f): two at random" % ins
+		var shuf: Array = w.shuffled(ranked)
+		for i_s in range(shuf.size()):
+			for j_s in range(i_s + 1, shuf.size()):
+				var cand_ids: Array = [shuf[i_s].id, shuf[j_s].id]
+				cand_ids.sort()
+				if not seen_pairs.has("%s:%s" % [cand_ids[0], cand_ids[1]]):
+					pair = [shuf[i_s], shuf[j_s]]
+					break
+			if not pair.is_empty():
+				break
+		if pair.is_empty():
+			pair = shuf.slice(0, 2)
+		why = "a scattered look (insight %.2f): two unchecked together" % ins
 	elif ins >= 0.6 and yes_on.get(ranked[0].id, 0) >= 2 and fresh.size() >= 2:
 		pair = w.shuffled(fresh).slice(0, 2)
 		why = "settled on %s (two yeses); looks at two fresh people" % ranked[0].id

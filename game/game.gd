@@ -7,6 +7,7 @@
 extends RefCounted
 
 const C = preload("res://sim/content.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
@@ -952,14 +953,15 @@ func _search() -> void:
 			_narr("As it burns, you feel the curse on the town lift. Whoever it turned is themselves again.")
 			_facts([{"kind": "curse_lifted", "subject": [], "source": "player", "day": w.day, "phase": w.phase,
 				"text": "Day %d: the totem burned and the Revenant's curse lifted. The turned soul is good again." % w.day}])
-	var items: Array = w.dropped.get(l, [])
+	var raw_items: Array = w.dropped.get(l, [])
+	w.dropped.erase(l)
+	var items: Array = raw_items.filter(func(it): return it.get("owner", "") != "" or Tuning.Setup.LEGACY_MUD_DROPS_ENABLED)
 	if items.is_empty():
 		if tt.is_empty():
 			w.dlog.add("player_search", "player", "", {"loc": l}, "Nothing dropped here.")
 		if tt.is_empty():
 			_narr("You search %s carefully. Nothing out of place." % w.loc_name(l))
 		return
-	w.dropped.erase(l)
 	var blk: String = w.loc_block(l)
 	for it in items:
 		w.dlog.add("player_search", "player", it["who"], {"loc": l, "item": it}, "Found something %s dropped (%s)." % [it["who"], it["why"]])
@@ -1656,8 +1658,8 @@ const TRAIT_WORDS = {
 }
 
 func _maybe_tell_trait(n, t, r: Dictionary) -> void:
-	if n.silenced or (n.traits.get("gossip", 0.5) < 0.2 and n.pressure < 0.5):
-		return  # the same gate as the opinion itself
+	if n.silenced:
+		return
 	var friend: bool = t.id in n.friends
 	var rival: bool = t.id in n.rivals
 	var allowed: Array = (Mind.C.TRAITS if friend else OBSERVABLE_TRAITS).filter(func(k): return not t.revealed_traits.has(k))
@@ -2435,7 +2437,7 @@ func _board(filter: String) -> String:
 func _ending() -> void:
 	_headline("ending", "Victory" if w.winner == "good" else "Defeat", w.end_reason)
 	var frozen: Dictionary = prediction_snapshots[-1] if not prediction_snapshots.is_empty() else {}
-	case_summary = CaseMetrics.summarize(w, frozen, prediction_spoiled, board)
+	case_summary = CaseMetrics.summarize(w, frozen, prediction_spoiled, board, prediction_snapshots)
 	case_summary["present_fallbacks"] = fallback_count
 	case_summary["legacy_fallbacks"] = shared_fallbacks.size()
 	w.dlog.add("case_summary", "world", "", case_summary, "Frozen pre-outcome identification, town survival, and execution attribution.")
@@ -2456,7 +2458,12 @@ func _grimoire() -> String:
 		var lies: int = w.dlog.entries.filter(func(e): return e["actor"] == n.id and e["type"] == "think" and e["data"].get("topic", "") == "lie").size()
 		var poisoned: Array = w.dlog.entries.filter(func(e): return e["type"] == "poison" and e["target"] == n.id).map(func(e): return str(e["day"]))
 		var extra = PackedStringArray()
-		if n.is_evil():
+		var role_label: String = C.role_name(n.role)
+		if n.id == w.scion_rose:
+			role_label = "Scion (promoted to Demon)"
+		elif n.turned:
+			role_label = "%s (cursed by Revenant)" % C.role_name(n.role)
+		if n.is_evil() and not n.turned and w.evil_plan.get("bluffs", {}).has(n.id):
 			extra.append("bluffed %s" % C.role_name(w.evil_plan["bluffs"][n.id]))
 		if n.id == w.evil_plan.get("scapegoat", ""):
 			extra.append("evil's scapegoat")
@@ -2473,7 +2480,7 @@ func _grimoire() -> String:
 		var traits = PackedStringArray()
 		for t in C.TRAITS:
 			traits.append("%s %s" % [t.substr(0, 4), C.tier(n.traits[t])])
-		out.append("  %-12s %-11s %-5s %s" % [n.name, C.role_name(n.role), n.alignment.to_upper(), "; ".join(extra)])
+		out.append("  %-12s %-11s %-5s %s" % [n.name, role_label, n.alignment.to_upper(), "; ".join(extra)])
 		out.append("  %-12s traits: %s; rapport %.2f, credibility %.2f" % ["", ", ".join(traits), n.trust, n.credibility])
 	out.append("Demon temperament: %s." % w.evil_plan["mood"])
 	out.append("Type 'grimoire lies' to see every lie and false reading with its reason, or 'grimoire talk' for who told whom what.")

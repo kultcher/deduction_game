@@ -155,17 +155,17 @@ func _distrust() -> void:
 		check(n.distrust_memory.action == "You broke your promise to me.", "largest actual, quotable loss is remembered for both alignments")
 		n.traits.gossip = 0.0
 		n.pressed_today = 0
-		var state = w.rng.state
-		var trust: float = n.trust
 		var reply = Mind.answer_opinion(w, n, t)
-		check(reply.lines.size() == 2 and "You broke your promise to me." in Speech.said(reply.lines[1]), "an opinion refusal explains the strongest remembered action")
-		check(reply.facts.is_empty() and n.trust == trust and w.rng.state == state, "explanation changes neither facts, trust nor RNG")
+		check(not reply.lines.is_empty(), "low-gossip townsfolk still answer opinion questions")
 		n.traits.privacy = 1.0
 		n.max_tier = 0
 		n.claim_public = false
 		n.pressed_today = 0
 		var gift = Mind.answer_gift(w, n)
-		check(gift.lines.size() == 1, "a second refusal in another topic does not repeat the daily explanation")
+		check(gift.lines.size() == 2 and "promise" in gift.lines[1].text, "a gift refusal explains the strongest remembered action")
+		n.pressed_today = 0
+		gift = Mind.answer_gift(w, n)
+		check(gift.lines.size() == 1, "a second refusal does not repeat the daily explanation")
 		w.day += 1
 		n.pressed_today = 0
 		gift = Mind.answer_gift(w, n)

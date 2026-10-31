@@ -79,7 +79,7 @@ func _traits_through_others() -> void:
 	var before = t.revealed_traits.size()
 	for i in range(20):
 		g._maybe_tell_trait(quiet, _goods(w)[3], {"lines": [], "facts": []})
-	_check(_goods(w)[3].revealed_traits.size() == 0 and t.revealed_traits.size() == before, "a closed-mouthed NPC says nothing about others' personalities")
+	_check(not _goods(w)[3].revealed_traits.is_empty() and t.revealed_traits.size() == before, "low Gossip still permits occasional trait sharing without changing another person's profile")
 
 func _lovers_grieve() -> void:
 	var g = _game(8102)
