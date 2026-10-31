@@ -235,6 +235,12 @@ class Roles:
 	}
 
 
+	## Warden credit for quiet nights (Oct 30): belief = 1 / (1 + known alternatives).
+	const WARDEN_SAVE_BELIEF_MIN = 0.5
+	const WARDEN_SAVE_TRUST = 0.1   # trust gained (x belief) by the Warden in the protectee, and back if believed
+	const WARDEN_TELL_TRUST = 0.6   # the Warden tells the protectee when trusting them at least this much
+	const WARDEN_SAVE_RELIABILITY = 0.7  # how far the model trusts a claimed save (an inference, not a sighting)
+
 # ---------------------------------------------------------------- 3. NPC Mind, Belief Ledger & Credence
 class Mind:
 	const SIGMOID_SLOPE = 4.0

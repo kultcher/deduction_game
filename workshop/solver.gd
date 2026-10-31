@@ -603,7 +603,14 @@ static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictio
 static func _report_content(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
 	_ensure_people(view)
 	if card.role == "warden":
-		return not view.get("timeline", {}).get("events", []).any(func(event): return event.kind == "demon_death" and event.at.day == card.observed_at.day and card.data.target in event.subjects)
+		if view.get("timeline", {}).get("events", []).any(func(event): return event.kind == "demon_death" and event.at.day == card.observed_at.day and card.data.target in event.subjects):
+			return false
+		# A claimed save (the quiet night was the Demon turned away from this door) holds
+		# only where the target is good: the Demon goes for the good (Oct 30).
+		if card.data.get("saved", false):
+			var ti: int = person_index(view, card.data.target)
+			return ti < 0 or (int(world.evil) & (1 << ti)) == 0
+		return true
 	var rdef = C.role_def(card.role)
 	if Domain.live(view):
 		if rdef != null and rdef.shape == "NIGHT_ROUTE" and card.data.seen.any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):

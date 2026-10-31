@@ -101,6 +101,7 @@ var beliefs: Array = []
 ## Ability results: {day, role, data, text, true:bool, why, shared}
 var info_log: Array = []
 var warden_log = {}          # Warden only: "night" -> who they guarded
+var warden_saves = {}        # Warden only: "night" -> {target, belief}: quiet nights they take as their save
 
 ## Claims.
 var claimed_role = ""        # "" = not claimed; "none" = denies a gift

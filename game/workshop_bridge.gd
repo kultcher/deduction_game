@@ -168,8 +168,11 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 		var residents: Array = input.people.filter(func(p): return p.id == target)
 		if night < 1 or night > now.day or residents.is_empty():
 			continue
-		input.receipts.append({"private": true, "card": {"kind": "sighting", "source": n.id, "subject": [n.id], "guard_claim": target,
-			"block": residents[0].home, "day": night, "phase": C.NIGHT, "text": "My own guard statement."}})
+		var own_guard = {"kind": "sighting", "source": n.id, "subject": [n.id], "guard_claim": target,
+			"block": residents[0].home, "day": night, "phase": C.NIGHT, "text": "My own guard statement."}
+		if n.warden_saves.get(key, {}).get("target", "") == target:
+			own_guard["save_claim"] = true
+		input.receipts.append({"private": true, "card": own_guard})
 	# No role/alignment certainty is manufactured from truth or inferred from a gift.
 	input.issues.append({"code": "listener_history_partial", "fact": "", "detail": "Legacy knowledge lacks complete report/learning times and withdrawal receipts; own and known readings are retained."})
 
