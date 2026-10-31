@@ -1852,7 +1852,7 @@ func _meeting_command(verb: String, rest: String) -> void:
 				_err(why)
 				return
 			w.open_nomination("player", n.id)
-			Credibility.record_public(self, "evil", n.id)
+			Credibility.record_public(self, "evil", n.id, Tuning.Trust.CRED_WEIGHT_FORMAL)
 			town_quiet = false
 			_narr("You stand and nominate %s." % n.name)
 			_defend_pending()
@@ -1946,7 +1946,8 @@ func _nomination_command(verb: String, rest: String, progress: Callable = Callab
 			if not card.is_empty() and not _presentation_gate(card, w.living().filter(func(v): return v != t), [t.id], "deduction" if card.kind == "deduction" else verb, "nomination"):
 				return
 			statement_used = true
-			Credibility.record_public(self, "evil" if verb == "accuse" else "good", t.id)
+			var stmt_weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL if not card.is_empty() else Tuning.Trust.CRED_WEIGHT_STATEMENT
+			Credibility.record_public(self, "evil" if verb == "accuse" else "good", t.id, stmt_weight)
 			nm["statement"] = verb
 			if not card.is_empty():
 				_narr("You lay card #%d before the town: %s" % [card["n"], card["text"]])
@@ -2124,6 +2125,7 @@ func _resolve_night() -> void:
 		for mind in [n, n.shadow]:
 			if mind != null and not mind.workshop_state.is_empty():
 				mind.workshop_state["committed_lean"] = Mind.suspicion_view(mind).duplicate(true)
+				mind.workshop_state["committed_requested"] = mind.workshop_state.get("requested", {}).duplicate(true)
 	_settle_offers()
 	var vig: String = w.player_vigil
 	w.resolve_night()

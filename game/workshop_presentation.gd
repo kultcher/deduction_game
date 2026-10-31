@@ -181,6 +181,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		Profiler.close(park_span)
 	else:
 		for target in targets:
+			preload("res://game/credibility.gd").record(n, "good" if direction == "defend" else "evil", target, g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL)
 			var sign_value = -0.4 if direction == "defend" else 0.45
 			var eid = "workshop:tell:%s:%s" % [key, target]
 			var meta = {"kind": "tell", "workshop_card": Evidence.normalize_card(card), "text": card.get("text", "")}

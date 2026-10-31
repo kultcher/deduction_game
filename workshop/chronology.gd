@@ -128,7 +128,7 @@ static func restore_cover(cover: Dictionary, view: Dictionary = {}) -> Dictionar
 	# Only explicitly permitted workshop fields cross the boundary. Evil-only intel,
 	# role truth and real-mind memories cannot be accidentally copied by this adapter.
 	var result = {}
-	for field in ["id", "name", "preset", "trust", "confidence", "insight", "reasoning_mode", "confidence_mode", "npc_trust", "suspicion", "reading_reliability", "knowledge", "ledger", "case_memory", "theories"]:
+	for field in ["id", "name", "preset", "trust", "confidence", "insight", "reasoning_mode", "confidence_mode", "npc_trust", "suspicion", "lean", "committed_requested", "per_card_source_trust", "reading_reliability", "knowledge", "ledger", "case_memory", "theories"]:
 		if cover.has(field):
 			result[field] = cover[field].duplicate(true) if cover[field] is Dictionary or cover[field] is Array else cover[field]
 	if result.has("knowledge"):

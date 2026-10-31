@@ -212,7 +212,7 @@ static func _evaluate_deduction(g, n, ded: Dictionary, scale: float, speak: bool
 	var span = WorkshopProfiler.open("listener", n.id)
 	# The player argued this to them: it joins their track record (game/credibility.gd).
 	var said: Dictionary = ded.get("conclusion", {})
-	preload("res://game/credibility.gd").record(n, str(said.get("type", "")), str(said.get("a", "")), g.w.day)
+	preload("res://game/credibility.gd").record(n, str(said.get("type", "")), str(said.get("a", "")), g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL)
 	var result: Dictionary = _evaluate_deduction_inner(g, n, ded, scale, speak, venue)
 	WorkshopProfiler.close(span)
 	return result

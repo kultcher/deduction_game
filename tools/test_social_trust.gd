@@ -54,8 +54,17 @@ func _init():
 	# raise it; claims against it lower it.
 	var g2 = _game(15)
 	var listener = g2.w.npc_with_role("seer")
-	var reading: Dictionary = listener.info_log[0]
-	var pair: Array = reading.data.pair
+	# Give the listener a decisive independent reading, rather than relying on a
+	# seeded weak Seer result that may correctly abstain under the corroboration gate.
+	var pair: Array = g2.w.living_good().filter(func(p): return p != listener).slice(0, 2).map(func(p): return p.id)
+	listener.role = "dowser"
+	listener.ledger.clear()
+	listener.workshop_state.clear()
+	listener.workshop_state["enabled"] = true
+	listener.info_log = [{"day": 1, "phase": 0, "role": "dowser", "data": {"group": pair, "count": 0}, "text": "independent zero count"}]
+	listener.applied_info = 0
+	Mind.update_from_own_info(g2.w)
+	var reading: Dictionary = {"data": {"yes": false}}
 	var agree: String = "evil" if reading.data.yes else "good"
 	var disagree: String = "good" if reading.data.yes else "evil"
 	for id in pair:

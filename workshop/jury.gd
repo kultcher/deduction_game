@@ -73,8 +73,9 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	var signature_case = Graph.compile_case(view, case_data)
 	signature_case.conclusion = {"type": "evil", "target": "all", "at": case_data.conclusion.at}
 	var common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
-		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.confidence,
-		baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
+		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.get("player_credibility", baseline.trust),
+		baseline.get("lean", {}), baseline.get("committed_requested", {}), baseline.get("per_card_source_trust", false),
+		baseline.confidence, baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
 	var consequences = _consequences_eval(view, case_data, baseline, {}, common_key, [], true)
 	var effects = {}
 	for person in view.people:
@@ -114,8 +115,9 @@ static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Diction
 	var signature_case = Graph.compile_case(view, case_data)
 	signature_case.conclusion = {"type": "evil", "target": "all", "at": case_data.conclusion.at}
 	var common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
-		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.confidence,
-		baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
+		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.get("player_credibility", baseline.trust),
+		baseline.get("lean", {}), baseline.get("committed_requested", {}), baseline.get("per_card_source_trust", false),
+		baseline.confidence, baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
 	# context.headline_only: a scoped reply whose effects are never applied (the shared
 	# union owns belief changes). Only the headline target's effect is computed; every
 	# other person's projection, theory and CaseEval re-run is skipped.
@@ -196,8 +198,9 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 	var previous: Dictionary = listener.case_memory.get(case_data.id, {})
 	var signature = _signature(view, case_data)
 	var input_key = JSON.stringify(_canonical([signature, listener.get("reasoning_mode", "full"), listener.get("insight", 0.5),
-		listener.get("confidence_mode", "scale"), listener.confidence, listener.trust, listener.npc_trust,
-		listener.suspicion, listener.reading_reliability, listener.knowledge]))
+		listener.get("confidence_mode", "scale"), listener.confidence, listener.trust, listener.get("player_credibility", listener.trust),
+		listener.npc_trust, listener.suspicion, listener.get("lean", {}), listener.get("committed_requested", {}),
+		listener.get("per_card_source_trust", false), listener.reading_reliability, listener.knowledge]))
 	var repeated: bool = previous.get("input_key", "") == input_key
 	var knowledge: Dictionary = listener.knowledge
 	var full_case = case_data.duplicate(true)
@@ -479,8 +482,9 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 	var previous: Dictionary = listener.case_memory.get(case_data.id, {})
 	var signature = _signature(view, case_data)
 	var input_key = JSON.stringify(_canonical([signature, listener.get("reasoning_mode", "full"), listener.get("insight", 0.5),
-		listener.get("confidence_mode", "scale"), listener.confidence, listener.trust, listener.npc_trust,
-		listener.suspicion, listener.reading_reliability, listener.knowledge]))
+		listener.get("confidence_mode", "scale"), listener.confidence, listener.trust, listener.get("player_credibility", listener.trust),
+		listener.npc_trust, listener.suspicion, listener.get("lean", {}), listener.get("committed_requested", {}),
+		listener.get("per_card_source_trust", false), listener.reading_reliability, listener.knowledge]))
 	var repeated: bool = previous.get("input_key", "") == input_key
 	var knowledge: Dictionary = listener.knowledge
 	var full_case = case_data.duplicate(true)
@@ -689,18 +693,65 @@ static func _movement_trace_tail(view: Dictionary, cards: Array) -> String:
 		_:
 			return "The routes, observation coverage and traces change which explanation I favor. Lawful activity and eligible passers remain alternatives; this is circumstantial evidence."
 
+static func _headline_group_key(view: Dictionary, card: Dictionary) -> String:
+	var role: String = str(card.get("role", ""))
+	var source: String = str(card.get("source", ""))
+	var data: Dictionary = card.get("data", {}) if card.get("data", {}) is Dictionary else {}
+	var subjects: Array = []
+	if data.get("pair") is Array:
+		subjects = data.pair.duplicate()
+	elif data.get("group") is Array:
+		subjects = data.group.duplicate()
+	subjects.sort()
+	var result_sig: String = ""
+	match role:
+		"seer":
+			result_sig = "1" if bool(data.get("yes", false)) else "0"
+		"archivist":
+			result_sig = str(data.get("role", ""))
+		"dowser":
+			result_sig = str(int(data.get("count", 0)))
+		_:
+			result_sig = JSON.stringify(data)
+	var obs: Dictionary = card.get("observed_at", {}) if card.get("observed_at", {}) is Dictionary else {}
+	var obs_day: int = int(obs.get("day", card.get("night", 0)))
+	var obs_phase: String = str(obs.get("phase", "night" if int(card.get("night", -1)) >= 0 else "morning"))
+	var scion_epoch: int = 0
+	var executions = view.get("timeline", {}).get("executions", {})
+	if executions is Dictionary:
+		for ex_day_key in executions:
+			var ex_day: int = int(ex_day_key)
+			# Evening execution on day d precedes Night d and any morning/afternoon reading on days > d.
+			if (obs_phase == "night" and ex_day <= obs_day) or (obs_phase != "night" and ex_day < obs_day):
+				scion_epoch += 1
+	return "%s|%s|%s|%s|%d" % [source, role, ",".join(PackedStringArray(subjects)), result_sig, scion_epoch]
+
 static func _headline(view: Dictionary, cards: Array, person: String, prior: float, listener: Dictionary, eval_listener: Dictionary, player_tells: bool) -> float:
 	var own_ids: Array = eval_listener.get("knowledge", {}).get("own_reports", [])
 	if own_ids.is_empty():
 		own_ids = eval_listener.get("knowledge", {}).get("attention_reports", [])
-	var miss: float = 1.0
+	var grouped: Dictionary = {}
 	for card in cards:
 		if card.get("kind", "") != "report" or card.get("quoted", false):
 			continue
 		var p: float = _headline_chance(card, person)
 		if p > 0.0:
 			var credence: float = 1.0 - CaseEval.reading_error(view, card, eval_listener, own_ids)
-			miss *= 1.0 - clampf(p * credence * _card_trust(card, listener, player_tells), 0.0, 1.0)
+			var hit: float = clampf(p * credence * _card_trust(card, listener, player_tells or bool(card.get("via_player_only", false))), 0.0, 1.0)
+			var gkey: String = _headline_group_key(view, card)
+			if not grouped.has(gkey):
+				grouped[gkey] = []
+			grouped[gkey].append(hit)
+	var miss: float = 1.0
+	for gkey in grouped:
+		var hits: Array = grouped[gkey]
+		hits.sort_custom(func(a, b): return a > b)
+		var group_miss: float = 1.0 - float(hits[0])
+		var decay: float = Tuning.Workshop.HEADLINE_REPEAT_BUMP
+		for i in range(1, hits.size()):
+			group_miss *= 1.0 - clampf(float(hits[i]) * decay, 0.0, 1.0)
+			decay *= Tuning.Workshop.HEADLINE_REPEAT_BUMP
+		miss *= group_miss
 	var implied: float = 1.0 - miss
 	if implied <= prior:
 		return 0.0
@@ -780,10 +831,10 @@ static func _card_trust(card: Dictionary, listener: Dictionary, player_tells: bo
 	return t
 
 static func _trust_in(who: String, listener: Dictionary) -> float:
-	if who == "" or who == listener.get("id", "") or who == "town":
+	if who == "" or who == listener.get("id", "") or who == "town" or who == "evidence":
 		return 1.0
 	if who == "player":
-		return clampf(float(listener.get("trust", 0.5)), 0.0, 1.0)
+		return clampf(float(listener.get("player_credibility", listener.get("trust", 0.5))), 0.0, 1.0)
 	var trusts: Dictionary = listener.get("npc_trust", {})
 	return clampf(float(trusts.get(who, 0.5)), 0.0, 1.0) if trusts.has(who) else 1.0
 
@@ -889,11 +940,31 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 				net_weight = maxf(net_weight, 0.12 * challenge.agreement)
 		var own_check: Dictionary = attention.case.duplicate(true)
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
-		if invalid or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict":
+		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict"
+		if direct_fatal:
 			net_weight = 0.0
+		var per_card_trust: bool = bool(baseline.get("per_card_source_trust", false))
 		var source_trust: float = _source_trust(held, id, baseline, not refresh)
-		var resist: float = _directional(confidence, net_weight, float(baseline.get("lean", {}).get(id, 0.0)), persistence)
-		effects[id] = {"requested": net_weight * (0.5 + source_trust) * resist, "source_trust": source_trust, "alignment_signal": alignment, "pattern_signal": circumstantial,
+		var outer_scale: float = Tuning.Workshop.JURY_BELIEF_SCALE if per_card_trust else (0.5 + source_trust)
+		var raw_req: float = net_weight * outer_scale
+		var curse_origin: String = str(view.get("chronology", {}).get("curse", {}).get("executed", ""))
+		var hard_proof: bool = direct_fatal or curse_origin == id or (not ev.impossible and float(odds.prior) > 0.01 and (float(odds.posterior) <= 0.0005 or float(odds.posterior) >= 0.9995))
+		var withdrawn_empty: bool = is_zero_approx(raw_req) and not held.any(func(c): return id in _mentions(c))
+		var lean_map: Dictionary = baseline.get("lean", {})
+		var lean_val: float = float(lean_map.get(id, 0.0))
+		var final_req: float = raw_req
+		if direct_fatal or withdrawn_empty:
+			final_req = 0.0
+		elif not hard_proof:
+			if not lean_map.is_empty():
+				var comm_req: float = float(baseline.get("committed_requested", {}).get(id, 0.0))
+				var delta_req: float = raw_req - comm_req
+				var delta_resist: float = _directional(clampf(confidence, 0.0, 1.0), delta_req, lean_val, persistence)
+				final_req = comm_req + delta_resist * delta_req
+			else:
+				var base_resist: float = _directional(confidence, net_weight, lean_val, persistence)
+				final_req = raw_req * base_resist
+		effects[id] = {"requested": final_req, "raw_requested": raw_req, "source_trust": source_trust, "alignment_signal": alignment, "pattern_signal": circumstantial,
 			"circumstantial_signal": 0.0, "circumstantial_incidents": [],
 			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"),
 			"protection_signal": protection_signal, "headline_signal": headline_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
