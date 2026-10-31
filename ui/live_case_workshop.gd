@@ -4,6 +4,7 @@ extends "res://ui/case_workshop_canvas.gd"
 signal filed
 signal cards_dropped(numbers: Array)
 signal contents_changed
+signal trace_solver_requested(selected_by_night: Dictionary)
 const Live = preload("res://game/workshop_canvas.gd")
 const WorkshopSolver = preload("res://workshop/solver.gd")
 var g
@@ -121,6 +122,9 @@ func _ready() -> void:
 	var add_circ_btn = _button(tools, "Add Circumstantial Evidence", add_circumstantial_hub)
 	add_circ_btn.name = "AddCircumstantialHub"
 	add_circ_btn.tooltip_text = "Adds a Stage 2 Circumstantial Evidence hub (+0.015 max per incident, +0.045 cap per suspect) to group social framing and impressions under a Premise."
+	var trace_solver_btn = _button(tools, "Trace Solver", func(): trace_solver_requested.emit({}))
+	trace_solver_btn.name = "OpenTraceSolver"
+	trace_solver_btn.tooltip_text = "Opens the 2-row x N-night Trace Solver matrix to cross-reference crime-scene tokens and scents and commit a bundled Trace Chain node."
 
 	_button(tools, "Fit case", func(): canvas.fit_case())
 	_button(tools, "All cards", func(): canvas.fit_case(true))
@@ -229,6 +233,10 @@ func refresh() -> void:
 		if node.get("kind") == "profile_info":
 			for rid in node.get("receipt_ids", []):
 				referenced_profile_ids[rid] = true
+		elif node.get("kind") == "trace_chain":
+			for arr_key in ["trace_ids", "sibling_trace_ids", "death_ids", "receipt_ids"]:
+				for tid in node.get(arr_key, []):
+					referenced_profile_ids[tid] = true
 	for old in board.view.cards:
 		if (board.nodes.has("e:" + old.id) or referenced_profile_ids.has(old.id)) and not next_view.cards.any(func(c): return c.id == old.id):
 			var missing: Dictionary = old.duplicate(true)
@@ -288,6 +296,20 @@ func add_circumstantial_hub() -> String:
 	var id: String = board.add_circumstantial_hub(at)
 	_session_changed()
 	canvas.fit_case(true)
+	return id
+
+func add_trace_chain(selected_by_night: Dictionary) -> String:
+	if g == null:
+		return ""
+	refresh()
+	var at: Vector2 = (canvas.size / 2.0 - canvas.pan) / maxf(canvas.zoom, 0.1) - Vector2(150, 90)
+	if canvas.size.x <= 10.0:
+		var idx: int = board.nodes.values().filter(func(n): return n.kind in ["evidence", "profile_info", "circumstantial", "trace_chain"]).size()
+		at = Vector2(60.0 + (idx % 4) * 320.0, 320.0 + (idx / 4) * 280.0)
+	var id: String = board.add_trace_chain(selected_by_night, at)
+	if id != "":
+		_session_changed()
+		canvas.fit_case(true)
 	return id
 
 func add_evidence(number: int) -> void:
@@ -436,6 +458,24 @@ func _refresh_case() -> void:
 				var csum: Dictionary = Live.circumstantial_summary(g, board.compile(pid))
 				if csum.get("has_hub", false):
 					_label(case_box, csum.text, 15)
+		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
+	elif node.kind == "trace_chain":
+		_clear(case_box)
+		_label(case_box, board.title(answer_id), 22, "accent")
+		_label(case_box, "Bundles your selected physical trace chain together with discovered workplaces, haunts, and any sister scene traces (so linking a vigil or Night Watch sighting automatically separates a passing walker on 2-trace nights).", 16)
+		var TraceSolver = preload("res://workshop/trace_solver.gd")
+		var ev_tc: Dictionary = TraceSolver.evaluate_selection(board.view, node.get("selected_by_night", {}))
+		for tr in ev_tc.get("selected_traces", []):
+			_label(case_box, "• Night %d: %s (%s)" % [int(tr.night), str(tr.item_label), ", ".join(PackedStringArray(tr.loc_names))], 15)
+		var latest_tc: Dictionary = TraceSolver.bundle_for_workshop(board.view, node.get("selected_by_night", {}))
+		if latest_tc.receipt_ids != node.get("receipt_ids", []):
+			_button(case_box, "Sync newly learned haunts", func():
+				board.sync_trace_chain(answer_id)
+				_edit())
+		var sel_copy: Dictionary = node.get("selected_by_night", {}).duplicate(true)
+		_button(case_box, "Edit selection in Trace Solver", func():
+			answer_window.hide()
+			trace_solver_requested.emit(sel_copy))
 		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
 	elif node.kind == "modifier":
 		_clear(case_box)
@@ -644,6 +684,8 @@ func remove_node(id: String) -> void:
 			board.remove_profile_info(id)
 		"circumstantial":
 			board.remove_circumstantial(id)
+		"trace_chain":
+			board.remove_trace_chain(id)
 		"modifier":
 			board.remove_modifier(id)
 		"contradiction":
@@ -674,7 +716,7 @@ func _undo_remove() -> void:
 	status.text = "Restored."
 
 func _extend_context(id: String) -> void:
-	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "profile_info", "circumstantial", "modifier"]:
+	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "profile_info", "trace_chain", "circumstantial", "modifier"]:
 		context_menu.add_separator()
 		context_menu.add_item("Remove from Workshop", 204)
 
@@ -693,10 +735,16 @@ func board_numbers() -> Array:
 		return _numbers
 	_numbers_key = key
 	_numbers = []
+	var bundled_ids: Dictionary = {}
+	for nd in board.nodes.values():
+		if nd.get("kind") == "trace_chain":
+			for tid in nd.get("trace_ids", []) + nd.get("sibling_trace_ids", []):
+				bundled_ids[tid] = true
 	for receipt in g.board:
 		if receipt.kind == "deduction" or receipt.get("deleted", false):
 			continue
-		if board.nodes.has("e:" + Live.Evidence.normalize_card(receipt).id):
+		var norm_id: String = Live.Evidence.normalize_card(receipt).id
+		if board.nodes.has("e:" + norm_id) or bundled_ids.has(norm_id):
 			_numbers.append(receipt.n)
 	return _numbers
 
@@ -802,6 +850,11 @@ func _detail_label(node: Dictionary) -> Dictionary:
 
 func _field_popup(id: String, field: String) -> void:
 	var node: Dictionary = board.nodes[id]
+	if node.kind == "trace_chain":
+		if field == "sync_trace_chain":
+			board.sync_trace_chain(id)
+			_edit()
+		return
 	if node.kind == "profile_info":
 		if field == "profile_person":
 			board.selected = id

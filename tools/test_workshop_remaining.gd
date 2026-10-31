@@ -262,7 +262,7 @@ func _calibration() -> void:
 		native._maybe_drop(passer, "calibration")
 		for dropped in native.dropped.values():
 			good_items += int(dropped[0].owner == passer.id)
-	check(demon_fit_count == 10000 and loc_count > 6000 and absf(float(token_count) / float(loc_count) - Tuning.Setup.TRACE_TOKEN_PROB) < 0.03 and absf(two_trace_count / 10000.0 - Tuning.Setup.EXTRA_TRACE_CHANCE) < 0.025 and absf(float(slot0_demon_count) / maxf(two_trace_count, 1) - 0.5) < 0.04, "10,000 kill-generator samples always include the Demon trace, hit ~75% locations (67/33 token/scent), and roll 45% shuffled passer second traces")
+	check(demon_fit_count == 10000 and loc_count == 10000 and absf(float(token_count) / float(loc_count) - Tuning.Setup.TRACE_TOKEN_PROB) < 0.03 and absf(two_trace_count / 10000.0 - Tuning.Setup.EXTRA_TRACE_CHANCE) < 0.025 and absf(float(slot0_demon_count) / maxf(two_trace_count, 1) - 0.5) < 0.04, "10,000 kill-generator samples always include the Demon trace, hit 100% locations (67/33 token/scent), and roll 45% shuffled passer second traces")
 	check(absf(demon_items / 10000.0 - 0.042) < 0.007 and absf(good_items / 10000.0 - 0.018) < 0.005, "actual drop-generator samples match the conditional 4.2/1.8 percent mechanism, before route/location search")
 
 func _ui() -> void:
