@@ -18,8 +18,12 @@ func _run() -> void:
 		scene.conversation_view.begin(id, cast_member.name)
 		var texture: Texture2D = scene.conversation_view.portrait.texture
 		assert(texture != null and texture.get_size() == Vector2(1024, 1536))
-		var expected_name: String = "bartholomew" if id == "bart" else id
-		assert(texture.resource_path.get_file().begins_with(expected_name + "-vn-"))
+		assert(texture == scene.conversation_view._expression_texture(id, "neutral"))
+		for expression in ["warm", "harsh", "concerned", "sorrowful"]:
+			var variant: Texture2D = scene.conversation_view._expression_texture(id, expression)
+			assert(variant != null and variant != texture)
+			assert(variant.get_size() == Vector2(1024, 1536))
+		assert(scene.conversation_view._expression_texture(id, "invalid") == texture)
 	var g = scene.g
 	var n = g.w.living_good()[0]
 	n.loc = "chapel"
@@ -31,6 +35,17 @@ func _run() -> void:
 	assert(scene.conversation_view.visible)
 	assert(scene.conversation_view.person_id == n.id)
 	assert(scene.conversation_view.portrait.texture != null)
+	var view = scene.conversation_view
+	var neutral: Texture2D = view.portrait.texture
+	view.set_expression("warm")
+	assert(view.portrait.texture != neutral and view.previous_portrait.texture == neutral)
+	assert(view.previous_portrait.visible)
+	view.set_expression("harsh")
+	assert(view.previous_portrait.visible)
+	view.portrait_tween.custom_step(1.0)
+	assert(not view.previous_portrait.visible)
+	view.begin(n.id, n.name)
+	assert(view.portrait.texture == neutral and not view.previous_portrait.visible)
 	assert(scene.conversation_view.controls.get_children().any(func(c): return c is Button and c.text == "Leave"))
 	var buttons = scene.actions.get_children().filter(func(c): return c is Button and c.text == "Look at the map")
 	assert(buttons.size() == 1)

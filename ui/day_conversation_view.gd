@@ -23,10 +23,21 @@ const LARGE = {
 	"nisha": preload("res://assets/art/portraits_vn_cast/nisha-vn-v1.png"),
 	"odette": preload("res://assets/art/portraits_vn_cast/odette-vn-v1.png"),
 }
+const EXPRESSIONS = ["neutral", "warm", "harsh", "concerned", "sorrowful"]
+const CONSTANCE_EXPRESSIONS = {
+	"neutral": "res://assets/art/portraits_vn_poc/constance-vn-poc-v1.png",
+	"warm": "res://assets/art/portrait_expression_poc/constance-warm-v1.png",
+	"harsh": "res://assets/art/portrait_expression_poc/constance-harsh-v2.png",
+	"concerned": "res://assets/art/portrait_expression_poc/constance-worried-v1.png",
+	"sorrowful": "res://assets/art/portrait_expression_poc/constance-sorrowful-v1.png",
+}
+const FADE_SECONDS = 0.15
 
 var formatter = Formatter.new()
 var renderer = Renderer.new()
 var portrait: TextureRect
+var previous_portrait: TextureRect
+var portrait_tween: Tween
 var speaker: Label
 var speech: RichTextLabel
 var controls: HFlowContainer
@@ -64,6 +75,16 @@ void fragment() {
 	portrait.anchor_bottom = 1.0
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(portrait)
+	previous_portrait = TextureRect.new()
+	previous_portrait.expand_mode = portrait.expand_mode
+	previous_portrait.stretch_mode = portrait.stretch_mode
+	previous_portrait.anchor_left = portrait.anchor_left
+	previous_portrait.anchor_top = portrait.anchor_top
+	previous_portrait.anchor_right = portrait.anchor_right
+	previous_portrait.anchor_bottom = portrait.anchor_bottom
+	previous_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	previous_portrait.hide()
+	add_child(previous_portrait)
 	var bubble = PanelContainer.new()
 	bubble.anchor_left = 0.47
 	bubble.anchor_top = 0.12
@@ -104,10 +125,44 @@ void fragment() {
 func begin(id: String, name: String) -> void:
 	person_id = id
 	lines.clear()
-	portrait.texture = LARGE.get(id, UITheme.tex("art/portraits/" + id))
+	_stop_portrait_fade()
+	portrait.texture = _expression_texture(id, "neutral")
 	speaker.text = name
 	speaker.add_theme_color_override("font_color", UITheme.ink_of(C.npc_color(id)))
 	_render()
+
+func _expression_texture(id: String, expression: String) -> Texture2D:
+	var fallback: Texture2D = LARGE.get(id, UITheme.tex("art/portraits/" + id))
+	if expression not in EXPRESSIONS:
+		expression = "neutral"
+	var path: String = CONSTANCE_EXPRESSIONS.get(expression, "") if id == "constance" else "res://assets/art/cast_expressions/%s/%s-v1.png" % [id, expression]
+	if ResourceLoader.exists(path):
+		return load(path)
+	if expression != "neutral":
+		return _expression_texture(id, "neutral")
+	return fallback
+
+## Presentation only: callers supply a public expression cue, not hidden game state.
+func set_expression(expression: String) -> void:
+	var texture = _expression_texture(person_id, expression)
+	if portrait.texture == texture:
+		return
+	_stop_portrait_fade()
+	previous_portrait.texture = portrait.texture
+	portrait.texture = texture
+	if not is_visible_in_tree() or previous_portrait.texture == null:
+		return
+	previous_portrait.modulate.a = 1.0
+	previous_portrait.show()
+	portrait_tween = create_tween()
+	portrait_tween.tween_property(previous_portrait, "modulate:a", 0.0, FADE_SECONDS)
+	portrait_tween.tween_callback(previous_portrait.hide)
+
+func _stop_portrait_fade() -> void:
+	if portrait_tween != null and portrait_tween.is_valid():
+		portrait_tween.kill()
+	if previous_portrait != null:
+		previous_portrait.hide()
 
 func consume(events: Array) -> void:
 	var spoken: Array = []
