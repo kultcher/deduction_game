@@ -58,6 +58,12 @@ func _init() -> void:
 	var args = _parse(OS.get_cmdline_user_args())
 	var first: int = int(args.get("seed", "1"))
 	var games: int = int(args.get("games", "1"))
+	# Only the town sizes with a defined setup make real games (others silently play with
+	# no working evil team: no kills, nothing to find).
+	if not C.SETUPS.has(int(args.get("npcs", "7"))):
+		push_error("--npcs must be one of %s (got %s)" % [str(C.SETUPS.keys()), args.get("npcs", "7")])
+		quit(2)
+		return
 	transcript = args.has("transcript")
 	passive = args.has("passive")
 	trace_enabled = not args.has("no-trace")
