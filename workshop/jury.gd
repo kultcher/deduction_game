@@ -949,7 +949,8 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		var raw_req: float = net_weight * outer_scale
 		var curse_origin: String = str(view.get("chronology", {}).get("curse", {}).get("executed", ""))
 		var hard_proof: bool = direct_fatal or curse_origin == id or (not ev.impossible and float(odds.prior) > 0.01 and (float(odds.posterior) <= 0.0005 or float(odds.posterior) >= 0.9995))
-		var withdrawn_empty: bool = is_zero_approx(raw_req) and not held.any(func(c): return id in _mentions(c))
+		# Profile context supplies premises to other evidence, but no standalone Stage 1 contribution.
+		var withdrawn_empty: bool = is_zero_approx(raw_req) and not held.any(func(c): return c.kind != "context" and (id in _mentions(c) or c.kind in ["trace", "coverage", "totem"]))
 		var lean_map: Dictionary = baseline.get("lean", {})
 		var lean_val: float = float(lean_map.get(id, 0.0))
 		var final_req: float = raw_req

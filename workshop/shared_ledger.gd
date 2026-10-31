@@ -617,7 +617,8 @@ static func _card_route_trust(fact: Dictionary, adapted_card: Dictionary, fact_o
 			var pt: float = player_cred if source == "player" else 0.5 * (src_t + player_cred)
 			best_player = maxf(best_player, pt)
 	if best_non_player >= 0.0:
-		return {"trust": maxf(best_non_player, best_player), "via_player_only": false}
+		# An independent hearing owns this fact; a player restatement is not corroboration.
+		return {"trust": best_non_player, "via_player_only": false}
 	if best_player >= 0.0:
 		return {"trust": best_player, "via_player_only": true}
 	return {"trust": src_t, "via_player_only": source == "player"}

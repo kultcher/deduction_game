@@ -97,6 +97,10 @@ func _test_3_1_delta_confidence_and_proof_retraction_overrides() -> void:
 	_check(d2_req_hi > d2_req_lo + 0.01,
 		"Day 2 contrary evidence damps delta on high-Confidence listener (%.4f vs %.4f)" % [d2_req_hi, d2_req_lo])
 
+	# A profile receipt can remain held without providing standalone guilt evidence.
+	var home: int = g.add_card({"kind": "home", "source": "town", "subject": [suspect.id], "block": suspect.home_block, "text": "Known home of " + suspect.id})
+	var profile_case: int = g.file_deduction({"type": "evil", "a": suspect.id}, [home])
+	g._evaluate_deduction(high_conf, g.board[profile_case - 1], 1.0, false)
 	# Sole-case retraction override: retracting both presentations snaps requested to 0.0 with zero phantom residue!
 	g.workshop_retract(ded_evil, high_conf.id)
 	g.workshop_retract(ded_clear, high_conf.id)
@@ -163,6 +167,19 @@ func _test_3_2_per_card_source_trust_non_dilution_and_non_laundering() -> void:
 	var hi_req: float = float(listener_hi.workshop_state.requested.get(suspect.id, 0.0))
 	_check(hi_req > lo_req + 0.04,
 		"per-card npc_trust scales heard report strength monotonically without laundering low-trust rumors (lo %.4f vs hi %.4f)" % [lo_req, hi_req])
+
+	# Presenting the exact report already independently heard must not endorse it twice.
+	var known_card: Dictionary = single_rumor.duplicate(true)
+	known_card.merge({"kind": "info", "source": rumor_teller.id, "subject": [suspect.id]})
+	var known_num: int = g.add_card(known_card)
+	var repeated_case: int = g.file_deduction({"type": "evil", "a": suspect.id}, [known_num])
+	listener_lo.credibility = 0.9
+	g._evaluate_deduction(listener_lo, g.board[repeated_case - 1], 1.0, false)
+	var endorsed_req: float = float(listener_lo.workshop_state.requested.get(suspect.id, 0.0))
+	_check(is_equal_approx(lo_req, endorsed_req), "player endorsement cannot boost an independently heard low-trust report")
+	listener_lo.credibility = 0.1
+	Mind.recompute_beliefs(g.w, listener_lo, "player credibility changed")
+	_check(is_equal_approx(endorsed_req, float(listener_lo.workshop_state.requested.get(suspect.id, 0.0))), "player credibility changes do not reweight independently heard reports")
 
 
 func _test_3_2_headline_context_aware_repeat_grouping() -> void:
