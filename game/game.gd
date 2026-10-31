@@ -1001,7 +1001,7 @@ func _maybe_approach() -> void:
 	state = "approach"
 	w.dlog.add("approach", n.id, "player", {"agenda": c["agenda"]})
 	_narr("%s the %s approaches you at %s." % [n.name, n.occupation, w.loc_name(n.loc)])
-	_line(Mind.say(n, "[PH] Demonologist, a word?"))
+	_line(Mind.say_voiced(n, "approach_word", "Demonologist, a word?"))
 	_line(Social.approach_teaser(w, n, c["agenda"]))
 	if c["agenda"] == "protect":
 		n.request_day = w.day
@@ -1619,7 +1619,8 @@ func _maybe_tell_haunts(n, t, r: Dictionary) -> void:
 	var tell: Array = unknown if roll < p * 0.4 else [unknown[0]]
 	var names: Array = tell.map(func(x): return w.loc_name(x))
 	known_haunts[t.id] = known_haunts.get(t.id, []) + tell
-	r["lines"].append(Mind.say(n, "[PH] When %s isn't working, you'll often find them at %s." % [t.name, " or ".join(PackedStringArray(names))]))
+	var places_s: String = " or ".join(PackedStringArray(names))
+	r["lines"].append(Mind.say_voiced(n, "tell_haunt", "When %s isn't working, you'll often find them at %s." % [t.name, places_s], {"subject": t.name, "places": places_s}))
 	for loc_id in tell:
 		add_profile_receipt({"kind": "haunt", "subject": [t.id], "source": n.id, "loc": loc_id, "locs": [loc_id],
 			"block": w.loc_block(loc_id), "day": w.day, "phase": _phase_now(), "class": "circumstantial",
@@ -1663,13 +1664,18 @@ func _maybe_tell_trait(n, t, r: Dictionary) -> void:
 	var tier: String = Mind.C.tier(t.traits[key])
 	var words: String = TRAIT_WORDS[key][tier][0 if friend else (2 if rival else 1)]
 	var line: String = ("I'll say this for %s: they're %s." if friend else ("%s is %s, if you ask me." if rival else "From what I've seen, %s is %s.")) % [t.name, words]
+	var spoken_trait: Dictionary
 	if n == t:
 		# Keep the selected trait, its learning and the existing rolls; only person changes.
 		var own_words: String = TRAIT_WORDS[key][tier][1].replace("themselves", "myself").replace("their", "my").replace("them", "me").replace("they've", "I've").replace("they're", "I'm")
 		line = "I'd call myself %s." % own_words
+		spoken_trait = Mind.say_voiced(n, "tell_trait_self", line, {"words": own_words})
+	else:
+		var trait_key: String = "tell_trait_friend" if friend else ("tell_trait_rival" if rival else "tell_trait_neutral")
+		spoken_trait = Mind.say_voiced(n, trait_key, line, {"subject": t.name, "words": words})
 	t.revealed_traits[key] = tier
 	_record_trait_receipt(t, key, tier, n.id)
-	r["lines"].append(Mind.say(n, "[PH] " + line))
+	r["lines"].append(spoken_trait)
 	r["narration"] = r.get("narration", []) + ["(You learn %s's %s: %s.)" % [t.name, key.capitalize(), tier]]
 	w.dlog.add("trait_reveal", n.id, t.id, {"trait": key, "tier": tier, "value": t.traits[key], "via": n.id, "friend": friend, "rival": rival})
 
@@ -1693,19 +1699,28 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 	var tell: Array = unknown if roll < p * 0.4 else [unknown[0]]
 	for entry in tell:
 		var bond: Dictionary = entry.bond
-		var text = "%s and %s %s." % [w.by_id[bond.people[0]].name, w.by_id[bond.people[1]].name,
+		var name_a: String = w.by_id[bond.people[0]].name
+		var name_b: String = w.by_id[bond.people[1]].name
+		var text = "%s and %s %s." % [name_a, name_b,
 			"are close" if bond.kind == "friend" else "don't get along"]
 		var note = n.name + " says " + text
+		var bond_line: Dictionary
 		if n.id in bond.people:
 			var other: String = bond.people[1] if bond.people[0] == n.id else bond.people[0]
-			text = "%s and I %s." % [w.by_id[other].name, "are close" if bond.kind == "friend" else "don't get along"]
+			var other_name: String = w.by_id[other].name
+			text = "%s and I %s." % [other_name, "are close" if bond.kind == "friend" else "don't get along"]
 			note = n.name + ' says "' + text + '"'
+			var self_key: String = "tell_bond_self_close" if bond.kind == "friend" else "tell_bond_self_rival"
+			bond_line = Mind.say_voiced(n, self_key, text, {"other": other_name})
+		else:
+			var third_key: String = "tell_bond_third_close" if bond.kind == "friend" else "tell_bond_third_rival"
+			bond_line = Mind.say_voiced(n, third_key, text, {"a": name_a, "b": name_b})
 		known_relationships[entry.key] = {"kind": bond.kind, "people": bond.people.duplicate(), "source": n.id, "text": note}
 		var bond_people: Array = bond.people.duplicate()
 		bond_people.sort()
 		add_profile_receipt({"kind": "bond", "subject": bond_people, "bond_kind": bond.kind, "source": n.id,
 			"day": w.day, "phase": _phase_now(), "class": "circumstantial", "text": note})
-		r.lines.append(Mind.say(n, "[PH] " + text))
+		r.lines.append(bond_line)
 		w.dlog.add("player_learns_relationship", n.id, t.id, {"kind": bond.kind, "people": bond.people})
 
 ## Authored speech can explicitly disclose a bond outside "ask about". Record only

@@ -270,7 +270,8 @@ func _test_fake_watch_story() -> void:
 		# Undisclosed, the watch result is withheld (never contradicted)...
 		var held = Mind.answer_night(w, m, 1)
 		var held_txt = " ".join(PackedStringArray(held["lines"].map(func(l): return l["text"])))
-		if not ("not ready to share" in held_txt) or "I saw nobody" in held_txt:
+		var held_stmts = " ".join(PackedStringArray(held["lines"].map(func(l): return str(l.get("statement", l["text"])))))
+		if not ("not ready to share" in held_stmts) or "I saw nobody" in held_stmts:
 			bad += 1
 			print("  withheld wrongly: ", held_txt)
 		# ...and once told, the night story names exactly who the report names.
@@ -279,8 +280,9 @@ func _test_fake_watch_story() -> void:
 		w.rng.seed = 1
 		var r = Mind.answer_night(w, m, 1)
 		var txt = " ".join(PackedStringArray(r["lines"].map(func(l): return l["text"])))
+		var stmts = " ".join(PackedStringArray(r["lines"].map(func(l): return str(l.get("statement", l["text"])))))
 		tried += 1
-		if not (goods[0].name in txt) or "I saw nobody" in txt:
+		if not (goods[0].name in txt) or "I saw nobody" in stmts:
 			bad += 1
 			print("  inconsistent: ", txt)
 	_check(bad == 0, "a false Night Watch's night story matches their fake report (%d cases)" % tried)

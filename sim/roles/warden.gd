@@ -19,7 +19,9 @@ func _init() -> void:
 	quiet_night_claim_weight = Tuning.Roles.WARDEN.quiet_night_claim_weight
 	min_gift_day = 1
 	hard_to_kill = true
-	request_agree_line = "[PH] Very well. I'll stand at %s's door tonight."
+	request_agree_line = "Very well. I'll stand at %s's door tonight."
+	request_agree_voice_key = "gift_req_agree_warden"
+	request_agree_slot = "target"
 
 
 ## Pick whom the Warden guards tonight (trusted info claimants, trusted people).
@@ -159,7 +161,7 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, _block: String, mind, block_
 		var gb: String = w.by_id[guarded].home_block
 		return {
 			"handled": true,
-			"line": mind.say(n, "[PH] Standing guard at %s's door, as my gift asks." % w.by_id[guarded].name),
+			"line": mind.say_voiced(n, "duty_warden", "Standing guard at %s's door, as my gift asks." % w.by_id[guarded].name, {"target": w.by_id[guarded].name}),
 			"fact": guard_fact(w, n, nd, guarded, block_name_fn),
 			"vantage": gb,
 			"how": "street",

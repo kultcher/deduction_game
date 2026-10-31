@@ -693,7 +693,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	if C.has_role_def(n.claimed_role):
 		var withhold_msg: String = C.role_def(n.claimed_role).withholds_night_sightings(n, nd, _mind())
 		if withhold_msg != "":
-			lines.append(say(n, "[PH] " + withhold_msg))
+			lines.append(say_voiced(n, "nightwatch_withhold", withhold_msg))
 			return {"lines": lines, "facts": facts}
 	var seen: Array = n.beliefs.filter(func(b): return b["kind"] in ["saw", "stayed_in"] and b["day"] == nd and b["phase"] == C.NIGHT)
 	var reported: Array = []
@@ -737,10 +737,10 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		var shares = w.decision_roll(n, "direct_night_sightings", 0.95, {"eligible_sightings": reported.size()})
 		w.dlog.decision(n.id, "direct_night_sightings", "outcome", shares, {"p": 0.95, "eligible": reported.size()})
 		if not shares:
-			lines.append(say(n, "[PH] I'm not ready to discuss who I saw."))
+			lines.append(say_voiced(n, "night_sightings_refuse", "I'm not ready to discuss who I saw."))
 			return {"lines": lines, "facts": facts}
 	if reported.is_empty() and not (was_out and not n.is_evil()):
-		lines.append(say(n, "[PH] I saw nobody."))
+		lines.append(say_voiced(n, "night_saw_nobody", "I saw nobody."))
 	var groups: Array = []
 	for b in reported:
 		var r = sighting_report(w, n, b, nd)
@@ -774,7 +774,7 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	var who = w.by_id[b["who"]]
 	var bn = C.block_name(b["block"])
 	if b["kind"] == "stayed_in":
-		return {"line": say(n, "[PH] From my window on night %d, I saw %s go in for the night, and they never came out." % [nd, who.name]),
+		return {"line": say(n, "From my window on night %d, I saw %s go in for the night, and they never came out." % [nd, who.name]),
 			"observation": {"kind": "alibi", "subject": who.name, "scene": _observation_scene(n, b, nd),
 				"before": "From my window on night %d, I saw " % nd, "after": " go in for the night, and they never came out."},
 			"fact": {"kind": "alibi", "subject": [who.id], "home": true, "witness": true, "day": nd, "phase": C.NIGHT, "source": n.id, "block": b["block"],
@@ -793,7 +793,7 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	else:
 		before = "I did see "
 		after = " out on %s on night %d." % [bn, nd]
-	return {"line": say(n, "[PH] " + before + who.name + after),
+	return {"line": say(n, before + who.name + after),
 		"observation": {"kind": "sighting", "subject": who.name, "scene": _observation_scene(n, b, nd), "before": before, "after": after},
 		"fact": {"kind": "sighting", "subject": [who.id], "block": b["block"], "day": nd, "phase": C.NIGHT, "source": n.id, "how": b.get("how", "street"),
 			"text": "%s says they saw %s on %s on night %d%s." % [n.name, who.name, bn, nd, how]}}
@@ -855,14 +855,22 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 		was_s = was_s[0].to_upper() + was_s.substr(1)
 	var limit = _gossip_share(w, n, "share_sightings")
 	if limit == 0:
-		lines.append(say(n, "[PH] " + ((was_s + ". ") if was_s != "" else "") + "Who else goes where is none of my business."))
+		var refuse_prefix: String = (was_s + ". ") if was_s != "" else ""
+		var refuse_tail: String = Dialogue.voice_line(n.id, "day_sightings_refuse", "Who else goes where is none of my business.")
+		var refuse_line: Dictionary = say(n, refuse_prefix + refuse_tail)
+		refuse_line["statement"] = refuse_prefix + "Who else goes where is none of my business."
+		lines.append(refuse_line)
 		return {"lines": lines, "facts": facts}
 	# Memory: they recall only their most recent few sightings (more with Insight), one per person.
 	var memory = 2 + int(round(trait_of(n, "insight") * 4.0))
 	var before: Array = n.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] != C.NIGHT and in_frame.call(b))
 	var seen: Array = before.filter(func(b): return not sighting_is_here(w, b, b["who"], near_loc))
 	if seen.is_empty() and not before.is_empty():
-		lines.append(say(n, "[PH] " + ((was_s + ". ") if was_s != "" else "") + "Nobody but who you can see around you for yourself."))
+		var here_prefix: String = (was_s + ". ") if was_s != "" else ""
+		var here_tail: String = Dialogue.voice_line(n.id, "day_only_here", "Nobody but who you can see around you for yourself.")
+		var here_line: Dictionary = say(n, here_prefix + here_tail)
+		here_line["statement"] = here_prefix + "Nobody but who you can see around you for yourself."
+		lines.append(here_line)
 		return {"lines": lines, "facts": facts}
 	var recalled: Array = []
 	var people = {}
@@ -877,7 +885,14 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 		if recalled.size() >= memory:
 			break
 	if recalled.is_empty():
-		lines.append(say(n, "[PH] " + ((was_s + ", and saw nobody worth mentioning.") if was_s != "" else "Nobody worth mentioning.")))
+		var empty_canonical: String = (was_s + ", and saw nobody worth mentioning.") if was_s != "" else "Nobody worth mentioning."
+		var empty_spoken: String = empty_canonical
+		if Dialogue.has_voice(n.id):
+			var saw_nobody_tail: String = Dialogue.voice_line(n.id, "day_saw_nobody", "saw nobody worth mentioning.")
+			empty_spoken = (was_s + ", and " + saw_nobody_tail) if was_s != "" else ("I " + saw_nobody_tail)
+		var empty_line: Dictionary = say(n, empty_spoken)
+		empty_line["statement"] = empty_canonical
+		lines.append(empty_line)
 		return {"lines": lines, "facts": facts}
 	w.dlog.think(n.id, "share_sightings", "Recalls %d recent sighting(s) (memory %d from insight), shares up to %d (gossip)." %
 		[recalled.size(), memory, limit])
@@ -916,7 +931,11 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 		facts.append({"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": b["phase"], "source": n.id,
 			"text": "%s saw %s on %s, day %d %s." % [n.name, who.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
 	if parts.is_empty():
-		lines.append(say(n, "[PH] " + ((was_s + ". ") if was_s != "" else "") + "Nobody you didn't see for yourself."))
+		var silent_prefix: String = (was_s + ". ") if was_s != "" else ""
+		var silent_tail: String = Dialogue.voice_line(n.id, "day_only_here", "Nobody you didn't see for yourself.")
+		var silent_line: Dictionary = say(n, silent_prefix + silent_tail)
+		silent_line["statement"] = silent_prefix + "Nobody you didn't see for yourself."
+		lines.append(silent_line)
 		return {"lines": lines, "facts": facts}
 	var reports = Dialogue.compose_turn(n.id, parts, {"audience": "player", "speech_act": "answer",
 		"trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, was_s != "")
@@ -935,10 +954,13 @@ static func answer_opinion(w, n, t) -> Dictionary:
 			{"gate": "gossip_and_pressure_cutoff", "gossip": trait_of(n, "gossip"),
 				"gossip_minimum": 0.2, "pressure": n.pressure, "pressure_override": 0.5}, t.id)
 		w.dlog.think(n.id, "opinion", "Gossip %.2f: won't discuss others." % trait_of(n, "gossip"))
-		var refused: String = "[PH] It's not my place to say."
+		var canonical_refusal: String = "It's not my place to say."
 		var previous: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
+		var refused: String = Dialogue.voice_line(n.id, "opinion_refuse", canonical_refusal)
 		refused = Dialogue.repeated_opinion_refusal(n.id, t.name, previous, refused)
-		lines.append(say(n, Dialogue.contextualize(n.id, refused, previous if previous != "opinion_again" else "", t.name)))
+		var refusal_line: Dictionary = say(n, Dialogue.contextualize(n.id, refused, previous if previous != "opinion_again" else "", t.name))
+		refusal_line["statement"] = canonical_refusal
+		lines.append(refusal_line)
 		_append_distrust(w, n, lines)
 		return {"lines": lines, "facts": facts}
 	# Same pipeline for both alignments: a suspicion level plus an optional grounded reason.
@@ -1103,11 +1125,15 @@ static func _observation_scene(n, b: Dictionary, day: int) -> Dictionary:
 static func _add_observation(groups: Array, observation: Dictionary) -> void:
 	Observations.add(groups, observation.kind, observation.scene, observation.subject, observation.before, observation.after)
 
-static func _observation_lines(n, groups: Array, audience: String, speech_act: String, preceded: bool) -> Array:
+static func _observation_lines(n, groups: Array, audience: String, speech_act: String, preceded: bool, first_relation: String = "independent") -> Array:
 	var intents: Array = []
-	for group in groups:
+	for i in range(groups.size()):
+		var group = groups[i]
 		var statement: String = group.before + Observations.spoken_list(group.names) + group.after
-		intents.append({"kind": "report", "statement": statement, "event_id": JSON.stringify([group.scene, group.names])})
+		var intent: Dictionary = {"kind": "report", "statement": statement, "event_id": JSON.stringify([group.scene, group.names])}
+		if i == 0 and first_relation != "independent":
+			intent["relation"] = first_relation
+		intents.append(intent)
 	var rendered = Dialogue.compose_turn(n.id, intents, {"audience": audience, "speech_act": speech_act,
 		"trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, preceded)
 	# Keep the established one-line-per-fact-kind presentation; cards stay separate.

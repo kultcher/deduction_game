@@ -62,6 +62,8 @@ var count_mode: String = "group"
 
 # Player gift-request agreement template ("" if role does not take night requests)
 var request_agree_line: String = ""
+var request_agree_voice_key: String = ""
+var request_agree_slot: String = "target"
 
 static var _content_script
 

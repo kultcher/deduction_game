@@ -508,15 +508,21 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		# their own (their reading, what they saw) are worth adding.
 		var first = w.by_id[earlier[0]["by"]]
 		var own = why.begins_with("my own") or why.begins_with("I ")
-		var extra = " [PH] I have my own reason, but I'm not ready to share it yet." if hint else ((" " + why[0].to_upper() + why.substr(1) + ".") if own else "")
-		var canonical_agree = "I agree with %s about %s.%s" % [first.name, t.name, extra.replace("[PH] ", "")]
-		var voiced_agree = Dialogue.voice_line(n.id, "meeting_agree_accuse", "I agree with %s about %s." % [first.name, t.name], {"accuser": first.name, "target": t.name}) + extra
+		var canonical_extra = " I have my own reason, but I'm not ready to share it yet." if hint else ((" " + why[0].to_upper() + why.substr(1) + ".") if own else "")
+		var voiced_extra = (" " + Dialogue.voice_line(n.id, "nomination_held_reason", "I have my own reason, but I'm not ready to share it yet.")) if hint else canonical_extra
+		var canonical_agree = "I agree with %s about %s.%s" % [first.name, t.name, canonical_extra]
+		var voiced_agree = Dialogue.voice_line(n.id, "meeting_agree_accuse", "I agree with %s about %s." % [first.name, t.name], {"accuser": first.name, "target": t.name}) + voiced_extra
 		line = {"speaker": n.id, "name": n.name, "text": voiced_agree, "statement": canonical_agree}
 	elif hint:
 		line = say_voiced(n, "meeting_accuse_hint", "I have a reason to suspect %s, but I'm not ready to share it yet." % t.name, {"target": t.name})
 	else:
-		var tail = (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else " Something's off about them."
-		line = say(n, "[PH] I don't trust %s.%s" % [t.name, tail])
+		var reason_s: String = (why[0].to_upper() + why.substr(1)).trim_suffix(".") if why != "" else ""
+		var tail = (" " + reason_s + ".") if why != "" else " Something's off about them."
+		var canonical_accuse = "I don't trust %s.%s" % [t.name, tail]
+		if why != "":
+			line = say_voiced(n, "meeting_accuse_reason", canonical_accuse, {"target": t.name, "reason": reason_s})
+		else:
+			line = say_voiced(n, "meeting_accuse_vibes", canonical_accuse, {"target": t.name})
 	if w.meeting.has("accusations"):
 		w.meeting["accusations"].append({"by": n.id, "target": t.id})
 	var text = ("%s publicly accused %s, hinting at a private reason they won't share yet." if hint else "%s publicly accused %s.") % [n.name, t.name]
@@ -541,10 +547,15 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	if n.told_to.has(_town_sighting_key(n, seen)): return
 	n.told_to[_town_sighting_key(n, seen)] = true
 	var report = sighting_report(w, n, seen, seen["day"])
+	var groups: Array = []
+	_add_observation(groups, report["observation"])
+	var obs_lines: Array = _observation_lines(n, groups, "town", "volunteer", not lines.is_empty(), "development" if not lines.is_empty() else "independent")
 	var night_label: String = C.night_name(seen["day"])
-	if not (night_label in report["line"]["text"] or ("night %d" % seen["day"]) in report["line"]["text"]):
-		report["line"]["text"] = "On %s: %s" % [night_label, report["line"]["text"]]
-	lines.append(report["line"])
+	for obs_line in obs_lines:
+		obs_line["statement"] = report["line"]["text"]
+		if not (night_label in obs_line["text"] or ("night %d" % seen["day"]) in obs_line["text"]):
+			obs_line["text"] = "On %s: %s" % [night_label, obs_line["text"]]
+		lines.append(obs_line)
 	facts.append(report["fact"])
 
 ## Peer pressure: what public accusations add to a listener's action score.
@@ -802,9 +813,10 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 	var description = ", ".join(PackedStringArray(items.map(func(x): return "%s (%s, %.2f)" % [x["why"], x["kind"], x["contrib"]])))
 	w.dlog.think(n.id, "nomination_case", "Case against %s: %s." % [t.id, description if description != "" else "no citable reasons on record"], {"items": items.map(func(x): return {"eid": x["eid"], "kind": x["kind"]})})
 	if items.is_empty():
-		lines.append(say(n, "[PH] I don't trust %s, and I can't say better than that." % t.name))
+		lines.append(say_voiced(n, "nomination_no_reasons", "I don't trust %s, and I can't say better than that." % t.name, {"target": t.name}))
 	if not recap.is_empty():
-		lines.append(say(n, "[PH] Remember: %s." % "; and ".join(PackedStringArray(recap.slice(0, 2)))))
+		var recap_s: String = "; and ".join(PackedStringArray(recap.slice(0, 2))).trim_suffix(".")
+		lines.append(say_voiced(n, "nomination_recap", "Remember: %s." % recap_s, {"recap": recap_s}))
 	if not priv.is_empty():
 		var top: Dictionary = priv[0]
 		var cost = reveal_cost(w, n)
@@ -816,7 +828,7 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 			_public_disclosure(w, n, lines, facts)
 		else:
 			n.hints[t.id] = {"day": w.day, "src": top["eid"]}
-			lines.append(say(n, "[PH] And I have another reason I'm not ready to share yet."))
+			lines.append(say_voiced(n, "nomination_held_reason", "And I have another reason I'm not ready to share yet."))
 			facts.append({"kind": "accusation", "subject": [t.id], "source": n.id, "hint": true,
 				"text": "%s nominated %s, hinting at a private reason they won't share yet." % [n.name, t.name]})
 	return {"lines": lines, "facts": facts}
@@ -1074,8 +1086,8 @@ static func _add_observation(groups: Array, observation: Dictionary) -> void:
 static func _afraid(w, n) -> bool:
 	return _mind()._afraid(w, n)
 
-static func _observation_lines(n, groups: Array, audience: String, speech_act: String, preceded: bool) -> Array:
-	return _mind()._observation_lines(n, groups, audience, speech_act, preceded)
+static func _observation_lines(n, groups: Array, audience: String, speech_act: String, preceded: bool, first_relation: String = "independent") -> Array:
+	return _mind()._observation_lines(n, groups, audience, speech_act, preceded, first_relation)
 
 static func action_susp(n, id: String) -> float:
 	return _mind().action_susp(n, id)

@@ -16,7 +16,9 @@ func _init() -> void:
 	red_herring_registers = true
 	public_threat_bonus = Tuning.Roles.SEER.public_threat_bonus
 	public_threat_key = "seer"
-	request_agree_line = "[PH] All right. Tonight I'll look at %s."
+	request_agree_line = "All right. Tonight I'll look at %s."
+	request_agree_voice_key = "gift_req_agree_seer"
+	request_agree_slot = "target"
 
 
 func setup_world(w, holder) -> void:

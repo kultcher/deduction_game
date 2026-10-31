@@ -369,12 +369,12 @@ static func wants_protection(w, n) -> bool:
 static func approach_teaser(w, n, agenda: String) -> Dictionary:
 	match agenda:
 		"news", "frame":
-			return Mind.say(n, "[PH] It's about my gift. I've learned something you should hear.")
+			return Mind.say_voiced(n, "approach_teaser_gift", "It's about my gift. I've learned something you should hear.")
 		"gossip":
-			return Mind.say(n, "[PH] I've heard something about one of our neighbours.")
+			return Mind.say_voiced(n, "approach_teaser_gossip", "I've heard something about one of our neighbours.")
 		"protect":
 			return Mind.protection_line(n, Mind.protection_kind(w, n))
-	return Mind.say(n, "[PH] Demonologist, a word?")
+	return Mind.say_voiced(n, "approach_word", "Demonologist, a word?")
 
 ## What they open with once the player accepts. Returns {lines, facts}.
 static func approach_open(w, n, agenda: String) -> Dictionary:
@@ -384,18 +384,19 @@ static func approach_open(w, n, agenda: String) -> Dictionary:
 		"news", "frame":
 			var r: Dictionary = Mind.answer_gift(w, n, 4)
 			n.pressed_today -= 1
-			lines.append(Mind.say(n, "[PH] I've been meaning to find you."))
+			lines.append(Mind.say_voiced(n, "approach_open_gift", "I've been meaning to find you."))
 			lines += r["lines"]
 			facts += r["facts"]
 			if agenda == "frame":
 				var sg = w.by_id[w.evil_plan["scapegoat"]]
 				var why = Evil.cite(w, n, Evil.bluff_reason(w, n, sg))
 				w.dlog.think(n.id, "lie", "Evil: approaches the player to push scapegoat %s." % sg.id)
-				lines.append(Mind.say(n, "[PH] And keep an eye on %s. %s" % [sg.name,
-					(why[0].to_upper() + why.substr(1) + ".") if why != "" else "Something's off about them."]))
+				var reason_s: String = ((why[0].to_upper() + why.substr(1)).trim_suffix(".") + ".") if why != "" else "Something's off about them."
+				var canonical_warn: String = "And keep an eye on %s. %s" % [sg.name, reason_s]
+				lines.append(Mind.say_voiced(n, "approach_frame_warn", canonical_warn, {"subject": sg.name, "reason": reason_s}))
 				facts.append({"kind": "opinion", "subject": [sg.id], "source": n.id, "text": "%s warned you about %s." % [n.name, sg.name]})
 		"gossip":
-			lines.append(Mind.say(n, "[PH] You'll want to hear this."))
+			lines.append(Mind.say_voiced(n, "approach_open_gossip", "You'll want to hear this."))
 			var g = gossip_item(w, n)
 			lines += g["lines"]
 			facts += g["facts"]
@@ -442,7 +443,8 @@ static func gossip_item(w, n) -> Dictionary:
 			n.told_to["player|secret:" + owner] = true
 			w.dlog.think(n.id, "gossip", "Tells the player %s's secret (heard via %s)." % [owner, n.known_secrets[owner]])
 			o.secret_spread_by_npc = true
-			return {"lines": [Mind.say(n, "[PH] Between you and me, %s %s. That's why they're about at night." % [o.name, o.secret["text"]])],
+			var secret_fallback: String = "Between you and me, %s %s. That's why they're about at night." % [o.name, o.secret["text"]]
+			return {"lines": [Mind.say_voiced(n, "gossip_secret", secret_fallback, {"subject": o.name, "secret": o.secret["text"]})],
 				"facts": [{"kind": "secret", "subject": [owner], "owner": owner, "source": n.id, "via": n.known_secrets[owner],
 					"secret_kind": o.secret.get("kind", ""), "mod": "lovers" if o.secret.get("kind", "") == "lover" else "",
 					"text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, o.secret["text"]]}]}
@@ -458,14 +460,20 @@ static func gossip_item(w, n) -> Dictionary:
 			var f = Mind.info_fact(w, src, e)
 			f["via"] = n.id
 			f["text"] = "Via %s: " % n.name + f["text"]
-			return {"lines": [Mind.say(n, "[PH] %s told me their gift is %s, and that %s." % [src.name, C.role_name(e["role"]), C.third_person(e["text"])])], "facts": [f]}
+			var role_s: String = C.role_name(e["role"])
+			var report_s: String = C.third_person(e["text"])
+			var reading_fallback: String = "%s told me their gift is %s, and that %s." % [src.name, role_s, report_s]
+			return {"lines": [Mind.say_voiced(n, "gossip_reading", reading_fallback, {"source": src.name, "role": role_s, "report": report_s})], "facts": [f]}
 		if h["kind"] == "sighting":
 			var who = w.by_id[h["about"]]
 			var by = w.by_id[h["from"]].name if w.by_id.has(h["from"]) else "someone"
-			return {"lines": [Mind.say(n, "[PH] %s says %s was out on %s on night %d." % [by, who.name, C.block_name(h["block"]), h["day"]])],
+			var block_s: String = C.block_name(h["block"])
+			var night_s: String = "on night %d" % h["day"]
+			var sighting_fallback: String = "%s says %s was out on %s %s." % [by, who.name, block_s, night_s]
+			return {"lines": [Mind.say_voiced(n, "gossip_sighting", sighting_fallback, {"source": by, "subject": who.name, "block": block_s, "night": night_s})],
 				"facts": [{"kind": "sighting", "subject": [who.id], "block": h["block"], "day": h["day"], "phase": C.NIGHT, "source": h["from"], "via": n.id,
-					"text": "Via %s: %s saw %s on %s on night %d." % [n.name, by, who.name, C.block_name(h["block"]), h["day"]]}]}
-	return {"lines": [Mind.say(n, "[PH] ...Well, I thought I had something. The price of bread, mostly.")], "facts": []}
+					"text": "Via %s: %s saw %s on %s on night %d." % [n.name, by, who.name, block_s, h["day"]]}]}
+	return {"lines": [Mind.say_voiced(n, "gossip_empty", "...Well, I thought I had something. The price of bread, mostly.")], "facts": []}
 
 # ---------------------------------------------------------------- asking about a role
 

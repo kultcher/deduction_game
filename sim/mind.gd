@@ -1068,7 +1068,10 @@ static func consider_gift_request(w, n, role: String, targets: Array) -> Diction
 		n.gift_request = {"night": w.day, "role": role, "targets": targets.duplicate()}
 		w.dlog.add("gift_request_agreed", "player", n.id, {"role": role, "targets": targets})
 		var agree_tpl: String = rdef.request_agree_line if rdef != null and rdef.request_agree_line != "" else ""
-		return {"lines": [say(n, agree_tpl % named)], "facts": [], "agreed": true}
+		var agree_fallback: String = (agree_tpl % named) if agree_tpl != "" else ""
+		if rdef != null and rdef.request_agree_voice_key != "":
+			return {"lines": [say_voiced(n, rdef.request_agree_voice_key, agree_fallback, {rdef.request_agree_slot: named})], "facts": [], "agreed": true}
+		return {"lines": [say(n, agree_fallback)], "facts": [], "agreed": true}
 	w.dlog.add("gift_request_refused", "player", n.id, {"role": role, "targets": targets})
 	var counter: String = ""
 	if n.trust >= 0.35 and top != "" and not (top in targets) and rdef != null:
@@ -1343,8 +1346,8 @@ static func _spoken_list(items: Array) -> String:
 static func _add_observation(groups: Array, observation: Dictionary) -> void:
 	MindDialogue._add_observation(groups, observation)
 
-static func _observation_lines(n, groups: Array, audience: String, speech_act: String, preceded: bool) -> Array:
-	return MindDialogue._observation_lines(n, groups, audience, speech_act, preceded)
+static func _observation_lines(n, groups: Array, audience: String, speech_act: String, preceded: bool, first_relation: String = "independent") -> Array:
+	return MindDialogue._observation_lines(n, groups, audience, speech_act, preceded, first_relation)
 
 static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	return MindDialogue.sighting_report(w, n, b, nd)

@@ -411,7 +411,7 @@ func first_person_notes():
 			var reply = {"lines": [], "facts": []}
 			g._maybe_tell_relationships(n, t, reply)
 			var expected = t.name + (" and I are close." if kind == "friend" else " and I don't get along.")
-			check(reply.lines.size() == 1 and Speech.said(reply.lines[0]) == expected, "both pair orders and bond kinds use first person about the speaker")
+			check(reply.lines.size() == 1 and reply.lines[0].get("statement", reply.lines[0].text) == expected and t.name in reply.lines[0].text, "both pair orders and bond kinds use first person about the speaker")
 			var note = g.known_relationships.values()[0]
 			check(note.text == n.name + ' says "' + expected + '"' and note.source == n.id and note.people == order and reply.facts.is_empty(), "first-person profile note retains attribution and original bond identity without cards")
 			check(w.rng.state == probe.state, "first-person relationship wording keeps the original single roll")
@@ -422,7 +422,7 @@ func first_person_notes():
 	w.rng.state = reveal_state
 	var third = {"lines": [], "facts": []}
 	g._maybe_tell_relationships(n, t, third)
-	check(Speech.said(third.lines[0]) == "%s and %s are close." % [t.name, other.name], "third-party relationship wording stays unchanged")
+	check(third.lines[0].get("statement", third.lines[0].text) == "%s and %s are close." % [t.name, other.name] and t.name in third.lines[0].text and other.name in third.lines[0].text, "third-party relationship wording retains canonical bond and names")
 	n.friends = []
 	n.rivals = []
 	n.pressure = 1.0 # Allow self-trait replies even when exercising low gossip.
@@ -439,7 +439,7 @@ func first_person_notes():
 			probe.randi_range(0, 0)
 			var reply = {"lines": [], "facts": []}
 			g._maybe_tell_trait(n, n, reply)
-			check(reply.lines.size() == 1 and Speech.said(reply.lines[0]).begins_with("I'd call myself ") and not n.name in Speech.said(reply.lines[0]) and not "their" in Speech.said(reply.lines[0]) and not "themselves" in Speech.said(reply.lines[0]), "self-trait wording uses first person")
+			check(reply.lines.size() == 1 and reply.lines[0].get("statement", reply.lines[0].text).begins_with("I'd call myself ") and not n.name in reply.lines[0].text and not "their" in reply.lines[0].text and not "themselves" in reply.lines[0].text, "self-trait wording uses first person")
 			check(n.revealed_traits[key] == C.tier(n.traits[key]) and w.rng.state == probe.state and reply.facts.is_empty(), "self-trait phrasing retains the selected trait, learning and exact RNG draws")
 
 func confidence_public_notice():
@@ -501,11 +501,11 @@ func empty_nomination_cases():
 		n.shadow = null
 		var state = w.rng.state
 		var reply = Mind.nomination_case(w, n, t, "")
-		check(reply.lines.size() == 1 and Speech.said(reply.lines[0]) == "I don't trust %s, and I can't say better than that." % t.name, "an empty good or evil nomination gives a plain spoken fallback")
+		check(reply.lines.size() == 1 and reply.lines[0].get("statement", reply.lines[0].text) == "I don't trust %s, and I can't say better than that." % t.name and t.name in reply.lines[0].text, "an empty good or evil nomination gives a voiced fallback with canonical statement")
 		check(reply.facts.is_empty() and w.rng.state == state, "empty-case wording adds no evidence or RNG draws")
 		n.ledger = {"public": {"eid": "public", "effects": [[t.id, 0, 0, 0, "a public account"]], "applied": {0: 0.2}}}
 		var recap = Mind.nomination_case(w, n, t, "")
-		check(recap.lines.size() == 1 and Speech.said(recap.lines[0]) == "Remember: a public account.", "a grounded public reason keeps its original recap")
+		check(recap.lines.size() == 1 and recap.lines[0].get("statement", recap.lines[0].text) == "Remember: a public account." and "a public account" in recap.lines[0].text, "a grounded public reason keeps its original recap")
 		var already = Mind.nomination_case(w, n, t, "a public account")
 		check(already.lines.is_empty() and already.facts.is_empty() and w.rng.state == state, "an already-cited grounded reason stays silent rather than becoming an empty-case fallback")
 
@@ -617,7 +617,7 @@ func direct_night_willingness():
 		if shared: told += 1
 		else:
 			withheld += 1
-			check(reply.lines.any(func(line): return "not ready to discuss" in line.text), "unwilling direct answers refuse instead of falsely claiming to have seen nobody")
+			check(reply.lines.any(func(line): return "not ready to discuss" in str(line.get("statement", line.text)) and line.text != ""), "unwilling direct answers refuse instead of falsely claiming to have seen nobody")
 	check(told > 180 and withheld > 0 and n.told_to.has("player|saw:%s:2" % t.id), "near-certain direct sharing still has a refusal outcome and records player telling")
 	n.beliefs = []
 	for person in w.npcs.filter(func(other): return other != n).slice(0, 6):

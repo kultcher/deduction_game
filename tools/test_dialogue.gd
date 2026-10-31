@@ -20,6 +20,7 @@ func _init() -> void:
 	_exchange()
 	_batch2_voices()
 	_batch3_voices()
+	_batch4_voices()
 	_live()
 	_live_presence()
 	call_deferred("_lab")
@@ -411,6 +412,61 @@ func _batch3_voices() -> void:
 				_check(str(slot_val) in rendered, "%s/%s preserves slot value %s" % [id, key, str(slot_val)])
 			if key == "fear_gift_refusal":
 				_check(not "safer" in rendered.to_lower(), "%s/fear_gift_refusal avoids 'safer' wording" % id)
+		_check(Dialogue.voice_line("unvoiced_npc", key, "FALLBACK", slots) == "FALLBACK", "unvoiced fallback preserved for " + key)
+
+func _batch4_voices() -> void:
+	var slot_specs = {
+		"opinion_refuse": {},
+		"tell_haunt": {"subject": "Edda", "places": "the Bakery or the Well"},
+		"tell_trait_friend": {"subject": "Edda", "words": "steady as a rock"},
+		"tell_trait_neutral": {"subject": "Edda", "words": "fairly level-headed"},
+		"tell_trait_rival": {"subject": "Edda", "words": "pigheaded"},
+		"tell_trait_self": {"words": "fairly level-headed"},
+		"tell_bond_third_close": {"a": "Edda", "b": "Jory"},
+		"tell_bond_third_rival": {"a": "Odette", "b": "Isolde"},
+		"tell_bond_self_close": {"other": "Edda"},
+		"tell_bond_self_rival": {"other": "Isolde"},
+		"meeting_accuse_vibes": {"target": "Dorian"},
+		"meeting_accuse_reason": {"target": "Dorian", "reason": "My own sight named them"},
+		"nomination_no_reasons": {"target": "Dorian"},
+		"nomination_recap": {"recap": "a public account"},
+		"nomination_held_reason": {},
+		"night_saw_nobody": {},
+		"night_sightings_refuse": {},
+		"day_sightings_refuse": {},
+		"day_saw_nobody": {},
+		"day_only_here": {},
+		"duty_warden": {"target": "Jory"},
+		"duty_nightwatch": {"block": "the Docks"},
+		"nightwatch_withhold": {},
+		"duty_lamplighter": {},
+		"duty_medium_hearth": {"target": "Greta"},
+		"duty_medium_plain": {},
+		"approach_word": {},
+		"approach_teaser_gift": {},
+		"approach_teaser_gossip": {},
+		"approach_open_gift": {},
+		"approach_open_gossip": {},
+		"approach_frame_warn": {"subject": "Edda", "reason": "Something's off about them."},
+		"gossip_secret": {"subject": "Dorian", "secret": "goes gambling"},
+		"gossip_empty": {},
+		"gossip_reading": {"source": "Hollis", "role": "Seer", "report": "neither was the demon"},
+		"gossip_sighting": {"source": "Jory", "subject": "Odette", "block": "Market Row", "night": "on night 1"},
+		"gift_req_agree_seer": {"target": "Edda"},
+		"gift_req_agree_warden": {"target": "Jory"},
+		"gift_req_agree_watch": {"block": "Chapel Hill"},
+	}
+	for key in slot_specs:
+		var slots: Dictionary = slot_specs[key]
+		for id in Fixtures.IDS:
+			var rendered = Dialogue.voice_line(id, key, "FALLBACK", slots)
+			_check(rendered != "FALLBACK" and rendered != "" and not "{" in rendered and not "[PH]" in rendered, "%s/%s resolves cleanly without leftover slots or [PH]" % [id, key])
+			for slot_val in slots.values():
+				_check(str(slot_val) in rendered, "%s/%s preserves slot value %s" % [id, key, str(slot_val)])
+			if key == "tell_trait_self":
+				_check(not "their" in rendered.to_lower() and not "themselves" in rendered.to_lower(), "%s/tell_trait_self stays first-person" % id)
+			if id != "nisha":
+				_check(not "data" in rendered.to_lower(), "%s/%s avoids 'data' outside Nisha" % [id, key])
 		_check(Dialogue.voice_line("unvoiced_npc", key, "FALLBACK", slots) == "FALLBACK", "unvoiced fallback preserved for " + key)
 
 func _live() -> void:
