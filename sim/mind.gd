@@ -1229,8 +1229,8 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 static func nomination_case(w, n, t, already: String) -> Dictionary:
 	return MindMeeting.nomination_case(w, n, t, already)
 
-static func defend_self(w, d, nominator_id: String) -> Dictionary:
-	return MindMeeting.defend_self(w, d, nominator_id)
+static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = []) -> Dictionary:
+	return MindMeeting.defend_self(w, d, nominator_id, disclosed_facts)
 
 static func defence_line(w, n) -> Dictionary:
 	return MindMeeting.defence_line(w, n)

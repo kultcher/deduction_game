@@ -263,10 +263,11 @@ func _test_decision_records() -> void:
 		"nomination with sufficient suspicion and no competing block remains available")
 	n.traits["gossip"] = 0.1
 	n.pressure = 0.0
-	_check(Mind._gossip_share(w, n, "test") == 0, "low-gossip refusal retains behavior")
-	gate = _last_decision(w, "gossip_share", "gate", n.id)
-	_check(gate["data"]["details"].get("gate") == "gossip_and_pressure_cutoff",
-		"gossip cutoff has machine-readable refusal reason")
+	var share_count: int = Mind._gossip_share(w, n, "test")
+	_check(share_count >= 1, "low-gossip villagers retain a minimum share without a cutoff")
+	gate = _last_decision(w, "gossip_share", "outcome", n.id)
+	_check(not gate.is_empty() and gate["data"]["result"] == share_count,
+		"gossip sharing count has a machine-readable outcome")
 	n.pressure = 0.5
 	_check(Mind._gossip_share(w, n, "test") > 0, "pressure override retains its inclusive boundary")
 	w.day = 1

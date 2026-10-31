@@ -187,6 +187,7 @@ func add_trace_chain(selected_by_night: Dictionary, at: Vector2 = Vector2(240, 3
 			existing["sibling_trace_ids"] = bundle.sibling_trace_ids
 			existing["death_ids"] = bundle.death_ids
 			existing["receipt_ids"] = bundle.receipt_ids
+			existing["assessment"] = bundle.get("assessment", {})
 			selected = key
 			version += 1
 			return key
@@ -203,6 +204,7 @@ func add_trace_chain(selected_by_night: Dictionary, at: Vector2 = Vector2(240, 3
 		"sibling_trace_ids": bundle.sibling_trace_ids,
 		"death_ids": bundle.death_ids,
 		"receipt_ids": bundle.receipt_ids,
+		"assessment": bundle.get("assessment", {}),
 		"at": [at.x, at.y],
 	}
 	selected = id
@@ -219,6 +221,7 @@ func sync_trace_chain(id: String) -> void:
 		nodes[id]["sibling_trace_ids"] = bundle.sibling_trace_ids
 		nodes[id]["death_ids"] = bundle.death_ids
 		nodes[id]["receipt_ids"] = bundle.receipt_ids
+		nodes[id]["assessment"] = bundle.get("assessment", {})
 		version += 1
 
 func remove_trace_chain(id: String) -> void:
@@ -572,6 +575,17 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 	if not hub_entries.is_empty():
 		hub_entries.sort_custom(func(a, b): return str(a.id) + ":" + str(a.premise) < str(b.id) + ":" + str(b.premise))
 		result["circumstantial"] = hub_entries
+	var trace_assessments: Array = []
+	var seen_digests: Dictionary = {}
+	for id in all:
+		if nodes[id].kind == "trace_chain":
+			var compiled_tc: Dictionary = TraceSolver.compile_assessment(view, nodes[id].get("selected_by_night", {}))
+			var dig: String = str(compiled_tc.get("digest", ""))
+			if dig != "" and not seen_digests.has(dig):
+				seen_digests[dig] = true
+				trace_assessments.append(compiled_tc)
+	if not trace_assessments.is_empty():
+		result["trace_assessments"] = trace_assessments
 	if result.conclusion.type == "conflict":
 		result.conflict_scope = result.cards.duplicate()
 		result.disputes = [] # Ask whether contents conflict; do not resolve one first.
@@ -628,7 +642,9 @@ func _evidence(ids: Array) -> Array:
 				if rid not in result:
 					result.append(rid)
 		elif nodes[id].kind == "trace_chain":
-			for field in ["trace_ids", "sibling_trace_ids", "death_ids", "receipt_ids"]:
+			# Profile `receipt_ids` stay on the node for UI explanation/sync while the compiled
+			# shared assessment supplies exact profile weights without 38-card case bloat.
+			for field in ["trace_ids", "sibling_trace_ids", "death_ids"]:
 				for tid in nodes[id].get(field, []):
 					if tid not in result:
 						result.append(tid)
@@ -748,6 +764,8 @@ func restore(value, session) -> String:
 			for arr_name in ["trace_ids", "sibling_trace_ids", "death_ids", "receipt_ids"]:
 				if not n[arr_name].all(func(cid): return cid is String and not Solver.card_by_id(view, cid).is_empty()):
 					return "Invalid trace chain receipt."
+			if not n.get("assessment") is Dictionary or n.get("assessment", {}).is_empty():
+				n["assessment"] = TraceSolver.compile_assessment(view, n.get("selected_by_night", {}))
 		elif n.kind == "modifier":
 			if not preload("res://workshop/reading_challenges.gd").valid(view, n.get("card", ""), {"mode": n.get("mode"), "supports": []}):
 				return "Invalid reading modifier."

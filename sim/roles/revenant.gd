@@ -52,7 +52,35 @@ func on_executed(w, rv, res: Dictionary, mind) -> void:
 			mind.ledger_hear(w, l, "curse:%d" % w.day, e, 1.0, [], {"kind": "event"})
 	w.public_event("curse", [rv.id], rv.id)
 	w.meeting["curse"] = true
+	# Public curse activation identifies the executed Revenant and invalidates any Good gift claim they made,
+	# without erasing ordinary street sightings they previously reported.
+	for real in w.living():
+		var minds: Array = [real]
+		if real.shadow != null:
+			minds.append(real.shadow)
+		for m in minds:
+			for eid in m.ledger.keys():
+				if str(eid).begins_with("claim:%s:" % rv.id):
+					m.ledger[eid]["weight"] = 0.0
+			m.believed_roles[rv.id] = "revenant"
+		if not real.is_evil():
+			mind.adjust(w, real, rv.id, 1.0, "the Revenant's curse proved them evil", "", false)
+			mind.recompute_beliefs(w, real, " (Revenant curse revealed)")
+		elif real.shadow != null:
+			mind.recompute_beliefs(w, real, " (Revenant curse revealed)")
 
 
 func should_evil_vote_to_hang(w, nom_n, v) -> bool:
-	return nom_n.is_evil() and not w.totem.is_empty() and w.decision_roll(v, "vote_revenant_curse", Tuning.Roles.REVENANT.evil_vote_hang_prob, {}, nom_n.id)
+	if not nom_n.is_evil() or w.totem.is_empty() or nom_n.gift_broken() or w.living().size() < 5:
+		return false
+	if not w.evil_plan.has("revenant_hang_plan"):
+		w.evil_plan["revenant_hang_plan"] = {}
+	var plan_map: Dictionary = w.evil_plan["revenant_hang_plan"]
+	var ballot_key: String = "%d:%s:%d" % [w.day, nom_n.id, w.meeting.get("results", []).size()]
+	if not plan_map.has(ballot_key):
+		var good_backing: bool = w.stances.keys().any(func(aid): return w.by_id.has(aid) and not w.by_id[aid].is_evil() and w.stances[aid].get("target", "") == nom_n.id and int(w.stances[aid].get("day", -1)) == w.day)
+		var nom_by: String = str(w.meeting.get("pending", {}).get("by", ""))
+		if nom_by == "player" or (w.by_id.has(nom_by) and not w.by_id[nom_by].is_evil()):
+			good_backing = true
+		plan_map[ballot_key] = good_backing and w.decision_roll(v, "vote_revenant_curse", Tuning.Roles.REVENANT.evil_vote_hang_prob, {"good_backing": good_backing}, nom_n.id)
+	return bool(plan_map[ballot_key])

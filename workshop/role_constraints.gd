@@ -217,6 +217,10 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 		var role: String = knowledge.public_roles[person]
 		if index < 0 or world.evil & (1 << index) or not _assign(assignments, role, 1 << index):
 			return 0.0
+	if view.get("chronology", {}).has("curse"):
+		var rev_idx: int = ids.find(str(view.chronology.curse.get("executed", "")))
+		if rev_idx >= 0 and not _assign(assignments, "revenant", (1 << rev_idx) & minions):
+			return 0.0
 	var seer = ""
 	var seer_source = -1
 	var seer_readings: Array = []

@@ -368,14 +368,14 @@ static func _signature(snapshot: Dictionary) -> String:
 	choices.erase("version")
 	var ids: Array = snapshot.selected.duplicate()
 	ids.sort()
-	return JSON.stringify(Evidence.canonical([root.conclusion, ids, choices]))
+	return JSON.stringify(Evidence.canonical([root.conclusion, ids, choices])).sha256_text()
 
 static func _discussion_inputs(n, snapshot: Dictionary) -> String:
 	var state: Dictionary = n.workshop_state
 	var cognition = [state.get("reasoning_mode", "bounded"), n.traits.get("insight", 0.5),
 		state.get("confidence_mode", "scale"), n.traits.get("confidence", 0.5)]
 	return JSON.stringify(Evidence.canonical([state.get("outside", n.suspicion), state.get("facts", []),
-		state.get("attention_focus", []), n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognition]))
+		state.get("attention_focus", []), n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognition])).sha256_text()
 
 static func _snapshot(g, n, card: Dictionary, targets: Array, direction: String, venue: String) -> Dictionary:
 	if direction == "deduction":

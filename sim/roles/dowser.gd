@@ -81,6 +81,24 @@ func generate_reading(w, dw, ctx: Dictionary, _mind) -> Dictionary:
 	}
 
 
+## A bluff changes the count, while keeping the same eligibility and complete local
+## crowd as a real Dowser. Target requests cannot manufacture a remote crowd.
+func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: Array) -> Dictionary:
+	if w.day < min_gift_day or n.dowsed_day == w.day:
+		return {}
+	var blk: String = n.home_block if n.at_home() else w.loc_block(n.loc)
+	var others: Array = w.living().filter(func(m): return m != n and (m.home_block if m.at_home() else w.loc_block(m.loc)) == blk)
+	if others.size() < 2:
+		return {}
+	var ids: Array = others.map(func(m): return m.id)
+	var count: int = 0 if others.any(func(m): return m.is_evil()) else (1 if s in ids else others.filter(func(m): return m.is_evil()).size())
+	n.dowsed_day = w.day
+	return {
+		"entry": {"data": {"group": ids, "count": count, "block": blk}, "text": "on %s I sensed %d evil among %s" % [content().block_name(blk), count, w._names(ids)]},
+		"why": "fabricates count for the complete local crowd on %s" % blk,
+	}
+
+
 func fake_medium_reading(w, _n, dd, s: String, sg, d, goods: Array, _other: Callable, e: Dictionary, demon_implicated: bool) -> Dictionary:
 	var C = content()
 	if d != null and d.alive and demon_implicated and w.chance(0.5):

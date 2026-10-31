@@ -64,6 +64,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	var marked_questions: Array = []
 	var disputes: Array = []
 	var circumstantial_hubs: Array = []
+	var trace_assessments_by_scene: Dictionary = {}
 	var reading_challenges = {}
 	for receipt in preload("res://workshop/public_evidence.gd").martyr_receipts(input.public_events, input.people.map(func(p): return p.id)):
 		_add(facts, owners, receipt, "public")
@@ -104,6 +105,10 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 				var hcopy: Dictionary = chub.duplicate(true)
 				hcopy["presentation_key"] = str(key)
 				circumstantial_hubs.append(hcopy)
+			for ta in argument.get("workshop_case", {}).get("trace_assessments", []):
+				if ta is Dictionary and str(ta.get("digest", "")) != "":
+					# Latest non-withdrawn assessment for a scene replaces older versions without stacking.
+					trace_assessments_by_scene[str(ta.digest)] = ta.duplicate(true)
 			if argument.conclusion.get("type") == "marked":
 				var target: String = Assess._target(argument.conclusion)
 				if target not in marked_questions:
@@ -147,6 +152,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	input.root = -1
 	input.arguments = [{"board_number": -1, "conclusion": {"type": "evil", "a": input.people[0].id}, "supports": numbers}]
 	var prepared = Assess.prepare(input)
+	if not trace_assessments_by_scene.is_empty():
+		prepared.view["trace_assessments"] = trace_assessments_by_scene.values()
 	issues.append_array(prepared.issues.filter(func(issue): return not facts.is_empty() or issue != "No supported reading is presented."))
 	var aliases = {}
 	var coarse_aliases = {}

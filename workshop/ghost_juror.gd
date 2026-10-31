@@ -18,6 +18,8 @@ static func profile(people: Array) -> Dictionary:
 static func evaluate(view: Dictionary, value: Dictionary) -> Dictionary:
 	return evaluate_with_profile(view, value, profile(view.people))
 
+static var _live_cache: Dictionary = {}
+
 static func live(snapshot: Dictionary) -> Dictionary:
 	var input = snapshot.duplicate(true)
 	input.private_evidence = []
@@ -26,12 +28,22 @@ static func live(snapshot: Dictionary) -> Dictionary:
 	input.listener = {"id": ghost.id, "name": ghost.name, "trust": ghost.trust, "confidence": ghost.confidence,
 		"insight": ghost.insight, "npc_trust": ghost.npc_trust, "suspicion": ghost.suspicion,
 		"discounted": {}, "honesty": {}, "own_gift": "", "legacy_evidence": []}
+	# Includes receipts, compiled profile weights and public history. Repeated previews
+	# with identical inputs can reuse the neutral result without re-running the jury.
+	var cache_input = [input, Jury.engine, preload("res://workshop/case_eval.gd").prior_k, preload("res://workshop/reasoner.gd").unlimited_cards]
+	var cache_key = hash(cache_input)
+	if _live_cache.has(cache_key) and _live_cache[cache_key].input == cache_input:
+		return _live_cache[cache_key].result.duplicate(true)
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"ready": false, "issues": prepared.issues, "proposal": {}, "elapsed_ms": 0, "scope": "Player-held evidence only; unsupported mechanics need an adapter."}
 	var listener = profile(input.people)
 	listener.knowledge.good = prepared.listener.knowledge.good.filter(func(id): return id != ghost.id)
-	return evaluate_with_profile(prepared.view, prepared.case, listener)
+	var result = evaluate_with_profile(prepared.view, prepared.case, listener)
+	if _live_cache.size() >= 16:
+		_live_cache.clear()
+	_live_cache[cache_key] = {"input": cache_input.duplicate(true), "result": result.duplicate(true)}
+	return result
 
 static func evaluate_with_profile(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
 	var started = Time.get_ticks_msec()

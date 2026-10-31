@@ -188,7 +188,7 @@ func _medium_bluff() -> void:
 	var out: Array = r["facts"].filter(func(f): return f.get("duty_claim", false))
 	_check(not out.is_empty() and out[0]["block"] == dead.home_block, "evil Medium claims the hearth's block (%s), not where they were (docks)" % dead.home_block)
 	_check(r["lines"].any(func(l): return l is Dictionary and dead.name in l["text"]), "the Medium names whose hearth")
-	# Fake readings visit each of the dead once, most recent first.
+	# Fake readings can only visit corpses from an earlier night, then revisit the most recent.
 	var fresh = _game(7104)
 	var w2 = fresh.w
 	var mate = w2.npcs.filter(func(x): return x.is_evil())[0]
@@ -207,7 +207,7 @@ func _medium_bluff() -> void:
 		for e in mate.info_log:
 			if e.get("role", "") == "medium" and e.get("day", -1) == d:
 				seen.append(e["data"]["dead"])
-	_check(seen == [goods[1].id, goods[0].id, goods[1].id], "fake Medium readings: Demon victims first, then revisit the most recent (%s)" % str(seen))
+	_check(seen == [goods[0].id, goods[1].id, goods[1].id], "fake Medium readings: Demon victims first, then revisit the most recent (%s)" % str(seen))
 
 func _warden_doors() -> void:
 	var g = _game(7105)

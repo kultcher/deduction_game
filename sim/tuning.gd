@@ -565,3 +565,25 @@ class Workshop:
 		"rivals": 27,
 		"complete": true,
 	}
+
+
+static var _fingerprint_cache: String = ""
+
+
+static func fingerprint() -> String:
+	if _fingerprint_cache != "":
+		return _fingerprint_cache
+	var src: String = FileAccess.get_file_as_string("res://sim/tuning.gd")
+	if src != "":
+		_fingerprint_cache = src.sha256_text().substr(0, 12)
+	else:
+		_fingerprint_cache = JSON.stringify([
+			Setup.SHARED_EXECUTION_PRIORITY_WEIGHT,
+			Workshop.PRIOR_K,
+			Workshop.HEADLINE_WEIGHT,
+			Workshop.LEAN_MIN,
+			Meeting.NOMINATION_BASE,
+			Meeting.VOTE_BASE_NEED,
+			Meeting.VOTE_URGENCY_PER_DEATH,
+		]).sha256_text().substr(0, 12)
+	return _fingerprint_cache

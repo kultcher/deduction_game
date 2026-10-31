@@ -200,8 +200,16 @@ static func reason_status(w, n, t_id: String) -> Dictionary:
 	var src: String = n.sus_src.get(t_id, "")
 	if n.workshop_state.get("active", false):
 		var joint_strength: float = float(n.workshop_state.get("requested", {}).get(t_id, 0.0)) + float(n.workshop_state.get("circumstantial_requested", {}).get(t_id, 0.0))
-		if joint_strength >= 0.15:
-			return {"why": "the reports considered together point toward them", "kind": n.workshop_state.get("reason_visibility", "shared_private"), "entry": {}, "strength": joint_strength}
+		if joint_strength > 0.03:
+			var ranked: Array = case_against(w, n, t_id, 1)
+			if not ranked.is_empty():
+				var top: Dictionary = ranked[0]
+				var resolved = {"why": top["why"], "kind": top["kind"], "entry": top["entry"], "strength": top["strength"]}
+				if top.has("src"):
+					resolved["src"] = top["src"]
+				return resolved
+			if joint_strength >= 0.15:
+				return {"why": "the reports considered together point toward them", "kind": n.workshop_state.get("reason_visibility", "shared_private"), "entry": {}, "strength": joint_strength}
 		if n.workshop_state.get("owned", {}).has(src):
 			return {"why": "", "kind": "none", "entry": {}, "strength": 0.0} # An obsolete raw bonus is no longer the reason.
 	var out = {"why": why, "kind": "none" if why == "" else "public", "entry": {}, "strength": 0.0}
@@ -685,6 +693,21 @@ static func _good_nomination_impl(w, n, m: Dictionary, block: String, trace_id: 
 ## Shadow self (step 2): evil nominates as its good self would. Naming a teammate is
 ## high stakes (overridden unless caution has worn thin); pushing the scapegoat when the
 ## good self wouldn't nominate is an override that's cheap once the town is already hot on them.
+static func _evil_counter_or_pass(w, n, m: Dictionary, ev) -> Variant:
+	if ev == null:
+		return null
+	var blk: String = m.get("block", "")
+	var mate_on_block: bool = blk != "" and w.by_id.has(blk) and w.by_id[blk].is_evil()
+	var sg = w.by_id[ev["nominee"]]
+	var ready: Dictionary = Evil.scapegoat_readiness(w, n, sg)
+	if not mate_on_block and float(ready.get("room_heat", 0.0)) < 0.40:
+		w.dlog.think(n.id, "nominate", "Evil: stays silent rather than nominating teammate or forcing a cold scapegoat push.")
+		return null
+	var rescue_bonus: float = 0.45 if (mate_on_block and blk == w.demon_id) else (0.20 if mate_on_block else 0.0)
+	if evil_override(w, n, "nomination", 0.45 + float(ready["score"]) + rescue_bonus, 0.5, "push scapegoat %s instead" % sg.id):
+		return ev
+	return null
+
 static func _evil_nomination(w, n, m: Dictionary, block: String):
 	var ev = Evil.evil_nomination(w, n)
 	if not C.SHADOW_SELF:
@@ -694,18 +717,20 @@ static func _evil_nomination(w, n, m: Dictionary, block: String):
 		sc["by"] = n.id
 		if w.by_id[sc["nominee"]].role == "demon":
 			w.dlog.think(n.id, "team_survival", "Protects the demon: maintaining cover cannot justify nominating them.")
-			return ev
+			return _evil_counter_or_pass(w, n, m, ev)
 		if Evil.is_teammate(w, n, sc["nominee"]):
-			var stakes = 0.8 * Evil.teammate_value(w, sc["nominee"])
-			if evil_override(w, n, "nomination", stakes, 1.0, "good self would nominate teammate %s" % sc["nominee"]):
-				return ev
+			var stakes = 0.85 * Evil.teammate_value(w, sc["nominee"])
+			if evil_override(w, n, "nomination", stakes, 0.35, "stay silent instead of nominating teammate %s" % sc["nominee"]):
+				return _evil_counter_or_pass(w, n, m, ev)
 			sc["reason"] = "Evil (good self): nominates teammate %s; %s" % [sc["nominee"], sc["reason"]]
 		return sc
 	if ev == null:
 		return null
+	var blk2: String = m.get("block", "")
+	var rescue2: float = 0.45 if (blk2 != "" and blk2 == w.demon_id) else (0.20 if (blk2 != "" and w.by_id.has(blk2) and w.by_id[blk2].is_evil()) else 0.0)
 	var sg = w.by_id[ev["nominee"]]
 	var sg_ready: float = Evil.scapegoat_readiness(w, n, sg)["score"]
-	if evil_override(w, n, "nomination", 0.45 + sg_ready, 0.5, "push scapegoat %s (good self wouldn't nominate)" % sg.id):
+	if evil_override(w, n, "nomination", 0.45 + sg_ready + rescue2, 0.5, "push scapegoat %s (good self wouldn't nominate)" % sg.id):
 		return ev
 	return null
 
@@ -751,24 +776,64 @@ static func next_nomination(w):
 ## entry}, with kind as in reason_status (public | player | private) for that entry. An
 ## evil nominator ranks its good self's ledger (what an innocent would cite) but its own
 ## readings (real or fake) are looked up on the real NPC.
+static func _entry_rejected_in_workshop(w, mind, real_npc, e: Dictionary) -> bool:
+	if float(e.get("weight", 0.0)) <= 0.01:
+		return true
+	if e["eid"].begins_with("info:"):
+		var parts: PackedStringArray = str(e["eid"]).split(":")
+		if parts.size() >= 2:
+			var holder = real_npc if parts[1] == real_npc.id else w.by_id.get(parts[1])
+			if holder != null:
+				for en in holder.info_log:
+					if info_eid(holder.id, en) == e["eid"] and en.get("disowned", false):
+						return true
+	var receipt_ids: Array = e.get("meta", {}).get("workshop_receipts", {}).keys()
+	if e.get("meta", {}).has("workshop_card"):
+		receipt_ids.append(e["meta"]["workshop_card"].get("id", ""))
+	for ch in mind.workshop_state.get("reading_challenges", []):
+		if ch.get("card", "") in receipt_ids and (float(ch.get("multiplier", 1.0)) <= 0.5 or (ch.get("mode", "") == "lying" and float(ch.get("agreement", 0.0)) >= 0.6)):
+			return true
+	return false
+
 static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	var mind = n
 	if n.is_evil():
 		mind = n.shadow if n.shadow != null else n
+	var ws_active: bool = mind.workshop_state.get("active", false)
+	var ws_owned: Dictionary = mind.workshop_state.get("owned", {}) if ws_active else {}
+	var ws_joint: float = (float(mind.workshop_state.get("requested", {}).get(t_id, 0.0)) + float(mind.workshop_state.get("circumstantial_requested", {}).get(t_id, 0.0))) if ws_active else 0.0
+	var claimants: Dictionary = _mind()._claimants(mind.ledger.values()) if ws_active else {}
 	var items: Array = []
 	for e in mind.ledger.values():
 		var contrib = 0.0
 		var why = ""
 		var effs: Array = e["effects"]
-		for i in range(effs.size()):
-			var f: Array = effs[i]
-			if f[0] != t_id:
+		if ws_active and ws_owned.has(e["eid"]):
+			if ws_joint <= 0.03 or _entry_rejected_in_workshop(w, mind, n, e):
 				continue
-			var a: float = e["applied"].get(i, 0.0) + e["applied"].get("%d:%s" % [i, t_id], 0.0)
-			if a > 0.0:
-				contrib += a
-				if why == "" and f[4] != "":
-					why = f[4]
+			var rp: Array = _mind()._rel(e)
+			var rel_w: float = _mind().reliability(mind, rp[0], rp[1], rp[2])
+			if rel_w < 0.35:
+				continue
+			for i in range(effs.size()):
+				var f: Array = effs[i]
+				if float(f[1]) <= 0.0 or f[4] == "":
+					continue
+				var targets: Array = _mind()._expand(f[0], claimants)
+				if t_id in targets:
+					contrib += float(f[1]) * float(e["weight"]) * rel_w
+					if why == "":
+						why = f[4]
+		else:
+			for i in range(effs.size()):
+				var f: Array = effs[i]
+				if f[0] != t_id:
+					continue
+				var a: float = e["applied"].get(i, 0.0) + e["applied"].get("%d:%s" % [i, t_id], 0.0)
+				if a > 0.0:
+					contrib += a
+					if why == "" and f[4] != "":
+						why = f[4]
 		if contrib >= 0.03 and why != "":
 			items.append({"eid": e["eid"], "why": why, "contrib": contrib})
 	items.sort_custom(func(x, y): return x["contrib"] > y["contrib"])
@@ -848,7 +913,59 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 ## it rises and falls with them. Only a reveal carries real weight; the rest sway little.
 ## Evil defends as the good townsperson it pretends to be: its bluff stands in for its gift,
 ## and it has no secret to confess. Returns {lines, facts, moves}.
-static func defend_self(w, d, nominator_id: String) -> Dictionary:
+static func _reading_known_to_defender(d, src_id: String, rd: Dictionary, disclosed_facts: Array) -> bool:
+	if rd.get("shared", false):
+		return true
+	for f in disclosed_facts:
+		if f.get("kind", "") == "info" and f.get("source", "") == src_id and f.get("role", "") == rd.get("role", "") and int(f.get("day", -2)) == int(rd.get("day", -1)):
+			return true
+	var d_mind = d.shadow if d.is_evil() and d.shadow != null else d
+	if d_mind.known_claims.has(src_id) and rd in d_mind.known_claims[src_id].get("readings", []):
+		return true
+	var eid: String = info_eid(src_id, rd)
+	if not d_mind.ledger.has(eid):
+		return false
+	var receipts: Dictionary = d_mind.ledger[eid].get("meta", {}).get("workshop_receipts", {})
+	if receipts.is_empty():
+		return true
+	return receipts.values().any(func(r): return not r.get("content", {}).get("anonymous", false))
+
+static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> Array:
+	var out: Array = []
+	var seen_eids: Dictionary = {}
+	var d_mind = d.shadow if d.is_evil() and d.shadow != null else d
+	if accuser != null:
+		for it in case_against(w, accuser, d.id, 6):
+			if it["kind"] == "public" or (not it["eid"].begins_with("info:") and d_mind.ledger.has(it["eid"])):
+				out.append(it)
+				seen_eids[it["eid"]] = true
+			elif it["eid"].begins_with("info:"):
+				var p: PackedStringArray = str(it["eid"]).split(":")
+				var sn = w.by_id.get(p[1]) if p.size() >= 2 else null
+				if sn != null and not it["entry"].is_empty() and _reading_known_to_defender(d, sn.id, it["entry"], disclosed_facts):
+					out.append(it)
+					seen_eids[it["eid"]] = true
+	for f in disclosed_facts:
+		if f.get("kind", "") == "info" and d.id in f.get("subject", []):
+			var src_id: String = str(f.get("source", ""))
+			var sn2 = w.by_id.get(src_id)
+			if sn2 == null or sn2 == d:
+				continue
+			for en in sn2.info_log:
+				if en.get("role", "") == f.get("role", "") and int(en.get("day", -1)) == int(f.get("day", -2)):
+					var eid2: String = info_eid(src_id, en)
+					if not seen_eids.has(eid2):
+						out.append({"eid": eid2, "why": "their reading pointed at me", "contrib": reading_strength(en, d.id), "kind": "public", "strength": reading_strength(en, d.id), "entry": en})
+						seen_eids[eid2] = true
+		elif f.get("kind", "") == "sighting" and d.id in f.get("subject", []):
+			var s_eid: String = "disclosed:sighting:%s:%d" % [f.get("source", ""), int(f.get("day", -1))]
+			if not seen_eids.has(s_eid):
+				var sc: float = _mind().night_sighting_scale(w, d, d.id, str(f.get("block", "")), int(f.get("day", -1)))
+				out.append({"eid": s_eid, "why": "seen out at night", "contrib": 0.35 * sc, "kind": "public", "strength": 0.35 * sc, "entry": {}})
+				seen_eids[s_eid] = true
+	return out
+
+static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = []) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
 	var moves: Array = []
@@ -856,12 +973,12 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 		return {"lines": [{"speaker": d.id, "name": d.name, "text": "...", "silent": true}], "facts": [], "moves": ["silenced"]}
 	var accuser = w.by_id.get(nominator_id) if nominator_id != "player" else null
 	if accuser == null:
-		var best = -1.0
-		for m in w.living_good():
+		var best = 0.0
+		for m in w.living():
 			if m != d and susp(m, d.id) > best:
 				best = susp(m, d.id)
 				accuser = m
-	var items: Array = case_against(w, accuser, d.id) if accuser != null else []
+	var items: Array = _disclosed_items_against(w, d, accuser, disclosed_facts)
 	var role: String = w.evil_plan["bluffs"].get(d.id, "") if d.is_evil() else d.role
 	var out_items: Array = items.filter(func(x): return "out" in x["why"] or "night" in x["why"])
 	var out_weight = 0.0
@@ -913,7 +1030,7 @@ static func defend_self(w, d, nominator_id: String) -> Dictionary:
 				if sn == null or sn == d:
 					continue
 				for en in sn.info_log:
-					if info_eid(sn.id, en) == x["eid"]:
+					if info_eid(sn.id, en) == x["eid"] and _reading_known_to_defender(d, sn.id, en, disclosed_facts):
 						rd = en
 						src_id = sn.id
 				if not rd.is_empty():
@@ -1017,10 +1134,13 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		w.dlog.think(v.id, "vote", "Votes no on own execution.", {"nominee": nominee, "yes": false})
 		return false
 	if v.is_evil():
-		var evil_yes: bool = Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
 		if w.by_id[nominee].role == "demon":
 			w.dlog.think(v.id, "team_survival", "Votes no on the demon: later voters can make even an early vote decisive.")
 			return false
+		if v.id == nominator and not Evil.is_teammate(w, v, nominee):
+			w.dlog.think(v.id, "vote", "YES on %s. Follows through on own nomination." % nominee, {"evil": true})
+			return true
+		var evil_yes: bool = Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
 		if not C.SHADOW_SELF:
 			return evil_yes
 		# Shadow self (step 2): vote as their good self would, unless breaking cover is worth it.
@@ -1028,12 +1148,31 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		if sh_yes == null or sh_yes == evil_yes:
 			return evil_yes
 		var have = yes_so_far + (1 if player_yes else 0)
-		var pivot = 1.0 if absi(have + 1 - w.vote_threshold()) <= 1 else 0.35
+		var order: Array = w.vote_order(nominee)
+		var my_idx: int = order.find(v.id)
+		var expected_later: int = 0
+		if my_idx >= 0:
+			for k_idx in range(my_idx + 1, order.size()):
+				var rem_id: String = order[k_idx]
+				if rem_id == "player" or rem_id == nominee or not w.by_id.has(rem_id):
+					continue
+				var rem_n = w.by_id[rem_id]
+				if rem_n.is_evil() and evil_yes:
+					expected_later += 1
+				elif w.stances.get(rem_id, {}).get("target", "") == nominee and int(w.stances.get(rem_id, {}).get("day", -1)) == w.day:
+					expected_later += 1
+		var target_votes: int = maxi(w.vote_threshold(), int(w.meeting.get("block_count", 0)))
+		var projected: int = have + 1 + expected_later
+		var pivot = 1.0 if (absi(have + 1 - target_votes) <= 1 or (projected >= target_votes - 1 and have + 1 <= target_votes + 1)) else 0.45
+		var cur_block: String = w.meeting.get("block", "")
+		var demon_on_block: bool = cur_block != "" and cur_block == w.demon_id
+		var mate_on_block: bool = cur_block != "" and w.by_id.has(cur_block) and w.by_id[cur_block].is_evil()
+		var rescue: float = 0.65 if demon_on_block else (0.30 if mate_on_block else 0.0)
 		var stakes = 0.3
 		if Evil.is_teammate(w, v, nominee):
-			stakes = Evil.teammate_value(w, nominee) * pivot if not evil_yes else 0.6
+			stakes = Evil.teammate_value(w, nominee) * maxf(pivot, 0.75) if not evil_yes else 0.75
 		elif evil_yes:
-			stakes = (0.5 + (0.3 if nominee == w.evil_plan.get("scapegoat", "") else 0.0)) * pivot
+			stakes = (0.55 + (0.30 if nominee == w.evil_plan.get("scapegoat", "") else 0.0)) * pivot + rescue
 		var detail = "%s on %s (good self: %s)" % ["YES" if evil_yes else "no", nominee, "yes" if sh_yes else "no"]
 		return evil_yes if evil_override(w, v, "vote", stakes, 0.6, detail) else sh_yes
 	reconsider(w, v, "thinking it over before the vote")
