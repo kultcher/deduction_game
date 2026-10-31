@@ -317,7 +317,9 @@ static func reveal_trait(w, n) -> String:
 
 ## Disclosure tier the NPC is willing to reach right now (1..4).
 static func _target_tier(w, n, trace_id: int = 0) -> int:
-	var jitter = w.rng.randf_range(-Tuning.Dialogue.OPENNESS_JITTER, Tuning.Dialogue.OPENNESS_JITTER)
+	# One mood per NPC per day (a fixed daily sample, like fear), so asking again the same
+	# day can't fish for a better roll (Oct 30, docs/social_trust_pass.md).
+	var jitter: float = (_day_roll(n.id, w.day, 0x0BE7) - 0.5) * 2.0 * Tuning.Dialogue.OPENNESS_JITTER
 	var openness = (1.0 - trait_of(n, "privacy")) * 1.0 + n.trust * 1.2 + n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")) \
 		+ 0.1 * (w.day - 1) + Tuning.Dialogue.OPENNESS_BASE_OFFSET + jitter
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
@@ -336,7 +338,7 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 		"parts": {"privacy": (1.0 - trait_of(n, "privacy")) * 1.0, "trust": n.trust * 1.2,
 			"pressure": n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")),
 			"day": 0.1 * (w.day - 1), "base": -0.72, "jitter": jitter}.merged(gift_terms),
-		"jitter_min": -0.2, "jitter_max": 0.2, "thresholds": [{"above": 0.75, "tier": 4}, {"above": 0.45, "tier": 3},
+		"jitter_min": -Tuning.Dialogue.OPENNESS_JITTER, "jitter_max": Tuning.Dialogue.OPENNESS_JITTER, "thresholds": [{"above": 0.75, "tier": 4}, {"above": 0.45, "tier": 3},
 			{"above": 0.15, "tier": 2}, {"otherwise": 1}], "comparison": ">"}, "", trace_id)
 	w.dlog.think(n.id, "disclosure", "Disclosure tier %d (openness %.2f; privacy %.2f, trust %.2f, pressure %.2f)." %
 		[t, openness, trait_of(n, "privacy"), n.trust, n.pressure], {"tier": t})

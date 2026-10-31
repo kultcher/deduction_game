@@ -274,6 +274,10 @@ static func end_of_day_trust(w) -> void:
 			var bonus = Tuning.Trust.SECRET_KEPT_BASE + Tuning.Trust.SECRET_KEPT_PRIVACY_SCALE * trait_of(n, "privacy")
 			if n.secret_spread_by_npc:
 				bonus *= Tuning.Trust.SECRET_KEPT_RUMOR_MULT
+			# Gratitude fades as keeping it becomes the expected thing (Oct 30): full the first
+			# night, then shrinking each night after.
+			bonus *= pow(Tuning.Trust.SECRET_KEPT_DECAY, n.secret_kept_nights)
+			n.secret_kept_nights += 1
 			set_trust(w, n, n.trust + bonus, "the Demonologist kept my secret today%s" % (" (though others are talking)" if n.secret_spread_by_npc else ""))
 
 # ---------------------------------------------------------------- shadow self

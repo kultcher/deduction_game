@@ -112,6 +112,7 @@ var told_readings = 0        # how many info_log entries have been told to the p
 var revealed_traits = {}     # trait -> tier string
 var secret_known = false     # the player learned their secret from them
 var secret_spread = false    # the player used it against them
+var secret_kept_nights = 0   # nights the player has kept it so far (the rapport bonus shrinks)
 
 ## Social knowledge (stage 2). Every item records where it came from.
 var hearsay: Array = []      # facts heard from other NPCs: {kind, about, from (original source), via, day, ...}

@@ -222,16 +222,16 @@ func private_gift_terms():
 			n.martyr_target = g.w.npcs.back().id
 			for day in [1, 2, 3]:
 				g.w.day = day
-				var probe = RandomNumberGenerator.new()
-				probe.state = g.w.rng.state
-				var jitter = probe.randf_range(-0.2, 0.2)
+				# Since Oct 30 the jitter is a fixed daily sample (+-OPENNESS_JITTER), no RNG draw.
+				var rng_before = g.w.rng.state
+				var jitter: float = (preload("res://sim/mind_dialogue.gd")._day_roll(n.id, day, 0x0BE7) - 0.5) * 2.0 * preload("res://sim/tuning.gd").Dialogue.OPENNESS_JITTER
 				var openness = 0.5 + 0.5 * 1.2 + 0.1 * (day - 1) - 0.72 + jitter
 				if C.ROLES[role].kind != "info": openness -= 0.5
 				if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"] and day <= 2: openness -= 0.4
 				elif role in C.START_ROLES: openness += 0.3
 				var expected = 4 if openness > 0.75 else (3 if openness > 0.45 else (2 if openness > 0.15 else 1))
 				check(Mind._target_tier(g.w, n) == expected, "private tier applies only the approved gift terms under public-roll conditions")
-				check(g.w.rng.state == probe.state, "gift-type tuning retains exactly one jitter draw")
+				check(g.w.rng.state == rng_before, "gift-type tuning draws no RNG for the jitter")
 
 func totem_signpost():
 	var g = fresh()

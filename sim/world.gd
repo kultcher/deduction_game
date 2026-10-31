@@ -845,6 +845,15 @@ func vote_pending(player_yes: bool) -> Dictionary:
 	public_event("vote", [nid], "town", {"nominee": nid, "nominator": nm["by"], "yes": yes.duplicate(), "no": no.duplicate(),
 		"player_yes": player_yes, "count": count, "threshold": thr, "outcome": outcome})
 	dlog.add("vote_tally", "world", nid, res)
+	# The nominee remembers who voted to hang them, and who stood by them (Oct 30).
+	var nominee_npc = by_id[nid]
+	if nominee_npc.alive:
+		for v in yes:
+			if v != nid and by_id.has(v):
+				nominee_npc.npc_trust[v] = clampf(nominee_npc.npc_trust.get(v, 0.5) - Tuning.Social.TRUST_VOTED_AGAINST, 0.0, 1.0)
+		for v in no:
+			if v != nid and by_id.has(v):
+				nominee_npc.npc_trust[v] = clampf(nominee_npc.npc_trust.get(v, 0.5) + Tuning.Social.TRUST_VOTED_FOR, 0.0, 1.0)
 	if player_yes:
 		var t = by_id[nid]
 		if nm["by"] != "player":
@@ -980,6 +989,10 @@ func _grief(ex, res: Dictionary) -> void:
 	for f in living_good():
 		var t: float = f.npc_trust.get(ex.id, 0.5)
 		if t < 0.62:
+			continue
+		# A friend who had come to believe they were evil doesn't mourn the hanging (Oct 30):
+		# a minion the town rightly hanged, if the friend saw it too.
+		if Mind.susp(f, ex.id) >= Tuning.Trust.GRIEF_BELIEVED_EVIL:
 			continue
 		var strength = (t - 0.5) * 2.0
 		var nom: String = res.get("by", "")

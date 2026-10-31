@@ -92,3 +92,23 @@ Not changing:
   - `test_workshop_clerk_archivist_seer`: the player factor reads credibility;
   - `test_prior_mapping`: uneven starting suspicion now set explicitly;
   - `test_workshop_profile_traces`: the deflection pick set explicitly, since bonds no longer seed suspicion.
+
+## Phase 2 as built (Oct 30, branch `claude/social-phase2`)
+
+- **Disclosure jitter** is ±0.1, a fixed daily sample per NPC (`_day_roll(id, day, 0x0BE7)`) with no world RNG draw. This changes trajectories by removing one draw per ask.
+- **Secret-keeping rapport** is the full bonus the first night, then × `SECRET_KEPT_DECAY` (0.5) each night after (`n.secret_kept_nights`).
+- **Gossip and the teller** (`Social.gossip_bond`):
+  - +0.02 when the listener's suspicion of the teller is below 0.4;
+  - −0.02 when the share runs down someone the listener trusts at 0.65 or more (an opinion, a case, a sighting, or an implicating reading);
+  - otherwise 0.
+- **NPC-to-NPC trust reacts to meetings:**
+  - a surviving nominee loses 0.1 trust in each yes voter and gains 0.03 in each no voter;
+  - the target of a public accusation loses 0.1 trust in the accuser.
+
+  "Caught lying about me" isn't built: there's no clean hook for it yet.
+- **Grief** is skipped when the mourner's own suspicion of the hanged friend is 0.6 or more. This replaces "publicly shown evil", because a Gravedigger reading comes only after the grief.
+- **Confidence is directional** (`Jury._directional`).
+  - The `1.4 − 0.8 × Confidence` factor applies only to moves against the listener's lean. Every other move gets 1.0.
+  - The lean is their suspicion at the end of the previous day, centred on their own average, with a dead zone of `LEAN_MIN` 0.05. It's frozen per day in `workshop_state.committed_lean` (`Game._resolve_night`), so refreshes stay idempotent.
+  - On Day 1 there's no lean, so no resistance.
+- **Tests:** `tools/test_social_phase2.gd` (new). Updated to the new rules: `test_backlog_batch3` (the jitter is now a daily sample) and `test_workshop_consequences` (the step is now source trust plus directional Confidence).

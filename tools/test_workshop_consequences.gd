@@ -98,7 +98,9 @@ func _run() -> void:
 	check(_claim(complete, suspicious).note.contains("circumstantial") and complete.effects.constance.applied > first.effects.constance.applied, "contradiction through a suspiciousness claim strengthens Constance's case")
 	check(complete.effects.hollis.applied > 0 and complete.shared_assessment.compatible == 2, "converging alibi branch preserves Hollis's effect and both Constance/Nisha worlds")
 	var ce: Dictionary = complete.effects.constance
-	check(is_equal_approx(ce.requested, maxf(absf(ce.alignment_signal), ce.pattern_signal) * (0.5 + listener.trust) * (1.4 - 0.8 * listener.confidence)), "overlapping contradiction/pattern routes use one envelope, not two added awards")
+	# Since Oct 30 the step scales by trust in the sources, and Confidence only resists moves
+	# against a standing hunch (this fixture listener has none, so it doesn't apply).
+	check(is_equal_approx(ce.requested, maxf(absf(ce.alignment_signal), ce.pattern_signal) * (0.5 + ce.source_trust)), "overlapping contradiction/pattern routes use one envelope, not two added awards")
 	# Every person must be assessed from the same source suspicion / prior snapshot.
 	var reordered = view.duplicate(true)
 	reordered.people.reverse()
