@@ -132,7 +132,10 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 	if counter:
 		on_question(w, n)
 		var rival = w.by_id[card["source"]]
-		lines.append(say(n, "[PH] I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name]))
+		var accusation: Dictionary = say(n, "[PH] I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name])
+		accusation["expression"] = "harsh"
+		accusation["expression_strength"] = 2
+		lines.append(accusation)
 		if not n.is_evil():
 			var receipt: Dictionary = WorkshopLedger.Evidence.normalize_card(card)
 			ledger_hear(w, n, "own_role:" + fact_id(card), [[rival.id, 0.3, true, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift"]], 1.0,
@@ -1001,6 +1004,16 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	var opinion_cue: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
 	opinion_reply["text"] = Dialogue.contextualize(n.id, opinion_reply["text"], opinion_cue, t.name)
 	opinion_reply["statement"] = canonical_opinion
+	# Assign only to specific voiced deliveries, never to the private relationship
+	# or suspicion score that led to the publicly spoken opinion.
+	var opinion_expressions = {
+		"opinion_trust": {"agnes": "warm", "edda": "warm", "fenwick": "warm", "isolde": "warm", "jory": "warm", "merrin": "warm"},
+		"opinion_accuse": {"constance": "harsh", "edda": "harsh", "fenwick": "harsh", "greta": "harsh", "jory": "harsh", "lian": "harsh", "merrin": "harsh", "dorian": "concerned", "isolde": "concerned"},
+	}
+	var expressed: String = opinion_expressions.get(opinion_key, {}).get(n.id, "")
+	if expressed != "" and Dialogue.has_voice(n.id):
+		opinion_reply["expression"] = expressed
+		opinion_reply["expression_strength"] = 1 if expressed == "warm" else 2
 	if close:
 		opinion_reply["relationship"] = {"kind": "friend", "people": [n.id, t.id]}
 	lines.append(opinion_reply)

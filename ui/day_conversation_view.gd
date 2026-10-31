@@ -23,12 +23,27 @@ const LARGE = {
 	"nisha": preload("res://assets/art/portraits_vn_cast/nisha-vn-v1.png"),
 	"odette": preload("res://assets/art/portraits_vn_cast/odette-vn-v1.png"),
 }
+const EXPRESSIONS = ["neutral", "warm", "harsh", "concerned", "sorrowful"]
+const CONSTANCE_EXPRESSIONS = {
+	"neutral": "res://assets/art/portraits_vn_poc/constance-vn-poc-v1.png",
+	"warm": "res://assets/art/portrait_expression_poc/constance-warm-v1.png",
+	"harsh": "res://assets/art/portrait_expression_poc/constance-harsh-v2.png",
+	"concerned": "res://assets/art/portrait_expression_poc/constance-worried-v1.png",
+	"sorrowful": "res://assets/art/portrait_expression_poc/constance-sorrowful-v1.png",
+}
+const FADE_SECONDS = 0.15
+const REVEAL_PER_SECOND = 90.0
 
 var formatter = Formatter.new()
 var renderer = Renderer.new()
 var portrait: TextureRect
+var previous_portrait: TextureRect
+var portrait_tween: Tween
 var speaker: Label
 var speech: RichTextLabel
+var reveal_hint: Label
+var reveal_position = 0.0
+var reveal_total = 0
 var controls: HFlowContainer
 var person_id = ""
 var lines: Array = []
@@ -64,6 +79,16 @@ void fragment() {
 	portrait.anchor_bottom = 1.0
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(portrait)
+	previous_portrait = TextureRect.new()
+	previous_portrait.expand_mode = portrait.expand_mode
+	previous_portrait.stretch_mode = portrait.stretch_mode
+	previous_portrait.anchor_left = portrait.anchor_left
+	previous_portrait.anchor_top = portrait.anchor_top
+	previous_portrait.anchor_right = portrait.anchor_right
+	previous_portrait.anchor_bottom = portrait.anchor_bottom
+	previous_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	previous_portrait.hide()
+	add_child(previous_portrait)
 	var bubble = PanelContainer.new()
 	bubble.anchor_left = 0.47
 	bubble.anchor_top = 0.12
@@ -76,6 +101,7 @@ void fragment() {
 	style.set_corner_radius_all(10)
 	style.set_content_margin_all(14)
 	bubble.add_theme_stylebox_override("panel", style)
+	bubble.gui_input.connect(_on_dialogue_input)
 	add_child(bubble)
 	var content = VBoxContainer.new()
 	content.add_theme_constant_override("separation", 8)
@@ -87,7 +113,14 @@ void fragment() {
 	speech.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	speech.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	speech.scroll_active = true
+	speech.gui_input.connect(_on_dialogue_input)
 	content.add_child(speech)
+	reveal_hint = Label.new()
+	reveal_hint.text = "Click dialogue to show all"
+	reveal_hint.add_theme_font_size_override("font_size", 14)
+	reveal_hint.add_theme_color_override("font_color", Color("795b42"))
+	reveal_hint.mouse_filter = Control.MOUSE_FILTER_PASS
+	content.add_child(reveal_hint)
 	var control_scroll = ScrollContainer.new()
 	control_scroll.anchor_left = 0.47
 	control_scroll.anchor_top = 0.71
@@ -104,18 +137,60 @@ void fragment() {
 func begin(id: String, name: String) -> void:
 	person_id = id
 	lines.clear()
-	portrait.texture = LARGE.get(id, UITheme.tex("art/portraits/" + id))
+	_stop_portrait_fade()
+	portrait.texture = _expression_texture(id, "neutral")
 	speaker.text = name
 	speaker.add_theme_color_override("font_color", UITheme.ink_of(C.npc_color(id)))
 	_render()
 
+func _expression_texture(id: String, expression: String) -> Texture2D:
+	var fallback: Texture2D = LARGE.get(id, UITheme.tex("art/portraits/" + id))
+	if expression not in EXPRESSIONS:
+		expression = "neutral"
+	var path: String = CONSTANCE_EXPRESSIONS.get(expression, "") if id == "constance" else "res://assets/art/cast_expressions/%s/%s-v1.png" % [id, expression]
+	if ResourceLoader.exists(path):
+		return load(path)
+	if expression != "neutral":
+		return _expression_texture(id, "neutral")
+	return fallback
+
+## Presentation only: callers supply a public expression cue, not hidden game state.
+func set_expression(expression: String) -> void:
+	var texture = _expression_texture(person_id, expression)
+	if portrait.texture == texture:
+		return
+	_stop_portrait_fade()
+	previous_portrait.texture = portrait.texture
+	portrait.texture = texture
+	if not is_visible_in_tree() or previous_portrait.texture == null:
+		return
+	previous_portrait.modulate.a = 1.0
+	previous_portrait.show()
+	portrait_tween = create_tween()
+	portrait_tween.tween_property(previous_portrait, "modulate:a", 0.0, FADE_SECONDS)
+	portrait_tween.tween_callback(previous_portrait.hide)
+
+func _stop_portrait_fade() -> void:
+	if portrait_tween != null and portrait_tween.is_valid():
+		portrait_tween.kill()
+	if previous_portrait != null:
+		previous_portrait.hide()
+
 func consume(events: Array) -> void:
 	var spoken: Array = []
+	var expression = "neutral"
+	var strength = 0
 	for event in events:
 		if event.get("k") == "speech" and event.get("speaker") == person_id:
 			spoken.append(str(event.get("text", "")))
+			var cue: String = event.get("expression", "")
+			var cue_strength = int(event.get("expression_strength", 1))
+			if cue in EXPRESSIONS and cue != "neutral" and cue_strength > 0 and cue_strength >= strength:
+				expression = cue
+				strength = cue_strength
 	if not spoken.is_empty():
 		lines = spoken
+		set_expression(expression)
 		_render()
 
 func _render() -> void:
@@ -123,3 +198,26 @@ func _render() -> void:
 	var text = "\n\n".join(PackedStringArray(lines)) if not lines.is_empty() else "Choose a question to begin."
 	renderer.append_to(speech, formatter.format_text(text, {
 		"surface": "paper", "speaker_id": person_id, "font_size": 20, "icon_size": 20}))
+	reveal_total = speech.get_total_character_count()
+	reveal_position = 0.0
+	if lines.is_empty():
+		reveal_all()
+	else:
+		speech.visible_characters = 0
+		reveal_hint.visible = reveal_total > 0
+
+func _process(delta: float) -> void:
+	if is_visible_in_tree() and speech != null and speech.visible_characters >= 0 and speech.visible_characters < reveal_total:
+		reveal_position = minf(float(reveal_total), reveal_position + delta * REVEAL_PER_SECOND)
+		speech.visible_characters = int(reveal_position)
+		if speech.visible_characters >= reveal_total:
+			reveal_hint.hide()
+
+func reveal_all() -> void:
+	reveal_position = float(reveal_total)
+	speech.visible_characters = -1
+	reveal_hint.hide()
+
+func _on_dialogue_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		reveal_all()
