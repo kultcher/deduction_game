@@ -25,6 +25,7 @@ func _init() -> void:
 	var shader = Shader.new()
 	shader.code = """shader_type canvas_item;
 uniform vec4 crop = vec4(0.0, 0.0, 1.0, 1.0);
+uniform float desaturate : hint_range(0.0, 1.0) = 0.0;
 varying vec4 tint;
 void vertex() {
 	tint = COLOR;
@@ -36,7 +37,9 @@ void fragment() {
 	if (source_uv.x < 0.0 || source_uv.y < 0.0 || source_uv.x > 1.0 || source_uv.y > 1.0) {
 		face.a = 0.0;
 	}
-	COLOR = tint * vec4(face.rgb, face.a * circle);
+	float luma = dot(face.rgb, vec3(0.299, 0.587, 0.114));
+	vec3 rgb = mix(face.rgb, vec3(luma), desaturate);
+	COLOR = tint * vec4(rgb, face.a * circle);
 }"""
 	var mat = ShaderMaterial.new()
 	mat.shader = shader
@@ -72,7 +75,25 @@ func _layout() -> void:
 	ring.size = size
 	queue_redraw()
 
+var _grayscale: float = 0.0
+
+func set_grayscale(amount: float) -> void:
+	var clamped: float = clampf(amount, 0.0, 1.0)
+	if is_equal_approx(_grayscale, clamped):
+		return
+	_grayscale = clamped
+	if photo != null and photo.material is ShaderMaterial:
+		photo.material.set_shader_parameter("desaturate", _grayscale)
+	queue_redraw()
+
+func get_grayscale() -> float:
+	return _grayscale
+
 func _draw() -> void:
-	draw_circle(size / 2, minf(size.x, size.y) / 2, C.npc_color(_id).darkened(0.35))
+	var base_col: Color = C.npc_color(_id).darkened(0.35)
+	if _grayscale > 0.0:
+		var g_lum: float = base_col.r * 0.299 + base_col.g * 0.587 + base_col.b * 0.114
+		base_col = base_col.lerp(Color(g_lum, g_lum, g_lum, base_col.a), _grayscale)
+	draw_circle(size / 2, minf(size.x, size.y) / 2, base_col)
 	if ring.texture == null:
 		draw_arc(size / 2, minf(size.x, size.y) / 2 - 1, 0, TAU, 48, UITheme.color("border"), 2)

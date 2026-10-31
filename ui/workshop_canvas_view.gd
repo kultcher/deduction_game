@@ -12,6 +12,7 @@ const CanvasSkin = preload("res://ui/theme.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
+const TraceSolver = preload("res://workshop/trace_solver.gd")
 var model
 var zoom = 0.85
 var pan = Vector2(50, 10)
@@ -109,6 +110,8 @@ func world_rect(id: String) -> Rect2:
 		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, profile_layout(id).h))
 	if model.nodes[id].kind == "circumstantial":
 		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, circumstantial_layout(id).h))
+	if model.nodes[id].kind == "trace_chain":
+		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, trace_chain_layout(id).h))
 	if model.nodes[id].kind in ["evidence", "modifier"] and not _evidence_card(id).is_empty():
 		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, evidence_layout(id).h))
 	var lines = 0
@@ -180,6 +183,9 @@ func _draw_card(id: String, rect: Rect2) -> void:
 		return
 	if node.kind == "circumstantial":
 		_draw_circumstantial(id, rect)
+		return
+	if node.kind == "trace_chain":
+		_draw_trace_chain(id, rect)
 		return
 	if node.kind in ["evidence", "modifier"] and not _evidence_card(id).is_empty():
 		_draw_evidence(id, rect)
@@ -719,6 +725,72 @@ func _draw_circumstantial(id: String, rect: Rect2) -> void:
 	draw_string(font, answer.position + Vector2(14, 20) * zoom, "Details", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
 	var link = _link_rect(rect)
 	draw_style_box(CanvasSkin.flat(Color("e6f0ee"), Color("5b7f79"), 1, 3, 0), link)
+	draw_string(font, link.position + Vector2(19, 20) * zoom, "Link", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
+
+func trace_chain_layout(id: String) -> Dictionary:
+	var node: Dictionary = model.nodes[id]
+	var sel_map: Dictionary = node.get("selected_by_night", {})
+	var ev: Dictionary = TraceSolver.evaluate_selection(model.view, sel_map)
+	var lines: Array = []
+	var div_nights: Dictionary = {}
+	for d in ev.matrix.get("scion_dividers", []):
+		div_nights[int(d.after_night)] = d
+	var sel_traces: Array = ev.get("selected_traces", [])
+	for i in range(sel_traces.size()):
+		var tr: Dictionary = sel_traces[i]
+		var two_tag: String = " [1/2]" if int(tr.scene_trace_count) >= 2 else ""
+		lines.append("N%d%s: %s" % [int(tr.night), two_tag, " · ".join(PackedStringArray(tr.short_locs))])
+		if i < sel_traces.size() - 1 and div_nights.has(int(tr.night)):
+			var dv: Dictionary = div_nights[int(tr.night)]
+			lines.append("  [Day %d hanging: %s]" % [int(dv.exec_day), str(dv.executed_name)])
+	var fit_names: Array = []
+	for pid in ev.get("matches_ids", []).slice(0, 4):
+		fit_names.append(Solver.person_name(model.view, pid))
+	var unk_count: int = ev.get("unknown_ids", []).size()
+	lines.append("Fits: " + (", ".join(PackedStringArray(fit_names)) if not fit_names.is_empty() else "none confirmed") + (" · %d ?" % unk_count if unk_count > 0 else ""))
+	var wrapped: Array = []
+	for row in lines:
+		for ln in _lines(row, WIDTH - 32, 13).slice(0, 2):
+			wrapped.append(ln)
+	var y: float = 52.0 + wrapped.size() * 17.0 + 6.0
+	var els: Array = []
+	var latest_bundle: Dictionary = TraceSolver.bundle_for_workshop(model.view, sel_map)
+	if latest_bundle.receipt_ids != node.get("receipt_ids", []):
+		els.append({"t": "chip", "rect": Rect2(14, y, WIDTH - 28, 24), "text": "+ Sync newly learned haunts", "on": false, "disabled": false, "field": "sync_trace_chain",
+			"tip": "New haunt receipts were learned after committing this Trace Chain. Click to bundle them."})
+		y += 30.0
+	return {"h": y + 44.0, "lines": wrapped, "els": els, "fit_count": ev.get("matches_ids", []).size(), "unk_count": unk_count}
+
+func _draw_trace_chain(id: String, rect: Rect2) -> void:
+	var lay: Dictionary = trace_chain_layout(id)
+	var paper = Color("e8dec8")
+	var header = Color("a68456")
+	var ink = Color("2b241c")
+	draw_style_box(CanvasSkin.flat(paper, Color("f7d988") if id == model.selected or id == linking else Color("6b563a"), 3 if id == model.selected else 1, 6, 0), rect)
+	var head = Rect2(rect.position, Vector2(rect.size.x, 40 * zoom))
+	draw_rect(head, header)
+	draw_rect(Rect2(rect.position + Vector2(0, 37 * zoom), Vector2(rect.size.x, 3.0 * zoom)), Color("6e5230"))
+	var chip_text: String = "%d fit · %d ?" % [int(lay.fit_count), int(lay.unk_count)]
+	var chip_col: Color = Color("497552") if int(lay.fit_count) > 0 else Color("8a6a3b")
+	var cw: float = font.get_string_size(chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14.0
+	draw_string(font, rect.position + Vector2(12, 25) * zoom, model.title(id), HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - (cw + 22) * zoom, _fs(15), Color("fbf6ea"))
+	var chip = Rect2(rect.position + Vector2(WIDTH - cw - 8, 9) * zoom, Vector2(cw, 22) * zoom)
+	draw_style_box(CanvasSkin.flat(chip_col, chip_col.darkened(0.25), 1, 9, 0), chip)
+	draw_string(font, chip.position + Vector2(7, 16) * zoom, chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(12), Color("fbf6ea"))
+	tips.append({"rect": chip, "text": "Bundled physical trace chain + discovered workplace/haunt receipts. Link into a Premise (and link night sightings here or to the Premise on 2-trace scenes)."})
+	var y: float = 52.0
+	for ln in lay.lines:
+		draw_string(font, rect.position + Vector2(16, y + 11) * zoom, ln, HORIZONTAL_ALIGNMENT_LEFT, (WIDTH - 32) * zoom, _fs(13), ink)
+		y += 17.0
+	fields[id] = []
+	for el in lay.els:
+		_draw_element(id, rect.position, el)
+	var answer = _answer_rect(rect)
+	answer_buttons[id] = answer
+	draw_style_box(CanvasSkin.flat(Color("f3ead7"), Color("8c7250"), 1, 3, 0), answer)
+	draw_string(font, answer.position + Vector2(14, 20) * zoom, "Details", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
+	var link = _link_rect(rect)
+	draw_style_box(CanvasSkin.flat(Color("f3ead7"), Color("8c7250"), 1, 3, 0), link)
 	draw_string(font, link.position + Vector2(19, 20) * zoom, "Link", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
 
 func _draw_evidence(id: String, rect: Rect2) -> void:

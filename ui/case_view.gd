@@ -21,6 +21,7 @@ const DeductionTray = preload("res://ui/deduction_tray.gd")
 const ProfilePanel = preload("res://ui/profile_panel.gd")
 const BoardPanel = preload("res://ui/board_panel.gd")
 const WorkshopDrawer = preload("res://ui/workshop_drawer.gd")
+const TraceSolverPanel = preload("res://ui/trace_solver_panel.gd")
 
 var g
 var mono: Font
@@ -57,6 +58,7 @@ var conf_opt: OptionButton:
 var hidden_check: CheckBox
 var staged: Array = []        # board cards currently in the Case Workshop (marked on the board)
 var workshop                  # ui/workshop_drawer.gd
+var trace_solver              # ui/trace_solver_panel.gd
 var workshop_execute: Callable  # runs a workshop command through the main screen
 var canvas: Control
 var panels: Dictionary = {}
@@ -201,7 +203,7 @@ func build(font: Font) -> void:
 	dock.add_theme_constant_override("h_separation", 8)
 	dock.add_theme_constant_override("v_separation", 4)
 	root.add_child(dock)
-	for entry in [["cards", "Card List"], ["profile", "Profile"]]:
+	for entry in [["cards", "Card List"], ["profile", "Profile"], ["traces", "Trace Solver"]]:
 		var key: String = entry[0]
 		var toggle = _btn(dock, entry[1], func(): set_panel_open(key, not panels[key].visible))
 		toggle.toggle_mode = true
@@ -278,6 +280,21 @@ func build(font: Font) -> void:
 		state.select_card(n)
 		board.fit_selection())
 	profile_panel.content.add_child(profile)
+
+	var traces_panel = _make_panel("traces", "Trace Solver", Vector2(680, 520))
+	trace_solver = TraceSolverPanel.new()
+	trace_solver.person_clicked.connect(func(pid: String):
+		state.select_person(pid)
+		show_profile(pid, true))
+	trace_solver.commit_requested.connect(func(sel_map: Dictionary):
+		open_workshop_trace_chain(sel_map))
+	traces_panel.content.add_child(trace_solver)
+	workshop.trace_solver_requested.connect(func(sel_map: Dictionary):
+		if not sel_map.is_empty():
+			trace_solver.set_selection(sel_map)
+		else:
+			trace_solver.refresh()
+		set_panel_open("traces", true))
 	_queue_panel_layout()
 
 func _make_panel(key: String, title: String, initial_size: Vector2):
@@ -369,6 +386,8 @@ func _layout_panels() -> void:
 	if not _panels_placed:
 		panels["cards"].move_to(Vector2(8, 8))
 		panels["profile"].move_to(Vector2(canvas.size.x - panels["profile"].size.x - 8, 8))
+		if panels.has("traces"):
+			panels["traces"].move_to(Vector2(maxf(16.0, (canvas.size.x - panels["traces"].size.x) * 0.5), 24.0))
 
 func _heading(t: String) -> Label:
 	var l = Label.new()
@@ -429,6 +448,7 @@ func set_game(game) -> void:
 		lp.add_check_item("    " + C.loc_name(l))
 		lp.set_item_metadata(lp.item_count - 1, l)
 	profile.setup(g, state)
+	trace_solver.set_game(g)
 	workshop.collapse()
 	workshop.set_game(g)
 	_fill_kinds()
@@ -447,6 +467,8 @@ func refresh() -> void:
 	theory_label.text = _theory_text()
 	_refresh_cards()
 	_refresh_profile()
+	if trace_solver != null:
+		trace_solver.refresh()
 	if visible:
 		workshop.refresh()
 	_refresh_staged()
@@ -643,6 +665,15 @@ func open_workshop_profile(person_id: String, facet: String = "home_work") -> vo
 	_refresh_staged()
 	if g != null and g.w.by_id.has(person_id):
 		status_label.text = "%s's Profile is in the Case Workshop." % g.w.by_id[person_id].name
+
+func open_workshop_trace_chain(selected_by_night: Dictionary) -> String:
+	visible = true
+	workshop.open(0.5)
+	var node_id: String = workshop.add_trace_chain(selected_by_night)
+	_refresh_staged()
+	if node_id != "":
+		status_label.text = "Committed Trace Chain (%d night%s) to the Case Workshop." % [selected_by_night.size(), "" if selected_by_night.size() == 1 else "s"]
+	return node_id
 
 func _refresh_staged() -> void:
 	if workshop == null or workshop.editor == null or g == null:

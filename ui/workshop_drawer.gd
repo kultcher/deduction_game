@@ -5,6 +5,7 @@ extends Control
 
 signal filed
 signal changed
+signal trace_solver_requested(selected_by_night: Dictionary)
 
 const UITheme = preload("res://ui/theme.gd")
 const Editor = preload("res://ui/live_case_workshop.gd")
@@ -66,6 +67,7 @@ func set_game(game) -> void:
 		editor.filed.connect(func(): filed.emit())
 		editor.cards_dropped.connect(_drop_cards)
 		editor.contents_changed.connect(func(): changed.emit())
+		editor.trace_solver_requested.connect(func(sel): trace_solver_requested.emit(sel))
 		sheet.add_child(editor)
 		sheet.move_child(editor, 0)
 	else:
@@ -134,6 +136,17 @@ func add_circumstantial_hub() -> void:
 	handle.queue_redraw()
 	if is_collapsed():
 		_pulse()
+
+func add_trace_chain(selected_by_night: Dictionary) -> String:
+	if g == null or editor == null:
+		return ""
+	var id: String = editor.add_trace_chain(selected_by_night)
+	if id != "":
+		_flash = 1.0
+		handle.queue_redraw()
+		if is_collapsed():
+			_pulse()
+	return id
 
 func _pulse() -> void:
 	var tween = create_tween()

@@ -3,6 +3,7 @@ extends RefCounted
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const C = preload("res://sim/content.gd")
+const TraceSolver = preload("res://workshop/trace_solver.gd")
 const PROFILE_FACETS = ["home_work", "haunts", "personality", "bonds"]
 const PROFILE_FACET_NAMES = {"home_work": "Home & Work", "haunts": "Haunts", "personality": "Personality", "bonds": "Bonds"}
 var view: Dictionary
@@ -175,6 +176,64 @@ func remove_circumstantial(id: String) -> void:
 		selected = premises[0] if not premises.is_empty() else (nodes.keys()[0] if not nodes.is_empty() else "")
 	version += 1
 
+func add_trace_chain(selected_by_night: Dictionary, at: Vector2 = Vector2(240, 320)) -> String:
+	var bundle: Dictionary = TraceSolver.bundle_for_workshop(view, selected_by_night)
+	if bundle.trace_ids.is_empty():
+		return ""
+	for key in nodes:
+		var existing: Dictionary = nodes[key]
+		if existing.kind == "trace_chain" and existing.get("selected_by_night", {}) == bundle.selected_by_night:
+			existing["trace_ids"] = bundle.trace_ids
+			existing["sibling_trace_ids"] = bundle.sibling_trace_ids
+			existing["death_ids"] = bundle.death_ids
+			existing["receipt_ids"] = bundle.receipt_ids
+			selected = key
+			version += 1
+			return key
+	serial += 1
+	var id = "tc:%d" % serial
+	while nodes.has(id):
+		serial += 1
+		id = "tc:%d" % serial
+	nodes[id] = {
+		"id": id,
+		"kind": "trace_chain",
+		"selected_by_night": bundle.selected_by_night,
+		"trace_ids": bundle.trace_ids,
+		"sibling_trace_ids": bundle.sibling_trace_ids,
+		"death_ids": bundle.death_ids,
+		"receipt_ids": bundle.receipt_ids,
+		"at": [at.x, at.y],
+	}
+	selected = id
+	version += 1
+	return id
+
+func sync_trace_chain(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "trace_chain":
+		return
+	var bundle: Dictionary = TraceSolver.bundle_for_workshop(view, nodes[id].get("selected_by_night", {}))
+	if not bundle.trace_ids.is_empty():
+		nodes[id]["selected_by_night"] = bundle.selected_by_night
+		nodes[id]["trace_ids"] = bundle.trace_ids
+		nodes[id]["sibling_trace_ids"] = bundle.sibling_trace_ids
+		nodes[id]["death_ids"] = bundle.death_ids
+		nodes[id]["receipt_ids"] = bundle.receipt_ids
+		version += 1
+
+func remove_trace_chain(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "trace_chain":
+		return
+	links = links.filter(func(edge): return edge.from != id and edge.to != id)
+	for node in nodes.values():
+		if node.kind in ["contradiction", "modifier"]:
+			node.prior_links = node.get("prior_links", []).filter(func(edge): return edge.from != id and edge.to != id)
+	nodes.erase(id)
+	if selected == id or not nodes.has(selected):
+		var premises: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise")
+		selected = premises[0] if not premises.is_empty() else (nodes.keys()[0] if not nodes.is_empty() else "")
+	version += 1
+
 func hub_premise_targets(id: String, seen: Array = []) -> Array:
 	if id in seen or not nodes.has(id):
 		return []
@@ -220,7 +279,7 @@ func connect_cards(from: String, to: String) -> String:
 		var swap = from
 		from = to
 		to = swap
-	elif nodes[from].kind == "circumstantial" and nodes[to].kind in ["evidence", "profile_info", "contradiction", "modifier"]:
+	elif nodes[from].kind == "circumstantial" and nodes[to].kind in ["evidence", "profile_info", "trace_chain", "contradiction", "modifier"]:
 		var swap_c = from
 		from = to
 		to = swap_c
@@ -237,7 +296,7 @@ func connect_cards(from: String, to: String) -> String:
 	if links.any(func(edge): return edge.from == from and edge.to == to):
 		return "These cards are already linked."
 	var relation = "supports"
-	if a.kind in ["evidence", "profile_info"] and b.kind in ["evidence", "profile_info"]:
+	if a.kind in ["evidence", "profile_info", "trace_chain"] and b.kind in ["evidence", "profile_info", "trace_chain"]:
 		relation = "read_together"
 	if _gift_link(a, b):
 		relation = "explains_outing"
@@ -568,6 +627,11 @@ func _evidence(ids: Array) -> Array:
 			for rid in nodes[id].get("receipt_ids", []):
 				if rid not in result:
 					result.append(rid)
+		elif nodes[id].kind == "trace_chain":
+			for field in ["trace_ids", "sibling_trace_ids", "death_ids", "receipt_ids"]:
+				for tid in nodes[id].get(field, []):
+					if tid not in result:
+						result.append(tid)
 	result.sort()
 	return result
 
@@ -596,6 +660,9 @@ func title(id: String) -> String:
 		return "%s's Profile" % Solver.person_name(view, node.get("person", ""))
 	if node.kind == "circumstantial":
 		return "Circumstantial Evidence"
+	if node.kind == "trace_chain":
+		var n_cnt: int = node.get("trace_ids", []).size()
+		return "Trace Chain (%d night%s)" % [n_cnt, "" if n_cnt == 1 else "s"]
 	var card = Solver.card_by_id(view, node.card)
 	if card.has("relay_source"):
 		return "Medium relay · " + (C.role_name(card.role) if card.get("role", "") != "" else card.kind.capitalize())
@@ -644,7 +711,7 @@ func restore(value, session) -> String:
 	var evidence: Array = []
 	for id in candidate.nodes:
 		var n = candidate.nodes[id]
-		if not id is String or not n is Dictionary or n.get("id") != id or n.get("kind") not in ["evidence", "profile_info", "circumstantial", "premise", "contradiction", "modifier"] or not n.get("at") is Array or n.at.size() != 2 or not n.at.all(func(x): return (x is float or x is int) and is_finite(float(x)) and absf(float(x)) <= 100000):
+		if not id is String or not n is Dictionary or n.get("id") != id or n.get("kind") not in ["evidence", "profile_info", "trace_chain", "circumstantial", "premise", "contradiction", "modifier"] or not n.get("at") is Array or n.at.size() != 2 or not n.at.all(func(x): return (x is float or x is int) and is_finite(float(x)) and absf(float(x)) <= 100000):
 			return "Invalid canvas card or position."
 		if n.kind == "evidence":
 			if not n.get("card") is String or n.card in evidence or Solver.card_by_id(view, n.card).is_empty() or not n.get("answers") is Dictionary or not n.get("reasons") is Dictionary or not n.get("citations") is Dictionary:
@@ -675,6 +742,12 @@ func restore(value, session) -> String:
 		elif n.kind == "circumstantial":
 			if n.keys().any(func(k): return k not in ["id", "kind", "at"]):
 				return "Invalid circumstantial hub."
+		elif n.kind == "trace_chain":
+			if not n.get("selected_by_night") is Dictionary or not n.get("trace_ids") is Array or n.trace_ids.is_empty() or not n.get("sibling_trace_ids") is Array or not n.get("death_ids") is Array or not n.get("receipt_ids") is Array:
+				return "Invalid trace chain."
+			for arr_name in ["trace_ids", "sibling_trace_ids", "death_ids", "receipt_ids"]:
+				if not n[arr_name].all(func(cid): return cid is String and not Solver.card_by_id(view, cid).is_empty()):
+					return "Invalid trace chain receipt."
 		elif n.kind == "modifier":
 			if not preload("res://workshop/reading_challenges.gd").valid(view, n.get("card", ""), {"mode": n.get("mode"), "supports": []}):
 				return "Invalid reading modifier."
