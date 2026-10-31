@@ -238,7 +238,27 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			if owner != s:
 				owner.secret_spread_by_npc = true
 	if not public:
-		l.npc_trust[s.id] = clampf(l.npc_trust.get(s.id, 0.5) + 0.02, 0.0, 1.0)
+		l.npc_trust[s.id] = clampf(l.npc_trust.get(s.id, 0.5) + gossip_bond(l, s, item), 0.0, 1.0)
+
+## How a private share changes the listener's trust in the teller (Oct 30): a small gain
+## when the listener believes them (they don't suspect the teller), nothing otherwise, and
+## a small loss when it runs down someone the listener trusts.
+static func gossip_bond(l, s, item: Dictionary) -> float:
+	var about: String = item.get("about", "")
+	var against: bool = item["kind"] in ["opinion", "case", "sighting"] or (item["kind"] == "reading" and _implicates(item))
+	if against and about != "" and about != s.id and l.npc_trust.get(about, 0.5) >= Tuning.Social.GOSSIP_SMEAR_TRUST:
+		return -Tuning.Social.GOSSIP_BOND
+	if Mind.susp(l, s.id) < Tuning.Social.GOSSIP_BELIEVED_BELOW:
+		return Tuning.Social.GOSSIP_BOND
+	return 0.0
+
+## A relayed reading that speaks against someone (a "yes", a pair with an evil role, a
+## positive count) rather than clearing them.
+static func _implicates(item: Dictionary) -> bool:
+	var data = item.get("entry", {}).get("data", {})
+	if not data is Dictionary:
+		return false
+	return data.get("yes", false) or int(data.get("count", 0)) > 0 or (data.has("role") and C.ROLES.get(data.role, {}).get("align", "good") == "evil")
 
 static func _describe(w, s, item: Dictionary) -> String:
 	var src = item.get("from", "")

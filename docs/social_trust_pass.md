@@ -92,3 +92,46 @@ Not changing:
   - `test_workshop_clerk_archivist_seer`: the player factor reads credibility;
   - `test_prior_mapping`: uneven starting suspicion now set explicitly;
   - `test_workshop_profile_traces`: the deflection pick set explicitly, since bonds no longer seed suspicion.
+
+## Phase 2 as built (Oct 30, branch `claude/social-phase2`)
+
+- **Disclosure jitter** is ±0.1, a fixed daily sample per NPC (`_day_roll(id, day, 0x0BE7)`) with no world RNG draw. This changes trajectories by removing one draw per ask.
+- **Secret-keeping rapport** is the full bonus the first night, then × `SECRET_KEPT_DECAY` (0.5) each night after (`n.secret_kept_nights`).
+- **Gossip and the teller** (`Social.gossip_bond`):
+  - +0.02 when the listener's suspicion of the teller is below 0.4;
+  - −0.02 when the share runs down someone the listener trusts at 0.65 or more (an opinion, a case, a sighting, or an implicating reading);
+  - otherwise 0.
+- **NPC-to-NPC trust reacts to meetings:**
+  - a surviving nominee loses 0.1 trust in each yes voter and gains 0.03 in each no voter;
+  - the target of a public accusation loses 0.1 trust in the accuser.
+
+  "Caught lying about me" isn't built: there's no clean hook for it yet.
+- **Grief** is skipped when the mourner's own suspicion of the hanged friend is 0.6 or more. This replaces "publicly shown evil", because a Gravedigger reading comes only after the grief.
+- **Confidence is directional** (`Jury._directional`).
+  - The `1.4 − 0.8 × Confidence` factor applies only to moves against the listener's lean. Every other move gets 1.0.
+  - The lean is their suspicion at the end of the previous day, centred on their own average, with a dead zone of `LEAN_MIN` 0.05. It's frozen per day in `workshop_state.committed_lean` (`Game._resolve_night`), so refreshes stay idempotent.
+  - On Day 1 there's no lean, so no resistance.
+- **Tests:** `tools/test_social_phase2.gd` (new). Updated to the new rules: `test_backlog_batch3` (the jitter is now a daily sample) and `test_workshop_consequences` (the step is now source trust plus directional Confidence).
+
+## Phase 3 as built (Oct 30, branch `claude/warden-credit`, on top of phase 2)
+
+- **When it fires:** `World._warden_credit` runs after a quiet night (night 1 or later, Demon alive) when a good Warden guarded someone.
+  - The Warden's belief = 1 / (1 + the living public Veteran claims other than themselves). They don't know whether their own gift actually worked.
+  - At or above `WARDEN_SAVE_BELIEF_MIN` (0.5), they believe it: `n.warden_saves[night] = {target, belief}`.
+- **The Warden's trust in the protectee** rises by `WARDEN_SAVE_TRUST` (0.1) × belief.
+- **Telling the protectee:** if the Warden trusts them at least `WARDEN_TELL_TRUST` (0.6), `Mind.tell_save` gives them:
+  - the Warden's claim;
+  - the guard statement, as testimony (a `heard:` ledger entry with the guard receipt);
+  - +0.1 × belief trust in the Warden, if they don't suspect the Warden (suspicion below 0.4).
+
+  An evil protectee only learns who the Warden is.
+- **The statement:** guard statements carry `save_claim` and say so ("Nobody died that night: they believe the Demon came for X…"). The Warden's gift answer adds a line about the save.
+- **In the shared model:**
+  - a Warden report with `data.saved` holds only in worlds where the target is good, since the Demon goes for the good;
+  - its reliability is × `WARDEN_SAVE_RELIABILITY` (0.7), because a save is an inference from a quiet night, not something seen;
+  - in the Warden's own view, one save takes the protectee from P(evil) 0.27 to about 0.06.
+- **Not yet built:**
+  - evil Wardens faking saves (an evil-strategy change, to measure separately);
+  - the Warden telling the town at the meeting beyond the usual gift disclosure;
+  - player wards the Warden knows about counting as alternatives.
+- **Tests:** `tools/test_warden_credit.gd`.

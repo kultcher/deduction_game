@@ -92,9 +92,25 @@ static func _collect(g, number, numbers: Array, arguments: Array, issues: Array,
 		for support in card.get("supports", []):
 			_collect(g, support, numbers, arguments, issues, path + [number])
 
+## The listener's hunches as of the end of the previous day (state.committed_lean, set by
+## Game before each night), centred on their average: + leans evil, - leans good.
+## Confidence resists moves against it. Frozen for the day so refreshes stay idempotent
+## (a refresh never depends on its own last output). Day 1: no hunches yet.
+static func _lean(n) -> Dictionary:
+	var committed: Dictionary = n.workshop_state.get("committed_lean", {})
+	var belief = {}
+	var total := 0.0
+	for id in committed:
+		belief[id] = clampf(float(committed[id]), 0.0, 1.5)
+		total += belief[id]
+	var mean: float = total / maxf(belief.size(), 1)
+	for id in belief:
+		belief[id] = belief[id] - mean
+	return belief
+
 static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 	# "trust" is how far the shared model takes the player's word: credibility, not rapport.
-	input["listener"] = {"id": n.id, "name": n.name, "trust": n.credibility, "rapport": n.trust, "own_gift": n.role,
+	input["listener"] = {"id": n.id, "name": n.name, "trust": n.credibility, "rapport": n.trust, "lean": _lean(n), "own_gift": n.role,
 		"suspicion": preload("res://sim/mind.gd").suspicion_view(n), "npc_trust": n.npc_trust.duplicate(true),
 		"confidence": n.traits.get("confidence", 0.5), "insight": n.traits.get("insight", 0.5),
 		"reasoning_mode": n.workshop_state.get("reasoning_mode", "bounded"),
@@ -152,8 +168,11 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 		var residents: Array = input.people.filter(func(p): return p.id == target)
 		if night < 1 or night > now.day or residents.is_empty():
 			continue
-		input.receipts.append({"private": true, "card": {"kind": "sighting", "source": n.id, "subject": [n.id], "guard_claim": target,
-			"block": residents[0].home, "day": night, "phase": C.NIGHT, "text": "My own guard statement."}})
+		var own_guard = {"kind": "sighting", "source": n.id, "subject": [n.id], "guard_claim": target,
+			"block": residents[0].home, "day": night, "phase": C.NIGHT, "text": "My own guard statement."}
+		if n.warden_saves.get(key, {}).get("target", "") == target:
+			own_guard["save_claim"] = true
+		input.receipts.append({"private": true, "card": own_guard})
 	# No role/alignment certainty is manufactured from truth or inferred from a gift.
 	input.issues.append({"code": "listener_history_partial", "fact": "", "detail": "Legacy knowledge lacks complete report/learning times and withdrawal receipts; own and known readings are retained."})
 

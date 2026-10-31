@@ -1,5 +1,6 @@
 ## Restricted live comparison. Pure inputs/outputs; no simulation objects or effects.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Jury = preload("res://workshop/jury.gd")
 const Domain = preload("res://workshop/world_domain.gd")
@@ -342,6 +343,8 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 				card["kind"] = "report"
 				card["role"] = "warden"
 				card["data"] = {"target": e.content.guard_claim}
+				if e.content.get("save_claim", false):
+					card.data["saved"] = true  # the Warden takes the quiet night as their save
 			if e.content.get("dropped", false) and e.source == "evidence" and e.subjects.size() == 1:
 				card["item_drop"] = true
 			return card
@@ -729,12 +732,17 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 			reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.relay_source, card.relay_observed_at.day], 0.0), src.discounted.get(card.relay_source + ":*", 0.0))
 		if card.id in src.get("disowned_reports", []):
 			reliability[card.id] = 0.0
+		elif card.get("role", "") == "warden" and card.get("data", {}).get("saved", false):
+			# A save is the Warden's inference from a quiet night, not something they saw: an
+			# unknown ward, an unclaimed Veteran, or their own failed gift could explain it.
+			reliability[card.id] *= Tuning.Roles.WARDEN_SAVE_RELIABILITY
 		elif card.get("testimony_only", false):
 			reliability[card.id] = C.RELAY_WEIGHT
 	var result = {"id": src.id, "name": src.name, "trust": src.trust, "confidence": src.confidence,
 		"insight": src.insight, "reasoning_mode": src.get("reasoning_mode", "full"),
 		"confidence_mode": src.get("confidence_mode", "scale"), "theories": src.get("theories", {}).duplicate(true),
 		"npc_trust": src.npc_trust.duplicate(true), "suspicion": src.suspicion.duplicate(true),
+		"lean": src.get("lean", {}).duplicate(true),
 		"reading_reliability": reliability, "knowledge": {"self": src.id, "good": good, "own_role": src.own_gift, "public_roles": public_roles,
 			"own_reports": cards.filter(func(c): return c.id in snapshot.private_evidence).map(func(c): return c.id),
 			"attention_reports": cards.filter(func(c): return c.id in snapshot.private_evidence and (c.source == src.id or c.get("relay_source") == src.id)).map(func(c): return c.id), "own_outings": src.get("own_outings", {}).duplicate(true)},

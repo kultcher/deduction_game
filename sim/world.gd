@@ -845,6 +845,15 @@ func vote_pending(player_yes: bool) -> Dictionary:
 	public_event("vote", [nid], "town", {"nominee": nid, "nominator": nm["by"], "yes": yes.duplicate(), "no": no.duplicate(),
 		"player_yes": player_yes, "count": count, "threshold": thr, "outcome": outcome})
 	dlog.add("vote_tally", "world", nid, res)
+	# The nominee remembers who voted to hang them, and who stood by them (Oct 30).
+	var nominee_npc = by_id[nid]
+	if nominee_npc.alive:
+		for v in yes:
+			if v != nid and by_id.has(v):
+				nominee_npc.npc_trust[v] = clampf(nominee_npc.npc_trust.get(v, 0.5) - Tuning.Social.TRUST_VOTED_AGAINST, 0.0, 1.0)
+		for v in no:
+			if v != nid and by_id.has(v):
+				nominee_npc.npc_trust[v] = clampf(nominee_npc.npc_trust.get(v, 0.5) + Tuning.Social.TRUST_VOTED_FOR, 0.0, 1.0)
 	if player_yes:
 		var t = by_id[nid]
 		if nm["by"] != "player":
@@ -981,6 +990,10 @@ func _grief(ex, res: Dictionary) -> void:
 		var t: float = f.npc_trust.get(ex.id, 0.5)
 		if t < 0.62:
 			continue
+		# A friend who had come to believe they were evil doesn't mourn the hanging (Oct 30):
+		# a minion the town rightly hanged, if the friend saw it too.
+		if Mind.susp(f, ex.id) >= Tuning.Trust.GRIEF_BELIEVED_EVIL:
+			continue
 		var strength = (t - 0.5) * 2.0
 		var nom: String = res.get("by", "")
 		if nom != "" and nom != "player" and nom != f.id:
@@ -1095,6 +1108,8 @@ func resolve_night() -> void:
 
 	if day >= 1 and deaths_last_night.is_empty():
 		_quiet_night()
+		if warden_t != "" and demon() != null and demon().alive:
+			_warden_credit(warden, warden_t)
 	if not C.INFO_BEFORE_KILL:
 		for n in living_good():
 			if C.ROLES[n.role]["kind"] == "info":
@@ -1138,6 +1153,27 @@ func _medium_choice(m) -> String:
 
 ## Nobody died: a point in favour of whoever publicly claims to protect (Warden) or to be
 ## unkillable (Veteran). Evil can claim these too, so it's evidence, not proof.
+## A quiet night while a good Warden stood at someone's door (Oct 30, phase 3 of
+## docs/social_trust_pass.md). The Demon kills every night from night 1, so the Warden takes
+## the quiet as their save, discounted by the other explanations they know of (a living
+## public Veteran claim each). They don't know whether their gift actually worked. Above
+## WARDEN_SAVE_BELIEF_MIN they believe it: they warm to the person the Demon went for (the
+## Demon picks the good), and, if they trust that person, tell them.
+func _warden_credit(warden, target: String) -> void:
+	if warden == null or warden.is_evil() or not by_id.has(target) or not by_id[target].alive:
+		return
+	var alternatives: int = public_claims.filter(func(pc): return pc["role"] == "veteran" and pc["who"] != warden.id and by_id[pc["who"]].alive).size()
+	var belief: float = 1.0 / float(1 + alternatives)
+	if belief < Tuning.Roles.WARDEN_SAVE_BELIEF_MIN:
+		return
+	var protectee = by_id[target]
+	warden.warden_saves[str(day)] = {"target": target, "belief": belief}
+	warden.npc_trust[target] = clampf(warden.npc_trust.get(target, 0.5) + Tuning.Roles.WARDEN_SAVE_TRUST * belief, 0.0, 1.0)
+	dlog.add("warden_save_belief", warden.id, target, {"night": day, "belief": belief, "alternatives": alternatives},
+		"%s believes their watch turned the Demon from %s's door." % [warden.name, protectee.name])
+	if warden.npc_trust.get(target, 0.5) >= Tuning.Roles.WARDEN_TELL_TRUST:
+		Mind.tell_save(self, warden, protectee, day, belief)
+
 func _quiet_night() -> void:
 	dlog.add("quiet_night", "world", "", {"night": day}, "Nobody died on night %d." % day)
 	for pc in public_claims:

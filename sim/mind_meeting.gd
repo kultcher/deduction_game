@@ -500,6 +500,8 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	var earlier: Array = w.meeting.get("accusations", []).filter(func(a): return a["target"] == t.id)
 	t.pressure += 0.15 * pow(0.5, earlier.size())
 	w.public_event("accusation", [t.id], n.id)
+	# Being accused in front of the town costs the accuser some of the target's trust (Oct 30).
+	t.npc_trust[n.id] = clampf(t.npc_trust.get(n.id, 0.5) - Tuning.Social.TRUST_ACCUSED_ME, 0.0, 1.0)
 	var line: Dictionary
 	if not earlier.is_empty():
 		# Someone already said it: agree rather than restate their grounds. Only grounds of

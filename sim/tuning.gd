@@ -235,6 +235,12 @@ class Roles:
 	}
 
 
+	## Warden credit for quiet nights (Oct 30): belief = 1 / (1 + known alternatives).
+	const WARDEN_SAVE_BELIEF_MIN = 0.5
+	const WARDEN_SAVE_TRUST = 0.1   # trust gained (x belief) by the Warden in the protectee, and back if believed
+	const WARDEN_TELL_TRUST = 0.6   # the Warden tells the protectee when trusting them at least this much
+	const WARDEN_SAVE_RELIABILITY = 0.7  # how far the model trusts a claimed save (an inference, not a sighting)
+
 # ---------------------------------------------------------------- 3. NPC Mind, Belief Ledger & Credence
 class Mind:
 	const SIGMOID_SLOPE = 4.0
@@ -288,6 +294,9 @@ class Trust:
 	const SECRET_KEPT_BASE = 0.03
 	const SECRET_KEPT_PRIVACY_SCALE = 0.04
 	const SECRET_KEPT_RUMOR_MULT = 0.4
+	const SECRET_KEPT_DECAY = 0.5
+	## No grief for a hanged friend the mourner already believed evil (Oct 30).
+	const GRIEF_BELIEVED_EVIL = 0.6  # each later night is worth half the one before (Oct 30)
 
 	## Broken confidence & spread secrets
 	const CONFIDENCE_BROKEN_BASE = 0.05
@@ -324,6 +333,16 @@ class Social:
 	const SHARE_TRUST_BUMP = 0.02
 	const TAVERN_WHISPER_MIN_CROWD = 4
 	const TAVERN_WHISPER_CHANCE = 0.5
+	## Gossip and the teller (Oct 30): +GOSSIP_BOND trust when believed (suspicion of the teller
+	## below GOSSIP_BELIEVED_BELOW), -GOSSIP_BOND when it runs down someone the listener
+	## trusts at least GOSSIP_SMEAR_TRUST, otherwise nothing.
+	const GOSSIP_BOND = 0.02
+	const GOSSIP_BELIEVED_BELOW = 0.4
+	const GOSSIP_SMEAR_TRUST = 0.65
+	## NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter.
+	const TRUST_VOTED_AGAINST = 0.1
+	const TRUST_VOTED_FOR = 0.03
+	const TRUST_ACCUSED_ME = 0.1
 	const PARANOIA_DRIFT_RATE = 0.06  # unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH)
 	const APPROACH_PHASE_CHANCE = 0.4
 	const APPROACH_SCORE_THRESHOLD = 0.35
@@ -380,7 +399,7 @@ class Meeting:
 # ---------------------------------------------------------------- 7. One-on-One Dialogue, Pressing & Disclosure
 class Dialogue:
 	const OPENNESS_BASE_OFFSET = -0.72
-	const OPENNESS_JITTER = 0.2
+	const OPENNESS_JITTER = 0.1  # was 0.2; a daily sample since Oct 30
 	const TIER_VAGUE = 0.15
 	const TIER_PARTIAL = 0.45
 	const TIER_FULL = 0.75
@@ -462,6 +481,9 @@ class Workshop:
 	## (headline - model) where the headline is higher. The per-role values are the chance
 	## each named person is evil "if the reading is simply true" (1.0 = full share).
 	const HEADLINE_WEIGHT = 1.0
+	## Directional Confidence: below this lean (suspicion minus the listener's average) there
+	## is no hunch to defend, so Confidence doesn't resist (Oct 30).
+	const LEAN_MIN = 0.05
 	const HEADLINE_SEER = 1.0       # "one of A/B is the Demon": each 1/2
 	const HEADLINE_ARCHIVIST = 1.0  # "one of A/B holds <evil role>": each 1/2
 	const HEADLINE_DOWSER = 1.0     # "c of these n read as evil": each c/n

@@ -700,6 +700,14 @@ static func _headline_chance(card: Dictionary, person: String) -> float:
 				return Tuning.Workshop.HEADLINE_DOWSER * float(data.count) / float(group.size())
 	return 0.0
 
+## Confidence is directional (Oct 30, docs/social_trust_pass.md): the scale-mode factor
+## (1.4 - 0.8 * confidence) applies only to a move against the listener's current lean;
+## fresh evidence (no clear lean) and moves with the lean come through at 1.0.
+static func _directional(confidence: float, step: float, lean: float, persistence: bool) -> float:
+	if persistence or absf(lean) < Tuning.Workshop.LEAN_MIN:
+		return 1.0 if not persistence else confidence
+	return confidence if (step > 0.0) != (lean > 0.0) else 1.0
+
 ## How far the listener trusts the sources behind the evidence about one person (Oct 30,
 ## user): the belief step scales by (0.5 + this) instead of by trust in the player.
 ## Per card: the listener's own evidence 1.0; public facts (no personal source) 1.0; the
@@ -861,7 +869,8 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		if invalid or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict":
 			net_weight = 0.0
 		var source_trust: float = _source_trust(held, id, baseline, not refresh)
-		effects[id] = {"requested": net_weight * (0.5 + source_trust) * confidence, "source_trust": source_trust, "alignment_signal": alignment, "pattern_signal": circumstantial,
+		var resist: float = _directional(confidence, net_weight, float(baseline.get("lean", {}).get(id, 0.0)), persistence)
+		effects[id] = {"requested": net_weight * (0.5 + source_trust) * resist, "source_trust": source_trust, "alignment_signal": alignment, "pattern_signal": circumstantial,
 			"circumstantial_signal": 0.0, "circumstantial_incidents": [],
 			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"),
 			"protection_signal": protection_signal, "headline_signal": headline_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,

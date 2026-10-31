@@ -2091,6 +2091,11 @@ func _night_command(verb: String, rest: String) -> void:
 
 func _resolve_night() -> void:
 	capture_prediction("before_night")
+	# Each NPC's hunches at day's end: tomorrow's Confidence resists moves against them.
+	for n in w.npcs:
+		for mind in [n, n.shadow]:
+			if mind != null and not mind.workshop_state.is_empty():
+				mind.workshop_state["committed_lean"] = Mind.suspicion_view(mind).duplicate(true)
 	_settle_offers()
 	var vig: String = w.player_vigil
 	w.resolve_night()

@@ -274,6 +274,10 @@ static func end_of_day_trust(w) -> void:
 			var bonus = Tuning.Trust.SECRET_KEPT_BASE + Tuning.Trust.SECRET_KEPT_PRIVACY_SCALE * trait_of(n, "privacy")
 			if n.secret_spread_by_npc:
 				bonus *= Tuning.Trust.SECRET_KEPT_RUMOR_MULT
+			# Gratitude fades as keeping it becomes the expected thing (Oct 30): full the first
+			# night, then shrinking each night after.
+			bonus *= pow(Tuning.Trust.SECRET_KEPT_DECAY, n.secret_kept_nights)
+			n.secret_kept_nights += 1
 			set_trust(w, n, n.trust + bonus, "the Demonologist kept my secret today%s" % (" (though others are talking)" if n.secret_spread_by_npc else ""))
 
 # ---------------------------------------------------------------- shadow self
@@ -1065,6 +1069,28 @@ static func _request_target_text(w, role: String, targets: Array) -> String:
 
 static func watch_block(w, n) -> String:
 	return C.role_def("nightwatch").pick_targets(w, n, _mind())
+
+## The Warden tells the person whose door they guarded that the quiet night was their save
+## (Oct 30). The protectee hears the claim and the guard statement as ordinary testimony
+## (the shared model reads "the Demon went for me, so I'm likely good" from it), and warms
+## to the Warden if they believe them. Evil protectees just learn who the Warden is.
+static func tell_save(w, warden, protectee, night: int, belief: float) -> void:
+	var rdef = C.role_def("warden")
+	var fact: Dictionary = rdef.guard_fact(w, warden, night, protectee.id, func(b): return C.block_name(b))
+	protectee.known_claims[warden.id] = {"role": "warden", "readings": protectee.known_claims.get(warden.id, {}).get("readings", []), "via": warden.id}
+	warden.told_to["%s|save:%d" % [protectee.id, night]] = true
+	w.dlog.add("warden_tells_save", warden.id, protectee.id, {"night": night, "belief": belief},
+		"%s tells %s they stood at their door on night %d." % [warden.name, protectee.name, night])
+	if protectee.is_evil():
+		return
+	hear_claim(w, protectee, warden.id, "warden", 1.0, "told")
+	var card = fact.duplicate(true)
+	card["learned"] = [{"day": w.day, "phase": w.phase, "via": warden.id}]
+	var receipt = WorkshopLedger.Evidence.normalize_card(card)
+	ledger_hear(w, protectee, "heard:" + receipt.id, [], 1.0, [warden.id, night, "report"],
+		{"kind": "tell", "workshop_card": receipt, "workshop_teller": warden.id, "workshop_public": false})
+	if susp(protectee, warden.id) < Tuning.Social.GOSSIP_BELIEVED_BELOW:
+		protectee.npc_trust[warden.id] = clampf(protectee.npc_trust.get(warden.id, 0.5) + Tuning.Roles.WARDEN_SAVE_TRUST * belief, 0.0, 1.0)
 
 static func warden_target(w, n) -> String:
 	return C.role_def("warden").pick_targets(w, n, _mind())

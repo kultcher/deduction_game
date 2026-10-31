@@ -105,7 +105,9 @@ func warden_door(w, n, nd: int) -> String:
 
 func guard_fact(w, n, nd: int, guarded: String, block_name_fn: Callable) -> Dictionary:
 	var gb: String = w.by_id[guarded].home_block
-	return {
+	# A quiet night they take as their save (World._warden_credit): "the Demon came for them".
+	var saved: bool = n.warden_saves.get(str(nd), {}).get("target", "") == guarded
+	var fact = {
 		"kind": "sighting",
 		"subject": [n.id],
 		"block": gb,
@@ -115,6 +117,10 @@ func guard_fact(w, n, nd: int, guarded: String, block_name_fn: Callable) -> Dict
 		"guard_claim": guarded,
 		"text": "%s says they guarded %s's door (on %s) on night %d." % [n.name, w.by_id[guarded].name, block_name_fn.call(gb), nd],
 	}
+	if saved:
+		fact["save_claim"] = true
+		fact["text"] += " Nobody died that night: they believe the Demon came for %s and their watch turned it away." % w.by_id[guarded].name
+	return fact
 
 
 func answer_gift_custom(w, n, first_time: bool, tier: int, lines: Array, facts: Array, mind, night_name_fn: Callable, block_name_fn: Callable) -> Dictionary:
@@ -129,6 +135,13 @@ func answer_gift_custom(w, n, first_time: bool, tier: int, lines: Array, facts: 
 			lines.pop_front() # Skip reconfirmation when there is work to report.
 		var said: String = "; ".join(PackedStringArray(doors))
 		lines.append(mind.say(n, "[PH] I keep watch over one door each night: %s." % (said[0].to_upper() + said.substr(1))))
+		var saves: Array = []
+		for nd in range(0, w.day):
+			var sv: Dictionary = n.warden_saves.get(str(nd), {})
+			if not sv.is_empty() and w.by_id.has(sv.target):
+				saves.append("%s on %s" % [w.by_id[sv.target].name, night_name_fn.call(nd)])
+		if not saves.is_empty():
+			lines.append(mind.say(n, "[PH] Nobody died the nights I kept %s safe. I believe the Demon came for them and my watch turned it away." % " and ".join(PackedStringArray(saves))))
 		n.max_tier = maxi(n.max_tier, tier)
 		return {"lines": lines, "facts": facts}
 	return {}
