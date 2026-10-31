@@ -273,6 +273,8 @@ func _intermediate() -> void:
 		p.beliefs = []
 		p.ledger = {}
 	var n = g.w.by_id.odette
+	# This fixture exercises uptake of a trusted intermediate case, not low-credibility rejection.
+	n.credibility = 1.0
 	n.alignment = "good"
 	# The listener is the Dowser (Oct 30). This used to be Fenwick's reading, trusted only
 	# because suspicion 0.0 read as near-proven good. Under the relative prior a 4-of-4

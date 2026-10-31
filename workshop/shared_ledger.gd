@@ -271,14 +271,26 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		if not focus.is_empty():
 			prepared.listener.knowledge["presented_reports"] = focus.filter(func(id): return facts.has(id))
 			prepared.listener.knowledge.presented_reports.sort()
-		# Raw discoveries must not change strength when player trust changes. Player
-		# trust discounts only facts whose sole route is the player's presentation.
-		var player_weight = clampf(0.5 + prepared.listener.trust, 0.0, 1.0)
+		# Per-card source reliability (Phase 3.2): each spoken card carries its own
+		# source/teller/player trust into CaseEval and _headline individually, so a low-trust
+		# rumor never dilutes a firsthand clue and a firsthand clue never launders a rumor.
+		# Raw NPC discoveries never depend on player credibility unless heard solely via player.
+		var player_cred: float = clampf(float(prepared.listener.trust), 0.0, 1.0)
+		var rel_base: float = Assess.Tuning.Workshop.SOURCE_REL_BASE
+		var rel_slope: float = Assess.Tuning.Workshop.SOURCE_REL_SLOPE
+		var player_weight: float = clampf(rel_base + rel_slope * player_cred, rel_base, 1.0)
 		prepared.listener.trust = 0.5
+		prepared.listener["player_credibility"] = player_cred
+		prepared.listener["per_card_source_trust"] = true
 		var adapted = {}
 		for card in prepared.view.cards:
 			adapted[card.id] = card
 		for id in facts:
+			var card_ref: Dictionary = adapted.get(id, {})
+			var route_info: Dictionary = _card_route_trust(facts[id], card_ref, owners[id], ledger, input.listener.id, prepared.listener.npc_trust, player_cred)
+			var best_trust: float = float(route_info.trust)
+			if not card_ref.is_empty() and bool(route_info.via_player_only):
+				card_ref["via_player_only"] = true
 			var claim_hearing = -1.0
 			for owner in owners[id]:
 				if owner.begins_with("claim:"):
@@ -303,26 +315,40 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 					hearing = 1.0
 				if adapted.has(id):
 					adapted[id]["hearing_weight"] = hearing
+			elif not shared and facts[id].kind in ["sighting", "alibi"] and adapted.has(id):
+				if not ("learned" in owners[id] and facts[id].source == input.listener.id):
+					adapted[id]["hearing_weight"] = clampf(float(adapted[id].get("hearing_weight", 1.0)) * (0.35 + 0.65 * best_trust), 0.10, 1.0)
 			if facts[id].kind not in ["info", "claim"]:
 				continue
-			var weight = player_weight
-			if claim_hearing >= 0.0:
-				weight = claim_hearing
-			if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:")):
-				weight = 1.0
-				var hearing_weight = -1.0
-				for owner in owners[id]:
-					if owner.begins_with("reading:"):
-						hearing_weight = maxf(hearing_weight, clampf(ledger[owner.trim_prefix("reading:")].weight, 0.0, 1.0))
-				if hearing_weight >= 0.0:
-					weight = hearing_weight # Several paths retain the strongest hearing once.
-			if shared:
-				weight = maxf(weight if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:") or owner.begins_with("case:")) else 0.0, hearing)
 			var testimony: bool = adapted.get(id, {}).get("testimony_only", false)
 			if testimony:
-				prepared.listener.reading_reliability[id] = minf(prepared.listener.reading_reliability[id], weight)
-			else:
-				prepared.listener.reading_reliability[id] *= weight
+				var raw_w: float = player_weight
+				if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:")):
+					raw_w = 1.0
+					var hw: float = -1.0
+					for owner in owners[id]:
+						if owner.begins_with("reading:"):
+							hw = maxf(hw, clampf(ledger[owner.trim_prefix("reading:")].weight, 0.0, 1.0))
+					if hw >= 0.0:
+						raw_w = hw
+				if shared:
+					raw_w = maxf(raw_w if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:") or owner.begins_with("case:")) else 0.0, hearing)
+				prepared.listener.reading_reliability[id] = minf(prepared.listener.reading_reliability[id], clampf(raw_w * (rel_base + rel_slope * best_trust), 0.05, 1.0))
+				continue
+			if facts[id].kind == "claim":
+				var claim_w: float = player_weight
+				if claim_hearing >= 0.0:
+					claim_w = claim_hearing
+				if "learned" in owners[id] and facts[id].source == input.listener.id:
+					claim_w = 1.0
+				prepared.listener.reading_reliability[id] *= claim_w
+				continue
+			if facts[id].source == input.listener.id and "learned" in owners[id]:
+				continue
+			var rel_scale: float = clampf(rel_base + rel_slope * best_trust, rel_base, 1.0)
+			if shared and not owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:") or owner.begins_with("case:")):
+				rel_scale = clampf(rel_base + rel_slope * (best_trust * maxf(hearing, 0.35)), rel_base, 1.0)
+			prepared.listener.reading_reliability[id] *= rel_scale
 		# Presentation weights add per-report uncertainty; enforce the budget AFTER
 		# introducing those dimensions as well as during ordinary preparation.
 		var sources = {}
@@ -382,6 +408,15 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 	view.world_options = plan.prepared.view.world_options.duplicate(true)
 	if plan.prepared.view.get("live_activity", false):
 		view["live_activity"] = true
+	var prepared_cards: Dictionary = {}
+	for card in plan.prepared.view.cards:
+		prepared_cards[card.id] = card
+	for i in range(view.cards.size()):
+		var cid: String = view.cards[i].id
+		if prepared_cards.has(cid):
+			for k in ["hearing_weight", "via_player_only"]:
+				if prepared_cards[cid].has(k):
+					view.cards[i][k] = prepared_cards[cid][k]
 	for card in plan.prepared.view.cards:
 		if not view.cards.any(func(c): return c.id == card.id):
 			view.cards.append(card.duplicate(true))
@@ -536,3 +571,54 @@ static func _presented(entry: Dictionary, presentations: Dictionary) -> bool:
 			if presentations.has(number):
 				return true
 	return false
+
+
+static func _trust_lookup(who: String, listener_id: String, npc_trust: Dictionary, player_cred: float) -> float:
+	if who == "" or who == listener_id or who == "town" or who == "evidence":
+		return 1.0
+	if who == "player":
+		return player_cred
+	return clampf(float(npc_trust.get(who, 0.5)), 0.0, 1.0) if npc_trust.has(who) else 1.0
+
+
+static func _card_route_trust(fact: Dictionary, adapted_card: Dictionary, fact_owners: Array, ledger: Dictionary, listener_id: String, npc_trust: Dictionary, player_cred: float) -> Dictionary:
+	var source: String = str(fact.get("source", ""))
+	if source == "" or source == "town" or source == "evidence" or (source == listener_id and "learned" in fact_owners):
+		return {"trust": 1.0, "via_player_only": false}
+	var src_t: float = _trust_lookup(source, listener_id, npc_trust, player_cred)
+	var prov = fact.get("provenance", {})
+	var prov_via: String = str(prov.get("via", "")) if prov is Dictionary else ""
+	var relay_src: String = str(adapted_card.get("relay_source", prov_via))
+	var best_non_player: float = -1.0
+	var best_player: float = -1.0
+	for owner in fact_owners:
+		if owner == "learned" or owner.begins_with("reading:") or owner.begins_with("claim:") or owner.begins_with("defence:"):
+			if source == "player":
+				best_player = maxf(best_player, player_cred)
+			elif relay_src != "" and relay_src != source and relay_src != listener_id:
+				var rt: float = 0.5 * (src_t + _trust_lookup(relay_src, listener_id, npc_trust, player_cred))
+				if relay_src == "player":
+					best_player = maxf(best_player, rt)
+				else:
+					best_non_player = maxf(best_non_player, rt)
+			else:
+				best_non_player = maxf(best_non_player, src_t)
+		elif owner.begins_with("share:") or owner.begins_with("testimony:"):
+			var eid: String = owner.substr(owner.find(":") + 1)
+			var teller: String = str(ledger.get(eid, {}).get("meta", {}).get("workshop_teller", relay_src))
+			var st: float = src_t
+			if teller != "" and teller != source and teller != listener_id:
+				st = 0.5 * (src_t + _trust_lookup(teller, listener_id, npc_trust, player_cred))
+			if teller == "player" or source == "player":
+				best_player = maxf(best_player, st)
+			else:
+				best_non_player = maxf(best_non_player, st)
+		elif owner.begins_with("case:") or owner.begins_with("tell:"):
+			var pt: float = player_cred if source == "player" else 0.5 * (src_t + player_cred)
+			best_player = maxf(best_player, pt)
+	if best_non_player >= 0.0:
+		# An independent hearing owns this fact; a player restatement is not corroboration.
+		return {"trust": best_non_player, "via_player_only": false}
+	if best_player >= 0.0:
+		return {"trust": best_player, "via_player_only": true}
+	return {"trust": src_t, "via_player_only": source == "player"}

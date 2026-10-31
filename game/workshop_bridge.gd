@@ -110,7 +110,8 @@ static func _lean(n) -> Dictionary:
 
 static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 	# "trust" is how far the shared model takes the player's word: credibility, not rapport.
-	input["listener"] = {"id": n.id, "name": n.name, "trust": n.credibility, "rapport": n.trust, "lean": _lean(n), "own_gift": n.role,
+	input["listener"] = {"id": n.id, "name": n.name, "trust": n.credibility, "rapport": n.trust, "lean": _lean(n),
+		"committed_requested": n.workshop_state.get("committed_requested", {}).duplicate(true), "own_gift": n.role,
 		"suspicion": preload("res://sim/mind.gd").suspicion_view(n), "npc_trust": n.npc_trust.duplicate(true),
 		"confidence": n.traits.get("confidence", 0.5), "insight": n.traits.get("insight", 0.5),
 		"reasoning_mode": n.workshop_state.get("reasoning_mode", "bounded"),

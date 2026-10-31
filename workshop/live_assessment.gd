@@ -773,6 +773,8 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 		"confidence_mode": src.get("confidence_mode", "scale"), "theories": src.get("theories", {}).duplicate(true),
 		"npc_trust": src.npc_trust.duplicate(true), "suspicion": src.suspicion.duplicate(true),
 		"lean": src.get("lean", {}).duplicate(true),
+		"committed_requested": src.get("committed_requested", {}).duplicate(true),
+		"per_card_source_trust": bool(src.get("per_card_source_trust", false)),
 		"reading_reliability": reliability, "knowledge": {"self": src.id, "good": good, "own_role": src.own_gift, "public_roles": public_roles,
 			"own_reports": cards.filter(func(c): return c.id in snapshot.private_evidence).map(func(c): return c.id),
 			"attention_reports": cards.filter(func(c): return c.id in snapshot.private_evidence and (c.source == src.id or c.get("relay_source") == src.id)).map(func(c): return c.id), "own_outings": src.get("own_outings", {}).duplicate(true)},

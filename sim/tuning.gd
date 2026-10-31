@@ -289,6 +289,12 @@ class Trust:
 	const CRED_STEP = 0.5
 	const CRED_MIN = 0.1
 	const CRED_MAX = 0.9
+	## Minimum independent posterior movement from baseline prior before an NPC scores
+	## a recorded player claim at Dawn (unless public alignment proof already exists).
+	const CRED_CORROBORATION_MIN = 0.06
+	## Track-record weights: formal deductions/nominations vs bare meeting statements.
+	const CRED_WEIGHT_FORMAL = 1.0
+	const CRED_WEIGHT_STATEMENT = 0.35
 	const DISTRUST_EXPLAIN_THRESHOLD = 0.35
 
 	## Overnight secret-keeping recovery
@@ -489,6 +495,13 @@ class Workshop:
 	const HEADLINE_SEER = 1.0       # "one of A/B is the Demon": each 1/2
 	const HEADLINE_ARCHIVIST = 1.0  # "one of A/B holds <evil role>": each 1/2
 	const HEADLINE_DOWSER = 1.0     # "c of these n read as evil": each c/n
+	## Diminishing confirmation weight for same-source, same-epoch repeat readings in _headline.
+	const HEADLINE_REPEAT_BUMP = 0.15
+	## Calibrated outer belief scale when source reliability is applied per-card upstream.
+	const JURY_BELIEF_SCALE = 1.35
+	## Per-card epistemic reliability mapping for spoken reports (0.50 + 0.50 * trust in [0.50, 1.00]).
+	const SOURCE_REL_BASE = 0.50
+	const SOURCE_REL_SLOPE = 0.50
 
 	## Role constraints, movement & public/speech evidence (`workshop/*.gd`)
 	const BLUFF_WEIGHT = 0.92
@@ -584,6 +597,9 @@ static func fingerprint() -> String:
 			Workshop.PRIOR_K,
 			Workshop.HEADLINE_WEIGHT,
 			Workshop.LEAN_MIN,
+			Workshop.JURY_BELIEF_SCALE,
+			Workshop.HEADLINE_REPEAT_BUMP,
+			Trust.CRED_CORROBORATION_MIN,
 			Meeting.NOMINATION_BASE,
 			Meeting.VOTE_BASE_NEED,
 			Meeting.VOTE_URGENCY_PER_DEATH,
