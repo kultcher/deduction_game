@@ -373,12 +373,14 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 				var forced_lamp = false
 				var checked = selected.duplicate()
 				var okay = true
-				var counts = Activity.routes(view, selected) if factor.get("coupled", false) else {}
+				var counts = Activity.routes(view, selected, {}, {}, false) if factor.get("coupled", false) else {}
 				for night in nights:
 					var paths = Activity._paths(view, factor.person, int(night), selected, graph.knowledge)
 					okay = okay and not paths.is_empty()
 					forced_lamp = forced_lamp or not paths.is_empty() and paths.all(func(path): return path.size() == 4)
-					var out: bool = factor.person.id in counts.get("nights", {}).get(night, {}).get("forced_out", []) if not counts.is_empty() else not paths.is_empty() and paths.all(func(path): return not path.is_empty())
+					# Likelihood inference must use the same fallible-report routes as Activity.factors.
+					var likelihood_paths = Activity._paths(view, factor.person, int(night), selected, {}, false)
+					var out: bool = factor.person.id in counts.get("nights", {}).get(night, {}).get("forced_out", []) if not counts.is_empty() else not likelihood_paths.is_empty() and likelihood_paths.all(func(path): return not path.is_empty())
 					if out:
 						checked.append({"id": "inferred-out:%s:%s" % [factor.person.id, night], "kind": "sighting", "source": "evidence", "subject": factor.person.id, "subjects": [factor.person.id], "block": "", "night": int(night)})
 				if factor.kind == "forced_lamp":

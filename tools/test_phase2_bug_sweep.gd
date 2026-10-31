@@ -125,7 +125,7 @@ func _test_2_4_warden_credit_alternatives() -> void:
 	warden.role = "warden"
 	w.day = 2
 	warden.warden_saves.clear()
-	w.public_event("knell", [], "sexton_test")
+	w.public_event("knell", [warden.id], "sexton_test")
 	w._warden_credit(warden, target.id)
 	_check(warden.warden_saves.has("2") and is_equal_approx(warden.warden_saves["2"].belief, 0.5), "public Sexton knell halves Warden quiet-night save belief")
 
@@ -259,7 +259,7 @@ func _test_2_7_night0_nightwatch_impairment_and_cleanups() -> void:
 		"source": bluffer.id, "watch_claim": true, "text": "%s says they kept watch on Chapel Hill on night 1." % bluffer.name,
 	})
 	var vig_num: int = g.add_card({
-		"kind": "sighting", "subject": [], "block": "hill", "day": 1, "phase": C.NIGHT,
+		"kind": "vigil", "subject": [], "block": "hill", "day": 1, "phase": C.NIGHT,
 		"source": "player", "vigil": true, "text": "Night 1 vigil: nobody came to Chapel Hill.",
 	})
 	var cview: Dictionary = WorkshopCanvas.view(g)
