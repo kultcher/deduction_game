@@ -247,7 +247,7 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 	# Homes affect Surveyor blocks; kind/event distinguish public process cards.
 	# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
 	var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.source,
-		card.get("role", ""), card.observed_at, card.data, positive, positive_blocks]
+		card.get("role", ""), card.observed_at, card.data, positive, positive_blocks, card.get("duty_only", false)]
 	if not marked.is_empty():
 		inputs.append(marked)
 	if card.get("testimony_only", false):
@@ -295,7 +295,7 @@ static func content_sig(view: Dictionary, world: Dictionary) -> int:
 	return int(world.__key)
 
 ## Roles whose report content can fail in a world (the rest only need a valid source).
-const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch", "warden"]
+const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch", "warden", "medium"]
 
 static var _bits: Dictionary = {}
 
@@ -613,7 +613,11 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 		return true
 	var rdef = C.role_def(card.role)
 	if Domain.live(view):
-		if rdef != null and rdef.shape == "NIGHT_ROUTE" and card.data.seen.any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):
+		if card.role == "medium" and card.get("duty_only", false):
+			var dblock: String = str(card.data.get("block", ""))
+			var has_corpse: bool = view.people.any(func(p): return p.home == dblock and not preload("res://workshop/live_history.gd").alive_at_night(view, p.id, card.night))
+			return has_corpse
+		if rdef != null and rdef.shape == "NIGHT_ROUTE" and card.data.get("seen", []).any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):
 			return false
 		if card.role == "rumormonger":
 			return Domain.rumor(view, world, card, answer)
@@ -700,10 +704,10 @@ static func _movement(view: Dictionary, cards: Array, answers: Dictionary, knowl
 					if mask & (1 << ids.find(card.subject)):
 						valid = false
 				elif card.role == "nightwatch":
-					required = card.data.seen + [card.source]
+					required = [card.source] if card.get("duty_only", false) else (card.data.seen + [card.source])
 				elif card.role == "lamplighter":
 					required = [card.source] + answers.get(card.id, {}).get("positive", [])
-					if popcount(mask & ~(1 << ids.find(card.source))) != card.data.count:
+					if not card.get("duty_only", false) and popcount(mask & ~(1 << ids.find(card.source))) != card.data.count:
 						valid = false
 				for id in required:
 					if not (mask & (1 << ids.find(id))):

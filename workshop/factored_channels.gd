@@ -266,7 +266,7 @@ static func _movement(view: Dictionary, graph: Dictionary) -> void:
 	if not Activity.available(view):
 		_conditional(graph, movement_facts, "fixture_movement")
 		return
-	var coupled: bool = movement_facts.any(func(f): return f.card.kind == "dropped" or f.card.get("item_drop", false) or f.card.get("role") == "lamplighter" and f.card.kind == "report")
+	var coupled: bool = movement_facts.any(func(f): return f.card.kind == "dropped" or f.card.get("item_drop", false) or f.card.get("role") == "lamplighter" and f.card.kind == "report" and not f.card.get("duty_only", false))
 	if coupled:
 		_conditional(graph, movement_facts, "route_counts")
 	for person in view.people:
@@ -293,7 +293,7 @@ static func _affects(card: Dictionary, person: String) -> bool:
 	if card.kind == "claim":
 		return card.source == person
 	if card.kind == "report":
-		return card.role == "nightwatch" or card.role in ["lamplighter", "veteran"] and card.source == person
+		return (card.role == "nightwatch" and (not card.get("duty_only", false) or card.source == person)) or (card.role in ["lamplighter", "veteran", "medium"] and card.source == person)
 	if card.kind in ["coverage", "trace"]:
 		return true
 	if card.kind == "sighting":

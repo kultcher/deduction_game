@@ -70,6 +70,7 @@ class Setup:
 	## Night drops, sightings & crime scene traces
 	const DROP_CHANCE_DEMON = 0.35
 	const DROP_CHANCE_WALKER = 0.15
+	const LEGACY_MUD_DROPS_ENABLED = false
 	const DROP_OWNED_CHANCE = 0.12
 	const NIGHT_SIGHTING_STREET_CHANCE = 0.5
 	const NIGHT_SIGHTING_WINDOW_CHANCE = 0.15
@@ -469,6 +470,7 @@ class Workshop:
 	## CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`)
 	const DEFAULT_ERR = 0.01
 	const OWN_ERR = 0.002
+	const NIGHTWATCH_REPORT_ERROR = 0.08
 	const LR_WEAK = 1.5
 	const LR_MODERATE = 3.0
 	const LR_STRONG = 10.0

@@ -328,7 +328,7 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 		response = "I can see that possibility, but the reports also allow another explanation."
 	if not combined.factors.is_empty():
 		if combined.factors.any(func(label): return label.begins_with("Movement / trace")):
-			response += " The routes, observation coverage and traces change which explanation I favor. Lawful activity and eligible passers remain alternatives; this is circumstantial evidence."
+			response += " " + _movement_trace_tail(view, _cards_by_ids(view, case_data.get("cards", [])))
 		else:
 			response += " If the linked observation is accurate, the home alibi is false. That is circumstantial evidence, not proof of deliberate deception or evil." if combined.factors.any(func(label): return label.begins_with("Challenged home alibi")) else " The supplied test factor changes which remaining explanation I favor; it does not prove it."
 	if listener.get("reasoning_mode", "full") == "bounded":
@@ -354,7 +354,7 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 			if alternative.has("demon"):
 				response += " In that explanation, %s is the Demon." % Solver.person_name(view, alternative.demon)
 			if Movement.available(view) and stance == "accept":
-				response = "I checked another explanation that also fits, but the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible."
+				response = "I checked another explanation that also fits, but the %s evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible." % _movement_trace_kind(view, _cards_by_ids(view, reasoning.get("considered", case_data.get("cards", []))))
 		elif reasoning.status == "entailed_in_attention":
 			response = "The reports I considered force this if they are accurate."
 		elif reasoning.status == "inconsistent":
@@ -576,7 +576,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			if alternative.has("demon"):
 				response += " In that explanation, %s is the Demon." % Solver.person_name(view, alternative.demon)
 			if stance == "accept":
-				response += " Even so, the evidence favors your explanation." if ev.movement.is_empty() else " Even so, the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible."
+				response += " Even so, the evidence favors your explanation." if ev.movement.is_empty() else (" Even so, the %s evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible." % _movement_trace_kind(view, _cards_by_ids(view, reasoning.get("considered", case_data.get("cards", [])))))
 		elif reasoning.status == "entailed_in_attention":
 			response = "The reports I considered force this if they are accurate."
 		elif reasoning.status == "inconsistent":
@@ -654,7 +654,7 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 		if rival.shift > 0.2 and rival.posterior > 0.5:
 			response += " If anything, it points me toward %s." % Solver.person_name(view, rival.id)
 	if ev.movement.any(func(label): return label.begins_with("Movement / trace")):
-		response += " The routes, observation coverage and traces change which explanation I favor. Lawful activity and eligible passers remain alternatives; this is circumstantial evidence."
+		response += " " + _movement_trace_tail(view, _cards_by_ids(view, case_data.get("cards", [])))
 	elif ev.movement.any(func(label): return label.begins_with("Challenged home alibi")):
 		response += " If the linked observation is accurate, the home alibi is false. That is circumstantial evidence, not proof of deliberate deception or evil."
 	elif not ev.movement.is_empty():
@@ -668,8 +668,31 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 ## Seer "yes": one of the pair is the Demon (each 1/2). Archivist: one of the pair holds
 ## the named evil role (each 1/2). Dowser: count of the group read as evil (each count/n).
 ## Several readings combine as independent chances (noisy-or). Only raises suspicion.
+static func _cards_by_ids(view: Dictionary, ids: Array) -> Array:
+	return view.get("cards", []).filter(func(c): return c.get("id", "") in ids)
+
+static func _movement_trace_kind(view: Dictionary, cards: Array) -> String:
+	var has_trace: bool = not view.get("trace_assessments", []).is_empty() or cards.any(func(c): return not c.get("quoted", false) and c.get("kind", "") == "trace")
+	var has_move: bool = cards.any(func(c): return not c.get("quoted", false) and (c.get("kind", "") in ["sighting", "alibi", "coverage", "evening", "dropped", "item"] or (c.get("kind", "") == "report" and c.get("role", "") in ["nightwatch", "warden", "lamplighter", "veteran", "medium"])))
+	if has_trace and has_move:
+		return "movement and trace"
+	if has_trace:
+		return "trace"
+	return "movement"
+
+static func _movement_trace_tail(view: Dictionary, cards: Array) -> String:
+	match _movement_trace_kind(view, cards):
+		"trace":
+			return "The crime-scene traces change which explanation I favor. Unknown habits and eligible passers remain alternatives; this is circumstantial evidence."
+		"movement":
+			return "The routes and observation coverage change which explanation I favor. Lawful activity and unrecorded outings remain alternatives; this is circumstantial evidence."
+		_:
+			return "The routes, observation coverage and traces change which explanation I favor. Lawful activity and eligible passers remain alternatives; this is circumstantial evidence."
+
 static func _headline(view: Dictionary, cards: Array, person: String, prior: float, listener: Dictionary, eval_listener: Dictionary, player_tells: bool) -> float:
 	var own_ids: Array = eval_listener.get("knowledge", {}).get("own_reports", [])
+	if own_ids.is_empty():
+		own_ids = eval_listener.get("knowledge", {}).get("attention_reports", [])
 	var miss: float = 1.0
 	for card in cards:
 		if card.get("kind", "") != "report" or card.get("quoted", false):

@@ -62,7 +62,7 @@ static func answer_hint(w, n) -> Dictionary:
 	if not decide(w, n, "hint_followup", parts, "Tell the Demonologist why they suspect %s?" % target):
 		lines.append(_hint_decline(w, n, t))
 		return {"lines": lines, "facts": []}
-	var r = answer_gift(w, n, 4)
+	var r = answer_gift(w, n, 4, false)
 	lines.append(say(n, "[PH] All right. You asked, so here's why I suspect %s." % t.name))
 	lines.append_array(r["lines"])
 	var facts: Array = r["facts"]
@@ -436,15 +436,14 @@ static func _confidence_request(w, n, tier: int, refusal: Dictionary) -> Diction
 ## A promised answer, once the player agrees: what answer_gift would say at that tier, without
 ## costing a question (the question was spent asking).
 static func keep_request(w, n, tier: int) -> Dictionary:
-	var r: Dictionary = answer_gift(w, n, tier)
-	n.pressed_today = maxi(n.pressed_today - 1, 0)
-	return r
+	# Accepting an NPC's own secrecy deal spends no new question and never triggers question-4 fatigue.
+	return answer_gift(w, n, tier, false)
 
-static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
+static func answer_gift(w, n, force_tier: int = 0, count_question: bool = true) -> Dictionary:
 	var id = w.dlog.decision(n.id, "gift_disclosure", "start", null,
 		{"force_tier": force_tier, "prior_tier": n.max_tier, "public": n.claim_public,
-			"trust": n.trust, "pressure": n.pressure, "questions_today": n.pressed_today})
-	var result = _answer_gift_impl(w, n, force_tier, id)
+			"trust": n.trust, "pressure": n.pressure, "questions_today": n.pressed_today, "count_question": count_question})
+	var result = _answer_gift_impl(w, n, force_tier, id, count_question)
 	if result.facts.any(func(f): return f.get("kind", "") == "refusal"):
 		result["refusal_line"] = result.lines.size() - 1
 		_append_distrust(w, n, result.lines)
@@ -453,8 +452,9 @@ static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
 			"role_claim": n.claimed_role, "public": n.claim_public}, "", id)
 	return result
 
-static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionary:
-	on_question(w, n)
+static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_question: bool = true) -> Dictionary:
+	if count_question:
+		on_question(w, n)
 	var lines: Array = []
 	var facts: Array = []
 	var evil: bool = n.is_evil()
@@ -522,6 +522,15 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionar
 		var contextual: String = Dialogue.gift_reveal(n.id, C.role_name(role), reveal_cue)
 		if contextual != "":
 			lines.append(say(n, contextual))
+		elif w.day <= 1 and w.phase == C.MORNING:
+			var early_fb: String = "I'll trust you with this. I'm the %s." % C.role_name(role)
+			var early_voiced: String = Dialogue.voice_line(n.id, "private_reveal_early", "", {"role": C.role_name(role)})
+			if early_voiced != "":
+				var early_line: Dictionary = say(n, early_voiced)
+				early_line["statement"] = early_fb
+				lines.append(early_line)
+			else:
+				lines.append(say_voiced(n, "private_reveal", early_fb, {"role": C.role_name(role)}))
 		else:
 			lines.append(say_voiced(n, "private_reveal", "I'll trust you with this. I'm the %s." % C.role_name(role), {"role": C.role_name(role)}))
 		if not evil and C.ROLES[role].get("night_walk", false) and not n.lied_nights.is_empty():
@@ -949,20 +958,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	var facts: Array = []
 	var text = ""
 	var level = 0.0
-	if trait_of(n, "gossip") < 0.2 and n.pressure < 0.5:
-		w.dlog.decision(n.id, "opinion_disclosure", "gate", false,
-			{"gate": "gossip_and_pressure_cutoff", "gossip": trait_of(n, "gossip"),
-				"gossip_minimum": 0.2, "pressure": n.pressure, "pressure_override": 0.5}, t.id)
-		w.dlog.think(n.id, "opinion", "Gossip %.2f: won't discuss others." % trait_of(n, "gossip"))
-		var canonical_refusal: String = "It's not my place to say."
-		var previous: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
-		var refused: String = Dialogue.voice_line(n.id, "opinion_refuse", canonical_refusal)
-		refused = Dialogue.repeated_opinion_refusal(n.id, t.name, previous, refused)
-		var refusal_line: Dictionary = say(n, Dialogue.contextualize(n.id, refused, previous if previous != "opinion_again" else "", t.name))
-		refusal_line["statement"] = canonical_refusal
-		lines.append(refusal_line)
-		_append_distrust(w, n, lines)
-		return {"lines": lines, "facts": facts}
+	# No hard Gossip cutoff: even discreet townsfolk give an opinion when asked directly.
 	# Same pipeline for both alignments: a suspicion level plus an optional grounded reason.
 	var why = ""
 	var lie = false

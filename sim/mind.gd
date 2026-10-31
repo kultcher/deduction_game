@@ -84,8 +84,9 @@ static func _challenged(n, response: Dictionary, card: Dictionary) -> Dictionary
 		if line is Dictionary and line.get("speaker", "") == n.id:
 			# Rephrasing changes delivery only. Keep the approved statement and any
 			# canonical payload/provenance attached to the original speech event.
+			var is_visual: bool = card.get("kind", "") in ["sighting", "vigil"] or (card.get("kind", "") == "info" and card.get("role", "") == "nightwatch")
 			var rephrased: Dictionary = line.duplicate(true)
-			rephrased["text"] = voiced(n, "doubted", line["text"], fact_id(card), {"challenged": true})["text"]
+			rephrased["text"] = voiced(n, "doubted", line["text"], fact_id(card), {"challenged": true, "visual": is_visual})["text"]
 			response["lines"][i] = rephrased
 			break
 	return response
@@ -1307,11 +1308,11 @@ static func _confidence_request(w, n, tier: int, refusal: Dictionary) -> Diction
 static func keep_request(w, n, tier: int) -> Dictionary:
 	return MindDialogue.keep_request(w, n, tier)
 
-static func answer_gift(w, n, force_tier: int = 0) -> Dictionary:
-	return MindDialogue.answer_gift(w, n, force_tier)
+static func answer_gift(w, n, force_tier: int = 0, count_question: bool = true) -> Dictionary:
+	return MindDialogue.answer_gift(w, n, force_tier, count_question)
 
-static func _answer_gift_impl(w, n, force_tier: int, trace_id: int) -> Dictionary:
-	return MindDialogue._answer_gift_impl(w, n, force_tier, trace_id)
+static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_question: bool = true) -> Dictionary:
+	return MindDialogue._answer_gift_impl(w, n, force_tier, trace_id, count_question)
 
 static func _gossip_share(w, n, topic: String) -> int:
 	return MindDialogue._gossip_share(w, n, topic)
@@ -1769,7 +1770,7 @@ static func gossip(w) -> Dictionary:
 	# Nothing they've already told you (privately, or in your hearing at the tavern).
 	var night_seen: Array = speaker.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] == C.NIGHT and b["day"] >= w.day - 2 \
 		and not speaker.told_to.has("player|saw:%s:%d" % [b["who"], b["day"]]))
-	if not night_seen.is_empty() and trait_of(speaker, "gossip") >= 0.2:
+	if not night_seen.is_empty():
 		var b: Dictionary = night_seen[night_seen.size() - 1]
 		var who = w.by_id[b["who"]]
 		speaker.told_to["player|saw:%s:%d" % [b["who"], b["day"]]] = true

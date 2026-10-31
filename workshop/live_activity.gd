@@ -14,7 +14,7 @@ static func available(view: Dictionary) -> bool:
 	return view.get("live_activity", false)
 
 static func relevant(cards: Array) -> Array:
-	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran"]))
+	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium"]))
 
 ## Everything routes() and factors() read from a card list: the movement-relevant
 ## cards, relayed cards (in order) and each person's claimed role. Two listeners who
@@ -26,7 +26,7 @@ static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionar
 		var role: String = role_of(cards, person.id, knowledge)
 		roles.append([role, role_hearing(cards, person.id, role)] if weighted else role)
 	var has_struct_trace: bool = include_context and cards.any(func(x): return x.kind == "trace" and x.get("data", {}).has("family"))
-	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran"])), roles]
+	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium"])), roles]
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):
@@ -45,7 +45,7 @@ static func role_hearing(cards: Array, person: String, role: String) -> float:
 			strength = maxf(strength, float(card.get("hearing_weight", 1.0)))
 	return strength
 
-static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Array, knowledge: Dictionary) -> Array:
+static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Array, knowledge: Dictionary, strict_reports: bool = true) -> Array:
 	if not History.alive_at_night(view, person.id, night):
 		return [[]]
 	var role = role_of(cards, person.id, knowledge)
@@ -81,10 +81,12 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 			elif card.kind == "report" and card.role == "nightwatch":
 				if card.source == person.id:
 					okay = okay and out and path.back() == card.data.block
-				else:
+				elif strict_reports and not card.get("duty_only", false):
 					okay = okay and ((card.data.block in path) == (person.id in card.data.seen))
 			elif card.kind == "report" and card.role == "warden" and card.source == person.id:
 				okay = okay and out and path.back() == card.block
+			elif card.kind == "report" and card.role == "medium" and card.source == person.id:
+				okay = okay and out and path.back() == card.data.get("block", card.get("block", ""))
 			elif card.kind == "report" and card.role == "lamplighter" and card.source == person.id:
 				okay = okay and path.size() == C.BLOCKS.size()
 			if not okay:
@@ -93,8 +95,8 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 			result.append(path)
 	return result
 
-static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, knowledge: Dictionary = {}) -> Dictionary:
-	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, knowledge), answers, knowledge]
+static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, knowledge: Dictionary = {}, strict_reports: bool = true) -> Dictionary:
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, knowledge), answers, knowledge, strict_reports]
 	var key = hash(input)
 	if route_cache.has(key) and route_cache[key].input == input:
 		return route_cache[key].result
@@ -112,7 +114,7 @@ static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, kno
 		var possible = 0
 		var paths: Array = []
 		for i in range(view.people.size()):
-			var options = _paths(view, view.people[i], int(night_key), cards, knowledge)
+			var options = _paths(view, view.people[i], int(night_key), cards, knowledge, strict_reports)
 			paths.append(options)
 			if options.is_empty():
 				okay = false
@@ -141,7 +143,7 @@ static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, kno
 				continue
 			var valid = true
 			for card in cards:
-				if card.kind != "report" or card.get("night", -1) != int(night_key) or card.get("quoted", false) or card.get("role") != "lamplighter":
+				if card.kind != "report" or card.get("duty_only", false) or card.get("night", -1) != int(night_key) or card.get("quoted", false) or card.get("role") != "lamplighter":
 					continue
 				var source: int = view.people.map(func(p): return p.id).find(card.source)
 				if _count(mask & ~(1 << source)) != card.data.count or not answers.get(card.id, {}).get("positive", []).all(func(id): return mask & (1 << view.people.map(func(p): return p.id).find(id))):
@@ -197,7 +199,7 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
 	var checked = cards.duplicate()
-	var movement = routes(view, cards)
+	var movement = routes(view, cards, {}, {}, false)
 	for night in movement.nights:
 		for person in movement.nights[night].forced_out:
 			checked.append({"id": "inferred-out:%s:%s" % [person, night], "kind": "sighting", "source": "evidence", "subject": person, "subjects": [person], "block": "", "night": int(night)})
@@ -764,10 +766,17 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 		"report":
 			if card.role == "warden" and card.source == person:
 				return 1.0 if out and path.back() == card.block else 0.0
+			if card.role == "medium" and card.source == person:
+				return 1.0 if out and path.back() == card.data.get("block", card.get("block", "")) else 0.0
+			if card.role == "lamplighter" and card.source == person and card.get("duty_only", false):
+				return 1.0 if path.size() == C.BLOCKS.size() else 0.0
 			if card.role == "nightwatch":
 				if card.source == person:
 					return 1.0 if out and path.back() == card.data.block else 0.0
-				return 1.0 if ((card.data.block in path) == (person in card.data.seen)) else 0.0
+				if card.get("duty_only", false):
+					return 1.0
+				var nw_err: float = clampf(float(card.get("report_error", Tuning.Workshop.NIGHTWATCH_REPORT_ERROR)), 0.02, 0.45)
+				return (1.0 - nw_err) if ((card.data.block in path) == (person in card.data.seen)) else nw_err
 		"trace":
 			if alignment == "demon":
 				if card.get("data", {}).has("family"):

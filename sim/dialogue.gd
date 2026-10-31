@@ -137,6 +137,8 @@ static func _compose(id: String, intent: Dictionary, context: Dictionary, memory
 		memory["seen"] = seen
 		memory["counts"] = counts
 		return result
+	if kind == "doubted" and context.get("visual", false) and Voices.VOICES[id].has("doubted_visual"):
+		cue = "doubted_visual"
 	var count_key = audience + ":" + cue
 	var choices: Array = Voices.VOICES[id][cue]
 	var extra: String = choices[int(counts.get(count_key, 0)) % choices.size()]
