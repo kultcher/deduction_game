@@ -104,7 +104,11 @@ class Roles:
 
 	## Default public-claim / reveal-cost / disclosure-tier modifiers (`sim/role_def.gd`)
 	const HIDE_FROM_DEMON_CLAIM = -0.5
-	const ONGOING_INFO_EARLY_CLAIM = -0.4
+	const HIDE_FROM_DEMON_CLAIM_D2 = -0.3
+	const HIDE_FROM_DEMON_CLAIM_D3 = -0.1
+	const WARDEN_HIDE_CLAIM_FLOOR = -0.35
+	const ONGOING_INFO_EARLY_CLAIM = -0.45
+	const ONGOING_INFO_CLAIM_D2 = -0.2
 	const ONE_SHOT_GIFT_CLAIM = 0.3
 
 	## Per-role tuning blocks (`sim/roles/*.gd`)
@@ -335,6 +339,8 @@ class Social:
 	const NEWS_BONUS_EVIL = 0.6
 	const NEWS_BONUS_GOOD = 0.5
 	const IDLE_CHAT_WEIGHT = 0.3
+	const DAY_RUMOR_WEIGHT = 0.45
+	const UNEASE_SUSP_MIN = 0.34
 	const HEARSAY_TRUST_SCALE = 0.75
 	const HEARSAY_WEIGHT_CAP = 0.55
 	const SHARE_TRUST_BUMP = 0.02
@@ -361,8 +367,11 @@ class Social:
 class Meeting:
 	const VOLUNTEER_SIGHTING_BASE = 1.2
 	const PUBLIC_CLAIM_BASE = -0.35
+	const PUBLIC_CLAIM_DAY_SLOPE = 0.4
 	const PUBLIC_CLAIM_FEW_LEFT = 0.8
 	const PUBLIC_CLAIM_PROMISED_PLAYER = -0.6
+	const REVEAL_SUSPICION_PIVOT = 0.45
+	const REVEAL_SUSPICION_SLOPE = 1.5
 
 	## Anonymous reading relays
 	const RELAY_WEIGHT = 0.3
@@ -600,6 +609,9 @@ static func fingerprint() -> String:
 			Workshop.JURY_BELIEF_SCALE,
 			Workshop.HEADLINE_REPEAT_BUMP,
 			Trust.CRED_CORROBORATION_MIN,
+			Roles.ONGOING_INFO_EARLY_CLAIM,
+			Meeting.PUBLIC_CLAIM_DAY_SLOPE,
+			Meeting.REVEAL_SUSPICION_PIVOT,
 			Meeting.NOMINATION_BASE,
 			Meeting.VOTE_BASE_NEED,
 			Meeting.VOTE_URGENCY_PER_DEATH,

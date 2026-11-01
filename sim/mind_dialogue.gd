@@ -353,10 +353,10 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 ## evil hiding behind a bluffed gift as for good, so it isn't a tell.
 ## Too afraid to say what they are (the Demon's next mark)? Steadier people are less afraid.
 ## Pressure works against fear: keep withholding and they risk being hanged on suspicion.
-## So does paranoia, here in its sense of the town opening up as the dead pile up.
+## Paranoia no longer subtracts from fear (Phase 4.1), so fear never drops as bodies pile up.
 ## A kept ward/vigil promise halves what's left. One roll per person per day.
 static func fear_chance(w, n) -> float:
-	var p: float = Tuning.Dialogue.FEAR_BASE + Tuning.Dialogue.FEAR_COMPOSURE_SCALE * (1.0 - trait_of(n, "composure")) - Tuning.Dialogue.FEAR_PRESSURE_SCALE * n.pressure - paranoia(w, n)
+	var p: float = Tuning.Dialogue.FEAR_BASE + Tuning.Dialogue.FEAR_COMPOSURE_SCALE * (1.0 - trait_of(n, "composure")) - Tuning.Dialogue.FEAR_PRESSURE_SCALE * n.pressure
 	if n.fear_eased:
 		p *= Tuning.Dialogue.FEAR_EASED_MULT  # the Demonologist kept their word to watch over them
 	return clampf(p, 0.0, Tuning.Dialogue.FEAR_CAP)

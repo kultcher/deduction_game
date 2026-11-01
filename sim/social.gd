@@ -104,6 +104,7 @@ static func _pick_item(w, s, l):
 			if about != l.id and not _told(s, l, key):
 				cands.append([gos * 0.5, {"kind": "case", "about": about, "card": c["card"], "from": "player", "key": key}])
 	# Things anyone might pass on: what they saw at night, what they've heard, others' secrets.
+	var has_recent_night_sighting: bool = false
 	for b in s.beliefs:
 		if b["kind"] == "saw" and b["phase"] == C.NIGHT and b["day"] >= w.day - 2 and b["who"] != l.id and w.by_id[b["who"]].alive:
 			if s.is_evil() and w.by_id[b["who"]].is_evil():
@@ -111,13 +112,49 @@ static func _pick_item(w, s, l):
 			var key2 = "sighting:%s:%d" % [b["who"], b["day"]]
 			if _told(s, l, key2):
 				continue
+			has_recent_night_sighting = true
 			var scene = 0.0
 			for sid in w.scenes:
 				if w.scenes[sid]["day"] == b["day"] and w.scenes[sid]["block"] == b["block"]:
 					scene = 0.4
 			cands.append([gos * 0.8 + scene, {"kind": "sighting", "about": b["who"], "block": b["block"], "day": b["day"], "from": s.id, "key": key2}])
+	# Low-walker daytime rumor fuel (Phase 4.1): when `s` holds no recent untold night sightings,
+	# share daytime work/haunt sightings/alibis and mild unease so social chatter and gossip_bond
+	# stay alive in Revenant + Scion setups without fabricating night evidence.
+	if not has_recent_night_sighting:
+		for idx in range(s.beliefs.size() - 1, -1, -1):
+			var db: Dictionary = s.beliefs[idx]
+			if db.get("kind", "") != "saw" or db.get("phase", C.NIGHT) == C.NIGHT:
+				continue
+			var who_id: String = str(db.get("who", ""))
+			if who_id == "" or who_id == l.id or who_id == s.id or not w.by_id.has(who_id) or not w.by_id[who_id].alive:
+				continue
+			if int(db.get("day", -1)) < maxi(1, w.day - 1):
+				continue
+			var dkey: String = "day_sighting:%s:%d:%d" % [who_id, int(db["day"]), int(db["phase"])]
+			if _told(s, l, dkey):
+				continue
+			var dloc: String = str(db.get("loc", ""))
+			cands.append([gos * Tuning.Social.DAY_RUMOR_WEIGHT, {
+				"kind": "day_sighting", "about": who_id, "loc": dloc, "block": str(db.get("block", "")),
+				"day": int(db["day"]), "phase": int(db["phase"]), "from": s.id, "key": dkey,
+			}])
+			break
+		# With no eligible observation, there is no daytime sighting to share.
+		# Workplaces and haunts describe routines, not witnessed visits.
+		if not s.is_evil():
+			var uneasy_pool: Array = Mind.ranked_suspects(w, s).filter(func(m): return m != l)
+			if not uneasy_pool.is_empty():
+				var ut = uneasy_pool[0]
+				var ususp: float = Mind.susp(s, ut.id)
+				var ukey: String = "unease:" + ut.id
+				if ususp >= Tuning.Social.UNEASE_SUSP_MIN and ususp < 0.5 and not _told(s, l, ukey) and not _told(s, l, "opinion:" + ut.id):
+					cands.append([gos * Tuning.Social.DAY_RUMOR_WEIGHT, {
+						"kind": "unease", "about": ut.id, "why": Mind.citable_reason(w, s, ut.id, "town"),
+						"from": s.id, "key": ukey,
+					}])
 	for h in s.hearsay.slice(-4):
-		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] == "secret":
+		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] in ["secret", "day_sighting", "unease"]:
 			continue
 		if s.is_evil() and h.get("about", "") != "" and w.by_id[h["about"]].is_evil():
 			continue
@@ -213,9 +250,13 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			Mind.ledger_hear(w, l, "heard:" + receipt.id, e1, wgt * 2.0, [s.id, item.get("day", -1), "report"],
 				{"kind": "tell", "workshop_card": receipt, "workshop_teller": s.id, "workshop_public": public})
 			l.hearsay.append(hs)
-		"opinion":
+		"opinion", "unease":
 			# Remember the conversation and teller, without turning their conclusion
 			# into evidence about its target (Q4).
+			l.hearsay.append(hs)
+		"day_sighting":
+			# Witnessed daytime visits build social fabric and context
+			# without manufacturing night-movement suspicion in the listener's ledger.
 			l.hearsay.append(hs)
 		"case":
 			var e3: Array = []
@@ -245,7 +286,7 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 ## a small loss when it runs down someone the listener trusts.
 static func gossip_bond(l, s, item: Dictionary) -> float:
 	var about: String = item.get("about", "")
-	var against: bool = item["kind"] in ["opinion", "case", "sighting"] or (item["kind"] == "reading" and _implicates(item))
+	var against: bool = item["kind"] in ["opinion", "unease", "case", "sighting"] or (item["kind"] == "reading" and _implicates(item))
 	if against and about != "" and about != s.id and l.npc_trust.get(about, 0.5) >= Tuning.Social.GOSSIP_SMEAR_TRUST:
 		return -Tuning.Social.GOSSIP_BOND
 	if Mind.susp(l, s.id) < Tuning.Social.GOSSIP_BELIEVED_BELOW:
@@ -272,6 +313,15 @@ static func _describe(w, s, item: Dictionary) -> String:
 			return "%s was out on %s on night %d%s" % [w.by_id[item["about"]].name, C.block_name(item["block"]), item["day"], via]
 		"opinion":
 			return "they distrust %s%s" % [w.by_id[item["about"]].name, via]
+		"unease":
+			return "they feel uneasy about %s%s" % [w.by_id[item["about"]].name, via]
+		"day_sighting":
+			var dname: String = w.by_id[item["about"]].name
+			var dloc: String = str(item.get("loc", ""))
+			if dloc != "":
+				var lname: String = w.loc_name(dloc)
+				return "%s was seen at %s%s" % [dname, lname, via]
+			return "%s was seen on %s during the day%s" % [dname, C.block_name(str(item.get("block", ""))), via]
 		"case":
 			return "the Demonologist's case against %s" % w.by_id[item["about"]].name
 		"secret":

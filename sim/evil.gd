@@ -881,9 +881,10 @@ static func intel_from_share(w, m, speaker, item: Dictionary) -> void:
 			elif about != "":
 				add_intel(w, m, "walker", about, 0.0, "heard they were out on %s on night %d" % [C.block_name(item["block"]), item["day"]],
 					{"block": item["block"], "night": item["day"]})
-		"opinion", "case":
+		"opinion", "case", "unease":
 			if about != "" and w.by_id[about].is_evil():
-				add_intel(w, m, "threat", speaker.id, 1.0, "is suspicious of %s" % about)
+				var threat_w: float = 0.5 if item["kind"] == "unease" else 1.0
+				add_intel(w, m, "threat", speaker.id, threat_w, "is suspicious of %s" % about)
 
 # ---------------------------------------------------------------- day gifts
 

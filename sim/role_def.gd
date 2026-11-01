@@ -224,30 +224,65 @@ func info_effects(_w, _listener, _source, _entry: Dictionary, _weight: float, _f
 	return []
 
 
+## Day-tapered reluctance for non-info gifts that hide from the Demon (`-0.50` D1,
+## `-0.30` D2, `-0.10` D3+), retaining a `-0.35` floor for the Warden.
+func hides_from_demon_claim_term(day: int) -> float:
+	if kind == "info":
+		return 0.0
+	var val: float = Tuning.Roles.HIDE_FROM_DEMON_CLAIM
+	if day == 2:
+		val = Tuning.Roles.HIDE_FROM_DEMON_CLAIM_D2
+	elif day >= 3:
+		val = Tuning.Roles.HIDE_FROM_DEMON_CLAIM_D3
+	if id == "warden":
+		val = minf(val, Tuning.Roles.WARDEN_HIDE_CLAIM_FLOOR)
+	return val
+
+
+## Day-tapered reluctance for ongoing info gifts (`-0.45` D1, `-0.20` D2, `0.0` D3+).
+func ongoing_info_claim_term(day: int) -> float:
+	if not is_ongoing_info():
+		return 0.0
+	if day <= 1:
+		return Tuning.Roles.ONGOING_INFO_EARLY_CLAIM
+	if day == 2:
+		return Tuning.Roles.ONGOING_INFO_CLAIM_D2
+	return 0.0
+
+
 ## Role-specific terms when `n` decides whether to publicly claim this role at a meeting (`Mind._public_claim_decision`).
 func score_public_claim(w, _n, parts: Dictionary) -> void:
-	if kind != "info":
-		parts["hides_from_demon"] = Tuning.Roles.HIDE_FROM_DEMON_CLAIM
-	if is_ongoing_info() and w.day <= 2:
-		parts["gift_keeps_giving"] = Tuning.Roles.ONGOING_INFO_EARLY_CLAIM
+	var hide: float = hides_from_demon_claim_term(w.day)
+	if hide != 0.0:
+		parts["hides_from_demon"] = hide
+	if is_ongoing_info():
+		var ongoing: float = ongoing_info_claim_term(w.day)
+		if ongoing != 0.0:
+			parts["gift_keeps_giving"] = ongoing
 	elif first_night:
 		parts["one_shot_gift"] = Tuning.Roles.ONE_SHOT_GIFT_CLAIM
 
 
 ## Role-specific terms when `n` weighs the cost of revealing their gift (`Mind.reveal_cost`).
 func score_reveal_cost(w, _n, parts: Dictionary) -> void:
-	if kind != "info":
-		parts["hides_from_demon"] = -Tuning.Roles.HIDE_FROM_DEMON_CLAIM
-	if is_ongoing_info() and w.day <= 2:
-		parts["gift_keeps_giving"] = -Tuning.Roles.ONGOING_INFO_EARLY_CLAIM
+	var hide: float = hides_from_demon_claim_term(w.day)
+	if hide != 0.0:
+		parts["hides_from_demon"] = -hide
+	if is_ongoing_info():
+		var ongoing: float = ongoing_info_claim_term(w.day)
+		if ongoing != 0.0:
+			parts["gift_keeps_giving"] = -ongoing
 
 
 ## Role-specific terms when `n` computes their gift disclosure tier (`Mind._target_tier`).
 func score_disclosure_tier(w, _n, gift_terms: Dictionary) -> void:
-	if kind != "info":
-		gift_terms["hides_from_demon"] = Tuning.Roles.HIDE_FROM_DEMON_CLAIM
-	if is_ongoing_info() and w.day <= 2:
-		gift_terms["gift_keeps_giving"] = Tuning.Roles.ONGOING_INFO_EARLY_CLAIM
+	var hide: float = hides_from_demon_claim_term(w.day)
+	if hide != 0.0:
+		gift_terms["hides_from_demon"] = hide
+	if is_ongoing_info():
+		var ongoing: float = ongoing_info_claim_term(w.day)
+		if ongoing != 0.0:
+			gift_terms["gift_keeps_giving"] = ongoing
 	elif first_night:
 		gift_terms["one_shot_gift"] = Tuning.Roles.ONE_SHOT_GIFT_CLAIM
 
