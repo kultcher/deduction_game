@@ -1217,11 +1217,11 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	if C.SHARED_EXECUTION_PRIORITY_WEIGHT != 0.0:
 		parts["shared_execution_priority"] = execution_priority_contribution(v, nominee)
 	if player_yes:
-		parts["player_votes_yes"] = 0.25 * v.credibility - 0.05
+		parts["player_votes_yes"] = Tuning.Meeting.PLAYER_VOTE_YES_SLOPE * v.credibility + Tuning.Meeting.PLAYER_VOTE_YES_OFFSET
 	if statement == "defend":
 		parts["player_defends"] = -0.25 * v.credibility
 	elif statement == "accuse":
-		parts["player_accuses"] = 0.2 * v.credibility
+		parts["player_accuses"] = Tuning.Meeting.PLAYER_ACCUSE_SLOPE * v.credibility
 	if nominator != "player" and susp(v, nominator) > 0.7:
 		parts["distrusts_nominator"] = -0.15
 	if v.spare_pref.get(nominee, 0.0) > 0.0:
@@ -1233,7 +1233,11 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	for k in parts:
 		if k not in ["suspicion", "town_pressure", "shared_execution_priority"]:
 			s += parts[k]
-	var need = Tuning.Meeting.VOTE_BASE_NEED - Tuning.Meeting.VOTE_CONFIDENCE_SCALE * (trait_of(v, "confidence") - 0.5) * 2.0 + (Tuning.Meeting.VOTE_DAY1_PENALTY if w.day <= 1 else 0.0) - Tuning.Meeting.VOTE_PARANOIA_WEIGHT * paranoia(w, v) - Tuning.Meeting.VOTE_URGENCY_PER_DEATH * w.npcs.filter(func(m): return not m.alive).size()
+	var conf_need: float = -Tuning.Meeting.VOTE_CONFIDENCE_SCALE * (trait_of(v, "confidence") - 0.5) * 2.0
+	var early_need: float = Tuning.Meeting.VOTE_DAY1_PENALTY if w.day <= 1 else 0.0
+	var para_need: float = -Tuning.Meeting.VOTE_PARANOIA_WEIGHT * paranoia(w, v)
+	var urg_need: float = -Tuning.Meeting.VOTE_URGENCY_PER_DEATH * w.npcs.filter(func(m): return not m.alive).size()
+	var need: float = Tuning.Meeting.VOTE_BASE_NEED + conf_need + early_need + para_need + urg_need
 	var yes = s >= need
 	var exact_parts: Dictionary = parts.duplicate()
 	exact_parts["suspicion"] = susp(v, nominee) # pressure is reported separately
@@ -1241,9 +1245,8 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		"score": s, "threshold": need, "comparison": ">=", "margin": s - need,
 		"inputs": {"confidence": trait_of(v, "confidence"), "composure": trait_of(v, "composure"),
 			"paranoia": paranoia(w, v), "trust": v.trust, "credibility": v.credibility, "trust_in_nominee": v.npc_trust.get(nominee, 0.5), "suspicion": susp(v, nominee)},
-		"threshold_parts": {"base": 0.5,
-			"confidence": -0.12 * (trait_of(v, "confidence") - 0.5) * 2.0,
-			"early_day": 0.1 if w.day <= 1 else 0.0, "paranoia": -0.4 * paranoia(w, v)},
+		"threshold_parts": {"base": Tuning.Meeting.VOTE_BASE_NEED,
+			"confidence": conf_need, "early_day": early_need, "paranoia": para_need, "urgency": urg_need},
 		"trust": v.trust, "block": block, "spare_preference": v.spare_pref.get(nominee, 0.0),
 		"shared_execution_priority": execution_priority(v, nominee), "shared_execution_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT,
 		"reluctance_rounding": "martyr contribution retains existing two-decimal rounding"}, nominee, trace_id)

@@ -25,7 +25,7 @@ class Setup:
 	const INFO_BEFORE_KILL = true
 	const DEFENCE_MOVES = true
 	const USE_FLAVOR_SECRETS = false
-	const SHARED_EXECUTION_PRIORITY_WEIGHT = 0.0
+	const SHARED_EXECUTION_PRIORITY_WEIGHT = 0.22
 
 	## Marked registration probabilities
 	const MARKED_EVIL_CHANCE = 0.5
@@ -378,9 +378,9 @@ class Meeting:
 	const RELAY_CORROBORATE = 0.05
 
 	## Social consensus bandwagon pressure
-	const CONSENSUS_BASE = 0.12
+	const CONSENSUS_BASE = 0.09
 	const CONSENSUS_FADE = 0.6
-	const CONSENSUS_CAP = 0.3
+	const CONSENSUS_CAP = 0.22
 	const CONSENSUS_HINT = 1.15
 
 	## Self-defence moves
@@ -403,13 +403,16 @@ class Meeting:
 	const NOMINATION_COOLOFF_SELF = 0.28
 	const NOMINATION_COOLOFF_ROOM = 0.10
 
-	## Voting threshold
-	const VOTE_BASE_NEED = 0.5
+	## Voting threshold & player ballot leverage
+	const VOTE_BASE_NEED = 0.52
 	const VOTE_CONFIDENCE_SCALE = 0.12
 	const VOTE_DAY1_PENALTY = 0.1
-	const VOTE_PARANOIA_WEIGHT = 0.4
+	const VOTE_PARANOIA_WEIGHT = 0.20
 	## Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it.
 	const VOTE_URGENCY_PER_DEATH = 0.02
+	const PLAYER_VOTE_YES_SLOPE = 0.18
+	const PLAYER_VOTE_YES_OFFSET = -0.04
+	const PLAYER_ACCUSE_SLOPE = 0.15
 
 
 # ---------------------------------------------------------------- 7. One-on-One Dialogue, Pressing & Disclosure
@@ -538,6 +541,8 @@ class Workshop:
 	}
 	const STANCE_ACCEPT = 0.6
 	const STANCE_PARTIAL = 0.35
+	const EXECUTION_PRIORITY_TOP_MARGIN = 0.12
+	const EXECUTION_PRIORITY_TOP_BONUS = 0.10
 
 	## Stage 2 Circumstantial Evidence Hub (`workshop/circumstantial.gd`)
 	const CIRCUMSTANTIAL_INCIDENT_MAX = 0.015
@@ -612,8 +617,15 @@ static func fingerprint() -> String:
 			Roles.ONGOING_INFO_EARLY_CLAIM,
 			Meeting.PUBLIC_CLAIM_DAY_SLOPE,
 			Meeting.REVEAL_SUSPICION_PIVOT,
+			Meeting.CONSENSUS_BASE,
+			Meeting.CONSENSUS_CAP,
 			Meeting.NOMINATION_BASE,
 			Meeting.VOTE_BASE_NEED,
+			Meeting.VOTE_PARANOIA_WEIGHT,
 			Meeting.VOTE_URGENCY_PER_DEATH,
+			Meeting.PLAYER_VOTE_YES_SLOPE,
+			Meeting.PLAYER_ACCUSE_SLOPE,
+			Workshop.EXECUTION_PRIORITY_TOP_MARGIN,
+			Workshop.EXECUTION_PRIORITY_TOP_BONUS,
 		]).sha256_text().substr(0, 12)
 	return _fingerprint_cache

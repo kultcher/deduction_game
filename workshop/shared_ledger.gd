@@ -1,5 +1,6 @@
 ## Portable shared ownership plan. No NPC/World references and no additive case awards.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const Jury = preload("res://workshop/jury.gd")
@@ -530,15 +531,56 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 				prepared.listener.confidence, target, reasoning.considered]))
 			Theory.prepare(prepared.view, question, prepared.listener, reasoning, key)
 	result["theories"] = prepared.listener.theories.duplicate(true)
-	# Expose the attended model's candidate ranking separately from the replaceable
-	# suspicion delta. This is a provisional action input, not an execution decision;
-	# urgency and action tuning remain deferred (Q3), and its consumer weight is zero.
-	var priorities = {}
+	# Listener-mean-centered execution priority: bystanders at or below the listener's
+	# live average receive 0.0, while joint-world standouts above listener_mean (plus at
+	# most two non-tied top standouts clearing listener_mean + TOP_MARGIN) gain priority.
+	var self_id: String = str(prepared.listener.get("id", ""))
+	var people_list: Array = plan.get("input", {}).get("people", prepared.view.get("people", []))
+	var alive_other_ids: Dictionary = {}
+	for p in people_list:
+		var pid: String = str(p.get("id", ""))
+		if pid != "" and pid != self_id and bool(p.get("alive", true)):
+			alive_other_ids[pid] = true
+	var raw_posteriors = {}
+	var sum_post: float = 0.0
+	var count_post: int = 0
 	for person in result.effects:
 		var effect: Dictionary = result.effects[person]
 		if effect.has("posterior"):
-			priorities[person] = clampf(float(effect.posterior), 0.0, 1.0)
-	result["action"] = {"execution_priority": priorities, "basis": "attended_posterior", "tuned": false}
+			var post_v: float = clampf(float(effect.posterior), 0.0, 1.0)
+			raw_posteriors[person] = post_v
+			if alive_other_ids.has(person):
+				sum_post += post_v
+				count_post += 1
+	var listener_mean: float = sum_post / float(maxi(1, count_post))
+	var top_margin: float = Tuning.Workshop.EXECUTION_PRIORITY_TOP_MARGIN
+	var top_bonus: float = Tuning.Workshop.EXECUTION_PRIORITY_TOP_BONUS
+	var qualifying_posts: Array = []
+	for person in raw_posteriors:
+		if alive_other_ids.has(person) and float(raw_posteriors[person]) >= listener_mean + top_margin:
+			qualifying_posts.append(float(raw_posteriors[person]))
+	qualifying_posts.sort()
+	qualifying_posts.reverse()
+	var bonus_floor: float = INF
+	if not qualifying_posts.is_empty():
+		var second_cut: float = float(qualifying_posts[mini(1, qualifying_posts.size() - 1)])
+		var at_or_above: int = qualifying_posts.filter(func(v): return float(v) >= second_cut - 1e-6).size()
+		bonus_floor = second_cut - 1e-6 if at_or_above <= 2 else second_cut + 1e-6
+	var priorities = {}
+	for person in raw_posteriors:
+		var post_v: float = float(raw_posteriors[person])
+		if not alive_other_ids.has(person) or post_v <= listener_mean + 1e-6:
+			priorities[person] = 0.0
+		else:
+			var tb: float = top_bonus if post_v >= bonus_floor else 0.0
+			priorities[person] = clampf((post_v - listener_mean) + tb, 0.0, 1.0)
+	result["action"] = {
+		"execution_priority": priorities,
+		"listener_mean": listener_mean,
+		"raw_posterior": raw_posteriors,
+		"basis": "listener_mean_centered",
+		"tuned": true,
+	}
 	return result
 
 static func _add(facts: Dictionary, owners: Dictionary, receipt: Dictionary, owner: String) -> void:

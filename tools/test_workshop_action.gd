@@ -3,11 +3,12 @@ const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
 const C = preload("res://sim/content.gd")
+const Tuning = preload("res://sim/tuning.gd")
 var checks = 0
 var fails = 0
 
 func _init() -> void:
-	check(C.SHARED_EXECUTION_PRIORITY_WEIGHT == 0.0, "Q3 stays deferred with a fixed zero action weight")
+	check(is_equal_approx(C.SHARED_EXECUTION_PRIORITY_WEIGHT, Tuning.Setup.SHARED_EXECUTION_PRIORITY_WEIGHT) and C.SHARED_EXECUTION_PRIORITY_WEIGHT > 0.0, "Phase 4.2 activates listener-mean-centered shared execution priority")
 	for size in [7, 10]:
 		_live(size)
 	_decisions()
@@ -32,11 +33,16 @@ func _live(size: int) -> void:
 	for n in g.w.living():
 		Mind.apply_info(g.w, n, source, reading, 0.5)
 		var listener = n.shadow if n.is_evil() else n
-		check(listener.workshop_state.active and listener.workshop_state.action.basis == "attended_posterior" and not listener.workshop_state.action.tuned, "a live shared solve supplies an explicitly provisional action for " + n.id)
+		check(listener.workshop_state.active and listener.workshop_state.action.basis == "listener_mean_centered" and listener.workshop_state.action.tuned, "a live shared solve supplies a tuned listener-mean-centered action for " + n.id)
 		var key: String = n.id + (":cover" if n.is_evil() else ":good")
 		var proposal: Dictionary = g._workshop_evaluations[key].proposal
-		check(proposal.action.execution_priority.keys() == proposal.effects.keys() and proposal.effects.keys().all(func(id): return is_equal_approx(Mind.execution_priority(listener, id), proposal.effects[id].posterior)), "action inputs reuse the attended posterior without another solve")
-		check(Mind.execution_priority_contribution(listener, target.id) == 0.0, "the new action input makes no decision contribution")
+		var l_mean: float = float(proposal.action.get("listener_mean", -1.0))
+		check(proposal.action.execution_priority.keys() == proposal.effects.keys() and l_mean >= 0.0 and proposal.effects.keys().all(func(id):
+			var post_v: float = float(proposal.effects[id].posterior)
+			var ep_v: float = Mind.execution_priority(listener, id)
+			return is_zero_approx(ep_v) if (id == listener.id or post_v <= l_mean + 1e-6) else ep_v > 0.0
+		), "listener-mean centering zeroes bystanders at or below mean and elevates above-mean suspects without another solve")
+		check(is_equal_approx(Mind.execution_priority_contribution(listener, target.id), C.SHARED_EXECUTION_PRIORITY_WEIGHT * Mind.execution_priority(listener, target.id)), "execution_priority_contribution scales priority by SHARED_EXECUTION_PRIORITY_WEIGHT")
 	var observer = target
 	var before = observer.suspicion.duplicate(true)
 	var rng = g.w.rng.state
@@ -77,7 +83,8 @@ func _decisions() -> void:
 	for id in listener.suspicion:
 		listener.suspicion[id] = 0.1
 	var rng = w.rng.state
-	for suspicion in [-0.2, 0.45, 0.5, 0.62, 0.9, 1.6]:
+	var wgt: float = C.SHARED_EXECUTION_PRIORITY_WEIGHT
+	for suspicion in [-0.2, 0.38, 0.5, 0.62, 0.9, 1.6]:
 		listener.suspicion[target.id] = suspicion
 		var votes: Array = []
 		var nominations: Array = []
@@ -85,13 +92,17 @@ func _decisions() -> void:
 			listener.workshop_state = {"active": true, "action": {"execution_priority": {target.id: priority}}}
 			votes.append(Mind.vote(w, listener, target.id, "player", false, "", 0))
 			nominations.append(Mind._good_nomination(w, listener, w.meeting, ""))
-		check(votes[0] == votes[1] and nominations[0] == nominations[1], "zero weight preserves voting and nomination at suspicion " + str(suspicion))
+		check((not votes[0] or votes[1]) and (nominations[0] == null or nominations[1] != null), "higher execution priority monotonically supports voting and nomination at suspicion " + str(suspicion))
+		if is_equal_approx(suspicion, 0.38):
+			check(not votes[0] and votes[1], "priority 1.0 bridges a 0.38-suspicion world-model standout across the 0.52 vote bar (0.38 + %.2f = %.2f)" % [wgt, 0.38 + wgt])
 	var evaluations = w.dlog.trace_events().filter(func(event): return event.type == "decision" and event.data.kind == "vote" and event.data.stage == "evaluation" and event.actor == listener.id)
 	for index in range(0, evaluations.size(), 2):
 		var low: Dictionary = evaluations[index].data.details
 		var high: Dictionary = evaluations[index + 1].data.details
-		check(low.score == high.score and low.margin == high.margin and low.threshold == high.threshold and low.parts == high.parts, "zero weight preserves the exact vote equation and margin")
-		check(low.shared_execution_priority == 0.0 and high.shared_execution_priority == 1.0 and high.shared_execution_weight == 0.0, "decision traces expose the unused shared input and its zero coefficient")
+		var expected_delta: float = 0.0 if float(low.score) == 0.0 and float(low.inputs.suspicion) <= 0.0 else wgt
+		if float(low.inputs.suspicion) >= 0.0:
+			check(is_equal_approx(float(high.score) - float(low.score), wgt) and is_equal_approx(float(high.margin) - float(low.margin), wgt) and is_equal_approx(float(low.threshold), float(high.threshold)), "priority 1.0 adds exact SHARED_EXECUTION_PRIORITY_WEIGHT to vote score and margin")
+		check(low.shared_execution_priority == 0.0 and high.shared_execution_priority == 1.0 and is_equal_approx(float(high.shared_execution_weight), wgt), "decision traces expose the active shared input and coefficient")
 	check(w.rng.state == rng, "the action plumbing draws no game RNG")
 	listener.workshop_state.active = false
 	check(Mind.execution_priority(listener, target.id) == 0.0, "even a stored maximum score is ignored after ownership is inactive")
