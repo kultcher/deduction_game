@@ -2,76 +2,107 @@ name: Overwrite Latest Archive on Google Drive
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: drive-latest-backup
+  cancel-in-progress: false
 
 jobs:
   backup-to-drive:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
     steps:
-    # 1. Check out the latest code from the repository
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
 
-    # 2. Package the repository using a reliable, error-tolerant compression method
-    # This prevents the workflow from crashing on exit code 5 if there are locked files
-    - name: Archive Repository Files safely
-      run: |
-        zip -r -q latest-repo-archive.zip . -x "*.git*"
+      - name: Archive tracked repository files
+        shell: bash
+        run: git archive --format=zip --output="$RUNNER_TEMP/latest-repo-archive.zip" HEAD
 
-    # 3. Authenticate with Google Cloud using your Service Account
-    - name: Authenticate with Google
-      id: auth
-      uses: google-github-actions/auth@v3 # Updated to v3 to resolve deprecation notices
-      with:
-        credentials_json: ${{ secrets.GDRIVE_CREDENTIALS }}
+      - name: Authenticate as the My Drive owner
+        id: auth
+        shell: bash
+        env:
+          CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${CLIENT_ID:?GDRIVE_CLIENT_ID is empty}"
+          : "${CLIENT_SECRET:?GDRIVE_CLIENT_SECRET is empty}"
+          : "${REFRESH_TOKEN:?GDRIVE_REFRESH_TOKEN is empty}"
+          curl --fail-with-body --silent --show-error \
+            --data-urlencode "client_id=$CLIENT_ID" \
+            --data-urlencode "client_secret=$CLIENT_SECRET" \
+            --data-urlencode "refresh_token=$REFRESH_TOKEN" \
+            --data-urlencode 'grant_type=refresh_token' \
+            'https://oauth2.googleapis.com/token' > "$RUNNER_TEMP/drive-token.json"
+          TOKEN=$(jq -er '.access_token | select(type == "string" and length > 0)' "$RUNNER_TEMP/drive-token.json")
+          echo "::add-mask::$TOKEN"
+          printf 'access_token=%s\n' "$TOKEN" >> "$GITHUB_OUTPUT"
+          rm -f "$RUNNER_TEMP/drive-token.json"
 
-    # 4. Upload and Overwrite the file on Google Drive
-    - name: Upload and Overwrite on Google Drive
-      run: |
-        ACCESS_TOKEN=$(gcloud auth print-access-token)
-        FOLDER_ID="${{ secrets.GDRIVE_FOLDER_ID }}"
-        FILENAME="latest-backup.zip"
-        
-        echo "Checking if an old backup exists..."
-        # 1. Capture the raw API response and the HTTP status code
-        SEARCH_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -G \
-          -H "Authorization: Bearer $ACCESS_TOKEN" \
-          --data-urlencode "q='${FOLDER_ID}' in parents and name='${FILENAME}' and trashed=false" \
-          "https://googleapis.com")
-          
-        # Split the response text from the status code
-        RAW_BODY=$(echo "$SEARCH_RESPONSE" | sed '/HTTP_STATUS:/d')
-        STATUS_CODE=$(echo "$SEARCH_RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+      - name: Create or overwrite the latest backup
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+        run: |
+          set -euo pipefail
+          : "${ACCESS_TOKEN:?No access token was generated}"
+          : "${FOLDER_ID:?GDRIVE_FOLDER_ID is empty}"
+          [[ "$FOLDER_ID" =~ ^[A-Za-z0-9_-]+$ ]] || { echo 'Use only the folder ID, not its full URL'; exit 1; }
+          FILENAME='latest-backup.zip'
+          ARCHIVE="$RUNNER_TEMP/latest-repo-archive.zip"
+          RESPONSE="$RUNNER_TEMP/drive-response.json"
 
-        echo "Google Drive API Response Code: $STATUS_CODE"
-        
-        # 2. Check if the response failed
-        if [ "$STATUS_CODE" -ne 200 ]; then
-          echo "❌ Google API Error! Raw response below:"
-          echo "$RAW_BODY"
-          exit 1
-        fi
-
-        # 3. Parse safely now that we know it's valid JSON
-        FILE_ID=$(echo "$RAW_BODY" | jq -r '.files[0].id // empty' 2>/dev/null)
-        
-        if [ -n "$FILE_ID" ] && [ "$FILE_ID" != "null" ]; then
-          echo "Found existing file with ID: $FILE_ID. Overwriting..."
-          curl -s -X PATCH \
+          echo 'Checking for an existing backup...'
+          curl --fail-with-body --silent --show-error --get \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
-            -F "file=@latest-repo-archive.zip;type=application/zip" \
-            "https://googleapis.com{FILE_ID}?uploadType=media"
-        else
-          echo "No existing file found. Creating a new one..."
-          curl -s -X POST \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            -F "metadata={name: '${FILENAME}', parents: ['${FOLDER_ID}']};type=application/json;charset=UTF-8" \
-            -F "file=@latest-repo-archive.zip;type=application/zip" \
-            "https://googleapis.com"
-        fi
-        echo "Backup complete!"
+            --data-urlencode "q='$FOLDER_ID' in parents and name='$FILENAME' and trashed=false" \
+            --data-urlencode 'fields=files(id,name),nextPageToken' \
+            --data-urlencode 'pageSize=100' \
+            --data-urlencode 'supportsAllDrives=true' \
+            --data-urlencode 'includeItemsFromAllDrives=true' \
+            'https://www.googleapis.com/drive/v3/files' > "$RESPONSE"
+          jq -e '.files | type == "array"' "$RESPONSE" > /dev/null
+          COUNT=$(jq '.files | length' "$RESPONSE")
+          if (( COUNT > 1 )); then
+            echo 'Multiple latest-backup.zip files exist. Remove duplicates before retrying.'
+            exit 1
+          fi
+          FILE_ID=$(jq -r '.files[0].id // empty' "$RESPONSE")
+
+          if [[ -n "$FILE_ID" ]]; then
+            echo 'Overwriting the existing backup...'
+            curl --fail-with-body --silent --show-error -X PATCH \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -H 'Content-Type: application/zip' \
+              --data-binary "@$ARCHIVE" \
+              "https://www.googleapis.com/upload/drive/v3/files/$FILE_ID?uploadType=media&supportsAllDrives=true&fields=id,name,size" > "$RESPONSE"
+          else
+            echo 'Creating the first backup...'
+            jq -n --arg name "$FILENAME" --arg folder "$FOLDER_ID" \
+              '{name:$name,parents:[$folder]}' > "$RUNNER_TEMP/drive-metadata.json"
+            curl --fail-with-body --silent --show-error -X POST \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -H 'Content-Type: application/json; charset=UTF-8' \
+              -H 'X-Upload-Content-Type: application/zip' \
+              --data-binary "@$RUNNER_TEMP/drive-metadata.json" \
+              --dump-header "$RUNNER_TEMP/drive-upload.headers" \
+              'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,size' > "$RESPONSE"
+            UPLOAD_URL=$(sed -n 's/^[Ll]ocation: *//p' "$RUNNER_TEMP/drive-upload.headers" | tr -d '\r')
+            : "${UPLOAD_URL:?Drive did not return an upload session URL}"
+            curl --fail-with-body --silent --show-error -X PUT \
+              -H 'Content-Type: application/zip' \
+              --upload-file "$ARCHIVE" "$UPLOAD_URL" > "$RESPONSE"
+          fi
+          jq -e '.id | type == "string" and length > 0' "$RESPONSE" > /dev/null
+          echo 'Backup complete.'
