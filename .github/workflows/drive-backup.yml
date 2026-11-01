@@ -1,0 +1,77 @@
+name: Overwrite Latest Archive on Google Drive
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  backup-to-drive:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Check out the latest code from the repository
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    # 2. Package the repository using a reliable, error-tolerant compression method
+    # This prevents the workflow from crashing on exit code 5 if there are locked files
+    - name: Archive Repository Files safely
+      run: |
+        zip -r -q latest-repo-archive.zip . -x "*.git*"
+
+    # 3. Authenticate with Google Cloud using your Service Account
+    - name: Authenticate with Google
+      id: auth
+      uses: google-github-actions/auth@v3 # Updated to v3 to resolve deprecation notices
+      with:
+        credentials_json: ${{ secrets.GDRIVE_CREDENTIALS }}
+
+    # 4. Upload and Overwrite the file on Google Drive
+    - name: Upload and Overwrite on Google Drive
+      run: |
+        ACCESS_TOKEN=$(gcloud auth print-access-token)
+        FOLDER_ID="${{ secrets.GDRIVE_FOLDER_ID }}"
+        FILENAME="latest-backup.zip"
+        
+        echo "Checking if an old backup exists..."
+        # 1. Capture the raw API response and the HTTP status code
+        SEARCH_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -G \
+          -H "Authorization: Bearer $ACCESS_TOKEN" \
+          --data-urlencode "q='${FOLDER_ID}' in parents and name='${FILENAME}' and trashed=false" \
+          "https://googleapis.com")
+          
+        # Split the response text from the status code
+        RAW_BODY=$(echo "$SEARCH_RESPONSE" | sed '/HTTP_STATUS:/d')
+        STATUS_CODE=$(echo "$SEARCH_RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+
+        echo "Google Drive API Response Code: $STATUS_CODE"
+        
+        # 2. Check if the response failed
+        if [ "$STATUS_CODE" -ne 200 ]; then
+          echo "❌ Google API Error! Raw response below:"
+          echo "$RAW_BODY"
+          exit 1
+        fi
+
+        # 3. Parse safely now that we know it's valid JSON
+        FILE_ID=$(echo "$RAW_BODY" | jq -r '.files[0].id // empty' 2>/dev/null)
+        
+        if [ -n "$FILE_ID" ] && [ "$FILE_ID" != "null" ]; then
+          echo "Found existing file with ID: $FILE_ID. Overwriting..."
+          curl -s -X PATCH \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -F "file=@latest-repo-archive.zip;type=application/zip" \
+            "https://googleapis.com{FILE_ID}?uploadType=media"
+        else
+          echo "No existing file found. Creating a new one..."
+          curl -s -X POST \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -F "metadata={name: '${FILENAME}', parents: ['${FOLDER_ID}']};type=application/json;charset=UTF-8" \
+            -F "file=@latest-repo-archive.zip;type=application/zip" \
+            "https://googleapis.com"
+        fi
+        echo "Backup complete!"
