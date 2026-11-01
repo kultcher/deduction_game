@@ -1,6 +1,7 @@
 ## Test suite for the complete RoleDef / RoleRegistry system (all 21 roles in C.ROLES).
 ##   godot --headless --path . --script res://tools/test_role_def_poc.gd
 extends SceneTree
+const Tuning = preload("res://sim/tuning.gd")
 
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
@@ -365,7 +366,7 @@ func _test_final_roles_hooks() -> void:
 	w.day = 1
 	var seer_claim_parts: Dictionary = {}
 	C.role_def("seer").score_public_claim(w, rumor, seer_claim_parts)
-	_check(is_equal_approx(seer_claim_parts.get("gift_keeps_giving", 0.0), -0.4), "Ongoing info RoleDef sets gift_keeps_giving = -0.4 on early days")
+	_check(is_equal_approx(seer_claim_parts.get("gift_keeps_giving", 0.0), Tuning.Roles.ONGOING_INFO_EARLY_CLAIM), "Ongoing info RoleDef sets gift_keeps_giving = -0.45 on Day 1")
 	var clerk_claim_parts: Dictionary = {}
 	C.role_def("clerk").score_public_claim(w, rumor, clerk_claim_parts)
 	_check(is_equal_approx(clerk_claim_parts.get("one_shot_gift", 0.0), 0.3), "First-night RoleDef sets one_shot_gift = 0.3")

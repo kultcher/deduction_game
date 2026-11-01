@@ -123,9 +123,9 @@ static func _public_claim_decision(w, n) -> String:
 	var kind: String = C.ROLES[role]["kind"]
 	var parts = {
 		"openness": (0.5 - trait_of(n, "privacy")) * 1.2,
-		"day": 0.3 * (w.day - 1),
+		"day": Tuning.Meeting.PUBLIC_CLAIM_DAY_SLOPE * (w.day - 1),
 		"pressure": n.pressure * 0.8 * (1.0 - 0.5 * trait_of(n, "composure")),
-		"base": -0.35,
+		"base": Tuning.Meeting.PUBLIC_CLAIM_BASE,
 	}
 	# Gifts that pay off night after night are worth protecting early; one-shot first-night
 	# gifts have less to lose by coming out.
@@ -372,7 +372,8 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 	if rs["kind"] == "relay":
 		return {"tier": "relay", "why": "", "src": rs["src"], "entry": rs["entry"]}
 	var cost = reveal_cost(w, n)
-	var parts = {"strength": (rs["strength"] - 0.45) * 1.4, "suspicion": (s2 - 0.75) * 1.2,
+	var parts = {"strength": (rs["strength"] - 0.45) * 1.4,
+		"suspicion": (s2 - Tuning.Meeting.REVEAL_SUSPICION_PIVOT) * Tuning.Meeting.REVEAL_SUSPICION_SLOPE,
 		"confidence": (trait_of(n, "confidence") - 0.5) * 0.6}
 	for k in cost:
 		parts["cost_" + k] = -cost[k]
@@ -886,7 +887,9 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 	if not priv.is_empty():
 		var top: Dictionary = priv[0]
 		var cost = reveal_cost(w, n)
-		var parts = {"strength": (top["strength"] - 0.45) * 1.4, "suspicion": (susp(n.shadow if n.is_evil() and n.shadow != null else n, t.id) - 0.75) * 1.2,
+		var nom_susp: float = susp(n.shadow if n.is_evil() and n.shadow != null else n, t.id)
+		var parts = {"strength": (top["strength"] - 0.45) * 1.4,
+			"suspicion": (nom_susp - Tuning.Meeting.REVEAL_SUSPICION_PIVOT) * Tuning.Meeting.REVEAL_SUSPICION_SLOPE,
 			"confidence": (trait_of(n, "confidence") - 0.5) * 0.6, "nominating": 0.2}
 		for k in cost:
 			parts["cost_" + k] = -cost[k]
