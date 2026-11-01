@@ -231,7 +231,7 @@ static func ensure_scapegoat(w) -> void:
 ## Record something an evil member knows. kind: threat | walker | player_suspects
 static func add_intel(w, m, kind: String, about: String, score: float, why: String, extra: Dictionary = {}) -> void:
 	var key = "%s:%s:%s" % [kind, about, why]
-	if m.intel.has(key):
+	if m.intel.has(key) and (kind != "threat" or score <= float(m.intel[key]["score"])):
 		return
 	var it = {"kind": kind, "about": about, "score": score, "why": why, "day": w.day, "from": m.id}
 	for k in extra:
@@ -239,16 +239,20 @@ static func add_intel(w, m, kind: String, about: String, score: float, why: Stri
 	m.intel[key] = it
 	w.dlog.add("evil_intel", m.id, about, it, "%s learns: %s (%s)" % [m.name, why, kind])
 
+## Threat observations keep their strongest known score, including across teammates.
+static func _stronger_threat(incoming: Dictionary, existing: Dictionary) -> bool:
+	return incoming.get("kind", "") == "threat" and float(incoming.get("score", 0.0)) > float(existing.get("score", 0.0))
+
 ## Two evil members pool what they know (a meeting, a whisper, or the first night).
 static func share_intel(w, a, b, how: String) -> void:
 	var gave_a = 0
 	var gave_b = 0
 	for k in a.intel:
-		if not b.intel.has(k):
+		if not b.intel.has(k) or _stronger_threat(a.intel[k], b.intel[k]):
 			b.intel[k] = a.intel[k].duplicate()
 			gave_a += 1
 	for k in b.intel:
-		if not a.intel.has(k):
+		if not a.intel.has(k) or _stronger_threat(b.intel[k], a.intel[k]):
 			a.intel[k] = b.intel[k].duplicate()
 			gave_b += 1
 	w.dlog.add("evil_share", a.id, b.id, {"how": how, "a_gave": gave_a, "b_gave": gave_b},
@@ -257,7 +261,7 @@ static func share_intel(w, a, b, how: String) -> void:
 static func unshared_intel(a, b) -> int:
 	var c = 0
 	for k in a.intel:
-		if not b.intel.has(k):
+		if not b.intel.has(k) or _stronger_threat(a.intel[k], b.intel[k]):
 			c += 1
 	return c
 

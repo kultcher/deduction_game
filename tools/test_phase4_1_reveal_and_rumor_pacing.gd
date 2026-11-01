@@ -15,6 +15,7 @@ const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
+const Evil = preload("res://sim/evil.gd")
 
 var checks: int = 0
 var fails: int = 0
@@ -33,6 +34,7 @@ func _init() -> void:
 	_test_knob1_tapered_role_reluctance_and_day_slope()
 	_test_knob2_reactive_reveal_pivot_and_fear_paranoia_fix()
 	_test_knob3_zero_walker_daytime_rumor_fuel()
+	_test_threat_intel_escalation()
 	var user_args: PackedStringArray = OS.get_cmdline_user_args()
 	if "--sweep" in user_args:
 		var s_idx: int = user_args.find("--sweep")
@@ -267,6 +269,35 @@ func _test_knob3_zero_walker_daytime_rumor_fuel() -> void:
 			block_only = candidate
 			break
 	_check(not block_only.is_empty() and block_only.loc == "" and block_only.block == "hill" and "during the day" in Social._describe(w, speaker, block_only), "a block-only observation never acquires a workplace or haunt location")
+
+
+func _test_threat_intel_escalation() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(97930, 10)
+	var w = g.w
+	var a = w.evil_team()[0]
+	var b = w.evil_team()[1]
+	var speaker = w.living_good()[0]
+	a.intel.clear()
+	b.intel.clear()
+	var item: Dictionary = {"kind": "unease", "about": a.id}
+	Evil.intel_from_share(w, a, speaker, item)
+	_check(is_equal_approx(Evil.intel_threat(a, speaker.id), 0.5), "mild unease starts as half-strength threat intel")
+	Evil.share_intel(w, a, b, "test unease")
+	_check(is_equal_approx(Evil.intel_threat(b, speaker.id), 0.5) and Evil.unshared_intel(a, b) == 0, "pooled unease is shared once")
+	for kind in ["opinion", "case"]:
+		item.kind = kind
+		Evil.intel_from_share(w, a, speaker, item)
+		_check(is_equal_approx(Evil.intel_threat(a, speaker.id), 1.0), "stronger %s upgrades an existing threat without stacking" % kind)
+		if kind == "opinion":
+			_check(Evil.unshared_intel(a, b) == 1, "a threat upgrade counts as news for a teammate with stale intel")
+	Evil.share_intel(w, b, a, "test reverse pool")
+	_check(is_equal_approx(Evil.intel_threat(a, speaker.id), 1.0) and is_equal_approx(Evil.intel_threat(b, speaker.id), 1.0), "stronger threat survives reverse-order pooling and reaches the stale teammate")
+	item.kind = "unease"
+	Evil.intel_from_share(w, a, speaker, item)
+	Evil.share_intel(w, a, b, "test repeat")
+	_check(a.intel.size() == 1 and b.intel.size() == 1 and is_equal_approx(Evil.intel_threat(a, speaker.id), 1.0) and Evil.unshared_intel(a, b) == 0, "repeated or weaker intel cannot downgrade or duplicate an upgraded threat")
 
 
 func _run_checkpoint_sweep(games: int) -> Dictionary:
