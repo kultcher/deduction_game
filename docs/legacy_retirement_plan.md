@@ -1,6 +1,6 @@
 # Retiring the old belief system: inventory and plan
 
-Prepared by Claude, Oct 30, 2026. **Status: the design needs sign-off before any code is deleted.**
+Prepared by Claude, Oct 30, 2026. **Status (Nov 1):** decisions 1 and 4 answered (below); 2 and 3 open.
 
 The user asked for the old belief system to be purged. On Oct 24–25 the user had decided to keep a deliberate hybrid, recorded in the Project doc `claude/legacy-migration-plan.md`. That decision included "not deleting the legacy ledger wholesale", and it kept the native rules as the baseline for the bot A/B test. Purging reverses part of that, so this note lists what exists, what is still live, and the questions that need answers first.
 
@@ -61,7 +61,15 @@ Each phase is its own PR, with the full suite, `test_trace`, the 54875 replay an
    - The 37 suites that toggle the switch are rewritten: delete the native-parity checks, and keep anything that tests behaviour.
 4. **Retire the template evaluator,** once the bot builds Workshop cases. Remove the templates and the `link` / `conclude` text commands.
 
-## Decisions needed (user)
+## Decisions (user)
+
+**Answered Nov 1:**
+- **1. Native A/B baseline: dropped.** Old baselines (native and pre-overhaul shared) are set aside; new baselines are taken once the tuning overhaul settles.
+- **4. Bot rewrite: no rush.** Phases 1–3 go ahead without it; phase 4 waits.
+
+**Ordering (Nov 1):** phase 1 now. Before phase 2, the overhaul's new readers of legacy effects move to the shared model: meeting reasons (`case_against`), defences (`night_sighting_scale` / `reading_strength` in `defend_self`), the Gravedigger rapport side effects in `info_effects`, and the Revenant curse's `adjust` + `recompute_beliefs`. Phases 2–3 then land before the overhaul's phase 5 sweeps.
+
+**Original questions:**
 
 1. **Does the purge reverse the Oct 24–25 "keep native as the A/B baseline" decision?**
    - The last A/B (Oct 25) still had native ahead on town agreement: 35% vs 20% sharing a top suspect at Day 3, with top-3 overlap 1.93 vs 1.30.
