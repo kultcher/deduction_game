@@ -64,7 +64,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	var marked_questions: Array = []
 	var disputes: Array = []
 	var circumstantial_hubs: Array = []
-	var trace_assessments_by_scene: Dictionary = {}
+	var trace_assessments_by_digest: Dictionary = {}
 	var reading_challenges = {}
 	for receipt in preload("res://workshop/public_evidence.gd").martyr_receipts(input.public_events, input.people.map(func(p): return p.id)):
 		_add(facts, owners, receipt, "public")
@@ -107,8 +107,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 				circumstantial_hubs.append(hcopy)
 			for ta in argument.get("workshop_case", {}).get("trace_assessments", []):
 				if ta is Dictionary and str(ta.get("digest", "")) != "":
-					# Latest non-withdrawn assessment for a scene replaces older versions without stacking.
-					trace_assessments_by_scene[str(ta.digest)] = ta.duplicate(true)
+					# Keyed by digest here; LiveActivity._build_scene_tables deduplicates per scene so newer revisions replace older ones.
+					trace_assessments_by_digest[str(ta.digest)] = ta.duplicate(true)
 			if argument.conclusion.get("type") == "marked":
 				var target: String = Assess._target(argument.conclusion)
 				if target not in marked_questions:
@@ -152,8 +152,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 	input.root = -1
 	input.arguments = [{"board_number": -1, "conclusion": {"type": "evil", "a": input.people[0].id}, "supports": numbers}]
 	var prepared = Assess.prepare(input)
-	if not trace_assessments_by_scene.is_empty():
-		prepared.view["trace_assessments"] = trace_assessments_by_scene.values()
+	if not trace_assessments_by_digest.is_empty():
+		prepared.view["trace_assessments"] = trace_assessments_by_digest.values()
 	issues.append_array(prepared.issues.filter(func(issue): return not facts.is_empty() or issue != "No supported reading is presented."))
 	var aliases = {}
 	var coarse_aliases = {}
@@ -345,6 +345,16 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 				continue
 			if facts[id].source == input.listener.id and "learned" in owners[id]:
 				continue
+			if not owners[id].any(func(owner): return owner == "learned" or owner == "public" or owner.begins_with("case:")) and owners[id].any(func(owner): return owner.begins_with("reading:")):
+				var max_rw: float = 0.0
+				for owner in owners[id]:
+					if owner.begins_with("reading:"):
+						max_rw = maxf(max_rw, float(ledger.get(owner.trim_prefix("reading:"), {}).get("weight", 0.0)))
+					elif owner.begins_with("share:"):
+						max_rw = maxf(max_rw, float(ledger.get(owner.trim_prefix("share:"), {}).get("weight", 0.0)))
+				if max_rw <= 0.01:
+					prepared.listener.reading_reliability[id] = 0.0
+					continue
 			var rel_scale: float = clampf(rel_base + rel_slope * best_trust, rel_base, 1.0)
 			if shared and not owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:") or owner.begins_with("case:")):
 				rel_scale = clampf(rel_base + rel_slope * (best_trust * maxf(hearing, 0.35)), rel_base, 1.0)
@@ -592,6 +602,10 @@ static func _card_route_trust(fact: Dictionary, adapted_card: Dictionary, fact_o
 	var best_non_player: float = -1.0
 	var best_player: float = -1.0
 	for owner in fact_owners:
+		if owner.begins_with("reading:") or owner.begins_with("claim:") or owner.begins_with("defence:") or owner.begins_with("share:") or owner.begins_with("testimony:"):
+			var owner_eid: String = owner.substr(owner.find(":") + 1)
+			if ledger.has(owner_eid) and float(ledger[owner_eid].get("weight", 1.0)) <= 0.01:
+				continue
 		if owner == "learned" or owner.begins_with("reading:") or owner.begins_with("claim:") or owner.begins_with("defence:"):
 			if source == "player":
 				best_player = maxf(best_player, player_cred)

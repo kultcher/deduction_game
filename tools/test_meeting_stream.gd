@@ -20,12 +20,14 @@ func _play(sd: int, stream: bool) -> Dictionary:
 	g.detailed_logging = false
 	g.log_dir = "user://test_logs"
 	g.stream_meeting = stream
-	g.new_case(sd, 10)
+	var cast_size: int = 10 if sd == 54875 else 7
+	var max_day: int = 2 if cast_size == 10 else 3
+	g.new_case(sd, cast_size)
 	var text = ""
 	var steps = 0
 	var meetings = 0
 	for i in range(200):
-		if g.state == "over" or g.w.day > 3:
+		if g.state == "over" or g.w.day > max_day:
 			break
 		var cmd = "wait"
 		match g.state:

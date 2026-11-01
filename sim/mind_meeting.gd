@@ -797,6 +797,34 @@ static func _entry_rejected_in_workshop(w, mind, real_npc, e: Dictionary) -> boo
 			return true
 	return false
 
+static func _sighting_non_incriminating_in_workshop(w, mind, t_id: String, e: Dictionary) -> bool:
+	var meta: Dictionary = e.get("meta", {})
+	if meta.has("workshop_card"):
+		var wc: Dictionary = meta["workshop_card"]
+		if wc.get("kind", "") == "sighting":
+			var obs: Dictionary = wc.get("observed_at", {})
+			var is_night: bool = str(obs.get("phase", "")) == "night" or int(wc.get("phase", -1)) == C.NIGHT
+			var subjs: Array = wc.get("subjects", wc.get("subject", [])) if wc.get("subjects", wc.get("subject", [])) is Array else [wc.get("subject", "")]
+			if is_night and t_id in subjs:
+				var blk: String = str(wc.get("content", {}).get("block", wc.get("block", "")))
+				var dy: int = int(obs.get("day", wc.get("day", -1)))
+				return _mind().night_sighting_scale(w, mind, t_id, blk, dy) < 0.35
+	for rec in meta.get("workshop_receipts", {}).values():
+		if not (rec is Dictionary):
+			continue
+		var content: Dictionary = rec.get("content", {})
+		var r_role: String = str(content.get("role", rec.get("role", "")))
+		var r_data: Dictionary = content.get("data", rec.get("data", {}))
+		var r_obs: Dictionary = rec.get("observed_at", {})
+		if r_role == "nightwatch" and t_id in r_data.get("seen", []):
+			var nw_day: int = int(r_obs.get("day", rec.get("day", -1)))
+			return _mind().night_sighting_scale(w, mind, t_id, str(r_data.get("block", "")), nw_day) < 0.35
+		if r_role == "medium":
+			var item: Dictionary = r_data.get("item", {})
+			if str(item.get("type", "")) == "sighting" and str(item.get("who", "")) == t_id:
+				return _mind().night_sighting_scale(w, mind, t_id, str(item.get("block", "")), int(item.get("night", -1))) < 0.35
+	return false
+
 static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	var mind = n
 	if n.is_evil():
@@ -817,12 +845,15 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 			var rel_w: float = _mind().reliability(mind, rp[0], rp[1], rp[2])
 			if rel_w < 0.35:
 				continue
+			var skip_sighting: bool = _sighting_non_incriminating_in_workshop(w, mind, t_id, e)
 			for i in range(effs.size()):
 				var f: Array = effs[i]
 				if float(f[1]) <= 0.0 or f[4] == "":
 					continue
 				var targets: Array = _mind()._expand(f[0], claimants)
 				if t_id in targets:
+					if skip_sighting and (e.get("meta", {}).get("workshop_card", {}).get("kind", "") == "sighting" or "seen out at night" in str(f[3])):
+						continue
 					contrib += float(f[1]) * float(e["weight"]) * rel_w
 					if why == "":
 						why = f[4]

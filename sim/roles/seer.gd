@@ -130,6 +130,13 @@ func pick_targets(w, n, mind):
 		why = "settled on %s (two yeses); looks at two fresh people" % ranked[0].id
 	else:
 		var others: Array = ranked.slice(1)
+		var unrepeated: Array = others.filter(func(m):
+			var p_ids: Array = [ranked[0].id, m.id]
+			p_ids.sort()
+			return not seen_pairs.has("%s:%s" % [p_ids[0], p_ids[1]])
+		)
+		if not unrepeated.is_empty():
+			others = unrepeated
 		if ins >= 0.6:
 			var fr: Array = others.filter(func(m): return not checked.has(m.id))
 			if not fr.is_empty():

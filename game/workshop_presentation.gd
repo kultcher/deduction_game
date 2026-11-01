@@ -352,14 +352,7 @@ static func _belief_stance_text(g, n, kind: String, subject: String, before: flo
 			reasons = reasons.substr(lead_s.length()).strip_edges()
 			break
 	if believed == "reject":
-		for accept_tail in [
-			" Even so, the evidence favors your explanation.",
-			" Even so, the movement evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
-			" Even so, the trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
-			" Even so, the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
-		]:
-			reasons = reasons.replace(accept_tail, "")
-		reasons = reasons.strip_edges()
+		reasons = Shared.Jury.strip_accept_persuasion_tail(reasons)
 	var name: String = g.w.by_id[subject].name
 	var lead: String
 	match believed:

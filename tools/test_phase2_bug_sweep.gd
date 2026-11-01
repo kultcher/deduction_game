@@ -122,17 +122,18 @@ func _test_2_4_warden_credit_alternatives() -> void:
 	var w = g.w
 	var warden = w.living_good()[0]
 	var target = w.living_good()[1]
+	var vet_claimant = w.living_good()[2]
 	warden.role = "warden"
 	w.day = 2
 	warden.warden_saves.clear()
-	w.public_event("knell", [warden.id], "sexton_test")
+	w.public_claims.append({"who": vet_claimant.id, "role": "veteran", "day": 2})
 	w._warden_credit(warden, target.id)
-	_check(warden.warden_saves.has("2") and is_equal_approx(warden.warden_saves["2"].belief, 0.5), "public Sexton knell halves Warden quiet-night save belief")
+	_check(warden.warden_saves.has("2") and is_equal_approx(warden.warden_saves["2"].belief, 0.5), "living public Veteran claim halves Warden quiet-night save belief")
 
 	warden.warden_saves.clear()
 	w.player_ward = warden.id
 	w._warden_credit(warden, target.id)
-	_check(not warden.warden_saves.has("2"), "public knell plus known player ward lowers Warden save belief below threshold (1/3 < 0.5)")
+	_check(not warden.warden_saves.has("2"), "public Veteran claim plus known player ward lowers Warden save belief below threshold (1/3 < 0.5)")
 
 
 func _test_2_5_headline_firsthand_attention_reports() -> void:

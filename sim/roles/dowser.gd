@@ -91,7 +91,12 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	if others.size() < 2:
 		return {}
 	var ids: Array = others.map(func(m): return m.id)
-	var count: int = 0 if others.any(func(m): return m.is_evil()) else (1 if s in ids else others.filter(func(m): return m.is_evil()).size())
+	var count: int = 0
+	if not others.any(func(m): return m.is_evil()):
+		if s in ids:
+			count = 2 if (others.size() >= 4 and w.chance(0.35)) else 1
+		elif others.size() >= 4 and w.chance(0.25):
+			count = 1
 	n.dowsed_day = w.day
 	return {
 		"entry": {"data": {"group": ids, "count": count, "block": blk}, "text": "on %s I sensed %d evil among %s" % [content().block_name(blk), count, w._names(ids)]},

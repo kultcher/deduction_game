@@ -522,7 +522,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 		var contextual: String = Dialogue.gift_reveal(n.id, C.role_name(role), reveal_cue)
 		if contextual != "":
 			lines.append(say(n, contextual))
-		elif w.day <= 1 and w.phase == C.MORNING:
+		elif w.day < 2 and (n.pressed_today - (1 if count_question else 0)) < 2:
 			var early_fb: String = "I'll trust you with this. I'm the %s." % C.role_name(role)
 			var early_voiced: String = Dialogue.voice_line(n.id, "private_reveal_early", "", {"role": C.role_name(role)})
 			if early_voiced != "":

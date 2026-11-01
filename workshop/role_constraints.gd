@@ -68,7 +68,7 @@ static func fits_weights(view: Dictionary, universe: Array, cards: Array, knowle
 			# The Medium claims a relay adds are the same in every world that passes the
 			# relay checks (worlds that fail never reach routing), so routes hoist too.
 			if routes == null and Activity.available(view):
-				routes = Activity.routes(view, _routing_cards(_live_cards(cards)), answers, knowledge)
+				routes = Activity.routes(view, _routing_cards(_live_cards(cards)), answers, knowledge, not bluffs)
 			results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, routes, bluffs)
 		out[i] = float(results[mask])
 	return out
@@ -187,7 +187,7 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 	var live: bool = bluffs
 	if Activity.available(view):
 		if routes == null:
-			routes = Activity.routes(view, cards, answers, knowledge)
+			routes = Activity.routes(view, cards, answers, knowledge, not live)
 		# Live testimony can be false (an evil fake sighting, a lying alibi): routes that
 		# can't all hold no longer void every world; the movement likelihood weighs them.
 		if not routes.okay and not live:

@@ -427,7 +427,12 @@ static func _show_ward_context(g, card: Dictionary, listeners: Array) -> Diction
 			var bonus: float = Tuning.Trust.WARD_SIGIL_BONUS + (Tuning.Trust.WARD_SIGIL_TARGET_BONUS if listener.id == card.target else 0.0)
 			Mind.set_trust(g.w, listener, listener.trust + bonus, "the Demonologist showed a scorched ward sigil")
 		g.sigil_heard[card.n] = heard
-	g.w.dlog.add("player_ward_context", "player", card.get("target", ""), {"card": card.n, "listeners": listeners.map(func(n): return n.id), "rewarded": rewarded, "public": public_show})
+	var ward_night: int = int(card.get("night", card.get("day", -1)))
+	g.w.dlog.add("player_ward_context", "player", card.get("target", ""), {"card": card.n, "night": ward_night, "kind": str(card.get("kind", "")), "listeners": listeners.map(func(n): return n.id), "rewarded": rewarded, "public": public_show})
+	if ward_night >= 1:
+		for listener in listeners:
+			if listener.alive:
+				g.w.reweigh_warden_credit_for_ward(listener, ward_night, str(card.get("kind", "")), str(card.get("target", "")))
 	return {"lines": ["You show %s: %s" % ["the town" if public_show else ", ".join(PackedStringArray(listeners.map(func(n): return n.name))), card.text]], "facts": []}
 
 

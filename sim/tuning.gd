@@ -175,6 +175,7 @@ class Roles:
 	const GRAVEDIGGER = {
 		"card_strength": 0.3,
 		"marked_evil_chance": 0.3,
+		"eff_impossible_source": 0.5,
 		"eff_executed_evil": 1.0,
 		"eff_executed_good": -0.4,
 		"eff_nominator_of_good": 0.25,
@@ -369,7 +370,6 @@ class Meeting:
 	const PUBLIC_CLAIM_BASE = -0.35
 	const PUBLIC_CLAIM_DAY_SLOPE = 0.4
 	const PUBLIC_CLAIM_FEW_LEFT = 0.8
-	const PUBLIC_CLAIM_PROMISED_PLAYER = -0.6
 	const REVEAL_SUSPICION_PIVOT = 0.45
 	const REVEAL_SUSPICION_SLOPE = 1.5
 

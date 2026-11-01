@@ -580,7 +580,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			if alternative.has("demon"):
 				response += " In that explanation, %s is the Demon." % Solver.person_name(view, alternative.demon)
 			if stance == "accept":
-				response += " Even so, the evidence favors your explanation." if ev.movement.is_empty() else (" Even so, the %s evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible." % _movement_trace_kind(view, _cards_by_ids(view, reasoning.get("considered", case_data.get("cards", [])))))
+				response += accept_persuasion_tail("" if ev.movement.is_empty() else _movement_trace_kind(view, _cards_by_ids(view, reasoning.get("considered", case_data.get("cards", [])))))
 		elif reasoning.status == "entailed_in_attention":
 			response = "The reports I considered force this if they are accurate."
 		elif reasoning.status == "inconsistent":
@@ -674,6 +674,19 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 ## Several readings combine as independent chances (noisy-or). Only raises suspicion.
 static func _cards_by_ids(view: Dictionary, ids: Array) -> Array:
 	return view.get("cards", []).filter(func(c): return c.get("id", "") in ids)
+
+const ACCEPT_PERSUASION_PREFIX = " Even so, "
+
+static func accept_persuasion_tail(kind: String) -> String:
+	if kind == "":
+		return ACCEPT_PERSUASION_PREFIX + "the evidence favors your explanation."
+	return ACCEPT_PERSUASION_PREFIX + ("the %s evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible." % kind)
+
+static func strip_accept_persuasion_tail(text: String) -> String:
+	var out: String = text
+	for kind in ["", "movement", "trace", "movement and trace"]:
+		out = out.replace(accept_persuasion_tail(kind), "")
+	return out.strip_edges()
 
 static func _movement_trace_kind(view: Dictionary, cards: Array) -> String:
 	var has_trace: bool = not view.get("trace_assessments", []).is_empty() or cards.any(func(c): return not c.get("quoted", false) and c.get("kind", "") == "trace")

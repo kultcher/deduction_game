@@ -35,7 +35,7 @@ func info_effects(w, listener, source, entry: Dictionary, weight: float, fresh: 
 	var ex_good: bool = content().ROLES[d["role"]]["align"] == "good"
 	var proven_revenant: bool = w.public_log.any(func(ev): return ev.get("kind", "") == "curse" and ex.id in ev.get("subjects", []))
 	if proven_revenant and d["role"] != "revenant" and not own:
-		mind._eff(effs, source.id, Tuning.Roles.DOWSER.eff_impossible_source,
+		mind._eff(effs, source.id, Tuning.Roles.GRAVEDIGGER.eff_impossible_source,
 			tag + ": claims %s was %s despite public Revenant curse" % [ex.id, d["role"]],
 			"%s claimed %s was the %s after the Revenant's curse proved what they were" % [source.name, ex.name, content().role_name(d["role"])])
 		return effs

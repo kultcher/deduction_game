@@ -1170,16 +1170,44 @@ func _medium_choice(m) -> String:
 ## public Veteran claim each). They don't know whether their gift actually worked. Above
 ## WARDEN_SAVE_BELIEF_MIN they believe it: they warm to the person the Demon went for (the
 ## Demon picks the good), and, if they trust that person, tell them.
+func warden_knows_ward(warden, night: int) -> bool:
+	if warden == null:
+		return false
+	if night == day and player_ward == warden.id:
+		return true
+	if dlog.entries.any(func(e): return e["type"] == "protect" and e["day"] == night and e["actor"] == "player" and e["target"] == warden.id):
+		return true
+	return dlog.entries.any(func(e): return e["type"] == "player_ward_context" and int(e["data"].get("night", -1)) == night and (e["data"].get("public", false) or warden.id in e["data"].get("listeners", [])))
+
+func reweigh_warden_credit_for_ward(warden, night: int, card_kind: String, ward_target: String) -> void:
+	if warden == null or warden.is_evil() or not warden.warden_saves.has(str(night)):
+		return
+	var prev: Dictionary = warden.warden_saves[str(night)]
+	var prot_id: String = str(prev.get("target", ""))
+	var old_belief: float = float(prev.get("belief", 0.0))
+	if card_kind == "scorched_sigil" and ward_target != "" and ward_target != prot_id:
+		warden.warden_saves.erase(str(night))
+		if by_id.has(prot_id):
+			warden.npc_trust[prot_id] = clampf(warden.npc_trust.get(prot_id, 0.5) - Tuning.Roles.WARDEN_SAVE_TRUST * old_belief, 0.0, 1.0)
+		return
+	var alternatives: int = public_claims.filter(func(pc): return pc["role"] == "veteran" and pc["who"] != warden.id and by_id[pc["who"]].alive).size()
+	if warden_knows_ward(warden, night):
+		alternatives += 1
+	var new_belief: float = 1.0 / float(1 + alternatives)
+	if new_belief >= old_belief:
+		return
+	if by_id.has(prot_id):
+		warden.npc_trust[prot_id] = clampf(warden.npc_trust.get(prot_id, 0.5) + Tuning.Roles.WARDEN_SAVE_TRUST * (new_belief - old_belief), 0.0, 1.0)
+	if new_belief < Tuning.Roles.WARDEN_SAVE_BELIEF_MIN:
+		warden.warden_saves.erase(str(night))
+	else:
+		warden.warden_saves[str(night)]["belief"] = new_belief
+
 func _warden_credit(warden, target: String) -> void:
 	if warden == null or warden.is_evil() or not by_id.has(target) or not by_id[target].alive:
 		return
 	var alternatives: int = public_claims.filter(func(pc): return pc["role"] == "veteran" and pc["who"] != warden.id and by_id[pc["who"]].alive).size()
-	if knell_night == day or public_log.any(func(ev): return ev.get("kind", "") == "knell" and int(ev.get("day", ev.get("at", {}).get("day", -1))) == day):
-		alternatives += 1
-	var known_ward: bool = (player_ward != "" and (player_ward == warden.id or warden.ledger.has("ward:%d" % day))) or public_log.any(func(ev): return ev.get("kind", "") in ["ward", "scorched_sigil"] and int(ev.get("day", ev.get("at", {}).get("day", -1))) == day)
-	if not known_ward and player_ward != "":
-		known_ward = dlog.entries.any(func(e): return e["type"] == "player_offer" and e["day"] == day and e["target"] == warden.id and e["data"].get("what", "") == "ward" and player_ward == warden.id)
-	if known_ward:
+	if warden_knows_ward(warden, day):
 		alternatives += 1
 	var belief: float = 1.0 / float(1 + alternatives)
 	if belief < Tuning.Roles.WARDEN_SAVE_BELIEF_MIN:

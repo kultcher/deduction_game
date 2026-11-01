@@ -11,6 +11,7 @@ const CaseEval = preload("res://workshop/case_eval.gd")
 const ChannelLikelihood = preload("res://workshop/channel_likelihood.gd")
 const Chronology = preload("res://workshop/chronology.gd")
 const FactoredChannels = preload("res://workshop/factored_channels.gd")
+const GhostJuror = preload("res://workshop/ghost_juror.gd")
 const Jury = preload("res://workshop/jury.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 const MovementModel = preload("res://workshop/movement_model.gd")
@@ -19,6 +20,7 @@ const Reasoner = preload("res://workshop/reasoner.gd")
 const RoleConstraints = preload("res://workshop/role_constraints.gd")
 const Solver = preload("res://workshop/solver.gd")
 const SupportModel = preload("res://workshop/support_model.gd")
+const TraceSolver = preload("res://workshop/trace_solver.gd")
 const WorldDomain = preload("res://workshop/world_domain.gd")
 
 static func clear_all() -> void:
@@ -33,6 +35,7 @@ static func clear_all() -> void:
 	Chronology._cached_people = null
 	Chronology._cached_idx = {}
 	FactoredChannels.cache.clear()
+	GhostJuror._live_cache.clear()
 	Jury._eval_memo.clear()
 	LiveActivity.cache.clear()
 	LiveActivity.route_cache.clear()
@@ -59,6 +62,7 @@ static func clear_all() -> void:
 	SupportModel.comparisons.clear()
 	SupportModel.priors.clear()
 	SupportModel.explanations.clear()
+	TraceSolver._compiled_cache.clear()
 	WorldDomain.cache.clear()
 	WorldDomain._cached_people = null
 	WorldDomain._cached_idx = {}

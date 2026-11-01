@@ -226,8 +226,12 @@ func private_gift_terms():
 				var rng_before = g.w.rng.state
 				var jitter: float = (preload("res://sim/mind_dialogue.gd")._day_roll(n.id, day, 0x0BE7) - 0.5) * 2.0 * preload("res://sim/tuning.gd").Dialogue.OPENNESS_JITTER
 				var openness = 0.5 + 0.5 * 1.2 + 0.1 * (day - 1) - 0.72 + jitter
-				if C.ROLES[role].kind != "info": openness -= 0.5
-				if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"] and day <= 2: openness -= 0.4
+				if C.ROLES[role].kind != "info":
+					var hide_pen: float = -0.50 if day <= 1 else (-0.30 if day == 2 else -0.10)
+					if role == "warden": hide_pen = minf(hide_pen, -0.35)
+					openness += hide_pen
+				if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"]:
+					openness += (-0.45 if day <= 1 else (-0.20 if day == 2 else 0.0))
 				elif role in C.START_ROLES: openness += 0.3
 				var expected = 4 if openness > 0.75 else (3 if openness > 0.45 else (2 if openness > 0.15 else 1))
 				check(Mind._target_tier(g.w, n) == expected, "private tier applies only the approved gift terms under public-roll conditions")
