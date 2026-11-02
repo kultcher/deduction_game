@@ -1105,7 +1105,6 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	if n.is_evil():
 		mind = n.shadow if n.shadow != null else n
 	var ws_active: bool = mind.workshop_state.get("active", false)
-	var ws_owned: Dictionary = mind.workshop_state.get("owned", {}) if ws_active else {}
 	var items: Array = []
 	if ws_active:
 		if mind.workshop_state.get("reasons_pending", false) and w.workshop_reasons.is_valid():
@@ -1117,43 +1116,6 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 				var resolved: Dictionary = _resolve_shared_reason(w, mind, n, t_id, raw, vis_maps)
 				if not resolved.is_empty() and resolved.get("why", "") != "":
 					items.append(resolved)
-	# Transitional compatibility ONLY for native mode (`workshop_effects == false`) or synthetic
-	# unowned test ledger entries (`not ws_owned.has(eid)`) until Phase 2c/3 deletes legacy effects.
-	for e in mind.ledger.values():
-		if ws_active and ws_owned.has(e["eid"]):
-			continue
-		var contrib: float = 0.0
-		var why: String = ""
-		var effs: Array = e["effects"]
-		for i in range(effs.size()):
-			var f: Array = effs[i]
-			if f[0] != t_id:
-				continue
-			var a: float = e["applied"].get(i, 0.0) + e["applied"].get("%d:%s" % [i, t_id], 0.0)
-			if a > 0.0:
-				contrib += a
-				if why == "" and f[4] != "":
-					why = f[4]
-		if contrib >= 0.03 and why != "":
-			var leg_item: Dictionary = {"eid": e["eid"], "why": why, "contrib": contrib, "kind": "public", "strength": 0.3, "entry": {}}
-			var own_prefix: String = "info:%s:" % n.id
-			if leg_item["eid"].begins_with(own_prefix):
-				for i in range(n.info_log.size()):
-					var en_l: Dictionary = n.info_log[i]
-					if info_eid(n.id, en_l) == leg_item["eid"]:
-						leg_item["entry"] = en_l
-						leg_item["strength"] = reading_strength(en_l, t_id)
-						leg_item["kind"] = "public" if en_l.get("shared", false) else ("player" if i < n.told_readings else "private")
-			elif leg_item["eid"].begins_with("info:"):
-				var hr: Dictionary = _heard_reading(w, n, leg_item["eid"])
-				if not hr.is_empty():
-					leg_item["kind"] = "relay"
-					leg_item["entry"] = hr["entry"]
-					leg_item["src"] = hr["src"]
-			if leg_item["kind"] == "public" and leg_item["why"].begins_with("my own") and not n.claim_public:
-				leg_item["kind"] = "private"
-				leg_item["strength"] = maxf(leg_item["strength"], 0.5)
-			items.append(leg_item)
 	var best_res: Dictionary = _mind().best_resentment_against(w, mind, t_id)
 	if not best_res.is_empty():
 		var r_strength: float = float(best_res.get("strength", 0.0))
@@ -1319,7 +1281,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	var out_weight = 0.0
 	for x in out_items:
 		out_weight += x["contrib"]
-	var effs_by_move = {}
+	var move_strengths = {}
+	var move_scales = {}
 	var defence_scopes = {}
 	# 1. A gift that walks at night explains being seen out.
 	if not out_items.is_empty() and C.ROLES.get(role, {}).get("night_walk", false):
@@ -1331,7 +1294,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				_public_disclosure(w, d, lines, facts)
 			lines.append(say_voiced(d, "defence_reveal", "I was out because I'm the %s. That's what you saw." % C.role_name(role), {"role": C.role_name(role)}))
 			moves.append("reveal")
-			effs_by_move["reveal"] = [[d.id, -minf(0.35, out_weight), true, "excused: out at night as the %s" % C.role_name(role), ""]]
+			move_strengths["reveal"] = minf(0.35, out_weight)
+			move_scales["reveal"] = 1.0
 			defence_scopes["reveal"] = {"type": "gift_claim", "role": role}
 	# 2. A personal secret explains it (good only: evil has nothing true to confess).
 	if moves.is_empty() and not out_items.is_empty() and not d.is_evil() and not d.secret.is_empty():
@@ -1342,7 +1306,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				"secret_kind": d.secret.get("kind", ""), "mod": "lovers" if d.secret.get("kind", "") == "lover" else "",
 				"text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]})
 			moves.append("secret")
-			effs_by_move["secret"] = [[d.id, -minf(0.3, out_weight), true, "excused: a personal secret", ""]]
+			move_strengths["secret"] = minf(0.3, out_weight)
+			move_scales["secret"] = 1.0
 			defence_scopes["secret"] = {"type": "secret_claim", "owner": d.id, "kind": d.secret.get("kind", "")}
 	# 2b. "I've been known to sleepwalk": the real Sleepwalker (who can't know they were
 	# out, only that they've walked before) or an evil bluffer whose cover needs it.
@@ -1352,7 +1317,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			lines.append(excuse["line"])
 			facts.append(excuse["fact"])
 			moves.append("sleepwalk")
-			effs_by_move["sleepwalk"] = [[d.id, -minf(0.3, out_weight), true, "excused: says they sleepwalk", ""]]
+			move_strengths["sleepwalk"] = 1.0
+			move_scales["sleepwalk"] = 1.0
 			defence_scopes["sleepwalk"] = {"type": "secret_claim", "owner": d.id, "kind": "sleepwalker"}
 	# 3. Against a reading that names them.
 	if moves.size() < 2:
@@ -1380,7 +1346,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				var mv_name: String = custom_def["move"]
 				lines.append(custom_def["line"])
 				moves.append(mv_name)
-				effs_by_move[mv_name] = custom_def["effs"]
+				move_strengths[mv_name] = 1.0
+				move_scales[mv_name] = float(custom_def.get("hearing_scale", 0.05))
 				defence_scopes[mv_name] = custom_def["scope"]
 			elif pair.size() == 2 and d.id in pair:
 				# One incident, one hearing: "it's the other one" accepts the reading, "the
@@ -1392,18 +1359,21 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				if fits and w.by_id.has(other) and w.by_id[other].alive:
 					lines.append(say(d, "[PH] One of the two, %s said. It isn't me, so look at %s." % [src.name, w.by_id[other].name]))
 					moves.append("pair_other")
-					effs_by_move["pair_other"] = [[d.id, -0.06, true, "points at the other one in the pair", ""], [other, 0.06, true, "%s says it's the other one in the pair" % d.name, ""]]
+					move_strengths["pair_other"] = 1.0
+					move_scales["pair_other"] = 0.06
 					defence_scopes["pair_other"] = {"type": "rival", "source": src_id, "other": other}
 			if moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves):
 				if trait_of(d, "confidence") > 0.6:
 					lines.append(say_voiced(d, "defence_lying", "Then %s is lying, and you should ask yourselves why." % src.name, {"source": src.name}))
 					moves.append("lying")
-					effs_by_move["lying"] = [[d.id, -0.05, true, "says the reading against them is a lie", ""], [src_id, C.DEFENCE_LIE_BLOWBACK, true, "%s says they lied" % d.name, ""]]
+					move_strengths["lying"] = 1.0
+					move_scales["lying"] = maxf(0.05, absf(float(C.DEFENCE_LIE_BLOWBACK)))
 					defence_scopes["lying"] = {"type": "challenge", "mode": "lying", "reading": WorkshopLedger.reading(src_id, rd).id}
 				else:
 					lines.append(say_voiced(d, "defence_misled", "%s's gift could have been turned. It's happened before." % src.name, {"source": src.name}))
 					moves.append("misled")
-					effs_by_move["misled"] = [[d.id, -0.06, true, "says the reading against them was misled", ""]]
+					move_strengths["misled"] = 1.0
+					move_scales["misled"] = 0.06
 					defence_scopes["misled"] = {"type": "challenge", "mode": "misled", "reading": WorkshopLedger.reading(src_id, rd).id}
 	# 4. Nothing to show: fear, or the desperation play.
 	if moves.is_empty():
@@ -1413,33 +1383,24 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 		else:
 			lines.append(say_voiced(d, "defence_desperation", "I don't know what's going on, but I know I'm not evil."))
 			moves.append("desperation")
-		effs_by_move[moves[0]] = [[d.id, -0.02, true, "pleads innocence", ""]]
+		move_strengths[moves[0]] = 1.0
+		move_scales[moves[0]] = 0.02
 		defence_scopes[moves[0]] = {"type": "plea"}
-	for mv in effs_by_move:
+	for mv in move_strengths:
 		var scope: Dictionary = defence_scopes[mv]
 		var identity: String = "def:%s:%s:%s" % [d.id, scope.type, JSON.stringify(WorkshopLedger.Evidence.canonical(scope)).sha256_text()]
-		var effects: Array = effs_by_move[mv].duplicate(true)
-		var strength = 1.0
-		if mv in ["reveal", "secret"]:
-			# Keep the strongest complete hearing, rather than borrowing a strong
-			# excuse's magnitude and a different hearing's stronger trust weight.
-			strength = -float(effects[0][1])
-			effects[0][1] = -1.0
+		var strength: float = float(move_strengths[mv])
 		for l in w.living():
 			if l == d:
 				continue
-			var meta = {"kind": "defence", "move": mv, "scope": scope.duplicate(true), "hearing_scale": 1.0}
+			var meta = {"kind": "defence", "move": mv, "scope": scope.duplicate(true), "hearing_scale": float(move_scales.get(mv, 1.0))}
 			if scope.type == "gift_claim":
 				meta["workshop_card"] = WorkshopLedger.Evidence.normalize_card({"kind": "claim", "source": d.id, "subject": [d.id], "role": scope.role, "day": w.day, "phase": w.phase, "text": "Walking-gift defence."})
 			elif scope.type == "secret_claim":
 				meta["workshop_card"] = WorkshopLedger.Evidence.normalize_card({"kind": "secret", "source": d.id, "subject": [d.id], "owner": d.id, "secret_kind": scope.kind, "day": w.day, "phase": w.phase, "text": "Confessed errand defence."})
-			else:
-				meta.hearing_scale = 0.0
-				for effect in effects:
-					meta.hearing_scale = maxf(meta.hearing_scale, absf(float(effect[1])))
 			if l.ledger.get(identity, {}).get("meta", {}).has("workshop_card"):
 				meta["workshop_card"] = l.ledger[identity].meta.workshop_card
-			ledger_hear(w, l, identity, effects, strength * (0.5 + 0.5 * l.npc_trust.get(d.id, 0.5)),
+			ledger_hear(w, l, identity, [], strength * (0.5 + 0.5 * l.npc_trust.get(d.id, 0.5)),
 				[d.id, -1, "report"], meta)
 	w.dlog.think(d.id, "defence", "Defends against %s: %s." % [nominator_id, ", ".join(PackedStringArray(moves))], {"moves": moves, "evil": d.is_evil()})
 	return {"lines": lines, "facts": facts, "moves": moves}
@@ -1609,8 +1570,8 @@ static func implicated(e: Dictionary) -> Array:
 static func info_eid(src: String, entry: Dictionary) -> String:
 	return _mind().info_eid(src, entry)
 
-static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
-	return _mind().ledger_hear(w, n, eid, effects, weight, rel, meta)
+static func ledger_hear(w, n, eid: String, _effects: Array = [], weight: float = 1.0, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
+	return _mind().ledger_hear(w, n, eid, [], weight, rel, meta)
 
 static func paranoia(w, n) -> float:
 	return _mind().paranoia(w, n)

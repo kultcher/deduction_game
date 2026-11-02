@@ -43,21 +43,18 @@ func _reversible_totals() -> void:
 	var n = g.w.living_good()[0]
 	var source = g.w.npcs.filter(func(p): return p != n)[0]
 	var target = g.w.npcs.filter(func(p): return p != n and p != source)[0]
-	g.set_workshop_effects(false)
 	for delta in [3.0, -6.0]:
 		var before: float = n.suspicion[target.id]
-		Mind.ledger_hear(g.w, n, "saturation", [[target.id, delta, false, "reversible", ""]], 1.0)
-		check(is_equal_approx(n.suspicion[target.id], before + delta), "ledger retains the whole contribution beyond a display bound")
+		Mind.adjust(g.w, n, target.id, delta, "reversible", "", false)
+		check(is_equal_approx(n.suspicion[target.id], before + delta), "outside baseline retains the whole contribution beyond a display bound")
 		check(Mind.susp(n, target.id) == clampf(before + delta, 0.0, 1.5), "consumers see bounded suspicion")
-		n.ledger.saturation.weight = 0.0
-		Mind.recompute_beliefs(g.w, n, "withdraw saturated entry")
-		check(is_equal_approx(n.suspicion[target.id], before), "withdrawing a saturated contribution restores the exact baseline")
-		n.ledger.erase("saturation")
-	n.suspicion[target.id] = 0.1
+		Mind.adjust(g.w, n, target.id, -delta, "withdraw reversible", "", false)
+		check(is_equal_approx(n.suspicion[target.id], before), "withdrawing a saturated adjustment restores the exact baseline")
+	n.suspicion[target.id] = 0.02
+	n.workshop_state.outside[target.id] = 0.02
 	Mind.apply_info(g.w, n, source, {"role": "dowser", "day": 1, "phase": 0, "data": {"group": [target.id], "count": 0}}, 1.0)
-	check(n.suspicion[target.id] < 0.0, "a clearing reading can cross the lower bound")
-	g.set_workshop_effects(true)
-	check(n.workshop_state.active and not n.workshop_state.owned.is_empty(), "a previously saturated clearing reading acquires shared ownership")
+	check(n.suspicion[target.id] < 0.02 and Mind.susp(n, target.id) >= 0.0, "a clearing reading lowers shared suspicion cleanly")
+	check(n.workshop_state.active and not n.workshop_state.owned.is_empty(), "a clearing reading acquires shared ownership")
 	target.alive = false
 	target.death_cause = "demon"
 	Mind.recompute_beliefs(g.w, n, "demon-victim reading")

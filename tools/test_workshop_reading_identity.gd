@@ -59,7 +59,7 @@ func _live(size: int) -> void:
 		var listener = n.shadow if n.is_evil() else n
 		var entries: Array = listener.ledger.values().filter(func(entry): return entry.meta.get("kind") == "reading")
 		check(entries.size() == 3 and entries.all(func(entry): return entry.meta.workshop_receipts.size() == 1), "distinct readings and their repeat retain three exact owners for " + n.id)
-		check(listener.workshop_state.active and entries.all(func(entry): return listener.workshop_state.owned.has(entry.eid) and entry.applied.values().all(func(value): return is_zero_approx(value))), "all exact native contributions are parked before joint assessment for " + n.id)
+		check(listener.workshop_state.active and entries.all(func(entry): return listener.workshop_state.owned.has(entry.eid) and entry.effects.is_empty()), "all exact readings are owned with empty legacy effects for " + n.id)
 	check(g.w.rng.state == rng, "exact identity and repeated receipt ownership draw no game RNG")
 	var ded = g.file_deduction({"type": "evil", "a": observer.id}, cards)
 	g.strict_evaluator = true

@@ -64,13 +64,9 @@ func _parked() -> void:
 	var reading = {"role": "nightwatch", "day": 1, "phase": 3, "data": {"block": "square", "seen": [target.id]}, "text": "Night Watch crossing", "shared": false}
 	Mind.apply_info(g.w, observer, source, reading, 1.0)
 	var eid: String = Mind.info_eid(source.id, reading)
-	check(observer.workshop_state.owned.has(eid) and observer.ledger[eid].applied.values().all(func(x): return is_zero_approx(x)), "legacy night-sighting scale is parked with its shared reading owner")
+	check(observer.workshop_state.owned.has(eid) and observer.ledger[eid].effects.is_empty(), "night-sighting reading stores receipt-only empty effects under its shared owner")
 	var before: Dictionary = observer.workshop_state.requested.duplicate(true)
-	var old: Array = observer.ledger[eid].effects.duplicate(true)
-	for effect in observer.ledger[eid].effects:
-		effect[1] *= 20
-	Mind.recompute_beliefs(g.w, observer, " (parked scale probe)")
-	check(observer.workshop_state.requested == before and observer.ledger[eid].applied.values().all(func(x): return is_zero_approx(x)), "changing parked native sighting coefficients cannot change shared beliefs")
-	observer.ledger[eid].effects = old
+	Mind.recompute_beliefs(g.w, observer, " (receipt-only sighting probe)")
+	check(observer.workshop_state.requested == before and observer.ledger[eid].effects.is_empty(), "recomputing sighting beliefs is stable with empty ledger effects")
 	g.set_workshop_effects(false)
-	check(observer.ledger[eid].applied.values().any(func(x): return not is_zero_approx(x)), "native comparison mode restores the compatibility sighting effect")
+	check(not observer.workshop_state.get("active", false) and observer.workshop_state.get("owned", {}).is_empty(), "disabling shared effects retracts shared sighting ownership cleanly")

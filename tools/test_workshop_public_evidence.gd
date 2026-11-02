@@ -61,7 +61,7 @@ func _live() -> void:
 			continue
 		var eid = "demon_death:" + victim.id
 		check(listener.workshop_state.active and listener.workshop_state.owned.has(eid), "public death has one shared owner for " + listener.id)
-		check(listener.ledger[eid].applied.values().all(func(v): return is_zero_approx(v)), "native death contribution is parked for " + listener.id)
+		check(listener.ledger[eid].effects.is_empty(), "demon_death ledger entry carries empty effects for " + listener.id)
 		check(Mind.susp(listener, victim.id) > 0.0 and Mind.susp(listener, victim.id) < 0.8, "public death lowers suspicion without a reset for " + listener.id)
 	var input = g.workshop_snapshot([], observer.id)
 	var prepared_listener = Assess._listener(input, [])
@@ -102,7 +102,7 @@ func _silence() -> void:
 			continue
 		var listener = n.shadow if n.is_evil() else n
 		check(listener.workshop_state.active and listener.workshop_state.owned.has(eid), "silence acquires shared ownership for " + listener.id)
-		check(listener.ledger[eid].applied.values().all(func(v): return is_zero_approx(v)), "silence's native contribution is parked for " + listener.id)
+		check(listener.ledger[eid].effects.is_empty(), "silenced ledger entry carries empty effects for " + listener.id)
 		check(Mind.susp(listener, target.id) > 0.0 and Mind.susp(listener, target.id) < 0.8, "silence is finite innocence evidence for " + listener.id)
 	var observer = g.w.living_good()[0]
 	var before = observer.suspicion.duplicate(true)
@@ -200,7 +200,7 @@ func _martyr_ownership(size: int) -> void:
 	for n in g.w.living():
 		var listener = n.shadow if n.is_evil() else n
 		check(listener.workshop_state.active and listener.workshop_state.owned.has("martyr:2"), "public Martyr proof is owned for " + n.id)
-		check(listener.ledger["martyr:2"].applied.values().all(func(v): return is_zero_approx(v)), "native Martyr proof is parked for " + n.id)
+		check(listener.ledger["martyr:2"].effects.is_empty(), "Martyr proof ledger entry carries empty effects for " + n.id)
 		check(listener.workshop_state.facts.size() == 1 and listener.workshop_state.owners.values()[0] == ["public"], "uncited proof has one automatic public receipt for " + n.id)
 		check([actor.id, saved.id].all(func(person): return person == listener.id or (is_zero_approx(Mind.susp(listener, person)) and is_zero_approx(listener.suspicion[person]) and is_equal_approx(listener.workshop_state.outside[person], 2.4))), "a witnessed proof clears even saturated baselines without destroying them for " + n.id)
 	var before = observer.suspicion.duplicate(true)

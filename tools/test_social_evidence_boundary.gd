@@ -76,10 +76,12 @@ func _opinions() -> void:
 	listener.suspicion[target.id] = 0.9
 	listener.suspicion[subject.id] = 0.9
 	var psychology = {"role": "psychologist", "day": 1, "data": {"subject": subject.id, "trusts": target.id, "suspects": source.id}}
-	check(Mind._info_effects(g.w, listener, source, psychology, 1.0, false).is_empty(), "learning who trusts whom does not create guilt by association")
-	check(Mind.card_strength(g.w, psychology, target) == 0 and Mind.defend_strength(psychology, target.id) == 0, "native compatibility paths do not turn social readings into accusation or defence evidence")
+	Mind.apply_info(g.w, listener, source, psychology, 1.0)
+	check(listener.ledger[Mind.info_eid(source.id, psychology)].effects.is_empty() and is_equal_approx(listener.suspicion[target.id], 0.9), "learning who trusts whom does not create guilt by association")
+	check(Mind.card_strength(g.w, psychology, target) == 0 and Mind.defend_strength(psychology, target.id) == 0, "social readings carry zero accusation or defence strength")
 	var relay = {"role": "medium", "day": 1, "data": {"dead": subject.id, "item": {"type": "suspicion", "about": target.id}}}
-	check(Mind._info_effects(g.w, listener, source, relay, 1.0, false).is_empty(), "a dead person's opinion has no native alignment effect")
+	Mind.apply_info(g.w, listener, source, relay, 1.0)
+	check(listener.ledger[Mind.info_eid(source.id, relay)].effects.is_empty() and is_equal_approx(listener.suspicion[target.id], 0.9), "a dead person's opinion has no alignment effect")
 	var number = g.add_card({"kind": "info", "source": source.id, "role": "medium", "day": 1, "data": relay.data, "text": "The deceased distrusted them"})
 	var value = preload("res://workshop/solver.gd").empty_case()
 	value.cards = [Live.Evidence.normalize_card(g.board[number - 1]).id]

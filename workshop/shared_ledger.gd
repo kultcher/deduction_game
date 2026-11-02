@@ -192,7 +192,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		if kind == "event" and not curse.is_empty() and eid == "curse:%d" % (int(curse.from) / 4) and entry.get("effects", []).all(func(effect): return effect[0] in curse.yes_voters and is_equal_approx(float(effect[1]), 0.15)):
 			owned[eid] = true
 			continue
-		if kind in ["martyr", "proof"] and input.evidence.any(func(receipt): return receipt.kind == "martyr" and eid == "martyr:%d" % receipt.observed_at.day and not entry.get("effects", []).is_empty() and entry.effects.all(func(effect): return effect[0] in receipt.subjects and is_equal_approx(float(effect[1]), -2.0))):
+		if kind in ["martyr", "proof"] and input.evidence.any(func(receipt): return receipt.kind == "martyr" and eid == "martyr:%d" % receipt.observed_at.day and entry.get("effects", []).all(func(effect): return effect[0] in receipt.subjects and is_equal_approx(float(effect[1]), -2.0))):
 			owned[eid] = true
 			continue
 		if kind in ["demon_death", "silenced"] and eid in public_keys:

@@ -30,22 +30,6 @@ func card_strength(_d: Dictionary, _suspect_id: String) -> float:
 	return Tuning.Roles.ARCHIVIST.card_strength
 
 
-func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
-	var effs: Array = []
-	var d: Dictionary = entry["data"]
-	var own: bool = source == listener
-	var src_name: String = "my own" if own else source.name + "'s"
-	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	var pair: Array = d["pair"]
-	var others: Array = pair.filter(func(i): return i != listener.id)
-	var per: float = Tuning.Roles.ARCHIVIST.eff_pair if others.size() > 1 else Tuning.Roles.ARCHIVIST.eff_solo
-	var rn: String = content().role_name(d.get("role", "poisoner"))
-	for i in others:
-		mind._eff(effs, i, per, tag + ": archivist pair",
-			"%s records tie them to the %s" % [src_name, rn], not own)
-	return effs
-
-
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var broken: bool = n.gift_broken()
 	var mid: String = w.pick(w.minion_ids)

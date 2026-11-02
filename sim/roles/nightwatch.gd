@@ -31,26 +31,6 @@ func defend_strength(_d: Dictionary, _nominee: String) -> float:
 	return Tuning.Roles.NIGHTWATCH.defend_strength
 
 
-func info_effects(w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
-	var effs: Array = []
-	var d: Dictionary = entry["data"]
-	var own: bool = source == listener
-	var src_bare: String = "I" if own else source.name
-	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	var seen: Array = d["seen"]
-	for i in seen:
-		if i == listener.id:
-			var where: String = listener.history.get(w.time_key(entry["day"], 3), "")
-			if where.begins_with("home") and not own:
-				mind._eff(effs, source.id, Tuning.Roles.NIGHTWATCH.eff_lied_about_listener, tag + ": claims to have seen me out, but I was home",
-					"%s claims to have seen me out at night, which is a lie" % src_bare)
-			continue
-		var sc: float = mind.night_sighting_scale(w, listener, i, d["block"], entry["day"])
-		mind._eff(effs, i, Tuning.Roles.NIGHTWATCH.eff_seen_out * sc, tag + ": seen out at night (x%.2f: %s)" % [sc, "near a death" if sc >= 0.99 else "nowhere near a death" if sc > 0.1 else "discounted"],
-			"%s saw them out at night%s" % [src_bare, " where someone was killed" if sc >= 0.5 else ""], not own)
-	return effs
-
-
 func pick_targets(w, n, mind):
 	var asked: Array = mind.requested_targets(w, n, "nightwatch")
 	if not asked.is_empty():

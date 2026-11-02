@@ -108,9 +108,7 @@ func _test_case_against_skips_non_incriminating_sightings() -> void:
 		"kind": "sighting", "source": other.id, "subject": [walker.id],
 		"block": "hill", "day": 1, "phase": C.NIGHT, "text": "A witnessed outing off murder block"
 	})
-	var effs: Array = []
-	Mind._eff(effs, walker.id, 0.04, "saw out off murder block", "saw them out on Chapel Hill at night")
-	Mind.ledger_hear(w, listener, "heard:sight_off_block", effs, 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_off})
+	Mind.ledger_hear(w, listener, "heard:sight_off_block", [], 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_off})
 	Mind.recompute_beliefs(w, listener, " (test off-block sighting)")
 	var reasons_off: Array = MindMeeting.case_against(w, listener, walker.id)
 	_check(not reasons_off.any(func(r): return r.get("channel", "") == "movement_out"), "case_against does not cite an off-murder-block night sighting in shared attribution")
@@ -120,7 +118,7 @@ func _test_case_against_skips_non_incriminating_sightings() -> void:
 		"kind": "sighting", "source": other.id, "subject": [walker.id],
 		"block": "docks", "day": 1, "phase": C.NIGHT, "text": "A witnessed outing on murder block"
 	})
-	Mind.ledger_hear(w, listener, "heard:sight_on_block", effs, 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_on})
+	Mind.ledger_hear(w, listener, "heard:sight_on_block", [], 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_on})
 	Mind.recompute_beliefs(w, listener, " (test murder-block sighting)")
 	var reasons_on: Array = MindMeeting.case_against(w, listener, walker.id)
 	_check(reasons_on.any(func(r): return r.get("channel", "") == "movement_out"), "case_against cites a murder-block night sighting when walker has no credible walking claim")
@@ -169,7 +167,7 @@ func _test_shared_ledger_zero_weight_reading_guard() -> void:
 		"data": {"pair": [t1.id, t2.id], "yes": true}, "subject": [t1.id, t2.id], "text": "seer yes",
 	}
 	var norm: Dictionary = preload("res://workshop/live_evidence.gd").normalize_card(card)
-	Mind.ledger_hear(g.w, listener, "info:%s:1:seer" % speaker.id, [[t1.id, 0.4, 0, "seer", "seer"]], 0.0, [speaker.id, 1, "reading"], {
+	Mind.ledger_hear(g.w, listener, "info:%s:1:seer" % speaker.id, [], 0.0, [speaker.id, 1, "reading"], {
 		"kind": "reading", "workshop_receipts": {norm.id: norm},
 	})
 	var input: Dictionary = Bridge.capture(g, [], listener.id, "private", listener)

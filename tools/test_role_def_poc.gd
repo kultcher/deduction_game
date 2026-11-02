@@ -93,8 +93,8 @@ func _test_seer_hooks() -> void:
 	_check(Gifts.implicated(no_entry).is_empty() and Gifts.clears(no_entry) == [a.id, b.id], "Gifts.implicated/clears delegates Seer NO reading via PING shape")
 	_check("YES" in Gifts.short_text("seer", yes_entry["data"], seer.name, func(id): return w.by_id[id].name), "Gifts.short_text formats Seer reading via RoleDef")
 
-	var effs_no: Array = C.role_def("seer").info_effects(w, seer, seer, no_entry, 1.0, true, Mind)
-	_check(effs_no.size() == 2 and seer.cleared.has(a.id) and seer.cleared.has(b.id), "Seer info_effects clears both subjects on own fresh NO reading")
+	C.role_def("seer").on_reading_heard(seer, seer, no_entry, true)
+	_check(not C.role_def("seer").has_method("info_effects") and seer.cleared.has(a.id) and seer.cleared.has(b.id), "Seer on_reading_heard clears both subjects on own fresh NO reading without legacy info_effects")
 
 	w.day = 1
 	seer.trust = 0.9
@@ -238,8 +238,7 @@ func _test_role_at_site_hooks() -> void:
 	_check(med_r.get("data", {}).get("dead", "") == victim.id and med_r.get("data", {}).get("item", {}).get("type", "") == "reading", "Medium generate_reading relays unshared reading from dead victim")
 	var med_entry = {"role": "medium", "day": 1, "data": med_r["data"], "text": med_r["text"]}
 	_check(Gifts.clears(med_entry) == [dowser.id, other.id] and Gifts.implicated(med_entry).is_empty(), "Medium implicated/clears delegates to relayed reading")
-	var med_effs: Array = C.role_def("medium").info_effects(w, medium, medium, med_entry, 1.0, true, Mind)
-	_check(med_effs.size() == 2 and is_equal_approx(med_effs[0][1], -0.3 * 0.6), "Medium info_effects scales relayed reading effects by 0.6")
+	_check(not C.role_def("medium").has_method("info_effects") and C.role_def("medium").defend_strength(med_entry["data"], dowser.id) > 0.0, "Medium delegates clears/defence without legacy info_effects")
 
 	medium.info_log.append(med_entry)
 	medium.claimed_role = "medium"

@@ -764,9 +764,7 @@ func open_meeting() -> void:
 			for real in living():
 				var l = real.shadow if real.is_evil() else real
 				if l != null and real != n:
-					var e: Array = []
-					Mind._eff(e, n.id, -0.12, "silenced by the demon's side: they must have been a threat to it")
-					Mind.ledger_hear(self, l, "silenced:%s:%d" % [n.id, day], e, 1.0, [], {"kind": "silenced", "subject": n.id, "day": day})
+					Mind.ledger_hear(self, l, "silenced:%s:%d" % [n.id, day], [], 1.0, [], {"kind": "silenced", "subject": n.id, "day": day})
 	Mind.refresh_all_consensus(self)  # yesterday's accusations count for less today
 
 func can_nominate(by: String, nominee: String) -> String:
@@ -1268,15 +1266,10 @@ func _quiet_night() -> void:
 		var qdef = C.role_def(pc["role"])
 		if qdef == null or not qdef.can_cause_quiet_night or not by_id[pc["who"]].alive:
 			continue
-		var q_eff: float = qdef.quiet_night_effect
 		for l in living_good():
 			if l.id == pc["who"]:
 				continue
-			var e: Array = []
-			Mind._eff(e, pc["who"], q_eff,
-				"nobody died on night %d, and they claim the %s" % [day, C.role_name(pc["role"])])
-			# Scaled live by how credible the claimant is to this listener.
-			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0, [pc["who"], -1, "report"], {"kind": "quiet_night", "night": day, "claimant": pc["who"], "role": pc["role"]})
+			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], [], 1.0, [pc["who"], -1, "report"], {"kind": "quiet_night", "night": day, "claimant": pc["who"], "role": pc["role"]})
 
 func _night_movement(poison_t: String, kill_t: String, watch, watch_block: String, warden = null, warden_t: String = "",
 		medium = null, medium_t: String = "", lamp = null) -> void:
@@ -1628,10 +1621,7 @@ func _kill(v) -> void:
 		var listener = n.shadow if n.is_evil() else n
 		if listener == null:
 			continue
-		var effects: Array = []
-		Mind._eff(effects, v.id, preload("res://workshop/public_evidence.gd").victim_effect(Mind.susp(listener, v.id)),
-			"killed by the Demon: strong evidence of innocence, not a guarantee", "", false)
-		Mind.ledger_hear(self, listener, "demon_death:" + v.id, effects, 1.0, [], {"kind": "demon_death", "victim": v.id})
+		Mind.ledger_hear(self, listener, "demon_death:" + v.id, [], 1.0, [], {"kind": "demon_death", "victim": v.id})
 
 # ---------------------------------------------------------------- abilities
 

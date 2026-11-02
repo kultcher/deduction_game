@@ -503,7 +503,7 @@ func empty_nomination_cases():
 		var reply = Mind.nomination_case(w, n, t, "")
 		check(reply.lines.size() == 1 and reply.lines[0].get("statement", reply.lines[0].text) == "I don't trust %s, and I can't say better than that." % t.name and t.name in reply.lines[0].text, "an empty good or evil nomination gives a voiced fallback with canonical statement")
 		check(reply.facts.is_empty() and w.rng.state == state, "empty-case wording adds no evidence or RNG draws")
-		n.ledger = {"public": {"eid": "public", "effects": [[t.id, 0, 0, 0, "a public account"]], "applied": {0: 0.2}}}
+		n.workshop_state = {"active": true, "reasons": {t.id: [{"card_id": "fact:pub", "why_public": "a public account", "strength": 0.6, "contrib": 0.2, "channel": "generic"}]}}
 		var recap = Mind.nomination_case(w, n, t, "")
 		check(recap.lines.size() == 1 and recap.lines[0].get("statement", recap.lines[0].text) == "Remember: a public account." and "a public account" in recap.lines[0].text, "a grounded public reason keeps its original recap")
 		var already = Mind.nomination_case(w, n, t, "a public account")
@@ -829,17 +829,19 @@ func grimoire_modifiers():
 
 func count_reason_names():
 	var g = fresh()
+	g.set_workshop_effects(true)
 	var source = g.w.living_good()[0]
 	var listener = g.w.living_good()[1]
 	var rng = g.w.rng.state
 	for role in ["hearthwitch", "dowser"]:
-		var zero = {"role": role, "data": {"group": [listener.id], "count": 0}}
-		var own = Mind._info_effects(g.w, source, source, zero, 1.0, true)
-		check(own.size() == 1 and own[0][1] == -0.25 and own[0][3] == "own info: " + role + " count 0", "own zero-count reason names its actual gift without changing strength: " + role)
-		var impossible = {"role": role, "data": {"group": [listener.id], "count": 1}}
-		var heard = Mind._info_effects(g.w, listener, source, impossible, 1.0, true)
-		check(heard.size() == 1 and heard[0][1] == 0.5 and (role + " count impossible") in heard[0][3], "impossible-count reason also names its actual gift: " + role)
-	check(g.w.rng.state == rng, "reason wording consumes no RNG")
+		var zero = {"day": 1, "phase": 0, "role": role, "data": {"group": [listener.id], "count": 0}, "shared": true}
+		check(not C.role_def(role).has_method("info_effects") and is_equal_approx(C.role_def(role).defend_strength(zero["data"], listener.id), 0.4), "zero-count reading preserves RoleDef defence strength without legacy info_effects: " + role)
+		listener.ledger = {}
+		listener.suspicion[source.id] = 0.1
+		var impossible = {"day": 1, "phase": 0, "role": role, "data": {"group": [listener.id], "count": 1}, "shared": true}
+		Mind.apply_info(g.w, listener, source, impossible, 1.0)
+		check(Mind.susp(listener, source.id) > 0.1, "impossible-count reading against self raises shared suspicion of source: " + role)
+	check(g.w.rng.state == rng, "reason evaluation consumes no RNG")
 
 func false_reading_causes():
 	var g = fresh()

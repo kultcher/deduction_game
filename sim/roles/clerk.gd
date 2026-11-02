@@ -25,20 +25,6 @@ func defend_strength(_d: Dictionary, _nominee: String) -> float:
 	return Tuning.Roles.CLERK.defend_strength
 
 
-func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
-	var effs: Array = []
-	var d: Dictionary = entry["data"]
-	var own: bool = source == listener
-	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	var pair: Array = d["pair"]
-	if listener.id in pair and d["role"] == listener.role and not own:
-		mind._eff(effs, source.id, Tuning.Roles.CLERK.eff_named_listener, tag + ": clerk correctly named my role")
-	for i in pair:
-		if i != listener.id:
-			mind._eff(effs, i, Tuning.Roles.CLERK.eff_pair_good, tag + ": clerk pair probably good", "", not own)
-	return effs
-
-
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var broken: bool = n.gift_broken()
 	var targets: Array = w.npcs.filter(func(m): return m != n and not m.is_evil())

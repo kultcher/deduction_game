@@ -23,32 +23,6 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 	return "%s %s: %d evil of %s" % [src, display_name, d.get("count", 0), _names(group_of(d), nm)]
 
 
-func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
-	var effs: Array = []
-	var d: Dictionary = entry["data"]
-	var own: bool = source == listener
-	var src_name: String = "my own" if own else source.name + "'s"
-	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	var nbrs: Array = group_of(d)
-	var count: int = d["count"]
-	var others: Array = nbrs.filter(func(i): return i != listener.id)
-	var excluded: int = nbrs.size() - others.size()
-	if count == 0:
-		for i in others:
-			mind._eff(effs, i, Tuning.Roles.DOWSER.eff_zero, tag + ": dowser count 0", "", not own)
-	else:
-		var per: float = Tuning.Roles.DOWSER.eff_per_evil * count
-		if excluded > 0:
-			per = Tuning.Roles.DOWSER.eff_per_evil_excluded * count
-		if count > others.size() and not own:
-			mind._eff(effs, source.id, Tuning.Roles.DOWSER.eff_impossible_source, tag + ": dowser count impossible from my view",
-				"%s reading about the lane can't be right" % src_name)
-		for i in others:
-			mind._eff(effs, i, per, tag + ": dowser count %d" % count,
-				"%s reading pointed at that crowd" % src_name, not own)
-	return effs
-
-
 func run_day_gift(w, dw, mind, _evil) -> void:
 	if not dw.is_evil() and dw.dowsed_day != w.day:
 		var dw_entry: Dictionary = generate_reading(w, dw, {"day_phase": true}, mind)

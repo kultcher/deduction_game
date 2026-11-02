@@ -23,18 +23,6 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 	return "%s Rumormonger: %s in %s" % [src, content().secret_name(d.get("secret", "")), _names(d.get("pair", []), nm)]
 
 
-func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
-	var effs: Array = []
-	var d: Dictionary = entry["data"]
-	var own: bool = source == listener
-	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	# Secret-holders are good, so "one of these two carries a secret" speaks for both a little.
-	for i in d["pair"]:
-		if i != listener.id:
-			mind._eff(effs, i, Tuning.Roles.RUMORMONGER.eff_pair_good, tag + ": rumormonger pair probably good", "", not own)
-	return effs
-
-
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var C = content()
 	var broken: bool = n.gift_broken()

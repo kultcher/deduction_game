@@ -164,9 +164,8 @@ func _test_gravedigger_rapport_moved_out_of_info_effects() -> void:
 	var t0: float = listener.trust
 	var gd_good_entry: Dictionary = {"day": 1, "phase": C.NIGHT, "role": "gravedigger", "data": {"executed": ex_friend.id, "role": "surveyor"}, "true": true, "shared": true, "text": "Was Surveyor"}
 
-	# 1. Calling legacy info_effects directly must NOT mutate listener.trust anymore.
-	C.role_def("gravedigger").info_effects(w, listener, gd_npc, gd_good_entry, 1.0, true, Mind)
-	_check(is_equal_approx(listener.trust, t0), "Gravedigger info_effects no longer mutates listener rapport directly")
+	# 1. Legacy info_effects is deleted in Phase 2c; rapport lives solely in World.on_execution_reading_heard.
+	_check(not C.role_def("gravedigger").has_method("info_effects") and is_equal_approx(listener.trust, t0), "Gravedigger legacy info_effects is deleted and rapport starts unchanged")
 
 	# 2. Hearing the reading via Mind.apply_info updates shared beliefs first, then docks -0.06 rapport once.
 	Mind.apply_info(w, listener, gd_npc, gd_good_entry, 0.8)

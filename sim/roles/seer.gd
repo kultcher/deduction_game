@@ -42,25 +42,15 @@ func defend_strength(d: Dictionary, _nominee: String) -> float:
 	return 0.0 if d.get("yes", false) else Tuning.Roles.SEER.defend_strength_no
 
 
-func info_effects(_w, listener, source, entry: Dictionary, weight: float, fresh: bool, mind) -> Array:
-	var effs: Array = []
-	var d: Dictionary = entry["data"]
-	var own: bool = source == listener
-	var src_name: String = "my own" if own else source.name + "'s"
-	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	var pair: Array = d["pair"]
-	var others: Array = pair.filter(func(i): return i != listener.id)
-	if d["yes"]:
-		var per: float = Tuning.Roles.SEER.eff_yes_pair if others.size() > 1 else Tuning.Roles.SEER.eff_yes_solo
-		for i in others:
-			mind._eff(effs, i, per, tag + ": seer yes",
-				"%s sight said one of them is the demon" % src_name, not own)
-	else:
-		for i in others:
-			mind._eff(effs, i, (Tuning.Roles.SEER.eff_no_own if own else Tuning.Roles.SEER.eff_no_heard), tag + ": seer no", "", not own)
-			if own and fresh:
-				listener.cleared[i] = true
-	return effs
+func on_reading_heard(listener, source, entry: Dictionary, fresh: bool) -> void:
+	if listener != source or not fresh:
+		return
+	var d: Dictionary = entry.get("data", {})
+	if d.get("yes", true):
+		return
+	for i in d.get("pair", []):
+		if i != listener.id:
+			listener.cleared[i] = true
 
 
 func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, workshop_ledger) -> Dictionary:
@@ -70,7 +60,7 @@ func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, works
 			"handled": true,
 			"move": "red_herring",
 			"line": mind.say(d, "[PH] %s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name),
-			"effs": [[d.id, Tuning.Roles.SEER.red_herring_defence_eff, true, "says they're the Seer's red herring", ""]],
+			"hearing_scale": absf(float(Tuning.Roles.SEER.red_herring_defence_eff)),
 			"scope": {"type": "challenge", "mode": "misled", "reading": workshop_ledger.reading(src_id, rd).id},
 		}
 	return {}

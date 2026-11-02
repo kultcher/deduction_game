@@ -225,8 +225,8 @@ func _test_phase1_5_revenant_curse_order_and_role_invalidation() -> void:
 	# Fake Gravedigger claiming proven Revenant held a Good role backfires onto the Gravedigger.
 	var fake_gd = g.w.by_id[g.w.demon_id]
 	var fake_entry = {"day": 3, "role": "gravedigger", "data": {"executed": rev.id, "role": "medium"}, "fake": true, "shared": true, "text": "Isolde was Medium"}
-	var gd_effs: Array = C.role_def("gravedigger").info_effects(g.w, friend, fake_gd, fake_entry, 1.0, true, Mind)
-	_check(gd_effs.any(func(ef): return ef[0] == fake_gd.id and float(ef[1]) >= 0.45), "Gravedigger claiming a proven Revenant held a Good role triggers impossible-source suspicion")
+	Mind.apply_info(g.w, friend, fake_gd, fake_entry, 1.0)
+	_check(float(friend.workshop_state.get("source_doubt", {}).get(fake_gd.id + ":*", 0.0)) >= 0.99 and Mind.susp(friend, fake_gd.id) > 0.35, "Gravedigger claiming a proven Revenant held a Good role triggers shared source_doubt and suspicion")
 
 
 func _test_phase1_6_compiled_trace_chain_speed_and_boundaries() -> void:

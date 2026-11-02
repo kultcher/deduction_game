@@ -104,11 +104,8 @@ func _live() -> void:
 	var q = g.add_card({"kind": "quiet", "source": "player", "subject": [], "night": 1, "day": 1, "phase": 3, "ward": "", "text": "No deaths on N1"})
 	var c = g.add_card({"kind": "claim", "source": claimant.id, "subject": [claimant.id], "role": "warden", "day": 1, "phase": 0, "text": "I am Warden"})
 	var eid = "quiet:1>" + claimant.id
-	var effects: Array = []
-	Mind._eff(effects, claimant.id, -0.15, "Quiet-night native protection credit")
-	Mind.ledger_hear(g.w, listener, eid, effects, 1.0, [claimant.id, -1, "report"], {"kind": "proof"})
-	var native: float = listener.suspicion[claimant.id]
-	var native_applied: Dictionary = listener.ledger[eid].applied.duplicate(true)
+	Mind.ledger_hear(g.w, listener, eid, [], 1.0, [claimant.id, -1, "report"], {"kind": "proof"})
+	var outside_base: float = listener.suspicion[claimant.id]
 	var board = Canvas.new(Live.view(g))
 	var root: String = board.selected
 	board.nodes[root].conclusion = {"type": "good", "target": claimant.id, "at": "Original alignment"}
@@ -122,16 +119,14 @@ func _live() -> void:
 	g.set_workshop_effects(true)
 	var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false), "quiet-night case reaches shared presentation")
-	check(listener.workshop_state.get("owned", {}).has(eid), "exact native quiet-night effect is owned instead of stacked")
+	check(listener.workshop_state.get("owned", {}).has(eid) and listener.ledger[eid].effects.is_empty(), "quiet-night receipt is owned with empty legacy effects")
 	var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
 	response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 	check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, "quiet-night repeat is stable")
 	g.set_workshop_effects(false)
-	check(not listener.workshop_state.get("active", false) and listener.workshop_state.get("owned", {}).is_empty() and listener.ledger[eid].applied == native_applied, "disabling shared model restores exact native quiet-night credit")
-	# Disabling also restores the presented argument's native contribution. Withdraw
-	# that separate argument before comparing the whole suspicion vector to baseline.
+	check(not listener.workshop_state.get("active", false) and listener.workshop_state.get("owned", {}).is_empty(), "disabling shared model retracts quiet-night ownership")
 	g.workshop_retract(filed, listener.id)
-	check(is_equal_approx(listener.suspicion[claimant.id], native), "withdrawing the argument after disabling restores the native-only baseline")
+	check(is_equal_approx(listener.suspicion[claimant.id], outside_base), "withdrawing the argument restores the outside baseline")
 	var veteran = g.add_card({"kind": "info", "source": claimant.id, "subject": [], "role": "veteran", "day": 1, "phase": 3, "data": {"attacked": 1, "block": "market"}, "text": "Veteran attack report"})
 	var fresh = Canvas.new(Live.view(g))
 	fresh.nodes[fresh.selected].conclusion.target = claimant.id

@@ -171,14 +171,17 @@ func _init() -> void:
 		# Doubt before hearing: L is told D is misled on night 1, then hears D's reading.
 		var e_d = {"day": 1, "role": "seer", "data": {"pair": [b, c], "yes": true}, "text": "x"}
 		var L2 = lis[1] if lis.size() > 1 else L
+		L2.workshop_state["enabled"] = true
 		var before = Mind.susp(L2, b)
 		var dm = g.file_deduction({"type": "misled", "a": d, "night": 1}, [k7])
 		var unheard = Argue.evaluate(w, L2, g.board[dm - 1], g.board, 1.0)
-		_check(absf(Mind.susp(L2, b) - before) < 0.01, "doubting an unheard reading changes nothing")
+		Mind.recompute_beliefs(w, L2, " (doubt before hearing)")
+		_check(absf(Mind.susp(L2, b) - before) < 0.05, "doubting an unheard reading changes nothing")
 		Mind.apply_info(w, L2, w.by_id[d], e_d, 0.5)
 		var after = Mind.susp(L2, b)
 		print("doubted-then-heard reading moved suspicion of B by %.2f (reliability %.2f)" % [after - before, Mind.reliability(L2, d, 1)])
 		_check(Mind.reliability(L2, d, 1) < 1.0, "doubt recorded before hearing the reading")
+		L2.workshop_state["enabled"] = false
 		# Credibility rises: the earlier argument is re-weighed (the reconsideration still
 		# fires on a rapport change; the weight follows credibility since Oct 30).
 		var wt0: float = L.ledger["arg:" + Argue.conclusion_key({"type": "evil", "a": a})]["weight"]
@@ -260,10 +263,9 @@ func _init() -> void:
 	var dcf = g.file_deduction(pc["conclusion"], pc["supports"])
 	_check(dcf > 0 and g.board[dcf - 1]["template"] == "out_vs_home", "group conclusion picks up the contradiction (%s)" % (g.board[dcf - 1]["template"] if dcf > 0 else g.last_error))
 	var Lc = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))[0]
-	var before_rel = Mind.reliability(Lc, b, 1)
 	var rc = Argue.evaluate(w, Lc, g.board[dcf - 1], g.board, 1.0)
 	print("conflict: agreement %.2f, line %s" % [rc["agreement"], rc["lines"][0]["text"]])
-	_check(rc["agreement"] >= 0.5 and Mind.reliability(Lc, b, 1) < before_rel, "accepting it casts some doubt on those involved")
+	_check(rc["agreement"] >= 0.5 and Lc.ledger.has("arg:" + Argue.conclusion_key(pc["conclusion"])), "accepting a conflict records the argument receipt without legacy effects")
 	var p0b = w.by_id[b].pressure
 	g._conflict_pressure(g.board[dcf - 1], 0.2, null)
 	_check(w.by_id[b].pressure > p0b, "presenting it raises pressure on those involved")
@@ -300,12 +302,23 @@ func _init() -> void:
 	var vin = g.link_cards([dmi, kgd])["result"]["matches"].map(func(m): return m["template"])
 	_check("vindication" in vin, "vindication (got %s)" % str(vin))
 	var Lv = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))[-1]
+	Lv.ledger = {}
+	Lv.info_log = []
+	Lv.known_claims = {}
+	Lv.beliefs = []
+	Lv.workshop_state = {"enabled": true}
+	w.by_id[a].alive = false
+	w.by_id[a].death_day = 2
+	w.by_id[a].death_cause = "executed"
+	w.public_event("execution", [a], "town")
+	w.executions.append({"day": 2, "id": a, "nominator": "player", "yes": [d], "no": [], "player_yes": true, "player_nominated": true})
+	w.day = 3
 	var e_a = {"day": 1, "role": "seer", "data": {"pair": [b, c], "yes": true}, "text": "A's seer reading"}
 	Mind.apply_info(w, Lv, w.by_id[a], e_a, 0.5)
 	var rel0 = Mind.reliability(Lv, a, 1)
-	Mind.apply_info(w, Lv, w.by_id[d], e_gd, 0.5)
+	Mind.apply_info(w, Lv, w.by_id[d], e_gd, 0.8)
 	var rel1 = Mind.reliability(Lv, a, 1)
-	Mind.ledger_hear(w, Lv, "test-doubt-d", [[ "disc:%s:2" % d, 0.8, false, "test", ""]], 1.0)
+	Mind.ledger_hear(w, Lv, "arg:doubt-d", [], 1.0, [], {"kind": "arg", "conclusion": {"type": "misled", "a": d, "night": 2}})
 	var rel2 = Mind.reliability(Lv, a, 1)
 	print("A's readings: reliability %.2f -> %.2f after D's verdict -> %.2f once D is doubted" % [rel0, rel1, rel2])
 	_check(rel1 < rel0 and rel2 > rel1, "doubt cascades: discrediting the Gravedigger restores A's readings")

@@ -138,7 +138,7 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		lines.append(accusation)
 		if not n.is_evil():
 			var receipt: Dictionary = WorkshopLedger.Evidence.normalize_card(card)
-			ledger_hear(w, n, "own_role:" + fact_id(card), [[rival.id, 0.3, true, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift"]], 1.0,
+			ledger_hear(w, n, "own_role:" + fact_id(card), [], 1.0,
 				[rival.id, -1, "role"], {"kind": "role_counter", "workshop_card": receipt})
 		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 		pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
@@ -1056,7 +1056,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 		canonical_opinion += opinion_tail
 	# Their word is a separate matter from their alignment: a cleared neighbour whose reports
 	# haven't held up gets a caveat. Not for a teammate or scapegoat an evil speaker is lying about.
-	if level < 0.45 and not lie and float(n.honesty.get(t.id, 1.0)) < WORD_DOUBT_BELOW:
+	if level < 0.45 and not lie and reliability(n, t.id, -1, "report") < WORD_DOUBT_BELOW:
 		var caveat: String = "Though I'd not take everything %s says on faith." % t.name
 		text += " " + Dialogue.voice_line(n.id, "opinion_word_doubt", caveat, {"subject": t.name})
 		canonical_opinion += " " + caveat
@@ -1125,8 +1125,8 @@ static func info_fact(w, n, e: Dictionary) -> Dictionary:
 static func info_lines(w, n, entries: Array, audience: String = "player", preceded: bool = false, speech_act: String = "answer") -> Array:
 	return _mind().info_lines(w, n, entries, audience, preceded, speech_act)
 
-static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
-	return _mind().ledger_hear(w, n, eid, effects, weight, rel, meta)
+static func ledger_hear(w, n, eid: String, _effects: Array = [], weight: float = 1.0, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
+	return _mind().ledger_hear(w, n, eid, [], weight, rel, meta)
 
 static func paranoia(w, n) -> float:
 	return _mind().paranoia(w, n)

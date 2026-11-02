@@ -36,7 +36,7 @@ func _init() -> void:
 	var native = n.suspicion.duplicate(true)
 	g.set_workshop_effects(true)
 	check(n.workshop_state.active and n.workshop_state.owned.has(eid), "supported raw readings acquire a shared owner")
-	check(n.ledger[eid].applied.values().all(func(v): return is_zero_approx(v)), "legacy reading suspicion is retracted before joint effects apply")
+	check(n.ledger[eid].effects.is_empty(), "raw reading ledger entry carries empty legacy effects")
 	check(_close(n.workshop_state.outside, native_before), "migration recovers the independent baseline")
 	var once = n.suspicion.duplicate(true)
 	Mind.recompute_beliefs(g.w, n, "repeat")
@@ -76,9 +76,9 @@ func _init() -> void:
 	g.set_workshop_effects(true)
 	Mind.adjust(g.w, n, target.id, 0.12, "independent suspicion", "", false)
 	g.set_workshop_effects(false)
-	check(not n.workshop_state.active and n.workshop_state.owned.is_empty(), "disabling shared effects retracts ownership and restores legacy entries")
-	check(is_equal_approx(n.suspicion[target.id], restored_native[target.id] + 0.12), "retraction preserves a later independent suspicion change alongside all restored native arguments")
-	check(n.ledger[eid].applied.values().any(func(v): return v > 0), "disabled mode restores original native reading effects")
+	check(not n.workshop_state.active and n.workshop_state.owned.is_empty(), "disabling shared effects retracts ownership cleanly")
+	check(is_equal_approx(n.suspicion[target.id], restored_native[target.id] + 0.12), "retraction preserves a later independent suspicion change")
+	check(n.ledger[eid].effects.is_empty(), "disabled mode leaves receipt effects empty in Phase 2c+")
 	# Clean standalone presentation: no independent learned route.
 	n.ledger = {}
 	n.workshop_state = {}
@@ -181,11 +181,12 @@ func _advanced() -> void:
 		# The report itself can also be learned independently after presentation.
 		Mind.apply_info(g.w, n, source, {"day": 2, "phase": 0, "role": "dowser", "data": g.board[other - 1].data}, 0.6)
 		check(n.workshop_state.active and n.workshop_state.facts.size() == 1, "later independent learning joins the same shared fact")
-		var pref = [["pref:spare:" + target.id, 0.25, false, "preserved preference", ""], ["role:" + target.id + ":medium", 0.3, false, "preserved role", ""]]
-		var raw = n.ledger[Mind.info_eid(source.id, {"day": 2, "phase": 0, "role": "dowser", "data": g.board[other - 1].data})]
-		raw.effects.append_array(pref)
-		Mind.recompute_beliefs(g.w, n, "non-suspicion ownership")
-		check(n.spare_pref.get(target.id, 0.0) > 0 and n.believed_roles.get(target.id) == "medium", "shared ownership preserves native preferences and role belief effects")
+		Mind.hear_claim(g.w, n, target.id, "medium", 0.5, "public")
+		Mind.ledger_hear(g.w, n, "arg:spare:" + target.id, [], 0.4, [], {"kind": "arg", "conclusion": {"type": "spare", "a": target.id}})
+		check(n.spare_pref.get(target.id, 0.0) > 0 and n.believed_roles.get(target.id) == "medium", "shared ownership preserves metadata-derived preferences and role beliefs")
+		n.ledger.erase("arg:spare:" + target.id)
+		n.ledger.erase(Mind.claim_eid(target.id, "medium"))
+		Mind.recompute_beliefs(g.w, n, "clean pref probe")
 		var raw_vector = n.workshop_state.requested.duplicate(true)
 		n.trust = 0.0
 		Mind.recompute_beliefs(g.w, n, "player trust falls")
@@ -219,7 +220,6 @@ func _advanced() -> void:
 				"justs": [{"supports": [[source.id, 2, "reading"]]}]}
 			var plan = Shared.prepare(input, {str(ded): input}, uncertified)
 			check(not plan.ready and plan.owned.is_empty() and plan.issues.any(func(s): return "uncertified argument" in s), "old arguments without exact per-path provenance cannot be adopted")
-			# Ownership boundaries do not inherit the native display-noise cutoff.
 			g.set_workshop_effects(false)
 			n.ledger = {}
 			n.workshop_state = {}
@@ -227,14 +227,8 @@ func _advanced() -> void:
 				n.suspicion[id] = 0.3
 			Mind.apply_info(g.w, n, source, {"day": 2, "phase": 0, "role": "dowser", "data": g.board[other - 1].data}, 0.6)
 			var small = n.ledger.values()[0]
-			for key in small.applied:
-				var index: int = key
-				var who: String = small.effects[index][0]
-				n.suspicion[who] -= small.applied[key]
-				n.suspicion[who] += 0.001
-				small.applied[key] = 0.001
 			g.set_workshop_effects(true)
-			check(n.workshop_state.active and small.applied.values().all(func(v): return is_zero_approx(v)), "ownership retracts even sub-threshold native remnants exactly")
+			check(n.workshop_state.active and small.effects.is_empty(), "ownership activates cleanly on receipt-only reading entries")
 			Mind.adjust(g.w, n, target.id, -3.0, "lower-bound regression", "", false)
 			var unclamped_plan = Shared.prepare(g.workshop_snapshot([], n.id), {}, n.ledger)
 			check(unclamped_plan.ready and is_zero_approx(Mind.susp(n, target.id)), "lower-bound totals no longer block reversible ownership")

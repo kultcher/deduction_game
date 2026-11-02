@@ -44,12 +44,8 @@ func on_executed(w, rv, res: Dictionary, mind) -> void:
 	# Someone who voted to hang it has turned: each good yes-voter is a little suspect to the rest.
 	var voters: Array = res.get("yes", []).filter(func(i): return w.by_id[i].alive)
 	for l in w.living_good():
-		var e: Array = []
-		for i in voters:
-			if i != l.id:
-				mind._eff(e, i, Tuning.Roles.REVENANT.curse_voter_eff, "voted to hang the Revenant; the curse turned one of those voters")
-		if not e.is_empty():
-			mind.ledger_hear(w, l, "curse:%d" % w.day, e, 1.0, [], {"kind": "event"})
+		if voters.any(func(i): return i != l.id):
+			mind.ledger_hear(w, l, "curse:%d" % w.day, [], 1.0, [], {"kind": "event"})
 	w.public_event("curse", [rv.id], rv.id)
 	w.meeting["curse"] = true
 	# Public curse activation identifies the executed Revenant and invalidates any Good gift claim they made,

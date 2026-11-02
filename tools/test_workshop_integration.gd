@@ -164,7 +164,7 @@ func _audit() -> void:
 		"data": entry.data, "text": "Dowser group"})
 	Mind.apply_info(g.w, listener, source, entry, 0.5)
 	var audit = LedgerAudit.inspect(g.workshop_snapshot([number], listener.id))
-	check(not listener.ledger[Mind.info_eid(source.id, entry)].applied.is_empty() and not audit.reading_entries.is_empty(), "audit detects a native Dowser reading with actual suspicion already applied")
+	check(listener.ledger[Mind.info_eid(source.id, entry)].effects.is_empty() and not audit.reading_entries.is_empty(), "audit detects a learned Dowser reading receipt with empty legacy effects")
 
 func _routes() -> void:
 	var off = _game(7)

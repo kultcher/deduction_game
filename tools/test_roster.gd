@@ -84,7 +84,9 @@ func _test_setup(size: int) -> void:
 	_check(mods.size() == 4, "%d-player: all four secrets turn up" % size)
 
 func _test_martyr_save() -> void:
-	var w = _game(9100).w
+	var gm = _game(9100)
+	gm.set_workshop_effects(true)
+	var w = gm.w
 	w.day = 2
 	var goods: Array = w.living_good()
 	var mart = goods[0]

@@ -217,11 +217,9 @@ func defend_strength(d: Dictionary, nominee: String) -> float:
 	return Tuning.Roles.FALLBACK_DEFEND_STRENGTH
 
 
-## Native suspicion effects (`[[who_id, delta, can_cite, internal_tag, spoken_reason], ...]`)
-## when `listener` hears `entry` from `source`. May also apply side-effects (e.g. `listener.cleared`,
-## `Mind.set_trust` on Gravedigger confirmation).
-func info_effects(_w, _listener, _source, _entry: Dictionary, _weight: float, _fresh: bool, _mind) -> Array:
-	return []
+## First-hearing non-suspicion side effects when a reading enters a listener's ledger.
+func on_reading_heard(_listener, _source, _entry: Dictionary, _fresh: bool) -> void:
+	pass
 
 
 ## Day-tapered reluctance for non-info gifts that hide from the Demon (`-0.50` D1,

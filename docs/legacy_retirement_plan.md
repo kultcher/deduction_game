@@ -1,6 +1,6 @@
 # Retiring the old belief system: inventory and plan
 
-Prepared by Claude, Oct 30, 2026. **Status (Nov 1):** phase 1 done (PR #45); phase 2a implemented (`workshop/reason_attribution.gd` + `sim/mind_meeting.gd`). Decisions 1, 2, 3 and 4 all confirmed (including keeping vote-based circumstantial evidence player-presented rather than auto-evaluated in every NPC refresh). Full plan for phases 2-4 below.
+Prepared by Claude, Oct 30, 2026. **Status (Nov 2):** phases 1, 2a, and 2b merged on `main`; **phase 2c implemented** (empty ledger `effects`, all 12 role `info_effects` deleted, legacy doubt/honesty/hearing/parking/retraction arithmetic removed, `_recompute_beliefs` reduced to the shared refresh plus metadata preferences). Phases 3 and 4 remain below.
 
 The user asked for the old belief system to be purged. On Oct 24–25 the user had decided to keep a deliberate hybrid, recorded in the Project doc `claude/legacy-migration-plan.md`. That decision included "not deleting the legacy ledger wholesale", and it kept the native rules as the baseline for the bot A/B test. Purging reverses part of that, so this note lists what exists, what is still live, and the questions that need answers first.
 
@@ -56,16 +56,16 @@ Each phase is its own PR, with the full suite, `test_trace`, the 54875 replay an
 
 ### Where things stand
 
-- **Done:** phase 1 (`sim/deduction.gd`, PR #45) and phase 2a (`workshop/reason_attribution.gd` + `sim/mind_meeting.gd`).
-- **The shared model owns every ledger entry** in normal play, and after 2a meetings and defences no longer read legacy effect magnitudes, `sus_why`/`sus_src`, `night_sighting_scale`, or `reading_strength` when the shared model is active. Remaining legacy by-products for 2b/2c:
+- **Done:** phase 1 (`sim/deduction.gd`, PR #45), phase 2a (`workshop/reason_attribution.gd` + `sim/mind_meeting.gd`, PR #47), phase 2b (`workshop/source_doubt.gd` + social layer), and **phase 2c** (stop generating legacy effects).
+- **The shared model owns every ledger entry and no legacy suspicion/doubt/honesty arithmetic runs anymore.** Summary of retired legacy by-products across 2a-2c:
 
-| Legacy by-product | Made by | Still read by |
+| Legacy by-product | Made by | Status after 2c |
 |---|---|---|
-| Effect magnitudes on ledger entries (`effects`, `applied`) | role `info_effects`, `ledger_hear` | **retired from shared-mode meetings in 2a** (only unowned native compatibility paths until 2c/3) |
-| `n.discounted` (per-source, per-night reading doubt) | `_night_doubt` in `_recompute_beliefs` | **retired from shared mode in 2b** (replaced by `workshop_state.source_doubt` via `workshop/source_doubt.gd`; only unowned native fallback until 2c/3) |
-| `n.honesty` | `_honesty` in `_recompute_beliefs` | **retired from shared mode in 2b** (`WorkshopBridge`, `Mind.reliability`, and `game.gd` debug view read `source_doubt` / shared beliefs; only native fallback until 2c/3) |
+| Effect magnitudes on ledger entries (`effects`, `applied`) | formerly role `info_effects`, `ledger_hear` | **deleted in 2c** (`ledger_hear` stores `effects: []` with no `applied` dict; all 12 role `info_effects` deleted) |
+| `n.discounted` (per-source, per-night reading doubt) | formerly `_night_doubt` in `_recompute_beliefs` | **deleted in 2c** (`_night_doubt` removed; `Mind.reliability` and `night_reliability` read `workshop_state.source_doubt`) |
+| `n.honesty` | formerly `_honesty` in `_recompute_beliefs` | **deleted in 2c** (`_honesty` removed; `answer_opinion` word-doubt caveat and `debug_npc_text` read `reliability` / `source_doubt`) |
 | `n.sus_why` / `n.sus_src` | `Mind.adjust` | **retired from shared-mode meetings in 2a** |
-| `night_sighting_scale`, `reading_strength`, `card_strength`, `defend_strength` | legacy helpers | **retired from shared-mode `case_against` / `defend_self` / `_go_public` in 2a** (`card_strength` / `defend_strength` remain only in legacy hearing / `Argue` / pressing) |
+| `night_sighting_scale`, `reading_strength`, `card_strength`, `defend_strength` | legacy helpers | **retired from shared-mode meetings in 2a and hearing tails in 2c** (`card_strength` / `defend_strength` remain only for `press`, `present` direction inference, self-support rapport, and `Argue` until Phase 4) |
 | Direct suspicion changes | grief (`World._grief`), freed soul (`World.free_turned`), Revenant curse (`revenant.gd`) | **retired in 2b** (grief -> private `resentments`, freed soul -> pre-turn snapshot restore, Revenant `+1.0` deleted; `outside` stays flat `0.1`) |
 | Role side effects inside `info_effects` | Gravedigger rapport changes | **moved out of `info_effects` in 2b** (`World.on_execution_reading_heard` post-refresh hook) |
 
@@ -104,12 +104,16 @@ Goal: no legacy by-product feeds the shared model or the social layer.
   - *Shielding is rarely citable.* It fires from 0.48 belief, but incidents are capped at `CIRCUMSTANTIAL_INCIDENT_MAX = 0.015` and reasons cite from 0.01 applied, so it only becomes a spoken reason when the listener is firm (about 0.7+) or the nominee is a proven Revenant. Seer pings alone top out near 0.35 (red herring), so this mostly needs corroboration.
   7. **Outside layer invariance & tests (`tools/test_legacy_purge_phase2b.gd`).** Zero non-ledger `Mind.adjust` calls remain in normal shared-mode play, keeping `workshop_state.outside` flat at `0.1` across multi-day games with hangings, grief, Revenant curses, and freed souls.
 
-### Phase 2c: stop generating legacy effects (one PR, should be identical play)
+### Phase 2c: stop generating legacy effects (one PR, implemented Nov 2)
 
-1. `ledger_hear` keeps receipts, metadata and weights (they are hearing weights the shared model reads); `effects` become empty.
-2. Delete role `info_effects` (12 role files) and the legacy hearing evaluators that only feed them: `card_strength` / `defend_strength` paths in `mind.gd`, `_night_doubt`, `_honesty`, `_claimants`-based effect expansion, the parking of native contributions (`Argue._apply` in `workshop_presentation.gd`) and the retraction of `applied`.
-3. `_recompute_beliefs` shrinks to: run the shared refresh, apply its vector over the flat start.
-4. **Proof:** suspicions identical through Day 4 on fixed seeds against the 2b result, plus `test_trace` and the 54875 replay. Anything that differs is a reader 2a or 2b missed.
+Goal: stop computing, parking, or retracting legacy effect arrays while preserving identical shared-mode play.
+
+- **As built (Nov 2, `sim/mind.gd` + `sim/role_def.gd` + 11 `sim/roles/*.gd` + `sim/mind_meeting.gd` + `sim/mind_dialogue.gd` + `game/workshop_presentation.gd`):**
+  1. **Receipt-only `ledger_hear` (`effects = []`).** `Mind.ledger_hear` (and its forwarders in `mind_dialogue.gd` and `mind_meeting.gd`) retains receipts, provenance metadata, justifications, and hearing weights read by the shared model while storing `"effects": []` and omitting `"applied"`. All production callers (`hear_claim`, `apply_info`, `press`, `defend_self`, `Social` relays, `World` silence/quiet-night/death events, `Martyr`, `Revenant`, `Argue._apply`, and `WorkshopPresentation._present`) pass `[]`. `SharedLedger.prepare` (`martyr:`) and `LiveProtection.owns` (`quiet:`) certify ownership from receipt/event metadata when `effects` is empty.
+  2. **Role `info_effects` deleted across all 12 role files.** Removed `RoleDef.info_effects`, `Mind._info_effects`, and all 11 role overrides (`archivist`, `clerk`, `dowser`, `gravedigger`, `hearthwitch`, `martyr`, `medium`, `nightwatch`, `rumormonger`, `seer`, `veteran`). Preserved Seer's first-hearing own `no`-reading `listener.cleared` side effect via `RoleDef.on_reading_heard` (`sim/roles/seer.gd`).
+  3. **Legacy evaluators, doubt/honesty passes, presentation parking, and `applied` loops removed.** Deleted `Mind._eff`, `_claimants`, `_expand`, `_final_weight`, `_night_doubt`, `_honesty`, `_support_factor`, `_ledger_apply`, `word_factor`, `_tell_meta`, the native hearing tails of `hear_accusation` / `hear_defence` / `hear_group_case` / `_public_case_hear`, the transitional `applied` loop in `MindMeeting.case_against`, and `Argue._apply` native deduction parking in `WorkshopPresentation._present`. Also switched the missed `n.honesty` reader in `MindDialogue.answer_opinion` (`WORD_DOUBT_BELOW`) and `Game.debug_npc_text` to `Mind.reliability` / `source_doubt`.
+  4. **Shrunk `_recompute_beliefs`.** Runs `workshop_refresh` (`"before"` / `"after"`) over the outside baseline, refreshes metadata-backed non-suspicion preferences and role beliefs (`protect_pref`, `spare_pref`, `believed_roles`, and `e["eff"]`), prunes stale resentments, and captures the devlog snapshot.
+  5. **Tests:** `tools/test_legacy_purge_phase2c.gd` verifies empty ledger `effects` across all receipt kinds, deletion of `info_effects` / `_night_doubt` / `_honesty` / `Argue._apply` presentation parking, Seer `on_reading_heard` `cleared` preservation, metadata-derived preferences/role beliefs, and multi-day shared-mode stability with zero fallbacks.
 
 ### Phase 3: remove the switch and the fallback (one PR)
 
@@ -130,7 +134,8 @@ Goal: no legacy by-product feeds the shared model or the social layer.
 
 - 2a done (Nov 1–2, `ff13ea6`). Fixes the "no citable reasons" playtest problem, lazily attributes shared-model reasons on demand, and retires meeting/defence reads of legacy magnitudes.
 - 2b done (Nov 2; about 5% slower than 2a over four seeds to Day 4). Retires shared-mode reads of `discounted` / `honesty` via `source_doubt`, moves Gravedigger rapport out of `info_effects`, converts grief to private fading `resentments`, restores freed souls from pre-turn snapshots, deletes the Revenant `+1.0` `adjust`, and adds player-presented `shielding` vote circumstantial evidence.
-- 2c and 3 back to back, before the overhaul's phase 5 sweeps, so the sweeps measure the final structure.
+- 2c done (Nov 2): empties ledger `effects`, deletes all 12 role `info_effects` and legacy doubt/honesty/hearing/parking/retraction arithmetic, and shrinks `_recompute_beliefs` to the shared refresh plus metadata preferences.
+- 3 next, right before the overhaul's phase 5 sweeps, so the sweeps measure the final structure.
 - 4 whenever the bot rewrite happens.
 
 ### Open items

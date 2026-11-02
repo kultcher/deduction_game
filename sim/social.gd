@@ -255,15 +255,10 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			l.hearsay.append(hs)
 		"sighting":
 			var orig_src_id: String = str(item.get("from", s.id))
-			var orig_name: String = w.by_id[orig_src_id].name if w.by_id.has(orig_src_id) else s.name
 			var sight_wgt: float = wgt
 			if orig_src_id != s.id:
 				var chain_trust: float = minf(l.npc_trust.get(s.id, 0.5), l.npc_trust.get(orig_src_id, 0.5))
 				sight_wgt = clampf(Tuning.Social.HEARSAY_TRUST_SCALE * chain_trust, 0.0, Tuning.Social.HEARSAY_WEIGHT_CAP)
-			var sc = Mind.night_sighting_scale(w, l, item["about"], item.get("block", ""), item.get("day", -1))
-			var e1: Array = []
-			Mind._eff(e1, item["about"], 0.4 * sc, "heard from %s that %s was out at night (x%.2f)" % [orig_src_id, item["about"], sc],
-				"%s says they were out at night" % orig_name)
 			var card = {"kind": "sighting", "source": orig_src_id, "via": s.id, "subject": [item["about"]], "block": item.get("block", ""), "day": item.get("day", -1), "phase": C.NIGHT,
 				"learned": [{"day": w.day, "phase": w.phase, "via": s.id}], "text": desc}
 			if not original.is_empty():
@@ -271,7 +266,7 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 				card["via"] = s.id
 				card["learned"] = [{"day": w.day, "phase": w.phase, "via": s.id, "public": public}]
 			var receipt = Mind.WorkshopLedger.Evidence.normalize_card(card)
-			Mind.ledger_hear(w, l, "heard:" + receipt.id, e1, sight_wgt * 2.0, [orig_src_id, item.get("day", -1), "report"],
+			Mind.ledger_hear(w, l, "heard:" + receipt.id, [], sight_wgt * 2.0, [orig_src_id, item.get("day", -1), "report"],
 				{"kind": "tell", "workshop_card": receipt, "workshop_teller": s.id, "workshop_origin": orig_src_id, "workshop_public": public})
 			l.hearsay.append(hs)
 		"opinion", "unease":
@@ -283,16 +278,13 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			# without manufacturing night-movement suspicion in the listener's ledger.
 			l.hearsay.append(hs)
 		"case":
-			var e3: Array = []
-			Mind._eff(e3, item["about"], 0.1, "heard the Demonologist's case against %s via %s" % [item["about"], s.id],
-				"the Demonologist has a case against them")
 			var proof = w.workshop_roots.call(item["card"]) if w.workshop_roots.is_valid() else {"complete": false, "receipts": {}}
 			for receipt in proof.receipts.values():
 				var path = {"via": s.id, "kind": "npc_case", "at": {"day": w.day, "phase": w.phase}}
 				if not receipt.has("provenance_paths"):
 					receipt["provenance_paths"] = []
 				receipt.provenance_paths.append(path)
-			Mind.ledger_hear(w, l, "relayed-case:%s>%s" % [str(item.card.get("n", Mind.fact_id(item.card))), item["about"]], e3, wgt * 2.0, [],
+			Mind.ledger_hear(w, l, "relayed-case:%s>%s" % [str(item.card.get("n", Mind.fact_id(item.card))), item["about"]], [], wgt * 2.0, [],
 				{"kind": "shared_case", "workshop_receipts": proof.receipts, "workshop_complete": proof.complete, "workshop_teller": s.id})
 			if not proof.complete:
 				w.dlog.add("evidence_excluded", l.id, item["about"], {"via": s.id}, "Relayed case excluded from shared evidence: its original roots are missing or unsupported.")

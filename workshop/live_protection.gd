@@ -54,6 +54,6 @@ static func owns(entry: Dictionary, cards: Array) -> bool:
 				continue
 			var expected: float = C.role_def(claim.role).quiet_night_effect
 			var effects: Array = entry.get("effects", [])
-			if effects.size() == 1 and effects[0][0] == claim.source and is_equal_approx(float(effects[0][1]), expected):
+			if effects.is_empty() or (effects.size() == 1 and effects[0][0] == claim.source and is_equal_approx(float(effects[0][1]), expected)):
 				return true
 	return false
