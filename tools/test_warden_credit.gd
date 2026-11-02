@@ -49,6 +49,7 @@ func _init():
 	Caches.clear_all()
 	var before: Dictionary = _own_effects(g, warden)
 	var trust_before: float = warden.npc_trust[target.id]
+	target.suspicion[warden.id] = 0.1  # the protectee believes the Warden (tell_save warms only then)
 	var protectee_trust: float = target.npc_trust.get(warden.id, 0.5)
 	w._warden_credit(warden, target.id)
 	_check(warden.warden_saves.has("1") and is_equal_approx(warden.warden_saves["1"].belief, 1.0), "a quiet night with no other known protector is taken as the Warden's save")
