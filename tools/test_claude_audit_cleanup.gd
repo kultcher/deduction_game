@@ -88,28 +88,42 @@ func _test_case_against_skips_non_incriminating_sightings() -> void:
 	var w = g.w
 	var listener = w.living_good()[0]
 	var walker = w.living_good()[1]
+	var victim = w.living_good()[2]
+	walker.home_block = "square"
+	victim.home_block = "docks"
+	victim.alive = false
+	victim.death_day = 1
+	victim.death_cause = "demon"
+	w.day = 1
+	w.public_event("demon_death", [victim.id], "town")
 	w.day = 2
-	w.scenes["victim_n1"] = {"day": 1, "block": "docks", "loc": "wharf"}
+	w.scenes[victim.id] = {"day": 1, "block": "docks", "loc": "wharf"}
 
-	# Off-murder-block night sighting owned by SharedLedger even when walker has elevated shared suspicion from other grounds.
-	var wcard = preload("res://workshop/live_evidence.gd").normalize_card({
-		"kind": "sighting", "source": listener.id, "subject": [walker.id],
-		"block": "hill", "day": 1, "phase": C.NIGHT, "text": "A witnessed outing"
+	# Off-murder-block night sighting ("hill" while walker lives on "square" and victim died on "docks")
+	# has LR < 1.0 in LiveActivity even when another card raises walker's suspicion.
+	var other = w.living_good()[3]
+	var dowse_entry: Dictionary = {"day": 1, "phase": C.MORNING, "role": "dowser", "data": {"group": [walker.id, other.id], "count": 1}, "shared": true, "text": "1 evil in pair"}
+	Mind.apply_info(w, listener, other, dowse_entry, 1.0)
+	var wcard_off = preload("res://workshop/live_evidence.gd").normalize_card({
+		"kind": "sighting", "source": other.id, "subject": [walker.id],
+		"block": "hill", "day": 1, "phase": C.NIGHT, "text": "A witnessed outing off murder block"
 	})
 	var effs: Array = []
-	Mind._eff(effs, walker.id, 0.04, "saw out off murder block", "I saw them out on Chapel Hill at night")
-	Mind.ledger_hear(w, listener, "heard:sight_off_block", effs, 1.0, [listener.id, 1, "report"], {"kind": "tell", "workshop_card": wcard})
-	listener.workshop_state["active"] = true
-	listener.workshop_state["owned"] = {"heard:sight_off_block": true}
-	listener.workshop_state["requested"] = {walker.id: 0.42}
+	Mind._eff(effs, walker.id, 0.04, "saw out off murder block", "saw them out on Chapel Hill at night")
+	Mind.ledger_hear(w, listener, "heard:sight_off_block", effs, 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_off})
+	Mind.recompute_beliefs(w, listener, " (test off-block sighting)")
 	var reasons_off: Array = MindMeeting.case_against(w, listener, walker.id)
-	_check(reasons_off.is_empty(), "case_against does not cite an off-murder-block night sighting owned by SharedLedger")
+	_check(not reasons_off.any(func(r): return r.get("channel", "") == "movement_out"), "case_against does not cite an off-murder-block night sighting in shared attribution")
 
-	# Same sighting ON the murder block ("docks") IS cited when walker has no credible night-walk claim.
-	wcard["block"] = "docks"
-	wcard["content"]["block"] = "docks"
+	# Same sighting ON the murder block ("docks") IS cited when walker has no credible walking claim.
+	var wcard_on = preload("res://workshop/live_evidence.gd").normalize_card({
+		"kind": "sighting", "source": other.id, "subject": [walker.id],
+		"block": "docks", "day": 1, "phase": C.NIGHT, "text": "A witnessed outing on murder block"
+	})
+	Mind.ledger_hear(w, listener, "heard:sight_on_block", effs, 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_on})
+	Mind.recompute_beliefs(w, listener, " (test murder-block sighting)")
 	var reasons_on: Array = MindMeeting.case_against(w, listener, walker.id)
-	_check(reasons_on.size() == 1, "case_against cites a murder-block night sighting when walker has no credible walking claim")
+	_check(reasons_on.any(func(r): return r.get("channel", "") == "movement_out"), "case_against cites a murder-block night sighting when walker has no credible walking claim")
 
 
 func _test_live_role_constraints_non_strict_nightwatch() -> void:

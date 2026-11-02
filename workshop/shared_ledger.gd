@@ -6,6 +6,7 @@ const Assess = preload("res://workshop/live_assessment.gd")
 const Jury = preload("res://workshop/jury.gd")
 const Support = preload("res://workshop/support_model.gd")
 const Theory = preload("res://workshop/theory.gd")
+const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 
@@ -541,6 +542,7 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 				prepared.listener.reading_reliability, prepared.listener.knowledge, prepared.listener.insight,
 				prepared.listener.confidence, target, reasoning.considered]))
 			Theory.prepare(prepared.view, question, prepared.listener, reasoning, key)
+	result["reasons"] = ReasonAttribution.attach_owners(result.get("reasons", {}), plan.get("owners", {}), public_good)
 	result["theories"] = prepared.listener.theories.duplicate(true)
 	# Listener-mean-centered execution priority: bystanders at or below the listener's
 	# live average receive 0.0, while joint-world standouts above listener_mean (plus at

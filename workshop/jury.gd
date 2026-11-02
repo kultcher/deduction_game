@@ -16,6 +16,7 @@ const CaseEval = preload("res://workshop/case_eval.gd")
 const Protection = preload("res://workshop/live_protection.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
+const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 
 ## Which engine judges cases (docs/CASE_REASONING.md): "case_eval" (likelihood-weighted
 ## worlds, one pass for every person) or "legacy" (model v5's credibility-state mixture
@@ -94,7 +95,7 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	listener.ledger[case_data.id] = {"effects": effects.duplicate(true)}
 	listener.theories = consequences.theories
 	Profiler.close(span)
-	return {"effects": effects, "reasoning": consequences.reasoning, "reading_challenges": consequences.reading_challenges,
+	return {"effects": effects, "reasons": consequences.get("reasons", {}), "reasoning": consequences.reasoning, "reading_challenges": consequences.reading_challenges,
 		"effect_rule": consequences.rule}
 
 static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
@@ -1033,8 +1034,11 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 				note += " An alternative to the parent claim still fits what I checked."
 			child.links.append({"parent": parent_id, "parent_label": parent.label, "relation": relation,
 				"evidence_difference": contribution, "exclusive_cards": exclusive, "alternative_remains": remaining, "note": note})
+	var refresh_reasons: Dictionary = {}
+	if refresh:
+		refresh_reasons = ReasonAttribution.attribute_refresh(view, scoped, attended, held, challenged, baseline, eval_listener, ev, effects)
 	Profiler.close(span)
-	return {"effects": effects, "claims": claims, "theories": theories, "considered": attention.considered,
+	return {"effects": effects, "reasons": refresh_reasons, "claims": claims, "theories": theories, "considered": attention.considered,
 		"reading_challenges": challenged.results,
 		"reasoning": {"status": "belief_refresh", "impossible": ev.impossible, "profile": attention.profile, "considered": attention.considered.duplicate(),
 			"ignored": attention.ignored.duplicate(), "ignored_lines": attention.ignored_lines.duplicate(), "private_checks": attention.private_checks.duplicate(true)},
