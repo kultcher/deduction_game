@@ -5,6 +5,7 @@ const Bridge = preload("res://game/workshop_bridge.gd")
 const Mind = preload("res://sim/mind.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
+const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 
 static func refresh(g, n, phase: String) -> void:
 	var span = Profiler.open("ownership_" + phase)
@@ -40,6 +41,7 @@ static func _refresh(g, n, phase: String) -> void:
 		state.circumstantial_requested = {}
 		state.circumstantial_applied = {}
 		state.circumstantial_incidents = {}
+		state.reasons = {}
 		state.owned = {}
 		state.erase("action") # An unsupported/disabled refresh cannot retain an action.
 		g._workshop_plans.erase(key)
@@ -158,6 +160,19 @@ static func _refresh(g, n, phase: String) -> void:
 					g.w.dlog.trace_event("value_change", n.id, id, {"quantity": "suspicion", "from": old_c,
 						"to": n.suspicion[id], "requested_delta": c_des, "applied_delta": state.circumstantial_applied[id],
 						"ledger_id": "workshop:circumstantial"}, "Stage 2 circumstantial hub")
+		var refresh_reasons: Dictionary = proposal.get("reasons", {}).duplicate(true)
+		if not state.circumstantial_incidents.is_empty():
+			ReasonAttribution.append_circumstantial(refresh_reasons, state.circumstantial_incidents, chubs, state.get("presentations", {}))
+		ReasonAttribution.append_elimination_fallbacks(
+			refresh_reasons,
+			state.requested,
+			state.circumstantial_requested,
+			state.reasoning.get("considered", []),
+			plan.prepared.view,
+			n.id,
+			state.get("public_good", [])
+		)
+		state.reasons = refresh_reasons
 		state.active = true
 		g.w.dlog.trace_event("workshop_ownership", n.id, "", {"owned": state.owned, "facts": state.facts,
 			"owners": state.owners, "requested": state.requested, "applied": state.applied,
