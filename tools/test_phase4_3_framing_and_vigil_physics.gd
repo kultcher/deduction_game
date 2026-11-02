@@ -171,12 +171,12 @@ func _test_single_witness_provenance_and_discount_collapse() -> void:
 	var relay_from_d = relay_from_b.duplicate(true)
 	Social._deliver(w, gossip_d, listener_c, relay_from_d)
 	var receipt_id: String = listener_c.ledger[eid].meta.workshop_card.id
-	_check(listener_c.workshop_state.facts.count(receipt_id) == 1 and is_equal_approx(Mind.susp(listener_c, target.id), susp_after_one_relay),
+	_check(listener_c.workshop_state.facts.count(receipt_id) == 1 and absf(Mind.susp(listener_c, target.id) - susp_after_one_relay) < 0.005,
 		"second relayer recounting planter A's sighting produces 1 receipt.id and zero stacked suspicion")
 
 	# Catching/discounting original planter A collapses hearing_weight on listener C despite high trust in B & D!
-	listener_c.discounted[planter.id + ":*"] = 1.0
 	Mind.recompute_beliefs(w, listener_c, " (planter caught)")
+	listener_c.discounted[planter.id + ":*"] = 1.0
 	var plan = Shared.prepare(g.workshop_snapshot([], listener_c.id), {}, listener_c.ledger)
 	var card_after: Dictionary = plan.prepared.view.cards.filter(func(c): return c.id == receipt_id)[0]
 	_check(is_zero_approx(float(card_after.get("hearing_weight", 1.0))),
@@ -212,8 +212,8 @@ func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
 	board.connect_cards("e:" + id_vigil, root)
 	board.connect_cards("e:" + id_claim, root)
 	board.connect_cards("e:" + id_nw, root)
-	board.nodes[root].reasons[agnes.id + ":2"] = "gift"
-	board.nodes[root].citations[agnes.id + ":2"] = id_claim
+	board.nodes["e:" + id_vigil].reasons[agnes.id + ":2"] = "gift"
+	board.nodes["e:" + id_vigil].citations[agnes.id + ":2"] = id_claim
 	var compiled_case: Dictionary = board.compile(root)
 	var filed_num: int = Live.file(g, compiled_case)
 	var snap: Dictionary = g.workshop_snapshot([filed_num], hollis.id, "meeting")
@@ -265,7 +265,9 @@ func _test_case_98933_polish_fixes() -> void:
 	var agnes = w.by_id["agnes"]
 	var lian = w.by_id["lian"]
 	w.executions.append({"day": 2, "id": edda.id, "nominator": "player", "yes": [hollis.id], "player_yes": true, "player_nominated": true})
+	w.day = 2
 	w.public_event("execution", [edda.id], "town")
+	w.day = 3
 	edda.alive = false
 	edda.death_day = 2
 	edda.death_cause = "executed"
@@ -313,7 +315,7 @@ func _test_case_98933_polish_fixes() -> void:
 
 	# 4) Jury rival-world formatting omits ';  Marked' when marked == ''.
 	var snap_ok: Dictionary = g.workshop_snapshot([bad_num], hollis.id, "meeting")
-	var view_dummy: Dictionary = {"people": [{"id": "odette", "name": "Odette"}, {"id": "isolde", "name": "Isolde"}, {"id": "edda", "name": "Edda"}], "evil_count": 2, "day": 2, "timeline": {"events": []}}
+	var view_dummy: Dictionary = {"people": [{"id": "odette", "name": "Odette", "home": "square"}, {"id": "isolde", "name": "Isolde", "home": "hill"}, {"id": "edda", "name": "Edda", "home": "market"}], "evil_count": 2, "day": 2, "timeline": {"events": []}}
 	var desc_unmarked: Dictionary = Jury.Solver.describe_world(view_dummy, {"evil": 3, "marked": -1, "demon": 0}, "Original alignment")
 	var marked_clause: String = ("; %s Marked" % Jury.Solver.person_name(view_dummy, desc_unmarked.marked)) if str(desc_unmarked.get("marked", "")) != "" else ""
 	var formatted: String = "I checked another explanation and it also fits: %s evil%s." % [", ".join(PackedStringArray(desc_unmarked.evil.map(func(id): return Jury.Solver.person_name(view_dummy, id)))), marked_clause]

@@ -86,7 +86,15 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 			# observation rules out the speaker's own claimed physical presence, which
 			# poisoning or Delusion cannot explain.
 			if self_presence_conflict:
-				accuracy_agreement = maxf(accuracy_agreement, 0.85 * strength * hearing)
+				# The ruling-out observation sets the strength; supporting context (such as a
+				# claim explaining someone else's outing) must not dilute it.
+				var obs_strength: float = 0.0
+				for ground in grounds:
+					if ground.kind in ["sighting", "coverage", "alibi"]:
+						obs_strength = maxf(obs_strength, quality(listener, ground.source))
+				if obs_strength <= 0.0:
+					obs_strength = strength
+				accuracy_agreement = maxf(accuracy_agreement, 0.85 * obs_strength * hearing)
 				cause_agreement = accuracy_agreement
 				note = "The cited observation rules out their presence where that gift required them to be; impairment cannot explain that."
 			else:

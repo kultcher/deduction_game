@@ -104,11 +104,12 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 		g._workshop_native_social = true # already recorded above, once per listener
 		g._narr("[dev] The shared model doesn't judge '%s' conclusions yet; the legacy rules judged this one." % ", ".join(PackedStringArray(kinds)))
 		return true
-	if not _all_authoring_validation_issues(check.issues):
-		for row in check.listeners:
-			if not row.ready:
-				WorkshopOwnership.fallback(g, g.w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
-	else:
+	# Per listener: a row blocked only by canvas authoring problems (a missing cited
+	# claim, an empty hub) is not a model gap, so it is not counted as a fallback.
+	for row in check.listeners:
+		if not row.ready and not _all_authoring_validation_issues(row.issues):
+			WorkshopOwnership.fallback(g, g.w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
+	if _all_authoring_validation_issues(check.issues):
 		g.w.dlog.trace_event("workshop_validation_blocked", "player", "", {"card": card.get("n", 0), "issues": check.issues.duplicate(true)}, "Blocked incomplete canvas submission without legacy fallback.")
 	# No legacy route for presentations: an unsupported submission is blocked with its
 	# reason, so a playtest always tests the shared model (user, Oct 25).

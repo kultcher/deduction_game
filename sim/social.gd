@@ -83,7 +83,9 @@ static func _pick_item(w, s, l):
 				var wgt = (1.0 - priv) * 1.2 * maxf(0.0, bond - 0.3) * 2.0 + 0.3 * s.pressure
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": "reading:%d:%s" % [e["day"], e["role"]], "lie": true}])
 		var planter_id: String = str(w.evil_plan.get("daily_planter", ""))
-		var can_plant_sg: bool = (planter_id == "" and w.day < 2) or (planter_id == "" and not w.evil_plan.has("daily_planter")) or (s.id == planter_id and int(w.evil_plan.get("plants_today", 0)) < Tuning.Evil.MAX_DIRECT_PLANTS)
+		# With a planter today, only the planter frames the scapegoat (anti-collusion). With no
+		# planter (no murder scene, or no clean cover), the ordinary scapegoat whispers stand.
+		var can_plant_sg: bool = planter_id == "" or (s.id == planter_id and int(w.evil_plan.get("plants_today", 0)) < Tuning.Evil.MAX_DIRECT_PLANTS)
 		if sg != "" and sg != l.id and w.by_id[sg].alive and can_plant_sg:
 			var fs = Evil.fake_night_sighting(w, s, w.day - 1)
 			if fs != null and not _told(s, l, "sighting:%s:%d" % [sg, fs["day"]]):

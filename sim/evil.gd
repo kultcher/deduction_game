@@ -190,7 +190,7 @@ static func plan_daily_frame(w) -> void:
 					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
 				elif str(watch.get("data", {}).get("block", "")) == death_block and sg_id in watch.get("data", {}).get("seen", []):
 					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
-				elif not watch.get("shared", false) and m.told_readings == 0:
+				elif not watch.get("shared", false) and m.told_readings == 0 and not m.told_to.keys().any(func(k): return str(k).ends_with("|reading:%d:nightwatch" % nd)):
 					watch["data"] = {"block": death_block, "seen": [sg_id]}
 					watch["text"] = "I watched %s: I saw %s pass by" % [C.block_name(death_block), sg.name]
 					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}

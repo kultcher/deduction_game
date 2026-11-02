@@ -315,7 +315,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 				if "learned" in owners[id] and facts[id].source == input.listener.id:
 					hearing = 1.0
 				elif facts[id].source not in ["", "player", "evidence", "town"]:
-					var s_doubt: float = maxf(float(prepared.listener.discounted.get("%s:%d" % [facts[id].source, facts[id].observed_at.day], 0.0)), float(prepared.listener.discounted.get(facts[id].source + ":*", 0.0)))
+					var src_disc: Dictionary = input.listener.get("discounted", {})
+					var s_doubt: float = maxf(float(src_disc.get("%s:%d" % [facts[id].source, facts[id].observed_at.day], 0.0)), float(src_disc.get(facts[id].source + ":*", 0.0)))
 					hearing *= clampf(1.0 - s_doubt, 0.0, 1.0)
 				if adapted.has(id):
 					adapted[id]["hearing_weight"] = hearing
@@ -482,7 +483,8 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
 			continue
 		if card.kind == "sighting" and card.source not in ["", prepared.listener.id, "player", "evidence", "town"] and card.has("hearing_weight"):
-			var s_prev: float = maxf(float(plan.input.listener.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(plan.input.listener.discounted.get(card.source + ":*", 0.0)))
+			var prev_disc: Dictionary = plan.input.listener.get("discounted", {})
+			var s_prev: float = maxf(float(prev_disc.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(prev_disc.get(card.source + ":*", 0.0)))
 			var s_now: float = maxf(float(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(discounted.get(card.source + ":*", 0.0)))
 			var base_hw: float = float(card.hearing_weight) / (1.0 - s_prev) if s_prev < 1.0 else 0.0
 			card["hearing_weight"] = clampf(base_hw * (1.0 - s_now), 0.0, 1.0)
