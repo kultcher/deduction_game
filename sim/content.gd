@@ -39,6 +39,23 @@ const ROADS = [["square", "market"], ["square", "docks"], ["square", "hill"], ["
 static func night_name(nd: int) -> String:
 	return "the night before you arrived" if nd == 0 else "night %d" % nd
 
+const ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"]
+
+## How a person would say which night they mean, speaking on `today`: "last night" for the
+## most recent, otherwise "the second night" (night N is the Nth since the Demonologist
+## came). Card and log text keeps night_name()'s numbers.
+static func spoken_night(nd: int, today: int) -> String:
+	if nd == 0:
+		return "the night before you arrived"
+	if nd == today - 1:
+		return "last night"
+	return ("the %s night" % ORDINALS[nd - 1]) if nd <= ORDINALS.size() else "night %d" % nd
+
+## spoken_night() as an adverbial: "last night", "on the second night".
+static func spoken_when(nd: int, today: int) -> String:
+	var s: String = spoken_night(nd, today)
+	return s if s == "last night" or s.begins_with("the night before") else "on " + s
+
 ## Rewrite any "night 0" in player-facing text into natural phrasing.
 static func natural_nights(text: String) -> String:
 	if not ("night 0" in text or "Night 0" in text):

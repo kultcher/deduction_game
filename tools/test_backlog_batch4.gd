@@ -531,7 +531,7 @@ func volunteered_sightings():
 	var facts: Array = []
 	var state = w.rng.state
 	Mind._volunteer_night_sightings(w, n, lines, facts)
-	check(facts == [Mind.sighting_report(w, n, n.beliefs[0], 2).fact] and "night 2" in lines[0].text, "a privately told old-night sighting becomes the same ordinary public sighting card")
+	check(facts == [Mind.sighting_report(w, n, n.beliefs[0], 2).fact] and C.spoken_when(2, w.day) in lines[0].text.to_lower(), "a privately told old-night sighting becomes the same ordinary public sighting card")
 	check(w.rng.state == state and n.told_to.has(Mind._town_sighting_key(n, n.beliefs[0])), "volunteering uses the deterministic approved gate and records town identity")
 	Mind._volunteer_night_sightings(w, n, lines, facts)
 	check(facts.size() == 1, "a night sighting is volunteered to the town only once")

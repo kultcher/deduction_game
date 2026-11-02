@@ -11,7 +11,87 @@ const Decisions = preload("res://sim/dialogue_decisions.gd")
 const Voices = preload("res://sim/dialogue_voices.gd")
 const Observations = preload("res://sim/dialogue_observations.gd")
 const Contract = preload("res://sim/dialogue_contract.gd")
-const INTENTS = ["report", "doubted", "friend", "conceal", "revise", "alibi"]
+const INTENTS = ["report", "doubted", "friend", "rival", "conceal", "revise", "alibi"]
+
+## Verbal tics: a signature word that reads as character once and as a template by the third
+## time. Each entry caps how often the word may be spoken in one scope (a conversation with
+## the player, or a town meeting); later uses are removed by the listed rewrites, which are
+## ordered from most to least specific. Delivery only: the canonical statement is untouched.
+const _ADDRESS = [
+	[",\\s+%s,", ","],
+	[",\\s+%s(?=[.!?:;\u2014])", ""],
+	["\u2014%s\u2014", "\u2014"],
+	["(^|(?<=[.!?]\\s))%s,\\s+", "$1"],
+	["(^|(?<=[.!?]\\s))%s\u2014", "$1"],
+]
+const TICS = {
+	"isolde": [{"word": "truly", "cap": 1, "rewrites": [
+		[",\\s+truly I did,", ","], [",\\s+truly I do,", ","],
+		[",\\s+truly,", ","], [",\\s+truly(?=[.!?:;\u2014])", ""],
+		["(^|(?<=[.!?]\\s))Truly,\\s+", "$1"], ["\\btruly\\s+(?=[a-z])", ""]]}],
+	"odette": [{"word": "miracul\\w*|miracles?", "cap": 1, "rewrites": [
+		["(^|(?<=[.!?]\\s))Miraculously( enough)?,\\s+", "$1"], [",\\s+miraculously,", ","],
+		["\\band miraculously,\\s+", "and "], ["(^|(?<=[.!?]\\s))Miracles (do happen|never cease)[:\u2014]\\s*", "$1"]]}],
+	"edda": [{"word": "dear", "cap": 2, "rewrites": _ADDRESS}, {"word": "love", "cap": 1, "rewrites": _ADDRESS}],
+	"agnes": [{"word": "love", "cap": 1, "rewrites": _ADDRESS}, {"word": "dear", "cap": 1, "rewrites": _ADDRESS}],
+	"fenwick": [{"word": "my friend", "cap": 2, "rewrites": _ADDRESS}],
+	"kiran": [{"word": "Demonologist", "cap": 2, "rewrites": _ADDRESS}],
+	"merrin": [{"word": "heaven help (?:us|me)", "cap": 1, "rewrites": [
+		["(^|(?<=[.!?]\\s))Heaven help (us|me)[,!]\\s+", "$1"], [",\\s+heaven help (us|me)(?=[,.!?\u2014])", ""]]}],
+}
+
+## Start a fresh tic scope (a town meeting). Conversations start one in begin_conversation.
+static func begin_scope(memory: Dictionary) -> void:
+	memory["tics"] = {}
+
+static func _rx(pattern: String) -> RegEx:
+	var re = RegEx.new()
+	re.compile(pattern)
+	return re
+
+## Remove tics past their cap in this scope. Deterministic; no RNG; returns text unchanged
+## for unvoiced speakers or when nothing is over the cap.
+static func apply_tics(id: String, text: String, memory: Dictionary) -> String:
+	if not TICS.has(id) or text.is_empty():
+		return text
+	var used: Dictionary = memory.get("tics", {})
+	var out: String = text
+	for tic in TICS[id]:
+		var word: String = tic["word"]
+		var finder: RegEx = _rx("(?i)\\b(?:" + word + ")\\b")
+		var found: Array = finder.search_all(out)
+		if found.is_empty():
+			continue
+		var allowed: int = maxi(int(tic["cap"]) - int(used.get(word, 0)), 0)
+		used[word] = int(used.get(word, 0)) + mini(found.size(), allowed)
+		if found.size() <= allowed:
+			continue
+		# Keep the first `allowed` uses; rewrite the rest of the line.
+		var cut: int = 0 if allowed == 0 else found[allowed - 1].get_end()
+		var head: String = out.substr(0, cut)
+		var tail: String = out.substr(cut)
+		for rw in tic["rewrites"]:
+			var pattern: String = rw[0]
+			if "%s" in pattern:
+				pattern = pattern % ("(?i:" + word + ")")
+			tail = _rx(pattern).sub(tail, rw[1], true)
+		out = _tidy(head + tail)
+	memory["tics"] = used
+	return out
+
+static func _tidy(s: String) -> String:
+	var out: String = _rx(" {2,}").sub(s, " ", true)
+	out = _rx(" +(?=[,.!?:;])").sub(out, "", true)
+	out = _rx(",(?=[,.!?:;\u2014])").sub(out, "", true)
+	out = out.strip_edges()
+	# A removed sentence opener leaves a lowercase start.
+	var re: RegEx = _rx("(^|(?<!\\.)[.!?]\\s+)([a-z])")
+	var res = ""
+	var cursor = 0
+	for m in re.search_all(out):
+		res += out.substr(cursor, m.get_start(2) - cursor) + m.get_string(2).to_upper()
+		cursor = m.get_end(2)
+	return res + out.substr(cursor)
 
 static func has_voice(id: String) -> bool:	return Voices.VOICES.has(id)
 
@@ -58,6 +138,8 @@ static func _compose(id: String, intent: Dictionary, context: Dictionary, memory
 		return result
 	# These are authorizations from the caller, not deductions made by the renderer.
 	if kind == "friend" and (not context.get("close", false) or str(context.get("subject", "")).is_empty()):
+		return result
+	if kind == "rival" and (not context.get("rival", false) or str(context.get("subject", "")).is_empty()):
 		return result
 	if kind == "doubted" and not context.get("challenged", false):
 		return result
@@ -151,7 +233,7 @@ static func _compose(id: String, intent: Dictionary, context: Dictionary, memory
 		if form == "alibi" and when_label != "" and when_label != "last night":
 			rendered_form = rendered_form.replace("last night", when_label)
 		chunks = [rendered_form]
-	elif kind == "friend":
+	elif kind in ["friend", "rival"]:
 		chunks = [statement, extra]
 	# Confidentiality must be requested explicitly and only in private conversation.
 	if kind == "report" and audience != "town" and context.get("request_privacy", false):
@@ -202,6 +284,7 @@ static func compose_turn(id: String, intents: Array, context: Dictionary, memory
 ## Start a fresh scope when a new talk opens, but keep seen reports/decisions intact.
 static func begin_conversation(memory: Dictionary) -> void:
 	memory["conversation"] = {"last_action": "", "last_subject": ""}
+	begin_scope(memory)
 
 ## Record only the player's expressed action, never hidden reasons, trust, or alignment.
 ## Called after the NPC has actually spoken a reply to the player.
