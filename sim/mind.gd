@@ -452,6 +452,7 @@ static func capture_pre_turn_snapshot(w, n) -> Dictionary:
 
 static func restore_pre_turn_snapshot(w, n) -> void:
 	var snap: Dictionary = n.pre_turn_snapshot if n.pre_turn_snapshot is Dictionary else {}
+	var turned_shadow = n.shadow
 	var keep_enabled: bool = bool(n.workshop_state.get("enabled", false))
 	var has_enabled_key: bool = n.workshop_state.has("enabled")
 	if not snap.is_empty():
@@ -470,6 +471,13 @@ static func restore_pre_turn_snapshot(w, n) -> void:
 		n.told_readings = int(snap.get("told_readings", n.told_readings))
 	if has_enabled_key:
 		n.workshop_state["enabled"] = keep_enabled
+	# Public hearings from the turned period (meeting testimony, volunteered sightings,
+	# defences) were heard by the good-self shadow; carry those forward, nothing private.
+	if turned_shadow != null:
+		for eid in turned_shadow.ledger:
+			var le: Dictionary = turned_shadow.ledger[eid]
+			if not n.ledger.has(eid) and bool(le.get("meta", {}).get("workshop_public", false)):
+				n.ledger[eid] = le.duplicate(true)
 	n.pre_turn_snapshot = {}
 	shadow_reset(n)
 	for e in n.info_log:
@@ -814,9 +822,11 @@ static func reliability(n, src: String, night: int, kind: String = "reading") ->
 		return 1.0
 	if n.workshop_state.get("active", false):
 		var sd: Dictionary = n.workshop_state.get("source_doubt", {})
+		# source_doubt folds honesty into `src:*`, and _night_factor already applies `src:*`
+		# to readings; apply it once (it was squared for readings).
 		var r_shared: float = _night_factor(sd, src, night, kind)
-		if src != n.id:
-			r_shared *= clampf(1.0 - float(sd.get(src + ":*", 0.0)), 0.0, 1.0)
+		if kind != "reading" and src != n.id:
+			r_shared = clampf(1.0 - float(sd.get(src + ":*", 0.0)), 0.0, 1.0)
 		return clampf(r_shared, 0.0, 1.0)
 	var r = _night_factor(n.discounted, src, night, kind)
 	if src != n.id:

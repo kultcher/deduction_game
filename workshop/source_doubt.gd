@@ -118,7 +118,11 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if ckind == "report" and crole == "nightwatch" and self_id != "" and self_id in card.get("data", {}).get("seen", []):
 			var nd_key: String = str(cnight)
 			if own_outings.has(nd_key) and not bool(own_outings[nd_key]) and not settled_sincere.has(csrc):
-				pre_eval[csrc + ":*"] = 1.0
+				# A Night Watch list can be wrong without a lie (a poisoned watch): that night's
+				# report is void, and the source is doubted in general, not written off.
+				var nw_key: String = "%s:%d" % [csrc, cnight]
+				pre_eval[nw_key] = 1.0
+				pre_eval[csrc + ":*"] = maxf(float(pre_eval.get(csrc + ":*", 0.0)), 0.5)
 		if ckind == "report" and crole == "gravedigger":
 			var ex_id: String = str(card.get("data", {}).get("executed", ""))
 			var ex_role: String = str(card.get("data", {}).get("role", ""))
