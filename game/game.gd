@@ -103,6 +103,7 @@ var _workshop_repeats: Dictionary = {}
 var _workshop_busy = false
 var _workshop_plans = {}
 var _workshop_evaluations = {}
+var _workshop_reason_ctx = {} # deferred reason attribution inputs per mind (purge 2a)
 var _workshop_responses = {}
 var workshop_comparisons: Array = []
 var workshop_draft: Dictionary = {} # case-local canvas layout and filed premise numbers
@@ -216,6 +217,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	workshop_comparisons = []
 	_workshop_plans = {}
 	_workshop_evaluations = {}
+	_workshop_reason_ctx = {}
 	_workshop_responses = {}
 	_workshop_repeats = {}
 	_workshop_native_submission = false
@@ -280,6 +282,10 @@ func _attach_workshop_world() -> void:
 		var game = weak_game.get_ref()
 		if game != null and game.w == weak_world.get_ref():
 			WorkshopOwnership.refresh(game, n, phase)
+	w.workshop_reasons = func(n):
+		var game = weak_game.get_ref()
+		if game != null and game.w == weak_world.get_ref():
+			WorkshopOwnership.reasons_for(game, n)
 	w.workshop_roots = func(card):
 		var game = weak_game.get_ref()
 		if game == null or game.w != weak_world.get_ref():

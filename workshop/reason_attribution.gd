@@ -19,6 +19,10 @@ const Evidence = preload("res://workshop/live_evidence.gd")
 const MIN_SUSPECT_REQUESTED: float = 0.025
 const MIN_ITEM_CONTRIB: float = 0.03
 const MAX_REASONS_PER_TARGET: int = 6
+## Skip the leave-one-out pass when single-card reasons already carry this share of the shift.
+const LOO_COVERED_SHARE: float = 0.5
+## At most this many other people's cards are tested in the leave-one-out pass per suspect.
+const LOO_MAX_OTHER_CARDS: int = 6
 const SPOKEN_KINDS: Array = ["report", "sighting", "alibi", "claim", "context", "testimony"]
 
 static var _fits_cache: Dictionary = {}
@@ -127,38 +131,12 @@ static func attribute_refresh(
 			w_one[c_idx] = cc.count[c_idx] * team_prior[cc.team[c_idx]] * f_one[c_idx] * CaseEval._factor(st, sc_err, sc_q)
 		single_report_pre[sc_id] = {"w_one": w_one, "err": sc_err}
 
-	var need_loo: bool = false
-	for sp_id in suspect_ids:
-		if float(effects[sp_id].get("evil_change", 0.0)) >= 0.08:
-			need_loo = true
-			break
-	var loo_post_by_cid: Dictionary = {}
-	if need_loo:
-		for cand in attended:
-			if cand.get("quoted", false) or str(cand.get("kind", "")) not in ["report", "claim"]:
-				continue
-			var l_cid: String = str(cand.get("id", ""))
-			var rep_idx: int = -1
-			for j in range(cc.reports.size()):
-				if str(cc.reports[j].get("id", "")) == l_cid:
-					rep_idx = j
-					break
-			var like_wo: PackedFloat64Array = CaseEval._class_like(cc, errs, rep_idx) if rep_idx >= 0 else like_full
-			var l_role: String = str(cand.get("role", ""))
-			var needs_fits_recheck: bool = (
-				str(cand.get("kind", "")) == "claim"
-				or l_role in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran"]
-				or attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != l_cid and str(o.get("role", "")) == l_role)
-			)
-			var fits_wo: PackedFloat64Array = fits_full
-			if needs_fits_recheck:
-				var subset: Array = attended.filter(func(o): return str(o.get("id", "")) != l_cid)
-				fits_wo = _subset_fits(view, cc, subset, knowledge)
-			var post_wo: PackedFloat64Array = PackedFloat64Array()
-			post_wo.resize(nc)
-			for c_idx in range(nc):
-				post_wo[c_idx] = cc.count[c_idx] * team_prior[cc.team[c_idx]] * fits_wo[c_idx] * like_wo[c_idx] * move_full[c_idx] * test_full[c_idx]
-			loo_post_by_cid[l_cid] = post_wo
+	# Leave-one-out posteriors are computed lazily, once per card per refresh, and only
+	# for suspects whose single-card reasons don't already explain the shift (each one
+	# can re-solve role constraints, the dominant refresh cost).
+	var loo_ctx: Dictionary = {"view": view, "cc": cc, "attended": attended, "knowledge": knowledge,
+		"errs": errs, "team_prior": team_prior, "fits_full": fits_full, "like_full": like_full,
+		"move_full": move_full, "test_full": test_full, "nc": nc, "memo": {}}
 
 	var out: Dictionary = {}
 	for pid in suspect_ids:
@@ -317,9 +295,12 @@ static func attribute_refresh(
 		# 2. Leave-one-out contradiction & joint-inference pass when the joint model moved `pid`
 		#    substantially or when the listener's own card collides with `pid`'s account.
 		var full_shift: float = float(effects[pid].get("evil_change", 0.0))
-		if full_shift >= 0.08:
+		var direct_cover: float = 0.0
+		for it in items_by_id.values():
+			direct_cover += float(it.get("contrib", 0.0))
+		if full_shift >= 0.08 and direct_cover < LOO_COVERED_SHARE * full_shift * belief_scale:
 			_augment_joint_leave_one_out(
-				items_by_id, view, reps, attended, loo_post_by_cid,
+				items_by_id, view, reps, attended, loo_ctx,
 				pid, p_idx, pr0, full_shift, self_id, belief_scale
 			)
 
@@ -753,7 +734,7 @@ static func _augment_joint_leave_one_out(
 	view: Dictionary,
 	reps: Array,
 	attended: Array,
-	loo_post_by_cid: Dictionary,
+	loo_ctx: Dictionary,
 	pid: String,
 	p_idx: int,
 	pr0: Dictionary,
@@ -815,24 +796,37 @@ static func _augment_joint_leave_one_out(
 		var holder_src: String = str(c.get("relay_source", "")) if str(c.get("relay_source", "")) != "" else str(c.get("source", ""))
 		if holder_src == self_id:
 			candidates.append(c)
+	# Other people's cards are tested only when they bear on `pid`: they mention them, or
+	# concern a gift `pid` claims or reports with. Each test can re-solve role constraints,
+	# so unrelated cards are skipped (purge 2a performance; same contradictions found).
+	var pid_roles: Array = []
+	for pc in attended:
+		if not pc.get("quoted", false) and str(pc.get("source", "")) == pid and str(pc.get("kind", "")) in ["report", "claim"]:
+			var pr_role: String = str(pc.get("role", ""))
+			if pr_role != "" and pr_role not in pid_roles:
+				pid_roles.append(pr_role)
+	var others: Array = []
 	for c in attended:
 		if c.get("quoted", false) or str(c.get("kind", "")) not in ["report", "claim"]:
 			continue
 		var holder_src2: String = str(c.get("relay_source", "")) if str(c.get("relay_source", "")) != "" else str(c.get("source", ""))
-		if holder_src2 != self_id and holder_src2 != pid:
-			candidates.append(c)
+		if holder_src2 == self_id or holder_src2 == pid:
+			continue
+		var c_role: String = str(c.get("role", ""))
+		var c_data_role: String = str(c.get("data", {}).get("role", "")) if c.get("data", {}) is Dictionary else ""
+		if pid in _mentions(c) or c_role in pid_roles or (c_data_role != "" and c_data_role in pid_roles):
+			others.append(c)
+	candidates.append_array(others.slice(0, LOO_MAX_OTHER_CARDS))
 
 	var found_own_joint: bool = false
 	for cand in candidates:
 		var cid: String = str(cand.get("id", ""))
-		if not loo_post_by_cid.has(cid):
-			continue
 		var cand_rsrc: String = str(cand.get("relay_source", ""))
 		var csrc: String = cand_rsrc if cand_rsrc != "" else str(cand.get("source", ""))
 		if csrc != self_id and found_own_joint:
 			break
 		var crole: String = str(cand.get("role", ""))
-		var post_wo: PackedFloat64Array = loo_post_by_cid[cid]
+		var post_wo: PackedFloat64Array = _loo_post(loo_ctx, cand)
 		var pr_wo: Dictionary = _person_probs(view, reps, post_wo, p_idx)
 		if pr_wo.total <= 1e-18:
 			continue
@@ -888,6 +882,37 @@ static func _augment_joint_leave_one_out(
 			"joint": true,
 			"root_ids": roots,
 		})
+
+
+## The class posterior without one report or claim (memoised per refresh).
+static func _loo_post(ctx: Dictionary, cand: Dictionary) -> PackedFloat64Array:
+	var l_cid: String = str(cand.get("id", ""))
+	if ctx.memo.has(l_cid):
+		return ctx.memo[l_cid]
+	var cc: Dictionary = ctx.cc
+	var attended: Array = ctx.attended
+	var rep_idx: int = -1
+	for j in range(cc.reports.size()):
+		if str(cc.reports[j].get("id", "")) == l_cid:
+			rep_idx = j
+			break
+	var like_wo: PackedFloat64Array = CaseEval._class_like(cc, ctx.errs, rep_idx) if rep_idx >= 0 else ctx.like_full
+	var l_role: String = str(cand.get("role", ""))
+	var needs_fits_recheck: bool = (
+		str(cand.get("kind", "")) == "claim"
+		or l_role in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran"]
+		or attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != l_cid and str(o.get("role", "")) == l_role)
+	)
+	var fits_wo: PackedFloat64Array = ctx.fits_full
+	if needs_fits_recheck:
+		fits_wo = _subset_fits(ctx.view, cc, attended.filter(func(o): return str(o.get("id", "")) != l_cid), ctx.knowledge)
+	var post_wo: PackedFloat64Array = PackedFloat64Array()
+	post_wo.resize(ctx.nc)
+	for c_idx in range(ctx.nc):
+		post_wo[c_idx] = cc.count[c_idx] * ctx.team_prior[cc.team[c_idx]] * fits_wo[c_idx] * like_wo[c_idx] * ctx.move_full[c_idx] * ctx.test_full[c_idx]
+	ctx.memo[l_cid] = post_wo
+	return post_wo
+
 
 
 static func _subset_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledge: Dictionary) -> PackedFloat64Array:

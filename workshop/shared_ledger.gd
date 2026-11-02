@@ -542,7 +542,9 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 				prepared.listener.reading_reliability, prepared.listener.knowledge, prepared.listener.insight,
 				prepared.listener.confidence, target, reasoning.considered]))
 			Theory.prepare(prepared.view, question, prepared.listener, reasoning, key)
-	result["reasons"] = ReasonAttribution.attach_owners(result.get("reasons", {}), plan.get("owners", {}), public_good)
+	result["reasons"] = {}
+	result["reason_ctx"] = {"inputs": result.get("reason_inputs", []), "owners": plan.get("owners", {}), "public_good": public_good}
+	result.erase("reason_inputs")
 	result["theories"] = prepared.listener.theories.duplicate(true)
 	# Listener-mean-centered execution priority: bystanders at or below the listener's
 	# live average receive 0.0, while joint-world standouts above listener_mean (plus at

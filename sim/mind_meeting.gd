@@ -1089,6 +1089,8 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	var ws_owned: Dictionary = mind.workshop_state.get("owned", {}) if ws_active else {}
 	var items: Array = []
 	if ws_active:
+		if mind.workshop_state.get("reasons_pending", false) and w.workshop_reasons.is_valid():
+			w.workshop_reasons.call(mind)
 		var raw_list: Array = mind.workshop_state.get("reasons", {}).get(t_id, [])
 		if not raw_list.is_empty():
 			var vis_maps: Dictionary = _visibility_maps(w, mind, n)

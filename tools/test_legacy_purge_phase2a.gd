@@ -109,6 +109,7 @@ func _test_hollis_gravedigger_vs_odette_archivist_and_no_legacy_why_read() -> vo
 	hollis.sus_why[odette.id] = "POISONED_LEGACY_WHY"
 	hollis.sus_src[odette.id] = "POISONED_LEGACY_SRC"
 
+	w.workshop_reasons.call(hollis) # attribution is deferred until a reason is first needed
 	var raw_reasons: Array = hollis.workshop_state.get("reasons", {}).get(odette.id, [])
 	_check(not raw_reasons.is_empty(), "Hollis's refresh populates workshop_state.reasons for Odette")
 	var items: Array = MindMeeting.case_against(w, hollis, odette.id)

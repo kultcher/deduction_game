@@ -42,6 +42,7 @@ static func _refresh(g, n, phase: String) -> void:
 		state.circumstantial_applied = {}
 		state.circumstantial_incidents = {}
 		state.reasons = {}
+		state.reasons_pending = false
 		state.owned = {}
 		state.erase("action") # An unsupported/disabled refresh cannot retain an action.
 		g._workshop_plans.erase(key)
@@ -160,25 +161,48 @@ static func _refresh(g, n, phase: String) -> void:
 					g.w.dlog.trace_event("value_change", n.id, id, {"quantity": "suspicion", "from": old_c,
 						"to": n.suspicion[id], "requested_delta": c_des, "applied_delta": state.circumstantial_applied[id],
 						"ledger_id": "workshop:circumstantial"}, "Stage 2 circumstantial hub")
-		var refresh_reasons: Dictionary = proposal.get("reasons", {}).duplicate(true)
-		if not state.circumstantial_incidents.is_empty():
-			ReasonAttribution.append_circumstantial(refresh_reasons, state.circumstantial_incidents, chubs, state.get("presentations", {}))
-		ReasonAttribution.append_elimination_fallbacks(
-			refresh_reasons,
-			state.requested,
-			state.circumstantial_requested,
-			state.reasoning.get("considered", []),
-			plan.prepared.view,
-			n.id,
-			state.get("public_good", [])
-		)
-		state.reasons = refresh_reasons
+		# Reasons are attributed lazily (reasons_for): most refreshes are never asked for one.
+		state.reasons = {}
+		state.reasons_pending = true
+		g._workshop_reason_ctx[key] = {"proposal": proposal, "chubs": chubs, "view": plan.prepared.view}
 		state.active = true
 		g.w.dlog.trace_event("workshop_ownership", n.id, "", {"owned": state.owned, "facts": state.facts,
 			"owners": state.owners, "requested": state.requested, "applied": state.applied,
 			"reasoning": state.reasoning, "reasoning_mode": plan.prepared.listener.reasoning_mode,
 			"confidence_mode": plan.prepared.listener.confidence_mode,
 			"elapsed_ms": Time.get_ticks_msec() - started, "cache_hit": cache_hit}, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
+
+## Attribute this mind's reasons from its latest refresh, once (purge 2a, deferred).
+static func reasons_for(g, n) -> void:
+	var state: Dictionary = n.workshop_state
+	if not state.get("reasons_pending", false):
+		return
+	state.reasons_pending = false
+	var key = n.id + (":cover" if n.is_shadow else ":good")
+	var ctx: Dictionary = g._workshop_reason_ctx.get(key, {})
+	if ctx.is_empty():
+		return
+	var proposal: Dictionary = ctx.proposal
+	var rctx: Dictionary = proposal.get("reason_ctx", {})
+	var refresh_reasons: Dictionary = rctx.get("computed", {})
+	if not rctx.has("computed"):
+		var ins: Array = rctx.get("inputs", [])
+		var raw: Dictionary = ReasonAttribution.attribute_refresh(ins[0], ins[1], ins[2], ins[3], ins[4], ins[5], ins[6], ins[7], ins[8]) if ins.size() == 9 else {}
+		refresh_reasons = ReasonAttribution.attach_owners(raw, rctx.get("owners", {}), rctx.get("public_good", []))
+		rctx["computed"] = refresh_reasons # a cached proposal reuses its attribution
+	refresh_reasons = refresh_reasons.duplicate(true)
+	if not state.get("circumstantial_incidents", {}).is_empty():
+		ReasonAttribution.append_circumstantial(refresh_reasons, state.circumstantial_incidents, ctx.chubs, state.get("presentations", {}))
+	ReasonAttribution.append_elimination_fallbacks(
+		refresh_reasons,
+		state.get("requested", {}),
+		state.get("circumstantial_requested", {}),
+		state.get("reasoning", {}).get("considered", []),
+		ctx.view,
+		n.id,
+		state.get("public_good", [])
+	)
+	state.reasons = refresh_reasons
 
 static func fallback(g, n, point: String, issues: Array, card: int = 0) -> void:
 	var entry = {"listener": n.id, "point": point, "issues": issues.duplicate(true), "card": card, "day": g.w.day, "phase": g.w.phase}

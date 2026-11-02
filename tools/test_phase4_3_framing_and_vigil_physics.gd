@@ -285,8 +285,15 @@ func _test_case_98933_polish_fixes() -> void:
 	Mind.apply_info(w, hollis, odette, arch_entry, 0.5)
 	Mind.flush_beliefs(w, hollis)
 	var reasons: Array = Mind.MindMeeting.case_against(w, hollis, odette.id)
-	_check(not reasons.is_empty() and reasons[0]["kind"] == "private" and reasons[0]["entry"] == gd_entry,
-		"case_against surfaces Gravedigger Hollis's private contradicting reading against fake Archivist Odette (%s)" % str(reasons))
+	# Superseded by purge phase 2a: reasons now come from the shared model's attribution,
+	# and only for people the shared model actually suspects. This synthetic fixture (legacy
+	# apply_info, no poisoning explanation ruled out) leaves Odette below Hollis's average,
+	# so she has no reasons at all. The realistic version of this case is covered in
+	# tools/test_legacy_purge_phase2a.gd ("case_against surfaces Hollis's private
+	# Gravedigger reading against Odette via leave-one-out").
+	var odette_req: float = float(hollis.workshop_state.get("requested", {}).get(odette.id, 0.0))
+	_check(odette_req <= 0.0 or (not reasons.is_empty() and reasons[0]["kind"] == "private" and reasons[0]["entry"] == gd_entry),
+		"case_against cites Hollis's private Gravedigger reading whenever the shared model suspects Odette (%s)" % str(reasons))
 
 	# 3) Authoring validation block (citing 'gift' without walking-role claim card) leaves legacy_fallbacks at 0.
 	g.shared_fallbacks.clear()

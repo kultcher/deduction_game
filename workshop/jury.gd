@@ -95,7 +95,7 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	listener.ledger[case_data.id] = {"effects": effects.duplicate(true)}
 	listener.theories = consequences.theories
 	Profiler.close(span)
-	return {"effects": effects, "reasons": consequences.get("reasons", {}), "reasoning": consequences.reasoning, "reading_challenges": consequences.reading_challenges,
+	return {"effects": effects, "reasons": consequences.get("reasons", {}), "reason_inputs": consequences.get("reason_inputs", []), "reasoning": consequences.reasoning, "reading_challenges": consequences.reading_challenges,
 		"effect_rule": consequences.rule}
 
 static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
@@ -1034,11 +1034,12 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 				note += " An alternative to the parent claim still fits what I checked."
 			child.links.append({"parent": parent_id, "parent_label": parent.label, "relation": relation,
 				"evidence_difference": contribution, "exclusive_cards": exclusive, "alternative_remains": remaining, "note": note})
+	# Reason attribution is deferred (purge 2a): the inputs are kept and attribution runs
+	# only when a meeting or conversation first asks for a reason after this refresh.
 	var refresh_reasons: Dictionary = {}
-	if refresh:
-		refresh_reasons = ReasonAttribution.attribute_refresh(view, scoped, attended, held, challenged, baseline, eval_listener, ev, effects)
+	var reason_inputs: Array = [view, scoped, attended, held, challenged, baseline, eval_listener, ev, effects] if refresh else []
 	Profiler.close(span)
-	return {"effects": effects, "reasons": refresh_reasons, "claims": claims, "theories": theories, "considered": attention.considered,
+	return {"effects": effects, "reasons": refresh_reasons, "reason_inputs": reason_inputs, "claims": claims, "theories": theories, "considered": attention.considered,
 		"reading_challenges": challenged.results,
 		"reasoning": {"status": "belief_refresh", "impossible": ev.impossible, "profile": attention.profile, "considered": attention.considered.duplicate(),
 			"ignored": attention.ignored.duplicate(), "ignored_lines": attention.ignored_lines.duplicate(), "private_checks": attention.private_checks.duplicate(true)},
