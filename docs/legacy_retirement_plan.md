@@ -1,6 +1,6 @@
 # Retiring the old belief system: inventory and plan
 
-Prepared by Claude, Oct 30, 2026. **Status (Nov 1):** decisions 1 and 4 answered (below); 2 and 3 open.
+Prepared by Claude, Oct 30, 2026. **Status (Nov 1):** phase 1 done (PR #45); phase 2a implemented (`workshop/reason_attribution.gd` + `sim/mind_meeting.gd`). Decisions 1, 2, 3 and 4 all confirmed (including keeping vote-based circumstantial evidence player-presented rather than auto-evaluated in every NPC refresh). Full plan for phases 2-4 below.
 
 The user asked for the old belief system to be purged. On Oct 24–25 the user had decided to keep a deliberate hybrid, recorded in the Project doc `claude/legacy-migration-plan.md`. That decision included "not deleting the legacy ledger wholesale", and it kept the native rules as the baseline for the bot A/B test. Purging reverses part of that, so this note lists what exists, what is still live, and the questions that need answers first.
 
@@ -72,9 +72,16 @@ Each phase is its own PR, with the full suite, `test_trace`, the 54875 replay an
   - **The Revenant curse's direct `adjust` (+1.0) and `recompute_beliefs` are removed.** The shared model already pins the executed Revenant through the chronology.
   - **The flat 0.1 starting suspicion stays.**
 - **1. Native A/B baseline: dropped.** Old baselines (native and pre-overhaul shared) are set aside; new baselines are taken once the tuning overhaul settles.
+- **2. When a shared refresh cannot be prepared after Phase 3 (confirmed Nov 1):** keep the NPC's last good shared suspicion vector and log the issue, rather than resetting to baseline or hard-blocking.
+- **3. Social effects outside the shared model** (decided with the user Nov 1):
+  - **Grief becomes a private, citable action reason, not a suspicion change.** On an execution of someone a mourner trusted, the mourner gets a resentment record (`target`, strength, the hanged friend, day) that fades nightly like slights. It adds a term to *that NPC's* nomination, vote and accusation scores, and `reason_status` can return it as its own reason kind ("they pushed to hang Isolde"). It never enters anyone's shared model, so it only sways others through ordinary crowd pressure (accusations aren't evidence, Q4). Every friend of the hanged person gets their own record, so shared grief needs nothing extra.
+  - **Votes and nominations are player-presented circumstantial evidence, in both directions (refined Nov 1).** "Nominated or voted to hang someone I believe is good" stays circumstantial (the existing `hostile_vote` family in `workshop/circumstantial.gd`, nominator weighted above yes voters), and 2b adds the mirror: **record `no` votes too**, and count "voted no on (or didn't vote for) someone I believe is evil" as a separate `shielding` incident. Vote-based evidence stays **player-presented** (requiring a presented Circumstantial hub rather than automatic ambient calculation on every NPC refresh) so NPCs only weigh complex voting patterns when pointed out to them.
+  - **Freed souls revert to a snapshot.** At `turn_evil`, snapshot the fields the shadow copies (`SHADOW_COPY`: suspicion, ledger, workshop state, beliefs, hearsay, claims, credibility). On freeing, restore it, carry forward only public receipts from the turned period (public claims and readings; deaths and executions arrive from the world record), and drop the 0.25 suspicion cap. Private things from those days are forgotten. This replaces `shadow_adopt` + `recompute_beliefs` + the cap.
+  - **The Revenant curse's direct `adjust` (+1.0) and `recompute_beliefs` are removed.** The shared model already pins the executed Revenant through the chronology.
+  - **The flat 0.1 starting suspicion stays.**
 - **4. Bot rewrite: no rush.** Phases 1–3 go ahead without it; phase 4 waits.
 
-**Ordering (Nov 1):** phase 1 now (done: `sim/deduction.gd`, PR below). Before phase 2, the overhaul's new readers of legacy effects move to the shared model: meeting reasons (`case_against`), defences (`night_sighting_scale` / `reading_strength` in `defend_self`), the Gravedigger rapport side effects in `info_effects`, and the Revenant curse's `adjust` + `recompute_beliefs`. Phases 2–3 then land before the overhaul's phase 5 sweeps.
+**Ordering (Nov 1):** see "Order and timing" in the full plan above.
 
 **Original questions:**
 
@@ -87,6 +94,8 @@ Each phase is its own PR, with the full suite, `test_trace`, the 54875 replay an
 
 ## Cost and risk
 
-- **Phases 1 and 2:** low risk and mechanical. A day or two together.
-- **Phase 3:** medium. It touches 37 test suites and the Debug UI, and removes the A/B baseline.
-- **Phase 4:** medium to high. It depends on the bot rewrite, which changes every bot baseline.
+- **2a:** medium. New attribution code in the refresh; behaviour changes only in what NPCs cite and how they defend.
+- **2b:** medium. Intended behaviour changes (grief, freed souls, vote evidence, source doubt); measure with bot chunks.
+- **2c:** low if 2a and 2b caught every reader; proven by identical suspicions.
+- **3:** medium, mostly test churn (about 40 suites) and the Debug UI.
+- **4:** medium to high; depends on the bot rewrite, which resets every bot baseline.

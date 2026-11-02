@@ -6,6 +6,7 @@ const Assess = preload("res://workshop/live_assessment.gd")
 const Jury = preload("res://workshop/jury.gd")
 const Support = preload("res://workshop/support_model.gd")
 const Theory = preload("res://workshop/theory.gd")
+const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 
@@ -314,6 +315,10 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			if shared and facts[id].kind == "sighting":
 				if "learned" in owners[id] and facts[id].source == input.listener.id:
 					hearing = 1.0
+				elif facts[id].source not in ["", "player", "evidence", "town"]:
+					var src_disc: Dictionary = input.listener.get("discounted", {})
+					var s_doubt: float = maxf(float(src_disc.get("%s:%d" % [facts[id].source, facts[id].observed_at.day], 0.0)), float(src_disc.get(facts[id].source + ":*", 0.0)))
+					hearing *= clampf(1.0 - s_doubt, 0.0, 1.0)
 				if adapted.has(id):
 					adapted[id]["hearing_weight"] = hearing
 			elif not shared and facts[id].kind in ["sighting", "alibi"] and adapted.has(id):
@@ -457,6 +462,9 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 	# headline's own effect, which the reply text reads.
 	return Jury.evaluate(view, scoped.case, listener, {"headline_only": true})
 
+## Inputs for deferred reason attribution from the most recent evaluate() call.
+static var last_reason_ctx: Dictionary = {}
+
 static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictionary) -> Dictionary:
 	if not plan.ready:
 		return {}
@@ -477,6 +485,13 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 			continue
 		if card.has("route_origin"):
 			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
+			continue
+		if card.kind == "sighting" and card.source not in ["", prepared.listener.id, "player", "evidence", "town"] and card.has("hearing_weight"):
+			var prev_disc: Dictionary = plan.input.listener.get("discounted", {})
+			var s_prev: float = maxf(float(prev_disc.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(prev_disc.get(card.source + ":*", 0.0)))
+			var s_now: float = maxf(float(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(discounted.get(card.source + ":*", 0.0)))
+			var base_hw: float = float(card.hearing_weight) / (1.0 - s_prev) if s_prev < 1.0 else 0.0
+			card["hearing_weight"] = clampf(base_hw * (1.0 - s_now), 0.0, 1.0)
 			continue
 		if card.kind != "report":
 			continue # Impairment does not invalidate ordinary testimony/role claims.
@@ -530,6 +545,11 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 				prepared.listener.reading_reliability, prepared.listener.knowledge, prepared.listener.insight,
 				prepared.listener.confidence, target, reasoning.considered]))
 			Theory.prepare(prepared.view, question, prepared.listener, reasoning, key)
+	# Deferred reason attribution (purge 2a): the inputs go to a side slot, not the result,
+	# so results stay comparable values. The caller reads it straight after evaluate().
+	result["reasons"] = {}
+	last_reason_ctx = {"inputs": result.get("reason_inputs", []), "owners": plan.get("owners", {}), "public_good": public_good}
+	result.erase("reason_inputs")
 	result["theories"] = prepared.listener.theories.duplicate(true)
 	# Listener-mean-centered execution priority: bystanders at or below the listener's
 	# live average receive 0.0, while joint-world standouts above listener_mean (plus at
@@ -664,7 +684,7 @@ static func _card_route_trust(fact: Dictionary, adapted_card: Dictionary, fact_o
 			var teller: String = str(ledger.get(eid, {}).get("meta", {}).get("workshop_teller", relay_src))
 			var st: float = src_t
 			if teller != "" and teller != source and teller != listener_id:
-				st = 0.5 * (src_t + _trust_lookup(teller, listener_id, npc_trust, player_cred))
+				st = minf(src_t, _trust_lookup(teller, listener_id, npc_trust, player_cred))
 			if teller == "player" or source == "player":
 				best_player = maxf(best_player, st)
 			else:

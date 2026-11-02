@@ -339,6 +339,10 @@ class Trust:
 class Social:
 	const NEWS_BONUS_EVIL = 0.6
 	const NEWS_BONUS_GOOD = 0.5
+	const PLANTER_WHISPER_BONUS = 0.65
+	const PLANTER_TARGET_GOSSIP_MIN = 0.45
+	const PLANTER_TARGET_TRUST_MIN = 0.48
+	const MURDER_RELAY_BONUS = 0.35
 	const IDLE_CHAT_WEIGHT = 0.3
 	const DAY_RUMOR_WEIGHT = 0.45
 	const UNEASE_SUSP_MIN = 0.34
@@ -455,6 +459,8 @@ class Evil:
 	const EVIL_NOMINATION_CONFIDENCE_SCALE = 0.16
 	const EVIL_POCKET_FRAME_BONUS = 0.16
 	const EVIL_WALKER_INTEL_BONUS = 0.08
+	const MAX_DIRECT_PLANTS = 2
+	const PLANTER_SCENE_WEIGHT = 0.40
 
 	## Demon kill target scoring
 	const KILL_INFO_CLAIM = 3.0
@@ -627,5 +633,8 @@ static func fingerprint() -> String:
 			Meeting.PLAYER_ACCUSE_SLOPE,
 			Workshop.EXECUTION_PRIORITY_TOP_MARGIN,
 			Workshop.EXECUTION_PRIORITY_TOP_BONUS,
+			Social.PLANTER_WHISPER_BONUS,
+			Social.MURDER_RELAY_BONUS,
+			Evil.MAX_DIRECT_PLANTS,
 		]).sha256_text().substr(0, 12)
 	return _fingerprint_cache

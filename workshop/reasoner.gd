@@ -449,6 +449,12 @@ static func _ordered_live_candidates(view: Dictionary, cards: Array, value: Dict
 	var pos_marked_mask: int = 0
 	var pos_demon_mask: int = 0
 	var neg_demon_mask: int = 0
+	for ev in view.get("timeline", {}).get("events", []):
+		if ev.get("kind", "") == "demon_death":
+			for vid in ev.get("subjects", []):
+				var vidx: int = Solver.person_index(view, vid)
+				if vidx >= 0:
+					neg_demon_mask |= (1 << vidx)
 	if plain:
 		for id in listener.knowledge.get("good", []):
 			var idx: int = Solver.person_index(view, id)

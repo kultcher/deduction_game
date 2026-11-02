@@ -61,7 +61,7 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 			continue
 		var okay = true
 		for card in cards:
-			if card.has("relay_source") and not card.get("quoted", false) and card.relay_source == person.id and card.relay_observed_at.day == night:
+			if strict_reports and card.has("relay_source") and not card.get("quoted", false) and card.relay_source == person.id and card.relay_observed_at.day == night:
 				var hearth: String = view.people.filter(func(p): return p.id == card.source)[0].home
 				okay = okay and out and path.back() == hearth
 			if card.get("night", -1) != night or card.get("quoted", false):
@@ -79,15 +79,15 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 			elif card.kind == "coverage" and person.id not in card.get("excluded", []):
 				okay = okay and not C.vigil_sees_path(card.block, path)
 			elif card.kind == "report" and card.role == "nightwatch":
-				if card.source == person.id:
+				if strict_reports and card.source == person.id:
 					okay = okay and out and path.back() == card.data.block
 				elif strict_reports and not card.get("duty_only", false):
 					okay = okay and ((card.data.block in path) == (person.id in card.data.seen))
-			elif card.kind == "report" and card.role == "warden" and card.source == person.id:
+			elif strict_reports and card.kind == "report" and card.role == "warden" and card.source == person.id:
 				okay = okay and out and path.back() == card.block
-			elif card.kind == "report" and card.role == "medium" and card.source == person.id:
+			elif strict_reports and card.kind == "report" and card.role == "medium" and card.source == person.id:
 				okay = okay and out and path.back() == card.data.get("block", card.get("block", ""))
-			elif card.kind == "report" and card.role == "lamplighter" and card.source == person.id:
+			elif strict_reports and card.kind == "report" and card.role == "lamplighter" and card.source == person.id:
 				okay = okay and path.size() == C.BLOCKS.size()
 			if not okay:
 				break
@@ -765,14 +765,14 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				return (0.7 if alignment != "good" else 0.3) if out else 0.9
 		"report":
 			if card.role == "warden" and card.source == person:
-				return 1.0 if out and path.back() == card.block else 0.0
+				return (1.0 if out and path.back() == card.block else 0.0) if alignment == "good" else 1.0
 			if card.role == "medium" and card.source == person:
-				return 1.0 if out and path.back() == card.data.get("block", card.get("block", "")) else 0.0
+				return (1.0 if out and path.back() == card.data.get("block", card.get("block", "")) else 0.0) if alignment == "good" else 1.0
 			if card.role == "lamplighter" and card.source == person and card.get("duty_only", false):
-				return 1.0 if path.size() == C.BLOCKS.size() else 0.0
+				return (1.0 if path.size() == C.BLOCKS.size() else 0.0) if alignment == "good" else 1.0
 			if card.role == "nightwatch":
 				if card.source == person:
-					return 1.0 if out and path.back() == card.data.block else 0.0
+					return (1.0 if out and path.back() == card.data.block else 0.0) if alignment == "good" else 1.0
 				if card.get("duty_only", false):
 					return 1.0
 				var nw_err: float = clampf(float(card.get("report_error", Tuning.Workshop.NIGHTWATCH_REPORT_ERROR)), 0.02, 0.45)

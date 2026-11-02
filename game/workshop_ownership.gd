@@ -5,6 +5,7 @@ const Bridge = preload("res://game/workshop_bridge.gd")
 const Mind = preload("res://sim/mind.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
+const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 
 static func refresh(g, n, phase: String) -> void:
 	var span = Profiler.open("ownership_" + phase)
@@ -40,6 +41,8 @@ static func _refresh(g, n, phase: String) -> void:
 		state.circumstantial_requested = {}
 		state.circumstantial_applied = {}
 		state.circumstantial_incidents = {}
+		state.reasons = {}
+		state.reasons_pending = false
 		state.owned = {}
 		state.erase("action") # An unsupported/disabled refresh cannot retain an action.
 		g._workshop_plans.erase(key)
@@ -80,14 +83,19 @@ static func _refresh(g, n, phase: String) -> void:
 		var cached: Dictionary = g._workshop_evaluations.get(key, {})
 		var cache_hit = cached.get("input") == inputs
 		var proposal: Dictionary
+		var reason_ctx: Dictionary = {}
 		if cache_hit:
 			Profiler.count("union_cache_hit")
 			proposal = cached.proposal
+			reason_ctx = cached.get("reason_ctx", {})
 		else:
 			Profiler.count("union_cache_miss")
 			var union_span = Profiler.open("joint_effects")
 			proposal = Shared.evaluate(plan, n.suspicion, n.discounted)
 			Profiler.close(union_span)
+			# Deferred attribution inputs ride beside the proposal, never inside it (purge 2a).
+			reason_ctx = Shared.last_reason_ctx
+			Shared.last_reason_ctx = {}
 		state.outside = n.suspicion.duplicate(true)
 		# Only the applied total-evidence assessment commits theory memory. Scoped
 		# replies and developer/ghost previews operate on copies.
@@ -107,7 +115,7 @@ static func _refresh(g, n, phase: String) -> void:
 		# union merely because the first pass filled in its own memory.
 		var committed_inputs: Array = inputs.duplicate(true)
 		committed_inputs[0].listener.theories = state.theories.duplicate(true)
-		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "cache_hit": cache_hit}
+		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "reason_ctx": reason_ctx, "cache_hit": cache_hit}
 		state.requested = {}
 		state.applied = {}
 		for id in proposal.effects:
@@ -158,12 +166,47 @@ static func _refresh(g, n, phase: String) -> void:
 					g.w.dlog.trace_event("value_change", n.id, id, {"quantity": "suspicion", "from": old_c,
 						"to": n.suspicion[id], "requested_delta": c_des, "applied_delta": state.circumstantial_applied[id],
 						"ledger_id": "workshop:circumstantial"}, "Stage 2 circumstantial hub")
+		# Reasons are attributed lazily (reasons_for): most refreshes are never asked for one.
+		state.reasons = {}
+		state.reasons_pending = true
+		g._workshop_reason_ctx[key] = {"rctx": reason_ctx, "chubs": chubs, "view": plan.prepared.view}
 		state.active = true
 		g.w.dlog.trace_event("workshop_ownership", n.id, "", {"owned": state.owned, "facts": state.facts,
 			"owners": state.owners, "requested": state.requested, "applied": state.applied,
 			"reasoning": state.reasoning, "reasoning_mode": plan.prepared.listener.reasoning_mode,
 			"confidence_mode": plan.prepared.listener.confidence_mode,
 			"elapsed_ms": Time.get_ticks_msec() - started, "cache_hit": cache_hit}, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
+
+## Attribute this mind's reasons from its latest refresh, once (purge 2a, deferred).
+static func reasons_for(g, n) -> void:
+	var state: Dictionary = n.workshop_state
+	if not state.get("reasons_pending", false):
+		return
+	state.reasons_pending = false
+	var key = n.id + (":cover" if n.is_shadow else ":good")
+	var ctx: Dictionary = g._workshop_reason_ctx.get(key, {})
+	if ctx.is_empty():
+		return
+	var rctx: Dictionary = ctx.rctx
+	var refresh_reasons: Dictionary = rctx.get("computed", {})
+	if not rctx.has("computed"):
+		var ins: Array = rctx.get("inputs", [])
+		var raw: Dictionary = ReasonAttribution.attribute_refresh(ins[0], ins[1], ins[2], ins[3], ins[4], ins[5], ins[6], ins[7], ins[8]) if ins.size() == 9 else {}
+		refresh_reasons = ReasonAttribution.attach_owners(raw, rctx.get("owners", {}), rctx.get("public_good", []))
+		rctx["computed"] = refresh_reasons # a cached proposal reuses its attribution
+	refresh_reasons = refresh_reasons.duplicate(true)
+	if not state.get("circumstantial_incidents", {}).is_empty():
+		ReasonAttribution.append_circumstantial(refresh_reasons, state.circumstantial_incidents, ctx.chubs, state.get("presentations", {}))
+	ReasonAttribution.append_elimination_fallbacks(
+		refresh_reasons,
+		state.get("requested", {}),
+		state.get("circumstantial_requested", {}),
+		state.get("reasoning", {}).get("considered", []),
+		ctx.view,
+		n.id,
+		state.get("public_good", [])
+	)
+	state.reasons = refresh_reasons
 
 static func fallback(g, n, point: String, issues: Array, card: int = 0) -> void:
 	var entry = {"listener": n.id, "point": point, "issues": issues.duplicate(true), "card": card, "day": g.w.day, "phase": g.w.phase}

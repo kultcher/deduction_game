@@ -28,6 +28,9 @@ static func _implicated(e: Dictionary) -> Array:
 ## Does this NPC have something they'd want to tell someone today?
 static func has_news(w, n) -> bool:
 	if n.is_evil():
+		var sg_id: String = str(w.evil_plan.get("scapegoat", ""))
+		if n.id == str(w.evil_plan.get("daily_planter", "")) and int(w.evil_plan.get("plants_today", 0)) < Tuning.Evil.MAX_DIRECT_PLANTS and sg_id != "" and w.by_id.has(sg_id) and w.by_id[sg_id].alive:
+			return true
 		for mate in Evil.mates(w, n):
 			if Evil.unshared_intel(n, mate) > 0:
 				return true
@@ -47,9 +50,11 @@ static func news_bonus(w, a, b) -> float:
 			continue
 		if x.is_evil():
 			if y.is_evil():
-				bonus += 0.6
+				bonus += Tuning.Social.NEWS_BONUS_EVIL
+			elif x.id == str(w.evil_plan.get("daily_planter", "")) and int(w.evil_plan.get("plants_today", 0)) < Tuning.Evil.MAX_DIRECT_PLANTS and y.id != str(w.evil_plan.get("scapegoat", "")) and trait_of(y, "gossip") >= Tuning.Social.PLANTER_TARGET_GOSSIP_MIN and y.npc_trust.get(x.id, 0.5) >= Tuning.Social.PLANTER_TARGET_TRUST_MIN:
+				bonus += Tuning.Social.PLANTER_WHISPER_BONUS
 		elif x.npc_trust.get(y.id, 0.5) > 0.6:
-			bonus += 0.5
+			bonus += Tuning.Social.NEWS_BONUS_GOOD
 	return bonus
 
 # ---------------------------------------------------------------- NPC-to-NPC exchanges
@@ -77,10 +82,15 @@ static func _pick_item(w, s, l):
 				# Same willingness formula as a good NPC sharing a real reading.
 				var wgt = (1.0 - priv) * 1.2 * maxf(0.0, bond - 0.3) * 2.0 + 0.3 * s.pressure
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": "reading:%d:%s" % [e["day"], e["role"]], "lie": true}])
-		if sg != "" and sg != l.id and w.by_id[sg].alive:
+		var planter_id: String = str(w.evil_plan.get("daily_planter", ""))
+		# With a planter today, only the planter frames the scapegoat (anti-collusion). With no
+		# planter (no murder scene, or no clean cover), the ordinary scapegoat whispers stand.
+		var can_plant_sg: bool = planter_id == "" or (s.id == planter_id and int(w.evil_plan.get("plants_today", 0)) < Tuning.Evil.MAX_DIRECT_PLANTS)
+		if sg != "" and sg != l.id and w.by_id[sg].alive and can_plant_sg:
 			var fs = Evil.fake_night_sighting(w, s, w.day - 1)
 			if fs != null and not _told(s, l, "sighting:%s:%d" % [sg, fs["day"]]):
-				cands.append([gos * 0.8, {"kind": "sighting", "about": sg, "block": fs["block"], "day": fs["day"],
+				var p_scene: float = Tuning.Evil.PLANTER_SCENE_WEIGHT if s.id == planter_id else 0.0
+				cands.append([gos * 0.8 + p_scene, {"kind": "sighting", "about": sg, "block": fs["block"], "day": fs["day"],
 					"from": s.id, "key": "sighting:%s:%d" % [sg, fs["day"]], "lie": true}])
 			if not _told(s, l, "opinion:" + sg) and Evil.public_heat(w, w.by_id[sg]) >= 0.3:
 				cands.append([gos * 0.6 + (trait_of(s, "confidence") - 0.5) * 0.4, {"kind": "opinion", "about": sg, "why": Evil.bluff_reason(w, s, w.by_id[sg]), "from": s.id,
@@ -164,7 +174,13 @@ static func _pick_item(w, s, l):
 		var r = h.duplicate()
 		r["key"] = key3
 		r["relay"] = true
-		cands.append([gos * 0.45, r])
+		var relay_scene: float = 0.0
+		if not s.is_evil() and str(h.get("kind", "")) == "sighting":
+			for sid in w.scenes:
+				if int(w.scenes[sid].get("day", -2)) == int(h.get("day", -1)) and str(w.scenes[sid].get("block", "")) == str(h.get("block", "")):
+					relay_scene = Tuning.Social.MURDER_RELAY_BONUS
+					break
+		cands.append([gos * 0.45 + relay_scene, r])
 	for owner in s.known_secrets:
 		if owner == l.id or owner == s.id or l.known_secrets.has(owner):
 			continue
@@ -209,6 +225,8 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 		"relay": item.get("relay", false), "lie": lie}, "%s tells %s: %s%s" % [s.name, l.name, desc, "  [LIE]" if lie else ""])
 	if lie:
 		w.dlog.think(s.id, "lie", "Evil: tells %s %s." % [l.name, desc], {"lie": true})
+		if not public and s.is_evil() and not l.is_evil() and item.get("kind", "") in ["sighting", "opinion"] and s.id == str(w.evil_plan.get("daily_planter", "")):
+			w.evil_plan["plants_today"] = int(w.evil_plan.get("plants_today", 0)) + 1
 	if l.is_evil():
 		Evil.intel_from_share(w, l, s, item)
 		if item["kind"] == "secret":
@@ -236,19 +254,25 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 				l.known_claims[src.id]["readings"].append(e)
 			l.hearsay.append(hs)
 		"sighting":
+			var orig_src_id: String = str(item.get("from", s.id))
+			var orig_name: String = w.by_id[orig_src_id].name if w.by_id.has(orig_src_id) else s.name
+			var sight_wgt: float = wgt
+			if orig_src_id != s.id:
+				var chain_trust: float = minf(l.npc_trust.get(s.id, 0.5), l.npc_trust.get(orig_src_id, 0.5))
+				sight_wgt = clampf(Tuning.Social.HEARSAY_TRUST_SCALE * chain_trust, 0.0, Tuning.Social.HEARSAY_WEIGHT_CAP)
 			var sc = Mind.night_sighting_scale(w, l, item["about"], item.get("block", ""), item.get("day", -1))
 			var e1: Array = []
-			Mind._eff(e1, item["about"], 0.4 * sc, "heard from %s that %s was out at night (x%.2f)" % [s.id, item["about"], sc],
-				"%s says they were out at night" % s.name)
-			var card = {"kind": "sighting", "source": item.get("from", s.id), "via": s.id, "subject": [item["about"]], "block": item.get("block", ""), "day": item.get("day", -1), "phase": C.NIGHT,
+			Mind._eff(e1, item["about"], 0.4 * sc, "heard from %s that %s was out at night (x%.2f)" % [orig_src_id, item["about"], sc],
+				"%s says they were out at night" % orig_name)
+			var card = {"kind": "sighting", "source": orig_src_id, "via": s.id, "subject": [item["about"]], "block": item.get("block", ""), "day": item.get("day", -1), "phase": C.NIGHT,
 				"learned": [{"day": w.day, "phase": w.phase, "via": s.id}], "text": desc}
 			if not original.is_empty():
 				card = original.duplicate(true)
 				card["via"] = s.id
 				card["learned"] = [{"day": w.day, "phase": w.phase, "via": s.id, "public": public}]
 			var receipt = Mind.WorkshopLedger.Evidence.normalize_card(card)
-			Mind.ledger_hear(w, l, "heard:" + receipt.id, e1, wgt * 2.0, [s.id, item.get("day", -1), "report"],
-				{"kind": "tell", "workshop_card": receipt, "workshop_teller": s.id, "workshop_public": public})
+			Mind.ledger_hear(w, l, "heard:" + receipt.id, e1, sight_wgt * 2.0, [orig_src_id, item.get("day", -1), "report"],
+				{"kind": "tell", "workshop_card": receipt, "workshop_teller": s.id, "workshop_origin": orig_src_id, "workshop_public": public})
 			l.hearsay.append(hs)
 		"opinion", "unease":
 			# Remember the conversation and teller, without turning their conclusion

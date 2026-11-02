@@ -104,9 +104,13 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 		g._workshop_native_social = true # already recorded above, once per listener
 		g._narr("[dev] The shared model doesn't judge '%s' conclusions yet; the legacy rules judged this one." % ", ".join(PackedStringArray(kinds)))
 		return true
+	# Per listener: a row blocked only by canvas authoring problems (a missing cited
+	# claim, an empty hub) is not a model gap, so it is not counted as a fallback.
 	for row in check.listeners:
-		if not row.ready:
+		if not row.ready and not _all_authoring_validation_issues(row.issues):
 			WorkshopOwnership.fallback(g, g.w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
+	if _all_authoring_validation_issues(check.issues):
+		g.w.dlog.trace_event("workshop_validation_blocked", "player", "", {"card": card.get("n", 0), "issues": check.issues.duplicate(true)}, "Blocked incomplete canvas submission without legacy fallback.")
 	# No legacy route for presentations: an unsupported submission is blocked with its
 	# reason, so a playtest always tests the shared model (user, Oct 25).
 	var reason = "Card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(check.issues))]
@@ -116,6 +120,28 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 
 ## Conclusion types named by issues that are only about the conclusion ("Unsupported
 ## claim: role"), or [] if any issue is about the evidence itself.
+static func _all_authoring_validation_issues(issues: Array) -> bool:
+	if issues.is_empty():
+		return false
+	const PREFIXES = [
+		"Activity citations need an included walking-role or applicable secret claim",
+		"Invalid activity citations:",
+		"Link at least one supporting card into the Circumstantial Evidence hub",
+		"Circumstantial Evidence hubs support accusatory premises",
+		"Circumstantial Evidence hub references missing root cards",
+		"Invalid reading challenge or missing grounds",
+		"Invalid or unsupported disputes:",
+		"Select a filed deduction as the comparison's headline claim",
+		"No supported reading is presented",
+		"Conflicting reading challenges need separate alternatives",
+	]
+	for issue in issues:
+		var s: String = str(issue)
+		if not PREFIXES.any(func(p): return s.begins_with(p)):
+			return false
+	return true
+
+
 static func _unsupported_conclusions(issues: Array) -> Array:
 	var kinds: Array = []
 	for issue in issues:

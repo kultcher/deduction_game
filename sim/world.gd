@@ -17,6 +17,7 @@ var dlog = DevLog.new()
 var shadow_log = DevLog.new()   # legacy stream stays separate; detailed trace merges both
 ## Optional application adapter. Empty in simulation-only callers; no UI dependency.
 var workshop_refresh: Callable
+var workshop_reasons: Callable # deferred reason attribution for a mind (purge 2a)
 # Meeting testimony defers belief refreshes: a listener is refreshed just before they
 # speak and once when testimony ends (Mind.flush_beliefs), not after every statement.
 var defer_beliefs = false
@@ -1756,6 +1757,7 @@ func start_new_day() -> void:
 	dlog.set_time(day, "Morning")
 	if C.SHADOW_SELF:
 		Evil.review_scapegoat(self)
+		Evil.plan_daily_frame(self)
 	start_phase()
 
 # ---------------------------------------------------------------- dev snapshots

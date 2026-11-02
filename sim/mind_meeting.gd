@@ -7,6 +7,7 @@
 extends RefCounted
 
 const WorkshopLedger = preload("res://workshop/shared_ledger.gd")
+const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
@@ -198,23 +199,19 @@ static func info_fact(w, n, e: Dictionary) -> Dictionary:
 ## first (see _accuse_tier). The reason's provenance is the ledger entry that last raised
 ## the suspicion (n.sus_src), not its wording.
 static func reason_status(w, n, t_id: String) -> Dictionary:
+	var mind = n.shadow if n.is_evil() and n.shadow != null else n
+	if mind.workshop_state.get("active", false):
+		var ranked: Array = case_against(w, n, t_id, 1)
+		if not ranked.is_empty():
+			var top: Dictionary = ranked[0]
+			var resolved = {"why": top["why"], "kind": top["kind"], "entry": top["entry"], "strength": top["strength"], "eid": top.get("eid", "")}
+			if top.has("src"):
+				resolved["src"] = top["src"]
+			return resolved
+		return {"why": "", "kind": "none", "entry": {}, "strength": 0.0, "eid": ""}
 	var why: String = n.sus_why.get(t_id, "")
 	var src: String = n.sus_src.get(t_id, "")
-	if n.workshop_state.get("active", false):
-		var joint_strength: float = float(n.workshop_state.get("requested", {}).get(t_id, 0.0)) + float(n.workshop_state.get("circumstantial_requested", {}).get(t_id, 0.0))
-		if joint_strength > 0.03:
-			var ranked: Array = case_against(w, n, t_id, 1)
-			if not ranked.is_empty():
-				var top: Dictionary = ranked[0]
-				var resolved = {"why": top["why"], "kind": top["kind"], "entry": top["entry"], "strength": top["strength"]}
-				if top.has("src"):
-					resolved["src"] = top["src"]
-				return resolved
-			if joint_strength >= 0.15:
-				return {"why": "the reports considered together point toward them", "kind": n.workshop_state.get("reason_visibility", "shared_private"), "entry": {}, "strength": joint_strength}
-		if n.workshop_state.get("owned", {}).has(src):
-			return {"why": "", "kind": "none", "entry": {}, "strength": 0.0} # An obsolete raw bonus is no longer the reason.
-	var out = {"why": why, "kind": "none" if why == "" else "public", "entry": {}, "strength": 0.0}
+	var out = {"why": why, "kind": "none" if why == "" else "public", "entry": {}, "strength": 0.0, "eid": src}
 	if why == "":
 		return out
 	if src == "own_role" or n.ledger.get(src, {}).get("meta", {}).get("kind") == "role_counter":
@@ -379,8 +376,8 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 	for k in cost:
 		parts["cost_" + k] = -cost[k]
 	if decide(w, n, "reveal_to_accuse", parts, "Go public with what points at %s (%s)?" % [t.id, rs["why"]]):
-		return {"tier": "reveal", "why": rs["why"], "entry": rs["entry"]}
-	return {"tier": "hint", "why": ""}
+		return {"tier": "reveal", "why": rs["why"], "entry": rs["entry"], "eid": rs.get("eid", "")}
+	return {"tier": "hint", "why": "", "eid": rs.get("eid", "")}
 
 ## Called at the actual disclosure, including inside a streamed speaker's turn.
 ## The promise itself still lapses through Game._break_confidences as before.
@@ -413,8 +410,10 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 				continue
 			e["shared"] = true
 			var weights = {}
+			var n_mind = n.shadow if n.is_evil() and n.shadow != null else n
+			var use_shared_w: bool = n_mind.workshop_state.get("enabled", false)
 			for x in implicated(e):
-				weights[x] = reading_strength(e, x)
+				weights[x] = ReasonAttribution.score_reading_entry_in_world(w, n.id, e, x)["strength"] if use_shared_w else reading_strength(e, x)
 			w.public_event("reading", implicated(e), n.id, {"weights": weights})
 			w.public_event("clear", Gifts.clears(e), n.id)
 			shared_this_turn.append(e)
@@ -463,6 +462,15 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		var sg: String = w.evil_plan["scapegoat"]
 		if sg == "" or not w.by_id[sg].alive or w.day < 2:
 			return null
+		var planter_id: String = str(w.evil_plan.get("daily_planter", ""))
+		var earlier_sg: Array = w.meeting.get("accusations", []).filter(func(a): return a.get("target", "") == sg)
+		if planter_id != "" and n.id != planter_id and not earlier_sg.is_empty():
+			var good_spoke: bool = earlier_sg.any(func(a): return w.by_id.has(a.get("by", "")) and not w.by_id[a["by"]].is_evil())
+			if not good_spoke:
+				good_spoke = w.public_log.any(func(ev): return int(ev.get("day", -1)) == w.day and ev.get("kind", "") in ["accusation", "reading"] and sg in ev.get("subjects", []) and w.by_id.has(ev.get("by", "")) and not w.by_id[ev["by"]].is_evil())
+			if not good_spoke:
+				w.dlog.think(n.id, "accuse", "Evil patience: waits for a good voice against %s before echoing teammates." % sg)
+				return null
 		t = w.by_id[sg]
 		s2 = 0.8
 		why = Evil.bluff_reason(w, n, t)
@@ -479,13 +487,17 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	# What they can say for it: a reason the town already has, a hint at one they're
 	# keeping back, or their gift and its reading brought out now.
 	var hint = false
+	var hint_src: String = ""
 	if n.is_evil():
 		# A hinted "private reason" must fit the bluff: a gift that gives readings, with a
 		# fake one ready that points at the target, or (sometimes) none yet, as a free bluff
 		# they'll decline to back up if asked.
 		var bluff: String = w.evil_plan["bluffs"].get(n.id, "")
-		if why == "" and C.has_readings(bluff) and (_unshared_fake_on(n, t.id) != {} or w.decision_roll(n, "hint_without_reading", C.EVIL_HINT_CHANCE, {}, t.id)):
+		var fake_on_t: Dictionary = _unshared_fake_on(n, t.id)
+		if why == "" and C.has_readings(bluff) and (not fake_on_t.is_empty() or w.decision_roll(n, "hint_without_reading", C.EVIL_HINT_CHANCE, {}, t.id)):
 			hint = true
+			if not fake_on_t.is_empty():
+				hint_src = info_eid(n.id, fake_on_t)
 		w.dlog.think(n.id, "lie", "Evil: publicly accuses scapegoat %s, citing: %s." % [t.id, "a hinted private reason" if hint else why if why != "" else "vibes"])
 	else:
 		var tier = _accuse_tier(w, n, t, s2)
@@ -494,10 +506,11 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		elif tier["tier"] == "relay":
 			relay_reading(w, n, tier["src"], tier["entry"], lines, facts)
 		hint = tier["tier"] == "hint"
+		hint_src = str(tier.get("eid", ""))
 		why = tier["why"]
 		w.dlog.think(n.id, "accuse_tier", "Accuses %s: %s%s." % [t.id, tier["tier"], (" (" + why + ")") if why != "" else ""])
 	if hint:
-		n.hints[t.id] = {"day": w.day, "src": n.sus_src.get(t.id, "")}
+		n.hints[t.id] = {"day": w.day, "src": hint_src}
 	why = Evil.cite(w, n, why)
 	if not hint and why.begins_with("I saw"):
 		_append_accusation_sighting(w, n, t, why, lines, facts)
@@ -779,52 +792,295 @@ static func next_nomination(w):
 ## entry}, with kind as in reason_status (public | player | private) for that entry. An
 ## evil nominator ranks its good self's ledger (what an innocent would cite) but its own
 ## readings (real or fake) are looked up on the real NPC.
-static func _entry_rejected_in_workshop(w, mind, real_npc, e: Dictionary) -> bool:
-	if float(e.get("weight", 0.0)) <= 0.01:
+static func _visibility_maps(w, mind, real_npc) -> Dictionary:
+	var public_ids: Dictionary = {}
+	var player_ids: Dictionary = {}
+	var st: Dictionary = mind.workshop_state
+	for id in st.get("disclosures", {}):
+		var d: Dictionary = st.disclosures[id]
+		if d.get("player", false):
+			player_ids[str(id)] = true
+		if d.get("public", false):
+			public_ids[str(id)] = true
+	var withdrawn: Dictionary = st.get("withdrawn", {})
+	for pkey in st.get("presentations", {}):
+		if withdrawn.has(pkey) or withdrawn.has(str(pkey)):
+			continue
+		var snap: Dictionary = st.presentations[pkey]
+		var is_pub_venue: bool = str(snap.get("venue", "private")) != "private"
+		for id in snap.get("selected", []):
+			player_ids[str(id)] = true
+			if is_pub_venue:
+				public_ids[str(id)] = true
+	for entry in mind.ledger.values():
+		var meta: Dictionary = entry.get("meta", {})
+		for receipt in meta.get("workshop_receipts", {}).values():
+			if receipt is Dictionary and receipt.get("heard_in_public", false):
+				public_ids[str(receipt.get("id", ""))] = true
+		if meta.get("workshop_public", false) and meta.has("workshop_card"):
+			public_ids[str(meta.workshop_card.get("id", ""))] = true
+	for i in range(real_npc.info_log.size()):
+		var en: Dictionary = real_npc.info_log[i]
+		var rid: String = WorkshopLedger.reading(real_npc.id, en).id
+		if en.get("shared", false):
+			public_ids[rid] = true
+		if i < real_npc.told_readings:
+			player_ids[rid] = true
+	for p in w.npcs:
+		if p == real_npc:
+			continue
+		for en in p.info_log:
+			if en.get("shared", false):
+				public_ids[WorkshopLedger.reading(p.id, en).id] = true
+	for pc in w.public_claims:
+		var who_id: String = str(pc.get("who", ""))
+		var role_id: String = str(pc.get("role", ""))
+		var c_eid: String = "claim:%s:%s" % [who_id, role_id]
+		if mind.ledger.has(c_eid) and mind.ledger[c_eid].get("meta", {}).has("workshop_card"):
+			public_ids[str(mind.ledger[c_eid].meta.workshop_card.get("id", ""))] = true
+	return {"public": public_ids, "player": player_ids}
+
+
+static func _root_is_public(w, mind, real_npc, rid: String, public_ids: Dictionary) -> bool:
+	if public_ids.has(rid):
 		return true
-	if e["eid"].begins_with("info:"):
-		var parts: PackedStringArray = str(e["eid"]).split(":")
-		if parts.size() >= 2:
-			var holder = real_npc if parts[1] == real_npc.id else w.by_id.get(parts[1])
-			if holder != null:
-				for en in holder.info_log:
-					if info_eid(holder.id, en) == e["eid"] and en.get("disowned", false):
-						return true
-	var receipt_ids: Array = e.get("meta", {}).get("workshop_receipts", {}).keys()
-	if e.get("meta", {}).has("workshop_card"):
-		receipt_ids.append(e["meta"]["workshop_card"].get("id", ""))
-	for ch in mind.workshop_state.get("reading_challenges", []):
-		if ch.get("card", "") in receipt_ids and (float(ch.get("multiplier", 1.0)) <= 0.5 or (ch.get("mode", "") == "lying" and float(ch.get("agreement", 0.0)) >= 0.6)):
+	var owners: Array = mind.workshop_state.get("owners", {}).get(rid, [])
+	for owner in owners:
+		var os: String = str(owner)
+		if os == "public":
 			return true
+		if os.begins_with("claim:"):
+			var c_eid: String = os.trim_prefix("claim:")
+			var meta: Dictionary = mind.ledger.get(c_eid, {}).get("meta", {})
+			var who_id: String = str(meta.get("who", ""))
+			var role_id: String = str(meta.get("role", ""))
+			if w.public_claims.any(func(pc): return str(pc.get("who", "")) == who_id and str(pc.get("role", "")) == role_id):
+				return true
+		elif os.begins_with("reading:"):
+			var r_eid: String = os.trim_prefix("reading:")
+			var parts: PackedStringArray = r_eid.split(":")
+			if parts.size() >= 2:
+				var holder = real_npc if parts[1] == real_npc.id else w.by_id.get(parts[1])
+				if holder != null:
+					for en in holder.info_log:
+						if info_eid(holder.id, en) == r_eid and en.get("shared", false):
+							return true
 	return false
 
-static func _sighting_non_incriminating_in_workshop(w, mind, t_id: String, e: Dictionary) -> bool:
-	var meta: Dictionary = e.get("meta", {})
-	if meta.has("workshop_card"):
-		var wc: Dictionary = meta["workshop_card"]
-		if wc.get("kind", "") == "sighting":
-			var obs: Dictionary = wc.get("observed_at", {})
-			var is_night: bool = str(obs.get("phase", "")) == "night" or int(wc.get("phase", -1)) == C.NIGHT
-			var subjs: Array = wc.get("subjects", wc.get("subject", [])) if wc.get("subjects", wc.get("subject", [])) is Array else [wc.get("subject", "")]
-			if is_night and t_id in subjs:
-				var blk: String = str(wc.get("content", {}).get("block", wc.get("block", "")))
-				var dy: int = int(obs.get("day", wc.get("day", -1)))
-				return _mind().night_sighting_scale(w, mind, t_id, blk, dy) < 0.35
-	for rec in meta.get("workshop_receipts", {}).values():
-		if not (rec is Dictionary):
-			continue
-		var content: Dictionary = rec.get("content", {})
-		var r_role: String = str(content.get("role", rec.get("role", "")))
-		var r_data: Dictionary = content.get("data", rec.get("data", {}))
-		var r_obs: Dictionary = rec.get("observed_at", {})
-		if r_role == "nightwatch" and t_id in r_data.get("seen", []):
-			var nw_day: int = int(r_obs.get("day", rec.get("day", -1)))
-			return _mind().night_sighting_scale(w, mind, t_id, str(r_data.get("block", "")), nw_day) < 0.35
-		if r_role == "medium":
-			var item: Dictionary = r_data.get("item", {})
-			if str(item.get("type", "")) == "sighting" and str(item.get("who", "")) == t_id:
-				return _mind().night_sighting_scale(w, mind, t_id, str(item.get("block", "")), int(item.get("night", -1))) < 0.35
-	return false
+
+static func _find_reading_for_card(holder, cid: String, crole: String, cday: int) -> Array:
+	for i in range(holder.info_log.size()):
+		var en: Dictionary = holder.info_log[i]
+		if WorkshopLedger.reading(holder.id, en).id == cid:
+			return [i, en]
+	for i in range(holder.info_log.size()):
+		var en: Dictionary = holder.info_log[i]
+		if str(en.get("role", "")) == crole and int(en.get("day", -1)) == cday and not en.get("disowned", false):
+			return [i, en]
+	return [-1, {}]
+
+
+static func _resolve_shared_reason(w, mind, real_npc, t_id: String, raw: Dictionary, vis_maps: Dictionary) -> Dictionary:
+	var cid: String = str(raw.get("card_id", ""))
+	var ckind: String = str(raw.get("card_kind", ""))
+	var channel: String = str(raw.get("channel", ""))
+	var csrc: String = str(raw.get("source", ""))
+	var crole: String = str(raw.get("role", ""))
+	var cnight: int = int(raw.get("night", -1))
+	var cblock: String = str(raw.get("block", ""))
+	var contrib: float = float(raw.get("contrib", 0.0))
+	var strength: float = float(raw.get("strength", 0.3))
+	var is_joint: bool = bool(raw.get("joint", false))
+	var root_ids: Array = raw.get("root_ids", [])
+	var owners: Array = raw.get("owners", [])
+	var public_ids: Dictionary = vis_maps["public"]
+	var player_ids: Dictionary = vis_maps["player"]
+
+	if ckind == "circumstantial":
+		return {
+			"eid": cid,
+			"why": str(raw.get("why_public", "")),
+			"kind": str(raw.get("circ_visibility", "shared_player")),
+			"strength": strength,
+			"contrib": contrib,
+			"entry": {},
+			"channel": channel,
+		}
+
+	if ckind == "joint":
+		var all_pub: bool = root_ids.all(func(r): return _root_is_public(w, mind, real_npc, str(r), public_ids))
+		var all_plr: bool = root_ids.all(func(r): return _root_is_public(w, mind, real_npc, str(r), public_ids) or player_ids.has(str(r)))
+		var j_kind: String = "public" if all_pub else ("shared_player" if all_plr else "shared_private")
+		return {
+			"eid": cid,
+			"why": str(raw.get("why_public", "")),
+			"kind": j_kind,
+			"strength": strength,
+			"contrib": contrib,
+			"entry": {},
+			"channel": channel,
+		}
+
+	if channel == "role_clash" and csrc == real_npc.id and ckind == "claim":
+		return {
+			"eid": "own_role",
+			"why": str(raw.get("why_own", "")),
+			"kind": "public" if real_npc.claim_public else "private",
+			"strength": strength,
+			"contrib": contrib,
+			"entry": {},
+			"channel": channel,
+		}
+
+	if csrc == real_npc.id and ckind == "report":
+		var matched: Array = _find_reading_for_card(real_npc, cid, crole, cnight)
+		var idx: int = int(matched[0])
+		var en: Dictionary = matched[1]
+		if en.is_empty() and mind != real_npc:
+			var m2: Array = _find_reading_for_card(mind, cid, crole, cnight)
+			en = m2[1]
+		if not en.is_empty() and en.get("disowned", false):
+			return {}
+		var r_eid: String = info_eid(real_npc.id, en) if not en.is_empty() else ("info:%s:%d:%s" % [real_npc.id, cnight, crole])
+		var self_shared: bool = not en.is_empty() and bool(en.get("shared", false))
+		var board_pub: bool = public_ids.has(cid)
+		var told_direct: bool = idx >= 0 and idx < real_npc.told_readings
+		var board_plr: bool = player_ids.has(cid)
+		var other_pub: bool = not is_joint or root_ids.all(func(r): return str(r) == cid or _root_is_public(w, mind, real_npc, str(r), public_ids))
+		var other_plr: bool = not is_joint or root_ids.all(func(r): return str(r) == cid or _root_is_public(w, mind, real_npc, str(r), public_ids) or player_ids.has(str(r)))
+		var r_kind: String = "private"
+		var r_why: String = str(raw.get("why_own", ""))
+		if (self_shared or board_pub) and other_pub:
+			r_kind = "public"
+			r_why = str(raw.get("why_own", "")) if (real_npc.claim_public or self_shared) else str(raw.get("why_public", ""))
+		elif (told_direct or board_plr) and other_plr:
+			r_kind = "player"
+			r_why = str(raw.get("why_own", "")) if (told_direct or real_npc.claim_public) else str(raw.get("why_public", ""))
+		return {
+			"eid": r_eid,
+			"why": r_why,
+			"kind": r_kind,
+			"strength": strength,
+			"contrib": contrib,
+			"entry": en,
+			"channel": channel,
+		}
+
+	if csrc == real_npc.id and ckind == "sighting":
+		var seen_b: Dictionary = {}
+		for b in real_npc.beliefs:
+			if b.get("kind", "") == "saw" and b.get("who", "") == t_id and int(b.get("day", -1)) == cnight and int(b.get("phase", -1)) == C.NIGHT:
+				seen_b = b
+				break
+		var blk_label: String = C.block_name(cblock) if cblock in C.BLOCKS else "the street"
+		var n_label: String = C.night_name(cnight)
+		var s_why: String = str(raw.get("why_own", ""))
+		if not seen_b.is_empty():
+			if str(seen_b.get("how", "street")) == "window":
+				s_why = "I saw them out in the street from my window on %s" % n_label
+			elif real_npc.claim_public and C.ROLES.get(real_npc.claimed_role, {}).get("night_walk", false):
+				s_why = "I saw them out on %s on %s, while I was out on my duty" % [blk_label, n_label]
+			else:
+				s_why = "I saw them out on %s on %s" % [blk_label, n_label]
+		var already_disclosed: bool = (not seen_b.is_empty() and real_npc.told_to.has(_town_sighting_key(real_npc, seen_b))) or public_ids.has(cid)
+		var allowed_pub: bool = not seen_b.is_empty() and _public_sighting_allowed(w, real_npc, seen_b)
+		var s_kind: String = "shared_private"
+		if already_disclosed or allowed_pub:
+			s_kind = "public"
+		elif player_ids.has(cid):
+			s_kind = "shared_player"
+		elif C.ROLES.get(real_npc.role, {}).get("night_walk", false):
+			s_kind = "private"
+		return {
+			"eid": "sighting:%s:%s:%d:%s" % [real_npc.id, t_id, cnight, cblock],
+			"why": s_why,
+			"kind": s_kind,
+			"strength": strength,
+			"contrib": contrib,
+			"entry": {},
+			"channel": channel,
+			"own_sighting": true,
+			"own_sighting_disclosed": already_disclosed,
+		}
+
+	if ckind == "report" and w.by_id.has(csrc):
+		var src_npc = w.by_id[csrc]
+		var m_other: Array = _find_reading_for_card(src_npc, cid, crole, cnight)
+		var en_o: Dictionary = m_other[1]
+		if not en_o.is_empty() and en_o.get("disowned", false):
+			return {}
+		var o_eid: String = info_eid(csrc, en_o) if not en_o.is_empty() else ("info:%s:%d:%s" % [csrc, cnight, crole])
+		var o_shared: bool = (not en_o.is_empty() and bool(en_o.get("shared", false))) or public_ids.has(cid)
+		if csrc == t_id and channel in ["role_clash", "challenge_lie"] and w.public_claims.any(func(pc): return str(pc.get("who", "")) == t_id):
+			o_shared = true
+		var o_other_pub: bool = not is_joint or root_ids.all(func(r): return str(r) == cid or _root_is_public(w, mind, real_npc, str(r), public_ids))
+		var o_other_plr: bool = not is_joint or root_ids.all(func(r): return str(r) == cid or _root_is_public(w, mind, real_npc, str(r), public_ids) or player_ids.has(str(r)))
+		if o_shared and o_other_pub:
+			return {
+				"eid": o_eid,
+				"why": str(raw.get("why_public", "")),
+				"kind": "public",
+				"strength": strength,
+				"contrib": contrib,
+				"entry": en_o,
+				"channel": channel,
+			}
+		var heard_anon: bool = mind.ledger.get(o_eid, {}).get("meta", {}).get("workshop_receipts", {}).values().any(func(r): return r is Dictionary and r.get("content", {}).get("anonymous", false))
+		var direct_private: bool = not en_o.is_empty() and not heard_anon and owners.any(func(o): return str(o) == "learned" or str(o).begins_with("reading:"))
+		if direct_private and not is_joint:
+			return {
+				"eid": o_eid,
+				"why": str(raw.get("why_public", "")),
+				"kind": "relay",
+				"strength": strength * 0.5,
+				"contrib": contrib,
+				"entry": en_o,
+				"src": src_npc,
+				"channel": channel,
+			}
+		if heard_anon:
+			return {
+				"eid": o_eid,
+				"why": str(raw.get("why_public", "")),
+				"kind": "public",
+				"strength": strength * 0.5,
+				"contrib": contrib,
+				"entry": {},
+				"channel": channel,
+			}
+		return {
+			"eid": o_eid,
+			"why": str(raw.get("why_public", "")),
+			"kind": "shared_player" if (player_ids.has(cid) and o_other_plr) else "shared_private",
+			"strength": strength,
+			"contrib": contrib,
+			"entry": en_o,
+			"channel": channel,
+		}
+
+	var fallback_eid: String = cid
+	for owner in owners:
+		var os2: String = str(owner)
+		if os2.begins_with("share:") or os2.begins_with("claim:") or os2.begins_with("tell:") or os2.begins_with("testimony:"):
+			fallback_eid = os2.substr(os2.find(":") + 1)
+			break
+	var g_kind: String = "public"
+	if is_joint:
+		var g_pub: bool = root_ids.all(func(r): return _root_is_public(w, mind, real_npc, str(r), public_ids))
+		var g_plr: bool = root_ids.all(func(r): return _root_is_public(w, mind, real_npc, str(r), public_ids) or player_ids.has(str(r)))
+		g_kind = "public" if g_pub else ("shared_player" if g_plr else "shared_private")
+	elif csrc == "player" and not public_ids.has(cid):
+		g_kind = "shared_player"
+	return {
+		"eid": fallback_eid,
+		"why": str(raw.get("why_public", "")),
+		"kind": g_kind,
+		"strength": strength,
+		"contrib": contrib,
+		"entry": {},
+		"channel": channel,
+	}
+
 
 static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	var mind = n
@@ -832,70 +1088,56 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 		mind = n.shadow if n.shadow != null else n
 	var ws_active: bool = mind.workshop_state.get("active", false)
 	var ws_owned: Dictionary = mind.workshop_state.get("owned", {}) if ws_active else {}
-	var ws_joint: float = (float(mind.workshop_state.get("requested", {}).get(t_id, 0.0)) + float(mind.workshop_state.get("circumstantial_requested", {}).get(t_id, 0.0))) if ws_active else 0.0
-	var claimants: Dictionary = _mind()._claimants(mind.ledger.values()) if ws_active else {}
 	var items: Array = []
+	if ws_active:
+		if mind.workshop_state.get("reasons_pending", false) and w.workshop_reasons.is_valid():
+			w.workshop_reasons.call(mind)
+		var raw_list: Array = mind.workshop_state.get("reasons", {}).get(t_id, [])
+		if not raw_list.is_empty():
+			var vis_maps: Dictionary = _visibility_maps(w, mind, n)
+			for raw in raw_list:
+				var resolved: Dictionary = _resolve_shared_reason(w, mind, n, t_id, raw, vis_maps)
+				if not resolved.is_empty() and resolved.get("why", "") != "":
+					items.append(resolved)
+	# Transitional compatibility ONLY for native mode (`workshop_effects == false`) or synthetic
+	# unowned test ledger entries (`not ws_owned.has(eid)`) until Phase 2c/3 deletes legacy effects.
 	for e in mind.ledger.values():
-		var contrib = 0.0
-		var why = ""
-		var effs: Array = e["effects"]
 		if ws_active and ws_owned.has(e["eid"]):
-			if ws_joint <= 0.03 or _entry_rejected_in_workshop(w, mind, n, e):
+			continue
+		var contrib: float = 0.0
+		var why: String = ""
+		var effs: Array = e["effects"]
+		for i in range(effs.size()):
+			var f: Array = effs[i]
+			if f[0] != t_id:
 				continue
-			var rp: Array = _mind()._rel(e)
-			var rel_w: float = _mind().reliability(mind, rp[0], rp[1], rp[2])
-			if rel_w < 0.35:
-				continue
-			var skip_sighting: bool = _sighting_non_incriminating_in_workshop(w, mind, t_id, e)
-			for i in range(effs.size()):
-				var f: Array = effs[i]
-				if float(f[1]) <= 0.0 or f[4] == "":
-					continue
-				var targets: Array = _mind()._expand(f[0], claimants)
-				if t_id in targets:
-					if skip_sighting and (e.get("meta", {}).get("workshop_card", {}).get("kind", "") == "sighting" or "seen out at night" in str(f[3])):
-						continue
-					contrib += float(f[1]) * float(e["weight"]) * rel_w
-					if why == "":
-						why = f[4]
-		else:
-			for i in range(effs.size()):
-				var f: Array = effs[i]
-				if f[0] != t_id:
-					continue
-				var a: float = e["applied"].get(i, 0.0) + e["applied"].get("%d:%s" % [i, t_id], 0.0)
-				if a > 0.0:
-					contrib += a
-					if why == "" and f[4] != "":
-						why = f[4]
+			var a: float = e["applied"].get(i, 0.0) + e["applied"].get("%d:%s" % [i, t_id], 0.0)
+			if a > 0.0:
+				contrib += a
+				if why == "" and f[4] != "":
+					why = f[4]
 		if contrib >= 0.03 and why != "":
-			items.append({"eid": e["eid"], "why": why, "contrib": contrib})
-	items.sort_custom(func(x, y): return x["contrib"] > y["contrib"])
-	items = items.slice(0, limit)
-	var own = "info:%s:" % n.id
-	for it in items:
-		it["kind"] = "public"
-		it["strength"] = 0.3
-		it["entry"] = {}
-		if it["eid"].begins_with(own):
-			for i in range(n.info_log.size()):
-				var en: Dictionary = n.info_log[i]
-				if info_eid(n.id, en) == it["eid"]:
-					it["entry"] = en
-					it["strength"] = reading_strength(en, t_id)
-					it["kind"] = "public" if en.get("shared", false) else ("player" if i < n.told_readings else "private")
-		elif it["eid"].begins_with("info:"):
-			var hr = _heard_reading(w, n, it["eid"])
-			if not hr.is_empty():
-				it["kind"] = "relay"
-				it["entry"] = hr["entry"]
-				it["src"] = hr["src"]
-		# Wording that gives away their own gift is private until the gift is public (the
-		# same rule Evil.cite applies to accusations), whatever entry it came from.
-		if it["kind"] == "public" and it["why"].begins_with("my own") and not n.claim_public:
-			it["kind"] = "private"
-			it["strength"] = maxf(it["strength"], 0.5)
-	return items
+			var leg_item: Dictionary = {"eid": e["eid"], "why": why, "contrib": contrib, "kind": "public", "strength": 0.3, "entry": {}}
+			var own_prefix: String = "info:%s:" % n.id
+			if leg_item["eid"].begins_with(own_prefix):
+				for i in range(n.info_log.size()):
+					var en_l: Dictionary = n.info_log[i]
+					if info_eid(n.id, en_l) == leg_item["eid"]:
+						leg_item["entry"] = en_l
+						leg_item["strength"] = reading_strength(en_l, t_id)
+						leg_item["kind"] = "public" if en_l.get("shared", false) else ("player" if i < n.told_readings else "private")
+			elif leg_item["eid"].begins_with("info:"):
+				var hr: Dictionary = _heard_reading(w, n, leg_item["eid"])
+				if not hr.is_empty():
+					leg_item["kind"] = "relay"
+					leg_item["entry"] = hr["entry"]
+					leg_item["src"] = hr["src"]
+			if leg_item["kind"] == "public" and leg_item["why"].begins_with("my own") and not n.claim_public:
+				leg_item["kind"] = "private"
+				leg_item["strength"] = maxf(leg_item["strength"], 0.5)
+			items.append(leg_item)
+	items.sort_custom(func(x, y): return float(x["contrib"]) > float(y["contrib"]))
+	return items.slice(0, limit)
 
 ## The nominator lays out their case: public reasons recapped (cosmetic: hearing them again
 ## changes nothing), and their strongest private one hinted at or brought out (claim and
@@ -903,8 +1145,13 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 static func nomination_case(w, n, t, already: String) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
+	if already.begins_with("I saw"):
+		_append_accusation_sighting(w, n, t, already, lines, facts)
 	var items = case_against(w, n, t.id)
 	var recap: Array = items.filter(func(x): return x["kind"] == "public" and x["why"] != already).map(func(x): return x["why"])
+	for r_why in recap.slice(0, 2):
+		if str(r_why).begins_with("I saw"):
+			_append_accusation_sighting(w, n, t, str(r_why), lines, facts)
 	var priv: Array = items.filter(func(x): return x["kind"] in ["private", "player"])
 	var relays: Array = items.filter(func(x): return x["kind"] == "relay")
 	if priv.is_empty() and not relays.is_empty():
@@ -927,6 +1174,12 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 			parts["cost_" + k] = -cost[k]
 		if decide(w, n, "reveal_to_nominate", parts, "Bring out what points at %s (%s) to back the nomination?" % [t.id, top["why"]]):
 			_public_disclosure(w, n, lines, facts)
+			# The disclosure shares the gift and readings, not sightings: also state the private
+			# observations behind the nomination (as _public_accusation does), so the town hears
+			# them and the nominee's defence can answer them.
+			for p_item in priv.slice(0, 2):
+				if p_item.get("own_sighting", false) and str(p_item.get("why", "")).begins_with("I saw"):
+					_append_accusation_sighting(w, n, t, str(p_item["why"]), lines, facts)
 		else:
 			n.hints[t.id] = {"day": w.day, "src": top["eid"]}
 			lines.append(say_voiced(n, "nomination_held_reason", "And I have another reason I'm not ready to share yet."))
@@ -970,17 +1223,23 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 	var out: Array = []
 	var seen_eids: Dictionary = {}
 	var d_mind = d.shadow if d.is_evil() and d.shadow != null else d
+	var d_shared: bool = d_mind.workshop_state.get("enabled", false)
 	if accuser != null:
 		for it in case_against(w, accuser, d.id, 6):
-			if it["kind"] == "public" or (not it["eid"].begins_with("info:") and d_mind.ledger.has(it["eid"])):
-				out.append(it)
-				seen_eids[it["eid"]] = true
+			if it.get("own_sighting", false):
+				var sight_spoken: bool = bool(it.get("own_sighting_disclosed", false)) or disclosed_facts.any(func(f): return f.get("kind", "") == "sighting" and f.get("source", "") == accuser.id and d.id in f.get("subject", []))
+				if sight_spoken:
+					out.append(it)
+					seen_eids[it["eid"]] = true
 			elif it["eid"].begins_with("info:"):
 				var p: PackedStringArray = str(it["eid"]).split(":")
 				var sn = w.by_id.get(p[1]) if p.size() >= 2 else null
 				if sn != null and not it["entry"].is_empty() and _reading_known_to_defender(d, sn.id, it["entry"], disclosed_facts):
 					out.append(it)
 					seen_eids[it["eid"]] = true
+			elif it["kind"] == "public" or d_mind.ledger.has(it["eid"]):
+				out.append(it)
+				seen_eids[it["eid"]] = true
 	for f in disclosed_facts:
 		if f.get("kind", "") == "info" and d.id in f.get("subject", []):
 			var src_id: String = str(f.get("source", ""))
@@ -991,13 +1250,19 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 				if en.get("role", "") == f.get("role", "") and int(en.get("day", -1)) == int(f.get("day", -2)):
 					var eid2: String = info_eid(src_id, en)
 					if not seen_eids.has(eid2):
-						out.append({"eid": eid2, "why": "their reading pointed at me", "contrib": reading_strength(en, d.id), "kind": "public", "strength": reading_strength(en, d.id), "entry": en})
+						var r_score: Dictionary = ReasonAttribution.score_reading_entry_in_world(w, src_id, en, d.id) if d_shared else {"contrib": reading_strength(en, d.id), "strength": reading_strength(en, d.id)}
+						out.append({"eid": eid2, "why": "their reading pointed at me", "contrib": float(r_score["contrib"]), "kind": "public", "strength": float(r_score["strength"]), "entry": en, "channel": "report"})
 						seen_eids[eid2] = true
 		elif f.get("kind", "") == "sighting" and d.id in f.get("subject", []):
-			var s_eid: String = "disclosed:sighting:%s:%d" % [f.get("source", ""), int(f.get("day", -1))]
+			var s_eid: String = "sighting:%s:%s:%d:%s" % [str(f.get("source", "")), d.id, int(f.get("day", -1)), str(f.get("block", ""))]
 			if not seen_eids.has(s_eid):
-				var sc: float = _mind().night_sighting_scale(w, d, d.id, str(f.get("block", "")), int(f.get("day", -1)))
-				out.append({"eid": s_eid, "why": "seen out at night", "contrib": 0.35 * sc, "kind": "public", "strength": 0.35 * sc, "entry": {}})
+				var s_score: Dictionary
+				if d_shared:
+					s_score = ReasonAttribution.score_disclosed_fact_in_world(w, d_mind, f, d.id)
+				else:
+					var sc: float = _mind().night_sighting_scale(w, d, d.id, str(f.get("block", "")), int(f.get("day", -1)))
+					s_score = {"contrib": 0.35 * sc, "strength": 0.35 * sc}
+				out.append({"eid": s_eid, "why": "seen out at night", "contrib": float(s_score["contrib"]), "kind": "public", "strength": float(s_score["strength"]), "entry": {}, "channel": "movement_out"})
 				seen_eids[s_eid] = true
 	return out
 
@@ -1016,7 +1281,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				accuser = m
 	var items: Array = _disclosed_items_against(w, d, accuser, disclosed_facts)
 	var role: String = w.evil_plan["bluffs"].get(d.id, "") if d.is_evil() else d.role
-	var out_items: Array = items.filter(func(x): return "out" in x["why"] or "night" in x["why"])
+	var out_items: Array = items.filter(func(x): return x.get("channel", "") in ["movement_out", "alibi_contradiction"] or "out" in x["why"] or "night" in x["why"])
 	var out_weight = 0.0
 	for x in out_items:
 		out_weight += x["contrib"]
@@ -1024,7 +1289,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	var defence_scopes = {}
 	# 1. A gift that walks at night explains being seen out.
 	if not out_items.is_empty() and C.ROLES.get(role, {}).get("night_walk", false):
-		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": 0.2}
+		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": maxf(0.2, out_weight)}
 		for k in reveal_cost(w, d):
 			parts["cost_" + k] = -reveal_cost(w, d)[k]
 		if d.claim_public or decide(w, d, "defence_reveal", parts, "Explain being out with my gift (%s)?" % role):
@@ -1239,6 +1504,10 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	var para_need: float = -Tuning.Meeting.VOTE_PARANOIA_WEIGHT * paranoia(w, v)
 	var urg_need: float = -Tuning.Meeting.VOTE_URGENCY_PER_DEATH * w.npcs.filter(func(m): return not m.alive).size()
 	var need: float = Tuning.Meeting.VOTE_BASE_NEED + conf_need + early_need + para_need + urg_need
+	if v.id == nominator and (block == "" or block == nominee or action_susp(v, nominee) > action_susp(v, block)) and s < need:
+		var commit_gap: float = (need - s) + 0.02
+		parts["self_nomination"] = commit_gap
+		s += commit_gap
 	var yes = s >= need
 	var exact_parts: Dictionary = parts.duplicate()
 	exact_parts["suspicion"] = susp(v, nominee) # pressure is reported separately

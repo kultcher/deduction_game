@@ -16,6 +16,7 @@ const CaseEval = preload("res://workshop/case_eval.gd")
 const Protection = preload("res://workshop/live_protection.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
+const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 
 ## Which engine judges cases (docs/CASE_REASONING.md): "case_eval" (likelihood-weighted
 ## worlds, one pass for every person) or "legacy" (model v5's credibility-state mixture
@@ -94,7 +95,7 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	listener.ledger[case_data.id] = {"effects": effects.duplicate(true)}
 	listener.theories = consequences.theories
 	Profiler.close(span)
-	return {"effects": effects, "reasoning": consequences.reasoning, "reading_challenges": consequences.reading_challenges,
+	return {"effects": effects, "reasons": consequences.get("reasons", {}), "reason_inputs": consequences.get("reason_inputs", []), "reasoning": consequences.reasoning, "reading_challenges": consequences.reading_challenges,
 		"effect_rule": consequences.rule}
 
 static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
@@ -353,9 +354,11 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 				response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
 		elif reasoning.status == "rival_found":
 			var alternative = Solver.describe_world(view, reasoning.rival, conclusion.at)
-			response = "I checked another explanation and it also fits: %s evil; %s Marked. I cannot settle it from this alone." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, alternative.marked)]
+			var marked_s: String = ("; %s Marked" % Solver.person_name(view, alternative.marked)) if str(alternative.get("marked", "")) != "" else ""
+			response = "I checked another explanation and it also fits: %s evil%s. I cannot settle it from this alone." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), marked_s]
 			if alternative.has("demon"):
-				response += " In that explanation, %s is the Demon." % Solver.person_name(view, alternative.demon)
+				var d_alive: bool = preload("res://workshop/live_history.gd").alive_at_night(view, str(alternative.demon), maxi(0, int(view.get("day", 1))))
+				response += (" In that explanation, %s is the Demon." if d_alive else " In that explanation, %s was the starting Demon.") % Solver.person_name(view, alternative.demon)
 			if Movement.available(view) and stance == "accept":
 				response = "I checked another explanation that also fits, but the %s evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible." % _movement_trace_kind(view, _cards_by_ids(view, reasoning.get("considered", case_data.get("cards", []))))
 		elif reasoning.status == "entailed_in_attention":
@@ -576,9 +579,11 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 				response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
 		elif reasoning.status == "rival_found":
 			var alternative = Solver.describe_world(view, reasoning.rival, conclusion.at)
-			response = "I checked another explanation and it also fits: %s evil; %s Marked." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, alternative.marked)]
+			var marked_s2: String = ("; %s Marked" % Solver.person_name(view, alternative.marked)) if str(alternative.get("marked", "")) != "" else ""
+			response = "I checked another explanation and it also fits: %s evil%s." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), marked_s2]
 			if alternative.has("demon"):
-				response += " In that explanation, %s is the Demon." % Solver.person_name(view, alternative.demon)
+				var d_alive2: bool = preload("res://workshop/live_history.gd").alive_at_night(view, str(alternative.demon), maxi(0, int(view.get("day", 1))))
+				response += (" In that explanation, %s is the Demon." if d_alive2 else " In that explanation, %s was the starting Demon.") % Solver.person_name(view, alternative.demon)
 			if stance == "accept":
 				response += accept_persuasion_tail("" if ev.movement.is_empty() else _movement_trace_kind(view, _cards_by_ids(view, reasoning.get("considered", case_data.get("cards", [])))))
 		elif reasoning.status == "entailed_in_attention":
@@ -1034,8 +1039,12 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 				note += " An alternative to the parent claim still fits what I checked."
 			child.links.append({"parent": parent_id, "parent_label": parent.label, "relation": relation,
 				"evidence_difference": contribution, "exclusive_cards": exclusive, "alternative_remains": remaining, "note": note})
+	# Reason attribution is deferred (purge 2a): the inputs are kept and attribution runs
+	# only when a meeting or conversation first asks for a reason after this refresh.
+	var refresh_reasons: Dictionary = {}
+	var reason_inputs: Array = [view, scoped, attended, held, challenged, baseline, eval_listener, ev, effects] if refresh else []
 	Profiler.close(span)
-	return {"effects": effects, "claims": claims, "theories": theories, "considered": attention.considered,
+	return {"effects": effects, "reasons": refresh_reasons, "reason_inputs": reason_inputs, "claims": claims, "theories": theories, "considered": attention.considered,
 		"reading_challenges": challenged.results,
 		"reasoning": {"status": "belief_refresh", "impossible": ev.impossible, "profile": attention.profile, "considered": attention.considered.duplicate(),
 			"ignored": attention.ignored.duplicate(), "ignored_lines": attention.ignored_lines.duplicate(), "private_checks": attention.private_checks.duplicate(true)},
