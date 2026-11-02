@@ -25,7 +25,7 @@ func _live(size: int) -> void:
 			listener.beliefs = []
 			listener.believed_roles = {}
 			listener.ledger = {}
-			listener.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+			listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	var observer = g.w.living_good()[0]
 	var source = g.w.living_good()[1]
 	var teller = g.w.living_good()[2]
@@ -70,7 +70,7 @@ func _live(size: int) -> void:
 		for listener in [n, n.shadow]:
 			if listener != null:
 				listener.ledger = {}
-				listener.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+				listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	source.silenced = true # The existing corroboration chance is ineligible.
 	var lines: Array = []
 	var facts: Array = []

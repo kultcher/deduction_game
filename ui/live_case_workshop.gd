@@ -22,7 +22,7 @@ var field_menu: PopupMenu
 var _field_target: Dictionary = {}     # {id, field, values}
 var juror_timer: Timer
 var _last_juror: Dictionary = {}   # premise id -> {cards, lr}: to say why adding a card weakened it
-enum DebugItem { EFFECTS, PREVIEW, SUPPORT, WITHDRAW }
+enum DebugItem { PREVIEW, SUPPORT, WITHDRAW }
 var files: Dictionary = {}
 var execute: Callable
 var progress_window: Window
@@ -100,7 +100,6 @@ func _ready() -> void:
 	debug_menu.flat = false
 	debug_menu.tooltip_text = "Developer tools (shown while Debug is on)."
 	var dp: PopupMenu = debug_menu.get_popup()
-	dp.add_check_item("Shared evidence evaluator", DebugItem.EFFECTS)
 	dp.add_item("Preview effectiveness (test juror)", DebugItem.PREVIEW)
 	dp.add_item("Review evaluator support", DebugItem.SUPPORT)
 	dp.add_item("Withdraw endorsement…", DebugItem.WITHDRAW)
@@ -340,8 +339,6 @@ func _store() -> void:
 		g.workshop_draft = {"canvas": board.export_data(), "files": files.duplicate(true), "root": case_root}
 
 func _support_warning(check: Dictionary) -> String:
-	if not g.workshop_effects:
-		return "Existing rules are explicitly selected. Canvas answers, assumptions and intermediate claims do not gain shared interpretation in this mode."
 	if not check.ready:
 		return "Unsupported evidence submissions are blocked in ordinary play; they are not silently judged by existing rules. Remove or replace unsupported links. Bare opinions and mercy/protection preferences remain social speech."
 	return "The shared evaluator checks this case. Answers and assumptions are hypotheses, not extra evidence."
@@ -355,9 +352,7 @@ func _sync() -> void:
 	if not present_button.disabled:
 		var check = Live.status(g, board.compile(board.selected))
 		var issues: Array = check.issues.duplicate()
-		if not g.workshop_effects:
-			support_label.text = "Debug: the shared evaluator is switched off; the legacy rules will judge this."
-		elif check.ready and check.get("audience_ready", false):
+		if check.ready and check.get("audience_ready", false):
 			support_label.text = "Ready: everyone present can judge this case."
 		elif check.ready:
 			support_label.text = "Some listeners can't judge this case yet (hover for why)."
@@ -373,8 +368,6 @@ func _sync() -> void:
 	context_label.text = "Context: " + g.state + (" · speaking with " + g.talk_with.name if g.state == "talk" and g.talk_with != null else "")
 	present_button.text = "Present privately" if g.state == "talk" else "Take meeting floor" if g.state == "meeting" else "Speak on nomination" if g.state == "nomination" else "Start a conversation or meeting to present"
 	debug_menu.visible = g.debug_overlay
-	var dp: PopupMenu = debug_menu.get_popup()
-	dp.set_item_checked(dp.get_item_index(DebugItem.EFFECTS), g.workshop_effects)
 	_refresh_filed()
 	_store()
 
@@ -391,8 +384,6 @@ func _support_details() -> void:
 	var check = Live.status(g, board.compile(board.selected))
 	result_output.text = "Selected case: " + board.title(board.selected)
 	result_output.text += "\nSHARED EVALUATOR: this case is supported." if check.ready else "\nUNSUPPORTED: shared assessment is unavailable for this case."
-	if not g.workshop_effects:
-		result_output.text += "\nEXISTING RULES: the shared evaluator is switched off."
 	for issue in check.issues:
 		result_output.text += "\n• " + issue
 	result_output.text += "\n\n" + _support_warning(check)
@@ -641,9 +632,6 @@ func _withdraw_window() -> void:
 
 func _debug_action(id: int) -> void:
 	match id:
-		DebugItem.EFFECTS:
-			g.set_workshop_effects(not g.workshop_effects)
-			_session_changed()
 		DebugItem.PREVIEW:
 			_preview_effectiveness()
 		DebugItem.SUPPORT:

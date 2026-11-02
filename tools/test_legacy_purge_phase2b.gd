@@ -50,7 +50,6 @@ func _init() -> void:
 
 func _clean_game(seed_val: int, size: int = 10):
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = false
 	g.new_case(seed_val, size)
 	for p in g.w.npcs:
@@ -65,10 +64,11 @@ func _clean_game(seed_val: int, size: int = 10):
 			m.ledger = {}
 			m.resentments = []
 			m.settled_execution_rapport = {}
-			m.workshop_state = {"enabled": false, "reasoning_mode": "full", "confidence_mode": "scale"}
+			m.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 			for id in m.suspicion:
 				m.suspicion[id] = 0.1
-	g.set_workshop_effects(true)
+			if not m.is_evil():
+				Mind.refresh_beliefs(g.w, m, " (clean)")
 	return g
 
 
@@ -209,7 +209,7 @@ func _test_revenant_curse_no_direct_outside_adjust() -> void:
 	# refresh below sees the vote, curse and execution on the public record.
 	w.defer_beliefs = false
 	Mind.flush_beliefs(w)
-	Mind.recompute_beliefs(w, observer, " (post-curse chronology refresh)")
+	Mind.refresh_beliefs(w, observer, " (post-curse chronology refresh)")
 
 	_check(is_equal_approx(float(observer.workshop_state.outside.get(rv.id, -1.0)), 0.1),
 		"Revenant curse leaves outside baseline untouched at 0.1 (got %.4f)" % float(observer.workshop_state.outside.get(rv.id, -1.0)))
@@ -402,7 +402,7 @@ func _test_two_way_vote_circumstantial_shielding_player_presented_only() -> void
 	_check(shielder.id in tally["no"], "vote_pending records evil teammate in no voters")
 
 	var susp_before_hub: float = Mind.susp(listener, shielder.id)
-	Mind.recompute_beliefs(w, listener, " (ambient refresh after public vote)")
+	Mind.refresh_beliefs(w, listener, " (ambient refresh after public vote)")
 	_check(is_equal_approx(Mind.susp(listener, shielder.id), susp_before_hub) and listener.workshop_state.get("circumstantial_incidents", {}).is_empty(),
 		"ambient refresh does NOT auto-compute vote shielding without a player-presented Circumstantial hub")
 

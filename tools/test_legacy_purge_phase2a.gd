@@ -46,7 +46,6 @@ func _fresh_game(seed_val: int, size: int = 10):
 	var g = Game.new()
 	g.detailed_logging = false
 	g.new_case(seed_val, size)
-	g.set_workshop_effects(true)
 	return g
 
 
@@ -70,7 +69,7 @@ func _test_hollis_gravedigger_vs_odette_archivist_and_no_legacy_why_read() -> vo
 		p.claimed_role = ""
 		p.claim_public = false
 		p.told_readings = 0
-		p.workshop_state = {"enabled": true, "reasoning_mode": "bounded", "confidence_mode": "scale"}
+		p.workshop_state = {"reasoning_mode": "bounded", "confidence_mode": "scale"}
 
 	w.executions.append({"day": 2, "id": edda.id, "nominator": "player", "yes": [hollis.id], "player_yes": true, "player_nominated": true})
 	w.day = 2
@@ -166,7 +165,7 @@ func _test_kiran_firsthand_night_sightings_and_visibility() -> void:
 	# Window sighting on the murder block ("docks") vs street sighting off the murder block ("hill").
 	kiran.beliefs.append({"kind": "saw", "who": suspect.id, "loc": "", "block": "docks", "day": 1, "phase": C.NIGHT, "how": "window", "detail": "street"})
 	kiran.beliefs.append({"kind": "saw", "who": off_walker.id, "loc": "", "block": "hill", "day": 1, "phase": C.NIGHT, "how": "street", "detail": "street"})
-	Mind.recompute_beliefs(w, kiran, " (test firsthand sightings)")
+	Mind.refresh_beliefs(w, kiran, " (test firsthand sightings)")
 
 	var sus_items: Array = MindMeeting.case_against(w, kiran, suspect.id)
 	var off_items: Array = MindMeeting.case_against(w, kiran, off_walker.id)
@@ -206,7 +205,7 @@ func _test_kiran_firsthand_night_sightings_and_visibility() -> void:
 	w2.day = 2
 	walker_witness.history[w2.time_key(1, C.NIGHT)] = "night:docks"
 	walker_witness.beliefs.append({"kind": "saw", "who": target2.id, "loc": "", "block": "docks", "day": 1, "phase": C.NIGHT, "how": "street", "detail": "street"})
-	Mind.recompute_beliefs(w2, walker_witness, " (unclaimed street sighting)")
+	Mind.refresh_beliefs(w2, walker_witness, " (unclaimed street sighting)")
 	var rs_priv: Dictionary = Mind.reason_status(w2, walker_witness, target2.id)
 	_check(rs_priv["kind"] == "private" and Mind.citable_reason(w2, walker_witness, target2.id, "town") == "",
 		"unclaimed night-walker street sighting stays private rather than leaking night walk (%s)" % str(rs_priv))
@@ -277,7 +276,7 @@ func _test_elimination_residual_reason() -> void:
 		w.day = i + 1
 		w.public_event("demon_death", [v.id], "town")
 	w.day = 4
-	Mind.recompute_beliefs(w, listener, " (elimination test)")
+	Mind.refresh_beliefs(w, listener, " (elimination test)")
 	if float(listener.workshop_state.get("requested", {}).get(suspect.id, 0.0)) >= 0.15:
 		var rs: Dictionary = Mind.reason_status(w, listener, suspect.id)
 		_check(rs["kind"] == "public" and rs["why"] != "",

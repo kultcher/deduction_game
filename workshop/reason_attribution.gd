@@ -1021,6 +1021,10 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 		if crole == "gravedigger":
 			var ex_id: String = str(data.get("executed", ""))
 			var r_id: String = str(data.get("role", ""))
+			var gd_night: int = int(card.get("night", -1)) if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
+			if ex_id != "" and view.has("timeline") and not preload("res://workshop/live_history.gd").executed(view, ex_id, gd_night):
+				var no_ex_txt: String = "%s claimed a Gravedigger reading on %s when no such hanging happened" % [Solver.person_name(view, pid), Solver.person_name(view, ex_id)]
+				return [no_ex_txt, no_ex_txt]
 			if ex_id != "" and r_id != "":
 				var gd_txt: String = "%s claimed %s was the %s, which doesn't fit what we know" % [Solver.person_name(view, pid), Solver.person_name(view, ex_id), C.role_name(r_id)]
 				return [gd_txt, gd_txt]

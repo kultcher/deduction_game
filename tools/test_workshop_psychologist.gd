@@ -16,7 +16,6 @@ func _init() -> void:
 
 func _family(size: int) -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = false
 	g.new_case(692, size)
 	for real in g.w.npcs:
@@ -42,7 +41,6 @@ func _family(size: int) -> void:
 	var filed = Live.file(g, value)
 	check(filed > 0, "a Psychologist context case files for a %d-person town" % size)
 	g.strict_evaluator = true
-	g.set_workshop_effects(true)
 	for real in g.w.living():
 		var n = real.shadow if real.is_evil() else real
 		var prepared = Live.Assess.prepare(g.workshop_snapshot([filed], real.id))

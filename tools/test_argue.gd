@@ -12,7 +12,6 @@ var fails = 0
 
 func _init() -> void:
 	var g = Game.new()
-	g.workshop_effects = false # Explicit legacy baseline before testing migration.
 	g.log_dir = "user://test_logs"
 	g.new_case(4242)
 	var w = g.w
@@ -161,6 +160,8 @@ func _init() -> void:
 		var da = g.file_deduction({"type": "evil", "a": a}, [k1])
 		var db = g.file_deduction({"type": "evil", "a": a}, [k1, k2])
 		var dc = g.file_deduction({"type": "evil", "a": a}, [k2, k1])
+		g._workshop_native_submission = true
+		g._workshop_native_social = true
 		Argue.evaluate(w, L, g.board[da - 1], g.board, 1.0)
 		var s1 = Mind.susp(L, a)
 		Argue.evaluate(w, L, g.board[db - 1], g.board, 1.0)
@@ -171,17 +172,17 @@ func _init() -> void:
 		# Doubt before hearing: L is told D is misled on night 1, then hears D's reading.
 		var e_d = {"day": 1, "role": "seer", "data": {"pair": [b, c], "yes": true}, "text": "x"}
 		var L2 = lis[1] if lis.size() > 1 else L
-		L2.workshop_state["enabled"] = true
 		var before = Mind.susp(L2, b)
 		var dm = g.file_deduction({"type": "misled", "a": d, "night": 1}, [k7])
 		var unheard = Argue.evaluate(w, L2, g.board[dm - 1], g.board, 1.0)
-		Mind.recompute_beliefs(w, L2, " (doubt before hearing)")
+		g._workshop_native_submission = false
+		g._workshop_native_social = false
+		Mind.refresh_beliefs(w, L2, " (doubt before hearing)")
 		_check(absf(Mind.susp(L2, b) - before) < 0.05, "doubting an unheard reading changes nothing")
 		Mind.apply_info(w, L2, w.by_id[d], e_d, 0.5)
 		var after = Mind.susp(L2, b)
 		print("doubted-then-heard reading moved suspicion of B by %.2f (reliability %.2f)" % [after - before, Mind.reliability(L2, d, 1)])
 		_check(Mind.reliability(L2, d, 1) < 1.0, "doubt recorded before hearing the reading")
-		L2.workshop_state["enabled"] = false
 		# Credibility rises: the earlier argument is re-weighed (the reconsideration still
 		# fires on a rapport change; the weight follows credibility since Oct 30).
 		var wt0: float = L.ledger["arg:" + Argue.conclusion_key({"type": "evil", "a": a})]["weight"]
@@ -306,7 +307,7 @@ func _init() -> void:
 	Lv.info_log = []
 	Lv.known_claims = {}
 	Lv.beliefs = []
-	Lv.workshop_state = {"enabled": true}
+	Lv.workshop_state = {}
 	w.by_id[a].alive = false
 	w.by_id[a].death_day = 2
 	w.by_id[a].death_cause = "executed"

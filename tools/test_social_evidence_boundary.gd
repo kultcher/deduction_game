@@ -9,7 +9,6 @@ var fails = 0
 
 func _init() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = true
 	g.new_case(7101, 7)
 	var w = g.w
@@ -18,6 +17,7 @@ func _init() -> void:
 	listener.info_log = []
 	listener.known_claims = {}
 	listener.ledger = {}
+	listener.workshop_state = {}
 	listener.cleared = {}
 	listener.role = "surveyor"
 	listener.traits.confidence = 0.5
@@ -59,7 +59,6 @@ func _init() -> void:
 
 func _opinions() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = false
 	g.new_case(7101, 7)
 	var listener = g.w.living_good()[0]

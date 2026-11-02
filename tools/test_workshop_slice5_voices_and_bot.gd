@@ -36,7 +36,6 @@ func _check(cond: bool, msg: String) -> void:
 
 func _game(seed_val: int = 2501, size: int = 7):
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = false
 	g.new_case(seed_val, size)
 	for p in g.w.npcs:
@@ -47,10 +46,11 @@ func _game(seed_val: int = 2501, size: int = 7):
 			m.known_claims = {}
 			m.beliefs = []
 			m.ledger = {}
-			m.workshop_state = {"enabled": false, "reasoning_mode": "full", "confidence_mode": "scale"}
+			m.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 			for id in m.suspicion:
 				m.suspicion[id] = 0.1
-	g.set_workshop_effects(true)
+			if not m.is_evil():
+				Mind.refresh_beliefs(g.w, m, " (clean)")
 	return g
 
 func _init() -> void:

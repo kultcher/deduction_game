@@ -829,7 +829,6 @@ func grimoire_modifiers():
 
 func count_reason_names():
 	var g = fresh()
-	g.set_workshop_effects(true)
 	var source = g.w.living_good()[0]
 	var listener = g.w.living_good()[1]
 	var rng = g.w.rng.state

@@ -3,15 +3,13 @@
 ##
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
-##         [--native] [--no-attention]
+##         [--no-attention]
 ##
 ## --passive: a control player who does nothing (waits every phase, declines approaches,
 ## never nominates, votes no, sleeps). The town's win rate on its own.
 ##
 ## --transcript prints everything the player would see. Logs go to <log-dir>/case_<seed>.*
 ## --no-trace skips detailed state sidecars; ordinary developer logs and metrics remain.
-## --native runs the legacy belief rules (shared assessment off) on the same source, for
-## A/B comparisons with identical seeds.
 ## --no-attention (experiment): every shared-model listener reads every card it holds;
 ## Insight still limits links and the explanation search. Measures how much the card
 ## budget scatters the town's beliefs, and what reading everything costs.
@@ -41,7 +39,6 @@ var g
 var transcript = false
 var passive = false
 var trace_enabled = true
-var native = false
 var no_workshop_cases = false
 var no_hub = false
 var talked = {}
@@ -67,7 +64,6 @@ func _init() -> void:
 	transcript = args.has("transcript")
 	passive = args.has("passive")
 	trace_enabled = not args.has("no-trace")
-	native = args.has("native")
 	no_workshop_cases = args.has("no-workshop-cases")
 	no_hub = args.has("no-hub")
 	if args.has("no-attention"):
@@ -117,7 +113,7 @@ func _init() -> void:
 			push_error("Cannot write results: " + path)
 			quit(1)
 			return
-		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "beliefs": "native" if native else "shared", "workshop_cases": not (native or no_workshop_cases), "circumstantial_hub": not (native or no_workshop_cases or no_hub), "attention": "unlimited" if args.has("no-attention") else "budgeted", "seed_start": first,
+		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "beliefs": "shared", "workshop_cases": not no_workshop_cases, "circumstantial_hub": not (no_workshop_cases or no_hub), "attention": "unlimited" if args.has("no-attention") else "budgeted", "seed_start": first,
 			"npcs": int(args.get("npcs", "7")), "rng_note": "Same seed matches setup; player actions can change later random draws.",
 			"summary": summary, "cases": case_results}, "\t"))
 		file.close()
@@ -141,8 +137,6 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	new_talk_counts = {}
 	for key in NEW_ACTIONS: new_talk_counts[key] = 0
 	_out(g.new_case(seed_v, npc_count))
-	if native:
-		g.set_workshop_effects(false)
 	if echo:
 		g.w.dlog.echo = true
 	var guard = 0
@@ -679,7 +673,7 @@ static func _parse(argv: PackedStringArray) -> Dictionary:
 ## suspicious person. Returns the deduction card number, or 0.
 func _find_or_file_deduction() -> int:
 	var sc = _scores()
-	if not native and not no_workshop_cases and g.workshop_effects:
+	if not no_workshop_cases:
 		var built: Dictionary = BotWorkshop.build_and_file_case(g, sc, not no_hub, filed_workshop_sigs, last_workshop_case_by_target)
 		if int(built.get("card", 0)) > 0:
 			workshop_cases_filed += 1

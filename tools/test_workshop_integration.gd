@@ -181,13 +181,12 @@ func _routes() -> void:
 		b.info_log = []
 		var ar = off._evaluate_deduction(a, off.board[-1], 0.6, false, venue)
 		var br = on._evaluate_deduction(b, on.board[-1], 0.6, false, venue)
-		check(ar == br and _state(off) == _state(on), "comparison preserves actual legacy behavior and RNG at " + venue)
-		check(on.workshop_comparisons[-1].venue == venue and on.workshop_comparisons[-1].has("legacy"), "each venue retains side-by-side diagnostics")
+		check(ar == br and _state(off) == _state(on), "comparison preserves actual shared behavior and RNG at " + venue)
+		check(on.workshop_comparisons[-1].venue == venue and on.workshop_comparisons[-1].actual.model == "shared", "each venue retains side-by-side diagnostics")
 	check(off.workshop_comparisons.is_empty(), "comparison is opt-in")
 
 func _game(size: int):
 	var g = Game.new()
-	g.workshop_effects = false # This suite compares the native route with diagnostics.
 	g.detailed_logging = false
 	g.new_case(692, size)
 	return g

@@ -99,6 +99,12 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				note = "The cited observation rules out their presence where that gift required them to be; impairment cannot explain that."
 			else:
 				cause_agreement *= 1.0 - quality(listener, report.source)
+			if report.role == "gravedigger" and view.has("timeline"):
+				var gd_n: int = report.night if int(report.get("night", -1)) >= 0 else int(report.get("observed_at", {}).get("day", -1))
+				if not preload("res://workshop/live_history.gd").executed(view, str(report.data.get("executed", "")), gd_n):
+					accuracy_agreement = maxf(accuracy_agreement, 0.9 * hearing)
+					cause_agreement = accuracy_agreement
+					note = "No such public execution happened that night; impairment cannot explain that Gravedigger report."
 			if report.source != listener.id and report.role == listener.knowledge.get("own_role", ""):
 				cause_agreement = hearing # firsthand knowledge of a unique gift claim
 				note = "They claim the unique gift I know I hold. Impairment cannot explain that role claim."

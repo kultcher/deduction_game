@@ -49,7 +49,6 @@ func _init() -> void:
 
 func _game(sd: int, size: int = 10):
 	var g = Game.new()
-	g.workshop_effects = false # Native mechanics fixtures; shared integration has its own suites.
 	g.log_dir = "user://test_logs"
 	g.new_case(sd, size)
 	return g
@@ -233,10 +232,13 @@ func _warden_doors() -> void:
 
 func _martyr_reluctance() -> void:
 	var g = _game(7106)
-	g.set_workshop_effects(false) # Isolate the unchanged vote formula from evidence.
 	var w = g.w
 	var m = w.npcs.filter(func(x): return not x.is_evil())[0]
 	var t = w.npcs.filter(func(x): return not x.is_evil() and x != m)[0]
+	m.info_log = []
+	m.known_claims = {}
+	m.ledger = {}
+	m.workshop_state = {}
 	m.role = "martyr"
 	m.martyr_target = t.id
 	m.suspicion[t.id] = 0.7
@@ -449,7 +451,11 @@ func _own_lies() -> void:
 	n.traits["privacy"] = 0.0
 	n.pressure = 1.0
 	n.trust = 1.0
+	g._workshop_native_submission = true
+	g._workshop_native_social = true
 	var r = Argue.evaluate(w, n, g.board[dn - 1], g.board, 1.0)
+	g._workshop_native_submission = false
+	g._workshop_native_social = false
 	var line: String = r["lines"][0]["text"] if not r["lines"].is_empty() else ""
 	_check(not ("I know it's false" in line), "caught in their own lie, they don't call it false (%s)" % line)
 	_check("wasn't where I said" in line, "an open, pressed NPC owns up")
@@ -521,7 +527,6 @@ func _claim_backed_options() -> void:
 ## A reason is citable only to an audience that already has it (Oct 19 provenance fix).
 func _setup_private_reading(sd: int):
 	var g = _game(sd)
-	g.set_workshop_effects(true)
 	var w = g.w
 	var good: Array = w.living_good()
 	var n = good[0]
@@ -582,7 +587,7 @@ func _accuse_tiers() -> void:
 	# No private reason: a bare accusation.
 	n.info_log = []
 	n.ledger = {}
-	Mind.recompute_beliefs(w, n, " (clear own reading)")
+	Mind.refresh_beliefs(w, n, " (clear own reading)")
 	_check(Mind._accuse_tier(w, n, t, 0.9)["tier"] == "generic", "with no reason to protect, a generic accusation")
 
 ## Asking a hinter why: they may decline; if they tell, it's in confidence, and using it at
@@ -700,7 +705,6 @@ func _relay_unnamed() -> void:
 func _defence_moves() -> void:
 	# A Lamplighter seen out explains it; it sways those who trust them more.
 	var g = _game(7350)
-	g.set_workshop_effects(true)
 	var w = g.w
 	var goods: Array = w.living_good()
 	var d = goods[0]
@@ -725,7 +729,7 @@ func _defence_moves() -> void:
 		m.known_claims = {}
 		m.ledger = {}
 		m.beliefs = [{"kind": "saw", "who": d.id, "loc": "", "block": "docks", "day": 1, "phase": 3, "how": "window", "detail": "street"}]
-		Mind.recompute_beliefs(w, m, " (murder-block sighting)")
+		Mind.refresh_beliefs(w, m, " (murder-block sighting)")
 	l1.npc_trust[d.id] = 0.95
 	l2.npc_trust[d.id] = 0.05
 	var b1 = l1.suspicion[d.id]
@@ -737,7 +741,6 @@ func _defence_moves() -> void:
 	_check(drop1 > drop2 and drop1 > 0.01, "it sways those who trust them more (%.3f vs %.3f)" % [drop1, drop2])
 	# Named in a Seer's pair: points at the other one.
 	var g2 = _game(7360)
-	g2.set_workshop_effects(true)
 	var w2 = g2.w
 	var gs: Array = w2.living_good()
 	var seer = gs[0]

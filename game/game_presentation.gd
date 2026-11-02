@@ -50,9 +50,7 @@ static func workshop_readiness(g, card: Dictionary, listeners: Array, targets: A
 	for real in listeners:
 		var n = real.shadow if real.is_evil() else real
 		var check: Dictionary
-		if not g.workshop_effects:
-			check = {"ready": false, "issues": ["Shared effects are disabled."], "exit_point": "disabled"}
-		elif n == null:
+		if n == null:
 			check = {"ready": false, "issues": ["Listener assessment is not available yet."], "exit_point": "listener"}
 		else:
 			check = WorkshopPresentation.readiness(g, n, card, targets, direction, venue)
@@ -81,10 +79,6 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 		return true
 	var check: Dictionary = workshop_readiness(g, card, listeners, targets, direction, venue)
 	if check.ready:
-		return true
-	if not g.workshop_effects:
-		# The player switched shared effects off: the legacy rules are what they asked for.
-		g._workshop_native_submission = true
 		return true
 	if _bare_speech(check.issues):
 		# No evidence at all ("I believe they're not the Demon"): speech, which stays
@@ -182,24 +176,6 @@ static func _presentation_rejection(g, card: Dictionary) -> String:
 	return ""
 
 
-static func set_workshop_effects(g, on: bool) -> void:
-	if g.workshop_presenting:
-		return
-	g.workshop_effects = on
-	for real in g.w.npcs:
-		var minds: Array = [real]
-		if real.shadow != null:
-			minds.append(real.shadow)
-		for n in minds:
-			if n.is_evil():
-				# Preserve a turned good mind's reversible layer until its cover
-				# is created or it is restored. Never run inference on real evil.
-				n.workshop_state["enabled"] = on
-				continue
-			n.workshop_state["enabled"] = on
-			Mind.recompute_beliefs(g.w, n, " (shared ownership toggled)")
-
-
 static func workshop_retract(g, number: int, listener_id: String) -> void:
 	if g.workshop_presenting:
 		# Internal revision retirement is part of the same presentation, so it
@@ -230,7 +206,7 @@ static func _workshop_retract(g, number: int, listener_id: String) -> void:
 			entry.weight = 0.0
 			entry.justs = []
 			entry.meta = {"kind": "retired_workshop"}
-	Mind.recompute_beliefs(g.w, n, " (case endorsement withdrawn)")
+	Mind.refresh_beliefs(g.w, n, " (case endorsement withdrawn)")
 
 
 ## All three deduction venues share receipt ownership and optional comparison.
@@ -259,8 +235,8 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 	var result: Dictionary = Argue.evaluate(g.w, n, ded, g.all_receipts(), scale, speak)
 	if result.get("blocked", false):
 		return result
-	if g.workshop_effects and not result.get("workshop", false):
-		Mind.recompute_beliefs(g.w, n, " (shared presentation)")
+	if not result.get("workshop", false):
+		Mind.refresh_beliefs(g.w, n, " (shared presentation)")
 		_conflict_pressure(g, ded, 0.1 if venue == "private" else 0.2, n, true)
 	if g.workshop_compare:
 		var comparison: Dictionary = WorkshopAssessment.evaluate(snapshot)
@@ -283,9 +259,7 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 	if ded.has("workshop_case"):
 		var capability: Dictionary = _canvas_status(g, ded.workshop_case)
 		var issues: Array = capability.issues.duplicate()
-		if not g.workshop_effects:
-			issues.append("Experimental reading effects are switched off.")
-		elif not result.get("workshop", false) and issues.is_empty():
+		if not result.get("workshop", false) and issues.is_empty():
 			issues.append("This listener could not use the shared assessment; existing response rules were used.")
 		g.workshop_deliveries.append({
 			"listener": n.id,
@@ -398,7 +372,7 @@ static func _present_fallback(g, n, num: int, why: String) -> Dictionary:
 ## "Something doesn't add up" puts the people involved under scrutiny: publicly, all of
 ## them; privately, only the listener if they're one of them.
 static func _conflict_pressure(g, ded: Dictionary, amount: float, listener, fallback: bool = false) -> void:
-	if g.workshop_effects and not fallback:
+	if not fallback:
 		return # The supported assessment owns scrutiny; unsupported paths retain native behavior.
 	var c: Dictionary = ded.get("conclusion", {})
 	if c.get("type", "") != "conflict":

@@ -24,7 +24,7 @@ func _live(size: int) -> void:
 				listener.known_claims = {}
 				listener.beliefs = []
 				listener.ledger = {}
-				listener.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+				listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	var source = g.w.living_good()[0]
 	var observer = g.w.living_good()[1]
 	var first = {"day": 1, "phase": 0, "role": "dowser", "data": {"group": [source.id, observer.id], "count": 1}, "text": "One evil presence"}
@@ -86,7 +86,7 @@ func _live(size: int) -> void:
 	duplicate.eid = coarse
 	duplicate.weight = 0.2
 	observer.ledger[coarse] = duplicate
-	Mind.recompute_beliefs(g.w, observer, "old/new exact ownership")
+	Mind.refresh_beliefs(g.w, observer, "old/new exact ownership")
 	check(observer.workshop_state.active and observer.workshop_state.owned.has(coarse) and observer.workshop_state.facts.size() == 3, "an exactly identified old record can coexist with new records without duplicating a fact")
 	check(once.keys().all(func(id): return is_equal_approx(once[id], observer.workshop_state.requested.get(id, INF))), "a weaker duplicate path cannot reduce the strongest complete reading hearing")
 

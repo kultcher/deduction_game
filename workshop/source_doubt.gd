@@ -107,7 +107,8 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			if ckind == "report" and crole == "gravedigger":
 				var ex_self: String = str(card.get("data", {}).get("executed", ""))
 				var role_self: String = str(card.get("data", {}).get("role", ""))
-				if ex_self != "" and C.ROLES.has(role_self):
+				var self_missing_exec: bool = view.has("timeline") and not History.executed(view, ex_self, cnight)
+				if not self_missing_exec and ex_self != "" and C.ROLES.has(role_self):
 					if C.ROLES[role_self]["align"] == "evil":
 						pre_eval[ex_self + ":*"] = 1.0
 					elif not proven_revenants.has(ex_self):
@@ -126,7 +127,8 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if ckind == "report" and crole == "gravedigger":
 			var ex_id: String = str(card.get("data", {}).get("executed", ""))
 			var ex_role: String = str(card.get("data", {}).get("role", ""))
-			if proven_revenants.has(ex_id) and ex_role != "revenant" and not settled_sincere.has(csrc):
+			var missing_exec: bool = view.has("timeline") and not History.executed(view, ex_id, cnight)
+			if (missing_exec or (proven_revenants.has(ex_id) and ex_role != "revenant")) and not settled_sincere.has(csrc):
 				pre_eval[csrc + ":*"] = 1.0
 		if ckind == "alibi" and cnight >= 0:
 			for subj in card.get("subjects", [card.get("subject", "")]):

@@ -60,7 +60,6 @@ func _insight() -> void:
 		var n = g.w.npcs[0]
 		n.traits.insight = insight
 		var number = _proof(g)
-		g.set_workshop_effects(true)
 		var rng: int = g.w.rng.state
 		var r = g._evaluate_deduction(n, g.board[number - 1], 1.0, true)
 		check(r.get("workshop", false), "native cognitive profile uses shared presentation")
@@ -92,7 +91,7 @@ func _insight() -> void:
 		check(ghost.ready and ghost.proposal.reasoning.profile == "Full" and ghost.proposal.theory.mode == "scale", "neutral ghost remains full reasoning without native theory memory")
 		check(JSON.stringify([n.workshop_state, n.suspicion, n.trust, g.w.rng.state]) == before, "both preview types leave theories, beliefs and RNG untouched")
 		g.w.day += 1
-		Mind.recompute_beliefs(g.w, n, "new date, original alignment unchanged")
+		Mind.refresh_beliefs(g.w, n, "new date, original alignment unchanged")
 		check(n.workshop_state.theories == theories and _close(beliefs, n.suspicion), "day advance does not reset original-alignment theories or award evidence again")
 		if insight < 0.2:
 			n.traits.insight = 0.9
@@ -100,8 +99,6 @@ func _insight() -> void:
 			check(not revised.repeated and revised.assessment.reasoning.profile == "High" and n.workshop_state.reasoning.profile == "High", "a changed live trait invalidates both assessment caches and repetition status")
 		g.workshop_retract(number, n.id)
 		check(n.workshop_state.facts.is_empty() and _close(n.suspicion, n.workshop_state.outside), "sole-case retraction removes all persuasion even while theory memory remains")
-		g.set_workshop_effects(false)
-		check(not n.workshop_state.active and n.workshop_state.owned.is_empty(), "disable restores native ownership")
 	check(results[0].assessment.reasoning.limited and results[0].assessment.reasoning.status != "entailed_in_attention", "low Insight cannot borrow the complete referee proof")
 	check(results[2].assessment.reasoning.status == "entailed_in_attention" and results[2].agreement > results[0].agreement, "high Insight can establish the implication missed by the low profile")
 
@@ -118,7 +115,6 @@ func _attention() -> void:
 	for day in range(1, 7):
 		cards.append(_read(g, p[1], "dowser", day, {"group": [p[3].id], "count": 0}))
 	var number = g.file_deduction({"type": "good", "a": p[3].id}, cards)
-	g.set_workshop_effects(true)
 	var r = g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
 	check(r.get("workshop", false), "seven legal receipts fit the unchanged workload capability gate")
 	check(r.assessment.reasoning.considered.size() == cards.size() and own_id in r.assessment.reasoning.ignored, "all six presented cards are read; private evidence competes for the remaining budget")
@@ -126,7 +122,7 @@ func _attention() -> void:
 	var thought = n.workshop_state.theories.duplicate(true)
 	var beliefs = n.suspicion.duplicate(true)
 	for i in range(3):
-		Mind.recompute_beliefs(g.w, n, "same evidence")
+		Mind.refresh_beliefs(g.w, n, "same evidence")
 	check(n.workshop_state.theories == thought and _close(beliefs, n.suspicion), "automatic refresh cannot accumulate theory commitment")
 	# Known testimony from other people is not firsthand gift experience.
 	Mind.apply_info(g.w, n, p[1], {"role": "dowser", "day": 1, "phase": 0, "data": {"group": [p[3].id], "count": 0}}, 1.0)
@@ -146,14 +142,13 @@ func _confidence() -> void:
 		n.suspicion[p[3].id] = 0.6
 		var card = _read(g, p[1], "dowser", 1, {"group": [p[3].id], "count": 1})
 		var number = g.file_deduction({"type": "evil", "a": p[3].id}, [card])
-		g.set_workshop_effects(true)
 		var first = g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
 		initial.append(n.workshop_state.requested.duplicate(true))
 		atoms.append(first.assessment.support_model.atoms)
 		var key: String = p[3].id + "|Original alignment"
 		var old: String = n.workshop_state.theories[key].position
 		Mind.adjust(g.w, n, p[3].id, 0.15 - n.workshop_state.outside[p[3].id], "independent contrary evidence", "", false)
-		Mind.recompute_beliefs(g.w, n, "changed independent evidence")
+		Mind.refresh_beliefs(g.w, n, "changed independent evidence")
 		outcomes.append([old, n.workshop_state.theories[key].position, n.workshop_state.theories[key].decision.status])
 		if confidence > 0.5:
 			var clear = _read(g, p[1], "dowser", 2, {"group": [p[3].id], "count": 0})
@@ -167,30 +162,30 @@ func _cover_and_fallback() -> void:
 	var g = _game()
 	var n = g.w.npcs[0]
 	var number = _proof(g)
-	g.set_workshop_effects(true)
 	g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
 	var committed = n.workshop_state.theories.duplicate(true)
+	var last_good = n.suspicion.duplicate(true)
+	g.shared_fallbacks.clear()
 	g.w.public_log.append({"day": 1, "kind": "curse", "subjects": [n.id], "by": "town"})
-	Mind.recompute_beliefs(g.w, n, "unsupported public transition")
-	check(not n.workshop_state.active and n.workshop_state.owned.is_empty() and n.workshop_state.theories == committed, "unsupported history falls back without applying or changing dormant theory memory")
+	Mind.refresh_beliefs(g.w, n, "unsupported public transition")
+	check(n.workshop_state.active and _close(n.suspicion, last_good) and not g.shared_fallbacks.is_empty() and n.workshop_state.theories == committed, "unsupported history keeps last good vector and theory memory while logging fallback")
 	g.w.public_log.clear()
-	Mind.recompute_beliefs(g.w, n, "supported evidence again")
-	check(n.workshop_state.active, "supported ownership recovers after capability fallback")
+	Mind.refresh_beliefs(g.w, n, "supported evidence again")
+	check(n.workshop_state.active and n.workshop_state.issues.is_empty(), "supported ownership clears fallback issues once resolved")
 	var evil = g.w.npcs.filter(func(p): return p.is_evil())[0]
 	Mind.shadow_run(g.w, evil, func(_cover): pass)
 	var real_before = [evil.suspicion.duplicate(true), evil.intel.duplicate(true)]
 	g._evaluate_deduction(evil, g.board[number - 1], 1.0, true)
-	check(evil.shadow.workshop_state.get("enabled", false) and g.workshop_snapshot([number], evil.id).listener.reasoning_mode == "bounded", "evil's cover receives the bounded native profile")
+	check(evil.shadow.workshop_state.get("active", false) and g.workshop_snapshot([number], evil.id).listener.reasoning_mode == "bounded", "evil's cover receives the bounded native profile")
 	check(real_before == [evil.suspicion, evil.intel] and not evil.workshop_state.has("theories"), "cover cognition never changes the real evil mind or supplies evil intelligence")
 	g.new_case(692, 7)
-	check(g.w.npcs.all(func(p): return p.workshop_state.get("presentations", {}).is_empty() and p.workshop_state.get("discussion", {}).is_empty()) and g.workshop_effects, "new case clears prior presentations and keeps shared evaluation enabled")
+	check(g.w.npcs.all(func(p): return p.workshop_state.get("presentations", {}).is_empty() and p.workshop_state.get("discussion", {}).is_empty()), "new case clears prior presentations")
 
 func _registration() -> void:
 	var g = _game()
 	var p: Array = g.w.npcs
 	var n = p[0]
 	var number = _proof(g)
-	g.set_workshop_effects(true)
 	g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
 	var marked = g.file_deduction({"type": "marked", "a": p[4].id}, g.board[number - 1].supports)
 	var before = n.suspicion.duplicate(true)

@@ -1,6 +1,6 @@
 # Retiring the old belief system: inventory and plan
 
-Prepared by Claude, Oct 30, 2026. **Status (Nov 2):** phases 1, 2a, and 2b merged on `main`; **phase 2c implemented** (empty ledger `effects`, all 12 role `info_effects` deleted, legacy doubt/honesty/hearing/parking/retraction arithmetic removed, `_recompute_beliefs` reduced to the shared refresh plus metadata preferences). Phases 3 and 4 remain below.
+Prepared by Claude, Oct 30, 2026. **Status (Nov 2):** phases 1, 2a, and 2b merged on `main`; **phases 2c and 3 implemented** (empty ledger `effects`, all 12 role `info_effects` deleted, `workshop_effects` / `set_workshop_effects` / Debug toggles / `--native` removed, Gravedigger missing-execution readiness fixed, unready refreshes keep the last good vector and log the issue, and `recompute_beliefs` renamed to `refresh_beliefs`). Only Phase 4 (template evaluator retirement after the bot rewrite) remains below.
 
 The user asked for the old belief system to be purged. On Oct 24–25 the user had decided to keep a deliberate hybrid, recorded in the Project doc `claude/legacy-migration-plan.md`. That decision included "not deleting the legacy ledger wholesale", and it kept the native rules as the baseline for the bot A/B test. Purging reverses part of that, so this note lists what exists, what is still live, and the questions that need answers first.
 
@@ -115,13 +115,17 @@ Goal: stop computing, parking, or retracting legacy effect arrays while preservi
   4. **Shrunk `_recompute_beliefs`.** Runs `workshop_refresh` (`"before"` / `"after"`) over the outside baseline, refreshes metadata-backed non-suspicion preferences and role beliefs (`protect_pref`, `spare_pref`, `believed_roles`, and `e["eff"]`), prunes stale resentments, and captures the devlog snapshot.
   5. **Tests:** `tools/test_legacy_purge_phase2c.gd` verifies empty ledger `effects` across all receipt kinds, deletion of `info_effects` / `_night_doubt` / `_honesty` / `Argue._apply` presentation parking, Seer `on_reading_heard` `cleared` preservation, metadata-derived preferences/role beliefs, and multi-day shared-mode stability with zero fallbacks.
 
-### Phase 3: remove the switch and the fallback (one PR)
+### Phase 3: remove the switch and the fallback (one PR, implemented Nov 2)
 
-1. Delete `Game.workshop_effects`, `set_workshop_effects`, the Debug toggles (`ui/live_case_workshop.gd`, `ui/workshop_comparison.gd`) and the bot's `--native` mode.
-2. **When a refresh can't be prepared (confirmed Nov 1):** keep the last good vector and log the issue. Also fix the one known not-ready case worth fixing first: a Gravedigger report with no matching public execution on that night.
-3. Rename `recompute_beliefs` to `refresh_beliefs` (the shared refresh only) across its call sites.
-4. **Tests:** about 40 suites mention the switch. Delete native-parity checks; keep and rewrite anything that tests behaviour; drop `test_legacy_migration`'s native half.
-5. Baselines: native is gone (decision 1); record the first post-purge bot baseline here once the tuning overhaul settles.
+Goal: make shared Workshop evaluation unconditional, eliminate the native belief toggle, and keep the last good shared vector on any unprepared refresh.
+
+- **As built (Nov 2, `game/`, `sim/`, `workshop/`, `ui/`, `tools/`):**
+  1. **Switch, Debug toggles, and `--native` deleted.** Removed `Game.workshop_effects`, `Game.set_workshop_effects`, `GamePresentation.set_workshop_effects`, `DebugItem.EFFECTS` in `ui/live_case_workshop.gd`, `effects_toggle` in `ui/workshop_comparison.gd`, `--native` in `tools/autoplay.gd`, and `workshop_state["enabled"]` checks across `sim/`, `game/`, and `tools/`.
+  2. **Atomic unready-refresh handling (`game/workshop_ownership.gd`).** `WorkshopOwnership._refresh` checks `Shared.prepare` readiness (both before and after `SourceDoubt.derive`) against the candidate outside baseline prior to retracting or mutating `n.suspicion` or `n.workshop_state`. When a refresh cannot be prepared, the listener retains its last good shared suspicion vector (plus any independent `outside` adjustments) and logs the issue via `WorkshopOwnership.fallback` (`g.shared_fallbacks` / `legacy_fallback` devlog). Presentation rollbacks in `WorkshopPresentation._present` restore prior `presentations` and `attention_focus` cleanly if `g._workshop_plans` has no prepared union.
+  3. **Gravedigger missing-execution readiness (`workshop/live_assessment.gd`, `workshop/role_constraints.gd`, `workshop/solver.gd`, `workshop/reading_challenges.gd`, `workshop/source_doubt.gd`, `workshop/reason_attribution.gd`).** Removed the `LiveAssessment.prepare` readiness blocker on Gravedigger reports without a matching public execution on that night. When `view` carries `timeline`, `RoleConstraints._fits` and `Solver._report_content` / `_testimony_content` reject worlds where a good source reports a Gravedigger reading without a matching execution (since poison/Delusion only falsify `data.role`, never the existence or target of a public hanging), `SourceDoubt.derive` marks an unquoted non-sincere claimant `source:* = 1.0`, `ReadingChallenges.assess` backs `"lying"` challenges, and `ReasonAttribution` cites the bogus hanging claim.
+  4. **Renamed `recompute_beliefs` -> `refresh_beliefs`** (and `_recompute_beliefs` -> `_refresh_beliefs`) across `sim/mind.gd`, `sim/mind_meeting.gd`, `game/game_presentation.gd`, `game/workshop_presentation.gd`, and all test suites in `tools/`.
+  5. **Tests:** Updated all 37 affected suites in `tools/` (removing switch toggles and native-parity blocks, dropping `test_legacy_migration`'s native migration toggle, and rewriting fallback/Gravedigger checks to assert Phase 3 behaviour) and added `tools/test_legacy_purge_phase3.gd`.
+  6. **Baselines:** Native is gone (decision 1); record the first post-purge bot baseline once the tuning overhaul settles.
 
 ### Phase 4: retire the template evaluator (after the bot builds Workshop cases)
 
@@ -135,7 +139,7 @@ Goal: stop computing, parking, or retracting legacy effect arrays while preservi
 - 2a done (Nov 1–2, `ff13ea6`). Fixes the "no citable reasons" playtest problem, lazily attributes shared-model reasons on demand, and retires meeting/defence reads of legacy magnitudes.
 - 2b done (Nov 2; about 5% slower than 2a over four seeds to Day 4). Retires shared-mode reads of `discounted` / `honesty` via `source_doubt`, moves Gravedigger rapport out of `info_effects`, converts grief to private fading `resentments`, restores freed souls from pre-turn snapshots, deletes the Revenant `+1.0` `adjust`, and adds player-presented `shielding` vote circumstantial evidence.
 - 2c done (Nov 2): empties ledger `effects`, deletes all 12 role `info_effects` and legacy doubt/honesty/hearing/parking/retraction arithmetic, and shrinks `_recompute_beliefs` to the shared refresh plus metadata preferences.
-- 3 next, right before the overhaul's phase 5 sweeps, so the sweeps measure the final structure.
+- 3 done (Nov 2): removes `workshop_effects` / `set_workshop_effects` / Debug toggles / `--native`, keeps the last good shared vector on unprepared refreshes, supports Gravedigger reports with no matching execution on that night, and renames `recompute_beliefs` to `refresh_beliefs`.
 - 4 whenever the bot rewrite happens.
 
 ### Open items

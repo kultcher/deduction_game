@@ -35,7 +35,7 @@ func _init() -> void:
 	var claims: Array = plan.prepared.view.cards.filter(func(c): return c.kind == "claim" and c.source == rival.id)
 	check(plan.ready and claims.size() == 1 and is_equal_approx(claims[0].hearing_weight, 0.5), "a public rival declaration enters once at its hearing weight")
 	var before: Dictionary = listener.workshop_state.requested.duplicate(true)
-	Mind.recompute_beliefs(g.w, listener, "empty-effects double-claim probe")
+	Mind.refresh_beliefs(g.w, listener, "empty-effects double-claim probe")
 	check(listener.workshop_state.requested == before and listener.ledger.values().all(func(entry): return entry.effects.is_empty()), "claim ledger entries carry empty effects and stable shared requested deltas")
 	var original: String = listener.ledger[eid].meta.workshop_card.id
 	g.w.day += 1
@@ -48,8 +48,7 @@ func _init() -> void:
 	var size: int = listener.ledger.size()
 	Mind.press(g.w, listener, card)
 	check(listener.ledger.size() == size and listener.ledger[counter].times == 2, "repeated pressing has one stable claim owner")
-	g.set_workshop_effects(false)
-	check(Mind.claim_credence(listener, rival.id, "seer") > 0 and not listener.workshop_state.get("active", false), "disabling shared effects retracts ownership while retaining claim eff weight")
+	check(Mind.claim_credence(listener, rival.id, "seer") > 0 and listener.workshop_state.get("active", false), "shared ownership retains claim eff weight")
 	var report = {"id": "anonymous", "kind": "report", "source": "a", "role": "seer", "testimony_only": true}
 	var view = {"cards": [report]}
 	check(not Assess.conclusion_issues(view, {"cards": [report.id], "conclusion": {"type": "role", "target": "a", "role": "seer"}}).is_empty(), "an anonymous reading retold by a teller is not their gift declaration")

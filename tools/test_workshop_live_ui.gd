@@ -36,14 +36,11 @@ func _run() -> void:
 	g.set_debug_overlay(true)
 	panel.refresh()
 	check(g.prediction_spoiled and not panel.inspect_button.disabled, "debug inspection is labelled and follows existing scoring rules")
-	panel.effects_toggle.button_pressed = true
-	check(g.workshop_effects, "experimental ownership switch enables restricted effects explicitly")
 	g.workshop_compare = true
 	g._evaluate_deduction(n, g.board[-1], 0.6, true, "meeting")
 	panel._records()
 	check("Applied shared assessment" in panel.output.text and not g.workshop_comparisons[-1].has("legacy"), "recorded applied assessments name the actual model without inventing a legacy comparison")
-	panel.effects_toggle.button_pressed = false
-	check(not g.workshop_effects, "experimental switch can restore legacy ownership")
+	g.workshop_compare = false
 	for i in range(panel.listeners.item_count):
 		if panel.listeners.get_item_metadata(i) == n.id:
 			panel.listeners.select(i)
@@ -55,7 +52,7 @@ func _run() -> void:
 	check(g.workshop_compare, "recording control enables the shared venue comparator")
 	g._evaluate_deduction(n, g.board[-1], 0.6, false, "meeting")
 	panel._records()
-	check("Original agreement" in panel.output.text and "meeting" in panel.output.text, "recorded original and new responses appear together")
+	check("Applied shared assessment" in panel.output.text and "meeting" in panel.output.text, "recorded shared assessment and proposal appear together")
 	panel.refresh()
 	await panel._inspect()
 	for i in range(2):

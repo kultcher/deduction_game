@@ -165,7 +165,6 @@ func _test_knob2_reactive_reveal_pivot_and_fear_paranoia_fix() -> void:
 	seer.traits["composure"] = 0.75
 	seer.ledger.clear()
 	seer.workshop_state.clear()
-	seer.workshop_state["enabled"] = true
 	seer.info_log = [{"day": 1, "role": "seer", "data": {"pair": [suspect.id, partner.id], "yes": true}, "true": true, "shared": false, "text": "between %s and %s, one reads as the Demon" % [suspect.name, partner.name]}]
 	seer.applied_info = 0
 	Mind.update_from_own_info(w)

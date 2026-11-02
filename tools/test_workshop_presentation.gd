@@ -23,7 +23,6 @@ func _init() -> void:
 
 func _game():
 	var g = Game.new()
-	g.workshop_effects = false # Explicit legacy baseline before testing migration.
 	g.detailed_logging = false
 	g.new_case(692, 7)
 	for p in g.w.npcs:
@@ -63,7 +62,6 @@ func _trapped_group_response() -> void:
 	var number: int = LiveCanvas.file(g, canvas.compile(root))
 	check(number > 0, "challenged home alibi can be filed for a group presentation")
 	if number <= 0: return
-	g.set_workshop_effects(true)
 	var result: Dictionary = Presentation.present(g, n, g.board[number - 1], [others[0].id, others[1].id], "accuse", "private", true)
 	check(result.get("workshop", false), "challenged alibi is supported in group presentation")
 	if not result.get("workshop", false): return
@@ -77,11 +75,9 @@ func _direct_and_migration() -> void:
 	var source = g.w.npcs.filter(func(p): return p != n)[0]
 	var target = g.w.npcs.filter(func(p): return p != n and p != source)[0]
 	var card = _reading(g, source, "dowser", 1, {"group": [target.id], "count": 0})
-	var native = Mind.hear_defence(g.w, n, target, g.board[card - 1])
-	check(not native.get("workshop", false), "disabled mode retains native presentation")
-	check(n.ledger.values().any(func(e): return e.meta.get("kind") == "tell" and e.meta.has("workshop_card")), "native card presentations retain an exact original receipt for later migration")
-	g.set_workshop_effects(true)
-	check(n.workshop_state.active and n.workshop_state.owned.size() == 1, "existing direct card effects migrate into shared ownership")
+	var first_def = Mind.hear_defence(g.w, n, target, g.board[card - 1])
+	check(first_def.get("workshop", false) and n.workshop_state.active and n.workshop_state.owned.size() == 1, "direct card defence uses shared presentation and acquires one owner")
+	check(n.ledger.values().any(func(e): return e.meta.get("kind") == "tell" and e.meta.has("workshop_card")), "card presentations retain an exact original receipt")
 	var baseline = n.suspicion.duplicate(true)
 	n.pressed_today = 0
 	var result = Mind.hear_defence(g.w, n, target, g.board[card - 1])
@@ -129,7 +125,6 @@ func _conflicts() -> void:
 	var dowse = _reading(g, second, "dowser", 1, {"group": [a.id, b.id, c.id], "count": 3})
 	var conflict = g.file_deduction({"type": "conflict", "group": [source.id, second.id]}, [survey, dowse])
 	check(conflict > 0, "native conflict builder can supply a real supported conflict")
-	g.set_workshop_effects(true)
 	var before = n.suspicion.duplicate(true)
 	var result = g._evaluate_deduction(n, g.board[conflict - 1], 1.0, true)
 	if not result.get("workshop", false) or result.dialogue.stance != "accept":
@@ -179,29 +174,32 @@ func _venues_and_mixed() -> void:
 		var target = g.w.npcs.filter(func(p): return p != n and p != source)[0]
 		var card = _reading(g, source, "dowser", 1, {"group": [target.id], "count": 0})
 		var ded = g.file_deduction({"type": "good", "a": target.id}, [card])
-		g.set_workshop_effects(true)
 		var response = g._evaluate_deduction(n, g.board[ded - 1], 1.0 if venue == "private" else 0.6 if venue == "meeting" else 0.5, true, venue)
 		check(response.get("workshop", false), "supported deduction uses unified presentation at " + venue)
 		results.append([response.agreement, n.suspicion.duplicate(true), n.trust])
 		if venue == "private":
 			var vector: Dictionary = n.workshop_state.requested.duplicate(true)
-			Mind.recompute_beliefs(g.w, n, "unchanged inputs")
+			Mind.refresh_beliefs(g.w, n, "unchanged inputs")
 			check(g._workshop_evaluations[n.id + (":cover" if n.is_shadow else ":good")].cache_hit and _close(vector, n.workshop_state.requested), "unchanged joint reassessment reuses an exact cached input without changing effects")
 			n.npc_trust[source.id] = 0.1
-			Mind.recompute_beliefs(g.w, n, "source credibility changed")
+			Mind.refresh_beliefs(g.w, n, "source credibility changed")
 			check(not g._workshop_evaluations[n.id + (":cover" if n.is_shadow else ":good")].cache_hit and not _close(vector, n.workshop_state.requested), "source trust invalidates the aggregate cache")
 			n.npc_trust[source.id] = 1.0
-			Mind.recompute_beliefs(g.w, n, "source credibility restored")
+			Mind.refresh_beliefs(g.w, n, "source credibility restored")
 			check(_close(vector, n.workshop_state.requested), "restoring source trust restores the same joint vector")
 			var unsupported_source = g.w.npcs.filter(func(p): return p != n and p != source and p != target)[0]
 			Mind.apply_info(g.w, n, unsupported_source, {"role": "hearthwitch", "day": 1, "data": {"nbrs": [source.id, target.id], "count": 1}}, 0.2)
 			var unsupported_id = Mind.info_eid(unsupported_source.id, {"role": "hearthwitch", "day": 1, "data": {"nbrs": [source.id, target.id], "count": 1}})
 			check(n.workshop_state.active and n.ledger.has(unsupported_id) and not n.workshop_state.owned.has(unsupported_id), "independent unsupported readings retain native ownership without disabling supported evidence")
+			var hw_eid = Mind.info_eid(source.id, {"role": "hearthwitch", "day": 1, "data": {"nbrs": [source.id, target.id], "count": 1}})
 			Mind.apply_info(g.w, n, source, {"role": "hearthwitch", "day": 1, "data": {"nbrs": [source.id, target.id], "count": 1}}, 0.2)
-			check(not n.workshop_state.active and n.workshop_state.issues.any(func(s): return "shares a source" in s), "unsupported reports from the same source cannot be treated as independent background evidence")
-			n.ledger[Mind.info_eid(source.id, {"role": "hearthwitch", "day": 1, "data": {"nbrs": [source.id, target.id], "count": 1}})].weight = 0.0
-			Mind.recompute_beliefs(g.w, n, "coupled unsupported reading withdrawn")
-			check(n.workshop_state.active, "removing the coupled unsupported contribution restores supported ownership")
+			n.ledger[hw_eid].effects = [[target.id, 0.1, false, "coupled legacy probe", ""]]
+			var before_coupled: Dictionary = n.suspicion.duplicate(true)
+			Mind.refresh_beliefs(g.w, n, "coupled unsupported probe")
+			check(_close(n.suspicion, before_coupled) and n.workshop_state.issues.any(func(s): return "shares a source" in s), "coupled unsupported entry keeps last good vector and flags shared-source issue")
+			n.ledger[hw_eid].weight = 0.0
+			Mind.refresh_beliefs(g.w, n, "coupled unsupported reading withdrawn")
+			check(n.workshop_state.active and n.workshop_state.issues.is_empty(), "removing the coupled unsupported contribution clears the issue")
 			var extra = _reading(g, unsupported_source, "hearthwitch", 1, {"nbrs": [source.id, target.id], "count": 1})
 			var mixed = g.file_deduction({"type": "evil", "a": target.id}, [card, extra])
 			var fallback = g._evaluate_deduction(n, g.board[mixed - 1], 1.0, true)
@@ -223,7 +221,6 @@ func _scrutiny_and_cover() -> void:
 	var a = _reading(g, n, "surveyor", 0, {"count": 1})
 	var b = _reading(g, source, "dowser", 1, {"group": [first.id, second.id, third.id], "count": 3})
 	var conflict = g.file_deduction({"type": "conflict", "group": [n.id, source.id]}, [a, b])
-	g.set_workshop_effects(true)
 	var result = g._evaluate_deduction(n, g.board[conflict - 1], 1.0, true)
 	check(result.get("workshop", false) and result.agreement >= 0.6 and is_equal_approx(n.pressure, 0.1), "accepted conflict scrutiny applies once to an actual cited participant")
 	var trust: float = n.trust
@@ -295,7 +292,6 @@ func _intermediate() -> void:
 	var dowse = _reading(g, n, "dowser", 1, own_dowse.data)
 	var child = g.file_deduction({"type": "evil", "a": "hollis"}, [rumor, dowse])
 	var parent = g.file_deduction({"type": "evil", "a": "constance"}, [survey, child])
-	g.set_workshop_effects(true)
 	var started = Time.get_ticks_msec()
 	var result = g._evaluate_deduction(n, g.board[parent - 1], 1.0, true)
 	var first_ms = Time.get_ticks_msec() - started
@@ -339,7 +335,6 @@ func _private_reasons() -> void:
 	n.info_log.append(own)
 	Mind.apply_info(g.w, n, n, own, 1.0)
 	Mind.apply_info(g.w, n, source, rumor, 1.0)
-	g.set_workshop_effects(true)
 	check(n.workshop_state.active and n.workshop_state.requested.get(target.id, 0.0) >= 0.15, "a joint private inference can supply a substantial real belief effect")
 	check(Mind.reason_status(g.w, n, target.id).kind == "private" and Mind.citable_reason(g.w, n, target.id, "town") == "", "unpublished joint reports do not acquire a public citation")
 	var tier = Mind._accuse_tier(g.w, n, target, n.suspicion[target.id])
@@ -360,7 +355,6 @@ func _self_support_paths() -> void:
 	var source = g.w.living_good()[1]
 	var target = g.w.living_good()[2]
 	var number = _reading(g, source, "dowser", 1, {"group": [target.id], "count": 1})
-	g.set_workshop_effects(true)
 	var root = Evidence.normalize_card(g.board[number - 1]).id
 	var heard = Mind.hear_defence(g.w, n, n, g.board[number - 1])
 	check(heard.get("workshop", false) and root in n.workshop_state.facts, "a raw self-defence hears the evidence before deciding its reply")
@@ -381,7 +375,7 @@ func _self_support_paths() -> void:
 	var accused = Mind.hear_accusation(g.w, evil, evil, g.board[number - 1])
 	check(accused.get("workshop", false), "an evil self-accusation keeps its mask while reporting shared belief delivery")
 	var fixed = evil.shadow.suspicion.duplicate(true)
-	Mind.recompute_beliefs(g.w, evil.shadow, "self/group repeat")
+	Mind.refresh_beliefs(g.w, evil.shadow, "self/group repeat")
 	check(_close(fixed, evil.shadow.suspicion), "self and group roots cannot stack their original evidence")
 
 func _close(a: Dictionary, b: Dictionary) -> bool:

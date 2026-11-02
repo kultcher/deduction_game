@@ -14,7 +14,6 @@ func _init() -> void:
 
 func _run() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = false
 	g.new_case(692, 7)
 	g.w.day = 2
@@ -97,7 +96,6 @@ func _run() -> void:
 	var filed = Live.file(g, value)
 	check(filed > 0, "the supported explanation files as an ordinary case")
 	g.strict_evaluator = true
-	g.set_workshop_effects(true)
 	var heard = g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
 	check(heard.get("workshop", false) and secret_id in listener.workshop_state.facts, "an actual strict presentation retains the secret's exact shared root")
 	var before = listener.suspicion.duplicate(true)

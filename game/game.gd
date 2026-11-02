@@ -94,7 +94,6 @@ var log_paths: Array = []
 var debug = false
 var detailed_logging = true  # developer tracing, independent of spoiler/debug scoring
 var workshop_compare = false # opt-in diagnostics; never applies the proposed effects
-var workshop_effects = true # shared assessment is the normal presentation path
 ## Opt-in test assertion: unsupported presentations are rejected before any effects.
 var strict_evaluator = C.STRICT_EVALUATOR
 var _workshop_native_submission = false
@@ -262,7 +261,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	w.setup(seed_in, npc_count, func(_world): _attach_workshop_world())
 	if debug_overlay: set_debug_overlay(true)
 	w.dlog.begin_action("new_case_presentation")
-	w.dlog.trace_event("game_config", "world", "", {"workshop_effects": workshop_effects, "strict_evaluator": strict_evaluator})
+	w.dlog.trace_event("game_config", "world", "", {"strict_evaluator": strict_evaluator})
 	state = "day"
 	moved = false
 	approached_id = ""
@@ -302,16 +301,12 @@ func _attach_workshop_world() -> void:
 		var game = weak_game.get_ref()
 		if game == null or game.w != weak_world.get_ref():
 			return {}
-		if not game.workshop_effects or game._workshop_native_submission:
-			if game.workshop_effects and not game._workshop_native_social:
+		if game._workshop_native_submission:
+			if not game._workshop_native_social:
 				WorkshopOwnership.fallback(game, n, "submission", ["The whole audience is using existing response rules for this submission."], card.get("n", 0))
 			return {}
 		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak)
 	_home_cards()
-	for real in w.npcs:
-		real.workshop_state["enabled"] = workshop_effects
-		if real.shadow != null:
-			real.shadow.workshop_state["enabled"] = workshop_effects
 
 func _home_cards() -> void:
 	GameBoard._home_cards(self)
@@ -529,9 +524,6 @@ func _bare_speech(issues: Array) -> bool:
 
 func _presentation_rejection(card: Dictionary) -> String:
 	return GamePresentation._presentation_rejection(self, card)
-
-func set_workshop_effects(on: bool) -> void:
-	GamePresentation.set_workshop_effects(self, on)
 
 func workshop_retract(number: int, listener_id: String) -> void:
 	GamePresentation.workshop_retract(self, number, listener_id)

@@ -17,12 +17,12 @@ func _check(cond: bool, msg: String) -> void:
 
 func _game(seed_val: int = 2601, size: int = 7):
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = true
 	g.new_case(seed_val, size)
 	for p in g.w.npcs:
 		p.cleared = {}
 		p.consensus_pressure = {}
+		p.workshop_state = {}
 		for id in p.suspicion:
 			p.suspicion[id] = 0.1
 	return g

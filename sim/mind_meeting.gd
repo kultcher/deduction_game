@@ -336,7 +336,7 @@ static func acknowledge_reading(w, listener, source, entry: Dictionary, teller: 
 				paths.append(path.duplicate(true))
 	named.provenance_paths = paths
 	receipts[named.id] = named
-	recompute_beliefs(w, listener, " (reading source publicly acknowledged)")
+	refresh_beliefs(w, listener, " (reading source publicly acknowledged)")
 
 ## What going public with their gift would cost n right now (higher = more reluctant):
 ## gifts that hide from the demon or keep paying off, fear, privacy; less as the game
@@ -418,10 +418,8 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 				continue
 			e["shared"] = true
 			var weights = {}
-			var n_mind = n.shadow if n.is_evil() and n.shadow != null else n
-			var use_shared_w: bool = n_mind.workshop_state.get("enabled", false)
 			for x in implicated(e):
-				weights[x] = ReasonAttribution.score_reading_entry_in_world(w, n.id, e, x)["strength"] if use_shared_w else reading_strength(e, x)
+				weights[x] = ReasonAttribution.score_reading_entry_in_world(w, n.id, e, x)["strength"]
 			w.public_event("reading", implicated(e), n.id, {"weights": weights})
 			w.public_event("clear", Gifts.clears(e), n.id)
 			shared_this_turn.append(e)
@@ -1219,7 +1217,6 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 	var out: Array = []
 	var seen_eids: Dictionary = {}
 	var d_mind = d.shadow if d.is_evil() and d.shadow != null else d
-	var d_shared: bool = d_mind.workshop_state.get("enabled", false)
 	if accuser != null:
 		for it in case_against(w, accuser, d.id, 6):
 			if it.get("own_sighting", false):
@@ -1246,18 +1243,13 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 				if en.get("role", "") == f.get("role", "") and int(en.get("day", -1)) == int(f.get("day", -2)):
 					var eid2: String = info_eid(src_id, en)
 					if not seen_eids.has(eid2):
-						var r_score: Dictionary = ReasonAttribution.score_reading_entry_in_world(w, src_id, en, d.id) if d_shared else {"contrib": reading_strength(en, d.id), "strength": reading_strength(en, d.id)}
+						var r_score: Dictionary = ReasonAttribution.score_reading_entry_in_world(w, src_id, en, d.id)
 						out.append({"eid": eid2, "why": "their reading pointed at me", "contrib": float(r_score["contrib"]), "kind": "public", "strength": float(r_score["strength"]), "entry": en, "channel": "report"})
 						seen_eids[eid2] = true
 		elif f.get("kind", "") == "sighting" and d.id in f.get("subject", []):
 			var s_eid: String = "sighting:%s:%s:%d:%s" % [str(f.get("source", "")), d.id, int(f.get("day", -1)), str(f.get("block", ""))]
 			if not seen_eids.has(s_eid):
-				var s_score: Dictionary
-				if d_shared:
-					s_score = ReasonAttribution.score_disclosed_fact_in_world(w, d_mind, f, d.id)
-				else:
-					var sc: float = _mind().night_sighting_scale(w, d, d.id, str(f.get("block", "")), int(f.get("day", -1)))
-					s_score = {"contrib": 0.35 * sc, "strength": 0.35 * sc}
+				var s_score: Dictionary = ReasonAttribution.score_disclosed_fact_in_world(w, d_mind, f, d.id)
 				out.append({"eid": s_eid, "why": "seen out at night", "contrib": float(s_score["contrib"]), "kind": "public", "strength": float(s_score["strength"]), "entry": {}, "channel": "movement_out"})
 				seen_eids[s_eid] = true
 	return out
@@ -1579,8 +1571,8 @@ static func paranoia(w, n) -> float:
 static func ranked_suspects(w, n, social_pressure: bool = false) -> Array:
 	return _mind().ranked_suspects(w, n, social_pressure)
 
-static func recompute_beliefs(w, n, note: String) -> void:
-	_mind().recompute_beliefs(w, n, note)
+static func refresh_beliefs(w, n, note: String) -> void:
+	_mind().refresh_beliefs(w, n, note)
 
 static func reconsider(w, n, why: String) -> void:
 	_mind().reconsider(w, n, why)

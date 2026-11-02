@@ -10,7 +10,6 @@ var fails = 0
 
 func _init() -> void:
 	var g = Game.new()
-	g.workshop_effects = false # Explicit legacy baseline before testing migration.
 	g.detailed_logging = false
 	g.new_case(692, 7)
 	for p in g.w.npcs:
@@ -18,6 +17,7 @@ func _init() -> void:
 		p.known_claims = {}
 		p.beliefs = []
 		p.ledger = {}
+		p.workshop_state = {}
 		p.suspicion = {}
 		for other in g.w.npcs:
 			if other != p:
@@ -33,13 +33,11 @@ func _init() -> void:
 	Mind.apply_info(g.w, n, source, entry, 0.5)
 	var eid = Mind.info_eid(source.id, entry)
 	check(n.ledger[eid].meta.workshop_receipts.size() == 1, "raw reading records its exact original receipt")
-	var native = n.suspicion.duplicate(true)
-	g.set_workshop_effects(true)
 	check(n.workshop_state.active and n.workshop_state.owned.has(eid), "supported raw readings acquire a shared owner")
 	check(n.ledger[eid].effects.is_empty(), "raw reading ledger entry carries empty legacy effects")
-	check(_close(n.workshop_state.outside, native_before), "migration recovers the independent baseline")
+	check(_close(n.workshop_state.outside, native_before), "shared ownership preserves the independent baseline")
 	var once = n.suspicion.duplicate(true)
-	Mind.recompute_beliefs(g.w, n, "repeat")
+	Mind.refresh_beliefs(g.w, n, "repeat")
 	check(_close(once, n.suspicion), "unchanged reassessment cannot feed its accusation into credibility")
 	g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 	var presented = n.suspicion.duplicate(true)
@@ -51,12 +49,12 @@ func _init() -> void:
 	for venue in ["meeting", "nomination", "private"]:
 		g._evaluate_deduction(n, g.board[ded - 1], 0.5, false, venue)
 		n.trust = fixed_trust
-		Mind.recompute_beliefs(g.w, n, "fixed social inputs")
+		Mind.refresh_beliefs(g.w, n, "fixed social inputs")
 	check(_close(presented, n.suspicion), "repeating the same evidence across venues does not stack")
 	var other_ded = g.file_deduction({"type": "evil", "a": source.id}, [card])
 	g._evaluate_deduction(n, g.board[other_ded - 1], 0.6, false, "meeting")
 	n.trust = fixed_trust
-	Mind.recompute_beliefs(g.w, n, "shared roots")
+	Mind.refresh_beliefs(g.w, n, "shared roots")
 	check(_close(presented, n.suspicion), "a second case sharing the report adds no second award")
 	check(n.workshop_state.owners.values()[0].size() >= 3, "shared provenance retains raw and both case paths")
 	g.workshop_retract(ded, n.id)
@@ -69,21 +67,15 @@ func _init() -> void:
 	check(n.workshop_state.active and n.workshop_state.get("source_doubt", {}).get(source.id + ":1", 0.0) > 0.7, "interval doubt reaches the shared assessor automatically via source_doubt")
 	check(absf(n.workshop_state.requested.get(target.id, 0.0)) < absf(before_doubt.get(target.id, 0.0)), "doubting the reading retracts its joint consequences")
 	n.ledger["arg:doubt"].weight = 0.0
-	Mind.recompute_beliefs(g.w, n, "doubt removed")
+	Mind.refresh_beliefs(g.w, n, "doubt removed")
 	check(_close(before_doubt, n.workshop_state.requested), "removing interval doubt restores the former vector")
-	g.set_workshop_effects(false)
-	var restored_native = n.suspicion.duplicate(true)
-	g.set_workshop_effects(true)
+	var pre_adj_susp: float = n.suspicion[target.id]
 	Mind.adjust(g.w, n, target.id, 0.12, "independent suspicion", "", false)
-	g.set_workshop_effects(false)
-	check(not n.workshop_state.active and n.workshop_state.owned.is_empty(), "disabling shared effects retracts ownership cleanly")
-	check(is_equal_approx(n.suspicion[target.id], restored_native[target.id] + 0.12), "retraction preserves a later independent suspicion change")
-	check(n.ledger[eid].effects.is_empty(), "disabled mode leaves receipt effects empty in Phase 2c+")
+	check(is_equal_approx(n.workshop_state.outside[target.id], native_before[target.id] + 0.12) and is_equal_approx(n.suspicion[target.id], pre_adj_susp + 0.12), "independent suspicion adjusts both outside baseline and total cleanly")
 	# Clean standalone presentation: no independent learned route.
 	n.ledger = {}
 	n.workshop_state = {}
 	n.suspicion = native_before.duplicate(true)
-	g.set_workshop_effects(true)
 	g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 	check(n.workshop_state.active and n.workshop_state.facts.size() == 1, "player-only evidence can acquire one owner")
 	g.workshop_retract(ded, n.id)
@@ -98,17 +90,19 @@ func _init() -> void:
 	var saturated_baseline: float = n.workshop_state.outside[target.id]
 	g.workshop_retract(ded, n.id)
 	check(is_equal_approx(n.suspicion[target.id], saturated_baseline), "shared retraction preserves the entire independent total")
-	# Unsupported chronology must restore one model rather than retain a second layer.
+	# Unsupported chronology keeps the last good vector and logs the issue (Purge Phase 3).
 	n.suspicion = native_before.duplicate(true)
 	n.ledger = {}
-	n.workshop_state = {"enabled": true}
+	n.workshop_state = {}
 	Mind.apply_info(g.w, n, source, entry, 0.5)
 	check(n.workshop_state.active, "supported raw reading reactivates from a clean state")
+	var last_good: Dictionary = n.suspicion.duplicate(true)
+	g.shared_fallbacks.clear()
 	g.w.public_log.append({"day": 1, "kind": "curse", "subjects": [target.id], "by": "town"})
-	Mind.recompute_beliefs(g.w, n, "unsupported transition")
-	check(not n.workshop_state.active and n.workshop_state.owned.is_empty(), "conversion chronology retracts joint ownership and falls back completely")
-	check(_close(n.suspicion, native), "conversion fallback restores the native reading effect")
+	Mind.refresh_beliefs(g.w, n, "unsupported transition")
+	check(n.workshop_state.active and _close(n.suspicion, last_good) and not g.shared_fallbacks.is_empty(), "unsupported chronology keeps the last good shared vector and logs the issue")
 	g.w.public_log.clear()
+	Mind.refresh_beliefs(g.w, n, "chronology cleared")
 	# Distinct originals have exact native keys; old coarse records stay ambiguous.
 	var variant = entry.duplicate(true)
 	variant.data.count = 1
@@ -154,7 +148,6 @@ func _init() -> void:
 func _advanced() -> void:
 	for size in [7, 10]:
 		var g = Game.new()
-		g.workshop_effects = false # Explicit legacy baseline before testing migration.
 		g.detailed_logging = false
 		g.new_case(692, size)
 		for person in g.w.npcs:
@@ -162,6 +155,7 @@ func _advanced() -> void:
 			person.known_claims = {}
 			person.beliefs = []
 			person.ledger = {}
+			person.workshop_state = {}
 			for id in person.suspicion:
 				person.suspicion[id] = 0.3
 		var n = g.w.living_good()[0]
@@ -170,7 +164,6 @@ func _advanced() -> void:
 		var target = g.w.npcs.filter(func(p): return p != n and p != source)[0]
 		var card = g.add_card({"kind": "info", "source": source.id, "day": 1, "phase": 0, "role": "dowser", "data": {"group": [source.id, target.id], "count": 2}, "text": "First report"})
 		var ded = g.file_deduction({"type": "evil", "a": target.id}, [card])
-		g.set_workshop_effects(true)
 		g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 		check(n.workshop_state.active, "%d-person town supports a shared presentation" % size)
 		var previous_fact: String = n.workshop_state.facts[0]
@@ -186,14 +179,16 @@ func _advanced() -> void:
 		check(n.spare_pref.get(target.id, 0.0) > 0 and n.believed_roles.get(target.id) == "medium", "shared ownership preserves metadata-derived preferences and role beliefs")
 		n.ledger.erase("arg:spare:" + target.id)
 		n.ledger.erase(Mind.claim_eid(target.id, "medium"))
-		Mind.recompute_beliefs(g.w, n, "clean pref probe")
+		Mind.refresh_beliefs(g.w, n, "clean pref probe")
 		var raw_vector = n.workshop_state.requested.duplicate(true)
 		n.trust = 0.0
-		Mind.recompute_beliefs(g.w, n, "player trust falls")
+		Mind.refresh_beliefs(g.w, n, "player trust falls")
 		check(_close(raw_vector, n.workshop_state.requested), "independently learned readings do not depend on player trust")
 		# An overlapping old card presentation cannot be certified from a coarse ref.
-		Mind.ledger_hear(g.w, n, "test:mixed-tell", [[target.id, 0.1, false, "old testimony", ""]], 0.5, [source.id, 2, "reading"], {"kind": "tell"})
-		check(not n.workshop_state.active and n.workshop_state.owned.is_empty(), "uncertified card overlap restores the complete native model")
+		var before_overlap: Dictionary = n.suspicion.duplicate(true)
+		g.shared_fallbacks.clear()
+		Mind.ledger_hear(g.w, n, "test:mixed-tell", [], 0.5, [source.id, 2, "reading"], {"kind": "tell"})
+		check(_close(n.suspicion, before_overlap) and not g.shared_fallbacks.is_empty(), "uncertified card overlap keeps the last good vector and logs the fallback")
 		check(n.workshop_state.issues.any(func(s): return "testimony" in s), "overlap fallback exposes the missing ownership adapter")
 		if size == 7:
 			var evil = g.w.npcs.filter(func(p): return p.is_evil())[0]
@@ -206,8 +201,8 @@ func _advanced() -> void:
 				for id in sh.suspicion:
 					sh.suspicion[id] = 0.3)
 			g._evaluate_deduction(evil, g.board[ded - 1], 0.6, false)
-			check(evil.suspicion == real_suspicion, "enabled inference never modifies the real evil mind")
-			check(evil.shadow.workshop_state.get("enabled", false), "evil presentation routes shared state to the good cover")
+			check(evil.suspicion == real_suspicion, "shared inference never modifies the real evil mind")
+			check(evil.shadow.workshop_state.get("active", false), "evil presentation routes shared state to the good cover")
 			var input = g.workshop_snapshot([ded], n.id)
 			var uncertified = n.ledger.duplicate(true)
 			uncertified.erase("test:mixed-tell")
@@ -220,14 +215,12 @@ func _advanced() -> void:
 				"justs": [{"supports": [[source.id, 2, "reading"]]}]}
 			var plan = Shared.prepare(input, {str(ded): input}, uncertified)
 			check(not plan.ready and plan.owned.is_empty() and plan.issues.any(func(s): return "uncertified argument" in s), "old arguments without exact per-path provenance cannot be adopted")
-			g.set_workshop_effects(false)
 			n.ledger = {}
 			n.workshop_state = {}
 			for id in n.suspicion:
 				n.suspicion[id] = 0.3
 			Mind.apply_info(g.w, n, source, {"day": 2, "phase": 0, "role": "dowser", "data": g.board[other - 1].data}, 0.6)
 			var small = n.ledger.values()[0]
-			g.set_workshop_effects(true)
 			check(n.workshop_state.active and small.effects.is_empty(), "ownership activates cleanly on receipt-only reading entries")
 			Mind.adjust(g.w, n, target.id, -3.0, "lower-bound regression", "", false)
 			var unclamped_plan = Shared.prepare(g.workshop_snapshot([], n.id), {}, n.ledger)
@@ -248,12 +241,9 @@ func _advanced() -> void:
 			var pre_turn_susp: Dictionary = n.suspicion.duplicate(true)
 			g.w.turn_evil(n, "test conversion")
 			g.w.curse = {"victim": n.id, "day": 1}
-			g.set_workshop_effects(false)
-			check(n.shadow == null and n.workshop_state.get("active", false), "toggling while turned preserves the dormant reversible good layer")
+			check(n.shadow == null and n.workshop_state.get("active", false), "turning before any conversation preserves pre-turn state cleanly")
 			g.w.free_turned()
-			check(not n.is_evil() and not n.workshop_state.get("active", false) and n.workshop_state.owned.is_empty(), "restoration without a cover retracts dormant shared ownership")
-			g.set_workshop_effects(true)
-			check(_close(n.suspicion, pre_turn_susp), "freed soul restores pre-turn snapshot cleanly without an artificial 0.25 cap")
+			check(not n.is_evil() and n.workshop_state.get("active", false) and _close(n.suspicion, pre_turn_susp), "freed soul restores pre-turn snapshot cleanly without an artificial 0.25 cap")
 
 func _state(g) -> String:
 	var rows: Array = []

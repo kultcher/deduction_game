@@ -113,7 +113,7 @@ func _live() -> void:
 	g.w.day = 3
 	g.w.phase = 1
 	g.w.free_turned()
-	Mind.recompute_beliefs(g.w, observer, " (curse restoration test)")
+	Mind.refresh_beliefs(g.w, observer, " (curse restoration test)")
 	plan = Shared.prepare(Bridge.capture(g, [], observer.id), {}, observer.ledger)
 	check(plan.ready and plan.prepared.view.chronology.curse.until == 13, "actual public restoration closes the epoch at its observed phase")
 	var own = Bridge.capture(g, [], old_victim)

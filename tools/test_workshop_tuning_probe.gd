@@ -61,7 +61,7 @@ func _test_phase0_fingerprints_and_credibility_dlog() -> void:
 	var target_good = g.w.living_good()[1]
 	g.w.public_event("demon_death", [target_good.id], "town")
 	g.add_card({"kind": "death", "source": "player", "subject": [target_good.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": target_good.home_block, "text": "Death"})
-	Mind.recompute_beliefs(g.w, listener, "test death")
+	Mind.refresh_beliefs(g.w, listener, "test death")
 	Credibility.record(listener, "evil", target_good.id, 1)
 	Credibility.dawn(g)
 	var cred_entries: Array = g.w.dlog.entries.filter(func(e): return e["type"] == "credibility" and e["actor"] == listener.id)
@@ -81,7 +81,6 @@ func _test_phase1_1_meeting_reasons_and_defence_non_leak() -> void:
 	seer.claim_public = false
 	seer.ledger.clear()
 	seer.workshop_state.clear()
-	seer.workshop_state["enabled"] = true
 	seer.info_log = []
 	seer.applied_info = 0
 	var rd = {"day": 1, "role": "seer", "data": {"pair": [nom.id, other.id], "yes": true}, "true": true, "shared": false, "text": "between %s and %s, one reads as the Demon" % [nom.name, other.name]}
@@ -125,7 +124,7 @@ func _test_phase1_2_pre_gift_workshop_attach() -> void:
 	g.new_case(92974, 7)
 	var toggled: Array = g.w.dlog.entries.filter(func(e): return "shared ownership toggled" in str(e.get("reason", "")))
 	_check(toggled.is_empty(), "new_case attaches Workshop before Night 0 and Day 1 gifts with zero ownership-toggled retraction churn")
-	_check(g.w.living_good().all(func(n): return n.workshop_state.get("enabled", false)), "all Good NPCs have Workshop enabled from initial setup")
+	_check(g.w.living_good().all(func(n): return n.workshop_state.get("active", false)), "all Good NPCs have active shared Workshop state from initial setup")
 
 
 func _test_phase1_3_evil_nomination_and_vote_coherence() -> void:
@@ -340,7 +339,6 @@ func _run_receipt_level_ablation_probe() -> Array:
 	holder.claim_public = false
 	holder.ledger.clear()
 	holder.workshop_state.clear()
-	holder.workshop_state["enabled"] = true
 	holder.info_log = [{"day": 1, "role": "seer", "data": {"pair": [a.id, b.id], "yes": true}, "true": true, "shared": false, "text": "between %s and %s, one reads as the Demon" % [a.name, b.name]}]
 	holder.applied_info = 0
 	Mind.update_from_own_info(g.w)

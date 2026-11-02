@@ -87,8 +87,6 @@ func _circumstantial() -> void:
 
 func _live() -> void:
 	var g = Game.new()
-	# Capture a native baseline before enabling shared ownership below.
-	g.workshop_effects = false
 	g.new_case(692, 7)
 	g.w.dlog.detailed = false
 	var claimant = g.w.npcs[0]
@@ -116,15 +114,12 @@ func _live() -> void:
 	var preview = Ghost.live(Live.snapshot(g, value))
 	check(preview.ready and preview.proposal.effects[claimant.id].requested < 0, "quiet-night ghost shows circumstantial exoneration")
 	var filed = Live.file(g, value)
-	g.set_workshop_effects(true)
 	var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false), "quiet-night case reaches shared presentation")
 	check(listener.workshop_state.get("owned", {}).has(eid) and listener.ledger[eid].effects.is_empty(), "quiet-night receipt is owned with empty legacy effects")
 	var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
 	response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 	check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, "quiet-night repeat is stable")
-	g.set_workshop_effects(false)
-	check(not listener.workshop_state.get("active", false) and listener.workshop_state.get("owned", {}).is_empty(), "disabling shared model retracts quiet-night ownership")
 	g.workshop_retract(filed, listener.id)
 	check(is_equal_approx(listener.suspicion[claimant.id], outside_base), "withdrawing the argument restores the outside baseline")
 	var veteran = g.add_card({"kind": "info", "source": claimant.id, "subject": [], "role": "veteran", "day": 1, "phase": 3, "data": {"attacked": 1, "block": "market"}, "text": "Veteran attack report"})

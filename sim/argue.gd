@@ -258,7 +258,7 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 			_evil_reason(w, n, c, ded, approved)
 		# Shadow self (step 2): answer as their good self would, unless breaking cover is
 		# worth it. Arguments about themselves keep the mask ("it's about me").
-		if C.SHADOW_SELF and (times == 0 or n.workshop_state.get("enabled", false)) and (target != n or n.workshop_state.get("enabled", false)):
+		if C.SHADOW_SELF:
 			var sr = Mind.shadow_eval(w, n, func(sh): return evaluate(w, sh, ded, board, scale, false))
 			workshop_covered = sr != null and sr.get("workshop", false)
 			if target != n and sr != null and sr.has("dialogue") and sr["dialogue"].get("stance", "") != approved["stance"]:

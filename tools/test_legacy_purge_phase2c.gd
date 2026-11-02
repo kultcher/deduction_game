@@ -165,7 +165,7 @@ func _test_seer_cleared_and_metadata_preferences() -> void:
 	Mind.ledger_hear(w, seer, "arg:protect:" + a.id, [], 0.5, [], {"kind": "arg", "conclusion": {"type": "protect", "a": a.id}})
 	Mind.ledger_hear(w, seer, "arg:spare:" + b.id, [], 0.4, [], {"kind": "arg", "conclusion": {"type": "spare", "a": b.id}})
 	_check(seer.believed_roles.get(a.id, "") == "warden" and seer.protect_pref.get(a.id, 0.0) > 0.0 and seer.spare_pref.get(b.id, 0.0) > 0.0,
-		"recompute_beliefs derives believed_roles, protect_pref, and spare_pref from ledger metadata without effects arrays")
+		"refresh_beliefs derives believed_roles, protect_pref, and spare_pref from ledger metadata without effects arrays")
 
 	# answer_opinion word-doubt caveat reads reliability / source_doubt without n.honesty
 	seer.suspicion[c.id] = 0.2
@@ -215,7 +215,7 @@ func _test_shared_mode_multi_day_stability() -> void:
 				if not e.get("effects", []).is_empty() or e.has("applied"):
 					empty_effects_ok = false
 			var before_s: Dictionary = m.suspicion.duplicate(true)
-			Mind.recompute_beliefs(w, m, " (idempotency check)")
+			Mind.refresh_beliefs(w, m, " (idempotency check)")
 			for k in before_s:
 				if absf(float(before_s[k]) - float(m.suspicion.get(k, -99.0))) > 0.000001:
 					refresh_stable = false

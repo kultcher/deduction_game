@@ -54,7 +54,6 @@ func _alibis() -> void:
 		check(preview.ready and preview.proposal.effects.nisha.requested > 0, "ghost sees circumstantial suspicion")
 		var filed = Live.file(g, value)
 		check(g.board[filed - 1].supports.size() == 2, "filing retains both original board cards")
-		g.set_workshop_effects(true)
 		var response = g._evaluate_deduction(n, g.board[filed - 1], 1.0)
 		if not response.get("workshop", false):
 			print("Alibi fallback: ", n.workshop_state.get("issues", []), " / ", response)
@@ -183,7 +182,6 @@ func _ownership() -> void:
 	var id: String = Live.Evidence.normalize_card(g.board[number - 1]).id
 	board.connect_cards("e:" + id, root_id)
 	var filed = Live.file(g, board.compile(root_id))
-	g.set_workshop_effects(true)
 	g._evaluate_deduction(n, g.board[filed - 1], 1.0)
 	var initial: Dictionary = n.workshop_state.requested.duplicate(true)
 	board.add_modifier("e:" + id, "unlikely")

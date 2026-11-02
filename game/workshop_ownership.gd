@@ -13,75 +13,71 @@ static func refresh(g, n, phase: String) -> void:
 	_refresh(g, n, phase)
 	Profiler.close(span)
 
+static func _candidate_outside(n, state: Dictionary) -> Dictionary:
+	var out: Dictionary = n.suspicion.duplicate(true)
+	if state.get("active", false):
+		for id in state.outside:
+			# Preserve direct assignments too (ordinary adjustments go through
+			# Mind.adjust and already maintain the outside layer).
+			var expected: float = state.outside[id] + state.requested.get(id, 0.0) + state.get("circumstantial_requested", {}).get(id, 0.0)
+			var before: float = n.suspicion.get(id, expected)
+			var external_change: float = before - expected
+			# Preserve the exact stored baseline when nothing changed. Adding
+			# then subtracting the same float introduced rounding drift, which
+			# broke exact cache/repetition keys and fed priors on every refresh.
+			out[id] = state.outside[id] if absf(external_change) < 0.000000001 else state.outside[id] + external_change
+	return out
+
 static func _refresh(g, n, phase: String) -> void:
-	if g._workshop_busy or n.workshop_state.is_empty():
+	if g._workshop_busy:
 		return
 	var state: Dictionary = n.workshop_state
 	var key = n.id + (":cover" if n.is_shadow else ":good")
 	if phase == "before":
-		state.previous_owned = state.get("owned", {}).duplicate(true)
-		if state.get("active", false):
-			var removed = {}
-			for id in state.outside:
-				# Preserve direct native assignments too (ordinary adjustments go
-				# through Mind.adjust and already maintain the outside layer).
-				var expected: float = state.outside[id] + state.requested.get(id, 0.0) + state.get("circumstantial_requested", {}).get(id, 0.0)
-				var before: float = n.suspicion.get(id, expected)
-				var external_change: float = before - expected
-				# Preserve the exact stored baseline when nothing changed. Adding
-				# then subtracting the same float introduced rounding drift, which
-				# broke exact cache/repetition keys and fed priors on every refresh.
-				n.suspicion[id] = state.outside[id] if absf(external_change) < 0.000000001 else state.outside[id] + external_change
-				if not is_equal_approx(before, n.suspicion[id]):
-					removed[id] = {"from": before, "to": n.suspicion[id], "delta": n.suspicion[id] - before}
-			g.w.dlog.trace_event("workshop_retraction", n.id, "", {"removed": removed,
-				"previous_owned": state.previous_owned}, "Retract the entire previous joint vector before reassessment; independent suspicion remains.")
-		state.active = false
-		state.requested = {}
-		state.applied = {}
-		state.circumstantial_requested = {}
-		state.circumstantial_applied = {}
-		state.circumstantial_incidents = {}
-		state.reasons = {}
-		state.reasons_pending = false
-		state.source_doubt = state.get("manual_source_doubt", {}).duplicate(true)
-		state.owned = {}
-		state.erase("action") # An unsupported/disabled refresh cannot retain an action.
 		g._workshop_plans.erase(key)
-		if not state.get("enabled", false):
-			state.source_doubt = {}
-			state.issues = ["Shared effects disabled; legacy contributions restored."]
-			return
+		var cand_outside: Dictionary = _candidate_outside(n, state)
 		var input = Bridge.capture(g, [], n.id, "private", n)
+		input.listener.suspicion = cand_outside.duplicate(true)
 		var plan = Shared.prepare(input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
 		state.issues = plan.issues
-		state.facts = plan.facts
-		state.owners = plan.owners
-		state.quoted = plan.quotations.keys()
-		state.reason_visibility = _visibility(n, plan.facts)
-		state.owned = plan.owned
 		if plan.ready:
 			g._workshop_plans[key] = plan
 		else:
+			# Unprepared refresh (Purge Phase 3): keep the last good shared vector and log the issue.
 			fallback(g, n, "ownership_before", plan.issues)
 	else:
 		if not g._workshop_plans.has(key):
 			return
 		var plan: Dictionary = g._workshop_plans[key]
+		var cand_outside: Dictionary = _candidate_outside(n, state)
 		var manual_sd: Dictionary = state.get("manual_source_doubt", {})
 		var pre_bundle: Dictionary = SourceDoubt.derive(plan, n.ledger, manual_sd)
 		plan.input.listener.source_doubt = pre_bundle.pre_eval.duplicate(true)
-		plan.input.listener.suspicion = n.suspicion.duplicate(true)
+		plan.input.listener.suspicion = cand_outside.duplicate(true)
 		plan = Shared.prepare(plan.input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
+		state.issues = plan.issues
 		if not plan.ready:
-			state.owned = {}
-			state.source_doubt = {}
-			state.issues = plan.issues
+			g._workshop_plans.erase(key)
 			fallback(g, n, "ownership_after", plan.issues)
-			g._workshop_busy = true
-			Mind.recompute_beliefs(g.w, n, " (shared capability fallback)")
-			g._workshop_busy = false
 			return
+		g._workshop_plans[key] = plan
+		state.previous_owned = state.get("owned", {}).duplicate(true)
+		if state.get("active", false):
+			var removed = {}
+			for id in cand_outside:
+				var before: float = n.suspicion.get(id, cand_outside[id])
+				n.suspicion[id] = cand_outside[id]
+				if not is_equal_approx(before, n.suspicion[id]):
+					removed[id] = {"from": before, "to": n.suspicion[id], "delta": n.suspicion[id] - before}
+			g.w.dlog.trace_event("workshop_retraction", n.id, "", {"removed": removed,
+				"previous_owned": state.previous_owned}, "Retract the entire previous joint vector before reassessment; independent suspicion remains.")
+		else:
+			n.suspicion = cand_outside.duplicate(true)
+		state.facts = plan.facts
+		state.owners = plan.owners
+		state.quoted = plan.quotations.keys()
+		state.reason_visibility = _visibility(n, plan.facts)
+		state.owned = plan.owned
 		var doubt_bundle: Dictionary = SourceDoubt.derive(plan, n.ledger, manual_sd)
 		state.source_doubt = doubt_bundle.full.duplicate(true)
 		var started = Time.get_ticks_msec()
@@ -221,7 +217,7 @@ static func fallback(g, n, point: String, issues: Array, card: int = 0) -> void:
 	var seen: bool = g.shared_fallbacks.any(func(f): return f.listener == entry.listener and f.point == entry.point and f.issues == entry.issues and f.card == entry.card and f.day == entry.day)
 	if not seen:
 		g.shared_fallbacks.append(entry)
-		g.w.dlog.add("legacy_fallback", n.id, "", entry, "Legacy rules used (%s): %s" % [point, "; ".join(PackedStringArray(issues))])
+		g.w.dlog.add("legacy_fallback", n.id, "", entry, "Shared refresh kept last good vector (%s): %s" % [point, "; ".join(PackedStringArray(issues))])
 	g.w.dlog.trace_event("workshop_fallback", n.id, "", {"listener": n.id,
 		"card": card, "exit_point": point, "issues": issues.duplicate(true)},
 		"Shared evaluation unavailable: " + "; ".join(PackedStringArray(issues)))

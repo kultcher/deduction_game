@@ -10,7 +10,6 @@ var fails = 0
 
 func _init() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = false
 	g.new_case(692, 7)
 	for n in g.w.npcs:
@@ -51,7 +50,6 @@ func _init() -> void:
 		var repeated = Live.Assess.prepare(g.workshop_snapshot([twice], listener.id))
 		check(repeated.ready and repeated.case.cards == [fact], "diamond-shaped citations retain one original fact: " + str(repeated.issues) + " / " + str(repeated.case.get("cards", [])))
 		check(repeated.case.arguments.map(func(a): return a.id).size() == _unique(repeated.case.arguments.map(func(a): return a.id)).size(), "shared descendants do not duplicate question identities")
-		g.set_workshop_effects(true)
 		var response = g._evaluate_deduction(listener, g.board[parent - 1], 1.0, false)
 		check(response.get("workshop", false) and listener.workshop_state.active and fact in listener.workshop_state.facts, "actual nested presentations use shared ownership")
 	# Stored graph roots are checked against the child's real board supports, not

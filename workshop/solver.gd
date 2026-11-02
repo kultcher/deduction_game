@@ -295,7 +295,7 @@ static func content_sig(view: Dictionary, world: Dictionary) -> int:
 	return int(world.__key)
 
 ## Roles whose report content can fail in a world (the rest only need a valid source).
-const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch", "warden", "medium"]
+const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch", "warden", "medium", "gravedigger"]
 
 static var _bits: Dictionary = {}
 
@@ -581,6 +581,10 @@ static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictio
 	var evil: int = world.evil
 	if world.has("converted") and TimeModel.evil_index(view, world, world.converted, card.observed_at):
 		evil |= 1 << int(world.converted)
+	if card.role == "gravedigger" and view.has("timeline"):
+		var gd_night_t: int = card.night if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
+		if not preload("res://workshop/live_history.gd").executed(view, str(data.get("executed", "")), gd_night_t):
+			return false
 	var rdef = C.role_def(card.role)
 	if rdef != null and rdef.shape == "ROLE_IN_GROUP":
 		var group_mask: int = pair if rdef.role_group_key == "pair" else (1 << person_index(view, data.get(rdef.role_group_key, "")))
@@ -602,6 +606,10 @@ static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictio
 ## What a report says, given a valid source (see source_valid): does it hold here?
 static func _report_content(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
 	_ensure_people(view)
+	if card.role == "gravedigger" and view.has("timeline"):
+		var gd_night: int = card.night if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
+		if not preload("res://workshop/live_history.gd").executed(view, str(card.data.get("executed", "")), gd_night):
+			return false
 	if card.role == "warden":
 		if view.get("timeline", {}).get("events", []).any(func(event): return event.kind == "demon_death" and event.at.day == card.observed_at.day and card.data.target in event.subjects):
 			return false

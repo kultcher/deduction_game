@@ -109,7 +109,7 @@ func _test_case_against_skips_non_incriminating_sightings() -> void:
 		"block": "hill", "day": 1, "phase": C.NIGHT, "text": "A witnessed outing off murder block"
 	})
 	Mind.ledger_hear(w, listener, "heard:sight_off_block", [], 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_off})
-	Mind.recompute_beliefs(w, listener, " (test off-block sighting)")
+	Mind.refresh_beliefs(w, listener, " (test off-block sighting)")
 	var reasons_off: Array = MindMeeting.case_against(w, listener, walker.id)
 	_check(not reasons_off.any(func(r): return r.get("channel", "") == "movement_out"), "case_against does not cite an off-murder-block night sighting in shared attribution")
 
@@ -119,7 +119,7 @@ func _test_case_against_skips_non_incriminating_sightings() -> void:
 		"block": "docks", "day": 1, "phase": C.NIGHT, "text": "A witnessed outing on murder block"
 	})
 	Mind.ledger_hear(w, listener, "heard:sight_on_block", [], 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_on})
-	Mind.recompute_beliefs(w, listener, " (test murder-block sighting)")
+	Mind.refresh_beliefs(w, listener, " (test murder-block sighting)")
 	var reasons_on: Array = MindMeeting.case_against(w, listener, walker.id)
 	_check(reasons_on.any(func(r): return r.get("channel", "") == "movement_out"), "case_against cites a murder-block night sighting when walker has no credible walking claim")
 
@@ -161,7 +161,7 @@ func _test_shared_ledger_zero_weight_reading_guard() -> void:
 	var t1 = g.w.living_good()[2]
 	var t2 = g.w.living_good()[3]
 	listener.ledger.clear()
-	listener.workshop_state = {"enabled": true}
+	listener.workshop_state = {}
 	var card = {
 		"kind": "info", "source": speaker.id, "role": "seer", "day": 1, "phase": C.NIGHT,
 		"data": {"pair": [t1.id, t2.id], "yes": true}, "subject": [t1.id, t2.id], "text": "seer yes",

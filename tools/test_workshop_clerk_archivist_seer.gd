@@ -138,7 +138,6 @@ func _live() -> void:
 		listener.ledger = {}
 		listener.role = "warden"
 		listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-		g.set_workshop_effects(true)
 		var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 		check(response.get("workshop", false), role + " reaches actual shared NPC presentation")
 		var vector: Dictionary = listener.workshop_state.requested.duplicate(true)
@@ -149,7 +148,6 @@ func _live() -> void:
 			var identities = Ghost.live(Live.snapshot(g, board.compile(root)))
 			check(identities.ready, role + " supports explicit " + type + " questions")
 			check(Live.file(g, board.compile(root)) > 0, type + " premise files through the native board")
-		g.set_workshop_effects(false)
 
 func _ui() -> void:
 	var g = Game.new()

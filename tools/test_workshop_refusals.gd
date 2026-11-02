@@ -68,7 +68,7 @@ func _live(size: int) -> void:
 			listener.known_claims = {}
 			listener.beliefs = []
 			listener.ledger = {}
-			listener.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+			listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	var target = g.w.living_good()[0]
 	var observer = g.w.living_good()[1]
 	var raw = {"kind": "refusal", "source": target.id, "subject": [target.id], "day": 1, "phase": 3,
@@ -91,7 +91,7 @@ func _live(size: int) -> void:
 	var once = observer.suspicion.duplicate(true)
 	var rng = g.w.rng.state
 	var trust = observer.trust
-	Mind.recompute_beliefs(g.w, observer, "refusal repeat")
+	Mind.refresh_beliefs(g.w, observer, "refusal repeat")
 	check(_close(once, observer.suspicion) and rng == g.w.rng.state and trust == observer.trust, "unchanged refusal refresh does not stack, reward or draw RNG")
 	for changes in [{"source": "outsider"}, {"subject": [observer.id]}, {"fear": "yes"}, {"role": "invented"}, {"day": -1}]:
 		var bad = raw.duplicate(true)

@@ -41,7 +41,7 @@ func _init() -> void:
 	d.claimed_role = "lamplighter"
 	d.claim_public = true
 	accuser.beliefs = [{"kind": "saw", "who": d.id, "loc": "", "block": "docks", "day": 1, "phase": 3, "how": "window", "detail": "street"}]
-	Mind.recompute_beliefs(g.w, accuser, " (witnessed murder-block outing)")
+	Mind.refresh_beliefs(g.w, accuser, " (witnessed murder-block outing)")
 	var result = Mind.defend_self(g.w, d, accuser.id)
 	var entries: Array = listener.ledger.values().filter(func(e): return e.meta.get("kind") == "defence")
 	check(result.moves == ["reveal"] and entries.size() == 1 and listener.workshop_state.owned.has(entries[0].eid), "gift defence becomes an owned claim; its native bonus is parked")
@@ -57,7 +57,7 @@ func _init() -> void:
 	d.secret = {}
 	accuser.beliefs = []
 	accuser.ledger = {}
-	Mind.recompute_beliefs(g.w, accuser, " (clear outing)")
+	Mind.refresh_beliefs(g.w, accuser, " (clear outing)")
 	Mind.defend_self(g.w, d, "player")
 	entries = listener.ledger.values().filter(func(e): return e.meta.get("kind") == "defence" and e.meta.scope.type == "plea")
 	check(entries.size() == 1 and listener.workshop_state.owned.has(entries[0].eid), "plea remains speech and adds no native evidence discount")

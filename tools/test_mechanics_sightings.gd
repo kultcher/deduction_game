@@ -66,7 +66,5 @@ func _parked() -> void:
 	var eid: String = Mind.info_eid(source.id, reading)
 	check(observer.workshop_state.owned.has(eid) and observer.ledger[eid].effects.is_empty(), "night-sighting reading stores receipt-only empty effects under its shared owner")
 	var before: Dictionary = observer.workshop_state.requested.duplicate(true)
-	Mind.recompute_beliefs(g.w, observer, " (receipt-only sighting probe)")
+	Mind.refresh_beliefs(g.w, observer, " (receipt-only sighting probe)")
 	check(observer.workshop_state.requested == before and observer.ledger[eid].effects.is_empty(), "recomputing sighting beliefs is stable with empty ledger effects")
-	g.set_workshop_effects(false)
-	check(not observer.workshop_state.get("active", false) and observer.workshop_state.get("owned", {}).is_empty(), "disabling shared effects retracts shared sighting ownership cleanly")

@@ -65,7 +65,7 @@ func _test_listener_mean_centering_and_tie_symmetry() -> void:
 	var bystander = goods[4]
 	seer.role = "seer"
 	seer.ledger.clear()
-	seer.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+	seer.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	for id in seer.suspicion:
 		seer.suspicion[id] = Tuning.Setup.INITIAL_SUSPICION_BASE
 		seer.npc_trust[id] = 0.5
@@ -83,7 +83,7 @@ func _test_listener_mean_centering_and_tie_symmetry() -> void:
 
 	# 2) Dead person receives 0.0 execution_priority even if implicated by an old card.
 	p1.alive = false
-	Mind.recompute_beliefs(g.w, seer, "p1 died")
+	Mind.refresh_beliefs(g.w, seer, "p1 died")
 	_check(is_zero_approx(Mind.execution_priority(seer, p1.id)) and Mind.execution_priority(seer, p2.id) > ep_p2, "dead suspect drops to 0.0 execution_priority while surviving partner concentrates priority")
 	p1.alive = true
 
@@ -93,7 +93,7 @@ func _test_listener_mean_centering_and_tie_symmetry() -> void:
 		dowser.suspicion[id] = Tuning.Setup.INITIAL_SUSPICION_BASE
 	dowser.role = "dowser"
 	dowser.ledger.clear()
-	dowser.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+	dowser.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	dowser.info_log = [{"day": 1, "phase": C.MORNING, "role": "dowser", "data": {"group": [p1.id, p2.id, p3.id, bystander.id], "count": 2}, "true": true, "shared": false, "text": "dowser 2 of 4"}]
 	dowser.applied_info = 0
 	Mind.update_from_own_info(g.w)

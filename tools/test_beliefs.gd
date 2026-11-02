@@ -43,7 +43,7 @@ func _setup(sd: int) -> Dictionary:
 			m.ledger = {}
 			for id in m.suspicion:
 				m.suspicion[id] = 0.1
-			Mind.recompute_beliefs(w, m, " (clean)")
+			Mind.refresh_beliefs(w, m, " (clean)")
 	var L = w.living_good()[0]
 	var others: Array = w.npcs.filter(func(x): return x != L)
 	return {"g": g, "w": w, "L": L, "A": others[0], "B": others[1], "C": others[2], "D": others[3]}
@@ -131,7 +131,7 @@ func _test_stable_recompute() -> void:
 	_doubt(t, t["C"].id, 2)
 	var before = _snapshot(t)
 	for i in range(10):
-		Mind.recompute_beliefs(w, L, "")
+		Mind.refresh_beliefs(w, L, "")
 	var after = _snapshot(t)
 	_check(before == after, "recomputing with no new evidence changes nothing")
 
@@ -160,7 +160,7 @@ func _test_mutual_accusation() -> void:
 	Mind.apply_info(w, L, t["B"], _seer(1, t["A"].id, t["D"].id), 0.5)
 	var first = _snapshot(t)
 	for i in range(20):
-		Mind.recompute_beliefs(w, L, "")
+		Mind.refresh_beliefs(w, L, "")
 	var last = _snapshot(t)
 	_check(first == last, "mutual accusation is stable and bounded across repeated refreshes")
 
@@ -176,13 +176,16 @@ func _test_chained_deduction() -> void:
 	var g = t["g"]
 	var w = t["w"]
 	var L = t["L"]
-	g.set_workshop_effects(false)
+	g._workshop_native_submission = true
+	g._workshop_native_social = true
 	var kb = g.add_card(Mind.info_fact(w, t["B"], _seer(1, t["A"].id, t["C"].id)))
 	var d1 = g.file_deduction({"type": "evil", "a": t["A"].id}, [kb])
 	Argue.evaluate(w, L, g.board[d1 - 1], g.board, 1.0)
 	var d2 = g.file_deduction({"type": "demon", "a": t["A"].id}, [d1])
 	Argue.evaluate(w, L, g.board[d2 - 1], g.board, 1.0)
-	g.set_workshop_effects(true)
+	g._workshop_native_submission = false
+	g._workshop_native_social = false
+	Mind.refresh_beliefs(w, L, " (chained deduction setup)")
 	var e1 = "arg:" + Argue.conclusion_key({"type": "evil", "a": t["A"].id})
 	var e2 = "arg:" + Argue.conclusion_key({"type": "demon", "a": t["A"].id})
 	var a1 = _eff(t, e1)

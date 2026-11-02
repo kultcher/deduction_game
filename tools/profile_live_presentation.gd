@@ -43,7 +43,6 @@ func _run() -> void:
 		for number in reports:
 			board.connect_cards("e:" + Evidence.normalize_card(g.board[number - 1]).id, root_id)
 		var number = Live.file(g, board.compile(root_id))
-		g.set_workshop_effects(true)
 		var shared = 0
 		var native: Array = []
 		var why = {}

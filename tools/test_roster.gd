@@ -5,6 +5,7 @@
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
+const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const C = preload("res://sim/content.gd")
@@ -41,10 +42,15 @@ func _init() -> void:
 
 func _game(sd: int, size: int = 7):
 	var g = Game.new()
-	g.workshop_effects = false # Isolate role generation and native mechanics during migration.
 	g.log_dir = "user://test_logs"
 	g.new_case(sd, size)
 	return g
+
+## Pure World setup for multi-hundred-seed role/home/bluff distribution checks.
+func _world(sd: int, size: int = 7):
+	var w = World.new()
+	w.setup(sd, size)
+	return w
 
 ## Give a good NPC a role (swapping with whoever holds it, so roles stay unique).
 func _give(w, n, role: String) -> void:
@@ -57,7 +63,7 @@ func _test_setup(size: int) -> void:
 	var bad: Array = []
 	var mods = {}
 	for sd in range(9000, 9060):
-		var w = _game(sd, size).w
+		var w = _world(sd, size)
 		var cfg: Dictionary = C.SETUPS[size]
 		var roles: Array = w.npcs.map(func(n): return n.role)
 		var town: Array = roles.filter(func(r): return r in C.GOOD_ROLES)
@@ -85,7 +91,6 @@ func _test_setup(size: int) -> void:
 
 func _test_martyr_save() -> void:
 	var gm = _game(9100)
-	gm.set_workshop_effects(true)
 	var w = gm.w
 	w.day = 2
 	var goods: Array = w.living_good()
@@ -427,7 +432,7 @@ func _test_spent_gift_kills() -> void:
 	var spent_picked = 0
 	var tries = 0
 	for sd in range(9300, 9330):
-		var w = _game(sd).w
+		var w = _world(sd)
 		var goods: Array = w.living_good()
 		var a = goods[0]
 		var b = goods[1]
@@ -484,7 +489,7 @@ func _test_homes_and_bluffs() -> void:
 	var bad = 0
 	for sd in range(9500, 9520):
 		for size in [7, 10]:
-			var w = _game(sd, size).w
+			var w = _world(sd, size)
 			var counts = {}
 			for n in w.npcs:
 				counts[n.home_block] = counts.get(n.home_block, 0) + 1
@@ -495,7 +500,7 @@ func _test_homes_and_bluffs() -> void:
 	var over = 0
 	var total = 0
 	for sd in range(9520, 9900):
-		var w2 = _game(sd, 10).w
+		var w2 = _world(sd, 10)
 		for m in w2.evil_team():
 			for e in m.info_log:
 				if e.get("fake", false) and e["role"] == "surveyor":

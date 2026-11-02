@@ -28,7 +28,6 @@ func _init() -> void:
 
 func _game(sd: int, size: int = 10):
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(sd, size)
 	return g

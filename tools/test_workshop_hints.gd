@@ -62,7 +62,7 @@ func _live(size: int) -> void:
 			listener.known_claims = {}
 			listener.beliefs = []
 			listener.ledger = {}
-			listener.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+			listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	var target = g.w.living_good()[0]
 	var observer = g.w.living_good()[1]
 	var raw = {"kind": "hint", "source": target.id, "subject": [target.id], "day": 1, "phase": 0,

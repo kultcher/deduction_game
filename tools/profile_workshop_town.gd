@@ -73,7 +73,6 @@ func _run() -> void:
 	if "--nested" in args:
 		number = g.file_deduction({"type": "evil", "a": target.id}, [number])
 		assert(number > 0, "The nested benchmark must retain its original filed case")
-	g.set_workshop_effects(true)
 	g.state = "talk"
 	g.talk_with = listener
 	g.questions_left = 3

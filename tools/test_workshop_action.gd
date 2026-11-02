@@ -26,7 +26,7 @@ func _live(size: int) -> void:
 				listener.known_claims = {}
 				listener.beliefs = []
 				listener.ledger = {}
-				listener.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+				listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	var source = g.w.living_good()[0]
 	var target = g.w.living_good()[1]
 	var reading = {"day": 0, "phase": 0, "role": "surveyor", "data": {"count": 2}, "text": "Two evil blocks"}
@@ -47,26 +47,27 @@ func _live(size: int) -> void:
 	var before = observer.suspicion.duplicate(true)
 	var rng = g.w.rng.state
 	var action = observer.workshop_state.action.duplicate(true)
-	Mind.recompute_beliefs(g.w, observer, "same action inputs")
+	Mind.refresh_beliefs(g.w, observer, "same action inputs")
 	check(observer.workshop_state.action == action and observer.suspicion == before and g.w.rng.state == rng, "action refresh is repeatable and changes neither evidence nor RNG")
-	g.set_workshop_effects(false)
-	check(g.w.living().all(func(n): return not (n.shadow if n.is_evil() else n).workshop_state.has("action")), "disabling shared assessment removes every good/cover action")
+	var saved_ws: Dictionary = observer.workshop_state
+	observer.workshop_state = {}
 	check(Mind.execution_priority(observer, source.id) == 0.0, "inactive action reads supply no stale score")
-	g.set_workshop_effects(true)
-	check(observer.workshop_state.active and observer.workshop_state.has("action"), "supported evidence restores its action with ownership")
+	observer.workshop_state = saved_ws
 	# Anonymous accounts are now weak teller testimony, without a gift identity.
 	Mind.apply_info(g.w, observer, source, reading, 0.25, source.id, true)
 	check(observer.workshop_state.active and observer.workshop_state.has("action"), "supported anonymous testimony retains a current shared action")
-	# A genuine capability failure must still remove the previous action.
+	# An unready refresh keeps the last good vector and logs the fallback (Purge Phase 3).
+	var prev_susp: Dictionary = observer.suspicion.duplicate(true)
+	var prev_act: Dictionary = observer.workshop_state.action.duplicate(true)
+	g.shared_fallbacks.clear()
 	var invalid: Dictionary = reading.duplicate(true)
 	invalid.data.count = 99
 	Mind.apply_info(g.w, observer, source, invalid, 0.5)
-	check(not observer.workshop_state.active and not observer.workshop_state.has("action") and Mind.execution_priority(observer, source.id) == 0.0, "invalid report content clears the previous action")
+	check(observer.workshop_state.active and observer.suspicion == prev_susp and observer.workshop_state.action == prev_act and not g.shared_fallbacks.is_empty(), "invalid report content keeps the last good vector and logs the fallback")
 	check(Shared.evaluate({"ready": false}, {}, {}).is_empty() and not Shared.evaluate({"ready": true, "empty": true}, {}, {}).has("action"), "failed and evidence-free plans do not manufacture an action")
 
 func _decisions() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = true
 	g.new_case(7101, 7)
 	var w = g.w

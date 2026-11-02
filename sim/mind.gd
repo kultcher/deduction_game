@@ -460,8 +460,6 @@ static func capture_pre_turn_snapshot(w, n) -> Dictionary:
 static func restore_pre_turn_snapshot(w, n) -> void:
 	var snap: Dictionary = n.pre_turn_snapshot if n.pre_turn_snapshot is Dictionary else {}
 	var turned_shadow = n.shadow
-	var keep_enabled: bool = bool(n.workshop_state.get("enabled", false))
-	var has_enabled_key: bool = n.workshop_state.has("enabled")
 	if not snap.is_empty():
 		var fields: Dictionary = snap.get("fields", {})
 		for f in fields:
@@ -476,8 +474,6 @@ static func restore_pre_turn_snapshot(w, n) -> void:
 		n.claim_public = bool(snap.get("claim_public", n.claim_public))
 		n.max_tier = int(snap.get("max_tier", n.max_tier))
 		n.told_readings = int(snap.get("told_readings", n.told_readings))
-	if has_enabled_key:
-		n.workshop_state["enabled"] = keep_enabled
 	# Public hearings from the turned period (meeting testimony, volunteered sightings,
 	# defences) were heard by the good-self shadow; carry those forward, nothing private.
 	if turned_shadow != null:
@@ -520,7 +516,7 @@ static func restore_pre_turn_snapshot(w, n) -> void:
 			MindMeeting.refresh_consensus(w, n, st_target)
 	w.defer_beliefs = prev_defer
 	flush_beliefs(w, n)
-	recompute_beliefs(w, n, " (freed from the curse)")
+	refresh_beliefs(w, n, " (freed from the curse)")
 	w.dlog.think(n.id, "freed_restore", "Freed: restored pre-curse mind and public receipts (%d ledger entries)." % n.ledger.size())
 
 ## Turned or freed by the Revenant's curse: the shadow is rebuilt (or dropped) next time.
@@ -853,7 +849,7 @@ static func ledger_hear(w, n, eid: String, _effects: Array = [], weight: float =
 		e["weight"] = weight
 	if not e["meta"].has("w0"):
 		e["meta"]["w0"] = e["weight"]
-	recompute_beliefs(w, n, "")
+	refresh_beliefs(w, n, "")
 	return {"fresh": fresh, "gain": maxf(0.0, weight - old_w), "times": times}
 
 static func _merge_workshop_roots(old: Dictionary, value: Dictionary) -> Dictionary:
@@ -863,13 +859,13 @@ static func _merge_workshop_roots(old: Dictionary, value: Dictionary) -> Diction
 
 ## Refresh an NPC's beliefs via the shared Workshop model over the flat outside baseline,
 ## then derive metadata-backed social preferences and role beliefs.
-static func recompute_beliefs(w, n, note: String) -> void:
+static func refresh_beliefs(w, n, note: String) -> void:
 	if w.defer_beliefs:
 		if not w.pending_beliefs.any(func(p): return is_same(p[0], n)):
 			w.pending_beliefs.append([n, note])
 		return
 	var span = WorkshopLedgerProfiler.open("belief_refresh")
-	_recompute_beliefs(w, n, note)
+	_refresh_beliefs(w, n, note)
 	WorkshopLedgerProfiler.close(span)
 
 ## Run deferred refreshes: every pending mind, or only `only` (a speaker about to act).
@@ -885,12 +881,12 @@ static func flush_beliefs(w, only = null) -> void:
 	var was: bool = w.defer_beliefs
 	w.defer_beliefs = false
 	for p in run:
-		recompute_beliefs(w, p[0], p[1])
+		refresh_beliefs(w, p[0], p[1])
 	w.defer_beliefs = was
 
-static func _recompute_beliefs(w, n, note: String) -> void:
+static func _refresh_beliefs(w, n, note: String) -> void:
 	if n.is_evil():
-		shadow_run(w, n, func(sh): recompute_beliefs(w, sh, note))
+		shadow_run(w, n, func(sh): refresh_beliefs(w, sh, note))
 		return
 	if w.workshop_refresh.is_valid():
 		w.workshop_refresh.call(n, "before")
@@ -983,8 +979,7 @@ static func reconsider(w, n, why: String) -> void:
 		shadow_run(w, n, func(sh): reconsider(w, sh, why))
 		return
 	if absf(n.trust - n.trust_at_reconsider) < 0.03:
-		if n.workshop_state.get("enabled", false):
-			recompute_beliefs(w, n, " (shared evidence reconsidered: %s)" % why)
+		refresh_beliefs(w, n, " (shared evidence reconsidered: %s)" % why)
 		return
 	n.trust_at_reconsider = n.trust
 	var rate = 1.0 - Tuning.Mind.RECONSIDER_CONFIDENCE_DAMP * trait_of(n, "confidence")
@@ -1015,7 +1010,7 @@ static func reconsider(w, n, why: String) -> void:
 		if m.get("kind", "") == "arg" and nw >= maxf(w0 * 1.35, w0 + 0.05) and not m.get("remarked", false) and m.get("said", "") != "":
 			m["remarked"] = true
 			n.remarks.append(m["said"])
-	recompute_beliefs(w, n, " (reconsidered: %s)" % why)
+	refresh_beliefs(w, n, " (reconsidered: %s)" % why)
 
 ## Apply one ability result (own or heard) to a listener's suspicion, through their ledger:
 ## hearing the same reading again (directly, relayed, at the meeting) never stacks.
@@ -1610,7 +1605,7 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 			return interpreted
 	if group.size() == 1 and who.id == n.id:
 		var shared_self = false
-		if n.is_evil() and C.SHADOW_SELF and n.workshop_state.get("enabled", false):
+		if n.is_evil() and C.SHADOW_SELF:
 			var own_defence = shadow_eval(w, n, func(sh): return hear_defence(w, sh, whos, card))
 			shared_self = own_defence != null and own_defence.get("workshop", false)
 		var key = "support_self:" + fact_id(card)
@@ -1631,7 +1626,7 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 			lines.append(say(n, "[PH] Fair enough. I'll think better of %s." % who.name if r < 0.6 else "[PH] Maybe. I'll keep an open mind about %s." % who.name))
 		else:
 			lines.append(say(n, "[PH] Maybe. I'll keep an open mind about %s." % who.name if r < 0.7 else "[PH] That doesn't clear %s." % who.name))
-		var dr = shadow_eval(w, n, func(sh): return hear_defence(w, sh, whos, card)) if C.SHADOW_SELF and (not (n in group) or n.workshop_state.get("enabled", false)) else null
+		var dr = shadow_eval(w, n, func(sh): return hear_defence(w, sh, whos, card)) if C.SHADOW_SELF else null
 		if dr != null:
 			# Evil would rather a good person stay suspect: worth more if they're a threat.
 			var threats = group.filter(func(x): return not x.is_evil())
@@ -1661,7 +1656,7 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 			if x.is_evil():
 				Evil.add_intel(w, n, "player_suspects", x.id, 0.0, "the Demonologist thinks it's one of %s" % gname)
 		lines.append(say(n, "[PH] Maybe. I'll keep an eye on them both." if w.decision_roll(n, "group_defence_reply", 0.6) else "[PH] That... does look bad for one of them."))
-		var gr = shadow_eval(w, n, func(sh): return hear_group_case(w, sh, group, card)) if C.SHADOW_SELF and (not (n in group) or n.workshop_state.get("enabled", false)) else null
+		var gr = shadow_eval(w, n, func(sh): return hear_group_case(w, sh, group, card)) if C.SHADOW_SELF else null
 		if gr != null:
 			var mates = group.filter(func(x): return Evil.is_teammate(w, n, x.id))
 			var stakes = 0.0

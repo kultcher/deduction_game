@@ -101,7 +101,6 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	if headline.conclusion.type == "conflict":
 		novelty_ids = snapshot.selected
 	var fresh: Array = novelty_ids.filter(func(id): return id not in earlier and not state.get("rewarded_facts", {}).has(id))
-	state.enabled = true
 	var previous_focus: Array = state.get("attention_focus", []).duplicate()
 	state["attention_focus"] = original_ids.duplicate()
 	state.presentations = proposals
@@ -117,14 +116,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var stance_subject: String = headline.conclusion.get("a", "")
 	var stance_before: float = n.suspicion.get(stance_subject, 0.1)
 	var initial_span = Profiler.open("initial_refresh")
-	Mind.recompute_beliefs(g.w, n, " (interpreted presentation)")
+	Mind.refresh_beliefs(g.w, n, " (interpreted presentation)")
 	Profiler.close(initial_span)
-	if not state.get("active", false):
-		# An interval-derived budget can change during recomputation. Do not leave
-		# an unsupported endorsement behind when returning to native presentation.
+	if not state.get("active", false) or not g._workshop_plans.has(listener_key):
+		# An interval-derived budget can change during refresh. Do not leave
+		# an unsupported endorsement behind when blocking the presentation.
 		state.presentations = previous
 		state.attention_focus = previous_focus
-		Mind.recompute_beliefs(g.w, n, " (presentation capability fallback)")
+		Mind.refresh_beliefs(g.w, n, " (presentation capability fallback)")
 		return _unavailable(g, n, card, "ownership", state.get("issues", ["Ownership was not activated."]))
 	var plan: Dictionary = g._workshop_plans[listener_key]
 	# Rebuild against final interval reliability, matching the applied union.
@@ -209,14 +208,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			text = "You've told me that already. Thank you."
 		elif Mind.defend_strength(card, n.id) >= 0.2:
 			Mind.set_trust(g.w, n, n.trust + Tuning.Trust.SELF_SUPPORT_BONUS, "the Demonologist spoke up for me")
-			Mind.recompute_beliefs(g.w, n, " (self-support rapport)")
+			Mind.refresh_beliefs(g.w, n, " (self-support rapport)")
 			text = "Thank you for believing me."
 		else:
 			text = "I appreciate the support, but I'm not sure that explains it."
 	elif assessment.agreement >= 0.6 and not fresh.is_empty() and not repeated:
 		var reward_span = Profiler.open("trust_reward")
 		Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PRESENTATION_REWARD, "the presented reports support the argument")
-		Mind.recompute_beliefs(g.w, n, " (presentation trust reward)")
+		Mind.refresh_beliefs(g.w, n, " (presentation trust reward)")
 		Profiler.close(reward_span)
 	var presented_hubs: Array = root.get("workshop_case", {}).get("circumstantial", [])
 	var hub_canonical_tail: String = ""
@@ -242,7 +241,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			if not state.smear_penalized.has(signature):
 				state.smear_penalized[signature] = true
 				Mind.set_trust(g.w, n, n.trust - smear.penalty, "the Demonologist padded a case with thin circumstantial smears")
-				Mind.recompute_beliefs(g.w, n, " (circumstantial smear backlash)")
+				Mind.refresh_beliefs(g.w, n, " (circumstantial smear backlash)")
 			var smear_fb: String = "Thin guilt-by-association doesn't make a case for me."
 			hub_canonical_tail = " " + smear_fb
 			hub_voiced_tail = " " + Mind.Dialogue.voice_line(n.id, "circumstantial_smear_pushback", smear_fb)

@@ -30,7 +30,7 @@ func _game(size: int):
 			listener.traits.confidence = 0.5
 			for id in listener.suspicion:
 				listener.suspicion[id] = 0.1
-			Mind.recompute_beliefs(g.w, listener, " (clean)")
+			Mind.refresh_beliefs(g.w, listener, " (clean)")
 	return g
 
 func _reveal(size: int) -> void:
@@ -52,7 +52,7 @@ func _reveal(size: int) -> void:
 	d.claim_public = true
 	listener.npc_trust[d.id] = 0.95
 	accuser.beliefs = [{"kind": "saw", "who": d.id, "loc": "", "block": "docks", "day": 1, "phase": 3, "how": "window", "detail": "street"}]
-	Mind.recompute_beliefs(w, accuser, " (first outing)")
+	Mind.refresh_beliefs(w, accuser, " (first outing)")
 	var rng = w.rng.state
 	var first = Mind.defend_self(w, d, accuser.id)
 	var defs1: Array = _defences(listener)

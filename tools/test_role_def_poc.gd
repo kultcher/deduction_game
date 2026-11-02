@@ -75,7 +75,6 @@ func _test_registry_and_metadata() -> void:
 
 func _test_seer_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9101, 7)
 	var w = g.w
@@ -106,7 +105,6 @@ func _test_seer_hooks() -> void:
 
 func _test_warden_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9102, 7)
 	var w = g.w
@@ -135,7 +133,6 @@ func _test_warden_hooks() -> void:
 
 func _test_role_in_group_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9103, 7)
 	var w = g.w
@@ -195,7 +192,6 @@ func _test_role_in_group_hooks() -> void:
 
 func _test_role_at_site_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9104, 7)
 	var w = g.w
@@ -251,7 +247,6 @@ func _test_role_at_site_hooks() -> void:
 
 func _test_count_and_route_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9105, 7)
 	var w = g.w
@@ -305,7 +300,6 @@ func _test_count_and_route_hooks() -> void:
 
 func _test_final_roles_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9106, 7)
 	var w = g.w

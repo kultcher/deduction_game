@@ -148,7 +148,6 @@ func _test_2_5_headline_firsthand_attention_reports() -> void:
 	holder.claim_public = false
 	holder.ledger.clear()
 	holder.workshop_state.clear()
-	holder.workshop_state["enabled"] = true
 	holder.info_log = [{"role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [a.id, b.id], "yes": true}, "true": true, "shared": false, "text": "seer yes"}]
 	var input: Dictionary = Bridge.capture(g, [], holder.id, "private", holder)
 	var plan: Dictionary = Shared.prepare(input, {}, holder.ledger)
