@@ -1056,7 +1056,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 		canonical_opinion += opinion_tail
 	# Their word is a separate matter from their alignment: a cleared neighbour whose reports
 	# haven't held up gets a caveat. Not for a teammate or scapegoat an evil speaker is lying about.
-	if level < 0.45 and not lie and reliability(n, t.id, -1, "report") < WORD_DOUBT_BELOW:
+	if level < 0.45 and not lie and _mind().reliability(n, t.id, -1, "report") < WORD_DOUBT_BELOW:
 		var caveat: String = "Though I'd not take everything %s says on faith." % t.name
 		text += " " + Dialogue.voice_line(n.id, "opinion_word_doubt", caveat, {"subject": t.name})
 		canonical_opinion += " " + caveat
