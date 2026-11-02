@@ -15,6 +15,7 @@ const Solver = preload("res://workshop/solver.gd")
 const PublicEvidence = preload("res://workshop/public_evidence.gd")
 const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
+const History = preload("res://workshop/live_history.gd")
 
 
 static func lookup(source_doubt: Dictionary, src: String, night: int = -1, kind: String = "reading") -> float:

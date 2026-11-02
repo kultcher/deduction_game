@@ -209,7 +209,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	r["metrics"]["new_talk_actions"] = new_talk_counts.duplicate()
 	r["metrics"]["mode"] = "passive" if passive else "active"
 	r["metrics"]["guard_exhausted"] = guard >= 600 and g.state != "over"
-	r["metrics"]["beliefs"] = "native" if native else "shared"
+	r["metrics"]["beliefs"] = "shared"
 	r["metrics"]["suspicion_days"] = scale_days
 	r["metrics"]["votes"] = _vote_records()
 	var points = {}
@@ -325,7 +325,7 @@ func _print_scale(cases: Array) -> void:
 						b.demon_n += 1
 						b.demon_first += 1 if e.rank == 1 else 0
 						b.demon_top3 += 1 if e.rank <= 3 else 0
-	print("\n  SUSPICION SCALE (%s beliefs; good NPCs, end of day)" % ("native" if native else "shared"))
+	print("\n  SUSPICION SCALE (%s beliefs; good NPCs, end of day)" % ("shared"))
 	print("  day   NPCs  top   top+crowd  mean-good  demon  demon#1  top-is-evil  score-ready")
 	var days: Array = by_day.keys()
 	days.sort()

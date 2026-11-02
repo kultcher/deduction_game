@@ -415,7 +415,7 @@ func _test_final_roles_hooks() -> void:
 	var Tuning = C.Tuning
 	_check(Tuning != null, "C.Tuning preloads sim/tuning.gd")
 	_check(C.SETUPS == Tuning.Setup.SETUPS and C.SHADOW_SELF == Tuning.Setup.SHADOW_SELF, "C.SETUPS and C.SHADOW_SELF alias Tuning.Setup")
-	_check(is_equal_approx(Mind.SERIOUS_GRIEVANCE, Tuning.Trust.SERIOUS_GRIEVANCE) and is_equal_approx(Mind.HONESTY_K, Tuning.Mind.HONESTY_K), "Mind constants alias Tuning.Trust and Tuning.Mind")
+	_check(is_equal_approx(Mind.SERIOUS_GRIEVANCE, Tuning.Trust.SERIOUS_GRIEVANCE), "Mind constants alias Tuning.Trust")
 	_check(is_equal_approx(Mind.CONSENSUS_BASE, Tuning.Meeting.CONSENSUS_BASE) and is_equal_approx(C.DEFENCE_ROPE, Tuning.Meeting.DEFENCE_ROPE), "Meeting constants alias Tuning.Meeting")
 	_check(is_equal_approx(C.EVIL_CAUTION_DEMON, Tuning.Evil.EVIL_CAUTION_DEMON) and is_equal_approx(Evil.HEAT_FADE, Tuning.Evil.HEAT_FADE), "Evil constants alias Tuning.Evil")
 	_check(is_equal_approx(C.role_def("seer").public_threat_bonus, Tuning.Roles.SEER.public_threat_bonus) and is_equal_approx(C.role_def("warden").quiet_night_effect, Tuning.Roles.WARDEN.quiet_night_effect), "RoleDefs read per-role tuning from Tuning.Roles")

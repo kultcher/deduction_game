@@ -70,13 +70,13 @@ func _init() -> void:
 
 
 func _test_switch_debug_and_recompute_removed() -> void:
-	var game_props: Array = Game.get_script_property_list().map(func(p): return str(p.name))
-	var game_methods: Array = Game.get_script_method_list().map(func(m): return str(m.name))
+	var game_props: Array = (Game as Script).get_script_property_list().map(func(p): return str(p.name))
+	var game_methods: Array = (Game as Script).get_script_method_list().map(func(m): return str(m.name))
 	_check("workshop_effects" not in game_props and "set_workshop_effects" not in game_methods,
 		"Game.workshop_effects and Game.set_workshop_effects are deleted")
 
-	var mind_methods: Array = Mind.get_script_method_list().map(func(m): return str(m.name))
-	var meeting_methods: Array = MindMeeting.get_script_method_list().map(func(m): return str(m.name))
+	var mind_methods: Array = (Mind as Script).get_script_method_list().map(func(m): return str(m.name))
+	var meeting_methods: Array = (MindMeeting as Script).get_script_method_list().map(func(m): return str(m.name))
 	_check("recompute_beliefs" not in mind_methods and "_recompute_beliefs" not in mind_methods and "refresh_beliefs" in mind_methods,
 		"Mind.recompute_beliefs renamed to Mind.refresh_beliefs")
 	_check("recompute_beliefs" not in meeting_methods and "refresh_beliefs" in meeting_methods,
@@ -84,7 +84,7 @@ func _test_switch_debug_and_recompute_removed() -> void:
 
 	_check(not LiveCaseWorkshop.DebugItem.has("EFFECTS"),
 		"LiveCaseWorkshop Debug menu no longer exposes EFFECTS toggle")
-	var comp_props: Array = WorkshopComparison.get_script_property_list().map(func(p): return str(p.name))
+	var comp_props: Array = (WorkshopComparison as Script).get_script_property_list().map(func(p): return str(p.name))
 	_check("effects_toggle" not in comp_props,
 		"WorkshopComparison inspector no longer exposes effects_toggle")
 
