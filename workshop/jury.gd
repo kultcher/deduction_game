@@ -598,6 +598,9 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			response = "That is the same case; I made the same checks. Repeating it adds no new reason."
 	var target_prefix: String = (Solver.person_name(view, target) + "'s ") if target != "" else ""
 	for note in ev.movement:
+		# "Not that night's killer" says nothing against a minion.
+		if note.begins_with("Seen elsewhere:") and conclusion.type == "minion":
+			continue
 		if note.begins_with("Seen elsewhere:") or note.begins_with("Scattered sightings:"):
 			if target_prefix == "" or note.contains(": " + target_prefix):
 				response += " " + note
@@ -689,7 +692,9 @@ static func strip_accept_persuasion_tail(text: String) -> String:
 	return out.strip_edges()
 
 static func _movement_trace_kind(view: Dictionary, cards: Array) -> String:
-	var has_trace: bool = not view.get("trace_assessments", []).is_empty() or cards.any(func(c): return not c.get("quoted", false) and c.get("kind", "") == "trace")
+	# Only what the case itself cites: scene traces assessed elsewhere on the board are not
+	# "the trace evidence" of a case that never mentions one.
+	var has_trace: bool = cards.any(func(c): return not c.get("quoted", false) and c.get("kind", "") == "trace")
 	var has_move: bool = cards.any(func(c): return not c.get("quoted", false) and (c.get("kind", "") in ["sighting", "alibi", "coverage", "evening", "dropped", "item"] or (c.get("kind", "") == "report" and c.get("role", "") in ["nightwatch", "warden", "lamplighter", "veteran", "medium"])))
 	if has_trace and has_move:
 		return "movement and trace"

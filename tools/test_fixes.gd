@@ -461,7 +461,7 @@ func _own_lies() -> void:
 	var r2 = Mind.answer_gift(w, n, 3)
 	var txt = " ".join(PackedStringArray(r2["lines"].filter(func(l): return l is Dictionary).map(func(l): return l["text"])))
 	var stmts = " ".join(PackedStringArray(r2["lines"].filter(func(l): return l is Dictionary).map(func(l): return str(l.get("statement", l["text"])))))
-	_check("I was out" in stmts and "wasn't ready to tell you why" in stmts and "on night 2" in txt, "disclosing the gift, they own the earlier lie (%s)" % txt)
+	_check("I was out" in stmts and "wasn't ready to tell you why" in stmts and C.spoken_when(2, w.day) in txt, "disclosing the gift, they own the earlier lie (%s)" % txt)
 
 func _corroboration() -> void:
 	var g = _game(7130)

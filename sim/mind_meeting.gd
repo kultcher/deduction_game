@@ -155,7 +155,8 @@ static func _claim_line(n, role: String) -> Dictionary:
 
 ## Construct the exact public-facing report before a presentation layer touches it.
 static func _info_intent(w, n, e: Dictionary) -> Dictionary:
-	var when = "The night before you arrived" if e["day"] == 0 else "Last night" if e["day"] == w.day - 1 else "On night %d" % e["day"]
+	var spoken: String = C.spoken_when(e["day"], w.day)
+	var when = spoken[0].to_upper() + spoken.substr(1)
 	if e.has("phase"):
 		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
 	return {"kind": "report", "statement": "%s, %s." % [when, e["text"]], "event_id": info_eid(n.id, e)}

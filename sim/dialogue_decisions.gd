@@ -6,7 +6,7 @@ const LINES = {
 	"default": {
 		"accept": "That makes sense to me: {claim}.",
 		"already": "I'd come to that already: {claim}.",
-		"partial": "I can see a case for {claim}, but I'm not convinced.",
+		"partial": "I can see a case that {claim}, but I'm not convinced.",
 		"reject": "I'm not persuaded that {claim}.",
 		"repeat": "We've discussed this evidence. My answer is the same.",
 		"changed": "I've reconsidered what you showed me.",
@@ -19,6 +19,8 @@ const LINES = {
 		"source": "I'm doubtful of {source}'s account.",
 		"preferred": "I'm more suspicious of {preferred}.",
 		"nominate": "I nominate {target}.",
+		"warming": "I've come partway round since we last spoke.",
+		"cooling": "Looking at it again, I'm less sure than I was.",
 	},
 	"agnes": {
 		"accept": "Yes, I follow you: {claim}.",
@@ -35,6 +37,8 @@ const LINES = {
 		"source": "I'm having trouble trusting {source}'s account.",
 		"preferred": "It's {preferred} I'm more worried about.",
 		"nominate": "I'll put the name forward: {target}.",
+		"warming": "I've been turning it over, and I'm a little nearer your view than I was.",
+		"cooling": "I've thought on it again, love, and I'm less sure than I was.",
 	},
 	"bart": {
 		"accept": "Fair case: {claim}.",
@@ -51,6 +55,8 @@ const LINES = {
 		"source": "Don't put much stock in {source}'s account.",
 		"preferred": "I'd look harder at {preferred}.",
 		"nominate": "Put {target} up for a vote.",
+		"warming": "Moved a bit since last time.",
+		"cooling": "Less sure than I was.",
 	},
 	"constance": {
 		"accept": "I accept the argument that {claim}.",
@@ -67,6 +73,8 @@ const LINES = {
 		"source": "I have reservations about {source}'s account.",
 		"preferred": "My greater suspicion rests with {preferred}.",
 		"nominate": "I propose {target} for execution.",
+		"warming": "My assessment has moved somewhat toward yours.",
+		"cooling": "On reflection, I am less persuaded than I was.",
 	},
 	"dorian": {
 		"accept": "Wait—yes, when you lay it out like that, {claim}.",
@@ -83,6 +91,8 @@ const LINES = {
 		"source": "I'm not sure we can take {source}'s word at face value here.",
 		"preferred": "Honestly, {preferred} worries me a lot more right now.",
 		"nominate": "I hate doing this, sorry, but I'm nominating {target}.",
+		"warming": "Okay—I'm a bit closer to your view than before, I think.",
+		"cooling": "Wait, I think I'm actually less sure than I was before.",
 	},
 	"edda": {
 		"accept": "That rings true enough to me, dear: {claim}.",
@@ -99,6 +109,8 @@ const LINES = {
 		"source": "I'm taking {source}'s word with a pinch of salt.",
 		"preferred": "If we're minding the hearth, {preferred} is the one to watch.",
 		"nominate": "No sense putting it off: I nominate {target}.",
+		"warming": "I've warmed to it a little since we last talked, dear.",
+		"cooling": "I've had another think, and I'm less sure than I was.",
 	},
 	"fenwick": {
 		"accept": "Bravo! The pieces snap together: {claim}.",
@@ -115,6 +127,8 @@ const LINES = {
 		"source": "I suspect {source} may be embellishing more than I do.",
 		"preferred": "For my coin, the true villain of the piece is {preferred}.",
 		"nominate": "Let the town hear the name: I nominate {target}!",
+		"warming": "The plot has drawn me a little nearer your telling.",
+		"cooling": "Alas, on a second reading the tale grips me less.",
 	},
 	"greta": {
 		"accept": "Fine. The receipts line up: {claim}.",
@@ -131,6 +145,8 @@ const LINES = {
 		"source": "And why should I take {source}'s word for gospel?",
 		"preferred": "Stop barking up the wrong tree and look at {preferred}.",
 		"nominate": "Put {target} on the block and let them answer for it.",
+		"warming": "Fine—I'm closer to your read than I was.",
+		"cooling": "Looked again. I'm less convinced than before.",
 	},
 	"hollis": {
 		"accept": "The inference is sound and well-supported: {claim}.",
@@ -147,6 +163,8 @@ const LINES = {
 		"source": "I attach considerable epistemic doubt to {source}'s testimony.",
 		"preferred": "A rigorous accounting directs greater suspicion toward {preferred}.",
 		"nominate": "On the weight of the record, I nominate {target}.",
+		"warming": "My position has shifted somewhat in your direction.",
+		"cooling": "On re-examination, my confidence in the inference has diminished.",
 	},
 	"isolde": {
 		"accept": "It pains me to say it, truly, but I must agree that {claim}.",
@@ -163,6 +181,8 @@ const LINES = {
 		"source": "I'm sorry, truly, but I fear {source} may not be reliable here.",
 		"preferred": "If I must name whom I fear most, it is {preferred}.",
 		"nominate": "May heaven forgive me, I nominate {target}.",
+		"warming": "I've been thinking on it, and I'm a little more afraid you're right.",
+		"cooling": "I've thought it over again, and I'm less sure than I was—forgive me.",
 	},
 	"jory": {
 		"accept": "Oh! Yeah, that tracks—{claim}!",
@@ -179,6 +199,8 @@ const LINES = {
 		"source": "Not sure I'm buying {source}'s story here.",
 		"preferred": "Honestly? I'm looking way harder at {preferred}.",
 		"nominate": "Let's do it—I'm nominating {target}!",
+		"warming": "Okay, I'm leaning your way a bit more now!",
+		"cooling": "Hm, actually—less sure than I was.",
 	},
 	"kiran": {
 		"accept": "Cleanly played, Demonologist—I'll buy that {claim}.",
@@ -195,22 +217,26 @@ const LINES = {
 		"source": "I'd check {source}'s sleeves before trusting that account.",
 		"preferred": "If we're placing wagers, my eye is on {preferred}.",
 		"nominate": "Let's make it interesting: I nominate {target}.",
+		"warming": "I've shaded my odds a little toward yours.",
+		"cooling": "On the rematch, I like your odds less than I did.",
 	},
 	"lian": {
 		"accept": "Confirmed: {claim}.",
-		"already": "Already logged: {claim}.",
+		"already": "Already had that: {claim}.",
 		"partial": "Plausible that {claim}, but unverified.",
 		"reject": "Unproven that {claim}. Bring tighter links.",
-		"repeat": "Same inputs, same output. Move on.",
+		"repeat": "Same facts, same answer. Move on.",
 		"changed": "Updated my read on this case.",
-		"new_evidence": "New evidence logged. Re-evaluating.",
+		"new_evidence": "That's new. Weighing it.",
 		"alternative": "Better fit for the facts: {alternative}.",
 		"possible_alternative": "Open gap in the chain: {alternative}.",
 		"weak": "Insufficient support to act on.",
-		"quality": "Source reliability is too low to act on.",
+		"quality": "I wouldn't act on sources that shaky.",
 		"source": "{source}'s report doesn't hold up.",
-		"preferred": "Higher-priority suspect is {preferred}.",
+		"preferred": "I'd look at {preferred} first.",
 		"nominate": "Putting {target} to the vote.",
+		"warming": "Moved closer to your read.",
+		"cooling": "Less convinced than before.",
 	},
 	"merrin": {
 		"accept": "Oh, heaven preserve us, it's true: {claim}!",
@@ -227,22 +253,26 @@ const LINES = {
 		"source": "I tremble to rely upon {source}'s word in this dark hour.",
 		"preferred": "My every waking dread points straight at {preferred}!",
 		"nominate": "Before another night claims us all, I nominate {target}!",
+		"warming": "Oh, I fear you're nearer the truth than I allowed!",
+		"cooling": "Perhaps my dread ran ahead of me—I'm less certain now!",
 	},
 	"nisha": {
-		"accept": "The constraints lock in: {claim}.",
-		"already": "That matches my working model: {claim}.",
-		"partial": "The hypothesis that {claim} fits part of the board, but leaves branches open.",
-		"reject": "The premise that {claim} fails against the current constraints.",
-		"repeat": "Identical evidence set. My evaluation is unchanged.",
-		"changed": "Re-running that evidence against the board changes my conclusion.",
-		"new_evidence": "Adding that constraint narrows the remaining worlds.",
-		"alternative": "The stronger competing model is that {alternative}.",
-		"possible_alternative": "You haven't eliminated the branch where {alternative}.",
-		"weak": "The cited cards don't isolate the target variable.",
+		"accept": "Every piece fits: {claim}.",
+		"already": "That matches what I'd concluded: {claim}.",
+		"partial": "The idea that {claim} fits some of the facts, but leaves other answers open.",
+		"reject": "The idea that {claim} doesn't survive the facts we have.",
+		"repeat": "That's the same evidence. My answer hasn't changed.",
+		"changed": "Testing that evidence again changes my conclusion.",
+		"new_evidence": "That new fact narrows the possibilities.",
+		"alternative": "The stronger explanation is that {alternative}.",
+		"possible_alternative": "You haven't ruled out that {alternative}.",
+		"weak": "What you've shown doesn't single them out.",
 		"quality": "The premise relies on uncorroborated testimony.",
-		"source": "Discounting for {source}'s credibility weakens the chain.",
-		"preferred": "The stronger signal on the board points to {preferred}.",
-		"nominate": "To test the leading hypothesis, I nominate {target}.",
+		"source": "Once I allow for doubts about {source}, the chain weakens.",
+		"preferred": "The evidence points more strongly at {preferred}.",
+		"nominate": "On what we know so far, I nominate {target}.",
+		"warming": "Testing it again moves me somewhat toward your view.",
+		"cooling": "Testing it again leaves me less convinced than I was.",
 	},
 	"odette": {
 		"accept": "Much as I hate agreeing with a crowd, yes: {claim}.",
@@ -259,8 +289,12 @@ const LINES = {
 		"source": "Relying on {source}'s account is a brave choice.",
 		"preferred": "If you want a sensible target, look at {preferred}.",
 		"nominate": "Since someone must be the adult in the room, I nominate {target}.",
+		"warming": "I'm marginally closer to agreeing with you, which is annoying.",
+		"cooling": "On second thought, I'm less taken with it than I was.",
 	},
 }
+
+const STANCE_RANK = {"reject": 0, "partial": 1, "accept": 2}
 
 ## Single pass: names and quoted content cannot become template instructions.
 static func _line(id: String, key: String, slots: Dictionary) -> String:
@@ -286,9 +320,21 @@ static func render(id: String, d: Dictionary, audience: String, memory: Dictiona
 		var signature = JSON.stringify([d.get("stance", "partial"), d.get("reason", ""), d.get("alternative", ""), d.get("source", ""), d.get("preferred", ""), d.get("special", "")])
 		var same_facts = not prior.is_empty() and prior.get("facts", []) == d.get("facts", [])
 		var cue = ""
-		if not prior.is_empty():
+		# An argument about the speaker gets their denial, not a remark about their view moving.
+		var about_self: bool = str(d.get("target_id", "")) == id
+		if not prior.is_empty() and not about_self:
 			if prior.get("signature", "") != signature:
-				cue = "changed"
+				# The opener must agree with the stance that follows it: "I've come round"
+				# only before agreement, and a different reason for the same stance is not
+				# a change of mind.
+				var was: int = STANCE_RANK.get(prior.get("stance", "partial"), 1)
+				var now: int = STANCE_RANK.get(d.get("stance", "partial"), 1)
+				if now > was:
+					cue = "changed" if d.get("stance", "") == "accept" else "warming"
+				elif now < was:
+					cue = "cooling"
+				elif d.get("facts", []).any(func(f): return not f in prior.get("facts", [])):
+					cue = "new_evidence"
 			elif same_facts:
 				cue = "repeat"
 			elif d.get("facts", []).any(func(f): return not f in prior.get("facts", [])):

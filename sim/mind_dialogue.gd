@@ -171,7 +171,10 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 	var r2 = answer_gift(w, n, tier)
 	lines += r2["lines"]
 	facts += r2["facts"]
-	var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
+	# "Are you doubting my account?" only fits when the card questions something they said.
+	# A reading or claim that names them is an accusation, and gets the gift answer plain.
+	var own_account: bool = card.get("source", "") == n.id or (kind == "deduction" and c.get("type", "") in ["lied", "unreliable"])
+	var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card) if own_account else {"lines": lines, "facts": facts}
 	pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
 	return pressed
 
@@ -227,8 +230,7 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	variants[str(night)] = count + 1
 	n.dialogue_memory["pressed_nights"] = variants
 	var alternate = count % 2 == 1
-	var when = C.night_name(night)
-	if when.begins_with("night"): when = "on " + when
+	var when = C.spoken_when(night, w.day)
 	var text = ""
 	var statement = ""
 	for fact in response.facts:
@@ -535,8 +537,8 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 			lines.append(say_voiced(n, "private_reveal", "I'll trust you with this. I'm the %s." % C.role_name(role), {"role": C.role_name(role)}))
 		if not evil and C.ROLES[role].get("night_walk", false) and not n.lied_nights.is_empty():
 			# The lie they told you about that night, owned now it has a reason.
-			var nights: Array = n.lied_nights.map(func(x): return C.night_name(x))
-			var nights_str: String = " and ".join(PackedStringArray(nights.map(func(x): return ("on " + x) if x.begins_with("night") else x)))
+			var nights: Array = n.lied_nights.map(func(x): return C.spoken_when(x, w.day))
+			var nights_str: String = " and ".join(PackedStringArray(nights))
 			lines.append(say_voiced(n, "own_night_lie", "So yes: I was out %s, whatever I told you. I wasn't ready to tell you why." % nights_str, {"nights": nights_str}))
 			w.dlog.think(n.id, "admit", "Owns the whereabouts lie(s) now the gift is out: nights %s." % str(n.lied_nights))
 			n.lied_nights.clear()
@@ -570,7 +572,19 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 	if evil and not readings.is_empty():
 		w.dlog.think(n.id, "lie", "Evil: recites fabricated %s results." % role)
 	if not first_time and not readings.is_empty(): lines.pop_front()
-	var reports = info_lines(w, n, readings, "player", not lines.is_empty())
+	# Asked again with something new: say the new reading and stand by the old ones, rather
+	# than reciting the whole history before reaching the news. (Facts still cover them all.)
+	var told: Dictionary = n.dialogue_memory.get("told_player_readings", {})
+	var recite: Array = readings
+	if not first_time:
+		var fresh: Array = readings.filter(func(e): return not told.has(str(n.info_log.find(e))))
+		if not fresh.is_empty() and fresh.size() < readings.size():
+			recite = fresh
+			lines.append(say_voiced(n, "readings_stand", "My earlier readings stand as I told you."))
+	for e in readings:
+		told[str(n.info_log.find(e))] = true
+	n.dialogue_memory["told_player_readings"] = told
+	var reports = info_lines(w, n, recite, "player", not lines.is_empty())
 	if not reports.is_empty():
 		lines.append(say(n, " ".join(PackedStringArray(reports.map(func(line): return line.text)))))
 	for e in readings:
@@ -952,6 +966,17 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 	lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + spoken))
 	return {"lines": lines, "facts": facts}
 
+## Below this credit for someone's word (Mind honesty, evidence-based), an opinion that
+## clears them adds a caveat about relying on what they say.
+const WORD_DOUBT_BELOW = 0.75
+## Canonical (unvoiced) wording when the opinion and the bond are said together.
+const OPINION_BONDED = {
+	"opinion_friend_clear": "%s is a friend of mine, and I don't believe they're evil.",
+	"opinion_friend_suspect": "%s is a friend of mine, and it pains me, but I have my doubts about them.",
+	"opinion_rival_clear": "%s and I have never got on, but I don't take them for a killer.",
+	"opinion_rival_suspect": "%s and I have never got on, so weigh this as you will, but I have my doubts about them.",
+}
+
 static func answer_opinion(w, n, t) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
@@ -989,51 +1014,80 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	why = Evil.cite(w, n, why)
 	var shown = level
 	var opinion_key = ""
+	# What they say keeps three things apart (docs/social_trust_pass.md): whether they think
+	# the subject is evil (the suspicion level, which picks the line), how far they credit the
+	# subject's word (honesty, an optional clause), and their bond (friend or rival, said
+	# alongside, never instead). Bonds are stated truthfully by both alignments.
+	var close = n.npc_trust.get(t.id, 0.5) > 0.7 and not (n.is_evil() and t.id == w.evil_plan["scapegoat"])
+	var bond: String = "friend" if (t.id in n.friends or close) else ("rival" if t.id in n.rivals else "")
+	var combined: bool = false   # the line itself states the bond
 	if level < 0.25:
-		text = "I trust %s." % t.name
-		opinion_key = "opinion_trust"
+		text = "I don't take %s for one of the evil ones." % t.name
+		opinion_key = "opinion_clear"
 	elif level < 0.45:
 		if w.decision_roll(n, "neutral_opinion_suspicion", 0.6 - 0.4 * trait_of(n, "insight") + paranoia(w, n), {"insight": trait_of(n, "insight"), "paranoia": paranoia(w, n)}, t.id):
 			text = "I can't put my finger on it, but something's off about %s." % t.name
 			opinion_key = "opinion_vibes"
 			shown = 0.5
 		else:
-			text = ("%s seems all right to me." % t.name) if level < 0.35 else ("I don't really know %s that well." % t.name)
-			opinion_key = "opinion_fine" if level < 0.35 else "opinion_unfamiliar"
+			# "I don't really know them" makes no sense of a friend or a rival.
+			var fine: bool = level < 0.35 or bond != ""
+			text = ("%s seems all right to me." % t.name) if fine else ("I don't really know %s that well." % t.name)
+			opinion_key = "opinion_fine" if fine else "opinion_unfamiliar"
 	elif level < 0.8:
 		text = "I have my doubts about %s." % t.name
 		opinion_key = "opinion_doubt"
 	else:
 		text = "If you ask me, %s is the one." % t.name
 		opinion_key = "opinion_accuse"
+	if bond != "" and opinion_key in ["opinion_clear", "opinion_fine", "opinion_doubt"]:
+		var settled: bool = opinion_key != "opinion_doubt"
+		opinion_key = "opinion_%s_%s" % [bond, "clear" if settled else "suspect"]
+		text = OPINION_BONDED[opinion_key] % t.name
+		combined = true
 	var canonical_opinion: String = text
 	text = Dialogue.voice_line(n.id, opinion_key, text, {"subject": t.name})
 	if level >= 0.45:
 		var opinion_tail: String = (" " + why[0].to_upper() + why.substr(1) + ".") if why != "" else (" I have my reasons, but I'm not ready to say." if held else " Something's off about them.")
+		# A friend-or-rival line has already admitted it's a doubt, not a case.
+		if combined and why == "" and not held:
+			opinion_tail = ""
 		text += opinion_tail
 		canonical_opinion += opinion_tail
-	var close = n.npc_trust.get(t.id, 0.5) > 0.7 and not (n.is_evil() and t.id == w.evil_plan["scapegoat"])
-	if close and not Dialogue.has_voice(n.id):
+	# Their word is a separate matter from their alignment: a cleared neighbour whose reports
+	# haven't held up gets a caveat. Not for a teammate or scapegoat an evil speaker is lying about.
+	if level < 0.45 and not lie and float(n.honesty.get(t.id, 1.0)) < WORD_DOUBT_BELOW:
+		var caveat: String = "Though I'd not take everything %s says on faith." % t.name
+		text += " " + Dialogue.voice_line(n.id, "opinion_word_doubt", caveat, {"subject": t.name})
+		canonical_opinion += " " + caveat
+	if bond == "friend" and not combined and not Dialogue.has_voice(n.id):
 		text += " We're close, mind."
+	elif bond == "rival" and not combined and not Dialogue.has_voice(n.id):
+		text += " We don't get along, mind."
 	w.dlog.think(n.id, "lie" if lie else "opinion", "%s opinion of %s: level %.2f, reason: %s." %
 		["Evil cover" if lie else ("Evil (mimicking the town)" if n.is_evil() else "Honest"), t.id, level, why if why != "" else "vibes"])
 	level = shown
-	var opinion_reply: Dictionary = voiced(n, "friend", text, "opinion:" + t.id, {"close": close, "subject": t.name})
+	# An uncombined friend or rival gets the voice's partiality note after the opinion.
+	var tail_kind: String = bond if (bond != "" and not combined) else "friend"
+	var opinion_reply: Dictionary = voiced(n, tail_kind, text, "opinion:" + t.id,
+		{"close": bond == "friend" and not combined, "rival": bond == "rival" and not combined, "subject": t.name})
 	var opinion_cue: String = Dialogue.exchange_cue(n.dialogue_memory, "opinion", t.id)
 	opinion_reply["text"] = Dialogue.contextualize(n.id, opinion_reply["text"], opinion_cue, t.name)
 	opinion_reply["statement"] = canonical_opinion
 	# Assign only to specific voiced deliveries, never to the private relationship
 	# or suspicion score that led to the publicly spoken opinion.
 	var opinion_expressions = {
-		"opinion_trust": {"agnes": "warm", "edda": "warm", "fenwick": "warm", "isolde": "warm", "jory": "warm", "merrin": "warm"},
+		"opinion_clear": {"agnes": "warm", "edda": "warm", "fenwick": "warm", "isolde": "warm", "jory": "warm", "merrin": "warm"},
+		"opinion_friend_clear": {"agnes": "warm", "edda": "warm", "fenwick": "warm", "isolde": "warm", "jory": "warm", "merrin": "warm"},
+		"opinion_friend_suspect": {"dorian": "concerned", "isolde": "concerned", "merrin": "concerned"},
 		"opinion_accuse": {"constance": "harsh", "edda": "harsh", "fenwick": "harsh", "greta": "harsh", "jory": "harsh", "lian": "harsh", "merrin": "harsh", "dorian": "concerned", "isolde": "concerned"},
 	}
 	var expressed: String = opinion_expressions.get(opinion_key, {}).get(n.id, "")
 	if expressed != "" and Dialogue.has_voice(n.id):
 		opinion_reply["expression"] = expressed
 		opinion_reply["expression_strength"] = 1 if expressed == "warm" else 2
-	if close:
-		opinion_reply["relationship"] = {"kind": "friend", "people": [n.id, t.id]}
+	if bond != "":
+		opinion_reply["relationship"] = {"kind": bond, "people": [n.id, t.id]}
 	lines.append(opinion_reply)
 	if level >= 0.5:
 		facts.append({"kind": "opinion", "subject": [t.id], "source": n.id, "text": "%s distrusts %s." % [n.name, t.name]})

@@ -176,7 +176,7 @@ func _presence() -> void:
 		"kiran": "Now there's a question I can oblige you on: Jory was at the tavern yesterday evening—I saw them myself. And Fenwick was gracing the place as well.",
 		"lian": "Short version: Jory was at the tavern yesterday evening. Saw them myself. Fenwick was there too.",
 		"merrin": "Oh, I dread what grim conclusion you'll draw from this, truly I do— I saw Jory at the tavern yesterday evening. And Fenwick was there in the gathering gloom as well!",
-		"nisha": "One verified observation: I saw Jory at the tavern yesterday evening. Keep the sighting separate from what it implies. Fenwick was also present.",
+		"nisha": "One thing I saw for certain: I saw Jory at the tavern yesterday evening. Keep the sighting separate from what it implies. Fenwick was also present.",
 		"odette": "Brace yourself: Jory was at the tavern yesterday evening. I saw them myself—utterly scandalous, I'm sure. Fenwick was there as well.",
 	}
 	for id in Fixtures.IDS:
@@ -335,7 +335,13 @@ func _batch2_voices() -> void:
 		"private_reveal": {"role": "Seer"},
 		"public_claim": {"role": "Seer"},
 		"own_night_lie": {"nights": "on night 1"},
-		"opinion_trust": {"subject": "Edda"},
+		"opinion_clear": {"subject": "Edda"},
+		"opinion_word_doubt": {"subject": "Edda"},
+		"opinion_friend_clear": {"subject": "Edda"},
+		"opinion_friend_suspect": {"subject": "Edda"},
+		"opinion_rival_clear": {"subject": "Edda"},
+		"opinion_rival_suspect": {"subject": "Edda"},
+		"readings_stand": {},
 		"opinion_fine": {"subject": "Edda"},
 		"opinion_unfamiliar": {"subject": "Edda"},
 		"opinion_vibes": {"subject": "Edda"},
@@ -495,7 +501,7 @@ func _live() -> void:
 	n.npc_trust[target.id] = 0.9
 	n.suspicion[target.id] = 0.6
 	var opinion = Mind.answer_opinion(w, n, target)
-	_check("I have my doubts about Edda." in opinion["lines"][0]["text"] and "fond of Edda" in opinion["lines"][0]["text"], "live friendship acknowledges affection without erasing suspicion")
+	_check("doubts" in opinion["lines"][0]["text"] and "Edda" in opinion["lines"][0]["text"] and "friend" in opinion["lines"][0]["text"] and opinion["lines"][0].get("relationship", {}).get("kind", "") == "friend", "live friendship acknowledges affection without erasing suspicion")
 	_check(opinion["facts"].size() == 1 and opinion["facts"][0]["text"] == "Agnes distrusts Edda.", "friend dialogue retains the original opinion fact")
 	n.npc_trust[target.id] = 0.5
 	var neutral = Mind.answer_opinion(w, n, target)["lines"][0]["text"]
@@ -567,7 +573,7 @@ func _live() -> void:
 	readings[1]["text"] = "my sight was unclear"
 	n.dialogue_memory.clear()
 	var grouped = Mind.info_lines(w, n, readings, "player", true)
-	_check(grouped.size() == 2 and "Last night, " + entry["text"] + "." in grouped[0]["text"] and "On night 1, my sight was unclear." in grouped[1]["text"], "live grouped readings retain content and ordering")
+	_check(grouped.size() == 2 and "Last night, " + entry["text"] + "." in grouped[0]["text"] and ((Mind.C.spoken_when(1, w.day)[0].to_upper() + Mind.C.spoken_when(1, w.day).substr(1) + ", my sight was unclear.") in grouped[1]["text"]), "live grouped readings retain content and ordering")
 	_check(not "Here's what I can tell you" in grouped[0]["text"] and not "Here, let me put it plainly" in grouped[1]["text"], "live uninterrupted role disclosure avoids fresh reading introductions")
 	n.dialogue_memory.clear()
 	Mind.Dialogue.begin_conversation(n.dialogue_memory)

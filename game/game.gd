@@ -1647,7 +1647,7 @@ const TRAIT_WORDS = {
 		"mid": ["happy to pass on news if you ask", "willing to pass on news if asked", "someone who'll talk if you ask"],
 		"high": ["always the first to know the news", "someone who loves passing on what they've heard", "a terrible gossip"]},
 	"confidence": {"low": ["careful, and thinks twice", "someone who second-guesses themselves", "a pushover"],
-		"mid": ["steady in their views", "fairly firm in their views", "set in their ways, now and then"],
+		"mid": ["sensible, and open to reason", "neither stubborn nor easily swayed", "set in their ways, now and then"],
 		"high": ["principled", "sure of themselves and hard to budge", "pigheaded"]},
 	"composure": {"low": ["honest, and wears their heart on their sleeve", "someone who wears every feeling on their face", "jumpy"],
 		"mid": ["level-headed enough", "fairly level-headed", "hard to read some days"],
@@ -1687,11 +1687,18 @@ func _maybe_tell_trait(n, t, r: Dictionary) -> void:
 	r["narration"] = r.get("narration", []) + ["(You learn %s's %s: %s.)" % [t.name, key.capitalize(), tier]]
 	w.dlog.add("trait_reveal", n.id, t.id, {"trait": key, "tier": tier, "value": t.traits[key], "via": n.id, "friend": friend, "rival": rival})
 
+const MAX_BONDS_TOLD = 2
+
 ## Town bonds use the haunt disclosure chance, but remain attributed profile notes.
 ## No relationship card or hidden Lover/private trust information is generated.
 func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 	if not t.alive or n.silenced:
 		return
+	# Bonds the opinion line itself just stated aren't told twice.
+	var stated: Array = []
+	for line in r.get("lines", []):
+		if line is Dictionary and not line.get("relationship", {}).is_empty():
+			stated.append(line.relationship)
 	var unknown: Array = []
 	for bond in w.town_relationships:
 		var key = bond.kind + ":" + ":".join(PackedStringArray(bond.people))
@@ -1704,7 +1711,17 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 	w.observe_decision(n, "share_relationships", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * 0.4, "one": p}, "outcome_chances": {"all": p * 0.4, "one": p * 0.6, "none": 1.0 - p}}, t.id)
 	if roll >= p:
 		return
-	var tell: Array = unknown if roll < p * 0.4 else [unknown[0]]
+	# Filtered after the roll so the decision draws are unchanged. Ties to the dead belong to
+	# grief and gossip, not a "who are they close to" answer; the speaker's own ties come
+	# first; never more than two in one answer.
+	var living: Callable = func(e): return e.bond.people.all(func(id): return w.by_id[id].alive)
+	var said: Callable = func(e): return stated.any(func(sb): return sb.kind == e.bond.kind and e.bond.people.all(func(id): return id in sb.people))
+	unknown = unknown.filter(func(e): return living.call(e) and not said.call(e))
+	if unknown.is_empty():
+		return
+	unknown.sort_custom(func(a, b): return (n.id in a.bond.people) and not (n.id in b.bond.people))
+	var tell: Array = unknown.slice(0, MAX_BONDS_TOLD) if roll < p * 0.4 else [unknown[0]]
+	var used_keys: Array = []
 	for entry in tell:
 		var bond: Dictionary = entry.bond
 		var name_a: String = w.by_id[bond.people[0]].name
@@ -1722,7 +1739,10 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 			bond_line = Mind.say_voiced(n, self_key, text, {"other": other_name})
 		else:
 			var third_key: String = "tell_bond_third_close" if bond.kind == "friend" else "tell_bond_third_rival"
-			bond_line = Mind.say_voiced(n, third_key, text, {"a": name_a, "b": name_b})
+			# A second bond of the same kind in one answer gets the plain wording, so a
+			# voice's idiom ("thick as thieves") isn't said twice in a row.
+			bond_line = Mind.say(n, text) if third_key in used_keys else Mind.say_voiced(n, third_key, text, {"a": name_a, "b": name_b})
+			used_keys.append(third_key)
 		known_relationships[entry.key] = {"kind": bond.kind, "people": bond.people.duplicate(), "source": n.id, "text": note}
 		var bond_people: Array = bond.people.duplicate()
 		bond_people.sort()

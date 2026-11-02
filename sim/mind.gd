@@ -25,10 +25,17 @@ static func _mind():
 # ---------------------------------------------------------------- utilities
 
 static func say(n, text: String) -> Dictionary:
-	return {"speaker": n.id, "name": n.name, "text": text}
+	return {"speaker": n.id, "name": n.name, "text": Dialogue.apply_tics(n.id, text, _tic_memory(n))}
+
+## Tic counts live with the speaker's dialogue memory; a bare speaker record (tools, UI
+## previews) has none, so nothing is capped for it.
+static func _tic_memory(n) -> Dictionary:
+	if n is Dictionary:
+		return n.get("dialogue_memory", {})
+	return n.dialogue_memory
 
 static func say_voiced(n, key: String, fallback: String, slots: Dictionary = {}) -> Dictionary:
-	var line = {"speaker": n.id, "name": n.name, "text": Dialogue.voice_line(n.id, key, fallback, slots), "statement": fallback}
+	var line = {"speaker": n.id, "name": n.name, "text": Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, key, fallback, slots), _tic_memory(n)), "statement": fallback}
 	# Curated from the actual voiced wording. Unlisted deliveries stay neutral.
 	# These cues do not inspect alignment, secrets, decisions, or truthfulness.
 	var cues = {

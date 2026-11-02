@@ -740,6 +740,9 @@ func begin_meeting() -> Array:
 ## then Mind.testimony_start / testimony_step.
 func open_meeting() -> void:
 	set_log_time()
+	# A meeting is its own speaking scope for verbal tics (sim/dialogue.gd TICS).
+	for n in npcs:
+		Mind.Dialogue.begin_scope(n.dialogue_memory)
 	# Hold belief refreshes from here until each speaker's turn (or the end of the
 	# testimony): one refresh per mind instead of one now and another a moment later.
 	defer_beliefs = true
