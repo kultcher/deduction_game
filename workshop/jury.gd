@@ -353,9 +353,11 @@ static func _assess_target_inner(view: Dictionary, case_data: Dictionary, listen
 				response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
 		elif reasoning.status == "rival_found":
 			var alternative = Solver.describe_world(view, reasoning.rival, conclusion.at)
-			response = "I checked another explanation and it also fits: %s evil; %s Marked. I cannot settle it from this alone." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, alternative.marked)]
+			var marked_s: String = ("; %s Marked" % Solver.person_name(view, alternative.marked)) if str(alternative.get("marked", "")) != "" else ""
+			response = "I checked another explanation and it also fits: %s evil%s. I cannot settle it from this alone." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), marked_s]
 			if alternative.has("demon"):
-				response += " In that explanation, %s is the Demon." % Solver.person_name(view, alternative.demon)
+				var d_alive: bool = preload("res://workshop/live_history.gd").alive_at_night(view, str(alternative.demon), maxi(0, int(view.get("day", 1))))
+				response += (" In that explanation, %s is the Demon." if d_alive else " In that explanation, %s was the starting Demon.") % Solver.person_name(view, alternative.demon)
 			if Movement.available(view) and stance == "accept":
 				response = "I checked another explanation that also fits, but the %s evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible." % _movement_trace_kind(view, _cards_by_ids(view, reasoning.get("considered", case_data.get("cards", []))))
 		elif reasoning.status == "entailed_in_attention":
@@ -576,9 +578,11 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 				response = "Your explanation fits what I considered. I am provisionally persuaded, but I have not checked another explanation." if stance == "accept" else "I found your explanation coherent, but I am not convinced by its support. I have not checked another explanation."
 		elif reasoning.status == "rival_found":
 			var alternative = Solver.describe_world(view, reasoning.rival, conclusion.at)
-			response = "I checked another explanation and it also fits: %s evil; %s Marked." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), Solver.person_name(view, alternative.marked)]
+			var marked_s2: String = ("; %s Marked" % Solver.person_name(view, alternative.marked)) if str(alternative.get("marked", "")) != "" else ""
+			response = "I checked another explanation and it also fits: %s evil%s." % [", ".join(PackedStringArray(alternative.evil.map(func(id): return Solver.person_name(view, id)))), marked_s2]
 			if alternative.has("demon"):
-				response += " In that explanation, %s is the Demon." % Solver.person_name(view, alternative.demon)
+				var d_alive2: bool = preload("res://workshop/live_history.gd").alive_at_night(view, str(alternative.demon), maxi(0, int(view.get("day", 1))))
+				response += (" In that explanation, %s is the Demon." if d_alive2 else " In that explanation, %s was the starting Demon.") % Solver.person_name(view, alternative.demon)
 			if stance == "accept":
 				response += accept_persuasion_tail("" if ev.movement.is_empty() else _movement_trace_kind(view, _cards_by_ids(view, reasoning.get("considered", case_data.get("cards", [])))))
 		elif reasoning.status == "entailed_in_attention":

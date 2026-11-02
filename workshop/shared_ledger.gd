@@ -314,6 +314,9 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 			if shared and facts[id].kind == "sighting":
 				if "learned" in owners[id] and facts[id].source == input.listener.id:
 					hearing = 1.0
+				elif facts[id].source not in ["", "player", "evidence", "town"]:
+					var s_doubt: float = maxf(float(prepared.listener.discounted.get("%s:%d" % [facts[id].source, facts[id].observed_at.day], 0.0)), float(prepared.listener.discounted.get(facts[id].source + ":*", 0.0)))
+					hearing *= clampf(1.0 - s_doubt, 0.0, 1.0)
 				if adapted.has(id):
 					adapted[id]["hearing_weight"] = hearing
 			elif not shared and facts[id].kind in ["sighting", "alibi"] and adapted.has(id):
@@ -477,6 +480,12 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 			continue
 		if card.has("route_origin"):
 			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
+			continue
+		if card.kind == "sighting" and card.source not in ["", prepared.listener.id, "player", "evidence", "town"] and card.has("hearing_weight"):
+			var s_prev: float = maxf(float(plan.input.listener.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(plan.input.listener.discounted.get(card.source + ":*", 0.0)))
+			var s_now: float = maxf(float(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(discounted.get(card.source + ":*", 0.0)))
+			var base_hw: float = float(card.hearing_weight) / (1.0 - s_prev) if s_prev < 1.0 else 0.0
+			card["hearing_weight"] = clampf(base_hw * (1.0 - s_now), 0.0, 1.0)
 			continue
 		if card.kind != "report":
 			continue # Impairment does not invalidate ordinary testimony/role claims.
@@ -664,7 +673,7 @@ static func _card_route_trust(fact: Dictionary, adapted_card: Dictionary, fact_o
 			var teller: String = str(ledger.get(eid, {}).get("meta", {}).get("workshop_teller", relay_src))
 			var st: float = src_t
 			if teller != "" and teller != source and teller != listener_id:
-				st = 0.5 * (src_t + _trust_lookup(teller, listener_id, npc_trust, player_cred))
+				st = minf(src_t, _trust_lookup(teller, listener_id, npc_trust, player_cred))
 			if teller == "player" or source == "player":
 				best_player = maxf(best_player, st)
 			else:

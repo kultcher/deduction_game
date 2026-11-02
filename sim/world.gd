@@ -1753,6 +1753,7 @@ func start_new_day() -> void:
 	dlog.set_time(day, "Morning")
 	if C.SHADOW_SELF:
 		Evil.review_scapegoat(self)
+		Evil.plan_daily_frame(self)
 	start_phase()
 
 # ---------------------------------------------------------------- dev snapshots

@@ -14,6 +14,9 @@ static func quality(listener: Dictionary, source: String) -> float:
 	if source == listener.id or source == "evidence":
 		return 1.0
 	if source == "player":
+		if listener.has("player_credibility"):
+			var pcred: float = clampf(float(listener.get("player_credibility", 0.5)), 0.0, 1.0)
+			return clampf(0.5 + 0.5 * pcred, 0.4, 1.0)
 		return clampf(listener.trust, 0.0, 1.0)
 	return clampf(0.2 + 0.65 * listener.npc_trust.get(source, 0.5) - 0.35 * listener.suspicion.get(source, 0.1), 0.05, 0.95)
 
@@ -41,11 +44,17 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 		var has_reference: bool = counted.possible
 		var grounds: Array = cards.filter(func(c): return c.id in challenge.get("supports", []) and c.id != id and not c.get("quoted", false) and quality(listener, c.source) >= 0.4)
 		var conflict = false
+		var self_presence_conflict = false
 		var strength = 1.0
 		if not grounds.is_empty():
 			var alone = Solver.solve(view, grounds, {}, {}, listener.knowledge)
 			var together = Solver.solve(view, grounds + [report], {}, {}, listener.knowledge)
 			conflict = not alone.worlds.is_empty() and alone.movement_ok and (together.worlds.is_empty() or not together.movement_ok)
+			if conflict and report.get("role", "") in ["nightwatch", "warden", "medium", "lamplighter"]:
+				var duty_probe: Dictionary = report.duplicate(true)
+				duty_probe["duty_only"] = true
+				var duty_together = Solver.solve(view, grounds + [duty_probe], {}, {}, listener.knowledge)
+				self_presence_conflict = alone.movement_ok and not duty_together.movement_ok
 			for ground in grounds:
 				strength = minf(strength, quality(listener, ground.source))
 		var supported = (fraction == 0.0 and has_reference) or conflict or (challenge.mode == "unlikely" and fraction < 0.05 and has_reference)
@@ -73,9 +82,15 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 		multiplier = 1.0 - hearing * (1.0 - multiplier)
 		var cause_agreement: float = accuracy_agreement
 		if challenge.mode == "lying":
-			# Discrepancy alone does not identify the dishonest source. Disposition
-			# can favor that hypothesis, but cannot create evidence for it.
-			cause_agreement *= 1.0 - quality(listener, report.source)
+			# Discrepancy alone does not identify the dishonest source unless the cited
+			# observation rules out the speaker's own claimed physical presence, which
+			# poisoning or Delusion cannot explain.
+			if self_presence_conflict:
+				accuracy_agreement = maxf(accuracy_agreement, 0.85 * strength * hearing)
+				cause_agreement = accuracy_agreement
+				note = "The cited observation rules out their presence where that gift required them to be; impairment cannot explain that."
+			else:
+				cause_agreement *= 1.0 - quality(listener, report.source)
 			if report.source != listener.id and report.role == listener.knowledge.get("own_role", ""):
 				cause_agreement = hearing # firsthand knowledge of a unique gift claim
 				note = "They claim the unique gift I know I hold. Impairment cannot explain that role claim."

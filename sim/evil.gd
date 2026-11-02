@@ -46,6 +46,9 @@ static func make_plan(w) -> Dictionary:
 		"caution": 0.0,        # after an unexplained failed kill: shy away from high-profile targets
 		"fake_watch": {},
 		"fake_sightings": {},
+		"daily_planter": "",
+		"plants_today": 0,
+		"planter_sighting": {},
 		"spared": [],
 		"vet_suspects": [],    # failed kills nobody visibly explained: maybe a Veteran
 		"warden_suspects": [], # glimpsed at a door when a kill failed
@@ -134,6 +137,83 @@ static func review_scapegoat(w) -> void:
 		w.dlog.think(w.demon_id, "scapegoat", "Evil switches scapegoat %s -> %s (scores %s)." % [cur, best, str(table)], {"scores": table, "from": cur, "to": best})
 	else:
 		w.dlog.think(w.demon_id, "scapegoat", "Evil keeps scapegoat %s (scores %s)." % [cur, str(table)], {"scores": table})
+
+## Phase 4.3: Select at most one daily_planter from Day 2 onward to seed a plausible
+## murder-block sighting of the scapegoat into town whispers, using ONLY Evil's own intel
+## and public log facts (never peeking at the player's private vigil or unshared Good info).
+static func plan_daily_frame(w) -> void:
+	ensure_scapegoat(w)
+	var plan: Dictionary = w.evil_plan
+	plan["daily_planter"] = ""
+	plan["plants_today"] = 0
+	plan["planter_sighting"] = {}
+	if w.day < 2:
+		return
+	var sg_id: String = str(plan.get("scapegoat", ""))
+	if sg_id == "" or not w.by_id.has(sg_id) or not w.by_id[sg_id].alive:
+		return
+	if w.public_log.any(func(ev): return ev.get("kind", "") == "martyr" and sg_id in ev.get("subjects", [])):
+		return
+	var nd: int = w.day - 1
+	var death_block: String = ""
+	for sid in w.scenes:
+		if int(w.scenes[sid].get("day", -2)) == nd:
+			death_block = str(w.scenes[sid].get("block", ""))
+			break
+	if death_block == "":
+		return
+	var sg = w.by_id[sg_id]
+	var best_m = null
+	var best_sight: Dictionary = {}
+	var best_score: float = -999.0
+	for m in w.evil_team():
+		if not m.alive or m.silenced or m.id == sg_id:
+			continue
+		var key: String = "%s:%d" % [m.id, nd]
+		if plan.get("fake_sightings", {}).has(key):
+			var existing = plan["fake_sightings"][key]
+			if existing is Dictionary and str(existing.get("who", "")) == sg_id:
+				var ex_score: float = (1.0 if m.id != w.demon_id else 0.0) + 0.8 * m.traits.get("gossip", 0.5) - 0.6 * float(exposure(w, m).get("public_talk", 0.0))
+				if ex_score > best_score:
+					best_score = ex_score
+					best_m = m
+					best_sight = existing
+			continue
+		var bluff: String = str(plan.get("bluffs", {}).get(m.id, ""))
+		var cand: Dictionary = {}
+		var watch: Dictionary = _own_fake_reading(m, nd, "nightwatch")
+		if m.home_block == death_block and sg.home_block != death_block and watch.is_empty():
+			cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "window", "detail": "street"}
+		elif bluff in ["nightwatch", "warden", "lamplighter"]:
+			if bluff == "nightwatch":
+				if watch.is_empty():
+					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
+				elif str(watch.get("data", {}).get("block", "")) == death_block and sg_id in watch.get("data", {}).get("seen", []):
+					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
+				elif not watch.get("shared", false) and m.told_readings == 0:
+					watch["data"] = {"block": death_block, "seen": [sg_id]}
+					watch["text"] = "I watched %s: I saw %s pass by" % [C.block_name(death_block), sg.name]
+					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
+			elif bluff == "warden":
+				if w.living().any(func(p): return p != m and p.home_block == death_block):
+					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
+			else:
+				cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
+		elif m.home_block == sg.home_block and watch.is_empty():
+			cand = {"kind": "saw", "who": sg_id, "loc": "", "block": m.home_block, "day": nd, "phase": C.NIGHT, "how": "window", "detail": "leaving_home"}
+		if cand.is_empty():
+			continue
+		var score: float = (1.0 if m.id != w.demon_id else 0.0) + 0.8 * m.traits.get("gossip", 0.5) - 0.6 * float(exposure(w, m).get("public_talk", 0.0)) + 0.01 * (1.0 - m.traits.get("privacy", 0.5))
+		if score > best_score:
+			best_score = score
+			best_m = m
+			best_sight = cand
+	if best_m != null and not best_sight.is_empty():
+		plan["daily_planter"] = best_m.id
+		plan["planter_sighting"] = best_sight.duplicate(true)
+		plan["fake_sightings"]["%s:%d" % [best_m.id, nd]] = best_sight.duplicate(true)
+		w.dlog.think(best_m.id, "evil_plan", "Daily planter %s prepares night-%d %s frame on scapegoat %s (%s)." % [
+			best_m.id, nd, best_sight["how"], sg_id, C.block_name(best_sight["block"])], best_sight.duplicate(true))
 
 ## A fake Medium reading at dd's hearth. Drawn from the same menu a real Medium's
 ## readings fall into, so no single kind of answer gives it away:
@@ -628,12 +708,21 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 ## (Night Watch, Warden). One story per night: if the cached one was told from elsewhere, it
 ## isn't repeated here (it wouldn't fit). "" vantage = their own home.
 static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String = "window"):
+	var planter_id: String = str(w.evil_plan.get("daily_planter", ""))
 	if vantage == "":
-		vantage = n.home_block
-		how = "window"
+		var ps: Dictionary = w.evil_plan.get("planter_sighting", {})
+		if n.id == planter_id and int(ps.get("day", -2)) == nd and str(ps.get("block", "")) != "":
+			vantage = str(ps["block"])
+			how = str(ps.get("how", "window"))
+		else:
+			vantage = n.home_block
+			how = "window"
 	var key = "%s:%d" % [n.id, nd]
 	var cache: Dictionary = w.evil_plan["fake_sightings"]
 	if not cache.has(key):
+		if planter_id != "" and nd == w.day - 1 and n.id != planter_id and _own_fake_reading(n, nd, "nightwatch").is_empty():
+			cache[key] = false
+			return null
 		var s: String = w.evil_plan["scapegoat"]
 		var result = null
 		# One story per member per night: a made-up watch report for this night already says

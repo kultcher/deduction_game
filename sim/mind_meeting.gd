@@ -462,6 +462,15 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		var sg: String = w.evil_plan["scapegoat"]
 		if sg == "" or not w.by_id[sg].alive or w.day < 2:
 			return null
+		var planter_id: String = str(w.evil_plan.get("daily_planter", ""))
+		var earlier_sg: Array = w.meeting.get("accusations", []).filter(func(a): return a.get("target", "") == sg)
+		if planter_id != "" and n.id != planter_id and not earlier_sg.is_empty():
+			var good_spoke: bool = earlier_sg.any(func(a): return w.by_id.has(a.get("by", "")) and not w.by_id[a["by"]].is_evil())
+			if not good_spoke:
+				good_spoke = w.public_log.any(func(ev): return int(ev.get("day", -1)) == w.day and ev.get("kind", "") in ["accusation", "reading"] and sg in ev.get("subjects", []) and w.by_id.has(ev.get("by", "")) and not w.by_id[ev["by"]].is_evil())
+			if not good_spoke:
+				w.dlog.think(n.id, "accuse", "Evil patience: waits for a good voice against %s before echoing teammates." % sg)
+				return null
 		t = w.by_id[sg]
 		s2 = 0.8
 		why = Evil.bluff_reason(w, n, t)
@@ -797,6 +806,51 @@ static func _entry_rejected_in_workshop(w, mind, real_npc, e: Dictionary) -> boo
 			return true
 	return false
 
+static func _workshop_cross_card_own_reason(w, mind, real_npc, t_id: String, ws_joint: float) -> Dictionary:
+	var t_claim: String = ""
+	var t_readings: Array = []
+	if mind.known_claims.has(t_id):
+		t_claim = str(mind.known_claims[t_id].get("role", ""))
+		t_readings = mind.known_claims[t_id].get("readings", [])
+	if t_claim == "":
+		for pc in w.public_claims:
+			if pc.get("who", "") == t_id:
+				t_claim = str(pc.get("role", ""))
+				break
+	if t_readings.is_empty() and w.by_id.has(t_id):
+		for te in w.by_id[t_id].info_log:
+			if te.get("shared", false):
+				t_readings.append(te)
+	for i in range(real_npc.info_log.size() - 1, -1, -1):
+		var en: Dictionary = real_npc.info_log[i]
+		if en.get("disowned", false):
+			continue
+		var my_role: String = str(en.get("role", ""))
+		var my_data: Dictionary = en.get("data", {})
+		var clashes: bool = (t_claim != "" and t_claim == my_role and t_id != real_npc.id)
+		if not clashes:
+			for tr in t_readings:
+				var tr_role: String = str(tr.get("role", ""))
+				var tr_data: Dictionary = tr.get("data", {})
+				if my_role == "gravedigger" and tr_role in ["archivist", "clerk"] and str(tr_data.get("role", "")) == str(my_data.get("role", "")) and not (str(my_data.get("executed", "")) in tr_data.get("pair", [])):
+					clashes = true
+					break
+				if my_role in ["archivist", "clerk"] and tr_role == "gravedigger" and str(my_data.get("role", "")) == str(tr_data.get("role", "")) and not (str(tr_data.get("executed", "")) in my_data.get("pair", [])):
+					clashes = true
+					break
+				if my_role in ["archivist", "clerk"] and tr_role in ["archivist", "clerk"] and str(my_data.get("role", "")) == str(tr_data.get("role", "")):
+					var p1: Array = my_data.get("pair", [])
+					var p2: Array = tr_data.get("pair", [])
+					if not p1.any(func(x): return x in p2):
+						clashes = true
+						break
+				if tr_data.has("role") and str(tr_data.get("role", "")) == my_role and not (real_npc.id in tr_data.get("pair", [tr_data.get("executed", "")])):
+					clashes = true
+					break
+		if clashes:
+			return {"eid": info_eid(real_npc.id, en), "why": "my own reading contradicts their account", "contrib": maxf(0.45, ws_joint)}
+	return {}
+
 static func _sighting_non_incriminating_in_workshop(w, mind, t_id: String, e: Dictionary) -> bool:
 	var meta: Dictionary = e.get("meta", {})
 	if meta.has("workshop_card"):
@@ -869,6 +923,14 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 						why = f[4]
 		if contrib >= 0.03 and why != "":
 			items.append({"eid": e["eid"], "why": why, "contrib": contrib})
+	if ws_active and ws_joint >= 0.20 and items.is_empty():
+		var own_contradiction: Dictionary = _workshop_cross_card_own_reason(w, mind, n, t_id, ws_joint)
+		if not own_contradiction.is_empty():
+			items.append(own_contradiction)
+		elif ws_joint >= 0.25:
+			var t_public: bool = mind.workshop_state.get("reason_visibility", "") == "public" or w.public_claims.any(func(pc): return pc.get("who", "") == t_id)
+			if t_public:
+				items.append({"eid": "workshop:joint:" + t_id, "why": "their account doesn't fit the other reports on the table", "contrib": ws_joint})
 	items.sort_custom(func(x, y): return x["contrib"] > y["contrib"])
 	items = items.slice(0, limit)
 	var own = "info:%s:" % n.id
@@ -1238,6 +1300,10 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	var para_need: float = -Tuning.Meeting.VOTE_PARANOIA_WEIGHT * paranoia(w, v)
 	var urg_need: float = -Tuning.Meeting.VOTE_URGENCY_PER_DEATH * w.npcs.filter(func(m): return not m.alive).size()
 	var need: float = Tuning.Meeting.VOTE_BASE_NEED + conf_need + early_need + para_need + urg_need
+	if v.id == nominator and (block == "" or block == nominee or action_susp(v, nominee) > action_susp(v, block)) and s < need:
+		var commit_gap: float = (need - s) + 0.02
+		parts["self_nomination"] = commit_gap
+		s += commit_gap
 	var yes = s >= need
 	var exact_parts: Dictionary = parts.duplicate()
 	exact_parts["suspicion"] = susp(v, nominee) # pressure is reported separately

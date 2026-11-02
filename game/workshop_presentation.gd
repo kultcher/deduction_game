@@ -45,7 +45,8 @@ static func _key(card: Dictionary, targets: Array, direction: String, snapshot: 
 	return str(card.n) if direction == "deduction" else "direct:%s:%s:%s" % [origin, direction, ",".join(PackedStringArray(people))]
 
 static func _unavailable(g, n, card: Dictionary, point: String, issues: Array) -> Dictionary:
-	Ownership.fallback(g, n, point, issues, card.get("n", 0))
+	if not preload("res://game/game_presentation.gd")._all_authoring_validation_issues(issues):
+		Ownership.fallback(g, n, point, issues, card.get("n", 0))
 	# No legacy route for presentations (user, Oct 25): block with the reason.
 	return {"blocked": true, "lines": ["Cannot present card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(issues))]], "facts": [], "agreement": 0.0}
 
