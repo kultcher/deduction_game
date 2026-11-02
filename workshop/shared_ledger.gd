@@ -462,6 +462,9 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 	# headline's own effect, which the reply text reads.
 	return Jury.evaluate(view, scoped.case, listener, {"headline_only": true})
 
+## Inputs for deferred reason attribution from the most recent evaluate() call.
+static var last_reason_ctx: Dictionary = {}
+
 static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictionary) -> Dictionary:
 	if not plan.ready:
 		return {}
@@ -542,8 +545,10 @@ static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictio
 				prepared.listener.reading_reliability, prepared.listener.knowledge, prepared.listener.insight,
 				prepared.listener.confidence, target, reasoning.considered]))
 			Theory.prepare(prepared.view, question, prepared.listener, reasoning, key)
+	# Deferred reason attribution (purge 2a): the inputs go to a side slot, not the result,
+	# so results stay comparable values. The caller reads it straight after evaluate().
 	result["reasons"] = {}
-	result["reason_ctx"] = {"inputs": result.get("reason_inputs", []), "owners": plan.get("owners", {}), "public_good": public_good}
+	last_reason_ctx = {"inputs": result.get("reason_inputs", []), "owners": plan.get("owners", {}), "public_good": public_good}
 	result.erase("reason_inputs")
 	result["theories"] = prepared.listener.theories.duplicate(true)
 	# Listener-mean-centered execution priority: bystanders at or below the listener's

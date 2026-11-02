@@ -83,14 +83,19 @@ static func _refresh(g, n, phase: String) -> void:
 		var cached: Dictionary = g._workshop_evaluations.get(key, {})
 		var cache_hit = cached.get("input") == inputs
 		var proposal: Dictionary
+		var reason_ctx: Dictionary = {}
 		if cache_hit:
 			Profiler.count("union_cache_hit")
 			proposal = cached.proposal
+			reason_ctx = cached.get("reason_ctx", {})
 		else:
 			Profiler.count("union_cache_miss")
 			var union_span = Profiler.open("joint_effects")
 			proposal = Shared.evaluate(plan, n.suspicion, n.discounted)
 			Profiler.close(union_span)
+			# Deferred attribution inputs ride beside the proposal, never inside it (purge 2a).
+			reason_ctx = Shared.last_reason_ctx
+			Shared.last_reason_ctx = {}
 		state.outside = n.suspicion.duplicate(true)
 		# Only the applied total-evidence assessment commits theory memory. Scoped
 		# replies and developer/ghost previews operate on copies.
@@ -110,7 +115,7 @@ static func _refresh(g, n, phase: String) -> void:
 		# union merely because the first pass filled in its own memory.
 		var committed_inputs: Array = inputs.duplicate(true)
 		committed_inputs[0].listener.theories = state.theories.duplicate(true)
-		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "cache_hit": cache_hit}
+		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "reason_ctx": reason_ctx, "cache_hit": cache_hit}
 		state.requested = {}
 		state.applied = {}
 		for id in proposal.effects:
@@ -164,7 +169,7 @@ static func _refresh(g, n, phase: String) -> void:
 		# Reasons are attributed lazily (reasons_for): most refreshes are never asked for one.
 		state.reasons = {}
 		state.reasons_pending = true
-		g._workshop_reason_ctx[key] = {"proposal": proposal, "chubs": chubs, "view": plan.prepared.view}
+		g._workshop_reason_ctx[key] = {"rctx": reason_ctx, "chubs": chubs, "view": plan.prepared.view}
 		state.active = true
 		g.w.dlog.trace_event("workshop_ownership", n.id, "", {"owned": state.owned, "facts": state.facts,
 			"owners": state.owners, "requested": state.requested, "applied": state.applied,
@@ -182,8 +187,7 @@ static func reasons_for(g, n) -> void:
 	var ctx: Dictionary = g._workshop_reason_ctx.get(key, {})
 	if ctx.is_empty():
 		return
-	var proposal: Dictionary = ctx.proposal
-	var rctx: Dictionary = proposal.get("reason_ctx", {})
+	var rctx: Dictionary = ctx.rctx
 	var refresh_reasons: Dictionary = rctx.get("computed", {})
 	if not rctx.has("computed"):
 		var ins: Array = rctx.get("inputs", [])
