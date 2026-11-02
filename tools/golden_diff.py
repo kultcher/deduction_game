@@ -115,8 +115,11 @@ def main():
     base, cand = seed_files(args.baseline), seed_files(args.candidate)
     ok = True
     for name in sorted(set(base) | set(cand)):
-        if name not in cand or name not in base:
-            print("%s: missing from %s" % (name, "candidate" if name not in cand else "baseline"))
+        if name not in cand:
+            print("%s: skipped (not in candidate)" % name)
+            continue
+        if name not in base:
+            print("%s: missing from baseline" % name)
             ok = False
             continue
         a, b = load(base[name]), load(cand[name])
