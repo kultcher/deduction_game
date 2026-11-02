@@ -9,7 +9,7 @@ signal roles_requested
 signal workshop_requested(number: int)
 
 const C = preload("res://sim/content.gd")
-const Argue = preload("res://sim/argue.gd")
+const Deduction = preload("res://sim/deduction.gd")
 const CardList = preload("res://ui/card_list.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const Metrics = preload("res://game/case_metrics.gd")

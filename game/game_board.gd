@@ -8,7 +8,7 @@ extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
-const Argue = preload("res://sim/argue.gd")
+const Deduction = preload("res://sim/deduction.gd")
 const CardModel = preload("res://game/card_model.gd")
 
 
@@ -261,7 +261,7 @@ static func find_links(g, limit: int = 40) -> Array:
 	var seen = {}
 	for i in range(pool.size()):
 		for j in range(i + 1, pool.size()):
-			var res: Dictionary = Argue.check(g.w, [pool[i], pool[j]])
+			var res: Dictionary = Deduction.check(g.w, [pool[i], pool[j]])
 			for m in res["matches"]:
 				var key = str(m["cards"])
 				if not seen.has(key):
@@ -327,15 +327,15 @@ static func link_cards(g, nums: Array) -> Dictionary:
 	for x in nums:
 		if x >= 1 and x <= g.board.size():
 			cards.append(g.board[x - 1])
-	var res: Dictionary = Argue.check(g.w, cards)
+	var res: Dictionary = Deduction.check(g.w, cards)
 	var options: Array = []
 	for m in res["matches"]:
 		if m.get("relation", "contradiction") == "contradiction":
-			var grp: Array = Argue.group_of(g.w, cards.filter(func(x): return x["n"] in m["cards"]))
+			var grp: Array = Deduction.group_of(g.w, cards.filter(func(x): return x["n"] in m["cards"]))
 			if grp.size() >= 2:
 				var cc = {"type": "conflict", "a": "", "group": grp}
 				options.append({"match": m, "expl": {"id": 0, "kind": "conflict", "blame": "", "conclusion": cc,
-					"label": "Something doesn't add up (no explanation chosen): one of %s is misled or lying" % Argue._names(g.w, grp)}})
+					"label": "Something doesn't add up (no explanation chosen): one of %s is misled or lying" % Deduction._names(g.w, grp)}})
 		for e in m["explanations"]:
 			# Alternatives the town weighs, but that nothing in these cards supports, aren't
 			# offered for filing.
@@ -350,30 +350,30 @@ static func link_cards(g, nums: Array) -> Dictionary:
 ## File a deduction card. conclusion: {type, a, role?, night?, card?}. Returns the card
 ## number, or -1 if refused (reason in last_error).
 static func file_deduction(g, conclusion: Dictionary, supports: Array, match_info: Dictionary = {}, chosen: int = 0, workshop_filing: bool = false) -> int:
-	conclusion = Argue.normalize(conclusion.duplicate())
+	conclusion = Deduction.normalize(conclusion.duplicate())
 	var pool: Array = all_receipts(g)
 	var cards: Array = pool.filter(func(x): return x["n"] in supports and not x.get("deleted", false))
 	# The same conclusion from the same cards gets the same footing however it was built:
 	# if a template among the supports offers this conclusion, use it.
 	if conclusion.get("type", "") == "conflict":
 		if conclusion.get("group", []).is_empty():
-			conclusion["group"] = Argue.group_of(g.w, cards)
+			conclusion["group"] = Deduction.group_of(g.w, cards)
 		if match_info.is_empty():
-			for m in Argue.check(g.w, cards)["matches"]:
+			for m in Deduction.check(g.w, cards)["matches"]:
 				if m.get("relation", "contradiction") == "contradiction":
 					match_info = m
 					chosen = 0
 					break
 	elif match_info.is_empty() and not supports.is_empty():
-		for m in Argue.check(g.w, cards)["matches"]:
+		for m in Deduction.check(g.w, cards)["matches"]:
 			for e in m["explanations"]:
-				if Argue.conclusion_key(Argue.normalize(e["conclusion"].duplicate())) == Argue.conclusion_key(conclusion):
+				if Deduction.conclusion_key(Deduction.normalize(e["conclusion"].duplicate())) == Deduction.conclusion_key(conclusion):
 					match_info = m
 					chosen = e["id"]
 					break
 			if not match_info.is_empty():
 				break
-	g.last_error = Argue.filing_problem(g.w, conclusion, supports, pool, not match_info.is_empty())
+	g.last_error = Deduction.filing_problem(g.w, conclusion, supports, pool, not match_info.is_empty())
 	if g.last_error != "":
 		g.w.dlog.add("deduction_refused", "player", conclusion.get("a", ""), {"conclusion": conclusion, "supports": supports}, g.last_error)
 		return -1
@@ -388,7 +388,7 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, match_inf
 		cls = "circumstantial" # an inference is never stronger than circumstantial on its own
 	# Unfounded = the cards don't actually bear on the person (not merely "no template").
 	var active_pool: Array = pool.filter(func(x): return not x.get("deleted", false))
-	var unfounded: bool = match_info.is_empty() and not Argue.bears_on(g.w, conclusion, cards, active_pool)
+	var unfounded: bool = match_info.is_empty() and not Deduction.bears_on(g.w, conclusion, cards, active_pool)
 	var basis = ""
 	if not match_info.is_empty():
 		basis = " (from #%s: %s)" % [", #".join(PackedStringArray(match_info["cards"].map(func(x): return str(x)))), match_info["text"]]
@@ -398,7 +398,7 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, match_inf
 	var subj: Array = conclusion.get("group", []).duplicate() if conclusion.get("type", "") == "conflict" else ([conclusion["a"]] if conclusion.has("a") else [])
 	var near = ""
 	if unfounded:
-		var nr: Array = Argue.check(g.w, cards)["near"]
+		var nr: Array = Deduction.check(g.w, cards)["near"]
 		if not nr.is_empty():
 			near = nr[0]
 	var card = {
@@ -414,7 +414,7 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, match_inf
 		"unfounded": unfounded,
 		"near": near,
 		"relation": match_info.get("relation", ""),
-		"text": "Deduction: %s%s [basis: %s]." % [Argue.conclusion_text(g.w, conclusion), basis, cls],
+		"text": "Deduction: %s%s [basis: %s]." % [Deduction.conclusion_text(g.w, conclusion), basis, cls],
 	}
 	if workshop_filing:
 		card.text += " [Workshop filing %d]" % (g.board.size() + 1)
@@ -465,7 +465,7 @@ static func _parse_conclusion(g, rest: String) -> Dictionary:
 		if not (tail in ["is misled or lying", "are misled or lying", "is lying or misled", "doesn't add up", "is wrong"]):
 			return {"error": "For a group, say: conclude one of these is misled or lying because <cards>."}
 		var gcards: Array = g.board.filter(func(x): return x["n"] in supports)
-		return {"conclusion": Argue.conflict_of(g.w, gcards), "supports": supports}
+		return {"conclusion": Deduction.conflict_of(g.w, gcards), "supports": supports}
 	var who = g.find_npc(words[0], true)
 	if who == null:
 		return {"error": "Who is '%s'?" % words[0]}
@@ -499,7 +499,7 @@ static func _parse_conclusion(g, rest: String) -> Dictionary:
 			status = "a Secret Lover"
 		"a sleepwalker", "sleepwalker":
 			status = "a Sleepwalker"
-	var c = Argue.from_builder(who.id, verb, status, night, card)
+	var c = Deduction.from_builder(who.id, verb, status, night, card)
 	if c.is_empty():
 		return {"error": "'%s %s' isn't something you can conclude. %s" % [verb, status, usage]}
 	if supports.is_empty() and not g.last_link.is_empty():
@@ -530,7 +530,7 @@ static func _link_command(g, rest: String) -> void:
 		g._prompt("You can still argue from them: 'conclude <name> is <status> because <cards>'. If the cards bear on that person it's your own inference; if not, it's unfounded.")
 		return
 	for m in res["matches"]:
-		g._narr("%s %s" % [Argue.RELATION_LEAD[m.get("relation", "contradiction")], m["text"]])
+		g._narr("%s %s" % [Deduction.RELATION_LEAD[m.get("relation", "contradiction")], m["text"]])
 	var k = 0
 	for o in lk["options"]:
 		k += 1
@@ -597,7 +597,7 @@ static func timeline_data(g, filter: String = "") -> Dictionary:
 	for n in g.w.npcs:
 		rows[n.id] = {}
 	for c in cards:
-		for a in Argue.assertions(c):
+		for a in Deduction.assertions(c):
 			var who: String = a.get("who", "")
 			if not rows.has(who):
 				continue

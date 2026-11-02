@@ -49,6 +49,7 @@ That's the social layer the hybrid decision meant to keep.
 Each phase is its own PR, with the full suite, `test_trace`, the 54875 replay and a passive bot chunk before and after.
 
 1. **Split `argue.gd`.** Move the schema into `sim/deduction.gd` and keep forwarders. This is a pure move with no behaviour change, and it takes about one day.
+   - **As built (Nov 1):** `sim/deduction.gd` holds the conclusion vocabulary, assertions, the template matcher (`check` and its `_match_*` helpers), text, keys and the filing checks (33 functions, 7 constants; it needs only `content.gd` and `gifts.gd`). `sim/argue.gd` keeps the evaluator (`evaluate`, `_apply`, `effects_of`, `support_refs`, the evil masks and argument lines) plus forwarders for the 16 schema functions and the constants still called through `Argue.*`. `game_board.gd` now calls `Deduction` directly. Same-seed active bot games are byte-identical before and after.
 2. **Stop generating legacy effects.**
    - Ledger entries keep their receipts and metadata, but legacy `effects` become empty.
    - Role `info_effects` either go away or shrink to the metadata the receipts need.
@@ -64,10 +65,16 @@ Each phase is its own PR, with the full suite, `test_trace`, the 54875 replay an
 ## Decisions (user)
 
 **Answered Nov 1:**
+- **3. Social effects outside the shared model** (decided with the user Nov 1):
+  - **Grief becomes a private, citable action reason, not a suspicion change.** On an execution of someone a mourner trusted, the mourner gets a resentment record (`target`, strength, the hanged friend, day) that fades nightly like slights. It adds a term to *that NPC's* nomination, vote and accusation scores, and `reason_status` can return it as its own reason kind ("they pushed to hang Isolde"). It never enters anyone's shared model, so it only sways others through ordinary crowd pressure (accusations aren't evidence, Q4). Every friend of the hanged person gets their own record, so shared grief needs nothing extra.
+  - **Votes and nominations are circumstantial evidence, in both directions.** "Nominated or voted to hang someone I believe is good" stays circumstantial (the existing `hostile_vote` family in `workshop/circumstantial.gd`, nominator weighted above yes voters). Add the mirror: **record no votes too**, and count "voted no on (or didn't vote for) someone I believe is evil" as a separate shielding incident. Check first that vote receipts reach every NPC's shared input from the public record, not only when the player presents a vote card. The evidence half of grief ("pushed to hang someone later shown innocent") is covered here, for everyone, before phase 2 removes the Gravedigger's legacy "nominator of an innocent" effect.
+  - **Freed souls revert to a snapshot.** At `turn_evil`, snapshot the fields the shadow copies (`SHADOW_COPY`: suspicion, ledger, workshop state, beliefs, hearsay, claims, credibility). On freeing, restore it, carry forward only public receipts from the turned period (public claims and readings; deaths and executions arrive from the world record), and drop the 0.25 suspicion cap. Private things from those days are forgotten. This replaces `shadow_adopt` + `recompute_beliefs` + the cap.
+  - **The Revenant curse's direct `adjust` (+1.0) and `recompute_beliefs` are removed.** The shared model already pins the executed Revenant through the chronology.
+  - **The flat 0.1 starting suspicion stays.**
 - **1. Native A/B baseline: dropped.** Old baselines (native and pre-overhaul shared) are set aside; new baselines are taken once the tuning overhaul settles.
 - **4. Bot rewrite: no rush.** Phases 1–3 go ahead without it; phase 4 waits.
 
-**Ordering (Nov 1):** phase 1 now. Before phase 2, the overhaul's new readers of legacy effects move to the shared model: meeting reasons (`case_against`), defences (`night_sighting_scale` / `reading_strength` in `defend_self`), the Gravedigger rapport side effects in `info_effects`, and the Revenant curse's `adjust` + `recompute_beliefs`. Phases 2–3 then land before the overhaul's phase 5 sweeps.
+**Ordering (Nov 1):** phase 1 now (done: `sim/deduction.gd`, PR below). Before phase 2, the overhaul's new readers of legacy effects move to the shared model: meeting reasons (`case_against`), defences (`night_sighting_scale` / `reading_strength` in `defend_self`), the Gravedigger rapport side effects in `info_effects`, and the Revenant curse's `adjust` + `recompute_beliefs`. Phases 2–3 then land before the overhaul's phase 5 sweeps.
 
 **Original questions:**
 
