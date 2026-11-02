@@ -21,6 +21,8 @@ const MIN_ITEM_CONTRIB: float = 0.03
 const MAX_REASONS_PER_TARGET: int = 6
 const SPOKEN_KINDS: Array = ["report", "sighting", "alibi", "claim", "context", "testimony"]
 
+static var _fits_cache: Dictionary = {}
+
 
 static func attribute_refresh(
 	view: Dictionary,
@@ -87,17 +89,76 @@ static func attribute_refresh(
 	var dull: float = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(listener.get("insight", 0.5)), 0.0, 1.0))
 	var belief_scale: float = Tuning.Workshop.JURY_BELIEF_SCALE if bool(listener.get("per_card_source_trust", false)) else 1.0
 
-	# Precompute full posterior weights per class for fast leave-one-out checks when needed.
+	# Precompute full posterior weights, single-report class weights, and leave-one-out
+	# class posteriors ONCE per refresh rather than repeating role-table solves per suspect.
 	var errs: Array = []
 	for r_card in cc.reports:
 		errs.append(CaseEval.reading_error(view, r_card, eval_listener, own_ids))
-	var fits_full: PackedFloat64Array = _subset_fits(view, cc, attended, knowledge)
+	var fits_full: PackedFloat64Array = _apply_curse_good(view, cc, CaseEval._class_fits(view, cc, attended, knowledge), knowledge)
 	var like_full: PackedFloat64Array = CaseEval._class_like(cc, errs, -1)
 	var move_full: PackedFloat64Array = cc.move if cc.movement_ok else PackedFloat64Array()
 	if not cc.movement_ok:
 		move_full.resize(nc)
 		move_full.fill(0.0)
 	var test_full: PackedFloat64Array = CaseEval._test_like(view, cc, eval_listener, own_ids)
+
+	var attended_map: Dictionary = {}
+	for ac in attended:
+		attended_map[str(ac.get("id", ""))] = true
+
+	var single_report_pre: Dictionary = {}
+	for card in attended:
+		if card.get("quoted", false) or str(card.get("kind", "")) != "report":
+			continue
+		var sc_role: String = str(card.get("role", ""))
+		if sc_role in ["nightwatch", "lamplighter"] or card.get("duty_only", false):
+			continue
+		var sc_id: String = str(card.get("id", ""))
+		var r_tab: PackedByteArray = Solver.report_table(view, card)
+		var v_tab: PackedByteArray = CaseEval._valid_table(view, card)
+		var sc_err: float = CaseEval.reading_error(view, card, eval_listener, own_ids)
+		var sc_q: float = CaseEval.chance_content(view, card)
+		var f_one: PackedFloat64Array = _subset_fits(view, cc, [card], knowledge)
+		var w_one: PackedFloat64Array = PackedFloat64Array()
+		w_one.resize(nc)
+		for c_idx in range(nc):
+			var u_idx: int = cc.rep[c_idx]
+			var st: int = 0 if r_tab[u_idx] == 1 else (1 if v_tab[u_idx] == 1 else 2)
+			w_one[c_idx] = cc.count[c_idx] * team_prior[cc.team[c_idx]] * f_one[c_idx] * CaseEval._factor(st, sc_err, sc_q)
+		single_report_pre[sc_id] = {"w_one": w_one, "err": sc_err}
+
+	var need_loo: bool = false
+	for sp_id in suspect_ids:
+		if float(effects[sp_id].get("evil_change", 0.0)) >= 0.08:
+			need_loo = true
+			break
+	var loo_post_by_cid: Dictionary = {}
+	if need_loo:
+		for cand in attended:
+			if cand.get("quoted", false) or str(cand.get("kind", "")) not in ["report", "claim"]:
+				continue
+			var l_cid: String = str(cand.get("id", ""))
+			var rep_idx: int = -1
+			for j in range(cc.reports.size()):
+				if str(cc.reports[j].get("id", "")) == l_cid:
+					rep_idx = j
+					break
+			var like_wo: PackedFloat64Array = CaseEval._class_like(cc, errs, rep_idx) if rep_idx >= 0 else like_full
+			var l_role: String = str(cand.get("role", ""))
+			var needs_fits_recheck: bool = (
+				str(cand.get("kind", "")) == "claim"
+				or l_role in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran"]
+				or attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != l_cid and str(o.get("role", "")) == l_role)
+			)
+			var fits_wo: PackedFloat64Array = fits_full
+			if needs_fits_recheck:
+				var subset: Array = attended.filter(func(o): return str(o.get("id", "")) != l_cid)
+				fits_wo = _subset_fits(view, cc, subset, knowledge)
+			var post_wo: PackedFloat64Array = PackedFloat64Array()
+			post_wo.resize(nc)
+			for c_idx in range(nc):
+				post_wo[c_idx] = cc.count[c_idx] * team_prior[cc.team[c_idx]] * fits_wo[c_idx] * like_wo[c_idx] * move_full[c_idx] * test_full[c_idx]
+			loo_post_by_cid[l_cid] = post_wo
 
 	var out: Dictionary = {}
 	for pid in suspect_ids:
@@ -106,10 +167,6 @@ static func attribute_refresh(
 			continue
 		var pr0: Dictionary = _person_probs(view, reps, base_w, p_idx)
 		var items_by_id: Dictionary = {}
-
-		var attended_map: Dictionary = {}
-		for ac in attended:
-			attended_map[str(ac.get("id", ""))] = true
 
 		# 1. Direct single-card report, claim, movement, trace, and challenge evaluation.
 		for card in held:
@@ -169,7 +226,7 @@ static func attribute_refresh(
 										"joint": false, "root_ids": [cid],
 									})
 					continue
-				var rep_item: Dictionary = _score_single_report(view, cc, reps, team_prior, card, pid, p_idx, pr0, listener, eval_listener, own_ids, knowledge, self_id, dull, belief_scale)
+				var rep_item: Dictionary = _score_single_report(view, cc, reps, team_prior, card, pid, p_idx, pr0, listener, eval_listener, own_ids, knowledge, self_id, dull, belief_scale, single_report_pre.get(cid, {}))
 				if not rep_item.is_empty():
 					_put_item(items_by_id, rep_item)
 
@@ -262,9 +319,8 @@ static func attribute_refresh(
 		var full_shift: float = float(effects[pid].get("evil_change", 0.0))
 		if full_shift >= 0.08:
 			_augment_joint_leave_one_out(
-				items_by_id, view, cc, reps, attended, errs,
-				team_prior, fits_full, like_full, move_full, test_full,
-				knowledge, pid, p_idx, pr0, full_shift, self_id, belief_scale
+				items_by_id, view, reps, attended, loo_post_by_cid,
+				pid, p_idx, pr0, full_shift, self_id, belief_scale
 			)
 
 		if not items_by_id.is_empty():
@@ -411,7 +467,7 @@ static func public_view_from_world(w) -> Dictionary:
 		"evil_count": 1 + int(C.SETUPS.get(w.n_npcs, {"minions": 1}).minions),
 		"alignment_epoch": "Current alignment" if hist.value.has("curse") else "Original alignment",
 		"live_activity": true,
-		"timeline": hist.timeline,
+		"timeline": History.from_events(pub_events),
 		"chronology": hist.value,
 		"world_options": {
 			"modifiers": C.SECRET_MOD_LIST.duplicate(),
@@ -550,20 +606,27 @@ static func _score_single_report(
 	knowledge: Dictionary,
 	self_id: String,
 	dull: float,
-	belief_scale: float
+	belief_scale: float,
+	precomputed: Dictionary = {}
 ) -> Dictionary:
-	var nc: int = reps.size()
-	var r_tab: PackedByteArray = Solver.report_table(view, card)
-	var v_tab: PackedByteArray = CaseEval._valid_table(view, card)
-	var err: float = CaseEval.reading_error(view, card, eval_listener, own_ids)
-	var q: float = CaseEval.chance_content(view, card)
-	var f_one: PackedFloat64Array = _subset_fits(view, cc, [card], knowledge)
-	var w_one: PackedFloat64Array = PackedFloat64Array()
-	w_one.resize(nc)
-	for c_idx in range(nc):
-		var u_idx: int = cc.rep[c_idx]
-		var st: int = 0 if r_tab[u_idx] == 1 else (1 if v_tab[u_idx] == 1 else 2)
-		w_one[c_idx] = cc.count[c_idx] * team_prior[cc.team[c_idx]] * f_one[c_idx] * CaseEval._factor(st, err, q)
+	var err: float
+	var w_one: PackedFloat64Array
+	if precomputed.has("w_one"):
+		w_one = precomputed["w_one"]
+		err = float(precomputed["err"])
+	else:
+		var nc: int = reps.size()
+		var r_tab: PackedByteArray = Solver.report_table(view, card)
+		var v_tab: PackedByteArray = CaseEval._valid_table(view, card)
+		err = CaseEval.reading_error(view, card, eval_listener, own_ids)
+		var q: float = CaseEval.chance_content(view, card)
+		var f_one: PackedFloat64Array = _subset_fits(view, cc, [card], knowledge)
+		w_one = PackedFloat64Array()
+		w_one.resize(nc)
+		for c_idx in range(nc):
+			var u_idx: int = cc.rep[c_idx]
+			var st: int = 0 if r_tab[u_idx] == 1 else (1 if v_tab[u_idx] == 1 else 2)
+			w_one[c_idx] = cc.count[c_idx] * team_prior[cc.team[c_idx]] * f_one[c_idx] * CaseEval._factor(st, err, q)
 	var pr1: Dictionary = _person_probs(view, reps, w_one, p_idx)
 	if pr1.total <= 1e-18:
 		return {}
@@ -688,16 +751,9 @@ static func _score_movement_sighting(
 static func _augment_joint_leave_one_out(
 	items_by_id: Dictionary,
 	view: Dictionary,
-	cc: Dictionary,
 	reps: Array,
 	attended: Array,
-	errs: Array,
-	team_prior: PackedFloat64Array,
-	fits_full: PackedFloat64Array,
-	like_full: PackedFloat64Array,
-	move_full: PackedFloat64Array,
-	test_full: PackedFloat64Array,
-	knowledge: Dictionary,
+	loo_post_by_cid: Dictionary,
 	pid: String,
 	p_idx: int,
 	pr0: Dictionary,
@@ -705,7 +761,6 @@ static func _augment_joint_leave_one_out(
 	self_id: String,
 	belief_scale: float
 ) -> void:
-	var nc: int = reps.size()
 	var pid_cards: Array = []
 	for ac in attended:
 		if not ac.get("quoted", false) and (str(ac.get("source", "")) == pid or pid in _mentions(ac)):
@@ -770,31 +825,14 @@ static func _augment_joint_leave_one_out(
 	var found_own_joint: bool = false
 	for cand in candidates:
 		var cid: String = str(cand.get("id", ""))
+		if not loo_post_by_cid.has(cid):
+			continue
 		var cand_rsrc: String = str(cand.get("relay_source", ""))
 		var csrc: String = cand_rsrc if cand_rsrc != "" else str(cand.get("source", ""))
 		if csrc != self_id and found_own_joint:
 			break
-		var rep_idx: int = -1
-		for j in range(cc.reports.size()):
-			if str(cc.reports[j].get("id", "")) == cid:
-				rep_idx = j
-				break
-		var like_wo: PackedFloat64Array = CaseEval._class_like(cc, errs, rep_idx) if rep_idx >= 0 else like_full
 		var crole: String = str(cand.get("role", ""))
-		var needs_fits_recheck: bool = (
-			str(cand.get("kind", "")) == "claim"
-			or crole in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran"]
-			or attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != cid and str(o.get("role", "")) == crole)
-		)
-		var fits_wo: PackedFloat64Array = fits_full
-		if needs_fits_recheck:
-			var subset: Array = attended.filter(func(o): return str(o.get("id", "")) != cid)
-			fits_wo = _subset_fits(view, cc, subset, knowledge)
-
-		var post_wo: PackedFloat64Array = PackedFloat64Array()
-		post_wo.resize(nc)
-		for c_idx in range(nc):
-			post_wo[c_idx] = cc.count[c_idx] * team_prior[cc.team[c_idx]] * fits_wo[c_idx] * like_wo[c_idx] * move_full[c_idx] * test_full[c_idx]
+		var post_wo: PackedFloat64Array = loo_post_by_cid[cid]
 		var pr_wo: Dictionary = _person_probs(view, reps, post_wo, p_idx)
 		if pr_wo.total <= 1e-18:
 			continue
@@ -859,19 +897,53 @@ static func _subset_fits(view: Dictionary, cc: Dictionary, cards: Array, knowled
 		ones.resize(nc)
 		ones.fill(1.0)
 		return ones
-	var fits: PackedFloat64Array = CaseEval._fits_over(view, cc, cards, knowledge, range(nc))
-	if view.get("chronology", {}).has("curse"):
-		fits = fits.duplicate()
-		var worlds: Array = Solver.universe(view)
-		for c_idx in range(fits.size()):
-			var world: Dictionary = worlds[cc.rep[c_idx]]
-			for person in knowledge.get("good", []):
-				if TimeModel.evil_at(view, world, person, knowledge.get("good_epoch", view.alignment_epoch)):
-					fits[c_idx] = 0.0
-			for fact in knowledge.get("timed_good", []):
-				if TimeModel.evil_at(view, world, fact.person, fact.at):
-					fits[c_idx] = 0.0
-	return fits
+	var card_sig: Array = []
+	for c in cards:
+		card_sig.append([c.get("id", ""), c.get("kind", ""), c.get("source", ""), c.get("role", ""), c.get("hearing_weight", 1.0), c.has("relay_source"), c.get("quoted", false)])
+	var live: bool = Domain.live(view)
+	var neutral_key: int = hash([cc.key, "ra_neutral", live, card_sig])
+	if not _fits_cache.has(neutral_key):
+		if _fits_cache.size() > 256:
+			_fits_cache.clear()
+		_fits_cache[neutral_key] = CaseEval._fits_over(view, cc, cards, {}, range(nc))
+	var neutral: PackedFloat64Array = _fits_cache[neutral_key]
+	var personal: Dictionary = {
+		"self": knowledge.get("self", ""),
+		"own_role": knowledge.get("own_role", ""),
+		"own_outings": knowledge.get("own_outings", {}),
+	}
+	if not knowledge.get("public_roles", {}).is_empty():
+		personal["public_roles"] = knowledge.public_roles
+	var fits: PackedFloat64Array = neutral
+	if personal.own_role != "" or not personal.own_outings.is_empty() or not personal.get("public_roles", {}).is_empty():
+		var p_key: int = hash([cc.key, "ra_personal", live, card_sig, personal])
+		if not _fits_cache.has(p_key):
+			if _fits_cache.size() > 256:
+				_fits_cache.clear()
+				_fits_cache[neutral_key] = neutral
+			var open: Array = []
+			for c_idx in range(nc):
+				if neutral[c_idx] > 0.0:
+					open.append(c_idx)
+			_fits_cache[p_key] = CaseEval._fits_over(view, cc, cards, personal, open)
+		fits = _fits_cache[p_key]
+	return _apply_curse_good(view, cc, fits, knowledge)
+
+
+static func _apply_curse_good(view: Dictionary, cc: Dictionary, fits: PackedFloat64Array, knowledge: Dictionary) -> PackedFloat64Array:
+	if not view.get("chronology", {}).has("curse"):
+		return fits
+	var copy_f: PackedFloat64Array = fits.duplicate()
+	var worlds: Array = Solver.universe(view)
+	for c_idx in range(copy_f.size()):
+		var world: Dictionary = worlds[cc.rep[c_idx]]
+		for person in knowledge.get("good", []):
+			if TimeModel.evil_at(view, world, person, knowledge.get("good_epoch", view.alignment_epoch)):
+				copy_f[c_idx] = 0.0
+		for fact in knowledge.get("timed_good", []):
+			if TimeModel.evil_at(view, world, fact.person, fact.at):
+				copy_f[c_idx] = 0.0
+	return copy_f
 
 
 static func _person_probs(view: Dictionary, reps: Array, weights: PackedFloat64Array, p_idx: int) -> Dictionary:

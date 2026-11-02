@@ -410,7 +410,7 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 			e["shared"] = true
 			var weights = {}
 			var n_mind = n.shadow if n.is_evil() and n.shadow != null else n
-			var use_shared_w: bool = n_mind.workshop_state.get("active", false)
+			var use_shared_w: bool = n_mind.workshop_state.get("enabled", false)
 			for x in implicated(e):
 				weights[x] = ReasonAttribution.score_reading_entry_in_world(w, n.id, e, x)["strength"] if use_shared_w else reading_strength(e, x)
 			w.public_event("reading", implicated(e), n.id, {"weights": weights})
@@ -1171,6 +1171,12 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 			parts["cost_" + k] = -cost[k]
 		if decide(w, n, "reveal_to_nominate", parts, "Bring out what points at %s (%s) to back the nomination?" % [t.id, top["why"]]):
 			_public_disclosure(w, n, lines, facts)
+			# The disclosure shares the gift and readings, not sightings: also state the private
+			# observations behind the nomination (as _public_accusation does), so the town hears
+			# them and the nominee's defence can answer them.
+			for p_item in priv.slice(0, 2):
+				if p_item.get("own_sighting", false) and str(p_item.get("why", "")).begins_with("I saw"):
+					_append_accusation_sighting(w, n, t, str(p_item["why"]), lines, facts)
 		else:
 			n.hints[t.id] = {"day": w.day, "src": top["eid"]}
 			lines.append(say_voiced(n, "nomination_held_reason", "And I have another reason I'm not ready to share yet."))
@@ -1214,7 +1220,7 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 	var out: Array = []
 	var seen_eids: Dictionary = {}
 	var d_mind = d.shadow if d.is_evil() and d.shadow != null else d
-	var d_shared: bool = d_mind.workshop_state.get("active", false)
+	var d_shared: bool = d_mind.workshop_state.get("enabled", false)
 	if accuser != null:
 		for it in case_against(w, accuser, d.id, 6):
 			if it.get("own_sighting", false):
@@ -1280,7 +1286,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	var defence_scopes = {}
 	# 1. A gift that walks at night explains being seen out.
 	if not out_items.is_empty() and C.ROLES.get(role, {}).get("night_walk", false):
-		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": 0.2}
+		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": maxf(0.2, out_weight)}
 		for k in reveal_cost(w, d):
 			parts["cost_" + k] = -reveal_cost(w, d)[k]
 		if d.claim_public or decide(w, d, "defence_reveal", parts, "Explain being out with my gift (%s)?" % role):
