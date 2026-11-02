@@ -112,7 +112,18 @@ def main():
     args = ap.parse_args()
     ignore = {k for k in args.ignore.split(",") if k}
 
+    for folder, label in ((args.baseline, "baseline"), (args.candidate, "candidate")):
+        if not folder.is_dir():
+            print("%s folder not found: %s" % (label, folder))
+            sys.exit(1)
     base, cand = seed_files(args.baseline), seed_files(args.candidate)
+    # A partial candidate is fine; an empty one (misspelt path, failed capture) is not.
+    if not cand:
+        print("no seed captures (seed_*.jsonl) in candidate folder %s" % args.candidate)
+        sys.exit(1)
+    if not set(cand) & set(base):
+        print("candidate shares no seeds with the baseline: %s" % ", ".join(sorted(cand)))
+        sys.exit(1)
     ok = True
     for name in sorted(set(base) | set(cand)):
         if name not in cand:
