@@ -140,7 +140,7 @@ func _dated_sighting_wording() -> void:
 		observation["who"] = target.id
 		observation["block"] = "square"
 		var reply = Mind.sighting_report(g.w, speaker, observation, 3)
-		_check("night 3" in reply.line.text and reply.fact.day == 3, "spoken sighting/alibi names the same night as its receipt")
+		_check(C.spoken_when(3, g.w.day) in reply.line.text and reply.fact.day == 3, "spoken sighting/alibi names the same night as its receipt")
 		if observation.how == "street":
 			_check(not "window" in reply.line.text, "a street sighting is not worded as a window observation")
 	_check(g.w.rng.state == rng, "dating an approved sighting adds no RNG draw")

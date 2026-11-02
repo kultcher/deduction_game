@@ -176,7 +176,7 @@ func _presence() -> void:
 		"kiran": "Now there's a question I can oblige you on: Jory was at the tavern yesterday evening—I saw them myself. And Fenwick was gracing the place as well.",
 		"lian": "Short version: Jory was at the tavern yesterday evening. Saw them myself. Fenwick was there too.",
 		"merrin": "Oh, I dread what grim conclusion you'll draw from this, truly I do— I saw Jory at the tavern yesterday evening. And Fenwick was there in the gathering gloom as well!",
-		"nisha": "One thing I saw for certain: I saw Jory at the tavern yesterday evening. Keep the sighting separate from what it implies. Fenwick was also present.",
+		"nisha": "One verified observation: I saw Jory at the tavern yesterday evening. Keep the sighting separate from what it implies. Fenwick was also present.",
 		"odette": "Brace yourself: Jory was at the tavern yesterday evening. I saw them myself—utterly scandalous, I'm sure. Fenwick was there as well.",
 	}
 	for id in Fixtures.IDS:

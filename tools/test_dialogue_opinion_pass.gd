@@ -60,7 +60,7 @@ func _tics() -> void:
 	Dialogue.begin_scope(dorian)
 	var lines = ["Sorry, I can't say.", "I'd rather not, sorry.", "Um, sorry, that's not for me to say."]
 	var out = lines.map(func(l): return Dialogue.apply_tics("dorian", l, dorian))
-	check(out[0] == lines[0] and out[1] == lines[1] and out[2] == "Um, that's not for me to say.", "Dorian keeps two 'sorry's per scope: " + str(out))
+	check(out == lines, "Dorian's 'sorry' is his tic and is never capped")
 	check(Dialogue.apply_tics("unvoiced", "truly truly truly", {}) == "truly truly truly", "unvoiced speakers are untouched")
 
 func _decision_cues() -> void:
@@ -90,8 +90,9 @@ func _decision_cues() -> void:
 func _spoken_nights() -> void:
 	check(C.spoken_night(0, 3) == "the night before you arrived", "night 0 is named")
 	check(C.spoken_when(2, 3) == "last night", "yesterday's night is 'last night'")
-	check(C.spoken_when(1, 3) == "the night before last", "two nights back is 'the night before last'")
-	check(C.spoken_when(1, 5) == "on night 1", "older nights keep the board's number")
+	check(C.spoken_when(1, 3) == "on the first night", "older nights are ordinal: " + C.spoken_when(1, 3))
+	check(C.spoken_when(3, 6) == "on the third night", "the third night")
+	check(C.spoken_night(12, 14) == "night 12", "past the ordinal table, the number")
 
 func _opinions() -> void:
 	var g = Game.new()

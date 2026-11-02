@@ -561,11 +561,11 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	var groups: Array = []
 	_add_observation(groups, report["observation"])
 	var obs_lines: Array = _observation_lines(n, groups, "town", "volunteer", not lines.is_empty(), "development" if not lines.is_empty() else "independent")
-	var night_label: String = C.night_name(seen["day"])
+	var night_label: String = C.spoken_when(seen["day"], w.day)
 	for obs_line in obs_lines:
 		obs_line["statement"] = report["line"]["text"]
 		if not (night_label in obs_line["text"] or ("night %d" % seen["day"]) in obs_line["text"]):
-			obs_line["text"] = "On %s: %s" % [night_label, obs_line["text"]]
+			obs_line["text"] = "%s: %s" % [night_label[0].to_upper() + night_label.substr(1), obs_line["text"]]
 		lines.append(obs_line)
 	facts.append(report["fact"])
 

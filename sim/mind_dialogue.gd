@@ -771,9 +771,9 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			var who: String = w.by_id[b.who].name
 			var detail = "go in for the night" if b.kind == "stayed_in" else ("leave their house" if b.get("detail", "") == "leaving_home" else "out")
 			var end = ", and they never came out" if b.kind == "stayed_in" else ""
-			r.line.text = "…though I did see %s %s on %s on night %d%s, not that I was there." % [who, detail, C.block_name(b.block), nd, end]
+			r.line.text = "…though I did see %s %s on %s %s%s, not that I was there." % [who, detail, C.block_name(b.block), C.spoken_when(nd, w.day), end]
 			r.observation.before = "…though I did see "
-			r.observation.after = " %s on %s on night %d%s, not that I was there." % [detail, C.block_name(b.block), nd, end]
+			r.observation.after = " %s on %s %s%s, not that I was there." % [detail, C.block_name(b.block), C.spoken_when(nd, w.day), end]
 			r.observation.scene["slip"] = true
 		_add_observation(groups, r.observation)
 		facts.append(r["fact"])
@@ -797,9 +797,9 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	var who = w.by_id[b["who"]]
 	var bn = C.block_name(b["block"])
 	if b["kind"] == "stayed_in":
-		return {"line": say(n, "From my window on night %d, I saw %s go in for the night, and they never came out." % [nd, who.name]),
+		return {"line": say(n, "From my window %s, I saw %s go in for the night, and they never came out." % [C.spoken_when(nd, w.day), who.name]),
 			"observation": {"kind": "alibi", "subject": who.name, "scene": _observation_scene(n, b, nd),
-				"before": "From my window on night %d, I saw " % nd, "after": " go in for the night, and they never came out."},
+				"before": "From my window %s, I saw " % C.spoken_when(nd, w.day), "after": " go in for the night, and they never came out."},
 			"fact": {"kind": "alibi", "subject": [who.id], "home": true, "witness": true, "day": nd, "phase": C.NIGHT, "source": n.id, "block": b["block"],
 				"text": "%s says they saw %s go home for the night on night %d and not come out (from their window, %s)." % [n.name, who.name, nd, bn]}}
 	var before = ""
@@ -809,13 +809,13 @@ static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 		how = " (from their window)"
 		if b.get("detail", "") == "leaving_home":
 			before = "From my window, I saw "
-			after = " leave their house on night %d." % nd
+			after = " leave their house %s." % C.spoken_when(nd, w.day)
 		else:
 			before = "From my window, I saw "
-			after = " out in the street on night %d." % nd
+			after = " out in the street %s." % C.spoken_when(nd, w.day)
 	else:
 		before = "I did see "
-		after = " out on %s on night %d." % [bn, nd]
+		after = " out on %s %s." % [bn, C.spoken_when(nd, w.day)]
 	return {"line": say(n, before + who.name + after),
 		"observation": {"kind": "sighting", "subject": who.name, "scene": _observation_scene(n, b, nd), "before": before, "after": after},
 		"fact": {"kind": "sighting", "subject": [who.id], "block": b["block"], "day": nd, "phase": C.NIGHT, "source": n.id, "how": b.get("how", "street"),

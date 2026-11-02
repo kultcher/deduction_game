@@ -134,7 +134,7 @@ func _night() -> void:
 	_check(_report(g, speaker, target)["facts"].is_empty(), "a hidden night role is not exposed by asking about another person")
 	speaker.max_tier = 3
 	var r = _report(g, speaker, target)
-	_check(r["facts"].size() == 1 and r["facts"][0]["phase"] == C.NIGHT and "night 1" in r["lines"][0]["text"], "a disclosed night walker may report the requested person with an explicit night")
+	_check(r["facts"].size() == 1 and r["facts"][0]["phase"] == C.NIGHT and C.spoken_when(1, w.day) in r["lines"][0]["text"], "a disclosed night walker may report the requested person with an explicit night")
 	var alibi = {"kind": "alibi", "source": speaker.id, "subject": [speaker.id], "day": 1, "phase": C.NIGHT, "home": true, "block": speaker.home_block}
 	_check(_report(g, speaker, target, [alibi])["facts"].is_empty(), "the new report does not contradict an existing home alibi")
 	speaker.beliefs = [_belief(target, 1, C.NIGHT, speaker.home_block, "window")]

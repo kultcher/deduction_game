@@ -32,7 +32,6 @@ const TICS = {
 	"odette": [{"word": "miracul\\w*|miracles?", "cap": 1, "rewrites": [
 		["(^|(?<=[.!?]\\s))Miraculously( enough)?,\\s+", "$1"], [",\\s+miraculously,", ","],
 		["\\band miraculously,\\s+", "and "], ["(^|(?<=[.!?]\\s))Miracles (do happen|never cease)[:\u2014]\\s*", "$1"]]}],
-	"dorian": [{"word": "sorry", "cap": 2, "rewrites": _ADDRESS}],
 	"edda": [{"word": "dear", "cap": 2, "rewrites": _ADDRESS}, {"word": "love", "cap": 1, "rewrites": _ADDRESS}],
 	"agnes": [{"word": "love", "cap": 1, "rewrites": _ADDRESS}, {"word": "dear", "cap": 1, "rewrites": _ADDRESS}],
 	"fenwick": [{"word": "my friend", "cap": 2, "rewrites": _ADDRESS}],
