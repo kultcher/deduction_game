@@ -103,7 +103,7 @@ func _test_2_3_gravedigger_credence_gate() -> void:
 	listener.friends = [ex_villager.id]
 	var trust_before: float = listener.trust
 	var entry = {"day": 1, "role": "gravedigger", "data": {"executed": ex_villager.id, "role": "surveyor"}, "fake": true, "shared": true, "text": "Was Surveyor"}
-	C.role_def("gravedigger").info_effects(g.w, listener, fake_gd, entry, 1.0, true, Mind)
+	g.w.on_execution_reading_heard(listener, fake_gd, entry, 1.0)
 	_check(is_equal_approx(listener.trust, trust_before), "suspected Gravedigger claim never docks player Rapport")
 
 	# Trusted Gravedigger still does not dock personal Rapport when executed Good villager was not a friend/lover.
@@ -111,7 +111,7 @@ func _test_2_3_gravedigger_credence_gate() -> void:
 	listener.npc_trust[fake_gd.id] = 0.75
 	listener.friends = []
 	listener.lover = ""
-	C.role_def("gravedigger").info_effects(g.w, listener, fake_gd, entry, 1.0, true, Mind)
+	g.w.on_execution_reading_heard(listener, fake_gd, entry, 1.0)
 	_check(is_equal_approx(listener.trust, trust_before), "non-friend execution accuracy stays in Credibility.dawn rather than personal Rapport")
 
 

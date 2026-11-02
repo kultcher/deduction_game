@@ -2770,7 +2770,12 @@ func debug_npc_text(id: String) -> String:
 	for n in w.living_good():
 		if n.id == id:
 			continue
-		hon[n.id] = n.honesty.get(id, 1.0)
+		if n.workshop_state.get("active", false):
+			var sd: Dictionary = n.workshop_state.get("source_doubt", {})
+			var s_pen: float = clampf(Tuning.Mind.HONESTY_K * maxf(0.0, Mind.susp(n, id) - 0.1), 0.0, Tuning.Mind.HONESTY_CAP) if not Mind.demon_victim(w, id) else 0.0
+			hon[n.id] = clampf(1.0 - maxf(float(sd.get(id + ":*", 0.0)), s_pen), 0.0, 1.0)
+		else:
+			hon[n.id] = n.honesty.get(id, 1.0)
 		sus[n.id] = Mind.susp(n, id)
 	var n0 = w.by_id[id]
 	var town = {}

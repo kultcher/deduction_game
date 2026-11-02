@@ -211,7 +211,7 @@ func _claim_routes() -> void:
 	n.credibility = 0.0  # how far the player's word counts (credibility since Oct 30)
 	var filed = Live.file(g, board.compile(root_id))
 	var snapshot = g.workshop_snapshot([filed], n.id)
-	snapshot.listener.discounted[pair[0] + ":*"] = 1.0
+	snapshot.listener.source_doubt[pair[0] + ":*"] = 1.0
 	var assessed = Assess.prepare(snapshot)
 	check(assessed.ready and assessed.listener.reading_reliability[claim_id] == 1.0, "gift impairment cannot discount a role claim")
 	var plan = preload("res://workshop/shared_ledger.gd").prepare(g.workshop_snapshot([], n.id), {str(filed): snapshot}, n.ledger)

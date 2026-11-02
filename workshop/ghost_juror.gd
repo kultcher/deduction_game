@@ -27,7 +27,7 @@ static func live(snapshot: Dictionary) -> Dictionary:
 	var ghost = profile(input.people)
 	input.listener = {"id": ghost.id, "name": ghost.name, "trust": ghost.trust, "confidence": ghost.confidence,
 		"insight": ghost.insight, "npc_trust": ghost.npc_trust, "suspicion": ghost.suspicion,
-		"discounted": {}, "honesty": {}, "own_gift": "", "legacy_evidence": []}
+		"source_doubt": {}, "own_gift": "", "legacy_evidence": []}
 	# Includes receipts, compiled profile weights and public history. Repeated previews
 	# with identical inputs can reuse the neutral result without re-running the jury.
 	var cache_input = [input, Jury.engine, preload("res://workshop/case_eval.gd").prior_k, preload("res://workshop/reasoner.gd").unlimited_cards]

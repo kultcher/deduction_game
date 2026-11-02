@@ -147,7 +147,7 @@ static func status(g, value: Dictionary) -> Dictionary:
 	# Use a synthetic profile for capability checks, without running the expensive
 	# numerical preview or looking at any real listener's private knowledge.
 	input.listener = {"id": "ghost", "name": "Neutral reference", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "own_gift": ""}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	var issues: Array = prepared.issues.duplicate()
 	var audience_ready = true
@@ -225,7 +225,7 @@ static func test_juror(g, value: Dictionary) -> Dictionary:
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "honesty": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"ready": false, "issues": prepared.issues.duplicate()}
@@ -339,7 +339,7 @@ static func trace_summary(g, value: Dictionary) -> Dictionary:
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Trace check", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "honesty": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"has_traces": false}
@@ -446,7 +446,7 @@ static func circumstantial_summary(g, value: Dictionary) -> Dictionary:
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Hub check", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "discounted": {}, "honesty": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"has_hub": false}

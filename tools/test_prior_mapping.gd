@@ -71,7 +71,7 @@ func _own_view(g, n) -> Dictionary:
 	var plan = Shared.prepare(input, st.get("presentations", {}), n.ledger, st.get("withdrawn", {}), st.get("attention_focus", []))
 	if not plan.ready:
 		return {}
-	return Shared.evaluate(plan, outside, n.discounted).effects
+	return Shared.evaluate(plan, outside, st.get("source_doubt", {})).effects
 
 func _play(sd: int, day: int):
 	var g = Game.new()

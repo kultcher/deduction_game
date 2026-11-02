@@ -251,12 +251,14 @@ static func extract_hub_incidents(
 					}
 				matched_cards[cid] = true
 
-		# 4. Hostile vote or nomination against someone the listener trusts / knows is good.
+		# 4. Hostile vote or nomination against someone the listener trusts / knows is good,
+		#    or shielding vote (voting no / declining to hang) for someone the listener believes is evil.
 		if kind == "context" and ctx == "vote":
 			var vdata: Dictionary = c.get("data", {})
 			var nominee: String = str(vdata.get("nominee", ""))
 			var nominator: String = str(vdata.get("nominator", ""))
 			var yes_list: Array = vdata.get("yes", [])
+			var no_list: Array = vdata.get("no", [])
 			var vday: int = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
 			if nominee != "" and nominee != target and (nominator == target or target in yes_list):
 				target_relevant[cid] = true
@@ -273,6 +275,28 @@ static func extract_hub_incidents(
 							"family": "hostile_vote",
 							"raw": vval,
 							"label": "%s %s on Day %d" % ["Nominated" if nominator == target else "Voted to hang", Solver.person_name(view, nominee), vday],
+						}
+					matched_cards[cid] = true
+			if nominee != "" and nominee != target and target in no_list:
+				target_relevant[cid] = true
+				var nom_susp2: float = float(post_stage1_susp.get(nominee, 0.1))
+				var curse_exec: String = str(view.get("chronology", {}).get("curse", {}).get("executed", ""))
+				var proven_evil_nom: bool = (curse_exec != "" and nominee == curse_exec)
+				if not proven_evil_nom:
+					for ev_item in view.get("timeline", {}).get("events", []):
+						if str(ev_item.get("kind", "")) == "curse" and nominee in ev_item.get("subjects", []):
+							proven_evil_nom = true
+							break
+				if nominee not in known_good and (proven_evil_nom or nom_susp2 >= 0.48):
+					var evil_w: float = 1.0 if proven_evil_nom else clampf((nom_susp2 - 0.42) / 0.35, 0.3, 1.0)
+					var skey = "shielding:%s:%d:%s" % [target, vday, nominee]
+					var sval: float = INCIDENT_MAX * 0.80 * evil_w
+					if sval > incidents.get(skey, {}).get("raw", 0.0):
+						incidents[skey] = {
+							"key": skey,
+							"family": "shielding",
+							"raw": sval,
+							"label": "Voted against hanging %s on Day %d" % [Solver.person_name(view, nominee), vday],
 						}
 					matched_cards[cid] = true
 

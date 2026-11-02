@@ -752,14 +752,15 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 				timed_good.append({"person": person, "at": receipt.observed_at})
 			elif person not in good:
 				good.append(person)
+	var s_doubt: Dictionary = src.get("source_doubt", src.get("discounted", {}))
 	for card in cards:
-		reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), src.discounted.get(card.source + ":*", 0.0)) if card.kind == "report" else 1.0
+		reliability[card.id] = 1.0 - maxf(float(s_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(s_doubt.get(card.source + ":*", 0.0))) if card.kind == "report" else 1.0
 		if card.has("route_origin"):
 			reliability[card.accuracy_origin] = reliability[card.id]
 			reliability[card.id] = 1.0
 		if card.has("relay_source"):
 			reliability[card.accuracy_origin] = reliability[card.id]
-			reliability[card.id] = 1.0 - maxf(src.discounted.get("%s:%d" % [card.relay_source, card.relay_observed_at.day], 0.0), src.discounted.get(card.relay_source + ":*", 0.0))
+			reliability[card.id] = 1.0 - maxf(float(s_doubt.get("%s:%d" % [card.relay_source, card.relay_observed_at.day], 0.0)), float(s_doubt.get(card.relay_source + ":*", 0.0)))
 		if card.id in src.get("disowned_reports", []):
 			reliability[card.id] = 0.0
 		elif card.get("role", "") == "warden" and card.get("data", {}).get("saved", false):

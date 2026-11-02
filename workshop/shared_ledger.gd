@@ -9,6 +9,7 @@ const Theory = preload("res://workshop/theory.gd")
 const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
+const SourceDoubt = preload("res://workshop/source_doubt.gd")
 
 static func reading(source: String, entry: Dictionary, via: String = "", anonymous: bool = false) -> Dictionary:
 	var card = {"kind": "info", "source": source, "role": entry.get("role", ""),
@@ -287,6 +288,8 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 		var adapted = {}
 		for card in prepared.view.cards:
 			adapted[card.id] = card
+		var seed_doubt: Dictionary = input.listener.get("source_doubt", input.listener.get("discounted", {}))
+		var prep_doubt: Dictionary = SourceDoubt.derive({"ready": true, "prepared": prepared, "input": input, "owned": owned, "owners": owners}, ledger, seed_doubt).full
 		for id in facts:
 			var card_ref: Dictionary = adapted.get(id, {})
 			var route_info: Dictionary = _card_route_trust(facts[id], card_ref, owners[id], ledger, input.listener.id, prepared.listener.npc_trust, player_cred)
@@ -313,13 +316,13 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 						shared = true
 						hearing = maxf(hearing, clampf(ledger[eid].weight, 0.0, 1.0))
 			if shared and facts[id].kind == "sighting":
-				if "learned" in owners[id] and facts[id].source == input.listener.id:
-					hearing = 1.0
-				elif facts[id].source not in ["", "player", "evidence", "town"]:
-					var src_disc: Dictionary = input.listener.get("discounted", {})
-					var s_doubt: float = maxf(float(src_disc.get("%s:%d" % [facts[id].source, facts[id].observed_at.day], 0.0)), float(src_disc.get(facts[id].source + ":*", 0.0)))
+				var base_sighting_hw: float = 1.0 if ("learned" in owners[id] and facts[id].source == input.listener.id) else hearing
+				hearing = base_sighting_hw
+				if not ("learned" in owners[id] and facts[id].source == input.listener.id) and facts[id].source not in ["", "player", "evidence", "town"]:
+					var s_doubt: float = maxf(float(prep_doubt.get("%s:%d" % [facts[id].source, facts[id].observed_at.day], 0.0)), float(prep_doubt.get(facts[id].source + ":*", 0.0)))
 					hearing *= clampf(1.0 - s_doubt, 0.0, 1.0)
 				if adapted.has(id):
+					adapted[id]["base_hearing_weight"] = base_sighting_hw
 					adapted[id]["hearing_weight"] = hearing
 			elif not shared and facts[id].kind in ["sighting", "alibi"] and adapted.has(id):
 				if not ("learned" in owners[id] and facts[id].source == input.listener.id):
@@ -465,39 +468,43 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 ## Inputs for deferred reason attribution from the most recent evaluate() call.
 static var last_reason_ctx: Dictionary = {}
 
-static func evaluate(plan: Dictionary, suspicion: Dictionary, discounted: Dictionary) -> Dictionary:
+static func evaluate(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}) -> Dictionary:
 	if not plan.ready:
 		return {}
 	if plan.empty:
 		return {"effects": {}}
+	var eff_sighting_doubt: Dictionary = sighting_doubt if not sighting_doubt.is_empty() else source_doubt
+	var prev_doubt: Dictionary = plan.input.listener.get("source_doubt", plan.input.listener.get("discounted", {}))
 	var prepared: Dictionary = plan.prepared.duplicate(true)
 	prepared.listener.suspicion = suspicion.duplicate(true)
 	for card in prepared.view.cards:
 		if card.get("testimony_only", false):
 			continue # The teller's testimony is not a gift that poison can break.
 		if card.has("relay_source"):
-			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
+			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(float(source_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(source_doubt.get(card.source + ":*", 0.0)))
 			var relay_source: String = card.relay_source
 			var relay_day: int = card.relay_observed_at.day
-			var relay_before: float = maxf(plan.input.listener.discounted.get("%s:%d" % [relay_source, relay_day], 0.0), plan.input.listener.discounted.get(relay_source + ":*", 0.0))
-			var relay_after: float = maxf(discounted.get("%s:%d" % [relay_source, relay_day], 0.0), discounted.get(relay_source + ":*", 0.0))
+			var relay_before: float = maxf(float(prev_doubt.get("%s:%d" % [relay_source, relay_day], 0.0)), float(prev_doubt.get(relay_source + ":*", 0.0)))
+			var relay_after: float = maxf(float(source_doubt.get("%s:%d" % [relay_source, relay_day], 0.0)), float(source_doubt.get(relay_source + ":*", 0.0)))
 			prepared.listener.reading_reliability[card.id] = prepared.listener.reading_reliability[card.id] * (1.0 - relay_after) / (1.0 - relay_before) if relay_before < 1.0 else 0.0
 			continue
 		if card.has("route_origin"):
-			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
+			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(float(source_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(source_doubt.get(card.source + ":*", 0.0)))
 			continue
 		if card.kind == "sighting" and card.source not in ["", prepared.listener.id, "player", "evidence", "town"] and card.has("hearing_weight"):
-			var prev_disc: Dictionary = plan.input.listener.get("discounted", {})
-			var s_prev: float = maxf(float(prev_disc.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(prev_disc.get(card.source + ":*", 0.0)))
-			var s_now: float = maxf(float(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(discounted.get(card.source + ":*", 0.0)))
-			var base_hw: float = float(card.hearing_weight) / (1.0 - s_prev) if s_prev < 1.0 else 0.0
-			card["hearing_weight"] = clampf(base_hw * (1.0 - s_now), 0.0, 1.0)
+			var s_now: float = maxf(float(eff_sighting_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(eff_sighting_doubt.get(card.source + ":*", 0.0)))
+			if card.has("base_hearing_weight"):
+				card["hearing_weight"] = clampf(float(card.base_hearing_weight) * (1.0 - s_now), 0.0, 1.0)
+			else:
+				var s_prev: float = maxf(float(prev_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(prev_doubt.get(card.source + ":*", 0.0)))
+				var base_hw: float = float(card.hearing_weight) / (1.0 - s_prev) if s_prev < 1.0 else 0.0
+				card["hearing_weight"] = clampf(base_hw * (1.0 - s_now), 0.0, 1.0)
 			continue
 		if card.kind != "report":
 			continue # Impairment does not invalidate ordinary testimony/role claims.
-		var doubt = maxf(discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), discounted.get(card.source + ":*", 0.0))
+		var doubt = maxf(float(source_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(source_doubt.get(card.source + ":*", 0.0)))
 		# Keep hearing-route discount, replacing only the stale interval reliability.
-		var previous = maxf(plan.input.listener.discounted.get("%s:%d" % [card.source, card.observed_at.day], 0.0), plan.input.listener.discounted.get(card.source + ":*", 0.0))
+		var previous = maxf(float(prev_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(prev_doubt.get(card.source + ":*", 0.0)))
 		var route_weight = prepared.listener.reading_reliability[card.id] / (1.0 - previous) if previous < 1.0 else 0.0
 		prepared.listener.reading_reliability[card.id] = route_weight * (1.0 - doubt)
 	# No headline: the union only asks how every suspicion moves (Jury.refresh).

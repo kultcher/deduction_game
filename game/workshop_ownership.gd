@@ -6,6 +6,7 @@ const Mind = preload("res://sim/mind.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
 const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
+const SourceDoubt = preload("res://workshop/source_doubt.gd")
 
 static func refresh(g, n, phase: String) -> void:
 	var span = Profiler.open("ownership_" + phase)
@@ -43,10 +44,12 @@ static func _refresh(g, n, phase: String) -> void:
 		state.circumstantial_incidents = {}
 		state.reasons = {}
 		state.reasons_pending = false
+		state.source_doubt = state.get("manual_source_doubt", {}).duplicate(true)
 		state.owned = {}
 		state.erase("action") # An unsupported/disabled refresh cannot retain an action.
 		g._workshop_plans.erase(key)
 		if not state.get("enabled", false):
+			state.source_doubt = {}
 			state.issues = ["Shared effects disabled; legacy contributions restored."]
 			return
 		var input = Bridge.capture(g, [], n.id, "private", n)
@@ -65,21 +68,24 @@ static func _refresh(g, n, phase: String) -> void:
 		if not g._workshop_plans.has(key):
 			return
 		var plan: Dictionary = g._workshop_plans[key]
-		plan.input.listener.discounted = n.discounted.duplicate(true)
+		var manual_sd: Dictionary = state.get("manual_source_doubt", {})
+		var pre_bundle: Dictionary = SourceDoubt.derive(plan, n.ledger, manual_sd)
+		plan.input.listener.source_doubt = pre_bundle.pre_eval.duplicate(true)
 		plan.input.listener.suspicion = n.suspicion.duplicate(true)
 		plan = Shared.prepare(plan.input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
 		if not plan.ready:
 			state.owned = {}
+			state.source_doubt = {}
 			state.issues = plan.issues
 			fallback(g, n, "ownership_after", plan.issues)
 			g._workshop_busy = true
 			Mind.recompute_beliefs(g.w, n, " (shared capability fallback)")
 			g._workshop_busy = false
 			return
-		# Derive interval doubt first; evaluate joint effects only after removing
-		# the owned legacy grounds from honesty and the entire previous vector.
+		var doubt_bundle: Dictionary = SourceDoubt.derive(plan, n.ledger, manual_sd)
+		state.source_doubt = doubt_bundle.full.duplicate(true)
 		var started = Time.get_ticks_msec()
-		var inputs = [plan.prepared, n.suspicion, n.discounted, plan.marked_questions]
+		var inputs = [plan.prepared, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, plan.marked_questions]
 		var cached: Dictionary = g._workshop_evaluations.get(key, {})
 		var cache_hit = cached.get("input") == inputs
 		var proposal: Dictionary
@@ -91,7 +97,7 @@ static func _refresh(g, n, phase: String) -> void:
 		else:
 			Profiler.count("union_cache_miss")
 			var union_span = Profiler.open("joint_effects")
-			proposal = Shared.evaluate(plan, n.suspicion, n.discounted)
+			proposal = Shared.evaluate(plan, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full)
 			Profiler.close(union_span)
 			# Deferred attribution inputs ride beside the proposal, never inside it (purge 2a).
 			reason_ctx = Shared.last_reason_ctx

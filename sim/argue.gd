@@ -612,8 +612,13 @@ static func _apply(w, n, ded: Dictionary, supports: Array, base: float, board: A
 		ledger_id = "arg:workshop:%d" % ded.n
 	var before: Dictionary = n.ledger.get(ledger_id, {}).duplicate(true) if w.dlog.detailed else {}
 	var suspicion_before: Dictionary = n.suspicion.duplicate() if w.dlog.detailed else {}
+	var c_meta: Dictionary = c.duplicate(true)
+	if c_meta.get("type", "") in ["lied", "misled", "unreliable"] and int(c_meta.get("night", -1)) < 0 and c_meta.has("card"):
+		for sc in supports:
+			if sc.get("n", -2) == c_meta["card"] and sc.get("kind", "") == "info":
+				c_meta["night"] = sc.get("day", -1)
 	var h = Mind.ledger_hear(w, n, ledger_id, effects_of(w, c, supports, why), base * (0.5 + n.trust), [],
-		{"kind": "arg", "base": base, "text": conclusion_text(w, c), "said": said, "supports": sup,
+		{"kind": "arg", "base": base, "text": conclusion_text(w, c), "said": said, "supports": sup, "conclusion": c_meta,
 		"workshop_roots": Mind.WorkshopLedger.roots(supports, board), "workshop_case": str(ded.get("n", 0)), "workshop_conclusion": c.type})
 	w.dlog.decision(n.id, "argument", "ledger", h, {"ledger_id": ledger_id,
 		"before": before, "after": n.ledger.get(ledger_id, {}), "suspicion_before": suspicion_before,

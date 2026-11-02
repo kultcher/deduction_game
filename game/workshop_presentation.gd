@@ -128,7 +128,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		return _unavailable(g, n, card, "ownership", state.get("issues", ["Ownership was not activated."]))
 	var plan: Dictionary = g._workshop_plans[listener_key]
 	# Rebuild against final interval reliability, matching the applied union.
-	plan.input.listener.discounted = n.discounted.duplicate(true)
+	plan.input.listener.source_doubt = state.get("source_doubt", {}).duplicate(true)
 	plan.input.listener.theories = state.get("theories", {}).duplicate(true)
 	plan = Shared.prepare(plan.input, proposals, n.ledger, state.get("withdrawn", {}), snapshot.selected)
 	var response_input = [plan.prepared, snapshot.arguments, snapshot.root, snapshot.board_map, snapshot.selected,
@@ -388,7 +388,7 @@ static func _discussion_inputs(n, snapshot: Dictionary) -> String:
 	var cognition = [state.get("reasoning_mode", "bounded"), n.traits.get("insight", 0.5),
 		state.get("confidence_mode", "scale"), n.traits.get("confidence", 0.5)]
 	return JSON.stringify(Evidence.canonical([state.get("outside", n.suspicion), state.get("facts", []),
-		state.get("attention_focus", []), n.discounted, n.trust, n.npc_trust, n.role, snapshot.public_events, cognition])).sha256_text()
+		state.get("attention_focus", []), state.get("source_doubt", {}), n.trust, n.npc_trust, n.role, snapshot.public_events, cognition])).sha256_text()
 
 static func _snapshot(g, n, card: Dictionary, targets: Array, direction: String, venue: String) -> Dictionary:
 	if direction == "deduction":

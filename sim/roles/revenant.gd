@@ -63,11 +63,9 @@ func on_executed(w, rv, res: Dictionary, mind) -> void:
 				if str(eid).begins_with("claim:%s:" % rv.id):
 					m.ledger[eid]["weight"] = 0.0
 			m.believed_roles[rv.id] = "revenant"
-		# No refresh here: the execution and its vote aren't on the public record yet, so a
-		# shared refresh now can't be prepared (it fell back to the legacy rules for every
-		# listener). The next ordinary refresh picks up the curse from the chronology.
-		if not real.is_evil():
-			mind.adjust(w, real, rv.id, 1.0, "the Revenant's curse proved them evil", "", false)
+		# No refresh or direct suspicion bump here: the execution and its vote aren't on the
+		# public record yet, and the next ordinary shared refresh pins the executed Revenant
+		# directly from the chronology.
 
 
 func should_evil_vote_to_hang(w, nom_n, v) -> bool:

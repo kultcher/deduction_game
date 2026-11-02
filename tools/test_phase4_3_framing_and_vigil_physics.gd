@@ -176,7 +176,7 @@ func _test_single_witness_provenance_and_discount_collapse() -> void:
 
 	# Catching/discounting original planter A collapses hearing_weight on listener C despite high trust in B & D!
 	Mind.recompute_beliefs(w, listener_c, " (planter caught)")
-	listener_c.discounted[planter.id + ":*"] = 1.0
+	listener_c.workshop_state["source_doubt"][planter.id + ":*"] = 1.0
 	var plan = Shared.prepare(g.workshop_snapshot([], listener_c.id), {}, listener_c.ledger)
 	var card_after: Dictionary = plan.prepared.view.cards.filter(func(c): return c.id == receipt_id)[0]
 	_check(is_zero_approx(float(card_after.get("hearing_weight", 1.0))),

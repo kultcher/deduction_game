@@ -43,7 +43,7 @@ func _init():
 		var plan = Shared.prepare(input, st.get("presentations", {}), n.ledger, st.get("withdrawn", {}), st.get("attention_focus", []))
 		if not plan.ready:
 			continue
-		var prop = Shared.evaluate(plan, outside, n.discounted)
+		var prop = Shared.evaluate(plan, outside, st.get("source_doubt", {}))
 		var people = {}
 		for id in prop.effects:
 			if id == n.id or not g.w.by_id.has(id):

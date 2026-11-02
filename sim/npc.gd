@@ -141,6 +141,9 @@ var distrust_memory = {}
 var distrust_explained_day = -1
 var trust_at_reconsider = 0.5
 var honesty = {}             # derived: id -> how far they credit that person's word (from evidence)
+var resentments: Array = []  # private mourning grudges: {target, strength, friend, day, role}
+var pre_turn_snapshot = {}   # saved pre-curse good mind restored on free_turned()
+var settled_execution_rapport = {}  # ex_id -> "good"|"evil" once execution proof settles rapport
 ## Evil only: what this member knows (own observations and what they were told).
 var intel = {}               # key -> {kind, about, score, why, day, from}
 ## Evil only: the shadow good self (Mind.shadow_run): what they'd believe if they were the

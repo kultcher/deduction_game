@@ -286,6 +286,7 @@ static func fade_slights(w, n) -> void:
 static func end_of_day_trust(w) -> void:
 	for n in w.living():
 		fade_slights(w, n)
+		fade_resentments(w, n)
 	for n in w.living():
 		if n.secret_known and not n.secret_spread:
 			var bonus = Tuning.Trust.SECRET_KEPT_BASE + Tuning.Trust.SECRET_KEPT_PRIVACY_SCALE * trait_of(n, "privacy")
@@ -311,7 +312,7 @@ static func end_of_day_trust(w) -> void:
 ## Fields copied once, when the shadow is made (a turned NPC's good mind carries over).
 const SHADOW_COPY = ["traits", "trait_base", "work_phases", "haunts", "friends", "rivals",
 	"suspicion", "sus_why", "sus_src", "npc_trust", "ledger", "honesty", "discounted", "believed_roles",
-	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts", "workshop_state", "consensus_pressure", "claim_record"]
+	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts", "workshop_state", "consensus_pressure", "claim_record", "resentments"]
 const SHADOW_SAME = ["id", "name", "pron", "style", "blurb", "occupation", "work", "home_block", "ring"]
 
 ## Run f(shadow) for evil NPC n inside the shadow context: the shadow's RNG and log in
@@ -425,24 +426,87 @@ static func shadow_eval(w, n, f: Callable):
 	shadow_run(w, n, func(sh): box["r"] = f.call(sh))
 	return box.get("r")
 
-## Freed from the Revenant's curse: the good self they kept while turned becomes their
-## mind again. It heard everything they heard as evil, and never knew who else was evil,
-## which is what "remembers nothing of their time as evil" means. What it took from their
-## own fake readings is dropped (those readings are disowned), and the beliefs re-derived.
-static func shadow_adopt(w, n) -> void:
-	var s = n.shadow
-	if s == null:
-		return
+## Snapshot the pre-curse good mind at `turn_evil` so `free_turned` restores it cleanly,
+## carrying forward only public claims and readings from the turned period (Decision 3).
+static func capture_pre_turn_snapshot(w, n) -> Dictionary:
+	var snap: Dictionary = {"fields": {}, "public_claims_cursor": w.public_claims.size(), "shared_readings": {}}
 	for f in SHADOW_COPY:
 		if f in ["traits", "trait_base", "work_phases", "haunts", "friends", "rivals"]:
 			continue
-		n.set(f, s.get(f).duplicate(true))
+		snap.fields[f] = n.get(f).duplicate(true)
+	snap["credibility"] = n.credibility
+	snap["trust"] = n.trust
+	snap["trust_cap"] = n.trust_cap
+	snap["trust_at_reconsider"] = n.trust_at_reconsider
+	snap["beliefs"] = n.beliefs.duplicate(true)
+	snap["hearsay"] = n.hearsay.duplicate(true)
+	snap["claimed_role"] = n.claimed_role
+	snap["claim_public"] = n.claim_public
+	snap["max_tier"] = n.max_tier
+	snap["told_readings"] = n.told_readings
+	for p in w.npcs:
+		for en in p.info_log:
+			if en.get("shared", false):
+				snap.shared_readings[info_eid(p.id, en)] = true
+	return snap
+
+static func restore_pre_turn_snapshot(w, n) -> void:
+	var snap: Dictionary = n.pre_turn_snapshot if n.pre_turn_snapshot is Dictionary else {}
+	var keep_enabled: bool = bool(n.workshop_state.get("enabled", false))
+	var has_enabled_key: bool = n.workshop_state.has("enabled")
+	if not snap.is_empty():
+		var fields: Dictionary = snap.get("fields", {})
+		for f in fields:
+			n.set(f, fields[f].duplicate(true))
+		n.credibility = float(snap.get("credibility", n.credibility))
+		n.trust = float(snap.get("trust", n.trust))
+		n.trust_cap = float(snap.get("trust_cap", n.trust_cap))
+		n.trust_at_reconsider = float(snap.get("trust_at_reconsider", n.trust_at_reconsider))
+		n.beliefs = snap.get("beliefs", []).duplicate(true)
+		n.hearsay = snap.get("hearsay", []).duplicate(true)
+		n.claimed_role = str(snap.get("claimed_role", n.claimed_role))
+		n.claim_public = bool(snap.get("claim_public", n.claim_public))
+		n.max_tier = int(snap.get("max_tier", n.max_tier))
+		n.told_readings = int(snap.get("told_readings", n.told_readings))
+	if has_enabled_key:
+		n.workshop_state["enabled"] = keep_enabled
+	n.pre_turn_snapshot = {}
+	shadow_reset(n)
 	for e in n.info_log:
 		if e.get("fake", false):
 			n.ledger.erase(info_eid(n.id, e))
-	n.applied_info = n.info_log.size()
-	w.dlog.think(n.id, "shadow_adopt", "Freed: takes back their good self's beliefs (%d ledger entries)." % n.ledger.size())
+	var prev_defer: bool = w.defer_beliefs
+	w.defer_beliefs = true
+	hear_claim(w, n, n.id, n.role, 1.5, "own")
+	var cursor: int = int(snap.get("public_claims_cursor", 0))
+	for idx in range(maxi(0, cursor), w.public_claims.size()):
+		var pc: Dictionary = w.public_claims[idx]
+		var who_id: String = str(pc.get("who", ""))
+		var role_id: String = str(pc.get("role", ""))
+		if who_id == n.id:
+			if role_id == n.role:
+				n.claimed_role = role_id
+				n.claim_public = true
+		elif who_id != "":
+			hear_claim(w, n, who_id, role_id, 0.5, "public")
+	var prev_shared: Dictionary = snap.get("shared_readings", {})
+	for p in w.npcs:
+		if p == n:
+			continue
+		for en in p.info_log:
+			if not en.get("shared", false) or en.get("disowned", false):
+				continue
+			var r_eid: String = info_eid(p.id, en)
+			if not prev_shared.has(r_eid):
+				apply_info(w, n, p, en, heard_weight(n, p))
+	for a in w.stances:
+		var st_target: String = str(w.stances[a].get("target", ""))
+		if st_target != "" and st_target != n.id:
+			MindMeeting.refresh_consensus(w, n, st_target)
+	w.defer_beliefs = prev_defer
+	flush_beliefs(w, n)
 	recompute_beliefs(w, n, " (freed from the curse)")
+	w.dlog.think(n.id, "freed_restore", "Freed: restored pre-curse mind and public receipts (%d ledger entries)." % n.ledger.size())
 
 ## Turned or freed by the Revenant's curse: the shadow is rebuilt (or dropped) next time.
 static func shadow_reset(n) -> void:
@@ -506,6 +570,97 @@ static func suspicion_view(n) -> Dictionary:
 
 static func demon_victim(w, id: String) -> bool:
 	return w.public_log.any(func(event): return event.kind == "demon_death" and id in event.subjects)
+
+# ---------------------------------------------------------------- mourning resentment
+
+static func _friend_shown_evil(w, n, friend_id: String) -> bool:
+	if friend_id == "":
+		return false
+	if susp(n, friend_id) >= Tuning.Trust.GRIEF_BELIEVED_EVIL:
+		return true
+	var b_role: String = str(n.believed_roles.get(friend_id, ""))
+	if b_role != "" and C.ROLES.get(b_role, {}).get("align", "good") == "evil":
+		return true
+	if w != null and w.public_log.any(func(ev): return ev.get("kind", "") == "curse" and friend_id in ev.get("subjects", [])):
+		return true
+	return false
+
+static func add_resentment(w, mourner, target_id: String, delta: float, friend_id: String, role_tag: String = "nominator") -> void:
+	if mourner == null or target_id == "" or target_id == "player" or target_id == mourner.id or delta <= 0.0:
+		return
+	if mourner.is_evil():
+		shadow_run(w, mourner, func(sh): add_resentment(w, sh, target_id, delta, friend_id, role_tag))
+		return
+	if _friend_shown_evil(w, mourner, friend_id):
+		return
+	for r in mourner.resentments:
+		if str(r.get("target", "")) == target_id and str(r.get("friend", "")) == friend_id:
+			r["strength"] = minf(float(r.get("strength", 0.0)) + delta, Tuning.Trust.RESENTMENT_CAP)
+			if role_tag == "nominator":
+				r["role"] = "nominator"
+			r["day"] = w.day
+			return
+	mourner.resentments.append({
+		"target": target_id,
+		"strength": minf(delta, Tuning.Trust.RESENTMENT_CAP),
+		"friend": friend_id,
+		"day": w.day,
+		"role": role_tag,
+	})
+	w.dlog.trace_event("resentment_added", mourner.id, target_id, {"friend": friend_id, "role": role_tag, "strength": minf(delta, Tuning.Trust.RESENTMENT_CAP)},
+		"grief resentment: %s %s %s" % [target_id, "nominated" if role_tag == "nominator" else "voted to hang", friend_id])
+
+static func prune_resentments(w, n) -> void:
+	if n == null or n.resentments.is_empty():
+		return
+	n.resentments = n.resentments.filter(func(r): return float(r.get("strength", 0.0)) >= 0.01 and not _friend_shown_evil(w, n, str(r.get("friend", ""))))
+
+static func fade_resentments(w, n) -> void:
+	if n.is_evil():
+		shadow_run(w, n, func(sh): fade_resentments(w, sh))
+		return
+	if n.resentments.is_empty():
+		return
+	var kept: Array = []
+	for r in n.resentments:
+		if _friend_shown_evil(w, n, str(r.get("friend", ""))):
+			continue
+		var next_s: float = float(r.get("strength", 0.0)) * (1.0 - Tuning.Trust.RESENTMENT_FADE)
+		if next_s >= 0.01:
+			var r_copy: Dictionary = r.duplicate(true)
+			r_copy["strength"] = next_s
+			kept.append(r_copy)
+	n.resentments = kept
+
+static func resentment_toward(w, n, target_id: String) -> float:
+	var mind = n.shadow if n.is_evil() and n.shadow != null else n
+	if mind == null or mind.resentments.is_empty() or target_id == "" or target_id == mind.id:
+		return 0.0
+	var total: float = 0.0
+	for r in mind.resentments:
+		if str(r.get("target", "")) != target_id:
+			continue
+		if _friend_shown_evil(w, mind, str(r.get("friend", ""))):
+			continue
+		total += float(r.get("strength", 0.0))
+	return minf(total, Tuning.Trust.RESENTMENT_CAP)
+
+static func best_resentment_against(w, n, target_id: String) -> Dictionary:
+	var mind = n.shadow if n.is_evil() and n.shadow != null else n
+	if mind == null or mind.resentments.is_empty() or target_id == "" or target_id == mind.id:
+		return {}
+	var best: Dictionary = {}
+	var best_s: float = 0.0
+	for r in mind.resentments:
+		if str(r.get("target", "")) != target_id:
+			continue
+		if _friend_shown_evil(w, mind, str(r.get("friend", ""))):
+			continue
+		var s: float = float(r.get("strength", 0.0))
+		if s > best_s:
+			best_s = s
+			best = r.duplicate(true)
+	return best
 
 # ---------------------------------------------------------------- evidence ledger
 ## Each good NPC keeps a ledger of the evidence and arguments they've taken in, keyed by the
@@ -657,12 +812,20 @@ static func _night_factor(disc: Dictionary, src: String, night: int, kind: Strin
 static func reliability(n, src: String, night: int, kind: String = "reading") -> float:
 	if src == "":
 		return 1.0
+	if n.workshop_state.get("active", false):
+		var sd: Dictionary = n.workshop_state.get("source_doubt", {})
+		var r_shared: float = _night_factor(sd, src, night, kind)
+		if src != n.id:
+			r_shared *= clampf(1.0 - float(sd.get(src + ":*", 0.0)), 0.0, 1.0)
+		return clampf(r_shared, 0.0, 1.0)
 	var r = _night_factor(n.discounted, src, night, kind)
 	if src != n.id:
 		r *= n.honesty.get(src, 1.0)
 	return clampf(r, 0.0, 1.0)
 
 static func night_reliability(n, src: String, night: int) -> float:
+	if n.workshop_state.get("active", false):
+		return _night_factor(n.workshop_state.get("source_doubt", {}), src, night, "reading")
 	return _night_factor(n.discounted, src, night, "reading")
 
 ## Take in a claim, evidence or an argument. Hearing the same thing again only raises its
@@ -828,6 +991,7 @@ static func _recompute_beliefs(w, n, note: String) -> void:
 				_ledger_apply(w, n, [t, f[1], f[2], f[3], f[4]], diff, want, note, e["eid"])
 	if w.workshop_refresh.is_valid():
 		w.workshop_refresh.call(n, "after")
+	prune_resentments(w, n)
 	w.dlog.capture_npc(n, "belief_recompute" + note)
 
 ## An argument's weight = its strongest justification as it stands now (each justification
@@ -983,6 +1147,8 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float, vi
 	receipt.provenance_paths = paths
 	receipts[receipt.id] = receipt
 	ledger_hear(w, listener, eid, effs, weight, [source.id, entry["day"], "reading"], {"kind": "reading", "workshop_receipts": receipts})
+	if fresh and source != listener and weight > 0.2:
+		w.on_execution_reading_heard(listener, source, entry, weight)
 
 static func info_eid(src: String, entry: Dictionary) -> String:
 	return WorkshopLedger.reading_key(WorkshopLedger.reading(src, entry))

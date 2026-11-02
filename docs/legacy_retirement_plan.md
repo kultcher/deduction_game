@@ -62,12 +62,12 @@ Each phase is its own PR, with the full suite, `test_trace`, the 54875 replay an
 | Legacy by-product | Made by | Still read by |
 |---|---|---|
 | Effect magnitudes on ledger entries (`effects`, `applied`) | role `info_effects`, `ledger_hear` | **retired from shared-mode meetings in 2a** (only unowned native compatibility paths until 2c/3) |
-| `n.discounted` (per-source, per-night reading doubt) | `_night_doubt` in `_recompute_beliefs` | `SharedLedger.prepare` / `evaluate` (reading reliability, relay hearing, the 4.3 relayed-sighting collapse), `LiveAssessment._listener`, `Credibility.dawn`, presentation keys |
-| `n.honesty` | `_honesty` in `_recompute_beliefs` | `Mind.reliability` (legacy), the bridge, a debug view in `game.gd` |
+| `n.discounted` (per-source, per-night reading doubt) | `_night_doubt` in `_recompute_beliefs` | **retired from shared mode in 2b** (replaced by `workshop_state.source_doubt` via `workshop/source_doubt.gd`; only unowned native fallback until 2c/3) |
+| `n.honesty` | `_honesty` in `_recompute_beliefs` | **retired from shared mode in 2b** (`WorkshopBridge`, `Mind.reliability`, and `game.gd` debug view read `source_doubt` / shared beliefs; only native fallback until 2c/3) |
 | `n.sus_why` / `n.sus_src` | `Mind.adjust` | **retired from shared-mode meetings in 2a** |
 | `night_sighting_scale`, `reading_strength`, `card_strength`, `defend_strength` | legacy helpers | **retired from shared-mode `case_against` / `defend_self` / `_go_public` in 2a** (`card_strength` / `defend_strength` remain only in legacy hearing / `Argue` / pressing) |
-| Direct suspicion changes | grief (`World._grief`), freed soul (`World.free_turned`), Revenant curse (`revenant.gd`) | the "outside" layer the shared model starts from |
-| Role side effects inside `info_effects` | Gravedigger rapport changes | rapport |
+| Direct suspicion changes | grief (`World._grief`), freed soul (`World.free_turned`), Revenant curse (`revenant.gd`) | **retired in 2b** (grief -> private `resentments`, freed soul -> pre-turn snapshot restore, Revenant `+1.0` deleted; `outside` stays flat `0.1`) |
+| Role side effects inside `info_effects` | Gravedigger rapport changes | **moved out of `info_effects` in 2b** (`World.on_execution_reading_heard` post-refresh hook) |
 
 - **`recompute_beliefs` is not only legacy.** It is the refresh entry point: the shared model's `workshop_refresh` hook runs inside it (about 20 production call sites). Phase 3 keeps a refresh function and deletes only the legacy arithmetic around the hook.
 
@@ -85,18 +85,18 @@ Goal: nothing in meetings reads legacy effect magnitudes.
   4. **Podium defence & disclosure scoring (`_disclosed_items_against`, `_go_public`).** Uses `ReasonAttribution.score_disclosed_fact_in_world` and `score_reading_entry_in_world` on public world state for newly spoken podium facts, keeping defender visibility non-leak rules intact.
   5. **Tests:** `tools/test_legacy_purge_phase2a.gd` covers `#98933` Hollis Gravedigger vs. Odette Archivist, firsthand night sightings (Kiran window/murder-block vs. off-block sightings), Vigil vs. Night Watch contradiction attribution, elimination fallback, and `defend_self` visibility and shared-model `out_weight`.
 
-### Phase 2b: doubt, side effects and the social layer (one PR)
+### Phase 2b: doubt, side effects and the social layer (one PR, implemented Nov 2)
 
 Goal: no legacy by-product feeds the shared model or the social layer.
 
-1. **Replace `discounted` with shared-model source doubt.** Build `workshop_state.source_doubt` (same `source:night` / `source:*` keys) from what the shared model already establishes: reading-challenge results (`ReadingChallenges.assess` source penalties and report multipliers), caught lies and impossible claims, and public proofs (Gravedigger, Revenant curse, Demon victims). Switch every consumer listed above to it. `honesty` goes with it.
-2. **Gravedigger rapport side effects** move out of `info_effects` into the world's execution-result handling, gated on the listener's own belief that the hanged person was innocent (or evil).
-3. **Revenant curse:** delete the direct `adjust(+1.0)` and its `recompute_beliefs` (the premature `recompute_beliefs` was already removed); the chronology already pins the executed Revenant.
-4. **Grief → resentment records** (decision 3): private, fading, citable, a term in that NPC's own nomination, vote and accusation scores; never a suspicion change. No grief if the mourner voted yes; a grudge clears if the hanged person is later shown evil.
-5. **Freed souls → snapshot at turning**, restore on freeing, carry forward public receipts only; drop the 0.25 cap and the `shadow_adopt` + `recompute_beliefs` path.
-6. **Votes and nominations as player-presented circumstantial evidence, both ways (updated Nov 1):** record `no` votes in the vote receipts and add the `"shielding"` incident (voted `no` on, or didn't vote for, someone the listener believes is evil) next to the existing `hostile_vote` in `workshop/circumstantial.gd`. **Do NOT auto-inject public vote receipts into every NPC's ambient refresh:** keep vote-based circumstantial evidence as a player-presented tool via Circumstantial hubs so NPCs behave like human townsfolk rather than omniscient vote-tallying spreadsheets unless the pattern is pointed out to them.
-7. **After 2b the outside layer is the flat 0.1 start** (plus cast relationship seeds / paranoia until otherwise changed). Check: every NPC's `outside` matches only intended non-ledger baseline through Day 4 on fixed seeds.
-8. **Measure:** passive and active bot chunks; fallbacks 0; no runtime regression on the meeting suites.
+- **As built (Nov 2, `workshop/source_doubt.gd` + `sim/world.gd` + `sim/mind.gd` + `sim/mind_meeting.gd` + `workshop/circumstantial.gd`):**
+  1. **Shared-model source doubt (`workshop_state.source_doubt`).** `SourceDoubt.derive` (`workshop/source_doubt.gd`) builds `source:night` and `source:*` doubt without touching `n.discounted`, `n.honesty`, or ledger `effects`: `pre_eval` captures caught lies (unique gift clashes, false Night Watch sightings of a home-staying listener, firsthand-contradicted night alibis, impossible Gravedigger claims against a public Revenant), public proofs (Revenant curse, own/trusted Gravedigger execution proofs, Martyr and Demon-victim sincerity clearing `source:*` while keeping `source:night`), and unowned template argument metadata (`meta.conclusion` + `weight`); `full` merges in `ReadingChallenges.assess` report multipliers and lying-source penalties without double-multiplying inside `CaseEval.reading_error`. `WorkshopBridge`, `LiveAssessment`, `SharedLedger`, `WorkshopOwnership`, `WorkshopPresentation`, `Credibility.dawn`, `Mind.reliability` / `night_reliability`, and `game.gd:debug_npc_text` all read `source_doubt`.
+  2. **Post-refresh execution rapport (`World.on_execution_reading_heard`).** Removed `set_trust` mutations from `sim/roles/gravedigger.gd:info_effects` and moved them into `World.on_execution_reading_heard`, invoked after `Mind.apply_info` refreshes the listener's shared beliefs and gated on the listener's own belief about both the reader and the hanged person (`settled_execution_rapport` prevents duplicate triggers).
+  3. **Revenant curse cleanup (`sim/roles/revenant.gd`).** Deleted the direct `mind.adjust(..., +1.0)` on `rv.id`; chronology (`curse.executed`) already pins the executed Revenant in the shared universe.
+  4. **Private, fading, citable resentment records (`n.resentments`).** `World._grief` skips mourners who voted `yes` to hang `ex` and records private `{target, strength, friend, day, role}` grudges (`RESENTMENT_NOMINATOR_SCALE = 0.30`, `RESENTMENT_VOTER_SCALE = 0.12`, `RESENTMENT_FADE = 0.35`, `RESENTMENT_CAP = 0.45`) instead of mutating `suspicion`. Resentment fades nightly in `Mind.end_of_day_trust`, clears automatically (both live and on refresh) if the hanged friend is later believed/proven evil, enters only that NPC's own accusation, nomination, and vote scores, and surfaces in `case_against` / `reason_status` as a citable public reason (`"they pushed to hang X"` / `"they voted to hang X"`).
+  5. **Freed-soul pre-turn snapshots (`capture_pre_turn_snapshot` / `restore_pre_turn_snapshot`).** `World.turn_evil` snapshots `SHADOW_COPY` + `credibility` / `beliefs` / `hearsay` / public cursors; `World.free_turned` disowns fake turned readings, emits `curse_lifted`, restores the pre-turn mind, replays only public claims and publicly shared readings from the turned period, drops `shadow_adopt` and the `0.25` suspicion cap, and runs one clean belief refresh.
+  6. **Two-way player-presented vote circumstantial evidence (`shielding`).** Recorded `no` votes on execution records (`w.executions`) alongside `vote_pending` and board vote cards, and added the `"shielding"` incident family in `workshop/circumstantial.gd` (`"Voted against hanging X on Day d"` -> `"they voted against hanging X on Day d"`) when `target` voted `no` on someone the listener believes is evil (`post_stage1_susp >= 0.48` or proven Revenant), strictly when presented via a Circumstantial hub.
+  7. **Outside layer invariance & tests (`tools/test_legacy_purge_phase2b.gd`).** Zero non-ledger `Mind.adjust` calls remain in normal shared-mode play, keeping `workshop_state.outside` flat at `0.1` across multi-day games with hangings, grief, Revenant curses, and freed souls.
 
 ### Phase 2c: stop generating legacy effects (one PR, should be identical play)
 
@@ -122,8 +122,8 @@ Goal: no legacy by-product feeds the shared model or the social layer.
 
 ### Order and timing
 
-- 2a done (Nov 1). Fixes the "no citable reasons" playtest problem and retires meeting/defence reads of legacy magnitudes.
-- 2b next; it is the behaviour-changing one (grief, freed souls, `source_doubt`, player-presented `shielding` vote incidents).
+- 2a done (Nov 1–2, `ff13ea6`). Fixes the "no citable reasons" playtest problem, lazily attributes shared-model reasons on demand, and retires meeting/defence reads of legacy magnitudes.
+- 2b done (Nov 2). Retires shared-mode reads of `discounted` / `honesty` via `source_doubt`, moves Gravedigger rapport out of `info_effects`, converts grief to private fading `resentments`, restores freed souls from pre-turn snapshots, deletes the Revenant `+1.0` `adjust`, and adds player-presented `shielding` vote circumstantial evidence.
 - 2c and 3 back to back, before the overhaul's phase 5 sweeps, so the sweeps measure the final structure.
 - 4 whenever the bot rewrite happens.
 

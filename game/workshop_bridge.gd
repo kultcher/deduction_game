@@ -117,7 +117,7 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 		"reasoning_mode": n.workshop_state.get("reasoning_mode", "bounded"),
 		"confidence_mode": n.workshop_state.get("confidence_mode", "scale"),
 		"theories": n.workshop_state.get("theories", {}).duplicate(true),
-		"discounted": n.discounted.duplicate(true), "honesty": n.honesty.duplicate(true),
+		"source_doubt": n.workshop_state.get("source_doubt", {}).duplicate(true),
 		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true), "legacy_evidence": []}
 	input.listener["disowned_reports"] = []
 	for entry in n.ledger.values():

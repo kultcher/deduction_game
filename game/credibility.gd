@@ -10,6 +10,7 @@ const Tuning = preload("res://sim/tuning.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const PublicEvidence = preload("res://workshop/public_evidence.gd")
+const SourceDoubt = preload("res://workshop/source_doubt.gd")
 
 const EVIL_LEANING = ["evil", "demon", "minion", "suspicious"]
 const GOOD_LEANING = ["good"]
@@ -80,6 +81,7 @@ static func _agreement(g, n):
 	var outside: Dictionary = st.get("outside", n.suspicion).duplicate(true)
 	var input = Bridge.capture(g, [], n.id, "private", n)
 	input.listener.suspicion = outside.duplicate(true)
+	input.listener.source_doubt = {}
 	var ledger = {}
 	for eid in n.ledger:
 		if not players_word(str(eid)):
@@ -87,7 +89,8 @@ static func _agreement(g, n):
 	var plan = Shared.prepare(input, {}, ledger, st.get("withdrawn", {}), st.get("attention_focus", []))
 	if not plan.ready:
 		return null
-	var eval_res: Dictionary = Shared.evaluate(plan, outside, n.discounted)
+	var doubt_bundle: Dictionary = SourceDoubt.derive(plan, ledger)
+	var eval_res: Dictionary = Shared.evaluate(plan, outside, doubt_bundle.pre_eval, doubt_bundle.full)
 	var effects: Dictionary = eval_res.get("effects", {})
 	var people: Array = effects.keys().filter(func(id): return id != n.id)
 	if people.is_empty():

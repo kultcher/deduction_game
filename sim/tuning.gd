@@ -309,6 +309,12 @@ class Trust:
 	const SECRET_KEPT_DECAY = 0.5
 	## No grief for a hanged friend the mourner already believed evil (Oct 30).
 	const GRIEF_BELIEVED_EVIL = 0.6  # each later night is worth half the one before (Oct 30)
+	## Private mourning resentment (Phase 2b): action-only score terms that fade nightly
+	## and clear immediately if the hanged friend is later shown/believed evil.
+	const RESENTMENT_NOMINATOR_SCALE = 0.30
+	const RESENTMENT_VOTER_SCALE = 0.12
+	const RESENTMENT_FADE = 0.35
+	const RESENTMENT_CAP = 0.45
 
 	## Broken confidence & spread secrets
 	const CONFIDENCE_BROKEN_BASE = 0.05
@@ -620,6 +626,10 @@ static func fingerprint() -> String:
 			Workshop.JURY_BELIEF_SCALE,
 			Workshop.HEADLINE_REPEAT_BUMP,
 			Trust.CRED_CORROBORATION_MIN,
+			Trust.RESENTMENT_NOMINATOR_SCALE,
+			Trust.RESENTMENT_VOTER_SCALE,
+			Trust.RESENTMENT_FADE,
+			Trust.RESENTMENT_CAP,
 			Roles.ONGOING_INFO_EARLY_CLAIM,
 			Meeting.PUBLIC_CLAIM_DAY_SLOPE,
 			Meeting.REVEAL_SUSPICION_PIVOT,

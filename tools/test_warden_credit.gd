@@ -32,7 +32,7 @@ func _own_effects(g, n) -> Dictionary:
 	var input = Bridge.capture(g, [], n.id, "private", n)
 	input.listener.suspicion = outside.duplicate(true)
 	var plan = Shared.prepare(input, st.get("presentations", {}), n.ledger, st.get("withdrawn", {}), st.get("attention_focus", []))
-	return Shared.evaluate(plan, outside, n.discounted).effects if plan.ready else {}
+	return Shared.evaluate(plan, outside, st.get("source_doubt", {})).effects if plan.ready else {}
 
 func _init():
 	var g = _game()

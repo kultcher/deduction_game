@@ -355,7 +355,7 @@ func _run_receipt_level_ablation_probe() -> Array:
 	var out_rows: Array = []
 	for k_val in [-1.0, 1.5]:
 		CaseEval.prior_k = k_val
-		var prop: Dictionary = Shared.evaluate(plan, outside, holder.discounted)
+		var prop: Dictionary = Shared.evaluate(plan, outside, holder.workshop_state.get("source_doubt", {}))
 		var eff_a: Dictionary = prop.effects.get(a.id, {})
 		out_rows.append({
 			"prior_k": k_val,

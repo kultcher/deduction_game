@@ -75,10 +75,11 @@ func _insight() -> void:
 		var plan: Dictionary = g._workshop_plans[n.id + ":good"]
 		var fresh_plan = plan.duplicate(true)
 		fresh_plan.prepared.listener.theories = {}
-		var once = Shared.evaluate(fresh_plan, n.workshop_state.outside, n.discounted)
+		var sd_map: Dictionary = n.workshop_state.get("source_doubt", {})
+		var once = Shared.evaluate(fresh_plan, n.workshop_state.outside, sd_map)
 		var next_plan = fresh_plan.duplicate(true)
 		next_plan.prepared.listener.theories = once.theories.duplicate(true)
-		var twice = Shared.evaluate(next_plan, n.workshop_state.outside, n.discounted)
+		var twice = Shared.evaluate(next_plan, n.workshop_state.outside, sd_map)
 		check(once == twice, "a committed live theory returns the exact same assessment on unchanged input")
 		for venue in ["private", "meeting", "nomination", "private"]:
 			g._evaluate_deduction(n, g.board[number - 1], 0.6, true, venue)

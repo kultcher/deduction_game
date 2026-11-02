@@ -204,10 +204,18 @@ static func reason_status(w, n, t_id: String) -> Dictionary:
 		if not ranked.is_empty():
 			var top: Dictionary = ranked[0]
 			var resolved = {"why": top["why"], "kind": top["kind"], "entry": top["entry"], "strength": top["strength"], "eid": top.get("eid", "")}
+			if top.has("channel"):
+				resolved["channel"] = top["channel"]
 			if top.has("src"):
 				resolved["src"] = top["src"]
 			return resolved
 		return {"why": "", "kind": "none", "entry": {}, "strength": 0.0, "eid": ""}
+	var best_res: Dictionary = _mind().best_resentment_against(w, mind, t_id)
+	if not best_res.is_empty() and n.sus_why.get(t_id, "") == "":
+		var f_id: String = str(best_res.get("friend", ""))
+		var f_nm: String = w.by_id[f_id].name if w.by_id.has(f_id) else f_id
+		var r_why_leg: String = ("they pushed to hang %s" % f_nm) if str(best_res.get("role", "nominator")) == "nominator" else ("they voted to hang %s" % f_nm)
+		return {"why": r_why_leg, "kind": "public", "entry": {}, "strength": clampf(float(best_res.get("strength", 0.0)) * 2.0, 0.25, 0.75), "eid": "resentment:%s:%s" % [f_id, t_id], "channel": "resentment"}
 	var why: String = n.sus_why.get(t_id, "")
 	var src: String = n.sus_src.get(t_id, "")
 	var out = {"why": why, "kind": "none" if why == "" else "public", "entry": {}, "strength": 0.0, "eid": src}
@@ -473,14 +481,24 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		t = w.by_id[sg]
 		s2 = 0.8
 		why = Evil.bluff_reason(w, n, t)
+	var acc_resent: float = 0.0
+	if n.is_evil():
+		pass
 	else:
 		var ranked = ranked_suspects(w, n)
 		if ranked.is_empty():
 			return null
+		ranked.sort_custom(func(a, b):
+			var sa: float = susp(n, a.id) + _mind().resentment_toward(w, n, a.id)
+			var sb: float = susp(n, b.id) + _mind().resentment_toward(w, n, b.id)
+			return sa > sb)
 		t = ranked[0]
 		s2 = susp(n, t.id)
+		acc_resent = _mind().resentment_toward(w, n, t.id)
 	var parts = {"suspicion": (s2 - 0.6) * 1.5, "confidence": (trait_of(n, "confidence") - 0.5) * 0.8,
 		"pressure_deflect": n.pressure * 0.4}
+	if acc_resent > 0.0:
+		parts["resentment"] = acc_resent * 1.5
 	if not decide(w, n, "accuse", parts, "Publicly accuse %s?" % t.id):
 		return null
 	# What they can say for it: a reason the town already has, a hint at one they're
@@ -665,7 +683,7 @@ static func nomination_cooloff(w, nominator_id: String, target_id: String) -> fl
 	return 0.0
 
 static func _nomination_action_score(w, n, target_id: String) -> float:
-	var s: float = action_susp(n, target_id)
+	var s: float = action_susp(n, target_id) + _mind().resentment_toward(w, n, target_id)
 	if n.cleared.has(target_id):
 		s -= Tuning.Meeting.NOMINATION_OWN_CLEAR_RELIEF
 	s -= nomination_cooloff(w, n.id, target_id)
@@ -688,18 +706,20 @@ static func _good_nomination_impl(w, n, m: Dictionary, block: String, trace_id: 
 			continue
 		var cooloff: float = nomination_cooloff(w, n.id, t.id)
 		var clear_adj: float = -Tuning.Meeting.NOMINATION_OWN_CLEAR_RELIEF if n.cleared.has(t.id) else 0.0
-		var s: float = action_susp(n, t.id) + clear_adj - cooloff
+		var resent: float = _mind().resentment_toward(w, n, t.id)
+		var s: float = action_susp(n, t.id) + resent + clear_adj - cooloff
 		w.dlog.decision(n.id, "nomination", "evaluation", s >= thr, {"score": s,
 			"raw_suspicion": susp(n, t.id), "town_pressure": action_susp(n, t.id) - execution_priority_contribution(n, t.id) - susp(n, t.id),
-			"own_clear_adjustment": clear_adj, "nomination_cooloff": -cooloff,
+			"resentment": resent, "own_clear_adjustment": clear_adj, "nomination_cooloff": -cooloff,
 			"shared_execution_priority": execution_priority(n, t.id), "shared_execution_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT,
 			"threshold": thr, "comparison": ">=",
 			"threshold_parts": {"day_base": day_base, "confidence": conf_term, "paranoia": para_term}}, t.id, trace_id)
 		if s < thr:
 			continue
-		if block != "" and action_susp(n, block) >= s:
+		var block_s: float = (action_susp(n, block) + _mind().resentment_toward(w, n, block)) if block != "" else 0.0
+		if block != "" and block_s >= s:
 			w.dlog.decision(n.id, "nomination", "gate", false, {"gate": "prefers_existing_block",
-				"block": block, "block_suspicion": action_susp(n, block), "candidate_score": s}, t.id, trace_id)
+				"block": block, "block_suspicion": block_s, "candidate_score": s}, t.id, trace_id)
 			return null  # content with who is already on the block
 		return {"nominee": t.id, "by": n.id, "score": s,
 			"reason": "suspicion of %s %.2f >= threshold %.2f" % [t.id, s, thr]}
@@ -1135,6 +1155,22 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 				leg_item["kind"] = "private"
 				leg_item["strength"] = maxf(leg_item["strength"], 0.5)
 			items.append(leg_item)
+	var best_res: Dictionary = _mind().best_resentment_against(w, mind, t_id)
+	if not best_res.is_empty():
+		var r_strength: float = float(best_res.get("strength", 0.0))
+		if r_strength >= 0.03:
+			var f_id: String = str(best_res.get("friend", ""))
+			var f_nm: String = w.by_id[f_id].name if w.by_id.has(f_id) else f_id
+			var r_why: String = ("they pushed to hang %s" % f_nm) if str(best_res.get("role", "nominator")) == "nominator" else ("they voted to hang %s" % f_nm)
+			items.append({
+				"eid": "resentment:%s:%s" % [f_id, t_id],
+				"why": r_why,
+				"kind": "public",
+				"strength": clampf(r_strength * 2.0, 0.25, 0.75),
+				"contrib": r_strength,
+				"entry": {},
+				"channel": "resentment",
+			})
 	items.sort_custom(func(x, y): return float(x["contrib"]) > float(y["contrib"]))
 	return items.slice(0, limit)
 
@@ -1477,10 +1513,13 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		return evil_yes if evil_override(w, v, "vote", stakes, 0.6, detail) else sh_yes
 	reconsider(w, v, "thinking it over before the vote")
 	var base = action_susp(v, nominee)
+	var v_resent: float = _mind().resentment_toward(w, v, nominee)
 	var s = base
 	var parts = {"suspicion": snappedf(susp(v, nominee), 0.01), "town_pressure": base - execution_priority_contribution(v, nominee) - susp(v, nominee)}
 	if C.SHARED_EXECUTION_PRIORITY_WEIGHT != 0.0:
 		parts["shared_execution_priority"] = execution_priority_contribution(v, nominee)
+	if v_resent > 0.0:
+		parts["resentment"] = v_resent
 	if player_yes:
 		parts["player_votes_yes"] = Tuning.Meeting.PLAYER_VOTE_YES_SLOPE * v.credibility + Tuning.Meeting.PLAYER_VOTE_YES_OFFSET
 	if statement == "defend":
@@ -1492,7 +1531,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	if v.spare_pref.get(nominee, 0.0) > 0.0:
 		parts["persuaded_to_spare"] = -0.5 * v.spare_pref[nominee]
 	var block: String = w.meeting["block"]
-	if block != "" and block != nominee and action_susp(v, block) >= base:
+	if block != "" and block != nominee and (action_susp(v, block) + _mind().resentment_toward(w, v, block)) >= (base + v_resent):
 		parts["prefers_block"] = -0.4
 	C.role_def(v.role).score_vote_reluctance(w, v, nominee, base, paranoia(w, v), parts)
 	for k in parts:

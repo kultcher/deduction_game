@@ -906,8 +906,8 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 	n.loc = "dead"
 	_bereave(n)
 	executed_today = id
-	executions.append({"day": day, "id": id, "nominator": res.get("by", ""), "yes": res.get("yes", []),
-		"player_yes": res.get("player_yes", false), "player_nominated": res.get("by", "") == "player"})
+	executions.append({"day": day, "id": id, "nominator": res.get("by", ""), "yes": res.get("yes", []).duplicate(),
+		"no": res.get("no", []).duplicate(), "player_yes": res.get("player_yes", false), "player_nominated": res.get("by", "") == "player"})
 	dlog.add("execution", "world", id, {"role": n.role, "align": n.alignment},
 		"%s (%s) executed by town vote." % [n.name, n.role])
 	mart_def.on_chosen_executed(self, mart, n)
@@ -933,6 +933,7 @@ func _revenant_curse(rv, res: Dictionary) -> void:
 	C.role_def("revenant").on_executed(self, rv, res, Mind)
 
 func turn_evil(v, why: String) -> void:
+	v.pre_turn_snapshot = Mind.capture_pre_turn_snapshot(self, v)
 	v.alignment = "evil"
 	Mind.shadow_reset(v)  # rebuilt from their good mind as it stands now
 	v.turned = true
@@ -943,8 +944,8 @@ func turn_evil(v, why: String) -> void:
 			Evil.add_intel(self, m, "teammate", v.id, 0.0, "%s has joined us (%s)" % [v.name, why])
 	dlog.add("turned", "world", v.id, {"why": why, "role": v.role}, "%s turns evil (%s). Keeps their gift and claims; now works for the demon." % [v.name, why])
 
-## The totem is found: the curse breaks. The turned soul is good again and remembers
-## nothing of who else was evil; what they said while turned they no longer stand by.
+## The totem is found: the curse breaks. Restore the pre-turn good snapshot, disown fake
+## turned readings, carry forward only public receipts from the turned period, and refresh.
 func free_turned() -> String:
 	if curse.is_empty():
 		return ""
@@ -953,23 +954,15 @@ func free_turned() -> String:
 	if not v.alive:
 		return ""
 	v.alignment = "good"
-	Mind.shadow_adopt(self, v)  # their good self, kept while turned, is their mind again
-	if v.workshop_state.get("active", false):
-		# A turned mind may never have needed a cover. Retract its shared layer
-		# BEFORE applying the native post-restoration suspicion cap below.
-		Mind.recompute_beliefs(self, v, " (shared ownership before restoration cap)")
-	Mind.shadow_reset(v)
 	v.turned = false
 	v.intel = {}
 	for e in v.info_log:
 		if e.get("fake", false):
 			e["disowned"] = true
 			e["shared"] = true  # never repeated
-	for m in npcs:
-		if m != v:
-			Mind.adjust(self, v, m.id, minf(Mind.susp(v, m.id), 0.25) - v.suspicion.get(m.id, 0.1), "freed soul", "", false)
-	Mind.hear_claim(self, v, v.id, v.role, 1.5, "own")
+	v.applied_info = v.info_log.size()
 	public_event("curse_lifted", ["town"], "")
+	Mind.restore_pre_turn_snapshot(self, v)
 	dlog.add("freed", "world", v.id, {}, "%s is freed from the curse; remembers nothing of their time as evil." % v.name)
 	return v.id
 
@@ -998,7 +991,10 @@ func _grief(ex, res: Dictionary) -> void:
 		return  # the town was right; nobody mourns the demon
 	if public_log.any(func(ev): return ev.get("kind", "") == "curse" and ex.id in ev.get("subjects", [])):
 		return  # the Revenant's curse erupted publicly at the gallows; nobody mourns proven evil
+	var yes_voters: Array = res.get("yes", [])
 	for f in living_good():
+		if f.id in yes_voters:
+			continue  # no grief if the mourner voted yes to hang them
 		var t: float = f.npc_trust.get(ex.id, 0.5)
 		if t < 0.62:
 			continue
@@ -1009,18 +1005,60 @@ func _grief(ex, res: Dictionary) -> void:
 		var strength = (t - 0.5) * 2.0
 		var nom: String = res.get("by", "")
 		if nom != "" and nom != "player" and nom != f.id:
-			Mind.adjust(self, f, nom, 0.3 * strength, "grief: %s nominated %s, whom I trusted" % [nom, ex.id],
-				"they pushed to hang %s" % ex.name, false)
+			Mind.add_resentment(self, f, nom, Tuning.Trust.RESENTMENT_NOMINATOR_SCALE * strength, ex.id, "nominator")
 			f.npc_trust[nom] = clampf(f.npc_trust.get(nom, 0.5) - 0.2 * strength, 0.0, 1.0)
-		for v in res.get("yes", []):
+		for v in yes_voters:
 			if v != f.id and v != nom:
-				Mind.adjust(self, f, v, 0.12 * strength, "grief: voted to hang %s" % ex.id, "", false)
+				Mind.add_resentment(self, f, v, Tuning.Trust.RESENTMENT_VOTER_SCALE * strength, ex.id, "voter")
 		if nom == "player":
 			Mind.set_trust(self, f, f.trust - 0.3 * strength, "grief: the Demonologist nominated %s" % ex.id)
 			Mind.cap_trust(self, f, 0.55, "grief: the Demonologist nominated %s" % ex.id)
 		elif res.get("player_yes", false):
 			Mind.set_trust(self, f, f.trust - 0.2 * strength, "grief: the Demonologist voted to hang %s" % ex.id)
 		dlog.think(f.id, "grief", "Mourns %s (trust %.2f); resents those who pushed the execution." % [ex.id, t])
+
+## Post-hearing execution-result rapport adjustment (Phase 2b): moved out of Gravedigger's
+## `info_effects` and gated on the listener's own post-refresh belief about the source and
+## the hanged person. Fires at most once per (listener, executed).
+func on_execution_reading_heard(listener, source, entry: Dictionary, weight: float) -> void:
+	if listener == null or listener.is_evil() or listener.is_shadow or source == listener or weight <= 0.2:
+		return
+	var d: Dictionary = {}
+	var r_day: int = int(entry.get("day", -1))
+	if str(entry.get("role", "")) == "gravedigger":
+		d = entry.get("data", {})
+	elif str(entry.get("role", "")) == "medium":
+		var item: Dictionary = entry.get("data", {}).get("item", {})
+		if str(item.get("type", "")) == "reading" and str(item.get("role", "")) == "gravedigger":
+			d = item.get("data", {})
+	if d.is_empty():
+		return
+	var ex_id: String = str(d.get("executed", ""))
+	var ex_role: String = str(d.get("role", ""))
+	if ex_id == "" or not by_id.has(ex_id) or not C.ROLES.has(ex_role) or listener.settled_execution_rapport.has(ex_id):
+		return
+	if public_log.any(func(ev): return ev.get("kind", "") == "curse" and ex_id in ev.get("subjects", [])) and ex_role != "revenant":
+		return
+	var rel_gd: float = Mind.reliability(listener, source.id, r_day, "reading")
+	var trusts_gd: bool = Mind.susp(listener, source.id) < 0.40 and rel_gd >= 0.55 and listener.npc_trust.get(source.id, 0.5) >= 0.45
+	if not trusts_gd:
+		return
+	var ex_good: bool = C.ROLES[ex_role]["align"] == "good"
+	var believes_outcome: bool = (Mind.susp(listener, ex_id) < Tuning.Trust.GRIEF_BELIEVED_EVIL) if ex_good else (Mind.susp(listener, ex_id) >= 0.22)
+	if not believes_outcome:
+		return
+	for e in executions:
+		if str(e.get("id", "")) != ex_id or not (bool(e.get("player_nominated", false)) or bool(e.get("player_yes", false))):
+			continue
+		listener.settled_execution_rapport[ex_id] = "good" if ex_good else "evil"
+		if ex_good:
+			# Execution accuracy is tracked by Credibility.dawn; personal Rapport only drops for close personal bonds.
+			if ex_id in listener.friends or ex_id == listener.lover:
+				Mind.set_trust(self, listener, listener.trust - 0.06, "the Demonologist backed hanging %s, an innocent friend" % ex_id)
+		else:
+			Mind.set_trust(self, listener, listener.trust + 0.08 + 0.06 * Mind.trait_of(listener, "insight"),
+				"the Demonologist was proven right about %s" % ex_id)
+		break
 
 func _check_parity() -> void:
 	if game_over:

@@ -65,10 +65,10 @@ func _init() -> void:
 	check(n.workshop_state.active and n.workshop_state.facts.size() == 1, "withdrawing both cases still retains the independently learned report")
 	check(_close(presented, n.suspicion), "intermediate claim labels never create extra evidence bonuses")
 	var before_doubt = n.workshop_state.requested.duplicate(true)
-	Mind.ledger_hear(g.w, n, "test:doubt", [["disc:" + source.id + ":1", 0.8, false, "uncertain interval", ""]], 1.0)
-	check(n.workshop_state.active and n.discounted.get(source.id + ":1", 0.0) > 0.7, "interval doubt reaches the shared assessor automatically")
+	Mind.ledger_hear(g.w, n, "arg:doubt", [["disc:" + source.id + ":1", 0.8, false, "uncertain interval", ""]], 1.0, [], {"kind": "arg", "conclusion": {"type": "misled", "a": source.id, "night": 1}})
+	check(n.workshop_state.active and n.workshop_state.get("source_doubt", {}).get(source.id + ":1", 0.0) > 0.7, "interval doubt reaches the shared assessor automatically via source_doubt")
 	check(absf(n.workshop_state.requested.get(target.id, 0.0)) < absf(before_doubt.get(target.id, 0.0)), "doubting the reading retracts its joint consequences")
-	n.ledger["test:doubt"].weight = 0.0
+	n.ledger["arg:doubt"].weight = 0.0
 	Mind.recompute_beliefs(g.w, n, "doubt removed")
 	check(_close(before_doubt, n.workshop_state.requested), "removing interval doubt restores the former vector")
 	g.set_workshop_effects(false)
@@ -247,6 +247,7 @@ func _advanced() -> void:
 			var wide_plan = Shared.prepare(wide_input, {}, n.ledger)
 			check(wide_plan.ready and wide_plan.facts.size() >= 10, "wide unions are assessed whole without truncating supplied reports")
 			# A conversion can be restored before any conversation creates a cover.
+			var pre_turn_susp: Dictionary = n.suspicion.duplicate(true)
 			g.w.turn_evil(n, "test conversion")
 			g.w.public_event("curse", ["town"], "")
 			g.w.curse = {"victim": n.id, "day": 1}
@@ -254,7 +255,8 @@ func _advanced() -> void:
 			check(n.shadow == null and n.workshop_state.get("active", false), "toggling while turned preserves the dormant reversible good layer")
 			g.w.free_turned()
 			check(not n.is_evil() and not n.workshop_state.get("active", false) and n.workshop_state.owned.is_empty(), "restoration without a cover retracts dormant shared ownership")
-			check(n.suspicion.values().all(func(value): return value <= 0.250001), "ownership restores native effects before the restoration suspicion cap")
+			g.set_workshop_effects(true)
+			check(_close(n.suspicion, pre_turn_susp), "freed soul restores pre-turn snapshot cleanly without an artificial 0.25 cap")
 
 func _state(g) -> String:
 	var rows: Array = []
