@@ -22,6 +22,7 @@ const Credibility = preload("res://game/credibility.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
+const Solver = preload("res://workshop/solver.gd")
 
 var checks: int = 0
 var fails: int = 0
@@ -42,6 +43,7 @@ func _init() -> void:
 	_test_freed_soul_pre_turn_snapshot_and_public_carry_forward()
 	_test_two_way_vote_circumstantial_shielding_player_presented_only()
 	_test_multi_day_outside_layer_invariance()
+	_test_nightwatch_against_third_party_alibi_both_ways()
 	print("Legacy Purge Phase 2b: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -204,6 +206,10 @@ func _test_revenant_curse_no_direct_outside_adjust() -> void:
 	w.public_event("vote", [rv.id], "town", {"nominee": rv.id, "nominator": "player", "yes": voters, "no": [observer.id], "player_yes": true, "count": 4, "threshold": 4, "outcome": "on_block"})
 	w.execute(rv.id, {"by": "player", "yes": voters, "no": [observer.id], "player_yes": true})
 	w.public_event("execution", [rv.id], "town")
+	# open_meeting defers belief refreshes until a speaker's turn; release them so the
+	# refresh below sees the vote, curse and execution on the public record.
+	w.defer_beliefs = false
+	Mind.flush_beliefs(w)
 	Mind.recompute_beliefs(w, observer, " (post-curse chronology refresh)")
 
 	_check(is_equal_approx(float(observer.workshop_state.outside.get(rv.id, -1.0)), 0.1),
@@ -232,12 +238,20 @@ func _test_grief_resentments_fading_citable_and_exonerated() -> void:
 	w.open_meeting()
 	w.execute(ex.id, {"by": nominator.id, "yes": [nominator.id, yes_voter.id, mourner_yes.id], "no": [mourner_no.id], "player_yes": false})
 	w.public_event("execution", [ex.id], "town")
+	# Release the meeting's deferred refreshes so later hearings apply immediately.
+	w.defer_beliefs = false
+	Mind.flush_beliefs(w)
 
 	# 1. No grief if the mourner voted yes!
 	_check(mourner_yes.resentments.is_empty(), "mourner who voted YES to hang trusted friend records zero grief resentment")
 
 	# 2. Mourner who voted NO gets private resentment records, with zero suspicion/outside mutation!
-	_check(mourner_no.resentments.size() == 2, "mourner who opposed execution records resentment against nominator and yes-voter")
+	var res_targets: Array = mourner_no.resentments.map(func(r): return str(r.get("target", "")))
+	res_targets.sort()
+	var want_targets: Array = [nominator.id, yes_voter.id, mourner_yes.id]
+	want_targets.sort()
+	_check(res_targets == want_targets,
+		"mourner who opposed execution resents the nominator and every yes-voter (%s)" % str(res_targets))
 	_check(is_equal_approx(Mind.susp(mourner_no, nominator.id), 0.1) and is_equal_approx(float(mourner_no.workshop_state.outside.get(nominator.id, -1.0)), 0.1),
 		"grief resentment never alters shared suspicion or outside baseline")
 
@@ -304,7 +318,8 @@ func _test_freed_soul_pre_turn_snapshot_and_public_carry_forward() -> void:
 	# Give `victim` strong pre-turn own evidence against `suspect` (> 0.25 old cap!).
 	victim.role = "seer"
 	var own_seer: Dictionary = {"day": 1, "phase": C.NIGHT, "role": "seer", "data": {"pair": [suspect.id, w.demon_id], "yes": true}, "true": true, "shared": false, "text": "Demon among pair"}
-	victim.info_log = [own_seer]
+	var own_seer0: Dictionary = {"day": 0, "phase": C.NIGHT, "role": "seer", "data": {"pair": [suspect.id, pub_ally.id], "yes": true}, "true": true, "shared": false, "text": "Demon among pair"}
+	victim.info_log = [own_seer0, own_seer]
 	victim.applied_info = 0
 	Mind.hear_claim(w, victim, victim.id, "seer", 1.5, "own")
 	Mind.update_from_own_info(w)
@@ -342,7 +357,7 @@ func _test_freed_soul_pre_turn_snapshot_and_public_carry_forward() -> void:
 		"private hearings from the turned period are forgotten on restoration")
 	_check(victim.ledger.has(Mind.claim_eid(pub_ally.id, "dowser")) and victim.ledger.has(Mind.info_eid(pub_ally.id, pub_dowser)),
 		"public claims and shared readings from the turned period carry forward cleanly")
-	_check(victim.info_log[1].get("disowned", false) and not victim.info_log[0].get("disowned", false),
+	_check(victim.info_log[2].get("disowned", false) and not victim.info_log[0].get("disowned", false) and not victim.info_log[1].get("disowned", false),
 		"fake turned readings are disowned while true pre-turn readings stay intact")
 	_check(Mind.susp(victim, suspect.id) > 0.26,
 		"freed soul keeps genuine pre-turn + public suspicion without the old 0.25 cap (%.3f)" % Mind.susp(victim, suspect.id))
@@ -369,12 +384,16 @@ func _test_two_way_vote_circumstantial_shielding_player_presented_only() -> void
 	listener.role = "seer"
 	var s1: Dictionary = {"day": 0, "phase": C.NIGHT, "role": "seer", "data": {"pair": [nom_evil.id, foil_a.id], "yes": true}, "true": true, "shared": false, "text": "Demon among pair 1"}
 	var s2: Dictionary = {"day": 1, "phase": C.NIGHT, "role": "seer", "data": {"pair": [nom_evil.id, foil_b.id], "yes": true}, "true": true, "shared": false, "text": "Demon among pair 2"}
-	var d1: Dictionary = {"day": 1, "phase": C.NIGHT, "role": "dowser", "data": {"group": [shielder.id, nominator.id], "count": 1}, "true": true, "shared": true, "text": "One evil"}
+	var d1: Dictionary = {"day": 1, "phase": C.MORNING, "role": "dowser", "data": {"group": [shielder.id, nominator.id], "count": 1}, "true": true, "shared": true, "text": "One evil"}
 	listener.info_log = [s1, s2]
 	listener.applied_info = 0
 	Mind.hear_claim(w, listener, listener.id, "seer", 1.5, "own")
 	Mind.update_from_own_info(w)
 	Mind.apply_info(w, listener, nominator, d1, 0.8)
+	# Two Seer pings top out near 0.3 (the nominee could be the red herring), so add an
+	# ambient reason outside the shared ledger. Shielding fires from 0.48, but an incident
+	# is only citable from 0.01 applied, which takes a firm belief (about 0.7+).
+	Mind.adjust(w, listener, nom_evil.id, 0.55, "fixture: ambient reasons to think the nominee is evil", "", false)
 	_check(Mind.susp(listener, nom_evil.id) >= 0.48, "precondition: listener believes nominee is evil (%.3f)" % Mind.susp(listener, nom_evil.id))
 
 	# Hold a public vote where `shielder` votes NO on `nom_evil`.
@@ -399,7 +418,7 @@ func _test_two_way_vote_circumstantial_shielding_player_presented_only() -> void
 	})
 	var dowser_card_num: int = g.add_card({
 		"kind": "info", "source": nominator.id, "subject": [shielder.id, nominator.id],
-		"day": 1, "phase": C.NIGHT, "role": "dowser",
+		"day": 1, "phase": C.MORNING, "role": "dowser",
 		"data": {"group": [shielder.id, nominator.id], "count": 1},
 		"text": "Dowser count 1",
 	})
@@ -457,3 +476,64 @@ func _test_multi_day_outside_layer_invariance() -> void:
 					all_flat = false
 		_check(all_flat and g.shared_fallbacks.is_empty(),
 			"seed %d (%d NPCs) reaches Day %d with 0 fallbacks and strictly flat 0.1 outside layer" % [sd, sz, g.w.day])
+
+
+func _canvas_node(model, view, pick: Callable) -> String:
+	for id in model.nodes:
+		var nd = model.nodes[id]
+		if nd.kind == "evidence" and pick.call(Solver.card_by_id(view, nd.card)):
+			return id
+	return ""
+
+
+## Present Night Watch `W`'s "saw A out on night 1" against A's "I was home" to a listener,
+## blaming either the alibi ("alibi") or the report ("report"). Returns {a, w} suspicion after.
+func _present_watch_vs_alibi(trust_w: float, trust_a: float, blame: String) -> Dictionary:
+	var g = _clean_game(61204, 10)
+	var w = g.w
+	w.day = 2
+	w.phase = C.MORNING
+	var goods: Array = w.living_good()
+	var listener = goods[0]
+	var watcher = goods[1]
+	var alibied = goods[2]
+	listener.npc_trust[watcher.id] = trust_w
+	listener.npc_trust[alibied.id] = trust_a
+	g.add_card({"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": C.NIGHT,
+		"data": {"block": alibied.home_block, "seen": [alibied.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, alibied.name]})
+	g.add_card({"kind": "alibi", "subject": [alibied.id], "home": true, "day": 1, "phase": C.NIGHT, "source": alibied.id,
+		"block": alibied.home_block, "text": "%s says they were home on night 1." % alibied.name})
+	var view: Dictionary = WorkshopCanvas.view(g)
+	var model = CanvasModel.new(view)
+	var report: String = _canvas_node(model, view, func(c): return c.kind == "report" and c.source == watcher.id)
+	var alibi: String = _canvas_node(model, view, func(c): return c.kind == "alibi")
+	var premise: String = model.add_premise(alibied.id if blame == "alibi" else watcher.id, "suspicious", Vector2(0, 0))
+	model.connect_cards(report, alibi)
+	var contradiction: String = model.selected
+	if blame == "report":
+		model.doubt_report(contradiction)
+		model.connect_cards(report, premise)
+		model.connect_cards(alibi, premise)
+	else:
+		model.connect_cards(contradiction, premise)
+	var filed: int = WorkshopCanvas.file(g, model.compile(premise))
+	g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false, "meeting")
+	return {"a": Mind.susp(listener, alibied.id), "w": Mind.susp(listener, watcher.id)}
+
+
+## A Night Watch report can still break a third party's home alibi, and the listener's
+## trust decides how far each side falls: the source_doubt change for a Night Watch report
+## naming the listener themselves must not reach this case.
+func _test_nightwatch_against_third_party_alibi_both_ways() -> void:
+	var alibi_false_trust_w: Dictionary = _present_watch_vs_alibi(0.85, 0.3, "alibi")
+	var alibi_false_trust_a: Dictionary = _present_watch_vs_alibi(0.3, 0.85, "alibi")
+	_check(alibi_false_trust_w.a > 0.3 and alibi_false_trust_a.a > 0.2 and alibi_false_trust_w.a > alibi_false_trust_w.w,
+		"a Night Watch report against a home alibi raises the alibi-giver (%.3f trusting the watcher, %.3f trusting the alibi-giver)" % [alibi_false_trust_w.a, alibi_false_trust_a.a])
+	_check(alibi_false_trust_w.a > alibi_false_trust_a.a,
+		"the alibi-giver falls further when the listener trusts the watcher more (%.3f > %.3f)" % [alibi_false_trust_w.a, alibi_false_trust_a.a])
+	var report_false_trust_w: Dictionary = _present_watch_vs_alibi(0.85, 0.3, "report")
+	var report_false_trust_a: Dictionary = _present_watch_vs_alibi(0.3, 0.85, "report")
+	_check(report_false_trust_a.w > 0.2 and report_false_trust_a.w > report_false_trust_a.a,
+		"the other world is open too: doubting the report raises the watcher (%.3f)" % report_false_trust_a.w)
+	_check(report_false_trust_a.w > report_false_trust_w.w,
+		"and the watcher falls further when the listener trusts the alibi-giver more (%.3f > %.3f)" % [report_false_trust_a.w, report_false_trust_w.w])

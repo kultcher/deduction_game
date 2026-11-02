@@ -933,6 +933,11 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 				person_ev = _case_eval(view, scoped, biased)
 		var odds: Dictionary = person_ev.people.get(id, {"prior": 0.0, "posterior": 0.0})
 		var s: float = CaseEval.shift(odds.prior, odds.posterior) if not ev.impossible else 0.0
+		# The public curse proves its executed Revenant evil in every world, before the case
+		# as much as after, so prior and posterior are both 1 and the shift is 0. Pin it here:
+		# the chronology is the proof (the old direct +1.0 adjust is gone, purge 2b).
+		if not ev.impossible and str(view.get("chronology", {}).get("curse", {}).get("executed", "")) == id:
+			s = 1.0
 		var alignment: float = 0.45 * s
 		# Headline reading (Oct 30): a duller listener takes a strong evil signal at its word
 		# ("one of Kiran or Fenwick is the Demon") and skips the subtler counter-explanations

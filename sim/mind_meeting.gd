@@ -482,9 +482,7 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		s2 = 0.8
 		why = Evil.bluff_reason(w, n, t)
 	var acc_resent: float = 0.0
-	if n.is_evil():
-		pass
-	else:
+	if not n.is_evil():
 		var ranked = ranked_suspects(w, n)
 		if ranked.is_empty():
 			return null

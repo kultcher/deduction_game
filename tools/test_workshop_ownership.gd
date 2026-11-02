@@ -247,9 +247,12 @@ func _advanced() -> void:
 			var wide_plan = Shared.prepare(wide_input, {}, n.ledger)
 			check(wide_plan.ready and wide_plan.facts.size() >= 10, "wide unions are assessed whole without truncating supplied reports")
 			# A conversion can be restored before any conversation creates a cover.
+			# Restoration re-hears the mind's own gift claim, so hold it before the snapshot too.
+			# (No bare "curse" public event: without its execution and vote the shared model
+			# rightly refuses the chronology and falls back to native.)
+			Mind.hear_claim(g.w, n, n.id, n.role, 1.5, "own")
 			var pre_turn_susp: Dictionary = n.suspicion.duplicate(true)
 			g.w.turn_evil(n, "test conversion")
-			g.w.public_event("curse", ["town"], "")
 			g.w.curse = {"victim": n.id, "day": 1}
 			g.set_workshop_effects(false)
 			check(n.shadow == null and n.workshop_state.get("active", false), "toggling while turned preserves the dormant reversible good layer")
