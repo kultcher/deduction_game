@@ -2,7 +2,7 @@
 ## caller-approved fields, never a world/NPC or an invitation to resolve new meaning.
 extends RefCounted
 
-const CONTEXT_FIELDS = ["audience", "speech_act", "trust", "pressure", "warm", "close", "subject",
+const CONTEXT_FIELDS = ["audience", "speech_act", "trust", "pressure", "warm", "close", "rival", "subject",
 	"challenged", "visual", "withholding", "reconsidered", "decided", "request_privacy",
 	"flow_position", "flow_relation", "shared_presence"]
 const PAYLOAD_FIELDS = ["kind", "form", "event_id", "statement", "observation", "argument", "when",

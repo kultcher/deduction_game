@@ -208,7 +208,7 @@ func _meeting_sighting_prefix_and_gallows() -> void:
 	w.phase = C.MORNING
 	var rng_state = w.rng.state
 	Mind._volunteer_night_sightings(w, n, lines, facts)
-	_check(facts.size() == 1 and lines.size() == 1 and lines[0].text.count("night 1") == 1, "actual volunteered sighting says the night exactly once")
+	_check(facts.size() == 1 and lines.size() == 1 and lines[0].text.to_lower().count(C.spoken_when(1, w.day)) == 1, "actual volunteered sighting says the night exactly once")
 	_check(w.rng.state == rng_state, "formatting a volunteered night sighting adds no RNG draw")
 	# The person-specific recent-sightings path has its own date-prefix handling.
 	n.role = "lamplighter"
@@ -216,7 +216,7 @@ func _meeting_sighting_prefix_and_gallows() -> void:
 	n.claim_public = true
 	var recent = {"lines": [], "facts": []}
 	Recent.append_to(w, n, target, recent, [])
-	_check(recent.facts.size() == 1 and recent.lines.size() == 1 and recent.lines[0].text.count("night 1") == 1, "actual recent night sighting says the night exactly once")
+	_check(recent.facts.size() == 1 and recent.lines.size() == 1 and recent.lines[0].text.to_lower().count(C.spoken_when(1, w.day)) == 1, "actual recent night sighting says the night exactly once")
 	n.info_log.clear()
 	n.beliefs.clear()
 	var gallows: Dictionary = Mind.last_words(w, n)

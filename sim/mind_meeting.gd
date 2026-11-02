@@ -156,7 +156,8 @@ static func _claim_line(n, role: String) -> Dictionary:
 
 ## Construct the exact public-facing report before a presentation layer touches it.
 static func _info_intent(w, n, e: Dictionary) -> Dictionary:
-	var when = "The night before you arrived" if e["day"] == 0 else "Last night" if e["day"] == w.day - 1 else "On night %d" % e["day"]
+	var spoken: String = C.spoken_when(e["day"], w.day)
+	var when = spoken[0].to_upper() + spoken.substr(1)
 	if e.has("phase"):
 		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
 	return {"kind": "report", "statement": "%s, %s." % [when, e["text"]], "event_id": info_eid(n.id, e)}
@@ -573,11 +574,11 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	var groups: Array = []
 	_add_observation(groups, report["observation"])
 	var obs_lines: Array = _observation_lines(n, groups, "town", "volunteer", not lines.is_empty(), "development" if not lines.is_empty() else "independent")
-	var night_label: String = C.night_name(seen["day"])
+	var night_label: String = C.spoken_when(seen["day"], w.day)
 	for obs_line in obs_lines:
 		obs_line["statement"] = report["line"]["text"]
 		if not (night_label in obs_line["text"] or ("night %d" % seen["day"]) in obs_line["text"]):
-			obs_line["text"] = "On %s: %s" % [night_label, obs_line["text"]]
+			obs_line["text"] = "%s: %s" % [night_label[0].to_upper() + night_label.substr(1), obs_line["text"]]
 		lines.append(obs_line)
 	facts.append(report["fact"])
 
