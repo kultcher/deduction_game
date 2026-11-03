@@ -5,6 +5,7 @@ naming a suite explicitly always runs it. Run them before merging, and whenever 
 change touches tracing, logging, determinism or whole-game flow.
 """
 import argparse
+import shutil
 import os
 from pathlib import Path
 import re
@@ -34,6 +35,18 @@ def main():
     if not args.tests and not args.include_slow:
         skipped = [suite.stem for suite in suites if suite.stem in SLOW]
         suites = [suite for suite in suites if suite.stem not in SLOW]
+    # C# solver kernel (migration slice C0+): build it first so suites load current code.
+    # Debug is the configuration the editor binary loads (.godot/mono/temp/bin/Debug).
+    csproj = project / "Demonologist.csproj"
+    if csproj.exists():
+        if shutil.which("dotnet") is None:
+            print("WARNING: Demonologist.csproj present but dotnet is not installed; C# suites will skip", flush=True)
+        else:
+            build = subprocess.run(["dotnet", "build", str(csproj), "-c", "Debug", "--nologo", "-v", "q"], cwd=project,
+                                   capture_output=True, text=True)
+            if build.returncode != 0:
+                print("FAIL dotnet build\n" + build.stdout[-4000:] + build.stderr[-4000:], flush=True)
+                return True
     failed = []
     pattern = re.compile(r"(?m)^(?:FAIL[ :]|ERROR: FAIL|SCRIPT ERROR:)|(?:FAILURES:\s*[1-9]|failures:\s*[1-9]|\b[1-9]\d* failures\b)")
     for suite in suites:
