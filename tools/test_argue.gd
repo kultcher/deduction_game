@@ -237,7 +237,7 @@ func _init() -> void:
 		var dme = g.file_deduction({"type": "unreliable", "a": P.id}, [ksp])
 		if dme > 0:
 			var rm = Argue.evaluate(w, P, g.board[dme - 1], g.board, 1.0)
-			_check("I'm no liar" in rm["lines"][0]["text"], "misled-or-lying about yourself reads as misled (%s)" % rm["lines"][0]["text"])
+			_check("I'm no liar" in Speech.said(rm["lines"][0]), "misled-or-lying about yourself reads as misled (%s)" % Speech.said(rm["lines"][0]))
 	# present routing.
 	var lis2 = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))
 	if not lis2.is_empty():

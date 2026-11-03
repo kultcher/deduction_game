@@ -112,7 +112,7 @@ func _test_receipt_only_ledger_entries() -> void:
 
 	martyr.role = "martyr"
 	martyr.martyr_target = saved.id
-	C.role_def("martyr").on_substitute_death(w, martyr, saved, {"by": "player", "yes": [], "player_yes": false}, Mind)
+	C.role_def("martyr").on_substitute_execution(w, martyr, saved, {"by": "player", "yes": [], "player_yes": false}, Mind)
 
 	var rev = w.minions()[0]
 	rev.role = "revenant"

@@ -16,16 +16,18 @@ static func refresh(g, n, phase: String) -> void:
 static func _candidate_outside(n, state: Dictionary) -> Dictionary:
 	var out: Dictionary = n.suspicion.duplicate(true)
 	if state.get("active", false):
-		for id in state.outside:
+		var outside: Dictionary = state.get("outside", {})
+		var requested: Dictionary = state.get("requested", {})
+		for id in outside:
 			# Preserve direct assignments too (ordinary adjustments go through
 			# Mind.adjust and already maintain the outside layer).
-			var expected: float = state.outside[id] + state.requested.get(id, 0.0) + state.get("circumstantial_requested", {}).get(id, 0.0)
+			var expected: float = outside[id] + requested.get(id, 0.0) + state.get("circumstantial_requested", {}).get(id, 0.0)
 			var before: float = n.suspicion.get(id, expected)
 			var external_change: float = before - expected
 			# Preserve the exact stored baseline when nothing changed. Adding
 			# then subtracting the same float introduced rounding drift, which
 			# broke exact cache/repetition keys and fed priors on every refresh.
-			out[id] = state.outside[id] if absf(external_change) < 0.000000001 else state.outside[id] + external_change
+			out[id] = outside[id] if absf(external_change) < 0.000000001 else outside[id] + external_change
 	return out
 
 static func _refresh(g, n, phase: String) -> void:

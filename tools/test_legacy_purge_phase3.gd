@@ -188,14 +188,16 @@ func _test_multi_day_shared_play_zero_fallbacks() -> void:
 		g.detailed_logging = false
 		g.new_case(sd, 7)
 		var guard: int = 0
-		while g.state != "over" and g.w.day < 4 and guard < 120:
+		while g.state != "over" and g.w.day < 4 and guard < 250:
 			guard += 1
 			if g.state == "approach":
 				g.command("decline")
 			elif g.state == "day":
 				g.command("wait")
 			elif g.state == "meeting":
-				g.command("pass")
+				g.command("done" if g.town_quiet else "wait")
+			elif g.state == "talk":
+				g.command("bye")
 			elif g.state == "nomination":
 				g.command("vote no")
 			elif g.state == "night":

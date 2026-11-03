@@ -547,8 +547,10 @@ func _live() -> void:
 	n.silenced = false
 	n.traits["gossip"] = 0.9
 	Mind.Dialogue.begin_conversation(n.dialogue_memory)
-	var claim_card: int = g.add_card({"kind": "claim", "source": target.id, "subject": [target.id],
-		"role": "clerk", "text": "Edda claimed Clerk."})
+	# Dialogue continuity, not evidence judging: present a card the shared judge supports
+	# (a bare claim card is blocked now that the legacy route is gone, purge 3).
+	var claim_card: int = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id],
+		"block": "docks", "day": 1, "phase": C.NIGHT, "text": "You saw Edda out at the docks, night 1."})
 	g.command("tell edda %d" % claim_card)
 	_check(n.dialogue_memory.get("conversation", {}).get("last_action", "") == "accusation" and
 		n.dialogue_memory.get("conversation", {}).get("last_subject", "") == target.id,
