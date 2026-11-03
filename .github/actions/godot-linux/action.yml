@@ -1,0 +1,29 @@
+name: Install Godot .NET (Linux)
+description: Download the Godot .NET editor binary for headless runs (cached).
+outputs:
+  bin:
+    description: Path to the Godot .NET binary
+    value: ${{ steps.out.outputs.bin }}
+runs:
+  using: composite
+  steps:
+    - name: Cache Godot
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/godot
+        key: godot-mono-linux-${{ env.GODOT_VERSION }}
+    - name: Download
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/godot"
+        curl -sSL -o "$RUNNER_TEMP/godot.zip" \
+          "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64.zip"
+        unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP/godot"
+    - id: out
+      shell: bash
+      run: |
+        bin=$(find "$RUNNER_TEMP/godot" -name "Godot_v*_mono_linux.x86_64" -type f | head -1)
+        chmod +x "$bin"
+        echo "bin=$bin" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,19 @@
+# Suites CI runs on every pull request (main runs everything). Keep this to the suites
+# that cover the shared model, the C# solver and its boundaries; about 15 minutes total.
+test_csharp_slice_c0
+test_csharp_slice_c1
+test_workshop_ownership
+test_workshop_integration
+test_workshop_efficiency
+test_workshop_clerk_archivist_seer
+test_workshop_nightwatch_gravedigger
+test_workshop_martyr_sexton
+test_workshop_protection
+test_workshop_medium
+test_workshop_reading_challenges
+test_mechanics_curse
+test_legacy_purge_phase2b
+test_legacy_purge_phase3
+test_beliefs
+test_headline
+test_role_def_poc

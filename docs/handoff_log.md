@@ -17,6 +17,70 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03 ~13:30 ET, Claude: slice C0b + C1 checked, green, on main
+
+- **Base:** `1821db3` as declared; unpacked on `csharp/slice-c1`, no conflicts, no
+  changes needed to Argon's code.
+- **Build:** `dotnet build -c Debug`: 0 warnings, 0 errors. All 262 scripts parse on the
+  .NET binary.
+- **Suites** (.NET Godot, Linux): all 13 from the manifest checklist pass, plus
+  `test_workshop_ownership` and `test_headline`.
+- **Golden vs `baseline_82faa5b`, `--tol 0`:** identical on all five seeds in **both**
+  `--mode gdscript` (default) and `--mode csharp`; 0 script errors. Captures ran side by
+  side under equal load: GDScript 750 s total, C# 568 s (about 24% faster end to end).
+- **VERIFY:** `profile_c0` reports 18,207 boundary calls, 0 mismatches.
+
+### Profile, seed 42 (7 NPCs, to Day 4), self time
+
+| Stage | GDSCRIPT ms | CSHARP ms |
+|---|---:|---:|
+| outer_prep | 1406 | 1654 |
+| pack_inputs | 0 | 1932 |
+| world_domain | 5701 | 892 |
+| live_activity | 2904 | 3329 |
+| case_eval_compile | 1094 | 1168 |
+| reason_attribution | 267 | 309 |
+| **wall** | **11923** | **9918** |
+
+(Profiled while a suite run used the other core, so absolute numbers are noisy; the
+ratios are the useful part.)
+
+### Notes for Argon
+
+1. **Packing is now the bottleneck of what C1 moved.** `world_domain` dropped 6.4x
+   (5.7 s to 0.9 s), but repacking inputs per call costs 1.9 s, about 1 ms per call for
+   `coarse_masks` (819 calls), `bluff_weights` (314), `bluff_weights_temporal` (132) and
+   `fits_weights` (754). The universe and role tables are the same across most of those
+   calls within one refresh, so packing them once per refresh (or per universe key) and
+   passing a handle should recover most of the 1.9 s. Same rule as before: key the cache
+   on everything that varies, and clear it in `clear_context`.
+2. **VERIFY barely exercises `coarse_masks`:** 4 calls in VERIFY against 819 in CSHARP.
+   VERIFY seems to take a path where cached masks skip the comparison. Worth checking that
+   VERIFY compares on every call, or it can miss a mismatch that CSHARP mode would ship.
+3. **`channel_sum_product` shows 0 calls** in both modes on seed 42, so either that path
+   doesn't run in this game or the timers are on functions that aren't the hot entry
+   points. Confirm before C3 targets it.
+4. **`live_activity` (2.9 s) is now the largest pure-GDScript stage after outer prep**,
+   which supports C2 as the next slice, per the plan.
+5. **The profile header says `refreshes=0`:** the refresh counter in `profile_c0.gd` isn't
+   wired (the golden capture counts 67 for this seed). Cosmetic.
+
+### CI (new, Michael's go-ahead)
+
+`.github/workflows/ci.yml` now runs on every pull request and on main:
+
+- builds the C# project on the Godot .NET binary;
+- runs suites (`tools/ci_fast_suites.txt` on PRs, everything on main, 4 shards);
+- diffs golden captures (gdscript and csharp modes) against `baseline_82faa5b` at
+  `--tol 0`, failing on any `SCRIPT ERROR`.
+
+A Windows golden job runs on main and manual runs and is informational until it first
+agrees with Linux. Add new C# slice suites to `tools/ci_fast_suites.txt`.
+
+Next actor: **Argon** (C2 `live_activity`, after the packing cache in note 1 if it's quick).
+
+---
+
 ## 2026-11-03 11:55 ET, Argon: slice C0b + C1 delivered (`patch_002_slice_c1.zip`)
 
 - **Base:** `main` at `1821db368bf22ec5d3436b8aa5407a54c6b3db86` (`1821db3`).

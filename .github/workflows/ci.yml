@@ -1,0 +1,168 @@
+name: CI
+
+# Build the C# solver, run the GDScript suites and diff golden captures against the
+# frozen baseline, on the .NET build of Godot.
+#   pull requests: fast suite list + golden diff (GDScript and C# modes)
+#   main:          full suite (sharded) + golden diff + Windows golden check
+#   manual:        same as main; tick "windows" to include the Windows check
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      windows:
+        description: "Also run the Windows golden check"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GODOT_VERSION: "4.7.2"
+  BASELINE: tools/golden/baseline_82faa5b
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  suites:
+    name: Suites (${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Install Godot .NET
+        id: godot
+        uses: ./.github/actions/godot-linux
+      - name: Build C# solver
+        run: dotnet build Demonologist.csproj -c Debug --nologo -v q
+      - name: Import project
+        run: timeout 600 "${{ steps.godot.outputs.bin }}" --headless --path . --import > /dev/null 2>&1 || true
+      - name: Pick this shard's suites
+        id: pick
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Pull requests run the fast list (tools/ci_fast_suites.txt), split across shards.
+            mapfile -t all < <(grep -v '^\s*#' tools/ci_fast_suites.txt | sed '/^\s*$/d')
+          else
+            # Main and manual runs: every suite except the slow ones, which get shard 4 alone.
+            mapfile -t all < <(ls tools/test_*.gd | xargs -n1 basename | sed 's/\.gd$//' | grep -v -x -e test_trace -e test_meeting_stream)
+          fi
+          picked=()
+          for i in "${!all[@]}"; do
+            if (( i % 4 == ${{ matrix.shard }} - 1 )); then picked+=("${all[$i]}"); fi
+          done
+          if [[ "${{ github.event_name }}" != "pull_request" && "${{ matrix.shard }}" == "4" ]]; then
+            picked+=(test_trace test_meeting_stream)
+          fi
+          echo "suites=${picked[*]}" >> "$GITHUB_OUTPUT"
+          echo "Suites: ${picked[*]}"
+      - name: Run suites
+        if: steps.pick.outputs.suites != ''
+        run: python3 tools/run_gd_tests.py --godot "${{ steps.godot.outputs.bin }}" --timeout 2400 ${{ steps.pick.outputs.suites }}
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: suite-logs-${{ matrix.shard }}
+          path: logs/test-run/*.txt
+          if-no-files-found: ignore
+
+  golden:
+    name: Golden diff (${{ matrix.mode }}, Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [gdscript, csharp]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Install Godot .NET
+        id: godot
+        uses: ./.github/actions/godot-linux
+      - name: Build C# solver
+        run: dotnet build Demonologist.csproj -c Debug --nologo -v q
+      - name: Import project
+        run: timeout 600 "${{ steps.godot.outputs.bin }}" --headless --path . --import > /dev/null 2>&1 || true
+      - name: Capture
+        run: |
+          "${{ steps.godot.outputs.bin }}" --headless --path . --script res://tools/golden_capture.gd -- \
+            --out "$RUNNER_TEMP/golden" --mode ${{ matrix.mode }} 2>&1 | tee "$RUNNER_TEMP/golden.log"
+      - name: No script errors
+        run: |
+          if grep -a "SCRIPT ERROR" "$RUNNER_TEMP/golden.log"; then
+            echo "::error::The capture logged script errors, so it recorded a broken game."
+            exit 1
+          fi
+      - name: Diff against the baseline (--tol 0)
+        run: python3 tools/golden_diff.py "$BASELINE" "$RUNNER_TEMP/golden" --tol 0 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload capture
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-${{ matrix.mode }}-linux
+          path: ${{ runner.temp }}/golden*
+
+  golden-windows:
+    name: Golden diff (gdscript, Windows)
+    # Windows minutes cost double: main pushes and manual runs only, and informational
+    # until the first run shows Windows and Linux agree.
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.windows)
+    continue-on-error: true
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Install Godot .NET
+        id: godot
+        shell: pwsh
+        run: |
+          $zip = "$env:RUNNER_TEMP\godot.zip"
+          Invoke-WebRequest "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION-stable/Godot_v$env:GODOT_VERSION-stable_mono_win64.zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath "$env:RUNNER_TEMP\godot"
+          $bin = Get-ChildItem "$env:RUNNER_TEMP\godot" -Recurse -Filter "*_console.exe" | Select-Object -First 1
+          "bin=$($bin.FullName)" >> $env:GITHUB_OUTPUT
+      - name: Build C# solver
+        run: dotnet build Demonologist.csproj -c Debug --nologo -v q
+      - name: Import project
+        shell: pwsh
+        run: '& "${{ steps.godot.outputs.bin }}" --headless --path . --import *> $null; exit 0'
+      - name: Capture
+        shell: pwsh
+        run: '& "${{ steps.godot.outputs.bin }}" --headless --path . --script res://tools/golden_capture.gd -- --out "$env:RUNNER_TEMP\golden" 2>&1 | Tee-Object "$env:RUNNER_TEMP\golden.log"'
+      - name: No script errors
+        shell: pwsh
+        run: |
+          if (Select-String -Path "$env:RUNNER_TEMP\golden.log" -Pattern "SCRIPT ERROR" -Quiet) {
+            Write-Output "::error::The capture logged script errors."
+            exit 1
+          }
+      - name: Diff against the Linux baseline (--tol 0)
+        shell: pwsh
+        run: python tools/golden_diff.py "$env:BASELINE" "$env:RUNNER_TEMP\golden" --tol 0 | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
+      - name: Upload capture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-gdscript-windows
+          path: ${{ runner.temp }}\golden
