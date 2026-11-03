@@ -55,7 +55,12 @@ func _hang(w, who, day: int) -> void:
 	who.alive = false
 	who.death_day = day
 	who.death_cause = "executed"
+	# The public execution is logged on the day it happened, which is what dates the
+	# Gravedigger's reading that night (purge 3 rejects a reading with no such execution).
+	var today: int = w.day
+	w.day = day
 	w.public_event("execution", [who.id], "town")
+	w.day = today
 	w.executions.append({"day": day, "id": who.id, "nominator": "player", "yes": [], "no": [], "player_yes": true, "player_nominated": true})
 
 func _verdict(night: int, who: String, role: String) -> Dictionary:
@@ -81,13 +86,14 @@ func _test_recovery() -> void:
 	_hang(w, t["A"], 2)
 	Mind.apply_info(w, L, t["A"], _seer(1, t["C"].id, t["D"].id), 0.5)
 	var h0 = Mind.reliability(L, t["A"].id, 1)
-	var s0 = Mind.susp(L, t["C"].id)
+	# Compare the unclamped shared request: C can sit below zero, where suspicion clamps.
+	var s0 = float(L.workshop_state.get("requested", {}).get(t["C"].id, 0.0))
 	Mind.apply_info(w, L, t["B"], _verdict(2, t["A"].id, "poisoner"), 0.8)
 	var h1 = Mind.reliability(L, t["A"].id, 1)
-	var s1 = Mind.susp(L, t["C"].id)
+	var s1 = float(L.workshop_state.get("requested", {}).get(t["C"].id, 0.0))
 	_doubt(t, t["B"].id, 2)
 	var h2 = Mind.reliability(L, t["A"].id, 1)
-	var s2 = Mind.susp(L, t["C"].id)
+	var s2 = float(L.workshop_state.get("requested", {}).get(t["C"].id, 0.0))
 	_check(h1 < h0 and h2 > h1 and s1 < s0 and s2 > s1, "discrediting B's report lets A's claims recover")
 
 func _test_independent_evidence() -> void:
@@ -262,7 +268,9 @@ func _test_double_claim_shifts() -> void:
 	Mind.hear_claim(w, L, Y, r, 0.5, "public")
 	var dx1 = Mind.susp(L, X) - sx0
 	var dy1 = Mind.susp(L, Y) - sy0
-	Mind.apply_info(w, L, t["D"], _seer(1, Y, L.id), 0.8)
+	# A third Seer reading would make D another rival claimant to the double-claimed gift,
+	# so implicate Y with a different gift: one evil between Y and the (good) listener.
+	Mind.apply_info(w, L, t["D"], {"day": 1, "phase": 0, "role": "dowser", "data": {"group": [Y, L.id], "count": 1}, "text": "dowser test"}, 0.8)
 	_check(dx1 > 0.0 and dy1 > 0.0 and Mind.susp(L, Y) > Mind.susp(L, X), "a double claim raises suspicion on both claimants and shifts toward the one implicated by readings")
 
 func _test_own_gift() -> void:

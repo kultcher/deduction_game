@@ -153,7 +153,12 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		var role2: String = str(card.get("data", {}).get("role", ""))
 		if ex2 == "" or not C.ROLES.has(role2) or proven_revenants.has(ex2):
 			continue
-		var g_trust: float = clampf(float(npc_trust.get(gsrc, 0.5)), 0.0, 1.0)
+		# A reading the listener already doubts (misled that night, or the source in
+		# general) proves only as much as they still credit it.
+		var g_night: int = int(card.get("night", card.get("observed_at", {}).get("day", -1)))
+		var g_doubt: float = maxf(float(pre_eval.get(gsrc + ":*", 0.0)), float(pre_eval.get("%s:%d" % [gsrc, g_night], 0.0)))
+		g_doubt = maxf(g_doubt, _arg_doubt(ledger, owned_map, gsrc, g_night))
+		var g_trust: float = clampf(float(npc_trust.get(gsrc, 0.5)), 0.0, 1.0) * (1.0 - clampf(g_doubt, 0.0, 1.0))
 		if C.ROLES[role2]["align"] == "evil" and g_trust >= 0.45:
 			pre_eval[ex2 + ":*"] = maxf(float(pre_eval.get(ex2 + ":*", 0.0)), clampf(0.85 * g_trust, 0.0, 0.95))
 		elif C.ROLES[role2]["align"] == "good" and g_trust >= 0.60:
@@ -212,3 +217,29 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 				full_doubt[r_src + ":*"] = maxf(float(full_doubt.get(r_src + ":*", 0.0)), src_pen)
 
 	return {"pre_eval": pre_eval, "full": full_doubt, "settled_sincere": settled_sincere}
+
+
+## Night or general doubt about `src` from unowned template arguments (the same values
+## pass 3 writes), so pass 2 can weigh a Gravedigger proof the listener already doubts.
+static func _arg_doubt(ledger: Dictionary, owned_map: Dictionary, src: String, night: int) -> float:
+	var out: float = 0.0
+	for eid in ledger:
+		if owned_map.has(eid):
+			continue
+		var entry: Dictionary = ledger[eid]
+		var wgt: float = clampf(float(entry.get("weight", 0.0)), 0.0, 1.0)
+		var meta: Dictionary = entry.get("meta", {})
+		if wgt <= 0.01 or str(meta.get("kind", "")) != "arg" or not (meta.get("conclusion") is Dictionary):
+			continue
+		var conc: Dictionary = meta.conclusion
+		if str(conc.get("a", "")) != src:
+			continue
+		var cn: int = int(conc.get("night", -1))
+		if cn >= 0 and cn != night:
+			continue
+		match str(conc.get("type", "")):
+			"misled":
+				out = maxf(out, minf(0.8 * wgt, 0.9))
+			"unreliable", "lied":
+				out = maxf(out, minf(0.5 * wgt, 0.9))
+	return out
