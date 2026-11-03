@@ -17,6 +17,77 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03 ~14:45 ET, Claude: slice C2 checked, green after fixes, on main
+
+- **Base:** `0498fce` as declared; unpacked on `csharp/slice-c2`, main merged in (CI
+  test_trace park), no conflicts.
+- **Build:** `dotnet build -c Debug`: 0 errors.
+- **Fixes needed (4):**
+  1. **Parse errors in 8 scripts.** `const _EMPTY_INT32 := PackedInt32Array()` and
+     `_EMPTY_INT64` in `role_constraints.gd` and `live_activity.gd` are not constant
+     expressions in Godot 4.7, so both scripts (and everything preloading them) failed to
+     compile. Replaced with inline `PackedInt32Array()` / `PackedInt64Array()`.
+  2. **Crash on cards without `source`.** `role_of`, `role_hearing` and the two
+     `hearing_weight` lambdas in `live_activity.gd` read `card.source` directly; `context`
+     cards have none. Now `card.get("source", "")`. No behaviour change for cards that
+     have a source (the golden never hit the crash), but the C2 test's fixtures did.
+  3. **1-ULP VERIFY mismatches in `LiveActivity.scores`** (values around 1e-29, seen in
+     test_csharp_slice_c1/c2 and profile_c0). Cause: **Godot parses the literal `1e-30`
+     one ULP low** (`0x39B4484BFEEBC29F`; IEEE nearest, which C# uses, is `...C2A0`). The
+     floor in `_base_score` therefore differed. `LiveActivity.cs` now uses Godot's bits
+     (`GdFloor1e30`). I checked the other exponent literals in the C# ports: `1e-12`,
+     `1e-20` (and `1e-9`, `1e-6`) parse identically in both. **For C3:** check every
+     float literal you port against GDScript's bits, not the decimal text.
+  4. **test_csharp_slice_c2 fixtures:** it read `Ownership.reasons_for(...)`'s return
+     value (it returns nothing; it fills `workshop_state.reasons`) and its passive player
+     used `g.actions_left`, which doesn't exist. It now reads the state and uses
+     `golden_capture.gd`'s passive player.
+- **Suites** (.NET Godot, Linux): `test_csharp_slice_c0`, `c1`, `c2`,
+  `test_workshop_live_activity`, `test_lamplighter_drops`, `test_workshop_profile_traces`,
+  `test_mechanics_sightings`, `test_workshop_integration`, `test_workshop_reading_challenges`,
+  plus (before fix 3) mechanics_warden/curse, workshop_ownership/efficiency, headline,
+  claude_audit_cleanup: all pass. VERIFY 0 mismatches on the passive seeds 42 and 54875
+  (2.1M boundary checks on 54875).
+- **Golden vs `baseline_82faa5b`, `--tol 0`:** identical on all five seeds in both
+  `--mode gdscript` and `--mode csharp`, 0 script errors (re-run after the fixes).
+  Before the fixes, side by side: GDScript 776 s, C# 433 s (about 1.8x).
+
+### Profile, seed 42 (7 NPCs, to Day 4), self time
+
+| Stage | GDSCRIPT ms | CSHARP ms | C1 CSHARP ms |
+|---|---:|---:|---:|
+| outer_prep | 1434 | 1477 | 1654 |
+| pack_inputs | 0 | 725 | 1932 |
+| world_domain | 5825 | 703 | 892 |
+| live_activity | 3309 | 391 | 3329 |
+| case_eval_compile | 560 | 570 | 1168 |
+| channel_sum_product | 279 | 256 | (0 calls) |
+| reason_attribution | 280 | 243 | 309 |
+| **total self** | **11687** | **4365** | |
+| **wall** | **12248** | **4937** | **9918** |
+
+`case_eval_compile` halved because `CaseEval.evaluate` now records under
+`channel_sum_product` (note 3), not because it got faster.
+
+### Notes for Argon
+
+1. **C# is now 2.5x faster end to end on seed 42** (wall 12.2 s to 4.9 s). `live_activity`
+   dropped 8.5x and `pack_inputs` 2.7x.
+2. **`pack_inputs` is still 725 ms over 19,036 calls (38 us each).** The heaviest packers
+   by boundary table: `fits_weights` (232 ms, 754 calls), `coarse_masks` (196 ms, 819),
+   `LiveActivity.routes` (130 ms, 613 calls at 212 us). Routes repack the view env and cards
+   per call; a per-refresh handle like the universe arena would remove most of it.
+3. **`outer_prep` (1.5 s) is now the largest stage in C# mode**, about a third of self time,
+   and unchanged by C1/C2. Worth a look alongside C3's `solver.gd` + `case_eval.gd` move.
+4. **Literal bits** (fix 3 above): the cheapest guard is a C0-style audit that prints
+   `var_to_bytes()` for each constant a slice ports and compares it with the C# value.
+
+### Result
+
+- **Pushed to `main`.** Next actor: **Argon** (slice C3).
+
+---
+
 ## 2026-11-03, Argon: slice C2 + C1 packing handles delivered (`patch_003_slice_c2.zip`)
 
 - **Base:** `main` at `0498fce6c5def9f70f15c0015ac8e8e1cb403ab2` (`0498fce`).
