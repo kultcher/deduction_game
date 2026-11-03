@@ -22,6 +22,8 @@ import cv2
 import numpy as np
 
 SRC = "assets/art/cast_expressions/{id}/{expr}-v1.png"
+# Drawn ink, when there is some: ink in alpha on a transparent sheet, registered to SRC.
+INK = "assets/art/cast_ink/{id}/{expr}-v1.png"
 OUT = "assets/art/line_boil_poc/{id}"
 VARIANTS = "abc"
 
@@ -107,8 +109,70 @@ def hatch_strokes(shade, alpha, rng):
     return np.clip(canvas, 0, 1) * (alpha > 0.5)
 
 
+def paint_out(bgr, alpha, mask):
+    solid = cv2.erode((alpha > 0.9).astype(np.uint8), np.ones((13, 13), np.uint8))
+    mask = mask.copy()
+    mask[solid == 0] = 0
+    painted = cv2.inpaint(bgr, mask, 3, cv2.INPAINT_TELEA)
+    return painted, cv2.addWeighted(painted, 0.8, bgr, 0.2, 0)
+
+
+def make_from_ink(cid, expr, img, ink_img):
+    """Drawn ink: split it into outline (heavy strokes) and hatching (fine strokes), and
+    make the extra variants by redrawing it: warped, re-weighted, some strokes left out."""
+    bgr = img[:, :, :3]
+    alpha = img[:, :, 3].astype(np.float32) / 255.0
+    ink = ink_img[:, :, 3].astype(np.float32) / 255.0
+    heavy = cv2.morphologyEx((ink > 0.5).astype(np.uint8), cv2.MORPH_OPEN,
+                             cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4, 4)))
+    heavy = cv2.dilate(heavy, np.ones((3, 3), np.uint8)).astype(np.float32)
+    outline = ink * heavy
+    hatch = ink * (1.0 - heavy)
+
+    out = OUT.format(id=cid)
+    os.makedirs(out, exist_ok=True)
+    # Paint out the portrait's own linework under the drawn outlines (and its other dark lines).
+    inner, _, gray = extract_outline(bgr, alpha)
+    # A colour "closing" lifts out dark lines thinner than the kernel and keeps the fill
+    # either side; inpainting smeared the lines' dark cores into dashes. Anything the
+    # closing lightens a lot is a line, drawn ink or not.
+    closed = cv2.morphologyEx(bgr, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11)))
+    lift = cv2.cvtColor(closed, cv2.COLOR_BGR2GRAY).astype(np.float32) - gray
+    mask = ((outline > 0.2) | (inner > 0.22) | (lift > 40)).astype(np.uint8) * 255
+    mask = cv2.dilate(mask, np.ones((5, 5), np.uint8))
+    closed = cv2.GaussianBlur(closed, (0, 0), 1.5)
+    solid = cv2.erode((alpha > 0.9).astype(np.uint8), np.ones((9, 9), np.uint8)).astype(np.float32)
+    m = cv2.GaussianBlur((mask > 0).astype(np.float32), (0, 0), 1.5) * solid
+    base = (bgr * (1 - m[..., None]) + closed * m[..., None]).astype(np.uint8)
+    cv2.imwrite(os.path.join(out, "%s-base.png" % expr), np.dstack([base, img[:, :, 3]]))
+
+    n_strokes, strokes = cv2.connectedComponents((hatch > 0.25).astype(np.uint8), connectivity=8)
+    for i, v in enumerate(VARIANTS):
+        rng = np.random.default_rng(1000 * i + sum(map(ord, cid + expr)))
+        o, hch = outline, hatch
+        if i > 0:
+            h, w = ink.shape
+            dx = smooth_field((h, w), rng, 40, 1.6)
+            dy = smooth_field((h, w), rng, 40, 1.6)
+            gx, gy = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
+            keep = rng.random(n_strokes) > 0.22   # a redraw doesn't repeat every stroke
+            keep[0] = True
+            hch = hatch * keep[strokes]
+            o = cv2.remap(outline, gx + dx, gy + dy, cv2.INTER_LINEAR)
+            hch = cv2.remap(hch, gx + dx, gy + dy, cv2.INTER_LINEAR)
+            o = np.clip(o, 0, 1) ** np.exp(smooth_field((h, w), rng, 60, 0.45))
+        packed = np.zeros(img.shape[:2] + (4,), np.uint8)
+        packed[:, :, 2] = (np.clip(o, 0, 1) * 255).astype(np.uint8)
+        packed[:, :, 1] = (np.clip(hch, 0, 1) * 255).astype(np.uint8)
+        packed[:, :, 3] = 255
+        cv2.imwrite(os.path.join(out, "%s-lines-%s.png" % (expr, v)), packed)
+    print("wrote", out, expr, "(from drawn ink)")
+
+
 def make(cid, expr):
     img = load(SRC.format(id=cid, expr=expr))
+    if os.path.exists(INK.format(id=cid, expr=expr)):
+        return make_from_ink(cid, expr, img, load(INK.format(id=cid, expr=expr)))
     bgr = img[:, :, :3]
     alpha = img[:, :, 3].astype(np.float32) / 255.0
     inner, rim, gray = extract_outline(bgr, alpha)
@@ -122,7 +186,7 @@ def make(cid, expr):
     # Thick strokes and junctions are wider than the line detector: take their dark cores too.
     grown = cv2.dilate(mask, np.ones((9, 9), np.uint8))
     mask[(gray < 75) & (grown > 0)] = 255
-    solid = cv2.erode((alpha > 0.99).astype(np.uint8), np.ones((13, 13), np.uint8))
+    solid = cv2.erode((alpha > 0.9).astype(np.uint8), np.ones((13, 13), np.uint8))
     mask[solid == 0] = 0
     painted = cv2.inpaint(bgr, mask, 3, cv2.INPAINT_TELEA)
     base = cv2.addWeighted(painted, 0.8, bgr, 0.2, 0)

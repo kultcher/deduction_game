@@ -65,6 +65,8 @@ func _run() -> void:
 		var rig = {"name": id.capitalize(), "rects": {}}
 		for expr in ["neutral", "harsh"]:
 			var dir = "res://assets/art/line_boil_poc/%s/%s" % [id, expr]
+			if not ResourceLoader.exists(dir + "-base.png"):   # no harsh layers: flare without the swap
+				dir = "res://assets/art/line_boil_poc/%s/neutral" % id
 			var m = ShaderMaterial.new()
 			m.shader = SHADER
 			m.set_shader_parameter("lines_a", load(dir + "-lines-a.png"))
