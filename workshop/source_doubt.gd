@@ -10,6 +10,7 @@
 ##   4. Unowned template deduction metadata (`meta.conclusion` + `weight`, never `effects`) until Phase 4.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Solver = preload("res://workshop/solver.gd")
 const PublicEvidence = preload("res://workshop/public_evidence.gd")
@@ -124,7 +125,7 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 				# report is void, and the source is doubted in general, not written off.
 				var nw_key: String = "%s:%d" % [csrc, cnight]
 				pre_eval[nw_key] = 1.0
-				pre_eval[csrc + ":*"] = maxf(float(pre_eval.get(csrc + ":*", 0.0)), 0.5)
+				pre_eval[csrc + ":*"] = maxf(float(pre_eval.get(csrc + ":*", 0.0)), Tuning.Workshop.DOUBT_FALSE_NW_GENERAL)
 		if ckind == "report" and crole == "gravedigger":
 			var ex_id: String = str(card.get("data", {}).get("executed", ""))
 			var ex_role: String = str(card.get("data", {}).get("role", ""))
@@ -136,8 +137,8 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 				var s_id: String = str(subj)
 				if s_id != "" and own_saw.has("%s:%d" % [s_id, cnight]) and not sleepwalkers.has(s_id) and not settled_sincere.has(s_id):
 					var nk_a: String = "%s:%d" % [s_id, cnight]
-					pre_eval[nk_a] = maxf(float(pre_eval.get(nk_a, 0.0)), 0.75)
-					pre_eval[s_id + ":*"] = maxf(float(pre_eval.get(s_id + ":*", 0.0)), 0.55)
+					pre_eval[nk_a] = maxf(float(pre_eval.get(nk_a, 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT)
+					pre_eval[s_id + ":*"] = maxf(float(pre_eval.get(s_id + ":*", 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL)
 
 	# Pass 2: Gravedigger execution proofs from non-discredited other sources.
 	var npc_trust: Dictionary = listener.get("npc_trust", {})
@@ -147,7 +148,7 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		var gsrc: String = str(card.get("source", ""))
 		if gsrc in ["", self_id, "player", "evidence", "town"]:
 			continue
-		if float(pre_eval.get(gsrc + ":*", 0.0)) >= 0.5:
+		if float(pre_eval.get(gsrc + ":*", 0.0)) >= Tuning.Workshop.DOUBT_GD_MAX_SOURCE_DOUBT:
 			continue
 		var ex2: String = str(card.get("data", {}).get("executed", ""))
 		var role2: String = str(card.get("data", {}).get("role", ""))
@@ -159,9 +160,9 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		var g_doubt: float = maxf(float(pre_eval.get(gsrc + ":*", 0.0)), float(pre_eval.get("%s:%d" % [gsrc, g_night], 0.0)))
 		g_doubt = maxf(g_doubt, _arg_doubt(ledger, owned_map, gsrc, g_night))
 		var g_trust: float = clampf(float(npc_trust.get(gsrc, 0.5)), 0.0, 1.0) * (1.0 - clampf(g_doubt, 0.0, 1.0))
-		if C.ROLES[role2]["align"] == "evil" and g_trust >= 0.45:
-			pre_eval[ex2 + ":*"] = maxf(float(pre_eval.get(ex2 + ":*", 0.0)), clampf(0.85 * g_trust, 0.0, 0.95))
-		elif C.ROLES[role2]["align"] == "good" and g_trust >= 0.60:
+		if C.ROLES[role2]["align"] == "evil" and g_trust >= Tuning.Workshop.DOUBT_GD_EVIL_TRUST_MIN:
+			pre_eval[ex2 + ":*"] = maxf(float(pre_eval.get(ex2 + ":*", 0.0)), clampf(Tuning.Workshop.DOUBT_GD_EVIL_SCALE * g_trust, 0.0, 0.95))
+		elif C.ROLES[role2]["align"] == "good" and g_trust >= Tuning.Workshop.DOUBT_GD_GOOD_TRUST_MIN:
 			settled_sincere[ex2] = true
 
 	# Pass 3: Unowned template deduction metadata (`meta.conclusion` + `weight`; never `effects`).
@@ -183,14 +184,14 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if ctype in ["misled", "unreliable"]:
 			var cn: int = int(conc.get("night", -1))
 			var k_arg: String = "%s:%s" % [ca, str(cn) if cn >= 0 else "*"]
-			var d_val: float = (0.8 if ctype == "misled" else 0.5) * wgt
-			pre_eval[k_arg] = minf(maxf(float(pre_eval.get(k_arg, 0.0)), d_val), 0.9)
+			var d_val: float = (Tuning.Workshop.DOUBT_ARG_MISLED_SCALE if ctype == "misled" else Tuning.Workshop.DOUBT_ARG_UNRELIABLE_SCALE) * wgt
+			pre_eval[k_arg] = minf(maxf(float(pre_eval.get(k_arg, 0.0)), d_val), Tuning.Workshop.DOUBT_ARG_CAP)
 		elif ctype == "lied" and not settled_sincere.has(ca):
 			var cn2: int = int(conc.get("night", -1))
 			var k_lied: String = "%s:%s" % [ca, str(cn2) if cn2 >= 0 else "*"]
-			pre_eval[k_lied] = minf(maxf(float(pre_eval.get(k_lied, 0.0)), 0.5 * wgt), 0.9)
+			pre_eval[k_lied] = minf(maxf(float(pre_eval.get(k_lied, 0.0)), Tuning.Workshop.DOUBT_ARG_UNRELIABLE_SCALE * wgt), Tuning.Workshop.DOUBT_ARG_CAP)
 		elif ctype == "secret_mod" and str(conc.get("mod", "")) == "delusional":
-			pre_eval[ca + ":*"] = minf(maxf(float(pre_eval.get(ca + ":*", 0.0)), 0.7 * wgt), 0.9)
+			pre_eval[ca + ":*"] = minf(maxf(float(pre_eval.get(ca + ":*", 0.0)), Tuning.Workshop.DOUBT_ARG_DELUSIONAL_SCALE * wgt), Tuning.Workshop.DOUBT_ARG_CAP)
 
 	for s_good in settled_sincere:
 		if not seed_doubt.has(s_good + ":*"):
@@ -209,10 +210,10 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			if r_src != "" and r_night >= 0 and mult < 1.0:
 				var nk_rc: String = "%s:%d" % [r_src, r_night]
 				full_doubt[nk_rc] = maxf(float(full_doubt.get(nk_rc, 0.0)), clampf(1.0 - mult, 0.0, 0.95))
-			if str(r.get("mode", "")) == "lying" and float(r.get("agreement", 0.0)) >= 0.6 and r_src != "" and not settled_sincere.has(r_src):
+			if str(r.get("mode", "")) == "lying" and float(r.get("agreement", 0.0)) >= Tuning.Workshop.DOUBT_CHALLENGE_LYING_MIN_AGR and r_src != "" and not settled_sincere.has(r_src):
 				var agr: float = float(r.get("agreement", 0.0))
 				var src_pen: float = clampf(1.0 - float(challenged.get("sources", {}).get(r_src, 1.0)), 0.0, 1.0)
-				if agr >= 0.75:
+				if agr >= Tuning.Workshop.DOUBT_CHALLENGE_STRONG_AGR:
 					src_pen = maxf(src_pen, clampf(agr, 0.0, 0.95))
 				full_doubt[r_src + ":*"] = maxf(float(full_doubt.get(r_src + ":*", 0.0)), src_pen)
 

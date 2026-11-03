@@ -298,7 +298,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 ## "I couldn't follow it" while their suspicion moved as if convinced (54875). The stance
 ## they voice now comes from how far the refresh actually moved the subject; the scoped
 ## reply only supplies the reasons. Nothing here changes a belief, only the words.
-const STANCE_MOVE = {"accept": 0.06, "partial": 0.02}   # suspicion moved toward the claim
+const STANCE_MOVE = Tuning.Workshop.STANCE_MOVE   # suspicion moved toward the claim
 const STANCE_RANK = {"reject": 0, "partial": 1, "accept": 2}
 ## Scoped openings that only state a stance (dropped when the belief says otherwise). Any
 ## other opening is a reason, and stays.

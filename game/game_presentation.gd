@@ -461,5 +461,5 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 	for n in g.w.living():
 		if progress.is_valid():
 			await progress.call(n.name)
-		var r: Dictionary = _evaluate_deduction(g, n, ded, 0.6, true, "meeting")
+		var r: Dictionary = _evaluate_deduction(g, n, ded, Tuning.Workshop.VENUE_MULTS.meeting, true, "meeting")
 		g._lines(r["lines"])

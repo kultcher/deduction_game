@@ -1115,7 +1115,7 @@ func _grant_protection(n, what: String) -> void:
 		return
 	if not _promised_to(n):
 		_offer_command(n, what, true)
-	var p: float = clampf(n.trust * n.traits.get("composure", 0.5) * 1.6, 0.05, 0.85)
+	var p: float = clampf(n.trust * n.traits.get("composure", 0.5) * Tuning.Dialogue.PROTECTION_DISCLOSE_MULT, Tuning.Dialogue.PROTECTION_DISCLOSE_MIN, Tuning.Dialogue.PROTECTION_DISCLOSE_MAX)
 	var now: bool = w.decision_roll(n, "protection_disclosure", p, {"trust": n.trust, "composure": n.traits.get("composure", 0.5)})
 	w.dlog.decision(n.id, "protection_disclosure", "outcome", now, {"trust": n.trust,
 		"composure": n.traits.get("composure", 0.5), "p": snappedf(p, 0.01)})
@@ -1565,7 +1565,7 @@ func _offer_command(n, what: String, requested: bool = false) -> void:
 	if not requested:
 		_line(Mind.say_voiced(n, "offer_thanks", "That's good of you. I'll sleep a little easier."))
 	Mind.Dialogue.record_exchange(n.dialogue_memory, "other")
-	Mind.set_trust(w, n, n.trust + 0.03, "the Demonologist offered to watch over me tonight")
+	Mind.set_trust(w, n, n.trust + Tuning.Trust.PROMISE_OFFER_BONUS, "the Demonologist offered to watch over me tonight")
 	w.dlog.add("player_offer", "player", n.id, {"what": what, "block": n.home_block, "requested": requested})
 	if state == "talk":
 		_prompt("(No question used. %d question%s left)" % [questions_left, "" if questions_left == 1 else "s"])
@@ -1595,13 +1595,13 @@ func _settle_offers() -> void:
 		if not n.alive:
 			continue
 		if p[1]:
-			Mind.set_trust(w, n, n.trust + 0.06, "the Demonologist kept their word (%s)" % p[2])
+			Mind.set_trust(w, n, n.trust + Tuning.Trust.PROMISE_KEPT_BONUS, "the Demonologist kept their word (%s)" % p[2])
 			_narr("You keep your word to %s." % n.name)
 			n.fear_eased = true  # less afraid to say what they are, from now on
 			if protect_pending.has(n.id) and not (n.id in divulge_due):
 				divulge_due.append(n.id)
 		else:
-			Mind.set_trust(w, n, n.trust - 0.15, "the Demonologist broke their word (%s)" % p[2])
+			Mind.set_trust(w, n, n.trust - Tuning.Trust.PROMISE_BROKEN_DROP, "the Demonologist broke their word (%s)" % p[2])
 			_narr("You break your word to %s. They'll know by morning." % n.name)
 			n.fear_eased = false  # and the fear comes back
 			n.protect_lock = false
@@ -1617,12 +1617,12 @@ func _maybe_tell_haunts(n, t, r: Dictionary) -> void:
 	var unknown: Array = t.haunts.filter(func(x): return not (x in known_haunts.get(t.id, [])))
 	if unknown.is_empty():
 		return
-	var p = clampf(0.15 + 0.55 * n.traits.get("gossip", 0.5) + 0.5 * (n.trust - 0.5), 0.0, 0.9)
+	var p = clampf(Tuning.Dialogue.SHARE_HAUNTS_BASE + Tuning.Dialogue.SHARE_HAUNTS_GOSSIP_SCALE * n.traits.get("gossip", 0.5) + Tuning.Dialogue.SHARE_HAUNTS_TRUST_SCALE * (n.trust - 0.5), 0.0, Tuning.Dialogue.SHARE_HAUNTS_CAP)
 	var roll = w.rng.randf()
-	w.observe_decision(n, "share_haunts", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * 0.4, "one": p}, "outcome_chances": {"all": p * 0.4, "one": p * 0.6, "none": 1.0 - p}}, t.id)
+	w.observe_decision(n, "share_haunts", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE, "one": p}, "outcome_chances": {"all": p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE, "one": p * (1.0 - Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE), "none": 1.0 - p}}, t.id)
 	if roll >= p:
 		return
-	var tell: Array = unknown if roll < p * 0.4 else [unknown[0]]
+	var tell: Array = unknown if roll < p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE else [unknown[0]]
 	var names: Array = tell.map(func(x): return w.loc_name(x))
 	known_haunts[t.id] = known_haunts.get(t.id, []) + tell
 	var places_s: String = " or ".join(PackedStringArray(names))
@@ -1663,7 +1663,7 @@ func _maybe_tell_trait(n, t, r: Dictionary) -> void:
 	var allowed: Array = (Mind.C.TRAITS if friend else OBSERVABLE_TRAITS).filter(func(k): return not t.revealed_traits.has(k))
 	if allowed.is_empty():
 		return
-	var p = clampf(0.1 + 0.35 * n.traits.get("gossip", 0.5) + 0.3 * (n.trust - 0.5) + (0.15 if friend else 0.0), 0.0, 0.6)
+	var p = clampf(Tuning.Dialogue.SHARE_TRAIT_BASE + Tuning.Dialogue.SHARE_TRAIT_GOSSIP_SCALE * n.traits.get("gossip", 0.5) + Tuning.Dialogue.SHARE_TRAIT_TRUST_SCALE * (n.trust - 0.5) + (Tuning.Dialogue.SHARE_TRAIT_FRIEND_BONUS if friend else 0.0), 0.0, Tuning.Dialogue.SHARE_TRAIT_CAP)
 	if not w.decision_roll(n, "share_observed_trait", p, {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust, "friend": friend}, t.id):
 		return
 	var key: String = w.decision_pick(n, "shared_trait_choice", allowed, {}, t.id)
@@ -1704,9 +1704,9 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 			unknown.append({"key": key, "bond": bond})
 	if unknown.is_empty():
 		return
-	var p = clampf(0.15 + 0.55 * n.traits.get("gossip", 0.5) + 0.5 * (n.trust - 0.5), 0.0, 0.9)
+	var p = clampf(Tuning.Dialogue.SHARE_HAUNTS_BASE + Tuning.Dialogue.SHARE_HAUNTS_GOSSIP_SCALE * n.traits.get("gossip", 0.5) + Tuning.Dialogue.SHARE_HAUNTS_TRUST_SCALE * (n.trust - 0.5), 0.0, Tuning.Dialogue.SHARE_HAUNTS_CAP)
 	var roll = w.rng.randf()
-	w.observe_decision(n, "share_relationships", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * 0.4, "one": p}, "outcome_chances": {"all": p * 0.4, "one": p * 0.6, "none": 1.0 - p}}, t.id)
+	w.observe_decision(n, "share_relationships", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE, "one": p}, "outcome_chances": {"all": p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE, "one": p * (1.0 - Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE), "none": 1.0 - p}}, t.id)
 	if roll >= p:
 		return
 	# Filtered after the roll so the decision draws are unchanged. Ties to the dead belong to
@@ -1718,7 +1718,7 @@ func _maybe_tell_relationships(n, t, r: Dictionary) -> void:
 	if unknown.is_empty():
 		return
 	unknown.sort_custom(func(a, b): return (n.id in a.bond.people) and not (n.id in b.bond.people))
-	var tell: Array = unknown.slice(0, MAX_BONDS_TOLD) if roll < p * 0.4 else [unknown[0]]
+	var tell: Array = unknown.slice(0, MAX_BONDS_TOLD) if roll < p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE else [unknown[0]]
 	var used_keys: Array = []
 	for entry in tell:
 		var bond: Dictionary = entry.bond
@@ -1976,18 +1976,18 @@ func _nomination_command(verb: String, rest: String, progress: Callable = Callab
 						if v != t:
 							if progress.is_valid():
 								await progress.call(v.name)
-							_evaluate_deduction(v, card, 0.5, false, "nomination")
+							_evaluate_deduction(v, card, Tuning.Workshop.VENUE_MULTS.nomination, false, "nomination")
 				else:
 					Mind.public_case(w, t, card, verb)
 			if verb == "defend":
 				_narr("You speak in %s's defence." % t.name)
-				Mind.set_trust(w, t, t.trust + 0.06, "the Demonologist defended me")
+				Mind.set_trust(w, t, t.trust + Tuning.Trust.SPEAK_DEFEND_BONUS, "the Demonologist defended me")
 				if nm["by"] != "player":
 					var nb = w.by_id[nm["by"]]
-					Mind.set_trust(w, nb, nb.trust - 0.04, "the Demonologist spoke against my nomination")
+					Mind.set_trust(w, nb, nb.trust - Tuning.Trust.SPEAK_AGAINST_NOMINATOR_DROP, "the Demonologist spoke against my nomination")
 			else:
 				_narr("You add your voice against %s." % t.name)
-				Mind.set_trust(w, t, t.trust - 0.08, "the Demonologist spoke against me")
+				Mind.set_trust(w, t, t.trust - Tuning.Trust.SPEAK_AGAINST_NOMINEE_DROP, "the Demonologist spoke against me")
 			w.dlog.add("player_statement", "player", t.id, {"statement": verb, "card": card.get("n", 0)})
 			_prompt("'vote yes' or 'vote no'.")
 		"clemency":

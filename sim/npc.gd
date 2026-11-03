@@ -1,6 +1,8 @@
 ## One townsperson's state for a single case. Pure data; logic lives in world/mind/evil.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
+
 var id = ""
 var name = ""
 var pron = "they"
@@ -80,7 +82,7 @@ var applied_info = 0
 var trust = 0.5
 ## Credibility of the player, 0.1..0.9: how much your word counts, from your track record
 ## (game/credibility.gd). Used wherever your evidence, votes or stance are weighed.
-var credibility = 0.5
+var credibility = Tuning.Trust.CREDIBILITY_START
 ## Conclusions the player argued to them: target id -> {type: "evil"|"good", day}.
 var claim_record = {}
 var trust_cap = 1.0

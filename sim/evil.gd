@@ -72,11 +72,11 @@ static func _pick_scapegoat(w, why: String) -> void:
 		for k in w.demon().intel:
 			var it: Dictionary = w.demon().intel[k]
 			if it["kind"] == "walker" and it["about"] == g.id:
-				s += 1.0  # seen out at night: easier to frame
-		if w.demon().npc_trust.get(g.id, 0.5) < 0.4:
-			s += 0.5
+				s += Tuning.Evil.SCAPEGOAT_WALKER_BONUS  # seen out at night: easier to frame
+		if w.demon().npc_trust.get(g.id, 0.5) < Tuning.Evil.SCAPEGOAT_DISTRUST_CUTOFF:
+			s += Tuning.Evil.SCAPEGOAT_DISTRUST_BONUS
 		if g.claim_public and C.has_role_def(g.claimed_role) and C.role_def(g.claimed_role).hard_to_kill:
-			s += 0.2  # claims a gift the demon can't kill through: better hanged
+			s += Tuning.Evil.SCAPEGOAT_HARD_TO_KILL_BONUS  # claims a gift the demon can't kill through: better hanged
 		if s > best_s:
 			best_s = s
 			best = g
@@ -103,20 +103,20 @@ static func review_scapegoat(w) -> void:
 		var parts = {"momentum": public_heat(w, g)}
 		var sh_vals: Array = team.filter(func(m): return m.shadow != null).map(func(m): return clampf(m.shadow.suspicion.get(g.id, 0.1), 0.0, 1.5))
 		if not sh_vals.is_empty():
-			parts["momentum"] += 0.5 * sh_vals.reduce(func(a, b): return a + b) / sh_vals.size()
+			parts["momentum"] += Tuning.Evil.SCAPEGOAT_SHADOW_WEIGHT * sh_vals.reduce(func(a, b): return a + b) / sh_vals.size()
 		var fit = 0.0
 		for m in team:
 			for e in m.info_log:
 				if e.get("fake", false) and e.get("shared", false) and g.id in Gifts.implicated(e):
-					fit += 0.25
+					fit += Tuning.Evil.SCAPEGOAT_FAKE_INFO_FIT
 			for k in m.intel:
 				if m.intel[k]["kind"] == "walker" and m.intel[k]["about"] == g.id:
-					fit += 0.15
-		parts["fit"] = minf(fit, 0.6)
+					fit += Tuning.Evil.SCAPEGOAT_WALKER_FIT
+		parts["fit"] = minf(fit, Tuning.Evil.SCAPEGOAT_FIT_CAP)
 		var clears = 0.0
 		for e in w.public_log:
 			if e["kind"] == "clear" and g.id in e["subjects"]:
-				clears += 0.3 * pow(HEAT_FADE, w.day - e["day"])
+				clears += Tuning.Evil.SCAPEGOAT_CLEAR_PENALTY * pow(HEAT_FADE, w.day - e["day"])
 		if clears > 0.0:
 			parts["dead_end"] = -clears
 		var flop_cooloff: float = vote_cooloff(w, "", g.id)
@@ -124,7 +124,7 @@ static func review_scapegoat(w) -> void:
 			parts["failed_vote"] = -flop_cooloff
 		if g.id == cur:
 			var accused = w.public_log.filter(func(e): return e["kind"] == "accusation" and g.id in e["subjects"] and w.by_id.has(e["by"]) and w.by_id[e["by"]].is_evil()).size()
-			parts["keep"] = 0.25 + 0.15 * accused
+			parts["keep"] = Tuning.Evil.SCAPEGOAT_KEEP_BASE + Tuning.Evil.SCAPEGOAT_KEEP_PER_ACCUSATION * accused
 		var total = 0.0
 		for k in parts:
 			total += parts[k]
@@ -173,7 +173,7 @@ static func plan_daily_frame(w) -> void:
 		if plan.get("fake_sightings", {}).has(key):
 			var existing = plan["fake_sightings"][key]
 			if existing is Dictionary and str(existing.get("who", "")) == sg_id:
-				var ex_score: float = (1.0 if m.id != w.demon_id else 0.0) + 0.8 * m.traits.get("gossip", 0.5) - 0.6 * float(exposure(w, m).get("public_talk", 0.0))
+				var ex_score: float = (Tuning.Evil.PLANTER_MINION_BONUS if m.id != w.demon_id else 0.0) + Tuning.Evil.PLANTER_GOSSIP_WEIGHT * m.traits.get("gossip", 0.5) - Tuning.Evil.PLANTER_EXPOSURE_PENALTY * float(exposure(w, m).get("public_talk", 0.0))
 				if ex_score > best_score:
 					best_score = ex_score
 					best_m = m
@@ -203,7 +203,7 @@ static func plan_daily_frame(w) -> void:
 			cand = {"kind": "saw", "who": sg_id, "loc": "", "block": m.home_block, "day": nd, "phase": C.NIGHT, "how": "window", "detail": "leaving_home"}
 		if cand.is_empty():
 			continue
-		var score: float = (1.0 if m.id != w.demon_id else 0.0) + 0.8 * m.traits.get("gossip", 0.5) - 0.6 * float(exposure(w, m).get("public_talk", 0.0)) + 0.01 * (1.0 - m.traits.get("privacy", 0.5))
+		var score: float = (Tuning.Evil.PLANTER_MINION_BONUS if m.id != w.demon_id else 0.0) + Tuning.Evil.PLANTER_GOSSIP_WEIGHT * m.traits.get("gossip", 0.5) - Tuning.Evil.PLANTER_EXPOSURE_PENALTY * float(exposure(w, m).get("public_talk", 0.0)) + Tuning.Evil.PLANTER_OPENNESS_TIEBREAK * (1.0 - m.traits.get("privacy", 0.5))
 		if score > best_score:
 			best_score = score
 			best_m = m
@@ -351,7 +351,7 @@ static func intel_threat(m, id: String) -> float:
 		var it: Dictionary = m.intel[k]
 		if it["kind"] == "threat" and it["about"] == id:
 			t += it["score"]
-	return minf(t, 3.0)
+	return minf(t, Tuning.Evil.INTEL_THREAT_CAP)
 
 ## After each night: evil members note who they saw out (and who may have seen them).
 static func gather_night_intel(w) -> void:
@@ -374,7 +374,7 @@ static func gather_night_intel(w) -> void:
 ## Dowser's crowd); public clears cool it; older talk fades (HEAT_FADE a day).
 const HEAT_FADE = Tuning.Evil.HEAT_FADE
 static func public_heat(w, t) -> float:
-	var h = 0.15
+	var h = Tuning.Evil.PUBLIC_HEAT_BASE
 	for e in w.public_log:
 		if w.by_id.has(e["by"]) and w.by_id[e["by"]].is_evil():
 			continue
@@ -385,16 +385,16 @@ static func public_heat(w, t) -> float:
 static func _heat_of(e: Dictionary, id: String) -> float:
 	match e["kind"]:
 		"accusation":
-			return 0.12
+			return Tuning.Evil.HEAT_ACCUSATION
 		"nomination":
-			return 0.2
+			return Tuning.Evil.HEAT_NOMINATION
 		"reading":
 			var wt = e.get("data", {}).get("weights", {})
-			return 0.4 * wt[id] if wt.has(id) else 0.2
+			return Tuning.Evil.HEAT_READING_SCALE * wt[id] if wt.has(id) else Tuning.Evil.HEAT_NOMINATION
 		"vote_yes":
-			return 0.04
+			return Tuning.Evil.HEAT_VOTE_YES
 		"clear":
-			return -0.12
+			return Tuning.Evil.HEAT_CLEAR
 	return 0.0
 
 ## How exposed an evil member is right now (0..~1.5), as named parts: the town's public
@@ -408,13 +408,13 @@ static func exposure(w, n) -> Dictionary:
 	var parts = {"public_talk": snappedf(clampf(h, 0.0, 1.0), 0.01)}
 	for k in n.intel:
 		if n.intel[k]["kind"] == "player_suspects" and n.intel[k]["about"] == n.id:
-			parts["player_suspects"] = 0.3
+			parts["player_suspects"] = Tuning.Evil.EXPOSURE_PLAYER_SUSPECTS
 			break
 	if n.pressure > 0.0:
-		parts["pressure"] = snappedf(0.5 * n.pressure, 0.01)
+		parts["pressure"] = snappedf(Tuning.Evil.EXPOSURE_PRESSURE_SCALE * n.pressure, 0.01)
 	var m: Dictionary = w.meeting
 	if m.get("block", "") == n.id or n.id in m.get("nominated", []):
-		parts["on_the_block"] = 0.2
+		parts["on_the_block"] = Tuning.Evil.EXPOSURE_ON_BLOCK
 	return parts
 
 ## How much it takes for an evil member to break cover (stakes beyond exposure must beat
@@ -427,7 +427,7 @@ static func caution(w, n) -> float:
 
 ## What a teammate's life is worth to the team: the demon's is the game.
 static func teammate_value(w, id: String) -> float:
-	return 2.0 if id == w.demon_id else 1.0
+	return Tuning.Evil.TEAMMATE_VALUE_DEMON if id == w.demon_id else Tuning.Evil.TEAMMATE_VALUE_MINION
 
 ## How much someone has publicly acted against the evil team.
 static func public_hostility(w, n) -> float:
@@ -437,8 +437,8 @@ static func public_hostility(w, n) -> float:
 			continue
 		for sid in e["subjects"]:
 			if w.by_id.has(sid) and w.by_id[sid].is_evil():
-				h += 0.5 if e["kind"] == "vote_yes" else 1.0
-	return minf(h, 2.5)
+				h += Tuning.Evil.PUBLIC_HOSTILITY_VOTE_WEIGHT if e["kind"] == "vote_yes" else 1.0
+	return minf(h, Tuning.Evil.PUBLIC_HOSTILITY_CAP)
 
 ## True if an info result points toward the evil team.
 static func info_implicates(w, e: Dictionary) -> bool:
@@ -505,27 +505,27 @@ static func choose_kill_target(w) -> String:
 		var poisoner_up = w.living_with_role("poisoner") != null
 		if vet and fails >= 1 and n.id in plan.get("vet_suspects", []) + _claimed_vets(w):
 			# The Veteran survives only the first attack: that's spent now.
-			parts["veteran_spent"] = 0.3
+			parts["veteran_spent"] = Tuning.Evil.KILL_VETERAN_SPENT
 		elif vet and poisoner_up:
 			# Survives the first attack... unless the Poisoner breaks the gift first.
-			parts["veteran_with_poison"] = 0.6
+			parts["veteran_with_poison"] = Tuning.Evil.KILL_VETERAN_WITH_POISON
 		elif vet:
-			parts["veteran_first_attack_wasted"] = -2.0
+			parts["veteran_first_attack_wasted"] = Tuning.Evil.KILL_VETERAN_UNPOISONED
 		elif fails > 0:
-			parts["failed_before"] = -10.0 * fails
+			parts["failed_before"] = Tuning.Evil.KILL_FAILED_PENALTY * fails
 		if n.id in plan["spared"] and w.living().size() > 4:
-			parts["spared_keep_to_frame"] = -1.5
+			parts["spared_keep_to_frame"] = Tuning.Evil.KILL_SPARED_KEEP
 		if warden_claimed and n.claim_public and n.claimed_role in C.INFO_ROLES:
-			parts["likely_warded"] = -0.8
+			parts["likely_warded"] = Tuning.Evil.KILL_LIKELY_WARDED
 		var caution: float = plan.get("caution", 0.0)
 		if caution > 0.05:
 			var profile = 0.0
 			for k in _public_threat(w, n):
 				profile += _public_threat(w, n)[k]
 			if profile > 0.0:
-				parts["caution_low_profile"] = snappedf(-caution * minf(profile, 4.0) * 0.7, 0.01)
+				parts["caution_low_profile"] = snappedf(-caution * minf(profile, Tuning.Evil.KILL_CAUTION_PROFILE_CAP) * Tuning.Evil.KILL_CAUTION_SCALE, 0.01)
 		var noise_draw = w.rng.randf()
-		parts["noise"] = snappedf(noise_draw * 0.8, 0.01)
+		parts["noise"] = snappedf(noise_draw * Tuning.Evil.KILL_NOISE, 0.01)
 		var total = 0.0
 		for k in parts:
 			total += parts[k]
@@ -535,7 +535,7 @@ static func choose_kill_target(w) -> String:
 		if total > best_s:
 			best_s = total
 			best = n.id
-	w.observe_ranked(d, "kill_ranking", observed, best, 0.8)
+	w.observe_ranked(d, "kill_ranking", observed, best, Tuning.Evil.KILL_NOISE)
 	# Now and then the demon does something nobody would predict: it passes over its top
 	# three and takes someone else.
 	var zag = false
@@ -553,7 +553,7 @@ static func choose_kill_target(w) -> String:
 			and not (best in plan["failed"]):
 		plan["poison_for_kill"] = best
 		w.dlog.think(d.id, "evil_plan", "Asks the Poisoner to poison %s first, so the Veteran's gift fails tonight." % best)
-	plan["caution"] = plan.get("caution", 0.0) * 0.5  # fades over the next nights
+	plan["caution"] = plan.get("caution", 0.0) * Tuning.Evil.KILL_CAUTION_DECAY  # fades over the next nights
 	return best
 
 static func _claimed_vets(w) -> Array:
@@ -616,7 +616,7 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 		if n.id in wardens and kt != null:
 			parts["disable_warden"] = Tuning.Evil.POISON_WARDEN_INFO if (kt.claim_public and kt.claimed_role in C.INFO_ROLES) else Tuning.Evil.POISON_WARDEN_OTHER
 		var noise_draw = w.rng.randf()
-		parts["noise"] = snappedf(noise_draw * 1.5, 0.01)
+		parts["noise"] = snappedf(noise_draw * Tuning.Evil.POISON_NOISE, 0.01)
 		var total = 0.0
 		for k in parts:
 			total += parts[k]
@@ -626,7 +626,7 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 		if total > best_s:
 			best_s = total
 			best = n.id
-	w.observe_ranked(m, "poison_ranking", observed, best, 1.5)
+	w.observe_ranked(m, "poison_ranking", observed, best, Tuning.Evil.POISON_NOISE)
 	w.dlog.think(m.id, "poison_choice", "Poisoner targets %s (score %.2f)%s." % [best, best_s,
 		" (blind guess on the first night)" if w.day == 0 else ""], {"scores": scores})
 	return best
@@ -652,7 +652,7 @@ static func note_kill_result(w, target: String, outcome: String) -> void:
 		if not spotted and not (target in w.evil_plan["vet_suspects"]):
 			# Nobody at the door: perhaps they simply can't be killed.
 			w.evil_plan["vet_suspects"].append(target)
-		w.evil_plan["caution"] = minf(w.evil_plan.get("caution", 0.0) + 1.0, 1.5)
+		w.evil_plan["caution"] = minf(w.evil_plan.get("caution", 0.0) + Tuning.Evil.KILL_FAILED_CAUTION_GAIN, Tuning.Evil.KILL_FAILED_CAUTION_CAP)
 		w.dlog.think(w.demon_id, "kill_failed", "Attack on %s failed (%s). Will shy away from high-profile targets for a while (caution %.2f)." %
 			[target, "someone was at the door: a Warden" if spotted else "nobody in sight: a Warden unseen, or a Veteran; may try again with poison", w.evil_plan["caution"]])
 
@@ -736,7 +736,7 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 				result = {"kind": "saw", "who": who, "loc": "", "block": vantage, "day": nd, "phase": C.NIGHT, "how": how, "detail": "street"}
 				w.dlog.think(n.id, "lie", "Evil: tells the night-%d sighting of %s from its own fake watch report." % [nd, who], {"lie": true})
 			cache[key] = result if result != null else false
-		elif s != n.id and w.by_id[s].alive and nd >= 1 and w.chance(0.5):
+		elif s != n.id and w.by_id[s].alive and nd >= 1 and w.chance(Tuning.Evil.FAKE_SIGHTING_INVENT_PROB):
 			var detail = "leaving_home" if (how == "window" and w.by_id[s].home_block == vantage and w.chance(0.5)) else "street"
 			result = {"kind": "saw", "who": s, "loc": "", "block": vantage, "day": nd, "phase": C.NIGHT, "how": how, "detail": detail}
 			w.dlog.think(n.id, "lie", "Evil: invents a night sighting of scapegoat %s on %s (%s)." % [s, vantage, "from their window" if how == "window" else "while out"], {"lie": true})
@@ -756,7 +756,7 @@ static func _own_fake_reading(n, nd: int, role: String) -> Dictionary:
 
 static func fake_gossip(w, speaker):
 	var s: String = w.evil_plan["scapegoat"]
-	if s == "" or not w.by_id[s].alive or not w.decision_roll(speaker, "spread_false_gossip", 0.6, {}, s):
+	if s == "" or not w.by_id[s].alive or not w.decision_roll(speaker, "spread_false_gossip", Tuning.Evil.FAKE_GOSSIP_PROB, {}, s):
 		return null
 	var block: String = w.by_id[s].home_block
 	for sid in w.scenes:
@@ -777,7 +777,7 @@ static func cite(w, n, why: String) -> String:
 		return ""
 	if why.begins_with("my own") and not n.claim_public:
 		return ""  # citing it would give away a gift they haven't claimed
-	if w.decision_roll(n, "careless_bluff_reason", 0.5 * (1.0 - n.traits.get("insight", 0.5)), {"insight": n.traits.get("insight", 0.5)}):
+	if w.decision_roll(n, "careless_bluff_reason", Tuning.Evil.CARELESS_BLUFF_INSIGHT_SCALE * (1.0 - n.traits.get("insight", 0.5)), {"insight": n.traits.get("insight", 0.5)}):
 		return ""
 	return why
 
@@ -810,7 +810,7 @@ static func bluff_reason(w, n, t) -> String:
 ## Total public heat in the meeting room, including Evil's own shared readings and accusations
 ## (the good town cannot distinguish Evil's public setup from genuine town talk).
 static func room_heat(w, t) -> float:
-	var h = 0.15
+	var h = Tuning.Evil.PUBLIC_HEAT_BASE
 	for e in w.public_log:
 		if t.id in e["subjects"]:
 			h += _heat_of(e, t.id) * pow(HEAT_FADE, w.day - e["day"])
@@ -899,7 +899,7 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool =
 		why = "The Revenant's totem is hidden: its hanging will turn one of the town."
 	elif is_teammate(w, v, nominee):
 		var have = yes_so_far + (1 if player_yes else 0)  # counted so far, without me
-		if v.id == w.demon_id and block == v.id and have + 1 == bc and have + 1 >= thr and w.decision_roll(v, "vote_to_tie", 0.4 + 0.5 * v.traits.get("confidence", 0.5), {"confidence": v.traits.get("confidence", 0.5)}, nominee):
+		if v.id == w.demon_id and block == v.id and have + 1 == bc and have + 1 >= thr and w.decision_roll(v, "vote_to_tie", Tuning.Evil.EVIL_VOTE_TIE_BASE + Tuning.Evil.EVIL_VOTE_TIE_CONF_SCALE * v.traits.get("confidence", 0.5), {"confidence": v.traits.get("confidence", 0.5)}, nominee):
 			# On the block myself: one more vote ties the count and clears the block.
 			yes = true
 			why = "Demon on the block votes for own minion: %d votes ties the block's %d and clears it." % [have + 1, bc]
@@ -918,7 +918,7 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool =
 		yes = true
 		why = "Joins a likely-winning vote against a good NPC."
 	else:
-		yes = w.decision_roll(v, "vote_to_look_natural", 0.35 + 0.2 * v.traits.get("confidence", 0.5), {"confidence": v.traits.get("confidence", 0.5)}, nominee)
+		yes = w.decision_roll(v, "vote_to_look_natural", Tuning.Evil.EVIL_VOTE_NATURAL_BASE + Tuning.Evil.EVIL_VOTE_NATURAL_CONF_SCALE * v.traits.get("confidence", 0.5), {"confidence": v.traits.get("confidence", 0.5)}, nominee)
 		why = "Coin-flip vote on a good NPC to look natural."
 	w.dlog.think(v.id, "vote", "%s on %s. %s" % ["YES" if yes else "no", nominee, why], {"evil": true})
 	return yes

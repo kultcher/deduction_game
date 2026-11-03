@@ -15,8 +15,8 @@ const TARGET_CAP = Tuning.Workshop.CIRCUMSTANTIAL_TARGET_CAP
 const GATE_REF = Tuning.Workshop.CIRCUMSTANTIAL_GATE_REF
 const SMEAR_MIN = Tuning.Workshop.CIRCUMSTANTIAL_SMEAR_MIN
 const SMEAR_MAX = Tuning.Workshop.CIRCUMSTANTIAL_SMEAR_MAX
-const REFUSAL_FEAR_DISCOUNT: float = 0.25 / 0.35
-const STAGE1_NOISE_FLOOR: float = 0.01
+const REFUSAL_FEAR_DISCOUNT: float = Tuning.Workshop.CIRCUMSTANTIAL_REFUSAL_FEAR_DISCOUNT
+const STAGE1_NOISE_FLOOR: float = Tuning.Workshop.CIRCUMSTANTIAL_STAGE1_NOISE_FLOOR
 const ACCUSATORY_TYPES = ["evil", "demon", "minion", "suspicious"]
 
 
@@ -54,8 +54,8 @@ static func _passive_survivor_floor(view: Dictionary, stage1_requested: Dictiona
 
 static func stage1_gate(specific_stage1: float, outside_suspicion: float) -> float:
 	var s1: float = maxf(0.0, specific_stage1 - STAGE1_NOISE_FLOOR)
-	var prior_above: float = maxf(0.0, outside_suspicion - 0.15)
-	return clampf((s1 + 0.35 * prior_above) / GATE_REF, 0.0, 1.0)
+	var prior_above: float = maxf(0.0, outside_suspicion - Tuning.Workshop.CIRCUMSTANTIAL_GATE_PRIOR_PIVOT)
+	return clampf((s1 + Tuning.Workshop.CIRCUMSTANTIAL_GATE_PRIOR_WEIGHT * prior_above) / GATE_REF, 0.0, 1.0)
 
 
 static func _silenced_by_day(view: Dictionary, cards: Array) -> Dictionary:
@@ -205,7 +205,7 @@ static func extract_hub_incidents(
 			if c.get("orig_kind", "") == "conversation" and subjs.size() == 2:
 				var partner: String = subjs[0] if subjs[1] == target else subjs[1]
 				var p_susp: float = float(post_stage1_susp.get(partner, 0.1))
-				if partner != target and partner not in known_good and p_susp >= 0.32:
+				if partner != target and partner not in known_good and p_susp >= Tuning.Workshop.CIRCUMSTANTIAL_ASSOC_MIN_SUSP:
 					var fit: float = clampf((p_susp - 0.28) / 0.35, 0.2, 1.0)
 					var akey = "assoc:%s:%s" % [target, partner]
 					var aval: float = INCIDENT_MAX * fit
@@ -226,7 +226,7 @@ static func extract_hub_incidents(
 				stage1_bearing[cid] = true
 			elif bkind == "friend":
 				var o_susp: float = float(post_stage1_susp.get(other, 0.1))
-				if other not in known_good and o_susp >= 0.32:
+				if other not in known_good and o_susp >= Tuning.Workshop.CIRCUMSTANTIAL_ASSOC_MIN_SUSP:
 					var bfit: float = clampf((o_susp - 0.28) / 0.35, 0.2, 1.0)
 					var bkey = "assoc:%s:%s" % [target, other]
 					var bval: float = INCIDENT_MAX * bfit
@@ -264,7 +264,7 @@ static func extract_hub_incidents(
 				target_relevant[cid] = true
 				var nom_susp: float = float(post_stage1_susp.get(nominee, 0.1))
 				var nom_trust: float = float(npc_trust.get(nominee, 0.5))
-				if nominee in known_good or (nom_susp <= 0.28 and nom_trust >= 0.45):
+				if nominee in known_good or (nom_susp <= Tuning.Workshop.CIRCUMSTANTIAL_HOSTILE_VOTE_MAX_SUSP and nom_trust >= Tuning.Workshop.CIRCUMSTANTIAL_HOSTILE_VOTE_MIN_TRUST):
 					var role_w: float = 1.0 if nominator == target else 0.85
 					var good_w: float = 1.0 if nominee in known_good else clampf((0.35 - nom_susp) / 0.25, 0.3, 1.0) * clampf(0.5 + 0.5 * nom_trust, 0.5, 1.0)
 					var vkey = "hostile_vote:%s:%d:%s" % [target, vday, nominee]
@@ -287,7 +287,7 @@ static func extract_hub_incidents(
 						if str(ev_item.get("kind", "")) == "curse" and nominee in ev_item.get("subjects", []):
 							proven_evil_nom = true
 							break
-				if nominee not in known_good and (proven_evil_nom or nom_susp2 >= 0.48):
+				if nominee not in known_good and (proven_evil_nom or nom_susp2 >= Tuning.Workshop.CIRCUMSTANTIAL_SHIELDING_MIN_SUSP):
 					var evil_w: float = 1.0 if proven_evil_nom else clampf((nom_susp2 - 0.42) / 0.35, 0.3, 1.0)
 					var skey = "shielding:%s:%d:%s" % [target, vday, nominee]
 					var sval: float = INCIDENT_MAX * 0.80 * evil_w
@@ -395,7 +395,7 @@ static func evaluate_union(
 			if cid not in grouped[t]:
 				grouped[t].append(cid)
 
-	var trust_mult: float = clampf(0.5 + listener_trust, 0.5, 1.25)
+	var trust_mult: float = clampf(Tuning.Workshop.CIRCUMSTANTIAL_TRUST_MULT_BASE + listener_trust, Tuning.Workshop.CIRCUMSTANTIAL_TRUST_MULT_BASE, Tuning.Workshop.CIRCUMSTANTIAL_TRUST_MULT_CAP)
 	for t in grouped:
 		var passive_floor: float = _passive_survivor_floor(view, stage1_requested, listener_id, known_good, t)
 		var spec_s1: float = maxf(0.0, float(stage1_requested.get(t, 0.0)) - passive_floor)
@@ -481,7 +481,7 @@ static func evaluate_smear_backlash(
 		var unmatched_n: int = extracted.unmatched_cards.size()
 		var unrelated_n: int = extracted.get("unrelated_cards", []).size()
 		var inc_n: int = extracted.incidents.size()
-		var friend_bonus: float = 0.005 if float(npc_trust.get(t, 0.5)) >= 0.65 or t == listener_id or t in known_good else 0.0
+		var friend_bonus: float = Tuning.Workshop.CIRCUMSTANTIAL_SMEAR_FRIEND_BONUS if float(npc_trust.get(t, 0.5)) >= Tuning.Workshop.CIRCUMSTANTIAL_SMEAR_FRIEND_MIN_TRUST or t == listener_id or t in known_good else 0.0
 		if unrelated_n > 0 and (inc_n == 0 or s1 < 0.02):
 			penalty = maxf(penalty, clampf(SMEAR_MIN * float(unrelated_n) + friend_bonus, SMEAR_MIN, SMEAR_MAX))
 			reason = "ungrounded_hub_padding"

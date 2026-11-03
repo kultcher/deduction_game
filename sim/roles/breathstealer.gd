@@ -38,7 +38,7 @@ func breath_target(w, bs, evil) -> String:
 		if known > 0.0:
 			parts["known_threat"] = known
 		var noise_draw: float = w.rng.randf()
-		parts["noise"] = snappedf(noise_draw * 1.0, 0.01)
+		parts["noise"] = snappedf(noise_draw * Tuning.Roles.BREATHSTEALER.noise, 0.01)
 		var total = 0.0
 		for k in parts:
 			total += parts[k]
@@ -48,7 +48,7 @@ func breath_target(w, bs, evil) -> String:
 		if total > best_s:
 			best_s = total
 			best = n.id
-	w.observe_ranked(bs, "silence_ranking", observed, best, 1.0)
+	w.observe_ranked(bs, "silence_ranking", observed, best, Tuning.Roles.BREATHSTEALER.noise)
 	var p: float = Tuning.Roles.BREATHSTEALER.phase_probs_high[w.phase] if best_s > Tuning.Roles.BREATHSTEALER.high_score_threshold else Tuning.Roles.BREATHSTEALER.phase_probs_low[w.phase]
 	if not w.decision_roll(bs, "silence_this_phase", p, {"best_target_score": best_s}, best):
 		w.dlog.think(bs.id, "breath_choice", "Breathstealer holds off this phase (best %s, %.2f)." % [best, best_s], {"scores": scores})

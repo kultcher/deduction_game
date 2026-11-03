@@ -68,8 +68,8 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	var count: int = 0
 	if not others.any(func(m): return m.is_evil()):
 		if s in ids:
-			count = 2 if (others.size() >= 4 and w.chance(0.35)) else 1
-		elif others.size() >= 4 and w.chance(0.25):
+			count = 2 if (others.size() >= 4 and w.chance(Tuning.Roles.DOWSER.bluff_two_evil_prob)) else 1
+		elif others.size() >= 4 and w.chance(Tuning.Roles.DOWSER.bluff_crowd_one_prob):
 			count = 1
 	n.dowsed_day = w.day
 	return {

@@ -33,7 +33,7 @@ func score_vote_reluctance(_w, v, nominee: String, base: float, panic: float, pa
 	if v.martyr_target == nominee and not v.gift_broken():
 		# They'd die in this one's place: reluctant, unless the case, the pressure or the
 		# panic is overwhelming.
-		var r: float = 0.6 - 0.4 * panic - 0.3 * v.pressure - 0.4 * maxf(0.0, base - 0.8)
+		var r: float = Tuning.Roles.MARTYR.reluctance_base - Tuning.Roles.MARTYR.reluctance_panic_scale * panic - Tuning.Roles.MARTYR.reluctance_pressure_scale * v.pressure - Tuning.Roles.MARTYR.reluctance_susp_scale * maxf(0.0, base - Tuning.Roles.MARTYR.reluctance_susp_pivot)
 		if r > 0.0:
 			parts["martyr_reluctance"] = -snappedf(r, 0.01)
 
@@ -62,7 +62,7 @@ func pick_targets(w, mart, mind):
 	for m in w.living():
 		if m == mart:
 			continue
-		var t: float = mart.npc_trust.get(m.id, 0.5) - mind.susp(mart, m.id) * 0.5 + mart.protect_pref.get(m.id, 0.0) * 0.5
+		var t: float = mart.npc_trust.get(m.id, 0.5) - mind.susp(mart, m.id) * Tuning.Roles.MARTYR.pick_susp_scale + mart.protect_pref.get(m.id, 0.0) * Tuning.Roles.MARTYR.pick_pref_scale
 		if t > best_t:
 			best_t = t
 			best = m.id

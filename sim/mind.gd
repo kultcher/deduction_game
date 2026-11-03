@@ -187,7 +187,7 @@ static func apologise(w, n, index: int) -> Dictionary:
 	var share: float = Tuning.Trust.APOLOGY_SHARE_SERIOUS if g["serious"] else Tuning.Trust.APOLOGY_SHARE_MINOR
 	var ins: float = trait_of(n, "insight")
 	if g["evidence"]:
-		share *= 1.0 - clampf((ins - 0.4) * 1.2, 0.0, 0.6)
+		share *= 1.0 - clampf((ins - Tuning.Mind.APOLOGY_EVIDENCE_INSIGHT_PIVOT) * Tuning.Mind.APOLOGY_EVIDENCE_INSIGHT_SLOPE, 0.0, Tuning.Mind.APOLOGY_EVIDENCE_DAMP_CAP)
 	var repair: float = g["drop"] * share
 	# Fading may already have repaid part of it; together they never exceed the limit.
 	repair = minf(repair, maxf(0.0, _repay_limit(g) - float(g.get("repaired", 0.0))))
@@ -246,7 +246,7 @@ static func _trust_action(w, why: String) -> String:
 ## A refusal can explain distrust once per day, without affecting its decision,
 ## facts, RNG or trust. The same safe action vocabulary serves both alignments.
 static func _append_distrust(w, n, lines: Array) -> void:
-	if n.trust >= 0.35 or n.distrust_explained_day == w.day:
+	if n.trust >= Tuning.Trust.DISTRUST_EXPLAIN_THRESHOLD or n.distrust_explained_day == w.day:
 		return
 	n.distrust_explained_day = w.day
 	var action: String = n.distrust_memory.get("action", "")
@@ -340,7 +340,7 @@ static func shadow_run(w, n, f: Callable) -> void:
 	_shadow_sync(w, n, s)
 	w.dlog.capture_npc(s, "after_shadow_sync")
 	if made and s.role != "":
-		hear_claim(w, s, s.id, s.role, 1.5, "own")  # knows "its own" gift, as every good NPC does
+		hear_claim(w, s, s.id, s.role, Tuning.Setup.OWN_ROLE_CLAIM_WEIGHT, "own")  # knows "its own" gift, as every good NPC does
 	f.call(s)
 	w.dlog.capture_npc(s, "shadow_return")
 	w.rng = saved_rng
@@ -488,7 +488,7 @@ static func restore_pre_turn_snapshot(w, n) -> void:
 			n.ledger.erase(info_eid(n.id, e))
 	var prev_defer: bool = w.defer_beliefs
 	w.defer_beliefs = true
-	hear_claim(w, n, n.id, n.role, 1.5, "own")
+	hear_claim(w, n, n.id, n.role, Tuning.Setup.OWN_ROLE_CLAIM_WEIGHT, "own")
 	var cursor: int = int(snap.get("public_claims_cursor", 0))
 	for idx in range(maxi(0, cursor), w.public_claims.size()):
 		var pc: Dictionary = w.public_claims[idx]
@@ -499,7 +499,7 @@ static func restore_pre_turn_snapshot(w, n) -> void:
 				n.claimed_role = role_id
 				n.claim_public = true
 		elif who_id != "":
-			hear_claim(w, n, who_id, role_id, 0.5, "public")
+			hear_claim(w, n, who_id, role_id, Tuning.Mind.PUBLIC_CLAIM_HEARING_WEIGHT, "public")
 	var prev_shared: Dictionary = snap.get("shared_readings", {})
 	for p in w.npcs:
 		if p == n:
@@ -721,11 +721,11 @@ static func night_sighting_scale(w, listener, who: String, block: String, night:
 	for sid in w.scenes:
 		if w.scenes[sid]["day"] == night and w.scenes[sid]["block"] == block:
 			near_death = true
-	var s = 1.0 if near_death else 0.12
+	var s = Tuning.Mind.NIGHT_SIGHTING_NEAR_DEATH if near_death else Tuning.Mind.NIGHT_SIGHTING_ELSEWHERE
 	var nn = w.by_id.get(who)
 	if nn != null and nn.claim_public and C.ROLES.get(nn.claimed_role, {}).get("night_walk", false):
 		var cr = claim_credence(listener, who, nn.claimed_role) if listener != null else 0.5
-		s *= 1.0 - 0.7 * clampf(cr, 0.0, 1.0)
+		s *= 1.0 - Tuning.Mind.NIGHT_SIGHTING_WALK_DISCOUNT * clampf(cr, 0.0, 1.0)
 	return s
 
 ## What a card rests on, as [source, night, kind] (kind: reading | report | evidence).
@@ -925,7 +925,7 @@ static func _refresh_ledger_preferences(w, n) -> void:
 	for e in n.ledger.values():
 		var meta: Dictionary = e.get("meta", {})
 		var kind: String = str(meta.get("kind", ""))
-		var kg: float = 1.95 if kind == "role_claim" and str(meta.get("how", "")) != "own" and demon_victim(w, str(meta.get("who", ""))) else 1.0
+		var kg: float = Tuning.Mind.DEMON_VICTIM_CLAIM_BOOST if kind == "role_claim" and str(meta.get("how", "")) != "own" and demon_victim(w, str(meta.get("who", ""))) else 1.0
 		var js: Array = e.get("justs", [])
 		var w_eff: float = float(e.get("weight", 0.0))
 		if not js.is_empty():
@@ -938,7 +938,7 @@ static func _refresh_ledger_preferences(w, n) -> void:
 		if kind == "role_claim":
 			var who: String = str(meta.get("who", ""))
 			var role: String = str(meta.get("role", ""))
-			if who != "" and role != "" and eff >= 0.12 and n.believed_roles.get(who, "") != "revenant":
+			if who != "" and role != "" and eff >= Tuning.Mind.BELIEVED_ROLE_MIN_EFF and n.believed_roles.get(who, "") != "revenant":
 				n.believed_roles[who] = role
 		elif kind == "arg":
 			_apply_conclusion_pref(n, meta.get("conclusion", {}), eff)
@@ -968,7 +968,7 @@ static func _apply_conclusion_pref(n, c: Dictionary, eff: float) -> void:
 			n.spare_pref[target_id] = maxf(n.spare_pref.get(target_id, 0.0), 1.0 * eff)
 		"role":
 			var r: String = str(c.get("role", ""))
-			if r != "" and eff >= 0.12 and n.believed_roles.get(target_id, "") != "revenant":
+			if r != "" and eff >= Tuning.Mind.BELIEVED_ROLE_MIN_EFF and n.believed_roles.get(target_id, "") != "revenant":
 				n.believed_roles[target_id] = r
 
 ## Re-weigh what the player has argued, in light of current trust. Firsthand knowledge and
@@ -978,7 +978,7 @@ static func reconsider(w, n, why: String) -> void:
 	if n.is_evil():
 		shadow_run(w, n, func(sh): reconsider(w, sh, why))
 		return
-	if absf(n.trust - n.trust_at_reconsider) < 0.03:
+	if absf(n.trust - n.trust_at_reconsider) < Tuning.Mind.RECONSIDER_MIN_SHIFT:
 		refresh_beliefs(w, n, " (shared evidence reconsidered: %s)" % why)
 		return
 	n.trust_at_reconsider = n.trust
@@ -992,7 +992,7 @@ static func reconsider(w, n, why: String) -> void:
 		var js: Array = e.get("justs", [])
 		if js.is_empty():
 			var want: float = m["base"] * (0.5 + n.credibility)
-			if absf(want - cur) < 0.02:
+			if absf(want - cur) < Tuning.Mind.RECONSIDER_ENTRY_MIN_DELTA:
 				continue
 			nw = cur + (want - cur) * rate
 		else:
@@ -1001,7 +1001,7 @@ static func reconsider(w, n, why: String) -> void:
 				var wj: float = jj["base"] * (0.5 + n.credibility)
 				jj["weight"] = jj["weight"] + (wj - jj["weight"]) * rate
 				nw = maxf(nw, jj["weight"])
-			if absf(nw - cur) < 0.02:
+			if absf(nw - cur) < Tuning.Mind.RECONSIDER_ENTRY_MIN_DELTA:
 				continue
 		e["weight"] = nw
 		w.dlog.think(n.id, "reconsider", "Re-weighs '%s': %.2f -> %.2f (trust %.2f, %s)." % [m.get("text", e["eid"]), cur, nw, n.trust, why],
@@ -1055,7 +1055,7 @@ static func update_from_own_info(w) -> void:
 ## How much a reading heard first-hand from its giver counts, before credibility. The
 ## giver's credibility is applied live by the ledger (it changes as evidence comes in).
 static func heard_weight(listener, speaker) -> float:
-	return 0.5
+	return Tuning.Mind.HEARD_READING_WEIGHT
 
 # ---------------------------------------------------------------- night choices (good)
 
@@ -1104,7 +1104,7 @@ static func consider_gift_request(w, n, role: String, targets: Array) -> Diction
 	on_question(w, n)
 	var ranked: Array = ranked_suspects(w, n)
 	var top: String = ranked[0].id if not ranked.is_empty() else ""
-	var parts = {"trust": (n.trust - 0.5) * 2.0, "base": 0.2}
+	var parts = {"trust": (n.trust - 0.5) * Tuning.Mind.GIFT_REQ_TRUST_SLOPE, "base": Tuning.Mind.GIFT_REQ_BASE}
 	var rdef = C.role_def(role)
 	if rdef != null:
 		rdef.score_gift_request(w, n, targets, top, parts, _mind())
@@ -1120,7 +1120,7 @@ static func consider_gift_request(w, n, role: String, targets: Array) -> Diction
 		return {"lines": [say(n, agree_fallback)], "facts": [], "agreed": true}
 	w.dlog.add("gift_request_refused", "player", n.id, {"role": role, "targets": targets})
 	var counter: String = ""
-	if n.trust >= 0.35 and top != "" and not (top in targets) and rdef != null:
+	if n.trust >= Tuning.Mind.GIFT_REQ_COUNTER_MIN_TRUST and top != "" and not (top in targets) and rdef != null:
 		counter = rdef.counter_gift_request(w, n, targets, top)
 	if counter != "":
 		return {"lines": [say_voiced(n, "gift_req_counter", "No. " + counter, {"counter": counter})], "facts": [], "agreed": false}
@@ -1614,7 +1614,7 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		if repeated:
 			lines.append(say(n, "[PH] You've told me that already. Thank you."))
 		elif defend_strength(card, n.id) >= 0.2:
-			set_trust(w, n, n.trust + 0.03, "the Demonologist spoke up for me")
+			set_trust(w, n, n.trust + Tuning.Trust.SELF_SUPPORT_BONUS, "the Demonologist spoke up for me")
 			lines.append(say(n, "[PH] Thank you for believing me."))
 		else:
 			lines.append(say(n, "[PH] I appreciate the support, but I'm not sure that explains it."))
@@ -1743,7 +1743,7 @@ static func gossip(w) -> Dictionary:
 			"facts": [{"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": C.NIGHT, "source": speaker.id,
 				"text": "Gossip from %s: %s was out on %s on night %d." % [speaker.name, who.name, C.block_name(b["block"]), b["day"]]}]}
 	var ranked = ranked_suspects(w, speaker)
-	if not ranked.is_empty() and susp(speaker, ranked[0].id) >= 0.4 and not speaker.told_to.has("player|gossip_susp:%s:%d" % [ranked[0].id, w.day]):
+	if not ranked.is_empty() and susp(speaker, ranked[0].id) >= Tuning.Social.TAVERN_OVERHEAR_MIN_SUSP and not speaker.told_to.has("player|gossip_susp:%s:%d" % [ranked[0].id, w.day]):
 		var t = ranked[0]
 		speaker.told_to["player|gossip_susp:%s:%d" % [t.id, w.day]] = true
 		w.dlog.think(speaker.id, "gossip", "Shares their suspicion of %s." % t.id)

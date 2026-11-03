@@ -53,7 +53,7 @@ static func news_bonus(w, a, b) -> float:
 				bonus += Tuning.Social.NEWS_BONUS_EVIL
 			elif x.id == str(w.evil_plan.get("daily_planter", "")) and int(w.evil_plan.get("plants_today", 0)) < Tuning.Evil.MAX_DIRECT_PLANTS and y.id != str(w.evil_plan.get("scapegoat", "")) and trait_of(y, "gossip") >= Tuning.Social.PLANTER_TARGET_GOSSIP_MIN and y.npc_trust.get(x.id, 0.5) >= Tuning.Social.PLANTER_TARGET_TRUST_MIN:
 				bonus += Tuning.Social.PLANTER_WHISPER_BONUS
-		elif x.npc_trust.get(y.id, 0.5) > 0.6:
+		elif x.npc_trust.get(y.id, 0.5) > Tuning.Social.GOOD_NEWS_TRUST_MIN:
 			bonus += Tuning.Social.NEWS_BONUS_GOOD
 	return bonus
 
@@ -80,7 +80,7 @@ static func _pick_item(w, s, l):
 		for e in s.info_log:
 			if e.get("fake", false) and not e["shared"] and not _told(s, l, "reading:%d:%s" % [e["day"], e["role"]]):
 				# Same willingness formula as a good NPC sharing a real reading.
-				var wgt = (1.0 - priv) * 1.2 * maxf(0.0, bond - 0.3) * 2.0 + 0.3 * s.pressure
+				var wgt = (1.0 - priv) * Tuning.Social.SHARE_READING_OPENNESS_SCALE * maxf(0.0, bond - Tuning.Social.SHARE_READING_BOND_FLOOR) * Tuning.Social.SHARE_READING_BOND_SLOPE + Tuning.Social.SHARE_READING_PRESSURE_SCALE * s.pressure
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": "reading:%d:%s" % [e["day"], e["role"]], "lie": true}])
 		var planter_id: String = str(w.evil_plan.get("daily_planter", ""))
 		# With a planter today, only the planter frames the scapegoat (anti-collusion). With no
@@ -90,29 +90,29 @@ static func _pick_item(w, s, l):
 			var fs = Evil.fake_night_sighting(w, s, w.day - 1)
 			if fs != null and not _told(s, l, "sighting:%s:%d" % [sg, fs["day"]]):
 				var p_scene: float = Tuning.Evil.PLANTER_SCENE_WEIGHT if s.id == planter_id else 0.0
-				cands.append([gos * 0.8 + p_scene, {"kind": "sighting", "about": sg, "block": fs["block"], "day": fs["day"],
+				cands.append([gos * Tuning.Social.SHARE_SIGHTING_GOSSIP_SCALE + p_scene, {"kind": "sighting", "about": sg, "block": fs["block"], "day": fs["day"],
 					"from": s.id, "key": "sighting:%s:%d" % [sg, fs["day"]], "lie": true}])
 			if not _told(s, l, "opinion:" + sg) and Evil.public_heat(w, w.by_id[sg]) >= 0.3:
-				cands.append([gos * 0.6 + (trait_of(s, "confidence") - 0.5) * 0.4, {"kind": "opinion", "about": sg, "why": Evil.bluff_reason(w, s, w.by_id[sg]), "from": s.id,
+				cands.append([gos * Tuning.Social.SHARE_OPINION_GOSSIP_SCALE + (trait_of(s, "confidence") - 0.5) * Tuning.Social.SHARE_OPINION_CONF_SCALE, {"kind": "opinion", "about": sg, "why": Evil.bluff_reason(w, s, w.by_id[sg]), "from": s.id,
 					"key": "opinion:" + sg, "lie": true}])
 	else:
 		for e in s.info_log:
 			var key = "reading:%d:%s" % [e["day"], e["role"]]
 			if not e["shared"] and not _told(s, l, key):
-				var wgt = (1.0 - priv) * 1.2 * maxf(0.0, bond - 0.3) * 2.0 + 0.3 * s.pressure
+				var wgt = (1.0 - priv) * Tuning.Social.SHARE_READING_OPENNESS_SCALE * maxf(0.0, bond - Tuning.Social.SHARE_READING_BOND_FLOOR) * Tuning.Social.SHARE_READING_BOND_SLOPE + Tuning.Social.SHARE_READING_PRESSURE_SCALE * s.pressure
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": key}])
 		if not s.secret.is_empty() and not l.known_secrets.has(s.id):
-			cands.append([(1.0 - priv) * maxf(0.0, bond - 0.6) * 3.0, {"kind": "secret", "about": s.id, "from": s.id, "key": "secret:" + s.id}])
+			cands.append([(1.0 - priv) * maxf(0.0, bond - Tuning.Social.SHARE_SECRET_BOND_FLOOR) * Tuning.Social.SHARE_SECRET_SLOPE, {"kind": "secret", "about": s.id, "from": s.id, "key": "secret:" + s.id}])
 		var ranked = Mind.ranked_suspects(w, s).filter(func(m): return m != l)
-		if not ranked.is_empty() and Mind.susp(s, ranked[0].id) >= 0.5 and not _told(s, l, "opinion:" + ranked[0].id):
+		if not ranked.is_empty() and Mind.susp(s, ranked[0].id) >= Tuning.Social.SHARE_OPINION_MIN_SUSP and not _told(s, l, "opinion:" + ranked[0].id):
 			var t = ranked[0]
-			cands.append([gos * 0.6 + (trait_of(s, "confidence") - 0.5) * 0.4, {"kind": "opinion", "about": t.id,
+			cands.append([gos * Tuning.Social.SHARE_OPINION_GOSSIP_SCALE + (trait_of(s, "confidence") - 0.5) * Tuning.Social.SHARE_OPINION_CONF_SCALE, {"kind": "opinion", "about": t.id,
 				"why": Mind.citable_reason(w, s, t.id, "town"), "from": s.id, "key": "opinion:" + t.id}])
 		for c in s.player_cases.slice(-2):
 			var about: String = c["suspect"]
 			var key: String = "case:" + str(c.card.get("n", c.card.text))
 			if about != l.id and not _told(s, l, key):
-				cands.append([gos * 0.5, {"kind": "case", "about": about, "card": c["card"], "from": "player", "key": key}])
+				cands.append([gos * Tuning.Social.SHARE_CASE_GOSSIP_SCALE, {"kind": "case", "about": about, "card": c["card"], "from": "player", "key": key}])
 	# Things anyone might pass on: what they saw at night, what they've heard, others' secrets.
 	var has_recent_night_sighting: bool = false
 	for b in s.beliefs:
@@ -126,8 +126,8 @@ static func _pick_item(w, s, l):
 			var scene = 0.0
 			for sid in w.scenes:
 				if w.scenes[sid]["day"] == b["day"] and w.scenes[sid]["block"] == b["block"]:
-					scene = 0.4
-			cands.append([gos * 0.8 + scene, {"kind": "sighting", "about": b["who"], "block": b["block"], "day": b["day"], "from": s.id, "key": key2}])
+					scene = Tuning.Social.SHARE_SIGHTING_SCENE_BONUS
+			cands.append([gos * Tuning.Social.SHARE_SIGHTING_GOSSIP_SCALE + scene, {"kind": "sighting", "about": b["who"], "block": b["block"], "day": b["day"], "from": s.id, "key": key2}])
 	# Low-walker daytime rumor fuel (Phase 4.1): when `s` holds no recent untold night sightings,
 	# share daytime work/haunt sightings/alibis and mild unease so social chatter and gossip_bond
 	# stay alive in Revenant + Scion setups without fabricating night evidence.
@@ -158,7 +158,7 @@ static func _pick_item(w, s, l):
 				var ut = uneasy_pool[0]
 				var ususp: float = Mind.susp(s, ut.id)
 				var ukey: String = "unease:" + ut.id
-				if ususp >= Tuning.Social.UNEASE_SUSP_MIN and ususp < 0.5 and not _told(s, l, ukey) and not _told(s, l, "opinion:" + ut.id):
+				if ususp >= Tuning.Social.UNEASE_SUSP_MIN and ususp < Tuning.Social.SHARE_OPINION_MIN_SUSP and not _told(s, l, ukey) and not _told(s, l, "opinion:" + ut.id):
 					cands.append([gos * Tuning.Social.DAY_RUMOR_WEIGHT, {
 						"kind": "unease", "about": ut.id, "why": Mind.citable_reason(w, s, ut.id, "town"),
 						"from": s.id, "key": ukey,
@@ -180,11 +180,11 @@ static func _pick_item(w, s, l):
 				if int(w.scenes[sid].get("day", -2)) == int(h.get("day", -1)) and str(w.scenes[sid].get("block", "")) == str(h.get("block", "")):
 					relay_scene = Tuning.Social.MURDER_RELAY_BONUS
 					break
-		cands.append([gos * 0.45 + relay_scene, r])
+		cands.append([gos * Tuning.Social.SHARE_RELAY_GOSSIP_SCALE + relay_scene, r])
 	for owner in s.known_secrets:
 		if owner == l.id or owner == s.id or l.known_secrets.has(owner):
 			continue
-		cands.append([gos * 0.4 * (1.3 - trait_of(s, "composure")), {"kind": "secret", "about": owner, "from": owner, "key": "secret:" + owner, "relay": true}])
+		cands.append([gos * Tuning.Social.SHARE_RELAY_SECRET_GOSSIP_SCALE * (Tuning.Social.SHARE_RELAY_SECRET_COMPOSURE_BASE - trait_of(s, "composure")), {"kind": "secret", "about": owner, "from": owner, "key": "secret:" + owner, "relay": true}])
 	if cands.is_empty():
 		return null
 	var total = Tuning.Social.IDLE_CHAT_WEIGHT  # chance they just talk about the weather
@@ -195,9 +195,9 @@ static func _pick_item(w, s, l):
 	for c in cands:
 		r2 -= maxf(c[0], 0.0)
 		if r2 <= 0:
-			w.observe_weighted(s, "npc_share", cands, c[1]["key"], observed_draw, {"privacy": priv, "gossip": gos, "trust_in_listener": bond, "pressure": s.pressure}, l.id, 0.3)
+			w.observe_weighted(s, "npc_share", cands, c[1]["key"], observed_draw, {"privacy": priv, "gossip": gos, "trust_in_listener": bond, "pressure": s.pressure}, l.id, Tuning.Social.IDLE_CHAT_WEIGHT)
 			return c[1]
-	w.observe_weighted(s, "npc_share", cands, "nothing", observed_draw, {"privacy": priv, "gossip": gos, "trust_in_listener": bond, "pressure": s.pressure}, l.id, 0.3)
+	w.observe_weighted(s, "npc_share", cands, "nothing", observed_draw, {"privacy": priv, "gossip": gos, "trust_in_listener": bond, "pressure": s.pressure}, l.id, Tuning.Social.IDLE_CHAT_WEIGHT)
 	return null
 
 ## Public ordinary sightings use the same hearing/receipt path as private shares.
@@ -347,14 +347,14 @@ static func _describe(w, s, item: Dictionary) -> String:
 
 ## Evil members in the same crowded tavern can pass word unobserved (slow, partial).
 static func tavern_whispers(w) -> void:
-	if w.npcs_at("tavern").size() < 4:
+	if w.npcs_at("tavern").size() < Tuning.Social.TAVERN_WHISPER_MIN_CROWD:
 		return
 	var here: Array = w.evil_team().filter(func(x): return x.loc == "tavern" and x.busy_with == "")
 	for i in range(here.size()):
 		for j in range(i + 1, here.size()):
 			var d = here[i]
 			var m = here[j]
-			if Evil.unshared_intel(d, m) + Evil.unshared_intel(m, d) > 0 and w.decision_roll(d, "whisper_intelligence", 0.5, {}, m.id):
+			if Evil.unshared_intel(d, m) + Evil.unshared_intel(m, d) > 0 and w.decision_roll(d, "whisper_intelligence", Tuning.Social.TAVERN_WHISPER_CHANCE, {}, m.id):
 				Evil.share_intel(w, d, m, "whisper in the crowded tavern")
 
 # ---------------------------------------------------------------- paranoia
@@ -385,8 +385,8 @@ static func approach_candidate(w):
 			for i in range(n.told_readings, n.info_log.size()):
 				if not n.info_log[i]["shared"]:
 					fresh += 1
-			if fresh > 0 and n.trust >= 0.5 and sg != "" and w.by_id[sg].alive:
-				s = (1.0 - trait_of(n, "privacy")) + n.trust - 0.6
+			if fresh > 0 and n.trust >= Tuning.Social.APPROACH_NEWS_MIN_TRUST and sg != "" and w.by_id[sg].alive:
+				s = (1.0 - trait_of(n, "privacy")) + n.trust - Tuning.Social.APPROACH_NEWS_OFFSET
 				a = "frame"
 		else:
 			var unshared = n.info_log.size() - n.told_readings
@@ -394,16 +394,16 @@ static func approach_candidate(w):
 			for i in range(n.told_readings, n.info_log.size()):
 				if not n.info_log[i]["shared"]:
 					hidden_new += 1
-			if hidden_new > 0 and n.trust >= 0.5 and unshared > 0:
-				s = (1.0 - trait_of(n, "privacy")) + n.trust - 0.6
+			if hidden_new > 0 and n.trust >= Tuning.Social.APPROACH_NEWS_MIN_TRUST and unshared > 0:
+				s = (1.0 - trait_of(n, "privacy")) + n.trust - Tuning.Social.APPROACH_NEWS_OFFSET
 				a = "news"
-		if gos >= 0.6 and has_gossip(w, n):
-			var gs = gos - 0.3
+		if gos >= Tuning.Social.APPROACH_GOSSIP_MIN and has_gossip(w, n):
+			var gs = gos - Tuning.Social.APPROACH_GOSSIP_OFFSET
 			if gs > s:
 				s = gs
 				a = "gossip"
 		if wants_protection(w, n):
-			var ps = n.trust + 0.5 * (1.0 - trait_of(n, "composure")) - 0.4
+			var ps = n.trust + Tuning.Social.APPROACH_PROTECT_COMPOSURE_SCALE * (1.0 - trait_of(n, "composure")) - Tuning.Social.APPROACH_PROTECT_OFFSET
 			if ps > s:
 				s = ps
 				a = "protect"
@@ -416,9 +416,9 @@ static func approach_candidate(w):
 			best = n
 			agenda = a
 	if best == null or best_s < Tuning.Social.APPROACH_SCORE_THRESHOLD:
-		w.observe_decision(best, "approach_selection", false, {"gate": "no eligible NPC cleared the approach threshold", "score": best_s, "threshold": 0.35, "comparison": ">="})
+		w.observe_decision(best, "approach_selection", false, {"gate": "no eligible NPC cleared the approach threshold", "score": best_s, "threshold": Tuning.Social.APPROACH_SCORE_THRESHOLD, "comparison": ">="})
 		return null
-	w.observe_decision(best, "approach_selection", agenda, {"score": best_s, "threshold": 0.35, "comparison": ">=", "gate": "highest eligible score selected; no extra draw"})
+	w.observe_decision(best, "approach_selection", agenda, {"score": best_s, "threshold": Tuning.Social.APPROACH_SCORE_THRESHOLD, "comparison": ">=", "gate": "highest eligible score selected; no extra draw"})
 	w.dlog.think(best.id, "approach", "Seeks out the Demonologist (agenda: %s, score %.2f)." % [agenda, best_s], {"agenda": agenda})
 	return {"npc": best, "agenda": agenda}
 
@@ -505,7 +505,7 @@ static func gossip_item(w, n) -> Dictionary:
 			continue
 		var owner: String = it[1]
 		var o = w.by_id[owner]
-		if w.decision_roll(n, "approach_gossip_direct", 0.5 + 0.3 * trait_of(n, "gossip"), {"gossip": trait_of(n, "gossip")}):
+		if w.decision_roll(n, "approach_gossip_direct", Tuning.Social.APPROACH_SECRET_DIRECT_BASE + Tuning.Social.APPROACH_SECRET_DIRECT_GOSSIP_SCALE * trait_of(n, "gossip"), {"gossip": trait_of(n, "gossip")}):
 			n.told_to["player|secret:" + owner] = true
 			w.dlog.think(n.id, "gossip", "Tells the player %s's secret (heard via %s)." % [owner, n.known_secrets[owner]])
 			o.secret_spread_by_npc = true
@@ -555,7 +555,7 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 	# A general question about the town, but it touches their own gift: a small chance they
 	# own up (likelier the more they trust you). Otherwise they answer like anyone else.
 	if mine == role:
-		var p = 0.15 + 0.2 * n.trust
+		var p = Tuning.Social.ROLE_OWN_UP_BASE + Tuning.Social.ROLE_OWN_UP_TRUST_SCALE * n.trust
 		var out = w.decision_roll(n, "own_up_to_gift", p, {"trust": n.trust})
 		w.dlog.think(n.id, "about_role", "Asked who holds their own gift (%s): owns up? -> %s (p=%.2f)." % [role, "yes" if out else "no", p])
 		if out:
@@ -565,7 +565,7 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 	var text = ""
 	if not public.is_empty():
 		text = "Everyone heard %s claim the %s." % [" and ".join(PackedStringArray(public)), rn]
-	var willing = trait_of(n, "gossip") * 0.7 + n.trust * 0.5 + n.pressure * 0.3 > 0.55
+	var willing = trait_of(n, "gossip") * Tuning.Social.ROLE_WILLING_GOSSIP_SCALE + n.trust * Tuning.Social.ROLE_WILLING_TRUST_SCALE + n.pressure * Tuning.Social.ROLE_WILLING_PRESSURE_SCALE > Tuning.Social.ROLE_WILLING_THRESHOLD
 	var told = false
 	if not n.is_evil() and willing:
 		for sid in n.known_claims:
@@ -612,7 +612,7 @@ static func answer_is_role(w, n, role: String) -> Dictionary:
 		return {"lines": [Mind.say(n, "[PH] No. I told you: I'm the %s." % C.role_name(claimed) if C.ROLES.has(claimed) else "[PH] No.")], "facts": []}
 	if mine == role:
 		var first = n.role_guesses == 0
-		var tier: int = Mind._target_tier(w, n) + (1 if first and w.decision_roll(n, "correct_role_guess_bonus", 0.5) else 0)
+		var tier: int = Mind._target_tier(w, n) + (1 if first and w.decision_roll(n, "correct_role_guess_bonus", Tuning.Social.CORRECT_ROLE_GUESS_BONUS_PROB) else 0)
 		w.dlog.think(n.id, "about_role", "Asked if they are the %s (right): disclosure tier %d%s." % [role, tier,
 			"" if first else " (no bonus: you guessed wrong before)"])
 		if tier >= 2:
@@ -620,7 +620,7 @@ static func answer_is_role(w, n, role: String) -> Dictionary:
 			return Mind.answer_gift(w, n, mini(tier, 4))
 	else:
 		n.role_guesses += 1
-		var cost = 0.02 * n.role_guesses
+		var cost = Tuning.Trust.WRONG_ROLE_GUESS_STEP * n.role_guesses
 		Mind.set_trust(w, n, n.trust - cost, "the Demonologist guessed my gift wrong (%s; %d wrong so far)" % [role, n.role_guesses])
 		w.dlog.think(n.id, "about_role", "Asked if they are the %s (wrong): gives the usual non-answer." % role)
 	var line = "Why do you keep asking me that?" if n.role_guesses >= 3 else "What my gift is, I'll keep to myself."

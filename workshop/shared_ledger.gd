@@ -326,7 +326,7 @@ static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dict
 					adapted[id]["hearing_weight"] = hearing
 			elif not shared and facts[id].kind in ["sighting", "alibi"] and adapted.has(id):
 				if not ("learned" in owners[id] and facts[id].source == input.listener.id):
-					adapted[id]["hearing_weight"] = clampf(float(adapted[id].get("hearing_weight", 1.0)) * (0.35 + 0.65 * best_trust), 0.10, 1.0)
+					adapted[id]["hearing_weight"] = clampf(float(adapted[id].get("hearing_weight", 1.0)) * (Tuning.Workshop.SIGHTING_TRUST_BASE + Tuning.Workshop.SIGHTING_TRUST_SLOPE * best_trust), Tuning.Workshop.SIGHTING_HEARING_FLOOR, 1.0)
 			if facts[id].kind not in ["info", "claim"]:
 				continue
 			var testimony: bool = adapted.get(id, {}).get("testimony_only", false)
