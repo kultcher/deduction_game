@@ -234,7 +234,7 @@ func _test_role_at_site_hooks() -> void:
 	_check(med_r.get("data", {}).get("dead", "") == victim.id and med_r.get("data", {}).get("item", {}).get("type", "") == "reading", "Medium generate_reading relays unshared reading from dead victim")
 	var med_entry = {"role": "medium", "day": 1, "data": med_r["data"], "text": med_r["text"]}
 	_check(Gifts.clears(med_entry) == [dowser.id, other.id] and Gifts.implicated(med_entry).is_empty(), "Medium implicated/clears delegates to relayed reading")
-	_check(not C.role_def("medium").has_method("info_effects") and C.role_def("medium").defend_strength(med_entry["data"], dowser.id) > 0.0, "Medium delegates clears/defence without legacy info_effects")
+	_check(not C.role_def("medium").has_method("info_effects") and dowser.id in C.role_def("medium").clears(med_entry["data"]), "Medium delegates clears/defence without legacy info_effects")
 
 	medium.info_log.append(med_entry)
 	medium.claimed_role = "medium"
@@ -387,12 +387,12 @@ func _test_final_roles_hooks() -> void:
 	_check(g.filter_cards("") == g.GameBoard.filter_cards(g, ""), "Game.filter_cards forwards identically to GameBoard.filter_cards")
 	_check(g.timeline_data() == g.GameBoard.timeline_data(g), "Game.timeline_data forwards identically to GameBoard.timeline_data")
 
-	# 8. Codex review regressions: raw-data card/defend strength & single Martyr registration roll
-	_check(is_equal_approx(C.role_def("dowser").card_strength({"group": [vet.id, sexton.id], "count": 1, "block": vet.home_block}, vet.id), 0.6), "Dowser card_strength accepts raw data dict and returns 0.6 for implicated member")
-	_check(is_equal_approx(C.role_def("martyr").card_strength({"target": vet.id, "evil": true}, vet.id), 0.6), "Martyr evil-outcome card_strength accepts raw data dict and returns 0.6")
-	_check(is_equal_approx(C.role_def("gravedigger").defend_strength({"executed": vet.id, "role": "warden"}, vet.id), 0.5), "Gravedigger good-role defend_strength accepts raw data dict and returns 0.5")
-	_check(is_equal_approx(C.role_def("rumormonger").defend_strength({"pair": [vet.id, sexton.id], "secret": "marked"}, vet.id), 0.5), "Rumormonger defend_strength accepts raw data dict and returns 0.5")
-	_check(is_equal_approx(C.role_def("archivist").defend_strength({"pair": [vet.id, sexton.id], "role": "poisoner"}, vet.id), 0.15), "Non-clearing RoleDef.defend_strength preserves 0.15 fallback")
+	# 8. Codex review regressions: raw-data implicated/clears & single Martyr registration roll
+	_check(vet.id in C.role_def("dowser").implicated({"group": [vet.id, sexton.id], "count": 1, "block": vet.home_block}), "Dowser implicated() accepts a raw data dict and names the group member")
+	_check(vet.id in C.role_def("martyr").implicated({"target": vet.id, "evil": true}), "Martyr evil outcome implicates its target from a raw data dict")
+	_check(vet.id in C.role_def("gravedigger").clears({"executed": vet.id, "role": "warden"}), "Gravedigger good-role reading clears the executed from a raw data dict")
+	_check(vet.id in C.role_def("rumormonger").clears({"pair": [vet.id, sexton.id], "secret": "marked"}), "Rumormonger reading clears from a raw data dict")
+	_check(not (vet.id in C.role_def("archivist").clears({"pair": [vet.id, sexton.id], "role": "poisoner"})), "a non-clearing reading clears nobody")
 
 	var m_def = C.role_def("martyr")
 	vet.secret_mod = "marked"

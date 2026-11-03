@@ -2,6 +2,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Social = preload("res://sim/social.gd")
 const Overlay = preload("res://ui/headline_overlay.gd")
 var checks = 0
@@ -437,7 +438,7 @@ func last_words():
 
 func before_press_night(w, n, card):
 	# Original night branch with composure fixed to 1: no nerves variant draw.
-	var strength = clampf(Mind.card_strength(w, card, n), 0.3, 1.0)
+	var strength = clampf(Mind.card_weight_against(w, card, n.id), Tuning.Dialogue.PRESS_STRENGTH_MIN, 1.0)
 	w.rng.randf()
 	n.pressure += 0.35 * strength
 	if not n.is_evil(): Mind.set_trust(w, n, n.trust - (0.03 + 0.06 * Mind.trait_of(n, "privacy")), "the Demonologist pressed me with evidence")

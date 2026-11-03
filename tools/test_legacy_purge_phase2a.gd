@@ -104,10 +104,6 @@ func _test_hollis_gravedigger_vs_odette_archivist_and_no_legacy_why_read() -> vo
 	Mind.apply_info(w, hollis, odette, arch_entry, 0.5)
 	Mind.flush_beliefs(w, hollis)
 
-	# Poison legacy sus_why / sus_src to prove shared mode ignores them completely.
-	hollis.sus_why[odette.id] = "POISONED_LEGACY_WHY"
-	hollis.sus_src[odette.id] = "POISONED_LEGACY_SRC"
-
 	w.workshop_reasons.call(hollis) # attribution is deferred until a reason is first needed
 	var raw_reasons: Array = hollis.workshop_state.get("reasons", {}).get(odette.id, [])
 	_check(not raw_reasons.is_empty(), "Hollis's refresh populates workshop_state.reasons for Odette")
@@ -115,8 +111,6 @@ func _test_hollis_gravedigger_vs_odette_archivist_and_no_legacy_why_read() -> vo
 	_check(not items.is_empty() and items[0]["kind"] == "private" and items[0]["entry"] == gd_entry,
 		"case_against surfaces Hollis's private Gravedigger reading against Odette via leave-one-out (%s)" % str(items))
 	var rs: Dictionary = Mind.reason_status(w, hollis, odette.id)
-	_check(rs["why"] != "POISONED_LEGACY_WHY" and rs.get("eid", "") != "POISONED_LEGACY_SRC",
-		"reason_status ignores legacy sus_why / sus_src in shared mode")
 	_check(Mind.citable_reason(w, hollis, odette.id, "town") == "" and rs["strength"] >= 0.5,
 		"unshared Gravedigger contradiction stays private with reveal-worthy strength")
 

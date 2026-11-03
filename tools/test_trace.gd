@@ -5,7 +5,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const DevLog = preload("res://sim/devlog.gd")
 const Mind = preload("res://sim/mind.gd")
-const Argue = preload("res://sim/argue.gd")
+const PresentationReply = preload("res://sim/presentation_reply.gd")
 const C = preload("res://sim/content.gd")
 
 var fails = 0
@@ -293,7 +293,7 @@ func _test_decision_records() -> void:
 	# These records exercise the deliberately retained template argument routes (retired in Phase 4).
 	g._workshop_native_submission = true
 	g._workshop_native_social = true
-	Argue.evaluate(w, n, ded, [support], 1.0, false)
+	PresentationReply.evaluate(w, n, ded, [support], 1.0, false)
 	g._workshop_native_submission = false
 	g._workshop_native_social = false
 	var argument = _last_decision(w, "argument", "evaluation", n.id)
@@ -309,7 +309,7 @@ func _test_decision_records() -> void:
 			"conclusion": {"type": "suspicious", "a": target.id}},
 		{"id": 2, "kind": "clear", "blame": target.id, "label": "innocent",
 			"conclusion": {"type": "good", "a": target.id}}]
-	Argue.evaluate(w, n, ded, [support], 1.0, false)
+	PresentationReply.evaluate(w, n, ded, [support], 1.0, false)
 	var contest = _last_decision(w, "argument", "contest", n.id)
 	_check(not contest.is_empty() and contest["data"]["details"]["explanations"].size() == 2,
 		"template contest includes raw and rounded explanation weights")
@@ -342,8 +342,8 @@ func _test_active_parity() -> void:
 					"conclusion": {"type": "suspicious", "a": target.id}},
 				{"id": 2, "kind": "clear", "blame": target.id, "label": "innocent",
 					"conclusion": {"type": "good", "a": target.id}}]
-		var ra = Argue.evaluate(a.w, na, ded.duplicate(true), [support], 1.0, false)
-		var rb = Argue.evaluate(b.w, nb, ded.duplicate(true), [support], 1.0, false)
+		var ra = PresentationReply.evaluate(a.w, na, ded.duplicate(true), [support], 1.0, false)
+		var rb = PresentationReply.evaluate(b.w, nb, ded.duplicate(true), [support], 1.0, false)
 		identical = identical and ra == rb and _fingerprint(a) == _fingerprint(b)
 	_check(identical, "disclosure, rolls, generic and structured arguments preserve on/off parity")
 	var roll = _last_decision(a.w, "test_roll", "roll", na.id)

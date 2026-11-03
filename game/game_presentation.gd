@@ -10,7 +10,8 @@ extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
-const Argue = preload("res://sim/argue.gd")
+const Deduction = preload("res://sim/deduction.gd")
+const PresentationReply = preload("res://sim/presentation_reply.gd")
 const WorkshopBridge = preload("res://game/workshop_bridge.gd")
 const WorkshopOwnership = preload("res://game/workshop_ownership.gd")
 const WorkshopPresentation = preload("res://game/workshop_presentation.gd")
@@ -89,15 +90,12 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 		return true
 	var kinds: Array = _unsupported_conclusions(check.issues)
 	if not kinds.is_empty():
-		# Supported evidence, but a conclusion type the shared model doesn't judge yet
-		# (MECHANICS_SUPPORT item 0). The legacy rules judge it, loudly.
-		for row in check.listeners:
-			if not row.ready:
-				WorkshopOwnership.fallback(g, g.w.by_id[row.listener], "conclusion_type", row.issues, card.get("n", 0))
-		g._workshop_native_submission = true
-		g._workshop_native_social = true # already recorded above, once per listener
-		g._narr("[dev] The shared model doesn't judge '%s' conclusions yet; the legacy rules judged this one." % ", ".join(PackedStringArray(kinds)))
-		return true
+		# Supported evidence, but a conclusion type the shared model doesn't judge
+		# (secret, red herring). There is no legacy judge behind it any more (purge
+		# phase 4): block it with its reason, like any other unsupported submission.
+		g.w.dlog.trace_event("workshop_conclusion_blocked", "player", "", {"card": card.get("n", 0), "kinds": kinds.duplicate()}, "Unsupported conclusion type blocked (no legacy route).")
+		g._err("Cannot present. Card #%d: the town can't weigh a '%s' conclusion. Present it as a case about who is good or evil instead." % [card.get("n", 0), ", ".join(PackedStringArray(kinds))])
+		return false
 	# Per listener: a row blocked only by canvas authoring problems (a missing cited
 	# claim, an empty hub) is not a model gap, so it is not counted as a fallback.
 	for row in check.listeners:
@@ -232,7 +230,7 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 		workshop_canvas_retire(g, n, ded)
 	var snapshot: Dictionary = workshop_snapshot(g, [ded.n], n.id, venue) if g.workshop_compare else {}
 	var before: Dictionary = n.suspicion.duplicate(true) if g.workshop_compare else {}
-	var result: Dictionary = Argue.evaluate(g.w, n, ded, g.all_receipts(), scale, speak)
+	var result: Dictionary = PresentationReply.evaluate(g.w, n, ded, g.all_receipts(), scale, speak)
 	if result.get("blocked", false):
 		return result
 	if not result.get("workshop", false):
@@ -322,7 +320,7 @@ static func _route_present(g, n, rest: String) -> Dictionary:
 	if who == n and dir == "for":
 		return {"verb": "defend", "rest": "%s %d" % [n.id, num], "note": "You speak up for %s." % n.name}
 	if card["kind"] == "deduction":
-		var cc: Dictionary = Argue.normalize(card["conclusion"].duplicate())
+		var cc: Dictionary = Deduction.normalize(card["conclusion"].duplicate())
 		if cc.get("a", "") == n.id and not (cc["type"] in ["misled", "unreliable"]):
 			return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
 		return {"verb": "convince", "rest": str(num), "note": "You argue it to %s." % n.name}
@@ -340,20 +338,21 @@ static func _route_present(g, n, rest: String) -> Dictionary:
 	if targets.is_empty():
 		return _present_fallback(g, n, num, "the card isn't about anyone living")
 	if dir == "":
-		var inc = 0.0
-		var dfn = 0.0
+		# Which way the card points, from its structure alone (purge phase 4b): who it
+		# implicates and who it speaks for. A secret both points at its owner and partly
+		# explains them; pressing it on someone is an accusation, as before.
+		var inc = false
+		var dfn = false
 		for x in targets:
-			inc = maxf(inc, Mind.card_strength(g.w, card, g.w.by_id[x]))
-			if card.get("kind", "") == "sighting" and card.get("phase", -1) == C.NIGHT:
-				inc = maxf(inc, 0.45) # its direction is plain even when it's weak (far from any death)
-			dfn = maxf(dfn, Mind.defend_strength(card, x))
-		if inc >= 0.4 and inc > dfn:
+			inc = inc or Mind.card_implicates(g.w, card, x)
+			dfn = dfn or Mind.card_clears(card, x)
+		if inc and (not dfn or card.get("kind", "") == "secret"):
 			dir = "against"
-		elif dfn >= 0.4 and dfn > inc:
+		elif dfn and not inc:
 			dir = "for"
 		else:
-			return _present_fallback(g, n, num, "no clear direction (incriminating %.2f, clearing %.2f)" % [inc, dfn])
-	var names = Argue._names(g.w, targets)
+			return _present_fallback(g, n, num, "no clear direction (incriminating %s, clearing %s)" % [str(inc), str(dfn)])
+	var names = Deduction._names(g.w, targets)
 	var ids = ",".join(PackedStringArray(targets))
 	if dir == "for":
 		return {"verb": "defend", "rest": "%s %d" % [ids, num], "note": "You speak up for %s." % names}

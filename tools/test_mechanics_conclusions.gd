@@ -26,7 +26,7 @@ func _run() -> void:
 	var other = g.add_card({"kind": "info", "role": "dowser", "source": "odette", "subject": ["greta"], "day": 1, "phase": 1, "data": {"group": ["greta", "hollis"], "count": 1}, "text": "Independent mechanics support."})
 	for type in ["notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]:
 		var conclusion = {"type": type, "a": "greta", "role": "surveyor", "mod": "delusional", "card": number}
-		var filed = g.file_deduction(conclusion, [number, other], {}, 0, true)
+		var filed = g.file_deduction(conclusion, [number, other], true)
 		check(filed > 0, type + " files: " + g.last_error)
 		var prepared = Assess.prepare(g.workshop_snapshot([filed], "nisha"))
 		check(prepared.ready, type + " has a shared adapter: " + str(prepared.issues))
@@ -48,10 +48,10 @@ func _run() -> void:
 		if type == "unreliable":
 			_fraction_parity(prepared)
 	for type in ["secret", "red_herring"]:
-		var filed = g.file_deduction({"type": type, "a": "greta"}, [number, other], {}, 0, true)
+		var filed = g.file_deduction({"type": type, "a": "greta"}, [number, other], true)
 		check(not Assess.prepare(g.workshop_snapshot([filed], "nisha")).ready, type + " stays explicit without a represented fact")
 	for type in ["protect", "spare"]:
-		var filed = g.file_deduction({"type": type, "a": "greta"}, [number, other], {}, 0, true)
+		var filed = g.file_deduction({"type": type, "a": "greta"}, [number, other], true)
 		var before: int = g.w.dlog.entries.filter(func(e): return e.type == "legacy_fallback").size()
 		check(g._presentation_gate(g.board[filed - 1], [g.w.by_id.nisha], [], "", "meeting") and g._workshop_native_social, type + " is social speech")
 		check(g.w.dlog.entries.filter(func(e): return e.type == "legacy_fallback").size() == before, type + " does not count as fallback")

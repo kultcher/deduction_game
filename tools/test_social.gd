@@ -86,7 +86,6 @@ func _test_agree_line() -> void:
 	var lines: Array = []
 	for a in [goods[0], goods[1]]:
 		a.suspicion[T.id] = 1.5
-		a.sus_why[T.id] = "%s's sight said one of them is the demon" % goods[3].name
 		var acc = null
 		for i in range(30):
 			acc = Mind._public_accusation(w, a)

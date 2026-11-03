@@ -9,7 +9,6 @@ const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const C = preload("res://sim/content.gd")
-const Argue = preload("res://sim/argue.gd")
 
 var fails = 0
 
@@ -404,15 +403,6 @@ func _test_night_suspicion() -> void:
 	var w = _game(9260).w
 	var l = w.living_good()[0]
 	var x = w.living_good()[1]
-	w.scenes["scene_test"] = {"name": "t", "block": "docks", "victim": "", "day": 1, "trace_block": "docks", "trace_true": true, "why": "", "searched": false}
-	var near = Mind.night_sighting_scale(w, l, x.id, "docks", 1)
-	var far = Mind.night_sighting_scale(w, l, x.id, "hill", 1)
-	x.claimed_role = "lamplighter"
-	x.claim_public = true
-	Mind.hear_claim(w, l, x.id, "lamplighter", 0.5, "public")
-	var claimed = Mind.night_sighting_scale(w, l, x.id, "docks", 1)
-	print("night sighting scale: near a death %.2f, elsewhere %.2f, near a death but an open Lamplighter %.2f" % [near, far, claimed])
-	_check(near == 1.0 and far < 0.2 and claimed < near, "night sightings count near deaths, and less for open walkers")
 	var sw_out = 0
 	for sd in range(9270, 9290):
 		var w2 = _game(sd).w

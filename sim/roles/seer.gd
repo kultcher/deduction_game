@@ -30,18 +30,6 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 	return "%s Seer: %s → %s" % [src, _names(d.get("pair", []), nm), "YES" if d.get("yes", false) else "no"]
 
 
-func reading_strength(d: Dictionary, _t_id: String) -> float:
-	return Tuning.Roles.SEER.reading_strength_yes if d.get("yes", false) else 0.0
-
-
-func card_strength(d: Dictionary, _suspect_id: String) -> float:
-	return Tuning.Roles.SEER.card_strength_yes if d.get("yes", false) else 0.0
-
-
-func defend_strength(d: Dictionary, _nominee: String) -> float:
-	return 0.0 if d.get("yes", false) else Tuning.Roles.SEER.defend_strength_no
-
-
 func on_reading_heard(listener, source, entry: Dictionary, fresh: bool) -> void:
 	if listener != source or not fresh:
 		return

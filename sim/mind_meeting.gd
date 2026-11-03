@@ -196,8 +196,8 @@ static func info_fact(w, n, e: Dictionary) -> Dictionary:
 ##        "player"  n's own reading, told to the player privately but not to the town;
 ##        "private" n's own reading, told to nobody.
 ## An NPC may only cite what the audience already has; a private reason has to be claimed
-## first (see _accuse_tier). The reason's provenance is the ledger entry that last raised
-## the suspicion (n.sus_src), not its wording.
+## first (see _accuse_tier). Reasons come from the shared model's attribution
+## (case_against), so their provenance is the evidence itself, not its wording.
 static func reason_status(w, n, t_id: String) -> Dictionary:
 	var mind = n.shadow if n.is_evil() and n.shadow != null else n
 	if mind.workshop_state.get("active", false):
@@ -211,44 +211,9 @@ static func reason_status(w, n, t_id: String) -> Dictionary:
 				resolved["src"] = top["src"]
 			return resolved
 		return {"why": "", "kind": "none", "entry": {}, "strength": 0.0, "eid": ""}
-	var best_res: Dictionary = _mind().best_resentment_against(w, mind, t_id)
-	if not best_res.is_empty() and n.sus_why.get(t_id, "") == "":
-		var f_id: String = str(best_res.get("friend", ""))
-		var f_nm: String = w.by_id[f_id].name if w.by_id.has(f_id) else f_id
-		var r_why_leg: String = ("they pushed to hang %s" % f_nm) if str(best_res.get("role", "nominator")) == "nominator" else ("they voted to hang %s" % f_nm)
-		return {"why": r_why_leg, "kind": "public", "entry": {}, "strength": clampf(float(best_res.get("strength", 0.0)) * 2.0, 0.25, 0.75), "eid": "resentment:%s:%s" % [f_id, t_id], "channel": "resentment"}
-	var why: String = n.sus_why.get(t_id, "")
-	var src: String = n.sus_src.get(t_id, "")
-	var out = {"why": why, "kind": "none" if why == "" else "public", "entry": {}, "strength": 0.0, "eid": src}
-	if why == "":
-		return out
-	if src == "own_role" or n.ledger.get(src, {}).get("meta", {}).get("kind") == "role_counter":
-		out["kind"] = "public" if n.claim_public else "private"
-		out["strength"] = 0.5
-		return out
-	var own = "info:%s:" % n.id
-	if not src.begins_with(own):
-		var hr = _heard_reading(w, n, src)
-		if not hr.is_empty():
-			out["kind"] = "relay"
-			out["entry"] = hr["entry"]
-			out["src"] = hr["src"]
-			out["strength"] = reading_strength(hr["entry"], t_id) * 0.5
-		return out
-	for i in range(n.info_log.size()):
-		var e: Dictionary = n.info_log[i]
-		if info_eid(n.id, e) != src:
-			continue
-		out["entry"] = e
-		out["strength"] = reading_strength(e, t_id)
-		if e.get("shared", false):
-			out["kind"] = "public"
-		elif i < n.told_readings:
-			out["kind"] = "player"
-		else:
-			out["kind"] = "private"
-		return out
-	return out
+	# Before a mind's first shared refresh it has no reasons yet (the legacy sus_why
+	# provenance this used to fall back to is gone, purge phase 4).
+	return {"why": "", "kind": "none", "entry": {}, "strength": 0.0, "eid": ""}
 
 ## The reason n may give for suspecting t to this audience ("town" or "player"), or "" if
 ## the only reason they have is one the audience hasn't been told.
@@ -257,15 +222,6 @@ static func citable_reason(w, n, t_id: String, audience: String = "town") -> Str
 	if rs["kind"] == "public" or (rs["kind"] in ["player", "shared_player"] and audience == "player"):
 		return rs["why"]
 	return ""
-
-## How strongly one reading points at t (0..1): a Seer naming the demon among two says far
-## more than one in a Dowser's crowd of four.
-static func reading_strength(e: Dictionary, t_id: String) -> float:
-	var d: Dictionary = e.get("data", {})
-	var rdef = C.role_def(e.get("role", ""))
-	if rdef != null:
-		return rdef.reading_strength(d, t_id)
-	return 0.3
 
 ## Evil: an unshared fake reading of theirs that points at t, or {}.
 static func _unshared_fake_on(n, t_id: String) -> Dictionary:

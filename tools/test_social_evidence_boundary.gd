@@ -86,7 +86,7 @@ func _opinions() -> void:
 	var psychology = {"role": "psychologist", "day": 1, "data": {"subject": subject.id, "trusts": target.id, "suspects": source.id}}
 	Mind.apply_info(g.w, listener, source, psychology, 1.0)
 	check(listener.ledger[Mind.info_eid(source.id, psychology)].effects.is_empty() and is_equal_approx(listener.suspicion[target.id], settled), "learning who trusts whom does not create guilt by association")
-	check(Mind.card_strength(g.w, psychology, target) == 0 and Mind.defend_strength(psychology, target.id) == 0, "social readings carry zero accusation or defence strength")
+	check(Mind.card_weight_against(g.w, psychology, target.id) == 0 and not Mind.card_clears(psychology, target.id) and not Mind.card_implicates(g.w, psychology, target.id), "social readings carry zero accusation or defence weight")
 	var relay = {"role": "medium", "day": 1, "data": {"dead": subject.id, "item": {"type": "suspicion", "about": target.id}}}
 	Mind.apply_info(g.w, listener, source, relay, 1.0)
 	check(listener.ledger[Mind.info_eid(source.id, relay)].effects.is_empty() and is_equal_approx(listener.suspicion[target.id], settled), "a dead person's opinion has no alignment effect")
@@ -102,7 +102,7 @@ func _opinions() -> void:
 	var nested = g.board[number - 1].duplicate(true)
 	nested.data.item = {"type": "reading", "entry": {"role": "medium", "day": 1, "data": relay.data}}
 	check("opinion is not evidence" in g._presentation_rejection(nested), "nesting the Medium transmission does not hide the original opinion")
-	check(Mind.card_strength(g.w, nested, target) == 0 and Mind.defend_strength(nested, target.id) == 0, "native compatibility paths assign no accusation or defence weight to the same opinion")
+	check(Mind.card_weight_against(g.w, nested, target.id) == 0 and not Mind.card_clears(nested, target.id), "social reactions assign no accusation or defence weight to the same opinion")
 	check(Mind.Gifts.implicated(g.board[number - 1]).is_empty(), "the common gift summary does not identify an opinion as implicating its target")
 
 func check(ok: bool, label: String) -> void:
