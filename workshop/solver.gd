@@ -1307,10 +1307,14 @@ static func _movement_cs(view: Dictionary, cards: Array, answers: Dictionary, kn
 	var own: String = str(knowledge.get("self", ""))
 	var own_idx: int = person_index(view, own)
 	var own_outings: Dictionary = knowledge.get("own_outings", {})
+	# Keep each night as the cards give it: the GDScript twin keys `nights` by str(night),
+	# which is "1.0" for JSON-loaded (float) nights. Only the C# spec gets int(night).
 	var observed_nights: Array = []
+	var night_keys: Dictionary = {}
 	for card in cards:
 		if card.get("night", -1) >= 0 and card.night not in observed_nights:
-			observed_nights.append(int(card.night))
+			observed_nights.append(card.night)
+			night_keys[int(card.night)] = str(card.night)
 
 	var night_specs := PackedInt32Array()
 	var card_specs := PackedInt32Array()
@@ -1324,7 +1328,7 @@ static func _movement_cs(view: Dictionary, cards: Array, answers: Dictionary, kn
 		var own_state: int = -1
 		if own_idx >= 0 and own_outings.has(n_str):
 			own_state = 1 if bool(own_outings[n_str]) else 0
-		night_specs.append(night)
+		night_specs.append(int(night))
 		night_specs.append(own_state)
 		night_specs.append(card_cursor)
 		night_specs.append(relevant.size())
@@ -1384,7 +1388,7 @@ static func _movement_cs(view: Dictionary, cards: Array, answers: Dictionary, kn
 			for i in range(n_people):
 				if (f_mask & (1 << i)) != 0:
 					forced.append(ids[i])
-		nights[str(night)] = {"compatible": compat, "forced_out": forced}
+		nights[night_keys.get(night, str(night))] = {"compatible": compat, "forced_out": forced}
 	return {"okay": raw[0] != 0, "nights": nights}
 
 static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -> bool:

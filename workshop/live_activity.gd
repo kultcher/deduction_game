@@ -342,7 +342,7 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 				elif strict_reports and not card.get("duty_only", false):
 					okay = okay and ((card.data.block in path) == (person.id in card.data.seen))
 			elif strict_reports and card.kind == "report" and card.role == "warden" and card.source == person.id:
-				okay = okay and out and path.back() == card.block
+				okay = okay and out and path.back() == card.get("block", "")
 			elif strict_reports and card.kind == "report" and card.role == "medium" and card.source == person.id:
 				okay = okay and out and path.back() == card.data.get("block", card.get("block", ""))
 			elif strict_reports and card.kind == "report" and card.role == "lamplighter" and card.source == person.id:
