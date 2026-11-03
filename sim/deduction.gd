@@ -725,6 +725,7 @@ static func _match_groups(w, asserts: Array) -> Array:
 				acc["times"] = conv.size()
 				acc["base_eid"] = a["eid"]
 				acc["base_src"] = a["src"]
+				acc["base_who"] = x
 				var m2 = _mk(w, "association", "%s is implicated as evil, and was seen talking with %s%s." %
 					[_nm(w, x), _nm(w, y), (" %d times" % conv.size()) if conv.size() > 1 else ""], cards2,
 					[acc, _clear(w, y, {"type": "good"}, "%s is good, and was being worked on (or just a friend)" % _nm(w, y))], y, [])

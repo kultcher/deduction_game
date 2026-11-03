@@ -172,6 +172,7 @@ func _init() -> void:
 		# Doubt before hearing: L is told D is misled on night 1, then hears D's reading.
 		var e_d = {"day": 1, "role": "seer", "data": {"pair": [b, c], "yes": true}, "text": "x"}
 		var L2 = lis[1] if lis.size() > 1 else L
+		Mind.refresh_beliefs(w, L2, " (settle before the doubt)") # measure only the doubt
 		var before = Mind.susp(L2, b)
 		var dm = g.file_deduction({"type": "misled", "a": d, "night": 1}, [k7])
 		var unheard = Argue.evaluate(w, L2, g.board[dm - 1], g.board, 1.0)
@@ -237,7 +238,10 @@ func _init() -> void:
 		var dme = g.file_deduction({"type": "unreliable", "a": P.id}, [ksp])
 		if dme > 0:
 			var rm = Argue.evaluate(w, P, g.board[dme - 1], g.board, 1.0)
-			_check("I'm no liar" in Speech.said(rm["lines"][0]), "misled-or-lying about yourself reads as misled (%s)" % Speech.said(rm["lines"][0]))
+			# Supported only by a sighting, "P's reading was unreliable" names no reading: the
+			# shared judge blocks it and says what to select (no native fallback after purge 3).
+			var said: String = Speech.said(rm["lines"][0])
+			_check("I'm no liar" in said or "select the report being questioned" in said, "misled-or-lying about yourself reads as misled, or asks for the reading (%s)" % said)
 	# present routing.
 	var lis2 = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))
 	if not lis2.is_empty():
@@ -266,9 +270,10 @@ func _init() -> void:
 	var Lc = w.living_good().filter(func(x): return not (x.id in [a, b, c, d]))[0]
 	var rc = Argue.evaluate(w, Lc, g.board[dcf - 1], g.board, 1.0)
 	print("conflict: agreement %.2f, line %s" % [rc["agreement"], rc["lines"][0]["text"]])
-	_check(rc["agreement"] >= 0.5 and Lc.ledger.has("arg:" + Argue.conclusion_key(pc["conclusion"])), "accepting a conflict records the argument receipt without legacy effects")
+	_check(rc["agreement"] >= 0.5 and Lc.ledger.values().all(func(e): return e.get("effects", []).is_empty()), "accepting a conflict is judged by the shared model without legacy effects")
 	var p0b = w.by_id[b].pressure
-	g._conflict_pressure(g.board[dcf - 1], 0.2, null)
+	# Native scrutiny only runs where the shared assessment didn't own the reply (fallback).
+	g._conflict_pressure(g.board[dcf - 1], 0.2, null, true)
 	_check(w.by_id[b].pressure > p0b, "presenting it raises pressure on those involved")
 	_check(g.file_deduction({"type": "conflict", "a": "", "group": [b]}, [k1]) < 0, "a one-person group is refused")
 	# Clerk vs both claims.
@@ -292,12 +297,18 @@ func _init() -> void:
 			La = w.living_good().filter(func(x): return not (x.id in [a, c]) and not x.ledger.has(assoc_e["base_eid"]))
 		var L1 = La[0]
 		var wt_before = Argue._expl_weight(w, L1, assoc_e)
-		Argue.evaluate(w, L1, g.board[dev - 1], g.board, 1.0)
+		# A is a Demon kill on this board, so the shared model won't be talked into "A is
+		# evil" here; stand in for a listener who believes it (their shared suspicion).
+		L1.suspicion[a] = Mind.susp(L1, a) + 0.4
 		var wt_after = Argue._expl_weight(w, L1, assoc_e)
 		print("association weight %.2f -> %.2f once they accept 'A is evil'" % [wt_before, wt_after])
 		_check(wt_after > wt_before, "association grows with belief in the base claim")
 	# Vindication + cascade: D (Gravedigger) says A was the Poisoner on night 2.
+	# The cascade hangs C, not A: the board already announced A as a Demon kill, and the
+	# shared model rightly treats a Demon victim as sincere.
 	var e_gd = {"day": 2, "role": "gravedigger", "data": {"executed": a, "role": "poisoner"}, "text": "A was the Poisoner"}
+	var hx: String = c
+	var e_gdx = {"day": 2, "role": "gravedigger", "data": {"executed": hx, "role": "poisoner"}, "text": "C was the Poisoner"}
 	var kgd = g.add_card(Mind.info_fact(w, w.by_id[d], e_gd))
 	var dmi = g.file_deduction({"type": "misled", "a": d, "night": 2}, [kgd])
 	var vin = g.link_cards([dmi, kgd])["result"]["matches"].map(func(m): return m["template"])
@@ -308,19 +319,20 @@ func _init() -> void:
 	Lv.known_claims = {}
 	Lv.beliefs = []
 	Lv.workshop_state = {}
-	w.by_id[a].alive = false
-	w.by_id[a].death_day = 2
-	w.by_id[a].death_cause = "executed"
-	w.public_event("execution", [a], "town")
-	w.executions.append({"day": 2, "id": a, "nominator": "player", "yes": [d], "no": [], "player_yes": true, "player_nominated": true})
+	w.by_id[hx].alive = false
+	w.by_id[hx].death_day = 2
+	w.by_id[hx].death_cause = "executed"
+	w.day = 2 # the public execution is dated the day it happened (it dates D's verdict)
+	w.public_event("execution", [hx], "town")
+	w.executions.append({"day": 2, "id": hx, "nominator": "player", "yes": [d], "no": [], "player_yes": true, "player_nominated": true})
 	w.day = 3
-	var e_a = {"day": 1, "role": "seer", "data": {"pair": [b, c], "yes": true}, "text": "A's seer reading"}
-	Mind.apply_info(w, Lv, w.by_id[a], e_a, 0.5)
-	var rel0 = Mind.reliability(Lv, a, 1)
-	Mind.apply_info(w, Lv, w.by_id[d], e_gd, 0.8)
-	var rel1 = Mind.reliability(Lv, a, 1)
+	var e_a = {"day": 1, "role": "seer", "data": {"pair": [b, a], "yes": true}, "text": "C's seer reading"}
+	Mind.apply_info(w, Lv, w.by_id[hx], e_a, 0.5)
+	var rel0 = Mind.reliability(Lv, hx, 1)
+	Mind.apply_info(w, Lv, w.by_id[d], e_gdx, 0.8)
+	var rel1 = Mind.reliability(Lv, hx, 1)
 	Mind.ledger_hear(w, Lv, "arg:doubt-d", [], 1.0, [], {"kind": "arg", "conclusion": {"type": "misled", "a": d, "night": 2}})
-	var rel2 = Mind.reliability(Lv, a, 1)
+	var rel2 = Mind.reliability(Lv, hx, 1)
 	print("A's readings: reliability %.2f -> %.2f after D's verdict -> %.2f once D is doubted" % [rel0, rel1, rel2])
 	_check(rel1 < rel0 and rel2 > rel1, "doubt cascades: discrediting the Gravedigger restores A's readings")
 	# Timeline and filters.

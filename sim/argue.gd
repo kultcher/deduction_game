@@ -148,6 +148,10 @@ static func _expl_weight(w, n, e: Dictionary) -> float:
 			var cred = 0.0
 			if e.get("base_eid", "") != "" and n.ledger.has(e["base_eid"]):
 				cred = clampf(n.ledger[e["base_eid"]]["weight"] * 1.5, 0.0, 1.0)  # how much they bought "X is evil"
+			elif e.get("base_who", "") != "" and n.suspicion.has(e["base_who"]) and Mind.susp(n, e["base_who"]) > 0.1:
+				# Shared presentations keep no `arg:` entry (purge 2c): how far they believe
+				# "X is evil" is their shared suspicion of X above the flat 0.1 start.
+				cred = clampf((Mind.susp(n, e["base_who"]) - 0.1) * 2.0, 0.0, 1.0)
 			elif e.get("base_src", "") != "" and w.by_id.has(e["base_src"]):
 				cred = _cred(w, n, e["base_src"]) * 0.8  # a Gravedigger's verdict, as credible as its source
 			return maxf(0.05 + 0.25 * e.get("times", 1) * cred + 0.9 * cred * 0.5 + Mind.susp(n, who) * 0.6, 0.02)
