@@ -53,18 +53,21 @@ func _reveal(size: int) -> void:
 	listener.npc_trust[d.id] = 0.95
 	accuser.beliefs = [{"kind": "saw", "who": d.id, "loc": "", "block": "docks", "day": 1, "phase": 3, "how": "window", "detail": "street"}]
 	Mind.refresh_beliefs(w, accuser, " (first outing)")
+	# The accuser says their window sighting when they nominate (the meeting flow passes
+	# spoken facts); a defence answers only what has been said.
+	var spoken: Array = [{"kind": "sighting", "source": accuser.id, "subject": [d.id], "block": "docks", "day": 1, "phase": 3}]
 	var rng = w.rng.state
-	var first = Mind.defend_self(w, d, accuser.id)
+	var first = Mind.defend_self(w, d, accuser.id, spoken)
 	var defs1: Array = _defences(listener)
 	check(first.moves == ["reveal"] and defs1.size() == 1 and defs1[0].effects.is_empty(), "a first gift defence records one receipt-only defence entry")
 	var w1: float = defs1[0].weight
 	var once = listener.suspicion.duplicate(true)
 	w.day += 1
-	Mind.defend_self(w, d, accuser.id)
+	Mind.defend_self(w, d, accuser.id, spoken)
 	check(listener.suspicion == once and _defences(listener).size() == 1 and is_equal_approx(_defences(listener)[0].weight, w1), "repeating the same gift explanation tomorrow adds no second discount or weight")
 	# Lowering trust while re-defending cannot overwrite a stronger prior hearing weight.
 	listener.npc_trust[d.id] = 0.05
-	Mind.defend_self(w, d, accuser.id)
+	Mind.defend_self(w, d, accuser.id, spoken)
 	check(_defences(listener).size() == 1 and is_equal_approx(_defences(listener)[0].weight, w1), "one owner keeps the strongest complete hearing weight")
 	for n in w.living():
 		if n == d:

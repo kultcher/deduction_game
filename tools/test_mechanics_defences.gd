@@ -42,7 +42,10 @@ func _init() -> void:
 	d.claim_public = true
 	accuser.beliefs = [{"kind": "saw", "who": d.id, "loc": "", "block": "docks", "day": 1, "phase": 3, "how": "window", "detail": "street"}]
 	Mind.refresh_beliefs(g.w, accuser, " (witnessed murder-block outing)")
-	var result = Mind.defend_self(g.w, d, accuser.id)
+	# The accuser says their window sighting when they nominate (the meeting flow passes
+	# spoken facts); a defence answers only what has been said.
+	var spoken: Array = [{"kind": "sighting", "source": accuser.id, "subject": [d.id], "block": "docks", "day": 1, "phase": 3}]
+	var result = Mind.defend_self(g.w, d, accuser.id, spoken)
 	var entries: Array = listener.ledger.values().filter(func(e): return e.meta.get("kind") == "defence")
 	check(result.moves == ["reveal"] and entries.size() == 1 and listener.workshop_state.owned.has(entries[0].eid), "gift defence becomes an owned claim; its native bonus is parked")
 	var plan = Shared.prepare(g.workshop_snapshot([], listener.id), {}, listener.ledger)
@@ -50,7 +53,7 @@ func _init() -> void:
 	check(plan.ready and claims.size() == 1 and is_equal_approx(claims[0].hearing_weight, entries[0].weight), "legacy defence strength and regard become claim hearing weight")
 	var first: Array = listener.workshop_state.facts.duplicate()
 	g.w.day += 1
-	Mind.defend_self(g.w, d, accuser.id)
+	Mind.defend_self(g.w, d, accuser.id, spoken)
 	check(listener.workshop_state.facts == first, "daily defence repeats retain the first receipt identity")
 	d.claim_public = false
 	d.role = "surveyor"
