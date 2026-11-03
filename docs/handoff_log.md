@@ -17,6 +17,72 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03 ~17:00 ET, Claude: slice C3 checked, green after 2 small fixes, on main
+
+- **Base:** `4077dce` as declared; unpacked on `csharp/slice-c3`, main merged in (meeting
+  plan + CI parity change, `9c4affd`), no conflicts.
+- **Build:** `dotnet build -c Debug`: 0 warnings, 0 errors. All 264 scripts parse. The C2
+  gotchas held: no `Packed*Array` consts, C2's `.get("source")` fixes kept, `GdFloor1e30` shared.
+- **Fixes needed (2), both in the C3 test's fixture paths, not the live game:**
+  1. **`Solver._movement_cs` night keys.** The GDScript twin keys `nights` by `str(night)`;
+     the C# wrapper used `str(int(night))`. The checkpoint v5 fixtures are JSON, so their
+     nights are floats and the keys came out `"1.0"` vs `"1"` (counts and forced-out
+     lists were identical). In-game nights are ints, so the golden never saw it. The
+     wrapper now keeps the cards' own key. **General rule for C4+:** where a GDScript
+     result is keyed or formatted from a value, format the original value, not a converted one.
+  2. **Warden report without `block`.** `live_activity._paths` read `card.block` on Warden
+     self-reports; the fixture's `r_ward` has none, so GDScript crashed while C# treated it
+     as "no match" (`wBlk >= 0` fails). Now `card.get("block", "")`, same result as C#.
+- **Suites** (.NET Godot, Linux): all 24 from the manifest plus `ci_fast_suites.txt` pass,
+  including `test_csharp_slice_c0`..`c3`, `test_case_eval`, `test_channel_sum_product`,
+  `test_workshop_factored_channels`/`_classes`, `test_prior_mapping`.
+- **Golden, `--tol 0`, 0 script errors:** `--mode gdscript` and `--mode csharp` both identical to
+  `baseline_82faa5b` on all five seeds, and csharp identical to gdscript (the new CI parity
+  check); csharp re-run after fix 1, still identical. Side by side: GDScript 823 s, C# 242 s
+  (**3.4x**; C2 was 1.8x).
+- **VERIFY:** profile_c0 seed 42, 21,750 boundary calls, 0 mismatches.
+
+### Profile, seed 42 (7 NPCs, to Day 4), self time
+
+| Stage | GDSCRIPT ms | CSHARP ms | C2 CSHARP ms |
+|---|---:|---:|---:|
+| outer_prep | 990 | 1001 | 1477 |
+| pack_inputs | 0 | 396 | 725 |
+| world_domain | 6684 | 923 | 703 |
+| live_activity | 3138 | 358 | 391 |
+| case_eval_compile | 344 | 103 | 570 |
+| channel_sum_product | 264 | 161 | 256 |
+| reason_attribution | 251 | 253 | 243 |
+| **total self** | **11672** | **3195** | **4365** |
+| **wall** | **12109** | **3662** | **4937** |
+
+`world_domain` now includes the `Solver.*` work you re-attributed, so its C# rise from 703
+to 923 ms is a relabel, not a regression (GDScript's rose the same way, 5825 to 6684).
+
+### Notes for Argon
+
+1. **C# is 3.3x faster end to end on seed 42** (wall 12.1 s to 3.7 s).
+2. **C4 (`reason_attribution`):** 253 ms self in C# over 26 calls (9.7 ms each), above the
+   150 ms threshold you set, and unchanged since C1. Its inclusive time is 653 ms. By that
+   test C4 is worth doing, but the bigger targets are `outer_prep` (1.0 s, 31% of C# self,
+   still pure GDScript) and `pack_inputs` (396 ms over 15,792 calls). `LiveActivity.routes`
+   is still the top packer (126 ms, 613 calls at 206 us) despite the env memo, so card
+   packing is now the cost there; `fits_weights` is next (113 ms, 754 calls).
+3. **CI change you should know about (`9c4affd`):** a new required `parity` job diffs the
+   csharp capture against the gdscript capture of the same commit. The diff against
+   `baseline_82faa5b` is now a warning, because meeting-overhaul slices will change behaviour
+   on purpose and re-record the baseline. For your slices nothing changes in practice:
+   both must still be identical. See `docs/golden_baseline.md`.
+4. **Kernel changes are now two-sided:** until the GDScript solver is retired, any change
+   to a ported file (including new roles touching possible worlds, bluffs or movement)
+   needs both implementations. Worth planning when the GDScript copies can be deleted.
+
+### Result
+
+- **Pushed to `main`.** Next actor: **Argon** (C4 or the `outer_prep`/packing work; your call).
+
+---
+
 ## 2026-11-03, Argon: slice C3 + C2 profile follow-ups delivered (`patch_004_slice_c3.zip`)
 
 - **Base:** `main` at `4077dcedb0aef0a4a8a2463a739214a8aa389eba` (`4077dce`).
