@@ -359,7 +359,9 @@ func _play_passive(sd: int, sz: int, day_limit: int, mode: int) -> Dictionary:
 			var day_r: Dictionary = {}
 			for npc in g.w.npcs:
 				if npc.alive:
-					day_r[npc.id] = Ownership.reasons_for(g, npc).duplicate(true)
+					# reasons_for fills workshop_state.reasons (it returns nothing)
+					Ownership.reasons_for(g, npc)
+					day_r[npc.id] = npc.workshop_state.get("reasons", {}).duplicate(true)
 			reasons_snap[g.w.day] = day_r
 		var cmd: String = _passive_command(g)
 		g.command(cmd)

@@ -15,8 +15,6 @@ static var _mru_handle: int = -1
 static var _mru_epoch: int = -1
 
 const _CARD_STRIDE = 20
-const _EMPTY_INT32 := PackedInt32Array()
-const _EMPTY_INT64 := PackedInt64Array()
 
 static func available(view: Dictionary) -> bool:
 	return view.get("live_activity", false)
@@ -861,7 +859,7 @@ static func _score_gd(world: Dictionary, factor: Dictionary) -> float:
 			return 0.5 * direct + 0.5 * (pre_s * post_s)
 	return direct
 
-static func scores(universe: Array, factor: Dictionary, u_handle: int = -1, sub_indices: PackedInt32Array = _EMPTY_INT32) -> PackedFloat64Array:
+static func scores(universe: Array, factor: Dictionary, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedFloat64Array:
 	if not SolverBackend.profiling_enabled:
 		return _scores_dispatch(universe, factor, u_handle, sub_indices)
 	var _st: int = SolverBackend.begin_stage("live_activity")
@@ -877,7 +875,7 @@ static func _scores_dispatch(universe: Array, factor: Dictionary, u_handle: int,
 	if mode == SolverBackend.Mode.GDSCRIPT:
 		return _scores_gd(universe, factor)
 	var fh: int = _ensure_factor_handle(factor)
-	var fallback_worlds: PackedInt64Array = _EMPTY_INT64
+	var fallback_worlds: PackedInt64Array = PackedInt64Array()
 	var pack_u: int = 0
 	if u_handle < 0:
 		var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
