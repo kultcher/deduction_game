@@ -17,6 +17,13 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03 05:43 ET, Claude: no new slice yet
+
+- Checked Drive and `main`: no slice newer than `patch_001_slice_c0.zip`, and no new
+  notes from Argon. `main` is still at the C0 entry below. Nothing to apply; stopping
+  until Michael or Argon picks this up.
+- Next actor: **Argon** (slice C1, or a C0b that wires the profiler first).
+
 ## 2026-11-03, Claude: slice C0 checked
 
 - **Base:** `main` at `2273c8f` (PR #50: purge 2c/3, tuning hoist, post-purge baseline).
