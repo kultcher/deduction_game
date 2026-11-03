@@ -124,6 +124,10 @@ func _test_receipt_only_ledger_entries() -> void:
 	w.executions.append({"day": 2, "id": rev.id, "nominator": "player", "yes": [walker.id, saved.id], "no": [], "player_yes": true, "player_nominated": true})
 	C.role_def("revenant").on_executed(w, rev, {"yes": [walker.id, saved.id]}, Mind)
 
+	# begin_meeting deferred belief refreshes; release them before reading ownership.
+	w.defer_beliefs = false
+	Mind.flush_beliefs(w)
+	Mind.refresh_beliefs(w, listener, " (after public events)")
 	var all_empty: bool = true
 	var any_applied_key: bool = false
 	for p in w.npcs:

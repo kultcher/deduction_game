@@ -124,7 +124,13 @@ func _test_phase1_2_pre_gift_workshop_attach() -> void:
 	g.new_case(92974, 7)
 	var toggled: Array = g.w.dlog.entries.filter(func(e): return "shared ownership toggled" in str(e.get("reason", "")))
 	_check(toggled.is_empty(), "new_case attaches Workshop before Night 0 and Day 1 gifts with zero ownership-toggled retraction churn")
-	_check(g.w.living_good().all(func(n): return n.workshop_state.get("active", false)), "all Good NPCs have active shared Workshop state from initial setup")
+	# There is no enabled flag any more (purge 3). A mind that has heard nothing yet has no
+	# shared state; its first refresh makes it active.
+	_check(g.w.living_good().all(func(n): return not n.workshop_state.has("enabled")), "no NPC carries the retired workshop enabled flag")
+	var idle: Array = g.w.living_good().filter(func(n): return not n.workshop_state.get("active", false))
+	if not idle.is_empty():
+		Mind.refresh_beliefs(g.w, idle[0], " (first refresh)")
+	_check(idle.is_empty() or idle[0].workshop_state.get("active", false), "a mind's first shared refresh activates its shared state")
 
 
 func _test_phase1_3_evil_nomination_and_vote_coherence() -> void:
@@ -221,6 +227,10 @@ func _test_phase1_5_revenant_curse_order_and_role_invalidation() -> void:
 	_check(is_equal_approx(friend.trust, trust_before), "friend does not mourn or dock player Rapport when executed target triggers public Revenant curse")
 	_check(friend.believed_roles.get(rev.id, "") == "revenant", "public Revenant curse sets believed_roles to revenant and invalidates fake Good claim")
 
+	# The game logs the public execution and releases open_meeting's deferred refreshes.
+	g.w.public_event("execution", [rev.id], "town")
+	g.w.defer_beliefs = false
+	Mind.flush_beliefs(g.w)
 	# Fake Gravedigger claiming proven Revenant held a Good role backfires onto the Gravedigger.
 	var fake_gd = g.w.by_id[g.w.demon_id]
 	var fake_entry = {"day": 3, "role": "gravedigger", "data": {"executed": rev.id, "role": "medium"}, "fake": true, "shared": true, "text": "Isolde was Medium"}
