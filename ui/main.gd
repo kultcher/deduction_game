@@ -14,6 +14,7 @@ const MapView = preload("res://ui/map_view.gd")
 const MeetingView = preload("res://ui/meeting_view.gd")
 const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
+const TraceArt = preload("res://ui/trace_art.gd")
 const ProfilePanel = preload("res://ui/profile_panel.gd")
 const CastList = preload("res://ui/cast_list.gd")
 const LogText = preload("res://ui/log_text.gd")
@@ -37,6 +38,9 @@ var map_stage: Control
 var conversation_view
 var conversation_show_map = false
 var conversation_finished = false
+## Crime-scene traces from the last search, shown one at a time in the conversation view.
+var inspect_pages: Array = []
+var inspect_index = 0
 var meeting_view
 var actions: Container
 var action_title: Label
@@ -426,6 +430,7 @@ func _new_case() -> void:
 		return
 	conversation_finished = false
 	conversation_show_map = false
+	inspect_pages.clear()
 	_case_seed = int(seed_box.value)
 	case_state.select_card(0)
 	g = Game.new()
@@ -652,6 +657,7 @@ func _run(cmd: String) -> void:
 	_print("\n> " + cmd)
 	_print(g.command(cmd))
 	_capture_conversation(previous_state, cmd)
+	_capture_scene_search(cmd)
 	if not conversation_finished:
 		_consume_headlines()
 	if g.meeting_streaming() and not conversation_finished:
@@ -675,6 +681,47 @@ func _capture_conversation(previous_state: String, cmd: String) -> void:
 		if not verb in ["bye", "leave", "done"]:
 			conversation_finished = true
 			conversation_show_map = false
+
+## A search that turns up crime-scene traces shows them in the conversation view, the item
+## where the portrait goes; the log keeps the same text. Any other command closes it.
+func _capture_scene_search(cmd: String) -> void:
+	inspect_pages.clear()
+	inspect_index = 0
+	if cmd.strip_edges().get_slice(" ", 0).to_lower() not in ["search", "s"]:
+		return
+	var prose: Array = []
+	var cards: Array = []
+	for e in g.last_events:
+		if e.get("k", "") == "narration" and cards.is_empty():
+			prose.append(str(e.get("text", "")))
+		elif e.get("k", "") == "card":
+			var c: Dictionary = g.board[int(e["n"]) - 1]
+			if c.get("kind", "") == "trace":
+				cards.append(c)
+	# Each trace's narration comes just before the cards are minted, in the same order.
+	prose = prose.slice(maxi(0, prose.size() - cards.size()))
+	for i in range(cards.size()):
+		var c: Dictionary = cards[i]
+		var victim = g.w.by_id.get(str(c.get("victim", "")))
+		var place: String = ("%s's cottage" % victim.name) if victim != null else "The crime scene"
+		var title: String = place if cards.size() == 1 else "%s · trace %d of %d" % [place, i + 1, cards.size()]
+		var text: String = prose[i] if i < prose.size() and prose[i] != "" else str(c.get("text", ""))
+		inspect_pages.append({"title": title, "texture": TraceArt.icon(c, "large"), "text": text})
+	if not inspect_pages.is_empty():
+		_show_inspect_page()
+
+func _show_inspect_page() -> void:
+	var page: Dictionary = inspect_pages[inspect_index]
+	conversation_view.show_item(page.title, page.texture, page.text)
+
+func _inspect_next() -> void:
+	inspect_index += 1
+	if inspect_index >= inspect_pages.size():
+		inspect_pages.clear()
+		inspect_index = 0
+	else:
+		_show_inspect_page()
+	_refresh_all()
 
 func _leave_finished_conversation() -> void:
 	conversation_finished = false
@@ -744,7 +791,7 @@ func _refresh_all() -> void:
 		meeting_show_map = false  # a vote starting (or being counted) brings the circle back
 	_last_state = g.state
 	map_stage.visible = conversation_finished or not meeting or meeting_show_map
-	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map)
+	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map) or not inspect_pages.is_empty()
 	meeting_view.visible = meeting and not meeting_show_map and not conversation_finished
 	input.editable = not conversation_finished
 	if meeting:
@@ -843,6 +890,9 @@ func _refresh_actions() -> void:
 		action_title.text = "Conversation finished"
 		_button(conversation_view.controls, "Leave conversation", _leave_finished_conversation)
 		return
+	if not inspect_pages.is_empty():
+		var more: bool = inspect_index < inspect_pages.size() - 1
+		_button(conversation_view.controls, "Next trace" if more else "Done", _inspect_next)
 	if g.meeting_streaming():
 		action_title.text = "Day %d: the town meeting" % w.day
 		_hint("The town is speaking…")

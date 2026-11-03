@@ -13,6 +13,7 @@ const EvidenceContext = preload("res://ui/evidence_context.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
 const TraceSolver = preload("res://workshop/trace_solver.gd")
+const TraceTooltip = preload("res://ui/trace_tooltip.gd")
 var model
 var zoom = 0.85
 var pan = Vector2(50, 10)
@@ -455,7 +456,11 @@ func _can_drop_data(_at: Vector2, data) -> bool:
 func _drop_data(_at: Vector2, data) -> void:
 	cards_dropped.emit(data["cards"])
 
+## The Trace Chain under the pointer, when that's what the tooltip is about.
+var _tip_chain: String = ""
+
 func _get_tooltip(at: Vector2) -> String:
+	_tip_chain = ""
 	var context = false
 	for id in hit:
 		if hit[id].has_point(at) and EvidenceContext.is_context(_evidence_card(id)):
@@ -463,7 +468,27 @@ func _get_tooltip(at: Vector2) -> String:
 	for i in range(tips.size() - 1, -1, -1):
 		if tips[i].rect.has_point(at):
 			return tips[i].text + ("\n" + EvidenceContext.EXPLANATION if context else "")
+	for id in hit:
+		if hit[id].has_point(at) and model.nodes.has(id) and model.nodes[id].kind == "trace_chain":
+			var traces: Array = _chain_traces(id)
+			if not traces.is_empty():
+				_tip_chain = id
+				return "\n".join(PackedStringArray(traces.map(func(tr): return _chain_trace_text(tr))))
 	return EvidenceContext.EXPLANATION if context else ""
+
+func _chain_traces(id: String) -> Array:
+	return TraceSolver.evaluate_selection(model.view, model.nodes[id].get("selected_by_night", {})).get("selected_traces", [])
+
+func _chain_trace_text(tr: Dictionary) -> String:
+	var shared: String = " (one of two traces at this scene)" if int(tr.get("scene_trace_count", 1)) >= 2 else ""
+	return "Night %d%s: %s" % [int(tr.get("night", 0)), shared, str(tr.get("text", ""))]
+
+## A Trace Chain's tooltip lists every trace it bundles, each with its artwork.
+func _make_custom_tooltip(for_text: String) -> Object:
+	if _tip_chain == "" or not model.nodes.has(_tip_chain):
+		return null
+	var rows: Array = _chain_traces(_tip_chain).map(func(tr): return {"trace": tr, "text": _chain_trace_text(tr)})
+	return TraceTooltip.build(rows, model.title(_tip_chain))
 
 # ------------------------------------------------------------ evidence cards
 
