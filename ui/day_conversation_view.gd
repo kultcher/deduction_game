@@ -34,6 +34,16 @@ const CONSTANCE_EXPRESSIONS = {
 const FADE_SECONDS = 0.15
 const PORTRAIT_FRAME = [0.01, 0.02, 0.48, 1.0]   # anchors: left, top, right, bottom
 const ITEM_FRAME = [0.07, 0.12, 0.42, 0.72]      # an object sits level with the speech bubble
+# Line boil test (ui/line_boil.gdshader): rotoscope-style redrawn ink on these portraits,
+# flaring on expression changes. Layers come from tools/make_line_boil_layers.py.
+const LINE_BOIL = preload("res://ui/line_boil.gdshader")
+const LINE_BOIL_IDS = ["edda"]
+const LINE_BOIL_DIR = "res://assets/art/line_boil_poc/%s/%s"
+const BOIL_REST = 0.15
+const BOIL_FLARE = {"harsh": 1.0, "neutral": 0.45}   # others: BOIL_FLARE_DEFAULT
+const BOIL_FLARE_DEFAULT = 0.65
+const BOIL_DECAY_SECONDS = 0.45
+static var line_boil_enabled = true
 const REVEAL_PER_SECOND = 90.0
 
 var formatter = Formatter.new()
@@ -49,6 +59,10 @@ var reveal_total = 0
 var controls: HFlowContainer
 var action_hint: Label
 var person_id = ""
+var boil = BOIL_REST
+var current_expression = "neutral"
+var boil_materials = {}   # base texture path -> ShaderMaterial
+var boil_warp: NoiseTexture2D
 var lines: Array = []
 
 var _built: bool = false
@@ -156,6 +170,46 @@ void fragment() {
 	controls.add_theme_constant_override("v_separation", 5)
 	action_content.add_child(controls)
 
+func _boil_warp() -> NoiseTexture2D:
+	if boil_warp == null:
+		var noise = FastNoiseLite.new()
+		noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		noise.frequency = 0.012
+		noise.fractal_octaves = 2
+		boil_warp = NoiseTexture2D.new()
+		boil_warp.width = 512
+		boil_warp.height = 512
+		boil_warp.seamless = true
+		boil_warp.noise = noise
+	return boil_warp
+
+func _boil_dir(id: String, expression: String) -> String:
+	if not line_boil_enabled or id not in LINE_BOIL_IDS:
+		return ""
+	var dir = LINE_BOIL_DIR % [id, expression]
+	return dir if ResourceLoader.exists(dir + "-base.png") else ""
+
+func _boil_material(texture: Texture2D) -> ShaderMaterial:
+	if texture == null or not texture.resource_path.ends_with("-base.png") or "line_boil_poc" not in texture.resource_path:
+		return null
+	var key = texture.resource_path
+	if not boil_materials.has(key):
+		var dir = key.trim_suffix("-base.png")
+		var m = ShaderMaterial.new()
+		m.shader = LINE_BOIL
+		for v in ["a", "b", "c"]:
+			m.set_shader_parameter("lines_" + v, load("%s-lines-%s.png" % [dir, v]))
+		m.set_shader_parameter("warp_tex", _boil_warp())
+		boil_materials[key] = m
+	return boil_materials[key]
+
+func _sync_portrait_materials() -> void:
+	portrait.material = _boil_material(portrait.texture)
+	previous_portrait.material = _boil_material(previous_portrait.texture)
+	for r in [portrait, previous_portrait]:
+		if r.material != null:
+			r.material.set_shader_parameter("boil", boil)
+
 func set_action_hint(text: String) -> void:
 	_build()
 	action_hint.text = text
@@ -168,6 +222,9 @@ func begin(id: String, name: String) -> void:
 	_stop_portrait_fade()
 	_portrait_frame(PORTRAIT_FRAME)
 	portrait.texture = _expression_texture(id, "neutral")
+	current_expression = "neutral"
+	boil = BOIL_REST
+	_sync_portrait_materials()
 	speaker.text = name
 	speaker.add_theme_color_override("font_color", UITheme.ink_of(C.npc_color(id)))
 	_render()
@@ -199,6 +256,9 @@ func _expression_texture(id: String, expression: String) -> Texture2D:
 	var fallback: Texture2D = LARGE.get(id, UITheme.tex("art/portraits/" + id))
 	if expression not in EXPRESSIONS:
 		expression = "neutral"
+	var boil_dir = _boil_dir(id, expression)
+	if not boil_dir.is_empty():
+		return load(boil_dir + "-base.png")
 	var path: String = CONSTANCE_EXPRESSIONS.get(expression, "") if id == "constance" else "res://assets/art/cast_expressions/%s/%s-v1.png" % [id, expression]
 	if ResourceLoader.exists(path):
 		return load(path)
@@ -209,12 +269,15 @@ func _expression_texture(id: String, expression: String) -> Texture2D:
 ## Presentation only: callers supply a public expression cue, not hidden game state.
 func set_expression(expression: String) -> void:
 	_build()
+	current_expression = expression
 	var texture = _expression_texture(person_id, expression)
 	if portrait.texture == texture:
 		return
 	_stop_portrait_fade()
 	previous_portrait.texture = portrait.texture
 	portrait.texture = texture
+	boil = maxf(boil, BOIL_FLARE.get(expression, BOIL_FLARE_DEFAULT))
+	_sync_portrait_materials()
 	if not is_visible_in_tree() or previous_portrait.texture == null:
 		return
 	previous_portrait.modulate.a = 1.0
@@ -261,11 +324,24 @@ func _render() -> void:
 		reveal_hint.visible = reveal_total > 0
 
 func _process(delta: float) -> void:
+	if portrait != null and portrait.material != null and boil > BOIL_REST:
+		boil = BOIL_REST + (boil - BOIL_REST) * exp(-delta / BOIL_DECAY_SECONDS)
+		_sync_portrait_materials()
 	if is_visible_in_tree() and speech != null and speech.visible_characters >= 0 and speech.visible_characters < reveal_total:
 		reveal_position = minf(float(reveal_total), reveal_position + delta * REVEAL_PER_SECOND)
 		speech.visible_characters = int(reveal_position)
 		if speech.visible_characters >= reveal_total:
 			reveal_hint.hide()
+
+## Line boil test: F8 flips between boiling ink and the plain portrait.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if is_visible_in_tree() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F8:
+		line_boil_enabled = not line_boil_enabled
+		_stop_portrait_fade()
+		portrait.texture = _expression_texture(person_id, current_expression)
+		boil = BOIL_FLARE_DEFAULT
+		_sync_portrait_materials()
+		get_viewport().set_input_as_handled()
 
 func reveal_all() -> void:
 	_build()
