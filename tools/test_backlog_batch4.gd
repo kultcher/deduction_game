@@ -840,6 +840,8 @@ func count_reason_names():
 	for role in ["hearthwitch", "dowser"]:
 		var zero = {"day": 1, "phase": 0, "role": role, "data": {"group": [listener.id], "count": 0}, "shared": true}
 		check(not C.role_def(role).has_method("info_effects") and is_equal_approx(C.role_def(role).defend_strength(zero["data"], listener.id), want[role]), "zero-count reading preserves RoleDef defence strength without legacy info_effects: " + role)
+		if role == "hearthwitch":
+			continue # benched (not in the script) and not read by the shared model
 		listener.ledger = {}
 		listener.suspicion[source.id] = 0.1
 		var group: Array = [listener.id]

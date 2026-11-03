@@ -120,6 +120,7 @@ func _test_receipt_only_ledger_entries() -> void:
 	rev.alive = false
 	rev.death_day = 2
 	rev.death_cause = "executed"
+	w.public_event("vote", [rev.id], "town", {"nominee": rev.id, "nominator": "player", "yes": [walker.id, saved.id], "no": [], "player_yes": true, "count": 3, "threshold": 3, "outcome": "on_block"})
 	w.public_event("execution", [rev.id], "town")
 	w.executions.append({"day": 2, "id": rev.id, "nominator": "player", "yes": [walker.id, saved.id], "no": [], "player_yes": true, "player_nominated": true})
 	C.role_def("revenant").on_executed(w, rev, {"yes": [walker.id, saved.id]}, Mind)
