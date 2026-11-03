@@ -26,6 +26,10 @@ func _init() -> void:
 	for id in listener.suspicion:
 		listener.suspicion[id] = 0.1
 	listener.suspicion[target.id] = 0.45
+	# These checks are about the social formulas alone. Every mind is shared now (purge 3)
+	# and vote() reconsiders through a shared refresh, whose outside layer feeds priors;
+	# hold refreshes so the fixture's suspicions stay exactly as set.
+	g._workshop_busy = true
 	var before = JSON.stringify([listener.suspicion, listener.ledger, listener.honesty, listener.discounted, listener.npc_trust, listener.trust, w.rng.state])
 	for accuser in w.npcs:
 		if accuser != listener and accuser != target:
@@ -53,6 +57,7 @@ func _init() -> void:
 	w.stances.clear()
 	Mind.refresh_all_consensus(w)
 	check(listener.consensus_pressure.get(target.id, 0.0) == 0, "withdrawing the final stance clears the social pressure")
+	g._workshop_busy = false
 	_opinions()
 	print("Social evidence boundary: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -74,13 +79,17 @@ func _opinions() -> void:
 	check(listener.hearsay.size() == count + 1 and is_equal_approx(listener.npc_trust[source.id], minf(1.0, trust + 0.02)), "opinion gossip retains its social conversation and teller bond")
 	listener.suspicion[target.id] = 0.9
 	listener.suspicion[subject.id] = 0.9
+	# Settle the shared refresh over the new outside values first, so the checks below
+	# measure only what each hearing adds.
+	Mind.refresh_beliefs(g.w, listener, " (settle fixture)")
+	var settled: float = listener.suspicion[target.id]
 	var psychology = {"role": "psychologist", "day": 1, "data": {"subject": subject.id, "trusts": target.id, "suspects": source.id}}
 	Mind.apply_info(g.w, listener, source, psychology, 1.0)
-	check(listener.ledger[Mind.info_eid(source.id, psychology)].effects.is_empty() and is_equal_approx(listener.suspicion[target.id], 0.9), "learning who trusts whom does not create guilt by association")
+	check(listener.ledger[Mind.info_eid(source.id, psychology)].effects.is_empty() and is_equal_approx(listener.suspicion[target.id], settled), "learning who trusts whom does not create guilt by association")
 	check(Mind.card_strength(g.w, psychology, target) == 0 and Mind.defend_strength(psychology, target.id) == 0, "social readings carry zero accusation or defence strength")
 	var relay = {"role": "medium", "day": 1, "data": {"dead": subject.id, "item": {"type": "suspicion", "about": target.id}}}
 	Mind.apply_info(g.w, listener, source, relay, 1.0)
-	check(listener.ledger[Mind.info_eid(source.id, relay)].effects.is_empty() and is_equal_approx(listener.suspicion[target.id], 0.9), "a dead person's opinion has no alignment effect")
+	check(listener.ledger[Mind.info_eid(source.id, relay)].effects.is_empty() and is_equal_approx(listener.suspicion[target.id], settled), "a dead person's opinion has no alignment effect")
 	var number = g.add_card({"kind": "info", "source": source.id, "role": "medium", "day": 1, "data": relay.data, "text": "The deceased distrusted them"})
 	var value = preload("res://workshop/solver.gd").empty_case()
 	value.cards = [Live.Evidence.normalize_card(g.board[number - 1]).id]

@@ -48,7 +48,9 @@ func _init() -> void:
 	var size: int = listener.ledger.size()
 	Mind.press(g.w, listener, card)
 	check(listener.ledger.size() == size and listener.ledger[counter].times == 2, "repeated pressing has one stable claim owner")
-	check(Mind.claim_credence(listener, rival.id, "seer") > 0 and listener.workshop_state.get("active", false), "shared ownership retains claim eff weight")
+	# There is no switch to retract ownership any more (purge 3): the claim stays owned by
+	# the shared model, so its legacy credence stays parked.
+	check(is_zero_approx(Mind.claim_credence(listener, rival.id, "seer")) and listener.workshop_state.get("active", false) and listener.workshop_state.owned.has(eid), "the shared model keeps owning the claim; legacy credence stays parked")
 	var report = {"id": "anonymous", "kind": "report", "source": "a", "role": "seer", "testimony_only": true}
 	var view = {"cards": [report]}
 	check(not Assess.conclusion_issues(view, {"cards": [report.id], "conclusion": {"type": "role", "target": "a", "role": "seer"}}).is_empty(), "an anonymous reading retold by a teller is not their gift declaration")
