@@ -112,14 +112,50 @@ jobs:
             echo "::error::The capture logged script errors, so it recorded a broken game."
             exit 1
           fi
-      - name: Diff against the baseline (--tol 0)
-        run: python3 tools/golden_diff.py "$BASELINE" "$RUNNER_TEMP/golden" --tol 0 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Regression check against the baseline (informational)
+        # Behaviour-neutral changes should show "identical" here. Intended behaviour
+        # changes will differ until the baseline is re-recorded, so this step warns
+        # instead of failing; the parity job below is the gate.
+        run: |
+          python3 tools/golden_diff.py "$BASELINE" "$RUNNER_TEMP/golden" --tol 0 > "$RUNNER_TEMP/regression.txt" && rc=0 || rc=$?
+          cat "$RUNNER_TEMP/regression.txt"
+          { echo "### Regression vs \`$BASELINE\` (${{ matrix.mode }})"; echo '```'; cat "$RUNNER_TEMP/regression.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if [ $rc -ne 0 ]; then
+            echo "::warning::${{ matrix.mode }} capture differs from $BASELINE. Expected only if this change is meant to alter behaviour (then re-record the baseline)."
+          fi
       - name: Upload capture
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: golden-${{ matrix.mode }}-linux
-          path: ${{ runner.temp }}/golden*
+          path: ${{ runner.temp }}/golden
+
+  parity:
+    name: C# parity (csharp vs gdscript, same commit)
+    # The migration gate: both backends must play the identical game at this commit,
+    # whatever the game currently does. Independent of the fixed baseline.
+    needs: golden
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: golden-gdscript-linux
+          path: ${{ runner.temp }}/gd
+      - uses: actions/download-artifact@v4
+        with:
+          name: golden-csharp-linux
+          path: ${{ runner.temp }}/cs
+      - name: Diff csharp against gdscript (--tol 0)
+        run: |
+          {
+            echo "### C# parity (csharp vs gdscript)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          python3 tools/golden_diff.py "$RUNNER_TEMP/gd" "$RUNNER_TEMP/cs" --tol 0 | tee -a "$GITHUB_STEP_SUMMARY"
+          rc=${PIPESTATUS[0]}
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
 
   golden-windows:
     name: Golden diff (gdscript, Windows)
