@@ -2141,7 +2141,9 @@ func _resolve_night() -> void:
 	# Each NPC's hunches at day's end: tomorrow's Confidence resists moves against them.
 	for n in w.npcs:
 		for mind in [n, n.shadow]:
-			if mind != null and not mind.workshop_state.is_empty():
+			# Every mind is shared now (purge 3): commit even for one that hasn't refreshed
+			# yet, as before, when the retired enabled key kept its state non-empty.
+			if mind != null:
 				mind.workshop_state["committed_lean"] = Mind.suspicion_view(mind).duplicate(true)
 				mind.workshop_state["committed_requested"] = mind.workshop_state.get("requested", {}).duplicate(true)
 	_settle_offers()

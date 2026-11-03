@@ -51,8 +51,6 @@ static func dawn(g) -> void:
 		if n.claim_record.is_empty():
 			continue
 		var mind = n.shadow if n.is_evil() and n.shadow != null else n
-		if mind.workshop_state.is_empty():
-			continue
 		var agreement = _agreement(g, mind)
 		if agreement == null:
 			continue
