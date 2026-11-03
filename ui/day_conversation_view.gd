@@ -39,10 +39,10 @@ const ITEM_FRAME = [0.07, 0.12, 0.42, 0.72]      # an object sits level with the
 const LINE_BOIL = preload("res://ui/line_boil.gdshader")
 const LINE_BOIL_IDS = ["edda"]
 const LINE_BOIL_DIR = "res://assets/art/line_boil_poc/%s/%s"
-const BOIL_REST = 0.15
+const BOIL_REST = 0.3
 const BOIL_FLARE = {"harsh": 1.0, "neutral": 0.45}   # others: BOIL_FLARE_DEFAULT
 const BOIL_FLARE_DEFAULT = 0.65
-const BOIL_DECAY_SECONDS = 0.45
+const BOIL_DECAY_SECONDS = 1.0
 static var line_boil_enabled = true
 const REVEAL_PER_SECOND = 90.0
 
@@ -225,6 +225,10 @@ func begin(id: String, name: String) -> void:
 	current_expression = "neutral"
 	boil = BOIL_REST
 	_sync_portrait_materials()
+	if portrait.material != null:
+		print("line boil on for %s (B toggles, Shift+B flares)" % id)
+	elif id in LINE_BOIL_IDS:
+		print("line boil: no layers found for %s at %s" % [id, LINE_BOIL_DIR % [id, "neutral"]])
 	speaker.text = name
 	speaker.add_theme_color_override("font_color", UITheme.ink_of(C.npc_color(id)))
 	_render()
@@ -333,15 +337,22 @@ func _process(delta: float) -> void:
 		if speech.visible_characters >= reveal_total:
 			reveal_hint.hide()
 
-## Line boil test: F8 flips between boiling ink and the plain portrait.
+## Line boil test, in a conversation: B flips between boiling ink and the plain portrait,
+## Shift+B fires a flare (as an expression change would).
 func _unhandled_key_input(event: InputEvent) -> void:
-	if is_visible_in_tree() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F8:
+	if not (is_visible_in_tree() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_B):
+		return
+	if event.shift_pressed:
+		boil = 1.0
+		_sync_portrait_materials()
+	else:
 		line_boil_enabled = not line_boil_enabled
+		print("line boil ", "on" if line_boil_enabled else "off")
 		_stop_portrait_fade()
 		portrait.texture = _expression_texture(person_id, current_expression)
 		boil = BOIL_FLARE_DEFAULT
 		_sync_portrait_materials()
-		get_viewport().set_input_as_handled()
+	get_viewport().set_input_as_handled()
 
 func reveal_all() -> void:
 	_build()
