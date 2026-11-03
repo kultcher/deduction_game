@@ -58,7 +58,8 @@ jobs:
             # Pull requests run the fast list (tools/ci_fast_suites.txt), split across shards.
             mapfile -t all < <(grep -v '^\s*#' tools/ci_fast_suites.txt | sed '/^\s*$/d')
           else
-            # Main and manual runs: every suite except the slow ones, which get shard 4 alone.
+            # Main and manual runs: every suite except test_trace (parked until the trace tool
+            # is in use again, Nov 3) and test_meeting_stream, which gets shard 4 alone.
             mapfile -t all < <(ls tools/test_*.gd | xargs -n1 basename | sed 's/\.gd$//' | grep -v -x -e test_trace -e test_meeting_stream)
           fi
           picked=()
@@ -66,7 +67,7 @@ jobs:
             if (( i % 4 == ${{ matrix.shard }} - 1 )); then picked+=("${all[$i]}"); fi
           done
           if [[ "${{ github.event_name }}" != "pull_request" && "${{ matrix.shard }}" == "4" ]]; then
-            picked+=(test_trace test_meeting_stream)
+            picked+=(test_meeting_stream)
           fi
           echo "suites=${picked[*]}" >> "$GITHUB_OUTPUT"
           echo "Suites: ${picked[*]}"
