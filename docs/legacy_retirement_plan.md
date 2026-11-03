@@ -127,12 +127,68 @@ Goal: make shared Workshop evaluation unconditional, eliminate the native belief
   5. **Tests:** Updated all 37 affected suites in `tools/` (removing switch toggles and native-parity blocks, dropping `test_legacy_migration`'s native migration toggle, and rewriting fallback/Gravedigger checks to assert Phase 3 behaviour) and added `tools/test_legacy_purge_phase3.gd`.
   6. **Baselines:** Native is gone (decision 1); record the first post-purge bot baseline once the tuning overhaul settles.
 
-### Phase 4: retire the template evaluator (after the bot builds Workshop cases)
+### Phase 4: retire the template evaluator and the last legacy numbers (Nov 3 plan)
 
-1. The bot files Workshop cases instead of two-card template deductions (backlog item "Bot builds Case Workshop cases").
-2. Delete `Argue.evaluate`, `_apply`, `effects_of`, `support_refs`, the evil argument masks and argument lines, then `sim/argue.gd` itself; point remaining `Argue.*` callers at `Deduction`.
-3. Remove the `link` / `conclude` text commands.
-4. **Decision needed then:** whether the case board's template matcher (`Deduction.check`, which files "matched" deductions and powers the link helper) stays as a player-facing helper or goes with the board if the Workshop canvas replaces it.
+Decided with Michael, Nov 3: **purge everything left of the old deduction system**, and
+build the bot on the shared model. Claude implements it. Order:
+
+**4a. Presentations stop going through `Argue.evaluate` (should not change behaviour).**
+`GamePresentation._evaluate_deduction_inner` still calls `Argue.evaluate` for every
+presentation. For good listeners it hands straight to `w.workshop_present`, but it also
+does three jobs the Workshop path doesn't:
+1. **Evil listeners.** `WorkshopPresentation._present` returns `{}` for evil NPCs; `Argue`
+   answers for them with the evil mask (`_evil_mask`, `_argument_descriptor`,
+   `_evil_reason`, intel on `player_suspects`) and, through `shadow_eval`, as their good
+   self unless breaking cover is worth it. Move this into a small presentation-reply module
+   beside `WorkshopPresentation`, unchanged.
+2. **Repeat counting** (`n.heard["ded:<conclusion>|<facts>"]`). Move unchanged.
+3. **The template fallback** (good listener, Workshop returned `{}`: the
+   `_workshop_native_submission` path and stale-wrapper cases). Delete it: per the standing
+   rule, presentations never fall back; the listener answers with the Workshop's
+   `_unavailable` reason instead. This is the one behaviour change in 4a; log how often it
+   fired before removing it.
+
+Check: active bot games before/after on the same seeds (the golden's passive player never
+presents), plus the presentation and shadow-self suites.
+
+**4b. Replace the hand-set strength numbers.** `Mind.card_strength` / `defend_strength`
+(and the 12 role `card_strength` / `defend_strength` hooks, `night_sighting_scale`) no
+longer touch beliefs but still drive social reactions to evidence, which breaks "no
+evidence judged by both systems":
+- **Presentation direction** (`game_presentation.gd`, incriminate vs clear per target):
+  from card structure only (`Gifts.implicated`, `subjects`, clears). No strengths.
+- **Pressing with a card** (`mind_dialogue.gd`) and **self-support rapport**
+  (`workshop_presentation.gd`, `mind.gd`): read the shared model's own weight for that
+  card from the reason attribution the jury already computes; a small fixed value
+  (new `Tuning` constant) for cards it has no entry for.
+- Delete the role hooks, `night_sighting_scale`, the strength tuning tables.
+Changes press outcomes slightly; covered by a before/after pressing test.
+
+**4c. The bot builds Workshop cases** (backlog "Bot builds Case Workshop cases", decided):
+- **Strength settings:** passive bot stays the floor; the new active bot is an
+  "analyst", near-ideal reader of the player's board, with an `--insight` setting
+  (default 1.0) that degrades it (misses cards / noisy weights) for a human-ish run.
+- **Information:** the player's board only. The hidden `w.dropped` peek goes.
+- **Ranking:** a neutral test juror's posterior over the board replaces `_scores`.
+- **Case building:** once a day, against the top suspect: add cards greedily while each
+  raises the juror's strength, try each card's answers, cap about 8 cards. Conclusion:
+  "evil" by default; also try "demon" only if checking both is cheap (Michael: timing
+  decides).
+- **Nominate / vote / defend** from the juror's belief, with thresholds tuned once.
+- Meeting-overhaul slice M4 extends it later (Podium Press, supporters).
+
+**4d. Delete the old system.** `Argue.evaluate`, `_apply`, `effects_of`, `support_refs`,
+the evil masks' old home, argument lines, then `sim/argue.gd`; the template matcher
+(`Deduction.check` and `_match_*`), `find_links` / `link_cards` and the template checks
+inside `file_deduction` (Workshop filing keeps its path); the `link` / `conclude` /
+`deduce` text commands (Michael, Nov 3: purge them); legacy tests (`test_argue`, template
+parts of others). `sim/deduction.gd` keeps the conclusion vocabulary (`normalize`,
+keys, text) that the Workshop and board use.
+
+**4e. Re-baseline.** Old bot vs new bot on the same seeds once, for continuity; then the
+first post-migration bot baseline: passive, analyst, analyst at reduced insight, at 7
+and 10 NPCs. Bot games now run the shared model, so sweeps run in C# mode and the seed
+count is set by time, not fixed at 150.
 
 ### Order and timing
 
@@ -140,7 +196,7 @@ Goal: make shared Workshop evaluation unconditional, eliminate the native belief
 - 2b done (Nov 2; about 5% slower than 2a over four seeds to Day 4). Retires shared-mode reads of `discounted` / `honesty` via `source_doubt`, moves Gravedigger rapport out of `info_effects`, converts grief to private fading `resentments`, restores freed souls from pre-turn snapshots, deletes the Revenant `+1.0` `adjust`, and adds player-presented `shielding` vote circumstantial evidence.
 - 2c done (Nov 2): empties ledger `effects`, deletes all 12 role `info_effects` and legacy doubt/honesty/hearing/parking/retraction arithmetic, and shrinks `_recompute_beliefs` to the shared refresh plus metadata preferences.
 - 3 done (Nov 2): removes `workshop_effects` / `set_workshop_effects` / Debug toggles / `--native`, keeps the last good shared vector on unprepared refreshes, supports Gravedigger reports with no matching execution on that night, and renames `recompute_beliefs` to `refresh_beliefs`.
-- 4 whenever the bot rewrite happens.
+- 4 started Nov 3 (Claude): 4a presentation path, 4b strengths, 4c bot, 4d deletion, 4e baselines.
 
 ### Open items
 
