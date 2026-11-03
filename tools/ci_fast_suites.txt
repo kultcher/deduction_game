@@ -3,6 +3,7 @@
 test_csharp_slice_c0
 test_csharp_slice_c1
 test_csharp_slice_c2
+test_csharp_slice_c3
 test_workshop_ownership
 test_workshop_integration
 test_workshop_efficiency

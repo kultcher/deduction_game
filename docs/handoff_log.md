@@ -17,6 +17,71 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03, Argon: slice C3 + C2 profile follow-ups delivered (`patch_004_slice_c3.zip`)
+
+- **Base:** `main` at `4077dcedb0aef0a4a8a2463a739214a8aa389eba` (`4077dce`).
+- **Deliverable:** `patch_004_slice_c3.zip` in Google Drive (`Demonologist Patches`), with
+  full replacement/new files plus `MANIFEST_SLICE_C3.md`.
+- **Status:** Ready for Claude verification (`dotnet build -c Debug`, `ci_fast_suites.txt`
+  including `test_csharp_slice_c3`, `test_case_eval`, `test_channel_sum_product`,
+  `test_workshop_factored_channels`, `test_workshop_factored_classes`, `test_prior_mapping`,
+  Seed 42 Day 4 `tools/profile_c0.gd` run, and `--tol 0` golden capture vs
+  `tools/golden/baseline_82faa5b`).
+- **Next actor:** **Claude**.
+
+### What's in `patch_004_slice_c3.zip`
+
+1. **Slice C3 C# kernels (`workshop/cs/`):**
+   - `workshop/cs/SolverKernel.cs` (+ `.uid`, `uid://do19o1k4et4jx`) & `workshop/solver.gd`:
+     1:1 bit-exact C# port of `world_bits`, `sig_groups` (cached per universe handle on
+     `SolverContext`), `valid_table`, `report_table` (all `CONTENT_ROLES`, `positive` /
+     `blocks` / `marked` answers, `testimony_only` shapes `ROLE_IN_GROUP` / `PING` /
+     `SECRET_PAIR`, and `curse` events across live and fixture universes), `_solve`
+     candidate & position filtering, fixture `_movement` bitmask enumeration,
+     `question_table` (`misled` & `unreliable`), and `premise_mask`.
+   - `workshop/cs/CaseEvalKernel.cs` (+ `.uid`, `uid://dnwp18om6galx`) & `workshop/case_eval.gd`:
+     1:1 bit-exact (`--tol 0`) C# port of `_index`, `compile` (ternary card-state codes,
+     64-bit `long` vs tuple class keys, `group` / `group_bits`, `test_hold`, and fused C#
+     class movement scoring directly via registered `LiveActivity` factor handles),
+     `_own_counts` (preserving `tools/test_case_eval.gd`'s synthetic `_own_cache` override),
+     `_team_prior` (passing dynamic `CaseEval.prior_k`, preserving `prior_k = -1.0` probe
+     mode), `_class_like`, and the full `evaluate` posterior marginalization pass (`own_like`
+     in reverse `ko-1..0` order, `test_like`, `theory_bias`, `_class_share`, `_people`,
+     `_joint`, `_pivotal`, and `_expand`).
+   - `workshop/cs/ChannelSumProduct.cs` (+ `.uid`, `uid://dwr8kf4qmbl8z`),
+     `workshop/channel_sum_product.gd`, & `workshop/factored_channels.gd`:
+     1:1 bit-exact (`--tol 0`) C# port of `ChannelSumProduct.compile` (preserving insertion-
+     order variable tie-breaking), `evaluate` (forward + zero-safe reverse adjoints),
+     `circuit` (constant-folded register DAG registered in `SolverContext`), `run`, and
+     batched `FactoredChannels.assess` (`FactoredAssessBatch`, pre-populating missing coarse
+     signatures once and running all worlds/representatives + signature memoization +
+     marginals in a single C# call).
+   - `workshop/cs/SolverContext.cs`, `workshop/cs/SolverBridge.cs`, & `workshop/caches.gd`:
+     Added `UniverseMeta` per-handle caches plus `CompiledCaseEntry`, `CompiledProgram`, and
+     `CompiledCircuit` arenas, all cleared atomically in `WorkshopCaches.clear_all()`.
+2. **Follow-ups on Claude's C2 profile notes (`pack_inputs` 725 ms & `outer_prep` 1,477 ms):**
+   - **Handle propagation on subset & solver role checks:** Fixed
+     `RoleConstraints._fits_weights_dispatch` so non-empty `sub_indices` (`personal` open
+     subsets in `CaseEval._class_fits` and `ReasonAttribution._subset_fits`) map
+     `miss_sub.append(sub_indices[i])` against `u_handle` instead of repacking `miss_worlds`;
+     passed `u_handle` (+ surviving `PackedInt32Array` indices) in `Solver._solve`,
+     `Solver.question_table`, and `ReadingChallenges._fraction`.
+   - **`LiveActivity._pack_view_env` memoization:** Cached `_pack_view_env` on `LiveActivity`
+     (cleared in `WorkshopCaches.clear_all()`) so the 613 `routes` calls per Seed 42 game
+     reuse the packed homes/deaths/timeline arrays instead of rebuilding them per call.
+   - **`outer_prep` reductions:** Added O(1) indexed `Solver.card_by_id` lookup (safe under
+     in-place `view.cards.append(...)` and mutations), attributed `Solver.*` work to
+     `world_domain`, and made `Jury`'s recursive `JSON.stringify(_canonical(...))`
+     `common_key` lazy so it only runs when `confidence_mode == "persistence"` (or legacy
+     engine), skipping unused stringification on live refreshes.
+   - **C2 gotchas enforced:** Zero `Packed*Array()` in GDScript `const`, safe `.get(...)` on
+     card fields, shared `SolverContext.GdFloor1e30` (`0x39B4484BFEEBC29FL`), and a float
+     literal `var_to_bytes()` + `VerifyFloat64Buffer` audit at the start of
+     `tools/test_csharp_slice_c3.gd` (`uid://dsjyh3rxwvsyc`, registered in
+     `tools/ci_fast_suites.txt`).
+
+---
+
 ## 2026-11-03 ~15:00 ET, Claude: slice C2 checked, green after fixes, on main
 
 - **Base:** `0498fce` as declared; unpacked on `csharp/slice-c2`, main merged in (CI

@@ -15,6 +15,11 @@ public partial class SolverBridge : RefCounted
     private static long _verifyCalls = 0;
     private static long _verifyMismatches = 0;
 
+    // Transient buffers for multi-array CompileOwnCounts unpack without extra allocations:
+    private static int[] _lastOwnOf = Array.Empty<int>();
+    private static byte[] _lastOwnFlatCodes = Array.Empty<byte>();
+    private static double[] _lastOwnCounts = Array.Empty<double>();
+
     public static int GetMode() => _mode;
     public static void SetMode(int mode) => _mode = Math.Clamp(mode, ModeGdscript, ModeVerify);
 
@@ -34,6 +39,9 @@ public partial class SolverBridge : RefCounted
         _contextEpoch++;
         _verifyCalls = 0;
         _verifyMismatches = 0;
+        _lastOwnOf = Array.Empty<int>();
+        _lastOwnFlatCodes = Array.Empty<byte>();
+        _lastOwnCounts = Array.Empty<double>();
         SolverContext.Clear();
     }
 
@@ -43,7 +51,11 @@ public partial class SolverBridge : RefCounted
     public static int GetCachedUniverseCount() => SolverContext.CachedUniverseCount;
     public static int GetRegisteredHandleCount() => SolverContext.RegisteredHandleCount;
     public static int GetRegisteredMovementFactorCount() => SolverContext.RegisteredMovementFactorCount;
+    public static int GetRegisteredCompiledCaseCount() => SolverContext.RegisteredCompiledCaseCount;
+    public static int GetRegisteredProgramCount() => SolverContext.RegisteredProgramCount;
+    public static int GetRegisteredCircuitCount() => SolverContext.RegisteredCircuitCount;
     public static int GetWorldEntryByteSize() => Unsafe.SizeOf<WorldEntry>();
+    public static double GetGdFloor1e30() => SolverContext.GdFloor1e30;
 
     // --- Handle-Based Universe Arena (Eliminates Per-Call World Repacking) ---
 
@@ -55,6 +67,9 @@ public partial class SolverBridge : RefCounted
 
     public static int RegisterIndexedSubUniverse(string subKey, int baseHandle, int[] indices) =>
         SolverContext.RegisterIndexedSubUniverse(subKey, baseHandle, indices);
+
+    public static void ClearCompiledCases() =>
+        SolverContext.ClearCompiledCases();
 
     // --- Bit-Exact Numerical Helpers (Slice C0 / C0b Math Audit) ---
 
@@ -471,4 +486,262 @@ public partial class SolverBridge : RefCounted
         int factorHandle) =>
         LiveActivityKernel.ScoreWorlds(
             SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds), factorHandle);
+
+    // --- Slice C3: SolverKernel Entry Points ---
+
+    public static long[] SolverWorldBits(int universeHandle, long[] fallbackWorlds) =>
+        SolverKernel.ComputeWorldBitsFlat(universeHandle, fallbackWorlds);
+
+    public static int[] SolverSigGroups(
+        int universeHandle,
+        long[] fallbackWorlds,
+        int nPeople,
+        bool isLive) =>
+        SolverKernel.ComputeSigGroupsFlat(universeHandle, fallbackWorlds, nPeople, isLive);
+
+    public static byte[] SolverValidTable(
+        int universeHandle,
+        long[] fallbackWorlds,
+        int nPeople,
+        bool isLive,
+        int cardKindCode,
+        bool testimonyOnly,
+        int sourceIdx,
+        bool giftTimeAndAliveOk,
+        bool convEvilAtCheck) =>
+        SolverKernel.EvaluateValidTable(
+            universeHandle, fallbackWorlds, nPeople, isLive, cardKindCode,
+            testimonyOnly, sourceIdx, giftTimeAndAliveOk, convEvilAtCheck);
+
+    public static byte[] SolverReportTable(
+        int universeHandle,
+        long[] fallbackWorlds,
+        int nPeople,
+        bool isLive,
+        int[] specInts,
+        int[] reqMarkedIndices,
+        int[] chosenBlockMasks,
+        int[] allBlockMasks) =>
+        SolverKernel.EvaluateReportTable(
+            universeHandle, fallbackWorlds, nPeople, isLive, specInts,
+            reqMarkedIndices, chosenBlockMasks, allBlockMasks);
+
+    public static int[] SolverFilterCandidates(
+        int universeHandle,
+        long[] fallbackWorlds,
+        int tableCount,
+        byte[] flatTables,
+        int mustBeGoodMask,
+        int mustBeEvilMask,
+        int markedReq,
+        int[] posSpecs,
+        int[] timedGoodSpecs) =>
+        SolverKernel.FilterSolveCandidates(
+            universeHandle, fallbackWorlds, tableCount, flatTables,
+            mustBeGoodMask, mustBeEvilMask, markedReq, posSpecs, timedGoodSpecs);
+
+    public static int[] SolverFilterPositions(
+        int universeHandle,
+        int[] subsetIndices,
+        long[] fallbackWorlds,
+        int mustBeGoodMask,
+        int mustBeEvilMask,
+        int markedReq,
+        int[] posSpecs) =>
+        SolverKernel.FilterPositionsSubset(
+            universeHandle, subsetIndices, fallbackWorlds,
+            mustBeGoodMask, mustBeEvilMask, markedReq, posSpecs);
+
+    public static int[] SolverFixtureMovement(
+        int nPeople,
+        int ownPersonIdx,
+        int[] nightSpecs,
+        int[] cardSpecs) =>
+        SolverKernel.EvaluateFixtureMovement(nPeople, ownPersonIdx, nightSpecs, cardSpecs);
+
+    public static byte[] SolverQuestionTable(
+        int universeHandle,
+        long[] fallbackWorlds,
+        byte[] accepted,
+        byte[] roles,
+        bool isMisled,
+        bool isSeerYes,
+        int pairMask,
+        bool pairHasMinusOne,
+        int sourceIdx,
+        bool convEvilAtObs) =>
+        SolverKernel.ComputeQuestionTable(
+            universeHandle, fallbackWorlds, accepted, roles,
+            isMisled, isSeerYes, pairMask, pairHasMinusOne, sourceIdx, convEvilAtObs);
+
+    public static byte[] SolverPremiseMask(
+        int universeHandle,
+        long[] fallbackWorlds,
+        bool isLive,
+        int conclTypeCode,
+        int targetIdx,
+        int secretModCode,
+        bool convEvilAtConcl) =>
+        SolverKernel.ComputePremiseMask(
+            universeHandle, fallbackWorlds, isLive, conclTypeCode,
+            targetIdx, secretModCode, convEvilAtConcl);
+
+    public static int SolverUnresolvedMask(long[] packedWorlds, int nPeople) =>
+        SolverKernel.ComputeUnresolvedMask(packedWorlds, nPeople);
+
+    // --- Slice C3: CaseEvalKernel Entry Points ---
+
+    public static int[] CaseEvalTeamIndex(
+        int universeHandle,
+        long[] fallbackWorlds,
+        bool currentEpochConvEvil) =>
+        CaseEvalKernel.BuildTeamIndexFlat(universeHandle, fallbackWorlds, currentEpochConvEvil);
+
+    public static int CaseEvalCompile(
+        int universeHandle,
+        long[] fallbackWorlds,
+        int[] headerInts,
+        byte[] dead,
+        byte[] premise,
+        byte[] flatTables,
+        byte[] flatValids,
+        double[] q,
+        int[] testTargetSpecs,
+        int[] moveFactorSpecs,
+        double[] moveFactorDoubles) =>
+        CaseEvalKernel.CompileEquivalenceClasses(
+            universeHandle, fallbackWorlds, headerInts, dead, premise,
+            flatTables, flatValids, q, testTargetSpecs, moveFactorSpecs, moveFactorDoubles);
+
+    public static int[] CaseEvalGetCompiledInts(int ccHandle) =>
+        CaseEvalKernel.GetCompiledCaseInts(ccHandle);
+
+    public static byte[] CaseEvalGetCompiledBytes(int ccHandle) =>
+        CaseEvalKernel.GetCompiledCaseBytes(ccHandle);
+
+    public static double[] CaseEvalGetCompiledDoubles(int ccHandle) =>
+        CaseEvalKernel.GetCompiledCaseDoubles(ccHandle);
+
+    public static int CaseEvalCompileOwnCounts(
+        int ccHandle,
+        int[] fallbackClassOf,
+        int nc,
+        int kOwn,
+        byte[] flatTables,
+        byte[] flatValids)
+    {
+        var (ns, of, flatCodes, counts) = CaseEvalKernel.CompileOwnCounts(
+            ccHandle, fallbackClassOf, nc, kOwn, flatTables, flatValids);
+        _lastOwnOf = of;
+        _lastOwnFlatCodes = flatCodes;
+        _lastOwnCounts = counts;
+        return ns;
+    }
+
+    public static int[] CaseEvalGetLastOwnOf() => _lastOwnOf;
+    public static byte[] CaseEvalGetLastOwnFlatCodes() => _lastOwnFlatCodes;
+    public static double[] CaseEvalGetLastOwnCounts() => _lastOwnCounts;
+
+    public static double[] CaseEvalTeamPrior(
+        int universeHandle,
+        long[] fallbackWorlds,
+        bool currentEpochConvEvil,
+        double[] rawSusp,
+        double[] npcTrust,
+        int goodMask,
+        double priorK) =>
+        CaseEvalKernel.ComputeTeamPrior(
+            universeHandle, fallbackWorlds, currentEpochConvEvil, rawSusp, npcTrust, goodMask, priorK);
+
+    public static double[] CaseEvalClassLike(
+        int ccHandle,
+        int ncFallback,
+        int kFallback,
+        byte[] fallbackStates,
+        byte[] fallbackDead,
+        double[] fallbackQ,
+        double[] errs,
+        int skip) =>
+        CaseEvalKernel.ComputeClassLike(
+            ccHandle, ncFallback, kFallback, fallbackStates, fallbackDead, fallbackQ, errs, skip);
+
+    public static double[] CaseEvalEvaluatePosterior(
+        int ccHandle,
+        int universeHandle,
+        long[] fallbackWorlds,
+        int[] evalInts,
+        double[] tuningDoubles,
+        double[] teamPrior,
+        double[] fits,
+        double[] fitsBefore,
+        double[] caseErrs,
+        double[] ownErrs,
+        double[] ownQs,
+        double[] counts,
+        int[] ownOf,
+        byte[] flatOwnCodes,
+        double[] routeCredits,
+        double[] testLog2Ratios,
+        double biasFactor) =>
+        CaseEvalKernel.EvaluatePosterior(
+            ccHandle, universeHandle, fallbackWorlds, evalInts, tuningDoubles,
+            teamPrior, fits, fitsBefore, caseErrs, ownErrs, ownQs,
+            counts, ownOf, flatOwnCodes, routeCredits, testLog2Ratios, biasFactor);
+
+    // --- Slice C3: ChannelSumProduct & FactoredChannels Entry Points ---
+
+    public static int[] SumProductCompile(int nInputs, int[] scopeOffsets, int[] scopeVars) =>
+        ChannelSumProductKernel.CompileProgram(nInputs, scopeOffsets, scopeVars);
+
+    public static double[] SumProductEvaluate(
+        int programHandle,
+        int[] fallbackFlatProgram,
+        int[] valOffsets,
+        double[] flatValues,
+        bool marginals) =>
+        ChannelSumProductKernel.EvaluateProgram(
+            programHandle, fallbackFlatProgram, valOffsets, flatValues, marginals);
+
+    public static int[] SumProductCircuit(
+        int programHandle,
+        int[] fallbackFlatProgram,
+        byte[] constFlags,
+        int[] constOffsets,
+        double[] flatConsts) =>
+        ChannelSumProductKernel.CompileCircuit(
+            programHandle, fallbackFlatProgram, constFlags, constOffsets, flatConsts);
+
+    public static double[] SumProductRun(
+        int circuitHandle,
+        int[] fallbackFlatCircuit,
+        int[] valOffsets,
+        double[] flatValues,
+        bool marginals) =>
+        ChannelSumProductKernel.RunCircuit(
+            circuitHandle, fallbackFlatCircuit, valOffsets, flatValues, marginals);
+
+    public static double[] FactoredAssessBatch(
+        int universeHandle,
+        long[] fallbackWorlds,
+        int nPeople,
+        int[] representatives,
+        double[] multiplicity,
+        int circuitHandle,
+        int[] fallbackFlatCircuit,
+        int[] factorSpecs,
+        double[] factorDoubles,
+        int tableStride,
+        byte[] flatByteTables,
+        int[] publicSpecs,
+        double[] publicRatios,
+        long[] condRowSigs,
+        int[] condRowOffsets,
+        double[] flatCondRows,
+        int[] markerFactorIndices,
+        int[] markerAdjRows) =>
+        ChannelSumProductKernel.AssessFactoredBatch(
+            universeHandle, fallbackWorlds, nPeople, representatives, multiplicity,
+            circuitHandle, fallbackFlatCircuit, factorSpecs, factorDoubles,
+            tableStride, flatByteTables, publicSpecs, publicRatios,
+            condRowSigs, condRowOffsets, flatCondRows, markerFactorIndices, markerAdjRows);
 }

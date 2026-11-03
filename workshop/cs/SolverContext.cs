@@ -163,22 +163,58 @@ public readonly struct WorldEntry : IEquatable<WorldEntry>
 /// </summary>
 internal static class SolverContext
 {
+    // GDScript parses 1e-30 one ULP below IEEE nearest (0x39B4484BFEEBC29F vs ...C2A0).
+    internal static readonly double GdFloor1e30 = BitConverter.Int64BitsToDouble(0x39B4484BFEEBC29FL);
+
+    internal sealed class UniverseMeta
+    {
+        public long[]? EvilBits;
+        public long[]? DeludedBits;
+        public bool PlainBits;
+        public bool HasWorldBits;
+
+        public int[]? SigRep;
+        public int[]? SigOf;
+        public bool SigIsLive;
+        public int SigNPeople;
+        public bool HasSigGroups;
+
+        public int[]? PlainTeams;
+        public int[]? PlainTeamOf;
+        public bool HasPlainTeams;
+
+        public int[]? CurseTeams;
+        public int[]? CurseTeamOf;
+        public bool HasCurseTeams;
+    }
+
     private static readonly Dictionary<string, long[]> UniverseStride3Cache = new(16);
     private static readonly List<long[]> PackedUniverses = new(64);
     private static readonly Dictionary<string, int> PackedUniverseByKey = new(64);
+    private static readonly Dictionary<int, UniverseMeta> UniverseMetaByHandle = new(64);
     private static readonly List<LiveActivityKernel.CompiledMovementFactor> MovementFactors = new(64);
+    private static readonly List<CaseEvalKernel.CompiledCaseEntry> CompiledCases = new(64);
+    private static readonly List<ChannelSumProductKernel.CompiledProgram> Programs = new(32);
+    private static readonly List<ChannelSumProductKernel.CompiledCircuit> Circuits = new(32);
 
     public static void Clear()
     {
         UniverseStride3Cache.Clear();
         PackedUniverses.Clear();
         PackedUniverseByKey.Clear();
+        UniverseMetaByHandle.Clear();
         MovementFactors.Clear();
+        CompiledCases.Clear();
+        Programs.Clear();
+        Circuits.Clear();
     }
 
     public static int CachedUniverseCount => UniverseStride3Cache.Count;
     public static int RegisteredHandleCount => PackedUniverses.Count;
     public static int RegisteredMovementFactorCount => MovementFactors.Count;
+    public static int RegisteredCompiledCaseCount => CompiledCases.Count;
+    public static int RegisteredProgramCount => Programs.Count;
+    public static int RegisteredCircuitCount => Circuits.Count;
 
     public static bool TryGetUniverse(string cacheKey, out long[] stride3) =>
         UniverseStride3Cache.TryGetValue(cacheKey, out stride3!);
@@ -254,6 +290,20 @@ internal static class SolverContext
         return sub;
     }
 
+    public static UniverseMeta GetOrCreateUniverseMeta(int handle)
+    {
+        if (handle < 0 || handle >= PackedUniverses.Count)
+        {
+            return new UniverseMeta();
+        }
+        if (!UniverseMetaByHandle.TryGetValue(handle, out UniverseMeta? meta))
+        {
+            meta = new UniverseMeta();
+            UniverseMetaByHandle[handle] = meta;
+        }
+        return meta;
+    }
+
     public static int RegisterMovementFactor(LiveActivityKernel.CompiledMovementFactor factor)
     {
         int handle = MovementFactors.Count;
@@ -263,4 +313,36 @@ internal static class SolverContext
 
     public static LiveActivityKernel.CompiledMovementFactor? GetMovementFactor(int handle) =>
         (handle >= 0 && handle < MovementFactors.Count) ? MovementFactors[handle] : null;
+
+    public static int RegisterCompiledCase(CaseEvalKernel.CompiledCaseEntry entry)
+    {
+        int handle = CompiledCases.Count;
+        CompiledCases.Add(entry);
+        return handle;
+    }
+
+    public static CaseEvalKernel.CompiledCaseEntry? GetCompiledCase(int handle) =>
+        (handle >= 0 && handle < CompiledCases.Count) ? CompiledCases[handle] : null;
+
+    public static void ClearCompiledCases() => CompiledCases.Clear();
+
+    public static int RegisterProgram(ChannelSumProductKernel.CompiledProgram prog)
+    {
+        int handle = Programs.Count;
+        Programs.Add(prog);
+        return handle;
+    }
+
+    public static ChannelSumProductKernel.CompiledProgram? GetProgram(int handle) =>
+        (handle >= 0 && handle < Programs.Count) ? Programs[handle] : null;
+
+    public static int RegisterCircuit(ChannelSumProductKernel.CompiledCircuit circuit)
+    {
+        int handle = Circuits.Count;
+        Circuits.Add(circuit);
+        return handle;
+    }
+
+    public static ChannelSumProductKernel.CompiledCircuit? GetCircuit(int handle) =>
+        (handle >= 0 && handle < Circuits.Count) ? Circuits[handle] : null;
 }

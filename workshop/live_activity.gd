@@ -13,6 +13,7 @@ static var _factor_handles: Dictionary = {}
 static var _mru_factor = null
 static var _mru_handle: int = -1
 static var _mru_epoch: int = -1
+static var _env_cache: Dictionary = {}
 
 const _CARD_STRIDE = 20
 
@@ -106,6 +107,10 @@ static func _intern_tok(map: Dictionary, s: String) -> int:
 	return nxt
 
 static func _pack_view_env(view: Dictionary, ids: Array) -> Dictionary:
+	var env_in: Array = [ids, view.people, view.get("timeline", {}), view.get("chronology", {})]
+	var env_k: int = hash(env_in)
+	if _env_cache.has(env_k) and _env_cache[env_k].input == env_in:
+		return _env_cache[env_k].env
 	var n: int = ids.size()
 	var homes := PackedInt32Array()
 	var deaths := PackedInt32Array()
@@ -132,7 +137,7 @@ static func _pack_view_env(view: Dictionary, ids: Array) -> Dictionary:
 		var curse: Dictionary = chrono.curse
 		curse_from = int(curse.get("from", 0))
 		curse_until = int(curse.get("until", 0))
-	return {
+	var env_out: Dictionary = {
 		"homes": homes,
 		"deaths": deaths,
 		"demon_events": demon_events,
@@ -140,6 +145,10 @@ static func _pack_view_env(view: Dictionary, ids: Array) -> Dictionary:
 		"curse_from": curse_from,
 		"curse_until": curse_until,
 	}
+	if _env_cache.size() >= 16:
+		_env_cache.clear()
+	_env_cache[env_k] = {"input": env_in.duplicate(true), "env": env_out}
+	return env_out
 
 static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Array, answers: Dictionary, role_tok_map: Dictionary) -> Dictionary:
 	var c_count: int = cards.size()

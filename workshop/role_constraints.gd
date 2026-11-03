@@ -130,7 +130,8 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 		var miss_masks := PackedInt64Array()
 		var miss_sub := PackedInt32Array()
 		var miss_seen: Dictionary = {}
-		var use_sub_handle: bool = u_handle >= 0 and sub_indices.is_empty()
+		var use_sub_handle: bool = u_handle >= 0
+		var has_sub: bool = not sub_indices.is_empty()
 		for i in range(universe.size()):
 			var m: int = masks[i]
 			if not results.has(m) and not miss_seen.has(m):
@@ -138,7 +139,7 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 				miss_worlds.append(universe[i])
 				miss_masks.append(m)
 				if use_sub_handle:
-					miss_sub.append(i)
+					miss_sub.append(sub_indices[i] if has_sub else i)
 		if not miss_worlds.is_empty():
 			var miss_h: int = u_handle if use_sub_handle else -1
 			var miss_weights: PackedFloat64Array = _eval_cs_weights(view, ids, miss_worlds, miss_h, miss_sub, cards, knowledge, answers, bluffs, false)

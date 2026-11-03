@@ -133,9 +133,11 @@ static func _fraction(view: Dictionary, report: Dictionary, knowledge: Dictionar
 	var key = hash(input)
 	if fraction_cache.has(key) and fraction_cache[key].input == input:
 		return fraction_cache[key].result
+	var u_key: String = Solver._universe_key(view)
 	var universe: Array = Solver.universe(view)
+	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
 	var table: PackedByteArray = Solver.report_table(view, report)
-	var roles: PackedByteArray = Solver.Roles.fits_table(view, universe, [report], knowledge)
+	var roles: PackedByteArray = Solver.Roles.fits_table(view, universe, [report], knowledge, {}, false, u_handle)
 	var compatible: bool = Domain.claims_compatible([report], knowledge)
 	var indices = {}
 	for i in range(universe.size()):

@@ -4,6 +4,8 @@ extends RefCounted
 const C = preload("res://sim/content.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const Roles = preload("res://workshop/role_constraints.gd")
+const History = preload("res://workshop/live_history.gd")
+const Activity = preload("res://workshop/live_activity.gd")
 
 const Graph = preload("res://workshop/case_graph.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
@@ -18,6 +20,9 @@ static var _cached_people = null
 static var _cached_ids: Array = []
 static var _cached_idx: Dictionary = {}
 static var _cached_block_masks: Dictionary = {}
+static var _cached_cards_ref = null
+static var _cached_cards_size: int = 0
+static var _cached_card_idx: Dictionary = {}
 
 static func _ensure_people(view: Dictionary) -> void:
 	if view.people == _cached_people:
@@ -46,10 +51,70 @@ static func empty_case() -> Dictionary:
 		"conclusion": {"type": "evil", "target": "constance", "at": "opening through day 3"}}
 
 static func card_by_id(view: Dictionary, id: String) -> Dictionary:
-	for card in view.cards:
-		if card.id == id:
+	var cards_arr: Array = view.cards
+	var sz: int = cards_arr.size()
+	if not is_same(cards_arr, _cached_cards_ref) or sz < _cached_cards_size:
+		_cached_cards_ref = cards_arr
+		_cached_cards_size = sz
+		_cached_card_idx.clear()
+		for i in range(sz):
+			var cid: String = str(cards_arr[i].get("id", ""))
+			if not _cached_card_idx.has(cid):
+				_cached_card_idx[cid] = i
+	elif sz > _cached_cards_size:
+		for i in range(_cached_cards_size, sz):
+			var cid: String = str(cards_arr[i].get("id", ""))
+			if not _cached_card_idx.has(cid):
+				_cached_card_idx[cid] = i
+		_cached_cards_size = sz
+	if _cached_card_idx.has(id):
+		var hit_i: int = int(_cached_card_idx[id])
+		if hit_i >= 0 and hit_i < sz and cards_arr[hit_i].get("id", "") == id:
+			return cards_arr[hit_i]
+	for i in range(sz):
+		var card: Dictionary = cards_arr[i]
+		if card.get("id", "") == id:
+			_cached_card_idx[id] = i
 			return card
 	return {}
+
+static func _curse_active_at(view: Dictionary, at) -> bool:
+	var chrono: Dictionary = view.get("chronology", {})
+	if not chrono.has("curse"):
+		return false
+	var curse: Dictionary = chrono.curse
+	if curse.is_empty():
+		return false
+	var time: int = TimeModel.tick(at) if at is Dictionary else int(chrono.get("epochs", {}).get(at, -1))
+	return time >= int(curse.from) and time < int(curse.until)
+
+static func _position_code(pos: String) -> int:
+	match pos:
+		"evil":
+			return 1
+		"demon":
+			return 2
+		"minion":
+			return 3
+		"marked":
+			return 4
+		"unmarked":
+			return 5
+		_:
+			return 0
+
+static func _secret_mod_code(mod_name: String) -> int:
+	match mod_name:
+		"delusional":
+			return 0
+		"marked":
+			return 1
+		"lovers":
+			return 2
+		"sleepwalker":
+			return 3
+		_:
+			return -99
 
 static func selected(view: Dictionary, case_data: Dictionary) -> Array:
 	# Semantic identity is independent of wrapper id and presentation venue.
@@ -179,7 +244,10 @@ static func solve(view: Dictionary, cards: Array, positions: Dictionary = {}, an
 		var cached: Dictionary = solve_cache[key].result
 		Profiler.close(span)
 		return cached
+	var st: int = SolverBackend.begin_stage("world_domain") if SolverBackend.profiling_enabled else -1
 	var result = _solve(view, cards, positions, answers, knowledge, epoch, temporal_positions)
+	if st >= 0:
+		SolverBackend.end_stage(st)
 	if reuse_solves:
 		if solve_cache.size() >= 1024:
 			solve_cache.erase(solve_cache.keys()[0])
@@ -236,8 +304,16 @@ static func _build_universe(view: Dictionary) -> Array:
 ## content holds as a healthy reading from a good source (cached by exact inputs).
 ## marked: answered "registered because Marked" (Dowser and Surveyor answers only).
 static func report_table(view: Dictionary, card: Dictionary, positive: Array = [], positive_blocks: Array = [], marked: Array = []) -> PackedByteArray:
+	if not SolverBackend.profiling_enabled:
+		return _report_table_dispatch(view, card, positive, positive_blocks, marked)
+	var st: int = SolverBackend.begin_stage("world_domain")
+	var out: PackedByteArray = _report_table_dispatch(view, card, positive, positive_blocks, marked)
+	SolverBackend.end_stage(st)
+	return out
+
+static func _report_table_dispatch(view: Dictionary, card: Dictionary, positive: Array, positive_blocks: Array, marked: Array) -> PackedByteArray:
 	var universe_key = _universe_key(view)
-	var universe: Array = universe(view)
+	var u_worlds: Array = universe(view)
 	positive = positive.duplicate()
 	positive.sort()
 	positive_blocks = positive_blocks.duplicate()
@@ -246,8 +322,8 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 	marked.sort()
 	# Homes affect Surveyor blocks; kind/event distinguish public process cards.
 	# Hashes accelerate lookup, but exact snapshots guard collisions and edits.
-	var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.source,
-		card.get("role", ""), card.observed_at, card.data, positive, positive_blocks, card.get("duty_only", false)]
+	var inputs = [universe_key, view.people, view.get("timeline", {}), card.kind, card.get("event", ""), card.get("source", ""),
+		card.get("role", ""), card.get("observed_at", {}), card.get("data", {}), positive, positive_blocks, card.get("duty_only", false)]
 	if not marked.is_empty():
 		inputs.append(marked)
 	if card.get("testimony_only", false):
@@ -256,32 +332,229 @@ static func report_table(view: Dictionary, card: Dictionary, positive: Array = [
 	if not report_matches.has(key) or report_matches[key].inputs != inputs:
 		if report_matches.size() > 512:
 			report_matches.clear()
-		var accepted = PackedByteArray()
-		accepted.resize(universe.size())
-		# Worlds differing only in the demon's identity share one answer.
-		var groups = sig_groups(view)
-		var rep: PackedInt32Array = groups.rep
-		var of: PackedInt32Array = groups.of
-		var answers = PackedByteArray()
-		answers.resize(rep.size())
-		if card.get("testimony_only", false) and card.kind == "report":
-			for i in range(universe.size()):
-				accepted[i] = 1 if source_valid(view, universe[i], card) and _testimony_content(view, universe[i], card) else 0
-			report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
-			return accepted
-		if card.kind == "report":
-			# A valid source (vectorised), then the content where it matters.
-			var valid: PackedByteArray = valid_table(view, card)
-			var trivial: bool = card.get("role", "") not in CONTENT_ROLES
-			for g in range(rep.size()):
-				answers[g] = 0 if valid[rep[g]] == 0 else (1 if trivial or _report_content(view, universe[rep[g]], card, {"positive": positive, "blocks": positive_blocks, "marked": marked}) else 0)
+		var mode: int = SolverBackend.active_mode()
+		var accepted: PackedByteArray
+		if mode == SolverBackend.Mode.GDSCRIPT:
+			accepted = _report_table_gd(view, u_worlds, card, positive, positive_blocks, marked)
+		elif mode == SolverBackend.Mode.CSHARP:
+			accepted = _report_table_cs(view, universe_key, u_worlds, card, positive, positive_blocks, marked)
 		else:
-			for g in range(rep.size()):
-				answers[g] = 1 if _report_holds(view, universe[rep[g]], card, {"positive": positive, "blocks": positive_blocks, "marked": marked}) else 0
-		for i in range(universe.size()):
-			accepted[i] = answers[of[i]]
+			accepted = _report_table_gd(view, u_worlds, card, positive, positive_blocks, marked)
+			var cs_acc: PackedByteArray = _report_table_cs(view, universe_key, u_worlds, card, positive, positive_blocks, marked)
+			SolverBackend._bridge().VerifyByteBuffer("Solver.report_table", accepted, cs_acc)
 		report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
 	return report_matches[key].accepted
+
+static func _report_table_gd(view: Dictionary, u_worlds: Array, card: Dictionary, positive: Array, positive_blocks: Array, marked: Array) -> PackedByteArray:
+	var accepted = PackedByteArray()
+	accepted.resize(u_worlds.size())
+	if card.get("testimony_only", false) and card.kind == "report":
+		for i in range(u_worlds.size()):
+			accepted[i] = 1 if source_valid(view, u_worlds[i], card) and _testimony_content(view, u_worlds[i], card) else 0
+		return accepted
+	# Worlds differing only in the demon's identity share one answer.
+	var groups = _sig_groups_gd(view, u_worlds)
+	var rep: PackedInt32Array = groups.rep
+	var of: PackedInt32Array = groups.of
+	var answers = PackedByteArray()
+	answers.resize(rep.size())
+	if card.kind == "report":
+		# A valid source (vectorised), then the content where it matters.
+		var valid: PackedByteArray = _valid_table_gd(view, u_worlds, card)
+		var trivial: bool = card.get("role", "") not in CONTENT_ROLES
+		for g in range(rep.size()):
+			answers[g] = 0 if valid[rep[g]] == 0 else (1 if trivial or _report_content(view, u_worlds[rep[g]], card, {"positive": positive, "blocks": positive_blocks, "marked": marked}) else 0)
+	else:
+		for g in range(rep.size()):
+			answers[g] = 1 if _report_holds(view, u_worlds[rep[g]], card, {"positive": positive, "blocks": positive_blocks, "marked": marked}) else 0
+	for i in range(u_worlds.size()):
+		accepted[i] = answers[of[i]]
+	return accepted
+
+static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: Array, card: Dictionary, positive: Array, positive_blocks: Array, marked: Array) -> PackedByteArray:
+	_ensure_people(view)
+	var u_handle: int = SolverBackend.get_universe_handle(universe_key, u_worlds)
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(u_worlds) if u_handle < 0 else PackedInt64Array()
+	var n_people: int = _cached_ids.size()
+	var is_live: bool = Domain.live(view)
+	var c_kind: String = str(card.get("kind", ""))
+	var kind_code: int = 1 if c_kind == "report" else (2 if (c_kind == "event" and card.get("event", "") == "curse") else 0)
+	var testimony_only: bool = bool(card.get("testimony_only", false))
+	var src_str: String = str(card.get("source", ""))
+	var src_idx: int = person_index(view, src_str)
+	var obs_at = card.get("observed_at", {})
+	var gift_and_alive_ok: bool = true
+	if kind_code == 1 and is_live and not testimony_only:
+		gift_and_alive_ok = Domain._gift_time_gd(card) and History.observer_alive(view, src_str, obs_at)
+	var conv_stmt: bool = _curse_active_at(view, TimeModel.statement_time(card)) if testimony_only else false
+	var conv_obs: bool = _curse_active_at(view, obs_at)
+
+	var has_ans_pos: bool = not positive.is_empty()
+	var ans_pos_mask: int = 0
+	var ans_pos_unknown: bool = false
+	for id in positive:
+		var pi: int = person_index(view, str(id))
+		if pi < 0:
+			ans_pos_unknown = true
+		else:
+			ans_pos_mask |= (1 << pi)
+
+	var req_marked := PackedInt32Array()
+	req_marked.resize(marked.size())
+	for mi in range(marked.size()):
+		req_marked[mi] = person_index(view, str(marked[mi]))
+
+	var chosen_block_masks := PackedInt32Array()
+	var chosen_blocks_invalid: bool = false
+	for blk in positive_blocks:
+		if not _cached_block_masks.has(blk):
+			chosen_blocks_invalid = true
+		else:
+			chosen_block_masks.append(int(_cached_block_masks[blk]))
+
+	var all_block_masks := PackedInt32Array()
+	var bm_vals: Array = _cached_block_masks.values()
+	all_block_masks.resize(bm_vals.size())
+	for bi in range(bm_vals.size()):
+		all_block_masks[bi] = int(bm_vals[bi])
+
+	var role_str: String = str(card.get("role", ""))
+	var rdef = C.role_def(role_str)
+	var data: Dictionary = card.get("data", {}) if card.get("data", {}) is Dictionary else {}
+	var content_mode: int = 0
+	var pair_or_group_mask: int = 0
+	var target_or_secret: int = 0
+
+	if kind_code == 1:
+		var pre_fail: bool = false
+		if role_str == "gravedigger" and view.has("timeline"):
+			var gd_n: int = int(card.night) if int(card.get("night", -1)) >= 0 else int(obs_at.get("day", -1))
+			if not History.executed(view, str(data.get("executed", "")), gd_n):
+				pre_fail = true
+		if not pre_fail and role_str == "warden":
+			var obs_day: int = int(obs_at.get("day", -1))
+			var w_tgt: String = str(data.get("target", ""))
+			if view.get("timeline", {}).get("events", []).any(func(ev): return ev.kind == "demon_death" and ev.at.day == obs_day and w_tgt in ev.subjects):
+				pre_fail = true
+			elif bool(data.get("saved", false)):
+				content_mode = 2
+				target_or_secret = person_index(view, w_tgt)
+			else:
+				content_mode = 0
+		elif pre_fail:
+			content_mode = 1
+		else:
+			var handled: bool = false
+			if is_live:
+				if role_str == "medium" and bool(card.get("duty_only", false)):
+					var dblock: String = str(data.get("block", ""))
+					var m_night: int = int(card.get("night", -1))
+					var has_corpse: bool = view.people.any(func(p): return p.home == dblock and not History.alive_at_night(view, p.id, m_night))
+					content_mode = 0 if has_corpse else 1
+					handled = true
+				elif rdef != null and rdef.shape == "NIGHT_ROUTE":
+					var nr_night: int = int(card.get("night", -1))
+					if data.get("seen", []).any(func(sid): return not History.alive_at_night(view, sid, nr_night)):
+						content_mode = 1
+						handled = true
+				elif role_str == "rumormonger":
+					content_mode = 3
+					for pid in data.get("pair", []):
+						var p_i: int = person_index(view, str(pid))
+						if p_i >= 0:
+							pair_or_group_mask |= (1 << p_i)
+					target_or_secret = _secret_mod_code(str(data.get("secret", "")))
+					handled = true
+			if not handled:
+				if role_str == "rumormonger":
+					content_mode = 4
+					for pid in data.get("pair", []):
+						var p_i: int = person_index(view, str(pid))
+						if p_i >= 0:
+							pair_or_group_mask |= (1 << p_i)
+				else:
+					var is_site_group: bool = rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count" and rdef.site_group_key == "group"
+					var is_surveyor: bool = rdef != null and rdef.shape == "GROUP_COUNT" and rdef.count_mode == "blocks"
+					if is_site_group:
+						content_mode = 5
+						for pid in data.get(rdef.site_group_key, []):
+							var p_i: int = person_index(view, str(pid))
+							if p_i >= 0:
+								pair_or_group_mask |= (1 << p_i)
+						target_or_secret = int(data.get("count", 0))
+					elif is_surveyor:
+						content_mode = 6
+						target_or_secret = int(data.get("count", 0))
+					else:
+						content_mode = 0
+					if role_str not in CONTENT_ROLES and not testimony_only:
+						content_mode = 0
+
+	var pre_testim_fail: bool = false
+	var testim_shape: int = 0
+	var marked_reg: bool = false
+	var testim_mask: int = 0
+	var testim_secret_code: int = -99
+
+	if testimony_only and kind_code == 1:
+		if role_str == "gravedigger" and view.has("timeline"):
+			var gd_nt: int = int(card.night) if int(card.get("night", -1)) >= 0 else int(obs_at.get("day", -1))
+			if not History.executed(view, str(data.get("executed", "")), gd_nt):
+				pre_testim_fail = true
+		var pair_t: int = 0
+		for pid in data.get("pair", []):
+			var p_i: int = person_index(view, str(pid))
+			if p_i >= 0:
+				pair_t |= (1 << p_i)
+		if rdef != null and rdef.shape == "ROLE_IN_GROUP":
+			if rdef.role_group_key == "pair":
+				testim_mask = pair_t
+			else:
+				var g_i: int = person_index(view, str(data.get(rdef.role_group_key, "")))
+				testim_mask = (1 << g_i) if g_i >= 0 else 0
+			match rdef.role_target_pool:
+				"good":
+					testim_shape = 1
+				"minion":
+					testim_shape = 2
+				_:
+					var named_align: String = str(C.ROLES.get(str(data.get("role", "")), {}).get("align", ""))
+					testim_shape = 3 if named_align == "evil" else 4
+					marked_reg = bool(rdef.marked_registers)
+		elif rdef != null and rdef.shape == "PING":
+			testim_mask = pair_t
+			testim_shape = 5 if bool(data.get("yes", false)) else 6
+		elif rdef != null and rdef.shape == "SECRET_PAIR":
+			testim_mask = pair_t
+			testim_secret_code = _secret_mod_code(str(data.get("secret", "")))
+			testim_shape = 7
+		else:
+			testim_shape = 0
+
+	var spec := PackedInt32Array([
+		kind_code,
+		1 if testimony_only else 0,
+		src_idx,
+		1 if gift_and_alive_ok else 0,
+		1 if conv_stmt else 0,
+		1 if conv_obs else 0,
+		content_mode,
+		pair_or_group_mask,
+		target_or_secret,
+		1 if has_ans_pos else 0,
+		ans_pos_mask,
+		1 if ans_pos_unknown else 0,
+		1 if chosen_blocks_invalid else 0,
+		1 if pre_testim_fail else 0,
+		testim_shape,
+		1 if marked_reg else 0,
+		testim_mask,
+		testim_secret_code,
+	])
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("Solver.report_table", pack_u)
+	return SolverBackend._bridge().SolverReportTable(u_handle, fallback, n_people, is_live, spec, req_marked, chosen_block_masks, all_block_masks)
 
 ## A world's key without the demon's identity. Report contents and source validity
 ## never read it, so worlds differing only there share one answer. -1: no key.
@@ -307,37 +580,90 @@ static func world_bits(view: Dictionary) -> Dictionary:
 		return _bits[key]
 	if _bits.size() > 16:
 		_bits.clear()
-	var universe: Array = universe(view)
+	var st: int = SolverBackend.begin_stage("world_domain") if SolverBackend.profiling_enabled else -1
+	var u_worlds: Array = universe(view)
+	var mode: int = SolverBackend.active_mode()
+	var out: Dictionary
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		out = _world_bits_gd(u_worlds)
+	elif mode == SolverBackend.Mode.CSHARP:
+		out = _world_bits_cs(key, u_worlds)
+	else:
+		out = _world_bits_gd(u_worlds)
+		var cs_out: Dictionary = _world_bits_cs(key, u_worlds)
+		var b = SolverBackend._bridge()
+		b.VerifyInt64Buffer("Solver.world_bits.evil", out.evil, cs_out.evil)
+		b.VerifyInt64Buffer("Solver.world_bits.deluded", out.deluded, cs_out.deluded)
+		b.VerifyScalarBool("Solver.world_bits.plain", out.plain, cs_out.plain)
+	if st >= 0:
+		SolverBackend.end_stage(st)
+	_bits[key] = out
+	return out
+
+static func _world_bits_gd(u_worlds: Array) -> Dictionary:
 	var evil = PackedInt64Array()
 	var deluded = PackedInt64Array()
-	evil.resize(universe.size())
-	deluded.resize(universe.size())
+	evil.resize(u_worlds.size())
+	deluded.resize(u_worlds.size())
 	var plain = true
-	for i in range(universe.size()):
-		var w: Dictionary = universe[i]
+	for i in range(u_worlds.size()):
+		var w: Dictionary = u_worlds[i]
 		evil[i] = int(w.evil)
 		deluded[i] = int(w.get("holders", 0)) if w.get("modifier", "") == "delusional" else 0
 		if w.has("converted"):
 			plain = false
-	_bits[key] = {"evil": evil, "deluded": deluded, "plain": plain}
-	return _bits[key]
+	return {"evil": evil, "deluded": deluded, "plain": plain}
+
+static func _world_bits_cs(u_key: String, u_worlds: Array) -> Dictionary:
+	var u_handle: int = SolverBackend.get_universe_handle(u_key, u_worlds)
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(u_worlds) if u_handle < 0 else PackedInt64Array()
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("Solver.world_bits", pack_u)
+	var raw: PackedInt64Array = SolverBackend._bridge().SolverWorldBits(u_handle, fallback)
+	var n: int = u_worlds.size()
+	return {
+		"evil": raw.slice(1, 1 + n),
+		"deluded": raw.slice(1 + n, 1 + 2 * n),
+		"plain": raw[0] != 0,
+	}
 
 ## source_valid for every world of the universe.
 static func valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
-	var universe: Array = universe(view)
+	if not SolverBackend.profiling_enabled:
+		return _valid_table_dispatch(view, card)
+	var st: int = SolverBackend.begin_stage("world_domain")
+	var out: PackedByteArray = _valid_table_dispatch(view, card)
+	SolverBackend.end_stage(st)
+	return out
+
+static func _valid_table_dispatch(view: Dictionary, card: Dictionary) -> PackedByteArray:
+	var u_key: String = _universe_key(view)
+	var u_worlds: Array = universe(view)
+	var mode: int = SolverBackend.active_mode()
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		return _valid_table_gd(view, u_worlds, card)
+	var cs_out: PackedByteArray = _valid_table_cs(view, u_key, u_worlds, card)
+	if mode == SolverBackend.Mode.CSHARP:
+		return cs_out
+	var gd_out: PackedByteArray = _valid_table_gd(view, u_worlds, card)
+	SolverBackend._bridge().VerifyByteBuffer("Solver.valid_table", gd_out, cs_out)
+	return gd_out
+
+static func _valid_table_gd(view: Dictionary, u_worlds: Array, card: Dictionary) -> PackedByteArray:
 	var t = PackedByteArray()
-	t.resize(universe.size())
+	t.resize(u_worlds.size())
 	t.fill(0)
 	if card.kind != "report":
 		t.fill(1)
 		return t
 	if card.get("testimony_only", false):
-		for i in range(universe.size()):
-			t[i] = 1 if source_valid(view, universe[i], card) else 0
+		for i in range(u_worlds.size()):
+			t[i] = 1 if source_valid(view, u_worlds[i], card) else 0
 		return t
 	var live: bool = Domain.live(view)
 	# Gift timing and the source being alive don't vary by world.
-	if live and (not Domain.gift_time(card) or not preload("res://workshop/live_history.gd").observer_alive(view, card.source, card.observed_at)):
+	if live and (not Domain.gift_time(card) or not History.observer_alive(view, card.source, card.observed_at)):
 		return t
 	var bits = world_bits(view)
 	var source: int = person_ids(view).find(card.source)
@@ -347,7 +673,7 @@ static func valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
 			var bit: int = 1 << source
 			var evil: PackedInt64Array = bits.evil
 			var deluded: PackedInt64Array = bits.deluded
-			for i in range(universe.size()):
+			for i in range(u_worlds.size()):
 				t[i] = 0 if (evil[i] & bit) or (deluded[i] & bit) else 1
 		return t
 	var groups = sig_groups(view)
@@ -356,10 +682,29 @@ static func valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
 	var answers = PackedByteArray()
 	answers.resize(rep.size())
 	for g in range(rep.size()):
-		answers[g] = 1 if source_valid(view, universe[rep[g]], card) else 0
-	for i in range(universe.size()):
+		answers[g] = 1 if source_valid(view, u_worlds[rep[g]], card) else 0
+	for i in range(u_worlds.size()):
 		t[i] = answers[of[i]]
 	return t
+
+static func _valid_table_cs(view: Dictionary, u_key: String, u_worlds: Array, card: Dictionary) -> PackedByteArray:
+	var u_handle: int = SolverBackend.get_universe_handle(u_key, u_worlds)
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(u_worlds) if u_handle < 0 else PackedInt64Array()
+	var n_people: int = person_ids(view).size()
+	var is_live: bool = Domain.live(view)
+	var kind_code: int = 1 if card.get("kind", "") == "report" else 0
+	var testimony_only: bool = bool(card.get("testimony_only", false))
+	var src_str: String = str(card.get("source", ""))
+	var src_idx: int = person_index(view, src_str)
+	var obs_at = card.get("observed_at", {})
+	var gift_ok: bool = true
+	if kind_code == 1 and is_live and not testimony_only:
+		gift_ok = Domain._gift_time_gd(card) and History.observer_alive(view, src_str, obs_at)
+	var conv_check: bool = _curse_active_at(view, TimeModel.statement_time(card) if testimony_only else obs_at)
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("Solver.valid_table", pack_u)
+	return SolverBackend._bridge().SolverValidTable(u_handle, fallback, n_people, is_live, kind_code, testimony_only, src_idx, gift_ok, conv_check)
 
 static var _sig_groups: Dictionary = {}
 
@@ -371,13 +716,32 @@ static func sig_groups(view: Dictionary) -> Dictionary:
 		return _sig_groups[key]
 	if _sig_groups.size() > 16:
 		_sig_groups.clear()
-	var universe: Array = universe(view)
+	var st: int = SolverBackend.begin_stage("world_domain") if SolverBackend.profiling_enabled else -1
+	var u_worlds: Array = universe(view)
+	var mode: int = SolverBackend.active_mode()
+	var out: Dictionary
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		out = _sig_groups_gd(view, u_worlds)
+	elif mode == SolverBackend.Mode.CSHARP:
+		out = _sig_groups_cs(view, key, u_worlds)
+	else:
+		out = _sig_groups_gd(view, u_worlds)
+		var cs_out: Dictionary = _sig_groups_cs(view, key, u_worlds)
+		var b = SolverBackend._bridge()
+		b.VerifyInt32Buffer("Solver.sig_groups.rep", out.rep, cs_out.rep)
+		b.VerifyInt32Buffer("Solver.sig_groups.of", out.of, cs_out.of)
+	if st >= 0:
+		SolverBackend.end_stage(st)
+	_sig_groups[key] = out
+	return out
+
+static func _sig_groups_gd(view: Dictionary, u_worlds: Array) -> Dictionary:
 	var index = {}
 	var rep = PackedInt32Array()
 	var of = PackedInt32Array()
-	of.resize(universe.size())
-	for i in range(universe.size()):
-		var sig: int = content_sig(view, universe[i])
+	of.resize(u_worlds.size())
+	for i in range(u_worlds.size()):
+		var sig: int = content_sig(view, u_worlds[i])
 		var g: int = index.get(sig, -1) if sig >= 0 else -1
 		if g < 0:
 			g = rep.size()
@@ -385,8 +749,22 @@ static func sig_groups(view: Dictionary) -> Dictionary:
 			if sig >= 0:
 				index[sig] = g
 		of[i] = g
-	_sig_groups[key] = {"rep": rep, "of": of}
-	return _sig_groups[key]
+	return {"rep": rep, "of": of}
+
+static func _sig_groups_cs(view: Dictionary, u_key: String, u_worlds: Array) -> Dictionary:
+	var u_handle: int = SolverBackend.get_universe_handle(u_key, u_worlds)
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(u_worlds) if u_handle < 0 else PackedInt64Array()
+	var n_people: int = person_ids(view).size()
+	var is_live: bool = Domain.live(view)
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("Solver.sig_groups", pack_u)
+	var raw: PackedInt32Array = SolverBackend._bridge().SolverSigGroups(u_handle, fallback, n_people, is_live)
+	var r_len: int = raw[0]
+	return {
+		"rep": raw.slice(1, 1 + r_len),
+		"of": raw.slice(1 + r_len),
+	}
 
 ## Whether a card is constrained by a report table (reports, and the curse event).
 static func tabled(card: Dictionary) -> bool:
@@ -404,7 +782,7 @@ static func source_valid(view: Dictionary, world: Dictionary, card: Dictionary) 
 	if Domain.live(view):
 		if not Domain.healthy(view, world, card.source) or not Domain.gift_time(card):
 			return false
-		if not preload("res://workshop/live_history.gd").observer_alive(view, card.source, card.observed_at):
+		if not History.observer_alive(view, card.source, card.observed_at):
 			return false
 	return true
 
@@ -415,28 +793,63 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 		var base = solve(view, cards, {}, answers, knowledge, epoch)
 		return {"worlds": _positions(view, base.worlds, positions, epoch, temporal_positions),
 			"movement": base.movement, "movement_ok": base.movement_ok}
-	# Report masks use the universe's array index, including distinct conversion
-	# histories. Keep the worlds themselves unchanged for explanations/checkpoints.
-	var universe: Array = universe(view)
+	var u_key: String = _universe_key(view)
+	var u_worlds: Array = universe(view)
 	var tables: Array = []
 	for card in cards:
 		if not tabled(card):
 			continue
 		tables.append(report_table(view, card, answers.get(card.id, {}).get("positive", []), answers.get(card.id, {}).get("blocks", []), answers.get(card.id, {}).get("marked", [])))
+
+	var claims_ok: bool = not Domain.live(view) or Domain.claims_compatible(cards, knowledge)
+	var worlds: Array = []
+	var surviving_indices := PackedInt32Array()
+	var mode: int = SolverBackend.active_mode()
+	var u_handle: int = SolverBackend.get_universe_handle(u_key, u_worlds) if mode != SolverBackend.Mode.GDSCRIPT else -1
+
+	if claims_ok:
+		if mode == SolverBackend.Mode.GDSCRIPT:
+			worlds = _filter_candidates_gd(view, u_worlds, tables, positions, knowledge, epoch, temporal_positions)
+		elif mode == SolverBackend.Mode.CSHARP:
+			surviving_indices = _filter_candidates_cs(view, u_worlds, u_handle, tables, positions, knowledge, epoch, temporal_positions)
+			worlds.resize(surviving_indices.size())
+			for k_i in range(surviving_indices.size()):
+				worlds[k_i] = u_worlds[surviving_indices[k_i]]
+		else:
+			worlds = _filter_candidates_gd(view, u_worlds, tables, positions, knowledge, epoch, temporal_positions)
+			surviving_indices = _filter_candidates_cs(view, u_worlds, u_handle, tables, positions, knowledge, epoch, temporal_positions)
+			var gd_idx := PackedInt32Array()
+			gd_idx.resize(worlds.size())
+			for k_i in range(worlds.size()):
+				var wi = worlds[k_i].get("__i", -1)
+				gd_idx[k_i] = int(wi) if int(wi) >= 0 else u_worlds.find(worlds[k_i])
+			SolverBackend._bridge().VerifyInt32Buffer("Solver._solve.candidates", gd_idx, surviving_indices)
+
+	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
+	if view.get("world_options", {}).get("roles", false) and not worlds.is_empty():
+		# One role table for the surviving worlds (same answers as fits per world).
+		var fit: PackedByteArray = Roles.fits_table(view, worlds, cards, knowledge, answers, false, u_handle, surviving_indices)
+		var kept: Array = []
+		for i in range(worlds.size()):
+			if fit[i] == 1:
+				kept.append(worlds[i])
+		worlds = kept
+	var movement = movement_for(view, cards if view.get("live_activity", false) else movement_cards, answers, knowledge)
+	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
+
+static func _filter_candidates_gd(view: Dictionary, u_worlds: Array, tables: Array, positions: Dictionary, knowledge: Dictionary, epoch: String, temporal_positions: Array) -> Array:
 	var worlds: Array = []
 	if tables.is_empty():
-		worlds = universe.duplicate()
+		worlds = u_worlds.duplicate()
 	else:
-		for i in range(universe.size()):
+		for i in range(u_worlds.size()):
 			var accepted = true
 			for table in tables:
 				if table[i] == 0:
 					accepted = false
 					break
 			if accepted:
-				worlds.append(universe[i])
-	if Domain.live(view) and not Domain.claims_compatible(cards, knowledge):
-		worlds = []
+				worlds.append(u_worlds[i])
 	var has_curse: bool = view.get("chronology", {}).has("curse")
 	if not has_curse and temporal_positions.is_empty():
 		var must_be_good: int = 0
@@ -485,19 +898,100 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 				worlds = worlds.filter(func(w): return position_holds(view, w, id, assignment.positions[id], assignment.at))
 	for fact in knowledge.get("timed_good", []):
 		worlds = worlds.filter(func(w): return not TimeModel.evil_at(view, w, fact.person, fact.at))
-	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
-	if view.get("world_options", {}).get("roles", false):
-		# One role table for the surviving worlds (same answers as fits per world).
-		var fit: PackedByteArray = Roles.fits_table(view, worlds, cards, knowledge, answers)
-		var kept: Array = []
-		for i in range(worlds.size()):
-			if fit[i] == 1:
-				kept.append(worlds[i])
-		worlds = kept
-	var movement = movement_for(view, cards if view.get("live_activity", false) else movement_cards, answers, knowledge)
-	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
+	return worlds
+
+static func _filter_candidates_cs(view: Dictionary, u_worlds: Array, u_handle: int, tables: Array, positions: Dictionary, knowledge: Dictionary, epoch: String, temporal_positions: Array) -> PackedInt32Array:
+	var n: int = u_worlds.size()
+	if n == 0:
+		return PackedInt32Array()
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(u_worlds) if u_handle < 0 else PackedInt64Array()
+	var has_curse: bool = view.get("chronology", {}).has("curse")
+	var must_be_good: int = 0
+	var must_be_evil: int = 0
+	var marked_req: int = -2
+	var pos_specs := PackedInt32Array()
+	var eff_epoch = view.get("alignment_epoch", "") if epoch == "" else epoch
+	var conv_eff_epoch: bool = _curse_active_at(view, eff_epoch)
+
+	if not has_curse and temporal_positions.is_empty():
+		for id in knowledge.get("good", []):
+			var idx: int = person_index(view, str(id))
+			if idx >= 0:
+				must_be_good |= (1 << idx)
+		for id in positions:
+			var idx: int = person_index(view, str(id))
+			var pv: String = str(positions[id])
+			if idx < 0:
+				if pv in ["evil", "marked", "unmarked"]:
+					return PackedInt32Array()
+				continue
+			if pv == "good":
+				must_be_good |= (1 << idx)
+			elif pv == "evil":
+				must_be_evil |= (1 << idx)
+			elif pv == "marked":
+				if marked_req >= 0 and marked_req != idx:
+					return PackedInt32Array()
+				marked_req = idx
+			else:
+				pos_specs.append(idx)
+				pos_specs.append(_position_code(pv))
+				pos_specs.append(1 if conv_eff_epoch else 0)
+	else:
+		var good_ep = knowledge.get("good_epoch", epoch)
+		var eff_good_ep = view.get("alignment_epoch", "") if good_ep == "" else good_ep
+		var conv_good_ep: bool = _curse_active_at(view, eff_good_ep)
+		for id in knowledge.get("good", []):
+			pos_specs.append(person_index(view, str(id)))
+			pos_specs.append(0)
+			pos_specs.append(1 if conv_good_ep else 0)
+		for id in positions:
+			pos_specs.append(person_index(view, str(id)))
+			pos_specs.append(_position_code(str(positions[id])))
+			pos_specs.append(1 if conv_eff_epoch else 0)
+		for assignment in temporal_positions:
+			var conv_assn: bool = _curse_active_at(view, assignment.at)
+			for id in assignment.positions:
+				pos_specs.append(person_index(view, str(id)))
+				pos_specs.append(_position_code(str(assignment.positions[id])))
+				pos_specs.append(1 if conv_assn else 0)
+
+	var tg_specs := PackedInt32Array()
+	for fact in knowledge.get("timed_good", []):
+		tg_specs.append(person_index(view, str(fact.person)))
+		tg_specs.append(1 if _curse_active_at(view, fact.at) else 0)
+
+	var t_count: int = tables.size()
+	var flat_tables := PackedByteArray()
+	if t_count == 1:
+		flat_tables = tables[0]
+	elif t_count > 1:
+		for tab in tables:
+			flat_tables.append_array(tab)
+
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("Solver.filter_candidates", pack_u)
+	return SolverBackend._bridge().SolverFilterCandidates(u_handle, fallback, t_count, flat_tables, must_be_good, must_be_evil, marked_req, pos_specs, tg_specs)
 
 static func _positions(view: Dictionary, worlds: Array, positions: Dictionary, epoch: String, temporal: Array) -> Array:
+	if worlds.is_empty():
+		return []
+	var mode: int = SolverBackend.active_mode()
+	if mode == SolverBackend.Mode.GDSCRIPT or worlds.size() < 64:
+		return _positions_gd(view, worlds, positions, epoch, temporal)
+	var cs_kept_idx: PackedInt32Array = _positions_cs_indices(view, worlds, positions, epoch, temporal)
+	var cs_worlds: Array = []
+	cs_worlds.resize(cs_kept_idx.size())
+	for k_i in range(cs_kept_idx.size()):
+		cs_worlds[k_i] = worlds[cs_kept_idx[k_i]]
+	if mode == SolverBackend.Mode.CSHARP:
+		return cs_worlds
+	var gd_worlds: Array = _positions_gd(view, worlds, positions, epoch, temporal)
+	SolverBackend._bridge().VerifyScalarInt64("Solver._positions.count", gd_worlds.size(), cs_worlds.size())
+	return gd_worlds
+
+static func _positions_gd(view: Dictionary, worlds: Array, positions: Dictionary, epoch: String, temporal: Array) -> Array:
 	if view.get("chronology", {}).has("curse") or not temporal.is_empty():
 		for id in positions:
 			worlds = worlds.filter(func(w): return position_holds(view, w, id, positions[id], epoch))
@@ -528,9 +1022,70 @@ static func _positions(view: Dictionary, worlds: Array, positions: Dictionary, e
 		worlds = worlds.filter(func(w): return position_holds(view, w, id, positions[id], epoch))
 	return worlds
 
+static func _positions_cs_indices(view: Dictionary, worlds: Array, positions: Dictionary, epoch: String, temporal: Array) -> PackedInt32Array:
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var u_key: String = _universe_key(view)
+	var u_worlds: Array = universe(view)
+	var u_handle: int = SolverBackend.get_universe_handle(u_key, u_worlds)
+	var sub_idx := PackedInt32Array()
+	var fallback := PackedInt64Array()
+	var can_index: bool = u_handle >= 0 and worlds.all(func(w): return w.has("__i"))
+	if can_index:
+		sub_idx.resize(worlds.size())
+		for i in range(worlds.size()):
+			sub_idx[i] = int(worlds[i]["__i"])
+	else:
+		u_handle = -1
+		fallback = SolverBackend.pack_worlds(worlds)
+
+	var has_curse: bool = view.get("chronology", {}).has("curse")
+	var must_good: int = 0
+	var must_evil: int = 0
+	var marked_req: int = -2
+	var pos_specs := PackedInt32Array()
+	var eff_epoch = view.get("alignment_epoch", "") if epoch == "" else epoch
+	var conv_eff: bool = _curse_active_at(view, eff_epoch)
+
+	if has_curse or not temporal.is_empty():
+		for id in positions:
+			pos_specs.append(person_index(view, str(id)))
+			pos_specs.append(_position_code(str(positions[id])))
+			pos_specs.append(1 if conv_eff else 0)
+		for assignment in temporal:
+			var conv_a: bool = _curse_active_at(view, assignment.at)
+			for id in assignment.positions:
+				pos_specs.append(person_index(view, str(id)))
+				pos_specs.append(_position_code(str(assignment.positions[id])))
+				pos_specs.append(1 if conv_a else 0)
+	else:
+		for id in positions:
+			var idx: int = person_index(view, str(id))
+			var pv: String = str(positions[id])
+			if idx < 0:
+				if pv in ["evil", "marked", "unmarked"]:
+					return PackedInt32Array()
+				continue
+			match pv:
+				"good":
+					must_good |= (1 << idx)
+				"evil":
+					must_evil |= (1 << idx)
+				"marked":
+					if marked_req >= 0 and marked_req != idx:
+						return PackedInt32Array()
+					marked_req = idx
+				_:
+					pos_specs.append(idx)
+					pos_specs.append(_position_code(pv))
+					pos_specs.append(1 if conv_eff else 0)
+
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("Solver.filter_positions", pack_u)
+	return SolverBackend._bridge().SolverFilterPositions(u_handle, sub_idx, fallback, must_good, must_evil, marked_req, pos_specs)
+
 static func movement_for(view: Dictionary, cards: Array, answers: Dictionary = {}, knowledge: Dictionary = {}) -> Dictionary:
-	if preload("res://workshop/live_activity.gd").available(view):
-		return preload("res://workshop/live_activity.gd").routes(view, cards, answers, knowledge)
+	if Activity.available(view):
+		return Activity.routes(view, cards, answers, knowledge)
 	var ids: Array = view.people.map(func(p): return p.id)
 	var movement_cards: Array = cards.filter(func(c): return c.kind in ["sighting", "alibi"] or (c.kind == "report" and c.get("role", "") in ["nightwatch", "lamplighter"]))
 	var movement_key = JSON.stringify([ids, movement_cards, answers, knowledge])
@@ -583,7 +1138,7 @@ static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictio
 		evil |= 1 << int(world.converted)
 	if card.role == "gravedigger" and view.has("timeline"):
 		var gd_night_t: int = card.night if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
-		if not preload("res://workshop/live_history.gd").executed(view, str(data.get("executed", "")), gd_night_t):
+		if not History.executed(view, str(data.get("executed", "")), gd_night_t):
 			return false
 	var rdef = C.role_def(card.role)
 	if rdef != null and rdef.shape == "ROLE_IN_GROUP":
@@ -608,7 +1163,7 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 	_ensure_people(view)
 	if card.role == "gravedigger" and view.has("timeline"):
 		var gd_night: int = card.night if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
-		if not preload("res://workshop/live_history.gd").executed(view, str(card.data.get("executed", "")), gd_night):
+		if not History.executed(view, str(card.data.get("executed", "")), gd_night):
 			return false
 	if card.role == "warden":
 		if view.get("timeline", {}).get("events", []).any(func(event): return event.kind == "demon_death" and event.at.day == card.observed_at.day and card.data.target in event.subjects):
@@ -623,9 +1178,9 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 	if Domain.live(view):
 		if card.role == "medium" and card.get("duty_only", false):
 			var dblock: String = str(card.data.get("block", ""))
-			var has_corpse: bool = view.people.any(func(p): return p.home == dblock and not preload("res://workshop/live_history.gd").alive_at_night(view, p.id, card.night))
+			var has_corpse: bool = view.people.any(func(p): return p.home == dblock and not History.alive_at_night(view, p.id, card.night))
 			return has_corpse
-		if rdef != null and rdef.shape == "NIGHT_ROUTE" and card.data.get("seen", []).any(func(id): return not preload("res://workshop/live_history.gd").alive_at_night(view, id, card.night)):
+		if rdef != null and rdef.shape == "NIGHT_ROUTE" and card.data.get("seen", []).any(func(id): return not History.alive_at_night(view, id, card.night)):
 			return false
 		if card.role == "rumormonger":
 			return Domain.rumor(view, world, card, answer)
@@ -686,6 +1241,19 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 	return false
 
 static func _movement(view: Dictionary, cards: Array, answers: Dictionary, knowledge: Dictionary = {}) -> Dictionary:
+	var mode: int = SolverBackend.active_mode()
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		return _movement_gd(view, cards, answers, knowledge)
+	var cs_out: Dictionary = _movement_cs(view, cards, answers, knowledge)
+	if mode == SolverBackend.Mode.CSHARP:
+		return cs_out
+	var gd_out: Dictionary = _movement_gd(view, cards, answers, knowledge)
+	var b = SolverBackend._bridge()
+	b.VerifyScalarBool("Solver._movement.okay", gd_out.okay, cs_out.okay)
+	b.VerifyScalarBool("Solver._movement.nights", gd_out.nights == cs_out.nights, true)
+	return gd_out
+
+static func _movement_gd(view: Dictionary, cards: Array, answers: Dictionary, knowledge: Dictionary = {}) -> Dictionary:
 	var ids: Array = view.people.map(func(p): return p.id)
 	var nights = {}
 	var okay = true
@@ -732,6 +1300,93 @@ static func _movement(view: Dictionary, cards: Array, answers: Dictionary, knowl
 		okay = okay and not possibilities.is_empty()
 	return {"okay": okay, "nights": nights}
 
+static func _movement_cs(view: Dictionary, cards: Array, answers: Dictionary, knowledge: Dictionary) -> Dictionary:
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var ids: Array = person_ids(view)
+	var n_people: int = ids.size()
+	var own: String = str(knowledge.get("self", ""))
+	var own_idx: int = person_index(view, own)
+	var own_outings: Dictionary = knowledge.get("own_outings", {})
+	var observed_nights: Array = []
+	for card in cards:
+		if card.get("night", -1) >= 0 and card.night not in observed_nights:
+			observed_nights.append(int(card.night))
+
+	var night_specs := PackedInt32Array()
+	var card_specs := PackedInt32Array()
+	var card_cursor: int = 0
+
+	for night in observed_nights:
+		var relevant: Array = cards.filter(func(c): return not c.get("quoted", false) and c.get("night", -1) == night and (c.kind in ["sighting", "alibi"] or c.get("role", "") in ["nightwatch", "lamplighter"]))
+		if relevant.is_empty():
+			continue
+		var n_str: String = str(night)
+		var own_state: int = -1
+		if own_idx >= 0 and own_outings.has(n_str):
+			own_state = 1 if bool(own_outings[n_str]) else 0
+		night_specs.append(night)
+		night_specs.append(own_state)
+		night_specs.append(card_cursor)
+		night_specs.append(relevant.size())
+
+		for card in relevant:
+			var kind_code: int = 1
+			var req_list: Array = []
+			var alibi_idx: int = -1
+			var lamp_src: int = -1
+			var lamp_cnt: int = 0
+			if card.kind == "sighting":
+				req_list = card.get("subjects", [card.get("subject", "")])
+			elif card.kind == "alibi":
+				kind_code = 2
+				alibi_idx = person_index(view, str(card.get("subject", "")))
+				if alibi_idx < 0:
+					# In GDScript 1 << -1 is 0 so mask & 0 == 0 (never invalidates).
+					alibi_idx = -1
+			elif card.get("role", "") == "nightwatch":
+				var src_s: String = str(card.get("source", ""))
+				req_list = [src_s] if bool(card.get("duty_only", false)) else (card.get("data", {}).get("seen", []) + [src_s])
+			elif card.get("role", "") == "lamplighter":
+				var src_s: String = str(card.get("source", ""))
+				req_list = [src_s] + answers.get(card.get("id", ""), {}).get("positive", [])
+				if not bool(card.get("duty_only", false)):
+					kind_code = 3
+					lamp_src = person_index(view, src_s)
+					lamp_cnt = int(card.get("data", {}).get("count", 0))
+			var req_mask: int = 0
+			var has_invalid_req: bool = false
+			for req_id in req_list:
+				var ri: int = person_index(view, str(req_id))
+				if ri < 0:
+					has_invalid_req = true
+				else:
+					req_mask |= (1 << ri)
+			card_specs.append(kind_code)
+			card_specs.append(req_mask)
+			card_specs.append(1 if has_invalid_req else 0)
+			card_specs.append(alibi_idx)
+			card_specs.append(lamp_src)
+			card_specs.append(lamp_cnt)
+			card_cursor += 1
+
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("Solver._movement", pack_u)
+	var raw: PackedInt32Array = SolverBackend._bridge().SolverFixtureMovement(n_people, own_idx, night_specs, card_specs)
+	var nights: Dictionary = {}
+	var p: int = 1
+	while p + 2 < raw.size():
+		var night: int = raw[p]
+		var compat: int = raw[p + 1]
+		var f_mask: int = raw[p + 2]
+		p += 3
+		var forced: Array = []
+		if compat > 0:
+			for i in range(n_people):
+				if (f_mask & (1 << i)) != 0:
+					forced.append(ids[i])
+		nights[str(night)] = {"compatible": compat, "forced_out": forced}
+	return {"okay": raw[0] != 0, "nights": nights}
+
 static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -> bool:
 	var index: int = person_index(view, conclusion.target)
 	if index < 0:
@@ -770,28 +1425,71 @@ static func question_inputs(view: Dictionary, conclusion: Dictionary) -> Array:
 ## Existing report truth and role tables answer reading questions without adding
 ## honesty/source states to the world domain.
 static func question_table(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
-	var input = [_universe_key(view), view.people, view.get("timeline", {}), view.get("live_activity", false), question_inputs(view, conclusion)]
+	if not SolverBackend.profiling_enabled:
+		return _question_table_dispatch(view, conclusion)
+	var st: int = SolverBackend.begin_stage("world_domain")
+	var out: PackedByteArray = _question_table_dispatch(view, conclusion)
+	SolverBackend.end_stage(st)
+	return out
+
+static func _question_table_dispatch(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
+	var u_key: String = _universe_key(view)
+	var input = [u_key, view.people, view.get("timeline", {}), view.get("live_activity", false), question_inputs(view, conclusion)]
 	var key = hash(input)
 	if question_cache.has(key) and question_cache[key].input == input:
 		return question_cache[key].table
 	var worlds: Array = universe(view)
-	var out = PackedByteArray()
-	out.resize(worlds.size())
 	var report = card_by_id(view, conclusion.get("report", ""))
+	var out := PackedByteArray()
+	out.resize(worlds.size())
 	if report.get("kind") == "report":
+		var mode: int = SolverBackend.active_mode()
+		var u_handle: int = SolverBackend.get_universe_handle(u_key, worlds) if mode != SolverBackend.Mode.GDSCRIPT else -1
 		var accepted: PackedByteArray = report_table(view, report)
-		var roles: PackedByteArray = Roles.fits_table(view, worlds, [report], {})
-		var pair: Array = report.get("data", {}).get("pair", []).map(func(id): return person_index(view, id))
-		for i in range(worlds.size()):
-			var wrong: bool = accepted[i] == 0 or roles[i] == 0
-			if conclusion.type == "misled":
-				var registration: bool = report.role == "seer" and report.data.yes and worlds[i].has("demon") and worlds[i].demon not in pair
-				wrong = not TimeModel.evil_at(view, worlds[i], report.source, report.observed_at) and (wrong or registration)
-			out[i] = 1 if wrong else 0
+		var roles: PackedByteArray = Roles.fits_table(view, worlds, [report], {}, {}, false, u_handle)
+		if mode == SolverBackend.Mode.GDSCRIPT:
+			out = _question_table_gd(view, worlds, conclusion, report, accepted, roles)
+		elif mode == SolverBackend.Mode.CSHARP:
+			out = _question_table_cs(view, worlds, u_handle, conclusion, report, accepted, roles)
+		else:
+			out = _question_table_gd(view, worlds, conclusion, report, accepted, roles)
+			var cs_out: PackedByteArray = _question_table_cs(view, worlds, u_handle, conclusion, report, accepted, roles)
+			SolverBackend._bridge().VerifyByteBuffer("Solver.question_table", out, cs_out)
 	if question_cache.size() >= 128:
 		question_cache.clear()
 	question_cache[key] = {"input": input.duplicate(true), "table": out}
 	return out
+
+static func _question_table_gd(view: Dictionary, worlds: Array, conclusion: Dictionary, report: Dictionary, accepted: PackedByteArray, roles: PackedByteArray) -> PackedByteArray:
+	var out = PackedByteArray()
+	out.resize(worlds.size())
+	var pair: Array = report.get("data", {}).get("pair", []).map(func(id): return person_index(view, id))
+	for i in range(worlds.size()):
+		var wrong: bool = accepted[i] == 0 or roles[i] == 0
+		if conclusion.type == "misled":
+			var registration: bool = report.role == "seer" and report.data.yes and worlds[i].has("demon") and worlds[i].demon not in pair
+			wrong = not TimeModel.evil_at(view, worlds[i], report.source, report.observed_at) and (wrong or registration)
+		out[i] = 1 if wrong else 0
+	return out
+
+static func _question_table_cs(view: Dictionary, worlds: Array, u_handle: int, conclusion: Dictionary, report: Dictionary, accepted: PackedByteArray, roles: PackedByteArray) -> PackedByteArray:
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(worlds) if u_handle < 0 else PackedInt64Array()
+	var is_misled: bool = conclusion.get("type", "") == "misled"
+	var is_seer_yes: bool = report.get("role", "") == "seer" and bool(report.get("data", {}).get("yes", false))
+	var pair_mask: int = 0
+	var pair_has_minus_one: bool = false
+	for pid in report.get("data", {}).get("pair", []):
+		var pi: int = person_index(view, str(pid))
+		if pi < 0:
+			pair_has_minus_one = true
+		else:
+			pair_mask |= (1 << pi)
+	var src_idx: int = person_index(view, str(report.get("source", "")))
+	var conv_obs: bool = _curse_active_at(view, report.get("observed_at", {}))
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("Solver.question_table", pack_u)
+	return SolverBackend._bridge().SolverQuestionTable(u_handle, fallback, accepted, roles, is_misled, is_seer_yes, pair_mask, pair_has_minus_one, src_idx, conv_obs)
 
 static func describe_world(view: Dictionary, world: Dictionary, epoch: String = "") -> Dictionary:
 	var ids: Array = person_ids(view)

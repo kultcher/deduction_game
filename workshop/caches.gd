@@ -9,6 +9,7 @@ extends RefCounted
 
 const CaseEval = preload("res://workshop/case_eval.gd")
 const ChannelLikelihood = preload("res://workshop/channel_likelihood.gd")
+const ChannelSumProduct = preload("res://workshop/channel_sum_product.gd")
 const Chronology = preload("res://workshop/chronology.gd")
 const FactoredChannels = preload("res://workshop/factored_channels.gd")
 const GhostJuror = preload("res://workshop/ghost_juror.gd")
@@ -29,10 +30,15 @@ static func clear_all() -> void:
 	CaseEval._index_cache.clear()
 	CaseEval._premise_cache.clear()
 	CaseEval._compiled.clear()
+	CaseEval._cc_handles.clear()
+	CaseEval._cc_handles_epoch = -1
 	CaseEval._coarse_cache.clear()
 	CaseEval._own_cache.clear()
 	CaseEval._fits_cache.clear()
 	ChannelLikelihood.cache.clear()
+	ChannelSumProduct._program_entries.clear()
+	ChannelSumProduct._circuit_entries.clear()
+	ChannelSumProduct._handles_epoch = -1
 	Chronology._cached_people = null
 	Chronology._cached_idx = {}
 	FactoredChannels.cache.clear()
@@ -45,6 +51,7 @@ static func clear_all() -> void:
 	LiveActivity._mru_factor = null
 	LiveActivity._mru_handle = -1
 	LiveActivity._mru_epoch = -1
+	LiveActivity._env_cache.clear()
 	MovementModel.cache.clear()
 	ReadingChallenges.cache.clear()
 	ReadingChallenges.fraction_cache.clear()
@@ -61,6 +68,9 @@ static func clear_all() -> void:
 	Solver._cached_ids = []
 	Solver._cached_idx = {}
 	Solver._cached_block_masks = {}
+	Solver._cached_cards_ref = null
+	Solver._cached_cards_size = 0
+	Solver._cached_card_idx.clear()
 	Solver._bits.clear()
 	Solver._sig_groups.clear()
 	Solver.question_cache.clear()

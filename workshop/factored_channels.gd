@@ -31,13 +31,40 @@ static func _assess_impl(view: Dictionary, cards: Array, knowledge: Dictionary, 
 		cache[key] = {"input": input.duplicate(true), "graph": _compile(view, cards, knowledge, include_public)}
 	var graph: Dictionary = cache[key].graph
 	var compile_us = Time.get_ticks_usec() - start
-	var value_us = 0
-	var sum_us = 0
 	var result = {"base": PackedFloat64Array(), "post": PackedFloat64Array(), "held": {}, "acceptance": {}, "consistent": false,
 		"issues": graph.issues, "states": 0, "peak_rows": graph.get("program", {}).get("peak", 0)}
 	if not graph.issues.is_empty():
 		return result
+
 	var universe: Array = Solver.universe(view)
+	var mode: int = SolverBackend.active_mode()
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		result = _assess_worlds_gd(view, graph, universe, rates, q, representatives, multiplicity, compile_us)
+	elif mode == SolverBackend.Mode.CSHARP:
+		result = _assess_worlds_cs(view, graph, universe, rates, q, representatives, multiplicity, compile_us)
+	else:
+		result = _assess_worlds_gd(view, graph, universe, rates, q, representatives, multiplicity, compile_us)
+		var cs_res: Dictionary = _assess_worlds_cs(view, graph, universe, rates, q, representatives, multiplicity, compile_us)
+		var b = SolverBackend._bridge()
+		b.VerifyScalarInt64("FactoredChannels.assess.states", result.states, cs_res.states)
+		b.VerifyScalarBool("FactoredChannels.assess.consistent", result.consistent, cs_res.consistent)
+		b.VerifyFloat64Buffer("FactoredChannels.assess.post", result.post, cs_res.post, 0.0)
+		for id in graph.markers:
+			b.VerifyFloat64Buffer("FactoredChannels.assess.held", result.held[id], cs_res.held[id], 0.0)
+			b.VerifyScalarFloat64("FactoredChannels.assess.acceptance", float(result.acceptance[id]), float(cs_res.acceptance[id]), 0.0)
+
+	if not include_public:
+		result.base = result.post.duplicate()
+	else:
+		var prior = assess(view, cards.filter(func(card): return card.id in baseline_ids), knowledge, rates, q, [], representatives, multiplicity, false)
+		result.base = prior.post
+	return result
+
+static func _assess_worlds_gd(view: Dictionary, graph: Dictionary, universe: Array, rates: Dictionary, q: Dictionary, representatives: PackedInt32Array, multiplicity: PackedFloat64Array, compile_us: int) -> Dictionary:
+	var value_us = 0
+	var sum_us = 0
+	var result = {"base": PackedFloat64Array(), "post": PackedFloat64Array(), "held": {}, "acceptance": {}, "consistent": false,
+		"issues": graph.issues, "states": 0, "peak_rows": graph.get("program", {}).get("peak", 0)}
 	var size: int = universe.size() if representatives.is_empty() else representatives.size()
 	result.post.resize(size)
 	for id in graph.markers:
@@ -52,21 +79,17 @@ static func _assess_impl(view: Dictionary, cards: Array, knowledge: Dictionary, 
 		var values: Array = []
 		for factor in graph.factors:
 			values.append(_values(view, graph, factor, world, index, rates, q))
-		# Many modifier worlds have identical factors. Memoize the numerical program,
-		# not an assumed role/alignment equivalence that could miss impairment.
 		var signature = hash(values)
 		value_us += Time.get_ticks_usec() - value_start
 		var sum_start = Time.get_ticks_usec()
 		if not memo.has(signature) or memo[signature].values != values:
-			memo[signature] = {"values": values, "result": Sum.run(graph.circuit, values)}
+			memo[signature] = {"values": values, "result": Sum._run_gd(graph.circuit, values)}
 		var summed: Dictionary = memo[signature].result
 		sum_us += Time.get_ticks_usec() - sum_start
 		result.post[slot] = summed.total
 		for id in graph.markers:
 			var marker: int = graph.markers[id]
 			result.held[id][slot] = summed.adjoints[marker][0 if graph.factors[marker].scope.is_empty() else 1]
-		# Consistency asks whether all original statements can hold together, not
-		# whether some fallible explanation gives the evidence positive likelihood.
 		if not result.consistent and summed.total > 0.0:
 			result.consistent = _all_hold(view, graph, world, index)
 	result.states = memo.size()
@@ -79,12 +102,235 @@ static func _assess_impl(view: Dictionary, cards: Array, knowledge: Dictionary, 
 		for slot in range(size):
 			mass += result.held[id][slot] * (1.0 if multiplicity.is_empty() else multiplicity[slot])
 		result.acceptance[id] = mass / total if total > 0.0 else 0.0
-	if not include_public:
-		result.base = result.post.duplicate()
-	else:
-		var prior = assess(view, cards.filter(func(card): return card.id in baseline_ids), knowledge, rates, q, [], representatives, multiplicity, false)
-		result.base = prior.post
 	return result
+
+static func _assess_worlds_cs(view: Dictionary, graph: Dictionary, universe: Array, rates: Dictionary, q: Dictionary, representatives: PackedInt32Array, multiplicity: PackedFloat64Array, compile_us: int) -> Dictionary:
+	var value_start: int = Time.get_ticks_usec()
+	var u_key: String = Solver._universe_key(view)
+	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(universe) if u_handle < 0 else PackedInt64Array()
+	var n_people: int = view.people.size()
+	var size: int = universe.size() if representatives.is_empty() else representatives.size()
+	var has_reps: bool = not representatives.is_empty()
+
+	# Pre-populate conditional factor.rows for any missing coarse signatures across the evaluated slice:
+	for factor in graph.factors:
+		var fk: String = str(factor.kind)
+		if fk in ["static", "prior", "chance", "report", "knowledge", "public"]:
+			continue
+		if fk in ["forced_lamp", "route_counts", "fixture_movement"]:
+			if not factor.rows.has(0):
+				var w0: Dictionary = universe[representatives[0] if has_reps and size > 0 else 0]
+				_values(view, graph, factor, w0, representatives[0] if has_reps and size > 0 else 0, rates, q)
+			continue
+		if fk == "activity":
+			var p_idx: int = Solver.person_index(view, str(factor.person.id))
+			for slot in range(size):
+				if factor.rows.size() >= 3:
+					break
+				var idx: int = representatives[slot] if has_reps else slot
+				var w: Dictionary = universe[idx]
+				var sig: int = 2 if w.get("demon", -1) == p_idx else (1 if w.evil & (1 << p_idx) else 0)
+				if not factor.rows.has(sig):
+					_values(view, graph, factor, w, idx, rates, q)
+			continue
+		if fk == "roles":
+			var walkers: int = 0
+			for wid in factor.get("walker_ids", []):
+				var wi: int = Solver.person_index(view, str(wid))
+				if wi >= 0:
+					walkers |= (1 << wi)
+			var mediums: int = 0
+			for mid in factor.get("relay_ids", []):
+				var mi: int = Solver.person_index(view, str(mid))
+				if mi >= 0:
+					mediums |= (1 << mi)
+			var masks: PackedInt64Array = Solver.Roles.coarse_masks(n_people, universe, bool(factor.seer), mediums, walkers, u_handle)
+			for slot in range(size):
+				var idx: int = representatives[slot] if has_reps else slot
+				var sig: int = masks[idx]
+				if not factor.rows.has(sig):
+					_values(view, graph, factor, universe[idx], idx, rates, q)
+			continue
+		if fk == "speech":
+			for slot in range(size):
+				var idx: int = representatives[slot] if has_reps else slot
+				var w: Dictionary = universe[idx]
+				var sig: int = int(w.evil) * (n_people + 1) + int(w.get("demon", -1)) + 1
+				if not factor.rows.has(sig):
+					_values(view, graph, factor, w, idx, rates, q)
+
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var factor_specs := PackedInt32Array()
+	var factor_doubles := PackedFloat64Array()
+	var flat_byte_tables := PackedByteArray()
+	var table_count: int = 0
+	var public_specs := PackedInt32Array()
+	var public_ratios := PackedFloat64Array()
+	var cond_sigs := PackedInt64Array()
+	var cond_offsets := PackedInt32Array([0])
+	var flat_cond_rows := PackedFloat64Array()
+
+	var n_factors: int = graph.factors.size()
+	factor_specs.resize(n_factors * 6)
+
+	for fi in range(n_factors):
+		var factor: Dictionary = graph.factors[fi]
+		var fk: String = str(factor.kind)
+		var off: int = fi * 6
+		var k_code: int = 0
+		var p_a: int = 0
+		var p_b: int = 0
+		var p_c: int = 0
+		var c_start: int = 0
+		var c_count: int = 0
+
+		match fk:
+			"static":
+				k_code = 0
+				p_b = factor_doubles.size()
+				var sv: PackedFloat64Array = factor.values
+				factor_doubles.append_array(sv)
+				p_c = sv.size()
+			"prior":
+				var rate = rates[factor.channel.key]
+				if rate is Dictionary:
+					k_code = 2
+					p_a = Solver.person_index(view, str(factor.channel.source))
+					p_b = factor_doubles.size()
+					factor_doubles.append(float(rate.healthy))
+					factor_doubles.append(float(rate.impaired))
+				else:
+					k_code = 1
+					p_b = factor_doubles.size()
+					factor_doubles.append(float(rate))
+			"chance":
+				k_code = 3
+				p_a = 1 if not factor.scope.is_empty() else 0
+				p_b = factor_doubles.size()
+				factor_doubles.append(float(q.get(factor.origin, q.get(factor.card.id, 1.0))))
+			"report":
+				k_code = 4
+				p_a = 1 if not factor.scope.is_empty() else 0
+				p_b = table_count
+				flat_byte_tables.append_array(factor.table)
+				table_count += 1
+			"knowledge":
+				k_code = 5
+				p_b = table_count
+				flat_byte_tables.append_array(factor.table)
+				table_count += 1
+			"public":
+				k_code = 6
+				for pf in factor.factors:
+					public_specs.append(Solver.person_index(view, str(pf.target)))
+					var pf_ep = pf.get("epoch", view.get("alignment_epoch", ""))
+					public_specs.append(1 if Solver._curse_active_at(view, pf_ep) else 0)
+					public_ratios.append(pow(2.0, float(pf.log2_ratio)))
+			"forced_lamp", "route_counts", "fixture_movement":
+				k_code = 7
+				c_start = cond_sigs.size()
+				for sig_k in factor.rows:
+					cond_sigs.append(int(sig_k))
+					flat_cond_rows.append_array(factor.rows[sig_k])
+					cond_offsets.append(flat_cond_rows.size())
+					c_count += 1
+			"activity":
+				k_code = 8
+				p_a = Solver.person_index(view, str(factor.person.id))
+				c_start = cond_sigs.size()
+				for sig_k in factor.rows:
+					cond_sigs.append(int(sig_k))
+					flat_cond_rows.append_array(factor.rows[sig_k])
+					cond_offsets.append(flat_cond_rows.size())
+					c_count += 1
+			"roles":
+				k_code = 9
+				p_a = 1 if bool(factor.seer) else 0
+				for mid in factor.get("relay_ids", []):
+					var mi: int = Solver.person_index(view, str(mid))
+					if mi >= 0:
+						p_b |= (1 << mi)
+				for wid in factor.get("walker_ids", []):
+					var wi: int = Solver.person_index(view, str(wid))
+					if wi >= 0:
+						p_c |= (1 << wi)
+				c_start = cond_sigs.size()
+				for sig_k in factor.rows:
+					cond_sigs.append(int(sig_k))
+					flat_cond_rows.append_array(factor.rows[sig_k])
+					cond_offsets.append(flat_cond_rows.size())
+					c_count += 1
+			"speech":
+				k_code = 10
+				c_start = cond_sigs.size()
+				for sig_k in factor.rows:
+					cond_sigs.append(int(sig_k))
+					flat_cond_rows.append_array(factor.rows[sig_k])
+					cond_offsets.append(flat_cond_rows.size())
+					c_count += 1
+
+		factor_specs[off] = k_code
+		factor_specs[off + 1] = p_a
+		factor_specs[off + 2] = p_b
+		factor_specs[off + 3] = p_c
+		factor_specs[off + 4] = c_start
+		factor_specs[off + 5] = c_count
+
+	var marker_ids: Array = graph.markers.keys()
+	var n_markers: int = marker_ids.size()
+	var m_factors := PackedInt32Array()
+	var m_rows := PackedInt32Array()
+	m_factors.resize(n_markers)
+	m_rows.resize(n_markers)
+	for mi in range(n_markers):
+		var mf_idx: int = int(graph.markers[marker_ids[mi]])
+		m_factors[mi] = mf_idx
+		m_rows[mi] = 0 if graph.factors[mf_idx].scope.is_empty() else 1
+
+	var cir_h: int = Sum.lookup_circuit_handle(graph.circuit)
+	var fb_cir: PackedInt32Array = Sum.pack_flat_circuit(graph.circuit) if cir_h < 0 else PackedInt32Array()
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	var value_us: int = Time.get_ticks_usec() - value_start
+	var sum_start: int = Time.get_ticks_usec()
+	SolverBackend.record_boundary_call("FactoredChannels.assess_batch", pack_u)
+	var raw: PackedFloat64Array = SolverBackend._bridge().FactoredAssessBatch(
+		u_handle, fallback, n_people, representatives, multiplicity,
+		cir_h, fb_cir, factor_specs, factor_doubles, universe.size(), flat_byte_tables,
+		public_specs, public_ratios, cond_sigs, cond_offsets, flat_cond_rows, m_factors, m_rows
+	)
+	var sum_us: int = Time.get_ticks_usec() - sum_start
+
+	var states_cnt: int = int(raw[0])
+	var post: PackedFloat64Array = raw.slice(1, 1 + size)
+	var held_dict: Dictionary = {}
+	var acc_dict: Dictionary = {}
+	var h_base: int = 1 + size
+	var a_base: int = 1 + size + n_markers * size
+	for mi in range(n_markers):
+		var mid = marker_ids[mi]
+		held_dict[mid] = raw.slice(h_base + mi * size, h_base + (mi + 1) * size)
+		acc_dict[mid] = raw[a_base + mi]
+
+	var consistent: bool = false
+	for slot in range(size):
+		if post[slot] > 0.0:
+			var idx: int = representatives[slot] if has_reps else slot
+			if _all_hold(view, graph, universe[idx], idx):
+				consistent = true
+				break
+
+	return {
+		"base": PackedFloat64Array(),
+		"post": post,
+		"held": held_dict,
+		"acceptance": acc_dict,
+		"consistent": consistent,
+		"issues": graph.issues,
+		"states": states_cnt,
+		"peak_rows": graph.get("program", {}).get("peak", 0),
+		"timing_us": {"compile": compile_us, "values": value_us, "sum": sum_us},
+	}
 
 static func _compile(view: Dictionary, cards: Array, knowledge: Dictionary, include_public: bool) -> Dictionary:
 	var plan = Channels.compile(view, cards)
@@ -299,9 +545,9 @@ static func _affects(card: Dictionary, person: String) -> bool:
 	if card.has("relay_source"):
 		return card.relay_source == person
 	if card.kind == "claim":
-		return card.source == person
+		return card.get("source", "") == person
 	if card.kind == "report":
-		return (card.role == "nightwatch" and (not card.get("duty_only", false) or card.source == person)) or (card.role in ["lamplighter", "veteran", "medium"] and card.source == person)
+		return (card.role == "nightwatch" and (not card.get("duty_only", false) or card.get("source", "") == person)) or (card.role in ["lamplighter", "veteran", "medium"] and card.get("source", "") == person)
 	if card.kind in ["coverage", "trace"]:
 		return true
 	if card.kind == "sighting":
@@ -362,7 +608,6 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 		match factor.kind:
 			"roles":
 				weight = 1.0 if (not Solver.Domain.live(view) or Solver.Domain.claims_compatible(selected, graph.knowledge)) and Solver.Roles.fits(plain, world, selected, graph.knowledge) else 0.0
-
 			"fixture_movement":
 				weight = 1.0 if Solver.movement_for(view, selected, {}, graph.knowledge).okay else 0.0
 				for f in Movement.factors(view, selected, {}):

@@ -82,12 +82,14 @@ static func _refresh_impl(view: Dictionary, case_data: Dictionary, listener: Dic
 	for person in old_effects:
 		baseline.suspicion[person] = snappedf(baseline.suspicion.get(person, 0.1) - old_effects[person].applied, 0.000000001)
 	baseline.ledger = {}
-	var signature_case = Graph.compile_case(view, case_data)
-	signature_case.conclusion = {"type": "evil", "target": "all", "at": case_data.conclusion.at}
-	var common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
-		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.get("player_credibility", baseline.trust),
-		baseline.get("lean", {}), baseline.get("committed_requested", {}), baseline.get("per_card_source_trust", false),
-		baseline.confidence, baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
+	var common_key: String = ""
+	if baseline.get("confidence_mode", "scale") == "persistence":
+		var signature_case = Graph.compile_case(view, case_data)
+		signature_case.conclusion = {"type": "evil", "target": "all", "at": case_data.conclusion.at}
+		common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
+			baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.get("player_credibility", baseline.trust),
+			baseline.get("lean", {}), baseline.get("committed_requested", {}), baseline.get("per_card_source_trust", false),
+			baseline.confidence, baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
 	var consequences = _consequences_eval(view, case_data, baseline, {}, common_key, [], true)
 	var effects = {}
 	for person in view.people:
@@ -126,10 +128,12 @@ static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Diction
 	var result = _assess_target_eval(view, case_data, primary_listener, context) if modern else _assess_target(view, case_data, primary_listener, context)
 	var signature_case = Graph.compile_case(view, case_data)
 	signature_case.conclusion = {"type": "evil", "target": "all", "at": case_data.conclusion.at}
-	var common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
-		baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.get("player_credibility", baseline.trust),
-		baseline.get("lean", {}), baseline.get("committed_requested", {}), baseline.get("per_card_source_trust", false),
-		baseline.confidence, baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
+	var common_key: String = ""
+	if not modern or baseline.get("confidence_mode", "scale") == "persistence":
+		common_key = JSON.stringify(_canonical([_signature(view, signature_case), baseline.suspicion, baseline.npc_trust,
+			baseline.knowledge, baseline.reading_reliability, baseline.trust, baseline.get("player_credibility", baseline.trust),
+			baseline.get("lean", {}), baseline.get("committed_requested", {}), baseline.get("per_card_source_trust", false),
+			baseline.confidence, baseline.get("confidence_mode"), baseline.get("reasoning_mode"), baseline.get("insight")]))
 	# context.headline_only: a scoped reply whose effects are never applied (the shared
 	# union owns belief changes). Only the headline target's effect is computed; every
 	# other person's projection, theory and CaseEval re-run is skipped.
