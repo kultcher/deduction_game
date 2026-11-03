@@ -68,3 +68,4 @@ static func clear_all() -> void:
 	WorldDomain.cache.clear()
 	WorldDomain._cached_people = null
 	WorldDomain._cached_idx = {}
+	SolverBackend.clear_context()
