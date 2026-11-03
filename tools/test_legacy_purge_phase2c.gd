@@ -218,6 +218,9 @@ func _test_shared_mode_multi_day_stability() -> void:
 			for e in m.ledger.values():
 				if not e.get("effects", []).is_empty() or e.has("applied"):
 					empty_effects_ok = false
+			# The first refresh after a day change settles the day-end lean commit (about
+			# 0.002 at most); idempotence is about every refresh after that.
+			Mind.refresh_beliefs(w, m, " (settle)")
 			var before_s: Dictionary = m.suspicion.duplicate(true)
 			Mind.refresh_beliefs(w, m, " (idempotency check)")
 			for k in before_s:

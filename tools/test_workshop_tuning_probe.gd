@@ -223,6 +223,8 @@ func _test_phase1_5_revenant_curse_order_and_role_invalidation() -> void:
 	Mind.hear_claim(g.w, friend, rev.id, "medium", 0.8, "public")
 	g.w.totem = {"loc": "well", "day": 3, "owner": rev.id, "material": rev.home_block}
 	g.w.open_meeting()
+	# The curse's chronology needs the successful public vote, as the game logs it.
+	g.w.public_event("vote", [rev.id], "town", {"nominee": rev.id, "nominator": "player", "yes": [voter_good.id], "no": [], "player_yes": true, "count": 2, "threshold": 2, "outcome": "on_block"})
 	g.w.execute(rev.id, {"by": "player", "yes": [voter_good.id], "no": [], "player_yes": true})
 	_check(is_equal_approx(friend.trust, trust_before), "friend does not mourn or dock player Rapport when executed target triggers public Revenant curse")
 	_check(friend.believed_roles.get(rev.id, "") == "revenant", "public Revenant curse sets believed_roles to revenant and invalidates fake Good claim")

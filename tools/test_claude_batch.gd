@@ -105,12 +105,14 @@ func _victims_were_sincere() -> void:
 	var listener = goods[0]
 	var victim = goods[1]
 	Mind.ledger_hear(w, listener, "arg:lie:" + victim.id, [], 1.0, [], {"kind": "arg", "conclusion": {"type": "lied", "a": victim.id, "night": 1}})
-	var alive_rel: float = Mind.reliability(listener, victim.id, -1, "report")
+	# The argument says they lied on night 1, so it is that night's word it discounts
+	# (source_doubt keys a dated lie to its night).
+	var alive_rel: float = Mind.reliability(listener, victim.id, 1, "reading")
 	victim.alive = false
 	victim.death_cause = "demon"
 	w.public_event("demon_death", [victim.id], "")
 	Mind.ledger_hear(w, listener, "demon_death:" + victim.id, [], 1.0, [], {"kind": "demon_death", "victim": victim.id})
-	var dead_rel: float = Mind.reliability(listener, victim.id, -1, "report")
+	var dead_rel: float = Mind.reliability(listener, victim.id, 1, "reading")
 	_check(alive_rel < 1.0 and is_equal_approx(dead_rel, 1.0), "a caught-lie argument discounts someone's word (%.2f) until the Demon kills them (%.2f)" % [alive_rel, dead_rel])
 
 ## A gift reading against an alibi offers both explanations: the alibi is false (as

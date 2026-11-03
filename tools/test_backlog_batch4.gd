@@ -829,17 +829,26 @@ func grimoire_modifiers():
 
 func count_reason_names():
 	var g = fresh()
-	var source = g.w.living_good()[0]
 	var listener = g.w.living_good()[1]
+	# A Hearthwitch reads her own neighbours, so the source must live next to the listener.
+	var near: Array = g.w.living_neighbours(listener).filter(func(m): return not m.is_evil())
+	var source = near[0] if not near.is_empty() else g.w.living_good()[0]
 	var rng = g.w.rng.state
+	# Defence strengths are unchanged by 2c: Hearthwitch's zero reading uses its own tuning,
+	# Dowser the RoleDef default for a reading that clears the nominee.
+	var want = {"hearthwitch": C.Tuning.Roles.HEARTHWITCH.defend_strength_zero, "dowser": C.Tuning.Roles.DEFAULT_DEFEND_STRENGTH}
 	for role in ["hearthwitch", "dowser"]:
 		var zero = {"day": 1, "phase": 0, "role": role, "data": {"group": [listener.id], "count": 0}, "shared": true}
-		check(not C.role_def(role).has_method("info_effects") and is_equal_approx(C.role_def(role).defend_strength(zero["data"], listener.id), 0.4), "zero-count reading preserves RoleDef defence strength without legacy info_effects: " + role)
+		check(not C.role_def(role).has_method("info_effects") and is_equal_approx(C.role_def(role).defend_strength(zero["data"], listener.id), want[role]), "zero-count reading preserves RoleDef defence strength without legacy info_effects: " + role)
 		listener.ledger = {}
 		listener.suspicion[source.id] = 0.1
-		var impossible = {"day": 1, "phase": 0, "role": role, "data": {"group": [listener.id], "count": 1}, "shared": true}
+		var group: Array = [listener.id]
+		if role == "hearthwitch":
+			group = g.w.living_neighbours(source).map(func(m): return m.id)
+		# Everyone in the group evil, the (good) listener included: impossible for them.
+		var impossible = {"day": 1, "phase": 0, "role": role, "data": {"group": group, "count": group.size()}, "shared": true}
 		Mind.apply_info(g.w, listener, source, impossible, 1.0)
-		check(Mind.susp(listener, source.id) > 0.1, "impossible-count reading against self raises shared suspicion of source: " + role)
+		check(listener.id in group and Mind.susp(listener, source.id) > 0.1, "impossible-count reading against self raises shared suspicion of source: " + role)
 	check(g.w.rng.state == rng, "reason evaluation consumes no RNG")
 
 func false_reading_causes():
