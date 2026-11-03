@@ -17,6 +17,32 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03 ~18:30 ET, Claude: `game.gd` separation checked, green, no fixes, on main
+
+- **Base:** `b061bb3` as declared; unpacked on `refactor/game-gd-separation`, no changes
+  needed. `game.gd` 2,886 to 1,020 lines; four new helpers (conversation, meeting,
+  day/night, screens). This is also meeting-plan slice **M0**.
+- **Static checks:** every function, `var` and `const` that was on `Game` still is. All
+  91 moved function bodies are identical to the originals once `self.`/implicit member
+  access is rewritten as `g.` (mechanical comparison), and all 91 forwarders call the
+  same-named helper with `self` plus the same arguments (3 that never touched instance
+  state correctly omit `self`). `dotnet build` 0 errors; all 268 scripts parse.
+- **Suites** (.NET Godot, targeted per Michael): `test_npc_interactions`,
+  `test_dialogue_decisions`, `test_social`, `test_playtest_followups`,
+  `test_mechanics_defences`, `test_outcomes`, `test_backlog_batch3`,
+  `test_mechanics_sightings`, `test_mechanics_curse`, `test_town_ui`, `test_text_ui`,
+  `test_ui`, `test_fixes`, `test_role_def_poc`, `test_workshop_slice5_voices_and_bot`:
+  15/15 pass.
+- **Golden** `--mode gdscript` vs `baseline_82faa5b`, `--tol 0`: identical on all five
+  seeds, 0 script errors. Not re-run in csharp mode (no `workshop/` changes; CI's parity
+  job covers it on the push).
+- **Active play, which the golden doesn't exercise:** 3 active bot games (seeds
+  1000-1002, 7 NPCs) at `b061bb3` and at this branch. Transcripts identical line for line
+  and dev logs byte-identical.
+- **Pushed to `main`.** Next actor: Claude (bot rewrite + final legacy purge, Phase 4).
+
+---
+
 ## 2026-11-03, Argon: `game/game.gd` 4-slice separation delivered (`patch_005_game_separation.zip`)
 
 - **Base:** `main` at `b061bb3f7e3054b4f922cdb08189070dd322fe3e` (`b061bb3`).
