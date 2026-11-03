@@ -175,7 +175,7 @@ static func status(g, value: Dictionary) -> Dictionary:
 	if value.cards.is_empty():
 		issues.append("Connect evidence to the selected premise before filing.")
 	return {"ready": prepared.ready and not blocked, "audience_ready": audience_ready, "blocked": blocked or (g.strict_evaluator and (not prepared.ready or not audience_ready)), "issues": issues,
-		"mode": "shared" if prepared.ready and g.workshop_effects else "legacy",
+		"mode": "shared" if prepared.ready else "legacy",
 		"warning": "Fallback evaluates the headline and original cards using the existing argument system. Canvas answers, assumptions, intermediate claims and link meanings are NOT interpreted by that system."}
 
 static func file(g, value: Dictionary, previous: int = 0) -> int:

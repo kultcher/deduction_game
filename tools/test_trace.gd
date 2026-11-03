@@ -290,9 +290,12 @@ func _test_decision_records() -> void:
 		"class": "concrete", "day": 0, "phase": C.NIGHT, "block": target.home_block, "text": "test sighting"}
 	var ded = {"n": 2, "kind": "deduction", "text": "test suspicion",
 		"conclusion": {"type": "suspicious", "a": target.id}, "supports": [1]}
-	# These records exercise the deliberately retained native argument routes.
-	g.set_workshop_effects(false)
+	# These records exercise the deliberately retained template argument routes (retired in Phase 4).
+	g._workshop_native_submission = true
+	g._workshop_native_social = true
 	Argue.evaluate(w, n, ded, [support], 1.0, false)
+	g._workshop_native_submission = false
+	g._workshop_native_social = false
 	var argument = _last_decision(w, "argument", "evaluation", n.id)
 	_check(argument["data"]["details"]["route"] == "generic_support",
 		"generic inference evaluation is labeled separately")

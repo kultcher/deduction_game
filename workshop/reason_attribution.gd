@@ -16,13 +16,13 @@ const LiveActivity = preload("res://workshop/live_activity.gd")
 const History = preload("res://workshop/live_history.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 
-const MIN_SUSPECT_REQUESTED: float = 0.025
-const MIN_ITEM_CONTRIB: float = 0.03
-const MAX_REASONS_PER_TARGET: int = 6
+const MIN_SUSPECT_REQUESTED: float = Tuning.Workshop.REASON_MIN_SUSPECT_REQUESTED
+const MIN_ITEM_CONTRIB: float = Tuning.Workshop.REASON_MIN_ITEM_CONTRIB
+const MAX_REASONS_PER_TARGET: int = Tuning.Workshop.REASON_MAX_PER_TARGET
 ## Skip the leave-one-out pass when single-card reasons already carry this share of the shift.
-const LOO_COVERED_SHARE: float = 0.5
+const LOO_COVERED_SHARE: float = Tuning.Workshop.REASON_LOO_COVERED_SHARE
 ## At most this many other people's cards are tested in the leave-one-out pass per suspect.
-const LOO_MAX_OTHER_CARDS: int = 6
+const LOO_MAX_OTHER_CARDS: int = Tuning.Workshop.REASON_LOO_MAX_OTHER_CARDS
 const SPOKEN_KINDS: Array = ["report", "sighting", "alibi", "claim", "context", "testimony"]
 
 static var _fits_cache: Dictionary = {}
@@ -298,7 +298,7 @@ static func attribute_refresh(
 		var direct_cover: float = 0.0
 		for it in items_by_id.values():
 			direct_cover += float(it.get("contrib", 0.0))
-		if full_shift >= 0.08 and direct_cover < LOO_COVERED_SHARE * full_shift * belief_scale:
+		if full_shift >= Tuning.Workshop.REASON_LOO_MIN_SHIFT and direct_cover < LOO_COVERED_SHARE * full_shift * belief_scale:
 			_augment_joint_leave_one_out(
 				items_by_id, view, reps, attended, loo_ctx,
 				pid, p_idx, pr0, full_shift, self_id, belief_scale
@@ -349,7 +349,7 @@ static func append_circumstantial(
 		var list: Array = reasons.get(pid, [])
 		for inc in incs:
 			var app: float = float(inc.get("applied", 0.0))
-			if app < 0.01:
+			if app < Tuning.Workshop.REASON_CIRCUMSTANTIAL_MIN_APPLIED:
 				continue
 			var clause: String = _circumstantial_clause(str(inc.get("label", "")))
 			if clause == "":
@@ -400,7 +400,7 @@ static func append_elimination_fallbacks(
 		if not reasons.get(pid, []).is_empty():
 			continue
 		var total_req: float = float(requested.get(pid, 0.0)) + float(circ_requested.get(pid, 0.0))
-		if total_req < 0.15:
+		if total_req < Tuning.Workshop.REASON_ELIMINATION_MIN_REQ:
 			continue
 		var txt: String = "the reports considered together point toward them" if not non_ctx_roots.is_empty() else "narrowing down who hasn't been cleared points toward them"
 		reasons[pid] = [{
@@ -1021,6 +1021,10 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 		if crole == "gravedigger":
 			var ex_id: String = str(data.get("executed", ""))
 			var r_id: String = str(data.get("role", ""))
+			var gd_night: int = int(card.get("night", -1)) if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
+			if ex_id != "" and view.has("timeline") and not preload("res://workshop/live_history.gd").executed(view, ex_id, gd_night):
+				var no_ex_txt: String = "%s claimed a Gravedigger reading on %s when no such hanging happened" % [Solver.person_name(view, pid), Solver.person_name(view, ex_id)]
+				return [no_ex_txt, no_ex_txt]
 			if ex_id != "" and r_id != "":
 				var gd_txt: String = "%s claimed %s was the %s, which doesn't fit what we know" % [Solver.person_name(view, pid), Solver.person_name(view, ex_id), C.role_name(r_id)]
 				return [gd_txt, gd_txt]

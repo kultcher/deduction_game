@@ -99,10 +99,7 @@ func _live() -> void:
 	observer.info_log = []
 	observer.known_claims = {}
 	observer.ledger = {}
-	var effects: Array = []
-	for person in voters:
-		Mind._eff(effects, person, 0.15, "voted to hang the Revenant")
-	Mind.ledger_hear(g.w, observer, "curse:2", effects, 1.0, [], {"kind": "event"})
+	Mind.ledger_hear(g.w, observer, "curse:2", [], 1.0, [], {"kind": "event"})
 	var captured = Bridge.capture(g, [], observer.id)
 	var plan = Shared.prepare(captured, {}, observer.ledger)
 	check(plan.ready and not plan.empty and plan.owned.has("curse:2"), "a public curse is assessed with no cited reading and parks its native voter bump: " + str(plan.issues))
@@ -116,7 +113,7 @@ func _live() -> void:
 	g.w.day = 3
 	g.w.phase = 1
 	g.w.free_turned()
-	Mind.recompute_beliefs(g.w, observer, " (curse restoration test)")
+	Mind.refresh_beliefs(g.w, observer, " (curse restoration test)")
 	plan = Shared.prepare(Bridge.capture(g, [], observer.id), {}, observer.ledger)
 	check(plan.ready and plan.prepared.view.chronology.curse.until == 13, "actual public restoration closes the epoch at its observed phase")
 	var own = Bridge.capture(g, [], old_victim)

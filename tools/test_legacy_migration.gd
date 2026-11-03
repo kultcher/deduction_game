@@ -21,8 +21,6 @@ func _clean():
 	g.log_dir = "res://logs/migration/tests"
 	g.detailed_logging = true
 	g.new_case(54875, 10)
-	check(g.workshop_effects, "ordinary games enable shared evaluation by default")
-	g.set_workshop_effects(false)
 	for real in g.w.npcs:
 		var n = real.shadow if real.is_evil() else real
 		if n == null:
@@ -35,7 +33,7 @@ func _clean():
 		n.role = "warden"
 		for id in n.suspicion:
 			n.suspicion[id] = 0.3
-	g.set_workshop_effects(true)
+		Mind.refresh_beliefs(g.w, n, " (clean)")
 	return g
 
 func _reversible_totals() -> void:
@@ -43,24 +41,21 @@ func _reversible_totals() -> void:
 	var n = g.w.living_good()[0]
 	var source = g.w.npcs.filter(func(p): return p != n)[0]
 	var target = g.w.npcs.filter(func(p): return p != n and p != source)[0]
-	g.set_workshop_effects(false)
 	for delta in [3.0, -6.0]:
 		var before: float = n.suspicion[target.id]
-		Mind.ledger_hear(g.w, n, "saturation", [[target.id, delta, false, "reversible", ""]], 1.0)
-		check(is_equal_approx(n.suspicion[target.id], before + delta), "ledger retains the whole contribution beyond a display bound")
+		Mind.adjust(g.w, n, target.id, delta, "reversible", "", false)
+		check(is_equal_approx(n.suspicion[target.id], before + delta), "outside baseline retains the whole contribution beyond a display bound")
 		check(Mind.susp(n, target.id) == clampf(before + delta, 0.0, 1.5), "consumers see bounded suspicion")
-		n.ledger.saturation.weight = 0.0
-		Mind.recompute_beliefs(g.w, n, "withdraw saturated entry")
-		check(is_equal_approx(n.suspicion[target.id], before), "withdrawing a saturated contribution restores the exact baseline")
-		n.ledger.erase("saturation")
-	n.suspicion[target.id] = 0.1
+		Mind.adjust(g.w, n, target.id, -delta, "withdraw reversible", "", false)
+		check(is_equal_approx(n.suspicion[target.id], before), "withdrawing a saturated adjustment restores the exact baseline")
+	n.suspicion[target.id] = 0.02
+	n.workshop_state.outside[target.id] = 0.02
 	Mind.apply_info(g.w, n, source, {"role": "dowser", "day": 1, "phase": 0, "data": {"group": [target.id], "count": 0}}, 1.0)
-	check(n.suspicion[target.id] < 0.0, "a clearing reading can cross the lower bound")
-	g.set_workshop_effects(true)
-	check(n.workshop_state.active and not n.workshop_state.owned.is_empty(), "a previously saturated clearing reading acquires shared ownership")
+	check(n.suspicion[target.id] < 0.02 and Mind.susp(n, target.id) >= 0.0, "a clearing reading lowers shared suspicion cleanly")
+	check(n.workshop_state.active and not n.workshop_state.owned.is_empty(), "a clearing reading acquires shared ownership")
 	target.alive = false
 	target.death_cause = "demon"
-	Mind.recompute_beliefs(g.w, n, "demon-victim reading")
+	Mind.refresh_beliefs(g.w, n, "demon-victim reading")
 	check(n.workshop_state.active, "a reading naming a demon victim does not prevent migration")
 	var total: float = n.suspicion[target.id]
 	Mind.adjust(g.w, n, target.id, 0.1, "counterevidence", "", false)
@@ -144,7 +139,7 @@ func _revisions_and_repeats() -> void:
 	control.g._evaluate_deduction(control.n, control.g.board[fresh - 1], 1.0, true)
 	for pair in [[g, n], [control.g, control.n]]:
 		pair[1].trust = 0.7
-		Mind.recompute_beliefs(pair[0].w, pair[1], "fixed trust parity")
+		Mind.refresh_beliefs(pair[0].w, pair[1], "fixed trust parity")
 	var equal = true
 	for id in n.workshop_state.requested:
 		equal = equal and absf(n.workshop_state.requested[id] - control.n.workshop_state.requested.get(id, 0.0)) < 0.000001

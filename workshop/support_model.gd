@@ -2,6 +2,7 @@
 ## A false accuracy assumption removes a constraint; it never negates the report.
 extends RefCounted
 
+const Tuning = preload("res://sim/tuning.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
@@ -454,7 +455,7 @@ static func source_quality(listener: Dictionary, source: String) -> float:
 		return 1.0
 	if source == "player":
 		return 0.9
-	return clampf(0.2 + 0.65 * listener.npc_trust.get(source, 0.5) - 0.35 * listener.suspicion.get(source, 0.1), 0.05, 0.95)
+	return clampf(Tuning.Workshop.WITNESS_QUALITY_BASE + Tuning.Workshop.WITNESS_QUALITY_TRUST_SCALE * listener.npc_trust.get(source, 0.5) - Tuning.Workshop.WITNESS_QUALITY_SUSP_SCALE * listener.suspicion.get(source, 0.1), Tuning.Workshop.WITNESS_QUALITY_MIN, Tuning.Workshop.WITNESS_QUALITY_MAX)
 
 static func _direct_ratio(factors: Array, conclusion: Dictionary) -> float:
 	if conclusion.type not in ["evil", "good", "suspicious"]:

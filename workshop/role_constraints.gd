@@ -259,6 +259,10 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 			return 0.0
 		if card.kind == "claim":
 			continue
+		if card.role == "gravedigger" and view.has("timeline"):
+			var gd_night: int = card.night if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
+			if not preload("res://workshop/live_history.gd").executed(view, str(card.data.get("executed", "")), gd_night):
+				return 0.0
 		var pair_mask = 0
 		for person in card.data.get("pair", []):
 			var i: int = ids.find(person)

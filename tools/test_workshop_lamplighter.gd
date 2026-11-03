@@ -80,7 +80,6 @@ func _live() -> void:
 	listener.ledger = {}
 	listener.role = "seer"
 	listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-	g.set_workshop_effects(true)
 	var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false), "Lamplighter reaches real shared delivery")
 	var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
@@ -88,4 +87,3 @@ func _live() -> void:
 	check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, "Lamplighter presentation is repeat stable")
 	check(board.add_modifier("e:" + id, "misled") == "", "Lamplighter permits supported reading challenges")
 	check(Live.status(g, board.compile(root)).ready, "Lamplighter modifier stays in live evaluator")
-	g.set_workshop_effects(false)

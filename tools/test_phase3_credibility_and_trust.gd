@@ -54,7 +54,6 @@ func _test_3_1_delta_confidence_and_proof_retraction_overrides() -> void:
 		listener.applied_info = 0
 		listener.ledger.clear()
 		listener.workshop_state.clear()
-		listener.workshop_state["enabled"] = true
 		listener.traits.insight = 0.85
 		for id in listener.suspicion:
 			listener.suspicion[id] = Tuning.Setup.INITIAL_SUSPICION_BASE
@@ -112,7 +111,7 @@ func _test_3_1_delta_confidence_and_proof_retraction_overrides() -> void:
 	high_conf.workshop_state["committed_lean"] = Mind.suspicion_view(high_conf).duplicate(true)
 	high_conf.workshop_state["committed_requested"] = high_conf.workshop_state.get("requested", {}).duplicate(true)
 	g.w.public_log.append({"day": 2, "kind": "martyr", "subjects": [suspect.id, other.id], "by": other.id})
-	Mind.recompute_beliefs(g.w, high_conf, "public Martyr proof")
+	Mind.refresh_beliefs(g.w, high_conf, "public Martyr proof")
 	_check(is_zero_approx(float(high_conf.suspicion.get(suspect.id, 1.0))),
 		"public Martyr proof overrides high-Confidence committed_requested and clears target to 0.0")
 
@@ -133,7 +132,6 @@ func _test_3_2_per_card_source_trust_non_dilution_and_non_laundering() -> void:
 	seer.applied_info = 0
 	seer.ledger.clear()
 	seer.workshop_state.clear()
-	seer.workshop_state["enabled"] = true
 	seer.npc_trust[rumor_teller.id] = 0.15
 	Mind.update_from_own_info(g.w)
 	var base_req: float = float(seer.workshop_state.requested.get(suspect.id, 0.0))
@@ -156,7 +154,6 @@ func _test_3_2_per_card_source_trust_non_dilution_and_non_laundering() -> void:
 		l.applied_info = 0
 		l.ledger.clear()
 		l.workshop_state.clear()
-		l.workshop_state["enabled"] = true
 		l.traits.insight = 0.8
 	listener_lo.npc_trust[rumor_teller.id] = 0.10
 	listener_hi.npc_trust[rumor_teller.id] = 0.95
@@ -178,7 +175,7 @@ func _test_3_2_per_card_source_trust_non_dilution_and_non_laundering() -> void:
 	var endorsed_req: float = float(listener_lo.workshop_state.requested.get(suspect.id, 0.0))
 	_check(is_equal_approx(lo_req, endorsed_req), "player endorsement cannot boost an independently heard low-trust report")
 	listener_lo.credibility = 0.1
-	Mind.recompute_beliefs(g.w, listener_lo, "player credibility changed")
+	Mind.refresh_beliefs(g.w, listener_lo, "player credibility changed")
 	_check(is_equal_approx(endorsed_req, float(listener_lo.workshop_state.requested.get(suspect.id, 0.0))), "player credibility changes do not reweight independently heard reports")
 
 
@@ -233,8 +230,7 @@ func _test_3_3_non_circular_credibility_dawn_and_tiered_weights() -> void:
 	uninformed.applied_info = 0
 	uninformed.ledger.clear()
 	uninformed.workshop_state.clear()
-	uninformed.workshop_state["enabled"] = true
-	Mind.recompute_beliefs(g.w, uninformed, "clean uninformed baseline")
+	Mind.refresh_beliefs(g.w, uninformed, "clean uninformed baseline")
 
 	# 1) Detective Penalty check: player records an accusation on `suspect` before `uninformed` knows anything.
 	uninformed.credibility = 0.5
@@ -270,7 +266,7 @@ func _test_3_3_non_circular_credibility_dawn_and_tiered_weights() -> void:
 	var victim = goods[4]
 	g.w.public_event("demon_death", [victim.id], "town")
 	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": victim.home_block, "text": "Death"})
-	Mind.recompute_beliefs(g.w, uninformed, "public demon death")
+	Mind.refresh_beliefs(g.w, uninformed, "public demon death")
 
 	uninformed.claim_record = {}
 	uninformed.credibility = 0.5

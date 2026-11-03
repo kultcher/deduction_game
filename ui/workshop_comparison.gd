@@ -6,7 +6,6 @@ var listeners: OptionButton
 var automatic: CheckBox
 var inspect_button: Button
 var preview_button: Button
-var effects_toggle: CheckBox
 var output: RichTextLabel
 var heading: Label
 
@@ -28,15 +27,6 @@ func _ready() -> void:
 	automatic.text = "Record comparisons when I present deductions (may add a pause)"
 	automatic.toggled.connect(func(on): g.workshop_compare = on)
 	column.add_child(automatic)
-	effects_toggle = CheckBox.new()
-	effects_toggle.text = "Experimental shared reading effects (Debug; unsupported cases use legacy beliefs)"
-	effects_toggle.toggled.connect(func(on):
-		if g.debug_overlay:
-			g.set_workshop_effects(on)
-			effects_toggle.set_pressed_no_signal(g.workshop_effects)
-		else:
-			effects_toggle.set_pressed_no_signal(false))
-	column.add_child(effects_toggle)
 	var row = HBoxContainer.new()
 	column.add_child(row)
 	cases = OptionButton.new()
@@ -92,8 +82,6 @@ func refresh() -> void:
 		listeners.add_item(n.name)
 		listeners.set_item_metadata(listeners.item_count - 1, n.id)
 	automatic.set_pressed_no_signal(g.workshop_compare)
-	effects_toggle.set_pressed_no_signal(g.workshop_effects)
-	effects_toggle.disabled = not g.debug_overlay
 	preview_button.disabled = cases.item_count == 0
 	inspect_button.disabled = cases.item_count == 0 or listeners.item_count == 0 or not g.debug_overlay
 	output.text = "Enable Debug in the main window to inspect private NPC responses. Debug inspection leaves identification unscored." if not g.debug_overlay else "Choose a filed deduction and a listener. Inspection costs no game time. Recorded presentations keep the original response alongside the new proposal."

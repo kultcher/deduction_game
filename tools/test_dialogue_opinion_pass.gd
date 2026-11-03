@@ -113,6 +113,7 @@ func _opinions() -> void:
 			n.npc_trust[t.id] = 0.25
 		n.suspicion[t.id] = level
 		n.honesty[t.id] = honesty
+		n.workshop_state["source_doubt"] = {t.id + ":*": clampf(1.0 - honesty, 0.0, 1.0)}
 		n.dialogue_memory = {}
 	setup.call(0.1, "rival", 1.0)
 	var state = w.rng.state

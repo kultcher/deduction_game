@@ -106,7 +106,7 @@ static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void
 	var threshold = Tuning.Meeting.VOLUNTEER_SIGHTING_BASE - panic
 	w.observe_decision(n, "volunteer_night_sightings", score >= threshold, {"score": score, "threshold": threshold, "comparison": ">=",
 		"inputs": {"gossip": trait_of(n, "gossip"), "confidence": trait_of(n, "confidence"), "paranoia": panic, "composure": trait_of(n, "composure")},
-		"threshold_parts": {"base": 1.2, "paranoia": -panic}, "gate": "Gossip + Confidence threshold; eligible untold sightings still require disclosure/cover checks; no random draw"})
+		"threshold_parts": {"base": Tuning.Meeting.VOLUNTEER_SIGHTING_BASE, "paranoia": -panic}, "gate": "Gossip + Confidence threshold; eligible untold sightings still require disclosure/cover checks; no random draw"})
 	if score < threshold: return
 	var groups: Array = []
 	for b in n.beliefs:
@@ -123,9 +123,9 @@ static func _public_claim_decision(w, n) -> String:
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	var kind: String = C.ROLES[role]["kind"]
 	var parts = {
-		"openness": (0.5 - trait_of(n, "privacy")) * 1.2,
+		"openness": (0.5 - trait_of(n, "privacy")) * Tuning.Meeting.PUBLIC_CLAIM_OPENNESS_SLOPE,
 		"day": Tuning.Meeting.PUBLIC_CLAIM_DAY_SLOPE * (w.day - 1),
-		"pressure": n.pressure * 0.8 * (1.0 - 0.5 * trait_of(n, "composure")),
+		"pressure": n.pressure * Tuning.Meeting.PUBLIC_CLAIM_PRESSURE_SLOPE * (1.0 - Tuning.Meeting.PUBLIC_CLAIM_COMPOSURE_DAMP * trait_of(n, "composure")),
 		"base": Tuning.Meeting.PUBLIC_CLAIM_BASE,
 	}
 	# Gifts that pay off night after night are worth protecting early; one-shot first-night
@@ -135,7 +135,7 @@ static func _public_claim_decision(w, n) -> String:
 		w.observe_decision(n, "claim", false, {"gate": "protect_lock_promised_player_first"})
 		return ""  # promised to tell the Demonologist first once protected
 	if w.living().size() <= 4:
-		parts["few_left"] = 0.8
+		parts["few_left"] = Tuning.Meeting.PUBLIC_CLAIM_FEW_LEFT
 	var why = ("Evil cover: publicly claim bluff %s?" % role) if n.is_evil() else ("Publicly reveal true role %s?" % role)
 	if decide(w, n, "claim", parts, why):
 		if n.is_evil():
@@ -336,7 +336,7 @@ static func acknowledge_reading(w, listener, source, entry: Dictionary, teller: 
 				paths.append(path.duplicate(true))
 	named.provenance_paths = paths
 	receipts[named.id] = named
-	recompute_beliefs(w, listener, " (reading source publicly acknowledged)")
+	refresh_beliefs(w, listener, " (reading source publicly acknowledged)")
 
 ## What going public with their gift would cost n right now (higher = more reluctant):
 ## gifts that hide from the demon or keep paying off, fear, privacy; less as the game
@@ -345,13 +345,13 @@ static func reveal_cost(w, n) -> Dictionary:
 	if n.claim_public:
 		return {}
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
-	var parts = {"privacy": (trait_of(n, "privacy") - 0.5) * 0.8, "base": 0.2}
+	var parts = {"privacy": (trait_of(n, "privacy") - 0.5) * Tuning.Meeting.REVEAL_COST_PRIVACY_SLOPE, "base": Tuning.Meeting.REVEAL_COST_BASE}
 	C.role_def(role).score_reveal_cost(w, n, parts)
 	if _afraid(w, n):
-		parts["afraid"] = 0.35
-	parts["day"] = -0.12 * (w.day - 1)
+		parts["afraid"] = Tuning.Meeting.REVEAL_COST_AFRAID
+	parts["day"] = Tuning.Meeting.REVEAL_COST_DAY_SLOPE * (w.day - 1)
 	if w.living().size() <= 4:
-		parts["few_left"] = -0.6
+		parts["few_left"] = Tuning.Meeting.REVEAL_COST_FEW_LEFT
 	return parts
 
 ## The four ways a good NPC with a reason to suspect t can speak at the meeting:
@@ -378,9 +378,9 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 	if rs["kind"] == "relay":
 		return {"tier": "relay", "why": "", "src": rs["src"], "entry": rs["entry"]}
 	var cost = reveal_cost(w, n)
-	var parts = {"strength": (rs["strength"] - 0.45) * 1.4,
+	var parts = {"strength": (rs["strength"] - Tuning.Meeting.REVEAL_STRENGTH_PIVOT) * Tuning.Meeting.REVEAL_STRENGTH_SLOPE,
 		"suspicion": (s2 - Tuning.Meeting.REVEAL_SUSPICION_PIVOT) * Tuning.Meeting.REVEAL_SUSPICION_SLOPE,
-		"confidence": (trait_of(n, "confidence") - 0.5) * 0.6}
+		"confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Meeting.REVEAL_CONFIDENCE_SLOPE}
 	for k in cost:
 		parts["cost_" + k] = -cost[k]
 	if decide(w, n, "reveal_to_accuse", parts, "Go public with what points at %s (%s)?" % [t.id, rs["why"]]):
@@ -410,7 +410,7 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 			"text": "%s publicly claims to be the %s." % [n.name, C.role_name(claim)]})
 		for l in w.living():
 			if l != n:
-				hear_claim(w, l, n.id, claim, 0.5, "public")
+				hear_claim(w, l, n.id, claim, Tuning.Mind.PUBLIC_CLAIM_HEARING_WEIGHT, "public")
 	if share_readings and C.has_readings(n.claimed_role):
 		var shared_this_turn: Array = []
 		for e in n.info_log:
@@ -418,10 +418,8 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 				continue
 			e["shared"] = true
 			var weights = {}
-			var n_mind = n.shadow if n.is_evil() and n.shadow != null else n
-			var use_shared_w: bool = n_mind.workshop_state.get("enabled", false)
 			for x in implicated(e):
-				weights[x] = ReasonAttribution.score_reading_entry_in_world(w, n.id, e, x)["strength"] if use_shared_w else reading_strength(e, x)
+				weights[x] = ReasonAttribution.score_reading_entry_in_world(w, n.id, e, x)["strength"]
 			w.public_event("reading", implicated(e), n.id, {"weights": weights})
 			w.public_event("clear", Gifts.clears(e), n.id)
 			shared_this_turn.append(e)
@@ -494,10 +492,10 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		t = ranked[0]
 		s2 = susp(n, t.id)
 		acc_resent = _mind().resentment_toward(w, n, t.id)
-	var parts = {"suspicion": (s2 - 0.6) * 1.5, "confidence": (trait_of(n, "confidence") - 0.5) * 0.8,
-		"pressure_deflect": n.pressure * 0.4}
+	var parts = {"suspicion": (s2 - Tuning.Meeting.ACCUSE_SUSPICION_PIVOT) * Tuning.Meeting.ACCUSE_SUSPICION_SLOPE, "confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Meeting.ACCUSE_CONFIDENCE_SLOPE,
+		"pressure_deflect": n.pressure * Tuning.Meeting.ACCUSE_PRESSURE_DEFLECT}
 	if acc_resent > 0.0:
-		parts["resentment"] = acc_resent * 1.5
+		parts["resentment"] = acc_resent * Tuning.Meeting.ACCUSE_RESENTMENT_SLOPE
 	if not decide(w, n, "accuse", parts, "Publicly accuse %s?" % t.id):
 		return null
 	# What they can say for it: a reason the town already has, a hint at one they're
@@ -538,7 +536,7 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 			refresh_consensus(w, l, prev_target)
 	# Scrutiny rises with each voice, but less for each one that only joins in.
 	var earlier: Array = w.meeting.get("accusations", []).filter(func(a): return a["target"] == t.id)
-	t.pressure += 0.15 * pow(0.5, earlier.size())
+	t.pressure += Tuning.Meeting.ACCUSE_PRESSURE_BASE * pow(Tuning.Meeting.ACCUSE_PRESSURE_DECAY, earlier.size())
 	w.public_event("accusation", [t.id], n.id)
 	# Being accused in front of the town costs the accuser some of the target's trust (Oct 30).
 	t.npc_trust[n.id] = clampf(t.npc_trust.get(n.id, 0.5) - Tuning.Social.TRUST_ACCUSED_ME, 0.0, 1.0)
@@ -734,11 +732,11 @@ static func _evil_counter_or_pass(w, n, m: Dictionary, ev) -> Variant:
 	var mate_on_block: bool = blk != "" and w.by_id.has(blk) and w.by_id[blk].is_evil()
 	var sg = w.by_id[ev["nominee"]]
 	var ready: Dictionary = Evil.scapegoat_readiness(w, n, sg)
-	if not mate_on_block and float(ready.get("room_heat", 0.0)) < 0.40:
+	if not mate_on_block and float(ready.get("room_heat", 0.0)) < Tuning.Meeting.EVIL_COUNTER_MIN_HEAT:
 		w.dlog.think(n.id, "nominate", "Evil: stays silent rather than nominating teammate or forcing a cold scapegoat push.")
 		return null
-	var rescue_bonus: float = 0.45 if (mate_on_block and blk == w.demon_id) else (0.20 if mate_on_block else 0.0)
-	if evil_override(w, n, "nomination", 0.45 + float(ready["score"]) + rescue_bonus, 0.5, "push scapegoat %s instead" % sg.id):
+	var rescue_bonus: float = Tuning.Meeting.EVIL_RESCUE_DEMON_BONUS if (mate_on_block and blk == w.demon_id) else (Tuning.Meeting.EVIL_RESCUE_MINION_BONUS if mate_on_block else 0.0)
+	if evil_override(w, n, "nomination", Tuning.Meeting.EVIL_NOMINATION_STAKES_BASE + float(ready["score"]) + rescue_bonus, 0.5, "push scapegoat %s instead" % sg.id):
 		return ev
 	return null
 
@@ -761,10 +759,10 @@ static func _evil_nomination(w, n, m: Dictionary, block: String):
 	if ev == null:
 		return null
 	var blk2: String = m.get("block", "")
-	var rescue2: float = 0.45 if (blk2 != "" and blk2 == w.demon_id) else (0.20 if (blk2 != "" and w.by_id.has(blk2) and w.by_id[blk2].is_evil()) else 0.0)
+	var rescue2: float = Tuning.Meeting.EVIL_RESCUE_DEMON_BONUS if (blk2 != "" and blk2 == w.demon_id) else (Tuning.Meeting.EVIL_RESCUE_MINION_BONUS if (blk2 != "" and w.by_id.has(blk2) and w.by_id[blk2].is_evil()) else 0.0)
 	var sg = w.by_id[ev["nominee"]]
 	var sg_ready: float = Evil.scapegoat_readiness(w, n, sg)["score"]
-	if evil_override(w, n, "nomination", 0.45 + sg_ready + rescue2, 0.5, "push scapegoat %s (good self wouldn't nominate)" % sg.id):
+	if evil_override(w, n, "nomination", Tuning.Meeting.EVIL_NOMINATION_STAKES_BASE + sg_ready + rescue2, 0.5, "push scapegoat %s (good self wouldn't nominate)" % sg.id):
 		return ev
 	return null
 
@@ -1105,7 +1103,6 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	if n.is_evil():
 		mind = n.shadow if n.shadow != null else n
 	var ws_active: bool = mind.workshop_state.get("active", false)
-	var ws_owned: Dictionary = mind.workshop_state.get("owned", {}) if ws_active else {}
 	var items: Array = []
 	if ws_active:
 		if mind.workshop_state.get("reasons_pending", false) and w.workshop_reasons.is_valid():
@@ -1117,43 +1114,6 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 				var resolved: Dictionary = _resolve_shared_reason(w, mind, n, t_id, raw, vis_maps)
 				if not resolved.is_empty() and resolved.get("why", "") != "":
 					items.append(resolved)
-	# Transitional compatibility ONLY for native mode (`workshop_effects == false`) or synthetic
-	# unowned test ledger entries (`not ws_owned.has(eid)`) until Phase 2c/3 deletes legacy effects.
-	for e in mind.ledger.values():
-		if ws_active and ws_owned.has(e["eid"]):
-			continue
-		var contrib: float = 0.0
-		var why: String = ""
-		var effs: Array = e["effects"]
-		for i in range(effs.size()):
-			var f: Array = effs[i]
-			if f[0] != t_id:
-				continue
-			var a: float = e["applied"].get(i, 0.0) + e["applied"].get("%d:%s" % [i, t_id], 0.0)
-			if a > 0.0:
-				contrib += a
-				if why == "" and f[4] != "":
-					why = f[4]
-		if contrib >= 0.03 and why != "":
-			var leg_item: Dictionary = {"eid": e["eid"], "why": why, "contrib": contrib, "kind": "public", "strength": 0.3, "entry": {}}
-			var own_prefix: String = "info:%s:" % n.id
-			if leg_item["eid"].begins_with(own_prefix):
-				for i in range(n.info_log.size()):
-					var en_l: Dictionary = n.info_log[i]
-					if info_eid(n.id, en_l) == leg_item["eid"]:
-						leg_item["entry"] = en_l
-						leg_item["strength"] = reading_strength(en_l, t_id)
-						leg_item["kind"] = "public" if en_l.get("shared", false) else ("player" if i < n.told_readings else "private")
-			elif leg_item["eid"].begins_with("info:"):
-				var hr: Dictionary = _heard_reading(w, n, leg_item["eid"])
-				if not hr.is_empty():
-					leg_item["kind"] = "relay"
-					leg_item["entry"] = hr["entry"]
-					leg_item["src"] = hr["src"]
-			if leg_item["kind"] == "public" and leg_item["why"].begins_with("my own") and not n.claim_public:
-				leg_item["kind"] = "private"
-				leg_item["strength"] = maxf(leg_item["strength"], 0.5)
-			items.append(leg_item)
 	var best_res: Dictionary = _mind().best_resentment_against(w, mind, t_id)
 	if not best_res.is_empty():
 		var r_strength: float = float(best_res.get("strength", 0.0))
@@ -1257,7 +1217,6 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 	var out: Array = []
 	var seen_eids: Dictionary = {}
 	var d_mind = d.shadow if d.is_evil() and d.shadow != null else d
-	var d_shared: bool = d_mind.workshop_state.get("enabled", false)
 	if accuser != null:
 		for it in case_against(w, accuser, d.id, 6):
 			if it.get("own_sighting", false):
@@ -1284,18 +1243,13 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 				if en.get("role", "") == f.get("role", "") and int(en.get("day", -1)) == int(f.get("day", -2)):
 					var eid2: String = info_eid(src_id, en)
 					if not seen_eids.has(eid2):
-						var r_score: Dictionary = ReasonAttribution.score_reading_entry_in_world(w, src_id, en, d.id) if d_shared else {"contrib": reading_strength(en, d.id), "strength": reading_strength(en, d.id)}
+						var r_score: Dictionary = ReasonAttribution.score_reading_entry_in_world(w, src_id, en, d.id)
 						out.append({"eid": eid2, "why": "their reading pointed at me", "contrib": float(r_score["contrib"]), "kind": "public", "strength": float(r_score["strength"]), "entry": en, "channel": "report"})
 						seen_eids[eid2] = true
 		elif f.get("kind", "") == "sighting" and d.id in f.get("subject", []):
 			var s_eid: String = "sighting:%s:%s:%d:%s" % [str(f.get("source", "")), d.id, int(f.get("day", -1)), str(f.get("block", ""))]
 			if not seen_eids.has(s_eid):
-				var s_score: Dictionary
-				if d_shared:
-					s_score = ReasonAttribution.score_disclosed_fact_in_world(w, d_mind, f, d.id)
-				else:
-					var sc: float = _mind().night_sighting_scale(w, d, d.id, str(f.get("block", "")), int(f.get("day", -1)))
-					s_score = {"contrib": 0.35 * sc, "strength": 0.35 * sc}
+				var s_score: Dictionary = ReasonAttribution.score_disclosed_fact_in_world(w, d_mind, f, d.id)
 				out.append({"eid": s_eid, "why": "seen out at night", "contrib": float(s_score["contrib"]), "kind": "public", "strength": float(s_score["strength"]), "entry": {}, "channel": "movement_out"})
 				seen_eids[s_eid] = true
 	return out
@@ -1319,7 +1273,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	var out_weight = 0.0
 	for x in out_items:
 		out_weight += x["contrib"]
-	var effs_by_move = {}
+	var move_strengths = {}
+	var move_scales = {}
 	var defence_scopes = {}
 	# 1. A gift that walks at night explains being seen out.
 	if not out_items.is_empty() and C.ROLES.get(role, {}).get("night_walk", false):
@@ -1331,7 +1286,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				_public_disclosure(w, d, lines, facts)
 			lines.append(say_voiced(d, "defence_reveal", "I was out because I'm the %s. That's what you saw." % C.role_name(role), {"role": C.role_name(role)}))
 			moves.append("reveal")
-			effs_by_move["reveal"] = [[d.id, -minf(0.35, out_weight), true, "excused: out at night as the %s" % C.role_name(role), ""]]
+			move_strengths["reveal"] = minf(Tuning.Meeting.DEFENCE_REVEAL_CAP, out_weight)
+			move_scales["reveal"] = 1.0
 			defence_scopes["reveal"] = {"type": "gift_claim", "role": role}
 	# 2. A personal secret explains it (good only: evil has nothing true to confess).
 	if moves.is_empty() and not out_items.is_empty() and not d.is_evil() and not d.secret.is_empty():
@@ -1342,7 +1298,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				"secret_kind": d.secret.get("kind", ""), "mod": "lovers" if d.secret.get("kind", "") == "lover" else "",
 				"text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]})
 			moves.append("secret")
-			effs_by_move["secret"] = [[d.id, -minf(0.3, out_weight), true, "excused: a personal secret", ""]]
+			move_strengths["secret"] = minf(Tuning.Meeting.DEFENCE_SECRET_CAP, out_weight)
+			move_scales["secret"] = 1.0
 			defence_scopes["secret"] = {"type": "secret_claim", "owner": d.id, "kind": d.secret.get("kind", "")}
 	# 2b. "I've been known to sleepwalk": the real Sleepwalker (who can't know they were
 	# out, only that they've walked before) or an evil bluffer whose cover needs it.
@@ -1352,7 +1309,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			lines.append(excuse["line"])
 			facts.append(excuse["fact"])
 			moves.append("sleepwalk")
-			effs_by_move["sleepwalk"] = [[d.id, -minf(0.3, out_weight), true, "excused: says they sleepwalk", ""]]
+			move_strengths["sleepwalk"] = 1.0
+			move_scales["sleepwalk"] = 1.0
 			defence_scopes["sleepwalk"] = {"type": "secret_claim", "owner": d.id, "kind": "sleepwalker"}
 	# 3. Against a reading that names them.
 	if moves.size() < 2:
@@ -1380,7 +1338,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				var mv_name: String = custom_def["move"]
 				lines.append(custom_def["line"])
 				moves.append(mv_name)
-				effs_by_move[mv_name] = custom_def["effs"]
+				move_strengths[mv_name] = 1.0
+				move_scales[mv_name] = float(custom_def.get("hearing_scale", 0.05))
 				defence_scopes[mv_name] = custom_def["scope"]
 			elif pair.size() == 2 and d.id in pair:
 				# One incident, one hearing: "it's the other one" accepts the reading, "the
@@ -1392,18 +1351,21 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				if fits and w.by_id.has(other) and w.by_id[other].alive:
 					lines.append(say(d, "[PH] One of the two, %s said. It isn't me, so look at %s." % [src.name, w.by_id[other].name]))
 					moves.append("pair_other")
-					effs_by_move["pair_other"] = [[d.id, -0.06, true, "points at the other one in the pair", ""], [other, 0.06, true, "%s says it's the other one in the pair" % d.name, ""]]
+					move_strengths["pair_other"] = 1.0
+					move_scales["pair_other"] = Tuning.Meeting.DEFENCE_PAIR_OTHER_DELTA
 					defence_scopes["pair_other"] = {"type": "rival", "source": src_id, "other": other}
 			if moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves):
 				if trait_of(d, "confidence") > 0.6:
 					lines.append(say_voiced(d, "defence_lying", "Then %s is lying, and you should ask yourselves why." % src.name, {"source": src.name}))
 					moves.append("lying")
-					effs_by_move["lying"] = [[d.id, -0.05, true, "says the reading against them is a lie", ""], [src_id, C.DEFENCE_LIE_BLOWBACK, true, "%s says they lied" % d.name, ""]]
+					move_strengths["lying"] = 1.0
+					move_scales["lying"] = maxf(absf(float(Tuning.Meeting.DEFENCE_LYING_RELIEF)), absf(float(C.DEFENCE_LIE_BLOWBACK)))
 					defence_scopes["lying"] = {"type": "challenge", "mode": "lying", "reading": WorkshopLedger.reading(src_id, rd).id}
 				else:
 					lines.append(say_voiced(d, "defence_misled", "%s's gift could have been turned. It's happened before." % src.name, {"source": src.name}))
 					moves.append("misled")
-					effs_by_move["misled"] = [[d.id, -0.06, true, "says the reading against them was misled", ""]]
+					move_strengths["misled"] = 1.0
+					move_scales["misled"] = absf(float(Tuning.Meeting.DEFENCE_MISLED_RELIEF))
 					defence_scopes["misled"] = {"type": "challenge", "mode": "misled", "reading": WorkshopLedger.reading(src_id, rd).id}
 	# 4. Nothing to show: fear, or the desperation play.
 	if moves.is_empty():
@@ -1413,33 +1375,24 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 		else:
 			lines.append(say_voiced(d, "defence_desperation", "I don't know what's going on, but I know I'm not evil."))
 			moves.append("desperation")
-		effs_by_move[moves[0]] = [[d.id, -0.02, true, "pleads innocence", ""]]
+		move_strengths[moves[0]] = 1.0
+		move_scales[moves[0]] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
 		defence_scopes[moves[0]] = {"type": "plea"}
-	for mv in effs_by_move:
+	for mv in move_strengths:
 		var scope: Dictionary = defence_scopes[mv]
 		var identity: String = "def:%s:%s:%s" % [d.id, scope.type, JSON.stringify(WorkshopLedger.Evidence.canonical(scope)).sha256_text()]
-		var effects: Array = effs_by_move[mv].duplicate(true)
-		var strength = 1.0
-		if mv in ["reveal", "secret"]:
-			# Keep the strongest complete hearing, rather than borrowing a strong
-			# excuse's magnitude and a different hearing's stronger trust weight.
-			strength = -float(effects[0][1])
-			effects[0][1] = -1.0
+		var strength: float = float(move_strengths[mv])
 		for l in w.living():
 			if l == d:
 				continue
-			var meta = {"kind": "defence", "move": mv, "scope": scope.duplicate(true), "hearing_scale": 1.0}
+			var meta = {"kind": "defence", "move": mv, "scope": scope.duplicate(true), "hearing_scale": float(move_scales.get(mv, 1.0))}
 			if scope.type == "gift_claim":
 				meta["workshop_card"] = WorkshopLedger.Evidence.normalize_card({"kind": "claim", "source": d.id, "subject": [d.id], "role": scope.role, "day": w.day, "phase": w.phase, "text": "Walking-gift defence."})
 			elif scope.type == "secret_claim":
 				meta["workshop_card"] = WorkshopLedger.Evidence.normalize_card({"kind": "secret", "source": d.id, "subject": [d.id], "owner": d.id, "secret_kind": scope.kind, "day": w.day, "phase": w.phase, "text": "Confessed errand defence."})
-			else:
-				meta.hearing_scale = 0.0
-				for effect in effects:
-					meta.hearing_scale = maxf(meta.hearing_scale, absf(float(effect[1])))
 			if l.ledger.get(identity, {}).get("meta", {}).has("workshop_card"):
 				meta["workshop_card"] = l.ledger[identity].meta.workshop_card
-			ledger_hear(w, l, identity, effects, strength * (0.5 + 0.5 * l.npc_trust.get(d.id, 0.5)),
+			ledger_hear(w, l, identity, [], strength * (0.5 + 0.5 * l.npc_trust.get(d.id, 0.5)),
 				[d.id, -1, "report"], meta)
 	w.dlog.think(d.id, "defence", "Defends against %s: %s." % [nominator_id, ", ".join(PackedStringArray(moves))], {"moves": moves, "evil": d.is_evil()})
 	return {"lines": lines, "facts": facts, "moves": moves}
@@ -1502,7 +1455,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		var cur_block: String = w.meeting.get("block", "")
 		var demon_on_block: bool = cur_block != "" and cur_block == w.demon_id
 		var mate_on_block: bool = cur_block != "" and w.by_id.has(cur_block) and w.by_id[cur_block].is_evil()
-		var rescue: float = 0.65 if demon_on_block else (0.30 if mate_on_block else 0.0)
+		var rescue: float = Tuning.Meeting.EVIL_VOTE_RESCUE_DEMON if demon_on_block else (Tuning.Meeting.EVIL_VOTE_RESCUE_MINION if mate_on_block else 0.0)
 		var stakes = 0.3
 		if Evil.is_teammate(w, v, nominee):
 			stakes = Evil.teammate_value(w, nominee) * maxf(pivot, 0.75) if not evil_yes else 0.75
@@ -1522,16 +1475,16 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	if player_yes:
 		parts["player_votes_yes"] = Tuning.Meeting.PLAYER_VOTE_YES_SLOPE * v.credibility + Tuning.Meeting.PLAYER_VOTE_YES_OFFSET
 	if statement == "defend":
-		parts["player_defends"] = -0.25 * v.credibility
+		parts["player_defends"] = Tuning.Meeting.PLAYER_DEFEND_SLOPE * v.credibility
 	elif statement == "accuse":
 		parts["player_accuses"] = Tuning.Meeting.PLAYER_ACCUSE_SLOPE * v.credibility
-	if nominator != "player" and susp(v, nominator) > 0.7:
-		parts["distrusts_nominator"] = -0.15
+	if nominator != "player" and susp(v, nominator) > Tuning.Meeting.VOTE_DISTRUST_NOMINATOR_MIN_SUSP:
+		parts["distrusts_nominator"] = Tuning.Meeting.VOTE_DISTRUST_NOMINATOR_OFFSET
 	if v.spare_pref.get(nominee, 0.0) > 0.0:
-		parts["persuaded_to_spare"] = -0.5 * v.spare_pref[nominee]
+		parts["persuaded_to_spare"] = Tuning.Meeting.VOTE_SPARE_PREF_SLOPE * v.spare_pref[nominee]
 	var block: String = w.meeting["block"]
 	if block != "" and block != nominee and (action_susp(v, block) + _mind().resentment_toward(w, v, block)) >= (base + v_resent):
-		parts["prefers_block"] = -0.4
+		parts["prefers_block"] = Tuning.Meeting.VOTE_PREFERS_BLOCK_OFFSET
 	C.role_def(v.role).score_vote_reluctance(w, v, nominee, base, paranoia(w, v), parts)
 	for k in parts:
 		if k not in ["suspicion", "town_pressure", "shared_execution_priority"]:
@@ -1542,7 +1495,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	var urg_need: float = -Tuning.Meeting.VOTE_URGENCY_PER_DEATH * w.npcs.filter(func(m): return not m.alive).size()
 	var need: float = Tuning.Meeting.VOTE_BASE_NEED + conf_need + early_need + para_need + urg_need
 	if v.id == nominator and (block == "" or block == nominee or action_susp(v, nominee) > action_susp(v, block)) and s < need:
-		var commit_gap: float = (need - s) + 0.02
+		var commit_gap: float = (need - s) + Tuning.Meeting.VOTE_SELF_NOMINATION_MARGIN
 		parts["self_nomination"] = commit_gap
 		s += commit_gap
 	var yes = s >= need
@@ -1609,8 +1562,8 @@ static func implicated(e: Dictionary) -> Array:
 static func info_eid(src: String, entry: Dictionary) -> String:
 	return _mind().info_eid(src, entry)
 
-static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
-	return _mind().ledger_hear(w, n, eid, effects, weight, rel, meta)
+static func ledger_hear(w, n, eid: String, _effects: Array = [], weight: float = 1.0, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
+	return _mind().ledger_hear(w, n, eid, [], weight, rel, meta)
 
 static func paranoia(w, n) -> float:
 	return _mind().paranoia(w, n)
@@ -1618,8 +1571,8 @@ static func paranoia(w, n) -> float:
 static func ranked_suspects(w, n, social_pressure: bool = false) -> Array:
 	return _mind().ranked_suspects(w, n, social_pressure)
 
-static func recompute_beliefs(w, n, note: String) -> void:
-	_mind().recompute_beliefs(w, n, note)
+static func refresh_beliefs(w, n, note: String) -> void:
+	_mind().refresh_beliefs(w, n, note)
 
 static func reconsider(w, n, why: String) -> void:
 	_mind().reconsider(w, n, why)

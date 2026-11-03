@@ -42,25 +42,15 @@ func defend_strength(d: Dictionary, _nominee: String) -> float:
 	return 0.0 if d.get("yes", false) else Tuning.Roles.SEER.defend_strength_no
 
 
-func info_effects(_w, listener, source, entry: Dictionary, weight: float, fresh: bool, mind) -> Array:
-	var effs: Array = []
-	var d: Dictionary = entry["data"]
-	var own: bool = source == listener
-	var src_name: String = "my own" if own else source.name + "'s"
-	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	var pair: Array = d["pair"]
-	var others: Array = pair.filter(func(i): return i != listener.id)
-	if d["yes"]:
-		var per: float = Tuning.Roles.SEER.eff_yes_pair if others.size() > 1 else Tuning.Roles.SEER.eff_yes_solo
-		for i in others:
-			mind._eff(effs, i, per, tag + ": seer yes",
-				"%s sight said one of them is the demon" % src_name, not own)
-	else:
-		for i in others:
-			mind._eff(effs, i, (Tuning.Roles.SEER.eff_no_own if own else Tuning.Roles.SEER.eff_no_heard), tag + ": seer no", "", not own)
-			if own and fresh:
-				listener.cleared[i] = true
-	return effs
+func on_reading_heard(listener, source, entry: Dictionary, fresh: bool) -> void:
+	if listener != source or not fresh:
+		return
+	var d: Dictionary = entry.get("data", {})
+	if d.get("yes", true):
+		return
+	for i in d.get("pair", []):
+		if i != listener.id:
+			listener.cleared[i] = true
 
 
 func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, workshop_ledger) -> Dictionary:
@@ -70,7 +60,7 @@ func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, works
 			"handled": true,
 			"move": "red_herring",
 			"line": mind.say(d, "[PH] %s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name),
-			"effs": [[d.id, Tuning.Roles.SEER.red_herring_defence_eff, true, "says they're the Seer's red herring", ""]],
+			"hearing_scale": absf(float(Tuning.Roles.SEER.red_herring_defence_eff)),
 			"scope": {"type": "challenge", "mode": "misled", "reading": workshop_ledger.reading(src_id, rd).id},
 		}
 	return {}
@@ -111,7 +101,7 @@ func pick_targets(w, n, mind):
 	if w.day == 0 or ranked.size() < 3:
 		pair = w.shuffled(ranked).slice(0, 2)
 		why = "first look: two at random"
-	elif not w.decision_roll(n, "seer_focused_look", 0.3 + 0.5 * ins, {"insight": ins}):
+	elif not w.decision_roll(n, "seer_focused_look", Tuning.Roles.SEER.focus_base + Tuning.Roles.SEER.focus_insight_scale * ins, {"insight": ins}):
 		var shuf: Array = w.shuffled(ranked)
 		for i_s in range(shuf.size()):
 			for j_s in range(i_s + 1, shuf.size()):
@@ -125,7 +115,7 @@ func pick_targets(w, n, mind):
 		if pair.is_empty():
 			pair = shuf.slice(0, 2)
 		why = "a scattered look (insight %.2f): two unchecked together" % ins
-	elif ins >= 0.6 and yes_on.get(ranked[0].id, 0) >= 2 and fresh.size() >= 2:
+	elif ins >= Tuning.Roles.SEER.sharp_insight_threshold and yes_on.get(ranked[0].id, 0) >= 2 and fresh.size() >= 2:
 		pair = w.shuffled(fresh).slice(0, 2)
 		why = "settled on %s (two yeses); looks at two fresh people" % ranked[0].id
 	else:
@@ -137,12 +127,12 @@ func pick_targets(w, n, mind):
 		)
 		if not unrepeated.is_empty():
 			others = unrepeated
-		if ins >= 0.6:
+		if ins >= Tuning.Roles.SEER.sharp_insight_threshold:
 			var fr: Array = others.filter(func(m): return not checked.has(m.id))
 			if not fr.is_empty():
 				others = fr
 		pair = [ranked[0], w.decision_pick(n, "seer_second_target", others, {"insight": ins})]
-		why = "top suspect plus %s (insight %.2f)" % ["someone unchecked" if ins >= 0.6 else "one other", ins]
+		why = "top suspect plus %s (insight %.2f)" % ["someone unchecked" if ins >= Tuning.Roles.SEER.sharp_insight_threshold else "one other", ins]
 	var ids: Array = pair.map(func(m): return m.id)
 	w.dlog.think(n.id, "seer_pick", "Seer: " + why + ".", {"pair": ids})
 	return ids
@@ -215,7 +205,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, asked: Arr
 		pair = [s, w.pick(others_s)]
 		yes = true
 		why = "frames scapegoat %s with a 'yes'" % s
-	elif mate.alive and w.chance(0.4) and not others_m.is_empty():
+	elif mate.alive and w.chance(Tuning.Roles.SEER.bluff_clear_mate_prob) and not others_m.is_empty():
 		pair = [mate.id, w.pick(others_m)]
 		why = "clears teammate %s with a 'no'" % mate.id
 	elif others_s.size() >= 2:

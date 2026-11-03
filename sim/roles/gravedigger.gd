@@ -26,33 +26,6 @@ func card_strength(_d: Dictionary, _suspect_id: String) -> float:
 	return Tuning.Roles.GRAVEDIGGER.card_strength
 
 
-func info_effects(w, listener, source, entry: Dictionary, weight: float, fresh: bool, mind) -> Array:
-	var effs: Array = []
-	var d: Dictionary = entry["data"]
-	var own: bool = source == listener
-	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	var ex = w.by_id[d["executed"]]
-	var ex_good: bool = content().ROLES[d["role"]]["align"] == "good"
-	var proven_revenant: bool = w.public_log.any(func(ev): return ev.get("kind", "") == "curse" and ex.id in ev.get("subjects", []))
-	if proven_revenant and d["role"] != "revenant" and not own:
-		mind._eff(effs, source.id, Tuning.Roles.GRAVEDIGGER.eff_impossible_source,
-			tag + ": claims %s was %s despite public Revenant curse" % [ex.id, d["role"]],
-			"%s claimed %s was the %s after the Revenant's curse proved what they were" % [source.name, ex.name, content().role_name(d["role"])])
-		return effs
-	if ex.id != listener.id:
-		# "X was evil" (or good) is evidence about X like any other; X's credibility
-		# follows from it in recompute_beliefs, not from a role-specific rule.
-		mind._eff(effs, ex.id, Tuning.Roles.GRAVEDIGGER.eff_executed_evil if not ex_good else Tuning.Roles.GRAVEDIGGER.eff_executed_good, tag + ": %s was the %s" % [ex.id, d["role"]], "", false)
-	for e in w.executions:
-		if e["id"] == ex.id:
-			var nom: String = e["nominator"]
-			if nom != "" and nom != "player":
-				mind._eff(effs, nom, (Tuning.Roles.GRAVEDIGGER.eff_nominator_of_good if ex_good else Tuning.Roles.GRAVEDIGGER.eff_nominator_of_evil),
-					tag + ": nominator of %s, who was %s" % [ex.id, d["role"]],
-					"they pushed to hang %s, who was innocent" % ex.name)
-	return effs
-
-
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	if w.executed_today == "":
 		return {}

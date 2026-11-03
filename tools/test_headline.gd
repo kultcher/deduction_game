@@ -20,7 +20,7 @@ func _init():
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
 	g.new_case(4, 10)
-	var holder = g.w.living_good().filter(func(m): return not m.workshop_state.is_empty())[0]
+	var holder = g.w.living_good()[0]
 	var demon: String = g.w.demon_id
 	var good: Array = g.w.npcs.filter(func(m): return m.id != holder.id and not m.is_evil()).map(func(m): return m.id)
 	var minion: String = g.w.npcs.filter(func(m): return m.is_evil() and m.id != demon)[0].id

@@ -30,11 +30,22 @@ func _init() -> void:
 			mind.known_claims = {}
 			mind.ledger = {}
 			mind.beliefs = []
+	var victim = goods[3]
+	victim.home_block = "docks"
+	d.home_block = "square"
+	accuser.home_block = "docks"
+	g.w.day = 1
+	g.w._kill(victim)
+	g.w.day = 4
 	d.role = "lamplighter"
 	d.claimed_role = "lamplighter"
 	d.claim_public = true
-	Mind.ledger_hear(g.w, accuser, "test:out", [[d.id, 0.1, false, "seen out at night", "seen out"]], 1.0)
-	var result = Mind.defend_self(g.w, d, accuser.id)
+	accuser.beliefs = [{"kind": "saw", "who": d.id, "loc": "", "block": "docks", "day": 1, "phase": 3, "how": "window", "detail": "street"}]
+	Mind.refresh_beliefs(g.w, accuser, " (witnessed murder-block outing)")
+	# The accuser says their window sighting when they nominate (the meeting flow passes
+	# spoken facts); a defence answers only what has been said.
+	var spoken: Array = [{"kind": "sighting", "source": accuser.id, "subject": [d.id], "block": "docks", "day": 1, "phase": 3}]
+	var result = Mind.defend_self(g.w, d, accuser.id, spoken)
 	var entries: Array = listener.ledger.values().filter(func(e): return e.meta.get("kind") == "defence")
 	check(result.moves == ["reveal"] and entries.size() == 1 and listener.workshop_state.owned.has(entries[0].eid), "gift defence becomes an owned claim; its native bonus is parked")
 	var plan = Shared.prepare(g.workshop_snapshot([], listener.id), {}, listener.ledger)
@@ -42,12 +53,14 @@ func _init() -> void:
 	check(plan.ready and claims.size() == 1 and is_equal_approx(claims[0].hearing_weight, entries[0].weight), "legacy defence strength and regard become claim hearing weight")
 	var first: Array = listener.workshop_state.facts.duplicate()
 	g.w.day += 1
-	Mind.defend_self(g.w, d, accuser.id)
+	Mind.defend_self(g.w, d, accuser.id, spoken)
 	check(listener.workshop_state.facts == first, "daily defence repeats retain the first receipt identity")
 	d.claim_public = false
 	d.role = "surveyor"
 	d.secret = {}
+	accuser.beliefs = []
 	accuser.ledger = {}
+	Mind.refresh_beliefs(g.w, accuser, " (clear outing)")
 	Mind.defend_self(g.w, d, "player")
 	entries = listener.ledger.values().filter(func(e): return e.meta.get("kind") == "defence" and e.meta.scope.type == "plea")
 	check(entries.size() == 1 and listener.workshop_state.owned.has(entries[0].eid), "plea remains speech and adds no native evidence discount")

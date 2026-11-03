@@ -65,7 +65,7 @@ func _test_listener_mean_centering_and_tie_symmetry() -> void:
 	var bystander = goods[4]
 	seer.role = "seer"
 	seer.ledger.clear()
-	seer.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+	seer.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	for id in seer.suspicion:
 		seer.suspicion[id] = Tuning.Setup.INITIAL_SUSPICION_BASE
 		seer.npc_trust[id] = 0.5
@@ -83,7 +83,7 @@ func _test_listener_mean_centering_and_tie_symmetry() -> void:
 
 	# 2) Dead person receives 0.0 execution_priority even if implicated by an old card.
 	p1.alive = false
-	Mind.recompute_beliefs(g.w, seer, "p1 died")
+	Mind.refresh_beliefs(g.w, seer, "p1 died")
 	_check(is_zero_approx(Mind.execution_priority(seer, p1.id)) and Mind.execution_priority(seer, p2.id) > ep_p2, "dead suspect drops to 0.0 execution_priority while surviving partner concentrates priority")
 	p1.alive = true
 
@@ -93,7 +93,7 @@ func _test_listener_mean_centering_and_tie_symmetry() -> void:
 		dowser.suspicion[id] = Tuning.Setup.INITIAL_SUSPICION_BASE
 	dowser.role = "dowser"
 	dowser.ledger.clear()
-	dowser.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+	dowser.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	dowser.info_log = [{"day": 1, "phase": C.MORNING, "role": "dowser", "data": {"group": [p1.id, p2.id, p3.id, bystander.id], "count": 2}, "true": true, "shared": false, "text": "dowser 2 of 4"}]
 	dowser.applied_info = 0
 	Mind.update_from_own_info(g.w)
@@ -140,6 +140,9 @@ func _test_bandwagon_pullback_vs_model_standout() -> void:
 	Mind.refresh_all_consensus(w)
 	voter.suspicion[target.id] = 0.42
 	voter.workshop_state = {"active": true, "action": {"execution_priority": {target.id: 0.55}}}
+	# A vote-formula check: hold the shared refresh (vote reconsiders through it, purge 3)
+	# so the injected priority and suspicion are what the formula sees.
+	g._workshop_busy = true
 	_check(Mind.vote(w, voter, target.id, accusers[0].id, false, "", 0), "world-model standout (0.42 susp + 0.22*0.55 priority = 0.541) crosses 0.52 vote bar without bandwagon chorus")
 
 
@@ -171,6 +174,7 @@ func _test_death_spiral_pullback_and_threshold_parts_parity() -> void:
 	# New need = 0.52 - 0.20*0.147 - 0.06 = 0.4306 (refuses lukewarm 0.40 panic hang!).
 	w.stances.clear()
 	voter.consensus_pressure.clear()
+	g._workshop_busy = true # threshold formula only; keep the fixture suspicions exact
 	var panic_yes: bool = Mind.vote(w, voter, target.id, "player", false, "", 0)
 	_check(not panic_yes, "3 deaths in a 10-NPC game no longer drop the vote bar below 0.40 on lukewarm suspects")
 

@@ -148,6 +148,10 @@ static func _expl_weight(w, n, e: Dictionary) -> float:
 			var cred = 0.0
 			if e.get("base_eid", "") != "" and n.ledger.has(e["base_eid"]):
 				cred = clampf(n.ledger[e["base_eid"]]["weight"] * 1.5, 0.0, 1.0)  # how much they bought "X is evil"
+			elif e.get("base_who", "") != "" and n.suspicion.has(e["base_who"]) and Mind.susp(n, e["base_who"]) > 0.1:
+				# Shared presentations keep no `arg:` entry (purge 2c): how far they believe
+				# "X is evil" is their shared suspicion of X above the flat 0.1 start.
+				cred = clampf((Mind.susp(n, e["base_who"]) - 0.1) * 2.0, 0.0, 1.0)
 			elif e.get("base_src", "") != "" and w.by_id.has(e["base_src"]):
 				cred = _cred(w, n, e["base_src"]) * 0.8  # a Gravedigger's verdict, as credible as its source
 			return maxf(0.05 + 0.25 * e.get("times", 1) * cred + 0.9 * cred * 0.5 + Mind.susp(n, who) * 0.6, 0.02)
@@ -258,7 +262,7 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 			_evil_reason(w, n, c, ded, approved)
 		# Shadow self (step 2): answer as their good self would, unless breaking cover is
 		# worth it. Arguments about themselves keep the mask ("it's about me").
-		if C.SHADOW_SELF and (times == 0 or n.workshop_state.get("enabled", false)) and (target != n or n.workshop_state.get("enabled", false)):
+		if C.SHADOW_SELF:
 			var sr = Mind.shadow_eval(w, n, func(sh): return evaluate(w, sh, ded, board, scale, false))
 			workshop_covered = sr != null and sr.get("workshop", false)
 			if target != n and sr != null and sr.has("dialogue") and sr["dialogue"].get("stance", "") != approved["stance"]:
@@ -517,68 +521,71 @@ static func _paraphrase(w, c: Dictionary) -> String:
 	return ""
 
 ## What accepting a conclusion does to the listener, as ledger effects at weight 1.
+static func _eff(effs: Array, target: String, delta: float, why: String, public_why: String = "", conf_scaled: bool = true) -> void:
+	effs.append([target, delta, conf_scaled, why, public_why])
+
 static func effects_of(w, c: Dictionary, supports: Array, why: String) -> Array:
 	var a: String = c.get("a", "")
 	var e: Array = []
 	match c["type"]:
 		"evil", "minion":
-			Mind._eff(e, a, 0.45, why, "the Demonologist made a case against them")
+			_eff(e, a, 0.45, why, "the Demonologist made a case against them")
 		"demon":
-			Mind._eff(e, a, 0.55, why, "the Demonologist made a case against them")
+			_eff(e, a, 0.55, why, "the Demonologist made a case against them")
 		"good":
-			Mind._eff(e, a, -0.4, why)
-			Mind._eff(e, "pref:protect:" + a, 0.5, why, "", false)
+			_eff(e, a, -0.4, why)
+			_eff(e, "pref:protect:" + a, 0.5, why, "", false)
 		"protect":
-			Mind._eff(e, "pref:protect:" + a, 1.0, why, "", false)
-			Mind._eff(e, a, -0.15, why)
+			_eff(e, "pref:protect:" + a, 1.0, why, "", false)
+			_eff(e, a, -0.15, why)
 		"spare":
-			Mind._eff(e, "pref:spare:" + a, 1.0, why, "", false)
-			Mind._eff(e, a, -0.15, why)
+			_eff(e, "pref:spare:" + a, 1.0, why, "", false)
+			_eff(e, a, -0.15, why)
 		"role":
-			Mind._eff(e, "role:%s:%s" % [a, c["role"]], 1.0, why, "", false)
+			_eff(e, "role:%s:%s" % [a, c["role"]], 1.0, why, "", false)
 			if is_evil_role(c["role"]):
-				Mind._eff(e, a, 0.5, why, "the Demonologist made a case they're one of the demon's")
+				_eff(e, a, 0.5, why, "the Demonologist made a case they're one of the demon's")
 				return e
-			Mind._eff(e, a, -0.1, why)
+			_eff(e, a, -0.1, why)
 			# Believing a's claim makes anyone else claiming that gift a liar (now or later).
-			Mind._eff(e, "rivals:%s:%s" % [c["role"], a], 0.3, why + " (so a rival claim is false)", "their claim clashes with someone I believe")
+			_eff(e, "rivals:%s:%s" % [c["role"], a], 0.3, why + " (so a rival claim is false)", "their claim clashes with someone I believe")
 		"notrole":
-			Mind._eff(e, a, 0.3, why, "the Demonologist showed their claim is false")
+			_eff(e, a, 0.3, why, "the Demonologist showed their claim is false")
 		"lied":
-			Mind._eff(e, a, 0.3, why, "the Demonologist caught them in a lie")
+			_eff(e, a, 0.3, why, "the Demonologist caught them in a lie")
 			for card in supports:
 				if card["n"] == c.get("card", -1) and card.get("kind", "") == "info":
-					Mind._eff(e, "disc:%s:%d" % [card["source"], card.get("day", -1)], 0.5, why, "", false)
+					_eff(e, "disc:%s:%d" % [card["source"], card.get("day", -1)], 0.5, why, "", false)
 		"misled", "unreliable":
 			var night: int = c.get("night", -1)
 			if night < 0 and c.has("card"):
 				for card in supports:
 					if card["n"] == c["card"] and card.get("kind", "") == "info":
 						night = card.get("day", -1)
-			Mind._eff(e, "disc:%s:%s" % [a, str(night) if night >= 0 else "*"], 0.8 if c["type"] == "misled" else 0.5, why, "", false)
+			_eff(e, "disc:%s:%s" % [a, str(night) if night >= 0 else "*"], 0.8 if c["type"] == "misled" else 0.5, why, "", false)
 			if c["type"] == "unreliable":
-				Mind._eff(e, a, 0.12, why)
+				_eff(e, a, 0.12, why)
 		"notdemon":
-			Mind._eff(e, a, -0.25, why)
+			_eff(e, a, -0.25, why)
 		"truthful":
-			Mind._eff(e, a, -0.15, why)
+			_eff(e, a, -0.15, why)
 		"conflict":
 			var grp: Array = c.get("group", [])
 			for g in grp:
-				Mind._eff(e, "disc:%s:*" % g, 0.4 / maxf(1.0, grp.size()), why, "", false)
-				Mind._eff(e, g, 0.05, why)
+				_eff(e, "disc:%s:*" % g, 0.4 / maxf(1.0, grp.size()), why, "", false)
+				_eff(e, g, 0.05, why)
 		"suspicious":
 			# A weak push: pressure, not proof.
-			Mind._eff(e, a, 0.15, why, "the Demonologist finds them suspicious")
+			_eff(e, a, 0.15, why, "the Demonologist finds them suspicious")
 		"secret":
-			Mind._eff(e, a, -0.12, why)
+			_eff(e, a, -0.12, why)
 		"marked", "red_herring":
-			Mind._eff(e, a, -0.3 if c["type"] == "marked" else -0.4, why)
+			_eff(e, a, -0.3 if c["type"] == "marked" else -0.4, why)
 		"secret_mod":
 			if c.get("mod", "") == "delusional":
-				Mind._eff(e, "disc:%s:*" % a, 0.7, why, "", false)
+				_eff(e, "disc:%s:*" % a, 0.7, why, "", false)
 			else:
-				Mind._eff(e, a, -0.15, why)
+				_eff(e, a, -0.15, why)
 	return e
 
 ## Take the argument in through the ledger. base excludes trust, so it can be re-weighed
@@ -617,7 +624,7 @@ static func _apply(w, n, ded: Dictionary, supports: Array, base: float, board: A
 		for sc in supports:
 			if sc.get("n", -2) == c_meta["card"] and sc.get("kind", "") == "info":
 				c_meta["night"] = sc.get("day", -1)
-	var h = Mind.ledger_hear(w, n, ledger_id, effects_of(w, c, supports, why), base * (0.5 + n.trust), [],
+	var h = Mind.ledger_hear(w, n, ledger_id, [], base * (0.5 + n.trust), [],
 		{"kind": "arg", "base": base, "text": conclusion_text(w, c), "said": said, "supports": sup, "conclusion": c_meta,
 		"workshop_roots": Mind.WorkshopLedger.roots(supports, board), "workshop_case": str(ded.get("n", 0)), "workshop_conclusion": c.type})
 	w.dlog.decision(n.id, "argument", "ledger", h, {"ledger_id": ledger_id,

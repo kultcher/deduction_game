@@ -56,9 +56,9 @@ static func answer_hint(w, n) -> Dictionary:
 		lines.append(_hint_decline(w, n, t))
 		return {"lines": lines, "facts": []}
 	var cost = reveal_cost(w, n)
-	var parts = {"trust": (n.trust - 0.45) * 2.0, "privacy": (0.5 - trait_of(n, "privacy")) * 0.8}
+	var parts = {"trust": (n.trust - Tuning.Dialogue.HINT_FOLLOWUP_TRUST_PIVOT) * Tuning.Dialogue.HINT_FOLLOWUP_TRUST_SLOPE, "privacy": (0.5 - trait_of(n, "privacy")) * Tuning.Dialogue.HINT_FOLLOWUP_PRIVACY_SLOPE}
 	if cost.has("afraid"):
-		parts["afraid"] = -0.3
+		parts["afraid"] = Tuning.Dialogue.HINT_FOLLOWUP_AFRAID_OFFSET
 	if not decide(w, n, "hint_followup", parts, "Tell the Demonologist why they suspect %s?" % target):
 		lines.append(_hint_decline(w, n, t))
 		return {"lines": lines, "facts": []}
@@ -126,7 +126,7 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		[card.get("text", ""), strength, str(hiding), p_nerves, str(nervous)], {"night": night, "naming_me": naming_me, "counter": counter})
 	n.pressure += Tuning.Dialogue.PRESS_PRESSURE_GAIN * strength
 	if not naming_me and not n.is_evil():
-		set_trust(w, n, n.trust - (0.03 + 0.06 * trait_of(n, "privacy")), "the Demonologist pressed me with evidence")
+		set_trust(w, n, n.trust - (Tuning.Trust.PRESSED_EVIDENCE_BASE + Tuning.Trust.PRESSED_EVIDENCE_PRIVACY * trait_of(n, "privacy")), "the Demonologist pressed me with evidence")
 	if nervous:
 		lines.append("%s %s" % [n.name, ["looks away a moment too quickly.", "shifts uneasily.", "goes a little pale.", "fumbles for an answer."][w.rng.randi_range(0, 3)]])
 	if counter:
@@ -138,7 +138,7 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		lines.append(accusation)
 		if not n.is_evil():
 			var receipt: Dictionary = WorkshopLedger.Evidence.normalize_card(card)
-			ledger_hear(w, n, "own_role:" + fact_id(card), [[rival.id, 0.3, true, "the Demonologist showed me %s claims my gift" % rival.id, "they claim my gift"]], 1.0,
+			ledger_hear(w, n, "own_role:" + fact_id(card), [], 1.0,
 				[rival.id, -1, "role"], {"kind": "role_counter", "workshop_card": receipt})
 		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 		pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
@@ -273,8 +273,8 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 
 static func on_question(w, n) -> void:
 	n.pressed_today += 1
-	if n.pressed_today > 3:
-		var drop: float = (0.03 + 0.05 * trait_of(n, "privacy")) * (1.0 - 0.5 * trait_of(n, "composure"))
+	if n.pressed_today > Tuning.Trust.QUESTION_FATIGUE_LIMIT:
+		var drop: float = (Tuning.Trust.QUESTION_FATIGUE_BASE + Tuning.Trust.QUESTION_FATIGUE_PRIVACY * trait_of(n, "privacy")) * (1.0 - Tuning.Trust.QUESTION_FATIGUE_COMPOSURE_DAMP * trait_of(n, "composure"))
 		set_trust(w, n, n.trust - drop, "pressed with %d questions today" % n.pressed_today)
 
 ## Attitude cue on greeting, shown only if their composure lets it slip.
@@ -300,7 +300,7 @@ static func end_conversation(w, n) -> Array:
 	var out: Array = []
 	if n.talked_day != w.day:
 		n.talked_day = w.day
-		set_trust(w, n, n.trust + 0.04 * (1.0 - 0.5 * trait_of(n, "privacy")), "a civil conversation with the Demonologist")
+		set_trust(w, n, n.trust + Tuning.Trust.CIVIL_TALK_BASE * (1.0 - Tuning.Trust.CIVIL_TALK_PRIVACY_DAMP * trait_of(n, "privacy")), "a civil conversation with the Demonologist")
 	var t = reveal_trait(w, n)
 	if t != "":
 		out.append(t)
@@ -325,8 +325,8 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 	# One mood per NPC per day (a fixed daily sample, like fear), so asking again the same
 	# day can't fish for a better roll (Oct 30, docs/social_trust_pass.md).
 	var jitter: float = (_day_roll(n.id, w.day, 0x0BE7) - 0.5) * 2.0 * Tuning.Dialogue.OPENNESS_JITTER
-	var openness = (1.0 - trait_of(n, "privacy")) * 1.0 + n.trust * 1.2 + n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")) \
-		+ 0.1 * (w.day - 1) + Tuning.Dialogue.OPENNESS_BASE_OFFSET + jitter
+	var openness = (1.0 - trait_of(n, "privacy")) * Tuning.Dialogue.OPENNESS_PRIVACY_WEIGHT + n.trust * Tuning.Dialogue.OPENNESS_TRUST_WEIGHT + n.pressure * Tuning.Dialogue.OPENNESS_PRESSURE_WEIGHT * (1.0 - Tuning.Dialogue.OPENNESS_COMPOSURE_DAMP * trait_of(n, "composure")) \
+		+ Tuning.Dialogue.OPENNESS_DAY_SLOPE * (w.day - 1) + Tuning.Dialogue.OPENNESS_BASE_OFFSET + jitter
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	var gift_terms = {}
 	C.role_def(role).score_disclosure_tier(w, n, gift_terms)
@@ -340,11 +340,11 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 	elif openness > Tuning.Dialogue.TIER_VAGUE:
 		t = 2
 	w.dlog.decision(n.id, "gift_disclosure", "tier", t, {"openness": openness,
-		"parts": {"privacy": (1.0 - trait_of(n, "privacy")) * 1.0, "trust": n.trust * 1.2,
-			"pressure": n.pressure * 0.6 * (1.0 - 0.5 * trait_of(n, "composure")),
-			"day": 0.1 * (w.day - 1), "base": -0.72, "jitter": jitter}.merged(gift_terms),
-		"jitter_min": -Tuning.Dialogue.OPENNESS_JITTER, "jitter_max": Tuning.Dialogue.OPENNESS_JITTER, "thresholds": [{"above": 0.75, "tier": 4}, {"above": 0.45, "tier": 3},
-			{"above": 0.15, "tier": 2}, {"otherwise": 1}], "comparison": ">"}, "", trace_id)
+		"parts": {"privacy": (1.0 - trait_of(n, "privacy")) * Tuning.Dialogue.OPENNESS_PRIVACY_WEIGHT, "trust": n.trust * Tuning.Dialogue.OPENNESS_TRUST_WEIGHT,
+			"pressure": n.pressure * Tuning.Dialogue.OPENNESS_PRESSURE_WEIGHT * (1.0 - Tuning.Dialogue.OPENNESS_COMPOSURE_DAMP * trait_of(n, "composure")),
+			"day": Tuning.Dialogue.OPENNESS_DAY_SLOPE * (w.day - 1), "base": Tuning.Dialogue.OPENNESS_BASE_OFFSET, "jitter": jitter}.merged(gift_terms),
+		"jitter_min": -Tuning.Dialogue.OPENNESS_JITTER, "jitter_max": Tuning.Dialogue.OPENNESS_JITTER, "thresholds": [{"above": Tuning.Dialogue.TIER_FULL, "tier": 4}, {"above": Tuning.Dialogue.TIER_PARTIAL, "tier": 3},
+			{"above": Tuning.Dialogue.TIER_VAGUE, "tier": 2}, {"otherwise": 1}], "comparison": ">"}, "", trace_id)
 	w.dlog.think(n.id, "disclosure", "Disclosure tier %d (openness %.2f; privacy %.2f, trust %.2f, pressure %.2f)." %
 		[t, openness, trait_of(n, "privacy"), n.trust, n.pressure], {"tier": t})
 	return t
@@ -402,13 +402,13 @@ static func protection_line(n, kind: String) -> Dictionary:
 ## for protection instead. One request a day; {} when they don't ask. Hearing and answering
 ## it is free; "decline" carries what they'd have said instead.
 static func _protection_request(w, n, refusal: Dictionary) -> Dictionary:
-	if n.request_day == w.day or n.claim_public or n.protect_lock or n.trust < 0.45:
+	if n.request_day == w.day or n.claim_public or n.protect_lock or n.trust < Tuning.Dialogue.PROTECTION_REQ_MIN_TRUST:
 		w.observe_decision(n, "protection_request", false, {"gate": "request already made today, claim public, promised protection, or trust < 0.45", "inputs": {"trust": n.trust, "request_day": n.request_day, "day": w.day, "claim_public": n.claim_public, "protect_lock": n.protect_lock}})
 		return {}
 	var kind: String = protection_kind(w, n)
 	if kind == "":
 		return {}
-	var p: float = clampf(0.35 + (n.trust - 0.45) * 1.5, 0.0, 0.85)
+	var p: float = clampf(Tuning.Dialogue.PROTECTION_REQ_BASE + (n.trust - Tuning.Dialogue.PROTECTION_REQ_MIN_TRUST) * Tuning.Dialogue.PROTECTION_REQ_TRUST_SLOPE, 0.0, Tuning.Dialogue.PROTECTION_REQ_CAP)
 	var asks: bool = w.decision_roll(n, "protection_request", p, {"trust": n.trust})
 	w.dlog.decision(n.id, "protection_request", "outcome", asks, {"trust": n.trust, "p": snappedf(p, 0.01), "kind": kind})
 	if not asks:
@@ -420,10 +420,10 @@ static func _protection_request(w, n, refusal: Dictionary) -> Dictionary:
 ## Where they'd keep something back (not out of fear, and not because trust fell), a nervous
 ## NPC may offer it on condition the player keeps it quiet for now. tier: what they'd tell.
 static func _confidence_request(w, n, tier: int, refusal: Dictionary) -> Dictionary:
-	if n.request_day == w.day or n.claim_public or n.trust < 0.4:
+	if n.request_day == w.day or n.claim_public or n.trust < Tuning.Dialogue.CONFIDENCE_REQ_MIN_TRUST:
 		w.observe_decision(n, "confidence_request", false, {"gate": "request already made today, claim public, or trust < 0.4", "inputs": {"trust": n.trust, "request_day": n.request_day, "day": w.day, "claim_public": n.claim_public, "protect_lock": n.protect_lock}})
 		return {}
-	var p: float = clampf(0.15 + (n.trust - 0.5) * 0.8 + (0.5 - trait_of(n, "composure")) * 0.5, 0.0, 0.5)
+	var p: float = clampf(Tuning.Dialogue.CONFIDENCE_REQ_BASE + (n.trust - 0.5) * Tuning.Dialogue.CONFIDENCE_REQ_TRUST_SLOPE + (0.5 - trait_of(n, "composure")) * Tuning.Dialogue.CONFIDENCE_REQ_COMPOSURE_SLOPE, 0.0, Tuning.Dialogue.CONFIDENCE_REQ_CAP)
 	var asks: bool = w.decision_roll(n, "confidence_request", p, {"trust": n.trust, "composure": trait_of(n, "composure")})
 	w.dlog.decision(n.id, "confidence_request", "outcome", asks, {"trust": n.trust,
 		"composure": trait_of(n, "composure"), "p": snappedf(p, 0.01), "tier": tier})
@@ -547,7 +547,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 	facts.append({"kind": "claim", "subject": [n.id], "role": role, "source": n.id, "private": not n.claim_public,
 		"text": "%s %s the %s." % [n.name, "claims to be" if n.claim_public else "told you privately they are", C.role_name(role)]})
 	if first_time:
-		set_trust(w, n, n.trust + 0.03, "shared their gift with the Demonologist")
+		set_trust(w, n, n.trust + Tuning.Trust.SHARED_GIFT_FIRST_TIME_BONUS, "shared their gift with the Demonologist")
 	n.max_tier = maxi(n.max_tier, 3)
 	var rdef = C.role_def(role)
 	if rdef != null:
@@ -619,7 +619,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 static func _gossip_share(w, n, topic: String) -> int:
 	# No Gossip cutoff (Oct 30): the least talkative still share one thing.
 	var g = trait_of(n, "gossip")
-	var count = 1 + int(round((g + n.pressure * 0.5) * 3.0))
+	var count = 1 + int(round((g + n.pressure * Tuning.Dialogue.GOSSIP_SHARE_PRESSURE_SCALE) * Tuning.Dialogue.GOSSIP_SHARE_MULT))
 	w.dlog.decision(n.id, "gossip_share", "outcome", count,
 		{"topic": topic, "gossip": g, "pressure": n.pressure})
 	return count
@@ -679,8 +679,8 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		var can_confess = not n.is_evil() and not n.secret.is_empty()
 		var confess = false
 		if can_confess:
-			confess = decide(w, n, "confess", {"trust": (n.trust - 0.6) * 1.5, "privacy": (0.4 - trait_of(n, "privacy")) * 1.0,
-				"pressure": n.pressure * 0.8 * (1.0 - 0.5 * trait_of(n, "composure")), "insight_none": 0.0},
+			confess = decide(w, n, "confess", {"trust": (n.trust - Tuning.Dialogue.CONFESS_TRUST_PIVOT) * Tuning.Dialogue.CONFESS_TRUST_SLOPE, "privacy": (Tuning.Dialogue.CONFESS_PRIVACY_PIVOT - trait_of(n, "privacy")) * Tuning.Dialogue.CONFESS_PRIVACY_SLOPE,
+				"pressure": n.pressure * Tuning.Dialogue.CONFESS_PRESSURE_SLOPE * (1.0 - Tuning.Dialogue.CONFESS_COMPOSURE_DAMP * trait_of(n, "composure")), "insight_none": 0.0},
 				"Confess personal secret (%s)?" % n.secret.get("kind", "?"))
 		if confess:
 			n.secret_known = true
@@ -693,8 +693,8 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		else:
 			var prior_account: Dictionary = n.dialogue_memory.get("night_accounts", {}).get(str(nd), {})
 			var prior_kind: String = prior_account.get("kind", "")
-			var bold: bool = (prior_kind == "alibi") if prior_kind in ["alibi", "refusal"] else decide(w, n, "lie_or_stonewall", {"confidence": (trait_of(n, "confidence") - 0.5) * 1.5,
-				"privacy_stonewalls": -(trait_of(n, "privacy") - 0.5) * 0.6}, "Hiding (%s): lie outright rather than stonewall?" % hiding)
+			var bold: bool = (prior_kind == "alibi") if prior_kind in ["alibi", "refusal"] else decide(w, n, "lie_or_stonewall", {"confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Dialogue.LIE_BOLD_CONF_SLOPE,
+				"privacy_stonewalls": -(trait_of(n, "privacy") - 0.5) * Tuning.Dialogue.LIE_BOLD_PRIVACY_SLOPE}, "Hiding (%s): lie outright rather than stonewall?" % hiding)
 			if bold:
 				w.dlog.think(n.id, "lie", "Hiding (%s): was on %s, claims to have been home." % [hiding, block], {"lie": true})
 				if not n.is_evil() and not (nd in n.lied_nights):
@@ -727,7 +727,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		if vantage != "" and b["block"] != vantage:
 			# Seen from somewhere they say they weren't: telling it would give the lie away.
 			# Most keep quiet; a rattled few let it slip.
-			var slip = 0.25 * (1.0 - trait_of(n, "composure")) + 0.15 * n.pressure
+			var slip = Tuning.Dialogue.SLIP_COMPOSURE_SCALE * (1.0 - trait_of(n, "composure")) + Tuning.Dialogue.SLIP_PRESSURE_SCALE * n.pressure
 			if not w.decision_roll(n, "whereabouts_slip", slip, {"composure": trait_of(n, "composure"), "pressure": n.pressure}, b["who"]):
 				w.dlog.think(n.id, "omit", "Leaves out seeing %s on %s: they say they were on %s." % [b["who"], b["block"], vantage])
 				continue
@@ -748,7 +748,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				# Same slip mechanic as an account contradicted by an observation.
 				# Discretionary Gossip/friend filters have been replaced by the
 				# direct-answer willingness roll; the privacy gate still applies.
-				var slip = 0.25 * (1.0 - trait_of(n, "composure")) + 0.15 * n.pressure
+				var slip = Tuning.Dialogue.SLIP_COMPOSURE_SCALE * (1.0 - trait_of(n, "composure")) + Tuning.Dialogue.SLIP_PRESSURE_SCALE * n.pressure
 				if not w.decision_roll(n, "refused_whereabouts_slip", slip, {"composure": trait_of(n, "composure"), "pressure": n.pressure}, observation.who):
 					w.dlog.think(n.id, "omit", "Withholds seeing %s on %s after refusing whereabouts." % [observation.who, observation.block])
 					continue
@@ -757,8 +757,8 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			safe.append(observation)
 		reported = safe
 	if not reported.is_empty():
-		var shares = w.decision_roll(n, "direct_night_sightings", 0.95, {"eligible_sightings": reported.size()})
-		w.dlog.decision(n.id, "direct_night_sightings", "outcome", shares, {"p": 0.95, "eligible": reported.size()})
+		var shares = w.decision_roll(n, "direct_night_sightings", Tuning.Dialogue.DIRECT_NIGHT_SIGHTING_SHARE_PROB, {"eligible_sightings": reported.size()})
+		w.dlog.decision(n.id, "direct_night_sightings", "outcome", shares, {"p": Tuning.Dialogue.DIRECT_NIGHT_SIGHTING_SHARE_PROB, "eligible": reported.size()})
 		if not shares:
 			lines.append(say_voiced(n, "night_sightings_refuse", "I'm not ready to discuss who I saw."))
 			return {"lines": lines, "facts": facts}
@@ -885,7 +885,7 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 		lines.append(refuse_line)
 		return {"lines": lines, "facts": facts}
 	# Memory: they recall only their most recent few sightings (more with Insight), one per person.
-	var memory = 2 + int(round(trait_of(n, "insight") * 4.0))
+	var memory = Tuning.Dialogue.DAY_MEMORY_BASE + int(round(trait_of(n, "insight") * Tuning.Dialogue.DAY_MEMORY_INSIGHT_SCALE))
 	var before: Array = n.beliefs.filter(func(b): return b["kind"] == "saw" and b["phase"] != C.NIGHT and in_frame.call(b))
 	var seen: Array = before.filter(func(b): return not sighting_is_here(w, b, b["who"], near_loc))
 	if seen.is_empty() and not before.is_empty():
@@ -968,7 +968,7 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 
 ## Below this credit for someone's word (Mind honesty, evidence-based), an opinion that
 ## clears them adds a caveat about relying on what they say.
-const WORD_DOUBT_BELOW = 0.75
+const WORD_DOUBT_BELOW = Tuning.Dialogue.WORD_DOUBT_BELOW
 ## Canonical (unvoiced) wording when the opinion and the bond are said together.
 const OPINION_BONDED = {
 	"opinion_friend_clear": "%s is a friend of mine, and I don't believe they're evil.",
@@ -1056,7 +1056,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 		canonical_opinion += opinion_tail
 	# Their word is a separate matter from their alignment: a cleared neighbour whose reports
 	# haven't held up gets a caveat. Not for a teammate or scapegoat an evil speaker is lying about.
-	if level < 0.45 and not lie and float(n.honesty.get(t.id, 1.0)) < WORD_DOUBT_BELOW:
+	if level < 0.45 and not lie and _mind().reliability(n, t.id, -1, "report") < WORD_DOUBT_BELOW:
 		var caveat: String = "Though I'd not take everything %s says on faith." % t.name
 		text += " " + Dialogue.voice_line(n.id, "opinion_word_doubt", caveat, {"subject": t.name})
 		canonical_opinion += " " + caveat
@@ -1125,8 +1125,8 @@ static func info_fact(w, n, e: Dictionary) -> Dictionary:
 static func info_lines(w, n, entries: Array, audience: String = "player", preceded: bool = false, speech_act: String = "answer") -> Array:
 	return _mind().info_lines(w, n, entries, audience, preceded, speech_act)
 
-static func ledger_hear(w, n, eid: String, effects: Array, weight: float, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
-	return _mind().ledger_hear(w, n, eid, effects, weight, rel, meta)
+static func ledger_hear(w, n, eid: String, _effects: Array = [], weight: float = 1.0, rel: Array = [], meta: Dictionary = {}) -> Dictionary:
+	return _mind().ledger_hear(w, n, eid, [], weight, rel, meta)
 
 static func paranoia(w, n) -> float:
 	return _mind().paranoia(w, n)

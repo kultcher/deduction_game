@@ -61,7 +61,7 @@ func _test_phase0_fingerprints_and_credibility_dlog() -> void:
 	var target_good = g.w.living_good()[1]
 	g.w.public_event("demon_death", [target_good.id], "town")
 	g.add_card({"kind": "death", "source": "player", "subject": [target_good.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": target_good.home_block, "text": "Death"})
-	Mind.recompute_beliefs(g.w, listener, "test death")
+	Mind.refresh_beliefs(g.w, listener, "test death")
 	Credibility.record(listener, "evil", target_good.id, 1)
 	Credibility.dawn(g)
 	var cred_entries: Array = g.w.dlog.entries.filter(func(e): return e["type"] == "credibility" and e["actor"] == listener.id)
@@ -81,7 +81,6 @@ func _test_phase1_1_meeting_reasons_and_defence_non_leak() -> void:
 	seer.claim_public = false
 	seer.ledger.clear()
 	seer.workshop_state.clear()
-	seer.workshop_state["enabled"] = true
 	seer.info_log = []
 	seer.applied_info = 0
 	var rd = {"day": 1, "role": "seer", "data": {"pair": [nom.id, other.id], "yes": true}, "true": true, "shared": false, "text": "between %s and %s, one reads as the Demon" % [nom.name, other.name]}
@@ -125,7 +124,13 @@ func _test_phase1_2_pre_gift_workshop_attach() -> void:
 	g.new_case(92974, 7)
 	var toggled: Array = g.w.dlog.entries.filter(func(e): return "shared ownership toggled" in str(e.get("reason", "")))
 	_check(toggled.is_empty(), "new_case attaches Workshop before Night 0 and Day 1 gifts with zero ownership-toggled retraction churn")
-	_check(g.w.living_good().all(func(n): return n.workshop_state.get("enabled", false)), "all Good NPCs have Workshop enabled from initial setup")
+	# There is no enabled flag any more (purge 3). A mind that has heard nothing yet has no
+	# shared state; its first refresh makes it active.
+	_check(g.w.living_good().all(func(n): return not n.workshop_state.has("enabled")), "no NPC carries the retired workshop enabled flag")
+	var idle: Array = g.w.living_good().filter(func(n): return not n.workshop_state.get("active", false))
+	if not idle.is_empty():
+		Mind.refresh_beliefs(g.w, idle[0], " (first refresh)")
+	_check(idle.is_empty() or idle[0].workshop_state.get("active", false), "a mind's first shared refresh activates its shared state")
 
 
 func _test_phase1_3_evil_nomination_and_vote_coherence() -> void:
@@ -218,15 +223,21 @@ func _test_phase1_5_revenant_curse_order_and_role_invalidation() -> void:
 	Mind.hear_claim(g.w, friend, rev.id, "medium", 0.8, "public")
 	g.w.totem = {"loc": "well", "day": 3, "owner": rev.id, "material": rev.home_block}
 	g.w.open_meeting()
+	# The curse's chronology needs the successful public vote, as the game logs it.
+	g.w.public_event("vote", [rev.id], "town", {"nominee": rev.id, "nominator": "player", "yes": [voter_good.id], "no": [], "player_yes": true, "count": 2, "threshold": 2, "outcome": "on_block"})
 	g.w.execute(rev.id, {"by": "player", "yes": [voter_good.id], "no": [], "player_yes": true})
 	_check(is_equal_approx(friend.trust, trust_before), "friend does not mourn or dock player Rapport when executed target triggers public Revenant curse")
 	_check(friend.believed_roles.get(rev.id, "") == "revenant", "public Revenant curse sets believed_roles to revenant and invalidates fake Good claim")
 
+	# The game logs the public execution and releases open_meeting's deferred refreshes.
+	g.w.public_event("execution", [rev.id], "town")
+	g.w.defer_beliefs = false
+	Mind.flush_beliefs(g.w)
 	# Fake Gravedigger claiming proven Revenant held a Good role backfires onto the Gravedigger.
 	var fake_gd = g.w.by_id[g.w.demon_id]
 	var fake_entry = {"day": 3, "role": "gravedigger", "data": {"executed": rev.id, "role": "medium"}, "fake": true, "shared": true, "text": "Isolde was Medium"}
-	var gd_effs: Array = C.role_def("gravedigger").info_effects(g.w, friend, fake_gd, fake_entry, 1.0, true, Mind)
-	_check(gd_effs.any(func(ef): return ef[0] == fake_gd.id and float(ef[1]) >= 0.45), "Gravedigger claiming a proven Revenant held a Good role triggers impossible-source suspicion")
+	Mind.apply_info(g.w, friend, fake_gd, fake_entry, 1.0)
+	_check(float(friend.workshop_state.get("source_doubt", {}).get(fake_gd.id + ":*", 0.0)) >= 0.99 and Mind.susp(friend, fake_gd.id) > 0.35, "Gravedigger claiming a proven Revenant held a Good role triggers shared source_doubt and suspicion")
 
 
 func _test_phase1_6_compiled_trace_chain_speed_and_boundaries() -> void:
@@ -340,7 +351,6 @@ func _run_receipt_level_ablation_probe() -> Array:
 	holder.claim_public = false
 	holder.ledger.clear()
 	holder.workshop_state.clear()
-	holder.workshop_state["enabled"] = true
 	holder.info_log = [{"day": 1, "role": "seer", "data": {"pair": [a.id, b.id], "yes": true}, "true": true, "shared": false, "text": "between %s and %s, one reads as the Demon" % [a.name, b.name]}]
 	holder.applied_info = 0
 	Mind.update_from_own_info(g.w)

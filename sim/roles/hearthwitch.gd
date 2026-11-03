@@ -29,32 +29,6 @@ func defend_strength(d: Dictionary, _nominee: String) -> float:
 	return Tuning.Roles.HEARTHWITCH.defend_strength_zero if d.get("count", 0) == 0 else 0.0
 
 
-func info_effects(_w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
-	var effs: Array = []
-	var d: Dictionary = entry["data"]
-	var own: bool = source == listener
-	var src_name: String = "my own" if own else source.name + "'s"
-	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	var nbrs: Array = group_of(d)
-	var count: int = d["count"]
-	var others: Array = nbrs.filter(func(i): return i != listener.id)
-	var excluded: int = nbrs.size() - others.size()
-	if count == 0:
-		for i in others:
-			mind._eff(effs, i, Tuning.Roles.HEARTHWITCH.eff_zero, tag + ": hearthwitch count 0", "", not own)
-	else:
-		var per: float = Tuning.Roles.HEARTHWITCH.eff_per_evil * count
-		if excluded > 0:
-			per = Tuning.Roles.HEARTHWITCH.eff_per_evil_excluded * count
-		if count > others.size() and not own:
-			mind._eff(effs, source.id, Tuning.Roles.HEARTHWITCH.eff_impossible_source, tag + ": hearthwitch count impossible from my view",
-				"%s reading about the lane can't be right" % src_name)
-		for i in others:
-			mind._eff(effs, i, per, tag + ": hearthwitch count %d" % count,
-				"%s reading pointed at their neighbours" % src_name, not own)
-	return effs
-
-
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var broken: bool = n.gift_broken()
 	var nb: Array = w.living_neighbours(n)

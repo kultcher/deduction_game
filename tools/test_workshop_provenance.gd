@@ -25,7 +25,7 @@ func _live(size: int) -> void:
 			listener.beliefs = []
 			listener.believed_roles = {}
 			listener.ledger = {}
-			listener.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+			listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	var observer = g.w.living_good()[0]
 	var source = g.w.living_good()[1]
 	var teller = g.w.living_good()[2]
@@ -57,7 +57,7 @@ func _live(size: int) -> void:
 	check(receipts.size() == 1 and receipts.has(named.id) and not receipts.has(anonymous.id), "an explicit public acknowledgement binds precisely the anonymous telling")
 	check(receipts[named.id].provenance_paths.any(func(path): return path.origin_certainty == "anonymous") and receipts[named.id].provenance_paths.any(func(path): return path.origin_certainty == "public_acknowledgement"), "one fact retains the anonymous and acknowledged routes")
 	check(observer.workshop_state.active and observer.workshop_state.owned.has(eid) and observer.workshop_state.facts.size() == 1, "the resolved reading acquires one shared owner")
-	check(observer.ledger[eid].weight == weight and observer.ledger[eid].applied.values().all(func(value): return is_zero_approx(value)), "binding grants no weight bonus and retracts the native effect")
+	check(observer.ledger[eid].weight == weight and observer.ledger[eid].effects.is_empty(), "binding grants no weight bonus and keeps ledger effects empty")
 	check(g.w.rng.state == rng, "recording or acknowledging provenance draws no RNG")
 	var once = observer.suspicion.duplicate(true)
 	Mind.acknowledge_reading(g.w, observer, source, entry, teller.id)
@@ -70,7 +70,7 @@ func _live(size: int) -> void:
 		for listener in [n, n.shadow]:
 			if listener != null:
 				listener.ledger = {}
-				listener.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+				listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	source.silenced = true # The existing corroboration chance is ineligible.
 	var lines: Array = []
 	var facts: Array = []

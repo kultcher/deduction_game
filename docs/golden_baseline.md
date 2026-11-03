@@ -28,11 +28,30 @@ strings (they are 64-bit); doubles are written at full precision.
 plus the dialogue pass, Nov 2), gzipped. It was recorded twice in parallel and the two
 captures were identical at zero tolerance, so the game is deterministic under capture.
 
+### Post-purge baseline (the C# oracle)
+
+`tools/golden/baseline_82faa5b/` is the capture from `claude/purge-2c-3` at `82faa5b`:
+legacy purge 2c and 3 plus the tuning literal hoist, Nov 2. **This is the reference
+the C# migration diffs against** (`--tol 0`). Recorded twice in parallel, identical.
+
+Against `baseline_3bd51ea` (with `--ignore engine,discounted,honesty,effects,applied,eff,enabled`,
+the fields the purge retired) seeds 42, 54875 and 900 are identical; 692 and 98933 differ
+only by two intended 2c fixes:
+
+- 98933: the Revenant curse's "+0.15 to every yes-voter" ledger entry was never owned
+  by the shared model, so the legacy path pushed five outside values to 0.245. 2c
+  stops generating legacy effects, so the outside layer stays flat at 0.1.
+- 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
+  believing Constance's Clerk claim after catching her lying; now she doesn't.
+
+Check a capture's log for `SCRIPT ERROR` lines before trusting a diff: Godot keeps
+running when a script fails to compile, and the capture then records the broken game.
+
 ## Using it
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_3bd51ea /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_82faa5b /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs

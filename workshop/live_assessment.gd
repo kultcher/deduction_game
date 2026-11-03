@@ -126,8 +126,6 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		view.world_options["roles"] = true
 		view.world_options["identities"] = true
 	for card in cards:
-		if card.kind == "report" and card.get("role") == "gravedigger" and not History.executed(view, card.data.executed, card.night):
-			result.issues.append("Gravedigger report needs a matching public execution on the reported night.")
 		if card.kind == "report" and card.get("role") == "martyr" and card.data.get("chosen", false) and cards.any(func(other): return other.kind == "execution" and other.subject == card.data.target and Solver.TimeModel.tick(other.observed_at) > Solver.TimeModel.tick(card.observed_at)):
 			result.issues.append("A prior Martyr promise versus a later execution needs a dated outcome/health adapter. The new evaluator does not yet infer failure from that pair; existing rules handle the case.")
 	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch"]):

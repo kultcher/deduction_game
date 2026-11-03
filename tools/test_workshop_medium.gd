@@ -106,13 +106,11 @@ func _run() -> void:
 	npc.beliefs = []
 	npc.role = "warden"
 	npc.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-	g.set_workshop_effects(true)
 	var response = g._evaluate_deduction(npc, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false), "Medium presentation reaches shared owner")
 	var before: Dictionary = npc.workshop_state.get("requested", {}).duplicate(true)
 	response = g._evaluate_deduction(npc, g.board[filed - 1], 1.0)
 	check(response.get("repeated", false) and npc.workshop_state.get("requested", {}) == before, "Medium repeat does not stack")
-	g.set_workshop_effects(false)
 	check(board.add_modifier("e:" + id, "lying") != "", "ambiguous relay blame cannot silently accuse the wrong speaker")
 	var alive_input = _ghost_input(g, value)
 	alive_input.public_events = []

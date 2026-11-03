@@ -50,7 +50,6 @@ func _init() -> void:
 
 func _clean_game(seed_val: int, size: int = 10):
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = false
 	g.new_case(seed_val, size)
 	for p in g.w.npcs:
@@ -65,10 +64,11 @@ func _clean_game(seed_val: int, size: int = 10):
 			m.ledger = {}
 			m.resentments = []
 			m.settled_execution_rapport = {}
-			m.workshop_state = {"enabled": false, "reasoning_mode": "full", "confidence_mode": "scale"}
+			m.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 			for id in m.suspicion:
 				m.suspicion[id] = 0.1
-	g.set_workshop_effects(true)
+			if not m.is_evil():
+				Mind.refresh_beliefs(g.w, m, " (clean)")
 	return g
 
 
@@ -164,9 +164,8 @@ func _test_gravedigger_rapport_moved_out_of_info_effects() -> void:
 	var t0: float = listener.trust
 	var gd_good_entry: Dictionary = {"day": 1, "phase": C.NIGHT, "role": "gravedigger", "data": {"executed": ex_friend.id, "role": "surveyor"}, "true": true, "shared": true, "text": "Was Surveyor"}
 
-	# 1. Calling legacy info_effects directly must NOT mutate listener.trust anymore.
-	C.role_def("gravedigger").info_effects(w, listener, gd_npc, gd_good_entry, 1.0, true, Mind)
-	_check(is_equal_approx(listener.trust, t0), "Gravedigger info_effects no longer mutates listener rapport directly")
+	# 1. Legacy info_effects is deleted in Phase 2c; rapport lives solely in World.on_execution_reading_heard.
+	_check(not C.role_def("gravedigger").has_method("info_effects") and is_equal_approx(listener.trust, t0), "Gravedigger legacy info_effects is deleted and rapport starts unchanged")
 
 	# 2. Hearing the reading via Mind.apply_info updates shared beliefs first, then docks -0.06 rapport once.
 	Mind.apply_info(w, listener, gd_npc, gd_good_entry, 0.8)
@@ -210,7 +209,7 @@ func _test_revenant_curse_no_direct_outside_adjust() -> void:
 	# refresh below sees the vote, curse and execution on the public record.
 	w.defer_beliefs = false
 	Mind.flush_beliefs(w)
-	Mind.recompute_beliefs(w, observer, " (post-curse chronology refresh)")
+	Mind.refresh_beliefs(w, observer, " (post-curse chronology refresh)")
 
 	_check(is_equal_approx(float(observer.workshop_state.outside.get(rv.id, -1.0)), 0.1),
 		"Revenant curse leaves outside baseline untouched at 0.1 (got %.4f)" % float(observer.workshop_state.outside.get(rv.id, -1.0)))
@@ -403,7 +402,7 @@ func _test_two_way_vote_circumstantial_shielding_player_presented_only() -> void
 	_check(shielder.id in tally["no"], "vote_pending records evil teammate in no voters")
 
 	var susp_before_hub: float = Mind.susp(listener, shielder.id)
-	Mind.recompute_beliefs(w, listener, " (ambient refresh after public vote)")
+	Mind.refresh_beliefs(w, listener, " (ambient refresh after public vote)")
 	_check(is_equal_approx(Mind.susp(listener, shielder.id), susp_before_hub) and listener.workshop_state.get("circumstantial_incidents", {}).is_empty(),
 		"ambient refresh does NOT auto-compute vote shielding without a player-presented Circumstantial hub")
 

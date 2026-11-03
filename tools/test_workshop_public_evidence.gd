@@ -61,28 +61,22 @@ func _live() -> void:
 			continue
 		var eid = "demon_death:" + victim.id
 		check(listener.workshop_state.active and listener.workshop_state.owned.has(eid), "public death has one shared owner for " + listener.id)
-		check(listener.ledger[eid].applied.values().all(func(v): return is_zero_approx(v)), "native death contribution is parked for " + listener.id)
+		check(listener.ledger[eid].effects.is_empty(), "demon_death ledger entry carries empty effects for " + listener.id)
 		check(Mind.susp(listener, victim.id) > 0.0 and Mind.susp(listener, victim.id) < 0.8, "public death lowers suspicion without a reset for " + listener.id)
 	var input = g.workshop_snapshot([], observer.id)
 	var prepared_listener = Assess._listener(input, [])
 	check(victim.id not in prepared_listener.knowledge.good, "a public victim is absent from hard known-good knowledge")
 	var fixed = observer.suspicion.duplicate(true)
 	var rng = g.w.rng.state
-	Mind.recompute_beliefs(g.w, observer, "unchanged death")
+	Mind.refresh_beliefs(g.w, observer, "unchanged death")
 	check(_close(fixed, observer.suspicion) and g.w.rng.state == rng, "unchanged death refresh is reversible and consumes no RNG")
 	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1,
 		"block": victim.home_block, "text": "Another receipt of the public announcement"})
-	Mind.recompute_beliefs(g.w, observer, "board announcement")
+	Mind.refresh_beliefs(g.w, observer, "board announcement")
 	check(_close(fixed, observer.suspicion), "world announcement and board receipt contribute once together")
 	Mind.adjust(g.w, observer, victim.id, 0.12, "later counterevidence", "", false)
 	check(is_equal_approx(observer.suspicion[victim.id], fixed[victim.id] + 0.12), "dead victims remain open to later counterevidence")
-	# The transitional native path also has finite, retractable evidence.
-	g.set_workshop_effects(false)
-	var native_before = observer.suspicion.duplicate(true)
-	Mind.recompute_beliefs(g.w, observer, "native repeat")
-	check(_close(native_before, observer.suspicion) and Mind.susp(observer, victim.id) > 0.0, "native compatibility never reinstates a hard clear or stacks on recompute")
-	g.set_workshop_effects(true)
-	check(observer.workshop_state.active, "re-enabling shared effects restores ownership of public evidence")
+	check(observer.workshop_state.active and Mind.susp(observer, victim.id) > 0.0, "shared public evidence remains finite without reinstating a hard clear")
 
 func _silence() -> void:
 	var g = _game()
@@ -102,7 +96,7 @@ func _silence() -> void:
 			continue
 		var listener = n.shadow if n.is_evil() else n
 		check(listener.workshop_state.active and listener.workshop_state.owned.has(eid), "silence acquires shared ownership for " + listener.id)
-		check(listener.ledger[eid].applied.values().all(func(v): return is_zero_approx(v)), "silence's native contribution is parked for " + listener.id)
+		check(listener.ledger[eid].effects.is_empty(), "silenced ledger entry carries empty effects for " + listener.id)
 		check(Mind.susp(listener, target.id) > 0.0 and Mind.susp(listener, target.id) < 0.8, "silence is finite innocence evidence for " + listener.id)
 	var observer = g.w.living_good()[0]
 	var before = observer.suspicion.duplicate(true)
@@ -142,7 +136,7 @@ func _game(size: int = 7):
 			listener.known_claims = {}
 			listener.beliefs = []
 			listener.ledger = {}
-			listener.workshop_state = {"enabled": true, "reasoning_mode": "full", "confidence_mode": "scale"}
+			listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 			listener.role = "warden" if not listener.is_evil() else listener.role
 			for id in listener.suspicion:
 				listener.suspicion[id] = 0.8
@@ -200,28 +194,24 @@ func _martyr_ownership(size: int) -> void:
 	for n in g.w.living():
 		var listener = n.shadow if n.is_evil() else n
 		check(listener.workshop_state.active and listener.workshop_state.owned.has("martyr:2"), "public Martyr proof is owned for " + n.id)
-		check(listener.ledger["martyr:2"].applied.values().all(func(v): return is_zero_approx(v)), "native Martyr proof is parked for " + n.id)
+		check(listener.ledger["martyr:2"].effects.is_empty(), "Martyr proof ledger entry carries empty effects for " + n.id)
 		check(listener.workshop_state.facts.size() == 1 and listener.workshop_state.owners.values()[0] == ["public"], "uncited proof has one automatic public receipt for " + n.id)
 		check([actor.id, saved.id].all(func(person): return person == listener.id or (is_zero_approx(Mind.susp(listener, person)) and is_zero_approx(listener.suspicion[person]) and is_equal_approx(listener.workshop_state.outside[person], 2.4))), "a witnessed proof clears even saturated baselines without destroying them for " + n.id)
 	var before = observer.suspicion.duplicate(true)
 	var number = g.add_card({"kind": "martyr", "source": "player", "subject": [actor.id, saved.id], "martyr": actor.id, "saved": saved.id,
 		"day": 2, "phase": 2, "text": "The same witnessed substitution in the notebook"})
-	Mind.recompute_beliefs(g.w, observer, "proof on board")
+	Mind.refresh_beliefs(g.w, observer, "proof on board")
 	check(_close(before, observer.suspicion) and observer.workshop_state.facts.size() == 1, "World proof and notebook prose share one receipt and one effect")
 	Mind.adjust(g.w, observer, saved.id, 0.12, "independent addition", "", false)
 	check(is_zero_approx(Mind.susp(observer, saved.id)), "readers retain public certainty while independent changes remain reversible")
-	Mind.recompute_beliefs(g.w, observer, "new independent baseline")
+	Mind.refresh_beliefs(g.w, observer, "new independent baseline")
 	check(is_equal_approx(observer.workshop_state.outside[saved.id], 2.52) and is_zero_approx(observer.suspicion[saved.id]), "proof refresh preserves an independent addition under the clear")
 	# The empty direct snapshot has no headline, but its permitted knowledge is
 	# still well-defined independently of any player presentation.
 	var knowledge = Assess._listener(g.workshop_snapshot([], observer.id), []).knowledge
 	check(knowledge.public_roles.get(actor.id) == "martyr" and actor.id in knowledge.good and saved.id in knowledge.good, "the witnessed gift and alignments are public knowledge outside attention")
-	g.set_workshop_effects(false)
-	var restored = observer.suspicion.duplicate(true)
-	Mind.recompute_beliefs(g.w, observer, "native proof repeat")
-	check(_close(restored, observer.suspicion) and not observer.workshop_state.active, "disabling shared ownership restores one native proof, without stacking")
-	g.set_workshop_effects(true)
-	check(observer.workshop_state.active and is_zero_approx(observer.suspicion[saved.id]) and is_equal_approx(observer.workshop_state.outside[saved.id], 2.52), "re-enabling shared proof recovers the complete independent baseline")
+	Mind.refresh_beliefs(g.w, observer, "shared proof repeat")
+	check(observer.workshop_state.active and is_zero_approx(observer.suspicion[saved.id]) and is_equal_approx(observer.workshop_state.outside[saved.id], 2.52), "repeated refresh preserves the complete independent baseline under the proof")
 
 func _close(a: Dictionary, b: Dictionary) -> bool:
 	for id in a:

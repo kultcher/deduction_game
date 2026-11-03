@@ -60,7 +60,6 @@ func _init():
 	listener.role = "dowser"
 	listener.ledger.clear()
 	listener.workshop_state.clear()
-	listener.workshop_state["enabled"] = true
 	listener.info_log = [{"day": 1, "phase": 0, "role": "dowser", "data": {"group": pair, "count": 0}, "text": "independent zero count"}]
 	listener.applied_info = 0
 	Mind.update_from_own_info(g2.w)

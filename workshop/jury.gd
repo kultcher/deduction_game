@@ -778,7 +778,7 @@ static func _headline(view: Dictionary, cards: Array, person: String, prior: flo
 	var implied: float = 1.0 - miss
 	if implied <= prior:
 		return 0.0
-	return 0.45 * CaseEval.shift(prior, implied)
+	return Tuning.Workshop.JURY_ALIGNMENT_COEFF * CaseEval.shift(prior, implied)
 
 static func _headline_chance(card: Dictionary, person: String) -> float:
 	var data = card.get("data", {})
@@ -943,7 +943,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		# the chronology is the proof (the old direct +1.0 adjust is gone, purge 2b).
 		if not ev.impossible and str(view.get("chronology", {}).get("curse", {}).get("executed", "")) == id:
 			s = 1.0
-		var alignment: float = 0.45 * s
+		var alignment: float = Tuning.Workshop.JURY_ALIGNMENT_COEFF * s
 		# Headline reading (Oct 30): a duller listener takes a strong evil signal at its word
 		# ("one of Kiran or Fenwick is the Demon") and skips the subtler counter-explanations
 		# the full model weighs. It only ever raises, and fades out with Insight.
@@ -964,8 +964,8 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		if absf(protection_signal) > absf(net_weight):
 			net_weight = protection_signal
 		for challenge in challenged.results:
-			if challenge.mode == "lying" and challenge.source == id and challenge.agreement >= 0.6:
-				net_weight = maxf(net_weight, 0.12 * challenge.agreement)
+			if challenge.mode == "lying" and challenge.source == id and challenge.agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
+				net_weight = maxf(net_weight, Tuning.Workshop.JURY_CHALLENGE_LYING_SCALE * challenge.agreement)
 		var own_check: Dictionary = attention.case.duplicate(true)
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
 		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict"

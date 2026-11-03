@@ -101,7 +101,6 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	if headline.conclusion.type == "conflict":
 		novelty_ids = snapshot.selected
 	var fresh: Array = novelty_ids.filter(func(id): return id not in earlier and not state.get("rewarded_facts", {}).has(id))
-	state.enabled = true
 	var previous_focus: Array = state.get("attention_focus", []).duplicate()
 	state["attention_focus"] = original_ids.duplicate()
 	state.presentations = proposals
@@ -117,14 +116,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var stance_subject: String = headline.conclusion.get("a", "")
 	var stance_before: float = n.suspicion.get(stance_subject, 0.1)
 	var initial_span = Profiler.open("initial_refresh")
-	Mind.recompute_beliefs(g.w, n, " (interpreted presentation)")
+	Mind.refresh_beliefs(g.w, n, " (interpreted presentation)")
 	Profiler.close(initial_span)
-	if not state.get("active", false):
-		# An interval-derived budget can change during recomputation. Do not leave
-		# an unsupported endorsement behind when returning to native presentation.
+	if not state.get("active", false) or not g._workshop_plans.has(listener_key):
+		# An interval-derived budget can change during refresh. Do not leave
+		# an unsupported endorsement behind when blocking the presentation.
 		state.presentations = previous
 		state.attention_focus = previous_focus
-		Mind.recompute_beliefs(g.w, n, " (presentation capability fallback)")
+		Mind.refresh_beliefs(g.w, n, " (presentation capability fallback)")
 		return _unavailable(g, n, card, "ownership", state.get("issues", ["Ownership was not activated."]))
 	var plan: Dictionary = g._workshop_plans[listener_key]
 	# Rebuild against final interval reliability, matching the applied union.
@@ -173,25 +172,17 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		for claim in assessment.claims:
 			if claim.conclusion.target in targets.slice(1):
 				text += " About %s: %s" % [g.w.by_id[claim.conclusion.target].name, claim.note]
-	# Keep a compatible native contribution parked underneath the owner. It can be
-	# restored on fallback/disable; its agreement comes from this assessment too.
-	if direction == "deduction":
-		var supports: Array = g.all_receipts().filter(func(c): return c.n in card.supports)
-		var park_span = Profiler.open("park_native")
-		Argue._apply(g.w, n, card, supports, maxf(0.0, assessment.agreement) * Tuning.Workshop.VENUE_MULTS.get(venue, 0.6), g.all_receipts())
-		Profiler.close(park_span)
-	else:
+	if direction != "deduction":
 		for target in targets:
 			preload("res://game/credibility.gd").record(n, "good" if direction == "defend" else "evil", target, g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL)
-			var sign_value = -0.4 if direction == "defend" else 0.45
 			var eid = "workshop:tell:%s:%s" % [key, target]
-			var meta = {"kind": "tell", "workshop_card": Evidence.normalize_card(card), "text": card.get("text", "")}
+			var meta = {"kind": "tell", "workshop_card": Evidence.normalize_card(card), "text": card.get("text", ""), "conclusion": root.conclusion.duplicate(true)}
 			if card.get("kind") == "deduction":
-				meta = {"kind": "arg", "workshop_conclusion": root.conclusion.type, "workshop_roots": Shared.roots([card], g.all_receipts()),
+				meta = {"kind": "arg", "workshop_conclusion": root.conclusion.type, "conclusion": root.conclusion.duplicate(true), "workshop_roots": Shared.roots([card], g.all_receipts()),
 					"workshop_case": key, "supports": Argue.support_refs([card], g.all_receipts())}
 			var scoped: Array = assessment.claims.filter(func(c): return c.conclusion.target == target and c.conclusion.type == root.conclusion.type)
 			var agreement: float = scoped[0].agreement if not scoped.is_empty() else assessment.agreement
-			Mind.ledger_hear(g.w, n, eid, [[target, sign_value, true, "Presented original report", ""]], maxf(0.0, agreement), Mind.support_ref(card), meta)
+			Mind.ledger_hear(g.w, n, eid, [], maxf(0.0, agreement), Mind.support_ref(card), meta)
 	var voiced_stance: String = assessment.stance
 	if not repeated and text == assessment.response and stance_subject != "" and g.w.by_id.has(stance_subject):
 		var after_susp: float = n.suspicion.get(stance_subject, 0.1)
@@ -217,14 +208,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			text = "You've told me that already. Thank you."
 		elif Mind.defend_strength(card, n.id) >= 0.2:
 			Mind.set_trust(g.w, n, n.trust + Tuning.Trust.SELF_SUPPORT_BONUS, "the Demonologist spoke up for me")
-			Mind.recompute_beliefs(g.w, n, " (self-support rapport)")
+			Mind.refresh_beliefs(g.w, n, " (self-support rapport)")
 			text = "Thank you for believing me."
 		else:
 			text = "I appreciate the support, but I'm not sure that explains it."
 	elif assessment.agreement >= 0.6 and not fresh.is_empty() and not repeated:
 		var reward_span = Profiler.open("trust_reward")
 		Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PRESENTATION_REWARD, "the presented reports support the argument")
-		Mind.recompute_beliefs(g.w, n, " (presentation trust reward)")
+		Mind.refresh_beliefs(g.w, n, " (presentation trust reward)")
 		Profiler.close(reward_span)
 	var presented_hubs: Array = root.get("workshop_case", {}).get("circumstantial", [])
 	var hub_canonical_tail: String = ""
@@ -250,7 +241,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			if not state.smear_penalized.has(signature):
 				state.smear_penalized[signature] = true
 				Mind.set_trust(g.w, n, n.trust - smear.penalty, "the Demonologist padded a case with thin circumstantial smears")
-				Mind.recompute_beliefs(g.w, n, " (circumstantial smear backlash)")
+				Mind.refresh_beliefs(g.w, n, " (circumstantial smear backlash)")
 			var smear_fb: String = "Thin guilt-by-association doesn't make a case for me."
 			hub_canonical_tail = " " + smear_fb
 			hub_voiced_tail = " " + Mind.Dialogue.voice_line(n.id, "circumstantial_smear_pushback", smear_fb)
@@ -307,7 +298,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 ## "I couldn't follow it" while their suspicion moved as if convinced (54875). The stance
 ## they voice now comes from how far the refresh actually moved the subject; the scoped
 ## reply only supplies the reasons. Nothing here changes a belief, only the words.
-const STANCE_MOVE = {"accept": 0.06, "partial": 0.02}   # suspicion moved toward the claim
+const STANCE_MOVE = Tuning.Workshop.STANCE_MOVE   # suspicion moved toward the claim
 const STANCE_RANK = {"reject": 0, "partial": 1, "accept": 2}
 ## Scoped openings that only state a stance (dropped when the belief says otherwise). Any
 ## other opening is a reason, and stays.

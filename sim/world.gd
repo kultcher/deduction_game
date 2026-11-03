@@ -582,7 +582,7 @@ func _choose_idle_location(n) -> String:
 	var social: Array = ["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"]
 	# Creatures of habit: idle hours often go to one of their two haunts (40%; at 60% the bot
 	# player found fewer people and won ~8 points less at 7 townsfolk).
-	if not n.haunts.is_empty() and chance(0.4):
+	if not n.haunts.is_empty() and chance(Tuning.Setup.IDLE_HAUNT_CHANCE):
 		social = n.haunts
 	match phase:
 		C.MORNING:
@@ -619,8 +619,8 @@ func pair_weight(a, b) -> float:
 		C.role_def(b.role).conversation_nudge if not b.is_evil() else 0.0
 	)
 	if a.silenced or b.silenced:
-		return 0.02
-	return clampf((t - 0.3) * 2.0 + Social.news_bonus(self, a, b) + nudge, 0.02, 2.0)
+		return Tuning.Setup.PAIR_SILENCED_WEIGHT
+	return clampf((t - Tuning.Setup.PAIR_TRUST_PIVOT) * Tuning.Setup.PAIR_TRUST_SLOPE + Social.news_bonus(self, a, b) + nudge, Tuning.Setup.PAIR_SILENCED_WEIGHT, Tuning.Setup.PAIR_MAX_WEIGHT)
 
 func _idle_pairable() -> Array:
 	return living().filter(func(n): return not n.working and n.available() and n.pair_day != day)
@@ -632,7 +632,7 @@ func _pre_pair() -> void:
 		var cands = _idle_pairable()
 		if cands.size() < 2 or player_options().size() - 2 < 3:
 			break
-		if not decision_roll(null, "pre_phase_conversation", 0.65):
+		if not decision_roll(null, "pre_phase_conversation", Tuning.Setup.PRE_PHASE_CHAT_CHANCE):
 			break
 		var pr = _choose_pair(cands)
 		if pr.is_empty():
@@ -716,7 +716,7 @@ func _day_sightings() -> void:
 				continue
 			var same_loc: bool = a.loc == b.loc
 			var same_block: bool = loc_block(a.loc) == loc_block(b.loc)
-			if same_loc or (same_block and chance(0.4)):
+			if same_loc or (same_block and chance(Tuning.Setup.SAME_BLOCK_SIGHTING_CHANCE)):
 				a.beliefs.append({"kind": "saw", "who": b.id, "loc": b.loc if same_loc else "",
 					"block": loc_block(b.loc), "day": day, "phase": phase,
 					"with": b.busy_with if same_loc and b.busy_with != a.id else ""})
@@ -764,9 +764,7 @@ func open_meeting() -> void:
 			for real in living():
 				var l = real.shadow if real.is_evil() else real
 				if l != null and real != n:
-					var e: Array = []
-					Mind._eff(e, n.id, -0.12, "silenced by the demon's side: they must have been a threat to it")
-					Mind.ledger_hear(self, l, "silenced:%s:%d" % [n.id, day], e, 1.0, [], {"kind": "silenced", "subject": n.id, "day": day})
+					Mind.ledger_hear(self, l, "silenced:%s:%d" % [n.id, day], [], 1.0, [], {"kind": "silenced", "subject": n.id, "day": day})
 	Mind.refresh_all_consensus(self)  # yesterday's accusations count for less today
 
 func can_nominate(by: String, nominee: String) -> String:
@@ -786,11 +784,11 @@ func open_nomination(by: String, nominee: String, reason: String = "") -> Dictio
 	meeting["pending"] = nm
 	var target = by_id[nominee]
 	public_event("nomination", [nominee], by)
-	target.pressure += 0.4
+	target.pressure += Tuning.Trust.NOMINATED_PRESSURE
 	if by == "player":
-		Mind.set_trust(self, target, target.trust - 0.15, "the Demonologist nominated me")
+		Mind.set_trust(self, target, target.trust - Tuning.Trust.NOMINATED_BY_PLAYER_DROP, "the Demonologist nominated me")
 	else:
-		target.npc_trust[by] = clampf(target.npc_trust.get(by, 0.5) - 0.25, 0.0, 1.0)
+		target.npc_trust[by] = clampf(target.npc_trust.get(by, 0.5) - Tuning.Trust.NOMINATED_NPC_TRUST_DROP, 0.0, 1.0)
 		dlog.add("npc_trust", nominee, by, {"to": target.npc_trust[by]}, "%s nominated me" % by)
 	dlog.add("nomination", by, nominee, {"reason": reason, "on_block": meeting["block"], "block_count": meeting["block_count"]})
 	return nm
@@ -804,19 +802,19 @@ func clemency() -> void:
 	dlog.add("clemency", "player", spared.id, {"nominator": nm["by"]}, "The Demonologist spares %s from this nomination." % spared.name)
 	for n in living():
 		if n == spared:
-			Mind.set_trust(self, n, n.trust + 0.15, "the Demonologist spared me")
+			Mind.set_trust(self, n, n.trust + Tuning.Trust.CLEMENCY_SPARED_BONUS, "the Demonologist spared me")
 			continue
 		if n.id == nm["by"]:
-			var nom_drop: float = 0.10 if (not n.is_evil() and Mind.susp(n, spared.id) > 0.6) else 0.08
+			var nom_drop: float = Tuning.Trust.CLEMENCY_OVERRULED_HIGH_SUSP_DROP if (not n.is_evil() and Mind.susp(n, spared.id) > Tuning.Trust.CLEMENCY_HIGH_SUSP_MIN) else Tuning.Trust.CLEMENCY_OVERRULED_DROP
 			Mind.set_trust(self, n, n.trust - nom_drop, "the Demonologist overruled my nomination")
 			continue
 		if n.is_evil():
 			continue
 		var s = Mind.susp(n, spared.id)
-		if s < 0.35:
-			Mind.set_trust(self, n, n.trust + 0.06, "the Demonologist spared %s, whom I trust" % spared.id)
-		elif s > 0.6:
-			Mind.set_trust(self, n, n.trust - 0.1, "the Demonologist spared %s, whom I suspect" % spared.id)
+		if s < Tuning.Trust.CLEMENCY_LOW_SUSP_MAX:
+			Mind.set_trust(self, n, n.trust + Tuning.Trust.CLEMENCY_TRUSTED_BONUS, "the Demonologist spared %s, whom I trust" % spared.id)
+		elif s > Tuning.Trust.CLEMENCY_HIGH_SUSP_MIN:
+			Mind.set_trust(self, n, n.trust - Tuning.Trust.CLEMENCY_SUSPECTED_DROP, "the Demonologist spared %s, whom I suspect" % spared.id)
 	meeting["pending"] = {}
 
 ## Count the votes on the pending nomination and update who is on the block.
@@ -870,7 +868,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 	if player_yes:
 		var t = by_id[nid]
 		if nm["by"] != "player":
-			Mind.set_trust(self, t, t.trust - 0.08, "the Demonologist voted to hang me")
+			Mind.set_trust(self, t, t.trust - Tuning.Trust.VOTED_YES_ON_ME_DROP, "the Demonologist voted to hang me")
 	return res
 
 ## Close the meeting: whoever is on the block is executed.
@@ -999,7 +997,7 @@ func _grief(ex, res: Dictionary) -> void:
 		if f.id in yes_voters:
 			continue  # no grief if the mourner voted yes to hang them
 		var t: float = f.npc_trust.get(ex.id, 0.5)
-		if t < 0.62:
+		if t < Tuning.Trust.GRIEF_FRIEND_MIN_TRUST:
 			continue
 		# A friend who had come to believe they were evil doesn't mourn the hanging (Oct 30):
 		# a minion the town rightly hanged, if the friend saw it too.
@@ -1009,15 +1007,15 @@ func _grief(ex, res: Dictionary) -> void:
 		var nom: String = res.get("by", "")
 		if nom != "" and nom != "player" and nom != f.id:
 			Mind.add_resentment(self, f, nom, Tuning.Trust.RESENTMENT_NOMINATOR_SCALE * strength, ex.id, "nominator")
-			f.npc_trust[nom] = clampf(f.npc_trust.get(nom, 0.5) - 0.2 * strength, 0.0, 1.0)
+			f.npc_trust[nom] = clampf(f.npc_trust.get(nom, 0.5) - Tuning.Trust.GRIEF_NPC_NOMINATOR_DROP * strength, 0.0, 1.0)
 		for v in yes_voters:
 			if v != f.id and v != nom:
 				Mind.add_resentment(self, f, v, Tuning.Trust.RESENTMENT_VOTER_SCALE * strength, ex.id, "voter")
 		if nom == "player":
-			Mind.set_trust(self, f, f.trust - 0.3 * strength, "grief: the Demonologist nominated %s" % ex.id)
-			Mind.cap_trust(self, f, 0.55, "grief: the Demonologist nominated %s" % ex.id)
+			Mind.set_trust(self, f, f.trust - Tuning.Trust.GRIEF_PLAYER_NOMINATOR_DROP * strength, "grief: the Demonologist nominated %s" % ex.id)
+			Mind.cap_trust(self, f, Tuning.Trust.GRIEF_PLAYER_NOMINATOR_CAP, "grief: the Demonologist nominated %s" % ex.id)
 		elif res.get("player_yes", false):
-			Mind.set_trust(self, f, f.trust - 0.2 * strength, "grief: the Demonologist voted to hang %s" % ex.id)
+			Mind.set_trust(self, f, f.trust - Tuning.Trust.GRIEF_PLAYER_VOTER_DROP * strength, "grief: the Demonologist voted to hang %s" % ex.id)
 		dlog.think(f.id, "grief", "Mourns %s (trust %.2f); resents those who pushed the execution." % [ex.id, t])
 
 ## Post-hearing execution-result rapport adjustment (Phase 2b): moved out of Gravedigger's
@@ -1043,11 +1041,11 @@ func on_execution_reading_heard(listener, source, entry: Dictionary, weight: flo
 	if public_log.any(func(ev): return ev.get("kind", "") == "curse" and ex_id in ev.get("subjects", [])) and ex_role != "revenant":
 		return
 	var rel_gd: float = Mind.reliability(listener, source.id, r_day, "reading")
-	var trusts_gd: bool = Mind.susp(listener, source.id) < 0.40 and rel_gd >= 0.55 and listener.npc_trust.get(source.id, 0.5) >= 0.45
+	var trusts_gd: bool = Mind.susp(listener, source.id) < Tuning.Trust.EXEC_READING_MAX_SOURCE_SUSP and rel_gd >= Tuning.Trust.EXEC_READING_MIN_SOURCE_REL and listener.npc_trust.get(source.id, 0.5) >= Tuning.Trust.EXEC_READING_MIN_SOURCE_TRUST
 	if not trusts_gd:
 		return
 	var ex_good: bool = C.ROLES[ex_role]["align"] == "good"
-	var believes_outcome: bool = (Mind.susp(listener, ex_id) < Tuning.Trust.GRIEF_BELIEVED_EVIL) if ex_good else (Mind.susp(listener, ex_id) >= 0.22)
+	var believes_outcome: bool = (Mind.susp(listener, ex_id) < Tuning.Trust.GRIEF_BELIEVED_EVIL) if ex_good else (Mind.susp(listener, ex_id) >= Tuning.Trust.EXEC_READING_MIN_EVIL_SUSP)
 	if not believes_outcome:
 		return
 	for e in executions:
@@ -1057,9 +1055,9 @@ func on_execution_reading_heard(listener, source, entry: Dictionary, weight: flo
 		if ex_good:
 			# Execution accuracy is tracked by Credibility.dawn; personal Rapport only drops for close personal bonds.
 			if ex_id in listener.friends or ex_id == listener.lover:
-				Mind.set_trust(self, listener, listener.trust - 0.06, "the Demonologist backed hanging %s, an innocent friend" % ex_id)
+				Mind.set_trust(self, listener, listener.trust + float(Tuning.Roles.GRAVEDIGGER.trust_backed_innocent), "the Demonologist backed hanging %s, an innocent friend" % ex_id)
 		else:
-			Mind.set_trust(self, listener, listener.trust + 0.08 + 0.06 * Mind.trait_of(listener, "insight"),
+			Mind.set_trust(self, listener, listener.trust + float(Tuning.Roles.GRAVEDIGGER.trust_proven_right_base) + float(Tuning.Roles.GRAVEDIGGER.trust_proven_right_insight) * Mind.trait_of(listener, "insight"),
 				"the Demonologist was proven right about %s" % ex_id)
 		break
 
@@ -1268,15 +1266,10 @@ func _quiet_night() -> void:
 		var qdef = C.role_def(pc["role"])
 		if qdef == null or not qdef.can_cause_quiet_night or not by_id[pc["who"]].alive:
 			continue
-		var q_eff: float = qdef.quiet_night_effect
 		for l in living_good():
 			if l.id == pc["who"]:
 				continue
-			var e: Array = []
-			Mind._eff(e, pc["who"], q_eff,
-				"nobody died on night %d, and they claim the %s" % [day, C.role_name(pc["role"])])
-			# Scaled live by how credible the claimant is to this listener.
-			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], e, 1.0, [pc["who"], -1, "report"], {"kind": "quiet_night", "night": day, "claimant": pc["who"], "role": pc["role"]})
+			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], [], 1.0, [pc["who"], -1, "report"], {"kind": "quiet_night", "night": day, "claimant": pc["who"], "role": pc["role"]})
 
 func _night_movement(poison_t: String, kill_t: String, watch, watch_block: String, warden = null, warden_t: String = "",
 		medium = null, medium_t: String = "", lamp = null) -> void:
@@ -1356,10 +1349,10 @@ func _night_sightings() -> void:
 			var saw = false
 			var where = ""
 			if o.out_last_night and o.night_block in path:
-				saw = chance(0.5)
+				saw = chance(Tuning.Setup.NIGHT_SIGHTING_STREET_CHANCE)
 				where = o.night_block
 			elif not o.out_last_night and o.home_block in path:
-				saw = chance(0.15)
+				saw = chance(Tuning.Setup.NIGHT_SIGHTING_WINDOW_CHANCE)
 				where = o.home_block
 			if saw:
 				# From home you see the street from your window; out, you see them in passing.
@@ -1375,7 +1368,7 @@ func _night_sightings() -> void:
 		if o.out_last_night or o.secret_mod == "sleepwalker":
 			continue
 		for m in living():
-			if m != o and m.home_block == o.home_block and not m.out_last_night and chance(0.2):
+			if m != o and m.home_block == o.home_block and not m.out_last_night and chance(Tuning.Setup.NIGHT_NEIGHBOUR_ALIBI_CHANCE):
 				o.beliefs.append({"kind": "stayed_in", "who": m.id, "loc": "", "block": m.home_block, "day": day, "phase": C.NIGHT, "how": "window"})
 				dlog.add("night_alibi", o.id, m.id, {"block": m.home_block}, "%s saw %s go in for the night and not come out." % [o.name, m.name])
 	if player_vigil != "":
@@ -1455,8 +1448,8 @@ func _build_locations_trace(actor, v, slot: int, used_keys: Dictionary, prev_loc
 	if not low_overlap.is_empty():
 		pool = low_overlap
 	# Prefer candidates whose cast match count lands near ~70% of the town (6..8 of 10, 4..6 of 7).
-	var target_lo: int = maxi(3, int(floor(npcs.size() * 0.6)))
-	var target_hi: int = maxi(target_lo + 1, int(ceil(npcs.size() * 0.85)))
+	var target_lo: int = maxi(3, int(floor(npcs.size() * Tuning.Setup.TRACE_CAST_BAND_LO)))
+	var target_hi: int = maxi(target_lo + 1, int(ceil(npcs.size() * Tuning.Setup.TRACE_CAST_BAND_HI)))
 	var in_band: Array = pool.filter(func(comb):
 		var cnt: int = npcs.filter(func(p): return p.work in comb or p.haunts.any(func(h): return h in comb)).size()
 		return cnt >= target_lo and cnt <= target_hi)
@@ -1628,10 +1621,7 @@ func _kill(v) -> void:
 		var listener = n.shadow if n.is_evil() else n
 		if listener == null:
 			continue
-		var effects: Array = []
-		Mind._eff(effects, v.id, preload("res://workshop/public_evidence.gd").victim_effect(Mind.susp(listener, v.id)),
-			"killed by the Demon: strong evidence of innocence, not a guarantee", "", false)
-		Mind.ledger_hear(self, listener, "demon_death:" + v.id, effects, 1.0, [], {"kind": "demon_death", "victim": v.id})
+		Mind.ledger_hear(self, listener, "demon_death:" + v.id, [], 1.0, [], {"kind": "demon_death", "victim": v.id})
 
 # ---------------------------------------------------------------- abilities
 
@@ -1723,7 +1713,7 @@ func _psych_read(subj) -> Dictionary:
 	var suspects = ""
 	if subj.is_evil():
 		var mates: Array = others.filter(func(m): return m.is_evil())
-		if not mates.is_empty() and chance(0.75):
+		if not mates.is_empty() and chance(Tuning.Setup.PSYCH_EVIL_TEAMMATE_TRUST_PROB):
 			trusts = pick(mates).id
 		var sg: String = evil_plan.get("scapegoat", "")
 		if sg != "" and by_id[sg].alive and sg != subj.id:

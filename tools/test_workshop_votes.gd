@@ -16,7 +16,6 @@ func _init() -> void:
 
 func _run(size: int) -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = false
 	g.new_case(692, size)
 	for n in g.w.npcs:
@@ -27,7 +26,7 @@ func _run(size: int) -> void:
 			listener.known_claims = {}
 			listener.beliefs = []
 			listener.ledger = {}
-			listener.workshop_state = {"enabled": false, "reasoning_mode": "full", "confidence_mode": "scale"}
+			listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	g.w.day = 2
 	g.w.phase = 2
 	g.w.meeting = {"block": "", "block_count": 0, "nominated": [], "nominators": [], "results": [], "pending": {}}
@@ -59,7 +58,6 @@ func _run(size: int) -> void:
 	if prepared.ready:
 		var result = Eval.evaluate(prepared.view, prepared.case)
 		check(result.people.values().all(func(p): return is_equal_approx(p.prior, p.posterior)), "votes alone have no alignment likelihood")
-	g.set_workshop_effects(true)
 	g.strict_evaluator = true
 	for n in g.w.living():
 		var heard = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)

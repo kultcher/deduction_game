@@ -21,7 +21,6 @@ func _check(cond: bool, msg: String) -> void:
 
 func _game(seed_val: int = 2404, size: int = 7):
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = false
 	g.new_case(seed_val, size)
 	for p in g.w.npcs:
@@ -32,10 +31,11 @@ func _game(seed_val: int = 2404, size: int = 7):
 			m.known_claims = {}
 			m.beliefs = []
 			m.ledger = {}
-			m.workshop_state = {"enabled": false, "reasoning_mode": "full", "confidence_mode": "scale"}
+			m.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 			for id in m.suspicion:
 				m.suspicion[id] = 0.1
-	g.set_workshop_effects(true)
+			if not m.is_evil():
+				Mind.refresh_beliefs(g.w, m, " (clean)")
 	return g
 
 func _init() -> void:
@@ -104,8 +104,7 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	# Public murder + Breathstealer silence on Day 1
 	g.w.public_event("demon_death", [victim.id], "town")
 	g.w.public_event("silenced", [silenced_p.id], "town")
-	listener.workshop_state["enabled"] = true
-	Mind.recompute_beliefs(g.w, listener, "seed public baseline")
+	Mind.refresh_beliefs(g.w, listener, "seed public baseline")
 	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
 	var sil_num: int = g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced at meeting"})
 	var conv_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
@@ -191,8 +190,7 @@ func _test_association_alibi_boundary_and_trace_guards() -> void:
 	g.w.public_event("demon_death", [victim.id], "town")
 	for l in [skeptical_listener, trusting_listener]:
 		l.trust = 0.65
-		l.workshop_state["enabled"] = true
-		Mind.recompute_beliefs(g.w, l, "seed baseline")
+		Mind.refresh_beliefs(g.w, l, "seed baseline")
 	# Skeptical listener already suspects `partner`; trusting listener thinks `partner` is good!
 	Mind.adjust(g.w, skeptical_listener, partner.id, 0.45, "prior suspicion on partner", "", false)
 	trusting_listener.workshop_state.outside[partner.id] = 0.08
@@ -269,15 +267,14 @@ func _test_union_dedup_cap_and_retraction() -> void:
 	g.w.public_event("silenced", [trusted_ally.id], "town")
 	g.w.public_event("vote", [trusted_ally.id], "town", {"nominee": trusted_ally.id, "nominator": target.id, "yes": [target.id, accomplice.id], "no": [listener.id], "player_yes": false, "count": 2, "threshold": 4, "outcome": "fails"})
 	listener.npc_trust[trusted_ally.id] = 0.85
-	listener.workshop_state["enabled"] = true
-	Mind.recompute_beliefs(g.w, listener, "seed baseline with public events")
+	Mind.refresh_beliefs(g.w, listener, "seed baseline with public events")
 	# Give listener high suspicion on accomplice and low suspicion on trusted_ally in outside baseline
 	Mind.adjust(g.w, listener, accomplice.id, 0.50, "suspect accomplice", "", false)
 	Mind.adjust(g.w, listener, trusted_ally.id, -0.05, "trust ally", "", false)
 	# This test isolates the union cap/deduplication, with an explicitly open prior gate.
 	Mind.adjust(g.w, listener, target.id, 0.35, "ground the cap fixture", "", false)
 	listener.trust = 0.75
-	Mind.recompute_beliefs(g.w, listener, "lock pre-case baseline")
+	Mind.refresh_beliefs(g.w, listener, "lock pre-case baseline")
 
 	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
 	var trace_num: int = g.add_card({
@@ -327,7 +324,7 @@ func _test_union_dedup_cap_and_retraction() -> void:
 
 	# Refresh idempotence: recomputing beliefs does NOT feed Stage 2 into Stage 1 priors!
 	var susp_snapshot: float = listener.suspicion[target.id]
-	Mind.recompute_beliefs(g.w, listener, "idempotence check")
+	Mind.refresh_beliefs(g.w, listener, "idempotence check")
 	_check(is_equal_approx(listener.suspicion[target.id], susp_snapshot), "belief refresh retracts Stage 2 before Stage 1 so vibes never compound into priors")
 
 	# Retracting both cases restores exact post-public-event baseline suspicion!
@@ -354,8 +351,7 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 	g.w.public_event("demon_death", [victim.id], "town")
 	g.w.public_event("silenced", [silenced_p.id], "town")
 	for l in [listener, control_listener]:
-		l.workshop_state["enabled"] = true
-		Mind.recompute_beliefs(g.w, l, "seed public baseline")
+		Mind.refresh_beliefs(g.w, l, "seed public baseline")
 	var outside_before: float = float(listener.workshop_state.outside[target.id])
 	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
 	var sil_num: int = g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced at meeting"})
@@ -388,8 +384,8 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 	Mind.adjust(g.w, control_listener, target.id, grief_delta, "execution grief test", "", false)
 	_check(is_equal_approx(listener.suspicion[target.id], pre_adjust_susp + grief_delta), "Mind.adjust preserves both Stage 1 and Stage 2 layers immediately")
 	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), outside_before + grief_delta), "Mind.adjust advances state.outside by exact native delta")
-	Mind.recompute_beliefs(g.w, listener, "post-adjust refresh check")
-	Mind.recompute_beliefs(g.w, control_listener, "post-adjust control refresh")
+	Mind.refresh_beliefs(g.w, listener, "post-adjust refresh check")
+	Mind.refresh_beliefs(g.w, control_listener, "post-adjust control refresh")
 	var s1_after: float = float(listener.workshop_state.requested.get(target.id, 0.0))
 	var s2_after: float = float(listener.workshop_state.get("circumstantial_requested", {}).get(target.id, 0.0))
 	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), outside_before + grief_delta) and is_equal_approx(listener.suspicion[target.id], outside_before + grief_delta + s1_after + s2_after), "ownership refresh after Mind.adjust does not subtract Stage 2 contribution from outside baseline")

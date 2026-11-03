@@ -102,7 +102,6 @@ func _live() -> void:
 		listener.ledger = {}
 		listener.role = "warden"
 		listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-		g.set_workshop_effects(true)
 		var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 		check(response.get("workshop", false), role + " actual NPC delivery uses shared evaluator")
 		var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
@@ -110,11 +109,13 @@ func _live() -> void:
 		check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, role + " repeat does not stack effects")
 		check(board.add_modifier("e:" + id, "misled") == "", role + " supports Misled attachment")
 		check(Live.status(g, board.compile(root)).ready, role + " attached modifier preserves live capability")
-		g.set_workshop_effects(false)
 		if role == "gravedigger":
 			g.board[0]["deleted"] = true
-			# Public process receipts remain the only authority; no hidden execution query.
+			# Public process receipts remain the only authority; without a matching
+			# execution, the Gravedigger report stays ready and cannot hold for a good reader.
 			g.board = g.board.filter(func(c): return c.kind != "execution")
 			for i in range(g.board.size()):
 				g.board[i].n = i + 1
-			check(not Live.status(g, value).ready, "missing execution history is explicit fallback")
+			check(Live.status(g, value).ready, "missing execution history remains ready in shared model")
+			var bogus_preview = Ghost.live(Live.snapshot(g, value))
+			check(bogus_preview.ready and bogus_preview.proposal.assessment.compatible == 0, "missing execution makes accepted Gravedigger report impossible for a good reader")

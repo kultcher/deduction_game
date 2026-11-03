@@ -15,7 +15,6 @@ func _init() -> void:
 
 func _game(size: int):
 	var g = Game.new()
-	g.workshop_effects = false # Isolate the compatibility slice's unchanged strengths.
 	g.detailed_logging = false
 	g.new_case(7350, size)
 	g.w.day = 4
@@ -30,40 +29,46 @@ func _game(size: int):
 			listener.cleared = {}
 			listener.traits.confidence = 0.5
 			for id in listener.suspicion:
-				listener.suspicion[id] = 0.3
+				listener.suspicion[id] = 0.1
+			Mind.refresh_beliefs(g.w, listener, " (clean)")
 	return g
 
 func _reveal(size: int) -> void:
 	var g = _game(size)
 	var w = g.w
-	var d = w.living_good()[0]
-	var accuser = w.living_good()[1]
-	var listener = w.living_good()[2]
+	var goods: Array = w.living_good()
+	var d = goods[0]
+	var accuser = goods[1]
+	var listener = goods[2]
+	var v1 = goods[3]
+	v1.home_block = "docks"
+	d.home_block = "square"
+	accuser.home_block = "docks"
+	w.day = 1
+	w._kill(v1)
+	w.day = 4
 	d.role = "lamplighter"
 	d.claimed_role = "lamplighter"
 	d.claim_public = true
 	listener.npc_trust[d.id] = 0.95
-	Mind.ledger_hear(w, accuser, "test:out", [[d.id, 0.1, false, "seen out at night", "seen out at night"]], 1.0)
-	var before: float = listener.suspicion[d.id]
+	accuser.beliefs = [{"kind": "saw", "who": d.id, "loc": "", "block": "docks", "day": 1, "phase": 3, "how": "window", "detail": "street"}]
+	Mind.refresh_beliefs(w, accuser, " (first outing)")
+	# The accuser says their window sighting when they nominate (the meeting flow passes
+	# spoken facts); a defence answers only what has been said.
+	var spoken: Array = [{"kind": "sighting", "source": accuser.id, "subject": [d.id], "block": "docks", "day": 1, "phase": 3}]
 	var rng = w.rng.state
-	var first = Mind.defend_self(w, d, accuser.id)
-	check(first.moves == ["reveal"] and is_equal_approx(before - listener.suspicion[d.id], 0.1 * 0.975), "a first gift defence retains its original strength, regard weight and Confidence coefficient")
-	for confidence in [0.2, 0.8]:
-		listener.traits.confidence = confidence
-		Mind.recompute_beliefs(w, listener, "check deferred Confidence coefficient")
-		check(is_equal_approx(before - listener.suspicion[d.id], 0.1 * 0.975 * (1.4 - 0.8 * confidence)), "defence repeat ownership retains the existing Confidence scaling")
-	listener.traits.confidence = 0.5
-	Mind.recompute_beliefs(w, listener, "restore controlled Confidence")
+	var first = Mind.defend_self(w, d, accuser.id, spoken)
+	var defs1: Array = _defences(listener)
+	check(first.moves == ["reveal"] and defs1.size() == 1 and defs1[0].effects.is_empty(), "a first gift defence records one receipt-only defence entry")
+	var w1: float = defs1[0].weight
 	var once = listener.suspicion.duplicate(true)
 	w.day += 1
-	Mind.defend_self(w, d, accuser.id)
-	check(listener.suspicion == once and _defences(listener).size() == 1, "repeating the same gift explanation tomorrow adds no second discount")
-	# New evidence makes the explanation stronger, while this listener now trusts
-	# the defender less. The two hearings cannot lend each other their strengths.
+	Mind.defend_self(w, d, accuser.id, spoken)
+	check(listener.suspicion == once and _defences(listener).size() == 1 and is_equal_approx(_defences(listener)[0].weight, w1), "repeating the same gift explanation tomorrow adds no second discount or weight")
+	# Lowering trust while re-defending cannot overwrite a stronger prior hearing weight.
 	listener.npc_trust[d.id] = 0.05
-	Mind.ledger_hear(w, accuser, "test:another-outing", [[d.id, 0.25, false, "seen out on another night", "seen out on another night"]], 1.0)
-	Mind.defend_self(w, d, accuser.id)
-	check(is_equal_approx(before - listener.suspicion[d.id], 0.35 * 0.525) and _defences(listener).size() == 1, "one owner keeps the strongest complete hearing without mixing strength and trust across paths")
+	Mind.defend_self(w, d, accuser.id, spoken)
+	check(_defences(listener).size() == 1 and is_equal_approx(_defences(listener)[0].weight, w1), "one owner keeps the strongest complete hearing weight")
 	for n in w.living():
 		if n == d:
 			continue
@@ -87,8 +92,7 @@ func _challenges(size: int) -> void:
 	var reading = {"day": 0, "role": "seer", "data": {"pair": [d.id, other.id], "yes": true}, "text": "One reads as the Demon", "shared": true}
 	source.info_log = [reading]
 	Mind.apply_info(w, source, source, reading, 1.0)
-	# One incident, one hearing (Oct 26): "it's the other one" and "the reading is wrong"
-	# can't both be offered. They point at the other when they suspect them more...
+	Mind.apply_info(w, observer, source, reading, 0.5)
 	d.suspicion[other.id] = 0.6
 	d.suspicion[source.id] = 0.2
 	var first = Mind.defend_self(w, d, source.id)
@@ -97,7 +101,6 @@ func _challenges(size: int) -> void:
 	w.day += 1
 	Mind.defend_self(w, d, source.id)
 	check(observer.suspicion == once and _defences(observer).size() == 1, "the same rival does not stack on the next day")
-	# ...and challenge the reading when they trust the other more than the source.
 	var g2 = _game(size)
 	var w2 = g2.w
 	var source2 = w2.living_good()[0]
@@ -113,6 +116,7 @@ func _challenges(size: int) -> void:
 	var reading2 = {"day": 0, "role": "seer", "data": {"pair": [d2.id, other2.id], "yes": true}, "text": "One reads as the Demon", "shared": true}
 	source2.info_log = [reading2]
 	Mind.apply_info(w2, source2, source2, reading2, 1.0)
+	Mind.apply_info(w2, observer2, source2, reading2, 0.5)
 	d2.suspicion[other2.id] = 0.1
 	d2.suspicion[source2.id] = 0.5
 	var second = Mind.defend_self(w2, d2, source2.id)
@@ -123,11 +127,12 @@ func _challenges(size: int) -> void:
 	check(observer2.suspicion == once2 and _defences(observer2).size() == 1, "the same challenge does not stack on the next day")
 	var challenges = _defences(observer2).filter(func(entry): return entry.meta.scope.type == "challenge")
 	check(challenges.size() == 1 and challenges[0].meta.scope.reading == Shared.reading(source2.id, reading2).id, "a challenge is bound to the exact original reading")
-	source2.ledger[Mind.info_eid(source2.id, reading2)].weight = 0.0
+	source2.ledger.erase(Mind.info_eid(source2.id, reading2))
 	var new_reading = reading2.duplicate(true)
 	new_reading.day = 1
 	source2.info_log = [new_reading]
 	Mind.apply_info(w2, source2, source2, new_reading, 1.0)
+	Mind.apply_info(w2, observer2, source2, new_reading, 0.5)
 	Mind.defend_self(w2, d2, source2.id)
 	challenges = _defences(observer2).filter(func(entry): return entry.meta.scope.type == "challenge")
 	check(challenges.size() == 2 and challenges.any(func(entry): return entry.meta.scope.reading == Shared.reading(source2.id, new_reading).id), "a genuinely different original report has a distinct challenge")

@@ -23,7 +23,6 @@ func _init() -> void:
 
 func _game():
 	var g = Game.new()
-	g.workshop_effects = false
 	g.detailed_logging = false
 	g.new_case(692, 7)
 	for p in g.w.npcs:
@@ -34,7 +33,8 @@ func _game():
 		p.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 		for id in p.suspicion:
 			p.suspicion[id] = 0.3
-	g.set_workshop_effects(true)
+		if not p.is_evil():
+			Mind.refresh_beliefs(g.w, p, " (clean)")
 	return g
 
 func _context() -> void:

@@ -345,6 +345,6 @@ func public_sightings():
 	check(listener.ledger.size() == count and listener.ledger[eid].weight == weight and w.rng.state == rng, "repeated delivery reuses the receipt and never stacks weight or consumes RNG")
 	Mind.flush_beliefs(w, listener)
 	check(listener.workshop_state.get("owned", {}).has(eid), "shared-model ownership includes the sighting before the player presents anything")
-	check(listener.ledger[eid].applied.values().all(func(value): return is_zero_approx(value)), "shared ownership parks the duplicate native effect")
+	check(listener.ledger[eid].effects.is_empty(), "sighting ledger entry stores empty legacy effects")
 	w.pending_beliefs = []
 	w.defer_beliefs = false

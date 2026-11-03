@@ -129,13 +129,11 @@ func _live() -> void:
 	listener.ledger = {}
 	listener.role = "warden"
 	listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-	g.set_workshop_effects(true)
 	var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false), "trace presentation uses actual shared owner")
 	var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
 	response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 	check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, "repeated trace presentation does not stack")
-	g.set_workshop_effects(false)
 	var legacy = g.add_card({"kind": "trace", "source": "evidence", "subject": [], "day": 1, "phase": 2, "block": "market", "text": "Old trace without scene metadata"})
 	var legacy_id: String = Live.Evidence.normalize_card(g.board[legacy - 1]).id
 	var old_view = Live.view(g)

@@ -28,19 +28,6 @@ func short_text(d: Dictionary, src: String, _nm: Callable) -> String:
 	return "%s Veteran: attacked, from %s" % [src, content().block_name(d.get("block", ""))]
 
 
-func info_effects(w, listener, source, entry: Dictionary, weight: float, _fresh: bool, mind) -> Array:
-	var effs: Array = []
-	var d: Dictionary = entry["data"]
-	var own: bool = source == listener
-	var tag: String = "own info" if own else "heard %s's info (w=%.2f)" % [source.id, weight]
-	# The demon came by way of that block: a little toward those who live there.
-	for m in w.living():
-		if m != listener and m != source and m.home_block == d.get("block", ""):
-			mind._eff(effs, m.id, Tuning.Roles.VETERAN.eff_attacker_block, tag + ": the demon came by way of their block",
-				"the demon came by way of %s, where they live" % content().block_name(d["block"]), not own)
-	return effs
-
-
 func survives_demon_attack(v) -> bool:
 	return not v.is_evil() and not v.gift_broken() and not v.vet_used
 

@@ -62,15 +62,15 @@ func pick_targets(w, n, mind):
 		if s > best_s:
 			best_s = s
 			best = m.id
-	w.observe_ranked(n, "warden_target", observed, best, 0.3)
+	w.observe_ranked(n, "warden_target", observed, best, Tuning.Roles.WARDEN.pick_noise)
 	w.dlog.think(n.id, "warden_pick", "Protects whoever scores highest (trusted info claimants, trusted people).", {"scores": scores, "pick": best})
 	return best
 
 
 func score_gift_request(_w, n, targets: Array, _top: String, parts: Dictionary, mind) -> void:
 	var t: String = targets[0]
-	parts["cares_for_them"] = (n.npc_trust.get(t, 0.5) - 0.5) * 1.0
-	parts["suspects_them"] = -mind.susp(n, t) * 1.0
+	parts["cares_for_them"] = (n.npc_trust.get(t, 0.5) - 0.5) * Tuning.Roles.WARDEN.req_trust_scale
+	parts["suspects_them"] = -mind.susp(n, t) * Tuning.Roles.WARDEN.req_susp_scale
 
 
 func on_evil_agreed_request(w, n, asked: Array) -> void:

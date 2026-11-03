@@ -1,5 +1,6 @@
 ## Player-raised questions about a report. Never consult referee truth.
 extends RefCounted
+const Tuning = preload("res://sim/tuning.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 static var cache: Dictionary = {}
@@ -18,7 +19,7 @@ static func quality(listener: Dictionary, source: String) -> float:
 			var pcred: float = clampf(float(listener.get("player_credibility", 0.5)), 0.0, 1.0)
 			return clampf(0.5 + 0.5 * pcred, 0.4, 1.0)
 		return clampf(listener.trust, 0.0, 1.0)
-	return clampf(0.2 + 0.65 * listener.npc_trust.get(source, 0.5) - 0.35 * listener.suspicion.get(source, 0.1), 0.05, 0.95)
+	return clampf(Tuning.Workshop.WITNESS_QUALITY_BASE + Tuning.Workshop.WITNESS_QUALITY_TRUST_SCALE * listener.npc_trust.get(source, 0.5) - Tuning.Workshop.WITNESS_QUALITY_SUSP_SCALE * listener.suspicion.get(source, 0.1), Tuning.Workshop.WITNESS_QUALITY_MIN, Tuning.Workshop.WITNESS_QUALITY_MAX)
 
 static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, cards: Array) -> Dictionary:
 	var selected: Dictionary = value.get("reading_challenges", {})
@@ -42,7 +43,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 		var counted = _fraction(view, report, listener.knowledge, reference)
 		var fraction: float = counted.fraction
 		var has_reference: bool = counted.possible
-		var grounds: Array = cards.filter(func(c): return c.id in challenge.get("supports", []) and c.id != id and not c.get("quoted", false) and quality(listener, c.source) >= 0.4)
+		var grounds: Array = cards.filter(func(c): return c.id in challenge.get("supports", []) and c.id != id and not c.get("quoted", false) and quality(listener, c.source) >= Tuning.Workshop.CHALLENGE_GROUND_MIN_QUALITY)
 		var conflict = false
 		var self_presence_conflict = false
 		var strength = 1.0
@@ -99,14 +100,20 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				note = "The cited observation rules out their presence where that gift required them to be; impairment cannot explain that."
 			else:
 				cause_agreement *= 1.0 - quality(listener, report.source)
+			if report.role == "gravedigger" and view.has("timeline"):
+				var gd_n: int = report.night if int(report.get("night", -1)) >= 0 else int(report.get("observed_at", {}).get("day", -1))
+				if not preload("res://workshop/live_history.gd").executed(view, str(report.data.get("executed", "")), gd_n):
+					accuracy_agreement = maxf(accuracy_agreement, 0.9 * hearing)
+					cause_agreement = accuracy_agreement
+					note = "No such public execution happened that night; impairment cannot explain that Gravedigger report."
 			if report.source != listener.id and report.role == listener.knowledge.get("own_role", ""):
 				cause_agreement = hearing # firsthand knowledge of a unique gift claim
 				note = "They claim the unique gift I know I hold. Impairment cannot explain that role claim."
 			if report.source in listener.knowledge.good:
 				cause_agreement = 0.0
 				note += " My established good-alignment knowledge does not support the evil-reader explanation."
-			if cause_agreement >= 0.6:
-				result.sources[report.source] = minf(result.sources.get(report.source, 1.0), 1.0 - 0.3 * cause_agreement)
+			if cause_agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
+				result.sources[report.source] = minf(result.sources.get(report.source, 1.0), 1.0 - Tuning.Workshop.CHALLENGE_SOURCE_PENALTY_SCALE * cause_agreement)
 			else:
 				note += " I am not convinced the reader deliberately lied."
 		elif challenge.mode == "misled" and supported:

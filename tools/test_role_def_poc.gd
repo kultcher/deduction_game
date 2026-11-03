@@ -75,7 +75,6 @@ func _test_registry_and_metadata() -> void:
 
 func _test_seer_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9101, 7)
 	var w = g.w
@@ -93,8 +92,8 @@ func _test_seer_hooks() -> void:
 	_check(Gifts.implicated(no_entry).is_empty() and Gifts.clears(no_entry) == [a.id, b.id], "Gifts.implicated/clears delegates Seer NO reading via PING shape")
 	_check("YES" in Gifts.short_text("seer", yes_entry["data"], seer.name, func(id): return w.by_id[id].name), "Gifts.short_text formats Seer reading via RoleDef")
 
-	var effs_no: Array = C.role_def("seer").info_effects(w, seer, seer, no_entry, 1.0, true, Mind)
-	_check(effs_no.size() == 2 and seer.cleared.has(a.id) and seer.cleared.has(b.id), "Seer info_effects clears both subjects on own fresh NO reading")
+	C.role_def("seer").on_reading_heard(seer, seer, no_entry, true)
+	_check(not C.role_def("seer").has_method("info_effects") and seer.cleared.has(a.id) and seer.cleared.has(b.id), "Seer on_reading_heard clears both subjects on own fresh NO reading without legacy info_effects")
 
 	w.day = 1
 	seer.trust = 0.9
@@ -106,7 +105,6 @@ func _test_seer_hooks() -> void:
 
 func _test_warden_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9102, 7)
 	var w = g.w
@@ -135,7 +133,6 @@ func _test_warden_hooks() -> void:
 
 func _test_role_in_group_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9103, 7)
 	var w = g.w
@@ -195,7 +192,6 @@ func _test_role_in_group_hooks() -> void:
 
 func _test_role_at_site_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9104, 7)
 	var w = g.w
@@ -238,8 +234,7 @@ func _test_role_at_site_hooks() -> void:
 	_check(med_r.get("data", {}).get("dead", "") == victim.id and med_r.get("data", {}).get("item", {}).get("type", "") == "reading", "Medium generate_reading relays unshared reading from dead victim")
 	var med_entry = {"role": "medium", "day": 1, "data": med_r["data"], "text": med_r["text"]}
 	_check(Gifts.clears(med_entry) == [dowser.id, other.id] and Gifts.implicated(med_entry).is_empty(), "Medium implicated/clears delegates to relayed reading")
-	var med_effs: Array = C.role_def("medium").info_effects(w, medium, medium, med_entry, 1.0, true, Mind)
-	_check(med_effs.size() == 2 and is_equal_approx(med_effs[0][1], -0.3 * 0.6), "Medium info_effects scales relayed reading effects by 0.6")
+	_check(not C.role_def("medium").has_method("info_effects") and C.role_def("medium").defend_strength(med_entry["data"], dowser.id) > 0.0, "Medium delegates clears/defence without legacy info_effects")
 
 	medium.info_log.append(med_entry)
 	medium.claimed_role = "medium"
@@ -252,7 +247,6 @@ func _test_role_at_site_hooks() -> void:
 
 func _test_count_and_route_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9105, 7)
 	var w = g.w
@@ -306,7 +300,6 @@ func _test_count_and_route_hooks() -> void:
 
 func _test_final_roles_hooks() -> void:
 	var g = Game.new()
-	g.workshop_effects = false
 	g.log_dir = "user://test_logs"
 	g.new_case(9106, 7)
 	var w = g.w
@@ -422,7 +415,7 @@ func _test_final_roles_hooks() -> void:
 	var Tuning = C.Tuning
 	_check(Tuning != null, "C.Tuning preloads sim/tuning.gd")
 	_check(C.SETUPS == Tuning.Setup.SETUPS and C.SHADOW_SELF == Tuning.Setup.SHADOW_SELF, "C.SETUPS and C.SHADOW_SELF alias Tuning.Setup")
-	_check(is_equal_approx(Mind.SERIOUS_GRIEVANCE, Tuning.Trust.SERIOUS_GRIEVANCE) and is_equal_approx(Mind.HONESTY_K, Tuning.Mind.HONESTY_K), "Mind constants alias Tuning.Trust and Tuning.Mind")
+	_check(is_equal_approx(Mind.SERIOUS_GRIEVANCE, Tuning.Trust.SERIOUS_GRIEVANCE), "Mind constants alias Tuning.Trust")
 	_check(is_equal_approx(Mind.CONSENSUS_BASE, Tuning.Meeting.CONSENSUS_BASE) and is_equal_approx(C.DEFENCE_ROPE, Tuning.Meeting.DEFENCE_ROPE), "Meeting constants alias Tuning.Meeting")
 	_check(is_equal_approx(C.EVIL_CAUTION_DEMON, Tuning.Evil.EVIL_CAUTION_DEMON) and is_equal_approx(Evil.HEAT_FADE, Tuning.Evil.HEAT_FADE), "Evil constants alias Tuning.Evil")
 	_check(is_equal_approx(C.role_def("seer").public_threat_bonus, Tuning.Roles.SEER.public_threat_bonus) and is_equal_approx(C.role_def("warden").quiet_night_effect, Tuning.Roles.WARDEN.quiet_night_effect), "RoleDefs read per-role tuning from Tuning.Roles")

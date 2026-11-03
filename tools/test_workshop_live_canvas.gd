@@ -68,7 +68,6 @@ func _run() -> void:
 	check(prepared.ready and prepared.case.answers == value.answers, "live transport preserves reading answers")
 	check(prepared.case.arguments == value.arguments and prepared.case.lines == value.lines, "live transport preserves scoped claims, assumptions and paths")
 	check(g.w.rng.state == rng, "filing and support inspection do not use world randomness")
-	g.set_workshop_effects(true)
 	var before = listener.suspicion.duplicate(true)
 	var result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
 	check(result.get("workshop", false), "filed live canvas uses the new assessment path")
@@ -113,12 +112,10 @@ func _run() -> void:
 	g.board[read - 1].deleted = true
 	check(Live.status(g, missing).blocked and Live.file(g, missing, number) < 0, "missing original evidence blocks filing instead of silently weakening the case")
 	g.board[read - 1].deleted = false
-	g.set_workshop_effects(false)
 	g._start_meeting()
 	g.workshop_deliveries.clear()
 	g.command("present %d" % number)
 	check(g.presented_today and g.workshop_deliveries.size() == g.w.living().size(), "ordinary typed meeting commands still complete synchronously without a progress callback")
-	g.set_workshop_effects(true)
 	await _ui(g, report_id, trace_id)
 	await _flow()
 	await _main_ui()
@@ -195,10 +192,6 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor._support_details()
 	check("UNSUPPORTED" in editor.result_output.text and "blocked in ordinary play" in editor.result_output.text and not "Fallback evaluates" in editor.result_output.text, "support review does not advertise a fallback that ordinary submission will block")
 	editor.preview_window.hide()
-	g.workshop_effects = false
-	editor._session_changed()
-	check(editor.support_label.text.begins_with("Debug") and "explicitly selected" in editor.support_label.tooltip_text, "deliberately disabled shared evaluation stays visibly distinct")
-	g.workshop_effects = true
 	editor._session_changed()
 	check(support_state == JSON.stringify([g.board, g.w.rng.state, g.w.npcs.map(func(n): return [n.trust, n.suspicion, n.ledger])]), "support wording changes no evidence, RNG or beliefs")
 	editor._open_answer("e:" + trace_id)
@@ -224,7 +217,7 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	g.new_case(693, 10)
 	editor.refresh()
 	check(editor.files.is_empty() and editor.board.links.is_empty() and editor.board.view.people.size() == 10 and not editor.board.nodes.values().any(func(n): return n.kind == "evidence"), "new case clears the graph and starts without transferred evidence")
-	check(g.workshop_effects and g.workshop_deliveries.is_empty(), "case reset retains shared evaluation and clears presentation feedback")
+	check(g.workshop_deliveries.is_empty(), "case reset clears presentation feedback")
 	editor.queue_free()
 	await process_frame
 
@@ -252,7 +245,6 @@ func _flow() -> void:
 		board.connect_cards("e:" + Live.Evidence.normalize_card(g.board[number - 1]).id, root_id)
 	var number = Live.file(g, board.compile(root_id))
 	check(number > 0 and Live.status(g, board.compile(root_id)).ready, "native reports form a supported filed canvas case")
-	g.set_workshop_effects(true)
 	g.state = "talk"
 	g.talk_with = listener
 	g.questions_left = 3
@@ -290,7 +282,7 @@ func _flow() -> void:
 		g.command("sleep")
 	check(g.w.day >= 2 or g.w.game_over, "normal execution and night resolution finish after the canvas presentations")
 	g.new_case(692, 10)
-	check(g.workshop_draft.is_empty() and g.workshop_deliveries.is_empty() and g.workshop_effects, "restarting the same seed clears canvas ownership and feedback while retaining shared evaluation")
+	check(g.workshop_draft.is_empty() and g.workshop_deliveries.is_empty(), "restarting the same seed clears canvas ownership and feedback")
 
 func _main_ui() -> void:
 	var main = load("res://ui/main.tscn").instantiate()
@@ -308,7 +300,7 @@ func _main_ui() -> void:
 	check(editor.g == main.g and editor.board.view.get("live", false), "main menu opens the live editor rather than the fixture canvas")
 	check(main.get_window().gui_embed_subwindows, "Workshop dialogs are embedded in the game window")
 	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded()), "live answer, results, progress and context windows are embedded transient dialogs")
-	check(not main.g.prediction_spoiled and main.g.workshop_effects, "opening the live editor preserves shared evaluation without enabling debug spoilers")
+	check(not main.g.prediction_spoiled, "opening the live editor does not enable debug spoilers")
 	var number: int = main.g.board[0].n
 	main.case_view.show_card_menu(number, Vector2i(200, 200))
 	main.case_view.card_menu.id_pressed.emit(main.case_view.CardAction.WORKSHOP)

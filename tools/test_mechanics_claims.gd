@@ -35,12 +35,8 @@ func _init() -> void:
 	var claims: Array = plan.prepared.view.cards.filter(func(c): return c.kind == "claim" and c.source == rival.id)
 	check(plan.ready and claims.size() == 1 and is_equal_approx(claims[0].hearing_weight, 0.5), "a public rival declaration enters once at its hearing weight")
 	var before: Dictionary = listener.workshop_state.requested.duplicate(true)
-	for entry in listener.ledger.values():
-		for effect in entry.effects:
-			if effect[0].begins_with("rivals:"):
-				effect[1] *= 20
-	Mind.recompute_beliefs(g.w, listener, "parked double-claim probe")
-	check(listener.workshop_state.requested == before and range(listener.ledger[eid].effects.size()).filter(func(k): return Shared.ordinary(listener.ledger[eid].effects[k][0])).all(func(k): return is_zero_approx(listener.ledger[eid].applied.get(k, 0.0))), "legacy double-claim coefficients cannot add suspicion to the shared result")
+	Mind.refresh_beliefs(g.w, listener, "empty-effects double-claim probe")
+	check(listener.workshop_state.requested == before and listener.ledger.values().all(func(entry): return entry.effects.is_empty()), "claim ledger entries carry empty effects and stable shared requested deltas")
 	var original: String = listener.ledger[eid].meta.workshop_card.id
 	g.w.day += 1
 	Mind.hear_claim(g.w, listener, rival.id, "seer", 0.5, "relayed")
@@ -48,12 +44,13 @@ func _init() -> void:
 	var card = {"kind": "claim", "source": rival.id, "subject": [rival.id], "role": "seer", "day": 1, "phase": 0, "text": "I claim the Seer."}
 	Mind.press(g.w, listener, card)
 	var counter: String = "own_role:" + Mind.fact_id(card)
-	check(listener.workshop_state.owned.has(counter) and listener.ledger[counter].applied.values().all(func(x): return is_zero_approx(x)), "pressing a rival gift claim parks the separate own_role bump")
+	check(listener.workshop_state.owned.has(counter) and listener.ledger[counter].effects.is_empty(), "pressing a rival gift claim records a receipt-only own_role counter")
 	var size: int = listener.ledger.size()
 	Mind.press(g.w, listener, card)
 	check(listener.ledger.size() == size and listener.ledger[counter].times == 2, "repeated pressing has one stable claim owner")
-	g.set_workshop_effects(false)
-	check(Mind.claim_credence(listener, rival.id, "seer") > 0 and listener.ledger[counter].applied.values().any(func(x): return not is_zero_approx(x)), "native comparison mode restores legacy credence and counterclaim effects")
+	# There is no switch to retract ownership any more (purge 3): the claim stays owned by
+	# the shared model, so its legacy credence stays parked.
+	check(is_zero_approx(Mind.claim_credence(listener, rival.id, "seer")) and listener.workshop_state.get("active", false) and listener.workshop_state.owned.has(eid), "the shared model keeps owning the claim; legacy credence stays parked")
 	var report = {"id": "anonymous", "kind": "report", "source": "a", "role": "seer", "testimony_only": true}
 	var view = {"cards": [report]}
 	check(not Assess.conclusion_issues(view, {"cards": [report.id], "conclusion": {"type": "role", "target": "a", "role": "seer"}}).is_empty(), "an anonymous reading retold by a teller is not their gift declaration")

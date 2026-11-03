@@ -97,13 +97,11 @@ func _live() -> void:
 		listener.ledger = {}
 		listener.role = "warden"
 		listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-		g.set_workshop_effects(true)
 		var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 		check(response.get("workshop", false), role + " actual presentation uses shared owner")
 		var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
 		response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 		check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, role + " presentation repeat is stable")
-		g.set_workshop_effects(false)
 		check(board.add_modifier("e:" + id, "misled") == "", role + " supports reading modifier")
 		check(Live.status(g, board.compile(root)).ready, role + " modifier retains capability")
 		if role == "martyr":

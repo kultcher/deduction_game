@@ -47,14 +47,10 @@ static func record_public(g, type: String, target: String, weight: float = Tunin
 
 ## Dawn: move each NPC's credibility toward their track-record target.
 static func dawn(g) -> void:
-	if not g.workshop_effects:
-		return
 	for n in g.w.living():
 		if n.claim_record.is_empty():
 			continue
 		var mind = n.shadow if n.is_evil() and n.shadow != null else n
-		if mind.workshop_state.is_empty():
-			continue
 		var agreement = _agreement(g, mind)
 		if agreement == null:
 			continue
