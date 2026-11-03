@@ -44,6 +44,26 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
+### Two checks, not one (from Nov 3)
+
+The golden captures answer two separate questions, and CI keeps them apart:
+
+- **C# parity (the migration gate):** a `--mode csharp` capture diffed against a
+  `--mode gdscript` capture **of the same commit**, `--tol 0`. Valid whatever the game
+  currently does, so behaviour-changing features (the meeting overhaul, new roles) can
+  land without breaking it. CI job `parity`; required.
+- **Regression (did behaviour change?):** each capture diffed against the fixed baseline.
+  Behaviour-neutral work (refactors, ports, UI) must show "identical". An intended
+  behaviour change will differ: re-record the baseline from that commit in the same
+  change, and run the passive A/B. CI reports this as a warning, not a failure, so the
+  reviewer (Claude, for Argon's patches) has to read it.
+
+While both solver backends exist, any change to the ported kernel (`world_domain`,
+`role_constraints`, `live_activity`, `solver`, `case_eval`, the channel code), including
+a new role that changes possible worlds, bluff weights or night movement, must be made in
+GDScript **and** C#; the parity check catches a missed side. Work above the kernel
+(meeting flow, dialogue, social) needs no C# change.
+
 Check a capture's log for `SCRIPT ERROR` lines before trusting a diff: Godot keeps
 running when a script fails to compile, and the capture then records the broken game.
 
