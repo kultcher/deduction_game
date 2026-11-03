@@ -17,6 +17,55 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03, Argon: `game/game.gd` 4-slice separation delivered (`patch_005_game_separation.zip`)
+
+- **Base:** `main` at `b061bb3f7e3054b4f922cdb08189070dd322fe3e` (`b061bb3`).
+- **Deliverable:** `patch_005_game_separation.zip` in Google Drive (`Demonologist Patches`), with
+  full replacement/new files plus `MANIFEST_SLICE_GAME_SEPARATION.md`.
+- **Status:** Ready for Claude verification (`dotnet build -c Debug`, domain suites + `ci_fast_suites.txt`,
+  and 5-seed `--tol 0` golden capture in both `gdscript` and `csharp` modes vs
+  `tools/golden/baseline_82faa5b`).
+- **Next actor:** **Claude**.
+
+### What's in `patch_005_game_separation.zip`
+
+1. **All 4 `game/game.gd` static domain helper extractions (100% simulation-neutral):**
+   - `game/game_conversation.gd` (856 LOC, `uid://c4m8kq2vx7pbn`): `# --- approaches` and
+     `# --- conversation` (`_maybe_approach`, `_promised_to`, `_maybe_divulge`, `_approach_command`,
+     `_protect_approach_answer`, `_grant_protection`, `_phase_header`, `_remember_dialogue_exchange`,
+     `_talk_options`, `_repeat_refusal`, `_talk_command`, `_record_trace_profile_haunts`,
+     `_answer_request`, `_answer_request_now`, `_gift_request`, `_grievance_menu`, `grievance_text`,
+     `_offer_command`, `offer_text`, `_settle_offers`, `OBSERVABLE_TRAITS`, `TRAIT_WORDS`,
+     `MAX_BONDS_TOLD`, `_maybe_tell_haunts`, `_record_trait_receipt`, `sync_bereaved_traits`,
+     `_maybe_tell_trait`, `_maybe_tell_relationships`, `_remember_spoken_relationship`,
+     `known_relationship_notes`, `known_haunt_names`, `_close_conversation`).
+   - `game/game_meeting.gd` (321 LOC, `uid://c7n3rw5tb2kdm`, **Meeting Overhaul Slice M0**):
+     `# --- meeting` (`_start_meeting`, `meeting_streaming`, `testimony_step`, `_testimony_turn`,
+     `_meeting_opened`, `_meeting_command`, `_next_npc_nomination`, `_defend_pending`,
+     `vote_requirement_text`, `_show_nomination`, `_nomination_command` coroutine with `await`,
+     `_after_vote`, `_last_words`, `_close_meeting` passing bound `g._last_words` to
+     `g.w.end_meeting`).
+   - `game/game_day_night.gd` (495 LOC, `uid://b8p6vy3qf4hlk`): `# --- day` and `# --- night`
+     (`unseen_at`, `unseen_at_ui`, `can_see`, `can_see_ui`, `_present`, `_resolve_go`,
+     `_best_location_on`, `_day_command`, `_warn_busy_visit`, `_who_here`, `_observe`, `_search`,
+     `_end_phase`, `_night_homes`, `_night_command`, `_resolve_night`, `_fallbacks_text`,
+     `_morning_report`).
+   - `game/game_screens.gd` (614 LOC, `uid://c2t5wx8jm3rqp`): `# --- info screens` and
+     player theory/prediction/debug/profile helpers (`_intro`, `_help`, `_look`, `_card_workers`,
+     `_card_conversations`, `_map`, `_cast`, `_profile`, `_script`, `_tools`, `_board`, `_ending`,
+     `_grimoire`, `_exchanges`, `_lies`, `_write_logs`, `set_note`, `set_guess`,
+     `set_secret_guess`, `capture_prediction`, `theory_status`, `_outcome_text`,
+     `set_debug_overlay`, `_spread`, `debug_card_text`, `debug_npc_text`, `named_in`,
+     `_death_text`, `_claim_text`, `profile_data`).
+2. **Refactored `game/game.gd` (2,886 LOC -> 1,020 LOC):**
+   - Retains all 72 session variables, all 25 existing constants/preloads (preserving `g.Argue`,
+     `g.Mind`, `Game.OBSERVABLE_TRAITS`, `g.OBSERVABLE_TRAITS`, and static `Game.grievance_text`),
+     adds `GameConversation`, `GameMeeting`, `GameDayNight`, and `GameScreens` preloads, and
+     delegates all extracted functions via 1-line forwarders (including
+     `await GameMeeting._nomination_command(self, verb, rest, progress)`).
+
+---
+
 ## 2026-11-03 ~17:00 ET, Claude: slice C3 checked, green after 2 small fixes, on main
 
 - **Base:** `4077dce` as declared; unpacked on `csharp/slice-c3`, main merged in (meeting
