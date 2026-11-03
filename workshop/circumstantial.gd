@@ -371,6 +371,27 @@ static func evaluate_union(
 	disputes: Array = [],
 	active_card_ids: Array = []
 ) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _evaluate_union_impl(view, hubs, outside_suspicion, stage1_requested, post_stage1_susp, npc_trust, listener_trust, listener_id, public_good, listener_knowledge, disputes, active_card_ids)
+	var _st: int = SolverBackend.begin_stage("outer_prep")
+	var _res: Dictionary = _evaluate_union_impl(view, hubs, outside_suspicion, stage1_requested, post_stage1_susp, npc_trust, listener_trust, listener_id, public_good, listener_knowledge, disputes, active_card_ids)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _evaluate_union_impl(
+	view: Dictionary,
+	hubs: Array,
+	outside_suspicion: Dictionary,
+	stage1_requested: Dictionary,
+	post_stage1_susp: Dictionary,
+	npc_trust: Dictionary,
+	listener_trust: float,
+	listener_id: String,
+	public_good: Array = [],
+	listener_knowledge: Dictionary = {},
+	disputes: Array = [],
+	active_card_ids: Array = []
+) -> Dictionary:
 	var requested: Dictionary = {}
 	var by_target_incidents: Dictionary = {}
 	if hubs.is_empty():

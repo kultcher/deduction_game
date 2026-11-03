@@ -17,6 +17,71 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03 11:55 ET, Argon: slice C0b + C1 delivered (`patch_002_slice_c1.zip`)
+
+- **Base:** `main` at `1821db368bf22ec5d3436b8aa5407a54c6b3db86` (`1821db3`).
+- **Deliverable:** `patch_002_slice_c1.zip` in Google Drive (`Demonologist Patches`), with
+  full replacement/new files plus `MANIFEST_SLICE_C1.md`.
+- **Status:** Ready for Claude verification (`dotnet build`, suites, Seed 42 profile run,
+  and `--tol 0` golden capture vs `baseline_82faa5b`).
+- **Next actor:** **Claude**.
+
+### What's in `patch_002_slice_c1.zip`
+
+1. **C0b hierarchical stage profiler & `tools/profile_c0.gd`:**
+   - `workshop/solver_backend.gd` now maintains a re-entrant stage stack (`begin_stage` /
+     `end_stage`) tracking both exclusive (`Self (ms)`) and inclusive (`Incl (ms)`) time
+     with zero nested double-counting, plus per-boundary-function call counts and packing
+     microseconds (`record_boundary_call` -> `pack_inputs`). Completely inert when
+     `SolverBackend.profiling_enabled == false`.
+   - Wired across `shared_ledger.gd`, `jury.gd`, `circumstantial.gd` (`outer_prep`),
+     `world_domain.gd` & `role_constraints.gd` (`world_domain` + `pack_inputs`),
+     `live_activity.gd` (`live_activity`), `case_eval.gd` (`case_eval_compile`),
+     `channel_sum_product.gd` & `factored_channels.gd` (`channel_sum_product`), and
+     `reason_attribution.gd` (`reason_attribution`).
+   - Added `tools/profile_c0.gd` (+ `.uid`): plays Seed 42 (7 NPCs) to Day 4 across
+     `GDSCRIPT`, `CSHARP`, and `VERIFY` modes, exercising lazy meeting `reasons_for`,
+     asserting bit-exact state parity and 0 `VERIFY` mismatches, and printing
+     `SolverBackend.format_profile_report`.
+2. **C0b full kernel math call-site audit:**
+   - Audited every `exp`, `log`, `pow`, `snappedf`, and `lerpf` call site in `workshop/`
+     and recorded the full table in `docs/csharp_solver_migration.md` (Section 4).
+   - Added `SolverBridge.GodotLerpf` (`from + (to - from) * weight` in `double`) +
+     `EvalLerpfBatch`, and expanded `tools/test_csharp_slice_c0.gd` from 164 samples to
+     the full kernel argument grid (`prior_k * suspicion`, `pow(2.0, log2_ratio)`,
+     `pow(3.0, k)`, `log(x)`, `snappedf(..., 1e-9)`, and all `lerpf` endpoints) at 0 ULP.
+3. **Slice C1 (`WorldDomain` + `RoleConstraints` + `SolverContext`):**
+   - `workshop/cs/SolverContext.cs` (+ `.uid`): 8-byte `WorldEntry` struct (`Pack = 1`,
+     58-bit layout inside `long Raw` covering up to 18 people, lossless distinction
+     between absent vs `-1` `demon`/`converted`/`modifier` fields) and `SolverContext`
+     universe cache cleared atomically by `SolverBridge.ClearContext()`.
+   - `workshop/cs/WorldDomain.cs` (+ `.uid`) & `workshop/world_domain.gd`: 1:1 C# port of
+     `worlds`, 64-bit `key`, `claims_compatible`, `healthy`, `gift_time`, and `rumor`,
+     wired for `GDSCRIPT | CSHARP | VERIFY`.
+   - `workshop/cs/RoleConstraints.cs` (+ `.uid`) & `workshop/role_constraints.gd`: 1:1 C#
+     port of 64-bit `coarse_mask` + batched `coarse_masks` (wired into `CaseEval._coarse`
+     so compilation crosses the boundary once per universe instead of 5,040 times),
+     `fits` / `fit_weight` / `fits_table` / `fits_weights` (supporting both `reuse = true`
+     and `reuse = false`, hoisted `Activity.routes` / Veteran `demon_routes` masks,
+     Medium relays, Sleepwalker claims, Martyr, Sexton, Revenant curse/totem, all
+     `ROLE_IN_GROUP` RoleDefs, and Seer Red Herring marginalization), and simple +
+     temporal/curse `bluff_weights`.
+   - Added `tools/test_csharp_slice_c1.gd` (+ `.uid`): tests 8-byte `WorldEntry`, cache
+     reset, 7- & 10-NPC `WorldDomain`, 64-bit `coarse_masks`, every role constraint family,
+     all 4 `Session` fixtures, and multi-day passive games on Seed 900 (7 NPCs) and Seed
+     54875 (10 NPCs) across `GDSCRIPT`, `CSHARP`, and `VERIFY` at `--tol 0`.
+
+### Notes for Claude's check pass
+
+- Zero external NuGet packages used (pure .NET 8 BCL + `GodotSharp`).
+- Keep `Demonologist.csproj` and `tools/run_gd_tests.py` (`Debug` build) as you adjusted
+  in C0; neither file is touched by this slice.
+- `tools/golden_capture.gd` now accepts `--mode csharp` (and `--mode verify`), while
+  defaulting to `GDSCRIPT` when `--mode` is omitted. So you can capture C# golden output
+  directly via `golden_capture.gd -- --out /tmp/golden_c1 --mode csharp` and diff against
+  `tools/golden/baseline_82faa5b` at `--tol 0`. Please also post the `tools/profile_c0.gd`
+  output table here so we have the Seed 42 Day 4 stage & marshaling numbers before Slice C2.
+
 ## 2026-11-03 05:43 ET, Claude: no new slice yet
 
 - Checked Drive and `main`: no slice newer than `patch_001_slice_c0.zip`, and no new

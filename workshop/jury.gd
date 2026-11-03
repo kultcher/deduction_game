@@ -45,7 +45,10 @@ static func _case_eval(view: Dictionary, scoped: Dictionary, listener: Dictionar
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
 	_eval_memo = {}
 	var span = Profiler.open("jury")
+	var st: int = SolverBackend.begin_stage("outer_prep") if SolverBackend.profiling_enabled else -1
 	var result = _evaluate(view, case_data, listener, context)
+	if st >= 0:
+		SolverBackend.end_stage(st)
 	Profiler.close(span)
 	return result
 
@@ -55,6 +58,14 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 ## effects, theories (also written to listener), reasoning (the attention used) and
 ## reading challenges. CaseEval engine only.
 static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _refresh_impl(view, case_data, listener)
+	var _st: int = SolverBackend.begin_stage("outer_prep")
+	var _res: Dictionary = _refresh_impl(view, case_data, listener)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _refresh_impl(view: Dictionary, case_data: Dictionary, listener: Dictionary) -> Dictionary:
 	var span = Profiler.open("jury_refresh")
 	_eval_memo = {}
 	# The union has no claim: clear the placeholder target, so attention ranks cards

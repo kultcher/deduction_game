@@ -203,6 +203,14 @@ static func category_text(cat: String) -> String:
 ##   pivotal             card ids whose removal would drop the category (reference listener)
 ##   impossible          no world survives the case's hard facts
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary = {}) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _evaluate_impl(view, case_data, listener)
+	var _st: int = SolverBackend.begin_stage("case_eval_compile")
+	var _res: Dictionary = _evaluate_impl(view, case_data, listener)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Dictionary = {}) -> Dictionary:
 	if listener.is_empty():
 		listener = neutral_listener(view)
 	# An already-compiled (attended) case has its lines folded away: keep its factors.
@@ -304,6 +312,14 @@ static var _compiled: Dictionary = {}
 ## the premise. Listener-specific work is then per class, not per world.
 ## known: the listener's own readings, which can complete a test factor's route.
 static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known: Array = []) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _compile_impl(view, cards, case_data, known)
+	var _st: int = SolverBackend.begin_stage("case_eval_compile")
+	var _res: Dictionary = _compile_impl(view, cards, case_data, known)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary, known: Array = []) -> Dictionary:
 	var conclusion: Dictionary = case_data.conclusion
 	var key_input = [view.get("trace_assessments", []), Solver._universe_key(view), view.get("timeline", {}), view.people, conclusion, case_data.get("citations", {}), case_data.get("test_factors", []),
 		known.map(func(c): return c.get("fact_id", c.id)) if not case_data.get("test_factors", []).is_empty() else [],
@@ -472,10 +488,7 @@ static func _coarse(view: Dictionary, seer: bool, mediums: int, walkers: int = 0
 		_coarse_cache.clear()
 	var universe: Array = Solver.universe(view)
 	var people: int = view.people.size()
-	var out = PackedInt64Array()
-	out.resize(universe.size())
-	for i in range(universe.size()):
-		out[i] = Solver.Roles.coarse_mask(people, universe[i], seer, mediums, walkers)
+	var out: PackedInt64Array = Solver.Roles.coarse_masks(people, universe, seer, mediums, walkers)
 	_coarse_cache[key] = out
 	return out
 

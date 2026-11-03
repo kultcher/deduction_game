@@ -59,6 +59,14 @@ static func ordinary(target: String) -> bool:
 ## A presentation is an endorsement path, not an additional copy of its facts.
 ## Removing it removes only roots with no remaining learned/endorsed owner.
 static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dictionary, withdrawn: Dictionary = {}, focus: Array = []) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _prepare_impl(current, presentations, ledger, withdrawn, focus)
+	var _st: int = SolverBackend.begin_stage("outer_prep")
+	var _res: Dictionary = _prepare_impl(current, presentations, ledger, withdrawn, focus)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger: Dictionary, withdrawn: Dictionary = {}, focus: Array = []) -> Dictionary:
 	var input = current.duplicate(true)
 	var facts = {}
 	var owners = {}
@@ -469,6 +477,14 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 static var last_reason_ctx: Dictionary = {}
 
 static func evaluate(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt)
+	var _st: int = SolverBackend.begin_stage("outer_prep")
+	var _res: Dictionary = _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}) -> Dictionary:
 	if not plan.ready:
 		return {}
 	if plan.empty:

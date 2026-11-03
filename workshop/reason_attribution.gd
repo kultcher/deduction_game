@@ -39,6 +39,24 @@ static func attribute_refresh(
 	ev: Dictionary,
 	effects: Dictionary
 ) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _attribute_refresh_impl(view, scoped_case, attended, held, challenged, listener, eval_listener, ev, effects)
+	var _st: int = SolverBackend.begin_stage("reason_attribution")
+	var _res: Dictionary = _attribute_refresh_impl(view, scoped_case, attended, held, challenged, listener, eval_listener, ev, effects)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _attribute_refresh_impl(
+	view: Dictionary,
+	scoped_case: Dictionary,
+	attended: Array,
+	held: Array,
+	challenged: Dictionary,
+	listener: Dictionary,
+	eval_listener: Dictionary,
+	ev: Dictionary,
+	effects: Dictionary
+) -> Dictionary:
 	if ev.get("impossible", false):
 		return {}
 	var self_id: String = str(listener.get("id", ""))
@@ -460,6 +478,14 @@ static func public_view_from_world(w) -> Dictionary:
 
 
 static func score_disclosed_fact_in_world(w, defender_mind, fact: Dictionary, target_id: String) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _score_disclosed_fact_in_world_impl(w, defender_mind, fact, target_id)
+	var _st: int = SolverBackend.begin_stage("reason_attribution")
+	var _res: Dictionary = _score_disclosed_fact_in_world_impl(w, defender_mind, fact, target_id)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _score_disclosed_fact_in_world_impl(w, defender_mind, fact: Dictionary, target_id: String) -> Dictionary:
 	var view: Dictionary = public_view_from_world(w)
 	var t_idx: int = Solver.person_index(view, target_id)
 	if t_idx < 0:
@@ -515,6 +541,14 @@ static func score_disclosed_fact_in_world(w, defender_mind, fact: Dictionary, ta
 
 
 static func score_reading_entry_in_world(w, src_id: String, entry: Dictionary, target_id: String) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _score_reading_entry_in_world_impl(w, src_id, entry, target_id)
+	var _st: int = SolverBackend.begin_stage("reason_attribution")
+	var _res: Dictionary = _score_reading_entry_in_world_impl(w, src_id, entry, target_id)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _score_reading_entry_in_world_impl(w, src_id: String, entry: Dictionary, target_id: String) -> Dictionary:
 	var role: String = str(entry.get("role", ""))
 	var data: Dictionary = entry.get("data", {})
 	var nd: int = int(entry.get("day", 0))

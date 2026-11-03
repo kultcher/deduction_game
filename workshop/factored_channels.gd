@@ -14,6 +14,14 @@ const Speech = preload("res://workshop/speech_evidence.gd")
 static var cache = {}
 
 static func assess(view: Dictionary, cards: Array, knowledge: Dictionary, rates: Dictionary, q: Dictionary, baseline_ids: Array = [], representatives: PackedInt32Array = PackedInt32Array(), multiplicity: PackedFloat64Array = PackedFloat64Array(), include_public: bool = true) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _assess_impl(view, cards, knowledge, rates, q, baseline_ids, representatives, multiplicity, include_public)
+	var _st: int = SolverBackend.begin_stage("channel_sum_product")
+	var _res: Dictionary = _assess_impl(view, cards, knowledge, rates, q, baseline_ids, representatives, multiplicity, include_public)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _assess_impl(view: Dictionary, cards: Array, knowledge: Dictionary, rates: Dictionary, q: Dictionary, baseline_ids: Array = [], representatives: PackedInt32Array = PackedInt32Array(), multiplicity: PackedFloat64Array = PackedFloat64Array(), include_public: bool = true) -> Dictionary:
 	var start = Time.get_ticks_usec()
 	var input = [Solver._query_view(view), cards, Solver._query_knowledge(knowledge), include_public]
 	var key = hash(input)

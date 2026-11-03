@@ -7,6 +7,14 @@ static func factor(scope: Array, values: Array) -> Dictionary:
 	return {"scope": scope, "values": PackedFloat64Array(values)}
 
 static func compile(scopes: Array) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _compile_impl(scopes)
+	var _st: int = SolverBackend.begin_stage("channel_sum_product")
+	var _res: Dictionary = _compile_impl(scopes)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _compile_impl(scopes: Array) -> Dictionary:
 	var nodes: Array = scopes.map(func(scope): return {"scope": scope.duplicate()})
 	var active: Array = range(nodes.size())
 	var steps: Array = []
@@ -53,6 +61,14 @@ static func compile(scopes: Array) -> Dictionary:
 	return {"nodes": nodes, "steps": steps, "roots": active, "inputs": scopes.size(), "peak": peak}
 
 static func evaluate(program: Dictionary, values: Array, marginals: bool = true) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _evaluate_impl(program, values, marginals)
+	var _st: int = SolverBackend.begin_stage("channel_sum_product")
+	var _res: Dictionary = _evaluate_impl(program, values, marginals)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _evaluate_impl(program: Dictionary, values: Array, marginals: bool = true) -> Dictionary:
 	var data: Array = values.duplicate()
 	for step in program.steps:
 		var output = PackedFloat64Array()
@@ -108,6 +124,14 @@ static func evaluate(program: Dictionary, values: Array, marginals: bool = true)
 ## null entries are numerical inputs; marker factors must remain inputs so their
 ## derivatives retain the accepted-content masses.
 static func circuit(program: Dictionary, constants: Array) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _circuit_impl(program, constants)
+	var _st: int = SolverBackend.begin_stage("channel_sum_product")
+	var _res: Dictionary = _circuit_impl(program, constants)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _circuit_impl(program: Dictionary, constants: Array) -> Dictionary:
 	var build = {"ops": [[0, 0.0], [0, 1.0]], "memo": {}, "inputs": []}
 	var data: Array = []
 	for i in range(program.inputs):
@@ -152,6 +176,14 @@ static func _op(build: Dictionary, kind: int, a: int, b: int) -> int:
 	return build.memo[key]
 
 static func run(circuit_data: Dictionary, values: Array, marginals: bool = true) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _run_impl(circuit_data, values, marginals)
+	var _st: int = SolverBackend.begin_stage("channel_sum_product")
+	var _res: Dictionary = _run_impl(circuit_data, values, marginals)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _run_impl(circuit_data: Dictionary, values: Array, marginals: bool = true) -> Dictionary:
 	var registers = PackedFloat64Array()
 	registers.resize(circuit_data.ops.size())
 	registers[1] = 1.0

@@ -34,14 +34,16 @@ public partial class SolverBridge : RefCounted
         _contextEpoch++;
         _verifyCalls = 0;
         _verifyMismatches = 0;
-        // Slice C1+ will reset SolverContext arena buffers here.
+        SolverContext.Clear();
     }
 
     public static long GetContextEpoch() => _contextEpoch;
     public static long GetVerifyCalls() => _verifyCalls;
     public static long GetVerifyMismatches() => _verifyMismatches;
+    public static int GetCachedUniverseCount() => SolverContext.CachedUniverseCount;
+    public static int GetWorldEntryByteSize() => Unsafe.SizeOf<WorldEntry>();
 
-    // --- Bit-Exact Numerical Helpers (Slice C0 Math Audit) ---
+    // --- Bit-Exact Numerical Helpers (Slice C0 / C0b Math Audit) ---
 
     /// <summary>
     /// Matches Godot's global round(x): rounds half-way cases away from zero
@@ -59,6 +61,14 @@ public partial class SolverBridge : RefCounted
     public static double GodotSnappedf(double value, double step) =>
         step != 0.0 ? Math.Floor(value / step + 0.5) * step : value;
 
+    /// <summary>
+    /// Matches Godot's Math::lerp(p_from, p_to, p_weight) / GDScript lerpf:
+    /// p_from + (p_to - p_from) * p_weight in 64-bit IEEE-754 double.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double GodotLerpf(double from, double to, double weight) =>
+        from + (to - from) * weight;
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double GodotExp(double x) => Math.Exp(x);
 
@@ -71,7 +81,7 @@ public partial class SolverBridge : RefCounted
     /// <summary>
     /// Batch-evaluates [op, x, y] triples so GDScript can verify 0-ULP parity
     /// across thousands of representative kernel inputs in one call.
-    /// op: 0=round(x), 1=snappedf(x,y), 2=exp(x), 3=log(x), 4=pow(x,y)
+    /// op: 0=round(x), 1=snappedf(x,y), 2=exp(x), 3=log(x), 4=pow(x,y), 5=lerpf(1.0,x,y)
     /// </summary>
     public static double[] EvalMathBatch(int[] ops, double[] xs, double[] ys)
     {
@@ -86,11 +96,25 @@ public partial class SolverBridge : RefCounted
                 2 => GodotExp(xs[i]),
                 3 => GodotLog(xs[i]),
                 4 => GodotPow(xs[i], ys[i]),
+                5 => GodotLerpf(1.0, xs[i], ys[i]),
                 _ => double.NaN
             };
         }
         return outBuf;
     }
+
+    public static double[] EvalLerpfBatch(double[] froms, double[] tos, double[] weights)
+    {
+        int n = froms.Length;
+        double[] outBuf = new double[n];
+        for (int i = 0; i < n; i++)
+        {
+            outBuf[i] = GodotLerpf(froms[i], tos[i], weights[i]);
+        }
+        return outBuf;
+    }
+
+    // --- VERIFY Mode Buffer & Scalar Comparators ---
 
     /// <summary>
     /// Compares two double arrays bit-for-bit (or within tol) for VERIFY mode.
@@ -122,4 +146,177 @@ public partial class SolverBridge : RefCounted
         }
         return -1;
     }
+
+    public static int VerifyInt64Buffer(string fnName, long[] gd, long[] cs)
+    {
+        _verifyCalls++;
+        if (gd.Length != cs.Length)
+        {
+            _verifyMismatches++;
+            GD.PushError($"[SolverBridge.VERIFY] {fnName}: length mismatch gd={gd.Length} cs={cs.Length}");
+            return 0;
+        }
+        for (int i = 0; i < gd.Length; i++)
+        {
+            if (gd[i] != cs[i])
+            {
+                _verifyMismatches++;
+                GD.PushError($"[SolverBridge.VERIFY] {fnName}[{i}]: gd={gd[i]} cs={cs[i]}");
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static int VerifyByteBuffer(string fnName, byte[] gd, byte[] cs)
+    {
+        _verifyCalls++;
+        if (gd.Length != cs.Length)
+        {
+            _verifyMismatches++;
+            GD.PushError($"[SolverBridge.VERIFY] {fnName}: length mismatch gd={gd.Length} cs={cs.Length}");
+            return 0;
+        }
+        for (int i = 0; i < gd.Length; i++)
+        {
+            if (gd[i] != cs[i])
+            {
+                _verifyMismatches++;
+                GD.PushError($"[SolverBridge.VERIFY] {fnName}[{i}]: gd={gd[i]} cs={cs[i]}");
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static bool VerifyScalarBool(string fnName, bool gd, bool cs)
+    {
+        _verifyCalls++;
+        if (gd != cs)
+        {
+            _verifyMismatches++;
+            GD.PushError($"[SolverBridge.VERIFY] {fnName}: gd={gd} cs={cs}");
+            return false;
+        }
+        return true;
+    }
+
+    public static bool VerifyScalarInt64(string fnName, long gd, long cs)
+    {
+        _verifyCalls++;
+        if (gd != cs)
+        {
+            _verifyMismatches++;
+            GD.PushError($"[SolverBridge.VERIFY] {fnName}: gd={gd} cs={cs}");
+            return false;
+        }
+        return true;
+    }
+
+    public static bool VerifyScalarFloat64(string fnName, double gd, double cs, double tol = 0.0)
+    {
+        _verifyCalls++;
+        bool match = tol == 0.0
+            ? BitConverter.DoubleToInt64Bits(gd) == BitConverter.DoubleToInt64Bits(cs)
+            : Math.Abs(gd - cs) <= tol;
+        if (!match)
+        {
+            _verifyMismatches++;
+            long ulp = Math.Abs(BitConverter.DoubleToInt64Bits(gd) - BitConverter.DoubleToInt64Bits(cs));
+            GD.PushError($"[SolverBridge.VERIFY] {fnName}: gd={gd:G17} cs={cs:G17} ulp={ulp}");
+            return false;
+        }
+        return true;
+    }
+
+    // --- Slice C1: WorldDomain Entry Points ---
+
+    public static long[] DomainEnumerateWorlds(int n, int evilCount, string[] modifiers, bool identities) =>
+        WorldDomainKernel.EnumerateWorlds(n, evilCount, modifiers, identities);
+
+    public static long DomainWorldKey(int n, long packedWorld) =>
+        WorldDomainKernel.ComputeKey(n, new WorldEntry(packedWorld));
+
+    public static long[] DomainWorldKeys(int n, long[] packedWorlds) =>
+        WorldDomainKernel.ComputeKeys(n, packedWorlds);
+
+    public static bool DomainClaimsCompatible(
+        int[] kindCodes,
+        byte[] flags,
+        string[] sources,
+        string[] roles,
+        bool hasSelf,
+        string selfId,
+        bool hasOwnRole,
+        string ownRole) =>
+        WorldDomainKernel.ClaimsCompatible(kindCodes, flags, sources, roles, hasSelf, selfId, hasOwnRole, ownRole);
+
+    public static bool DomainHealthy(long packedWorld, int personIndex) =>
+        WorldDomainKernel.Healthy(packedWorld, personIndex);
+
+    public static byte[] DomainHealthyTable(long[] packedWorlds, int personIndex) =>
+        WorldDomainKernel.HealthyTable(packedWorlds, personIndex);
+
+    public static bool DomainGiftTime(
+        string roleId,
+        string align,
+        bool eveningOrNight,
+        bool isDay,
+        bool firstNight,
+        int minGiftDay,
+        int obsDay,
+        string obsPhase) =>
+        WorldDomainKernel.GiftTime(roleId, align, eveningOrNight, isDay, firstNight, minGiftDay, obsDay, obsPhase);
+
+    public static bool DomainRumor(
+        long packedWorld,
+        string worldModifier,
+        int sourceIdx,
+        string secret,
+        int pairMask,
+        bool hasAnsPos,
+        int ansMask) =>
+        WorldDomainKernel.Rumor(packedWorld, worldModifier, sourceIdx, secret, pairMask, hasAnsPos, ansMask);
+
+    // --- Slice C1: RoleConstraints Entry Points ---
+
+    public static long RoleCoarseMask(int people, long packedWorld, bool seer, int mediums, int walkers) =>
+        RoleConstraintsKernel.CoarseMask(people, new WorldEntry(packedWorld), seer, mediums, walkers);
+
+    public static long[] RoleCoarseMasks(int people, long[] packedWorlds, bool seer, int mediums, int walkers) =>
+        RoleConstraintsKernel.CoarseMasks(people, packedWorlds, seer, mediums, walkers);
+
+    public static double RoleSeerRhWeight(int candidatesMask, int demon, int marked, int[] readingInts) =>
+        RoleConstraintsKernel.SeerRhWeight(candidatesMask, demon, marked, readingInts);
+
+    public static double[] RoleFitsWeights(
+        long[] packedWorlds,
+        int[] headerInts,
+        int[] publicRolesInts,
+        int[] forcedLampIndices,
+        int[] cardInts) =>
+        RoleConstraintsKernel.FitsWeights(packedWorlds, headerInts, publicRolesInts, forcedLampIndices, cardInts);
+
+    public static byte[] RoleFitsTable(
+        long[] packedWorlds,
+        int[] headerInts,
+        int[] publicRolesInts,
+        int[] forcedLampIndices,
+        int[] cardInts) =>
+        RoleConstraintsKernel.FitsTable(packedWorlds, headerInts, publicRolesInts, forcedLampIndices, cardInts);
+
+    public static double[] RoleBluffWeightsSimple(long[] packedWorlds, int[] declaredBits, double bluffWeight) =>
+        RoleConstraintsKernel.BluffWeightsSimple(packedWorlds, declaredBits, bluffWeight);
+
+    public static double[] RoleBluffWeightsTemporal(
+        long[] packedWorlds,
+        int[] whoIndices,
+        double[] hearingWeights,
+        int[] stmtTicks,
+        bool hasCurse,
+        int curseFrom,
+        int curseUntil,
+        double bluffWeight) =>
+        RoleConstraintsKernel.BluffWeightsTemporal(
+            packedWorlds, whoIndices, hearingWeights, stmtTicks, hasCurse, curseFrom, curseUntil, bluffWeight);
 }

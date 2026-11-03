@@ -3,15 +3,68 @@ extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Activity = preload("res://workshop/live_activity.gd")
+const History = preload("res://workshop/live_history.gd")
+const Chronology = preload("res://workshop/chronology.gd")
+const Domain = preload("res://workshop/world_domain.gd")
 static var cache: Dictionary = {}
 static var reuse = true
+
+# Fixed role slots matching workshop/cs/RoleConstraints.cs:
+const _FIXED_ROLES = {
+	"medium": 0,
+	"lamplighter": 1,
+	"revenant": 2,
+	"martyr": 3,
+	"sexton": 4,
+	"veteran": 5,
+	"seer": 6,
+	"gravedigger": 7,
+	"nightwatch": 8,
+	"demon": 9,
+}
+const _CARD_STRIDE = 20
 
 static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary = {}) -> bool:
 	return fit_weight(view, world, cards, knowledge, answers) > 0.0
 
 static func fit_weight(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false) -> float:
+	if not SolverBackend.profiling_enabled:
+		return _fit_weight_dispatch(view, world, cards, knowledge, answers, bluffs)
+	var st: int = SolverBackend.begin_stage("world_domain")
+	var w: float = _fit_weight_dispatch(view, world, cards, knowledge, answers, bluffs)
+	SolverBackend.end_stage(st)
+	return w
+
+static func _fit_weight_dispatch(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool) -> float:
 	if not view.get("world_options", {}).get("roles", false):
 		return 1.0
+	var mode: int = SolverBackend.active_mode()
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		return _fit_weight_gd(view, world, cards, knowledge, answers, bluffs)
+	var ids: Array = view.people.map(func(p): return p.id)
+	if reuse:
+		var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
+		var key = hash(input)
+		if not cache.has(key) or cache[key].input != input:
+			if cache.size() >= 64:
+				cache.clear()
+			cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
+		var mask: int = _coarse_mask_gd(ids.size(), world, cache[key].seer, relay_mediums(ids, cards), sleepwalk_claimants(ids, cards))
+		if cache[key].results.has(mask):
+			if mode == SolverBackend.Mode.CSHARP:
+				return float(cache[key].results[mask])
+		elif mode == SolverBackend.Mode.CSHARP:
+			var cs_single: float = _eval_cs_weights(view, ids, [world], cards, knowledge, answers, bluffs, false)[0]
+			cache[key].results[mask] = cs_single
+			return cs_single
+	elif mode == SolverBackend.Mode.CSHARP:
+		return _eval_cs_weights(view, ids, [world], cards, knowledge, answers, bluffs, false)[0]
+	var cs_val: float = _eval_cs_weights(view, ids, [world], cards, knowledge, answers, bluffs, false)[0]
+	var gd_val: float = _fit_weight_gd(view, world, cards, knowledge, answers, bluffs)
+	SolverBackend._bridge().VerifyScalarFloat64("RoleConstraints.fit_weight", gd_val, cs_val, 0.0)
+	return gd_val
+
+static func _fit_weight_gd(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool) -> float:
 	var ids: Array = view.people.map(func(p): return p.id)
 	if not reuse:
 		return _fits_view(view, ids, world, cards, knowledge, answers, null, bluffs)
@@ -21,7 +74,7 @@ static func fit_weight(view: Dictionary, world: Dictionary, cards: Array, knowle
 		if cache.size() >= 64:
 			cache.clear()
 		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
-	var mask: int = coarse_mask(ids.size(), world, cache[key].seer, relay_mediums(ids, cards), sleepwalk_claimants(ids, cards))
+	var mask: int = _coarse_mask_gd(ids.size(), world, cache[key].seer, relay_mediums(ids, cards), sleepwalk_claimants(ids, cards))
 	if not cache[key].results.has(mask):
 		cache[key].results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, null, bluffs)
 	return float(cache[key].results[mask])
@@ -43,12 +96,72 @@ static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledg
 	return out
 
 static func fits_weights(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false) -> PackedFloat64Array:
+	if not SolverBackend.profiling_enabled:
+		return _fits_weights_dispatch(view, universe, cards, knowledge, answers, bluffs)
+	var st: int = SolverBackend.begin_stage("world_domain")
+	var out: PackedFloat64Array = _fits_weights_dispatch(view, universe, cards, knowledge, answers, bluffs)
+	SolverBackend.end_stage(st)
+	return out
+
+static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool) -> PackedFloat64Array:
 	var out = PackedFloat64Array()
 	out.resize(universe.size())
 	if not view.get("world_options", {}).get("roles", false):
 		out.fill(1.0)
 		return out
+	if universe.is_empty():
+		return out
+	var mode: int = SolverBackend.active_mode()
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		return _fits_weights_gd(view, universe, cards, knowledge, answers, bluffs)
 	var ids: Array = view.people.map(func(p): return p.id)
+	if mode == SolverBackend.Mode.CSHARP:
+		if not reuse:
+			return _eval_cs_weights(view, ids, universe, cards, knowledge, answers, bluffs, false)
+		var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
+		var key = hash(input)
+		if not cache.has(key) or cache[key].input != input:
+			if cache.size() >= 64:
+				cache.clear()
+			cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
+		var entry: Dictionary = cache[key]
+		var results: Dictionary = entry.results
+		var seer: bool = entry.seer
+		var mediums: int = relay_mediums(ids, cards)
+		var walkers: int = sleepwalk_claimants(ids, cards)
+		var packed_all: PackedInt64Array = _pack_worlds_profiled("RoleConstraints.coarse_masks", universe)
+		var masks: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasks(ids.size(), packed_all, seer, mediums, walkers)
+		var miss_worlds: Array = []
+		var miss_masks := PackedInt64Array()
+		var miss_seen: Dictionary = {}
+		for i in range(universe.size()):
+			var m: int = masks[i]
+			if not results.has(m) and not miss_seen.has(m):
+				miss_seen[m] = true
+				miss_worlds.append(universe[i])
+				miss_masks.append(m)
+		if not miss_worlds.is_empty():
+			var miss_weights: PackedFloat64Array = _eval_cs_weights(view, ids, miss_worlds, cards, knowledge, answers, bluffs, false)
+			for j in range(miss_worlds.size()):
+				results[miss_masks[j]] = miss_weights[j]
+		for i in range(universe.size()):
+			out[i] = float(results[masks[i]])
+		return out
+	# VERIFY mode: run both GDScript reference and C# kernel side-by-side at --tol 0
+	var cs_out: PackedFloat64Array = _eval_cs_weights(view, ids, universe, cards, knowledge, answers, bluffs, reuse)
+	var gd_out: PackedFloat64Array = _fits_weights_gd(view, universe, cards, knowledge, answers, bluffs)
+	SolverBackend._bridge().VerifyFloat64Buffer("RoleConstraints.fits_weights", gd_out, cs_out, 0.0)
+	return gd_out
+
+static func _fits_weights_gd(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool) -> PackedFloat64Array:
+	var out = PackedFloat64Array()
+	out.resize(universe.size())
+	var ids: Array = view.people.map(func(p): return p.id)
+	if not reuse:
+		var plain_routes = Activity.routes(view, _routing_cards(_live_cards(cards)), answers, knowledge, not bluffs) if Activity.available(view) else null
+		for i in range(universe.size()):
+			out[i] = _fits_view(view, ids, universe[i], cards, knowledge, answers, plain_routes, bluffs)
+		return out
 	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
 	var key = hash(input)
 	if not cache.has(key) or cache[key].input != input:
@@ -63,7 +176,7 @@ static func fits_weights(view: Dictionary, universe: Array, cards: Array, knowle
 	var routes = null
 	for i in range(universe.size()):
 		var world: Dictionary = universe[i]
-		var mask: int = coarse_mask(ids.size(), world, seer, mediums, walkers)
+		var mask: int = _coarse_mask_gd(ids.size(), world, seer, mediums, walkers)
 		if not results.has(mask):
 			# The Medium claims a relay adds are the same in every world that passes the
 			# relay checks (worlds that fail never reach routing), so routes hoist too.
@@ -73,6 +186,287 @@ static func fits_weights(view: Dictionary, universe: Array, cards: Array, knowle
 		out[i] = float(results[mask])
 	return out
 
+static func _intern_role(role_map: Dictionary, role: String) -> int:
+	if role_map.has(role):
+		return int(role_map[role])
+	var next_id: int = role_map.size()
+	role_map[role] = next_id
+	return next_id
+
+static func _intern_token(tok_map: Dictionary, s: String) -> int:
+	if tok_map.has(s):
+		return int(tok_map[s])
+	var next_id: int = tok_map.size() + 1
+	tok_map[s] = next_id
+	return next_id
+
+static func _pack_worlds_profiled(fn_name: String, universe: Array) -> PackedInt64Array:
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var packed: PackedInt64Array = SolverBackend.pack_worlds(universe)
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call(fn_name, pack_u)
+	return packed
+
+static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool, use_coarse_memo: bool) -> PackedFloat64Array:
+	var live_cards: Array = _live_cards(cards)
+	var routes_avail: bool = Activity.available(view)
+	var routes_okay: bool = true
+	var forced_lamp := PackedInt32Array()
+	if routes_avail:
+		var r_dict: Dictionary = Activity.routes(view, _routing_cards(live_cards), answers, knowledge, not bluffs)
+		routes_okay = bool(r_dict.get("okay", false))
+		if routes_okay:
+			var fl: Array = r_dict.get("forced_lamp", [])
+			forced_lamp.resize(fl.size())
+			for idx_f in range(fl.size()):
+				forced_lamp[idx_f] = ids.find(fl[idx_f])
+
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var packed_worlds: PackedInt64Array = SolverBackend.pack_worlds(universe)
+	var role_map: Dictionary = _FIXED_ROLES.duplicate()
+	var src_tokens: Dictionary = {}
+	var martyr_tokens: Dictionary = {}
+
+	var view_empty: bool = view.is_empty()
+	var chrono: Dictionary = view.get("chronology", {})
+	var has_curse: bool = chrono.has("curse")
+	var curse_exec_idx: int = -1
+	var curse_from: int = 0
+	var curse_until: int = 0
+	if has_curse:
+		var curse: Dictionary = chrono.curse
+		curse_exec_idx = ids.find(str(curse.get("executed", "")))
+		curse_from = int(curse.get("from", 0))
+		curse_until = int(curse.get("until", 0))
+
+	var own_idx: int = ids.find(knowledge.get("self", ""))
+	var own_role_str: String = str(knowledge.get("own_role", ""))
+	var own_role_id: int = -1
+	if own_idx >= 0 and own_role_str in C.ROLES:
+		own_role_id = _intern_role(role_map, own_role_str)
+	else:
+		own_idx = -1
+
+	var pub_roles_dict: Dictionary = knowledge.get("public_roles", {})
+	var pub_roles := PackedInt32Array()
+	pub_roles.resize(pub_roles_dict.size() * 2)
+	var pr_pos: int = 0
+	for person in pub_roles_dict:
+		pub_roles[pr_pos] = ids.find(person)
+		pub_roles[pr_pos + 1] = _intern_role(role_map, str(pub_roles_dict[person]))
+		pr_pos += 2
+
+	var seer_on: bool = seer_flag(cards)
+	var mediums_mask: int = relay_mediums(ids, cards)
+	var walkers_mask: int = sleepwalk_claimants(ids, cards)
+
+	var header := PackedInt32Array([
+		ids.size(),
+		1 if bluffs else 0,
+		1 if view_empty else 0,
+		1 if has_curse else 0,
+		curse_exec_idx,
+		curse_from,
+		curse_until,
+		own_idx,
+		own_role_id,
+		1 if routes_avail else 0,
+		1 if routes_okay else 0,
+		1 if use_coarse_memo else 0,
+		1 if seer_on else 0,
+		mediums_mask,
+		walkers_mask,
+	])
+
+	var events: Array = view.get("timeline", {}).get("events", [])
+	var has_timeline: bool = view.has("timeline")
+	var c_count: int = live_cards.size()
+	var card_ints := PackedInt32Array()
+	card_ints.resize(c_count * _CARD_STRIDE)
+
+	for c_idx in range(c_count):
+		var card: Dictionary = live_cards[c_idx]
+		var off: int = c_idx * _CARD_STRIDE
+		var k_str: String = str(card.get("kind", ""))
+		var kind_code: int = 0
+		if k_str == "report":
+			kind_code = 1
+		elif k_str == "claim":
+			kind_code = 2
+		elif k_str == "secret_claim":
+			kind_code = 3
+		elif k_str == "totem":
+			kind_code = 4
+		elif k_str == "event" and card.get("event") == "martyr":
+			kind_code = 5
+		card_ints[off] = kind_code
+
+		var quoted: bool = bool(card.get("quoted", false))
+		var inferred: bool = bool(card.get("inferred", false))
+		var has_relay: bool = card.has("relay_source")
+		var flags: int = 0
+		if quoted:
+			flags |= (1 << 0)
+		if inferred:
+			flags |= (1 << 1)
+		if has_relay:
+			flags |= (1 << 2)
+
+		var src_str: String = str(card.get("source", ""))
+		var src_idx: int = ids.find(src_str)
+		var src_tok: int = _intern_token(src_tokens, src_str)
+		card_ints[off + 2] = src_idx
+		card_ints[off + 3] = src_tok
+
+		var subj_val = card.get("subject", "")
+		card_ints[off + 4] = ids.find(subj_val) if subj_val is String else -1
+
+		var role_str: String = str(card.get("role", ""))
+		var role_id: int = _intern_role(role_map, role_str) if role_str != "" else -1
+		card_ints[off + 5] = role_id
+
+		if has_relay:
+			var rel_str: String = str(card.relay_source)
+			card_ints[off + 6] = ids.find(rel_str)
+			card_ints[off + 7] = _intern_token(src_tokens, rel_str)
+			if not quoted:
+				var rel_day: int = int(card.relay_observed_at.day)
+				card_ints[off + 8] = rel_day
+				if History.alive_at_night(view, rel_str, rel_day):
+					flags |= (1 << 3)
+			else:
+				card_ints[off + 8] = -1
+		else:
+			card_ints[off + 6] = -1
+			card_ints[off + 7] = -1
+			card_ints[off + 8] = -1
+
+		var c_night: int = int(card.get("night", -1))
+		card_ints[off + 9] = c_night
+		var data: Dictionary = card.get("data", {}) if card.get("data") is Dictionary else {}
+		card_ints[off + 10] = int(data.get("night", -1))
+
+		if kind_code == 3 and data.get("secret_kind", "") == "sleepwalker":
+			flags |= (1 << 11)
+
+		if kind_code == 1 and not quoted:
+			if role_str == "martyr":
+				if bool(data.get("evil", false)):
+					flags |= (1 << 4)
+					if History.executed(view, str(data.get("target", "")), int(card.get("observed_at", {}).get("day", -1))):
+						flags |= (1 << 5)
+			elif role_str == "sexton":
+				var sx_night: int = int(data.get("night", -1))
+				var alive_cnt: int = 0
+				for p in view.people:
+					if History.alive_at_night(view, p.id, sx_night):
+						alive_cnt += 1
+				var demon_ev: bool = events.any(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == sx_night)
+				if alive_cnt < 5 and not demon_ev:
+					flags |= (1 << 12)
+			elif role_str == "veteran":
+				var vet_mask: int = 0
+				var demon_ev_v: bool = events.any(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == c_night)
+				if not demon_ev_v and not view.people.is_empty():
+					var v_src_home: String = view.people[src_idx].home if src_idx >= 0 else view.people[-1].home
+					var blk: String = str(data.get("block", ""))
+					for d_i in range(ids.size()):
+						var d_routes: Array = Activity.demon_routes(view.people[d_i].home, v_src_home)
+						var fits_app: bool = d_routes.any(func(rt): return (rt.path[rt.path.size() - 2] if rt.path.size() >= 2 else v_src_home) == blk)
+						if fits_app:
+							vet_mask |= (1 << d_i)
+				card_ints[off + 11] = vet_mask
+
+		if kind_code == 1 or kind_code == 2:
+			card_ints[off + 12] = Chronology.tick(Chronology.statement_time(card))
+
+		if kind_code == 4: # totem
+			var t_cands: int = 0
+			for tid in data.get("candidates", []):
+				var t_i: int = ids.find(tid)
+				if t_i >= 0:
+					t_cands |= (1 << t_i)
+			card_ints[off + 13] = t_cands
+		elif kind_code == 5: # martyr event
+			card_ints[off + 13] = ids.find(data.get("martyr", ""))
+			card_ints[off + 14] = ids.find(data.get("saved", ""))
+		elif kind_code == 1: # report
+			if role_str == "gravedigger":
+				if not has_timeline:
+					flags |= (1 << 6)
+				else:
+					var gd_night: int = c_night if c_night >= 0 else int(card.get("observed_at", {}).get("day", -1))
+					if History.executed(view, str(data.get("executed", "")), gd_night):
+						flags |= (1 << 6)
+			else:
+				flags |= (1 << 6)
+
+			var pair_mask: int = 0
+			for person in data.get("pair", []):
+				var p_i: int = ids.find(person)
+				if p_i < 0:
+					pair_mask = -1
+					break
+				pair_mask |= (1 << p_i)
+			card_ints[off + 13] = pair_mask
+
+			var ans: Dictionary = answers.get(card.get("id", ""), {})
+			var sel_mask: int = 0
+			for person in ans.get("positive", []):
+				var s_i: int = ids.find(person)
+				if s_i < 0:
+					sel_mask = -1
+					break
+				sel_mask |= (1 << s_i)
+			card_ints[off + 14] = sel_mask
+
+			var rdef = C.role_def(role_str)
+			if rdef != null and rdef.shape == "ROLE_IN_GROUP":
+				flags |= (1 << 7)
+				if rdef.marked_registers:
+					flags |= (1 << 8)
+				if rdef.role_group_key == "pair":
+					card_ints[off + 15] = 0
+					card_ints[off + 16] = -1
+				else:
+					card_ints[off + 15] = 1
+					card_ints[off + 16] = ids.find(data.get(rdef.role_group_key, ""))
+				match rdef.role_target_pool:
+					"minion":
+						card_ints[off + 17] = 1
+					"demon":
+						card_ints[off + 17] = 2
+					"any":
+						card_ints[off + 17] = 3
+					_:
+						card_ints[off + 17] = 0
+				var read_role: String = str(data.get("role", ""))
+				if C.ROLES.get(read_role, {}).get("align") == "evil":
+					flags |= (1 << 9)
+				card_ints[off + 18] = _intern_role(role_map, read_role)
+			elif role_str == "martyr":
+				var m_tgt: String = str(data.get("target", ""))
+				card_ints[off + 16] = ids.find(m_tgt)
+				card_ints[off + 17] = _intern_token(martyr_tokens, m_tgt) if m_tgt != "" else 0
+			elif role_str == "seer":
+				if bool(data.get("yes", false)):
+					flags |= (1 << 10)
+				var reg: String = str(ans.get("registration", ""))
+				var reg_code: int = 0
+				if reg == "demon":
+					reg_code = 1
+				elif reg == "red_herring":
+					reg_code = 2
+				elif reg == "marked":
+					reg_code = 3
+				card_ints[off + 19] = reg_code
+
+		card_ints[off + 1] = flags
+
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("RoleConstraints.fits_weights", pack_u)
+	return SolverBackend._bridge().RoleFitsWeights(packed_worlds, header, pub_roles, forced_lamp, card_ints)
+
 ## The parts of a world the role check reads, as one int: fits() gives the same answer
 ## for worlds with the same mask (for the same view, cards and knowledge).
 ## mediums: relay_mediums(). A relay only reads whether its Medium is Delusional (the
@@ -81,6 +475,48 @@ static func fits_weights(view: Dictionary, universe: Array, cards: Array, knowle
 ## walkers: sleepwalk_claimants(). A "known to sleepwalk" claim reads only whether its
 ## claimants are the Sleepwalker, so only their bits join the mask (0 when nobody claims).
 static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> int:
+	var mode: int = SolverBackend.active_mode()
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		return _coarse_mask_gd(people, world, seer, mediums, walkers)
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var packed: int = SolverBackend.pack_world(world)
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("RoleConstraints.coarse_mask", pack_u)
+	var cs_val: int = int(SolverBackend._bridge().RoleCoarseMask(people, packed, seer, mediums, walkers))
+	if mode == SolverBackend.Mode.CSHARP:
+		return cs_val
+	var gd_val: int = _coarse_mask_gd(people, world, seer, mediums, walkers)
+	SolverBackend._bridge().VerifyScalarInt64("RoleConstraints.coarse_mask", gd_val, cs_val)
+	return gd_val
+
+static func coarse_masks(people: int, universe: Array, seer: bool, mediums: int, walkers: int = 0) -> PackedInt64Array:
+	if not SolverBackend.profiling_enabled:
+		return _coarse_masks_dispatch(people, universe, seer, mediums, walkers)
+	var st: int = SolverBackend.begin_stage("world_domain")
+	var out: PackedInt64Array = _coarse_masks_dispatch(people, universe, seer, mediums, walkers)
+	SolverBackend.end_stage(st)
+	return out
+
+static func _coarse_masks_dispatch(people: int, universe: Array, seer: bool, mediums: int, walkers: int) -> PackedInt64Array:
+	var mode: int = SolverBackend.active_mode()
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		return _coarse_masks_gd(people, universe, seer, mediums, walkers)
+	var packed: PackedInt64Array = _pack_worlds_profiled("RoleConstraints.coarse_masks", universe)
+	var cs_out: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasks(people, packed, seer, mediums, walkers)
+	if mode == SolverBackend.Mode.CSHARP:
+		return cs_out
+	var gd_out: PackedInt64Array = _coarse_masks_gd(people, universe, seer, mediums, walkers)
+	SolverBackend._bridge().VerifyInt64Buffer("RoleConstraints.coarse_masks", gd_out, cs_out)
+	return gd_out
+
+static func _coarse_masks_gd(people: int, universe: Array, seer: bool, mediums: int, walkers: int) -> PackedInt64Array:
+	var out := PackedInt64Array()
+	out.resize(universe.size())
+	for i in range(universe.size()):
+		out[i] = _coarse_mask_gd(people, universe[i], seer, mediums, walkers)
+	return out
+
+static func _coarse_mask_gd(people: int, world: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> int:
 	var n: int = people + 1
 	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if seer else 0)
 	if mediums != 0:
@@ -145,7 +581,7 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 	for card in cards:
 		if card.has("relay_source") and not card.get("quoted", false):
 			var medium: int = ids.find(card.relay_source)
-			if medium < 0 or world.evil & (1 << medium) or not preload("res://workshop/world_domain.gd").healthy(view, world, card.relay_source) or not preload("res://workshop/live_history.gd").alive_at_night(view, card.relay_source, card.relay_observed_at.day):
+			if medium < 0 or world.evil & (1 << medium) or not Domain._healthy_gd(view, world, card.relay_source) or not History.alive_at_night(view, card.relay_source, card.relay_observed_at.day):
 				return 0.0
 			var visit: String = card.relay_source + ":" + card.source
 			if visits.has(visit) and visits[visit] != card.relay_observed_at.day:
@@ -156,14 +592,14 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 	for card in cards:
 		if card.kind != "report" or card.get("quoted", false):
 			continue
-		if card.role == "martyr" and card.data.get("evil", false) and not preload("res://workshop/live_history.gd").executed(view, card.data.target, card.observed_at.day):
+		if card.role == "martyr" and card.data.get("evil", false) and not History.executed(view, card.data.target, card.observed_at.day):
 			return 0.0
 		if card.role == "sexton":
 			if sexton_night >= 0 and sexton_night != card.data.night:
 				return 0.0
 			sexton_night = card.data.night
 	if sexton_night >= 0:
-		if view.people.filter(func(p): return preload("res://workshop/live_history.gd").alive_at_night(view, p.id, sexton_night)).size() >= 5:
+		if view.people.filter(func(p): return History.alive_at_night(view, p.id, sexton_night)).size() >= 5:
 			return 0.0
 		if view.get("timeline", {}).get("events", []).any(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == sexton_night):
 			return 0.0
@@ -249,8 +685,7 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 			return 0.0
 		var source_evil: bool = (world.evil & (1 << source)) != 0
 		if world.has("converted") and not view.is_empty():
-			var time = preload("res://workshop/chronology.gd")
-			source_evil = time.evil_at(view, world, card.source, time.statement_time(card))
+			source_evil = Chronology.evil_at(view, world, card.source, Chronology.statement_time(card))
 		if source_evil:
 			if bluffs and not card.get("inferred", false):
 				continue
@@ -261,7 +696,7 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 			continue
 		if card.role == "gravedigger" and view.has("timeline"):
 			var gd_night: int = card.night if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
-			if not preload("res://workshop/live_history.gd").executed(view, str(card.data.get("executed", "")), gd_night):
+			if not History.executed(view, str(card.data.get("executed", "")), gd_night):
 				return 0.0
 		var pair_mask = 0
 		for person in card.data.get("pair", []):
@@ -325,7 +760,7 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 			seer_readings.append({"yes": bool(card.data.yes), "pair": pair_mask, "ping": ping, "reason": reason})
 	var seer_weight: float = 1.0
 	if seer != "":
-		seer_weight = _seer_rh_weight(good & ~(1 << seer_source), demon, int(world.marked), seer_readings)
+		seer_weight = _seer_rh_weight_gd(good & ~(1 << seer_source), demon, int(world.marked), seer_readings)
 		if seer_weight <= 0.0:
 			return 0.0
 	return seer_weight if _matching(assignments.values(), 0) else 0.0
@@ -333,6 +768,30 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 ## Average over every eligible Red Herring candidate r in G of the product of each
 ## Seer reading's probability in this world (Marked rolls 50% independently per reading).
 static func _seer_rh_weight(candidates_mask: int, demon: int, marked: int, readings: Array) -> float:
+	var mode: int = SolverBackend.active_mode()
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		return _seer_rh_weight_gd(candidates_mask, demon, marked, readings)
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var r_ints := PackedInt32Array()
+	r_ints.resize(readings.size() * 4)
+	for idx in range(readings.size()):
+		var rd: Dictionary = readings[idx]
+		var b: int = idx * 4
+		r_ints[b] = 1 if bool(rd.get("yes", false)) else 0
+		r_ints[b + 1] = int(rd.get("pair", 0))
+		r_ints[b + 2] = int(rd.get("ping", 0))
+		var r_str: String = str(rd.get("reason", ""))
+		r_ints[b + 3] = 1 if r_str == "demon" else (2 if r_str == "red_herring" else (3 if r_str == "marked" else 0))
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("RoleConstraints._seer_rh_weight", pack_u)
+	var cs_val: float = float(SolverBackend._bridge().RoleSeerRhWeight(candidates_mask, demon, marked, r_ints))
+	if mode == SolverBackend.Mode.CSHARP:
+		return cs_val
+	var gd_val: float = _seer_rh_weight_gd(candidates_mask, demon, marked, readings)
+	SolverBackend._bridge().VerifyScalarFloat64("RoleConstraints._seer_rh_weight", gd_val, cs_val, 0.0)
+	return gd_val
+
+static func _seer_rh_weight_gd(candidates_mask: int, demon: int, marked: int, readings: Array) -> float:
 	if candidates_mask == 0:
 		return 0.0
 	var demon_bit: int = (1 << demon) if demon >= 0 else 0
@@ -405,6 +864,25 @@ static func _matching(masks: Array, occupied: int) -> bool:
 ## Per world: BLUFF_WEIGHT for each distinct (source, role) declared by a source who is
 ## evil in that world. Inferred and quoted declarations don't count.
 static func bluff_weights(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
+	if not SolverBackend.profiling_enabled:
+		return _bluff_weights_dispatch(view, universe, cards)
+	var st: int = SolverBackend.begin_stage("world_domain")
+	var out: PackedFloat64Array = _bluff_weights_dispatch(view, universe, cards)
+	SolverBackend.end_stage(st)
+	return out
+
+static func _bluff_weights_dispatch(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
+	var mode: int = SolverBackend.active_mode()
+	if mode == SolverBackend.Mode.GDSCRIPT:
+		return _bluff_weights_gd(view, universe, cards)
+	var cs_out: PackedFloat64Array = _bluff_weights_cs(view, universe, cards)
+	if mode == SolverBackend.Mode.CSHARP:
+		return cs_out
+	var gd_out: PackedFloat64Array = _bluff_weights_gd(view, universe, cards)
+	SolverBackend._bridge().VerifyFloat64Buffer("RoleConstraints.bluff_weights", gd_out, cs_out, 0.0)
+	return gd_out
+
+static func _bluff_weights_gd(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
 	if view.get("chronology", {}).has("curse"):
 		return _temporal_bluff_weights(view, universe, cards)
 	if cards.any(func(c): return c.has("hearing_weight") and c.kind in ["claim", "report"]):
@@ -432,12 +910,64 @@ static func bluff_weights(view: Dictionary, universe: Array, cards: Array) -> Pa
 		out[w] = weight
 	return out
 
+static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var packed_worlds: PackedInt64Array = SolverBackend.pack_worlds(universe)
+	var ids: Array = view.people.map(func(p): return p.id)
+	var has_curse: bool = view.get("chronology", {}).has("curse")
+	var has_hw: bool = cards.any(func(c): return c.has("hearing_weight") and c.kind in ["claim", "report"])
+	if not has_curse and not has_hw:
+		var declared := PackedInt32Array()
+		var seen: Dictionary = {}
+		for card in cards:
+			if card.kind not in ["report", "claim"] or card.get("quoted", false) or card.get("inferred", false) or card.get("testimony_only", false):
+				continue
+			var i: int = ids.find(card.source)
+			var key: String = card.source + "|" + str(card.get("role", ""))
+			if i < 0 or seen.has(key):
+				continue
+			seen[key] = true
+			declared.append(1 << i)
+		var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+		SolverBackend.record_boundary_call("RoleConstraints.bluff_weights", pack_u)
+		return SolverBackend._bridge().RoleBluffWeightsSimple(packed_worlds, declared, BLUFF_WEIGHT)
+
+	var declarations: Dictionary = {}
+	for card in cards:
+		if card.kind in ["report", "claim"] and not card.get("quoted", false) and not card.get("inferred", false) and not card.get("testimony_only", false):
+			var dkey: String = Chronology.source_key(view, card) + ":" + card.role
+			if not declarations.has(dkey) or float(card.get("hearing_weight", 1.0)) > float(declarations[dkey].get("hearing_weight", 1.0)):
+				declarations[dkey] = card
+	var decl_cards: Array = declarations.values()
+	var d_count: int = decl_cards.size()
+	var who := PackedInt32Array()
+	var h_weights := PackedFloat64Array()
+	var stmt_ticks := PackedInt32Array()
+	who.resize(d_count)
+	h_weights.resize(d_count)
+	stmt_ticks.resize(d_count)
+	for d in range(d_count):
+		var c: Dictionary = decl_cards[d]
+		who[d] = ids.find(c.source)
+		h_weights[d] = float(c.get("hearing_weight", 1.0))
+		stmt_ticks[d] = Chronology.tick(Chronology.statement_time(c))
+	var curse_from: int = 0
+	var curse_until: int = 0
+	if has_curse:
+		var curse: Dictionary = view.chronology.curse
+		curse_from = int(curse.get("from", 0))
+		curse_until = int(curse.get("until", 0))
+	var pack_u2: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("RoleConstraints.bluff_weights_temporal", pack_u2)
+	return SolverBackend._bridge().RoleBluffWeightsTemporal(
+		packed_worlds, who, h_weights, stmt_ticks, has_curse, curse_from, curse_until, BLUFF_WEIGHT
+	)
+
 static func _temporal_bluff_weights(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
-	var time = preload("res://workshop/chronology.gd")
 	var declarations = {}
 	for card in cards:
 		if card.kind in ["report", "claim"] and not card.get("quoted", false) and not card.get("inferred", false) and not card.get("testimony_only", false):
-			var key: String = time.source_key(view, card) + ":" + card.role
+			var key: String = Chronology.source_key(view, card) + ":" + card.role
 			if not declarations.has(key) or float(card.get("hearing_weight", 1.0)) > float(declarations[key].get("hearing_weight", 1.0)):
 				declarations[key] = card
 	# Per declaration, once: the source's index, statement time and factor. A world with
@@ -449,7 +979,7 @@ static func _temporal_bluff_weights(view: Dictionary, universe: Array, cards: Ar
 	for card in declarations.values():
 		who.append(ids.find(card.source))
 		factor.append(lerpf(1.0, BLUFF_WEIGHT, float(card.get("hearing_weight", 1.0))))
-		times.append(time.statement_time(card))
+		times.append(Chronology.statement_time(card))
 	var out = PackedFloat64Array()
 	out.resize(universe.size())
 	for i in range(universe.size()):
@@ -461,7 +991,7 @@ static func _temporal_bluff_weights(view: Dictionary, universe: Array, cards: Ar
 			var j: int = who[d]
 			if j < 0:
 				continue
-			if (evil & (1 << j)) != 0 or (converted and time.evil_index(view, world, j, times[d])):
+			if (evil & (1 << j)) != 0 or (converted and Chronology.evil_index(view, world, j, times[d])):
 				weight *= factor[d]
 		out[i] = weight
 	return out

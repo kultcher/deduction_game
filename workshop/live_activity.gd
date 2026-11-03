@@ -96,6 +96,14 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 	return result
 
 static func routes(view: Dictionary, cards: Array, answers: Dictionary = {}, knowledge: Dictionary = {}, strict_reports: bool = true) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _routes_impl(view, cards, answers, knowledge, strict_reports)
+	var _st: int = SolverBackend.begin_stage("live_activity")
+	var _res: Dictionary = _routes_impl(view, cards, answers, knowledge, strict_reports)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _routes_impl(view: Dictionary, cards: Array, answers: Dictionary = {}, knowledge: Dictionary = {}, strict_reports: bool = true) -> Dictionary:
 	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, knowledge), answers, knowledge, strict_reports]
 	var key = hash(input)
 	if route_cache.has(key) and route_cache[key].input == input:
@@ -186,6 +194,14 @@ static func _count(mask: int) -> int:
 	return result
 
 static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
+	if not SolverBackend.profiling_enabled:
+		return _factors_impl(view, cards, value)
+	var _st: int = SolverBackend.begin_stage("live_activity")
+	var _res: Array = _factors_impl(view, cards, value)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _factors_impl(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	if not available(view):
 		return []
 	var observations = relevant(cards).filter(func(c): return not c.get("quoted", false) or c.kind == "alibi")
@@ -284,6 +300,14 @@ static func score(world: Dictionary, factor: Dictionary) -> float:
 	return direct
 
 static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
+	if not SolverBackend.profiling_enabled:
+		return _likelihood_impl(view, cards, person, alignment)
+	var _st: int = SolverBackend.begin_stage("live_activity")
+	var _res: float = _likelihood_impl(view, cards, person, alignment)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _likelihood_impl(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
 	var relevant_cards = relevant(cards)
 	var nights: Array = []
 	for card in relevant_cards:
@@ -481,6 +505,14 @@ static func _scion_succession_splits(view: Dictionary, cards: Array, full_profil
 ## Normalized probability in [0, 1] that `person` walked across `scene_block` on `night`
 ## given non-trace movement observations in `cards` under `alignment`.
 static func crossing_probability(view: Dictionary, cards: Array, person: Dictionary, night: int, alignment: String, scene_block: String) -> float:
+	if not SolverBackend.profiling_enabled:
+		return _crossing_probability_impl(view, cards, person, night, alignment, scene_block)
+	var _st: int = SolverBackend.begin_stage("live_activity")
+	var _res: float = _crossing_probability_impl(view, cards, person, night, alignment, scene_block)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _crossing_probability_impl(view: Dictionary, cards: Array, person: Dictionary, night: int, alignment: String, scene_block: String) -> float:
 	if not History.alive_at_night(view, person.id, night) or scene_block == "":
 		return 0.0
 	var role: String = role_of(cards, person.id)
@@ -631,6 +663,14 @@ static func _build_scene_tables(view: Dictionary, cards: Array) -> Array:
 ## Three-valued evaluation of a structured trace against ONLY the receipts present in `cards`.
 ## Returns {"state": "matches" | "unknown" | "contradicts", "weight": float, "missing": String, "reason": String}.
 static func evaluate_trace_for_person(view: Dictionary, cards: Array, trace_card: Dictionary, person_id: String) -> Dictionary:
+	if not SolverBackend.profiling_enabled:
+		return _evaluate_trace_for_person_impl(view, cards, trace_card, person_id)
+	var _st: int = SolverBackend.begin_stage("live_activity")
+	var _res: Dictionary = _evaluate_trace_for_person_impl(view, cards, trace_card, person_id)
+	SolverBackend.end_stage(_st)
+	return _res
+
+static func _evaluate_trace_for_person_impl(view: Dictionary, cards: Array, trace_card: Dictionary, person_id: String) -> Dictionary:
 	var d: Dictionary = trace_card.get("data", {})
 	var fam: String = d.get("family", "")
 	var night: int = int(trace_card.get("night", d.get("day", -1)))
