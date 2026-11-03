@@ -6,6 +6,7 @@ enum Mode { GDSCRIPT = 0, CSHARP = 1, VERIFY = 2 }
 static var _cs_bridge: Variant = null
 static var _cs_probed: bool = false
 static var _mode: int = Mode.GDSCRIPT
+static var _universe_handles: Dictionary = {}
 
 # --- Slice C0 / C0b Microsecond Stage Timers & Boundary Call Counters ---
 static var profiling_enabled: bool = false
@@ -18,11 +19,11 @@ static var _boundary_pack_usec: Dictionary = {}
 
 const STAGES: Array[String] = [
 	"outer_prep",          # jury.gd, shared_ledger.gd, circumstantial.gd
-	"pack_inputs",         # full dictionary -> Packed*Array repacking
+	"pack_inputs",         # dictionary -> Packed*Array repacking & handle registration
 	"world_domain",        # world_domain.gd + role_constraints.gd
-	"live_activity",       # live_activity.gd route masks & trace likelihoods
-	"case_eval_compile",   # case_eval.gd equivalence classes & posterior pass
-	"channel_sum_product", # channel_sum_product.gd + factored_channels.gd
+	"live_activity",       # live_activity.gd route masks, trace likelihoods & movement scores
+	"case_eval_compile",   # case_eval.gd equivalence classes
+	"channel_sum_product", # case_eval.gd posterior pass + channel_sum_product.gd + factored_channels.gd
 	"reason_attribution",  # reason_attribution.gd (_class_like / _subset_fits)
 ]
 
@@ -53,6 +54,7 @@ static func active_mode() -> int:
 	return _mode if _bridge() != null else Mode.GDSCRIPT
 
 static func clear_context() -> void:
+	_universe_handles.clear()
 	var b = _bridge()
 	if b != null:
 		b.ClearContext()
@@ -65,7 +67,7 @@ static func get_verify_mismatches() -> int:
 	var b = _bridge()
 	return int(b.GetVerifyMismatches()) if b != null else 0
 
-# --- Compact 8-Byte WorldEntry Packing (Matches SolverContext.cs::WorldEntry) ---
+# --- Compact 8-Byte WorldEntry Packing & Handle Registry ---
 
 static func modifier_code(world: Dictionary) -> int:
 	if not world.has("modifier"):
@@ -98,6 +100,30 @@ static func pack_worlds(universe: Array) -> PackedInt64Array:
 	for i in range(n):
 		out[i] = pack_world(universe[i])
 	return out
+
+static func get_universe_handle(u_key: String, universe: Array) -> int:
+	if active_mode() == Mode.GDSCRIPT or u_key == "":
+		return -1
+	if _universe_handles.has(u_key):
+		return int(_universe_handles[u_key])
+	var t0: int = Time.get_ticks_usec() if profiling_enabled else 0
+	var packed: PackedInt64Array = pack_worlds(universe)
+	var pack_u: int = (Time.get_ticks_usec() - t0) if profiling_enabled else 0
+	record_boundary_call("SolverContext.RegisterPackedUniverse", pack_u)
+	var h: int = int(_bridge().RegisterPackedUniverse(u_key, packed))
+	_universe_handles[u_key] = h
+	return h
+
+static func get_sub_universe_handle(sub_key: String, base_handle: int, indices: PackedInt32Array) -> int:
+	if active_mode() == Mode.GDSCRIPT or base_handle < 0 or sub_key == "":
+		return -1
+	if _universe_handles.has(sub_key):
+		return int(_universe_handles[sub_key])
+	record_boundary_call("SolverContext.RegisterIndexedSubUniverse", 0)
+	var h: int = int(_bridge().RegisterIndexedSubUniverse(sub_key, base_handle, indices))
+	if h >= 0:
+		_universe_handles[sub_key] = h
+	return h
 
 # --- Re-Entrant Exclusive / Inclusive Profiling Helpers ---
 
@@ -194,13 +220,13 @@ static func format_profile_report(label: String = "Solver Profile") -> String:
 		lines.append("%-22s %10.2f %10.2f %10d %10.1f %7.1f%%" % [s, ms, inc_ms, c, per_call, pct])
 	if not _boundary_calls.is_empty():
 		lines.append("--- Boundary Calls ---")
-		lines.append("%-34s %10s %10s %10s" % ["Function", "Calls", "Pack (ms)", "Pack us"])
+		lines.append("%-40s %10s %10s %10s" % ["Function", "Calls", "Pack (ms)", "Pack us"])
 		var names: Array = _boundary_calls.keys()
 		names.sort()
 		for fn_name in names:
 			var calls: int = int(_boundary_calls[fn_name])
 			var p_u: int = int(_boundary_pack_usec.get(fn_name, 0))
-			lines.append("%-34s %10d %10.2f %10.1f" % [
+			lines.append("%-40s %10d %10.2f %10.1f" % [
 				str(fn_name), calls, p_u / 1000.0, float(p_u) / float(max(calls, 1))
 			])
 	return "\n".join(lines)

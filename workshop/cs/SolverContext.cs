@@ -58,10 +58,6 @@ public readonly struct WorldEntry : IEquatable<WorldEntry>
         get => (int)((Raw >> 42) & 0xFL) - 2;
     }
 
-    /// <summary>
-    /// Matches world.get("modifier", "marked") in GDScript: when "modifier" is absent (-2),
-    /// defaults to ModMarked (1).
-    /// </summary>
     public int EffectiveModifier
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -72,9 +68,6 @@ public readonly struct WorldEntry : IEquatable<WorldEntry>
         }
     }
 
-    /// <summary>
-    /// Matches C.SECRET_MOD_LIST.find(world.modifier): 0..3 for standard modifiers, -1 otherwise.
-    /// </summary>
     public int SecretModIndex
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -171,13 +164,21 @@ public readonly struct WorldEntry : IEquatable<WorldEntry>
 internal static class SolverContext
 {
     private static readonly Dictionary<string, long[]> UniverseStride3Cache = new(16);
+    private static readonly List<long[]> PackedUniverses = new(64);
+    private static readonly Dictionary<string, int> PackedUniverseByKey = new(64);
+    private static readonly List<LiveActivityKernel.CompiledMovementFactor> MovementFactors = new(64);
 
     public static void Clear()
     {
         UniverseStride3Cache.Clear();
+        PackedUniverses.Clear();
+        PackedUniverseByKey.Clear();
+        MovementFactors.Clear();
     }
 
     public static int CachedUniverseCount => UniverseStride3Cache.Count;
+    public static int RegisteredHandleCount => PackedUniverses.Count;
+    public static int RegisteredMovementFactorCount => MovementFactors.Count;
 
     public static bool TryGetUniverse(string cacheKey, out long[] stride3) =>
         UniverseStride3Cache.TryGetValue(cacheKey, out stride3!);
@@ -190,4 +191,76 @@ internal static class SolverContext
         }
         UniverseStride3Cache[cacheKey] = stride3;
     }
+
+    public static int LookupPackedUniverseHandle(string key) =>
+        PackedUniverseByKey.TryGetValue(key, out int handle) ? handle : -1;
+
+    public static int RegisterPackedUniverse(string key, long[] packedWorlds)
+    {
+        if (!string.IsNullOrEmpty(key) && PackedUniverseByKey.TryGetValue(key, out int existing))
+        {
+            return existing;
+        }
+        int handle = PackedUniverses.Count;
+        PackedUniverses.Add(packedWorlds);
+        if (!string.IsNullOrEmpty(key))
+        {
+            PackedUniverseByKey[key] = handle;
+        }
+        return handle;
+    }
+
+    public static int RegisterIndexedSubUniverse(string subKey, int baseHandle, int[] indices)
+    {
+        if (!string.IsNullOrEmpty(subKey) && PackedUniverseByKey.TryGetValue(subKey, out int existing))
+        {
+            return existing;
+        }
+        if (baseHandle < 0 || baseHandle >= PackedUniverses.Count)
+        {
+            return -1;
+        }
+        long[] baseWorlds = PackedUniverses[baseHandle];
+        long[] sliced = new long[indices.Length];
+        for (int i = 0; i < indices.Length; i++)
+        {
+            sliced[i] = baseWorlds[indices[i]];
+        }
+        int handle = PackedUniverses.Count;
+        PackedUniverses.Add(sliced);
+        if (!string.IsNullOrEmpty(subKey))
+        {
+            PackedUniverseByKey[subKey] = handle;
+        }
+        return handle;
+    }
+
+    public static long[] ResolveWorlds(int handle, int[] subsetIndices, long[] fallbackWorlds)
+    {
+        if (handle < 0 || handle >= PackedUniverses.Count)
+        {
+            return fallbackWorlds;
+        }
+        long[] baseWorlds = PackedUniverses[handle];
+        if (subsetIndices.Length == 0)
+        {
+            return baseWorlds;
+        }
+        long[] sub = new long[subsetIndices.Length];
+        for (int i = 0; i < subsetIndices.Length; i++)
+        {
+            sub[i] = baseWorlds[subsetIndices[i]];
+        }
+        return sub;
+    }
+
+    public static int RegisterMovementFactor(LiveActivityKernel.CompiledMovementFactor factor)
+    {
+        int handle = MovementFactors.Count;
+        MovementFactors.Add(factor);
+        return handle;
+    }
+
+    public static LiveActivityKernel.CompiledMovementFactor? GetMovementFactor(int handle) =>
+        (handle >= 0 && handle < MovementFactors.Count) ? MovementFactors[handle] : null;
 }

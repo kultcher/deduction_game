@@ -10,6 +10,8 @@ const Game = preload("res://game/game.gd")
 const Caches = preload("res://workshop/caches.gd")
 const Ownership = preload("res://game/workshop_ownership.gd")
 
+var _refreshes: int = 0
+
 func _init() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	var sd: int = 42
@@ -74,12 +76,12 @@ func _run_seed(sd: int, size: int, day_limit: int, mode: int, mode_name: String)
 	g.log_dir = "user://profile_c0"
 	g.new_case(sd, size)
 
-	var refreshes: int = 0
+	_refreshes = 0
 	var inner: Callable = g.w.workshop_refresh
 	g.w.workshop_refresh = func(n, phase):
 		inner.call(n, phase)
 		if phase == "after":
-			refreshes += 1
+			_refreshes += 1
 
 	var steps: int = 0
 	while g.w.day < day_limit and not g.w.game_over and steps < 400:
@@ -94,7 +96,7 @@ func _run_seed(sd: int, size: int, day_limit: int, mode: int, mode_name: String)
 
 	var wall_ms: int = Time.get_ticks_msec() - t0_ms
 	var label: String = "Seed %d (%d NPCs, to Day %d) [%s] wall=%d ms steps=%d refreshes=%d" % [
-		sd, size, day_limit, mode_name, wall_ms, steps, refreshes
+		sd, size, day_limit, mode_name, wall_ms, steps, _refreshes
 	]
 	print(SolverBackend.format_profile_report(label))
 	if mode == SolverBackend.Mode.VERIFY:
@@ -111,7 +113,7 @@ func _run_seed(sd: int, size: int, day_limit: int, mode: int, mode_name: String)
 	return {
 		"wall_ms": wall_ms,
 		"steps": steps,
-		"refreshes": refreshes,
+		"refreshes": _refreshes,
 		"rng": str(g.w.rng.state),
 		"suspicions": sus,
 		"verify_calls": SolverBackend.get_verify_calls(),

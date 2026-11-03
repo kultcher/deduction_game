@@ -41,6 +41,10 @@ static func clear_all() -> void:
 	LiveActivity.cache.clear()
 	LiveActivity.route_cache.clear()
 	LiveActivity.demon_route_cache.clear()
+	LiveActivity._factor_handles.clear()
+	LiveActivity._mru_factor = null
+	LiveActivity._mru_handle = -1
+	LiveActivity._mru_epoch = -1
 	MovementModel.cache.clear()
 	ReadingChallenges.cache.clear()
 	ReadingChallenges.fraction_cache.clear()

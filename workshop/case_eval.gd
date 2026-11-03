@@ -205,7 +205,7 @@ static func category_text(cat: String) -> String:
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary = {}) -> Dictionary:
 	if not SolverBackend.profiling_enabled:
 		return _evaluate_impl(view, case_data, listener)
-	var _st: int = SolverBackend.begin_stage("case_eval_compile")
+	var _st: int = SolverBackend.begin_stage("channel_sum_product")
 	var _res: Dictionary = _evaluate_impl(view, case_data, listener)
 	SolverBackend.end_stage(_st)
 	return _res
@@ -424,7 +424,6 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 			f.routes = routes
 			tests.append(f)
 	var test_hold = PackedByteArray()  # class-major: does each test factor's target fit?
-	var move = PackedFloat64Array()
 	var team_of: PackedInt32Array = ix.team_of
 	var plain_bits: bool = Solver.world_bits(view).plain
 	var group = PackedInt32Array()  # per class: index into group_bits (who is evil then)
@@ -458,7 +457,6 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 			count.append(0.0)
 			prem.append(premise[i])
 			is_dead.append(dead[i])
-			move.append(_movement_score(view, universe[i], movement))
 			for f in tests:
 				var target: int = Solver.person_index(view, f.target)
 				test_hold.append(1 if target >= 0 and TimeModel.evil_at(view, universe[i], f.target, f.epoch) else 0)
@@ -468,6 +466,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 			states.append_array(digits)
 		count[c_id] += 1.0
 		class_of[i] = c_id
+	var u_handle: int = SolverBackend.get_universe_handle(Solver._universe_key(view), universe)
+	var move: PackedFloat64Array = _movement_scores(view, universe, rep, u_handle, movement)
 	var out = {"input": key_input, "key": key, "reports": reports, "tables": tables, "valids": valids, "move": move,
 		"movement": movement.map(func(f): return f.label), "factors": movement, "tests": tests, "test_hold": test_hold, "group": group, "group_bits": group_bits, "movement_ok": _movement_ok(view, cards, live),
 		"q": reports.map(func(c): return chance_content(view, c)), "team": team, "rep": rep, "count": count,
@@ -486,9 +486,11 @@ static func _coarse(view: Dictionary, seer: bool, mediums: int, walkers: int = 0
 		return _coarse_cache[key]
 	if _coarse_cache.size() > 16:
 		_coarse_cache.clear()
+	var u_key: String = Solver._universe_key(view)
 	var universe: Array = Solver.universe(view)
 	var people: int = view.people.size()
-	var out: PackedInt64Array = Solver.Roles.coarse_masks(people, universe, seer, mediums, walkers)
+	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
+	var out: PackedInt64Array = Solver.Roles.coarse_masks(people, universe, seer, mediums, walkers, u_handle)
 	_coarse_cache[key] = out
 	return out
 
@@ -506,6 +508,37 @@ static func _movement_score(view: Dictionary, world: Dictionary, factors: Array)
 		elif target >= 0 and factor.get("origin", "") == "movement_model" and world.marked == target:
 			score *= maxf(factor.good_marked_likelihood, 1e-12) / maxf(factor.good_likelihood, 1e-12)
 	return score
+
+static func _movement_scores(view: Dictionary, universe: Array, rep: PackedInt32Array, u_handle: int, factors: Array) -> PackedFloat64Array:
+	var nc: int = rep.size()
+	var out := PackedFloat64Array()
+	out.resize(nc)
+	out.fill(1.0)
+	if nc == 0 or factors.is_empty():
+		return out
+	var rep_worlds: Array = []
+	rep_worlds.resize(nc)
+	for c in range(nc):
+		rep_worlds[c] = universe[rep[c]]
+	for factor in factors:
+		if factor.get("joint_live", false):
+			var j_scores: PackedFloat64Array = Movement.Live.scores(rep_worlds, factor, u_handle, rep)
+			for c in range(nc):
+				out[c] *= j_scores[c]
+			continue
+		var target: int = Solver.person_index(view, factor.target)
+		if target < 0:
+			continue
+		var ep = factor.get("epoch", view.get("alignment_epoch", ""))
+		var ratio: float = pow(2.0, float(factor.log2_ratio))
+		var is_mm: bool = factor.get("origin", "") == "movement_model"
+		for c in range(nc):
+			var world: Dictionary = rep_worlds[c]
+			if TimeModel.evil_at(view, world, factor.target, ep):
+				out[c] *= ratio
+			elif is_mm and world.marked == target:
+				out[c] *= maxf(factor.good_marked_likelihood, 1e-12) / maxf(factor.good_likelihood, 1e-12)
+	return out
 
 ## Fixture views: sightings and alibis that can't all be true leave no consistent world.
 ## (Live views check routes inside the role check.)
@@ -726,13 +759,24 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 	out.resize(cc.team.size())
 	out.fill(0.0)
 	var universe: Array = Solver.universe(view)
+	var base_u_handle: int = SolverBackend.get_universe_handle(Solver._universe_key(view), universe)
+	var cc_reps_handle: int = SolverBackend.get_sub_universe_handle("cc_reps:" + str(cc.key), base_u_handle, cc.rep)
 	var reps: Array = []
 	var which: Array = []
-	for c in classes:
+	var sub_idx := PackedInt32Array()
+	var full_cc: bool = classes.size() == cc.rep.size()
+	for k_i in range(classes.size()):
+		var c: int = int(classes[k_i])
 		reps.append(universe[cc.rep[c]])
 		which.append(c)
+		if full_cc and c != k_i:
+			full_cc = false
+	if not full_cc and cc_reps_handle >= 0:
+		sub_idx.resize(which.size())
+		for k_i in range(which.size()):
+			sub_idx[k_i] = int(which[k_i])
 	var live: bool = Domain.live(view)
-	var t: PackedFloat64Array = Solver.Roles.fits_weights(view, reps, cards, knowledge, {}, live)
+	var t: PackedFloat64Array = Solver.Roles.fits_weights(view, reps, cards, knowledge, {}, live, cc_reps_handle, sub_idx)
 	# Only classes that fail the content check need the declaration-only check.
 	var declarations = PackedByteArray()
 	if live and t.has(0.0) and cards.any(func(card): return card.kind == "report"):
@@ -746,16 +790,19 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 			claims.append(claim)
 		var failed: Array = []
 		var at: PackedInt32Array = PackedInt32Array()
+		var failed_cc_idx := PackedInt32Array()
 		for x in range(reps.size()):
 			if t[x] == 0.0:
 				failed.append(reps[x])
 				at.append(x)
-		var sub: PackedByteArray = Solver.Roles.fits_table(view, failed, claims, knowledge, {}, true)
+				if cc_reps_handle >= 0:
+					failed_cc_idx.append(int(which[x]))
+		var sub: PackedByteArray = Solver.Roles.fits_table(view, failed, claims, knowledge, {}, true, cc_reps_handle, failed_cc_idx)
 		declarations.resize(reps.size())
 		declarations.fill(0)
 		for y in range(at.size()):
 			declarations[at[y]] = sub[y]
-	var weights: PackedFloat64Array = Solver.Roles.bluff_weights(view, reps, cards) if live else PackedFloat64Array()
+	var weights: PackedFloat64Array = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, sub_idx) if live else PackedFloat64Array()
 	var relayed_seers: Array = cards.filter(func(card): return card.kind == "report" and card.get("role", "") == "seer" and card.get("testimony_only", false) and not card.get("quoted", false))
 	var ids: Array = Solver.person_ids(view)
 	var all_mask: int = (1 << ids.size()) - 1

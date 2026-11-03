@@ -17,6 +17,69 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03, Argon: slice C2 + C1 packing handles delivered (`patch_003_slice_c2.zip`)
+
+- **Base:** `main` at `0498fce6c5def9f70f15c0015ac8e8e1cb403ab2` (`0498fce`).
+- **Deliverable:** `patch_003_slice_c2.zip` in Google Drive (`Demonologist Patches`), with
+  full replacement/new files plus `MANIFEST_SLICE_C2.md`.
+- **Status:** Ready for Claude verification (`dotnet build -c Debug`, `ci_fast_suites.txt`
+  including `test_csharp_slice_c2`, Seed 42 Day 4 `tools/profile_c0.gd` run, and `--tol 0`
+  golden capture vs `tools/golden/baseline_82faa5b`).
+- **Next actor:** **Claude**.
+
+### What's in `patch_003_slice_c2.zip`
+
+1. **Follow-ups on all 5 notes from Claude's C1 report:**
+   - **Note 1 (`pack_inputs` 1,932 ms bottleneck):** Added a handle-based packed universe
+     arena in `SolverContext.cs` (`RegisterPackedUniverse`, `RegisterIndexedSubUniverse`,
+     `ResolveWorlds`) and `SolverBackend` (`get_universe_handle`, `get_sub_universe_handle`),
+     cleared atomically in `WorkshopCaches.clear_all()`. Wired `u_handle` / `cc_reps_handle`
+     and `sub_idx` / `failed_cc_idx` through `CaseEval._coarse`, `CaseEval._fits_over`, and
+     `RoleConstraints` (`coarse_masks`, `fits_weights`, `fits_table`, `bluff_weights`), so
+     the 5,040- / 15,120-world universe and each equivalence-class `cc.rep` table pack once
+     per key instead of repacking ~2,000 times per Seed 42 game.
+   - **Note 2 (`VERIFY` skipping `coarse_masks`):** `RoleConstraints.fits_weights` in
+     `VERIFY` mode previously delegated to `_fits_weights_gd`, whose coarse-mask cache hit
+     skipped calling `RoleCoarseMasks`. `VERIFY` now explicitly invokes
+     `RoleCoarseMasksByHandle` + `VerifyInt64Buffer("RoleConstraints.coarse_masks", ...)` on
+     every `fits_weights` call alongside `VerifyFloat64Buffer("RoleConstraints.fits_weights")`.
+   - **Note 3 (`channel_sum_product` showing 0 calls):** Live `CaseEval` evaluates posterior
+     marginals over compiled equivalence classes in `CaseEval.evaluate`, whereas the
+     treewidth sum-product circuit (`FactoredChannels` / `ChannelSumProduct`) only runs in
+     circuit/probe suites. `CaseEval.evaluate` now records under `channel_sum_product` while
+     `CaseEval.compile` stays under `case_eval_compile`, cleanly separating class compilation
+     from per-listener posterior evaluation ahead of Slice C3.
+   - **Note 4 (`live_activity` 2,904 ms):** Ported in full below as Slice C2.
+   - **Note 5 (`profile_c0.gd` `refreshes=0`):** Promoted `_refreshes` from a value-captured
+     local `int` inside the lambda to a `SceneTree` member variable (matching
+     `golden_capture.gd`).
+2. **Slice C2 (`LiveActivity.cs` + batched `LiveActivity.scores`):**
+   - `workshop/cs/LiveActivity.cs` (+ `.uid`, `uid://dwxl3uolgi3pa`) & `workshop/live_activity.gd`:
+     1:1 bit-exact C# port of `routes` / `_paths` (4-block pairwise bitmask `PathSpec`,
+     Medium `relay_source` hearth checks, complete vigils, `guard_claim`, `coverage`,
+     Night Watch / Warden / Medium / Lamplighter strict reports, Lamplighter walker counts +
+     `positive` answers, and `dropped` / `item_drop` Hall matching), single & all-person
+     batched `_likelihood` (`LiveAllProfiles`), single & scene-batched
+     `crossing_probability` (`LiveSceneCrossings`), pre-registered compiled movement factor
+     handles (`LiveRegisterMovementFactor`, cleared atomically in `WorkshopCaches.clear_all()`),
+     and single + handle-batched world scoring (`LiveScoreWorld`, `LiveScoreWorldsByHandle`)
+     covering Revenant `converted` profiles, 1-trace & 2-trace passer contractions, and Scion
+     succession splits.
+   - Wired `CaseEval._movement_scores` (`workshop/case_eval.gd`) to score all equivalence-class
+     representatives `rep` in a single `LiveScoreWorldsByHandle(u_handle, rep, ...)` call per
+     `CaseEval.compile` (1 boundary crossing and 0 `pack_world` loops instead of ~1,000).
+   - Added `tools/test_csharp_slice_c2.gd` (+ `.uid`, `uid://dbbsd0qc7quhn`) and registered
+     `test_csharp_slice_c2` in `tools/ci_fast_suites.txt`.
+
+### Notes for Claude's check pass
+
+- Pure .NET 8 BCL + `GodotSharp` only (zero external NuGet dependencies).
+- Please post the updated `tools/profile_c0.gd` Seed 42 Day 4 table so we can see how much of
+  both `pack_inputs` (`1,932 ms`) and `live_activity` (`2,904 ms` / `3,329 ms`) dropped before
+  Slice C3 moves `solver.gd` + `case_eval.gd` compilation & marginalization into C#.
+
+---
+
 ## 2026-11-03 ~13:30 ET, Claude: slice C0b + C1 checked, green, on main
 
 - **Base:** `1821db3` as declared; unpacked on `csharp/slice-c1`, no conflicts, no

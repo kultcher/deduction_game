@@ -23,6 +23,8 @@ const _FIXED_ROLES = {
 	"demon": 9,
 }
 const _CARD_STRIDE = 20
+const _EMPTY_INT32 := PackedInt32Array()
+const _EMPTY_INT64 := PackedInt64Array()
 
 static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary = {}) -> bool:
 	return fit_weight(view, world, cards, knowledge, answers) > 0.0
@@ -42,7 +44,7 @@ static func _fit_weight_dispatch(view: Dictionary, world: Dictionary, cards: Arr
 	if mode == SolverBackend.Mode.GDSCRIPT:
 		return _fit_weight_gd(view, world, cards, knowledge, answers, bluffs)
 	var ids: Array = view.people.map(func(p): return p.id)
-	if reuse:
+	if reuse and mode == SolverBackend.Mode.CSHARP:
 		var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
 		var key = hash(input)
 		if not cache.has(key) or cache[key].input != input:
@@ -51,15 +53,13 @@ static func _fit_weight_dispatch(view: Dictionary, world: Dictionary, cards: Arr
 			cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
 		var mask: int = _coarse_mask_gd(ids.size(), world, cache[key].seer, relay_mediums(ids, cards), sleepwalk_claimants(ids, cards))
 		if cache[key].results.has(mask):
-			if mode == SolverBackend.Mode.CSHARP:
-				return float(cache[key].results[mask])
-		elif mode == SolverBackend.Mode.CSHARP:
-			var cs_single: float = _eval_cs_weights(view, ids, [world], cards, knowledge, answers, bluffs, false)[0]
-			cache[key].results[mask] = cs_single
-			return cs_single
+			return float(cache[key].results[mask])
+		var cs_single: float = _eval_cs_weights(view, ids, [world], -1, _EMPTY_INT32, cards, knowledge, answers, bluffs, false)[0]
+		cache[key].results[mask] = cs_single
+		return cs_single
 	elif mode == SolverBackend.Mode.CSHARP:
-		return _eval_cs_weights(view, ids, [world], cards, knowledge, answers, bluffs, false)[0]
-	var cs_val: float = _eval_cs_weights(view, ids, [world], cards, knowledge, answers, bluffs, false)[0]
+		return _eval_cs_weights(view, ids, [world], -1, _EMPTY_INT32, cards, knowledge, answers, bluffs, false)[0]
+	var cs_val: float = _eval_cs_weights(view, ids, [world], -1, _EMPTY_INT32, cards, knowledge, answers, bluffs, false)[0]
 	var gd_val: float = _fit_weight_gd(view, world, cards, knowledge, answers, bluffs)
 	SolverBackend._bridge().VerifyScalarFloat64("RoleConstraints.fit_weight", gd_val, cs_val, 0.0)
 	return gd_val
@@ -79,31 +79,25 @@ static func _fit_weight_gd(view: Dictionary, world: Dictionary, cards: Array, kn
 		cache[key].results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, null, bluffs)
 	return float(cache[key].results[mask])
 
-## fits() for every world of a universe, hashing the view and cards once rather than
-## per world. Same memo as fits(), so the results agree.
-## Weight of one role declaration (claim, or a reading's implied gift) by a source who
-## is evil in that world: a bluff is possible, but naming this exact role is a choice
-## among several, so a claim still weakly supports its claimant (live play only).
 const BLUFF_WEIGHT = Tuning.Workshop.BLUFF_WEIGHT
 
-## bluffs (live play): evil sources' role declarations constrain nothing; see _fits.
-static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false) -> PackedByteArray:
-	var weights: PackedFloat64Array = fits_weights(view, universe, cards, knowledge, answers, bluffs)
+static func fits_table(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false, u_handle: int = -1, sub_indices: PackedInt32Array = _EMPTY_INT32) -> PackedByteArray:
+	var weights: PackedFloat64Array = fits_weights(view, universe, cards, knowledge, answers, bluffs, u_handle, sub_indices)
 	var out = PackedByteArray()
 	out.resize(weights.size())
 	for i in range(weights.size()):
 		out[i] = 1 if weights[i] > 0.0 else 0
 	return out
 
-static func fits_weights(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false) -> PackedFloat64Array:
+static func fits_weights(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary = {}, bluffs: bool = false, u_handle: int = -1, sub_indices: PackedInt32Array = _EMPTY_INT32) -> PackedFloat64Array:
 	if not SolverBackend.profiling_enabled:
-		return _fits_weights_dispatch(view, universe, cards, knowledge, answers, bluffs)
+		return _fits_weights_dispatch(view, universe, cards, knowledge, answers, bluffs, u_handle, sub_indices)
 	var st: int = SolverBackend.begin_stage("world_domain")
-	var out: PackedFloat64Array = _fits_weights_dispatch(view, universe, cards, knowledge, answers, bluffs)
+	var out: PackedFloat64Array = _fits_weights_dispatch(view, universe, cards, knowledge, answers, bluffs, u_handle, sub_indices)
 	SolverBackend.end_stage(st)
 	return out
 
-static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool) -> PackedFloat64Array:
+static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool, u_handle: int, sub_indices: PackedInt32Array) -> PackedFloat64Array:
 	var out = PackedFloat64Array()
 	out.resize(universe.size())
 	if not view.get("world_options", {}).get("roles", false):
@@ -115,9 +109,10 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 	if mode == SolverBackend.Mode.GDSCRIPT:
 		return _fits_weights_gd(view, universe, cards, knowledge, answers, bluffs)
 	var ids: Array = view.people.map(func(p): return p.id)
+	var bridge = SolverBackend._bridge()
 	if mode == SolverBackend.Mode.CSHARP:
 		if not reuse:
-			return _eval_cs_weights(view, ids, universe, cards, knowledge, answers, bluffs, false)
+			return _eval_cs_weights(view, ids, universe, u_handle, sub_indices, cards, knowledge, answers, bluffs, false)
 		var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
 		var key = hash(input)
 		if not cache.has(key) or cache[key].input != input:
@@ -129,28 +124,44 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 		var seer: bool = entry.seer
 		var mediums: int = relay_mediums(ids, cards)
 		var walkers: int = sleepwalk_claimants(ids, cards)
-		var packed_all: PackedInt64Array = _pack_worlds_profiled("RoleConstraints.coarse_masks", universe)
-		var masks: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasks(ids.size(), packed_all, seer, mediums, walkers)
+		var fallback_all: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
+		if u_handle >= 0:
+			SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
+		var masks: PackedInt64Array = bridge.RoleCoarseMasksByHandle(ids.size(), u_handle, sub_indices, fallback_all, seer, mediums, walkers)
 		var miss_worlds: Array = []
 		var miss_masks := PackedInt64Array()
+		var miss_sub := PackedInt32Array()
 		var miss_seen: Dictionary = {}
+		var use_sub_handle: bool = u_handle >= 0 and sub_indices.is_empty()
 		for i in range(universe.size()):
 			var m: int = masks[i]
 			if not results.has(m) and not miss_seen.has(m):
 				miss_seen[m] = true
 				miss_worlds.append(universe[i])
 				miss_masks.append(m)
+				if use_sub_handle:
+					miss_sub.append(i)
 		if not miss_worlds.is_empty():
-			var miss_weights: PackedFloat64Array = _eval_cs_weights(view, ids, miss_worlds, cards, knowledge, answers, bluffs, false)
+			var miss_h: int = u_handle if use_sub_handle else -1
+			var miss_weights: PackedFloat64Array = _eval_cs_weights(view, ids, miss_worlds, miss_h, miss_sub, cards, knowledge, answers, bluffs, false)
 			for j in range(miss_worlds.size()):
 				results[miss_masks[j]] = miss_weights[j]
 		for i in range(universe.size()):
 			out[i] = float(results[masks[i]])
 		return out
-	# VERIFY mode: run both GDScript reference and C# kernel side-by-side at --tol 0
-	var cs_out: PackedFloat64Array = _eval_cs_weights(view, ids, universe, cards, knowledge, answers, bluffs, reuse)
+	# VERIFY mode: verify BOTH coarse_masks and fits_weights on every call at --tol 0
+	var v_seer: bool = seer_flag(cards)
+	var v_med: int = relay_mediums(ids, cards)
+	var v_wlk: int = sleepwalk_claimants(ids, cards)
+	var v_fb: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
+	if u_handle >= 0:
+		SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
+	var cs_masks: PackedInt64Array = bridge.RoleCoarseMasksByHandle(ids.size(), u_handle, sub_indices, v_fb, v_seer, v_med, v_wlk)
+	var gd_masks: PackedInt64Array = _coarse_masks_gd(ids.size(), universe, v_seer, v_med, v_wlk)
+	bridge.VerifyInt64Buffer("RoleConstraints.coarse_masks", gd_masks, cs_masks)
+	var cs_out: PackedFloat64Array = _eval_cs_weights(view, ids, universe, u_handle, sub_indices, cards, knowledge, answers, bluffs, reuse)
 	var gd_out: PackedFloat64Array = _fits_weights_gd(view, universe, cards, knowledge, answers, bluffs)
-	SolverBackend._bridge().VerifyFloat64Buffer("RoleConstraints.fits_weights", gd_out, cs_out, 0.0)
+	bridge.VerifyFloat64Buffer("RoleConstraints.fits_weights", gd_out, cs_out, 0.0)
 	return gd_out
 
 static func _fits_weights_gd(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool) -> PackedFloat64Array:
@@ -178,8 +189,6 @@ static func _fits_weights_gd(view: Dictionary, universe: Array, cards: Array, kn
 		var world: Dictionary = universe[i]
 		var mask: int = _coarse_mask_gd(ids.size(), world, seer, mediums, walkers)
 		if not results.has(mask):
-			# The Medium claims a relay adds are the same in every world that passes the
-			# relay checks (worlds that fail never reach routing), so routes hoist too.
 			if routes == null and Activity.available(view):
 				routes = Activity.routes(view, _routing_cards(_live_cards(cards)), answers, knowledge, not bluffs)
 			results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, routes, bluffs)
@@ -200,14 +209,16 @@ static func _intern_token(tok_map: Dictionary, s: String) -> int:
 	tok_map[s] = next_id
 	return next_id
 
-static func _pack_worlds_profiled(fn_name: String, universe: Array) -> PackedInt64Array:
+static func _pack_worlds_if_needed(fn_name: String, universe: Array, u_handle: int) -> PackedInt64Array:
+	if u_handle >= 0:
+		return _EMPTY_INT64
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var packed: PackedInt64Array = SolverBackend.pack_worlds(universe)
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call(fn_name, pack_u)
 	return packed
 
-static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool, use_coarse_memo: bool) -> PackedFloat64Array:
+static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_handle: int, sub_indices: PackedInt32Array, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool, use_coarse_memo: bool) -> PackedFloat64Array:
 	var live_cards: Array = _live_cards(cards)
 	var routes_avail: bool = Activity.available(view)
 	var routes_okay: bool = true
@@ -222,7 +233,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, card
 				forced_lamp[idx_f] = ids.find(fl[idx_f])
 
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
-	var packed_worlds: PackedInt64Array = SolverBackend.pack_worlds(universe)
+	var fallback_worlds: PackedInt64Array = SolverBackend.pack_worlds(universe) if u_handle < 0 else _EMPTY_INT64
 	var role_map: Dictionary = _FIXED_ROLES.duplicate()
 	var src_tokens: Dictionary = {}
 	var martyr_tokens: Dictionary = {}
@@ -465,15 +476,8 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, card
 
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("RoleConstraints.fits_weights", pack_u)
-	return SolverBackend._bridge().RoleFitsWeights(packed_worlds, header, pub_roles, forced_lamp, card_ints)
+	return SolverBackend._bridge().RoleFitsWeightsByHandle(u_handle, sub_indices, fallback_worlds, header, pub_roles, forced_lamp, card_ints)
 
-## The parts of a world the role check reads, as one int: fits() gives the same answer
-## for worlds with the same mask (for the same view, cards and knowledge).
-## mediums: relay_mediums(). A relay only reads whether its Medium is Delusional (the
-## Medium's evil bit is already in the mask), not the other modifier holders: keying on
-## all holders split every class ~12,000 ways in late games.
-## walkers: sleepwalk_claimants(). A "known to sleepwalk" claim reads only whether its
-## claimants are the Sleepwalker, so only their bits join the mask (0 when nobody claims).
 static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> int:
 	var mode: int = SolverBackend.active_mode()
 	if mode == SolverBackend.Mode.GDSCRIPT:
@@ -489,20 +493,22 @@ static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int
 	SolverBackend._bridge().VerifyScalarInt64("RoleConstraints.coarse_mask", gd_val, cs_val)
 	return gd_val
 
-static func coarse_masks(people: int, universe: Array, seer: bool, mediums: int, walkers: int = 0) -> PackedInt64Array:
+static func coarse_masks(people: int, universe: Array, seer: bool, mediums: int, walkers: int = 0, u_handle: int = -1, sub_indices: PackedInt32Array = _EMPTY_INT32) -> PackedInt64Array:
 	if not SolverBackend.profiling_enabled:
-		return _coarse_masks_dispatch(people, universe, seer, mediums, walkers)
+		return _coarse_masks_dispatch(people, universe, seer, mediums, walkers, u_handle, sub_indices)
 	var st: int = SolverBackend.begin_stage("world_domain")
-	var out: PackedInt64Array = _coarse_masks_dispatch(people, universe, seer, mediums, walkers)
+	var out: PackedInt64Array = _coarse_masks_dispatch(people, universe, seer, mediums, walkers, u_handle, sub_indices)
 	SolverBackend.end_stage(st)
 	return out
 
-static func _coarse_masks_dispatch(people: int, universe: Array, seer: bool, mediums: int, walkers: int) -> PackedInt64Array:
+static func _coarse_masks_dispatch(people: int, universe: Array, seer: bool, mediums: int, walkers: int, u_handle: int, sub_indices: PackedInt32Array) -> PackedInt64Array:
 	var mode: int = SolverBackend.active_mode()
 	if mode == SolverBackend.Mode.GDSCRIPT:
 		return _coarse_masks_gd(people, universe, seer, mediums, walkers)
-	var packed: PackedInt64Array = _pack_worlds_profiled("RoleConstraints.coarse_masks", universe)
-	var cs_out: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasks(people, packed, seer, mediums, walkers)
+	var fallback: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
+	if u_handle >= 0:
+		SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
+	var cs_out: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasksByHandle(people, u_handle, sub_indices, fallback, seer, mediums, walkers)
 	if mode == SolverBackend.Mode.CSHARP:
 		return cs_out
 	var gd_out: PackedInt64Array = _coarse_masks_gd(people, universe, seer, mediums, walkers)
@@ -529,7 +535,6 @@ static func _coarse_mask_gd(people: int, world: Dictionary, seer: bool, mediums:
 		mask = mask * n + int(world.converted) + 1
 	return mask
 
-## Bit per person who said they've been known to sleepwalk (unquoted secret claims).
 static func sleepwalk_claimants(ids: Array, cards: Array) -> int:
 	var bits: int = 0
 	for card in cards:
@@ -539,7 +544,6 @@ static func sleepwalk_claimants(ids: Array, cards: Array) -> int:
 				bits |= 1 << i
 	return bits
 
-## Bit per Medium named by an unquoted relay card (the people the relay check reads).
 static func relay_mediums(ids: Array, cards: Array) -> int:
 	var bits: int = 0
 	for card in cards:
@@ -549,12 +553,9 @@ static func relay_mediums(ids: Array, cards: Array) -> int:
 				bits |= 1 << medium
 	return bits
 
-## Cards the role check reads: testimony-only cards are weighed elsewhere.
 static func _live_cards(cards: Array) -> Array:
 	return cards.filter(func(card): return not card.get("testimony_only", false))
 
-## The cards routing reads in a world that passes the relay checks: each unquoted relay
-## adds its Medium's inferred claim, in card order (as _fits_view does).
 static func _routing_cards(cards: Array) -> Array:
 	var out: Array = cards.duplicate()
 	for card in cards:
@@ -562,16 +563,11 @@ static func _routing_cards(cards: Array) -> Array:
 			out.append({"kind": "claim", "source": card.relay_source, "role": "medium", "inferred": true})
 	return out
 
-## The seer flag fits() keys its memo on.
 static func seer_flag(cards: Array) -> bool:
 	return cards.any(func(c): return c.get("role") in ["seer", "gravedigger", "martyr"] and not c.get("quoted", false))
 
-## routes: Activity.routes(view, cards, answers, knowledge) if already computed. It
-## doesn't depend on the world, so fits_table computes it once for all worlds.
 static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null, bluffs: bool = false) -> float:
 	cards = _live_cards(cards)
-	# "I've been known to sleepwalk": true of the one Sleepwalker; anyone else saying it
-	# is evil and lying. (Two claimants: at least one is evil.)
 	var walkers: int = sleepwalk_claimants(ids, cards)
 	if walkers != 0:
 		var asleep: int = int(world.get("holders", 0)) if world.get("modifier", "marked") == "sleepwalker" else 0
@@ -624,21 +620,16 @@ static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: A
 	if Activity.available(view):
 		if routes == null:
 			routes = Activity.routes(view, cards, answers, knowledge, not live)
-		# Live testimony can be false (an evil fake sighting, a lying alibi): routes that
-		# can't all hold no longer void every world; the movement likelihood weighs them.
 		if not routes.okay and not live:
 			return 0.0
 		if routes.okay:
 			cards = cards.duplicate()
 			for person in routes.forced_lamp:
 				if world.get("demon", -1) == ids.find(person):
-					continue # The killer may have taken a detour; no forced good-gift proof.
+					continue
 				cards.append({"kind": "claim", "source": person, "role": "lamplighter", "inferred": true})
 	return _fits(ids, world, cards, knowledge, answers, live, view)
 
-## bluffs (live play): in a world where a claim's source is evil, the claim is a bluff:
-## it occupies no role and constrains nothing. A good source's claim stays binding, so a
-## contradiction leaves only the worlds where some claimant is lying.
 static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool = false, view: Dictionary = {}) -> float:
 	var all: int = (1 << ids.size()) - 1
 	var good: int = all & ~world.evil
@@ -725,7 +716,6 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 				group_mask = 1 << target
 			var read_role: String = card.data.role
 			var evil_role: bool = C.ROLES.get(read_role, {}).get("align") == "evil"
-			# Marked can receive any evil-role result without actually holding it.
 			if rdef.marked_registers and evil_role and world.marked >= 0 and (group_mask & (1 << world.marked)) != 0:
 				continue
 			var pool_mask: int = good
@@ -765,8 +755,6 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 			return 0.0
 	return seer_weight if _matching(assignments.values(), 0) else 0.0
 
-## Average over every eligible Red Herring candidate r in G of the product of each
-## Seer reading's probability in this world (Marked rolls 50% independently per reading).
 static func _seer_rh_weight(candidates_mask: int, demon: int, marked: int, readings: Array) -> float:
 	var mode: int = SolverBackend.active_mode()
 	if mode == SolverBackend.Mode.GDSCRIPT:
@@ -861,21 +849,19 @@ static func _matching(masks: Array, occupied: int) -> bool:
 		available &= ~bit
 	return false
 
-## Per world: BLUFF_WEIGHT for each distinct (source, role) declared by a source who is
-## evil in that world. Inferred and quoted declarations don't count.
-static func bluff_weights(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
+static func bluff_weights(view: Dictionary, universe: Array, cards: Array, u_handle: int = -1, sub_indices: PackedInt32Array = _EMPTY_INT32) -> PackedFloat64Array:
 	if not SolverBackend.profiling_enabled:
-		return _bluff_weights_dispatch(view, universe, cards)
+		return _bluff_weights_dispatch(view, universe, cards, u_handle, sub_indices)
 	var st: int = SolverBackend.begin_stage("world_domain")
-	var out: PackedFloat64Array = _bluff_weights_dispatch(view, universe, cards)
+	var out: PackedFloat64Array = _bluff_weights_dispatch(view, universe, cards, u_handle, sub_indices)
 	SolverBackend.end_stage(st)
 	return out
 
-static func _bluff_weights_dispatch(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
+static func _bluff_weights_dispatch(view: Dictionary, universe: Array, cards: Array, u_handle: int, sub_indices: PackedInt32Array) -> PackedFloat64Array:
 	var mode: int = SolverBackend.active_mode()
 	if mode == SolverBackend.Mode.GDSCRIPT:
 		return _bluff_weights_gd(view, universe, cards)
-	var cs_out: PackedFloat64Array = _bluff_weights_cs(view, universe, cards)
+	var cs_out: PackedFloat64Array = _bluff_weights_cs(view, universe, cards, u_handle, sub_indices)
 	if mode == SolverBackend.Mode.CSHARP:
 		return cs_out
 	var gd_out: PackedFloat64Array = _bluff_weights_gd(view, universe, cards)
@@ -888,7 +874,7 @@ static func _bluff_weights_gd(view: Dictionary, universe: Array, cards: Array) -
 	if cards.any(func(c): return c.has("hearing_weight") and c.kind in ["claim", "report"]):
 		return _temporal_bluff_weights(view, universe, cards)
 	var ids: Array = view.people.map(func(p): return p.id)
-	var declared: Array = []  # source bit per distinct declaration
+	var declared: Array = []
 	var seen = {}
 	for card in cards:
 		if card.kind not in ["report", "claim"] or card.get("quoted", false) or card.get("inferred", false) or card.get("testimony_only", false):
@@ -910,9 +896,9 @@ static func _bluff_weights_gd(view: Dictionary, universe: Array, cards: Array) -
 		out[w] = weight
 	return out
 
-static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
+static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array, u_handle: int, sub_indices: PackedInt32Array) -> PackedFloat64Array:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
-	var packed_worlds: PackedInt64Array = SolverBackend.pack_worlds(universe)
+	var fallback_worlds: PackedInt64Array = SolverBackend.pack_worlds(universe) if u_handle < 0 else _EMPTY_INT64
 	var ids: Array = view.people.map(func(p): return p.id)
 	var has_curse: bool = view.get("chronology", {}).has("curse")
 	var has_hw: bool = cards.any(func(c): return c.has("hearing_weight") and c.kind in ["claim", "report"])
@@ -930,7 +916,7 @@ static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array) -
 			declared.append(1 << i)
 		var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 		SolverBackend.record_boundary_call("RoleConstraints.bluff_weights", pack_u)
-		return SolverBackend._bridge().RoleBluffWeightsSimple(packed_worlds, declared, BLUFF_WEIGHT)
+		return SolverBackend._bridge().RoleBluffWeightsSimpleByHandle(u_handle, sub_indices, fallback_worlds, declared, BLUFF_WEIGHT)
 
 	var declarations: Dictionary = {}
 	for card in cards:
@@ -959,8 +945,8 @@ static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array) -
 		curse_until = int(curse.get("until", 0))
 	var pack_u2: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("RoleConstraints.bluff_weights_temporal", pack_u2)
-	return SolverBackend._bridge().RoleBluffWeightsTemporal(
-		packed_worlds, who, h_weights, stmt_ticks, has_curse, curse_from, curse_until, BLUFF_WEIGHT
+	return SolverBackend._bridge().RoleBluffWeightsTemporalByHandle(
+		u_handle, sub_indices, fallback_worlds, who, h_weights, stmt_ticks, has_curse, curse_from, curse_until, BLUFF_WEIGHT
 	)
 
 static func _temporal_bluff_weights(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
@@ -970,8 +956,6 @@ static func _temporal_bluff_weights(view: Dictionary, universe: Array, cards: Ar
 			var key: String = Chronology.source_key(view, card) + ":" + card.role
 			if not declarations.has(key) or float(card.get("hearing_weight", 1.0)) > float(declarations[key].get("hearing_weight", 1.0)):
 				declarations[key] = card
-	# Per declaration, once: the source's index, statement time and factor. A world with
-	# no conversion is evil at every time exactly when its evil bit is set.
 	var ids: Array = view.people.map(func(p): return p.id)
 	var who = PackedInt32Array()
 	var factor = PackedFloat64Array()
