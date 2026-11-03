@@ -40,14 +40,14 @@ static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) ->
 	for card in cards:
 		if card.get("relay_source") == person and not card.get("quoted", false):
 			return "medium"
-		if not card.get("quoted", false) and not card.get("testimony_only", false) and card.source == person and card.kind in ["claim", "report"]:
+		if not card.get("quoted", false) and not card.get("testimony_only", false) and card.get("source", "") == person and card.kind in ["claim", "report"]:
 			return card.role
 	return ""
 
 static func role_hearing(cards: Array, person: String, role: String) -> float:
 	var strength = 0.0
 	for card in cards:
-		if not card.get("quoted", false) and not card.get("testimony_only", false) and card.source == person and card.get("role", "") == role and card.kind in ["claim", "report"]:
+		if not card.get("quoted", false) and not card.get("testimony_only", false) and card.get("source", "") == person and card.get("role", "") == role and card.kind in ["claim", "report"]:
 			strength = maxf(strength, float(card.get("hearing_weight", 1.0)))
 	return strength
 
@@ -946,7 +946,7 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 		{"kind": "gift", "weight": 0.7 if gift else 0.15}, {"kind": "secret", "weight": 0.1}]
 	if alignment in ["good", "converted"] and role != "" and not gift:
 		profiles = [{"kind": "ordinary", "weight": 0.9}, {"kind": "secret", "weight": 0.1}]
-	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.source == person.id and c.has("hearing_weight")):
+	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.get("source", "") == person.id and c.has("hearing_weight")):
 		var strength: float = role_hearing(cards, person.id, role)
 		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, 0.2 if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, 0.7 if gift else 0.0, strength)}, {"kind": "secret", "weight": 0.1}]
 	var reports_by_night: Array = []
@@ -1222,7 +1222,7 @@ static func _crossing_probability_gd(view: Dictionary, cards: Array, person: Dic
 		{"kind": "gift", "weight": 0.7 if gift else 0.15}, {"kind": "secret", "weight": 0.1}]
 	if alignment in ["good", "converted"] and role != "" and not gift:
 		profiles = [{"kind": "ordinary", "weight": 0.9}, {"kind": "secret", "weight": 0.1}]
-	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.source == person.id and c.has("hearing_weight")):
+	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.get("source", "") == person.id and c.has("hearing_weight")):
 		var strength: float = role_hearing(cards, person.id, role)
 		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, 0.2 if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, 0.7 if gift else 0.0, strength)}, {"kind": "secret", "weight": 0.1}]
 	var night_obs: Array = []

@@ -381,17 +381,12 @@ func _play_passive(sd: int, sz: int, day_limit: int, mode: int) -> Dictionary:
 	}
 
 func _passive_command(g) -> String:
+	# Same passive player as tools/golden_capture.gd.
 	match g.state:
-		"approach":
-			return "decline"
-		"conversation":
-			return "bye"
-		"day":
-			return "wait" if g.actions_left > 0 else "done"
-		"meeting":
-			return "wait"
-		"nomination":
-			return "vote no"
-		"night":
-			return "sleep"
-	return "wait"
+		"day": return "wait"
+		"approach": return "decline"
+		"talk": return "bye"
+		"meeting": return "done" if g.town_quiet else "wait"
+		"nomination": return "vote no"
+		"night": return "sleep"
+	return "look"

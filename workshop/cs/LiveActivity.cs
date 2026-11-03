@@ -18,6 +18,11 @@ namespace Demonologist.Workshop;
 /// </summary>
 internal static class LiveActivityKernel
 {
+    // GDScript parses the literal 1e-30 one ULP low (0x39B4484BFEEBC29F; IEEE nearest is
+    // ...C2A0). GDScript is the oracle, so the floor uses Godot's bits, not C#'s 1e-30.
+    // 1e-12 and 1e-20 parse identically in both and need no such constant.
+    private static readonly double GdFloor1e30 = BitConverter.Int64BitsToDouble(0x39B4484BFEEBC29FL);
+
     // Canonical block order matching C.BLOCKS = {"square", "market", "docks", "hill"}:
     public const int BlockSquare = 0;
     public const int BlockMarket = 1;
@@ -1660,7 +1665,7 @@ internal static class LiveActivityKernel
             {
                 pVal = profGood[i];
             }
-            result *= Math.Max(pVal, 1e-30) / Math.Max(profGood[i], 1e-30);
+            result *= Math.Max(pVal, GdFloor1e30) / Math.Max(profGood[i], GdFloor1e30);
         }
         result *= SceneScore(evilMask, convIdx, demonIdx, sceneTables, eps, unkWeight);
         return result;
