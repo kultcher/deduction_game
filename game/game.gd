@@ -52,6 +52,8 @@ var town_quiet = false     # the town has had its say since the last nomination 
 var talk_approached = false  # this conversation began with them approaching you (it costs the phase)
 var statement_used = false # player's one statement on the pending nomination
 var presented_today = false # player has had the meeting floor today
+var public_presentations = {} # card numbers of cases you've put to the town (floor, nomination, statement)
+var public_citations = {}     # card numbers of plain cards you've cited at a meeting
 var notes = {}              # npc id -> player's note
 var guesses = {}            # npc id -> {guess, confidence 1..3}
 var guess_history: Array = []
@@ -216,6 +218,8 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	# Each case starts from empty shared-model memo tables (and picks up tuning changes).
 	WorkshopCaches.clear_all()
 	workshop_draft = {}
+	public_presentations = {}
+	public_citations = {}
 	workshop_deliveries = []
 	workshop_comparisons = []
 	_workshop_plans = {}
@@ -350,7 +354,7 @@ func workshop_command(line: String, progress: Callable) -> String:
 	if workshop_presenting:
 		return "A case presentation is still being assessed."
 	var parts = line.split(" ", false, 1)
-	if parts.size() != 2 or not ((state == "meeting" and parts[0] == "present") or (state == "nomination" and parts[0] in ["accuse", "defend"])):
+	if parts.size() != 2 or not ((state == "meeting" and parts[0] in ["present", "nominate"]) or (state == "nomination" and parts[0] in ["accuse", "defend"])):
 		return command(line)
 	workshop_presenting = true
 	_workshop_native_submission = false
@@ -358,7 +362,9 @@ func workshop_command(line: String, progress: Callable) -> String:
 	w.set_log_time()
 	w.dlog.begin_action("command", {"cmd": line})
 	w.trace_capture("before_command")
-	if state == "meeting":
+	if state == "meeting" and parts[0] == "nominate":
+		await GameMeeting._player_nomination(self, parts[1], progress)
+	elif state == "meeting":
 		await _present_deduction(parts[1], progress)
 	else:
 		await _nomination_command(parts[0], parts[1], progress)
@@ -877,6 +883,17 @@ func _conflict_pressure(ded: Dictionary, amount: float, listener, fallback: bool
 	GamePresentation._conflict_pressure(self, ded, amount, listener, fallback)
 
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
+## Meeting plan M2a, for the nomination picker: the case on deck against `id`, every live
+## case that names them, and whether a card or case is already public.
+func on_deck_case(id: String) -> Dictionary:
+	return GameMeeting.on_deck_case(self, id)
+
+func cases_naming(id: String) -> Array:
+	return board.filter(func(c): return c.get("kind", "") == "deduction" and not c.get("deleted", false) and int(c.get("superseded_by", 0)) == 0 and GameMeeting._case_names(c, id))
+
+func already_public(card: Dictionary) -> bool:
+	return GameMeeting.already_public(self, card)
+
 func _secrets_used(ded: Dictionary, depth: int = 0) -> void:
 	GamePresentation._secrets_used(self, ded, depth)
 

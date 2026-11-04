@@ -10,6 +10,8 @@ const Tuning = preload("res://sim/tuning.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
 const Credibility = preload("res://game/credibility.gd")
+const CardModel = preload("res://game/card_model.gd")
+const Deduction = preload("res://sim/deduction.gd")
 
 
 static func _start_meeting(g) -> void:
@@ -81,20 +83,7 @@ static func _meeting_command(g, verb: String, rest: String) -> void:
 		"present":
 			g._present_deduction(rest)
 		"nominate", "nom":
-			var n = g.find_npc(rest)
-			if n == null:
-				g._err("Nominate whom?")
-				return
-			var why = g.w.can_nominate("player", n.id)
-			if why != "":
-				g._err(why)
-				return
-			g.w.open_nomination("player", n.id)
-			Credibility.record_public(g, "evil", n.id, Tuning.Trust.CRED_WEIGHT_FORMAL)
-			g.town_quiet = false
-			g._narr("You stand and nominate %s." % n.name)
-			_defend_pending(g)
-			_show_nomination(g)
+			_player_nomination(g, rest)
 		"wait":
 			if not _next_npc_nomination(g):
 				g.town_quiet = true
@@ -111,6 +100,101 @@ static func _meeting_command(g, verb: String, rest: String) -> void:
 			_close_meeting(g)
 		_:
 			g._err("At the meeting: present <deduction#> (once) | nominate <name> | wait | done")
+
+
+## The player's nomination (meeting plan M2a). 'nominate <name>' rests on the on-deck case
+## (your latest filed case accusing them) when there is one; 'nominate <name> #N' picks
+## another case, 'nominate <name> raw' rests on your word alone. The UI offers the same
+## choices (and updating the case) before it sends the command.
+static func _player_nomination(g, rest: String, progress: Callable = Callable()) -> void:
+	var words: PackedStringArray = rest.strip_edges().split(" ", false)
+	var choice: String = ""
+	if words.size() > 1 and (words[-1].to_lower() == "raw" or words[-1].trim_prefix("#").is_valid_int()):
+		choice = words[-1].to_lower()
+		words = words.slice(0, words.size() - 1)
+	var n = g.find_npc(" ".join(words))
+	if n == null:
+		g._err("Nominate whom?")
+		return
+	var why = g.w.can_nominate("player", n.id)
+	if why != "":
+		g._err(why)
+		return
+	var card: Dictionary = {}
+	if choice == "":
+		card = on_deck_case(g, n.id)
+	elif choice != "raw":
+		var num: int = choice.trim_prefix("#").to_int()
+		if num < 1 or num > g.board.size() or g.board[num - 1].get("kind", "") != "deduction" or g.board[num - 1].get("deleted", false):
+			g._err("Card #%d isn't one of your filed cases. ('nominate %s', 'nominate %s #<case>' or 'nominate %s raw')" % [num, n.name.to_lower(), n.name.to_lower(), n.name.to_lower()])
+			return
+		card = g.board[num - 1]
+		if not _case_names(card, n.id):
+			g._err("Case #%d doesn't name %s as one to suspect." % [num, n.name])
+			return
+	if not card.is_empty() and not g._presentation_gate(card, g.w.living().filter(func(v): return v != n), [n.id], "deduction", "nomination"):
+		return
+	g.w.open_nomination("player", n.id)
+	Credibility.record_public(g, "evil", n.id, Tuning.Trust.CRED_WEIGHT_FORMAL if not card.is_empty() else Tuning.Trust.CRED_WEIGHT_BARE_NOMINATION)
+	g.town_quiet = false
+	if card.is_empty():
+		g._narr("You stand and nominate %s." % n.name)
+		if choice == "" :
+			g._ev({"k": "note", "text": "No case of yours names %s yet, so this nomination rests on your word. File a case in the Case Workshop to nominate on its strength." % n.name})
+	else:
+		g._narr("You stand and nominate %s on the strength of your case (#%d)." % [n.name, card.n])
+		var repeat: bool = g.public_presentations.has(int(card.n))
+		g.w.meeting["pending"]["case_card"] = int(card.n)
+		g.w.meeting["pending"]["case_facts"] = Array(card.get("supports", [])).filter(func(x): return int(x) >= 1 and int(x) <= g.board.size()).map(func(x): return g.board[int(x) - 1])
+		g._break_confidences([card.n] + Array(card.get("supports", [])))
+		g._secrets_used(card)
+		if repeat:
+			note_already_public(g, true, false)
+		else:
+			g.public_presentations[int(card.n)] = true
+			for v in g.w.living():
+				if v != n:
+					if progress.is_valid():
+						await progress.call(v.name)
+					g._evaluate_deduction(v, card, Tuning.Workshop.VENUE_MULTS.nomination, false, "nomination")
+	g.w.dlog.add("player_nomination", "player", n.id, {"case": int(card.get("n", 0)), "raw": card.is_empty()})
+	_defend_pending(g)
+	_show_nomination(g)
+
+
+## Does this filed case name `id` as one to suspect (its conclusion accuses them)?
+static func _case_names(card: Dictionary, id: String) -> bool:
+	var c: Dictionary = card.get("conclusion", {})
+	return str(c.get("a", "")) == id and str(c.get("type", "")) in Deduction.ACCUSING
+
+
+## The case on deck against `id`: the latest live (not deleted, not superseded) filed case
+## whose conclusion accuses them. {} when none.
+static func on_deck_case(g, id: String) -> Dictionary:
+	for i in range(g.board.size() - 1, -1, -1):
+		var c: Dictionary = g.board[i]
+		if c.get("kind", "") != "deduction" or c.get("deleted", false) or int(c.get("superseded_by", 0)) > 0:
+			continue
+		if _case_names(c, id):
+			return c
+	return {}
+
+
+## Has the town already heard exactly this card or case from you (or, for a plain card,
+## at a meeting)? Then citing it again only adds your voice.
+static func already_public(g, card: Dictionary) -> bool:
+	if card.is_empty():
+		return false
+	if card.get("kind", "") == "deduction":
+		return g.public_presentations.has(int(card.get("n", 0)))
+	return g.public_citations.has(int(card.get("n", 0))) or CardModel.disclosure_scope(card) == "public"
+
+
+## Informational only (never a confirmation): the town already has this.
+static func note_already_public(g, is_case: bool, with_voice: bool) -> void:
+	var what: String = "case" if is_case else "card"
+	var tail: String = ", and your voice still carries weight." if with_voice else "."
+	g._ev({"k": "note", "text": "This %s is already public knowledge: citing it again doesn't sway the town further, but it stands on its own merits%s" % [what, tail]})
 
 
 static func _next_npc_nomination(g) -> bool:
@@ -189,6 +273,14 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 			if not card.is_empty() and not g._presentation_gate(card, g.w.living().filter(func(v): return v != t), [t.id], "deduction" if card.kind == "deduction" else verb, "nomination"):
 				return
 			g.statement_used = true
+			if not card.is_empty():
+				var was_public: bool = already_public(g, card)
+				if was_public:
+					note_already_public(g, card.get("kind", "") == "deduction", true)
+				if card.get("kind", "") == "deduction":
+					g.public_presentations[int(card.n)] = true
+				else:
+					g.public_citations[int(card.n)] = true
 			var stmt_weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL if not card.is_empty() else Tuning.Trust.CRED_WEIGHT_STATEMENT
 			Credibility.record_public(g, "evil" if verb == "accuse" else "good", t.id, stmt_weight)
 			nm["statement"] = verb

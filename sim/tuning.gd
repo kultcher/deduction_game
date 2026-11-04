@@ -273,6 +273,7 @@ class Trust:
 	## Track-record weights: formal deductions/nominations vs bare meeting statements.
 	const CRED_WEIGHT_FORMAL = 1.0
 	const CRED_WEIGHT_STATEMENT = 0.35
+	const CRED_WEIGHT_BARE_NOMINATION = 1.0
 	const DISTRUST_EXPLAIN_THRESHOLD = 0.35
 
 	## Overnight secret-keeping recovery
@@ -432,6 +433,22 @@ class Social:
 
 # ---------------------------------------------------------------- 6. Town Meeting: Claims, Consensus, Nominations & Votes
 class Meeting:
+	## Meeting plan M2a: opening testimony reacts to what's said, and private townsfolk
+	## fade once a wagon is rolling (docs/meeting_flow_plan.md sections 2.2-2.3).
+	const REACTIVE_OPENNESS_BONUS = 0.35
+	const CROWD_FADE_PRIVACY_FLOOR = 0.45
+	const CROWD_FADE_SLOPE = 0.18
+	const CROWD_FADE_SIGHTING_BAR = 0.10
+	## Block safety (Step 2): how safe a nominee is because someone else is firmly on the block.
+	const BLOCK_SAFETY_FULL_MARGIN = 3.0
+	const BLOCK_SAFETY_HEAT_BASE = 0.15
+	const BLOCK_SAFETY_HEAT_PER_ACCUSER = 0.15
+	const BLOCK_SAFETY_HEAT_CREDIBILITY = 0.30
+	const BLOCK_SAFETY_DEFENCE_RELIEF = 0.75
+	const BLOCK_SAFETY_PRESS_RELIEF = 0.65
+	## Player nominations: with a filed case (anchored) or without (raw). A raw nomination
+	## still counts at the formal track-record weight (unchanged; revisit in M4's sweep).
+	const ALLOW_UNANCHORED_PLAYER_NOMINATION = true
 	const VOLUNTEER_SIGHTING_BASE = 1.2
 	const PUBLIC_CLAIM_BASE = -0.35
 	const PUBLIC_CLAIM_OPENNESS_SLOPE = 1.2

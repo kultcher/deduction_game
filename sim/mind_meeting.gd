@@ -38,7 +38,11 @@ static func meeting_testimony(w) -> Array:
 ## one is worked out. Running every step in a row is exactly meeting_testimony.
 static func testimony_start(w) -> Dictionary:
 	w.defer_beliefs = true
-	return {"speakers": w.shuffled(w.living()), "i": 0, "done": false}
+	var st: Dictionary = {"speakers": w.shuffled(w.living()), "i": 0, "done": false,
+		"substantive_turns": 0, "reactive": {}, "interjected": {}, "spoken": {}}
+	if w.meeting is Dictionary:
+		w.meeting["testimony"] = st
+	return st
 
 ## One step: the next speaker's turn ({who, lines, facts}; lines may be empty), or once
 ## everyone has spoken, one of the belief refreshes still waiting ({}). Sets st.done after
@@ -53,6 +57,7 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		var lines: Array = []
 		var facts: Array = []
 		flush_beliefs(w, n)  # a speaker reacts to everything said before their turn
+		var reacting: bool = st["reactive"].has(n.id)
 		if not n.claim_public and _public_claim_decision(w, n) != "":
 			_public_disclosure(w, n, lines, facts)
 		elif n.claim_public:
@@ -62,6 +67,14 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 			lines.append(acc["line"])
 			facts.append(acc["fact"])
 		_volunteer_night_sightings(w, n, lines, facts)
+		st["reactive"].erase(n.id)
+		st["spoken"][n.id] = true
+		if facts.any(func(f): return str(f.get("kind", "")) in ["claim", "info", "accusation"]):
+			st["substantive_turns"] += 1
+		if not facts.is_empty():
+			_queue_reactions(w, st, n, facts)
+		if reacting and not lines.is_empty():
+			w.dlog.think(n.id, "testimony", "Speaks up in reaction to what was just said.", {"reactive": true})
 		return {"who": n.id, "lines": lines, "facts": facts}
 	# Everyone has spoken: the remaining refreshes, one mind per step, in queue order.
 	if not w.pending_beliefs.is_empty():
@@ -70,6 +83,103 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		w.defer_beliefs = false
 		st["done"] = true
 	return {}
+
+## Who reacts to what a speaker just said (plan 2.2), from cheap metadata only (no solver):
+## 1 a rival claim on their gift, 2 being named, 3 holding something that clears the
+## person just accused. Those yet to speak move up (by priority); someone who already spoke
+## may interject once per meeting, for 1 or 2 only.
+static func _queue_reactions(w, st: Dictionary, s, facts: Array) -> void:
+	var claimed: Array = []
+	var named: Array = []
+	var accused: Array = []
+	for f in facts:
+		var subj: Array = f.get("subject", []) if f.get("subject", []) is Array else [str(f.get("subject", ""))]
+		match str(f.get("kind", "")):
+			"claim":
+				if str(f.get("source", "")) == s.id:
+					claimed.append(str(f.get("role", "")))
+			"accusation", "info", "sighting":
+				named.append_array(subj)
+				if str(f.get("kind", "")) == "accusation":
+					accused.append_array(subj)
+				elif str(f.get("kind", "")) == "info":
+					accused.append_array(Gifts.implicated(f))
+	var picks: Array = []
+	for l in w.living():
+		if l == s or l.silenced:
+			continue
+		var my_role: String = str(w.evil_plan.get("bluffs", {}).get(l.id, "")) if l.is_evil() else str(l.role)
+		var trigger: int = 0
+		var subject: String = ""
+		if my_role != "" and my_role in claimed:
+			trigger = 1
+		elif l.id in named:
+			trigger = 2
+			subject = l.id
+		else:
+			for x in accused:
+				if x == l.id or not w.by_id.has(x):
+					continue
+				var clears_x: bool = l.info_log.any(func(e): return not e.get("shared", false) and x in Gifts.clears(e))
+				if clears_x or (l.role == "martyr" and not l.is_evil() and l.martyr_target == x):
+					trigger = 3
+					subject = x
+					break
+		if trigger == 0:
+			continue
+		var idx: int = st["speakers"].find(l)
+		var yet: bool = idx >= st["i"]
+		if not yet and (trigger == 3 or st["interjected"].has(l.id) or not st["spoken"].has(l.id)):
+			continue
+		picks.append([trigger, l, yet])
+		st["reactive"][l.id] = {"trigger": trigger, "by": s.id, "subject": subject, "bonus": Tuning.Meeting.REACTIVE_OPENNESS_BONUS}
+	picks.sort_custom(func(a, b): return a[0] < b[0] if a[0] != b[0] else a[1].id < b[1].id)
+	var insert_at: int = st["i"]
+	for p in picks:
+		var l = p[1]
+		if p[2]:
+			st["speakers"].erase(l)
+		else:
+			st["interjected"][l.id] = true
+		st["speakers"].insert(insert_at, l)
+		insert_at += 1
+		w.dlog.think(l.id, "testimony", "Reacts to %s (trigger %d): moves up to speak next." % [s.id, int(p[0])], {"trigger": p[0], "by": s.id, "interjection": not p[2]})
+
+## Opening openness during testimony: a reaction boosts it; otherwise, once a few speakers
+## have claimed, shared or accused, a private person holds their cards (plan 2.3).
+static func _testimony_openness(w, n) -> float:
+	var st = w.meeting.get("testimony", null) if w.meeting is Dictionary else null
+	if st == null or st.get("done", true):
+		return 0.0
+	if st["reactive"].has(n.id):
+		return float(st["reactive"][n.id].get("bonus", 0.0))
+	return -float(st.get("substantive_turns", 0)) * maxf(0.0, trait_of(n, "privacy") - Tuning.Meeting.CROWD_FADE_PRIVACY_FLOOR) * Tuning.Meeting.CROWD_FADE_SLOPE
+
+static func _testimony_sighting_bar(w, n) -> float:
+	var st = w.meeting.get("testimony", null) if w.meeting is Dictionary else null
+	if st == null or st.get("done", true) or st["reactive"].has(n.id):
+		return 0.0
+	return float(st.get("substantive_turns", 0)) * Tuning.Meeting.CROWD_FADE_SIGHTING_BAR
+
+## How safe nominee d is because someone else is already firmly on the block (0..1, public
+## information only; plan Step 2). Feeds the defence, and later the Podium Press and supporters.
+static func block_safety(w, d) -> float:
+	var blk: String = str(w.meeting.get("block", ""))
+	var high: int = int(w.meeting.get("block_count", 0))
+	var thr: int = w.vote_threshold()
+	if blk == "" or blk == d.id or high < thr:
+		return 0.0
+	var margin: float = clampf(float(high - thr + 1) / Tuning.Meeting.BLOCK_SAFETY_FULL_MARGIN, 0.0, 1.0)
+	var accusers: int = w.meeting.get("accusations", []).filter(func(a): return a.get("target", "") == d.id).size()
+	var pending: Dictionary = w.meeting.get("pending", {})
+	var nominator: String = str(pending.get("by", "")) if str(pending.get("nominee", "")) == d.id else ""
+	var nom_cred: float = 0.0
+	if nominator == "player":
+		nom_cred = clampf(d.credibility, 0.0, 1.0)
+	elif nominator != "" and w.by_id.has(nominator):
+		nom_cred = clampf(d.npc_trust.get(nominator, 0.5), 0.0, 1.0)
+	var heat: float = clampf(Tuning.Meeting.BLOCK_SAFETY_HEAT_BASE + Tuning.Meeting.BLOCK_SAFETY_HEAT_PER_ACCUSER * accusers + Tuning.Meeting.BLOCK_SAFETY_HEAT_CREDIBILITY * nom_cred, 0.0, 1.0)
+	return margin * (1.0 - heat)
 
 ## A volunteer never invents a cover or reveals an undisclosed walk. Reuse the
 ## known account and walking-gift/reading constraints used by private followups.
@@ -103,7 +213,7 @@ static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void
 	if n.silenced: return
 	var score = trait_of(n, "gossip") + trait_of(n, "confidence")
 	var panic = paranoia(w, n)
-	var threshold = Tuning.Meeting.VOLUNTEER_SIGHTING_BASE - panic
+	var threshold = Tuning.Meeting.VOLUNTEER_SIGHTING_BASE - panic + _testimony_sighting_bar(w, n)
 	w.observe_decision(n, "volunteer_night_sightings", score >= threshold, {"score": score, "threshold": threshold, "comparison": ">=",
 		"inputs": {"gossip": trait_of(n, "gossip"), "confidence": trait_of(n, "confidence"), "paranoia": panic, "composure": trait_of(n, "composure")},
 		"threshold_parts": {"base": Tuning.Meeting.VOLUNTEER_SIGHTING_BASE, "paranoia": -panic}, "gate": "Gossip + Confidence threshold; eligible untold sightings still require disclosure/cover checks; no random draw"})
@@ -131,6 +241,9 @@ static func _public_claim_decision(w, n) -> String:
 	# Gifts that pay off night after night are worth protecting early; one-shot first-night
 	# gifts have less to lose by coming out.
 	C.role_def(role).score_public_claim(w, n, parts)
+	var opening: float = _testimony_openness(w, n)
+	if opening != 0.0:
+		parts["reactive" if opening > 0.0 else "crowd_fade"] = opening
 	if n.protect_lock and not (n.id in w.meeting.get("nominated", []) or n.pressure >= 0.7 or w.living().size() <= 4):
 		w.observe_decision(n, "claim", false, {"gate": "protect_lock_promised_player_first"})
 		return ""  # promised to tell the Demonologist first once protected
@@ -457,6 +570,9 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		"pressure_deflect": n.pressure * Tuning.Meeting.ACCUSE_PRESSURE_DEFLECT}
 	if acc_resent > 0.0:
 		parts["resentment"] = acc_resent * Tuning.Meeting.ACCUSE_RESENTMENT_SLOPE
+	var acc_opening: float = _testimony_openness(w, n)
+	if acc_opening != 0.0:
+		parts["reactive" if acc_opening > 0.0 else "crowd_fade"] = acc_opening
 	if not decide(w, n, "accuse", parts, "Publicly accuse %s?" % t.id):
 		return null
 	# What they can say for it: a reason the town already has, a hint at one they're
@@ -1241,6 +1357,9 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	# 1. A gift that walks at night explains being seen out.
 	if not out_items.is_empty() and C.ROLES.get(role, {}).get("night_walk", false):
 		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": maxf(0.2, out_weight)}
+		var safety: float = block_safety(w, d)
+		if safety > 0.0:
+			parts["block_safety"] = -safety * Tuning.Meeting.BLOCK_SAFETY_DEFENCE_RELIEF
 		for k in reveal_cost(w, d):
 			parts["cost_" + k] = -reveal_cost(w, d)[k]
 		if d.claim_public or decide(w, d, "defence_reveal", parts, "Explain being out with my gift (%s)?" % role):
@@ -1253,7 +1372,12 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			defence_scopes["reveal"] = {"type": "gift_claim", "role": role}
 	# 2. A personal secret explains it (good only: evil has nothing true to confess).
 	if moves.is_empty() and not out_items.is_empty() and not d.is_evil() and not d.secret.is_empty():
-		if decide(w, d, "defence_confess", {"facing_the_rope": 0.5, "privacy": (0.4 - trait_of(d, "privacy")) * 1.0}, "Confess my secret to explain being out?"):
+		var confess_parts = {"facing_the_rope": 0.5, "privacy": (0.4 - trait_of(d, "privacy")) * 1.0}
+		var confess_safety: float = block_safety(w, d)
+		if confess_safety > 0.0:
+			confess_parts["block_safety"] = -confess_safety * Tuning.Meeting.BLOCK_SAFETY_DEFENCE_RELIEF
+			w.dlog.think(d.id, "defence", "Weighs holding back: %s is already on the block (%d votes)." % [str(w.meeting.get("block", "")), int(w.meeting.get("block_count", 0))])
+		if decide(w, d, "defence_confess", confess_parts, "Confess my secret to explain being out?"):
 			d.secret_known = true
 			lines.append(say_voiced(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % d.secret.get("me", d.secret.get("text", "")), {"secret": d.secret.get("me", d.secret.get("text", ""))}))
 			facts.append({"kind": "secret", "subject": [d.id], "owner": d.id, "source": d.id,

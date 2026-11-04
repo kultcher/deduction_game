@@ -1490,6 +1490,20 @@ static func card_weight_against(w, card: Dictionary, target_id: String) -> float
 		return clampf(best, 0.0, 1.0)
 	return Tuning.Dialogue.UNMODELLED_CARD_WEIGHT if card_implicates(w, card, target_id) else 0.0
 
+## Is this card already among the reasons `v` holds against `target_id` (its own receipt or
+## one of its roots)? Then citing it against them changes nothing in v's shared model.
+static func card_already_weighed(v, card: Dictionary, target_id: String) -> bool:
+	var ids: Dictionary = WorkshopLedger.roots([card], []).receipts
+	if ids.is_empty():
+		return false
+	for item in v.workshop_state.get("reasons", {}).get(target_id, []):
+		if ids.has(str(item.get("card_id", ""))):
+			return true
+		for r in item.get("root_ids", []):
+			if ids.has(str(r)):
+				return true
+	return false
+
 ## Using someone's confessed secret against them costs trust with its owner.
 static func _secret_used(w, card: Dictionary) -> void:
 	if card.get("kind", "") != "secret":
@@ -1704,6 +1718,11 @@ static func public_case(w, nominee, card: Dictionary, direction: String) -> void
 
 ## One voter weighs the player's public case (see public_case).
 static func _public_case_hear(w, v, nominee, card: Dictionary, direction: String, cw: Dictionary) -> void:
+	if direction == "accuse" and card_already_weighed(v, card, nominee.id):
+		# Already part of why they suspect the nominee: nothing new to assess (the player's
+		# voice and credibility still count, through the statement itself).
+		w.dlog.think(v.id, "public_case", "Already weighed card against %s; no new assessment." % nominee.id, {"card": card.get("n", 0)})
+		return
 	if w.workshop_present.is_valid():
 		var interpreted: Dictionary = w.workshop_present.call(v, card, [nominee.id], direction, "nomination", false)
 		if not interpreted.is_empty():
