@@ -31,7 +31,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var ok = true
 	if broken:
 		var C = content()
-		role = w.pick(C.GOOD_ROLES.filter(func(x): return x != t.role and x != other.role and x != "clerk"))
+		role = w.pick(w.case_script.town.filter(func(x): return x != t.role and x != other.role and x != "clerk"))
 		ok = false
 	var pair: Array = w.shuffled([t.id, other.id])
 	return {
@@ -46,7 +46,7 @@ func generate_bluff_reading(w, _n, plan: Dictionary, _s: String, mate, _asked: A
 		return {}
 	var C = content()
 	var other = w.pick(w.living_good())
-	var role: String = plan["bluffs"].get(mate.id, w.pick(C.GOOD_ROLES))
+	var role: String = plan["bluffs"].get(mate.id, w.pick(w.case_script.town))
 	var pair: Array = w.shuffled([mate.id, other.id])
 	var why = "vouches for teammate %s as the %s" % [mate.id, role]
 	var entry: Dictionary = {

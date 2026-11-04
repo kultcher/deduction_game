@@ -270,7 +270,7 @@ func consult_town_hall() -> Dictionary:
 		_town_hall_rng = RandomNumberGenerator.new()
 		_town_hall_rng.seed = hash([seed_value, n_npcs, "town_hall"])
 	var in_pool: Array = initial_good_roles.filter(func(r): return not (r in town_hall_shown_roles))
-	var out_pool: Array = C.GOOD_ROLES.filter(func(r): return not (r in initial_good_roles) and not (r in town_hall_shown_roles))
+	var out_pool: Array = case_script.town.filter(func(r): return not (r in initial_good_roles) and not (r in town_hall_shown_roles))
 	if in_pool.is_empty() or out_pool.is_empty():
 		return {}
 	var r_in: String = in_pool[_town_hall_rng.randi_range(0, in_pool.size() - 1)]
