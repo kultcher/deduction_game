@@ -44,7 +44,7 @@ func _walker_wording() -> void:
 		expected_rng.state = g.w.rng.state
 		expected_rng.randi_range(0, 0) # The existing single-option w.pick call.
 		var why = Evil.bluff_reason(g.w, n, target)
-		check("night 3" in why, "every fake-sighting reason names its stored night")
+		check(C.spoken_night(3, g.w.day) in why, "every fake-sighting reason names its stored night")
 		check(("duty" in why and not "window" in why) if role != "seer" else "window" in why, "claimed walking duties and window claims have distinct wording")
 		check(g.w.rng.state == expected_rng.state and JSON.stringify(g.w.evil_plan.fake_sightings) == original, "wording preserves the existing choice RNG and cached frame")
 

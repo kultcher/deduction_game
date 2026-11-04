@@ -651,6 +651,8 @@ static func _offer_command(g, n, what: String, requested: bool = false) -> void:
 	Mind.Dialogue.record_exchange(n.dialogue_memory, "other")
 	Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PROMISE_OFFER_BONUS, "the Demonologist offered to watch over me tonight")
 	g.w.dlog.add("player_offer", "player", n.id, {"what": what, "block": n.home_block, "requested": requested})
+	if n.is_evil():
+		Mind.Evil.note_player_offer(g.w, n, what, n.home_block if what == "vigil" else n.id)
 	if g.state == "talk":
 		g._prompt("(No question used. %d question%s left)" % [g.questions_left, "" if g.questions_left == 1 else "s"])
 

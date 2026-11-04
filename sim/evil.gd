@@ -360,6 +360,34 @@ static func intel_threat(m, id: String) -> float:
 			t += it["score"]
 	return minf(t, Tuning.Evil.INTEL_THREAT_CAP)
 
+## Record a player ward or vigil promise made directly to an evil NPC so they
+## (and any teammates they later confer with via share_intel) avoid walking into it.
+static func note_player_offer(w, n, what: String, target_or_block: String) -> void:
+	if n == null or not n.is_evil():
+		return
+	if what == "vigil":
+		add_intel(w, n, "player_vigil", target_or_block, 1.0,
+			"Demonologist promised %s a vigil on %s for night %d" % [n.name, C.block_name(target_or_block), w.day],
+			{"block": target_or_block, "night": w.day})
+	elif what == "ward":
+		add_intel(w, n, "player_ward", target_or_block, 1.0,
+			"Demonologist promised %s a ward for night %d" % [n.name, w.day],
+			{"who": target_or_block, "night": w.day})
+
+static func _knows_promised_vigil_tonight(m, block: String, night: int) -> bool:
+	for k in m.intel:
+		var it: Dictionary = m.intel[k]
+		if it.get("kind", "") == "player_vigil" and int(it.get("night", -1)) == night and str(it.get("block", "")) == block:
+			return true
+	return false
+
+static func _knows_promised_ward_tonight(m, who_id: String, night: int) -> bool:
+	for k in m.intel:
+		var it: Dictionary = m.intel[k]
+		if it.get("kind", "") == "player_ward" and int(it.get("night", -1)) == night and str(it.get("who", "")) == who_id:
+			return true
+	return false
+
 ## After each night: evil members note who they saw out (and who may have seen them).
 static func gather_night_intel(w) -> void:
 	for m in w.evil_team():
@@ -432,8 +460,21 @@ static func caution(w, n) -> float:
 		return maxf(Tuning.Evil.DEMON_CAUTION_FLOOR, C.EVIL_CAUTION_DEMON - Tuning.Evil.DEMON_CAUTION_DRIFT * (w.day - 1))
 	return maxf(C.MINION_CAUTION_FLOOR, C.EVIL_CAUTION_MINION - C.MINION_ID_DRIFT * maxi(0, w.day - 2))
 
-## What a teammate's life is worth to the team: the demon's is the game.
+## True when executing the current Demon would promote a living, unbroken Scion
+## rather than ending the case (`alive_before >= 5`; Sexton suppression deferred to Chunk 6).
+static func scion_fallback_active(w) -> bool:
+	var sc = w.living_with_role("scion")
+	return C.role_def("scion").can_promote_to_demon(sc, w.living().size())
+
+## What a teammate's life is worth to the team: the demon's is the game unless a
+## live Scion stands ready to inherit, in which case the Scion's cover matters more.
 static func teammate_value(w, id: String) -> float:
+	if scion_fallback_active(w):
+		if id == w.demon_id:
+			return Tuning.Evil.TEAMMATE_VALUE_DEMON_WITH_SCION
+		if w.by_id.has(id) and w.by_id[id].role == "scion":
+			return Tuning.Evil.TEAMMATE_VALUE_SCION_ACTIVE
+		return Tuning.Evil.TEAMMATE_VALUE_MINION
 	return Tuning.Evil.TEAMMATE_VALUE_DEMON if id == w.demon_id else Tuning.Evil.TEAMMATE_VALUE_MINION
 
 ## How much someone has publicly acted against the evil team.
@@ -524,6 +565,10 @@ static func choose_kill_target(w) -> String:
 			parts["spared_keep_to_frame"] = Tuning.Evil.KILL_SPARED_KEEP
 		if warden_claimed and n.claim_public and n.claimed_role in C.INFO_ROLES:
 			parts["likely_warded"] = Tuning.Evil.KILL_LIKELY_WARDED
+		if _knows_promised_vigil_tonight(d, n.home_block, w.day):
+			parts["promised_vigil_block"] = Tuning.Evil.KILL_PROMISED_VIGIL_PENALTY
+		if _knows_promised_ward_tonight(d, n.id, w.day):
+			parts["promised_ward"] = Tuning.Evil.KILL_PROMISED_WARD_PENALTY
 		var caution: float = plan.get("caution", 0.0)
 		if caution > 0.05:
 			var profile = 0.0
@@ -622,6 +667,8 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 			parts["known_threat"] = known
 		if n.id in wardens and kt != null:
 			parts["disable_warden"] = Tuning.Evil.POISON_WARDEN_INFO if (kt.claim_public and kt.claimed_role in C.INFO_ROLES) else Tuning.Evil.POISON_WARDEN_OTHER
+		if _knows_promised_vigil_tonight(m, n.home_block, w.day):
+			parts["promised_vigil_block"] = Tuning.Evil.POISON_PROMISED_VIGIL_PENALTY
 		var noise_draw = w.rng.randf()
 		parts["noise"] = snappedf(noise_draw * Tuning.Evil.POISON_NOISE, 0.01)
 		var total = 0.0
@@ -805,11 +852,12 @@ static func bluff_reason(w, n, t) -> String:
 		var fs = w.evil_plan["fake_sightings"][k]
 		if fs is Dictionary and fs["who"] == t.id and k.begins_with(n.id + ":"):
 			var night: int = int(fs.get("day", k.get_slice(":", 1)))
+			var when_s: String = C.spoken_when(night, w.day)
 			var walking_claim: bool = C.ROLES.get(n.claimed_role, {}).get("night_walk", false)
 			if walking_claim:
-				opts.append("I saw them out on %s on night %d, while I was out on my duty" % [C.block_name(fs["block"]), night])
+				opts.append("I saw them out on %s %s, while I was out on my duty" % [C.block_name(fs["block"]), when_s])
 			else:
-				opts.append("I saw them out in the street from my window on night %d" % night if fs.get("how", "window") == "window" else "I saw them out on %s on night %d" % [C.block_name(fs["block"]), night])
+				opts.append("I saw them out in the street from my window %s" % when_s if fs.get("how", "window") == "window" else "I saw them out on %s %s" % [C.block_name(fs["block"]), when_s])
 	if opts.is_empty():
 		return ""
 	return w.pick(opts)

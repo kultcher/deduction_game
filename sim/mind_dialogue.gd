@@ -1224,7 +1224,38 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	lines.append(opinion_reply)
 	if level >= 0.5:
 		facts.append({"kind": "opinion", "subject": [t.id], "source": n.id, "text": "%s distrusts %s." % [n.name, t.name]})
+	_second_hand_gift_note(w, n, t, lines, facts)
 	return {"lines": lines, "facts": facts}
+
+## Meeting plan M1: asked about someone, a willing good speaker passes on a private gift
+## claim or hint that person made to them (once; shares the keys gossip_item uses).
+static func _second_hand_gift_note(w, n, t, lines: Array, facts: Array) -> void:
+	if n.is_evil() or t.claim_public or not t.alive:
+		return
+	var willing: bool = trait_of(n, "gossip") * Tuning.Social.ROLE_WILLING_GOSSIP_SCALE + n.trust * Tuning.Social.ROLE_WILLING_TRUST_SCALE + n.pressure * Tuning.Social.ROLE_WILLING_PRESSURE_SCALE > Tuning.Social.ROLE_WILLING_THRESHOLD
+	if not willing:
+		return
+	var kc: Dictionary = n.known_claims.get(t.id, {})
+	if not kc.is_empty() and kc.get("via", "") == t.id and C.ROLES.has(str(kc.get("role", ""))) and not n.told_to.has("player|role_claim:" + t.id):
+		n.told_to["player|role_claim:" + t.id] = true
+		var rn: String = C.role_name(kc["role"])
+		lines.append(say_voiced(n, "role_query_private_direct", "Between us, %s told me they're the %s." % [t.name, rn], {"who": t.name, "role": rn}))
+		facts.append({"kind": "claim", "subject": [t.id], "role": kc["role"], "source": t.id, "via": n.id, "private": true,
+			"text": "Via %s: %s privately claims to be the %s." % [n.name, t.name, rn]})
+		return
+	for h in n.hearsay:
+		if h.get("kind", "") != "role_hint" or h.get("from", "") != t.id or n.told_to.has("player|role_hint:" + t.id):
+			continue
+		var pk: String = str(h.get("package", ""))
+		if not C.HINT_PACKAGES.has(pk):
+			continue
+		n.told_to["player|role_hint:" + t.id] = true
+		lines.append(say(n, "Between us, %s hinted their gift is %s." % [t.name, C.HINT_PACKAGES[pk]["name"]]))
+		facts.append({"kind": "hint", "subject": [t.id], "source": t.id, "via": n.id, "private": true, "package": pk,
+			"roles": C.HINT_PACKAGES[pk]["roles"].duplicate(),
+			"text": "Via %s: %s hinted at %s (%s)." % [n.name, t.name, C.HINT_PACKAGES[pk]["name"],
+				" / ".join(PackedStringArray(C.HINT_PACKAGES[pk]["roles"].map(func(r): return C.role_name(r))))]})
+		return
 
 # ---------------------------------------------------------------- Mind delegates
 

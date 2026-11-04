@@ -226,10 +226,13 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 		primary_key = "present_false_known"
 		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
 		allow_lean = false
-	elif status == "inconsistent" or not bool(ev.get("consistent", true)) or str(assessment.get("assessment", {}).get("status", "")) == "conflicting":
+	elif (status == "inconsistent") if bounded else ((not bool(ev.get("consistent", true)) or str(assessment.get("assessment", {}).get("status", "")) == "conflicting") and believed_stance == "reject"):
 		primary_key = "present_conflict_weighing"
 		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
 		allow_lean = false
+		if believed_stance in ["accept", "partial"]:
+			var inc_follow: String = "present_accept_open" if believed_stance == "accept" else "present_partial"
+			parts.append(Dialogue.voice_line(listener.id, inc_follow, "", {"target": target_label}))
 	elif status == "rival_found" and reasoning.get("rival") is Dictionary and not reasoning.rival.is_empty():
 		var epoch: String = str(root_conclusion.get("at", "now"))
 		var alt: Dictionary = Solver.describe_world(view, reasoning.rival, epoch)
@@ -319,7 +322,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 
 	if bounded and primary_key not in ["present_lost_thread", "present_false_self", "present_false_known", "present_conflict_found", "present_conflict_none"]:
 		var ignored_arr: Array = reasoning.get("ignored", [])
-		var pres_rep: Array = view.get("listener", {}).get("knowledge", {}).get("presented_reports", ignored_arr)
+		var pres_rep: Array = snapshot.get("selected", []) if snapshot.has("selected") else view.get("listener", {}).get("knowledge", {}).get("presented_reports", [])
 		var ignored_presented: bool = ignored_arr.any(func(id): return id in pres_rep)
 		if ignored_presented or not reasoning.get("ignored_lines", []).is_empty():
 			parts.append(Dialogue.voice_line(listener.id, "present_partial_attention", ""))
