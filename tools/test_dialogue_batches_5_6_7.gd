@@ -246,6 +246,21 @@ func _test_botc_rival_pair_and_marked_gate() -> void:
 	_check(Presentations._is_marked_relevant(m_id, {"type": "evil", "a": t_id}, relevant_snap, {"considered": ["r1"]}), "Attended Seer ping mentioning Marked triggers present_alt_marked")
 
 
+## File a real Workshop case ("target is evil") from board cards, the way the canvas does.
+func _file_case(g, target_id: String, board_numbers: Array) -> int:
+	var WorkshopCanvas = preload("res://game/workshop_canvas.gd")
+	var CanvasModel = preload("res://workshop/canvas_model.gd")
+	var view: Dictionary = WorkshopCanvas.view(g)
+	var model = CanvasModel.new(view)
+	var root: String = model.selected
+	model.nodes[root].conclusion = {"type": "evil", "target": target_id, "at": view.alignment_epoch}
+	for num in board_numbers:
+		var node: String = "e:" + WorkshopCanvas.Evidence.normalize_card(g.board[int(num) - 1]).id
+		if model.nodes.has(node):
+			model.connect_cards(node, root)
+	return WorkshopCanvas.file(g, model.compile(root), 0)
+
+
 func _test_live_presentation_and_evil_parity() -> void:
 	var g = _game(5603, 7)
 	var good_listener = g.w.living_good()[0]
@@ -266,34 +281,28 @@ func _test_live_presentation_and_evil_parity() -> void:
 		"data": {"pair": [target.id, mate.id], "yes": true},
 		"text": "%s (Seer, Night 1): one of %s or %s is the Demon." % [seer_src.name, target.name, mate.name],
 	}])
-	var ded_num: int = g.board.size() + 1
-	g.board.append({
-		"n": ded_num, "kind": "deduction", "source": "player", "day": 2, "phase": C.EVENING,
-		"conclusion": {"type": "evil", "a": target.id},
-		"supports": [1, 2],
-		"workshop_case": {"version": 1, "root": {"type": "evil", "target": target.id, "at": "now"}, "cards": [1, 2]},
-		"text": "Deduction: %s is evil." % target.name,
-	})
+	var ded_num: int = _file_case(g, target.id, [1, 2])
+	_check(ded_num > 0, "test case against the target files through the Workshop")
 	var ded: Dictionary = g.board[ded_num - 1]
 	var r_good: Dictionary = g._evaluate_deduction(good_listener, ded, 1.0, true, "private")
 	var r_evil: Dictionary = g._evaluate_deduction(evil_listener, ded, 1.0, true, "private")
 	_check(not r_good.lines.is_empty() and not ("[PH]" in r_good.lines[0].text) and r_good.lines[0].has("statement"), "Good Workshop presentation speaks character voice with zero [PH] and canonical statement")
 	_check(not r_evil.lines.is_empty() and not ("[PH]" in r_evil.lines[0].text) and r_evil.lines[0].has("statement"), "Evil Workshop presentation speaks character voice with zero [PH] and canonical statement")
 
-	var self_ded_num: int = g.board.size() + 1
-	g.board.append({
-		"n": self_ded_num, "kind": "deduction", "source": "player", "day": 2, "phase": C.EVENING,
-		"conclusion": {"type": "evil", "a": evil_listener.id},
-		"supports": [1, 2],
-		"workshop_case": {"version": 1, "root": {"type": "evil", "target": evil_listener.id, "at": "now"}, "cards": [1, 2]},
-		"text": "Deduction: %s is evil." % evil_listener.name,
-	})
+	var self_ded_num: int = _file_case(g, evil_listener.id, [1, 2])
+	_check(self_ded_num > 0, "test case against the evil listener files through the Workshop")
 	var r_self_evil: Dictionary = g._evaluate_deduction(evil_listener, g.board[self_ded_num - 1], 1.0, true, "private")
 	var expected_self: String = Dialogue.voice_line(evil_listener.id, "present_false_self", "")
 	_check(not r_self_evil.lines.is_empty() and r_self_evil.lines[0].text == expected_self, "Evil self-accusation uses character's present_false_self line")
 
-	var sup_good: Dictionary = Mind.hear_defence(g.w, good_listener, [good_listener], g.board[0])
-	var sup_evil: Dictionary = Mind.hear_defence(g.w, evil_listener, [evil_listener], g.board[0])
+	# Self-support thanks needs a card that clears the listener (their own claim does).
+	var own_claims: Dictionary = {}
+	for who in [good_listener, evil_listener]:
+		g._facts([{"kind": "claim", "source": who.id, "subject": [who.id], "role": "clerk",
+			"day": 2, "phase": C.MORNING, "private": false, "text": "%s claims to be the Clerk." % who.name}])
+		own_claims[who.id] = g.board.back()
+	var sup_good: Dictionary = Mind.hear_defence(g.w, good_listener, [good_listener], own_claims[good_listener.id])
+	var sup_evil: Dictionary = Mind.hear_defence(g.w, evil_listener, [evil_listener], own_claims[evil_listener.id])
 	_check(not sup_good.lines.is_empty() and not ("[PH]" in sup_good.lines[0].text) and sup_good.lines[0].statement == "Thank you for believing me.", "Good self-support uses voiced self_support_thanks with canonical statement")
 	_check(not sup_evil.lines.is_empty() and not ("[PH]" in sup_evil.lines[0].text) and sup_evil.lines[0].statement == "Thank you for believing me.", "Evil self-support uses voiced self_support_thanks with canonical statement")
 
@@ -408,6 +417,8 @@ func _test_batch7_conversations_press_roles_and_meetings() -> void:
 	speaker.traits["privacy"] = 0.0
 	speaker.info_log = [{"day": 1, "role": "seer", "data": {"pair": [other.id, third.id], "yes": true}, "text": "I looked at %s and %s: one of them reads as the demon" % [other.name, third.name], "true": true, "shared": false}]
 	speaker.hints = {other.id: {"day": 1}}
+	# Reasons come from the shared model: let the speaker weigh the reading first.
+	Mind.refresh_beliefs(g.w, speaker, "test: private Seer reading")
 	var ah_ok: Dictionary = Mind.answer_hint(g.w, speaker)
 	_check(ah_ok.lines.size() >= 3 and other.name in ah_ok.lines[0].text and not ("[PH]" in ah_ok.lines[0].text) and not ("[PH]" in ah_ok.lines.back().text), "Accepted hint follow-up voices hint_why_lead and hint_why_confidential without [PH]")
 

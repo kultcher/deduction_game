@@ -82,6 +82,40 @@ Ground rules (from Nov 3, until Michael changes them):
   The old bot also triggers this class (45 events across 3 seeds at 10 NPCs), so it
   predates Phase 4, but it's a card the shared model can't read.
 
+### Result
+
+- **`main` is already red.** PR #52 (patch_006, dialogue batches 5–7) was merged with
+  three suites failing: `test_dialogue_batches_5_6_7` (8 failures plus script errors),
+  `test_backlog_batch4` (2), `test_workshop_presentation` (2). I ran them on `96fb5ea`
+  itself and got exactly the same failures as on this branch, so Phase 4 adds none.
+- **Fixed on this branch:**
+  - `dialogue_presentations._pick_rival_pair`: on a "now" claim a dead starting Demon was
+    still picked as the accomplice. The pool now holds the living only.
+  - `test_dialogue_batches_5_6_7`: the test hand-built `workshop_case` dictionaries in a
+    shape the game never files (a `root` key, board numbers instead of card ids), which
+    caused all the script errors. It now files real cases through `WorkshopCanvas.file`.
+    The self-support checks passed cards that don't concern the listener (a 0.1 or 0.15
+    old strength, under the 0.2 bar, so they'd fail on the old system too); each listener
+    now gets their own claim.
+- **Still failing (Argon, patch_006; 2-attempt cap reached on the first):**
+  1. `test_dialogue_batches_5_6_7` "Accepted hint follow-up…": the test writes a Seer
+     reading straight into `speaker.info_log`. The shared model never sees it, so
+     `reason_status` is "none" even after `Mind.refresh_beliefs` and the speaker declines.
+     The reading needs to go in the way a real one does (or the test needs a mind
+     whose reading came from a real night).
+  2. `test_backlog_batch4:206` "the repeated gift refusal has a different line" and
+     `:682` "arrival narration adds no phase advance or RNG draws". Voiced lines likely
+     replaced the expected English text; the second may be a real RNG draw added to
+     arrival narration (the golden didn't move, but it doesn't cover arrivals).
+  3. `test_workshop_presentation:69–70`: the group-response text no longer starts with
+     the expected admission / isn't shown in full.
+- Golden: identical to `baseline_82faa5b` in both modes after the merge
+  (`--ignore engine,sus_why,sus_src`), C#/GDScript parity identical, no script errors.
+- **Not pushed to `main`** (rule: `main` moves only when green). Opened a PR from
+  `claude/phase4-purge-bot` instead. It makes `main` strictly better (fixes 3 checks, adds
+  no failures), so Michael may merge it as is; otherwise it waits for Argon's fixes
+  to the five checks above. **Next actor: Argon** (patch_006 failures), or Michael (merge).
+
 ## 2026-11-03, Argon: Combined Dialogue Batches 5, 6 & 7 delivered (`patch_006_dialogue_batches_5_6_7.zip`)
 
 - **Base:** `main` at `9df96cc7f7f64f567cf99c5fd060cc44bfc4799a` (`9df96cc`).
