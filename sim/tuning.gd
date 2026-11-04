@@ -100,16 +100,6 @@ class Setup:
 
 # ---------------------------------------------------------------- 2. Role Definitions & Per-Role Strengths
 class Roles:
-	## Shape-driven default strengths (`sim/role_def.gd`)
-	const DEFAULT_READING_STRENGTH = 0.3
-	const PING_YES_READING_STRENGTH = 0.9
-	const GROUP_READING_STRENGTH_SCALE = 0.9
-	const GROUP_READING_STRENGTH_CAP = 0.8
-	const NIGHT_ROUTE_READING_STRENGTH = 0.35
-	const DEFAULT_CARD_STRENGTH = 0.6
-	const DEFAULT_DEFEND_STRENGTH = 0.5
-	const FALLBACK_DEFEND_STRENGTH = 0.15
-
 	## Default public-claim / reveal-cost / disclosure-tier modifiers (`sim/role_def.gd`)
 	const HIDE_FROM_DEMON_CLAIM = -0.5
 	const HIDE_FROM_DEMON_CLAIM_D2 = -0.3
@@ -122,13 +112,6 @@ class Roles:
 	## Per-role tuning blocks (`sim/roles/*.gd`)
 	const SEER = {
 		"public_threat_bonus": 1.0,
-		"reading_strength_yes": 0.9,
-		"card_strength_yes": 1.0,
-		"defend_strength_no": 0.8,
-		"eff_yes_pair": 0.45,
-		"eff_yes_solo": 0.85,
-		"eff_no_own": -0.45,
-		"eff_no_heard": -0.3,
 		"red_herring_defence_eff": -0.12,
 		"focus_base": 0.3,
 		"focus_insight_scale": 0.5,
@@ -151,81 +134,45 @@ class Roles:
 	}
 
 	const DOWSER = {
-		"eff_zero": -0.25,
-		"eff_per_evil": 0.35,
-		"eff_per_evil_excluded": 0.7,
-		"eff_impossible_source": 0.5,
 		"bluff_two_evil_prob": 0.35,
 		"bluff_crowd_one_prob": 0.25,
 	}
 
 	const HEARTHWITCH = {
-		"card_strength_per_evil": 0.5,
-		"defend_strength_zero": 0.6,
-		"eff_zero": -0.25,
-		"eff_per_evil": 0.35,
-		"eff_per_evil_excluded": 0.7,
-		"eff_impossible_source": 0.5,
 	}
 
 	const CLERK = {
-		"defend_strength": 0.5,
-		"eff_named_listener": -0.3,
-		"eff_pair_good": -0.15,
 	}
 
 	const ARCHIVIST = {
-		"reading_strength_demon": 0.6,
-		"reading_strength_evil": 0.4,
-		"reading_strength_good": 0.15,
-		"card_strength": 0.8,
-		"eff_pair": 0.35,
-		"eff_solo": 0.75,
 	}
 
 	const GRAVEDIGGER = {
-		"card_strength": 0.3,
 		"marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE,
-		"eff_impossible_source": 0.5,
-		"eff_executed_evil": 1.0,
-		"eff_executed_good": -0.4,
-		"eff_nominator_of_good": 0.25,
-		"eff_nominator_of_evil": -0.2,
 		"trust_backed_innocent": -0.06,
 		"trust_proven_right_base": 0.08,
 		"trust_proven_right_insight": 0.06,
 	}
 
 	const NIGHTWATCH = {
-		"card_strength_seen": 1.0,
-		"defend_strength": 0.0,
-		"eff_lied_about_listener": 0.45,
-		"eff_seen_out": 0.5,
 		"req_already_wondering": 0.3,
 	}
 
 	const RUMORMONGER = {
-		"eff_pair_good": -0.12,
 	}
 
 	const MEDIUM = {
-		"reading_strength": 0.5,
 		"relay_reading_scale": 0.6,
-		"eff_dead_sighting": 0.3,
 		"dead_suspicion_min": 0.35,
 	}
 
 	const VETERAN = {
 		"quiet_night_effect": -0.06,
 		"quiet_night_claim_weight": 0.025,
-		"eff_attacker_block": 0.12,
 	}
 
 	const MARTYR = {
 		"claim_chosen_bonus": 0.4,
-		"reading_strength_evil": 0.9,
-		"eff_chosen_good": -0.2,
-		"eff_hanged_evil": 1.0,
 		"pick_min_score": 0.62,
 		"pick_susp_scale": 0.5,
 		"pick_pref_scale": 0.5,
@@ -583,6 +530,12 @@ class Dialogue:
 	const FEAR_CAP = 0.85
 
 	## Pressing with evidence
+	## Press strength (purge phase 4b): the shared model's weight for the card, floored here;
+	## a pressed deduction lands at a fixed strength; cards the model has no entry for
+	## count this much against someone they structurally implicate.
+	const PRESS_STRENGTH_MIN = 0.3
+	const PRESS_DEDUCTION_STRENGTH = 0.6
+	const UNMODELLED_CARD_WEIGHT = 0.5
 	const PRESS_NERVES_HIDING = 0.6
 	const PRESS_NERVES_HONEST = 0.2
 	const PRESS_PRESSURE_GAIN = 0.35
@@ -868,6 +821,21 @@ class Workshop:
 		"complete": true,
 	}
 
+
+
+# ---------------------------------------------------------------- 10. Presentation replies (purge phase 4)
+
+## Speech the Workshop doesn't judge (protect / spare preferences, bare beliefs):
+## sim/presentation_reply.gd. Never evidence; only feeds social preferences.
+class Presentation:
+	## Agreement = trust weight x the listener's trust in the player + belief weight x how
+	## far their own suspicion already leans the speaker's way.
+	const SOCIAL_TRUST_WEIGHT = 0.5
+	const SOCIAL_BELIEF_WEIGHT = 0.5
+	## Below this (agreement x venue scale) nothing is recorded.
+	const SOCIAL_MIN_BASE = 0.004
+	## Trust lost when the player accuses a good listener of something they know is false.
+	const SELF_ACCUSED_TRUST_LOSS = 0.05
 
 static var _fingerprint_cache: String = ""
 

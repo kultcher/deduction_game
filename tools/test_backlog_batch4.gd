@@ -834,12 +834,10 @@ func count_reason_names():
 	var near: Array = g.w.living_neighbours(listener).filter(func(m): return not m.is_evil())
 	var source = near[0] if not near.is_empty() else g.w.living_good()[0]
 	var rng = g.w.rng.state
-	# Defence strengths are unchanged by 2c: Hearthwitch's zero reading uses its own tuning,
-	# Dowser the RoleDef default for a reading that clears the nominee.
-	var want = {"hearthwitch": C.Tuning.Roles.HEARTHWITCH.defend_strength_zero, "dowser": C.Tuning.Roles.DEFAULT_DEFEND_STRENGTH}
+	# Purge phase 4 retired the hand-set defence strengths: no role keeps legacy hooks.
 	for role in ["hearthwitch", "dowser"]:
 		var zero = {"day": 1, "phase": 0, "role": role, "data": {"group": [listener.id], "count": 0}, "shared": true}
-		check(not C.role_def(role).has_method("info_effects") and is_equal_approx(C.role_def(role).defend_strength(zero["data"], listener.id), want[role]), "zero-count reading preserves RoleDef defence strength without legacy info_effects: " + role)
+		check(not C.role_def(role).has_method("info_effects") and not C.role_def(role).has_method("defend_strength"), "no legacy info_effects or strength hooks remain: " + role)
 		if role == "hearthwitch":
 			continue # benched (not in the script) and not read by the shared model
 		listener.ledger = {}

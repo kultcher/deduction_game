@@ -197,12 +197,12 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 	# Build native fallback footing through the ordinary filer, then retain the
 	# entire graph. A unique label prevents text-based card merging across drafts.
 	var old_size: int = g.board.size()
-	var number = g.file_deduction(conclusion, roots.numbers, {}, 0, true)
+	var number = g.file_deduction(conclusion, roots.numbers, true)
 	if number < 1:
 		return number
 	var card: Dictionary = g.board[number - 1].duplicate(true)
 	card["workshop_case"] = value.duplicate(true)
-	card["text"] = "Case: %s (%d original reports)." % [g.Argue.conclusion_text(g.w, conclusion), roots.numbers.size()]
+	card["text"] = "Case: %s (%d original reports)." % [g.Deduction.conclusion_text(g.w, conclusion), roots.numbers.size()]
 	# A revision is a new historical receipt. Listeners retain the version they
 	# actually heard until the new card is presented.
 	if previous > 0 and previous <= g.board.size() and g.board[previous - 1].has("workshop_case"):

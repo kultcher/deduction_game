@@ -68,7 +68,7 @@ func _init() -> void:
 	check(l.workshop_state.facts.size() == before_reading + 1 and implied.id == reading.id, "a relayed reading's implied gift claim reuses the same evidence receipt")
 	check(implied.observed_at.day == 0 and implied.provenance.via == s.id, "the implied declaration retains original reading time and teller provenance")
 	var number = g.add_card({"kind": "info", "source": s.id, "role": "surveyor", "subject": [], "day": 0, "phase": 3, "data": {"count": 2}, "text": "Shared reading"})
-	var filed = g.file_deduction({"type": "evil", "a": "constance"}, [number], {}, 0, true)
+	var filed = g.file_deduction({"type": "evil", "a": "constance"}, [number], true)
 	var item = {"kind": "case", "about": "constance", "card": g.board[filed - 1], "from": "player", "key": "case:" + str(filed)}
 	Social._deliver(g.w, s, l, item)
 	var wrappers: Array = l.ledger.keys().filter(func(id): return str(id).begins_with("relayed-case:"))

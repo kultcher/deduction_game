@@ -68,10 +68,6 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 	return "%s Medium: %s had nothing to tell" % [src, dead]
 
 
-func reading_strength(_d: Dictionary, _t_id: String) -> float:
-	return Tuning.Roles.MEDIUM.reading_strength
-
-
 ## Public hearth eligibility: Demon victims only; revisit the latest after all are visited.
 func pick_targets(w, m, _mind, before_day: int = -1):
 	var dead: Array = w.npcs.filter(func(x): return not x.alive and x.death_cause == "demon" and (before_day < 0 or x.death_day < before_day))

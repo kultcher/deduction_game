@@ -6,7 +6,6 @@ const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
 const Evil = preload("res://sim/evil.gd")
 const C = preload("res://sim/content.gd")
-const Argue = preload("res://sim/argue.gd")
 var checks = 0
 var fails = 0
 func _init() -> void:
@@ -18,7 +17,6 @@ func _run() -> void:
 	_distrust()
 	_relationships()
 	_role_guess_warning()
-	_trace_subjects()
 	print("Batch 2: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 func fresh():
@@ -278,15 +276,3 @@ func _role_guess_warning() -> void:
 			check(n.role_guesses == i and is_equal_approx(before - n.trust, 0.02 * i), "warning preserves the wrong-guess counter and existing cost")
 			check(g.w.rng.state == state, "wrong-guess wording introduces no random choice")
 
-func _trace_subjects() -> void:
-	var g = fresh()
-	var a: String = g.w.npcs[0].id
-	var b: String = g.w.npcs[1].id
-	var conversation = {"n": 1, "kind": "conversation", "source": "player", "subject": [a, b], "block": "square", "day": 1, "phase": C.EVENING}
-	var trace = {"n": 2, "kind": "trace", "source": "evidence", "subject": [], "block": "square", "day": 1, "phase": C.NIGHT}
-	var rng = g.w.rng.state
-	for cards in [[conversation, trace], [trace, conversation], [conversation, trace, conversation]]:
-		var matches: Array = Argue.check(g.w, cards).matches.filter(func(m): return m.template == "trace_match")
-		check(matches.size() == 2 and matches.any(func(m): return m.subject == a) and matches.any(func(m): return m.subject == b), "a trace links both conversation participants, once each, irrespective of input order or repeated receipt")
-		check(matches.all(func(m): return m.cards == [1, 2] and m.explanations.size() == 2 and m.explanations[0].id == 1 and m.explanations[1].id == 2), "per-person matches retain original supports and rival explanations")
-	check(g.w.rng.state == rng, "subject-aware native dedup uses no randomness")

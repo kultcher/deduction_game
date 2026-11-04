@@ -116,7 +116,8 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 				night = x.get("day", -1)
 	var naming_me = kind == "info" and C.has_role_def(card.get("role", "")) and C.role_def(card.get("role", "")).names_good_role_in_pair() and n.id in pair  # "one of you two is the X"
 	var counter = kind == "claim" and card.get("source", "") != n.id and n.claim_public and card.get("role", "") == n.claimed_role
-	var strength = 0.6 if kind == "deduction" else clampf(card_strength(w, card, n), 0.3, 1.0)
+	# How hard the card lands: the town's own shared weight for it (purge phase 4b).
+	var strength = Tuning.Dialogue.PRESS_DEDUCTION_STRENGTH if kind == "deduction" else clampf(_mind().card_weight_against(w, card, n.id), Tuning.Dialogue.PRESS_STRENGTH_MIN, 1.0)
 	if naming_me:
 		strength = 0.5
 	# Hiding something this card touches?
@@ -1234,8 +1235,8 @@ static func _challenged(n, response: Dictionary, card: Dictionary) -> Dictionary
 static func _unshared_fake_on(n, t_id: String) -> Dictionary:
 	return _mind()._unshared_fake_on(n, t_id)
 
-static func card_strength(w, card: Dictionary, suspect) -> float:
-	return _mind().card_strength(w, card, suspect)
+static func card_weight_against(w, card: Dictionary, target_id: String) -> float:
+	return _mind().card_weight_against(w, card, target_id)
 
 static func citable_reason(w, n, t_id: String, audience: String = "town") -> String:
 	return _mind().citable_reason(w, n, t_id, audience)

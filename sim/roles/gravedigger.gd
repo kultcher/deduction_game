@@ -22,10 +22,6 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 	return "%s Gravedigger: %s was %s" % [src, nm.call(d.get("executed", "")), content().role_name(d.get("role", ""))]
 
 
-func card_strength(_d: Dictionary, _suspect_id: String) -> float:
-	return Tuning.Roles.GRAVEDIGGER.card_strength
-
-
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	if w.executed_today == "":
 		return {}

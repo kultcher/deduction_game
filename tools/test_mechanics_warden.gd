@@ -24,7 +24,7 @@ func _init() -> void:
 	var observer = goods[2]
 	var raw = {"kind": "sighting", "source": guard.id, "subject": [guard.id], "block": resident.home_block, "guard_claim": resident.id, "day": 1, "phase": 3, "text": "Guarded this door."}
 	var number = g.add_card(raw)
-	var filed = g.file_deduction({"type": "evil", "a": resident.id}, [number], {}, 0, true)
+	var filed = g.file_deduction({"type": "evil", "a": resident.id}, [number], true)
 	var prepared = Live.Assess.prepare(g.workshop_snapshot([filed], observer.id))
 	var id: String = Live.Evidence.normalize_card(raw).id
 	var card = Solver.card_by_id(prepared.view, id)

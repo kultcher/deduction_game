@@ -4,7 +4,6 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
-const Argue = preload("res://sim/argue.gd")
 const Recent = preload("res://game/recent_sightings.gd")
 const C = preload("res://sim/content.gd")
 const Social = preload("res://sim/social.gd")
@@ -19,7 +18,6 @@ func _init() -> void:
 	_watch_disclosure()
 	_public_sighting()
 	_survival()
-	_own_role()
 	_meeting_sighting_prefix_and_gallows()
 	_public_hearsay_and_self_gossip()
 	_approach_ui_visibility()
@@ -74,9 +72,6 @@ func _whereabouts() -> void:
 	var r = Mind.answer_today(w, n, "yesterday evening")
 	var own: Array = r["facts"].filter(func(c): return c.get("self_report", false))
 	_check(own.size() == 1 and own[0]["subject"] == [n.id] and own[0]["source"] == n.id and own[0]["block"] == "docks", "a reticent speaker's stated whereabouts still produce attributed evidence")
-	var a = g.add_card(own[0])
-	var b = g.add_card({"kind": "trace", "block": "docks", "day": 1, "source": "evidence", "text": "Docks trace."})
-	_check(Argue.check(w, [g.board[a - 1], g.board[b - 1]])["matches"].any(func(m): return m["template"] == "trace_match"), "the speaker's evening account can be linked to a trace")
 
 func _secrets() -> void:
 	var g = _game()
@@ -95,17 +90,6 @@ func _secrets() -> void:
 	_check(secrets.size() == 1 and secrets[0].get("mod", "") == "lovers", "a Lover's confession records the disclosed secret type")
 	if secrets.is_empty():
 		return
-	var a = g.add_card(secrets[0])
-	var b = g.add_card({"kind": "sighting", "subject": [n.id], "source": "player", "day": 1, "phase": C.NIGHT, "block": "hill", "text": "Seen out."})
-	var matches: Array = Argue.check(w, [g.board[a - 1], g.board[b - 1]])["matches"]
-	_check(matches.any(func(m): return m["template"] == "secret_explains_movement"), "a confession provides a possible defence of night movement")
-	_check(not Argue.assertions(g.board[a - 1]).any(func(s): return s["t"] == "proven_good"), "a confession is not a proven alignment")
-	var marked = {"n": 999, "kind": "secret", "subject": [n.id], "owner": n.id, "source": n.id, "mod": "marked"}
-	var read = {"n": 1000, "kind": "info", "subject": [n.id, other.id], "source": other.id, "role": "seer", "day": 1, "data": {"pair": [n.id, other.id], "yes": true}}
-	_check(Argue.check(w, [marked, read])["matches"].any(func(m): return m["template"] == "marked_explains_reading"), "a reported Marked secret can explain an evil ping without proving innocence")
-	read["role"] = "nightwatch"
-	read["data"] = {"block": "hill", "seen": [n.id]}
-	_check(not Argue.check(w, [marked, read])["matches"].any(func(m): return m["template"] == "marked_explains_reading"), "Marked does not excuse a Night Watch's physical sighting")
 
 func _watch_disclosure() -> void:
 	var g = _game()
@@ -176,19 +160,6 @@ func _survival() -> void:
 	n.warden_log.clear()
 	n.history[w.time_key(4, C.NIGHT)] = "home:" + n.home_block
 	_check(Mind.warden_door(w, n, 4) == demon.id, "a claimed protection target is not a guaranteed non-teammate")
-
-func _own_role() -> void:
-	var g = _game()
-	var n = g.w.living_good()[0]
-	n.role = "warden"
-	var e = Argue._clear(g.w, n.id, {"type": "role", "role": "lamplighter"}, "They were the Lamplighter")
-	_check(Argue._expl_weight(g.w, n, e) == 0.0, "a Warden cannot explain their own movements by being the Lamplighter")
-	var other = g.w.living_good()[1]
-	_check(Argue._expl_weight(g.w, other, e) > 0.0, "that private knowledge does not leak to another listener")
-	n.home_block = "hill"
-	n.history[g.w.time_key(1, C.NIGHT)] = "night:docks"
-	var on_way: String = C.route(n.home_block, "docks")[0]
-	_check(Argue._knows_false(g.w, n, {"t": "out", "who": n.id, "night": 1, "block": on_way}) == -1, "own knowledge recognizes sightings along the route, not just the destination")
 
 func _meeting_sighting_prefix_and_gallows() -> void:
 	var g = _game()

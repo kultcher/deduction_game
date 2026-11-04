@@ -17,6 +17,105 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03 ~23:30 ET, Claude: legacy purge Phase 4 (purge + analyst bot)
+
+- **Branch:** `claude/phase4-purge-bot`, merged with `main` at `96fb5ea` (Argon's dialogue
+  batches 5–7 and the trace art). Plan: `docs/legacy_retirement_plan.md` Phase 4.
+- **What's gone:** `sim/argue.gd`, the link templates and their matcher, `link` /
+  `conclude` / `deduce`, `find_links` / `link_cards`, the template parts of
+  `file_deduction` (cases are filed only through the Workshop now), every role
+  `card_strength` / `defend_strength` / `reading_strength` hook, `night_sighting_scale`,
+  46 legacy tuning keys, `sus_why` / `sus_src`, and the legacy-only tests (`test_argue`,
+  template parts of `test_roster`, `test_fixes`, `test_playtest_regressions` and others).
+- **What replaced it:**
+  - `sim/presentation_reply.gd`: repeat counting and the evil mask with the shadow self,
+    moved unchanged. **Argon:** your patch_006 change to `Argue.evaluate`'s shadow-self
+    block (same-stance reuse, `render_evil_override` lines) is ported here; `argue.gd` is
+    deleted, so edit `presentation_reply.gd` from now on.
+  - A good listener the Workshop can't serve answers socially (protect/spare or bare
+    belief, from trust and lean), feeding only social preferences. There's no template
+    fallback any more.
+  - `Mind.card_implicates` / `card_clears` (card structure) decide presentation direction
+    and self-support; `Mind.card_weight_against` (the shared model's own reason weight,
+    or `Tuning.Dialogue.UNMODELLED_CARD_WEIGHT`) sets press strength.
+  - The merge conflict in `Mind.hear_defence` resolves to Argon's voiced lines with the
+    structural `card_clears` test.
+- **Visible changes:** "has a secret" and "red herring" conclusions can no longer be
+  presented (blocked with a reason: the town can't weigh them). Press outcomes move a
+  little.
+- **Analyst bot** (`tools/analyst.gd`, used by `tools/autoplay.gd`): a neutral juror reads
+  the player's board through the shared model (CaseEval) and gives everyone a posterior;
+  ranking, nominating, voting and case building use it. Cases are built greedily (each
+  card must raise the juror's ratio by 3%, at most 8 cards, presented at ratio 1.45 or
+  more, hub at 1.55 or more), conclusion "evil" only. `--insight 0.6` makes it miss 40%
+  of cards. `--backend csharp` for sweeps.
+- **Checks:** all scripts parse. Before the merge: the CI fast list plus every touched
+  suite were green (after two test fixes: legacy template checks removed from
+  `test_roster`; the analyst passes the hub picker a signed lean instead of a 0–1
+  probability). Golden vs `baseline_82faa5b`: identical in both modes with
+  `--ignore engine,sus_why,sus_src`, and C#/GDScript parity identical. After the merge:
+  see Result.
+
+### Bot baselines (seeds 2000–2011, C# backend, 2 runs at a time on 2 cores)
+
+| Setup | NPCs | Good wins | Wrongful exec / game | Evil exec / game | Demon identified | s / game |
+|---|---|---|---|---|---|---|
+| Passive | 7 | 4/12 (33%) | 1.08 | 0.67 | – | 6 |
+| Old bot (`9df96cc`) | 7 | 3/12 (25%) | 1.25 | 0.58 | 6 | 16 |
+| Analyst, insight 0.6 | 7 | 5/12 (42%) | 1.00 | 0.67 | 5 | 23 |
+| Analyst | 7 | 7/12 (58%) | 0.75 | 0.92 | 10 | 53 |
+| Passive | 10 | 2/12 (17%) | 2.00 | 1.08 | – | 77 |
+| Old bot (`9df96cc`) | 10 | 5/12 (42%) | 1.58 | 1.50 | 9 | 128 |
+| Analyst, insight 0.6 | 10 | 3/12 (25%) | 1.50 | 1.58 | 8 | 162 |
+| Analyst | 10 | 6/12 (50%) | 1.50 | 1.33 | 8 | 247 |
+
+- 12 seeds is noisy (one game is 8 points). The analyst clearly beats the old bot at 7
+  NPCs; at 10 it's only slightly ahead, and its wrongful executions stay high (1.5 a game),
+  so the town's votes, not the bot's reading, look like the limit there.
+- The old bot did worse than passive at 7 NPCs.
+- Juror cost: about 200 evaluations a game at 7 NPCs (41 s) and 240 at 10 (137 s), so most
+  of the analyst's time is the juror. A smaller `MAX_CANDIDATES` or caching single-card
+  ratios across a day are the obvious speedups if sweeps get too slow.
+- **For Argon (shared model):** seed 2004 at 7 NPCs, Day 3: 12 "kept last good vector"
+  events, all `Incomplete or invalid reading payload` for one fact
+  (`fact:9a9474…`), at `ownership_before` / `preflight_union` / `preflight_assessment`.
+  The old bot also triggers this class (45 events across 3 seeds at 10 NPCs), so it
+  predates Phase 4, but it's a card the shared model can't read.
+
+### Result
+
+- **`main` is already red.** PR #52 (patch_006, dialogue batches 5–7) was merged with
+  three suites failing: `test_dialogue_batches_5_6_7` (8 failures plus script errors),
+  `test_backlog_batch4` (2), `test_workshop_presentation` (2). I ran them on `96fb5ea`
+  itself and got exactly the same failures as on this branch, so Phase 4 adds none.
+- **Fixed on this branch:**
+  - `dialogue_presentations._pick_rival_pair`: on a "now" claim a dead starting Demon was
+    still picked as the accomplice. The pool now holds the living only.
+  - `test_dialogue_batches_5_6_7`: the test hand-built `workshop_case` dictionaries in a
+    shape the game never files (a `root` key, board numbers instead of card ids), which
+    caused all the script errors. It now files real cases through `WorkshopCanvas.file`.
+    The self-support checks passed cards that don't concern the listener (a 0.1 or 0.15
+    old strength, under the 0.2 bar, so they'd fail on the old system too); each listener
+    now gets their own claim.
+- **Still failing (Argon, patch_006; 2-attempt cap reached on the first):**
+  1. `test_dialogue_batches_5_6_7` "Accepted hint follow-up…": the test writes a Seer
+     reading straight into `speaker.info_log`. The shared model never sees it, so
+     `reason_status` is "none" even after `Mind.refresh_beliefs` and the speaker declines.
+     The reading needs to go in the way a real one does (or the test needs a mind
+     whose reading came from a real night).
+  2. `test_backlog_batch4:206` "the repeated gift refusal has a different line" and
+     `:682` "arrival narration adds no phase advance or RNG draws". Voiced lines likely
+     replaced the expected English text; the second may be a real RNG draw added to
+     arrival narration (the golden didn't move, but it doesn't cover arrivals).
+  3. `test_workshop_presentation:69–70`: the group-response text no longer starts with
+     the expected admission / isn't shown in full.
+- Golden: identical to `baseline_82faa5b` in both modes after the merge
+  (`--ignore engine,sus_why,sus_src`), C#/GDScript parity identical, no script errors.
+- **Not pushed to `main`** (rule: `main` moves only when green). Opened a PR from
+  `claude/phase4-purge-bot` instead. It makes `main` strictly better (fixes 3 checks, adds
+  no failures), so Michael may merge it as is; otherwise it waits for Argon's fixes
+  to the five checks above. **Next actor: Argon** (patch_006 failures), or Michael (merge).
+
 ## 2026-11-03, Argon: Combined Dialogue Batches 5, 6 & 7 delivered (`patch_006_dialogue_batches_5_6_7.zip`)
 
 - **Base:** `main` at `9df96cc7f7f64f567cf99c5fd060cc44bfc4799a` (`9df96cc`).

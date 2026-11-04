@@ -316,14 +316,7 @@ func _intermediate() -> void:
 		check(Mind.citable_reason(g.w, n, "hollis", "town") != "", "public presentation makes its shared report-based reason publicly citable")
 		g._evaluate_deduction(n, g.board[parent - 1], 1.0, true)
 		check(Mind.citable_reason(g.w, n, "hollis", "town") != "", "a later private restatement does not erase an earlier public disclosure")
-		n.sus_why.constance = "old argument"
-		# Nothing in the ledger may be owned (presentations live in workshop_state), so
-		# point the stale source at any key that could have been one.
-		n.sus_src.constance = n.workshop_state.owned.keys()[0] if not n.workshop_state.owned.is_empty() else "workshop:stale"
 		g.workshop_retract(parent, n.id)
-		# Her own Dowser reading still implicates Constance after the case is withdrawn
-		# (Oct 30 fixture), so a fresh shared reason may remain; the withdrawn one may not.
-		check(Mind.reason_status(g.w, n, "constance").why != "old argument", "withdrawn shared evidence cannot leave an owned legacy accusation as the stated reason")
 
 func _private_reasons() -> void:
 	var g = _game()

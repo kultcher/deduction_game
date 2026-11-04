@@ -323,7 +323,7 @@ static func end_of_day_trust(w) -> void:
 
 ## Fields copied once, when the shadow is made (a turned NPC's good mind carries over).
 const SHADOW_COPY = ["traits", "trait_base", "work_phases", "haunts", "friends", "rivals",
-	"suspicion", "sus_why", "sus_src", "npc_trust", "ledger", "honesty", "discounted", "believed_roles",
+	"suspicion", "npc_trust", "ledger", "honesty", "discounted", "believed_roles",
 	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts", "workshop_state", "consensus_pressure", "claim_record", "resentments"]
 const SHADOW_SAME = ["id", "name", "pron", "style", "blurb", "occupation", "work", "home_block", "ring"]
 
@@ -568,9 +568,6 @@ static func adjust(w, listener, target_id: String, delta: float, why: String, pu
 		"ledger_id": src}, why)
 	if absf(delta) >= 0.05:
 		w.dlog.add("suspicion", listener.id, target_id, {"from": snappedf(old, 0.01), "to": snappedf(nv, 0.01)}, why)
-	if delta >= 0.15 and public_why != "":
-		listener.sus_why[target_id] = public_why
-		listener.sus_src[target_id] = src  # where the reason came from (a ledger entry id), for citing
 
 static func susp(n, target_id: String) -> float:
 	if n.workshop_state.get("active", false) and target_id in n.workshop_state.get("public_good", []):
@@ -713,25 +710,6 @@ static func claim_credence(n, who: String, role: String) -> float:
 		return 0.0 # Shared role testimony owns the claim's evidence weight.
 	var e = n.ledger.get(eid)
 	return e.get("eff", 0.0) if e != null else 0.0
-
-## How much a night sighting of someone counts (0..1). Being out at night is only damning
-## near a death: seen on the block where someone was killed that night counts in full,
-## anywhere else very little. Someone who openly claims a gift that walks at night (Night
-## Watch, Warden, Lamplighter, Medium) is discounted further, as far as the listener
-## believes the claim.
-static func night_sighting_scale(w, listener, who: String, block: String, night: int) -> float:
-	# Native compatibility and social pressing only. Shared reading/tell owners
-	# park these legacy effects; live_activity alone judges their alignment evidence.
-	var near_death = false
-	for sid in w.scenes:
-		if w.scenes[sid]["day"] == night and w.scenes[sid]["block"] == block:
-			near_death = true
-	var s = Tuning.Mind.NIGHT_SIGHTING_NEAR_DEATH if near_death else Tuning.Mind.NIGHT_SIGHTING_ELSEWHERE
-	var nn = w.by_id.get(who)
-	if nn != null and nn.claim_public and C.ROLES.get(nn.claimed_role, {}).get("night_walk", false):
-		var cr = claim_credence(listener, who, nn.claimed_role) if listener != null else 0.5
-		s *= 1.0 - Tuning.Mind.NIGHT_SIGHTING_WALK_DISCOUNT * clampf(cr, 0.0, 1.0)
-	return s
 
 ## What a card rests on, as [source, night, kind] (kind: reading | report | evidence).
 static func support_ref(card: Dictionary) -> Array:
@@ -1214,9 +1192,6 @@ static func reason_status(w, n, t_id: String) -> Dictionary:
 static func citable_reason(w, n, t_id: String, audience: String = "town") -> String:
 	return MindMeeting.citable_reason(w, n, t_id, audience)
 
-static func reading_strength(e: Dictionary, t_id: String) -> float:
-	return MindMeeting.reading_strength(e, t_id)
-
 static func _unshared_fake_on(n, t_id: String) -> Dictionary:
 	return MindMeeting._unshared_fake_on(n, t_id)
 
@@ -1429,41 +1404,79 @@ static func evidence_class(card: Dictionary) -> String:
 		return "speech"
 	return "circumstantial"
 
-## How incriminating a board card is on its own (0..1.4), before credibility and trust.
-static func card_strength(w, card: Dictionary, suspect) -> float:
+## Does a board card point at `id`, by its structure alone (purge phase 4b)? Night
+## sightings, gift readings that implicate them, traces, secrets, and a role claim that
+## collides with someone else's public claim. No weights: how much it counts is the
+## shared model's business (card_weight_against).
+static func card_implicates(w, card: Dictionary, id: String) -> bool:
 	if WorkshopLedger.Evidence.contains_opinion(card) or WorkshopLedger.Evidence.social_reading(card):
-		return 0.0
+		return false
 	match card.get("kind", ""):
 		"sighting":
-			if card.get("phase", -1) != C.NIGHT:
-				return 0.15
-			return 1.4 * night_sighting_scale(w, null, suspect.id, card.get("block", ""), card.get("day", -1))
+			return card.get("phase", -1) == C.NIGHT and id in card.get("subject", [])
 		"info":
-			var d: Dictionary = card.get("data", {})
-			var rdef = C.role_def(card.get("role", ""))
-			if rdef != null:
-				return rdef.card_strength(d, suspect.id)
-			if suspect.id in Gifts.implicated(card):
-				return 0.6
-			return 0.0
+			return id in Gifts.implicated(card)
 		"trace":
-			return 0.7
-		"home", "work", "haunt", "trait", "bond":
-			return 0.0
-		"refusal":
-			# Fear is a better reason than none: it softens, but doesn't clear, the silence.
-			return 0.25 if card.get("fear", false) else 0.35
+			return true
 		"secret":
-			return 0.5
+			return id in card.get("subject", []) or card.get("owner", "") == id
 		"claim":
 			var role: String = card.get("role", "")
 			if role == "" or role == "none":
-				return 0.1
+				return false
 			for pc in w.public_claims:
-				if pc["role"] == role and pc["who"] != suspect.id:
-					return 1.0
-			return 0.1
-	return 0.2
+				if pc["role"] == role and pc["who"] != id:
+					return true
+	return false
+
+## Does a board card speak for `id`, by its structure alone? A gift reading that clears
+## them, a deduction concluding something good about them, their death, a vigil or a
+## secret that accounts for them. With `claims`, their own role claim counts too (thanks
+## for repeating what they said).
+static func card_clears(card: Dictionary, id: String, claims: bool = false) -> bool:
+	if WorkshopLedger.Evidence.contains_opinion(card) or WorkshopLedger.Evidence.social_reading(card):
+		return false
+	if not (id in card.get("subject", [])):
+		return false
+	match card.get("kind", ""):
+		"deduction":
+			var conclusion: Dictionary = card.get("conclusion", {})
+			if conclusion.get("a", "") != id or card.get("unfounded", false):
+				return false
+			if conclusion.get("type", "") in ["good", "notdemon", "truthful", "spare", "protect", "secret", "marked", "red_herring"]:
+				return true
+			return conclusion.get("type", "") == "role" and C.ROLES.get(conclusion.get("role", ""), {}).get("align", "") == "good"
+		"info":
+			return id in Gifts.clears(card)
+		"death", "vigil", "secret":
+			return true
+		"claim":
+			return claims
+	return false
+
+## How hard a card lands against `target_id`, in the town's own shared judgement (0..1):
+## the strongest weight any living mind's reason attribution gives this card's roots
+## against them. Cards the model has no entry for get a fixed value if they structurally
+## implicate the target, else 0.
+static func card_weight_against(w, card: Dictionary, target_id: String) -> float:
+	var ids: Dictionary = WorkshopLedger.roots([card], []).receipts
+	var best: float = -1.0
+	if not ids.is_empty():
+		for m in w.npcs:
+			if not m.alive or m.id == target_id:
+				continue
+			for item in m.workshop_state.get("reasons", {}).get(target_id, []):
+				var hit: bool = ids.has(str(item.get("card_id", "")))
+				if not hit:
+					for r in item.get("root_ids", []):
+						if ids.has(str(r)):
+							hit = true
+							break
+				if hit:
+					best = maxf(best, float(item.get("strength", 0.0)))
+	if best >= 0.0:
+		return clampf(best, 0.0, 1.0)
+	return Tuning.Dialogue.UNMODELLED_CARD_WEIGHT if card_implicates(w, card, target_id) else 0.0
 
 ## Using someone's confessed secret against them costs trust with its owner.
 static func _secret_used(w, card: Dictionary) -> void:
@@ -1520,38 +1533,6 @@ static func card_weight(w, n, suspect, card: Dictionary) -> Dictionary:
 	return {"rel": rel, "relevance": relevance, "cred": cred, "cred_why": cred_why, "cls": cls, "class_w": class_w,
 		"repeat": pow(0.35, times), "times": times, "key": key, "subj": subj}
 
-## How strongly a card speaks *for* someone (used when defending a nominee).
-static func defend_strength(card: Dictionary, nominee: String) -> float:
-	if WorkshopLedger.Evidence.contains_opinion(card) or WorkshopLedger.Evidence.social_reading(card):
-		return 0.0
-	var subj: Array = card.get("subject", [])
-	if not (nominee in subj):
-		return 0.1
-	var d: Dictionary = card.get("data", {})
-	match card.get("kind", ""):
-		"deduction":
-			var conclusion: Dictionary = card.get("conclusion", {})
-			if conclusion.get("a", "") == nominee and not card.get("unfounded", false):
-				if conclusion.get("type", "") in ["good", "notdemon", "truthful", "spare", "protect", "secret", "marked", "red_herring"]:
-					return 0.3
-				if conclusion.get("type", "") == "role" and C.ROLES.get(conclusion.get("role", ""), {}).get("align", "") == "good":
-					return 0.2
-		"info":
-			var rdef = C.role_def(card.get("role", ""))
-			if rdef != null:
-				return rdef.defend_strength(d, nominee)
-			if nominee in Gifts.clears(card):
-				return 0.5
-		"claim":
-			return 0.2
-		"death":
-			return 1.0
-		"vigil":
-			return 0.4
-		"secret":
-			return 0.4
-	return 0.15
-
 ## The player's case: "tell <n>: <suspect> is suspicious because <card>".
 static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 	on_question(w, n)
@@ -1559,7 +1540,7 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 		_secret_used(w, card)
 	var lines: Array = []
 	var cw = card_weight(w, n, suspect, card)
-	var strength = card_strength(w, card, suspect)
+	var strength = card_weight_against(w, card, suspect.id)
 	var relevance: float = cw["relevance"] * strength
 	var times: int = cw["times"]
 	var cls: String = cw["cls"]
@@ -1621,7 +1602,7 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		n.heard[key] = n.heard.get(key, 0) + 1
 		if repeated:
 			lines.append(Presentations.render_self_support(n, "repeat", "You've told me that already. Thank you.", _tic_memory(n)))
-		elif defend_strength(card, n.id) >= 0.2:
+		elif card_clears(card, n.id, true):
 			set_trust(w, n, n.trust + Tuning.Trust.SELF_SUPPORT_BONUS, "the Demonologist spoke up for me")
 			lines.append(Presentations.render_self_support(n, "thanks", "Thank you for believing me.", _tic_memory(n)))
 		else:

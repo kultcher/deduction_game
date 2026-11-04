@@ -102,7 +102,8 @@ static func _pick_rival_pair(w, listener_id: String, suspicion_map: Dictionary, 
 			return sa > sb if not is_equal_approx(sa, sb) else a < b
 		)
 		demon_id = ranked_all[0]
-	var rest_evil: Array = evil_ids.filter(func(cid): return cid != demon_id)
+	# A "now" claim names living people only: a dead starting Demon is no accomplice.
+	var rest_evil: Array = evil_ids.filter(func(cid): return cid != demon_id and (epoch != "now" or w.by_id[cid].alive))
 	rest_evil.sort_custom(func(a, b):
 		var sa: float = float(suspicion_map.get(a, 0.1))
 		var sb: float = float(suspicion_map.get(b, 0.1))

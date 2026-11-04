@@ -9,7 +9,6 @@ const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const C = preload("res://sim/content.gd")
-const Argue = preload("res://sim/argue.gd")
 
 var fails = 0
 
@@ -34,7 +33,6 @@ func _init() -> void:
 	_test_lovers()
 	_test_night_suspicion()
 	_test_spent_gift_kills()
-	_test_templates()
 	_test_homes_and_bluffs()
 	_test_seer_insight()
 	print("FAILURES: %d" % fails)
@@ -404,15 +402,6 @@ func _test_night_suspicion() -> void:
 	var w = _game(9260).w
 	var l = w.living_good()[0]
 	var x = w.living_good()[1]
-	w.scenes["scene_test"] = {"name": "t", "block": "docks", "victim": "", "day": 1, "trace_block": "docks", "trace_true": true, "why": "", "searched": false}
-	var near = Mind.night_sighting_scale(w, l, x.id, "docks", 1)
-	var far = Mind.night_sighting_scale(w, l, x.id, "hill", 1)
-	x.claimed_role = "lamplighter"
-	x.claim_public = true
-	Mind.hear_claim(w, l, x.id, "lamplighter", 0.5, "public")
-	var claimed = Mind.night_sighting_scale(w, l, x.id, "docks", 1)
-	print("night sighting scale: near a death %.2f, elsewhere %.2f, near a death but an open Lamplighter %.2f" % [near, far, claimed])
-	_check(near == 1.0 and far < 0.2 and claimed < near, "night sightings count near deaths, and less for open walkers")
 	var sw_out = 0
 	for sd in range(9270, 9290):
 		var w2 = _game(sd).w
@@ -450,40 +439,6 @@ func _test_spent_gift_kills() -> void:
 				spent_picked += 1
 	print("between a spent Archivist and a live Seer, the demon took the Archivist %d/%d" % [spent_picked, tries])
 	_check(tries > 0 and spent_picked * 3 < tries, "the demon prefers a gift that keeps reporting")
-
-func _templates_of(g, nums: Array) -> Array:
-	return g.link_cards(nums)["result"]["matches"].map(func(m): return m["template"])
-
-func _test_templates() -> void:
-	var g = _game(9400, 10)
-	var w = g.w
-	var ids: Array = w.npcs.map(func(n): return n.id)
-	var s1 = ids[0]
-	var s2 = ids[1]
-	var x = ids[2]
-	var y = ids[3]
-	var z = ids[4]
-	var k1 = g.add_card({"kind": "info", "role": "seer", "source": s1, "day": 0, "subject": [y, x], "data": {"pair": [y, x], "yes": true}, "text": "seer 1"})
-	var k2 = g.add_card({"kind": "info", "role": "seer", "source": s1, "day": 1, "subject": [x, z], "data": {"pair": [x, z], "yes": true}, "text": "seer 2"})
-	var t = _templates_of(g, [k1, k2])
-	_check("overlap" in t, "two Seer yeses sharing one person -> overlap (got %s)" % str(t))
-	var k3 = g.add_card({"kind": "info", "role": "dowser", "source": s2, "day": 1, "phase": 1, "subject": [x, y, z], "data": {"group": [x, y, z], "count": 1, "block": "docks"}, "text": "dowser 1"})
-	var k4 = g.add_card({"kind": "info", "role": "dowser", "source": s2, "day": 2, "phase": 0, "subject": [y, z, s1], "data": {"group": [y, z, s1], "count": 0, "block": "docks"}, "text": "dowser 0"})
-	t = _templates_of(g, [k3, k4])
-	_check("group_elimination" in t, "a clean crowd clears all but one of a dirty one -> group elimination (got %s)" % str(t))
-	var k5 = g.add_card({"kind": "claim", "role": "archivist", "source": z, "subject": [z], "text": "z claims archivist"})
-	var k6 = g.add_card({"kind": "refusal", "source": z, "subject": [z], "withheld": true, "role": "archivist", "text": "z withholds"})
-	t = _templates_of(g, [k5, k6])
-	_check("withholding" in t, "claims an information gift but won't share -> withholding (got %s)" % str(t))
-	var k7 = g.add_card({"kind": "execution", "subject": [x], "source": "player", "day": 2, "phase": C.EVENING, "alive_before": 9, "text": "x hanged"})
-	var res = g.link_cards([k1, k7])["result"]["matches"]
-	var scion_expl = false
-	for m in res:
-		if m["template"] == "pair_elimination":
-			for e in m["explanations"]:
-				if "Scion" in e["label"]:
-					scion_expl = true
-	_check(scion_expl, "with five or more alive, 'hanged, so not the demon' allows for a Scion")
 
 func _test_homes_and_bluffs() -> void:
 	var bad = 0
