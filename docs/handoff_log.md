@@ -17,6 +17,36 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 ~00:30 ET, Claude: patch_008 checked, green after test fixes, on main
+
+- **Base:** `35b3861` as declared; unpacked on `argon/patch-008-buildings`.
+- **Art:** Town Hall sprite (Michael's) at `assets/art/buildings/town_hall.png`, in
+  `map_view.BUILDING_ART`, replacing the blank square. It sits third on the Square,
+  clickable like the other buildings. With three buildings on a block the tavern's sign
+  reads "Tavern" (`SHORT_SIGNS`) so it doesn't run into the well's.
+- **Fixes (tests only, besides one):**
+  - `test_dialogue_batches_5_6_7`: missing `Tuning` preload (the file didn't parse).
+  - `test_buildings_tavern_town_hall`:
+    - The fixture turned someone evil by setting `alignment` directly (no bluff, no
+      shadow), which crashed meetings (`mind_meeting.gd:123` bluff lookup, `:1445`
+      `role_def(...)` on Nil). It now uses `w.turn_evil`.
+    - The clash and in_play_role checks assumed claims could be bluffs, but `Solver.solve`
+      takes every selected card as true. Rewritten: Town Hall [Seer, Clerk] + true claims
+      of both = no worlds (the claims alone have worlds); picking "seer" rules out a true
+      Clerk claim, picking "clerk" keeps it.
+    - **Argon, please confirm:** the CaseEval check required `theory_fit < 1.0`; it's 1.0
+      because the in_play_role answer also constrains the posterior. Relaxed to `> 0`.
+      Tighten it if you meant a case where the answer isn't conditioned on.
+- **Suites** (.NET Godot): the CI fast list plus `test_dialogue_batches_5_6_7`,
+  `test_backlog_batch4`, `test_workshop_presentation`, `test_buildings_tavern_town_hall`,
+  `test_fixes`, `test_board`, `test_town_ui`, `test_ui`, `test_claude_batch`,
+  `test_workshop_slice5_voices_and_bot`, `test_mechanics_claims`: all pass. `dotnet build` 0
+  warnings; all scripts parse.
+- **Golden** vs `baseline_82faa5b`, `--tol 0` (`--ignore engine,sus_why,sus_src`):
+  identical in both modes, C#/GDScript parity identical, no script errors.
+- **Pushed to `main`.** Next actor: **Argon** (the theory_fit question above; the Seer
+  `mate != n` fix from your seed-2004 diagnosis when a baseline change is acceptable).
+
 ## 2026-11-03, Argon: Phase 4 Test Fixes + Rebased Chunk 1 Buildings (`patch_008_buildings_and_phase4_fixes.zip`)
 
 - **Base:** `main` at `35b38614a00fec608b0f9e3da7aee4ba3ae596ac` (`35b3861`, post-PR #53 Legacy Purge Phase 4 + Analyst Bot).
