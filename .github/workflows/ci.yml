@@ -58,9 +58,9 @@ jobs:
             # Pull requests run the fast list (tools/ci_fast_suites.txt), split across shards.
             mapfile -t all < <(grep -v '^\s*#' tools/ci_fast_suites.txt | sed '/^\s*$/d')
           else
-            # Main and manual runs: every suite except test_trace (parked until the trace tool
-            # is in use again, Nov 3) and test_meeting_stream, which gets shard 4 alone.
-            mapfile -t all < <(ls tools/test_*.gd | xargs -n1 basename | sed 's/\.gd$//' | grep -v -x -e test_trace -e test_meeting_stream)
+            # Main and manual runs: every suite except test_meeting_stream, which gets shard 4
+            # alone. (test_trace was retired on Nov 4.)
+            mapfile -t all < <(ls tools/test_*.gd | xargs -n1 basename | sed 's/\.gd$//' | grep -v -x -e test_meeting_stream)
           fi
           picked=()
           for i in "${!all[@]}"; do

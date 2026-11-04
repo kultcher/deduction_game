@@ -13,8 +13,9 @@ import subprocess
 import json
 import time
 
-# test_trace plays twelve full games with tracing on/off parity checks (~10 minutes).
-SLOW = {"test_trace"}
+# Suites skipped in a full run unless --include-slow or named. (test_trace was retired on
+# 2026-11-04 with the trace tool parked; it is in git history if the tool comes back.)
+SLOW = set()
 
 
 def main():

@@ -97,7 +97,8 @@ def main() -> None:
     fast = TOOLS / "ci_fast_suites.txt"
     if fast.exists():
         ci_fast = {l.strip() for l in fast.read_text().splitlines() if l.strip() and not l.startswith("#")}
-    slow = set(re.findall(r'"(test_\w+)"', re.search(r"SLOW\s*=\s*\{([^}]*)\}", (TOOLS / "run_gd_tests.py").read_text()).group(1)))
+    m = re.search(r"SLOW\s*=\s*\{([^}]*)\}", (TOOLS / "run_gd_tests.py").read_text())
+    slow = set(re.findall(r'"(test_\w+)"', m.group(1))) if m else set()
     for s in suites:
         s["seconds"] = timing.get(s["suite"], {}).get("seconds")
         s["passed"] = timing.get(s["suite"], {}).get("passed")
