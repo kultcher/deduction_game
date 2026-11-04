@@ -523,16 +523,15 @@ func _assign_secret_mod() -> void:
 		return
 	var forced_secret: Array = case_script.forced_in(case_script.secrets)
 	var k: String = forced_secret[0] if not forced_secret.is_empty() else pick(case_script.secrets)
-	if k != "lovers":
-		# The Rumormonger's gift can't name its own holder, so it never holds the secret
-		# alone (Lovers always involve someone else). The shared model knows the rule.
-		goods = goods.filter(func(n): return not C.role_def(n.role).cannot_hold_solo_secret)
-		if goods.size() < 2:
-			return
-	if k in ["lovers", "sleepwalker"]:
-		# These send their holder out at night: never on a role that is already out at
-		# night, so nobody has two reasons to be out (Case 22485).
-		goods = goods.filter(func(n): return not C.ROLES.get(n.role, {}).get("night_walk", false))
+	# Placement rules (ScriptDef.PLACEMENT_RULES): the Rumormonger never holds a secret
+	# alone; Lovers and Sleepwalker never land on a night-walker (Case 22485). Each rule
+	# narrows the candidates in turn, as the hand-written checks always did.
+	for rule in ScriptDef.PLACEMENT_RULES:
+		if rule.has("except") and k in rule.except:
+			continue
+		if rule.has("only") and not k in rule.only:
+			continue
+		goods = goods.filter(func(n): return not C.role_def(n.role).get(rule.not_on_flag))
 		if goods.size() < 2:
 			return
 	var a = goods[0]

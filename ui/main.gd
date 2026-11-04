@@ -406,7 +406,7 @@ func _ready() -> void:
 	if DisplayServer.get_name() == "headless" or "--quick-start" in OS.get_cmdline_user_args():
 		_new_case()
 	else:
-		new_case_screen.open(false)
+		new_case_screen.open(false, debug_check.button_pressed)
 
 func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
 	var b = Button.new()
@@ -430,7 +430,7 @@ func _open_new_case_screen() -> void:
 	if g != null and (g.workshop_presenting or g.meeting_streaming()):
 		return
 	new_case_screen.count = int(size_opt.get_item_metadata(size_opt.selected))
-	new_case_screen.open(g != null and not g.w.game_over)
+	new_case_screen.open(g != null and not g.w.game_over, debug_check.button_pressed)
 
 func _on_new_case_start(count: int, script_def) -> void:
 	for i in range(size_opt.item_count):

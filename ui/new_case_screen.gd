@@ -9,6 +9,7 @@ const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const ScriptBuilder = preload("res://sim/script_builder.gd")
+const PlaytestMarks = preload("res://ui/playtest_marks.gd")
 const CaseScriptEditor = preload("res://ui/script_editor.gd")
 
 enum Pick { DEFAULT, LOAD, CUSTOM, DYNAMIC }
@@ -18,6 +19,11 @@ var chosen = ScriptDef.default_script()
 ## Dynamic is a mode, not a fixed script: each time the screen opens it deals a fresh one.
 var dynamic_mode: bool = false
 var reroll_btn: Button
+## Debug only: playtest marks skew dynamic scripts (ui/playtest_marks.gd).
+var debug: bool = false
+var marks_panel
+var marks_btn: Button
+var marks_label: Label
 var sheet: PanelContainer
 var size_opt: OptionButton
 var script_opt: OptionButton
@@ -88,6 +94,20 @@ func _init() -> void:
 		editor.show())
 	pick_row.add_child(edit_btn)
 	v.add_child(pick_row)
+	var marks_row = HBoxContainer.new()
+	marks_row.add_theme_constant_override("separation", 8)
+	marks_btn = Button.new()
+	marks_btn.text = "Playtest marks…"
+	marks_btn.tooltip_text = "Debug: favour, list or deal specific roles in dynamic scripts."
+	marks_btn.pressed.connect(func():
+		sheet.hide()
+		marks_panel.open())
+	marks_row.add_child(marks_btn)
+	marks_label = _label("", 13, UITheme.color("ink"))
+	marks_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	marks_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	marks_row.add_child(marks_label)
+	v.add_child(marks_row)
 	script_label = _label("", 15, UITheme.color("ink"))
 	script_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(script_label)
@@ -126,6 +146,21 @@ func _init() -> void:
 	editor.finished.connect(_on_editor_done)
 	add_child(editor)
 
+	marks_panel = PlaytestMarks.new()
+	marks_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	marks_panel.offset_left = 360
+	marks_panel.offset_top = 60
+	marks_panel.offset_right = -360
+	marks_panel.offset_bottom = -60
+	marks_panel.hide()
+	marks_panel.finished.connect(func():
+		marks_panel.hide()
+		sheet.show()
+		if dynamic_mode:
+			_roll_dynamic()
+		_refresh())
+	add_child(marks_panel)
+
 	load_dialog = FileDialog.new()
 	load_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	load_dialog.access = FileDialog.ACCESS_USERDATA
@@ -140,11 +175,14 @@ func _init() -> void:
 	add_child(load_dialog)
 
 
-## can_cancel: false at launch (there is no case to go back to).
-func open(can_cancel: bool) -> void:
+## can_cancel: false at launch (there is no case to go back to). debug_on shows the
+## playtest marks and applies them to dynamic scripts.
+func open(can_cancel: bool, debug_on: bool = false) -> void:
+	debug = debug_on
 	cancel_btn.visible = can_cancel
 	warn_label.visible = can_cancel
 	editor.hide()
+	marks_panel.hide()
 	sheet.show()
 	if dynamic_mode:
 		_roll_dynamic()
@@ -154,7 +192,12 @@ func open(can_cancel: bool) -> void:
 
 func _roll_dynamic() -> void:
 	var sd: int = randi() % 1000000 + 1
-	chosen = ScriptBuilder.dynamic({"seed": sd, "name": "Dynamic #%d" % sd})
+	var opts = {"seed": sd, "name": "Dynamic #%d" % sd}
+	if debug:
+		opts["favoured"] = marks_panel.ids("favoured")
+		opts["include"] = marks_panel.ids("include")
+		opts["forced"] = marks_panel.ids("forced")
+	chosen = ScriptBuilder.dynamic(opts)
 
 
 func _on_script_pick(i: int) -> void:
@@ -193,6 +236,9 @@ func _refresh() -> void:
 	var pick: int = Pick.DYNAMIC if dynamic_mode else (Pick.DEFAULT if chosen.is_default() else Pick.CUSTOM)
 	script_opt.select(script_opt.get_item_index(pick))
 	reroll_btn.visible = dynamic_mode
+	marks_btn.get_parent().visible = debug
+	var ms: String = marks_panel.summary()
+	marks_label.text = ("Marks apply to dynamic scripts. " + ms) if ms != "" else "No playtest marks."
 	script_label.text = "%s — %s" % [chosen.name, chosen.summary()]
 	if not chosen.is_default():
 		script_label.text += "\nTown: " + ", ".join(PackedStringArray(chosen.town.map(func(r): return ScriptDef.display(r))))

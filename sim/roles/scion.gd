@@ -7,6 +7,7 @@ func _init() -> void:
 	display_name = "Scion"
 	align = "evil"
 	kind = "evil"
+	tags = ["execution"]
 	minion = true
 	desc = "If the demon is executed while five or more are alive, the Scion becomes the demon."
 	shape = "NONE"

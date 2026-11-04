@@ -11,7 +11,7 @@ func _init() -> void:
 	display_name = "Martyr"
 	align = "good"
 	kind = "protect"
-	tags = ["protection"]
+	tags = ["protection", "execution"]
 	desc = "Once per case, secretly chooses someone. If they are later executed while good, the Martyr dies in their place."
 	shape = "NIGHT_EVENT"
 	produces_readings = true

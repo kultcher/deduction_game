@@ -31,7 +31,9 @@ func _deal(seed_in: int, size: int, sc = null) -> Dictionary:
 func _init() -> void:
 	var d = ScriptDef.default_script()
 	var res = d.check()
-	_check(d.is_default() and res.errors.is_empty() and res.warnings.is_empty(), "Default script is clean: %s" % [res])
+	# The Default script predates the night-walker band: four town night-walkers, the
+	# Poisoner and the Demon make six (the band is 3-5). That is its only warning.
+	_check(d.is_default() and res.errors.is_empty() and res.warnings.size() == 1 and res.warnings[0].begins_with("6 Night-walker roles"), "Default script deals and only warns about its night-walkers: %s" % [res])
 	_check(d.town.size() == 15 and d.minions.size() == 4 and d.secrets.size() == 4 and d.demons == ["demon"], "Default is 15 / 4 / 4 / 1")
 	_check(d.mode() == "Beginner", "one demon type is Beginner")
 
@@ -134,6 +136,34 @@ func _init() -> void:
 			for rule in ScriptDef.DRAW_RULES:
 				dealt_ok = dealt_ok and in_play.filter(func(r): return r in rule.roles).size() >= rule.min
 	_check(dyn_ok, "dynamic scripts are 15 / 4 / 4 / 1, valid, and drawn from the roster")
+	var rules_ok = true
+	var nw_seen = {}
+	var nw_rule: Dictionary = ScriptDef.SCRIPT_RULES.filter(func(r): return r.id == "night_walkers")[0]
+	for sd in range(1, 41):
+		var dyn = ScriptBuilder.dynamic({"seed": sd})
+		rules_ok = rules_ok and dyn.rule_problems().is_empty() and dyn.check().warnings.is_empty()
+		nw_seen[dyn.script_rule_value(nw_rule)] = true
+	_check(rules_ok, "dynamic scripts keep every script rule and raise no warnings (one Demon-ID gift, two targeted role-ID, two kill protection, 3-5 night-walkers)")
+	_check(nw_seen.keys().all(func(n): return n >= 3 and n <= 5) and nw_seen.size() >= 2, "night-walkers vary around four, counting the Demon (%s)" % [nw_seen.keys()])
+	var both = ScriptDef.default_script()
+	both.town.append("augur")
+	_check(both.rule_problems().any(func(w): return w.begins_with("2 Demon ID roles")), "Seer and Augur together break the one-Demon-ID limit")
+	# Playtest marks: forced roles are listed and dealt, listed ones listed, favoured ones likelier.
+	var marked = ScriptBuilder.dynamic({"seed": 21, "forced": ["magistrate"], "include": ["chronicler"]})
+	_check("magistrate" in marked.town and "magistrate" in marked.forced and "chronicler" in marked.town and not "chronicler" in marked.forced, "playtest marks: In play roles are listed and forced; On script roles are listed")
+	var with_fav = 0
+	var without_fav = 0
+	for sd in range(100, 160):
+		if "psychologist" in ScriptBuilder.dynamic({"seed": sd, "favoured": ["psychologist"]}).town:
+			with_fav += 1
+		if "psychologist" in ScriptBuilder.dynamic({"seed": sd}).town:
+			without_fav += 1
+	_check(with_fav > without_fav, "favoured roles turn up more often (%d vs %d of 60)" % [with_fav, without_fav])
+	var dealt_marked = _deal(5, 7, marked)
+	_check(dealt_marked.roles.values().any(func(x): return x[0] == "magistrate"), "a forced playtest role is dealt")
+	# Placement rules: Lovers and Sleepwalker never on a night-walker; the Rumormonger never holds one alone.
+	_check(not ScriptDef.placement_allows("sleepwalker", "warden") and ScriptDef.placement_allows("delusional", "warden")
+		and not ScriptDef.placement_allows("marked", "rumormonger") and ScriptDef.placement_allows("lovers", "rumormonger"), "secret placement rules read from the table")
 	_check(spares_ok and ideal_ok, "every deal guarantee has spare roles on a dynamic script (all 4 start-knowledge gifts, 3+ identifiers)")
 	_check(distinct.size() >= 30, "dynamic scripts vary (%d different town lists in 40)" % distinct.size())
 	_check(ScriptBuilder.dynamic({"seed": 5}).to_dict() == ScriptBuilder.dynamic({"seed": 5}).to_dict(), "a dynamic script is reproducible from its seed")

@@ -11,7 +11,7 @@ func _init() -> void:
 	display_name = "Warden"
 	align = "good"
 	kind = "protect"
-	tags = ["protection", "night_walker"]
+	tags = ["protection", "night_walker", "kill_protection"]
 	night_walk = true
 	desc = "Each night, guards one other person's door against the demon."
 	shape = "NIGHT_EVENT"
