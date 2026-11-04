@@ -47,7 +47,7 @@ func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, works
 		return {
 			"handled": true,
 			"move": "red_herring",
-			"line": mind.say(d, "[PH] %s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name),
+			"line": mind.say_voiced(d, "defence_red_herring", "%s keeps finding me because I'm the one the Seer always misreads. Look at who else they named." % src.name, {"source": src.name}),
 			"hearing_scale": absf(float(Tuning.Roles.SEER.red_herring_defence_eff)),
 			"scope": {"type": "challenge", "mode": "misled", "reading": workshop_ledger.reading(src_id, rd).id},
 		}

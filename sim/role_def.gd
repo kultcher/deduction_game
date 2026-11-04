@@ -422,3 +422,8 @@ func override_night_sightings(_w, _n, _nd: int) -> Dictionary:
 ## Pressed-night reconfirmation line for a duty/guard/watch fact in `Mind._answer_pressed_night`.
 func pressed_night_line(_w, _n, _fact: Dictionary, _night: int, _when: String, _alternate: bool, _block_name_fn: Callable) -> String:
 	return ""
+
+
+## Template slots for voiced `pressed_<role>_night` / `pressed_<role>_night_alt` delivery.
+func pressed_night_slots(_w, _n, _fact: Dictionary, _night: int, _when: String, _block_name_fn: Callable) -> Dictionary:
+	return {}

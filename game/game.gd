@@ -731,6 +731,9 @@ func _phase_header() -> void:
 func _remember_dialogue_exchange(n, verb: String, rest: String, response: Dictionary) -> void:
 	GameConversation._remember_dialogue_exchange(self, n, verb, rest, response)
 
+func _greeting_context(n) -> Dictionary:
+	return GameConversation.greeting_context(self, n)
+
 func _talk_options(n) -> String:
 	return GameConversation._talk_options(self, n)
 

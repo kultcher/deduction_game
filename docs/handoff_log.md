@@ -17,6 +17,98 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03 ~23:30 ET, Claude: legacy purge Phase 4 (purge + analyst bot)
+
+- **Branch:** `claude/phase4-purge-bot`, merged with `main` at `96fb5ea` (Argon's dialogue
+  batches 5–7 and the trace art). Plan: `docs/legacy_retirement_plan.md` Phase 4.
+- **What's gone:** `sim/argue.gd`, the link templates and their matcher, `link` /
+  `conclude` / `deduce`, `find_links` / `link_cards`, the template parts of
+  `file_deduction` (cases are filed only through the Workshop now), every role
+  `card_strength` / `defend_strength` / `reading_strength` hook, `night_sighting_scale`,
+  46 legacy tuning keys, `sus_why` / `sus_src`, and the legacy-only tests (`test_argue`,
+  template parts of `test_roster`, `test_fixes`, `test_playtest_regressions` and others).
+- **What replaced it:**
+  - `sim/presentation_reply.gd`: repeat counting and the evil mask with the shadow self,
+    moved unchanged. **Argon:** your patch_006 change to `Argue.evaluate`'s shadow-self
+    block (same-stance reuse, `render_evil_override` lines) is ported here; `argue.gd` is
+    deleted, so edit `presentation_reply.gd` from now on.
+  - A good listener the Workshop can't serve answers socially (protect/spare or bare
+    belief, from trust and lean), feeding only social preferences. There's no template
+    fallback any more.
+  - `Mind.card_implicates` / `card_clears` (card structure) decide presentation direction
+    and self-support; `Mind.card_weight_against` (the shared model's own reason weight,
+    or `Tuning.Dialogue.UNMODELLED_CARD_WEIGHT`) sets press strength.
+  - The merge conflict in `Mind.hear_defence` resolves to Argon's voiced lines with the
+    structural `card_clears` test.
+- **Visible changes:** "has a secret" and "red herring" conclusions can no longer be
+  presented (blocked with a reason: the town can't weigh them). Press outcomes move a
+  little.
+- **Analyst bot** (`tools/analyst.gd`, used by `tools/autoplay.gd`): a neutral juror reads
+  the player's board through the shared model (CaseEval) and gives everyone a posterior;
+  ranking, nominating, voting and case building use it. Cases are built greedily (each
+  card must raise the juror's ratio by 3%, at most 8 cards, presented at ratio 1.45 or
+  more, hub at 1.55 or more), conclusion "evil" only. `--insight 0.6` makes it miss 40%
+  of cards. `--backend csharp` for sweeps.
+- **Checks:** all scripts parse. Before the merge: the CI fast list plus every touched
+  suite were green (after two test fixes: legacy template checks removed from
+  `test_roster`; the analyst passes the hub picker a signed lean instead of a 0–1
+  probability). Golden vs `baseline_82faa5b`: identical in both modes with
+  `--ignore engine,sus_why,sus_src`, and C#/GDScript parity identical. After the merge:
+  see Result.
+
+### Bot baselines (seeds 2000–2011, C# backend, 2 runs at a time on 2 cores)
+
+| Setup | NPCs | Good wins | Wrongful exec / game | Evil exec / game | Demon identified | s / game |
+|---|---|---|---|---|---|---|
+| Passive | 7 | 4/12 (33%) | 1.08 | 0.67 | – | 6 |
+| Old bot (`9df96cc`) | 7 | 3/12 (25%) | 1.25 | 0.58 | 6 | 16 |
+| Analyst, insight 0.6 | 7 | 5/12 (42%) | 1.00 | 0.67 | 5 | 23 |
+| Analyst | 7 | 7/12 (58%) | 0.75 | 0.92 | 10 | 53 |
+| Passive | 10 | 2/12 (17%) | 2.00 | 1.08 | – | 77 |
+| Old bot (`9df96cc`) | 10 | 5/12 (42%) | 1.58 | 1.50 | 9 | 128 |
+| Analyst, insight 0.6 | 10 | 3/12 (25%) | 1.50 | 1.58 | 8 | 162 |
+| Analyst | 10 | 6/12 (50%) | 1.50 | 1.33 | 8 | 247 |
+
+- 12 seeds is noisy (one game is 8 points). The analyst clearly beats the old bot at 7
+  NPCs; at 10 it's only slightly ahead, and its wrongful executions stay high (1.5 a game),
+  so the town's votes, not the bot's reading, look like the limit there.
+- The old bot did worse than passive at 7 NPCs.
+- Juror cost: about 200 evaluations a game at 7 NPCs (41 s) and 240 at 10 (137 s), so most
+  of the analyst's time is the juror. A smaller `MAX_CANDIDATES` or caching single-card
+  ratios across a day are the obvious speedups if sweeps get too slow.
+- **For Argon (shared model):** seed 2004 at 7 NPCs, Day 3: 12 "kept last good vector"
+  events, all `Incomplete or invalid reading payload` for one fact
+  (`fact:9a9474…`), at `ownership_before` / `preflight_union` / `preflight_assessment`.
+  The old bot also triggers this class (45 events across 3 seeds at 10 NPCs), so it
+  predates Phase 4, but it's a card the shared model can't read.
+
+## 2026-11-03, Argon: Combined Dialogue Batches 5, 6 & 7 delivered (`patch_006_dialogue_batches_5_6_7.zip`)
+
+- **Base:** `main` at `9df96cc7f7f64f567cf99c5fd060cc44bfc4799a` (`9df96cc`).
+- **Deliverable:** `patch_006_dialogue_batches_5_6_7.zip` in Google Drive (`Demonologist Patches`), containing full replacement/new files plus `MANIFEST_DIALOGUE_BATCHES_5_6_7.md` (supersedes `patch_006_dialogue_batches_5_6.zip`).
+- **Status:** Ready for Claude verification (`dotnet build -c Debug`, `test_dialogue_batches_5_6_7` + targeted dialogue/UI/Workshop/role suites + `ci_fast_suites.txt`, and `--tol 0` golden capture check vs `tools/golden/baseline_82faa5b`).
+- **Next actor:** **Claude**.
+
+### What's in `patch_006_dialogue_batches_5_6_7.zip`
+
+1. **Full 230-Key Symmetric Cast Voice Pack (`sim/dialogue_voices.gd` - 143 -> 230 keys per character, zero `[PH]` codebase-wide):**
+   - **Batch 5 (+31 keys):** Workshop case-presentation reactions, BotC 2-suspect rival framing, movement/trace/role-fit tails, repeats, and self-support replies.
+   - **Batch 6 (+8 keys):** `greet_neutral` (x3), `greet_cold` (x2), `greet_warm` (x2), and 5 contextual overrides (`greet_friend_killed`, `greet_after_murder`, `greet_after_execution`, `greet_after_friction`, `greet_after_protection`).
+   - **Batch 7 (+46 new keys + 2 completed cast hooks):** Populates the remaining 14 characters on `private_reveal_early` and `doubted_visual` (so all 15 characters share an identical 230-key schema) and adds bespoke character voices for all 25 remaining `[PH]` sites across conversations, `press` edge cases, 1st/2nd-press night-walking duty reconfirmations (`warden`, `nightwatch`, `lamplighter`, `medium`), all 5 `HINT_PACKAGES`, fear-withheld readings, protection-promise trust, `_repeat_refusal` pushbacks, role queries (`answer_about_role` / `answer_is_role`), Seer Red Herring defence, Warden door/save reports, and town-meeting anonymous relays and block pleas.
+   - Zero `[PH]` tags remain anywhere across `sim/`, `game/`, `workshop/`, or `ui/`; `"data"` remains exclusive to Nisha; `greet_neutral` avoids burning `Dialogue.TICS` caps; zero `"when it's safer"` or `"stand by it"` boilerplate on Batch 7 lines.
+2. **Batch 5 - Voiced Case-Presentation Composer & Good/Evil Parity (`sim/dialogue_presentations.gd`, `game/workshop_presentation.gd`, `sim/argue.gd`, `sim/mind.gd`, `sim/evil.gd`):**
+   - Keeps `workshop/` (`jury.gd`, `reasoner.gd`, C# solver kernels) and `WorkshopPresentation._belief_stance_text` 100% untouched; canonical diagnostic strings remain on `spoken_line["statement"]` and `descriptor["special"]`.
+   - Uses BotC-style top-Demon + `#2` highest-suspicion `{accomplice}` rival framing (never naming a 3rd evil, promoting a living evil successor if the starting Demon died on `"now"` claims, and appending `present_alt_marked` only when Marked explains an attended ping/conclusion) and unifies Good and Evil presentation phrasing.
+   - **Merge note for Claude's Purge Phase 4 (`sim/argue.gd` retirement):** All presentation and Evil-override voicing lives in `sim/dialogue_presentations.gd` (with zero dependency on `sim/argue.gd`). When Phase 4 deletes `sim/argue.gd`, retain `Presentations.render_evil_override(...)` in the unified presentation path and reuse `sr.dialogue.voiced_text` when Evil adopts its shadow's assessment.
+3. **Batch 6 - VN Conversation Intro & Greeting System (`sim/mind_dialogue.gd`, `sim/mind.gd`, `game/game_conversation.gd`, `game/game_day_night.gd`, `game/game.gd`, `ui/day_conversation_view.gd`):**
+   - `Mind.greeting_line(w, n, context)` consumes the exact same single `greeting_attitude_visible` Composure RNG draw as `Mind.greeting_cue`, emits spoken `speech` events with 5-state VN portrait expressions (`neutral`, `warm`, `harsh`, `concerned`, `sorrowful`) on `talk` entry and `divulge` `accept`, removes `"Choose a question to begin."`, and preserves zero-cost `bye`.
+4. **Batch 7 - Final `[PH]` Sweep (`sim/mind_dialogue.gd`, `sim/social.gd`, `sim/mind_meeting.gd`, `sim/role_def.gd`, `sim/roles/seer.gd`, `sim/roles/warden.gd`, `sim/roles/nightwatch.gd`, `sim/roles/lamplighter.gd`, `sim/roles/medium.gd`, `game/game_conversation.gd`):**
+   - Preserves `C.role_def(f_role).pressed_night_line(...)` as the canonical `statement` (keeping `test_role_def_poc` green) while adding `pressed_night_slots(...)` to feed `pressed_<role>_night` / `pressed_<role>_night_alt`.
+   - Normalizes relayed `known_claims` readings in `Social.answer_about_role` via `C.third_person(e["text"])` while retaining canonical `statement` on all voiced lines.
+5. **New Unified Suite:** `tools/test_dialogue_batches_5_6_7.gd` (`uid://c5w7mp3qn8kvr`).
+
+---
+
 ## 2026-11-03 ~18:30 ET, Claude: `game.gd` separation checked, green, no fixes, on main
 
 - **Base:** `b061bb3` as declared; unpacked on `refactor/game-gd-separation`, no changes

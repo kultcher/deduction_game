@@ -10,6 +10,7 @@ const C = preload("res://sim/content.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
+const Dialogue = preload("res://sim/dialogue.gd")
 
 static func trait_of(n, t: String) -> float:
 	return n.traits.get(t, 0.5)
@@ -563,8 +564,12 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 			return Mind.answer_gift(w, n, maxi(2, Mind._target_tier(w, n)))
 	var public: Array = w.public_claims.filter(func(c): return c["role"] == role and w.by_id[c["who"]].alive).map(func(c): return w.by_id[c["who"]].name)
 	var text = ""
+	var voiced_chunks: Array = []
 	if not public.is_empty():
-		text = "Everyone heard %s claim the %s." % [" and ".join(PackedStringArray(public)), rn]
+		var pub_names: String = " and ".join(PackedStringArray(public))
+		var pub_fb: String = "Everyone heard %s claim the %s." % [pub_names, rn]
+		text = pub_fb
+		voiced_chunks.append(Dialogue.voice_line(n.id, "role_query_public", pub_fb, {"names": pub_names, "role": rn}))
 	var willing = trait_of(n, "gossip") * Tuning.Social.ROLE_WILLING_GOSSIP_SCALE + n.trust * Tuning.Social.ROLE_WILLING_TRUST_SCALE + n.pressure * Tuning.Social.ROLE_WILLING_PRESSURE_SCALE > Tuning.Social.ROLE_WILLING_THRESHOLD
 	var told = false
 	if not n.is_evil() and willing:
@@ -574,11 +579,22 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 			if kc["role"] != role or who.claim_public:
 				continue
 			told = true
-			text += (" " if text != "" else "") + "Between us, %s told %s they're the %s." % [who.name, "me" if kc["via"] == sid else w.by_id[kc["via"]].name, rn]
+			if kc["via"] == sid:
+				var priv_fb: String = "Between us, %s told me they're the %s." % [who.name, rn]
+				text += (" " if text != "" else "") + priv_fb
+				voiced_chunks.append(Dialogue.voice_line(n.id, "role_query_private_direct", priv_fb, {"who": who.name, "role": rn}))
+			else:
+				var via_name: String = w.by_id[kc["via"]].name
+				var priv_fb: String = "Between us, %s told %s they're the %s." % [who.name, via_name, rn]
+				text += (" " if text != "" else "") + priv_fb
+				voiced_chunks.append(Dialogue.voice_line(n.id, "role_query_private_via", priv_fb, {"who": who.name, "via": via_name, "role": rn}))
 			facts.append({"kind": "claim", "subject": [sid], "role": role, "source": sid, "via": n.id, "private": true,
 				"text": "Via %s: %s privately claims to be the %s." % [n.name, who.name, rn]})
 			for e in kc["readings"]:
-				text += " They said %s." % e["text"]
+				var said_rd: String = C.third_person(e["text"])
+				var rd_fb: String = "They said %s." % said_rd
+				text += " " + rd_fb
+				voiced_chunks.append(Dialogue.voice_line(n.id, "role_query_reading", rd_fb, {"reading": said_rd}))
 				var f = Mind.info_fact(w, who, e)
 				f["via"] = n.id
 				f["text"] = "Via %s: " % n.name + f["text"]
@@ -592,7 +608,9 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 		else:
 			lines.append(Mind.say_voiced(n, "role_query_unknown", "I couldn't tell you who the %s is." % rn, {"role": rn}))
 	else:
-		lines.append(Mind.say(n, "[PH] " + text))
+		var line_dict: Dictionary = Mind.say(n, " ".join(PackedStringArray(voiced_chunks)))
+		line_dict["statement"] = text
+		lines.append(line_dict)
 	return {"lines": lines, "facts": facts}
 
 ## "Are you the <gift>?": a direct guess at the listener's own gift. Right, they own up a
@@ -609,7 +627,10 @@ static func answer_is_role(w, n, role: String) -> Dictionary:
 	var said: bool = n.claim_public or n.max_tier >= 3
 	if said:
 		var claimed: String = n.claimed_role
-		return {"lines": [Mind.say(n, "[PH] No. I told you: I'm the %s." % C.role_name(claimed) if C.ROLES.has(claimed) else "[PH] No.")], "facts": []}
+		if C.ROLES.has(claimed):
+			var c_name: String = C.role_name(claimed)
+			return {"lines": [Mind.say_voiced(n, "role_already_claimed", "No. I told you: I'm the %s." % c_name, {"role": c_name})], "facts": []}
+		return {"lines": [Mind.say_voiced(n, "role_already_claimed_none", "No.")], "facts": []}
 	if mine == role:
 		var first = n.role_guesses == 0
 		var tier: int = Mind._target_tier(w, n) + (1 if first and w.decision_roll(n, "correct_role_guess_bonus", Tuning.Social.CORRECT_ROLE_GUESS_BONUS_PROB) else 0)

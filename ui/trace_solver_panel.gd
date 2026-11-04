@@ -10,6 +10,9 @@ const UITheme = preload("res://ui/theme.gd")
 const PortraitBadge = preload("res://ui/portrait_badge.gd")
 const TraceSolver = preload("res://workshop/trace_solver.gd")
 const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
+const TraceArt = preload("res://ui/trace_art.gd")
+const CELL_ICON = 62
+const CELL_W = 236.0   # was 186; the icon takes 68 of it
 
 
 class SuspectTile extends Control:
@@ -286,7 +289,7 @@ func _rebuild_matrix(matrix: Dictionary) -> void:
 		var col: Dictionary = cols[idx]
 		var night: int = int(col.night)
 		var col_box = VBoxContainer.new()
-		col_box.custom_minimum_size = Vector2(188, 0)
+		col_box.custom_minimum_size = Vector2(CELL_W + 2, 0)
 		col_box.add_theme_constant_override("separation", 6)
 		matrix_row.add_child(col_box)
 
@@ -305,7 +308,7 @@ func _rebuild_matrix(matrix: Dictionary) -> void:
 				var btn = Button.new()
 				btn.toggle_mode = true
 				btn.button_pressed = active
-				btn.custom_minimum_size = Vector2(186, 82)
+				btn.custom_minimum_size = Vector2(CELL_W, 82)
 				btn.clip_text = true
 				var kind_tag: String = "Token (2)" if cell.subtype == "token" else "Scent (3)"
 				var item_short: String = str(cell.item_label).trim_prefix("a ").trim_prefix("an ")
@@ -314,6 +317,15 @@ func _rebuild_matrix(matrix: Dictionary) -> void:
 				btn.text = "%s
 %s
 %s" % [kind_tag, item_short, " · ".join(PackedStringArray(cell.short_locs))]
+				var art: Texture2D = TraceArt.icon(cell)
+				if art != null:
+					# Icon on the left, the three lines beside it; same card size as before.
+					btn.icon = art
+					btn.expand_icon = true
+					btn.add_theme_constant_override("icon_max_width", CELL_ICON)
+					btn.add_theme_constant_override("h_separation", 6)
+					btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+
 				btn.tooltip_text = "%s
 Places: %s
 %s" % [
@@ -333,7 +345,7 @@ Places: %s
 				col_box.add_child(btn)
 			else:
 				var spacer = PanelContainer.new()
-				spacer.custom_minimum_size = Vector2(186, 82)
+				spacer.custom_minimum_size = Vector2(CELL_W, 82)
 				spacer.add_theme_stylebox_override("panel", UITheme.flat(Color(0.12, 0.12, 0.12, 0.3), Color(0.3, 0.28, 0.25, 0.35), 1, 6, 6))
 				var slbl = Label.new()
 				slbl.text = "Single trace

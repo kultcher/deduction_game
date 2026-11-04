@@ -18,6 +18,7 @@ const Gifts = preload("res://sim/gifts.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const Presentations = preload("res://sim/dialogue_presentations.gd")
 
 static func _mind():
 	return load("res://sim/mind.gd")
@@ -42,6 +43,10 @@ static func say_voiced(n, key: String, fallback: String, slots: Dictionary = {})
 		"apology_accept": {"agnes": "warm", "dorian": "warm", "fenwick": "warm", "isolde": "warm", "jory": "warm", "merrin": "warm"},
 		"distrust_action": {"greta": "harsh", "jory": "harsh", "lian": "harsh", "merrin": "harsh", "isolde": "concerned"},
 		"fear_gift_refusal": {"dorian": "concerned", "isolde": "concerned", "jory": "concerned", "merrin": "concerned"},
+		"withhold_readings_fear_all": {"dorian": "concerned", "isolde": "concerned", "jory": "concerned", "merrin": "concerned"},
+		"withhold_readings_fear_rest": {"dorian": "concerned", "isolde": "concerned", "jory": "concerned", "merrin": "concerned"},
+		"defence_fear_plea": {"dorian": "concerned", "isolde": "concerned", "jory": "concerned", "merrin": "concerned"},
+		"protect_trust_now": {"agnes": "warm", "dorian": "warm", "edda": "warm", "fenwick": "warm", "isolde": "warm", "jory": "warm", "merrin": "warm"},
 		"request_ward": {"dorian": "concerned", "isolde": "concerned"},
 		"request_vigil": {"isolde": "concerned"},
 		"pressed_multi_trace_case": {"dorian": "harsh", "jory": "harsh", "merrin": "harsh"},
@@ -1295,6 +1300,9 @@ static func on_question(w, n) -> void:
 static func greeting_cue(w, n) -> String:
 	return MindDialogue.greeting_cue(w, n)
 
+static func greeting_line(w, n, context: Dictionary = {}) -> Dictionary:
+	return MindDialogue.greeting_line(w, n, context)
+
 static func end_conversation(w, n) -> Array:
 	return MindDialogue.end_conversation(w, n)
 
@@ -1562,13 +1570,13 @@ static func hear_accusation(w, n, suspect, card: Dictionary) -> Dictionary:
 		{"kind": "tell", "text": card.get("text", ""), "workshop_card": WorkshopLedger.Evidence.normalize_card(card), "workshop_public": false})
 	n.used_facts[cw["key"] + ">" + suspect.id] = true
 	if times > 0:
-		lines.append(say(n, "[PH] You've told me that already."))
+		lines.append(say_voiced(n, "present_repeat_private", "You've told me that already."))
 	elif suspect == n:
-		lines.append(say(n, "[PH] Me? That's madness."))
+		lines.append(Presentations.render_evil_override(w, n, {"type": "evil", "a": n.id}, "reject", false, false, "player", "Me? That's madness.", _tic_memory(n)))
 	elif cls == "speech" and ins >= 0.67:
-		lines.append(say(n, "[PH] That's only talk. Show me something real."))
+		lines.append(say_voiced(n, "present_unmoved", "That's only talk. Show me something real.", {"target": suspect.name}))
 	else:
-		lines.append(say(n, "[PH] Maybe. I'll keep an eye on %s." % suspect.name))
+		lines.append(say_voiced(n, "present_partial", "Maybe. I'll keep an eye on %s." % suspect.name, {"target": suspect.name}))
 	return {"lines": lines, "facts": [], "repeated": times > 0}
 
 ## The player speaks for someone in private, citing a card ("present <card#> for <name>").
@@ -1593,20 +1601,20 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		var repeated: bool = n.heard.has(key)
 		n.heard[key] = n.heard.get(key, 0) + 1
 		if repeated:
-			lines.append(say(n, "[PH] You've told me that already. Thank you."))
+			lines.append(Presentations.render_self_support(n, "repeat", "You've told me that already. Thank you.", _tic_memory(n)))
 		elif card_clears(card, n.id, true):
 			set_trust(w, n, n.trust + Tuning.Trust.SELF_SUPPORT_BONUS, "the Demonologist spoke up for me")
-			lines.append(say(n, "[PH] Thank you for believing me."))
+			lines.append(Presentations.render_self_support(n, "thanks", "Thank you for believing me.", _tic_memory(n)))
 		else:
-			lines.append(say(n, "[PH] I appreciate the support, but I'm not sure that explains it."))
+			lines.append(Presentations.render_self_support(n, "weak", "I appreciate the support, but I'm not sure that explains it.", _tic_memory(n)))
 		return {"lines": lines, "facts": [], "repeated": repeated, "workshop": shared_self}
 	if n.is_evil():
 		var r = w.rng.randf()
 		w.observe_decision(n, "defence_reply", r < (0.6 if who.is_evil() else 0.7), {"probability": 0.6 if who.is_evil() else 0.7, "draw": r, "comparison": "<", "inputs": {}}, who.id)
 		if who.is_evil():
-			lines.append(say(n, "[PH] Fair enough. I'll think better of %s." % who.name if r < 0.6 else "[PH] Maybe. I'll keep an open mind about %s." % who.name))
+			lines.append(say_voiced(n, "present_accept_open" if r < 0.6 else "present_partial", "Fair enough. I'll think better of %s." % who.name if r < 0.6 else "Maybe. I'll keep an open mind about %s." % who.name, {"target": who.name}))
 		else:
-			lines.append(say(n, "[PH] Maybe. I'll keep an open mind about %s." % who.name if r < 0.7 else "[PH] That doesn't clear %s." % who.name))
+			lines.append(say_voiced(n, "present_partial" if r < 0.7 else "present_unmoved", "Maybe. I'll keep an open mind about %s." % who.name if r < 0.7 else "That doesn't clear %s." % who.name, {"target": who.name}))
 		var dr = shadow_eval(w, n, func(sh): return hear_defence(w, sh, whos, card)) if C.SHADOW_SELF else null
 		if dr != null:
 			# Evil would rather a good person stay suspect: worth more if they're a threat.
@@ -1623,7 +1631,10 @@ static func hear_defence(w, n, whos, card: Dictionary) -> Dictionary:
 		var hx = ledger_hear(w, n, "for:%s>%s" % [cw["key"], x.id], [], 0.25 * (0.5 + n.credibility) / group.size(), cw["rel"],
 			{"kind": "tell", "text": card.get("text", ""), "workshop_card": WorkshopLedger.Evidence.normalize_card(card), "workshop_public": false})
 		times = maxi(times, hx["times"])
-	lines.append(say(n, "[PH] You've told me that already." if times > 0 else "[PH] Maybe. I'll keep an open mind about %s." % gname))
+	if times > 0:
+		lines.append(say_voiced(n, "present_repeat_private", "You've told me that already."))
+	else:
+		lines.append(say_voiced(n, "present_partial", "Maybe. I'll keep an open mind about %s." % gname, {"target": gname}))
 	return {"lines": lines, "facts": [], "repeated": times > 0}
 
 ## A card that implicates one of several people (a Seer "yes" on two): the case is split
@@ -1636,7 +1647,8 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 		for x in group:
 			if x.is_evil():
 				Evil.add_intel(w, n, "player_suspects", x.id, 0.0, "the Demonologist thinks it's one of %s" % gname)
-		lines.append(say(n, "[PH] Maybe. I'll keep an eye on them both." if w.decision_roll(n, "group_defence_reply", 0.6) else "[PH] That... does look bad for one of them."))
+		var grp_partial: bool = w.decision_roll(n, "group_defence_reply", 0.6)
+		lines.append(say_voiced(n, "present_partial" if grp_partial else "present_accept_open", "Maybe. I'll keep an eye on them both." if grp_partial else "That... does look bad for one of them.", {"target": gname}))
 		var gr = shadow_eval(w, n, func(sh): return hear_group_case(w, sh, group, card)) if C.SHADOW_SELF else null
 		if gr != null:
 			var mates = group.filter(func(x): return Evil.is_teammate(w, n, x.id))
@@ -1657,7 +1669,10 @@ static func hear_group_case(w, n, group: Array, card: Dictionary) -> Dictionary:
 			{"kind": "tell", "text": card.get("text", ""), "workshop_card": WorkshopLedger.Evidence.normalize_card(card), "workshop_public": false})
 		n.used_facts[cw["key"] + ">" + x.id] = true
 		times = maxi(times, h["times"])
-	lines.append(say(n, "[PH] You've told me that already." if times > 0 else "[PH] Maybe. I'll keep an eye on them both."))
+	if times > 0:
+		lines.append(say_voiced(n, "present_repeat_private", "You've told me that already."))
+	else:
+		lines.append(say_voiced(n, "present_partial", "Maybe. I'll keep an eye on them both.", {"target": gname}))
 	return {"lines": lines, "facts": [], "repeated": times > 0}
 
 ## A card-backed public statement on a nomination: every voter weighs it (more weakly than

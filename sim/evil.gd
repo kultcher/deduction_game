@@ -6,9 +6,16 @@ extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Gifts = preload("res://sim/gifts.gd")
+const Dialogue = preload("res://sim/dialogue.gd")
+const Presentations = preload("res://sim/dialogue_presentations.gd")
 
 static func say(n, text: String) -> Dictionary:
 	return {"speaker": n.id, "name": n.name, "text": text}
+
+static func _say_voiced_pres(n, key: String, fallback: String, slots: Dictionary = {}) -> Dictionary:
+	var mem: Dictionary = n.get("dialogue_memory", {}) if n is Dictionary else n.dialogue_memory
+	var spoken: String = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, key, fallback, slots), mem)
+	return {"speaker": n.id, "name": n.name, "text": spoken, "statement": fallback}
 
 static func is_teammate(w, n, id: String) -> bool:
 	return id != n.id and w.by_id[id].is_evil()
@@ -942,23 +949,24 @@ static func evil_hear_accusation(w, n, suspect, card: Dictionary, relevance: flo
 	# Replies come from the same set a good listener uses (see mind.gd hear_accusation).
 	var r = w.rng.randf()
 	var strength: float = relevance
+	var mem: Dictionary = n.get("dialogue_memory", {}) if n is Dictionary else n.dialogue_memory
 	if times > 0:
-		lines.append(say(n, "[PH] You've told me that already."))
+		lines.append(_say_voiced_pres(n, "present_repeat_private", "You've told me that already."))
 	elif suspect == n:
-		lines.append(say(n, "[PH] Me? That's madness."))
+		lines.append(Presentations.render_evil_override(w, n, {"type": "evil", "a": n.id}, "reject", false, false, "player", "Me? That's madness.", mem))
 	elif relevance < 0.3:
-		lines.append(say(n, "[PH] I don't see what that has to do with %s." % suspect.name))
+		lines.append(_say_voiced_pres(n, "present_unmoved", "I don't see what that has to do with %s." % suspect.name, {"target": suspect.name}))
 	elif serves < 0.5:
 		if card.get("kind", "") in ["claim", "hint", "refusal", "opinion", "accusation", "alibi"] and r < 0.5:
-			lines.append(say(n, "[PH] That's only talk. Show me something real."))
+			lines.append(_say_voiced_pres(n, "present_unmoved", "That's only talk. Show me something real.", {"target": suspect.name}))
 		else:
-			lines.append(say(n, "[PH] Maybe. I'll keep an eye on %s." % suspect.name))
+			lines.append(_say_voiced_pres(n, "present_partial", "Maybe. I'll keep an eye on %s." % suspect.name, {"target": suspect.name}))
 	elif strength >= 0.9 and r < 0.35:
-		lines.append(say(n, "[PH] You're right. I'll not trust %s again." % suspect.name))
+		lines.append(_say_voiced_pres(n, "present_accept_open", "You're right. I'll not trust %s again." % suspect.name, {"target": suspect.name}))
 	elif r < 0.7:
-		lines.append(say(n, "[PH] That... does look bad for %s." % suspect.name))
+		lines.append(_say_voiced_pres(n, "present_accept_open", "That... does look bad for %s." % suspect.name, {"target": suspect.name}))
 	else:
-		lines.append(say(n, "[PH] Maybe. I'll keep an eye on %s." % suspect.name))
+		lines.append(_say_voiced_pres(n, "present_partial", "Maybe. I'll keep an eye on %s." % suspect.name, {"target": suspect.name}))
 	return {"lines": lines, "facts": [], "repeated": times > 0}
 
 ## An evil NPC learns from what a good NPC told them in conversation.

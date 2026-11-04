@@ -12,6 +12,7 @@ const PresentationReply = preload("res://sim/presentation_reply.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 const Ownership = preload("res://game/workshop_ownership.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
+const Presentations = preload("res://sim/dialogue_presentations.gd")
 
 ## Pure capability check against the real listener and the proposed evidence union.
 ## Used for the entire audience before a command spends time or discloses secrets.
@@ -78,9 +79,12 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		Profiler.count("repeat_no_assessment")
 		var result: Dictionary = cached_repeat.result.duplicate(true)
 		var text = "I heard you say that at the meeting. My assessment is unchanged." if existing.venue != "private" else "You've heard this from me already. My assessment is unchanged."
-		result.lines = [Mind.say(n, "[PH] " + text)] if speak and not n.silenced else []
+		var rep_tic_mem: Dictionary = Mind._tic_memory(n) if (speak and not n.silenced and not n.is_shadow) else {}
+		var rep_line: Dictionary = Presentations.render_repeat(n, existing.venue != "private", text, rep_tic_mem)
+		result.lines = [rep_line] if speak and not n.silenced else []
 		result.repeated = true
 		result.dialogue.special = text
+		result.dialogue["voiced_text"] = rep_line["text"]
 		g.w.dlog.trace_event("workshop_repeat", n.id, "", {"card": card.get("n", 0), "venue": venue}, "Reuse an unchanged discussion without evaluating or rewarding it again.")
 		return result
 	var original_ids: Array = snapshot.selected.duplicate()
@@ -167,7 +171,8 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 				text = trapped_voiced
 				trapped_out = true
 				break
-	if repeated and state.get("delivered", {}).get(delivery_key, "") == inputs:
+	var repeated_same_audience: bool = repeated and state.get("delivered", {}).get(delivery_key, "") == inputs
+	if repeated_same_audience:
 		text = "Those are the same reports. My assessment is unchanged."
 	elif targets.size() > 1:
 		for claim in assessment.claims:
@@ -185,9 +190,10 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			var agreement: float = scoped[0].agreement if not scoped.is_empty() else assessment.agreement
 			Mind.ledger_hear(g.w, n, eid, [], maxf(0.0, agreement), Mind.support_ref(card), meta)
 	var voiced_stance: String = assessment.stance
+	var already_aligned: bool = false
 	if not repeated and text == assessment.response and stance_subject != "" and g.w.by_id.has(stance_subject):
 		var after_susp: float = n.suspicion.get(stance_subject, 0.1)
-		var already_aligned: bool = stance_before <= 0.15 if headline.conclusion.type in ["good", "marked"] else stance_before >= 0.48
+		already_aligned = stance_before <= 0.15 if headline.conclusion.type in ["good", "marked"] else stance_before >= 0.48
 		text = _belief_stance_text(g, n, headline.conclusion.type, stance_subject, stance_before, assessment.stance, text, fresh.is_empty())
 		if headline.conclusion.type in ["evil", "demon", "minion", "suspicious", "good", "marked"]:
 			var b_stance: String = belief_stance(headline.conclusion.type, stance_before, after_susp)
@@ -199,6 +205,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var trust_before: float = n.trust
 	var pressure_before: float = n.pressure
 	var self_support: bool = direction == "defend" and targets == [n.id] and venue == "private"
+	var self_support_variant: String = ""
 	if self_support:
 		# Beliefs use the shared receipts; appreciation remains the original social
 		# response. Knowing oneself good supplies no evidential agreement bonus.
@@ -206,12 +213,15 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		var already: bool = n.heard.has(support_key)
 		n.heard[support_key] = n.heard.get(support_key, 0) + 1
 		if already:
+			self_support_variant = "repeat"
 			text = "You've told me that already. Thank you."
 		elif Mind.card_clears(card, n.id, true):
 			Mind.set_trust(g.w, n, n.trust + Tuning.Trust.SELF_SUPPORT_BONUS, "the Demonologist spoke up for me")
 			Mind.refresh_beliefs(g.w, n, " (self-support rapport)")
+			self_support_variant = "thanks"
 			text = "Thank you for believing me."
 		else:
+			self_support_variant = "weak"
 			text = "I appreciate the support, but I'm not sure that explains it."
 	elif assessment.agreement >= 0.6 and not fresh.is_empty() and not repeated:
 		var reward_span = Profiler.open("trust_reward")
@@ -268,16 +278,26 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		if not state.has("delivered"):
 			state.delivered = {}
 		state.delivered[delivery_key] = state.discussion[signature]
-	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": voiced_stance,
-		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": text}
 	var base_canonical: String = text
 	if hub_voiced_tail != "" and base_canonical.ends_with(hub_voiced_tail):
 		base_canonical = base_canonical.substr(0, base_canonical.length() - hub_voiced_tail.length()) + hub_canonical_tail
 	if trapped_out and base_canonical.begins_with(trapped_voiced):
 		base_canonical = trapped_canonical + base_canonical.substr(trapped_voiced.length())
-	var spoken_line: Dictionary = Mind.say(n, text if (trapped_out or hub_voiced_tail != "") else "[PH] " + text)
-	if trapped_out or hub_voiced_tail != "":
-		spoken_line["statement"] = base_canonical
+	var tic_mem: Dictionary = Mind._tic_memory(n) if (speak and not n.silenced and not n.is_shadow) else {}
+	var spoken_line: Dictionary
+	if trapped_out:
+		var trap_spoken: String = Mind.Dialogue.apply_tics(n.id, trapped_voiced + hub_voiced_tail, tic_mem)
+		spoken_line = {"speaker": n.id, "name": n.name, "text": trap_spoken, "statement": base_canonical}
+	elif self_support:
+		spoken_line = Presentations.render_self_support(n, self_support_variant, base_canonical, tic_mem)
+	elif repeated_same_audience:
+		spoken_line = Presentations.render_repeat(n, venue != "private", base_canonical, tic_mem)
+	else:
+		spoken_line = Presentations.render_workshop_reply(g.w, n, root.conclusion, targets, assessment, plan.prepared.view, snapshot, voiced_stance, already_aligned, fresh.is_empty(), base_canonical, tic_mem)
+		if hub_voiced_tail != "":
+			spoken_line["text"] = str(spoken_line["text"]) + Mind.Dialogue.apply_tics(n.id, hub_voiced_tail, tic_mem)
+	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": voiced_stance,
+		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": base_canonical, "voiced_text": spoken_line["text"]}
 	var lines: Array = [spoken_line] if speak and not n.silenced else []
 	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
 		{"venue": venue, "key": key, "agreement": assessment.agreement, "stance": assessment.stance,

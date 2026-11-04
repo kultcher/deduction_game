@@ -157,9 +157,7 @@ static func _day_command(g, verb: String, rest: String) -> void:
 			g.talk_offered = false
 			g.state = "talk"
 			g.w.dlog.add("player_talk", "player", n.id, {"trust": snappedf(n.trust, 0.01)})
-			var cue = Mind.greeting_cue(g.w, n)
-			if cue != "":
-				g._narr(cue)
+			g._line(Mind.greeting_line(g.w, n, g._greeting_context(n)))
 			if not n.remarks.is_empty() and not n.is_evil():
 				var said: String = n.remarks.pop_front()
 				g.w.dlog.think(n.id, "reconsider", "Tells the player they've come round to %s." % said)

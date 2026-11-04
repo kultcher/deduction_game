@@ -9,6 +9,7 @@ const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
+const Dialogue = preload("res://sim/dialogue.gd")
 const RecentSightings = preload("res://game/recent_sightings.gd")
 
 
@@ -98,6 +99,8 @@ static func _approach_command(g, verb: String, rest: String) -> void:
 				var r: Dictionary = Social.approach_open(g.w, n, g.approach["agenda"])
 				g._lines(r["lines"])
 				g._facts(r["facts"])
+			else:
+				g._line(Mind.greeting_line(g.w, n, greeting_context(g, n)))
 			g._prompt(_talk_options(g, n))
 		"decline", "no", "n":
 			g.state = "day"
@@ -147,7 +150,7 @@ static func _grant_protection(g, n, what: String) -> void:
 	g.w.dlog.decision(n.id, "protection_disclosure", "outcome", now, {"trust": n.trust,
 		"composure": n.traits.get("composure", 0.5), "p": snappedf(p, 0.01)})
 	if now:
-		g._line(Mind.say(n, "[PH] Then I'll trust you now."))
+		g._line(Mind.say_voiced(n, "protect_trust_now", "Then I'll trust you now."))
 		var r: Dictionary = Mind.keep_request(g.w, n, 3)
 		g._lines(r["lines"])
 		g._facts(r["facts"])
@@ -197,6 +200,33 @@ static func _remember_dialogue_exchange(g, n, verb: String, rest: String, respon
 	Mind.Dialogue.record_exchange(n.dialogue_memory, action, subject)
 
 
+## Public/conversation context keys for one-shot VN greetings (never inspects hidden alignment/roles).
+static func greeting_context(g, n) -> Dictionary:
+	var ctx: Dictionary = {}
+	for c_num in g.sigil_heard:
+		var heard_list: Array = g.sigil_heard[c_num]
+		if n.id in heard_list:
+			var rec: Dictionary = g.receipt_by_number(int(c_num))
+			if str(rec.get("target", "")) == n.id:
+				ctx["protection_key"] = "protect:sigil:%d" % int(c_num)
+	if not ctx.has("protection_key") and n.fear_eased:
+		ctx["protection_key"] = "protect:promise:%s" % n.id
+	if not ctx.has("protection_key"):
+		for eid in n.ledger:
+			var meta: Dictionary = n.ledger[eid].get("meta", {})
+			if meta.get("save_claim", false) and str(meta.get("save_target", "")) == n.id:
+				ctx["protection_key"] = "protect:save:%s" % str(eid)
+				break
+	var open_gr: Array = Mind.open_grievances(n)
+	for gr in open_gr:
+		if int(gr.get("day", -99)) >= g.w.day - 1:
+			ctx["friction_key"] = "friction:grievance:%s:%d" % [str(gr.get("key", "")), int(gr.get("day", 0))]
+	var my_claim: Dictionary = n.claim_record.get(n.id, {})
+	if not ctx.has("friction_key") and str(my_claim.get("type", "")) == "evil" and int(my_claim.get("day", -99)) >= g.w.day - 1:
+		ctx["friction_key"] = "friction:accuse:%d" % int(my_claim.get("day", 0))
+	return ctx
+
+
 static func _talk_options(g, n) -> String:
 	var why = " | ask why" if Mind.has_live_hint(g.w, n) else ""
 	return "(3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift>%s | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)" % why
@@ -221,16 +251,28 @@ static func _repeat_refusal(n, response: Dictionary) -> void:
 	var line: Dictionary = response.lines[response.refusal_line]
 	if key.begins_with("are:"):
 		# Retain both existing patience warnings verbatim, but vary the response.
-		line.text += " [PH] My answer hasn't changed." if count % 2 == 1 else " [PH] I've already given you my answer."
+		var base_stmt: String = str(line.get("statement", line.text))
+		var rep_fb: String = "My answer hasn't changed." if count % 2 == 1 else "I've already given you my answer."
+		var rep_key: String = "repeat_guess_1" if count % 2 == 1 else "repeat_guess_2"
+		var rep_voiced: String = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, rep_key, rep_fb), n.dialogue_memory)
+		line.text += " " + rep_voiced
+		line["statement"] = base_stmt + " " + rep_fb
 	else:
 		var refused: Array = response.facts.filter(func(f): return f.get("kind", "") == "refusal")
 		var fact: Dictionary = refused[0] if not refused.is_empty() else {}
+		var rep_key: String = ""
+		var rep_fb: String = ""
 		if fact.get("withheld", false):
-			line.text = "[PH] Those readings are still staying with me." if count % 2 == 1 else "[PH] I've not agreed to share any more readings."
+			rep_key = "repeat_withheld_1" if count % 2 == 1 else "repeat_withheld_2"
+			rep_fb = "Those readings are still staying with me." if count % 2 == 1 else "I've not agreed to share any more readings."
 		elif fact.get("fear", false):
-			line.text = "[PH] I'm still afraid to name it. Ask me when it's safer." if count % 2 == 1 else "[PH] Naming my gift still feels too dangerous. Not yet."
+			rep_key = "repeat_fear_1" if count % 2 == 1 else "repeat_fear_2"
+			rep_fb = "Naming my gift now puts a target on my back before it can help. Not yet." if count % 2 == 1 else "Naming my gift still feels too dangerous. Not yet."
 		else:
-			line.text = "[PH] You've had my answer about my gift. I won't tell you more." if count % 2 == 1 else "[PH] I'm still keeping my gift to myself."
+			rep_key = "repeat_gift_1" if count % 2 == 1 else "repeat_gift_2"
+			rep_fb = "You've had my answer about my gift. I won't tell you more." if count % 2 == 1 else "I'm still keeping my gift to myself."
+		line.text = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, rep_key, rep_fb), n.dialogue_memory)
+		line["statement"] = rep_fb
 
 
 static func _talk_command(g, verb: String, rest: String) -> void:

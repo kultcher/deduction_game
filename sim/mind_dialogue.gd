@@ -44,7 +44,9 @@ static func answer_hint(w, n) -> Dictionary:
 		w.dlog.decision(n.id, "hint_followup", "gate", false, {"gate": "no_living_hinted_target"})
 		var count: int = n.dialogue_memory.get("empty_hint_replies", 0)
 		n.dialogue_memory["empty_hint_replies"] = count + 1
-		lines.append(say(n, "[PH] I've nothing more to tell you." if count % 2 == 0 else "[PH] I've no further reason to give you."))
+		var empty_key: String = "hint_why_empty_1" if count % 2 == 0 else "hint_why_empty_2"
+		var empty_fb: String = "I've nothing more to tell you." if count % 2 == 0 else "I've no further reason to give you."
+		lines.append(say_voiced(n, empty_key, empty_fb))
 		return {"lines": lines, "facts": []}
 	var t = w.by_id[target]
 	var has_reason = _unshared_fake_on(n, target) != {} if n.is_evil() else reason_status(w, n, target)["kind"] in ["private", "player"]
@@ -63,12 +65,12 @@ static func answer_hint(w, n) -> Dictionary:
 		lines.append(_hint_decline(w, n, t))
 		return {"lines": lines, "facts": []}
 	var r = answer_gift(w, n, 4, false)
-	lines.append(say(n, "[PH] All right. You asked, so here's why I suspect %s." % t.name))
+	lines.append(say_voiced(n, "hint_why_lead", "All right. You asked, so here's why I suspect %s." % t.name, {"target": t.name}))
 	lines.append_array(r["lines"])
 	var facts: Array = r["facts"]
 	if not n.claim_public:
 		n.dialogue_memory["confidence_requested"] = true
-		lines.append(say(n, "[PH] But keep this between us. Don't bring it up at the meeting; not yet."))
+		lines.append(say_voiced(n, "hint_why_confidential", "But keep this between us. Don't bring it up at the meeting; not yet."))
 		for f in facts:
 			if f.get("source", "") == n.id and f.get("kind", "") in ["info", "claim"]:
 				f["confidential"] = n.id
@@ -100,7 +102,7 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 	var about_me = trace_fits_me or n.id in subj or c.get("a", "") == n.id or n.id in pair or (card.get("kind") == "claim" and card.get("source") != n.id and n.claim_public and card.get("role") == n.claimed_role)
 	if not about_me:
 		on_question(w, n)
-		lines.append(say(n, "[PH] What has that to do with me?"))
+		lines.append(say_voiced(n, "press_not_about_me", "What has that to do with me?"))
 		return {"lines": lines, "facts": facts}
 	var kind: String = card.get("kind", "")
 	var d: Dictionary = card.get("data", {})
@@ -133,7 +135,8 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 	if counter:
 		on_question(w, n)
 		var rival = w.by_id[card["source"]]
-		var accusation: Dictionary = say(n, "[PH] I am the %s. If %s says otherwise, %s is lying." % [C.role_name(n.claimed_role), rival.name, rival.name])
+		var role_disp: String = C.role_name(n.claimed_role)
+		var accusation: Dictionary = say_voiced(n, "press_counter_claim", "I am the %s. If %s says otherwise, %s is lying." % [role_disp, rival.name, rival.name], {"role": role_disp, "rival": rival.name})
 		accusation["expression"] = "harsh"
 		accusation["expression_strength"] = 2
 		lines.append(accusation)
@@ -237,22 +240,25 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	for fact in response.facts:
 		if fact.get("kind", "") == "alibi" and fact.get("source", "") == n.id and n.id in fact.get("subject", []):
 			statement = ("That sighting doesn't change where I was: at home %s." if alternate else "I was at home %s. I stand by that account.") % when
-			text = ("[PH] " + statement) if alternate else Dialogue.voice_line(n.id, "pressed_home_stand", statement, {"when": when})
+			text = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, "pressed_home_stand_alt" if alternate else "pressed_home_stand", statement, {"when": when}), n.dialogue_memory)
 			break
 		if fact.get("kind", "") == "secret" and fact.get("owner", "") == n.id:
 			var sec_me: String = n.secret.get("me", n.secret["text"])
 			statement = ("I wasn't there on evil business. I %s. Keep that between us." if alternate else "All right: I %s. That's why I was out; please keep it quiet.") % sec_me
-			text = ("[PH] " + statement) if alternate else Dialogue.voice_line(n.id, "confess_secret_private", statement, {"secret": sec_me})
+			text = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, "confess_secret_private_alt" if alternate else "confess_secret_private", statement, {"secret": sec_me}), n.dialogue_memory)
 			break
 		if fact.get("kind", "") == "refusal" and fact.get("source", "") == n.id:
 			statement = "I've nothing more to say about that night." if alternate else "That sighting doesn't give you the right to demand my whereabouts."
-			text = ("[PH] " + statement) if alternate else Dialogue.voice_line(n.id, "pressed_refusal_stand", statement)
+			text = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, "pressed_refusal_stand_alt" if alternate else "pressed_refusal_stand", statement), n.dialogue_memory)
 			break
 		var f_role: String = fact.get("role", "") if fact.get("kind", "") == "info" else ("nightwatch" if fact.get("watch_claim", false) else (fact.get("duty", "") if fact.get("duty_claim", false) else ""))
 		if f_role != "" and C.has_role_def(f_role):
-			statement = C.role_def(f_role).pressed_night_line(w, n, fact, night, when, alternate, C.block_name)
+			var rdef_press = C.role_def(f_role)
+			statement = rdef_press.pressed_night_line(w, n, fact, night, when, alternate, C.block_name)
 			if statement != "":
-				text = "[PH] " + statement
+				var role_key: String = "pressed_%s_night%s" % [f_role, "_alt" if alternate else ""]
+				var role_slots: Dictionary = rdef_press.pressed_night_slots(w, n, fact, night, when, C.block_name)
+				text = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, role_key, statement, role_slots), n.dialogue_memory)
 				break
 	if text != "":
 		for line in response.lines:
@@ -278,6 +284,28 @@ static func on_question(w, n) -> void:
 		var drop: float = (Tuning.Trust.QUESTION_FATIGUE_BASE + Tuning.Trust.QUESTION_FATIGUE_PRIVACY * trait_of(n, "privacy")) * (1.0 - Tuning.Trust.QUESTION_FATIGUE_COMPOSURE_DAMP * trait_of(n, "composure"))
 		set_trust(w, n, n.trust - drop, "pressed with %d questions today" % n.pressed_today)
 
+const GREET_COLD_EXP = {
+	"agnes": "concerned", "dorian": "concerned", "isolde": "concerned", "merrin": "concerned",
+}
+const GREET_MURDER_EXP = {
+	"isolde": "sorrowful", "greta": "harsh",
+}
+const GREET_EXEC_EXP = {
+	"bart": "neutral", "greta": "neutral", "kiran": "neutral", "lian": "neutral",
+	"nisha": "neutral", "jory": "concerned",
+}
+const GREET_FRICTION_EXP = {
+	"dorian": "concerned", "isolde": "concerned",
+}
+
+static func _pool_greeting(id: String, key: String, index: int, fallback: String) -> String:
+	if not Dialogue.has_voice(id):
+		return fallback
+	var arr = Dialogue.Voices.VOICES[id].get(key, [])
+	if arr is Array and not arr.is_empty():
+		return str(arr[posmod(index, arr.size())])
+	return fallback
+
 ## Attitude cue on greeting, shown only if their composure lets it slip.
 static func greeting_cue(w, n) -> String:
 	if not w.decision_roll(n, "greeting_attitude_visible", (1.0 - trait_of(n, "composure")) * 0.9, {"composure": trait_of(n, "composure")}, "", "<="):
@@ -286,15 +314,114 @@ static func greeting_cue(w, n) -> String:
 	var t: float = n.trust
 	var cue = ""
 	if t < 0.3:
-		cue = "%s eyes you warily. \"[PH] What do you want now?\"" % n.name
+		cue = "%s eyes you warily. \"%s\"" % [n.name, _pool_greeting(n.id, "greet_cold", 0, "What do you want now?")]
 	elif t < 0.5:
 		cue = "%s gives you a guarded nod." % n.name
 	elif t < 0.7:
 		cue = "%s greets you civilly enough." % n.name
 	else:
-		cue = "%s brightens when they see you. \"[PH] Ah, Demonologist. Sit.\"" % n.name
+		cue = "%s brightens when they see you. \"%s\"" % [n.name, _pool_greeting(n.id, "greet_warm", 0, "Ah, Demonologist. Sit.")]
 	w.dlog.think(n.id, "cue", "Shows attitude cue for trust %.2f." % t)
 	return cue
+
+## Spoken VN conversation opener with rapport tiers, one-shot event overrides, and
+## curated portrait expressions. Consumes the exact same single composure roll as
+## greeting_cue so RNG state and Decision Inspector parity are preserved.
+static func greeting_line(w, n, context: Dictionary = {}) -> Dictionary:
+	var attitude_visible: bool = w.decision_roll(n, "greeting_attitude_visible", (1.0 - trait_of(n, "composure")) * 0.9, {"composure": trait_of(n, "composure")}, "", "<=")
+	var greeted: Dictionary = n.dialogue_memory.get("greeted_events", {})
+	var visits: int = int(n.dialogue_memory.get("greet_visits", 0))
+	var text: String = ""
+	var canonical: String = ""
+	var expr: String = "neutral"
+	var strength: int = 1
+	var event_fired: bool = false
+
+	if w.phase == C.MORNING and not w.deaths_last_night.is_empty() and not greeted.has("murder:%d" % w.day):
+		var friend_vid: String = ""
+		for vid in w.deaths_last_night:
+			var s_vid: String = str(vid)
+			if w.by_id.has(s_vid) and (float(n.npc_trust.get(s_vid, 0.5)) >= 0.65 or s_vid in n.friends or s_vid == n.lover):
+				friend_vid = s_vid
+				break
+		if friend_vid != "":
+			var f_name: String = w.by_id[friend_vid].name
+			canonical = "I still cannot believe %s is gone. Ask what you need." % f_name
+			text = Dialogue.voice_line(n.id, "greet_friend_killed", canonical, {"victim": f_name})
+			expr = "sorrowful"
+			strength = 2
+		else:
+			var v0_id: String = str(w.deaths_last_night[0])
+			var v_name: String = w.by_id[v0_id].name if w.by_id.has(v0_id) else "our neighbor"
+			canonical = "After losing %s in the night, nobody slept easy." % v_name
+			text = Dialogue.voice_line(n.id, "greet_after_murder", canonical, {"victim": v_name})
+			expr = str(GREET_MURDER_EXP.get(n.id, "concerned"))
+			strength = 2
+		greeted["murder:%d" % w.day] = true
+		event_fired = true
+	elif w.phase == C.MORNING and not w.executions.is_empty() and int(w.executions[-1].get("day", -1)) == w.day - 1 and not greeted.has("exec:%d" % (w.day - 1)):
+		var ex_id: String = str(w.executions[-1].get("id", ""))
+		if w.by_id.has(ex_id):
+			var ex_name: String = w.by_id[ex_id].name
+			canonical = "After hanging %s last night, let us tread carefully today." % ex_name
+			text = Dialogue.voice_line(n.id, "greet_after_execution", canonical, {"executed": ex_name})
+			expr = str(GREET_EXEC_EXP.get(n.id, "sorrowful"))
+			strength = 2 if expr != "neutral" else 1
+			greeted["exec:%d" % (w.day - 1)] = true
+			event_fired = true
+	if not event_fired:
+		var prot_key: String = str(context.get("protection_key", ""))
+		var fric_key: String = str(context.get("friction_key", ""))
+		if prot_key != "" and not greeted.has(prot_key):
+			canonical = "Thank you for looking out for my safety. Ask what you need."
+			text = Dialogue.voice_line(n.id, "greet_after_protection", canonical)
+			expr = "warm"
+			strength = 1
+			greeted[prot_key] = true
+			event_fired = true
+		elif fric_key != "" and not greeted.has(fric_key):
+			canonical = "After how you treated me earlier, state your question plainly."
+			text = Dialogue.voice_line(n.id, "greet_after_friction", canonical)
+			expr = str(GREET_FRICTION_EXP.get(n.id, "harsh"))
+			strength = 2
+			greeted[fric_key] = true
+			event_fired = true
+
+	if not event_fired:
+		n.dialogue_memory["greet_visits"] = visits + 1
+		var idx: int = visits + w.day
+		if attitude_visible and n.trust < 0.32:
+			w.dlog.think(n.id, "cue", "Shows attitude cue for trust %.2f." % n.trust)
+			canonical = "What do you want now?"
+			text = _pool_greeting(n.id, "greet_cold", idx, canonical)
+			expr = str(GREET_COLD_EXP.get(n.id, "harsh"))
+			strength = 2
+		elif attitude_visible and n.trust >= 0.65:
+			w.dlog.think(n.id, "cue", "Shows attitude cue for trust %.2f." % n.trust)
+			canonical = "Ah, Demonologist. Sit."
+			text = _pool_greeting(n.id, "greet_warm", idx, canonical)
+			expr = "warm"
+			strength = 1
+		else:
+			if not attitude_visible:
+				w.dlog.think(n.id, "cue", "Composure hides their attitude (trust %.2f)." % n.trust)
+			else:
+				w.dlog.think(n.id, "cue", "Shows attitude cue for trust %.2f." % n.trust)
+			canonical = "Good day, Demonologist."
+			text = _pool_greeting(n.id, "greet_neutral", idx, canonical)
+			expr = "neutral"
+			strength = 1
+	else:
+		w.dlog.think(n.id, "cue", "Shows contextual greeting (%s)." % expr)
+
+	n.dialogue_memory["greeted_events"] = greeted
+	var M = _mind()
+	var spoken: String = Dialogue.apply_tics(n.id, text, M._tic_memory(n))
+	var line: Dictionary = {"speaker": n.id, "name": n.name, "text": spoken, "statement": canonical}
+	if expr != "" and expr != "neutral" and Dialogue.has_voice(n.id):
+		line["expression"] = expr
+		line["expression_strength"] = strength
+	return line
 
 ## End of a conversation: small trust gain (once a day) and trait reveals.
 static func end_conversation(w, n) -> Array:
@@ -481,7 +608,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 			else:
 				w.dlog.think(n.id, "lie", "Evil: denies having a gift.", {"lie": true})
 			n.claimed_role = "none"
-			lines.append(say(n, "[PH] A gift? No, nothing like that. I'm only the %s." % n.occupation))
+			lines.append(say_voiced(n, "deny_any_gift", "A gift? No, nothing like that. I'm only the %s." % n.occupation, {"occupation": n.occupation}))
 			facts.append({"kind": "claim", "subject": [n.id], "role": "none", "source": n.id, "private": true,
 				"text": "%s told you privately they have no gift." % n.name})
 		elif _afraid(w, n):
@@ -508,7 +635,8 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 		var pk: String = C.package_of(role)
 		if evil:
 			w.dlog.think(n.id, "lie", "Evil: gives a hint matching bluff %s." % role, {"lie": true})
-		lines.append(say(n, "[PH] " + C.HINT_PACKAGES[pk]["text"] + " That's all I'll say."))
+		var pkg_fb: String = C.HINT_PACKAGES[pk]["text"] + " That's all I'll say."
+		lines.append(say_voiced(n, "hint_pkg_" + pk, pkg_fb))
 		facts.append({"kind": "hint", "subject": [n.id], "source": n.id, "private": true, "package": pk,
 			"roles": C.HINT_PACKAGES[pk]["roles"],
 			"text": "%s hinted at %s (%s)." % [n.name, C.HINT_PACKAGES[pk]["name"],
@@ -603,7 +731,9 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 		elif afraid:
 			ask = _protection_request(w, n, refusal)
 			if ask.is_empty():
-				lines.append(say(n, "[PH] If word gets round what %s, I'll be dead by morning. Not yet." % ("the rest of my readings show" if not readings.is_empty() else "my gift has shown me")))
+				var fear_fb: String = "If word gets round what %s, I'll be dead by morning. Not yet." % ("the rest of my readings show" if not readings.is_empty() else "my gift has shown me")
+				var fear_key: String = "withhold_readings_fear_rest" if not readings.is_empty() else "withhold_readings_fear_all"
+				lines.append(say_voiced(n, fear_key, fear_fb))
 		else:
 			ask = _confidence_request(w, n, 4, refusal)
 			if ask.is_empty():

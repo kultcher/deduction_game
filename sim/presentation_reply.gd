@@ -13,6 +13,7 @@ extends RefCounted
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
+const Presentations = preload("res://sim/dialogue_presentations.gd")
 const Deduction = preload("res://sim/deduction.gd")
 const Tuning = preload("res://sim/tuning.gd")
 
@@ -71,13 +72,16 @@ static func _evil(w, n, ded: Dictionary, board: Array, scale: float, c: Dictiona
 	if C.SHADOW_SELF:
 		var sr = Mind.shadow_eval(w, n, func(sh): return evaluate(w, sh, ded, board, scale, false))
 		workshop_covered = sr != null and sr.get("workshop", false)
-		if target != n and sr != null and sr.has("dialogue") and sr["dialogue"].get("stance", "") != approved["stance"]:
+		if target != n and sr != null and sr.has("dialogue"):
 			var mine: Dictionary = sr["dialogue"]
-			var rank = {"reject": 0, "partial": 1, "accept": 2}
-			var dev = absf(rank.get(mine["stance"], 1) - rank.get(approved["stance"], 1)) / 2.0
-			var stakes = _evil_argument_stakes(w, n, c, target)
-			if not Mind.evil_override(w, n, "argument", stakes, dev, "%s (good self: %s, evil: %s)" % [Deduction.conclusion_text(w, c), mine["stance"], approved["stance"]]):
+			if mine.get("stance", "") == approved["stance"]:
 				approved = mine.duplicate(true)
+			else:
+				var rank = {"reject": 0, "partial": 1, "accept": 2}
+				var dev = absf(rank.get(mine["stance"], 1) - rank.get(approved["stance"], 1)) / 2.0
+				var stakes = _evil_argument_stakes(w, n, c, target)
+				if not Mind.evil_override(w, n, "argument", stakes, dev, "%s (good self: %s, evil: %s)" % [Deduction.conclusion_text(w, c), mine["stance"], approved["stance"]]):
+					approved = mine.duplicate(true)
 	if times > 0 and not workshop_covered:
 		var prior: Dictionary = delivery_memory.get("decisions", {}).get(JSON.stringify([audience, Deduction.conclusion_key(c)]), {})
 		# Reuse their expressed position, not new private strategy. A new audience
@@ -86,7 +90,15 @@ static func _evil(w, n, ded: Dictionary, board: Array, scale: float, c: Dictiona
 			if prior.has(field):
 				approved[field] = prior[field]
 	if not n.silenced:
-		lines.append(line(n, approved, audience, delivery_memory))
+		if workshop_covered:
+			if approved.has("voiced_text"):
+				var v_shadow: String = Mind.Dialogue.apply_tics(n.id, str(approved["voiced_text"]), delivery_memory)
+				lines.append({"speaker": n.id, "name": n.name, "text": v_shadow, "statement": str(approved.get("special", v_shadow))})
+			else:
+				var canon_ev: String = Mind.Dialogue.decision(n.id, approved, audience, delivery_memory.duplicate(true))["text"]
+				lines.append(Presentations.render_evil_override(w, n, c, str(approved.get("stance", "partial")), bool(approved.get("already", false)), times > 0 and delivery_memory.get("decisions", {}).has(JSON.stringify([audience, Deduction.conclusion_key(c)])), audience, canon_ev, delivery_memory))
+		else:
+			lines.append(line(n, approved, audience, delivery_memory))
 	w.dlog.add("argument_stance", n.id, c.get("a", ""), {"key": Deduction.conclusion_key(c), "stance": approved["stance"], "evil": true, "repeat": times > 0})
 	w.dlog.decision(n.id, "argument", "outcome", approved, {"route": "evil_mask",
 		"agreement": 0.0, "updates_real_beliefs": false, "repeat_count": times}, c.get("a", ""), trace_id)

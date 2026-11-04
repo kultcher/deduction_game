@@ -32,6 +32,8 @@ const CONSTANCE_EXPRESSIONS = {
 	"sorrowful": "res://assets/art/portrait_expression_poc/constance-sorrowful-v1.png",
 }
 const FADE_SECONDS = 0.15
+const PORTRAIT_FRAME = [0.01, 0.02, 0.48, 1.0]   # anchors: left, top, right, bottom
+const ITEM_FRAME = [0.07, 0.12, 0.42, 0.72]      # an object sits level with the speech bubble
 const REVEAL_PER_SECOND = 90.0
 
 var formatter = Formatter.new()
@@ -152,10 +154,31 @@ func begin(id: String, name: String) -> void:
 	person_id = id
 	lines.clear()
 	_stop_portrait_fade()
+	_portrait_frame(PORTRAIT_FRAME)
 	portrait.texture = _expression_texture(id, "neutral")
 	speaker.text = name
 	speaker.add_theme_color_override("font_color", UITheme.ink_of(C.npc_color(id)))
 	_render()
+
+## Item mode: an object (a crime-scene trace) where the portrait goes, with its text in the
+## speech bubble. No speaker, so expressions and speech events are ignored until `begin`.
+## A null texture leaves the portrait slot empty (art not drawn yet).
+func show_item(title: String, texture: Texture2D, text: String) -> void:
+	person_id = ""
+	_stop_portrait_fade()
+	_portrait_frame(ITEM_FRAME)
+	portrait.texture = texture
+	speaker.text = title
+	speaker.add_theme_color_override("font_color", UITheme.color("ink"))
+	lines = [text]
+	_render()
+
+func _portrait_frame(frame: Array) -> void:
+	for r in [portrait, previous_portrait]:
+		r.anchor_left = frame[0]
+		r.anchor_top = frame[1]
+		r.anchor_right = frame[2]
+		r.anchor_bottom = frame[3]
 
 func _expression_texture(id: String, expression: String) -> Texture2D:
 	var fallback: Texture2D = LARGE.get(id, UITheme.tex("art/portraits/" + id))
@@ -209,7 +232,7 @@ func consume(events: Array) -> void:
 
 func _render() -> void:
 	speech.clear()
-	var text = "\n\n".join(PackedStringArray(lines)) if not lines.is_empty() else "Choose a question to begin."
+	var text = "\n\n".join(PackedStringArray(lines))
 	renderer.append_to(speech, formatter.format_text(text, {
 		"surface": "paper", "speaker_id": person_id, "font_size": 20, "icon_size": 20}))
 	reveal_total = speech.get_total_character_count()
