@@ -44,6 +44,22 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
+### Current baseline (Nov 4): `baseline_165ce09`
+
+`tools/golden/baseline_165ce09/` is the capture from `165ce09` (meeting plan M1, peer
+role hints and claims, on top of the Seer bluff fix and the refresh cost cleanup).
+**This is the reference CI diffs against now.** Recorded twice in parallel (identical),
+and the `--mode csharp` capture is identical to it, so it is also the C# oracle.
+
+Against `baseline_82faa5b`, the Seer fix and the refresh cleanup changed nothing on
+these seeds (identical with `--ignore engine,sus_why,sus_src`). M1 moves all five from
+the first private gift share on: new `role_hint` / `role_claim` hearsay, the small trust
+bump those shares give, and the plays that follow (seed 98933 parts at step 8, Agnes
+hearing Dorian's hint). Passive A/B over seeds 2000-2011: good wins 33% -> 25% (7 NPCs)
+and 17% -> 33% (10 NPCs), executions similar; within noise for 12 seeds.
+
+`baseline_82faa5b` and `baseline_3bd51ea` stay for history.
+
 ### Two checks, not one (from Nov 3)
 
 The golden captures answer two separate questions, and CI keeps them apart:
@@ -71,7 +87,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_82faa5b /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_165ce09 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
