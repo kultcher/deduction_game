@@ -173,6 +173,8 @@ func validate_case(value) -> String:
 			return "Invalid answer slots."
 		if answer.has("slots") and answer.slots.filter(func(p): return p is String and p != "") != answer.positive:
 			return "The displayed slots and recorded answers disagree."
+		if answer.has("in_play_role") and not (answer.in_play_role is String):
+			return "Invalid Town Hall role answer."
 	for key in value.reasons:
 		var valid_keys: Array = []
 		for id in ids:

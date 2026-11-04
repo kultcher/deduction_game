@@ -286,8 +286,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var tic_mem: Dictionary = Mind._tic_memory(n) if (speak and not n.silenced and not n.is_shadow) else {}
 	var spoken_line: Dictionary
 	if trapped_out:
-		var trap_spoken: String = Mind.Dialogue.apply_tics(n.id, trapped_voiced + hub_voiced_tail, tic_mem)
-		spoken_line = {"speaker": n.id, "name": n.name, "text": trap_spoken, "statement": base_canonical}
+		spoken_line = {"speaker": n.id, "name": n.name, "text": text, "statement": base_canonical}
 	elif self_support:
 		spoken_line = Presentations.render_self_support(n, self_support_variant, base_canonical, tic_mem)
 	elif repeated_same_audience:
@@ -296,8 +295,9 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		spoken_line = Presentations.render_workshop_reply(g.w, n, root.conclusion, targets, assessment, plan.prepared.view, snapshot, voiced_stance, already_aligned, fresh.is_empty(), base_canonical, tic_mem)
 		if hub_voiced_tail != "":
 			spoken_line["text"] = str(spoken_line["text"]) + Mind.Dialogue.apply_tics(n.id, hub_voiced_tail, tic_mem)
+	var descriptor_special: String = text if trapped_out else base_canonical
 	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": voiced_stance,
-		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": base_canonical, "voiced_text": spoken_line["text"]}
+		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": descriptor_special, "voiced_text": spoken_line["text"]}
 	var lines: Array = [spoken_line] if speak and not n.silenced else []
 	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
 		{"venue": venue, "key": key, "agreement": assessment.agreement, "stance": assessment.stance,

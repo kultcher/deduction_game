@@ -188,7 +188,7 @@ static func core_keys(card: Dictionary) -> Array:
 
 
 static func _corroborate(card: Dictionary, src: String) -> void:
-	if src == "" or src == card.get("source", "") or src in card.get("subject", []):
+	if src in ["", "rumour"] or card.get("tavern_gossip", false) or src == card.get("source", "") or src in card.get("subject", []):
 		return
 	var cb: Array = card.get("corroborated_by", [])
 	if not (src in cb):
@@ -400,9 +400,10 @@ static func timeline_data(g, filter: String = "") -> Dictionary:
 				_:
 					continue
 			var confirmed: bool = a.get("src", "") == "player"
+			var rumour: bool = c.get("tavern_gossip", false) or a.get("src", "") == "rumour"
 			if not rows[who].has(key):
 				rows[who][key] = []
-			rows[who][key].append({"val": val, "confirmed": confirmed, "card": c["n"]})
+			rows[who][key].append({"val": val, "confirmed": confirmed, "rumour": rumour, "card": c["n"]})
 	return {"cols": cols, "rows": rows}
 
 
@@ -425,11 +426,12 @@ static func _timeline(g, filter: String) -> String:
 			var vals: Array = td["rows"][n.id].get(key, [])
 			var shown = {}
 			for v in vals:
-				var tag = v["val"] + ("" if v["confirmed"] else "~")
+				var suffix: String = "" if v["confirmed"] else ("?" if v.get("rumour", false) else "~")
+				var tag = v["val"] + suffix
 				if not shown.has(tag):
 					shown[tag] = true
 					cell += ("/" if cell != "" else "") + tag
 			line += "%-7s" % (cell if cell != "" else ".")
 		out.append(line)
-	out.append("Sq Square, Mk Market, Dk Docks, Hl Chapel Hill, hm home, XX killed. No mark = you saw it; ~ = someone told you.")
+	out.append("Sq Square, Mk Market, Dk Docks, Hl Chapel Hill, hm home, XX killed. No mark = you saw it; ~ = someone told you; ? = tavern rumour.")
 	return "\n".join(out)

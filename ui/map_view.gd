@@ -38,7 +38,10 @@ const BLOCK_TINT = {
 }
 const OVERVIEW = Rect2(0, 0, 1000, 700)
 const BUILDING_ART = {"tavern": "tavern", "well": "well", "smithy": "smithy", "bakery": "bakery",
-	"wharf": "wharf", "mill": "mill", "chapel": "chapel", "graveyard": "graveyard"}
+	"wharf": "wharf", "mill": "mill", "chapel": "chapel", "graveyard": "graveyard", "town_hall": "town_hall"}
+## Shorter signs for blocks with three buildings (the Square with the Town Hall), so
+## neighbouring signs don't overlap. Hover labels keep the full name.
+const SHORT_SIGNS = {"tavern": "Tavern"}
 
 var g
 var zoom_block = ""
@@ -90,16 +93,25 @@ func _r(r: Rect2) -> Rect2:
 func _fs(base: float) -> int:
 	return int(clampf(base * _scale * 1.25, 13.0, 32.0))
 
-func _loc_rect(l: String) -> Rect2:
-	var b: String = C.LOCATIONS[l]["block"]
-	var R: Rect2 = BLOCK_RECTS[b]
+func _map_buildings_on(b: String) -> Array:
 	var locs: Array = C.LOCATIONS.keys().filter(func(x): return C.LOCATIONS[x]["block"] == b)
+	for pb in C.PLAYER_BUILDINGS.keys():
+		if C.PLAYER_BUILDINGS[pb]["block"] == b:
+			locs.append(pb)
+	return locs
+
+func _loc_rect(l: String) -> Rect2:
+	var b: String = C.loc_block(l)
+	var R: Rect2 = BLOCK_RECTS[b]
+	var locs: Array = _map_buildings_on(b)
 	var i = locs.find(l)
+	if locs.size() >= 3:
+		return Rect2(R.position.x + R.size.x * (0.04 + 0.31 * i), R.position.y + R.size.y * 0.12, R.size.x * 0.28, R.size.y * 0.46)
 	return Rect2(R.position.x + R.size.x * (0.06 + 0.48 * i), R.position.y + R.size.y * 0.12, R.size.x * 0.42, R.size.y * 0.46)
 
 ## Which location a layout rect belongs to (if it's a building).
 func _loc_of_rect(rect: Rect2) -> String:
-	for l in C.LOCATIONS:
+	for l in C.LOCATIONS.keys() + C.PLAYER_BUILDINGS.keys():
 		if _loc_rect(l) == rect:
 			return l
 	return ""
@@ -234,19 +246,21 @@ func _draw() -> void:
 		draw_rect(R, border, false, 3.0 if (b == selected_block or here) else 2.0)
 		if zoom_block == "":
 			_hits.append({"rect": R, "kind": "block", "id": b, "label": C.block_name(b), "hint": "Click to look closer" if not night else "Click to choose it for your vigil"})
-		# Locations: building sprites with a name sign.
-		for l in C.LOCATIONS:
-			if C.LOCATIONS[l]["block"] != b:
-				continue
+		# Locations and player-only buildings (the Town Hall): building sprites with a name sign.
+		for l in _map_buildings_on(b):
 			var LR: Rect2 = _r(_loc_rect(l))
 			var art = _art("buildings/" + BUILDING_ART.get(l, "cottage_red"), 0.5)
 			var drawn = _draw_art(art, LR.grow_individual(0, LR.size.y * 0.1, 0, 0), "contain", tint) if art != null else LR
 			if art == null:
-				draw_rect(LR, Color(0.3, 0.26, 0.22))
+				draw_rect(LR, Color(0.3, 0.26, 0.22) * tint)
+				draw_rect(LR, UITheme.color("border"), false, 1.5)
 			var here_l = g.moved and g.loc == l and not night
 			var sign_r = drawn
 			if zoom_block != "" or _scale > 0.9:
-				sign_r = _sign(font, C.loc_name(l).trim_prefix("the ").capitalize(), Vector2(drawn.get_center().x, drawn.end.y - 4), _fs(11), here_l, false)
+				var sign_txt: String = C.loc_name(l).trim_prefix("the ").capitalize()
+				if _map_buildings_on(b).size() >= 3:
+					sign_txt = SHORT_SIGNS.get(l, sign_txt)
+				sign_r = _sign(font, sign_txt, Vector2(drawn.get_center().x, drawn.end.y - 4), _fs(11), here_l, false)
 			elif here_l:
 				draw_rect(drawn.grow(2), UITheme.color("accent"), false, 2.0)
 			# Someone's there you can't see yet: a count, not a name.

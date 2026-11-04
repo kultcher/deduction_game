@@ -201,9 +201,11 @@ func repeated_refusals():
 	var first = a.command("ask gift")
 	Mind.answer_gift(b.w, nb)
 	var second = a.command("ask gift")
+	var second_speeches: Array = a.last_events.filter(func(e): return e.get("k", "") == "speech" and e.get("speaker", "") == na.id)
+	var second_said: String = Speech.said(second_speeches[0]) if not second_speeches.is_empty() else second
 	Mind.answer_gift(b.w, nb)
 	check(a.questions_left == 2 and a.free_repeats == 1 and "No question used" in second, "second identical gift refusal uses the existing one free-repeat slot")
-	check(first != second and "You've had my answer" in second or "still afraid" in second, "the repeated gift refusal has a different line")
+	check(first != second and ("You've had my answer" in second_said or "puts a target on my back" in second_said), "the repeated gift refusal has a different line")
 	check(na.pressed_today == nb.pressed_today and na.trust == nb.trust and a.w.rng.state == b.w.rng.state, "the free slot does not waive NPC fatigue/trust or alter disclosure RNG")
 	a.command("ask gift")
 	check(a.questions_left == 1 and a.free_repeats == 1, "later repeats cost a question after the single free repeat")

@@ -309,6 +309,8 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 			kind_code = 4
 		elif k_str == "event" and card.get("event") == "martyr":
 			kind_code = 5
+		elif k_str == "town_hall":
+			kind_code = 6
 		card_ints[off] = kind_code
 
 		var quoted: bool = bool(card.get("quoted", false))
@@ -400,6 +402,18 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		elif kind_code == 5: # martyr event
 			card_ints[off + 13] = ids.find(data.get("martyr", ""))
 			card_ints[off + 14] = ids.find(data.get("saved", ""))
+		elif kind_code == 6: # town_hall
+			var th_roles: Array = data.get("roles", card.get("roles", []))
+			if th_roles is Array and th_roles.size() == 2 and str(th_roles[0]) != "" and str(th_roles[1]) != "" and str(th_roles[0]) != str(th_roles[1]):
+				card_ints[off + 13] = _intern_role(role_map, str(th_roles[0]))
+				card_ints[off + 14] = _intern_role(role_map, str(th_roles[1]))
+				var th_ans: Dictionary = answers.get(card.get("id", ""), {})
+				var th_pick: String = str(th_ans.get("in_play_role", ""))
+				card_ints[off + 15] = 0 if th_pick == "" else (1 if th_pick == str(th_roles[0]) else (2 if th_pick == str(th_roles[1]) else 3))
+			else:
+				card_ints[off + 13] = -1
+				card_ints[off + 14] = -1
+				card_ints[off + 15] = 3
 		elif kind_code == 1: # report
 			if role_str == "gravedigger":
 				if not has_timeline:
@@ -652,8 +666,19 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 	var seer_readings: Array = []
 	var veteran_night = -1
 	var martyr_target = ""
+	var town_halls: Array = []
 	for card in cards:
 		if card.get("quoted", false):
+			continue
+		if card.kind == "town_hall":
+			var th_rs: Array = card.get("data", {}).get("roles", card.get("roles", []))
+			if not (th_rs is Array) or th_rs.size() != 2 or str(th_rs[0]) == "" or str(th_rs[1]) == "" or str(th_rs[0]) == str(th_rs[1]):
+				return 0.0
+			var th_pick_s: String = str(answers.get(card.get("id", ""), {}).get("in_play_role", ""))
+			var pick_mode: int = 0 if th_pick_s == "" else (1 if th_pick_s == str(th_rs[0]) else (2 if th_pick_s == str(th_rs[1]) else 3))
+			if pick_mode == 3:
+				return 0.0
+			town_halls.append([str(th_rs[0]), str(th_rs[1]), pick_mode])
 			continue
 		if card.kind == "totem":
 			var candidates = 0
@@ -752,7 +777,9 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 		seer_weight = _seer_rh_weight_gd(good & ~(1 << seer_source), demon, int(world.marked), seer_readings)
 		if seer_weight <= 0.0:
 			return 0.0
-	return seer_weight if _matching(assignments.values(), 0) else 0.0
+	if town_halls.is_empty():
+		return seer_weight if _matching(assignments.values(), 0) else 0.0
+	return seer_weight if _town_hall_matches(assignments, town_halls, 0, good, {}) else 0.0
 
 static func _seer_rh_weight(candidates_mask: int, demon: int, marked: int, readings: Array) -> float:
 	var mode: int = SolverBackend.active_mode()
@@ -835,6 +862,31 @@ static func _assign(assignments: Dictionary, role: String, candidates: int) -> b
 		candidates &= assignments[role]
 	assignments[role] = candidates
 	return candidates != 0
+
+static func _town_hall_matches(assignments: Dictionary, town_halls: Array, idx: int, good: int, forbidden: Dictionary) -> bool:
+	if idx >= town_halls.size():
+		return _matching(assignments.values(), 0)
+	var entry: Array = town_halls[idx]
+	var r0: String = entry[0]
+	var r1: String = entry[1]
+	var pick_mode: int = int(entry[2])
+	for choice in range(2):
+		if pick_mode == 1 and choice != 0:
+			continue
+		if pick_mode == 2 and choice != 1:
+			continue
+		var in_r: String = r0 if choice == 0 else r1
+		var out_r: String = r1 if choice == 0 else r0
+		if forbidden.has(in_r) or assignments.has(out_r):
+			continue
+		var next_assign: Dictionary = assignments.duplicate()
+		if not _assign(next_assign, in_r, good):
+			continue
+		var next_forbid: Dictionary = forbidden.duplicate()
+		next_forbid[out_r] = true
+		if _town_hall_matches(next_assign, town_halls, idx + 1, good, next_forbid):
+			return true
+	return false
 
 static func _matching(masks: Array, occupied: int) -> bool:
 	if masks.is_empty():

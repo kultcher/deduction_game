@@ -5,7 +5,7 @@ const Evidence = preload("res://workshop/live_evidence.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 
 static func view(g) -> Dictionary:
-	var numbers: Array = g.board.filter(func(c): return not c.get("deleted", false) and c.kind != "deduction").map(func(c): return c.n)
+	var numbers: Array = g.board.filter(func(c): return not c.get("deleted", false) and not c.get("tavern_gossip", false) and c.get("workshop_usable", true) and c.kind != "deduction").map(func(c): return c.n)
 	var profile_ids = {}
 	for pr in g.profile_receipts:
 		numbers.append(pr.n)
@@ -26,7 +26,9 @@ static func view(g) -> Dictionary:
 			activity = Assess.testimony_card(receipt, snapshot)
 		if not activity.is_empty():
 			note = "Adapter available · experimental joint activity/trace comparison"
-			if activity.kind in ["context", "location"]:
+			if activity.kind == "town_hall":
+				note = "Adapter available · Town Hall census (exactly 1 of these 2 good roles is in play)"
+			elif activity.kind in ["context", "location"]:
 				note = "Adapter available · location context; this does not establish guilt"
 		if receipt.kind == "info" and content.get("role") in Assess.ROLES:
 			note = "Reading adapter available · check whole-case support"
@@ -307,12 +309,12 @@ static func connections(g, value: Dictionary, limit: int = 5, budget: int = 20) 
 	var candidates: Array = []
 	for i in range(g.board.size() - 1, -1, -1):
 		var card: Dictionary = g.board[i]
-		if card.kind in ["deduction", "home"] or card.get("deleted", false):
+		if card.kind in ["deduction", "home"] or card.get("deleted", false) or card.get("tavern_gossip", false) or not card.get("workshop_usable", true):
 			continue
 		var id: String = Evidence.normalize_card(card).id
 		if id in value.cards or id in candidates.map(func(c): return c.id):
 			continue
-		if _mentions(card).any(func(who): return people.has(who)):
+		if card.kind == "town_hall" or _mentions(card).any(func(who): return people.has(who)):
 			candidates.append({"number": card.n, "id": id, "text": card.get("text", "")})
 		if candidates.size() >= budget:
 			break

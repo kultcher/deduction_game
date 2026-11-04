@@ -17,6 +17,35 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-03, Argon: Phase 4 Test Fixes + Rebased Chunk 1 Buildings (`patch_008_buildings_and_phase4_fixes.zip`)
+
+- **Base:** `main` at `35b38614a00fec608b0f9e3da7aee4ba3ae596ac` (`35b3861`, post-PR #53 Legacy Purge Phase 4 + Analyst Bot).
+- **Deliverable:** `patch_008_buildings_and_phase4_fixes.zip` in Google Drive (`Demonologist Patches`), containing all 40 replacement/new files plus `MANIFEST_BUILDINGS_AND_PHASE4_FIXES.md`. Supersedes `patch_007_buildings_tavern_town_hall.zip` (which was built on pre-Phase-4 `96fb5ea` and has been renamed `SUPERSEDED_patch_007_buildings_tavern_town_hall_96fb5ea.zip` on Drive so there are zero merge conflicts against Phase 4's deleted `sim/argue.gd`, `link`/`conclude`, and rewritten `tools/autoplay.gd`).
+- **Status:** Ready for Claude verification (`dotnet build -c Debug`, the 3 previously red suites `test_dialogue_batches_5_6_7`, `test_backlog_batch4`, `test_workshop_presentation`, plus `test_buildings_tavern_town_hall` + `tools/ci_fast_suites.txt`, `--tol 0` golden check vs `tools/golden/baseline_82faa5b`, and Town Hall sprite placement in `ui/map_view.gd`).
+- **Next actor:** **Claude**.
+
+### 1. Fixes for All 5 Test Failures Flagged on `main` (`35b3861`)
+
+1. **`tools/test_dialogue_batches_5_6_7.gd:412-423` ("Accepted hint follow-up voices `hint_why_lead` and `hint_why_confidential` without `[PH]`"):**
+   - Uses a clean fixture game (`_game(5702, 10)`), resets `h_speaker.ledger = {}`, records `Mind.hear_claim(..., "seer", ..., "own")`, appends the Night 0 Seer reading, and calls `Mind.update_from_own_info(g_hint.w)` (matching `tools/test_fixes.gd:_setup_private_reading`) so `reason_status` resolves `"private"` through the shared model instead of colliding with the speaker's previously dealt role claim or unapplied `info_log`.
+2. **`tools/test_backlog_batch4.gd:206` ("the repeated gift refusal has a different line"):**
+   - Checks `first != second` on rendered output alongside `Speech.said(...)` on the emitted `speech` event in `a.last_events` (`"You've had my answer"` or `"puts a target on my back"`), keeping gameplay checks decoupled from character voice pack phrasing per `tools/speech.gd`.
+3. **`tools/test_backlog_batch4.gd:682` ("arrival narration adds no phase advance or RNG draws"):**
+   - Added `roll_attitude: bool = true` to `Mind.greeting_line` / `MindDialogue.greeting_line` and passed `false` on `"divulge"` `accept` in `game/game_conversation.gd:103` (where the NPC already approached and spoke their divulge lines). Preserves the VN stage greeting speech event while consuming **0 RNG draws** and **0 phase advances**; ordinary `talk` visits still perform the exact single `greeting_attitude_visible` roll.
+4. **`tools/test_workshop_presentation.gd:69-70` (`_trapped_group_response`, 2 checks):**
+   - In `game/workshop_presentation.gd`, preserved the full `text` (`trapped_voiced` + `" About <name>: <note>"` + optional `hub_voiced_tail`) in both `spoken_line["text"]` and `descriptor["special"]` when `trapped_out` is active, while keeping `trapped_canonical` + tails on `spoken_line["statement"]`. All non-`trapped_out` presentation descriptors (`Speech.said(line) == dialogue.special`) remain untouched.
+
+### 2. Diagnosis of Seed 2004 Shared-Model Warning (`Incomplete or invalid reading payload`)
+
+- Traced `fact:9a9474...` on Seed 2004 (7 NPCs, Day 3): in `sim/evil.gd:685-687`, when one evil member has been executed so the survivor is alone (`Evil.mate(w, n) == null`), `evil.gd` sets `mate = n`. On an even night (`w.day == 2`, read on Day 3), `sim/roles/seer.gd:196-197` (`elif mate.alive and w.chance(...)`) fabricates `pair = [mate.id, w.pick(others_m)]` = `[n.id, other]`, putting the Seer bluffer inside their own `data.pair`, which `workshop/live_assessment.gd:822` (`receipt.source in data.pair`) rightly rejects as impossible for a real Seer. (Also noted a dormant copy-paste in benched `sim/roles/hearthwitch.gd:66,73` `fake_medium_reading` writing `"group"` instead of `"nbrs"`.)
+- Left `sim/roles/seer.gd` untouched in this patch so `baseline_82faa5b` stays bit-exact at `--tol 0` for immediate merge; adding `mate != n` on `sim/roles/seer.gd:196` (and `x != n.id` on `asked` at line 184) will eliminate that invalid payload class whenever we next recapture goldens or verify none of the 5 golden seeds hit solo-evil Seer bluff on an even night.
+
+### 3. Rebased Roster & Mechanics Chunk 1 - Tavern Gossip Rework & Town Hall
+
+- Cleanly rebased all 36 code/test files from `patch_007` onto `35b3861` (`Deduction.filing_problem`, `PresentationReply`, `Mind.card_implicates` / `card_clears` / `card_weight_against`, deleted-card check in `game_conversation.gd`, and Analyst-powered `tools/autoplay.gd` + `WorkshopCanvas.view` excluding `tavern_gossip` / `workshop_usable == false` cards so the Analyst juror never ingests unattributed rumours):
+  1. **Evening-Only Tavern Gossip (`sim/tuning.gd`, `sim/world.gd`, `sim/social.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/deduction.gd`, `game/game_day_night.gd`, `game/game_board.gd`, `game/game_conversation.gd`, `game/game_presentation.gd`, `game/card_model.gd`, `ui/board_view.gd`, `ui/main.gd`, `ui/case_view.gd`, `ui/workshop_drawer.gd`, `ui/live_case_workshop.gd`, `tools/autoplay.gd`):** Evening-only phase action, resolves evening `_post_pair` once via `World.finish_evening_conversations`, harvests 3-5 two-tier anonymized items from `w.daily_npc_shares` + unlearned haunt/public-bond backfill (never Secret Lovers), marks board cards `source = "rumour"`, `tavern_gossip = true`, `workshop_usable = false`, `pressable = false` with `"rumour|"` `fact_id` isolation and `"dotted"` timeline markers (`?` in CLI `timeline`).
+  2. **Town Hall & Lockstep GDScript/C# Solver (`sim/content.gd`, `sim/world.gd`, `game/game.gd`, `game/game_day_night.gd`, `game/card_model.gd`, `game/workshop_canvas.gd`, `ui/map_view.gd`, `ui/main.gd`, `ui/workshop_canvas_view.gd`, `workshop/live_evidence.gd`, `workshop/live_assessment.gd`, `workshop/canvas_model.gd`, `workshop/session.gd`, `workshop/case_graph.gd`, `workshop/solver.gd`, `workshop/case_eval.gd`, `workshop/factored_channels.gd`, `workshop/role_constraints.gd`, `workshop/cs/RoleConstraints.cs`, `tools/test_buildings_tavern_town_hall.gd`, `tools/ci_fast_suites.txt`):** `C.PLAYER_BUILDINGS["town_hall"]` on `the Square` (blank square placeholder in `ui/map_view.gd`, `C.LOCATIONS` untouched), Morning/Afternoon only, 3 uses/case, 6 unique roles (`[in_play, out_of_play]` from `initial_good_roles`), lockstep `.gd`/`.cs` `KindTownHall = 6` solver + `FactoredChannels` role-pool merging + Workshop `in_play_role` chips.
+
 ## 2026-11-03 ~23:30 ET, Claude: legacy purge Phase 4 (purge + analyst bot)
 
 - **Branch:** `claude/phase4-purge-bot`, merged with `main` at `96fb5ea` (Argon's dialogue

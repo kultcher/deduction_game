@@ -36,6 +36,9 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	for e in snapshot.evidence:
 		if e.id not in needed:
 			continue
+		if e.content.get("tavern_gossip", false) or e.content.get("workshop_usable", true) == false:
+			result.issues.append("Tavern rumours are unattributed and cannot be used in the Case Workshop.")
+			continue
 		if e.kind in ["opinion", "accusation"]:
 			result.issues.append("An %s is not evidence. Cite the supporting observations or readings." % e.kind)
 			continue
@@ -128,7 +131,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	for card in cards:
 		if card.kind == "report" and card.get("role") == "martyr" and card.data.get("chosen", false) and cards.any(func(other): return other.kind == "execution" and other.subject == card.data.target and Solver.TimeModel.tick(other.observed_at) > Solver.TimeModel.tick(card.observed_at)):
 			result.issues.append("A prior Martyr promise versus a later execution needs a dated outcome/health adapter. The new evaluator does not yet infer failure from that pair; existing rules handle the case.")
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch"]):
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem", "town_hall"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch"]):
 		view.world_options["roles"] = true
 	if snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["role", "notrole", "misled", "unreliable"]):
 		view.world_options["roles"] = true
@@ -273,6 +276,14 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["kind"] = "context"
 		card["context_kind"] = "bond"
 		card["data"] = e.content.duplicate(true)
+		return card
+	if e.kind == "town_hall" and e.source == "player" and e.observed_at.phase in ["morning", "afternoon"] and night >= 1:
+		var th_roles = e.content.get("roles", [])
+		if not (th_roles is Array) or th_roles.size() != 2 or th_roles[0] == th_roles[1] or not th_roles.all(func(r): return r in C.GOOD_ROLES):
+			return {}
+		card["kind"] = "town_hall"
+		card["night"] = -1
+		card["data"] = {"roles": th_roles.duplicate()}
 		return card
 	if night < 0:
 		return {}

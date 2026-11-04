@@ -76,6 +76,9 @@ func body(id: String) -> Array:
 	if card.kind == "event" and card.get("event") == "curse":
 		var chosen: Array = node.answers.get(card.id, {}).get("positive", [])
 		result.append("Converted voter: " + ("?" if chosen.is_empty() else Solver.person_name(model.view, chosen[0])))
+	if card.kind == "town_hall":
+		var th_pick: String = str(node.answers.get(card.id, {}).get("in_play_role", ""))
+		result.append("In town: " + ("? Either role" if th_pick == "" else C.role_name(th_pick)))
 	for fault in node.get("faults", {}).values():
 		result.append("Possible poison: %s (%s)" % [fault.window, "unsupported" if fault.get("basis", "") == "" else "cites " + fault.basis])
 	var slots: Array = node.answers.get(card.id, {}).get("slots", node.answers.get(card.id, {}).get("positive", []))
@@ -621,6 +624,18 @@ func evidence_layout(id: String) -> Dictionary:
 			els.append({"t": "face", "p": p, "at": Vector2(36 + (i % 5) * FACE_STEP, y + FACE_R + 2 + (i / 5) * (FACE_R * 2 + 28)), "r": FACE_R,
 				"state": "reason:" + reason, "field": "why:" + p, "tip": Solver.person_name(model.view, p) + ": click to say why they were out"})
 		y += maxf(1.0, ceili(seen.size() / 5.0)) * (FACE_R * 2 + 28) + 6.0
+	elif card.kind == "town_hall":
+		var th_roles: Array = card.get("data", {}).get("roles", [])
+		var th_pick: String = str(answer.get("in_play_role", ""))
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Exactly 1 in play (optional: pick which):"})
+		y += 26.0
+		for i in range(th_roles.size()):
+			var r_id: String = str(th_roles[i])
+			var chip_r = Rect2(14 + i * 140, y, 132, 30)
+			els.append({"t": "chip", "rect": chip_r, "text": C.role_name(r_id), "on": th_pick == r_id,
+				"field": "th_role:" + r_id,
+				"tip": C.role_name(r_id) + ": click to specify this role is the one in town (click again for either)"})
+		y += 38.0
 	elif card.kind == "event" and card.get("event") == "curse":
 		var eligible: Array = card.get("data", {}).get("eligible", [])
 		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Who turned?"})

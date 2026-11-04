@@ -202,7 +202,9 @@ static func minimal_conflicts(view: Dictionary, cards: Array, knowledge: Diction
 		return conflict_cache[key].result
 	# Shrink one conflict, then explore excluding each member to discover other cores.
 	# This avoids enumerating every unrelated subset for a simple alibi conflict.
-	cards = cards.filter(func(c): return c.kind in ["report", "sighting", "alibi", "totem", "dropped"])
+	var has_th: bool = cards.any(func(c): return c.kind == "town_hall")
+	var conflict_kinds: Array = ["report", "claim", "town_hall", "sighting", "alibi", "totem", "dropped"] if has_th else ["report", "sighting", "alibi", "totem", "dropped"]
+	cards = cards.filter(func(c): return c.kind in conflict_kinds)
 	var result: Array = []
 	_find_conflicts(view, cards, knowledge, result, {})
 	if reuse_solves:
@@ -1582,6 +1584,12 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			errors.append("%s: only Surveyor answers can name blocks." % id)
 		if card.get("role", "") == "rumormonger" and not positive.all(func(p): return p in card.data.pair):
 			errors.append("%s: choose someone in the named pair." % id)
+		if card.get("kind", "") == "town_hall":
+			var th_pick: String = str(case_data.answers[id].get("in_play_role", ""))
+			if th_pick != "" and th_pick not in card.get("data", {}).get("roles", []):
+				errors.append("%s: choose one of the two roles named in this Town Hall record." % id)
+			if not positive.is_empty():
+				errors.append("%s: Town Hall records select a role, not a person." % id)
 	return errors
 
 static func person_name(view: Dictionary, id: String) -> String:

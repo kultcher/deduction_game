@@ -722,6 +722,10 @@ static func support_ref(card: Dictionary) -> Array:
 
 ## A stable identity for the fact behind a board card.
 static func fact_id(card: Dictionary) -> String:
+	var prefix: String = "rumour|" if card.get("tavern_gossip", false) else ""
+	return prefix + _raw_fact_id(card)
+
+static func _raw_fact_id(card: Dictionary) -> String:
 	var k: String = card.get("kind", "")
 	var subj: Array = card.get("subject", []).duplicate()
 	subj.sort()
@@ -747,6 +751,10 @@ static func fact_id(card: Dictionary) -> String:
 			return "trace:%s:%d" % [card.get("block", ""), card.get("day", -1)]
 		"claim":
 			return "claim:%s:%s" % [card.get("source", ""), card.get("role", "")]
+		"town_hall":
+			var th_roles: Array = card.get("roles", []).duplicate()
+			th_roles.sort()
+			return "town_hall:" + ",".join(PackedStringArray(th_roles))
 		"death", "execution":
 			return "%s:%s" % [k, ss]
 	return "card:" + card.get("text", "")
@@ -1300,8 +1308,8 @@ static func on_question(w, n) -> void:
 static func greeting_cue(w, n) -> String:
 	return MindDialogue.greeting_cue(w, n)
 
-static func greeting_line(w, n, context: Dictionary = {}) -> Dictionary:
-	return MindDialogue.greeting_line(w, n, context)
+static func greeting_line(w, n, context: Dictionary = {}, roll_attitude: bool = true) -> Dictionary:
+	return MindDialogue.greeting_line(w, n, context, roll_attitude)
 
 static func end_conversation(w, n) -> Array:
 	return MindDialogue.end_conversation(w, n)

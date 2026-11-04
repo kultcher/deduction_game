@@ -156,6 +156,8 @@ static func _bare_speech(issues: Array) -> bool:
 
 
 static func _presentation_rejection(g, card: Dictionary) -> String:
+	if card.get("tavern_gossip", false) or not card.get("workshop_usable", true):
+		return "Card #%d is an unattributed tavern rumour and cannot be cited as evidence." % int(card.get("n", 0))
 	if card.get("superseded_by", 0) > 0:
 		return "Case #%d was superseded by case #%d." % [card.n, card.superseded_by]
 	var speech: Array = []
@@ -306,6 +308,8 @@ static func _route_present(g, n, rest: String) -> Dictionary:
 	if num < 1 or num > g.board.size() or g.board[num - 1].get("deleted", false):
 		return {"error": "No such card on your board."}
 	var card: Dictionary = g.board[num - 1]
+	if card.get("tavern_gossip", false) or not card.get("pressable", true) or not card.get("workshop_usable", true):
+		return {"error": "Card #%d is only an unattributed tavern rumour; you can't press or cite someone with it." % num}
 	if card["kind"] in ["home", "haunt"]:
 		return {"flat": "Where %s lives or idles is nothing to put to anyone." % g.w.by_id[card["subject"][0]].name}
 	var dir = ""

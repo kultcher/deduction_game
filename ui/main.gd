@@ -1008,8 +1008,8 @@ func _actions_day(w) -> void:
 			var talk = _button(actions, "Talk to %s" % selected.name, func(): _talk_to_person(selected.id), C.npc_color(selected.id))
 			talk.disabled = selected.busy_with != ""
 		if map.zoom_block != "" and C.BLOCKS.has(map.zoom_block):
-			for l in C.LOCATIONS:
-				if C.LOCATIONS[l]["block"] != map.zoom_block:
+			for l in C.LOCATIONS.keys() + C.PLAYER_BUILDINGS.keys():
+				if C.loc_block(l) != map.zoom_block:
 					continue
 				var loc_id: String = l
 				_button(actions, "Go to %s" % w.loc_name(loc_id), func(): _run("go " + loc_id))
@@ -1035,10 +1035,19 @@ func _actions_day(w) -> void:
 			if not who.is_empty():
 				for n in who:
 					_button(actions, "Talk to %s (at %s)" % [n.name, w.loc_name(l)], func(): _run("talk " + n.id), C.npc_color(n.id))
-	if not g.loc.begins_with("home_"):
+	if not g.loc.begins_with("home_") and not C.is_player_building(g.loc):
 		_button(actions, "Search here", func(): _run("search"))
 	if g.loc == "tavern":
-		_button(actions, "Listen to the gossip", func(): _run("gossip"))
+		var gos_btn = _button(actions, "Listen to the gossip" if w.phase == C.EVENING else "Listen to the gossip (evening only)", func(): _run("gossip"))
+		gos_btn.disabled = w.phase != C.EVENING
+	if g.loc == "town_hall":
+		var th_open: bool = w.phase in [C.MORNING, C.AFTERNOON]
+		var th_left: int = w.town_hall_uses_left
+		var th_lbl: String = ("Check the Town Hall records (%d left)" % th_left) if th_open else "Check the Town Hall records (morning/afternoon only)"
+		if th_left <= 0:
+			th_lbl = "Check the Town Hall records (0 left)"
+		var th_btn = _button(actions, th_lbl, func(): _run("records"))
+		th_btn.disabled = (not th_open) or th_left <= 0
 	_button(actions, "Wait", func(): _run("wait"))
 	if not g.free_move_used:
 		_hint("You can still step to the other spot on this block (click it on the map).")
@@ -1070,7 +1079,8 @@ func _actions_talk(w) -> void:
 			# They hinted at a private reason at the meeting: ask them for it.
 			_button(actions, "Ask why they suspect %s" % w.by_id[k].name, func(): _run("ask why"), C.npc_color(k))
 			break
-	_button(actions, "Present a card…", func(): _card_picker("Present a card to %s" % n.name, func(c): return true,
+	_button(actions, "Present a card…", func(): _card_picker("Present a card to %s" % n.name,
+		func(c): return not c.get("tavern_gossip", false) and c.get("pressable", true) and c.get("workshop_usable", true),
 		func(num, extra): _run(("present %d" % num) + extra), false, true))
 	_button(actions, "Leave", func(): _run("bye"))
 

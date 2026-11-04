@@ -23,15 +23,15 @@ const VIEW_NAMES = {"places": "Places & sightings", "statements": "Statements", 
 ## Kinds the filter menus offer in each view.
 const VIEW_KINDS = {
 	"places": ["sighting", "conversation", "vigil", "alibi", "trace", "dropped", "totem", "ward", "scorched_sigil"],
-	"statements": ["home", "haunt", "info", "claim", "hint", "refusal", "opinion", "accusation", "secret", "case"],
+	"statements": ["home", "haunt", "info", "claim", "town_hall", "hint", "refusal", "opinion", "accusation", "secret", "case"],
 	"process": ["vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell"],
-	"all": ["home", "haunt", "sighting", "conversation", "vigil", "alibi", "trace", "dropped", "totem", "ward", "scorched_sigil", "info", "claim", "hint", "refusal",
+	"all": ["home", "haunt", "sighting", "conversation", "vigil", "alibi", "trace", "dropped", "totem", "ward", "scorched_sigil", "info", "claim", "town_hall", "hint", "refusal",
 		"opinion", "accusation", "secret", "vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell", "deduction"],
 }
 
 ## Facts that can reach you more than once (told privately, then publicly; relayed by
 ## someone else): repeats add a disclosure to the existing card instead of a new card.
-const MERGE_KINDS = ["claim", "info", "sighting", "alibi", "home", "work", "haunt", "trait", "bond"]
+const MERGE_KINDS = ["claim", "info", "town_hall", "sighting", "alibi", "home", "work", "haunt", "trait", "bond"]
 
 ## How what a card says reached you, for the case-board visuals rework. Scaffolding only:
 ## no view reads it yet (BACKLOG.md "Case board visuals"; the badge layout comes first).
@@ -114,14 +114,16 @@ static func place_markers(card: Dictionary, learned_day: int = -1, learned_phase
 	var src: String = card.get("source", "")
 	var out: Array = []
 	var firsthand = src in ["player", "evidence", ""]
+	var is_rumour = card.get("tavern_gossip", false) or src == "rumour"
+	var witness_mark: String = "solid" if firsthand else ("dotted" if is_rumour else "hollow")
 	match k:
 		"sighting", "conversation":
 			for who in card.get("subject", []):
 				out.append({"who": who, "block": card.get("block", ""), "loc": card.get("loc", ""), "time": t,
-					"mark": "solid" if firsthand else "hollow"})
+					"mark": witness_mark})
 		"alibi":
 			var who2: String = card.get("subject", [""])[0]
-			out.append({"who": who2, "block": card.get("block", ""), "loc": "home_" + who2, "time": t, "mark": "solid" if firsthand else "hollow", "home": true})
+			out.append({"who": who2, "block": card.get("block", ""), "loc": "home_" + who2, "time": t, "mark": witness_mark, "home": true})
 		"vigil":
 			out.append({"who": "", "block": card.get("block", ""), "loc": "", "time": t, "mark": "solid"})
 		"trace", "dropped", "totem", "ward", "scorched_sigil":
@@ -170,7 +172,13 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 		"info":
 			return Gifts.short_text(card.get("role", ""), card.get("data", {}), src, nm)
 		"claim":
+			if card.get("source", "") == "rumour" or card.get("tavern_gossip", false):
+				return "Rumour: %s in town" % C.role_name(card.get("role", ""))
 			return "%s claims %s" % [src, C.role_name(card.get("role", ""))]
+		"town_hall":
+			var th_rs: Array = card.get("roles", [])
+			if th_rs.size() == 2:
+				return "Town Hall: %s or %s" % [C.role_name(th_rs[0]), C.role_name(th_rs[1])]
 		"vote":
 			return "Vote on %s: %d for (%s)" % [nm.call(card.get("nominee", "")), card.get("yes", []).size(), card.get("outcome", "")]
 	var t: String = card.get("text", "")

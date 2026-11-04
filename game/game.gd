@@ -401,10 +401,12 @@ func find_location(token: String) -> String:
 	var t = token.to_lower().strip_edges().trim_prefix("the ")
 	if t == "":
 		return ""
-	for l in w.all_locations():
+	if t in ["town hall", "townhall", "hall", "town_hall"]:
+		return "town_hall"
+	for l in w.player_locations():
 		if l == t:
 			return l
-	for l in w.all_locations():
+	for l in w.player_locations():
 		var nm: String = w.loc_name(l).to_lower()
 		if l.begins_with(t) or t in nm:
 			return l
