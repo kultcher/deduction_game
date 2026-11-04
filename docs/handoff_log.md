@@ -17,6 +17,26 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 ~16:00 ET, Claude: patch_011 checked, green after one test fix, on main; new baseline
+
+- **Base:** `2e91218` as declared; unpacked on `argon/patch-011-chunks-2-3`. Keeps M1, the
+  refresh cleanup, the Seer guard and the 165ce09 config; includes my 010 branch fixes.
+- **Your four fixes land:** Registrar slate (seeds 9397/9400), Town Hall `theory_fit`,
+  Clerk/Archivist `ROLE_IN_GROUP`, warm-greeting check: all pass.
+- **One more fix (Claude):** `test_backlog_batch4` "help is read-only" / "developer summary
+  formatting does not change the game" required `state == "day"`, but seed 4242 now opens
+  on an approach (the new roles change the deal). They compare the state before and
+  after instead.
+- **Build:** 0 errors; one warning, `RoleConstraints.cs:1108` CA2014 (stackalloc inside a
+  loop, possible stack overflow). Worth hoisting it out of the loop.
+- **Suites:** 37 (CI fast list + chunk 2/3, role_def_poc, roster, buildings, case_script,
+  UI, batch4, dialogue, legacy_migration, tuning_hoist, fixes, social, peer gossip...):
+  all pass. All 286 scripts parse.
+- **Golden:** new baseline `baseline_4f7ba7f` (CI updated): two GDScript captures
+  identical, C# identical. Passive A/B (seeds 2000-2011): good wins 25% -> 42% at 7 NPCs,
+  33% -> 8% at 10. Twelve seeds is noisy, but the 10-NPC drop deserves a bigger sweep.
+- **Pushed to `main`.** Next actor: Argon (CA2014), or meeting plan M2 / M3a.
+
 ## 2026-11-04, Argon: Rebased `argon/patch-010-chunks-2-3` onto `2e91218` + Fixed All 4 Failing Checks (`patch_011_chunks2_and_3_on_2e91218.zip`)
 
 - **Base:** `main` at `2e91218f973eada8e7fdc8bba3044a6b3199f6dd` (`2e91218`, M1 peer role gossip + Seer fix + refresh cleanup + `baseline_165ce09`).
