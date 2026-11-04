@@ -1,4 +1,6 @@
-## Live migration contracts: reversibility, preflight atomicity and explicit failure.
+## Presentation contracts: bounded and reversible suspicion totals, strict submission
+## (blocked presentations cost nothing and say why), case revisions, and free repeats.
+## (Was test_legacy_migration; renamed 2026-11-04.)
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -13,7 +15,7 @@ func _init() -> void:
 	_reversible_totals()
 	_strict_submission()
 	_revisions_and_repeats()
-	print("Legacy migration: %d checks, %d failures" % [checks, fails])
+	print("Presentation contracts: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
 func _clean():
