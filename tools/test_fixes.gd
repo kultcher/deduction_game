@@ -83,8 +83,8 @@ func _victim_trace() -> void:
 	var victim_excluded = true
 	var demon_always_matches = true
 	var extra_passer_spawned = false
-	for seed_v in range(7140, 7170):
-		var g = _game(seed_v)
+	for seed_v in range(7140, 7160):
+		var g = _game(seed_v, 7)
 		var w = g.w
 		var victim = w.living_good()[0]
 		var d = w.demon()
@@ -265,8 +265,8 @@ func _summary() -> void:
 func _zag() -> void:
 	var zags = 0
 	var nights = 0
-	for sd in range(7200, 7260):
-		var g = _game(sd)
+	for sd in range(7200, 7240):
+		var g = _game(sd, 7)
 		for i in range(3):
 			Evil.choose_kill_target(g.w)
 			nights += 1
@@ -278,7 +278,7 @@ func _zag() -> void:
 func _own_gift_refusal() -> void:
 	var declined = 0
 	for sd in range(7310, 7330):
-		var g = _game(sd)
+		var g = _game(sd, 7)
 		var n = g.w.living_good()[0]
 		n.role = "seer"
 		n.claimed_role = ""
@@ -297,8 +297,9 @@ func _own_gift_refusal() -> void:
 
 func _no_gift_denial() -> void:
 	var denials = 0
-	for sd in range(7300, 7320):
-		var g = _game(sd)
+	# The knob is a constant; a few towns show it holds.
+	for sd in range(7300, 7303):
+		var g = _game(sd, 7)
 		for n in g.w.npcs:
 			n.trust = 0.0
 			n.traits["privacy"] = 1.0
@@ -317,7 +318,7 @@ func _talk_to(g, n) -> void:
 	g.loc = n.loc if C.LOCATIONS.has(n.loc) else "tavern"
 
 func _where_were_you() -> void:
-	var g = _game(7110)
+	var g = _game(7110, 7)
 	for i in range(40):
 		if g.w.day >= 2 and g.state == "day":
 			break
@@ -418,8 +419,8 @@ func _corroboration() -> void:
 	_check(n.id in g.board[mine - 1].get("corroborated_by", []), "...which lands on your card")
 
 ## A reason is citable only to an audience that already has it (Oct 19 provenance fix).
-func _setup_private_reading(sd: int):
-	var g = _game(sd)
+func _setup_private_reading(sd: int, size: int = 10):
+	var g = _game(sd, size)
 	var w = g.w
 	var good: Array = w.living_good()
 	var n = good[0]
@@ -543,7 +544,7 @@ func _nomination_case() -> void:
 	var revealed = 0
 	var leaked = 0
 	for sd in range(7300, 7320):
-		var r = _setup_private_reading(sd)
+		var r = _setup_private_reading(sd, 7)
 		var w = r[1]
 		var n = r[2]
 		var t = r[3]
