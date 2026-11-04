@@ -370,14 +370,22 @@ const TRAIT_TEXT = {
 const ROLES = {
 	"archivist": {"name": "Archivist", "align": "good", "kind": "info", "first_night": true,
 		"desc": "Starts knowing that one of two people is a particular minion."},
+	"augur": {"name": "Augur", "align": "good", "kind": "info", "day": true,
+		"desc": "Each evening, learns whether they crossed paths with the demon in public on the same block earlier that day."},
+	"chronicler": {"name": "Chronicler", "align": "good", "kind": "info",
+		"desc": "On night 3, learns three other people (living or dead): at case start, one was an ordinary townsfolk, one carried a secret, and one was a minion."},
 	"clerk": {"name": "Clerk", "align": "good", "kind": "info", "first_night": true,
 		"desc": "Starts knowing that one of two people holds a particular gift."},
 	"dowser": {"name": "Dowser", "align": "good", "kind": "info", "day": true,
-		"desc": "The first time each day the Dowser is on a block with two or more others, learns how many of them are evil."},
+		"desc": "The first time each day the Dowser is out in public on a block with two or more others, learns how many of them are evil."},
+	"executor": {"name": "Executor", "align": "good", "kind": "info",
+		"desc": "At case start, learns one person. Should they die, learns their role the next morning."},
 	"gravedigger": {"name": "Gravedigger", "align": "good", "kind": "info",
 		"desc": "Each night after an execution, learns the true role of the executed."},
 	"lamplighter": {"name": "Lamplighter", "align": "good", "kind": "info", "night_walk": true,
 		"desc": "Each night, walks the lamp route and learns how many other people were out."},
+	"magistrate": {"name": "Magistrate", "align": "good", "kind": "info",
+		"desc": "Each night, learns whether the first townsperson (other than you or the Magistrate) to nominate that day shared an alignment with their nominee."},
 	"martyr": {"name": "Martyr", "align": "good", "kind": "protect",
 		"desc": "Once per case, secretly chooses someone. If they are later executed while good, the Martyr dies in their place."},
 	"medium": {"name": "Medium", "align": "good", "kind": "info", "night_walk": true,
@@ -386,6 +394,8 @@ const ROLES = {
 		"desc": "Each night, watches one block and learns who moved through it. Is out on that block."},
 	"psychologist": {"name": "Psychologist", "align": "good", "kind": "info",
 		"desc": "Each night, picks someone they talked with that day and learns whom that person trusts and suspects most."},
+	"registrar": {"name": "Registrar", "align": "good", "kind": "info",
+		"desc": "Starts knowing three roles on the script (at most one minion, never the demon), at least one of which is in play. Each night from night 1, checks one person and learns if they hold one of those roles."},
 	"rumormonger": {"name": "Rumormonger", "align": "good", "kind": "info", "first_night": true,
 		"desc": "Starts knowing that one of two people carries a particular secret."},
 	"seer": {"name": "Seer", "align": "good", "kind": "info",
@@ -393,7 +403,7 @@ const ROLES = {
 	"sexton": {"name": "Sexton", "align": "good", "kind": "protect",
 		"desc": "Once per case, with fewer than five alive, may toll the death knell in the evening: that night, no gift that needs walking abroad works."},
 	"surveyor": {"name": "Surveyor", "align": "good", "kind": "info", "first_night": true,
-		"desc": "Starts knowing how many blocks have an evil resident."},
+		"desc": "Starts knowing whether or not all the residents on a random block (not their own) share the same alignment."},
 	"veteran": {"name": "Veteran", "align": "good", "kind": "passive",
 		"desc": "The first time the demon attacks the Veteran, they survive and learn the last block the attacker came through."},
 	"warden": {"name": "Warden", "align": "good", "kind": "protect", "night_walk": true,
@@ -413,16 +423,16 @@ const ROLES = {
 }
 
 ## The script: what may be in play in a case. No duplicates.
-const GOOD_ROLES = ["archivist", "clerk", "dowser", "gravedigger", "lamplighter", "martyr", "medium", "nightwatch",
-	"psychologist", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
+const GOOD_ROLES = ["archivist", "augur", "chronicler", "clerk", "dowser", "executor", "gravedigger", "lamplighter",
+	"magistrate", "martyr", "medium", "nightwatch", "psychologist", "registrar", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
 const MINION_ROLES = ["breathstealer", "poisoner", "revenant", "scion"]
 const EVIL_ROLES = ["demon", "breathstealer", "poisoner", "revenant", "scion"]
 ## Gifts that produce readings to share.
-const INFO_ROLES = ["archivist", "clerk", "dowser", "gravedigger", "hearthwitch", "lamplighter", "medium", "nightwatch",
-	"psychologist", "rumormonger", "seer", "surveyor"]
+const INFO_ROLES = ["archivist", "augur", "chronicler", "clerk", "dowser", "executor", "gravedigger", "hearthwitch",
+	"lamplighter", "magistrate", "medium", "nightwatch", "psychologist", "registrar", "rumormonger", "seer", "surveyor"]
 ## Setup protection: at least two start-knowledge gifts and one strong identifier.
 const START_ROLES = ["archivist", "clerk", "surveyor", "rumormonger"]
-const IDENTIFIER_ROLES = ["seer", "dowser", "gravedigger"]
+const IDENTIFIER_ROLES = ["seer", "dowser", "gravedigger", "augur", "registrar"]
 ## Case sizes: townsfolk (one carries the secret), minions, demon.
 const SETUPS = Tuning.Setup.SETUPS
 
@@ -459,15 +469,15 @@ static func secret_name(k: String) -> String:
 ## Flavoured hints. Each package holds 2+ roles so a hint is never a full reveal; a gift
 ## may sit in two (its hint is from the first).
 const HINT_PACKAGES = {
-	"official": {"roles": ["archivist", "clerk", "surveyor", "rumormonger"], "name": "a gift of official business",
+	"official": {"roles": ["archivist", "clerk", "surveyor", "rumormonger", "chronicler", "magistrate", "registrar"], "name": "a gift of official business",
 		"text": "My gift deals in records and reports, the town's official business."},
 	"night_sight": {"roles": ["seer", "nightwatch", "lamplighter", "hearthwitch"], "name": "a night-sight gift",
 		"text": "My gift shows me things in the dark hours."},
-	"the_dead": {"roles": ["gravedigger", "medium", "sexton", "martyr"], "name": "a gift of the dead",
+	"the_dead": {"roles": ["gravedigger", "medium", "sexton", "martyr", "executor"], "name": "a gift of the dead",
 		"text": "My gift has to do with the dead, and with death."},
 	"shelter": {"roles": ["warden", "veteran", "martyr"], "name": "a sheltering gift",
 		"text": "My gift is a kind of shelter against the demon."},
-	"people": {"roles": ["dowser", "psychologist", "rumormonger"], "name": "a gift for reading people",
+	"people": {"roles": ["dowser", "psychologist", "rumormonger", "augur"], "name": "a gift for reading people",
 		"text": "My gift lets me read people, if I'm close enough."},
 }
 

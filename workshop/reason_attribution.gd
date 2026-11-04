@@ -199,7 +199,7 @@ static func _attribute_refresh_impl(
 					continue
 				if discredited_cards.has(cid) and csrc != pid:
 					continue
-				if pid not in _mentions(card) and csrc != pid and crole not in ["surveyor", "veteran"]:
+				if pid not in _mentions(card) and csrc != pid and crole not in ["surveyor", "veteran", "augur"]:
 					continue
 				if not attended_map.has(cid):
 					# Unattended reports only contribute via _headline for lower-Insight listeners.
@@ -934,7 +934,7 @@ static func _loo_post(ctx: Dictionary, cand: Dictionary) -> PackedFloat64Array:
 	var l_role: String = str(cand.get("role", ""))
 	var needs_fits_recheck: bool = (
 		str(cand.get("kind", "")) == "claim"
-		or l_role in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran"]
+		or l_role in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar"]
 		or attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != l_cid and str(o.get("role", "")) == l_role)
 	)
 	var fits_wo: PackedFloat64Array = ctx.fits_full
@@ -1052,6 +1052,16 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 	var crole: String = str(card.get("role", ""))
 	var data: Dictionary = card.get("data", {}) if card.get("data", {}) is Dictionary else {}
 	if csrc == pid:
+		if crole == "executor" and data.has("role"):
+			var ex_tid: String = str(data.get("target", ""))
+			var ex_rid: String = str(data.get("role", ""))
+			var ex_day: int = int(card.get("observed_at", {}).get("day", -1))
+			if ex_tid != "" and view.has("timeline") and not preload("res://workshop/live_history.gd").died_before_morning(view, ex_tid, ex_day):
+				var no_dt_txt: String = "%s claimed a post-death Executor reading on %s without a matching death" % [Solver.person_name(view, pid), Solver.person_name(view, ex_tid)]
+				return [no_dt_txt, no_dt_txt]
+			if ex_tid != "" and ex_rid != "":
+				var ex_txt: String = "%s claimed %s was the %s, which doesn't fit what we know" % [Solver.person_name(view, pid), Solver.person_name(view, ex_tid), C.role_name(ex_rid)]
+				return [ex_txt, ex_txt]
 		if crole == "gravedigger":
 			var ex_id: String = str(data.get("executed", ""))
 			var r_id: String = str(data.get("role", ""))
@@ -1096,9 +1106,41 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 				"%s reading pointed at their neighbours" % third_poss,
 			]
 		"surveyor":
+			if data.has("block"):
+				var s_blk: String = C.block_name(str(data.get("block", "square")))
+				return [
+					"%s reading on %s points toward their quarter" % [own_poss, s_blk],
+					"%s reading on %s points toward their quarter" % [third_poss, s_blk],
+				]
 			return [
 				"%s block count points toward their quarter" % own_poss,
 				"%s block count points toward their quarter" % third_poss,
+			]
+		"chronicler":
+			return [
+				"%s chronicle placed a minion among those three" % own_poss,
+				"%s chronicle placed a minion among those three" % third_poss,
+			]
+		"augur":
+			return [
+				"%s evening omen sensed the demon along that daytime path" % own_poss,
+				"%s evening omen sensed the demon along that daytime path" % third_poss,
+			]
+		"magistrate":
+			return [
+				"%s reading on that day's first nomination pointed at them" % own_poss,
+				"%s reading on that day's first nomination pointed at them" % third_poss,
+			]
+		"executor":
+			var e_role: String = C.role_name(str(data.get("role", "")))
+			return [
+				"%s Executor reading named them the %s" % [own_poss, e_role],
+				"%s Executor reading named them the %s" % [third_poss, e_role],
+			]
+		"registrar":
+			return [
+				"%s register check conflicted with their claim or matched a minion role" % own_poss,
+				"%s register check conflicted with their claim or matched a minion role" % third_poss,
 			]
 		"martyr":
 			var m_txt: String = "the Martyr lived when they went to the rope"
@@ -1188,6 +1230,16 @@ static func _headline_chance(card: Dictionary, person: String) -> float:
 			var dgroup: Array = data.get("group", [])
 			if person in dgroup and int(data.get("count", 0)) > 0:
 				return Tuning.Workshop.HEADLINE_DOWSER * float(data.count) / float(maxi(dgroup.size(), 1))
+		"chronicler":
+			var ctrio: Array = data.get("trio", [])
+			if person in ctrio:
+				return Tuning.Workshop.HEADLINE_ARCHIVIST / float(maxi(ctrio.size(), 1))
+		"magistrate":
+			if not bool(data.get("same", true)) and person in [str(data.get("nominator", "")), str(data.get("nominee", ""))]:
+				return Tuning.Workshop.HEADLINE_DOWSER * 0.5
+		"registrar":
+			if bool(data.get("yes", false)) and str(data.get("target", "")) == person and data.get("roles", []).any(func(r): return C.is_minion(str(r))):
+				return Tuning.Workshop.HEADLINE_ARCHIVIST * 0.5
 	return 0.0
 
 
@@ -1224,7 +1276,7 @@ static func _mentions(card: Dictionary) -> Array:
 			out.append(v)
 	var data = card.get("data", {})
 	if data is Dictionary:
-		for key in ["pair", "group", "seen", "nbrs", "target", "chosen", "executed", "guarded"]:
+		for key in ["pair", "group", "seen", "nbrs", "trio", "target", "chosen", "executed", "guarded", "nominator", "nominee"]:
 			var v = data.get(key)
 			if v is Array:
 				out.append_array(v)

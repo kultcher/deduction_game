@@ -937,7 +937,7 @@ func presentation_options():
 	var rng = g.w.rng.state
 	var phase = g.w.phase
 	var cards = JSON.stringify(g.board)
-	var roles_count = C.GOOD_ROLES.size() + C.EVIL_ROLES.size() + C.SECRET_MOD_LIST.size()
+	var roles_count = g.w.case_script.town.size() + g.w.case_script.demons.size() + g.w.case_script.minions.size() + g.w.case_script.secrets.size()
 	scene._open_roles()
 	var content = scene.roles_content
 	check(not scene.roles_pinned and scene.roles_win.visible and not scene.roles_dock.visible, "Roles starts as the existing movable window")

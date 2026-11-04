@@ -321,9 +321,9 @@ func _test_town_hall_workshop_and_csharp_parity() -> void:
 	case_d.answers = {"th_1": {"positive": [], "in_play_role": "seer"}}
 	case_d.conclusion = {"type": "evil", "target": p1, "at": "Original alignment"}
 	var ev_res: Dictionary = CaseEval.evaluate(view, case_d)
-	# The in_play_role answer also constrains the posterior, so full agreement (1.0) is
-	# expected here; the check is that theory_fit is computed (non-zero) for the card.
-	_check(ev_res.posterior > ev_res.prior and ev_res.theory_fit > 0.0,
+	# Chosen answers are scored in _theory_fit rather than conditioned into post; both
+	# roles remain possible in post (either claimant can bluff), so 0 < theory_fit < 1.
+	_check(ev_res.posterior > ev_res.prior and ev_res.theory_fit > 0.0 and ev_res.theory_fit < 1.0,
 		"CaseEval raises suspicion on rival claimant (%.3f -> %.3f) and computes Town Hall theory_fit (%.3f)" % [
 			ev_res.prior, ev_res.posterior, ev_res.theory_fit])
 

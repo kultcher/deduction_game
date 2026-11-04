@@ -24,6 +24,10 @@ static func alive_at_night(view: Dictionary, person: String, night: int) -> bool
 static func executed(view: Dictionary, person: String, night: int) -> bool:
 	return person in view.get("timeline", {}).get("executions", {}).get(str(night), [])
 
+static func died_before_morning(view: Dictionary, person: String, morning_day: int) -> bool:
+	var dt: int = int(view.get("timeline", {}).get("death_ticks", {}).get(person, 2147483647))
+	return dt < 2147483647 and int(dt / 4) + 1 == morning_day
+
 static func observer_alive(view: Dictionary, person: String, stamp: Dictionary) -> bool:
 	var tick: int = int(stamp.get("day", -1)) * 4 + {"morning": 0, "afternoon": 1, "evening": 2, "night": 3}.get(stamp.get("phase"), 3)
 	return tick <= view.get("timeline", {}).get("death_ticks", {}).get(person, 2147483647)

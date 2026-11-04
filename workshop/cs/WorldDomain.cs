@@ -232,6 +232,22 @@ internal static class WorldDomainKernel
         {
             return false;
         }
+        if (roleId == "chronicler")
+        {
+            return obsDay == 3 && obsPhase == "night";
+        }
+        if (roleId == "augur")
+        {
+            return obsDay >= minGiftDay && obsPhase == "evening";
+        }
+        if (roleId == "executor")
+        {
+            return (obsDay == 0 && obsPhase == "night") || (obsDay >= 1 && obsPhase == "morning");
+        }
+        if (roleId == "registrar")
+        {
+            return obsDay >= 0 && obsPhase == "night";
+        }
         if (eveningOrNight)
         {
             return obsDay >= minGiftDay && (obsPhase == "evening" || obsPhase == "night");

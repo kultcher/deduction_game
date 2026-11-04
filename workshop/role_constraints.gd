@@ -21,8 +21,11 @@ const _FIXED_ROLES = {
 	"gravedigger": 7,
 	"nightwatch": 8,
 	"demon": 9,
+	"scion": 10,
+	"executor": 11,
+	"registrar": 12,
 }
-const _CARD_STRIDE = 20
+const _CARD_STRIDE = 24
 
 static func fits(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary = {}) -> bool:
 	return fit_weight(view, world, cards, knowledge, answers) > 0.0
@@ -236,6 +239,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 	var role_map: Dictionary = _FIXED_ROLES.duplicate()
 	var src_tokens: Dictionary = {}
 	var martyr_tokens: Dictionary = {}
+	var executor_tokens: Dictionary = {}
 
 	var view_empty: bool = view.is_empty()
 	var chrono: Dictionary = view.get("chronology", {})
@@ -468,6 +472,29 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 				if C.ROLES.get(read_role, {}).get("align") == "evil":
 					flags |= (1 << 9)
 				card_ints[off + 18] = _intern_role(role_map, read_role)
+				if read_role == "demon" and rdef.role_group_key != "pair":
+					card_ints[off + 11] = _scion_exec_alive_demon_mask(view, ids, str(data.get(rdef.role_group_key, "")))
+			elif role_str == "executor":
+				var e_tgt: String = str(data.get("target", ""))
+				card_ints[off + 16] = ids.find(e_tgt)
+				card_ints[off + 17] = _intern_token(executor_tokens, e_tgt) if e_tgt != "" else 0
+				if data.has("role") and not bool(data.get("assigned", false)):
+					flags |= (1 << 14)
+					flags |= (1 << 8)
+					var e_role: String = str(data.get("role", ""))
+					if C.ROLES.get(e_role, {}).get("align") == "evil":
+						flags |= (1 << 9)
+					card_ints[off + 18] = _intern_role(role_map, e_role)
+					if e_role == "demon":
+						card_ints[off + 11] = _scion_exec_alive_demon_mask(view, ids, e_tgt)
+					var ex_obs_day: int = int(card.get("observed_at", {}).get("day", -1))
+					if not has_timeline or History.died_before_morning(view, e_tgt, ex_obs_day):
+						flags |= (1 << 13)
+				elif bool(data.get("assigned", false)) and not data.has("role"):
+					flags |= (1 << 15)
+			elif role_str == "registrar":
+				var reg_meta: int = _pack_registrar_card(data, ids, role_map, card_ints, off)
+				card_ints[off + 23] = reg_meta
 			elif role_str == "martyr":
 				var m_tgt: String = str(data.get("target", ""))
 				card_ints[off + 16] = ids.find(m_tgt)
@@ -577,7 +604,62 @@ static func _routing_cards(cards: Array) -> Array:
 	return out
 
 static func seer_flag(cards: Array) -> bool:
-	return cards.any(func(c): return c.get("role") in ["seer", "gravedigger", "martyr"] and not c.get("quoted", false))
+	return cards.any(func(c): return c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar"] and not c.get("quoted", false))
+
+static func _scion_exec_alive_demon_mask(view: Dictionary, ids: Array, target_id: String) -> int:
+	if target_id == "" or not view.has("timeline"):
+		return 0
+	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
+	var death_ticks: Dictionary = view.get("timeline", {}).get("death_ticks", {})
+	for day_str in execs:
+		if target_id in execs[day_str]:
+			var exec_day: int = int(day_str)
+			var alive_before: int = 0
+			for p in view.people:
+				if int(death_ticks.get(p.id, 2147483647)) >= exec_day * 4 + 2:
+					alive_before += 1
+			if alive_before >= 5:
+				var mask: int = 0
+				for d_i in range(ids.size()):
+					if ids[d_i] != target_id and History.alive_at_night(view, ids[d_i], exec_day):
+						mask |= (1 << d_i)
+				return mask
+	return 0
+
+static func _registrar_roles_ok(roles_val) -> bool:
+	if not (roles_val is Array) or roles_val.size() != 3:
+		return false
+	var seen: Dictionary = {}
+	var min_cnt: int = 0
+	for r in roles_val:
+		var rs: String = str(r)
+		if rs == "" or seen.has(rs) or rs == "registrar" or rs == "demon":
+			return false
+		if C.is_minion(rs):
+			min_cnt += 1
+		elif rs not in C.GOOD_ROLES:
+			return false
+		seen[rs] = true
+	return min_cnt <= 1
+
+static func _pack_registrar_card(data: Dictionary, ids: Array, role_map: Dictionary, card_ints: PackedInt32Array, off: int) -> int:
+	var r_arr = data.get("roles", [])
+	if not _registrar_roles_ok(r_arr):
+		return -1
+	var meta: int = 0
+	for k in range(3):
+		var rs: String = str(r_arr[k])
+		card_ints[off + 20 + k] = _intern_role(role_map, rs)
+		if C.is_minion(rs):
+			meta |= (1 << k)
+	if data.has("target") or data.has("yes"):
+		if not (data.has("target") and data.get("yes") is bool):
+			return -1
+		meta |= (1 << 3)
+		if bool(data.get("yes", false)):
+			meta |= (1 << 4)
+		card_ints[off + 16] = ids.find(str(data.get("target", "")))
+	return meta
 
 static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null, bluffs: bool = false) -> float:
 	cards = _live_cards(cards)
@@ -666,6 +748,13 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 	var seer_readings: Array = []
 	var veteran_night = -1
 	var martyr_target = ""
+	var executor_target = ""
+	var has_registrar = false
+	var reg_roles: Array = []
+	var reg_minion_bits: int = 0
+	var reg_no_mask: int = 0
+	var reg_yes_mask: int = 0
+	var reg_yes_targets: Array = []
 	var town_halls: Array = []
 	for card in cards:
 		if card.get("quoted", false):
@@ -750,8 +839,86 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 					pool_mask = (1 << demon) if demon >= 0 else 0
 				"any":
 					pool_mask = (1 << demon) if read_role == "demon" and demon >= 0 else (minions if evil_role else good)
-			if not _assign(assignments, read_role, group_mask & pool_mask):
+			if read_role == "demon" and rdef.role_group_key != "pair":
+				var t_gd_id: String = str(card.data.get(rdef.role_group_key, ""))
+				var t_gd_idx: int = ids.find(t_gd_id)
+				if demon == t_gd_idx:
+					if not _assign(assignments, "demon", 1 << t_gd_idx):
+						return 0.0
+				else:
+					var sc_mask_gd: int = _scion_exec_alive_demon_mask(view, ids, t_gd_id)
+					if sc_mask_gd != 0 and demon >= 0 and (sc_mask_gd & (1 << demon)) != 0 and (minions & (1 << t_gd_idx)) != 0:
+						if not _assign(assignments, "scion", 1 << t_gd_idx):
+							return 0.0
+					else:
+						return 0.0
+			elif not _assign(assignments, read_role, group_mask & pool_mask):
 				return 0.0
+		elif card.role == "executor":
+			var ex_tgt_str: String = str(card.data.get("target", ""))
+			var ex_tgt_i: int = ids.find(ex_tgt_str)
+			if ex_tgt_str == "" or ex_tgt_i < 0 or ex_tgt_i == source:
+				return 0.0
+			if executor_target != "" and executor_target != ex_tgt_str:
+				return 0.0
+			executor_target = ex_tgt_str
+			if bool(card.data.get("assigned", false)) and not card.data.has("role"):
+				continue
+			if card.data.has("role") and not bool(card.data.get("assigned", false)):
+				if view.has("timeline") and not History.died_before_morning(view, ex_tgt_str, int(card.get("observed_at", {}).get("day", -1))):
+					return 0.0
+				var ex_r: String = str(card.data.get("role", ""))
+				if not C.ROLES.has(ex_r):
+					return 0.0
+				var ex_evil_r: bool = C.ROLES.get(ex_r, {}).get("align") == "evil"
+				if ex_evil_r and world.marked >= 0 and world.marked == ex_tgt_i:
+					continue
+				if ex_r == "demon":
+					if demon == ex_tgt_i:
+						if not _assign(assignments, "demon", 1 << ex_tgt_i):
+							return 0.0
+					else:
+						var sc_mask_ex: int = _scion_exec_alive_demon_mask(view, ids, ex_tgt_str)
+						if sc_mask_ex != 0 and demon >= 0 and (sc_mask_ex & (1 << demon)) != 0 and (minions & (1 << ex_tgt_i)) != 0:
+							if not _assign(assignments, "scion", 1 << ex_tgt_i):
+								return 0.0
+						else:
+							return 0.0
+				else:
+					var ex_pool: int = minions if ex_evil_r else good
+					if not _assign(assignments, ex_r, (1 << ex_tgt_i) & ex_pool):
+						return 0.0
+			else:
+				return 0.0
+		elif card.role == "registrar":
+			var r_arr_c = card.data.get("roles", [])
+			if not _registrar_roles_ok(r_arr_c):
+				return 0.0
+			var r0_s: String = str(r_arr_c[0])
+			var r1_s: String = str(r_arr_c[1])
+			var r2_s: String = str(r_arr_c[2])
+			if not has_registrar:
+				has_registrar = true
+				reg_roles = [r0_s, r1_s, r2_s]
+				reg_minion_bits = 0
+				for rk_i in range(3):
+					if C.is_minion(reg_roles[rk_i]):
+						reg_minion_bits |= (1 << rk_i)
+			else:
+				if not (r0_s in reg_roles and r1_s in reg_roles and r2_s in reg_roles):
+					return 0.0
+			if card.data.has("target") or card.data.has("yes"):
+				if not (card.data.has("target") and card.data.get("yes") is bool):
+					return 0.0
+				var rt_i: int = ids.find(str(card.data.get("target", "")))
+				if rt_i < 0 or rt_i == source:
+					return 0.0
+				if bool(card.data.get("yes", false)):
+					if (reg_yes_mask & (1 << rt_i)) == 0:
+						reg_yes_mask |= (1 << rt_i)
+						reg_yes_targets.append(rt_i)
+				else:
+					reg_no_mask |= (1 << rt_i)
 		elif card.role == "veteran":
 			if veteran_night >= 0 and veteran_night != card.night:
 				return 0.0
@@ -777,6 +944,8 @@ static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictio
 		seer_weight = _seer_rh_weight_gd(good & ~(1 << seer_source), demon, int(world.marked), seer_readings)
 		if seer_weight <= 0.0:
 			return 0.0
+	if has_registrar:
+		return seer_weight if _registrar_matches(assignments, reg_roles, reg_minion_bits, reg_no_mask, reg_yes_targets, int(world.marked), int(world.evil), good, minions, town_halls) else 0.0
 	if town_halls.is_empty():
 		return seer_weight if _matching(assignments.values(), 0) else 0.0
 	return seer_weight if _town_hall_matches(assignments, town_halls, 0, good, {}) else 0.0
@@ -862,6 +1031,48 @@ static func _assign(assignments: Dictionary, role: String, candidates: int) -> b
 		candidates &= assignments[role]
 	assignments[role] = candidates
 	return candidates != 0
+
+static func _registrar_matches(assignments: Dictionary, reg_roles: Array, reg_minion_bits: int, reg_no_mask: int, reg_yes_targets: Array, marked: int, evil: int, good: int, minions: int, town_halls: Array) -> bool:
+	var base_assign: Dictionary = assignments.duplicate()
+	var base_pools: Array = [0, 0, 0]
+	for k in range(3):
+		var rk: String = reg_roles[k]
+		base_pools[k] = (minions if ((reg_minion_bits & (1 << k)) != 0) else good) & ~reg_no_mask
+		if base_assign.has(rk):
+			base_assign[rk] = int(base_assign[rk]) & ~reg_no_mask
+			if int(base_assign[rk]) == 0:
+				return false
+	return _registrar_yes_step(base_assign, 0, reg_roles, reg_minion_bits, base_pools, reg_yes_targets, marked, evil, good, town_halls)
+
+static func _registrar_yes_step(cur_assign: Dictionary, y_idx: int, reg_roles: Array, reg_minion_bits: int, base_pools: Array, reg_yes_targets: Array, marked: int, evil: int, good: int, town_halls: Array) -> bool:
+	if y_idx >= reg_yes_targets.size():
+		var any_in: bool = cur_assign.has(reg_roles[0]) or cur_assign.has(reg_roles[1]) or cur_assign.has(reg_roles[2])
+		if any_in:
+			return _matching(cur_assign.values(), 0) if town_halls.is_empty() else _town_hall_matches(cur_assign, town_halls, 0, good, {})
+		for k in range(3):
+			var bp: int = int(base_pools[k])
+			if bp == 0:
+				continue
+			var next_in: Dictionary = cur_assign.duplicate()
+			if not _assign(next_in, reg_roles[k], bp):
+				continue
+			if (town_halls.is_empty() and _matching(next_in.values(), 0)) or (not town_halls.is_empty() and _town_hall_matches(next_in, town_halls, 0, good, {})):
+				return true
+		return false
+	var t: int = int(reg_yes_targets[y_idx])
+	var t_bit: int = 1 << t
+	for k in range(3):
+		if (int(base_pools[k]) & t_bit) == 0:
+			continue
+		var next_a: Dictionary = cur_assign.duplicate()
+		if not _assign(next_a, reg_roles[k], t_bit):
+			continue
+		if _registrar_yes_step(next_a, y_idx + 1, reg_roles, reg_minion_bits, base_pools, reg_yes_targets, marked, evil, good, town_halls):
+			return true
+	if reg_minion_bits != 0 and marked == t and (evil & t_bit) == 0:
+		if _registrar_yes_step(cur_assign, y_idx + 1, reg_roles, reg_minion_bits, base_pools, reg_yes_targets, marked, evil, good, town_halls):
+			return true
+	return false
 
 static func _town_hall_matches(assignments: Dictionary, town_halls: Array, idx: int, good: int, forbidden: Dictionary) -> bool:
 	if idx >= town_halls.size():

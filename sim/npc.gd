@@ -52,6 +52,9 @@ var gift_request = {}        # an agreed player request for tonight: {night, rol
 ## Gift state.
 var vet_used = false         # Veteran: survived their one attack
 var martyr_target = ""       # Martyr: whom they chose ("" = not yet)
+var executor_target = ""     # Executor: person learned at case start
+var executor_resolved = false # Executor: whether post-death role reading has fired
+var registrar_roles: Array = [] # Registrar: three-role slate learned at case start
 var gift_used = false        # one-shot gifts spent (Sexton's knell)
 var medium_visited: Array = []   # Medium: the dead whose homes they've visited
 var talked_today: Array = []     # NPCs they talked with today (Psychologist picks from these)

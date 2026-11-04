@@ -82,10 +82,21 @@ func body(id: String) -> Array:
 	for fault in node.get("faults", {}).values():
 		result.append("Possible poison: %s (%s)" % [fault.window, "unsupported" if fault.get("basis", "") == "" else "cites " + fault.basis])
 	var slots: Array = node.answers.get(card.id, {}).get("slots", node.answers.get(card.id, {}).get("positive", []))
-	if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "lamplighter", "clerk", "archivist", "seer"]:
-		var count: int = (1 if card.data.yes else 0) if card.role == "seer" else (1 if card.role in ["rumormonger", "clerk", "archivist"] else clampi(int(card.data.get("count", 0)), 0, model.view.people.size()))
+	if card.kind == "report" and card.role in ["surveyor", "rumormonger", "dowser", "lamplighter", "clerk", "archivist", "seer", "chronicler", "magistrate", "augur"]:
+		var count: int = 0
+		if card.role in ["seer", "augur"]:
+			count = 1 if card.data.get("yes", false) else 0
+		elif card.role in ["rumormonger", "clerk", "archivist", "chronicler"]:
+			count = 1
+		elif card.role == "magistrate":
+			count = 0 if card.data.get("same", false) else 1
+		elif card.role == "surveyor" and card.data.has("block"):
+			var s_res_n: int = _people_home(str(card.data.get("block", ""))).size()
+			count = 0 if card.data.get("same", false) else maxi(1, s_res_n - 1)
+		else:
+			count = clampi(int(card.data.get("count", 0)), 0, model.view.people.size())
 		for i in range(count):
-			var prefix: String = C.block_name(C.BLOCKS.keys()[i]) if card.role == "surveyor" and count == 4 else (str(card.data.get("secret", "marked")).capitalize() if card.role == "rumormonger" else "Slot %d" % (i + 1))
+			var prefix: String = C.block_name(C.BLOCKS.keys()[i]) if card.role == "surveyor" and card.data.has("count") and count == 4 else ("Minion" if card.role == "chronicler" else (str(card.data.get("secret", "marked")).capitalize() if card.role == "rumormonger" else "Slot %d" % (i + 1)))
 			result.append("%s: %s" % [prefix, Solver.person_name(model.view, slots[i]) if i < slots.size() and slots[i] is String and slots[i] != "" else "?"])
 		if card.role == "seer":
 			result.append("Registration: " + str(node.answers.get(card.id, {}).get("registration", "? Any valid cause")).replace("_", " ").capitalize())
@@ -541,7 +552,7 @@ func evidence_layout(id: String) -> Dictionary:
 		for mode in ["misled", "lying", "unlikely"]:
 			var label: String = {"misled": "Misled", "lying": "Lying", "unlikely": "Unlikely"}[mode]
 			var w: float = 84.0
-			var disabled: bool = mode == "unlikely" and card.get("role", "") != "surveyor"
+			var disabled: bool = mode == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))
 			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": node.mode == mode, "disabled": disabled, "field": "mode:" + mode,
 				"tip": {"misled": "Honest but wrong: impaired, or a misleading registration.", "lying": "The reader is lying about this result.", "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
 			x += w + 8.0
@@ -593,6 +604,20 @@ func evidence_layout(id: String) -> Dictionary:
 			els.append({"t": "face", "p": p, "at": Vector2(36 + (i % per_row) * FACE_STEP, y + FACE_R + 2 + (i / per_row) * (FACE_R * 2 + 16)), "r": FACE_R, "state": state,
 				"field": "pick:" + p, "tip": Solver.person_name(model.view, p) + (": click to mark as registering evil; again for \"registered as Marked\"; again to clear" if role == "dowser" else ": click to say they were out")})
 		y += ceili(group.size() / float(per_row)) * (FACE_R * 2 + 16) + 8.0
+	elif card.kind == "report" and role == "surveyor" and card.get("data", {}).has("block"):
+		var s_blk: String = str(card.data.get("block", ""))
+		var s_same: bool = bool(card.data.get("same", false))
+		var s_residents: Array = _people_home(s_blk)
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "%s: %s" % [C.block_name(s_blk), "all share alignment" if s_same else "mixed alignments"]})
+		y += 26.0
+		var sx0: float = WIDTH / 2.0 - (s_residents.size() - 1) * FACE_STEP * 0.5
+		for i in range(s_residents.size()):
+			var p: String = s_residents[i]
+			var st_s: String = ("marked" if p in marked else "on") if p in positive else ""
+			els.append({"t": "face", "p": p, "at": Vector2(sx0 + i * FACE_STEP, y + FACE_R + 2), "r": FACE_R, "state": st_s,
+				"field": "" if s_same else ("pick:" + p),
+				"tip": Solver.person_name(model.view, p) + (" lives on " + C.block_name(s_blk) if s_same else ": click to mark as registering evil; again for \"registered as Marked\"; again to clear")})
+		y += FACE_R * 2 + 16.0
 	elif card.kind == "report" and role == "surveyor":
 		var count: int = int(card.data.get("count", 0))
 		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "%d of 4 blocks have an evil resident" % count})
@@ -612,6 +637,38 @@ func evidence_layout(id: String) -> Dictionary:
 					"state": ("marked" if p in marked else "on") if p in positive else "", "field": "resident:" + p,
 					"tip": Solver.person_name(model.view, p) + ": click to name them as the reason; again for \"registered as Marked\"; again to clear"})
 		y += 172.0
+	elif card.kind == "report" and role == "chronicler":
+		var trio: Array = card.get("data", {}).get("trio", [])
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Case start: 1 folk, 1 secret, 1 Minion"})
+		y += 26.0
+		var cx0: float = WIDTH / 2.0 - (trio.size() - 1) * FACE_STEP * 0.6
+		for i in range(trio.size()):
+			var p: String = trio[i]
+			els.append({"t": "face", "p": p, "at": Vector2(cx0 + i * FACE_STEP * 1.2, y + FACE_R + 2), "r": FACE_R,
+				"state": "on" if p in positive else "", "field": "pick:" + p,
+				"tip": Solver.person_name(model.view, p) + ": click to say they were the Minion at case start"})
+		y += FACE_R * 2 + 16.0
+	elif card.kind == "report" and role == "magistrate":
+		var m_same: bool = bool(card.get("data", {}).get("same", false))
+		var m_pair: Array = [str(card.get("data", {}).get("nominator", "")), str(card.get("data", {}).get("nominee", ""))]
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Nomination: same alignment" if m_same else "Nomination: different alignments"})
+		y += 26.0
+		var mx0: float = WIDTH / 2.0 - FACE_STEP * 0.75
+		for i in range(m_pair.size()):
+			var p: String = m_pair[i]
+			if p == "":
+				continue
+			var st_m: String = ("marked" if p in marked else "on") if p in positive else ""
+			els.append({"t": "face", "p": p, "at": Vector2(mx0 + i * FACE_STEP * 1.5, y + FACE_R + 2), "r": FACE_R,
+				"state": st_m, "field": "" if m_same else ("pick:" + p),
+				"tip": Solver.person_name(model.view, p) + ("" if m_same else ": click to mark as registering evil; again for \"registered as Marked\"; again to clear")})
+		y += FACE_R * 2 + 16.0
+	elif card.kind == "report" and role == "augur":
+		var a_yes: bool = bool(card.get("data", {}).get("yes", false))
+		var a_day: int = int(card.get("observed_at", {}).get("day", 1))
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": ("Yes: crossed Demon in public (D%d)" % a_day) if a_yes else ("No public Demon crossing (D%d)" % a_day)})
+		y += 26.0
+		details = true
 	elif (card.kind == "report" and role == "nightwatch") or (card.kind == "sighting" and card.get("night", -1) >= 0):
 		var seen: Array = card.data.get("seen", []) if role == "nightwatch" else card.get("subjects", [card.get("subject", "")])
 		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Why were they out?" if not seen.is_empty() else "Nobody seen"})
@@ -645,6 +702,18 @@ func evidence_layout(id: String) -> Dictionary:
 			els.append({"t": "face", "p": p, "at": Vector2(36 + (i % 5) * FACE_STEP, y + FACE_R + 2 + (i / 5) * (FACE_R * 2 + 16)), "r": FACE_R,
 				"state": "on" if p in positive else "", "field": "pick:" + p, "tip": Solver.person_name(model.view, p) + ": click if you think they turned"})
 		y += ceili(eligible.size() / 5.0) * (FACE_R * 2 + 16) + 8.0
+	elif card.kind == "report" and role == "executor":
+		var ex_t: String = Solver.person_name(model.view, str(card.data.get("target", "")))
+		var ex_lbl: String = ("Charge: %s" % ex_t) if card.data.get("assigned", false) else ("%s was %s" % [ex_t, C.role_name(str(card.data.get("role", "")))])
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": ex_lbl})
+		y += 26.0
+		details = true
+	elif card.kind == "report" and role == "registrar":
+		var r_list: String = ", ".join(PackedStringArray(card.data.get("roles", []).map(func(r): return C.role_name(str(r)))))
+		var reg_lbl: String = ("Slate: %s" % r_list) if not card.data.has("target") else ("%s in [%s]: %s" % [Solver.person_name(model.view, str(card.data.get("target", ""))), r_list, "Yes" if bool(card.data.get("yes", false)) else "No"])
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": reg_lbl})
+		y += 26.0
+		details = true
 	else:
 		details = card.kind == "report" and role in ["warden", "gravedigger", "veteran", "martyr", "sexton"]
 	return {"h": y + 44.0, "els": els, "text": text_lines, "details": details}

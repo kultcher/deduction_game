@@ -4,6 +4,7 @@
 extends RefCounted
 
 const Tuning = preload("res://sim/tuning.gd")
+const C = preload("res://sim/content.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const Support = preload("res://workshop/support_model.gd")
@@ -740,6 +741,10 @@ static func _headline_group_key(view: Dictionary, card: Dictionary) -> String:
 		subjects = data.pair.duplicate()
 	elif data.get("group") is Array:
 		subjects = data.group.duplicate()
+	elif data.get("trio") is Array:
+		subjects = data.trio.duplicate()
+	elif data.has("nominator") and data.has("nominee"):
+		subjects = [str(data.get("nominator", "")), str(data.get("nominee", ""))]
 	subjects.sort()
 	var result_sig: String = ""
 	match role:
@@ -810,6 +815,16 @@ static func _headline_chance(card: Dictionary, person: String) -> float:
 			var group: Array = data.get("group", [])
 			if person in group and int(data.get("count", 0)) > 0:
 				return Tuning.Workshop.HEADLINE_DOWSER * float(data.count) / float(group.size())
+		"chronicler":
+			var ctrio: Array = data.get("trio", [])
+			if person in ctrio:
+				return Tuning.Workshop.HEADLINE_ARCHIVIST / float(maxi(ctrio.size(), 1))
+		"magistrate":
+			if not bool(data.get("same", true)) and person in [str(data.get("nominator", "")), str(data.get("nominee", ""))]:
+				return Tuning.Workshop.HEADLINE_DOWSER * 0.5
+		"registrar":
+			if bool(data.get("yes", false)) and str(data.get("target", "")) == person and data.get("roles", []).any(func(r): return C.is_minion(str(r))):
+				return Tuning.Workshop.HEADLINE_ARCHIVIST * 0.5
 	return 0.0
 
 ## Confidence is directional (Oct 30, docs/social_trust_pass.md): the scale-mode factor
@@ -887,7 +902,7 @@ static func _mentions(card: Dictionary) -> Array:
 			out.append(v)
 	var data = card.get("data", {})
 	if data is Dictionary:
-		for key in ["pair", "group", "seen", "nbrs", "target", "chosen", "executed", "guarded"]:
+		for key in ["pair", "group", "seen", "nbrs", "trio", "target", "chosen", "executed", "guarded", "nominator", "nominee"]:
 			var v = data.get(key)
 			if v is Array:
 				out.append_array(v)

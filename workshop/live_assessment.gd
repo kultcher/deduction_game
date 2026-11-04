@@ -6,7 +6,7 @@ const Jury = preload("res://workshop/jury.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const LedgerAudit = preload("res://workshop/ledger_audit.gd")
 const C = preload("res://sim/content.gd")
-const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "warden", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist"]
+const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "warden", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist", "chronicler", "augur", "magistrate", "executor", "registrar"]
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
 const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]
@@ -131,11 +131,11 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	for card in cards:
 		if card.kind == "report" and card.get("role") == "martyr" and card.data.get("chosen", false) and cards.any(func(other): return other.kind == "execution" and other.subject == card.data.target and Solver.TimeModel.tick(other.observed_at) > Solver.TimeModel.tick(card.observed_at)):
 			result.issues.append("A prior Martyr promise versus a later execution needs a dated outcome/health adapter. The new evaluator does not yet infer failure from that pair; existing rules handle the case.")
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem", "town_hall"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch"]):
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem", "town_hall"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar"]):
 		view.world_options["roles"] = true
 	if snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["role", "notrole", "misled", "unreliable"]):
 		view.world_options["roles"] = true
-	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "notdemon", "minion"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "notdemon", "minion"])):
+	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger", "chronicler", "augur", "executor", "registrar"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "notdemon", "minion"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "notdemon", "minion"])):
 		view.world_options["identities"] = true
 		view.world_options["roles"] = true
 	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0] if snapshot.arguments.any(func(a): return a.board_number == snapshot.root) else {}
@@ -826,6 +826,8 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 		var grp = data.get(rdef.site_group_key)
 		return _group_valid(grp, ids) and _count_valid(data.get("count"), grp.size())
 	elif rdef != null and rdef.shape == "GROUP_COUNT":
+		if rdef.count_mode == "blocks" and (data.has("block") or data.has("same")):
+			return data.get("block") in C.BLOCKS and data.get("same") is bool
 		return _count_valid(data.get("count"), 4 if rdef.count_mode == "blocks" else (ids.size() - 1))
 	elif rdef != null and rdef.shape == "NIGHT_ROUTE":
 		return data.get("block") in C.BLOCKS and data.get("seen") is Array and (data.seen.is_empty() or _group_valid(data.seen, ids)) and receipt.source not in data.seen
@@ -846,7 +848,41 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 			return data.get("target") in ids and data.target != receipt.source and ((data.get("chosen") == true and not data.get("evil", false)) or (data.get("evil") == true and not data.get("chosen", false)))
 		"sexton":
 			return _count_valid(data.get("night"), receipt.observed_at.day) and data.night == receipt.observed_at.day and data.night >= 1
+		"chronicler":
+			return _group_valid(data.get("trio"), ids) and data.trio.size() == 3 and receipt.source not in data.trio
+		"augur":
+			return data.get("yes") is bool and receipt.observed_at.phase == "evening" and receipt.observed_at.day >= 1
+		"magistrate":
+			return data.get("nominator") in ids and data.get("nominee") in ids and data.nominator != data.nominee and data.nominator != receipt.source and data.get("same") is bool and receipt.observed_at.phase == "night" and receipt.observed_at.day >= 1
+		"executor":
+			if not (data.get("target") in ids and data.target != receipt.source):
+				return false
+			if data.get("assigned") == true:
+				return not data.has("role") and receipt.observed_at.day == 0 and receipt.observed_at.phase == "night"
+			return not data.get("assigned", false) and data.get("role") in C.ROLES and receipt.observed_at.day >= 1 and receipt.observed_at.phase == "morning"
+		"registrar":
+			if not _registrar_roles_valid(data.get("roles")):
+				return false
+			if not data.has("target") and not data.has("yes"):
+				return receipt.observed_at.day == 0 and receipt.observed_at.phase == "night"
+			return data.get("target") in ids and data.target != receipt.source and data.get("yes") is bool and receipt.observed_at.day >= 1 and receipt.observed_at.phase == "night"
 	return false
+
+static func _registrar_roles_valid(value) -> bool:
+	if not (value is Array) or value.size() != 3:
+		return false
+	var seen = {}
+	var minion_cnt: int = 0
+	for r in value:
+		var rs: String = str(r)
+		if seen.has(rs) or rs == "registrar" or rs == "demon":
+			return false
+		if rs in C.MINION_ROLES:
+			minion_cnt += 1
+		elif rs not in C.GOOD_ROLES:
+			return false
+		seen[rs] = true
+	return minion_cnt <= 1
 
 static func _group_valid(value, ids: Array) -> bool:
 	if not value is Array or value.is_empty():

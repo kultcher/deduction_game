@@ -118,6 +118,23 @@ internal static class CaseEvalKernel
         return 4;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static double AugurSlotProb(int codes, int personIdx)
+    {
+        if (personIdx < 0)
+        {
+            return 0.0;
+        }
+        int code = (codes >> (personIdx * 2)) & 3;
+        return code switch
+        {
+            0 => 0.0,
+            1 => 0.1875,
+            2 => 0.25,
+            _ => 1.0
+        };
+    }
+
     public static (int[] Teams, int[] TeamOf) GetOrComputeTeamIndex(
         int universeHandle,
         long[] fallbackWorlds,
@@ -279,7 +296,7 @@ internal static class CaseEvalKernel
                 rms[i] = i;
             }
         }
-        else if (rolesOn)
+        else if (rolesOn || seer)
         {
             rms = RoleConstraintsKernel.CoarseMasks(nPeople, worlds, seer, mediums, walkers);
         }
@@ -396,7 +413,6 @@ internal static class CaseEvalKernel
         }
 
         int[] repArr = repList.ToArray();
-        int nc = repArr.Length;
         double[] move = ComputeClassMovementScores(worlds, repArr, moveFactorSpecs, moveFactorDoubles);
 
         int[] finalGroupBits = plainBits ? ixTeams : groupBitsList!.ToArray();
@@ -522,19 +538,58 @@ internal static class CaseEvalKernel
         {
             int off = f * 4;
             int kind = moveFactorSpecs[off];
-            int handleOrTarget = moveFactorSpecs[off + 1];
-            bool convEvil = moveFactorSpecs[off + 2] != 0;
-            bool isMm = moveFactorSpecs[off + 3] != 0;
-
             if (kind == 0)
             {
+                int handle = moveFactorSpecs[off + 1];
                 for (int c = 0; c < nc; c++)
                 {
-                    outBuf[c] *= LiveActivityKernel.ScoreWorld(worlds[rep[c]], handleOrTarget);
+                    outBuf[c] *= LiveActivityKernel.ScoreWorld(worlds[rep[c]], handle);
                 }
                 continue;
             }
 
+            if (kind == 2)
+            {
+                int packedFlags = moveFactorSpecs[off + 1];
+                int srcIdx = packedFlags & 0xFFFF;
+                bool yes = ((packedFlags >> 16) & 1) != 0;
+                bool augConvEvil = ((packedFlags >> 17) & 1) != 0;
+                bool augIsLive = ((packedFlags >> 18) & 1) != 0;
+                int slot0Codes = moveFactorSpecs[off + 2];
+                int slot1Codes = moveFactorSpecs[off + 3];
+                double pRef = moveFactorDoubles[f * 2];
+                double defaultErr = moveFactorDoubles[f * 2 + 1];
+                double zeroMult = (defaultErr * 0.5) / ((1.0 - defaultErr) + defaultErr * 0.5);
+
+                for (int c = 0; c < nc; c++)
+                {
+                    long wRaw = worlds[rep[c]];
+                    var w = new WorldEntry(wRaw);
+                    if (SolverKernel.EvilIndex(w, srcIdx, augConvEvil) || (augIsLive && !WorldDomainKernel.Healthy(wRaw, srcIdx)))
+                    {
+                        continue;
+                    }
+                    int dIdx = w.DemonOrMinusOne;
+                    int mIdx = w.Marked;
+                    double dp0 = AugurSlotProb(slot0Codes, dIdx);
+                    double dp1 = AugurSlotProb(slot1Codes, dIdx);
+                    double mp0 = (mIdx >= 0 && mIdx != srcIdx) ? AugurSlotProb(slot0Codes, mIdx) : 0.0;
+                    double mp1 = (mIdx >= 0 && mIdx != srcIdx) ? AugurSlotProb(slot1Codes, mIdx) : 0.0;
+                    double trig0 = 1.0 - (1.0 - dp0) * (1.0 - 0.5 * mp0);
+                    double trig1 = 1.0 - (1.0 - dp1) * (1.0 - 0.5 * mp1);
+                    double pYes = 1.0 - (1.0 - trig0) * (1.0 - trig1);
+                    double pOut = yes ? pYes : (1.0 - pYes);
+                    double mult = pOut <= 0.0
+                        ? zeroMult
+                        : ((1.0 - defaultErr) * (pOut / pRef) + defaultErr);
+                    outBuf[c] *= mult;
+                }
+                continue;
+            }
+
+            int handleOrTarget = moveFactorSpecs[off + 1];
+            bool convEvil = moveFactorSpecs[off + 2] != 0;
+            bool isMm = moveFactorSpecs[off + 3] != 0;
             if (handleOrTarget < 0)
             {
                 continue;

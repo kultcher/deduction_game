@@ -4,7 +4,7 @@ extends RefCounted
 
 const FORMAT = "demonologist-live-evidence-1"
 const REPORT_FIELDS = {
-	"surveyor": ["count"], "dowser": ["group", "count", "block"],
+	"surveyor": ["block", "same", "count"], "dowser": ["group", "count", "block"],
 	"hearthwitch": ["nbrs", "count"], "rumormonger": ["pair", "secret"],
 	"nightwatch": ["block", "seen"], "lamplighter": ["count"],
 	"seer": ["pair", "yes"], "archivist": ["pair", "role"], "clerk": ["pair", "role"],
@@ -12,8 +12,13 @@ const REPORT_FIELDS = {
 	"veteran": ["attacked", "block"], "martyr": ["target", "chosen", "evil"],
 	"sexton": ["night"],
 	"warden": ["target"],
+	"chronicler": ["trio"],
+	"augur": ["yes"],
+	"magistrate": ["nominator", "nominee", "same"],
+	"executor": ["target", "assigned", "role"],
+	"registrar": ["roles", "target", "yes"],
 }
-const FIELDS = ["block", "loc", "locs", "home", "night", "role", "secret_kind", "fear", "withheld", "package", "roles", "duty_claim", "duty", "vigil", "dropped",
+const FIELDS = ["assigned", "block", "loc", "locs", "home", "night", "role", "secret_kind", "fear", "withheld", "package", "roles", "duty_claim", "duty", "vigil", "dropped",
 	"nominee", "by", "yes", "no", "player_yes", "count", "threshold", "outcome", "alive_before", "owner", "material", "crime_night", "scene", "scene_block", "victim", "ward", "guard_claim", "save_claim", "watch_claim", "target",
 	"work_phases", "occupation", "trait", "tier", "withdrawn", "bond_kind", "tavern_gossip", "workshop_usable", "pressable",
 	"trace_family", "trace_subtype", "trace_slot", "trace_scene_count", "scene_trace_count", "trace_key", "trace_home_block", "trace_evening_block", "victim_block", "item_label"]
@@ -113,11 +118,11 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 		# The reading's payload identifies its subjects, regardless of whether it was
 		# collected from a board card or the listener's private reading log.
 		content.subjects = []
-		for field in ["pair", "group", "nbrs", "seen"]:
+		for field in ["pair", "group", "nbrs", "seen", "trio"]:
 			for person in content.data.get(field, []):
 				if person not in content.subjects:
 					content.subjects.append(person)
-		for field in ["executed", "subject", "trusts", "suspects", "target"]:
+		for field in ["executed", "subject", "trusts", "suspects", "target", "nominator", "nominee"]:
 			if content.data.has(field) and content.data[field] not in content.subjects:
 				content.subjects.append(content.data[field])
 		content.subjects.sort()
@@ -183,7 +188,7 @@ static func report_data(role: String, data: Dictionary) -> Dictionary:
 	for key in REPORT_FIELDS.get(role, []):
 		if data.has(key):
 			result[key] = data[key].duplicate(true) if data[key] is Array or data[key] is Dictionary else data[key]
-			if key in ["pair", "group", "nbrs", "seen"]:
+			if key in ["pair", "group", "nbrs", "seen", "trio"]:
 				result[key].sort()
 	return result
 

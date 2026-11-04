@@ -86,8 +86,11 @@ func _init() -> void:
 	var trimmed = ScriptDef.default_script()
 	trimmed.town.erase("clerk")
 	trimmed.town.erase("warden")
+	var spare_off: Array = ScriptDef.roster().town.filter(func(r): return r != "clerk" and not r in trimmed.town)
+	var refilled_exact = ScriptBuilder.fill(trimmed, ["warden"] + spare_off, 3)
+	_check("clerk" in refilled_exact.town and not "warden" in refilled_exact.town and refilled_exact.town.size() == 14, "fill adds back what isn't excluded")
 	var refilled = ScriptBuilder.fill(trimmed, ["warden"], 3)
-	_check("clerk" in refilled.town and not "warden" in refilled.town and refilled.town.size() == 14, "fill adds back what isn't excluded")
+	_check(not "warden" in refilled.town and refilled.town.size() == ScriptDef.TOWN_SIZE, "fill tops script up to TOWN_SIZE from expanded roster")
 	_check(ScriptBuilder.build({"seed": 9}).to_dict() == ScriptBuilder.build({"seed": 9}).to_dict(), "building is deterministic by seed")
 
 	# Save and load.
@@ -103,6 +106,7 @@ func _init() -> void:
 	# Tags.
 	_check("first_night_info" in ScriptDef.tags_of("clerk") and "role_id" in ScriptDef.tags_of("medium") and not "ongoing_info" in ScriptDef.tags_of("nightwatch"), "role tags")
 	_check(not "hearthwitch" in ScriptDef.roster().town, "benched roles stay off the roster")
+	_check("augur" in ScriptDef.roster().town and "executor" in ScriptDef.roster().town and "registrar" in ScriptDef.roster().town, "expanded town roles appear on the buildable roster")
 
 	if fails == 0:
 		print("test_case_script: ALL %d CHECKS PASSED" % checks)

@@ -9,7 +9,7 @@ const MODES = ["misled", "lying", "unlikely"]
 
 static func valid(view: Dictionary, id: String, value) -> bool:
 	var card = Solver.card_by_id(view, id)
-	return value is Dictionary and value.get("mode") in MODES and card.get("kind") == "report" and not card.has("relay_source") and not card.get("testimony_only", false) and (value.mode != "unlikely" or card.get("role") == "surveyor") and value.get("supports", []) is Array and value.get("supports", []).all(func(root): return root != id and not Solver.card_by_id(view, root).is_empty())
+	return value is Dictionary and value.get("mode") in MODES and card.get("kind") == "report" and not card.has("relay_source") and not card.get("testimony_only", false) and (value.mode != "unlikely" or (card.get("role") == "surveyor" and card.get("data", {}).has("count"))) and value.get("supports", []) is Array and value.get("supports", []).all(func(root): return root != id and not Solver.card_by_id(view, root).is_empty())
 
 static func quality(listener: Dictionary, source: String) -> float:
 	if source == listener.id or source == "evidence":
@@ -106,6 +106,12 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 					accuracy_agreement = maxf(accuracy_agreement, 0.9 * hearing)
 					cause_agreement = accuracy_agreement
 					note = "No such public execution happened that night; impairment cannot explain that Gravedigger report."
+			if report.role == "executor" and report.data.has("role") and view.has("timeline"):
+				var ex_obs_d: int = int(report.get("observed_at", {}).get("day", -1))
+				if not preload("res://workshop/live_history.gd").died_before_morning(view, str(report.data.get("target", "")), ex_obs_d):
+					accuracy_agreement = maxf(accuracy_agreement, 0.9 * hearing)
+					cause_agreement = accuracy_agreement
+					note = "That person had not just died before that morning; impairment cannot explain that Executor report."
 			if report.source != listener.id and report.role == listener.knowledge.get("own_role", ""):
 				cause_agreement = hearing # firsthand knowledge of a unique gift claim
 				note = "They claim the unique gift I know I hold. Impairment cannot explain that role claim."

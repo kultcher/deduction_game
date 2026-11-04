@@ -168,9 +168,9 @@ static func _add_group(view: Dictionary, groups: Array, id: String, roots: Array
 
 static func _salience(card: Dictionary, target: String, listener: Dictionary, live: bool = false) -> float:
 	var score = 1.0 + listener.npc_trust.get(card.source, 0.5) * 0.1
-	if card.kind == "report" and (card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (live and card.role in ["nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton"])):
+	if card.kind == "report" and (card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (live and card.role in ["nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "chronicler", "augur", "magistrate", "executor", "registrar"])):
 		score += 3.0
-	if card.get("subject", "") == target or target in card.get("data", {}).get("pair", []) or target in card.get("data", {}).get("group", []) or target in card.get("data", {}).get("seen", []):
+	if card.get("subject", "") == target or target in card.get("data", {}).get("pair", []) or target in card.get("data", {}).get("group", []) or target in card.get("data", {}).get("seen", []) or target in card.get("data", {}).get("trio", []) or target in [card.get("data", {}).get("nominator", ""), card.get("data", {}).get("nominee", "")]:
 		score += 2.0
 	return score
 
@@ -293,6 +293,10 @@ static func _live_person_priority(id: String, is_target: bool, cards: Array, lis
 			elif role == "clerk" and id in d.get("pair", []):
 				score -= 1.5
 			elif role == "nightwatch" and id in d.get("seen", []):
+				score += 1.5
+			elif role == "chronicler" and id in d.get("trio", []):
+				score += 1.0
+			elif role == "magistrate" and not d.get("same", true) and id in [d.get("nominator", ""), d.get("nominee", "")]:
 				score += 1.5
 		elif card.kind == "sighting" and id in card.get("subjects", [card.get("subject", "")]):
 			score += 1.5
@@ -554,11 +558,11 @@ static func _ordered_live_candidates(view: Dictionary, cards: Array, value: Dict
 	var needs_holders: bool = type == "secret_mod" or (req_modifier != "" and req_modifier != "marked")
 	for card in cards:
 		var role: String = card.get("role", "")
-		if role in ["seer", "archivist", "gravedigger"] or card.get("kind", "") == "totem" or card.get("testimony_only", false):
+		if role in ["seer", "archivist", "gravedigger", "chronicler", "augur", "executor", "registrar"] or card.get("kind", "") == "totem" or card.get("testimony_only", false):
 			needs_demon = true
-		if role in ["seer", "dowser", "surveyor", "rumormonger", "martyr", "gravedigger"] or card.get("testimony_only", false):
+		if role in ["seer", "dowser", "surveyor", "rumormonger", "martyr", "gravedigger", "chronicler", "augur", "magistrate", "executor", "registrar"] or card.get("testimony_only", false):
 			needs_marked = true
-		if role == "rumormonger" and card.get("data", {}).get("secret", "marked") != "marked":
+		if role == "chronicler" or (role == "rumormonger" and card.get("data", {}).get("secret", "marked") != "marked"):
 			needs_holders = true
 	var mediums: int = Solver.Roles.relay_mediums(ids, cards)
 	var walkers: int = Solver.Roles.sleepwalk_claimants(ids, cards)

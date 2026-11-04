@@ -19,7 +19,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 		input.people.append({"id": n.id, "name": n.name, "home": n.home_block, "alive": n.alive})
 	for event in g.w.public_log:
 		input.public_events.append({"kind": event.kind, "subjects": event.get("subjects", []).duplicate(),
-			"by": event.get("by", ""), "at": {"day": event.day, "phase": "night" if event.kind == "demon_death" else ("evening" if event.kind in ["silenced", "vote"] else "unknown")}})
+			"by": event.get("by", ""), "at": {"day": event.day, "phase": "night" if event.kind == "demon_death" else ("evening" if event.kind in ["silenced", "vote", "nomination", "meeting"] else "unknown")}})
 		if event.kind in ["curse", "curse_lifted"] and event.has("phase"):
 			input.public_events[-1].at = Evidence.stamp({"day": event.day, "phase": event.phase})
 		if event.kind == "vote":

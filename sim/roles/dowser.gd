@@ -1,7 +1,8 @@
 ## Dowser role definition and simulation hooks.
 ##
-## Shape: ROLE_AT_SITE (group_count mode: the first time each day the Dowser is on a
-## block with two or more others, learns how many of them register as evil).
+## Shape: ROLE_AT_SITE (group_count mode: the first time each day the Dowser is out in a
+## public area on a block with two or more others also out in public there, learns how
+## many of them register as evil).
 extends "res://sim/role_def.gd"
 
 
@@ -12,7 +13,7 @@ func _init() -> void:
 	kind = "info"
 	tags = ["ongoing_info", "evil_id"]
 	day = true
-	desc = "The first time each day the Dowser is on a block with two or more others, learns how many of them are evil."
+	desc = "The first time each day the Dowser is out in public on a block with two or more others, learns how many of them are evil."
 	shape = "ROLE_AT_SITE"
 	site_mode = "group_count"
 	site_group_key = "group"
@@ -33,10 +34,12 @@ func run_day_gift(w, dw, mind, _evil) -> void:
 
 
 func generate_reading(w, dw, ctx: Dictionary, _mind) -> Dictionary:
-	if not ctx.get("day_phase", false):
+	if not ctx.get("day_phase", false) or dw.at_home():
 		return {}
-	var b: String = dw.home_block if dw.at_home() else w.loc_block(dw.loc)
-	var others: Array = w.living().filter(func(m): return m != dw and (m.home_block if m.at_home() else w.loc_block(m.loc)) == b)
+	var b: String = w.loc_block(dw.loc)
+	if b == "":
+		return {}
+	var others: Array = w.living().filter(func(m): return m != dw and not m.at_home() and w.loc_block(m.loc) == b)
 	if others.size() < 2:
 		return {}
 	dw.dowsed_day = w.day
@@ -56,13 +59,15 @@ func generate_reading(w, dw, ctx: Dictionary, _mind) -> Dictionary:
 	}
 
 
-## A bluff changes the count, while keeping the same eligibility and complete local
-## crowd as a real Dowser. Target requests cannot manufacture a remote crowd.
+## A bluff changes the count, while keeping the same public-area eligibility and complete
+## local crowd as a real Dowser. Target requests cannot manufacture a remote crowd.
 func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: Array) -> Dictionary:
-	if w.day < min_gift_day or n.dowsed_day == w.day:
+	if w.day < min_gift_day or n.dowsed_day == w.day or n.at_home():
 		return {}
-	var blk: String = n.home_block if n.at_home() else w.loc_block(n.loc)
-	var others: Array = w.living().filter(func(m): return m != n and (m.home_block if m.at_home() else w.loc_block(m.loc)) == blk)
+	var blk: String = w.loc_block(n.loc)
+	if blk == "":
+		return {}
+	var others: Array = w.living().filter(func(m): return m != n and not m.at_home() and w.loc_block(m.loc) == blk)
 	if others.size() < 2:
 		return {}
 	var ids: Array = others.map(func(m): return m.id)
@@ -75,7 +80,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	n.dowsed_day = w.day
 	return {
 		"entry": {"data": {"group": ids, "count": count, "block": blk}, "text": "on %s I sensed %d evil among %s" % [content().block_name(blk), count, w._names(ids)]},
-		"why": "fabricates count for the complete local crowd on %s" % blk,
+		"why": "fabricates count for the complete public crowd on %s" % blk,
 	}
 
 

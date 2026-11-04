@@ -474,7 +474,7 @@ func _refresh_case() -> void:
 		_label(case_box, "Link grounds to this modifier. It asks the listener to assess your explanation; selecting it does not prove error or deception.", 17)
 		var option = _option(case_box, ["Misled reading", "Suspected lie", "Unlikely reading"])
 		option.select(["misled", "lying", "unlikely"].find(node.mode))
-		option.set_item_disabled(2, _report(node.card).get("role") != "surveyor")
+		option.set_item_disabled(2, _report(node.card).get("role", "") != "surveyor" or not _report(node.card).get("data", {}).has("count"))
 		option.item_selected.connect(func(i): node.mode = ["misled", "lying", "unlikely"][i]; _edit())
 	elif node.kind == "contradiction":
 		_clear(case_box)
@@ -1016,7 +1016,7 @@ func _explain_change(id: String, value: Dictionary, badge: Dictionary) -> void:
 	var card: Dictionary = _report(added[0])
 	var target: String = value.conclusion.get("target", "")
 	var others: Array = []
-	for who in card.get("subjects", [card.get("subject", "")]) + card.get("data", {}).get("seen", []) + card.get("data", {}).get("pair", []):
+	for who in card.get("subjects", [card.get("subject", "")]) + card.get("data", {}).get("seen", []) + card.get("data", {}).get("pair", []) + card.get("data", {}).get("trio", []) + [card.get("data", {}).get("nominator", ""), card.get("data", {}).get("nominee", "")]:
 		if who is String and who != "" and who != target and who not in others and board.view.people.any(func(p): return p.id == who):
 			others.append(who)
 	var note: String = "Adding \"%s\" weakened this." % card.get("text", "that card")
@@ -1048,7 +1048,7 @@ func set_evidence_field(id: String, field: String) -> void:
 	var value: String = field.substr(kind.length() + 1)
 	board.selected = id
 	if kind == "mode":
-		if node.kind == "modifier" and not (value == "unlikely" and card.get("role", "") != "surveyor"):
+		if node.kind == "modifier" and not (value == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))):
 			node.mode = value
 			_edit()
 		return
