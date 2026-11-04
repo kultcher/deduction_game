@@ -80,7 +80,12 @@ func _case(sd: int, size: int, to_day: int) -> void:
 		var owned = s.info_log.filter(func(e): return e.get("fake", false)).size()
 		_check(owned == fakes.size(), who + ": shadow owns its %d fake readings" % fakes.size())
 	# The real evil minds still take nothing from the ledger.
-	_check(evil.all(func(n): return n.ledger.is_empty()), tag + " real evil ledgers stay empty")
+	# A turned soul keeps the ledger it built while good, but adds nothing once evil.
+	var frozen = func(n):
+		if not n.turned:
+			return n.ledger.is_empty()
+		return n.ledger.values().all(func(e): return int(e.get("day", 0)) <= int(n.turned_day))
+	_check(evil.all(frozen), tag + " real evil ledgers stay empty (turned souls: frozen at the turn)")
 	# Snapshots carry the shadow view under its own key.
 	var snaps: Array = w.dlog.entries.filter(func(e): return e["type"] == "snapshot" and e["data"].has("shadow"))
 	_check(not snaps.is_empty(), tag + " snapshots carry a shadow view")
