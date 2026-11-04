@@ -17,6 +17,35 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 evening, Claude: patch_012 + M2a merged to main; new baseline `baseline_0534e6b`
+
+- **Base:** patch_012 unpacked at `fdf4760` as declared (`3e7b88a`), merged with `main`
+  (`e39fa1f`, the test audit) on `claude/m2a`, then the M1/refresh leftovers and M2a.
+- **012 lands.** All listed fixes check out; build 0 warnings, 0 errors.
+- **Merged with one known failure (Michael's call):** `test_workshop_remaining`
+  "presenting the restored epoch retracts earlier curse-era suspicion"
+  (`tools/test_workshop_remaining.gd:179`). Fails on `3e7b88a` alone: Merrin's delta is
+  +0.0015 instead of < 0, from the new `_chance_rumormonger` calibration. **Argon: please
+  fix in the next patch.**
+- **Three test updates for 012's intended behaviour (mine, no code changes):**
+  `test_backlog_batch2` checks `C.spoken_night` instead of "night 3";
+  `test_playtest_regressions` drops Surveyor from the no-fake-Medium list (it has one since
+  011) and runs the demon-cover vote check without a ready Scion (012's Scion fallback);
+  `test_shadow` lets a turned soul keep its good-era ledger, frozen at the turn.
+- **M2a** (see `docs/meeting_flow_plan.md` slice M2): `nominate <name> [#N|raw]` with the
+  on-deck case, nomination menu in `ui/main.gd`, informational "already public" toast,
+  `Mind.card_already_weighed` skip, `MindMeeting.block_safety`, reactive testimony and
+  crowd fading. Tests: `tools/test_meeting_m2a.gd` (in `ci_fast_suites.txt`).
+  Gotcha: testimony state keeps `spoke_ids` (the game uses `_testimony["spoken"]` as an
+  int), and only plain data goes on `w.meeting["testimony"]` (NPC objects there break the
+  Debug on/off fingerprint).
+- **Leftovers:** `answer_opinion` passes on second-hand role claims/hints
+  (`_second_hand_gift_note`); `WorkshopOwnership.refresh(g, n)` is one call and
+  `w.workshop_refresh` takes `(n)` only (capture/profile hooks updated).
+- **Checks:** full suite 124/125 (above); golden 2x GDScript identical, C# identical;
+  passive A/B in `docs/golden_baseline.md`.
+- **Next actor:** Argon (the one failing check); Claude for M2b (`podium_press`).
+
 ## 2026-11-04, Argon: Nov 4 Playtest Fixes (`95955` & `40741`) + `RoleConstraints.cs` CA2014 (`patch_012_playtest_fixes_fdf4760.zip`)
 
 - **Base:** `main` at `fdf4760f2a774479cad42ac1c91bfc4b4e4495b9` (`fdf4760`, post-`patch_011` + `baseline_4f7ba7f`).
