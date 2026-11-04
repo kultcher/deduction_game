@@ -115,6 +115,8 @@ Ground rules (from Nov 3, until Michael changes them):
   `claude/phase4-purge-bot` instead. It makes `main` strictly better (fixes 3 checks, adds
   no failures), so Michael may merge it as is; otherwise it waits for Argon's fixes
   to the five checks above. **Next actor: Argon** (patch_006 failures), or Michael (merge).
+- **Update 22:15 ET:** Michael said to merge as is; merged to `main` as PR #53 (`3ea25b5`).
+  **Next actor: Argon** (the five patch_006 checks above).
 
 ## 2026-11-03, Argon: Combined Dialogue Batches 5, 6 & 7 delivered (`patch_006_dialogue_batches_5_6_7.zip`)
 
