@@ -136,14 +136,16 @@ func answer_gift_custom(w, n, first_time: bool, tier: int, lines: Array, facts: 
 		if not first_time:
 			lines.pop_front() # Skip reconfirmation when there is work to report.
 		var said: String = "; ".join(PackedStringArray(doors))
-		lines.append(mind.say(n, "[PH] I keep watch over one door each night: %s." % (said[0].to_upper() + said.substr(1))))
+		var doors_cap: String = said[0].to_upper() + said.substr(1)
+		lines.append(mind.say_voiced(n, "warden_doors_report", "I keep watch over one door each night: %s." % doors_cap, {"doors": doors_cap}))
 		var saves: Array = []
 		for nd in range(0, w.day):
 			var sv: Dictionary = n.warden_saves.get(str(nd), {})
 			if not sv.is_empty() and w.by_id.has(sv.target):
 				saves.append("%s on %s" % [w.by_id[sv.target].name, night_name_fn.call(nd)])
 		if not saves.is_empty():
-			lines.append(mind.say(n, "[PH] Nobody died the nights I kept %s safe. I believe the Demon came for them and my watch turned it away." % " and ".join(PackedStringArray(saves))))
+			var saves_str: String = " and ".join(PackedStringArray(saves))
+			lines.append(mind.say_voiced(n, "warden_saves_claim", "Nobody died the nights I kept %s safe. I believe the Demon came for them and my watch turned it away." % saves_str, {"saves": saves_str}))
 		n.max_tier = maxi(n.max_tier, tier)
 		return {"lines": lines, "facts": facts}
 	return {}
@@ -180,3 +182,10 @@ func pressed_night_line(w, _n, fact: Dictionary, _night: int, when: String, alte
 	if door != "" and w.by_id.has(door):
 		return ("I stand by it: I guarded %s's door %s." if alternate else "My duty was at %s's door %s. That is still my account.") % [w.by_id[door].name, when]
 	return ""
+
+
+func pressed_night_slots(w, _n, fact: Dictionary, _night: int, when: String, _block_name_fn: Callable) -> Dictionary:
+	var door: String = fact.get("data", {}).get("target", fact.get("guard_claim", ""))
+	if door != "" and w.by_id.has(door):
+		return {"target": w.by_id[door].name, "when": when}
+	return {}

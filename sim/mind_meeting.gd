@@ -296,7 +296,7 @@ static func _heard_reading(w, n, eid: String) -> Dictionary:
 static func relay_reading(w, n, src, e: Dictionary, lines: Array, facts: Array) -> void:
 	var rn = C.role_name(e["role"])
 	var said = C.third_person(e["text"])
-	lines.append(say(n, "[PH] Word reached me from the %s: %s." % [rn, said]))
+	lines.append(say_voiced(n, "meeting_relay_reading", "Word reached me from the %s: %s." % [rn, said], {"role": rn, "reading": said}))
 	facts.append({"kind": "accusation", "subject": Gifts.implicated(e), "source": n.id, "relay": true, "role": e["role"],
 		"text": "%s says the %s (unnamed) told them: %s." % [n.name, rn, said]})
 	for l in w.living():
@@ -1349,7 +1349,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				var other: String = pair[0] if pair[1] == d.id else pair[1]
 				var fits: bool = (not Evil.is_teammate(w, d, other)) if d.is_evil() else susp(d, other) >= susp(d, src_id)
 				if fits and w.by_id.has(other) and w.by_id[other].alive:
-					lines.append(say(d, "[PH] One of the two, %s said. It isn't me, so look at %s." % [src.name, w.by_id[other].name]))
+					var other_name: String = w.by_id[other].name
+					lines.append(say_voiced(d, "defence_pair_other", "One of the two, %s said. It isn't me, so look at %s." % [src.name, other_name], {"source": src.name, "other": other_name}))
 					moves.append("pair_other")
 					move_strengths["pair_other"] = 1.0
 					move_scales["pair_other"] = Tuning.Meeting.DEFENCE_PAIR_OTHER_DELTA
@@ -1370,7 +1371,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	# 4. Nothing to show: fear, or the desperation play.
 	if moves.is_empty():
 		if _afraid(w, d) and not d.claim_public:
-			lines.append(say(d, "[PH] If I say what I am, I'll be dead by morning. But I'm not what you think."))
+			lines.append(say_voiced(d, "defence_fear_plea", "If I say what I am, I'll be dead by morning. But I'm not what you think."))
 			moves.append("fear")
 		else:
 			lines.append(say_voiced(d, "defence_desperation", "I don't know what's going on, but I know I'm not evil."))

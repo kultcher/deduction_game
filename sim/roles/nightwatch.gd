@@ -186,3 +186,7 @@ func override_night_sightings(w, n, nd: int) -> Dictionary:
 
 func pressed_night_line(_w, _n, fact: Dictionary, _night: int, when: String, alternate: bool, block_name_fn: Callable) -> String:
 	return ("I was keeping watch on %s %s; my account stands." if alternate else "My watch took me through %s %s. That's where I was.") % [block_name_fn.call(fact.block), when]
+
+
+func pressed_night_slots(_w, _n, fact: Dictionary, _night: int, when: String, block_name_fn: Callable) -> Dictionary:
+	return {"block": block_name_fn.call(fact.get("block", "")), "when": when}
