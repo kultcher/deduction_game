@@ -243,7 +243,7 @@ static func _show_nomination(g) -> void:
 	g.statement_used = false
 	var nm: Dictionary = g.w.meeting["pending"]
 	var t = g.w.by_id[nm["nominee"]]
-	g._headline("nomination", "%s nominates %s" % ["You" if nm["by"] == "player" else g.w.by_id[nm["by"]].name, t.name])
+	g._headline("nomination", ("You nominate %s" % t.name) if nm["by"] == "player" else ("%s nominates %s" % [g.w.by_id[nm["by"]].name, t.name]))
 	var blk = ""
 	if g.w.meeting["block"] != "":
 		blk = " %s is on the block with %d votes." % [g.w.by_id[g.w.meeting["block"]].name, g.w.meeting["block_count"]]
