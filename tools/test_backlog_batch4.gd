@@ -201,9 +201,11 @@ func repeated_refusals():
 	var first = a.command("ask gift")
 	Mind.answer_gift(b.w, nb)
 	var second = a.command("ask gift")
+	var second_speeches: Array = a.last_events.filter(func(e): return e.get("k", "") == "speech" and e.get("speaker", "") == na.id)
+	var second_said: String = Speech.said(second_speeches[0]) if not second_speeches.is_empty() else second
 	Mind.answer_gift(b.w, nb)
 	check(a.questions_left == 2 and a.free_repeats == 1 and "No question used" in second, "second identical gift refusal uses the existing one free-repeat slot")
-	check(first != second and "You've had my answer" in second or "still afraid" in second, "the repeated gift refusal has a different line")
+	check(first != second and ("You've had my answer" in second_said or "puts a target on my back" in second_said), "the repeated gift refusal has a different line")
 	check(na.pressed_today == nb.pressed_today and na.trust == nb.trust and a.w.rng.state == b.w.rng.state, "the free slot does not waive NPC fatigue/trust or alter disclosure RNG")
 	a.command("ask gift")
 	check(a.questions_left == 1 and a.free_repeats == 1, "later repeats cost a question after the single free repeat")
@@ -834,12 +836,10 @@ func count_reason_names():
 	var near: Array = g.w.living_neighbours(listener).filter(func(m): return not m.is_evil())
 	var source = near[0] if not near.is_empty() else g.w.living_good()[0]
 	var rng = g.w.rng.state
-	# Defence strengths are unchanged by 2c: Hearthwitch's zero reading uses its own tuning,
-	# Dowser the RoleDef default for a reading that clears the nominee.
-	var want = {"hearthwitch": C.Tuning.Roles.HEARTHWITCH.defend_strength_zero, "dowser": C.Tuning.Roles.DEFAULT_DEFEND_STRENGTH}
+	# Purge phase 4 retired the hand-set defence strengths: no role keeps legacy hooks.
 	for role in ["hearthwitch", "dowser"]:
 		var zero = {"day": 1, "phase": 0, "role": role, "data": {"group": [listener.id], "count": 0}, "shared": true}
-		check(not C.role_def(role).has_method("info_effects") and is_equal_approx(C.role_def(role).defend_strength(zero["data"], listener.id), want[role]), "zero-count reading preserves RoleDef defence strength without legacy info_effects: " + role)
+		check(not C.role_def(role).has_method("info_effects") and not C.role_def(role).has_method("defend_strength"), "no legacy info_effects or strength hooks remain: " + role)
 		if role == "hearthwitch":
 			continue # benched (not in the script) and not read by the shared model
 		listener.ledger = {}

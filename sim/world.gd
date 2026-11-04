@@ -67,6 +67,12 @@ var meeting = {}
 
 ## Player tools and night choices.
 var tools = {"ward": 1, "clemency": 1}
+var daily_npc_shares: Array = []    # Non-strategizing NPC-to-NPC items spoken today
+var _evening_chats_done_day: int = -1
+var initial_good_roles: Array = []  # Good roles dealt at case start (unaffected by death/curse)
+var town_hall_uses_left: int = Tuning.Setup.TOWN_HALL_USES_PER_CASE
+var town_hall_shown_roles: Array = []
+var _town_hall_rng: RandomNumberGenerator = null
 var player_ward = ""
 var ward_saves: Array = [] # Player-only aftermath, recorded only when their sigil stops an attack.
 var sleepwalk_claims: Array = [] # who has said "I've been known to sleepwalk" (to anyone)
@@ -243,8 +249,39 @@ func all_locations() -> Array:
 		out.append(s)
 	return out
 
+func player_locations() -> Array:
+	var out: Array = all_locations()
+	for pb in C.PLAYER_BUILDINGS.keys():
+		out.append(pb)
+	return out
+
 func locations_on(block: String) -> Array:
 	return all_locations().filter(func(l): return loc_block(l) == block)
+
+func player_locations_on(block: String) -> Array:
+	return player_locations().filter(func(l): return loc_block(l) == block)
+
+## Consult Town Hall census records: returns {roles: [r0, r1], in_play: r_in, uses_left: int}
+## using a dedicated deterministic RNG stream so passive simulation RNG is never perturbed.
+func consult_town_hall() -> Dictionary:
+	if town_hall_uses_left <= 0:
+		return {}
+	if _town_hall_rng == null:
+		_town_hall_rng = RandomNumberGenerator.new()
+		_town_hall_rng.seed = hash([seed_value, n_npcs, "town_hall"])
+	var in_pool: Array = initial_good_roles.filter(func(r): return not (r in town_hall_shown_roles))
+	var out_pool: Array = C.GOOD_ROLES.filter(func(r): return not (r in initial_good_roles) and not (r in town_hall_shown_roles))
+	if in_pool.is_empty() or out_pool.is_empty():
+		return {}
+	var r_in: String = in_pool[_town_hall_rng.randi_range(0, in_pool.size() - 1)]
+	var r_out: String = out_pool[_town_hall_rng.randi_range(0, out_pool.size() - 1)]
+	var pair: Array = [r_in, r_out] if _town_hall_rng.randi_range(0, 1) == 0 else [r_out, r_in]
+	town_hall_shown_roles.append(r_in)
+	town_hall_shown_roles.append(r_out)
+	town_hall_uses_left -= 1
+	dlog.add("town_hall", "player", "", {"roles": pair.duplicate(), "in_play": r_in, "uses_left": town_hall_uses_left},
+		"Town Hall records: %s vs %s (in play: %s; %d left)." % [r_in, r_out, r_in, town_hall_uses_left])
+	return {"roles": pair, "in_play": r_in, "uses_left": town_hall_uses_left}
 
 func npcs_at(l: String) -> Array:
 	return npcs.filter(func(n): return n.alive and n.loc == l)
@@ -323,6 +360,12 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 	max_days = 6 if npc_count < 10 else 8
 	day = 0
 	phase = C.NIGHT
+	daily_npc_shares = []
+	_evening_chats_done_day = -1
+	initial_good_roles = []
+	town_hall_uses_left = Tuning.Setup.TOWN_HALL_USES_PER_CASE
+	town_hall_shown_roles = []
+	_town_hall_rng = null
 	var build_id: String = trace_build if trace_build != "" else str(ProjectSettings.get_setting("application/config/version", "dev"))
 	var tuning_id: String = trace_tuning if trace_tuning != "" else Tuning.fingerprint()
 	trace_build = build_id
@@ -458,6 +501,7 @@ func _assign_roles() -> void:
 	for i in range(1 + mins.size(), order.size()):
 		order[i].role = good[k]
 		k += 1
+	initial_good_roles = good.duplicate()
 	var evil_count = 1 + mins.size()
 	# Evil only ever bluffs a gift that is on the script.
 	bluffs = shuffled(sc.town.filter(func(r): return not role_in_play(r))).slice(0, maxi(3, evil_count + 1))
@@ -739,9 +783,22 @@ func _day_sightings() -> void:
 					"block": loc_block(b.loc), "day": day, "phase": phase,
 					"with": b.busy_with if same_loc and b.busy_with != a.id else ""})
 
+## Run the evening post-phase NPC conversations early (used by Evening Tavern Gossip
+## so the player hears word from across the whole day, including evening chats, once).
+func finish_evening_conversations(talked_id: String = "") -> void:
+	if phase != C.EVENING or _evening_chats_done_day == day:
+		return
+	_evening_chats_done_day = day
+	_post_pair(talked_id)
+
 ## Advance to the next day phase. Returns false at the end of Evening.
 func end_day_phase(talked_id: String = "") -> bool:
-	_post_pair(talked_id)
+	if phase == C.EVENING and _evening_chats_done_day == day:
+		pass
+	else:
+		if phase == C.EVENING:
+			_evening_chats_done_day = day
+		_post_pair(talked_id)
 	snapshot("phase_end")
 	if phase < C.EVENING:
 		phase += 1
@@ -1796,6 +1853,8 @@ func find_totem(l: String) -> Dictionary:
 func start_new_day() -> void:
 	day += 1
 	phase = C.MORNING
+	daily_npc_shares = []
+	_evening_chats_done_day = -1
 	if day > max_days and not game_over:
 		dlog.set_time(day, "Morning")
 		_finish("evil", "Time ran out: the demon survived %d days." % max_days)

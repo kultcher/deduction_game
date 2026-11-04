@@ -11,7 +11,7 @@ const Tuning = preload("res://sim/tuning.gd")
 const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
-const Argue = preload("res://sim/argue.gd")
+const Deduction = preload("res://sim/deduction.gd")
 const Evil = preload("res://sim/evil.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
 const CardModel = preload("res://game/card_model.gd")
@@ -52,7 +52,6 @@ var town_quiet = false     # the town has had its say since the last nomination 
 var talk_approached = false  # this conversation began with them approaching you (it costs the phase)
 var statement_used = false # player's one statement on the pending nomination
 var presented_today = false # player has had the meeting floor today
-var last_link = {}          # result of the last 'link' (for 'conclude <number>')
 var notes = {}              # npc id -> player's note
 var guesses = {}            # npc id -> {guess, confidence 1..3}
 var guess_history: Array = []
@@ -239,7 +238,6 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	prediction_snapshots = []
 	prediction_spoiled = false
 	case_summary = {}
-	last_link = {}
 	log_paths = []
 	ward_log = {}
 	sigil_heard = {}
@@ -405,10 +403,12 @@ func find_location(token: String) -> String:
 	var t = token.to_lower().strip_edges().trim_prefix("the ")
 	if t == "":
 		return ""
-	for l in w.all_locations():
+	if t in ["town hall", "townhall", "hall", "town_hall"]:
+		return "town_hall"
+	for l in w.player_locations():
 		if l == t:
 			return l
-	for l in w.all_locations():
+	for l in w.player_locations():
 		var nm: String = w.loc_name(l).to_lower()
 		if l.begins_with(t) or t in nm:
 			return l
@@ -568,9 +568,6 @@ func _dispatch(text: String) -> void:
 		"timeline", "tl":
 			_screen(_timeline(rest))
 			return
-		"link":
-			_link_command(rest)
-			return
 		"hide", "unhide":
 			_narr(hide_card(rest.strip_edges().trim_prefix("#").to_int(), verb == "hide"))
 			return
@@ -581,8 +578,8 @@ func _dispatch(text: String) -> void:
 			show_hidden = not show_hidden
 			_narr("Hidden cards are now %s." % ("shown" if show_hidden else "hidden"))
 			return
-		"conclude", "deduce":
-			_conclude_command(rest)
+		"link", "conclude", "deduce":
+			_err("Cases are built in the Case Workshop now (the old link / conclude commands are retired).")
 			return
 		"note":
 			var p0 = rest.split(" ", false)
@@ -798,10 +795,6 @@ func known_haunt_names(id: String) -> String:
 func _close_conversation() -> void:
 	GameConversation._close_conversation(self)
 
-func find_links(limit: int = 40) -> Array:
-	return GameBoard.find_links(self, limit)
-
-
 # ---------------------------------------------------------------- meeting forwarders
 
 func _start_meeting() -> void:
@@ -860,25 +853,10 @@ func filter_cards(filter: String) -> Array:
 func _filter_term(cards: Array, f: String) -> Array:
 	return GameBoard._filter_term(self, cards, f)
 
-## Link cards: run the contradiction templates. Returns the check result and remembers it.
-func link_cards(nums: Array) -> Dictionary:
-	return GameBoard.link_cards(self, nums)
-
 ## File a deduction card. conclusion: {type, a, role?, night?, card?}. Returns the card
 ## number, or -1 if refused (reason in last_error).
-func file_deduction(conclusion: Dictionary, supports: Array, match_info: Dictionary = {}, chosen: int = 0, workshop_filing: bool = false) -> int:
-	return GameBoard.file_deduction(self, conclusion, supports, match_info, chosen, workshop_filing)
-
-## Parse "conclude <name> <is | is not | should be> <status> [night N] [about #N] [because <#> ...]".
-## Status: good, evil, the demon, a gift, lying, misled, misled or lying, protected, spared.
-func _parse_conclusion(rest: String) -> Dictionary:
-	return GameBoard._parse_conclusion(self, rest)
-
-func _link_command(rest: String) -> void:
-	GameBoard._link_command(self, rest)
-
-func _conclude_command(rest: String) -> void:
-	GameBoard._conclude_command(self, rest)
+func file_deduction(conclusion: Dictionary, supports: Array, workshop_filing: bool = false) -> int:
+	return GameBoard.file_deduction(self, conclusion, supports, workshop_filing)
 
 ## "present <card#> [for|against <name>]" in conversation: work out what the player means.
 ## About the listener -> press them. A deduction -> argue it. A plain card about others ->

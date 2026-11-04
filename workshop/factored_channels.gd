@@ -472,9 +472,12 @@ static func _conditional(graph: Dictionary, facts: Array, kind: String, extra: D
 ## separate gifts/sources integrate independently.
 static func _roles(view: Dictionary, graph: Dictionary) -> void:
 	var facts: Array = graph.facts.filter(func(f): return _role_keys(f.card).size() > 0)
+	var has_th: bool = facts.any(func(f): return f.card.kind == "town_hall")
 	var components: Array = []
 	for fact in facts:
 		var keys = _role_keys(fact.card)
+		if has_th and "town_hall_pool" not in keys:
+			keys = keys + ["town_hall_pool"]
 		var combined: Array = [fact]
 		var merged = true
 		while merged:
@@ -503,6 +506,8 @@ static func _role_keys(card: Dictionary) -> Array:
 				result.append("holder:" + person)
 		if card.kind == "report" and card.role == "sexton":
 			result.append("night-walk")
+	elif card.kind == "town_hall":
+		result = ["town_hall_pool"] + card.get("data", {}).get("roles", []).map(func(r): return "gift:" + str(r))
 	elif card.kind == "totem":
 		result = ["gift:revenant"] + card.data.candidates.map(func(id): return "holder:" + id)
 	elif card.kind == "event" and card.get("event") == "martyr":

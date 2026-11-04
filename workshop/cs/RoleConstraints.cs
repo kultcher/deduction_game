@@ -34,6 +34,7 @@ internal static class RoleConstraintsKernel
     public const int KindSecretClaim = 3;
     public const int KindTotem = 4;
     public const int KindEventMartyr = 5;
+    public const int KindTownHall = 6;
 
     // Card flag bits (slot 1):
     public const int FlagQuoted = 1 << 0;
@@ -496,6 +497,11 @@ internal static class RoleConstraintsKernel
         int veteranNight = -1;
         int martyrTargetToken = 0;
 
+        Span<int> thR0Stack = stackalloc int[16];
+        Span<int> thR1Stack = stackalloc int[16];
+        Span<int> thPickStack = stackalloc int[16];
+        int thCount = 0;
+
         bool worldHasConverted = world.HasConverted;
         int worldConverted = world.ConvertedRaw;
 
@@ -509,6 +515,21 @@ internal static class RoleConstraintsKernel
                 continue;
             }
             int kind = cardInts[off];
+            if (kind == KindTownHall)
+            {
+                int r0 = cardInts[off + 13];
+                int r1 = cardInts[off + 14];
+                int pickMode = cardInts[off + 15];
+                if (r0 < 0 || r1 < 0 || r0 == r1 || pickMode == 3 || thCount >= 16)
+                {
+                    return 0.0;
+                }
+                thR0Stack[thCount] = r0;
+                thR1Stack[thCount] = r1;
+                thPickStack[thCount] = pickMode;
+                thCount++;
+                continue;
+            }
             if (kind == KindTotem)
             {
                 int candidates = cardInts[off + 13];
@@ -765,7 +786,120 @@ internal static class RoleConstraintsKernel
             }
         }
 
-        return Matching(assignMasks.Slice(0, assignCount), assignCount - 1, 0) ? seerWeight : 0.0;
+        if (thCount == 0)
+        {
+            return Matching(assignMasks.Slice(0, assignCount), assignCount - 1, 0) ? seerWeight : 0.0;
+        }
+        Span<int> forbiddenRoles = stackalloc int[16];
+        bool thOk = TownHallMatches(
+            assignRoles,
+            assignMasks,
+            assignCount,
+            thR0Stack.Slice(0, thCount),
+            thR1Stack.Slice(0, thCount),
+            thPickStack.Slice(0, thCount),
+            0,
+            good,
+            forbiddenRoles,
+            0);
+        return thOk ? seerWeight : 0.0;
+    }
+
+    private static bool TownHallMatches(
+        ReadOnlySpan<int> curRoles,
+        ReadOnlySpan<int> curMasks,
+        int curCount,
+        ReadOnlySpan<int> thR0,
+        ReadOnlySpan<int> thR1,
+        ReadOnlySpan<int> thPick,
+        int idx,
+        int good,
+        ReadOnlySpan<int> forbidden,
+        int forbiddenCount)
+    {
+        if (idx >= thR0.Length)
+        {
+            return Matching(curMasks.Slice(0, curCount), curCount - 1, 0);
+        }
+
+        int r0 = thR0[idx];
+        int r1 = thR1[idx];
+        int pickMode = thPick[idx];
+
+        Span<int> nextRoles = stackalloc int[curCount + 1];
+        Span<int> nextMasks = stackalloc int[curCount + 1];
+        Span<int> nextForbidden = stackalloc int[forbiddenCount + 1];
+
+        for (int choice = 0; choice < 2; choice++)
+        {
+            if (pickMode == 1 && choice != 0)
+            {
+                continue;
+            }
+            if (pickMode == 2 && choice != 1)
+            {
+                continue;
+            }
+
+            int inRole = choice == 0 ? r0 : r1;
+            int outRole = choice == 0 ? r1 : r0;
+
+            bool inIsForbidden = false;
+            for (int f = 0; f < forbiddenCount; f++)
+            {
+                if (forbidden[f] == inRole)
+                {
+                    inIsForbidden = true;
+                    break;
+                }
+            }
+            if (inIsForbidden)
+            {
+                continue;
+            }
+
+            bool outIsAssigned = false;
+            for (int a = 0; a < curCount; a++)
+            {
+                if (curRoles[a] == outRole)
+                {
+                    outIsAssigned = true;
+                    break;
+                }
+            }
+            if (outIsAssigned)
+            {
+                continue;
+            }
+
+            curRoles.Slice(0, curCount).CopyTo(nextRoles);
+            curMasks.Slice(0, curCount).CopyTo(nextMasks);
+            int nextCount = curCount;
+            if (!AssignRole(nextRoles, nextMasks, ref nextCount, inRole, good))
+            {
+                continue;
+            }
+
+            forbidden.Slice(0, forbiddenCount).CopyTo(nextForbidden);
+            nextForbidden[forbiddenCount] = outRole;
+
+            if (TownHallMatches(
+                nextRoles,
+                nextMasks,
+                nextCount,
+                thR0,
+                thR1,
+                thPick,
+                idx + 1,
+                good,
+                nextForbidden,
+                forbiddenCount + 1))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

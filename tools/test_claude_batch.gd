@@ -274,7 +274,7 @@ func _evil_subject_never_accepts() -> void:
 		var g = _game(sd)
 		var e = g.w.evil_team()[0]
 		for type in ["minion", "evil", "demon"]:
-			var mask: Dictionary = preload("res://sim/argue.gd")._evil_mask(g.w, e, {"type": type, "a": e.id}, 0, false)
+			var mask: Dictionary = preload("res://sim/presentation_reply.gd")._evil_mask(g.w, e, {"type": type, "a": e.id}, 0, false)
 			tried += 1
 			if mask.get("stance", "") == "accept":
 				accepted += 1

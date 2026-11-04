@@ -22,14 +22,6 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 	return "%s %s: %d evil of %s" % [src, display_name, d.get("count", 0), _names(group_of(d), nm)]
 
 
-func card_strength(d: Dictionary, _suspect_id: String) -> float:
-	return Tuning.Roles.HEARTHWITCH.card_strength_per_evil * d.get("count", 0)
-
-
-func defend_strength(d: Dictionary, _nominee: String) -> float:
-	return Tuning.Roles.HEARTHWITCH.defend_strength_zero if d.get("count", 0) == 0 else 0.0
-
-
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var broken: bool = n.gift_broken()
 	var nb: Array = w.living_neighbours(n)

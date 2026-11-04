@@ -7,7 +7,7 @@ const Game = preload("res://game/game.gd")
 const World = preload("res://sim/world.gd")
 const NPC = preload("res://sim/npc.gd")
 const Mind = preload("res://sim/mind.gd")
-const Argue = preload("res://sim/argue.gd")
+const Deduction = preload("res://sim/deduction.gd")
 const C = preload("res://sim/content.gd")
 
 const PROFILES = [
@@ -96,7 +96,7 @@ func _init() -> void:
 					eval = d["details"]
 				if d["kind"] == "argument" and d["stage"] == "contest":
 					contest = d["details"]
-			var eid = "arg:" + Argue.conclusion_key(ded["conclusion"])
+			var eid = "arg:" + Deduction.conclusion_key(ded["conclusion"])
 			var e: Dictionary = n.ledger[eid]
 			var old: Dictionary = snapshots[n.id]
 			var expected_delta: float = 0.55 * (1.4 - 0.8 * p[4]) * eval["nominal_weight"]

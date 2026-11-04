@@ -4,7 +4,6 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
-const Argue = preload("res://sim/argue.gd")
 
 var fails = 0
 
@@ -15,7 +14,6 @@ func _init() -> void:
 	_test_stable_recompute()
 	_test_other_source()
 	_test_mutual_accusation()
-	_test_chained_deduction()
 	_test_weak_restatement()
 	_test_poison_argument_undone()
 	_test_own_reading_poisoned()
@@ -176,30 +174,6 @@ func _argue(t: Dictionary, eid: String, base: float, supports: Array, conclusion
 
 func _eff(t: Dictionary, eid: String) -> float:
 	return t["L"].ledger[eid]["eff"] if t["L"].ledger.has(eid) else 0.0
-
-func _test_chained_deduction() -> void:
-	var t = _setup(5107)
-	var g = t["g"]
-	var w = t["w"]
-	var L = t["L"]
-	g._workshop_native_submission = true
-	g._workshop_native_social = true
-	var kb = g.add_card(Mind.info_fact(w, t["B"], _seer(1, t["A"].id, t["C"].id)))
-	var d1 = g.file_deduction({"type": "evil", "a": t["A"].id}, [kb])
-	Argue.evaluate(w, L, g.board[d1 - 1], g.board, 1.0)
-	var d2 = g.file_deduction({"type": "demon", "a": t["A"].id}, [d1])
-	Argue.evaluate(w, L, g.board[d2 - 1], g.board, 1.0)
-	g._workshop_native_submission = false
-	g._workshop_native_social = false
-	Mind.refresh_beliefs(w, L, " (chained deduction setup)")
-	var e1 = "arg:" + Argue.conclusion_key({"type": "evil", "a": t["A"].id})
-	var e2 = "arg:" + Argue.conclusion_key({"type": "demon", "a": t["A"].id})
-	var a1 = _eff(t, e1)
-	var a2 = _eff(t, e2)
-	_doubt(t, t["B"].id, 1)
-	var b1 = _eff(t, e1)
-	var b2 = _eff(t, e2)
-	_check(a2 > 0.0 and b1 < a1 and b2 < a2 * 0.7, "a deduction built on another weakens when the original evidence is discredited")
 
 func _test_weak_restatement() -> void:
 	var t = _setup(5108)

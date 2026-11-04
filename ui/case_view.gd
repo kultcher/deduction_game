@@ -346,7 +346,7 @@ func show_card_menu(num: int, at: Vector2i) -> void:
 	state.select_card(num)
 	var card: Dictionary = g.board[num - 1]
 	card_menu.clear()
-	if card.kind != "deduction":
+	if card.kind != "deduction" and not card.get("tavern_gossip", false) and card.get("workshop_usable", true):
 		card_menu.add_item("Add to Case Workshop", CardAction.WORKSHOP)
 	card_menu.add_item("Unhide" if card.get("hidden", false) else "Hide", CardAction.HIDE)
 	if card.get("kind", "") == "deduction":
@@ -646,6 +646,9 @@ func selected_cards() -> Array:
 ## Double-click, drag or the card menu: put a board card into the Case Workshop.
 func add_to_workshop(num: int) -> void:
 	if g == null or num < 1 or num > g.board.size() or g.board[num - 1].kind == "deduction":
+		return
+	if g.board[num - 1].get("tavern_gossip", false) or not g.board[num - 1].get("workshop_usable", true):
+		status_label.text = "Card #%d is an unattributed tavern rumour and cannot be used in the Case Workshop." % num
 		return
 	workshop.add_card(num)
 	_refresh_staged()

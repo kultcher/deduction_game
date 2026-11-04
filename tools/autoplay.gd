@@ -3,10 +3,14 @@
 ##
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
-##         [--no-attention]
+##         [--no-attention] [--insight 1.0] [--backend gdscript|csharp|verify]
 ##
 ## --passive: a control player who does nothing (waits every phase, declines approaches,
-## never nominates, votes no, sleeps). The town's win rate on its own.
+## never nominates, votes no, sleeps). The town's win rate on its own: the floor.
+## Otherwise the bot is the analyst (tools/analyst.gd): a neutral test juror reads the
+## player's board through the shared model and gives everyone a posterior chance of being
+## evil; the bot ranks, nominates, votes and builds Workshop cases from it. That is the
+## ceiling, a near-ideal reader. --insight < 1.0 makes it miss that share of cards.
 ##
 ## --transcript prints everything the player would see. Logs go to <log-dir>/case_<seed>.*
 ## --no-trace skips detailed state sidecars; ordinary developer logs and metrics remain.
@@ -26,11 +30,19 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
-const Gifts = preload("res://sim/gifts.gd")
-const Argue = preload("res://sim/argue.gd")
 const Mind = preload("res://sim/mind.gd")
 const Metrics = preload("res://game/case_metrics.gd")
 const BotWorkshop = preload("res://tools/autoplay_workshop.gd")
+const Analyst = preload("res://tools/analyst.gd")
+
+## Analyst decision thresholds on the juror's posterior P(evil) (bot policy, not game tuning).
+const TELL_P = 0.55
+const NOMINATE_P = 0.6
+const ACCUSE_P = 0.6
+const VOTE_P = 0.5
+const DEFEND_P = 0.12
+const CLEMENCY_P = 0.06
+const CASE_P = 0.4
 
 const NEW_ACTIONS = ["offer_ward", "offer_vigil", "ask_person", "answer_confidence", "answer_protection", "apologise", "request_check", "request_guard", "request_watch", "keep_ward", "keep_vigil"]
 var talk_policy_used = {}
@@ -50,6 +62,10 @@ var last_workshop_case_by_target = {}
 var workshop_cases_filed: int = 0
 var hub_cases_filed: int = 0
 var rng = RandomNumberGenerator.new()
+var insight: float = 1.0
+var analyst = {}
+var _belief_key = ""
+var _belief_cache = {}
 
 func _init() -> void:
 	var args = _parse(OS.get_cmdline_user_args())
@@ -62,12 +78,18 @@ func _init() -> void:
 		quit(2)
 		return
 	transcript = args.has("transcript")
+	insight = float(args.get("insight", "1.0"))
 	passive = args.has("passive")
 	trace_enabled = not args.has("no-trace")
 	no_workshop_cases = args.has("no-workshop-cases")
 	no_hub = args.has("no-hub")
 	if args.has("no-attention"):
 		preload("res://workshop/reasoner.gd").unlimited_cards = true
+	# Solver backend (same game either way; csharp is ~3x faster, verify checks both).
+	match str(args.get("backend", "gdscript")).to_lower():
+		"csharp": SolverBackend.set_mode(SolverBackend.Mode.CSHARP)
+		"verify": SolverBackend.set_mode(SolverBackend.Mode.VERIFY)
+		_: SolverBackend.set_mode(SolverBackend.Mode.GDSCRIPT)
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links",
@@ -133,6 +155,9 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	last_workshop_case_by_target = {}
 	workshop_cases_filed = 0
 	hub_cases_filed = 0
+	analyst = Analyst.new_state(insight)
+	_belief_key = ""
+	_belief_cache = {}
 	talk_policy_used = {}
 	new_talk_counts = {}
 	for key in NEW_ACTIONS: new_talk_counts[key] = 0
@@ -219,6 +244,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	r["metrics"]["legacy_fallback_points"] = points
 	r["metrics"]["workshop_cases"] = workshop_cases_filed
 	r["metrics"]["hub_cases"] = hub_cases_filed
+	r["metrics"]["analyst"] = {"insight": insight, "juror_evals": analyst.get("evals", 0), "juror_ms": analyst.get("eval_ms", 0),
+		"accepted": analyst.get("accepted", []).size(), "set_aside": analyst.get("rejected", {}).size(), "missed": analyst.get("missed", {}).size()}
 	return r
 
 # ---------------------------------------------------------------- suspicion scale
@@ -382,72 +409,19 @@ func _out(s: String) -> void:
 
 # ---------------------------------------------------------------- bot brain
 
+## The analyst's picture: posterior P(evil) per person, from the juror's reading of the
+## board (tools/analyst.gd). Recomputed only when the visible evidence changes.
 func _scores() -> Dictionary:
 	var w = g.w
-	var sc = {}
+	var key: String = "%d:%d:%d:%d:%d:%d" % [g.board.size(), g.profile_receipts.size(), w.day, w.phase, w.executions.size(), w.living().size()]
+	if key != _belief_key:
+		_belief_key = key
+		_belief_cache = Analyst.belief(g, analyst, rng)
+	var sc: Dictionary = {}
 	for n in w.npcs:
-		sc[n.id] = 0.0
-	for pass_i in range(2):
-		var nsc = {}
-		for n in w.npcs:
-			nsc[n.id] = 0.0
-		var claims = {}
-		for c in g.board:
-			var src: String = c.get("source", "")
-			var cred = 1.0
-			if sc.has(src):
-				cred = clampf(1.0 - sc[src] / 2.0, 0.1, 1.0)
-			var subj: Array = c.get("subject", [])
-			var add = 0.0
-			match c["kind"]:
-				"info":
-					# Any reading: what it points at, and what it speaks for (see sim/gifts.gd).
-					var role: String = c.get("role", "")
-					var d: Dictionary = c.get("data", {})
-					var imp: Array = Gifts.implicated(c)
-					var clr: Array = Gifts.clears(c)
-					var strong = {"seer": 1.0, "archivist": 0.7, "nightwatch": 0.4, "hearthwitch": 0.5, "dowser": 0.5,
-						"gravedigger": 1.2, "martyr": 1.2, "medium": 0.4}
-					for i in subj:
-						if i == src or not nsc.has(i):
-							continue
-						var a = 0.0
-						if i in imp:
-							a = strong.get(role, 0.3)
-							if role in ["hearthwitch", "dowser"]:
-								a = a * d.get("count", 0) / maxf(1.0, Gifts.group_of(d).size()) * 2.0
-						elif i in clr:
-							a = -0.3
-						nsc[i] += a * cred
-					subj = []
-				"sighting":
-					if c.get("phase", -1) == C.NIGHT:
-						# Out at night only counts near a death (and less for open walkers), as the town reckons it.
-						var sc_n = 0.12
-						if not subj.is_empty():
-							sc_n = Mind.night_sighting_scale(w, null, subj[0], c.get("block", ""), c.get("day", -1))
-						add = (0.6 if src == "player" else 0.3) * sc_n * 2.0
-				"refusal":
-					add = 0.15
-				"claim":
-					var role: String = c.get("role", "")
-					if role != "none" and not c.get("private", false):
-						if not claims.has(role):
-							claims[role] = []
-						if not (subj[0] in claims[role]):
-							claims[role].append(subj[0])
-			for i in subj:
-				if i != src and nsc.has(i):
-					nsc[i] += add * cred
-		for role in claims:
-			if claims[role].size() > 1:
-				for i in claims[role]:
-					nsc[i] += 1.0
-		sc = nsc
-	BotWorkshop.apply_trace_and_profile_scores(g, sc)
-	for n in w.npcs:
+		sc[n.id] = float(_belief_cache.get(n.id, 0.0))
 		if not n.alive and n.death_cause == "demon":
-			sc[n.id] = -9.0
+			sc[n.id] = 0.0
 	return sc
 
 func _top_suspect():
@@ -555,7 +529,7 @@ func _decide() -> String:
 				var n = fresh[rng.randi_range(0, fresh.size() - 1)]
 				talked[n.id] = w.day
 				return "talk " + n.id
-			if g.loc == "tavern":
+			if w.phase == C.EVENING and g.loc == "tavern":
 				return "gossip"
 			if rng.randf() < 0.5:
 				return "search"
@@ -580,15 +554,12 @@ func _decide() -> String:
 					if dd > 0:
 						return "convince %d" % dd
 			var ts = _top_suspect()
-			if ts[0] != null and ts[1] >= 0.8 and ts[0] != n:
-				# Use the strongest card against them.
+			if ts[0] != null and ts[1] >= TELL_P and ts[0] != n:
+				# Tell them the latest card that points at the top suspect.
 				var best_c = 0
-				var best_v = 0.25
 				for c in g.board:
 					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and not (c["kind"] in ["vote", "secret", "deduction", "conversation", "home", "haunt"]) and g._presentation_rejection(c) == "":
-						var v: float = Mind.card_strength(w, c, ts[0])
-						if v > best_v:
-							best_v = v
+						if Mind.card_implicates(w, c, ts[0].id):
 							best_c = c["n"]
 				if best_c > 0:
 					return "tell %s %d" % [ts[0].id, best_c]
@@ -602,7 +573,7 @@ func _decide() -> String:
 				if ded > 0:
 					return "present %d" % ded
 			var ts = _top_suspect()
-			if ts[0] != null and ts[1] >= 1.0 and w.day >= 2 and w.can_nominate("player", ts[0].id) == "":
+			if ts[0] != null and ts[1] >= NOMINATE_P and w.day >= 2 and w.can_nominate("player", ts[0].id) == "":
 				if w.meeting["block"] != ts[0].id:
 					return "nominate " + ts[0].id
 			return "done" if g.town_quiet else "wait"
@@ -615,13 +586,13 @@ func _decide() -> String:
 				for c in g.board:
 					if nm["nominee"] in c.get("subject", []) and c.get("source", "") != nm["nominee"] and c["kind"] in ["info", "sighting", "trace"]:
 						best_card = c["n"]
-				if s <= -0.3:
+				if s <= DEFEND_P:
 					return "defend"
-				if s >= 1.0:
+				if s >= ACCUSE_P:
 					return "accuse %d" % best_card if best_card > 0 else "accuse"
-			if w.tools["clemency"] > 0 and nm["by"] != "player" and s <= -0.8 and rng.randf() < 0.5:
+			if w.tools["clemency"] > 0 and nm["by"] != "player" and s <= CLEMENCY_P and rng.randf() < 0.5:
 				return "clemency"
-			return "vote yes" if s >= 0.5 else "vote no"
+			return "vote yes" if s >= VOTE_P else "vote no"
 		"night":
 			var promised = new_night_option(g)
 			if promised != "": return promised
@@ -669,42 +640,21 @@ static func _parse(argv: PackedStringArray) -> Dictionary:
 		i += 1
 	return out
 
-## Look for a contradiction among recent cards; file the explanation blaming the most
-## suspicious person. Returns the deduction card number, or 0.
+## Build a Workshop case against the analyst's top suspects (the top two, if the first
+## won't hold) and return its card number; else the latest filed case, or 0.
 func _find_or_file_deduction() -> int:
+	if no_workshop_cases:
+		return _latest_deduction()
 	var sc = _scores()
-	if not no_workshop_cases:
-		var built: Dictionary = BotWorkshop.build_and_file_case(g, sc, not no_hub, filed_workshop_sigs, last_workshop_case_by_target)
+	var ranked: Array = g.w.living().filter(func(n): return sc.get(n.id, 0.0) >= CASE_P)
+	ranked.sort_custom(func(a, b): return sc[a.id] > sc[b.id] if not is_equal_approx(sc[a.id], sc[b.id]) else a.id < b.id)
+	for target in ranked.slice(0, 2):
+		var built: Dictionary = Analyst.build_case(g, analyst, target.id, sc, not no_hub, filed_workshop_sigs, last_workshop_case_by_target)
 		if int(built.get("card", 0)) > 0:
 			workshop_cases_filed += 1
 			if built.get("used_hub", false):
 				hub_cases_filed += 1
 			return int(built.card)
-	var recent: Array = g.board.filter(func(c): return not (c["kind"] in ["deduction", "home", "haunt"]) and g._presentation_rejection(c) == "").slice(-14)
-	for i in range(recent.size()):
-		for j in range(i + 1, recent.size()):
-			var key = "%d:%d" % [recent[i]["n"], recent[j]["n"]]
-			if linked_pairs.has(key):
-				continue
-			linked_pairs[key] = true
-			if Argue.check(g.w, [recent[i], recent[j]])["matches"].is_empty():
-				continue
-			var lk = g.link_cards([recent[i]["n"], recent[j]["n"]])
-			var best = 0
-			var best_s = -99.0
-			for k in range(lk["options"].size()):
-				var b: String = lk["options"][k]["expl"].get("blame", "")
-				var ek: String = lk["options"][k]["expl"]["kind"]
-				var s2 = sc.get(b, 0.0) + (0.3 if ek == "misled" else 0.0)
-				if ek in ["clear", "herring"]:
-					s2 = -sc.get(b, 0.0) - 0.2  # clearing someone: prefer the least suspicious
-				if s2 > best_s:
-					best_s = s2
-					best = k
-			var o = lk["options"][best]
-			var fn = g.file_deduction(o["expl"]["conclusion"], o["match"]["cards"], o["match"], o["expl"]["id"])
-			if fn > 0:
-				return fn
 	return _latest_deduction()
 
 func _latest_deduction() -> int:

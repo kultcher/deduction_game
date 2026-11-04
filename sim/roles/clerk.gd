@@ -22,10 +22,6 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 	return "%s Clerk: %s in %s" % [src, content().role_name(d.get("role", "")), _names(d.get("pair", []), nm)]
 
 
-func defend_strength(_d: Dictionary, _nominee: String) -> float:
-	return Tuning.Roles.CLERK.defend_strength
-
-
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var broken: bool = n.gift_broken()
 	var targets: Array = w.npcs.filter(func(m): return m != n and not m.is_evil())

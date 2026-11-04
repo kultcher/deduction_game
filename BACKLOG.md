@@ -748,6 +748,10 @@ exact values remain open. The code-derived examples and clarifications are in
   > `tools/autoplay.gd::_decide`: the bot searches crime scenes as now and otherwise only on public
   > grounds. Teaching it to read traces and drops stays open. Note in the commit that bot baselines
   > may shift.
+  >
+  > **Nov 3:** the analyst bot (legacy purge 4c) reads trace cards through the shared model
+  > (trace matches use unlocked profile facets), so traces now count. It still doesn't
+  > choose where to search for drops.
 
   > **Batch 2 verification:** removed only the hidden drop-presence check in `_decide`; public
   > crime-scene searches and the ordinary search/wait roll remain. Bot baselines may shift,
@@ -868,7 +872,12 @@ exact values remain open. The code-derived examples and clarifications are in
   and defences. Expect a much stronger bot (near-ideal reader) and slower bot games
   (about 10-30 test-juror evaluations a day); re-baseline old vs new bot on the same
   seeds. Then the `link` / `conclude` text commands can be retired with the templates.
-  [deferred]
+  [done]
+
+  > **Done (Claude, Nov 3, legacy purge Phase 4c):** `tools/analyst.gd`. The juror reads
+  > the player's board through the shared model, the bot builds greedy Workshop cases
+  > (conclusion "evil" only), and `--insight` degrades it. `link` / `conclude` / `deduce`
+  > and the templates are deleted. Old vs new baselines are in `docs/handoff_log.md`, Nov 3.
 
 - **The Revenant can hide a new totem each day.** Burning a totem doesn't make the
   Revenant safe to hang for good: in 54875 the totem burned on Day 4, a new one was
@@ -1138,8 +1147,8 @@ exact values remain open. The code-derived examples and clarifications are in
 ## Template gaps (NYI)
 
 A running list of patterns that come up in play, or that the mechanics make meaningful,
-but that no link template recognises yet. Add to it whenever a playtest log shows
-"no template matched" on a combination that should mean something.
+but that the Case Workshop / shared model can't express yet. (The link templates were
+deleted Nov 3, so the list now tracks Workshop gaps.)
 
 - **Time-scoped Revenant possession premise.** Let "X was possessed by a Revenant
   on day D" be an explicit argument/case premise, so testimony and alignment claims

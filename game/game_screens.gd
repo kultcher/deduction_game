@@ -9,7 +9,7 @@ const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
-const Argue = preload("res://sim/argue.gd")
+const Deduction = preload("res://sim/deduction.gd")
 const Evil = preload("res://sim/evil.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
 
@@ -28,17 +28,11 @@ static func _help(g) -> String:
 	return """Commands
   Anytime : look | map | cast | profile <name> | board [filter] | timeline [filter] | roles | tools | help | log | fallbacks
             filters: person, block, location, kind, class, d2 / n1, or any text
-  Case    : link <card#> <card#> [card#]  (check for a contradiction)
-            conclude <number>  (file an explanation from your last link)
-            conclude <name> <is | is not | should be> <status> [night N] [because <card#> ...]
-            conclude one of these is misled or lying because <card#> ...  ("something doesn't add up")
-              status: good, evil, the demon, a gift (seer...), lying, misled, misled or lying;
-                      should be protected / spared
-              misled = not lying, but their information was wrong (poisoned or mistaken)
+  Case    : build cases in the Case Workshop; present them at the meeting
             hide <#> | unhide <#> | showhidden | delete <#> (your own deductions only)
             note <name> <text> | guess <name> <role|evil|good> [1-4] | theory
   Day     : go <place | block | person>   (then one free move within the same block)
-            then one action: talk <name> | search | gossip (tavern) | wait
+            then one action: talk <name> | search | gossip (tavern, evening) | records (town hall, morning/afternoon, 3/case) | wait
   Talking : ask gift | ask night | ask seen <today | morning | afternoon | evening | yesterday [phase]>
             ask are <gift> | ask about <name> (haunts and recent sightings) | bye
             ask about <gift> ("Have you heard of a ...?")
@@ -490,7 +484,7 @@ static func _spread(g, vals: Dictionary) -> String:
 static func debug_card_text(g, card: Dictionary) -> String:
 	var eid = ""
 	if card.get("kind", "") == "deduction":
-		eid = "arg:" + Argue.conclusion_key(Argue.normalize(card["conclusion"].duplicate()))
+		eid = "arg:" + Deduction.conclusion_key(Deduction.normalize(card["conclusion"].duplicate()))
 	else:
 		eid = Mind.fact_id(card)
 	var vals = {}

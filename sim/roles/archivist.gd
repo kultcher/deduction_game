@@ -22,15 +22,6 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 	return "%s Archivist: %s in %s" % [src, content().role_name(d.get("role", "poisoner")), _names(d.get("pair", []), nm)]
 
 
-func reading_strength(d: Dictionary, _t_id: String) -> float:
-	var r: String = d.get("role", "")
-	return (Tuning.Roles.ARCHIVIST.reading_strength_demon if r == "demon" else Tuning.Roles.ARCHIVIST.reading_strength_evil) if content().ROLES.get(r, {}).get("align", "good") == "evil" else Tuning.Roles.ARCHIVIST.reading_strength_good
-
-
-func card_strength(_d: Dictionary, _suspect_id: String) -> float:
-	return Tuning.Roles.ARCHIVIST.card_strength
-
-
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var broken: bool = n.gift_broken()
 	var mid: String = w.pick(w.minion_ids)

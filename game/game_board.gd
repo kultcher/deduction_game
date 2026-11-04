@@ -188,7 +188,7 @@ static func core_keys(card: Dictionary) -> Array:
 
 
 static func _corroborate(card: Dictionary, src: String) -> void:
-	if src == "" or src == card.get("source", "") or src in card.get("subject", []):
+	if src in ["", "rumour"] or card.get("tavern_gossip", false) or src == card.get("source", "") or src in card.get("subject", []):
 		return
 	var cb: Array = card.get("corroborated_by", [])
 	if not (src in cb):
@@ -252,24 +252,6 @@ static func _disclose(card: Dictionary, disc: Dictionary) -> void:
 	card["learned"] = ls
 
 
-## Board hint: pairs of cards (among the most recent) that a template would recognise,
-## so you know a link is there to be made. Doesn't say what it shows.
-static func find_links(g, limit: int = 40) -> Array:
-	var pool: Array = g.board.filter(func(c): return not c.get("deleted", false) and not (c["kind"] in ["home", "haunt"]))
-	pool = pool.slice(maxi(0, pool.size() - limit))
-	var found: Array = []
-	var seen = {}
-	for i in range(pool.size()):
-		for j in range(i + 1, pool.size()):
-			var res: Dictionary = Deduction.check(g.w, [pool[i], pool[j]])
-			for m in res["matches"]:
-				var key = str(m["cards"])
-				if not seen.has(key):
-					seen[key] = true
-					found.append({"cards": m["cards"], "relation": m.get("relation", "contradiction")})
-	return found
-
-
 # ---------------------------------------------------------------- case work (stage 3)
 
 ## Filter the board by a text query. Terms joined with "+" must all match ("greta+night"):
@@ -321,59 +303,16 @@ static func _filter_term(g, cards: Array, f: String) -> Array:
 	return out
 
 
-## Link cards: run the contradiction templates. Returns the check result and remembers it.
-static func link_cards(g, nums: Array) -> Dictionary:
-	var cards: Array = []
-	for x in nums:
-		if x >= 1 and x <= g.board.size():
-			cards.append(g.board[x - 1])
-	var res: Dictionary = Deduction.check(g.w, cards)
-	var options: Array = []
-	for m in res["matches"]:
-		if m.get("relation", "contradiction") == "contradiction":
-			var grp: Array = Deduction.group_of(g.w, cards.filter(func(x): return x["n"] in m["cards"]))
-			if grp.size() >= 2:
-				var cc = {"type": "conflict", "a": "", "group": grp}
-				options.append({"match": m, "expl": {"id": 0, "kind": "conflict", "blame": "", "conclusion": cc,
-					"label": "Something doesn't add up (no explanation chosen): one of %s is misled or lying" % Deduction._names(g.w, grp)}})
-		for e in m["explanations"]:
-			# Alternatives the town weighs, but that nothing in these cards supports, aren't
-			# offered for filing.
-			if not e.get("rival_only", false):
-				options.append({"match": m, "expl": e})
-	g.last_link = {"cards": nums.duplicate(), "result": res, "options": options}
-	g.w.dlog.add("player_link", "player", "", {"cards": nums, "matches": res["matches"].map(func(m): return m["template"]),
-		"near": res["near"]}, "matched" if not res["matches"].is_empty() else "no template matched (flag for template work)")
-	return g.last_link
-
-
-## File a deduction card. conclusion: {type, a, role?, night?, card?}. Returns the card
-## number, or -1 if refused (reason in last_error).
-static func file_deduction(g, conclusion: Dictionary, supports: Array, match_info: Dictionary = {}, chosen: int = 0, workshop_filing: bool = false) -> int:
+## File a deduction card (the Case Workshop files its cases through this).
+## conclusion: {type, a, role?, night?, card?}. Returns the card number, or -1 if
+## refused (reason in last_error).
+static func file_deduction(g, conclusion: Dictionary, supports: Array, workshop_filing: bool = false) -> int:
 	conclusion = Deduction.normalize(conclusion.duplicate())
 	var pool: Array = all_receipts(g)
 	var cards: Array = pool.filter(func(x): return x["n"] in supports and not x.get("deleted", false))
-	# The same conclusion from the same cards gets the same footing however it was built:
-	# if a template among the supports offers this conclusion, use it.
-	if conclusion.get("type", "") == "conflict":
-		if conclusion.get("group", []).is_empty():
-			conclusion["group"] = Deduction.group_of(g.w, cards)
-		if match_info.is_empty():
-			for m in Deduction.check(g.w, cards)["matches"]:
-				if m.get("relation", "contradiction") == "contradiction":
-					match_info = m
-					chosen = 0
-					break
-	elif match_info.is_empty() and not supports.is_empty():
-		for m in Deduction.check(g.w, cards)["matches"]:
-			for e in m["explanations"]:
-				if Deduction.conclusion_key(Deduction.normalize(e["conclusion"].duplicate())) == Deduction.conclusion_key(conclusion):
-					match_info = m
-					chosen = e["id"]
-					break
-			if not match_info.is_empty():
-				break
-	g.last_error = Deduction.filing_problem(g.w, conclusion, supports, pool, not match_info.is_empty())
+	if conclusion.get("type", "") == "conflict" and conclusion.get("group", []).is_empty():
+		conclusion["group"] = Deduction.group_of(g.w, cards)
+	g.last_error = Deduction.filing_problem(g.w, conclusion, supports, pool, false)
 	if g.last_error != "":
 		g.w.dlog.add("deduction_refused", "player", conclusion.get("a", ""), {"conclusion": conclusion, "supports": supports}, g.last_error)
 		return -1
@@ -384,23 +323,14 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, match_inf
 		var cc: String = rec.get("class", "circumstantial")
 		if rank.get(cc, 1) < rank[cls]:
 			cls = cc
-	if match_info.is_empty() and rank[cls] > 1:
+	if rank[cls] > 1:
 		cls = "circumstantial" # an inference is never stronger than circumstantial on its own
-	# Unfounded = the cards don't actually bear on the person (not merely "no template").
+	# Unfounded = the cards don't actually bear on the person.
 	var active_pool: Array = pool.filter(func(x): return not x.get("deleted", false))
-	var unfounded: bool = match_info.is_empty() and not Deduction.bears_on(g.w, conclusion, cards, active_pool)
-	var basis = ""
-	if not match_info.is_empty():
-		basis = " (from #%s: %s)" % [", #".join(PackedStringArray(match_info["cards"].map(func(x): return str(x)))), match_info["text"]]
-	else:
-		var labels: Array = supports.map(func(x): return ("P%d" % (-x - 10000)) if x <= -10000 else ("#%d" % x))
-		basis = " (because %s%s)" % [", ".join(PackedStringArray(labels)), "; unfounded" if unfounded else "; your inference"]
+	var unfounded: bool = not Deduction.bears_on(g.w, conclusion, cards, active_pool)
+	var labels: Array = supports.map(func(x): return ("P%d" % (-x - 10000)) if x <= -10000 else ("#%d" % x))
+	var basis = " (because %s%s)" % [", ".join(PackedStringArray(labels)), "; unfounded" if unfounded else "; your inference"]
 	var subj: Array = conclusion.get("group", []).duplicate() if conclusion.get("type", "") == "conflict" else ([conclusion["a"]] if conclusion.has("a") else [])
-	var near = ""
-	if unfounded:
-		var nr: Array = Deduction.check(g.w, cards)["near"]
-		if not nr.is_empty():
-			near = nr[0]
 	var card = {
 		"kind": "deduction",
 		"subject": subj,
@@ -408,164 +338,15 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, match_inf
 		"class": cls,
 		"conclusion": conclusion,
 		"supports": supports.duplicate(),
-		"template": match_info.get("template", ""),
-		"explanations": match_info.get("explanations", []),
-		"chosen": chosen,
 		"unfounded": unfounded,
-		"near": near,
-		"relation": match_info.get("relation", ""),
 		"text": "Deduction: %s%s [basis: %s]." % [Deduction.conclusion_text(g.w, conclusion), basis, cls],
 	}
 	if workshop_filing:
 		card.text += " [Workshop filing %d]" % (g.board.size() + 1)
 	var n: int = add_card(g, card)
 	g.w.dlog.add("deduction", "player", conclusion.get("a", ""), {"card": n, "conclusion": conclusion, "supports": supports,
-		"template": card["template"], "unfounded": unfounded, "class": cls}, card["text"])
+		"unfounded": unfounded, "class": cls}, card["text"])
 	return n
-
-
-## Parse "conclude <name> <is | is not | should be> <status> [night N] [about #N] [because <#> ...]".
-static func _parse_conclusion(g, rest: String) -> Dictionary:
-	var usage = "Usage: conclude <name> <is | is not | should be> <status> [night N] [because <card#> ...]. Status: good, evil, the demon, a gift (seer, poisoner...), lying, misled, misled or lying, suspicious, hiding a secret, Marked, the Seer's red herring, Delusional, a Secret Lover, a Sleepwalker; should be protected / spared."
-	var text = " " + rest.to_lower().strip_edges() + " "
-	var supports: Array = []
-	var bi = text.find(" because ")
-	if bi >= 0:
-		for q in text.substr(bi + 9).split(" ", false):
-			var num = q.trim_prefix("#").to_int()
-			if num >= 1 and num <= g.board.size() and not g.board[num - 1].get("deleted", false):
-				supports.append(num)
-		text = text.substr(0, bi + 1)
-	var night = -1
-	var ni = text.find(" night ")
-	if ni >= 0:
-		var after = text.substr(ni + 7).split(" ", false)
-		if after.size() > 0 and after[0].is_valid_int():
-			night = after[0].to_int()
-		text = text.substr(0, ni + 1)
-		if text.ends_with(" on "):
-			text = text.substr(0, text.length() - 3)
-	var card = -1
-	var ai = text.find(" about #")
-	if ai >= 0:
-		card = text.substr(ai + 8).split(" ", false)[0].to_int()
-		text = text.substr(0, ai + 1)
-	var words = text.split(" ", false)
-	if words.size() < 3:
-		return {"error": usage}
-	var group_lead = 0
-	if words[0] in ["someone", "somebody"]:
-		group_lead = 1
-	elif words.size() > 3 and words[0] == "one" and words[1] == "of" and words[2] in ["these", "them", "those"]:
-		group_lead = 3
-	if group_lead > 0:
-		if supports.is_empty() and not g.last_link.is_empty():
-			supports = g.last_link["cards"].duplicate()
-		var tail = " ".join(words.slice(group_lead)).strip_edges()
-		if not (tail in ["is misled or lying", "are misled or lying", "is lying or misled", "doesn't add up", "is wrong"]):
-			return {"error": "For a group, say: conclude one of these is misled or lying because <cards>."}
-		var gcards: Array = g.board.filter(func(x): return x["n"] in supports)
-		return {"conclusion": Deduction.conflict_of(g.w, gcards), "supports": supports}
-	var who = g.find_npc(words[0], true)
-	if who == null:
-		return {"error": "Who is '%s'?" % words[0]}
-	var verb = ""
-	var rest_i = 1
-	if words[1] == "should" and words.size() > 2 and words[2] == "be":
-		verb = "should be"
-		rest_i = 3
-	elif words[1] in ["isnt", "isn't"] or (words[1] == "is" and words.size() > 2 and words[2] == "not"):
-		verb = "is not"
-		rest_i = 2 if words[1] != "is" else 3
-	elif words[1] == "is":
-		verb = "is"
-		rest_i = 2
-	else:
-		return {"error": usage}
-	var status = " ".join(words.slice(rest_i)).strip_edges().trim_prefix("the ").strip_edges()
-	if status == "demon":
-		status = "the demon"
-	if status in ["spared", "spared from execution"]:
-		status = "spared from execution"
-	var role: String = g.find_role(status)
-	if role != "" and role != "demon":
-		status = role
-	match status:
-		"a secret", "hiding a secret", "a secret (innocent)":
-			status = "hiding a secret"
-		"red herring", "the red herring", "the seer's red herring", "a red herring":
-			status = "the Seer's red herring"
-		"a lover", "a secret lover", "lover", "lovers":
-			status = "a Secret Lover"
-		"a sleepwalker", "sleepwalker":
-			status = "a Sleepwalker"
-	var c = Deduction.from_builder(who.id, verb, status, night, card)
-	if c.is_empty():
-		return {"error": "'%s %s' isn't something you can conclude. %s" % [verb, status, usage]}
-	if supports.is_empty() and not g.last_link.is_empty():
-		supports = g.last_link["cards"].duplicate()
-	if c["type"] in ["lied", "unreliable", "truthful"] and not c.has("card"):
-		for x in supports:
-			if g.board[x - 1].get("source", "") == who.id:
-				c["card"] = x
-				break
-	return {"conclusion": c, "supports": supports}
-
-
-static func _link_command(g, rest: String) -> void:
-	var nums: Array = []
-	for q in rest.split(" ", false):
-		var num = q.trim_prefix("#").to_int()
-		if num >= 1 and num <= g.board.size() and not (num in nums):
-			nums.append(num)
-	if nums.size() < 1 or nums.size() > 3:
-		g._err("Usage: link <card#> <card#> [card#]   (1-3 cards; see 'board')")
-		return
-	var lk: Dictionary = link_cards(g, nums)
-	var res: Dictionary = lk["result"]
-	if res["matches"].is_empty():
-		g._narr("Nothing links those cards: no conflict, corroboration or inference the town would recognise.")
-		for r in res["near"].slice(0, 2):
-			g._narr("  Close, but " + r)
-		g._prompt("You can still argue from them: 'conclude <name> is <status> because <cards>'. If the cards bear on that person it's your own inference; if not, it's unfounded.")
-		return
-	for m in res["matches"]:
-		g._narr("%s %s" % [Deduction.RELATION_LEAD[m.get("relation", "contradiction")], m["text"]])
-	var k = 0
-	for o in lk["options"]:
-		k += 1
-		g._narr("  %d. %s" % [k, o["expl"]["label"]])
-	g._prompt("'conclude <number>' to file the explanation you believe, or write your own: 'conclude <name> is <status> because <cards>'.")
-
-
-static func _conclude_command(g, rest: String) -> void:
-	var r = rest.strip_edges()
-	if r.is_valid_int() and not g.last_link.is_empty():
-		var k = r.to_int()
-		var opts: Array = g.last_link["options"]
-		if k < 1 or k > opts.size():
-			g._err("Pick one of the numbered explanations from your last 'link'.")
-			return
-		var o: Dictionary = opts[k - 1]
-		var n: int = file_deduction(g, o["expl"]["conclusion"], o["match"]["cards"], o["match"], o["expl"]["id"])
-		if n < 0:
-			g._err(g.last_error)
-			return
-		g._narr("Filed.")
-		g._ev({"k": "card", "n": n})
-		return
-	var p: Dictionary = _parse_conclusion(g, r)
-	if p.has("error"):
-		g._err(p["error"])
-		return
-	var n2: int = file_deduction(g, p["conclusion"], p["supports"])
-	if n2 < 0:
-		g._err(g.last_error)
-		return
-	var d2: Dictionary = g.board[n2 - 1]
-	g._narr("Filed%s." % (" (unfounded: those cards don't bear on them)" if d2["unfounded"] else
-		(" (backed by: %s)" % d2["template"]) if d2["template"] != "" else " (your inference)"))
-	g._ev({"k": "card", "n": n2})
 
 
 ## Hide a card from views (any card), or delete one of your own deductions.
@@ -619,9 +400,10 @@ static func timeline_data(g, filter: String = "") -> Dictionary:
 				_:
 					continue
 			var confirmed: bool = a.get("src", "") == "player"
+			var rumour: bool = c.get("tavern_gossip", false) or a.get("src", "") == "rumour"
 			if not rows[who].has(key):
 				rows[who][key] = []
-			rows[who][key].append({"val": val, "confirmed": confirmed, "card": c["n"]})
+			rows[who][key].append({"val": val, "confirmed": confirmed, "rumour": rumour, "card": c["n"]})
 	return {"cols": cols, "rows": rows}
 
 
@@ -644,11 +426,12 @@ static func _timeline(g, filter: String) -> String:
 			var vals: Array = td["rows"][n.id].get(key, [])
 			var shown = {}
 			for v in vals:
-				var tag = v["val"] + ("" if v["confirmed"] else "~")
+				var suffix: String = "" if v["confirmed"] else ("?" if v.get("rumour", false) else "~")
+				var tag = v["val"] + suffix
 				if not shown.has(tag):
 					shown[tag] = true
 					cell += ("/" if cell != "" else "") + tag
 			line += "%-7s" % (cell if cell != "" else ".")
 		out.append(line)
-	out.append("Sq Square, Mk Market, Dk Docks, Hl Chapel Hill, hm home, XX killed. No mark = you saw it; ~ = someone told you.")
+	out.append("Sq Square, Mk Market, Dk Docks, Hl Chapel Hill, hm home, XX killed. No mark = you saw it; ~ = someone told you; ? = tavern rumour.")
 	return "\n".join(out)

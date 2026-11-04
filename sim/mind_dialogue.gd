@@ -95,6 +95,8 @@ static func _hint_decline(w, n, t) -> Dictionary:
 static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
+	if card.get("tavern_gossip", false) or not card.get("pressable", true):
+		return {"lines": ["That's only unattributed tavern talk; you need a named witness or concrete evidence to press %s." % n.name], "facts": []}
 	var c: Dictionary = card.get("conclusion", {})
 	var subj: Array = card.get("subject", [])
 	var pair: Array = card.get("data", {}).get("pair", [])
@@ -116,7 +118,8 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 				night = x.get("day", -1)
 	var naming_me = kind == "info" and C.has_role_def(card.get("role", "")) and C.role_def(card.get("role", "")).names_good_role_in_pair() and n.id in pair  # "one of you two is the X"
 	var counter = kind == "claim" and card.get("source", "") != n.id and n.claim_public and card.get("role", "") == n.claimed_role
-	var strength = 0.6 if kind == "deduction" else clampf(card_strength(w, card, n), 0.3, 1.0)
+	# How hard the card lands: the town's own shared weight for it (purge phase 4b).
+	var strength = Tuning.Dialogue.PRESS_DEDUCTION_STRENGTH if kind == "deduction" else clampf(_mind().card_weight_against(w, card, n.id), Tuning.Dialogue.PRESS_STRENGTH_MIN, 1.0)
 	if naming_me:
 		strength = 0.5
 	# Hiding something this card touches?
@@ -326,8 +329,8 @@ static func greeting_cue(w, n) -> String:
 ## Spoken VN conversation opener with rapport tiers, one-shot event overrides, and
 ## curated portrait expressions. Consumes the exact same single composure roll as
 ## greeting_cue so RNG state and Decision Inspector parity are preserved.
-static func greeting_line(w, n, context: Dictionary = {}) -> Dictionary:
-	var attitude_visible: bool = w.decision_roll(n, "greeting_attitude_visible", (1.0 - trait_of(n, "composure")) * 0.9, {"composure": trait_of(n, "composure")}, "", "<=")
+static func greeting_line(w, n, context: Dictionary = {}, roll_attitude: bool = true) -> Dictionary:
+	var attitude_visible: bool = w.decision_roll(n, "greeting_attitude_visible", (1.0 - trait_of(n, "composure")) * 0.9, {"composure": trait_of(n, "composure")}, "", "<=") if roll_attitude else (trait_of(n, "composure") < 0.5)
 	var greeted: Dictionary = n.dialogue_memory.get("greeted_events", {})
 	var visits: int = int(n.dialogue_memory.get("greet_visits", 0))
 	var text: String = ""
@@ -1234,8 +1237,8 @@ static func _challenged(n, response: Dictionary, card: Dictionary) -> Dictionary
 static func _unshared_fake_on(n, t_id: String) -> Dictionary:
 	return _mind()._unshared_fake_on(n, t_id)
 
-static func card_strength(w, card: Dictionary, suspect) -> float:
-	return _mind().card_strength(w, card, suspect)
+static func card_weight_against(w, card: Dictionary, target_id: String) -> float:
+	return _mind().card_weight_against(w, card, target_id)
 
 static func citable_reason(w, n, t_id: String, audience: String = "town") -> String:
 	return _mind().citable_reason(w, n, t_id, audience)

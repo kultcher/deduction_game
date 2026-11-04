@@ -19,3 +19,4 @@ test_legacy_purge_phase3
 test_beliefs
 test_headline
 test_role_def_poc
+test_buildings_tavern_town_hall

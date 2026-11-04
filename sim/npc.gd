@@ -67,11 +67,6 @@ var turned_day = -1
 ## Suspicion of each other NPC id (0 = trusting, 1+ = convinced evil).
 ## Unclamped totals; use Mind.susp / Mind.suspicion_view when reading beliefs.
 var suspicion = {}
-## Player-readable reason for the most recent large rise in suspicion, per target.
-var sus_why = {}
-## Where each of those reasons came from: the evidence-ledger entry id ("" = no record).
-## Decides whether the reason can be cited, and to whom (Mind.reason_status).
-var sus_src = {}
 ## Hints they've dropped at the meeting: target id -> {day, src} ("I have a reason to
 ## suspect X, but I'm not ready to share it"). The player can ask them why (Mind.answer_hint).
 var hints = {}

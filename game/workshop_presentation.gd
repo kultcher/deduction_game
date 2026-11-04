@@ -7,7 +7,8 @@ const Evidence = preload("res://workshop/live_evidence.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const Mind = preload("res://sim/mind.gd")
-const Argue = preload("res://sim/argue.gd")
+const Deduction = preload("res://sim/deduction.gd")
+const PresentationReply = preload("res://sim/presentation_reply.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 const Ownership = preload("res://game/workshop_ownership.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
@@ -184,7 +185,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			var meta = {"kind": "tell", "workshop_card": Evidence.normalize_card(card), "text": card.get("text", ""), "conclusion": root.conclusion.duplicate(true)}
 			if card.get("kind") == "deduction":
 				meta = {"kind": "arg", "workshop_conclusion": root.conclusion.type, "conclusion": root.conclusion.duplicate(true), "workshop_roots": Shared.roots([card], g.all_receipts()),
-					"workshop_case": key, "supports": Argue.support_refs([card], g.all_receipts())}
+					"workshop_case": key, "supports": PresentationReply.support_refs([card], g.all_receipts())}
 			var scoped: Array = assessment.claims.filter(func(c): return c.conclusion.target == target and c.conclusion.type == root.conclusion.type)
 			var agreement: float = scoped[0].agreement if not scoped.is_empty() else assessment.agreement
 			Mind.ledger_hear(g.w, n, eid, [], maxf(0.0, agreement), Mind.support_ref(card), meta)
@@ -214,7 +215,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		if already:
 			self_support_variant = "repeat"
 			text = "You've told me that already. Thank you."
-		elif Mind.defend_strength(card, n.id) >= 0.2:
+		elif Mind.card_clears(card, n.id, true):
 			Mind.set_trust(g.w, n, n.trust + Tuning.Trust.SELF_SUPPORT_BONUS, "the Demonologist spoke up for me")
 			Mind.refresh_beliefs(g.w, n, " (self-support rapport)")
 			self_support_variant = "thanks"
@@ -285,8 +286,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var tic_mem: Dictionary = Mind._tic_memory(n) if (speak and not n.silenced and not n.is_shadow) else {}
 	var spoken_line: Dictionary
 	if trapped_out:
-		var trap_spoken: String = Mind.Dialogue.apply_tics(n.id, trapped_voiced + hub_voiced_tail, tic_mem)
-		spoken_line = {"speaker": n.id, "name": n.name, "text": trap_spoken, "statement": base_canonical}
+		spoken_line = {"speaker": n.id, "name": n.name, "text": text, "statement": base_canonical}
 	elif self_support:
 		spoken_line = Presentations.render_self_support(n, self_support_variant, base_canonical, tic_mem)
 	elif repeated_same_audience:
@@ -295,8 +295,9 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		spoken_line = Presentations.render_workshop_reply(g.w, n, root.conclusion, targets, assessment, plan.prepared.view, snapshot, voiced_stance, already_aligned, fresh.is_empty(), base_canonical, tic_mem)
 		if hub_voiced_tail != "":
 			spoken_line["text"] = str(spoken_line["text"]) + Mind.Dialogue.apply_tics(n.id, hub_voiced_tail, tic_mem)
+	var descriptor_special: String = text if trapped_out else base_canonical
 	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": voiced_stance,
-		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": base_canonical, "voiced_text": spoken_line["text"]}
+		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": descriptor_special, "voiced_text": spoken_line["text"]}
 	var lines: Array = [spoken_line] if speak and not n.silenced else []
 	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
 		{"venue": venue, "key": key, "agreement": assessment.agreement, "stance": assessment.stance,

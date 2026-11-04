@@ -190,38 +190,6 @@ func short_text(_d: Dictionary, src: String, _nm: Callable) -> String:
 
 # ---------------------------------------------------------------- belief & social weights (mind.gd)
 
-## How strongly an NPC's own reading implicates `t_id` (0..1) when deciding whether to reveal.
-func reading_strength(d: Dictionary, t_id: String) -> float:
-	match shape:
-		"PING":
-			return Tuning.Roles.PING_YES_READING_STRENGTH if d.get("yes", false) else 0.0
-		"GROUP_COUNT":
-			if count_mode == "group":
-				var g: Array = group_of(d)
-				return clampf(Tuning.Roles.GROUP_READING_STRENGTH_SCALE * d.get("count", 0) / maxf(1.0, g.size()), 0.0, Tuning.Roles.GROUP_READING_STRENGTH_CAP) if t_id in g else 0.0
-		"ROLE_AT_SITE":
-			if site_mode == "group_count":
-				var g: Array = group_of(d)
-				return clampf(Tuning.Roles.GROUP_READING_STRENGTH_SCALE * d.get("count", 0) / maxf(1.0, g.size()), 0.0, Tuning.Roles.GROUP_READING_STRENGTH_CAP) if t_id in g else 0.0
-		"NIGHT_ROUTE":
-			return Tuning.Roles.NIGHT_ROUTE_READING_STRENGTH
-	return Tuning.Roles.DEFAULT_READING_STRENGTH
-
-
-## How strongly a board `info` card speaks against `suspect_id` (0..1).
-func card_strength(d: Dictionary, suspect_id: String) -> float:
-	if suspect_id in implicated(d):
-		return Tuning.Roles.DEFAULT_CARD_STRENGTH
-	return 0.0
-
-
-## How strongly a board `info` card speaks for `nominee` (0..1).
-func defend_strength(d: Dictionary, nominee: String) -> float:
-	if nominee in clears(d):
-		return Tuning.Roles.DEFAULT_DEFEND_STRENGTH
-	return Tuning.Roles.FALLBACK_DEFEND_STRENGTH
-
-
 ## First-hearing non-suspicion side effects when a reading enters a listener's ledger.
 func on_reading_heard(_listener, _source, _entry: Dictionary, _fresh: bool) -> void:
 	pass

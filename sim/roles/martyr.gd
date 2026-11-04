@@ -53,10 +53,6 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 	return "%s Martyr: chose %s" % [src, nm.call(d.get("target", ""))]
 
 
-func reading_strength(d: Dictionary, _t_id: String) -> float:
-	return Tuning.Roles.MARTYR.reading_strength_evil if d.get("evil", false) else 0.0
-
-
 func pick_targets(w, mart, mind):
 	var best: String = ""
 	var best_t: float = 0.0

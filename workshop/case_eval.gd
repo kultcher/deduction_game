@@ -1481,12 +1481,17 @@ static func _rivals(view: Dictionary, people: Dictionary, conclusion: Dictionary
 static func _theory_fit(view: Dictionary, case_data: Dictionary, cards: Array, post: PackedFloat64Array) -> float:
 	var universe: Array = Solver.universe(view)
 	var masks: Array = []
+	var has_th_answer: bool = false
 	for card in cards:
 		var positive: Array = case_data.get("answers", {}).get(card.id, {}).get("positive", [])
 		var blocks: Array = case_data.get("answers", {}).get(card.id, {}).get("blocks", [])
 		var marked: Array = case_data.get("answers", {}).get(card.id, {}).get("marked", [])
 		if Solver.tabled(card) and (not positive.is_empty() or not blocks.is_empty()):
 			masks.append(Solver.report_table(view, card, positive, blocks, marked))
+		elif card.kind == "town_hall" and str(case_data.get("answers", {}).get(card.id, {}).get("in_play_role", "")) != "":
+			has_th_answer = true
+	if has_th_answer and view.get("world_options", {}).get("roles", false):
+		masks.append(Solver.Roles.fits_table(view, universe, cards, {}, case_data.get("answers", {})))
 	var positions: Dictionary = case_data.get("positions", {})
 	if masks.is_empty() and positions.is_empty():
 		return 1.0

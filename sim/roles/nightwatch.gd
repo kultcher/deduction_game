@@ -24,14 +24,6 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 	return "%s Watch %s: %s" % [src, C.block_name(d.get("block", "")), seen_str]
 
 
-func card_strength(d: Dictionary, suspect_id: String) -> float:
-	return Tuning.Roles.NIGHTWATCH.card_strength_seen if suspect_id in d.get("seen", []) else 0.0
-
-
-func defend_strength(_d: Dictionary, _nominee: String) -> float:
-	return Tuning.Roles.NIGHTWATCH.defend_strength
-
-
 func pick_targets(w, n, mind):
 	var asked: Array = mind.requested_targets(w, n, "nightwatch")
 	if not asked.is_empty():
