@@ -233,9 +233,6 @@ class Mind:
 	const PUBLIC_CLAIM_HEARING_WEIGHT = 0.5
 	const DEMON_VICTIM_CLAIM_BOOST = 1.95
 	const BELIEVED_ROLE_MIN_EFF = 0.12
-	const NIGHT_SIGHTING_NEAR_DEATH = 1.0
-	const NIGHT_SIGHTING_ELSEWHERE = 0.12
-	const NIGHT_SIGHTING_WALK_DISCOUNT = 0.7
 	const HEARD_READING_WEIGHT = 0.5
 
 	## Reconsideration, gift requests, apologies & shadow self
