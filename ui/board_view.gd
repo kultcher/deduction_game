@@ -21,6 +21,8 @@ const BoardModel = preload("res://game/board_model.gd")
 const UITheme = preload("res://ui/theme.gd")
 const Icons = preload("res://ui/board_icons.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
+const TraceArt = preload("res://ui/trace_art.gd")
+const TraceTooltip = preload("res://ui/trace_tooltip.gd")
 
 const HEAD_W = 132.0     # row labels (screen pixels, not zoomed)
 const HEAD_H = 34.0      # time labels
@@ -639,7 +641,18 @@ func _gui_input(ev: InputEvent) -> void:
 			_hover = n
 			queue_redraw()
 
+## The trace card under the pointer when the tooltip was asked for: it gets its artwork.
+var _tip_card: Dictionary = {}
+
+func _make_custom_tooltip(for_text: String) -> Object:
+	if _tip_card.is_empty() or TraceArt.icon(_tip_card) == null:
+		return null
+	var lines: PackedStringArray = for_text.split("\n")
+	var rest: String = "\n".join(lines.slice(1)) if lines.size() > 1 else ""
+	return TraceTooltip.build([{"trace": _tip_card, "text": lines[0]}], "", rest)
+
 func _get_tooltip(at: Vector2) -> String:
+	_tip_card = {}
 	var h = _hit(at)
 	if h.is_empty():
 		for rh in _row_hits:
@@ -650,6 +663,7 @@ func _get_tooltip(at: Vector2) -> String:
 				return hint
 		return ""
 	var card: Dictionary = g.board[h["n"] - 1]
+	_tip_card = card if card.get("kind", "") == "trace" else {}
 	var t = "#%d  %s" % [card["n"], card.get("text", "")]
 	if context_numbers.has(card.n):
 		t += "\n" + EvidenceContext.EXPLANATION
