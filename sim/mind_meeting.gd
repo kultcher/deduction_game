@@ -39,15 +39,26 @@ static func meeting_testimony(w) -> Array:
 static func testimony_start(w) -> Dictionary:
 	w.defer_beliefs = true
 	var st: Dictionary = {"speakers": w.shuffled(w.living()), "i": 0, "done": false,
-		"substantive_turns": 0, "reactive": {}, "interjected": {}, "spoken": {}}
-	if w.meeting is Dictionary:
-		w.meeting["testimony"] = st
+		"substantive_turns": 0, "reactive": {}, "interjected": {}, "spoke_ids": {}}
+	_sync_testimony_ctx(w, st)
 	return st
+
+## What speakers' decisions read about the testimony so far, as plain data (ids and
+## counts only, so meeting state stays comparable between runs).
+static func _sync_testimony_ctx(w, st: Dictionary) -> void:
+	if w.meeting is Dictionary:
+		w.meeting["testimony"] = {"reactive": st.get("reactive", {}), "substantive_turns": int(st.get("substantive_turns", 0)), "done": bool(st.get("done", false))}
 
 ## One step: the next speaker's turn ({who, lines, facts}; lines may be empty), or once
 ## everyone has spoken, one of the belief refreshes still waiting ({}). Sets st.done after
 ## the last one.
 static func testimony_step(w, st: Dictionary) -> Dictionary:
+	for k in ["reactive", "interjected", "spoke_ids"]:
+		if not st.has(k):
+			st[k] = {}
+	if not st.has("substantive_turns"):
+		st["substantive_turns"] = 0
+	_sync_testimony_ctx(w, st)
 	while st["i"] < st["speakers"].size():
 		var n = st["speakers"][st["i"]]
 		st["i"] += 1
@@ -68,11 +79,12 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 			facts.append(acc["fact"])
 		_volunteer_night_sightings(w, n, lines, facts)
 		st["reactive"].erase(n.id)
-		st["spoken"][n.id] = true
+		st["spoke_ids"][n.id] = true
 		if facts.any(func(f): return str(f.get("kind", "")) in ["claim", "info", "accusation"]):
 			st["substantive_turns"] += 1
 		if not facts.is_empty():
 			_queue_reactions(w, st, n, facts)
+		_sync_testimony_ctx(w, st)
 		if reacting and not lines.is_empty():
 			w.dlog.think(n.id, "testimony", "Speaks up in reaction to what was just said.", {"reactive": true})
 		return {"who": n.id, "lines": lines, "facts": facts}
@@ -82,6 +94,7 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 	if w.pending_beliefs.is_empty():
 		w.defer_beliefs = false
 		st["done"] = true
+		_sync_testimony_ctx(w, st)
 	return {}
 
 ## Who reacts to what a speaker just said (plan 2.2), from cheap metadata only (no solver):
@@ -129,7 +142,7 @@ static func _queue_reactions(w, st: Dictionary, s, facts: Array) -> void:
 			continue
 		var idx: int = st["speakers"].find(l)
 		var yet: bool = idx >= st["i"]
-		if not yet and (trigger == 3 or st["interjected"].has(l.id) or not st["spoken"].has(l.id)):
+		if not yet and (trigger == 3 or st["interjected"].has(l.id) or not st["spoke_ids"].has(l.id)):
 			continue
 		picks.append([trigger, l, yet])
 		st["reactive"][l.id] = {"trigger": trigger, "by": s.id, "subject": subject, "bonus": Tuning.Meeting.REACTIVE_OPENNESS_BONUS}

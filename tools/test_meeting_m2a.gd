@@ -166,7 +166,7 @@ func _test_block_safety() -> void:
 	w.meeting["block_count"] = w.vote_threshold() + 2
 	var calm: float = MindMeeting.block_safety(w, d)
 	_check(calm > 0.0 and MindMeeting.block_safety(w, a) == 0.0, "someone else firmly on the block makes another nominee safer (%.2f), not the one on it" % calm)
-	w.meeting["accusations"] = [{"by": "x", "target": d.id}, {"by": "y", "target": d.id}]
+	w.meeting["accusations"].append_array([{"by": "x", "target": d.id}, {"by": "y", "target": d.id}])
 	_check(MindMeeting.block_safety(w, d) < calm, "public accusations of the nominee eat into that safety")
 	w.meeting["block_count"] = w.vote_threshold() - 1
 	_check(MindMeeting.block_safety(w, d) == 0.0, "a block short of the threshold gives no safety")
@@ -180,19 +180,19 @@ func _test_reactive_testimony() -> void:
 	var rival = people[1]
 	var named = people[2]
 	var speakers: Array = [s, people[3], people[4], rival, named]
-	var st: Dictionary = {"speakers": speakers, "i": 1, "done": false, "substantive_turns": 0, "reactive": {}, "interjected": {}, "spoken": {s.id: true}}
-	w.meeting["testimony"] = st
+	var st: Dictionary = {"speakers": speakers, "i": 1, "done": false, "substantive_turns": 0, "reactive": {}, "interjected": {}, "spoke_ids": {s.id: true}}
 	var facts: Array = [
 		{"kind": "claim", "source": s.id, "subject": [s.id], "role": rival.role},
 		{"kind": "accusation", "source": s.id, "subject": [named.id]},
 	]
 	MindMeeting._queue_reactions(w, st, s, facts)
+	MindMeeting._sync_testimony_ctx(w, st)
 	_check(st.speakers[1] == rival and st.speakers[2] == named, "a rival claimant, then the person named, move up to speak next")
 	_check(int(st.reactive[rival.id].trigger) == 1 and int(st.reactive[named.id].trigger) == 2, "each gets a reactive context")
 	_check(MindMeeting._testimony_openness(w, rival) == Tuning.Meeting.REACTIVE_OPENNESS_BONUS, "and an openness bonus on their next beat")
 	# Someone who already spoke may interject once, for a rival claim or being named.
 	var early = people[3]
-	st.spoken[early.id] = true
+	st.spoke_ids[early.id] = true
 	st.i = 3
 	st.speakers = [s, early, people[4], rival, named]
 	MindMeeting._queue_reactions(w, st, s, [{"kind": "accusation", "source": s.id, "subject": [early.id]}])
@@ -206,13 +206,14 @@ func _test_crowd_fade() -> void:
 	var g = _meeting_game(8109)
 	var w = g.w
 	var n = w.living_good()[0]
-	var st: Dictionary = {"speakers": [n], "i": 0, "done": false, "substantive_turns": 3, "reactive": {}, "interjected": {}, "spoken": {}}
-	w.meeting["testimony"] = st
+	var st: Dictionary = {"speakers": [n], "i": 0, "done": false, "substantive_turns": 3, "reactive": {}, "interjected": {}, "spoke_ids": {}}
+	MindMeeting._sync_testimony_ctx(w, st)
 	n.traits["privacy"] = 0.9
 	_check(MindMeeting._testimony_openness(w, n) < 0.0, "a private person fades once claims and accusations pile up")
 	_check(MindMeeting._testimony_sighting_bar(w, n) > 0.0, "and needs more to volunteer a sighting")
 	n.traits["privacy"] = 0.2
 	_check(MindMeeting._testimony_openness(w, n) == 0.0, "an open person doesn't")
 	st.done = true
+	MindMeeting._sync_testimony_ctx(w, st)
 	n.traits["privacy"] = 0.9
 	_check(MindMeeting._testimony_openness(w, n) == 0.0, "nothing applies once testimony is over")
