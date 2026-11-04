@@ -352,7 +352,7 @@ class Social:
 	const PLANTER_TARGET_GOSSIP_MIN = 0.45
 	const PLANTER_TARGET_TRUST_MIN = 0.48
 	const MURDER_RELAY_BONUS = 0.35
-	const IDLE_CHAT_WEIGHT = 0.3
+	const IDLE_CHAT_WEIGHT = 0.18  # was 0.30 (meeting plan M1: more leads, less weather)
 	const DAY_RUMOR_WEIGHT = 0.45
 	const UNEASE_SUSP_MIN = 0.34
 	const HEARSAY_TRUST_SCALE = 0.75
@@ -370,6 +370,23 @@ class Social:
 	const SHARE_CASE_GOSSIP_SCALE = 0.5
 	const SHARE_SIGHTING_GOSSIP_SCALE = 0.8
 	const SHARE_SIGHTING_SCENE_BONUS = 0.4
+	## Peer role hints and claims (meeting plan M1). A hint names only the gift's family
+	## (HINT_PACKAGES); a claim names the role, even for gifts with no readings to share.
+	const SHARE_ROLE_HINT_BOND_MIN = 0.55
+	const SHARE_ROLE_HINT_OPENNESS_SCALE = 0.9
+	const SHARE_ROLE_HINT_BOND_OFFSET = 0.15
+	const SHARE_ROLE_HINT_GOSSIP_SCALE = 0.2
+	const SHARE_ROLE_CLAIM_BOND_MIN = 0.68
+	const SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN = 0.55
+	const SHARE_ROLE_CLAIM_PRESSURE_MIN = 0.55
+	const SHARE_ROLE_CLAIM_SLOPE = 1.8
+	const SHARE_ROLE_CLAIM_BOND_FLOOR = 0.55
+	const SHARE_ROLE_CLAIM_MIN_WEIGHT = 0.05
+	## Good NPCs with an untold gift count as having news on these early days.
+	const ROLE_NEWS_LAST_DAY = 2
+	## What an evil listener makes of a peer's role hint / claim (a target worth watching).
+	const EVIL_ROLE_HINT_THREAT = 0.5
+	const EVIL_ROLE_CLAIM_THREAT = 1.5
 	const SHARE_RELAY_GOSSIP_SCALE = 0.45
 	const SHARE_RELAY_SECRET_GOSSIP_SCALE = 0.4
 	const SHARE_RELAY_SECRET_COMPOSURE_BASE = 1.3

@@ -24,6 +24,20 @@ static func _mark(s, l, key: String) -> void:
 static func _implicated(e: Dictionary) -> Array:
 	return Gifts.implicated(e)
 
+## The gift this NPC would name to a peer: their own, or evil's agreed bluff.
+static func _my_role(w, s) -> String:
+	var r: String = str(w.evil_plan.get("bluffs", {}).get(s.id, "")) if s.is_evil() else str(s.role)
+	return r if C.ROLES.has(r) else ""
+
+## Has a good NPC told any trusted friend about their gift yet (hint or claim)?
+static func _gift_told_a_friend(w, n) -> bool:
+	for l in w.living():
+		if l == n or n.npc_trust.get(l.id, 0.5) < Tuning.Social.GOOD_NEWS_TRUST_MIN:
+			continue
+		if _told(n, l, "role_hint:" + n.id) or _told(n, l, "role_claim:" + n.id):
+			return true
+	return false
+
 # ---------------------------------------------------------------- news (drives who seeks whom out)
 
 ## Does this NPC have something they'd want to tell someone today?
@@ -39,6 +53,11 @@ static func has_news(w, n) -> bool:
 	for e in n.info_log:
 		if not e["shared"]:
 			return true
+	# Early on, an unclaimed gift no trusted friend has heard about is news too (M1).
+	if w.day <= Tuning.Social.ROLE_NEWS_LAST_DAY and not n.claim_public and _my_role(w, n) != "" and not _gift_told_a_friend(w, n):
+		for l in w.living():
+			if l != n and n.npc_trust.get(l.id, 0.5) >= Tuning.Social.GOOD_NEWS_TRUST_MIN:
+				return true
 	return false
 
 ## Extra pairing weight for someone with news and the person they'd tell.
@@ -114,6 +133,20 @@ static func _pick_item(w, s, l):
 			var key: String = "case:" + str(c.card.get("n", c.card.text))
 			if about != l.id and not _told(s, l, key):
 				cands.append([gos * Tuning.Social.SHARE_CASE_GOSSIP_SCALE, {"kind": "case", "about": about, "card": c["card"], "from": "player", "key": key}])
+	# Their own gift, told privately (M1). Evil uses its agreed bluff with the same formulas,
+	# so a private claim is a social clue, never an alignment test.
+	var my_role: String = _my_role(w, s)
+	if my_role != "" and not s.claim_public:
+		var pkg: String = C.package_of(my_role)
+		var hint_key: String = "role_hint:" + s.id
+		if pkg != "" and bond >= Tuning.Social.SHARE_ROLE_HINT_BOND_MIN and not _told(s, l, hint_key) and not l.known_claims.has(s.id):
+			var hint_w: float = (1.0 - priv) * Tuning.Social.SHARE_ROLE_HINT_OPENNESS_SCALE * (bond - Tuning.Social.SHARE_ROLE_HINT_BOND_MIN + Tuning.Social.SHARE_ROLE_HINT_BOND_OFFSET) + gos * Tuning.Social.SHARE_ROLE_HINT_GOSSIP_SCALE
+			cands.append([hint_w, {"kind": "role_hint", "about": s.id, "from": s.id, "package": pkg, "key": hint_key, "lie": s.is_evil()}])
+		var claim_key: String = "role_claim:" + s.id
+		var claim_ok: bool = bond >= Tuning.Social.SHARE_ROLE_CLAIM_BOND_MIN or (bond >= Tuning.Social.SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN and s.pressure >= Tuning.Social.SHARE_ROLE_CLAIM_PRESSURE_MIN)
+		if claim_ok and not s.protect_lock and not _told(s, l, claim_key) and str(l.known_claims.get(s.id, {}).get("role", "")) != my_role:
+			var claim_w: float = (1.0 - priv) * Tuning.Social.SHARE_ROLE_CLAIM_SLOPE * maxf(Tuning.Social.SHARE_ROLE_CLAIM_MIN_WEIGHT, bond - Tuning.Social.SHARE_ROLE_CLAIM_BOND_FLOOR) + Tuning.Social.SHARE_READING_PRESSURE_SCALE * s.pressure
+			cands.append([claim_w, {"kind": "role_claim", "about": s.id, "from": s.id, "role": my_role, "key": claim_key, "lie": s.is_evil()}])
 	# Things anyone might pass on: what they saw at night, what they've heard, others' secrets.
 	var has_recent_night_sighting: bool = false
 	for b in s.beliefs:
@@ -165,7 +198,7 @@ static func _pick_item(w, s, l):
 						"from": s.id, "key": ukey,
 					}])
 	for h in s.hearsay.slice(-4):
-		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] in ["secret", "day_sighting", "unease"]:
+		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] in ["secret", "day_sighting", "unease", "role_hint", "role_claim"]:
 			continue
 		if s.is_evil() and h.get("about", "") != "" and w.by_id[h["about"]].is_evil():
 			continue
@@ -251,7 +284,7 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			var src = w.by_id[item["from"]]
 			Mind.apply_info(w, l, src, e, wgt, s.id)
 			if not l.known_claims.has(src.id):
-				l.known_claims[src.id] = {"role": e["role"], "readings": [], "via": s.id}
+				l.known_claims[src.id] = {"role": e["role"], "readings": [], "via": s.id, "first_claimed_day": w.day}
 			Mind.hear_claim(w, l, src.id, e["role"], wgt, "relayed", Mind.WorkshopLedger.reading(src.id, e, s.id))
 			if not (e in l.known_claims[src.id]["readings"]):
 				l.known_claims[src.id]["readings"].append(e)
@@ -271,6 +304,15 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			var receipt = Mind.WorkshopLedger.Evidence.normalize_card(card)
 			Mind.ledger_hear(w, l, "heard:" + receipt.id, [], sight_wgt * 2.0, [orig_src_id, item.get("day", -1), "report"],
 				{"kind": "tell", "workshop_card": receipt, "workshop_teller": s.id, "workshop_origin": orig_src_id, "workshop_public": public})
+			l.hearsay.append(hs)
+		"role_hint":
+			# Only the gift's family: remembered, no claim on record yet.
+			l.hearsay.append(hs)
+		"role_claim":
+			var prev: Dictionary = l.known_claims.get(s.id, {})
+			l.known_claims[s.id] = {"role": item["role"], "readings": prev.get("readings", []) if prev.get("role", "") == item["role"] else [],
+				"via": s.id, "first_claimed_day": mini(int(prev.get("first_claimed_day", w.day)), w.day)}
+			Mind.hear_claim(w, l, s.id, item["role"], wgt, "relayed")
 			l.hearsay.append(hs)
 		"opinion", "unease":
 			# Remember the conversation and teller, without turning their conclusion
@@ -343,6 +385,10 @@ static func _describe(w, s, item: Dictionary) -> String:
 			return "%s was seen on %s during the day%s" % [dname, C.block_name(str(item.get("block", ""))), via]
 		"case":
 			return "the Demonologist's case against %s" % w.by_id[item["about"]].name
+		"role_hint":
+			return "their gift is %s" % C.HINT_PACKAGES[item["package"]]["name"]
+		"role_claim":
+			return "they are the %s" % C.role_name(item["role"])
 		"secret":
 			var o = w.by_id[item["about"]]
 			return "%s's secret: %s %s" % [o.name, o.name, o.secret.get("text", "?")]
@@ -487,6 +533,10 @@ static func _gossip_items(w, n) -> Array:
 			if Mind.reading_disclosed(src, h["entry"]):
 				continue
 			out.append(["hearsay", i])
+		elif h["kind"] in ["role_claim", "role_hint"] and w.by_id.has(h["from"]) and w.by_id[h["from"]].alive and not w.by_id[h["from"]].claim_public:
+			if n.told_to.has("player|%s:%s" % [h["kind"], h["from"]]):
+				continue
+			out.append(["hearsay", i])
 		elif h["kind"] == "sighting" and w.by_id.has(h["about"]):
 			var src = w.by_id.get(h["from"])
 			var town_key = "town|sighting:%s:%s:%d:%d:%s" % [h.get("from", ""), h["about"], h.get("day", -1), C.NIGHT, h.get("block", "")]
@@ -533,6 +583,22 @@ static func gossip_item(w, n) -> Dictionary:
 			var report_s: String = C.third_person(e["text"])
 			var reading_fallback: String = "%s told me their gift is %s, and that %s." % [src.name, role_s, report_s]
 			return {"lines": [Mind.say_voiced(n, "gossip_reading", reading_fallback, {"source": src.name, "role": role_s, "report": report_s})], "facts": [f]}
+		if h["kind"] == "role_claim" and src != null:
+			n.told_to["player|role_claim:" + src.id] = true
+			var crn: String = C.role_name(h["role"])
+			var claim_fb: String = "Between us, %s told me they're the %s." % [src.name, crn]
+			return {"lines": [Mind.say_voiced(n, "role_query_private_direct", claim_fb, {"who": src.name, "role": crn})],
+				"facts": [{"kind": "claim", "subject": [src.id], "role": h["role"], "source": src.id, "via": n.id, "private": true,
+					"text": "Via %s: %s privately claims to be the %s." % [n.name, src.name, crn]}]}
+		if h["kind"] == "role_hint" and src != null:
+			n.told_to["player|role_hint:" + src.id] = true
+			var hp: String = h["package"]
+			var hint_fb: String = "Between us, %s hinted their gift is %s." % [src.name, C.HINT_PACKAGES[hp]["name"]]
+			return {"lines": [Mind.say(n, hint_fb)],
+				"facts": [{"kind": "hint", "subject": [src.id], "source": src.id, "via": n.id, "private": true, "package": hp,
+					"roles": C.HINT_PACKAGES[hp]["roles"].duplicate(),
+					"text": "Via %s: %s hinted at %s (%s)." % [n.name, src.name, C.HINT_PACKAGES[hp]["name"],
+						" / ".join(PackedStringArray(C.HINT_PACKAGES[hp]["roles"].map(func(r): return C.role_name(r))))]}]}
 		if h["kind"] == "sighting":
 			var who = w.by_id[h["about"]]
 			var by = w.by_id[h["from"]].name if w.by_id.has(h["from"]) else "someone"

@@ -17,6 +17,27 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 ~05:15 ET, Claude: meeting plan M1 (peer role gossip) and new golden baseline, on main
+
+- **M1** (`sim/social.gd`, `sim/evil.gd`, `sim/tuning.gd`): NPCs privately hint at their
+  gift's family to friends (bond >= 0.55) or claim it outright (bond >= 0.68, or >= 0.55
+  under pressure), even with no readings; evil uses its agreed bluff with the same
+  formulas. Claims fill `known_claims` (with `first_claimed_day`) and go through
+  `Mind.hear_claim`; hints are remembered. Gift talk isn't relayed peer to peer. Evil
+  listeners log the speaker as a threat. Good NPCs with an untold gift count as having
+  news on Days 1-2. The player hears second-hand claims and hints through gossip and
+  `ask about <role>`. `IDLE_CHAT_WEIGHT` 0.30 -> 0.18. Not done: the `answer_opinion`
+  second-hand note.
+- **Tests:** new `test_peer_role_gossip` (20 checks, in the fast CI list); 30 suites pass.
+- **Passive A/B** (seeds 2000-2011, C#): good wins 33% -> 25% at 7 NPCs, 17% -> 33% at 10;
+  executions similar. Noise-level for 12 seeds; M4's 150-seed sweep is the real measure.
+  (A first run showed 0% for M1: that worktree's C# build was stale from the 010 branch.
+  Rebuild C# after switching branches before any `--backend csharp` run.)
+- **New golden baseline `baseline_165ce09`** (CI `BASELINE` updated): two GDScript
+  captures identical, C# identical. See `docs/golden_baseline.md`.
+- **Next actor: Argon** for patch_010 (rebase on this main; four checks listed in the
+  010 entry). Next meeting-plan work: M2 trial engine (or M3a UI).
+
 ## 2026-11-04 ~04:30 ET, Claude: five failing suites fixed, Seer fix, refresh cleanup (M2 item), on main
 
 - **Seer bluff** (`sim/roles/seer.gd`, Argon's seed-2004 trace): a lone evil Seer bluffer
