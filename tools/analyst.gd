@@ -166,7 +166,7 @@ static func build_case(g, state: Dictionary, target_id: String, posterior: Dicti
 	var stage1: Dictionary = model.compile(root)
 	var attached_hub = false
 	if include_hub and cur_lr >= HUB_CASE_LR:
-		var hub_ids: Array = Bot.select_circumstantial_cards(view, view.get("cards", []), target_id, posterior, stage1.get("disputes", []))
+		var hub_ids: Array = Bot.select_circumstantial_cards(view, view.get("cards", []), target_id, signed_lean(posterior), stage1.get("disputes", []))
 		if not hub_ids.is_empty():
 			var hub: String = model.add_circumstantial_hub()
 			for hcid in hub_ids:
@@ -188,6 +188,23 @@ static func build_case(g, state: Dictionary, target_id: String, posterior: Dicti
 	filed_sigs[sig] = filed
 	last_by_target[target_id] = filed
 	return {"card": filed, "used_hub": attached_hub and not final_compiled.get("circumstantial", []).is_empty()}
+
+
+## The hub selector reads a signed lean (-1 cleared .. +1 damned, 0 = no shift). Map each
+## posterior against the board's average belief: below average scales to -1 at zero,
+## above scales to +1 at certainty.
+static func signed_lean(posterior: Dictionary) -> Dictionary:
+	if posterior.is_empty():
+		return {}
+	var mean: float = 0.0
+	for id in posterior:
+		mean += float(posterior[id])
+	mean = clampf(mean / posterior.size(), 0.01, 0.99)
+	var out: Dictionary = {}
+	for id in posterior:
+		var p: float = float(posterior[id])
+		out[id] = (p - mean) / (1.0 - mean) if p >= mean else (p - mean) / mean
+	return out
 
 
 ## Does a juror card bear on this person: about them, a reading naming them, a death, or a
