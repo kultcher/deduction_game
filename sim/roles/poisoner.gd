@@ -7,6 +7,7 @@ func _init() -> void:
 	display_name = "Poisoner"
 	align = "evil"
 	kind = "evil"
+	tags = ["night_walker"]
 	minion = true
 	night_walk = true
 	desc = "Each night, poisons one person; their gift fails or lies until the next night."

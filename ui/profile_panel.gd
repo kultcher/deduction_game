@@ -128,15 +128,11 @@ func build() -> void:
 	gpad.add_child(grid)
 	hv.add_child(gpad)
 	guess_opt = OptionButton.new()
-	for x in ["?", "good", "evil"] + C.GOOD_ROLES + C.EVIL_ROLES:
-		guess_opt.add_item((x if not C.ROLES.has(x) else C.role_name(x)) + ("" if x == "?" else " ?"))
-		guess_opt.set_item_metadata(guess_opt.item_count - 1, x)
+	_fill_guess_options(null)
 	guess_opt.tooltip_text = "Your private theory about this person's role. Nobody else sees it."
 	guess_opt.item_selected.connect(func(_i): _save_guess())
 	secret_opt = OptionButton.new()
-	for x in ["?", "none"] + C.SECRET_MOD_LIST:
-		secret_opt.add_item("?" if x == "?" else ("None" if x == "none" else C.secret_name(x)) + " ?")
-		secret_opt.set_item_metadata(secret_opt.item_count - 1, x)
+	_fill_secret_options(null)
 	secret_opt.tooltip_text = "Your guess at whether they carry the secret in play, and which."
 	secret_opt.item_selected.connect(func(_i): _save_secret())
 	conf_opt = _conf_menu()
@@ -236,11 +232,28 @@ func build() -> void:
 			card_clicked.emit(n))
 	pv.add_child(body)
 
+## Guess lists follow the case's script: only what may be in play.
+func _fill_guess_options(sc) -> void:
+	guess_opt.clear()
+	var roles: Array = (sc.town + sc.demons + sc.minions) if sc != null else C.GOOD_ROLES + C.EVIL_ROLES
+	for x in ["?", "good", "evil"] + roles:
+		guess_opt.add_item((x if not C.ROLES.has(x) else C.role_name(x)) + ("" if x == "?" else " ?"))
+		guess_opt.set_item_metadata(guess_opt.item_count - 1, x)
+
+func _fill_secret_options(sc) -> void:
+	secret_opt.clear()
+	for x in ["?", "none"] + (sc.secrets if sc != null else C.SECRET_MOD_LIST):
+		secret_opt.add_item("?" if x == "?" else ("None" if x == "none" else C.secret_name(x)) + " ?")
+		secret_opt.set_item_metadata(secret_opt.item_count - 1, x)
+
 func setup(game, st) -> void:
 	g = game
 	state = st
 	if person_opt == null:
 		build()
+	if guess_opt != null:
+		_fill_guess_options(g.w.case_script)
+		_fill_secret_options(g.w.case_script)
 	bars.reset_observations()
 	_setting = true
 	person_opt.clear()

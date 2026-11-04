@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Gravedigger"
 	align = "good"
 	kind = "info"
+	tags = ["ongoing_info", "evil_id", "role_id"]
 	desc = "Each night after an execution, learns the true role of the executed."
 	shape = "ROLE_IN_GROUP"
 	role_group_key = "executed"

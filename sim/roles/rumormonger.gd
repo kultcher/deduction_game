@@ -9,6 +9,7 @@ func _init() -> void:
 	display_name = "Rumormonger"
 	align = "good"
 	kind = "info"
+	tags = ["first_night_info"]
 	first_night = true
 	desc = "Starts knowing that one of two people carries a particular secret."
 	shape = "SECRET_PAIR"
@@ -33,7 +34,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	if holders.is_empty() or broken:
 		var plain: Array = w.npcs.filter(func(m): return m != n and m.secret_mod == "")
 		pair = w.shuffled(plain).slice(0, 2).map(func(m): return m.id)
-		sk = w.pick(C.SECRET_MOD_LIST)
+		sk = w.pick(w.case_script.secrets)
 		ok = false
 	else:
 		var h = w.pick(holders)
@@ -53,7 +54,7 @@ func generate_bluff_reading(w, _n, _plan: Dictionary, s: String, mate, _asked: A
 	var C = content()
 	var other = w.pick(w.living_good().filter(func(x): return x.id != s))
 	var pair: Array = w.shuffled([mate.id, other.id])
-	var sk: String = w.pick(C.SECRET_MOD_LIST)
+	var sk: String = w.pick(w.case_script.secrets)
 	var why: String = "lends teammate %s a harmless secret" % mate.id
 	var entry: Dictionary = {
 		"data": {"pair": pair, "secret": sk},

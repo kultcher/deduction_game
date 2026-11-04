@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Hearthwitch"
 	align = "good"
 	kind = "info"
+	status = "benched"
 	desc = "Each night, learns how many of their two living lane-neighbours are evil. (Benched: not in the script.)"
 	shape = "ROLE_AT_SITE"
 	site_mode = "group_count"

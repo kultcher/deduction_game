@@ -15,6 +15,7 @@ const MeetingView = preload("res://ui/meeting_view.gd")
 const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
 const TraceArt = preload("res://ui/trace_art.gd")
+const NewCaseScreen = preload("res://ui/new_case_screen.gd")
 const ProfilePanel = preload("res://ui/profile_panel.gd")
 const CastList = preload("res://ui/cast_list.gd")
 const LogText = preload("res://ui/log_text.gd")
@@ -24,7 +25,10 @@ var g
 var out: RichTextLabel
 var input: LineEdit
 var seed_box: SpinBox
-var size_opt: OptionButton
+var size_opt: OptionButton       # hidden: the New Case screen sets it (tests still drive it)
+var new_case_screen
+## The script for the next case (sim/script_def.gd); null deals the Default script.
+var current_script = null
 var side: VBoxContainer
 var side_filter: LineEdit
 var side_list
@@ -74,7 +78,6 @@ var roles_content: VBoxContainer
 var roles_window_box: VBoxContainer
 var roles_pin: CheckBox
 var log_text = LogText.new()
-var new_case_confirm: ConfirmationDialog
 
 var headlines
 
@@ -141,6 +144,7 @@ func _ready() -> void:
 	size_opt.add_item("10 townsfolk")
 	size_opt.set_item_metadata(1, 10)
 	size_opt.tooltip_text = "Town size for the next case: 7 (one minion) or 10 (two minions)."
+	size_opt.visible = false
 	top.add_child(size_opt)
 	var more = MenuButton.new()
 	more.text = "More ▾"
@@ -150,12 +154,6 @@ func _ready() -> void:
 	for it in [["New case…", MoreItem.NEW_CASE], ["Cast (text)", MoreItem.CAST], ["Timeline (text)", MoreItem.TIMELINE],
 			["Card list sidebar", MoreItem.SIDEBAR], ["Write dev log", MoreItem.LOG], ["Case Workshop", MoreItem.WORKSHOP]]:
 		mp.add_item(it[0], it[1])
-	new_case_confirm = ConfirmationDialog.new()
-	new_case_confirm.title = "New case"
-	new_case_confirm.dialog_text = "Start a new case? The current case and its board will be lost."
-	new_case_confirm.ok_button_text = "Start new case"
-	new_case_confirm.confirmed.connect(_new_case_button)
-	add_child(new_case_confirm)
 	mp.id_pressed.connect(_on_more)
 	top.add_child(more)
 	debug_check = CheckBox.new()
@@ -400,7 +398,15 @@ func _ready() -> void:
 	add_child(headline_layer)
 	headlines = preload("res://ui/headline_overlay.gd").new()
 	headline_layer.add_child(headlines)
-	_new_case()
+	new_case_screen = NewCaseScreen.new()
+	new_case_screen.hide()
+	new_case_screen.start_requested.connect(_on_new_case_start)
+	add_child(new_case_screen)
+	# Headless runs (tests, tools) and --quick-start skip the screen and deal a Default case.
+	if DisplayServer.get_name() == "headless" or "--quick-start" in OS.get_cmdline_user_args():
+		_new_case()
+	else:
+		new_case_screen.open(false)
 
 func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
 	var b = Button.new()
@@ -420,6 +426,22 @@ func _on_side_activated(num) -> void:
 	input.caret_column = input.text.length()
 
 ## New case from the button: a fresh seed, unless you've typed one in since this case began.
+func _open_new_case_screen() -> void:
+	if g != null and (g.workshop_presenting or g.meeting_streaming()):
+		return
+	new_case_screen.count = int(size_opt.get_item_metadata(size_opt.selected))
+	new_case_screen.open(g != null and not g.w.game_over)
+
+func _on_new_case_start(count: int, script_def) -> void:
+	for i in range(size_opt.item_count):
+		if int(size_opt.get_item_metadata(i)) == count:
+			size_opt.select(i)
+	current_script = script_def
+	if g == null:
+		_new_case()
+	else:
+		_new_case_button()
+
 func _new_case_button() -> void:
 	if int(seed_box.value) == _case_seed:
 		seed_box.value = randi() % 100000
@@ -439,7 +461,8 @@ func _new_case() -> void:
 	headlines.clear()
 	g.stream_meeting = true
 	out.clear()
-	_print(g.new_case(int(seed_box.value), int(size_opt.get_item_metadata(size_opt.selected))))
+	_print(g.new_case(int(seed_box.value), int(size_opt.get_item_metadata(size_opt.selected)),
+		current_script.duplicate_script() if current_script != null else null))
 	_consume_headlines()
 	case_view.set_game(g)
 	profile.setup(g, case_state)
@@ -530,15 +553,15 @@ func _build_roles(embedded: bool) -> void:
 		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		c.add_theme_constant_override("separation", 6)
 		cols.add_child(c)
-	_roles_group(left, "Gifts of the town", C.GOOD_ROLES)
-	_roles_group(right, "The demon's side: the demon and %d minion%s" % [g.w.minion_ids.size(), "" if g.w.minion_ids.size() == 1 else "s"], C.EVIL_ROLES)
+	_roles_group(left, "Gifts of the town", g.w.case_script.town)
+	_roles_group(right, "The demon's side: the demon and %d minion%s" % [g.w.minion_ids.size(), "" if g.w.minion_ids.size() == 1 else "s"], g.w.case_script.demons + g.w.case_script.minions)
 	var night_rule = Label.new()
 	night_rule.name = "DemonNightRule"
 	night_rule.text = C.DEMON_NIGHT_RULE
 	night_rule.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	night_rule.add_theme_color_override("font_color", UITheme.color("ink"))
 	right.add_child(night_rule)
-	_roles_group(right, "Secrets: one in play, on top of a gift", C.SECRET_MOD_LIST)
+	_roles_group(right, "Secrets: one in play, on top of a gift", g.w.case_script.secrets)
 	var summary = Label.new()
 	summary.name = "SetupSummary"
 	summary.text = setup_summary(g.w.n_npcs)
@@ -610,10 +633,7 @@ func _on_more(i: int) -> void:
 		MoreItem.WORKSHOP:
 			_open_live_workshop()
 		MoreItem.NEW_CASE:
-			if g == null or g.w.game_over:
-				_new_case_button()
-			else:
-				new_case_confirm.popup_centered()
+			_open_new_case_screen()
 
 ## The Case Workshop lives on the case board as a pull-out sheet.
 func _open_live_workshop(number: int = 0) -> void:
@@ -984,7 +1004,7 @@ func _refresh_actions() -> void:
 			_button(actions, "Show the grimoire", func(): _run("grimoire"))
 			_button(actions, "Show every lie", func(): _run("grimoire lies"))
 			_button(actions, "Show who told whom what", func(): _run("grimoire talk"))
-			_button(actions, "New case", _new_case_button)
+			_button(actions, "New case", _open_new_case_screen)
 
 ## Portraits inspect; this explicit action owns the existing go/talk sequence.
 func _talk_to_person(id: String) -> void:
@@ -1149,7 +1169,7 @@ func _ask_gift_picker(anchor: Control) -> void:
 		_run("ask gift"))
 	h.add_child(qs)
 	var gifts = _column("…if they are the")
-	for r in C.GOOD_ROLES:
+	for r in g.w.case_script.town:
 		_button(gifts, C.role_name(r), func():
 			popup.hide()
 			_run("ask are " + C.role_name(r).to_lower()))
@@ -1248,7 +1268,7 @@ func _ask_about_picker(anchor: Control) -> void:
 			_run("ask about " + n.id), C.npc_color(n.id))
 	h.add_child(people)
 	var gifts = _column("Heard of a…")
-	for r in C.GOOD_ROLES:
+	for r in g.w.case_script.town:
 		_button(gifts, C.role_name(r), func():
 			popup.hide()
 			_run("ask about " + C.role_name(r).to_lower()))

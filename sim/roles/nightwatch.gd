@@ -9,6 +9,7 @@ func _init() -> void:
 	display_name = "Night Watch"
 	align = "good"
 	kind = "info"
+	tags = ["night_walker"]
 	night_walk = true
 	desc = "Each night, watches one block and learns who moved through it. Is out on that block."
 	shape = "NIGHT_ROUTE"

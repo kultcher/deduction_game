@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Clerk"
 	align = "good"
 	kind = "info"
+	tags = ["first_night_info"]
 	first_night = true
 	desc = "Starts knowing that one of two people holds a particular gift."
 	shape = "ROLE_IN_GROUP"

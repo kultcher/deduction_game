@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Archivist"
 	align = "good"
 	kind = "info"
+	tags = ["first_night_info", "evil_id"]
 	first_night = true
 	desc = "Starts knowing that one of two people is a particular minion."
 	shape = "ROLE_IN_GROUP"
@@ -41,7 +42,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	if broken:
 		var goods: Array = w.npcs.filter(func(m): return m != n and not m.is_evil())
 		pair = w.shuffled(goods).slice(0, 2).map(func(m): return m.id)
-		mrole = w.pick(C.MINION_ROLES)
+		mrole = w.pick(w.case_script.minions)
 		ok = false
 	return {
 		"data": {"pair": pair, "role": mrole},

@@ -16,6 +16,11 @@ var display_name: String = ""
 var align: String = "good"        # "good" | "evil"
 var kind: String = "info"         # "info" | "protect" | "passive" | "evil"
 var desc: String = ""
+## Script-builder tags (sim/script_def.gd): first_night_info, ongoing_info, evil_id,
+## demon_id, role_id, protection, night_walker.
+var tags: Array = []
+## "ready" (offered on scripts), "experimental" (offered, marked) or "benched" (hidden).
+var status: String = "ready"
 var first_night: bool = false
 var night_walk: bool = false
 var day: bool = false

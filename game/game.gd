@@ -210,7 +210,8 @@ static func render(evs: Array) -> String:
 
 # ---------------------------------------------------------------- lifecycle
 
-func new_case(seed_in: int, npc_count: int = 7) -> String:
+## `case_script` (sim/script_def.gd): what may be in play; null deals the Default script.
+func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	if workshop_presenting:
 		return "A case presentation is still being assessed."
 	# Each case starts from empty shared-model memo tables (and picks up tuning changes).
@@ -262,6 +263,7 @@ func new_case(seed_in: int, npc_count: int = 7) -> String:
 	w.detailed_logging = detailed_logging
 	w.trace_build = trace_build
 	w.trace_tuning = trace_tuning
+	w.case_script = case_script
 	w.setup(seed_in, npc_count, func(_world): _attach_workshop_world())
 	if debug_overlay: set_debug_overlay(true)
 	w.dlog.begin_action("new_case_presentation")

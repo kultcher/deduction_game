@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Lamplighter"
 	align = "good"
 	kind = "info"
+	tags = ["ongoing_info", "night_walker"]
 	night_walk = true
 	desc = "Each night, walks the lamp route and learns how many other people were out."
 	shape = "GROUP_COUNT"
