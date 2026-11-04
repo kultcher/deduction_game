@@ -378,6 +378,11 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 				weights[x] = ReasonAttribution.score_reading_entry_in_world(w, n.id, e, x)["strength"]
 			w.public_event("reading", implicated(e), n.id, {"weights": weights})
 			w.public_event("clear", Gifts.clears(e), n.id)
+			if str(e.get("role", n.claimed_role)) == "nightwatch":
+				var nw_day: int = int(e.get("day", -1))
+				var nw_blk: String = str(e.get("data", {}).get("block", ""))
+				for seen_id in e.get("data", {}).get("seen", []):
+					n.told_to["town|sighting:%s:%s:%d:%d:%s" % [n.id, str(seen_id), nw_day, C.NIGHT, nw_blk]] = true
 			shared_this_turn.append(e)
 			facts.append(info_fact(w, n, e))
 			for l in w.living():
@@ -541,15 +546,6 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	if n.told_to.has(_town_sighting_key(n, seen)): return
 	n.told_to[_town_sighting_key(n, seen)] = true
 	var report = sighting_report(w, n, seen, seen["day"])
-	var groups: Array = []
-	_add_observation(groups, report["observation"])
-	var obs_lines: Array = _observation_lines(n, groups, "town", "volunteer", not lines.is_empty(), "development" if not lines.is_empty() else "independent")
-	var night_label: String = C.spoken_when(seen["day"], w.day)
-	for obs_line in obs_lines:
-		obs_line["statement"] = report["line"]["text"]
-		if not (night_label in obs_line["text"] or ("night %d" % seen["day"]) in obs_line["text"]):
-			obs_line["text"] = "%s: %s" % [night_label[0].to_upper() + night_label.substr(1), obs_line["text"]]
-		lines.append(obs_line)
 	facts.append(report["fact"])
 
 ## Peer pressure: what public accusations add to a listener's action score.
@@ -715,7 +711,12 @@ static func _evil_nomination(w, n, m: Dictionary, block: String):
 	if ev == null:
 		return null
 	var blk2: String = m.get("block", "")
-	var rescue2: float = Tuning.Meeting.EVIL_RESCUE_DEMON_BONUS if (blk2 != "" and blk2 == w.demon_id) else (Tuning.Meeting.EVIL_RESCUE_MINION_BONUS if (blk2 != "" and w.by_id.has(blk2) and w.by_id[blk2].is_evil()) else 0.0)
+	var scion_safe_nom: bool = Evil.scion_fallback_active(w)
+	var rescue2: float = 0.0
+	if blk2 != "" and blk2 == w.demon_id:
+		rescue2 = (0.0 if n.role == "scion" else Tuning.Meeting.EVIL_RESCUE_MINION_BONUS) if scion_safe_nom else Tuning.Meeting.EVIL_RESCUE_DEMON_BONUS
+	elif blk2 != "" and w.by_id.has(blk2) and w.by_id[blk2].is_evil():
+		rescue2 = Tuning.Meeting.EVIL_RESCUE_MINION_BONUS
 	var sg = w.by_id[ev["nominee"]]
 	var sg_ready: float = Evil.scapegoat_readiness(w, n, sg)["score"]
 	if evil_override(w, n, "nomination", Tuning.Meeting.EVIL_NOMINATION_STAKES_BASE + sg_ready + rescue2, 0.5, "push scapegoat %s (good self wouldn't nominate)" % sg.id):
@@ -945,15 +946,17 @@ static func _resolve_shared_reason(w, mind, real_npc, t_id: String, raw: Diction
 				seen_b = b
 				break
 		var blk_label: String = C.block_name(cblock) if cblock in C.BLOCKS else "the street"
-		var n_label: String = C.night_name(cnight)
+		var when_s: String = C.spoken_when(cnight, w.day)
 		var s_why: String = str(raw.get("why_own", ""))
 		if not seen_b.is_empty():
 			if str(seen_b.get("how", "street")) == "window":
-				s_why = "I saw them out in the street from my window on %s" % n_label
+				s_why = "I saw them out in the street from my window %s" % when_s
 			elif real_npc.claim_public and C.ROLES.get(real_npc.claimed_role, {}).get("night_walk", false):
-				s_why = "I saw them out on %s on %s, while I was out on my duty" % [blk_label, n_label]
+				s_why = "I saw them out on %s %s, while I was out on my duty" % [blk_label, when_s]
 			else:
-				s_why = "I saw them out on %s on %s" % [blk_label, n_label]
+				s_why = "I saw them out on %s %s" % [blk_label, when_s]
+		elif cnight >= 0:
+			s_why = s_why.replace("on " + C.night_name(cnight), when_s)
 		var already_disclosed: bool = (not seen_b.is_empty() and real_npc.told_to.has(_town_sighting_key(real_npc, seen_b))) or public_ids.has(cid)
 		var allowed_pub: bool = not seen_b.is_empty() and _public_sighting_allowed(w, real_npc, seen_b)
 		var s_kind: String = "shared_private"
@@ -1043,9 +1046,12 @@ static func _resolve_shared_reason(w, mind, real_npc, t_id: String, raw: Diction
 		g_kind = "public" if g_pub else ("shared_player" if g_plr else "shared_private")
 	elif csrc == "player" and not public_ids.has(cid):
 		g_kind = "shared_player"
+	var g_why: String = str(raw.get("why_public", ""))
+	if cnight >= 0:
+		g_why = g_why.replace("on " + C.night_name(cnight), C.spoken_when(cnight, w.day))
 	return {
 		"eid": fallback_eid,
-		"why": str(raw.get("why_public", "")),
+		"why": g_why,
 		"kind": g_kind,
 		"strength": strength,
 		"contrib": contrib,
@@ -1379,7 +1385,8 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		w.dlog.think(v.id, "vote", "Votes no on own execution.", {"nominee": nominee, "yes": false})
 		return false
 	if v.is_evil():
-		if w.by_id[nominee].role == "demon":
+		var scion_safe: bool = Evil.scion_fallback_active(w)
+		if w.by_id[nominee].role == "demon" and not scion_safe:
 			w.dlog.think(v.id, "team_survival", "Votes no on the demon: later voters can make even an early vote decisive.")
 			return false
 		if v.id == nominator and not Evil.is_teammate(w, v, nominee):
@@ -1388,18 +1395,18 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		var evil_yes: bool = Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
 		if not C.SHADOW_SELF:
 			return evil_yes
-		# Shadow self (step 2): vote as their good self would, unless breaking cover is worth it.
-		var sh_yes = shadow_eval(w, v, func(sh): return vote(w, sh, nominee, nominator, player_yes, statement, yes_so_far))
-		if sh_yes == null or sh_yes == evil_yes:
-			return evil_yes
 		var have = yes_so_far + (1 if player_yes else 0)
 		var order: Array = w.vote_order(nominee)
 		var my_idx: int = order.find(v.id)
 		var expected_later: int = 0
+		var remaining_possible: int = 0
 		if my_idx >= 0:
 			for k_idx in range(my_idx + 1, order.size()):
 				var rem_id: String = order[k_idx]
-				if rem_id == "player" or rem_id == nominee or not w.by_id.has(rem_id):
+				if rem_id == nominee:
+					continue
+				remaining_possible += 1
+				if rem_id == "player" or not w.by_id.has(rem_id):
 					continue
 				var rem_n = w.by_id[rem_id]
 				if rem_n.is_evil() and evil_yes:
@@ -1407,15 +1414,33 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 				elif w.stances.get(rem_id, {}).get("target", "") == nominee and int(w.stances.get(rem_id, {}).get("day", -1)) == w.day:
 					expected_later += 1
 		var target_votes: int = maxi(w.vote_threshold(), int(w.meeting.get("block_count", 0)))
-		var projected: int = have + 1 + expected_later
-		var pivot = 1.0 if (absi(have + 1 - target_votes) <= 1 or (projected >= target_votes - 1 and have + 1 <= target_votes + 1)) else 0.45
 		var cur_block: String = w.meeting.get("block", "")
 		var demon_on_block: bool = cur_block != "" and cur_block == w.demon_id
+		if v.id == w.demon_id and demon_on_block and not scion_safe and evil_yes and not Evil.is_teammate(w, v, nominee) and have + 1 + remaining_possible >= target_votes:
+			w.dlog.think(v.id, "team_survival", "Demon on the block backs counter-nominee %s: survival overrides cover." % nominee)
+			return true
+		# Shadow self (step 2): vote as their good self would, unless breaking cover is worth it.
+		var sh_yes = shadow_eval(w, v, func(sh): return vote(w, sh, nominee, nominator, player_yes, statement, yes_so_far))
+		if sh_yes == null or sh_yes == evil_yes:
+			return evil_yes
+		var projected: int = have + 1 + expected_later
+		var pivot = 1.0 if (absi(have + 1 - target_votes) <= 1 or (projected >= target_votes - 1 and have + 1 <= target_votes + 1)) else 0.45
+		var landslide: bool = have >= target_votes or projected >= target_votes + 2
 		var mate_on_block: bool = cur_block != "" and w.by_id.has(cur_block) and w.by_id[cur_block].is_evil()
-		var rescue: float = Tuning.Meeting.EVIL_VOTE_RESCUE_DEMON if demon_on_block else (Tuning.Meeting.EVIL_VOTE_RESCUE_MINION if mate_on_block else 0.0)
+		var rescue: float = 0.0
+		if demon_on_block:
+			rescue = (Tuning.Meeting.EVIL_VOTE_RESCUE_MINION * (0.5 if v.role == "scion" else 1.0)) if scion_safe else Tuning.Meeting.EVIL_VOTE_RESCUE_DEMON
+		elif mate_on_block:
+			rescue = Tuning.Meeting.EVIL_VOTE_RESCUE_MINION
 		var stakes = 0.3
-		if Evil.is_teammate(w, v, nominee):
-			stakes = Evil.teammate_value(w, nominee) * maxf(pivot, 0.75) if not evil_yes else 0.75
+		if Evil.is_teammate(w, v, nominee) or w.by_id[nominee].role == "demon":
+			if not evil_yes:
+				var mate_pivot: float = 1.0 if pivot >= 1.0 else (Tuning.Meeting.EVIL_VOTE_LANDSLIDE_PIVOT if landslide else Tuning.Meeting.EVIL_VOTE_NONPIVOTAL_TEAMMATE)
+				stakes = Evil.teammate_value(w, nominee) * mate_pivot
+				if scion_safe and w.by_id[nominee].role == "demon" and v.role == "scion":
+					stakes *= Tuning.Meeting.EVIL_VOTE_SCION_COVER_MULT
+			else:
+				stakes = 0.75
 		elif evil_yes:
 			stakes = (0.55 + (0.30 if nominee == w.evil_plan.get("scapegoat", "") else 0.0)) * pivot + rescue
 		var detail = "%s on %s (good self: %s)" % ["YES" if evil_yes else "no", nominee, "yes" if sh_yes else "no"]

@@ -17,6 +17,21 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04, Argon: Nov 4 Playtest Fixes (`95955` & `40741`) + `RoleConstraints.cs` CA2014 (`patch_012_playtest_fixes_fdf4760.zip`)
+
+- **Base:** `main` at `fdf4760f2a774479cad42ac1c91bfc4b4e4495b9` (`fdf4760`, post-`patch_011` + `baseline_4f7ba7f`).
+- **Deliverable:** `patch_012_playtest_fixes_fdf4760.zip` in Google Drive (`Demonologist Patches`), containing all modified/new repo files relative to `fdf4760f2a774479cad42ac1c91bfc4b4e4495b9` plus `MANIFEST_PLAYTEST_FIXES_FDF4760.md`.
+- **Scope:**
+  1. **Rumormonger & Chronicler `chance_content` calibration (`workshop/case_eval.gd`)**: Replaced the `0.50` fallback for `SECRET_PAIR` (`rumormonger`) and `0.25` constant for `chronicler` with exact modifier-domain hold rates (`_chance_rumormonger`, `_chance_chronicler`) so uncontradicted Rumormonger and Chronicler readings no longer self-incriminate their speaker with `"their Rumormonger report doesn't fit what we know"` (`q` packs from GDScript into C#, preserving `--tol 0` parity).
+  2. **Presentation voice routing (`sim/dialogue_presentations.gd`)**: Scoped `present_conflict_weighing` on bounded listeners strictly to `status == "inconsistent"` (stopping background town lies in `full_case` from hijacking accepted coherent cases), and read `snapshot.selected` before falling back to `[]` (never `ignored_arr`) so unpresented background town cards in `reasoning.ignored` stop firing `present_partial_attention` on 3- and 4-card cases.
+  3. **Evil protection-promise awareness (`game/game_conversation.gd`, `sim/evil.gd`, `sim/tuning.gd`)**: `GameConversation._offer_command` now calls `Evil.note_player_offer` when promising a `vigil` or `ward` to an evil NPC, recording `player_vigil` / `player_ward` in `n.intel` (shared naturally with teammates via `Evil.share_intel`) and penalizing promised vigil blocks / warded doors in `Evil.choose_kill_target` and `Evil.choose_poison_target` with zero extra RNG draws.
+  4. **Scion-active voting/nomination cover & doomed-Demon rescue votes (`sim/evil.gd`, `sim/mind_meeting.gd`, `sim/tuning.gd`)**: Added `Evil.scion_fallback_active(w)` (`living >= 5` and unbroken Scion; Sexton suppression deferred to Chunk 6 rework). When active, `teammate_value` weights Scion (`1.45`) above the replaceable Demon (`1.1`), Demon trials flow through `SHADOW_SELF` + `evil_override`, and landslide teammate trials (`have >= target_votes` or `projected >= target_votes + 2`) drop non-pivotal `NO` stakes (`0.20`) so minions and Scions keep cover instead of casting futile `NO` votes. Conversely, when no Scion fallback is active, a Demon on the block backs mathematically live counter-nominations (`survival overrides cover`).
+  5. **Natural night phrasing & Night Watch / accusation sighting deduplication (`sim/evil.gd`, `sim/mind_meeting.gd`)**: Replaced raw `"on night %d"` / `C.night_name` strings in `Evil.bluff_reason` and `MindMeeting._resolve_shared_reason` with `C.spoken_when(..., w.day)`. Sharing a `nightwatch` reading in `_go_public` now marks covered `(who, day, block)` keys in `n.told_to`, and `_append_accusation_sighting` emits the usable `sighting` card without prepending a duplicate spoken line ahead of `acc["line"]`.
+  6. **C# CA2014 warning cleanup (`workshop/cs/RoleConstraints.cs`)**: Hoisted `Span<int> fbBuf = stackalloc int[16]` outside the `for (int k = 0; k < 3; k++)` loop in `RegistrarYesStep` (`0 warnings, 0 errors`).
+  7. **Regression suite (`tools/test_playtest_nov4_fixes.gd`, `tools/ci_fast_suites.txt`)**: Added deterministic tests for all fixes plus `SolverBackend.get_verify_mismatches()` verification.
+- **Note for Claude:** Intentional behavior/prior fixes (`chance_content`, evil kill/vote/bluff phrasing, sighting dedup) will intentionally shift golden trajectories; please verify `dotnet build -c Debug` (0 warnings, 0 errors), `tools/ci_fast_suites.txt` + `test_playtest_regressions` + `test_case_eval` + `test_dialogue_batches_5_6_7` + `test_backlog_batch4`, `--tol 0` C#/GDScript parity on the same commit, and recapture `tools/golden/baseline_*`.
+- **Next actor:** **Claude**.
+
 ## 2026-11-04 ~16:00 ET, Claude: patch_011 checked, green after one test fix, on main; new baseline
 
 - **Base:** `2e91218` as declared; unpacked on `argon/patch-011-chunks-2-3`. Keeps M1, the

@@ -1070,14 +1070,14 @@ internal static class RoleConstraintsKernel
                     break;
                 }
             }
+            Span<int> fbBuf = stackalloc int[16];
             if (anyIn)
             {
                 if (thR0.Length == 0)
                 {
                     return Matching(curMasks.Slice(0, curCount), curCount - 1, 0);
                 }
-                Span<int> fb0 = stackalloc int[16];
-                return TownHallMatches(curRoles, curMasks, curCount, thR0, thR1, thPick, 0, good, fb0, 0);
+                return TownHallMatches(curRoles, curMasks, curCount, thR0, thR1, thPick, 0, good, fbBuf, 0);
             }
 
             Span<int> nextInRoles = stackalloc int[curCount + 1];
@@ -1105,8 +1105,8 @@ internal static class RoleConstraintsKernel
                 }
                 else
                 {
-                    Span<int> fb1 = stackalloc int[16];
-                    if (TownHallMatches(nextInRoles, nextInMasks, nextInCount, thR0, thR1, thPick, 0, good, fb1, 0))
+                    fbBuf.Clear();
+                    if (TownHallMatches(nextInRoles, nextInMasks, nextInCount, thR0, thR1, thPick, 0, good, fbBuf, 0))
                     {
                         return true;
                     }
