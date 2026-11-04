@@ -156,6 +156,10 @@ static func _bare_speech(issues: Array) -> bool:
 
 
 static func _presentation_rejection(g, card: Dictionary) -> String:
+	if card.get("deprecated", false):
+		var by_id: String = str(card.get("disclaimed_by", ""))
+		var by_nm: String = g.w.by_id[by_id].name if g.w.by_id.has(by_id) else "its source"
+		return "Card #%d was disclaimed by %s as muddled and is deprecated." % [int(card.get("n", 0)), by_nm]
 	if card.get("tavern_gossip", false) or not card.get("workshop_usable", true):
 		return "Card #%d is an unattributed tavern rumour and cannot be cited as evidence." % int(card.get("n", 0))
 	if card.get("superseded_by", 0) > 0:

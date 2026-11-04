@@ -154,7 +154,7 @@ static func key(view: Dictionary, world: Dictionary) -> int:
 
 static func _key_gd(view: Dictionary, world: Dictionary) -> int:
 	var n: int = view.people.size()
-	var base: int = ((int(world.evil) * (n + 1) + int(world.marked) + 1) * 4 + C.SECRET_MOD_LIST.find(world.modifier)) * (1 << n) + int(world.holders)
+	var base: int = ((int(world.evil) * (n + 1) + int(world.marked) + 1) * 5 + C.SECRET_MOD_LIST.find(world.modifier)) * (1 << n) + int(world.holders)
 	base = base * (n + 1) + world.demon + 1 if world.has("demon") else base
 	return base * (n + 1) + world.converted + 1 if world.has("converted") else base
 
