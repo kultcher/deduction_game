@@ -62,7 +62,9 @@ static func belief(g, state: Dictionary, rng: RandomNumberGenerator) -> Dictiona
 			state.accepted.append(cid)
 		else:
 			state.rejected[cid] = "impossible" if trial.get("ready", false) else "unreadable"
-	var key: String = JSON.stringify([state.accepted, profiles])
+	# Profile receipts aren't in `accepted`, and `profiles` names only facets: key on the
+	# facets' receipt ids too, so a newly learned haunt or home re-reads the board.
+	var key: String = JSON.stringify([state.accepted, profiles, _profile_receipts(view, profiles)])
 	if key == state.cache_key:
 		return state.posterior
 	var out: Dictionary = {}
@@ -234,6 +236,18 @@ static func _profile_people(view: Dictionary) -> Dictionary:
 				unlocked.append(f)
 		if not unlocked.is_empty():
 			out[pid] = unlocked
+	return out
+
+
+## The receipt ids behind each unlocked facet the juror uses, per person.
+static func _profile_receipts(view: Dictionary, profiles: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var facets_map: Dictionary = view.get("profile_facets", {})
+	for pid in profiles:
+		var ids: Array = []
+		for f in profiles[pid]:
+			ids.append(facets_map.get(pid, {}).get(f, {}).get("receipt_ids", []))
+		out[pid] = ids
 	return out
 
 
