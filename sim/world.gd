@@ -70,6 +70,9 @@ var tools = {"ward": 1, "clemency": 1}
 var daily_npc_shares: Array = []    # Non-strategizing NPC-to-NPC items spoken today
 var _evening_chats_done_day: int = -1
 var initial_good_roles: Array = []  # Good roles dealt at case start (unaffected by death/curse)
+var initial_minion_ids: Array = []  # Minion ids dealt at case start (unaffected by Scion promotion)
+var initial_evil_ids: Array = []    # Initial evil ids dealt at case start (unaffected by Revenant curse)
+var initial_secret_holders: Array = [] # Good townsfolk dealt a secret modifier at case start
 var town_hall_uses_left: int = Tuning.Setup.TOWN_HALL_USES_PER_CASE
 var town_hall_shown_roles: Array = []
 var _town_hall_rng: RandomNumberGenerator = null
@@ -502,6 +505,8 @@ func _assign_roles() -> void:
 		order[i].role = good[k]
 		k += 1
 	initial_good_roles = good.duplicate()
+	initial_minion_ids = minion_ids.duplicate()
+	initial_evil_ids = ([demon_id] + minion_ids).duplicate()
 	var evil_count = 1 + mins.size()
 	# Evil only ever bluffs a gift that is on the script.
 	bluffs = shuffled(sc.town.filter(func(r): return not role_in_play(r))).slice(0, maxi(3, evil_count + 1))
@@ -512,6 +517,7 @@ func _assign_roles() -> void:
 
 ## One secret modifier per case, on a townsfolk (the Lovers take two), on top of their gift.
 func _assign_secret_mod() -> void:
+	initial_secret_holders = []
 	var goods = shuffled(npcs.filter(func(n): return not n.is_evil()))
 	if goods.size() < 2:
 		return
@@ -543,6 +549,7 @@ func _assign_secret_mod() -> void:
 			pr[0].secret = {"kind": "lover", "with": pr[1].id, "dest": pr[1].home_block,
 				"text": "slips out to meet %s in secret" % pr[1].name, "me": "slip out to meet %s in secret" % pr[1].name}
 			pr[0].known_secrets[pr[1].id] = pr[1].id
+	initial_secret_holders = npcs.filter(func(n): return not n.is_evil() and n.secret_mod != "").map(func(n): return n.id)
 	dlog.add("secret_mod", a.id, a.lover, {"mod": k}, "Secret: %s is %s%s." % [a.name, C.secret_name(k),
 		(" with " + by_id[a.lover].name) if a.lover != "" else ""])
 
@@ -615,6 +622,8 @@ func start_phase() -> void:
 		totem_at_dawn = not totem.is_empty()
 		for n in npcs:
 			n.talked_today = []
+		if day >= 1:
+			_morning_executor_gifts()
 	if phase == C.EVENING:
 		# A silence lasts until the next evening.
 		for n in living():
@@ -951,6 +960,7 @@ func end_meeting(last_words: Callable = Callable()) -> String:
 	if meeting.get("closed", false): return ""
 	meeting["closed"] = true
 	set_log_time()
+	public_event("meeting", [], "town")
 	var b: String = meeting["block"]
 	if b == "":
 		dlog.add("no_execution", "world", "", {}, "Nobody is on the block when the meeting closes.")
@@ -1101,15 +1111,17 @@ func on_execution_reading_heard(listener, source, entry: Dictionary, weight: flo
 		return
 	var d: Dictionary = {}
 	var r_day: int = int(entry.get("day", -1))
-	if str(entry.get("role", "")) == "gravedigger":
+	if str(entry.get("role", "")) in ["gravedigger", "executor"]:
 		d = entry.get("data", {})
 	elif str(entry.get("role", "")) == "medium":
 		var item: Dictionary = entry.get("data", {}).get("item", {})
-		if str(item.get("type", "")) == "reading" and str(item.get("role", "")) == "gravedigger":
+		if str(item.get("type", "")) == "reading" and str(item.get("role", "")) in ["gravedigger", "executor"]:
 			d = item.get("data", {})
-	if d.is_empty():
+	if d.is_empty() or not d.has("role"):
 		return
-	var ex_id: String = str(d.get("executed", ""))
+	var ex_id: String = str(d.get("executed", d.get("target", "")))
+	if ex_id == "" or not by_id.has(ex_id) or by_id[ex_id].death_cause != "executed":
+		return
 	var ex_role: String = str(d.get("role", ""))
 	if ex_id == "" or not by_id.has(ex_id) or not C.ROLES.has(ex_role) or listener.settled_execution_rapport.has(ex_id):
 		return
@@ -1829,8 +1841,21 @@ func _medium_text(dead, it: Dictionary) -> String:
 
 ## Gifts that work in the daytime: the Dowser reads a crowd; the Breathstealer silences;
 ## the Revenant hides a totem.
+func _morning_executor_gifts() -> void:
+	var ex_def = C.role_def("executor")
+	if ex_def == null:
+		return
+	var fired = false
+	var holder = living_with_role("executor")
+	if holder != null:
+		fired = ex_def.run_morning_gift(self, holder) or fired
+	for n in evil_team():
+		fired = ex_def.run_morning_bluff(self, n) or fired
+	if fired:
+		Mind.update_from_own_info(self)
+
 func _day_gifts() -> void:
-	for role_id in ["dowser", "breathstealer", "revenant"]:
+	for role_id in ["dowser", "augur", "breathstealer", "revenant"]:
 		var holder = living_with_role(role_id)
 		if holder != null:
 			C.role_def(role_id).run_day_gift(self, holder, Mind, Evil)

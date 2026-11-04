@@ -1090,7 +1090,7 @@ func _actions_talk(w) -> void:
 	wb.pressed.connect(func(): _ask_when_picker(wb))
 	var ab = _button(actions, "Ask about others…  ▸", func(): pass)
 	ab.pressed.connect(func(): _ask_about_picker(ab))
-	var asks: Dictionary = {"seer": "check", "warden": "guard", "nightwatch": "watch"}
+	var asks: Dictionary = {"seer": "check", "registrar": "check", "warden": "guard", "nightwatch": "watch"}
 	if (n.max_tier >= 3 or n.claim_public) and asks.has(n.claimed_role) and w.phase != C.NIGHT:
 		var rb = _button(actions, "Ask them to use their gift tonight…  ▸", func(): pass)
 		rb.pressed.connect(func(): _gift_request_picker(rb, n.claimed_role, asks[n.claimed_role]))
@@ -1245,7 +1245,7 @@ func _gift_request_picker(anchor: Control, role: String, verb: String) -> void:
 		for m in g.w.living():
 			if m != n:
 				items.append([m.name, "ask %s %s" % [verb, m.id], C.npc_color(m.id)])
-	var title = {"seer": "Ask %s to look at… (a question; for a pair, type 'ask check A, B')", "warden": "Ask %s to guard…", "nightwatch": "Ask %s to watch…"}[role] % n.name
+	var title = {"seer": "Ask %s to look at… (a question; for a pair, type 'ask check A, B')", "registrar": "Ask %s to check against their register…", "warden": "Ask %s to guard…", "nightwatch": "Ask %s to watch…"}[role] % n.name
 	_list_picker(anchor, title, items)
 
 ## "Ask where they were and who they saw…": a time to ask about.

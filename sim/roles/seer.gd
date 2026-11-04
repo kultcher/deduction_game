@@ -180,17 +180,18 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, asked: Arr
 	var others_m: Array = goods.filter(func(x): return x != mate.id and x != s)
 	var late: bool = w.living().size() <= 5
 	var why = ""
-	if not asked.is_empty():
+	var clean_asked: Array = asked.filter(func(x): return x != n.id)
+	if not clean_asked.is_empty():
 		# Looked where the Demonologist asked: a 'yes' only frames the scapegoat.
 		# A real Seer never reads themself: drop the bluffer from the asked pair.
-		pair = asked.filter(func(x): return x != n.id).slice(0, 2)
+		pair = clean_asked.slice(0, 2)
 		if pair.size() < 2:
 			var fill: Array = goods.filter(func(x): return not (x in pair) and x != mate.id and x != n.id)
 			if fill.is_empty():
 				return {}
 			pair.append(w.pick(fill))
 		yes = s in pair
-		why = "looks where asked (%s); %s" % [str(asked), "frames the scapegoat" if yes else "a harmless 'no'"]
+		why = "looks where asked (%s); %s" % [str(clean_asked), "frames the scapegoat" if yes else "a harmless 'no'"]
 	elif w.by_id[s].alive and (w.day % 2 == 1 or w.day == 0 or late) and not others_s.is_empty():
 		pair = [s, w.pick(others_s)]
 		yes = true

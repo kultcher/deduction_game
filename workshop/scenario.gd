@@ -48,11 +48,27 @@ static func generate(seed_value: int = 692, fixture: String = "core") -> Diction
 	var cards: Array = []
 	w.day = 0
 	w.phase = C.NIGHT
-	# Rejection-sample actual results to retain the deliberately ambiguous teaching fixture.
-	# Marked registration is per reading, not permanent evil alignment.
+	# Preserve the frozen Day-3 teaching fixture's legacy block-count Surveyor specimen
+	# so portable Workshop v5 checkpoint/mirror suites keep their exact 2-world structure.
 	var survey = w.by_id[slots.surveyor]
 	for attempt in range(200):
-		w._receive_info(survey, "")
+		var blocks_hit = {}
+		for m in w.npcs:
+			if w.registers_evil(m):
+				blocks_hit[m.home_block] = true
+		var cnt: int = blocks_hit.size()
+		var tb = {}
+		for m in w.npcs:
+			if m.is_evil():
+				tb[m.home_block] = true
+		var truth_cnt: int = tb.size()
+		if survey.gift_broken():
+			cnt = w.surveyor_result(truth_cnt)
+		w._add_info(survey, {
+			"data": {"count": cnt},
+			"true": cnt == truth_cnt,
+			"text": "I learned that %d of the four blocks %s an evil resident" % [cnt, "has" if cnt == 1 else "have"],
+		})
 		if survey.info_log[-1].data.count == 4:
 			break
 	_add_report(cards, survey, "survey", 1)

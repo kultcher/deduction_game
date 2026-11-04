@@ -311,7 +311,7 @@ func add_modifier(id: String, mode: String) -> String:
 	if not nodes.has(id) or nodes[id].kind != "evidence":
 		return "Select a reading card."
 	var report = Solver.card_by_id(view, nodes[id].card)
-	if report.kind != "report" or report.has("relay_source") or report.get("testimony_only", false) or mode not in ["misled", "lying", "unlikely"] or (mode == "unlikely" and report.role != "surveyor"):
+	if report.kind != "report" or report.has("relay_source") or report.get("testimony_only", false) or mode not in ["misled", "lying", "unlikely"] or (mode == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))):
 		return "This modifier is not supported for that evidence type."
 	for node in nodes.values():
 		if node.kind == "modifier" and node.card == report.id:
@@ -805,9 +805,19 @@ func apply_answer(card: Dictionary, previous: Dictionary, kind: String, value: S
 	var positive: Array = answer.get("positive", []).duplicate()
 	var marked: Array = answer.get("marked", []).duplicate()
 	var role: String = card.get("role", "")
+	var cdata: Dictionary = card.get("data", {}) if card.get("data", {}) is Dictionary else {}
+	var is_parity_surv: bool = card.kind == "report" and role == "surveyor" and cdata.has("block")
 	var count: int = 1
-	if card.kind == "report" and role in ["dowser", "lamplighter", "surveyor"]:
-		count = int(card.data.get("count", 0))
+	if card.kind == "report":
+		if is_parity_surv:
+			var res_cnt: int = view.people.filter(func(p): return p.home == cdata.get("block", "")).size()
+			count = 0 if bool(cdata.get("same", false)) else maxi(1, res_cnt - 1)
+		elif role in ["dowser", "lamplighter", "surveyor"]:
+			count = int(cdata.get("count", 0))
+		elif role == "magistrate":
+			count = 0 if bool(cdata.get("same", false)) else 1
+		elif role == "augur":
+			count = 1 if bool(cdata.get("yes", false)) else 0
 	match kind:
 		"th_role":
 			if card.kind == "town_hall" and value in card.get("data", {}).get("roles", []):
@@ -818,7 +828,7 @@ func apply_answer(card: Dictionary, previous: Dictionary, kind: String, value: S
 		"reg":
 			answer["registration"] = value
 		"pick":
-			if role == "dowser":
+			if role in ["dowser", "magistrate"] or is_parity_surv:
 				# ? -> registered (evil or Marked) -> registered as Marked -> ?
 				if value not in positive:
 					if positive.size() < count:

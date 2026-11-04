@@ -362,18 +362,41 @@ func _question(card: Dictionary) -> void:
 		_label(box, "This claims a private errand that could explain an outing. It does not prove innocence, a particular secret modifier, or that the person was out.", 16, "muted")
 	elif card.kind == "context" and card.get("context_kind", "") == "psychologist":
 		_label(box, "This reports whom someone trusts and suspects. Those opinions do not establish anyone's alignment.", 16, "muted")
-	elif card.kind == "report" and role in ["surveyor", "dowser", "rumormonger", "lamplighter", "clerk", "archivist", "seer"]:
-		var prompt: String = {"surveyor": "Which blocks or residents account for the positives? A positive may be evil or Marked.", "dowser": "Who registered as evil in this reading? Marked is a possible explanation.", "rumormonger": "Which person is Marked in your explanation?", "lamplighter": "Who were the other people out? The Lamplighter is excluded.", "clerk": "If this reading is accurate, who holds the named good gift?", "archivist": "If this reading is accurate, who holds the named minion gift?", "seer": "What explains this Demon reading? A negative reading does not clear minions."}[role]
+	elif card.kind == "report" and role in ["surveyor", "dowser", "rumormonger", "lamplighter", "clerk", "archivist", "seer", "chronicler", "magistrate", "augur"]:
+		var is_p_surv: bool = role == "surveyor" and card.data.has("block")
+		var prompt: String = {
+			"surveyor": ("All residents on %s registered the same alignment." % C.block_name(str(card.data.get("block", ""))) if card.data.get("same", false) else "Who on %s registered as evil (or Marked)?" % C.block_name(str(card.data.get("block", "")))) if is_p_surv else "Which blocks or residents account for the positives? A positive may be evil or Marked.",
+			"dowser": "Who registered as evil in this reading? Marked is a possible explanation.",
+			"rumormonger": "Which person is Marked in your explanation?",
+			"lamplighter": "Who were the other people out? The Lamplighter is excluded.",
+			"clerk": "If this reading is accurate, who holds the named good gift?",
+			"archivist": "If this reading is accurate, who holds the named minion gift?",
+			"seer": "What explains this Demon reading? A negative reading does not clear minions.",
+			"chronicler": "If this reading is accurate, who in the trio was the Minion at case start?",
+			"magistrate": "Both nominess shared an alignment registration." if card.data.get("same", false) else "Which of the two registered as evil (or Marked)?",
+			"augur": "Link daytime sightings or work receipts from this day to weigh public crossings. Optional: pick who crossed paths with the Augur." if card.data.get("yes", false) else "Link daytime sightings or work receipts from this day to clear anyone who shared a public block with the Augur.",
+		}[role]
 		if role == "rumormonger":
 			prompt = "Which person has the named secret (%s) in your explanation?" % card.data.get("secret", "marked")
 		_label(box, prompt, 16)
-		var count: int = (1 if card.data.yes else 0) if role == "seer" else (1 if role in ["rumormonger", "clerk", "archivist"] else card.data.count)
+		var count: int = 0
+		if role in ["seer", "augur"]:
+			count = 1 if card.data.get("yes", false) else 0
+		elif role in ["rumormonger", "clerk", "archivist", "chronicler"]:
+			count = 1
+		elif role == "magistrate":
+			count = 0 if card.data.get("same", false) else 1
+		elif is_p_surv:
+			var s_res_c: int = session.scenario.public_view.people.filter(func(p): return p.home == card.data.get("block", "")).size()
+			count = 0 if card.data.get("same", false) else maxi(1, s_res_c - 1)
+		else:
+			count = int(card.data.get("count", 0))
 		var current = _active_choices()
 		var answer: Dictionary = current.answers.get(card.id, {})
 		var fallback_slots: Array = answer.get("positive", []).duplicate()
 		for block in answer.get("blocks", []):
 			fallback_slots.append("block:" + str(block))
-		if role == "surveyor" and count == 4:
+		if role == "surveyor" and not is_p_surv and count == 4:
 			var by_block = {}
 			for choice in fallback_slots:
 				if str(choice).begins_with("block:"):
@@ -388,6 +411,12 @@ func _question(card: Dictionary) -> void:
 			var choices: Array = session.scenario.public_view.people.map(func(p): return p.id)
 			if role in ["rumormonger", "clerk", "archivist", "seer"]:
 				choices = card.data.pair
+			elif role == "chronicler":
+				choices = card.data.get("trio", [])
+			elif role == "magistrate":
+				choices = [card.data.get("nominator", ""), card.data.get("nominee", "")]
+			elif is_p_surv:
+				choices = session.scenario.public_view.people.filter(func(p): return p.home == card.data.get("block", "")).map(func(p): return p.id)
 			elif role == "surveyor":
 				if count == 4:
 					var block: String = C.BLOCKS.keys()[i]
@@ -397,7 +426,7 @@ func _question(card: Dictionary) -> void:
 					choices = C.BLOCKS.keys().map(func(block): return "block:" + block) + choices
 			elif role == "dowser":
 				choices = card.data.group
-			elif role == "lamplighter":
+			elif role in ["lamplighter", "augur"]:
 				choices = choices.filter(func(id): return id != card.source)
 			var slot = _option(box, ["? Unresolved slot %d" % (i + 1)] + choices.map(func(id): return "Someone on " + C.block_name(str(id).trim_prefix("block:")) if str(id).begins_with("block:") else _name(id)))
 			slot.name = "Answer_%s_%d" % [card.id, i]
@@ -415,7 +444,7 @@ func _question(card: Dictionary) -> void:
 				var updated: Dictionary = current.answers.get(card.id, {}).duplicate(true)
 				var positive: Array = chosen.filter(func(v): return not v.begins_with("block:"))
 				updated.merge({"slots": values, "positive": positive}, true)
-				if role == "surveyor":
+				if role == "surveyor" and not is_p_surv:
 					updated["blocks"] = chosen.filter(func(v): return v.begins_with("block:")).map(func(v): return v.trim_prefix("block:"))
 				current.answers[card.id] = updated
 				_edit())
@@ -463,13 +492,15 @@ func _question(card: Dictionary) -> void:
 				if private_errand:
 					support = claims.filter(func(c): return c.id == current.citations.get(key, ""))[0] if claims.any(func(c): return c.id == current.citations.get(key, "")) else {}
 				_label(box, "Cited: %s. This could explain the outing; accuracy and activity are still assumptions." % support.text if not support.is_empty() else "No applicable walking-gift claim is cited; this explanation receives no discount.", 14, "muted")
-	elif card.kind == "report" and role in ["warden", "gravedigger", "veteran", "martyr", "sexton"]:
+	elif card.kind == "report" and role in ["warden", "gravedigger", "veteran", "martyr", "sexton", "executor", "registrar"]:
 		var explanation: String = {
 			"warden": "This claims a guard at the named door on that night. Movement, public deaths and quiet nights weigh it together; a quiet night alone does not prove a successful protection.",
 			"gravedigger": "This names the executed person's role at that execution. An evil-role result can also come from a good Marked person. No additional answer is required.",
 			"veteran": "This claims the first survived Demon attack and its approach block. It can constrain the attacker's route if the report is sound. No additional answer is required.",
 			"martyr": "This records a claimed choice; choosing someone does not establish that they are good. Comparing an earlier promise with a later hanging still needs a dated outcome adapter." if card.data.get("chosen", false) else "This claims the chosen person was hanged without substitution. If the gift was healthy, they registered evil; Marked remains an explanation.",
-			"sexton": "A healthy toll stops gifts that need walking that night. Secret outings may continue. Hearing the bell alone does not establish that the gift worked."
+			"sexton": "A healthy toll stops gifts that need walking that night. Secret outings may continue. Hearing the bell alone does not establish that the gift worked.",
+			"executor": "Records the Executor's case-start charge; consistency requires any later death reading from this Executor to name the same person." if card.data.get("assigned", false) else "Names the deceased charge's role the morning after they died. An evil-role result can also come from a good Marked person. No additional answer is required.",
+			"registrar": "Lists the three script roles on this Registrar's slate; at least one is in play if the Registrar is good and healthy." if not card.data.has("target") else "Checks whether the named person holds one of the three roles on the slate (Marked can falsely match a minion role on the slate). No additional answer is required."
 		}[role]
 		_label(box, explanation, 16, "muted")
 	else:
