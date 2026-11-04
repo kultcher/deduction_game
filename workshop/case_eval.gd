@@ -82,15 +82,81 @@ static func _concl_type_code(c_type: String) -> int:
 
 ## Chance of this report's content arising by chance: roughly one over the number of
 ## different things the gift could have said.
+static func _healthy_modifier_worlds_per_team(g: int, mods: Array) -> float:
+	var w_h: float = 0.0
+	if "marked" in mods:
+		w_h += float(g)
+	if "delusional" in mods:
+		w_h += float(maxi(0, g - 1))
+	if "sleepwalker" in mods:
+		w_h += float(g)
+	if "lovers" in mods:
+		w_h += float(g * (g - 1)) * 0.5
+	return w_h
+
+static func _chance_rumormonger(view: Dictionary, d: Dictionary) -> float:
+	var n: int = view.get("people", []).size()
+	var e: int = clampi(int(view.get("evil_count", 2)), 1, maxi(1, n - 1))
+	var g: int = n - e
+	if n <= 2 or g <= 1:
+		return 0.25
+	var pair_sz: int = clampi(int(d.get("pair", []).size()), 1, n - 1)
+	if not Domain.live(view):
+		return clampf((float(pair_sz) * float(g - 1) / float(n - 1)) / float(g), 0.01, 0.5)
+	var mods: Array = view.get("world_options", {}).get("modifiers", ["marked"])
+	var w_h: float = _healthy_modifier_worlds_per_team(g, mods)
+	if w_h <= 0.0:
+		return 0.25
+	var sec: String = str(d.get("secret", "marked"))
+	if sec not in mods:
+		return clampf(1.0 / w_h, 0.01, 0.5)
+	if sec == "lovers":
+		if n < 3 or g < 2:
+			return 0.2
+		var denom: float = float((n - 1) * (n - 2))
+		var both_good: float = float((g - 1) * (g - 2)) / denom
+		var one_good: float = float(2 * (g - 1) * e) / denom
+		var exp_lovers: float = both_good * float(2 * g - 3) + one_good * float(g - 1)
+		return clampf(exp_lovers / w_h, 0.01, 0.5)
+	var exp_solo: float = float(pair_sz) * float(g - 1) / float(n - 1)
+	return clampf(exp_solo / w_h, 0.01, 0.5)
+
+static func _chance_chronicler(view: Dictionary) -> float:
+	var n: int = view.get("people", []).size()
+	var e: int = clampi(int(view.get("evil_count", 2)), 1, maxi(1, n - 1))
+	var g: int = n - e
+	if n < 4 or g < 3 or e < 2:
+		return 0.15
+	var c_n1_3: float = float((n - 1) * (n - 2) * (n - 3)) / 6.0
+	if not Domain.live(view):
+		var exp_fix: float = float((e - 1) * (g - 1) * (g - 2)) / c_n1_3
+		return clampf(exp_fix / float(g), 0.01, 0.5)
+	var mods: Array = view.get("world_options", {}).get("modifiers", ["marked"])
+	var w_h: float = _healthy_modifier_worlds_per_team(g, mods)
+	if w_h <= 0.0:
+		return 0.15
+	var solo_worlds: float = 0.0
+	for m_kind in ["marked", "delusional", "sleepwalker"]:
+		if m_kind in mods:
+			solo_worlds += float(g - 1)
+	var lovers_with_src: float = float(g - 1) if "lovers" in mods else 0.0
+	var lovers_no_src: float = (float((g - 1) * (g - 2)) * 0.5) if "lovers" in mods else 0.0
+	var trios_one_sec: float = float((e - 1) * (g - 2))
+	var trios_two_sec: float = float((e - 1) * 2 * maxi(0, g - 3))
+	var exp_holds: float = ((solo_worlds + lovers_with_src) * trios_one_sec + lovers_no_src * trios_two_sec) / c_n1_3
+	return clampf(exp_holds / w_h, 0.01, 0.5)
+
 static func chance_content(view: Dictionary, card: Dictionary) -> float:
 	var d: Dictionary = card.get("data", {})
 	var role_id: String = str(card.get("role", ""))
 	if role_id == "chronicler":
-		return 0.25
+		return _chance_chronicler(view)
 	if role_id in ["augur", "magistrate"]:
 		return 0.5
 	var rdef = Solver.C.role_def(role_id)
 	if rdef != null:
+		if rdef.shape == "SECRET_PAIR":
+			return _chance_rumormonger(view, d)
 		if rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count":
 			return 1.0 / float(d.get("group", []).size() + 1)
 		if rdef.shape == "GROUP_COUNT":

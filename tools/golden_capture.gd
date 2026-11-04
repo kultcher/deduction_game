@@ -80,10 +80,9 @@ func _capture(out: String, sd: int, size: int, day_limit: int) -> void:
 		"engine": Engine.get_version_info().get("string", ""), "rng": str(g.w.rng.state)})
 	# Wrap the shared-refresh hook (read-only observer after the real refresh).
 	var inner: Callable = g.w.workshop_refresh
-	g.w.workshop_refresh = func(n, phase):
-		inner.call(n, phase)
-		if phase == "after":
-			_on_refresh(n)
+	g.w.workshop_refresh = func(n):
+		inner.call(n)
+		_on_refresh(n)
 	_write(_step_record(g, -1, "", ""))
 	var steps: int = 0
 	while g.w.day < day_limit and not g.w.game_over and steps < 400:

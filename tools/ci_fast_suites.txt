@@ -25,3 +25,5 @@ test_peer_role_gossip
 test_case_script
 test_chunk2_world_mask_roles
 test_chunk3_executor_registrar
+test_playtest_nov4_fixes
+test_meeting_m2a

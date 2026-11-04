@@ -38,12 +38,27 @@ static func meeting_testimony(w) -> Array:
 ## one is worked out. Running every step in a row is exactly meeting_testimony.
 static func testimony_start(w) -> Dictionary:
 	w.defer_beliefs = true
-	return {"speakers": w.shuffled(w.living()), "i": 0, "done": false}
+	var st: Dictionary = {"speakers": w.shuffled(w.living()), "i": 0, "done": false,
+		"substantive_turns": 0, "reactive": {}, "interjected": {}, "spoke_ids": {}}
+	_sync_testimony_ctx(w, st)
+	return st
+
+## What speakers' decisions read about the testimony so far, as plain data (ids and
+## counts only, so meeting state stays comparable between runs).
+static func _sync_testimony_ctx(w, st: Dictionary) -> void:
+	if w.meeting is Dictionary:
+		w.meeting["testimony"] = {"reactive": st.get("reactive", {}), "substantive_turns": int(st.get("substantive_turns", 0)), "done": bool(st.get("done", false))}
 
 ## One step: the next speaker's turn ({who, lines, facts}; lines may be empty), or once
 ## everyone has spoken, one of the belief refreshes still waiting ({}). Sets st.done after
 ## the last one.
 static func testimony_step(w, st: Dictionary) -> Dictionary:
+	for k in ["reactive", "interjected", "spoke_ids"]:
+		if not st.has(k):
+			st[k] = {}
+	if not st.has("substantive_turns"):
+		st["substantive_turns"] = 0
+	_sync_testimony_ctx(w, st)
 	while st["i"] < st["speakers"].size():
 		var n = st["speakers"][st["i"]]
 		st["i"] += 1
@@ -53,6 +68,7 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		var lines: Array = []
 		var facts: Array = []
 		flush_beliefs(w, n)  # a speaker reacts to everything said before their turn
+		var reacting: bool = st["reactive"].has(n.id)
 		if not n.claim_public and _public_claim_decision(w, n) != "":
 			_public_disclosure(w, n, lines, facts)
 		elif n.claim_public:
@@ -62,6 +78,15 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 			lines.append(acc["line"])
 			facts.append(acc["fact"])
 		_volunteer_night_sightings(w, n, lines, facts)
+		st["reactive"].erase(n.id)
+		st["spoke_ids"][n.id] = true
+		if facts.any(func(f): return str(f.get("kind", "")) in ["claim", "info", "accusation"]):
+			st["substantive_turns"] += 1
+		if not facts.is_empty():
+			_queue_reactions(w, st, n, facts)
+		_sync_testimony_ctx(w, st)
+		if reacting and not lines.is_empty():
+			w.dlog.think(n.id, "testimony", "Speaks up in reaction to what was just said.", {"reactive": true})
 		return {"who": n.id, "lines": lines, "facts": facts}
 	# Everyone has spoken: the remaining refreshes, one mind per step, in queue order.
 	if not w.pending_beliefs.is_empty():
@@ -69,7 +94,105 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 	if w.pending_beliefs.is_empty():
 		w.defer_beliefs = false
 		st["done"] = true
+		_sync_testimony_ctx(w, st)
 	return {}
+
+## Who reacts to what a speaker just said (plan 2.2), from cheap metadata only (no solver):
+## 1 a rival claim on their gift, 2 being named, 3 holding something that clears the
+## person just accused. Those yet to speak move up (by priority); someone who already spoke
+## may interject once per meeting, for 1 or 2 only.
+static func _queue_reactions(w, st: Dictionary, s, facts: Array) -> void:
+	var claimed: Array = []
+	var named: Array = []
+	var accused: Array = []
+	for f in facts:
+		var subj: Array = f.get("subject", []) if f.get("subject", []) is Array else [str(f.get("subject", ""))]
+		match str(f.get("kind", "")):
+			"claim":
+				if str(f.get("source", "")) == s.id:
+					claimed.append(str(f.get("role", "")))
+			"accusation", "info", "sighting":
+				named.append_array(subj)
+				if str(f.get("kind", "")) == "accusation":
+					accused.append_array(subj)
+				elif str(f.get("kind", "")) == "info":
+					accused.append_array(Gifts.implicated(f))
+	var picks: Array = []
+	for l in w.living():
+		if l == s or l.silenced:
+			continue
+		var my_role: String = str(w.evil_plan.get("bluffs", {}).get(l.id, "")) if l.is_evil() else str(l.role)
+		var trigger: int = 0
+		var subject: String = ""
+		if my_role != "" and my_role in claimed:
+			trigger = 1
+		elif l.id in named:
+			trigger = 2
+			subject = l.id
+		else:
+			for x in accused:
+				if x == l.id or not w.by_id.has(x):
+					continue
+				var clears_x: bool = l.info_log.any(func(e): return not e.get("shared", false) and x in Gifts.clears(e))
+				if clears_x or (l.role == "martyr" and not l.is_evil() and l.martyr_target == x):
+					trigger = 3
+					subject = x
+					break
+		if trigger == 0:
+			continue
+		var idx: int = st["speakers"].find(l)
+		var yet: bool = idx >= st["i"]
+		if not yet and (trigger == 3 or st["interjected"].has(l.id) or not st["spoke_ids"].has(l.id)):
+			continue
+		picks.append([trigger, l, yet])
+		st["reactive"][l.id] = {"trigger": trigger, "by": s.id, "subject": subject, "bonus": Tuning.Meeting.REACTIVE_OPENNESS_BONUS}
+	picks.sort_custom(func(a, b): return a[0] < b[0] if a[0] != b[0] else a[1].id < b[1].id)
+	var insert_at: int = st["i"]
+	for p in picks:
+		var l = p[1]
+		if p[2]:
+			st["speakers"].erase(l)
+		else:
+			st["interjected"][l.id] = true
+		st["speakers"].insert(insert_at, l)
+		insert_at += 1
+		w.dlog.think(l.id, "testimony", "Reacts to %s (trigger %d): moves up to speak next." % [s.id, int(p[0])], {"trigger": p[0], "by": s.id, "interjection": not p[2]})
+
+## Opening openness during testimony: a reaction boosts it; otherwise, once a few speakers
+## have claimed, shared or accused, a private person holds their cards (plan 2.3).
+static func _testimony_openness(w, n) -> float:
+	var st = w.meeting.get("testimony", null) if w.meeting is Dictionary else null
+	if st == null or st.get("done", true):
+		return 0.0
+	if st["reactive"].has(n.id):
+		return float(st["reactive"][n.id].get("bonus", 0.0))
+	return -float(st.get("substantive_turns", 0)) * maxf(0.0, trait_of(n, "privacy") - Tuning.Meeting.CROWD_FADE_PRIVACY_FLOOR) * Tuning.Meeting.CROWD_FADE_SLOPE
+
+static func _testimony_sighting_bar(w, n) -> float:
+	var st = w.meeting.get("testimony", null) if w.meeting is Dictionary else null
+	if st == null or st.get("done", true) or st["reactive"].has(n.id):
+		return 0.0
+	return float(st.get("substantive_turns", 0)) * Tuning.Meeting.CROWD_FADE_SIGHTING_BAR
+
+## How safe nominee d is because someone else is already firmly on the block (0..1, public
+## information only; plan Step 2). Feeds the defence, and later the Podium Press and supporters.
+static func block_safety(w, d) -> float:
+	var blk: String = str(w.meeting.get("block", ""))
+	var high: int = int(w.meeting.get("block_count", 0))
+	var thr: int = w.vote_threshold()
+	if blk == "" or blk == d.id or high < thr:
+		return 0.0
+	var margin: float = clampf(float(high - thr + 1) / Tuning.Meeting.BLOCK_SAFETY_FULL_MARGIN, 0.0, 1.0)
+	var accusers: int = w.meeting.get("accusations", []).filter(func(a): return a.get("target", "") == d.id).size()
+	var pending: Dictionary = w.meeting.get("pending", {})
+	var nominator: String = str(pending.get("by", "")) if str(pending.get("nominee", "")) == d.id else ""
+	var nom_cred: float = 0.0
+	if nominator == "player":
+		nom_cred = clampf(d.credibility, 0.0, 1.0)
+	elif nominator != "" and w.by_id.has(nominator):
+		nom_cred = clampf(d.npc_trust.get(nominator, 0.5), 0.0, 1.0)
+	var heat: float = clampf(Tuning.Meeting.BLOCK_SAFETY_HEAT_BASE + Tuning.Meeting.BLOCK_SAFETY_HEAT_PER_ACCUSER * accusers + Tuning.Meeting.BLOCK_SAFETY_HEAT_CREDIBILITY * nom_cred, 0.0, 1.0)
+	return margin * (1.0 - heat)
 
 ## A volunteer never invents a cover or reveals an undisclosed walk. Reuse the
 ## known account and walking-gift/reading constraints used by private followups.
@@ -103,7 +226,7 @@ static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void
 	if n.silenced: return
 	var score = trait_of(n, "gossip") + trait_of(n, "confidence")
 	var panic = paranoia(w, n)
-	var threshold = Tuning.Meeting.VOLUNTEER_SIGHTING_BASE - panic
+	var threshold = Tuning.Meeting.VOLUNTEER_SIGHTING_BASE - panic + _testimony_sighting_bar(w, n)
 	w.observe_decision(n, "volunteer_night_sightings", score >= threshold, {"score": score, "threshold": threshold, "comparison": ">=",
 		"inputs": {"gossip": trait_of(n, "gossip"), "confidence": trait_of(n, "confidence"), "paranoia": panic, "composure": trait_of(n, "composure")},
 		"threshold_parts": {"base": Tuning.Meeting.VOLUNTEER_SIGHTING_BASE, "paranoia": -panic}, "gate": "Gossip + Confidence threshold; eligible untold sightings still require disclosure/cover checks; no random draw"})
@@ -131,6 +254,9 @@ static func _public_claim_decision(w, n) -> String:
 	# Gifts that pay off night after night are worth protecting early; one-shot first-night
 	# gifts have less to lose by coming out.
 	C.role_def(role).score_public_claim(w, n, parts)
+	var opening: float = _testimony_openness(w, n)
+	if opening != 0.0:
+		parts["reactive" if opening > 0.0 else "crowd_fade"] = opening
 	if n.protect_lock and not (n.id in w.meeting.get("nominated", []) or n.pressure >= 0.7 or w.living().size() <= 4):
 		w.observe_decision(n, "claim", false, {"gate": "protect_lock_promised_player_first"})
 		return ""  # promised to tell the Demonologist first once protected
@@ -378,6 +504,11 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 				weights[x] = ReasonAttribution.score_reading_entry_in_world(w, n.id, e, x)["strength"]
 			w.public_event("reading", implicated(e), n.id, {"weights": weights})
 			w.public_event("clear", Gifts.clears(e), n.id)
+			if str(e.get("role", n.claimed_role)) == "nightwatch":
+				var nw_day: int = int(e.get("day", -1))
+				var nw_blk: String = str(e.get("data", {}).get("block", ""))
+				for seen_id in e.get("data", {}).get("seen", []):
+					n.told_to["town|sighting:%s:%s:%d:%d:%s" % [n.id, str(seen_id), nw_day, C.NIGHT, nw_blk]] = true
 			shared_this_turn.append(e)
 			facts.append(info_fact(w, n, e))
 			for l in w.living():
@@ -452,6 +583,9 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		"pressure_deflect": n.pressure * Tuning.Meeting.ACCUSE_PRESSURE_DEFLECT}
 	if acc_resent > 0.0:
 		parts["resentment"] = acc_resent * Tuning.Meeting.ACCUSE_RESENTMENT_SLOPE
+	var acc_opening: float = _testimony_openness(w, n)
+	if acc_opening != 0.0:
+		parts["reactive" if acc_opening > 0.0 else "crowd_fade"] = acc_opening
 	if not decide(w, n, "accuse", parts, "Publicly accuse %s?" % t.id):
 		return null
 	# What they can say for it: a reason the town already has, a hint at one they're
@@ -541,15 +675,6 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	if n.told_to.has(_town_sighting_key(n, seen)): return
 	n.told_to[_town_sighting_key(n, seen)] = true
 	var report = sighting_report(w, n, seen, seen["day"])
-	var groups: Array = []
-	_add_observation(groups, report["observation"])
-	var obs_lines: Array = _observation_lines(n, groups, "town", "volunteer", not lines.is_empty(), "development" if not lines.is_empty() else "independent")
-	var night_label: String = C.spoken_when(seen["day"], w.day)
-	for obs_line in obs_lines:
-		obs_line["statement"] = report["line"]["text"]
-		if not (night_label in obs_line["text"] or ("night %d" % seen["day"]) in obs_line["text"]):
-			obs_line["text"] = "%s: %s" % [night_label[0].to_upper() + night_label.substr(1), obs_line["text"]]
-		lines.append(obs_line)
 	facts.append(report["fact"])
 
 ## Peer pressure: what public accusations add to a listener's action score.
@@ -715,7 +840,12 @@ static func _evil_nomination(w, n, m: Dictionary, block: String):
 	if ev == null:
 		return null
 	var blk2: String = m.get("block", "")
-	var rescue2: float = Tuning.Meeting.EVIL_RESCUE_DEMON_BONUS if (blk2 != "" and blk2 == w.demon_id) else (Tuning.Meeting.EVIL_RESCUE_MINION_BONUS if (blk2 != "" and w.by_id.has(blk2) and w.by_id[blk2].is_evil()) else 0.0)
+	var scion_safe_nom: bool = Evil.scion_fallback_active(w)
+	var rescue2: float = 0.0
+	if blk2 != "" and blk2 == w.demon_id:
+		rescue2 = (0.0 if n.role == "scion" else Tuning.Meeting.EVIL_RESCUE_MINION_BONUS) if scion_safe_nom else Tuning.Meeting.EVIL_RESCUE_DEMON_BONUS
+	elif blk2 != "" and w.by_id.has(blk2) and w.by_id[blk2].is_evil():
+		rescue2 = Tuning.Meeting.EVIL_RESCUE_MINION_BONUS
 	var sg = w.by_id[ev["nominee"]]
 	var sg_ready: float = Evil.scapegoat_readiness(w, n, sg)["score"]
 	if evil_override(w, n, "nomination", Tuning.Meeting.EVIL_NOMINATION_STAKES_BASE + sg_ready + rescue2, 0.5, "push scapegoat %s (good self wouldn't nominate)" % sg.id):
@@ -945,15 +1075,17 @@ static func _resolve_shared_reason(w, mind, real_npc, t_id: String, raw: Diction
 				seen_b = b
 				break
 		var blk_label: String = C.block_name(cblock) if cblock in C.BLOCKS else "the street"
-		var n_label: String = C.night_name(cnight)
+		var when_s: String = C.spoken_when(cnight, w.day)
 		var s_why: String = str(raw.get("why_own", ""))
 		if not seen_b.is_empty():
 			if str(seen_b.get("how", "street")) == "window":
-				s_why = "I saw them out in the street from my window on %s" % n_label
+				s_why = "I saw them out in the street from my window %s" % when_s
 			elif real_npc.claim_public and C.ROLES.get(real_npc.claimed_role, {}).get("night_walk", false):
-				s_why = "I saw them out on %s on %s, while I was out on my duty" % [blk_label, n_label]
+				s_why = "I saw them out on %s %s, while I was out on my duty" % [blk_label, when_s]
 			else:
-				s_why = "I saw them out on %s on %s" % [blk_label, n_label]
+				s_why = "I saw them out on %s %s" % [blk_label, when_s]
+		elif cnight >= 0:
+			s_why = s_why.replace("on " + C.night_name(cnight), when_s)
 		var already_disclosed: bool = (not seen_b.is_empty() and real_npc.told_to.has(_town_sighting_key(real_npc, seen_b))) or public_ids.has(cid)
 		var allowed_pub: bool = not seen_b.is_empty() and _public_sighting_allowed(w, real_npc, seen_b)
 		var s_kind: String = "shared_private"
@@ -1043,9 +1175,12 @@ static func _resolve_shared_reason(w, mind, real_npc, t_id: String, raw: Diction
 		g_kind = "public" if g_pub else ("shared_player" if g_plr else "shared_private")
 	elif csrc == "player" and not public_ids.has(cid):
 		g_kind = "shared_player"
+	var g_why: String = str(raw.get("why_public", ""))
+	if cnight >= 0:
+		g_why = g_why.replace("on " + C.night_name(cnight), C.spoken_when(cnight, w.day))
 	return {
 		"eid": fallback_eid,
-		"why": str(raw.get("why_public", "")),
+		"why": g_why,
 		"kind": g_kind,
 		"strength": strength,
 		"contrib": contrib,
@@ -1235,6 +1370,9 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	# 1. A gift that walks at night explains being seen out.
 	if not out_items.is_empty() and C.ROLES.get(role, {}).get("night_walk", false):
 		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": maxf(0.2, out_weight)}
+		var safety: float = block_safety(w, d)
+		if safety > 0.0:
+			parts["block_safety"] = -safety * Tuning.Meeting.BLOCK_SAFETY_DEFENCE_RELIEF
 		for k in reveal_cost(w, d):
 			parts["cost_" + k] = -reveal_cost(w, d)[k]
 		if d.claim_public or decide(w, d, "defence_reveal", parts, "Explain being out with my gift (%s)?" % role):
@@ -1247,7 +1385,12 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			defence_scopes["reveal"] = {"type": "gift_claim", "role": role}
 	# 2. A personal secret explains it (good only: evil has nothing true to confess).
 	if moves.is_empty() and not out_items.is_empty() and not d.is_evil() and not d.secret.is_empty():
-		if decide(w, d, "defence_confess", {"facing_the_rope": 0.5, "privacy": (0.4 - trait_of(d, "privacy")) * 1.0}, "Confess my secret to explain being out?"):
+		var confess_parts = {"facing_the_rope": 0.5, "privacy": (0.4 - trait_of(d, "privacy")) * 1.0}
+		var confess_safety: float = block_safety(w, d)
+		if confess_safety > 0.0:
+			confess_parts["block_safety"] = -confess_safety * Tuning.Meeting.BLOCK_SAFETY_DEFENCE_RELIEF
+			w.dlog.think(d.id, "defence", "Weighs holding back: %s is already on the block (%d votes)." % [str(w.meeting.get("block", "")), int(w.meeting.get("block_count", 0))])
+		if decide(w, d, "defence_confess", confess_parts, "Confess my secret to explain being out?"):
 			d.secret_known = true
 			lines.append(say_voiced(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % d.secret.get("me", d.secret.get("text", "")), {"secret": d.secret.get("me", d.secret.get("text", ""))}))
 			facts.append({"kind": "secret", "subject": [d.id], "owner": d.id, "source": d.id,
@@ -1379,7 +1522,8 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		w.dlog.think(v.id, "vote", "Votes no on own execution.", {"nominee": nominee, "yes": false})
 		return false
 	if v.is_evil():
-		if w.by_id[nominee].role == "demon":
+		var scion_safe: bool = Evil.scion_fallback_active(w)
+		if w.by_id[nominee].role == "demon" and not scion_safe:
 			w.dlog.think(v.id, "team_survival", "Votes no on the demon: later voters can make even an early vote decisive.")
 			return false
 		if v.id == nominator and not Evil.is_teammate(w, v, nominee):
@@ -1388,18 +1532,18 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		var evil_yes: bool = Evil.evil_vote(w, v, nominee, yes_so_far, player_yes)
 		if not C.SHADOW_SELF:
 			return evil_yes
-		# Shadow self (step 2): vote as their good self would, unless breaking cover is worth it.
-		var sh_yes = shadow_eval(w, v, func(sh): return vote(w, sh, nominee, nominator, player_yes, statement, yes_so_far))
-		if sh_yes == null or sh_yes == evil_yes:
-			return evil_yes
 		var have = yes_so_far + (1 if player_yes else 0)
 		var order: Array = w.vote_order(nominee)
 		var my_idx: int = order.find(v.id)
 		var expected_later: int = 0
+		var remaining_possible: int = 0
 		if my_idx >= 0:
 			for k_idx in range(my_idx + 1, order.size()):
 				var rem_id: String = order[k_idx]
-				if rem_id == "player" or rem_id == nominee or not w.by_id.has(rem_id):
+				if rem_id == nominee:
+					continue
+				remaining_possible += 1
+				if rem_id == "player" or not w.by_id.has(rem_id):
 					continue
 				var rem_n = w.by_id[rem_id]
 				if rem_n.is_evil() and evil_yes:
@@ -1407,15 +1551,33 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 				elif w.stances.get(rem_id, {}).get("target", "") == nominee and int(w.stances.get(rem_id, {}).get("day", -1)) == w.day:
 					expected_later += 1
 		var target_votes: int = maxi(w.vote_threshold(), int(w.meeting.get("block_count", 0)))
-		var projected: int = have + 1 + expected_later
-		var pivot = 1.0 if (absi(have + 1 - target_votes) <= 1 or (projected >= target_votes - 1 and have + 1 <= target_votes + 1)) else 0.45
 		var cur_block: String = w.meeting.get("block", "")
 		var demon_on_block: bool = cur_block != "" and cur_block == w.demon_id
+		if v.id == w.demon_id and demon_on_block and not scion_safe and evil_yes and not Evil.is_teammate(w, v, nominee) and have + 1 + remaining_possible >= target_votes:
+			w.dlog.think(v.id, "team_survival", "Demon on the block backs counter-nominee %s: survival overrides cover." % nominee)
+			return true
+		# Shadow self (step 2): vote as their good self would, unless breaking cover is worth it.
+		var sh_yes = shadow_eval(w, v, func(sh): return vote(w, sh, nominee, nominator, player_yes, statement, yes_so_far))
+		if sh_yes == null or sh_yes == evil_yes:
+			return evil_yes
+		var projected: int = have + 1 + expected_later
+		var pivot = 1.0 if (absi(have + 1 - target_votes) <= 1 or (projected >= target_votes - 1 and have + 1 <= target_votes + 1)) else 0.45
+		var landslide: bool = have >= target_votes or projected >= target_votes + 2
 		var mate_on_block: bool = cur_block != "" and w.by_id.has(cur_block) and w.by_id[cur_block].is_evil()
-		var rescue: float = Tuning.Meeting.EVIL_VOTE_RESCUE_DEMON if demon_on_block else (Tuning.Meeting.EVIL_VOTE_RESCUE_MINION if mate_on_block else 0.0)
+		var rescue: float = 0.0
+		if demon_on_block:
+			rescue = (Tuning.Meeting.EVIL_VOTE_RESCUE_MINION * (0.5 if v.role == "scion" else 1.0)) if scion_safe else Tuning.Meeting.EVIL_VOTE_RESCUE_DEMON
+		elif mate_on_block:
+			rescue = Tuning.Meeting.EVIL_VOTE_RESCUE_MINION
 		var stakes = 0.3
-		if Evil.is_teammate(w, v, nominee):
-			stakes = Evil.teammate_value(w, nominee) * maxf(pivot, 0.75) if not evil_yes else 0.75
+		if Evil.is_teammate(w, v, nominee) or w.by_id[nominee].role == "demon":
+			if not evil_yes:
+				var mate_pivot: float = 1.0 if pivot >= 1.0 else (Tuning.Meeting.EVIL_VOTE_LANDSLIDE_PIVOT if landslide else Tuning.Meeting.EVIL_VOTE_NONPIVOTAL_TEAMMATE)
+				stakes = Evil.teammate_value(w, nominee) * mate_pivot
+				if scion_safe and w.by_id[nominee].role == "demon" and v.role == "scion":
+					stakes *= Tuning.Meeting.EVIL_VOTE_SCION_COVER_MULT
+			else:
+				stakes = 0.75
 		elif evil_yes:
 			stakes = (0.55 + (0.30 if nominee == w.evil_plan.get("scapegoat", "") else 0.0)) * pivot + rescue
 		var detail = "%s on %s (good self: %s)" % ["YES" if evil_yes else "no", nominee, "yes" if sh_yes else "no"]

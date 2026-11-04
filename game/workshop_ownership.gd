@@ -8,10 +8,13 @@ const Circumstantial = preload("res://workshop/circumstantial.gd")
 const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
 
-static func refresh(g, n, phase: String) -> void:
-	var span = Profiler.open("ownership_" + phase)
-	_refresh(g, n, phase)
-	Profiler.close(span)
+## One shared belief refresh: prepare the plan ("before"), then re-prepare with its source
+## doubt if that changed and apply it ("after"). One call since meeting plan M2's cleanup.
+static func refresh(g, n) -> void:
+	for phase in ["before", "after"]:
+		var span = Profiler.open("ownership_" + phase)
+		_refresh(g, n, phase)
+		Profiler.close(span)
 
 static func _candidate_outside(n, state: Dictionary) -> Dictionary:
 	var out: Dictionary = n.suspicion.duplicate(true)

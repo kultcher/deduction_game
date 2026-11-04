@@ -649,6 +649,7 @@ func _run_workshop(cmd: String, progress: Callable) -> void:
 	_capture_conversation(previous_state, cmd)
 	if not conversation_finished:
 		_consume_headlines()
+		_show_notes()
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()
@@ -680,6 +681,7 @@ func _run(cmd: String) -> void:
 	_capture_scene_search(cmd)
 	if not conversation_finished:
 		_consume_headlines()
+		_show_notes()
 	if g.meeting_streaming() and not conversation_finished:
 		_stream_meeting()
 		return
@@ -957,7 +959,7 @@ func _refresh_actions() -> void:
 			nom.disabled = "player" in w.meeting.get("nominators", [])
 			if nom.disabled:
 				nom.tooltip_text = "No nominations remaining"
-			nom.pressed.connect(func(): _people_picker(nom, "Nominate whom?", func(id): _run("nominate " + id), func(n): return w.can_nominate("player", n.id) == ""))
+			nom.pressed.connect(func(): _people_picker(nom, "Nominate whom?", func(id): _nomination_menu(nom, id), func(n): return w.can_nominate("player", n.id) == ""))
 			var done = _button(actions, "Close the meeting", func(): _run("done"))
 			done.disabled = not g.town_quiet
 			if not g.town_quiet:
@@ -1159,6 +1161,55 @@ func _show_popup(content: Control, anchor: Control) -> void:
 		var origin = anchor.global_position if anchor.get_window().gui_embed_subwindows else anchor.get_screen_position()
 		pos = Vector2i(origin) + Vector2i(0, int(anchor.size.y))
 	preload("res://ui/column_menus.gd").fit_picker(popup, content, pos)
+
+## Meeting plan M2a: nominate on the case on deck (your latest case naming them), update it
+## first, pick another, file one, or nominate on your word alone.
+func _nomination_menu(anchor: Control, id: String) -> void:
+	var who = g.w.by_id[id]
+	var deck: Dictionary = g.on_deck_case(id)
+	var v = _column("Nominate %s" % who.name)
+	var public_tip: String = "This case is already public knowledge: citing it again doesn't sway the town further, but it stands on its own merits."
+	if not deck.is_empty():
+		var go = _button(v, "Nominate on case #%d: %s" % [deck.n, deck.text], func():
+			popup.hide()
+			_run("nominate %s #%d" % [id, deck.n]))
+		if g.already_public(deck):
+			go.tooltip_text = public_tip
+		_button(v, "Update case #%d in the Workshop first" % deck.n, func():
+			popup.hide()
+			_open_live_workshop(deck.n))
+	var others: Array = g.cases_naming(id).filter(func(c): return deck.is_empty() or c.n != deck.n).map(func(c): return c.n)
+	if not others.is_empty():
+		_button(v, "Nominate on another case…", func():
+			popup.hide()
+			_card_picker("Nominate %s on which case?" % who.name, func(c): return c.n in others, func(num, _x): _run("nominate %s #%d" % [id, num]), false))
+	if deck.is_empty():
+		_button(v, "File a case against %s in the Workshop" % who.name, func():
+			popup.hide()
+			_open_live_workshop())
+	var raw = _button(v, "Nominate without a case", func():
+		popup.hide()
+		_run("nominate %s raw" % id))
+	raw.tooltip_text = "Rests on your word alone: the town will want more, and a wrong call costs your credibility."
+	_show_popup(v, anchor)
+
+## Informational notes (never a confirmation): a short toast that fades on its own.
+func _show_notes() -> void:
+	for e in g.last_events:
+		if e.get("k", "") != "note":
+			continue
+		var panel = PanelContainer.new()
+		var lbl = Label.new()
+		lbl.text = e.text
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.custom_minimum_size = Vector2(420, 0)
+		panel.add_child(lbl)
+		add_child(panel)
+		panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+		panel.position.y -= 160
+		get_tree().create_timer(6.0).timeout.connect(func():
+			if is_instance_valid(panel):
+				panel.queue_free())
 
 func _column(title: String) -> VBoxContainer:
 	var v = VBoxContainer.new()

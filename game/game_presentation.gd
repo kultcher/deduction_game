@@ -450,13 +450,16 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 		return
 	var num = rest.strip_edges().trim_prefix("#").to_int()
 	if num < 1 or num > g.board.size() or g.board[num - 1]["kind"] != "deduction" or g.board[num - 1].get("deleted", false):
-		g._err("Present which deduction? ('present <card#>'; file one with 'link' and 'conclude')")
+		g._err("Present which case? ('present <card#>'; file one in the Case Workshop)")
 		return
 	var ded: Dictionary = g.board[num - 1]
 	if not _presentation_gate(g, ded, g.w.living(), [], "deduction", "meeting"):
 		return
 	g.presented_today = true
 	g._narr("You take the floor: %s" % ded["text"])
+	if g.public_presentations.has(num):
+		g._ev({"k": "note", "text": "This case is already public knowledge: presenting it again doesn't sway the town further, but it stands on its own merits."})
+	g.public_presentations[num] = true
 	g.w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
 	g._break_confidences([num] + Array(ded.get("supports", [])))
 	_secrets_used(g, ded)

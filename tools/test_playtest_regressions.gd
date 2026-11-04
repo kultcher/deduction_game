@@ -143,6 +143,9 @@ func _survival() -> void:
 	var w = g.w
 	var n = w.by_id["isolde"]
 	var demon = w.demon()
+	# Without a Scion ready to inherit (patch_012 lets evil spend the demon when one is).
+	for sc in w.npcs.filter(func(x): return x.role == "scion"):
+		sc.alive = false
 	w.day = 5
 	w.begin_meeting()
 	n.pressure = 10.0
@@ -288,7 +291,7 @@ func _medium_fake_dead_reading_fallback() -> void:
 	var sg = w.living_good()[1]
 	w.evil_plan["scapegoat"] = sg.id
 	var ok = true
-	for role in ["surveyor", "rumormonger", "lamplighter", "veteran", "martyr"]:
+	for role in ["rumormonger", "lamplighter", "veteran", "martyr"]:  # surveyor has its own (patch_011)
 		var res: Dictionary = Mind.Evil._fake_dead_reading(w, evil_npc, dd, role, sg.id, 1)
 		if not res.is_empty():
 			ok = false
