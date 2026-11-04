@@ -112,7 +112,7 @@ internal static class WorldDomainKernel
     public static long ComputeKey(int n, WorldEntry w)
     {
         long np1 = n + 1L;
-        long baseVal = ((((long)w.Evil * np1 + (long)w.Marked + 1L) * 4L + (long)w.SecretModIndex) * (1L << n)) + (long)w.Holders;
+        long baseVal = ((((long)w.Evil * np1 + (long)w.Marked + 1L) * 5L + (long)w.SecretModIndex) * (1L << n)) + (long)w.Holders;
         if (w.HasDemon)
         {
             baseVal = baseVal * np1 + (long)w.DemonRaw + 1L;

@@ -11,7 +11,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 	var input = {"case_id": "case:%d:%d" % [g.w.seed_value, g.w.n_npcs], "now": now, "venue": venue,
 		"people": [], "receipts": [], "selected": [], "arguments": [], "root": 0, "issues": [],
 		"public_events": [], "rules": {"initial_evil_count": 1 + C.SETUPS.get(g.w.n_npcs, {"minions": 1}).minions,
-			"modifier_options": C.SECRET_MOD_LIST.duplicate(), "one_modifier_kind": true,
+			"modifier_options": g.w.case_script.secrets.duplicate() if g.w.case_script != null else C.SECRET_MOD_LIST.duplicate(), "one_modifier_kind": true,
 			"lovers_holders": 2, "other_modifier_holders": 1, "roles": C.ROLES.keys()}}
 	if venue not in ["private", "meeting", "nomination"]:
 		input.issues.append({"code": "invalid_venue", "fact": "", "detail": venue})

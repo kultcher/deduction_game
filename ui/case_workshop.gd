@@ -362,6 +362,43 @@ func _question(card: Dictionary) -> void:
 		_label(box, "This claims a private errand that could explain an outing. It does not prove innocence, a particular secret modifier, or that the person was out.", 16, "muted")
 	elif card.kind == "context" and card.get("context_kind", "") == "psychologist":
 		_label(box, "This reports whom someone trusts and suspects. Those opinions do not establish anyone's alignment.", 16, "muted")
+	elif card.kind == "report" and role == "psychologist":
+		var p_mode_q: String = str(card.data.get("mode", ""))
+		if p_mode_q == "none_false":
+			_label(box, "No eligible statements heard directly by the Psychologist on day %d were false or misread. Link alongside day-%d evidence to bolster it, or right-click to challenge if day-%d statements contradict each other." % [int(card.data.get("day_heard", 1)), int(card.data.get("day_heard", 1)), int(card.data.get("day_heard", 1))], 16)
+		elif p_mode_q == "pair" and card.data.get("statements") is Array and card.data.statements.size() == 2:
+			var current_p = _active_choices()
+			var ans_p: Dictionary = current_p.answers.get(card.id, {})
+			var stmts_q: Array = card.data.statements
+			_label(box, "At least one of these two statements from day %d was a lie or misreading. Specify which one (and why) to factor it directly into the solver:" % int(card.data.get("day_heard", 1)), 16)
+			var slot_vals: Array = ["", "0", "1", "both"]
+			var slot_opt = _option(box, ["? Either statement could be false", "Statement 1: " + str(stmts_q[0].get("summary", "")), "Statement 2: " + str(stmts_q[1].get("summary", "")), "Both statements are false"])
+			slot_opt.select(maxi(0, slot_vals.find(str(ans_p.get("false_slot", "")))))
+			slot_opt.item_selected.connect(func(idx_s):
+				var upd: Dictionary = current_p.answers.get(card.id, {}).duplicate(true)
+				if idx_s <= 0:
+					upd.erase("false_slot")
+					upd.erase("false_reason")
+				else:
+					upd["false_slot"] = slot_vals[idx_s]
+					if slot_vals[idx_s] == "both" or (str(upd.get("false_reason", "")) == "misled" and str(stmts_q[mini(idx_s - 1, 1)].get("kind", "")) == "sighting"):
+						upd.erase("false_reason")
+				current_p.answers[card.id] = upd
+				_edit())
+			var cur_fs: String = str(ans_p.get("false_slot", ""))
+			if cur_fs in ["0", "1"]:
+				var why_vals: Array = ["", "lying", "misled"]
+				var why_opt = _option(box, ["? Unresolved cause (lied or misled)", "Source was lying (evil)", "Source was misled (poisoned, Delusional, Marked, Red Herring, or Sleepwalker)"])
+				why_opt.set_item_disabled(2, str(stmts_q[int(cur_fs)].get("kind", "")) == "sighting")
+				why_opt.select(maxi(0, why_vals.find(str(ans_p.get("false_reason", "")))))
+				why_opt.item_selected.connect(func(idx_w):
+					var upd2: Dictionary = current_p.answers.get(card.id, {}).duplicate(true)
+					if idx_w <= 0:
+						upd2.erase("false_reason")
+					else:
+						upd2["false_reason"] = why_vals[idx_w]
+					current_p.answers[card.id] = upd2
+					_edit())
 	elif card.kind == "report" and role in ["surveyor", "dowser", "rumormonger", "lamplighter", "clerk", "archivist", "seer", "chronicler", "magistrate", "augur"]:
 		var is_p_surv: bool = role == "surveyor" and card.data.has("block")
 		var prompt: String = {

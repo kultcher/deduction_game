@@ -113,6 +113,8 @@ static func _secret_mod_code(mod_name: String) -> int:
 			return 2
 		"sleepwalker":
 			return 3
+		"muddler":
+			return 4
 		_:
 			return -99
 
@@ -158,6 +160,23 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 				challenge_errors.append("The selected reader alignment conflicts with the %s explanation." % mode.capitalize())
 			else:
 				positions[source] = positions.get(source, assumed)
+	for pcard in cards:
+		if pcard.get("kind") == "report" and pcard.get("role", "") == "psychologist" and not case_data.get("reading_challenges", {}).has(pcard.id):
+			var pdata: Dictionary = pcard.get("data", {}) if pcard.get("data") is Dictionary else {}
+			if str(pdata.get("mode", "")) == "pair" and pdata.get("statements") is Array and pdata.statements.size() == 2:
+				var pans: Dictionary = case_data.get("answers", {}).get(pcard.id, {})
+				var fslot: String = str(pans.get("false_slot", ""))
+				var fwhy: String = str(pans.get("false_reason", ""))
+				if fslot in ["0", "1"] and fwhy in ["misled", "lying"]:
+					var st_sel: Dictionary = pdata.statements[int(fslot)]
+					var t_src: String = str(st_sel.get("source", ""))
+					if t_src != "":
+						var p_assumed: String = "good" if fwhy == "misled" else "evil"
+						var p_allowed: Array = ["good", "marked"] if fwhy == "misled" else ["evil", "demon", "minion"]
+						if positions.get(t_src, p_assumed) not in p_allowed:
+							challenge_errors.append("The selected speaker alignment conflicts with the Psychologist %s explanation." % fwhy.capitalize())
+						else:
+							positions[t_src] = positions.get(t_src, p_assumed)
 	var proposed = solve(view, proposed_cards, positions, case_data.answers, knowledge, case_data.conclusion.at, case_data.get("temporal_positions", []))
 	var errors = validate_answers(view, case_data) + case_data.get("graph_errors", [])
 	errors.append_array(challenge_errors)
@@ -923,11 +942,30 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 				kept.append(worlds[i])
 		worlds = kept
 	if not worlds.is_empty():
+		var active_fids: Dictionary = {}
+		for c_act in cards:
+			if not c_act.get("quoted", false):
+				active_fids[str(c_act.get("fact_id", c_act.id))] = true
+				active_fids[str(c_act.id)] = true
 		for ac in cards:
 			if ac.kind == "report" and ac.get("role", "") == "augur" and not ac.get("quoted", false) and not ac.get("testimony_only", false):
 				var aspec: Dictionary = augur_day_spec(view, cards, ac, answers.get(ac.id, {}))
 				if aspec.has_day_evidence or aspec.picked_idx >= 0:
 					worlds = worlds.filter(func(w): return not source_valid(view, w, ac) or augur_world_outcome_prob(w, aspec) > 0.0)
+			elif ac.kind == "report" and ac.get("role", "") == "psychologist" and not ac.get("quoted", false) and not ac.get("testimony_only", false):
+				var pdata_s: Dictionary = ac.get("data", {}) if ac.get("data") is Dictionary else {}
+				if str(pdata_s.get("mode", "")) == "pair" and pdata_s.get("statements") is Array and pdata_s.statements.size() == 2:
+					var fid0: String = str(pdata_s.statements[0].get("fact_id", ""))
+					var fid1: String = str(pdata_s.statements[1].get("fact_id", ""))
+					if fid0 != "" and fid1 != "" and active_fids.has(fid0) and active_fids.has(fid1):
+						worlds = worlds.filter(func(w): return not source_valid(view, w, ac))
+					var pans_s: Dictionary = answers.get(ac.id, {})
+					if str(pans_s.get("false_slot", "")) in ["0", "1"] and str(pans_s.get("false_reason", "")) == "misled":
+						var st_m: Dictionary = pdata_s.statements[int(str(pans_s.get("false_slot", "0")))]
+						if str(st_m.get("kind", "")) == "alibi" and Domain.live(view) and "sleepwalker" in view.get("world_options", {}).get("modifiers", []):
+							var sw_idx: int = person_index(view, str(st_m.get("source", "")))
+							if sw_idx >= 0:
+								worlds = worlds.filter(func(w): return w.get("modifier", "") == "sleepwalker" and (int(w.get("holders", 0)) & (1 << sw_idx)) != 0)
 	var movement = movement_for(view, cards if view.get("live_activity", false) else movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
 
@@ -1994,6 +2032,16 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			errors.append("%s: the Augur cannot cross paths with themselves." % id)
 		if is_parity_surv and not positive.all(func(p): return p in surv_res):
 			errors.append("%s: choose residents living on %s." % [id, C.block_name(str(cdata.get("block", "")))])
+		if role_v == "psychologist":
+			var f_slot_v: String = str(case_data.answers[id].get("false_slot", ""))
+			var f_why_v: String = str(case_data.answers[id].get("false_reason", ""))
+			if f_slot_v not in ["", "0", "1", "both"]:
+				errors.append("%s: invalid Psychologist statement choice." % id)
+			if f_why_v not in ["", "lying", "misled"]:
+				errors.append("%s: invalid Psychologist explanation." % id)
+			if f_slot_v in ["0", "1"] and f_why_v == "misled" and cdata.get("statements") is Array and cdata.statements.size() == 2:
+				if str(cdata.statements[int(f_slot_v)].get("kind", "")) == "sighting":
+					errors.append("%s: a direct night sighting cannot be misled; choose Lying or leave the cause unresolved." % id)
 		if role_v == "seer" and case_data.answers[id].get("registration", "") not in ["", "demon", "marked", "red_herring"]:
 			errors.append("%s: choose a valid registration explanation." % id)
 		if cdef != null and cdef.shape == "GROUP_COUNT" and cdef.count_mode == "walkers" and card.source in positive:

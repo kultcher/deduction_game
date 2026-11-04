@@ -17,6 +17,26 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 night, Argon: patch_013_chunk4_psychologist_muddler_on_e54c2fd.zip
+
+- **Base commit:** `e54c2fdd2ada7466d6f08ad5c6909387a4db7c36` (`latest-backup.zip` after `patch_012` + `M2a`).
+- **Status:** `READY_FOR_CLAUDE_BUILD_AND_TEST`
+- **Next actor:** Claude (`dotnet build -c Debug`, `ci_fast_suites` + `test_workshop_remaining` + `test_chunk4_psychologist_muddler`, `parity` check at `--tol 0`).
+- **What's inside `patch_013`:**
+  1. **`test_workshop_remaining.gd:179` Fix (`workshop/case_eval.gd`)**:
+     - Restored `if not Domain.live(view): return 0.5` in `_chance_rumormonger` and `0.25` in `_chance_chronicler` so v5 non-live fixtures (`Session.new(692, "revenant")`) retract curse-era suspicion cleanly (`Merrin` delta `< 0`), while live `Domain.live(view)` keeps exact modifier-world hold rates (now including `"muddler"`).
+  2. **Chunk 4A: Psychologist Rework (`sim/roles/psychologist.gd`, `sim/social.gd`, `sim/mind_meeting.gd`, `sim/mind_dialogue.gd`, `workshop/`, `ui/`)**:
+     - `min_gift_day = 1` (never Night 0). Evaluates direct eligible statements heard on `w.day` (gift readings, night sightings, and night home alibis; excludes role claims, hints, and opinions).
+     - Reports `mode == "none_false"` when `>= 1` eligible statements were heard and 0 were lies/misreads, `mode == "pair"` when `>= 1` was false/misread and `>= 2` were heard, and `{}` when 0 eligible statements were heard.
+     - Misled rules stay aligned with `ReadingChallenges`: Poison, Delusion, Marked registration, Seer Red Herring, and Sleepwalker false home alibis count as `"misled"`; broken/bluffing Psychologists can report two true statements, two lies, or false `"none_false"`.
+     - Sharing a `"pair"` reading emits companion `Via <Psychologist>` cards onto `g.board` for any cited statement the player hasn't heard yet.
+     - Workshop UI (`ui/workshop_canvas_view.gd`, `ui/case_workshop.gd`, `workshop/canvas_model.gd`) lets the player pick which statement is incorrect (`Stmt 1`, `Stmt 2`, `Both`, or `Either`) and why (`Source lied` vs `Source misled`, disabling `misled` on raw night sightings), wired directly into `Graph.compile_case`, `TimeModel.hypothetical_cards`, `Solver.analyze`, `ReadingChallenges.assess` (including challenging `"none_false"` with contradictory Day-`d` statements), `CaseEval` (`_theory_fit` + Day-`d` bolstering), and `FactoredChannels` (`psych_pair_gate` matching `ChannelLikelihood`). Legacy `{"subject", "trusts", "suspects"}` payloads remain supported as `context` so existing Psychologist fixture suites stay green.
+  3. **Chunk 4B: Muddler Secret (`sim/muddler.gd`, `sim/content.gd`, `sim/script_def.gd`, `workshop/cs/SolverContext.cs`, `workshop/cs/WorldDomain.cs`, `workshop/world_domain.gd`)**:
+     - Added `"muddler"` to `C.SECRET_MODS` / `C.SECRET_MOD_LIST` (`ModMuddler = 4`, `* 5` world-key radix in lockstep across GDScript & C#, zero `SolverBridge.cs` signature changes). Kept `ScriptDef.DEFAULT_SECRETS` at 4 secrets so `Default` script tests stay warning-free while `ScriptDef.roster().secrets` exposes all 5 secrets and `WorkshopBridge` reads `g.w.case_script.secrets`.
+     - Unaware holder; 65% muddle chance (`Tuning.Social.MUDDLER_CHANCE = 0.65`) rolled once per heard item key (`npc.muddled_items`) on relayed gift readings and night sightings only (never role claims, hints, haunts, bonds, secrets, opinions, or day sightings), mutating exactly one fact while preserving speaker/reader identity and gift role.
+     - Public meeting relays (`MindMeeting.relay_reading`): claimed sources immediately debunk; unclaimed sources weigh `reveal_cost` (`debunk_muddle`) and either reveal immediately or queue `pending_muddle_debunks` so a later `_go_public` includes the debunk.
+     - Private `ask gift` / `ask night` (`GameConversation`, `Muddler.apply_private_disclaimers`): source always disclaims a muddled `Via` card on `g.board` (marking `deprecated = true`, `disclaimed_by`, `workshop_usable = false`, `pressable = false`), while still only providing the real reading when normal disclosure (`tier >= 4`) allows it (`superseded_by` linked when real card arrives).
+
 ## 2026-11-04 evening, Claude: patch_012 + M2a merged to main; new baseline `baseline_0534e6b`
 
 - **Base:** patch_012 unpacked at `fdf4760` as declared (`3e7b88a`), merged with `main`

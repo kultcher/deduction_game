@@ -371,6 +371,8 @@ class Social:
 	const SHARE_CASE_GOSSIP_SCALE = 0.5
 	const SHARE_SIGHTING_GOSSIP_SCALE = 0.8
 	const SHARE_SIGHTING_SCENE_BONUS = 0.4
+	const SHARE_ALIBI_WEIGHT = 0.22
+	const MUDDLER_CHANCE = 0.65
 	## Peer role hints and claims (meeting plan M1). A hint names only the gift's family
 	## (HINT_PACKAGES); a claim names the role, even for gifts with no readings to share.
 	const SHARE_ROLE_HINT_BOND_MIN = 0.55

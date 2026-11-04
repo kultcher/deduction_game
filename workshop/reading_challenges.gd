@@ -51,6 +51,18 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 			var alone = Solver.solve(view, grounds, {}, {}, listener.knowledge)
 			var together = Solver.solve(view, grounds + [report], {}, {}, listener.knowledge)
 			conflict = not alone.worlds.is_empty() and alone.movement_ok and (together.worlds.is_empty() or not together.movement_ok)
+			if not conflict and report.get("role", "") == "psychologist" and str(report.get("data", {}).get("mode", "")) == "none_false":
+				var dh_ch: int = int(report.get("data", {}).get("day_heard", -1))
+				var day_grounds: Array = grounds.filter(func(g_c): return Solver.Graph.is_day_statement(g_c, dh_ch))
+				if day_grounds.size() >= 2:
+					var d_joint = Solver.solve(view, day_grounds, {}, {}, listener.knowledge)
+					var each_ok: bool = day_grounds.all(func(g_c): var sg = Solver.solve(view, [g_c], {}, {}, listener.knowledge); return not sg.worlds.is_empty() and sg.movement_ok)
+					if each_ok and (d_joint.worlds.is_empty() or not d_joint.movement_ok):
+						conflict = true
+				elif day_grounds.size() == 1:
+					var sg1 = Solver.solve(view, day_grounds, {}, {}, listener.knowledge)
+					if sg1.worlds.is_empty() or not sg1.movement_ok:
+						conflict = true
 			if conflict and report.get("role", "") in ["nightwatch", "warden", "medium", "lamplighter"]:
 				var duty_probe: Dictionary = report.duplicate(true)
 				duty_probe["duty_only"] = true
@@ -155,7 +167,7 @@ static func _fraction(view: Dictionary, report: Dictionary, knowledge: Dictionar
 		if not Solver.position_holds(view, world, report.source, "good", knowledge.get("good_epoch", "")) or not Domain.healthy(view, world, report.source):
 			continue
 		var modifier: int = Domain.C.SECRET_MOD_LIST.find(world.get("modifier", "marked"))
-		var base_key: int = (int(world.evil) * 4 + modifier) * (1 << n) + int(world.get("holders", 1 << world.marked))
+		var base_key: int = (int(world.evil) * 5 + modifier) * (1 << n) + int(world.get("holders", 1 << world.marked))
 		denominator[base_key] = true
 		var i: int = indices[Solver.TimeModel.key(view, world)]
 		if compatible and table[i] != 0 and roles[i] != 0:

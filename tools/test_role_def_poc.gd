@@ -71,7 +71,7 @@ func _test_registry_and_metadata() -> void:
 	_check(C.role_def("lamplighter").shape == "GROUP_COUNT" and C.role_def("lamplighter").count_mode == "walkers" and C.role_def("lamplighter").night_walk, "Lamplighter RoleDef registered with GROUP_COUNT walkers metadata")
 	_check(C.role_def("nightwatch").shape == "NIGHT_ROUTE" and C.role_def("nightwatch").night_walk, "Night Watch RoleDef registered with NIGHT_ROUTE metadata")
 	_check(C.role_def("rumormonger").shape == "SECRET_PAIR" and C.role_def("rumormonger").first_night, "Rumormonger RoleDef registered with SECRET_PAIR metadata")
-	_check(C.role_def("psychologist").shape == "SOCIAL_PAIR", "Psychologist RoleDef registered with SOCIAL_PAIR metadata")
+	_check(C.role_def("psychologist").shape == "PSYCH_STATEMENTS" and C.role_def("psychologist").min_gift_day == 1, "Psychologist RoleDef registered with PSYCH_STATEMENTS and Night-1+ metadata")
 	_check(C.role_def("veteran").shape == "NIGHT_EVENT" and C.role_def("veteran").can_cause_quiet_night and is_equal_approx(C.role_def("veteran").quiet_night_effect, -0.06), "Veteran RoleDef registered with NIGHT_EVENT quiet night metadata")
 	_check(C.role_def("martyr").shape == "NIGHT_EVENT" and C.role_def("martyr").marked_registers, "Martyr RoleDef registered with NIGHT_EVENT metadata")
 	_check(C.role_def("sexton").shape == "NIGHT_EVENT", "Sexton RoleDef registered with NIGHT_EVENT metadata")
@@ -338,10 +338,17 @@ func _test_final_roles_hooks() -> void:
 	var rumor_entry = {"role": "rumormonger", "day": 0, "data": rumor_r["data"], "text": rumor_r["text"]}
 	_check(Gifts.clears(rumor_entry) == rumor_r["data"]["pair"] and Gifts.implicated(rumor_entry).is_empty(), "Rumormonger SECRET_PAIR clears both members of the pair")
 
-	# 2. Psychologist (SOCIAL_PAIR)
-	psych.talked_today = [vet.id]
-	var psych_r: Dictionary = C.role_def("psychologist").generate_reading(w, psych, {}, Mind)
-	_check(psych_r.get("data", {}).get("subject", "") == vet.id and psych_r.get("data", {}).has("trusts") and psych_r.get("data", {}).has("suspects"), "Psychologist generate_reading reads talked subject's trust and suspicion")
+	# 2. Psychologist (PSYCH_STATEMENTS)
+	w.day = 0
+	_check(C.role_def("psychologist").generate_reading(w, psych, {}, Mind).is_empty(), "Psychologist generate_reading never triggers on Night 0")
+	w.day = 1
+	var PR = preload("res://sim/roles/psychologist.gd")
+	PR.record_heard(w, psych, vet.id, {"kind": "alibi", "source": vet.id, "subject": [vet.id], "home": true, "block": vet.home_block, "day": 0, "phase": C.NIGHT, "text": "home"}, false)
+	var psych_nf: Dictionary = C.role_def("psychologist").generate_reading(w, psych, {}, Mind)
+	_check(psych_nf.get("data", {}).get("mode", "") == "none_false" and int(psych_nf.get("data", {}).get("day_heard", -1)) == 1, "Psychologist generate_reading reports none_false when all heard statements are true")
+	PR.record_heard(w, psych, martyr.id, {"kind": "sighting", "source": martyr.id, "subject": [rumor.id], "block": rumor.home_block, "day": 0, "phase": C.NIGHT, "text": "saw"}, true, "lying")
+	var psych_pair: Dictionary = C.role_def("psychologist").generate_reading(w, psych, {}, Mind)
+	_check(psych_pair.get("data", {}).get("mode", "") == "pair" and psych_pair.get("data", {}).get("statements", []).size() == 2, "Psychologist generate_reading reports statement pair when at least one heard statement is false")
 
 	# 3. Veteran, Martyr, Sexton (NIGHT_EVENT)
 	w.day = 1

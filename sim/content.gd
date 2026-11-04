@@ -393,7 +393,7 @@ const ROLES = {
 	"nightwatch": {"name": "Night Watch", "align": "good", "kind": "info", "night_walk": true,
 		"desc": "Each night, watches one block and learns who moved through it. Is out on that block."},
 	"psychologist": {"name": "Psychologist", "align": "good", "kind": "info",
-		"desc": "Each night, picks someone they talked with that day and learns whom that person trusts and suspects most."},
+		"desc": "Each night (not the first), learns either two statements they heard directly that day (at least one of which was a lie or misreading), or that none of the eligible statements they heard that day were false."},
 	"registrar": {"name": "Registrar", "align": "good", "kind": "info",
 		"desc": "Starts knowing three roles on the script (at most one minion, never the demon), at least one of which is in play. Each night from night 1, checks one person and learns if they hold one of those roles."},
 	"rumormonger": {"name": "Rumormonger", "align": "good", "kind": "info", "first_night": true,
@@ -457,8 +457,9 @@ const SECRET_MODS = {
 	"marked": {"name": "Marked", "desc": "May register as evil, or as the demon, to gifts that read them."},
 	"lovers": {"name": "Secret Lovers", "desc": "Two townsfolk meet in secret at a different place each night."},
 	"sleepwalker": {"name": "Sleepwalker", "desc": "Leaves home each night without knowing it."},
+	"muddler": {"name": "Muddler", "desc": "Often muddles one detail when passing on someone else's reading or night sighting. They don't know."},
 }
-const SECRET_MOD_LIST = ["delusional", "marked", "lovers", "sleepwalker"]
+const SECRET_MOD_LIST = ["delusional", "marked", "lovers", "sleepwalker", "muddler"]
 
 ## How sure you are of a guess (stored as 1..4).
 const CONFIDENCE = ["Flimsy", "Maybe", "Likely", "Confirmed"]

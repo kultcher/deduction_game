@@ -819,6 +819,30 @@ func apply_answer(card: Dictionary, previous: Dictionary, kind: String, value: S
 		elif role == "augur":
 			count = 1 if bool(cdata.get("yes", false)) else 0
 	match kind:
+		"psych_pick":
+			if card.kind == "report" and role == "psychologist" and str(cdata.get("mode", "")) == "pair":
+				var cur_ps: String = str(answer.get("false_slot", ""))
+				var next_ps: String = "" if (value == "" or cur_ps == value) else value
+				if next_ps == "":
+					answer.erase("false_slot")
+					answer.erase("false_reason")
+				else:
+					answer["false_slot"] = next_ps
+					if next_ps == "both":
+						answer.erase("false_reason")
+					elif str(answer.get("false_reason", "")) == "misled" and cdata.get("statements") is Array and cdata.statements.size() == 2:
+						if str(cdata.statements[int(next_ps)].get("kind", "")) == "sighting":
+							answer.erase("false_reason")
+		"psych_why":
+			if card.kind == "report" and role == "psychologist" and str(cdata.get("mode", "")) == "pair":
+				var cur_slot_w: String = str(answer.get("false_slot", ""))
+				if cur_slot_w in ["0", "1"]:
+					var st_w: Dictionary = cdata.get("statements", [{}, {}])[int(cur_slot_w)]
+					if not (value == "misled" and str(st_w.get("kind", "")) == "sighting"):
+						if value == "" or str(answer.get("false_reason", "")) == value:
+							answer.erase("false_reason")
+						else:
+							answer["false_reason"] = value
 		"th_role":
 			if card.kind == "town_hall" and value in card.get("data", {}).get("roles", []):
 				if str(answer.get("in_play_role", "")) == value:
