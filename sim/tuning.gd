@@ -62,6 +62,7 @@ class Setup:
 
 	## Conversation & movement rates
 	const IDLE_HAUNT_CHANCE = 0.4
+	const TOWN_HALL_USES_PER_CASE = 3
 	const PAIR_SILENCED_WEIGHT = 0.02
 	const PAIR_TRUST_PIVOT = 0.3
 	const PAIR_TRUST_SLOPE = 2.0
@@ -378,6 +379,11 @@ class Social:
 	const TAVERN_WHISPER_MIN_CROWD = 4
 	const TAVERN_WHISPER_CHANCE = 0.5
 	const TAVERN_OVERHEAR_MIN_SUSP = 0.4
+	const TAVERN_GOSSIP_MIN_ITEMS = 3
+	const TAVERN_GOSSIP_MAX_ITEMS = 5
+	const TAVERN_UNHEARD_SPOKEN_WEIGHT = 4.0
+	const TAVERN_BACKFILL_PROFILE_WEIGHT = 1.2
+	const TAVERN_HEARD_SPOKEN_WEIGHT = 0.2
 	## Gossip and the teller (Oct 30): +GOSSIP_BOND trust when believed (suspicion of the teller
 	## below GOSSIP_BELIEVED_BELOW), -GOSSIP_BOND when it runs down someone the listener
 	## trusts at least GOSSIP_SMEAR_TRUST, otherwise nothing.

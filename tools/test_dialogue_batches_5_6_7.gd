@@ -18,6 +18,7 @@ const Dialogue = preload("res://sim/dialogue.gd")
 const Voices = preload("res://sim/dialogue_voices.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
 const Mind = preload("res://sim/mind.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
 const Social = preload("res://sim/social.gd")
 const DayConvView = preload("res://ui/day_conversation_view.gd")
@@ -409,18 +410,26 @@ func _test_batch7_conversations_press_roles_and_meetings() -> void:
 	var eh2: Dictionary = Mind.answer_hint(g.w, speaker)
 	_check(eh1.lines[0].text != eh2.lines[0].text and not ("[PH]" in eh1.lines[0].text) and not ("[PH]" in eh2.lines[0].text), "Empty hint follow-ups alternate between hint_why_empty_1 and hint_why_empty_2 without [PH]")
 
-	speaker.role = "seer"
-	speaker.claimed_role = ""
-	speaker.claim_public = false
-	speaker.max_tier = 0
-	speaker.trust = 1.0
-	speaker.traits["privacy"] = 0.0
-	speaker.info_log = [{"day": 1, "role": "seer", "data": {"pair": [other.id, third.id], "yes": true}, "text": "I looked at %s and %s: one of them reads as the demon" % [other.name, third.name], "true": true, "shared": false}]
-	speaker.hints = {other.id: {"day": 1}}
-	# Reasons come from the shared model: let the speaker weigh the reading first.
-	Mind.refresh_beliefs(g.w, speaker, "test: private Seer reading")
-	var ah_ok: Dictionary = Mind.answer_hint(g.w, speaker)
-	_check(ah_ok.lines.size() >= 3 and other.name in ah_ok.lines[0].text and not ("[PH]" in ah_ok.lines[0].text) and not ("[PH]" in ah_ok.lines.back().text), "Accepted hint follow-up voices hint_why_lead and hint_why_confidential without [PH]")
+	var g_hint = _game(5702, 10)
+	var h_good: Array = g_hint.w.living_good()
+	var h_speaker = h_good[0]
+	var h_other = h_good[1]
+	var h_third = h_good[2]
+	h_speaker.role = "seer"
+	h_speaker.claimed_role = ""
+	h_speaker.claim_public = false
+	h_speaker.max_tier = 0
+	h_speaker.trust = 1.0
+	h_speaker.traits["privacy"] = 0.0
+	h_speaker.ledger = {}
+	Mind.hear_claim(g_hint.w, h_speaker, h_speaker.id, "seer", Tuning.Setup.OWN_ROLE_CLAIM_WEIGHT, "own")
+	h_speaker.info_log = [{"day": 0, "role": "seer", "data": {"pair": [h_other.id, h_third.id], "yes": true}, "text": "I looked at %s and %s: one of them reads as the demon" % [h_other.name, h_third.name], "true": false, "shared": false, "why": "test"}]
+	h_speaker.applied_info = 0
+	h_speaker.told_readings = 0
+	Mind.update_from_own_info(g_hint.w)
+	h_speaker.hints = {h_other.id: {"day": g_hint.w.day}}
+	var ah_ok: Dictionary = Mind.answer_hint(g_hint.w, h_speaker)
+	_check(ah_ok.lines.size() >= 3 and h_other.name in ah_ok.lines[0].text and not ("[PH]" in ah_ok.lines[0].text) and not ("[PH]" in ah_ok.lines.back().text), "Accepted hint follow-up voices hint_why_lead and hint_why_confidential without [PH]")
 
 	# 5. Mind.press: unrelated card & counter-claim confrontation.
 	var unrelated_card = {"kind": "sighting", "source": third.id, "subject": [other.id], "block": "market", "day": 1, "phase": C.NIGHT, "text": "Sighting"}

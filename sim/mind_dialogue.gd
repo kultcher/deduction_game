@@ -95,6 +95,8 @@ static func _hint_decline(w, n, t) -> Dictionary:
 static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
+	if card.get("tavern_gossip", false) or not card.get("pressable", true):
+		return {"lines": ["That's only unattributed tavern talk; you need a named witness or concrete evidence to press %s." % n.name], "facts": []}
 	var c: Dictionary = card.get("conclusion", {})
 	var subj: Array = card.get("subject", [])
 	var pair: Array = card.get("data", {}).get("pair", [])
@@ -327,8 +329,8 @@ static func greeting_cue(w, n) -> String:
 ## Spoken VN conversation opener with rapport tiers, one-shot event overrides, and
 ## curated portrait expressions. Consumes the exact same single composure roll as
 ## greeting_cue so RNG state and Decision Inspector parity are preserved.
-static func greeting_line(w, n, context: Dictionary = {}) -> Dictionary:
-	var attitude_visible: bool = w.decision_roll(n, "greeting_attitude_visible", (1.0 - trait_of(n, "composure")) * 0.9, {"composure": trait_of(n, "composure")}, "", "<=")
+static func greeting_line(w, n, context: Dictionary = {}, roll_attitude: bool = true) -> Dictionary:
+	var attitude_visible: bool = w.decision_roll(n, "greeting_attitude_visible", (1.0 - trait_of(n, "composure")) * 0.9, {"composure": trait_of(n, "composure")}, "", "<=") if roll_attitude else (trait_of(n, "composure") < 0.5)
 	var greeted: Dictionary = n.dialogue_memory.get("greeted_events", {})
 	var visits: int = int(n.dialogue_memory.get("greet_visits", 0))
 	var text: String = ""

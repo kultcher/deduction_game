@@ -15,9 +15,9 @@ const REPORT_FIELDS = {
 }
 const FIELDS = ["block", "loc", "locs", "home", "night", "role", "secret_kind", "fear", "withheld", "package", "roles", "duty_claim", "duty", "vigil", "dropped",
 	"nominee", "by", "yes", "no", "player_yes", "count", "threshold", "outcome", "alive_before", "owner", "material", "crime_night", "scene", "scene_block", "victim", "ward", "guard_claim", "save_claim", "watch_claim", "target",
-	"work_phases", "occupation", "trait", "tier", "withdrawn", "bond_kind",
+	"work_phases", "occupation", "trait", "tier", "withdrawn", "bond_kind", "tavern_gossip", "workshop_usable", "pressable",
 	"trace_family", "trace_subtype", "trace_slot", "trace_scene_count", "scene_trace_count", "trace_key", "trace_home_block", "trace_evening_block", "victim_block", "item_label"]
-const KINDS = ["home", "work", "haunt", "trait", "bond", "info", "claim", "sighting", "conversation", "vigil", "alibi",
+const KINDS = ["home", "work", "haunt", "trait", "bond", "info", "claim", "town_hall", "sighting", "conversation", "vigil", "alibi",
 	"trace", "dropped", "totem", "death", "execution", "quiet", "vote", "martyr", "curse",
 	"curse_lifted", "silenced", "knell", "secret", "hint", "refusal", "opinion", "accusation", "case", "ward", "scorched_sigil"]
 
@@ -126,7 +126,7 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 		issues.append("original_report_time_unknown")
 	if kind not in KINDS:
 		issues.append("evidence_kind_unsupported")
-	if kind not in ["info", "claim", "sighting", "alibi", "conversation", "home", "work", "haunt", "trait", "bond", "dropped", "martyr"] or "report_semantics_unsupported" in issues:
+	if kind not in ["info", "claim", "town_hall", "sighting", "alibi", "conversation", "home", "work", "haunt", "trait", "bond", "dropped", "martyr"] or "report_semantics_unsupported" in issues:
 		# Several legacy cards carry semantics only in their visible text. Retain that
 		# receipt; do not invent a structured interpretation or merge distinct scenes.
 		content["statement"] = card.get("text", "")

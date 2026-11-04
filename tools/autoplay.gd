@@ -529,7 +529,7 @@ func _decide() -> String:
 				var n = fresh[rng.randi_range(0, fresh.size() - 1)]
 				talked[n.id] = w.day
 				return "talk " + n.id
-			if g.loc == "tavern":
+			if w.phase == C.EVENING and g.loc == "tavern":
 				return "gossip"
 			if rng.randf() < 0.5:
 				return "search"

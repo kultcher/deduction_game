@@ -36,7 +36,9 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 			blocks.sort()
 			var existing_blocks: Array = result.answers.get(id, {}).get("blocks", []).duplicate()
 			existing_blocks.sort()
-			if result.answers.has(id) and (existing != positive or existing_blocks != blocks):
+			var th_role: String = str(line.answers[id].get("in_play_role", ""))
+			var existing_th: String = str(result.answers.get(id, {}).get("in_play_role", ""))
+			if result.answers.has(id) and (existing != positive or existing_blocks != blocks or (th_role != "" and existing_th != "" and th_role != existing_th)):
 				errors.append("%s: supporting lines give different answers to %s; put alternatives in a separate explanation." % [line.label, id])
 			result.answers[id] = line.answers[id].duplicate(true)
 		for key in line.get("reasons", {}):

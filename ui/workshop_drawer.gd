@@ -111,7 +111,8 @@ func covered_width() -> float:
 func add_card(number: int) -> void:
 	if g == null or number < 1 or number > g.board.size():
 		return
-	if g.board[number - 1].kind == "deduction" or editor == null:
+	var c: Dictionary = g.board[number - 1]
+	if c.kind == "deduction" or c.get("tavern_gossip", false) or not c.get("workshop_usable", true) or editor == null:
 		return
 	editor.add_evidence(number)
 	_flash = 1.0

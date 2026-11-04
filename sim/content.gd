@@ -126,6 +126,15 @@ const LOCATIONS = {
 	"graveyard": {"name": "the graveyard", "block": "hill"},
 }
 
+## Player-only buildings: never visited, worked at, haunted, or searched by NPCs so
+## schedule, drop, totem, and trace tables stay strictly over the 8 town locations.
+const PLAYER_BUILDINGS = {
+	"town_hall": {"name": "the Town Hall", "block": "square"},
+}
+
+static func is_player_building(l: String) -> bool:
+	return PLAYER_BUILDINGS.has(l)
+
 ## 28 bespoke tactile 2-location trade tokens / pocket curios (keys sorted alphabetically: "a:b").
 const TRACE_TOKENS = {
 	"bakery:chapel": "a stamped wafer-iron brass pin",
@@ -516,11 +525,15 @@ static func block_name(b: String) -> String:
 static func loc_name(l: String) -> String:
 	if LOCATIONS.has(l):
 		return LOCATIONS[l]["name"]
+	if PLAYER_BUILDINGS.has(l):
+		return PLAYER_BUILDINGS[l]["name"]
 	return l
 
 static func loc_block(l: String) -> String:
 	if LOCATIONS.has(l):
 		return LOCATIONS[l]["block"]
+	if PLAYER_BUILDINGS.has(l):
+		return PLAYER_BUILDINGS[l]["block"]
 	return ""
 
 static func role_def(r: String):

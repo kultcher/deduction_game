@@ -809,6 +809,12 @@ func apply_answer(card: Dictionary, previous: Dictionary, kind: String, value: S
 	if card.kind == "report" and role in ["dowser", "lamplighter", "surveyor"]:
 		count = int(card.data.get("count", 0))
 	match kind:
+		"th_role":
+			if card.kind == "town_hall" and value in card.get("data", {}).get("roles", []):
+				if str(answer.get("in_play_role", "")) == value:
+					answer.erase("in_play_role")
+				else:
+					answer["in_play_role"] = value
 		"reg":
 			answer["registration"] = value
 		"pick":

@@ -32,7 +32,7 @@ static func _help(g) -> String:
             hide <#> | unhide <#> | showhidden | delete <#> (your own deductions only)
             note <name> <text> | guess <name> <role|evil|good> [1-4] | theory
   Day     : go <place | block | person>   (then one free move within the same block)
-            then one action: talk <name> | search | gossip (tavern) | wait
+            then one action: talk <name> | search | gossip (tavern, evening) | records (town hall, morning/afternoon, 3/case) | wait
   Talking : ask gift | ask night | ask seen <today | morning | afternoon | evening | yesterday [phase]>
             ask are <gift> | ask about <name> (haunts and recent sightings) | bye
             ask about <gift> ("Have you heard of a ...?")

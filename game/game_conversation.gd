@@ -100,7 +100,7 @@ static func _approach_command(g, verb: String, rest: String) -> void:
 				g._lines(r["lines"])
 				g._facts(r["facts"])
 			else:
-				g._line(Mind.greeting_line(g.w, n, greeting_context(g, n)))
+				g._line(Mind.greeting_line(g.w, n, greeting_context(g, n), false))
 			g._prompt(_talk_options(g, n))
 		"decline", "no", "n":
 			g.state = "day"
@@ -401,6 +401,9 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 			var num1 = rest.strip_edges().trim_prefix("#").to_int()
 			if num1 < 1 or num1 > g.board.size() or g.board[num1 - 1].get("deleted", false):
 				g._err("Press them with which card? ('press <card#>': a card or deduction about them)")
+				return
+			if g.board[num1 - 1].get("tavern_gossip", false) or not g.board[num1 - 1].get("pressable", true):
+				g._err("Card #%d is only an unattributed tavern rumour; you can't press %s with it without a named source." % [num1, n.name])
 				return
 			var pc: Dictionary = g.board[num1 - 1].duplicate()
 			if pc["kind"] == "deduction":

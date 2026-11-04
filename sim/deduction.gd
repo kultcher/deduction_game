@@ -367,6 +367,9 @@ static func filing_problem(w, c: Dictionary, supports: Array, board: Array, matc
 	var cards: Array = board.filter(func(x): return x["n"] in supports)
 	if cards.is_empty():
 		return "Those cards aren't on your board."
+	for x in cards:
+		if x.get("tavern_gossip", false) or not x.get("workshop_usable", true):
+			return "Card #%d is an unattributed tavern rumour and cannot be used to build a case." % int(x.get("n", 0))
 	if matched:
 		return ""
 	var positive = (c["type"] in ["role", "good", "notdemon", "truthful", "protect", "spare", "secret", "marked", "red_herring"] and not is_evil_role(c.get("role", ""))) \

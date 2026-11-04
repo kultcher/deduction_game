@@ -8,6 +8,7 @@ extends RefCounted
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Mind = preload("res://sim/mind.gd")
+const Social = preload("res://sim/social.gd")
 const Credibility = preload("res://game/credibility.gd")
 
 
@@ -170,6 +171,9 @@ static func _day_command(g, verb: String, rest: String) -> void:
 			if g.loc.begins_with("home_"):
 				g._err("You can't search someone's home from their doorstep.")
 				return
+			if C.is_player_building(g.loc):
+				g._err("There are no personal drops or crime scenes inside %s; use 'records' to check the town register." % g.w.loc_name(g.loc))
+				return
 			_search(g)
 			_end_phase(g, "")
 		"gossip":
@@ -179,9 +183,41 @@ static func _day_command(g, verb: String, rest: String) -> void:
 			if g.loc != "tavern":
 				g._err("You can only listen for gossip at the tavern.")
 				return
-			var r: Dictionary = Mind.gossip(g.w)
+			if g.w.phase != C.EVENING:
+				g._err("The tavern only buzzes with town gossip in the evening.")
+				return
+			g.w.finish_evening_conversations("")
+			var r: Dictionary = Social.tavern_evening_gossip(g)
 			g._lines(r["lines"])
 			g._facts(r["facts"])
+			_apply_tavern_profile_gossip(g, r)
+			_end_phase(g, "")
+		"records", "register", "town_hall", "inspect":
+			if not g.moved:
+				g._err("First choose where to spend this phase ('go town_hall').")
+				return
+			if g.loc != "town_hall":
+				g._err("You can only inspect the town registers at the Town Hall.")
+				return
+			if g.w.phase not in [C.MORNING, C.AFTERNOON]:
+				g._err("The Town Hall's records room is only open in the morning and afternoon.")
+				return
+			if g.w.town_hall_uses_left <= 0:
+				g._err("You have already consulted the Town Hall records %d times this case." % Tuning.Setup.TOWN_HALL_USES_PER_CASE)
+				return
+			var th: Dictionary = g.w.consult_town_hall()
+			if th.is_empty():
+				g._err("Nothing further can be gleaned from the Town Hall ledgers.")
+				return
+			var pair: Array = th["roles"]
+			var rem: int = int(th["uses_left"])
+			g._narr("Combing through the Town Hall's parish ledgers, you narrow the town's gifts: either the %s or the %s is in play here, not both. (%d consultation%s left this case.)" %
+				[C.role_name(pair[0]), C.role_name(pair[1]), rem, "" if rem == 1 else "s"])
+			g._facts([{
+				"kind": "town_hall", "subject": [], "roles": pair.duplicate(), "source": "player",
+				"day": g.w.day, "phase": g.w.phase, "class": "concrete",
+				"text": "Town Hall records: either the %s or the %s is in town, not both." % [C.role_name(pair[0]), C.role_name(pair[1])],
+			}])
 			_end_phase(g, "")
 		"wait", "rest", "pass":
 			g._narr("You let the %s pass." % g.w.phase_name().to_lower())
@@ -224,6 +260,8 @@ static func _observe(g) -> void:
 			g._narr("You knock, and %s opens the door." % here[0].name)
 			g._facts([{"kind": "sighting", "subject": [here[0].id], "block": g.w.loc_block(l), "loc": l, "day": g.w.day, "phase": g.w.phase,
 				"source": "player", "text": "You found %s at home, day %d %s." % [here[0].name, g.w.day, g.w.phase_name()]}])
+	elif l == "town_hall":
+		g._narr("The clerks' desks stand quiet; the parish registers and gift rolls are kept here.")
 	elif here.is_empty():
 		g._narr("Nobody is here.")
 	elif not l.begins_with("home_"):
@@ -246,12 +284,50 @@ static func _observe(g) -> void:
 					[x.name, g.w.loc_name(other), g.w.day, g.w.phase_name()]}])
 	if g.w.scenes.has(l):
 		g._narr("This is where %s was killed. ('search' to examine it.)" % g.w.by_id[g.w.scenes[l]["victim"]].name)
-	var acts = "Actions: talk <name> | search%s | wait" % (" | gossip" if l == "tavern" else "")
-	if l.begins_with("home_"):
+	var acts = "Actions: talk <name> | search%s | wait" % (" | gossip" if (l == "tavern" and g.w.phase == C.EVENING) else "")
+	if l == "town_hall":
+		var rec_opt: String = ("records (%d left) | " % g.w.town_hall_uses_left) if (g.w.phase in [C.MORNING, C.AFTERNOON] and g.w.town_hall_uses_left > 0) else ""
+		acts = "Actions: %swait" % rec_opt
+	elif l.begins_with("home_"):
 		acts = "Actions: talk <name> | wait"
 	if not g.free_move_used:
 		acts += "   (or 'go <place>' once more within %s)" % C.block_name(g.w.loc_block(l))
 	g._prompt(acts)
+
+
+static func _apply_tavern_profile_gossip(g, r: Dictionary) -> void:
+	for ph in r.get("haunts", []):
+		var pid: String = str(ph.get("id", ""))
+		var loc_id: String = str(ph.get("loc", ""))
+		if pid == "" or not g.w.by_id.has(pid) or not C.LOCATIONS.has(loc_id):
+			continue
+		if not (loc_id in g.known_haunts.get(pid, [])):
+			g.known_haunts[pid] = g.known_haunts.get(pid, []) + [loc_id]
+		g.add_profile_receipt({
+			"kind": "haunt", "subject": [pid], "source": "town", "loc": loc_id, "locs": [loc_id],
+			"day": g.w.day, "phase": g._phase_now(), "class": "circumstantial",
+			"text": "Word about town says %s often goes to %s when off work." % [g.w.by_id[pid].name, g.w.loc_name(loc_id)],
+		})
+		g.w.dlog.add("player_learns_haunts", "rumour", pid, {"locs": [loc_id], "via": "tavern_gossip"})
+	for pb in r.get("bonds", []):
+		var bkey: String = str(pb.get("key", ""))
+		var bkind: String = str(pb.get("kind", ""))
+		var people: Array = pb.get("people", []).duplicate()
+		if bkey == "" or bkind not in ["friend", "rival"] or people.size() != 2 or not people.all(func(pid): return g.w.by_id.has(pid)):
+			continue
+		if g.known_relationships.has(bkey):
+			continue
+		var na: String = g.w.by_id[people[0]].name
+		var nb: String = g.w.by_id[people[1]].name
+		var note: String = "Word about town says %s and %s %s." % [na, nb, "are close" if bkind == "friend" else "don't get along"]
+		g.known_relationships[bkey] = {"kind": bkind, "people": people.duplicate(), "source": "town", "text": note}
+		var sorted_p: Array = people.duplicate()
+		sorted_p.sort()
+		g.add_profile_receipt({
+			"kind": "bond", "subject": sorted_p, "bond_kind": bkind, "source": "town",
+			"day": g.w.day, "phase": g._phase_now(), "class": "circumstantial", "text": note,
+		})
+		g.w.dlog.add("player_learns_relationship", "rumour", people[0], {"kind": bkind, "people": people, "via": "tavern_gossip"})
 
 
 static func _search(g) -> void:

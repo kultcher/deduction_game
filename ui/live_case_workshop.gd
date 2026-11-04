@@ -315,7 +315,7 @@ func add_evidence(number: int) -> void:
 	if number < 1 or number > g.board.size():
 		return
 	var receipt: Dictionary = g.board[number - 1]
-	if receipt.kind == "deduction" or receipt.get("deleted", false):
+	if receipt.kind == "deduction" or receipt.get("deleted", false) or receipt.get("tavern_gossip", false) or not receipt.get("workshop_usable", true):
 		return
 	refresh()
 	var card_id: String = Live.Evidence.normalize_card(receipt).id

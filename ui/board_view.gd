@@ -409,6 +409,15 @@ func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 		"hollow":
 			draw_circle(c, rad, UITheme.color("bg") * fade)
 			draw_arc(c, rad - 2 * zoom, 0, TAU, 28, col_c, maxf(2.0, 4.0 * zoom))
+		"dotted":
+			draw_circle(c, rad, UITheme.color("bg") * fade)
+			var segs: int = 8
+			var r_arc: float = rad - 2.0 * zoom
+			var w_arc: float = maxf(2.0, 3.5 * zoom)
+			for s_i in range(segs):
+				var a0: float = TAU * float(s_i) / float(segs)
+				var a1: float = a0 + (TAU / float(segs)) * 0.52
+				draw_arc(c, r_arc, a0, a1, 5, col_c, w_arc)
 		"ability":
 			draw_circle(c, rad, col_c.darkened(0.15))
 			draw_arc(c, rad + 2 * zoom, 0, TAU, 28, UITheme.color("border") * fade, maxf(1.5, 2.5 * zoom))
@@ -422,7 +431,7 @@ func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 		var initial: String = g.w.by_id[who].name.substr(0, 1)
 		var fs = int(clampf(15 * zoom, 7, 30))
 		draw_string(_font, c + Vector2(-rad, fs * 0.35), initial, HORIZONTAL_ALIGNMENT_CENTER, rad * 2, fs,
-			UITheme.color("ink") * fade if mark != "hollow" else col_c)
+			UITheme.color("ink") * fade if mark not in ["hollow", "dotted"] else col_c)
 		if _lod() >= 2:
 			var card: Dictionary = g.board[n - 1]
 			var where = C.loc_name(card["loc"]).trim_prefix("the ") if C.LOCATIONS.has(card.get("loc", "")) else ""
