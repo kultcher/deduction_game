@@ -182,9 +182,10 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, asked: Arr
 	var why = ""
 	if not asked.is_empty():
 		# Looked where the Demonologist asked: a 'yes' only frames the scapegoat.
-		pair = asked.slice(0, 2)
+		# A real Seer never reads themself: drop the bluffer from the asked pair.
+		pair = asked.filter(func(x): return x != n.id).slice(0, 2)
 		if pair.size() < 2:
-			var fill: Array = goods.filter(func(x): return not (x in pair) and x != mate.id)
+			var fill: Array = goods.filter(func(x): return not (x in pair) and x != mate.id and x != n.id)
 			if fill.is_empty():
 				return {}
 			pair.append(w.pick(fill))
@@ -194,7 +195,8 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, asked: Arr
 		pair = [s, w.pick(others_s)]
 		yes = true
 		why = "frames scapegoat %s with a 'yes'" % s
-	elif mate.alive and w.chance(Tuning.Roles.SEER.bluff_clear_mate_prob) and not others_m.is_empty():
+	elif mate != n and mate.alive and w.chance(Tuning.Roles.SEER.bluff_clear_mate_prob) and not others_m.is_empty():
+		# (A lone evil's "mate" is itself: clearing it would put the bluffer in its own pair.)
 		pair = [mate.id, w.pick(others_m)]
 		why = "clears teammate %s with a 'no'" % mate.id
 	elif others_s.size() >= 2:

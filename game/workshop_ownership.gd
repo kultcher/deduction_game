@@ -54,9 +54,17 @@ static func _refresh(g, n, phase: String) -> void:
 		var cand_outside: Dictionary = _candidate_outside(n, state)
 		var manual_sd: Dictionary = state.get("manual_source_doubt", {})
 		var pre_bundle: Dictionary = SourceDoubt.derive(plan, n.ledger, manual_sd)
-		plan.input.listener.source_doubt = pre_bundle.pre_eval.duplicate(true)
-		plan.input.listener.suspicion = cand_outside.duplicate(true)
-		plan = Shared.prepare(plan.input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
+		# Re-prepare with the source doubt the first plan implies. When that doubt and the
+		# candidate suspicion are exactly what the first plan was prepared with (the common
+		# case), preparing again yields the same plan: reuse it (meeting plan M2 cleanup).
+		var same_inputs: bool = plan.input.listener.get("source_doubt", {}) == pre_bundle.pre_eval \
+			and plan.input.listener.get("suspicion", {}) == cand_outside
+		if same_inputs:
+			Profiler.count("ownership_prepare_reused")
+		else:
+			plan.input.listener.source_doubt = pre_bundle.pre_eval.duplicate(true)
+			plan.input.listener.suspicion = cand_outside.duplicate(true)
+			plan = Shared.prepare(plan.input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
 		state.issues = plan.issues
 		if not plan.ready:
 			g._workshop_plans.erase(key)

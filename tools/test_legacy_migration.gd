@@ -153,7 +153,7 @@ func _revisions_and_repeats() -> void:
 	Profiler.start()
 	var reply = g.command("convince %d" % revised)
 	var profile = Profiler.finish()
-	check("I heard you say that at the meeting" in reply and g.questions_left == 3 and g.free_repeats == 1, "a meeting repeat is acknowledged and free once per conversation")
+	check("at the meeting" in reply and "No question used" in reply and g.questions_left == 3 and g.free_repeats == 1, "a meeting repeat is acknowledged and free once per conversation")
 	check(profile.counters.values().count(1) > 0 and profile.rows.all(func(row): return row.stage != "joint_effects" and row.stage != "jury"), "an unchanged repeat does not run the evaluator again")
 	check(unchanged == _state(g), "the free repeat changes no beliefs, pressure, trust or RNG")
 	g.command("convince %d" % revised)

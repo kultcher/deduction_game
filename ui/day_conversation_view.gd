@@ -51,7 +51,17 @@ var action_hint: Label
 var person_id = ""
 var lines: Array = []
 
+var _built: bool = false
+
 func _ready() -> void:
+	_build()
+
+## Build the child nodes once. Public entry points call this too, so the view works even
+## before it enters a running tree (headless tests, or a caller that begins it early).
+func _build() -> void:
+	if _built:
+		return
+	_built = true
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	clip_contents = true
 	var backdrop = ColorRect.new()
@@ -147,10 +157,12 @@ void fragment() {
 	action_content.add_child(controls)
 
 func set_action_hint(text: String) -> void:
+	_build()
 	action_hint.text = text
 	action_hint.visible = not text.is_empty()
 
 func begin(id: String, name: String) -> void:
+	_build()
 	person_id = id
 	lines.clear()
 	_stop_portrait_fade()
@@ -164,6 +176,7 @@ func begin(id: String, name: String) -> void:
 ## speech bubble. No speaker, so expressions and speech events are ignored until `begin`.
 ## A null texture leaves the portrait slot empty (art not drawn yet).
 func show_item(title: String, texture: Texture2D, text: String) -> void:
+	_build()
 	person_id = ""
 	_stop_portrait_fade()
 	_portrait_frame(ITEM_FRAME)
@@ -195,6 +208,7 @@ func _expression_texture(id: String, expression: String) -> Texture2D:
 
 ## Presentation only: callers supply a public expression cue, not hidden game state.
 func set_expression(expression: String) -> void:
+	_build()
 	var texture = _expression_texture(person_id, expression)
 	if portrait.texture == texture:
 		return
@@ -216,6 +230,7 @@ func _stop_portrait_fade() -> void:
 		previous_portrait.hide()
 
 func consume(events: Array) -> void:
+	_build()
 	var spoken: Array = []
 	var expression = "neutral"
 	var strength = 0
@@ -253,6 +268,7 @@ func _process(delta: float) -> void:
 			reveal_hint.hide()
 
 func reveal_all() -> void:
+	_build()
 	reveal_position = float(reveal_total)
 	speech.visible_characters = -1
 	reveal_hint.hide()

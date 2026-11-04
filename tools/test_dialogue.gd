@@ -511,7 +511,7 @@ func _live() -> void:
 	var challenge = {"kind": "claim", "source": target.id, "subject": [target.id], "role": "seer", "text": "Edda claims Seer."}
 	var pressed = Mind.press(w, n, challenge)
 	var speeches: Array = pressed["lines"].filter(func(x): return x is Dictionary)
-	_check(speeches[0]["text"].begins_with("All right, let's talk it through.") and "Edda is lying." in speeches[0]["text"], "a real challenge uses the authored response without changing its claim")
+	_check(speeches[0]["text"].begins_with("All right, let's talk it through.") and "I am the Seer" in speeches[0]["text"] and ("Edda is lying" in speeches[0]["text"] or "Edda is telling a flat lie" in speeches[0]["text"]), "a real challenge uses the authored response without changing its claim")
 	_check(pressed.get("dialogue_exchange", {}).get("action", "") == "challenge_gift", "live rival-role confrontation explicitly marks a gift challenge")
 	n.claim_public = false
 	n.claimed_role = "clerk"
