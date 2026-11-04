@@ -281,10 +281,10 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 func _attach_workshop_world() -> void:
 	var weak_game = weakref(self)
 	var weak_world = weakref(w)
-	w.workshop_refresh = func(n, phase):
+	w.workshop_refresh = func(n):
 		var game = weak_game.get_ref()
 		if game != null and game.w == weak_world.get_ref():
-			WorkshopOwnership.refresh(game, n, phase)
+			WorkshopOwnership.refresh(game, n)
 	w.workshop_reasons = func(n):
 		var game = weak_game.get_ref()
 		if game != null and game.w == weak_world.get_ref():

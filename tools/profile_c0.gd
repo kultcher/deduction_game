@@ -78,10 +78,9 @@ func _run_seed(sd: int, size: int, day_limit: int, mode: int, mode_name: String)
 
 	_refreshes = 0
 	var inner: Callable = g.w.workshop_refresh
-	g.w.workshop_refresh = func(n, phase):
-		inner.call(n, phase)
-		if phase == "after":
-			_refreshes += 1
+	g.w.workshop_refresh = func(n):
+		inner.call(n)
+		_refreshes += 1
 
 	var steps: int = 0
 	while g.w.day < day_limit and not g.w.game_over and steps < 400:

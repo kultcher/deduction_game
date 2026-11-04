@@ -12,6 +12,7 @@ const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
 const Social = preload("res://sim/social.gd")
+const Mind = preload("res://sim/mind.gd")
 
 var _checks: int = 0
 var _fails: int = 0
@@ -32,6 +33,7 @@ func _init() -> void:
 	_test_protect_lock_withholds_claim()
 	_test_no_echo_or_relay()
 	_test_player_hears_second_hand()
+	_test_opinion_mentions_second_hand()
 	print("Peer role gossip: %d checks, %d failures" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
 
@@ -230,3 +232,32 @@ func _test_player_hears_second_hand() -> void:
 	var asked: Dictionary = Social.answer_about_role(w, l, s.role)
 	_check(asked.facts.any(func(x): return x.get("kind", "") == "claim" and s.id in x.get("subject", [])),
 		"asking about the %s surfaces the second-hand private claim" % s.role)
+
+
+func _test_opinion_mentions_second_hand() -> void:
+	var g = _game(7107)
+	var w = g.w
+	var pr: Array = _good_pair(w, ["warden", "martyr", "seer"])
+	var s = pr[0]
+	var l = pr[1]
+	_prime(w, s, l, 0.95)
+	var item = _pick_kind(w, s, l, "role_claim")
+	if item == null:
+		_check(false, "setup: a claim for the opinion note")
+		return
+	Social._deliver(w, s, l, item)
+	l.traits["gossip"] = 1.0
+	l.trust = 1.0
+	l.pressure = 1.0
+	var op: Dictionary = Mind.answer_opinion(w, l, s)
+	_check(op.facts.any(func(x): return x.get("kind", "") == "claim" and x.get("via", "") == l.id and s.id in x.get("subject", [])),
+		"asking about someone surfaces the private claim they made to the speaker")
+	var op2: Dictionary = Mind.answer_opinion(w, l, s)
+	_check(not op2.facts.any(func(x): return x.get("kind", "") == "claim" and s.id in x.get("subject", [])),
+		"the second-hand claim isn't repeated on a second ask")
+	l.traits["gossip"] = 0.0
+	l.trust = 0.0
+	l.pressure = 0.0
+	l.told_to.erase("player|role_claim:" + s.id)
+	var shy: Dictionary = Mind.answer_opinion(w, l, s)
+	_check(not shy.facts.any(func(x): return x.get("kind", "") == "claim"), "an unwilling speaker keeps it to themself")

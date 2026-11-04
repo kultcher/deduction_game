@@ -880,9 +880,7 @@ static func _refresh_beliefs(w, n, note: String) -> void:
 		shadow_run(w, n, func(sh): refresh_beliefs(w, sh, note))
 		return
 	if w.workshop_refresh.is_valid():
-		w.workshop_refresh.call(n, "before")
-	if w.workshop_refresh.is_valid():
-		w.workshop_refresh.call(n, "after")
+		w.workshop_refresh.call(n)
 	_refresh_ledger_preferences(w, n)
 	prune_resentments(w, n)
 	w.dlog.capture_npc(n, "belief_recompute" + note)
