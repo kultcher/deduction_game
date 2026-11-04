@@ -1,4 +1,4 @@
-## Slice 2 tests: 200-seed trace generator feasibility & non-subset guard,
+## Slice 2 tests: trace generator feasibility & non-subset guard (36 seeds: 30 seven-person, 6 ten-person),
 ## 3:1 three-valued (matches / unknown / contradicts) evaluation, Scion succession safety,
 ## Workshop candidate summary, and NPC trace reactions with minion Demon-protection.
 extends SceneTree
@@ -42,8 +42,11 @@ func _test_200_seed_feasibility_and_nonsubset() -> void:
 	var zero_subset_pairs = true
 	var token_n = 0
 	var scent_n = 0
-	for sd in range(1000, 1200):
-		var g = _game(sd, 10 if sd % 2 == 0 else 7)
+	# 36 towns, mostly 7-person (a 10-person town costs ~10x as much to advance). The
+	# generator doesn't depend on town size; the 10-person ones keep that honest.
+	var seeds: Array = range(1000, 1036)
+	for sd in seeds:
+		var g = _game(sd, 10 if sd % 6 == 0 else 7)
 		var w = g.w
 		var d = w.demon()
 		var victims: Array = w.living_good().slice(0, 3)
@@ -70,7 +73,7 @@ func _test_200_seed_feasibility_and_nonsubset() -> void:
 					if w._is_subset_or_superset(tr.locs, prev) and loc_sets.size() < 4:
 						zero_subset_pairs = false
 				loc_sets.append(tr.locs)
-	_check(total_traces == 600 and all_fit_demon, "all 600 traces across 200 7p/10p seeds are 100% compatible with the Demon")
+	_check(total_traces == seeds.size() * 3 and all_fit_demon, "all %d traces across %d 7p/10p seeds are 100%% compatible with the Demon" % [total_traces, seeds.size()])
 	_check(zero_dup_keys and zero_subset_pairs, "trace generator never repeats clue keys or rolls subset/superset location sets across 3 murders")
 	var ratio: float = float(token_n) / maxf(float(token_n + scent_n), 1.0)
 	_check(ratio > 0.55 and ratio < 0.79, "location traces blend ~67% 2-spot tokens and ~33% 3-spot scents")

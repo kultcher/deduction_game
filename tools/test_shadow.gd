@@ -15,8 +15,11 @@ func _init() -> void:
 		print("SHADOW_SELF is off; nothing to test.")
 		quit(0)
 		return
-	for sd in [96773, 55774, 4242]:
-		_case(sd)
+	# Two 7-person towns to day 3 and one 10-person town (two minions) to day 2: a
+	# 10-person town costs about ten times as much to play.
+	_case(96773, 7, 3)
+	_case(55774, 7, 3)
+	_case(4242, 10, 2)
 	_scapegoat_review()
 	_private_case_reaches_shadow()
 	_fake_medium()
@@ -29,13 +32,13 @@ func _check(ok: bool, label: String) -> void:
 	if not ok:
 		fails += 1
 
-## Play a case to day 3 with the player idle, then look at the shadows.
-func _case(sd: int) -> void:
+## Play a case to `to_day` with the player idle, then look at the shadows.
+func _case(sd: int, size: int, to_day: int) -> void:
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
-	g.new_case(sd, 10)
+	g.new_case(sd, size)
 	for i in range(80):
-		if g.w.day >= 3 and g.state == "day":
+		if g.w.day >= to_day and g.state == "day":
 			break
 		match g.state:
 			"night":
@@ -48,9 +51,9 @@ func _case(sd: int) -> void:
 			_:
 				g.command("wait")
 	var w = g.w
-	var tag = "case %d:" % sd
+	var tag = "case %d (%d people):" % [sd, size]
 	var evil: Array = w.evil_team().filter(func(n): return n.alive)
-	_check(not evil.is_empty(), tag + " some evil still alive at day 3")
+	_check(not evil.is_empty(), tag + " some evil still alive at day %d" % to_day)
 	for n in evil:
 		var s = n.shadow
 		var who = "%s %s (%s)" % [tag, n.name, n.role]
@@ -70,7 +73,7 @@ func _case(sd: int) -> void:
 			if b.get("phase", -1) == C.NIGHT and not str(n.history.get(w.time_key(b.get("day", 0), C.NIGHT), "home")).begins_with("home"):
 				leaked += 1
 		_check(leaked == 0, who + ": no night sightings from nights spent out")
-		# It has heard things: its ledger isn't empty by day 3.
+		# It has heard things: its ledger is not empty by now.
 		_check(s.ledger.size() > 0, who + ": shadow has heard something (%d ledger entries)" % s.ledger.size())
 		# Its fake readings are its own.
 		var fakes: Array = n.info_log.filter(func(e): return e.get("fake", false))

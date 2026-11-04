@@ -6,7 +6,9 @@ const Game = preload("res://game/game.gd")
 var fails = 0
 
 func _init() -> void:
-	for sd in [42, 7104, 54875]:
+	# Two 7-person towns, each played twice. (A 10-person town, 54875, took ~250 s of the
+	# suite's ~270; streaming doesn't depend on town size.)
+	for sd in [42, 7104]:
 		var a = _play(sd, false)
 		var b = _play(sd, true)
 		_check(a.text == b.text, "seed %d: the same testimony, in the same order" % sd)

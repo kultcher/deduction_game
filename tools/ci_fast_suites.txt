@@ -14,8 +14,9 @@ test_workshop_protection
 test_workshop_medium
 test_workshop_reading_challenges
 test_mechanics_curse
-test_legacy_purge_phase2b
-test_legacy_purge_phase3
+test_shared_model
+test_execution_aftermath
+test_workshop_vote_and_alibi
 test_beliefs
 test_headline
 test_role_def_poc
