@@ -175,6 +175,8 @@ func show_item(title: String, texture: Texture2D, text: String) -> void:
 
 func _portrait_frame(frame: Array) -> void:
 	for r in [portrait, previous_portrait]:
+		if r == null:
+			continue
 		r.anchor_left = frame[0]
 		r.anchor_top = frame[1]
 		r.anchor_right = frame[2]
