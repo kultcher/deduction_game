@@ -17,6 +17,31 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 ~04:30 ET, Claude: five failing suites fixed, Seer fix, refresh cleanup (M2 item), on main
+
+- **Seer bluff** (`sim/roles/seer.gd`, Argon's seed-2004 trace): a lone evil Seer bluffer
+  no longer "clears its teammate" (itself), and asked targets never put the bluffer in
+  its own pair. None of the five golden seeds hits this, so the golden is unchanged.
+- **The five suites outside CI that failed on main** (all pass now):
+  - `test_dialogue_batches_5_6_7`: `DayConversationView` builds its nodes on first use
+    (idempotent `_build()`), so it works before entering a running tree.
+  - `test_dialogue`, `test_legacy_migration`: checked old wording replaced by voiced
+    lines; now check the substance (the lie accusation; "at the meeting", no question used).
+  - `test_tuning_hoist`: deleted `NIGHT_SIGHTING_ELSEWHERE` / `_NEAR_DEATH` /
+    `_WALK_DISCOUNT`, unused since Phase 4 removed `night_sighting_scale`.
+  - `test_legacy_purge_phase2c`: not broken, just slow (40 to 60 minutes here); passes
+    with `--timeout 3600`.
+- **Refresh cost cleanup** (meeting plan M2's first item): the "after" refresh reuses the
+  first plan when its source doubt and candidate suspicion are exactly unchanged, and
+  `Jury._consequences_eval` copies the case shallowly per person. Seed 42 to Day 4:
+  `outer_prep` 280 -> 207 calls, 975 -> 835 ms self time (GDScript; wall time was noisy,
+  other jobs running). I kept the before/after API for now (the golden and profiler hooks
+  use it); folding it is a separate small change.
+- **Checks:** 31 suites (fast list + the five + touched), plus 8 ownership/jury suites
+  after the cleanup. Golden: two GDScript captures identical, C# identical, and identical
+  to `baseline_82faa5b` (`--ignore engine,sus_why,sus_src`), so the baseline stands; it
+  is re-recorded with M1, the first change that moves it.
+
 ## 2026-11-04 ~00:30 ET, Claude: patch_008 checked, green after test fixes, on main
 
 - **Base:** `35b3861` as declared; unpacked on `argon/patch-008-buildings`.
