@@ -931,7 +931,9 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		if persistence:
 			# A committed listener keeps a working theory per person and reads the
 			# evidence through it (Theory bias), as the headline does.
-			var evil_case: Dictionary = attention.case.duplicate(true)
+			# Shallow copy: only the conclusion differs per person, and nothing below writes
+			# into the shared case (meeting plan M2 cleanup; was a deep copy per person).
+			var evil_case: Dictionary = attention.case.duplicate(false)
 			evil_case.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
 			# The explanation search only feeds Theory.prepare. Skip it when its result
 			# would be unused: the headline's own theory, or a decision Theory already
