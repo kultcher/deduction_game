@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Dowser"
 	align = "good"
 	kind = "info"
+	tags = ["ongoing_info", "evil_id"]
 	day = true
 	desc = "The first time each day the Dowser is on a block with two or more others, learns how many of them are evil."
 	shape = "ROLE_AT_SITE"

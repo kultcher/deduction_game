@@ -10,6 +10,7 @@ const DevLog = preload("res://sim/devlog.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const Social = preload("res://sim/social.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 
 var rng = RandomNumberGenerator.new()
 var seed_value = 0
@@ -38,6 +39,8 @@ var first_demon_id = ""            # the demon at the start (a Scion may take ov
 var minion_id = ""                  # the first minion (kept for older code paths)
 var minion_ids: Array = []
 var bluffs: Array = []
+## What may be in play (sim/script_def.gd). Set before setup(); null deals the Default script.
+var case_script = null
 var evil_plan = {}
 
 ## Dynamic locations (crime scenes). id -> {name, block, victim, day, trace_block, trace_true, why, searched}
@@ -267,7 +270,7 @@ func consult_town_hall() -> Dictionary:
 		_town_hall_rng = RandomNumberGenerator.new()
 		_town_hall_rng.seed = hash([seed_value, n_npcs, "town_hall"])
 	var in_pool: Array = initial_good_roles.filter(func(r): return not (r in town_hall_shown_roles))
-	var out_pool: Array = C.GOOD_ROLES.filter(func(r): return not (r in initial_good_roles) and not (r in town_hall_shown_roles))
+	var out_pool: Array = case_script.town.filter(func(r): return not (r in initial_good_roles) and not (r in town_hall_shown_roles))
 	if in_pool.is_empty() or out_pool.is_empty():
 		return {}
 	var r_in: String = in_pool[_town_hall_rng.randi_range(0, in_pool.size() - 1)]
@@ -377,6 +380,12 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 		"coverage": "milestone_2_state_and_structured_decisions"})
 	dlog.add("case_start", "world", "", {"seed": seed_in, "npcs": npc_count, "build": build_id,
 		"tuning": tuning_id, "shared_execution_priority_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT})
+	if case_script == null:
+		case_script = ScriptDef.default_script()
+	elif not case_script.is_default():
+		# Only a non-default script is logged, so Default cases stay trace-identical.
+		dlog.add("case_script", "world", "", {"name": case_script.name, "fingerprint": case_script.fingerprint(),
+			"script": case_script.to_dict()})
 
 	var cast = shuffled(C.CAST).slice(0, npc_count)
 	var occs = shuffled(C.OCCUPATIONS.keys()).slice(0, npc_count)
@@ -462,16 +471,23 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 ## start-knowledge gifts and one strong identifier (Seer, Dowser or Gravedigger).
 func _assign_roles() -> void:
 	var cfg: Dictionary = C.SETUPS.get(n_npcs, {"town": n_npcs - 2, "minions": 1})
+	var sc = case_script
+	# Forced roles (custom games) are dealt first; the rest is drawn as before, so the
+	# Default script deals exactly what the global lists always did.
+	var forced_town: Array = sc.forced_in(sc.town)
+	var town_pool: Array = sc.town.filter(func(r): return not r in forced_town)
 	var good: Array = []
 	for attempt in range(200):
-		good = shuffled(C.GOOD_ROLES).slice(0, cfg["town"])
+		good = forced_town + shuffled(town_pool).slice(0, cfg["town"] - forced_town.size())
 		var starts = good.filter(func(r): return r in C.START_ROLES).size()
 		var ident = good.filter(func(r): return r in C.IDENTIFIER_ROLES).size()
 		if starts >= 2 and ident >= 1:
 			break
-	var mins: Array = shuffled(C.MINION_ROLES).slice(0, cfg["minions"])
+	var forced_mins: Array = sc.forced_in(sc.minions)
+	var mins: Array = forced_mins + shuffled(sc.minions.filter(func(r): return not r in forced_mins)).slice(0, cfg["minions"] - forced_mins.size())
 	var order = shuffled(npcs)
-	order[0].role = "demon"
+	var forced_demon: Array = sc.forced_in(sc.demons)
+	order[0].role = forced_demon[0] if not forced_demon.is_empty() else (sc.demons[0] if sc.demons.size() == 1 else pick(sc.demons))
 	order[0].alignment = "evil"
 	demon_id = order[0].id
 	first_demon_id = demon_id
@@ -487,7 +503,8 @@ func _assign_roles() -> void:
 		k += 1
 	initial_good_roles = good.duplicate()
 	var evil_count = 1 + mins.size()
-	bluffs = shuffled(C.GOOD_ROLES.filter(func(r): return not role_in_play(r))).slice(0, maxi(3, evil_count + 1))
+	# Evil only ever bluffs a gift that is on the script.
+	bluffs = shuffled(sc.town.filter(func(r): return not role_in_play(r))).slice(0, maxi(3, evil_count + 1))
 	for n in npcs:
 		var rdef = C.role_def(n.role)
 		if rdef != null:
@@ -498,7 +515,8 @@ func _assign_secret_mod() -> void:
 	var goods = shuffled(npcs.filter(func(n): return not n.is_evil()))
 	if goods.size() < 2:
 		return
-	var k: String = pick(C.SECRET_MOD_LIST)
+	var forced_secret: Array = case_script.forced_in(case_script.secrets)
+	var k: String = forced_secret[0] if not forced_secret.is_empty() else pick(case_script.secrets)
 	if k != "lovers":
 		# The Rumormonger's gift can't name its own holder, so it never holds the secret
 		# alone (Lovers always involve someone else). The shared model knows the rule.

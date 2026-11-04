@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Sexton"
 	align = "good"
 	kind = "protect"
+	tags = ["protection"]
 	desc = "Once per case, with fewer than five alive, may toll the death knell in the evening: that night, no gift that needs walking abroad works."
 	shape = "NIGHT_EVENT"
 	evening_or_night = true

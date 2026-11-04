@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Veteran"
 	align = "good"
 	kind = "passive"
+	tags = ["protection"]
 	desc = "The first time the demon attacks the Veteran, they survive and learn the last block the attacker came through."
 	shape = "NIGHT_EVENT"
 	produces_readings = true

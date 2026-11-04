@@ -213,19 +213,21 @@ static func _profile(g, token: String) -> String:
 static func _script(g) -> String:
 	var out = PackedStringArray()
 	out.append("Gifts that may be in play (not all will be):")
-	for r in C.GOOD_ROLES:
+	var sc = g.w.case_script
+	for r in sc.town:
 		out.append("  %-12s %s" % [C.role_name(r), C.ROLES[r]["desc"]])
 	var fams = PackedStringArray()
 	for pk in C.HINT_PACKAGES:
-		fams.append("%s (%s)" % [C.HINT_PACKAGES[pk]["name"], ", ".join(PackedStringArray(C.HINT_PACKAGES[pk]["roles"].filter(func(r): return r in C.GOOD_ROLES).map(func(r): return C.role_name(r))))])
+		fams.append("%s (%s)" % [C.HINT_PACKAGES[pk]["name"], ", ".join(PackedStringArray(C.HINT_PACKAGES[pk]["roles"].filter(func(r): return r in sc.town).map(func(r): return C.role_name(r))))])
 	out.append("Hint families: " + "; ".join(fams) + ".")
 	out.append("Evil: the Demon, and %d of these minions:" % g.w.minion_ids.size())
-	out.append("  %-12s %s" % ["Demon", C.ROLES["demon"]["desc"]])
+	for r in sc.demons:
+		out.append("  %-12s %s" % [C.role_name(r), C.ROLES[r]["desc"]])
 	out.append(C.DEMON_NIGHT_RULE)
-	for r in C.MINION_ROLES:
+	for r in sc.minions:
 		out.append("  %-12s %s" % [C.role_name(r), C.ROLES[r]["desc"]])
 	out.append("Secrets (one in play, laid on a townsfolk on top of their gift):")
-	for k in C.SECRET_MOD_LIST:
+	for k in sc.secrets:
 		out.append("  %-12s %s" % [C.secret_name(k), C.SECRET_MODS[k]["desc"]])
 	return "\n".join(out)
 

@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Gravedigger"
 	align = "good"
 	kind = "info"
+	tags = ["ongoing_info", "evil_id", "role_id"]
 	desc = "Each night after an execution, learns the true role of the executed."
 	shape = "ROLE_IN_GROUP"
 	role_group_key = "executed"
@@ -31,7 +32,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var role: String = ex.role
 	var entry: Dictionary = {}
 	if ex.secret_mod == "marked" and w.chance(Tuning.Roles.GRAVEDIGGER.marked_evil_chance):
-		role = w.pick(C.EVIL_ROLES)
+		role = w.pick(w.case_script.demons + w.case_script.minions)
 		entry["why"] = "Marked reads as evil"
 	if broken:
 		role = w.pick(C.ROLES.keys().filter(func(x): return x != ex.role and x != "demon" and x != "hearthwitch"))
@@ -55,7 +56,7 @@ func generate_bluff_reading(w, _n, plan: Dictionary, _s: String, _mate, _asked: 
 		role = ex.claimed_role
 		why = "confirms executed good NPC's own claim (safe)"
 	else:
-		role = w.pick(C.GOOD_ROLES)
+		role = w.pick(w.case_script.town)
 		why = "guesses a good role for executed NPC"
 	var entry: Dictionary = {
 		"data": {"executed": ex.id, "role": role},
@@ -79,7 +80,7 @@ func fake_medium_reading(w, _n, dd, _s: String, _sg, _d, _goods: Array, _other: 
 	else:
 		# A good hanged soul "was a minion": sometimes one that isn't even in the game.
 		# Never the Breathstealer unless there is one: its silences would give it away.
-		var pool: Array = C.MINION_ROLES.filter(func(m): return m != "breathstealer" or w.living_with_role("breathstealer") != null)
+		var pool: Array = w.case_script.minions.filter(func(m): return m != "breathstealer" or w.living_with_role("breathstealer") != null)
 		rl = w.pick(pool)
 	e["data"] = {"executed": ex.id, "role": rl}
 	e["text"] = "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(rl)]

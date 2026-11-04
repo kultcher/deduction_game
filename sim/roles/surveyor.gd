@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Surveyor"
 	align = "good"
 	kind = "info"
+	tags = ["first_night_info", "evil_id"]
 	first_night = true
 	desc = "Starts knowing how many blocks have an evil resident."
 	shape = "GROUP_COUNT"

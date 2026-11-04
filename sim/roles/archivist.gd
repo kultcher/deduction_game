@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Archivist"
 	align = "good"
 	kind = "info"
+	tags = ["first_night_info", "evil_id"]
 	first_night = true
 	desc = "Starts knowing that one of two people is a particular minion."
 	shape = "ROLE_IN_GROUP"
@@ -32,7 +33,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	if broken:
 		var goods: Array = w.npcs.filter(func(m): return m != n and not m.is_evil())
 		pair = w.shuffled(goods).slice(0, 2).map(func(m): return m.id)
-		mrole = w.pick(C.MINION_ROLES)
+		mrole = w.pick(w.case_script.minions)
 		ok = false
 	return {
 		"data": {"pair": pair, "role": mrole},
@@ -62,7 +63,7 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, _d, _goods: Array, other: Ca
 		return {}
 	var C = content()
 	var pair2: Array = w.shuffled([s, o4.id])
-	var mr: String = w.pick(C.MINION_ROLES.filter(func(x): return x != "breathstealer" or w.living_with_role("breathstealer") != null))
+	var mr: String = w.pick(w.case_script.minions.filter(func(x): return x != "breathstealer" or w.living_with_role("breathstealer") != null))
 	e["data"] = {"pair": pair2, "role": mr}
 	e["text"] = "I learned that one of %s is the %s" % [w._names(pair2), C.role_name(mr)]
 	return {"entry": e, "why": "the dead Archivist %s 'named' scapegoat %s as a minion" % [dd.id, s], "frames": true}

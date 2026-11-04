@@ -26,6 +26,7 @@ func _init() -> void:
 	display_name = "Medium"
 	align = "good"
 	kind = "info"
+	tags = ["ongoing_info", "night_walker", "role_id"]
 	night_walk = true
 	desc = "Each night after the first Demon kill, visits an unvisited Demon victim's hearth, or revisits the most recent victim. Learns something they knew but never shared, if anything new remains."
 	shape = "ROLE_AT_SITE"

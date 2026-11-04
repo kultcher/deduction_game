@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Seer"
 	align = "good"
 	kind = "info"
+	tags = ["ongoing_info", "demon_id"]
 	desc = "Each night, picks two people and learns if either is the demon. One good soul reads falsely as the demon."
 	shape = "PING"
 	marked_registers = true

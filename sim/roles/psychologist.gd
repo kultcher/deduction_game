@@ -10,6 +10,7 @@ func _init() -> void:
 	display_name = "Psychologist"
 	align = "good"
 	kind = "info"
+	tags = ["ongoing_info"]
 	desc = "Each night, picks someone they talked with that day and learns whom that person trusts and suspects most."
 	shape = "SOCIAL_PAIR"
 	conversation_nudge = Tuning.Roles.PSYCHOLOGIST.conversation_nudge
