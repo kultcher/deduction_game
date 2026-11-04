@@ -44,11 +44,11 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 4, afternoon): `baseline_4f7ba7f`
+### Previous baseline (Nov 4, afternoon): `baseline_4f7ba7f`
 
 `tools/golden/baseline_4f7ba7f/` is the capture from `4f7ba7f` (Argon's patch_011:
 Chunk 2 world-mask roles Augur, Chronicler, Magistrate; Chunk 3 Executor and Registrar;
-Surveyor/Dowser rework). **CI diffs against this one now.** Two GDScript captures
+Surveyor/Dowser rework). Two GDScript captures
 identical, `--mode csharp` identical. Against `baseline_165ce09` every seed parts at the
 first record: the new roles change the starting deal. Passive A/B over seeds 2000-2011:
 good wins 25% -> 42% (7 NPCs), 33% -> 8% (10 NPCs); worth a larger sweep at 10.
@@ -96,7 +96,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_4f7ba7f /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_0534e6b /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
