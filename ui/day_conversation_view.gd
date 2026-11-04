@@ -232,7 +232,7 @@ func consume(events: Array) -> void:
 
 func _render() -> void:
 	speech.clear()
-	var text = "\n\n".join(PackedStringArray(lines)) if not lines.is_empty() else "Choose a question to begin."
+	var text = "\n\n".join(PackedStringArray(lines))
 	renderer.append_to(speech, formatter.format_text(text, {
 		"surface": "paper", "speaker_id": person_id, "font_size": 20, "icon_size": 20}))
 	reveal_total = speech.get_total_character_count()
