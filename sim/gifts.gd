@@ -7,7 +7,12 @@
 ##   {nbrs|group, count}       Hearthwitch, Dowser: how many of these are evil
 ##   {block, seen}             Night Watch: who passed
 ##   {executed, role}          Gravedigger: what the hanged really were
-##   {count}                   Surveyor (blocks with an evil resident), Lamplighter (others out)
+##   {block, same} / {count}   Surveyor (block alignment parity), Lamplighter (others out)
+##   {trio}                    Chronicler: case-start townsfolk, secret-holder, and minion
+##   {yes}                     Augur: daytime public-block Demon crossing
+##   {nominator, nominee, same} Magistrate: first eligible nomination alignment parity
+##   {target, assigned|role}   Executor: case-start charge, or post-death role learned
+##   {roles[, target, yes]}    Registrar: 3-role slate, or nightly check against slate
 ##   {dead, item}              Medium: something the dead knew (item: reading, sighting,
 ##                             suspicion, home)
 ##   {subject, trusts, suspects}  Psychologist
@@ -42,11 +47,11 @@ static func clears(e: Dictionary) -> Array:
 static func subjects(e: Dictionary) -> Array:
 	var d: Dictionary = e.get("data", {})
 	var out: Array = []
-	for k in ["nbrs", "group", "pair", "seen"]:
+	for k in ["nbrs", "group", "pair", "seen", "trio"]:
 		for x in d.get(k, []):
 			if not (x in out):
 				out.append(x)
-	for k in ["executed", "subject", "trusts", "suspects", "target", "dead"]:
+	for k in ["executed", "subject", "trusts", "suspects", "target", "dead", "nominator", "nominee"]:
 		var v: String = d.get(k, "")
 		if v != "" and not (v in out):
 			out.append(v)

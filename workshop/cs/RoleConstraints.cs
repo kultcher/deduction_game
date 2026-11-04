@@ -23,9 +23,12 @@ internal static class RoleConstraintsKernel
     public const int RoleGravedigger = 7;
     public const int RoleNightwatch = 8;
     public const int RoleDemon = 9;
+    public const int RoleScion = 10;
+    public const int RoleExecutor = 11;
+    public const int RoleRegistrar = 12;
 
-    // Packed card stride (20 int32 slots per live card):
-    public const int CardStride = 20;
+    // Packed card stride (24 int32 slots per live card):
+    public const int CardStride = 24;
 
     // Card kind codes (slot 0):
     public const int KindOther = 0;
@@ -50,6 +53,9 @@ internal static class RoleConstraintsKernel
     public const int FlagSeerYes = 1 << 10;
     public const int FlagSecretSleepwalker = 1 << 11;
     public const int FlagSextonEnvOk = 1 << 12;
+    public const int FlagExecutorDeadOk = 1 << 13;
+    public const int FlagExecutorRoleRead = 1 << 14;
+    public const int FlagExecutorAssigned = 1 << 15;
 
     // ROLE_IN_GROUP target pool codes (slot 17):
     public const int PoolGood = 0;
@@ -496,6 +502,14 @@ internal static class RoleConstraintsKernel
         int seerReadingCount = 0;
         int veteranNight = -1;
         int martyrTargetToken = 0;
+        int executorTargetToken = 0;
+        bool hasRegistrar = false;
+        Span<int> regRoles = stackalloc int[3];
+        int regMinionBits = 0;
+        int regNoMask = 0;
+        int regYesMask = 0;
+        Span<int> regYesTargets = stackalloc int[32];
+        int regYesCount = 0;
 
         Span<int> thR0Stack = stackalloc int[16];
         Span<int> thR1Stack = stackalloc int[16];
@@ -649,9 +663,156 @@ internal static class RoleConstraintsKernel
                         break;
                 }
 
-                if (!AssignRole(assignRoles, assignMasks, ref assignCount, readRoleId, groupMask & poolMask))
+                if (readRoleId == RoleDemon && groupMode != 0)
+                {
+                    int gdTarget = cardInts[off + 16];
+                    if (demon == gdTarget)
+                    {
+                        if (!AssignRole(assignRoles, assignMasks, ref assignCount, RoleDemon, 1 << gdTarget))
+                        {
+                            return 0.0;
+                        }
+                    }
+                    else
+                    {
+                        int scionAliveMask = cardInts[off + 11];
+                        if (scionAliveMask != 0 && demon >= 0 && (scionAliveMask & (1 << demon)) != 0 && (minions & (1 << gdTarget)) != 0)
+                        {
+                            if (!AssignRole(assignRoles, assignMasks, ref assignCount, RoleScion, 1 << gdTarget))
+                            {
+                                return 0.0;
+                            }
+                        }
+                        else
+                        {
+                            return 0.0;
+                        }
+                    }
+                }
+                else if (!AssignRole(assignRoles, assignMasks, ref assignCount, readRoleId, groupMask & poolMask))
                 {
                     return 0.0;
+                }
+            }
+            else if (roleId == RoleExecutor)
+            {
+                int eTarget = cardInts[off + 16];
+                int eToken = cardInts[off + 17];
+                if (eToken == 0 || eTarget < 0 || eTarget == source)
+                {
+                    return 0.0;
+                }
+                if (executorTargetToken != 0 && executorTargetToken != eToken)
+                {
+                    return 0.0;
+                }
+                executorTargetToken = eToken;
+                if ((flags & FlagExecutorAssigned) != 0)
+                {
+                    continue;
+                }
+                if ((flags & FlagExecutorRoleRead) != 0)
+                {
+                    if ((flags & FlagExecutorDeadOk) == 0)
+                    {
+                        return 0.0;
+                    }
+                    int exRoleId = cardInts[off + 18];
+                    bool exEvilRole = (flags & FlagReadRoleEvil) != 0;
+                    if (exEvilRole && world.Marked >= 0 && world.Marked == eTarget)
+                    {
+                        continue;
+                    }
+                    if (exRoleId == RoleDemon)
+                    {
+                        if (demon == eTarget)
+                        {
+                            if (!AssignRole(assignRoles, assignMasks, ref assignCount, RoleDemon, 1 << eTarget))
+                            {
+                                return 0.0;
+                            }
+                        }
+                        else
+                        {
+                            int scionAliveMask = cardInts[off + 11];
+                            if (scionAliveMask != 0 && demon >= 0 && (scionAliveMask & (1 << demon)) != 0 && (minions & (1 << eTarget)) != 0)
+                            {
+                                if (!AssignRole(assignRoles, assignMasks, ref assignCount, RoleScion, 1 << eTarget))
+                                {
+                                    return 0.0;
+                                }
+                            }
+                            else
+                            {
+                                return 0.0;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        int exPool = exEvilRole ? minions : good;
+                        if (!AssignRole(assignRoles, assignMasks, ref assignCount, exRoleId, (1 << eTarget) & exPool))
+                        {
+                            return 0.0;
+                        }
+                    }
+                }
+                else
+                {
+                    return 0.0;
+                }
+            }
+            else if (roleId == RoleRegistrar)
+            {
+                int regMeta = cardInts[off + 23];
+                if (regMeta < 0)
+                {
+                    return 0.0;
+                }
+                int r0 = cardInts[off + 20];
+                int r1 = cardInts[off + 21];
+                int r2 = cardInts[off + 22];
+                if (!hasRegistrar)
+                {
+                    hasRegistrar = true;
+                    regRoles[0] = r0;
+                    regRoles[1] = r1;
+                    regRoles[2] = r2;
+                    regMinionBits = regMeta & 7;
+                }
+                else
+                {
+                    bool r0In = (r0 == regRoles[0] || r0 == regRoles[1] || r0 == regRoles[2]);
+                    bool r1In = (r1 == regRoles[0] || r1 == regRoles[1] || r1 == regRoles[2]);
+                    bool r2In = (r2 == regRoles[0] || r2 == regRoles[1] || r2 == regRoles[2]);
+                    if (!r0In || !r1In || !r2In)
+                    {
+                        return 0.0;
+                    }
+                }
+                if ((regMeta & (1 << 3)) != 0)
+                {
+                    int rTarget = cardInts[off + 16];
+                    if (rTarget < 0 || rTarget == source)
+                    {
+                        return 0.0;
+                    }
+                    if ((regMeta & (1 << 4)) != 0)
+                    {
+                        if ((regYesMask & (1 << rTarget)) == 0)
+                        {
+                            if (regYesCount >= regYesTargets.Length)
+                            {
+                                return 0.0;
+                            }
+                            regYesMask |= (1 << rTarget);
+                            regYesTargets[regYesCount++] = rTarget;
+                        }
+                    }
+                    else
+                    {
+                        regNoMask |= (1 << rTarget);
+                    }
                 }
             }
             else if (roleId == RoleVeteran)
@@ -786,6 +947,26 @@ internal static class RoleConstraintsKernel
             }
         }
 
+        if (hasRegistrar)
+        {
+            bool regOk = RegistrarMatches(
+                assignRoles,
+                assignMasks,
+                assignCount,
+                regRoles,
+                regMinionBits,
+                regNoMask,
+                regYesTargets.Slice(0, regYesCount),
+                world.Marked,
+                evil,
+                good,
+                minions,
+                thR0Stack.Slice(0, thCount),
+                thR1Stack.Slice(0, thCount),
+                thPickStack.Slice(0, thCount));
+            return regOk ? seerWeight : 0.0;
+        }
+
         if (thCount == 0)
         {
             return Matching(assignMasks.Slice(0, assignCount), assignCount - 1, 0) ? seerWeight : 0.0;
@@ -803,6 +984,197 @@ internal static class RoleConstraintsKernel
             forbiddenRoles,
             0);
         return thOk ? seerWeight : 0.0;
+    }
+
+    private static bool RegistrarMatches(
+        ReadOnlySpan<int> curRoles,
+        ReadOnlySpan<int> curMasks,
+        int curCount,
+        ReadOnlySpan<int> regRoles,
+        int regMinionBits,
+        int regNoMask,
+        ReadOnlySpan<int> regYesTargets,
+        int marked,
+        int evil,
+        int good,
+        int minions,
+        ReadOnlySpan<int> thR0,
+        ReadOnlySpan<int> thR1,
+        ReadOnlySpan<int> thPick)
+    {
+        Span<int> baseRoles = stackalloc int[Math.Max(1, curCount)];
+        Span<int> baseMasks = stackalloc int[Math.Max(1, curCount)];
+        curRoles.Slice(0, curCount).CopyTo(baseRoles);
+        curMasks.Slice(0, curCount).CopyTo(baseMasks);
+
+        Span<int> basePools = stackalloc int[3];
+        for (int k = 0; k < 3; k++)
+        {
+            int rk = regRoles[k];
+            basePools[k] = (((regMinionBits & (1 << k)) != 0) ? minions : good) & ~regNoMask;
+            for (int a = 0; a < curCount; a++)
+            {
+                if (baseRoles[a] == rk)
+                {
+                    baseMasks[a] &= ~regNoMask;
+                    if (baseMasks[a] == 0)
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return RegistrarYesStep(
+            baseRoles.Slice(0, curCount),
+            baseMasks.Slice(0, curCount),
+            curCount,
+            0,
+            regRoles,
+            regMinionBits,
+            basePools,
+            regYesTargets,
+            marked,
+            evil,
+            good,
+            thR0,
+            thR1,
+            thPick);
+    }
+
+    private static bool RegistrarYesStep(
+        ReadOnlySpan<int> curRoles,
+        ReadOnlySpan<int> curMasks,
+        int curCount,
+        int yIdx,
+        ReadOnlySpan<int> regRoles,
+        int regMinionBits,
+        ReadOnlySpan<int> basePools,
+        ReadOnlySpan<int> regYesTargets,
+        int marked,
+        int evil,
+        int good,
+        ReadOnlySpan<int> thR0,
+        ReadOnlySpan<int> thR1,
+        ReadOnlySpan<int> thPick)
+    {
+        if (yIdx >= regYesTargets.Length)
+        {
+            bool anyIn = false;
+            for (int a = 0; a < curCount; a++)
+            {
+                int cr = curRoles[a];
+                if (cr == regRoles[0] || cr == regRoles[1] || cr == regRoles[2])
+                {
+                    anyIn = true;
+                    break;
+                }
+            }
+            if (anyIn)
+            {
+                if (thR0.Length == 0)
+                {
+                    return Matching(curMasks.Slice(0, curCount), curCount - 1, 0);
+                }
+                Span<int> fb0 = stackalloc int[16];
+                return TownHallMatches(curRoles, curMasks, curCount, thR0, thR1, thPick, 0, good, fb0, 0);
+            }
+
+            Span<int> nextInRoles = stackalloc int[curCount + 1];
+            Span<int> nextInMasks = stackalloc int[curCount + 1];
+            for (int k = 0; k < 3; k++)
+            {
+                int bp = basePools[k];
+                if (bp == 0)
+                {
+                    continue;
+                }
+                curRoles.Slice(0, curCount).CopyTo(nextInRoles);
+                curMasks.Slice(0, curCount).CopyTo(nextInMasks);
+                int nextInCount = curCount;
+                if (!AssignRole(nextInRoles, nextInMasks, ref nextInCount, regRoles[k], bp))
+                {
+                    continue;
+                }
+                if (thR0.Length == 0)
+                {
+                    if (Matching(nextInMasks.Slice(0, nextInCount), nextInCount - 1, 0))
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    Span<int> fb1 = stackalloc int[16];
+                    if (TownHallMatches(nextInRoles, nextInMasks, nextInCount, thR0, thR1, thPick, 0, good, fb1, 0))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        int t = regYesTargets[yIdx];
+        int tBit = 1 << t;
+        Span<int> nextRoles = stackalloc int[curCount + 1];
+        Span<int> nextMasks = stackalloc int[curCount + 1];
+
+        for (int k = 0; k < 3; k++)
+        {
+            if ((basePools[k] & tBit) == 0)
+            {
+                continue;
+            }
+            curRoles.Slice(0, curCount).CopyTo(nextRoles);
+            curMasks.Slice(0, curCount).CopyTo(nextMasks);
+            int nextCount = curCount;
+            if (!AssignRole(nextRoles, nextMasks, ref nextCount, regRoles[k], tBit))
+            {
+                continue;
+            }
+            if (RegistrarYesStep(
+                nextRoles.Slice(0, nextCount),
+                nextMasks.Slice(0, nextCount),
+                nextCount,
+                yIdx + 1,
+                regRoles,
+                regMinionBits,
+                basePools,
+                regYesTargets,
+                marked,
+                evil,
+                good,
+                thR0,
+                thR1,
+                thPick))
+            {
+                return true;
+            }
+        }
+
+        if (regMinionBits != 0 && marked == t && (evil & tBit) == 0)
+        {
+            if (RegistrarYesStep(
+                curRoles,
+                curMasks,
+                curCount,
+                yIdx + 1,
+                regRoles,
+                regMinionBits,
+                basePools,
+                regYesTargets,
+                marked,
+                evil,
+                good,
+                thR0,
+                thR1,
+                thPick))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static bool TownHallMatches(

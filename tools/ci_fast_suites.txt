@@ -21,3 +21,6 @@ test_headline
 test_role_def_poc
 test_buildings_tavern_town_hall
 test_peer_role_gossip
+test_case_script
+test_chunk2_world_mask_roles
+test_chunk3_executor_registrar

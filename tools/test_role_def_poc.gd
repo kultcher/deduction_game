@@ -31,11 +31,17 @@ func _give(w, n, role: String) -> void:
 	var holder = w.npc_with_role(role)
 	if holder != null and holder != n:
 		holder.role = n.role
+		holder.poisoned = false
 		holder.info_log.clear()
+		holder.known_claims.clear()
+		holder.believed_roles.clear()
 		holder.ledger.clear()
 		holder.history.clear()
 	n.role = role
+	n.poisoned = false
 	n.info_log.clear()
+	n.known_claims.clear()
+	n.believed_roles.clear()
 	n.ledger.clear()
 	n.history.clear()
 
@@ -69,6 +75,9 @@ func _test_registry_and_metadata() -> void:
 	_check(C.role_def("veteran").shape == "NIGHT_EVENT" and C.role_def("veteran").can_cause_quiet_night and is_equal_approx(C.role_def("veteran").quiet_night_effect, -0.06), "Veteran RoleDef registered with NIGHT_EVENT quiet night metadata")
 	_check(C.role_def("martyr").shape == "NIGHT_EVENT" and C.role_def("martyr").marked_registers, "Martyr RoleDef registered with NIGHT_EVENT metadata")
 	_check(C.role_def("sexton").shape == "NIGHT_EVENT", "Sexton RoleDef registered with NIGHT_EVENT metadata")
+	_check(C.role_def("chronicler").shape == "CHRONICLER_TRIO" and C.role_def("chronicler").cannot_hold_solo_secret and C.role_def("chronicler").min_gift_day == 3, "Chronicler RoleDef registered with CHRONICLER_TRIO and Night-3 metadata")
+	_check(C.role_def("augur").shape == "AUGUR_CROSSING" and C.role_def("augur").day and C.role_def("augur").marked_registers, "Augur RoleDef registered with AUGUR_CROSSING and Marked metadata")
+	_check(C.role_def("magistrate").shape == "MAGISTRATE_NOM" and C.role_def("magistrate").marked_registers and C.role_def("magistrate").min_gift_day == 1, "Magistrate RoleDef registered with MAGISTRATE_NOM metadata")
 	for rid in C.ROLES.keys():
 		_check(C.role_def(rid) != null and C.role_def(rid).to_role_dict() == C.ROLES[rid], "%s RoleDef.to_role_dict() matches C.ROLES['%s'] exactly" % [rid, rid])
 
@@ -148,6 +157,11 @@ func _test_role_in_group_hooks() -> void:
 	_give(w, clerk, "clerk")
 	_give(w, arch, "archivist")
 	_give(w, grave, "gravedigger")
+	for healthy_npc in [clerk, arch, grave]:
+		if healthy_npc.secret_mod == "delusional":
+			healthy_npc.secret_mod = ""
+	if subject_good.secret_mod == "marked":
+		subject_good.secret_mod = ""
 
 	# 1. Gifts.implicated / Gifts.clears / Gifts.short_text via ROLE_IN_GROUP shape
 	var clerk_entry = {"role": "clerk", "day": 0, "data": {"pair": [subject_good.id, subject_other.id], "role": subject_good.role}}
@@ -203,15 +217,17 @@ func _test_role_at_site_hooks() -> void:
 	_give(w, dowser, "dowser")
 	_give(w, medium, "medium")
 
-	# 1. Dowser ROLE_AT_SITE group_count reading
+	# 1. Dowser ROLE_AT_SITE group_count reading (requires public locations, not at home)
+	w.day = 1
 	dowser.loc = "home"
 	victim.loc = "home"
 	other.loc = "home"
-	victim.home_block = dowser.home_block
-	other.home_block = dowser.home_block
-	w.day = 1
+	_check(C.role_def("dowser").generate_reading(w, dowser, {"day_phase": true}, Mind).is_empty(), "Dowser generate_reading does not trigger while at home")
+	dowser.loc = "tavern"
+	victim.loc = "well"
+	other.loc = "tavern"
 	var dw_r: Dictionary = C.role_def("dowser").generate_reading(w, dowser, {"day_phase": true}, Mind)
-	_check(dw_r.get("data", {}).get("group", []).size() >= 2 and dw_r.get("data", {}).get("block", "") == dowser.home_block, "Dowser generate_reading reads crowd on block during day phase")
+	_check(dw_r.get("data", {}).get("group", []).size() >= 2 and dw_r.get("data", {}).get("block", "") == w.loc_block("tavern"), "Dowser generate_reading reads public crowd on block during day phase")
 	_check(C.role_def("dowser").generate_reading(w, dowser, {}, Mind).is_empty(), "Dowser generate_reading is a no-op during night _receive_info")
 	var dw_zero = {"role": "dowser", "day": 1, "data": {"group": [victim.id, other.id], "count": 0, "block": dowser.home_block}}
 	var dw_one = {"role": "dowser", "day": 1, "data": {"group": [victim.id, other.id], "count": 1, "block": dowser.home_block}}
@@ -260,12 +276,13 @@ func _test_count_and_route_hooks() -> void:
 	_give(w, watch, "nightwatch")
 	var name_fn = func(id): return w.by_id[id].name
 
-	# 1. Surveyor (GROUP_COUNT blocks)
+	# 1. Surveyor (block alignment parity on random non-own >=2 resident block)
 	var surv_r: Dictionary = C.role_def("surveyor").generate_reading(w, surv, {}, Mind)
-	_check(surv_r.get("data", {}).get("count", -1) >= 1 and surv_r.get("data", {}).get("count", -1) <= 4, "Surveyor generate_reading counts blocks with evil residents")
+	var surv_blk: String = str(surv_r.get("data", {}).get("block", ""))
+	_check(surv_blk in C.BLOCKS and surv_blk != surv.home_block and w.npcs.filter(func(m): return m.home_block == surv_blk).size() >= 2 and surv_r.get("data", {}).get("same") is bool, "Surveyor generate_reading reads alignment parity on a non-own >=2 resident block")
 	var surv_entry = {"role": "surveyor", "day": 0, "data": surv_r["data"], "text": surv_r["text"]}
 	_check(Gifts.implicated(surv_entry).is_empty() and Gifts.clears(surv_entry).is_empty(), "Surveyor reading implicates and clears nobody directly")
-	_check("Surveyor:" in Gifts.short_text("surveyor", surv_r["data"], surv.name, name_fn), "Surveyor short_text formats block count")
+	_check("Surveyor:" in Gifts.short_text("surveyor", surv_r["data"], surv.name, name_fn), "Surveyor short_text formats block alignment parity")
 
 	# 2. Lamplighter (GROUP_COUNT walkers)
 	w.night_walkers = [{"id": lamp.id, "block": lamp.home_block, "path": [lamp.home_block]}, {"id": walker.id, "block": walker.home_block, "path": [walker.home_block]}]
@@ -375,6 +392,9 @@ func _test_final_roles_hooks() -> void:
 	_check(Domain.gift_time({"role": "dowser", "observed_at": {"day": 1, "phase": "morning"}}) and not Domain.gift_time({"role": "dowser", "observed_at": {"day": 1, "phase": "night"}}), "Domain.gift_time delegates Dowser day-only timing to RoleDef")
 	_check(Domain.gift_time({"role": "surveyor", "observed_at": {"day": 0, "phase": "night"}}) and not Domain.gift_time({"role": "surveyor", "observed_at": {"day": 1, "phase": "night"}}), "Domain.gift_time delegates Surveyor first-night timing to RoleDef")
 	_check(Domain.gift_time({"role": "martyr", "observed_at": {"day": 1, "phase": "evening"}}) and not Domain.gift_time({"role": "martyr", "observed_at": {"day": 0, "phase": "night"}}), "Domain.gift_time delegates Martyr evening/night day>=1 timing to RoleDef")
+	_check(Domain.gift_time({"role": "chronicler", "observed_at": {"day": 3, "phase": "night"}}) and not Domain.gift_time({"role": "chronicler", "observed_at": {"day": 2, "phase": "night"}}) and not Domain.gift_time({"role": "chronicler", "observed_at": {"day": 4, "phase": "night"}}), "Domain.gift_time restricts Chronicler to Night 3")
+	_check(Domain.gift_time({"role": "augur", "observed_at": {"day": 1, "phase": "evening"}}) and not Domain.gift_time({"role": "augur", "observed_at": {"day": 1, "phase": "morning"}}) and not Domain.gift_time({"role": "augur", "observed_at": {"day": 1, "phase": "night"}}), "Domain.gift_time restricts Augur to Evening day>=1")
+	_check(Domain.gift_time({"role": "magistrate", "observed_at": {"day": 1, "phase": "night"}}) and not Domain.gift_time({"role": "magistrate", "observed_at": {"day": 0, "phase": "night"}}), "Domain.gift_time restricts Magistrate to Night day>=1")
 
 	# 6. MindMeeting & MindDialogue module extraction checks
 	_check(Mind.MindMeeting != null and Mind.MindDialogue != null, "Mind preloads MindMeeting and MindDialogue modules")

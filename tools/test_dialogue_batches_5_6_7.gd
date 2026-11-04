@@ -329,7 +329,7 @@ func _test_vn_greetings_expressions_and_rng_parity() -> void:
 
 	speaker.traits["composure"] = 0.0
 	speaker.trust = 0.85
-	var warm_line: Dictionary = Mind.greeting_line(g.w, speaker, {})
+	var warm_line: Dictionary = Mind.greeting_line(g.w, speaker, {}, false)
 	_check(warm_line.get("expression", "") == "warm" and warm_line.text in Voices.VOICES[speaker.id]["greet_warm"], "Second talk after one-shot murder greeting falls back to warm rapport greeting")
 
 	var prot_line: Dictionary = Mind.greeting_line(g.w, speaker, {"protection_key": "protect:promise:" + speaker.id})

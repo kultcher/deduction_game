@@ -7,8 +7,8 @@ namespace Demonologist.Workshop;
 
 /// <summary>
 /// Slice C3 1:1 port of workshop/solver.gd hot loops and constraint tables:
-///   - world_bits & sig_groups (cached per universe handle)
-///   - valid_table & report_table (_report_holds, _testimony_content, _report_content)
+///   - world_bits &amp; sig_groups (cached per universe handle)
+///   - valid_table &amp; report_table (_report_holds, _testimony_content, _report_content)
 ///   - _solve world filtering, _positions filtering, and fixture _movement bitmask enumeration
 ///   - question_table, holds / _build_premise_mask, and unresolved bitmask scan
 /// </summary>
@@ -45,6 +45,9 @@ internal static class SolverKernel
     public const int ContentFixtureRumor = 4;
     public const int ContentSiteGroup = 5;
     public const int ContentSurveyor = 6;
+    public const int ContentParityGroup = 7;
+    public const int ContentChronicler = 8;
+    public const int ContentAugur = 9;
 
     // Conclusion type codes (holds / _build_premise_mask):
     public const int ConclEvilOrSuspicious = 0;
@@ -475,6 +478,127 @@ internal static class SolverKernel
                 return false;
             }
 
+            case ContentParityGroup:
+            {
+                if (ansPosHasUnknown || chosenBlocksInvalid || chosenBlockMasks.Length > 0)
+                {
+                    return false;
+                }
+                if (hasAnsPos && (ansPosMask & ~pairOrGroupMask) != 0)
+                {
+                    return false;
+                }
+                for (int r = 0; r < reqMarkedIndices.Length; r++)
+                {
+                    int rm = reqMarkedIndices[r];
+                    if (rm != w.Marked || (pairOrGroupMask & (1 << rm)) == 0)
+                    {
+                        return false;
+                    }
+                }
+
+                int groupSize = BitOperations.PopCount((uint)pairOrGroupMask);
+                if (groupSize < 2)
+                {
+                    return false;
+                }
+
+                int evilBits = w.Evil;
+                if (w.HasConverted && w.ConvertedRaw >= 0 && EvilIndex(w, w.ConvertedRaw, convEvilAtObs))
+                {
+                    evilBits |= (1 << w.ConvertedRaw);
+                }
+
+                bool wantSame = targetOrSecretCode != 0;
+                int startMarkReads = reqMarkedIndices.Length > 0 ? 1 : 0;
+                for (int mr = startMarkReads; mr <= 1; mr++)
+                {
+                    bool markReads = mr == 1;
+                    int posMask = evilBits | ((markReads && w.Marked >= 0) ? (1 << w.Marked) : 0);
+                    if (hasAnsPos && (posMask & ansPosMask) != ansPosMask)
+                    {
+                        continue;
+                    }
+                    int cnt = BitOperations.PopCount((uint)(posMask & pairOrGroupMask));
+                    bool isSame = (cnt == 0 || cnt == groupSize);
+                    if (isSame == wantSame)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            case ContentChronicler:
+            {
+                if (ansPosHasUnknown || chosenBlocksInvalid || chosenBlockMasks.Length > 0 || reqMarkedIndices.Length > 0)
+                {
+                    return false;
+                }
+                if (BitOperations.PopCount((uint)pairOrGroupMask) != 3)
+                {
+                    return false;
+                }
+                if (isLive && sourceIdx >= 0 && (w.Holders & ~(1 << sourceIdx)) == 0)
+                {
+                    return false;
+                }
+                if (sourceIdx >= 0 && (pairOrGroupMask & (1 << sourceIdx)) != 0)
+                {
+                    return false;
+                }
+                int allMask = (1 << nPeople) - 1;
+                int demonIdx = w.DemonOrMinusOne;
+                int demonBit = demonIdx >= 0 ? (1 << demonIdx) : 0;
+                int minionMask = w.Evil & ~demonBit;
+                int secretMask = isLive
+                    ? (w.Holders & ~w.Evil)
+                    : ((w.Marked >= 0 ? (1 << w.Marked) : 0) & ~w.Evil);
+                int folkMask = allMask & ~w.Evil & ~secretMask;
+                if ((pairOrGroupMask & minionMask) == 0
+                    || (pairOrGroupMask & secretMask) == 0
+                    || (pairOrGroupMask & folkMask) == 0)
+                {
+                    return false;
+                }
+                if (hasAnsPos && ((ansPosMask & pairOrGroupMask) != ansPosMask || (ansPosMask & minionMask) != ansPosMask))
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            case ContentAugur:
+            {
+                if (ansPosHasUnknown || chosenBlocksInvalid || chosenBlockMasks.Length > 0 || reqMarkedIndices.Length > 0)
+                {
+                    return false;
+                }
+                int demonIdx = w.DemonOrMinusOne;
+                if (sourceIdx >= 0 && demonIdx == sourceIdx)
+                {
+                    return false;
+                }
+                if (hasAnsPos)
+                {
+                    if (targetOrSecretCode == 0)
+                    {
+                        return false;
+                    }
+                    if (sourceIdx >= 0 && (ansPosMask & (1 << sourceIdx)) != 0)
+                    {
+                        return false;
+                    }
+                    int regDemonMask = (w.HasDemon ? (demonIdx >= 0 ? (1 << demonIdx) : 0) : w.Evil)
+                        | (w.Marked >= 0 ? (1 << w.Marked) : 0);
+                    if ((ansPosMask & regDemonMask) != ansPosMask)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
             default:
                 return true;
         }
@@ -550,12 +674,16 @@ internal static class SolverKernel
             }
 
             default:
+            {
+                int fbSourceIdx = (fallbackContentMode == ContentChronicler || fallbackContentMode == ContentAugur)
+                    ? -1
+                    : sourceIdx;
                 return EvalReportContentWorld(
                     w,
                     nPeople,
                     isLive,
                     fallbackContentMode,
-                    sourceIdx,
+                    fbSourceIdx,
                     convEvilAtObs,
                     fallbackPairOrGroupMask,
                     fallbackTargetOrSecretCode,
@@ -566,6 +694,7 @@ internal static class SolverKernel
                     Array.Empty<int>(),
                     false,
                     allBlockMasks);
+            }
         }
     }
 
@@ -643,6 +772,49 @@ internal static class SolverKernel
                         targetOrSecretCode,
                         allBlockMasks);
                 accepted[i] = ok ? (byte)1 : (byte)0;
+            }
+            return accepted;
+        }
+
+        // Chronicler and Augur depend on world.Demon, which sig_groups collapses; evaluate per world.
+        if (cardKindCode == CardKindReport && (contentMode == ContentChronicler || contentMode == ContentAugur))
+        {
+            byte[] valid = EvaluateValidTable(
+                universeHandle,
+                worlds,
+                nPeople,
+                isLive,
+                CardKindReport,
+                false,
+                sourceIdx,
+                giftTimeAndAliveOk,
+                convEvilAtObs);
+            for (int i = 0; i < n; i++)
+            {
+                if (valid[i] == 0)
+                {
+                    accepted[i] = 0;
+                }
+                else
+                {
+                    var w = new WorldEntry(worlds[i]);
+                    accepted[i] = EvalReportContentWorld(
+                        w,
+                        nPeople,
+                        isLive,
+                        contentMode,
+                        sourceIdx,
+                        convEvilAtObs,
+                        pairOrGroupMask,
+                        targetOrSecretCode,
+                        hasAnsPos,
+                        ansPosMask,
+                        ansPosHasUnknown,
+                        reqMarkedIndices,
+                        chosenBlockMasks,
+                        chosenBlocksInvalid,
+                        allBlockMasks) ? (byte)1 : (byte)0;
+                }
             }
             return accepted;
         }

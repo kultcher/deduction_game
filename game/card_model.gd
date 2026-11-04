@@ -94,12 +94,13 @@ static func time_label(t: Dictionary) -> String:
 static func about(card: Dictionary) -> Array:
 	var out: Array = card.get("subject", []).duplicate()
 	var d: Dictionary = card.get("data", {})
-	for key in ["pair", "nbrs", "seen"]:
+	for key in ["pair", "nbrs", "seen", "trio"]:
 		for x in d.get(key, []):
 			if not (x in out):
 				out.append(x)
-	if d.has("executed") and not (d["executed"] in out):
-		out.append(d["executed"])
+	for key2 in ["executed", "nominator", "nominee"]:
+		if d.has(key2) and str(d[key2]) != "" and not (d[key2] in out):
+			out.append(d[key2])
 	if card.has("nominee") and not (card["nominee"] in out):
 		out.append(card["nominee"])
 	return out

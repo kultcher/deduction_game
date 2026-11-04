@@ -472,7 +472,7 @@ static func _conditional(graph: Dictionary, facts: Array, kind: String, extra: D
 ## separate gifts/sources integrate independently.
 static func _roles(view: Dictionary, graph: Dictionary) -> void:
 	var facts: Array = graph.facts.filter(func(f): return _role_keys(f.card).size() > 0)
-	var has_th: bool = facts.any(func(f): return f.card.kind == "town_hall")
+	var has_th: bool = facts.any(func(f): return f.card.kind == "town_hall" or (f.card.kind == "report" and f.card.get("role", "") == "registrar"))
 	var components: Array = []
 	for fact in facts:
 		var keys = _role_keys(fact.card)
@@ -498,12 +498,23 @@ static func _role_keys(card: Dictionary) -> Array:
 	if card.get("quoted", false):
 		return []
 	var result: Array = []
-	if card.kind == "claim" or (card.kind == "report" and card.role in ["seer", "clerk", "archivist", "gravedigger", "veteran", "martyr", "sexton", "nightwatch", "lamplighter", "medium"]):
+	if card.kind == "claim" or (card.kind == "report" and card.role in ["seer", "clerk", "archivist", "gravedigger", "veteran", "martyr", "sexton", "nightwatch", "lamplighter", "medium", "surveyor", "chronicler", "augur", "magistrate", "executor", "registrar"]):
 		result = ["gift:" + card.role, "holder:" + card.source]
 		if card.kind == "report" and card.role in ["clerk", "archivist", "gravedigger"]:
 			result.append("gift:" + card.data.role)
 			for person in card.data.get("pair", [card.data.get("executed", "")]):
 				result.append("holder:" + person)
+		elif card.kind == "report" and card.role == "executor":
+			if str(card.data.get("target", "")) != "":
+				result.append("holder:" + str(card.data.target))
+			if card.data.has("role"):
+				result.append("gift:" + str(card.data.role))
+		elif card.kind == "report" and card.role == "registrar":
+			result.append("town_hall_pool")
+			for r in card.data.get("roles", []):
+				result.append("gift:" + str(r))
+			if str(card.data.get("target", "")) != "":
+				result.append("holder:" + str(card.data.target))
 		if card.kind == "report" and card.role == "sexton":
 			result.append("night-walk")
 	elif card.kind == "town_hall":

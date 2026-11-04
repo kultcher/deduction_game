@@ -326,7 +326,7 @@ func _refresh_case() -> void:
 		_label(case_box, "Link supporting grounds to this modifier. It proposes an explanation; it does not establish error or dishonesty.", 17)
 		var choice = _option(case_box, ["Misled reading", "Suspected lie", "Unlikely reading"])
 		choice.select(["misled", "lying", "unlikely"].find(node.mode))
-		choice.set_item_disabled(2, _report(node.card).get("role") != "surveyor")
+		choice.set_item_disabled(2, _report(node.card).get("role", "") != "surveyor" or not _report(node.card).get("data", {}).has("count"))
 		choice.item_selected.connect(func(i): node.mode = ["misled", "lying", "unlikely"][i]; _edit())
 	elif node.kind == "contradiction":
 		for child in node.children:
@@ -427,7 +427,7 @@ func _context(id: String) -> void:
 		var report = _report(board.nodes[id].card)
 		for entry in [[200, "misled (honest but wrong)", "misled"], [201, "lying", "lying"], [202, "unlikely reading", "unlikely"]]:
 			context_menu.add_item("Challenge: " + entry[1], entry[0])
-			context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.has("relay_source") or report.get("support_note", "").begins_with("FALLBACK") or (entry[2] == "unlikely" and report.get("role") != "surveyor"))
+			context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.has("relay_source") or report.get("support_note", "").begins_with("FALLBACK") or (entry[2] == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))))
 	if board.nodes[id].kind == "modifier":
 		context_menu.add_item("Remove modifier (keep evidence and links)", 203)
 	if board.nodes[id].kind == "contradiction":

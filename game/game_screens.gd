@@ -545,16 +545,47 @@ static func named_in(g, id: String) -> Array:
 		if c["kind"] != "info" or c.get("deleted", false) or not g.w.by_id.has(c.get("source", "")):
 			continue
 		var d: Dictionary = c.get("data", {})
+		if c["source"] == id:
+			continue
+		var role_id: String = c.get("role", "")
+		var src: String = g.w.by_id[c["source"]].name
+		if role_id == "chronicler":
+			var trio: Array = d.get("trio", [])
+			if id in trio:
+				var others_t: Array = trio.filter(func(x): return x != id).map(func(x): return g.w.by_id[x].name if g.w.by_id.has(x) else x)
+				out.append("possibly townsfolk, secret-holder, or minion (#%d: %s's Chronicler reading, night %d, with %s)" % [
+					c["n"], src, c.get("day", 3), " and ".join(PackedStringArray(others_t))])
+			continue
+		if role_id == "magistrate":
+			var nom_pair: Array = [str(d.get("nominator", "")), str(d.get("nominee", ""))]
+			if id in nom_pair:
+				var partner_id: String = nom_pair[1] if nom_pair[0] == id else nom_pair[0]
+				var partner_nm: String = g.w.by_id[partner_id].name if g.w.by_id.has(partner_id) else partner_id
+				var rel_txt: String = "same alignment as %s" % partner_nm if d.get("same", false) else "different alignment from %s" % partner_nm
+				out.append("%s (#%d: %s's Magistrate reading, night %d)" % [rel_txt, c["n"], src, c.get("day", 1)])
+			continue
+		if role_id == "executor":
+			if str(d.get("target", "")) == id:
+				if d.has("role"):
+					out.append("learned upon death to be the %s (#%d: %s's Executor reading, day %d)" % [C.role_name(str(d.get("role", ""))), c["n"], src, c.get("day", 1)])
+				else:
+					out.append("named as Executor charge (#%d: %s's Executor reading, night 0)" % [c["n"], src])
+			continue
+		if role_id == "registrar":
+			if str(d.get("target", "")) == id:
+				var rnames: String = ", ".join(PackedStringArray(d.get("roles", []).map(func(r): return C.role_name(str(r)))))
+				var rtxt: String = ("holds one of %s" if bool(d.get("yes", false)) else "holds none of %s") % rnames
+				out.append("%s (#%d: %s's Registrar reading, night %d)" % [rtxt, c["n"], src, c.get("day", 1)])
+			continue
 		var pair: Array = d.get("pair", [])
-		if not (id in pair) or c["source"] == id:
+		if not (id in pair):
 			continue
 		var other = ""
 		for x in pair:
 			if x != id:
 				other = g.w.by_id[x].name if g.w.by_id.has(x) else x
-		var src: String = g.w.by_id[c["source"]].name
 		var what = ""
-		match c.get("role", ""):
+		match role_id:
 			"clerk":
 				what = "the " + C.role_name(d.get("role", ""))
 			"archivist":
@@ -566,7 +597,7 @@ static func named_in(g, id: String) -> Array:
 		if what == "":
 			continue
 		var lead = "" if what.begins_with("not") else "possibly "
-		out.append("%s%s (#%d: %s's %s reading, night %d%s)" % [lead, what, c["n"], src, C.role_name(c["role"]), c.get("day", 0),
+		out.append("%s%s (#%d: %s's %s reading, night %d%s)" % [lead, what, c["n"], src, C.role_name(role_id), c.get("day", 0),
 			(", with " + other) if other != "" else ""])
 	return out
 

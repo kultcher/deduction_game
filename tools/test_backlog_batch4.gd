@@ -770,11 +770,12 @@ func busy_visit_warning():
 func new_actions_help():
 	var g = fresh()
 	var rng = g.w.rng.state
+	var st0: String = g.state  # a seed may open on an approach; help must leave it as it was
 	var text = g._help()
 	for action in ["offer ward", "offer vigil", "apologise <number>", "yes | no", "ask check <name>", "ask guard <name>", "ask watch <block>", "ask about <gift>", "ward or scorched-sigil card#"]:
 		check(action in text, "help documents newer action: " + action)
 	check("pending request" in text and "disclosed that gift" in text and "privately or at the meeting" in text, "help explains the action contexts")
-	check(g.w.rng.state == rng and g.state == "day", "help is read-only")
+	check(g.w.rng.state == rng and g.state == st0, "help is read-only")
 
 func seer_space_targets():
 	var control_rng = -1
@@ -820,6 +821,7 @@ func grimoire_modifiers():
 	var n = g.w.living_good()[0]
 	n.secret = {"kind": "test", "text": "keeps a private diary"}
 	var rng = g.w.rng.state
+	var st1: String = g.state
 	for mod in C.SECRET_MOD_LIST:
 		n.secret_mod = mod
 		var lines = Array(g._grimoire().split("\n"))
@@ -827,7 +829,7 @@ func grimoire_modifiers():
 		check("secret modifier: " + C.secret_name(mod) in row and "keeps a private diary" in row, "grimoire shows personal secret and modifier together: " + mod)
 	n.secret_mod = ""
 	check(not Array(g._grimoire().split("\n")).filter(func(line): return line.strip_edges().begins_with(n.name + " "))[0].contains("secret modifier:"), "no invented modifier is printed for an unmodified NPC")
-	check(g.w.rng.state == rng and g.state == "day", "developer summary formatting does not change the game")
+	check(g.w.rng.state == rng and g.state == st1, "developer summary formatting does not change the game")
 
 func count_reason_names():
 	var g = fresh()
@@ -937,7 +939,7 @@ func presentation_options():
 	var rng = g.w.rng.state
 	var phase = g.w.phase
 	var cards = JSON.stringify(g.board)
-	var roles_count = C.GOOD_ROLES.size() + C.EVIL_ROLES.size() + C.SECRET_MOD_LIST.size()
+	var roles_count = g.w.case_script.town.size() + g.w.case_script.demons.size() + g.w.case_script.minions.size() + g.w.case_script.secrets.size()
 	scene._open_roles()
 	var content = scene.roles_content
 	check(not scene.roles_pinned and scene.roles_win.visible and not scene.roles_dock.visible, "Roles starts as the existing movable window")

@@ -468,7 +468,7 @@ func _init() -> void:
 	_check(g.case_notes == "Suspect the miller", "case notes save as you type")
 	scene._open_roles()
 	await process_frame
-	_check(scene.roles_win.visible and _role_rows(scene.roles_box) >= C.GOOD_ROLES.size() + 4, "roles window lists every gift")
+	_check(scene.roles_win.visible and _role_rows(scene.roles_box) >= g.w.case_script.town.size() + 4, "roles window lists every gift on the script")
 	scene.roles_win.hide()
 	# Debug overlay: shows NPCs' private view, and marks identification unscored.
 	scene.debug_check.button_pressed = true
@@ -495,7 +495,8 @@ func _init() -> void:
 	_check(scene.g.w.npcs.size() == 10 and scene.g.w.minion_ids.size() == 2, "the size selector starts a 10-person case")
 	scene._open_roles()
 	await process_frame
-	_check(_role_rows(scene.roles_box) == C.GOOD_ROLES.size() + C.EVIL_ROLES.size() + C.SECRET_MOD_LIST.size(), "the roles window lists the whole script and the secrets")
+	var sc_ui = scene.g.w.case_script
+	_check(_role_rows(scene.roles_box) == sc_ui.town.size() + sc_ui.demons.size() + sc_ui.minions.size() + sc_ui.secrets.size(), "the roles window lists the whole script and the secrets")
 	scene.roles_win.hide()
 	# Card numbers in the log open the card on the case board.
 	scene.out.meta_clicked.emit("card:1")

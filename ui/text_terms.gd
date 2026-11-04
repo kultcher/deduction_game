@@ -7,8 +7,8 @@ const UITheme = preload("res://ui/theme.gd")
 
 ## These names can also describe ordinary things or occupations. In prose, match their
 ## canonical capitalization only; a caller can opt into role_context for known gift text.
-const AMBIGUOUS_ROLES = ["archivist", "clerk", "dowser", "gravedigger", "martyr", "medium",
-	"psychologist", "sexton", "surveyor", "veteran", "warden", "scion"]
+const AMBIGUOUS_ROLES = ["archivist", "augur", "chronicler", "clerk", "dowser", "executor", "gravedigger", "magistrate", "registrar",
+	"martyr", "medium", "psychologist", "sexton", "surveyor", "veteran", "warden", "scion"]
 const WORD_CHAR = "[\\p{L}\\p{N}\\p{M}_]"
 
 var _terms: Dictionary = {}
@@ -78,27 +78,32 @@ func lookup(id: String) -> Dictionary:
 ## ambiguous lowercase gift names and internal role IDs in already identified role text.
 ## At the same position, longest wins; equal lengths use stable ID order.
 func find_matches(text: String, options: Dictionary = {}) -> Array:
-	if not options.get("enabled", true):
+	if not options.get("enabled", true) or text == "":
 		return []
-	var candidates: Array = []
 	var kinds: Array = options.get("kinds", [])
-	for pattern in _patterns:
-		if pattern["role_only"] and not options.get("role_context", false):
+	var role_context: bool = options.get("role_context", false)
+	var candidates: Array = []
+	for entry in _patterns:
+		if entry["role_only"] and not role_context:
 			continue
-		if not kinds.is_empty() and not _terms[pattern["id"]]["kind"] in kinds:
+		var term: Dictionary = _terms[entry["id"]]
+		if not kinds.is_empty() and term["kind"] not in kinds:
 			continue
-		for hit in pattern["regex"].search_all(text):
-			candidates.append({"id": pattern["id"], "start": hit.get_start(), "end": hit.get_end(), "text": hit.get_string()})
+		for m in entry["regex"].search_all(text):
+			candidates.append({"start": m.get_start(), "end": m.get_end(), "text": m.get_string(),
+				"id": term["id"], "kind": term["kind"], "content_id": term.get("content_id", ""),
+				"color": term["color"], "bold": term["bold"],
+				"icon_path": term["icon_path"], "tooltip": term["tooltip"]})
 	candidates.sort_custom(func(a, b):
 		if a["start"] != b["start"]:
 			return a["start"] < b["start"]
-		if a["end"] != b["end"]:
-			return a["end"] > b["end"]
+		if (a["end"] - a["start"]) != (b["end"] - b["start"]):
+			return (a["end"] - a["start"]) > (b["end"] - b["start"])
 		return a["id"] < b["id"])
-	var result: Array = []
-	var end = 0
-	for candidate in candidates:
-		if candidate["start"] >= end:
-			result.append(candidate)
-			end = candidate["end"]
-	return result
+	var chosen: Array = []
+	var cursor = 0
+	for c in candidates:
+		if c["start"] >= cursor:
+			chosen.append(c)
+			cursor = c["end"]
+	return chosen

@@ -20,6 +20,11 @@ const PsychologistDef = preload("res://sim/roles/psychologist.gd")
 const VeteranDef = preload("res://sim/roles/veteran.gd")
 const MartyrDef = preload("res://sim/roles/martyr.gd")
 const SextonDef = preload("res://sim/roles/sexton.gd")
+const ChroniclerDef = preload("res://sim/roles/chronicler.gd")
+const AugurDef = preload("res://sim/roles/augur.gd")
+const MagistrateDef = preload("res://sim/roles/magistrate.gd")
+const ExecutorDef = preload("res://sim/roles/executor.gd")
+const RegistrarDef = preload("res://sim/roles/registrar.gd")
 const DemonDef = preload("res://sim/roles/demon.gd")
 const PoisonerDef = preload("res://sim/roles/poisoner.gd")
 const BreathstealerDef = preload("res://sim/roles/breathstealer.gd")
@@ -40,6 +45,7 @@ static func _ensure_init() -> void:
 		DowserDef, HearthwitchDef, MediumDef,
 		SurveyorDef, LamplighterDef, NightWatchDef,
 		RumormongerDef, PsychologistDef, VeteranDef, MartyrDef, SextonDef,
+		ChroniclerDef, AugurDef, MagistrateDef, ExecutorDef, RegistrarDef,
 		DemonDef, PoisonerDef, BreathstealerDef, RevenantDef, ScionDef,
 	]:
 		var def = script.new()

@@ -134,7 +134,7 @@ static func semantic_key(card: Dictionary) -> String:
 	if card.has("fact_id"):
 		return card.fact_id
 	var data: Dictionary = card.get("data", {}).duplicate(true)
-	for key in ["pair", "group", "seen"]:
+	for key in ["pair", "group", "seen", "trio"]:
 		if data.has(key):
 			data[key].sort()
 	return JSON.stringify([card.get("kind"), card.get("source"), card.get("role"), card.get("observed_at"), data, card.get("subject"), card.get("block")])
@@ -354,6 +354,13 @@ static func _report_table_gd(view: Dictionary, u_worlds: Array, card: Dictionary
 		for i in range(u_worlds.size()):
 			accepted[i] = 1 if source_valid(view, u_worlds[i], card) and _testimony_content(view, u_worlds[i], card) else 0
 		return accepted
+	# Chronicler and Augur depend on the demon's identity, which sig_groups collapses.
+	if card.kind == "report" and card.get("role", "") in ["chronicler", "augur"]:
+		var valid_direct: PackedByteArray = _valid_table_gd(view, u_worlds, card)
+		var ans_dict: Dictionary = {"positive": positive, "blocks": positive_blocks, "marked": marked}
+		for i in range(u_worlds.size()):
+			accepted[i] = 0 if valid_direct[i] == 0 else (1 if _report_content(view, u_worlds[i], card, ans_dict) else 0)
+		return accepted
 	# Worlds differing only in the demon's identity share one answer.
 	var groups = _sig_groups_gd(view, u_worlds)
 	var rep: PackedInt32Array = groups.rep
@@ -389,8 +396,9 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 	var gift_and_alive_ok: bool = true
 	if kind_code == 1 and is_live and not testimony_only:
 		gift_and_alive_ok = Domain._gift_time_gd(card) and History.observer_alive(view, src_str, obs_at)
+	var role_str: String = str(card.get("role", ""))
 	var conv_stmt: bool = _curse_active_at(view, TimeModel.statement_time(card)) if testimony_only else false
-	var conv_obs: bool = _curse_active_at(view, obs_at)
+	var conv_obs: bool = _curse_active_at(view, {"day": int(obs_at.get("day", -1)), "phase": "afternoon"}) if role_str == "magistrate" else _curse_active_at(view, obs_at)
 
 	var has_ans_pos: bool = not positive.is_empty()
 	var ans_pos_mask: int = 0
@@ -421,7 +429,6 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 	for bi in range(bm_vals.size()):
 		all_block_masks[bi] = int(bm_vals[bi])
 
-	var role_str: String = str(card.get("role", ""))
 	var rdef = C.role_def(role_str)
 	var data: Dictionary = card.get("data", {}) if card.get("data", {}) is Dictionary else {}
 	var content_mode: int = 0
@@ -433,6 +440,25 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 		if role_str == "gravedigger" and view.has("timeline"):
 			var gd_n: int = int(card.night) if int(card.get("night", -1)) >= 0 else int(obs_at.get("day", -1))
 			if not History.executed(view, str(data.get("executed", "")), gd_n):
+				pre_fail = true
+		if not pre_fail and role_str == "executor":
+			var ex_t_idx: int = person_index(view, str(data.get("target", "")))
+			if ex_t_idx < 0 or (not testimony_only and src_idx >= 0 and ex_t_idx == src_idx):
+				pre_fail = true
+			elif data.has("role") and not bool(data.get("assigned", false)):
+				if not C.ROLES.has(str(data.get("role", ""))) or (view.has("timeline") and not History.died_before_morning(view, str(data.get("target", "")), int(obs_at.get("day", -1)))):
+					pre_fail = true
+			elif not (bool(data.get("assigned", false)) and not data.has("role")):
+				pre_fail = true
+		if not pre_fail and role_str == "registrar":
+			if not Roles._registrar_roles_ok(data.get("roles")):
+				pre_fail = true
+			elif data.has("target") or data.has("yes"):
+				var rg_t_idx: int = person_index(view, str(data.get("target", "")))
+				if not (data.has("target") and data.get("yes") is bool) or rg_t_idx < 0 or (not testimony_only and src_idx >= 0 and rg_t_idx == src_idx):
+					pre_fail = true
+		if not pre_fail and role_str == "magistrate":
+			if not _magistrate_nomination_ok(view, card, not testimony_only):
 				pre_fail = true
 		if not pre_fail and role_str == "warden":
 			var obs_day: int = int(obs_at.get("day", -1))
@@ -475,6 +501,31 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 						var p_i: int = person_index(view, str(pid))
 						if p_i >= 0:
 							pair_or_group_mask |= (1 << p_i)
+				elif role_str == "chronicler":
+					var trio_arr = data.get("trio", [])
+					var trio_m: int = 0
+					var trio_ok: bool = trio_arr is Array and trio_arr.size() == 3
+					if trio_ok:
+						for pid in trio_arr:
+							var p_i: int = person_index(view, str(pid))
+							if p_i < 0 or (trio_m & (1 << p_i)) != 0:
+								trio_ok = false
+							else:
+								trio_m |= (1 << p_i)
+					if not trio_ok or (not testimony_only and src_idx >= 0 and (trio_m & (1 << src_idx)) != 0):
+						content_mode = 1
+					else:
+						content_mode = 8
+						pair_or_group_mask = trio_m
+				elif role_str == "augur":
+					content_mode = 9
+					target_or_secret = 1 if bool(data.get("yes", false)) else 0
+				elif role_str == "magistrate":
+					var a_i: int = person_index(view, str(data.get("nominator", "")))
+					var b_i: int = person_index(view, str(data.get("nominee", "")))
+					content_mode = 7
+					pair_or_group_mask = ((1 << a_i) if a_i >= 0 else 0) | ((1 << b_i) if b_i >= 0 else 0)
+					target_or_secret = 1 if bool(data.get("same", false)) else 0
 				else:
 					var is_site_group: bool = rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count" and rdef.site_group_key == "group"
 					var is_surveyor: bool = rdef != null and rdef.shape == "GROUP_COUNT" and rdef.count_mode == "blocks"
@@ -485,6 +536,15 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 							if p_i >= 0:
 								pair_or_group_mask |= (1 << p_i)
 						target_or_secret = int(data.get("count", 0))
+					elif is_surveyor and data.has("block") and data.has("same"):
+						var blk_s: String = str(data.get("block", ""))
+						var b_mask_s: int = int(_cached_block_masks.get(blk_s, 0))
+						if not _cached_block_masks.has(blk_s) or popcount(b_mask_s) < 2 or (not testimony_only and src_idx >= 0 and (b_mask_s & (1 << src_idx)) != 0):
+							content_mode = 1
+						else:
+							content_mode = 7
+							pair_or_group_mask = b_mask_s
+							target_or_secret = 1 if bool(data.get("same", false)) else 0
 					elif is_surveyor:
 						content_mode = 6
 						target_or_secret = int(data.get("count", 0))
@@ -500,6 +560,8 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 	var testim_secret_code: int = -99
 
 	if testimony_only and kind_code == 1:
+		if content_mode == 1:
+			pre_testim_fail = true
 		if role_str == "gravedigger" and view.has("timeline"):
 			var gd_nt: int = int(card.night) if int(card.get("night", -1)) >= 0 else int(obs_at.get("day", -1))
 			if not History.executed(view, str(data.get("executed", "")), gd_nt):
@@ -531,6 +593,30 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 			testim_mask = pair_t
 			testim_secret_code = _secret_mod_code(str(data.get("secret", "")))
 			testim_shape = 7
+		elif role_str == "executor":
+			var ex_ti: int = person_index(view, str(data.get("target", "")))
+			if ex_ti < 0:
+				pre_testim_fail = true
+			elif data.has("role") and not bool(data.get("assigned", false)):
+				testim_mask = 1 << ex_ti
+				var ex_align: String = str(C.ROLES.get(str(data.get("role", "")), {}).get("align", ""))
+				testim_shape = 3 if ex_align == "evil" else 4
+				marked_reg = true
+			else:
+				testim_shape = 0
+		elif role_str == "registrar":
+			if data.has("target"):
+				var rg_ti: int = person_index(view, str(data.get("target", "")))
+				if rg_ti < 0:
+					pre_testim_fail = true
+				elif bool(data.get("yes", false)):
+					testim_mask = 1 << rg_ti
+					var rg_has_min: bool = data.get("roles", []).any(func(r): return C.is_minion(str(r)))
+					testim_shape = 6 if rg_has_min else 4
+				else:
+					testim_shape = 0
+			else:
+				testim_shape = 0
 		else:
 			testim_shape = 0
 
@@ -570,7 +656,7 @@ static func content_sig(view: Dictionary, world: Dictionary) -> int:
 	return int(world.__key)
 
 ## Roles whose report content can fail in a world (the rest only need a valid source).
-const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch", "warden", "medium", "gravedigger"]
+const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch", "warden", "medium", "gravedigger", "chronicler", "augur", "magistrate", "executor", "registrar"]
 
 static var _bits: Dictionary = {}
 
@@ -836,6 +922,12 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 			if fit[i] == 1:
 				kept.append(worlds[i])
 		worlds = kept
+	if not worlds.is_empty():
+		for ac in cards:
+			if ac.kind == "report" and ac.get("role", "") == "augur" and not ac.get("quoted", false) and not ac.get("testimony_only", false):
+				var aspec: Dictionary = augur_day_spec(view, cards, ac, answers.get(ac.id, {}))
+				if aspec.has_day_evidence or aspec.picked_idx >= 0:
+					worlds = worlds.filter(func(w): return not source_valid(view, w, ac) or augur_world_outcome_prob(w, aspec) > 0.0)
 	var movement = movement_for(view, cards if view.get("live_activity", false) else movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
 
@@ -1158,14 +1250,230 @@ static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictio
 		return demon or (pair & ~evil) != 0 if data.yes else not demon
 	if rdef != null and rdef.shape == "SECRET_PAIR":
 		return world.get("modifier", "marked") == data.secret and (int(world.get("holders", 1 << world.marked)) & pair) != 0
-	return _report_content(view, world, card, {})
+	if card.role == "executor":
+		var ex_ti_gd: int = person_index(view, str(data.get("target", "")))
+		if ex_ti_gd < 0:
+			return false
+		if data.has("role") and not bool(data.get("assigned", false)):
+			if not C.ROLES.has(str(data.get("role", ""))) or (view.has("timeline") and not History.died_before_morning(view, str(data.get("target", "")), int(card.get("observed_at", {}).get("day", -1)))):
+				return false
+			var ex_mask_gd: int = 1 << ex_ti_gd
+			var ex_reads_ev: bool = (world.evil & ex_mask_gd) != 0 or (world.marked >= 0 and world.marked == ex_ti_gd)
+			return ex_reads_ev if Domain.C.ROLES.get(str(data.get("role", "")), {}).get("align") == "evil" else (world.evil & ex_mask_gd) == 0
+		return bool(data.get("assigned", false)) and not data.has("role")
+	if card.role == "registrar":
+		if not Roles._registrar_roles_ok(data.get("roles")):
+			return false
+		if not data.has("target") and not data.has("yes"):
+			return true
+		if not (data.has("target") and data.get("yes") is bool):
+			return false
+		var rg_ti_gd: int = person_index(view, str(data.get("target", "")))
+		if rg_ti_gd < 0:
+			return false
+		if bool(data.get("yes", false)):
+			var rg_has_min_gd: bool = data.get("roles", []).any(func(r): return C.is_minion(str(r)))
+			if rg_has_min_gd:
+				return not (world.get("demon", -1) >= 0 and int(world.demon) == rg_ti_gd)
+			return (world.evil & (1 << rg_ti_gd)) == 0
+		return true
+	return _report_content_impl(view, world, card, {}, true)
+
+static func _magistrate_nomination_ok(view: Dictionary, card: Dictionary, check_source: bool) -> bool:
+	_ensure_people(view)
+	var d: Dictionary = card.get("data", {}) if card.get("data", {}) is Dictionary else {}
+	var nom_a: String = str(d.get("nominator", ""))
+	var nom_b: String = str(d.get("nominee", ""))
+	var a_i: int = person_index(view, nom_a)
+	var b_i: int = person_index(view, nom_b)
+	if a_i < 0 or b_i < 0 or a_i == b_i:
+		return false
+	var src: String = str(card.get("source", ""))
+	if check_source and nom_a == src:
+		return false
+	if not view.has("timeline"):
+		return true
+	var obs_day: int = int(card.get("observed_at", {}).get("day", -1))
+	var events: Array = view.get("timeline", {}).get("events", [])
+	var has_day_record: bool = events.any(func(ev): return int(ev.get("at", {}).get("day", -1)) == obs_day and ev.get("kind", "") in ["nomination", "meeting"])
+	if not has_day_record:
+		return true
+	if check_source:
+		for ev in events:
+			if ev.get("kind", "") != "nomination" or int(ev.get("at", {}).get("day", -1)) != obs_day:
+				continue
+			var by: String = str(ev.get("by", ""))
+			var subs: Array = ev.get("subjects", [])
+			var tgt: String = str(subs[0]) if not subs.is_empty() else ""
+			if by == "" or by == "player" or by == src or tgt == "" or tgt == by:
+				continue
+			if person_index(view, by) >= 0 and person_index(view, tgt) >= 0:
+				return by == nom_a and tgt == nom_b
+		return false
+	# Testimony-only (unnamed Magistrate): valid if some non-nominator townsperson sees (nom_a, nom_b) first.
+	for cand in _cached_ids:
+		if cand == nom_a:
+			continue
+		var matched: bool = false
+		var seen_first: bool = false
+		for ev in events:
+			if ev.get("kind", "") != "nomination" or int(ev.get("at", {}).get("day", -1)) != obs_day:
+				continue
+			var by2: String = str(ev.get("by", ""))
+			var subs2: Array = ev.get("subjects", [])
+			var tgt2: String = str(subs2[0]) if not subs2.is_empty() else ""
+			if by2 == "" or by2 == "player" or by2 == cand or tgt2 == "" or tgt2 == by2:
+				continue
+			if person_index(view, by2) >= 0 and person_index(view, tgt2) >= 0:
+				seen_first = true
+				matched = (by2 == nom_a and tgt2 == nom_b)
+				break
+		if seen_first and matched:
+			return true
+	return false
+
+static func augur_slot_prob(codes: int, idx: int) -> float:
+	if idx < 0:
+		return 0.0
+	match (codes >> (idx * 2)) & 3:
+		0:
+			return 0.0
+		1:
+			return 0.1875
+		2:
+			return 0.25
+		_:
+			return 1.0
+
+static func augur_day_spec(view: Dictionary, cards: Array, augur_card: Dictionary, answer: Dictionary = {}) -> Dictionary:
+	_ensure_people(view)
+	var ids: Array = _cached_ids
+	var n: int = ids.size()
+	var src: String = str(augur_card.get("source", ""))
+	var src_idx: int = person_index(view, src)
+	var day_num: int = int(augur_card.get("observed_at", {}).get("day", -1))
+	var yes: bool = bool(augur_card.get("data", {}).get("yes", false))
+	var pos_arr: Array = answer.get("positive", [])
+	var picked_idx: int = person_index(view, str(pos_arr[0])) if not pos_arr.is_empty() else -1
+	var slot_codes: Array = [0, 0]
+	var has_day_evidence: bool = false
+	var phases: Array = ["morning", "afternoon"]
+	for s_i in range(2):
+		var ph_name: String = phases[s_i]
+		var known_blk: Array = []
+		var alive_slot: Array = []
+		known_blk.resize(n)
+		alive_slot.resize(n)
+		for j in range(n):
+			alive_slot[j] = History.observer_alive(view, ids[j], {"day": day_num, "phase": ph_name})
+			known_blk[j] = ""
+		for c in cards:
+			if c.get("quoted", false):
+				continue
+			var ck: String = str(c.get("kind", ""))
+			if ck == "location" and int(c.get("day", c.get("observed_at", {}).get("day", -1))) == day_num and str(c.get("observed_at", {}).get("phase", "")) == ph_name:
+				var blk: String = str(c.get("block", ""))
+				if blk in C.BLOCKS:
+					for who in c.get("subjects", [c.get("subject", "")]):
+						var w_i: int = person_index(view, str(who))
+						if w_i >= 0 and alive_slot[w_i]:
+							if known_blk[w_i] == "":
+								known_blk[w_i] = blk
+							elif known_blk[w_i] != blk:
+								known_blk[w_i] = "?"
+			elif ck == "context" and str(c.get("context_kind", "")) == "work":
+				var subj_i: int = person_index(view, str(c.get("subject", "")))
+				if subj_i >= 0 and alive_slot[subj_i] and s_i in c.get("data", {}).get("work_phases", []):
+					var wloc: String = str(c.get("data", {}).get("loc", ""))
+					var wblk: String = str(c.get("block", C.loc_block(wloc) if wloc in C.LOCATIONS else ""))
+					if wblk in C.BLOCKS:
+						if known_blk[subj_i] == "":
+							known_blk[subj_i] = wblk
+						elif known_blk[subj_i] != wblk:
+							known_blk[subj_i] = "?"
+		for j in range(n):
+			if known_blk[j] == "?":
+				known_blk[j] = ""
+			elif known_blk[j] != "":
+				has_day_evidence = true
+		var aug_blk: String = known_blk[src_idx] if (src_idx >= 0 and src_idx < n) else ""
+		var packed_s: int = 0
+		for j in range(n):
+			var code: int = 0
+			if j == src_idx or not alive_slot[j]:
+				code = 0
+			elif aug_blk != "" and known_blk[j] != "":
+				code = 3 if known_blk[j] == aug_blk else 0
+			elif aug_blk != "" or known_blk[j] != "":
+				code = 2
+			else:
+				code = 1
+			if j != src_idx and code != 1:
+				has_day_evidence = true
+			packed_s |= (code << (j * 2))
+		slot_codes[s_i] = packed_s
+	var p_ref: float = (87.0 / 256.0) if yes else (169.0 / 256.0)
+	return {
+		"src_idx": src_idx,
+		"day": day_num,
+		"yes": yes,
+		"picked_idx": picked_idx,
+		"slot0_codes": int(slot_codes[0]),
+		"slot1_codes": int(slot_codes[1]),
+		"has_day_evidence": has_day_evidence,
+		"p_ref": p_ref,
+	}
+
+static func augur_world_outcome_prob(world: Dictionary, spec: Dictionary) -> float:
+	var src_idx: int = int(spec.src_idx)
+	var d_idx: int = int(world.get("demon", -1))
+	if src_idx >= 0 and d_idx == src_idx:
+		return 0.0
+	var picked_idx: int = int(spec.get("picked_idx", -1))
+	if picked_idx >= 0:
+		if augur_slot_prob(int(spec.slot0_codes), picked_idx) <= 0.0 and augur_slot_prob(int(spec.slot1_codes), picked_idx) <= 0.0:
+			return 0.0
+	var m_idx: int = int(world.get("marked", -1))
+	var dp0: float = augur_slot_prob(int(spec.slot0_codes), d_idx)
+	var dp1: float = augur_slot_prob(int(spec.slot1_codes), d_idx)
+	var mp0: float = augur_slot_prob(int(spec.slot0_codes), m_idx) if (m_idx >= 0 and m_idx != src_idx) else 0.0
+	var mp1: float = augur_slot_prob(int(spec.slot1_codes), m_idx) if (m_idx >= 0 and m_idx != src_idx) else 0.0
+	var trig0: float = 1.0 - (1.0 - dp0) * (1.0 - 0.5 * mp0)
+	var trig1: float = 1.0 - (1.0 - dp1) * (1.0 - 0.5 * mp1)
+	var p_yes: float = 1.0 - (1.0 - trig0) * (1.0 - trig1)
+	return p_yes if bool(spec.yes) else (1.0 - p_yes)
 
 ## What a report says, given a valid source (see source_valid): does it hold here?
 static func _report_content(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
+	return _report_content_impl(view, world, card, answer, false)
+
+static func _report_content_impl(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary, from_testimony: bool) -> bool:
 	_ensure_people(view)
 	if card.role == "gravedigger" and view.has("timeline"):
 		var gd_night: int = card.night if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
 		if not History.executed(view, str(card.data.get("executed", "")), gd_night):
+			return false
+	if card.role == "executor":
+		var ex_t_impl: int = person_index(view, str(card.data.get("target", "")))
+		var ex_s_impl: int = -1 if from_testimony else person_index(view, str(card.get("source", "")))
+		if ex_t_impl < 0 or (ex_s_impl >= 0 and ex_t_impl == ex_s_impl):
+			return false
+		if card.data.has("role") and not bool(card.data.get("assigned", false)):
+			if not C.ROLES.has(str(card.data.get("role", ""))) or (view.has("timeline") and not History.died_before_morning(view, str(card.data.get("target", "")), int(card.get("observed_at", {}).get("day", -1)))):
+				return false
+			return true
+		return bool(card.data.get("assigned", false)) and not card.data.has("role")
+	if card.role == "registrar":
+		if not Roles._registrar_roles_ok(card.data.get("roles")):
+			return false
+		if card.data.has("target") or card.data.has("yes"):
+			var rg_t_impl: int = person_index(view, str(card.data.get("target", "")))
+			var rg_s_impl: int = -1 if from_testimony else person_index(view, str(card.get("source", "")))
+			if not (card.data.has("target") and card.data.get("yes") is bool) or rg_t_impl < 0 or (rg_s_impl >= 0 and rg_t_impl == rg_s_impl):
+				return false
+		return true
+	if card.role == "magistrate":
+		if not _magistrate_nomination_ok(view, card, not from_testimony):
 			return false
 	if card.role == "warden":
 		if view.get("timeline", {}).get("events", []).any(func(event): return event.kind == "demon_death" and event.at.day == card.observed_at.day and card.data.target in event.subjects):
@@ -1191,6 +1499,110 @@ static func _report_content(view: Dictionary, world: Dictionary, card: Dictionar
 		var marked: int = world.marked
 		var marked_id: String = _cached_ids[marked] if marked >= 0 and marked < _cached_ids.size() else ""
 		return marked_id in d.pair and (answer.get("positive", []).is_empty() or marked_id in answer.positive)
+	if card.role == "chronicler":
+		if not answer.get("blocks", []).is_empty() or not answer.get("marked", []).is_empty():
+			return false
+		var trio_arr = d.get("trio", [])
+		if not (trio_arr is Array) or trio_arr.size() != 3:
+			return false
+		var trio_mask: int = 0
+		for pid in trio_arr:
+			var p_i: int = person_index(view, str(pid))
+			if p_i < 0 or (trio_mask & (1 << p_i)) != 0:
+				return false
+			trio_mask |= (1 << p_i)
+		var c_src_idx: int = -1 if from_testimony else person_index(view, str(card.get("source", "")))
+		if c_src_idx >= 0 and (trio_mask & (1 << c_src_idx)) != 0:
+			return false
+		if Domain.live(view) and c_src_idx >= 0 and (int(world.get("holders", 0)) & ~(1 << c_src_idx)) == 0:
+			return false
+		var all_m: int = (1 << _cached_ids.size()) - 1
+		var d_i: int = int(world.get("demon", -1))
+		var d_bit: int = (1 << d_i) if d_i >= 0 else 0
+		var minion_m: int = int(world.evil) & ~d_bit
+		var secret_m: int = (int(world.get("holders", 0)) & ~int(world.evil)) if Domain.live(view) else (((1 << int(world.marked)) if int(world.marked) >= 0 else 0) & ~int(world.evil))
+		var folk_m: int = all_m & ~int(world.evil) & ~secret_m
+		if (trio_mask & minion_m) == 0 or (trio_mask & secret_m) == 0 or (trio_mask & folk_m) == 0:
+			return false
+		var c_pos: Array = answer.get("positive", [])
+		if not c_pos.is_empty():
+			var c_ans_m: int = 0
+			for pid in c_pos:
+				var ap_i: int = person_index(view, str(pid))
+				if ap_i < 0:
+					return false
+				c_ans_m |= (1 << ap_i)
+			if (c_ans_m & trio_mask) != c_ans_m or (c_ans_m & minion_m) != c_ans_m:
+				return false
+		return true
+	if card.role == "augur":
+		if not answer.get("blocks", []).is_empty() or not answer.get("marked", []).is_empty():
+			return false
+		var a_src_idx: int = -1 if from_testimony else person_index(view, str(card.get("source", "")))
+		var a_demon: int = int(world.get("demon", -1))
+		if a_src_idx >= 0 and a_demon == a_src_idx:
+			return false
+		var a_pos: Array = answer.get("positive", [])
+		if not a_pos.is_empty():
+			if not bool(d.get("yes", false)):
+				return false
+			var a_ans_m: int = 0
+			for pid in a_pos:
+				var ap_i2: int = person_index(view, str(pid))
+				if ap_i2 < 0 or (a_src_idx >= 0 and ap_i2 == a_src_idx):
+					return false
+				a_ans_m |= (1 << ap_i2)
+			var reg_d_m: int = (((1 << a_demon) if a_demon >= 0 else 0) if world.has("demon") else int(world.evil)) | ((1 << int(world.marked)) if int(world.marked) >= 0 else 0)
+			if (a_ans_m & reg_d_m) != a_ans_m:
+				return false
+		return true
+	var is_parity_surveyor: bool = card.role == "surveyor" and d.has("block") and d.has("same")
+	if is_parity_surveyor or card.role == "magistrate":
+		if not answer.get("blocks", []).is_empty():
+			return false
+		var p_group_m: int = 0
+		if is_parity_surveyor:
+			var blk_id: String = str(d.get("block", ""))
+			if not _cached_block_masks.has(blk_id):
+				return false
+			p_group_m = int(_cached_block_masks[blk_id])
+			var s_src_i: int = -1 if from_testimony else person_index(view, str(card.get("source", "")))
+			if popcount(p_group_m) < 2 or (s_src_i >= 0 and (p_group_m & (1 << s_src_i)) != 0):
+				return false
+		else:
+			var ma_i: int = person_index(view, str(d.get("nominator", "")))
+			var mb_i: int = person_index(view, str(d.get("nominee", "")))
+			if ma_i < 0 or mb_i < 0 or ma_i == mb_i:
+				return false
+			p_group_m = (1 << ma_i) | (1 << mb_i)
+		var p_ans_pos: Array = answer.get("positive", [])
+		var p_ans_m: int = 0
+		for pid in p_ans_pos:
+			var pi_p: int = person_index(view, str(pid))
+			if pi_p < 0 or (p_group_m & (1 << pi_p)) == 0:
+				return false
+			p_ans_m |= (1 << pi_p)
+		var p_req_marked: Array = answer.get("marked", [])
+		for mid in p_req_marked:
+			var mi_p: int = person_index(view, str(mid))
+			if mi_p != int(world.marked) or (p_group_m & (1 << mi_p)) == 0:
+				return false
+		var p_evil_bits: int = int(world.evil)
+		if world.has("converted") and int(world.converted) >= 0:
+			var p_stamp = {"day": int(card.observed_at.get("day", -1)), "phase": "afternoon"} if card.role == "magistrate" else card.observed_at
+			if TimeModel.evil_index(view, world, int(world.converted), p_stamp):
+				p_evil_bits |= (1 << int(world.converted))
+		var grp_sz: int = popcount(p_group_m)
+		var want_same: bool = bool(d.get("same", false))
+		for mark_reads in ([true] if not p_req_marked.is_empty() else [false, true]):
+			var pos_m: int = p_evil_bits | ((1 << int(world.marked)) if (mark_reads and int(world.marked) >= 0) else 0)
+			if not p_ans_pos.is_empty() and (pos_m & p_ans_m) != p_ans_m:
+				continue
+			var cnt_p: int = popcount(pos_m & p_group_m)
+			var is_same_p: bool = (cnt_p == 0 or cnt_p == grp_sz)
+			if is_same_p == want_same:
+				return true
+		return false
 	var is_site_group: bool = rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count" and rdef.site_group_key == "group"
 	var is_surveyor: bool = rdef != null and rdef.shape == "GROUP_COUNT" and rdef.count_mode == "blocks"
 	if not is_site_group and not is_surveyor:
@@ -1544,7 +1956,21 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 		var card = card_by_id(view, id)
 		var positive: Array = case_data.answers[id].get("positive", [])
 		var chosen_blocks: Array = case_data.answers[id].get("blocks", [])
-		var maximum: int = (0 if card.data.get("yes") == false else 1) if card.get("role") == "seer" else (1 if card.get("role", "") in ["rumormonger", "clerk", "archivist"] else card.get("data", {}).get("count", 10))
+		var role_v: String = str(card.get("role", ""))
+		var cdata: Dictionary = card.get("data", {}) if card.get("data", {}) is Dictionary else {}
+		var is_parity_surv: bool = role_v == "surveyor" and cdata.has("block")
+		var surv_res: Array = view.people.filter(func(p): return p.home == cdata.get("block", "")).map(func(p): return p.id) if is_parity_surv else []
+		var maximum: int = 10
+		if role_v in ["seer", "augur"]:
+			maximum = 0 if cdata.get("yes") == false else 1
+		elif role_v in ["rumormonger", "clerk", "archivist", "chronicler"]:
+			maximum = 1
+		elif role_v == "magistrate":
+			maximum = 2 if bool(cdata.get("same", false)) else 1
+		elif is_parity_surv:
+			maximum = surv_res.size() if bool(cdata.get("same", false)) else maxi(1, surv_res.size() - 1)
+		else:
+			maximum = int(cdata.get("count", 10))
 		if positive.size() + chosen_blocks.size() > maximum:
 			errors.append("%s: there are more answers than positive slots." % id)
 		var unique: Array = []
@@ -1555,16 +1981,24 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 			if person in unique:
 				errors.append("%s: the same person fills two slots." % id)
 			unique.append(person)
-		var cdef = C.role_def(card.get("role", ""))
-		if cdef != null and cdef.shape == "ROLE_AT_SITE" and cdef.site_mode == "group_count" and not positive.all(func(p): return p in card.data.get(cdef.site_group_key, [])):
+		var cdef = C.role_def(role_v)
+		if cdef != null and cdef.shape == "ROLE_AT_SITE" and cdef.site_mode == "group_count" and not positive.all(func(p): return p in cdata.get(cdef.site_group_key, [])):
 			errors.append("%s: choose people in this reading's group." % id)
-		if card.get("role", "") in ["clerk", "archivist", "seer"] and not positive.all(func(p): return p in card.data.pair):
+		if role_v in ["clerk", "archivist", "seer"] and not positive.all(func(p): return p in cdata.get("pair", [])):
 			errors.append("%s: choose a person in this reading's pair." % id)
-		if card.get("role") == "seer" and case_data.answers[id].get("registration", "") not in ["", "demon", "marked", "red_herring"]:
+		if role_v == "chronicler" and not positive.all(func(p): return p in cdata.get("trio", [])):
+			errors.append("%s: choose someone in this reading's trio." % id)
+		if role_v == "magistrate" and not positive.all(func(p): return p in [cdata.get("nominator", ""), cdata.get("nominee", "")]):
+			errors.append("%s: choose someone named in this nomination." % id)
+		if role_v == "augur" and card.get("source", "") in positive:
+			errors.append("%s: the Augur cannot cross paths with themselves." % id)
+		if is_parity_surv and not positive.all(func(p): return p in surv_res):
+			errors.append("%s: choose residents living on %s." % [id, C.block_name(str(cdata.get("block", "")))])
+		if role_v == "seer" and case_data.answers[id].get("registration", "") not in ["", "demon", "marked", "red_herring"]:
 			errors.append("%s: choose a valid registration explanation." % id)
 		if cdef != null and cdef.shape == "GROUP_COUNT" and cdef.count_mode == "walkers" and card.source in positive:
 			errors.append("%s: the count excludes the Lamplighter." % id)
-		if cdef != null and cdef.shape == "GROUP_COUNT" and cdef.count_mode == "blocks":
+		if cdef != null and cdef.shape == "GROUP_COUNT" and cdef.count_mode == "blocks" and not is_parity_surv:
 			var blocks: Array = []
 			for block in chosen_blocks:
 				if block not in C.BLOCKS:
@@ -1581,8 +2015,8 @@ static func validate_answers(view: Dictionary, case_data: Dictionary) -> Array:
 					errors.append("%s: each slot needs a different block." % id)
 				blocks.append(home)
 		elif not chosen_blocks.is_empty():
-			errors.append("%s: only Surveyor answers can name blocks." % id)
-		if card.get("role", "") == "rumormonger" and not positive.all(func(p): return p in card.data.pair):
+			errors.append("%s: only block-count Surveyor answers can name blocks." % id)
+		if role_v == "rumormonger" and not positive.all(func(p): return p in cdata.get("pair", [])):
 			errors.append("%s: choose someone in the named pair." % id)
 		if card.get("kind", "") == "town_hall":
 			var th_pick: String = str(case_data.answers[id].get("in_play_role", ""))

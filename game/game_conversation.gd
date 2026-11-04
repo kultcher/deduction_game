@@ -350,7 +350,7 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 						_maybe_tell_trait(g, n, t, r)
 						_maybe_tell_relationships(g, n, t, r)
 						RecentSightings.append_to(g.w, n, t, r, g.board)
-				"check", "look", "guard", "watch":
+				"check", "look", "guard", "watch", "register":
 					r = _gift_request(g, n, topic, " ".join(p.slice(1)))
 					if r.is_empty():
 						return
@@ -569,7 +569,9 @@ static func _answer_request_now(g, n, rq: Dictionary, verb: String, rest: String
 ## (a Night Watch): ask someone who told you their gift to use it that way tonight.
 ## {} after an error.
 static func _gift_request(g, n, topic: String, target: String) -> Dictionary:
-	var role: String = {"check": "seer", "look": "seer", "guard": "warden", "watch": "nightwatch"}[topic]
+	var role: String = {"check": "seer", "look": "seer", "guard": "warden", "watch": "nightwatch", "register": "registrar"}[topic]
+	if topic in ["check", "look"] and n.claimed_role == "registrar":
+		role = "registrar"
 	var told: bool = (n.max_tier >= 3 or n.claim_public) and n.claimed_role == role
 	if not told:
 		g._err("%s hasn't told you they're the %s." % [n.name, C.role_name(role)])
@@ -588,12 +590,12 @@ static func _gift_request(g, n, topic: String, target: String) -> Dictionary:
 		for nm in names:
 			var t = g.find_npc(nm.strip_edges())
 			if t == null or not t.alive or t == n:
-				g._err("Ask them to %s whom?" % ("look at" if role == "seer" else "guard"))
+				g._err("Ask them to %s whom?" % ("look at" if role == "seer" else ("check" if role == "registrar" else "guard")))
 				return {}
 			if not (t.id in targets):
 				targets.append(t.id)
 		if targets.is_empty() or targets.size() > (2 if role == "seer" else 1):
-			g._err("A Seer looks at one or two people; a Warden guards one.")
+			g._err("A Seer looks at one or two people; a Registrar or Warden picks one.")
 			return {}
 	if g.w.phase == C.NIGHT:
 		g._err("It's too late to ask for tonight.")

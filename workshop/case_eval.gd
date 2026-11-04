@@ -84,12 +84,19 @@ static func _concl_type_code(c_type: String) -> int:
 ## different things the gift could have said.
 static func chance_content(view: Dictionary, card: Dictionary) -> float:
 	var d: Dictionary = card.get("data", {})
-	var rdef = Solver.C.role_def(card.get("role", ""))
+	var role_id: String = str(card.get("role", ""))
+	if role_id == "chronicler":
+		return 0.25
+	if role_id in ["augur", "magistrate"]:
+		return 0.5
+	var rdef = Solver.C.role_def(role_id)
 	if rdef != null:
 		if rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count":
 			return 1.0 / float(d.get("group", []).size() + 1)
 		if rdef.shape == "GROUP_COUNT":
 			if rdef.count_mode == "blocks":
+				if d.has("block"):
+					return 0.5
 				var blocks = {}
 				for p in view.people:
 					blocks[p.home] = true
@@ -407,8 +414,8 @@ static func _evaluate_posterior_gd(view: Dictionary, case_data: Dictionary, card
 	result["factors"] = cc.factors + test_used
 	result["rivals"] = _rivals(view, result.people, conclusion)
 	result["theory_fit"] = 1.0
-	if not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty()):
-		result["theory_fit"] = _theory_fit(view, case_data, cards, _expand(cc, oc, post))
+	if not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty() or str(a.get("in_play_role", "")) != ""):
+		result["theory_fit"] = _theory_fit(view, case_data, cards, _expand(cc, oc, post), listener.get("knowledge", {}))
 	if listener.get("id", "") == "":
 		# Only the board's strength label needs it: the reference listener.
 		result["pivotal"] = _pivotal(cc, base, ns, err_for, p0, result.category)
@@ -474,7 +481,7 @@ static func _evaluate_posterior_cs(view: Dictionary, case_data: Dictionary, card
 		bias_factor = float(bias.factor)
 
 	var compute_piv: bool = listener.get("id", "") == ""
-	var need_expand: bool = not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty())
+	var need_expand: bool = not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty() or str(a.get("in_play_role", "")) != "")
 
 	var eval_ints := PackedInt32Array([
 		ns,
@@ -541,7 +548,7 @@ static func _evaluate_posterior_cs(view: Dictionary, case_data: Dictionary, card
 	}
 	if need_expand:
 		var exp_post: PackedFloat64Array = raw.slice(p, p + universe.size())
-		result["theory_fit"] = _theory_fit(view, case_data, cards, exp_post)
+		result["theory_fit"] = _theory_fit(view, case_data, cards, exp_post, listener.get("knowledge", {}))
 	if compute_piv:
 		result["pivotal"] = piv_ids
 	return result
@@ -596,6 +603,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		key_input.append(cards.map(func(c): return c.get("hearing_weight", 1.0)))
 	if cards.any(func(c): return c.get("testimony_only", false)):
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
+	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
+		key_input.append(case_data.get("reading_challenges", {}).keys())
 	var key = hash(key_input)
 	if _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]
@@ -632,6 +641,7 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	var movement: Array = Movement.factors(view, cards, case_data).duplicate()
 	movement.append_array(PublicEvidence.factors(view))
 	movement.append_array(SpeechEvidence.factors(cards))
+	movement.append_array(_augur_factors(view, cards, case_data, live))
 
 	var semantic = {}
 	for card in cards + known:
@@ -707,8 +717,8 @@ static func _compile_classes_gd(view: Dictionary, universe: Array, key_input: Ar
 		var v: PackedByteArray = valids[c]
 		for i in range(n):
 			codes[i] = codes[i] * 3 + (0 if t[i] == 1 else (1 if v[i] == 1 else 2))
-	var rms: PackedInt64Array = _coarse(view, seer, mediums, walkers) if roles_on else Solver.world_bits(view).evil
-	if not roles_on and view.get("chronology", {}).has("curse"):
+	var rms: PackedInt64Array = _coarse(view, seer, mediums, walkers) if (roles_on or seer) else Solver.world_bits(view).evil
+	if not (roles_on or seer) and view.get("chronology", {}).has("curse"):
 		rms = rms.duplicate()
 		for i in range(n):
 			rms[i] = rms[i] * (people + 1) + int(universe[i].converted) + 1
@@ -821,6 +831,14 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 			move_specs[m_off + 3] = 0
 			move_doubles[fi * 2] = 0.0
 			move_doubles[fi * 2 + 1] = 1.0
+		elif f.get("augur_crossing", false):
+			var packed_af: int = (int(f.src_idx) & 0xFFFF) | ((1 if bool(f.yes) else 0) << 16) | ((1 if bool(f.conv_evil) else 0) << 17) | ((1 if bool(f.is_live) else 0) << 18)
+			move_specs[m_off] = 2
+			move_specs[m_off + 1] = packed_af
+			move_specs[m_off + 2] = int(f.slot0_codes)
+			move_specs[m_off + 3] = int(f.slot1_codes)
+			move_doubles[fi * 2] = float(f.p_ref)
+			move_doubles[fi * 2 + 1] = DEFAULT_ERR
 		else:
 			var t_idx: int = Solver.person_index(view, str(f.target))
 			var f_ep = f.get("epoch", view.get("alignment_epoch", ""))
@@ -908,11 +926,72 @@ static func _coarse(view: Dictionary, seer: bool, mediums: int, walkers: int = 0
 
 ## A world's movement/trace likelihood ratio (good everywhere = 1), as the support
 ## model's world_score without its prior ranks.
+static func _augur_factors(view: Dictionary, cards: Array, case_data: Dictionary, live: bool) -> Array:
+	var result: Array = []
+	var challenges: Dictionary = case_data.get("reading_challenges", {})
+	for card in cards:
+		if card.kind != "report" or card.get("role", "") != "augur" or card.get("quoted", false) or card.get("testimony_only", false):
+			continue
+		if challenges.has(card.id):
+			continue
+		var src: String = str(card.get("source", ""))
+		var src_idx: int = Solver.person_index(view, src)
+		if src_idx < 0:
+			continue
+		if live and (not Domain._gift_time_gd(card) or not Solver.History.observer_alive(view, src, card.get("observed_at", {}))):
+			continue
+		var spec: Dictionary = Solver.augur_day_spec(view, cards, card)
+		if not spec.has_day_evidence:
+			continue
+		result.append({
+			"origin": "augur_crossing",
+			"augur_crossing": true,
+			"target": "",
+			"log2_ratio": 1.0,
+			"label": "Day %d daytime crossings with Augur %s" % [int(spec.day), Solver.person_name(view, src)],
+			"cards": [card.id],
+			"src": src,
+			"src_idx": src_idx,
+			"yes": bool(spec.yes),
+			"conv_evil": Solver._curse_active_at(view, card.get("observed_at", {})),
+			"is_live": live,
+			"slot0_codes": int(spec.slot0_codes),
+			"slot1_codes": int(spec.slot1_codes),
+			"p_ref": float(spec.p_ref),
+		})
+	return result
+
+static func _augur_world_mult(view: Dictionary, world: Dictionary, factor: Dictionary) -> float:
+	var src_idx: int = int(factor.src_idx)
+	if (int(world.evil) & (1 << src_idx)) != 0 or (bool(factor.conv_evil) and world.has("converted") and int(world.converted) == src_idx):
+		return 1.0
+	if bool(factor.is_live) and not Domain._healthy_gd(view, world, str(factor.src)):
+		return 1.0
+	var d_idx: int = int(world.get("demon", -1))
+	var m_idx: int = int(world.get("marked", -1))
+	var s0: int = int(factor.slot0_codes)
+	var s1: int = int(factor.slot1_codes)
+	var dp0: float = Solver.augur_slot_prob(s0, d_idx)
+	var dp1: float = Solver.augur_slot_prob(s1, d_idx)
+	var mp0: float = Solver.augur_slot_prob(s0, m_idx) if (m_idx >= 0 and m_idx != src_idx) else 0.0
+	var mp1: float = Solver.augur_slot_prob(s1, m_idx) if (m_idx >= 0 and m_idx != src_idx) else 0.0
+	var trig0: float = 1.0 - (1.0 - dp0) * (1.0 - 0.5 * mp0)
+	var trig1: float = 1.0 - (1.0 - dp1) * (1.0 - 0.5 * mp1)
+	var p_yes: float = 1.0 - (1.0 - trig0) * (1.0 - trig1)
+	var p_out: float = p_yes if bool(factor.yes) else (1.0 - p_yes)
+	var p_ref: float = float(factor.p_ref)
+	if p_out <= 0.0:
+		return (DEFAULT_ERR * 0.5) / ((1.0 - DEFAULT_ERR) + DEFAULT_ERR * 0.5)
+	return (1.0 - DEFAULT_ERR) * (p_out / p_ref) + DEFAULT_ERR
+
 static func _movement_score(view: Dictionary, world: Dictionary, factors: Array) -> float:
 	var score = 1.0
 	for factor in factors:
 		if factor.get("joint_live", false):
 			score *= Movement.Live.score(world, factor)
+			continue
+		if factor.get("augur_crossing", false):
+			score *= _augur_world_mult(view, world, factor)
 			continue
 		var target: int = Solver.person_index(view, factor.target)
 		if target >= 0 and TimeModel.evil_at(view, world, factor.target, factor.get("epoch", view.get("alignment_epoch", ""))):
@@ -937,6 +1016,10 @@ static func _movement_scores(view: Dictionary, universe: Array, rep: PackedInt32
 			var j_scores: PackedFloat64Array = Movement.Live.scores(rep_worlds, factor, u_handle, rep)
 			for c in range(nc):
 				out[c] *= j_scores[c]
+			continue
+		if factor.get("augur_crossing", false):
+			for c in range(nc):
+				out[c] *= _augur_world_mult(view, rep_worlds[c], factor)
 			continue
 		var target: int = Solver.person_index(view, factor.target)
 		if target < 0:
@@ -1478,7 +1561,7 @@ static func _rivals(view: Dictionary, people: Dictionary, conclusion: Dictionary
 
 ## The player's answers and positions as a theory: the share of the posterior consistent
 ## with them. 1.0 when the player left everything open.
-static func _theory_fit(view: Dictionary, case_data: Dictionary, cards: Array, post: PackedFloat64Array) -> float:
+static func _theory_fit(view: Dictionary, case_data: Dictionary, cards: Array, post: PackedFloat64Array, knowledge: Dictionary = {}) -> float:
 	var universe: Array = Solver.universe(view)
 	var masks: Array = []
 	var has_th_answer: bool = false
@@ -1491,7 +1574,23 @@ static func _theory_fit(view: Dictionary, case_data: Dictionary, cards: Array, p
 		elif card.kind == "town_hall" and str(case_data.get("answers", {}).get(card.id, {}).get("in_play_role", "")) != "":
 			has_th_answer = true
 	if has_th_answer and view.get("world_options", {}).get("roles", false):
-		masks.append(Solver.Roles.fits_table(view, universe, cards, {}, case_data.get("answers", {})))
+		var live_th: bool = Domain.live(view)
+		var th_fit: PackedByteArray = Solver.Roles.fits_table(view, universe, cards, knowledge, case_data.get("answers", {}), live_th)
+		if live_th and th_fit.has(0) and cards.any(func(card): return card.kind == "report"):
+			var decl_cards: Array = []
+			for card in cards:
+				var decl: Dictionary = card
+				if card.kind == "report":
+					decl = card.duplicate()
+					decl.kind = "claim"
+					decl.data = {}
+				decl_cards.append(decl)
+			var decl_fit: PackedByteArray = Solver.Roles.fits_table(view, universe, decl_cards, knowledge, case_data.get("answers", {}), true)
+			th_fit = th_fit.duplicate()
+			for idx_f in range(th_fit.size()):
+				if th_fit[idx_f] == 0 and decl_fit[idx_f] != 0:
+					th_fit[idx_f] = 1
+		masks.append(th_fit)
 	var positions: Dictionary = case_data.get("positions", {})
 	if masks.is_empty() and positions.is_empty():
 		return 1.0

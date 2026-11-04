@@ -1423,7 +1423,13 @@ static func card_implicates(w, card: Dictionary, id: String) -> bool:
 		"sighting":
 			return card.get("phase", -1) == C.NIGHT and id in card.get("subject", [])
 		"info":
-			return id in Gifts.implicated(card)
+			if id in Gifts.implicated(card):
+				return true
+			if card.get("role", "") == "registrar":
+				var rd: Dictionary = card.get("data", {})
+				if not bool(rd.get("yes", true)) and str(rd.get("target", "")) == id and w.by_id.has(id) and w.by_id[id].claimed_role in rd.get("roles", []):
+					return true
+			return false
 		"trace":
 			return true
 		"secret":

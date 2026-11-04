@@ -452,7 +452,7 @@ func _test_homes_and_bluffs() -> void:
 			if vals.size() < 4 or vals.max() - vals.min() > 1:
 				bad += 1
 	_check(bad == 0, "homes are spread evenly across the blocks")
-	var over = 0
+	var invalid_fake = 0
 	var total = 0
 	for sd in range(9520, 9900):
 		var w2 = _world(sd, 10)
@@ -460,10 +460,12 @@ func _test_homes_and_bluffs() -> void:
 			for e in m.info_log:
 				if e.get("fake", false) and e["role"] == "surveyor":
 					total += 1
-					if e["data"]["count"] > w2.evil_team().size():
-						over += 1
-	print("fake Surveyor counts too high for the team: %d/%d" % [over, total])
-	_check(total > 0 and over * 4 < total, "fake Surveyor counts are mostly plausible")
+					var fblk: String = str(e["data"].get("block", ""))
+					var fres: int = w2.npcs.filter(func(x): return x.home_block == fblk).size()
+					if fblk not in C.BLOCKS or fblk == m.home_block or fres < 2 or not (e["data"].get("same") is bool):
+						invalid_fake += 1
+	print("fake Surveyor invalid block/parity readings: %d/%d" % [invalid_fake, total])
+	_check(total > 0 and invalid_fake == 0, "fake Surveyor bluffs always pick an eligible non-own >=2 resident block")
 
 func _test_seer_insight() -> void:
 	var hits = {"sharp": 0, "dull": 0}

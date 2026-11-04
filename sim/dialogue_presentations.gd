@@ -9,7 +9,7 @@ const Dialogue = preload("res://sim/dialogue.gd")
 const Solver = preload("res://workshop/solver.gd")
 
 const ACCUSING_TYPES = ["evil", "demon", "minion", "lied", "notrole", "suspicious", "unreliable"]
-const MARKED_PING_ROLES = ["seer", "dowser", "clerk", "gravedigger", "hearthwitch"]
+const MARKED_PING_ROLES = ["seer", "dowser", "clerk", "gravedigger", "hearthwitch", "surveyor", "augur", "magistrate", "executor", "registrar"]
 
 const FALSE_SELF_EXPRESSIONS = {
 	"bart": "harsh", "constance": "harsh", "dorian": "concerned", "edda": "harsh",
@@ -48,7 +48,7 @@ static func _card_mentions_person(card: Dictionary, pid: String) -> bool:
 			return true
 	var d = card.get("data", {})
 	if d is Dictionary:
-		for k in ["pair", "group", "seen", "nbrs", "target", "chosen", "executed", "guarded"]:
+		for k in ["pair", "group", "seen", "nbrs", "trio", "target", "chosen", "executed", "guarded", "nominator", "nominee"]:
 			var v = d.get(k)
 			if v is Array and pid in v:
 				return true

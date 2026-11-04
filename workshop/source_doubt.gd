@@ -106,10 +106,11 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if csrc == "" or csrc in ["player", "evidence", "town"]:
 			continue
 		if csrc == self_id:
-			if ckind == "report" and crole == "gravedigger":
-				var ex_self: String = str(card.get("data", {}).get("executed", ""))
+			if ckind == "report" and crole in ["gravedigger", "executor"] and card.get("data", {}).has("role"):
+				var ex_self: String = str(card.get("data", {}).get("executed" if crole == "gravedigger" else "target", ""))
 				var role_self: String = str(card.get("data", {}).get("role", ""))
-				var self_missing_exec: bool = view.has("timeline") and not History.executed(view, ex_self, cnight)
+				var obs_day_self: int = int(card.get("observed_at", {}).get("day", cnight))
+				var self_missing_exec: bool = view.has("timeline") and (not History.executed(view, ex_self, cnight) if crole == "gravedigger" else not History.died_before_morning(view, ex_self, obs_day_self))
 				if not self_missing_exec and ex_self != "" and C.ROLES.has(role_self):
 					if C.ROLES[role_self]["align"] == "evil":
 						pre_eval[ex_self + ":*"] = 1.0
@@ -126,10 +127,11 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 				var nw_key: String = "%s:%d" % [csrc, cnight]
 				pre_eval[nw_key] = 1.0
 				pre_eval[csrc + ":*"] = maxf(float(pre_eval.get(csrc + ":*", 0.0)), Tuning.Workshop.DOUBT_FALSE_NW_GENERAL)
-		if ckind == "report" and crole == "gravedigger":
-			var ex_id: String = str(card.get("data", {}).get("executed", ""))
+		if ckind == "report" and crole in ["gravedigger", "executor"] and card.get("data", {}).has("role"):
+			var ex_id: String = str(card.get("data", {}).get("executed" if crole == "gravedigger" else "target", ""))
 			var ex_role: String = str(card.get("data", {}).get("role", ""))
-			var missing_exec: bool = view.has("timeline") and not History.executed(view, ex_id, cnight)
+			var obs_day_e: int = int(card.get("observed_at", {}).get("day", cnight))
+			var missing_exec: bool = view.has("timeline") and (not History.executed(view, ex_id, cnight) if crole == "gravedigger" else not History.died_before_morning(view, ex_id, obs_day_e))
 			if (missing_exec or (proven_revenants.has(ex_id) and ex_role != "revenant")) and not settled_sincere.has(csrc):
 				pre_eval[csrc + ":*"] = 1.0
 		if ckind == "alibi" and cnight >= 0:
@@ -143,14 +145,15 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 	# Pass 2: Gravedigger execution proofs from non-discredited other sources.
 	var npc_trust: Dictionary = listener.get("npc_trust", {})
 	for card in cards:
-		if card.get("quoted", false) or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "gravedigger":
+		var grole: String = str(card.get("role", ""))
+		if card.get("quoted", false) or str(card.get("kind", "")) != "report" or grole not in ["gravedigger", "executor"] or not card.get("data", {}).has("role"):
 			continue
 		var gsrc: String = str(card.get("source", ""))
 		if gsrc in ["", self_id, "player", "evidence", "town"]:
 			continue
 		if float(pre_eval.get(gsrc + ":*", 0.0)) >= Tuning.Workshop.DOUBT_GD_MAX_SOURCE_DOUBT:
 			continue
-		var ex2: String = str(card.get("data", {}).get("executed", ""))
+		var ex2: String = str(card.get("data", {}).get("executed" if grole == "gravedigger" else "target", ""))
 		var role2: String = str(card.get("data", {}).get("role", ""))
 		if ex2 == "" or not C.ROLES.has(role2) or proven_revenants.has(ex2):
 			continue
