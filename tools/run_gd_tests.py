@@ -10,9 +10,12 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import json
+import time
 
-# test_trace plays twelve full games with tracing on/off parity checks (~10 minutes).
-SLOW = {"test_trace"}
+# Suites skipped in a full run unless --include-slow or named. (test_trace was retired on
+# 2026-11-04 with the trace tool parked; it is in git history if the tool comes back.)
+SLOW = set()
 
 
 def main():
@@ -22,6 +25,7 @@ def main():
     parser.add_argument("--output", type=Path, default=Path("logs/test-run"))
     parser.add_argument("--timeout", type=int, default=600)
     parser.add_argument("--include-slow", action="store_true", help="also run the slow suites in a full run")
+    parser.add_argument("--timings", type=Path, help="also write per-suite seconds and results as JSON here")
     parser.add_argument("tests", nargs="*")
     args = parser.parse_args()
     output = args.output.resolve()
@@ -48,9 +52,11 @@ def main():
                 print("FAIL dotnet build\n" + build.stdout[-4000:] + build.stderr[-4000:], flush=True)
                 return True
     failed = []
+    timings = {}
     pattern = re.compile(r"(?m)^(?:FAIL[ :]|ERROR: FAIL|SCRIPT ERROR:)|(?:FAILURES:\s*[1-9]|failures:\s*[1-9]|\b[1-9]\d* failures\b)")
     for suite in suites:
         cmd = [str(args.godot.resolve()), "--headless", "--path", str(project), "--log-file", str(output / "engine.log"), "--script", "res://tools/" + suite.name]
+        started = time.monotonic()
         try:
             result = subprocess.run(cmd, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=args.timeout)
             text = result.stdout + result.stderr
@@ -59,11 +65,15 @@ def main():
             text = (exc.stdout or b"").decode("utf-8", errors="replace") if isinstance(exc.stdout, bytes) else exc.stdout or ""
             text += "\nFAIL: suite timed out\n"
             bad = True
+        seconds = time.monotonic() - started
+        timings[suite.stem] = {"seconds": round(seconds, 1), "passed": not bad}
         (output / (suite.stem + ".txt")).write_text(text, encoding="utf-8")
-        print(f"{'FAIL' if bad else 'PASS'} {suite.stem}", flush=True)
+        print(f"{'FAIL' if bad else 'PASS'} {suite.stem} ({seconds:.1f}s)", flush=True)
         if bad:
             failed.append(suite.stem)
     print(f"{len(suites) - len(failed)}/{len(suites)} suites passed; failures: {', '.join(failed) or 'none'}", flush=True)
+    if args.timings:
+        args.timings.write_text(json.dumps(timings, indent=1), encoding="utf-8")
     if skipped:
         print(f"Skipped slow suites: {', '.join(skipped)} (use --include-slow, or name them)", flush=True)
     return bool(failed)

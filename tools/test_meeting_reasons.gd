@@ -1,11 +1,11 @@
-## Regression suite for Legacy Purge Phase 2a: shared-model refresh attribution
+## Why NPCs suspect people, and what they can say about it: shared-model reason attribution
 ## (`workshop_state.reasons`), meeting citations (`case_against`, `reason_status`,
-## `nomination_case`), and `defend_self` without legacy magnitudes.
+## `nomination_case`), private vs public visibility, and `defend_self`.
+## (Was test_legacy_purge_phase2a; renamed 2026-11-04.)
 ##
-## Unit suite:
-##   godot --headless --path . --script res://tools/test_legacy_purge_phase2a.gd
-## Optional passive nomination-citation sweep:
-##   godot --headless --path . --script res://tools/test_legacy_purge_phase2a.gd -- --sweep 25
+##   godot --headless --path . --script res://tools/test_meeting_reasons.gd
+## Optional passive nomination-citation sweep (7- and 10-person towns):
+##   godot --headless --path . --script res://tools/test_meeting_reasons.gd -- --sweep 25
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
@@ -27,18 +27,18 @@ func _check(ok: bool, label: String) -> void:
 
 
 func _init() -> void:
-	_test_hollis_gravedigger_vs_odette_archivist_and_no_legacy_why_read()
+	_test_hollis_gravedigger_vs_odette_archivist()
 	_test_kiran_firsthand_night_sightings_and_visibility()
 	_test_vigil_vs_nightwatch_joint_contradiction()
 	_test_elimination_residual_reason()
 	_test_defend_self_shared_attribution_and_visibility()
-	_test_passive_meeting_nomination_reason_rate(2)
+	_test_passive_meeting_nomination_reason_rate(2, [7])
 	var user_args: PackedStringArray = OS.get_cmdline_user_args()
 	if "--sweep" in user_args:
 		var s_idx: int = user_args.find("--sweep")
 		var n_games: int = int(user_args[s_idx + 1]) if s_idx + 1 < user_args.size() else 25
 		_run_passive_citation_sweep(n_games)
-	print("Legacy Purge Phase 2a: %d checks, %d failures" % [checks, fails])
+	print("Meeting reasons: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
 
@@ -49,7 +49,7 @@ func _fresh_game(seed_val: int, size: int = 10):
 	return g
 
 
-func _test_hollis_gravedigger_vs_odette_archivist_and_no_legacy_why_read() -> void:
+func _test_hollis_gravedigger_vs_odette_archivist() -> void:
 	var g = _fresh_game(98933, 10)
 	var w = g.w
 	w.day = 3
@@ -311,8 +311,8 @@ func _test_defend_self_shared_attribution_and_visibility() -> void:
 		"defend_self scores disclosed murder-block sighting via ReasonAttribution and triggers walking-gift reveal (%s)" % str(df["moves"]))
 
 
-func _test_passive_meeting_nomination_reason_rate(seeds_per_size: int = 2) -> void:
-	var stats: Dictionary = _measure_passive_nominations(seeds_per_size)
+func _test_passive_meeting_nomination_reason_rate(seeds_per_size: int = 2, sizes: Array = [7, 10]) -> void:
+	var stats: Dictionary = _measure_passive_nominations(seeds_per_size, sizes)
 	var above_floor: int = int(stats.good_noms_above_floor)
 	_check(above_floor == 0 or int(stats.good_noms_with_reason) == above_floor,
 		"every good nomination with shared suspicion >= 0.15 has a shared reason (%d / %d)" % [int(stats.good_noms_with_reason), above_floor])
@@ -328,13 +328,13 @@ func _run_passive_citation_sweep(n_games: int) -> void:
 		total_noms, cited_noms, pct, int(stats.good_noms_with_reason), int(stats.good_noms_above_floor), int(stats.fallbacks)])
 
 
-func _measure_passive_nominations(n_games: int) -> Dictionary:
+func _measure_passive_nominations(n_games: int, sizes: Array = [7, 10]) -> Dictionary:
 	var fallbacks: int = 0
 	var total_npc_noms: int = 0
 	var total_npc_noms_with_reason: int = 0
 	var good_noms_above_floor: int = 0
 	var good_noms_with_reason: int = 0
-	for npc_count in [7, 10]:
+	for npc_count in sizes:
 		for idx in range(n_games):
 			var g = _fresh_game(10000 + npc_count * 1000 + idx, npc_count)
 			var w = g.w
