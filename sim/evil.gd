@@ -982,6 +982,13 @@ static func intel_from_share(w, m, speaker, item: Dictionary) -> void:
 			elif about != "":
 				add_intel(w, m, "walker", about, 0.0, "heard they were out on %s on night %d" % [C.block_name(item["block"]), item["day"]],
 					{"block": item["block"], "night": item["day"]})
+		"role_hint", "role_claim":
+			# A peer naming their gift (or its family): someone worth watching, or killing.
+			var r: String = str(item.get("role", ""))
+			var gifted: bool = item["kind"] == "role_hint" or (C.ROLES.get(r, {}).get("align", "") == "good")
+			if gifted and speaker.id != m.id and not speaker.is_evil():
+				var tw: float = Tuning.Social.EVIL_ROLE_CLAIM_THREAT if item["kind"] == "role_claim" else Tuning.Social.EVIL_ROLE_HINT_THREAT
+				add_intel(w, m, "threat", speaker.id, tw, ("says they are the %s" % C.role_name(r)) if item["kind"] == "role_claim" else "hinted at their gift")
 		"opinion", "case", "unease":
 			if about != "" and w.by_id[about].is_evil():
 				var threat_w: float = 0.5 if item["kind"] == "unease" else 1.0

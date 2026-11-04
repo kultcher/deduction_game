@@ -20,3 +20,4 @@ test_beliefs
 test_headline
 test_role_def_poc
 test_buildings_tavern_town_hall
+test_peer_role_gossip
