@@ -29,6 +29,14 @@ const SUGGESTED_TAGS = {
 	"protection": 1,
 	"night_walker": 1,
 }
+## What the deal guarantees in play (World._assign_roles retries until these hold), and
+## the spare roles a script should carry beyond each minimum so the guarantee doesn't give
+## the dealt roles away: with exactly two start-knowledge gifts on a script, a player knows
+## both are in play. `spare` is the ideal; one spare is the floor before the editor warns.
+const DRAW_RULES = [
+	{"id": "start", "name": "start-knowledge gifts", "roles": C.START_ROLES, "min": 2, "spare": 2},
+	{"id": "identifier", "name": "strong identifiers", "roles": C.IDENTIFIER_ROLES, "min": 1, "spare": 2},
+]
 const TAG_NAMES = {
 	"first_night_info": "First-night info",
 	"ongoing_info": "Ongoing info",
@@ -164,9 +172,18 @@ func check(count: int = 0) -> Dictionary:
 		var have: int = town.filter(func(r): return tag in tags_of(r)).size()
 		if have < SUGGESTED_TAGS[tag]:
 			warnings.append("Few %s roles: %d (suggested %d or more)." % [TAG_NAMES[tag], have, SUGGESTED_TAGS[tag]])
-	if town.filter(func(r): return r in C.START_ROLES).size() < 2 or not town.any(func(r): return r in C.IDENTIFIER_ROLES):
-		warnings.append("The deal can't always guarantee two start-knowledge gifts and a Seer, Dowser or Gravedigger.")
+	for rule in DRAW_RULES:
+		var have: int = rule_count(rule)
+		var names: String = ", ".join(PackedStringArray(rule.roles.map(func(r): return display(r))))
+		if have < rule.min:
+			warnings.append("The deal can't always guarantee %d %s (%s); the script has %d." % [rule.min, rule.name, names, have])
+		elif have < rule.min + 1:
+			warnings.append("Only %d %s on the script and the deal needs %d in play, so players can tell which are dealt. Add another of %s." % [have, rule.name, rule.min, names])
 	return {"errors": errors, "warnings": warnings}
+
+
+func rule_count(rule: Dictionary) -> int:
+	return town.filter(func(r): return r in rule.roles).size()
 
 
 func ok(count: int = 0) -> bool:

@@ -47,6 +47,36 @@ static func build(opts: Dictionary = {}):
 	return s
 
 
+## A dynamic script: a semi-random 15 / 4 / 4 / 1-4 from every ready role. The deal's
+## guarantees come first, each with room to spare (ScriptDef.DRAW_RULES: the minimum plus
+## `spare` more where the roster has them, at least one more), so the script never gives
+## away which roles were dealt; then the suggested tags; then the rest at random.
+## opts: seed (0 = random), demons (1 = Beginner, up to MAX_DEMONS), excluded, name.
+static func dynamic(opts: Dictionary = {}):
+	var rng = RandomNumberGenerator.new()
+	var seed_in: int = int(opts.get("seed", 0))
+	if seed_in != 0:
+		rng.seed = seed_in
+	else:
+		rng.randomize()
+	var excluded: Array = opts.get("excluded", [])
+	var pool: Dictionary = ScriptDef.roster()
+	var town_pool: Array = pool.town.filter(func(r): return not r in excluded)
+	var s = ScriptDef.new()
+	s.name = str(opts.get("name", "Dynamic"))
+	for rule in ScriptDef.DRAW_RULES:
+		var eligible: Array = town_pool.filter(func(r): return r in rule.roles)
+		var want: int = mini(rule.min + rule.spare, eligible.size())
+		_fill(s.town, eligible, [], mini(s.town.size() + want - s.rule_count(rule), ScriptDef.TOWN_SIZE), rng)
+	var built = build({"base": s, "excluded": excluded, "seed": rng.randi() + 1, "name": s.name,
+		"demons": int(opts.get("demons", 1))})
+	# Alphabetical, so the order on the script says nothing about how it was built.
+	built.town.sort()
+	built.minions.sort()
+	built.secrets.sort()
+	return built
+
+
 ## Fill a script back up to size without removing anything the player chose.
 static func fill(script_in, excluded: Array = [], seed_in: int = 0):
 	return build({"base": script_in, "excluded": excluded, "seed": seed_in, "name": script_in.name})

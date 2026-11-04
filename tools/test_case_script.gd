@@ -108,6 +108,43 @@ func _init() -> void:
 	_check(not "hearthwitch" in ScriptDef.roster().town, "benched roles stay off the roster")
 	_check("augur" in ScriptDef.roster().town and "executor" in ScriptDef.roster().town and "registrar" in ScriptDef.roster().town, "expanded town roles appear on the buildable roster")
 
+	# Dynamic scripts: complete, valid, varied, and the deal's guarantees always have spares.
+	var roster: Dictionary = ScriptDef.roster()
+	var distinct = {}
+	var dyn_ok = true
+	var spares_ok = true
+	var ideal_ok = true
+	var dealt_ok = true
+	for sd in range(1, 41):
+		var dyn = ScriptBuilder.dynamic({"seed": sd})
+		distinct[JSON.stringify(dyn.town)] = true
+		var uniq = {}
+		for r in dyn.town:
+			uniq[r] = true
+		dyn_ok = dyn_ok and dyn.ok() and dyn.town.size() == 15 and uniq.size() == 15 and dyn.minions.size() == 4 \
+			and dyn.secrets.size() == 4 and dyn.demons == ["demon"] and dyn.town.all(func(r): return r in roster.town)
+		for rule in ScriptDef.DRAW_RULES:
+			var eligible: int = roster.town.filter(func(r): return r in rule.roles).size()
+			spares_ok = spares_ok and dyn.rule_count(rule) >= rule.min + 1
+			ideal_ok = ideal_ok and dyn.rule_count(rule) >= mini(rule.min + rule.spare, eligible)
+		if sd <= 6:
+			var dealt = _deal(sd, 7 if sd % 2 else 10, dyn)
+			var in_play: Array = dealt.roles.values().map(func(x): return x[0])
+			dealt_ok = dealt_ok and in_play.all(func(r): return dyn.has(r)) and dealt.bluffs.all(func(r): return r in dyn.town)
+			for rule in ScriptDef.DRAW_RULES:
+				dealt_ok = dealt_ok and in_play.filter(func(r): return r in rule.roles).size() >= rule.min
+	_check(dyn_ok, "dynamic scripts are 15 / 4 / 4 / 1, valid, and drawn from the roster")
+	_check(spares_ok and ideal_ok, "every deal guarantee has spare roles on a dynamic script (all 4 start-knowledge gifts, 3+ identifiers)")
+	_check(distinct.size() >= 30, "dynamic scripts vary (%d different town lists in 40)" % distinct.size())
+	_check(ScriptBuilder.dynamic({"seed": 5}).to_dict() == ScriptBuilder.dynamic({"seed": 5}).to_dict(), "a dynamic script is reproducible from its seed")
+	_check(dealt_ok, "cases dealt from dynamic scripts keep to the script and meet the deal's guarantees")
+	var excl = ScriptBuilder.dynamic({"seed": 3, "excluded": ["seer", "augur"]})
+	_check(not "seer" in excl.town and not "augur" in excl.town and excl.town.size() == 15, "dynamic scripts respect exclusions")
+	var thin = ScriptDef.default_script()
+	thin.town.erase("dowser")
+	thin.town.erase("gravedigger")
+	_check(thin.check().warnings.any(func(w): return w.begins_with("Only 1 strong identifiers")), "a script with exactly the guaranteed number of identifiers warns that it gives them away")
+
 	if fails == 0:
 		print("test_case_script: ALL %d CHECKS PASSED" % checks)
 		quit(0)

@@ -1,5 +1,5 @@
 ## The New Case screen, at launch and from More ▸ New case: Town Population (7 / 10) →
-## Script (Default / Load… / Custom…) → Start. Remembers the last choice while the game runs.
+## Script (Default / Dynamic / Load… / Custom…) → Start. Remembers the last choice while the game runs.
 extends Control
 
 signal start_requested(count: int, script_def)
@@ -8,12 +8,16 @@ signal cancelled
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
+const ScriptBuilder = preload("res://sim/script_builder.gd")
 const CaseScriptEditor = preload("res://ui/script_editor.gd")
 
-enum Pick { DEFAULT, LOAD, CUSTOM }
+enum Pick { DEFAULT, LOAD, CUSTOM, DYNAMIC }
 
 var count: int = 7
 var chosen = ScriptDef.default_script()
+## Dynamic is a mode, not a fixed script: each time the screen opens it deals a fresh one.
+var dynamic_mode: bool = false
+var reroll_btn: Button
 var sheet: PanelContainer
 var size_opt: OptionButton
 var script_opt: OptionButton
@@ -60,10 +64,30 @@ func _init() -> void:
 	v.add_child(_label("Script", 18, UITheme.color("ink")))
 	script_opt = OptionButton.new()
 	script_opt.add_item("Default", Pick.DEFAULT)
+	script_opt.add_item("Dynamic (built from every role)", Pick.DYNAMIC)
 	script_opt.add_item("Load from file…", Pick.LOAD)
 	script_opt.add_item("Custom…", Pick.CUSTOM)
 	script_opt.item_selected.connect(_on_script_pick)
-	v.add_child(script_opt)
+	var pick_row = HBoxContainer.new()
+	pick_row.add_theme_constant_override("separation", 8)
+	script_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pick_row.add_child(script_opt)
+	reroll_btn = Button.new()
+	reroll_btn.text = "Reroll"
+	reroll_btn.tooltip_text = "Build another dynamic script."
+	reroll_btn.pressed.connect(func():
+		_roll_dynamic()
+		_refresh())
+	pick_row.add_child(reroll_btn)
+	var edit_btn = Button.new()
+	edit_btn.text = "Edit…"
+	edit_btn.tooltip_text = "Open this script in the editor (it becomes a custom script)."
+	edit_btn.pressed.connect(func():
+		sheet.hide()
+		editor.edit(chosen)
+		editor.show())
+	pick_row.add_child(edit_btn)
+	v.add_child(pick_row)
 	script_label = _label("", 15, UITheme.color("ink"))
 	script_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(script_label)
@@ -110,6 +134,7 @@ func _init() -> void:
 		var s = ScriptDef.load_file(path)
 		if s != null:
 			chosen = s
+			dynamic_mode = false
 		_refresh())
 	load_dialog.canceled.connect(_refresh)
 	add_child(load_dialog)
@@ -121,14 +146,26 @@ func open(can_cancel: bool) -> void:
 	warn_label.visible = can_cancel
 	editor.hide()
 	sheet.show()
+	if dynamic_mode:
+		_roll_dynamic()
 	show()
 	_refresh()
+
+
+func _roll_dynamic() -> void:
+	var sd: int = randi() % 1000000 + 1
+	chosen = ScriptBuilder.dynamic({"seed": sd, "name": "Dynamic #%d" % sd})
 
 
 func _on_script_pick(i: int) -> void:
 	match script_opt.get_item_id(i):
 		Pick.DEFAULT:
+			dynamic_mode = false
 			chosen = ScriptDef.default_script()
+			_refresh()
+		Pick.DYNAMIC:
+			dynamic_mode = true
+			_roll_dynamic()
 			_refresh()
 		Pick.LOAD:
 			DirAccess.make_dir_recursive_absolute(ScriptDef.USER_DIR)
@@ -145,6 +182,7 @@ func _on_editor_done(s) -> void:
 	sheet.show()
 	if s != null:
 		chosen = s
+		dynamic_mode = false
 	_refresh()
 
 
@@ -152,9 +190,12 @@ func _refresh() -> void:
 	for i in range(size_opt.item_count):
 		if int(size_opt.get_item_metadata(i)) == count:
 			size_opt.select(i)
-	var pick: int = Pick.DEFAULT if chosen.is_default() else Pick.CUSTOM
+	var pick: int = Pick.DYNAMIC if dynamic_mode else (Pick.DEFAULT if chosen.is_default() else Pick.CUSTOM)
 	script_opt.select(script_opt.get_item_index(pick))
+	reroll_btn.visible = dynamic_mode
 	script_label.text = "%s — %s" % [chosen.name, chosen.summary()]
+	if not chosen.is_default():
+		script_label.text += "\nTown: " + ", ".join(PackedStringArray(chosen.town.map(func(r): return ScriptDef.display(r))))
 	var res: Dictionary = chosen.check(count)
 	var lines: Array = []
 	for e in res.errors:
