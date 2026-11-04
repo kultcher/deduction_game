@@ -479,15 +479,20 @@ func _assign_roles() -> void:
 	# Default script deals exactly what the global lists always did.
 	var forced_town: Array = sc.forced_in(sc.town)
 	var town_pool: Array = sc.town.filter(func(r): return not r in forced_town)
+	var forced_mins: Array = sc.forced_in(sc.minions)
+	var minion_pool: Array = sc.minions.filter(func(r): return not r in forced_mins)
 	var good: Array = []
+	var mins: Array = []
+	# Gifts and minions are drawn together until the deal's guarantees hold: two
+	# start-knowledge gifts, a strong identifier, and night-walkers in play within the
+	# size's band (ScriptDef.DEAL_RULES). After 200 tries the last draw stands.
 	for attempt in range(200):
 		good = forced_town + shuffled(town_pool).slice(0, cfg["town"] - forced_town.size())
+		mins = forced_mins + shuffled(minion_pool).slice(0, cfg["minions"] - forced_mins.size())
 		var starts = good.filter(func(r): return r in C.START_ROLES).size()
 		var ident = good.filter(func(r): return r in C.IDENTIFIER_ROLES).size()
-		if starts >= 2 and ident >= 1:
+		if starts >= 2 and ident >= 1 and ScriptDef.deal_ok(good + mins, n_npcs):
 			break
-	var forced_mins: Array = sc.forced_in(sc.minions)
-	var mins: Array = forced_mins + shuffled(sc.minions.filter(func(r): return not r in forced_mins)).slice(0, cfg["minions"] - forced_mins.size())
 	var order = shuffled(npcs)
 	var forced_demon: Array = sc.forced_in(sc.demons)
 	order[0].role = forced_demon[0] if not forced_demon.is_empty() else (sc.demons[0] if sc.demons.size() == 1 else pick(sc.demons))

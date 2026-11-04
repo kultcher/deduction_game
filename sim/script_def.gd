@@ -47,7 +47,14 @@ const SCRIPT_RULES = [
 	{"id": "targeted_role_id", "tag": "targeted_role_id", "max": 2, "why": "at most two gifts that name one person's role"},
 	{"id": "kill_protection", "tag": "kill_protection", "max": 2, "why": "at most two shields against the Demon's kill"},
 	{"id": "night_walkers", "tag": "night_walker", "sides": ["town", "minions"], "plus_demon": true,
-		"min": 3, "max": 5, "target": 4, "why": "night-walkers, counting the Demon: about four keeps night readings and traces meaningful"},
+		"min": 5, "max": 7, "target": 6, "why": "night-walkers, counting the Demon: about six on the script leaves the deal room to land near its target"},
+]
+## Deal-level limits (World._assign_roles retries until they hold, like DRAW_RULES):
+## night-walkers in play, counting the Demon, by town size. Secrets that walk (Lovers,
+## Sleepwalker) are placed after the deal and aren't counted.
+const DEAL_RULES = [
+	{"id": "night_walkers_in_play", "tag": "night_walker", "plus_demon": true,
+		"by_size": {7: [2, 4], 10: [3, 5]}, "why": "about three night-walkers in a 7-person town and four in a 10-person one, counting the Demon"},
 ]
 ## Pairs that never share a script: {"roles": [a, b], "why": String}.
 const JINXES = []
@@ -235,6 +242,18 @@ func rule_problems() -> Array:
 		if j.roles.all(func(r): return has(r)):
 			out.append("%s and %s can't share a script (%s)." % [display(j.roles[0]), display(j.roles[1]), j.why])
 	return out
+
+
+## Whether a dealt set of roles (town + minions + the demon) keeps to DEAL_RULES at this size.
+static func deal_ok(roles: Array, count: int) -> bool:
+	for rule in DEAL_RULES:
+		var band = rule.by_size.get(count, null)
+		if band == null:
+			continue
+		var n: int = roles.filter(func(r): return rule.tag in tags_of(r)).size() + (1 if rule.get("plus_demon", false) else 0)
+		if n < band[0] or n > band[1]:
+			return false
+	return true
 
 
 ## Whether a secret may sit on a holder with this role (PLACEMENT_RULES).

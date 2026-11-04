@@ -31,9 +31,7 @@ func _deal(seed_in: int, size: int, sc = null) -> Dictionary:
 func _init() -> void:
 	var d = ScriptDef.default_script()
 	var res = d.check()
-	# The Default script predates the night-walker band: four town night-walkers, the
-	# Poisoner and the Demon make six (the band is 3-5). That is its only warning.
-	_check(d.is_default() and res.errors.is_empty() and res.warnings.size() == 1 and res.warnings[0].begins_with("6 Night-walker roles"), "Default script deals and only warns about its night-walkers: %s" % [res])
+	_check(d.is_default() and res.errors.is_empty() and res.warnings.is_empty(), "Default script is clean: %s" % [res])
 	_check(d.town.size() == 15 and d.minions.size() == 4 and d.secrets.size() == 4 and d.demons == ["demon"], "Default is 15 / 4 / 4 / 1")
 	_check(d.mode() == "Beginner", "one demon type is Beginner")
 
@@ -143,8 +141,18 @@ func _init() -> void:
 		var dyn = ScriptBuilder.dynamic({"seed": sd})
 		rules_ok = rules_ok and dyn.rule_problems().is_empty() and dyn.check().warnings.is_empty()
 		nw_seen[dyn.script_rule_value(nw_rule)] = true
-	_check(rules_ok, "dynamic scripts keep every script rule and raise no warnings (one Demon-ID gift, two targeted role-ID, two kill protection, 3-5 night-walkers)")
-	_check(nw_seen.keys().all(func(n): return n >= 3 and n <= 5) and nw_seen.size() >= 2, "night-walkers vary around four, counting the Demon (%s)" % [nw_seen.keys()])
+	_check(rules_ok, "dynamic scripts keep every script rule and raise no warnings (one Demon-ID gift, two targeted role-ID, two kill protection, 5-7 night-walkers)")
+	_check(nw_seen.keys().all(func(n): return n >= 5 and n <= 7) and nw_seen.size() >= 2, "script night-walkers vary around six, counting the Demon (%s)" % [nw_seen.keys()])
+	# Deal-level: night-walkers in play, counting the Demon, 2-4 at 7 and 3-5 at 10.
+	var band_ok = true
+	var dealt_counts = {7: {}, 10: {}}
+	for sd in range(600, 640):
+		var size: int = 7 if sd % 2 else 10
+		var dl = _deal(sd, size, ScriptBuilder.dynamic({"seed": sd}) if sd % 3 else null)
+		var nwalk: int = dl.roles.values().filter(func(x): return "night_walker" in ScriptDef.tags_of(x[0])).size() + 1
+		dealt_counts[size][nwalk] = true
+		band_ok = band_ok and nwalk >= (2 if size == 7 else 3) and nwalk <= (4 if size == 7 else 5)
+	_check(band_ok, "dealt night-walkers stay in the band, counting the Demon (7: %s, 10: %s)" % [dealt_counts[7].keys(), dealt_counts[10].keys()])
 	var both = ScriptDef.default_script()
 	both.town.append("augur")
 	_check(both.rule_problems().any(func(w): return w.begins_with("2 Demon ID roles")), "Seer and Augur together break the one-Demon-ID limit")
