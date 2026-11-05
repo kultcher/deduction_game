@@ -448,6 +448,15 @@ class Meeting:
 	const BLOCK_SAFETY_HEAT_CREDIBILITY = 0.30
 	const BLOCK_SAFETY_DEFENCE_RELIEF = 0.75
 	const BLOCK_SAFETY_PRESS_RELIEF = 0.65
+	## Podium press (Step 3, sim/mind_podium.gd): being asked before the whole town, on
+	## trial, pushes toward an answer; a hint costs less than a claim; being seen out pushes
+	## a hidden walking gift to explain itself. A refusal raises pressure, and costs a little
+	## trust with the Demonologist when the press had no grounds or the nominee was safe.
+	const PODIUM_PRESS_URGENCY = 0.5
+	const PODIUM_HINT_EASE = 0.6
+	const PODIUM_SEEN_OUT = 0.4
+	const PODIUM_PRESS_PRESSURE_GAIN = 0.1
+	const PODIUM_FRICTION_SAFETY = 0.5
 	## Player nominations: with a filed case (anchored) or without (raw). A raw nomination
 	## still counts at the formal track-record weight (unchanged; revisit in M4's sweep).
 	const ALLOW_UNANCHORED_PLAYER_NOMINATION = true

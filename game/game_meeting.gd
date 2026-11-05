@@ -12,6 +12,7 @@ const Social = preload("res://sim/social.gd")
 const Credibility = preload("res://game/credibility.gd")
 const CardModel = preload("res://game/card_model.gd")
 const Deduction = preload("res://sim/deduction.gd")
+const MindPodium = preload("res://sim/mind_podium.gd")
 
 
 static func _start_meeting(g) -> void:
@@ -216,6 +217,8 @@ static func _next_npc_nomination(g) -> bool:
 ## The nominee's defence (meeting-flow step 2), once per nomination.
 static func _defend_pending(g) -> void:
 	var nm: Dictionary = g.w.meeting["pending"]
+	# Step 3 (podium press) opens once the defence is heard; a silenced nominee can't answer.
+	nm["press"] = "silenced" if g.w.by_id[nm["nominee"]].silenced else "open"
 	if not C.DEFENCE_MOVES:
 		g._line(Mind.defence_line(g.w, g.w.by_id[nm["nominee"]]))
 		return
@@ -248,6 +251,8 @@ static func _show_nomination(g) -> void:
 	if g.w.meeting["block"] != "":
 		blk = " %s is on the block with %d votes." % [g.w.by_id[g.w.meeting["block"]].name, g.w.meeting["block_count"]]
 	var opts = "'vote yes' or 'vote no'"
+	if nm.get("press", "") == "open":
+		opts += ". You may first press them before the town ('press role', 'press night [N]' or 'press card <#>', once)"
 	opts += ". Before voting you may 'defend' or 'accuse', optionally citing a card (one statement)"
 	if g.w.tools["clemency"] > 0 and nm["by"] != "player":
 		opts += ", or use 'clemency' to spare them"
@@ -273,6 +278,8 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 			if not card.is_empty() and not g._presentation_gate(card, g.w.living().filter(func(v): return v != t), [t.id], "deduction" if card.kind == "deduction" else verb, "nomination"):
 				return
 			g.statement_used = true
+			if nm.get("press", "") == "open":
+				nm["press"] = "closed"  # the statement is Step 5; the press (Step 3) is behind it
 			if not card.is_empty():
 				var was_public: bool = already_public(g, card)
 				if was_public:
@@ -307,6 +314,8 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 				Mind.set_trust(g.w, t, t.trust - Tuning.Trust.SPEAK_AGAINST_NOMINEE_DROP, "the Demonologist spoke against me")
 			g.w.dlog.add("player_statement", "player", t.id, {"statement": verb, "card": card.get("n", 0)})
 			g._prompt("'vote yes' or 'vote no'.")
+		"press":
+			_press(g, t, r)
 		"clemency":
 			if g.w.tools["clemency"] <= 0:
 				g._err("You have no Clemency left.")
@@ -352,7 +361,92 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 					g._narr("The nomination fails.")
 			_after_vote(g)
 		_:
-			g._err("On this nomination: defend | accuse | %svote yes | vote no" % ("clemency | " if g.w.tools["clemency"] > 0 else ""))
+			g._err("On this nomination: %sdefend | accuse | %svote yes | vote no" % ["press role | press night [N] | press card <#> | " if nm.get("press", "") == "open" else "", "clemency | " if g.w.tools["clemency"] > 0 else ""])
+
+
+## Step 3, the podium press: one public question to the nominee before the town weighs in.
+## 'press role' (or 'press readings' once they've claimed), 'press night [N]', 'press card <#>',
+## 'press skip'. Voting or speaking for/against without pressing simply skips it.
+static func _press(g, t, r: String) -> void:
+	var nm: Dictionary = g.w.meeting["pending"]
+	match nm.get("press", ""):
+		"silenced":
+			g._err("%s can't answer: the Breathstealer has taken their voice." % t.name)
+			return
+		"open":
+			pass
+		_:
+			g._err("You've already had your chance to press %s on this nomination." % t.name)
+			return
+	var words: PackedStringArray = r.split(" ", false)
+	var mode: String = words[0] if not words.is_empty() else ""
+	var arg: String = " ".join(words.slice(1)) if words.size() > 1 else ""
+	if mode.begins_with("#") or mode.is_valid_int():
+		arg = mode
+		mode = "card"
+	var opts: Dictionary = MindPodium.options(g.w, t)
+	var grounds: bool = not nm.get("case_facts", []).is_empty() or g.w.meeting.get("accusations", []).any(func(a): return a.get("target", "") == t.id)
+	var res: Dictionary = {}
+	var card: Dictionary = {}
+	match mode:
+		"skip":
+			nm["press"] = "skipped"
+			g._narr("You hold your peace.")
+			g._prompt("'vote yes' or 'vote no'.")
+			return
+		"role", "gift", "readings":
+			if opts.gift == "":
+				g._err("%s has already told the town their gift and everything it showed them. Press a night or a card instead." % t.name)
+				return
+			g._narr("You turn to %s before the town: %s" % [t.name, "what has your gift shown you that we haven't heard?" if opts.gift == "readings" else "what gift do you hold?"])
+			res = MindPodium.press_readings(g.w, t) if opts.gift == "readings" else MindPodium.press_role(g.w, t, grounds)
+		"night":
+			var nd: int = _press_night_default(g, nm)
+			if arg != "":
+				nd = arg.trim_prefix("n").to_int() if arg.trim_prefix("n").is_valid_int() else -1
+			if not (nd in opts.nights):
+				g._err("Press them on which night? Nights 0 to %d so far ('press night <N>')." % (g.w.day - 1))
+				return
+			g._narr("You turn to %s before the town: where were you %s?" % [t.name, C.spoken_when(nd, g.w.day)])
+			res = MindPodium.press_night(g.w, t, nd, grounds)
+		"card":
+			var num: int = arg.trim_prefix("#").to_int()
+			if num < 1 or num > g.board.size():
+				g._err("Press them with which card? ('press card <#>')")
+				return
+			card = g.board[num - 1]
+			if not MindPodium.card_fits(g.w, t, card):
+				g._err("Card #%d isn't about %s, so there's nothing to press them on." % [num, t.name])
+				return
+			g._narr("You hold up card #%d and turn to %s: %s" % [num, t.name, card.get("text", "")])
+			g._break_confidences([num])
+			if not already_public(g, card):
+				g.public_citations[num] = true
+				Mind.public_case(g.w, t, card, "accuse")
+			res = MindPodium.press_card(g.w, t, card, true)
+		_:
+			g._err("Press them on what? 'press role', 'press night [N]', 'press card <#>' or 'press skip'.")
+			return
+	nm["press"] = "done"
+	nm["press_mode"] = res.get("mode", mode)
+	g._lines(res.get("lines", []))
+	g._facts(res.get("facts", []))
+	var cf: Array = nm.get("case_facts", [])
+	cf.append_array(res.get("facts", []).map(func(f): return f.duplicate(true)))
+	nm["case_facts"] = cf
+	g.w.dlog.add("podium_press", "player", t.id, {"mode": nm["press_mode"], "card": int(card.get("n", 0)), "night": int(res.get("night", -1)), "outcome": res.get("outcome", "")},
+		"The Demonologist presses %s (%s): %s." % [t.name, nm["press_mode"], res.get("outcome", "")])
+	g._prompt("'vote yes' or 'vote no'%s." % ("" if g.statement_used else ". You may still 'defend' or 'accuse' (one statement)"))
+
+
+## The night a 'press night' with no number asks about: the latest night the case on the
+## floor cites, else last night.
+static func _press_night_default(g, nm: Dictionary) -> int:
+	var best: int = -1
+	for f in nm.get("case_facts", []):
+		if f is Dictionary and int(f.get("phase", -1)) == C.NIGHT:
+			best = maxi(best, int(f.get("day", -1)))
+	return best if best >= 0 and best < g.w.day else g.w.day - 1
 
 
 static func _after_vote(g) -> void:

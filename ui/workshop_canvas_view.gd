@@ -708,6 +708,26 @@ func evidence_layout(id: String) -> Dictionary:
 		els.append({"t": "label", "at": Vector2(16, y + 14), "text": ex_lbl})
 		y += 26.0
 		details = true
+	elif card.kind == "report" and role == "monitor":
+		var b_name: String = C.block_name(str(card.data.get("block", "")))
+		var mon_lbl: String = ""
+		if bool(card.data.get("walked", false)):
+			mon_lbl = "Abroad on %s: %s" % [b_name, C.role_name(str(card.data.get("role", "")))]
+		else:
+			mon_lbl = "No one walked on %s" % b_name
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": mon_lbl})
+		y += 26.0
+		details = true
+	elif card.kind == "report" and role == "confessor":
+		var conf_lbl: String = ""
+		if bool(card.data.get("forgot", false)):
+			conf_lbl = "Target: forgot who they visited"
+		else:
+			var tgt_nm: String = Solver.person_name(model.view, str(card.data.get("target", "")))
+			conf_lbl = "Visited %s: confirmed Good" % tgt_nm
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": conf_lbl})
+		y += 26.0
+		details = true
 	elif card.kind == "report" and role == "registrar":
 		var r_list: String = ", ".join(PackedStringArray(card.data.get("roles", []).map(func(r): return C.role_name(str(r)))))
 		var reg_lbl: String = ("Slate: %s" % r_list) if not card.data.has("target") else ("%s in [%s]: %s" % [Solver.person_name(model.view, str(card.data.get("target", ""))), r_list, "Yes" if bool(card.data.get("yes", false)) else "No"])

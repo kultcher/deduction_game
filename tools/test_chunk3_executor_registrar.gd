@@ -70,8 +70,8 @@ func _init() -> void:
 
 
 func _test_pools_hints_and_scripts() -> void:
-	_check("executor" in C.GOOD_ROLES and "registrar" in C.GOOD_ROLES and C.GOOD_ROLES.size() == 20,
-		"GOOD_ROLES includes executor and registrar (20 ready town roles)")
+	_check("executor" in C.GOOD_ROLES and "registrar" in C.GOOD_ROLES and C.GOOD_ROLES.size() >= 20,
+		"GOOD_ROLES includes executor and registrar (20+ ready town roles; 22 after patch_014)")
 	_check("registrar" in C.IDENTIFIER_ROLES and "registrar" not in C.START_ROLES and "executor" not in C.START_ROLES,
 		"registrar is in IDENTIFIER_ROLES and neither executor nor registrar is in START_ROLES")
 	_check("executor" in C.HINT_PACKAGES["the_dead"].roles and "registrar" in C.HINT_PACKAGES["official"].roles,

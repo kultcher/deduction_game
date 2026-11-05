@@ -498,6 +498,29 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 				elif role_str == "augur":
 					content_mode = 9
 					target_or_secret = 1 if bool(data.get("yes", false)) else 0
+				elif role_str == "monitor":
+					var m_blk: String = str(data.get("block", ""))
+					if not _cached_block_masks.has(m_blk) or (not testimony_only and src_idx >= 0 and (int(_cached_block_masks[m_blk]) & (1 << src_idx)) == 0):
+						content_mode = 1
+					else:
+						content_mode = 10
+						var m_cls: int = 0
+						if data.has("role"):
+							var m_role: String = str(data.get("role", ""))
+							m_cls = 1 if C.is_minion(m_role) else (2 if m_role == "demon" else 3)
+						target_or_secret = (1 if bool(data.get("walked", false)) else 0) | (m_cls << 1)
+				elif role_str == "confessor":
+					if bool(data.get("forgot", false)):
+						content_mode = 11
+					elif bool(data.get("good", false)):
+						var c_t: int = person_index(view, str(data.get("target", "")))
+						if c_t < 0 or (not testimony_only and src_idx >= 0 and c_t == src_idx):
+							content_mode = 1
+						else:
+							content_mode = 2  # as a Warden save: the target is not evil
+							target_or_secret = c_t
+					else:
+						content_mode = 1
 				elif role_str == "magistrate":
 					var a_i: int = person_index(view, str(data.get("nominator", "")))
 					var b_i: int = person_index(view, str(data.get("nominee", "")))
@@ -634,7 +657,7 @@ static func content_sig(view: Dictionary, world: Dictionary) -> int:
 	return int(world.__key)
 
 ## Roles whose report content can fail in a world (the rest only need a valid source).
-const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch", "warden", "medium", "gravedigger", "chronicler", "augur", "magistrate", "executor", "registrar"]
+const CONTENT_ROLES = ["surveyor", "dowser", "rumormonger", "nightwatch", "warden", "medium", "gravedigger", "chronicler", "augur", "magistrate", "executor", "registrar", "monitor", "confessor"]
 
 static var _bits: Dictionary = {}
 
@@ -1079,6 +1102,8 @@ static func _testimony_content(view: Dictionary, world: Dictionary, card: Dictio
 			var ex_reads_ev: bool = (world.evil & ex_mask_gd) != 0 or (world.marked >= 0 and world.marked == ex_ti_gd)
 			return ex_reads_ev if Domain.C.ROLES.get(str(data.get("role", "")), {}).get("align") == "evil" else (world.evil & ex_mask_gd) == 0
 		return bool(data.get("assigned", false)) and not data.has("role")
+	if card.role in ["monitor", "confessor"]:
+		return _report_content_impl(view, world, card, {}, true)
 	if card.role == "registrar":
 		if not Roles._registrar_roles_ok(data.get("roles")):
 			return false
@@ -1271,6 +1296,61 @@ static func _report_content_impl(view: Dictionary, world: Dictionary, card: Dict
 		var gd_night: int = card.night if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
 		if not History.executed(view, str(card.data.get("executed", "")), gd_night):
 			return false
+	if card.role == "monitor":
+		var m_blk: String = str(card.data.get("block", ""))
+		var m_walked: bool = bool(card.data.get("walked", false))
+		var m_src_i: int = -1 if from_testimony else person_index(view, str(card.get("source", "")))
+		if not _cached_block_masks.has(m_blk):
+			return false
+		var m_blk_mask: int = int(_cached_block_masks[m_blk])
+		if m_src_i >= 0 and (m_blk_mask & (1 << m_src_i)) == 0:
+			return false
+		var m_pos: Array = answer.get("positive", [])
+		if not m_pos.is_empty():
+			if not m_walked or not card.data.has("role"):
+				return false
+			var m_role: String = str(card.data.get("role", ""))
+			for pid in m_pos:
+				var pi: int = person_index(view, str(pid))
+				if pi < 0 or (m_src_i >= 0 and pi == m_src_i):
+					return false
+				if C.is_minion(m_role):
+					var is_evil_m: bool = (int(world.evil) & (1 << pi)) != 0
+					var is_marked_m: bool = (int(world.marked) == pi)
+					if not is_evil_m and not is_marked_m:
+						return false
+				elif m_role == "demon":
+					var is_dem: bool = (int(world.get("demon", -1)) == pi) if world.has("demon") else ((int(world.evil) & (1 << pi)) != 0)
+					var is_marked_d: bool = (int(world.marked) == pi)
+					if not is_dem and not is_marked_d:
+						return false
+				else:
+					if (int(world.evil) & (1 << pi)) != 0:
+						return false
+		return true
+	if card.role == "confessor":
+		var c_src_i: int = -1 if from_testimony else person_index(view, str(card.get("source", "")))
+		if bool(card.data.get("forgot", false)):
+			var cf_pos: Array = answer.get("positive", [])
+			if not cf_pos.is_empty():
+				for pid in cf_pos:
+					var pi2: int = person_index(view, str(pid))
+					if pi2 < 0 or (c_src_i >= 0 and pi2 == c_src_i):
+						return false
+					var is_ev2: bool = (int(world.evil) & (1 << pi2)) != 0
+					var is_mk2: bool = (int(world.marked) == pi2)
+					if not is_ev2 and not is_mk2:
+						return false
+			return true
+		if bool(card.data.get("good", false)):
+			var cf_tgt_str: String = str(card.data.get("target", ""))
+			var cf_tgt_i: int = person_index(view, cf_tgt_str)
+			if cf_tgt_i < 0 or (c_src_i >= 0 and cf_tgt_i == c_src_i):
+				return false
+			if (int(world.evil) & (1 << cf_tgt_i)) != 0:
+				return false
+			return true
+		return false
 	if card.role == "executor":
 		var ex_t_impl: int = person_index(view, str(card.data.get("target", "")))
 		var ex_s_impl: int = -1 if from_testimony else person_index(view, str(card.get("source", "")))

@@ -152,7 +152,7 @@ static func chance_content(view: Dictionary, card: Dictionary) -> float:
 	var role_id: String = str(card.get("role", ""))
 	if role_id == "chronicler":
 		return _chance_chronicler(view)
-	if role_id in ["augur", "magistrate"]:
+	if role_id in ["augur", "magistrate", "monitor", "confessor"]:
 		return 0.5
 	var rdef = Solver.C.role_def(role_id)
 	if rdef != null:

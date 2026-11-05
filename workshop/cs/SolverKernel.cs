@@ -48,6 +48,8 @@ internal static class SolverKernel
     public const int ContentParityGroup = 7;
     public const int ContentChronicler = 8;
     public const int ContentAugur = 9;
+    public const int ContentMonitor = 10;          // targetOrSecret: bit0 walked, bits1-2 role class (0 none, 1 minion, 2 demon, 3 other)
+    public const int ContentConfessorForgot = 11;  // every chip: evil or Marked, never the source
 
     // Conclusion type codes (holds / _build_premise_mask):
     public const int ConclEvilOrSuspicious = 0;
@@ -568,6 +570,78 @@ internal static class SolverKernel
                 return true;
             }
 
+            case ContentMonitor:
+            {
+                if (!hasAnsPos)
+                {
+                    return true;
+                }
+                if (ansPosHasUnknown)
+                {
+                    return false;
+                }
+                bool walked = (targetOrSecretCode & 1) != 0;
+                int cls = (targetOrSecretCode >> 1) & 3;
+                if (!walked || cls == 0)
+                {
+                    return false;
+                }
+                for (int pi = 0; pi < nPeople; pi++)
+                {
+                    if ((ansPosMask & (1 << pi)) == 0)
+                    {
+                        continue;
+                    }
+                    if (sourceIdx >= 0 && pi == sourceIdx)
+                    {
+                        return false;
+                    }
+                    bool isEvil = (w.Evil & (1 << pi)) != 0;
+                    bool isMarked = w.Marked == pi;
+                    if (cls == 1 && !isEvil && !isMarked)
+                    {
+                        return false;
+                    }
+                    if (cls == 2)
+                    {
+                        bool isDemon = w.HasDemon ? w.DemonOrMinusOne == pi : isEvil;
+                        if (!isDemon && !isMarked)
+                        {
+                            return false;
+                        }
+                    }
+                    if (cls == 3 && isEvil)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            case ContentConfessorForgot:
+            {
+                if (!hasAnsPos)
+                {
+                    return true;
+                }
+                if (ansPosHasUnknown)
+                {
+                    return false;
+                }
+                for (int pi = 0; pi < nPeople; pi++)
+                {
+                    if ((ansPosMask & (1 << pi)) == 0)
+                    {
+                        continue;
+                    }
+                    if ((sourceIdx >= 0 && pi == sourceIdx) || ((w.Evil & (1 << pi)) == 0 && w.Marked != pi))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
             case ContentAugur:
             {
                 if (ansPosHasUnknown || chosenBlocksInvalid || chosenBlockMasks.Length > 0 || reqMarkedIndices.Length > 0)
@@ -675,7 +749,8 @@ internal static class SolverKernel
 
             default:
             {
-                int fbSourceIdx = (fallbackContentMode == ContentChronicler || fallbackContentMode == ContentAugur)
+                int fbSourceIdx = (fallbackContentMode == ContentChronicler || fallbackContentMode == ContentAugur
+                    || fallbackContentMode == ContentMonitor || fallbackContentMode == ContentConfessorForgot)
                     ? -1
                     : sourceIdx;
                 return EvalReportContentWorld(
@@ -777,7 +852,7 @@ internal static class SolverKernel
         }
 
         // Chronicler and Augur depend on world.Demon, which sig_groups collapses; evaluate per world.
-        if (cardKindCode == CardKindReport && (contentMode == ContentChronicler || contentMode == ContentAugur))
+        if (cardKindCode == CardKindReport && (contentMode == ContentChronicler || contentMode == ContentAugur || contentMode == ContentMonitor))
         {
             byte[] valid = EvaluateValidTable(
                 universeHandle,

@@ -376,6 +376,10 @@ const ROLES = {
 		"desc": "On night 3, learns three other people (living or dead): at case start, one was an ordinary townsfolk, one carried a secret, and one was a minion."},
 	"clerk": {"name": "Clerk", "align": "good", "kind": "info", "first_night": true,
 		"desc": "Starts knowing that one of two people holds a particular gift."},
+	"confessor": {"name": "Confessor", "align": "good", "kind": "info", "night_walk": true,
+		"desc": "Each night (not the first), visits one living person in secret and learns whether their spirit is good. Evil souls (and Marked souls) return no memory of the visit."},
+	"monitor": {"name": "Monitor", "align": "good", "kind": "info",
+		"desc": "Each night (not the first), learns the role of one person who walked abroad on their home block, or that no one walked by their house. Never receives window night sightings."},
 	"dowser": {"name": "Dowser", "align": "good", "kind": "info", "day": true,
 		"desc": "The first time each day the Dowser is out in public on a block with two or more others, learns how many of them are evil."},
 	"executor": {"name": "Executor", "align": "good", "kind": "info",
@@ -423,13 +427,13 @@ const ROLES = {
 }
 
 ## The script: what may be in play in a case. No duplicates.
-const GOOD_ROLES = ["archivist", "augur", "chronicler", "clerk", "dowser", "executor", "gravedigger", "lamplighter",
-	"magistrate", "martyr", "medium", "nightwatch", "psychologist", "registrar", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
+const GOOD_ROLES = ["archivist", "augur", "chronicler", "clerk", "confessor", "dowser", "executor", "gravedigger", "lamplighter",
+	"magistrate", "martyr", "medium", "monitor", "nightwatch", "psychologist", "registrar", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
 const MINION_ROLES = ["breathstealer", "poisoner", "revenant", "scion"]
 const EVIL_ROLES = ["demon", "breathstealer", "poisoner", "revenant", "scion"]
 ## Gifts that produce readings to share.
-const INFO_ROLES = ["archivist", "augur", "chronicler", "clerk", "dowser", "executor", "gravedigger", "hearthwitch",
-	"lamplighter", "magistrate", "medium", "nightwatch", "psychologist", "registrar", "rumormonger", "seer", "surveyor"]
+const INFO_ROLES = ["archivist", "augur", "chronicler", "clerk", "confessor", "dowser", "executor", "gravedigger", "hearthwitch",
+	"lamplighter", "magistrate", "medium", "monitor", "nightwatch", "psychologist", "registrar", "rumormonger", "seer", "surveyor"]
 ## Setup protection: at least two start-knowledge gifts and one strong identifier.
 const START_ROLES = ["archivist", "clerk", "surveyor", "rumormonger"]
 const IDENTIFIER_ROLES = ["seer", "dowser", "gravedigger", "augur", "registrar"]
@@ -472,13 +476,13 @@ static func secret_name(k: String) -> String:
 const HINT_PACKAGES = {
 	"official": {"roles": ["archivist", "clerk", "surveyor", "rumormonger", "chronicler", "magistrate", "registrar"], "name": "a gift of official business",
 		"text": "My gift deals in records and reports, the town's official business."},
-	"night_sight": {"roles": ["seer", "nightwatch", "lamplighter", "hearthwitch"], "name": "a night-sight gift",
+	"night_sight": {"roles": ["seer", "nightwatch", "lamplighter", "hearthwitch", "monitor"], "name": "a night-sight gift",
 		"text": "My gift shows me things in the dark hours."},
 	"the_dead": {"roles": ["gravedigger", "medium", "sexton", "martyr", "executor"], "name": "a gift of the dead",
 		"text": "My gift has to do with the dead, and with death."},
 	"shelter": {"roles": ["warden", "veteran", "martyr"], "name": "a sheltering gift",
 		"text": "My gift is a kind of shelter against the demon."},
-	"people": {"roles": ["dowser", "psychologist", "rumormonger", "augur"], "name": "a gift for reading people",
+	"people": {"roles": ["dowser", "psychologist", "rumormonger", "augur", "confessor"], "name": "a gift for reading people",
 		"text": "My gift lets me read people, if I'm close enough."},
 }
 

@@ -68,6 +68,7 @@ var silenced = false         # can't speak (from a meeting until the next evenin
 var silence_day = -1         # day the silence began (at that evening's meeting)
 var silence_pending = -1     # day they were chosen (takes hold at that evening's meeting)
 var turned = false           # turned evil by the Revenant's curse
+var confessor_visited: Array = []  # Confessor: people already visited (they visit new doors first)
 var turned_day = -1
 
 ## Suspicion of each other NPC id (0 = trusting, 1+ = convinced evil).

@@ -248,6 +248,10 @@ internal static class WorldDomainKernel
         {
             return obsDay >= 0 && obsPhase == "night";
         }
+        if (roleId == "monitor" || roleId == "confessor")
+        {
+            return obsDay >= 1 && obsPhase == "night";
+        }
         if (eveningOrNight)
         {
             return obsDay >= minGiftDay && (obsPhase == "evening" || obsPhase == "night");
