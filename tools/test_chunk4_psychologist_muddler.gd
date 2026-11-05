@@ -40,8 +40,8 @@ func _give_role(w, n, role_id: String) -> void:
 
 
 func _init() -> void:
-	var prev_mode: int = SolverBackend.mode
-	var has_cs: bool = SolverBackend.cs_available()
+	var prev_mode: int = SolverBackend.get_mode()
+	var has_cs: bool = SolverBackend.is_csharp_available()
 	if has_cs:
 		SolverBackend.set_mode(SolverBackend.Mode.VERIFY)
 	var vm0: int = SolverBackend.get_verify_mismatches()
