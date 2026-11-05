@@ -1,7 +1,11 @@
-## The compact kernel must agree with exact enumeration for every legal world,
-## including modifier worlds that share an alignment but differ in gift health.
+## Both compact engines (ChannelLikelihood's class mode and FactoredChannels) must agree
+## with exact enumeration for every legal world, including modifier worlds that share an
+## alignment but differ in gift health. Merged from test_workshop_channel_classes and
+## test_workshop_factored_classes, which built the same cases and the same exact
+## enumeration; it is now computed once per case and both engines are held to it.
 extends SceneTree
 const Model = preload("res://workshop/channel_likelihood.gd")
+const Factored = preload("res://workshop/factored_channels.gd")
 const Channels = preload("res://workshop/evidence_channels.gd")
 const Eval = preload("res://workshop/case_eval.gd")
 const Solver = preload("res://workshop/solver.gd")
@@ -29,7 +33,7 @@ func _init() -> void:
 			view.live_activity = true
 			view.timeline = {"events": [{"kind": "demon_death", "subjects": ["p2"], "at": {"day": 2, "phase": "night"}}]}
 			_compare(view, [cards[2], relay], {"self": people.back().id, "own_role": "warden", "good": [people.back().id]}, [])
-	print("Channel class parity: %d checks, %d failures" % [checks, fails])
+	print("Class parity (channel and factored engines): %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
 func _compare(view: Dictionary, cards: Array, knowledge: Dictionary, own: Array) -> void:
@@ -45,21 +49,26 @@ func _compare(view: Dictionary, cards: Array, knowledge: Dictionary, own: Array)
 	for card in cards:
 		q[card.get("accuracy_origin", card.id)] = Eval.chance_content(view, card)
 	var exact = Model.assess(view, cards, knowledge, rates, q, own, false)
-	var compact = Model.assess(view, cards, knowledge, rates, q, own, true, cc.rep, cc.count)
-	var base_matches = true
-	var post_matches = true
-	var held_matches = true
-	for world in range(cc.class_of.size()):
-		var group: int = cc.class_of[world]
-		base_matches = base_matches and is_equal_approx(exact.base[world], compact.base[group])
-		post_matches = post_matches and is_equal_approx(exact.post[world], compact.post[group])
-		for id in exact.held:
-			held_matches = held_matches and is_equal_approx(exact.held[id][world], compact.held[id][group])
-	check(base_matches and post_matches and held_matches, "class representatives and eliminated channels preserve every world's private, submitted and accepted-content likelihoods")
-	check(exact.acceptance.keys().all(func(id): return is_equal_approx(exact.acceptance[id], compact.acceptance[id])) and exact.consistent == compact.consistent, "class multiplicity preserves acceptance and consistency, including relays")
-	check(compact.post.size() <= exact.post.size() and (cards.any(func(card): return card.has("relay_source")) or compact.post.size() < exact.post.size()), "ordinary reports evaluate fewer representatives; relays retain every distinct required modifier state")
-	var again = Model.assess(view, cards, knowledge, rates, q, own, true, cc.rep, cc.count)
-	check(again.post == compact.post and again.base == compact.base, "reusing conditional programs preserves the exact compact output")
+	var engines = {
+		"channel": func(): return Model.assess(view, cards, knowledge, rates, q, own, true, cc.rep, cc.count),
+		"factored": func(): return Factored.assess(view, cards, knowledge, rates, q, own, cc.rep, cc.count),
+	}
+	for engine in engines:
+		var compact = engines[engine].call()
+		var base_matches = true
+		var post_matches = true
+		var held_matches = true
+		for world in range(cc.class_of.size()):
+			var group: int = cc.class_of[world]
+			base_matches = base_matches and is_equal_approx(exact.base[world], compact.base[group])
+			post_matches = post_matches and is_equal_approx(exact.post[world], compact.post[group])
+			for id in exact.held:
+				held_matches = held_matches and is_equal_approx(exact.held[id][world], compact.held[id][group])
+		check(base_matches and post_matches and held_matches, "%s: class representatives and eliminated channels preserve every world's private, submitted and accepted-content likelihoods" % engine)
+		check(exact.acceptance.keys().all(func(id): return is_equal_approx(exact.acceptance[id], compact.acceptance[id])) and exact.consistent == compact.consistent, "%s: class multiplicity preserves acceptance and consistency, including relays" % engine)
+		check(compact.post.size() <= exact.post.size() and (cards.any(func(card): return card.has("relay_source")) or compact.post.size() < exact.post.size()), "%s: ordinary reports evaluate fewer representatives; relays retain every distinct required modifier state" % engine)
+		var again = engines[engine].call()
+		check(again.post == compact.post and again.base == compact.base, "%s: reusing conditional programs preserves the exact compact output" % engine)
 
 func check(ok: bool, label: String) -> void:
 	checks += 1

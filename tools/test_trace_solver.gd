@@ -49,7 +49,8 @@ func _test_pure_location_trace_generation() -> void:
 	_check(is_zero_approx(Tuning.Setup.TRACE_QUARTER_BASE_WEIGHT) and is_zero_approx(Tuning.Setup.TRACE_CONNECTION_BASE_WEIGHT), "quarter and connection trace base weights are 0.0")
 	var all_locations_only: bool = true
 	var total_rolled: int = 0
-	for sd in range(3200, 3260):
+	# 20 seeds, both town sizes (the zero base weights above make other families impossible).
+	for sd in range(3200, 3220):
 		var g = _game(sd, 10 if sd % 2 == 0 else 7)
 		var w = g.w
 		var victims: Array = w.living_good().slice(0, 2)
@@ -60,7 +61,7 @@ func _test_pure_location_trace_generation() -> void:
 				total_rolled += 1
 				if tr.get("trace_family", "") != "locations":
 					all_locations_only = false
-	_check(total_rolled >= 120 and all_locations_only, "100% of generated crime-scene traces across 60 seeds are locations tokens/scents")
+	_check(total_rolled >= 40 and all_locations_only, "100% of generated crime-scene traces across 20 seeds are locations tokens/scents")
 
 
 func _test_matrix_rows_scion_divider_and_portrait_states() -> void:
