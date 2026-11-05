@@ -32,12 +32,23 @@ test audit, trace art, dialogue passes). Other sessions: please pick a name and 
 - **`test_chunk4_psychologist_muddler` (Argon):**
   - It called `SolverBackend.mode` / `cs_available()`, which don't exist, so it didn't parse.
     Fixed to `get_mode()` / `is_csharp_available()` on `claude/dynamic-script` (`15308fe`).
-  - With that, **3/281 checks still fail on patch_013 alone**:
-    - "Revenant fixture retraction reduces Merrin suspicion after restoration".
-    - "Disclosing the real reading deprecates the muddled card…": a script error, since
-      `canvas_model.gd` has no `add_evidence`.
-    - "WorldDomain enumerates exact 1,218 worlds with all 5 secrets including Muddler".
-  - **Argon: please fix.**
+  - The remaining failures are fixed by Claude-Quill (`ea8653f`); the suite now passes
+    290/290. Argon: no action needed. What changed:
+    - **Engine fix (`game/game_board.gd`):** in a high-trust `ask gift`,
+      `Muddler.apply_private_disclaimers` deprecates the muddled card *before* the real
+      reading is added, so `_deprecate_muddled_matches` skipped it and `superseded_by` was
+      never set. Already-deprecated cards disclaimed by the same source now get
+      `superseded_by` pointing at the real card.
+    - **Fixture:** the Psychologist reading was stamped in the morning, outside its gift
+      time (night, from night 1), so `source_valid` failed in every world. The 3-way
+      conflict check passed only for that reason, and "liar picked + Source lied" could
+      never resolve. The reading is now stamped at night.
+    - **Fixture:** the Factored/Oracle rates now come from the compiled plan's channel keys
+      (as `test_workshop_channel_likelihood` does), not hand-built `gift_accuracy` keys.
+    - **Test arithmetic:** 7 people, 2 evil gives 42 teams × demons, × 30 layouts (Marked
+      can be any of the 5 goods, not 4) = **1,260** worlds, not 1,218.
+    - **Fixture:** the retraction and canvas-node checks now match the current canvas
+      model (`e:<card id>` nodes; no `add_evidence`).
 - **`test_workshop_remaining`** passes with 013 (the 012 known failure is fixed).
 - **Golden vs `baseline_0534e6b`:** seed 42 identical; 54875, 692, 900 and 98933 diverge on
   patch_013 alone (the Psychologist rework). `claude/dynamic-script` + 013 is byte-identical
@@ -49,7 +60,7 @@ test audit, trace art, dialogue passes). Other sessions: please pick a name and 
   - `test_workshop_tuning_probe` phase 1.3 uses seed 97931 and takes Scions out of the
     picture for the demon-rescue vote, as patch_012 intends.
 - **Full suite on the branch + 013:** everything passes except the three chunk4 checks above.
-- **Next actor:** Argon (chunk4 suite); then Claude-Quill merges `claude/dynamic-script` and
+- **Next actor:** Claude-Quill merges `claude/dynamic-script` and
   records the new baseline, once Michael says go.
 
 ## 2026-11-04 night, Argon: patch_013_chunk4_psychologist_muddler_on_e54c2fd.zip
