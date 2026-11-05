@@ -1074,7 +1074,11 @@ static func tavern_evening_gossip(g) -> Dictionary:
 			avail.remove_at(picked_idx)
 
 	if chosen.is_empty():
-		return {"lines": ["You spend the evening nursing a cup in the corner, but the taproom talk turns up nothing beyond the weather."], "facts": [], "haunts": [], "bonds": []}
+		var quiet_lines: Array = ["You spend the evening nursing a cup in the corner, but the taproom talk turns up nothing beyond the weather."]
+		var quiet_vibe: Dictionary = town_vibe(g)
+		if not quiet_vibe.is_empty():
+			quiet_lines.append("  • " + str(quiet_vibe["line"]))
+		return {"lines": quiet_lines, "facts": [], "haunts": [], "bonds": [], "vibe": quiet_vibe}
 
 	var lead_order: Array = range(TAVERN_LEADS.size())
 	for i in range(lead_order.size() - 1, 0, -1):
@@ -1097,6 +1101,62 @@ static func tavern_evening_gossip(g) -> Dictionary:
 			haunts.append(item["profile_haunt"])
 		if item.has("profile_bond"):
 			bonds.append(item["profile_bond"])
+	# Always, beside the drawn items: what the town makes of the Demonologist.
+	var vibe: Dictionary = town_vibe(g)
+	if not vibe.is_empty():
+		lines.append("  • " + str(vibe["line"]))
 	w.dlog.add("tavern_evening_gossip", "player", "", {"count": chosen.size(), "keys": chosen.map(func(c): return c["gkey"])},
 		"Evening tavern gossip yielded %d item(s)." % chosen.size())
-	return {"lines": lines, "facts": facts, "haunts": haunts, "bonds": bonds}
+	return {"lines": lines, "facts": facts, "haunts": haunts, "bonds": bonds, "vibe": vibe}
+
+
+
+## The town's vibe check on the Demonologist: rapport (trust in you) and competence (your
+## credibility) averaged over the living good townsfolk. Evil's private view is left out on
+## purpose (a deliberate fudge: the town's mood, not the demon's). No RNG draws.
+## Returns {line, rapport, credibility, rapport_band, credibility_band, trend} or {}.
+const VIBE_RAPPORT = ["the town is openly hostile to you", "folk mostly distrust you", "folk are wary of you",
+	"the town hasn't made up its mind about you", "folk are warming to you", "you're well liked", "the town is fond of you"]
+const VIBE_COMPETENCE = ["most take you for a fraud", "your word counts for little", "few put much stock in your judgement",
+	"your judgement is still unproven", "your judgement shows promise", "they think you're sharp", "they reckon you're the real thing"]
+
+## 0.1-wide bands centred on neutral: 0..6 for <0.25, 0.25-0.35, ..., >=0.75.
+static func vibe_band(v: float) -> int:
+	return clampi(int(floor((v - 0.25) / 0.1 + 1e-9)) + 1, 0, 6)  # epsilon: 0.35 is the band above
+
+static func town_vibe(g) -> Dictionary:
+	var w = g.w
+	var goods: Array = w.living().filter(func(n): return not n.is_evil())
+	if goods.is_empty():
+		return {}
+	var rap: float = 0.0
+	var cred: float = 0.0
+	var low: float = 1.0
+	for n in goods:
+		rap += float(n.trust)
+		cred += float(n.credibility)
+		low = minf(low, float(n.trust))
+	rap /= goods.size()
+	cred /= goods.size()
+	var rb: int = vibe_band(rap)
+	var cb: int = vibe_band(cred)
+	var r_text: String = VIBE_RAPPORT[rb]
+	var c_text: String = VIBE_COMPETENCE[cb]
+	var trend: Dictionary = {}
+	var last: Dictionary = g.town_vibe_heard
+	if not last.is_empty():
+		var dr: float = rap - float(last.get("rapport", rap))
+		var dc: float = cred - float(last.get("credibility", cred))
+		if absf(dr) >= Tuning.Social.TOWN_VIBE_TREND:
+			trend["rapport"] = dr
+			r_text += ", and warming since you last listened" if dr > 0.0 else ", though cooling since you last listened"
+		if absf(dc) >= Tuning.Social.TOWN_VIBE_TREND:
+			trend["credibility"] = dc
+			c_text += ", and rising" if dc > 0.0 else ", but slipping"
+	var line: String = "And about you, Demonologist: %s; %s." % [r_text, c_text]
+	if low <= rap - Tuning.Social.TOWN_VIBE_OUTLIER and low < 0.45:
+		line += " Not everyone agrees, mind: someone still doesn't trust you."
+	g.town_vibe_heard = {"day": w.day, "rapport": rap, "credibility": cred}
+	w.dlog.add("town_vibe", "player", "", {"rapport": snappedf(rap, 0.001), "credibility": snappedf(cred, 0.001),
+		"rapport_band": rb, "credibility_band": cb, "trend": trend, "low": snappedf(low, 0.001)}, line)
+	return {"line": line, "rapport": rap, "credibility": cred, "rapport_band": rb, "credibility_band": cb, "trend": trend}
