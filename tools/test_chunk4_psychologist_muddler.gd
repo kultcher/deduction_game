@@ -19,6 +19,7 @@ const Solver = preload("res://workshop/solver.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const Challenges = preload("res://workshop/reading_challenges.gd")
+const Channels = preload("res://workshop/evidence_channels.gd")
 const Factored = preload("res://workshop/factored_channels.gd")
 const Oracle = preload("res://workshop/channel_likelihood.gd")
 const Session = preload("res://workshop/session.gd")
@@ -67,10 +68,10 @@ func _init() -> void:
 func _test_revenant_retraction_regression() -> void:
 	var revenant = Session.new(692, "revenant")
 	var view: Dictionary = revenant.scenario.public_view
-	var c = Solver.empty_case()
+	# The same case as test_workshop_remaining's restoration check (the 012 regression).
+	var c = revenant.case_data.duplicate(true)
+	c.cards = ["survey", "rumor", "dowse", "curse_warning"]
 	c.conclusion = {"type": "evil", "target": "merrin", "at": "during curse"}
-	c.cards = ["curse_warning", "rumor", "dowse", "alibi_d4", "vigil_d4"]
-	c.disputes = [{"reports": ["alibi_d4", "vigil_d4"], "challenged": "alibi_d4", "preferred": "vigil_d4"}]
 	c.answers.curse_warning = {"positive": ["merrin"]}
 	revenant.case_data = c
 	revenant.present(false)
@@ -170,7 +171,12 @@ func _test_psychologist_workshop_solver_and_challenges() -> void:
 	Social._deliver(w, seer, psych, {"kind": "reading", "entry": seer_e, "about": "", "from": seer.id, "key": "reading:0:seer"})
 	Social._deliver(w, liar, psych, {"kind": "reading", "entry": liar_e, "about": "", "from": liar.id, "key": "reading:0:clerk", "lie": true})
 	var pr: Dictionary = C.role_def("psychologist").generate_reading(w, psych, {}, Mind)
+	# The Psychologist's gift fires at night: a reading stamped with a daytime phase is
+	# outside its gift time, so the Solver would reject every world for the wrong reason.
+	var phase0 = w.phase
+	w.phase = C.NIGHT
 	w._add_info(psych, pr)
+	w.phase = phase0
 	w.day = 2
 	var shared: Dictionary = Mind.answer_gift(w, psych, 4)
 	g._facts(shared["facts"])
@@ -191,9 +197,11 @@ func _test_psychologist_workshop_solver_and_challenges() -> void:
 
 	var prem: String = model.selected
 	model.nodes[prem].conclusion = {"type": "evil", "target": liar.id, "at": cview.alignment_epoch}
-	var ep: String = model.add_evidence(p_card.id, Vector2(80, 60))
-	var e0: String = model.add_evidence(fid0, Vector2(80, 260))
-	var e1: String = model.add_evidence(fid1, Vector2(80, 440))
+	# The canvas makes one evidence node per view card, keyed "e:<card id>".
+	var ep: String = "e:" + p_card.id
+	var e0: String = "e:" + fid0
+	var e1: String = "e:" + fid1
+	_check(model.nodes.has(ep) and model.nodes.has(e0) and model.nodes.has(e1), "the Psychologist reading and both cited statements are on the canvas")
 	model.connect_cards(ep, prem)
 	model.connect_cards(e0, prem)
 	model.connect_cards(e1, prem)
@@ -216,9 +224,10 @@ func _test_psychologist_workshop_solver_and_challenges() -> void:
 	var subset_cards: Array = [Solver.card_by_id(cview, p_card.id), Solver.card_by_id(cview, fid0), Solver.card_by_id(cview, fid1)]
 	var rates: Dictionary = {}
 	var q_map: Dictionary = {}
+	# Rates keyed by the compiled plan's own channels (as test_workshop_channel_likelihood does).
+	for channel in Channels.compile(cview, subset_cards).channels:
+		rates[channel.key] = {"healthy": 0.95, "impaired": 0.25} if channel.kind == "gift_accuracy" else 0.8
 	for sc in subset_cards:
-		rates["gift_honesty:" + sc.source] = 0.8
-		rates["gift_accuracy:%s:%d" % [sc.source, int(sc.observed_at.day)]] = {"healthy": 0.95, "impaired": 0.25}
 		q_map[sc.id] = CaseEval.chance_content(cview, sc)
 	var f_res: Dictionary = Factored.assess(cview, subset_cards, {}, rates, q_map)
 	var o_res: Dictionary = Oracle.assess(cview, subset_cards, {}, rates, q_map)
@@ -395,8 +404,9 @@ func _test_muddler_domain_and_channel_parity() -> void:
 		"world_options": {"modifiers": C.SECRET_MOD_LIST.duplicate(), "roles": true, "identities": true},
 	}
 	var worlds: Array = Domain.worlds(view)
-	# 7 people, 2 evil (21 teams * 2 demons = 42): per team 5+4+10+5+5 = 29 modifier layouts -> 42 * 29 = 1218 worlds
-	_check(worlds.size() == 1218, "WorldDomain enumerates exact 1,218 worlds with all 5 secrets including Muddler")
+	# 7 people, 2 evil (21 teams * 2 demons = 42): per team, over the 5 good people,
+	# delusional 5 + marked 5 + lovers C(5,2)=10 + sleepwalker 5 + muddler 5 = 30 layouts -> 42 * 30 = 1260 worlds
+	_check(worlds.size() == 1260, "WorldDomain enumerates exact 1,260 worlds with all 5 secrets including Muddler")
 	var keys: Dictionary = {}
 	for w in worlds:
 		keys[Domain.key(view, w)] = true

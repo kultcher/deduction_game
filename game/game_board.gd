@@ -32,11 +32,17 @@ static func _break_confidences(g, nums: Array) -> void:
 static func _deprecate_muddled_matches(g, src_id: String, role: String, day_val: int, muddled_data = null, superseded_by_num: int = 0, real_data = null) -> void:
 	var Muddler = preload("res://sim/muddler.gd")
 	for c in g.board:
-		if c.get("deleted", false) or c.get("deprecated", false) or c.get("tavern_gossip", false):
+		if c.get("deleted", false) or c.get("tavern_gossip", false):
 			continue
 		if str(c.get("kind", "")) != "info" or str(c.get("source", "")) != src_id or str(c.get("role", "")) != role or int(c.get("day", -2)) != day_val:
 			continue
 		if str(c.get("via", src_id)) == src_id:
+			continue
+		if c.get("deprecated", false):
+			# Already disclaimed (e.g. privately, just before the real reading was added):
+			# point it at the real card if the same source disclaimed it.
+			if superseded_by_num > 0 and int(c.get("superseded_by", 0)) == 0 and str(c.get("disclaimed_by", "")) == src_id:
+				c["superseded_by"] = superseded_by_num
 			continue
 		if muddled_data is Dictionary and c.get("data", {}) == muddled_data:
 			Muddler.deprecate_card(c, src_id, superseded_by_num)
