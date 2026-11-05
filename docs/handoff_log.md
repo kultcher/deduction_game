@@ -54,8 +54,23 @@ Ground rules (from Nov 3, until Michael changes them):
   way the Lamplighter's route is, so a Sexton seen out on the toll night counts as
   unexplained walking. It needs a Sexton route case in `LiveActivity` (C#), like the
   Lamplighter's.
-- **Checks:** full suite and golden in the merge entry below; `test_chunk6a` is now 39
-  checks.
+- **Rules changed in review (nine suites failed after the merge):**
+  - **Revenant curse fires at the hanging again,** not the next night. Deferring it broke
+    the town's warning, the shared model's curse event and ~20 checks across five suites.
+    It's skipped while minions are suppressed.
+  - **`World.is_minion_suppressed` covers the toll night and the following day** ("until the
+    following night"). With the toll night only, the day-time checks (curse, Scion's rise)
+    could never fire.
+  - **The Sexton lost the `night_walker` tag.** It walks once per case, and the tag moved
+    `DEAL_RULES`' night-walker band, so every Default deal (and `test_beliefs`) changed.
+  - **Solver view:** `WorkshopBridge.possible_roles` drops experimental roles that aren't on
+    the case's script, so the Brute isn't "possibly in play" in Default games.
+  - Role descs synced between `RoleDef` and `C.ROLES` (`test_role_def_poc` needs them
+    identical).
+  - The old knell checks in `test_roster` and `test_workshop_martyr_sexton` were rewritten
+    for the bell's rules. The `test_roster` Sexton check now verifies that the bell stops
+    the Poisoner.
+- **Checks:** full suite and golden in the PR; `test_chunk6a` is now 39 checks.
 
 ## 2026-11-04 late night, Argon: patch_015 (Slice 6A: Sexton Rework & Brute Minion) aligned to latest main (`ce3c2d8`)
 
