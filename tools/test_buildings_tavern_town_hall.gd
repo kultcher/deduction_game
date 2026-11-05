@@ -299,7 +299,6 @@ func _test_town_hall_workshop_and_csharp_parity() -> void:
 		"timeline": {"events": []},
 	}
 
-	SolverBackend.set_mode(SolverBackend.Mode.VERIFY if has_cs else SolverBackend.Mode.GDSCRIPT)
 	var solved_clash: Dictionary = Solver.solve(view, [c_th, c_p0, c_p1])
 	# The hard solve takes every selected card as true (claims included), so a Town Hall
 	# pair plus true claims of both roles is a contradiction; the claims alone are not.
@@ -351,9 +350,6 @@ func _test_town_hall_workshop_and_csharp_parity() -> void:
 	_check(max_diff <= 1e-12,
 		"FactoredChannels matches exhaustive ChannelLikelihood oracle on Town Hall slot saturation (max diff %.3g)" % max_diff)
 
-	if has_cs:
-		_check(SolverBackend.get_verify_mismatches() == 0,
-			"GDScript vs C# VERIFY mode recorded 0 mismatches across all Town Hall solver checks")
 
 	# Check CanvasModel.apply_answer toggle round-trip:
 	var cm = CanvasModel.new(view)
@@ -363,4 +359,3 @@ func _test_town_hall_workshop_and_csharp_parity() -> void:
 	_check(a1.get("in_play_role", "") == "seer" and a2.get("in_play_role", "") == "clerk" and not a3.has("in_play_role") and a1.get("positive", []) == [],
 		"CanvasModel.apply_answer toggles Town Hall in_play_role cleanly")
 
-	SolverBackend.set_mode(SolverBackend.Mode.GDSCRIPT)

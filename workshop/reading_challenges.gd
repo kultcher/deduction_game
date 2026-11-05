@@ -5,6 +5,7 @@ const Solver = preload("res://workshop/solver.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 static var cache: Dictionary = {}
 static var fraction_cache: Dictionary = {}
+static var _index_cache: Dictionary = {}
 const MODES = ["misled", "lying", "unlikely"]
 
 static func valid(view: Dictionary, id: String, value) -> bool:
@@ -157,23 +158,41 @@ static func _fraction(view: Dictionary, report: Dictionary, knowledge: Dictionar
 	var table: PackedByteArray = Solver.report_table(view, report)
 	var roles: PackedByteArray = Solver.Roles.fits_table(view, universe, [report], knowledge, {}, false, u_handle)
 	var compatible: bool = Domain.claims_compatible([report], knowledge)
-	var indices = {}
-	for i in range(universe.size()):
-		indices[Solver.TimeModel.key(view, universe[i])] = i
-	var denominator = {}
-	var numerator = {}
-	var n: int = view.people.size()
-	for world in reference:
-		if not Solver.position_holds(view, world, report.source, "good", knowledge.get("good_epoch", "")) or not Domain.healthy(view, world, report.source):
-			continue
-		var modifier: int = Domain.C.SECRET_MOD_LIST.find(world.get("modifier", "marked"))
-		var base_key: int = (int(world.evil) * 5 + modifier) * (1 << n) + int(world.get("holders", 1 << world.marked))
-		denominator[base_key] = true
-		var i: int = indices[Solver.TimeModel.key(view, world)]
-		if compatible and table[i] != 0 and roles[i] != 0:
-			numerator[base_key] = true
-	var result = {"fraction": float(numerator.size()) / maxf(denominator.size(), 1), "possible": not denominator.is_empty()}
+	# Universe index of each reference world: live worlds carry it (__i); fixture worlds
+	# are looked up by key (the map is cached per universe).
+	var ref_idx := PackedInt32Array()
+	ref_idx.resize(reference.size())
+	var by_key: Dictionary = {}
+	for k in range(reference.size()):
+		var ui: int = int(reference[k].get("__i", -1))
+		if ui < 0:
+			if by_key.is_empty():
+				by_key = _universe_index(view, u_key, universe)
+			ui = by_key[Solver.TimeModel.key(view, reference[k])]
+		ref_idx[k] = ui
+	var epoch: String = knowledge.get("good_epoch", "")
+	var eff_epoch = view.get("alignment_epoch", "") if epoch == "" else epoch
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(reference) if u_handle < 0 else PackedInt64Array()
+	SolverBackend.record_boundary_call("ReadingChallenges.fraction", 0)
+	var counts: PackedInt32Array = SolverBackend._bridge().ReadingFraction(u_handle, ref_idx, fallback, view.people.size(),
+		Solver.person_index(view, report.source), Solver._curse_active_at(view, eff_epoch), table, roles, compatible)
+	var numerator: int = counts[0]
+	var denominator: int = counts[1]
+	var result = {"fraction": float(numerator) / maxf(denominator, 1), "possible": denominator > 0}
 	if fraction_cache.size() >= 128:
 		fraction_cache.clear()
 	fraction_cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
+
+
+## Universe index by world key, per universe (fixture worlds carry no __i).
+static func _universe_index(view: Dictionary, u_key: String, universe: Array) -> Dictionary:
+	if _index_cache.has(u_key):
+		return _index_cache[u_key]
+	if _index_cache.size() >= 16:
+		_index_cache.clear()
+	var out: Dictionary = {}
+	for i in range(universe.size()):
+		out[Solver.TimeModel.key(view, universe[i])] = i
+	_index_cache[u_key] = out
+	return out

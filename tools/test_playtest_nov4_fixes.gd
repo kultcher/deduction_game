@@ -32,14 +32,11 @@ func _check(cond: bool, label: String) -> void:
 
 
 func _init() -> void:
-	var vm0: int = SolverBackend.get_verify_mismatches()
 	_test_rumormonger_and_chronicler_chance_content()
 	_test_presentation_reply_routing()
 	_test_evil_promised_vigil_and_ward_avoidance()
 	_test_scion_cover_and_doomed_demon_votes()
 	_test_spoken_when_and_sighting_dedup()
-	_check(SolverBackend.get_verify_mismatches() == vm0,
-		"Zero C#/GDScript verification mismatches across playtest regression suite")
 	print("PLAYTEST NOV4 FIXES: %d/%d passed (%d failed)" % [checks - fails, checks, fails])
 	quit(1 if fails > 0 else 0)
 

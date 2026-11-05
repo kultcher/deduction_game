@@ -25,13 +25,14 @@ For new decision checks, use `World.decision_roll`/`decision_pick` in place of t
 
 ## Verification
 
-`tools/test_decision_inspector.gd` checks analytical distributions, exact draw/state preservation, immutable bounded capture, file-trace independence, shadow labels, UI filtering/pause/detail/copy/reset controls, and paired Debug on/off NPC/shadow/game state through dialogue, a meeting and a night. `tools/test_trace.gd` covers file-trace parity through complete cases. Run with Godot 4.7.2:
+`tools/test_decision_inspector.gd` checks analytical distributions, exact draw/state preservation, immutable bounded capture, file-trace independence, shadow labels, UI filtering/pause/detail/copy/reset controls, and paired Debug on/off NPC/shadow/game state through dialogue, a meeting and a night. `test_trace`, which checked file-trace parity through complete cases, was retired Nov 4; the golden capture (`docs/golden_baseline.md`) now guards whole-case determinism. Run with Godot 4.7.2:
 
 ```text
-python tools/run_gd_tests.py --godot <godot-console.exe> test_decision_inspector
-python tools/run_gd_tests.py --godot <godot-console.exe>
-python tools/run_gd_tests.py --godot <godot-console.exe> --timeout 1800 test_trace
+python3 tools/run_gd_tests.py --godot <godot-console.exe> test_decision_inspector
+python3 tools/run_gd_tests.py --godot <godot-console.exe>
 ```
+
+The measurements below are from the original Oct 27 build and are kept as a historical control.
 
 A single sequential headless `tools/replay_54875.gd` comparison on Godot 4.7.2, with detailed tracing enabled and console mirroring off:
 
@@ -50,4 +51,4 @@ Initial inspector-only validation: 83/84 suites passed with `--include-slow --ti
 
 The inspector is integrated with all 23 batch-4 changes on PR #25. The conflict in `Mind.answer_night` keeps the approved 95% willingness rule, replacing the old discretionary Gossip/friend filters. New live observations cover that exact draw, the existing refusal-slip draw and the deterministic Gossip + Confidence volunteering threshold. Pinned Roles and the inspector coexist and retain their independent preferences across cases.
 
-`tools/test_decision_inspector.gd` additionally checks the merged private-answer/volunteering paths with capture on/off, exact RNG samples/states and bookkeeping, plus the combined UI and new-case binding. See [integration validation](BATCH4_INTEGRATION.md) for full-suite and replay results. The original inspector-only measurements above remain a historical control.
+`tools/test_decision_inspector.gd` additionally checks the merged private-answer/volunteering paths with capture on/off, exact RNG samples/states and bookkeeping, plus the combined UI and new-case binding. See [integration validation](archive/BATCH4_INTEGRATION.md) for full-suite and replay results. The original inspector-only measurements above remain a historical control.

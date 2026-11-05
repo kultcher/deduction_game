@@ -101,68 +101,11 @@ static func compile(scopes: Array) -> Dictionary:
 	return _res
 
 static func _compile_dispatch(scopes: Array) -> Dictionary:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _compile_gd(scopes)
 	var cs_pair: Array = _compile_cs(scopes)
 	var cs_prog: Dictionary = cs_pair[0]
 	var cs_h: int = int(cs_pair[1])
-	if mode == SolverBackend.Mode.CSHARP:
-		_store_program_handle(cs_prog, cs_h)
-		return cs_prog
-	var gd_prog: Dictionary = _compile_gd(scopes)
-	var b = SolverBackend._bridge()
-	b.VerifyScalarInt64("ChannelSumProduct.compile.peak", gd_prog.peak, cs_prog.peak)
-	b.VerifyScalarInt64("ChannelSumProduct.compile.steps", gd_prog.steps.size(), cs_prog.steps.size())
-	b.VerifyInt32Buffer("ChannelSumProduct.compile.flat", pack_flat_program(gd_prog), pack_flat_program(cs_prog))
-	_store_program_handle(gd_prog, cs_h)
-	return gd_prog
-
-static func _compile_gd(scopes: Array) -> Dictionary:
-	var nodes: Array = scopes.map(func(scope): return {"scope": scope.duplicate()})
-	var active: Array = range(nodes.size())
-	var steps: Array = []
-	var peak = 1
-	while active.any(func(i): return not nodes[i].scope.is_empty()):
-		var choices = {}
-		for i in active:
-			for variable in nodes[i].scope:
-				choices[variable] = true
-		var selected = -1
-		var best: Array = []
-		for variable in choices:
-			var joined: Array = []
-			for i in active:
-				if variable in nodes[i].scope:
-					for other in nodes[i].scope:
-						if other not in joined:
-							joined.append(other)
-			if selected < 0 or joined.size() < best.size():
-				selected = variable
-				best = joined
-		var inputs: Array = active.filter(func(i): return selected in nodes[i].scope)
-		best.erase(selected)
-		best.sort()
-		var joined: Array = best + [selected]
-		var rows = 1 << joined.size()
-		peak = maxi(peak, rows)
-		var maps: Array = []
-		for i in inputs:
-			var mapping = PackedInt32Array()
-			mapping.resize(rows)
-			for row in range(rows):
-				var index = 0
-				for bit in range(nodes[i].scope.size()):
-					index |= ((row >> joined.find(nodes[i].scope[bit])) & 1) << bit
-				mapping[row] = index
-			maps.append(mapping)
-		var output = nodes.size()
-		nodes.append({"scope": best})
-		steps.append({"inputs": inputs, "maps": maps, "output": output, "size": rows / 2})
-		active = active.filter(func(i): return i not in inputs)
-		active.append(output)
-	# All disconnected components now have scalar partitions.
-	return {"nodes": nodes, "steps": steps, "roots": active, "inputs": scopes.size(), "peak": peak}
+	_store_program_handle(cs_prog, cs_h)
+	return cs_prog
 
 static func _compile_cs(scopes: Array) -> Array:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
@@ -227,70 +170,8 @@ static func evaluate(program: Dictionary, values: Array, marginals: bool = true)
 	return _res
 
 static func _evaluate_dispatch(program: Dictionary, values: Array, marginals: bool) -> Dictionary:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _evaluate_gd(program, values, marginals)
 	var cs_res: Dictionary = _evaluate_cs(program, values, marginals)
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_res
-	var gd_res: Dictionary = _evaluate_gd(program, values, marginals)
-	var b = SolverBackend._bridge()
-	b.VerifyScalarFloat64("ChannelSumProduct.evaluate.total", gd_res.total, cs_res.total, 0.0)
-	if marginals:
-		for i in range(gd_res.adjoints.size()):
-			b.VerifyFloat64Buffer("ChannelSumProduct.evaluate.adj", gd_res.adjoints[i], cs_res.adjoints[i], 0.0)
-	return gd_res
-
-static func _evaluate_gd(program: Dictionary, values: Array, marginals: bool = true) -> Dictionary:
-	var data: Array = values.duplicate()
-	for step in program.steps:
-		var output = PackedFloat64Array()
-		output.resize(step.size)
-		for row in range(step.size * 2):
-			var product = 1.0
-			for k in range(step.inputs.size()):
-				product *= data[step.inputs[k]][step.maps[k][row]]
-			output[row % step.size] += product
-		data.append(output)
-	var total = 1.0
-	for i in program.roots:
-		total *= data[i][0]
-	if not marginals:
-		return {"total": total}
-	var adjoints: Array = []
-	for table in data:
-		var gradient = PackedFloat64Array()
-		gradient.resize(table.size())
-		adjoints.append(gradient)
-	for i in program.roots:
-		var derivative = 1.0
-		for j in program.roots:
-			if j != i:
-				derivative *= data[j][0]
-		adjoints[i][0] = derivative
-	for s in range(program.steps.size() - 1, -1, -1):
-		var step: Dictionary = program.steps[s]
-		for row in range(step.size * 2):
-			var gradient: float = adjoints[step.output][row % step.size]
-			if gradient == 0.0:
-				continue
-			var nonzero = gradient
-			var zeros = 0
-			for k in range(step.inputs.size()):
-				var weight: float = data[step.inputs[k]][step.maps[k][row]]
-				if weight == 0.0:
-					zeros += 1
-				else:
-					nonzero *= weight
-			for k in range(step.inputs.size()):
-				var i: int = step.inputs[k]
-				var index: int = step.maps[k][row]
-				var weight: float = data[i][index]
-				if zeros == 0:
-					adjoints[i][index] += nonzero / weight
-				elif zeros == 1 and weight == 0.0:
-					adjoints[i][index] += nonzero
-	return {"total": total, "adjoints": adjoints}
+	return cs_res
 
 static func _evaluate_cs(program: Dictionary, values: Array, marginals: bool) -> Dictionary:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
@@ -339,49 +220,11 @@ static func circuit(program: Dictionary, constants: Array) -> Dictionary:
 	return _res
 
 static func _circuit_dispatch(program: Dictionary, constants: Array) -> Dictionary:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _circuit_gd(program, constants)
 	var cs_pair: Array = _circuit_cs(program, constants)
 	var cs_cir: Dictionary = cs_pair[0]
 	var cs_h: int = int(cs_pair[1])
-	if mode == SolverBackend.Mode.CSHARP:
-		_store_circuit_handle(cs_cir, cs_h)
-		return cs_cir
-	var gd_cir: Dictionary = _circuit_gd(program, constants)
-	var b = SolverBackend._bridge()
-	b.VerifyInt32Buffer("ChannelSumProduct.circuit.flat", pack_flat_circuit(gd_cir), pack_flat_circuit(cs_cir))
-	_store_circuit_handle(gd_cir, cs_h)
-	return gd_cir
-
-static func _circuit_gd(program: Dictionary, constants: Array) -> Dictionary:
-	var build = {"ops": [[0, 0.0], [0, 1.0]], "memo": {}, "inputs": []}
-	var data: Array = []
-	for i in range(program.inputs):
-		var table = PackedInt32Array()
-		for row in range(1 << program.nodes[i].scope.size()):
-			if constants[i] != null:
-				var value: float = constants[i][row]
-				assert(value == 0.0 or value == 1.0)
-				table.append(1 if value == 1.0 else 0)
-			else:
-				table.append(build.ops.size())
-				build.inputs.append([i, row, build.ops.size()])
-				build.ops.append([1, i, row])
-		data.append(table)
-	for step in program.steps:
-		var output = PackedInt32Array()
-		output.resize(step.size)
-		for row in range(step.size * 2):
-			var product = 1
-			for k in range(step.inputs.size()):
-				product = _op(build, 2, product, data[step.inputs[k]][step.maps[k][row]])
-			output[row % step.size] = _op(build, 3, output[row % step.size], product)
-		data.append(output)
-	var root = 1
-	for i in program.roots:
-		root = _op(build, 2, root, data[i][0])
-	return {"ops": build.ops, "inputs": build.inputs, "root": root, "shapes": range(program.inputs).map(func(i): return 1 << program.nodes[i].scope.size())}
+	_store_circuit_handle(cs_cir, cs_h)
+	return cs_cir
 
 static func _circuit_cs(program: Dictionary, constants: Array) -> Array:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
@@ -437,21 +280,6 @@ static func _circuit_cs(program: Dictionary, constants: Array) -> Array:
 		shapes[i] = int(raw[p]); p += 1
 	return [{"ops": ops, "inputs": inputs, "root": root, "shapes": shapes}, c_h]
 
-static func _op(build: Dictionary, kind: int, a: int, b: int) -> int:
-	if kind == 2:
-		if a == 0 or b == 0:
-			return 0
-		if a == 1 or b == 1:
-			return b if a == 1 else a
-	else:
-		if a == 0 or b == 0:
-			return b if a == 0 else a
-	var key = [kind, mini(a, b), maxi(a, b)]
-	if not build.memo.has(key):
-		build.memo[key] = build.ops.size()
-		build.ops.append(key)
-	return build.memo[key]
-
 static func run(circuit_data: Dictionary, values: Array, marginals: bool = true) -> Dictionary:
 	if not SolverBackend.profiling_enabled:
 		return _run_dispatch(circuit_data, values, marginals)
@@ -461,54 +289,8 @@ static func run(circuit_data: Dictionary, values: Array, marginals: bool = true)
 	return _res
 
 static func _run_dispatch(circuit_data: Dictionary, values: Array, marginals: bool) -> Dictionary:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _run_gd(circuit_data, values, marginals)
 	var cs_res: Dictionary = _run_cs(circuit_data, values, marginals)
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_res
-	var gd_res: Dictionary = _run_gd(circuit_data, values, marginals)
-	var b = SolverBackend._bridge()
-	b.VerifyScalarFloat64("ChannelSumProduct.run.total", gd_res.total, cs_res.total, 0.0)
-	if marginals:
-		for i in range(gd_res.adjoints.size()):
-			b.VerifyFloat64Buffer("ChannelSumProduct.run.adj", gd_res.adjoints[i], cs_res.adjoints[i], 0.0)
-	return gd_res
-
-static func _run_gd(circuit_data: Dictionary, values: Array, marginals: bool = true) -> Dictionary:
-	var registers = PackedFloat64Array()
-	registers.resize(circuit_data.ops.size())
-	registers[1] = 1.0
-	for i in range(2, circuit_data.ops.size()):
-		var op: Array = circuit_data.ops[i]
-		match op[0]:
-			1: registers[i] = values[op[1]][op[2]]
-			2: registers[i] = registers[op[1]] * registers[op[2]]
-			3: registers[i] = registers[op[1]] + registers[op[2]]
-	var result = {"total": registers[circuit_data.root]}
-	if not marginals:
-		return result
-	var derivative = PackedFloat64Array()
-	derivative.resize(registers.size())
-	derivative[circuit_data.root] = 1.0
-	for i in range(registers.size() - 1, 1, -1):
-		var op: Array = circuit_data.ops[i]
-		var d: float = derivative[i]
-		if op[0] == 2:
-			derivative[op[1]] += d * registers[op[2]]
-			derivative[op[2]] += d * registers[op[1]]
-		elif op[0] == 3:
-			derivative[op[1]] += d
-			derivative[op[2]] += d
-	var adjoints: Array = []
-	for shape in circuit_data.shapes:
-		var table = PackedFloat64Array()
-		table.resize(shape)
-		adjoints.append(table)
-	for input in circuit_data.inputs:
-		adjoints[input[0]][input[1]] = derivative[input[2]]
-	result.adjoints = adjoints
-	return result
+	return cs_res
 
 static func _run_cs(circuit_data: Dictionary, values: Array, marginals: bool) -> Dictionary:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0

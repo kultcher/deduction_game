@@ -1,11 +1,11 @@
 # Working title: Demonologist (single-player social deduction)
 
-Status (Oct 25, 2026): playable Godot prototype with a painted town screen, a case board,
-a red-string Case Workshop judged by a shared possible-worlds model, and a deep NPC social
-simulation; text CLI and autoplay bot alongside. This document describes
-**how the game works now** and **which directions are decided**. It is organised by
-system, not by date; the dated build notes it used to hold are condensed into
-[History](#history-and-measurements) at the end.
+Status (Nov 4, 2026): playable Godot prototype with a painted town screen, a case board,
+a red-string Case Workshop judged by a shared possible-worlds model (its solver kernel in
+C#), case scripts with an editor, and a deep NPC social simulation; text CLI and an
+analyst autoplay bot alongside. This document describes **how the game works now** and
+**which directions are decided**. It is organised by system, not by date; dated build
+notes are condensed into [History](#history-and-measurements) at the end.
 
 **Tags.** Untagged text in a system section = built and current. **[decided]** = direction
 agreed, not built yet. **[tentative]** = a proposal awaiting design or tuning review.
@@ -13,24 +13,20 @@ agreed, not built yet. **[tentative]** = a proposal awaiting design or tuning re
 **[knob]** = a lever kept for balancing, not planned.
 
 **Companion documents**
-- `BACKLOG.md`: the to-do list, by effort, plus the template-gap list. The single place
-  for "what's next".
-- `TUNING.md`: audited formulas, thresholds and numbers for the social model (trust,
-  suspicion, persuasion, disclosure, votes, evil cover), with known feedback loops. This
-  doc gives the shape; TUNING gives the numbers. **TUNING predates the shared judge** (Oct
-  20): its evidence and argument numbers describe the legacy rules. It is updated after
-  the balance pass.
-- `docs/LEGACY_MIGRATION.md`: the shared judge and the native social sim, the decisions,
-  architecture rules and lessons. Read before touching `workshop/` or belief code.
-  `docs/MIGRATION_PROGRESS.md` holds the history and measurements;
-  `docs/MECHANICS_SUPPORT.md` the evidence-coverage work (done Oct 25).
-- `docs/BACKLOG_PREPARATION.md`: a code map and dependency order for working the backlog.
+- `BACKLOG.md`: the to-do list, by effort, plus the Workshop-gap list. The single place
+  for "what's next". `BACKLOG_POLISH.md` holds presentation-only polish.
+- `TUNING_NARRATIVE.md`: a plain-English account of how the social and evidence systems
+  interact. `tuning_catalogue.md`: the code-level companion (where each number lives).
+  The numbers themselves live in `sim/tuning.gd`.
+- `docs/meeting_flow_plan.md`: the meeting trial, slice by slice (M0–M4).
+- `docs/orchestration_plan.md`: work zones and their status.
+- `docs/golden_baseline.md`: the golden capture that guards against behaviour drift.
+- `docs/handoff_log.md`: notes between the agents working on the code.
+- `docs/DIALOGUE_DESIGN.md`: the voice bible and dialogue rules.
+- `docs/text_formatting.md`: the shared text system.
 - `role_exploration.md`: role ideas, On Deck gifts, relationships, exploratory places.
-- `docs/meeting_flow_plan.md`, `docs/shadow_self_plan.md`: step-by-step plans for the
-  meeting trial and evil's good self.
-- `docs/text_formatting.md`, `docs/text_system_handoff.md`: the shared text system (card
-  extension deferred).
-- `docs/dialogue_prototype.md`: the dialogue composer and lab.
+- `docs/archive/`: finished plans (the legacy retirement, the C# solver migration, the
+  evidence rework, the social trust pass, the shadow self, the dialogue prototype).
 
 ---
 
@@ -69,17 +65,18 @@ it means the game must teach its own way of thinking and make evidence very read
 
 - **Run:** a sequence of cases (roguelike). Meta-progression adds variety (new roles,
   demons, modifiers, player tools) and knowledge (bestiary), never raw certainty. **[open]**
-- **Case:** one town. Two sizes, picked beside the case seed:
+- **Case:** one town, chosen on the **New Case screen** (town population, then a script).
+  Two sizes:
   - **7 townsfolk:** 5 good (one carries the secret), 1 minion, the demon. 6 days.
   - **10 townsfolk:** 7 good (one carries the secret), 2 minions, the demon. 8 days.
   - Larger towns (12–15) only once the core loop works at 7/10. **[watch]**
 - **Win:** the demon's host is executed. **Lose:** only two townsfolk remain, or the last
   day ends.
 - **Cast pool (15):** persistent characters with fixed personalities (trait baselines in
-  `sim/content.gd`, listed in TUNING §1) who are dealt different occupations and roles each
-  case, or sit it out. Personality must never predict alignment. Agnes, Bartholomew,
-  Constance, Dorian, Edda, Fenwick, Greta, Hollis, Isolde, Jory, Kiran, Lian, Merrin,
-  Nisha, Odette; each has a portrait, a standee and an ink colour.
+  `sim/content.gd`) who are dealt different occupations and roles each case, or sit it
+  out. Personality must never predict alignment. Agnes, Bartholomew, Constance, Dorian,
+  Edda, Fenwick, Greta, Hollis, Isolde, Jory, Kiran, Lian, Merrin, Nisha, Odette; each has
+  a portrait (with five expressions), a standee, an ink colour and a voice.
 
 ## Time
 
@@ -87,12 +84,15 @@ it means the game must teach its own way of thinking and make evidence very read
 - The player gets **one action per phase**.
 - End of Evening: **town meeting**.
 - Night: evil acts, gifts fire, the player takes one night action.
+- **Day gifts** fire during the day: the Dowser on its first public block with company,
+  the Augur at the start of the Evening (before the player's Evening action and the
+  meeting), the Executor's reading in the morning after its charge dies.
 - **Night order:** walkers are placed, then readings, then the demon's kill
   (`C.INFO_BEFORE_KILL`, true; false gives BotC's kill-first order). Our dead can't speak,
   so a victim's last reading only reaches the town through a Medium. A night is one
   instant; timing within it isn't modelled.
 - Night 0 is "the night before you arrived" in all player-facing text. The demon kills
-  from night 1.
+  from night 1. Spoken references to nights use ordinals ("the second night").
 
 ---
 
@@ -101,15 +101,17 @@ it means the game must teach its own way of thinking and make evidence very read
 ### Blocks, places, homes, roads
 
 - The town has **four blocks** (the Square, the Market, the Docks, Chapel Hill); each holds
-  1–2 **locations**. Testimony and evidence usually point to blocks, not exact locations.
+  two **locations** (the tavern and the well; the smithy and the bakery; the wharf and the
+  mill; the chapel and the graveyard). Testimony and evidence usually point to blocks.
+- The **Town Hall** on the Square is a player-only building: NPCs never visit, work at,
+  haunt or search it.
 - Each block has a **home material** (straw, forge soot, river mud, chalk dust) that shows
-  up in traces and drops.
+  up in drops.
 - NPCs have **homes** (spread evenly: 10 townsfolk 3/3/2/2, 7 townsfolk 2/2/2/1) and
-  **occupations** tied to a workplace. Where everyone lives is common knowledge: each case
-  opens with a "lives on" card per resident.
-- **Every block has a road to every other** (since Oct 18). A night walker goes home →
-  destination, so they're seen only on their home block (leaving) or where they went.
-  The Lamplighter is the exception: the lamp route passes every block.
+  **occupations** tied to a workplace. Where everyone lives is common knowledge.
+- **Every block has a road to every other.** A night walker goes home → destination, so
+  they're seen only on their home block (leaving) or where they went. The Lamplighter is
+  the exception: the lamp route passes every block.
 - Occupation and gift are independent for now. Occupations should eventually correlate
   loosely with gifts, for believable bluffs. **[open]**
 - **Procedural town** (blocks, buildings and roads generated per case). **[open]**
@@ -120,8 +122,11 @@ it means the game must teach its own way of thinking and make evidence very read
   and talked to at work then. Free slots are flexible and unannounced; deviation is
   normal, so absence alone is not damning.
 - **Haunts:** each person has two favourite idle spots (40% of idle hours). Nobody's haunts
-  are known at the start; asking someone about a person may reveal one or both (a "haunt"
-  card). Profiles, the map and the "can't see them" hint use only learned haunts.
+  are known at the start; asking someone about a person may reveal one or both.
+- **Profile receipts.** Where someone lives, works and idles, their learned traits and
+  their known bonds are kept as hidden **profile receipts** rather than board cards. They
+  show in the person's profile and enter a case through a **Profile Info** node in the
+  Workshop. Receipts are immutable: a later haunt reveal or trait shift adds a receipt.
 - **Who you can see.** People at work or deep in conversation are visible from anywhere.
   Anyone else is out of sight until the player picks a block for the phase; then everyone
   on that block shows, including who's home (a lit window). Spots you can't see show a
@@ -134,8 +139,8 @@ it means the game must teach its own way of thinking and make evidence very read
   as firsthand sighting cards. Conversations you see, people you see nearby, and quiet
   nights also become cards.
 - Positions the player witnessed are **confirmed** (solid markers); hearsay is
-  **tentative** (hollow markers, with source). Observations aren't joined into an implied
-  route.
+  **tentative** (hollow markers, with source); tavern rumours are **dotted**.
+  Observations aren't joined into an implied route.
 
 ### Night movement and sightings
 
@@ -151,88 +156,119 @@ it means the game must teach its own way of thinking and make evidence very read
   Evil's invented sightings follow the same rule.
 - **How night sightings count** (shared judge, `workshop/live_activity.gd`): a movement
   model gives each possible world a likelihood for every sighting and trace. Good people
-  are out about 5% of nights with no walking gift, about always on a walking-gift duty,
-  and about 55% with a night secret; minions about 25%; the Demon goes to the victim's
-  home on kill nights, with a 5% chance of a detour, so being seen elsewhere argues
-  strongly but not absolutely against being the killer. Scattered sightings can
-  corroborate a walking-gift claim; previews and replies name both relationships. The
-  legacy rule (×1.0 on the death block, ×0.12 elsewhere, discounted for claimed walkers;
-  TUNING §3) remains only for evidence the native rules still own.
+  are out about 5% of nights with no walking gift, always on a walking-gift duty, and
+  about 55% with a night secret; minions about 25%; the Demon goes to the victim's home on
+  kill nights, with a 5% chance of a detour, so being seen elsewhere argues strongly but
+  not absolutely against being the killer. Scattered sightings corroborate a walking-gift
+  claim; previews and replies name both relationships ("Seen elsewhere", "Scattered
+  sightings"). The live Demon never actually detours (BACKLOG).
+- **Vigils see destinations:** a player vigil on a block sees walkers arriving there, or
+  doing the full Lamplighter tour, not people passing through. The Night Watch still sees
+  all traffic.
 
 ### Physical evidence
 
-- **Death-scene trace:** points to the block where the killer **spent the evening**. It's
-  misleading only for a cause: another walker passed the cottage that night (40% then),
-  leaving traces from *their* evening. The grimoire says who and why. The victim's own walk
-  can't supply it.
+- **Scene traces** (`World._kill`): each murder leaves a trace pointing at places the
+  killer frequents (their workplace or haunts): a **token** names two locations ("a
+  stamped wooden flour-cask tally; folk carry those around the bakery or the wharf"), a
+  **scent** names three. Traces are generated so a match fits roughly 60–85% of the town,
+  and later traces avoid repeating or nesting earlier ones. The player reads a trace
+  against profile receipts: matches, contradicts or unknown, at a 3:1 likelihood ratio.
+- **Second traces:** when another walker passed the victim's cottage that night, 45% of
+  scenes carry a second trace from the passer, in random order. The judge scores both
+  assignments jointly. The grimoire says who left which.
 - **Drops:** each walker may drop something on their route (demon 35%, others 15%): a
   home-block material (88%) or a personal item (12%). `search` finds everything dropped at
-  a location. A personal item becomes a night "out" card for its owner; a material links
-  with a resident's home alibi (`dropped_vs_home`).
+  a location. A personal item becomes a night "out" card for its owner.
 - Owner-identifying items stay rare (later plantable by a Framer). Category traces are
   common.
-- **Known issue: evening shifts.** A demon who works an evening shift has a publicly
-  known evening block, so traces converge on their workplace. Fix lives in the night
-  movement package below.
 
 ### Decided and open directions (world)
 
-- **Night movement and trace model** (one package, **[open]**): the night-proximity rule
-  for sightings (count sightings on the route from home to the death block); a route
-  limit (home → at most one detour → victim); traces from where the killer *started*
-  rather than their evening block (fixes evening shifts). With every block joined,
-  "passing vs. stopping" mostly collapses into "seen on own block" vs "seen elsewhere".
-  Once settled, check whether home and haunt cards still earn their place. The
-  evidence-chain item and the watchtower idea depend on this package.
 - **Passing through vs. stopping** as sighting wording ("heading toward the Docks" vs "out
   on the Docks"). **[open]**
 - **Locations as evidence:** a Dowser reading places the Dowser and group on a block but
   isn't a location card; your own visit could prove who *wasn't* at a spot. **[open]**
-- **Evidence chains:** a trace leads to a second clue at the killer's evening spot. Players
-  expect this (playtest 1). **[open]**
+- **Evidence chains:** a trace leads to a second clue at the killer's evening spot.
+  Players expect this (playtest 1). **[open]**
 - **NPCs find evidence and personal items.** **[decided]**
 
 ---
 
 ## Roles: the script
 
-Data in `sim/content.gd`. What each reading *says* in general terms (who it points at, who
-it speaks for, who it names) lives in `sim/gifts.gd`, so reasoning (NPCs, templates, the
-bot) keys off a few reading shapes rather than particular gifts. Every role and secret has
-an icon (`assets/ui/roles/<id>.png`). The script window opens when a case begins.
+Role data lives in `sim/roles/<id>.gd` (one `RoleDef` per role, registered in
+`sim/role_registry.gd`); what each reading *says* in general terms (who it points at, who
+it speaks for, who it names) is its **shape**, so reasoning keys off a few reading shapes
+rather than particular gifts. Every role and secret has an icon
+(`assets/ui/roles/<id>.png`). The script window opens when a case begins.
 
-**Setup.** Roles are drawn with no duplicates and a little protection: at least two
-start-knowledge gifts (Archivist, Clerk, Surveyor, Rumormonger) and at least one strong
-identifier (Seer, Dowser, Gravedigger).
+### Scripts
 
-### Good gifts (15)
+- A **script** (`sim/script_def.gd`) lists the roles that may be in play: town gifts,
+  secrets, minions and up to 4 demons. It is public. Evil never bluffs or names an
+  off-script role.
+- The **Default** script is the 15 starter gifts, 4 secrets, 4 minions and the Demon. The
+  **script editor** (`ui/script_editor.gd`) adds and removes roles, forces roles in play
+  (for debugging and custom games), filters by tag, fills to size and saves to
+  `user://scripts/*.json`. **Dynamic scripts** built at random from the full roster are on
+  the `claude/dynamic-script` branch.
+- **Constraints are soft:** the editor and New Case screen warn when a script doesn't cover
+  the suggested tags (first-night info, ongoing info, evil ID, demon ID, role ID,
+  protection, night walkers). Only a script that can't be dealt at all is blocked.
+- **The deal** keeps a little protection: at least two start-knowledge gifts (Archivist,
+  Clerk, Surveyor, Rumormonger) and at least one identifier (Seer, Dowser, Gravedigger,
+  Augur, Registrar). It retries up to 200 draws and is best effort when a script can't
+  meet it.
+- One demon per game; a script lists demon types by difficulty (only the default Demon
+  exists so far).
+
+### Good gifts (20)
 
 | Gift | Ability |
 |---|---|
 | Archivist | Starts knowing that one of two people is a particular minion. |
+| Augur | Each evening from day 1, learns whether they crossed paths with the Demon in public on the same block that morning or afternoon. Marked may register as the Demon (50%). |
+| Chronicler | On night 3, learns three other people (living or dead): at case start, one was an ordinary townsperson, one carried a secret, one was a minion. Never holds a solo secret. |
 | Clerk | Starts knowing that one of two people holds a particular gift. |
-| Dowser | The first time each day they're on a block with 2+ others (home counts as the home block), learns how many of those are evil. A day reading, shared with its time. |
+| Dowser | The first time each day they're out in public on a block with two or more others also in public, learns how many of those are evil. A day reading, shared with its time. |
+| Executor | Starts knowing one other person. If that person dies, learns their role the next morning (Marked reads as an evil role 30% of the time; poison or Delusional corrupts it). |
 | Gravedigger | Each night after an execution, learns the hanged person's true role. |
 | Lamplighter | Each night walks the lamp route through every block (so is out, and can be seen) and learns how many others were out. |
+| Magistrate | Each night from night 1, learns whether the first townsperson (other than the player or the Magistrate) to nominate that day shared an alignment with their nominee. No nomination, no reading. |
 | Martyr | Once per case, secretly chooses someone they trust (trust ≥ 0.62, minus suspicion; never night 0). If that person is later executed while good, the Martyr dies in their place: both proven good to everyone. If the chosen is hanged and the Martyr lives, the Martyr learns they were evil. Doesn't cover demon kills. A poisoned Martyr's save fails. Reluctant to vote to hang their chosen. |
-| Medium | Each night visits the hearth of the most recent dead not yet visited (demon victims first) and learns one thing they knew but never said in public (see Mediums below). |
-| Night Watch | Each night watches a block; learns who passed through it. Is out on that block. |
+| Medium | Each night after the first Demon kill, visits an unvisited Demon victim's hearth (or revisits the most recent victim) and learns one thing they knew but never said in public (see Mediums below). |
+| Night Watch | Each night watches a block; learns who moved through it. Is out on that block. |
 | Psychologist | Each night picks someone they talked with that day and learns whom they trust and suspect most. Evil mostly name a teammate as most trusted and their scapegoat as most suspected. Gets a nudge to seek conversations. |
+| Registrar | Starts knowing three roles on the script (at most one minion, never the Demon), at least one of them in play. Each night from night 1, checks one person and learns whether they hold one of those roles. Marked gives a false yes 50% of the time when a minion is on the slate. |
 | Rumormonger | Starts knowing that one of two people carries a particular secret (two, not one: secret-holders are good, so one name would clear them). |
 | Seer | Each night picks two people; learns if either is the demon. One good soul reads falsely as the demon (the red herring), and a Marked soul may. Picks scale with Insight (sharp Seers re-check suspects and pair them with someone unchecked). |
 | Sexton | Once per case, with fewer than five alive, may toll the death knell in the evening. That night no gift that walks abroad works: the demon's kill, the Poisoner, Warden, Night Watch, Medium, Lamplighter. Secrets still walk. The toll is public; the ringer isn't named. A poisoned Sexton tolls for nothing. |
-| Surveyor | Starts knowing how many of the four blocks have an evil resident. |
+| Surveyor | Starts knowing whether all the residents of one random block (not their own, with at least two residents) share the same alignment. Marked registers as evil 50% of the time. |
 | Veteran | The first attack fails; they learn the last block the attacker came through (their own if the demon lives there). A second attack kills. |
-| Warden | Each night guards one other person's door against the demon. Stands at the door, so can be seen, framed and hunted. |
+| Warden | Each night guards one other person's door against the demon. Stands at the door, so can be seen, framed and hunted. After a quiet night they may believe they made a save (see below). |
+
+Players may ask a gift-holder who has told them their gift to use it a particular way
+tonight (a Seer to look at someone, a Warden to guard, a Night Watch to watch a block, a
+Registrar to check someone). They agree, refuse or counter-propose by trust and their own
+plans; evil bluffers answer the same way and fake the result.
+
+**Warden saves.** After a quiet night (Demon alive) on which a good Warden guarded
+someone, the Warden believes they made the save with confidence 1 / (1 + living public
+Veteran claims other than themselves). At 0.5 or more they believe it: their trust in the
+protectee rises, and if they trust the protectee enough they tell them. A Warden report
+of a save holds only in worlds where the protectee is good, at reduced reliability (a save
+is an inference, not something seen).
 
 **Hint packages** (each gift sits in at least one package of 2+, so a hint is never a full
-reveal): official business (Archivist, Clerk, Surveyor, Rumormonger); night sight (Seer,
-Night Watch, Lamplighter); the dead (Gravedigger, Medium, Sexton, Martyr); shelter (Warden,
-Veteran, Martyr); reading people (Dowser, Psychologist, Rumormonger). Keep packages in mind
-when adding roles.
+reveal): official business (Archivist, Clerk, Surveyor, Rumormonger, Chronicler,
+Magistrate, Registrar); night sight (Seer, Night Watch, Lamplighter); the dead
+(Gravedigger, Medium, Sexton, Martyr, Executor); shelter (Warden, Veteran, Martyr);
+reading people (Dowser, Psychologist, Rumormonger, Augur). Keep packages in mind when
+adding roles.
 
 Benched: **Hearthwitch** (learns how many living lane-neighbours are evil; kept in code,
-out of the script).
+`status = "benched"`, off every script).
 
 ### Evil
 
@@ -248,8 +284,8 @@ out of the script).
 | Revenant | Hides a totem at a location it visits, on any day that began with no totem in play. If hanged with a totem hidden (and not poisoned), a random good yes-voter turns evil; the town is warned. `search` at the totem's location burns it (it's caked with the Revenant's home material, a lead). Found before the hanging: no curse. Found after: the turned soul is good again. Teammates often vote to let a Revenant with a totem hang. |
 | Scion | If the demon is executed while five or more are alive, the Scion becomes the demon (no double kill). |
 
-- Evil NPCs know each other and receive bluffs (good roles not in play, at least one more
-  than the evil team's size).
+- Evil NPCs know each other and receive bluffs (good roles on the script but not in play,
+  at least one more than the evil team's size).
 - A demon kill is **strong but not certain** evidence of goodness: future demons may kill
   their own minion. Rules text must not promise otherwise.
 - The demon cannot target the player. **(prototype)**
@@ -262,8 +298,8 @@ count as one):
 | Secret | Effect |
 |---|---|
 | Delusional | Their gift doesn't work and gives arbitrary information (they don't know). Protective gifts fail too. |
-| Marked | Each gift that reads them sees them as evil (Dowser, Surveyor, Martyr) or the demon (Seer) half the time; a Gravedigger sees a random evil role 30% of the time. |
-| Secret Lovers | Meet at a random block each night (both out), trust each other, know each other's secret, hide it like any secret (may confess). |
+| Marked | Gifts that read them may see them as evil or the demon: Dowser, Surveyor, Martyr and the Seer 50%, the Augur 50%, the Registrar 50% when a minion is on its slate; a Gravedigger or Executor sees a random evil role 30% of the time. |
+| Secret Lovers | Meet at a random block each night (both out), trust each other, know each other's secret, hide it like any secret (may confess). When one dies, the other withdraws: Privacy to the maximum, Gossip to the minimum, Composure up. |
 | Sleepwalker | Leaves home on about half of nights to a random block without knowing it: honestly says they were home, sees nothing while out. |
 
 Lovers and the Sleepwalker are never dealt to holders of a night-walking gift, so a
@@ -277,22 +313,23 @@ The older personal night-outs (insomnia, smuggling, debt) are benched
 They keep their gift and keep claiming it; from then on their readings are fabricated the
 way evil bluffs are. They know the team and the team knows them. When the totem burns
 they're good again, remember nothing of who else was evil, and disown what they said while
-turned. Other NPCs still hold what they heard; nobody knows who was turned.
+turned. Other NPCs still hold what they heard; nobody knows who was turned. A freed soul's
+standing is restored.
 
 ### How the town reads the special events
 
-Someone silenced gets a small credit with everyone (evil wanted them quiet); a curse makes
-every good yes-voter on the Revenant a little suspect; a Martyr's sacrifice proves both
-good; a Veteran's "came by way of X" nudges suspicion toward X's residents; a
-Psychologist's reading rubs a little suspicion between a suspect and whom they trust most;
-the Rumormonger's pair is mildly cleared; a Medium's report counts at 0.6 of hearing it
-from the dead; a quiet night credits a Warden or Veteran claimant. Values in TUNING §3, §11.
+All of these are facts in the shared judge, weighed per world: a Demon victim is good in
+95% of worlds; a public curse proves the executed Revenant evil and makes good yes-voters a
+little suspect; a Martyr's sacrifice proves both good; a silenced person was someone evil
+wanted quiet; a quiet night supports a Warden or Veteran claim; a Veteran's "came by way
+of X" bears on X's residents; a Medium's report is a relay of the dead source's original
+evidence (below).
 
 ### Mediums: one menu for real and fake
 
 The shared judge reads a Medium's report as a relay of the dead person's original
-evidence: dated to the original night and source, never an independent second origin.
-Without a supported original it is the teller's testimony at reduced weight.
+evidence: dated to the original night and source, never an independent second origin. Its
+reliability depends on doubt about both the Medium and the dead source.
 
 **Real Medium** (`World._medium_item`), in order: if poisoned or Delusional, a false
 sighting; the first unshared reading from any information gift; an unreported night
@@ -306,18 +343,19 @@ the dead's **publicly claimed** gift for their last night (weight 3; e.g. a dead
 "yes" on the scapegoat or carried on from an earlier yes, or clearing a publicly named
 demon); a sighting of the scapegoat near the death (1.5); "nothing new" (0.8); the dead's
 public stance (0.8); "home" (0.4). After the first frame, framing paths are offered only
-about half the time. Each dead visited once, most recent first. Both name the hearth
-("Communing with the dead at Dorian's hearth").
+about half the time. Both name the hearth ("Communing with the dead at Dorian's hearth").
 
 ### Roster directions
 
 - **Roster expansion** **[open]**: On Deck gifts (Tracker, Clairvoyant, Beckon,
-  Tallyman…); minions (Framer/Forger with evidence planting, Blackmailer, Hexer, Informant);
-  Debtor secret. Each needs a hint package and template coverage.
+  Tallyman, Bellringer…); minions (Framer/Forger with evidence planting, Blackmailer,
+  Hexer, Informant); Debtor secret. Each needs a hint package and solver support before
+  it goes live.
+- **Script follow-ups** **[decided]**: the off-script tell (a claim to an off-script role
+  is a lie, in NPC reasoning and the solver); multiple demon types; builder rules
+  ("jinxes"); remembering the last script.
 - **Relationships** (Bonded, Unrequited, Feuding, Hater) and Lovers relationship mods.
   **[open]**
-- **Lovers downside:** when one dies, the other withdraws (Privacy max, Gossip min, plus
-  whichever shift hurts the player most, e.g. Composure up). Visible. **[decided]**
 - **Revenant seeks execution** (draws suspicion on purpose), and **NPCs search for
   totems**. Today the Revenant is often invisible. **[decided]**
 - **Breathstealer confirms the good:** it only silences the good, so a silence proves
@@ -339,20 +377,26 @@ scouting tool). Then one action:
 
 - **Talk** to someone present (see Talking). Leaving before asking anything costs no time
   (except an approach you accepted).
-- **Search** the location: crime scenes give the trace; anywhere can turn up drops or a
+- **Search** the location: crime scenes give the traces; anywhere can turn up drops or a
   totem.
-- **Gossip** (tavern only): overhear a rumour, with its source. Skips what that person
-  already told you and readings the whole town heard.
+- **Gossip** (the tavern, Evening only): the evening's NPC conversations finish, then you
+  overhear 3–5 anonymised items from the day's shares, backfilled with unlearned haunts and
+  public bonds (never the Secret Lovers). These become **rumour** cards: dotted on the
+  timeline, not pressable and not usable in the Workshop.
+- **Town Hall records** (Morning or Afternoon, 3 times a case): the ledgers name two gifts,
+  exactly one of which is in play ("either the Seer or the Augur is in town, not both").
+  A concrete card the Workshop can use.
 - **Wait.**
 
 **Approaches:** at the start of some phases an NPC asks to talk (news, a frame or probe,
-or a busybody's gossip). Accepting costs the phase; declining is free.
+a busybody's gossip, or a fearful NPC asking for your protection in exchange for their
+gift). Accepting costs the phase; declining is free.
 
 ### Night
 
-- **Vigil** at a block (default, unlimited): see who moves through it, including anyone
-  whose gift sent them there. Offered vigils build trust only; they don't deter the demon
-  (a deterrent was tried and removed). Strength **[watch]**.
+- **Vigil** at a block (default, unlimited): see who arrives there, including anyone
+  whose gift sent them there, and anyone on the full lamp route. Offered vigils build
+  trust only; they don't deter the demon. Strength **[watch]**.
 - **Ward** (toolbox, below) or **sleep**.
 
 ### Toolbox
@@ -371,39 +415,46 @@ through progression.
 
 ### Talking
 
-A conversation has **3 questions**. The menu:
+A conversation opens with a voiced greeting in the daytime conversation view (portraits
+with expressions; the greeting changes after a murder, an execution, a friend's death,
+friction or protection). It has **3 questions**. The menu:
 - **Ask about <name>'s gift…**: their gift, or "are you the X?". A right first guess makes
   them own up a little more readily; a wrong guess costs trust (0.02 × wrong guesses so
   far) and gets the same non-answer an unwilling holder gives, so a guess never eliminates
   anyone.
+- **Ask them to use their gift** (once they've told you it): look at, guard, watch or
+  check someone tonight.
 - **Offer…**: your ward on their door, or a vigil on their block, tonight. Free (no
   question). Trust +0.03 on the offer, +0.06 when kept, −0.15 when broken; settled when
-  you choose your night work. **[watch]** on the numbers.
+  you choose your night work. An evil NPC passes your promise to its team. **[watch]** on
+  the numbers.
 - **Ask where they were and who they saw…**: today, last night, yesterday evening /
   afternoon / morning. Daytime answers start with where they were and are truthful
   (daytime whereabouts are open to anyone's eyes). People you can already see are left
   out. Night answers go through the night account (Lying, below).
 - **Ask about others…**: "Opinion on…" a person (may add their haunts and recent
-  sightings of them), or "Heard of a…" gift (who claims it, publicly or in private if
-  they'll pass it on; small chance the holder owns up).
+  sightings of them, and second-hand gift talk they've heard), or "Heard of a…" gift (who
+  claims it, publicly or in private if they'll pass it on; small chance the holder owns
+  up).
 - **Ask why they suspect X**, after they hinted at the meeting (see Citing reasons).
 - **Present a card** (below). A card already shown costs no question, once per
   conversation.
+- **Apologise** for a grievance they hold.
 - **Leave.**
 
 **Presenting** is the one verb for using the board on someone. The game reads the
-direction from the card (incriminating vs clearing strength) and who it's about:
-- a card or deduction about the listener **presses** them: pressure rises with the card's
-  strength; a night card makes them account for that night; a card about their gift
-  re-runs the disclosure decision (a true Clerk naming opens them up); a rival's claim of
-  their gift makes them restate it and turn on the rival. Nerves show with probability
-  ~ (hiding ? 0.6 : 0.2) × (1 − Composure) × strength: a hint, not a tell. Costs trust
-  unless the card names them favourably.
-- a deduction about someone else **argues** it;
-- a plain card about someone else makes a **case** for or against them; multi-person cards
-  apply to the group, split; `for` / `against` override.
+direction from the card's structure (does it implicate or clear, and whom) and who it's
+about:
+- a card or case about the listener **presses** them: pressure rises with the card's
+  weight in their own view; a night card makes them account for that night; a card about
+  their gift re-runs the disclosure decision (a true Clerk naming opens them up); a rival's
+  claim of their gift makes them restate it and turn on the rival. Nerves show with
+  probability ~ (hiding ? 0.6 : 0.2) × (1 − Composure) × strength: a hint, not a tell.
+  Costs trust unless the card names them favourably.
+- a filed case about someone else **argues** it; a plain card about someone else makes a
+  case for or against them; multi-person cards apply to the group, split.
 - A card with no direction falls flat ("I'm not sure what you're trying to prove"), costs
-  no question and is logged (`present_fallback`).
+  no question and is logged.
 
 The meeting's `present` is the same act in public.
 
@@ -416,12 +467,12 @@ The meeting's `present` is the same act in public.
 - Everything learned becomes a numbered card with an **evidence class**:
   - **Speech:** claims, opinions, hearsay, refusals, accusations, alibis.
   - **Circumstantial:** reported sightings, traces, readings reported by others.
-  - **Concrete:** player-witnessed events, owner-identifying items, template-backed
-    contradictions.
+  - **Concrete:** player-witnessed events, owner-identifying items, Town Hall records.
 - **Terms.** A **claim** is any stated piece of information from an NPC: a **role claim**
   (what someone says their gift is), a **reading** (a gift's result; poison can break it),
   a **report** (a sighting, an alibi, an opinion; poison doesn't touch it). **Evidence**
-  is what the player saw or found. An **argument** is a deduction the player presents.
+  is what the player saw or found. A **case** is an argument the player files in the
+  Workshop and presents.
 - Every card carries **when it happened** (canonical; all views place cards here) and
   **when you learned it** (every disclosure: who told you, public or private).
 - **One fact, one card:** the same fact reaching you again (privately, relayed, at a
@@ -429,34 +480,33 @@ The meeting's `present` is the same act in public.
   cards that know about each other (`corroborated_by`, "(also seen by Dorian)").
 - **Withholding** is a card too ("X claims the Archivist but won't share what it has shown
   them"), weak speech.
-- Hidden cards fade (42% opacity) when shown; only deductions can be deleted.
+- Hidden cards fade (42% opacity) when shown; only filed cases can be deleted.
 
 ### The case board
 
 - **Views** (exclusive, each with its own filters): **Places & sightings** (rows by place
   or person), **Statements** (rows by the person a card is about; claims, readings,
-  opinions, accusations), **Process** (nominations, votes, executions, deaths, quiet
-  nights). A card may show in two views (a Night Watch report is a statement and a set of
-  "ability" markers); it counts once in a deduction.
+  opinions, accusations, Town Hall records), **Process** (nominations, votes, executions,
+  deaths, quiet nights, curses, silences, the knell). A card may show in two views (a
+  Night Watch report is a statement and a set of "ability" markers); it counts once in a
+  case.
 - Drawn board with pan, zoom, three levels of detail, paper cards with role icons and the
-  speaker's colour; solid/hollow/ability-ring dots in Places; red strings on hover or
-  selection (to speakers, relayers, other appearances, a deduction's supports); day
+  speaker's colour; solid/hollow/dotted/ability-ring dots in Places; red strings on hover
+  or selection (to speakers, relayers, other appearances, a case's supports); day
   navigation (a day includes the night before); Fit day / Fit selection / Whole case.
 - **Filters** are removable chips with Clear all and a status line ("Showing 4 of 31 ·
   Statements · Filters: About: Agnes"); text filters combine with `+` and exclude with
   `-`. Shared between the grid and the Card List.
 - **Overlays** (minimized by default, movable, resizable, from a bottom-left dock): Card
   List, Profile, Notes, Roles. A shared right-click menu on any card offers Add to Case
-  Workshop and Hide/Unhide (Delete and Unpin for deductions).
+  Workshop and Hide/Unhide (Delete and Unpin for filed cases).
 - **The Case Workshop** (`ui/workshop_drawer.gd`, `ui/live_case_workshop.gd`) is a sheet
   over the board's right edge: a handle by default, free drag with snaps at half and full
   width. Double-click, drag or right-click adds a card; dragging it back out (or
-  right-click) removes it, with one step of undo. Premises start blank and are edited on
-  the card; evidence answers are clicked on the card (portraits, block tiles, chips); a
-  test juror labels each premise's strength after a pause in editing. Debug tools
-  (shared-evaluator switch, preview, support review) appear while Debug is on.
-- **Deductions** (the older template route) wait in a fold-up tray under the grid and pin
-  to the board where dropped.
+  right-click) removes it, with one step of undo. Profile Info and Circumstantial Evidence
+  nodes are added from buttons.
+- **Filed cases** wait in a fold-up tray under the grid and pin to the board where
+  dropped.
 - Conflicts are never auto-marked (space for an optional hint system later).
 - Code: `game/card_model.gd` (times, views, rows, markers), `game/board_model.gd` (layout
   as data), `ui/case_state.gd` (shared view, filters, selection), `ui/board_view.gd`,
@@ -465,23 +515,23 @@ The meeting's `present` is the same act in public.
 ### UI directions (case board)
 
 - **Card zoom and rich text on cards** **[decided: extension deferred; renderer approach
-  open]**: settle card sizing, clipping and zoom/detail transitions before extending the
-  shared text system to board cards, pinned deductions, the tray and Card List. See
-  `docs/text_system_handoff.md`.
-- **Long dropdowns in columns** (e.g. the builder's ~20-option "is the <blank>" list,
-  grouped by its existing categories). **[tentative]**
+  open]**: settle card sizing, clipping, badge slots and zoom/detail transitions before
+  extending the shared text system to board cards, the tray and Card List. See
+  `docs/archive/text_system_handoff.md`.
+- **Long dropdowns in columns** (e.g. long "is the <blank>" lists, grouped by category).
+  **[tentative]**
 - **Claims/reveals timeline** next to the location timeline. **[open]**
 - "Stayed home" vs "none of your business" on the boards. **[watch]**
-- A future "Script" panel and free-floating panels. **[open]**
+- Free-floating panels. **[open]**
 
 ---
 
 ## Cases and how the town judges them
 
-Since Oct 23–25 a presented case is judged by **one shared model** for every listener;
-the earlier template-and-weights model survives as the `link` / `conclude` helper and
-for the town's social reactions. Architecture, decisions and lessons:
-`docs/LEGACY_MIGRATION.md`.
+Every presented case, every NPC's belief refresh and every reason an NPC gives come from
+**one shared model**. The legacy template-and-weights system was retired between Nov 1
+and Nov 3 (`docs/archive/legacy_retirement_plan.md`): there are no link templates, no
+`link` / `conclude` commands, and no fallback to the old rules.
 
 ### Building a case: the Case Workshop
 
@@ -490,44 +540,77 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
   (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, a minion, Marked,
   suspicious, a modifier holder, holds / doesn't hold a gift, lied, truthful, misled,
   unreliable, and "something doesn't add up" (conflict). Protect and spare are
-  preferences, spoken as social speech. A generic innocent secret and a specific Red
-  Herring stay unsupported: no fact in the game establishes them.
-- **Cards with inline answers** (who in this Seer pair?); unknown answers stay legal.
+  preferences, spoken as social speech. "Has a secret" and "red herring" can't be
+  presented: nothing the town can weigh establishes them.
+- **Cards with inline answers** (who in this Seer pair? which blocks?); unknown answers
+  stay legal.
+- **Profile Info** node: a person's unlocked profile facets (home, work, haunts, traits,
+  bonds), the premises traces are read against.
+- **Circumstantial Evidence** hub: soft patterns (shared a location with a silencing,
+  pressure tells, corroborated walking routes) that add at most +0.015 per incident and
+  +0.045 per target across all active cases. It needs a premise, can't carry a case alone,
+  and is a separate retractable contribution.
 - **Links** between evidence and the premise; contradicting statements merge into a
   contradiction card that offers the challenges.
-- **Challenges** on a card: unlikely, misled or lying.
-- **File case** turns it into a presentable card, usable as a premise later.
-- **Strength while building:** doesn't support / weakly / moderately / strongly,
-  computed by the same model for a neutral listener (public facts, default trust).
+- **Challenges** on a card: unlikely, misled or lying. A gift reading against an alibi
+  offers both explanations ("the alibi is false" / "the report is false").
+- **File case** turns it into a presentable case, usable as a premise later.
+- **Strength while building:** doesn't support / weakly / moderately / strongly, from a
+  neutral test juror (public facts, default trust). Feedback names a clashing card, the
+  card that weakened the case and who it brings in, collateral ("this mostly raises
+  suspicion of X"), idle assumptions and where each assumption came from.
 
 `present` uses it privately or at the meeting. A presentation containing evidence the
-model can't read is **blocked with the reason**; it never falls back silently to the
-legacy rules. A bare belief with no evidence is social speech. Every remaining internal
-fallback is visible (`fallbacks`, a morning `[dev]` line, the case summary).
+model can't read is **blocked with the reason**. A bare belief with no evidence is social
+speech. Rumour cards from the tavern can't be used.
 
 ### The shared judge
 
-`workshop/case_eval.gd`, reached through `workshop/jury.gd` and
-`workshop/shared_ledger.gd`. **It judges the player's case; it doesn't search for
-theories.**
-- **Possible worlds:** about 15,000 assignments of the evil team, the Demon and the
-  modifier holder, enumerated exactly. Each card is a yes/no (or likelihood) fact per
-  world: a reading holds or not, a role claim fits, a sighting fits the movement model.
-- **Listener weights:** the prior comes from the listener's own suspicion odds, shifted
-  ×½ to ×2 by trust; their own readings count nearly as fact (error 0.002), others' at
-  error 0.01, discounted per reading for suspected poison.
+`workshop/case_eval.gd`, reached through `workshop/jury.gd`,
+`workshop/shared_ledger.gd` and `game/workshop_ownership.gd`; its hot kernel runs in C#
+(`workshop/cs/`, `--backend csharp`), bit-identical to the GDScript path. **It judges the
+player's case; it doesn't search for theories.**
+- **Possible worlds:** every assignment of the evil team, the Demon and the modifier
+  holder, enumerated exactly. Each card is a yes/no (or likelihood) fact per world: a
+  reading holds or not, a role claim fits, a sighting fits the movement model, a trace
+  matches the profile.
+- **Listener prior:** each person's odds of evil = exp(1.5 × the suspicion the model
+  doesn't own) × a trust factor (full NPC-to-NPC trust halves the odds, none doubles
+  them). The outside suspicion is a flat 0.1 seed, so in practice friendships and
+  rivalries are what tilt the prior.
+- **Readings:** the listener's own readings count nearly as fact (error 0.002), others' at
+  error 0.01 (a Night Watch list 0.08), each discounted by source doubt (below). The
+  Seer's red herring is averaged over every possible herring, including Marked's 50%.
 - **Soft testimony:** a good source's claims bind; an evil source's role declaration may
-  be a bluff (weight 0.35 per declaration). One lie never voids every world.
-- **Public facts:** a demon kill is 95:5 evidence of innocence (Q2); hints and refusals
-  are weak (likelihood ratio 1.5); opinions and accusations are not evidence (Q4); crowd
-  pressure is social (Q1).
-- **Suspicion change** = 0.45 × the shift from prior to posterior × (1.4 − 0.8 ×
-  Confidence), written as one joint vector that replaces the matching legacy ledger
-  entries (no evidence is judged twice).
+  be a bluff (bluff weight 0.92, so bare claims count weakly). One lie never voids every
+  world.
+- **Public facts:** a Demon victim is good in 95% of worlds; refusals and hints are weak
+  (likelihood ratio 1.5); opinions and accusations are not evidence; crowd pressure is
+  social; votes are public procedure, never guilt by association.
+- **Source doubt** (`workshop/source_doubt.gd`): caught lies and impossible claims in the
+  listener's view (a unique gift clash, a false sighting of the listener, a Gravedigger
+  report about a cursed Revenant) and accepted challenges ("misled on night N", "lying")
+  lower how much a source's readings count, per night or for every night. Poison belongs
+  to the night, not the person; a good NPC never doubts their own honesty but can accept
+  that their own reading was poisoned.
+- **Bounded attention:** Insight sets how much of what a listener holds they actually
+  weigh. A duller listener also takes a strong evil reading partly at its word ("one of
+  Kiran or Fenwick is the Demon") on top of the full model.
+- **Suspicion change** = 0.45 × the shift from prior to posterior, scaled by how far the
+  listener trusts the source of the evidence, then by **directional Confidence**: the
+  `1.4 − 0.8 × Confidence` factor applies only to moves against the listener's lean (their
+  suspicion at the end of the previous day, centred on their own average); fresh and
+  reinforcing evidence comes through at full strength. Hard proof (a posterior at 0 or 1)
+  isn't resisted.
+- **Execution priority:** from the same posteriors, centred on the listener's mean, with a
+  bonus for their top two suspects. It enters nominations and votes at weight 0.22, so a
+  credible lead makes a target actionable without inflating belief.
 - **Two runs per listener:** a belief refresh (everything they hold: how do their
   suspicions move?) and a scoped reply (what they say about this case; its effects are
-  never applied). During a meeting's testimony refreshes are queued and run just before
-  each speaker.
+  never applied). **Replies match beliefs:** the stance they voice comes from how far the
+  refresh actually moved the subject (0.06 or more: accept; 0.02: partly), and the scoped
+  reply supplies only the reasons. During the meeting refreshes are held until each
+  speaker's turn.
 - **Cost model:** cost ≈ listeners × refreshes × evaluations × cost per evaluation. A
   per-world fact is cheap; new hidden state multiplies everything. Speed budget (user's
   machine): meeting entry and presenting about 2 s, nominations under 1 s.
@@ -538,73 +621,10 @@ theories.**
   mainly on the argued target, with Insight-scaled spillover; a clearly wrong premise
   costs a little trust; the preview hints when the evidence points elsewhere. Today the
   refresh ignores the premise.
-- **Replies must match beliefs** **[decided]**: the reply's stance should come from the
-  same computation as the belief change.
-- **Insight as degree** (low Insight follows the evidence less strongly, never in a
-  different direction), **attention for replies only**, and **Confidence stickiness**
-  (committed conclusions resist reversal but yield to strong evidence) **[decided; not
-  built]**.
-- **Belief to action (Q3)** **[deferred to the balance pass]**: the legacy vote and
-  nomination formulas still decide, including the player's vote/accuse terms; the shared
-  execution-priority input exists at weight zero, the home for a rank-aware vote.
-- **Supporting evidence: logical where possible, vibes where not**; reactive meetings
-  **[open]** (BACKLOG).
-
-### Templates (`link` / `conclude`)
-
-The player can still `link` 1–3 cards and `conclude` an explanation, or write a
-conclusion directly (`conclude jory is misled on night 1 because #4 #7`). Statuses
-include evil / good / the Demon / not the Demon, a gift, lying, misled, misled or lying,
-suspicious, hiding a secret, Marked, the red herring, a secret, an evil role, should be
-protected / spared, and "something doesn't add up". Restatements (all supports from the
-subject) are refused unless a template matched.
-
-**Templates** (`sim/argue.gd`): the player links cards (or files directly; filing checks
-the supports for a template either way) and the game checks them against a library of
-three kinds:
-- **Contradiction** (can't both be accurate): two places at once by day; out at night vs
-  "I was home"; *off-route* (no single way from home passes both blocks, or a named night
-  destination doesn't fit a sighting; a claimed lamp route never conflicts); double role
-  claim; a watcher who missed someone; a flipped reading; Gravedigger vs a claim; a Veteran
-  killed by the demon; a changed story; the Martyr who didn't die.
-- **Corroboration**: two witnesses (the player or physical evidence can be one); a Clerk
-  reading backing a claim; a quiet night with a Warden/Veteran claim.
-- **Inference**: pair elimination (Seer/Archivist pair with one proven good; Scion-safe:
-  "hanged without ending the case" only proves "not the demon" with fewer than five
-  alive); *overlap* (two evil-pointing readings sharing one person); *group elimination*;
-  trace matches someone on that block that evening; association (implicated person seen
-  talking with Y); vindication (a Gravedigger poisoned the night they named the Poisoner);
-  *pair_both_good*; *martyr_no_save*; *dropped_vs_home*.
-
-Each template lists **explanations**; the player picks the one they argue. In a
-contradiction every explanation is fileable. In agreements and inferences, "the reader was
-wrong" and "the claim is false" are **rival_only**: rivals the NPC weighs, not offered for
-filing. Compatible pairs get a "these fit together" note.
-
-**Builder rules.**
-- A deduction needs at least one supporting card.
-- **Restatements are refused:** a positive conclusion whose supports all come from the
-  subject ("Jory is the Seer because of Jory's claim and reading") can't be filed unless a
-  template matched.
-- No template is not the same as **unfounded**: a conclusion from cards that bear on the
-  person is the player's own inference (at most circumstantial). It's unfounded only when
-  the cards don't touch the person; sharp NPCs reject that, credulous ones may be swayed.
-- A deduction's class is the weakest of its supports when a template matched; otherwise at
-  most circumstantial. A deduction resting on a confessed secret spreads it.
-- The mouse builder (working set, Find Links, Hints) was removed with the Case Workshop
-  sheet; `link` and `conclude` remain as text commands. Bringing "what connects to this
-  card?" back inside the Workshop is on the backlog.
-
-Caution (not a rule): avoid cases where the player believes they're proving something but
-the cards disagree on an invisible technicality. Show the fields a template depends on
-(night, phase, block, source) and have NPCs name why they reject an argument.
-
-The running list of patterns no template recognises yet is in BACKLOG ("Template gaps").
-
-Each template lists **explanations**; the player picks the one they argue; "the reader
-was wrong" and "the claim is false" are rivals the listener weighs, not offered for
-filing. Templates no longer decide how far a presented case moves anyone: that is the
-shared judge's job. Patterns no template recognises are in BACKLOG ("Template gaps").
+- **Observable actions as evidence (Stage 1B)** **[decided: the split; details open]**:
+  votes, nominations and defences as per-world likelihood factors measured from bot runs.
+- The running list of patterns the Workshop can't express yet is in BACKLOG ("Workshop
+  gaps").
 
 ---
 
@@ -618,9 +638,9 @@ then constant (low / mid / high tiers at 0.34 / 0.67):
 | Trait | Low | High |
 |---|---|---|
 | **Privacy** (about self: role, relationships, whereabouts) | shares who they are even at low trust; claims early | withholds as long as possible; reveals under pressure; stonewalls rather than lies |
-| **Gossip** (about others) | keeps out of others' business; at the extreme won't share even when asked | volunteers what they've seen and heard |
-| **Confidence** | opinions shift quickly; stonewalls or cracks when pushed; rarely nominates | opinions shift slowly both ways; lies boldly when pushed; nominates and votes readily |
-| **Insight** | swayed by speech alone | swayed only by concrete evidence or a preponderance of circumstantial |
+| **Gossip** (about others) | keeps out of others' business | volunteers what they've seen and heard |
+| **Confidence** | opinions shift quickly; stonewalls or cracks when pushed; rarely nominates | defends its lean against contrary evidence; lies boldly when pushed; nominates and votes readily |
+| **Insight** | weighs only part of what they hold; swayed by headlines | weighs everything; swayed only by what the evidence supports |
 | **Composure** | attitude cues obvious; strongly affected by pressure and paranoia | almost no cues; resists pressure and paranoia |
 
 Privacy decides **whether** an NPC discloses; Confidence decides **what they do when
@@ -629,17 +649,20 @@ pushed** (lie outright vs stonewall or crack).
 **Derived state** (changes during the case, hidden):
 - **Pressure** (individual): accusations, nominations, presses, circulating evidence.
   Loosens claims and secrets. Decays ×0.6 each night.
-- **Paranoia** (global): rises with each death (dampened by Composure); raises baseline
-  suspicion and lowers nomination/vote bars late.
-- **Trust in the player**, and **NPC-to-NPC trust** (relationships: friends and rivals are
-  rolled per pair; Lovers trust each other). Friends of an executed NPC resent its
-  nominator, yes-voters and the player (grief).
+- **Paranoia** (per NPC): 0.07 per death, dampened by Composure; lowers nomination and
+  vote bars late. It doesn't touch suspicion.
+- **Rapport and credibility with the player** (below), and **NPC-to-NPC trust**
+  (relationships: friends and rivals are rolled per pair; Lovers trust each other).
+  Friends of an executed NPC lose rapport with the player if the player nominated or
+  voted, and privately resent its nominator and yes-voters (an action-only term that
+  fades nightly and clears if the friend is later shown evil).
 
 **Alignment:** traits apply to both. Evil overrides **content** (lies) but **style follows
 traits and pressure**.
 
 **Decisions are weighted rolls:** named score parts become a probability through one
-sigmoid (`Mind.decide`); every breakdown is logged.
+sigmoid (`Mind.decide`); every breakdown is logged and shown live in the decision
+inspector (Debug ▸ Rolls).
 
 **Trait reveals:** after a private conversation one trait is revealed, with a roll for a
 second (Composure lowers it); after each meeting, a chance per attendee. Profiles show
@@ -649,142 +672,129 @@ learned traits as continuous bars (filling from the midpoint).
 by trust tier ("What do *you* want?" vs "Ah, Demonologist. Sit."). Composure decides
 whether these cues show at all.
 
-### Trust in the player
+### Rapport and credibility
 
-Trust gates disclosure and how far arguments move an NPC. What raises and lowers it (and
-caps) is audited line by line in TUNING §2. In brief: civil conversation, kept promises,
-first private disclosure, keeping a confessed secret, agreeing arguments and being proven
-right raise it; pressing, question fatigue (beyond 3 questions a day), wrong role
-guesses, accusing someone they trust, nominating them, spreading their secret, breaking a
-confidence or a promise, and a friend's execution lower it. **Trust ceilings:** spreading
-a very private person's secret, or nominating someone a good NPC grieves, permanently caps
-trust. There's no apology or repair path yet.
+The player has two numbers with each NPC (`game/credibility.gd`):
+- **Rapport** (`n.trust`) is how the NPC feels about you. It governs disclosure, requests,
+  approaches and confidences. Civil conversation, kept promises, first private
+  disclosure, keeping a confessed secret (a bonus that halves each night) and being
+  proven right raise it; pressing, question fatigue (beyond 3 questions a day), wrong role
+  guesses, accusing someone they trust, nominating them, spreading their secret, breaking
+  a confidence or a promise, and a friend's execution lower it. **Trust ceilings:**
+  spreading a very private person's secret, or nominating someone a good NPC grieves,
+  permanently caps it. Slights fade: each night a grievance recovers a quarter of its
+  drop (a serious one only up to half). Apologising for a specific grievance repairs some
+  of it.
+- **Credibility** (`n.credibility`, starts at 0.5) is how much your word counts: in the
+  shared model's source trust for your cards and presentations, and in your vote, accuse
+  and defend terms. It comes from your track record: the conclusions you argued to that
+  NPC, checked each dawn against what they now believe from their own evidence (without
+  your presentations, so the check isn't circular).
 
-### The evidence ledger (belief record)
+### Belief: what an NPC holds
 
-**Hybrid ownership (Oct 25).** Evidence the shared judge reads (readings, testimony,
-sightings, traces, public events, NPC-to-NPC shares with their provenance) is judged
-there: its legacy ledger entries are parked and one joint suspicion vector per listener
-replaces them. What follows still governs the native, social parts (vibes, grudges,
-consensus, trust, defences' social weight) and anything the judge can't read yet.
-
-Each NPC keeps a ledger of the evidence and arguments they've taken in, keyed by the
-**underlying fact** (Jory's night-1 reading; Agnes's sighting of Bart on the Docks), not by
-who relayed it or which card wrapped it. Each NPC reasons only from what they actually
-heard or witnessed.
-
-- **Suspicion** = a social base (vibes, nominations, grudges, consensus) + each ledger
-  entry's effects × its weight × how reliable the NPC currently thinks its source is.
-- Hearing the same fact again only raises its weight to the stronger hearing; it never
-  stacks.
-- "Jory is misled on night 1" lowers how much that reading counts, for readings already
-  heard and later ones. Trust in a person and confidence in one reading are separate.
-- **Credibility** = honesty of the person × doubt about a particular reading.
-  - **Honesty:** 1 − a capped share (max 50%) of the *evidence* against them (never vibes
-    or grudges).
-  - **Reading doubt:** from "X was misled on night N". Poison belongs to the night, not
-    the person. A good NPC never doubts their own honesty, but can accept that their own
-    reading was poisoned.
-- **No circular reasoning:** everything is recomputed from scratch, to a fixed depth,
-  whenever anything an NPC believes changes (reading doubt → honesty → arguments scaled by
-  their supports' credibility → final doubt → final honesty → effects as differences).
-  Recomputing without new evidence changes nothing; mutual accusations can't amplify.
-- **Cascades fall out of this:** B says A was evil → A's claims count for less;
-  discredit B's report → A's claims recover. Discrediting is not vindicating.
-- **Accepted conclusions track their supports**, down chains of deductions. Each distinct
-  justification is kept; a conclusion counts as its strongest justification *as it stands
-  now*.
-- **Shifting trust:** the player's arguments are stored with their weight before trust.
-  When trust in the player shifts noticeably, and before every vote, they're re-weighed
-  (Confidence sets how far at once). When an old argument finally lands, they say so.
-- **Role claims are per-listener records:** credence = hearing weight × the claimant's
-  honesty. Each record counts against anyone else that listener knows claims the same
-  gift, so double claims resolve by comparing credences. A good NPC's knowledge of their
-  own gift is a strong record (a false claimant is a liar to them). A claimant the demon
-  killed has their claim counted double.
-- **Vindication** relies on poison always making a reading wrong (current rule). Revisit
-  if the director makes poisoned results merely plausible.
+- **Receipts.** Each NPC's ledger stores what they actually heard or witnessed, keyed by
+  the **underlying fact** (Jory's night-1 reading; Agnes's sighting of Bart on the Docks),
+  not by who relayed it: role claims, readings (own and heard), relayed sightings and
+  testimony, defences, silences, Demon deaths. Hearing the same fact again adds a
+  disclosure, not weight. Each NPC reasons only from what they actually heard.
+- **Suspicion** = a flat 0.1 starting seed + the shared model's joint vector over
+  everything they hold. Bonds live in NPC-to-NPC trust (which tilts the prior), not in
+  suspicion. Crowd pressure, paranoia and grief are **action-only** terms: they move
+  nominations and votes, not belief. The shared model owns every ledger entry;
+  recomputing without new evidence changes nothing, and mutual accusations can't
+  amplify. A refresh that can't be prepared keeps the last good vector and logs why.
+- **Role claims** are per-listener records weighed in the worlds: a good NPC's knowledge
+  of their own gift is near-certain (a false claimant is a liar to them), and double
+  claims resolve by which worlds survive.
 - **Debug overlay** (checkbox): each card's influence across the good NPCs who heard it;
   profiles show how the town credits and suspects the person. Turning it on marks the
   case's identification unscored.
-- Acceptance tests: `tools/test_beliefs.gd`.
 
 ### Town consensus: peer pressure, not a pile-on
 
 A public accusation is a social signal, not evidence. Each accuser counts once (their
-latest stance), by how much the listener trusts them; each further voice adds half the
-one before; accusations fade to 60% a day; the total is capped. It's kept out of the
-ledger, so a crowd's opinion never lowers anyone's credibility. A second accuser says "I
-agree with X about Y", adding grounds only if they're their own.
+latest stance), by how much the listener trusts them; each further voice adds about half
+the one before (base 0.09); accusations fade to 60% a day; the total is capped (0.22). A
+hinted accusation weighs 1.15× a bare one. This **crowd pressure** is added to suspicion
+only when an NPC decides to nominate or vote; it's kept out of the shared model, so a
+crowd's opinion never moves belief or lowers anyone's credibility. A second accuser says "I agree with X about Y",
+adding grounds only if they're their own.
 
 ### Citing reasons: provenance
 
-Every reason an NPC speaks carries where it came from (`sus_src`), and
-`Mind.reason_status` classifies it: **none** (vibes), **public** (the town has it, or
-citing it reveals nothing of their gift), **player** (their own reading, told only to the
-player), **private** (told to nobody), **relay** (someone else's private reading).
-`Mind.citable_reason` returns a reason only if the audience has it; meeting accusations,
-nominations, tavern gossip, NPC-to-NPC shares and private opinions all go through it.
-A gift is never leaked by a reason.
+Reasons come from the shared model's own attribution (`workshop/reason_attribution.gd`):
+for each active suspect it scores the held evidence through the model's report tables,
+role constraints, movement likelihoods, reading challenges and leave-one-out
+contradictions. It runs only when a meeting or conversation first asks for a reason.
+`MindMeeting.case_against` ranks those reasons, and `_visibility_maps` classifies each by
+audience: **public** (the town has it, or citing it reveals nothing of their gift),
+**player** (their own reading, told only to the player), **private** (told to nobody),
+**relay** (someone else's private reading), and their shared variants. `citable_reason`
+returns a reason only if the audience has it; meeting accusations, nominations, tavern
+gossip, NPC-to-NPC shares and private opinions all go through it. A gift is never leaked
+by a reason.
 
 **Vague is the default for both alignments** ("something's off about them"), so neither
 vagueness nor a stated reason is a tell. Good NPCs state a reason only when it's grounded
 in something real; evil only when it's grounded in an active bluff.
 
 **Accusation tiers** at the meeting: silent → generic ("I don't trust X") → **hint** ("I
-have a reason, but I'm not ready to share it": a hint-marked card, weighs 1.15× a bare
-accusation) → **reveal** (they claim their gift and give the reading). Hint vs reveal
-weighs the reading's strength, suspicion and confidence against the **reveal cost**
-(privacy, gifts that hide from the demon or keep paying off, fear; falling as days pass
-and when four or fewer are left). Evil with nothing citable hints 30% of the time
-(`C.EVIL_HINT_CHANCE`), so a hint isn't proof of good.
+have a reason, but I'm not ready to share it": a hint-marked card) → **reveal** (they
+claim their gift and give the reading). Hint vs reveal weighs the reading's strength,
+suspicion and confidence against the **reveal cost** (privacy, gifts that hide from the
+demon or keep paying off, fear; falling as days pass and when four or fewer are left).
+Evil with nothing citable hints 30% of the time (`C.EVIL_HINT_CHANCE`), so a hint isn't
+proof of good.
 
 **Following up:** "Ask why they suspect X". If they tell, it's full disclosure; if their
-gift isn't public they ask you to keep it between you (the cards are marked
-confidential; using one at the meeting costs 0.15 of their trust, waived once they've
-gone public). Declining and evil's stalling draw from the same lines.
+gift isn't public they ask you to keep it between you (the cards are marked confidential;
+using one at the meeting costs 0.15 of their rapport, waived once they've gone public).
+Declining and evil's stalling draw from the same lines.
 
 **Relays:** a reading told to an NPC in private, not yet public, is passed on unnamed at
-the meeting: "Word reached me from the Seer: …". The shared judge takes it as the
-teller's testimony at reduced weight, with no model of who the hidden source is; a later
-"that was me" binds it to the named source, who steps forward 5% of the time.
+the meeting: "Word reached me from the Seer: …". The shared judge takes it as the teller's
+testimony at reduced weight; a later "that was me" binds it to the named source, who steps
+forward 5% of the time.
 
 ### Disclosure: the gift question
 
-One question, four tiers, from Privacy, trust, pressure and the day (TUNING §6):
+One question, four tiers, from Privacy, rapport, pressure and the day:
 1. Refuses to say (denials are off: `C.ALLOW_NO_GIFT_DENIAL` **[knob]**; evil almost never
    bluffed it, so it was near-proof of good).
 2. A **flavoured hint** pointing to a hint package.
 3. Names the gift.
 4. The gift and its readings.
 
-- Good NPCs never fall back to a lower tier. If trust drops after sharing, they withhold
+- Good NPCs never fall back to a lower tier. If rapport drops after sharing, they withhold
   *new* readings and say so ("I've told you enough").
 - **Caution tied to the gift:** Seer, Night Watch and other recurring readers lean quieter
   on days 1–2; start-knowledge gifts lean more open.
 - **Fear as cover:** refusals sometimes say "If I say what I am, I'll be dead by morning",
-  likelier as deaths mount and for the skittish (same odds for evil bluffers).
+  likelier as deaths mount and for the skittish (same odds for evil bluffers). The fearful
+  may instead ask for your ward or vigil in exchange for their gift.
 - **Public claims** have their own roll at each meeting (Privacy, day, pressure, gift
   kind; strongly up with four or fewer alive). Going public shares every unshared reading.
 
 ### Lying and night accounts
 
 Reasons NPCs lie, always recorded (`think`, topic `lie`):
-1. **Evil cover:** a bluff role whose readings are generated by running that role on a
-   fake world in which the scapegoat is evil. Lies stay consistent and break only where
-   the cover contradicts reality.
+1. **Evil cover:** a bluff role whose readings come from that gift's bluff rule, framing
+   the scapegoat and covering the team. Lies stay consistent and break only where the
+   cover contradicts reality.
 2. **Personal secrets:** a good NPC out at night for a secret lies about where they were
-   (or confesses, or stonewalls: Privacy, trust and pressure decide whether they confess;
-   Confidence whether they lie or stonewall).
+   (or confesses, or stonewalls: Privacy, rapport and pressure decide whether they
+   confess; Confidence whether they lie or stonewall).
 3. **Caution:** a good NPC with a high-value gift may hide it.
 4. **Poisoned / Delusional / Sleepwalker:** not lies; honest reports of false information.
 
 Asked where they were, an NPC with a disclosed walking gift names its duty (the watch
 kept, the door guarded, the hearth visited); evil bluffing a walking gift does the same
-from its bluff (a false Night Watch names exactly who its made-up report names; a false
-Warden's doors are fixed per night). A good NPC shown a sound "you lied" about their own
-statement knows it's true: open or pressed ones own up, the rest stonewall. Disclosing a
-walking gift later, they own the earlier lie.
+from its bluff. A good NPC shown a sound "you lied" about their own statement knows it's
+true: open or pressed ones own up, the rest stonewall. A good walker pressed with a
+sighting, or disclosing a walking gift later, owns the earlier lie ("So yes: I was out…").
+Seen out at night, the real Sleepwalker (under pressure) and evil bluffers can say "I've
+been known to sleepwalk"; two claimants prove a liar.
 
 ### The town talks (NPC to NPC)
 
@@ -793,38 +803,24 @@ walking gift later, they own the earlier lie.
   Readings and sightings become receipts in the listener's evidence with who told whom,
   credited by trust in the teller and deduplicated by the underlying fact; opinions stay
   social.
+- **Peer role gossip:** NPCs privately hint at their gift's family to friends (bond ≥
+  0.55) or claim it outright (bond ≥ 0.68, or ≥ 0.55 under pressure), even with no
+  readings; evil uses its agreed bluff with the same formulas. Claims are dated
+  (`first_claimed_day`); gift talk isn't relayed peer to peer; no A→B→A echo. The player
+  hears second-hand claims and hints through gossip, `ask about <role>` and opinions.
 - Every belief records **who it was heard from**, so it can be traced and disowned.
-- Evil feeds lies into the network through the same willingness formulas as good
-  (otherwise evil was suspiciously forthcoming).
+- Evil feeds lies into the network through the same willingness formulas as good.
 - **Gossips** relay what they've heard; **busybodies** approach the player, a main path to
-  others' secrets.
-- `ask about <gift>`: a trusting, gossipy NPC may share who claims it and what they said.
+  others' secrets. Even discreet townsfolk give an opinion when asked directly.
 
 ### Decided and tentative directions (NPC minds)
 
-From playtest 61251 (an evil team the player had identified won anyway) **[decided]**:
-- **A proven lie should hurt an info claimant hard.** A proven whereabouts lie by a public
-  info claimant should cut their readings to around 50% credibility (Constance stayed at
-  ~90% after an off-route lie, then her fake readings hanged two good people).
-- **A Seer's record:** each "yes" pair hanged and shown good should discount that Seer's
-  later readings, for everyone who learns it.
-- **Repeated trace matches add up** (the first test of the fit checks, above).
-- **The player's voice in votes is small at ordinary trust** (0.05–0.14 at trust 0.3–0.5):
-  the execution-priority idea applied to the player's nominations.
-
-Other **[decided]**:
-- **Offering protection eases fear**, and **the fearful ask for protection** (a ward, a
-  vigil, the Warden) instead of only clamming up.
+**[decided]**:
 - **Backing a strong case builds trust** with NPCs who agree (what makes throwing a
   teammate under the bus pay for evil).
-- **More talk in town**, scaled with population: each pair passes on the most newsworthy
-  things the other hasn't heard, never echoing back.
-- **Fading into the crowd:** a private character may bide their time when the town is
-  already moving.
 - **Lie severity** **[open]**: a false gift report weighs more than a whereabouts lie,
   unless the lie puts them near the crime; NPCs who accept a lie but won't hang should say
   so.
-- **NPCs push back on nominations their own information contradicts** **[open]**.
 - **Ways to discover and confront secrets** (sightings that don't fit, confidants,
   personal items, a "you have a secret" card as leverage) **[open]**; **named
   corroborators** in alibis ("I was with Jory"), word-against-word cards **[open]**.
@@ -834,34 +830,19 @@ Other **[decided]**:
 - **Initial general skepticism** **[knob]**: only if the early game gets too decisive.
 - **Trust dynamics around sources:** a relayer naming their source at a cost; evil tracing
   an unnamed source. **[open]**
+- **NPC-to-NPC credibility:** split NPC-to-NPC trust into liking and believing, as the
+  player's is. **[open]**
 - **NPC memory and recency bias.** **[open]**
 
-**Social retuning** **[tentative]** (Oct 20; candidates for one unified retuning proposal,
-see TUNING §12 for the feedback loops behind them):
-- Privacy without compounding trust penalties (remove it from starting trust and benign
-  gains; keep its disclosure gates; distinguish ordinary questions from repeated prying).
-- Evidence can build NPC-to-NPC trust (e.g. a Clerk reading that matches the listener's
-  own role), deduplicated by fact.
-- Diminishing trust changes near the extremes; review the permanent grief and secret caps
-  separately.
-- Opinion strength and shared origins: several NPCs repeating one story shouldn't count
-  as independent.
-- Martyr urgency: lower the commitment threshold as days pass, with a floor.
-- Demon victims' earlier readings: more belief in their sincerity without trusting every
-  reading's accuracy, based on listener knowledge only.
-- TUNING's "what to tune first": make vote resistance say whether it's disbelief,
-  distrust or preference for another execution; audit unrepairable caps; align raw-card
-  and structured-case treatment of the same evidence; accumulate genuinely independent
-  support; then revisit gossip and fatigue boundaries; separate belief from action
-  priority.
+**Social retuning** **[tentative]** (candidates for one unified retuning proposal; details
+in BACKLOG): Privacy without compounding trust penalties; evidence building NPC-to-NPC
+trust; diminishing trust changes near the extremes; opinion strength and shared origins;
+Martyr urgency; Demon victims' earlier readings.
 
-**Expanded dialogue and trust management** **[tentative]** (pending the retuning
-proposal): apologise for a specific incident (scaled by harm and responsibility); suggest
-actions to claimed roles (ask a Warden to guard, a Seer to check, a Night Watch to watch;
-evil can lie about compliance); general requests that spread through town chats;
-responsibility and follow-through as small trust gains; withdraw or revise a case; ask
-what would change their mind; explain an execution's purpose (e.g. for a Gravedigger
-read); promise confidentiality.
+**Expanded dialogue and trust management** **[tentative]**: suggest general requests that
+spread through town chats; responsibility and follow-through as small trust gains;
+withdraw or revise a case; ask what would change their mind; explain an execution's
+purpose (e.g. for a Gravedigger read); promise confidentiality.
 
 ---
 
@@ -874,7 +855,7 @@ read); promise confidentiality.
 - After that, evil knows only what a member **saw or was told**, plus what they pool when
   they meet (pairs you may see talking, a whisper in a crowded tavern, the meeting). It
   doesn't read hidden state (private suspicion, true night walkers, whom the player
-  confided in).
+  confided in). A ward or vigil the player promised an evil NPC becomes team intel.
 - Evil's sense of public **heat** ignores its own team's accusations and readings.
 - **Evil coordination you can see** (daytime meetups, with friends and Lovers meeting too
   as noise). **[open]**
@@ -883,19 +864,21 @@ read); promise confidentiality.
 
 Each evil NPC keeps a second, good mind (`n.shadow`) whose gift is its bluff. It runs the
 normal good belief pipeline on what that NPC really heard, with its own random stream and
-log, never in `w.npcs`. Plan and history: `docs/shadow_self_plan.md`.
+log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
 
 - **Secret acts stay on the evil brain:** kill, poison, breath, totem, intel, plan.
 - **Public acts follow the shadow:** argument replies, private-case replies, opinions,
   nominations and votes, unless **`Mind.evil_override`** says break cover:
   **stakes − deviation × exposure > caution**.
-  - **Stakes:** mostly a teammate's value (demon 2, minion 1) × their danger or how pivotal
-    the vote is, or the worth of pushing a good nominee (more for the scapegoat).
+  - **Stakes:** mostly a teammate's value (demon 2, minion 1; with a live Scion fallback,
+    the Scion 1.45 above a replaceable Demon 1.1) × their danger or how pivotal the vote
+    is, or the worth of pushing a good nominee (more for the scapegoat). In a landslide
+    against a teammate, non-pivotal "no" votes carry little stake, so evil keeps cover.
   - **Exposure:** public talk about them, known player suspicion, pressure, being on the
     block.
   - **Caution:** the demon 0.8 falling 0.03 a day (floor 0.45); minions 0.7 falling 0.08 a
     day after day 2 (floor 0.25). Late in the game minions sow chaos.
-  - Every decision is logged (`think`, topic `override`). Full table: TUNING §10.
+  - Every decision is logged (`think`, topic `override`).
 - Result: evil's replies differ from the good crowd's about twice as often as good's own
   disagreements (down from about five times), and evil sometimes votes with the town
   against a teammate (bus-throwing).
@@ -908,10 +891,10 @@ log, never in `w.npcs`. Plan and history: `docs/shadow_self_plan.md`.
   momentum (public heat + the good selves' suspicion), fit (fake readings and sightings
   already naming them), dead ends (public clears) and a switching cost. Evil rides
   mistaken town momentum: intentional, so the player's misdirection can matter.
-- **Bluffs** cover every information gift (fake readings in TUNING §10). A Seer bluff
-  never gives a "no" that covers the scapegoat and frames every night once five or fewer
-  remain. A fake Surveyor count is usually plausible-but-wrong, sometimes true, now and
-  then too high for the team (passing for poison or Delusional).
+- **Bluffs** cover every information gift. A Seer bluff never gives a "no" that covers the
+  scapegoat and frames every night once five or fewer remain; a lone evil Seer bluffer
+  never puts itself in its own pair. Each gift has its own bluff rule
+  (`generate_bluff_reading`), built around the scapegoat and the team.
 - Evil bluffing a walking gift says their gift took them out when asked where they were;
   its invented sightings follow the window/route rule.
 
@@ -919,9 +902,10 @@ log, never in `w.npcs`. Plan and history: `docs/shadow_self_plan.md`.
 
 - **Kill choice:** threat (public info claims, a Seer extra, readings implicating evil,
   hostility), opportunity (lives alone), temperament, minus penalties (preserve the
-  scapegoat while more than 4 live; spared by Clemency; previous failures). Noise only
-  matters between close candidates. A claimed start-knowledge gift spent after night 0 is
-  worth less than one that keeps reporting. 3% of nights the demon skips its top three.
+  scapegoat while more than 4 live; spared by Clemency; previous failures; a door the
+  player promised to ward or a block they promised to watch). Noise only matters between
+  close candidates. A claimed start-knowledge gift spent after night 0 is worth less than
+  one that keeps reporting. 3% of nights the demon skips its top three.
 - **After a failed kill** with no visible cause (Warden, Veteran), the demon avoids that
   person and shies from high-profile targets for a couple of nights; anyone it glimpsed
   at the door becomes a likely Warden.
@@ -929,7 +913,8 @@ log, never in `w.npcs`. Plan and history: `docs/shadow_self_plan.md`.
   claims); poisons a suspected Warden on nights the demon goes for someone prominent; can
   poison a claimed Veteran first so the kill lands.
 - **Breathstealer** silences the most dangerous voice on its block.
-- **Demon on the block** may cast the vote that ties and clears its minion.
+- **On the block**, with no Scion fallback, the Demon backs any live counter-nomination
+  (survival overrides cover) and may cast the vote that ties and clears its minion.
 
 ### Decided and open directions (evil)
 
@@ -939,13 +924,11 @@ log, never in `w.npcs`. Plan and history: `docs/shadow_self_plan.md`.
 - **Throw a teammate under the bus** beyond what the override gives: a pressured minion
   distances itself; the demon goes along with town conclusions to build trust; deliberate
   Scion succession. Needs team utility, not just vote pivot. **[open]**
+- **Evil's cover priorities:** arguing against a case on a teammate breaks cover while a
+  vote that isn't close keeps it; words should be the cheap place to keep cover.
+  **[decided]**
 - **Evil reads as evil** (casting aspersions with no information; doubting sound
   deductions). Largely addressed by the shadow self. **[watch]**
-- Tuning candidates: private-case overrides break cover ~9 times in 10; nomination
-  overrides grow late at 10 townsfolk. **[watch]**
-- The playtest 61251/25923 fixes from `402ac63` (evil won't vote to execute its own
-  demon just to follow its shadow, attributed whereabouts cards, and others in TUNING §13)
-  landed on main on Oct 21 (PR #17).
 
 ---
 
@@ -953,35 +936,49 @@ log, never in `w.npcs`. Plan and history: `docs/shadow_self_plan.md`.
 
 ### How it runs now
 
-1. **Testimony** (`Mind.meeting_testimony`): public claims (their own roll), readings,
-   accusations through the accusation tiers. Silenced people say nothing.
-2. **Floor:** the player may present one prepared case or deduction to everyone (once a
-   day), judged by the shared model for each listener.
+1. **Testimony**, streamed speaker by speaker (`MindMeeting.testimony_step`): public
+   claims (their own roll), readings, accusations through the accusation tiers. Silenced
+   people say nothing. **Reactive testimony:** when a statement names someone, claims
+   their gift, or touches a clearing reading they hold, that person moves up the queue
+   (once per meeting each). **Fading into the crowd:** once claims pile up, private people
+   bide their time.
+2. **Floor:** the player may present one prepared case to everyone (once per meeting),
+   judged by the shared model for each listener.
 3. **Nominations, one at a time.** BotC limits: each person nominates at most once and is
    nominated at most once per day. The player may `nominate`, or `wait` to let the town
-   nominate; `done` closes the meeting once a `wait` finds nothing.
+   nominate; `done` closes the meeting once a `wait` finds nothing. A failed vote cools
+   off renominating the same person the next day (less so late in the game).
+   - **The player's nomination** rests on the **on-deck case**: the latest live filed case
+     accusing that person. `#N` picks another filed case; `raw` (or having no case)
+     nominates on the player's word at reduced credibility. A case not yet public is put
+     to the town at the nomination. The menu shows each option before you confirm.
+     Citing a case or card that's already public is free but adds nothing ("already
+     public knowledge").
 4. For each nomination:
-   - **The nominator's case** (`Mind.nomination_case`): up to two public reasons recapped
-     (cosmetic: no ledger effect), and the strongest private reason hinted or revealed
-     (with a +0.2 push for nominating), or a relay.
-   - **The defence** (`Mind.defend_self`): one or two moves from the case against them:
-     *reveal* a walking gift to excuse sightings; *confess* a secret (good only); against a
-     reading, *red herring* (named in two+ shared Seer yeses), *pair_other*, *lying*
-     (if confident) or *misled*; else a plea. Gift reveals, confessed secrets and specific
-     reading challenges are judged by the shared model as claims and challenges, with
-     regard for the defender as hearing weight; pleas and rival suggestions are speech. Evil uses its bluff and has no secret. `C.DEFENCE_MOVES` brings back
-     the one-line protest.
+   - **The nominator's case** (`MindMeeting.nomination_case`): up to two public reasons
+     recapped (no ledger effect), and the strongest private reason hinted or revealed, or
+     a relay.
+   - **The defence** (`MindMeeting.defend_self`): one or two moves from the case against
+     them: *reveal* a walking gift to excuse sightings; *confess* a secret (good only); the
+     sleepwalk excuse; against a reading, *red herring* (named in two+ shared Seer yeses),
+     *pair_other*, *lying* (if confident) or *misled*; else a plea. Reveals, confessions
+     and reading challenges enter listeners' ledgers as undoable claims and challenges;
+     pleas and rival suggestions are speech. **Block safety:** while someone else is
+     firmly on the block, defence reveals and confessions are damped. Evil uses its bluff
+     and has no secret.
    - **The player's statement:** accuse or defend, optionally citing a card, or Clemency.
    - **The vote**, silent, in BotC order: clockwise from the seat after the nominee,
-     nominee last. Evil votes react to the running count. NPC votes compare suspicion plus
-     modifiers (the player's stance, relationship, a suspected nominator, spare
-     preference, a preference for whoever is already on the block) to a need that falls
-     with Confidence and panic (TUNING §8). These are still the legacy formulas (Q3,
-     deferred to the balance pass).
+     nominee last. Each voter compares suspicion + town pressure + execution priority +
+     the player's stance (scaled by credibility) + modifiers (relationship, a suspected
+     nominator, a spare preference, a preference for whoever is already on the block, role
+     reluctance) to a need: a base, lower for the confident, higher on Day 1, lower with
+     paranoia and with each death. A nominator commits to their own nomination. Evil votes
+     react to the running count.
 5. **On the block:** reaching half the voters (rounded up, the player included) puts the
    nominee on the block. A later nomination with more votes replaces them; a tie at the
    highest count clears the block.
-6. Whoever is on the block at the end is executed. A Martyr may die in their place.
+6. Whoever is on the block at the end is executed, with **last words** at the gallows. A
+   Martyr may die in their place.
 
 **Meeting circle** (`ui/meeting_view.gd`): the living townsfolk's standees in a ring on the
 Square (you at the bottom, a candle for your seat), the nominee's portrait in the centre,
@@ -993,36 +990,34 @@ map.
 **Dead NPCs:** no ghost votes. Keep the door open to the dead affecting the game, e.g. a
 final-day **Séance** vote. **[watch]**
 
-### Decided: the meeting as a trial (`docs/meeting_flow_plan.md`, steps 3–6) **[decided]**
+### Decided: the meeting as a trial (`docs/meeting_flow_plan.md`) **[decided]**
 
-Target per nomination: nomination and case → defence → **the player's turn** (accuse,
-defend or pass; the natural break in the log; becomes "make a case" under the theory
-model) → **supporters** (at most 3 shown) → vote → **last words** if hanged.
+Target per nomination: the nominator's case → the nominee's defence → **podium press**
+(the player challenges the defence on its role, its night or a card; M2b) →
+**supporters** (M2c) → **the player's turn** (M2d) → the vote, with selective resistance
+lines → last words.
 
-- **Supporters (step 3):** others who suspect the nominee pile on (like the nominator's
-  case); others defend, including **outing yourself to defend someone** (a Seer "no", a
-  Night Watch who saw them stay in), with the same weighing as accusing. Evil supporters
-  go through the shadow plus override.
-- **The director (step 4):** supporters are queued; the director shows the smallest
-  combination that gets the vote where it would land anyway, padded with vibes speakers
-  (reminders of existing cover, near-zero sway), in random order. Those not shown simply
-  didn't speak and keep their material.
-- **Sequence and UI (step 5):** a pacing-only "Continue" when a step runs long; player-turn
-  buttons (Accuse… / Defend… / Pass). Comes after the cases-instead-of-proofs design.
-- **Measure and write up (step 6).**
-- **Vote talk** returns with this work: evil voters draw from the same spread of reasons as
-  good ones, and only informative lines are spoken (a reason that differs from the crowd,
-  a vote against a stated stance, a swing vote).
-- **Last words** for the condemned (flavour).
+- **Supporters:** each bystander decides for themselves, in seat order, whether to speak,
+  weighing how sure they are the nominee is good, what the nominee's role is still worth,
+  what speaking costs them (exposure, the value of their own unspent gift) and how much
+  danger the nominee is actually in, re-read after every supporter. This includes
+  **outing yourself to defend someone** (a Seer "no", a Night Watch who saw them stay in).
+  A cap limits how many speak; there's no director picking a minimal set.
+- **Resistance lines:** a voter who accepted the case and still votes no says why
+  (preferring whoever is on the block, distrusting the nominator, reluctance, short of
+  rope); evil voters use the same phrasing.
+- **VN courtroom** (M3a): the 15-cast expression portraits staged over the seat ring.
+- **Measure and write up** (M4): the bot drives the trial, then 150-seed sweeps at both
+  sizes (good win rate, hidden night-walker hang rate, pacing).
 - Settled: recapping old evidence has zero impact; new evidence in a case has exactly the
   impact it would have at any other time; revealing concrete information lowers suspicion
   most but goes through normal credibility; other defences sway little.
 
-**Open issues from step 2:** evil gains more from defences than good (its "misled"/"lying"
-answers to real readings and its bluff reveals cost good ~11 wins in 150 at 10
-townsfolk); the defence barely changes how often good night walkers hang, because their
-nominations mostly aren't built on sightings. Find what drives those nominations before
-tuning further.
+**Open issues from defence moves:** evil gains more from defences than good (its
+"misled"/"lying" answers to real readings and its bluff reveals cost good ~11 wins in 150
+at 10 townsfolk, measured Oct 19 on the legacy rules); the defence barely changes how
+often good night walkers hang, because their nominations mostly aren't built on
+sightings. Re-measure under the shared model.
 
 **Urgency and paranoia:** NPCs grow readier to execute late ("we must hang someone"); tune
 paranoia and urgency together so the last days don't become random lynchings. Good NPCs
@@ -1032,23 +1027,34 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
 
 ## The town screen and presentation
 
+- **New Case screen** (`ui/new_case_screen.gd`): opens at launch and from More ▸ New case:
+  town population → script (Default / Load / Custom, with the script editor) → Start.
+  Headless runs and `--quick-start` skip it.
 - **Title bar:** sun or moon, day and phase, Town / Case board / Notes / Roles / Help, case
-  seed, New case, More ▾ (text cast and timeline, card sidebar, dev log), Debug.
+  seed, New case, More ▾ (text cast and timeline, card sidebar, dev log), Debug (and Rolls,
+  the live decision inspector).
 - **Town screen:** the painted map (top left), the townsfolk list (portrait, colour, claim
   icon, your pencilled guess, "at <location>" when visible; dead greyed), the compact
   profile; actions with a context line beside the log at the bottom. Every menu has a
-  Close button. **Case notes** and **Roles** (every gift, its icon and who has claimed it)
-  are movable windows from either screen.
-- **Painted map** (`ui/map_view.gd`): painted block bases, building sprites with signs,
-  cottages with the owner's colour at the door (crossed out as crime scenes), roads with
-  lamps, paper standees (busy ones marked, your conversation partner framed gold), night
-  tint, zoom to a block. Clicking a townsfolk row highlights their home, workplace,
-  visible icon and known haunts.
+  Close button. **Case notes** and **Roles** (every gift on the script, its icon and who
+  has claimed it) are movable windows from either screen.
+- **Painted map** (`ui/map_view.gd`): painted block bases, building sprites with signs
+  (the Town Hall third on the Square), cottages with the owner's colour at the door
+  (crossed out as crime scenes), roads with lamps, paper standees (busy ones marked, your
+  conversation partner framed gold), night tint, zoom to a block. Clicking a townsfolk row
+  highlights their home, workplace, visible icon and known haunts.
+- **Daytime conversations** (`ui/day_conversation_view.gd`): a visual-novel view with the
+  speaker's portrait in five expressions (neutral, warm, harsh, concerned, sorrowful) and
+  paced lines.
+- **Headline notices** (`ui/headline_overlay.gd`): dawn, nightfall, deaths, nominations,
+  executions, curses, burned totems and the end of the case, shown one at a time over the
+  game; a click skips.
 - **Shared profile** (`ui/profile_panel.gd`), on both screens: portrait, name in their ink,
   occupation and status, their claim with its icon ("Claims: Night Watch (to the town)" /
   "told you privately" / "Hinted at a night-sight gift"), trait bars, and **Your guesses**
   in red pencil (a role and a secret, each with a confidence: Flimsy / Maybe / Likely /
-  Confirmed). Tabs: About, Their claims, About them; each entry links to its card.
+  Confirmed). Tabs: About, Their claims, About them; each entry links to its card. Profile
+  receipts can be sent to the Workshop from here.
 - **The log:** speaker portraits on speech lines, day headers, a raven on deaths, a card
   icon on new cards; card numbers open the card on the board.
 - **Shared text system** (`ui/text_terms.gd`, `ui/text_formatter.gd`,
@@ -1058,11 +1064,12 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
   deferred (above).
 - **Papercraft skin** through one theme (`ui/theme.gd`): navy board, cream plaques, gold
   edges, framed paper, serif type; art sliced by `tools/slice_sheets.py`.
-- **Dialogue composer** (`sim/dialogue.gd`, `sim/dialogue_voices.gd`): presentation only.
-  The simulation decides what is said (including evil's fabrications); the composer words
-  it in a character's voice. It never sees world state or truth and draws no game RNG.
-  Agnes, Bartholomew and Constance have voices; everyone else uses plain lines. Workshop:
-  `ui/dialogue_lab.tscn`. **Voices for the rest of the cast** **[decided, later]**.
+- **Dialogue composer** (`sim/dialogue.gd`, `sim/dialogue_voices.gd`,
+  `sim/dialogue_presentations.gd`): presentation only. The simulation decides what is said
+  (including evil's fabrications); the composer words it in a character's voice. It never
+  sees world state or truth and draws no game RNG. All fifteen characters have voice packs;
+  every voiced line keeps a canonical statement. Workshop: `ui/dialogue_lab.tscn`. Rules:
+  `docs/DIALOGUE_DESIGN.md`.
 - **Talking to a group** (3 questions split among anyone at the spot). **[open]**
 
 ---
@@ -1077,9 +1084,10 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
   preserving good townsfolk. "Identified but lost" is descriptive partial credit.
 - **Executions** log nomination, votes and explicit statements; the player's stance is
   `backed`, `opposed` or `mixed`. Earlier arguments aren't assigned causal responsibility.
-- **`case_summary`** (schema 2) adds `loss_hint` (`identified_not_persuaded`,
-  `evidence_on_board`, `evidence_reachable`, `no_evidence`), night stats and
-  `present_fallbacks`. The ending lists evidence that pointed at the demon.
+- **`case_summary`** (`game/case_metrics.gd`, schema 2) adds `loss_hint`
+  (`identified_not_persuaded`, `evidence_on_board`, `evidence_reachable`, `no_evidence`),
+  night stats (kills, blocked kills, Warden stats), the execution list and good survival.
+  The ending lists evidence that pointed at the demon.
 - **Scoring system** (identification credit, guess accuracy with confidence, why the
   player lost) **[open]**.
 - **Why did the player lose?** Classify in playtests: wrong interpretation, missed
@@ -1089,26 +1097,28 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
 ## Dev logging (required)
 
 Every event goes to a JSONL log plus a readable transcript: world events, NPC reasoning
-(claims, lies, votes, kill/poison scores, argument evaluations with explanation weights,
+(claims, lies, votes, kill/poison scores, shared-model refreshes and deliveries,
 overrides), suspicion and trust changes with causes, per-phase snapshots (including
-shadows), and hidden state. Unmatched player links are flagged for template work. Entry
-types and filters: README "Dev log"; `tools/trace.py`.
+shadows), and hidden state. With detailed logging on, a `.trace.jsonl` sidecar records
+state changes for the case history viewer (`tools/case_viewer.py`,
+`docs/case_viewer.md`). Entry types and filters: README "Dev log"; `tools/trace.py`.
 
 ## Logic depth
 
 - **The judge is exact, the judging is personal.** The shared model enumerates every
   world consistent with the setup, but each listener weighs the evidence through their
-  own priors, trust, own readings and Confidence. NPCs judge the player's case; they
-  don't search for theories, so they must not out-deduce the player.
-- **Explainable:** every judgement can be traced (`workshop_delivery`, `belief_refresh`
-  and suspicion entries in the dev log).
+  own prior, trust, attention, own readings and Confidence. NPCs judge the player's case;
+  they don't search for theories, so they must not out-deduce the player.
+- **Explainable:** every judgement can be traced (`workshop_*` entries in the trace
+  sidecar, `suspicion` entries in the dev log, the decision inspector for rolls).
 - **Storyteller director** **[open]**: poisoned readings become arbitrary (plausible,
   sometimes coinciding with the truth) rather than always wrong. Today poison makes a
   reading wrong, which a player can invert (playtest 90028). Medium visits chosen by the
   director ("I was called to Hollis's home"). Solvability check, using the same world
   enumeration.
 - Main risks: hidden state that multiplies the world count (see the cost model), and
-  tuning sprawl. Keep the conclusion vocabulary small and weights in data.
+  tuning sprawl. Keep the conclusion vocabulary small and weights in data
+  (`sim/tuning.gd`).
 
 ## Teaching
 
@@ -1118,48 +1128,56 @@ types and filters: README "Dev log"; `tools/trace.py`.
 
 ## Tech and testing
 
-- **Godot 4.7.2 / GDScript.** The simulation core (`sim/`) is pure logic, separate from
-  presentation, deterministic from a seed, runnable headless. `game/game.gd` is the
-  command interpreter and case board model; it emits structured events rendered as text.
-  The CLI, the in-engine UI and the bot share one command interpreter.
+- **Godot 4.7.2 (.NET).** The simulation core (`sim/`) is pure logic, separate from
+  presentation, deterministic from a seed, runnable headless. `game/game.gd` is the command
+  interpreter and state container; domain logic lives in `game/game_conversation.gd`,
+  `game_meeting.gd`, `game_day_night.gd`, `game_screens.gd`, `game_board.gd` and
+  `game_presentation.gd` behind one-line forwarders. It emits structured events rendered
+  as text. The CLI, the in-engine UI and the bot share one command interpreter.
+- **Solver backend:** the shared model's numerical kernel runs in C# (`workshop/cs/`,
+  built with `dotnet build Demonologist.csproj`) or GDScript (`--backend`); both must give
+  bit-identical results. Rebuild C# after switching branches.
+- **Golden capture** (`tools/golden_capture.gd`, `tools/golden_diff.py`,
+  `docs/golden_baseline.md`): fixed seeds captured in both backends and diffed against the
+  CI baseline at `--tol 0`. A sim-neutral change must be identical; a behaviour change
+  re-records the baseline.
 - **Autoplay bot** (`tools/autoplay.gd`): plays through the same commands a human uses and
-  sees only what a player sees. `--passive` is the control (does nothing). `--native`
-  judges evidence with the legacy rules instead of the shared model (the A/B control);
-  it prints per-day suspicion against the truth, town agreement and every good vote's
-  score against its need. `--results` + `tools/compare_runs.py` pair seeds. Seed-to-seed
-  noise is about ±3 points per 150 seeds.
-- **Bot gaps** **[decided]**: the bot doesn't offer wards or vigils or ask about others for
-  haunts, ignores traces and dropped materials (and peeks at `w.dropped` when deciding to
-  search), never finds totems. Teach it, so bot runs measure these.
-- **Tests:** `python tools/run_gd_tests.py --godot <exe>` runs every suite and checks
-  failure text (some scripts exit 0 on failure); `--include-slow` adds `test_trace`.
-  Known failures: `test_social` (false Night Watch story) and `test_text_ui` (two
-  role-hover checks).
-- **Speed:** `tools/replay_54875.gd` (opening timings and a profile) and a late-game probe
-  (seed 42, Days 3–4); see LEGACY_MIGRATION "Measuring".
+  sees only what a player sees. `--passive` is the control (does nothing). Without it the
+  player is the **analyst bot** (`tools/analyst.gd`): a neutral juror reads the board
+  through the shared model, ranks suspects, builds Workshop cases greedily, nominates and
+  votes. `--insight F` makes it miss a share of cards. `--results` +
+  `tools/compare_runs.py` pair seeds.
+- **Bot gaps** **[decided]**: the bot doesn't offer wards or vigils, ask about others for
+  haunts, choose where to search for drops, or find totems; it doesn't yet drive the
+  podium press or the repositioned player turn (meeting plan M4).
+- **Tests:** `python3 tools/run_gd_tests.py --godot <exe>` runs every suite and checks
+  failure text (some scripts exit 0 on failure); `tools/ci_fast_suites.txt` is the PR
+  list. Known failure on main (Nov 4): `test_workshop_remaining` "presenting the restored
+  epoch retracts earlier curse-era suspicion".
+- **Speed:** `tools/replay_54875.gd` (opening timings and a profile), a late-game probe
+  (seed 42, Days 3–4) and `tools/profile_c0.gd` (solver stage timers).
 
 ---
 
 ## Roadmap
 
-Cases instead of proofs is built (Oct 23–25). A suggested reading of BACKLOG, not a
-settled plan:
+A suggested reading of BACKLOG, not a settled plan:
 
-1. **The premise matters**, then **replies match beliefs**: they decide whether
-   presenting is a real decision and whether a playtest is readable.
-2. **The balance pass:** Q3 (belief to action, a rank-aware vote), Insight as degree,
-   Confidence stickiness, the vigil and decisive night sightings, evil sometimes telling
-   the truth. Then update TUNING.
-3. **Speed:** presenting and search-into-meeting back under budget.
-4. **Meeting flow steps 3–6** (supporters, director, sequence and UI, vote talk, last
-   words), with "make a case" as the player's turn; reactive meetings.
-5. The medium features marked [decided]: evil backs into bluffs, the fearful ask for
-   protection, more town talk, Revenant seeks execution, NPCs find evidence, Lovers
-   downside, bot coverage; dialogue turn flow (PR #19).
+1. **Measure:** the overnight balance sweep on dynamic scripts (win rates by role, demon
+   and minion type, solvability, pace), then a paired baseline before more tuning.
+2. **Meeting plan M2b–M4:** podium press, supporters, the player's turn and resistance
+   lines, the VN courtroom, the bot cutover and sweep.
+3. **The premise matters.**
+4. **The balance pass:** decisive night sightings and the vigil, evil sometimes telling
+   the truth, the agreement-to-vote gap, Privacy and the first day.
+5. **Speed:** re-measure under the C# backend.
+6. Medium features marked [decided]: evil backs into bluffs, backing a strong case builds
+   trust, Revenant seeks execution, NPCs find evidence, bot coverage; the script
+   follow-ups (off-script tell, more demon types).
 
-Larger open areas: two-part traces and the trace model, the Breathstealer decision,
-relationships, roster expansion (new evidence types must be costed against the judge),
-the player toolbox, the director, scoring, procedural and larger towns, Town Hall.
+Larger open areas: evidence chains, the Breathstealer decision, relationships, roster
+expansion (new evidence types must be costed against the judge), the player toolbox, the
+director, scoring, procedural and larger towns.
 
 ## Open questions
 
@@ -1190,9 +1208,9 @@ Warden; named alibis and Framer planting remain).
 **Early playtests (3 cases, 2 players; then 90028):** gradual reveal works; wasted actions
 searching empty places (fixed by day visibility); players expect evidence chains (open);
 players read social patterns that were coincidence (open: visible evil coordination); evil
-is the most forthcoming (a player-led nomination of the true Seer passed 7/8: open, NPC
-pushback); vigil is strong; poison as inversion (director item); players want to cite
-cards in meeting statements (built).
+is the most forthcoming (a player-led nomination of the true Seer passed 7/8: now the
+supporters step of the meeting plan); vigil is strong; poison as inversion (director
+item); players want to cite cards in meeting statements (built).
 
 **Playtest 13473** (10 townsfolk): led to homes spread evenly, Insight-scaled Seer picks,
 withholding cards, fake Surveyor variety, benched flavour secrets, overlap and group
@@ -1200,36 +1218,54 @@ elimination templates, Scion-safe deductions, habitual haunts, unseen counts.
 
 **Oct 18:** all roads joined; off-route replaced the night two-places template; the talk
 rework (timeframe questions, offers, learned haunts); corroboration between cards; filing
-vs weighing (`rival_only`); new statuses; NPCs owning their lies; fear as cover; a vigil
-deterrent tried and removed; quick fixes (Medium hearths, Warden doors, Martyr reluctance,
-the demon's 3% unpredictable night, "night 0" wording).
+vs weighing; new statuses; NPCs owning their lies; fear as cover; a vigil deterrent tried
+and removed; quick fixes (Medium hearths, Warden doors, Martyr reluctance, the demon's 3%
+unpredictable night, "night 0" wording).
 
-**Oct 19:** shadow good self (steps 1, 2, 4, 5); citing reasons, accusation tiers, hints
-and follow-up; Mediums' shared menu; readings before the kill; meeting flow steps 1–2 and
-relays; full-screen case board, filters, right-click menus; social bars; recent sightings
-and firsthand work sightings; shared text system steps 1–3.
+**Oct 19:** shadow good self; citing reasons, accusation tiers, hints and follow-up;
+Mediums' shared menu; readings before the kill; meeting flow steps 1–2 and relays;
+full-screen case board, filters, right-click menus; social bars; recent sightings and
+firsthand work sightings; shared text system steps 1–3.
 
 **Oct 20:** TUNING.md audit; tentative social retuning and dialogue ideas; text-system
 handoff (card extension deferred); playtest 61251 notes; cases-instead-of-proofs decision.
 
 **Oct 21–23:** playtest 61251/25923 fixes landed; the Case Workshop experiments and the
 case-reasoning plan; the exact possible-worlds evaluator (`CaseEval`) replaced template
-proofs for presentations. Playtest 54875 showed it falling back to the legacy rules for
-every listener.
+proofs for presentations.
 
-**Oct 23–25:** the legacy migration (card adapters, Q1/Q2/Q4 decisions, fallback
-logging), then a re-baseline to a deliberate hybrid: shared judge for evidence, native
-social sim (`docs/LEGACY_MIGRATION.md`). Soft testimony ended "impossible" belief
-refreshes; meeting refreshes were queued; the exact per-source channel model was stopped
-(7 s → 151 s). Mechanics support covered every remaining evidence and conclusion type.
-Role-check fixes took a late-game meeting entry from 95 s to 6.5 s. Playtest 22485: the
-town executed the Demon on Day 2; fixes for the Breathstealer, claimed walkers' stories
-and night secrets on walking gifts.
+**Oct 23–25:** the legacy migration (card adapters, fallback logging), then a deliberate
+hybrid: shared judge for evidence, native social sim. Soft testimony ended "impossible"
+belief refreshes; meeting refreshes were queued. Role-check fixes took a late-game
+meeting entry from 95 s to 6.5 s. Playtest 22485: the town executed the Demon on Day 2.
 
-Bot measurements since the migration are in `docs/MIGRATION_PROGRESS.md`; the table below
-is the legacy rules.
+**Oct 26:** Codex batch 3 and a Claude batch: headline notices, the sleepwalk excuse,
+"doubt the report instead", Workshop feedback (clash headline, collateral, idle
+assumptions), the streamed meeting.
 
-**Bot baselines over time** (active vs passive where measured):
+**Oct 27–30:** role definitions (`sim/role_def.gd`, `sim/roles/`); the Seer's red herring
+as an exact weight; `sim/tuning.gd` as the single home for numbers (TUNING.md replaced by
+`tuning_catalogue.md`); Codex batch 4 (23 items, volunteered night sightings at meetings);
+the live decision inspector; destination-only vigils; nomination and evil tuning; the
+evidence rework (profile receipts, 3:1 token and scent traces, second traces, the
+circumstantial hub); all 15 voice packs; the social trust pass (rapport and credibility,
+directional Confidence, Warden credit); the listener prior changed from reading suspicion
+as a probability to exp(1.5 × suspicion).
+
+**Nov 1–3:** the legacy belief system retired in phases (`sim/deduction.gd` split out; the
+shared model takes over reasons, defences and doubt; legacy effects, the switch and the
+fallback removed; `sim/argue.gd`, the link templates and `link` / `conclude` deleted); the
+analyst bot; dialogue batches 5–7 (voiced presentations, greetings, the last `[PH]`
+lines); the C# solver kernel (slices C0–C3); `game.gd` split into four helpers; the
+golden capture in CI.
+
+**Nov 3–4:** the Tavern's evening gossip and the Town Hall; scripts, the script editor and
+the New Case screen; five new town gifts (Augur, Chronicler, Executor, Magistrate,
+Registrar), the Surveyor rework and the public-only Dowser; meeting plan M1 (peer role
+gossip) and M2a (player nominations on a case, reactive testimony, crowd fading, block
+safety); Nov 4 playtest fixes (evil aware of your promises, Scion-aware cover).
+
+**Bot baselines over time** (legacy rules, active vs passive where measured):
 
 | Change | 7 townsfolk | 10 townsfolk |
 |---|---|---|
@@ -1246,6 +1282,18 @@ is the legacy rules.
 | Meeting flow step 1 (nominator's case) | 49 → 54 | 37 → 37 |
 | Meeting flow step 2 (defence moves) | 53 → 49 | 37 → 26 |
 
+**Since the purge** (seeds 2000–2011, C# backend; 12 seeds is noisy, one game is 8
+points; `docs/handoff_log.md` Nov 3):
+
+| Setup | 7 townsfolk | 10 townsfolk |
+|---|---|---|
+| Passive | 4/12 | 2/12 |
+| Analyst bot, insight 0.6 | 5/12 | 3/12 |
+| Analyst bot | 7/12 | 6/12 |
+
+Passive runs moved a lot with each later change (M1, chunk 2/3 roles, M2a's reactive
+testimony); the overnight sweep is meant to settle them.
+
 Other measured effects worth keeping:
 - **Death-tied night suspicion** (10 townsfolk): Lamplighters hanged 57% → 43%, Veterans
   49% → 33%, Sleepwalkers 58% → 40%; Wardens unchanged (48%). Most remaining walker
@@ -1257,7 +1305,7 @@ Other measured effects worth keeping:
 - **Habit strength:** at 60% of idle hours the bot found fewer people and won ~8 points
   less at 7 townsfolk; 40% is back to baseline.
 - **Shadow self:** evil "off the crowd" 82% → 34% (7) and 69% → 29% (10), against good's
-  13–15%. 600 bot games in about 2 minutes.
+  13–15%.
 - **Readings before the kill:** a Medium finds an untold reading at a demon victim's
   hearth 28% → 41% (7) and 23% → 32% (10).
 - **Outcome tracking validation** (pre-roster): active 53/150 vs passive 25/150; demon

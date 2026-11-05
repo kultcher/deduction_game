@@ -37,71 +37,13 @@ static func _assess_impl(view: Dictionary, cards: Array, knowledge: Dictionary, 
 		return result
 
 	var universe: Array = Solver.universe(view)
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		result = _assess_worlds_gd(view, graph, universe, rates, q, representatives, multiplicity, compile_us)
-	elif mode == SolverBackend.Mode.CSHARP:
-		result = _assess_worlds_cs(view, graph, universe, rates, q, representatives, multiplicity, compile_us)
-	else:
-		result = _assess_worlds_gd(view, graph, universe, rates, q, representatives, multiplicity, compile_us)
-		var cs_res: Dictionary = _assess_worlds_cs(view, graph, universe, rates, q, representatives, multiplicity, compile_us)
-		var b = SolverBackend._bridge()
-		b.VerifyScalarInt64("FactoredChannels.assess.states", result.states, cs_res.states)
-		b.VerifyScalarBool("FactoredChannels.assess.consistent", result.consistent, cs_res.consistent)
-		b.VerifyFloat64Buffer("FactoredChannels.assess.post", result.post, cs_res.post, 0.0)
-		for id in graph.markers:
-			b.VerifyFloat64Buffer("FactoredChannels.assess.held", result.held[id], cs_res.held[id], 0.0)
-			b.VerifyScalarFloat64("FactoredChannels.assess.acceptance", float(result.acceptance[id]), float(cs_res.acceptance[id]), 0.0)
+	result = _assess_worlds_cs(view, graph, universe, rates, q, representatives, multiplicity, compile_us)
 
 	if not include_public:
 		result.base = result.post.duplicate()
 	else:
 		var prior = assess(view, cards.filter(func(card): return card.id in baseline_ids), knowledge, rates, q, [], representatives, multiplicity, false)
 		result.base = prior.post
-	return result
-
-static func _assess_worlds_gd(view: Dictionary, graph: Dictionary, universe: Array, rates: Dictionary, q: Dictionary, representatives: PackedInt32Array, multiplicity: PackedFloat64Array, compile_us: int) -> Dictionary:
-	var value_us = 0
-	var sum_us = 0
-	var result = {"base": PackedFloat64Array(), "post": PackedFloat64Array(), "held": {}, "acceptance": {}, "consistent": false,
-		"issues": graph.issues, "states": 0, "peak_rows": graph.get("program", {}).get("peak", 0)}
-	var size: int = universe.size() if representatives.is_empty() else representatives.size()
-	result.post.resize(size)
-	for id in graph.markers:
-		var held = PackedFloat64Array()
-		held.resize(size)
-		result.held[id] = held
-	var memo = {}
-	for slot in range(size):
-		var index: int = slot if representatives.is_empty() else representatives[slot]
-		var world: Dictionary = universe[index]
-		var value_start = Time.get_ticks_usec()
-		var values: Array = []
-		for factor in graph.factors:
-			values.append(_values(view, graph, factor, world, index, rates, q))
-		var signature = hash(values)
-		value_us += Time.get_ticks_usec() - value_start
-		var sum_start = Time.get_ticks_usec()
-		if not memo.has(signature) or memo[signature].values != values:
-			memo[signature] = {"values": values, "result": Sum._run_gd(graph.circuit, values)}
-		var summed: Dictionary = memo[signature].result
-		sum_us += Time.get_ticks_usec() - sum_start
-		result.post[slot] = summed.total
-		for id in graph.markers:
-			var marker: int = graph.markers[id]
-			result.held[id][slot] = summed.adjoints[marker][0 if graph.factors[marker].scope.is_empty() else 1]
-		if not result.consistent and summed.total > 0.0:
-			result.consistent = _all_hold(view, graph, world, index)
-	result.states = memo.size()
-	result["timing_us"] = {"compile": compile_us, "values": value_us, "sum": sum_us}
-	var total = 0.0
-	for slot in range(size):
-		total += result.post[slot] * (1.0 if multiplicity.is_empty() else multiplicity[slot])
-	for id in graph.markers:
-		var mass = 0.0
-		for slot in range(size):
-			mass += result.held[id][slot] * (1.0 if multiplicity.is_empty() else multiplicity[slot])
-		result.acceptance[id] = mass / total if total > 0.0 else 0.0
 	return result
 
 static func _assess_worlds_cs(view: Dictionary, graph: Dictionary, universe: Array, rates: Dictionary, q: Dictionary, representatives: PackedInt32Array, multiplicity: PackedFloat64Array, compile_us: int) -> Dictionary:
