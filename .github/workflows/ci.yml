@@ -1,8 +1,8 @@
 name: CI
 
-# Build the C# solver, run the GDScript suites and diff golden captures against the
-# frozen baseline, on the .NET build of Godot.
-#   pull requests: fast suite list + golden diff (GDScript and C# modes)
+# Build the C# solver, run the suites and diff the golden capture against the frozen
+# baseline, on the .NET build of Godot. C# is the only solver (Nov 4 cutover).
+#   pull requests: fast suite list + golden diff (gate: identical to $BASELINE)
 #   main:          full suite (sharded) + golden diff + Windows golden check
 #   manual:        same as main; tick "windows" to include the Windows check
 on:
@@ -83,13 +83,9 @@ jobs:
           if-no-files-found: ignore
 
   golden:
-    name: Golden diff (${{ matrix.mode }}, Linux)
+    name: Golden diff (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [gdscript, csharp]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -105,60 +101,33 @@ jobs:
       - name: Capture
         run: |
           "${{ steps.godot.outputs.bin }}" --headless --path . --script res://tools/golden_capture.gd -- \
-            --out "$RUNNER_TEMP/golden" --mode ${{ matrix.mode }} 2>&1 | tee "$RUNNER_TEMP/golden.log"
+            --out "$RUNNER_TEMP/golden" 2>&1 | tee "$RUNNER_TEMP/golden.log"
       - name: No script errors
         run: |
           if grep -a "SCRIPT ERROR" "$RUNNER_TEMP/golden.log"; then
             echo "::error::The capture logged script errors, so it recorded a broken game."
             exit 1
           fi
-      - name: Regression check against the baseline (informational)
-        # Behaviour-neutral changes should show "identical" here. Intended behaviour
-        # changes will differ until the baseline is re-recorded, so this step warns
-        # instead of failing; the parity job below is the gate.
+      - name: Regression check against the baseline (gate)
+        # Behaviour-neutral changes must be identical to the baseline. A change meant to
+        # alter behaviour re-records the baseline in the same branch (docs/golden_baseline.md).
         run: |
           python3 tools/golden_diff.py "$BASELINE" "$RUNNER_TEMP/golden" --tol 0 > "$RUNNER_TEMP/regression.txt" && rc=0 || rc=$?
           cat "$RUNNER_TEMP/regression.txt"
-          { echo "### Regression vs \`$BASELINE\` (${{ matrix.mode }})"; echo '```'; cat "$RUNNER_TEMP/regression.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "### Regression vs \`$BASELINE\`"; echo '```'; cat "$RUNNER_TEMP/regression.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           if [ $rc -ne 0 ]; then
-            echo "::warning::${{ matrix.mode }} capture differs from $BASELINE. Expected only if this change is meant to alter behaviour (then re-record the baseline)."
+            echo "::error::The capture differs from $BASELINE. If this change is meant to alter behaviour, re-record the baseline."
           fi
+          exit $rc
       - name: Upload capture
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: golden-${{ matrix.mode }}-linux
+          name: golden-linux
           path: ${{ runner.temp }}/golden
 
-  parity:
-    name: C# parity (csharp vs gdscript, same commit)
-    # The migration gate: both backends must play the identical game at this commit,
-    # whatever the game currently does. Independent of the fixed baseline.
-    needs: golden
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: golden-gdscript-linux
-          path: ${{ runner.temp }}/gd
-      - uses: actions/download-artifact@v4
-        with:
-          name: golden-csharp-linux
-          path: ${{ runner.temp }}/cs
-      - name: Diff csharp against gdscript (--tol 0)
-        run: |
-          {
-            echo "### C# parity (csharp vs gdscript)"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          python3 tools/golden_diff.py "$RUNNER_TEMP/gd" "$RUNNER_TEMP/cs" --tol 0 | tee -a "$GITHUB_STEP_SUMMARY"
-          rc=${PIPESTATUS[0]}
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          exit $rc
-
   golden-windows:
-    name: Golden diff (gdscript, Windows)
+    name: Golden diff (Windows, informational)
     # Windows minutes cost double: main pushes and manual runs only, and informational
     # until the first run shows Windows and Linux agree.
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.windows)
@@ -201,5 +170,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: golden-gdscript-windows
+          name: golden-windows
           path: ${{ runner.temp }}\golden

@@ -80,25 +80,21 @@ and 17% -> 33% (10 NPCs), executions similar; within noise for 12 seeds.
 
 `baseline_82faa5b` and `baseline_3bd51ea` stay for history.
 
-### Two checks, not one (from Nov 3)
+### One check (from Nov 4 evening: C# is the only solver)
 
-The golden captures answer two separate questions, and CI keeps them apart:
+The GDScript solver kernels were retired on Nov 4 (snapshot: branch
+`archive/gdscript-solver-final`, commit `47913b7`), so there is no parity check any more.
+CI captures once (C#) and diffs it against the fixed baseline at `--tol 0`, and that diff
+is the gate:
 
-- **C# parity (the migration gate):** a `--mode csharp` capture diffed against a
-  `--mode gdscript` capture **of the same commit**, `--tol 0`. Valid whatever the game
-  currently does, so behaviour-changing features (the meeting overhaul, new roles) can
-  land without breaking it. CI job `parity`; required.
-- **Regression (did behaviour change?):** each capture diffed against the fixed baseline.
-  Behaviour-neutral work (refactors, ports, UI) must show "identical". An intended
-  behaviour change will differ: re-record the baseline from that commit in the same
-  change, and run the passive A/B. CI reports this as a warning, not a failure, so the
-  reviewer (Claude, for Argon's patches) has to read it.
+- Behaviour-neutral work (refactors, ports, UI) must show "identical".
+- An intended behaviour change will differ: re-record the baseline from that commit in
+  the same branch (two captures, identical to each other), point `BASELINE` in
+  `.github/workflows/ci.yml` at it, and run the passive A/B.
 
-While both solver backends exist, any change to the ported kernel (`world_domain`,
-`role_constraints`, `live_activity`, `solver`, `case_eval`, the channel code), including
-a new role that changes possible worlds, bluff weights or night movement, must be made in
-GDScript **and** C#; the parity check catches a missed side. Work above the kernel
-(meeting flow, dialogue, social) needs no C# change.
+Changes to the solver kernels go in C# only (`workshop/cs/`); the GDScript files in
+`workshop/` marshal inputs and call it. History: Nov 3 to 4, CI also diffed a GDScript
+capture against a C# one from the same commit (the migration gate).
 
 Check a capture's log for `SCRIPT ERROR` lines before trusting a diff: Godot keeps
 running when a script fails to compile, and the capture then records the broken game.
