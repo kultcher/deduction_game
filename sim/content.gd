@@ -482,7 +482,7 @@ const HINT_PACKAGES = {
 		"text": "My gift has to do with the dead, and with death."},
 	"shelter": {"roles": ["warden", "veteran", "martyr"], "name": "a sheltering gift",
 		"text": "My gift is a kind of shelter against the demon."},
-	"people": {"roles": ["dowser", "psychologist", "rumormonger", "augur"], "name": "a gift for reading people",
+	"people": {"roles": ["dowser", "psychologist", "rumormonger", "augur", "confessor"], "name": "a gift for reading people",
 		"text": "My gift lets me read people, if I'm close enough."},
 }
 

@@ -26,3 +26,4 @@ test_playtest_nov4_fixes
 test_meeting_m2a
 res://tools/test_chunk4_psychologist_muddler.gd
 tools/test_chunk5_monitor_confessor.gd
+test_chunk5_cs_tables

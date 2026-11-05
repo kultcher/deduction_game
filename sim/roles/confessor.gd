@@ -6,6 +6,8 @@
 ## targets; visited person is unaware. Visit resolves before demon kills.
 extends "res://sim/role_def.gd"
 
+var request_refuse_line: String = ""
+
 
 func _init() -> void:
 	id = "confessor"
@@ -33,8 +35,6 @@ func pick_targets(w, n, _mind):
 	var candidates: Array = w.living().filter(func(m): return m != n)
 	if candidates.is_empty():
 		return ""
-	if not ("confessor_visited" in n):
-		n.set("confessor_visited", [])
 	var visited: Array = n.confessor_visited
 	var unvisited: Array = candidates.filter(func(m): return not (m.id in visited))
 	var chosen = w.pick(unvisited) if not unvisited.is_empty() else w.pick(candidates)
