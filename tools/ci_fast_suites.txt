@@ -30,3 +30,4 @@ tools/test_chunk5_monitor_confessor.gd
 test_chunk5_cs_tables
 tools/test_chunk6a_sexton_brute.gd
 test_town_vibe
+test_evidence_honesty

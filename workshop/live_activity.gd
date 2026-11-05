@@ -335,11 +335,12 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 				if card.has("guard_claim"):
 					okay = okay and out and path.back() == card.block
 			elif card.kind == "sighting" and card.get("complete", false) and person.id not in card.get("excluded", []):
-				pass # a vigil that missed them is scored (Tuning VIGIL_MISS), not ruled out
+				# Logical consistency; the probabilistic score uses VIGIL_MISS instead.
+				okay = okay and not C.vigil_sees_path(card.block, path)
 			elif card.kind == "alibi" and card.subject == person.id:
 				okay = okay and not out
 			elif card.kind == "coverage" and person.id not in card.get("excluded", []):
-				pass # as above
+				okay = okay and not C.vigil_sees_path(card.block, path)
 			elif card.kind == "report" and card.role == "nightwatch":
 				if strict_reports and card.source == person.id:
 					okay = okay and out and path.back() == card.data.block

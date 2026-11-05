@@ -433,7 +433,9 @@ internal static class LiveActivityKernel
                             }
                             else if (kind == KindSighting && (flags & FlagComplete) != 0 && (cardInts[off + 5] & (1 << i)) == 0)
                             {
-                                // A vigil that missed them is soft evidence (VigilMiss), scored, not a hard rule-out.
+                                // Logical consistency (both cards true): the vigil rules the route out. The
+                                // probabilistic score is softer (VigilMiss): the town allows a missed sighting.
+                                pathOk = pathOk && !path.VigilSees(cardInts[off + 10]);
                             }
                             else if (kind == KindAlibi && cardInts[off + 3] == i)
                             {
@@ -441,7 +443,7 @@ internal static class LiveActivityKernel
                             }
                             else if (kind == KindCoverage && (cardInts[off + 5] & (1 << i)) == 0)
                             {
-                                // As above: scored at VigilMiss, not ruled out.
+                                pathOk = pathOk && !path.VigilSees(cardInts[off + 10]);
                             }
                             else if (kind == KindReport && cardInts[off + 7] == MoveRoleNightwatch)
                             {

@@ -152,12 +152,35 @@ static func _chance_chronicler(view: Dictionary) -> float:
 ## A bluffer says something that fits, so content the worlds can't check (a Lamplighter's
 ## count, a relay from the dead) is free to fake and earns the source no credit; content
 ## that holds in few worlds (a Seer "yes", a Dowser count) is hard to fake by chance.
-## Falls back to the per-shape constants when the card has no report table.
+## Kept on the per-shape constants:
+## - the Chronicler and the Rumormonger, which have exact prior hold rates (the share is
+##   unweighted, and those two depend on the secret's priors);
+## - readings about roles (ROLE_CONTENT_FIXED): their content is checked by the role
+##   constraints, not the report table, so the table can't say how often a bluff fits;
+## - cards with no report table.
+const ROLE_CONTENT_FIXED = ["archivist", "clerk", "executor", "gravedigger", "registrar", "monitor", "martyr"]
+
 static func chance_content(view: Dictionary, card: Dictionary) -> float:
+	var role_id: String = str(card.get("role", ""))
+	if role_id in ROLE_CONTENT_FIXED:
+		return _chance_content_fixed(view, card)
+	if role_id == "chronicler":
+		return _chance_chronicler(view)
+	var rdef = Solver.C.role_def(role_id)
+	if rdef != null and rdef.shape == "SECRET_PAIR":
+		return _chance_rumormonger(view, card.get("data", {}))
 	if card.get("kind", "") == "report":
+		# Among worlds where the source could read healthily (the table only holds there).
 		var tab: PackedByteArray = Solver.report_table(view, card)
-		if not tab.is_empty():
-			return clampf(float(tab.count(1)) / float(tab.size()), Tuning.Workshop.CHANCE_CONTENT_FLOOR, 1.0)
+		var valid: PackedByteArray = _valid_table(view, card)
+		if not tab.is_empty() and valid.size() == tab.size():
+			var n_valid: int = valid.count(1)
+			if n_valid > 0:
+				var n_hold: int = 0
+				for i in range(tab.size()):
+					if tab[i] == 1 and valid[i] == 1:
+						n_hold += 1
+				return clampf(float(n_hold) / float(n_valid), Tuning.Workshop.CHANCE_CONTENT_FLOOR, 1.0)
 	return _chance_content_fixed(view, card)
 
 ## The per-shape estimates used before Nov 5 (kept for cards without a report table).
