@@ -9,6 +9,7 @@ const BruteDef = preload("res://sim/roles/brute.gd")
 const SextonDef = preload("res://sim/roles/sexton.gd")
 const SeerDef = preload("res://sim/roles/seer.gd")
 const ArchivistDef = preload("res://sim/roles/archivist.gd")
+const ScriptBuilder = preload("res://sim/script_builder.gd")
 
 var failures: int = 0
 var checks: int = 0
@@ -43,6 +44,7 @@ func _init() -> void:
 	_test_sexton_minion_suppression()
 	_test_sexton_townsfolk_gifts_unaffected()
 	_test_sexton_once_per_case()
+	_test_brute_experimental_on_scripts()
 
 	if failures == 0:
 		print("Slice 6A (Sexton rework & Brute minion): %d checks passed." % checks)
@@ -81,7 +83,11 @@ func _test_brute_hunting_and_demon_idle() -> void:
 
 	# While Brute is alive and active: Brute hunted and Demon stayed home
 	_check(minion_npc.out_last_night, "Brute night-walked on the hunt")
-	_check(minion_npc.night_block == victim.home_block, "Brute arrived at victim's home block")
+	# The demon's chosen target (not necessarily living_good()[0]): read the Brute's hunt walk.
+	var hunt: Array = w.night_walkers.filter(func(wk): return wk.id == minion_npc.id and "(as Brute)" in str(wk.why))
+	var hunted: Array = w.living().filter(func(p): return not hunt.is_empty() and ("hunting %s (as Brute)" % p.name) == str(hunt[0].why))
+	hunted.append_array(w.npcs.filter(func(p): return not p.alive and not hunt.is_empty() and ("hunting %s (as Brute)" % p.name) == str(hunt[0].why)))
+	_check(not hunted.is_empty() and minion_npc.night_block == hunted[0].home_block, "Brute arrived at the hunted victim's home block")
 	_check(not demon_npc.out_last_night, "Demon stayed home while Brute was hunting")
 	_check(demon_npc.night_block == demon_npc.home_block, "Demon remained on their home block")
 
@@ -258,3 +264,17 @@ func _test_sexton_once_per_case() -> void:
 	var rdef = C.role_def("sexton")
 	var second_toll = rdef.try_toll(w, sexton_npc, Mind)
 	_check(not second_toll, "Sexton cannot toll a second time in the same case")
+
+
+## The Brute is experimental until the solver models a non-Demon killer: never drawn on the
+## Default or a dynamic script, but a playtest mark (or the editor) can still put it on.
+func _test_brute_experimental_on_scripts() -> void:
+	_check(BruteDef.new().status == "experimental", "Brute is marked experimental")
+	_check(not ("brute" in ScriptDef.default_script().minions) and ScriptDef.default_script().is_default(), "the Default script leaves the Brute off")
+	var drawn: bool = false
+	for sd in range(1, 61):
+		if "brute" in ScriptBuilder.dynamic({"seed": sd}).minions:
+			drawn = true
+	_check(not drawn, "60 dynamic scripts never draw the Brute")
+	_check("brute" in ScriptBuilder.dynamic({"seed": 7, "include": ["brute"]}).minions, "a playtest 'include' mark still puts the Brute on")
+	_check("brute" in ScriptDef.roster().minions, "the script editor still offers the Brute")

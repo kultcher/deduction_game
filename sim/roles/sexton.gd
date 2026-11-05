@@ -40,7 +40,8 @@ func try_toll(w, sx, mind) -> bool:
 		return false
 	sx.gift_used = true
 	w.sexton_tolled_night = w.day
-	w._walk(sx, sx.home_block, "tolling the church bell through every parish", content().BLOCKS.keys())
+	# The walk itself happens in World._night_movement (which resets the night's walkers),
+	# on any toll night, whether or not a broken gift makes the bell work.
 	if sx.gift_broken():
 		w.dlog.add("sexton_toll", sx.id, "", {"works": false}, "%s tolls the church bell, but their gift is broken: minions are not suppressed." % sx.name)
 		return false

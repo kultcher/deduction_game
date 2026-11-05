@@ -17,6 +17,10 @@ func _init() -> void:
 	night_walk = true
 	desc = "While you are alive, you hunt and kill in place of the demon (dropping two traces); the demon stays home. You register as a minion, not the demon."
 	shape = "NONE"
+	# Experimental until the solver models a killer other than the Demon (night movement and
+	# traces assume the Demon walks to the victim): offered in the script editor and by playtest
+	# marks, never drawn on the Default or a dynamic script.
+	status = "experimental"
 
 
 func is_active_hunter(w, brute) -> bool:

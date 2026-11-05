@@ -28,7 +28,7 @@ static func build(opts: Dictionary = {}):
 	for key in ["town", "minions", "demons", "secrets"]:
 		s.set(key, s.get(key).filter(func(r): return not r in excluded))
 	s.forced = s.forced.filter(func(r): return s.has(r))
-	var pool: Dictionary = ScriptDef.roster()
+	var pool: Dictionary = _drawable(ScriptDef.roster(), opts.get("favoured", []))
 	var ctx = {"excluded": excluded, "favoured": opts.get("favoured", []), "caps": opts.get("caps", {}), "rng": rng}
 	var want_demons: int = clampi(int(opts.get("demons", maxi(1, s.demons.size()))), 1, ScriptDef.MAX_DEMONS)
 
@@ -61,14 +61,15 @@ static func build(opts: Dictionary = {}):
 static func dynamic(opts: Dictionary = {}):
 	var rng = _rng(opts)
 	var excluded: Array = opts.get("excluded", [])
-	var pool: Dictionary = ScriptDef.roster()
+	var roster: Dictionary = ScriptDef.roster()
+	var pool: Dictionary = _drawable(roster, opts.get("favoured", []))
 	var ctx = {"excluded": excluded, "favoured": opts.get("favoured", []), "caps": {}, "rng": rng}
 	var s = ScriptDef.new()
 	s.name = str(opts.get("name", "Dynamic"))
 	s.demons = ["demon"] if "demon" in pool.demons and not "demon" in excluded else []
 	var forced: Array = opts.get("forced", [])
 	for id in opts.get("include", []) + forced:
-		var side: String = _side_of(id, pool)
+		var side: String = _side_of(id, roster)  # marks may name experimental roles
 		if side != "" and not s.get(side).has(id) and not id in excluded:
 			s.get(side).append(id)
 	s.forced = forced.filter(func(r): return s.has(r))
@@ -102,6 +103,15 @@ static func dynamic(opts: Dictionary = {}):
 ## Fill a script back up to size without removing anything the player chose.
 static func fill(script_in, excluded: Array = [], seed_in: int = 0):
 	return build({"base": script_in, "excluded": excluded, "seed": seed_in, "name": script_in.name})
+
+
+## What automatic draws may pick: ready roles, plus any a playtest mark favours. Experimental
+## roles stay on the roster (the script editor offers them) but are never drawn on their own.
+static func _drawable(pool: Dictionary, favoured: Array) -> Dictionary:
+	var out: Dictionary = pool.duplicate(true)
+	for side in ["town", "minions", "demons"]:
+		out[side] = pool[side].filter(func(r): return r in favoured or ScriptDef.status_of(r) == "ready")
+	return out
 
 
 ## Whether adding `id` keeps the script within every cap and jinx.

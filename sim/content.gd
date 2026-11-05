@@ -422,6 +422,8 @@ const ROLES = {
 		"desc": "Once a day, silences someone on the same block, from that evening's meeting until the next evening. Silenced people can still vote."},
 	"revenant": {"name": "Revenant", "align": "evil", "kind": "evil", "minion": true, "day": true,
 		"desc": "Hides a totem somewhere each day it has none in play. If executed, that night a townsfolk who voted for them turns evil until the totem is found."},
+	"brute": {"name": "Brute", "align": "evil", "kind": "evil", "minion": true, "night_walk": true,
+		"desc": "While alive, hunts and kills in place of the demon (leaving two traces of their own); the demon stays home. Registers as a minion, not the demon."},
 	"scion": {"name": "Scion", "align": "evil", "kind": "evil", "minion": true,
 		"desc": "If the demon is executed while five or more are alive, the Scion becomes the demon."},
 }

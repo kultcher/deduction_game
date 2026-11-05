@@ -1428,7 +1428,7 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 	if confessor and confessor_t != "" and by_id.has(confessor_t):
 		_walk(confessor, by_id[confessor_t].home_block, "hearing confession of %s" % by_id[confessor_t].name)
 	var sx_walk = living_with_role("sexton")
-	if sx_walk and sexton_suppression_night == day:
+	if sx_walk and sexton_tolled_night == day:
 		_walk(sx_walk, sx_walk.home_block, "tolling the church bell through every parish", C.BLOCKS.keys())
 	# The Secret Lovers meet somewhere new each night; the Sleepwalker wanders unknowing.
 	var met = {}
@@ -1721,12 +1721,13 @@ func _kill(v) -> void:
 	case_traces.append(killer_trace.duplicate(true))
 	var traces: Array = [killer_trace]
 	var passer_actor_id: String = ""
+	var passers: Array = []
 	if brute_killed:
 		var brute_second_trace: Dictionary = build_actor_trace(killer, v, 1)
 		case_traces.append(brute_second_trace.duplicate(true))
 		traces.append(brute_second_trace)
 	else:
-		var passers: Array = night_walkers.filter(func(wk): return wk["id"] != killer.id and wk["id"] != v.id and v.home_block in wk.get("path", [wk["block"]]))
+		passers = night_walkers.filter(func(wk): return wk["id"] != killer.id and wk["id"] != v.id and v.home_block in wk.get("path", [wk["block"]]))
 		if not passers.is_empty() and chance(Tuning.Setup.EXTRA_TRACE_CHANCE):
 			var wk: Dictionary = pick(passers)
 			var passer = by_id[wk["id"]]
@@ -1754,8 +1755,8 @@ func _kill(v) -> void:
 		"trace_block": true_block, "trace_true": true, "traces": traces, "trace": killer_trace,
 		"passer_ids": passers.map(func(wk): return wk["id"]), "passer_trace_actor": passer_actor_id,
 		"why": why, "searched": false}
-	dlog.add("kill", demon_id, v.id, {"role": v.role, "scene": sid, "trace_family": demon_trace.trace_family,
-		"trace_subtype": demon_trace.trace_subtype, "trace_key": demon_trace.trace_key,
+	dlog.add("kill", demon_id, v.id, {"role": v.role, "scene": sid, "trace_family": killer_trace.trace_family,
+		"trace_subtype": killer_trace.trace_subtype, "trace_key": killer_trace.trace_key,
 		"trace_count": traces.size(), "passer_trace_actor": passer_actor_id, "trace_true": true}, why)
 	public_event("demon_death", [v.id], "town")
 	for n in npcs:
