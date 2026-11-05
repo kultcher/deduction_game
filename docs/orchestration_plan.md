@@ -116,7 +116,7 @@ Because `game/game.gd` keeps 1-line forwarding methods (such as `func add_card(f
   - **Day Actions, Observation & Crime-Scene Search (Lines 675 to 911)**: `_day_command`, `_warn_busy_visit`, `_who_here`, `_observe`, `_search`, `_end_phase`.
   - **Night Actions & Dawn Resolution (Lines 1943 to 2069)**: `_night_homes`, `_night_command`, `_resolve_night`, `_fallbacks_text`, `_morning_report`.
 - **Forwarders Retained on `Game`**: Keep thin forwarders on `game/game.gd` (UI and tests directly call `can_see`, `can_see_ui`, `unseen_at`, `unseen_at_ui`, `_search`, `_morning_report`, and `_present`).
-- **Verification**: `test_mechanics_sightings`, `test_sighting_followup`, `test_lamplighter_drops`, `test_mechanics_warden`, `test_mechanics_curse`, `test_town_ui`.
+- **Verification**: `test_mechanics_sightings`, `test_sighting_followup`, `test_roles_night_sight` (Lamplighter drops), `test_roles_shelter` (Warden), `test_roles_evil` (curse), `test_town_ui`.
 
 ### Slice 4: `game/game_screens.gd` (~565 LOC Extracted)
 *Scope: Lines 2070 to 2386 (`# --- info screens`) and Lines 2472 to 2718 (Theory, Guesses, Debug Overlay, and Profile Data).*
