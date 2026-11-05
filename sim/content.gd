@@ -421,9 +421,9 @@ const ROLES = {
 	"breathstealer": {"name": "Breathstealer", "align": "evil", "kind": "evil", "minion": true, "day": true,
 		"desc": "Once a day, silences someone on the same block, from that evening's meeting until the next evening. Silenced people can still vote."},
 	"revenant": {"name": "Revenant", "align": "evil", "kind": "evil", "minion": true, "day": true,
-		"desc": "Hides a totem somewhere each day it has none in play. If executed, that night a townsfolk who voted for them turns evil until the totem is found."},
+		"desc": "Hides a totem somewhere each day it has none in play. If hanged while a totem is hidden, a good soul who voted for it turns evil until the totem is found (not while the Sexton's bell suppresses minions)."},
 	"brute": {"name": "Brute", "align": "evil", "kind": "evil", "minion": true, "night_walk": true,
-		"desc": "While alive, hunts and kills in place of the demon (leaving two traces of their own); the demon stays home. Registers as a minion, not the demon."},
+		"desc": "While you are alive, you hunt and kill in place of the demon (dropping two traces); the demon stays home. You register as a minion, not the demon."},
 	"scion": {"name": "Scion", "align": "evil", "kind": "evil", "minion": true,
 		"desc": "If the demon is executed while five or more are alive, the Scion becomes the demon."},
 }

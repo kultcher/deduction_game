@@ -12,7 +12,7 @@ func _init() -> void:
 	display_name = "Sexton"
 	align = "good"
 	kind = "protect"
-	tags = ["protection", "night_walker"]
+	tags = ["protection"]  # not a night_walker for the deal's band: it walks once per case, on the toll night
 	night_walk = false # only walks on the night the bell is tolled
 	desc = "Once per case (not night 0), at the start of night, may toll the church bell and walk through every parish: all minion abilities are suppressed until the next night."
 	shape = "NIGHT_EVENT"

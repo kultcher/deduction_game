@@ -60,7 +60,6 @@ var curse = {}                      # the Revenant's curse: {victim, day} while 
 var knell_night = -1                # night the Sexton tolled (legacy)
 var sexton_tolled_night = -1        # night the Sexton tolled the church bell
 var sexton_suppression_night = -1   # night during which minions are suppressed
-var pending_revenant_curse: Dictionary = {} # deferred revenant curse pending night toll
 var scion_rose = ""                 # the Scion who became the demon, if any
 ## Everything said or done in public (what evil, and anyone, can know without being told).
 var public_log: Array = []          # {day, kind, subjects, by}
@@ -1195,14 +1194,6 @@ func resolve_night() -> void:
 	if sexton and not sexton.is_evil() and not first:
 		C.role_def("sexton").try_toll(self, sexton, Mind)
 
-	if not pending_revenant_curse.is_empty():
-		var rv_curse = pending_revenant_curse
-		pending_revenant_curse = {}
-		if is_minion_suppressed():
-			dlog.add("curse_suppressed", rv_curse.rv.id, "", {}, "The church bell suppresses the Revenant's curse.")
-		else:
-			C.role_def("revenant").trigger_curse(self, rv_curse.rv, rv_curse.res, Mind)
-
 	var brute = living_with_role("brute")
 	var brute_active: bool = (brute != null and brute.alive and not brute.gift_broken() and not is_minion_suppressed())
 
@@ -1306,8 +1297,12 @@ func attack_outcome(v, protected: Dictionary) -> String:
 	return "killed"
 
 ## Whether the Sexton tolls tonight, and whether it works (a broken gift tolls for nothing).
+## The Sexton's bell suppresses minions "until the following night": the toll night and the
+## day after it (executions, the Breathstealer, the Revenant's curse, the Scion's rise).
 func is_minion_suppressed() -> bool:
-	return sexton_suppression_night == day
+	if sexton_suppression_night < 0:
+		return false
+	return day == sexton_suppression_night or (day == sexton_suppression_night + 1 and phase != C.NIGHT)
 
 func _sexton_knell() -> bool:
 	var sx = living_with_role("sexton")

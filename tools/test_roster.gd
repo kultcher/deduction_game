@@ -209,13 +209,16 @@ func _test_sexton() -> void:
 		goods[0].alive = false
 		goods[1].alive = false
 		goods[2].alive = false
+		var poisoner = w.living_with_role("poisoner")
 		w.resolve_night()
-		if w.knell_night == 3:
+		if w.sexton_suppression_night == 3:
 			tolled += 1
-			if not w.deaths_last_night.is_empty() or not w.night_walkers.filter(func(wk): return wk["why"].begins_with("hunting")).is_empty():
+			# Nov 5 rework: the bell walks every parish and suppresses minions (no poison lands),
+			# but the Demon still hunts.
+			if poisoner != null and w.npcs.any(func(p): return p.poisoned):
 				killed_on_knell += 1
-	print("knell tolled in %d/20; demon still walked in %d" % [tolled, killed_on_knell])
-	_check(tolled > 0 and killed_on_knell == 0, "the Sexton's knell stops the demon's walk")
+	print("bell tolled in %d/20; poison landed anyway in %d" % [tolled, killed_on_knell])
+	_check(tolled > 0 and killed_on_knell == 0, "the Sexton's bell suppresses the Poisoner that night")
 
 func _test_veteran() -> void:
 	var w = _game(9150).w

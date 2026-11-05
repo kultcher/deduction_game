@@ -10,7 +10,7 @@ func _init() -> void:
 	tags = ["execution"]
 	minion = true
 	day = true
-	desc = "Hides a totem somewhere each day it has none in play. If executed, that night a townsfolk who voted for them turns evil until the totem is found."
+	desc = "Hides a totem somewhere each day it has none in play. If hanged while a totem is hidden, a good soul who voted for it turns evil until the totem is found (not while the Sexton's bell suppresses minions)."
 	shape = "NONE"
 
 
@@ -38,7 +38,7 @@ func on_executed(w, rv, res: Dictionary, _mind) -> void:
 	if w.is_minion_suppressed():
 		w.dlog.add("curse_suppressed", rv.id, "", {}, "The church bell suppresses the Revenant's curse.")
 		return
-	w.pending_revenant_curse = {"rv": rv, "res": res}
+	trigger_curse(w, rv, res, _mind)
 
 
 func trigger_curse(w, rv, res: Dictionary, mind) -> void:
