@@ -18,6 +18,7 @@ func _run() -> void:
 	lab.set_process(false)
 	for _i in range(4): await process_frame
 	lab.reset_clock()
+	if args.size() > 4 and args[4] == "subtle": lab.select_look(1)
 	lab.set_reading(reading)
 	for f in range(count):
 		if f > 0: lab._process(1.0 / 30.0)
@@ -32,8 +33,7 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(out_dir + "/protection.png")
 	lab.controls.show_protection.button_pressed = false
-	lab.legacy = true
-	lab._update_portraits()
+	lab.select_look(2)
 	for _i in range(4): await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(out_dir + "/legacy.png")

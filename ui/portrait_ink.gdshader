@@ -1,5 +1,5 @@
-// Interior ink over the ORIGINAL colour portrait. The original silhouette, paper,
-// structural lines and face are stable. R is structural ink (unused); G is hatching.
+// Ink over the ORIGINAL portrait. Optional form redraw moves original contours and
+// their colour fills together; facial features remain anchored behind the mask.
 // The controller supplies a monotonic step, so intensity never changes the clock.
 shader_type canvas_item;
 
@@ -9,7 +9,8 @@ uniform sampler2D lines_c : filter_linear, repeat_disable;
 uniform float redraw_step = 0.0;
 uniform float seed = 27.0;
 uniform int variant_count : hint_range(1, 3) = 1;
-uniform float displacement_px : hint_range(0.0, 4.0) = 1.2;
+uniform float displacement_px : hint_range(0.0, 12.0) = 1.2;
+uniform float form_displacement_px : hint_range(0.0, 20.0) = 0.0;
 uniform float patch_size_px = 90.0;
 uniform float ink_amount : hint_range(0.0, 1.0) = 0.6;
 uniform vec4 ink_color : source_color = vec4(0.13, 0.08, 0.06, 1.0);
@@ -47,26 +48,37 @@ float hatching(vec2 uv) {
 }
 
 void fragment() {
-	vec4 base = texture(TEXTURE, UV);
 	vec2 px = TEXTURE_PIXEL_SIZE;
 	vec2 p = UV / px;
-	float editable = 1.0;
+	float face_permission = 1.0;
 	if (protect_face) {
 		float d = length((UV - protected_face.xy) / max(protected_face.zw, vec2(0.001)));
-		editable *= smoothstep(1.0, 1.16, d);
+		face_permission = smoothstep(1.0, 1.24, d);
 	}
+	// A fresh broad deformation per drawing, rather than vibrating individual pixels.
+	// Warp the original ink, fill and alpha together so no duplicate outline remains.
+	vec2 form_noise = field(p / 230.0 + hash2(vec2(redraw_step, seed + 9.0)) * 70.0);
+	vec2 rest_noise = field(p / 230.0 + hash2(vec2(0.0, seed + 9.0)) * 70.0);
+	vec2 form_offset = (form_noise - rest_noise) * 0.7;
+	// Keep the cropped bottom and canvas edges anchored; allow the interior cutout
+	// contour to change shape without sampling stretched pixels past the source.
+	vec2 frame_guard = smoothstep(vec2(0.0), vec2(0.035), UV) *
+		(1.0 - smoothstep(vec2(0.965), vec2(1.0), UV));
+	vec2 art_uv = UV + form_offset * form_displacement_px * px * face_permission * frame_guard.x * frame_guard.y;
+	vec4 base = texture(TEXTURE, art_uv);
+	float editable = face_permission;
 	if (protect_edge) {
 		// Erode the permission mask, not the artwork. Hatch ink cannot escape the
 		// original cutout or make its contour wobble against the stationary fill.
 		vec2 guard_px = px * (4.0 + displacement_px);
-		float inside = min(min(texture(TEXTURE, UV + vec2(guard_px.x, 0.0)).a,
-			texture(TEXTURE, UV - vec2(guard_px.x, 0.0)).a),
-			min(texture(TEXTURE, UV + vec2(0.0, guard_px.y)).a,
-			texture(TEXTURE, UV - vec2(0.0, guard_px.y)).a));
+		float inside = min(min(texture(TEXTURE, art_uv + vec2(guard_px.x, 0.0)).a,
+			texture(TEXTURE, art_uv - vec2(guard_px.x, 0.0)).a),
+			min(texture(TEXTURE, art_uv + vec2(0.0, guard_px.y)).a,
+			texture(TEXTURE, art_uv - vec2(0.0, guard_px.y)).a));
 		editable *= smoothstep(0.95, 1.0, inside);
 	}
 	vec2 offset = field(p / max(patch_size_px, 1.0) + hash2(vec2(redraw_step, seed)) * 100.0);
-	vec2 uv = UV + offset * displacement_px * px * editable * float(warp_enabled);
+	vec2 uv = art_uv + offset * displacement_px * px * editable * float(warp_enabled);
 	float hatch = hatching(uv) * editable;
 	float pressure = 1.0 + field(p / 180.0 + vec2(redraw_step, seed)).x * pressure_variation;
 	float amount = clamp(hatch * ink_amount * pressure * ink_color.a, 0.0, 1.0);

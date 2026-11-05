@@ -48,6 +48,24 @@ func _run() -> void:
 	assert(alpha_changes == 0, "Animated ink must preserve original silhouette alpha")
 	assert(protected_changes == 0, "Protected facial features must match original RGB")
 	assert(moving_pixels > 50, "Ink must actually move outside the protected face")
+	player.configure({"form": 8.0})
+	var contour_first = await _snapshot(viewport)
+	player.advance(0.5)
+	var contour_second = await _snapshot(viewport)
+	var contour_pixels = 0
+	var contour_face_changes = 0
+	for y in range(SIZE.y):
+		for x in range(SIZE.x):
+			var a = original.get_pixel(x, y)
+			var b = contour_first.get_pixel(x, y)
+			var c = contour_second.get_pixel(x, y)
+			if absf(b.a - c.a) > 0.004: contour_pixels += 1
+			var p = (Vector2(x + 0.5, y + 0.5) / Vector2(SIZE) - Vector2(face.x, face.y)) / Vector2(face.z, face.w)
+			if p.length() < 0.9 and (not _same(a, b) or not _same(a, c)):
+				contour_face_changes += 1
+	assert(contour_pixels > 100, "Stronger preset must visibly move the silhouette, not just hatch detail")
+	assert(contour_face_changes == 0, "Stronger contour redraw must keep facial features anchored")
+	player.configure({"form": 0.0})
 	player.configure({"amount": 0.0})
 	var disabled = await _snapshot(viewport)
 	var bypass_changes = 0
@@ -56,7 +74,7 @@ func _run() -> void:
 			if not _same(original.get_pixel(x, y), disabled.get_pixel(x, y)):
 				bypass_changes += 1
 	assert(bypass_changes == 0, "Zero added ink must reproduce the original artwork")
-	print("GPU ink checks passed: alpha unchanged; protected face unchanged; %d moving pixels; exact bypass within 1/255" % moving_pixels)
+	print("GPU ink checks passed: subtle alpha unchanged; face unchanged in both modes; %d ink pixels and %d silhouette pixels move; exact bypass within 1/255" % [moving_pixels, contour_pixels])
 	viewport.queue_free()
 	await process_frame
 	quit()

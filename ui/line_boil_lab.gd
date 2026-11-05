@@ -15,6 +15,7 @@ var still_player = InkPlayer.new()
 var legacy_mats: Array[ShaderMaterial] = []
 var legacy_noise: NoiseTexture2D
 var legacy = false
+var look_index = 0
 var expression_opt: OptionButton
 var layout_opt: OptionButton
 var look_opt: OptionButton
@@ -62,10 +63,8 @@ func _ready() -> void:
 	expression_opt.item_selected.connect(func(i): set_expression(EXPRESSIONS[i]))
 	layout_opt = _option(selectors, ["Compare three views", "Read a conversation"])
 	layout_opt.item_selected.connect(func(i): set_reading(i == 1))
-	look_opt = _option(selectors, ["Protected interior ink", "Legacy reconstructed portrait"])
-	look_opt.item_selected.connect(func(i):
-		legacy = i == 1
-		_update_portraits())
+	look_opt = _option(selectors, ["Stronger: contours + fill", "Subtle: hatching only", "Legacy reconstruction"])
+	look_opt.item_selected.connect(select_look)
 	reading_mode_opt = _option(selectors, ["Reading: animated ink", "Reading: ink held still", "Reading: original art"])
 	reading_mode_opt.disabled = true
 	reading_mode_opt.item_selected.connect(func(i): conversation.set_portrait_ink_mode(["animated", "still", "original"][i]))
@@ -81,12 +80,13 @@ func _ready() -> void:
 	sliders.add_theme_constant_override("h_separation", 18)
 	body.add_child(sliders)
 	_slider(sliders, "rate", "Redraws / second", 1, 12, 1, 6)
-	_slider(sliders, "displacement", "Motion (source px)", 0, 4, 0.1, 1.2)
+	_slider(sliders, "displacement", "Ink motion (px)", 0, 12, 0.2, 2.0)
+	_slider(sliders, "form", "Contour motion (px)", 0, 20, 0.5, 8.0)
 	_slider(sliders, "amount", "Added ink", 0, 1, 0.05, 0.6)
 	var toggles = HFlowContainer.new()
 	toggles.add_theme_constant_override("h_separation", 12)
 	body.add_child(toggles)
-	for spec in [["protect_face", "Protect face", true], ["protect_edge", "Protect silhouette", true],
+	for spec in [["protect_face", "Protect face", true], ["protect_edge", "Keep hatching inside", true],
 		["show_protection", "Show protection mask", false], ["warp", "Deform hatching", true],
 		["variants", "Cycle old ink variants", false], ["pressure", "Vary pen pressure", false]]:
 		var key: String = spec[0]
@@ -162,7 +162,7 @@ func _ready() -> void:
 	status = _label(body, "", 15)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	still_player.mode = "still"
-	_update_portraits()
+	select_look(0)
 	_speak()
 	_fit_reading()
 
@@ -222,6 +222,20 @@ func _setting(key: String, value: Variant) -> void:
 	still_player.configure(change)
 	conversation.ink_player.configure(change)
 	_sync_legacy()
+	_refresh_caption()
+
+func select_look(index: int) -> void:
+	look_index = clampi(index, 0, 2)
+	legacy = look_index == 2
+	if legacy and reading.visible:
+		set_reading(false)
+	if not legacy:
+		var preset = {"form": 8.0 if look_index == 0 else 0.0,
+			"displacement": 2.0 if look_index == 0 else 1.2, "amount": 0.6}
+		for key in preset:
+			controls[key].set_value_no_signal(preset[key])
+			_setting(key, preset[key])
+	_update_portraits()
 
 func set_expression(value: String) -> void:
 	expression = value if value in EXPRESSIONS else "neutral"
@@ -229,7 +243,7 @@ func set_expression(value: String) -> void:
 	conversation.set_expression(expression)
 
 func _update_portraits() -> void:
-	if not reading.visible: look_opt.select(int(legacy))
+	look_opt.select(look_index)
 	for tween in tweens:
 		if tween.is_valid(): tween.kill()
 	tweens.clear()
@@ -286,6 +300,8 @@ func _refresh_caption() -> void:
 		caption.text = "Legacy comparison: reconstructed colour base and all-line animation. Its clock bug is corrected."
 	elif not ready:
 		caption.text = "This expression has no approved ink registration yet; all three show the original. Neutral is the visual checkpoint."
+	elif float(player.settings.form) > 0.0:
+		caption.text = "Stronger candidate: hair and clothing contours move with their fills; facial features stay anchored. Middle is held, right animates."
 
 func _noise() -> NoiseTexture2D:
 	if legacy_noise == null:
@@ -308,9 +324,9 @@ func set_reading(value: bool) -> void:
 	layout_opt.select(1 if value else 0)
 	compare.visible = not value
 	reading.visible = value
-	look_opt.disabled = value
+	look_opt.disabled = false
 	reading_mode_opt.disabled = not value
-	look_opt.select(0 if value else int(legacy))
+	look_opt.select(look_index)
 	if not value:
 		_update_portraits()
 	_refresh_caption()
@@ -341,7 +357,7 @@ func _process(delta: float) -> void:
 	if reading.visible:
 		conversation._process(delta)
 	var active = conversation.ink_player if reading.visible else player
-	var treatment = "historical reconstruction; face protection not applied" if legacy and not reading.visible else "original face and silhouette retained"
+	var treatment = "historical reconstruction; face protection not applied" if legacy and not reading.visible else ("contours and fills redraw; face anchored" if float(active.settings.form) > 0.0 else "interior hatching only; face and silhouette fixed")
 	status.text = "Step %d · %.1f redraws/s · %s" % [active.step_index, active.settings.rate, treatment]
 
 func _close() -> void:

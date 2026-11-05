@@ -3,6 +3,10 @@
 Prepared 2026-11-05 on `codex/portrait-line-boil-lab`, based on the rebased
 `claude/paper-cutout-shader` experiment and main `e09dbbd`.
 
+Updated after the first review: the hatching-only treatment was too subtle even at
+maximum settings. The lab now opens on **Stronger: contours + fill**, with the prior
+hatching-only treatment retained as a preset.
+
 This is a **neutral-Edda visual checkpoint**, not an approved cast-wide art treatment.
 No original artwork is overwritten. No simulation state or RNG is consulted.
 
@@ -17,10 +21,18 @@ and the identical added ink animated. Change **Compare three views** to
 formatted names/role icons, expression fades and dialogue buttons. The reading
 selector offers animated ink, held ink and original art independently of text pacing.
 
-Default candidate: six held redraws per second, 1.2 source pixels of coherent ink
-deformation and 60% added ink. The face and silhouette are protected. There is no
-colour-base jitter, patch dropout, automatic expression flare or pressure variation.
-Source-pixel displacement scales with the portrait: it is smaller on screen.
+The stronger candidate uses six held redraws per second, eight source pixels of form
+deformation, two source pixels of extra ink deformation and 60% added ink. A broad
+field redraws hair and clothing contours together with their colour fills and alpha,
+so a stationary duplicate outline is not left behind. The face remains anchored.
+The cropped canvas edges are anchored too. This is a procedural redraw approximation;
+it can look rubbery at high strengths and needs artistic judgment during reading.
+
+The **Subtle: hatching only** preset restores 1.2 pixels of ink deformation and a fixed
+silhouette. Form motion can reach 20 source pixels, and ink motion 12. These strengths
+scale down with the portrait. There is no whole-portrait translation, patch dropout,
+automatic expression flare or default pressure variation. Selecting the legacy
+comparison while reading returns to the comparison layout.
 
 Pause freezes the current drawing. Restart resets its deterministic clock. A manual
 pulse tests a short increase in displacement without altering the redraw cadence.
@@ -37,11 +49,14 @@ affects the historical comparison. The caption identifies that comparison explic
 ## Art and rendering contract
 
 - The original `cast_expressions/edda/neutral-v1.png` is sampled directly. No painted-
-  out base, generative replacement face, or colour deformation is used.
+  out base or generative replacement face is used. The stronger preset deforms the
+  source coordinates outside the protected face, moving structural lines and fill
+  together. No source image is modified.
 - The green channel of the existing registered neutral ink contains the hatching.
   The red structural-line channel is deliberately excluded from this candidate.
-- A feathered UV ellipse protects the face. A separate interior mask protects the
-  silhouette. Output alpha is always the original portrait's alpha.
+- A feathered UV ellipse protects the face. A separate interior mask keeps added ink
+  within the sampled cutout. The subtle preset retains original per-pixel alpha;
+  the stronger preset uses the alpha of the coherently displaced source sample.
 - Nearby strokes deform together using a low-frequency field held for each redraw.
   Added ink can darken the art but never lighten it.
 - Registrations are explicit in `ui/portrait_ink_assets.gd`. Only neutral Edda is
@@ -53,8 +68,9 @@ affects the historical comparison. The caption identifies that comparison explic
   item popups and paused/still states do not advance it.
 
 The daytime conversation view uses the same player and renderer. It defaults to the
-original art until visual approval. For a session-only in-game experiment, B toggles
-the candidate during an Edda conversation; Shift+B tests a pulse. Those shortcuts do
+original art until visual approval. Its session-only B shortcut toggles the registered
+player's hatching-only defaults during an Edda conversation; Shift+B tests a pulse.
+The stronger preset is currently configured by the standalone lab. Those shortcuts do
 not intercept typing into text fields or run in item popups. The standalone ink lab
 uses its own controls and disables those shortcuts.
 
@@ -75,8 +91,9 @@ item popup cleanup, lab controls, reading modes and the 1280x720 toolbar layout.
 
 Run `tools/verify_portrait_ink_render.gd` with a **real renderer** (OpenGL compatibility
 was used for this checkpoint). It compares original and animated GPU images: alpha
-must remain unchanged, the protected facial interior must match original RGB,
-interior ink must actually change, and zero added ink must reproduce the original
+must remain unchanged in the subtle preset, the protected facial interior must match
+original RGB in both presets, and the stronger preset must actually change silhouette
+alpha. With form motion and added ink both zero, the original must be reproduced
 within one 8-bit colour step. Headless dummy-renderer tests do not establish this.
 
 Record deterministic review frames with:
@@ -87,14 +104,16 @@ godot --path . --rendering-method gl_compatibility --rendering-driver opengl3 --
 ```
 
 Frames use 30 fps. An optional final `small` argument selects 1280x720 instead of
-1600x1000. Captures also include still conversation, protection-mask and legacy views.
-Local rendered output and clips live under ignored `logs/portrait-ink/`.
+1600x1000. A further `subtle` argument selects the older hatching-only preset.
+Captures also include still conversation, protection-mask and legacy views.
+Local rendered output and clips live under ignored `logs/portrait-ink-stronger/`
+for this revision; the initial clips remain in `logs/portrait-ink/`.
 
 ## Review question and next work
 
-Judge the animated candidate while reading, with the original and held version as
-references. Is the calm interior-hatching motion enough to give the illustration a
-little life, or should the next version allow selected hair/contour lines to move too?
+Judge the stronger candidate while reading, with the original and held version as
+references. Does it have enough presence without the hair and clothing looking
+rubbery? The original hatching-only approach remains available for comparison.
 
 After that artistic decision: tune/approve the neutral composite, prepare registered
 ink for Edda's other expressions, test a contrasting character, then expand the asset

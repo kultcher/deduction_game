@@ -5,7 +5,7 @@ extends RefCounted
 const Assets = preload("res://ui/portrait_ink_assets.gd")
 const SHADER = preload("res://ui/portrait_ink.gdshader")
 const DEFAULTS = {
-	"rate": 6.0, "displacement": 1.2, "amount": 0.6,
+	"rate": 6.0, "displacement": 1.2, "form": 0.0, "amount": 0.6,
 	"protect_face": true, "protect_edge": true, "show_protection": false,
 	"warp": true, "variants": false, "pressure": false,
 }
@@ -23,7 +23,8 @@ func configure(values: Dictionary) -> void:
 		if settings.has(key):
 			settings[key] = values[key]
 	settings.rate = clampf(float(settings.rate), 1.0, 12.0)
-	settings.displacement = clampf(float(settings.displacement), 0.0, 4.0)
+	settings.displacement = clampf(float(settings.displacement), 0.0, 12.0)
+	settings.form = clampf(float(settings.form), 0.0, 20.0)
 	settings.amount = clampf(float(settings.amount), 0.0, 1.0)
 	_sync()
 
@@ -78,6 +79,7 @@ func _sync() -> void:
 		# Keep GPU float hashes bounded while the CPU phase remains monotonic.
 		mat.set_shader_parameter("redraw_step", float(step_index % 4096))
 		mat.set_shader_parameter("displacement_px", float(settings.displacement) * (1.0 + pulse_left * 0.8))
+		mat.set_shader_parameter("form_displacement_px", float(settings.form) * (1.0 + pulse_left * 0.8))
 		mat.set_shader_parameter("ink_amount", float(settings.amount))
 		mat.set_shader_parameter("protect_face", bool(settings.protect_face))
 		mat.set_shader_parameter("protect_edge", bool(settings.protect_edge))
