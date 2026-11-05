@@ -1,6 +1,6 @@
 # Voice calibration: first writing pass
 
-Drafts for editorial review, following [DIALOGUE_DESIGN](DIALOGUE_DESIGN.md).
+Drafts for editorial review, following [DIALOGUE_DESIGN](../DIALOGUE_DESIGN.md).
 Four short situations per speaker. The new twelve are lab-only sketches, not live voice packs.
 Agnes, Bartholomew and Constance are comparison references. One version per situation;
 no pressure/repeat/serious-mode variants or new gameplay hooks in this pass.

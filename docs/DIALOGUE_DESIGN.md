@@ -1,8 +1,7 @@
 # Demonologist — Core Dialogue Design
 
-**Status:** Agreed design direction; implementation reference, not a claim that every feature below is built.  
-**Updated:** 2026-10-28
-**Suggested repository location:** `docs/DIALOGUE_DESIGN.md`
+**Status:** Agreed design direction and voice bible. All fifteen voice packs are live; the targets still open are listed in section 10.  
+**Updated:** 2026-11-04
 
 > **Core premise:** A character's voice is principally *how they process and present a thought*, not a vocabulary filter pasted over interchangeable text. The simulation decides what may be said; the dialogue system decides how that approved content sounds.
 
@@ -14,8 +13,8 @@ This is the **creative and behavioral specification** for dialogue. It does not 
 
 - `DESIGN.md` and the simulation remain authoritative on roles, secrets, schedules, knowledge, testimony, votes, social relationships, and mechanics.
 - `sim/content.gd` remains authoritative on the current cast IDs, pronouns, baseline traits, and the fact that occupations/roles/alignment can change each case.
-- `docs/dialogue_prototype.md` describes the existing implemented composer and dialogue laboratory, including its current limits.
-- `sim/dialogue.gd`, `sim/dialogue_voices.gd`, and `sim/dialogue_decisions.gd` are the current implementation surfaces. Nothing in this design document implies they already implement the entire voice bible.
+- `docs/archive/dialogue_prototype.md` records how the composer and dialogue laboratory were first built.
+- `sim/dialogue.gd`, `sim/dialogue_voices.gd`, `sim/dialogue_decisions.gd` and `sim/dialogue_presentations.gd` are the implementation surfaces.
 - `sim/dialogue_contract.gd` defines the shared presentation boundary and output metadata;
   `sim/dialogue_observations.gd` defines bounded direct-presence slots and scene identity.
   Simulation-facing conversation and meeting adapters live in `sim/mind_dialogue.gd`
@@ -380,39 +379,32 @@ Canonical reports and case cards remain separate. Qualification, changed provena
 or unsupported forms retain their full approved statements. This does not imply
 shared travel, a joint arrival or precise simultaneity.
 
-The implemented voice baseline remains Agnes, Bart and Constance. The remaining
-twelve profiles below, broad sentence architectures, subjective interpretation,
-serious-event reactions and relationship interplay remain authoring targets.
-Pressure alone does not activate grief or a new serious mode. Do not pass a design
-sketch off as a live simulation hook merely because its prose appears in this file.
+**Where it stands (Nov 4).** All fifteen characters have a live voice pack in
+`sim/dialogue_voices.gd`, each with the same set of about 230 keys, and no `[PH]`
+placeholders remain. The packs cover the composer intents, greetings (including
+contextual openers after a murder, an execution or a friend's death), gift disclosure
+and refusals, night alibis and pressed-night reconfirmations, opinions, approaches,
+tavern gossip, meeting speech (claims, accusation tiers, relays, nomination cases,
+defences, last words) and the Workshop case-presentation replies
+(`sim/dialogue_presentations.gd`). Every voiced line keeps a canonical `statement`
+beside its voiced `text`, so tests and the case judge never read the voice.
 
-The first editorial expansion is now available in
-[DIALOGUE_VOICE_SKETCHES.md](DIALOGUE_VOICE_SKETCHES.md) and the lab's **Voice calibration**
-section: gift refusal, routine alibi, firsthand report and the same report under doubt
-for all fifteen speakers. The twelve new voices are review samples only, with one
-version per situation; they are not registered as complete live voice packs. Review
-their ordinary short lines and collision groups before expanding variants or hooks.
-
-As documented in `docs/dialogue_prototype.md` and current `sim/` files:
-
-- Agnes, Bart, and Constance have authored presentation for the original report/challenge/friendship/conceal/reconsider intents, plus approved argument/nomination decisions.
-- The composer preserves canonical statements and has bounded authored forms for some refusals/reconsiderations.
-- `compose_turn` supports approved ordered reports and explicitly authorized connective relations; separate fact cards remain intact.
-- Immediate conversational continuity covers a small set of actual preceding player actions; it is not a general transcript-aware dialogue reasoner.
-- Per-audience memory, repetition flags, and deterministic variants protect case mechanics. The lab compares synthetic situations; tests cover truth-independence and semantic preservation.
-
-The full fifteen-voice catalogue, flexible syntax across every factual payload, automatic safe consolidation, and serious-mode coverage described above are **design targets**, not all current features.
+Still design targets: several meaning-equivalent realizations per approved form,
+automatic safe consolidation across facts, serious-mode reactions tied to explicit
+events, and relationship-aware interplay. The original calibration sketches are in
+[archive/DIALOGUE_VOICE_SKETCHES.md](archive/DIALOGUE_VOICE_SKETCHES.md); the lab keeps
+its **Voice calibration** section.
 
 ### Sensible implementation sequence
 
-1. **Complete voice profiles on existing hooks.** Add the remaining twelve voices to authored packs and decision responses. Extend gift refusals and standard night alibis where the relevant decision has already been made. Keep existing fallback for unsupported cases.
-2. **Expand the lab.** Compare all fifteen on the same short report, refusal, night alibi, challenged claim, repeated question, argument response, and nomination. Include private/public and normal/pressured pairs.
+1. **Complete voice profiles on existing hooks.** *Done (Nov 3, dialogue batches 2–7).* Add the remaining twelve voices to authored packs and decision responses. Extend gift refusals and standard night alibis where the relevant decision has already been made. Keep existing fallback for unsupported cases.
+2. **Expand the lab.** *Partly done: the lab's Voice calibration compares all fifteen on four situations.* Compare all fifteen on the same short report, refusal, night alibi, challenged claim, repeated question, argument response, and nomination. Include private/public and normal/pressured pairs.
 3. **Improve sentence-level variation.** Use multiple *meaning-equivalent* short realizations of approved forms; favor syntax over prefix inflation. Only add bounded semantic slots when the existing raw sentence prevents safe rewriting.
 4. **Add explicit discourse-aware joins.** First support high-confidence safe merges (identical observer/source and time/place for parallel sightings). Preserve original fact IDs and disable merging on ambiguous cases.
 5. **Add serious-mode cues carefully.** Hook to explicit, authorized simulation events; add bespoke reactions for especially consequential scenes rather than trying to derive bereavement, betrayal, or grief from generic pressure.
 6. **Eventually layer relationships.** Context-sensitive interplay (e.g., Greta addressing Fenwick differently from Nisha) is promising, but secondary to robust individual voices; it must use known, case-specific bonds and not fixed assumptions.
 
-Avoid a second independent dialogue pipeline. Expand `sim/dialogue.gd`, voice data, and decision rendering incrementally where their separation from simulation remains intact. Keep the prototype document as an implementation record and this file as the intended behavior.
+Avoid a second independent dialogue pipeline. Expand `sim/dialogue.gd`, voice data, and decision rendering incrementally where their separation from simulation remains intact. Keep this file as the intended behavior; the archived prototype document is the record of how the composer was first built.
 
 ## 11. Testing and acceptance criteria
 

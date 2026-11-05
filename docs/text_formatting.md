@@ -153,7 +153,7 @@ through `UITheme.rich_text_fonts()` so emphasizing names preserves the font fami
 ## Deferred extension
 
 Steps 4–5 are paused until card zoom and presentation are settled. See the
-[text-system handoff](text_system_handoff.md) for completed work, integration hooks,
+[text-system handoff](archive/text_system_handoff.md) for completed work, integration hooks,
 known constraints, renderer alternatives and a resume checklist.
 
 4. Add wrapping/layout support for board cards, pinned deductions and the tray.
