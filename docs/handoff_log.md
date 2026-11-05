@@ -22,6 +22,22 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-05 evening, Claude-Tally: `tools/replay_why.gd` (why the town voted), PR open
+
+Base `e09dbbd`. Branch `claude/replay-why`. Status: **PR open, for Michael to merge.**
+
+- New `tools/replay_why.gd` + `tools/belief_views.gd`: replays a playtest log and, just
+  before each vote, prints each good mind's suspicion, joint-world P(evil), P(Demon) and
+  likeliest evil teams. Ends with a vote-tally check against the log. See
+  `docs/DECISION_INSPECTOR.md`.
+- `workshop/case_eval.gd`: opt-in `CaseEval.capture_worlds` / `captured` (developer use
+  only). Off, the code path and results are unchanged (`need_expand` is the old
+  condition; the GD path only appends when the flag is set).
+- Checked on playtest case 13910 (10 NPCs, dynamic script): votes replay identically with
+  the views taken. `test_trace_solver` and `test_workshop_action` pass; CI runs the golden diff.
+
+---
+
 ## 2026-11-05 ~05:30 ET, Claude-Tally: balance sweep done (11,000 games); tooling on main
 
 - **Landed** (PRs #63, #64, sim-neutral): `autoplay.gd --dynamic --results-jsonl --sha`,

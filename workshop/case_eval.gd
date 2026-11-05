@@ -311,6 +311,13 @@ static func category_text(cat: String) -> String:
 ##   theory_fit          how much of the posterior agrees with the player's answers/positions
 ##   pivotal             card ids whose removal would drop the category (reference listener)
 ##   impossible          no world survives the case's hard facts
+## Developer inspection only (tools/belief_views.gd): when set, every evaluation also
+## appends {"worlds": per-world posterior weights (universe order, unnormalised),
+## "people": per-person odds} to captured, one entry per evaluation. Off in play; it
+## changes no result.
+static var capture_worlds: bool = false
+static var captured: Array = []
+
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary = {}) -> Dictionary:
 	if not SolverBackend.profiling_enabled:
 		return _evaluate_impl(view, case_data, listener)
@@ -428,6 +435,8 @@ static func _evaluate_posterior_gd(view: Dictionary, case_data: Dictionary, card
 	result["factors"] = cc.factors + test_used
 	result["rivals"] = _rivals(view, result.people, conclusion)
 	result["theory_fit"] = 1.0
+	if capture_worlds:
+		captured.append({"worlds": _expand(cc, oc, post), "people": result.people.duplicate(true)})
 	if not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty() or str(a.get("in_play_role", "")) != "" or str(a.get("false_slot", "")) != ""):
 		result["theory_fit"] = _theory_fit(view, case_data, cards, _expand(cc, oc, post), listener.get("knowledge", {}))
 	if listener.get("id", "") == "":
@@ -495,7 +504,8 @@ static func _evaluate_posterior_cs(view: Dictionary, case_data: Dictionary, card
 		bias_factor = float(bias.factor)
 
 	var compute_piv: bool = listener.get("id", "") == ""
-	var need_expand: bool = not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty() or str(a.get("in_play_role", "")) != "" or str(a.get("false_slot", "")) != "")
+	var theory_needed: bool = not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty() or str(a.get("in_play_role", "")) != "" or str(a.get("false_slot", "")) != "")
+	var need_expand: bool = theory_needed or capture_worlds
 
 	var eval_ints := PackedInt32Array([
 		ns,
@@ -562,7 +572,10 @@ static func _evaluate_posterior_cs(view: Dictionary, case_data: Dictionary, card
 	}
 	if need_expand:
 		var exp_post: PackedFloat64Array = raw.slice(p, p + universe.size())
-		result["theory_fit"] = _theory_fit(view, case_data, cards, exp_post, listener.get("knowledge", {}))
+		if capture_worlds:
+			captured.append({"worlds": exp_post, "people": people_dict.duplicate(true)})
+		if theory_needed:
+			result["theory_fit"] = _theory_fit(view, case_data, cards, exp_post, listener.get("knowledge", {}))
 	if compute_piv:
 		result["pivotal"] = piv_ids
 	return result

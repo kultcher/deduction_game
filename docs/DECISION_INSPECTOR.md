@@ -15,6 +15,26 @@ Use the NPC and decision filters to narrow the view. **Include good-self simulat
 - Fear uses an existing fixed NPC/day hash, not fresh game RNG. Its nominal percentage describes the fraction of daily samples under the cutoff; repeating the question does not reroll it.
 - Deterministic scores, skip gates and final choices with no additional draw show **N/A (no roll)**. There is no invented probability for an entire conversation, vote or strategy.
 
+## Why the town voted: `tools/replay_why.gd`
+
+The inspector shows each roll; this shows the beliefs behind the votes. It replays a
+playtest dev log and, just before each logged vote (or at `--at SEQ,...`), prints every good
+mind's view from the shared model:
+
+- **suspicion**: the value the vote and nomination scores read (`Mind.susp`).
+- **P(evil)**: that mind's joint-world posterior per person.
+- **P(Demon)**: the same posterior summed by who holds the Demon.
+- **team**: the likeliest evil teams (`--worlds N`, default 5), with their share of the posterior.
+
+```text
+godot --headless --path . --script res://tools/replay_why.gd -- logs/case_13910.jsonl [--at 480] [--worlds 5] [--json out.jsonl]
+```
+
+It ends by comparing the replay's vote tallies with the log (`votes_match`). Meeting
+testimony text can differ, because the UI splits it into separate records; the votes must
+match. Each view re-runs that mind's ordinary refresh with `CaseEval.capture_worlds` on,
+which only stores per-world weights and changes no result (`tools/belief_views.gd`).
+
 ## Coverage and maintenance
 
 Coverage includes weighted decision checks, gift tiers and withholding gates, protection/confidence requests, pressed nerves, whereabouts slips, opinions, gossip selection, traits/haunts/relationships, approaches and peer-conversation selection, public accusation/nomination/vote calculations, evil cover overrides, and Seer/Night Watch/Warden plus evil target decisions. Actual ability results, setup assignments and incidental flavour/world-generation randomness are outside this inspector's remit. It does not replay alternative decisions.
