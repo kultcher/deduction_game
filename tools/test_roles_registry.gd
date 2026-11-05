@@ -1,30 +1,154 @@
-## Test suite for the complete RoleDef / RoleRegistry system (all 21 roles in C.ROLES).
-##   godot --headless --path . --script res://tools/test_role_def_poc.gd
+## Role registry and definitions: RoleDef hooks, pools and hint packages, the deal (setup sizes, homes, bluffs) and the C# report tables every role compiles to.
+## Merged from: test_chunk2_world_mask_roles, test_chunk3_executor_registrar, test_chunk5_cs_tables, test_role_def_poc, test_roster.
 extends SceneTree
-const Tuning = preload("res://sim/tuning.gd")
 
-const Game = preload("res://game/game.gd")
-const C = preload("res://sim/content.gd")
 const Gifts = preload("res://sim/gifts.gd")
+const Reasoner = preload("res://workshop/reasoner.gd")
+const Domain = preload("res://workshop/world_domain.gd")
 const Mind = preload("res://sim/mind.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Evil = preload("res://sim/evil.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const Solver = preload("res://workshop/solver.gd")
-const Domain = preload("res://workshop/world_domain.gd")
-const Reasoner = preload("res://workshop/reasoner.gd")
+const Game = preload("res://game/game.gd")
+const C = preload("res://sim/content.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
+const World = preload("res://sim/world.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 
 var checks = 0
 var fails = 0
+var failures = 0
+var _checks = 0
+var _fails = 0
 
 
-func _check(ok: bool, msg: String) -> void:
+func _init() -> void:
+	call_deferred("_main")
+
+
+func _main() -> void:
+	_run_role_def_poc()
+	_run_chunk2_world_mask_roles()
+	_run_chunk3_executor_registra()
+	_run_roster()
+	_run_chunk5_cs_tables()
+	print("Roles: registry: %d checks, %d failures" % [checks, fails])
+	quit(1 if fails > 0 else 0)
+
+
+## One shared check helper (the merged suites used both names).
+func check(ok: bool, label: String) -> void:
+	_count(ok, label)
+
+
+func _check(ok: bool, label: String) -> void:
+	_count(ok, label)
+
+
+func _count(ok: bool, label: String) -> void:
 	checks += 1
+	_checks += 1
 	if not ok:
 		fails += 1
-		print("FAIL: ", msg)
-	else:
-		print("PASS: ", msg)
+		failures += 1
+		_fails += 1
+		printerr("FAIL: " + label)
+
+
+# ---------------------------------------------------------------- from test_role_def_poc
+
+func _run_role_def_poc() -> void:
+	_test_registry_and_metadata()
+	_test_seer_hooks()
+	_test_warden_hooks()
+	_test_role_in_group_hooks()
+	_test_role_at_site_hooks()
+	_test_count_and_route_hooks()
+	_test_final_roles_hooks()
+
+
+# ---------------------------------------------------------------- from test_chunk2_world_mask_roles
+
+func _run_chunk2_world_mask_roles() -> void:
+	_test_pools_hints_and_seer_solo_bluff()
+
+
+# ---------------------------------------------------------------- from test_chunk3_executor_registrar
+
+func _run_chunk3_executor_registra() -> void:
+	_test_pools_hints_and_scripts()
+
+
+# ---------------------------------------------------------------- from test_roster
+
+func _run_roster() -> void:
+	_test_setup(7)
+	_test_setup(10)
+	_test_homes_and_bluffs()
+
+
+# ---------------------------------------------------------------- from test_chunk5_cs_tables
+
+func _run_chunk5_cs_tables() -> void:
+	var g = Game.new()
+	g.new_case(692, 10)
+	g.w.dlog.detailed = false
+	g.w.day = 3
+	var obs = g.w.living_good()[0]
+	var prepared = Live.Assess.prepare(g.workshop_snapshot([], obs.id))
+	var view: Dictionary = prepared.view
+	var ids: Array = view.people.map(func(p): return p.id)
+	var src: String = ids[1]
+	var cards: Array = []
+	for blk in ["square", "docks", "nowhere"]:
+		for walked in [false, true]:
+			for r in ["", "poisoner", "demon", "seer"]:
+				var d = {"block": blk, "walked": walked}
+				if r != "": d["role"] = r
+				cards.append({"role": "monitor", "data": d})
+	for t in ids:
+		cards.append({"role": "confessor", "data": {"target": t, "good": true}})
+	cards.append({"role": "confessor", "data": {"forgot": true}})
+	cards.append({"role": "confessor", "data": {}})
+	var answers: Array = [[]]
+	for p in ids.slice(0, 5): answers.append([p])
+	answers.append([ids[2], ids[5]])
+	answers.append(["nobody"])
+	var universe: Array = Solver.universe(view)
+	var checked = 0
+	var bad = 0
+	for k in range(cards.size()):
+		for testimony in [false, true]:
+			var card: Dictionary = {"kind": "report", "quoted": false}
+			card["id"] = "mc:%d:%s" % [k, testimony]
+			card["role"] = cards[k].role
+			card["data"] = cards[k].data
+			card["source"] = src
+			card["observed_at"] = {"day": 2, "phase": "night"}
+			card["night"] = 2
+			if testimony:
+				card["testimony_only"] = true
+				card["reported_at"] = {"day": 3, "phase": "evening"}
+			for ans in (answers if not testimony else [[]]):
+				var table: PackedByteArray = Solver.report_table(view, card, ans)
+				var valid: PackedByteArray = Solver.valid_table(view, card)
+				for i in range(0, universe.size(), 37):
+					var want: bool
+					if testimony:
+						want = Solver.source_valid(view, universe[i], card) and Solver._testimony_content(view, universe[i], card)
+					else:
+						want = valid[i] != 0 and Solver._report_content(view, universe[i], card, {"positive": ans})
+					checked += 1
+					if (table[i] != 0) != want:
+						bad += 1
+						if bad <= 5:
+							print("MISMATCH card=", JSON.stringify(card.data), " role=", card.role, " testimony=", testimony, " ans=", ans, " world=", JSON.stringify(universe[i]), " cs=", table[i], " gd=", want)
+	print("C# Monitor/Confessor tables: %d worlds checked, %d mismatches" % [checked, bad])
+	check(checked > 0 and bad == 0, "C# Monitor/Confessor report tables agree with the content rule")
+
+
+# ---- test_role_def_poc
 
 
 func _give(w, n, role: String) -> void:
@@ -44,18 +168,6 @@ func _give(w, n, role: String) -> void:
 	n.believed_roles.clear()
 	n.ledger.clear()
 	n.history.clear()
-
-
-func _init() -> void:
-	_test_registry_and_metadata()
-	_test_seer_hooks()
-	_test_warden_hooks()
-	_test_role_in_group_hooks()
-	_test_role_at_site_hooks()
-	_test_count_and_route_hooks()
-	_test_final_roles_hooks()
-	print("RoleDef PoC: %d checks; failures: %d" % [checks, fails])
-	quit(1 if fails else 0)
 
 
 func _test_registry_and_metadata() -> void:
@@ -447,3 +559,145 @@ func _test_final_roles_hooks() -> void:
 	_check(is_equal_approx(C.EVIL_CAUTION_DEMON, Tuning.Evil.EVIL_CAUTION_DEMON) and is_equal_approx(Evil.HEAT_FADE, Tuning.Evil.HEAT_FADE), "Evil constants alias Tuning.Evil")
 	_check(is_equal_approx(C.role_def("seer").public_threat_bonus, Tuning.Roles.SEER.public_threat_bonus) and is_equal_approx(C.role_def("warden").quiet_night_effect, Tuning.Roles.WARDEN.quiet_night_effect), "RoleDefs read per-role tuning from Tuning.Roles")
 	_check(Reasoner.profile(0.2).cards == Tuning.Workshop.PROFILE_LOW.cards and Reasoner.profile(0.5).rivals == Tuning.Workshop.PROFILE_MEDIUM.rivals and Reasoner.profile(0.8).support == Tuning.Workshop.PROFILE_HIGH.support, "Reasoner.profile reads Low/Medium/High profiles from Tuning.Workshop")
+
+
+# ---- test_chunk2_world_mask_roles
+
+
+func _test_pools_hints_and_seer_solo_bluff() -> void:
+	_check(C.START_ROLES == ["archivist", "clerk", "surveyor", "rumormonger"],
+		"START_ROLES keeps the 4 Night-0 info roles")
+	_check("augur" in C.IDENTIFIER_ROLES and C.GOOD_ROLES.size() >= 18,
+		"IDENTIFIER_ROLES includes augur and GOOD_ROLES has 18 roles")
+	_check("chronicler" in C.HINT_PACKAGES["official"].roles and "magistrate" in C.HINT_PACKAGES["official"].roles and "augur" in C.HINT_PACKAGES["people"].roles,
+		"HINT_PACKAGES wires chronicler + magistrate to official and augur to people")
+
+	# Solo-evil Seer bluff guard (Seed 2004 regression):
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(2004, 7)
+	var w = g.w
+	var d = w.demon()
+	for m_id in w.minion_ids:
+		w.by_id[m_id].alive = false
+		w.by_id[m_id].death_day = 1
+		w.by_id[m_id].death_cause = "executed"
+	w.evil_plan["bluffs"][d.id] = "seer"
+	w.day = 2
+	w.phase = C.NIGHT
+	var self_paired: bool = false
+	for trial in range(60):
+		var res: Dictionary = C.role_def("seer").generate_bluff_reading(w, d, w.evil_plan, w.living_good()[0].id, d, [d.id])
+		var pair: Array = res.get("entry", {}).get("data", {}).get("pair", [])
+		if pair.size() != 2 or pair[0] == pair[1] or d.id in pair:
+			self_paired = true
+	_check(not self_paired,
+		"Solo-evil Seer bluffer never includes themselves in data.pair on even nights")
+
+
+# ---- test_chunk3_executor_registrar
+
+
+func _test_pools_hints_and_scripts() -> void:
+	_check("executor" in C.GOOD_ROLES and "registrar" in C.GOOD_ROLES and C.GOOD_ROLES.size() >= 20,
+		"GOOD_ROLES includes executor and registrar (20+ ready town roles; 22 after patch_014)")
+	_check("registrar" in C.IDENTIFIER_ROLES and "registrar" not in C.START_ROLES and "executor" not in C.START_ROLES,
+		"registrar is in IDENTIFIER_ROLES and neither executor nor registrar is in START_ROLES")
+	_check("executor" in C.HINT_PACKAGES["the_dead"].roles and "registrar" in C.HINT_PACKAGES["official"].roles,
+		"HINT_PACKAGES wires executor to the_dead and registrar to official")
+	_check("role_id" in ScriptDef.tags_of("executor") and "role_id" in ScriptDef.tags_of("registrar"),
+		"ScriptDef tags classify both executor and registrar under role_id")
+
+	var custom = ScriptDef.default_script()
+	custom.town.erase("warden")
+	custom.town.erase("veteran")
+	custom.town.append("executor")
+	custom.town.append("registrar")
+	custom.forced = ["executor", "registrar"]
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(9300, 7, custom)
+	var ex_n = g.w.npc_with_role("executor")
+	var rg_n = g.w.npc_with_role("registrar")
+	_check(ex_n != null and rg_n != null,
+		"Custom script deals forced Executor and Registrar")
+	_check(ex_n.info_log.size() == 1 and ex_n.info_log[0].get("data", {}).get("assigned", false) and ex_n.executor_target != ex_n.id,
+		"Dealt Executor starts Night 0 with a shareable charge reading on another person")
+	_check(rg_n.info_log.size() == 1 and rg_n.registrar_roles.size() == 3 and not rg_n.info_log[0].get("data", {}).has("target"),
+		"Dealt Registrar starts Night 0 knowing 3 roles without a Night 0 person check")
+
+
+# ---- test_roster
+
+
+## Give a good NPC a role (swapping with whoever holds it, so roles stay unique).
+func _world(sd: int, size: int = 7):
+	var w = World.new()
+	w.setup(sd, size)
+	return w
+
+
+func _test_setup(size: int) -> void:
+	var bad: Array = []
+	var mods = {}
+	# At least 20 deals, then until all four secrets have turned up (at most 60, as before).
+	for sd in range(9000, 9060):
+		if sd >= 9020 and mods.size() == 4:
+			break
+		var w = _world(sd, size)
+		var cfg: Dictionary = C.SETUPS[size]
+		var roles: Array = w.npcs.map(func(n): return n.role)
+		var town: Array = roles.filter(func(r): return r in C.GOOD_ROLES)
+		var mins: Array = roles.filter(func(r): return C.is_minion(r))
+		var uniq = {}
+		for r in roles:
+			uniq[r] = true
+		var holders: Array = w.npcs.filter(func(n): return n.secret_mod != "")
+		var kinds = {}
+		for h in holders:
+			kinds[h.secret_mod] = true
+		var ok = w.npcs.size() == size and town.size() == cfg["town"] and mins.size() == cfg["minions"] \
+			and roles.count("demon") == 1 and uniq.size() == size \
+			and town.filter(func(r): return r in C.START_ROLES).size() >= 2 \
+			and town.filter(func(r): return r in C.IDENTIFIER_ROLES).size() >= 1 \
+			and kinds.size() == 1 and holders.all(func(h): return not h.is_evil()) \
+			and holders.size() == (2 if kinds.has("lovers") else 1)
+		for k in kinds:
+			mods[k] = true
+		if not ok:
+			bad.append(sd)
+	print("%d-player setups: bad seeds %s; secrets seen %s" % [size, str(bad), str(mods.keys())])
+	_check(bad.is_empty(), "%d-player setup: right counts, unique roles, 2+ start gifts, an identifier, one secret on the good" % size)
+	_check(mods.size() == 4, "%d-player: all four secrets turn up" % size)
+
+
+func _test_homes_and_bluffs() -> void:
+	var bad = 0
+	for sd in range(9500, 9520):
+		for size in [7, 10]:
+			var w = _world(sd, size)
+			var counts = {}
+			for n in w.npcs:
+				counts[n.home_block] = counts.get(n.home_block, 0) + 1
+			var vals: Array = counts.values()
+			if vals.size() < 4 or vals.max() - vals.min() > 1:
+				bad += 1
+	_check(bad == 0, "homes are spread evenly across the blocks")
+	var invalid_fake = 0
+	var total = 0
+	# Enough fake Surveyor readings to judge them: at least 40 deals and 30 readings, at
+	# most the 380 deals this used to walk every time.
+	for sd in range(9520, 9900):
+		if sd >= 9560 and total >= 30:
+			break
+		var w2 = _world(sd, 10)
+		for m in w2.evil_team():
+			for e in m.info_log:
+				if e.get("fake", false) and e["role"] == "surveyor":
+					total += 1
+					var fblk: String = str(e["data"].get("block", ""))
+					var fres: int = w2.npcs.filter(func(x): return x.home_block == fblk).size()
+					if fblk not in C.BLOCKS or fblk == m.home_block or fres < 2 or not (e["data"].get("same") is bool):
+						invalid_fake += 1
+	print("fake Surveyor invalid block/parity readings: %d/%d" % [invalid_fake, total])
+	_check(total > 0 and invalid_fake == 0, "fake Surveyor bluffs always pick an eligible non-own >=2 resident block")
