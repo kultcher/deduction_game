@@ -20,7 +20,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
 | `USE_FLAVOR_SECRETS` | `false` |  | `sim/content.gd`, `sim/world.gd` |
 | `SHARED_EXECUTION_PRIORITY_WEIGHT` | `0.22` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_meeting.gd`, `sim/world.gd` |
-| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world.gd` |
+| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/confessor.gd`, `sim/roles/magistrate.gd`, `sim/world.gd` |
 | `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world.gd` |
 | `GRAVEDIGGER_MARKED_EVIL_CHANCE` | `0.3` |  | (only inside `sim/tuning.gd`) |
 | `EXTRA_WORK_SHIFT_CHANCE` | `0.3` | Schedule & relationship generation | `sim/world.gd` |
@@ -93,7 +93,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEARTHWITCH` | `{ }` |  | (unused) |
 | `CLERK` | `{ }` |  | (unused) |
 | `ARCHIVIST` | `{ }` |  | (unused) |
-| `GRAVEDIGGER` | `{ "marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE, "trust_backed_i...` |  | `sim/roles/executor.gd`, `sim/roles/gravedigger.gd`, `sim/world.gd` |
+| `GRAVEDIGGER` | `{ "marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE, "trust_backed_i...` |  | `sim/roles/executor.gd`, `sim/roles/gravedigger.gd`, `sim/roles/monitor.gd`, `sim/world.gd` |
 | `NIGHTWATCH` | `{ "req_already_wondering": 0.3, }` |  | `sim/roles/nightwatch.gd` |
 | `RUMORMONGER` | `{ }` |  | (unused) |
 | `MEDIUM` | `{ "relay_reading_scale": 0.6, "dead_suspicion_min": 0.35, }` |  | `sim/roles/medium.gd` |
@@ -189,7 +189,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `QUESTION_FATIGUE_BASE` | `0.03` |  | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_PRIVACY` | `0.05` |  | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
-| `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_dialogue.gd` |
+| `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
 | `PRESSED_EVIDENCE_PRIVACY` | `0.06` |  | `sim/mind_dialogue.gd` |
 | `WRONG_ROLE_GUESS_STEP` | `0.02` |  | `sim/social.gd` |
 | `SHARED_GIFT_FIRST_TIME_BONUS` | `0.03` |  | `sim/mind_dialogue.gd` |
@@ -244,6 +244,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_CASE_GOSSIP_SCALE` | `0.5` |  | `sim/social.gd` |
 | `SHARE_SIGHTING_GOSSIP_SCALE` | `0.8` |  | `sim/social.gd` |
 | `SHARE_SIGHTING_SCENE_BONUS` | `0.4` |  | `sim/social.gd` |
+| `SHARE_ALIBI_WEIGHT` | `0.22` |  | `sim/social.gd` |
+| `MUDDLER_CHANCE` | `0.65` |  | `sim/muddler.gd` |
 | `SHARE_ROLE_HINT_BOND_MIN` | `0.55` | Peer role hints and claims (meeting plan M1). A hint names only the gift's family (HINT_PACKAGES); a claim names the role, even for gifts with no readings to share. | `sim/social.gd` |
 | `SHARE_ROLE_HINT_OPENNESS_SCALE` | `0.9` |  | `sim/social.gd` |
 | `SHARE_ROLE_HINT_BOND_OFFSET` | `0.15` |  | `sim/social.gd` |
@@ -265,6 +267,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TAVERN_OVERHEAR_MIN_SUSP` | `0.4` |  | `sim/mind.gd` |
 | `TAVERN_GOSSIP_MIN_ITEMS` | `3` |  | `sim/social.gd` |
 | `TAVERN_GOSSIP_MAX_ITEMS` | `5` |  | `sim/social.gd` |
+| `TOWN_VIBE_TREND` | `0.03` | The town's vibe check on the Demonologist (always told at evening tavern gossip): the average rapport (trust) and competence (credibility) of the living good townsfolk, in 0.1-wide bands centred on neutral 0.5. A move of TOWN_VIBE_TREND since the player last heard it is called out; one good townsfolk TOWN_VIBE_OUTLIER below the average rapport (and below neutral) gets a 'not everyone agrees'. | `sim/social.gd` |
+| `TOWN_VIBE_OUTLIER` | `0.2` |  | `sim/social.gd` |
 | `TAVERN_UNHEARD_SPOKEN_WEIGHT` | `4.0` |  | `sim/social.gd` |
 | `TAVERN_BACKFILL_PROFILE_WEIGHT` | `1.2` |  | `sim/social.gd` |
 | `TAVERN_HEARD_SPOKEN_WEIGHT` | `0.2` |  | `sim/social.gd` |
@@ -308,14 +312,19 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `BLOCK_SAFETY_HEAT_PER_ACCUSER` | `0.15` |  | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_HEAT_CREDIBILITY` | `0.30` |  | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_DEFENCE_RELIEF` | `0.75` |  | `sim/mind_meeting.gd` |
-| `BLOCK_SAFETY_PRESS_RELIEF` | `0.65` |  | (unused) |
+| `BLOCK_SAFETY_PRESS_RELIEF` | `0.65` |  | `sim/mind_podium.gd` |
+| `PODIUM_PRESS_URGENCY` | `0.5` | Podium press (Step 3, sim/mind_podium.gd): being asked before the whole town, on trial, pushes toward an answer; a hint costs less than a claim; being seen out pushes a hidden walking gift to explain itself. A refusal raises pressure, and costs a little trust with the Demonologist when the press had no grounds or the nominee was safe. | `sim/mind_podium.gd` |
+| `PODIUM_HINT_EASE` | `0.6` |  | `sim/mind_podium.gd` |
+| `PODIUM_SEEN_OUT` | `0.4` |  | `sim/mind_podium.gd` |
+| `PODIUM_PRESS_PRESSURE_GAIN` | `0.1` |  | `sim/mind_podium.gd` |
+| `PODIUM_FRICTION_SAFETY` | `0.5` |  | `sim/mind_podium.gd` |
 | `ALLOW_UNANCHORED_PLAYER_NOMINATION` | `true` | Player nominations: with a filed case (anchored) or without (raw). A raw nomination still counts at the formal track-record weight (unchanged; revisit in M4's sweep). | (unused) |
 | `VOLUNTEER_SIGHTING_BASE` | `1.2` |  | `sim/mind_meeting.gd` |
 | `PUBLIC_CLAIM_BASE` | `-0.35` |  | `sim/mind_meeting.gd` |
-| `PUBLIC_CLAIM_OPENNESS_SLOPE` | `1.2` |  | `sim/mind_meeting.gd` |
+| `PUBLIC_CLAIM_OPENNESS_SLOPE` | `1.2` |  | `sim/mind_meeting.gd`, `sim/mind_podium.gd` |
 | `PUBLIC_CLAIM_DAY_SLOPE` | `0.4` |  | `sim/mind_meeting.gd` |
-| `PUBLIC_CLAIM_PRESSURE_SLOPE` | `0.8` |  | `sim/mind_meeting.gd` |
-| `PUBLIC_CLAIM_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_meeting.gd` |
+| `PUBLIC_CLAIM_PRESSURE_SLOPE` | `0.8` |  | `sim/mind_meeting.gd`, `sim/mind_podium.gd` |
+| `PUBLIC_CLAIM_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_meeting.gd`, `sim/mind_podium.gd` |
 | `PUBLIC_CLAIM_FEW_LEFT` | `0.8` |  | `sim/mind_meeting.gd` |
 | `REVEAL_COST_PRIVACY_SLOPE` | `0.8` |  | `sim/mind_meeting.gd` |
 | `REVEAL_COST_BASE` | `0.2` |  | `sim/mind_meeting.gd` |
@@ -423,12 +432,12 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRESS_PRESSURE_GAIN` | `0.35` |  | `sim/mind_dialogue.gd` |
 | `CONFESS_TRUST_PIVOT` | `0.6` | Night whereabouts, confession, stonewalling & slip rates | `sim/mind_dialogue.gd` |
 | `CONFESS_TRUST_SLOPE` | `1.5` |  | `sim/mind_dialogue.gd` |
-| `CONFESS_PRIVACY_PIVOT` | `0.4` |  | `sim/mind_dialogue.gd` |
-| `CONFESS_PRIVACY_SLOPE` | `1.0` |  | `sim/mind_dialogue.gd` |
+| `CONFESS_PRIVACY_PIVOT` | `0.4` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
+| `CONFESS_PRIVACY_SLOPE` | `1.0` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
 | `CONFESS_PRESSURE_SLOPE` | `0.8` |  | `sim/mind_dialogue.gd` |
 | `CONFESS_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
-| `LIE_BOLD_CONF_SLOPE` | `1.5` |  | `sim/mind_dialogue.gd` |
-| `LIE_BOLD_PRIVACY_SLOPE` | `0.6` |  | `sim/mind_dialogue.gd` |
+| `LIE_BOLD_CONF_SLOPE` | `1.5` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
+| `LIE_BOLD_PRIVACY_SLOPE` | `0.6` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
 | `SLIP_COMPOSURE_SCALE` | `0.25` |  | `sim/mind_dialogue.gd` |
 | `SLIP_PRESSURE_SCALE` | `0.15` |  | `sim/mind_dialogue.gd` |
 | `DIRECT_NIGHT_SIGHTING_SHARE_PROB` | `0.95` |  | `sim/mind_dialogue.gd` |

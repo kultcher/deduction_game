@@ -93,7 +93,7 @@ godot --headless --path . --script res://tools/autoplay.gd -- --seed 1 --games 5
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 1000 --games 150 --npcs 10
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 7 --transcript
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 1000 --games 150 --passive
-godot --headless --path . --script res://tools/autoplay.gd -- --seed 2000 --games 12 --backend csharp --no-trace
+godot --headless --path . --script res://tools/autoplay.gd -- --seed 2000 --games 12 --no-trace
 ```
 
 The bot plays through the same command interface a human uses, sees only what a player
@@ -105,7 +105,6 @@ through the shared model, and the bot ranks, nominates, votes and builds Worksho
 from its verdicts. `--insight 0.6` makes it miss 40% of cards. Compare it with the
 passive control on the same seeds to see how much the player's actions matter. Each game
 prints per-day suspicion against the truth and every good vote's score against its need.
-`--backend csharp` uses the C# solver kernel (much faster; results are identical);
 `--no-trace` skips the detailed state sidecar. Chunks of seeds can run in parallel.
 Measurements are in DESIGN's [History and measurements](DESIGN.md#history-and-measurements)
 and `docs/handoff_log.md`.
@@ -134,11 +133,9 @@ python3 tools/run_gd_tests.py --godot <exe> test_beliefs test_case_eval
 ```
 
 `tools/ci_fast_suites.txt` lists the suites CI runs on every PR. The **golden capture**
-(`tools/golden_capture.gd`, diffed with `tools/golden_diff.py`) replays fixed seeds in both
-solver backends and must match the CI baseline exactly unless a change is meant to alter
-behaviour: see [docs/golden_baseline.md](docs/golden_baseline.md). Known failure on main
-(Nov 4): `test_workshop_remaining`, "presenting the restored epoch retracts earlier
-curse-era suspicion". **Speed:** `tools/replay_54875.gd` replays a playtest opening with
+(`tools/golden_capture.gd`, diffed with `tools/golden_diff.py`) replays fixed seeds and must
+match the CI baseline exactly unless a change is meant to alter behaviour: see
+[docs/golden_baseline.md](docs/golden_baseline.md). **Speed:** `tools/replay_54875.gd` replays a playtest opening with
 timings and a profile; `tools/profile_c0.gd` times the solver stages.
 
 ## How to play
@@ -168,7 +165,7 @@ locations (`go scene_greta`, or `go greta`).
 its icon and who has claimed it. The Default script draws from fifteen good gifts
 (Archivist, Clerk, Dowser, Gravedigger, Lamplighter, Martyr, Medium, Night Watch,
 Psychologist, Rumormonger, Seer, Sexton, Surveyor, Veteran, Warden); custom scripts can
-add the Augur, Chronicler, Executor, Magistrate and Registrar. The minions:
+add the Augur, Chronicler, Confessor, Executor, Magistrate, Monitor and Registrar. The minions:
 
 - **Poisoner:** each night one person's gift fails or lies until the next night.
 - **Breathstealer:** once a day silences someone on its block from that evening's meeting
@@ -177,6 +174,8 @@ add the Augur, Chronicler, Executor, Magistrate and Registrar. The minions:
 - **Revenant:** hides a totem somewhere. Hanged with a totem hidden, it turns a good
   yes-voter evil. `search` at the totem's location burns it.
 - **Scion:** becomes the demon if the demon is executed while five or more are alive.
+- **Brute** (experimental, not dealt automatically): hunts and kills in the demon's place
+  while alive; the demon stays home.
 
 Evil knows each other and bluffs good gifts not in play. Full rules: DESIGN
 [Roles: the script](DESIGN.md#roles-the-script).
