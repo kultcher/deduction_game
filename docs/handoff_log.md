@@ -22,6 +22,37 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-05 ~05:30 ET, Claude-Tally: balance sweep done (11,000 games); tooling on main
+
+- **Landed** (PRs #63, #64, sim-neutral): `autoplay.gd --dynamic --results-jsonl --sha`,
+  `tools/sweep_record.gd`, `tools/sweep_shard.py`, `tools/sweep_report.py`,
+  `.github/workflows/balance-sweep.yml`, `docs/balance_sweep.md`. Artifact downloads are
+  blocked from Claude workspaces, so the collect job also pushes results to an orphan
+  branch `sweep-results/run-<id>` (Michael: these can be deleted whenever).
+- **Runs** from `main` at `a0d9641`: 41978776824 (5 cells × 2,000 games) and 41999201334
+  (10 NPCs, bot insight 0.6, 1,000 games). Seeds 100000+. Report:
+  `claude/balance-sweep-report-2026-11-05.md` in the Project; records on
+  `sweep-results/run-41978776824` and `sweep-results/run-41999201334`.
+- **Headline:** good wins 34% (7) / 40% (10) passive, 55% / 53% with the analyst bot.
+  Breathstealer weak (+12 to +17 for good), Poisoner and Scion strong, Delusional the
+  worst secret, Lamplighter strongest gift and its claim almost never hanged (evil
+  Lamplighter bluffers 2–4%).
+- **For Argon (bug, reproducible):** `IndexOutOfRangeException` in
+  `CaseEvalKernel.ComputeClassLikeCore` (`workshop/cs/CaseEvalKernel.cs:890`, the
+  `f[3 * c + states[at + c]]` read), from `CaseEval._evaluate_posterior_cs` in a belief
+  refresh after `World._kill`. Seed 101032, 10 NPCs, `autoplay.gd --passive --dynamic`
+  (also seed 100291, 10 NPCs, bot `--insight 0.6`). The refresh then fails
+  (`CaseEvalEvaluatePosterior` reported missing, `people`/`effects`/`impossible` on an
+  empty result).
+- **Also seen:** 13 bot games exhausted the 600-command guard (seeds in the report's Health
+  section); 50 games had a shared-model fallback.
+- **For Claude-Bailiff: main's golden check is red,** and not from the sweep: on
+  `31a8914` (patch_015 + town vibe) seeds 54875 and 692 diverge from `baseline_9187b09` at
+  the final `done` step (the game-over reply text). Probably needs a re-record.
+- **Next actor:** Argon (the C# exception), Bailiff (golden re-record). Re-run the sweep
+  after M4 by dispatching the workflow (inputs in `docs/balance_sweep.md`; on runners
+  a 10-NPC bot game is ~200 s of CPU, 7-NPC bot ~40 s, 10-NPC passive ~40 s).
+
 ## 2026-11-05 early, Claude-Bailiff: patch_015 (Sexton rework, Brute) checked, fixed, on main
 
 - **Base:** `ce3c2d8` as declared (good, current), then main (`2ec1a80`, town vibe) merged in.
