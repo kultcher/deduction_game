@@ -16,14 +16,27 @@ import argparse
 import gzip
 import json
 import math
+import re
 import sys
 from pathlib import Path
+
+
+# Absolute paths into Godot's user data folder (e.g. the game-over "Dev log written:" reply)
+# differ by machine; compare them as user://. Captures write user:// already
+# (tools/golden_capture.gd); this keeps older baselines comparable too.
+USER_DIR = re.compile(r"(?:[A-Za-z]:)?[^\s,:]*?app_userdata[/\\][^/\\,]+[/\\]([^,]*)")
+
+
+def portable(rec):
+    if isinstance(rec.get("reply"), str) and "app_userdata" in rec["reply"]:
+        rec["reply"] = USER_DIR.sub(lambda m: "user://" + m.group(1).replace("\\", "/"), rec["reply"])
+    return rec
 
 
 def load(path: Path):
     opener = gzip.open if path.suffix == ".gz" else open
     with opener(path, "rt", encoding="utf-8") as fh:
-        return [json.loads(line) for line in fh if line.strip()]
+        return [portable(json.loads(line)) for line in fh if line.strip()]
 
 
 def seed_files(folder: Path):
