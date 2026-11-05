@@ -8,7 +8,7 @@ const REPORT_FIELDS = {
 	"hearthwitch": ["nbrs", "count"], "rumormonger": ["pair", "secret"],
 	"nightwatch": ["block", "seen"], "lamplighter": ["count"],
 	"seer": ["pair", "yes"], "archivist": ["pair", "role"], "clerk": ["pair", "role"],
-	"gravedigger": ["executed", "role"], "psychologist": ["subject", "trusts", "suspects"],
+	"gravedigger": ["executed", "role"], "psychologist": ["subject", "trusts", "suspects", "mode", "day_heard", "statements"],
 	"veteran": ["attacked", "block"], "martyr": ["target", "chosen", "evil"],
 	"sexton": ["night"],
 	"warden": ["target"],
@@ -41,7 +41,8 @@ static func contains_opinion(card: Dictionary, depth: int = 0) -> bool:
 
 static func social_reading(card: Dictionary, depth: int = 0) -> bool:
 	if card.get("role", "") == "psychologist":
-		return true
+		var pdata = card.get("data", {})
+		return not (pdata is Dictionary and str(pdata.get("mode", "")) in ["pair", "none_false"])
 	if depth >= 64 or card.get("role", "") != "medium":
 		return false
 	var data = card.get("data", {})
@@ -125,6 +126,14 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 		for field in ["executed", "subject", "trusts", "suspects", "target", "nominator", "nominee"]:
 			if content.data.has(field) and content.data[field] not in content.subjects:
 				content.subjects.append(content.data[field])
+		for st in content.data.get("statements", []):
+			if st is Dictionary:
+				var st_src: String = str(st.get("source", ""))
+				if st_src != "" and st_src not in content.subjects:
+					content.subjects.append(st_src)
+				for sp in st.get("subject", []):
+					if str(sp) != "" and str(sp) not in content.subjects:
+						content.subjects.append(str(sp))
 		content.subjects.sort()
 		if card.get("role", "") not in REPORT_FIELDS and card.get("role") != "medium":
 			issues.append("report_semantics_unsupported")
@@ -184,6 +193,43 @@ static func report_data(role: String, data: Dictionary) -> Dictionary:
 					"data": report_data(nested_role, entry.get("data", {})), "text": entry.get("text", "")}
 				if entry.has("phase"):
 					result.item.entry["phase"] = entry.phase
+		return result
+	if role == "psychologist" and str(data.get("mode", "")) in ["pair", "none_false"]:
+		var pmode: String = str(data.get("mode", ""))
+		result["mode"] = pmode
+		result["day_heard"] = int(data.get("day_heard", -1))
+		if pmode == "pair" and data.get("statements") is Array:
+			var norm_stmts: Array = []
+			for st in data.statements:
+				if not (st is Dictionary):
+					continue
+				var sk: String = str(st.get("kind", ""))
+				var sraw: Dictionary = {"kind": sk, "source": str(st.get("source", "")), "subject": st.get("subject", []).duplicate(), "day": int(st.get("day", -1))}
+				if int(st.get("phase", -1)) >= 0:
+					sraw["phase"] = int(st.get("phase", -1))
+				if sk == "info":
+					sraw["role"] = str(st.get("role", ""))
+					sraw["data"] = report_data(sraw["role"], st.get("data", {}) if st.get("data") is Dictionary else {})
+				elif sk == "sighting":
+					sraw["block"] = str(st.get("block", ""))
+				elif sk == "alibi":
+					sraw["block"] = str(st.get("block", ""))
+					sraw["home"] = bool(st.get("home", true))
+				var snorm: Dictionary = normalize_card(sraw)
+				norm_stmts.append({
+					"fact_id": snorm.id,
+					"kind": sk,
+					"source": sraw["source"],
+					"subject": sraw["subject"],
+					"day": sraw["day"],
+					"phase": int(sraw.get("phase", 3 if sk == "info" else -1)),
+					"role": str(sraw.get("role", "")),
+					"data": sraw.get("data", {}),
+					"block": str(sraw.get("block", "")),
+					"home": bool(sraw.get("home", false)),
+					"summary": str(st.get("summary", "")),
+				})
+			result["statements"] = norm_stmts
 		return result
 	for key in REPORT_FIELDS.get(role, []):
 		if data.has(key):

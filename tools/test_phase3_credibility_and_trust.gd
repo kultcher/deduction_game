@@ -39,7 +39,7 @@ func _init() -> void:
 func _test_3_1_delta_confidence_and_proof_retraction_overrides() -> void:
 	var g = Game.new()
 	g.detailed_logging = false
-	g.new_case(97930, 10)
+	g.new_case(97931, 10)
 	var goods: Array = g.w.living_good()
 	var high_conf = goods[0]
 	var low_conf = goods[1]

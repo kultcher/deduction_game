@@ -479,15 +479,26 @@ func _assign_roles() -> void:
 	# Default script deals exactly what the global lists always did.
 	var forced_town: Array = sc.forced_in(sc.town)
 	var town_pool: Array = sc.town.filter(func(r): return not r in forced_town)
+	var forced_mins: Array = sc.forced_in(sc.minions)
+	var minion_pool: Array = sc.minions.filter(func(r): return not r in forced_mins)
 	var good: Array = []
+	var guaranteed = func(g: Array) -> bool:
+		return g.filter(func(r): return r in C.START_ROLES).size() >= 2 and g.any(func(r): return r in C.IDENTIFIER_ROLES)
 	for attempt in range(200):
 		good = forced_town + shuffled(town_pool).slice(0, cfg["town"] - forced_town.size())
-		var starts = good.filter(func(r): return r in C.START_ROLES).size()
-		var ident = good.filter(func(r): return r in C.IDENTIFIER_ROLES).size()
-		if starts >= 2 and ident >= 1:
+		if guaranteed.call(good):
 			break
-	var forced_mins: Array = sc.forced_in(sc.minions)
-	var mins: Array = forced_mins + shuffled(sc.minions.filter(func(r): return not r in forced_mins)).slice(0, cfg["minions"] - forced_mins.size())
+	var mins: Array = forced_mins + shuffled(minion_pool).slice(0, cfg["minions"] - forced_mins.size())
+	# Night-walkers in play must sit in the size's band (ScriptDef.DEAL_RULES). A deal that
+	# already fits is kept as drawn (same draws as before the rule existed); otherwise gifts
+	# and minions are redrawn together until everything holds. After 200 tries the last
+	# draw stands.
+	if not ScriptDef.deal_ok(good + mins, n_npcs):
+		for attempt in range(200):
+			good = forced_town + shuffled(town_pool).slice(0, cfg["town"] - forced_town.size())
+			mins = forced_mins + shuffled(minion_pool).slice(0, cfg["minions"] - forced_mins.size())
+			if guaranteed.call(good) and ScriptDef.deal_ok(good + mins, n_npcs):
+				break
 	var order = shuffled(npcs)
 	var forced_demon: Array = sc.forced_in(sc.demons)
 	order[0].role = forced_demon[0] if not forced_demon.is_empty() else (sc.demons[0] if sc.demons.size() == 1 else pick(sc.demons))
@@ -523,16 +534,15 @@ func _assign_secret_mod() -> void:
 		return
 	var forced_secret: Array = case_script.forced_in(case_script.secrets)
 	var k: String = forced_secret[0] if not forced_secret.is_empty() else pick(case_script.secrets)
-	if k != "lovers":
-		# The Rumormonger's gift can't name its own holder, so it never holds the secret
-		# alone (Lovers always involve someone else). The shared model knows the rule.
-		goods = goods.filter(func(n): return not C.role_def(n.role).cannot_hold_solo_secret)
-		if goods.size() < 2:
-			return
-	if k in ["lovers", "sleepwalker"]:
-		# These send their holder out at night: never on a role that is already out at
-		# night, so nobody has two reasons to be out (Case 22485).
-		goods = goods.filter(func(n): return not C.ROLES.get(n.role, {}).get("night_walk", false))
+	# Placement rules (ScriptDef.PLACEMENT_RULES): the Rumormonger never holds a secret
+	# alone; Lovers and Sleepwalker never land on a night-walker (Case 22485). Each rule
+	# narrows the candidates in turn, as the hand-written checks always did.
+	for rule in ScriptDef.PLACEMENT_RULES:
+		if rule.has("except") and k in rule.except:
+			continue
+		if rule.has("only") and not k in rule.only:
+			continue
+		goods = goods.filter(func(n): return not C.role_def(n.role).get(rule.not_on_flag))
 		if goods.size() < 2:
 			return
 	var a = goods[0]

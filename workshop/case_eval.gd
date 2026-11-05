@@ -90,6 +90,8 @@ static func _healthy_modifier_worlds_per_team(g: int, mods: Array) -> float:
 		w_h += float(maxi(0, g - 1))
 	if "sleepwalker" in mods:
 		w_h += float(g)
+	if "muddler" in mods:
+		w_h += float(g)
 	if "lovers" in mods:
 		w_h += float(g * (g - 1)) * 0.5
 	return w_h
@@ -100,9 +102,9 @@ static func _chance_rumormonger(view: Dictionary, d: Dictionary) -> float:
 	var g: int = n - e
 	if n <= 2 or g <= 1:
 		return 0.25
-	var pair_sz: int = clampi(int(d.get("pair", []).size()), 1, n - 1)
 	if not Domain.live(view):
-		return clampf((float(pair_sz) * float(g - 1) / float(n - 1)) / float(g), 0.01, 0.5)
+		return 0.5
+	var pair_sz: int = clampi(int(d.get("pair", []).size()), 1, n - 1)
 	var mods: Array = view.get("world_options", {}).get("modifiers", ["marked"])
 	var w_h: float = _healthy_modifier_worlds_per_team(g, mods)
 	if w_h <= 0.0:
@@ -129,14 +131,13 @@ static func _chance_chronicler(view: Dictionary) -> float:
 		return 0.15
 	var c_n1_3: float = float((n - 1) * (n - 2) * (n - 3)) / 6.0
 	if not Domain.live(view):
-		var exp_fix: float = float((e - 1) * (g - 1) * (g - 2)) / c_n1_3
-		return clampf(exp_fix / float(g), 0.01, 0.5)
+		return 0.25
 	var mods: Array = view.get("world_options", {}).get("modifiers", ["marked"])
 	var w_h: float = _healthy_modifier_worlds_per_team(g, mods)
 	if w_h <= 0.0:
 		return 0.15
 	var solo_worlds: float = 0.0
-	for m_kind in ["marked", "delusional", "sleepwalker"]:
+	for m_kind in ["marked", "delusional", "sleepwalker", "muddler"]:
 		if m_kind in mods:
 			solo_worlds += float(g - 1)
 	var lovers_with_src: float = float(g - 1) if "lovers" in mods else 0.0
@@ -391,8 +392,21 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 	var knowledge: Dictionary = listener.get("knowledge", {})
 	var own_ids: Array = knowledge.get("own_reports", [])
 	var own: Array = own_ids.map(func(id): return Solver.card_by_id(view, id)).filter(func(c): return not c.is_empty() and not (c in cards) and c.kind == "report" and Solver.tabled(c))
+	var corroborated_days: Dictionary = {}
+	for p_c in cards:
+		if p_c.kind == "report" and p_c.get("role", "") == "psychologist" and not p_c.get("quoted", false) and not case_data.get("reading_challenges", {}).has(p_c.id):
+			if str(p_c.get("data", {}).get("mode", "")) == "none_false":
+				corroborated_days[int(p_c.get("data", {}).get("day_heard", -1))] = p_c
 	var err_for = func(card: Dictionary) -> float:
-		return reading_error(view, card, listener, own_ids)
+		var base_e: float = reading_error(view, card, listener, own_ids)
+		if not corroborated_days.is_empty() and card.kind == "report" and card.get("role", "") != "psychologist" and not case_data.get("reading_challenges", {}).has(card.id):
+			for d_ok in corroborated_days:
+				if Graph.is_day_statement(card, int(d_ok)):
+					var p_err: float = reading_error(view, corroborated_days[d_ok], listener, own_ids)
+					var boost: float = clampf(1.0 - p_err, 0.0, 1.0)
+					base_e = clampf(OWN_ERR + (base_e - OWN_ERR) * (1.0 - 0.55 * boost), OWN_ERR, 1.0)
+					break
+		return base_e
 	var cc = compile(view, cards, case_data, own)
 	var oc = _own_counts(view, cc, own)
 	# Per class: prior (team odds, role fits) and the case's likelihood.
@@ -480,7 +494,7 @@ static func _evaluate_posterior_gd(view: Dictionary, case_data: Dictionary, card
 	result["factors"] = cc.factors + test_used
 	result["rivals"] = _rivals(view, result.people, conclusion)
 	result["theory_fit"] = 1.0
-	if not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty() or str(a.get("in_play_role", "")) != ""):
+	if not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty() or str(a.get("in_play_role", "")) != "" or str(a.get("false_slot", "")) != ""):
 		result["theory_fit"] = _theory_fit(view, case_data, cards, _expand(cc, oc, post), listener.get("knowledge", {}))
 	if listener.get("id", "") == "":
 		# Only the board's strength label needs it: the reference listener.
@@ -547,7 +561,7 @@ static func _evaluate_posterior_cs(view: Dictionary, case_data: Dictionary, card
 		bias_factor = float(bias.factor)
 
 	var compute_piv: bool = listener.get("id", "") == ""
-	var need_expand: bool = not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty() or str(a.get("in_play_role", "")) != "")
+	var need_expand: bool = not case_data.get("positions", {}).is_empty() or case_data.get("answers", {}).values().any(func(a): return not a.get("positive", []).is_empty() or not a.get("blocks", []).is_empty() or str(a.get("in_play_role", "")) != "" or str(a.get("false_slot", "")) != "")
 
 	var eval_ints := PackedInt32Array([
 		ns,
@@ -1657,7 +1671,19 @@ static func _theory_fit(view: Dictionary, case_data: Dictionary, cards: Array, p
 				if th_fit[idx_f] == 0 and decl_fit[idx_f] != 0:
 					th_fit[idx_f] = 1
 		masks.append(th_fit)
-	var positions: Dictionary = case_data.get("positions", {})
+	var positions: Dictionary = case_data.get("positions", {}).duplicate(true)
+	for pcard in cards:
+		if pcard.get("kind") == "report" and pcard.get("role", "") == "psychologist" and not case_data.get("reading_challenges", {}).has(pcard.id):
+			var pdata_t: Dictionary = pcard.get("data", {}) if pcard.get("data") is Dictionary else {}
+			if str(pdata_t.get("mode", "")) == "pair" and pdata_t.get("statements") is Array and pdata_t.statements.size() == 2:
+				var pans_t: Dictionary = case_data.get("answers", {}).get(pcard.id, {})
+				var fslot_t: String = str(pans_t.get("false_slot", ""))
+				var fwhy_t: String = str(pans_t.get("false_reason", ""))
+				if fslot_t in ["0", "1"] and fwhy_t in ["lying", "misled"]:
+					var st_t: Dictionary = pdata_t.statements[int(fslot_t)]
+					var t_src_t: String = str(st_t.get("source", ""))
+					if t_src_t != "" and not positions.has(t_src_t):
+						positions[t_src_t] = "evil" if fwhy_t == "lying" else "good"
 	if masks.is_empty() and positions.is_empty():
 		return 1.0
 	var fit = 0.0

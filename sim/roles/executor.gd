@@ -11,7 +11,7 @@ func _init() -> void:
 	display_name = "Executor"
 	align = "good"
 	kind = "info"
-	tags = ["ongoing_info", "evil_id", "role_id"]
+	tags = ["ongoing_info", "evil_id", "role_id", "targeted_role_id"]
 	desc = "At case start, learns one person. Should they die, learns their role the next morning."
 	shape = "EXECUTOR"
 	marked_registers = true

@@ -71,6 +71,9 @@ func _init() -> void:
 	foot.add_theme_constant_override("separation", 8)
 	root.add_child(foot)
 	_button(foot, "Reset to Default", func(): edit(ScriptDef.default_script()))
+	_button(foot, "Randomize", func():
+		var sd: int = randi() % 1000000 + 1
+		edit(ScriptBuilder.dynamic({"seed": sd, "name": "Dynamic #%d" % sd}))).tooltip_text = "Build a dynamic script from every role: the deal's guarantees with spares, the suggested tags, the rest at random."
 	_button(foot, "Fill to size", func():
 		working = ScriptBuilder.fill(working)
 		_rebuild()).tooltip_text = "Top the script up to 15 / 4 / 4 from roles not on it, favouring tags it is short of."

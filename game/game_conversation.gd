@@ -306,9 +306,11 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 			match topic:
 				"gift", "role", "info", "learned":
 					r = Mind.answer_gift(g.w, n)
+					preload("res://sim/muddler.gd").apply_private_disclaimers(g, n, topic, r)
 					r["refusal_ask"] = "gift"
 				"night", "lastnight":
 					r = Mind.answer_night(g.w, n)
+					preload("res://sim/muddler.gd").apply_private_disclaimers(g, n, topic, r)
 				"today", "seen", "yesterday", "morning", "afternoon", "evening":
 					# ask today | ask seen <morning|afternoon|evening> | ask seen yesterday [<phase>]
 					var words: Array = Array(p.slice(1)) if topic == "seen" else Array(p)

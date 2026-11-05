@@ -17,7 +17,8 @@ var align: String = "good"        # "good" | "evil"
 var kind: String = "info"         # "info" | "protect" | "passive" | "evil"
 var desc: String = ""
 ## Script-builder tags (sim/script_def.gd): first_night_info, ongoing_info, evil_id,
-## demon_id, role_id, protection, night_walker.
+## demon_id (direct: Seer, Augur), role_id, targeted_role_id ("this person is this role"),
+## protection, kill_protection (shields against the Demon's kill), night_walker, execution.
 var tags: Array = []
 ## "ready" (offered on scripts), "experimental" (offered, marked) or "benched" (hidden).
 var status: String = "ready"

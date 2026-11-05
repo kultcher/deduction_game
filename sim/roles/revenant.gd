@@ -7,6 +7,7 @@ func _init() -> void:
 	display_name = "Revenant"
 	align = "evil"
 	kind = "evil"
+	tags = ["execution"]
 	minion = true
 	day = true
 	desc = "Hides a totem somewhere each day it has none in play. If hanged while a totem is hidden, a good soul who voted for it turns evil until the totem is found."

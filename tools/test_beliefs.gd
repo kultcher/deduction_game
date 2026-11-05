@@ -78,7 +78,7 @@ func _h(t: Dictionary, id: String) -> float:
 	return minf(r_sd, 1.0 - s_pen)
 
 func _test_recovery() -> void:
-	var t = _setup(5101)
+	var t = _setup(6101)
 	var w = t["w"]
 	var L = t["L"]
 	_hang(w, t["A"], 2)
@@ -187,7 +187,7 @@ func _test_weak_restatement() -> void:
 	_check(discredited < strong and after < strong * 0.5, "a weak restatement doesn't restore the discredited argument's strength")
 
 func _test_poison_argument_undone() -> void:
-	var t = _setup(5109)
+	var t = _setup(5509)
 	var w = t["w"]
 	var L = t["L"]
 	var B = t["B"].id
@@ -230,7 +230,7 @@ func _other_role(t: Dictionary) -> String:
 	return "warden"
 
 func _test_double_claim_shifts() -> void:
-	var t = _setup(5112)
+	var t = _setup(5512)
 	var w = t["w"]
 	var L = t["L"]
 	var r = _other_role(t)

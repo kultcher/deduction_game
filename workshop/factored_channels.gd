@@ -340,12 +340,21 @@ static func _compile(view: Dictionary, cards: Array, knowledge: Dictionary, incl
 	for i in range(plan.channels.size()):
 		_add(graph, [i], {"kind": "prior", "channel": plan.channels[i]})
 	var bodies = {}
+	var vars_by_fid: Dictionary = {}
+	var psych_pairs: Array = []
 	for statement in plan.statements:
 		var card: Dictionary = statement.card
 		if card.get("quoted", false):
 			_fact(bodies, card, -1)
 			continue
 		var content = _and(graph, statement.content)
+		for fk_id in [str(card.get("fact_id", "")), str(card.id)]:
+			if fk_id != "":
+				if not vars_by_fid.has(fk_id):
+					vars_by_fid[fk_id] = []
+				vars_by_fid[fk_id].append(content)
+		if card.kind == "report" and card.get("role", "") == "psychologist" and not card.get("testimony_only", false) and str(card.get("data", {}).get("mode", "")) == "pair":
+			psych_pairs.append({"card": card, "var": content})
 		graph.markers[card.id] = _add(graph, [content] if content >= 0 else [], {"kind": "static", "values": PackedFloat64Array([1, 1]) if content >= 0 else PackedFloat64Array([1]), "query": true})
 		_fact(bodies, statement.body, content)
 		if card.kind == "report":
@@ -378,6 +387,17 @@ static func _compile(view: Dictionary, cards: Array, knowledge: Dictionary, incl
 	var public_factors: Array = Public.factors(view)
 	if include_public and not public_factors.is_empty():
 		_add(graph, [], {"kind": "public", "factors": public_factors})
+	for pp in psych_pairs:
+		var stmts_pp: Array = pp.card.get("data", {}).get("statements", [])
+		if stmts_pp.size() == 2:
+			var f0: String = str(stmts_pp[0].get("fact_id", ""))
+			var f1: String = str(stmts_pp[1].get("fact_id", ""))
+			if vars_by_fid.has(f0) and vars_by_fid.has(f1):
+				var vp: int = int(pp.var)
+				var v0: int = _or(graph, vars_by_fid[f0])
+				var v1: int = _or(graph, vars_by_fid[f1])
+				if vp >= 0 and v0 >= 0 and v1 >= 0 and vp != v0 and vp != v1 and v0 != v1:
+					_add(graph, [vp, v0, v1], {"kind": "static", "values": PackedFloat64Array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0]), "psych_pair_gate": true})
 	var speech: Array = graph.facts.filter(func(f): return f.card.kind == "gift_hint")
 	if not speech.is_empty():
 		_conditional(graph, speech, "speech")
@@ -667,7 +687,12 @@ static func _values(view: Dictionary, graph: Dictionary, factor: Dictionary, wor
 	factor.rows[signature] = values
 	return values
 
+static func _psych_gate_blocks(graph: Dictionary) -> bool:
+	return graph.factors.any(func(f): return bool(f.get("psych_pair_gate", false)))
+
 static func _all_hold(view: Dictionary, graph: Dictionary, world: Dictionary, index: int) -> bool:
+	if _psych_gate_blocks(graph):
+		return false
 	# Diagnostic only, once a positive world is found; rates never enter this check.
 	var cards: Array = graph.facts.filter(func(f): return not f.card.id.begins_with("inferred-lamp:")).map(func(f): return f.card)
 	return cards.filter(func(c): return Solver.tabled(c)).all(func(c): return Solver.report_table(view, c)[index] == 1) and (not Solver.Domain.live(view) or Solver.Domain.claims_compatible(cards, graph.knowledge)) and Solver.Roles.fits(view, world, cards, graph.knowledge) and Solver.movement_for(view, cards, {}, graph.knowledge).okay

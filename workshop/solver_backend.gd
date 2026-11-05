@@ -81,6 +81,8 @@ static func modifier_code(world: Dictionary) -> int:
 			return 2
 		"sleepwalker":
 			return 3
+		"muddler":
+			return 4
 		_:
 			return -1
 

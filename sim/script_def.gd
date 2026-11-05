@@ -17,6 +17,7 @@ const MAX_DEMONS = 4
 const DEFAULT_NAME = "Default"
 const DEFAULT_TOWN = ["archivist", "clerk", "dowser", "gravedigger", "lamplighter", "martyr", "medium", "nightwatch",
 	"psychologist", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
+const DEFAULT_SECRETS = ["delusional", "marked", "lovers", "sleepwalker"]
 const USER_DIR = "user://scripts"
 
 ## Soft coverage the editor suggests: at least this many town roles with the tag.
@@ -29,14 +30,54 @@ const SUGGESTED_TAGS = {
 	"protection": 1,
 	"night_walker": 1,
 }
+## What the deal guarantees in play (World._assign_roles retries until these hold), and
+## the spare roles a script should carry beyond each minimum so the guarantee doesn't give
+## the dealt roles away: with exactly two start-knowledge gifts on a script, a player knows
+## both are in play. `spare` is the ideal; one spare is the floor before the editor warns.
+const DRAW_RULES = [
+	{"id": "start", "name": "start-knowledge gifts", "roles": C.START_ROLES, "min": 2, "spare": 2},
+	{"id": "identifier", "name": "strong identifiers", "roles": C.IDENTIFIER_ROLES, "min": 1, "spare": 2},
+]
+## Script-level limits, public like Clocktower jinxes: the builder keeps to them and the
+## editor warns when a script breaks one (the player may still launch it).
+##   tag + max/min: how many roles with the tag the script lists. `sides` says which lists
+##   count (town by default); `plus_demon` counts the dealt Demon too. `target` is what the
+##   dynamic builder aims for (it picks within target ± 1).
+const SCRIPT_RULES = [
+	{"id": "demon_id", "tag": "demon_id", "max": 1, "why": "one direct Demon-ID gift (Seer or Augur)"},
+	{"id": "targeted_role_id", "tag": "targeted_role_id", "max": 2, "why": "at most two gifts that name one person's role"},
+	{"id": "kill_protection", "tag": "kill_protection", "max": 2, "why": "at most two shields against the Demon's kill"},
+	{"id": "night_walkers", "tag": "night_walker", "sides": ["town", "minions"], "plus_demon": true,
+		"min": 5, "max": 7, "target": 6, "why": "night-walkers, counting the Demon: about six on the script leaves the deal room to land near its target"},
+]
+## Deal-level limits (World._assign_roles retries until they hold, like DRAW_RULES):
+## night-walkers in play, counting the Demon, by town size. Secrets that walk (Lovers,
+## Sleepwalker) are placed after the deal and aren't counted.
+const DEAL_RULES = [
+	{"id": "night_walkers_in_play", "tag": "night_walker", "plus_demon": true,
+		"by_size": {7: [2, 4], 10: [3, 5]}, "why": "about three night-walkers in a 7-person town and four in a 10-person one, counting the Demon"},
+]
+## Pairs that never share a script: {"roles": [a, b], "why": String}.
+const JINXES = []
+## Deal-level placement of the one secret (World._assign_secret_mod). `except` lists the
+## secrets the rule skips; `not_on_flag` names a RoleDef flag the holder's role must not have.
+const PLACEMENT_RULES = [
+	{"except": ["lovers"], "not_on_flag": "cannot_hold_solo_secret",
+		"why": "the Rumormonger's gift can't name its own holder, so it never holds a secret alone"},
+	{"only": ["lovers", "sleepwalker"], "not_on_flag": "night_walk",
+		"why": "these send their holder out at night, so never on a role already out at night"},
+]
 const TAG_NAMES = {
 	"first_night_info": "First-night info",
 	"ongoing_info": "Ongoing info",
 	"evil_id": "Evil ID",
 	"demon_id": "Demon ID",
 	"role_id": "Role ID",
+	"targeted_role_id": "Targeted role ID",
 	"protection": "Protection",
+	"kill_protection": "Kill protection",
 	"night_walker": "Night-walker",
+	"execution": "Execution",
 }
 
 var name: String = DEFAULT_NAME
@@ -55,7 +96,7 @@ static func default_script():
 	s.town = DEFAULT_TOWN.duplicate()
 	s.minions = C.MINION_ROLES.duplicate()
 	s.demons = ["demon"]
-	s.secrets = C.SECRET_MOD_LIST.duplicate()
+	s.secrets = DEFAULT_SECRETS.duplicate()
 	return s
 
 
@@ -65,7 +106,7 @@ func duplicate_script():
 
 func is_default() -> bool:
 	return forced.is_empty() and town == DEFAULT_TOWN and minions == C.MINION_ROLES \
-		and demons == ["demon"] and secrets == C.SECRET_MOD_LIST
+		and demons == ["demon"] and secrets == DEFAULT_SECRETS
 
 
 func has(id: String) -> bool:
@@ -164,9 +205,69 @@ func check(count: int = 0) -> Dictionary:
 		var have: int = town.filter(func(r): return tag in tags_of(r)).size()
 		if have < SUGGESTED_TAGS[tag]:
 			warnings.append("Few %s roles: %d (suggested %d or more)." % [TAG_NAMES[tag], have, SUGGESTED_TAGS[tag]])
-	if town.filter(func(r): return r in C.START_ROLES).size() < 2 or not town.any(func(r): return r in C.IDENTIFIER_ROLES):
-		warnings.append("The deal can't always guarantee two start-knowledge gifts and a Seer, Dowser or Gravedigger.")
+	warnings.append_array(rule_problems())
+	for rule in DRAW_RULES:
+		var have: int = rule_count(rule)
+		var names: String = ", ".join(PackedStringArray(rule.roles.map(func(r): return display(r))))
+		if have < rule.min:
+			warnings.append("The deal can't always guarantee %d %s (%s); the script has %d." % [rule.min, rule.name, names, have])
+		elif have < rule.min + 1:
+			warnings.append("Only %d %s on the script and the deal needs %d in play, so players can tell which are dealt. Add another of %s." % [have, rule.name, rule.min, names])
 	return {"errors": errors, "warnings": warnings}
+
+
+func rule_count(rule: Dictionary) -> int:
+	return town.filter(func(r): return r in rule.roles).size()
+
+
+## How many roles a SCRIPT_RULES entry counts on this script.
+func script_rule_value(rule: Dictionary) -> int:
+	var n: int = 0
+	for side in rule.get("sides", ["town"]):
+		n += get(side).filter(func(r): return rule.tag in tags_of(r)).size()
+	if rule.get("plus_demon", false) and not demons.is_empty():
+		n += 1
+	return n
+
+
+## Script rules and jinxes this script breaks, as sentences.
+func rule_problems() -> Array:
+	var out: Array = []
+	for rule in SCRIPT_RULES:
+		var v: int = script_rule_value(rule)
+		if rule.has("max") and v > rule.max:
+			out.append("%d %s roles on the script; the limit is %d (%s)." % [v, TAG_NAMES.get(rule.tag, rule.tag), rule.max, rule.why])
+		elif rule.has("min") and v < rule.min:
+			out.append("Only %d %s roles on the script; aim for %d or more (%s)." % [v, TAG_NAMES.get(rule.tag, rule.tag), rule.min, rule.why])
+	for j in JINXES:
+		if j.roles.all(func(r): return has(r)):
+			out.append("%s and %s can't share a script (%s)." % [display(j.roles[0]), display(j.roles[1]), j.why])
+	return out
+
+
+## Whether a dealt set of roles (town + minions + the demon) keeps to DEAL_RULES at this size.
+static func deal_ok(roles: Array, count: int) -> bool:
+	for rule in DEAL_RULES:
+		var band = rule.by_size.get(count, null)
+		if band == null:
+			continue
+		var n: int = roles.filter(func(r): return rule.tag in tags_of(r)).size() + (1 if rule.get("plus_demon", false) else 0)
+		if n < band[0] or n > band[1]:
+			return false
+	return true
+
+
+## Whether a secret may sit on a holder with this role (PLACEMENT_RULES).
+static func placement_allows(secret: String, role: String) -> bool:
+	var d = Registry.get_def(role)
+	for rule in PLACEMENT_RULES:
+		if rule.has("except") and secret in rule.except:
+			continue
+		if rule.has("only") and not secret in rule.only:
+			continue
+		if d != null and d.get(rule.not_on_flag):
+			return false
+	return true
 
 
 func ok(count: int = 0) -> bool:
