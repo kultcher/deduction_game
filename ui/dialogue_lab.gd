@@ -27,6 +27,7 @@ var sketch_core: Label
 var sketch_outputs = {}
 var sketch_data: Dictionary
 var vn_preview
+var ink_lab
 
 func _ready() -> void:
 	theme = ThemeSkin.make()
@@ -74,6 +75,10 @@ func _ready() -> void:
 	preview_button.text = "Open VN portrait preview"
 	preview_button.pressed.connect(_open_vn_preview)
 	body.add_child(preview_button)
+	var ink_button = Button.new()
+	ink_button.text = "Open living-ink portrait lab"
+	ink_button.pressed.connect(_open_ink_lab)
+	body.add_child(ink_button)
 	var columns = GridContainer.new()
 	columns.columns = 3
 	columns.add_theme_constant_override("h_separation", 18)
@@ -115,6 +120,12 @@ func _ready() -> void:
 
 func _open_vn_preview() -> void:
 	vn_preview.show_results(last_results)
+
+func _open_ink_lab() -> void:
+	if ink_lab == null:
+		ink_lab = preload("res://ui/line_boil_lab.gd").new()
+		add_child(ink_lab)
+	ink_lab.show()
 
 func _build_voice_sketches(body: VBoxContainer) -> void:
 	sketch_data = Sketches.read()

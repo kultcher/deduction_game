@@ -16,6 +16,7 @@ uniform float boil : hint_range(0.0, 1.0) = 0.2;
 uniform float fps_rest = 8.0;               // steps per second at boil 0 ("on threes")
 uniform float fps_flare = 14.0;             // ...and at boil 1
 uniform float clock = -1.0;                 // seconds; < 0 uses TIME (set it for recordings)
+uniform float drawing_step = -1.0;          // optional integrated controller clock
 
 // Any smooth tileable greyscale noise (a Simplex NoiseTexture2D).
 uniform sampler2D warp_tex : repeat_enable, filter_linear;
@@ -54,7 +55,9 @@ void fragment() {
 	vec2 tex_px = UV / px;
 	float b = clamp(boil, 0.0, 1.0);
 	float t = clock >= 0.0 ? clock : TIME;
-	float step_n = floor(t * mix(fps_rest, fps_flare, b));
+	// Keep the old look as a comparison, but never multiply elapsed time by a
+	// changing rate: settling a flare must not rewind or skip the drawing clock.
+	float step_n = drawing_step >= 0.0 ? floor(drawing_step) : floor(t * fps_rest);
 	vec2 h = hash2(step_n);
 
 	// A fresh bend each step: two lookups into the same noise, far apart, give x and y.

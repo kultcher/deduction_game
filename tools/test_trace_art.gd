@@ -31,6 +31,8 @@ func _init() -> void:
 	if not check.call(v.person_id == "" and v.portrait.texture == tex and v.speaker.text == "Edda's cottage" and v.lines.size() == 1, "show_item puts the item in the portrait slot and its text in the bubble"): fails += 1
 	if not check.call(is_equal_approx(v.portrait.anchor_right, View.ITEM_FRAME[2]), "item uses the item frame"): fails += 1
 	v.begin("edda", "Edda")
+	v.set_portrait_ink_mode("animated")
+	if not check.call(v.portrait.material != null, "registered neutral ink is available for the Edda prototype"): fails += 1
 	if not check.call(is_equal_approx(v.portrait.anchor_right, View.PORTRAIT_FRAME[2]) and v.person_id == "edda", "begin restores the portrait frame"): fails += 1
 	# An Edda conversation leaves a line-boil material on the shared portrait slot.
 	# Searching a scene must clear it before that slot displays an evidence item.
