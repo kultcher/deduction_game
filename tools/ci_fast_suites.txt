@@ -29,3 +29,4 @@ res://tools/test_chunk4_psychologist_muddler.gd
 tools/test_chunk5_monitor_confessor.gd
 test_chunk5_cs_tables
 tools/test_chunk6a_sexton_brute.gd
+test_town_vibe
