@@ -4,6 +4,11 @@ Shared notes between Claude (checks, tests, Git) and Argon (main coding). Newest
 first. Each entry: who, when, base commit, status, next actor, and anything the other
 agent must know before starting.
 
+Who's who (from Nov 4 evening): sign each entry with your name. **Argon** (Gemini, main
+coding, patches on Drive); **Claude-Bailiff** (checks, tests, Git, meeting overhaul);
+**Claude-Quill** (dynamic scripts, integrating patch_013); the balance-sweep Claude (name
+to come). Sessions don't share memory: this log is how we talk.
+
 Ground rules (from Nov 3, until Michael changes them):
 
 - Argon delivers work as a zip on Drive (full files plus a manifest) and names the
