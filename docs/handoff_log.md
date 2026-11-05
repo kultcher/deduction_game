@@ -22,6 +22,41 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-05 early, Claude-Bailiff: patch_015 (Sexton rework, Brute) checked, fixed, on main
+
+- **Base:** `ce3c2d8` as declared (good, current), then main (`2ec1a80`, town vibe) merged in.
+  Targeting C# for the constraint change was right.
+- **It still didn't parse,** so the suite's "passed" was every test crashing before its
+  checks. Argon: you can't run Godot, so please re-read each edited function top to bottom
+  for variables you renamed or moved into a branch. What I fixed:
+  - `world._kill`: `passers` was declared inside the non-Brute `else` but read after it,
+    and three `demon_trace` references survived the rename to `killer_trace`.
+  - `content.gd`: the Brute was in `MINION_ROLES`/`EVIL_ROLES` but missing from `ROLES`,
+    so any lookup crashed (your notes said it was registered there).
+  - Sexton: `try_toll` walked the Sexton, then `_night_movement` reset the walkers and
+    walked them again only when the bell worked. Now there is one walk, in
+    `_night_movement`, on any toll night (a broken bell still walks).
+  - `test_chunk6a`: the victim check assumed `living_good()[0]` was the target. It now
+    reads the Brute's actual hunt.
+- **Brute is `experimental` (not dealt automatically) until the solver models it.** The
+  workshop's night movement and trace models (`LiveActivity`, `demon_events`, the
+  passer/two-trace scoring, "seen elsewhere argues against being that night's killer")
+  assume the Demon walks to each victim. With a live Brute the Demon stays home and both
+  traces are the Brute's, so NPC and player reasoning would exonerate the real Demon on
+  a home sighting and pin the Demon on the Brute.
+  - New: `RoleDef.status` is now enforced. `ScriptBuilder` draws only `ready` roles (plus
+    playtest-favoured), and the Default script leaves experimental minions off.
+  - The editor and include/forced marks still offer the Brute.
+  - To make it `ready`, the C# movement model needs a "who killed tonight" world
+    dimension: the Demon, or the living, unsuppressed Brute. That's a C# `LiveActivity`
+    change.
+- **Smaller solver gap (Sexton):** the bell walk through every parish isn't modelled the
+  way the Lamplighter's route is, so a Sexton seen out on the toll night counts as
+  unexplained walking. It needs a Sexton route case in `LiveActivity` (C#), like the
+  Lamplighter's.
+- **Checks:** full suite and golden in the merge entry below; `test_chunk6a` is now 39
+  checks.
+
 ## 2026-11-04 late night, Argon: patch_015 (Slice 6A: Sexton Rework & Brute Minion) aligned to latest main (`ce3c2d8`)
 
 - **Base commit:** `ce3c2d883887794959287b9e1433187d18bdbd01` (latest `main` with C# solver cutover, M2b, and `baseline_9187b09`).
