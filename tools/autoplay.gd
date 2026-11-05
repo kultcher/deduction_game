@@ -3,7 +3,13 @@
 ##
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
-##         [--no-attention] [--insight 1.0]
+##         [--no-attention] [--insight 1.0] [--dynamic] [--results-jsonl FILE] [--sha SHA]
+##
+## Balance sweep (docs/balance_sweep.md): --dynamic deals each case from
+## ScriptBuilder.dynamic seeded by the case seed, so a game is reproducible from its seed.
+## --results-jsonl appends one flat `sweep_v1` record per finished game (tools/sweep_record.gd)
+## and flushes after each, so a killed run keeps what it finished. --sha tags the records.
+## Both read finished state only: no world RNG draws, no decisions changed.
 ##
 ## --passive: a control player who does nothing (waits every phase, declines approaches,
 ## never nominates, votes no, sleeps). The town's win rate on its own: the floor.
@@ -34,6 +40,8 @@ const Mind = preload("res://sim/mind.gd")
 const Metrics = preload("res://game/case_metrics.gd")
 const BotWorkshop = preload("res://tools/autoplay_workshop.gd")
 const Analyst = preload("res://tools/analyst.gd")
+const ScriptBuilder = preload("res://sim/script_builder.gd")
+const SweepRecord = preload("res://tools/sweep_record.gd")
 
 ## Analyst decision thresholds on the juror's posterior P(evil) (bot policy, not game tuning).
 const TELL_P = 0.55
@@ -66,6 +74,9 @@ var insight: float = 1.0
 var analyst = {}
 var _belief_key = ""
 var _belief_cache = {}
+var dynamic_scripts = false
+var last_commands: int = 0
+var last_guard: int = 0
 
 func _init() -> void:
 	var args = _parse(OS.get_cmdline_user_args())
@@ -81,6 +92,17 @@ func _init() -> void:
 	insight = float(args.get("insight", "1.0"))
 	passive = args.has("passive")
 	trace_enabled = not args.has("no-trace")
+	dynamic_scripts = args.has("dynamic")
+	var jsonl = null
+	if args.has("results-jsonl"):
+		var jpath = ProjectSettings.globalize_path(args["results-jsonl"])
+		DirAccess.make_dir_recursive_absolute(jpath.get_base_dir())
+		jsonl = FileAccess.open(jpath, FileAccess.READ_WRITE) if FileAccess.file_exists(jpath) else FileAccess.open(jpath, FileAccess.WRITE)
+		if jsonl == null:
+			push_error("Cannot open results-jsonl: " + jpath)
+			quit(1)
+			return
+		jsonl.seek_end()
 	no_workshop_cases = args.has("no-workshop-cases")
 	no_hub = args.has("no-hub")
 	if args.has("no-attention"):
@@ -100,7 +122,17 @@ func _init() -> void:
 		stats[k] = 0
 	for i in range(games):
 		var seed_v = first + i
+		print("SWEEP_BEGIN %d" % seed_v)
+		var t0: int = Time.get_ticks_msec()
 		var r = _play(seed_v, int(args.get("npcs", "7")), log_dir, args.has("echo-log"))
+		if jsonl != null:
+			var rec: Dictionary = SweepRecord.build(g, {"seed": seed_v, "mode": "passive" if passive else "bot",
+				"insight": insight, "sha": str(args.get("sha", "")), "dynamic": dynamic_scripts, "metrics": r["metrics"], "r": r,
+				"commands": last_commands, "guard": last_guard, "stuck": r["metrics"].get("guard_exhausted", false),
+				"wall_s": (Time.get_ticks_msec() - t0) / 1000.0})
+			jsonl.store_line(JSON.stringify(rec))
+			jsonl.flush()
+		print("SWEEP_END %d" % seed_v)
 		case_results.append(r["metrics"])
 		scale_cases.append(r["metrics"])
 		stats[r["winner"]] += 1
@@ -159,7 +191,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	talk_policy_used = {}
 	new_talk_counts = {}
 	for key in NEW_ACTIONS: new_talk_counts[key] = 0
-	_out(g.new_case(seed_v, npc_count))
+	var case_script = ScriptBuilder.dynamic({"seed": seed_v, "name": "Sweep #%d" % seed_v}) if dynamic_scripts else null
+	_out(g.new_case(seed_v, npc_count, case_script))
 	if echo:
 		g.w.dlog.echo = true
 	var guard = 0
@@ -183,6 +216,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 		_out(reply)
 		if "Cannot present" in reply:
 			blocked_cmds[cmd] = true # never retry a blocked presentation
+	last_commands = guard
+	last_guard = guard
 	var w = g.w
 	if recorded_day != w.day:
 		scale_days.append(_scale_snapshot())
