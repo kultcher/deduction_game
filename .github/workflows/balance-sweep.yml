@@ -1,0 +1,13 @@
+name: Balance sweep
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/balance-sweep]
+    paths: [.github/workflows/balance-sweep.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "sweep workflow placeholder; nproc=$(nproc)"; free -g
