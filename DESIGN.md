@@ -1094,6 +1094,31 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
   accessible information, information never available, or failure to persuade. The logs
   can classify the first three; persuasion failures need the player's notes.
 
+### Balance target **[decided]** (Nov 5)
+
+A single-player game shouldn't sit at live BotC's ~50%: that would feel arbitrary. A
+skilled player shouldn't win every case either. The point of playing good is "was the
+world I theorised correct?", and the grimoire reveal is part of the payoff.
+
+- **A skilled player names the Demon in 85–90% of cases and wins 70–75%.** That makes
+  "won, given they named the Demon" about 80–85%. The rest are "I knew and couldn't get
+  the votes" losses, which are the good kind.
+- **Evil steering the town is a feature.** Coordination, misdirection and the town's
+  wrong hangings are what make up for evil being outnumbered. Good NPCs shouldn't be so
+  accurate that the player can ride along. What matters is that the steering is
+  **visible**: a sharp player can see who pushed a wrongful hang.
+- **Arbitrary losses are bugs:** deals where no amount of reasoning finds the Demon, or a
+  bluff that can't be broken (the walking-gift bluffs in the Nov 5 sweep).
+- **Measuring against it:**
+  - the analyst bot is the floor;
+  - an oracle bot (knows the grimoire, plays only legal moves with real evidence) is the
+    ceiling the town and evil allow (`docs/oracle_sweep_plan.md`);
+  - logged human playtests sit between the two.
+  - Sweeps report identification rate, win rate and win-given-identified against the
+    target.
+- Nov 5 sweep, analyst bot at insight 1.0: names the Demon 72%, wins 53–55%, wins
+  67–72% once it has named the Demon.
+
 ## Dev logging (required)
 
 Every event goes to a JSONL log plus a readable transcript: world events, NPC reasoning
