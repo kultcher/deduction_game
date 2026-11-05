@@ -27,6 +27,10 @@ lanes for ordinary CI. The **collect** job merges every shard's records and writ
 report. Its artifact, `sweep-report`, holds `sweep_report.md`, `sweep_summary.json`, the
 merged records (`sweep_merged.jsonl.gz`) and `sweep_errors.jsonl`. Each shard's own
 artifact (`sweep-<cell>_<first seed>`) has its records and the dev logs of flagged games.
+The collect job also pushes the report, summary, merged records and errors to a branch
+`sweep-results/run-<run id>` (an orphan branch with only those files), because artifact
+downloads can be blocked from some workspaces; `git fetch origin sweep-results/run-<id>`
+gets them. Michael deletes old results branches.
 
 Locally, one cell:
 
