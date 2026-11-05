@@ -1,0 +1,145 @@
+name: Balance sweep
+
+# Overnight autoplay sweep on dynamic scripts (docs/balance_sweep.md). Manual only.
+on:
+  workflow_dispatch:
+    inputs:
+      seed_start:
+        description: "First case seed (shared by every cell, so seeds pair across modes)"
+        default: "100000"
+      games_per_cell:
+        description: "Games per cell"
+        default: "2000"
+      cells:
+        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot", "insight": 1.0}'
+        default: '[{"npcs":7,"mode":"passive"},{"npcs":10,"mode":"passive"},{"npcs":7,"mode":"bot","insight":1.0},{"npcs":10,"mode":"bot","insight":1.0}]'
+      costs:
+        description: 'Seconds per game per core on a runner, by "<npcs>_<mode>" (sizes the shards)'
+        default: '{"7_passive":5,"10_passive":50,"7_bot":19,"10_bot":220}'
+      target_hours:
+        description: "Planned hours per shard job (the hard cap is 6)"
+        default: "3"
+      max_shards:
+        description: "Upper bound on shard jobs (GitHub allows 256 per matrix)"
+        default: "200"
+      ref:
+        description: "Branch, tag or sha to sweep (blank: the dispatched ref)"
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.2"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        shell: python
+        env:
+          SEED_START: ${{ inputs.seed_start }}
+          GAMES: ${{ inputs.games_per_cell }}
+          CELLS: ${{ inputs.cells }}
+          COSTS: ${{ inputs.costs }}
+          HOURS: ${{ inputs.target_hours }}
+          MAX_SHARDS: ${{ inputs.max_shards }}
+        run: |
+          import json, math, os
+          seed0 = int(os.environ["SEED_START"]); games = int(os.environ["GAMES"])
+          cells = json.loads(os.environ["CELLS"]); costs = json.loads(os.environ["COSTS"])
+          budget = float(os.environ["HOURS"]) * 3600 * 4  # 4 processes per runner
+          shards = []
+          for c in cells:
+              mode = c["mode"]; npcs = int(c["npcs"]); ins = float(c.get("insight", 1.0))
+              cost = float(costs.get("%d_%s" % (npcs, mode), 220))
+              per = max(4, int(budget // cost))
+              k = max(1, math.ceil(games / per))
+              size = math.ceil(games / k)
+              for i in range(k):
+                  a = seed0 + i * size; b = min(seed0 + games, a + size)
+                  if a < b:
+                      name = "%d_%s_%s_%d" % (npcs, mode, ("%g" % ins), a)
+                      shards.append({"name": name, "npcs": npcs, "mode": mode, "insight": ins, "first": a, "last": b})
+          if len(shards) > int(os.environ["MAX_SHARDS"]):
+              raise SystemExit("%d shards exceed max_shards; raise target_hours or lower games" % len(shards))
+          print("%d shards" % len(shards))
+          for s in shards:
+              print(s)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write("matrix=%s\n" % json.dumps({"include": shards}))
+
+  shard:
+    needs: plan
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 18
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Install Godot .NET
+        id: godot
+        uses: ./.github/actions/godot-linux
+      - name: Build C# solver
+        run: dotnet build Demonologist.csproj -c Debug --nologo -v q
+      - name: Import project
+        run: timeout 600 "${{ steps.godot.outputs.bin }}" --headless --path . --import > /dev/null 2>&1 || true
+      - name: Run shard
+        run: |
+          python3 tools/sweep_shard.py --godot "${{ steps.godot.outputs.bin }}" \
+            --npcs ${{ matrix.npcs }} --mode ${{ matrix.mode }} --insight ${{ matrix.insight }} \
+            --seeds ${{ matrix.first }}:${{ matrix.last }} --procs 4 --out "$RUNNER_TEMP/out" \
+            --sha "$(git rev-parse HEAD)"
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sweep-${{ matrix.name }}
+          path: ${{ runner.temp }}/out
+          if-no-files-found: warn
+          retention-days: 30
+
+  collect:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sweep-*
+          path: parts
+      - name: Merge and report
+        run: |
+          mkdir -p report
+          find parts -name 'results_*.jsonl' -print0 | xargs -0 -r cat > report/sweep_merged.jsonl
+          find parts -name 'errors_*.jsonl' -print0 | xargs -0 -r cat > report/sweep_errors.jsonl
+          wc -l report/sweep_merged.jsonl report/sweep_errors.jsonl
+          python3 tools/sweep_report.py report/sweep_merged.jsonl --md report/sweep_report.md \
+            --json report/sweep_summary.json --errors report/sweep_errors.jsonl
+          cat report/sweep_report.md >> "$GITHUB_STEP_SUMMARY"
+          gzip -k report/sweep_merged.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sweep-report
+          path: |
+            report/sweep_report.md
+            report/sweep_summary.json
+            report/sweep_merged.jsonl.gz
+            report/sweep_errors.jsonl
+          retention-days: 90
