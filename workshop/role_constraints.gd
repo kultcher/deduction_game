@@ -301,12 +301,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 						flags |= (1 << 5)
 			elif role_str == "sexton":
 				var sx_night: int = int(data.get("night", -1))
-				var alive_cnt: int = 0
-				for p in view.people:
-					if History.alive_at_night(view, p.id, sx_night):
-						alive_cnt += 1
-				var demon_ev: bool = events.any(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == sx_night)
-				if alive_cnt < 5 and not demon_ev:
+				if sx_night >= 1:
 					flags |= (1 << 12)
 			elif role_str == "veteran":
 				var vet_mask: int = 0

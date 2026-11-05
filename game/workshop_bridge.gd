@@ -1,10 +1,19 @@
 ## Read-only boundary between simulation state and the portable evidence contract.
 ## Never pass the World, real evil mind, hidden gift causes or developer log onward.
 extends RefCounted
+const ScriptDef = preload("res://sim/script_def.gd")
 
 const Evidence = preload("res://workshop/live_evidence.gd")
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
+
+## The roles the solver considers possibly in play: every known role, except experimental
+## ones that aren't on this case's script (they are never dealt otherwise, and an extra
+## possible minion type would dilute every minion reading in every game).
+static func possible_roles(g) -> Array:
+	var sc = g.w.case_script
+	return C.ROLES.keys().filter(func(r): return ScriptDef.status_of(r) != "experimental" or (sc != null and sc.has(r)))
+
 
 static func capture(g, selected: Array, listener_id: String = "", venue: String = "private", cover_mind = null) -> Dictionary:
 	var now = {"day": g.w.day, "phase": g._phase_now()}
@@ -12,7 +21,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 		"people": [], "receipts": [], "selected": [], "arguments": [], "root": 0, "issues": [],
 		"public_events": [], "rules": {"initial_evil_count": 1 + C.SETUPS.get(g.w.n_npcs, {"minions": 1}).minions,
 			"modifier_options": g.w.case_script.secrets.duplicate() if g.w.case_script != null else C.SECRET_MOD_LIST.duplicate(), "one_modifier_kind": true,
-			"lovers_holders": 2, "other_modifier_holders": 1, "roles": C.ROLES.keys()}}
+			"lovers_holders": 2, "other_modifier_holders": 1, "roles": possible_roles(g)}}
 	if venue not in ["private", "meeting", "nomination"]:
 		input.issues.append({"code": "invalid_venue", "fact": "", "detail": venue})
 	for n in g.w.npcs:

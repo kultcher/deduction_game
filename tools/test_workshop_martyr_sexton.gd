@@ -52,13 +52,15 @@ func _constraints() -> void:
 	var claim = {"id": "claim", "kind": "claim", "source": "c", "subject": "c", "role": "martyr"}
 	check(not Solver.Roles.fits(view, world, [substitution, claim], {}), "public Martyr identity challenges another person's role claim")
 	var sexton = _report("toll", "a", "sexton", {"night": 2}, 2)
-	check(not Solver.Roles.fits(view, world, [sexton], {}), "healthy Sexton cannot activate with seven living")
+	# Nov 5 rework (patch_015): the bell can toll on any night from 1, whoever is alive, and it
+	# suppresses minions only: walking gifts and the Demon's kill go on as usual.
+	check(Solver.Roles.fits(view, world, [sexton], {}), "a healthy Sexton can toll with seven living")
 	view.timeline.deaths = {"d": 1, "e": 1, "g": 2}
 	check(Solver.Roles.fits(view, world, [sexton], {}), "four publicly living residents permit Sexton activation")
 	var watch = _report("watch", "b", "nightwatch", {"block": "square", "seen": []}, 2)
-	check(not Solver.Roles.fits(view, world, [sexton, watch], {}), "healthy knell conflicts with a working walking gift")
+	check(Solver.Roles.fits(view, world, [sexton, watch], {}), "the bell leaves a working walking gift alone")
 	var lamp = _report("lamp", "b", "lamplighter", {"count": 1}, 2)
-	check(not Solver.Roles.fits(view, world, [sexton, lamp], {}), "healthy knell conflicts with lamp count even if count is small")
+	check(Solver.Roles.fits(view, world, [sexton, lamp], {}), "the bell leaves the lamp count alone")
 	var sight = {"id": "out", "kind": "sighting", "source": "player", "subject": "c", "subjects": ["c"], "night": 2, "block": "market"}
 	check(Solver.Roles.fits(view, world, [sexton, sight], {}), "secret outings remain possible during a working knell")
 	var seer = _report("seer", "b", "seer", {"pair": ["c", "f"], "yes": true}, 2)
@@ -66,7 +68,7 @@ func _constraints() -> void:
 	var twice = _report("twice", "a", "sexton", {"night": 3}, 3)
 	check(not Solver.Roles.fits(view, world, [sexton, twice], {}), "Sexton activation is once per case")
 	view.timeline.events = [{"kind": "demon_death", "subjects": ["c"], "at": {"day": 2}}]
-	check(not Solver.Roles.fits(view, world, [sexton], {}), "healthy knell conflicts with a Demon kill that night")
+	check(Solver.Roles.fits(view, world, [sexton], {}), "the bell night can still have a Demon kill")
 
 func _live() -> void:
 	var g = Game.new()

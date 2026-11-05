@@ -94,7 +94,7 @@ static func default_script():
 	var s = new()
 	s.name = DEFAULT_NAME
 	s.town = DEFAULT_TOWN.duplicate()
-	s.minions = C.MINION_ROLES.duplicate()
+	s.minions = default_minions()
 	s.demons = ["demon"]
 	s.secrets = DEFAULT_SECRETS.duplicate()
 	return s
@@ -105,7 +105,7 @@ func duplicate_script():
 
 
 func is_default() -> bool:
-	return forced.is_empty() and town == DEFAULT_TOWN and minions == C.MINION_ROLES \
+	return forced.is_empty() and town == DEFAULT_TOWN and minions == default_minions() \
 		and demons == ["demon"] and secrets == DEFAULT_SECRETS
 
 
@@ -123,6 +123,17 @@ func forced_in(list: Array) -> Array:
 
 
 # ---------------------------------------------------------------- roster
+
+## The Default script's minions: every minion that is ready (experimental ones are left off).
+static func default_minions() -> Array:
+	return C.MINION_ROLES.filter(func(id): return status_of(id) == "ready")
+
+
+## A role's readiness ("ready", "experimental", "benched"); roles without a definition are ready.
+static func status_of(id: String) -> String:
+	var d = Registry.get_def(id)
+	return d.status if d != null else "ready"
+
 
 ## Every role that could go on a script, by side: {town, minions, demons, secrets}.
 ## Benched roles are left out; experimental ones are offered and marked.

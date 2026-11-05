@@ -57,7 +57,9 @@ var stances = {}                    # accuser id -> {target, day}: their latest 
 var totem = {}                      # the Revenant's hidden totem: {loc, day, owner} or {}
 var totem_at_dawn = false           # a totem was in play when the day began (no new one today)
 var curse = {}                      # the Revenant's curse: {victim, day} while someone is turned
-var knell_night = -1                # night the Sexton tolled
+var knell_night = -1                # night the Sexton tolled (legacy)
+var sexton_tolled_night = -1        # night the Sexton tolled the church bell
+var sexton_suppression_night = -1   # night during which minions are suppressed
 var scion_rose = ""                 # the Scion who became the demon, if any
 ## Everything said or done in public (what evil, and anyone, can know without being told).
 var public_log: Array = []          # {day, kind, subjects, by}
@@ -1011,7 +1013,7 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 	_grief(n, res)
 	if id == demon_id:
 		var sc = living_with_role("scion")
-		if C.role_def("scion").can_promote_to_demon(sc, alive_before):
+		if C.role_def("scion").can_promote_to_demon(sc, alive_before, self):
 			_scion_rises(sc)
 		else:
 			_finish("good", "The demon's host was executed.")
@@ -1187,44 +1189,52 @@ func resolve_night() -> void:
 		n.pressure = n.pressure * Tuning.Setup.NIGHT_PRESSURE_DECAY
 	Mind.end_of_day_trust(self)
 
-	# The Sexton's knell (evening, fewer than five alive, once): no gift that walks abroad works.
-	var knell = _sexton_knell()
+	# The Sexton's bell (start of night, once per case from night 1): suppresses all minions
+	var sexton = living_with_role("sexton")
+	if sexton and not sexton.is_evil() and not first:
+		C.role_def("sexton").try_toll(self, sexton, Mind)
+
+	var brute = living_with_role("brute")
+	var brute_active: bool = (brute != null and brute.alive and not brute.gift_broken() and not is_minion_suppressed())
 
 	var kill_t = ""
-	if not first and demon().alive and not knell:
+	if not first and demon().alive:
 		kill_t = Evil.choose_kill_target(self)
 	var poisoner = living_with_role("poisoner")
 	var poison_t = ""
-	if poisoner != null and not knell:
+	if poisoner != null:
 		poison_t = Evil.choose_poison_target(self, kill_t)
 	var warden = living_with_role("warden")
 	var warden_t = ""
-	if warden and not warden.is_evil() and not knell:
+	if warden and not warden.is_evil():
 		warden_t = Mind.warden_target(self, warden)
 	var watch = living_with_role("nightwatch")
 	var watch_block = ""
-	if watch and not watch.is_evil() and not knell:
+	if watch and not watch.is_evil():
 		watch_block = Mind.watch_block(self, watch)
 	var medium = living_with_role("medium")
 	var medium_t = ""
-	if medium and not medium.is_evil() and not knell:
+	if medium and not medium.is_evil():
 		medium_t = _medium_choice(medium)
 	var lamp = living_with_role("lamplighter")
-	if lamp != null and (lamp.is_evil() or knell):
+	if lamp != null and lamp.is_evil():
 		lamp = null
 	var mart = living_with_role("martyr")
 	if mart != null and not mart.is_evil() and mart.martyr_target == "" and not first:
 		_martyr_choice(mart)
 	var confessor = living_with_role("confessor")
 	var confessor_t = ""
-	if confessor and not confessor.is_evil() and not knell and not first:
+	if confessor and not confessor.is_evil() and not first:
 		confessor_t = _confessor_choice(confessor)
 
-	_night_movement(poison_t, kill_t, watch, watch_block, warden, warden_t, medium, medium_t, lamp, confessor, confessor_t)
+	_night_movement(poison_t, kill_t, watch, watch_block, warden, warden_t, medium, medium_t, lamp, confessor, confessor_t, brute, brute_active)
 
 	if poison_t != "":
-		by_id[poison_t].poisoned = true
-		dlog.add("poison", poisoner.id, poison_t, {}, "%s's gift will fail until next night." % by_id[poison_t].name)
+		if is_minion_suppressed():
+			dlog.add("poison_suppressed", poisoner.id, poison_t, {}, "The Poisoner targets %s, but their ability is suppressed by the church bell." % by_id[poison_t].name)
+		else:
+			by_id[poison_t].poisoned = true
+			dlog.add("poison", poisoner.id, poison_t, {}, "%s's gift will fail until next night." % by_id[poison_t].name)
 
 	var protected = {}
 	if warden_t != "":
@@ -1287,6 +1297,13 @@ func attack_outcome(v, protected: Dictionary) -> String:
 	return "killed"
 
 ## Whether the Sexton tolls tonight, and whether it works (a broken gift tolls for nothing).
+## The Sexton's bell suppresses minions "until the following night": the toll night and the
+## day after it (executions, the Breathstealer, the Revenant's curse, the Scion's rise).
+func is_minion_suppressed() -> bool:
+	if sexton_suppression_night < 0:
+		return false
+	return day == sexton_suppression_night or (day == sexton_suppression_night + 1 and phase != C.NIGHT)
+
 func _sexton_knell() -> bool:
 	var sx = living_with_role("sexton")
 	return C.role_def("sexton").try_knell(self, sx, Mind)
@@ -1376,7 +1393,7 @@ func _quiet_night() -> void:
 			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], [], 1.0, [pc["who"], -1, "report"], {"kind": "quiet_night", "night": day, "claimant": pc["who"], "role": pc["role"]})
 
 func _night_movement(poison_t: String, kill_t: String, watch, watch_block: String, warden = null, warden_t: String = "",
-		medium = null, medium_t: String = "", lamp = null, confessor = null, confessor_t: String = "") -> void:
+		medium = null, medium_t: String = "", lamp = null, confessor = null, confessor_t: String = "", brute = null, brute_active: bool = false) -> void:
 	night_walkers = []
 	for n in living():
 		n.out_last_night = false
@@ -1384,7 +1401,10 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 		n.night_path = []
 		n.loc = "home"
 	if kill_t != "":
-		_walk(demon(), by_id[kill_t].home_block, "hunting %s" % by_id[kill_t].name)
+		if brute_active and brute != null:
+			_walk(brute, by_id[kill_t].home_block, "hunting %s (as Brute)" % by_id[kill_t].name)
+		else:
+			_walk(demon(), by_id[kill_t].home_block, "hunting %s" % by_id[kill_t].name)
 	if poison_t != "":
 		var m = living_with_role("poisoner")
 		if m != null:
@@ -1402,6 +1422,9 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 		_walk(lamp, lamp.home_block, "walking the lamp route", C.BLOCKS.keys())
 	if confessor and confessor_t != "" and by_id.has(confessor_t):
 		_walk(confessor, by_id[confessor_t].home_block, "hearing confession of %s" % by_id[confessor_t].name)
+	var sx_walk = living_with_role("sexton")
+	if sx_walk and sexton_tolled_night == day:
+		_walk(sx_walk, sx_walk.home_block, "tolling the church bell through every parish", C.BLOCKS.keys())
 	# The Secret Lovers meet somewhere new each night; the Sleepwalker wanders unknowing.
 	var met = {}
 	for n in living():
@@ -1684,24 +1707,32 @@ func _kill(v) -> void:
 	v.loc = "dead"
 	_bereave(v)
 	deaths_last_night.append(v.id)
-	var d = demon()
-	var ev_loc: String = d.history.get(time_key(day, C.EVENING), "home:" + d.home_block)
+	var brute_killer = living_with_role("brute")
+	var brute_killed: bool = (brute_killer != null and brute_killer.alive and not brute_killer.gift_broken() and not is_minion_suppressed())
+	var killer = brute_killer if brute_killed else demon()
+	var ev_loc: String = killer.history.get(time_key(day, C.EVENING), "home:" + killer.home_block)
 	var true_block: String = loc_block(ev_loc)
-	var passers: Array = night_walkers.filter(func(wk): return wk["id"] != demon_id and wk["id"] != v.id and v.home_block in wk.get("path", [wk["block"]]))
-	var demon_trace: Dictionary = build_actor_trace(d, v, 0)
-	case_traces.append(demon_trace.duplicate(true))
-	var traces: Array = [demon_trace]
+	var killer_trace: Dictionary = build_actor_trace(killer, v, 0)
+	case_traces.append(killer_trace.duplicate(true))
+	var traces: Array = [killer_trace]
 	var passer_actor_id: String = ""
-	if not passers.is_empty() and chance(Tuning.Setup.EXTRA_TRACE_CHANCE):
-		var wk: Dictionary = pick(passers)
-		var passer = by_id[wk["id"]]
-		passer_actor_id = passer.id
-		var passer_trace: Dictionary = build_actor_trace(passer, v, 1)
-		case_traces.append(passer_trace.duplicate(true))
-		if chance(0.5):
-			traces = [passer_trace, demon_trace]
-		else:
-			traces = [demon_trace, passer_trace]
+	var passers: Array = []
+	if brute_killed:
+		var brute_second_trace: Dictionary = build_actor_trace(killer, v, 1)
+		case_traces.append(brute_second_trace.duplicate(true))
+		traces.append(brute_second_trace)
+	else:
+		passers = night_walkers.filter(func(wk): return wk["id"] != killer.id and wk["id"] != v.id and v.home_block in wk.get("path", [wk["block"]]))
+		if not passers.is_empty() and chance(Tuning.Setup.EXTRA_TRACE_CHANCE):
+			var wk: Dictionary = pick(passers)
+			var passer = by_id[wk["id"]]
+			passer_actor_id = passer.id
+			var passer_trace: Dictionary = build_actor_trace(passer, v, 1)
+			case_traces.append(passer_trace.duplicate(true))
+			if chance(0.5):
+				traces = [passer_trace, killer_trace]
+			else:
+				traces = [killer_trace, passer_trace]
 	for idx in range(traces.size()):
 		traces[idx]["trace_slot"] = idx
 		traces[idx]["scene_trace_count"] = traces.size()
@@ -1711,16 +1742,16 @@ func _kill(v) -> void:
 				traces[idx]["scene_prose"] = "A second detail catches your eye: " + ptxt.trim_prefix("Near the body, ")
 			elif ptxt.begins_with("Near the body "):
 				traces[idx]["scene_prose"] = "A second detail catches your eye: you also notice " + ptxt.trim_prefix("Near the body ")
-	var why = "Scene trace (%s / %s) generated from %s." % [demon_trace.trace_family, demon_trace.trace_subtype, d.name]
+	var why = "Scene trace (%s / %s) generated from %s." % [killer_trace.trace_family, killer_trace.trace_subtype, killer.name]
 	if passer_actor_id != "":
 		why += " Extra trace added by passing night-walker %s." % by_id[passer_actor_id].name
 	var sid = "scene_" + v.id
 	scenes[sid] = {"name": "%s's cottage" % v.name, "block": v.home_block, "victim": v.id, "day": day,
-		"trace_block": true_block, "trace_true": true, "traces": traces, "trace": demon_trace,
+		"trace_block": true_block, "trace_true": true, "traces": traces, "trace": killer_trace,
 		"passer_ids": passers.map(func(wk): return wk["id"]), "passer_trace_actor": passer_actor_id,
 		"why": why, "searched": false}
-	dlog.add("kill", demon_id, v.id, {"role": v.role, "scene": sid, "trace_family": demon_trace.trace_family,
-		"trace_subtype": demon_trace.trace_subtype, "trace_key": demon_trace.trace_key,
+	dlog.add("kill", demon_id, v.id, {"role": v.role, "scene": sid, "trace_family": killer_trace.trace_family,
+		"trace_subtype": killer_trace.trace_subtype, "trace_key": killer_trace.trace_key,
 		"trace_count": traces.size(), "passer_trace_actor": passer_actor_id, "trace_true": true}, why)
 	public_event("demon_death", [v.id], "town")
 	for n in npcs:

@@ -10,7 +10,7 @@ func _init() -> void:
 	tags = ["execution"]
 	minion = true
 	day = true
-	desc = "Hides a totem somewhere each day it has none in play. If hanged while a totem is hidden, a good soul who voted for it turns evil until the totem is found."
+	desc = "Hides a totem somewhere each day it has none in play. If hanged while a totem is hidden, a good soul who voted for it turns evil until the totem is found (not while the Sexton's bell suppresses minions)."
 	shape = "NONE"
 
 
@@ -21,20 +21,27 @@ func place_totem_now(w, rv) -> bool:
 
 func run_day_gift(w, rv, _mind, _evil) -> void:
 	var C = content()
-	if not rv.is_evil() or not w.totem.is_empty() or w.totem_at_dawn or not C.LOCATIONS.has(rv.loc):
+	if not rv.is_evil() or not w.totem.is_empty() or w.totem_at_dawn or not C.LOCATIONS.has(rv.loc) or w.is_minion_suppressed():
 		return
 	if place_totem_now(w, rv):
 		w.totem = {"loc": rv.loc, "day": w.day, "owner": rv.id, "material": rv.home_block}
 		w.dlog.add("totem", rv.id, "", w.totem, "%s hides a totem at %s." % [rv.name, C.loc_name(rv.loc)])
 
 
-func on_executed(w, rv, res: Dictionary, mind) -> void:
+func on_executed(w, rv, res: Dictionary, _mind) -> void:
 	if w.totem.is_empty():
 		w.dlog.add("curse_fizzles", rv.id, "", {}, "The Revenant hangs with no totem in play: no curse.")
 		return
 	if rv.gift_broken():
 		w.dlog.add("curse_fizzles", rv.id, "", {}, "The Revenant was poisoned: the curse fails.")
 		return
+	if w.is_minion_suppressed():
+		w.dlog.add("curse_suppressed", rv.id, "", {}, "The church bell suppresses the Revenant's curse.")
+		return
+	trigger_curse(w, rv, res, _mind)
+
+
+func trigger_curse(w, rv, res: Dictionary, mind) -> void:
 	var cands: Array = res.get("yes", []).map(func(i): return w.by_id[i]).filter(func(m): return m.alive and not m.is_evil())
 	if cands.is_empty():
 		w.dlog.add("curse_fizzles", rv.id, "", {}, "No good soul voted to hang the Revenant: the curse finds nobody.")
@@ -49,8 +56,6 @@ func on_executed(w, rv, res: Dictionary, mind) -> void:
 			mind.ledger_hear(w, l, "curse:%d" % w.day, [], 1.0, [], {"kind": "event"})
 	w.public_event("curse", [rv.id], rv.id)
 	w.meeting["curse"] = true
-	# Public curse activation identifies the executed Revenant and invalidates any Good gift claim they made,
-	# without erasing ordinary street sightings they previously reported.
 	for real in w.living():
 		var minds: Array = [real]
 		if real.shadow != null:

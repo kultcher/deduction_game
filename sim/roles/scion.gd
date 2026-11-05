@@ -13,7 +13,9 @@ func _init() -> void:
 	shape = "NONE"
 
 
-func can_promote_to_demon(sc, alive_before: int) -> bool:
+func can_promote_to_demon(sc, alive_before: int, w = null) -> bool:
+	if w != null and w.is_minion_suppressed():
+		return false
 	return sc != null and alive_before >= 5 and not sc.gift_broken()
 
 
