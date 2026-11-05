@@ -340,5 +340,7 @@ static func _town_hears(w, d, facts: Array) -> void:
 		for l in w.living():
 			if l == d:
 				continue
+			# "tell" + workshop_card is the kind the shared model reads as testimony
+			# (Shared.prepare); the teller marks it as heard from the nominee themselves.
 			_mind().ledger_hear(w, l, eid, [], 0.5 + 0.5 * l.npc_trust.get(d.id, 0.5), [d.id, -1, "report"],
-				{"kind": "podium_" + kind, "workshop_card": receipt})
+				{"kind": "tell", "podium": kind, "text": f.get("text", ""), "workshop_card": receipt, "workshop_teller": d.id, "workshop_public": true})

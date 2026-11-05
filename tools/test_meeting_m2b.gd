@@ -10,6 +10,7 @@ extends SceneTree
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
+const Mind = preload("res://sim/mind.gd")
 
 var _checks: int = 0
 var _fails: int = 0
@@ -168,6 +169,13 @@ func _test_press_night_public() -> void:
 	_check(cards.any(func(c): return c.get("kind", "") in ["alibi", "refusal"] and c.get("source", "") == t.id),
 		"press night: their account goes on the board")
 	_check(_heard_by_town(g, t), "press night: every other listener hears the account")
+	# And their shared model takes it in as testimony (Shared.prepare reads 'tell' receipts).
+	var listener = g.w.living().filter(func(l): return l != t and not l.is_evil())[0]
+	var heard: Array = listener.ledger.keys().filter(func(k): return str(k).begins_with("podium:%s:" % t.id))
+	var rid: String = listener.ledger[heard[0]].meta.workshop_card.id if not heard.is_empty() else ""
+	g.w.defer_beliefs = false
+	Mind.refresh_beliefs(g.w, listener, "test")
+	_check(rid != "" and rid in listener.workshop_state.get("facts", []), "a listener's shared model reasons with the press answer")
 	_check(t.dialogue_memory.get("night_accounts", {}).has("1"), "press night: the account is kept on record for later questions")
 	_check(not g.w.meeting.pending.get("case_facts", []).is_empty(), "what the press shook loose feeds the trial's case facts")
 	_check(g.w.dlog.entries.any(func(e): return e.get("type", "") == "podium_press" and e.get("target", "") == t.id), "the press is logged")
