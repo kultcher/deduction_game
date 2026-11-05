@@ -15,7 +15,8 @@ test_headline
 test_buildings_tavern_town_hall
 test_peer_role_gossip
 test_case_script
-test_playtest_nov4_fixes
+test_workshop_regressions
+test_evil_play
 test_meeting_m2a
 test_meeting_m2b
 test_town_vibe

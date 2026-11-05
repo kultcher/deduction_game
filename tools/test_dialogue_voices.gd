@@ -1,68 +1,12 @@
-## Regression suite for Dialogue Batches 5, 6 & 7:
-## - Batch 5: 31 Workshop case-presentation & self-support/repeat keys across all 15 cast voices,
-##   BotC top-Demon + #2-accomplice rival framing (never naming a 3rd), dead starting-Demon
-##   Scion promotion, conditional Marked relevance gating, and Good-vs.-Evil presentation parity.
-## - Batch 6: 8 VN conversation greeting keys across all 15 cast voices, 5-state portrait
-##   expressions, 5 one-shot contextual overrides, Composure 1-RNG-draw parity with greeting_cue,
-##   tic-budget conservation on greet_neutral, DayConversationView consumption, and zero-cost bye.
-## - Batch 7: 46 new voice keys + full 15-cast completion of private_reveal_early and
-##   doubted_visual (230 symmetric keys per character), wiring all 25 remaining [PH] sites
-##   across sim/mind_dialogue.gd, sim/social.gd, sim/mind_meeting.gd, sim/roles/*.gd, and
-##   game/game_conversation.gd, plus zero-[PH] repository scan across sim/, game/, workshop/, ui/.
+## Voice packs and wording: every character's lines, spoken nights, first-person notes, relationship and opinion phrasing.
+## Merged from: test_backlog_batch2, test_backlog_batch4, test_dialogue_batches_5_6_7, test_fixes, test_playtest_followups, test_playtest_nov4_fixes, test_workshop_slice5_voices_and_bot.
 extends SceneTree
 
-const Game = preload("res://game/game.gd")
-const GameConversation = preload("res://game/game_conversation.gd")
 const C = preload("res://sim/content.gd")
-const Dialogue = preload("res://sim/dialogue.gd")
-const Voices = preload("res://sim/dialogue_voices.gd")
-const Presentations = preload("res://sim/dialogue_presentations.gd")
+const Game = preload("res://game/game.gd")
+const Evil = preload("res://sim/evil.gd")
 const Mind = preload("res://sim/mind.gd")
-const Tuning = preload("res://sim/tuning.gd")
-const MindMeeting = preload("res://sim/mind_meeting.gd")
-const Social = preload("res://sim/social.gd")
-const DayConvView = preload("res://ui/day_conversation_view.gd")
-
-const CAST_IDS = [
-	"agnes", "bart", "constance", "dorian", "edda",
-	"fenwick", "greta", "hollis", "isolde", "jory",
-	"kiran", "lian", "merrin", "nisha", "odette",
-]
-
-const BATCH5_SLOTS = {
-	"present_accept_solid": {},
-	"present_accept_open": {"target": "Edda"},
-	"present_partial": {"target": "Edda"},
-	"present_unmoved": {"target": "Edda"},
-	"present_already": {"target": "Edda"},
-	"present_alt_accept": {"demon": "Fenwick", "accomplice": "Odette", "target": "Edda"},
-	"present_alt_partial": {"demon": "Fenwick", "accomplice": "Odette", "target": "Edda"},
-	"present_alt_reject": {"demon": "Fenwick", "accomplice": "Odette"},
-	"present_alt_accept_solo": {"demon": "Fenwick", "target": "Edda"},
-	"present_alt_partial_solo": {"demon": "Fenwick", "target": "Edda"},
-	"present_alt_reject_solo": {"demon": "Fenwick"},
-	"present_alt_marked": {"marked": "Isolde"},
-	"present_points_elsewhere": {"target": "Edda", "rival": "Fenwick"},
-	"present_weighs_against": {"target": "Edda"},
-	"present_conflict_found": {},
-	"present_conflict_weighing": {},
-	"present_conflict_none": {},
-	"present_conditional": {},
-	"present_lost_thread": {},
-	"present_partial_attention": {},
-	"present_false_self": {},
-	"present_false_known": {},
-	"present_circumstantial_only": {},
-	"present_move_trace_lean": {},
-	"present_seen_elsewhere": {"subject": "Edda", "when": "on the second night"},  # spoken, never "night 1"
-	"present_role_fit": {"subject": "Edda", "role": "Warden"},
-	"present_repeat_meeting": {},
-	"present_repeat_private": {},
-	"self_support_thanks": {},
-	"self_support_weak": {},
-	"self_support_repeat": {},
-}
-
+const Voices = preload("res://sim/dialogue_voices.gd")
 const BATCH6_EVENT_SLOTS = {
 	"greet_friend_killed": {"victim": "Rowan"},
 	"greet_after_murder": {"victim": "Rowan"},
@@ -70,7 +14,6 @@ const BATCH6_EVENT_SLOTS = {
 	"greet_after_friction": {},
 	"greet_after_protection": {},
 }
-
 const BATCH7_SLOTS = {
 	"private_reveal_early": {"role": "Surveyor"},
 	"hint_why_empty_1": {},
@@ -120,39 +63,403 @@ const BATCH7_SLOTS = {
 	"defence_pair_other": {"source": "Hollis", "other": "Fenwick"},
 	"defence_fear_plea": {},
 }
+const BATCH5_SLOTS = {
+	"present_accept_solid": {},
+	"present_accept_open": {"target": "Edda"},
+	"present_partial": {"target": "Edda"},
+	"present_unmoved": {"target": "Edda"},
+	"present_already": {"target": "Edda"},
+	"present_alt_accept": {"demon": "Fenwick", "accomplice": "Odette", "target": "Edda"},
+	"present_alt_partial": {"demon": "Fenwick", "accomplice": "Odette", "target": "Edda"},
+	"present_alt_reject": {"demon": "Fenwick", "accomplice": "Odette"},
+	"present_alt_accept_solo": {"demon": "Fenwick", "target": "Edda"},
+	"present_alt_partial_solo": {"demon": "Fenwick", "target": "Edda"},
+	"present_alt_reject_solo": {"demon": "Fenwick"},
+	"present_alt_marked": {"marked": "Isolde"},
+	"present_points_elsewhere": {"target": "Edda", "rival": "Fenwick"},
+	"present_weighs_against": {"target": "Edda"},
+	"present_conflict_found": {},
+	"present_conflict_weighing": {},
+	"present_conflict_none": {},
+	"present_conditional": {},
+	"present_lost_thread": {},
+	"present_partial_attention": {},
+	"present_false_self": {},
+	"present_false_known": {},
+	"present_circumstantial_only": {},
+	"present_move_trace_lean": {},
+	"present_seen_elsewhere": {"subject": "Edda", "when": "on the second night"},  # spoken, never "night 1"
+	"present_role_fit": {"subject": "Edda", "role": "Warden"},
+	"present_repeat_meeting": {},
+	"present_repeat_private": {},
+	"self_support_thanks": {},
+	"self_support_weak": {},
+	"self_support_repeat": {},
+}
+const Tuning = preload("res://sim/tuning.gd")
+const GameConversation = preload("res://game/game_conversation.gd")
+const Dialogue = preload("res://sim/dialogue.gd")
+const Social = preload("res://sim/social.gd")
+const CAST_IDS = [
+	"agnes", "bart", "constance", "dorian", "edda",
+	"fenwick", "greta", "hollis", "isolde", "jory",
+	"kiran", "lian", "merrin", "nisha", "odette",
+]
+const DayConvView = preload("res://ui/day_conversation_view.gd")
+const MindMeeting = preload("res://sim/mind_meeting.gd")
+const Presentations = preload("res://sim/dialogue_presentations.gd")
+const CAST_IDS_WORKSHOP_SLICE5_VOICES_A = ["agnes", "bart", "constance", "dorian", "edda", "fenwick", "greta", "hollis", "isolde", "jory", "kiran", "lian", "merrin", "nisha", "odette"]
+const SLICE5_SLOTS = {
+	"trace_fit_locations": {"places": "the Bakery or the Tavern", "item": "a brass farthing"},
+	"trace_fit_quarter": {"home_block": "the Square", "evening_block": "Market Lane"},
+	"trace_fit_connection": {"victim": "Rowan"},
+	"trace_not_me": {},
+	"trace_point_haunt": {"loc": "the Tavern", "target": "Edda"},
+	"trace_point_work": {"loc": "the Bakery", "target": "Edda"},
+	"trace_point_quarter": {"block": "the Square", "target": "Edda"},
+	"trace_point_connection": {"target": "Edda"},
+	"pressed_multi_trace_case": {},
+	"circumstantial_hub_landed": {"target": "Edda"},
+	"circumstantial_smear_pushback": {},
+}
 
-var checks: int = 0
-var fails: int = 0
-
-
-func _check(cond: bool, msg: String) -> void:
-	checks += 1
-	if not cond:
-		fails += 1
-		push_error("FAIL: " + msg)
-
-
-func _game(seed_val: int = 5601, size: int = 10):
-	var g = Game.new()
-	g.detailed_logging = false
-	g.log_dir = "user://test_dialogue_b567"
-	g.new_case(seed_val, size)
-	return g
+var checks = 0
+var fails = 0
+var failures = 0
+var _checks = 0
+var _fails = 0
 
 
 func _init() -> void:
+	call_deferred("_main")
+
+
+func _main() -> void:
+	_run_backlog_batch2()
+	_run_backlog_batch4()
+	_run_fixes()
+	_run_playtest_followups()
+	_run_playtest_nov4_fixes()
+	_run_dialogue_batches_5_6_7()
+	_run_workshop_slice5_voices_a()
+	print("Dialogue: voices and wording: %d checks, %d failures" % [checks, fails])
+	quit(1 if fails > 0 else 0)
+
+
+## One shared check helper (the merged suites used both names).
+func check(ok: bool, label: String) -> void:
+	_count(ok, label)
+
+
+func _check(ok: bool, label: String) -> void:
+	_count(ok, label)
+
+
+func _count(ok: bool, label: String) -> void:
+	checks += 1
+	_checks += 1
+	if not ok:
+		fails += 1
+		failures += 1
+		_fails += 1
+		printerr("FAIL: " + label)
+
+
+# ---------------------------------------------------------------- from test_backlog_batch2
+
+func _run_backlog_batch2() -> void:
+	_walker_wording()
+
+
+# ---------------------------------------------------------------- from test_backlog_batch4
+
+func _run_backlog_batch4() -> void:
+	first_person_notes()
+
+
+# ---------------------------------------------------------------- from test_fixes
+
+func _run_fixes() -> void:
+	_wording()
+	_dated_sighting_wording()
+
+
+# ---------------------------------------------------------------- from test_playtest_followups
+
+func _run_playtest_followups() -> void:
+	martyr_wording()
+
+
+# ---------------------------------------------------------------- from test_playtest_nov4_fixes
+
+func _run_playtest_nov4_fixes() -> void:
+	_test_spoken_when_and_sighting_dedup()
+
+
+# ---------------------------------------------------------------- from test_dialogue_batches_5_6_7
+
+func _run_dialogue_batches_5_6_7() -> void:
 	_test_voice_pack_completeness_and_symmetry()
 	_test_botc_rival_pair_and_marked_gate()
 	_test_live_presentation_and_evil_parity()
 	_test_vn_greetings_expressions_and_rng_parity()
 	_test_batch7_conversations_press_roles_and_meetings()
 	_test_zero_ph_across_runtime_dirs()
-	if fails == 0:
-		print("test_dialogue_batches_5_6_7: ALL %d CHECKS PASSED" % checks)
-		quit(0)
-	else:
-		printerr("test_dialogue_batches_5_6_7: %d/%d FAILED" % [fails, checks])
-		quit(1)
+
+
+# ---------------------------------------------------------------- from test_workshop_slice5_voices_and_bot
+
+func _run_workshop_slice5_voices_a() -> void:
+	_test_all_15_voices_slice5_keys()
+
+
+# ---- test_backlog_batch2
+
+
+func fresh():
+	var g = Game.new()
+	g.detailed_logging = false
+	g.log_dir = "user://batch2_tests"
+	g.new_case(4242, 10)
+	return g
+
+
+func _walker_wording() -> void:
+	var g = fresh()
+	var n = g.w.minion()
+	var target = g.w.living_good()[0]
+	for person in g.w.npcs:
+		person.info_log = []
+	g.w.evil_plan.fake_sightings = {n.id + ":3": {"who": target.id, "block": "market", "day": 3, "how": "window"}}
+	var original = JSON.stringify(g.w.evil_plan.fake_sightings)
+	for role in ["nightwatch", "warden", "lamplighter", "medium", "seer"]:
+		n.claimed_role = role
+		var expected_rng = RandomNumberGenerator.new()
+		expected_rng.state = g.w.rng.state
+		expected_rng.randi_range(0, 0) # The existing single-option w.pick call.
+		var why = Evil.bluff_reason(g.w, n, target)
+		check(C.spoken_night(3, g.w.day) in why, "every fake-sighting reason names its stored night")
+		check(("duty" in why and not "window" in why) if role != "seer" else "window" in why, "claimed walking duties and window claims have distinct wording")
+		check(g.w.rng.state == expected_rng.state and JSON.stringify(g.w.evil_plan.fake_sightings) == original, "wording preserves the existing choice RNG and cached frame")
+
+
+# ---- test_backlog_batch4
+
+
+func backlog_batch4__fresh():
+	var g = Game.new()
+	g.detailed_logging = false
+	g.log_dir = "user://batch4_tests"
+	g.new_case(4242, 10)
+	return g
+
+
+func first_person_notes():
+	var g = backlog_batch4__fresh()
+	var w = g.w
+	var n = w.living_good()[0]
+	var t = w.living_good()[1]
+	var other = w.living_good()[2]
+	n.traits.gossip = 1.0
+	n.trust = 1.0
+	var probe = RandomNumberGenerator.new()
+	var reveal_state: int = 0
+	for seed_value in range(1, 100):
+		probe.seed = seed_value
+		var before = probe.state
+		if probe.randf() < 0.1:
+			reveal_state = before
+			break
+	for kind in ["friend", "rival"]:
+		for order in [[n.id, t.id], [t.id, n.id]]:
+			w.town_relationships = [{"kind": kind, "people": order}]
+			g.known_relationships = {}
+			w.rng.state = reveal_state
+			probe.state = reveal_state
+			probe.randf()
+			var reply = {"lines": [], "facts": []}
+			g._maybe_tell_relationships(n, t, reply)
+			var expected = t.name + (" and I are close." if kind == "friend" else " and I don't get along.")
+			check(reply.lines.size() == 1 and reply.lines[0].get("statement", reply.lines[0].text) == expected and t.name in reply.lines[0].text, "both pair orders and bond kinds use first person about the speaker")
+			var note = g.known_relationships.values()[0]
+			check(note.text == n.name + ' says "' + expected + '"' and note.source == n.id and note.people == order and reply.facts.is_empty(), "first-person profile note retains attribution and original bond identity without cards")
+			check(w.rng.state == probe.state, "first-person relationship wording keeps the original single roll")
+			g._maybe_tell_relationships(n, t, reply)
+			check(w.rng.state == probe.state and reply.lines.size() == 1, "known first-person bonds do not repeat or roll again")
+	w.town_relationships = [{"kind": "friend", "people": [t.id, other.id]}]
+	g.known_relationships = {}
+	w.rng.state = reveal_state
+	var third = {"lines": [], "facts": []}
+	g._maybe_tell_relationships(n, t, third)
+	check(third.lines[0].get("statement", third.lines[0].text) == "%s and %s are close." % [t.name, other.name] and t.name in third.lines[0].text and other.name in third.lines[0].text, "third-party relationship wording retains canonical bond and names")
+	n.friends = []
+	n.rivals = []
+	n.pressure = 1.0 # Allow self-trait replies even when exercising low gossip.
+	for key in g.OBSERVABLE_TRAITS:
+		for tier in [0.0, 0.5, 1.0]:
+			n.traits.gossip = 1.0
+			n.traits[key] = tier
+			n.revealed_traits = {}
+			for known in C.TRAITS:
+				if known != key: n.revealed_traits[known] = "mid"
+			w.rng.state = reveal_state
+			probe.state = reveal_state
+			probe.randf()
+			probe.randi_range(0, 0)
+			var reply = {"lines": [], "facts": []}
+			g._maybe_tell_trait(n, n, reply)
+			check(reply.lines.size() == 1 and reply.lines[0].get("statement", reply.lines[0].text).begins_with("I'd call myself ") and not n.name in reply.lines[0].text and not "their" in reply.lines[0].text and not "themselves" in reply.lines[0].text, "self-trait wording uses first person")
+			check(n.revealed_traits[key] == C.tier(n.traits[key]) and w.rng.state == probe.state and reply.facts.is_empty(), "self-trait phrasing retains the selected trait, learning and exact RNG draws")
+
+
+# ---- test_fixes
+
+
+func _game(sd: int, size: int = 10):
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(sd, size)
+	return g
+
+
+func _dated_sighting_wording() -> void:
+	var g = _game(7102)
+	var speaker = g.w.npcs[0]
+	var target = g.w.npcs[1]
+	var rng = g.w.rng.state
+	for observation in [
+		{"kind": "stayed_in", "how": "window"},
+		{"kind": "saw", "how": "window", "detail": "leaving_home"},
+		{"kind": "saw", "how": "window"},
+		{"kind": "saw", "how": "street"}]:
+		observation["who"] = target.id
+		observation["block"] = "square"
+		var reply = Mind.sighting_report(g.w, speaker, observation, 3)
+		_check(C.spoken_when(3, g.w.day) in reply.line.text and reply.fact.day == 3, "spoken sighting/alibi names the same night as its receipt")
+		if observation.how == "street":
+			_check(not "window" in reply.line.text, "a street sighting is not worded as a window observation")
+	_check(g.w.rng.state == rng, "dating an approved sighting adds no RNG draw")
+	g.state = "day"
+	g.moved = false
+	for n in g.w.living():
+		n.loc = "home_" + n.id
+		n.working = false
+		n.busy_with = ""
+	speaker.loc = "tavern"
+	var overview = g._map()
+	_check("Total out of sight:" in overview and "includes the anonymous counts above" in overview, "overview totals explicitly include rather than add to anonymous counts")
+
+
+## An evil Medium bluff's night story names the hearth of its fake reading, not where it was.
+func _wording() -> void:
+	_check(C.natural_nights("Fenwick says they were home on night 0.") == "Fenwick says they were home on the night before you arrived.", "night 0 reads as the night before you arrived")
+	_check(C.natural_nights("night 10 and night 1") == "night 10 and night 1", "other nights are untouched")
+	_check(C.third_person("I looked at Greta and Jory: one of them reads as the demon") == "they looked at Greta and Jory: one of them reads as the demon", "relayed readings are retold in the third person")
+	var g = _game(7102)
+	var bad = 0
+	for c in g.board:
+		if "night 0" in c.get("text", "") or "Night 0" in c.get("text", ""):
+			bad += 1
+	for i in range(6):
+		g.command("wait")
+	for c in g.board:
+		if "night 0" in c.get("text", "") or "Night 0" in c.get("text", ""):
+			bad += 1
+	_check(bad == 0, "no card says 'night 0'")
+
+
+# ---- test_playtest_followups
+
+
+func playtest_followups__fresh():
+	var g = Game.new()
+	g.detailed_logging = false
+	g.log_dir = "user://followup_tests"
+	g.new_case(4242, 10)
+	return g
+
+
+func martyr_wording():
+	var g = playtest_followups__fresh()
+	var w = g.w
+	var martyr = w.living_good()[0]
+	var target = w.minion()
+	for n in w.npcs:
+		if not n.is_evil(): n.role = "clerk"
+		n.secret_mod = ""
+		if n != martyr: n.martyr_target = ""
+	martyr.role = "martyr"
+	martyr.poisoned = false
+	martyr.martyr_target = target.id
+	martyr.info_log = []
+	w.day = 2
+	var rng = w.rng.state
+	w.execute(target.id, {"by": "player", "yes": []})
+	check(martyr.alive and not target.alive and martyr.info_log.size() == 1, "the original non-substitution outcome and report generation remain intact")
+	var report: Dictionary = martyr.info_log[0]
+	check(report.text == "As the Martyr, I chose %s. They were hanged and I still stand: they must have been evil or my gift failed" % target.name, "the Martyr explicitly identifies their choice and qualifies their interpretation")
+	check(report.data == {"target": target.id, "evil": true} and report["true"] and w.rng.state == rng, "wording changes no report truth, effects or RNG")
+
+
+# ---- test_playtest_nov4_fixes
+
+
+func _test_spoken_when_and_sighting_dedup() -> void:
+	var g = Game.new()
+	g.new_case(40741, 10)
+	var w = g.w
+	w.day = 3
+	w.phase = C.EVENING
+	w.begin_meeting()
+	var n = w.minion()
+	var sg = w.living_good()[0]
+	w.evil_plan["scapegoat"] = sg.id
+	w.evil_plan["bluffs"][n.id] = "nightwatch"
+	n.claimed_role = "nightwatch"
+	n.claim_public = true
+	w.public_claims.append({"day": 2, "who": n.id, "role": "nightwatch"})
+	n.traits["gossip"] = 1.0
+	n.traits["confidence"] = 1.0
+	n.traits["insight"] = 1.0
+	n.pressure = 2.0
+	n.told_to = {}
+	n.info_log = [{
+		"day": 2,
+		"role": "nightwatch",
+		"data": {"block": "market", "seen": [sg.id]},
+		"text": "Last night, I watched the Market: I saw %s pass by." % sg.name,
+		"true": false,
+		"fake": true,
+		"shared": false,
+	}]
+	var fs: Dictionary = {"kind": "saw", "who": sg.id, "loc": "", "block": "market", "day": 2, "phase": C.NIGHT, "how": "street", "detail": "street"}
+	w.evil_plan["fake_sightings"][n.id + ":2"] = fs
+	n.beliefs = [fs.duplicate(true)]
+
+	var reason_d3_n2: String = Evil.bluff_reason(w, n, sg)
+	_check(not ("on night " in reason_d3_n2),
+		"Evil.bluff_reason uses natural spoken_when phrasing rather than 'on night N' (%s)" % reason_d3_n2)
+
+	var st: Dictionary = {"speakers": [n], "i": 0, "done": false}
+	var turn: Dictionary = Mind.testimony_step(w, st)
+	var sighting_facts: Array = turn.get("facts", []).filter(func(f): return f.get("kind", "") == "sighting")
+	var info_facts: Array = turn.get("facts", []).filter(func(f): return f.get("kind", "") == "info")
+	_check(info_facts.size() == 1 and sighting_facts.is_empty(),
+		"Sharing Night Watch reading suppresses duplicate volunteered/accusation sighting cards (info=%d, sighting=%d)" % [info_facts.size(), sighting_facts.size()])
+	var texts: Array = turn.get("lines", []).map(func(l): return str(l.get("text", "")))
+	_check(not texts.any(func(t): return "on night 2" in t.to_lower() or "on night 1" in t.to_lower()),
+		"Testimony lines contain zero raw 'on night N' strings (%s)" % str(texts))
+
+
+# ---- test_dialogue_batches_5_6_7
+
+
+func dialogue_batches_5_6_7__game(seed_val: int = 5601, size: int = 10):
+	var g = Game.new()
+	g.detailed_logging = false
+	g.log_dir = "user://test_dialogue_b567"
+	g.new_case(seed_val, size)
+	return g
 
 
 func _test_voice_pack_completeness_and_symmetry() -> void:
@@ -206,8 +513,9 @@ func _test_voice_pack_completeness_and_symmetry() -> void:
 		_check(seen_pools.size() == CAST_IDS.size(), "all 15 cast voices have distinct %s pools" % pool_key)
 
 
+## File a real Workshop case ("target is evil") from board cards, the way the canvas does.
 func _test_botc_rival_pair_and_marked_gate() -> void:
-	var g = _game(5602, 10)
+	var g = dialogue_batches_5_6_7__game(5602, 10)
 	var listener = g.w.living_good()[0]
 	var others: Array = g.w.npcs.filter(func(p): return p.id != listener.id)
 	var d_id: String = others[0].id
@@ -247,7 +555,6 @@ func _test_botc_rival_pair_and_marked_gate() -> void:
 	_check(Presentations._is_marked_relevant(m_id, {"type": "evil", "a": t_id}, relevant_snap, {"considered": ["r1"]}), "Attended Seer ping mentioning Marked triggers present_alt_marked")
 
 
-## File a real Workshop case ("target is evil") from board cards, the way the canvas does.
 func _file_case(g, target_id: String, board_numbers: Array) -> int:
 	var WorkshopCanvas = preload("res://game/workshop_canvas.gd")
 	var CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -263,7 +570,7 @@ func _file_case(g, target_id: String, board_numbers: Array) -> int:
 
 
 func _test_live_presentation_and_evil_parity() -> void:
-	var g = _game(5603, 7)
+	var g = dialogue_batches_5_6_7__game(5603, 7)
 	var good_listener = g.w.living_good()[0]
 	var evil_listener = g.w.demon()
 	var target = g.w.living_good()[1]
@@ -309,15 +616,15 @@ func _test_live_presentation_and_evil_parity() -> void:
 
 
 func _test_vn_greetings_expressions_and_rng_parity() -> void:
-	var g_a = _game(5604, 7)
-	var g_b = _game(5604, 7)
+	var g_a = dialogue_batches_5_6_7__game(5604, 7)
+	var g_b = dialogue_batches_5_6_7__game(5604, 7)
 	for i in range(g_a.w.npcs.size()):
 		Mind.greeting_cue(g_a.w, g_a.w.npcs[i])
 		var gl: Dictionary = Mind.greeting_line(g_b.w, g_b.w.npcs[i], {})
 		_check(gl.get("text", "") != "" and not ("[PH]" in gl.get("text", "")), "greeting_line produces non-empty [PH]-free speech for " + g_b.w.npcs[i].id)
 	_check(g_a.w.rng.state == g_b.w.rng.state, "greeting_line preserves exact 1-draw RNG parity with greeting_cue")
 
-	var g = _game(5605, 7)
+	var g = dialogue_batches_5_6_7__game(5605, 7)
 	var speaker = g.w.living_good()[0]
 	var victim = g.w.living_good()[1]
 	g.w.day = 2
@@ -337,7 +644,7 @@ func _test_vn_greetings_expressions_and_rng_parity() -> void:
 	var fric_line: Dictionary = Mind.greeting_line(g.w, speaker, {"protection_key": "protect:promise:" + speaker.id, "friction_key": "friction:accuse:2"})
 	_check(fric_line.text == Voices.VOICES[speaker.id]["greet_after_friction"] and fric_line.get("expression", "") in ["harsh", "concerned"], "Recent player friction triggers greet_after_friction once protection key was already greeted")
 
-	var g_live = _game(5606, 7)
+	var g_live = dialogue_batches_5_6_7__game(5606, 7)
 	var target_npc = null
 	for p in g_live.w.living():
 		if not p.at_home() and p.busy_with == "":
@@ -368,7 +675,7 @@ func _test_batch7_conversations_press_roles_and_meetings() -> void:
 		_check(res.get("cue", "") == "doubted_visual" and not ("[PH]" in res.get("text", "")), "%s resolves doubted_visual cue cleanly" % id)
 
 	# 2. Day 1 unpressed private_reveal_early works for non-Constance cast members too.
-	var g = _game(5701, 10)
+	var g = dialogue_batches_5_6_7__game(5701, 10)
 	var speaker = g.w.living_good()[0]
 	var other = g.w.living_good()[1]
 	var third = g.w.living_good()[2]
@@ -410,7 +717,7 @@ func _test_batch7_conversations_press_roles_and_meetings() -> void:
 	var eh2: Dictionary = Mind.answer_hint(g.w, speaker)
 	_check(eh1.lines[0].text != eh2.lines[0].text and not ("[PH]" in eh1.lines[0].text) and not ("[PH]" in eh2.lines[0].text), "Empty hint follow-ups alternate between hint_why_empty_1 and hint_why_empty_2 without [PH]")
 
-	var g_hint = _game(5702, 10)
+	var g_hint = dialogue_batches_5_6_7__game(5702, 10)
 	var h_good: Array = g_hint.w.living_good()
 	var h_speaker = h_good[0]
 	var h_other = h_good[1]
@@ -540,3 +847,34 @@ func _scan_dir_for_ph(dir_path: String) -> void:
 				_check(not ("[PH]" in txt), "%s contains zero [PH] markers" % full)
 		entry = d.get_next()
 	d.list_dir_end()
+
+
+# ---- test_workshop_slice5_voices_and_bot
+
+
+func _test_all_15_voices_slice5_keys() -> void:
+	for key in SLICE5_SLOTS:
+		var slots: Dictionary = SLICE5_SLOTS[key]
+		var seen: Dictionary = {}
+		for id in CAST_IDS_WORKSHOP_SLICE5_VOICES_A:
+			var rendered: String = Dialogue.voice_line(id, key, "FALLBACK", slots)
+			_check(rendered != "FALLBACK" and rendered != "" and not "{" in rendered and not "}" in rendered and not "[PH]" in rendered, "%s/%s resolves cleanly without [PH] or leftover slots" % [id, key])
+			for slot_val in slots.values():
+				_check(str(slot_val) in rendered, "%s/%s preserves slot value %s" % [id, key, str(slot_val)])
+			if id != "nisha":
+				_check(not ("data" in rendered.to_lower()), "%s/%s keeps 'data' diction exclusive to Nisha" % [id, key])
+			if key == "pressed_multi_trace_case":
+				_check("frame" in rendered.to_lower(), "%s/pressed_multi_trace_case expresses frame-up denial" % id)
+			seen[rendered] = true
+		_check(seen.size() == CAST_IDS_WORKSHOP_SLICE5_VOICES_A.size(), "all 15 cast voices have distinct lines for " + key)
+		_check(Dialogue.voice_line("unvoiced_npc", key, "FALLBACK", slots) == "FALLBACK", "unvoiced fallback preserved for " + key)
+	var agnes_table: Dictionary = Voices.VOICES["agnes"]
+	var total_str: int = 0
+	var dear_str: int = 0
+	for k in agnes_table:
+		if agnes_table[k] is String:
+			total_str += 1
+			var low: String = String(agnes_table[k]).to_lower()
+			if "dear" in low or "love" in low:
+				dear_str += 1
+	_check(total_str > 0 and float(dear_str) / float(total_str) <= 0.30, "Agnes endearment ratio remains restrained (<= 30%%)")
