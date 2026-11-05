@@ -32,6 +32,15 @@ func _init() -> void:
 	if not check.call(is_equal_approx(v.portrait.anchor_right, View.ITEM_FRAME[2]), "item uses the item frame"): fails += 1
 	v.begin("edda", "Edda")
 	if not check.call(is_equal_approx(v.portrait.anchor_right, View.PORTRAIT_FRAME[2]) and v.person_id == "edda", "begin restores the portrait frame"): fails += 1
+	# An Edda conversation leaves a line-boil material on the shared portrait slot.
+	# Searching a scene must clear it before that slot displays an evidence item.
+	v.show_item("Edda's cottage", tex, "Near the body lies a brass grain-measure token.")
+	if not check.call(v.portrait.material == null, "item mode clears the preceding portrait's shader"): fails += 1
+	var toggle = InputEventKey.new()
+	toggle.keycode = KEY_B
+	toggle.pressed = true
+	v._unhandled_key_input(toggle)
+	if not check.call(v.portrait.texture == tex and v.portrait.material == null, "line-boil shortcut leaves item mode intact"): fails += 1
 	if fails == 0:
 		print("test_trace_art: ALL %d CHECKS PASSED" % checks)
 		quit(0)

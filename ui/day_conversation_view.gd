@@ -242,6 +242,7 @@ func show_item(title: String, texture: Texture2D, text: String) -> void:
 	_stop_portrait_fade()
 	_portrait_frame(ITEM_FRAME)
 	portrait.texture = texture
+	_sync_portrait_materials()
 	speaker.text = title
 	speaker.add_theme_color_override("font_color", UITheme.color("ink"))
 	lines = [text]
@@ -340,7 +341,7 @@ func _process(delta: float) -> void:
 ## Line boil test, in a conversation: B flips between boiling ink and the plain portrait,
 ## Shift+B fires a flare (as an expression change would).
 func _unhandled_key_input(event: InputEvent) -> void:
-	if not (is_visible_in_tree() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_B):
+	if person_id.is_empty() or not (is_visible_in_tree() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_B):
 		return
 	if event.shift_pressed:
 		boil = 1.0
