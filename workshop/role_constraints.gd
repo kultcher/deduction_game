@@ -41,11 +41,8 @@ static func fit_weight(view: Dictionary, world: Dictionary, cards: Array, knowle
 static func _fit_weight_dispatch(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool) -> float:
 	if not view.get("world_options", {}).get("roles", false):
 		return 1.0
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _fit_weight_gd(view, world, cards, knowledge, answers, bluffs)
 	var ids: Array = view.people.map(func(p): return p.id)
-	if reuse and mode == SolverBackend.Mode.CSHARP:
+	if reuse:
 		var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
 		var key = hash(input)
 		if not cache.has(key) or cache[key].input != input:
@@ -58,27 +55,7 @@ static func _fit_weight_dispatch(view: Dictionary, world: Dictionary, cards: Arr
 		var cs_single: float = _eval_cs_weights(view, ids, [world], -1, PackedInt32Array(), cards, knowledge, answers, bluffs, false)[0]
 		cache[key].results[mask] = cs_single
 		return cs_single
-	elif mode == SolverBackend.Mode.CSHARP:
-		return _eval_cs_weights(view, ids, [world], -1, PackedInt32Array(), cards, knowledge, answers, bluffs, false)[0]
-	var cs_val: float = _eval_cs_weights(view, ids, [world], -1, PackedInt32Array(), cards, knowledge, answers, bluffs, false)[0]
-	var gd_val: float = _fit_weight_gd(view, world, cards, knowledge, answers, bluffs)
-	SolverBackend._bridge().VerifyScalarFloat64("RoleConstraints.fit_weight", gd_val, cs_val, 0.0)
-	return gd_val
-
-static func _fit_weight_gd(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool) -> float:
-	var ids: Array = view.people.map(func(p): return p.id)
-	if not reuse:
-		return _fits_view(view, ids, world, cards, knowledge, answers, null, bluffs)
-	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
-	var key = hash(input)
-	if not cache.has(key) or cache[key].input != input:
-		if cache.size() >= 64:
-			cache.clear()
-		cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
-	var mask: int = _coarse_mask_gd(ids.size(), world, cache[key].seer, relay_mediums(ids, cards), sleepwalk_claimants(ids, cards))
-	if not cache[key].results.has(mask):
-		cache[key].results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, null, bluffs)
-	return float(cache[key].results[mask])
+	return _eval_cs_weights(view, ids, [world], -1, PackedInt32Array(), cards, knowledge, answers, bluffs, false)[0]
 
 const BLUFF_WEIGHT = Tuning.Workshop.BLUFF_WEIGHT
 
@@ -106,75 +83,10 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 		return out
 	if universe.is_empty():
 		return out
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _fits_weights_gd(view, universe, cards, knowledge, answers, bluffs)
 	var ids: Array = view.people.map(func(p): return p.id)
 	var bridge = SolverBackend._bridge()
-	if mode == SolverBackend.Mode.CSHARP:
-		if not reuse:
-			return _eval_cs_weights(view, ids, universe, u_handle, sub_indices, cards, knowledge, answers, bluffs, false)
-		var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
-		var key = hash(input)
-		if not cache.has(key) or cache[key].input != input:
-			if cache.size() >= 64:
-				cache.clear()
-			cache[key] = {"input": input.duplicate(true), "results": {}, "seer": seer_flag(cards)}
-		var entry: Dictionary = cache[key]
-		var results: Dictionary = entry.results
-		var seer: bool = entry.seer
-		var mediums: int = relay_mediums(ids, cards)
-		var walkers: int = sleepwalk_claimants(ids, cards)
-		var fallback_all: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
-		if u_handle >= 0:
-			SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
-		var masks: PackedInt64Array = bridge.RoleCoarseMasksByHandle(ids.size(), u_handle, sub_indices, fallback_all, seer, mediums, walkers)
-		var miss_worlds: Array = []
-		var miss_masks := PackedInt64Array()
-		var miss_sub := PackedInt32Array()
-		var miss_seen: Dictionary = {}
-		var use_sub_handle: bool = u_handle >= 0
-		var has_sub: bool = not sub_indices.is_empty()
-		for i in range(universe.size()):
-			var m: int = masks[i]
-			if not results.has(m) and not miss_seen.has(m):
-				miss_seen[m] = true
-				miss_worlds.append(universe[i])
-				miss_masks.append(m)
-				if use_sub_handle:
-					miss_sub.append(sub_indices[i] if has_sub else i)
-		if not miss_worlds.is_empty():
-			var miss_h: int = u_handle if use_sub_handle else -1
-			var miss_weights: PackedFloat64Array = _eval_cs_weights(view, ids, miss_worlds, miss_h, miss_sub, cards, knowledge, answers, bluffs, false)
-			for j in range(miss_worlds.size()):
-				results[miss_masks[j]] = miss_weights[j]
-		for i in range(universe.size()):
-			out[i] = float(results[masks[i]])
-		return out
-	# VERIFY mode: verify BOTH coarse_masks and fits_weights on every call at --tol 0
-	var v_seer: bool = seer_flag(cards)
-	var v_med: int = relay_mediums(ids, cards)
-	var v_wlk: int = sleepwalk_claimants(ids, cards)
-	var v_fb: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
-	if u_handle >= 0:
-		SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
-	var cs_masks: PackedInt64Array = bridge.RoleCoarseMasksByHandle(ids.size(), u_handle, sub_indices, v_fb, v_seer, v_med, v_wlk)
-	var gd_masks: PackedInt64Array = _coarse_masks_gd(ids.size(), universe, v_seer, v_med, v_wlk)
-	bridge.VerifyInt64Buffer("RoleConstraints.coarse_masks", gd_masks, cs_masks)
-	var cs_out: PackedFloat64Array = _eval_cs_weights(view, ids, universe, u_handle, sub_indices, cards, knowledge, answers, bluffs, reuse)
-	var gd_out: PackedFloat64Array = _fits_weights_gd(view, universe, cards, knowledge, answers, bluffs)
-	bridge.VerifyFloat64Buffer("RoleConstraints.fits_weights", gd_out, cs_out, 0.0)
-	return gd_out
-
-static func _fits_weights_gd(view: Dictionary, universe: Array, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool) -> PackedFloat64Array:
-	var out = PackedFloat64Array()
-	out.resize(universe.size())
-	var ids: Array = view.people.map(func(p): return p.id)
 	if not reuse:
-		var plain_routes = Activity.routes(view, _routing_cards(_live_cards(cards)), answers, knowledge, not bluffs) if Activity.available(view) else null
-		for i in range(universe.size()):
-			out[i] = _fits_view(view, ids, universe[i], cards, knowledge, answers, plain_routes, bluffs)
-		return out
+		return _eval_cs_weights(view, ids, universe, u_handle, sub_indices, cards, knowledge, answers, bluffs, false)
 	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
 	var key = hash(input)
 	if not cache.has(key) or cache[key].input != input:
@@ -186,15 +98,31 @@ static func _fits_weights_gd(view: Dictionary, universe: Array, cards: Array, kn
 	var seer: bool = entry.seer
 	var mediums: int = relay_mediums(ids, cards)
 	var walkers: int = sleepwalk_claimants(ids, cards)
-	var routes = null
+	var fallback_all: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
+	if u_handle >= 0:
+		SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
+	var masks: PackedInt64Array = bridge.RoleCoarseMasksByHandle(ids.size(), u_handle, sub_indices, fallback_all, seer, mediums, walkers)
+	var miss_worlds: Array = []
+	var miss_masks := PackedInt64Array()
+	var miss_sub := PackedInt32Array()
+	var miss_seen: Dictionary = {}
+	var use_sub_handle: bool = u_handle >= 0
+	var has_sub: bool = not sub_indices.is_empty()
 	for i in range(universe.size()):
-		var world: Dictionary = universe[i]
-		var mask: int = _coarse_mask_gd(ids.size(), world, seer, mediums, walkers)
-		if not results.has(mask):
-			if routes == null and Activity.available(view):
-				routes = Activity.routes(view, _routing_cards(_live_cards(cards)), answers, knowledge, not bluffs)
-			results[mask] = _fits_view(view, ids, world, cards, knowledge, answers, routes, bluffs)
-		out[i] = float(results[mask])
+		var m: int = masks[i]
+		if not results.has(m) and not miss_seen.has(m):
+			miss_seen[m] = true
+			miss_worlds.append(universe[i])
+			miss_masks.append(m)
+			if use_sub_handle:
+				miss_sub.append(sub_indices[i] if has_sub else i)
+	if not miss_worlds.is_empty():
+		var miss_h: int = u_handle if use_sub_handle else -1
+		var miss_weights: PackedFloat64Array = _eval_cs_weights(view, ids, miss_worlds, miss_h, miss_sub, cards, knowledge, answers, bluffs, false)
+		for j in range(miss_worlds.size()):
+			results[miss_masks[j]] = miss_weights[j]
+	for i in range(universe.size()):
+		out[i] = float(results[masks[i]])
 	return out
 
 static func _intern_role(role_map: Dictionary, role: String) -> int:
@@ -519,19 +447,12 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 	return SolverBackend._bridge().RoleFitsWeightsByHandle(u_handle, sub_indices, fallback_worlds, header, pub_roles, forced_lamp, card_ints)
 
 static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> int:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _coarse_mask_gd(people, world, seer, mediums, walkers)
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var packed: int = SolverBackend.pack_world(world)
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("RoleConstraints.coarse_mask", pack_u)
 	var cs_val: int = int(SolverBackend._bridge().RoleCoarseMask(people, packed, seer, mediums, walkers))
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_val
-	var gd_val: int = _coarse_mask_gd(people, world, seer, mediums, walkers)
-	SolverBackend._bridge().VerifyScalarInt64("RoleConstraints.coarse_mask", gd_val, cs_val)
-	return gd_val
+	return cs_val
 
 static func coarse_masks(people: int, universe: Array, seer: bool, mediums: int, walkers: int = 0, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedInt64Array:
 	if not SolverBackend.profiling_enabled:
@@ -542,25 +463,11 @@ static func coarse_masks(people: int, universe: Array, seer: bool, mediums: int,
 	return out
 
 static func _coarse_masks_dispatch(people: int, universe: Array, seer: bool, mediums: int, walkers: int, u_handle: int, sub_indices: PackedInt32Array) -> PackedInt64Array:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _coarse_masks_gd(people, universe, seer, mediums, walkers)
 	var fallback: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
 	if u_handle >= 0:
 		SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
 	var cs_out: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasksByHandle(people, u_handle, sub_indices, fallback, seer, mediums, walkers)
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_out
-	var gd_out: PackedInt64Array = _coarse_masks_gd(people, universe, seer, mediums, walkers)
-	SolverBackend._bridge().VerifyInt64Buffer("RoleConstraints.coarse_masks", gd_out, cs_out)
-	return gd_out
-
-static func _coarse_masks_gd(people: int, universe: Array, seer: bool, mediums: int, walkers: int) -> PackedInt64Array:
-	var out := PackedInt64Array()
-	out.resize(universe.size())
-	for i in range(universe.size()):
-		out[i] = _coarse_mask_gd(people, universe[i], seer, mediums, walkers)
-	return out
+	return cs_out
 
 static func _coarse_mask_gd(people: int, world: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> int:
 	var n: int = people + 1
@@ -661,299 +568,7 @@ static func _pack_registrar_card(data: Dictionary, ids: Array, role_map: Diction
 		card_ints[off + 16] = ids.find(str(data.get("target", "")))
 	return meta
 
-static func _fits_view(view: Dictionary, ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, routes = null, bluffs: bool = false) -> float:
-	cards = _live_cards(cards)
-	var walkers: int = sleepwalk_claimants(ids, cards)
-	if walkers != 0:
-		var asleep: int = int(world.get("holders", 0)) if world.get("modifier", "marked") == "sleepwalker" else 0
-		if walkers & ~int(world.evil) & ~asleep:
-			return 0.0
-	var visits = {}
-	for card in cards:
-		if card.has("relay_source") and not card.get("quoted", false):
-			var medium: int = ids.find(card.relay_source)
-			if medium < 0 or world.evil & (1 << medium) or not Domain._healthy_gd(view, world, card.relay_source) or not History.alive_at_night(view, card.relay_source, card.relay_observed_at.day):
-				return 0.0
-			var visit: String = card.relay_source + ":" + card.source
-			if visits.has(visit) and visits[visit] != card.relay_observed_at.day:
-				return 0.0
-			visits[visit] = card.relay_observed_at.day
-	cards = _routing_cards(cards)
-	var sexton_night = -1
-	for card in cards:
-		if card.kind != "report" or card.get("quoted", false):
-			continue
-		if card.role == "martyr" and card.data.get("evil", false) and not History.executed(view, card.data.target, card.observed_at.day):
-			return 0.0
-		if card.role == "sexton":
-			if sexton_night >= 0 and sexton_night != card.data.night:
-				return 0.0
-			sexton_night = card.data.night
-	if sexton_night >= 0:
-		if view.people.filter(func(p): return History.alive_at_night(view, p.id, sexton_night)).size() >= 5:
-			return 0.0
-		if view.get("timeline", {}).get("events", []).any(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == sexton_night):
-			return 0.0
-		for card in cards:
-			if card.get("quoted", false):
-				continue
-			if card.kind == "report" and card.role in ["nightwatch", "lamplighter", "medium"] and card.get("night", -1) == sexton_night:
-				return 0.0
-			if card.has("relay_source") and card.relay_observed_at.day == sexton_night:
-				return 0.0
-	for card in cards:
-		if card.get("role") != "veteran" or card.kind != "report" or card.get("quoted", false):
-			continue
-		var demon: int = world.get("demon", -1)
-		if demon < 0:
-			return 0.0
-		var attack_routes: Array = Activity.demon_routes(view.people[demon].home, view.people[ids.find(card.source)].home)
-		var fits_approach: bool = attack_routes.any(func(route): return (route.path[route.path.size() - 2] if route.path.size() >= 2 else view.people[ids.find(card.source)].home) == card.data.block)
-		if not fits_approach or view.get("timeline", {}).get("events", []).any(func(e): return e.kind in ["demon_death", "demon_attack"] and e.at.day == card.night):
-			return 0.0
-	var live: bool = bluffs
-	if Activity.available(view):
-		if routes == null:
-			routes = Activity.routes(view, cards, answers, knowledge, not live)
-		if not routes.okay and not live:
-			return 0.0
-		if routes.okay:
-			cards = cards.duplicate()
-			for person in routes.forced_lamp:
-				if world.get("demon", -1) == ids.find(person):
-					continue
-				cards.append({"kind": "claim", "source": person, "role": "lamplighter", "inferred": true})
-	return _fits(ids, world, cards, knowledge, answers, live, view)
-
-static func _fits(ids: Array, world: Dictionary, cards: Array, knowledge: Dictionary, answers: Dictionary, bluffs: bool = false, view: Dictionary = {}) -> float:
-	var all: int = (1 << ids.size()) - 1
-	var good: int = all & ~world.evil
-	var demon: int = world.get("demon", -1)
-	var minions: int = world.evil & ~(1 << demon) if demon >= 0 else world.evil
-	var assignments = {}
-	var own: int = ids.find(knowledge.get("self", ""))
-	if own >= 0 and knowledge.get("own_role", "") in C.ROLES:
-		assignments[knowledge.own_role] = 1 << own
-	for person in knowledge.get("public_roles", {}):
-		var index: int = ids.find(person)
-		var role: String = knowledge.public_roles[person]
-		if index < 0 or world.evil & (1 << index) or not _assign(assignments, role, 1 << index):
-			return 0.0
-	if view.get("chronology", {}).has("curse"):
-		var rev_idx: int = ids.find(str(view.chronology.curse.get("executed", "")))
-		if rev_idx >= 0 and not _assign(assignments, "revenant", (1 << rev_idx) & minions):
-			return 0.0
-	var seer = ""
-	var seer_source = -1
-	var seer_readings: Array = []
-	var veteran_night = -1
-	var martyr_target = ""
-	var executor_target = ""
-	var has_registrar = false
-	var reg_roles: Array = []
-	var reg_minion_bits: int = 0
-	var reg_no_mask: int = 0
-	var reg_yes_mask: int = 0
-	var reg_yes_targets: Array = []
-	var town_halls: Array = []
-	for card in cards:
-		if card.get("quoted", false):
-			continue
-		if card.kind == "town_hall":
-			var th_rs: Array = card.get("data", {}).get("roles", card.get("roles", []))
-			if not (th_rs is Array) or th_rs.size() != 2 or str(th_rs[0]) == "" or str(th_rs[1]) == "" or str(th_rs[0]) == str(th_rs[1]):
-				return 0.0
-			var th_pick_s: String = str(answers.get(card.get("id", ""), {}).get("in_play_role", ""))
-			var pick_mode: int = 0 if th_pick_s == "" else (1 if th_pick_s == str(th_rs[0]) else (2 if th_pick_s == str(th_rs[1]) else 3))
-			if pick_mode == 3:
-				return 0.0
-			town_halls.append([str(th_rs[0]), str(th_rs[1]), pick_mode])
-			continue
-		if card.kind == "totem":
-			var candidates = 0
-			for id in card.data.candidates:
-				var index: int = ids.find(id)
-				if index >= 0:
-					candidates |= 1 << index
-			if not _assign(assignments, "revenant", candidates & minions):
-				return 0.0
-		if card.kind == "event" and card.get("event") == "martyr":
-			var actor: int = ids.find(card.data.martyr)
-			var saved: int = ids.find(card.data.saved)
-			if actor < 0 or saved < 0 or world.evil & ((1 << actor) | (1 << saved)) or not _assign(assignments, "martyr", 1 << actor):
-				return 0.0
-		if card.kind not in ["report", "claim"]:
-			continue
-		var source: int = ids.find(card.source)
-		if source < 0:
-			return 0.0
-		var source_evil: bool = (world.evil & (1 << source)) != 0
-		if world.has("converted") and not view.is_empty():
-			source_evil = Chronology.evil_at(view, world, card.source, Chronology.statement_time(card))
-		if source_evil:
-			if bluffs and not card.get("inferred", false):
-				continue
-			return 0.0
-		if not _assign(assignments, card.role, 1 << source):
-			return 0.0
-		if card.kind == "claim":
-			continue
-		if card.role == "gravedigger" and view.has("timeline"):
-			var gd_night: int = card.night if int(card.get("night", -1)) >= 0 else int(card.get("observed_at", {}).get("day", -1))
-			if not History.executed(view, str(card.data.get("executed", "")), gd_night):
-				return 0.0
-		var pair_mask = 0
-		for person in card.data.get("pair", []):
-			var i: int = ids.find(person)
-			if i < 0:
-				return 0.0
-			pair_mask |= 1 << i
-		var answer: Dictionary = answers.get(card.id, {})
-		var selected = 0
-		for person in answer.get("positive", []):
-			var i: int = ids.find(person)
-			if i < 0:
-				return 0.0
-			selected |= 1 << i
-		var rdef = C.role_def(card.role)
-		if rdef != null and rdef.shape == "ROLE_IN_GROUP":
-			var group_mask: int = 0
-			if rdef.role_group_key == "pair":
-				group_mask = pair_mask
-				if selected != 0:
-					group_mask &= selected
-			else:
-				var target: int = ids.find(card.data.get(rdef.role_group_key, ""))
-				if target < 0:
-					return 0.0
-				group_mask = 1 << target
-			var read_role: String = card.data.role
-			var evil_role: bool = C.ROLES.get(read_role, {}).get("align") == "evil"
-			if rdef.marked_registers and evil_role and world.marked >= 0 and (group_mask & (1 << world.marked)) != 0:
-				continue
-			var pool_mask: int = good
-			match rdef.role_target_pool:
-				"minion":
-					pool_mask = minions
-				"demon":
-					pool_mask = (1 << demon) if demon >= 0 else 0
-				"any":
-					pool_mask = (1 << demon) if read_role == "demon" and demon >= 0 else (minions if evil_role else good)
-			if read_role == "demon" and rdef.role_group_key != "pair":
-				var t_gd_id: String = str(card.data.get(rdef.role_group_key, ""))
-				var t_gd_idx: int = ids.find(t_gd_id)
-				if demon == t_gd_idx:
-					if not _assign(assignments, "demon", 1 << t_gd_idx):
-						return 0.0
-				else:
-					var sc_mask_gd: int = _scion_exec_alive_demon_mask(view, ids, t_gd_id)
-					if sc_mask_gd != 0 and demon >= 0 and (sc_mask_gd & (1 << demon)) != 0 and (minions & (1 << t_gd_idx)) != 0:
-						if not _assign(assignments, "scion", 1 << t_gd_idx):
-							return 0.0
-					else:
-						return 0.0
-			elif not _assign(assignments, read_role, group_mask & pool_mask):
-				return 0.0
-		elif card.role == "executor":
-			var ex_tgt_str: String = str(card.data.get("target", ""))
-			var ex_tgt_i: int = ids.find(ex_tgt_str)
-			if ex_tgt_str == "" or ex_tgt_i < 0 or ex_tgt_i == source:
-				return 0.0
-			if executor_target != "" and executor_target != ex_tgt_str:
-				return 0.0
-			executor_target = ex_tgt_str
-			if bool(card.data.get("assigned", false)) and not card.data.has("role"):
-				continue
-			if card.data.has("role") and not bool(card.data.get("assigned", false)):
-				if view.has("timeline") and not History.died_before_morning(view, ex_tgt_str, int(card.get("observed_at", {}).get("day", -1))):
-					return 0.0
-				var ex_r: String = str(card.data.get("role", ""))
-				if not C.ROLES.has(ex_r):
-					return 0.0
-				var ex_evil_r: bool = C.ROLES.get(ex_r, {}).get("align") == "evil"
-				if ex_evil_r and world.marked >= 0 and world.marked == ex_tgt_i:
-					continue
-				if ex_r == "demon":
-					if demon == ex_tgt_i:
-						if not _assign(assignments, "demon", 1 << ex_tgt_i):
-							return 0.0
-					else:
-						var sc_mask_ex: int = _scion_exec_alive_demon_mask(view, ids, ex_tgt_str)
-						if sc_mask_ex != 0 and demon >= 0 and (sc_mask_ex & (1 << demon)) != 0 and (minions & (1 << ex_tgt_i)) != 0:
-							if not _assign(assignments, "scion", 1 << ex_tgt_i):
-								return 0.0
-						else:
-							return 0.0
-				else:
-					var ex_pool: int = minions if ex_evil_r else good
-					if not _assign(assignments, ex_r, (1 << ex_tgt_i) & ex_pool):
-						return 0.0
-			else:
-				return 0.0
-		elif card.role == "registrar":
-			var r_arr_c = card.data.get("roles", [])
-			if not _registrar_roles_ok(r_arr_c):
-				return 0.0
-			var r0_s: String = str(r_arr_c[0])
-			var r1_s: String = str(r_arr_c[1])
-			var r2_s: String = str(r_arr_c[2])
-			if not has_registrar:
-				has_registrar = true
-				reg_roles = [r0_s, r1_s, r2_s]
-				reg_minion_bits = 0
-				for rk_i in range(3):
-					if C.is_minion(reg_roles[rk_i]):
-						reg_minion_bits |= (1 << rk_i)
-			else:
-				if not (r0_s in reg_roles and r1_s in reg_roles and r2_s in reg_roles):
-					return 0.0
-			if card.data.has("target") or card.data.has("yes"):
-				if not (card.data.has("target") and card.data.get("yes") is bool):
-					return 0.0
-				var rt_i: int = ids.find(str(card.data.get("target", "")))
-				if rt_i < 0 or rt_i == source:
-					return 0.0
-				if bool(card.data.get("yes", false)):
-					if (reg_yes_mask & (1 << rt_i)) == 0:
-						reg_yes_mask |= (1 << rt_i)
-						reg_yes_targets.append(rt_i)
-				else:
-					reg_no_mask |= (1 << rt_i)
-		elif card.role == "veteran":
-			if veteran_night >= 0 and veteran_night != card.night:
-				return 0.0
-			veteran_night = card.night
-		elif card.role == "martyr":
-			if martyr_target != "" and martyr_target != card.data.target:
-				return 0.0
-			martyr_target = card.data.target
-			if card.data.get("evil", false):
-				var target: int = ids.find(card.data.target)
-				if target < 0 or not (world.evil & (1 << target)) and world.marked != target:
-					return 0.0
-		elif card.role == "seer":
-			if seer != "" and seer != card.source:
-				return 0.0
-			seer = card.source
-			seer_source = source
-			var ping: int = selected if selected != 0 else pair_mask
-			var reason: String = answer.get("registration", "")
-			seer_readings.append({"yes": bool(card.data.yes), "pair": pair_mask, "ping": ping, "reason": reason})
-	var seer_weight: float = 1.0
-	if seer != "":
-		seer_weight = _seer_rh_weight_gd(good & ~(1 << seer_source), demon, int(world.marked), seer_readings)
-		if seer_weight <= 0.0:
-			return 0.0
-	if has_registrar:
-		return seer_weight if _registrar_matches(assignments, reg_roles, reg_minion_bits, reg_no_mask, reg_yes_targets, int(world.marked), int(world.evil), good, minions, town_halls) else 0.0
-	if town_halls.is_empty():
-		return seer_weight if _matching(assignments.values(), 0) else 0.0
-	return seer_weight if _town_hall_matches(assignments, town_halls, 0, good, {}) else 0.0
-
 static func _seer_rh_weight(candidates_mask: int, demon: int, marked: int, readings: Array) -> float:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _seer_rh_weight_gd(candidates_mask, demon, marked, readings)
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var r_ints := PackedInt32Array()
 	r_ints.resize(readings.size() * 4)
@@ -968,148 +583,7 @@ static func _seer_rh_weight(candidates_mask: int, demon: int, marked: int, readi
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("RoleConstraints._seer_rh_weight", pack_u)
 	var cs_val: float = float(SolverBackend._bridge().RoleSeerRhWeight(candidates_mask, demon, marked, r_ints))
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_val
-	var gd_val: float = _seer_rh_weight_gd(candidates_mask, demon, marked, readings)
-	SolverBackend._bridge().VerifyScalarFloat64("RoleConstraints._seer_rh_weight", gd_val, cs_val, 0.0)
-	return gd_val
-
-static func _seer_rh_weight_gd(candidates_mask: int, demon: int, marked: int, readings: Array) -> float:
-	if candidates_mask == 0:
-		return 0.0
-	var demon_bit: int = (1 << demon) if demon >= 0 else 0
-	var marked_bit: int = (1 << marked) if marked >= 0 else 0
-	var total_weight: float = 0.0
-	var n_candidates: int = 0
-	var pool: int = candidates_mask
-	while pool != 0:
-		var r_bit: int = pool & -pool
-		pool &= ~r_bit
-		n_candidates += 1
-		var w: float = 1.0
-		for reading in readings:
-			var pair: int = reading.pair
-			if not reading.yes:
-				if (pair & demon_bit) != 0 or (pair & r_bit) != 0:
-					w = 0.0
-					break
-				if (pair & marked_bit) != 0:
-					w *= 0.5
-			else:
-				var ping: int = reading.ping
-				var reason: String = reading.reason
-				var demon_in: bool = (ping & demon_bit) != 0
-				var rh_in: bool = (ping & r_bit) != 0
-				var marked_in: bool = (ping & marked_bit) != 0
-				if reason == "demon":
-					if not demon_in:
-						w = 0.0
-						break
-				elif reason == "red_herring":
-					if not rh_in:
-						w = 0.0
-						break
-				elif reason == "marked":
-					if not marked_in:
-						w = 0.0
-						break
-					if not demon_in and not rh_in:
-						w *= 0.5
-				else:
-					if demon_in or rh_in:
-						pass
-					elif marked_in:
-						w *= 0.5
-					else:
-						w = 0.0
-						break
-		total_weight += w
-	return total_weight / float(n_candidates) if n_candidates > 0 else 0.0
-
-static func _assign(assignments: Dictionary, role: String, candidates: int) -> bool:
-	if assignments.has(role):
-		candidates &= assignments[role]
-	assignments[role] = candidates
-	return candidates != 0
-
-static func _registrar_matches(assignments: Dictionary, reg_roles: Array, reg_minion_bits: int, reg_no_mask: int, reg_yes_targets: Array, marked: int, evil: int, good: int, minions: int, town_halls: Array) -> bool:
-	var base_assign: Dictionary = assignments.duplicate()
-	var base_pools: Array = [0, 0, 0]
-	for k in range(3):
-		var rk: String = reg_roles[k]
-		base_pools[k] = (minions if ((reg_minion_bits & (1 << k)) != 0) else good) & ~reg_no_mask
-		if base_assign.has(rk):
-			base_assign[rk] = int(base_assign[rk]) & ~reg_no_mask
-			if int(base_assign[rk]) == 0:
-				return false
-	return _registrar_yes_step(base_assign, 0, reg_roles, reg_minion_bits, base_pools, reg_yes_targets, marked, evil, good, town_halls)
-
-static func _registrar_yes_step(cur_assign: Dictionary, y_idx: int, reg_roles: Array, reg_minion_bits: int, base_pools: Array, reg_yes_targets: Array, marked: int, evil: int, good: int, town_halls: Array) -> bool:
-	if y_idx >= reg_yes_targets.size():
-		var any_in: bool = cur_assign.has(reg_roles[0]) or cur_assign.has(reg_roles[1]) or cur_assign.has(reg_roles[2])
-		if any_in:
-			return _matching(cur_assign.values(), 0) if town_halls.is_empty() else _town_hall_matches(cur_assign, town_halls, 0, good, {})
-		for k in range(3):
-			var bp: int = int(base_pools[k])
-			if bp == 0:
-				continue
-			var next_in: Dictionary = cur_assign.duplicate()
-			if not _assign(next_in, reg_roles[k], bp):
-				continue
-			if (town_halls.is_empty() and _matching(next_in.values(), 0)) or (not town_halls.is_empty() and _town_hall_matches(next_in, town_halls, 0, good, {})):
-				return true
-		return false
-	var t: int = int(reg_yes_targets[y_idx])
-	var t_bit: int = 1 << t
-	for k in range(3):
-		if (int(base_pools[k]) & t_bit) == 0:
-			continue
-		var next_a: Dictionary = cur_assign.duplicate()
-		if not _assign(next_a, reg_roles[k], t_bit):
-			continue
-		if _registrar_yes_step(next_a, y_idx + 1, reg_roles, reg_minion_bits, base_pools, reg_yes_targets, marked, evil, good, town_halls):
-			return true
-	if reg_minion_bits != 0 and marked == t and (evil & t_bit) == 0:
-		if _registrar_yes_step(cur_assign, y_idx + 1, reg_roles, reg_minion_bits, base_pools, reg_yes_targets, marked, evil, good, town_halls):
-			return true
-	return false
-
-static func _town_hall_matches(assignments: Dictionary, town_halls: Array, idx: int, good: int, forbidden: Dictionary) -> bool:
-	if idx >= town_halls.size():
-		return _matching(assignments.values(), 0)
-	var entry: Array = town_halls[idx]
-	var r0: String = entry[0]
-	var r1: String = entry[1]
-	var pick_mode: int = int(entry[2])
-	for choice in range(2):
-		if pick_mode == 1 and choice != 0:
-			continue
-		if pick_mode == 2 and choice != 1:
-			continue
-		var in_r: String = r0 if choice == 0 else r1
-		var out_r: String = r1 if choice == 0 else r0
-		if forbidden.has(in_r) or assignments.has(out_r):
-			continue
-		var next_assign: Dictionary = assignments.duplicate()
-		if not _assign(next_assign, in_r, good):
-			continue
-		var next_forbid: Dictionary = forbidden.duplicate()
-		next_forbid[out_r] = true
-		if _town_hall_matches(next_assign, town_halls, idx + 1, good, next_forbid):
-			return true
-	return false
-
-static func _matching(masks: Array, occupied: int) -> bool:
-	if masks.is_empty():
-		return true
-	var remaining: Array = masks.duplicate()
-	var available: int = int(remaining.pop_back()) & ~occupied
-	while available:
-		var bit: int = available & -available
-		if _matching(remaining, occupied | bit):
-			return true
-		available &= ~bit
-	return false
+	return cs_val
 
 static func bluff_weights(view: Dictionary, universe: Array, cards: Array, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedFloat64Array:
 	if not SolverBackend.profiling_enabled:
@@ -1120,43 +594,7 @@ static func bluff_weights(view: Dictionary, universe: Array, cards: Array, u_han
 	return out
 
 static func _bluff_weights_dispatch(view: Dictionary, universe: Array, cards: Array, u_handle: int, sub_indices: PackedInt32Array) -> PackedFloat64Array:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _bluff_weights_gd(view, universe, cards)
-	var cs_out: PackedFloat64Array = _bluff_weights_cs(view, universe, cards, u_handle, sub_indices)
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_out
-	var gd_out: PackedFloat64Array = _bluff_weights_gd(view, universe, cards)
-	SolverBackend._bridge().VerifyFloat64Buffer("RoleConstraints.bluff_weights", gd_out, cs_out, 0.0)
-	return gd_out
-
-static func _bluff_weights_gd(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
-	if view.get("chronology", {}).has("curse"):
-		return _temporal_bluff_weights(view, universe, cards)
-	if cards.any(func(c): return c.has("hearing_weight") and c.kind in ["claim", "report"]):
-		return _temporal_bluff_weights(view, universe, cards)
-	var ids: Array = view.people.map(func(p): return p.id)
-	var declared: Array = []
-	var seen = {}
-	for card in cards:
-		if card.kind not in ["report", "claim"] or card.get("quoted", false) or card.get("inferred", false) or card.get("testimony_only", false):
-			continue
-		var i: int = ids.find(card.source)
-		var key: String = card.source + "|" + str(card.get("role", ""))
-		if i < 0 or seen.has(key):
-			continue
-		seen[key] = true
-		declared.append(1 << i)
-	var out = PackedFloat64Array()
-	out.resize(universe.size())
-	for w in range(universe.size()):
-		var evil: int = universe[w].evil
-		var weight = 1.0
-		for bit in declared:
-			if evil & bit:
-				weight *= BLUFF_WEIGHT
-		out[w] = weight
-	return out
+	return _bluff_weights_cs(view, universe, cards, u_handle, sub_indices)
 
 static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array, u_handle: int, sub_indices: PackedInt32Array) -> PackedFloat64Array:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
@@ -1211,33 +649,3 @@ static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array, u
 		u_handle, sub_indices, fallback_worlds, who, h_weights, stmt_ticks, has_curse, curse_from, curse_until, BLUFF_WEIGHT
 	)
 
-static func _temporal_bluff_weights(view: Dictionary, universe: Array, cards: Array) -> PackedFloat64Array:
-	var declarations = {}
-	for card in cards:
-		if card.kind in ["report", "claim"] and not card.get("quoted", false) and not card.get("inferred", false) and not card.get("testimony_only", false):
-			var key: String = Chronology.source_key(view, card) + ":" + card.role
-			if not declarations.has(key) or float(card.get("hearing_weight", 1.0)) > float(declarations[key].get("hearing_weight", 1.0)):
-				declarations[key] = card
-	var ids: Array = view.people.map(func(p): return p.id)
-	var who = PackedInt32Array()
-	var factor = PackedFloat64Array()
-	var times: Array = []
-	for card in declarations.values():
-		who.append(ids.find(card.source))
-		factor.append(lerpf(1.0, BLUFF_WEIGHT, float(card.get("hearing_weight", 1.0))))
-		times.append(Chronology.statement_time(card))
-	var out = PackedFloat64Array()
-	out.resize(universe.size())
-	for i in range(universe.size()):
-		var world: Dictionary = universe[i]
-		var converted: bool = world.has("converted")
-		var evil: int = int(world.evil)
-		var weight = 1.0
-		for d in range(who.size()):
-			var j: int = who[d]
-			if j < 0:
-				continue
-			if (evil & (1 << j)) != 0 or (converted and Chronology.evil_index(view, world, j, times[d])):
-				weight *= factor[d]
-		out[i] = weight
-	return out

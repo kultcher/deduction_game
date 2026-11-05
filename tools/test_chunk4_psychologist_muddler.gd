@@ -41,11 +41,7 @@ func _give_role(w, n, role_id: String) -> void:
 
 
 func _init() -> void:
-	var prev_mode: int = SolverBackend.get_mode()
 	var has_cs: bool = SolverBackend.is_csharp_available()
-	if has_cs:
-		SolverBackend.set_mode(SolverBackend.Mode.VERIFY)
-	var vm0: int = SolverBackend.get_verify_mismatches()
 
 	_test_revenant_retraction_regression()
 	_test_psychologist_simulation_and_companion_cards()
@@ -53,9 +49,6 @@ func _init() -> void:
 	_test_muddler_simulation_and_debunking()
 	_test_muddler_domain_and_channel_parity()
 
-	if has_cs:
-		_check(SolverBackend.get_verify_mismatches() == vm0, "Zero C#/GDScript VERIFY mismatches across Chunk 4 suite")
-	SolverBackend.set_mode(prev_mode)
 
 	if failures == 0:
 		print("Chunk 4 (Psychologist rework, Muddler secret & Revenant retraction fix): %d checks passed." % checks)

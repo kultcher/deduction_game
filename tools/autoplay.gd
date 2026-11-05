@@ -3,7 +3,7 @@
 ##
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
-##         [--no-attention] [--insight 1.0] [--backend gdscript|csharp|verify]
+##         [--no-attention] [--insight 1.0]
 ##
 ## --passive: a control player who does nothing (waits every phase, declines approaches,
 ## never nominates, votes no, sleeps). The town's win rate on its own: the floor.
@@ -85,11 +85,9 @@ func _init() -> void:
 	no_hub = args.has("no-hub")
 	if args.has("no-attention"):
 		preload("res://workshop/reasoner.gd").unlimited_cards = true
-	# Solver backend (same game either way; csharp is ~3x faster, verify checks both).
-	match str(args.get("backend", "gdscript")).to_lower():
-		"csharp": SolverBackend.set_mode(SolverBackend.Mode.CSHARP)
-		"verify": SolverBackend.set_mode(SolverBackend.Mode.VERIFY)
-		_: SolverBackend.set_mode(SolverBackend.Mode.GDSCRIPT)
+	# The solver is C# only (Nov 4 cutover); --backend is accepted for old scripts and ignored.
+	if args.has("backend") and str(args["backend"]).to_lower() != "csharp":
+		push_warning("autoplay: --backend %s ignored; the solver is C# only." % args["backend"])
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links",

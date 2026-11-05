@@ -1,11 +1,11 @@
+## The C# solver kernels (workshop/cs/) behind the GDScript workshop code. C# is the only
+## solver: the GDScript kernels were retired on Nov 4 (snapshot: branch
+## archive/gdscript-solver-final). A missing assembly is a hard error, never a fallback.
 class_name SolverBackend
 extends RefCounted
 
-enum Mode { GDSCRIPT = 0, CSHARP = 1, VERIFY = 2 }
-
 static var _cs_bridge: Variant = null
 static var _cs_probed: bool = false
-static var _mode: int = Mode.GDSCRIPT
 static var _universe_handles: Dictionary = {}
 
 # --- Slice C0 / C0b Microsecond Stage Timers & Boundary Call Counters ---
@@ -27,6 +27,8 @@ const STAGES: Array[String] = [
 	"reason_attribution",  # reason_attribution.gd (_class_like / _subset_fits)
 ]
 
+const MISSING_ASSEMBLY = "The C# solver (workshop/cs/SolverBridge.cs) is not available. Run with the Godot .NET build and build the assembly first: dotnet build Demonologist.csproj -c Debug"
+
 static func _bridge() -> Variant:
 	if not _cs_probed:
 		_cs_probed = true
@@ -34,38 +36,22 @@ static func _bridge() -> Variant:
 			var scr = load("res://workshop/cs/SolverBridge.cs")
 			if scr != null and scr.can_instantiate():
 				_cs_bridge = scr
+				_cs_bridge.SetMode(1)  # the bridge's own label; C# is the only path
+		if _cs_bridge == null:
+			push_error(MISSING_ASSEMBLY)
+			if DisplayServer.get_name() != "headless":
+				OS.alert(MISSING_ASSEMBLY, "Demonologist: C# solver missing")
+			assert(false, MISSING_ASSEMBLY)
 	return _cs_bridge
 
 static func is_csharp_available() -> bool:
 	return _bridge() != null
-
-static func set_mode(m: int) -> void:
-	_mode = clampi(m, Mode.GDSCRIPT, Mode.VERIFY)
-	var b = _bridge()
-	if b != null:
-		b.SetMode(_mode)
-
-static func get_mode() -> int:
-	return _mode
-
-static func active_mode() -> int:
-	if _mode == Mode.GDSCRIPT:
-		return Mode.GDSCRIPT
-	return _mode if _bridge() != null else Mode.GDSCRIPT
 
 static func clear_context() -> void:
 	_universe_handles.clear()
 	var b = _bridge()
 	if b != null:
 		b.ClearContext()
-
-static func get_verify_calls() -> int:
-	var b = _bridge()
-	return int(b.GetVerifyCalls()) if b != null else 0
-
-static func get_verify_mismatches() -> int:
-	var b = _bridge()
-	return int(b.GetVerifyMismatches()) if b != null else 0
 
 # --- Compact 8-Byte WorldEntry Packing & Handle Registry ---
 
@@ -104,7 +90,7 @@ static func pack_worlds(universe: Array) -> PackedInt64Array:
 	return out
 
 static func get_universe_handle(u_key: String, universe: Array) -> int:
-	if active_mode() == Mode.GDSCRIPT or u_key == "":
+	if u_key == "":
 		return -1
 	if _universe_handles.has(u_key):
 		return int(_universe_handles[u_key])
@@ -117,7 +103,7 @@ static func get_universe_handle(u_key: String, universe: Array) -> int:
 	return h
 
 static func get_sub_universe_handle(sub_key: String, base_handle: int, indices: PackedInt32Array) -> int:
-	if active_mode() == Mode.GDSCRIPT or base_handle < 0 or sub_key == "":
+	if base_handle < 0 or sub_key == "":
 		return -1
 	if _universe_handles.has(sub_key):
 		return int(_universe_handles[sub_key])
