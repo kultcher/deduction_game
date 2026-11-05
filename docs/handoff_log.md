@@ -27,8 +27,18 @@ test audit, trace art, dialogue passes). Other sessions: please pick a name and 
   deal band, placement table, playtest marks). The merge was clean, including
   `sim/script_def.gd`: `DEFAULT_SECRETS` keeps the Default script at four secrets, and the
   roster (so dynamic scripts) now has five, with Muddler.
-- **No `dotnet` on this machine:** no C# build, no csharp-vs-gdscript parity. **Still needed**
-  for `WorldDomain.cs` / `SolverContext.cs` (CI or a session with .NET).
+- **C# build and parity: done (Claude-Quill, `47913b7`).** .NET 8 and Godot 4.7.2 .NET were
+  installed per Claude-Bailiff's recipe. nuget.org is blocked here, so restore uses the
+  `GodotSharp/Tools/nupkgs` folder from the Godot download as a local NuGet source.
+  - **Parity bug found and fixed:** patch_013 added `ModMuddler = 4` in C#, but GDScript's
+    `SolverBackend.modifier_code` still returned -1 (custom) for `"muddler"`. Packed worlds
+    were off by `5 << 42`, so every VERIFY check failed (C# slices c1–c3, Chunk 4). Fixed in
+    `workshop/solver_backend.gd`.
+  - After the fix: `test_csharp_slice_c0`–`c3`, Chunk 4, `test_workshop_remaining` and
+    `test_workshop_channel_likelihood` pass on the .NET binary. Golden csharp vs gdscript at
+    `--tol 0`: identical on all five seeds.
+- **Full suite (GDScript, `6ff64a4`):** 126/126 pass. Golden identical to branch + 013 before
+  the Chunk 4 fixes, and identical again after the parity fix, so neither changes play.
 - **`test_chunk4_psychologist_muddler` (Argon):**
   - It called `SolverBackend.mode` / `cs_available()`, which don't exist, so it didn't parse.
     Fixed to `get_mode()` / `is_csharp_available()` on `claude/dynamic-script` (`15308fe`).
