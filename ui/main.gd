@@ -7,6 +7,7 @@ extends Control
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
+const MindPodium = preload("res://sim/mind_podium.gd")
 const CaseView = preload("res://ui/case_view.gd")
 const CardList = preload("res://ui/card_list.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
@@ -970,6 +971,10 @@ func _refresh_actions() -> void:
 			_map_toggle()
 			_button(actions, "Vote to execute", func(): _run("vote yes"))
 			_button(actions, "Vote to spare", func(): _run("vote no"))
+			if nm.get("press", "") == "open":
+				var pr = _button(actions, "Press them before the town…", func(): pass)
+				pr.tooltip_text = "One public question before the town weighs in. Voting without pressing skips it."
+				pr.pressed.connect(func(): _press_menu(pr, nm["nominee"]))
 			if not g.statement_used:
 				_button(actions, "Speak against them…", func(): _card_picker("Accuse, citing a card (optional)",
 					func(c): return true, func(num, _x): _run("accuse %d" % num if num > 0 else "accuse"), true))
@@ -1191,6 +1196,36 @@ func _nomination_menu(anchor: Control, id: String) -> void:
 		popup.hide()
 		_run("nominate %s raw" % id))
 	raw.tooltip_text = "Rests on your word alone: the town will want more, and a wrong call costs your credibility."
+	_show_popup(v, anchor)
+
+## The podium press (Step 3): their gift, a night's account, or a card about them. Cards
+## from the case on the floor come first.
+func _press_menu(anchor: Control, id: String) -> void:
+	var t = g.w.by_id[id]
+	var opts: Dictionary = MindPodium.options(g.w, t)
+	var v = _column("Press %s before the town" % t.name)
+	if opts.gift != "":
+		_button(v, "Ask what their gift has shown them" if opts.gift == "readings" else "Press them on their gift", func():
+			popup.hide()
+			_run("press role"))
+	var nights: Array = opts.nights.duplicate()
+	nights.reverse()
+	if not nights.is_empty():
+		_button(v, "Press their account of a night…", func():
+			popup.hide()
+			_list_picker(anchor, "Which night?", nights.map(func(nd): return [C.spoken_night(nd, g.w.day).capitalize(), "press night %d" % nd, null])))
+	var case_n: int = int(g.w.meeting["pending"].get("case_card", 0))
+	var case_cards: Array = []
+	if case_n > 0:
+		case_cards = Array(g.board[case_n - 1].get("supports", [])).map(func(x): return int(x))
+	var fits = func(c): return MindPodium.card_fits(g.w, t, c)
+	if case_cards.any(func(n): return n >= 1 and n <= g.board.size() and fits.call(g.board[n - 1])):
+		_button(v, "Press a card from case #%d…" % case_n, func():
+			popup.hide()
+			_card_picker("Press %s with which card from the case?" % t.name, func(c): return int(c.n) in case_cards and fits.call(c), func(num, _x): _run("press card %d" % num), false))
+	_button(v, "Press them with a card…", func():
+		popup.hide()
+		_card_picker("Press %s with which card?" % t.name, fits, func(num, _x): _run("press card %d" % num), false))
 	_show_popup(v, anchor)
 
 ## Informational notes (never a confirmation): a short toast that fades on its own.
