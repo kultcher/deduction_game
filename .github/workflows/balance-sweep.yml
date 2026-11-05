@@ -116,6 +116,8 @@ jobs:
     needs: shard
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # pushes the results to sweep-results/run-<id> (artifact storage can be unreachable)
     steps:
       - uses: actions/checkout@v4
         with:
@@ -133,7 +135,24 @@ jobs:
           python3 tools/sweep_report.py report/sweep_merged.jsonl --md report/sweep_report.md \
             --json report/sweep_summary.json --errors report/sweep_errors.jsonl
           cat report/sweep_report.md >> "$GITHUB_STEP_SUMMARY"
+          echo "===== sweep_report.md ====="; cat report/sweep_report.md
           gzip -k report/sweep_merged.jsonl
+      - name: Push results branch
+        run: |
+          branch="sweep-results/run-${{ github.run_id }}"
+          sha="$(git rev-parse HEAD)"
+          mkdir -p "$RUNNER_TEMP/res" && cp report/sweep_report.md report/sweep_summary.json report/sweep_merged.jsonl.gz report/sweep_errors.jsonl "$RUNNER_TEMP/res/"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan "$branch"
+          git rm -rq --cached .
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp "$RUNNER_TEMP"/res/* .
+          printf 'Balance sweep run %s on %s. See docs/balance_sweep.md on main.\n' "${{ github.run_id }}" "$sha" > README.md
+          git add -A
+          git commit -qm "Balance sweep results, run ${{ github.run_id }} ($sha)"
+          git push -q origin "$branch"
+          echo "Pushed $branch
       - uses: actions/upload-artifact@v4
         with:
           name: sweep-report
