@@ -17,6 +17,32 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 ~22:30 ET, Claude-Tally: documentation audit (docs only), on main
+
+- **Base:** `main` at `e54c2fd`; branch `claude/docs-audit`. No game code changed. One
+  new script, `tools/tuning_index.py` (stdlib Python, regenerates `tuning_catalogue.md`;
+  Godot never loads it). Golden and suites unaffected.
+- **Archived** to `docs/archive/` (with `git mv`): the batch 4 docs, the batch playtest
+  follow-ups, the dialogue audit, sketches and prototype, the evidence/circumstantial plan,
+  the legacy retirement plan, the C# solver migration, the social trust pass, the
+  text-system handoff, the unreliable-source note. Links into them are updated. Their
+  unbuilt leftovers are now BACKLOG items (C4 port, NPC-to-NPC credibility, social pass
+  leftovers, the Seer's small rise, the trace-weight sweep).
+- **BACKLOG.md:** checked item by item against the code. Built, absorbed (by the meeting
+  plan) and superseded items moved to BACKLOG_COMPLETED.md ("Moved Nov 4", original text
+  plus a closing note each); open items rewritten without the session commentary and code
+  locations. The "Template gaps" list is now "Workshop gaps".
+- **DESIGN.md:** brought up to the current code (scripts and the deal, 20 town gifts, the
+  Tavern and Town Hall, profile receipts and the new traces, the shared model as the only
+  judge, rapport and credibility, the meeting after M2a, the C# backend, the analyst bot).
+- **TUNING_NARRATIVE.md:** rewritten from scratch for the shared model.
+  **tuning_catalogue.md:** regenerated as an index of every `sim/tuning.gd` constant and
+  the files that use it (`python3 tools/tuning_index.py` after changing tuning).
+- **For everyone:** when a doc and the code disagree, the code was taken as the truth,
+  except where it looked like drift from an explicit decision (none found).
+- **Next actor:** no change (Argon for the known `test_workshop_remaining` failure;
+  Claude-Tally for the overnight balance sweep once main is settled).
+
 ## 2026-11-04 evening, Claude: patch_012 + M2a merged to main; new baseline `baseline_0534e6b`
 
 - **Base:** patch_012 unpacked at `fdf4760` as declared (`3e7b88a`), merged with `main`
