@@ -333,6 +333,12 @@ Slices **M0** and **M3a** must not change behaviour: their golden captures are i
      - Expected saving about 0.4-0.5 s of seed 42's 1.0 s `outer_prep` (Argon's estimate; measure with `profile_c0`). Behaviour-neutral: golden identical in both modes before the M2 behaviour work starts.
 5. **Slice M4 - Bot Cutover, 150-Seed Balance Sweep & New Golden Baseline (`tools/autoplay.gd`, `DESIGN.md`, `BACKLOG.md`)**:
    - Update `tools/autoplay.gd` to present a case before nominating (anchoring its nomination), drive `podium_press` (`press role` / `press night` / `press card` when holding contradictions, `press skip` otherwise), and act at repositioned `player_turn`.
+   - **Bot fixes from the Nov 5 sweep review** (`claude/balance-sweep-deep-dive-2026-11-05.md`):
+     - **Vigils go where the Demon is likeliest to strike:** the homes of high-value claimed gifts (info gifts, the Warden, the Veteran), not the top suspect's block. A watch there sees the killer arrive.
+     - **Test walking claims:** when a claimed walker (Lamplighter, Night Watch, Medium, Warden) is a live suspect, sometimes keep a vigil the claim says they'd pass. An empty or non-matching vigil is soft evidence against the claim (`Tuning.Workshop.VIGIL_MISS`).
+     - **Cases can use exclusion cards:** `Analyst._bears_on` takes only cards that name the target, so an empty vigil (a `coverage` card) or a vigil list that leaves the claimant out never enters a case. Let a coverage or complete-vigil card bear on anyone whose claim it contradicts.
+     - **Name the Demon from the Demon posterior,** not P(evil) (`_record_theory`), so a confident minion read isn't scored as the Demon guess.
+     - **Nominate less:** raise the bar, and back a good NPC's live nomination rather than making a weaker one. Half the wrongful hangs in bot games were the bot's own nominations.
    - **Check**: 150-seed sweeps at 7 and 10 NPCs measuring Good win rate, hidden night-walker hang rate (expected significant drop), cards/lines per meeting, supporters per trial, and **pacing**: player clicks and seconds per meeting (simulated at UI timings) and solver refreshes per nomination. Re-record the `tools/golden/` baseline from the M4 commit; update `DESIGN.md` and close absorbed `BACKLOG.md` items.
 
 ## 9. Gotchas & Invariants
