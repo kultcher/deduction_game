@@ -442,6 +442,7 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 			var w_tgt: String = str(data.get("target", ""))
 			if view.get("timeline", {}).get("events", []).any(func(ev): return ev.kind == "demon_death" and ev.at.day == obs_day and w_tgt in ev.subjects):
 				pre_fail = true
+				content_mode = 1  # the guarded door was killed that night: never a healthy reading
 			elif bool(data.get("saved", false)):
 				content_mode = 2
 				target_or_secret = person_index(view, w_tgt)
