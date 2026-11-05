@@ -44,11 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 4, late): `baseline_175e1f5`
+### Current baseline (Nov 4, night): `baseline_9187b09`
+
+`tools/golden/baseline_9187b09/` is the capture from `9187b09`: `baseline_175e1f5` plus
+Argon's patch_014 (Monitor, Confessor) and meeting plan M2b (podium press). Two captures
+identical. Against `baseline_175e1f5` the only differences are the pending nomination's
+new `press` field and the prompt text that offers the press (`--ignore engine,press,reply`
+shows every seed identical): the new roles aren't on the Default script the seeds deal from.
+
+### Previous baseline (Nov 4, late): `baseline_175e1f5`
 
 `tools/golden/baseline_175e1f5/` is the capture from `175e1f5`: main with dynamic scripts and
 patch 013 (Psychologist rework, Muddler), plus the C# cutover, the Warden packing fix and
-the `_fraction` C# port. **C# only; CI's gate.** Two captures identical. Identical to the
+the `_fraction` C# port. C# only. Two captures identical. Identical to the
 C# capture of `47913b7` (dynamic-script before the cutover); every seed differs from
 `baseline_0534e6b` because of patch 013.
 
@@ -111,7 +119,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_175e1f5 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_9187b09 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs

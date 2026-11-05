@@ -22,6 +22,38 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 night, Claude-Bailiff: patch_014 checked and fixed; M2b and patch_014 on main; `baseline_9187b09`
+
+- **patch_014** (base `6ff64a4`) applied on `argon/patch-014-monitor-confessor`, then main
+  (the C# cutover) and `claude/m2b-podium-press` merged in. **Argon: it didn't parse as
+  delivered.** Please run the suite before sending. What I fixed:
+  - `confessor.gd` used an undeclared `request_refuse_line`.
+  - `pick_targets` set `confessor_visited` on the NPC at runtime, which Godot objects
+    can't do. It is now a declared field in `sim/npc.gd`.
+  - The Monitor/Confessor content rules were pasted into `Solver._testimony_content`,
+    which has no `answer` or `from_testimony`. They now live in `_report_content_impl`,
+    and testimony delegates to it.
+  - `test_chunk5`: `.true` doesn't parse (use `["true"]`), and it still used the removed
+    VERIFY mode.
+  - The Confessor added to the `people` hint package, as your test expects.
+  - `test_chunk3`'s fixed `GOOD_ROLES.size() == 20` is relaxed.
+- **The C# side was missing (the solver is C# only now):** without it, both roles' reports
+  carried no information in the game, because C# scored them as trivially true. I added
+  `ContentMonitor` and `ContentConfessorForgot` to `SolverKernel.EvaluateReportTable`. The
+  Confessor's "good" reading reuses the Warden-saved mode. The Monitor is evaluated per
+  world, because it depends on the Demon's identity.
+  - New `tools/test_chunk5_cs_tables.gd` checks the C# table against the content rule
+    world by world: 44k sampled checks, 0 mismatches.
+  - **For future roles: a new report content rule needs its C# content mode in
+    `_report_table_cs` + `EvaluateReportTable`, or it silently becomes "always true".**
+- **M2b (podium press)** merged in; see `docs/meeting_flow_plan.md`.
+- **Checks:** full suite 126/126 after the `test_chunk3` fix. Golden: two captures
+  identical; vs `baseline_175e1f5` only the press field and prompt text differ.
+- **For the sweep Claude:** `tools/autoplay.gd` on main ignores `--backend` (C# only).
+  Merge your `--dynamic`/JSONL changes onto it.
+- **Next actor:** the sweep (from main); Argon for the next patch (C#-side content for any
+  new report roles).
+
 ## 2026-11-04 late night, Argon: patch_014 (Chunk 5: Monitor & Confessor) built on `claude/dynamic-script` (`6ff64a4`)
 
 - **Base commit:** `6ff64a4c6b9007a787c9423b312fe9dbc0294fd4` (`claude/dynamic-script`).
