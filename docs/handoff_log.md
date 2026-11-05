@@ -39,6 +39,19 @@ Base `d043da9` (main merged in). Branch `claude/replay-why`. Status: **PR open, 
     (`tools/belief_views.gd`). See `docs/DECISION_INSPECTOR.md`.
 - `workshop/case_eval.gd`: opt-in `CaseEval.capture_worlds` / `captured` (developer use
   only). Off, the code path and results are unchanged.
+- New `tools/explain_case.gd` (and `tools/log_replay.gd`, the replay loop both tools
+  share). Case mode presents a filed case and variants of it (`--add`, `--drop`,
+  `--challenge`) to each good mind and prints premise prior → posterior, LR, rivals and
+  per-card reliability and acceptance. Belief mode (`--belief X --at SEQ`) finds which
+  heard items hold up a mind's suspicion of X, by leave-one-out. See
+  `docs/DECISION_INSPECTOR.md`.
+- **Finding for whoever owns the solver (case 13910, seq 372):** Fenwick's podium defence
+  "Merrin is lying" moves every listener's suspicion of Fenwick by −0.08 to −0.18
+  (Constance 0.18 → 0.00), even though each listener's own challenge assessment rejects
+  it (`supported: false`, `multiplier 1.0`). P(Merrin evil) barely moves. Removing just
+  that ledger entry restores the old values. Probably the lying challenge's
+  "source is evil" assumption (`Solver`, reading challenges → `positions`) applies even when
+  `ReadingChallenges.assess` rejects the challenge. Not fixed here.
 - `tools/replay_54875.gd` stays separate: it's a fixed-fixture performance and fallback
   check, not a general replay.
 - Checked on playtest case 13910 (10 NPCs, dynamic script): all five votes replay
