@@ -54,7 +54,7 @@ const BATCH5_SLOTS = {
 	"present_false_known": {},
 	"present_circumstantial_only": {},
 	"present_move_trace_lean": {},
-	"present_seen_elsewhere": {"subject": "Edda", "night": "1"},
+	"present_seen_elsewhere": {"subject": "Edda", "when": "on the second night"},  # spoken, never "night 1"
 	"present_role_fit": {"subject": "Edda", "role": "Warden"},
 	"present_repeat_meeting": {},
 	"present_repeat_private": {},
