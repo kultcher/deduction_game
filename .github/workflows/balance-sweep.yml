@@ -152,7 +152,7 @@ jobs:
           git add -A
           git commit -qm "Balance sweep results, run ${{ github.run_id }} ($sha)"
           git push -q origin "$branch"
-          echo "Pushed $branch
+          echo "Pushed $branch"
       - uses: actions/upload-artifact@v4
         with:
           name: sweep-report
