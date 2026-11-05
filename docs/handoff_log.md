@@ -9,6 +9,10 @@ coding, patches on Drive); **Claude-Bailiff** (checks, tests, Git, meeting overh
 **Claude-Quill** (dynamic scripts, integrating patch_013); the balance-sweep Claude (name
 to come). Sessions don't share memory: this log is how we talk.
 
+Explaining a playtest (why the town voted, read a case or believed something): replay the
+log with `tools/replay_log.gd --why` and `tools/explain_case.gd` before reading code or
+guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry below.
+
 Ground rules (from Nov 3, until Michael changes them):
 
 - Argon delivers work as a zip on Drive (full files plus a manifest) and names the
