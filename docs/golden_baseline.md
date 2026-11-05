@@ -7,8 +7,8 @@ runs part ways.
 
 ## What is recorded
 
-`tools/golden_capture.gd` plays fixed seeds with the passive player from
-`test_trace` (decline, bye, wait, vote no, sleep) to the start of Day 4 and writes one
+`tools/golden_capture.gd` plays fixed seeds with a passive player (decline, bye,
+wait, vote no, sleep) to the start of Day 4 and writes one
 JSON line per:
 
 - **refresh**: every shared belief refresh (after phase) for every mind, covers

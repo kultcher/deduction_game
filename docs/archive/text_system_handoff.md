@@ -10,7 +10,7 @@ Snapshot: `73629a4` (small inline icons on dark surfaces), following `76877ea`
 branch. Recheck both histories before resuming, particularly if another developer
 has changed profiles, case-board UI or shared theme code.
 
-See [the API reference](text_formatting.md) for full field and matching contracts.
+See [the API reference](../text_formatting.md) for full field and matching contracts.
 
 ## Completed work
 
@@ -36,16 +36,16 @@ Paths below are relative to the repository root.
 
 | File / API | Responsibility and useful hook |
 | --- | --- |
-| [`ui/text_terms.gd`](../ui/text_terms.gd): `register_term`, `lookup`, `find_matches` | Public vocabulary. Extend with another term kind without coupling it to world state. IDs include `person:bart` and `role:nightwatch`. |
-| [`ui/text_formatter.gd`](../ui/text_formatter.gd): `format_text(text, context)` | Produces complete ordered spans: original text/ranges, entity ID, color, bold, opacity, surface, font/icon size, icon path and tooltip. Reusable by a future custom renderer. |
+| [`ui/text_terms.gd`](../../ui/text_terms.gd): `register_term`, `lookup`, `find_matches` | Public vocabulary. Extend with another term kind without coupling it to world state. IDs include `person:bart` and `role:nightwatch`. |
+| [`ui/text_formatter.gd`](../../ui/text_formatter.gd): `format_text(text, context)` | Produces complete ordered spans: original text/ranges, entity ID, color, bold, opacity, surface, font/icon size, icon path and tooltip. Reusable by a future custom renderer. |
 | Same file: `plain_text(spans)` | Exact original text for copying/search/fallback; generated icon spacing is excluded. |
-| [`ui/rich_text_renderer.gd`](../ui/rich_text_renderer.gd): `append_to(label, spans)` | Native `RichTextLabel` rendering. Balances its own formatting stack so an outer card-link context survives. |
+| [`ui/rich_text_renderer.gd`](../../ui/rich_text_renderer.gd): `append_to(label, spans)` | Native `RichTextLabel` rendering. Balances its own formatting stack so an outer card-link context survives. |
 | Same file: `text_color`, `icon_color` | Apply overall opacity exactly once. Use the same rule in any new renderer. |
-| [`ui/inline_icons.gd`](../ui/inline_icons.gd): `texture(path, surface, height)` | Original parchment texture or cached small dark-surface variant. Share an instance across cards where practical. |
-| [`ui/formatted_text_label.gd`](../ui/formatted_text_label.gd) | Wrapping paper tooltips, capped to the viewport; suppresses empty tooltip panels. |
-| [`ui/log_text.gd`](../ui/log_text.gd): `append_to` | Classifies existing plain log output before enrichment. Owns speech/header/card-reference structure. |
-| [`ui/profile_panel.gd`](../ui/profile_panel.gd) | Reference implementation for rich card passages, native role hints, hidden opacity and disclosure gates. Shared by town and case board. |
-| [`ui/theme.gd`](../ui/theme.gd): `rich_text_fonts`, `font_face`, role colors | Matching normal/bold/italic font families and shared appearance. Keep the parchment/engraving style. |
+| [`ui/inline_icons.gd`](../../ui/inline_icons.gd): `texture(path, surface, height)` | Original parchment texture or cached small dark-surface variant. Share an instance across cards where practical. |
+| [`ui/formatted_text_label.gd`](../../ui/formatted_text_label.gd) | Wrapping paper tooltips, capped to the viewport; suppresses empty tooltip panels. |
+| [`ui/log_text.gd`](../../ui/log_text.gd): `append_to` | Classifies existing plain log output before enrichment. Owns speech/header/card-reference structure. |
+| [`ui/profile_panel.gd`](../../ui/profile_panel.gd) | Reference implementation for rich card passages, native role hints, hidden opacity and disclosure gates. Shared by town and case board. |
+| [`ui/theme.gd`](../../ui/theme.gd): `rich_text_fonts`, `font_face`, role colors | Matching normal/bold/italic font families and shared appearance. Keep the parchment/engraving style. |
 
 Minimal native rendering example (inside a UI script):
 
@@ -97,13 +97,13 @@ Switching to scenes alone will not resolve a disagreement about zoom behavior.
 
 | Layer | Existing separation to keep |
 | --- | --- |
-| [`game/card_model.gd`](../game/card_model.gd) | Card meaning, time, short text, subjects and place markers |
-| [`game/board_model.gd`](../game/board_model.gd): `layout`, `links` | Pure rows/columns/cells/item identities and connections; one card can appear more than once |
-| [`ui/case_state.gd`](../ui/case_state.gd): `apply`, selection signals | Shared filters and selection across views; working set is separate |
-| [`ui/board_view.gd`](../ui/board_view.gd) | World/screen transforms, measured geometry, drawing, manual hit tests, pan/zoom and pin movement |
-| [`ui/case_view.gd`](../ui/case_view.gd): `show_card_menu`, staging/reveal methods | Existing actions, shared context menu, list/board/profile coordination |
-| [`ui/deduction_tray.gd`](../ui/deduction_tray.gd) | Fixed screen-size deduction cards, folding, horizontal scroll and drag-to-pin |
-| [`ui/card_list.gd`](../ui/card_list.gd) | Wrapping Tree rows, multi-selection, drag/drop and right-click card actions; one color per row today |
+| [`game/card_model.gd`](../../game/card_model.gd) | Card meaning, time, short text, subjects and place markers |
+| [`game/board_model.gd`](../../game/board_model.gd): `layout`, `links` | Pure rows/columns/cells/item identities and connections; one card can appear more than once |
+| [`ui/case_state.gd`](../../ui/case_state.gd): `apply`, selection signals | Shared filters and selection across views; working set is separate |
+| [`ui/board_view.gd`](../../ui/board_view.gd) | World/screen transforms, measured geometry, drawing, manual hit tests, pan/zoom and pin movement |
+| [`ui/case_view.gd`](../../ui/case_view.gd): `show_card_menu`, staging/reveal methods | Existing actions, shared context menu, list/board/profile coordination |
+| [`ui/deduction_tray.gd`](../../ui/deduction_tray.gd) | Fixed screen-size deduction cards, folding, horizontal scroll and drag-to-pin |
+| [`ui/card_list.gd`](../../ui/card_list.gd) | Wrapping Tree rows, multi-selection, drag/drop and right-click card actions; one color per row today |
 
 Keep stable card numbers as action identities, not the displayed text or a UI
 node's lifetime. Preserve `{"cards": [n]}` drag payloads and the tray's additional

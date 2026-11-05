@@ -3,6 +3,573 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Moved Nov 4, 2026 (documentation audit, Claude-Tally)
+
+Checked against `main` at `e54c2fd`. Original wording kept; each entry ends with a closing note.
+
+### Built
+
+- **From playtest 54875: case-workshop links that were missing or misread.** [decided]
+
+  - **A reading against an alibi is filed as "Contradicted home alibi"** with the
+    reading as the trusted observation, so its only explanation is "the alibi is false".
+    A gift reading is a claim and should be the doubtable side, or the card should offer
+    both explanations ("Dorian's alibi is false" / "Constance's report is false"). My own
+    vigil really is an observation; Constance's Night Watch report isn't.
+
+  - **One person's two accounts of the same night** (Constance told me "I saw Isolde",
+    then told the town "I saw Jory" for night 1) should be linkable as a conflict.
+
+  - **"Killed by the demon, so good" should give credence to the victim's alibi** as
+    grounds for challenging a reading ("it's likelier Constance is lying than that
+    Dorian has a secret night walk"): modest weight, not zero, and never proof. (Dorian
+    really was the Sleepwalker here, so the doubt was right by luck.)
+
+  - **Surveyor answers** should let the player pick the evil blocks and a suspect on each
+    (it can't express "the Square via Constance, Chapel Hill via Edda"). A block whose
+    residents are all demon victims drops out of the count: with the Market clean, Jory's
+    "2 blocks" plus Constance and Edda cleared the Docks, which the evaluator did work out
+    (Hollis and Lian −0.446) but couldn't say.
+
+  - **A claimed day gift but seen out at night** (Greta claimed Dowser after Isolde saw
+    her on the Docks) is a reasonable suspicion pattern.
+
+  > **Decided (user, Oct 26); Claude batch:** a gift reading against an alibi offers both explanations
+  > (alibi false / report false; your own vigil stays an observation); one person's two accounts of the
+  > same night link as a conflict; "claimed a day gift, seen out at night" becomes a recognised pattern.
+  > "Killed by the Demon, so credit the victim's alibi" needs a weight: left for the balance pass.
+  > Surveyor answers (blocks and residents) are already built (Workshop overhaul, Oct 25).
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** 'Doubt the report instead' on an alibi-vs-report
+  > contradiction (`CanvasModel.doubt_report`); someone's own walking report against their own home alibi
+  > links as a contradiction (`CaseGraph.valid_dispute`; the model reads it honestly: a hidden good Night
+  > Watch lies about being home too). 'Claimed a day gift, seen out at night' was already weighed by the
+  > movement model in live games.
+
+  > **Closed Nov 4 (audit):** Built Oct 26 (Claude batch): both explanations on an alibi-vs-report clash, one person's two accounts linked, 'claimed a day gift, seen out at night' weighed by the movement model; Surveyor answers built Oct 25. The victim-alibi weight stays in BACKLOG (Cases and the Workshop) as a [watch].
+
+- **From playtest 54875: case-workshop feedback.** [decided]
+
+  > **Session 2026-10-25 (B036): model/warning wording fixed; partial closure proposed.** Shared,
+  > unsupported, and explicitly selected existing-rule modes are distinguished. Unsupported-card
+  > help no longer advertises ordinary fallback presentation or hard-codes obsolete capability
+  > lists. The live support result still decides behavior. Assumption-origin and collateral
+  > explanations remain separate work; no evaluator, ownership, or submission rules changed.
+
+  > Focused UI checks: 2/2. Full runner: 73/75; only the two permitted failures.
+
+  - When adding a card lowers agreement, say why ("this also places Isolde on the kill
+    block; nothing explains her being there") and what kind of card would help. Adding
+    my second vigil dropped the case from 0.68 to 0.57 until Isolde's Lamplighter claim
+    sealed it (1.000): correct reasoning, but a player would delete the card.
+  - Assumptions are hypotheses, not evidence ("Isolde assumed good" did nothing; her
+    claim card did). Say so when an assumption isn't doing any work.
+  - A rejected case's supports still push their own way (rejecting my mis-specified case
+    raised Isolde +0.379, the person evil was framing). Warn before presenting: "if
+    presented, this mostly raises suspicion of Isolde".
+  - Collateral from a sighting card lands on everyone it places (my vigil card raised
+    Isolde too). Consider letting the player say what a card is offered for ("about
+    Constance's alibi").
+  - "Answer validity: the selected explanation does not fit" was the real diagnosis but
+    sat mid-text; make it the headline and highlight the card.
+  - "Assume Edda: evil" appeared on the premise without the player adding it. Show where
+    each assumption came from (the board, a derived inference, the private guess).
+
+  > **Decided (user, Oct 26); Claude batch:** all six bullets, presentation only. Deferred: saying what a card is
+  > offered for (it changes how evidence counts).
+
+  > **Built (Claude, branch `claude/batch-oct26`, Oct 26):** clash headline and red-outlined clashing cards,
+  > collateral ("mostly raises suspicion of X"), the weakening card named with who it brings in, idle
+  > assumptions, and assumption origins (`WorkshopCanvas.feedback`, `LiveCaseWorkshop._explain_change`,
+  > `_idle_assumptions`).
+
+  > **Closed Nov 4 (audit):** Built Oct 26 (Claude batch). 'Say what a card is offered for' stays in BACKLOG.
+
+- **From playtest 54875: Insight and Confidence barely shaped reactions.** Every good
+  listener's agreement was 0.92–1.0. [open]
+
+  - The canvas case had no root template, so it took the generic-support route, which
+    ignores Insight. Insight only discounts speech and circumstantial supports, and the
+    case was built from the player's own sightings: concrete, from source "player",
+    which `_cred` credits at 1.0 regardless of trust.
+  - Insight plays no part where it should differ: defences (weighted by trust in the
+    defender), crowd accusations (trust in the accuser) and pleas like "it's a lie".
+  - Confidence doesn't set how far an argument moves them, though DESIGN says it should.
+  - Directions: Insight discounts speech-only moves; sharp listeners weigh the rival
+    explanations, dull ones take the headline; Confidence sets the step size; the
+    player's sightings are the player's word to the listener and scale with trust
+    (DESIGN's corroboration rule, 0.5 + trust).
+
+  > **Closed Nov 4 (audit):** Built: Insight now sets each listener's attention (bounded reasoning) and how far a dull listener takes a strong headline at its word; Confidence resists only moves against the listener's lean (social pass phase 2); evidence from the player scales with source trust.
+
+- **From playtest 54875: a hidden walker caught out should explain.** Isolde (Lamplighter,
+  low Composure) was seen on the kill block on two kill nights, pressed with my sighting,
+  and still stonewalled until I guessed "are you the Lamplighter?". Once a walker has been
+  caught on a kill block, the reveal cost should collapse: they have nothing left to hide
+  and everything to explain. The defence moves do this at the meeting; a private press
+  with a sighting card should trigger it too. Ties to Rebuttals and excuses. [decided]
+
+  > Private side covered by the batch-3 pressing item in section 1 ("A press with a sighting…").
+
+  > **Closed Nov 4 (audit):** Built: a press with a sighting triggers the reveal privately (batch 3), and the defence's walking-gift reveal does it at the meeting.
+
+- **"I've been known to sleepwalk."** (user + Claude, Oct 26) An excuse for being seen out at
+  night, open to both the real Sleepwalker and evil bluffers. Cheap for the shared model: worlds already
+  enumerate the modifier and its holder, so the claim is a mask over existing worlds (true if they're the
+  Sleepwalker, or evil). Rules: a real Sleepwalker uses it only under pressure (it gives the secret type
+  away); an evil bluffer only when its bluff doesn't already explain being out; two claimants prove a
+  liar (one secret per case). Needs a shared-model adapter, so Claude builds it. [decided; Claude]
+  - **Lovers as an excuse** ("I was with X"): evil pairing two of its own is a two-for-one; pairing
+    with a good person only works if real Lovers sometimes leave each other out to dry. Parked. [open]
+
+  > **Decided (user, Oct 26); Claude batch:** build after Codex batch 3 (it overlaps last words and pressing).
+
+  > **Built (Claude, Oct 26):** `Mind.sleepwalk_excuse` (pressed with a sighting, or a nomination defence); shared model: role check plus the claimants' holder bits in `RoleConstraints.coarse_mask`. Lovers (below) stays open.
+
+  > **Closed Nov 4 (audit):** Built Oct 26 (`Mind.sleepwalk_excuse`). Lovers as an excuse stays in BACKLOG as its own item.
+
+- **Nisha's reticence.** 25923 used Gossip 0.11, Privacy 0.60, Trust 0.38. The shared
+  gossip rule returns zero below Gossip 0.20 unless pressure reaches 0.50; her pressure
+  stayed around 0–0.21. This explains repeated refusals without an evil-only penalty.
+  Consider a softer minimum-information policy separately from the bug fixes. [watch]
+  54875: Hollis (Gossip 0.01) answered "It's not my place to say" about Constance right
+  after agreeing with the case against her in public, and Lian (0.18) the same. A stance
+  already given in public should be exempt from the gate. [decided for that exemption]
+
+  > **Closed Nov 4 (audit):** Built: there's no hard Gossip cutoff on a direct opinion question any more; even discreet townsfolk give an opinion when asked.
+
+- **From playtest 61251** (an evil team the player had identified won anyway). [decided]
+
+  - **A proven lie should hurt an info claimant's credibility hard.** Constance (the
+    Breathstealer bluffing Seer) was caught in an off-route lie on day 2, and listeners
+    still credited her at about 90% (from 94%). Her fake "yes" readings then hanged Lian
+    (+3.1 suspicion across the town) and Edda (+2.6), and a fake "no" cleared the demon.
+    A proven whereabouts lie by a public info claimant should cut their readings to
+    around 50% credibility. This turns "lie severity" around: the lie itself was minor,
+    but it says the claimant's readings can't be trusted.
+
+  - **A Seer's record.** Each "yes" pair that's hanged and shown good (by the
+    Gravedigger, the Martyr, or a public clear) should discount that Seer's later
+    readings, not just add red-herring talk. In 61251, Lian was shown to be the Warden,
+    but only the Gravedigger updated (−0.4), and he was killed that night.
+
+  - **Repeated trace matches add up.** Three kill nights in a row had a trace on the
+    Docks with Greta there each time. Each was judged alone ("more likely someone else
+    on the Docks"), at about 0.3 agreement. The same suspect matching across several
+    nights should compound. This is a natural first test case for the theory and fit
+    checks (section 4), and the same shape as the Breathstealer-by-presence pattern.
+
+  - **The player's voice in votes is small at ordinary trust.** At trust 0.3–0.5, "the
+    player accuses" added only 0.05–0.14 to votes, while non-template cases got 0.19
+    agreement. This is the execution-priority idea (section 4) applied to the player's
+    own nominations.
+
+  - **Not the cause:** a failed nomination costs trust only with the nominee (−0.15).
+    There's no town-wide penalty, so the early lark nomination of Bart didn't cascade.
+    Worth confirming in a conservative playthrough.
+
+  > **Closed Nov 4 (audit):** Built: caught lies feed source doubt for that source's readings (`workshop/source_doubt.gd`); a Seer's 'yes' pairs shown good weigh against the Seer in the joint possible-worlds model; repeated trace matches compound (evidence rework, Oct 30); the player's nominations now rest on a case (M2a) and votes carry the execution-priority term.
+
+- **Medium relay credibility at both sources.** Audit/fix relayed readings so full
+  credence requires trusting both the Medium and the dead source. Current
+  `Mind.apply_info` stores the Medium as the ledger reliability source; the Medium
+  branch expands the dead reader's effects at 60% but does not retain a separate
+  live reliability dependency on that reader. Cover relayed readings, sightings and
+  opinions, both sources' sincerity, and each relevant reading's own night-specific
+  doubt without double-discounting. Keep relationship hearing weight distinct from
+  source honesty; never consult hidden actual poison/alignment for acceptance.
+  (Oct 21 code audit) [decided; exact combination open]
+
+  > **Closed Nov 4 (audit):** Built: a relayed reading's reliability depends on doubt about both the Medium and the dead source (`SharedLedger`).
+
+- **Confidence should protect convictions, not create general resistance.** A
+  confident NPC without an established view should consider fresh evidence at normal
+  strength. Scale resistance with the strength of the belief being challenged; low
+  suspicion alone does not establish belief in innocence. Include evidence-based
+  convictions, relationships and firsthand knowledge without giving NPCs hidden truth.
+  Audit direct adjustment, ledger recomputation, trust-based reconsideration,
+  own-reading/conflict agreement, and role-specific effects/flags (including Medium
+  relays and own versus heard readings), so a global fix does not leave inconsistent
+  role paths. Reinforcing evidence should not receive a blanket Confidence penalty.
+  Direction [decided]; conviction representation and curve [open].
+
+  > **Closed Nov 4 (audit):** Built Oct 30 (social pass phase 2): Confidence resists only moves against the listener's lean, frozen per day.
+
+- **Bot builds Case Workshop cases.** (user + Claude, Oct 25; deferred) The bot ranks
+  suspects with a hand-built heuristic (`autoplay.gd::_scores`, including the legacy
+  night-sighting scale) and builds cases only from two-card template matches
+  (`_find_or_file_deduction`). Proposal: rank suspects by a neutral test juror's
+  posterior over the player's board; build a workshop case against the top suspect
+  greedily (add a supported card when it raises the test juror's strength, try the
+  card answers, cap about 8 cards, once a day); use the juror for nominations, votes
+  and defences. Expect a much stronger bot (near-ideal reader) and slower bot games
+  (about 10-30 test-juror evaluations a day); re-baseline old vs new bot on the same
+  seeds. Then the `link` / `conclude` text commands can be retired with the templates.
+  [done]
+
+  > **Done (Claude, Nov 3, legacy purge Phase 4c):** `tools/analyst.gd`. The juror reads
+  > the player's board through the shared model, the bot builds greedy Workshop cases
+  > (conclusion "evil" only), and `--insight` degrades it. `link` / `conclude` / `deduce`
+  > and the templates are deleted. Old vs new baselines are in `docs/handoff_log.md`, Nov 3.
+
+  > **Closed Nov 4 (audit):** Done Nov 3 (analyst bot).
+
+- **Fading into the crowd.** NPCs weigh how much talking is already going on before
+  speaking or disclosing. When the town is already moving in a direction, a private
+  character may just bide their time and listen. (Oct 19) [decided]
+
+  > **Closed Nov 4 (audit):** Built Nov 4 (meeting plan M2a): private people fade once claims pile up.
+
+- **Reactive meetings: speak up when the last statement concerns you.** (user, Oct 24)
+  After each meeting statement, every listener runs cheap yes/no checks: does it name
+  me, or name a person or role that's part of my private information (my own gift,
+  someone I have a reading about, a claim of my role)? If so, add a situational bonus to
+  the usual disclosure decision, so they may respond on the spot: confirm, contradict,
+  claim, or defend. Uses the existing disclosure checks (privacy, trust, pressure),
+  not a new evaluation, so it's cheap and makes the meeting feel like a conversation.
+  Pairs with pacing refreshes behind dialogue. [decided: add; bonus size open]
+
+  > **Closed Nov 4 (audit):** Built Nov 4 (meeting plan M2a): reactive testimony moves a rival claimant, a person named, or the holder of a clearing reading up the queue, once each per meeting.
+
+- **Seen at night away from the murder.** (user, Oct 24) Being seen on a block the
+  killer couldn't have used is evidence against being the Demon that night. The two
+  models disagree today. Legacy `Mind.night_sighting_scale` only ever *raises* suspicion
+  (×0.12 of a near-death sighting, less for claimed walkers), so it's never
+  exculpatory. The shared movement model gives the Demon only the route to the victim's
+  home on a kill night, so an off-route sighting makes the Demon nearly impossible for
+  that person: probably too strong (the Demon could walk elsewhere first), and the
+  player can't argue it on the case board or hear NPCs say it. Wanted: a softer Demon
+  profile (some chance of a detour), and the "seen elsewhere, so not the killer"
+  relationship visible in previews and replies. A Minion stays possible. [decided:
+  add; strength open]
+
+  > **Closed Nov 4 (audit):** Built: the movement model gives the Demon a 5% detour, and previews and replies name 'seen elsewhere'. Live Demon movement still never detours: see the 78148/77388 detour item.
+
+- **Corroborated walking-gift claims.** (user, Oct 24) In a playtest, Odette claimed
+  Lamplighter and was seen on several different blocks across the town, which lent her
+  claim credence. In the shared movement model a claimed Lamplighter's path covers every
+  block, so several scattered sightings fit her claim better than a Minion's single
+  errand: the support exists numerically but is invisible. Make it visible ("seen all
+  over town, as a Lamplighter would be") in previews and replies, and decide whether it
+  should also count as support for the claim in the vibes stage (see "Supporting evidence
+  in a case" below). [decided: surface it; weight open]
+
+  > **Closed Nov 4 (audit):** Built: scattered sightings support a walking-gift claim and replies name it ('Scattered sightings').
+
+- **Votes and nominations ignore rank (Q3 pass).** (user question, Oct 24) Code check:
+  a good vote is an absolute bar (`Mind._vote_impl`: suspicion of the nominee + crowd
+  pressure + small terms ≥ about 0.43). The nomination walks `ranked_suspects` in order
+  and nominates the first not-yet-nominated person over its own absolute threshold, so a
+  second or third choice can be nominated if the first is taken. The only relative term
+  is `prefers_block` (−0.4 when the person already on the block is suspected at least as
+  much). Nothing lets an NPC say "not my first choice, but among my top suspects, so I'll
+  back the town's pick": an NPC with diffuse suspicion (0.3 on three people) can't vote for
+  any of them. Candidate: a rank-aware term for a nominee in the voter's top 3 at a
+  reasonable share of their top suspicion, through the shared execution-priority input
+  (wired at zero weight). Measure first: `autoplay.gd`'s AGREEMENT table (top-3 overlap,
+  peers' suspicion of each NPC's top suspect), after the impossible-refresh fix, since
+  that bug currently zeroes many voters. [decided: measure; design open]
+
+  > **Closed Nov 4 (audit):** Built: the shared execution-priority term (weight 0.22) is centred on the listener's mean posterior with a bonus for their top two suspects.
+
+- **Cases instead of proofs: the player argues a theory** (Oct 19–20 discussion; next up
+  after the usage reset, ahead of meeting-flow step 5). [decided, design first]
+
+  - **The problem:** deductions are "these cards prove this", gated by templates. Most
+    Clocktower reasoning is cumulative and probabilistic, so a strong case like "Seer
+    pair + near a murder + caught in a lie" gets filed as a weak "your inference". The
+    space of evidence interactions is too large for templates, and some that fit are
+    unintuitive to build.
+
+  - **The direction:** the player proposes a theory, which can be partial:
+
+    - the demon candidate and the suspected evil;
+    - optional assumptions ("Edda is the red herring", "Constance's reading was
+      poisoned").
+
+    The game scores each card on how well it fits that theory: supports, contradicts,
+    or doesn't bear. This answers the question the evidence poses (the Surveyor's "3":
+    mark who the evil are, and see if the count fits).
+  - **One fit check per evidence type** instead of templates for pairs:
+
+    - Surveyor: N blocks with an evil resident;
+    - Seer yes: the demon, the red herring or a Marked person is in the pair;
+    - Dowser and Hearthwitch: N evil among a group;
+    - Archivist: one of two is that minion;
+    - Gravedigger: the hanged person was that role;
+    - sightings near deaths: soft fits.
+
+    Partial theories need "fits / could fit / contradicts" (is the count still
+    reachable?). Demon victims count as good by default, so a Surveyor check includes
+    the dead without extra steps.
+  - **Against flooding the zone:** score fit weighted by how surprising it is.
+    Irrelevant cards add nothing, loose fits little (a Surveyor count fits many
+    theories), tight fits a lot (a Seer yes on the pair), contradictions cost.
+    Same-source cards count once. Every assumption weakens the case by the listener's
+    doubt in it.
+
+  - **NPCs judge the player's theory; they don't search for theories.** Each listener
+    checks it against what they know, at their own credibility weights, and answers two
+    questions: does it make it more likely (belief), and is it enough to act on
+    (execution priority: urgency, trust in the player, counterevidence)? An accepted
+    assumption can become a working belief that later arguments build on, and it's undone
+    if it collapses. That keeps the player as the detective and NPCs persuadable and
+    plausibly wrong (accidental misdirection and deliberate manipulation, such as
+    getting someone hanged for a Gravedigger read, both still work).
+
+  - **Keep:** templates, now as bonuses for rigorous links rather than gates; the evidence
+    ledger; cards; provenance; the shadow self. The per-card weighing that private cases
+    already use is the starting point for scoring.
+
+  - **Bonuses:** a supports/contradicts view of the board is a strong player tool on its
+    own. The private-theory panel (demon and minion guesses) is the natural entry point.
+    The bot can use the same checks.
+
+  - **Where it plugs in:** the player's turn in the meeting flow becomes "make a case".
+
+  - **Considered and not chosen:** Astra's full competing-hypotheses rework (every NPC
+    tracking demon, minion, red herring and Marked beliefs for everyone). It's sound,
+    but it makes NPCs better reasoners, which is the wrong direction, and it's a large
+    open-ended core rewrite. Revisit only if playtests keep pointing at "one suspicion
+    score" problems, and then as a log-only prototype first.
+
+  - **Related cheap idea, can come first:** an execution-priority term in nominations and
+    votes. A credible lead (a Seer yes, a trusted player's case) makes a target
+    actionable without inflating belief, scaled by urgency.
+
+  > **Closed Nov 4 (audit):** Built Oct 23–25 (Case Workshop and the possible-worlds judge); templates removed Nov 3. The execution-priority idea is built too.
+
+- **Night movement and trace model.** One package of related items:
+
+  - the deferred night-proximity rule for sightings (route from home to the death
+    block);
+  - the proposed route limit (home → at most one detour → victim);
+  - traces based on where the killer *started* rather than their evening block (this
+    fixes the evening-shift demon problem);
+  With every block joined, a walker is seen only at home (leaving) or at their
+  destination, so "passing vs stopping" mostly collapses into "seen on their own block
+  (they went out)" vs "seen elsewhere (where they went)"; homes are what tells the two
+  apart.
+  When this is settled, check whether the home cards and haunt cards still earn their
+  place (with every block joined, a route is just home → destination and homes may say
+  little a template needs); remove them if not. The
+  evidence-chain item, and the watchtower idea in role_exploration.md, depend on this
+  package. (DESIGN) [open]
+
+  > **Closed Nov 4 (audit):** Built Oct 30 (evidence rework): multi-category traces at 3:1 replace the evening-block trace (fixing evening shifts), hidden profile receipts replace the home and haunt cards, and a passer's second trace is scored jointly. Passing through vs stopping stays in BACKLOG.
+
+- **The Lamplighter contaminates vigils and traces.** It walks every block, so it shows
+  up on every vigil of a kill block and is the usual second walker that makes a scene
+  trace misleading (54875: Jory's trace pointed at the Square because Isolde passed; the
+  demon had spent the evening on the Docks). Fine when the Lamplighter can prove itself;
+  hard on a hidden one. [watch]
+
+  > **Closed Nov 4 (audit):** Addressed: destination-only vigils (PR #29) and joint two-trace scoring (evidence rework).
+
+- **Supporting evidence in a case: logical where possible, vibes where not.** After the
+  legacy migration. Example: an accusation that cites the accused's voting history ("she
+  voted to hang people you think are good"). (user, Oct 24) [decided: the split;
+  details open]
+
+  - **Observable actions go in the evaluator as soft evidence:** votes, nominations,
+    who defended whom, tie-breaks. "Voted to execute someone who is good in this world"
+    needs only each world's evil mask, so it adds no hidden dimension (cheap; see
+    Architecture rules in docs/LEGACY_MIGRATION.md). Each action is a likelihood factor:
+    the rate at which evil and good players take it against good targets, measured
+    from bot runs, not hand-set. The interaction the user wants ("if the case raises my
+    suspicion, her votes against people I trust count more") then follows from the
+    joint evaluation: no ordering, no feedback loop, no double counting. This is a
+    new decision: Q1 put accusations (speech) outside evidence; votes are actions.
+
+  - **Listener impressions go in a second stage gated on the first:** demeanour,
+    nervousness under pressure, "oddly quiet", trust in the presenter. Stage 1 (the
+    logical case) runs and is applied. Stage 2 then scores these cards from a snapshot
+    of the listener's updated beliefs, scaled by how far stage 1 moved them, so vibes
+    can't carry a case alone. Guardrails:
+
+    - read stage 1 once and never iterate;
+    - judge the cards by beliefs about *other* people (the targets), never the accused's
+      own raised suspicion;
+    - keep stage 2 a separate, retractable contribution (like the ownership layer
+      today), so the next belief refresh doesn't treat it as a prior and count it
+      twice.
+
+    Accept that stage 2 depends on order: the same cards split across two cases can
+    total differently from one case.
+  - **Existing hook:** `_consequences_eval` already has a circumstantial route
+    (`_pattern`), but it takes the larger of the logical and circumstantial signals.
+    The gated stage-2 term should add to the logical one instead.
+
+  - Open: which actions qualify, the measured rates, stage-2 weights (ties into the
+    deferred Q6 Insight/Confidence pass), and the NPC lines ("your case convinced me,
+    and now her votes look worse").
+
+  > **Closed Nov 4 (audit):** Stage 2 (the circumstantial hub) built Oct 30. Stage 1B (observable actions as evidence) stays in BACKLOG.
+
+### Absorbed by docs/meeting_flow_plan.md
+
+- **Vote resistance feedback.** Distinguish disbelief from execution priority and
+  distrust of the player. In 25923 the -0.4 preference for Lian already on the block
+  stopped several good NPCs voting for Nisha despite substantial suspicion. Revisit
+  with meeting/vote talk; do not turn every plausible alternative into inaction. [open]
+  54875 is the clearest case yet; see "agreement has to reach the vote" above.
+
+  > **Closed Nov 4 (audit):** Now meeting plan M2d (resistance lines).
+
+- **NPCs push back on nominations their own information contradicts** (a player-led
+  nomination of the true Seer passed 7/8). (DESIGN playtests) [open]
+
+  > **Closed Nov 4 (audit):** Now meeting plan step 4 (supporters, M2c).
+
+- **Rebuttals and excuses.** Someone accused explains with their gift ("I was out
+  because I'm the Lamplighter"; own-lie admissions are built), which buys some grace with listeners; evil without a
+  fitting bluff can claim a fake secret. Biggest open hole: hidden night walkers frame
+  themselves (Isolde 55774, Constance 96773; Lamplighter/Veteran/Sleepwalker/Warden hang rates). (DESIGN)
+  Now part of the meeting-flow plan (docs/meeting_flow_plan.md, step 2). [decided]
+
+  > **Closed Nov 4 (audit):** Now meeting plan steps 2–4.
+
+- **Meeting and vote talk** (returns with the rebuttal work). Votes are silent for now;
+  PR #3's vote explanations were removed. When vote talk comes back: evil voters must
+  draw from the same spread of reasons as good ones (in PR #3 they all said "the case is
+  strong enough"), and only lines that tell you something should be spoken (a reason
+  that differs from the crowd, a vote against a stated stance, a swing vote). [decided]
+
+  > **Closed Nov 4 (audit):** Now meeting plan M2d.
+
+- **Outing yourself to defend someone.** The flip side of the accusation tiers: when an
+  NPC holds information that could clear someone on the block (a Seer "no", a Night
+  Watch who saw them stay in), when are they willing to come out to defend them? The
+  same weighing as accusing (how strong the clearing is, what the reveal costs, how
+  close the vote is). (Oct 19) [decided]
+
+  > **Closed Nov 4 (audit):** Now meeting plan step 4 (M2c).
+
+- **More talk in town, especially in bigger towns.** 96773 (10 townsfolk, 4 days): 7
+  conversations, 7 shares; three conversations passed nothing on, and one pair swapped
+  the same sighting back and forth. Scale conversations with population, let each pass
+  on the one or two most newsworthy things the other hasn't heard, never echo back what
+  you were just told. Check with bot runs. [decided]
+
+  > **Closed Nov 4 (audit):** Partly built in meeting plan M1 (peer role gossip, no A→B→A echo); the plan absorbs the rest.
+
+### Superseded by the shared possible-worlds model (templates deleted Nov 3)
+
+- **One evaluation path for generic and structured cases.** In 25923, vigil sighting
+  #86 + death #87 (Nisha at Merrin's murder block that night) had no template, while
+  the generic support sum capped at 1.0 agreement. `trace_match` is specifically an
+  evening trace + evening presence, and faces competing explanations. Add the missing
+  night-sighting + murder relationship (the death assertion also needs its location)
+  with the broader fit-check work, so recognizing a case cannot make it weaker. [decided]
+
+  > **Closed Nov 4 (audit):** There is one path now: the Workshop and CaseEval.
+
+- **Independent support versus repetition.** The ledger currently takes the strongest
+  justification for a conclusion. Preserve duplicate-evidence suppression, but let
+  separate nights and independent sources build a cumulative case. Tie this to the
+  repeated-trace item below and the belief/action split, rather than raising every
+  suspicion increment. (61251) [decided] 54875: repeated presentations of a growing case
+  scored lower each time; see the novelty bug in section 1.
+
+  > **Closed Nov 4 (audit):** The joint evaluation counts separate nights and sources once each; the legacy 'strongest justification' ledger is gone.
+
+- **Template generalization** (now part of "Cases instead of proofs" in section 4: one fit check per evidence type;
+  originally: one translation table per role, so pair elimination
+  etc. work for any gift that makes the same kind of statement). (DESIGN, deferred to
+  roster expansion) [decided]
+
+  > **Closed Nov 4 (audit):** Templates are gone; each evidence type has its own fit check in the shared model.
+
+- **Track incrimination versus a suspected misread explanation?** Evaluate a separate
+  representation for "a Seer yes implicates this person, but I favor red herring or
+  Marked" rather than collapsing everything into net suspicion. It may be competing
+  hypotheses rather than another additive suspicion score. Explain apparent
+  incrimination, likely cause, and remaining uncertainty; reweight consistently when
+  either hypothesis loses support and avoid double-counting. Use accepted evidence,
+  never the actual hidden modifier. [open]
+
+  > **Closed Nov 4 (audit):** Red herring and Marked are hypotheses in the enumerated worlds, so incrimination and misread are weighed jointly.
+
+- **Accumulate discrete independent instances.** Multiple caught lies, trace matches,
+  and independent nights should strengthen a case with diminishing returns. Preserve
+  event/night/card identities and source provenance; distinguish independent facts
+  from several retellings of one origin. Audit conclusion IDs, strongest-justification
+  selection, and justification keys based on source/night/kind. In particular, the
+  reproduced generic two-card case can beat its better-supported template because
+  they use different agreement routes; align those semantics with the section-4
+  cases/evidence-fit work. [decided; aggregation design open]
+
+  > **Closed Nov 4 (audit):** Joint evaluation over the receipts; the generic-vs-template mismatch is gone with the templates.
+
+- **Pattern-based cases.** Alongside existing deductions, build a case from many
+  cards, without the three-card limit: repeated encounters, conflicting stories, or
+  other patterns. Offer small observation cards automatically ("Bart was near a
+  silencing"), then let the player name a suspect and a role or explanation. Show
+  support, counterevidence, gaps, and other people who fit. Unknown whereabouts are
+  not an alibi; retellings and observation cards don't count the same evidence again.
+  NPCs weigh what was actually presented plus what they know, considering sources
+  and alternatives, and explain their response. Reassess when evidence becomes
+  doubtful. Use plain-language strength, not exact odds. Prototype one pattern first,
+  initially reporting assessments without changing votes. Breathstealer contact is
+  one example, not the scope; use actual possible action times (currently any daytime
+  phase, with silence starting at the meeting). [decided: prototype; broader design
+  open; discussed 2026-10-19]
+
+  > **Closed Nov 4 (audit):** Workshop cases take any number of cards, and the circumstantial hub covers soft patterns.
+
+- **Same person in repeated Seer yeses, later proven good** → that person is the
+  red herring; drop them from the Seer's later readings. (55774: Jory)
+
+  > **Closed Nov 4 (audit):** The joint model marginalizes the red herring, so a proven-good repeat yes already points at it.
+
+- **Evil reading on a proven-good person** (Dowser count, Archivist pair) → Marked.
+
+  > **Closed Nov 4 (audit):** The joint model weighs Marked against the reading.
+
+- **Role confirmations:** a Clerk or Gravedigger confirming someone's gift → that claim
+  is backed (claim_backed covers the Clerk; the Gravedigger on a living rival claim
+  does not).
+
+  > **Closed Nov 4 (audit):** Clerk readings and Gravedigger results bind role claims in the joint model.
+
+- **NPC at evening location vs. murder evidence trace originating from a different location.**
+
+  > **Closed Nov 4 (audit):** Traces no longer point at the killer's evening block.
+
+- **Evening sightings and conversations vs the scene trace** (54875). Seeing someone at
+  the tavern in the evening, or two people talking there, should be a location sighting
+  that links to "the killer spent the evening on the Square". Conversation cards don't
+  count as location sightings today, so the best evening alibis on the board can't touch
+  the trace (tried: "Odette and Constance talking at the tavern" with the Square trace at
+  Hollis's death scene).
+
+  > **Implemented in Codex batch 2 (Oct 25):** fix the native dedup found below: `Argue.check`'s
+  > template-plus-cards key omits the subject, so a trace match against two people in one
+  > conversation offers only one. Include the subject in the key; test two participants on one card.
+
+  > **Batch 2 verification:** the native key now includes the subject. One conversation
+  > combined with one trace offers both participants, while duplicate matches for the same
+  > person still collapse. Focused checks cover both input orders and a repeated receipt.
+  > The wider trace-linking/preview item remains open; no evidence weights changed.
+
+  > **Closed Nov 4 (audit):** Traces no longer point at the killer's evening block.
+
+### From BACKLOG_POLISH.md
+
+- **Dialogue voices for the rest of the cast.** The composer is merged (Agnes,
+  Bartholomew, Constance × five situations; dialogue lab at `ui/dialogue_lab.tscn`).
+  Everyone else uses the plain lines until they get a voice. [decided, later] 54875: on
+  day 1 Dorian and Odette gave word-for-word identical gift refusals and night alibis
+  ("Whether I have a gift is my own business"; "At home all night, same as any honest
+  soul"), which makes the town read as one person.
+
+  > **Closed Nov 4 (audit):** Done: all fifteen characters have voice packs (dialogue batches 2–7, no `[PH]` left).
+
+- **Nominations make a case.** The nominator cites several cards, even weak ones.
+  Mostly flavour; it only moves NPCs if it brings new information. [decided]
+
+  > **Closed Nov 4 (audit):** The nominator's case is built (`MindMeeting.nomination_case`, on the shared model's reasons); further trial work is tracked in docs/meeting_flow_plan.md.
+
 ## Built Oct 26, 2026 (Codex batch 3 and Claude batch)
 
 Built on `codex/backlog-batch-3` (Codex), `claude/batch-oct26` and `claude/sleepwalk-ward` (Claude), all merged
@@ -1166,7 +1733,7 @@ Settled decisions, built work and parked levers, kept for the record.
   checks (including source/alpha preservation and separate caches), 17 live text-UI
   checks, editor import and rendered log/profile views on Godot 4.4.1.
 - **Oct 20: text-system handoff; card extension deferred.** Added
-  `docs/text_system_handoff.md` with completed steps 1–3, API/integration hooks,
+  `docs/archive/text_system_handoff.md` with completed steps 1–3, API/integration hooks,
   remaining steps, existing verification and a resume checklist. Reviewed the
   board/tray/list renderers and documented fixed card heights versus font/line
   budgets, detail thresholds, zoom-dependent row geometry, input and caching
