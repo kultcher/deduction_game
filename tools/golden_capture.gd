@@ -108,6 +108,13 @@ func _on_refresh(n) -> void:
 	_refreshes += 1
 
 
+## Replies can name files under the user data folder (the dev log at game over), whose
+## absolute path depends on the machine. Write it as user:// so captures compare anywhere.
+func _portable(text: String) -> String:
+	var root: String = ProjectSettings.globalize_path("user://").trim_suffix("/")
+	return text.replace(root + "/", "user://") if root != "" else text
+
+
 func _step_record(g, step: int, cmd: String, reply: String) -> Dictionary:
 	var npcs = {}
 	for n in g.w.npcs:
@@ -115,7 +122,7 @@ func _step_record(g, step: int, cmd: String, reply: String) -> Dictionary:
 		if n.shadow != null:
 			npcs[n.id]["shadow"] = DevLog.npc_state(n.shadow)
 			npcs[n.id]["shadow_rng"] = str(n.shadow.shadow_rng.state)
-	return {"k": "step", "step": step, "cmd": cmd, "reply": reply,
+	return {"k": "step", "step": step, "cmd": cmd, "reply": _portable(reply),
 		"rng": str(g.w.rng.state), "day": g.w.day, "phase": g.w.phase, "state": g.state,
 		"over": g.w.game_over, "winner": g.w.winner, "refreshes_so_far": _refreshes,
 		"public_log": g.w.public_log.duplicate(true), "executions": g.w.executions.duplicate(true),
