@@ -23,6 +23,30 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-05 evening, Claude-Tally: `replay_log.gd --why` (why the town voted), PR #72 open
+
+Base `d043da9` (main merged in). Branch `claude/replay-why`. Status: **PR open, for Michael to merge.**
+
+- Folded into Claude-Bailiff's `tools/replay_log.gd` rather than a second replay tool.
+  Its interface is unchanged (`-- <log> [stop_seq]`, same DIVERGE/FILED/REPLAY lines).
+  Added:
+  - The case is rebuilt with the log's `case_script`, so dynamic and custom-script cases
+    replay. Before, they were dealt from the Default script and replayed a different game.
+  - A closing vote-tally check against the log (`votes_match`), since testimony text
+    diverges harmlessly.
+  - `--why [--at S,..] [--worlds N] [--json OUT]`: before each vote, each good mind's
+    suspicion, joint-world P(evil), P(Demon) and likeliest evil teams
+    (`tools/belief_views.gd`). See `docs/DECISION_INSPECTOR.md`.
+- `workshop/case_eval.gd`: opt-in `CaseEval.capture_worlds` / `captured` (developer use
+  only). Off, the code path and results are unchanged.
+- `tools/replay_54875.gd` stays separate: it's a fixed-fixture performance and fallback
+  check, not a general replay.
+- Checked on playtest case 13910 (10 NPCs, dynamic script): all five votes replay
+  identically, with and without `--why`. `test_trace_solver` and `test_workshop_action`
+  pass; CI runs the golden diff.
+
+---
+
 ## 2026-11-05 evening, Claude-Quill: maintenance report fixes (#69); golden false red fixed (#68); `baseline_a42ef71`
 
 - **Base:** `main` at `3932e86` (maintenance PR #66 merged), then `e09dbbd` (#68).
@@ -52,22 +76,6 @@ Ground rules (from Nov 3, until Michael changes them):
 - **Still open from the report:** section B's win-rate question (Michael's call); the
   test-audit suggestions in section E; housekeeping branch deletions (not done).
 - **Next actor:** Michael (merge #69).
-
-## 2026-11-05 evening, Claude-Tally: `tools/replay_why.gd` (why the town voted), PR open
-
-Base `e09dbbd`. Branch `claude/replay-why`. Status: **PR open, for Michael to merge.**
-
-- New `tools/replay_why.gd` + `tools/belief_views.gd`: replays a playtest log and, just
-  before each vote, prints each good mind's suspicion, joint-world P(evil), P(Demon) and
-  likeliest evil teams. Ends with a vote-tally check against the log. See
-  `docs/DECISION_INSPECTOR.md`.
-- `workshop/case_eval.gd`: opt-in `CaseEval.capture_worlds` / `captured` (developer use
-  only). Off, the code path and results are unchanged (`need_expand` is the old
-  condition; the GD path only appends when the flag is set).
-- Checked on playtest case 13910 (10 NPCs, dynamic script): votes replay identically with
-  the views taken. `test_trace_solver` and `test_workshop_action` pass; CI runs the golden diff.
-
----
 
 ## 2026-11-05 ~05:30 ET, Claude-Tally: balance sweep done (11,000 games); tooling on main
 

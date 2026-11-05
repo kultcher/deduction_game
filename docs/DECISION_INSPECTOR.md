@@ -15,11 +15,12 @@ Use the NPC and decision filters to narrow the view. **Include good-self simulat
 - Fear uses an existing fixed NPC/day hash, not fresh game RNG. Its nominal percentage describes the fraction of daily samples under the cutoff; repeating the question does not reroll it.
 - Deterministic scores, skip gates and final choices with no additional draw show **N/A (no roll)**. There is no invented probability for an entire conversation, vote or strategy.
 
-## Why the town voted: `tools/replay_why.gd`
+## Why the town voted: `tools/replay_log.gd --why`
 
-The inspector shows each roll; this shows the beliefs behind the votes. It replays a
-playtest dev log and, just before each logged vote (or at `--at SEQ,...`), prints every good
-mind's view from the shared model:
+The inspector shows each roll; this shows the beliefs behind the votes. `tools/replay_log.gd`
+replays a playtest dev log (seed, size and script from the log; commands and Workshop
+filings in order). With `--why` it also prints, just before each logged vote (or only those
+at `--at SEQ,...`), every good mind's view from the shared model:
 
 - **suspicion**: the value the vote and nomination scores read (`Mind.susp`).
 - **P(evil)**: that mind's joint-world posterior per person.
@@ -27,7 +28,7 @@ mind's view from the shared model:
 - **team**: the likeliest evil teams (`--worlds N`, default 5), with their share of the posterior.
 
 ```text
-godot --headless --path . --script res://tools/replay_why.gd -- logs/case_13910.jsonl [--at 480] [--worlds 5] [--json out.jsonl]
+godot --headless --path . --script res://tools/replay_log.gd -- logs/case_13910.jsonl [stop_seq] [--why] [--at 480] [--worlds 5] [--json out.jsonl]
 ```
 
 It ends by comparing the replay's vote tallies with the log (`votes_match`). Meeting
