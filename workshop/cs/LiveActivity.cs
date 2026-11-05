@@ -41,10 +41,10 @@ internal static class LiveActivityKernel
     public const int KindCoverage = 4;
 
     // Mirrors of sim/tuning.gd Workshop.VIGIL_MISS and WALKER_CLAIM_* (Nov 5).
-    public const double VigilMiss = 0.1;
-    public const double WalkerClaimGift = 0.9;
-    public const double WalkerClaimHome = 0.07;
-    public const double WalkerClaimSecret = 0.03;
+    public const double VigilMiss = 0.05;
+    public const double WalkerClaimGift = 0.95;
+    public const double WalkerClaimHome = 0.03;
+    public const double WalkerClaimSecret = 0.02;
     public const int KindAlibi = 5;
     public const int KindDropped = 6;
     public const int KindReport = 7;

@@ -774,15 +774,17 @@ class Workshop:
 	const CHANCE_CONTENT_FLOOR = 0.01
 	## A player vigil that should have seen someone and didn't: the town's allowance that
 	## the Demonologist missed them (the player can't be wrong; the town doesn't know that).
+	## With the walker-claim split below, an empty vigil on a claimed walker's block is about
+	## 10:1 against the claim (strong, not certain).
 	## Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`.
-	const VIGIL_MISS = 0.1
+	const VIGIL_MISS = 0.05
 	## A good person who claims a walking gift: how the movement model splits their nights
 	## between doing the duty, staying home anyway, and a secret's outing (before Nov 5:
 	## 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the
 	## Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`.
-	const WALKER_CLAIM_GIFT = 0.9
-	const WALKER_CLAIM_HOME = 0.07
-	const WALKER_CLAIM_SECRET = 0.03
+	const WALKER_CLAIM_GIFT = 0.95
+	const WALKER_CLAIM_HOME = 0.03
+	const WALKER_CLAIM_SECRET = 0.02
 	const DEMON_DETOUR = 0.05
 	const NIGHT_OUT_RATES = {
 		"hunt": 1.0,
