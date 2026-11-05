@@ -155,10 +155,15 @@ static func _chance_chronicler(view: Dictionary) -> float:
 ## Kept on the per-shape constants:
 ## - the Chronicler and the Rumormonger, which have exact prior hold rates (the share is
 ##   unweighted, and those two depend on the secret's priors);
-## - readings about roles (ROLE_CONTENT_FIXED): their content is checked by the role
-##   constraints, not the report table, so the table can't say how often a bluff fits;
+## - readings checked somewhere other than the report table (ROLE_CONTENT_FIXED): readings
+##   about roles (the role constraints) and night sightings (the movement model: a Night
+##   Watch's list, a Warden's door, a Veteran's road), and the Seer (its red herring is a
+##   weight in the role constraints, so the table holds wherever any good soul is in the
+##   pair), so the table can't say how often a bluff fits. The Lamplighter's count isn't
+##   checked anywhere, so it takes the share.
 ## - cards with no report table.
-const ROLE_CONTENT_FIXED = ["archivist", "clerk", "executor", "gravedigger", "registrar", "monitor", "martyr"]
+const ROLE_CONTENT_FIXED = ["archivist", "clerk", "executor", "gravedigger", "registrar", "monitor", "martyr",
+	"nightwatch", "warden", "veteran", "seer"]
 
 static func chance_content(view: Dictionary, card: Dictionary) -> float:
 	var role_id: String = str(card.get("role", ""))
