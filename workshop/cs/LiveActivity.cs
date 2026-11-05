@@ -65,6 +65,7 @@ internal static class LiveActivityKernel
     public const int MoveRoleVeteran = 4;
     public const int MoveRoleMedium = 5;
     public const int MoveRoleOther = 6;
+    public const int MoveRoleMonitor = 7;
 
     // Profile kind codes:
     private const int ProfOrdinary = 0;
@@ -176,7 +177,7 @@ internal static class LiveActivityKernel
         || kind == KindCoverage
         || kind == KindAlibi
         || kind == KindDropped
-        || (kind == KindReport && moveRoleCode >= MoveRoleNightwatch && moveRoleCode <= MoveRoleMedium);
+        || (kind == KindReport && ((moveRoleCode >= MoveRoleNightwatch && moveRoleCode <= MoveRoleMedium) || moveRoleCode == MoveRoleMonitor));
 
     /// <summary>
     /// 1:1 port of LiveActivity.role_of(cards, person, knowledge).
@@ -450,6 +451,12 @@ internal static class LiveActivityKernel
                                     bool inSeen = (cardInts[off + 6] & (1 << i)) != 0;
                                     pathOk = pathOk && (inPath == inSeen);
                                 }
+                            }
+                            else if (strictReports && kind == KindReport && cardInts[off + 7] == MoveRoleMonitor
+                                && cardInts[off + 2] != i && (flags & FlagDutyOnly) == 0 && cardInts[off + 17] == 0)
+                            {
+                                // "No one walked by my house": nobody else's route crossed the Monitor's block.
+                                pathOk = pathOk && !path.HasBlock(cardInts[off + 11]);
                             }
                             else if (strictReports && kind == KindReport && cardInts[off + 7] == MoveRoleWarden && cardInts[off + 2] == i)
                             {
@@ -962,6 +969,11 @@ internal static class LiveActivityKernel
                 if (roleCode == MoveRoleLamplighter && src == personIdx && (flags & FlagDutyOnly) != 0)
                 {
                     return currentAlign == AlignGood ? (path.IsLampTour ? 1.0 : 0.0) : 1.0;
+                }
+                if (roleCode == MoveRoleMonitor && src != personIdx && (flags & FlagDutyOnly) == 0 && cardInts[off + 17] == 0)
+                {
+                    double monErr = cardDoubles[cardIdx * 2 + 1];
+                    return path.HasBlock(cardInts[off + 11]) ? monErr : (1.0 - monErr);
                 }
                 if (roleCode == MoveRoleNightwatch)
                 {

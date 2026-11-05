@@ -21,7 +21,7 @@ static func available(view: Dictionary) -> bool:
 	return view.get("live_activity", false)
 
 static func relevant(cards: Array) -> Array:
-	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium"]))
+	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"]))
 
 ## Everything routes() and factors() read from a card list: the movement-relevant
 ## cards, relayed cards (in order) and each person's claimed role. Two listeners who
@@ -33,7 +33,7 @@ static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionar
 		var role: String = role_of(cards, person.id, knowledge)
 		roles.append([role, role_hearing(cards, person.id, role)] if weighted else role)
 	var has_struct_trace: bool = include_context and cards.any(func(x): return x.kind == "trace" and x.get("data", {}).has("family"))
-	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium"])), roles]
+	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"])), roles]
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):
@@ -83,6 +83,8 @@ static func _move_role_code(role: String) -> int:
 			return 4
 		"medium":
 			return 5
+		"monitor":
+			return 7
 		_:
 			return 6
 
@@ -249,6 +251,9 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 					seen_m |= (1 << sn_i)
 			card_ints[off + 6] = seen_m
 			card_ints[off + 11] = _block_code(str(data.get("block", "")))
+		elif kind_code == 7 and move_rc == 7: # monitor: home block; walked flag in [17]
+			card_ints[off + 11] = _block_code(str(data.get("block", "")))
+			card_ints[off + 17] = 1 if bool(data.get("walked", false)) else 0
 		elif kind_code == 7 and move_rc == 5: # medium
 			card_ints[off + 11] = _block_code(str(data.get("block", card.get("block", ""))))
 		elif kind_code == 7 and move_rc == 3: # lamplighter
@@ -341,6 +346,9 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 					okay = okay and out and path.back() == card.data.block
 				elif strict_reports and not card.get("duty_only", false):
 					okay = okay and ((card.data.block in path) == (person.id in card.data.seen))
+			elif strict_reports and card.kind == "report" and card.role == "monitor" and card.source != person.id and not card.get("duty_only", false) and not card.get("data", {}).get("walked", false):
+				# "No one walked by my house": nobody else's route crossed the Monitor's block.
+				okay = okay and not (card.data.block in path)
 			elif strict_reports and card.kind == "report" and card.role == "warden" and card.source == person.id:
 				okay = okay and out and path.back() == card.get("block", "")
 			elif strict_reports and card.kind == "report" and card.role == "medium" and card.source == person.id:
@@ -1228,6 +1236,9 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				return (1.0 if out and path.back() == card.data.get("block", card.get("block", "")) else 0.0) if alignment == "good" else 1.0
 			if card.role == "lamplighter" and card.source == person and card.get("duty_only", false):
 				return (1.0 if path.size() == C.BLOCKS.size() else 0.0) if alignment == "good" else 1.0
+			if card.role == "monitor" and card.source != person and not card.get("duty_only", false) and not card.get("data", {}).get("walked", false):
+				var mon_err: float = clampf(float(card.get("report_error", Tuning.Workshop.NIGHTWATCH_REPORT_ERROR)), 0.02, 0.45)
+				return mon_err if (card.data.block in path) else (1.0 - mon_err)
 			if card.role == "nightwatch":
 				if card.source == person:
 					return (1.0 if out and path.back() == card.data.block else 0.0) if alignment == "good" else 1.0
