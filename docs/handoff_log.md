@@ -22,6 +22,50 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 late night, Argon: patch_015 (Slice 6A: Sexton Rework & Brute Minion) aligned to latest main (`ce3c2d8`)
+
+- **Base commit:** `ce3c2d883887794959287b9e1433187d18bdbd01` (latest `main` with C# solver cutover, M2b, and `baseline_9187b09`).
+- **Status:** Complete, aligned to C#-only solver architecture, ready for Claude verification and CI run.
+- **Deliverables:** `patch_015_chunk6a_sexton_brute.patch` and `patch_015_chunk6a_sexton_brute.zip` delivered to `Demonologist Patches`.
+- **Next actor:** Claude (test run, dotnet build, golden capture check).
+
+### Summary of Changes (Slice 6A: Night-Action Reworks: Sexton & Brute)
+
+1. **Sexton Rework (`sim/roles/sexton.gd`):**
+   - Ability can be triggered once per case, on any night from Night 1 (`min_gift_day = 1`). Decided at the start of night.
+   - On the toll night, performs a Lamplighter walk (`C.BLOCKS.keys()`) through all four parishes, starting and ending at their home block.
+   - Completely suppresses all minion powers until the following night:
+     - Poisoner chooses target and walks abroad, but target is NOT poisoned.
+     - Breathstealer chooses target, but target is NOT silenced.
+     - Scion promotion is blocked if Demon is executed under suppression (Good wins immediately).
+     - Revenant curse does not trigger on execution under suppression; cannot lay new totem under suppression.
+     - Brute's hunt redirect is suppressed: Demon hunts instead.
+   - Townsfolk gifts (Warden, Medium, Nightwatch, Lamplighter, Confessor) continue uninterrupted.
+   - Silent announcement (no headline), but Sexton can claim their gift at any time.
+
+2. **Brute Minion (`sim/roles/brute.gd` + `sim/roles/brute.gd.uid`):**
+   - Role ID: `"brute"`, alignment: `"evil"`, kind: `"evil"`, minion: `true`, `tags = ["minion", "night_walker"]`.
+   - While alive and unsuppressed: hunts and kills in place of the Demon; Demon stays home (`loc == "home"`).
+   - Drops **two physical traces** per hunt pointing toward the Brute itself.
+   - Identified strictly as a Minion (not Demon): Seer returns "neither is the demon"; Archivist can name Brute as minion.
+   - When executed or suppressed by Sexton, Demon resumes hunting as normal. Executing Demon while Brute lives ends game immediately (Brute does not shield Demon).
+
+3. **Simulation, Workshop & C# Solver Alignment:**
+   - `sim/world.gd`: Added `is_minion_suppressed` helper, night-start Sexton bell toll, Brute hunting and two-trace murder generation, Demon idle-at-home while Brute hunts, poison suppression, and deferred Revenant curse resolution.
+   - `sim/content.gd`: Registered `brute` in `ROLES`, `MINION_ROLES`, `EVIL_ROLES`; updated `sexton` and `revenant` descriptions.
+   - `sim/role_registry.gd`: Preloaded and registered `BruteDef`.
+   - `sim/roles/scion.gd`: Added minion suppression check in `can_promote_to_demon`.
+   - `sim/roles/revenant.gd`: Updated description and deferred curse to night resolution so Sexton bell suppresses curse; blocked totem placement under suppression.
+   - `workshop/role_constraints.gd` & `workshop/cs/RoleConstraints.cs`: Removed `< 5 alive` restriction and preserved townsfolk gifts on toll nights in lockstep.
+   - `ui/case_workshop.gd`: Updated Sexton explanation text.
+
+4. **Test Suite (`tools/test_chunk6a_sexton_brute.gd` + `.uid`):**
+   - 10-check automated test suite covering Brute hunting, Demon idle, two-trace murder generation, Seer/Archivist identification, Sexton Lamplighter walk, minion suppression, Scion/Revenant blocks, and once-per-case rules.
+   - Aligned directly with the C#-only solver runtime (no retired VERIFY mode).
+   - Registered in `tools/ci_fast_suites.txt`.
+
+---
+
 ## 2026-11-04 night, Claude-Bailiff: patch_014 checked and fixed; M2b and patch_014 on main; `baseline_9187b09`
 
 - **patch_014** (base `6ff64a4`) applied on `argon/patch-014-monitor-confessor`, then main

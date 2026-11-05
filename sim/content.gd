@@ -405,7 +405,7 @@ const ROLES = {
 	"seer": {"name": "Seer", "align": "good", "kind": "info",
 		"desc": "Each night, picks two people and learns if either is the demon. One good soul reads falsely as the demon."},
 	"sexton": {"name": "Sexton", "align": "good", "kind": "protect",
-		"desc": "Once per case, with fewer than five alive, may toll the death knell in the evening: that night, no gift that needs walking abroad works."},
+		"desc": "Once per case (not night 0), at the start of night, may toll the church bell and walk through every parish: all minion abilities are suppressed until the next night."},
 	"surveyor": {"name": "Surveyor", "align": "good", "kind": "info", "first_night": true,
 		"desc": "Starts knowing whether or not all the residents on a random block (not their own) share the same alignment."},
 	"veteran": {"name": "Veteran", "align": "good", "kind": "passive",
@@ -421,7 +421,7 @@ const ROLES = {
 	"breathstealer": {"name": "Breathstealer", "align": "evil", "kind": "evil", "minion": true, "day": true,
 		"desc": "Once a day, silences someone on the same block, from that evening's meeting until the next evening. Silenced people can still vote."},
 	"revenant": {"name": "Revenant", "align": "evil", "kind": "evil", "minion": true, "day": true,
-		"desc": "Hides a totem somewhere each day it has none in play. If hanged while a totem is hidden, a good soul who voted for it turns evil until the totem is found."},
+		"desc": "Hides a totem somewhere each day it has none in play. If executed, that night a townsfolk who voted for them turns evil until the totem is found."},
 	"scion": {"name": "Scion", "align": "evil", "kind": "evil", "minion": true,
 		"desc": "If the demon is executed while five or more are alive, the Scion becomes the demon."},
 }
@@ -429,8 +429,8 @@ const ROLES = {
 ## The script: what may be in play in a case. No duplicates.
 const GOOD_ROLES = ["archivist", "augur", "chronicler", "clerk", "confessor", "dowser", "executor", "gravedigger", "lamplighter",
 	"magistrate", "martyr", "medium", "monitor", "nightwatch", "psychologist", "registrar", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
-const MINION_ROLES = ["breathstealer", "poisoner", "revenant", "scion"]
-const EVIL_ROLES = ["demon", "breathstealer", "poisoner", "revenant", "scion"]
+const MINION_ROLES = ["breathstealer", "brute", "poisoner", "revenant", "scion"]
+const EVIL_ROLES = ["demon", "breathstealer", "brute", "poisoner", "revenant", "scion"]
 ## Gifts that produce readings to share.
 const INFO_ROLES = ["archivist", "augur", "chronicler", "clerk", "confessor", "dowser", "executor", "gravedigger", "hearthwitch",
 	"lamplighter", "magistrate", "medium", "monitor", "nightwatch", "psychologist", "registrar", "rumormonger", "seer", "surveyor"]

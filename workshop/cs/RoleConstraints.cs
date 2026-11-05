@@ -409,27 +409,6 @@ internal static class RoleConstraintsKernel
             {
                 return 0.0;
             }
-            for (int c = 0; c < baseCardCount; c++)
-            {
-                int off = c * CardStride;
-                int flags = cardInts[off + 1];
-                if ((flags & FlagQuoted) != 0)
-                {
-                    continue;
-                }
-                int kind = cardInts[off];
-                int roleId = cardInts[off + 5];
-                if (kind == KindReport
-                    && (roleId == RoleNightwatch || roleId == RoleLamplighter || roleId == RoleMedium)
-                    && cardInts[off + 9] == sextonNight)
-                {
-                    return 0.0;
-                }
-                if ((flags & FlagHasRelaySource) != 0 && cardInts[off + 8] == sextonNight)
-                {
-                    return 0.0;
-                }
-            }
         }
 
         // 4. Veteran approach check (lines 177-186)
