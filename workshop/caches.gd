@@ -55,6 +55,7 @@ static func clear_all() -> void:
 	MovementModel.cache.clear()
 	ReadingChallenges.cache.clear()
 	ReadingChallenges.fraction_cache.clear()
+	ReadingChallenges._index_cache.clear()
 	ReasonAttribution._fits_cache.clear()
 	Reasoner.matches.clear()
 	Reasoner.preparations.clear()
