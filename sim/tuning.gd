@@ -188,6 +188,16 @@ class Roles:
 	const SEXTON = {
 		"toll_few_left": 0.35,
 		"toll_per_dead": 0.1,
+		# Telling of the toll. The bell is not public: the Sexton keeps it quiet while the
+		# suppression runs (the toll night and the day after), then is open about it from
+		# the morning after that. Pressure, a nomination or the podium make them tell early.
+		"reveal_early_base": -1.1,
+		"reveal_early_pressure": 2.2,
+		"reveal_early_nominated": 1.6,
+		"reveal_early_podium": 0.9,
+		"reveal_early_trust": 0.8,
+		"claim_wait": 2.5,       # meeting claim term while the bell still holds
+		"claim_after_toll": 1.4,  # meeting claim term once it has worn off
 	}
 
 	const PSYCHOLOGIST = {
@@ -653,6 +663,7 @@ class Evil:
 	const TEAMMATE_VALUE_DEMON_WITH_SCION = 1.1
 	const TEAMMATE_VALUE_SCION_ACTIVE = 1.45
 	const TEAMMATE_VALUE_MINION = 1.0
+	const TEAMMATE_VALUE_REVENANT_CURSE = 0.25  # a Revenant with its curse ready: let it hang
 	const PUBLIC_HOSTILITY_VOTE_WEIGHT = 0.5
 	const PUBLIC_HOSTILITY_CAP = 2.5
 	const INTEL_THREAT_CAP = 3.0

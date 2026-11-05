@@ -808,6 +808,27 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		lines.append(home_alibi(w, n, nd))
 		facts.append(_alibi_home(n, nd))
 		vantage = n.home_block
+	elif _honest_outing(w, n, nd) == "reveal":
+		# A good gift that took them out, and they choose to tell of it (the Sexton's toll).
+		var own_def = C.role_def(n.role)
+		var first_claim: bool = n.claimed_role != n.role
+		n.claimed_role = n.role
+		n.max_tier = maxi(n.max_tier, 3)
+		if first_claim:
+			facts.append({"kind": "claim", "subject": [n.id], "role": n.role, "source": n.id, "private": true,
+				"text": "%s told you privately they are the %s." % [n.name, C.role_name(n.role)]})
+		var duty_out: Dictionary = own_def.night_duty_alibi(w, n, nd, was_out, block, _mind(), C.block_name)
+		lines.append(duty_out["line"])
+		facts.insert(0, duty_out["fact"])
+		vantage = duty_out["vantage"]
+		how = duty_out["how"]
+	elif _honest_outing(w, n, nd) == "withhold":
+		# Honest but not ready to tell (the bell still holds): a refusal, never a lie.
+		w.dlog.think(n.id, "stonewall", "Keeps the night's errand (%s gift) to themself for now." % C.role_name(n.role))
+		refused_whereabouts = true
+		lines.append(whereabouts_refusal(n, nd))
+		facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "day": nd, "phase": C.NIGHT,
+			"text": "%s refused to say where they were on night %d." % [n.name, nd]})
 	else:
 		# Out with something to hide: evil work, a personal secret, or a hidden Night Watch gift.
 		var hiding = "evil work" if n.is_evil() else ("hidden %s gift" % C.role_name(n.role) if C.ROLES[n.role].get("night_walk", false) and n.secret.is_empty() else "secret: %s" % n.secret.get("kind", "?"))
@@ -868,7 +889,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				continue
 			w.dlog.think(n.id, "slip", "Lets slip seeing %s on %s, though they say they were on %s (p=%.2f)." % [b["who"], b["block"], vantage, slip])
 		reported.append(b)
-	var ov_sight: Dictionary = C.role_def(n.claimed_role).override_night_sightings(w, n, nd) if C.has_role_def(n.claimed_role) else {}
+	var ov_sight: Dictionary = C.role_def(n.claimed_role).override_night_sightings(w, n, nd, reported) if C.has_role_def(n.claimed_role) else {}
 	if ov_sight.get("handled", false):
 		reported = ov_sight["reported"]
 	elif n.is_evil() and vantage != "":
@@ -1275,6 +1296,19 @@ static func card_weight_against(w, card: Dictionary, target_id: String) -> float
 
 static func citable_reason(w, n, t_id: String, audience: String = "town") -> String:
 	return _mind().citable_reason(w, n, t_id, audience)
+
+## RoleDef.honest_outing for the asker's real role, decided once per night asked and day
+## (so the reveal/withhold branches above agree, and asking twice gets one answer).
+static func _honest_outing(w, n, nd: int) -> String:
+	if n.is_evil() or not C.has_role_def(n.role):
+		return ""
+	var memo: Dictionary = n.dialogue_memory.get("honest_outing", {})
+	var key: String = "%d:%d" % [nd, w.day]
+	if not memo.has(key):
+		memo[key] = C.role_def(n.role).honest_outing(w, n, nd, _mind(), false)
+		n.dialogue_memory["honest_outing"] = memo
+	return str(memo[key])
+
 
 static func decide(w, n, topic: String, parts: Dictionary, why: String) -> bool:
 	return _mind().decide(w, n, topic, parts, why)

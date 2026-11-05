@@ -10,6 +10,7 @@ const SextonDef = preload("res://sim/roles/sexton.gd")
 const SeerDef = preload("res://sim/roles/seer.gd")
 const ArchivistDef = preload("res://sim/roles/archivist.gd")
 const ScriptBuilder = preload("res://sim/script_builder.gd")
+const Evil = preload("res://sim/evil.gd")
 
 var failures: int = 0
 var checks: int = 0
@@ -45,6 +46,11 @@ func _init() -> void:
 	_test_sexton_townsfolk_gifts_unaffected()
 	_test_sexton_once_per_case()
 	_test_brute_experimental_on_scripts()
+
+	_test_sexton_bell_stops_breathstealer()
+	_test_sexton_honest_about_toll_night()
+	_test_evil_reads_the_bell()
+	_test_veteran_reads_the_hunter()
 
 	if failures == 0:
 		print("Slice 6A (Sexton rework & Brute minion): %d checks passed." % checks)
@@ -278,3 +284,137 @@ func _test_brute_experimental_on_scripts() -> void:
 	_check(not drawn, "60 dynamic scripts never draw the Brute")
 	_check("brute" in ScriptBuilder.dynamic({"seed": 7, "include": ["brute"]}).minions, "a playtest 'include' mark still puts the Brute on")
 	_check("brute" in ScriptDef.roster().minions, "the script editor still offers the Brute")
+
+
+## Maintenance 2026-11-05 A1: the bell stops the Breathstealer (choosing and the meeting).
+func _test_sexton_bell_stops_breathstealer() -> void:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(67890, 7)
+	var w = g.w
+	var bs = w.living().filter(func(p): return p.is_evil() and p != w.demon())[0]
+	_give_role(w, bs, "breathstealer")
+	w.day = 2
+	w.phase = C.MORNING
+	w.sexton_suppression_night = 1
+	_check(w.is_minion_suppressed(), "bell rung on night 1 still holds on day 2")
+	C.role_def("breathstealer").run_day_gift(w, bs, Mind, Evil)
+	_check(w.living().all(func(p): return p.silence_pending != 2), "Breathstealer chooses nobody to silence while the bell holds")
+	var victim = w.living_good()[1]
+	victim.silence_pending = 2
+	w.phase = C.EVENING
+	w.open_meeting()
+	_check(not victim.silenced and not victim.id in w.meeting.get("silenced", []), "an earlier silencing doesn't land at a meeting under the bell")
+	_check(w.dlog.entries.any(func(e): return str(e.get("type", e.get("kind", ""))) == "silence_suppressed"), "the suppressed silencing is logged")
+
+
+## Maintenance A2 + design: the honest Sexton never lies about the toll night. While the
+## bell holds they keep it quiet (refuse) unless pressed hard; from the morning after it
+## wears off they tell of it.
+func _test_sexton_honest_about_toll_night() -> void:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(56789, 7)
+	var w = g.w
+	var sx = w.living_good()[0]
+	_give_role(w, sx, "sexton")
+	sx.gift_used = true
+	sx.claimed_role = ""
+	sx.claim_public = false
+	sx.secret = {}
+	sx.secret_mod = ""
+	sx.pressure = 0.0
+	w.sexton_tolled_night = 1
+	w.sexton_suppression_night = 1
+	var other_block: String = C.BLOCKS.keys().filter(func(b): return b != sx.home_block)[0]
+	sx.history[w.time_key(1, C.NIGHT)] = "night:" + other_block
+	w.day = 2
+	w.phase = C.MORNING
+	var r: Dictionary = Mind.answer_night(w, sx, 1)
+	var kinds: Array = r.facts.map(func(f): return str(f.get("kind", "")))
+	_check(not (1 in sx.lied_nights), "honest Sexton doesn't lie about the toll night while the bell holds")
+	_check(not r.facts.any(func(f): return f.get("kind", "") == "alibi" and f.get("home", false)), "no 'home all night' account for the toll night")
+	_check("refusal" in kinds or r.facts.any(func(f): return f.get("duty", "") == "sexton"), "while the bell holds: a refusal, or the truth if pressed")
+	# Pressed hard (nominated, rattled): they tell the truth early.
+	var sx2_res: Array = []
+	for i in range(6):
+		sx.dialogue_memory.erase("honest_outing")
+		sx.dialogue_memory.erase("night_accounts")
+		sx.claimed_role = ""
+		sx.max_tier = 0
+		sx.pressure = 1.0
+		w.meeting["nominated"] = [sx.id]
+		var rr: Dictionary = Mind.answer_night(w, sx, 1)
+		sx2_res.append(rr.facts.any(func(f): return f.get("duty", "") == "sexton"))
+	w.meeting["nominated"] = []
+	_check(sx2_res.count(true) >= 4, "under pressure the Sexton is quick to tell of the toll (%d/6)" % sx2_res.count(true))
+	# The morning after the bell wears off: open about it.
+	sx.dialogue_memory.erase("honest_outing")
+	sx.dialogue_memory.erase("night_accounts")
+	sx.claimed_role = ""
+	sx.max_tier = 0
+	sx.pressure = 0.0
+	w.day = 3
+	var r3: Dictionary = Mind.answer_night(w, sx, 1)
+	_check(r3.facts.any(func(f): return f.get("duty", "") == "sexton" and f.get("kind", "") == "sighting"), "from day 3 the Sexton tells of the toll when asked")
+	_check(sx.claimed_role == "sexton", "telling of the toll names the gift")
+	_check(r3.facts.any(func(f): return f.get("kind", "") == "claim" and f.get("role", "") == "sexton"), "with a private claim card")
+	# At the meeting: the claim leans to waiting while the bell holds, to telling after.
+	var parts_wait: Dictionary = {}
+	w.day = 2
+	C.role_def("sexton").score_public_claim(w, sx, parts_wait)
+	var parts_over: Dictionary = {}
+	w.day = 3
+	C.role_def("sexton").score_public_claim(w, sx, parts_over)
+	_check(parts_wait.get("toll_wait", 0.0) < 0.0 and parts_over.get("toll_over", 0.0) > 0.0, "meeting claim waits while the bell holds, then leans open")
+
+
+## Design: evil plays the bell only once a Sexton has told the town of it.
+func _test_evil_reads_the_bell() -> void:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(67890, 10)
+	var w = g.w
+	var minion = w.living().filter(func(p): return p.is_evil() and p != w.demon())[0]
+	_give_role(w, minion, "scion")
+	w.day = 2
+	w.phase = C.EVENING
+	w.sexton_tolled_night = 1
+	w.sexton_suppression_night = 1
+	var before: bool = Evil.scion_fallback_active(w)
+	_check(before, "evil that hasn't heard of the bell still counts on the Scion")
+	var sx = w.living_good()[0]
+	_give_role(w, sx, "sexton")
+	sx.gift_used = true
+	var lines: Array = []
+	var facts: Array = []
+	C.role_def("sexton").on_public_claim(w, sx, lines, facts, Mind)
+	_check(int(w.evil_plan.get("bell_believed", -1)) == 1, "a public toll tells evil the bell rang on night 1")
+	_check(not lines.is_empty() and facts.any(func(f): return f.get("duty", "") == "sexton" and f.get("public", false)), "the Sexton tells the town of the toll, with a card")
+	_check(not Evil.scion_fallback_active(w), "evil that believes the bell holds stops counting on the Scion")
+	w.day = 3
+	w.phase = C.MORNING
+	_check(Evil.scion_fallback_active(w), "once the bell has worn off, the Scion counts again")
+	# Revenant: fine to let it hang while its curse is ready, not under a believed bell.
+	_give_role(w, minion, "revenant")
+	w.totem = {"loc": "church", "day": 3, "owner": minion.id, "material": minion.home_block}
+	_check(Evil.teammate_value(w, minion.id) < Tuning.Evil.TEAMMATE_VALUE_MINION, "a Revenant with its curse ready is worth less to protect")
+	w.day = 2
+	w.phase = C.EVENING
+	_check(Evil.teammate_value(w, minion.id) >= Tuning.Evil.TEAMMATE_VALUE_MINION, "not while evil believes the bell holds (no curse)")
+
+
+## Maintenance A12: the Veteran reads whoever hunted (the Brute, when it hunts).
+func _test_veteran_reads_the_hunter() -> void:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(67890, 10)
+	var w = g.w
+	var brute = w.living().filter(func(p): return p.is_evil() and p != w.demon())[0]
+	_give_role(w, brute, "brute")
+	brute.poisoned = false
+	_check(w.night_killer() == brute, "an active Brute is tonight's killer")
+	w.sexton_suppression_night = w.day
+	w.phase = C.NIGHT
+	_check(w.night_killer() == w.demon(), "under the bell the Demon hunts")
+

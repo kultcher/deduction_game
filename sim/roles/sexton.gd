@@ -47,5 +47,106 @@ func try_toll(w, sx, mind) -> bool:
 		return false
 	w.sexton_suppression_night = w.day
 	w.dlog.add("sexton_toll", sx.id, "", {"works": true}, "%s tolls the church bell: all minion abilities are suppressed until next night." % sx.name)
-	w._add_info(sx, {"data": {"night": w.day}, "true": true, "text": "I tolled the church bell on night %d" % w.day}, true)
+	w._add_info(sx, {"data": {"night": w.day}, "true": true, "text": "I tolled the church bell on night %d" % w.day})
 	return true
+
+
+# ------------------------------------------------------------ telling of the toll
+# The toll is not public knowledge. The Sexton keeps it to themself while the bell holds
+# (the toll night and the day after), and is open about it from the morning after that.
+# Under pressure (pressed with a sighting, nominated, called to the podium) they tell early.
+
+## True once the toll night's suppression has run its course (from the morning of the
+## second day after the toll).
+static func toll_window_over(w) -> bool:
+	return w.sexton_tolled_night >= 0 and w.day >= w.sexton_tolled_night + 2
+
+
+func _tolled_on(w, n, nd: int) -> bool:
+	return n != null and n.role == "sexton" and not n.is_evil() and n.gift_used and nd == w.sexton_tolled_night
+
+
+## Asked where they were on a night they were out: "reveal" (tell of the toll and the
+## gift), "withhold" (refuse to say; never a lie) or "" (not this role's business).
+func honest_outing(w, n, nd: int, mind, public: bool) -> String:
+	if not _tolled_on(w, n, nd):
+		return ""
+	if toll_window_over(w) or n.claimed_role == "sexton":
+		return "reveal"
+	var T: Dictionary = Tuning.Roles.SEXTON
+	var parts: Dictionary = {"base": T.reveal_early_base, "pressure": n.pressure * T.reveal_early_pressure}
+	if n.id in w.meeting.get("nominated", []) or str(w.meeting.get("block", "")) == n.id:
+		parts["nominated"] = T.reveal_early_nominated
+	if public:
+		parts["podium"] = T.reveal_early_podium
+	else:
+		parts["trust"] = (n.trust - 0.5) * T.reveal_early_trust
+	var tell: bool = mind.decide(w, n, "sexton_reveal_early", parts,
+		"Asked about the toll night while the bell still holds: tell of the toll now?")
+	return "reveal" if tell else "withhold"
+
+
+func uses_night_duty_alibi(w, n, nd: int, was_out: bool) -> bool:
+	return was_out and _tolled_on(w, n, nd) and n.claimed_role == "sexton"
+
+
+func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_name_fn: Callable) -> Dictionary:
+	if not uses_night_duty_alibi(w, n, nd, was_out):
+		return {}
+	var C = content()
+	var when: String = C.spoken_when(nd, w.day)
+	return {
+		"handled": true,
+		"line": mind.say_voiced(n, "duty_sexton", "I was out %s. I tolled the church bell and walked every parish after it." % when, {"when": when}),
+		"fact": {
+			"kind": "sighting",
+			"subject": [n.id],
+			"block": block,
+			"day": nd,
+			"phase": 3,
+			"source": n.id,
+			"duty_claim": true,
+			"duty": "sexton",
+			"text": "%s says they tolled the church bell on night %d and walked every parish (they were out)." % [n.name, nd],
+		},
+		"vantage": block,
+		"how": "street",
+	}
+
+
+func pressed_night_line(_w, _n, _fact: Dictionary, _night: int, when: String, alternate: bool, _block_name_fn: Callable) -> String:
+	return ("The bell still accounts for my being out %s." if alternate else "I was out tolling the bell %s. That hasn't changed.") % when
+
+
+func pressed_night_slots(_w, _n, _fact: Dictionary, _night: int, when: String, _block_name_fn: Callable) -> Dictionary:
+	return {"when": when}
+
+
+## At the meeting: keep quiet while the bell holds, be open once it has worn off.
+func score_public_claim(w, n, parts: Dictionary) -> void:
+	super.score_public_claim(w, n, parts)
+	if n.role != "sexton" or n.is_evil() or not n.gift_used or w.sexton_tolled_night < 0:
+		return
+	if toll_window_over(w):
+		parts["toll_over"] = Tuning.Roles.SEXTON.claim_after_toll
+	else:
+		parts["toll_wait"] = -Tuning.Roles.SEXTON.claim_wait
+
+
+## Going public, the Sexton tells of the toll. Evil now believes the bell rang that night
+## (whether or not a broken gift made it work), and plays the suppression accordingly.
+func on_public_claim(w, n, lines: Array, facts: Array, mind) -> void:
+	if n.role != "sexton" or n.is_evil() or not n.gift_used or w.sexton_tolled_night < 0:
+		return
+	w.evil_plan["bell_believed"] = w.sexton_tolled_night
+	if n.dialogue_memory.get("toll_told_public", false):
+		return
+	n.dialogue_memory["toll_told_public"] = true
+	var nd: int = w.sexton_tolled_night
+	var C = content()
+	var when: String = C.spoken_when(nd, w.day)
+	lines.append(mind.say_voiced(n, "sexton_toll_public", "I tolled the church bell %s. No minion's work held from then until the next nightfall." % when, {"when": when}))
+	var where: String = n.history.get(w.time_key(nd, C.NIGHT), "home:" + n.home_block)
+	facts.append({"kind": "sighting", "subject": [n.id], "block": where.substr(where.find(":") + 1), "day": nd, "phase": 3,
+		"source": n.id, "duty_claim": true, "duty": "sexton", "public": true,
+		"text": "%s says they tolled the church bell on night %d: minion powers suppressed until the next night." % [n.name, nd]})

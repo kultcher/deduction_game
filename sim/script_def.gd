@@ -185,8 +185,9 @@ func check(count: int = 0) -> Dictionary:
 		var cfg: Dictionary = C.SETUPS.get(n, {})
 		if cfg.is_empty():
 			continue
-		if town.size() < cfg.town:
-			errors.append("A %d-person town deals %d town roles; the script has %d." % [n, cfg.town, town.size()])
+		if town.size() <= cfg.town:
+			# One more than the deal at least: evil bluffs a town role that isn't in play.
+			errors.append("A %d-person town deals %d town roles, and evil needs at least one more to bluff: the script needs %d or more; it has %d." % [n, cfg.town, cfg.town + 1, town.size()])
 		if minions.size() < cfg.minions:
 			errors.append("A %d-person town deals %d minion%s; the script has %d." % [n, cfg.minions, "" if cfg.minions == 1 else "s", minions.size()])
 		if forced_in(town).size() > cfg.town:

@@ -77,10 +77,10 @@ func generate_reading(w, n, ctx: Dictionary, _mind) -> Dictionary:
 	var reg_evil: bool = is_evil
 	var marked_triggered: bool = false
 
-	if target.secret_mod == "marked" and not is_evil:
-		if w.registers_evil(target) or w.chance(Tuning.Setup.MARKED_EVIL_CHANCE):
-			reg_evil = true
-			marked_triggered = true
+	# One roll, as everywhere else (World.registers_evil already rolls the Marked chance).
+	if target.secret_mod == "marked" and not is_evil and w.registers_evil(target):
+		reg_evil = true
+		marked_triggered = true
 
 	var forgot: bool = reg_evil
 	var why: String = ""
@@ -105,7 +105,8 @@ func generate_reading(w, n, ctx: Dictionary, _mind) -> Dictionary:
 
 	var nm = func(id: String) -> String:
 		return w.by_id[id].name if w.by_id.has(id) else id
-	var is_true: bool = (forgot == reg_evil)
+	# Measured against the truth: a Marked soul read as evil (no memory) is a false reading.
+	var is_true: bool = (forgot == is_evil)
 	var entry: Dictionary = {
 		"data": data,
 		"true": is_true,
@@ -114,6 +115,13 @@ func generate_reading(w, n, ctx: Dictionary, _mind) -> Dictionary:
 	if why != "":
 		entry["why"] = why
 	return entry
+
+
+## A remembered confession speaks for the confessed: their spirit is good.
+func clears(d: Dictionary) -> Array:
+	if bool(d.get("forgot", false)) or str(d.get("target", "")) == "":
+		return []
+	return [str(d.get("target", ""))]
 
 
 func uses_night_duty_alibi(_w, n, _nd: int, was_out: bool) -> bool:

@@ -172,8 +172,14 @@ class Worker:
                 if not missing:
                     break
                 if missing[0] == seed and proc.returncode != 0 and current is None:
-                    # Failed before starting any game (a load error): don't loop forever.
+                    # Failed before starting any game (a load error): don't loop forever, but
+                    # record every remaining seed as failed so none goes missing silently.
                     self._note_error(seed, "startup", ["exit %s" % proc.returncode])
+                    with open(self.results, "a", encoding="utf-8") as fh:
+                        for s_left in missing:
+                            fh.write(json.dumps({"schema": "sweep_v1", "seed": s_left, "npcs": self.a.npcs, "mode": self.a.mode,
+                                                 "insight": self.a.insight, "sha": self.a.sha, "dynamic": True,
+                                                 "failed": "startup", "complete": False}) + "\n")
                     break
                 seed = missing[0]
         shutil.rmtree(self.log_root, ignore_errors=True)
@@ -207,6 +213,9 @@ def main():
         t.join()
     total = sum(len(w._recorded()) for w in workers)
     print("shard %s %s: %d/%d records in %.0f s" % (cell_name(a), a.seeds, total, n, time.time() - t0), flush=True)
+    if total < n:
+        print("shard %s %s: %d seed(s) have no record" % (cell_name(a), a.seeds, n - total), flush=True)
+        return 1
     return 0
 
 

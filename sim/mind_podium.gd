@@ -166,7 +166,27 @@ static func press_night(w, d, nd: int, grounds: bool) -> Dictionary:
 	else:
 		var parts: Dictionary = _stakes(w, d)
 		var walking_gift: bool = not d.is_evil() and d.secret.is_empty() and C.ROLES[d.role].get("night_walk", false)
-		if walking_gift:
+		var outing: String = C.role_def(d.role).honest_outing(w, d, nd, _mind(), true) if not d.is_evil() and C.has_role_def(d.role) else ""
+		if outing == "reveal":
+			# A good gift that took them out (the Sexton's toll): come out with it before the town.
+			# The account below tells of the toll, so the claim doesn't announce it again.
+			d.dialogue_memory["toll_told_public"] = true
+			MindMeeting._public_disclosure(w, d, lines, facts, false)
+			var duty_out: Dictionary = C.role_def(d.role).night_duty_alibi(w, d, nd, was_out, block, _mind(), C.block_name)
+			lines.append(duty_out["line"])
+			facts.append(duty_out["fact"])
+			vantage = duty_out["vantage"]
+			how = duty_out["how"]
+			outcome = "gift_outing"
+		elif outing == "withhold":
+			w.dlog.think(d.id, "stonewall", "Pressed at the podium: keeps the night's errand (%s gift) to themself for now." % C.role_name(d.role))
+			lines.append(_say(d, "podium_whereabouts_refusal", "Where I spend my nights is my own affair, and I'll not answer for %s here." % C.spoken_when(nd, w.day),
+				{"when": C.spoken_when(nd, w.day)}))
+			facts.append({"kind": "refusal", "subject": [d.id], "source": d.id, "day": nd, "phase": C.NIGHT, "public": true,
+				"text": "%s refused, before the town, to say where they were %s." % [d.name, C.spoken_when(nd, w.day)]})
+			_refused(w, d, grounds)
+			outcome = "refusal"
+		elif walking_gift:
 			var cost: Dictionary = MindMeeting.reveal_cost(w, d)
 			for k in cost:
 				parts["cost_" + k] = -cost[k]
@@ -237,7 +257,7 @@ static func _night_sightings(w, d, nd: int, vantage: String, how: String, lines:
 		if d.told_to.has(MindMeeting._town_sighting_key(d, b)) or not MindMeeting._public_sighting_allowed(w, d, b):
 			continue
 		reported.append(b)
-	var ov: Dictionary = C.role_def(d.claimed_role).override_night_sightings(w, d, nd) if C.has_role_def(d.claimed_role) else {}
+	var ov: Dictionary = C.role_def(d.claimed_role).override_night_sightings(w, d, nd, reported) if C.has_role_def(d.claimed_role) else {}
 	if ov.get("handled", false):
 		reported = ov["reported"].filter(func(b): return not d.told_to.has(MindMeeting._town_sighting_key(d, b)))
 	elif d.is_evil():
