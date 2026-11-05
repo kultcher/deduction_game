@@ -460,15 +460,36 @@ static func caution(w, n) -> float:
 		return maxf(Tuning.Evil.DEMON_CAUTION_FLOOR, C.EVIL_CAUTION_DEMON - Tuning.Evil.DEMON_CAUTION_DRIFT * (w.day - 1))
 	return maxf(C.MINION_CAUTION_FLOOR, C.EVIL_CAUTION_MINION - C.MINION_ID_DRIFT * maxi(0, w.day - 2))
 
+## True when evil believes the Sexton's bell holds right now: a Sexton told the town of
+## a toll (`evil_plan.bell_believed`) whose window (that night and the day after) is open.
+## Evil goes by what it was told, not by whether a broken gift made the bell work.
+static func believes_bell(w) -> bool:
+	var nd: int = int(w.evil_plan.get("bell_believed", -1))
+	return nd >= 0 and (w.day == nd or (w.day == nd + 1 and w.phase != C.NIGHT))
+
 ## True when executing the current Demon would promote a living, unbroken Scion
-## rather than ending the case (`alive_before >= 5`; Sexton suppression deferred to Chunk 6).
+## rather than ending the case (`alive_before >= 5`), as far as evil knows: a bell they
+## have heard of means no Scion will rise today.
 static func scion_fallback_active(w) -> bool:
+	if believes_bell(w):
+		return false
 	var sc = w.living_with_role("scion")
 	return C.role_def("scion").can_promote_to_demon(sc, w.living().size())
+
+## True when hanging this Revenant would lay its curse, as far as evil knows: a totem is
+## hidden, the Revenant isn't known to be poisoned, and no bell is believed to hold.
+static func revenant_curse_ready(w, rv) -> bool:
+	if rv == null or rv.role != "revenant" or not rv.alive or w.totem.is_empty() or believes_bell(w):
+		return false
+	return not (rv.poisoned and w.living_with_role("poisoner") != null)
 
 ## What a teammate's life is worth to the team: the demon's is the game unless a
 ## live Scion stands ready to inherit, in which case the Scion's cover matters more.
 static func teammate_value(w, id: String) -> float:
+	# A Revenant whose curse is ready is worth hanging to the team: the curse turns a
+	# good voter. Not if they think the Sexton's bell holds (no curse today).
+	if w.by_id.has(id) and revenant_curse_ready(w, w.by_id[id]):
+		return Tuning.Evil.TEAMMATE_VALUE_REVENANT_CURSE
 	if scion_fallback_active(w):
 		if id == w.demon_id:
 			return Tuning.Evil.TEAMMATE_VALUE_DEMON_WITH_SCION

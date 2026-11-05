@@ -163,7 +163,7 @@ func withholds_night_sightings(n, nd: int, mind) -> String:
 	return ""
 
 
-func override_night_sightings(w, n, nd: int) -> Dictionary:
+func override_night_sightings(w, n, nd: int, _reported: Array = []) -> Dictionary:
 	if not n.is_evil():
 		return {}
 	var watch_story: Dictionary = fake_watch_entry(n, nd)

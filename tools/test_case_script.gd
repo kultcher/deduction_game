@@ -72,6 +72,14 @@ func _init() -> void:
 	var small = ScriptDef.default_script()
 	small.town = small.town.slice(0, 6)
 	_check(small.check(7).errors.is_empty() and not small.check(10).errors.is_empty(), "6 town roles deal a 7-person town but not a 10")
+	# Maintenance 2026-11-05 A5: exactly as many town roles as the deal leaves evil nothing to bluff.
+	var exact = ScriptDef.default_script()
+	exact.town = exact.town.slice(0, 5)
+	_check(not exact.check(7).errors.is_empty(), "5 town roles can't deal a 7-person town: evil needs a spare to bluff")
+	exact.town = ScriptDef.default_script().town.slice(0, 8)
+	_check(exact.check(10).errors.is_empty(), "8 town roles deal a 10-person town")
+	exact.town = ScriptDef.default_script().town.slice(0, 7)
+	_check(not exact.check(10).errors.is_empty(), "7 town roles can't deal a 10-person town")
 	var over = ScriptDef.default_script()
 	over.forced = ["poisoner", "scion"]
 	_check(not over.check(7).errors.is_empty() and over.check(10).errors.is_empty(), "two forced minions block 7 but not 10")

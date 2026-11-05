@@ -48,6 +48,7 @@ func _init() -> void:
 	_test_workshop_live_evidence_and_assessment()
 	_test_workshop_solver_monitor_and_confessor()
 	_test_muddler_monitor_and_confessor()
+	_test_maintenance_2026_11_05()
 
 
 	if failures == 0:
@@ -481,3 +482,53 @@ func _test_muddler_monitor_and_confessor() -> void:
 	var mut_conf = Muddler.mutate_reading_entry(w, muddler, "other", orig_conf)
 	_check(not mut_conf.is_empty(), "Muddler mutates Confessor reading")
 	_check(mut_conf.data.get("target") != "bob" or mut_conf.data.get("forgot") == true, "Muddler changes Confessor target or flips to forgot")
+
+
+## Maintenance 2026-11-05: A3 (Monitor bluffer night-scoped), A8 (Confessor clears),
+## A11 (Marked rolled once; misreads recorded false).
+func _test_maintenance_2026_11_05() -> void:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(33123, 7)
+	var w = g.w
+	var rdef = C.role_def("monitor")
+	var bluffer = w.demon()
+	var mate = w.living().filter(func(p): return p.is_evil() and p != bluffer)
+	var good = w.living_good()
+	var reported: Array = [
+		{"kind": "saw", "who": good[0].id, "block": bluffer.home_block, "day": 2, "phase": C.NIGHT, "how": "street"},
+		{"kind": "saw", "who": good[1].id, "block": bluffer.home_block, "day": 1, "phase": C.NIGHT, "how": "street"},
+		{"kind": "saw", "who": good[2].id, "block": bluffer.home_block, "day": 2, "phase": C.NIGHT, "how": "window"},
+	]
+	if not mate.is_empty():
+		bluffer.beliefs.append({"kind": "saw", "who": mate[0].id, "block": bluffer.home_block, "day": 2, "phase": C.NIGHT, "how": "street"})
+	var ov: Dictionary = rdef.override_night_sightings(w, bluffer, 2, reported)
+	var whos: Array = ov.get("reported", []).map(func(b): return b.who)
+	_check(ov.get("handled", false) and whos == [good[0].id], "evil Monitor bluffer reports only the night asked, from the filtered list, no window sightings")
+	_check(mate.is_empty() or not mate[0].id in whos, "and never a teammate")
+
+	var cdef = C.role_def("confessor")
+	_check(cdef.clears({"target": good[0].id, "good": true}) == [good[0].id], "a remembered confession clears the confessed")
+	_check(cdef.clears({"forgot": true}).is_empty(), "a forgotten one clears nobody")
+
+	# Marked: one roll. Over many seeds the Confessor's misread rate is MARKED_EVIL_CHANCE,
+	# not the ~75% the second roll gave; and the misread is recorded as false.
+	var conf = good[0]
+	_give_role(w, conf, "confessor")
+	conf.poisoned = false
+	conf.secret_mod = ""
+	var tgt = good[1]
+	tgt.secret_mod = "marked"
+	w.day = 2
+	var forgot: int = 0
+	var false_ok: bool = true
+	for i in range(400):
+		w.rng.seed = 90000 + i
+		var r: Dictionary = cdef.generate_reading(w, conf, {"confessor_t": tgt.id}, Mind)
+		if bool(r.data.get("forgot", false)):
+			forgot += 1
+			false_ok = false_ok and not bool(r["true"])
+	var rate: float = forgot / 400.0
+	_check(absf(rate - Tuning.Setup.MARKED_EVIL_CHANCE) < 0.08, "Confessor reads a Marked soul as evil at the Marked chance (%.2f vs %.2f)" % [rate, Tuning.Setup.MARKED_EVIL_CHANCE])
+	_check(false_ok, "a Marked misread is recorded as a false reading")
+
