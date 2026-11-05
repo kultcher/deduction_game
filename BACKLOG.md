@@ -15,7 +15,7 @@ Sources (playtest seeds, dates) are in parentheses.
 rebuttals and excuses at the trial, outing yourself to defend someone, NPCs pushing back
 on nominations their own information contradicts (supporters, slice M2c); vote talk and
 vote resistance lines, including "when they agree and still vote no, they say why"
-(M2d); the podium press (M2b); the VN courtroom (M3a); the bot cutover and balance sweep
+(M2d); the VN courtroom (M3a); the bot cutover and balance sweep
 (M4).
 
 ---

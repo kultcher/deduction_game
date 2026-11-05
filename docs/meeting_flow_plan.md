@@ -1,6 +1,6 @@
 # Meeting Flow Overhaul: Trials, Podium Press, Supporters, Peer Role Gossip & VN Courtroom
 
-**Status:** Steps 1 (`nomination_case`), 2 (`defend_self`), streamed `testimony_step`, and gallows `last_words` are live on `main` (`35d319b`, post-Legacy-Purge Phase 3 & Tuning Hoist). Opening reactive pacing, player nominations (anchored or raw), Podium Press, `block_safety`, self-paced Supporters, selective post-vote resistance lines, Peer Role Gossip, and the 15-cast VN Courtroom stage are specified below as the complete implementation plan.  
+**Status:** Steps 1 (`nomination_case`), 2 (`defend_self`), streamed `testimony_step`, and gallows `last_words` are live on `main` (`35d319b`, post-Legacy-Purge Phase 3 & Tuning Hoist). Opening reactive pacing, player nominations (anchored or raw), Podium Press, `block_safety`, self-paced Supporters, selective post-vote resistance lines, Peer Role Gossip, and the 15-cast VN Courtroom stage are specified below as the complete implementation plan. Built since: M0, M1, M2a and M2b (see the slice list below).  
 **Updated:** 2026-11-03 (review pass by Claude with Michael's decisions, same day)  
 **Repository location:** `docs/meeting_flow_plan.md`
 

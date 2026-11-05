@@ -231,6 +231,7 @@ rather than particular gifts. Every role and secret has an icon
 | Augur | Each evening from day 1, learns whether they crossed paths with the Demon in public on the same block that morning or afternoon. Marked may register as the Demon (50%). |
 | Chronicler | On night 3, learns three other people (living or dead): at case start, one was an ordinary townsperson, one carried a secret, one was a minion. Never holds a solo secret. |
 | Clerk | Starts knowing that one of two people holds a particular gift. |
+| Confessor | Each night (not the first), visits one living person in secret and learns whether their spirit is good. Evil and Marked souls return no memory of the visit. Is out at night. |
 | Dowser | The first time each day they're out in public on a block with two or more others also in public, learns how many of those are evil. A day reading, shared with its time. |
 | Executor | Starts knowing one other person. If that person dies, learns their role the next morning (Marked reads as an evil role 30% of the time; poison or Delusional corrupts it). |
 | Gravedigger | Each night after an execution, learns the hanged person's true role. |
@@ -238,12 +239,13 @@ rather than particular gifts. Every role and secret has an icon
 | Magistrate | Each night from night 1, learns whether the first townsperson (other than the player or the Magistrate) to nominate that day shared an alignment with their nominee. No nomination, no reading. |
 | Martyr | Once per case, secretly chooses someone they trust (trust ≥ 0.62, minus suspicion; never night 0). If that person is later executed while good, the Martyr dies in their place: both proven good to everyone. If the chosen is hanged and the Martyr lives, the Martyr learns they were evil. Doesn't cover demon kills. A poisoned Martyr's save fails. Reluctant to vote to hang their chosen. |
 | Medium | Each night after the first Demon kill, visits an unvisited Demon victim's hearth (or revisits the most recent victim) and learns one thing they knew but never said in public (see Mediums below). |
+| Monitor | Each night (not the first), learns the role of one person who walked abroad on their home block, or that no one walked by their house. Never receives window night sightings. |
 | Night Watch | Each night watches a block; learns who moved through it. Is out on that block. |
-| Psychologist | Each night picks someone they talked with that day and learns whom they trust and suspect most. Evil mostly name a teammate as most trusted and their scapegoat as most suspected. Gets a nudge to seek conversations. |
+| Psychologist | Each night (not the first), learns either two statements they heard directly that day, at least one of them a lie or misreading, or that none of the eligible statements they heard that day were false. Gets a nudge to seek conversations. |
 | Registrar | Starts knowing three roles on the script (at most one minion, never the Demon), at least one of them in play. Each night from night 1, checks one person and learns whether they hold one of those roles. Marked gives a false yes 50% of the time when a minion is on the slate. |
 | Rumormonger | Starts knowing that one of two people carries a particular secret (two, not one: secret-holders are good, so one name would clear them). |
 | Seer | Each night picks two people; learns if either is the demon. One good soul reads falsely as the demon (the red herring), and a Marked soul may. Picks scale with Insight (sharp Seers re-check suspects and pair them with someone unchecked). |
-| Sexton | Once per case, with fewer than five alive, may toll the death knell in the evening. That night no gift that walks abroad works: the demon's kill, the Poisoner, Warden, Night Watch, Medium, Lamplighter. Secrets still walk. The toll is public; the ringer isn't named. A poisoned Sexton tolls for nothing. |
+| Sexton | Once per case, from night 1, may toll the church bell at the start of night and walk through every block. For that night and the next day the bell suppresses minion abilities: the Poisoner's poison, the Brute's hunt, the Revenant's totem and curse, the Scion's rise. The toll is silent; the Sexton can still claim it. A poisoned Sexton walks and tolls for nothing. |
 | Surveyor | Starts knowing whether all the residents of one random block (not their own, with at least two residents) share the same alignment. Marked registers as evil 50% of the time. |
 | Veteran | The first attack fails; they learn the last block the attacker came through (their own if the demon lives there). A second attack kills. |
 | Warden | Each night guards one other person's door against the demon. Stands at the door, so can be seen, framed and hunted. After a quiet night they may believe they made a save (see below). |
@@ -262,9 +264,9 @@ is an inference, not something seen).
 
 **Hint packages** (each gift sits in at least one package of 2+, so a hint is never a full
 reveal): official business (Archivist, Clerk, Surveyor, Rumormonger, Chronicler,
-Magistrate, Registrar); night sight (Seer, Night Watch, Lamplighter); the dead
+Magistrate, Registrar); night sight (Seer, Night Watch, Lamplighter, Monitor); the dead
 (Gravedigger, Medium, Sexton, Martyr, Executor); shelter (Warden, Veteran, Martyr);
-reading people (Dowser, Psychologist, Rumormonger, Augur). Keep packages in mind when
+reading people (Dowser, Psychologist, Rumormonger, Augur, Confessor). Keep packages in mind when
 adding roles.
 
 Benched: **Hearthwitch** (learns how many living lane-neighbours are evil; kept in code,
@@ -281,6 +283,7 @@ Benched: **Hearthwitch** (learns how many living lane-neighbours are evil; kept 
 |---|---|
 | Poisoner | Each night poisons one person: their gift fails or lies until the next night. Out at night. With no Poisoner in play the demon is the only evil out at night. |
 | Breathstealer | Once a day (any day phase, likelier later), silences someone on the same block, wherever they are on it. It must be out, not at home. The silence takes hold at that evening's meeting and lasts until the next evening. The silenced can't claim, testify, accuse, nominate, defend, talk with you or chat with NPCs; they can still vote. Never the same person twice running. Picks the most dangerous voice. |
+| Brute (experimental: not dealt automatically until the solver models it) | While alive, hunts and kills in place of the demon, dropping two traces; the demon stays home. Registers as a minion, not the demon. |
 | Revenant | Hides a totem at a location it visits, on any day that began with no totem in play. If hanged with a totem hidden (and not poisoned), a random good yes-voter turns evil; the town is warned. `search` at the totem's location burns it (it's caked with the Revenant's home material, a lead). Found before the hanging: no curse. Found after: the turned soul is good again. Teammates often vote to let a Revenant with a totem hang. |
 | Scion | If the demon is executed while five or more are alive, the Scion becomes the demon (no double kill). |
 
@@ -487,7 +490,7 @@ The meeting's `present` is the same act in public.
 - **Views** (exclusive, each with its own filters): **Places & sightings** (rows by place
   or person), **Statements** (rows by the person a card is about; claims, readings,
   opinions, accusations, Town Hall records), **Process** (nominations, votes, executions,
-  deaths, quiet nights, curses, silences, the knell). A card may show in two views (a
+  deaths, quiet nights, curses, silences). A card may show in two views (a
   Night Watch report is a statement and a set of "ability" markers); it counts once in a
   case.
 - Drawn board with pan, zoom, three levels of detail, paper cards with role icons and the
@@ -568,7 +571,7 @@ speech. Rumour cards from the tavern can't be used.
 
 `workshop/case_eval.gd`, reached through `workshop/jury.gd`,
 `workshop/shared_ledger.gd` and `game/workshop_ownership.gd`; its hot kernel runs in C#
-(`workshop/cs/`, `--backend csharp`), bit-identical to the GDScript path. **It judges the
+(`workshop/cs/`). **It judges the
 player's case; it doesn't search for theories.**
 - **Possible worlds:** every assignment of the evil team, the Demon and the modifier
   holder, enumerated exactly. Each card is a yes/no (or likelihood) fact per world: a
@@ -1135,10 +1138,10 @@ state changes for the case history viewer (`tools/case_viewer.py`,
   `game_presentation.gd` behind one-line forwarders. It emits structured events rendered
   as text. The CLI, the in-engine UI and the bot share one command interpreter.
 - **Solver backend:** the shared model's numerical kernel runs in C# (`workshop/cs/`,
-  built with `dotnet build Demonologist.csproj`) or GDScript (`--backend`); both must give
-  bit-identical results. Rebuild C# after switching branches.
+  built with `dotnet build Demonologist.csproj`), the only solver since Nov 4. Rebuild C#
+  after switching branches.
 - **Golden capture** (`tools/golden_capture.gd`, `tools/golden_diff.py`,
-  `docs/golden_baseline.md`): fixed seeds captured in both backends and diffed against the
+  `docs/golden_baseline.md`): fixed seeds captured and diffed against the
   CI baseline at `--tol 0`. A sim-neutral change must be identical; a behaviour change
   re-records the baseline.
 - **Autoplay bot** (`tools/autoplay.gd`): plays through the same commands a human uses and
@@ -1152,8 +1155,7 @@ state changes for the case history viewer (`tools/case_viewer.py`,
   podium press or the repositioned player turn (meeting plan M4).
 - **Tests:** `python3 tools/run_gd_tests.py --godot <exe>` runs every suite and checks
   failure text (some scripts exit 0 on failure); `tools/ci_fast_suites.txt` is the PR
-  list. Known failure on main (Nov 4): `test_workshop_remaining` "presenting the restored
-  epoch retracts earlier curse-era suspicion".
+  list.
 - **Speed:** `tools/replay_54875.gd` (opening timings and a profile), a late-game probe
   (seed 42, Days 3–4) and `tools/profile_c0.gd` (solver stage timers).
 
@@ -1165,7 +1167,7 @@ A suggested reading of BACKLOG, not a settled plan:
 
 1. **Measure:** the overnight balance sweep on dynamic scripts (win rates by role, demon
    and minion type, solvability, pace), then a paired baseline before more tuning.
-2. **Meeting plan M2b–M4:** podium press, supporters, the player's turn and resistance
+2. **Meeting plan M2c–M4:** supporters, the player's turn and resistance
    lines, the VN courtroom, the bot cutover and sweep.
 3. **The premise matters.**
 4. **The balance pass:** decisive night sightings and the vigil, evil sometimes telling
