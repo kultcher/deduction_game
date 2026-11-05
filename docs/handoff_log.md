@@ -23,9 +23,39 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-05 evening, Claude-Tally: `replay_log.gd --why` (why the town voted), PR #72 open
+## 2026-11-05 evening, Claude-Tally: playtest analysis tools on main (PR #72)
 
-Base `d043da9` (main merged in). Branch `claude/replay-why`. Status: **PR open, for Michael to merge.**
+Base `d043da9`. Merged to `main` by Claude-Tally at Michael's request; all CI green.
+
+### For every agent: use these when a playtest needs explaining
+
+When Michael asks *why* the town voted, read a case or believed something, run these
+before reading code or guessing. Each takes a playtest dev log (`logs/case_<seed>.jsonl`,
+or the attachment) and replays it exactly, dynamic scripts included. About 10 seconds per run.
+
+```text
+# What every good mind believed just before each vote (or only --at SEQ,...)
+godot --headless --path . --script res://tools/replay_log.gd -- <log> --why [--at 480]
+
+# How each mind read a filed case, and variants of it
+godot --headless --path . --script res://tools/explain_case.gd -- <log> --card 78 [--add fenwick] [--drop] [--challenge fenwick=lying]
+
+# Which heard items hold up each mind's suspicion of someone at a point in the log
+godot --headless --path . --script res://tools/explain_case.gd -- <log> --belief fenwick --at 372
+```
+
+- `--why` prints each mind's suspicion (the number the vote reads), joint-world P(evil),
+  P(Demon) and the likeliest evil teams.
+- Case mode prints premise prior → posterior, LR, rivals, and per-card reliability and
+  acceptance.
+- Belief mode is a leave-one-out over the mind's ledger.
+- Seqs come from the log's `seq` field. Check the replay's closing `votes_match=true`.
+  Text DIVERGE lines at meeting testimony are expected.
+- Details: `docs/DECISION_INSPECTOR.md`. Worked example: the case 13910 playtest report
+  in the Project (`claude/playtest-report-2026-11-05.md`, issues 9–10 and the
+  vote section).
+
+### What changed
 
 - Folded into Claude-Bailiff's `tools/replay_log.gd` rather than a second replay tool.
   Its interface is unchanged (`-- <log> [stop_seq]`, same DIVERGE/FILED/REPLAY lines).
@@ -55,8 +85,7 @@ Base `d043da9` (main merged in). Branch `claude/replay-why`. Status: **PR open, 
 - `tools/replay_54875.gd` stays separate: it's a fixed-fixture performance and fallback
   check, not a general replay.
 - Checked on playtest case 13910 (10 NPCs, dynamic script): all five votes replay
-  identically, with and without `--why`. `test_trace_solver` and `test_workshop_action`
-  pass; CI runs the golden diff.
+  identically, with and without `--why`. CI: Suites 1–4 and the Linux golden diff pass.
 
 ---
 
