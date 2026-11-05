@@ -44,12 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 4, evening): `baseline_0534e6b`
+### Current baseline (Nov 4, late): `baseline_175e1f5`
+
+`tools/golden/baseline_175e1f5/` is the capture from `175e1f5`: main with dynamic scripts and
+patch 013 (Psychologist rework, Muddler), plus the C# cutover, the Warden packing fix and
+the `_fraction` C# port. **C# only; CI's gate.** Two captures identical. Identical to the
+C# capture of `47913b7` (dynamic-script before the cutover); every seed differs from
+`baseline_0534e6b` because of patch 013.
+
+### Previous baseline (Nov 4, evening): `baseline_0534e6b`
 
 `tools/golden/baseline_0534e6b/` is the capture from `0534e6b` (Argon's patch_012
 playtest fixes plus meeting plan M2a: anchored/raw player nominations, block safety,
 reactive testimony and crowd fading; plus the M1 second-hand opinion note and the single
-refresh call). **CI diffs against this one now.** Two GDScript captures identical,
+refresh call). Two GDScript captures identical,
 `--mode csharp` identical. Against `baseline_4f7ba7f` every seed parts at record 1:
 012's Rumormonger/Chronicler `chance_content` moves day-1 case-derived suspicion. Passive
 A/B over seeds 2000-2011 (C#): good wins 42% -> 17% (7 NPCs), 8% -> 25% (10 NPCs);
@@ -103,7 +111,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_0534e6b /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_175e1f5 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
