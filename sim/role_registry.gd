@@ -30,6 +30,8 @@ const PoisonerDef = preload("res://sim/roles/poisoner.gd")
 const BreathstealerDef = preload("res://sim/roles/breathstealer.gd")
 const RevenantDef = preload("res://sim/roles/revenant.gd")
 const ScionDef = preload("res://sim/roles/scion.gd")
+const MonitorDef = preload("res://sim/roles/monitor.gd")
+const ConfessorDef = preload("res://sim/roles/confessor.gd")
 
 static var _defs: Dictionary = {}
 static var _initialized: bool = false
@@ -46,6 +48,7 @@ static func _ensure_init() -> void:
 		SurveyorDef, LamplighterDef, NightWatchDef,
 		RumormongerDef, PsychologistDef, VeteranDef, MartyrDef, SextonDef,
 		ChroniclerDef, AugurDef, MagistrateDef, ExecutorDef, RegistrarDef,
+		MonitorDef, ConfessorDef,
 		DemonDef, PoisonerDef, BreathstealerDef, RevenantDef, ScionDef,
 	]:
 		var def = script.new()

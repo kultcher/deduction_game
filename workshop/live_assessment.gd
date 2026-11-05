@@ -6,7 +6,7 @@ const Jury = preload("res://workshop/jury.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const LedgerAudit = preload("res://workshop/ledger_audit.gd")
 const C = preload("res://sim/content.gd")
-const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "warden", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist", "chronicler", "augur", "magistrate", "executor", "registrar"]
+const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "warden", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist", "chronicler", "augur", "magistrate", "executor", "registrar", "monitor", "confessor"]
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
 const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]
@@ -878,6 +878,18 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 			if data.get("assigned") == true:
 				return not data.has("role") and receipt.observed_at.day == 0 and receipt.observed_at.phase == "night"
 			return not data.get("assigned", false) and data.get("role") in C.ROLES and receipt.observed_at.day >= 1 and receipt.observed_at.phase == "morning"
+		"monitor":
+			if not (data.get("block") in C.BLOCKS and data.get("walked") is bool and receipt.observed_at.day >= 1 and receipt.observed_at.phase == "night"):
+				return false
+			if bool(data.get("walked", false)):
+				return data.get("role") in C.ROLES
+			return not data.has("role")
+		"confessor":
+			if receipt.observed_at.day < 1 or receipt.observed_at.phase != "night":
+				return false
+			if bool(data.get("forgot", false)):
+				return not data.has("target") and not data.has("good")
+			return data.get("target") in ids and data.target != receipt.source and data.get("good") == true
 		"registrar":
 			if not _registrar_roles_valid(data.get("roles")):
 				return false

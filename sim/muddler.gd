@@ -110,6 +110,16 @@ static func _rebuild_reading_text(w, role: String, d: Dictionary, fallback_text:
 			return "I watched %s and saw %s pass through" % [b_nw, snames]
 		"warden":
 			return "I stood guard at %s's door" % nm.call(str(d.get("target", "")))
+		"monitor":
+			var bname_m: String = C.block_name(str(d.get("block", "")))
+			if bool(d.get("walked", false)):
+				return "I learned that a %s was abroad on %s last night" % [C.role_name(str(d.get("role", ""))), bname_m]
+			return "no one walked by my house last night"
+		"confessor":
+			if bool(d.get("forgot", false)):
+				return "I heard a confession in the dark hours, but I cannot remember who came to me"
+			var tgt_nm: String = nm.call(str(d.get("target", "")))
+			return "I heard %s's confession last night: their heart was pure and their spirit good" % tgt_nm
 		"gravedigger":
 			return "when we buried %s, I saw they were the %s" % [nm.call(str(d.get("executed", ""))), C.role_name(str(d.get("role", "")))]
 		"veteran":
@@ -247,6 +257,42 @@ static func mutate_reading_entry(w, muddler, src_id: String, orig: Dictionary) -
 			if wrep != "":
 				d["target"] = wrep
 				changed = true
+		"monitor":
+			if bool(d.get("walked", false)):
+				if w.chance(0.5):
+					var rpool_m: Array = _script_all_roles(w).filter(func(r): return r != str(d.get("role", "")))
+					if not rpool_m.is_empty():
+						d["role"] = str(w.pick(rpool_m))
+						changed = true
+				if not changed:
+					d["walked"] = false
+					d.erase("role")
+					changed = true
+			else:
+				var rpool_m2: Array = _script_all_roles(w)
+				if not rpool_m2.is_empty():
+					d["walked"] = true
+					d["role"] = str(w.pick(rpool_m2))
+					changed = true
+		"confessor":
+			if bool(d.get("forgot", false)):
+				var rep_c: String = _other_person(w, [src_id])
+				if rep_c != "":
+					d["forgot"] = false
+					d["target"] = rep_c
+					d["good"] = true
+					changed = true
+			else:
+				if w.chance(0.5):
+					var rep_c2: String = _other_person(w, [src_id, str(d.get("target", ""))])
+					if rep_c2 != "":
+						d["target"] = rep_c2
+						changed = true
+				if not changed:
+					d["forgot"] = true
+					d.erase("target")
+					d.erase("good")
+					changed = true
 		"gravedigger":
 			var gr_pool: Array = _script_all_roles(w).filter(func(r): return r != str(d.get("role", "")))
 			if not gr_pool.is_empty():

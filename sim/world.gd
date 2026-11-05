@@ -1215,8 +1215,12 @@ func resolve_night() -> void:
 	var mart = living_with_role("martyr")
 	if mart != null and not mart.is_evil() and mart.martyr_target == "" and not first:
 		_martyr_choice(mart)
+	var confessor = living_with_role("confessor")
+	var confessor_t = ""
+	if confessor and not confessor.is_evil() and not knell and not first:
+		confessor_t = _confessor_choice(confessor)
 
-	_night_movement(poison_t, kill_t, watch, watch_block, warden, warden_t, medium, medium_t, lamp)
+	_night_movement(poison_t, kill_t, watch, watch_block, warden, warden_t, medium, medium_t, lamp, confessor, confessor_t)
 
 	if poison_t != "":
 		by_id[poison_t].poisoned = true
@@ -1239,7 +1243,7 @@ func resolve_night() -> void:
 	if C.INFO_BEFORE_KILL:
 		for n in living_good():
 			if C.ROLES[n.role]["kind"] == "info":
-				_receive_info(n, watch_block, medium_t, lamp)
+				_receive_info(n, watch_block, medium_t, lamp, confessor_t)
 	var kill_outcome = ""
 	if kill_t != "":
 		var v = by_id[kill_t]
@@ -1261,7 +1265,7 @@ func resolve_night() -> void:
 	if not C.INFO_BEFORE_KILL:
 		for n in living_good():
 			if C.ROLES[n.role]["kind"] == "info":
-				_receive_info(n, watch_block, medium_t, lamp)
+				_receive_info(n, watch_block, medium_t, lamp, confessor_t)
 
 	_night_sightings()
 	if kill_t != "":
@@ -1292,6 +1296,9 @@ func _veteran_survives(v) -> void:
 	C.role_def("veteran").on_survive_attack(self, v)
 
 ## The Martyr chooses once, only someone they trust well.
+func _confessor_choice(conf) -> String:
+	return C.role_def("confessor").pick_targets(self, conf, Mind)
+
 func _martyr_choice(mart) -> void:
 	C.role_def("martyr").pick_targets(self, mart, Mind)
 
@@ -1369,7 +1376,7 @@ func _quiet_night() -> void:
 			Mind.ledger_hear(self, l, "quiet:%d>%s" % [day, pc["who"]], [], 1.0, [pc["who"], -1, "report"], {"kind": "quiet_night", "night": day, "claimant": pc["who"], "role": pc["role"]})
 
 func _night_movement(poison_t: String, kill_t: String, watch, watch_block: String, warden = null, warden_t: String = "",
-		medium = null, medium_t: String = "", lamp = null) -> void:
+		medium = null, medium_t: String = "", lamp = null, confessor = null, confessor_t: String = "") -> void:
 	night_walkers = []
 	for n in living():
 		n.out_last_night = false
@@ -1393,6 +1400,8 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 	if lamp:
 		# The lamp route runs through every block; they finish where they started.
 		_walk(lamp, lamp.home_block, "walking the lamp route", C.BLOCKS.keys())
+	if confessor and confessor_t != "" and by_id.has(confessor_t):
+		_walk(confessor, by_id[confessor_t].home_block, "hearing confession of %s" % by_id[confessor_t].name)
 	# The Secret Lovers meet somewhere new each night; the Sleepwalker wanders unknowing.
 	var met = {}
 	for n in living():
@@ -1449,8 +1458,10 @@ func _night_sightings() -> void:
 				saw = chance(Tuning.Setup.NIGHT_SIGHTING_STREET_CHANCE)
 				where = o.night_block
 			elif not o.out_last_night and o.home_block in path:
-				saw = chance(Tuning.Setup.NIGHT_SIGHTING_WINDOW_CHANCE)
-				where = o.home_block
+				var is_mon: bool = (o.role == "monitor") or (o.is_evil() and evil_plan.get("bluffs", {}).get(o.id, "") == "monitor")
+				if not is_mon:
+					saw = chance(Tuning.Setup.NIGHT_SIGHTING_WINDOW_CHANCE)
+					where = o.home_block
 			if saw:
 				# From home you see the street from your window; out, you see them in passing.
 				var how = "street" if o.out_last_night else "window"
@@ -1771,7 +1782,7 @@ func surveyor_result(exclude: int = -1) -> int:
 			options.append(count)
 	return pick(options)
 
-func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -> void:
+func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null, confessor_t: String = "") -> void:
 	var r: String = n.role
 	var first = day == 0
 	if C.ROLES[r].get("first_night", false) and not first:
@@ -1783,7 +1794,7 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null) -
 	var rdef = C.role_def(r)
 	if rdef == null:
 		return
-	entry = rdef.generate_reading(self, n, {"watch_block": watch_block, "medium_t": medium_t, "lamp": lamp}, Mind)
+	entry = rdef.generate_reading(self, n, {"watch_block": watch_block, "medium_t": medium_t, "lamp": lamp, "confessor_t": confessor_t}, Mind)
 	if entry.is_empty():
 		return
 	if broken:

@@ -529,7 +529,7 @@ func _question(card: Dictionary) -> void:
 				if private_errand:
 					support = claims.filter(func(c): return c.id == current.citations.get(key, ""))[0] if claims.any(func(c): return c.id == current.citations.get(key, "")) else {}
 				_label(box, "Cited: %s. This could explain the outing; accuracy and activity are still assumptions." % support.text if not support.is_empty() else "No applicable walking-gift claim is cited; this explanation receives no discount.", 14, "muted")
-	elif card.kind == "report" and role in ["warden", "gravedigger", "veteran", "martyr", "sexton", "executor", "registrar"]:
+	elif card.kind == "report" and role in ["warden", "gravedigger", "veteran", "martyr", "sexton", "executor", "registrar", "monitor", "confessor"]:
 		var explanation: String = {
 			"warden": "This claims a guard at the named door on that night. Movement, public deaths and quiet nights weigh it together; a quiet night alone does not prove a successful protection.",
 			"gravedigger": "This names the executed person's role at that execution. An evil-role result can also come from a good Marked person. No additional answer is required.",
@@ -537,7 +537,9 @@ func _question(card: Dictionary) -> void:
 			"martyr": "This records a claimed choice; choosing someone does not establish that they are good. Comparing an earlier promise with a later hanging still needs a dated outcome adapter." if card.data.get("chosen", false) else "This claims the chosen person was hanged without substitution. If the gift was healthy, they registered evil; Marked remains an explanation.",
 			"sexton": "A healthy toll stops gifts that need walking that night. Secret outings may continue. Hearing the bell alone does not establish that the gift worked.",
 			"executor": "Records the Executor's case-start charge; consistency requires any later death reading from this Executor to name the same person." if card.data.get("assigned", false) else "Names the deceased charge's role the morning after they died. An evil-role result can also come from a good Marked person. No additional answer is required.",
-			"registrar": "Lists the three script roles on this Registrar's slate; at least one is in play if the Registrar is good and healthy." if not card.data.has("target") else "Checks whether the named person holds one of the three roles on the slate (Marked can falsely match a minion role on the slate). No additional answer is required."
+			"registrar": "Lists the three script roles on this Registrar's slate; at least one is in play if the Registrar is good and healthy." if not card.data.has("target") else "Checks whether the named person holds one of the three roles on the slate (Marked can falsely match a minion role on the slate). No additional answer is required.",
+			"monitor": "Learns the role of someone who walked abroad on their home block, or that no one walked by their house (Marked can register as an evil role). No additional answer is required.",
+			"confessor": "Confirms whether the visited person is good. An 'I forgot' reading indicates they were evil (or Marked), or that the reading was corrupted. No additional answer is required."
 		}[role]
 		_label(box, explanation, 16, "muted")
 	else:

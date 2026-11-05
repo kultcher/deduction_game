@@ -17,11 +17,13 @@ const REPORT_FIELDS = {
 	"magistrate": ["nominator", "nominee", "same"],
 	"executor": ["target", "assigned", "role"],
 	"registrar": ["roles", "target", "yes"],
+	"monitor": ["block", "walked", "role"],
+	"confessor": ["target", "good", "forgot"],
 }
 const FIELDS = ["assigned", "block", "loc", "locs", "home", "night", "role", "secret_kind", "fear", "withheld", "package", "roles", "duty_claim", "duty", "vigil", "dropped",
 	"nominee", "by", "yes", "no", "player_yes", "count", "threshold", "outcome", "alive_before", "owner", "material", "crime_night", "scene", "scene_block", "victim", "ward", "guard_claim", "save_claim", "watch_claim", "target",
 	"work_phases", "occupation", "trait", "tier", "withdrawn", "bond_kind", "tavern_gossip", "workshop_usable", "pressable",
-	"trace_family", "trace_subtype", "trace_slot", "trace_scene_count", "scene_trace_count", "trace_key", "trace_home_block", "trace_evening_block", "victim_block", "item_label"]
+	"trace_family", "trace_subtype", "trace_slot", "trace_scene_count", "scene_trace_count", "trace_key", "trace_home_block", "trace_evening_block", "victim_block", "item_label", "walked", "good", "forgot"]
 const KINDS = ["home", "work", "haunt", "trait", "bond", "info", "claim", "town_hall", "sighting", "conversation", "vigil", "alibi",
 	"trace", "dropped", "totem", "death", "execution", "quiet", "vote", "martyr", "curse",
 	"curse_lifted", "silenced", "knell", "secret", "hint", "refusal", "opinion", "accusation", "case", "ward", "scorched_sigil"]
