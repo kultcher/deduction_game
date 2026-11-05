@@ -17,6 +17,7 @@ const MAX_DEMONS = 4
 const DEFAULT_NAME = "Default"
 const DEFAULT_TOWN = ["archivist", "clerk", "dowser", "gravedigger", "lamplighter", "martyr", "medium", "nightwatch",
 	"psychologist", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
+const DEFAULT_SECRETS = ["delusional", "marked", "lovers", "sleepwalker"]
 const USER_DIR = "user://scripts"
 
 ## Soft coverage the editor suggests: at least this many town roles with the tag.
@@ -95,7 +96,7 @@ static func default_script():
 	s.town = DEFAULT_TOWN.duplicate()
 	s.minions = C.MINION_ROLES.duplicate()
 	s.demons = ["demon"]
-	s.secrets = C.SECRET_MOD_LIST.duplicate()
+	s.secrets = DEFAULT_SECRETS.duplicate()
 	return s
 
 
@@ -105,7 +106,7 @@ func duplicate_script():
 
 func is_default() -> bool:
 	return forced.is_empty() and town == DEFAULT_TOWN and minions == C.MINION_ROLES \
-		and demons == ["demon"] and secrets == C.SECRET_MOD_LIST
+		and demons == ["demon"] and secrets == DEFAULT_SECRETS
 
 
 func has(id: String) -> bool:

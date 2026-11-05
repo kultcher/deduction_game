@@ -714,6 +714,44 @@ func evidence_layout(id: String) -> Dictionary:
 		els.append({"t": "label", "at": Vector2(16, y + 14), "text": reg_lbl})
 		y += 26.0
 		details = true
+	elif card.kind == "report" and role == "psychologist":
+		var p_mode_ui: String = str(card.data.get("mode", ""))
+		var p_dh_ui: int = int(card.data.get("day_heard", card.get("observed_at", {}).get("day", 1)))
+		if p_mode_ui == "none_false":
+			els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Day %d: no false statements heard" % p_dh_ui})
+			y += 26.0
+			details = true
+		elif p_mode_ui == "pair" and card.data.get("statements") is Array and card.data.statements.size() == 2:
+			var stmts_ui: Array = card.data.statements
+			for si in range(2):
+				var st_u: Dictionary = stmts_ui[si]
+				var sum_u: String = str(st_u.get("summary", Solver.person_name(model.view, str(st_u.get("source", "")))))
+				if sum_u.length() > 38:
+					sum_u = sum_u.substr(0, 35) + "…"
+				els.append({"t": "label", "at": Vector2(16, y + 14), "text": "%d. %s" % [si + 1, sum_u]})
+				y += 21.0
+			y += 4.0
+			var cur_ps_ui: String = str(answer.get("false_slot", ""))
+			var cur_pw_ui: String = str(answer.get("false_reason", ""))
+			var px: float = 14.0
+			for opt in [["", "Either"], ["0", "Stmt 1"], ["1", "Stmt 2"], ["both", "Both"]]:
+				var cw_p: float = 64.0 if opt[0] != "both" else 58.0
+				els.append({"t": "chip", "rect": Rect2(px, y, cw_p, 25), "text": opt[1], "on": cur_ps_ui == opt[0], "field": "psych_pick:" + opt[0],
+					"tip": "Which statement was false or misread: " + opt[1]})
+				px += cw_p + 5.0
+			y += 31.0
+			if cur_ps_ui in ["0", "1"]:
+				var picked_st: Dictionary = stmts_ui[int(cur_ps_ui)]
+				var sight_dis: bool = str(picked_st.get("kind", "")) == "sighting"
+				var wx: float = 14.0
+				for wopt in [["", "Any cause"], ["lying", "Source lied"], ["misled", "Source misled"]]:
+					var ww: float = 78.0 if wopt[0] == "" else (88.0 if wopt[0] == "lying" else 98.0)
+					var dis_w: bool = wopt[0] == "misled" and sight_dis
+					els.append({"t": "chip", "rect": Rect2(wx, y, ww, 25), "text": wopt[1], "on": cur_pw_ui == wopt[0], "disabled": dis_w, "field": "psych_why:" + wopt[0],
+						"tip": "Direct night sightings cannot be misled." if dis_w else ("Why the statement was wrong: " + wopt[1])})
+					wx += ww + 5.0
+				y += 31.0
+			details = true
 	else:
 		details = card.kind == "report" and role in ["warden", "gravedigger", "veteran", "martyr", "sexton"]
 	return {"h": y + 44.0, "els": els, "text": text_lines, "details": details}

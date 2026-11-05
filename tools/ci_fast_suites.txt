@@ -28,3 +28,4 @@ test_chunk3_executor_registrar
 test_playtest_nov4_fixes
 test_meeting_m2a
 test_meeting_m2b
+res://tools/test_chunk4_psychologist_muddler.gd

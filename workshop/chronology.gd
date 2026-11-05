@@ -101,20 +101,38 @@ static func fault_for(view: Dictionary, value: Dictionary, card: Dictionary) -> 
 static func hypothetical_cards(view: Dictionary, value: Dictionary, cards: Array) -> Array:
 	# For the PLAYER'S conditional explanation only. Numeric NPC conviction still
 	# averages healthy/broken credibility states and requires actual supporting input.
+	var psych_dropped: Dictionary = {}
+	for pcard in cards:
+		if pcard.get("kind") == "report" and pcard.get("role", "") == "psychologist" and not value.get("reading_challenges", {}).has(pcard.id):
+			var pdata: Dictionary = pcard.get("data", {}) if pcard.get("data") is Dictionary else {}
+			if str(pdata.get("mode", "")) == "pair" and pdata.get("statements") is Array and pdata.statements.size() == 2:
+				var pans: Dictionary = value.get("answers", {}).get(pcard.id, {})
+				var fslot: String = str(pans.get("false_slot", ""))
+				var fwhy: String = str(pans.get("false_reason", ""))
+				for s_idx in ([0] if fslot == "0" else ([1] if fslot == "1" else ([0, 1] if fslot == "both" else []))):
+					var fid: String = str(pdata.statements[s_idx].get("fact_id", ""))
+					if fid != "":
+						psych_dropped[fid] = fwhy if fslot in ["0", "1"] else ""
 	var result: Array = []
 	for card in cards:
 		if not fault_for(view, value, card).is_empty():
 			continue
 		var challenge: Dictionary = value.get("reading_challenges", {}).get(card.id, {})
-		if challenge.is_empty():
+		var cid_match: String = card.id if psych_dropped.has(card.id) else (str(card.get("fact_id", "")) if psych_dropped.has(str(card.get("fact_id", ""))) else "")
+		if not challenge.is_empty():
+			if challenge.get("mode") == "misled":
+				var claim: Dictionary = card.duplicate(true)
+				claim.kind = "claim"
+				claim.data = {}
+				result.append(claim)
+		elif cid_match != "":
+			if psych_dropped[cid_match] == "misled" and card.kind == "report":
+				var claim_p: Dictionary = card.duplicate(true)
+				claim_p.kind = "claim"
+				claim_p.data = {}
+				result.append(claim_p)
+		else:
 			result.append(card)
-		elif challenge.get("mode") == "misled":
-			# An honest misled reader still claims their gift. Dropping that identity
-			# too would let impairment excuse an impossible duplicate role claim.
-			var claim: Dictionary = card.duplicate(true)
-			claim.kind = "claim"
-			claim.data = {}
-			result.append(claim)
 	return result
 
 static func disowned(view: Dictionary, card: Dictionary, known_events: Array) -> bool:

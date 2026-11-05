@@ -11,6 +11,8 @@ const Gifts = preload("res://sim/gifts.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
+const Muddler = preload("res://sim/muddler.gd")
+const PsychologistRole = preload("res://sim/roles/psychologist.gd")
 
 static func trait_of(n, t: String) -> float:
 	return n.traits.get(t, 0.5)
@@ -162,6 +164,17 @@ static func _pick_item(w, s, l):
 				if w.scenes[sid]["day"] == b["day"] and w.scenes[sid]["block"] == b["block"]:
 					scene = Tuning.Social.SHARE_SIGHTING_SCENE_BONUS
 			cands.append([gos * Tuning.Social.SHARE_SIGHTING_GOSSIP_SCALE + scene, {"kind": "sighting", "about": b["who"], "block": b["block"], "day": b["day"], "from": s.id, "key": key2}])
+	# Peer night-home alibis: townsfolk (and evil or sleepwalking bluffers) occasionally mention
+	# having stayed home last night so alibis circulate naturally in 1-on-1 conversations.
+	if w.day >= 1:
+		var nd_alibi: int = w.day - 1
+		var akey: String = "alibi:%s:%d" % [s.id, nd_alibi]
+		if not _told(s, l, akey):
+			var where_a: String = str(s.history.get(w.time_key(nd_alibi, C.NIGHT), "home:" + s.home_block))
+			var claims_walk_duty: bool = C.has_role_def(s.claimed_role) and C.role_def(s.claimed_role).uses_night_duty_alibi(w, s, nd_alibi, where_a.begins_with("night:"))
+			var claims_home: bool = not claims_walk_duty and (not where_a.begins_with("night:") or s.secret_mod == "sleepwalker" or s.is_evil())
+			if claims_home:
+				cands.append([gos * Tuning.Social.SHARE_ALIBI_WEIGHT, {"kind": "alibi", "about": s.id, "block": s.home_block, "day": nd_alibi, "from": s.id, "key": akey, "lie": where_a.begins_with("night:") and s.is_evil()}])
 	# Low-walker daytime rumor fuel (Phase 4.1): when `s` holds no recent untold night sightings,
 	# share daytime work/haunt sightings/alibis and mild unease so social chatter and gossip_bond
 	# stay alive in Revenant + Scion setups without fabricating night evidence.
@@ -251,8 +264,40 @@ static func deliver_public_sighting(w, speaker, fact: Dictionary) -> void:
 		if listener.is_evil():
 			Mind.shadow_run(w, listener, func(sh): _deliver(w, speaker, sh, item, true, fact))
 
+static func _record_direct_statement_for_listener(w, s, l, item: Dictionary, original: Dictionary = {}) -> void:
+	if l == null or l.is_shadow or item.get("relay", false) or str(item.get("from", s.id)) != s.id:
+		return
+	var ik: String = str(item.get("kind", ""))
+	if ik == "reading" and item.get("entry") is Dictionary:
+		var e: Dictionary = item["entry"]
+		var r_fact: Dictionary = Mind.info_fact(w, s, e)
+		var is_f: bool = not bool(e.get("true", not e.get("fake", false)))
+		var f_why: String = ("lying" if s.is_evil() else "misled") if is_f else ""
+		PsychologistRole.record_heard(w, l, s.id, r_fact, is_f, f_why)
+	elif ik == "sighting":
+		var who_id: String = str(item.get("about", ""))
+		if not w.by_id.has(who_id):
+			return
+		var s_fact: Dictionary = original.duplicate(true) if not original.is_empty() else {"kind": "sighting", "source": s.id, "subject": [who_id], "block": str(item.get("block", "")), "day": int(item.get("day", -1)), "phase": C.NIGHT,
+			"text": "%s says they saw %s on %s on night %d." % [s.name, w.by_id[who_id].name, C.block_name(str(item.get("block", ""))), int(item.get("day", -1))]}
+		var is_s_false: bool = bool(item.get("lie", false))
+		if not is_s_false and not s.is_evil():
+			is_s_false = not s.beliefs.any(func(b): return b.get("kind") == "saw" and b.get("phase") == C.NIGHT and str(b.get("who", "")) == who_id and str(b.get("block", "")) == str(item.get("block", "")) and int(b.get("day", -1)) == int(item.get("day", -1)))
+		PsychologistRole.record_heard(w, l, s.id, s_fact, is_s_false, "lying" if is_s_false else "")
+	elif ik == "alibi":
+		var nd_a: int = int(item.get("day", w.day - 1))
+		var a_fact: Dictionary = {"kind": "alibi", "source": s.id, "subject": [s.id], "home": true, "block": s.home_block, "day": nd_a, "phase": C.NIGHT,
+			"text": "%s says they were home (on %s) on night %d." % [s.name, C.block_name(s.home_block), nd_a]}
+		var where_n: String = str(s.history.get(w.time_key(nd_a, C.NIGHT), "home:" + s.home_block))
+		var a_false: bool = where_n.begins_with("night:")
+		var a_why: String = ("misled" if (not s.is_evil() and s.secret_mod == "sleepwalker") else "lying") if a_false else ""
+		PsychologistRole.record_heard(w, l, s.id, a_fact, a_false, a_why)
+
 static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: Dictionary = {}) -> void:
 	_mark(s, l, item["key"])
+	if not public and item.get("relay", false):
+		item = Muddler.maybe_muddle_item(w, s, item, l.id)
+	_record_direct_statement_for_listener(w, s, l, item, original)
 	var lie: bool = item.get("lie", false)
 	if not public and not (s.is_evil() and l.is_evil()):
 		w.daily_npc_shares.append({"day": w.day, "phase": w.phase, "loc": s.loc, "speaker": s.id, "listener": l.id, "item": item.duplicate(true)})
@@ -318,6 +363,14 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			# Remember the conversation and teller, without turning their conclusion
 			# into evidence about its target (Q4).
 			l.hearsay.append(hs)
+		"alibi":
+			var nd_al: int = int(item.get("day", w.day - 1))
+			var al_card = {"kind": "alibi", "source": s.id, "via": s.id, "subject": [s.id], "home": true, "block": s.home_block, "day": nd_al, "phase": C.NIGHT,
+				"learned": [{"day": w.day, "phase": w.phase, "via": s.id}], "text": desc}
+			var al_rec = Mind.WorkshopLedger.Evidence.normalize_card(al_card)
+			Mind.ledger_hear(w, l, "heard:" + al_rec.id, [], wgt * 2.0, [s.id, nd_al, "report"],
+				{"kind": "tell", "workshop_card": al_rec, "workshop_teller": s.id, "workshop_origin": s.id, "workshop_public": public})
+			l.hearsay.append(hs)
 		"day_sighting":
 			# Witnessed daytime visits build social fabric and context
 			# without manufacturing night-movement suspicion in the listener's ledger.
@@ -372,6 +425,8 @@ static func _describe(w, s, item: Dictionary) -> String:
 			return "their %s reading: %s%s" % [C.role_name(item["entry"]["role"]), item["entry"]["text"], via]
 		"sighting":
 			return "%s was out on %s on night %d%s" % [w.by_id[item["about"]].name, C.block_name(item["block"]), item["day"], via]
+		"alibi":
+			return "%s stayed home on %s on night %d%s" % [w.by_id[item["about"]].name, C.block_name(item["block"]), item["day"], via]
 		"opinion":
 			return "they distrust %s%s" % [w.by_id[item["about"]].name, via]
 		"unease":
@@ -575,14 +630,19 @@ static func gossip_item(w, n) -> Dictionary:
 		var src = w.by_id.get(h["from"])
 		n.told_to["player|hs:%d" % i] = true
 		if h["kind"] == "reading" and src != null:
-			var e: Dictionary = h["entry"]
+			var mh_r: Dictionary = Muddler.maybe_muddle_item(w, n, h)
+			var e: Dictionary = mh_r["entry"]
 			var f = Mind.info_fact(w, src, e)
 			f["via"] = n.id
+			if e.get("muddled", false):
+				f["muddled"] = true
+				f["muddled_by"] = e.get("muddled_by", n.id)
 			f["text"] = "Via %s: " % n.name + f["text"]
+			var out_facts_r: Array = [f] + PsychologistRole.companion_facts(w, src, e, n.id)
 			var role_s: String = C.role_name(e["role"])
 			var report_s: String = C.third_person(e["text"])
 			var reading_fallback: String = "%s told me their gift is %s, and that %s." % [src.name, role_s, report_s]
-			return {"lines": [Mind.say_voiced(n, "gossip_reading", reading_fallback, {"source": src.name, "role": role_s, "report": report_s})], "facts": [f]}
+			return {"lines": [Mind.say_voiced(n, "gossip_reading", reading_fallback, {"source": src.name, "role": role_s, "report": report_s})], "facts": out_facts_r}
 		if h["kind"] == "role_claim" and src != null:
 			n.told_to["player|role_claim:" + src.id] = true
 			var crn: String = C.role_name(h["role"])
@@ -600,14 +660,19 @@ static func gossip_item(w, n) -> Dictionary:
 					"text": "Via %s: %s hinted at %s (%s)." % [n.name, src.name, C.HINT_PACKAGES[hp]["name"],
 						" / ".join(PackedStringArray(C.HINT_PACKAGES[hp]["roles"].map(func(r): return C.role_name(r))))]}]}
 		if h["kind"] == "sighting":
-			var who = w.by_id[h["about"]]
-			var by = w.by_id[h["from"]].name if w.by_id.has(h["from"]) else "someone"
-			var block_s: String = C.block_name(h["block"])
-			var night_s: String = "on night %d" % h["day"]
+			var mh_s: Dictionary = Muddler.maybe_muddle_item(w, n, h)
+			var who = w.by_id[mh_s["about"]]
+			var by = w.by_id[mh_s["from"]].name if w.by_id.has(mh_s["from"]) else "someone"
+			var block_s: String = C.block_name(mh_s["block"])
+			var night_s: String = "on night %d" % mh_s["day"]
 			var sighting_fallback: String = "%s says %s was out on %s %s." % [by, who.name, block_s, night_s]
+			var s_fact_out: Dictionary = {"kind": "sighting", "subject": [who.id], "block": mh_s["block"], "day": mh_s["day"], "phase": C.NIGHT, "source": mh_s["from"], "via": n.id,
+				"text": "Via %s: %s saw %s on %s on night %d." % [n.name, by, who.name, block_s, mh_s["day"]]}
+			if mh_s.get("muddled", false):
+				s_fact_out["muddled"] = true
+				s_fact_out["muddled_by"] = mh_s.get("muddled_by", n.id)
 			return {"lines": [Mind.say_voiced(n, "gossip_sighting", sighting_fallback, {"source": by, "subject": who.name, "block": block_s, "night": night_s})],
-				"facts": [{"kind": "sighting", "subject": [who.id], "block": h["block"], "day": h["day"], "phase": C.NIGHT, "source": h["from"], "via": n.id,
-					"text": "Via %s: %s saw %s on %s on night %d." % [n.name, by, who.name, block_s, h["day"]]}]}
+				"facts": [s_fact_out]}
 	return {"lines": [Mind.say_voiced(n, "gossip_empty", "...Well, I thought I had something. The price of bread, mostly.")], "facts": []}
 
 # ---------------------------------------------------------------- asking about a role
@@ -658,15 +723,20 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 				voiced_chunks.append(Dialogue.voice_line(n.id, "role_query_private_via", priv_fb, {"who": who.name, "via": via_name, "role": rn}))
 			facts.append({"kind": "claim", "subject": [sid], "role": role, "source": sid, "via": n.id, "private": true,
 				"text": "Via %s: %s privately claims to be the %s." % [n.name, who.name, rn]})
-			for e in kc["readings"]:
+			for raw_e in kc["readings"]:
+				var e: Dictionary = Muddler.maybe_muddle_reading(w, n, sid, raw_e)
 				var said_rd: String = C.third_person(e["text"])
 				var rd_fb: String = "They said %s." % said_rd
 				text += " " + rd_fb
 				voiced_chunks.append(Dialogue.voice_line(n.id, "role_query_reading", rd_fb, {"reading": said_rd}))
 				var f = Mind.info_fact(w, who, e)
 				f["via"] = n.id
+				if e.get("muddled", false):
+					f["muddled"] = true
+					f["muddled_by"] = e.get("muddled_by", n.id)
 				f["text"] = "Via %s: " % n.name + f["text"]
 				facts.append(f)
+				facts.append_array(PsychologistRole.companion_facts(w, who, e, n.id))
 		w.dlog.think(n.id, "about_role", "Asked about the %s: shares private knowledge (willing)." % role if told else "Asked about the %s: knows nothing private." % role)
 	elif not willing:
 		w.dlog.think(n.id, "about_role", "Asked about the %s: not willing to share private knowledge." % role)

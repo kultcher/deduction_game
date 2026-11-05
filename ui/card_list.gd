@@ -58,7 +58,12 @@ static func line_for(c: Dictionary) -> String:
 		var names: Array = cb.map(func(id): return "you" if id == "player" else _name_of(id))
 		also = "  (also seen by %s)" % ", ".join(PackedStringArray(names))
 	var history: Array = []
-	if k == "deduction":
+	if c.get("deprecated", false):
+		var dby: String = str(c.get("disclaimed_by", ""))
+		history.append("deprecated: disclaimed by %s" % (_name_of(dby) if dby != "" else "source"))
+		if int(c.get("superseded_by", 0)) > 0:
+			history.append("replaced by #%d" % int(c.superseded_by))
+	elif k == "deduction":
 		if int(c.get("revises", 0)) > 0:
 			history.append("revision of #%d" % c.revises)
 		if int(c.get("superseded_by", 0)) > 0:

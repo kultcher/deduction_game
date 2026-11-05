@@ -131,7 +131,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	for card in cards:
 		if card.kind == "report" and card.get("role") == "martyr" and card.data.get("chosen", false) and cards.any(func(other): return other.kind == "execution" and other.subject == card.data.target and Solver.TimeModel.tick(other.observed_at) > Solver.TimeModel.tick(card.observed_at)):
 			result.issues.append("A prior Martyr promise versus a later execution needs a dated outcome/health adapter. The new evaluator does not yet infer failure from that pair; existing rules handle the case.")
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem", "town_hall"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar"]):
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem", "town_hall"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar", "psychologist"]):
 		view.world_options["roles"] = true
 	if snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["role", "notrole", "misled", "unreliable"]):
 		view.world_options["roles"] = true
@@ -243,12 +243,12 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["night"] = -1 # Refusing whereabouts is not an admission of an outing.
 		card["data"] = {"fear": e.content.get("fear", false), "withheld": e.content.get("withheld", false), "role": e.content.get("role", "")}
 		return card
-	if e.kind == "info" and e.content.get("role", "") == "psychologist" and reading_valid(e, ids, snapshot.rules.modifier_options):
+	if e.kind == "info" and e.content.get("role", "") == "psychologist" and e.content.get("data", {}).has("subject") and reading_valid(e, ids, snapshot.rules.modifier_options):
 		card["kind"] = "context"
 		card["context_kind"] = "psychologist"
 		card["role"] = "psychologist"
 		card["data"] = e.content.data.duplicate(true)
-		return card # Opinions are context, even when the gift reports them accurately.
+		return card # Legacy opinion Psychologist readings stay context.
 	if e.kind == "secret" and e.source in ids and e.subjects.size() == 1 and e.subjects[0] in ids and e.content.get("owner", "") == e.subjects[0]:
 		if e.content.get("secret_kind", "") not in C.SECRETS.map(func(secret): return secret.kind) + ["lover", "sleepwalker"] or e.observed_at.day < 0 or e.observed_at.phase == "unknown" or (block != "" and block not in C.BLOCKS):
 			return {}
@@ -498,11 +498,11 @@ static func medium_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 	if raw.kind == "info":
 		if not reading_valid(original, snapshot.people.map(func(p): return p.id), snapshot.rules.modifier_options) or not Domain.gift_time({"role": raw.role, "observed_at": original.observed_at}):
 			return {}
-		if raw.role == "psychologist":
+		if raw.role == "psychologist" and raw.data.has("subject"):
 			var context = activity_card(original, snapshot)
 			context.merge({"id": e.id, "fact_id": e.fact_id, "source": e.source, "role": "", "text": e.text,
 				"original_source": dead, "original_role": raw.role, "provenance": e.provenance.duplicate(true)}, true)
-			return context # Relay fidelity supplies no alignment likelihood for an opinion.
+			return context # Relay fidelity supplies no alignment likelihood for a legacy opinion.
 		card = {"kind": "report", "source": dead, "role": raw.role, "data": raw.data, "subject": "", "subjects": original.subjects,
 			"night": original.observed_at.day if original.observed_at.phase == "night" or raw.role in ["martyr", "sexton"] else -1, "observed_at": original.observed_at, "reported_at": original.observed_at}
 	else:
@@ -536,7 +536,7 @@ static func testimony_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 			role = ""
 	var context = {"id": e.id, "fact_id": e.fact_id, "source": teller, "kind": "context", "context_kind": "unattributed_report", "role": "", "data": {}, "observed_at": e.observed_at, "text": e.text,
 		"testimony_only": true, "context_note": "Original evidence or observation time is unestablished; this account is context only."}
-	if role == "psychologist":
+	if role == "psychologist" and data.has("subject"):
 		context.context_note = "Relayed opinions are context, not alignment evidence."
 		return context
 	if role not in ROLES or role == "medium" or observed.day < 0 or observed.phase == "unknown":
@@ -837,8 +837,26 @@ static func reading_valid(receipt: Dictionary, ids: Array, modifiers: Array) -> 
 		return data.get("yes") is bool
 	elif rdef != null and rdef.shape == "SECRET_PAIR":
 		return _group_valid(data.get("pair"), ids) and data.get("pair", []).size() == 2 and data.get("secret") in modifiers
-	elif rdef != null and rdef.shape == "SOCIAL_PAIR":
-		return receipt.observed_at.phase == "night" and receipt.observed_at.day >= 1 and data.get("subject") in ids and data.subject != receipt.source and data.get("trusts") in ids and data.trusts != data.subject and data.get("suspects") in ids and data.suspects != data.subject
+	elif rdef != null and rdef.shape in ["SOCIAL_PAIR", "PSYCH_STATEMENTS"]:
+		if data.has("subject"):
+			return receipt.observed_at.phase == "night" and receipt.observed_at.day >= 1 and data.get("subject") in ids and data.subject != receipt.source and data.get("trusts") in ids and data.trusts != data.subject and data.get("suspects") in ids and data.suspects != data.subject
+		if receipt.observed_at.phase != "night" or receipt.observed_at.day < 1:
+			return false
+		var p_mode: String = str(data.get("mode", ""))
+		var dh: int = int(data.get("day_heard", -1))
+		if dh != receipt.observed_at.day:
+			return false
+		if p_mode == "none_false":
+			return true
+		if p_mode == "pair" and data.get("statements") is Array and data.statements.size() == 2:
+			var s0 = data.statements[0]
+			var s1 = data.statements[1]
+			if not (s0 is Dictionary and s1 is Dictionary):
+				return false
+			if str(s0.get("fact_id", "")) == "" or str(s1.get("fact_id", "")) == "" or str(s0.get("fact_id", "")) == str(s1.get("fact_id", "")):
+				return false
+			return [s0, s1].all(func(st): return str(st.get("kind", "")) in ["info", "sighting", "alibi"] and str(st.get("source", "")) in ids and str(st.get("source", "")) != receipt.source)
+		return false
 	match receipt.content.role:
 		"warden":
 			return data.get("target") in ids and data.target != receipt.source and receipt.observed_at.day >= 1 and receipt.observed_at.phase == "night"

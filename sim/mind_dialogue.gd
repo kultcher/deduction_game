@@ -718,8 +718,10 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 	var reports = info_lines(w, n, recite, "player", not lines.is_empty())
 	if not reports.is_empty():
 		lines.append(say(n, " ".join(PackedStringArray(reports.map(func(line): return line.text)))))
+	var PsychRoleD = preload("res://sim/roles/psychologist.gd")
 	for e in readings:
 		facts.append(info_fact(w, n, e))
+		facts.append_array(PsychRoleD.companion_facts(w, n, e))
 	var held = n.info_log.size() - readings.size()
 	if held > 0:
 		var afraid: bool = _afraid(w, n)
