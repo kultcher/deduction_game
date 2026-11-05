@@ -28,3 +28,4 @@ test_meeting_m2b
 res://tools/test_chunk4_psychologist_muddler.gd
 tools/test_chunk5_monitor_confessor.gd
 test_chunk5_cs_tables
+test_town_vibe

@@ -54,6 +54,7 @@ var statement_used = false # player's one statement on the pending nomination
 var presented_today = false # player has had the meeting floor today
 var public_presentations = {} # card numbers of cases you've put to the town (floor, nomination, statement)
 var public_citations = {}     # card numbers of plain cards you've cited at a meeting
+var town_vibe_heard = {}      # the town's opinion of you when you last heard it at the tavern
 var notes = {}              # npc id -> player's note
 var guesses = {}            # npc id -> {guess, confidence 1..3}
 var guess_history: Array = []
@@ -220,6 +221,7 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	workshop_draft = {}
 	public_presentations = {}
 	public_citations = {}
+	town_vibe_heard = {}
 	workshop_deliveries = []
 	workshop_comparisons = []
 	_workshop_plans = {}

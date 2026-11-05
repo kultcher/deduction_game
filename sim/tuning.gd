@@ -398,6 +398,13 @@ class Social:
 	const TAVERN_OVERHEAR_MIN_SUSP = 0.4
 	const TAVERN_GOSSIP_MIN_ITEMS = 3
 	const TAVERN_GOSSIP_MAX_ITEMS = 5
+	## The town's vibe check on the Demonologist (always told at evening tavern gossip):
+	## the average rapport (trust) and competence (credibility) of the living good townsfolk,
+	## in 0.1-wide bands centred on neutral 0.5. A move of TOWN_VIBE_TREND since the player
+	## last heard it is called out; one good townsfolk TOWN_VIBE_OUTLIER below the average
+	## rapport (and below neutral) gets a 'not everyone agrees'.
+	const TOWN_VIBE_TREND = 0.03
+	const TOWN_VIBE_OUTLIER = 0.2
 	const TAVERN_UNHEARD_SPOKEN_WEIGHT = 4.0
 	const TAVERN_BACKFILL_PROFILE_WEIGHT = 1.2
 	const TAVERN_HEARD_SPOKEN_WEIGHT = 0.2
