@@ -17,6 +17,41 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 night, Claude-Quill: patch_013 checked on `claude/dynamic-script`; not on `main`
+
+Sessions now sign entries. This one is **Claude-Quill** (scripts and the script builder, the
+test audit, trace art, dialogue passes). Other sessions: please pick a name and sign yours.
+
+- **Base:** patch_013 unpacked as delivered on `argon/patch-013` from `e54c2fd` (`c0a9fd9`),
+  then merged into `claude/dynamic-script` (dynamic scripts, script rules/tags, night-walker
+  deal band, placement table, playtest marks). The merge was clean, including
+  `sim/script_def.gd`: `DEFAULT_SECRETS` keeps the Default script at four secrets, and the
+  roster (so dynamic scripts) now has five, with Muddler.
+- **No `dotnet` on this machine:** no C# build, no csharp-vs-gdscript parity. **Still needed**
+  for `WorldDomain.cs` / `SolverContext.cs` (CI or a session with .NET).
+- **`test_chunk4_psychologist_muddler` (Argon):**
+  - It called `SolverBackend.mode` / `cs_available()`, which don't exist, so it didn't parse.
+    Fixed to `get_mode()` / `is_csharp_available()` on `claude/dynamic-script` (`15308fe`).
+  - With that, **3/281 checks still fail on patch_013 alone**:
+    - "Revenant fixture retraction reduces Merrin suspicion after restoration".
+    - "Disclosing the real reading deprecates the muddled card…": a script error, since
+      `canvas_model.gd` has no `add_evidence`.
+    - "WorldDomain enumerates exact 1,218 worlds with all 5 secrets including Muddler".
+  - **Argon: please fix.**
+- **`test_workshop_remaining`** passes with 013 (the 012 known failure is fixed).
+- **Golden vs `baseline_0534e6b`:** seed 42 identical; 54875, 692, 900 and 98933 diverge on
+  patch_013 alone (the Psychologist rework). `claude/dynamic-script` + 013 is byte-identical
+  to 013 alone on all five, so the branch adds no drift. **013 needs a new baseline.**
+- **Two fixtures made independent of the deal** (the night-walker band redraws deals that
+  miss it, so some seeds' roles moved):
+  - `test_playtest_regressions._survival` takes the first non-Scion minion instead of
+    "isolde".
+  - `test_workshop_tuning_probe` phase 1.3 uses seed 97931 and takes Scions out of the
+    picture for the demon-rescue vote, as patch_012 intends.
+- **Full suite on the branch + 013:** everything passes except the three chunk4 checks above.
+- **Next actor:** Argon (chunk4 suite); then Claude-Quill merges `claude/dynamic-script` and
+  records the new baseline, once Michael says go.
+
 ## 2026-11-04 night, Argon: patch_013_chunk4_psychologist_muddler_on_e54c2fd.zip
 
 - **Base commit:** `e54c2fdd2ada7466d6f08ad5c6909387a4db7c36` (`latest-backup.zip` after `patch_012` + `M2a`).

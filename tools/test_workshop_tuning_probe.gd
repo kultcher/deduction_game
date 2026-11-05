@@ -136,7 +136,7 @@ func _test_phase1_2_pre_gift_workshop_attach() -> void:
 func _test_phase1_3_evil_nomination_and_vote_coherence() -> void:
 	var g = Game.new()
 	g.detailed_logging = false
-	g.new_case(97930, 10)
+	g.new_case(97931, 10)
 	g.w.day = 3
 	g.w.open_meeting()
 	var demon = g.w.demon()
@@ -148,6 +148,10 @@ func _test_phase1_3_evil_nomination_and_vote_coherence() -> void:
 	_check(self_vote, "Evil nominator always votes YES on their own scapegoat nomination even at yes_so_far == 0")
 
 	# Demon on the block: fellow Evil voter rallies behind counter-nomination even early in ballot order.
+	# Only without a Scion ready to inherit (patch_012 lets evil spend the Demon when one is);
+	# which Scion is ready depends on the deal, so take it out of the picture.
+	for sc in g.w.npcs.filter(func(x): return x.role == "scion" and x != m0):
+		sc.alive = false
 	g.w.meeting["block"] = demon.id
 	g.w.meeting["block_count"] = g.w.vote_threshold()
 	var rescue_vote: bool = Mind.vote(g.w, m0, sg_id, g.w.living_good()[0].id, false, "", 0)

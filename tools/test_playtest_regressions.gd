@@ -141,7 +141,8 @@ func _public_sighting() -> void:
 func _survival() -> void:
 	var g = _game()
 	var w = g.w
-	var n = w.by_id["isolde"]
+	# An evil minion (the deal decides who; Isolde was the Revenant before the night-walker band).
+	var n = w.minions().filter(func(x): return x.role != "scion")[0] if w.minions().any(func(x): return x.role != "scion") else w.minions()[0]
 	var demon = w.demon()
 	# Without a Scion ready to inherit (patch_012 lets evil spend the demon when one is).
 	for sc in w.npcs.filter(func(x): return x.role == "scion"):
