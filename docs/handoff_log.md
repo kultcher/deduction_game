@@ -17,6 +17,60 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-04 late, Claude-Bailiff: C# is the only solver; meeting refresh cost cut ~3x
+
+- **Branches:** `claude/csharp-cutover` (off `claude/dynamic-script` at `47913b7`) and
+  `claude/fraction-cs` on top of it. Not on main yet. They wait for dynamic-script to land
+  and tonight's sweep to finish. The last dual-mode code is on branch
+  `archive/gdscript-solver-final` (`47913b7`): tags can't be pushed through our proxy.
+- **Why:** the game never switched the solver to C#. `SolverBackend` defaulted to
+  GDScript and only tools set C#, so every playtest ran the slow path. Michael decided:
+  C# only, no parity upkeep, GDScript kept only as an archived starting point for a
+  possible browser port (no C# web export).
+- **What changed:**
+  - The GDScript kernel implementations and `GDSCRIPT`/`VERIFY` modes are gone: 50 dead
+    private functions in `workshop/`. A missing assembly is a hard error.
+  - `test_csharp_slice_c1`-`c3` (parity suites) are retired.
+  - `autoplay --backend` is accepted and ignored. `golden_capture --mode` accepts only
+    `csharp`.
+  - CI captures once, and **the baseline diff is now the gate** (it was a warning, with
+    the parity job as the gate).
+  - Kept on purpose, because C# mode already used them:
+    - `Solver._positions` below 64 worlds;
+    - `CaseEval._evaluate_posterior_gd` for a case with no compiled class table;
+    - `WorldDomain._gift_time_gd` for input packing.
+- **Proof:** the golden capture after the cutover is identical (`--tol 0`) to the C#
+  capture at `47913b7`. Full suite on C#: 122/123, the one failure being the bug below.
+- **Bug found and fixed (latent C# divergence):** in the Warden packing in
+  `Solver._report_table_cs`, a guard on a door the Demon killed that night stayed
+  `ContentTrivialTrue`, because `pre_fail` was set inside the Warden branch, past the
+  `elif pre_fail`. Caught by `test_mechanics_warden` once the suites ran on C#.
+  Pattern to watch for in C# packing: a flag set after the branch that reads it.
+- **Perf (`claude/fraction-cs`):** `ReadingChallenges._fraction` was ~65% of each
+  meeting refresh. Its loop over the reference worlds was one C# `Healthy` crossing plus
+  a world key per world, per NPC. It is now one `SolverKernel.ReadingFraction` call per
+  challenged report, and the fixture index map is cached per universe. Golden identical.
+- **Measurements:** replay of playtest 40741 (10 NPCs), 2-core workspace:
+
+  | | Whole replay | Votes (all) | Meeting waits | Slowest meeting step |
+  |---|---|---|---|---|
+  | GDScript | 230 s | 21.0 s | 15.6 s | ~7 s |
+  | C# | 53.5 s | 10.4 s | 9.0 s | ~4 s |
+  | C# + `_fraction` port | 24.0 s | 3.1 s | 2.7 s | ~1.25 s |
+
+- **For Argon:** from here on, **solver-kernel changes go in C# only** (`workshop/cs/`).
+  The GDScript files in `workshop/` only marshal inputs and call it. Don't add GDScript
+  fallbacks. Patch 12 style ("compute in GDScript, pass arrays to C#") is fine for inputs.
+  Logic that runs per world belongs in C#. To run locally: the .NET 8 SDK plus the Godot
+  .NET build, `dotnet build Demonologist.csproj -c Debug`, then `--import`.
+- **For Claude-Quill:** `test_playtest_regressions` and `test_workshop_tuning_probe`
+  failed on `8ba458e` but pass on `47913b7`. Your branch's capture differs from
+  `baseline_0534e6b` from record 0 (patch 13 behaviour), so dynamic-script needs its own
+  baseline when it lands. The cutover is identical to your `47913b7` in C#, so record it
+  from either.
+- **Next actor:** Claude-Bailiff (merge order: dynamic-script, then cutover + fraction,
+  then M2b).
+
 ## 2026-11-04 night, Claude-Quill: patch_013 checked on `claude/dynamic-script`; not on `main`
 
 Sessions now sign entries. This one is **Claude-Quill** (scripts and the script builder, the

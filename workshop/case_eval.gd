@@ -196,35 +196,9 @@ static func _index(view: Dictionary) -> Dictionary:
 	if _index_cache.size() > 16:
 		_index_cache.clear()
 	var universe: Array = Solver.universe(view)
-	var mode: int = SolverBackend.active_mode()
-	var out: Dictionary
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		out = _index_gd(view, universe)
-	elif mode == SolverBackend.Mode.CSHARP:
-		out = _index_cs(view, key, universe)
-	else:
-		out = _index_gd(view, universe)
-		var cs_out: Dictionary = _index_cs(view, key, universe)
-		var b = SolverBackend._bridge()
-		b.VerifyInt32Buffer("CaseEval._index.teams", PackedInt32Array(out.teams), PackedInt32Array(cs_out.teams))
-		b.VerifyInt32Buffer("CaseEval._index.team_of", out.team_of, cs_out.team_of)
+	var out: Dictionary = _index_cs(view, key, universe)
 	_index_cache[key] = out
 	return out
-
-static func _index_gd(view: Dictionary, universe: Array) -> Dictionary:
-	var teams: Array = []
-	var team_idx = {}
-	var team_of = PackedInt32Array()
-	team_of.resize(universe.size())
-	for i in range(universe.size()):
-		var evil: int = universe[i].evil
-		if universe[i].has("converted") and TimeModel.evil_index(view, universe[i], universe[i].converted, "Current alignment"):
-			evil |= 1 << int(universe[i].converted)
-		if not team_idx.has(evil):
-			team_idx[evil] = teams.size()
-			teams.append(evil)
-		team_of[i] = team_idx[evil]
-	return {"teams": teams, "team_of": team_of}
 
 static func _index_cs(view: Dictionary, u_key: String, universe: Array) -> Dictionary:
 	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
@@ -259,34 +233,9 @@ static func _premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByt
 static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
 	if conclusion.type in ["misled", "unreliable"]:
 		return Solver.question_table(view, conclusion)
-	var mode: int = SolverBackend.active_mode()
 	var u_key: String = Solver._universe_key(view)
 	var universe: Array = Solver.universe(view)
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _build_premise_mask_gd(view, universe, conclusion)
-	var cs_out: PackedByteArray = _build_premise_mask_cs(view, u_key, universe, conclusion)
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_out
-	var gd_out: PackedByteArray = _build_premise_mask_gd(view, universe, conclusion)
-	SolverBackend._bridge().VerifyByteBuffer("CaseEval._build_premise_mask", gd_out, cs_out)
-	return gd_out
-
-static func _build_premise_mask_gd(view: Dictionary, universe: Array, conclusion: Dictionary) -> PackedByteArray:
-	var m = PackedByteArray()
-	m.resize(universe.size())
-	var bits = Solver.world_bits(view)
-	var index: int = Solver.person_ids(view).find(conclusion.get("target", ""))
-	if bits.plain and index >= 0 and conclusion.get("type", "") in ["evil", "suspicious", "good"]:
-		# No conversions: alignment is the world's evil bit.
-		var bit: int = 1 << index
-		var evil: PackedInt64Array = bits.evil
-		var want: int = 0 if conclusion.type == "good" else 1
-		for i in range(universe.size()):
-			m[i] = want if evil[i] & bit else 1 - want
-		return m
-	for i in range(universe.size()):
-		m[i] = 1 if Solver.holds(view, universe[i], conclusion) else 0
-	return m
+	return _build_premise_mask_cs(view, u_key, universe, conclusion)
 
 static func _build_premise_mask_cs(view: Dictionary, u_key: String, universe: Array, conclusion: Dictionary) -> PackedByteArray:
 	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
@@ -302,15 +251,6 @@ static func _build_premise_mask_cs(view: Dictionary, u_key: String, universe: Ar
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("Solver.premise_mask", pack_u)
 	return SolverBackend._bridge().SolverPremiseMask(u_handle, fallback, is_live, c_code, target_idx, sec_mod, conv_evil)
-
-static func _share(weights: PackedFloat64Array, mask: PackedByteArray) -> Array:
-	var yes = 0.0
-	var total = 0.0
-	for i in range(weights.size()):
-		total += weights[i]
-		if mask[i] == 1:
-			yes += weights[i]
-	return [yes, total]
 
 ## The chance a reading is wrong despite a good, healthy source, for this listener:
 ## their reliability for it (impairment, a doubted route, a challenge they accept),
@@ -428,17 +368,11 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 				if TimeModel.evil_at(view, world, fact.person, fact.at):
 					fits[c] = 0.0
 
-	var mode: int = SolverBackend.active_mode()
-	if mode != SolverBackend.Mode.GDSCRIPT:
-		_ensure_cc_epoch()
-		var cc_h: int = int(_cc_handles.get(cc.key, -1))
-		if cc_h >= 0:
-			var cs_res: Dictionary = _evaluate_posterior_cs(view, case_data, cards, conclusion, listener, own_ids, own, err_for, cc, cc_h, oc, team_prior, fits, fits_before)
-			if mode == SolverBackend.Mode.CSHARP:
-				return cs_res
-			var gd_res: Dictionary = _evaluate_posterior_gd(view, case_data, cards, conclusion, listener, own_ids, own, err_for, cc, oc, team_prior, fits, fits_before)
-			_verify_evaluate_result(gd_res, cs_res)
-			return gd_res
+	_ensure_cc_epoch()
+	var cc_h: int = int(_cc_handles.get(cc.key, -1))
+	if cc_h >= 0:
+		return _evaluate_posterior_cs(view, case_data, cards, conclusion, listener, own_ids, own, err_for, cc, cc_h, oc, team_prior, fits, fits_before)
+	# No compiled C# class table for this case (not registered): the GDScript posterior.
 	return _evaluate_posterior_gd(view, case_data, cards, conclusion, listener, own_ids, own, err_for, cc, oc, team_prior, fits, fits_before)
 
 static func _evaluate_posterior_gd(view: Dictionary, case_data: Dictionary, cards: Array, conclusion: Dictionary, listener: Dictionary, own_ids: Array, own: Array, err_for: Callable, cc: Dictionary, oc: Dictionary, team_prior: PackedFloat64Array, fits: PackedFloat64Array, fits_before: PackedFloat64Array) -> Dictionary:
@@ -633,32 +567,6 @@ static func _evaluate_posterior_cs(view: Dictionary, case_data: Dictionary, card
 		result["pivotal"] = piv_ids
 	return result
 
-static func _verify_evaluate_result(gd_res: Dictionary, cs_res: Dictionary) -> void:
-	var b = SolverBackend._bridge()
-	b.VerifyScalarFloat64("CaseEval.evaluate.prior", gd_res.prior, cs_res.prior, 0.0)
-	b.VerifyScalarFloat64("CaseEval.evaluate.posterior", gd_res.posterior, cs_res.posterior, 0.0)
-	b.VerifyScalarFloat64("CaseEval.evaluate.lr", gd_res.lr, cs_res.lr, 0.0)
-	b.VerifyScalarBool("CaseEval.evaluate.impossible", gd_res.impossible, cs_res.impossible)
-	b.VerifyScalarBool("CaseEval.evaluate.consistent", gd_res.consistent, cs_res.consistent)
-	b.VerifyScalarFloat64("CaseEval.evaluate.credence", gd_res.credence, cs_res.credence, 0.0)
-	b.VerifyScalarFloat64("CaseEval.evaluate.theory_fit", gd_res.theory_fit, cs_res.theory_fit, 0.0)
-	var gd_p := PackedFloat64Array()
-	var cs_p := PackedFloat64Array()
-	for pid in gd_res.people:
-		gd_p.append(gd_res.people[pid].prior)
-		gd_p.append(gd_res.people[pid].posterior)
-		cs_p.append(cs_res.people[pid].prior)
-		cs_p.append(cs_res.people[pid].posterior)
-	b.VerifyFloat64Buffer("CaseEval.evaluate.people", gd_p, cs_p, 0.0)
-	var gd_acc := PackedFloat64Array()
-	var cs_acc := PackedFloat64Array()
-	for cid in gd_res.acceptance:
-		gd_acc.append(gd_res.acceptance[cid])
-		cs_acc.append(cs_res.acceptance[cid])
-	b.VerifyFloat64Buffer("CaseEval.evaluate.acceptance", gd_acc, cs_acc, 0.0)
-	if gd_res.has("pivotal"):
-		b.VerifyScalarBool("CaseEval.evaluate.pivotal", gd_res.pivotal == cs_res.pivotal, true)
-
 static var _compiled: Dictionary = {}
 
 ## Per presentation: the universe grouped into classes that every listener weighs alike.
@@ -739,123 +647,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 
 	var movement_ok: bool = _movement_ok(view, cards, live)
 	var q_arr: Array = reports.map(func(c): return chance_content(view, c))
-	var mode: int = SolverBackend.active_mode()
-	var out: Dictionary
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		out = _compile_classes_gd(view, universe, key_input, key, conclusion, cards, reports, tables, valids, dead, premise, live, movement, movement_ok, tests, q_arr)
-	elif mode == SolverBackend.Mode.CSHARP:
-		out = _compile_classes_cs(view, universe, key_input, key, conclusion, cards, reports, tables, valids, dead, premise, live, movement, movement_ok, tests, q_arr)
-	else:
-		out = _compile_classes_gd(view, universe, key_input, key, conclusion, cards, reports, tables, valids, dead, premise, live, movement, movement_ok, tests, q_arr)
-		var cs_out: Dictionary = _compile_classes_cs(view, universe, key_input, key, conclusion, cards, reports, tables, valids, dead, premise, live, movement, movement_ok, tests, q_arr)
-		var b = SolverBackend._bridge()
-		b.VerifyInt32Buffer("CaseEval.compile.team", out.team, cs_out.team)
-		b.VerifyInt32Buffer("CaseEval.compile.rep", out.rep, cs_out.rep)
-		b.VerifyInt32Buffer("CaseEval.compile.group", out.group, cs_out.group)
-		b.VerifyInt32Buffer("CaseEval.compile.group_bits", PackedInt32Array(out.group_bits), PackedInt32Array(cs_out.group_bits))
-		b.VerifyInt32Buffer("CaseEval.compile.class_of", out.class_of, cs_out.class_of)
-		b.VerifyFloat64Buffer("CaseEval.compile.count", out.count, cs_out.count, 0.0)
-		b.VerifyFloat64Buffer("CaseEval.compile.move", out.move, cs_out.move, 0.0)
-		b.VerifyByteBuffer("CaseEval.compile.premise", out.premise, cs_out.premise)
-		b.VerifyByteBuffer("CaseEval.compile.dead", out.dead, cs_out.dead)
-		b.VerifyByteBuffer("CaseEval.compile.states", out.states, cs_out.states)
-		b.VerifyByteBuffer("CaseEval.compile.test_hold", out.test_hold, cs_out.test_hold)
+	var out: Dictionary = _compile_classes_cs(view, universe, key_input, key, conclusion, cards, reports, tables, valids, dead, premise, live, movement, movement_ok, tests, q_arr)
 	_compiled[key] = out
-	return out
-
-static func _compile_classes_gd(view: Dictionary, universe: Array, key_input: Array, key: int, conclusion: Dictionary, cards: Array, reports: Array, tables: Array, valids: Array, dead: PackedByteArray, premise: PackedByteArray, live: bool, movement: Array, movement_ok: bool, tests: Array, q_arr: Array) -> Dictionary:
-	var n: int = universe.size()
-	var ix = _index(view)
-	var people: int = view.people.size()
-	var roles_on: bool = view.get("world_options", {}).get("roles", false)
-	var ids: Array = Solver.person_ids(view)
-	var seer: bool = Solver.Roles.seer_flag(cards)
-	var mediums: int = Solver.Roles.relay_mediums(ids, cards)
-	var walkers: int = Solver.Roles.sleepwalk_claimants(ids, cards)
-	var k: int = reports.size()
-	var index = {}
-	var team = PackedInt32Array()
-	var rep = PackedInt32Array()
-	var count = PackedFloat64Array()
-	var prem = PackedByteArray()
-	var states = PackedByteArray()  # class-major, k per class
-	var is_dead = PackedByteArray()
-	var class_of = PackedInt32Array()
-	class_of.resize(n)
-	var digits = PackedByteArray()
-	digits.resize(k)
-	var radix: int = int(pow(3, k))
-	var rm_bound: int = (1 << people) * (people + 2) * (people + 2) * ((1 << people) if mediums != 0 else 1) * ((1 << people) if walkers != 0 else 1)
-	if view.get("chronology", {}).has("curse"):
-		rm_bound *= people + 1
-	var int_keys: bool = k <= 16 and float(rm_bound) * float(radix) * 4.0 < 9.0e18
-	var codes = PackedInt64Array()
-	codes.resize(n)
-	codes.fill(0)
-	for c in range(k):
-		var t: PackedByteArray = tables[c]
-		var v: PackedByteArray = valids[c]
-		for i in range(n):
-			codes[i] = codes[i] * 3 + (0 if t[i] == 1 else (1 if v[i] == 1 else 2))
-	var rms: PackedInt64Array = _coarse(view, seer, mediums, walkers) if (roles_on or seer) else Solver.world_bits(view).evil
-	if not (roles_on or seer) and view.get("chronology", {}).has("curse"):
-		rms = rms.duplicate()
-		for i in range(n):
-			rms[i] = rms[i] * (people + 1) + int(universe[i].converted) + 1
-	if not live:
-		rms = PackedInt64Array()
-		rms.resize(n)
-		for i in range(n):
-			rms[i] = i
-	var test_hold = PackedByteArray()
-	var team_of: PackedInt32Array = ix.team_of
-	var plain_bits: bool = Solver.world_bits(view).plain
-	var group = PackedInt32Array()
-	var group_bits: Array = ix.teams if plain_bits else []
-	var group_index = {}
-	for i in range(n):
-		var code: int = codes[i]
-		var rm: int = rms[i]
-		var ck = ((rm * radix + code) * 2 + premise[i]) * 2 + dead[i] if int_keys else [rm, code, premise[i], dead[i]]
-		var c_id = index.get(ck, -1)
-		if c_id < 0:
-			c_id = team.size()
-			index[ck] = c_id
-			team.append(team_of[i])
-			if plain_bits:
-				group.append(team_of[i])
-			else:
-				var bits = 0
-				for j in range(people):
-					if TimeModel.evil_index(view, universe[i], j, conclusion.get("at", view.get("alignment_epoch", ""))):
-						bits |= 1 << j
-				var g_id = group_index.get(bits, -1)
-				if g_id < 0:
-					g_id = group_bits.size()
-					group_index[bits] = g_id
-					group_bits.append(bits)
-				group.append(g_id)
-			rep.append(i)
-			count.append(0.0)
-			prem.append(premise[i])
-			is_dead.append(dead[i])
-			for f in tests:
-				var target: int = Solver.person_index(view, f.target)
-				test_hold.append(1 if target >= 0 and TimeModel.evil_at(view, universe[i], f.target, f.epoch) else 0)
-			for c in range(k - 1, -1, -1):
-				digits[c] = code % 3
-				code /= 3
-			states.append_array(digits)
-		count[c_id] += 1.0
-		class_of[i] = c_id
-	var u_handle: int = SolverBackend.get_universe_handle(Solver._universe_key(view), universe)
-	var move: PackedFloat64Array = _movement_scores(view, universe, rep, u_handle, movement)
-	var out = {"input": key_input, "key": key, "reports": reports, "tables": tables, "valids": valids, "move": move,
-		"movement": movement.map(func(f): return f.label), "factors": movement, "tests": tests, "test_hold": test_hold, "group": group, "group_bits": group_bits, "movement_ok": movement_ok,
-		"q": q_arr, "team": team, "rep": rep, "count": count,
-		"premise": prem, "dead": is_dead, "states": states, "class_of": class_of, "k": k}
-	for factor in movement:
-		out.movement.append_array(factor.get("relationships", []))
 	return out
 
 static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Array, key: int, conclusion: Dictionary, cards: Array, reports: Array, tables: Array, valids: Array, dead: PackedByteArray, premise: PackedByteArray, live: bool, movement: Array, movement_ok: bool, tests: Array, q_arr: Array) -> Dictionary:
@@ -989,21 +782,6 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 
 static var _coarse_cache: Dictionary = {}
 
-## Per universe: each world's role-check mask (Roles.coarse_mask), for these flags.
-static func _coarse(view: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> PackedInt64Array:
-	var key = hash([Solver._universe_key(view), seer, mediums, walkers])
-	if _coarse_cache.has(key):
-		return _coarse_cache[key]
-	if _coarse_cache.size() > 16:
-		_coarse_cache.clear()
-	var u_key: String = Solver._universe_key(view)
-	var universe: Array = Solver.universe(view)
-	var people: int = view.people.size()
-	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
-	var out: PackedInt64Array = Solver.Roles.coarse_masks(people, universe, seer, mediums, walkers, u_handle)
-	_coarse_cache[key] = out
-	return out
-
 ## A world's movement/trace likelihood ratio (good everywhere = 1), as the support
 ## model's world_score without its prior ranks.
 static func _augur_factors(view: Dictionary, cards: Array, case_data: Dictionary, live: bool) -> Array:
@@ -1040,80 +818,6 @@ static func _augur_factors(view: Dictionary, cards: Array, case_data: Dictionary
 			"p_ref": float(spec.p_ref),
 		})
 	return result
-
-static func _augur_world_mult(view: Dictionary, world: Dictionary, factor: Dictionary) -> float:
-	var src_idx: int = int(factor.src_idx)
-	if (int(world.evil) & (1 << src_idx)) != 0 or (bool(factor.conv_evil) and world.has("converted") and int(world.converted) == src_idx):
-		return 1.0
-	if bool(factor.is_live) and not Domain._healthy_gd(view, world, str(factor.src)):
-		return 1.0
-	var d_idx: int = int(world.get("demon", -1))
-	var m_idx: int = int(world.get("marked", -1))
-	var s0: int = int(factor.slot0_codes)
-	var s1: int = int(factor.slot1_codes)
-	var dp0: float = Solver.augur_slot_prob(s0, d_idx)
-	var dp1: float = Solver.augur_slot_prob(s1, d_idx)
-	var mp0: float = Solver.augur_slot_prob(s0, m_idx) if (m_idx >= 0 and m_idx != src_idx) else 0.0
-	var mp1: float = Solver.augur_slot_prob(s1, m_idx) if (m_idx >= 0 and m_idx != src_idx) else 0.0
-	var trig0: float = 1.0 - (1.0 - dp0) * (1.0 - 0.5 * mp0)
-	var trig1: float = 1.0 - (1.0 - dp1) * (1.0 - 0.5 * mp1)
-	var p_yes: float = 1.0 - (1.0 - trig0) * (1.0 - trig1)
-	var p_out: float = p_yes if bool(factor.yes) else (1.0 - p_yes)
-	var p_ref: float = float(factor.p_ref)
-	if p_out <= 0.0:
-		return (DEFAULT_ERR * 0.5) / ((1.0 - DEFAULT_ERR) + DEFAULT_ERR * 0.5)
-	return (1.0 - DEFAULT_ERR) * (p_out / p_ref) + DEFAULT_ERR
-
-static func _movement_score(view: Dictionary, world: Dictionary, factors: Array) -> float:
-	var score = 1.0
-	for factor in factors:
-		if factor.get("joint_live", false):
-			score *= Movement.Live.score(world, factor)
-			continue
-		if factor.get("augur_crossing", false):
-			score *= _augur_world_mult(view, world, factor)
-			continue
-		var target: int = Solver.person_index(view, factor.target)
-		if target >= 0 and TimeModel.evil_at(view, world, factor.target, factor.get("epoch", view.get("alignment_epoch", ""))):
-			score *= pow(2.0, float(factor.log2_ratio))
-		elif target >= 0 and factor.get("origin", "") == "movement_model" and world.marked == target:
-			score *= maxf(factor.good_marked_likelihood, 1e-12) / maxf(factor.good_likelihood, 1e-12)
-	return score
-
-static func _movement_scores(view: Dictionary, universe: Array, rep: PackedInt32Array, u_handle: int, factors: Array) -> PackedFloat64Array:
-	var nc: int = rep.size()
-	var out := PackedFloat64Array()
-	out.resize(nc)
-	out.fill(1.0)
-	if nc == 0 or factors.is_empty():
-		return out
-	var rep_worlds: Array = []
-	rep_worlds.resize(nc)
-	for c in range(nc):
-		rep_worlds[c] = universe[rep[c]]
-	for factor in factors:
-		if factor.get("joint_live", false):
-			var j_scores: PackedFloat64Array = Movement.Live.scores(rep_worlds, factor, u_handle, rep)
-			for c in range(nc):
-				out[c] *= j_scores[c]
-			continue
-		if factor.get("augur_crossing", false):
-			for c in range(nc):
-				out[c] *= _augur_world_mult(view, rep_worlds[c], factor)
-			continue
-		var target: int = Solver.person_index(view, factor.target)
-		if target < 0:
-			continue
-		var ep = factor.get("epoch", view.get("alignment_epoch", ""))
-		var ratio: float = pow(2.0, float(factor.log2_ratio))
-		var is_mm: bool = factor.get("origin", "") == "movement_model"
-		for c in range(nc):
-			var world: Dictionary = rep_worlds[c]
-			if TimeModel.evil_at(view, world, factor.target, ep):
-				out[c] *= ratio
-			elif is_mm and world.marked == target:
-				out[c] *= maxf(factor.good_marked_likelihood, 1e-12) / maxf(factor.good_likelihood, 1e-12)
-	return out
 
 ## Fixture views: sightings and alibis that can't all be true leave no consistent world.
 ## (Live views check routes inside the role check.)
@@ -1171,60 +875,9 @@ static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Diction
 		_own_cache.clear()
 	var tables: Array = own.map(func(c): return Solver.report_table(view, c))
 	var valids: Array = own.map(func(c): return _valid_table(view, c))
-	var mode: int = SolverBackend.active_mode()
-	var out: Dictionary
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		out = _own_counts_gd(cc, own, tables, valids)
-	elif mode == SolverBackend.Mode.CSHARP:
-		out = _own_counts_cs(cc, own, tables, valids)
-	else:
-		out = _own_counts_gd(cc, own, tables, valids)
-		var cs_out: Dictionary = _own_counts_cs(cc, own, tables, valids)
-		var b = SolverBackend._bridge()
-		b.VerifyScalarInt64("CaseEval._own_counts.states", out.states, cs_out.states)
-		b.VerifyInt32Buffer("CaseEval._own_counts.of", out.of, cs_out.of)
-		b.VerifyFloat64Buffer("CaseEval._own_counts.counts", out.counts, cs_out.counts, 0.0)
+	var out: Dictionary = _own_counts_cs(cc, own, tables, valids)
 	_own_cache[key] = out
 	return out
-
-static func _own_counts_gd(cc: Dictionary, own: Array, tables: Array, valids: Array) -> Dictionary:
-	var class_of: PackedInt32Array = cc.class_of
-	var n: int = class_of.size()
-	var of = PackedInt32Array()
-	of.resize(n)
-	var codes: Array = []
-	var indices = {}
-	var k: int = own.size()
-	if k <= 39:
-		for i in range(n):
-			var packed: int = 0
-			for c in range(k):
-				packed = packed * 3 + (0 if tables[c][i] == 1 else (1 if valids[c][i] == 1 else 2))
-			if not indices.has(packed):
-				var code = PackedByteArray()
-				code.resize(k)
-				for c in range(k):
-					code[c] = 0 if tables[c][i] == 1 else (1 if valids[c][i] == 1 else 2)
-				indices[packed] = codes.size()
-				codes.append(code)
-			of[i] = indices[packed]
-	else:
-		for i in range(n):
-			var code = PackedByteArray()
-			code.resize(k)
-			for c in range(k):
-				code[c] = 0 if tables[c][i] == 1 else (1 if valids[c][i] == 1 else 2)
-			if not indices.has(code):
-				indices[code] = codes.size()
-				codes.append(code)
-			of[i] = indices[code]
-	var ns = codes.size()
-	var counts = PackedFloat64Array()
-	counts.resize(cc.team.size() * ns)
-	counts.fill(0.0)
-	for i in range(n):
-		counts[class_of[i] * ns + of[i]] += 1.0
-	return {"states": ns, "counts": counts, "of": of, "codes": codes}
 
 static func _own_counts_cs(cc: Dictionary, own: Array, tables: Array, valids: Array) -> Dictionary:
 	_ensure_cc_epoch()
@@ -1263,15 +916,7 @@ static func _factor(st: int, err: float, q: float) -> float:
 
 ## The case's likelihood per class. skip >= 0 leaves that report card out (pivotal check).
 static func _class_like(cc: Dictionary, errs: Array, skip: int) -> PackedFloat64Array:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _class_like_gd(cc, errs, skip)
-	var cs_out: PackedFloat64Array = _class_like_cs(cc, errs, skip)
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_out
-	var gd_out: PackedFloat64Array = _class_like_gd(cc, errs, skip)
-	SolverBackend._bridge().VerifyFloat64Buffer("CaseEval._class_like", gd_out, cs_out, 0.0)
-	return gd_out
+	return _class_like_cs(cc, errs, skip)
 
 static func _class_like_gd(cc: Dictionary, errs: Array, skip: int) -> PackedFloat64Array:
 	var nc: int = cc.team.size()
@@ -1331,45 +976,7 @@ static func _state_like(view: Dictionary, own: Array, errs: Array, codes: Array)
 
 ## Per team: the listener's odds that exactly this team is evil (known-good people zero).
 static func _team_prior(view: Dictionary, listener: Dictionary) -> PackedFloat64Array:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _team_prior_gd(view, listener)
-	var cs_out: PackedFloat64Array = _team_prior_cs(view, listener)
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_out
-	var gd_out: PackedFloat64Array = _team_prior_gd(view, listener)
-	SolverBackend._bridge().VerifyFloat64Buffer("CaseEval._team_prior", gd_out, cs_out, 0.0)
-	return gd_out
-
-static func _team_prior_gd(view: Dictionary, listener: Dictionary) -> PackedFloat64Array:
-	var ix = _index(view)
-	var ids: Array = Solver.person_ids(view)
-	var odds: Array = []
-	for id in ids:
-		var raw: float = float(listener.get("suspicion", {}).get(id, 0.3))
-		var sv: float = clampf(raw, 0.02, 0.98)
-		# Trust in a person halves (full trust) or doubles (none) their odds of evil.
-		var trust: float = float(listener.get("npc_trust", {}).get(id, 0.5))
-		var base: float = sv / (1.0 - sv) if prior_k < 0.0 else exp(prior_k * clampf(raw, 0.0, 1.5))
-		odds.append(base * pow(2.0, -2.0 * (clampf(trust, 0.0, 1.0) - 0.5)))
-	var good_mask = 0
-	for id in listener.get("knowledge", {}).get("good", []):
-		var idx = ids.find(id)
-		if idx >= 0:
-			good_mask |= 1 << idx
-	var team_prior = PackedFloat64Array()
-	team_prior.resize(ix.teams.size())
-	for t in range(ix.teams.size()):
-		var evil: int = ix.teams[t]
-		if evil & good_mask:
-			team_prior[t] = 0.0
-			continue
-		var v = 1.0
-		for j in range(ids.size()):
-			if evil & (1 << j):
-				v *= odds[j]
-		team_prior[t] = v
-	return team_prior
+	return _team_prior_cs(view, listener)
 
 static func _team_prior_cs(view: Dictionary, listener: Dictionary) -> PackedFloat64Array:
 	var u_key: String = Solver._universe_key(view)

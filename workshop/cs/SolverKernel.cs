@@ -998,6 +998,54 @@ internal static class SolverKernel
     /// 1:1 port of Solver._positions over an arbitrary packed or handle-indexed world slice.
     /// Returns subset indices (0..sliceLen-1) that match all position and temporal_position filters.
     /// </summary>
+    /// <summary>
+    /// ReadingChallenges._fraction's world loop (Nov 4): over the listener's reference worlds
+    /// (universe indices), keep those where the report's source is good at the epoch and
+    /// healthy; count distinct alignment/modifier layouts (ignoring the Demon's identity),
+    /// and those where the report and its role claim also hold. Returns [numerator, denominator].
+    /// </summary>
+    public static int[] ReadingFraction(
+        int universeHandle,
+        int[] refIndices,
+        long[] fallbackWorlds,
+        int nPeople,
+        int sourceIdx,
+        bool convAtEpoch,
+        byte[] reportTable,
+        byte[] roleTable,
+        bool compatible)
+    {
+        if (refIndices.Length == 0)
+        {
+            return new[] { 0, 0 }; // ResolveWorlds reads an empty subset as "all worlds"
+        }
+        long[] worlds = SolverContext.ResolveWorlds(universeHandle, refIndices, fallbackWorlds);
+        var denominator = new HashSet<long>();
+        var numerator = new HashSet<long>();
+        long span = 1L << nPeople;
+        for (int k = 0; k < worlds.Length; k++)
+        {
+            var w = new WorldEntry(worlds[k]);
+            if (!PositionHolds(w, sourceIdx, PosGood, convAtEpoch) || !WorldDomainKernel.Healthy(worlds[k], sourceIdx))
+            {
+                continue;
+            }
+            int holders = w.Holders;
+            if (holders == 0 && w.Marked >= 0)
+            {
+                holders = 1 << w.Marked; // fixture worlds carry no holders: the marked one
+            }
+            long baseKey = ((long)w.Evil * 5 + w.EffectiveModifier) * span + holders;
+            denominator.Add(baseKey);
+            int ui = refIndices[k];
+            if (compatible && reportTable[ui] != 0 && roleTable[ui] != 0)
+            {
+                numerator.Add(baseKey);
+            }
+        }
+        return new[] { numerator.Count, denominator.Count };
+    }
+
     public static int[] FilterPositionsSubset(
         int universeHandle,
         int[] subsetIndices,

@@ -366,43 +366,11 @@ static func _routes_dispatch(view: Dictionary, cards: Array, answers: Dictionary
 	var key = hash(input)
 	if route_cache.has(key) and route_cache[key].input == input:
 		return route_cache[key].result
-	var mode: int = SolverBackend.active_mode()
-	var result: Dictionary
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		result = _routes_gd(view, cards, answers, knowledge, strict_reports)
-	elif mode == SolverBackend.Mode.CSHARP:
-		result = _routes_cs(view, cards, answers, knowledge, strict_reports)
-	else:
-		result = _routes_gd(view, cards, answers, knowledge, strict_reports)
-		var cs_res: Dictionary = _routes_cs(view, cards, answers, knowledge, strict_reports)
-		var ids: Array = view.people.map(func(p): return p.id)
-		var gd_buf: PackedInt32Array = _encode_routes_result(ids, result)
-		var cs_buf: PackedInt32Array = _encode_routes_result(ids, cs_res)
-		SolverBackend._bridge().VerifyInt32Buffer("LiveActivity.routes", gd_buf, cs_buf)
+	var result: Dictionary = _routes_cs(view, cards, answers, knowledge, strict_reports)
 	if route_cache.size() >= 128:
 		route_cache.clear()
 	route_cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
-
-static func _encode_routes_result(ids: Array, r: Dictionary) -> PackedInt32Array:
-	var out := PackedInt32Array()
-	out.append(1 if bool(r.get("okay", false)) else 0)
-	var fl: Array = r.get("forced_lamp", [])
-	out.append(fl.size())
-	for pid in fl:
-		out.append(ids.find(pid))
-	var nights: Dictionary = r.get("nights", {})
-	out.append(nights.size())
-	for nk in nights:
-		out.append(int(nk))
-		out.append(int(nights[nk].get("compatible", 0)))
-		var mask: int = 0
-		for pid in nights[nk].get("forced_out", []):
-			var ix: int = ids.find(pid)
-			if ix >= 0:
-				mask |= (1 << ix)
-		out.append(mask)
-	return out
 
 static func _routes_cs(view: Dictionary, cards: Array, answers: Dictionary, knowledge: Dictionary, strict_reports: bool) -> Dictionary:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
@@ -456,79 +424,6 @@ static func _routes_cs(view: Dictionary, cards: Array, answers: Dictionary, know
 		nights[str(n_int)] = {"compatible": comp_cnt, "forced_out": out_ids}
 	return {"okay": okay, "nights": nights, "forced_lamp": forced_lamp}
 
-static func _routes_gd(view: Dictionary, cards: Array, answers: Dictionary, knowledge: Dictionary, strict_reports: bool) -> Dictionary:
-	var nights = {}
-	for card in relevant(cards):
-		if card.get("night", -1) >= 0 and card.kind not in ["evening", "trace"]:
-			nights[str(card.night)] = {}
-	for card in cards:
-		if card.has("relay_source") and not card.get("quoted", false):
-			nights[str(card.relay_observed_at.day)] = {}
-	var okay = true
-	var forced_lamp: Array = []
-	for night_key in nights:
-		var forced = 0
-		var possible = 0
-		var paths: Array = []
-		for i in range(view.people.size()):
-			var options = _paths(view, view.people[i], int(night_key), cards, knowledge, strict_reports)
-			paths.append(options)
-			if options.is_empty():
-				okay = false
-			if not options.is_empty() and options.all(func(path): return not path.is_empty()):
-				forced |= 1 << i
-			if options.any(func(path): return not path.is_empty()):
-				possible |= 1 << i
-			if not options.is_empty() and options.all(func(path): return path.size() == C.BLOCKS.size()) and view.people[i].id not in forced_lamp:
-				forced_lamp.append(view.people[i].id)
-		var drops = {}
-		for card in cards:
-			if card.get("night", -1) != int(night_key) or card.get("quoted", false):
-				continue
-			if card.kind != "dropped" and not card.get("item_drop", false):
-				continue
-			var candidates = 0
-			for i in range(view.people.size()):
-				var person: Dictionary = view.people[i]
-				var matches_owner: bool = person.home == card.data.material if card.kind == "dropped" else person.id == card.subject
-				if matches_owner and paths[i].any(func(path): return card.block in path):
-					candidates |= 1 << i
-			drops[card.get("fact_id", card.id)] = candidates
-		var count_masks: Array = []
-		for mask in range(1 << view.people.size()):
-			if mask & forced != forced or mask & ~possible:
-				continue
-			var valid = true
-			for card in cards:
-				if card.kind != "report" or card.get("duty_only", false) or card.get("night", -1) != int(night_key) or card.get("quoted", false) or card.get("role") != "lamplighter":
-					continue
-				var source: int = view.people.map(func(p): return p.id).find(card.source)
-				if _count(mask & ~(1 << source)) != card.data.count or not answers.get(card.id, {}).get("positive", []).all(func(id): return mask & (1 << view.people.map(func(p): return p.id).find(id))):
-					valid = false
-			if valid and _drop_owners(drops.values(), mask):
-				count_masks.append(mask)
-		if count_masks.is_empty():
-			okay = false
-		var out: Array = []
-		for i in range(view.people.size()):
-			if not count_masks.is_empty() and count_masks.all(func(mask): return mask & (1 << i)):
-				out.append(view.people[i].id)
-		nights[night_key] = {"compatible": count_masks.size(), "forced_out": out}
-	okay = okay and forced_lamp.size() <= 1
-	return {"okay": okay, "nights": nights, "forced_lamp": forced_lamp}
-
-static func _drop_owners(groups: Array, available: int) -> bool:
-	if groups.is_empty():
-		return true
-	var remaining = groups.duplicate()
-	var candidates: int = remaining.pop_back() & available
-	while candidates:
-		var bit = candidates & -candidates
-		if _drop_owners(remaining, available & ~bit):
-			return true
-		candidates &= ~bit
-	return false
-
 static func _count(mask: int) -> int:
 	var result = 0
 	while mask:
@@ -559,79 +454,11 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
-	var mode: int = SolverBackend.active_mode()
-	var result: Array
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		result = _factors_gd(view, cards, observations)
-	elif mode == SolverBackend.Mode.CSHARP:
-		result = _factors_cs(view, cards, observations)
-		_ensure_factor_handle(result[0])
-	else:
-		result = _factors_gd(view, cards, observations)
-		var cs_res: Array = _factors_cs(view, cards, observations)
-		var gd_flat: PackedFloat64Array = _flatten_factor_floats(result[0])
-		var cs_flat: PackedFloat64Array = _flatten_factor_floats(cs_res[0])
-		SolverBackend._bridge().VerifyFloat64Buffer("LiveActivity.factors", gd_flat, cs_flat, 0.0)
+	var result: Array = _factors_cs(view, cards, observations)
+	_ensure_factor_handle(result[0])
 	if cache.size() >= 128:
 		cache.clear()
 	cache[key] = {"input": input.duplicate(true), "result": result}
-	return result
-
-static func _flatten_factor_floats(f: Dictionary) -> PackedFloat64Array:
-	var out := PackedFloat64Array()
-	for pr in f.get("profiles", []):
-		out.append(float(pr.good))
-		out.append(float(pr.minion))
-		out.append(float(pr.demon))
-		if pr.has("converted"):
-			out.append(float(pr.converted))
-	for st in f.get("scene_tables", []):
-		for v in st.w1:
-			out.append(float(v))
-		for v in st.w2:
-			out.append(float(v))
-		for v in st.cross_good:
-			out.append(float(v))
-		for v in st.cross_minion:
-			out.append(float(v))
-		for v in st.cross_converted:
-			out.append(float(v))
-	for sp in f.get("scion_splits", []):
-		for pr in sp.pre_profiles:
-			out.append(float(pr.good)); out.append(float(pr.minion)); out.append(float(pr.demon))
-		for pr in sp.post_profiles:
-			out.append(float(pr.good)); out.append(float(pr.minion)); out.append(float(pr.demon))
-		for st in sp.pre_scenes:
-			for v in st.w1: out.append(float(v))
-			for v in st.w2: out.append(float(v))
-			for v in st.cross_good: out.append(float(v))
-			for v in st.cross_minion: out.append(float(v))
-			for v in st.cross_converted: out.append(float(v))
-		for st in sp.post_scenes:
-			for v in st.w1: out.append(float(v))
-			for v in st.w2: out.append(float(v))
-			for v in st.cross_good: out.append(float(v))
-			for v in st.cross_minion: out.append(float(v))
-			for v in st.cross_converted: out.append(float(v))
-	return out
-
-static func _factors_gd(view: Dictionary, cards: Array, observations: Array) -> Array:
-	var checked = cards.duplicate()
-	var movement = routes(view, cards, {}, {}, false)
-	for night in movement.nights:
-		for person in movement.nights[night].forced_out:
-			checked.append({"id": "inferred-out:%s:%s" % [person, night], "kind": "sighting", "source": "evidence", "subject": person, "subjects": [person], "block": "", "night": int(night)})
-	var profiles: Array = []
-	for person in view.people:
-		profiles.append({"good": _likelihood_gd(view, checked, person, "good"), "minion": _likelihood_gd(view, checked, person, "minion"), "demon": _likelihood_gd(view, checked, person, "demon")})
-		if view.get("chronology", {}).has("curse"):
-			profiles[-1]["converted"] = _likelihood_gd(view, checked, person, "converted")
-	var scene_tables: Array = _build_scene_tables_gd(view, checked)
-	var scion_splits: Array = _scion_succession_splits_gd(view, checked)
-	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
-		"label": "Movement / trace: joint live comparison", "profiles": profiles, "scene_tables": scene_tables, "scion_splits": scion_splits,
-		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
-	result[0]["relationships"] = relationships(view, cards)
 	return result
 
 static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> Array:
@@ -785,55 +612,6 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 	_mru_handle = h
 	return h
 
-static func _passer_expected_weight(world: Dictionary, st: Dictionary, trace_weights: Array, demon_idx: int) -> float:
-	var eps: float = Tuning.Setup.TRACE_PASSER_PRIOR_FLOOR
-	var num: float = eps * Tuning.Setup.TRACE_UNKNOWN_WEIGHT
-	var den: float = eps
-	var n_people: int = trace_weights.size()
-	for j in range(n_people):
-		if j == demon_idx or j == st.victim_idx:
-			continue
-		var cp: float
-		if world.get("converted", -1) == j and not st.cross_converted.is_empty():
-			cp = float(st.cross_converted[j])
-		elif (world.evil & (1 << j)) != 0:
-			cp = float(st.cross_minion[j])
-		else:
-			cp = float(st.cross_good[j])
-		if cp > 0.0:
-			num += cp * float(trace_weights[j])
-			den += cp
-	return num / maxf(den, 1e-12)
-
-static func _scene_score(world: Dictionary, scene_tables: Array, demon_idx: int) -> float:
-	if demon_idx < 0 or scene_tables.is_empty():
-		return 1.0
-	var total = 1.0
-	for st in scene_tables:
-		var w1_d: float = float(st.w1[demon_idx])
-		if st.two_cited:
-			var w2_d: float = float(st.w2[demon_idx])
-			var ep2: float = _passer_expected_weight(world, st, st.w2, demon_idx)
-			var ep1: float = _passer_expected_weight(world, st, st.w1, demon_idx)
-			total *= 0.5 * (w1_d * ep2 + w2_d * ep1)
-		elif st.scene_trace_count >= 2:
-			var ep_single: float = _passer_expected_weight(world, st, st.w1, demon_idx)
-			total *= 0.5 * w1_d + 0.5 * ep_single
-		else:
-			total *= w1_d
-	return total
-
-static func _base_score(world: Dictionary, profiles: Array, demon_idx: int, scene_tables: Array = []) -> float:
-	var result = 1.0
-	for i in range(profiles.size()):
-		var profile: Dictionary = profiles[i]
-		var type: String = "demon" if demon_idx == i else ("minion" if world.evil & (1 << i) else "good")
-		if world.get("converted", -1) == i and profile.has("converted"):
-			type = "converted"
-		result *= maxf(profile[type], 1e-30) / maxf(profile.good, 1e-30)
-	result *= _scene_score(world, scene_tables, demon_idx)
-	return result
-
 static func score(world: Dictionary, factor: Dictionary) -> float:
 	if not SolverBackend.profiling_enabled:
 		return _score_dispatch(world, factor)
@@ -843,30 +621,11 @@ static func score(world: Dictionary, factor: Dictionary) -> float:
 	return _res
 
 static func _score_dispatch(world: Dictionary, factor: Dictionary) -> float:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _score_gd(world, factor)
 	var fh: int = _ensure_factor_handle(factor)
 	var packed_w: int = SolverBackend.pack_world(world)
 	SolverBackend.record_boundary_call("LiveActivity.score", 0)
 	var cs_val: float = float(SolverBackend._bridge().LiveScoreWorld(packed_w, fh))
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_val
-	var gd_val: float = _score_gd(world, factor)
-	SolverBackend._bridge().VerifyScalarFloat64("LiveActivity.score", gd_val, cs_val, 0.0)
-	return gd_val
-
-static func _score_gd(world: Dictionary, factor: Dictionary) -> float:
-	var d_idx: int = world.get("demon", -1)
-	var scene_tables: Array = factor.get("scene_tables", [])
-	var direct: float = _base_score(world, factor.profiles, d_idx, scene_tables)
-	for split in factor.get("scion_splits", []):
-		var exec_idx: int = split.executed_idx
-		if d_idx >= 0 and exec_idx != d_idx and (world.evil & (1 << exec_idx)) != 0 and split.alive_demon_mask & (1 << d_idx):
-			var pre_s: float = _base_score(world, split.pre_profiles, exec_idx, split.get("pre_scenes", []))
-			var post_s: float = _base_score(world, split.post_profiles, d_idx, split.get("post_scenes", []))
-			return 0.5 * direct + 0.5 * (pre_s * post_s)
-	return direct
+	return cs_val
 
 static func scores(universe: Array, factor: Dictionary, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedFloat64Array:
 	if not SolverBackend.profiling_enabled:
@@ -880,9 +639,6 @@ static func _scores_dispatch(universe: Array, factor: Dictionary, u_handle: int,
 	var n: int = universe.size()
 	if n == 0:
 		return PackedFloat64Array()
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _scores_gd(universe, factor)
 	var fh: int = _ensure_factor_handle(factor)
 	var fallback_worlds: PackedInt64Array = PackedInt64Array()
 	var pack_u: int = 0
@@ -893,19 +649,7 @@ static func _scores_dispatch(universe: Array, factor: Dictionary, u_handle: int,
 			pack_u = Time.get_ticks_usec() - t0
 	SolverBackend.record_boundary_call("LiveActivity.scores", pack_u)
 	var cs_out: PackedFloat64Array = SolverBackend._bridge().LiveScoreWorldsByHandle(u_handle, sub_indices, fallback_worlds, fh)
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_out
-	var gd_out: PackedFloat64Array = _scores_gd(universe, factor)
-	SolverBackend._bridge().VerifyFloat64Buffer("LiveActivity.scores", gd_out, cs_out, 0.0)
-	return gd_out
-
-static func _scores_gd(universe: Array, factor: Dictionary) -> PackedFloat64Array:
-	var n: int = universe.size()
-	var out := PackedFloat64Array()
-	out.resize(n)
-	for i in range(n):
-		out[i] = _score_gd(universe[i], factor)
-	return out
+	return cs_out
 
 # --- Single-Person Likelihood & Crossing Probability ---
 
@@ -918,9 +662,6 @@ static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alig
 	return _res
 
 static func _likelihood_dispatch(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _likelihood_gd(view, cards, person, alignment)
 	var ids: Array = view.people.map(func(p): return p.id)
 	var p_idx: int = ids.find(person.id)
 	if p_idx < 0:
@@ -936,11 +677,7 @@ static func _likelihood_dispatch(view: Dictionary, cards: Array, person: Diction
 		env.has_curse, env.curse_from, env.curse_until, DEMON_DETOUR,
 		packed_cards.ints, packed_cards.doubles
 	))
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_val
-	var gd_val: float = _likelihood_gd(view, cards, person, alignment)
-	SolverBackend._bridge().VerifyScalarFloat64("LiveActivity._likelihood", gd_val, cs_val, 0.0)
-	return gd_val
+	return cs_val
 
 static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
 	var relevant_cards = relevant(cards)
@@ -1088,46 +825,6 @@ static func relationships(view: Dictionary, cards: Array) -> Array:
 			result.append("Scattered sightings: %s's movements fit the claimed %s gift. This is corroboration, not proof of that identity." % [person.name, C.role_name(role)])
 	return result
 
-static func _scion_succession_splits_gd(view: Dictionary, cards: Array) -> Array:
-	var out: Array = []
-	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
-	if execs.is_empty():
-		return out
-	var nights: Array = []
-	for c in relevant(cards):
-		if c.get("night", -1) >= 0 and c.night not in nights:
-			nights.append(c.night)
-	if nights.is_empty():
-		return out
-	for day_str in execs:
-		var exec_day: int = int(day_str)
-		if not nights.any(func(n): return n < exec_day):
-			continue
-		var alive_before: int = 0
-		for p in view.people:
-			if view.get("timeline", {}).get("death_ticks", {}).get(p.id, 2147483647) >= exec_day * 4 + 2:
-				alive_before += 1
-		if alive_before < 5:
-			continue
-		var pre_cards: Array = cards.filter(func(c): return c.get("night", -1) < 0 or c.night < exec_day)
-		var post_cards: Array = cards.filter(func(c): return c.get("night", -1) < 0 or c.night >= exec_day)
-		var pre_profiles: Array = []
-		var post_profiles: Array = []
-		var alive_mask: int = 0
-		for i in range(view.people.size()):
-			var p: Dictionary = view.people[i]
-			if History.alive_at_night(view, p.id, exec_day):
-				alive_mask |= (1 << i)
-			pre_profiles.append({"good": _likelihood_gd(view, pre_cards, p, "good"), "minion": _likelihood_gd(view, pre_cards, p, "minion"), "demon": _likelihood_gd(view, pre_cards, p, "demon")})
-			post_profiles.append({"good": _likelihood_gd(view, post_cards, p, "good"), "minion": _likelihood_gd(view, post_cards, p, "minion"), "demon": _likelihood_gd(view, post_cards, p, "demon")})
-		var pre_scenes: Array = _build_scene_tables_gd(view, pre_cards)
-		var post_scenes: Array = _build_scene_tables_gd(view, post_cards)
-		for exec_id in execs[day_str]:
-			var idx: int = view.people.map(func(p): return p.id).find(exec_id)
-			if idx >= 0:
-				out.append({"exec_day": exec_day, "executed_idx": idx, "alive_demon_mask": alive_mask, "pre_profiles": pre_profiles, "post_profiles": post_profiles, "pre_scenes": pre_scenes, "post_scenes": post_scenes})
-	return out
-
 static func _scion_succession_splits_cs(view: Dictionary, ids: Array, env: Dictionary, cards: Array) -> Array:
 	var out: Array = []
 	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
@@ -1197,9 +894,6 @@ static func crossing_probability(view: Dictionary, cards: Array, person: Diction
 	return _res
 
 static func _crossing_probability_dispatch(view: Dictionary, cards: Array, person: Dictionary, night: int, alignment: String, scene_block: String) -> float:
-	var mode: int = SolverBackend.active_mode()
-	if mode == SolverBackend.Mode.GDSCRIPT:
-		return _crossing_probability_gd(view, cards, person, night, alignment, scene_block)
 	var ids: Array = view.people.map(func(p): return p.id)
 	var p_idx: int = ids.find(person.id)
 	if p_idx < 0:
@@ -1215,11 +909,7 @@ static func _crossing_probability_dispatch(view: Dictionary, cards: Array, perso
 		env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
 		DEMON_DETOUR, packed_cards.ints, packed_cards.doubles
 	))
-	if mode == SolverBackend.Mode.CSHARP:
-		return cs_val
-	var gd_val: float = _crossing_probability_gd(view, cards, person, night, alignment, scene_block)
-	SolverBackend._bridge().VerifyScalarFloat64("LiveActivity.crossing_probability", gd_val, cs_val, 0.0)
-	return gd_val
+	return cs_val
 
 static func _crossing_probability_gd(view: Dictionary, cards: Array, person: Dictionary, night: int, alignment: String, scene_block: String) -> float:
 	if not History.alive_at_night(view, person.id, night) or scene_block == "":
@@ -1264,109 +954,6 @@ static func _crossing_probability_gd(view: Dictionary, cards: Array, person: Dic
 	if den_all <= 1e-20:
 		return 0.0
 	return clampf(num_cross / den_all, 0.0, 1.0)
-
-static func _build_scene_tables_gd(view: Dictionary, cards: Array) -> Array:
-	var out: Array = []
-	var has_curse: bool = view.get("chronology", {}).has("curse")
-	var people_ids: Array = view.people.map(func(p): return p.id)
-	var compiled_by_scene: Dictionary = {}
-	var compiled_order: Array = []
-	for ta in view.get("trace_assessments", []):
-		if not ta is Dictionary:
-			continue
-		for cs in ta.get("scenes", []):
-			var sc_key: String = str(cs.get("scene", ""))
-			if sc_key == "":
-				continue
-			var sel_id: String = str(cs.get("selected_trace_id", ""))
-			if sel_id != "" and not cards.any(func(c): return not c.get("quoted", false) and c.id == sel_id):
-				continue
-			if not compiled_by_scene.has(sc_key):
-				compiled_order.append(sc_key)
-			compiled_by_scene[sc_key] = cs
-	for sc_key in compiled_order:
-		var cs: Dictionary = compiled_by_scene[sc_key]
-		var c_night: int = int(cs.get("night", 1))
-		var c_block: String = str(cs.get("scene_block", ""))
-		var c_victim_idx: int = people_ids.find(str(cs.get("victim_id", "")))
-		var c_two: bool = bool(cs.get("two_cited", false)) and cs.get("w2", []).size() == view.people.size()
-		var c_count: int = maxi(2 if c_two else 1, int(cs.get("scene_trace_count", 1)))
-		var c_good: Array = []
-		var c_minion: Array = []
-		var c_conv: Array = []
-		if c_two or c_count >= 2:
-			for p in view.people:
-				c_good.append(_crossing_probability_gd(view, cards, p, c_night, "good", c_block))
-				c_minion.append(_crossing_probability_gd(view, cards, p, c_night, "minion", c_block))
-				if has_curse:
-					c_conv.append(_crossing_probability_gd(view, cards, p, c_night, "converted", c_block))
-		out.append({
-			"scene": sc_key,
-			"night": c_night,
-			"scene_block": c_block,
-			"victim_idx": c_victim_idx,
-			"scene_trace_count": c_count,
-			"two_cited": c_two,
-			"w1": cs.get("w1", []).duplicate(),
-			"w2": cs.get("w2", []).duplicate() if c_two else [],
-			"cross_good": c_good,
-			"cross_minion": c_minion,
-			"cross_converted": c_conv,
-		})
-	var by_scene: Dictionary = {}
-	var scene_order: Array = []
-	for c in cards:
-		if c.get("quoted", false) or c.kind != "trace" or not c.get("data", {}).has("family"):
-			continue
-		var sc_id: String = str(c.data.get("scene", ""))
-		if sc_id == "" or compiled_by_scene.has(sc_id):
-			continue
-		var slot: int = int(c.data.get("slot", 0))
-		if not by_scene.has(sc_id):
-			by_scene[sc_id] = {}
-			scene_order.append(sc_id)
-		if not by_scene[sc_id].has(slot):
-			by_scene[sc_id][slot] = c
-	for sc_id in scene_order:
-		var slot_map: Dictionary = by_scene[sc_id]
-		var slots: Array = slot_map.keys()
-		slots.sort()
-		var t1: Dictionary = slot_map[slots[0]]
-		var two_cited: bool = slots.size() >= 2
-		var t2: Dictionary = slot_map[slots[1]] if two_cited else {}
-		var night: int = int(t1.get("night", 1))
-		var scene_block: String = str(t1.data.get("scene_block", ""))
-		var victim_id: String = str(t1.data.get("victim", ""))
-		var victim_idx: int = people_ids.find(victim_id)
-		var scene_trace_count: int = maxi(slots.size(), int(t1.data.get("scene_trace_count", 1)))
-		var w1: Array = []
-		var w2: Array = []
-		var cross_good: Array = []
-		var cross_minion: Array = []
-		var cross_converted: Array = []
-		for p in view.people:
-			w1.append(evaluate_trace_for_person(view, cards, t1, p.id).weight)
-			if two_cited:
-				w2.append(evaluate_trace_for_person(view, cards, t2, p.id).weight)
-			if two_cited or scene_trace_count >= 2:
-				cross_good.append(_crossing_probability_gd(view, cards, p, night, "good", scene_block))
-				cross_minion.append(_crossing_probability_gd(view, cards, p, night, "minion", scene_block))
-				if has_curse:
-					cross_converted.append(_crossing_probability_gd(view, cards, p, night, "converted", scene_block))
-		out.append({
-			"scene": sc_id,
-			"night": night,
-			"scene_block": scene_block,
-			"victim_idx": victim_idx,
-			"scene_trace_count": scene_trace_count,
-			"two_cited": two_cited,
-			"w1": w1,
-			"w2": w2,
-			"cross_good": cross_good,
-			"cross_minion": cross_minion,
-			"cross_converted": cross_converted,
-		})
-	return out
 
 static func _build_scene_tables_cs(view: Dictionary, ids: Array, env: Dictionary, cards: Array, packed_cards: Dictionary) -> Array:
 	var out: Array = []

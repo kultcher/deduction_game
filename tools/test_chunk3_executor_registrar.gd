@@ -167,8 +167,6 @@ func _test_executor_sim() -> void:
 func _test_executor_workshop_and_parity() -> void:
 	Caches.clear_all()
 	var has_cs: bool = SolverBackend.is_csharp_available()
-	_vm0 = SolverBackend.get_verify_mismatches()  # counters live in the C# bridge; compare deltas
-	SolverBackend.set_mode(SolverBackend.Mode.VERIFY if has_cs else SolverBackend.Mode.GDSCRIPT)
 
 	var people: Array = []
 	for i in range(7):
@@ -235,9 +233,6 @@ func _test_executor_workshop_and_parity() -> void:
 	_check(max_diff <= 1e-12,
 		"FactoredChannels matches exhaustive ChannelLikelihood oracle on Executor (max diff %.3g)" % max_diff)
 
-	if has_cs:
-		_check(SolverBackend.get_verify_mismatches() == _vm0,
-			"Zero GDScript vs C# VERIFY mismatches across Executor tests")
 
 
 func _test_registrar_sim() -> void:
@@ -351,8 +346,6 @@ func _test_registrar_sim() -> void:
 func _test_registrar_workshop_and_parity() -> void:
 	Caches.clear_all()
 	var has_cs: bool = SolverBackend.is_csharp_available()
-	_vm0 = SolverBackend.get_verify_mismatches()  # counters live in the C# bridge; compare deltas
-	SolverBackend.set_mode(SolverBackend.Mode.VERIFY if has_cs else SolverBackend.Mode.GDSCRIPT)
 
 	var people: Array = []
 	for i in range(7):
@@ -476,6 +469,3 @@ func _test_registrar_workshop_and_parity() -> void:
 	_check(max_diff <= 1e-12,
 		"FactoredChannels matches exhaustive ChannelLikelihood oracle on Registrar + claim clash (max diff %.3g)" % max_diff)
 
-	if has_cs:
-		_check(SolverBackend.get_verify_mismatches() == _vm0,
-			"Zero GDScript vs C# VERIFY mismatches across Registrar tests")

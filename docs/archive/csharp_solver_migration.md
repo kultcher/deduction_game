@@ -1,6 +1,8 @@
 # C# (.NET 8) Solver Backend Migration Plan
 
-**Status:** Active Implementation (Slices C0, C0b, C1 & C2 merged at `4077dce`; Slice C3 delivered via `patch_004_slice_c3.zip`)
+**Status:** Complete. **Nov 4 cutover (Claude-Bailiff): C# is the only solver.** The game, the bot, the tests and the golden capture all run the C# kernels; the GDScript kernel implementations, `SolverBackend` modes (`GDSCRIPT`/`VERIFY`), the parity CI job and the slice parity suites (`test_csharp_slice_c1`-`c3`) were removed. A missing assembly is a hard error. The last dual-mode code is kept on branch `archive/gdscript-solver-final` (`47913b7`) as the starting point should a browser build (no C# export) ever be wanted; that would be a port project, not a sync. Kernel changes from here on are C# only. Some small GDScript paths remain on purpose where C# mode always used them (e.g. `Solver._positions` below 64 worlds, `CaseEval._evaluate_posterior_gd` when a case has no compiled C# class table, `WorldDomain._gift_time_gd` for input packing).
+
+*History below is the migration as it happened.*
 **Updated:** 2026-11-03
 **Repository location:** `docs/csharp_solver_migration.md` (and Section 5 of `docs/orchestration_plan.md`)
 **Related:** `docs/orchestration_plan.md` (Zone 9 / Milestone 3, Track 3B), `docs/legacy_retirement_plan.md`, `docs/handoff_log.md`, `workshop/caches.gd`

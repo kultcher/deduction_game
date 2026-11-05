@@ -552,6 +552,20 @@ public partial class SolverBridge : RefCounted
             universeHandle, subsetIndices, fallbackWorlds,
             mustBeGoodMask, mustBeEvilMask, markedReq, posSpecs);
 
+    public static int[] ReadingFraction(
+        int universeHandle,
+        int[] refIndices,
+        long[] fallbackWorlds,
+        int nPeople,
+        int sourceIdx,
+        bool convAtEpoch,
+        byte[] reportTable,
+        byte[] roleTable,
+        bool compatible) =>
+        SolverKernel.ReadingFraction(
+            universeHandle, refIndices, fallbackWorlds, nPeople, sourceIdx,
+            convAtEpoch, reportTable, roleTable, compatible);
+
     public static int[] SolverFixtureMovement(
         int nPeople,
         int ownPersonIdx,

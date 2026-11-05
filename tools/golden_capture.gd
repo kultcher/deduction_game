@@ -33,14 +33,11 @@ func _init() -> void:
 		out = args[args.find("--out") + 1]
 	if "--day" in args:
 		day_limit = int(args[args.find("--day") + 1])
-	if "--mode" in args:
-		var m_arg: String = str(args[args.find("--mode") + 1]).to_lower()
-		if m_arg == "csharp":
-			SolverBackend.set_mode(SolverBackend.Mode.CSHARP)
-		elif m_arg == "verify":
-			SolverBackend.set_mode(SolverBackend.Mode.VERIFY)
-		else:
-			SolverBackend.set_mode(SolverBackend.Mode.GDSCRIPT)
+	# C# is the only solver; '--mode csharp' is still accepted, anything else is an error.
+	if "--mode" in args and str(args[args.find("--mode") + 1]).to_lower() != "csharp":
+		push_error("golden_capture: the solver is C# only (no --mode %s)" % args[args.find("--mode") + 1])
+		quit(2)
+		return
 	if "--seeds" in args:
 		seeds = []
 		for part in args[args.find("--seeds") + 1].split(","):
@@ -55,11 +52,6 @@ func _init() -> void:
 		var started: int = Time.get_ticks_msec()
 		_capture(out, int(cfg[0]), int(cfg[1]), day_limit)
 		print("GOLDEN seed %d size %d: %d refreshes, %d ms" % [cfg[0], cfg[1], _refreshes, Time.get_ticks_msec() - started])
-	if SolverBackend.get_mode() == SolverBackend.Mode.VERIFY and SolverBackend.get_verify_mismatches() != 0:
-		push_error("golden_capture: VERIFY mismatches = %d" % SolverBackend.get_verify_mismatches())
-		quit(1)
-		return
-	SolverBackend.set_mode(SolverBackend.Mode.GDSCRIPT)
 	quit(0)
 
 

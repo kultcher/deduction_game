@@ -146,8 +146,6 @@ func _test_dowser_public_area_fix() -> void:
 func _test_surveyor_rework_and_workshop() -> void:
 	Caches.clear_all()
 	var has_cs: bool = SolverBackend.is_csharp_available()
-	_vm0 = SolverBackend.get_verify_mismatches()  # counters live in the C# bridge; compare deltas
-	SolverBackend.set_mode(SolverBackend.Mode.VERIFY if has_cs else SolverBackend.Mode.GDSCRIPT)
 
 	var g = Game.new()
 	g.detailed_logging = false
@@ -226,16 +224,11 @@ func _test_surveyor_rework_and_workshop() -> void:
 	_check(not ReadingChallenges.valid(view, "sv_same", {"mode": "unlikely", "supports": []}) and ReadingChallenges.valid(view, "sv_leg", {"mode": "unlikely", "supports": []}),
 		"ReadingChallenges restricts 'unlikely' mode to legacy count-based Surveyor cards")
 
-	if has_cs:
-		_check(SolverBackend.get_verify_mismatches() == _vm0,
-			"Zero GDScript vs C# VERIFY mismatches across Surveyor tests")
 
 
 func _test_chronicler_sim_and_workshop() -> void:
 	Caches.clear_all()
 	var has_cs: bool = SolverBackend.is_csharp_available()
-	_vm0 = SolverBackend.get_verify_mismatches()  # counters live in the C# bridge; compare deltas
-	SolverBackend.set_mode(SolverBackend.Mode.VERIFY if has_cs else SolverBackend.Mode.GDSCRIPT)
 
 	var g = Game.new()
 	g.detailed_logging = false
@@ -322,16 +315,11 @@ func _test_chronicler_sim_and_workshop() -> void:
 	_check(max_diff <= 1e-12,
 		"FactoredChannels matches exhaustive ChannelLikelihood oracle on Chronicler (max diff %.3g)" % max_diff)
 
-	if has_cs:
-		_check(SolverBackend.get_verify_mismatches() == _vm0,
-			"Zero GDScript vs C# VERIFY mismatches across Chronicler tests")
 
 
 func _test_augur_sim_and_workshop() -> void:
 	Caches.clear_all()
 	var has_cs: bool = SolverBackend.is_csharp_available()
-	_vm0 = SolverBackend.get_verify_mismatches()  # counters live in the C# bridge; compare deltas
-	SolverBackend.set_mode(SolverBackend.Mode.VERIFY if has_cs else SolverBackend.Mode.GDSCRIPT)
 
 	var g = Game.new()
 	g.detailed_logging = false
@@ -425,16 +413,11 @@ func _test_augur_sim_and_workshop() -> void:
 		"Augur No + daytime sighting clears co-sighted person of being the Demon (Demon post %.3f vs prior %.3f)" % [
 			ev_clear.posterior, ev_clear.prior])
 
-	if has_cs:
-		_check(SolverBackend.get_verify_mismatches() == _vm0,
-			"Zero GDScript vs C# VERIFY mismatches across Augur tests")
 
 
 func _test_magistrate_sim_and_workshop() -> void:
 	Caches.clear_all()
 	var has_cs: bool = SolverBackend.is_csharp_available()
-	_vm0 = SolverBackend.get_verify_mismatches()  # counters live in the C# bridge; compare deltas
-	SolverBackend.set_mode(SolverBackend.Mode.VERIFY if has_cs else SolverBackend.Mode.GDSCRIPT)
 
 	var g = Game.new()
 	g.detailed_logging = false
@@ -517,6 +500,3 @@ func _test_magistrate_sim_and_workshop() -> void:
 	_check(ev_m.lr > Tuning.Workshop.LR_MODERATE and ev_m.posterior > 0.55,
 		"Magistrate same=false + Demon kill on nominator gives strong evil support on nominee (LR=%.2f, post=%.3f)" % [ev_m.lr, ev_m.posterior])
 
-	if has_cs:
-		_check(SolverBackend.get_verify_mismatches() == _vm0,
-			"Zero GDScript vs C# VERIFY mismatches across Magistrate tests")
