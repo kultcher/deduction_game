@@ -8,6 +8,10 @@ const History = preload("res://workshop/live_history.gd")
 static var cache = {}
 static var route_cache = {}
 const DEMON_DETOUR = Tuning.Workshop.DEMON_DETOUR
+const VIGIL_MISS = Tuning.Workshop.VIGIL_MISS
+const WALKER_CLAIM_GIFT = Tuning.Workshop.WALKER_CLAIM_GIFT
+const WALKER_CLAIM_HOME = Tuning.Workshop.WALKER_CLAIM_HOME
+const WALKER_CLAIM_SECRET = Tuning.Workshop.WALKER_CLAIM_SECRET
 static var demon_route_cache = {}
 static var _factor_handles: Dictionary = {}
 static var _mru_factor = null
@@ -331,11 +335,11 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 				if card.has("guard_claim"):
 					okay = okay and out and path.back() == card.block
 			elif card.kind == "sighting" and card.get("complete", false) and person.id not in card.get("excluded", []):
-				okay = okay and not C.vigil_sees_path(card.block, path)
+				pass # a vigil that missed them is scored (Tuning VIGIL_MISS), not ruled out
 			elif card.kind == "alibi" and card.subject == person.id:
 				okay = okay and not out
 			elif card.kind == "coverage" and person.id not in card.get("excluded", []):
-				okay = okay and not C.vigil_sees_path(card.block, path)
+				pass # as above
 			elif card.kind == "report" and card.role == "nightwatch":
 				if strict_reports and card.source == person.id:
 					okay = okay and out and path.back() == card.data.block
@@ -688,13 +692,13 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 	var role = role_of(cards, person.id)
 	var gift: bool = C.ROLES.get(role, {}).get("night_walk", false)
 	var profiles: Array = [{"kind": alignment, "weight": 1.0}] if alignment not in ["good", "converted"] else [
-		{"kind": "ordinary", "weight": 0.2 if gift else 0.75},
-		{"kind": "gift", "weight": 0.7 if gift else 0.15}, {"kind": "secret", "weight": 0.1}]
+		{"kind": "ordinary", "weight": WALKER_CLAIM_HOME if gift else 0.75},
+		{"kind": "gift", "weight": WALKER_CLAIM_GIFT if gift else 0.15}, {"kind": "secret", "weight": WALKER_CLAIM_SECRET if gift else 0.1}]
 	if alignment in ["good", "converted"] and role != "" and not gift:
 		profiles = [{"kind": "ordinary", "weight": 0.9}, {"kind": "secret", "weight": 0.1}]
 	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.get("source", "") == person.id and c.has("hearing_weight")):
 		var strength: float = role_hearing(cards, person.id, role)
-		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, 0.2 if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, 0.7 if gift else 0.0, strength)}, {"kind": "secret", "weight": 0.1}]
+		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, WALKER_CLAIM_HOME if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, WALKER_CLAIM_GIFT if gift else 0.0, strength)}, {"kind": "secret", "weight": lerpf(0.1, WALKER_CLAIM_SECRET if gift else 0.1, strength)}]
 	var reports_by_night: Array = []
 	for night in nights:
 		var reports: Array = []
@@ -755,7 +759,9 @@ static func _profile_paths(view: Dictionary, person: Dictionary, night: int, pro
 	if profile == "gift":
 		var role = role_of(cards, person.id)
 		if role == "medium":
-			destinations = view.people.filter(func(p): return not History.alive_at_night(view, p.id, night)).map(func(p): return p.home)
+			# Demon victims' hearths only, not the hanged.
+			var victims: Array = view.get("timeline", {}).get("events", []).filter(func(e): return e.kind == "demon_death").map(func(e): return e.subjects[0] if not e.subjects.is_empty() else "")
+			destinations = view.people.filter(func(p): return p.id in victims and not History.alive_at_night(view, p.id, night)).map(func(p): return p.home)
 		elif role == "warden":
 			destinations = view.people.filter(func(p): return p.id != person.id and History.alive_at_night(view, p.id, night)).map(func(p): return p.home)
 		if destinations.is_empty():
@@ -917,13 +923,13 @@ static func _crossing_probability_gd(view: Dictionary, cards: Array, person: Dic
 	var role: String = role_of(cards, person.id)
 	var gift: bool = C.ROLES.get(role, {}).get("night_walk", false)
 	var profiles: Array = [{"kind": alignment, "weight": 1.0}] if alignment not in ["good", "converted"] else [
-		{"kind": "ordinary", "weight": 0.2 if gift else 0.75},
-		{"kind": "gift", "weight": 0.7 if gift else 0.15}, {"kind": "secret", "weight": 0.1}]
+		{"kind": "ordinary", "weight": WALKER_CLAIM_HOME if gift else 0.75},
+		{"kind": "gift", "weight": WALKER_CLAIM_GIFT if gift else 0.15}, {"kind": "secret", "weight": WALKER_CLAIM_SECRET if gift else 0.1}]
 	if alignment in ["good", "converted"] and role != "" and not gift:
 		profiles = [{"kind": "ordinary", "weight": 0.9}, {"kind": "secret", "weight": 0.1}]
 	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.get("source", "") == person.id and c.has("hearing_weight")):
 		var strength: float = role_hearing(cards, person.id, role)
-		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, 0.2 if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, 0.7 if gift else 0.0, strength)}, {"kind": "secret", "weight": 0.1}]
+		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, WALKER_CLAIM_HOME if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, WALKER_CLAIM_GIFT if gift else 0.0, strength)}, {"kind": "secret", "weight": lerpf(0.1, WALKER_CLAIM_SECRET if gift else 0.1, strength)}]
 	var night_obs: Array = []
 	var seen_inc: Array = []
 	for c in relevant(cards):
@@ -1209,13 +1215,13 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				var matches_block: bool = card.block == "" or (C.vigil_sees_path(card.block, path) if card.get("complete", false) else card.block in path)
 				return 1.0 if out and matches_block else 1.0 - float(card.get("hearing_weight", 1.0))
 			if card.get("complete", false) and person not in card.get("excluded", []):
-				return 1.0 if not C.vigil_sees_path(card.block, path) else 0.0
+				return 1.0 if not C.vigil_sees_path(card.block, path) else VIGIL_MISS
 		"evening":
 			if person in card.get("subjects", [card.get("subject", "")]):
 				return 1.0 if card.block == evening else 0.0
 		"coverage":
 			if person not in card.get("excluded", []):
-				return 1.0 if not C.vigil_sees_path(card.block, path) else 0.0
+				return 1.0 if not C.vigil_sees_path(card.block, path) else VIGIL_MISS
 		"alibi":
 			if card.subject == person:
 				if not card.get("quoted", false):

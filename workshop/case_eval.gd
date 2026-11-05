@@ -147,7 +147,21 @@ static func _chance_chronicler(view: Dictionary) -> float:
 	var exp_holds: float = ((solo_worlds + lovers_with_src) * trios_one_sec + lovers_no_src * trios_two_sec) / c_n1_3
 	return clampf(exp_holds / w_h, 0.01, 0.5)
 
+## The chance that a source who can't give a healthy reading (evil, poisoned, Delusional)
+## would still say this: the share of possible worlds in which the reported content holds.
+## A bluffer says something that fits, so content the worlds can't check (a Lamplighter's
+## count, a relay from the dead) is free to fake and earns the source no credit; content
+## that holds in few worlds (a Seer "yes", a Dowser count) is hard to fake by chance.
+## Falls back to the per-shape constants when the card has no report table.
 static func chance_content(view: Dictionary, card: Dictionary) -> float:
+	if card.get("kind", "") == "report":
+		var tab: PackedByteArray = Solver.report_table(view, card)
+		if not tab.is_empty():
+			return clampf(float(tab.count(1)) / float(tab.size()), Tuning.Workshop.CHANCE_CONTENT_FLOOR, 1.0)
+	return _chance_content_fixed(view, card)
+
+## The per-shape estimates used before Nov 5 (kept for cards without a report table).
+static func _chance_content_fixed(view: Dictionary, card: Dictionary) -> float:
 	var d: Dictionary = card.get("data", {})
 	var role_id: String = str(card.get("role", ""))
 	if role_id == "chronicler":
