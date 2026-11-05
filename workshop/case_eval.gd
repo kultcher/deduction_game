@@ -45,6 +45,11 @@ const LR_STRONG = Tuning.Workshop.LR_STRONG
 
 static var _cc_handles: Dictionary = {}
 static var _cc_handles_epoch: int = -1
+## Bumped whenever the C# compiled cases are dropped (context epoch, the 32-entry cap).
+## Each compiled case carries its own handle and the generation it was made in, so a case
+## held across a clear, or one whose 32-bit key hash collides with another's, can never
+## reach a different case's C# entry (seed 101032: IndexOutOfRange in ComputeClassLikeCore).
+static var _cc_generation: int = 0
 
 static func _ensure_cc_epoch() -> void:
 	var b = SolverBackend._bridge()
@@ -53,7 +58,14 @@ static func _ensure_cc_epoch() -> void:
 	var ep: int = int(b.GetContextEpoch())
 	if ep != _cc_handles_epoch:
 		_cc_handles.clear()
+		_cc_generation += 1
 		_cc_handles_epoch = ep
+
+## The C# handle for this compiled case, or -1 when it isn't (or no longer) registered.
+static func _handle_for(cc: Dictionary) -> int:
+	if int(cc.get("cs_gen", -1)) != _cc_generation:
+		return -1
+	return int(cc.get("cs_handle", -1))
 
 static func _concl_type_code(c_type: String) -> int:
 	match c_type:
@@ -376,7 +388,7 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 					fits[c] = 0.0
 
 	_ensure_cc_epoch()
-	var cc_h: int = int(_cc_handles.get(cc.key, -1))
+	var cc_h: int = _handle_for(cc)
 	if cc_h >= 0:
 		return _evaluate_posterior_cs(view, case_data, cards, conclusion, listener, own_ids, own, err_for, cc, cc_h, oc, team_prior, fits, fits_before)
 	# No compiled C# class table for this case (not registered): the GDScript posterior.
@@ -612,6 +624,7 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	if _compiled.size() > 32:
 		_compiled.clear()
 		_cc_handles.clear()
+		_cc_generation += 1
 		var b_clr = SolverBackend._bridge()
 		if b_clr != null:
 			b_clr.ClearCompiledCases()
@@ -788,7 +801,8 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 	var out = {"input": key_input, "key": key, "reports": reports, "tables": tables, "valids": valids, "move": move,
 		"movement": movement.map(func(f): return f.label), "factors": movement, "tests": tests, "test_hold": test_hold, "group": group, "group_bits": group_bits, "movement_ok": movement_ok,
 		"q": q_arr, "team": team, "rep": rep, "count": count,
-		"premise": prem, "dead": is_dead, "states": states, "class_of": class_of, "k": k}
+		"premise": prem, "dead": is_dead, "states": states, "class_of": class_of, "k": k,
+		"cs_handle": cc_h, "cs_gen": _cc_generation}
 	for factor in movement:
 		out.movement.append_array(factor.get("relationships", []))
 	return out
@@ -881,21 +895,24 @@ static var _own_cache: Dictionary = {}
 static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Dictionary:
 	if own.is_empty():
 		return {"states": 1, "counts": cc.count, "of": PackedInt32Array(), "codes": [PackedByteArray()]}
-	var key = hash([cc.key, own.map(func(c): return c.get("fact_id", c.id))])
-	if _own_cache.has(key):
+	# Keyed by the exact compiled case (its input and C# registration), not only a hash.
+	var ref: Array = [cc.input, cc.get("cs_gen", -1), cc.get("cs_handle", -1), own.map(func(c): return c.get("fact_id", c.id))]
+	var key = hash(ref)
+	if _own_cache.has(key) and _own_cache[key].get("_ref", []) == ref:
 		return _own_cache[key]
 	if _own_cache.size() > 64:
 		_own_cache.clear()
 	var tables: Array = own.map(func(c): return Solver.report_table(view, c))
 	var valids: Array = own.map(func(c): return _valid_table(view, c))
 	var out: Dictionary = _own_counts_cs(cc, own, tables, valids)
+	out["_ref"] = ref
 	_own_cache[key] = out
 	return out
 
 static func _own_counts_cs(cc: Dictionary, own: Array, tables: Array, valids: Array) -> Dictionary:
 	_ensure_cc_epoch()
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
-	var cc_h: int = int(_cc_handles.get(cc.key, -1))
+	var cc_h: int = _handle_for(cc)
 	var k_own: int = own.size()
 	var flat_tables := PackedByteArray()
 	var flat_valids := PackedByteArray()
@@ -958,7 +975,7 @@ static func _class_like_gd(cc: Dictionary, errs: Array, skip: int) -> PackedFloa
 static func _class_like_cs(cc: Dictionary, errs: Array, skip: int) -> PackedFloat64Array:
 	_ensure_cc_epoch()
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
-	var cc_h: int = int(_cc_handles.get(cc.key, -1))
+	var cc_h: int = _handle_for(cc)
 	var k: int = int(cc.k)
 	var errs_p := PackedFloat64Array()
 	errs_p.resize(k)

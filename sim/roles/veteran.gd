@@ -35,7 +35,7 @@ func survives_demon_attack(v) -> bool:
 
 func on_survive_attack(w, v) -> void:
 	v.vet_used = true
-	var path: Array = w.demon().night_path
+	var path: Array = w.night_killer().night_path  # the Brute's path when it hunts
 	var from: String = path[path.size() - 2] if path.size() >= 2 else v.home_block
 	w._add_info(v, {
 		"data": {"attacked": w.day, "block": from},

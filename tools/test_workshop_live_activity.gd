@@ -41,6 +41,14 @@ func _routes() -> void:
 	var second = _sight("hearsay", "a", 1, "docks")
 	var watch = {"id": "watch", "kind": "report", "source": "b", "role": "nightwatch", "night": 1, "data": {"block": "market", "seen": []}, "observed_at": {"day": 1, "phase": "night"}}
 	check(not Activity.routes(view, [first, watch]).okay, "complete Watch list conflicts with omitted passer on watched block")
+	# Maintenance 2026-11-05 A7: a Monitor's "no one walked by my house" is a movement fact.
+	# a (home hill) seen on the market crosses nobody's house but the market's.
+	var mon_none = {"id": "mon", "kind": "report", "source": "b", "role": "monitor", "night": 1, "data": {"block": "market", "walked": false}, "observed_at": {"day": 1, "phase": "night"}}
+	check(not Activity.routes(view, [first, mon_none]).okay, "Monitor 'nobody walked by' conflicts with a seen crossing of their block")
+	check(Activity.routes(view, [_sight("away", "a", 1, "docks"), mon_none]).okay, "and allows a crossing elsewhere")
+	var mon_walked = mon_none.duplicate(true)
+	mon_walked.data = {"block": "market", "walked": true, "role": "seer"}
+	check(Activity.routes(view, [first, mon_walked]).okay, "a Monitor who saw a walker puts no route constraint")
 	first.block = "docks"
 	check(Activity.routes(view, [first, watch]).okay, "Watch omission does not put everyone at home")
 	first.block = "market"

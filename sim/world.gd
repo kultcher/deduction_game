@@ -849,6 +849,9 @@ func open_meeting() -> void:
 	meeting["silenced"] = []
 	for n in living():
 		n.busy_with = ""
+		if n.silence_pending == day and is_minion_suppressed():
+			n.silence_pending = -1
+			dlog.add("silence_suppressed", "world", n.id, {}, "The church bell holds: %s is not silenced at the meeting." % n.name)
 		if n.silence_pending == day:
 			n.silence_pending = -1
 			n.silenced = true
@@ -1700,6 +1703,14 @@ func build_actor_trace(actor, v, slot: int = 0) -> Dictionary:
 		_:
 			return _build_locations_trace(actor, v, slot, used_keys, prev_loc_sets)
 
+## Who hunts tonight: an active Brute (alive, unbroken, not under the Sexton's bell)
+## hunts in the Demon's place; otherwise the Demon.
+func night_killer():
+	var brute = living_with_role("brute")
+	if brute != null and C.role_def("brute").is_active_hunter(self, brute):
+		return brute
+	return demon()
+
 func _kill(v) -> void:
 	v.alive = false
 	v.death_day = day
@@ -1707,9 +1718,8 @@ func _kill(v) -> void:
 	v.loc = "dead"
 	_bereave(v)
 	deaths_last_night.append(v.id)
-	var brute_killer = living_with_role("brute")
-	var brute_killed: bool = (brute_killer != null and brute_killer.alive and not brute_killer.gift_broken() and not is_minion_suppressed())
-	var killer = brute_killer if brute_killed else demon()
+	var killer = night_killer()
+	var brute_killed: bool = killer.role == "brute"
 	var ev_loc: String = killer.history.get(time_key(day, C.EVENING), "home:" + killer.home_block)
 	var true_block: String = loc_block(ev_loc)
 	var killer_trace: Dictionary = build_actor_trace(killer, v, 0)

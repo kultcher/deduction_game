@@ -32,6 +32,7 @@ static func clear_all() -> void:
 	CaseEval._compiled.clear()
 	CaseEval._cc_handles.clear()
 	CaseEval._cc_handles_epoch = -1
+	CaseEval._cc_generation += 1
 	CaseEval._coarse_cache.clear()
 	CaseEval._own_cache.clear()
 	CaseEval._fits_cache.clear()

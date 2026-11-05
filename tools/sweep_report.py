@@ -177,7 +177,10 @@ def main():
     a = ap.parse_args()
     recs = load(a.jsonl)
     failed = [r for r in recs if r.get("failed")]
-    games = [r for r in recs if not r.get("failed")]
+    # Stuck games (the bot hit the command guard) have no real winner: autoplay records
+    # them as evil, so they are left out of every rate and listed under Health instead.
+    stuck = [r for r in recs if not r.get("failed") and r.get("stuck")]
+    games = [r for r in recs if not r.get("failed") and not r.get("stuck")]
     errors = []
     if a.errors:
         try:
@@ -191,7 +194,7 @@ def main():
     cells = sorted(by_cell)
     shas = sorted({r.get("sha", "") for r in recs})
     out = ["# %s" % a.title, ""]
-    out.append("Records: %d games, %d failed. Commit(s): %s." % (len(games), len(failed), ", ".join("`%s`" % s[:10] for s in shas if s) or "unknown"))
+    out.append("Records: %d games, %d failed, %d stuck (left out of the rates). Commit(s): %s." % (len(games), len(failed), len(stuck), ", ".join("`%s`" % s[:10] for s in shas if s) or "unknown"))
     out.append("")
     summary = {"cells": {}, "games": len(games), "failed": len(failed), "shas": shas}
 
@@ -336,8 +339,18 @@ def main():
 
     # ---------------- health
     out.append("## Health\n")
-    stuck = [r for r in games if r.get("stuck")]
     out.append("- Stuck games (guard exhausted): %d%s" % (len(stuck), (" — seeds " + ", ".join("%d (%d NPCs, %s)" % (r["seed"], r["npcs"], r["mode"]) for r in stuck[:30])) if stuck else ""))
+    # Seeds a cell should have (every cell shares the same seed range) but has no record of.
+    all_seeds = sorted({r["seed"] for r in recs if "seed" in r})
+    gaps = {}
+    if all_seeds:
+        expected = set(range(all_seeds[0], all_seeds[-1] + 1))
+        for k in cells:
+            have = {r["seed"] for r in recs if cell_key(r) == k}
+            lost = sorted(expected - have)
+            if lost:
+                gaps[cell_label(k)] = lost
+    out.append("- Seeds with no record: %s" % ("; ".join("%s: %d (first %s)" % (c, len(v), ", ".join(str(x) for x in v[:10])) for c, v in gaps.items()) if gaps else "none"))
     out.append("- Failed games (crash or timeout): %d%s" % (len(failed), (" — seeds " + ", ".join("%d (%s)" % (r["seed"], r.get("failed")) for r in failed[:30])) if failed else ""))
     err_seeds = defaultdict(int)
     for e in errors:
@@ -364,7 +377,7 @@ def main():
     slow = sorted(games, key=lambda r: -r.get("wall_s", 0.0))[:20]
     out.append("Slowest seeds: " + ", ".join("%d (%d NPCs %s, %.0f s)" % (r["seed"], r["npcs"], r["mode"], r.get("wall_s", 0.0)) for r in slow))
     out.append("")
-    summary["health"] = {"stuck": [r["seed"] for r in stuck], "failed": [r["seed"] for r in failed],
+    summary["health"] = {"stuck": [r["seed"] for r in stuck], "failed": [r["seed"] for r in failed], "missing": gaps,
                          "error_games": len(err_seeds)}
 
     with open(a.md, "w", encoding="utf-8") as fh:

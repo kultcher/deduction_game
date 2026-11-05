@@ -12,6 +12,9 @@ namespace Demonologist.Workshop;
 /// </summary>
 internal static class CaseEvalKernel
 {
+    /// <summary>Most card states that pack base 3 into a long (3^39 < 2^63 < 3^40).</summary>
+    private const int MaxPackedDigits = 39;
+
     internal sealed class CompiledCaseEntry
     {
         public readonly int UniverseHandle;
@@ -269,9 +272,15 @@ internal static class CaseEvalKernel
                 rmBound *= (nPeople + 1L);
             }
         }
-        bool intKeys = k <= 16 && ((double)rmBound * (double)radix * 4.0 < 9.0e18);
+        bool wide = k > MaxPackedDigits;
+        bool intKeys = !wide && k <= 16 && ((double)rmBound * (double)radix * 4.0 < 9.0e18);
 
+        // Each world's card states, base 3 in one long. 3^40 > 2^63, so from 40 report cards
+        // on the code would overflow (distinct states merging into one class, and negative
+        // codes decoding to digit 255: IndexOutOfRange in ComputeClassLikeCore, seed 101032).
+        // Wide cases keep each world's digits instead and key classes by them.
         long[] codes = new long[n];
+        byte[]? flatDigits = wide ? new byte[(long)n * k] : null;
         for (int c = 0; c < k; c++)
         {
             int cOff = c * n;
@@ -282,7 +291,15 @@ internal static class CaseEvalKernel
                     long digit = flatTables[cOff + i] == 1
                         ? 0L
                         : (flatValids[cOff + i] == 1 ? 1L : 2L);
-                    codes[i] = codes[i] * 3L + digit;
+                    if (wide)
+                    {
+                        flatDigits![(long)i * k + c] = (byte)digit;
+                        codes[i] = codes[i] * 1000003L + digit + 1L;   // a hash only; classes compare digits
+                    }
+                    else
+                    {
+                        codes[i] = codes[i] * 3L + digit;
+                    }
                 }
             }
         }
@@ -364,7 +381,8 @@ internal static class CaseEvalKernel
                         premList,
                         isDeadList,
                         testHoldList,
-                        statesList);
+                        statesList,
+                        flatDigits);
                     indexLong[ck] = cId;
                 }
                 countList[cId] += 1.0;
@@ -374,12 +392,46 @@ internal static class CaseEvalKernel
         else
         {
             var indexTuple = new Dictionary<(long Rm, long Code, byte Prem, byte Dead), int>(initCap);
+            // Wide cases: the code is a hash, so a hit must also match the class's digits;
+            // a mismatch (hash collision) goes to an overflow list keyed the same way.
+            var collide = wide ? new Dictionary<(long Rm, long Code, byte Prem, byte Dead), List<int>>() : null;
             for (int i = 0; i < n; i++)
             {
                 long code = codes[i];
                 long rm = rms[i];
                 var ck = (rm, code, premise[i], dead[i]);
-                if (!indexTuple.TryGetValue(ck, out int cId))
+                bool found = indexTuple.TryGetValue(ck, out int cId);
+                if (found && wide && !SameDigits(flatDigits!, k, i, repList[cId]))
+                {
+                    found = false;
+                    if (collide!.TryGetValue(ck, out var alts))
+                    {
+                        foreach (int alt in alts)
+                        {
+                            if (SameDigits(flatDigits!, k, i, repList[alt]))
+                            {
+                                cId = alt;
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!found)
+                    {
+                        cId = AppendNewClass(
+                            i, code, k, nPeople, worlds, teamOf, plainBits, conclEpochConvEvil, premise, dead,
+                            mTests, testTargetSpecs, digits, teamList, groupList, groupBitsList, groupIndex,
+                            repList, countList, premList, isDeadList, testHoldList, statesList, flatDigits);
+                        if (!collide.TryGetValue(ck, out var list))
+                        {
+                            list = new List<int>(2);
+                            collide[ck] = list;
+                        }
+                        list.Add(cId);
+                        found = true;
+                    }
+                }
+                if (!found)
                 {
                     cId = AppendNewClass(
                         i,
@@ -404,7 +456,8 @@ internal static class CaseEvalKernel
                         premList,
                         isDeadList,
                         testHoldList,
-                        statesList);
+                        statesList,
+                        flatDigits);
                     indexTuple[ck] = cId;
                 }
                 countList[cId] += 1.0;
@@ -441,6 +494,20 @@ internal static class CaseEvalKernel
         return SolverContext.RegisterCompiledCase(entry);
     }
 
+    private static bool SameDigits(byte[] flat, int k, int a, int b)
+    {
+        long oa = (long)a * k;
+        long ob = (long)b * k;
+        for (int c = 0; c < k; c++)
+        {
+            if (flat[oa + c] != flat[ob + c])
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static int AppendNewClass(
         int i,
         long code,
@@ -464,7 +531,8 @@ internal static class CaseEvalKernel
         List<byte> premList,
         List<byte> isDeadList,
         List<byte> testHoldList,
-        List<byte> statesList)
+        List<byte> statesList,
+        byte[]? flatDigits = null)
     {
         int cId = teamList.Count;
         teamList.Add(teamOf[i]);
@@ -505,11 +573,18 @@ internal static class CaseEvalKernel
             testHoldList.Add((tIdx >= 0 && SolverKernel.EvilIndex(w, tIdx, tConv)) ? (byte)1 : (byte)0);
         }
 
-        long tmp = code;
-        for (int c = k - 1; c >= 0; c--)
+        if (flatDigits != null)
         {
-            digits[c] = (byte)(tmp % 3L);
-            tmp /= 3L;
+            Array.Copy(flatDigits, (long)i * k, digits, 0, k);
+        }
+        else
+        {
+            long tmp = code;
+            for (int c = k - 1; c >= 0; c--)
+            {
+                digits[c] = (byte)(tmp % 3L);
+                tmp /= 3L;
+            }
         }
         for (int c = 0; c < k; c++)
         {

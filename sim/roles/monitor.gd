@@ -60,16 +60,18 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 				walkers.append(wn)
 
 	var true_walked: bool = not walkers.is_empty()
-	var true_role: String = ""
+	var true_role: String = ""      # what the gift reads (a Marked soul may read as evil)
+	var real_role: String = ""      # who actually walked by
 	var marked_triggered: bool = false
 	if true_walked:
 		var chosen = w.pick(walkers)
 		true_role = chosen.role
-		if chosen.secret_mod == "marked" and not chosen.is_evil():
-			if w.registers_evil(chosen) or w.chance(Tuning.Roles.GRAVEDIGGER.marked_evil_chance):
-				var evil_script: Array = (w.case_script.demons + w.case_script.minions) if (w.case_script != null and not w.case_script.minions.is_empty()) else C.EVIL_ROLES
-				true_role = str(w.pick(evil_script))
-				marked_triggered = true
+		real_role = chosen.role
+		# One roll, as everywhere else (World.registers_evil already rolls the Marked chance).
+		if chosen.secret_mod == "marked" and not chosen.is_evil() and w.registers_evil(chosen):
+			var evil_script: Array = (w.case_script.demons + w.case_script.minions) if (w.case_script != null and not w.case_script.minions.is_empty()) else C.EVIL_ROLES
+			true_role = str(w.pick(evil_script))
+			marked_triggered = true
 
 	var walked: bool = true_walked
 	var role: String = true_role
@@ -96,7 +98,8 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	if walked and role != "":
 		data["role"] = role
 
-	var is_true: bool = (walked == true_walked) and (not walked or role == true_role)
+	# Measured against who really walked by: a Marked misreading is false (as the Dowser's is).
+	var is_true: bool = (walked == true_walked) and (not walked or role == real_role)
 	var entry: Dictionary = {
 		"data": data,
 		"true": is_true,
@@ -159,12 +162,10 @@ func check_public_sighting_pregate(_w, _n, b: Dictionary, _mind) -> int:
 	return 0
 
 
-func override_night_sightings(_w, n, _nd: int) -> Dictionary:
+func override_night_sightings(_w, n, nd: int, reported: Array = []) -> Dictionary:
 	if not n.is_evil():
 		return {}
-	# Evil bluffing Monitor should never report out-the-window sightings
-	var filtered: Array = []
-	for b in n.beliefs:
-		if b.get("kind") == "saw" and str(b.get("how", "")) != "window":
-			filtered.append(b)
+	# Evil bluffing Monitor: the night asked about only, already cleared of teammates and
+	# of anything seen from where they say they weren't; and never a window sighting.
+	var filtered: Array = reported.filter(func(b): return b.get("kind") == "saw" and int(b.get("day", -1)) == nd and str(b.get("how", "")) != "window")
 	return {"handled": true, "reported": filtered}

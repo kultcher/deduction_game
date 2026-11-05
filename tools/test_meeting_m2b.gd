@@ -120,6 +120,8 @@ func _test_flow() -> void:
 func _test_press_role() -> void:
 	var seen: Dictionary = {}
 	for sd in range(8410, 8440):
+		if seen.size() == 3:
+			break  # claim, hint and refusal all checked
 		var g = _meeting_game(sd)
 		var cands: Array = _unclaimed(g)
 		if cands.is_empty():

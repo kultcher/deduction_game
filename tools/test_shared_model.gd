@@ -166,10 +166,10 @@ func _test_ledger_receipts_and_ownership() -> void:
 		"SharedLedger certifies martyr: and curse: ownership with empty ledger effects")
 	# Known gap in this composite scene (Nov 3): the quiet-night receipt is not certified here
 	# even with the player's quiet card and the heard Warden claim. The real path (game-added
-	# quiet card, LiveProtection.owns) is covered by test_workshop_protection and showed zero
+	# quiet card, LiveProtection.owns) is covered by test_roles_shelter (from test_workshop_protection) and showed zero
 	# fallbacks in the golden captures; revisit if quiet nights ever fall back in play.
 	if not listener.workshop_state.get("owned", {}).has("quiet:2>" + saved.id):
-		print("NOTE: quiet:2>%s not certified in the composite scene (known gap, see test_workshop_protection)" % saved.id)
+		print("NOTE: quiet:2>%s not certified in the composite scene (known gap, see test_roles_shelter)" % saved.id)
 
 
 func _test_seer_cleared_and_metadata_preferences() -> void:

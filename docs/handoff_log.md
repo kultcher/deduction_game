@@ -15,12 +15,43 @@ Ground rules (from Nov 3, until Michael changes them):
   `base_commit` it was built on. Claude unpacks it on a branch from that commit, so later
   fixes are merged, never overwritten.
 - `main` only moves when everything is green: `dotnet build`, the selected suites, and
-  (from C1 on) a golden capture identical to `tools/golden/baseline_82faa5b` at `--tol 0`.
+  (from C1 on) a golden capture identical to the current baseline (`BASELINE` in
+  `.github/workflows/ci.yml`; `docs/golden_baseline.md`) at `--tol 0`.
   Otherwise the work stays on its branch and the entry says why.
 - Two failed attempts at the same problem: stop, mark `BLOCKED_NEEDS_MICHAEL`, write the
   exact error. No force pushes, nothing irreversible.
 
 ---
+
+## 2026-11-05 evening, Claude-Quill: maintenance report fixes (#69); golden false red fixed (#68); `baseline_a42ef71`
+
+- **Base:** `main` at `3932e86` (maintenance PR #66 merged), then `e09dbbd` (#68).
+- **#68 (merged): the red golden gate was the dev-log path**, as the Steward said:
+  `baseline_9187b09` recorded `/root/.local/share/...` in the game-over reply. Captures now
+  write `user://`; `golden_diff.py` normalizes `app_userdata` paths (Linux and Windows).
+  Main vs `baseline_9187b09`: identical on all five seeds. CI green again.
+- **#69: every Section A item, done here rather than by Argon.** Argon: nothing to pick up.
+  - A1/A2 + Michael's bell design: Breathstealer suppressed; the honest Sexton never lies
+    about the toll night (refuses while the bell holds unless pressed, open from the morning
+    after it wears off); evil plays the bell only once told of it (no Scion fallback, a
+    Revenant not worth hanging); a Revenant with its curse ready is cheap to let hang.
+    New RoleDef hooks: `honest_outing`, `on_public_claim`.
+  - A3 Monitor bluffer night-scoped (`override_night_sightings` now gets the filtered list).
+  - **A4 was a real C# bug:** `CaseEvalKernel` packed card states base 3 into a long, which
+    overflows from 40 report cards (silently merged classes, then IndexOutOfRange). Wide
+    cases key classes by digits. Seed 101032 plays clean. Compiled cases also carry their
+    own handle and generation now.
+  - A5 script spare role; A6 bot/stuck games; A7 Monitor "nobody walked by" is a movement
+    fact (move-role 7, GD and C#); A8 Confessor clears; A9/A10/A13 sweep workflow and
+    shards; A11 Marked rolled once; A12 `World.night_killer()`; A14 tavern trend.
+  - Dialogue: Nisha's patch-006 lines follow the Nov 2 round-2 rule (that pass hadn't been
+    lost: patch 006 added new lines in the old style); "on night {night}" in speech is now
+    `C.spoken_when`.
+- **`baseline_a42ef71`:** only seed 42 changes vs `baseline_9187b09` (day 3: the Demon votes
+  to let the Revenant hang). Two captures identical.
+- **Still open from the report:** section B's win-rate question (Michael's call); the
+  test-audit suggestions in section E; housekeeping branch deletions (not done).
+- **Next actor:** Michael (merge #69).
 
 ## 2026-11-05 evening, Claude-Tally: `tools/replay_why.gd` (why the town voted), PR open
 
