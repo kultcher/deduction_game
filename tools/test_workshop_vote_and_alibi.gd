@@ -162,7 +162,9 @@ func _present_watch_vs_alibi(trust_w: float, trust_a: float, blame: String) -> D
 	var model = CanvasModel.new(view)
 	var report: String = _canvas_node(model, view, func(c): return c.kind == "report" and c.source == watcher.id)
 	var alibi: String = _canvas_node(model, view, func(c): return c.kind == "alibi")
-	var premise: String = model.add_premise(alibied.id if blame == "alibi" else watcher.id, "suspicious", Vector2(0, 0))
+	# "evil", not "suspicious": a suspicious premise is heard at half weight since premises
+	# step 2, and this checks how trust splits the blame, not the hedge.
+	var premise: String = model.add_premise(alibied.id if blame == "alibi" else watcher.id, "evil", Vector2(0, 0))
 	model.connect_cards(report, alibi)
 	var contradiction: String = model.selected
 	if blame == "report":

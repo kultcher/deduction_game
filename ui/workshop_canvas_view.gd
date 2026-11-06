@@ -161,7 +161,7 @@ func _draw() -> void:
 		var up = a.get_center().y > b.get_center().y
 		var start = Vector2(a.get_center().x, a.position.y if up else a.end.y)
 		var end = Vector2(b.get_center().x, b.end.y if up else b.position.y)
-		var color = Color("c5a869") if edge.kind == "supports" else Color("6aabb1")
+		var color = Color("c5a869") if edge.kind == "supports" else (Color("c0392b") if edge.kind == "contradicts" else Color("6aabb1"))
 		var points = PackedVector2Array()
 		for i in range(25):
 			var t = float(i) / 24.0
@@ -173,6 +173,8 @@ func _draw() -> void:
 			link_labels.append({"at": points[12], "text": "could explain outing", "fs": 14, "color": color})
 		elif edge.kind == "read_together":
 			link_labels.append({"at": points[12], "text": "read together", "fs": 13, "color": color})
+		elif edge.kind == "contradicts":
+			link_labels.append({"at": points[12], "text": "contradicts", "fs": 13, "color": color})
 	for id in hit:
 		_draw_card(id, hit[id])
 	for lbl in link_labels:
@@ -586,7 +588,7 @@ func evidence_layout(id: String) -> Dictionary:
 		y += FACE_R * 2 + 22.0
 		if role == "seer" and card.data.get("yes", false):
 			var x: float = 16.0
-			for reg in [["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"], ["marked", "Marked"]]:
+			for reg in ([["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"], ["marked", "Marked"]] if model.marked_answers else [["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"]]):
 				var w: float = 58.0 if reg[0] == "" else (64.0 if reg[0] != "red_herring" else 96.0)
 				els.append({"t": "chip", "rect": Rect2(x, y, w, 24), "text": reg[1], "on": answer.get("registration", "") == reg[0], "field": "reg:" + reg[0],
 					"tip": "Why the Seer got a yes: " + {"": "any valid explanation", "demon": "the Demon is the one you picked", "red_herring": "the one you picked is the Red Herring", "marked": "the one you picked is Marked"}[reg[0]]})
@@ -602,7 +604,7 @@ func evidence_layout(id: String) -> Dictionary:
 			var p: String = group[i]
 			var state: String = ("marked" if p in marked else "on") if p in positive else ""
 			els.append({"t": "face", "p": p, "at": Vector2(36 + (i % per_row) * FACE_STEP, y + FACE_R + 2 + (i / per_row) * (FACE_R * 2 + 16)), "r": FACE_R, "state": state,
-				"field": "pick:" + p, "tip": Solver.person_name(model.view, p) + (": click to mark as registering evil; again for \"registered as Marked\"; again to clear" if role == "dowser" else ": click to say they were out")})
+				"field": "pick:" + p, "tip": Solver.person_name(model.view, p) + (": click to mark as registering evil" + _again_clause() if role == "dowser" else ": click to say they were out")})
 		y += ceili(group.size() / float(per_row)) * (FACE_R * 2 + 16) + 8.0
 	elif card.kind == "report" and role == "surveyor" and card.get("data", {}).has("block"):
 		var s_blk: String = str(card.data.get("block", ""))
@@ -616,7 +618,7 @@ func evidence_layout(id: String) -> Dictionary:
 			var st_s: String = ("marked" if p in marked else "on") if p in positive else ""
 			els.append({"t": "face", "p": p, "at": Vector2(sx0 + i * FACE_STEP, y + FACE_R + 2), "r": FACE_R, "state": st_s,
 				"field": "" if s_same else ("pick:" + p),
-				"tip": Solver.person_name(model.view, p) + (" lives on " + C.block_name(s_blk) if s_same else ": click to mark as registering evil; again for \"registered as Marked\"; again to clear")})
+				"tip": Solver.person_name(model.view, p) + (" lives on " + C.block_name(s_blk) if s_same else ": click to mark as registering evil" + _again_clause())})
 		y += FACE_R * 2 + 16.0
 	elif card.kind == "report" and role == "surveyor":
 		var count: int = int(card.data.get("count", 0))
@@ -635,7 +637,7 @@ func evidence_layout(id: String) -> Dictionary:
 				var p: String = residents[j]
 				els.append({"t": "face", "p": p, "at": tile.position + Vector2(22 + j * 36, 52), "r": 14.0,
 					"state": ("marked" if p in marked else "on") if p in positive else "", "field": "resident:" + p,
-					"tip": Solver.person_name(model.view, p) + ": click to name them as the reason; again for \"registered as Marked\"; again to clear"})
+					"tip": Solver.person_name(model.view, p) + ": click to name them as the reason" + _again_clause()})
 		y += 172.0
 	elif card.kind == "report" and role == "chronicler":
 		var trio: Array = card.get("data", {}).get("trio", [])
@@ -661,7 +663,7 @@ func evidence_layout(id: String) -> Dictionary:
 			var st_m: String = ("marked" if p in marked else "on") if p in positive else ""
 			els.append({"t": "face", "p": p, "at": Vector2(mx0 + i * FACE_STEP * 1.5, y + FACE_R + 2), "r": FACE_R,
 				"state": st_m, "field": "" if m_same else ("pick:" + p),
-				"tip": Solver.person_name(model.view, p) + ("" if m_same else ": click to mark as registering evil; again for \"registered as Marked\"; again to clear")})
+				"tip": Solver.person_name(model.view, p) + ("" if m_same else ": click to mark as registering evil" + _again_clause())})
 		y += FACE_R * 2 + 16.0
 	elif card.kind == "report" and role == "augur":
 		var a_yes: bool = bool(card.get("data", {}).get("yes", false))
@@ -969,10 +971,18 @@ func _draw_evidence(id: String, rect: Rect2) -> void:
 	var ink = Color("2c2720")
 	var muted = Color("6f6350")
 	draw_style_box(CanvasSkin.flat(paper, Color("f7d988") if id == model.selected or id == linking else Color("665c4c"), 3 if id == model.selected else 1, 6, 0), rect)
-	if clashing.has(card.get("id", "")):
+	var contradicted_by: String = model.contradicted_by(id) if node.kind == "evidence" else ""
+	if clashing.has(card.get("id", "")) or contradicted_by != "":
 		draw_rect(rect.grow(4 * zoom), Color("c0392b"), false, 3.0 * zoom)
 	var head = Rect2(rect.position, Vector2(rect.size.x, 40 * zoom))
 	draw_rect(head, header)
+	if contradicted_by != "" and model.nodes.has(contradicted_by):
+		# Premises step 2: both cards stay; the contradicted one says what contradicts it.
+		var tag_text: String = "Contradicted by " + model.title(contradicted_by)
+		var tag = Rect2(rect.position + Vector2(0, -24) * zoom, Vector2(rect.size.x, 22) * zoom)
+		draw_style_box(CanvasSkin.flat(Color("c0392b"), Color("7d2a20"), 1, 6, 0), tag)
+		draw_string(font, tag.position + Vector2(8, 16) * zoom, tag_text, HORIZONTAL_ALIGNMENT_LEFT, tag.size.x - 16 * zoom, _fs(13), Color("fbf6ea"))
+		tips.append({"rect": tag, "text": tag_text + ". If that card is accurate, this one is false. Inspect this card to doubt the other instead, or to remove the contradiction."})
 	var x: float = 10.0
 	if model.view.people.any(func(p): return p.id == card.get("source", "")):
 		_draw_face(card.source, rect.position + Vector2(24, 20) * zoom, 14 * zoom)
@@ -1071,3 +1081,9 @@ func _draw_element(id: String, origin: Vector2, el: Dictionary) -> void:
 			if el.get("field", "") != "":
 				fields[id].append({"rect": hit_rect, "field": el.field})
 			tips.append({"rect": hit_rect, "text": el.get("tip", name_text)})
+
+
+## The end of a face's tip: whether another click says "registered as Marked" (off in the
+## live editor, premises step 2).
+func _again_clause() -> String:
+	return "; again for \"registered as Marked\"; again to clear" if model.marked_answers else "; again to clear"

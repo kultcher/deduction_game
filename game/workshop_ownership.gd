@@ -114,6 +114,9 @@ static func _refresh(g, n, phase: String) -> void:
 				if without_plan.get("ready", false):
 					shaping_eval = shaping.duplicate(true)
 					shaping_eval["without"] = without_plan
+					# Some suspicious, some not: the pass without only the suspicious ones.
+					if not shaping.hedged.is_empty() and shaping.hedged.size() < shaping.keys.size():
+						shaping_eval["without_firm"] = Shared.prepare(plan.input, Shared.without_shaping(state.get("presentations", {}), shaping, "hedged"), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
 				else:
 					Profiler.count("premise_shaping_unprepared")
 			proposal = Shared.evaluate(plan, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, shaping_eval)

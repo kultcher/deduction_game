@@ -29,11 +29,27 @@ var progress_window: Window
 var progress_label: Label
 var presenting = false
 
+## The claim menu (premises pass step 2): one entry per question the solver asks. "Is
+## Marked" is "holds a secret" with Marked; "bluffing" and "told the truth" were "evil" and
+## "good"; "lied", "misled" and "unreliable" are explanations on a reading (the reading
+## modifiers), not premises. Filed cases with the old types still evaluate.
+const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion", "notdemon", "secret_mod", "role"]
+const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift"]
+
 func premise_types() -> Array:
-	return TYPES + ["notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]
+	return LIVE_TYPES
 
 func premise_names() -> Array:
-	return TYPE_NAMES + ["is not the Demon", "has a secret modifier", "holds their claimed gift", "is bluffing their claimed gift", "lied about a reading", "did not lie about a reading", "was misled by a reading", "gave an unreliable reading"]
+	return LIVE_TYPE_NAMES
+
+func _marked_answers() -> bool:
+	return false
+
+func _auto_claims() -> bool:
+	return true
+
+func _identity_hint() -> String:
+	return "Why did they register? Optional: assume someone Good or Evil under the premise's assumptions. To argue someone is Marked, link this reading to a premise that they hold a secret."
 
 func _premise_details(node: Dictionary) -> void:
 	var conclusion: Dictionary = node.get("conclusion", {})
@@ -210,6 +226,8 @@ func refresh() -> void:
 		var empty_view = next_view.duplicate()
 		empty_view.cards = []
 		board = CanvasModel.new(empty_view)
+		board.marked_answers = false  # Marked is a secret premise here (premises step 2)
+		board.contradiction_links = true  # both cards stay, linked (premises step 2)
 		files = g.workshop_draft.get("files", {}).duplicate(true)
 		if g.workshop_draft.has("canvas"):
 			var saved: Dictionary = g.workshop_draft.canvas
@@ -413,6 +431,19 @@ func _refresh_case() -> void:
 		else:
 			_label(case_box, card.text, 18)
 			_label(case_box, "You can inspect this receipt, but it has no supported shared interpretation. Including unsupported evidence blocks an ordinary shared submission; remove it or replace it with supported evidence.", 16)
+		if board.contradicted_by(answer_id) != "":
+			# Premises step 2: the contradiction is a link between the two cards.
+			var other: String = board.contradicted_by(answer_id)
+			_label(case_box, "Contradicted by %s: if that card is accurate, this one is false." % board.title(other), 17, "accent")
+			var contradicted: String = answer_id
+			if board.report_doubtable(contradicted):
+				_button(case_box, "Doubt the report instead (suspected lie)", func():
+					var why: String = board.doubt_report(contradicted)
+					answer_window.hide()
+					_session_changed()
+					if why != "":
+						status.text = why)
+			_button(case_box, "Remove the contradiction", func(): board.remove_contradiction(contradicted); answer_window.hide(); _session_changed())
 		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
 	elif node.kind == "profile_info":
 		_clear(case_box)
@@ -514,13 +545,14 @@ func _refresh_case() -> void:
 			var row = HBoxContainer.new()
 			case_box.add_child(row)
 			_label(row, person.name, 17).custom_minimum_size.x = 170
-			var option = _option(row, ["? Unresolved", "Good", "Evil", "Good · Marked"])
-			option.select(["", "good", "evil", "marked"].find(node.positions.get(person.id, "")))
+			# No "Good · Marked" here (premises pass step 2): Marked is a secret premise.
+			var option = _option(row, ["? Unresolved", "Good", "Evil"])
+			option.select(["", "good", "evil"].find(node.positions.get(person.id, "")))
 			option.item_selected.connect(func(i):
 				if i == 0:
 					node.positions.erase(person.id)
 				else:
-					node.positions[person.id] = ["", "good", "evil", "marked"][i]
+					node.positions[person.id] = ["", "good", "evil"][i]
 				_edit())
 
 func _file() -> int:

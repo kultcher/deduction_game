@@ -108,6 +108,11 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 		for id in personal:
 			if cards.any(func(c): return c.id == id) and id not in keep:
 				keep.append(id)
+	# The player's word on a secret (premises step 2) is a claim they made to this listener,
+	# like a presented card: always in view, outside the budget.
+	for c in cards:
+		if c.get("player_word", false) and c.id not in keep:
+			keep.append(c.id)
 	# Never attend to a challenged report, disputed alibi, or explained outing while
 	# dropping the linked card that disproves or explains it.
 	var idx_k: int = 0

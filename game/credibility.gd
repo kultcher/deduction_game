@@ -11,6 +11,7 @@ const Shared = preload("res://workshop/shared_ledger.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const PublicEvidence = preload("res://workshop/public_evidence.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
+const CaseEval = preload("res://workshop/case_eval.gd")
 
 const EVIL_LEANING = ["evil", "demon", "minion", "suspicious"]
 const GOOD_LEANING = ["good"]
@@ -39,6 +40,27 @@ static func record(n, type: String, target: String, day: int, weight: float = Tu
 	n.claim_record[target] = entry
 	if n.shadow != null:
 		n.shadow.claim_record[target] = entry.duplicate(true)
+
+## Premises pass step 2: the player said `target` holds secret `mod` (a presented secret
+## premise, the root or one inside the case). Kept beside the alignment claims under
+## "secret:<target>"; the latest secret named for a person stands. Checked at dawn against
+## how likely the NPC's own evidence makes it.
+static func record_secret(n, target: String, mod: String, day: int, weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL) -> void:
+	if target == "" or mod == "" or target == n.id:
+		return
+	var entry: Dictionary = {"type": "secret", "target": target, "mod": mod, "day": day, "weight": clampf(weight, 0.05, 1.0)}
+	n.claim_record["secret:" + target] = entry
+	if n.shadow != null:
+		n.shadow.claim_record["secret:" + target] = entry.duplicate(true)
+
+## Every secret claim a filed case makes (its root premise and the premises inside it).
+static func record_case_secrets(n, ded: Dictionary, day: int) -> void:
+	var conclusions: Array = [ded.get("conclusion", {})]
+	for claim in ded.get("workshop_case", {}).get("arguments", []):
+		conclusions.append(claim.get("case", {}).get("conclusion", {}))
+	for c in conclusions:
+		if str(c.get("type", "")) == "secret_mod":
+			record_secret(n, str(c.get("a", c.get("target", ""))), str(c.get("mod", "")), day)
 
 ## Every living NPC everyone heard it from: nominations and public accusations.
 static func record_public(g, type: String, target: String, weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL) -> void:
@@ -125,4 +147,19 @@ static func _agreement(g, n):
 		var claim_w: float = clampf(float(n.claim_record[target].get("weight", Tuning.Trust.CRED_WEIGHT_FORMAL)), 0.05, 1.0)
 		total += claim_w * signed_a
 		weight_sum += claim_w
+	# Secret claims (premises step 2): how far the NPC's own evidence moved the chance that
+	# the person holds the named secret. Abstain while it hasn't moved.
+	for key in n.claim_record:
+		var claim: Dictionary = n.claim_record[key]
+		if str(claim.get("type", "")) != "secret" or not str(key).begins_with("secret:"):
+			continue
+		# The same attended, doubt-adjusted evidence as the alignment check above (Codex
+		# review of PR #93), not the raw prepared plan.
+		var ev: Dictionary = Shared.evaluate_question(plan, outside, doubt_bundle.pre_eval, doubt_bundle.full,
+			{"type": "secret_mod", "target": str(claim.target), "mod": str(claim.mod), "at": plan.prepared.case.conclusion.get("at", "")})
+		if ev.is_empty() or ev.get("impossible", false) or absf(float(ev.posterior) - float(ev.prior)) < Tuning.Trust.CRED_CORROBORATION_MIN:
+			continue
+		var w_s: float = clampf(float(claim.get("weight", Tuning.Trust.CRED_WEIGHT_FORMAL)), 0.05, 1.0)
+		total += w_s * CaseEval.shift(float(ev.prior), float(ev.posterior))
+		weight_sum += w_s
 	return total / weight_sum if weight_sum > 0.0 else null

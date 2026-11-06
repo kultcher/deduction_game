@@ -381,6 +381,7 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			if shared and not owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:") or owner.begins_with("case:")):
 				rel_scale = clampf(rel_base + rel_slope * (best_trust * maxf(hearing, 0.35)), rel_base, 1.0)
 			prepared.listener.reading_reliability[id] *= rel_scale
+		_add_player_words(prepared, presentations, withdrawn, owners, player_weight, input.get("now", {}))
 		# Presentation weights add per-report uncertainty; enforce the budget AFTER
 		# introducing those dimensions as well as during ordinary preparation.
 		var sources = {}
@@ -494,6 +495,74 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 ## Inputs for deferred reason attribution from the most recent evaluate() call.
 static var last_reason_ctx: Dictionary = {}
 
+## Premises pass step 2: a presented "X holds secret S" premise (the root, or a premise
+## inside the case) is the player's word: one card per (X, S), a secret reading of X alone
+## told by the player, so it counts like any card heard only from them (their credibility
+## sets its reliability) and an evil, impaired or Delusional reader can't explain it away.
+## The secret claims a presentation makes, as [{target, mod}].
+static func secret_claims(presented: Dictionary) -> Array:
+	var out: Array = []
+	var add := func(conclusion: Dictionary) -> void:
+		if str(conclusion.get("type", "")) != "secret_mod":
+			return
+		var target: String = Assess._target(conclusion)
+		var mod: String = str(conclusion.get("mod", ""))
+		if target == "" or mod == "":
+			return
+		var entry = {"target": target, "mod": mod}
+		if entry not in out:
+			out.append(entry)
+	for argument in presented.get("arguments", []):
+		if int(argument.get("board_number", -998)) == int(presented.get("root", -999)):
+			add.call(argument.get("conclusion", {}))
+		for claim in argument.get("workshop_case", {}).get("arguments", []):
+			add.call(claim.get("case", {}).get("conclusion", {}))
+	return out
+
+static func _name(view: Dictionary, id: String) -> String:
+	for p in view.get("people", []):
+		if p.id == id:
+			return str(p.get("name", id))
+	return id
+
+static func player_word_id(target: String, mod: String) -> String:
+	return "word:secret:%s:%s" % [target, mod]
+
+## Tests compare a case with and without the player's word on the same cards.
+static var player_words: bool = true
+
+static func _add_player_words(prepared: Dictionary, presentations: Dictionary, withdrawn: Dictionary, owners: Dictionary, player_weight: float, now: Dictionary) -> void:
+	if not player_words:
+		return
+	var view: Dictionary = prepared.view
+	var people: Array = view.get("people", []).map(func(p): return p.id)
+	var allowed: Array = view.get("world_options", {}).get("modifiers", [])
+	var added: Array = []
+	for key in presentations:
+		if withdrawn.has(key) or withdrawn.has(str(key)):
+			continue
+		for claim in secret_claims(presentations[key]):
+			if claim.target not in people or claim.mod not in allowed:
+				continue  # a secret this case can't have says nothing about its worlds
+			var id: String = player_word_id(claim.target, claim.mod)
+			if not owners.has(id):
+				owners[id] = []
+			if ("case:" + str(key)) not in owners[id]:
+				owners[id].append("case:" + str(key))
+			if id in added:
+				continue
+			added.append(id)
+			var at: Dictionary = now if not now.is_empty() else {"day": int(view.get("day", 0)), "phase": "morning"}
+			var card = {"id": id, "fact_id": id, "kind": "report", "role": "rumormonger", "source": "player",
+				"testimony_only": true, "player_word": true, "night": -1, "observed_at": at.duplicate(true), "reported_at": at.duplicate(true),
+				"data": {"pair": [claim.target], "secret": claim.mod},
+				"text": "The Demonologist says %s holds a secret: %s." % [_name(view, claim.target), Assess.C.secret_name(claim.mod)]}
+			prepared.listener.reading_reliability[id] = player_weight
+			# A new array, so Solver.card_by_id's index sees the card.
+			view.cards = view.cards + [card]
+			if id not in prepared.case.cards:
+				prepared.case.cards = prepared.case.cards + [id]
+
 ## Premises pass step 1: which remembered presentations shape this listener's beliefs.
 ## A card is shaped when only presentations brought it (not the listener's own readings or
 ## hearsay) and at least one of them argued an alignment premise about someone (its
@@ -534,9 +603,19 @@ static func premise_shaping(plan: Dictionary, presentations: Dictionary, withdra
 				targets.append(t)
 	keys.sort()
 	targets.sort()
+	# Premises step 2: a "suspicious" premise hedges, so the cards only suspicious premises
+	# brought count at half weight for everyone. Dropping those presentations alone leaves
+	# their cards held through any non-suspicious presentation at full weight.
+	var hedged: Array = keys.filter(func(k): return _root_type(presentations[k]) == "suspicious" and not k.begins_with("direct:"))
 	var spill: float = lerpf(Tuning.Workshop.PREMISE_SPILLOVER_MIN, Tuning.Workshop.PREMISE_SPILLOVER_MAX, clampf(insight, 0.0, 1.0))
 	shaped_cards.sort()
-	return {"keys": keys, "trim": trim, "cards": shaped_cards, "targets": targets, "spill": spill}
+	return {"keys": keys, "trim": trim, "cards": shaped_cards, "targets": targets, "spill": spill, "hedged": hedged, "hedge": Tuning.Workshop.SUSPICIOUS_HEARING}
+
+static func _root_type(presented: Dictionary) -> String:
+	for argument in presented.get("arguments", []):
+		if int(argument.get("board_number", -998)) == int(presented.get("root", -999)):
+			return str(argument.get("conclusion", {}).get("type", ""))
+	return ""
 
 ## The alignment targets a presentation argued about: its root premise (every argument for
 ## a direct accuse / defend), when its type asks an alignment question about a person.
@@ -553,18 +632,19 @@ static func premise_targets(key: String, presented: Dictionary) -> Array:
 			named.append(target)
 	return named
 
-## The presentations left once the shaping ones are dropped (the "without" side). An
+## The presentations left once some are dropped: `field` "keys" (all shaping ones, the
+## "without" side) or "hedged" (only the suspicious ones). On the "without" side an
 ## alignment presentation that owns a shaped card is dropped whole (its other cards are held
 ## another way, or they'd be shaped too). A presentation with no alignment target (Marked,
 ## conflict) that shares a shaped card keeps everything but the shaped cards, so its own
 ## cards aren't discounted for anyone (Codex review of PR #92).
-static func without_shaping(presentations: Dictionary, shaping: Dictionary) -> Dictionary:
+static func without_shaping(presentations: Dictionary, shaping: Dictionary, field: String = "keys") -> Dictionary:
 	var rest: Dictionary = {}
-	var keys: Array = shaping.get("keys", []).map(func(k): return str(k))
+	var keys: Array = shaping.get(field, []).map(func(k): return str(k))
 	var trim: Array = shaping.get("trim", []).map(func(k): return str(k))
 	var cards: Array = shaping.get("cards", [])
 	for key in presentations:
-		if str(key) in trim:
+		if field == "keys" and str(key) in trim:
 			var kept: Dictionary = presentations[key].duplicate(true)
 			kept.selected = kept.get("selected", []).filter(func(id): return str(id) not in cards)
 			rest[key] = kept
@@ -572,18 +652,31 @@ static func without_shaping(presentations: Dictionary, shaping: Dictionary) -> D
 			rest[key] = presentations[key]
 	return rest
 
-## Blend one person's effect between the "without" pass and the full pass: the
-## presentations' share of the change is scaled by `spill`.
-static func _shape_effect(effect: Dictionary, without: Dictionary, spill: float) -> void:
-	for field in ["requested", "raw_requested", "posterior", "evil_agreement", "evil_change"]:
+const _SHAPED_FIELDS = ["requested", "raw_requested", "posterior", "evil_agreement", "evil_change"]
+
+static func _field_base(effect: Dictionary, other: Dictionary, field: String) -> float:
+	return float(other.get(field, 0.0 if field in ["requested", "raw_requested", "evil_change"] else effect.get("prior", effect[field])))
+
+## Blend one person's effect: `bare` is the pass without any shaping presentation, `firm`
+## the pass without only the suspicious ones (their cards at full weight would be the full
+## pass). The firm presentations' change counts in full, the suspicious ones' at `hedge`,
+## and the whole at `factor` (1 for a target, the spillover for everyone else).
+static func _shape_effect(effect: Dictionary, bare: Dictionary, firm: Dictionary, factor: float, hedge: float) -> void:
+	var full: Dictionary = {}
+	for field in _SHAPED_FIELDS:
 		if effect.has(field):
-			var base: float = float(without.get(field, 0.0 if field in ["requested", "raw_requested", "evil_change"] else effect.get("prior", effect[field])))
-			effect[field] = base + spill * (float(effect[field]) - base)
+			full[field] = float(effect[field])
+	for field in full:
+		var b: float = _field_base(effect, bare, field)
+		var f: float = _field_base(effect, firm, field) if not firm.is_empty() else full[field]
+		effect[field] = b + factor * ((f - b) + hedge * (full[field] - f))
+	if not firm.is_empty() and full.has("requested"):
+		effect["suspicious_case_full"] = full.requested - _field_base(effect, firm, "requested")
 	if effect.has("good_agreement") and effect.has("evil_agreement"):
 		effect.good_agreement = 1.0 - float(effect.evil_agreement)
 	if effect.has("good_change") and effect.has("evil_change"):
 		effect.good_change = -float(effect.evil_change)
-	effect["premise_spill"] = spill
+	effect["premise_spill"] = factor
 
 ## `shaping` (premises pass step 1): {targets, spill, without} from premise_shaping, with
 ## `without` the plan prepared without the shaping presentations. Empty: no shaping.
@@ -600,6 +693,25 @@ static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt
 		return {}
 	if plan.empty:
 		return {"effects": {}}
+	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt)
+	# No headline: the union only asks how every suspicion moves (Jury.refresh).
+	return _evaluate_adjusted(plan, prepared, suspicion, source_doubt, sighting_doubt, shaping)
+
+## One question (`conclusion`, e.g. a secret) asked of the listener's own evidence the way
+## the belief refresh weighs it: the same doubt-adjusted cards, through the same attention
+## and challenge machinery (Jury), not the raw prepared plan. Returns CaseEval's result
+## ({prior, posterior, impossible, ...}), or {} when the plan isn't ready.
+static func evaluate_question(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, conclusion: Dictionary) -> Dictionary:
+	if not plan.get("ready", false) or plan.get("empty", false):
+		return {}
+	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt)
+	var question: Dictionary = prepared.case.duplicate(true)
+	question.conclusion = conclusion.duplicate(true)
+	var res: Dictionary = Jury.evaluate(prepared.view, question, prepared.listener, {"headline_only": true})
+	return res.get("case_eval", {})
+
+## The plan's prepared view and listener with source and sighting doubt applied.
+static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary) -> Dictionary:
 	var eff_sighting_doubt: Dictionary = sighting_doubt if not sighting_doubt.is_empty() else source_doubt
 	var prev_doubt: Dictionary = plan.input.listener.get("source_doubt", plan.input.listener.get("discounted", {}))
 	var prepared: Dictionary = plan.prepared.duplicate(true)
@@ -634,18 +746,35 @@ static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt
 		var previous = maxf(float(prev_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(prev_doubt.get(card.source + ":*", 0.0)))
 		var route_weight = prepared.listener.reading_reliability[card.id] / (1.0 - previous) if previous < 1.0 else 0.0
 		prepared.listener.reading_reliability[card.id] = route_weight * (1.0 - doubt)
-	# No headline: the union only asks how every suspicion moves (Jury.refresh).
+	return prepared
+
+static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, shaping: Dictionary) -> Dictionary:
 	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
 	# Premises pass step 1: the shaping presentations' effect reaches non-targets at `spill`.
+	# Step 2: cards only suspicious premises brought count at `hedge` for everyone.
 	if not shaping.is_empty() and shaping.get("without", {}).get("ready", false):
-		var without: Dictionary = _evaluate_impl(shaping.without, suspicion, source_doubt, sighting_doubt)
-		var wo_effects: Dictionary = without.get("effects", {})
+		var wo_effects: Dictionary = _evaluate_impl(shaping.without, suspicion, source_doubt, sighting_doubt).get("effects", {})
+		var hedged: Array = shaping.get("hedged", [])
+		var firm_effects: Dictionary = {}
+		var has_firm: bool = false
+		if not hedged.is_empty():
+			if hedged.size() == shaping.keys.size():
+				firm_effects = wo_effects  # every shaping presentation hedges
+				has_firm = true
+			elif shaping.get("without_firm", {}).get("ready", false):
+				firm_effects = _evaluate_impl(shaping.without_firm, suspicion, source_doubt, sighting_doubt).get("effects", {})
+				has_firm = true
 		var spill: float = float(shaping.spill)
+		var hedge: float = float(shaping.get("hedge", 1.0)) if has_firm else 1.0
 		for person in result.get("effects", {}):
-			if person in shaping.targets or person == prepared.listener.get("id", ""):
+			if person == prepared.listener.get("id", ""):
 				continue
-			_shape_effect(result.effects[person], wo_effects.get(person, {}), spill)
-		result["premise_shaping"] = {"targets": shaping.targets.duplicate(), "spill": spill}
+			var factor: float = 1.0 if person in shaping.targets else spill
+			if is_equal_approx(factor, 1.0) and is_equal_approx(hedge, 1.0):
+				continue
+			var firm_e: Dictionary = firm_effects.get(person, {"firm": true}) if has_firm else {}
+			_shape_effect(result.effects[person], wo_effects.get(person, {}), firm_e, factor, hedge)
+		result["premise_shaping"] = {"targets": shaping.targets.duplicate(), "spill": spill, "hedge": hedge}
 	var public_good: Array = preload("res://workshop/public_evidence.gd").known_good(plan.input.public_events, plan.input.people.map(func(p): return p.id))
 	if prepared.view.get("chronology", {}).has("curse"):
 		var curse: Dictionary = prepared.view.chronology.curse

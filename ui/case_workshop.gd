@@ -488,8 +488,8 @@ func _question(card: Dictionary) -> void:
 		if role in ["surveyor", "dowser"]:
 			_label(box, _identity_hint(), 15, "muted")
 		if role == "seer" and card.data.yes:
-			var reasons: Array = ["", "demon", "red_herring", "marked"]
-			var reason = _option(box, ["? Any valid explanation", "Demon", "Red Herring", "Marked"])
+			var reasons: Array = ["", "demon", "red_herring", "marked"] if _marked_answers() else ["", "demon", "red_herring"]
+			var reason = _option(box, ["? Any valid explanation", "Demon", "Red Herring", "Marked"] if _marked_answers() else ["? Any valid explanation", "Demon", "Red Herring"])
 			reason.select(reasons.find(answer.get("registration", "")))
 			reason.item_selected.connect(func(i):
 				var updated: Dictionary = current.answers.get(card.id, {}).duplicate(true)
@@ -516,14 +516,24 @@ func _question(card: Dictionary) -> void:
 			if current.reasons.get(key, "unexplained") in ["gift", "secret"]:
 				var private_errand: bool = current.reasons[key] == "secret"
 				var claims: Array = session.scenario.public_view.cards.filter(func(c): return c.kind == ("secret_claim" if private_errand else "claim") and c.subject == id)
-				var citation = _option(box, ["? No supporting claim"] + claims.map(func(c): return "%s Â· %s Â· day %s" % [_name(c.subject), C.role_name(c.role), c.acquired_day]))
+				var claim_labels: Array = claims.map(func(c): return "%s Â· %s Â· day %s" % [_name(c.subject), C.role_name(c.role), c.acquired_day])
+				# The live editor fills the citation itself from the board (premises step 2):
+				# its first entry is "automatic", and declining is an explicit choice.
+				var lead: Array = ["Automatic: the claim on the board", "No supporting claim"] if _auto_claims() else ["? No supporting claim"]
+				var citation = _option(box, lead + claim_labels)
 				citation.name = "Citation_%s_%d" % [id, card.night]
-				citation.select(claims.map(func(c): return c.id).find(current.citations.get(key, "")) + 1)
+				var cited_now: String = str(current.citations.get(key, ""))
+				if _auto_claims() and cited_now == "none":
+					citation.select(1)
+				else:
+					citation.select(claims.map(func(c): return c.id).find(cited_now) + lead.size() if claims.any(func(c): return c.id == cited_now) else 0)
 				citation.item_selected.connect(func(i):
 					if i == 0:
 						current.citations.erase(key)
+					elif _auto_claims() and i == 1:
+						current.citations[key] = "none"
 					else:
-						current.citations[key] = claims[i - 1].id
+						current.citations[key] = claims[i - lead.size()].id
 					_edit())
 				var support = Graph.valid_citation(session.scenario.public_view, current, id, card.night)
 				if private_errand:
@@ -547,6 +557,15 @@ func _question(card: Dictionary) -> void:
 
 func _card_available(card: Dictionary) -> bool:
 	return card.id in session.case_data.cards and (active_line == "" or card.id in _active_choices().cards)
+
+## Whether the citation menu fills itself from the board (the live editor, premises step 2).
+func _auto_claims() -> bool:
+	return false
+
+## Whether card answers and assumed identities offer "Marked" (the live editor says Marked
+## with a secret premise instead; premises pass step 2).
+func _marked_answers() -> bool:
+	return true
 
 func _identity_hint() -> String:
 	return "Why did they register? Optional: assign Good Â· Marked or Evil under assumptions below. Those choices remain hypotheses."

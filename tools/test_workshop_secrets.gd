@@ -123,11 +123,18 @@ func _ui(g, out: int, secret: int, person: String) -> void:
 	editor._open_answer(outing)
 	await process_frame
 	var citation = editor.find_child("Citation_%s_1" % person, true, false)
-	check(citation != null and citation.item_count == 2, "the actual live answer picker offers the secret claim: " + str(citation.item_count if citation != null else -1))
-	if citation != null and citation.item_count > 1:
+	# Premises step 2: the live picker leads with "Automatic" and "No supporting claim".
+	check(citation != null and citation.item_count == 3, "the actual live answer picker offers the secret claim: " + str(citation.item_count if citation != null else -1))
+	check(editor.board.compile(root_id).citations.get(person + ":1", "") == editor.board.nodes[explanation].card, "left automatic, it cites the errand claim on the board")
+	if citation != null and citation.item_count > 2:
+		citation.select(2)
+		citation.item_selected.emit(2)
+		check(editor.board.compile(root_id).citations.get(person + ":1", "") == editor.board.nodes[explanation].card, "the answer signal stores the exact explanation receipt")
 		citation.select(1)
 		citation.item_selected.emit(1)
-		check(editor.board.compile(root_id).citations.get(person + ":1", "") == editor.board.nodes[explanation].card, "the answer signal stores the exact explanation receipt")
+		check(not editor.board.compile(root_id).citations.has(person + ":1"), "'No supporting claim' declines it")
+		citation.select(2)
+		citation.item_selected.emit(2)
 	editor.queue_free()
 	await process_frame
 

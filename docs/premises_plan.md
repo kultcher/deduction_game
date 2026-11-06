@@ -19,9 +19,10 @@ the listener's pinned own readings.
   `test_workshop_live_cognition`).
 - **After step 1:** a premise moves beliefs only through its target (step 1, below).
 
-**Step 1 (Nov 6, Claude-Quill, branch `claude/premises-step1`):** built; see "Step 1 as built"
-below. Its acceptance A/B with the M4 bot is Tally's (overnight), with attention budgets
-fixed between arms. Steps 2–4 aren't started. Deliberate recency in attention is a separate
+**Step 1 (Nov 6, Claude-Quill, PR #92):** built; see "Step 1 as built" below.
+**Step 2 (Nov 6, Claude-Quill, branch `claude/premises-step2`, stacked on step 1):** built;
+see "Step 2 as built". Its acceptance A/B with the M4 bot is Tally's (overnight), with attention budgets
+fixed between arms. Steps 3–4 aren't started. Deliberate recency in attention is a separate
 step after step 1 (see "Recency: the topic of the day" below).
 
 **Restored Nov 6:** the Nov 5 late-night decisions (23:10 and 23:35 ET, with Michael) were
@@ -306,6 +307,58 @@ assumptions (proposal 6, step 2).
 - **Tests:** `tools/test_premise_step1.gd` (spillover ratio 0.4/0.8 at fixed attention,
   target unchanged by Insight, remembered shaping, wrong-premise cost and no repeat cost,
   the preference gate, movement notes, the preview hint).
+
+## Step 2 as built (Nov 6)
+
+Decided with Michael on Nov 6: both Marked pickers go; "lied", "misled" and "unreliable"
+leave the premise menu now (the reading modifiers stay until step 3's challenges); and a
+secret premise is **the player's word**, weighted by credibility.
+
+- **Claim menu** (`LiveCaseWorkshop.LIVE_TYPES`): evil, suspicious, good, conflict, Demon,
+  Minion, not the Demon, holds a secret (`secret_mod`), holds their claimed gift (`role`).
+  Gone from the menu: Marked, bluffing, told the truth, lied, misled, unreliable. Filed
+  cases with the old types still evaluate.
+- **Marked pickers removed in the live editor** (`CanvasModel.marked_answers = false`,
+  `_marked_answers()`): Dowser, Surveyor and Magistrate faces cycle registered -> clear,
+  never "registered as Marked"; the Seer registration offers Any / Demon / Red Herring;
+  assumed identities offer Good / Evil. The fixture workshop keeps its old controls.
+- **Secret premise = the player's word** (`SharedLedger._add_player_words`). A presented
+  "X holds S" (the root premise, or a premise inside the case) adds one card per (X, S):
+  a secret reading of X alone told by the player (`source` "player", `testimony_only`, a
+  one-person Rumormonger shape), reliability = how far the listener takes the player's word
+  (`SOURCE_REL_BASE + SLOPE * credibility`, like any card heard only from the player). An
+  evil, impaired or Delusional reader can't explain it away; a doubted player's word counts
+  for less. It's always in view (pinned in `Reasoner._prepare`). A secret the case's script
+  can't have adds nothing. One modifier per case, so "X is Marked" also rules out a
+  Delusional or Sleepwalker elsewhere, through the worlds.
+  - **Track record:** a presented secret joins `claim_record` as `secret:<target>`;
+    at dawn `Credibility._agreement` scores it by how far the NPC's own evidence moved the
+    chance that X holds S (abstaining when it hasn't moved), beside the alignment claims.
+- **Suspicious = half-weight hearing plus pressure.** Cards that only suspicious premises
+  brought count at `SUSPICIOUS_HEARING` (0.5) for everyone, both directions, on top of the
+  step 1 spillover (a third union pass when firm and suspicious presentations mix). The
+  other half presses the target once per filing (target and cards): the average listener's
+  full-weight rise on the target times `SUSPICIOUS_PRESSURE_PER_RISE` (0.5 private, 1.0 at
+  a meeting; a 0.2 rise gives the conflict premise's +0.1 / +0.2). Refiled as evil: full
+  weight, once, and no more pressure. Refiled as suspicious again: nothing. Direct
+  accusations (also "suspicious" internally) are unaffected: their cards are held through
+  the told-card ledger too.
+- **Contradictions are links** (`connect_cards` adds a `contradicts` link from the card that
+  disproves to the card it contradicts; `compile` adds the dispute when either card is in
+  the case and pulls in the other). Both cards stay; the contradicted card has a red border
+  and a "Contradicted by ..." tag. Inspect on it offers "Doubt the report instead" (the link
+  goes, the report gets a suspected lie with the alibi as grounds) and "Remove the
+  contradiction". Saved drafts with old merged contradiction cards still load and work.
+- **Claim citations fill themselves** (`CanvasModel._auto_citations`): an outing explained by
+  a gift (or a private errand) with no chosen claim cites the claim on the board that covers
+  that night and brings its card into the case (`auto_cards`). The citation menu's first
+  entry is "Automatic"; "No supporting claim" declines it (citation "none").
+- **Flagged, not changed:** the headline rule in `Jury` (a dull listener takes a strong
+  evil reading at its word) blends toward any positive headline signal, however small,
+  when the evidence clears someone. With the secret word, a tiny headline from a Seer
+  card heard through the player pulled p3's clearing back by a third (test fixture:
+  credibility 0.7 cleared p3 less than credibility 0.2). The posterior is right; the blend
+  probably wants a strength floor. Left for a decision.
 
 ## Decisions (settled Nov 5)
 

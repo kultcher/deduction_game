@@ -967,6 +967,13 @@ class Workshop:
 	## The protect / believed-role preference from a presented premise needs at least this
 	## agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks.
 	const PREMISE_PREF_MIN_AGREEMENT = 0.5
+	## Premises pass step 2: "suspicious" hedges, so the cards only suspicious premises
+	## brought count at this share for everyone (both directions), and the rest of their
+	## full effect on the target becomes pressure, once per filing: the average listener's
+	## full-weight rise times this (private / meeting), so a rise of 0.2 gives the conflict
+	## premise's +0.1 / +0.2.
+	const SUSPICIOUS_HEARING = 0.5
+	const SUSPICIOUS_PRESSURE_PER_RISE = {"private": 0.5, "meeting": 1.0}
 
 	## Bounded reasoning attention profiles (`workshop/reasoner.gd`)
 	## Attention salience (Reasoner._salience; premises pass step 0b). Naming the target outranks
