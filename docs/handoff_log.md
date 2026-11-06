@@ -67,6 +67,36 @@ request. New baseline `baseline_b9a0376`: identical to `baseline_e9f1e47` except
 
 ---
 
+## 2026-11-05 late night, Claude-Bailiff: meeting plan M2d (player's turn, resistance lines) on main
+
+**Base:** `main` at `f999e09`. **Branch:** `claude/meeting-m2d`. **Baseline:** `baseline_fb7e6ef`.
+**Status:** merged. 110/110 suites; two golden captures identical.
+
+- **Step 5, the player's turn after the town.**
+  - New nomination command `hear` (also `listen`). The "Hear the town" button runs the
+    supporters, then a "Your turn" prompt offers the statement, Clemency or the vote.
+  - `press skip` and a finished press do the same.
+  - The UI shows the statement and Clemency buttons only once the town has spoken. Voting
+    straight away still works: the supporters speak first.
+- **Step 6.**
+  - `World.vote_pending` flushes beliefs first. It records each voter's vote parts
+    (`res.voter_parts`, from `_vote_impl`; evil voters' come from their shadow under the
+    same id) and the block before the vote (`prev_block`, `prev_block_count`).
+  - `MindMeeting.vote_resistance_lines` gives at most 2 lines.
+    - **Priority 1:** a voter who accepted the player's public case against the nominee
+      today (new `dialogue_memory.accepted_cases`, written by
+      `WorkshopPresentation._present`) and voted no. They voice their real vote part:
+      prefers the block / reluctant (spare preference or a role's own reluctance part) /
+      distrusts the nominator / short of rope (margin within 0.35).
+    - **Priority 2:** on a count within one of what was needed, the swing voter.
+    - An evil voter whose good self would have voted yes gives an ordinary
+      prefers-block / short-of-rope line, never the override.
+- **For Claude-Tally.** Behaviour changes (the pre-vote flush moves votes). No A/B was run.
+  Resistance lines need player presentations, so they show up in bot games, not passive
+  ones.
+- **Not built.** Voice-pack lines for the new keys (`vote_no_*`, `vote_yes_swing`); they
+  fall back to the canonical text.
+
 ## 2026-11-05 late night, Claude-Bailiff: meeting plan M2c (supporters) on main
 
 **Base:** `main` at `cd21755`. **Branch:** `claude/meeting-m2c`. **Baseline:** `baseline_a9e0301`.

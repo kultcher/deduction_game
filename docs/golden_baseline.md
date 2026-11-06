@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 5, late night): `baseline_a9e0301`
+### Current baseline (Nov 5, late night): `baseline_fb7e6ef`
+
+`tools/golden/baseline_fb7e6ef/` is the capture from `fb7e6ef`: `baseline_a9e0301` plus
+meeting plan M2d:
+- the player's turn after the town;
+- beliefs flushed before the vote;
+- recorded voter parts;
+- vote resistance lines.
+
+Two captures identical. Against `baseline_a9e0301` every seed parts at the first nomination
+(the new prompt text). With `--ignore engine,voter_parts,prev_block,prev_block_count,reply,text,statement,said`
+they part at the first vote that the pre-vote flush moves (day 2-3).
+
+### Previous baseline (Nov 5, late night): `baseline_a9e0301`
 
 `tools/golden/baseline_a9e0301/` is the capture from `a9e0301`: `baseline_b9a0376` plus
 meeting plan M2c (supporters, `sim/mind_support.gd`). Two captures identical. Against
@@ -160,7 +173,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_a9e0301 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_fb7e6ef /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
