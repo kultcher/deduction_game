@@ -433,12 +433,17 @@ static func _search_regulars(g, l: String) -> bool:
 		g._narr("You ask after the regulars at %s, but there's nobody you didn't already know of." % place if not regulars.is_empty() else "You ask after the regulars at %s. Nobody makes a habit of it." % place)
 		g.w.dlog.add("player_learns_haunts", "player", "", {"loc": l, "via": "search", "found": false})
 		return true
-	var r = g.w.pick(unknown)
+	# Its own draw (seeded by the case and the place), so asking about regulars never shifts
+	# the world's random rolls.
+	var pick_rng := RandomNumberGenerator.new()
+	pick_rng.seed = hash([g.w.seed_value, l, "regulars"])
+	unknown.sort_custom(func(a, b): return a.id < b.id)
+	var r = unknown[pick_rng.randi_range(0, unknown.size() - 1)]
 	var workers: Array = g.w.living().filter(func(n): return n.work == l and n != r)
 	var told: String
 	if not workers.is_empty():
 		var wk = workers[0]
-		told = "%s, the %s, tells you %s is a regular at %s when not working." % [wk.name, C.OCCUPATIONS[wk.occupation]["title"], r.name, place]
+		told = "%s, the %s, tells you %s is a regular at %s when not working." % [wk.name, str(wk.occupation), r.name, place]
 	else:
 		told = "Asking around %s, you learn %s is a regular here when not working." % [place, r.name]
 	if unknown.size() > 1:

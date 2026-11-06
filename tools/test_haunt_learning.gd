@@ -62,7 +62,7 @@ func _test_search() -> void:
 	var text: String = g.events.filter(func(e): return e.get("k", "") == "narration").map(func(e): return str(e.text)).reduce(func(a, b): return a + " " + b, "")
 	var workers: Array = g.w.living().filter(func(n): return n.work == l and not (l in n.haunts))
 	if not workers.is_empty():
-		_check(C.OCCUPATIONS[workers[0].occupation]["title"] in text, "whoever works there points them out (%s)" % text)
+		_check(str(workers[0].occupation) in text, "whoever works there points them out (%s)" % text)
 	var learned = regulars.filter(func(n): return l in g.known_haunts.get(n.id, []))
 	_check(learned.any(func(n): return g.profile_receipts_for(n.id).any(func(c): return c.get("kind", "") == "haunt" and c.get("loc", "") == l)),
 		"it's kept as a haunt receipt on their profile")
