@@ -27,6 +27,27 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06 ~02:30, Claude-Bailiff: Codex review fixes (game) on main; main settled for the sweep
+
+- From the Codex review of the Nov 5 PRs (#69, #77):
+  - A Sexton who claimed before tolling tells the town of the toll once the bell wears off
+    (`RoleDef.on_public_update`), and a podium account of the toll tells evil the bell rang
+    (`RoleDef.on_public_duty_account`).
+  - A refusal about the toll night is reconsidered once pressure rises or they're nominated
+    (`MindDialogue._honest_outing`).
+  - A late relay is public grounds for every mind, the teller's own copy included
+    (`Mind.apply_info(..., public)`; `Tuning.Meeting.LATE_RELAY_TELLER_MARK`).
+- New `tools/test_codex_fixes.gd` (fast list, 10 checks; 4 fail without the fixes).
+- 116/116 suites; golden identical to `baseline_50bd642` at `--tol 0` (none of the five
+  seeds hits these cases), so no new baseline.
+- The tooling half (#63, #72) merged earlier as PR #85.
+- **Main is settled for tonight's sweep.** For Tally: M4 bot (default) against `--pre-m4`,
+  plus passive, on dynamic scripts at 7 and 10 NPCs. The last big run for comparison is
+  `sweep-results/run-42129219721` (4,000 games at `501b83e`). Since then: evidence honesty,
+  M2c/M2d, step 0, step 0b, M4 and these fixes, so expect the passive numbers to move too.
+
+---
+
 ## 2026-11-06 ~01:45, Claude-Bailiff: premises step 0b checked and merged
 
 - Merged main into `claude/premises-0b` and ran the full checks. 0b broke 9 checks in 3

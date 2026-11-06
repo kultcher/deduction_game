@@ -449,6 +449,18 @@ func on_public_claim(_w, _n, _lines: Array, _facts: Array, _mind) -> void:
 	pass
 
 
+## At a meeting, for someone already out with this (good) role: anything new to tell the
+## town that isn't a reading (Sexton: a toll since the claim, once the bell has worn off).
+func on_public_update(_w, _n, _lines: Array, _facts: Array, _mind) -> void:
+	pass
+
+
+## A public account of night `nd` given under this role's duty alibi (the podium press).
+## Sexton: telling of the toll before the town means evil now knows the bell rang.
+func on_public_duty_account(_w, _n, _nd: int) -> void:
+	pass
+
+
 ## Optional override for `reported` night sightings in `Mind.answer_night` and the podium
 ## (e.g. evil Night Watch matching fake watch report). `reported` is the list already
 ## filtered for the night asked, teammates and vantage; narrow it rather than rebuild it.

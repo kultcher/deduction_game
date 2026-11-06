@@ -1003,11 +1003,13 @@ static func reconsider(w, n, why: String) -> void:
 
 ## Apply one ability result (own or heard) to a listener's suspicion, through their ledger:
 ## hearing the same reading again (directly, relayed, at the meeting) never stacks.
-static func apply_info(w, listener, source, entry: Dictionary, weight: float, via: String = "", anonymous: bool = false) -> void:
+## `public`: told before the whole town (a late relay), so the receipt is public grounds
+## even though the source's own statement was private.
+static func apply_info(w, listener, source, entry: Dictionary, weight: float, via: String = "", anonymous: bool = false, public: bool = false) -> void:
 	if weight <= 0.01:
 		return
 	if listener.is_evil():
-		shadow_run(w, listener, func(sh): apply_info(w, sh, source, entry, weight, via, anonymous))
+		shadow_run(w, listener, func(sh): apply_info(w, sh, source, entry, weight, via, anonymous, public))
 		return
 	var receipt = WorkshopLedger.reading(source.id, entry, via)
 	var eid = WorkshopLedger.reading_key(receipt)
@@ -1018,7 +1020,7 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float, vi
 	var receipts: Dictionary = listener.ledger.get(eid, {}).get("meta", {}).get("workshop_receipts", {}).duplicate(true)
 	if anonymous:
 		receipt = WorkshopLedger.reading(source.id, entry, via, true)
-	receipt["heard_in_public"] = anonymous or entry.get("shared", false) or receipts.get(receipt.id, {}).get("heard_in_public", false)
+	receipt["heard_in_public"] = anonymous or public or entry.get("shared", false) or receipts.get(receipt.id, {}).get("heard_in_public", false)
 	var paths: Array = receipts.get(receipt.id, {}).get("provenance_paths", []).duplicate(true)
 	if (via != "" or anonymous or not paths.is_empty()) and receipt.provenance not in paths:
 		paths.append(receipt.provenance.duplicate(true))

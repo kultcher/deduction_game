@@ -529,6 +529,9 @@ class Meeting:
 	## Vote resistance lines (Step 6, M2d): after the tally, at most this many voters say why.
 	## Someone who accepted the Demonologist's case and still voted no explains; failing
 	## that, the voter who swung a close count. A "short of rope" no needs a close margin.
+	# A late relay marks the teller's own copy public; this weight only names the receipt
+	# (ledger weights merge by max, so it never lowers what they already held).
+	const LATE_RELAY_TELLER_MARK = 0.02
 	const MAX_VOTE_RESISTANCE_SPEAKERS = 2
 	const VOTE_RESISTANCE_CLOSE_MARGIN = 0.35
 	## Player nominations: with a filed case (anchored) or without (raw). A raw nomination
