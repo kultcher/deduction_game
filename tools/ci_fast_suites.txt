@@ -32,3 +32,4 @@ test_roles_evil
 test_roles_secrets
 test_evidence_honesty
 test_playtest_13910_dialogue
+test_npc_openness

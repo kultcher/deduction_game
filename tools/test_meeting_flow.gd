@@ -1025,7 +1025,10 @@ func public_sightings():
 		if mind == null or not mind.ledger.has(eid): continue
 		var entry: Dictionary = mind.ledger[eid]
 		check(entry.meta.workshop_public and entry.meta.workshop_teller == speaker.id and entry.meta.workshop_card.source == speaker.id and entry.meta.workshop_card.observed_at == {"day": 1, "phase": "night"}, "public hearing retains source, observed night and public provenance")
-		check(is_equal_approx(entry.weight, 0.75) and is_equal_approx(mind.npc_trust[speaker.id], 0.5), "ordinary hearing weight is reused without private-chat trust bonus")
+		# Weight follows trust in the teller (0.75 x trust, doubled for a receipt) with no
+		# private-chat bonus; an accused target's trust may already have dropped.
+		var tr: float = mind.npc_trust[speaker.id]
+		check(is_equal_approx(entry.weight, 2.0 * Tuning.Social.HEARSAY_TRUST_SCALE * tr) and tr <= 0.5 + 0.000001, "ordinary hearing weight is reused without private-chat trust bonus (%s: %.3f, trust %.3f)" % [listener.id, entry.weight, tr])
 		check(mind.hearsay.any(func(item): return item.kind == "sighting" and item.about == target.id and item.from == speaker.id), "listeners retain the attributed report for later conversation")
 	check(not dead.ledger.has(eid) and not speaker.ledger.has(eid), "dead NPCs and the speaker do not receive a secondhand self-report")
 	var rng = w.rng.state

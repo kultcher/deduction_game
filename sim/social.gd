@@ -87,10 +87,24 @@ static func converse(w, a, b, when: String) -> void:
 	if a.is_evil() and b.is_evil():
 		Evil.share_intel(w, a, b, "meeting (%s)" % when)
 		return
+	# Each side can pass on several things; every further item needs more trust, and each
+	# pick keeps the idle-chat chance, so a conversation can trail off (Nov 5).
 	for p in [[a, b], [b, a]]:
-		var item = _pick_item(w, p[0], p[1])
-		if item != null:
+		var bond: float = p[0].npc_trust.get(p[1].id, 0.5)
+		for k in range(Tuning.Social.SHARE_EXTRA_ITEM_BOND.size()):
+			if bond < float(Tuning.Social.SHARE_EXTRA_ITEM_BOND[k]):
+				break
+			var item = _pick_item(w, p[0], p[1])
+			if item == null:
+				break
 			_deliver(w, p[0], p[1], item)
+
+## How willing s is to tell a peer one of their readings: openness times bond above the floor,
+## plus pressure, plus a steep extra for listeners they trust.
+static func _reading_weight(s, priv: float, bond: float) -> float:
+	return (1.0 - priv) * Tuning.Social.SHARE_READING_OPENNESS_SCALE * maxf(0.0, bond - Tuning.Social.SHARE_READING_BOND_FLOOR) * Tuning.Social.SHARE_READING_BOND_SLOPE \
+		+ Tuning.Social.SHARE_READING_PRESSURE_SCALE * s.pressure \
+		+ Tuning.Social.SHARE_READING_TRUSTED_SLOPE * maxf(0.0, bond - Tuning.Social.SHARE_READING_TRUSTED_PIVOT)
 
 static func _pick_item(w, s, l):
 	var cands: Array = []
@@ -102,7 +116,7 @@ static func _pick_item(w, s, l):
 		for e in s.info_log:
 			if e.get("fake", false) and not e["shared"] and not _told(s, l, "reading:%d:%s" % [e["day"], e["role"]]):
 				# Same willingness formula as a good NPC sharing a real reading.
-				var wgt = (1.0 - priv) * Tuning.Social.SHARE_READING_OPENNESS_SCALE * maxf(0.0, bond - Tuning.Social.SHARE_READING_BOND_FLOOR) * Tuning.Social.SHARE_READING_BOND_SLOPE + Tuning.Social.SHARE_READING_PRESSURE_SCALE * s.pressure
+				var wgt = _reading_weight(s, priv, bond)
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": "reading:%d:%s" % [e["day"], e["role"]], "lie": true}])
 		var planter_id: String = str(w.evil_plan.get("daily_planter", ""))
 		# With a planter today, only the planter frames the scapegoat (anti-collusion). With no
@@ -121,7 +135,7 @@ static func _pick_item(w, s, l):
 		for e in s.info_log:
 			var key = "reading:%d:%s" % [e["day"], e["role"]]
 			if not e["shared"] and not _told(s, l, key):
-				var wgt = (1.0 - priv) * Tuning.Social.SHARE_READING_OPENNESS_SCALE * maxf(0.0, bond - Tuning.Social.SHARE_READING_BOND_FLOOR) * Tuning.Social.SHARE_READING_BOND_SLOPE + Tuning.Social.SHARE_READING_PRESSURE_SCALE * s.pressure
+				var wgt = _reading_weight(s, priv, bond)
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": key}])
 		if not s.secret.is_empty() and not l.known_secrets.has(s.id):
 			cands.append([(1.0 - priv) * maxf(0.0, bond - Tuning.Social.SHARE_SECRET_BOND_FLOOR) * Tuning.Social.SHARE_SECRET_SLOPE, {"kind": "secret", "about": s.id, "from": s.id, "key": "secret:" + s.id}])
@@ -210,9 +224,30 @@ static func _pick_item(w, s, l):
 						"kind": "unease", "about": ut.id, "why": Mind.citable_reason(w, s, ut.id, "town"),
 						"from": s.id, "key": ukey,
 					}])
+	# What a dead person told them is no longer someone else's to keep: readings from the
+	# dead are passed on readily, the more so the more they trusted the dead (Nov 5).
+	if not s.is_evil():
+		var dead_keys := {}
+		for h in s.hearsay:
+			if h.get("public", false) or str(h.get("kind", "")) != "reading" or not w.by_id.has(str(h.get("from", ""))):
+				continue
+			var src = w.by_id[str(h["from"])]
+			if src.alive or src.id == l.id or dead_keys.has(h["key"]):
+				continue
+			dead_keys[h["key"]] = true
+			var dkey3: String = "relay:" + str(h["key"])
+			if _told(s, l, dkey3):
+				continue
+			var dr = h.duplicate()
+			dr["key"] = dkey3
+			dr["relay"] = true
+			dr["late"] = true
+			cands.append([gos * Tuning.Social.SHARE_RELAY_GOSSIP_SCALE + Tuning.Social.SHARE_DEAD_RELAY_SLOPE * s.npc_trust.get(src.id, 0.5), dr])
 	for h in s.hearsay.slice(-4):
 		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] in ["secret", "day_sighting", "unease", "role_hint", "role_claim"]:
 			continue
+		if not s.is_evil() and str(h.get("kind", "")) == "reading" and w.by_id.has(str(h.get("from", ""))) and not w.by_id[str(h["from"])].alive:
+			continue # offered above
 		if s.is_evil() and h.get("about", "") != "" and w.by_id[h["about"]].is_evil():
 			continue
 		var key3 = "relay:" + h["key"]
