@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 6): `baseline_55cea76`
+### Current baseline (Nov 6, early): `baseline_50bd642`
+
+`tools/golden/baseline_50bd642/` is the capture from `50bd642`: `baseline_55cea76` plus the
+premises pass, step 0b (one attended set for presentations: salience by the premise's
+target, the listener's own readings pinned, the trust reward judged on the case and own
+readings; the belief update's focus target follows alignment premises only). Main's M4 bot
+and tooling fixes are in it too; they're sim-neutral. Two captures identical. Seeds 42 and
+54875 are unchanged; 692, 900 and 98933 part on Day 2 (records 82, 39 and 104), at the
+first refresh after a presentation's attention changes.
+
+Passive A/B: not run separately for 0b (the Codex game fixes stack on it the same night;
+the next entry's A/B covers both against `baseline_55cea76`'s commit).
+
+### Previous baseline (Nov 6): `baseline_55cea76`
 
 `tools/golden/baseline_55cea76/` is the capture from `55cea76`: `baseline_a64553d` plus the
 premises pass, step 0. A bare defence now cites no grounds, so it no longer turns bounded
@@ -210,7 +223,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_55cea76 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_50bd642 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
