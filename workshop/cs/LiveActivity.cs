@@ -39,6 +39,12 @@ internal static class LiveActivityKernel
     public const int KindEvening = 2;
     public const int KindTrace = 3;
     public const int KindCoverage = 4;
+
+    // Mirrors of sim/tuning.gd Workshop.VIGIL_MISS and WALKER_CLAIM_* (Nov 5).
+    public const double VigilMiss = 0.05;
+    public const double WalkerClaimGift = 0.95;
+    public const double WalkerClaimHome = 0.03;
+    public const double WalkerClaimSecret = 0.02;
     public const int KindAlibi = 5;
     public const int KindDropped = 6;
     public const int KindReport = 7;
@@ -428,6 +434,8 @@ internal static class LiveActivityKernel
                             }
                             else if (kind == KindSighting && (flags & FlagComplete) != 0 && (cardInts[off + 5] & (1 << i)) == 0)
                             {
+                                // Logical consistency (both cards true): the vigil rules the route out. The
+                                // probabilistic score is softer (VigilMiss): the town allows a missed sighting.
                                 pathOk = pathOk && !path.VigilSees(cardInts[off + 10]);
                             }
                             else if (kind == KindAlibi && cardInts[off + 3] == i)
@@ -704,11 +712,11 @@ internal static class LiveActivityKernel
         {
             double strength = RoleHearing(personIdx, roleToken, roleCode, cardInts, cardDoubles, cardCount);
             outProfKinds[0] = ProfOrdinary;
-            outProfWeights[0] = SolverBridge.GodotLerpf(0.75, gift ? 0.2 : 0.9, strength);
+            outProfWeights[0] = SolverBridge.GodotLerpf(0.75, gift ? WalkerClaimHome : 0.9, strength);
             outProfKinds[1] = ProfGift;
-            outProfWeights[1] = SolverBridge.GodotLerpf(0.15, gift ? 0.7 : 0.0, strength);
+            outProfWeights[1] = SolverBridge.GodotLerpf(0.15, gift ? WalkerClaimGift : 0.0, strength);
             outProfKinds[2] = ProfSecret;
-            outProfWeights[2] = 0.1;
+            outProfWeights[2] = SolverBridge.GodotLerpf(0.1, gift ? WalkerClaimSecret : 0.1, strength);
             profCount = 3;
         }
         else if (roleCode != MoveRoleEmpty && !gift)
@@ -722,11 +730,11 @@ internal static class LiveActivityKernel
         else
         {
             outProfKinds[0] = ProfOrdinary;
-            outProfWeights[0] = gift ? 0.2 : 0.75;
+            outProfWeights[0] = gift ? WalkerClaimHome : 0.75;
             outProfKinds[1] = ProfGift;
-            outProfWeights[1] = gift ? 0.7 : 0.15;
+            outProfWeights[1] = gift ? WalkerClaimGift : 0.15;
             outProfKinds[2] = ProfSecret;
-            outProfWeights[2] = 0.1;
+            outProfWeights[2] = gift ? WalkerClaimSecret : 0.1;
             profCount = 3;
         }
     }
@@ -785,9 +793,23 @@ internal static class LiveActivityKernel
 
         if (profKind == ProfGift && roleCode == MoveRoleMedium)
         {
+            // Demon victims' hearths only (not the hanged): a victim of night d is dead from night d + 1.
             for (int p = 0; p < nPeople; p++)
             {
-                if (night >= personDeathBeforeNight[p])
+                if (night < personDeathBeforeNight[p])
+                {
+                    continue;
+                }
+                bool demonVictim = false;
+                for (int e = 0; e + 1 < demonAttackEvents.Length; e += 2)
+                {
+                    if (demonAttackEvents[e + 1] == p && demonAttackEvents[e] + 1 == personDeathBeforeNight[p])
+                    {
+                        demonVictim = true;
+                        break;
+                    }
+                }
+                if (demonVictim)
                 {
                     destStack[destCount++] = personHomes[p];
                 }
@@ -920,7 +942,7 @@ internal static class LiveActivityKernel
                 }
                 if ((flags & FlagComplete) != 0 && (cardInts[off + 5] & personBit) == 0)
                 {
-                    return !path.VigilSees(cardInts[off + 10]) ? 1.0 : 0.0;
+                    return !path.VigilSees(cardInts[off + 10]) ? 1.0 : VigilMiss;
                 }
                 return 1.0;
             }
@@ -936,7 +958,7 @@ internal static class LiveActivityKernel
             {
                 if ((cardInts[off + 5] & personBit) == 0)
                 {
-                    return !path.VigilSees(cardInts[off + 10]) ? 1.0 : 0.0;
+                    return !path.VigilSees(cardInts[off + 10]) ? 1.0 : VigilMiss;
                 }
                 return 1.0;
             }

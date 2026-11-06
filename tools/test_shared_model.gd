@@ -368,7 +368,12 @@ func _test_unready_refresh_keeps_last_good_vector_and_logs() -> void:
 
 func _test_multi_day_smoke() -> void:
 	var all_clean: bool = true
-	for sd in [37291, 42, 54875, 900]:
+	# Seeds that reach Day 4 (a finished game has no refresh after its last event, so the
+	# idempotence check needs a live one); the list moves with balance changes.
+	var reached: int = 0
+	for sd in [37291, 42, 54875, 900, 1001, 1002, 1003, 1004, 1005, 1006]:
+		if reached >= 4:
+			break
 		var g = Game.new()
 		g.detailed_logging = false
 		g.new_case(sd, 7)
@@ -389,6 +394,9 @@ func _test_multi_day_smoke() -> void:
 				g.command("sleep")
 			else:
 				break
+		if g.state == "over" or g.w.day < 4:
+			continue
+		reached += 1
 		if not g.shared_fallbacks.is_empty():
 			all_clean = false
 		var rng_before: int = g.w.rng.state
@@ -404,4 +412,4 @@ func _test_multi_day_smoke() -> void:
 				all_clean = false
 		if g.w.rng.state != rng_before:
 			all_clean = false
-	_check(all_clean, "4 seeds reach Day 4 with 0 fallbacks, active shared state, a flat 0.1 outside layer, and idempotent, RNG-free refresh_beliefs")
+	_check(all_clean and reached == 4, "4 seeds reach Day 4 with 0 fallbacks, active shared state, a flat 0.1 outside layer, and idempotent, RNG-free refresh_beliefs")

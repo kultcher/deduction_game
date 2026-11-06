@@ -28,3 +28,4 @@ test_roles_shelter
 test_roles_people
 test_roles_evil
 test_roles_secrets
+test_evidence_honesty
