@@ -282,6 +282,8 @@ static func _observe(g) -> void:
 				g._facts([{"kind": "sighting", "subject": [x.id], "block": g.w.loc_block(other), "loc": other, "day": g.w.day,
 					"phase": g.w.phase, "source": "player", "text": "You saw %s nearby at %s, day %d %s." %
 					[x.name, g.w.loc_name(other), g.w.day, g.w.phase_name()]}])
+	if not l.begins_with("home_"):
+		_note_haunt_sightings(g, l)
 	if g.w.scenes.has(l):
 		g._narr("This is where %s was killed. ('search' to examine it.)" % g.w.by_id[g.w.scenes[l]["victim"]].name)
 	var acts = "Actions: talk <name> | search%s | wait" % (" | gossip" if (l == "tavern" and g.w.phase == C.EVENING) else "")
@@ -394,10 +396,11 @@ static func _search(g) -> void:
 	var raw_items: Array = g.w.dropped.get(l, [])
 	g.w.dropped.erase(l)
 	var items: Array = raw_items.filter(func(it): return it.get("owner", "") != "" or Tuning.Setup.LEGACY_MUD_DROPS_ENABLED)
+	var regular: bool = _search_regulars(g, l)
 	if items.is_empty():
 		if tt.is_empty():
 			g.w.dlog.add("player_search", "player", "", {"loc": l}, "Nothing dropped here.")
-		if tt.is_empty():
+		if tt.is_empty() and not regular:
 			g._narr("You search %s carefully. Nothing out of place." % g.w.loc_name(l))
 		return
 	var blk: String = g.w.loc_block(l)
@@ -414,6 +417,69 @@ static func _search(g) -> void:
 			g._facts([{"kind": "dropped", "subject": [], "block": blk, "loc": l, "day": it["night"], "phase": C.NIGHT, "source": "evidence",
 				"material": it["material"], "text": "%s found at %s, left on night %d: someone from %s was out that night." %
 				[C.BLOCKS[it["material"]]["trace"].capitalize(), g.w.loc_name(l), it["night"], C.block_name(it["material"])]}])
+
+
+## Searching a social spot also turns up one of its regulars (someone with it as a haunt),
+## once per place per game. Whoever works there points them out; with nobody working there,
+## you hear it around the place. Returns true if this search was the place's one ask.
+static func _search_regulars(g, l: String) -> bool:
+	if not C.LOCATIONS.has(l) or g.regulars_searched.has(l):
+		return false
+	g.regulars_searched[l] = true
+	var regulars: Array = g.w.living().filter(func(n): return l in n.haunts)
+	var unknown: Array = regulars.filter(func(n): return not (l in g.known_haunts.get(n.id, [])))
+	var place: String = g.w.loc_name(l)
+	if unknown.is_empty():
+		g._narr("You ask after the regulars at %s, but there's nobody you didn't already know of." % place if not regulars.is_empty() else "You ask after the regulars at %s. Nobody makes a habit of it." % place)
+		g.w.dlog.add("player_learns_haunts", "player", "", {"loc": l, "via": "search", "found": false})
+		return true
+	# Its own draw (seeded by the case and the place), so asking about regulars never shifts
+	# the world's random rolls.
+	var pick_rng := RandomNumberGenerator.new()
+	pick_rng.seed = hash([g.w.seed_value, l, "regulars"])
+	unknown.sort_custom(func(a, b): return a.id < b.id)
+	var r = unknown[pick_rng.randi_range(0, unknown.size() - 1)]
+	var workers: Array = g.w.living().filter(func(n): return n.work == l and n != r)
+	var told: String
+	if not workers.is_empty():
+		var wk = workers[0]
+		told = "%s, the %s, tells you %s is a regular at %s when not working." % [wk.name, str(wk.occupation), r.name, place]
+	else:
+		told = "Asking around %s, you learn %s is a regular here when not working." % [place, r.name]
+	if unknown.size() > 1:
+		told += " They're not the only one."
+	g._narr(told)
+	_learn_haunt(g, r, l, "player", "%s often goes to %s when off work (you asked after the regulars there, day %d)." % [r.name, place, g.w.day], "search")
+	return true
+
+
+## Seeing someone idle at one of their haunts, from the same block, on enough different days
+## (HAUNT_SIGHTING_DAYS; more for the tavern) teaches you it's a haunt of theirs.
+static func _note_haunt_sightings(g, l: String) -> void:
+	for x in g.w.living():
+		if x.working or not (x.loc in x.haunts) or g.w.loc_block(x.loc) != g.w.loc_block(l):
+			continue
+		if x.loc in g.known_haunts.get(x.id, []):
+			continue
+		var key: String = "%s:%s" % [x.id, x.loc]
+		var days: Array = g.haunt_sightings.get(key, [])
+		if g.w.day in days:
+			continue
+		days.append(g.w.day)
+		g.haunt_sightings[key] = days
+		var need: int = Tuning.Setup.HAUNT_SIGHTING_DAYS_TAVERN if x.loc == "tavern" else Tuning.Setup.HAUNT_SIGHTING_DAYS
+		if days.size() >= need:
+			var place: String = g.w.loc_name(x.loc)
+			g._narr("That's %d days you've seen %s at %s with time on their hands: it must be one of their haunts." % [days.size(), x.name, place])
+			_learn_haunt(g, x, x.loc, "player", "%s often goes to %s when off work (you've seen them there on %d days)." % [x.name, place, days.size()], "sightings")
+
+
+static func _learn_haunt(g, n, l: String, source: String, text: String, via: String) -> void:
+	if not (l in g.known_haunts.get(n.id, [])):
+		g.known_haunts[n.id] = g.known_haunts.get(n.id, []) + [l]
+	g.add_profile_receipt({"kind": "haunt", "subject": [n.id], "source": source, "loc": l, "locs": [l],
+		"block": g.w.loc_block(l), "day": g.w.day, "phase": g._phase_now(), "class": "circumstantial", "text": text})
+	g.w.dlog.add("player_learns_haunts", "player", n.id, {"locs": [l], "via": via})
 
 
 static func _end_phase(g, talked_id: String) -> void:

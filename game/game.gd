@@ -82,6 +82,8 @@ var divulge_due: Array = []
 ## Where people go when they're not working: unknown at the start; you learn it by asking
 ## others about them. id -> [location ids].
 var known_haunts = {}
+var regulars_searched = {}   # place -> true: a place's regulars can be asked about once per game
+var haunt_sightings = {}     # "npc:place" -> [days]: the player saw them idling there
 var known_relationships = {} # Public town bonds actually learned, with their source.
 var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
 # Every time the legacy rules judged something the shared model couldn't read (always
@@ -251,6 +253,8 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	offer = {}
 	talk_offered = false
 	known_haunts = {}
+	regulars_searched = {}
+	haunt_sightings = {}
 	known_relationships = {}
 	fallback_count = 0
 	shared_fallbacks = []

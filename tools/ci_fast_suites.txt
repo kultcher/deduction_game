@@ -37,3 +37,4 @@ test_defence_grounds
 test_codex_fixes
 test_attention_0b
 test_bot_m4
+test_haunt_learning
