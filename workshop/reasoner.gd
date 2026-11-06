@@ -95,6 +95,14 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 		for id in personal:
 			if cards.any(func(c): return c.id == id) and id not in keep:
 				keep.append(id)
+	elif bounded:
+		# Step 0b (premises pass): during a presentation or challenge the listener's own
+		# readings that bear on the premise's target, or on a presented card, stay in view
+		# outside the budget, so a case can't crowd out the listener's own reading of it.
+		# Hearsay and other people's cards still compete for the budget.
+		for id in _pinned_own(view, full, cards, personal, presented, listener):
+			if id not in keep:
+				keep.append(id)
 	# Never attend to a challenged report, disputed alibi, or explained outing while
 	# dropping the linked card that disproves or explains it.
 	var idx_k: int = 0
@@ -120,6 +128,49 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 		"ignored_lines": value.get("lines", []).filter(func(line): return line.relation == "supports" and line.id not in kept_lines).map(func(line): return line.id),
 		"private_reports": personal.duplicate(),
 		"private_checks": direct_checks(view, full, listener.knowledge)}
+
+## The listener's own readings (gift reports they received themselves) that speak about the
+## premise's target, about anyone a presented card speaks about, or about a presented
+## card's source.
+static func _pinned_own(view: Dictionary, full: Dictionary, cards: Array, personal: Array, presented: Array, listener: Dictionary) -> Array:
+	var people := {}
+	var target: String = str(full.get("conclusion", {}).get("target", ""))
+	if target != "":
+		people[target] = true
+	for c in cards:
+		if c.id in presented:
+			for p in _mentions(c):
+				people[p] = true
+			if str(c.get("source", "")) != "":
+				people[str(c.source)] = true
+	people.erase(str(listener.get("id", "")))
+	var out: Array = []
+	for id in personal:
+		var c: Dictionary = Solver.card_by_id(view, id)
+		if c.is_empty() or id in presented or str(c.get("kind", "")) != "report" or str(c.get("source", "")) != str(listener.get("id", "")):
+			continue
+		if _mentions(c).any(func(p): return people.has(p)):
+			out.append(id)
+	return out
+
+## People a card speaks about (same keys as Jury._mentions; kept here to avoid a preload cycle).
+static func _mentions(card: Dictionary) -> Array:
+	var out: Array = []
+	for key in ["subject", "subjects", "target", "who"]:
+		var v = card.get(key)
+		if v is Array:
+			out.append_array(v)
+		elif v is String and v != "":
+			out.append(v)
+	var data = card.get("data", {})
+	if data is Dictionary:
+		for key in ["pair", "group", "seen", "nbrs", "trio", "target", "chosen", "executed", "guarded", "nominator", "nominee"]:
+			var v = data.get(key)
+			if v is Array:
+				out.append_array(v)
+			elif v is String and v != "":
+				out.append(v)
+	return out
 
 ## Cards explicitly linked to disprove, challenge, or explain `card_id` stay bound to it
 ## so bounded attention cannot read a challenged claim while dropping its counter-evidence.
