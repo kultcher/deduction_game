@@ -62,6 +62,10 @@ class Setup:
 
 	## Conversation & movement rates
 	const IDLE_HAUNT_CHANCE = 0.4
+	# Learning a haunt by seeing someone idle there, on this many different days (the tavern
+	# takes more: in the evening much of the town goes there anyway).
+	const HAUNT_SIGHTING_DAYS = 2
+	const HAUNT_SIGHTING_DAYS_TAVERN = 3
 	const TOWN_HALL_USES_PER_CASE = 3
 	const PAIR_SILENCED_WEIGHT = 0.02
 	const PAIR_TRUST_PIVOT = 0.3
