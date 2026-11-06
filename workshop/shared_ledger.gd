@@ -510,27 +510,33 @@ static func premise_shaping(plan: Dictionary, presentations: Dictionary, withdra
 			continue
 		named_by["case:" + str(key)] = premise_targets(str(key), presentations[key])
 	var shaped_owners: Dictionary = {}
+	var shaped_cards: Array = []
 	for id in plan.get("owners", {}):
 		var owned_by: Array = plan.owners[id]
 		if owned_by.is_empty() or not owned_by.all(func(o): return named_by.has(str(o))):
 			continue  # held another way too: their own reading, hearsay or the public record
 		if not owned_by.any(func(o): return not named_by[str(o)].is_empty()):
 			continue
+		shaped_cards.append(str(id))
 		for o in owned_by:
 			shaped_owners[str(o)] = true
 	if shaped_owners.is_empty():
 		return {}
 	var keys: Array = []
+	var trim: Array = []   # shaped owners with no alignment target (Marked, conflict): keep their other cards
 	var targets: Array = []
 	for owner in shaped_owners:
 		keys.append(owner.trim_prefix("case:"))
+		if named_by[owner].is_empty():
+			trim.append(owner.trim_prefix("case:"))
 		for t in named_by[owner]:
 			if t not in targets:
 				targets.append(t)
 	keys.sort()
 	targets.sort()
 	var spill: float = lerpf(Tuning.Workshop.PREMISE_SPILLOVER_MIN, Tuning.Workshop.PREMISE_SPILLOVER_MAX, clampf(insight, 0.0, 1.0))
-	return {"keys": keys, "targets": targets, "spill": spill}
+	shaped_cards.sort()
+	return {"keys": keys, "trim": trim, "cards": shaped_cards, "targets": targets, "spill": spill}
 
 ## The alignment targets a presentation argued about: its root premise (every argument for
 ## a direct accuse / defend), when its type asks an alignment question about a person.
@@ -547,11 +553,22 @@ static func premise_targets(key: String, presented: Dictionary) -> Array:
 			named.append(target)
 	return named
 
-## The presentations left once the shaping ones are dropped (the "without" side).
+## The presentations left once the shaping ones are dropped (the "without" side). An
+## alignment presentation that owns a shaped card is dropped whole (its other cards are held
+## another way, or they'd be shaped too). A presentation with no alignment target (Marked,
+## conflict) that shares a shaped card keeps everything but the shaped cards, so its own
+## cards aren't discounted for anyone (Codex review of PR #92).
 static func without_shaping(presentations: Dictionary, shaping: Dictionary) -> Dictionary:
 	var rest: Dictionary = {}
+	var keys: Array = shaping.get("keys", []).map(func(k): return str(k))
+	var trim: Array = shaping.get("trim", []).map(func(k): return str(k))
+	var cards: Array = shaping.get("cards", [])
 	for key in presentations:
-		if key not in shaping.get("keys", []):
+		if str(key) in trim:
+			var kept: Dictionary = presentations[key].duplicate(true)
+			kept.selected = kept.get("selected", []).filter(func(id): return str(id) not in cards)
+			rest[key] = kept
+		elif str(key) not in keys:
 			rest[key] = presentations[key]
 	return rest
 

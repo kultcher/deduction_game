@@ -930,6 +930,11 @@ static func _refresh_ledger_preferences(w, n) -> void:
 			if who != "" and role != "" and eff >= Tuning.Mind.BELIEVED_ROLE_MIN_EFF and n.believed_roles.get(who, "") != "revenant":
 				n.believed_roles[who] = role
 		elif kind == "arg":
+			# A presentation-backed argument (a deduction cited to accuse or defend) is heard
+			# at its agreement: the same acceptance gate as presented premises below applies
+			# (Codex review of PR #92). Other social arguments are unaffected.
+			if meta.has("workshop_case") and float(e.get("weight", 0.0)) < Tuning.Workshop.PREMISE_PREF_MIN_AGREEMENT:
+				continue
 			_apply_conclusion_pref(n, meta.get("conclusion", {}), eff)
 	var withdrawn: Dictionary = n.workshop_state.get("withdrawn", {})
 	var agreements: Dictionary = n.workshop_state.get("presentation_agreement", {})

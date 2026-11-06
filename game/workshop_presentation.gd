@@ -227,9 +227,11 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		# Premises pass step 1: a well-supported premise earns trust, a clearly wrong one
 		# costs the same. Both are judged on the case plus the listener's own readings.
 		var reward_span = Profiler.open("trust_reward")
-		# The narrower second pass only matters when it could cross a threshold.
+		# Always judged on the narrower pass: the broader assessment's sign doesn't bound it
+		# (hearsay can lift a case its own cards and the listener's readings argue against;
+		# Codex review of PR #92).
 		var judged: float = float(assessment.agreement)
-		if not fresh.is_empty() or judged < 0.0:
+		if root.conclusion.type != "conflict":
 			judged = _reward_agreement(plan, snapshot, state.outside, assessment)
 		if not fresh.is_empty() and judged >= 0.6:
 			Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PRESENTATION_REWARD, "the presented reports support the argument")
