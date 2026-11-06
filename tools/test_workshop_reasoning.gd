@@ -55,6 +55,10 @@ func _init() -> void:
 	check(not limited.reasoning.ignored.is_empty() and limited.reasoning.considered.filter(func(id): return id not in limited.reasoning.private_reports).size() <= Jury.Reasoner.profile(0.1).cards, "oversized case exposes the evidence not attended to")
 	check(limited.reasoning.private_reports.size() == 2, "own gift reports remain available outside the attention budget")
 	var joined = c.duplicate(true)
+	# Premises step 0b: a line that names the premise's target outranks a gift reading. Aim
+	# these cases at Lian (named only by the Dowser reading), so the movement line is the one
+	# a Low mind can miss.
+	joined.conclusion.target = "lian"
 	joined.cards.append_array(["watch1", "watch2"])
 	joined.lines = [{"id": "readings_a", "label": "Readings A", "relation": "supports", "cards": ["survey", "rumor"], "positions": {}, "answers": {}},
 		{"id": "readings_b", "label": "Readings B", "relation": "supports", "cards": ["dowse"], "positions": {}, "answers": {}},

@@ -117,8 +117,9 @@ func _attention() -> void:
 	var number = g.file_deduction({"type": "good", "a": p[3].id}, cards)
 	var r = g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
 	check(r.get("workshop", false), "seven legal receipts fit the unchanged workload capability gate")
-	check(r.assessment.reasoning.considered.size() == cards.size() and own_id in r.assessment.reasoning.ignored, "all six presented cards are read; private evidence competes for the remaining budget")
-	check(n.workshop_state.reasoning.considered.size() == cards.size(), "applied union reserves the same presented roots")
+	# Premises step 0b: the listener's own reading is pinned outside the budget, beside the case.
+	check(r.assessment.reasoning.considered.size() == cards.size() + 1 and own_id in r.assessment.reasoning.considered, "all six presented cards are read, and the listener's own reading stays in view")
+	check(n.workshop_state.reasoning.considered.size() == cards.size() + 1, "applied union reserves the same presented roots (plus the pinned own reading)")
 	var thought = n.workshop_state.theories.duplicate(true)
 	var beliefs = n.suspicion.duplicate(true)
 	for i in range(3):
@@ -126,7 +127,7 @@ func _attention() -> void:
 	check(n.workshop_state.theories == thought and _close(beliefs, n.suspicion), "automatic refresh cannot accumulate theory commitment")
 	# Known testimony from other people is not firsthand gift experience.
 	Mind.apply_info(g.w, n, p[1], {"role": "dowser", "day": 1, "phase": 0, "data": {"group": [p[3].id], "count": 0}}, 1.0)
-	check(n.workshop_state.reasoning.considered.size() == cards.size(), "independently learning an already presented report does not create a second attention slot")
+	check(n.workshop_state.reasoning.considered.size() == cards.size() + 1, "independently learning an already presented report does not create a second attention slot")
 
 func _confidence() -> void:
 	# Hold source quality fixed and vary independent prior evidence about the
