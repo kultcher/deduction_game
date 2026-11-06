@@ -134,6 +134,21 @@ vote resistance lines, including "when they agree and still vote no, they say wh
 
 ### NPC behaviour
 
+- **Accusations from starting suspicion read as clues.** (13910) Constance accused Isolde
+  on Day 1 at suspicion 0.13 against a 0.10 start: a 12% roll with no reason behind it,
+  and the player took it as a lead. A 0.2 floor on good NPCs' accusations was tried and
+  reverted (Nov 5): those openers also start the meeting. Naming someone gives them +0.35
+  on their turn, which sets off the claims, rebuttals and bluffs, and the loud accuser
+  draws the Demon's kill. With the floor, some Day-1 meetings went silent (seed 2011:
+  3 reactive turns instead of 20; the Demon then killed the Seer who'd otherwise have
+  caught it). A 12-game passive A/B was inconclusive, because skipping a roll reshuffles
+  every later random draw. Idea on the table: keep the floor, and while nothing
+  substantive has been said, let one speaker voice unease at the old odds ("Something
+  about Isolde sits wrong with me"). That gives the target the +0.35 but no pressure,
+  chorus, accusation event, trust cost or "ask why". Measure it with a sweep against main.
+
+  [open; Michael to decide]
+
 - **Agreement has to reach the vote.** (54875) Six or seven good NPCs said "That makes
   sense to me: Constance is evil" at three meetings and voted no. Late-game urgency and
   the execution-priority vote term are now built; still open:
