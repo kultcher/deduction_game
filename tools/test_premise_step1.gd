@@ -19,6 +19,7 @@ func _init() -> void:
 	_preference()
 	_movement_notes()
 	_preview_hint()
+	_codex_review()
 	print("Premises step 1: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -160,3 +161,23 @@ func check(ok: bool, label: String) -> void:
 	if not ok:
 		fails += 1
 		push_error("FAIL: " + label)
+
+
+## Codex review of PR #92.
+func _codex_review() -> void:
+	# 1. The "without" side drops a shaped card, not every other card of a non-alignment
+	# presentation that shares it.
+	var presentations := {"a": {"selected": ["A"], "arguments": []}, "m": {"selected": ["A", "B"], "arguments": []}, "o": {"selected": ["C"], "arguments": []}}
+	var rest: Dictionary = Shared.without_shaping(presentations, {"keys": ["a", "m"], "trim": ["m"], "cards": ["A"]})
+	check(not rest.has("a") and rest.has("m") and rest.m.selected == ["B"] and rest.has("o"),
+		"the comparison plan drops shaped cards only; a Marked presentation keeps its own (%s)" % [rest])
+	# 2. A presentation-backed argument (a cited deduction) needs the same acceptance as a
+	# presented premise before it sets a protect preference.
+	var g = _game()
+	var n = g.w.npcs[0]
+	var t = g.w.npcs[1]
+	for agreement in [0.3, 0.7]:
+		n.ledger = {"workshop:tell:k:%s" % t.id: {"weight": agreement, "justs": [], "rel": [], "meta": {"kind": "arg", "workshop_case": "k", "conclusion": {"type": "good", "a": t.id}}}}
+		Mind._refresh_ledger_preferences(g.w, n)
+		var has_pref: bool = float(n.protect_pref.get(t.id, 0.0)) > 0.0
+		check(has_pref == (agreement >= Tuning.Workshop.PREMISE_PREF_MIN_AGREEMENT), "a cited defence at agreement %.1f %s a protect preference" % [agreement, "sets" if has_pref else "doesn't set"])
