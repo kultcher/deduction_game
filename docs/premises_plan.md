@@ -281,6 +281,17 @@ and never faded).
   bounded mind's attention. Lower Insight drifts more.
 - **Calling attention back.** Citing or re-presenting an old card refreshes its age, so the
   player (or an NPC) can say "remember Dorian's Dowser reading?" and it lands.
+- **Re-presenting restores attention, never weight** (Nov 6, with Michael). Today's rule,
+  "re-presenting evidence they already hold adds nothing", becomes "re-presenting adds no
+  evidence; it can bring back what the listener stopped weighing".
+  - Its effect is bounded by what full attention to that card would give. A mind that never
+    let it drift (high Insight, or the card is recent) doesn't move. A low-Insight mind
+    that dropped it moves back toward it.
+  - Repeating it again while it's still recent does nothing, so spamming a case can't
+    ratchet belief.
+  - Cited at a meeting, it refreshes the card for the whole town.
+  - Tests: no change while recent; after decay, movement toward the full-attention value
+    and never past it.
 - **Measure separately.** It likely makes the town worse in long games, so it gets its own
   A/B after step 1, not mixed into step 1's.
 - **For the evil-mind work:** evil could steer the topic away from a teammate.
