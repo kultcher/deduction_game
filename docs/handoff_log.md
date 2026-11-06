@@ -67,6 +67,57 @@ request. New baseline `baseline_b9a0376`: identical to `baseline_e9f1e47` except
 
 ---
 
+## 2026-11-05 ~20:40 ET, Claude-Bailiff: for Claude-Tally: three bluff checks queued after the oracle sweep
+
+Michael wants sweeps and balance checks with Tally from now on. These three are queued
+after tonight's oracle sweep. None is urgent: the Night Watch gap is much smaller than the
+Lamplighter's was. Background is in the entry below (evidence honesty fixes, PR #74) and in
+`claude/balance-sweep-deep-dive-2026-11-05.md`.
+
+1. **Night Watch bluff: find what's protecting it.**
+   - **Data.** After PR #74, good wins less when the Demon bluffs Night Watch (same seeds):
+
+     | Cell | Before | After |
+     |---|---|---|
+     | 7 bot | 57% | 42% |
+     | 10 bot | 48% | 45% |
+     | 7 passive | 22% | 15% |
+     | 10 passive | 33% | 24% |
+
+     NW bluffers are hanged less (7 bot: 63% → 47%).
+   - **Suspected cause.** Evil's fake NW report names the victim's block as the one it
+     watched (`Evil` sighting logic, `bluff in ["nightwatch", ...]`). The claimed duty then
+     sends the Demon exactly where it really went, as with the Medium. PR #74's walker-claim
+     binding (0.95 duty) makes that duty count for more.
+   - **Check.** The same leave-one-out probe used for the Lamplighter:
+     - pick 4–8 seeds where the Demon bluffs Night Watch and has claimed by Day 3
+       (`sweep-results/run-42129219721`, people rows with `bluff == "nightwatch"`);
+     - play passively to Day 3;
+     - run `Analyst.belief` on the full board;
+     - remove one accepted card at a time and record the Demon's P(evil).
+
+     The probe script is in the Lamplighter write-up: same shape, `Analyst.evaluate` with
+     one card left out. The card whose removal raises P(evil) most is the protector.
+   - **Possible counter, for Michael** (design, not code yet): a real NW on the victim's
+     block would have seen the killer arrive. A report that names only the scapegoat
+     amounts to "the scapegoat did it", which other evidence can check.
+
+2. **Medium bluff: check the relays.**
+   - **Data.** Unchanged by PR #74 (good wins 14–45%). The hearth restriction rarely binds.
+   - **Suspected cause.** The fake Medium's reports of what the dead knew are relay cards,
+     not `report` cards, so `CaseEval.chance_content` doesn't touch them. They may self-
+     certify the way the Lamplighter count did.
+   - **Check.** The same leave-one-out probe on Medium-bluff seeds. Then look at how
+     relay credence is computed: `reasoner.gd` relays and `source_doubt.gd`.
+
+3. **Detection rate (Michael, Nov 5): an idea, not a fix yet.**
+   - The movement model scores a sighting as "fits the route or not". It ignores how
+     likely the route is to be seen. So a Lamplighter or Sexton spotted on several blocks in
+     one night gets no extra credit, and a Lamplighter nobody sees costs nothing.
+   - Michael's view: same-night sightings on several blocks should mostly back the
+     Lamplighter and Sexton (anyone on any block can spot them), less so the Night Watch.
+   - Revisit only if the oracle sweep shows Lamplighter or Sexton claims still misread.
+
 ## 2026-11-05 evening, Claude-Bailiff: evidence honesty fixes on main (Lamplighter bluff, soft vigil exclusion, Medium hearths)
 
 **Base:** `main` at `4d370f8`. **Branch:** `claude/evidence-honesty-fixes`. **Baseline:** `baseline_e9f1e47`.
