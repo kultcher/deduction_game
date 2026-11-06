@@ -188,7 +188,7 @@ static func exonerate_parts(w, s, d, reading: bool, dang: float) -> Dictionary:
 	if reading:
 		var cost: Dictionary = MindMeeting.reveal_cost(w, s)
 		for k in cost:
-			parts["cost_" + k] = -cost[k]
+			parts["cost_" + k] = -cost[k] * Tuning.Meeting.SUPPORT_REVEAL_COST_SCALE
 	return parts
 
 

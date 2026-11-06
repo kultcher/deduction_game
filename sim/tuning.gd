@@ -482,11 +482,14 @@ class Meeting:
 	const MAX_SUPPORTERS_SHOWN = 3
 	const SUPPORT_BASE = -0.6
 	const SUPPORT_GOOD_PIVOT = 0.9
-	const SUPPORT_GOOD_SLOPE = 3.0
-	const SUPPORT_CLEARING_READING = 1.5
+	const SUPPORT_GOOD_SLOPE = 2.0
+	const SUPPORT_CLEARING_READING = 0.5
 	const SUPPORT_TRUST_SLOPE = 2.0
 	const SUPPORT_DANGER_DEFENCE_DAMPING = 0.7
 	const SUPPORT_DANGER_PER_ACCUSER = 0.15
+	## How much the bystander's own reveal cost (Mind.reveal_cost, tuned for accusations,
+	## where a reading's strength sits beside it) counts against speaking up for someone.
+	const SUPPORT_REVEAL_COST_SCALE = 3.0
 	const SUPPORT_HINT_FRACTION = 0.5
 	const SUPPORT_PILE_ON_MIN_SUSP = 0.45
 	const SUPPORT_PILE_ON_BASE = -0.8
@@ -503,13 +506,15 @@ class Meeting:
 	const VOUCH_MAX_SUSP = 0.25
 	const VOUCH_BASE = -0.4
 	## Plain liking or distrust, said aloud; a small social nudge, not evidence.
-	const VIBES_TRUST_MIN = 0.7
+	const VIBES_TRUST_MIN = 0.62
 	const VIBES_SUSP_MIN = 0.55
-	const VIBES_BASE = -1.4
+	const VIBES_BASE = -0.9
 	const VIBES_SWAY = 0.04
 	## Evil bystanders: the worth of defending a teammate in danger, or of piling onto the
-	## scapegoat, before cover (Mind.evil_override).
-	const SUPPORT_EVIL_DEFEND_STAKES = 1.0
+	## scapegoat, before cover (Mind.evil_override). Words are the cheap place to keep cover,
+	## so speaking up for a teammate is rare until the team is desperate (a Demon's stakes
+	## 0.6 against caution 0.8 falling to 0.45).
+	const SUPPORT_EVIL_DEFEND_STAKES = 0.3
 	const SUPPORT_EVIL_PILE_STAKES = 0.6
 	## Player nominations: with a filed case (anchored) or without (raw). A raw nomination
 	## still counts at the formal track-record weight (unchanged; revisit in M4's sweep).

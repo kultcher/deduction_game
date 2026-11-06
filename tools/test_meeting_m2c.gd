@@ -85,7 +85,7 @@ func _test_weighing() -> void:
 	var p2 = _pair(g2, "seer", "clerk")
 	var seer_for_clerk: float = _total(MindSupport.exonerate_parts(g2.w, p2[0], p2[1], true, MindSupport.danger(g2.w, p2[0], p2[1], ctx)))
 	_check(clerk_for_seer > 0.0, "an unclaimed Clerk who read a Seer as good leans to reveal (%.2f)" % clerk_for_seer)
-	_check(seer_for_clerk < clerk_for_seer, "a Seer with a 'no' on a spent Clerk leans quieter than the Clerk does for a Seer (%.2f vs %.2f)" % [seer_for_clerk, clerk_for_seer])
+	_check(seer_for_clerk < 0.0 and seer_for_clerk < clerk_for_seer, "a Seer with a 'no' on a spent Clerk usually keeps quiet (%.2f, the Clerk for a Seer %.2f)" % [seer_for_clerk, clerk_for_seer])
 	# A trusted voice has already cleared them: the danger drops, and with it the urge to burn cover.
 	var friend = g.w.living().filter(func(n): return n != s and n != d)[0]
 	s.npc_trust[friend.id] = 0.9
