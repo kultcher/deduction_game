@@ -27,7 +27,6 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-<<<<<<< HEAD
 ## 2026-11-06 afternoon, Claude-Bailiff: premises 0b revised, maintenance fixes. For Quill: the premises pass is yours
 
 **Landed in this PR** (116/116 suites; golden identical to `baseline_50bd642` at `--tol 0`, since the passive golden player never presents a case, so no new baseline):
@@ -75,7 +74,7 @@ the Nov 6 sweep report) as an acceptance number. The bot knows the Demon in 77% 
 but loses 29.5% of those.
 
 ---
-=======
+
 ## 2026-11-06 ~14:15, Claude-Tally: overnight sweep (M4 vs pre-M4 vs passive) results
 
 - Run `42174319660` at `0ca8654` (main `9a1b215` plus this PR's `bot_pre_m4` cell mode),
@@ -90,7 +89,8 @@ but loses 29.5% of those.
 - The 7-NPC bot cells timed out (single shards; costs were 4× low). 7 M4 has 978 of 2,000
   games, 7 pre-M4 has 1,756. This PR now carries measured costs. M4 takes ~1.7× the
   pre-M4 bot's time per game.
->>>>>>> origin/main
+
+---
 
 ## 2026-11-06 ~02:30, Claude-Bailiff: Codex review fixes (game) on main; main settled for the sweep
 
