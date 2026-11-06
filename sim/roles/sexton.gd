@@ -136,6 +136,23 @@ func score_public_claim(w, n, parts: Dictionary) -> void:
 ## Going public, the Sexton tells of the toll. Evil now believes the bell rang that night
 ## (whether or not a broken gift made it work), and plays the suppression accordingly.
 func on_public_claim(w, n, lines: Array, facts: Array, mind) -> void:
+	_tell_toll(w, n, lines, facts, mind)
+
+
+## Already out as the Sexton when the bell was tolled: tell of it once it has worn off
+## (the same timing as going public after a toll). Codex review of PR #69.
+func on_public_update(w, n, lines: Array, facts: Array, mind) -> void:
+	if toll_window_over(w):
+		_tell_toll(w, n, lines, facts, mind)
+
+
+func on_public_duty_account(w, n, nd: int) -> void:
+	if _tolled_on(w, n, nd):
+		w.evil_plan["bell_believed"] = w.sexton_tolled_night
+		n.dialogue_memory["toll_told_public"] = true
+
+
+func _tell_toll(w, n, lines: Array, facts: Array, mind) -> void:
 	if n.role != "sexton" or n.is_evil() or not n.gift_used or w.sexton_tolled_night < 0:
 		return
 	w.evil_plan["bell_believed"] = w.sexton_tolled_night

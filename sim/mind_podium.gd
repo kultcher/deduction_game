@@ -158,6 +158,8 @@ static func press_night(w, d, nd: int, grounds: bool) -> Dictionary:
 		vantage = duty["vantage"]
 		how = duty["how"]
 		outcome = "duty"
+		if not d.is_evil():
+			duty_def.on_public_duty_account(w, d, nd)
 	elif not was_out:
 		lines.append(_home_alibi(w, d, nd))
 		facts.append(_alibi_home(d, nd))

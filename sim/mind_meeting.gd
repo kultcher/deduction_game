@@ -257,9 +257,12 @@ static func _late_relay(w, n, lines: Array, facts: Array) -> void:
 			f["public"] = true
 			f["text"] = "%s says the late %s (as %s, night %d) told them: %s." % [n.name, src.name, rn, int(spoken_e.get("day", -1)), said]
 			facts.append(f)
+			# Told before the town: public grounds for every mind, the teller's own copy
+			# included (Codex review of PR #77). The source's own statement stays private.
 			for l in w.living():
 				if l != n:
-					apply_info(w, l, src, spoken_e, C.RELAY_WEIGHT * heard_weight(l, n), n.id)
+					apply_info(w, l, src, spoken_e, C.RELAY_WEIGHT * heard_weight(l, n), n.id, false, true)
+			apply_info(w, n, src, e, Tuning.Meeting.LATE_RELAY_TELLER_MARK, "", false, true)
 			w.public_event("reading", Gifts.implicated(spoken_e), n.id)
 			w.dlog.think(n.id, "relay", "Tells the town %s's private %s reading, heard before they died." % [src_id, spoken_e["role"]], {"src": src_id, "muddled": spoken_e.get("muddled", false)})
 			return
@@ -599,6 +602,8 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 				hear_claim(w, l, n.id, claim, Tuning.Mind.PUBLIC_CLAIM_HEARING_WEIGHT, "public")
 		if C.has_role_def(n.role) and not n.is_evil():
 			C.role_def(n.role).on_public_claim(w, n, lines, facts, _mind())
+	elif C.has_role_def(n.role) and not n.is_evil() and n.claimed_role == n.role:
+		C.role_def(n.role).on_public_update(w, n, lines, facts, _mind())
 	if share_readings and C.has_readings(n.claimed_role):
 		var PsychRole = preload("res://sim/roles/psychologist.gd")
 		if not n.pending_muddle_debunks.is_empty():
@@ -1964,8 +1969,8 @@ static func _observation_lines(n, groups: Array, audience: String, speech_act: S
 static func action_susp(n, id: String) -> float:
 	return _mind().action_susp(n, id)
 
-static func apply_info(w, listener, source, entry: Dictionary, weight: float, via: String = "", anonymous: bool = false) -> void:
-	_mind().apply_info(w, listener, source, entry, weight, via, anonymous)
+static func apply_info(w, listener, source, entry: Dictionary, weight: float, via: String = "", anonymous: bool = false, public: bool = false) -> void:
+	_mind().apply_info(w, listener, source, entry, weight, via, anonymous, public)
 
 static func decide(w, n, topic: String, parts: Dictionary, why: String) -> bool:
 	return _mind().decide(w, n, topic, parts, why)

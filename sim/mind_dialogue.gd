@@ -1333,16 +1333,22 @@ static func citable_reason(w, n, t_id: String, audience: String = "town") -> Str
 	return _mind().citable_reason(w, n, t_id, audience)
 
 ## RoleDef.honest_outing for the asker's real role, decided once per night asked and day
-## (so the reveal/withhold branches above agree, and asking twice gets one answer).
+## (so the reveal/withhold branches above agree, and asking twice gets one answer). A
+## refusal is reconsidered once their pressure has risen or they've been nominated since
+## (Codex review of PR #69: a press with evidence must be able to change a refusal).
 static func _honest_outing(w, n, nd: int) -> String:
 	if n.is_evil() or not C.has_role_def(n.role):
 		return ""
 	var memo: Dictionary = n.dialogue_memory.get("honest_outing", {})
 	var key: String = "%d:%d" % [nd, w.day]
-	if not memo.has(key):
-		memo[key] = C.role_def(n.role).honest_outing(w, n, nd, _mind(), false)
+	var nominated: bool = n.id in w.meeting.get("nominated", []) or str(w.meeting.get("block", "")) == n.id
+	var prev = memo.get(key)
+	var stale: bool = prev is Dictionary and prev.v == "withhold" and (n.pressure > float(prev.p) + 1e-6 or (nominated and not prev.nom))
+	if prev == null or stale:
+		memo[key] = {"v": C.role_def(n.role).honest_outing(w, n, nd, _mind(), false), "p": n.pressure, "nom": nominated}
 		n.dialogue_memory["honest_outing"] = memo
-	return str(memo[key])
+	var got = memo[key]
+	return str(got.v) if got is Dictionary else str(got)
 
 
 static func decide(w, n, topic: String, parts: Dictionary, why: String) -> bool:
