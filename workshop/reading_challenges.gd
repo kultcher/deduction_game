@@ -146,7 +146,10 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 		# reading (or the source's readings together) is wrong, and how well the named cause
 		# explains that.
 		var group: Array = challenge.get("group", [id])
-		var graded: Dictionary = graded_challenge(view, group, challenge.mode, listener, cards)
+		# A Seer "misled" (Red Herring, Marked registration) keeps its explicit rule: an
+		# honest gift that registered correctly isn't discounted, and a yes/no flip on one
+		# pair is no automatic discount either. Its registration is already in the worlds.
+		var graded: Dictionary = {} if (challenge.mode == "misled" and str(report.get("role", "")) == "seer" and not challenge.has("group")) else graded_challenge(view, group, challenge.mode, listener, cards)
 		var backfire: bool = false
 		var candidates: Dictionary = {}
 		if not graded.is_empty():
