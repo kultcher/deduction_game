@@ -27,6 +27,56 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06 ~01:45, Claude-Bailiff: premises step 0b checked and merged
+
+- Merged main into `claude/premises-0b` and ran the full checks. 0b broke 9 checks in 3
+  older suites (they pass on main). Fixed:
+  - **The belief update's focus target follows alignment premises only**
+    (`WorkshopPresentation.ATTENTION_TARGET_TYPES`). A Marked, secret or conflict premise
+    leaves the last alignment target in place. Before, "Merrin is Marked" with the same two
+    cards moved Merrin +0.11 and Lian -0.10 through attention alone, against the plan's
+    secrets decision (step 2) and its "condition, don't reshuffle attention" rule (step 1).
+    Clearing the target wasn't enough: dropping an earlier target moved beliefs as much.
+  - `test_workshop_live_cognition`: three checks now expect the pinned own reading in view.
+  - `test_workshop_attention`, `test_workshop_reasoning`: the "a Low mind can miss a line"
+    fixtures aim the case at Lian (named only by the Dowser reading). Under 0b a line that
+    names the target outranks a gift reading, so the old target made the movement line win.
+- 115/115 suites; two captures identical; new baseline `baseline_50bd642`.
+- Next: the Codex game fixes (`claude/codex-sim-fixes`) stack on this with their own baseline.
+
+---
+
+## 2026-11-06, Claude-Tally: premises pass step 0b (one attended set) on branch, merged above
+
+- Branch `claude/premises-0b` from main `93d24f3`. **Not tested beyond its own unit test, no
+  baseline yet:** Michael has a couple of small fixes to land on top before new baselines.
+  Expect every presentation's stance, agreement and belief change to move.
+- What it does (plan: Project doc `claude/premises-plan.md`, step 0b):
+  - **Salience** (`Reasoner._salience`, weights in `Tuning.Workshop.SALIENCE_*`): naming the
+    target +4; else naming someone a presented card names, or a presented card's source, +2;
+    else a counted-group gift reading (Dowser, Surveyor, Seer, Clerk, Rumormonger, Archivist,
+    Registrar) +1 for exclusion; gift reading +2; trust in the source 0.1 (tiebreak). Warden,
+    Monitor, Confessor and Psychologist joined the live gift roles. Mentions use the full keys
+    (subject(s), target, who, data.pair/group/seen/nbrs/trio/target/chosen/executed/guarded/
+    nominator/nominee).
+  - **Focus target** (`Reasoner._focus`): the case target, else
+    `knowledge.attention_target`. The belief update after a presentation had no target at
+    all (probe, seed 42 Day 3); `workshop_presentation.gd` now records the headline's target
+    in `state.attention_target`, plumbed via `workshop_bridge._listener` and the focus block
+    in `shared_ledger.gd`.
+  - **Own readings pinned** outside the budget in focused passes (bounded listeners): every
+    report whose source is the listener. Before, a Low listener facing a 4-card case dropped
+    all of them.
+  - **Trust reward** judges agreement on the case cards plus own readings only
+    (`Shared.response(..., own_only = true)`, `WorkshopPresentation._reward_agreement`); the
+    second pass runs only when hearsay was in view.
+- Probe finding for the plan: both the judging pass and the belief update already use the
+  all-holdings pool when focused; the drift between them was the missing target, not the pool.
+- Test: `tools/test_attention_0b.gd` (fast list), including the plan's worked example.
+- Opt-in `Reasoner.capture_attention` / `captured` for tools; off in play.
+
+---
+
 ## 2026-11-06 early, Claude-Bailiff: meeting plan M4, the bot (sweep for Tally)
 
 Branch `claude/m4-bot`, on main after step 0 (PR #81). Golden identical to
