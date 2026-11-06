@@ -44,7 +44,28 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 5): `baseline_a42ef71`
+### Current baseline (Nov 5, evening): `baseline_763872a`
+
+`tools/golden/baseline_763872a/` is the capture from `763872a`: `baseline_a42ef71` plus the
+playtest 13910 dialogue fixes (branch `claude/playtest-13910-dialogue`). Two captures
+identical at `--tol 0`. All five seeds part at the Day 1 meeting (record 4 to 17): good
+NPCs no longer accuse below suspicion 0.2 (`Tuning.Meeting.ACCUSE_MIN_SUSPICION`), so the
+base-suspicion accusations, and the roll they drew, are gone. The other fixes are wording
+only: a run with the floor set to 0 matched main exactly on seeds 2000-2011 (7 NPCs).
+
+Passive A/B (12 games per cell, Default script):
+
+| Cell | Good wins (main → new) | Good hanged | Evil hanged |
+|---|---|---|---|
+| 7 NPCs, seeds 2000-2011 | 3 → 2 | 10 → 15 | 8 → 5 |
+| 7 NPCs, seeds 2012-2023 | 4 → 6 | 12 → 9 | 7 → 9 |
+| 10 NPCs, seeds 2000-2011 | 4 → 2 | 18 → 26 | 19 → 16 |
+
+The two 7-NPC blocks point opposite ways (7/24 → 8/24 combined), so that's noise at this
+size. The 10-NPC cell leans worse (more good NPCs hanged) but is one 12-game block; a
+dynamic-script sweep would settle it.
+
+### Previous baseline (Nov 5): `baseline_a42ef71`
 
 `tools/golden/baseline_a42ef71/` is the capture from `a42ef71`: `baseline_9187b09` plus the
 fixes from the 2026-11-05 maintenance report. Two captures identical. Captures now write
@@ -130,7 +151,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_a42ef71 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_763872a /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs

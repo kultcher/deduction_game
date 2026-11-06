@@ -27,6 +27,45 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-05 evening, Claude-Tally: playtest 13910 dialogue fixes, PR open
+
+Base `42708ec`. Branch `claude/playtest-13910-dialogue`. Status: **PR open, for Michael.**
+New baseline `baseline_763872a` (CI points at it).
+
+- Fixes from the case 13910 playtest (Michael chose them; the Project doc
+  `claude/playtest-report-2026-11-05.md` has the context):
+  1. Owning a night out follows what was actually said: a false alibi ("whatever I
+     told you"), a refusal ("That's why I wouldn't say where I was"), or nothing.
+  2. A gift reveal under a night card opens "All right, you saw me", not a
+     doubted-sighting stem.
+  3. `ask why` with no live hint is free and says so, or names the dead person it was about.
+  6a. Readings spoken with a time lead drop their own "last night" and full stop
+     (`MindMeeting.reading_body`).
+  6b. An alibi that already says it saw nobody skips the extra saw-nobody line.
+  7. A meeting broadcast about someone logs no share line to that person (they still
+     get the public receipt; `test_meeting_flow` asserts every mind holds it).
+  10. "My stronger suspicion remains that X is the Demon" names the listener's own
+     standouts (`Presentations._own_standouts`), or hedges. Before, it named the rival
+     world's Demon, so every listener said the same name.
+  13. Good NPCs never accuse below suspicion 0.2 (`Tuning.Meeting.ACCUSE_MIN_SUSPICION`).
+     This is the only behaviour change; it moves the golden.
+  15. Reasons and "X is lying" already said at a meeting are pointed back to ("As Dorian
+     said, …"). Dowser and Surveyor reasons say what the reading found.
+  17/18. NPCs leave out sightings the player made themselves (ask seen, ask about).
+- Not done: 5 (muddled presentation reply). Michael deferred it to the "premises
+  matter" overhaul.
+- New keys with English fallbacks, not yet voiced per character: `own_night_refusal`,
+  `own_night_out`, `pressed_caught_out`, `hint_why_moot`, `present_alt_open`,
+  `meeting_accuse_reason_echo`, `defence_lying_echo`.
+- Tests: new `test_playtest_13910_dialogue` (in the fast list). `test_meeting_flow`
+  (the owned-lie case now has a real alibi) and `test_shared_model` (a finished case is
+  settled once before the idempotence check; seed 37291 now ends on Day 2) were updated.
+  Locally: full suite 104/106 at first; both failures were the intended changes, fixed
+  and rerun green, with the new suite.
+- Passive A/B and the 10-NPC caveat: `docs/golden_baseline.md`.
+
+---
+
 ## 2026-11-05 evening, Claude-Tally: playtest analysis tools on main (PR #72)
 
 Base `d043da9`. Merged to `main` by Claude-Tally at Michael's request; all CI green.
