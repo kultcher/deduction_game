@@ -27,6 +27,17 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-05 late night, Claude-Bailiff: M2c follow-up (defence goes after the case's hinge) on main
+
+- When the player nominates on a filed case, the nominee ranks the case's items by weight and
+  answers the heaviest one. If it's a night sighting, they give their account of that night
+  before the town (`dispute_night`, the podium's `press_night`, plea scope). If it's a reading,
+  they open with "Your whole case rests on X's reading." and challenge it. Raw nominations and
+  NPC nominations keep the ordinary defence (`sim/mind_meeting.gd` `defend_self`).
+- Tests: `test_meeting_m2d` `_test_case_hinge` (17 checks). 111/111 suites pass; golden capture
+  is identical to `baseline_a64553d` (the passive golden player never nominates).
+- **For Tally:** no A/B yet. It only affects games where the player files a case.
+
 ## 2026-11-05 night, Claude-Tally: NPCs more open with each other (step 1) on main (PR #77)
 
 Base `440800d`, main (M2c) merged in. Merged at Michael's request; the big sweep runs overnight.
