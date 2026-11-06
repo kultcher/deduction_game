@@ -18,9 +18,15 @@ static func append_to(w, speaker, target, reply: Dictionary, board: Array) -> vo
 	if (speaker.claim_public or speaker.max_tier >= 3) and C.ROLES.get(speaker.claimed_role, {}).get("night_walk", false):
 		candidates.append_array(_night_candidates(w, speaker, target, board))
 	var now: int = w.day * 4 + w.phase
+	# What you saw yourself (your own sighting cards) isn't worth telling you again.
+	var mine: Dictionary = {}
+	for c in board:
+		if c.get("kind", "") == "sighting" and c.get("source", "") == "player" and not c.get("deleted", false) and target.id in c.get("subject", []):
+			mine["%d|%d|%s" % [int(c.get("day", -1)), int(c.get("phase", -1)), str(c.get("block", ""))]] = true
 	candidates = candidates.filter(func(b):
 		var age: int = now - (int(b.get("day", -1)) * 4 + int(b.get("phase", -1)))
-		return age >= 0 and age < 3 and not Mind.sighting_is_here(w, b, target.id))
+		var seen_myself: bool = mine.has("%d|%d|%s" % [int(b.get("day", -1)), int(b.get("phase", -1)), str(b.get("block", ""))])
+		return age >= 0 and age < 3 and not Mind.sighting_is_here(w, b, target.id) and not seen_myself)
 	candidates.sort_custom(func(a, b): return a["day"] * 4 + a["phase"] > b["day"] * 4 + b["phase"])
 	var groups: Array = []
 	var frames = {}

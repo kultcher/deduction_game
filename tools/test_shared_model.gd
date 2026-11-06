@@ -391,6 +391,11 @@ func _test_multi_day_smoke() -> void:
 				break
 		if not g.shared_fallbacks.is_empty():
 			all_clean = false
+		if g.state == "over":
+			# A finished case isn't refreshed after its last event (seed 37291 ends on Day 2
+			# since the accusation floor, Nov 5): settle it once, then check idempotence.
+			for p in g.w.living_good():
+				Mind.refresh_beliefs(g.w, p, " (settle finished case)")
 		var rng_before: int = g.w.rng.state
 		for p in g.w.living_good():
 			if not p.workshop_state.get("active", false):

@@ -284,9 +284,19 @@ static func _claim_line(n, role: String) -> Dictionary:
 static func _info_intent(w, n, e: Dictionary) -> Dictionary:
 	var spoken: String = C.spoken_when(e["day"], w.day)
 	var when = spoken[0].to_upper() + spoken.substr(1)
+	var body: String = reading_body(str(e["text"]))
 	if e.has("phase"):
 		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
-	return {"kind": "report", "statement": "%s, %s." % [when, e["text"]], "event_id": info_eid(n.id, e)}
+	elif body.ends_with(" " + spoken):
+		body = body.substr(0, body.length() - spoken.length() - 1) # the lead already says when
+	return {"kind": "report", "statement": "%s, %s." % [when, body], "event_id": info_eid(n.id, e)}
+
+## A reading's text as a clause: no closing punctuation (the sentence adds its own).
+static func reading_body(text: String) -> String:
+	var body: String = text.strip_edges()
+	while body.length() > 0 and body[body.length() - 1] in [".", "!", "?"]:
+		body = body.substr(0, body.length() - 1)
+	return body
 
 static func info_line(w, n, e: Dictionary, audience: String = "player", speech_act: String = "answer") -> Dictionary:
 	var approved = _info_intent(w, n, e)
@@ -309,7 +319,7 @@ static func info_fact(w, n, e: Dictionary) -> Dictionary:
 	var subj: Array = Gifts.subjects(e)
 	var d: Dictionary = e["data"]
 	var f = {"kind": "info", "subject": subj, "source": n.id, "day": e["day"], "role": e["role"], "data": d.duplicate(),
-		"text": "%s (as %s, %s %d): %s." % [n.name, C.role_name(e["role"]), "day" if e.has("phase") else "night", e["day"], e["text"]]}
+		"text": "%s (as %s, %s %d): %s." % [n.name, C.role_name(e["role"]), "day" if e.has("phase") else "night", e["day"], reading_body(str(e["text"]))]}
 	if e.has("phase"):
 		f["phase"] = e["phase"]
 	return f
@@ -642,6 +652,10 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		t = ranked[0]
 		s2 = susp(n, t.id)
 		acc_resent = _mind().resentment_toward(w, n, t.id)
+		if s2 + acc_resent < Tuning.Meeting.ACCUSE_MIN_SUSPICION:
+			w.dlog.decision(n.id, "accuse", "gate", false, {"gate": "below_min_suspicion", "suspicion": s2,
+				"resentment": acc_resent, "min": Tuning.Meeting.ACCUSE_MIN_SUSPICION}, t.id)
+			return null
 	var parts = {"suspicion": (s2 - Tuning.Meeting.ACCUSE_SUSPICION_PIVOT) * Tuning.Meeting.ACCUSE_SUSPICION_SLOPE, "confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Meeting.ACCUSE_CONFIDENCE_SLOPE,
 		"pressure_deflect": n.pressure * Tuning.Meeting.ACCUSE_PRESSURE_DEFLECT}
 	if acc_resent > 0.0:
@@ -711,7 +725,15 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		var tail = (" " + reason_s + ".") if why != "" else " Something's off about them."
 		var canonical_accuse = "I don't trust %s.%s" % [t.name, tail]
 		if why != "":
-			line = say_voiced(n, "meeting_accuse_reason", canonical_accuse, {"target": t.name, "reason": reason_s})
+			var echo_of: String = _said_by_other(w, n, "reason:" + reason_s)
+			if echo_of != "":
+				# The same grounds, already given at this meeting: point back rather than recite.
+				var lc: String = reason_s[0].to_lower() + reason_s.substr(1)
+				line = say_voiced(n, "meeting_accuse_reason_echo", "I don't trust %s either. As %s said, %s." % [t.name, w.by_id[echo_of].name, lc],
+					{"target": t.name, "speaker": w.by_id[echo_of].name, "reason": lc})
+			else:
+				line = say_voiced(n, "meeting_accuse_reason", canonical_accuse, {"target": t.name, "reason": reason_s})
+			_note_said(w, n, "reason:" + reason_s)
 		else:
 			line = say_voiced(n, "meeting_accuse_vibes", canonical_accuse, {"target": t.name})
 	if w.meeting.has("accusations"):
@@ -719,6 +741,18 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	var text = ("%s publicly accused %s, hinting at a private reason they won't share yet." if hint else "%s publicly accused %s.") % [n.name, t.name]
 	return {"line": line,
 		"fact": {"kind": "accusation", "subject": [t.id], "source": n.id, "text": text, "hint": hint}}
+
+## Who else (living, not n) already said this at the current meeting, or "".
+static func _said_by_other(w, n, key: String) -> String:
+	var by: String = str(w.meeting.get("said", {}).get(key, ""))
+	return by if by != "" and by != n.id and w.by_id.has(by) else ""
+
+## Remember the first speaker of a line at this meeting (the meeting dict resets daily).
+static func _note_said(w, n, key: String) -> void:
+	if not w.meeting.has("said"):
+		w.meeting["said"] = {}
+	if not w.meeting.said.has(key):
+		w.meeting.said[key] = n.id
 
 ## A spoken observation must leave the same usable card as asking the witness privately.
 static func _append_accusation_sighting(w, n, target, why: String, lines: Array, facts: Array) -> void:
@@ -1519,7 +1553,12 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					defence_scopes["pair_other"] = {"type": "rival", "source": src_id, "other": other}
 			if moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves):
 				if trait_of(d, "confidence") > 0.6:
-					lines.append(say_voiced(d, "defence_lying", "Then %s is lying, and you should ask yourselves why." % src.name, {"source": src.name}))
+					var lie_key: String = "lying:" + src_id
+					if _said_by_other(w, d, lie_key) != "":
+						lines.append(say_voiced(d, "defence_lying_echo", "%s again? Then %s is lying about me too." % [src.name, src.name], {"source": src.name}))
+					else:
+						lines.append(say_voiced(d, "defence_lying", "Then %s is lying, and you should ask yourselves why." % src.name, {"source": src.name}))
+					_note_said(w, d, lie_key)
 					moves.append("lying")
 					move_strengths["lying"] = 1.0
 					move_scales["lying"] = maxf(absf(float(Tuning.Meeting.DEFENCE_LYING_RELIEF)), absf(float(C.DEFENCE_LIE_BLOWBACK)))

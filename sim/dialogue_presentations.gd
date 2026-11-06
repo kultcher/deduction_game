@@ -74,6 +74,28 @@ static func _is_marked_relevant(marked_id: String, root_conclusion: Dictionary, 
 	return false
 
 
+## The listener's own standout suspects, if any: the top living suspect (not the listener,
+## not `exclude`) when they clear OWN_STANDOUT_MIN and lead the third by OWN_STANDOUT_GAP;
+## the second too when it clears the same bar. Empty when suspicion is flat.
+const OWN_STANDOUT_MIN = 0.25
+const OWN_STANDOUT_GAP = 0.08
+static func _own_standouts(w, listener_id: String, suspicion_map: Dictionary, exclude: Array = []) -> Dictionary:
+	var ids: Array = []
+	for p in w.living():
+		if p.id != listener_id and not p.id in exclude:
+			ids.append(p.id)
+	var sv = func(id): return clampf(float(suspicion_map.get(id, 0.1)), 0.0, 1.5)
+	ids.sort_custom(func(a, b): return sv.call(a) > sv.call(b) if not is_equal_approx(sv.call(a), sv.call(b)) else a < b)
+	if ids.is_empty():
+		return {"demon_id": "", "accomplice_id": ""}
+	var third: float = sv.call(ids[2]) if ids.size() > 2 else 0.0
+	var second: float = sv.call(ids[1]) if ids.size() > 1 else 0.0
+	var top: float = sv.call(ids[0])
+	if top < OWN_STANDOUT_MIN or top - maxf(second if second < OWN_STANDOUT_MIN else third, 0.0) < OWN_STANDOUT_GAP:
+		return {"demon_id": "", "accomplice_id": ""}
+	var acc: String = ids[1] if ids.size() > 1 and second >= OWN_STANDOUT_MIN and second - third >= OWN_STANDOUT_GAP else ""
+	return {"demon_id": ids[0], "accomplice_id": acc}
+
 ## Extract at most two suspects from a rival world (top Demon + single highest-suspicion #2 evil).
 ## Never names a third evil member; promotes a living evil successor if the starting Demon died.
 static func _pick_rival_pair(w, listener_id: String, suspicion_map: Dictionary, alt: Dictionary, epoch: String) -> Dictionary:
@@ -238,12 +260,19 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 	elif status == "rival_found" and reasoning.get("rival") is Dictionary and not reasoning.rival.is_empty():
 		var epoch: String = str(root_conclusion.get("at", "now"))
 		var alt: Dictionary = Solver.describe_world(view, reasoning.rival, epoch)
-		var pair: Dictionary = _pick_rival_pair(w, listener.id, listener.suspicion, alt, epoch)
+		# These lines say "my stronger suspicion remains...": the names must be the
+		# listener's own standouts, not the rival world's (playtest 13910: nine listeners
+		# all named the same rival-world Demon from near-flat suspicions).
+		var pair: Dictionary = _own_standouts(w, listener.id, listener.suspicion, [stance_subject])
 		var demon_id: String = str(pair.get("demon_id", ""))
 		var acc_id: String = str(pair.get("accomplice_id", ""))
 		if believed_stance == "reject" and already_aligned:
 			primary_key = "present_already"
 			parts.append(Dialogue.voice_line(listener.id, primary_key, canonical, {"target": target_label}))
+		elif demon_id == "":
+			# Nobody stands out: the rival only shows the case isn't decisive.
+			primary_key = "present_accept_open" if believed_stance == "accept" else ("present_partial" if believed_stance == "partial" else "present_alt_open")
+			parts.append(Dialogue.voice_line(listener.id, primary_key, "Other explanations fit as well as yours; it doesn't settle it for me." if primary_key == "present_alt_open" else canonical, {"target": target_label}))
 		elif demon_id != "" and w.by_id.has(demon_id):
 			var d_name: String = w.by_id[demon_id].name
 			if acc_id != "" and w.by_id.has(acc_id):

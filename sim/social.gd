@@ -302,8 +302,12 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 	if not public and not (s.is_evil() and l.is_evil()):
 		w.daily_npc_shares.append({"day": w.day, "phase": w.phase, "loc": s.loc, "speaker": s.id, "listener": l.id, "item": item.duplicate(true)})
 	var desc = _describe(w, s, item)
-	w.dlog.add("npc_share", s.id, l.id, {"kind": item["kind"], "about": item.get("about", ""), "from": item.get("from", ""),
-		"relay": item.get("relay", false), "lie": lie}, "%s tells %s: %s%s" % [s.name, l.name, desc, "  [LIE]" if lie else ""])
+	# A public statement about the listener reaches them as a public receipt (every living
+	# mind holds the same public record), but it isn't something told *to* them: no share line.
+	var about_self: bool = public and str(item.get("about", "")) == l.id
+	if not about_self:
+		w.dlog.add("npc_share", s.id, l.id, {"kind": item["kind"], "about": item.get("about", ""), "from": item.get("from", ""),
+			"relay": item.get("relay", false), "lie": lie}, "%s tells %s: %s%s" % [s.name, l.name, desc, "  [LIE]" if lie else ""])
 	if lie:
 		w.dlog.think(s.id, "lie", "Evil: tells %s %s." % [l.name, desc], {"lie": true})
 		if not public and s.is_evil() and not l.is_evil() and item.get("kind", "") in ["sighting", "opinion"] and s.id == str(w.evil_plan.get("daily_planter", "")):

@@ -495,6 +495,10 @@ class Meeting:
 	const REVEAL_SUSPICION_SLOPE = 1.5
 	const REVEAL_CONFIDENCE_SLOPE = 0.6
 	const ACCUSE_SUSPICION_PIVOT = 0.6
+	## A good NPC never accuses below this suspicion (plus resentment): starting suspicion
+	## (INITIAL_SUSPICION_BASE 0.1) and the roll alone can't produce a public accusation.
+	## Playtest 13910: Constance accused Isolde at 0.13 on Day 1, read by the player as a clue.
+	const ACCUSE_MIN_SUSPICION = 0.2
 	const ACCUSE_SUSPICION_SLOPE = 1.5
 	const ACCUSE_CONFIDENCE_SLOPE = 0.8
 	const ACCUSE_PRESSURE_DEFLECT = 0.4

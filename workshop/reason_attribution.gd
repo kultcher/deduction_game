@@ -1096,6 +1096,14 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 				"%s records tie them to the %s" % [third_poss, a_role],
 			]
 		"dowser":
+			if data.has("count") and data.has("block"):
+				var d_blk: String = C.block_name(str(data.get("block", "")))
+				var d_n: int = int(data.get("count", 0))
+				var d_what: String = "one evil soul" if d_n == 1 else "%d evil souls" % d_n
+				return [
+					"%s reading on %s found %s in a crowd that included them" % [own_poss, d_blk, d_what],
+					"%s reading on %s found %s in a crowd that included them" % [third_poss, d_blk, d_what],
+				]
 			return [
 				"%s reading pointed at that crowd" % own_poss,
 				"%s reading pointed at that crowd" % third_poss,
@@ -1108,9 +1116,10 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 		"surveyor":
 			if data.has("block"):
 				var s_blk: String = C.block_name(str(data.get("block", "square")))
+				var s_what: String = "everyone living on %s is on the same side" % s_blk if bool(data.get("same", false)) else "the people living on %s aren't all on one side" % s_blk
 				return [
-					"%s reading on %s points toward their quarter" % [own_poss, s_blk],
-					"%s reading on %s points toward their quarter" % [third_poss, s_blk],
+					"%s reading says %s, and they live there" % [own_poss, s_what],
+					"%s reading says %s, and they live there" % [third_poss, s_what],
 				]
 			return [
 				"%s block count points toward their quarter" % own_poss,

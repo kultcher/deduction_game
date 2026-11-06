@@ -256,6 +256,8 @@ func pressed_nights():
 	n.trust = 0.1
 	n.history[g.w.time_key(1, C.NIGHT)] = "night:market"
 	n.lied_nights = [1]
+	# They told the player they were home that night (the owned-lie line needs a real lie).
+	n.dialogue_memory["night_accounts"] = {"1": {"kind": "alibi"}}
 	var card = {"kind": "sighting", "subject": [n.id], "source": "player", "block": "market", "day": 1, "phase": C.NIGHT, "text": "The player's vigil caught them out"}
 	var reply = Mind.press(g.w, n, card)
 	check(n.claimed_role == "nightwatch" and n.max_tier >= 3 and reply.facts.any(func(f): return f.kind == "claim" and f.role == "nightwatch"), "a caught hidden good walker reveals their gift despite low ordinary willingness")
