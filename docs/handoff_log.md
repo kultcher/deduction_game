@@ -363,9 +363,11 @@ godot --headless --path . --script res://tools/explain_case.gd -- <log> --belief
   "Merrin is lying" moves every listener's suspicion of Fenwick by −0.08 to −0.18
   (Constance 0.18 → 0.00), even though each listener's own challenge assessment rejects
   it (`supported: false`, `multiplier 1.0`). P(Merrin evil) barely moves. Removing just
-  that ledger entry restores the old values. Probably the lying challenge's
-  "source is evil" assumption (`Solver`, reading challenges → `positions`) applies even when
-  `ReadingChallenges.assess` rejects the challenge. Not fixed here.
+  that ledger entry restores the old values. **Corrected later the same night:** the
+  cause isn't the challenge's "source is evil" assumption, as first guessed here. The
+  defence's grounds were every fact the listener held, and Reasoner's attention rule pulls
+  a challenge's grounds in, so bounded listeners went to full attention (Constance 8 → 22
+  cards). Fixed by the premises pass, step 0 (`claude/defence-empty-grounds`).
 - `tools/replay_54875.gd` stays separate: it's a fixed-fixture performance and fallback
   check, not a general replay.
 - Checked on playtest case 13910 (10 NPCs, dynamic script): all five votes replay
