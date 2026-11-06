@@ -710,8 +710,18 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		parts["reactive" if acc_opening > 0.0 else "crowd_fade"] = acc_opening
 	if not decide(w, n, "accuse", parts, "Publicly accuse %s?" % t.id):
 		return null
-	# What they can say for it: a reason the town already has, a hint at one they're
-	# keeping back, or their gift and its reading brought out now.
+	return _accusation_body(w, n, t, s2, why, lines, facts)
+
+## A public accusation of a chosen target (a supporter piling on in Step 4): the same
+## voice as `_public_accusation` without its own choice of target or decision to speak.
+static func accuse_named(w, n, t, lines: Array, facts: Array) -> Dictionary:
+	var why: String = Evil.bluff_reason(w, n, t) if n.is_evil() else ""
+	var s2: float = 0.8 if n.is_evil() else susp(n, t.id)
+	return _accusation_body(w, n, t, s2, why, lines, facts)
+
+## What they can say for an accusation: a reason the town already has, a hint at one
+## they're keeping back, or their gift and its reading brought out now.
+static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, facts: Array) -> Dictionary:
 	var hint = false
 	var hint_src: String = ""
 	if n.is_evil():
@@ -850,6 +860,12 @@ static func refresh_consensus(w, l, target: String) -> void:
 	for i in range(vals.size()):
 		want += vals[i] * pow(0.5, i)
 	want = minf(want, CONSENSUS_CAP)
+	# Voices raised for them at a trial (M2c supporters) take a little of it back.
+	for a in w.defences:
+		var df: Dictionary = w.defences[a]
+		if df["target"] == target and a != l.id and a != target:
+			want -= Tuning.Meeting.VIBES_SWAY * (0.5 + l.npc_trust.get(a, 0.5)) * pow(CONSENSUS_FADE, w.day - df["day"])
+	want = maxf(want, 0.0)
 	var have: float = l.consensus_pressure.get(target, 0.0)
 	if absf(want - have) < 0.002:
 		return
@@ -861,6 +877,8 @@ static func refresh_all_consensus(w) -> void:
 	var targets = {}
 	for a in w.stances:
 		targets[w.stances[a]["target"]] = true
+	for a in w.defences:
+		targets[w.defences[a]["target"]] = true
 	for listener in w.living():
 		var mind = listener.shadow if listener.is_evil() and listener.shadow != null else listener
 		for target in mind.consensus_pressure:

@@ -87,6 +87,7 @@ func _live() -> void:
 	w.begin_meeting()
 	g.state = "meeting"
 	g.command("nominate " + target.id)
+	g.command("press skip") # the supporters (M2c) speak before the vote; the vote itself is silent
 	g.command("vote yes")
 	_check(g.last_events.filter(func(e): return e["k"] == "speech").is_empty(), "votes are counted without vote speeches")
 	g.new_case(4242, 10)
