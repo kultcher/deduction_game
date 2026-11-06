@@ -27,9 +27,10 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+<<<<<<< HEAD
 ## 2026-11-06 afternoon, Claude-Bailiff: premises 0b revised, maintenance fixes. For Quill: the premises pass is yours
 
-**Landed in this PR** (new golden baseline; see `docs/golden_baseline.md`):
+**Landed in this PR** (116/116 suites; golden identical to `baseline_50bd642` at `--tol 0`, since the passive golden player never presents a case, so no new baseline):
 - **Premises step 0b revised.** The belief update has no premise target, and nothing
   about an argument is remembered between presentations. The per-listener
   `attention_target` is gone (bridge, ledger, reasoner fallback, presentation).
@@ -74,6 +75,22 @@ the Nov 6 sweep report) as an acceptance number. The bot knows the Demon in 77% 
 but loses 29.5% of those.
 
 ---
+=======
+## 2026-11-06 ~14:15, Claude-Tally: overnight sweep (M4 vs pre-M4 vs passive) results
+
+- Run `42174319660` at `0ca8654` (main `9a1b215` plus this PR's `bot_pre_m4` cell mode),
+  results branch `sweep-results/run-42174319660`, report in the Project doc
+  `claude/balance-sweep-report-2026-11-06.md`. 10,734 games, 0 failed.
+- **M4 bot beats pre-M4 at 10 NPCs:** 55.8% vs 50.9% on the same 2,000 seeds (z 4.0). At 7 NPCs
+  it's +2.5 on 978 shared seeds, not significant.
+- **10-NPC passive fell:** 30.0% vs 42.6% at `501b83e` on the same 1,000 seeds (z −6.7). Fewer
+  evil executions on days 2–3, more good ones late, shares +23%, lies +24%. The cause isn't
+  pinned. A per-seed bisect would mislead (seeds regress to the mean at the first commit that
+  changes play), so test with fresh 1,000-seed passive cells at candidate commits instead.
+- The 7-NPC bot cells timed out (single shards; costs were 4× low). 7 M4 has 978 of 2,000
+  games, 7 pre-M4 has 1,756. This PR now carries measured costs. M4 takes ~1.7× the
+  pre-M4 bot's time per game.
+>>>>>>> origin/main
 
 ## 2026-11-06 ~02:30, Claude-Bailiff: Codex review fixes (game) on main; main settled for the sweep
 

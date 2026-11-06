@@ -109,6 +109,8 @@ class Worker:
                    "--log-dir", self.log_root, "--insight", str(self.a.insight)]
             if self.a.mode == "passive":
                 cmd.append("--passive")
+            elif self.a.mode == "bot_pre_m4":
+                cmd.append("--pre-m4")  # the bot policy before meeting plan M4, for A/Bs
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
                                     errors="replace")
             current = None
@@ -190,7 +192,7 @@ def main():
     ap.add_argument("--godot", required=True)
     ap.add_argument("--project", default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     ap.add_argument("--npcs", type=int, required=True)
-    ap.add_argument("--mode", choices=["passive", "bot"], required=True)
+    ap.add_argument("--mode", choices=["passive", "bot", "bot_pre_m4"], required=True)
     ap.add_argument("--insight", type=float, default=1.0)
     ap.add_argument("--seeds", required=True, help="first:last (last exclusive)")
     ap.add_argument("--procs", type=int, default=4)

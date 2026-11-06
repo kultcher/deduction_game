@@ -92,7 +92,7 @@ One JSON object per game. Flat fields:
 - **Health:** `wall_s`, `guard` (commands issued), `stuck` (the 600-command guard ran
   out), `legacy_fallbacks` (shared-model fallbacks), `complete`.
 
-A lost game has only identity fields plus `failed` (`crash` / `timeout`) and
+A lost game has only identity fields plus `failed` (`crash` / `timeout` / `startup`) and
 `complete: false`.
 
 ## Reading the report
@@ -110,10 +110,10 @@ A lost game has only identity fields plus `failed` (`crash` / `timeout`) and
 - **Pairs** only list role pairs with n ≥ 200 both ways and a 10-point difference.
 - **Paired seeds** compare bot and passive on the same deal: how often the player turns
   a loss into a win, and the reverse.
-- **Health** lists stuck, failed and error games with seeds, wall times and the slowest
-  seeds.
+- **Health** lists stuck, failed and error games with seeds, seeds with no record, wall
+  times and the slowest seeds. Stuck games are left out of every rate.
 
-Caveats: the bot doesn't yet drive every part of the meeting (meeting plan M2b–M2d, M4),
-so bot win rates describe today's bot, not a skilled human. Passive results mostly measure
+Caveats: bot win rates describe today's bot, not a skilled human (the M4 policy is the
+default; `--pre-m4` keeps the earlier one). Passive results mostly measure
 NPC meeting behaviour. Dynamic scripts aren't the Default script, so these numbers don't
 compare directly with older Default-script sweeps.

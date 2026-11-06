@@ -50,12 +50,12 @@ def mean(xs):
 
 
 def cell_key(r):
-    return (r["npcs"], r["mode"], float(r.get("insight", 1.0)) if r["mode"] == "bot" else 1.0)
+    return (r["npcs"], r["mode"], float(r.get("insight", 1.0)) if r["mode"] != "passive" else 1.0)
 
 
 def cell_label(k):
     npcs, mode, ins = k
-    return "%d NPCs, %s" % (npcs, mode if mode == "passive" else "bot insight %.1f" % ins)
+    return "%d NPCs, %s" % (npcs, mode if mode == "passive" else "%s insight %.1f" % ("bot (pre-M4)" if mode == "bot_pre_m4" else "bot", ins))
 
 
 def good_win(r):
@@ -322,7 +322,7 @@ def main():
     for npcs in sorted({k[0] for k in cells}):
         passive = {r["seed"]: r for r in by_cell.get((npcs, "passive", 1.0), [])}
         for k in cells:
-            if k[0] != npcs or k[1] != "bot":
+            if k[0] != npcs or k[1] == "passive":
                 continue
             flips = [0, 0, 0, 0]
             for r in by_cell[k]:
