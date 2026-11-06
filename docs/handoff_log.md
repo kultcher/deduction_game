@@ -27,6 +27,37 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06 evening, Claude-Quill: premises step 1 on `claude/premises-step1`. For Tally: the step 1 A/B
+
+**What step 1 does** (plan: `docs/premises_plan.md`, "Step 1 as built"; decided with Michael:
+the shaping is remembered, and the premise's type adds nothing to the target beyond the
+evidence):
+- **Spillover.** Cards that only presentations brought, under an alignment premise about
+  someone, are shaped: the target takes their full effect, everyone else 40% (Insight 0) to
+  80% (Insight 1). Every refresh does it (`SharedLedger.premise_shaping`, two union passes,
+  with and without those presentations), so it doesn't fade at the next refresh.
+- **Wrong-premise cost** 0.02 trust at agreement −0.25 or less. Agreement is
+  `CaseEval.shift` (−1..1), so the plan's "below 0.25" is read as its mirror; flagged to
+  Michael.
+- **Rejected-case preference fixed:** a presented premise's protect / believed-role
+  preference needs agreement ≥ 0.5.
+- **Movement notes** only follow killer-side premises (playtest issue #5); **preview hint**
+  for a "good" premise whose cards raise its subject.
+- **Invariants changed on purpose** (`test_workshop_live_cognition`): another premise type,
+  same target, moves beliefs no differently; another target moves that person only; a later
+  refresh reproduces the shaping exactly. New suite `tools/test_premise_step1.gd`.
+- **Docs:** the plan's Nov 5 late-night decisions (suspicious as half-weight hearing, q and f
+  on the same footing, neutral challenges cost nothing, "role" stays) were lost in the 22:50
+  rebuild; restored in "Decisions".
+
+**For Claude-Tally, the step 1 acceptance A/B** (tonight's sweep): M4 bot, main vs this
+branch, same seeds, attention budgets unchanged (step 1 doesn't touch attention). Numbers:
+win rate, wrong nominations that get through (moderately supported), and "identified but
+lost" (the bot knows the Demon but loses; 29.5% on Nov 6). Expect bot cells to cost more:
+listeners holding presented cards run a second union pass per refresh.
+
+---
+
 ## 2026-11-06 afternoon, Claude-Bailiff: premises 0b revised, maintenance fixes. For Quill: the premises pass is yours
 
 **Landed in this PR** (116/116 suites; golden identical to `baseline_50bd642` at `--tol 0`, since the passive golden player never presents a case, so no new baseline):

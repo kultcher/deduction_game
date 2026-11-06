@@ -932,8 +932,14 @@ static func _refresh_ledger_preferences(w, n) -> void:
 		elif kind == "arg":
 			_apply_conclusion_pref(n, meta.get("conclusion", {}), eff)
 	var withdrawn: Dictionary = n.workshop_state.get("withdrawn", {})
+	var agreements: Dictionary = n.workshop_state.get("presentation_agreement", {})
 	for p_key in n.workshop_state.get("presentations", {}):
 		if withdrawn.has(p_key):
+			continue
+		# Premises pass step 1: only a premise the listener accepted steers their protect
+		# and believed-role preferences. Not judged yet (mid-presentation) counts as not
+		# accepted; the presentation re-runs this once its agreement is recorded.
+		if float(agreements.get(p_key, 0.0)) < Tuning.Workshop.PREMISE_PREF_MIN_AGREEMENT:
 			continue
 		var snap: Dictionary = n.workshop_state.presentations[p_key]
 		var root_num: int = int(snap.get("root", -999))

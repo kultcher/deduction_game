@@ -1,6 +1,6 @@
 # Case Workshop: what premises actually do
 
-Nov 5, 2026 · @Michael Smith · revised Nov 5, 22:50 ET (Claude-Bailiff)
+Nov 5, 2026 · @Michael Smith · revised Nov 5, 22:50 ET (Claude-Bailiff) · step 1 and restored decisions Nov 6 (Claude-Quill)
 
 **Status (Nov 6, afternoon):** Step 0 (a bare defence cites no grounds; PR #81) and step 0b
 (one attended set; PR #86) are on main.
@@ -17,11 +17,18 @@ the listener's pinned own readings.
 - **The two invariants until step 1:** the same cards under any premise move beliefs the
   same way, and a later refresh isn't steered by an earlier argument's framing (both in
   `test_workshop_live_cognition`).
-- **After step 1:** a premise moves beliefs only by conditioning (step 1).
+- **After step 1:** a premise moves beliefs only through its target (step 1, below).
 
-Steps 1–4 aren't started; step 1 is measured with the M4 bot (on main, PR #84). Deliberate
-recency in attention is a separate step after step 1 (see "Recency: the topic of the day"
-below).
+**Step 1 (Nov 6, Claude-Quill, branch `claude/premises-step1`):** built; see "Step 1 as built"
+below. Its acceptance A/B with the M4 bot is Tally's (overnight), with attention budgets
+fixed between arms. Steps 2–4 aren't started. Deliberate recency in attention is a separate
+step after step 1 (see "Recency: the topic of the day" below).
+
+**Restored Nov 6:** the Nov 5 late-night decisions (23:10 and 23:35 ET, with Michael) were
+lost when this doc was rebuilt from the 22:50 copy. They're back in "Decisions": suspicious as
+half-weight hearing, q and f on the same footing, neutral challenges cost nothing, and
+"role" stays. The 23:35 attention items (pin all own readings, one attended set, the
+salience reshuffle) shipped in 0b and are superseded by "Step 0b revised" above.
 
 Today a premise changes what a listener says, not what they believe. Every person's belief change comes from one pass over the evidence the player presents; the premise picks the reply, the stance, a small trust reward, and two side preferences. Reading challenges reach the numbers only when the player links cards that flatly contradict the reading, and then only slightly.
 
@@ -138,7 +145,9 @@ For the challenged reading R, the listener uses three numbers:
 
 - **r**: the prior chance R is accurate. That's the source being good and healthy, times (1 − err). It's about 0.6 at default trust.
 - **f**: the leave-one-out share. Drop R, score the remaining evidence, and take the weighted share of those worlds in which R's content holds.
-- **q**: the chance R's content would come out that way by luck (`Eval.chance_content`). For a Seer "yes", it's roughly 0.5. Since PR #74 (Nov 5), `chance_content` is the share of valid worlds in which the content holds, except for a fixed list that keeps its old constants: role readings, movement-checked readings and the Seer (`ROLE_CONTENT_FIXED` in `workshop/case_eval.gd`). So for most cards q and f are measured over the same worlds, before and after leaving R out.
+- **q**: the share of worlds in which R's content holds before any evidence: the same measurement as f, with no evidence instead of "everything but R".
+
+**q and f on the same footing (restored Nov 5, 23:10).** "Neutral" lands at zero only if q and f are measured the same way. Since PR #74, `Eval.chance_content` is a world share except for `ROLE_CONTENT_FIXED` (`workshop/case_eval.gd`): Archivist, Clerk, Executor, Gravedigger, Registrar, Monitor, Martyr, Night Watch, Warden, Veteran and Seer keep fixed constants, because the report table can't say how often their content holds (the role table or movement model decides). These are most of the readings players will challenge. The challenge test measures both q and f with the full world weighting, role table and movement model included (`fits_weights`, the LiveActivity routes): q with no evidence, f with the evidence minus R. CaseEval's own constants stay; only the challenge test gets its own q.
 
 The chance that R is wrong, given everything, is (1 − r)·q ÷ ((1 − r)·q + r·f). This is the same per-card likelihood CaseEval already uses: an evil or impaired source gives q, and otherwise it's (1 − err)·\[holds\] + err·q. `ChannelLikelihood.assess` already returns it per card as `acceptance`. The challenge's strength is how far the chance R is wrong rises above its prior of 1 − r:
 
@@ -160,7 +169,7 @@ This replaces the pass/fail world-fraction test in `reading_challenges.gd`, whic
    - The listener's agreement with the cause scales the effect. A cause the worlds can't support ("lied" when the reader is all but proven good) gets low agreement.
 3. **A guard against cherry-picking.** The listener computes f from the cited grounds, the cards they're attending to, and their own readings that bear on R (pinned; see "Own readings stay in view" below). So their own support for R still counts against the challenge. It doesn't use everything they've heard: that is what the step 0 bug did.
 
-The effect is the rise above the prior, scaled by agreement with the cause. A rise of zero or less triggers the wrong-premise trust cost. `CaseEval.DEFAULT_ERR` stays small, as its comment asks, so "it was just wrong" can't explain away surprising readings. The extra room for error comes only from a named, checked cause.
+The effect is the rise above the prior, scaled by agreement with the cause. A neutral challenge does nothing either way; the trust cost applies only when the chance R is wrong falls 0.1 or more below its prior (restored Nov 5, 23:10). `CaseEval.DEFAULT_ERR` stays small, as its comment asks, so "it was just wrong" can't explain away surprising readings. The extra room for error comes only from a named, checked cause.
 
 ## Minion premises
 
@@ -188,8 +197,8 @@ Suggested order: the lineup variable first (cheap, and it makes impairment chall
 This needs no new structure. CaseEval already treats an evil or impaired source as giving chance content, so all of that source's readings can be wrong together, while a good, healthy source's readings must all hold. The premise is "this source couldn't read healthily", scored with the same leave-one-out comparison as a challenge, applied to the group:
 
 - **f\_joint**: given the rest of the evidence, the weighted share of worlds in which all of the source's cited readings hold.
-- **q\_joint**: the product of the readings' chance-content likelihoods.
-- When f\_joint is well below q\_joint, the chance that the source is evil, Delusional or poisoned rises above its prior. The rise, scaled by agreement, is the effect. As with challenges, no rise means a small trust cost.
+- **q\_joint**: the same share with no evidence, measured jointly with the full world weighting (restored Nov 5, 23:10); a product of per-reading constants would miss how the readings depend on each other.
+- When f\_joint is well below q\_joint, the chance that the source is evil, Delusional or poisoned rises above its prior. The rise, scaled by agreement, is the effect. As with challenges, a neutral result does nothing, and only a clear fall below the prior costs trust.
 
 It can be shown in the circumstantial column for the player, but its math belongs in the solver, where it's cheap and exact. The attached cause decides where the blame goes:
 
@@ -248,16 +257,73 @@ These are UX changes to fold into the same work.
 
 The card should be added, not just skipped as a step. The role table and movement model check the claim against the other claims and against routes. A citation with no claim card would lose that check and quietly change the evaluation.
 
+## Step 1 as built (Nov 6)
+
+Decided with Michael on Nov 6: the shaping is **remembered** (every refresh, not just the
+presentation), and the premise's type does nothing to the target's belief beyond the
+evidence (**evidence only**). Step 1 does no world conditioning: with "evidence only", the
+target's belief already is the evidence's full effect, and conditioning stays for
+assumptions (proposal 6, step 2).
+
+- **Shaping** (`SharedLedger.premise_shaping`, applied in `SharedLedger.evaluate` from
+  `WorkshopOwnership._refresh`). A card is shaped when only presentations brought it (not
+  the listener's own readings, hearsay or the public record) and at least one of them argued
+  an alignment premise about someone (`Tuning.Workshop.PREMISE_SHAPING_TYPES`: evil, demon,
+  minion, suspicious, good, notdemon, role, notrole, lied, truthful). Each refresh evaluates
+  the union twice, with and without the presentations that own a shaped card. The targets
+  take the full difference; everyone else takes `spill` of it, from 0.4 at Insight 0 to 0.8
+  at Insight 1 (`PREMISE_SPILLOVER_MIN/MAX`). Requested change, posterior and agreement are
+  all blended, so execution priority follows the shaped beliefs.
+  - Marked, secret, misled and conflict premises name no alignment target: re-presenting
+    the same cards under one neither shapes nor unshapes them.
+  - Several shaping presentations: every target among them takes the full effect.
+  - Cost: one extra union evaluation per refresh, only for listeners holding shaped cards
+    (cached with the union's own inputs).
+- **Trust cost** (`WorkshopPresentation`): agreement is `CaseEval.shift`, from −1 to 1
+  (how far the evidence moved toward the premise), not a probability. "Below 0.25" would
+  have charged neutral cases, so the threshold is the mirror of the decision's number:
+  **−0.25**, the evidence moving a quarter of the way toward the premise being false
+  (`Tuning.Trust.PRESENTATION_WRONG_AGREEMENT`; cost `PRESENTATION_WRONG_COST` 0.02). Judged
+  on the case plus own readings, like the reward; not for conflict premises; not on repeats.
+- **Rejected-case preference:** a presentation's agreement is stored
+  (`workshop_state.presentation_agreement`), and its protect / believed-role preference
+  applies only at agreement 0.5 or more (`PREMISE_PREF_MIN_AGREEMENT`).
+- **Credibility for filed cases:** already recorded on main (`GamePresentation._evaluate_deduction`
+  records every deduction presentation); the "skip" in the analysis above is out of date.
+- **Replies:** the stance already follows the belief move of the target (now shaped), and
+  the "chief suspicion" lines use the listener's own beliefs (PR #73). New: the movement
+  notes ("seen elsewhere", "the traces") only follow killer-side premises
+  (`DialoguePresentations.MOVEMENT_NOTE_TYPES`: evil, demon, minion, suspicious, good,
+  notdemon). Playtest issue #5.
+- **Preview hint:** the test juror already says "If presented, this mostly raises suspicion
+  of X" for accusations. New: a "good" premise whose cards raise its subject says "These
+  cards make X look more suspicious, not less."
+- **Invariants now** (`test_workshop_live_cognition`): another premise type about the same
+  target moves beliefs no differently; aiming the same cards at someone else gives that
+  person their full effect and leaves the rest as they were; a later refresh reproduces the
+  shaping exactly. The 0b rule that a later refresh isn't steered by attention framing still
+  holds: shaping is about what the presented cards do, not what the listener attends to.
+- **Tests:** `tools/test_premise_step1.gd` (spillover ratio 0.4/0.8 at fixed attention,
+  target unchanged by Insight, remembered shaping, wrong-premise cost and no repeat cost,
+  the preference gate, movement notes, the preview hint).
+
 ## Decisions (settled Nov 5)
 
 These answers replace the open questions. Where they differ from the proposed mechanics above, they win.
 
 - **Spillover:** Insight scales it from 40% (lowest Insight) to 80% (highest). The ceiling is there so the player can't present all the evidence under a wrong premise and let a high-Insight listener solve the case.
-- **Trust cost:** a clearly wrong premise costs the same as the current reward, 0.02 (`PRESENTATION_REWARD`). The "clearly wrong" threshold starts at agreement below 0.25.
+- **Trust cost:** a clearly wrong premise costs the same as the current reward, 0.02 (`PRESENTATION_REWARD`). The "clearly wrong" threshold starts at agreement below 0.25; as built, that's agreement −0.25 or less, since agreement runs from −1 to 1 (see "Step 1 as built"). For challenges and same-source premises (restored Nov 5, 23:10), the equivalent is the chance the reading is wrong falling 0.1 or more below its prior; a neutral result costs nothing.
 - **Type merge** (code names; the menu labels are in `workshop/canvas_model.gd`: "notrole" is "is bluffing their claimed gift", "truthful" is "told the truth about a reading", "role" is "holds their claimed gift", "secret\_mod" is "has a secret modifier"):
   - Drop "marked". It's "secret\_mod" with Marked as the secret, which also covers the other secrets.
   - Drop "notrole" and "truthful". They're the same questions as "evil" and "good".
-  - Keep "suspicious" as a pressure play, with its own meaning: "I don't say X is evil, but the evidence needs explaining." Agreement is how far the evidence raises the listener's suspicion of X above their prior, not the chance X is evil. The effect is pressure on X to come forward with a claim or secret, plus the listener's wish to hear it. Their belief that X is evil doesn't change.
+  - Keep "role" ("holds their claimed gift"), read as "X really is the role they claim": "X is good" plus the role table's fit (restored Nov 5, 23:10).
+  - Keep "suspicious" as a pressure play: "something's up here, but I'm not sure what yet." **Restored, settled Nov 5, 23:15 and 23:35 with Michael** (it replaces the earlier "belief doesn't change" wording):
+    - Evaluate it exactly like an "evil" premise on the same target: same agreement, spillover, trust reward and trust cost.
+    - The player is hedging, so every change the case causes is halved, for everyone and in both directions.
+    - Implement it as hearing weight, not a stored halved change. Beliefs are recomputed from the cards a listener holds, each held once at the highest `hearing_weight` among the presentations that own it (`workshop/shared_ledger.gd`: "no additive case awards"). A suspicious presentation owns its new cards at half weight, so refiling is safe by construction: the same cards refiled as "evil" rise to full weight once; one new card added and refiled as "evil" puts all at full weight; refiled as "suspicious" again changes nothing; cards already held at full weight stay there.
+    - Check in the A/B that half weight comes out near half the change. If it's far off, temper the case cards' likelihood by a power of 0.5 in CaseEval instead.
+    - The other half becomes pressure on the target, from one "case strength" for everyone: the average juror's full-weight rise on the target (the one listener, in private). Start so a full-weight rise of about 0.2 gives the conflict premise's pressure (+0.1 private, +0.2 at a meeting), then tune. No rise, no pressure.
+    - Pressure is a one-time event when the filing is first heard. Refiling doesn't push the target again.
 - **Poisoner candidates:** for an accepted "gift failed" cause, a candidate is someone with an unexplained night sighting in the window of the failed reading. Nobody without one gains suspicion, and with no candidates the cause only discounts the reading.
 - **Unclaimed roles:** no. "X is the role they claim" stays, and claims are still needed for specific roles.
 - **Order (Claude's call):**

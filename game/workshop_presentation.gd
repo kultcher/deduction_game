@@ -223,11 +223,26 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		else:
 			self_support_variant = "weak"
 			text = "I appreciate the support, but I'm not sure that explains it."
-	elif not fresh.is_empty() and not repeated and _reward_agreement(plan, snapshot, state.outside, assessment) >= 0.6:
+	elif not repeated:
+		# Premises pass step 1: a well-supported premise earns trust, a clearly wrong one
+		# costs the same. Both are judged on the case plus the listener's own readings.
 		var reward_span = Profiler.open("trust_reward")
-		Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PRESENTATION_REWARD, "the presented reports support the argument")
-		Mind.refresh_beliefs(g.w, n, " (presentation trust reward)")
+		# The narrower second pass only matters when it could cross a threshold.
+		var judged: float = float(assessment.agreement)
+		if not fresh.is_empty() or judged < 0.0:
+			judged = _reward_agreement(plan, snapshot, state.outside, assessment)
+		if not fresh.is_empty() and judged >= 0.6:
+			Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PRESENTATION_REWARD, "the presented reports support the argument")
+			Mind.refresh_beliefs(g.w, n, " (presentation trust reward)")
+		elif judged <= Tuning.Trust.PRESENTATION_WRONG_AGREEMENT and root.conclusion.type != "conflict":
+			Mind.set_trust(g.w, n, n.trust - Tuning.Trust.PRESENTATION_WRONG_COST, "the presented reports argue against the claim")
+			Mind.refresh_beliefs(g.w, n, " (presentation wrong-premise cost)")
 		Profiler.close(reward_span)
+	# The premise's agreement gates its protect / believed-role preference (Mind).
+	if not state.has("presentation_agreement"):
+		state.presentation_agreement = {}
+	state.presentation_agreement[key] = float(assessment.agreement)
+	Mind._refresh_ledger_preferences(g.w, n)
 	var presented_hubs: Array = root.get("workshop_case", {}).get("circumstantial", [])
 	var hub_canonical_tail: String = ""
 	var hub_voiced_tail: String = ""
