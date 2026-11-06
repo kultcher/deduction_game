@@ -15,7 +15,7 @@ on:
         default: '[{"npcs":7,"mode":"passive"},{"npcs":10,"mode":"passive"},{"npcs":7,"mode":"bot","insight":1.0},{"npcs":10,"mode":"bot","insight":1.0}]'
       costs:
         description: 'Seconds per game per core on a runner, by "<npcs>_<mode>" (sizes the shards)'
-        default: '{"7_passive":5,"10_passive":50,"7_bot":19,"10_bot":220}'
+        default: '{"7_passive":5,"10_passive":50,"7_bot":85,"10_bot":350,"7_bot_pre_m4":50,"10_bot_pre_m4":210}'
       target_hours:
         description: "Planned hours per shard job (the hard cap is 6)"
         default: "3"
