@@ -1,0 +1,1593 @@
+{
+ "cells": {
+  "7 NPCs, bot insight 1.0": {
+   "n": 1000,
+   "good_wins": 577,
+   "win_rate": 0.577,
+   "ci": [
+    0.546141922650669,
+    0.6072687349670269
+   ]
+  },
+  "7 NPCs, passive": {
+   "n": 1000,
+   "good_wins": 376,
+   "win_rate": 0.376,
+   "ci": [
+    0.34650609472782945,
+    0.4064429761215955
+   ]
+  },
+  "10 NPCs, bot insight 1.0": {
+   "n": 1000,
+   "good_wins": 563,
+   "win_rate": 0.563,
+   "ci": [
+    0.5320735047444565,
+    0.5934443060336583
+   ]
+  },
+  "10 NPCs, passive": {
+   "n": 1000,
+   "good_wins": 426,
+   "win_rate": 0.426,
+   "ci": [
+    0.39569154544653623,
+    0.4568748355442496
+   ]
+  }
+ },
+ "games": 4000,
+ "failed": 0,
+ "shas": [
+  "501b83e3691e514cceae7f5ee346f314e9655761"
+ ],
+ "effects": {
+  "7 NPCs, bot insight 1.0": {
+   "town": [
+    {
+     "feature": "martyr",
+     "with_n": 88,
+     "with_win": 0.4431818181818182,
+     "without_n": 912,
+     "without_win": 0.5899122807017544,
+     "diff": -0.1467304625199362,
+     "lo": -0.25532016424637083,
+     "hi": -0.038140760793501566,
+     "significant": true
+    },
+    {
+     "feature": "psychologist",
+     "with_n": 67,
+     "with_win": 0.4925373134328358,
+     "without_n": 933,
+     "without_win": 0.5830653804930332,
+     "diff": -0.09052806706019745,
+     "lo": -0.2143508953995318,
+     "hi": 0.033294761279136914,
+     "significant": false
+    },
+    {
+     "feature": "veteran",
+     "with_n": 73,
+     "with_win": 0.6575342465753424,
+     "without_n": 927,
+     "without_win": 0.5706580366774542,
+     "diff": 0.08687620989788825,
+     "lo": -0.02655005096871768,
+     "hi": 0.20030247076449417,
+     "significant": false
+    },
+    {
+     "feature": "augur",
+     "with_n": 193,
+     "with_win": 0.5077720207253886,
+     "without_n": 807,
+     "without_win": 0.5935563816604709,
+     "diff": -0.08578436093508224,
+     "lo": -0.16403641437953376,
+     "hi": -0.0075323074906307325,
+     "significant": true
+    },
+    {
+     "feature": "gravedigger",
+     "with_n": 283,
+     "with_win": 0.519434628975265,
+     "without_n": 717,
+     "without_win": 0.599721059972106,
+     "diff": -0.08028643099684096,
+     "lo": -0.1486582241724213,
+     "hi": -0.011914637821260607,
+     "significant": true
+    },
+    {
+     "feature": "nightwatch",
+     "with_n": 238,
+     "with_win": 0.634453781512605,
+     "without_n": 762,
+     "without_win": 0.5590551181102362,
+     "diff": 0.07539866340236878,
+     "lo": 0.004785051838984686,
+     "hi": 0.14601227496575286,
+     "significant": true
+    },
+    {
+     "feature": "chronicler",
+     "with_n": 76,
+     "with_win": 0.6447368421052632,
+     "without_n": 924,
+     "without_win": 0.5714285714285714,
+     "diff": 0.07330827067669177,
+     "lo": -0.038924164760702776,
+     "hi": 0.1855407061140863,
+     "significant": false
+    },
+    {
+     "feature": "magistrate",
+     "with_n": 73,
+     "with_win": 0.6438356164383562,
+     "without_n": 927,
+     "without_win": 0.5717367853290184,
+     "diff": 0.07209883110933779,
+     "lo": -0.042278322700879514,
+     "hi": 0.18647598491955508,
+     "significant": false
+    },
+    {
+     "feature": "monitor",
+     "with_n": 73,
+     "with_win": 0.5205479452054794,
+     "without_n": 927,
+     "without_win": 0.5814455231930961,
+     "diff": -0.060897577987616636,
+     "lo": -0.17981976266289124,
+     "hi": 0.05802460668765798,
+     "significant": false
+    },
+    {
+     "feature": "registrar",
+     "with_n": 270,
+     "with_win": 0.6185185185185185,
+     "without_n": 730,
+     "without_win": 0.5616438356164384,
+     "diff": 0.05687468290208009,
+     "lo": -0.011336743113354725,
+     "hi": 0.1250861089175149,
+     "significant": false
+    },
+    {
+     "feature": "dowser",
+     "with_n": 286,
+     "with_win": 0.6153846153846154,
+     "without_n": 714,
+     "without_win": 0.561624649859944,
+     "diff": 0.05375996552467144,
+     "lo": -0.013350963516688075,
+     "hi": 0.12087089456603095,
+     "significant": false
+    },
+    {
+     "feature": "archivist",
+     "with_n": 548,
+     "with_win": 0.5565693430656934,
+     "without_n": 452,
+     "without_win": 0.6017699115044248,
+     "diff": -0.04520056843873144,
+     "lo": -0.10657543185162577,
+     "hi": 0.016174294974162888,
+     "significant": false
+    },
+    {
+     "feature": "executor",
+     "with_n": 87,
+     "with_win": 0.6091954022988506,
+     "without_n": 913,
+     "without_win": 0.5739320920043811,
+     "diff": 0.035263310294469496,
+     "lo": -0.07216803708029419,
+     "hi": 0.14269465766923317,
+     "significant": false
+    },
+    {
+     "feature": "seer",
+     "with_n": 170,
+     "with_win": 0.6058823529411764,
+     "without_n": 830,
+     "without_win": 0.5710843373493976,
+     "diff": 0.034798015591778864,
+     "lo": -0.04600909386132307,
+     "hi": 0.1156051250448808,
+     "significant": false
+    },
+    {
+     "feature": "medium",
+     "with_n": 188,
+     "with_win": 0.5531914893617021,
+     "without_n": 812,
+     "without_win": 0.5825123152709359,
+     "diff": -0.029320825909233794,
+     "lo": -0.10806880555867181,
+     "hi": 0.04942715374020422,
+     "significant": false
+    },
+    {
+     "feature": "sexton",
+     "with_n": 74,
+     "with_win": 0.5540540540540541,
+     "without_n": 926,
+     "without_win": 0.5788336933045356,
+     "diff": -0.024779639250481544,
+     "lo": -0.14241493112340028,
+     "hi": 0.0928556526224372,
+     "significant": false
+    },
+    {
+     "feature": "surveyor",
+     "with_n": 508,
+     "with_win": 0.5885826771653543,
+     "without_n": 492,
+     "without_win": 0.5650406504065041,
+     "diff": 0.0235420267588502,
+     "lo": -0.037696958230933914,
+     "hi": 0.08478101174863431,
+     "significant": false
+    },
+    {
+     "feature": "clerk",
+     "with_n": 545,
+     "with_win": 0.5834862385321101,
+     "without_n": 455,
+     "without_win": 0.5692307692307692,
+     "diff": 0.014255469301340917,
+     "lo": -0.04725367146861967,
+     "hi": 0.0757646100713015,
+     "significant": false
+    },
+    {
+     "feature": "confessor",
+     "with_n": 224,
+     "with_win": 0.5848214285714286,
+     "without_n": 776,
+     "without_win": 0.5747422680412371,
+     "diff": 0.010079160530191533,
+     "lo": -0.0632289877323665,
+     "hi": 0.08338730879274957,
+     "significant": false
+    },
+    {
+     "feature": "lamplighter",
+     "with_n": 203,
+     "with_win": 0.5714285714285714,
+     "without_n": 797,
+     "without_win": 0.5784190715181933,
+     "diff": -0.006990500089621876,
+     "lo": -0.08321293957758759,
+     "hi": 0.06923193939834384,
+     "significant": false
+    },
+    {
+     "feature": "warden",
+     "with_n": 229,
+     "with_win": 0.5720524017467249,
+     "without_n": 771,
+     "without_win": 0.5784695201037614,
+     "diff": -0.006417118357036511,
+     "lo": -0.07936758157588604,
+     "hi": 0.06653334486181302,
+     "significant": false
+    },
+    {
+     "feature": "rumormonger",
+     "with_n": 504,
+     "with_win": 0.5773809523809523,
+     "without_n": 496,
+     "without_win": 0.5766129032258065,
+     "diff": 0.0007680491551458335,
+     "lo": -0.060475276487182816,
+     "hi": 0.06201137479747448,
+     "significant": false
+    }
+   ],
+   "minions": [
+    {
+     "feature": "breathstealer",
+     "with_n": 219,
+     "with_win": 0.6757990867579908,
+     "without_n": 781,
+     "without_win": 0.5492957746478874,
+     "diff": 0.12650331211010346,
+     "lo": 0.055362513262928265,
+     "hi": 0.19764411095727866,
+     "significant": true
+    },
+    {
+     "feature": "poisoner",
+     "with_n": 325,
+     "with_win": 0.5446153846153846,
+     "without_n": 675,
+     "without_win": 0.5925925925925926,
+     "diff": -0.04797720797720795,
+     "lo": -0.11359404770415595,
+     "hi": 0.01763963174974005,
+     "significant": false
+    },
+    {
+     "feature": "revenant",
+     "with_n": 221,
+     "with_win": 0.5429864253393665,
+     "without_n": 779,
+     "without_win": 0.5866495507060334,
+     "diff": -0.043663125366666944,
+     "lo": -0.11788857545137721,
+     "hi": 0.03056232471804332,
+     "significant": false
+    },
+    {
+     "feature": "scion",
+     "with_n": 235,
+     "with_win": 0.5617021276595745,
+     "without_n": 765,
+     "without_win": 0.5816993464052288,
+     "diff": -0.0199972187456543,
+     "lo": -0.0924297955249928,
+     "hi": 0.052435358033684196,
+     "significant": false
+    }
+   ],
+   "secrets": [
+    {
+     "feature": "delusional",
+     "with_n": 212,
+     "with_win": 0.4858490566037736,
+     "without_n": 788,
+     "without_win": 0.6015228426395939,
+     "diff": -0.11567378603582029,
+     "lo": -0.19113963495832711,
+     "hi": -0.04020793711331347,
+     "significant": true
+    },
+    {
+     "feature": "lovers",
+     "with_n": 208,
+     "with_win": 0.6682692307692307,
+     "without_n": 792,
+     "without_win": 0.553030303030303,
+     "diff": 0.11523892773892774,
+     "lo": 0.04248354554368078,
+     "hi": 0.1879943099341747,
+     "significant": true
+    },
+    {
+     "feature": "sleepwalker",
+     "with_n": 186,
+     "with_win": 0.5967741935483871,
+     "without_n": 814,
+     "without_win": 0.5724815724815725,
+     "diff": 0.024292621066814624,
+     "lo": -0.05397021879323555,
+     "hi": 0.1025554609268648,
+     "significant": false
+    },
+    {
+     "feature": "marked",
+     "with_n": 195,
+     "with_win": 0.5641025641025641,
+     "without_n": 805,
+     "without_win": 0.5801242236024845,
+     "diff": -0.016021659499920404,
+     "lo": -0.09352380595999217,
+     "hi": 0.06148048696015136,
+     "significant": false
+    },
+    {
+     "feature": "muddler",
+     "with_n": 199,
+     "with_win": 0.5728643216080402,
+     "without_n": 801,
+     "without_win": 0.5780274656679151,
+     "diff": -0.005163144059874836,
+     "lo": -0.08193189227369961,
+     "hi": 0.07160560415394994,
+     "significant": false
+    }
+   ],
+   "walkers": [
+    {
+     "feature": "3 night-walkers",
+     "with_n": 321,
+     "with_win": 0.5700934579439252,
+     "without_n": 679,
+     "without_win": 0.5802650957290133,
+     "diff": -0.010171637785088117,
+     "lo": -0.07583049483053807,
+     "hi": 0.055487219260361834,
+     "significant": false
+    },
+    {
+     "feature": "2 night-walkers",
+     "with_n": 636,
+     "with_win": 0.5801886792452831,
+     "without_n": 364,
+     "without_win": 0.5714285714285714,
+     "diff": 0.00876010781671166,
+     "lo": -0.05492535445989334,
+     "hi": 0.07244557009331666,
+     "significant": false
+    },
+    {
+     "feature": "4 night-walkers",
+     "with_n": 43,
+     "with_win": 0.5813953488372093,
+     "without_n": 957,
+     "without_win": 0.5768025078369906,
+     "diff": 0.004592841000218728,
+     "lo": -0.14614821387728721,
+     "hi": 0.15533389587772467,
+     "significant": false
+    }
+   ]
+  },
+  "7 NPCs, passive": {
+   "town": [
+    {
+     "feature": "nightwatch",
+     "with_n": 238,
+     "with_win": 0.5084033613445378,
+     "without_n": 762,
+     "without_win": 0.3346456692913386,
+     "diff": 0.1737576920531992,
+     "lo": 0.10194768164229193,
+     "hi": 0.24556770246410645,
+     "significant": true
+    },
+    {
+     "feature": "monitor",
+     "with_n": 73,
+     "with_win": 0.2191780821917808,
+     "without_n": 927,
+     "without_win": 0.3883495145631068,
+     "diff": -0.16917143237132598,
+     "lo": -0.2691239421835755,
+     "hi": -0.06921892255907647,
+     "significant": true
+    },
+    {
+     "feature": "martyr",
+     "with_n": 88,
+     "with_win": 0.2727272727272727,
+     "without_n": 912,
+     "without_win": 0.38596491228070173,
+     "diff": -0.11323763955342903,
+     "lo": -0.2115079122173305,
+     "hi": -0.014967366889527545,
+     "significant": true
+    },
+    {
+     "feature": "veteran",
+     "with_n": 73,
+     "with_win": 0.273972602739726,
+     "without_n": 927,
+     "without_win": 0.38403451995685006,
+     "diff": -0.11006191721712405,
+     "lo": -0.21705703745236515,
+     "hi": -0.0030667969818829466,
+     "significant": true
+    },
+    {
+     "feature": "dowser",
+     "with_n": 286,
+     "with_win": 0.45104895104895104,
+     "without_n": 714,
+     "without_win": 0.34593837535014005,
+     "diff": 0.10511057569881099,
+     "lo": 0.03770693897080009,
+     "hi": 0.1725142124268219,
+     "significant": true
+    },
+    {
+     "feature": "warden",
+     "with_n": 229,
+     "with_win": 0.45414847161572053,
+     "without_n": 771,
+     "without_win": 0.3527885862516213,
+     "diff": 0.10135988536409923,
+     "lo": 0.0285842450741393,
+     "hi": 0.17413552565405915,
+     "significant": true
+    },
+    {
+     "feature": "sexton",
+     "with_n": 74,
+     "with_win": 0.28378378378378377,
+     "without_n": 926,
+     "without_win": 0.3833693304535637,
+     "diff": -0.09958554666977992,
+     "lo": -0.20697347395990776,
+     "hi": 0.00780238062034791,
+     "significant": false
+    },
+    {
+     "feature": "executor",
+     "with_n": 87,
+     "with_win": 0.28735632183908044,
+     "without_n": 913,
+     "without_win": 0.384446878422782,
+     "diff": -0.09709055658370158,
+     "lo": -0.19728129016906293,
+     "hi": 0.003100177001659765,
+     "significant": false
+    },
+    {
+     "feature": "magistrate",
+     "with_n": 73,
+     "with_win": 0.4383561643835616,
+     "without_n": 927,
+     "without_win": 0.3710895361380798,
+     "diff": 0.0672666282454818,
+     "lo": -0.05073064395887822,
+     "hi": 0.1852639004498418,
+     "significant": false
+    },
+    {
+     "feature": "medium",
+     "with_n": 188,
+     "with_win": 0.324468085106383,
+     "without_n": 812,
+     "without_win": 0.3879310344827586,
+     "diff": -0.06346294937637564,
+     "lo": -0.13831111240588845,
+     "hi": 0.011385213653137147,
+     "significant": false
+    },
+    {
+     "feature": "augur",
+     "with_n": 193,
+     "with_win": 0.32642487046632124,
+     "without_n": 807,
+     "without_win": 0.3878562577447336,
+     "diff": -0.06143138727841235,
+     "lo": -0.1356384705283308,
+     "hi": 0.012775695971506101,
+     "significant": false
+    },
+    {
+     "feature": "gravedigger",
+     "with_n": 283,
+     "with_win": 0.34275618374558303,
+     "without_n": 717,
+     "without_win": 0.3891213389121339,
+     "diff": -0.046365155166550875,
+     "lo": -0.11218004753605225,
+     "hi": 0.0194497372029505,
+     "significant": false
+    },
+    {
+     "feature": "confessor",
+     "with_n": 224,
+     "with_win": 0.4107142857142857,
+     "without_n": 776,
+     "without_win": 0.36597938144329895,
+     "diff": 0.04473490427098675,
+     "lo": -0.02806270079112387,
+     "hi": 0.11753250933309738,
+     "significant": false
+    },
+    {
+     "feature": "chronicler",
+     "with_n": 76,
+     "with_win": 0.34210526315789475,
+     "without_n": 924,
+     "without_win": 0.3787878787878788,
+     "diff": -0.03668261562998404,
+     "lo": -0.1478355178343284,
+     "hi": 0.07447028657436032,
+     "significant": false
+    },
+    {
+     "feature": "archivist",
+     "with_n": 548,
+     "with_win": 0.36678832116788324,
+     "without_n": 452,
+     "without_win": 0.38716814159292035,
+     "diff": -0.02037982042503711,
+     "lo": -0.08075143819926606,
+     "hi": 0.039991797349191845,
+     "significant": false
+    },
+    {
+     "feature": "lamplighter",
+     "with_n": 203,
+     "with_win": 0.3645320197044335,
+     "without_n": 797,
+     "without_win": 0.37892095357590966,
+     "diff": -0.014388933871476162,
+     "lo": -0.08867286642075456,
+     "hi": 0.059894998677802236,
+     "significant": false
+    },
+    {
+     "feature": "seer",
+     "with_n": 170,
+     "with_win": 0.36470588235294116,
+     "without_n": 830,
+     "without_win": 0.3783132530120482,
+     "diff": -0.013607370659107054,
+     "lo": -0.09313312317701099,
+     "hi": 0.06591838185879688,
+     "significant": false
+    },
+    {
+     "feature": "psychologist",
+     "with_n": 67,
+     "with_win": 0.3880597014925373,
+     "without_n": 933,
+     "without_win": 0.37513397642015006,
+     "diff": 0.012925725072387262,
+     "lo": -0.10782619278054076,
+     "hi": 0.13367764292531528,
+     "significant": false
+    },
+    {
+     "feature": "registrar",
+     "with_n": 270,
+     "with_win": 0.3814814814814815,
+     "without_n": 730,
+     "without_win": 0.37397260273972605,
+     "diff": 0.0075088787417554315,
+     "lo": -0.06023484841085637,
+     "hi": 0.07525260589436723,
+     "significant": false
+    },
+    {
+     "feature": "rumormonger",
+     "with_n": 504,
+     "with_win": 0.373015873015873,
+     "without_n": 496,
+     "without_win": 0.3790322580645161,
+     "diff": -0.0060163850486431025,
+     "lo": -0.06606304467741421,
+     "hi": 0.054030274580128004,
+     "significant": false
+    },
+    {
+     "feature": "clerk",
+     "with_n": 545,
+     "with_win": 0.3743119266055046,
+     "without_n": 455,
+     "without_win": 0.378021978021978,
+     "diff": -0.0037100514164734033,
+     "lo": -0.06400927285166486,
+     "hi": 0.05658917001871804,
+     "significant": false
+    },
+    {
+     "feature": "surveyor",
+     "with_n": 508,
+     "with_win": 0.37598425196850394,
+     "without_n": 492,
+     "without_win": 0.37601626016260165,
+     "diff": -3.200819409771016e-05,
+     "lo": -0.06008408044542394,
+     "hi": 0.06002006405722852,
+     "significant": false
+    }
+   ],
+   "minions": [
+    {
+     "feature": "breathstealer",
+     "with_n": 219,
+     "with_win": 0.5159817351598174,
+     "without_n": 781,
+     "without_win": 0.33674775928297057,
+     "diff": 0.1792339758768468,
+     "lo": 0.1052101940863962,
+     "hi": 0.2532577576672974,
+     "significant": true
+    },
+    {
+     "feature": "revenant",
+     "with_n": 221,
+     "with_win": 0.3031674208144796,
+     "without_n": 779,
+     "without_win": 0.39666238767650835,
+     "diff": -0.09349496686202874,
+     "lo": -0.16315442106712352,
+     "hi": -0.02383551265693397,
+     "significant": true
+    },
+    {
+     "feature": "poisoner",
+     "with_n": 325,
+     "with_win": 0.3353846153846154,
+     "without_n": 675,
+     "without_win": 0.39555555555555555,
+     "diff": -0.06017094017094016,
+     "lo": -0.12338089565721622,
+     "hi": 0.0030390153153359023,
+     "significant": false
+    },
+    {
+     "feature": "scion",
+     "with_n": 235,
+     "with_win": 0.3702127659574468,
+     "without_n": 765,
+     "without_win": 0.37777777777777777,
+     "diff": -0.00756501182033098,
+     "lo": -0.07821805958340704,
+     "hi": 0.06308803594274508,
+     "significant": false
+    }
+   ],
+   "secrets": [
+    {
+     "feature": "delusional",
+     "with_n": 212,
+     "with_win": 0.22641509433962265,
+     "without_n": 788,
+     "without_win": 0.41624365482233505,
+     "diff": -0.1898285604827124,
+     "lo": -0.25584716266588364,
+     "hi": -0.12380995829954118,
+     "significant": true
+    },
+    {
+     "feature": "lovers",
+     "with_n": 208,
+     "with_win": 0.47115384615384615,
+     "without_n": 792,
+     "without_win": 0.351010101010101,
+     "diff": 0.12014374514374515,
+     "lo": 0.044599756405584584,
+     "hi": 0.19568773388190572,
+     "significant": true
+    },
+    {
+     "feature": "sleepwalker",
+     "with_n": 186,
+     "with_win": 0.41397849462365593,
+     "without_n": 814,
+     "without_win": 0.36732186732186733,
+     "diff": 0.0466566273017886,
+     "lo": -0.0314931245960894,
+     "hi": 0.1248063791996666,
+     "significant": false
+    },
+    {
+     "feature": "muddler",
+     "with_n": 199,
+     "with_win": 0.40703517587939697,
+     "without_n": 801,
+     "without_win": 0.3682896379525593,
+     "diff": 0.03874553792683766,
+     "lo": -0.03724850194531258,
+     "hi": 0.1147395777989879,
+     "significant": false
+    },
+    {
+     "feature": "marked",
+     "with_n": 195,
+     "with_win": 0.36923076923076925,
+     "without_n": 805,
+     "without_win": 0.37763975155279506,
+     "diff": -0.008408982322025804,
+     "lo": -0.08397241345210128,
+     "hi": 0.06715444880804967,
+     "significant": false
+    }
+   ],
+   "walkers": [
+    {
+     "feature": "4 night-walkers",
+     "with_n": 43,
+     "with_win": 0.4883720930232558,
+     "without_n": 957,
+     "without_win": 0.3709508881922675,
+     "diff": 0.11742120483098828,
+     "lo": -0.035089469191519285,
+     "hi": 0.26993187885349584,
+     "significant": false
+    },
+    {
+     "feature": "2 night-walkers",
+     "with_n": 636,
+     "with_win": 0.3333333333333333,
+     "without_n": 364,
+     "without_win": 0.45054945054945056,
+     "diff": -0.11721611721611724,
+     "lo": -0.18010436528962115,
+     "hi": -0.05432786914261335,
+     "significant": true
+    },
+    {
+     "feature": "3 night-walkers",
+     "with_n": 321,
+     "with_win": 0.4454828660436137,
+     "without_n": 679,
+     "without_win": 0.3431516936671576,
+     "diff": 0.10233117237645611,
+     "lo": 0.0372806066435106,
+     "hi": 0.16738173810940163,
+     "significant": true
+    }
+   ]
+  },
+  "10 NPCs, bot insight 1.0": {
+   "town": [
+    {
+     "feature": "chronicler",
+     "with_n": 137,
+     "with_win": 0.45255474452554745,
+     "without_n": 863,
+     "without_win": 0.5805330243337196,
+     "diff": -0.1279782798081721,
+     "lo": -0.21759462562837942,
+     "hi": -0.03836193398796481,
+     "significant": true
+    },
+    {
+     "feature": "dowser",
+     "with_n": 372,
+     "with_win": 0.6129032258064516,
+     "without_n": 628,
+     "without_win": 0.5334394904458599,
+     "diff": 0.0794637353605917,
+     "lo": 0.01643563563200051,
+     "hi": 0.1424918350891829,
+     "significant": true
+    },
+    {
+     "feature": "sexton",
+     "with_n": 148,
+     "with_win": 0.5,
+     "without_n": 852,
+     "without_win": 0.573943661971831,
+     "diff": -0.073943661971831,
+     "lo": -0.16107440264572598,
+     "hi": 0.013187078702063967,
+     "significant": false
+    },
+    {
+     "feature": "gravedigger",
+     "with_n": 358,
+     "with_win": 0.5251396648044693,
+     "without_n": 642,
+     "without_win": 0.5841121495327103,
+     "diff": -0.058972484728241015,
+     "lo": -0.1232337900182111,
+     "hi": 0.005288820561729066,
+     "significant": false
+    },
+    {
+     "feature": "nightwatch",
+     "with_n": 396,
+     "with_win": 0.5984848484848485,
+     "without_n": 604,
+     "without_win": 0.5397350993377483,
+     "diff": 0.05874974914710018,
+     "lo": -0.0037897103636654744,
+     "hi": 0.12128920865786584,
+     "significant": false
+    },
+    {
+     "feature": "martyr",
+     "with_n": 156,
+     "with_win": 0.5192307692307693,
+     "without_n": 844,
+     "without_win": 0.5710900473933649,
+     "diff": -0.05185927816259561,
+     "lo": -0.13707790689483218,
+     "hi": 0.03335935056964097,
+     "significant": false
+    },
+    {
+     "feature": "augur",
+     "with_n": 231,
+     "with_win": 0.5238095238095238,
+     "without_n": 769,
+     "without_win": 0.5747724317295189,
+     "diff": -0.050962907919995026,
+     "lo": -0.12423713908676919,
+     "hi": 0.022311323246779133,
+     "significant": false
+    },
+    {
+     "feature": "executor",
+     "with_n": 147,
+     "with_win": 0.5238095238095238,
+     "without_n": 853,
+     "without_win": 0.5697538100820633,
+     "diff": -0.045944286272539436,
+     "lo": -0.13325129756462628,
+     "hi": 0.041362725019547394,
+     "significant": false
+    },
+    {
+     "feature": "medium",
+     "with_n": 384,
+     "with_win": 0.5911458333333334,
+     "without_n": 616,
+     "without_win": 0.5454545454545454,
+     "diff": 0.045691287878787956,
+     "lo": -0.01727010729902141,
+     "hi": 0.10865268305659732,
+     "significant": false
+    },
+    {
+     "feature": "monitor",
+     "with_n": 144,
+     "with_win": 0.5416666666666666,
+     "without_n": 856,
+     "without_win": 0.5665887850467289,
+     "diff": -0.024922118380062308,
+     "lo": -0.11281519005444175,
+     "hi": 0.06297095329431714,
+     "significant": false
+    },
+    {
+     "feature": "psychologist",
+     "with_n": 148,
+     "with_win": 0.581081081081081,
+     "without_n": 852,
+     "without_win": 0.5598591549295775,
+     "diff": 0.021221926151503534,
+     "lo": -0.06497331643117124,
+     "hi": 0.10741716873417831,
+     "significant": false
+    },
+    {
+     "feature": "lamplighter",
+     "with_n": 382,
+     "with_win": 0.5759162303664922,
+     "without_n": 618,
+     "without_win": 0.5550161812297735,
+     "diff": 0.020900049136718724,
+     "lo": -0.04227754022102487,
+     "hi": 0.08407763849446231,
+     "significant": false
+    },
+    {
+     "feature": "warden",
+     "with_n": 377,
+     "with_win": 0.5755968169761273,
+     "without_n": 623,
+     "without_win": 0.5553772070626003,
+     "diff": 0.020219609913527004,
+     "lo": -0.04312002390749195,
+     "hi": 0.08355924373454596,
+     "significant": false
+    },
+    {
+     "feature": "confessor",
+     "with_n": 389,
+     "with_win": 0.5526992287917738,
+     "without_n": 611,
+     "without_win": 0.5695581014729951,
+     "diff": -0.016858872681221326,
+     "lo": -0.0799690698335325,
+     "hi": 0.046251324471089844,
+     "significant": false
+    },
+    {
+     "feature": "archivist",
+     "with_n": 563,
+     "with_win": 0.5701598579040853,
+     "without_n": 437,
+     "without_win": 0.5537757437070938,
+     "diff": 0.016384114196991484,
+     "lo": -0.04562043175786695,
+     "hi": 0.07838866015184992,
+     "significant": false
+    },
+    {
+     "feature": "registrar",
+     "with_n": 377,
+     "with_win": 0.5729442970822282,
+     "without_n": 623,
+     "without_win": 0.5569823434991974,
+     "diff": 0.015961953583030764,
+     "lo": -0.04740059071373083,
+     "hi": 0.07932449787979236,
+     "significant": false
+    },
+    {
+     "feature": "rumormonger",
+     "with_n": 590,
+     "with_win": 0.5677966101694916,
+     "without_n": 410,
+     "without_win": 0.5560975609756098,
+     "diff": 0.011699049193881761,
+     "lo": -0.05083751386418635,
+     "hi": 0.07423561225194987,
+     "significant": false
+    },
+    {
+     "feature": "magistrate",
+     "with_n": 135,
+     "with_win": 0.5555555555555556,
+     "without_n": 865,
+     "without_win": 0.5641618497109827,
+     "diff": -0.00860629415542713,
+     "lo": -0.09870763664515436,
+     "hi": 0.0814950483343001,
+     "significant": false
+    },
+    {
+     "feature": "veteran",
+     "with_n": 172,
+     "with_win": 0.5697674418604651,
+     "without_n": 828,
+     "without_win": 0.5615942028985508,
+     "diff": 0.008173238961914353,
+     "lo": -0.07317359488873632,
+     "hi": 0.08952007281256502,
+     "significant": false
+    },
+    {
+     "feature": "clerk",
+     "with_n": 581,
+     "with_win": 0.5611015490533563,
+     "without_n": 419,
+     "without_win": 0.5656324582338902,
+     "diff": -0.004530909180533893,
+     "lo": -0.06682823129385115,
+     "hi": 0.057766412932783374,
+     "significant": false
+    },
+    {
+     "feature": "surveyor",
+     "with_n": 588,
+     "with_win": 0.564625850340136,
+     "without_n": 412,
+     "without_win": 0.5606796116504854,
+     "diff": 0.003946238689650605,
+     "lo": -0.05852601685663649,
+     "hi": 0.06641849423593771,
+     "significant": false
+    },
+    {
+     "feature": "seer",
+     "with_n": 225,
+     "with_win": 0.5644444444444444,
+     "without_n": 775,
+     "without_win": 0.5625806451612904,
+     "diff": 0.001863799283154055,
+     "lo": -0.07173883974580357,
+     "hi": 0.07546643831211168,
+     "significant": false
+    }
+   ],
+   "minions": [
+    {
+     "feature": "breathstealer",
+     "with_n": 441,
+     "with_win": 0.6780045351473923,
+     "without_n": 559,
+     "without_win": 0.47227191413237923,
+     "diff": 0.2057326210150131,
+     "lo": 0.14561153383595643,
+     "hi": 0.2658537081940698,
+     "significant": true
+    },
+    {
+     "feature": "scion",
+     "with_n": 467,
+     "with_win": 0.4689507494646681,
+     "without_n": 533,
+     "without_win": 0.6454033771106942,
+     "diff": -0.1764526276460261,
+     "lo": -0.2372645893775447,
+     "hi": -0.11564066591450749,
+     "significant": true
+    },
+    {
+     "feature": "poisoner",
+     "with_n": 620,
+     "with_win": 0.5241935483870968,
+     "without_n": 380,
+     "without_win": 0.6263157894736842,
+     "diff": -0.1021222410865874,
+     "lo": -0.1646639903346883,
+     "hi": -0.039580491838486526,
+     "significant": true
+    },
+    {
+     "feature": "revenant",
+     "with_n": 472,
+     "with_win": 0.5995762711864406,
+     "without_n": 528,
+     "without_win": 0.5303030303030303,
+     "diff": 0.06927324088341036,
+     "lo": 0.00790303253511486,
+     "hi": 0.13064344923170584,
+     "significant": true
+    }
+   ],
+   "secrets": [
+    {
+     "feature": "marked",
+     "with_n": 191,
+     "with_win": 0.6335078534031413,
+     "without_n": 809,
+     "without_win": 0.546353522867738,
+     "diff": 0.08715433053540333,
+     "lo": 0.010690540612244226,
+     "hi": 0.16361812045856244,
+     "significant": true
+    },
+    {
+     "feature": "delusional",
+     "with_n": 216,
+     "with_win": 0.49537037037037035,
+     "without_n": 784,
+     "without_win": 0.5816326530612245,
+     "diff": -0.08626228269085412,
+     "lo": -0.16135064421798873,
+     "hi": -0.011173921163719513,
+     "significant": true
+    },
+    {
+     "feature": "sleepwalker",
+     "with_n": 207,
+     "with_win": 0.5410628019323671,
+     "without_n": 793,
+     "without_win": 0.5687263556116016,
+     "diff": -0.027663553679234454,
+     "lo": -0.10379854341750577,
+     "hi": 0.048471436059036865,
+     "significant": false
+    },
+    {
+     "feature": "lovers",
+     "with_n": 195,
+     "with_win": 0.5846153846153846,
+     "without_n": 805,
+     "without_win": 0.5577639751552795,
+     "diff": 0.026851409460105113,
+     "lo": -0.0503573819585761,
+     "hi": 0.10406020087878633,
+     "significant": false
+    },
+    {
+     "feature": "muddler",
+     "with_n": 191,
+     "with_win": 0.5706806282722513,
+     "without_n": 809,
+     "without_win": 0.5611866501854141,
+     "diff": 0.009493978086837163,
+     "lo": -0.06859032973549145,
+     "hi": 0.08757828590916578,
+     "significant": false
+    }
+   ],
+   "walkers": [
+    {
+     "feature": "5 night-walkers",
+     "with_n": 91,
+     "with_win": 0.5824175824175825,
+     "without_n": 909,
+     "without_win": 0.5610561056105611,
+     "diff": 0.021361476807021385,
+     "lo": -0.08497705137726831,
+     "hi": 0.12770000499131107,
+     "significant": false
+    },
+    {
+     "feature": "3 night-walkers",
+     "with_n": 543,
+     "with_win": 0.5543278084714549,
+     "without_n": 457,
+     "without_win": 0.5733041575492341,
+     "diff": -0.01897634907777923,
+     "lo": -0.08065432407578219,
+     "hi": 0.042701625920223724,
+     "significant": false
+    },
+    {
+     "feature": "4 night-walkers",
+     "with_n": 366,
+     "with_win": 0.5710382513661202,
+     "without_n": 634,
+     "without_win": 0.5583596214511041,
+     "diff": 0.012678629915016115,
+     "lo": -0.051080800053213304,
+     "hi": 0.07643805988324553,
+     "significant": false
+    }
+   ]
+  },
+  "10 NPCs, passive": {
+   "town": [
+    {
+     "feature": "chronicler",
+     "with_n": 137,
+     "with_win": 0.3284671532846715,
+     "without_n": 863,
+     "without_win": 0.44148319814600234,
+     "diff": -0.11301604486133082,
+     "lo": -0.19835523376325698,
+     "hi": -0.027676855959404667,
+     "significant": true
+    },
+    {
+     "feature": "nightwatch",
+     "with_n": 396,
+     "with_win": 0.49242424242424243,
+     "without_n": 604,
+     "without_win": 0.3824503311258278,
+     "diff": 0.1099739112984146,
+     "lo": 0.0473091179301937,
+     "hi": 0.1726387046666355,
+     "significant": true
+    },
+    {
+     "feature": "sexton",
+     "with_n": 148,
+     "with_win": 0.34459459459459457,
+     "without_n": 852,
+     "without_win": 0.44014084507042256,
+     "diff": -0.09554625047582799,
+     "lo": -0.17905305116300874,
+     "hi": -0.012039449788647225,
+     "significant": true
+    },
+    {
+     "feature": "archivist",
+     "with_n": 563,
+     "with_win": 0.3872113676731794,
+     "without_n": 437,
+     "without_win": 0.4759725400457666,
+     "diff": -0.08876117237258724,
+     "lo": -0.1505000990789585,
+     "hi": -0.027022245666215965,
+     "significant": true
+    },
+    {
+     "feature": "psychologist",
+     "with_n": 148,
+     "with_win": 0.36486486486486486,
+     "without_n": 852,
+     "without_win": 0.43661971830985913,
+     "diff": -0.07175485344499427,
+     "lo": -0.1561604053712094,
+     "hi": 0.012650698481220857,
+     "significant": false
+    },
+    {
+     "feature": "warden",
+     "with_n": 377,
+     "with_win": 0.46949602122015915,
+     "without_n": 623,
+     "without_win": 0.3996789727126806,
+     "diff": 0.06981704850747855,
+     "lo": 0.006433201775227632,
+     "hi": 0.13320089523972947,
+     "significant": true
+    },
+    {
+     "feature": "lamplighter",
+     "with_n": 382,
+     "with_win": 0.468586387434555,
+     "without_n": 618,
+     "without_win": 0.39967637540453077,
+     "diff": 0.06891001203002423,
+     "lo": 0.005698520365740506,
+     "hi": 0.13212150369430795,
+     "significant": true
+    },
+    {
+     "feature": "gravedigger",
+     "with_n": 358,
+     "with_win": 0.3854748603351955,
+     "without_n": 642,
+     "without_win": 0.4485981308411215,
+     "diff": -0.06312327050592598,
+     "lo": -0.12654312008794477,
+     "hi": 0.00029657907609281775,
+     "significant": false
+    },
+    {
+     "feature": "augur",
+     "with_n": 231,
+     "with_win": 0.3852813852813853,
+     "without_n": 769,
+     "without_win": 0.43823146944083224,
+     "diff": -0.052950084159446964,
+     "lo": -0.12484271072088762,
+     "hi": 0.018942542401993695,
+     "significant": false
+    },
+    {
+     "feature": "registrar",
+     "with_n": 377,
+     "with_win": 0.4482758620689655,
+     "without_n": 623,
+     "without_win": 0.41252006420545745,
+     "diff": 0.035755797863508076,
+     "lo": -0.027605090226065943,
+     "hi": 0.0991166859530821,
+     "significant": false
+    },
+    {
+     "feature": "monitor",
+     "with_n": 144,
+     "with_win": 0.4513888888888889,
+     "without_n": 856,
+     "without_win": 0.4217289719626168,
+     "diff": 0.029659916926272067,
+     "lo": -0.058094696867388065,
+     "hi": 0.1174145307199322,
+     "significant": false
+    },
+    {
+     "feature": "confessor",
+     "with_n": 389,
+     "with_win": 0.41131105398457585,
+     "without_n": 611,
+     "without_win": 0.4353518821603928,
+     "diff": -0.02404082817581693,
+     "lo": -0.08678465643792431,
+     "hi": 0.03870300008629045,
+     "significant": false
+    },
+    {
+     "feature": "rumormonger",
+     "with_n": 590,
+     "with_win": 0.43559322033898307,
+     "without_n": 410,
+     "without_win": 0.4121951219512195,
+     "diff": 0.023398098387763577,
+     "lo": -0.03881916398811875,
+     "hi": 0.0856153607636459,
+     "significant": false
+    },
+    {
+     "feature": "medium",
+     "with_n": 384,
+     "with_win": 0.4375,
+     "without_n": 616,
+     "without_win": 0.41883116883116883,
+     "diff": 0.018668831168831168,
+     "lo": -0.044418142696948784,
+     "hi": 0.08175580503461112,
+     "significant": false
+    },
+    {
+     "feature": "clerk",
+     "with_n": 581,
+     "with_win": 0.43201376936316693,
+     "without_n": 419,
+     "without_win": 0.41766109785202865,
+     "diff": 0.014352671511138282,
+     "lo": -0.04771515280616448,
+     "hi": 0.07642049582844104,
+     "significant": false
+    },
+    {
+     "feature": "magistrate",
+     "with_n": 135,
+     "with_win": 0.4148148148148148,
+     "without_n": 865,
+     "without_win": 0.4277456647398844,
+     "diff": -0.012930849925069599,
+     "lo": -0.10234384469632075,
+     "hi": 0.07648214484618156,
+     "significant": false
+    },
+    {
+     "feature": "dowser",
+     "with_n": 372,
+     "with_win": 0.4327956989247312,
+     "without_n": 628,
+     "without_win": 0.42197452229299365,
+     "diff": 0.010821176631737539,
+     "lo": -0.0526385580952039,
+     "hi": 0.07428091135867898,
+     "significant": false
+    },
+    {
+     "feature": "veteran",
+     "with_n": 172,
+     "with_win": 0.43023255813953487,
+     "without_n": 828,
+     "without_win": 0.4251207729468599,
+     "diff": 0.005111785192674967,
+     "lo": -0.07618332851760948,
+     "hi": 0.08640689890295941,
+     "significant": false
+    },
+    {
+     "feature": "executor",
+     "with_n": 147,
+     "with_win": 0.4217687074829932,
+     "without_n": 853,
+     "without_win": 0.42672919109026963,
+     "diff": -0.004960483607276411,
+     "lo": -0.09141928360903033,
+     "hi": 0.08149831639447751,
+     "significant": false
+    },
+    {
+     "feature": "seer",
+     "with_n": 225,
+     "with_win": 0.4222222222222222,
+     "without_n": 775,
+     "without_win": 0.4270967741935484,
+     "diff": -0.004874551971326191,
+     "lo": -0.07820966693845598,
+     "hi": 0.0684605629958036,
+     "significant": false
+    },
+    {
+     "feature": "martyr",
+     "with_n": 156,
+     "with_win": 0.42948717948717946,
+     "without_n": 844,
+     "without_win": 0.4253554502369668,
+     "diff": 0.004131729250212657,
+     "lo": -0.08040538605423164,
+     "hi": 0.08866884455465696,
+     "significant": false
+    },
+    {
+     "feature": "surveyor",
+     "with_n": 588,
+     "with_win": 0.4268707482993197,
+     "without_n": 412,
+     "without_win": 0.42475728155339804,
+     "diff": 0.002113466745921666,
+     "lo": -0.0601494653146038,
+     "hi": 0.06437639880644713,
+     "significant": false
+    }
+   ],
+   "minions": [
+    {
+     "feature": "breathstealer",
+     "with_n": 441,
+     "with_win": 0.5215419501133787,
+     "without_n": 559,
+     "without_win": 0.35062611806797855,
+     "diff": 0.17091583204540012,
+     "lo": 0.10977284094902606,
+     "hi": 0.23205882314177417,
+     "significant": true
+    },
+    {
+     "feature": "poisoner",
+     "with_n": 620,
+     "with_win": 0.3919354838709677,
+     "without_n": 380,
+     "without_win": 0.48157894736842105,
+     "diff": -0.08964346349745334,
+     "lo": -0.15289385605090283,
+     "hi": -0.026393070944003824,
+     "significant": true
+    },
+    {
+     "feature": "scion",
+     "with_n": 467,
+     "with_win": 0.3811563169164882,
+     "without_n": 533,
+     "without_win": 0.4652908067542214,
+     "diff": -0.0841344898377332,
+     "lo": -0.14523718890006904,
+     "hi": -0.023031790775397368,
+     "significant": true
+    },
+    {
+     "feature": "revenant",
+     "with_n": 472,
+     "with_win": 0.4258474576271186,
+     "without_n": 528,
+     "without_win": 0.42613636363636365,
+     "diff": -0.00028890600924502685,
+     "lo": -0.0616830164957365,
+     "hi": 0.06110520447724645,
+     "significant": false
+    }
+   ],
+   "secrets": [
+    {
+     "feature": "muddler",
+     "with_n": 191,
+     "with_win": 0.4869109947643979,
+     "without_n": 809,
+     "without_win": 0.411619283065513,
+     "diff": 0.07529171169888493,
+     "lo": -0.0032886878563747335,
+     "hi": 0.1538721112541446,
+     "significant": false
+    },
+    {
+     "feature": "delusional",
+     "with_n": 216,
+     "with_win": 0.375,
+     "without_n": 784,
+     "without_win": 0.44005102040816324,
+     "diff": -0.06505102040816324,
+     "lo": -0.1383708183144769,
+     "hi": 0.0082687774981504,
+     "significant": false
+    },
+    {
+     "feature": "sleepwalker",
+     "with_n": 207,
+     "with_win": 0.391304347826087,
+     "without_n": 793,
+     "without_win": 0.43505674653215637,
+     "diff": -0.043752398706069395,
+     "lo": -0.11865911007243209,
+     "hi": 0.031154312660293296,
+     "significant": false
+    },
+    {
+     "feature": "marked",
+     "with_n": 191,
+     "with_win": 0.4607329842931937,
+     "without_n": 809,
+     "without_win": 0.4177997527812114,
+     "diff": 0.042933231511982306,
+     "lo": -0.035503487911935916,
+     "hi": 0.12136995093590053,
+     "significant": false
+    },
+    {
+     "feature": "lovers",
+     "with_n": 195,
+     "with_win": 0.4256410256410256,
+     "without_n": 805,
+     "without_win": 0.4260869565217391,
+     "diff": -0.0004459308807134854,
+     "lo": -0.07779689363496535,
+     "hi": 0.07690503187353838,
+     "significant": false
+    }
+   ],
+   "walkers": [
+    {
+     "feature": "5 night-walkers",
+     "with_n": 91,
+     "with_win": 0.5934065934065934,
+     "without_n": 909,
+     "without_win": 0.40924092409240925,
+     "diff": 0.18416566931418415,
+     "lo": 0.0783013248996434,
+     "hi": 0.2900300137287249,
+     "significant": true
+    },
+    {
+     "feature": "3 night-walkers",
+     "with_n": 543,
+     "with_win": 0.3867403314917127,
+     "without_n": 457,
+     "without_win": 0.4726477024070022,
+     "diff": -0.0859073709152895,
+     "lo": -0.147333601089437,
+     "hi": -0.024481140741141993,
+     "significant": true
+    },
+    {
+     "feature": "4 night-walkers",
+     "with_n": 366,
+     "with_win": 0.4426229508196721,
+     "without_n": 634,
+     "without_win": 0.416403785488959,
+     "diff": 0.026219165330713112,
+     "lo": -0.03751442921974815,
+     "hi": 0.08995275988117438,
+     "significant": false
+    }
+   ]
+  }
+ },
+ "health": {
+  "stuck": [
+   100704,
+   100016,
+   100960,
+   100785
+  ],
+  "failed": [],
+  "error_games": 0
+ }
+}
