@@ -49,6 +49,26 @@ Base `ce26d25`. Branch `claude/defence-empty-grounds`. New baseline `baseline_55
 
 ---
 
+## 2026-11-05 late night, Claude-Bailiff: meeting plan M3a (courtroom stage) on main
+
+- `ui/vn_portraits.gd`: the 15 VN portraits and five expressions, shared by the day
+  conversation view and the meeting.
+- `ui/courtroom_stage.gd`, mounted inside `ui/meeting_view.gd`: each townsperson who speaks
+  at the meeting comes forward with their portrait and expression over a lighter, warm blur of
+  the ring. Lines reveal at 90 cps, hold, then auto-advance. A click finishes the line, a second
+  click or Continue brings the next speaker, and "Back to the circle" skips the rest (the log
+  keeps everything). The status pill shows the step: Opening Testimony, Accuser's Case,
+  Nominee's Defence, Podium Press, Town Speaks, After the Count or Last Words, plus the block
+  and what the vote needs.
+- Beats: a 1.2s dusk arrival on the full ring. A vote waits for the speakers before it, then the
+  hand goes round. Anything said after the tally (resistance lines) waits for the count. Last
+  words keep the circle up after the meeting closes, and the map returns once they're heard.
+- `main.gd` passes each meeting command's and testimony step's `last_events` to
+  `meeting_view.consume`. Sim-neutral: golden capture identical to `baseline_a64553d`.
+- Tests: `tools/test_meeting_stage.gd` (24 checks); `test_ui`, `test_town_ui`, `test_headline`,
+  `test_day_conversation_view` and `test_ui_controls` pass.
+- Not seen on a real screen yet (headless only). Michael: worth a look at layout and pacing.
+
 ## 2026-11-05 late night, Claude-Bailiff: M2c follow-up (defence goes after the case's hinge) on main
 
 - When the player nominates on a filed case, the nominee ranks the case's items by weight and
