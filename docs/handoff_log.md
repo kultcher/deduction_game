@@ -66,6 +66,75 @@ Base `42708ec`. Merged at Michael's request. New baseline `baseline_afcf9fa` (wo
 
 ---
 
+## 2026-11-05 evening, Claude-Bailiff: evidence honesty fixes on main (Lamplighter bluff, soft vigil exclusion, Medium hearths)
+
+**Base:** `main` at `4d370f8`. **Branch:** `claude/evidence-honesty-fixes`. **Baseline:** `baseline_e9f1e47`.
+**Status:** merged. 107/107 suites (after the test consolidation); two golden captures identical.
+
+**Why.** The Nov 5 sweep showed good winning 3–10% when the Demon bluffs the Lamplighter.
+
+**Root cause.**
+- `CaseEval.chance_content` gave the Lamplighter's count a fixed 1/(people) chance of
+  fitting a bluff. The count isn't checked anywhere, so every fake report counted about
+  7× toward the claimant's honesty.
+- A claimed walker's good worlds kept 30% "stayed home anyway" weight, so even an empty
+  vigil only cost the claim about 3×.
+
+**Changes.**
+- **`chance_content`** is now the share of valid worlds in which the report's content holds,
+  so uncheckable content (the Lamplighter count, the Augur, the Confessor) earns nothing.
+  Three groups keep the old constants:
+  - readings checked elsewhere: role readings, via the role constraints (Archivist, Clerk,
+    Executor, Gravedigger, Registrar, Monitor, Martyr);
+  - readings checked by the movement model (Night Watch, Warden, Veteran) and the Seer,
+    whose red herring is a separate weight;
+  - the Chronicler and Rumormonger, which have exact prior formulas.
+- **Vigil exclusion is soft in the score.** A complete or empty player vigil that should
+  have seen someone scores `VIGIL_MISS` (0.05), not 0: the town allows that the
+  Demonologist missed them. Route *consistency* checks (`routes`, challenges, conflict
+  notes) stay strict, because they ask "if both cards are true".
+- **Walker claims bind.** A good claimed walker's nights split 0.95 duty / 0.03 home /
+  0.02 secret (was 0.7 / 0.2 / 0.1). An empty vigil on their claimed block is now about
+  10:1 against the claim. (`Tuning.Workshop.WALKER_CLAIM_*`, mirrored in
+  `LiveActivity.cs`.)
+- **The Medium** is modelled visiting earlier Demon victims' hearths only, not the
+  hanged.
+- **New test:** `test_evidence_honesty`.
+- **Updated tests:** `test_shared_model` picks seeds that reach Day 4 (seed 42 now ends on
+  Day 3).
+
+**A/B.** Same 1000 seeds per cell as the Nov 5 sweep; run `42129219721`, results on
+`sweep-results/run-42129219721`.
+
+| Cell | Good wins | Wrongful hangs/game | Bot names the Demon |
+|---|---|---|---|
+| 7 passive | 33.4% → 37.6% | 1.01 → 0.94 | |
+| 10 passive | 40.0% → 42.6% | 1.42 → 1.30 | |
+| 7 bot | 56.2% → 57.8% | 0.80 → 0.76 | 72.0% → 73.0% |
+| 10 bot | 53.4% → 56.6% | 1.15 → 1.10 | 72.6% → 75.8% |
+
+Good wins when the Demon bluffs:
+
+| Bluff | 7 bot | 10 bot | 7 passive | 10 passive |
+|---|---|---|---|---|
+| Lamplighter | 19% → 51% | 5% → 58% | 1% → 29% | 0% → 37% |
+| Augur | 53% → 67% | 43% → 62% | | |
+| Night Watch | 57% → 42% | 48% → 45% | 22% → 15% | 33% → 24% |
+| Medium | unchanged, 18–45% | | | |
+
+- **Lamplighter bluffers** are hanged in 31–61% of games, up from 1–15%. True Lamplighters
+  are hanged in 8–11%, up from 2–4%: the claim is no longer near-proof.
+
+**Open, for Michael and the next pass.**
+- **The Night Watch bluff got stronger.** Binding walker claims makes "I was out on duty"
+  explain any night sighting. NW bluffers are hanged less: 47% vs 63% (7 bot). The fix is
+  Michael's same-night rule: several blocks on one night support a route; a single
+  sighting supports little. That needs a per-night support measure in `LiveActivity`.
+- **The Medium is unchanged.** The hearth fix rarely binds. The likely cause is the fake
+  Medium's relays from the dead (relay cards, not reports), which `chance_content`
+  doesn't touch. Next step: check how relays are credited.
+- **The bot doesn't test claims** with vigils yet. That's M4 (meeting plan).
+
 ## 2026-11-05 evening, Claude-Tally: playtest analysis tools on main (PR #72)
 
 Base `d043da9`. Merged to `main` by Claude-Tally at Michael's request; all CI green.
