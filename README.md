@@ -150,7 +150,7 @@ You get one action per phase. `help` lists every command in the current build.
 | Talking (3 questions) | `ask gift`, `ask are <gift>`, `ask night`, `ask seen <today / morning / afternoon / evening / yesterday [phase]>`, `ask about <name or gift>`, `ask why`, `ask check / guard / watch / register <name or block>` (ask a gift-holder who told you their gift to use it tonight), `present <card#> [for/against <name>]`, `offer ward` / `offer vigil` (free), `apologise`, `bye` |
 | Approached | `accept` (talk now; uses the phase) or `decline` (any other action also declines) |
 | Town meeting | `present <case#>` (once: everyone hears it), `nominate <name> [#case / raw]` (once; rests on your latest filed case against them unless you pick another or go `raw`), `wait` (let the town nominate), `done` (close the meeting, once a `wait` finds no more nominations) |
-| On a nomination | `accuse [card#]` or `defend [card#]` (one statement), `clemency` (once per case), `vote yes` / `vote no` |
+| On a nomination | `press role`, `press night [N]`, `press card <#>` or `press skip` (one public question, before the town speaks), `hear` (let the town speak), then `accuse [card#]` or `defend [card#]` (one statement), `clemency` (once per case), `vote yes` / `vote no` (the town speaks first if it hasn't) |
 | Night | `vigil <block>`, `ward <name>` (once per case), `sleep` |
 | Case work (any time) | cases are built in the Case Workshop (mouse only); `hide <#>`, `unhide <#>`, `showhidden`, `delete <#>` (filed cases only), `note <name> <text>`, `guess <name> <role / evil / good> [1-4]` |
 | After the case | `grimoire`, `grimoire lies` |

@@ -462,7 +462,8 @@ from their block, at 0.4 of the weight). Everyone has at most one NPC conversati
 
 ### What gets passed on
 
-Each partner passes one item, chosen by how newsworthy it is and how willing they are: an
+Each partner passes up to three items (the second needs a bond of 0.5, the third 0.65), each
+chosen by how newsworthy it is and how willing they are: an
 unshared reading (more open with friends), a confided secret (only to close friends), an
 opinion (if their suspicion is 0.5+, scaled by Gossip and Confidence), a case you made, a
 night sighting (Gossip-scaled, more for one near a murder scene), hearsay. Readings and
@@ -470,7 +471,7 @@ sightings become receipts in the listener's ledger, credited to who told whom. N
 echoed back to the person who told it.
 
 **Gift talk between friends:** an NPC may hint at their gift's family to a friend (bond
-0.55+) or claim it outright (0.68+, or 0.55+ under pressure), even with no readings yet.
+0.45+) or claim it outright (0.58+, or 0.5+ under pressure), even with no readings yet.
 Good NPCs with an untold gift count as having news on Days 1–2. Evil does the same with its
 bluff. Gift talk isn't relayed further, and an evil listener notes the speaker as a
 target.
