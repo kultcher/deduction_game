@@ -143,7 +143,7 @@ func _test_hint_only_at_moderate_bond() -> void:
 	var pr: Array = _good_pair(w, ["seer", "warden", "clerk"])
 	var s = pr[0]
 	var l = pr[1]
-	_prime(w, s, l, 0.6)  # above the hint bar, below the claim bar
+	_prime(w, s, l, 0.5)  # above the hint bar (0.45), below the claim bar (0.58)
 	var kinds: Dictionary = _kinds_offered(w, s, l)
 	_check(kinds.has("role_hint") and not kinds.has("role_claim"), "moderate bond offers a hint but no claim (%s)" % str(kinds.keys()))
 	var item = _pick_kind(w, s, l, "role_hint")

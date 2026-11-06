@@ -44,7 +44,26 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 5, late night): `baseline_a9e0301`
+### Current baseline (Nov 6): `baseline_7a96d27`
+
+`tools/golden/baseline_7a96d27/` is the capture from `7a96d27`: `baseline_a9e0301` (M2c) plus NPCs being more open with each other. Chats pass on up to three
+things; readings go far more readily to trusted listeners; hints and claims reach
+acquaintances; the dead's private readings get passed on and told at the meeting. Two
+captures identical. Every seed parts from `baseline_a9e0301` early, at the first NPC conversations. (The
+branch alone, before M2c, was captured as `9379b1e`; the A/B below is from it.)
+
+Passive A/B, seeds 2000-2011, 12 games per cell, Default script:
+
+| Cell | Good wins (main → new) | Good hanged | Evil hanged | NPC shares |
+|---|---|---|---|---|
+| 7 NPCs | 4 → 3 | 10 → 12 | 9 → 7 | 133 → 228 |
+| 10 NPCs | 5 → 3 | 14 → 18 | 20 → 17 | 460 → 633 |
+
+Within noise for 12 games, but both cells lean the same way. Share mix at 10 NPCs, per game
+(main → new): readings 2.2 → 4.1, role hints 1.0 → 2.7, claims 0.8 → 1.5, relayed readings
+0 → 0.6, meeting relays of the dead's readings 0 → 0.08.
+
+### Previous baseline (Nov 5, late night): `baseline_a9e0301`
 
 `tools/golden/baseline_a9e0301/` is the capture from `a9e0301`: `baseline_b9a0376` plus
 meeting plan M2c (supporters, `sim/mind_support.gd`). Two captures identical. Against
@@ -160,7 +179,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_a9e0301 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_7a96d27 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
