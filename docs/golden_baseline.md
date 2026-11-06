@@ -44,7 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 5, late night): `baseline_a64553d`
+### Current baseline (Nov 6): `baseline_55cea76`
+
+`tools/golden/baseline_55cea76/` is the capture from `55cea76`: `baseline_a64553d` plus the
+premises pass, step 0. A bare defence now cites no grounds, so it no longer turns bounded
+listeners into full-attention ones. Two captures identical. Every seed parts at the first
+refresh after a nominee's defence (record 27 to 52, Day 1 or 2 evening).
+
+Passive A/B, seeds 2000-2011, 12 games per cell, Default script:
+
+| Cell | Good wins (main → new) | Good hanged | Evil hanged |
+|---|---|---|---|
+| 7 NPCs | 4 → 4 | 12 → 13 | 6 → 5 |
+| 10 NPCs | 3 → 1 | 17 → 20 | 21 → 15 |
+
+Within noise, but the direction is plausible. Before the fix, every defence quietly made
+its listeners full-attention reasoners, so the town was sharper than its Insight budgets
+say. Restoring the budgets makes it a little worse at finding evil.
+
+### Previous baseline (Nov 5, late night): `baseline_a64553d`
 
 `tools/golden/baseline_a64553d/` is the capture from `a64553d`: `baseline_7a96d27` (NPC openness, M2c) plus
 meeting plan M2d:
@@ -192,7 +210,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_a64553d /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_55cea76 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
