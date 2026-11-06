@@ -287,9 +287,59 @@ static func _premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByt
 static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
 	if conclusion.type in ["misled", "unreliable"]:
 		return Solver.question_table(view, conclusion)
+	if conclusion.type == "holds":
+		return _holds_mask(view, Solver.card_by_id(view, str(conclusion.get("report", ""))))
+	if conclusion.type == "inconsistent":
+		# The source's readings can't all hold: not every one of them fits the world.
+		var n_w: int = Solver.universe(view).size()
+		var all_hold := PackedByteArray()
+		all_hold.resize(n_w)
+		all_hold.fill(1)
+		for rid in conclusion.get("reports", []):
+			var m: PackedByteArray = _holds_mask(view, Solver.card_by_id(view, str(rid)))
+			for i in range(n_w):
+				if m[i] == 0:
+					all_hold[i] = 0
+		var out := PackedByteArray()
+		out.resize(n_w)
+		for i in range(n_w):
+			out[i] = 1 - all_hold[i]
+		return out
 	var u_key: String = Solver._universe_key(view)
 	var universe: Array = Solver.universe(view)
 	return _build_premise_mask_cs(view, u_key, universe, conclusion)
+
+## Premises step 3: "the reading's content holds" as a question, for graded challenges. The
+## report table plus the role check, the same mask before and after the evidence, so a
+## challenge compares the reading against its own chance on one footing.
+static func _holds_mask(view: Dictionary, report: Dictionary) -> PackedByteArray:
+	var worlds: Array = Solver.universe(view)
+	var out := PackedByteArray()
+	out.resize(worlds.size())
+	if report.get("kind", "") != "report" or not Solver.tabled(report):
+		out.fill(1)
+		return out
+	if str(report.get("role", "")) == "seer":
+		# The Seer's content is the Demon's place: a Red Herring or a Marked registration is
+		# the "misled" explanation of a false reading, not the reading holding.
+		var in_pair := PackedByteArray()
+		in_pair.resize(worlds.size())
+		in_pair.fill(0)
+		for person in report.get("data", {}).get("pair", []):
+			var m: PackedByteArray = _premise_mask(view, {"type": "demon", "target": str(person), "at": view.get("alignment_epoch", "")})
+			for i in range(worlds.size()):
+				if i < m.size() and m[i] != 0:
+					in_pair[i] = 1
+		var yes: bool = bool(report.get("data", {}).get("yes", false))
+		for i in range(worlds.size()):
+			out[i] = in_pair[i] if yes else 1 - in_pair[i]
+		return out
+	var table: PackedByteArray = Solver.report_table(view, report)
+	var u_handle: int = SolverBackend.get_universe_handle(Solver._universe_key(view), worlds)
+	var roles: PackedByteArray = Solver.Roles.fits_table(view, worlds, [report], {}, {}, false, u_handle)
+	for i in range(worlds.size()):
+		out[i] = 1 if table[i] != 0 and (roles.is_empty() or roles[i] != 0) else 0
+	return out
 
 static func _build_premise_mask_cs(view: Dictionary, u_key: String, universe: Array, conclusion: Dictionary) -> PackedByteArray:
 	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)

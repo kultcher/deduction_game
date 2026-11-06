@@ -33,8 +33,11 @@ var presenting = false
 ## Marked" is "holds a secret" with Marked; "bluffing" and "told the truth" were "evil" and
 ## "good"; "lied", "misled" and "unreliable" are explanations on a reading (the reading
 ## modifiers), not premises. Filed cases with the old types still evaluate.
-const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion", "notdemon", "secret_mod", "role"]
-const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift"]
+const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "inconsistent"]
+const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together"]
+## Why their readings don't fit together (premises step 3), and what each blames.
+const INCONSISTENT_CAUSES = ["any", "lying", "impaired", "delusional"]
+const INCONSISTENT_CAUSE_NAMES = {"any": "Any cause", "lying": "They lied (evil)", "impaired": "Poisoned that night", "delusional": "They're Delusional"}
 
 func premise_types() -> Array:
 	return LIVE_TYPES
@@ -503,10 +506,10 @@ func _refresh_case() -> void:
 		_clear(case_box)
 		_label(case_box, board.title(answer_id), 22)
 		_label(case_box, "Link grounds to this modifier. It asks the listener to assess your explanation; selecting it does not prove error or deception.", 17)
-		var option = _option(case_box, ["Misled reading", "Suspected lie", "Unlikely reading"])
-		option.select(["misled", "lying", "unlikely"].find(node.mode))
+		var option = _option(case_box, ["Misled reading", "Suspected lie", "Unlikely reading", "Failed gift (poisoned)"])
+		option.select(["misled", "lying", "unlikely", "impaired"].find(node.mode))
 		option.set_item_disabled(2, _report(node.card).get("role", "") != "surveyor" or not _report(node.card).get("data", {}).has("count"))
-		option.item_selected.connect(func(i): node.mode = ["misled", "lying", "unlikely"][i]; _edit())
+		option.item_selected.connect(func(i): node.mode = ["misled", "lying", "unlikely", "impaired"][i]; _edit())
 	elif node.kind == "contradiction":
 		_clear(case_box)
 		var doubtable: bool = board.report_doubtable(answer_id)
@@ -824,7 +827,7 @@ func set_premise_field(id: String, field: String, value) -> void:
 		_default_detail(node)
 	elif field == "epoch":
 		node.conclusion.at = value
-	elif field in ["role", "mod", "report"]:
+	elif field in ["role", "mod", "report", "cause"]:
 		node.conclusion[field] = value
 	board.selected = id
 	_edit()
@@ -840,6 +843,9 @@ func _default_detail(node: Dictionary) -> void:
 		"secret_mod":
 			if not conclusion.has("mod"):
 				conclusion["mod"] = C.SECRET_MOD_LIST[0]
+		"inconsistent":
+			if not conclusion.has("cause"):
+				conclusion["cause"] = "any"
 
 func _reports_for(person: String) -> Array:
 	return board.view.cards.filter(func(card): return card.kind == "report" and card.source == person and not card.has("relay_source") and not card.get("testimony_only", false))
@@ -856,6 +862,9 @@ func _detail_label(node: Dictionary) -> Dictionary:
 		"secret_mod":
 			return {"field": "mod", "text": C.secret_name(conclusion.get("mod", "")), "icon": WorkshopSkin.tex("ui/roles/" + conclusion.get("mod", ""), 0.06),
 				"tip": "Which secret modifier you're arguing they hold."}
+		"inconsistent":
+			return {"field": "cause", "text": INCONSISTENT_CAUSE_NAMES.get(conclusion.get("cause", "any"), "Any cause"),
+				"tip": "Link two or more of their readings. The cause decides the blame: a lie raises suspicion of them, poisoning points at whoever was out that night, Delusional clears them."}
 		"lied", "truthful", "misled", "unreliable":
 			var report: Dictionary = {}
 			for card in _reports_for(conclusion.target):
@@ -936,6 +945,10 @@ func _field_popup(id: String, field: String) -> void:
 			for kind in C.SECRET_MOD_LIST:
 				field_menu.add_item(C.secret_name(kind), values.size())
 				values.append(kind)
+		"cause":
+			for cause in INCONSISTENT_CAUSES:
+				field_menu.add_item(INCONSISTENT_CAUSE_NAMES[cause], values.size())
+				values.append(cause)
 		"report":
 			for card in _reports_for(node.conclusion.get("target", "")):
 				field_menu.add_item(card.text, values.size())

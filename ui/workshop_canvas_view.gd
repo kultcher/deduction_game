@@ -551,12 +551,12 @@ func evidence_layout(id: String) -> Dictionary:
 	if node.kind == "modifier":
 		y += 4.0
 		var x: float = 16.0
-		for mode in ["misled", "lying", "unlikely"]:
-			var label: String = {"misled": "Misled", "lying": "Lying", "unlikely": "Unlikely"}[mode]
+		for mode in ["misled", "lying", "impaired", "unlikely"]:
+			var label: String = {"misled": "Misled", "lying": "Lying", "impaired": "Poisoned", "unlikely": "Unlikely"}[mode]
 			var w: float = 84.0
 			var disabled: bool = mode == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))
 			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": node.mode == mode, "disabled": disabled, "field": "mode:" + mode,
-				"tip": {"misled": "Honest but wrong: impaired, or a misleading registration.", "lying": "The reader is lying about this result.", "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
+				"tip": {"misled": "Honest but wrong: a misleading registration (Red Herring, Marked).", "lying": "The reader is lying about this result.", "impaired": "Their gift failed that night: a Poisoner. Points at whoever was seen out that night without a reason.", "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
 			x += w + 8.0
 		y += 36.0
 		return {"h": y + 44.0, "els": els, "text": text_lines, "details": false}

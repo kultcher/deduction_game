@@ -1668,6 +1668,19 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 			# explanations. Impairment is not deliberate dishonesty.
 			var evil: bool = TimeModel.evil_index(view, world, index, conclusion.get("question_at", conclusion.at))
 			return evil if conclusion.type == "lied" else not evil
+		"inconsistent":
+			# Premises step 3: not every one of the source's readings holds in this world.
+			var i_w: int = world.get("__i", -1)
+			if i_w < 0:
+				i_w = universe(view).find(world)
+			for rid in conclusion.get("reports", []):
+				var rep: Dictionary = card_by_id(view, str(rid))
+				if rep.is_empty() or i_w < 0:
+					continue
+				var tbl: PackedByteArray = report_table(view, rep)
+				if i_w < tbl.size() and tbl[i_w] == 0:
+					return true
+			return false
 		"misled", "unreliable":
 			var table: PackedByteArray = question_table(view, conclusion)
 			var i: int = world.get("__i", -1)
@@ -1679,7 +1692,9 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 static var question_cache: Dictionary = {}
 
 static func question_inputs(view: Dictionary, conclusion: Dictionary) -> Array:
-	return [conclusion, card_by_id(view, conclusion.get("report", ""))] if conclusion.get("type") in ["misled", "unreliable"] else [conclusion]
+	if conclusion.get("type") == "inconsistent":
+		return [conclusion, conclusion.get("reports", []).map(func(rid): return card_by_id(view, str(rid)))]
+	return [conclusion, card_by_id(view, conclusion.get("report", ""))] if conclusion.get("type") in ["misled", "unreliable", "holds"] else [conclusion]
 
 ## Existing report truth and role tables answer reading questions without adding
 ## honesty/source states to the world domain.

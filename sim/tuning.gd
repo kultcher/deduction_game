@@ -850,6 +850,15 @@ class Workshop:
 	const WITNESS_QUALITY_MAX = 0.95
 	const CHALLENGE_GROUND_MIN_QUALITY = 0.4
 	const CHALLENGE_SOURCE_PENALTY_SCALE = 0.3
+	## Premises step 3: a challenge backfires (and costs the presentation trust) when the rest
+	## of the evidence moves the reading's content this far toward certainly holding
+	## (CaseEval.shift of its share of worlds; the mirror of PRESENTATION_WRONG_AGREEMENT).
+	## The plan's "0.1 below the prior" can't be reached: the chance a reading is wrong can
+	## only fall to (1 - r) q / ((1 - r) q + r), about 0.09 below the prior at default trust.
+	const CHALLENGE_BACKFIRE_SHIFT = 0.25
+	## An accepted "the gift failed" challenge raises its Poisoner candidates by this share of
+	## its agreement, split among them.
+	const CHALLENGE_POISONER_SCALE = 0.12
 
 	## Role constraints, movement & public/speech evidence (`workshop/*.gd`)
 	const BLUFF_WEIGHT = 0.92

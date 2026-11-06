@@ -9,7 +9,9 @@ const C = preload("res://sim/content.gd")
 const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "warden", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist", "chronicler", "augur", "magistrate", "executor", "registrar", "monitor", "confessor"]
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
-const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]
+const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent"]
+## Premises step 3: "these readings from X don't fit together", with a named cause.
+const INCONSISTENT_CAUSES = {"any": "misled", "lying": "lying", "impaired": "impaired", "delusional": "delusional"}
 
 ## mixture_budget: apply the old 2^u mixture's 64-state gate, on the legacy engine only
 ## (CaseEval has no such limit, so no listener falls back to native rules over it).
@@ -118,6 +120,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	var view = {"seed": 0, "day": snapshot.now.day, "people": snapshot.people.duplicate(true), "cards": cards,
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": epoch, "history": [],
 		"world_options": {"modifiers": snapshot.rules.modifier_options.duplicate()}, "scope": result.scope,
+		"script_roles": snapshot.rules.get("roles", []).duplicate(),
 		"timeline": History.from_events(snapshot.public_events)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
@@ -197,6 +200,15 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 				var report = Solver.card_by_id(view, c.get("report", ""))
 				if not report.is_empty():
 					c["question_at"] = Solver.TimeModel.statement_time(report)
+			if c.type == "inconsistent":
+				# One challenge for the source's readings taken together (premises step 3).
+				var group: Array = Solver.selected(view, claim).filter(func(card): return card.kind == "report" and card.source == c.target and Solver.tabled(card) and not card.has("relay_source") and not card.get("testimony_only", false) and not card.get("quoted", false)).map(func(card): return card.id)
+				group.sort()
+				c["reports"] = group
+				if group.size() >= 2:
+					var g_challenge = {"mode": INCONSISTENT_CAUSES.get(str(c.get("cause", "any")), "misled"), "supports": claim.cards.filter(func(root): return root not in group), "group": group}
+					claim.reading_challenges[group[0]] = g_challenge
+					result.case.reading_challenges[group[0]] = g_challenge
 			if c.type in ["lied", "misled", "unreliable"] and c.get("report", "") in claim.cards:
 				var id: String = c.report
 				var challenge = {"mode": "lying" if c.type == "lied" else "misled", "supports": claim.cards.filter(func(root): return root != id)}
@@ -741,6 +753,12 @@ static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
 		return ["Choose a supported modifier for the secret premise."]
 	if c.type in ["role", "notrole"] and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and not card.get("testimony_only", false) and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):
 		return ["A role-declaration question needs that person's included claim or reading of the named good gift."]
+	if c.type == "inconsistent":
+		var own: Array = Solver.selected(view, value).filter(func(card): return card.kind == "report" and card.source == c.target and Solver.tabled(card) and not card.has("relay_source") and not card.get("testimony_only", false))
+		if own.size() < 2:
+			return ["Link at least two of that person's own readings to say they don't fit together."]
+		if str(c.get("cause", "any")) not in INCONSISTENT_CAUSES:
+			return ["Choose why their readings don't fit together."]
 	if c.type in ["lied", "truthful", "misled", "unreliable"]:
 		var card = Solver.card_by_id(view, c.get("report", ""))
 		if card.get("kind") != "report" or card.source != c.target or card.id not in value.cards or card.has("relay_source") or card.get("testimony_only", false):

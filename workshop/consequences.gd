@@ -62,6 +62,9 @@ static func _assess(view: Dictionary, value: Dictionary, baseline: Dictionary, p
 		for challenge in challenged.results:
 			if challenge.mode == "lying" and challenge.source == person.id and challenge.agreement >= 0.6:
 				net_weight = maxf(net_weight, 0.12 * challenge.agreement)
+			var cands: Dictionary = challenge.get("candidates", {})
+			if challenge.mode == "impaired" and cands.has(person.id) and challenge.agreement >= 0.6:
+				net_weight = maxf(net_weight, 0.12 * challenge.agreement / float(cands.size()))
 		if prepared.private_checks.fatal or not attention.case.get("graph_errors", []).is_empty() or not Solver.validate_answers(view, attention.case).is_empty():
 			net_weight = 0.0
 		if TimeModel.known_good(view, baseline.knowledge, person.id, value.conclusion.at):
