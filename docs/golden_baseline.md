@@ -44,7 +44,14 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 5, night): `baseline_b9a0376`
+### Current baseline (Nov 5, late night): `baseline_a9e0301`
+
+`tools/golden/baseline_a9e0301/` is the capture from `a9e0301`: `baseline_b9a0376` plus
+meeting plan M2c (supporters, `sim/mind_support.gd`). Two captures identical. Against
+`baseline_b9a0376` every seed parts at the vote of a nomination where a supporter spoke
+(day 1 to 3); earlier records are identical.
+
+### Previous baseline (Nov 5, night): `baseline_b9a0376`
 
 `tools/golden/baseline_b9a0376/` is the capture from `b9a0376`: `baseline_e9f1e47` plus the
 playtest 13910 dialogue fixes (PR #73), which are wording only. Before main moved, the same
@@ -153,7 +160,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_b9a0376 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_a9e0301 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs

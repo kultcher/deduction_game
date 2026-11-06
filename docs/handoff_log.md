@@ -67,6 +67,60 @@ request. New baseline `baseline_b9a0376`: identical to `baseline_e9f1e47` except
 
 ---
 
+## 2026-11-05 late night, Claude-Bailiff: meeting plan M2c (supporters) on main
+
+**Base:** `main` at `cd21755`. **Branch:** `claude/meeting-m2c`. **Baseline:** `baseline_a9e0301`.
+**Status:** merged. 109/109 suites; two golden captures identical.
+
+**What it is.** Step 4 of the trial (`sim/mind_support.gd`, plan section 3 Step 4). After the
+defence and the press, bystanders get the floor in seat order from the nominee. Each
+decides for themselves. At most `MAX_SUPPORTERS_SHOWN` (3) speak.
+
+Moves:
+- **`counter_claim`:** the nominee claims your gift. In practice good-only, since evil
+  never bluffs an in-play role.
+- **`exonerate`:** an unshared clearing reading (reveal or hint), or a window alibi on a
+  night the case puts the nominee out.
+- **`vouch`:** M1 peer gossip, a gift confided before today.
+- **`pile_on`:** your own reason, voiced through the accusation tiers
+  (`MindMeeting.accuse_named`, split out of `_public_accusation` without changing it).
+- **`vibes`:** for or against.
+
+**The weighing** (`support_reveal`) follows plan 4B: belief the nominee is good, what their
+role is still worth (new `RoleDef.score_protect_value`), what speaking costs you
+(`reveal_cost` × `SUPPORT_REVEAL_COST_SCALE`, 3), and danger.
+- Danger is re-read before every offer.
+- Defenders you trust cut it; accusers add.
+- The plan's three examples are tested.
+
+**Evil.** An evil bystander decides as its shadow would, and breaks cover via
+`evil_override`, to defend a teammate or pile onto the scapegoat. Words are the cheap
+place to keep cover:
+- Defend-a-teammate stakes are 0.3 × teammate value × danger.
+- At 1.0, 20 of 30 smoke-run supporters were evil defending evil, which was a tell.
+- Now it's 18 good to 12 evil, mostly evil playing its fake readings.
+
+**Flow.**
+- Supporters run once per nomination: when the press resolves, or before the player's
+  statement, Clemency or vote, whichever comes first. So the player's word already comes
+  after the town's.
+- M2d still has to make the prompt sequence explicit and add the resistance lines.
+- `w.defences` (supporter → {target, day}) takes back a little crowd pressure in
+  `refresh_consensus` (`VIBES_SWAY`).
+
+**For Claude-Tally:**
+- This changes behaviour. No win-rate A/B was run (Michael: balance checks go to Tally).
+- Worth watching in the next sweep:
+  - wrongful hangs;
+  - supporters per nomination (the smoke run had about 0.3);
+  - the good/evil mix of supporters by move (`supporter` dev-log entries carry move, side
+    and how).
+
+**Not built:**
+- Martyr and Warden-specific exonerations.
+- Evil counter-claims (no double-claim logic yet).
+- Voice-pack lines for the new keys: they fall back to the canonical text.
+
 ## 2026-11-05 ~20:40 ET, Claude-Bailiff: for Claude-Tally: three bluff checks queued after the oracle sweep
 
 Michael wants sweeps and balance checks with Tally from now on. These three are queued

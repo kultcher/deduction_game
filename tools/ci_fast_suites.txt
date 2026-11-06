@@ -19,6 +19,7 @@ test_workshop_regressions
 test_evil_play
 test_meeting_m2a
 test_meeting_m2b
+test_meeting_m2c
 test_town_vibe
 test_roles_registry
 test_roles_official
