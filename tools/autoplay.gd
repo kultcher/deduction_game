@@ -146,7 +146,7 @@ func _init() -> void:
 		var t0: int = Time.get_ticks_msec()
 		var r = _play(seed_v, int(args.get("npcs", "7")), log_dir, args.has("echo-log"))
 		if jsonl != null:
-			var rec: Dictionary = SweepRecord.build(g, {"seed": seed_v, "mode": "passive" if passive else "bot",
+			var rec: Dictionary = SweepRecord.build(g, {"seed": seed_v, "mode": "passive" if passive else ("bot" if m4 else "bot_pre_m4"),
 				"insight": insight, "sha": str(args.get("sha", "")), "dynamic": dynamic_scripts, "metrics": r["metrics"], "r": r,
 				"commands": last_commands, "guard": last_guard, "stuck": r["metrics"].get("guard_exhausted", false),
 				"wall_s": (Time.get_ticks_msec() - t0) / 1000.0})

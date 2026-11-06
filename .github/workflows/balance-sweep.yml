@@ -11,11 +11,11 @@ on:
         description: "Games per cell"
         default: "2000"
       cells:
-        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot", "insight": 1.0}'
+        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot"|"bot_pre_m4", "insight": 1.0}'
         default: '[{"npcs":7,"mode":"passive"},{"npcs":10,"mode":"passive"},{"npcs":7,"mode":"bot","insight":1.0},{"npcs":10,"mode":"bot","insight":1.0}]'
       costs:
         description: 'Seconds per game per core on a runner, by "<npcs>_<mode>" (sizes the shards)'
-        default: '{"7_passive":5,"10_passive":50,"7_bot":19,"10_bot":220}'
+        default: '{"7_passive":5,"10_passive":50,"7_bot":85,"10_bot":350,"7_bot_pre_m4":50,"10_bot_pre_m4":210}'
       target_hours:
         description: "Planned hours per shard job (the hard cap is 6)"
         default: "3"
@@ -57,9 +57,9 @@ jobs:
           shards = []
           for c in cells:
               mode = str(c["mode"]); npcs = int(c["npcs"]); ins = float(c.get("insight", 1.0))
-              if mode not in ("passive", "bot") or npcs not in (7, 10):
-                  raise SystemExit("bad cell %r: mode must be passive or bot, npcs 7 or 10" % (c,))
-              cost = float(costs.get("%d_%s" % (npcs, mode), 220))
+              if mode not in ("passive", "bot", "bot_pre_m4") or npcs not in (7, 10):
+                  raise SystemExit("bad cell %r: mode must be passive, bot or bot_pre_m4, npcs 7 or 10" % (c,))
+              cost = float(costs.get("%d_%s" % (npcs, mode), costs.get("%d_bot" % npcs, 220)))
               per = max(4, int(budget // cost))
               k = max(1, math.ceil(games / per))
               size = math.ceil(games / k)
