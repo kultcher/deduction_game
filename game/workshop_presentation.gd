@@ -278,6 +278,8 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			hub_canonical_tail = " " + hub_fb
 			hub_voiced_tail = " " + Mind.Dialogue.voice_line(n.id, "circumstantial_hub_landed", "Taken with the rest of your case, those surrounding circumstances make {target} harder to wave away.", {"target": s_name})
 			text += hub_voiced_tail
+	if root.conclusion.type == "suspicious" and direction == "deduction" and not self_support:
+		_suspicious_pressure(g, n, root, snapshot, venue, listener_key)
 	if root.conclusion.type == "conflict" and assessment.agreement >= 0.6 and not repeated:
 		if not state.has("scrutinized"):
 			state.scrutinized = {}
@@ -366,6 +368,39 @@ const STANCE_ONLY = [
 	"I checked another explanation that also fits, but the trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
 	"I checked another explanation that also fits, but the movement and trace evidence makes your explanation more convincing. This is persuasion, not a proof that the alternative is impossible.",
 ]
+
+## Premises pass step 2: a "suspicious" filing heard at half weight puts the other half on
+## its target as pressure, once per filing (target and cards): the average full-weight rise
+## across everyone who heard it, scaled by venue. Each new listener updates the average;
+## the target gets only the change, so a meeting gives the average and a refiling nothing.
+static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, venue: String, listener_key: String) -> void:
+	var target_id: String = str(root.conclusion.get("a", root.conclusion.get("target", "")))
+	if target_id == "" or target_id == n.id or not g.w.by_id.has(target_id):
+		return
+	var effect: Dictionary = g._workshop_evaluations.get(listener_key, {}).get("proposal", {}).get("effects", {}).get(target_id, {})
+	var rise: float = maxf(0.0, float(effect.get("suspicious_case_full", 0.0)))
+	var ids: Array = snapshot.selected.duplicate()
+	ids.sort()
+	var filing: String = target_id + "|" + ",".join(PackedStringArray(ids))
+	var book: Dictionary = g.w.suspicious_pressure
+	var entry: Dictionary = book.get(filing, {"sum": 0.0, "count": 0, "applied": 0.0, "venue": venue, "heard": []})
+	if n.id in entry.heard:
+		return
+	if entry.count > 0 and entry.venue != venue:
+		return  # pressure comes from the first hearing; telling another audience adds none
+	entry.heard.append(n.id)
+	entry.sum += rise
+	entry.count += 1
+	var scale: float = float(Tuning.Workshop.SUSPICIOUS_PRESSURE_PER_RISE.get("private" if venue == "private" else "meeting", 1.0))
+	var due: float = scale * entry.sum / float(entry.count)
+	var delta: float = due - float(entry.applied)
+	entry.applied = due
+	book[filing] = entry
+	var target = g.w.by_id[target_id]
+	if not is_zero_approx(delta):
+		target.pressure = maxf(0.0, target.pressure + delta)
+		g.w.dlog.trace_event("value_change", target_id, n.id, {"quantity": "pressure", "delta": delta, "rise": rise, "filing": filing, "venue": venue},
+			"A suspicious case presses its subject to explain (premises step 2)")
 
 static func belief_stance(kind: String, before: float, after: float) -> String:
 	var toward: float = (before - after) if kind in ["good", "marked"] else (after - before)

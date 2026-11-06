@@ -12,6 +12,15 @@ var links: Array = []
 var selected = ""
 var version = 1
 var serial = 0
+## Whether answers can say "registered as Marked" (premises step 2: the live editor says
+## Marked with a secret premise instead, and turns this off).
+var marked_answers: bool = true
+## Claim cards the last compile() brought in by itself (premises step 2).
+var auto_cards: Array = []
+## Whether two contradicting cards stay separate, joined by a "contradicts" link (the live
+## editor, premises step 2), instead of merging into one contradiction card (the fixture
+## workshop).
+var contradiction_links: bool = false
 
 func _init(public_view: Dictionary) -> void:
 	view = public_view
@@ -261,7 +270,13 @@ func ancestors(id: String, seen: Array = []) -> Array:
 		return result
 	result.append(id)
 	for edge in links:
-		if edge.to == id:
+		if edge.kind == "contradicts":
+			# A contradiction pulls in its other card, whichever one is in the case.
+			if edge.to == id:
+				result = ancestors(edge.from, result)
+			elif edge.from == id:
+				result = ancestors(edge.to, result)
+		elif edge.to == id:
 			result = ancestors(edge.from, result)
 	for child in nodes[id].get("children", []):
 		result = ancestors(child, result)
@@ -273,7 +288,24 @@ func _reaches(from: String, to: String, seen: Array = []) -> bool:
 	if from in seen:
 		return false
 	seen = seen + [from]
-	return links.any(func(edge): return edge.from == from and _reaches(edge.to, to, seen))
+	return links.any(func(edge): return edge.kind != "contradicts" and edge.from == from and _reaches(edge.to, to, seen))
+
+## Premises pass step 2: two contradicting cards stay on the canvas, joined by a
+## "contradicts" link from the card that disproves to the card it contradicts (the
+## dispute's preferred and challenged cards). The contradicted card is the one drawn red.
+func contradiction_of(id: String) -> Dictionary:
+	for edge in links:
+		if edge.kind == "contradicts" and edge.to == id:
+			return edge
+	return {}
+
+## The card that contradicts this one (or "").
+func contradicted_by(id: String) -> String:
+	return str(contradiction_of(id).get("from", ""))
+
+func remove_contradiction(id: String) -> void:
+	links = links.filter(func(edge): return not (edge.kind == "contradicts" and edge.to == id))
+	version += 1
 
 func connect_cards(from: String, to: String) -> String:
 	if not nodes.has(from) or not nodes.has(to) or from == to or nodes[from].has("merged") or nodes[to].has("merged"):
@@ -289,10 +321,19 @@ func connect_cards(from: String, to: String) -> String:
 	var a: Dictionary = nodes[from]
 	var b: Dictionary = nodes[to]
 	if a.kind == "evidence" and b.kind == "evidence":
-		for pair in [[a, b], [b, a]]:
-			var dispute = {"reports": [pair[0].card, pair[1].card], "challenged": pair[0].card, "preferred": pair[1].card}
-			if Graph.valid_dispute(view, dispute):
+		for pair in [[[a, from], [b, to]], [[b, to], [a, from]]]:
+			var dispute = {"reports": [pair[0][0].card, pair[1][0].card], "challenged": pair[0][0].card, "preferred": pair[1][0].card}
+			if Graph.valid_dispute(view, dispute) and not contradiction_links:
 				_merge(from, to, dispute)
+				return ""
+			if Graph.valid_dispute(view, dispute):
+				var challenged_id: String = pair[0][1]
+				var preferred_id: String = pair[1][1]
+				if links.any(func(edge): return edge.kind == "contradicts" and edge.to == challenged_id and edge.from == preferred_id):
+					return "These cards are already linked."
+				links.append({"from": preferred_id, "to": challenged_id, "kind": "contradicts", "dispute": dispute})
+				selected = challenged_id
+				version += 1
 				return ""
 	if _reaches(to, from):
 		return "That link would create a circular argument."
@@ -349,6 +390,46 @@ func remove_modifier(id: String) -> void:
 				links.append({"from": source, "to": target, "kind": "supports"})
 	selected = reading
 	version += 1
+
+## Premises pass step 2: an outing explained by a gift (or a private errand) needs the
+## person's claim in the case. When no claim is chosen, use the one on the board that
+## covers that night, and bring its card into the case: no hunting for it. The citation
+## "none" means the player declined that claim (the answer window's "No supporting claim").
+## Added cards are listed in the model's `auto_cards` (not the case: the assessment
+## rejects keys it doesn't know) so the editor can say so.
+func _auto_citations(result: Dictionary) -> void:
+	auto_cards = []
+	for key in result.reasons.keys():
+		var reason: String = str(result.reasons[key])
+		if reason not in ["gift", "secret"]:
+			continue
+		var parts: PackedStringArray = str(key).split(":")
+		if parts.size() != 2 or not parts[1].is_valid_int():
+			continue
+		var person: String = parts[0]
+		var night: int = int(parts[1])
+		var chosen: String = str(result.citations.get(key, ""))
+		if chosen == "none":
+			result.citations.erase(key)
+			continue
+		if chosen == "":
+			for card in view.get("cards", []):
+				if reason == "gift" and card.get("kind", "") == "claim":
+					var probe: Dictionary = {"citations": {key: card.id}}
+					if not Graph.valid_citation(view, probe, person, night).is_empty():
+						chosen = card.id
+						break
+				elif reason == "secret" and card.get("kind", "") == "secret_claim" and card.get("subject", "") == person:
+					var applies: Dictionary = card.get("applies", {})
+					if night >= int(applies.get("from", 0)) and night <= int(applies.get("through", 99)):
+						chosen = card.id
+						break
+			if chosen == "":
+				continue
+			result.citations[key] = chosen
+		if chosen not in result.cards:
+			result.cards.append(chosen)
+			auto_cards.append(chosen)
 
 func _gift_link(a: Dictionary, b: Dictionary) -> bool:
 	return not _gift_observations(a, b).is_empty()
@@ -436,18 +517,32 @@ func unmerge(id: String) -> void:
 
 ## A contradiction whose observation is a gift report (a claim, not something you saw)
 ## can be read the other way: the report is the false one. True when that's on offer.
+## `id` is the contradicted card (premises step 2) or, for drafts from before, the merged
+## contradiction node.
 func report_doubtable(id: String) -> bool:
-	if not nodes.has(id) or nodes[id].kind != "contradiction":
+	if not nodes.has(id):
 		return false
-	var report = Solver.card_by_id(view, nodes[id].dispute.preferred)
+	var dispute: Dictionary = nodes[id].get("dispute", {}) if nodes[id].kind == "contradiction" else contradiction_of(id).get("dispute", {})
+	if dispute.is_empty():
+		return false
+	var report = Solver.card_by_id(view, dispute.preferred)
 	return report.get("kind", "") == "report" and not report.has("relay_source") and not report.get("testimony_only", false)
 
-## The other explanation for an alibi against a gift report: the report is false. Splits
-## the contradiction back into its two cards and puts a "suspected lie" on the report,
-## keeping the links. Returns "" or why not.
+## The other explanation for an alibi against a gift report: the report is false. The
+## contradiction turns around: the link goes, the report gets a "suspected lie" with the
+## alibi as its grounds, and the report is now the challenged card. Returns "" or why not.
 func doubt_report(id: String) -> String:
 	if not report_doubtable(id):
 		return "Only a gift report can be doubted this way."
+	if nodes[id].kind != "contradiction":
+		var report_node: String = contradicted_by(id)
+		remove_contradiction(id)
+		var why: String = add_modifier(report_node, "lying")
+		if why == "":
+			var challenge: String = selected
+			if not links.any(func(edge): return edge.from == id and edge.to == challenge):
+				links.append({"from": id, "to": challenge, "kind": "supports"})
+		return why
 	var preferred: String = nodes[id].dispute.preferred
 	var report_node = ""
 	for child in nodes[id].children:
@@ -536,7 +631,7 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 							result.citations[key] = cited
 			result.faults = Graph.combine_faults(result.faults, node.get("faults", {}))
 		elif node.kind == "contradiction":
-			result.disputes.append(node.dispute.duplicate(true))
+			result.disputes.append(node.dispute.duplicate(true))  # drafts from before step 2
 		elif node.kind == "modifier":
 			result.reading_challenges[node.card] = {"mode": node.mode, "supports": _evidence(ancestors(id)).filter(func(card): return card != node.card)}
 		elif node.kind == "premise" and node.conclusion.get("type") == "conflict":
@@ -549,6 +644,9 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 		if node.kind == "premise" and not node.positions.is_empty() and node.conclusion.get("at", result.conclusion.at) != result.conclusion.at:
 			result.temporal_positions.append({"at": node.conclusion.at, "positions": node.positions.duplicate(true)})
 	for edge in links:
+		if edge.kind == "contradicts" and edge.from in all and edge.to in all and not result.disputes.has(edge.dispute):
+			result.disputes.append(edge.dispute.duplicate(true))
+	for edge in links:
 		if edge.kind == "explains_outing" and edge.from in all and edge.to in all:
 			var claim = Solver.card_by_id(view, nodes[edge.from].card)
 			for observation in _gift_observations(nodes[edge.from], nodes[edge.to]):
@@ -556,6 +654,7 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 				if not result.reasons.has(key):
 					result.reasons[key] = "gift"
 					result.citations[key] = claim.id
+	_auto_citations(result)
 	var hub_entries: Array = []
 	for id in all:
 		if nodes[id].kind == "circumstantial":
@@ -654,7 +753,7 @@ func _evidence(ids: Array) -> Array:
 ## How each premise type reads after the person's name (the Workshop's claim menu).
 const PREMISE_TEXT = {"evil": "is evil", "suspicious": "is suspicious", "good": "is good", "marked": "is Marked",
 	"conflict": "these reports conflict", "demon": "is the Demon", "minion": "is a Minion",
-	"notdemon": "is not the Demon", "secret_mod": "has a secret modifier", "role": "holds their claimed gift",
+	"notdemon": "is not the Demon", "secret_mod": "holds a secret", "role": "holds their claimed gift",
 	"notrole": "is bluffing their claimed gift", "lied": "lied about a reading", "truthful": "told the truth about a reading",
 	"misled": "was misled by a reading", "unreliable": "gave an unreliable reading"}
 
@@ -782,8 +881,12 @@ func restore(value, session) -> String:
 				if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing"] or (edge.from not in n.children and edge.to not in n.children) or edge.from == edge.to:
 					return "Invalid original contradiction links."
 	for edge in value.links:
-		if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing"] or candidate.nodes[edge.from].has("merged") or candidate.nodes[edge.to].has("merged") or candidate._reaches(edge.to, edge.from):
+		if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing", "contradicts"] or candidate.nodes[edge.from].has("merged") or candidate.nodes[edge.to].has("merged") or candidate._reaches(edge.to, edge.from):
 			return "Invalid or circular canvas link."
+		if edge.kind == "contradicts":
+			var cd = edge.get("dispute")
+			if not cd is Dictionary or not Graph.valid_dispute(candidate.view, cd) or candidate.nodes[edge.to].get("card", "") != cd.get("challenged", "") or candidate.nodes[edge.from].get("card", "") != cd.get("preferred", ""):
+				return "Invalid contradiction link."
 		if edge.kind == "explains_outing":
 			if not candidate._gift_link(candidate.nodes[edge.from], candidate.nodes[edge.to]):
 				return "Invalid gift explanation."
@@ -850,9 +953,16 @@ func apply_answer(card: Dictionary, previous: Dictionary, kind: String, value: S
 				else:
 					answer["in_play_role"] = value
 		"reg":
-			answer["registration"] = value
+			if value != "marked" or marked_answers:
+				answer["registration"] = value
 		"pick":
-			if role in ["dowser", "magistrate"] or is_parity_surv:
+			if (role in ["dowser", "magistrate"] or is_parity_surv) and not marked_answers:
+				if value in positive:
+					positive.erase(value)
+				elif positive.size() < count:
+					positive.append(value)
+				answer["slots"] = positive.duplicate()
+			elif role in ["dowser", "magistrate"] or is_parity_surv:
 				# ? -> registered (evil or Marked) -> registered as Marked -> ?
 				if value not in positive:
 					if positive.size() < count:
@@ -888,7 +998,7 @@ func apply_answer(card: Dictionary, previous: Dictionary, kind: String, value: S
 				elif used < count:
 					blocks.append(block)
 			elif value in positive:
-				if value not in marked:
+				if value not in marked and marked_answers:
 					marked = [value]
 				else:
 					positive.erase(value)

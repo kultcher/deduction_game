@@ -27,6 +27,28 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06 evening, Claude-Quill: premises step 2 on `claude/premises-step2` (stacked on step 1, PR #92)
+
+Plan: `docs/premises_plan.md`, "Step 2 as built". Decided with Michael: both Marked pickers
+go; "lied", "misled" and "unreliable" leave the premise menu now; a secret premise counts as
+the player's word.
+- **Claim menu:** evil, suspicious, good, conflict, Demon, Minion, not the Demon, holds a
+  secret, holds their claimed gift. Old types still evaluate in filed cases.
+- **Live editor only** (fixture workshop unchanged, via `CanvasModel.marked_answers` and
+  `contradiction_links`): no "registered as Marked" answers or "Good · Marked" identity;
+  contradictions are a `contradicts` link (both cards stay, red border and "Contradicted by"
+  tag; Inspect offers doubt the report / remove); claim citations fill themselves.
+- **Secret premise = player's word:** a pinned, player-sourced secret reading of X, weighted
+  like any card heard only from the player; joins the dawn track record.
+- **Suspicious:** its cards count at half for everyone, plus pressure on the target from the
+  average listener's full-weight rise, once per filing.
+- **Flagged for Michael, not changed:** `Jury`'s headline blend pulls toward any positive
+  headline signal, however small, when the evidence clears someone (see the plan).
+- **Not visually checked:** the canvas drawing (red border, tag, "contradicts" link label)
+  was written headless; worth a look in the editor.
+
+---
+
 ## 2026-11-06 evening, Claude-Quill: premises step 1 on `claude/premises-step1`. For Tally: the step 1 A/B
 
 **What step 1 does** (plan: `docs/premises_plan.md`, "Step 1 as built"; decided with Michael:

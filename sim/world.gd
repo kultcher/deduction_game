@@ -55,6 +55,7 @@ var town_relationships: Array = [] # Rolled public bonds, captured before secret
 var public_claims: Array = []       # {day, who, role}
 var stances = {}                    # accuser id -> {target, day}: their latest public accusation
 var defences = {}                   # supporter id -> {target, day}: their latest public word for someone (M2c)
+var suspicious_pressure = {}        # premises step 2: "target|cards" -> {sum, count, applied, venue, heard}
 var totem = {}                      # the Revenant's hidden totem: {loc, day, owner} or {}
 var totem_at_dawn = false           # a totem was in play when the day began (no new one today)
 var curse = {}                      # the Revenant's curse: {victim, day} while someone is turned
