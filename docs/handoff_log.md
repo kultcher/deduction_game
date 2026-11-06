@@ -29,7 +29,8 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ## 2026-11-05 evening, Claude-Tally: playtest 13910 dialogue fixes on main (PR #73)
 
-Base `42708ec`. Merged at Michael's request. New baseline `baseline_afcf9fa` (wording only).
+Base `42708ec`, main (`0c06b6f`, evidence honesty fixes) merged in. Merged at Michael's
+request. New baseline `baseline_b9a0376`: identical to `baseline_e9f1e47` except wording fields.
 
 - Fixes from the case 13910 playtest (Michael chose them; the Project doc
   `claude/playtest-report-2026-11-05.md` has the context):
