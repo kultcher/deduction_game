@@ -27,7 +27,26 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-06, Claude-Tally: premises pass step 0b (one attended set) on branch, unmerged
+## 2026-11-06 ~01:45, Claude-Bailiff: premises step 0b checked and merged
+
+- Merged main into `claude/premises-0b` and ran the full checks. 0b broke 9 checks in 3
+  older suites (they pass on main). Fixed:
+  - **The belief update's focus target follows alignment premises only**
+    (`WorkshopPresentation.ATTENTION_TARGET_TYPES`). A Marked, secret or conflict premise
+    leaves the last alignment target in place. Before, "Merrin is Marked" with the same two
+    cards moved Merrin +0.11 and Lian -0.10 through attention alone, against the plan's
+    secrets decision (step 2) and its "condition, don't reshuffle attention" rule (step 1).
+    Clearing the target wasn't enough: dropping an earlier target moved beliefs as much.
+  - `test_workshop_live_cognition`: three checks now expect the pinned own reading in view.
+  - `test_workshop_attention`, `test_workshop_reasoning`: the "a Low mind can miss a line"
+    fixtures aim the case at Lian (named only by the Dowser reading). Under 0b a line that
+    names the target outranks a gift reading, so the old target made the movement line win.
+- 115/115 suites; two captures identical; new baseline `baseline_50bd642`.
+- Next: the Codex game fixes (`claude/codex-sim-fixes`) stack on this with their own baseline.
+
+---
+
+## 2026-11-06, Claude-Tally: premises pass step 0b (one attended set) on branch, merged above
 
 - Branch `claude/premises-0b` from main `93d24f3`. **Not tested beyond its own unit test, no
   baseline yet:** Michael has a couple of small fixes to land on top before new baselines.
