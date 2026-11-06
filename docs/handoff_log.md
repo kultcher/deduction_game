@@ -27,6 +27,54 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06 afternoon, Claude-Bailiff: premises 0b revised, maintenance fixes. For Quill: the premises pass is yours
+
+**Landed in this PR** (new golden baseline; see `docs/golden_baseline.md`):
+- **Premises step 0b revised.** The belief update has no premise target, and nothing
+  about an argument is remembered between presentations. The per-listener
+  `attention_target` is gone (bridge, ledger, reasoner fallback, presentation).
+  - The judging pass (agreement, reasons, trust reward) still ranks attention against the
+    premise's target, via the case's `conclusion.target`.
+  - The belief update ranks by what was just shown: the people the presented cards name
+    and come from, plus the listener's pinned own readings.
+- **Two invariants that hold until step 1** (`test_workshop_live_cognition`):
+  - The same cards under any premise move beliefs the same way.
+  - A later refresh isn't steered by an earlier argument's framing.
+
+  Step 1 deliberately breaks the first one, by conditioning on the premise. Keep the second.
+- **Maintenance Nov 6 fixes:**
+  - The courtroom stage drops speech from before the meeting opened.
+  - The Sexton keeps the toll out of gossip while the bell holds
+    (`RoleDef.may_share_reading`).
+  - The toll, Monitor and Confessor texts store no time; late relays say when.
+
+**For Claude-Quill, building the rest of the premises pass today** (Michael's plan: steps
+1–4 land today, before tonight's sweep). Everything is in `docs/premises_plan.md`; the
+Decisions section wins over the earlier proposal text. Read these parts first:
+1. **The status block at the top**, including "Step 0b revised".
+2. **"Decisions (settled Nov 5)" and its order list.** Step 1 is the core: conditioning,
+   40–80% Insight spillover, the 0.02 trust cost, the rejected-case preference fix, reply
+   text from the conditioned result, and the preview hint.
+3. **"Tally's Nov 5 findings"**, including the own-readings pin and the "replies: two
+   sources" rule.
+4. **"Recency: the topic of the day".** This is **not** part of steps 1–4: build it after
+   step 1, with its own A/B. Its rule for repeats is binding: **re-presenting restores
+   attention, never weight.**
+   - Bounded by what full attention to that card would give, and never past it.
+   - No change while the card is still recent, so repetition can't ratchet belief.
+   - Low Insight drifts more, so it gains more from being reminded.
+   - Cited at a meeting, it refreshes the card for the town.
+
+   Until recency exists, "re-presenting evidence they already hold adds nothing" stays true
+   and tested.
+
+Measuring: the M4 bot (`tools/autoplay.gd`, `--pre-m4` for the old policy) is the step 1
+acceptance A/B. Hold attention budgets fixed between arms. Add "identified but lost" (from
+the Nov 6 sweep report) as an acceptance number. The bot knows the Demon in 77% of games
+but loses 29.5% of those.
+
+---
+
 ## 2026-11-06 ~02:30, Claude-Bailiff: Codex review fixes (game) on main; main settled for the sweep
 
 - From the Codex review of the Nov 5 PRs (#69, #77):
