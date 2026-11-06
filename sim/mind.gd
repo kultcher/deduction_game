@@ -1270,6 +1270,9 @@ static func defence_line(w, n) -> Dictionary:
 static func vote(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int) -> bool:
 	return MindMeeting.vote(w, v, nominee, nominator, player_yes, statement, yes_so_far)
 
+static func vote_resistance_lines(w, res: Dictionary) -> Array:
+	return MindMeeting.vote_resistance_lines(w, res)
+
 static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int, trace_id: int) -> bool:
 	return MindMeeting._vote_impl(w, v, nominee, nominator, player_yes, statement, yes_so_far, trace_id)
 

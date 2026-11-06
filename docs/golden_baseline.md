@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 6): `baseline_7a96d27`
+### Current baseline (Nov 5, late night): `baseline_a64553d`
+
+`tools/golden/baseline_a64553d/` is the capture from `a64553d`: `baseline_7a96d27` (NPC openness, M2c) plus
+meeting plan M2d:
+- the player's turn after the town;
+- beliefs flushed before the vote;
+- recorded voter parts;
+- vote resistance lines.
+
+Two captures identical. Against `baseline_7a96d27` every seed parts at the first nomination
+(the new prompt text). With `--ignore engine,voter_parts,prev_block,prev_block_count,reply,text,statement,said`
+they part at the first vote that the pre-vote flush moves (day 2-3).
+
+### Previous baseline (Nov 6): `baseline_7a96d27`
 
 `tools/golden/baseline_7a96d27/` is the capture from `7a96d27`: `baseline_a9e0301` (M2c) plus NPCs being more open with each other. Chats pass on up to three
 things; readings go far more readily to trusted listeners; hints and claims reach
@@ -179,7 +192,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_7a96d27 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_a64553d /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs

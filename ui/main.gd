@@ -971,16 +971,20 @@ func _refresh_actions() -> void:
 			_map_toggle()
 			_button(actions, "Vote to execute", func(): _run("vote yes"))
 			_button(actions, "Vote to spare", func(): _run("vote no"))
-			if nm.get("press", "") == "open":
-				var pr = _button(actions, "Press them before the town…", func(): pass)
-				pr.tooltip_text = "One public question before the town weighs in. Voting without pressing skips it."
-				pr.pressed.connect(func(): _press_menu(pr, nm["nominee"]))
-			if not g.statement_used:
+			if not nm.get("supporters_done", false):
+				# Steps 3-4 first (meeting plan M2c/M2d): press them, or let the town speak.
+				if nm.get("press", "") == "open":
+					var pr = _button(actions, "Press them before the town…", func(): pass)
+					pr.tooltip_text = "One public question before the town weighs in. Voting without pressing skips it."
+					pr.pressed.connect(func(): _press_menu(pr, nm["nominee"]))
+				var hear = _button(actions, "Hear the town", func(): _run("hear"))
+				hear.tooltip_text = "Let bystanders speak for or against them; then it's your turn."
+			elif not g.statement_used:
 				_button(actions, "Speak against them…", func(): _card_picker("Accuse, citing a card (optional)",
 					func(c): return true, func(num, _x): _run("accuse %d" % num if num > 0 else "accuse"), true))
 				_button(actions, "Speak in their defence…", func(): _card_picker("Defend, citing a card (optional)",
 					func(c): return true, func(num, _x): _run("defend %d" % num if num > 0 else "defend"), true))
-			if w.tools["clemency"] > 0 and nm["by"] != "player":
+			if w.tools["clemency"] > 0 and nm["by"] != "player" and nm.get("supporters_done", false):
 				_button(actions, "Invoke Clemency (once per case)", func(): _run("clemency"))
 		"night":
 			action_title.text = "Night %d: your night work" % w.day

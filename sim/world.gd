@@ -920,10 +920,16 @@ func clemency() -> void:
 ## Count the votes on the pending nomination and update who is on the block.
 func vote_pending(player_yes: bool) -> Dictionary:
 	set_log_time()
+	# Step 6 (meeting plan M2d): every reveal, press answer, supporter and player card so far
+	# is in each voter's beliefs before they decide.
+	Mind.flush_beliefs(self)
 	var nm: Dictionary = meeting["pending"]
 	var nid: String = nm["nominee"]
 	var yes: Array = []
 	var no: Array = []
+	var prev_block: String = meeting["block"]
+	var prev_block_count: int = int(meeting["block_count"])
+	meeting["vote_parts"] = {}
 	var order: Array = vote_order(nid)
 	for vid in order:
 		if vid == "player":
@@ -948,7 +954,9 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		else:
 			outcome = "short_of_block"
 	var res = {"nominee": nid, "by": nm["by"], "yes": yes, "no": no, "player_yes": player_yes, "count": count,
-		"threshold": thr, "order": order, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"]}
+		"threshold": thr, "order": order, "outcome": outcome, "block": meeting["block"], "block_count": meeting["block_count"],
+		"prev_block": prev_block, "prev_block_count": prev_block_count, "voter_parts": meeting.get("vote_parts", {}).duplicate(true)}
+	meeting.erase("vote_parts")
 	meeting["results"].append(res)
 	meeting["pending"] = {}
 	# An aggregate process receipt is not another hostile act by the nominator.

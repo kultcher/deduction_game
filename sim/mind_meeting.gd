@@ -1799,7 +1799,133 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	parts["total"] = snappedf(s, 0.01)
 	parts["need"] = snappedf(need, 0.01)
 	w.dlog.think(v.id, "vote", "%s on %s (score %.2f vs %.2f)." % ["YES" if yes else "no", nominee, s, need], parts)
+	# The parts behind the vote, for the resistance lines (M2d). An evil voter's are its
+	# good self's: the shadow runs this same path under the same id.
+	if w.meeting.has("vote_parts"):
+		w.meeting["vote_parts"][v.id] = {"parts": exact_parts, "margin": s - need, "yes": yes}
 	return yes
+
+## Step 6 (meeting plan M2d): after the tally, at most MAX_VOTE_RESISTANCE_SPEAKERS voters
+## say why they voted as they did. First, anyone who accepted the Demonologist's public case
+## against the nominee today and still voted no, voicing the vote part that held them back;
+## failing that, on a count within one of what was needed, the voter who swung it. An evil
+## voter speaks from its good self's parts (the shadow's), never from the override.
+static func vote_resistance_lines(w, res: Dictionary) -> Array:
+	var out: Array = []
+	var nominee: String = str(res.get("nominee", ""))
+	if not w.by_id.has(nominee):
+		return out
+	var t = w.by_id[nominee]
+	var parts_map: Dictionary = res.get("voter_parts", {})
+	var picked: Array = []
+	for vid in res.get("no", []):
+		if picked.size() >= Tuning.Meeting.MAX_VOTE_RESISTANCE_SPEAKERS:
+			break
+		if vid == nominee or not w.by_id.has(vid):
+			continue
+		var v = w.by_id[vid]
+		if v.silenced or not v.alive:
+			continue
+		var acc: Dictionary = v.dialogue_memory.get("accepted_cases", {}).get(nominee, {})
+		if acc.is_empty() or int(acc.get("day", -1)) != w.day:
+			continue
+		var mind = v.shadow if v.is_evil() and v.shadow != null else v
+		if mind.workshop_state.get("withdrawn", {}).has(str(acc.get("key", ""))):
+			continue
+		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res)
+		if key == "":
+			continue
+		out.append(_resistance_line(w, v, t, key, res))
+		picked.append(vid)
+	if picked.is_empty():
+		var needed: int = maxi(int(res.get("threshold", 0)), int(res.get("prev_block_count", 0)) + 1)
+		if absi(int(res.get("count", 0)) - needed) <= 1:
+			var swing = _swing_voter(w, res, parts_map, picked)
+			if swing != null:
+				var sv = swing[0]
+				var skey: String = swing[1]
+				if skey == "yes":
+					var why: String = citable_reason(w, sv, nominee)
+					if why != "":
+						out.append(say_voiced(sv, "vote_yes_swing", "I voted to hang %s: %s." % [t.name, why], {"nominee": t.name, "reason": why}))
+				else:
+					out.append(_resistance_line(w, sv, t, skey, res))
+	return out
+
+
+## Which reason a no-voter gives, from the parts their vote actually had.
+static func _resistance_key(w, v, vp: Dictionary, res: Dictionary) -> String:
+	var parts: Dictionary = vp.get("parts", {})
+	if v.is_evil() and bool(vp.get("yes", false)):
+		# Their good self would have voted yes: the no came from cover-breaking, which is
+		# never voiced. Say what any reluctant townsperson would.
+		return "vote_no_prefers_block" if str(res.get("prev_block", "")) not in ["", res.get("nominee", "")] else "vote_no_short_of_rope"
+	if vp.is_empty():
+		return "" # no record of how they weighed it (an evil voter's team rule, say)
+	if float(parts.get("prefers_block", 0.0)) < 0.0 and str(res.get("prev_block", "")) not in ["", res.get("nominee", "")]:
+		return "vote_no_prefers_block"
+	var known: Array = ["suspicion", "town_pressure", "shared_execution_priority", "resentment", "player_votes_yes", "player_defends",
+		"player_accuses", "distrusts_nominator", "prefers_block", "self_nomination", "persuaded_to_spare"]
+	if float(parts.get("persuaded_to_spare", 0.0)) < 0.0 or parts.keys().any(func(k): return k not in known and float(parts[k]) < 0.0):
+		return "vote_no_reluctant"
+	if float(parts.get("distrusts_nominator", 0.0)) < 0.0 and str(res.get("by", "")) != "player":
+		return "vote_no_distrust_nominator"
+	if float(vp.get("margin", -99.0)) > -Tuning.Meeting.VOTE_RESISTANCE_CLOSE_MARGIN:
+		return "vote_no_short_of_rope"
+	return ""
+
+
+static func _resistance_line(w, v, t, key: String, res: Dictionary) -> Dictionary:
+	var block_id: String = str(res.get("prev_block", ""))
+	var block_name: String = w.by_id[block_id].name if w.by_id.has(block_id) else ""
+	var nom_id: String = str(res.get("by", ""))
+	var nom_name: String = "the Demonologist" if nom_id == "player" else (w.by_id[nom_id].name if w.by_id.has(nom_id) else "")
+	match key:
+		"vote_no_prefers_block":
+			return say_voiced(v, key, "I take your point about %s, truly, but %s is already on the block and I'd sooner hang %s tonight." % [t.name, block_name, block_name],
+				{"nominee": t.name, "block": block_name})
+		"vote_no_reluctant":
+			return say_voiced(v, key, "Even with what you laid out, I'm not ready to put a rope on %s tonight." % t.name, {"nominee": t.name})
+		"vote_no_distrust_nominator":
+			return say_voiced(v, key, "The case against %s troubles me, yes, though I don't trust %s's hand in pushing it." % [t.name, nom_name],
+				{"nominee": t.name, "nominator": nom_name})
+	return say_voiced(v, "vote_no_short_of_rope", "Your case against %s has merit, Demonologist, just not enough to hang them today." % t.name, {"nominee": t.name})
+
+
+## The voter who swung a close count: on a narrow block or tie, the yes-voter nearest the
+## line; on a one-vote miss, the no-voter the Demonologist has the most rapport with.
+## Returns [voter, key] (key "yes", or a resistance key), or null.
+static func _swing_voter(w, res: Dictionary, parts_map: Dictionary, skip: Array):
+	var outcome: String = str(res.get("outcome", ""))
+	var best = null
+	var best_score: float = 1e9
+	if outcome in ["on_block", "tie"]:
+		for vid in res.get("yes", []):
+			if vid in skip or vid == res.get("by", "") or not w.by_id.has(vid) or not parts_map.has(vid):
+				continue
+			var v = w.by_id[vid]
+			if v.silenced:
+				continue
+			var m: float = absf(float(parts_map[vid].get("margin", 0.0)))
+			if m < best_score:
+				best_score = m
+				best = [v, "yes"]
+		return best
+	for vid in res.get("no", []):
+		if vid in skip or vid == res.get("nominee", "") or not w.by_id.has(vid) or not parts_map.has(vid):
+			continue
+		var v = w.by_id[vid]
+		if v.silenced:
+			continue
+		var key: String = _resistance_key(w, v, parts_map[vid], res)
+		if key == "":
+			continue
+		var score: float = -float(v.trust)
+		if score < best_score:
+			best_score = score
+			best = [v, key]
+	return best
+
 
 # ---------------------------------------------------------------- Mind delegates
 
