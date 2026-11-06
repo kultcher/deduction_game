@@ -20,7 +20,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
 | `USE_FLAVOR_SECRETS` | `false` |  | `sim/content.gd`, `sim/world.gd` |
 | `SHARED_EXECUTION_PRIORITY_WEIGHT` | `0.22` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_meeting.gd`, `sim/world.gd` |
-| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/confessor.gd`, `sim/roles/magistrate.gd`, `sim/world.gd` |
+| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world.gd` |
 | `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world.gd` |
 | `GRAVEDIGGER_MARKED_EVIL_CHANCE` | `0.3` |  | (only inside `sim/tuning.gd`) |
 | `EXTRA_WORK_SHIFT_CHANCE` | `0.3` | Schedule & relationship generation | `sim/world.gd` |
@@ -93,13 +93,13 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEARTHWITCH` | `{ }` |  | (unused) |
 | `CLERK` | `{ }` |  | (unused) |
 | `ARCHIVIST` | `{ }` |  | (unused) |
-| `GRAVEDIGGER` | `{ "marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE, "trust_backed_i...` |  | `sim/roles/executor.gd`, `sim/roles/gravedigger.gd`, `sim/roles/monitor.gd`, `sim/world.gd` |
+| `GRAVEDIGGER` | `{ "marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE, "trust_backed_i...` |  | `sim/roles/executor.gd`, `sim/roles/gravedigger.gd`, `sim/world.gd` |
 | `NIGHTWATCH` | `{ "req_already_wondering": 0.3, }` |  | `sim/roles/nightwatch.gd` |
 | `RUMORMONGER` | `{ }` |  | (unused) |
 | `MEDIUM` | `{ "relay_reading_scale": 0.6, "dead_suspicion_min": 0.35, }` |  | `sim/roles/medium.gd` |
 | `VETERAN` | `{ "quiet_night_effect": -0.06, "quiet_night_claim_weight": 0.025, }` |  | `sim/roles/veteran.gd` |
 | `MARTYR` | `{ "claim_chosen_bonus": 0.4, "pick_min_score": 0.62, "pick_susp_scale": 0.5, ...` |  | `sim/roles/martyr.gd` |
-| `SEXTON` | `{ "toll_few_left": 0.35, "toll_per_dead": 0.1, }` |  | `sim/roles/sexton.gd` |
+| `SEXTON` | `{ "toll_few_left": 0.35, "toll_per_dead": 0.1, # Telling of the toll. The bel...` |  | `sim/roles/sexton.gd` |
 | `PSYCHOLOGIST` | `{ "conversation_nudge": 0.5, }` |  | `sim/roles/psychologist.gd` |
 | `BREATHSTEALER` | `{ "phase_probs_high": [0.3, 0.5, 1.0], "phase_probs_low": [0.15, 0.3, 0.7], "...` |  | `sim/roles/breathstealer.gd` |
 | `REVENANT` | `{ "place_totem_probs": [0.45, 0.6, 1.0], "curse_voter_eff": 0.15, "evil_vote_...` |  | `sim/roles/revenant.gd` |
@@ -236,6 +236,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_READING_BOND_FLOOR` | `0.3` |  | `sim/social.gd` |
 | `SHARE_READING_BOND_SLOPE` | `2.0` |  | `sim/social.gd` |
 | `SHARE_READING_PRESSURE_SCALE` | `0.3` |  | `sim/social.gd` |
+| `SHARE_READING_TRUSTED_PIVOT` | `0.6` | Trusted listeners get readings far more readily (Nov 5, Michael): on top of the base formula, + slope x (bond - pivot) for bonds above the pivot. Friends start at 0.75. | `sim/social.gd` |
+| `SHARE_READING_TRUSTED_SLOPE` | `4.0` |  | `sim/social.gd` |
+| `SHARE_EXTRA_ITEM_BOND` | `[0.0, 0.5, 0.65]` | A conversation can pass on more than one thing (Nov 5). Item k (0-based) needs bond at least SHARE_EXTRA_ITEM_BOND[k]: the first is open to anyone, more need more trust. | `sim/social.gd` |
+| `SHARE_DEAD_RELAY_SLOPE` | `1.5` | Relaying what a dead person told you: weight per unit of the trust you had in them, scanned across all hearsay (not just the latest). | `sim/social.gd` |
 | `SHARE_SECRET_BOND_FLOOR` | `0.6` |  | `sim/social.gd` |
 | `SHARE_SECRET_SLOPE` | `3.0` |  | `sim/social.gd` |
 | `SHARE_OPINION_MIN_SUSP` | `0.5` |  | `sim/social.gd` |
@@ -246,15 +250,15 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_SIGHTING_SCENE_BONUS` | `0.4` |  | `sim/social.gd` |
 | `SHARE_ALIBI_WEIGHT` | `0.22` |  | `sim/social.gd` |
 | `MUDDLER_CHANCE` | `0.65` |  | `sim/muddler.gd` |
-| `SHARE_ROLE_HINT_BOND_MIN` | `0.55` | Peer role hints and claims (meeting plan M1). A hint names only the gift's family (HINT_PACKAGES); a claim names the role, even for gifts with no readings to share. | `sim/social.gd` |
+| `SHARE_ROLE_HINT_BOND_MIN` | `0.45` | was 0.55 (Nov 5: acquaintances, not only friends) | `sim/social.gd` |
 | `SHARE_ROLE_HINT_OPENNESS_SCALE` | `0.9` |  | `sim/social.gd` |
 | `SHARE_ROLE_HINT_BOND_OFFSET` | `0.15` |  | `sim/social.gd` |
 | `SHARE_ROLE_HINT_GOSSIP_SCALE` | `0.2` |  | `sim/social.gd` |
-| `SHARE_ROLE_CLAIM_BOND_MIN` | `0.68` |  | `sim/social.gd` |
-| `SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN` | `0.55` |  | `sim/social.gd` |
+| `SHARE_ROLE_CLAIM_BOND_MIN` | `0.58` | was 0.68 (Nov 5) | `sim/social.gd` |
+| `SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN` | `0.5` | was 0.55 (Nov 5) | `sim/social.gd` |
 | `SHARE_ROLE_CLAIM_PRESSURE_MIN` | `0.55` |  | `sim/social.gd` |
 | `SHARE_ROLE_CLAIM_SLOPE` | `1.8` |  | `sim/social.gd` |
-| `SHARE_ROLE_CLAIM_BOND_FLOOR` | `0.55` |  | `sim/social.gd` |
+| `SHARE_ROLE_CLAIM_BOND_FLOOR` | `0.45` | was 0.55 (Nov 5) | `sim/social.gd` |
 | `SHARE_ROLE_CLAIM_MIN_WEIGHT` | `0.05` |  | `sim/social.gd` |
 | `ROLE_NEWS_LAST_DAY` | `2` | Good NPCs with an untold gift count as having news on these early days. | `sim/social.gd` |
 | `EVIL_ROLE_HINT_THREAT` | `0.5` | What an evil listener makes of a peer's role hint / claim (a target worth watching). | `sim/evil.gd` |
@@ -318,6 +322,37 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PODIUM_SEEN_OUT` | `0.4` |  | `sim/mind_podium.gd` |
 | `PODIUM_PRESS_PRESSURE_GAIN` | `0.1` |  | `sim/mind_podium.gd` |
 | `PODIUM_FRICTION_SAFETY` | `0.5` |  | `sim/mind_podium.gd` |
+| `MAX_SUPPORTERS_SHOWN` | `3` | Supporters (Step 4, sim/mind_support.gd, meeting plan M2c): bystanders decide for themselves, in seat order, whether to speak for or against the nominee. At most MAX_SUPPORTERS_SHOWN speak. A self-exposing defence (an unshared clearing reading) weighs belief the nominee is good, what their role is still worth, what speaking costs the bystander, and how much danger the nominee is in (`support_reveal`). | `sim/mind_support.gd` |
+| `SUPPORT_BASE` | `-0.6` |  | `sim/mind_support.gd` |
+| `SUPPORT_GOOD_PIVOT` | `0.9` |  | `sim/mind_support.gd` |
+| `SUPPORT_GOOD_SLOPE` | `2.0` |  | `sim/mind_support.gd` |
+| `SUPPORT_CLEARING_READING` | `0.5` |  | `sim/mind_support.gd` |
+| `SUPPORT_TRUST_SLOPE` | `2.0` |  | `sim/mind_support.gd` |
+| `SUPPORT_DANGER_DEFENCE_DAMPING` | `0.7` |  | `sim/mind_support.gd` |
+| `SUPPORT_DANGER_PER_ACCUSER` | `0.15` |  | `sim/mind_support.gd` |
+| `SUPPORT_REVEAL_COST_SCALE` | `3.0` | How much the bystander's own reveal cost (Mind.reveal_cost, tuned for accusations, where a reading's strength sits beside it) counts against speaking up for someone. | `sim/mind_support.gd` |
+| `SUPPORT_HINT_FRACTION` | `0.5` |  | `sim/mind_support.gd` |
+| `SUPPORT_PILE_ON_MIN_SUSP` | `0.45` |  | `sim/mind_support.gd` |
+| `SUPPORT_PILE_ON_BASE` | `-0.8` |  | `sim/mind_support.gd` |
+| `SUPPORT_PILE_ON_SLOPE` | `4.0` |  | `sim/mind_support.gd` |
+| `PROTECT_VALUE_ONGOING` | `1.2` | What the nominee's role is still worth (RoleDef.score_protect_value). | (unused) |
+| `PROTECT_VALUE_PROTECTION` | `0.8` |  | (unused) |
+| `PROTECT_VALUE_SPENT` | `0.15` |  | (unused) |
+| `PROTECT_VALUE_OTHER` | `0.4` |  | (unused) |
+| `PROTECT_VALUE_UNKNOWN` | `0.4` |  | `sim/mind_support.gd` |
+| `PROTECT_VALUE_HORIZON_DAYS` | `6` |  | (unused) |
+| `VOUCH_MIN_TRUST` | `0.6` | A friend vouching for a gift the nominee confided before today (M1's peer gossip). | `sim/mind_support.gd` |
+| `VOUCH_MAX_SUSP` | `0.25` |  | `sim/mind_support.gd` |
+| `VOUCH_BASE` | `-0.4` |  | `sim/mind_support.gd` |
+| `VIBES_TRUST_MIN` | `0.62` | Plain liking or distrust, said aloud; a small social nudge, not evidence. | `sim/mind_support.gd` |
+| `VIBES_SUSP_MIN` | `0.55` |  | `sim/mind_support.gd` |
+| `VIBES_BASE` | `-0.9` |  | `sim/mind_support.gd` |
+| `VIBES_SWAY` | `0.04` |  | `sim/mind_meeting.gd` |
+| `SUPPORT_EVIL_DEFEND_STAKES` | `0.3` | Evil bystanders: the worth of defending a teammate in danger, or of piling onto the scapegoat, before cover (Mind.evil_override). Words are the cheap place to keep cover, so speaking up for a teammate is rare until the team is desperate (a Demon's stakes 0.6 against caution 0.8 falling to 0.45). | `sim/mind_support.gd` |
+| `SUPPORT_EVIL_PILE_STAKES` | `0.6` |  | `sim/mind_support.gd` |
+| `LATE_RELAY_TELLER_MARK` | `0.02` | Vote resistance lines (Step 6, M2d): after the tally, at most this many voters say why. Someone who accepted the Demonologist's case and still voted no explains; failing that, the voter who swung a close count. A "short of rope" no needs a close margin. | `sim/mind_meeting.gd` |
+| `MAX_VOTE_RESISTANCE_SPEAKERS` | `2` |  | `sim/mind_meeting.gd` |
+| `VOTE_RESISTANCE_CLOSE_MARGIN` | `0.35` |  | `sim/mind_meeting.gd` |
 | `ALLOW_UNANCHORED_PLAYER_NOMINATION` | `true` | Player nominations: with a filed case (anchored) or without (raw). A raw nomination still counts at the formal track-record weight (unchanged; revisit in M4's sweep). | (unused) |
 | `VOLUNTEER_SIGHTING_BASE` | `1.2` |  | `sim/mind_meeting.gd` |
 | `PUBLIC_CLAIM_BASE` | `-0.35` |  | `sim/mind_meeting.gd` |
@@ -338,12 +373,15 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `REVEAL_CONFIDENCE_SLOPE` | `0.6` |  | `sim/mind_meeting.gd` |
 | `ACCUSE_SUSPICION_PIVOT` | `0.6` |  | `sim/mind_meeting.gd` |
 | `ACCUSE_SUSPICION_SLOPE` | `1.5` |  | `sim/mind_meeting.gd` |
-| `ACCUSE_CONFIDENCE_SLOPE` | `0.8` |  | `sim/mind_meeting.gd` |
+| `ACCUSE_CONFIDENCE_SLOPE` | `0.8` |  | `sim/mind_meeting.gd`, `sim/mind_support.gd` |
 | `ACCUSE_PRESSURE_DEFLECT` | `0.4` |  | `sim/mind_meeting.gd` |
 | `ACCUSE_RESENTMENT_SLOPE` | `1.5` |  | `sim/mind_meeting.gd` |
 | `ACCUSE_PRESSURE_BASE` | `0.15` |  | `sim/mind_meeting.gd` |
 | `ACCUSE_PRESSURE_DECAY` | `0.5` |  | `sim/mind_meeting.gd` |
 | `RELAY_WEIGHT` | `0.3` | Anonymous reading relays | `sim/content.gd`, `sim/mind_meeting.gd`, `workshop/live_assessment.gd` |
+| `LATE_RELAY_BASE` | `0.3` | Telling the town what a dead person privately told you (MindMeeting._late_relay). | `sim/mind_meeting.gd` |
+| `LATE_RELAY_TRUST_SLOPE` | `2.0` |  | `sim/mind_meeting.gd` |
+| `LATE_RELAY_OPENNESS_SLOPE` | `0.8` |  | `sim/mind_meeting.gd` |
 | `RELAY_CORROBORATE` | `0.05` |  | `sim/content.gd`, `sim/mind_meeting.gd` |
 | `CONSENSUS_BASE` | `0.09` | Social consensus bandwagon pressure | `sim/mind_meeting.gd` |
 | `CONSENSUS_FADE` | `0.6` |  | `sim/mind_meeting.gd` |
@@ -483,6 +521,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TEAMMATE_VALUE_DEMON_WITH_SCION` | `1.1` |  | `sim/evil.gd` |
 | `TEAMMATE_VALUE_SCION_ACTIVE` | `1.45` |  | `sim/evil.gd` |
 | `TEAMMATE_VALUE_MINION` | `1.0` |  | `sim/evil.gd` |
+| `TEAMMATE_VALUE_REVENANT_CURSE` | `0.25` | a Revenant with its curse ready: let it hang | `sim/evil.gd` |
 | `PUBLIC_HOSTILITY_VOTE_WEIGHT` | `0.5` |  | `sim/evil.gd` |
 | `PUBLIC_HOSTILITY_CAP` | `2.5` |  | `sim/evil.gd` |
 | `INTEL_THREAT_CAP` | `3.0` |  | `sim/evil.gd` |
@@ -579,6 +618,11 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CHALLENGE_GROUND_MIN_QUALITY` | `0.4` |  | `workshop/reading_challenges.gd` |
 | `CHALLENGE_SOURCE_PENALTY_SCALE` | `0.3` |  | `workshop/reading_challenges.gd` |
 | `BLUFF_WEIGHT` | `0.92` | Role constraints, movement & public/speech evidence (`workshop/*.gd`) | `workshop/role_constraints.gd` |
+| `CHANCE_CONTENT_FLOOR` | `0.01` | Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds where a report's content holds). | `workshop/case_eval.gd` |
+| `VIGIL_MISS` | `0.05` | A player vigil that should have seen someone and didn't: the town's allowance that the Demonologist missed them (the player can't be wrong; the town doesn't know that). With the walker-claim split below, an empty vigil on a claimed walker's block is about 10:1 against the claim (strong, not certain). Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`. | `tools/autoplay.gd`, `workshop/live_activity.gd` |
+| `WALKER_CLAIM_GIFT` | `0.95` | A good person who claims a walking gift: how the movement model splits their nights between doing the duty, staying home anyway, and a secret's outing (before Nov 5: 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`. | `workshop/live_activity.gd` |
+| `WALKER_CLAIM_HOME` | `0.03` |  | `workshop/live_activity.gd` |
+| `WALKER_CLAIM_SECRET` | `0.02` |  | `workshop/live_activity.gd` |
 | `DEMON_DETOUR` | `0.05` |  | `workshop/live_activity.gd` |
 | `NIGHT_OUT_RATES` | `{ "hunt": 1.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05, }` |  | `workshop/movement_model.gd` |
 | `HAUNT_VISIT_RATE` | `0.7` |  | `workshop/movement_model.gd` |
@@ -632,7 +676,13 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `THEORY_THRESHOLD_SLOPE` | `4.0` |  | `workshop/theory.gd` |
 | `VENUE_MULTS` | `{ "private": 1.0, "meeting": 0.6, "nomination": 0.5, }` | Presentation venue multipliers (`game/workshop_presentation.gd`) | `game/game_meeting.gd`, `game/game_presentation.gd` |
 | `STANCE_MOVE` | `{ "accept": 0.06, "partial": 0.02, }` |  | `game/workshop_presentation.gd` |
-| `INSIGHT_LOW_CUTOFF` | `0.34` | Bounded reasoning attention profiles (`workshop/reasoner.gd`) | `workshop/reasoner.gd` |
+| `SALIENCE_BASE` | `1.0` | Bounded reasoning attention profiles (`workshop/reasoner.gd`) Attention salience (Reasoner._salience; premises pass step 0b). Naming the target outranks being a gift reading; trust in the source is a tiebreak. | `workshop/reasoner.gd` |
+| `SALIENCE_TRUST` | `0.1` |  | `workshop/reasoner.gd` |
+| `SALIENCE_GIFT` | `2.0` |  | `workshop/reasoner.gd` |
+| `SALIENCE_TARGET` | `4.0` |  | `workshop/reasoner.gd` |
+| `SALIENCE_NAMED` | `2.0` |  | `workshop/reasoner.gd` |
+| `SALIENCE_EXCLUSION` | `1.0` |  | `workshop/reasoner.gd` |
+| `INSIGHT_LOW_CUTOFF` | `0.34` |  | `workshop/reasoner.gd` |
 | `INSIGHT_MEDIUM_CUTOFF` | `0.67` |  | `workshop/reasoner.gd` |
 | `PROFILE_LOW` | `{ "name": "Low", "cards": 4, "lines": 2, "support": 12, "rivals": 3, "complet...` |  | `workshop/reasoner.gd` |
 | `PROFILE_MEDIUM` | `{ "name": "Medium", "cards": 8, "lines": 3, "support": 24, "rivals": 9, "comp...` |  | `workshop/reasoner.gd` |

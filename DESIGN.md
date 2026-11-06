@@ -1176,8 +1176,8 @@ state changes for the case history viewer (`tools/case_viewer.py`,
   votes. `--insight F` makes it miss a share of cards. `--results` +
   `tools/compare_runs.py` pair seeds.
 - **Bot gaps** **[decided]**: the bot doesn't offer wards or vigils, ask about others for
-  haunts, choose where to search for drops, or find totems; it doesn't yet drive the
-  podium press or the repositioned player turn (meeting plan M4).
+  haunts, choose where to search for drops, or find totems. Since M4 it presses nominees
+  at the podium; `--pre-m4` keeps the earlier policy for A/Bs.
 - **Tests:** `python3 tools/run_gd_tests.py --godot <exe>` runs every suite and checks
   failure text (some scripts exit 0 on failure); `tools/ci_fast_suites.txt` is the PR
   list.
@@ -1192,8 +1192,8 @@ A suggested reading of BACKLOG, not a settled plan:
 
 1. **Measure:** the overnight balance sweep on dynamic scripts (win rates by role, demon
    and minion type, solvability, pace), then a paired baseline before more tuning.
-2. **Meeting plan M2c–M4:** supporters, the player's turn and resistance
-   lines, the VN courtroom, the bot cutover and sweep.
+2. **Meeting plan M4:** the sweep. Supporters, the player's turn and resistance lines, the
+   VN courtroom and the bot policy are built.
 3. **The premise matters.**
 4. **The balance pass:** decisive night sightings and the vigil, evil sometimes telling
    the truth, the agreement-to-vote gap, Privacy and the first day.
