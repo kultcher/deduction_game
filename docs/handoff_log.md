@@ -27,6 +27,35 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06, Claude-Tally: premises pass step 0b (one attended set) on branch, unmerged
+
+- Branch `claude/premises-0b` from main `93d24f3`. **Not tested beyond its own unit test, no
+  baseline yet:** Michael has a couple of small fixes to land on top before new baselines.
+  Expect every presentation's stance, agreement and belief change to move.
+- What it does (plan: Project doc `claude/premises-plan.md`, step 0b):
+  - **Salience** (`Reasoner._salience`, weights in `Tuning.Workshop.SALIENCE_*`): naming the
+    target +4; else naming someone a presented card names, or a presented card's source, +2;
+    else a counted-group gift reading (Dowser, Surveyor, Seer, Clerk, Rumormonger, Archivist,
+    Registrar) +1 for exclusion; gift reading +2; trust in the source 0.1 (tiebreak). Warden,
+    Monitor, Confessor and Psychologist joined the live gift roles. Mentions use the full keys
+    (subject(s), target, who, data.pair/group/seen/nbrs/trio/target/chosen/executed/guarded/
+    nominator/nominee).
+  - **Focus target** (`Reasoner._focus`): the case target, else
+    `knowledge.attention_target`. The belief update after a presentation had no target at
+    all (probe, seed 42 Day 3); `workshop_presentation.gd` now records the headline's target
+    in `state.attention_target`, plumbed via `workshop_bridge._listener` and the focus block
+    in `shared_ledger.gd`.
+  - **Own readings pinned** outside the budget in focused passes (bounded listeners): every
+    report whose source is the listener. Before, a Low listener facing a 4-card case dropped
+    all of them.
+  - **Trust reward** judges agreement on the case cards plus own readings only
+    (`Shared.response(..., own_only = true)`, `WorkshopPresentation._reward_agreement`); the
+    second pass runs only when hearsay was in view.
+- Probe finding for the plan: both the judging pass and the belief update already use the
+  all-holdings pool when focused; the drift between them was the missing target, not the pool.
+- Test: `tools/test_attention_0b.gd` (fast list), including the plan's worked example.
+- Opt-in `Reasoner.capture_attention` / `captured` for tools; off in play.
+
 ## 2026-11-06 early, Claude-Tally: premises pass step 0 (defence grounds) on main
 
 Base `ce26d25`. Branch `claude/defence-empty-grounds`. New baseline `baseline_55cea76`.
