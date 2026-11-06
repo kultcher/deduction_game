@@ -168,10 +168,10 @@ static func build(g, ctx: Dictionary) -> Dictionary:
 	var gw_exec := 0
 	var gw_exec_secret := 0
 	for ex in summary.get("executions", []):
-		if str(ex.get("alignment", "")) != "good":
-			continue
-		var p = w.by_id.get(ex.get("id", ""))
-		if p == null:
+		# A Martyr substitution keeps the saved nominee in `id`; the one who hanged is
+		# `martyr_died` (the Martyr, who doesn't walk). Count whoever actually died.
+		var p = w.by_id.get(ex.get("martyr_died", ex.get("id", "")))
+		if p == null or p.alignment != "good":
 			continue
 		if _walks(p.role):
 			gw_exec += 1

@@ -27,6 +27,35 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06 early, Claude-Bailiff: meeting plan M4, the bot (sweep for Tally)
+
+Branch `claude/m4-bot`, on main after step 0 (PR #81). Golden identical to
+`baseline_55cea76` at `--tol 0` (the passive golden player doesn't use the bot); 114/114 suites.
+
+- `tools/autoplay.gd` (default policy; `--pre-m4` keeps the old one for A/Bs):
+  - **Podium press:** a sighting or trace card about the nominee, else their gift (or
+    readings they haven't shared), else last night. It skips a nominee it doesn't suspect
+    (P(evil) < 0.35) unless it nominated them.
+  - **Nominates less:** bar 0.6 → 0.7, and only 0.1 above whoever is on the block.
+  - **Vigils:** the home of the most trusted (P(evil) < 0.35) public claimant of an
+    information gift, the Warden or the Veteran, avoiding a suspected walker claimant's
+    home block. If nobody qualifies, it falls back to the top suspect's home, as before.
+  - **Demon guess:** the highest P(Demon) among the top 3 by P(evil) (`Analyst.demon_posterior`,
+    cached per board state). The Minion guess is the top P(evil) among the rest.
+- `tools/analyst.gd`: `_bears_on` lets an empty vigil or a complete vigil list that leaves
+  someone out bear on a claimed walker (Lamplighter, Night Watch, Medium, Warden, Sexton).
+  The greedy builder still keeps it only if it raises the strength.
+- New `tools/test_bot_m4.gd` (fast list, 9 checks): the exclusion rule both ways, and
+  P(Demon) ≤ P(evil), summing to 1.000 over the town.
+- Small A/B, seeds 1000–1015, 7 NPCs, Default script: good wins 5 → 6 of 16; Demon
+  identified 8 → 12 of 16; wrongful executions 15 → 14; evil executed 15 → 15. Too small to
+  read beyond "nothing broke, and the Demon guess is better".
+- **For Tally:** the M4 sweep (meeting plan slice M4: 150 seeds at 7 and 10 NPCs,
+  `--dynamic`, M4 against `--pre-m4`) once this is merged (step 0b too, if it's close). Worth adding the
+  hidden night-walker hang rate and how often the press and exclusion cards fire.
+
+---
+
 ## 2026-11-06 early, Claude-Tally: premises pass step 0 (defence grounds) on main
 
 Base `ce26d25`. Branch `claude/defence-empty-grounds`. New baseline `baseline_55cea76`.
@@ -72,6 +101,8 @@ Base `ce26d25`. Branch `claude/defence-empty-grounds`. New baseline `baseline_55
 - Tests: `tools/test_meeting_stage.gd` (24 checks); `test_ui`, `test_town_ui`, `test_headline`,
   `test_day_conversation_view` and `test_ui_controls` pass.
 - Not seen on a real screen yet (headless only). Michael: worth a look at layout and pacing.
+
+---
 
 ## 2026-11-05 late night, Claude-Bailiff: M2c follow-up (defence goes after the case's hinge) on main
 
