@@ -29,8 +29,8 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ## 2026-11-05 evening, Claude-Bailiff: evidence honesty fixes on main (Lamplighter bluff, soft vigil exclusion, Medium hearths)
 
-**Base:** `main` at `4d370f8`. **Branch:** `claude/evidence-honesty-fixes`. **Baseline:** `baseline_501b83e`.
-**Status:** merged. 129/129 suites; two golden captures identical.
+**Base:** `main` at `4d370f8`. **Branch:** `claude/evidence-honesty-fixes`. **Baseline:** `baseline_e9f1e47`.
+**Status:** merged. 107/107 suites (after the test consolidation); two golden captures identical.
 
 **Why.** The Nov 5 sweep showed good winning 3–10% when the Demon bluffs the Lamplighter.
 

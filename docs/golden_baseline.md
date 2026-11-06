@@ -44,16 +44,16 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 5, evening): `baseline_501b83e`
+### Current baseline (Nov 5, evening): `baseline_e9f1e47`
 
-`tools/golden/baseline_501b83e/` is the capture from `501b83e` (`claude/evidence-honesty-fixes`):
+`tools/golden/baseline_e9f1e47/` is the capture from `e9f1e47` (`claude/evidence-honesty-fixes` with main merged in, including the 2026-11-05 maintenance fixes):
 main after patch 015 plus the Nov 5 evidence honesty fixes:
 - report chance content is the share of worlds where the content holds;
 - the vigil exclusion is soft, about 10:1 against a walker's claim;
 - walker claims bind to the duty;
 - the Medium is modelled visiting earlier Demon victims only.
 
-Two captures, identical. Against `baseline_9187b09` every seed parts at record 1: the first
+Two captures, identical. Against `baseline_a42ef71` every seed parts at record 1: the first
 belief refresh already weighs readings differently. The passive and bot A/B is in
 `docs/handoff_log.md`.
 
@@ -143,7 +143,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_501b83e /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_e9f1e47 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
