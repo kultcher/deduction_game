@@ -242,7 +242,14 @@ static func seen_pairs(g) -> Dictionary:
 			for k in core_keys(c):
 				if k.begins_with("talk:"):
 					out[k] = c["n"]
+		elif c.get("kind", "") == "sighting" and c.get("source", "") == "player" and not c.get("deleted", false):
+			# People you saw yourself: NPCs leave them out of what they tell you.
+			for who in c.get("subject", []):
+				out[seen_key(str(who), int(c.get("day", -1)), int(c.get("phase", -1)), str(c.get("block", "")))] = c["n"]
 	return out
+
+static func seen_key(who: String, day: int, phase: int, block: String) -> String:
+	return "saw:%s|%d|%d|%s" % [who, day, phase, block]
 
 
 ## A fact an NPC passes over in silence because you saw it yourself: no new card, they're

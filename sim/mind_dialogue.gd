@@ -18,6 +18,10 @@ const Observations = preload("res://sim/dialogue_observations.gd")
 static var _mind_script
 
 
+
+## Phrases in an alibi line that already answer "who did you see?" with nobody.
+const SAW_NOBODY_MARKERS = ["see a soul", "saw a soul", "saw nobody", "saw no one", "seen nobody", "didn't see anyone", "didn't see anybody"]
+
 static func _mind():
 	if _mind_script == null:
 		_mind_script = load("res://sim/mind.gd")
@@ -151,8 +155,15 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		return pressed
 	if night >= 0:
 		var r = _answer_pressed_night(w, n, night)
+		# Caught out on gift business, they explain rather than defend what they saw: the
+		# "you doubt my account" opener only fits a restated sighting or alibi.
+		var reveal: bool = r["facts"].any(func(f): return f.get("kind", "") == "claim" and f.get("source", "") == n.id)
+		if reveal:
+			lines.append(say_voiced(n, "pressed_caught_out", "All right, you saw me. Here's why I was out."))
 		lines += r["lines"]
 		facts += r["facts"]
+		if reveal:
+			return {"lines": lines, "facts": facts, "dialogue_exchange": {"action": "challenge_night", "subject": n.id}}
 		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 		pressed["dialogue_exchange"] = {"action": "challenge_night", "subject": n.id}
 		return pressed
@@ -667,11 +678,24 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 		else:
 			lines.append(say_voiced(n, "private_reveal", "I'll trust you with this. I'm the %s." % C.role_name(role), {"role": C.role_name(role)}))
 		if not evil and C.ROLES[role].get("night_walk", false) and not n.lied_nights.is_empty():
-			# The lie they told you about that night, owned now it has a reason.
-			var nights: Array = n.lied_nights.map(func(x): return C.spoken_when(x, w.day))
-			var nights_str: String = " and ".join(PackedStringArray(nights))
-			lines.append(say_voiced(n, "own_night_lie", "So yes: I was out %s, whatever I told you. I wasn't ready to tell you why." % nights_str, {"nights": nights_str}))
-			w.dlog.think(n.id, "admit", "Owns the whereabouts lie(s) now the gift is out: nights %s." % str(n.lied_nights))
+			# The nights they were out, owned now it has a reason: by what they actually said
+			# about each night (a false "home", a refusal, or nothing yet).
+			var by_account: Dictionary = {"alibi": [], "refusal": [], "none": []}
+			for x in n.lied_nights:
+				var said: String = str(n.dialogue_memory.get("night_accounts", {}).get(str(x), {}).get("kind", ""))
+				by_account["alibi" if said == "alibi" else ("refusal" if said == "refusal" else "none")].append(x)
+			var spoken = func(nights: Array) -> String:
+				return " and ".join(PackedStringArray(nights.map(func(x): return C.spoken_when(x, w.day))))
+			if not by_account.alibi.is_empty():
+				var ns: String = spoken.call(by_account.alibi)
+				lines.append(say_voiced(n, "own_night_lie", "So yes: I was out %s, whatever I told you. I wasn't ready to tell you why." % ns, {"nights": ns}))
+			if not by_account.refusal.is_empty():
+				var nr: String = spoken.call(by_account.refusal)
+				lines.append(say_voiced(n, "own_night_refusal", "That's why I wouldn't say where I was %s. I was out on the gift's business." % nr, {"nights": nr}))
+			if not by_account.none.is_empty():
+				var nn: String = spoken.call(by_account.none)
+				lines.append(say_voiced(n, "own_night_out", "So yes, I was out %s. That's the gift's work." % nn, {"nights": nn}))
+			w.dlog.think(n.id, "admit", "Owns the night(s) out now the gift is out: lied %s, refused %s, unasked %s." % [str(by_account.alibi), str(by_account.refusal), str(by_account.none)])
 			n.lied_nights.clear()
 	else:
 		lines.append(say_voiced(n, "repeat_gift_confirm", "As you know, I'm the %s." % C.role_name(role), {"role": C.role_name(role)}))
@@ -918,7 +942,9 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		if not shares:
 			lines.append(say_voiced(n, "night_sightings_refuse", "I'm not ready to discuss who I saw."))
 			return {"lines": lines, "facts": facts}
-	if reported.is_empty() and not (was_out and not n.is_evil()):
+	# Some alibi wordings already say they saw nobody ("didn't see a soul"): don't repeat it.
+	var said_nobody: bool = lines.any(func(l): return l is Dictionary and SAW_NOBODY_MARKERS.any(func(m): return m in str(l.get("text", "")).to_lower()))
+	if reported.is_empty() and not (was_out and not n.is_evil()) and not said_nobody:
 		lines.append(say_voiced(n, "night_saw_nobody", "I saw nobody."))
 	var groups: Array = []
 	for b in reported:
@@ -1105,8 +1131,17 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 				"statement": "I saw %s at %s, talking with %s, %s." % [who.name, where, pn.name, when_s]})
 			facts.append(conv)
 		else:
+			var seen_fact: Dictionary = {"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": b["phase"], "source": n.id,
+				"text": "%s saw %s on %s, day %d %s." % [n.name, who.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]}
+			if seen_pairs.has("saw:%s|%d|%d|%s" % [who.id, b["day"], b["phase"], b["block"]]):
+				# You saw them there yourself: left out, but it backs your card.
+				seen_fact["silent"] = true
+				facts.append(seen_fact)
+				continue
 			var place_id: String = "loc:" + b["loc"] if b["loc"] != "" else "block:" + b["block"]
 			parts.append(Observations.presence(n.id, who.id, who.name, place_id, b["day"], b["phase"], where, when_s))
+			facts.append(seen_fact)
+			continue
 		facts.append({"kind": "sighting", "subject": [who.id], "block": b["block"], "day": b["day"], "phase": b["phase"], "source": n.id,
 			"text": "%s saw %s on %s, day %d %s." % [n.name, who.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
 	if parts.is_empty():

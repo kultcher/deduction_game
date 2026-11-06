@@ -333,6 +333,16 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 					else:
 						r = Mind.answer_today(g.w, n, frame, g.loc, g.seen_pairs())
 				"why", "reason", "hint":
+					# Only a live hint is worth a question. Otherwise say so, for free.
+					if not Mind.has_live_hint(g.w, n):
+						var dead: Array = n.hints.keys().filter(func(k): return g.w.by_id.has(k) and not g.w.by_id[k].alive)
+						if not dead.is_empty():
+							var gone = g.w.by_id[dead[0]]
+							var lead: Dictionary = Mind.say_voiced(n, "hint_why_moot", "It was about %s, and that hardly matters now." % gone.name, {"target": gone.name})
+							g._narr("%s: \"%s\"  (no question used)" % [n.name, lead["text"]])
+						else:
+							g._narr("%s hasn't hinted at a reason you could ask about. (No question used.)" % n.name)
+						return
 					r = Mind.answer_hint(g.w, n)
 				"about", "opinion":
 					var target = " ".join(p.slice(1))

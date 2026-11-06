@@ -44,7 +44,17 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 5, evening): `baseline_e9f1e47`
+### Current baseline (Nov 5, night): `baseline_b9a0376`
+
+`tools/golden/baseline_b9a0376/` is the capture from `b9a0376`: `baseline_e9f1e47` plus the
+playtest 13910 dialogue fixes (PR #73), which are wording only. Before main moved, the same
+fixes were checked against `baseline_a42ef71`: all five seeds identical with `--ignore
+reply,said,why_own,why_public,text,statement,why,dialogue_memory,reasons` (reason wording,
+reply text, the new `meeting.said` record). Against `baseline_e9f1e47` all five seeds are identical with
+the same `--ignore`. An accusation floor in that PR was reverted
+before merging (BACKLOG, NPC behaviour); its A/B notes are in the handoff log.
+
+### Previous baseline (Nov 5, evening): `baseline_e9f1e47`
 
 `tools/golden/baseline_e9f1e47/` is the capture from `e9f1e47` (`claude/evidence-honesty-fixes` with main merged in, including the 2026-11-05 maintenance fixes):
 main after patch 015 plus the Nov 5 evidence honesty fixes:
@@ -143,7 +153,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_e9f1e47 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_b9a0376 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs

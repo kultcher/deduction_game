@@ -27,6 +27,46 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-05 evening, Claude-Tally: playtest 13910 dialogue fixes on main (PR #73)
+
+Base `42708ec`, main (`0c06b6f`, evidence honesty fixes) merged in. Merged at Michael's
+request. New baseline `baseline_b9a0376`: identical to `baseline_e9f1e47` except wording fields.
+
+- Fixes from the case 13910 playtest (Michael chose them; the Project doc
+  `claude/playtest-report-2026-11-05.md` has the context):
+  1. Owning a night out follows what was actually said: a false alibi ("whatever I
+     told you"), a refusal ("That's why I wouldn't say where I was"), or nothing.
+  2. A gift reveal under a night card opens "All right, you saw me", not a
+     doubted-sighting stem.
+  3. `ask why` with no live hint is free and says so, or names the dead person it was about.
+  6a. Readings spoken with a time lead drop their own "last night" and full stop
+     (`MindMeeting.reading_body`).
+  6b. An alibi that already says it saw nobody skips the extra saw-nobody line.
+  7. A meeting broadcast about someone logs no share line to that person (they still
+     get the public receipt; `test_meeting_flow` asserts every mind holds it).
+  10. "My stronger suspicion remains that X is the Demon" names the listener's own
+     standouts (`Presentations._own_standouts`), or hedges. Before, it named the rival
+     world's Demon, so every listener said the same name.
+  13. **Reverted before merging:** a 0.2 floor on good NPCs' accusations
+     (BACKLOG, NPC behaviour). It silenced some Day-1 meetings: base-suspicion
+     accusations are what start the reactive chain. Passive A/B, 12 games per cell, good
+     wins main → floor: 7 NPCs 3 → 2 and 4 → 6 (two seed blocks); 10 NPCs 4 → 2. A
+     floor-off run matched main exactly, so the other fixes are wording only.
+  15. Reasons and "X is lying" already said at a meeting are pointed back to ("As Dorian
+     said, …"). Dowser and Surveyor reasons say what the reading found.
+  17/18. NPCs leave out sightings the player made themselves (ask seen, ask about).
+- Not done: 5 (muddled presentation reply). Michael deferred it to the "premises
+  matter" overhaul.
+- New keys with English fallbacks, not yet voiced per character: `own_night_refusal`,
+  `own_night_out`, `pressed_caught_out`, `hint_why_moot`, `present_alt_open`,
+  `meeting_accuse_reason_echo`, `defence_lying_echo`.
+- Tests: new `test_playtest_13910_dialogue` (in the fast list). `test_meeting_flow`'s
+  owned-lie case now has a real alibi.
+  Locally, with the floor: full suite 104/106. Both failures were intended changes, fixed and
+  rerun green. After the revert, not rerun locally (Michael: no further tests); CI covers it.
+
+---
+
 ## 2026-11-05 evening, Claude-Bailiff: evidence honesty fixes on main (Lamplighter bluff, soft vigil exclusion, Medium hearths)
 
 **Base:** `main` at `4d370f8`. **Branch:** `claude/evidence-honesty-fixes`. **Baseline:** `baseline_e9f1e47`.
