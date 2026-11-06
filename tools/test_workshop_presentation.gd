@@ -98,8 +98,11 @@ func _direct_and_migration() -> void:
 	check(cited.get("workshop", false) and n.workshop_state.active, "citing a deduction as a card follows original evidence instead of promoting its label")
 	check(not n.player_cases.is_empty() and n.player_cases[-1].card.supports == g.board[ded - 1].supports, "a supported private accusation remains available to ordinary NPC gossip with its original case")
 	check(_close(baseline, n.suspicion), "deduction-as-card presentation cannot duplicate its original report")
+	# The rejected accusation above cost trust (premises step 1, a clearly wrong premise), so
+	# the defence is judged afresh for the new audience rather than flagged as a repeat; it
+	# still awards no evidence a second time.
 	var repeat_result = g._evaluate_deduction(n, g.board[ded - 1], 0.6, true, "meeting")
-	check(repeat_result.repeated and "unchanged" not in repeat_result.dialogue.special, "a new audience receives an explanation without another evidence award")
+	check("unchanged" not in repeat_result.dialogue.special and _close(baseline, n.suspicion), "a new audience receives an explanation without another evidence award")
 	repeat_result = g._evaluate_deduction(n, g.board[ded - 1], 0.6, true, "meeting")
 	check(repeat_result.repeated and "unchanged" in repeat_result.dialogue.special, "repeating the explanation to the same audience is recognized")
 	var before_public = n.suspicion.duplicate(true)
