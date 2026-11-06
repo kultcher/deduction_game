@@ -27,6 +27,31 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-05 night, Claude-Tally: NPCs more open with each other (step 1), PR open
+
+Base `440800d`. Branch `claude/npc-openness`. Status: **PR open, for Michael to decide.**
+New baseline `baseline_9379b1e`.
+
+- Michael wants NPCs more open with each other, especially friends and anyone who's come to
+  trust each other. It also brings back some of the meeting spark that the backlogged
+  accusation floor would remove. Built:
+  - Up to three items per chat (`Tuning.Social.SHARE_EXTRA_ITEM_BOND` = 0, 0.5, 0.65).
+  - Readings to trusted listeners: +4.0 x (bond - 0.6) on the share weight.
+  - Hint bar 0.45 (was 0.55); claim bar 0.58 (was 0.68), pressured 0.5, floor 0.45.
+  - The dead's private readings: offered for relay across all hearsay, weighted by trust
+    in the dead; and `MindMeeting._late_relay`, where a good NPC names the dead's reading
+    at the meeting ("Before Dorian died, they told me...").
+  - Fix: a speaker who comes round again no longer agrees with their own accusation.
+- Not built (next): evil inventing a dead NPC's never-shared reading.
+- Tests: new `test_npc_openness` (fast list). `test_peer_role_gossip` (the hint-only bond
+  is now 0.5) and `test_meeting_flow` (the hearing weight check now tracks trust; an
+  accused target's trust has dropped) were updated. Full suite green after those.
+- Passive A/B in `docs/golden_baseline.md`: shares up 50-70%, good wins lean down (9 → 6
+  of 24) on small samples. Worth a sweep before merging.
+- New voice key `meeting_late_relay` (English fallback only).
+
+---
+
 ## 2026-11-05 evening, Claude-Tally: playtest 13910 dialogue fixes on main (PR #73)
 
 Base `42708ec`, main (`0c06b6f`, evidence honesty fixes) merged in. Merged at Michael's
