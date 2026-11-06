@@ -251,12 +251,12 @@ static func _show_nomination(g) -> void:
 	var blk = ""
 	if g.w.meeting["block"] != "":
 		blk = " %s is on the block with %d votes." % [g.w.by_id[g.w.meeting["block"]].name, g.w.meeting["block_count"]]
-	var opts = "'vote yes' or 'vote no'"
+	var opts: String = ""
 	if nm.get("press", "") == "open":
-		opts += ". You may first press them before the town ('press role', 'press night [N]' or 'press card <#>', once)"
-	opts += ". Before voting you may 'defend' or 'accuse', optionally citing a card (one statement)"
-	if g.w.tools["clemency"] > 0 and nm["by"] != "player":
-		opts += ", or use 'clemency' to spare them"
+		opts = "You may press them before the town ('press role', 'press night [N]' or 'press card <#>', once), or 'hear' the town first. "
+	else:
+		opts = "'hear' the town first, or "
+	opts += "'vote yes' / 'vote no' now (the town still speaks before you vote)"
 	g._prompt("Vote on %s. %s%s %s." % [t.name, vote_requirement_text(g), blk, opts])
 
 
@@ -315,9 +315,15 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 				g._narr("You add your voice against %s." % t.name)
 				Mind.set_trust(g.w, t, t.trust - Tuning.Trust.SPEAK_AGAINST_NOMINEE_DROP, "the Demonologist spoke against me")
 			g.w.dlog.add("player_statement", "player", t.id, {"statement": verb, "card": card.get("n", 0)})
-			g._prompt("'vote yes' or 'vote no'.")
+			g._prompt("'vote yes' or 'vote no'%s." % (", or 'clemency'" if g.w.tools["clemency"] > 0 and nm["by"] != "player" else ""))
 		"press":
 			_press(g, t, r)
+		"hear", "listen":
+			if nm.get("supporters_done", false):
+				g._err("The town has had its say on %s." % t.name)
+				return
+			_run_supporters(g)
+			_player_turn_prompt(g)
 		"clemency":
 			if g.w.tools["clemency"] <= 0:
 				g._err("You have no Clemency left.")
@@ -363,9 +369,11 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 						g._narr("Not enough to beat the earlier tie (%d votes)." % res["block_count"])
 				_:
 					g._narr("The nomination fails.")
+			# Step 6: a voter or two who might surprise you say why (meeting plan M2d).
+			g._lines(Mind.vote_resistance_lines(g.w, res))
 			_after_vote(g)
 		_:
-			g._err("On this nomination: %sdefend | accuse | %svote yes | vote no" % ["press role | press night [N] | press card <#> | " if nm.get("press", "") == "open" else "", "clemency | " if g.w.tools["clemency"] > 0 else ""])
+			g._err("On this nomination: %sdefend | accuse | %svote yes | vote no" % ["press role | press night [N] | press card <#> | hear | " if nm.get("press", "") == "open" else ("hear | " if not nm.get("supporters_done", false) else ""), "clemency | " if g.w.tools["clemency"] > 0 else ""])
 
 
 ## Step 3, the podium press: one public question to the nominee before the town weighs in.
@@ -397,7 +405,7 @@ static func _press(g, t, r: String) -> void:
 			nm["press"] = "skipped"
 			g._narr("You hold your peace.")
 			_run_supporters(g)
-			g._prompt("'vote yes' or 'vote no'.")
+			_player_turn_prompt(g)
 			return
 		"role", "gift", "readings":
 			if opts.gift == "":
@@ -442,7 +450,20 @@ static func _press(g, t, r: String) -> void:
 	g.w.dlog.add("podium_press", "player", t.id, {"mode": nm["press_mode"], "card": int(card.get("n", 0)), "night": int(res.get("night", -1)), "outcome": res.get("outcome", "")},
 		"The Demonologist presses %s (%s): %s." % [t.name, nm["press_mode"], res.get("outcome", "")])
 	_run_supporters(g)
-	g._prompt("'vote yes' or 'vote no'%s." % ("" if g.statement_used else ". You may still 'defend' or 'accuse' (one statement)"))
+	_player_turn_prompt(g)
+
+
+## Step 5, the player's turn: once the town has spoken, a statement (for or against, with a
+## card if you like), Clemency, or the vote.
+static func _player_turn_prompt(g) -> void:
+	var nm: Dictionary = g.w.meeting["pending"]
+	var opts: Array = []
+	if not g.statement_used:
+		opts.append("'accuse' or 'defend' (optionally citing a card; one statement)")
+	if g.w.tools["clemency"] > 0 and nm["by"] != "player":
+		opts.append("'clemency'")
+	opts.append("'vote yes' or 'vote no'")
+	g._prompt("Your turn: %s." % ", ".join(PackedStringArray(opts)))
 
 
 ## Step 4, supporters (sim/mind_support.gd): once per nomination, after the press and before

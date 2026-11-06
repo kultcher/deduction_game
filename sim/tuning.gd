@@ -516,6 +516,11 @@ class Meeting:
 	## 0.6 against caution 0.8 falling to 0.45).
 	const SUPPORT_EVIL_DEFEND_STAKES = 0.3
 	const SUPPORT_EVIL_PILE_STAKES = 0.6
+	## Vote resistance lines (Step 6, M2d): after the tally, at most this many voters say why.
+	## Someone who accepted the Demonologist's case and still voted no explains; failing
+	## that, the voter who swung a close count. A "short of rope" no needs a close margin.
+	const MAX_VOTE_RESISTANCE_SPEAKERS = 2
+	const VOTE_RESISTANCE_CLOSE_MARGIN = 0.35
 	## Player nominations: with a filed case (anchored) or without (raw). A raw nomination
 	## still counts at the formal track-record weight (unchanged; revisit in M4's sweep).
 	const ALLOW_UNANCHORED_PLAYER_NOMINATION = true

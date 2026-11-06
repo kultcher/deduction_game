@@ -20,6 +20,7 @@ test_evil_play
 test_meeting_m2a
 test_meeting_m2b
 test_meeting_m2c
+test_meeting_m2d
 test_town_vibe
 test_roles_registry
 test_roles_official

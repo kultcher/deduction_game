@@ -309,6 +309,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		"circumstantial_requested": state.get("circumstantial_requested", {})}, "One assessment controls supported presentation and shared belief ownership.")
 	g.w.dlog.add("argument_stance", n.id, root.conclusion.get("a", ""), {"key": signature, "stance": voiced_stance, "scoped_stance": assessment.stance,
 		"evil": false, "repeat": repeated, "model": "shared"})
+	# A public case they said they accepted: if they then vote no on that person, they say
+	# why (meeting plan M2d, vote resistance lines).
+	var ctype: String = str(root.conclusion.get("type", ""))
+	var ctarget: String = str(root.conclusion.get("a", root.conclusion.get("target", "")))
+	if venue != "private" and voiced_stance == "accept" and ctarget != "" and ctype in ["evil", "demon", "minion", "suspicious"]:
+		if not n.dialogue_memory.has("accepted_cases"):
+			n.dialogue_memory["accepted_cases"] = {}
+		n.dialogue_memory["accepted_cases"][ctarget] = {"day": g.w.day, "key": key}
 	var result = {"lines": lines, "facts": [], "agreement": assessment.agreement, "repeated": repeated,
 		"dialogue": descriptor, "workshop": true, "assessment": assessment}
 	g._workshop_repeats[repeat_key] = {"input": state.discussion[signature], "result": result.duplicate(true)}
