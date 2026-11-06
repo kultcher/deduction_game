@@ -36,6 +36,11 @@ testimony text can differ, because the UI splits it into separate records; the v
 match. Each view re-runs that mind's ordinary refresh with `CaseEval.capture_worlds` on,
 which only stores per-world weights and changes no result (`tools/belief_views.gd`).
 
+**Which code a log was played on.** Since Nov 6, `case_start` records the git commit in its
+`build` field (`sim/build_info.gd`; uncommitted changes aren't reflected). Both tools print a
+note when the log's commit differs from the checkout, with the `git worktree add` command to
+replay it on its own code. Logs from different code drift as the random rolls shift.
+
 ## Why the town read a case that way: `tools/explain_case.gd`
 
 Two modes, both replaying a playtest log (`tools/log_replay.gd`, shared with `replay_log.gd`).

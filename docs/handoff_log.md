@@ -45,7 +45,11 @@ Base `ce26d25`. Branch `claude/defence-empty-grounds`. New baseline `baseline_55
 - Passive A/B (`docs/golden_baseline.md`): 7 NPCs flat; 10 NPCs good wins 3 → 1 of 12. That's
   plausible, since the town loses accidental full attention, but small. Tonight's sweep
   should include it.
-- Next: step 1 goes back to Quill. Hold attention budgets fixed between the A/B arms.
+- Rode along (the plan suggested it): dev logs' `case_start.build` now records the git
+  commit (`sim/build_info.gd`), and `log_replay.gd` notes when a log came from other code,
+  with the worktree command to replay it there.
+- Next: step 0b (own readings pinned during presentations), then step 1 goes back to Quill.
+  Hold attention budgets fixed between the A/B arms.
 
 ---
 

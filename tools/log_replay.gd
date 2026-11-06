@@ -18,6 +18,14 @@ static func is_command(e) -> bool:
 
 static func new_game(events: Array):
 	var setup = events[0]
+	# A log replays faithfully only on the code it was played on (random rolls shift as the
+	# game changes). case_start records that commit since Nov 6.
+	var logged: String = str(setup.data.get("build", ""))
+	var here: String = preload("res://sim/build_info.gd").commit()
+	if logged.length() >= 7 and here != "" and not here.begins_with(logged) and not logged.begins_with(here):
+		print("NOTE: this log was played on commit %s; this checkout is %s. To replay it exactly: git worktree add ../replay_%s %s" % [logged.substr(0, 12), here.substr(0, 12), logged.substr(0, 7), logged.substr(0, 12)])
+	elif logged == "" or logged == "dev":
+		print("NOTE: this log doesn't record its commit (logs before Nov 6); if the replay diverges, replay it on the commit it was played on.")
 	var script = null
 	for e in events:
 		if e.type == "case_script":
