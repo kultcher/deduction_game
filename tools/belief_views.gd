@@ -9,6 +9,7 @@ extends RefCounted
 const Mind = preload("res://sim/mind.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Solver = preload("res://workshop/solver.gd")
+const Chronology = preload("res://workshop/chronology.gd")
 
 static func town(g, n_worlds: int = 5) -> Dictionary:
 	var out := {"day": g.w.day, "phase": g.w.phase_name() if g.w.has_method("phase_name") else "", "minds": {}}
@@ -52,6 +53,11 @@ static func mind(g, n, n_worlds: int = 5) -> Dictionary:
 		total += wt
 		var wd: Dictionary = worlds[i]
 		var bits: int = int(wd.get("evil", 0))
+		# A Revenant's convert is evil while the curse holds: group by the same alignment
+		# P(evil) reads (Chronology.evil_index at the view's alignment epoch).
+		var conv: int = int(wd.get("converted", -1))
+		if conv >= 0 and Chronology.evil_index(view, wd, conv, view.get("alignment_epoch", "")):
+			bits |= 1 << conv
 		teams[bits] = teams.get(bits, 0.0) + wt
 		var d: int = int(wd.get("demon", -1))
 		if d >= 0 and d < ids.size():

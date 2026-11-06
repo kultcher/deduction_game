@@ -44,17 +44,20 @@ func _init():
 				stop_seq = int(args[i])
 		i += 1
 	var events: Array = Replay.load_events(path)
-	# --why: for each vote, the last player command before it (the vote runs inside it).
+	# --why: for each vote, the player command it ran inside. A command's record is written
+	# after it runs (Game._finish_command), so that's the first command record after the
+	# tally, and the view is taken just before replaying it.
 	var dump_before := {}
 	if why:
-		var last_cmd := -1
+		var waiting: Array = []
 		for e in events:
+			if Replay.is_command(e) and not waiting.is_empty():
+				dump_before[int(e.seq)] = waiting
+				waiting = []
 			if int(e.seq) >= stop_seq:
 				break
-			if Replay.is_command(e):
-				last_cmd = int(e.seq)
-			elif e.type == "vote_tally" and last_cmd >= 0 and (only.is_empty() or int(e.seq) in only):
-				dump_before[last_cmd] = dump_before.get(last_cmd, []) + [e]
+			if e.type == "vote_tally" and (only.is_empty() or int(e.seq) in only):
+				waiting.append(e)
 	var dumps: Array = []
 	var hooks := {
 		"before_command": func(g, e):
