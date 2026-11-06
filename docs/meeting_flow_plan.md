@@ -331,7 +331,7 @@ Slices **M0** and **M3a** must not change behaviour: their golden captures are i
      - Re-run `Shared.prepare` only when `pre_bundle.pre_eval` differs from the doubt the first plan was prepared with; otherwise reuse the plan and the bundle (`derive` once).
      - In `Jury._consequences_eval`, stop deep-copying `attention.case` per person just to swap `conclusion.target` (7-10 `duplicate(true)` per refresh): copy the conclusion only, or pass the target separately to `Reasoner.direct_checks`.
      - Expected saving about 0.4-0.5 s of seed 42's 1.0 s `outer_prep` (Argon's estimate; measure with `profile_c0`). Behaviour-neutral: golden identical in both modes before the M2 behaviour work starts.
-5. **Slice M4 - Bot Cutover, 150-Seed Balance Sweep & New Golden Baseline (`tools/autoplay.gd`, `DESIGN.md`, `BACKLOG.md`)**:
+5. **(Bot policy built Nov 6, Claude-Bailiff: `claude/m4-bot`, `tools/test_bot_m4.gd`, `--pre-m4` for A/Bs; the sweep is Tally's, after premises step 0.)** **Slice M4 - Bot Cutover, 150-Seed Balance Sweep & New Golden Baseline (`tools/autoplay.gd`, `DESIGN.md`, `BACKLOG.md`)**:
    - Update `tools/autoplay.gd` to present a case before nominating (anchoring its nomination), drive `podium_press` (`press role` / `press night` / `press card` when holding contradictions, `press skip` otherwise), and act at repositioned `player_turn`.
    - **Bot fixes from the Nov 5 sweep review** (`claude/balance-sweep-deep-dive-2026-11-05.md`):
      - **Vigils go where the Demon is likeliest to strike:** the homes of high-value claimed gifts (info gifts, the Warden, the Veteran), not the top suspect's block. A watch there sees the killer arrive.

@@ -24,6 +24,13 @@
 ## Insight still limits links and the explanation search. Measures how much the card
 ## budget scatters the town's beliefs, and what reading everything costs.
 ##
+## The M4 policy (meeting plan slice M4; default): the bot presses the nominee at the
+## podium, nominates less (and not below the one on the block), keeps vigils where the
+## Demon is likeliest to strike (the homes of trusted high-value gifts, away from a suspect
+## walker's own home), lets exclusion cards (empty vigils, complete vigil lists) into its
+## cases against claimed walkers, and names the Demon from P(Demon), not P(evil).
+## --pre-m4 restores the earlier policy, for A/Bs.
+##
 ## Suspicion scale: at the end of each day (entering night, or the game's end) every
 ## living good NPC's suspicion is summarised against the truth: their top suspicion,
 ## the Demon's and minions' suspicion and rank, their good-nomination threshold, and
@@ -40,6 +47,7 @@ const Mind = preload("res://sim/mind.gd")
 const Metrics = preload("res://game/case_metrics.gd")
 const BotWorkshop = preload("res://tools/autoplay_workshop.gd")
 const Analyst = preload("res://tools/analyst.gd")
+const MindPodium = preload("res://sim/mind_podium.gd")
 const ScriptBuilder = preload("res://sim/script_builder.gd")
 const SweepRecord = preload("res://tools/sweep_record.gd")
 
@@ -51,6 +59,14 @@ const VOTE_P = 0.5
 const DEFEND_P = 0.12
 const CLEMENCY_P = 0.06
 const CASE_P = 0.4
+# M4 (meeting plan slice M4; --pre-m4 restores the old values and rules).
+const M4_NOMINATE_P = 0.7      # half the bot's wrongful hangs were its own nominations
+const M4_BLOCK_MARGIN = 0.1    # don't nominate unless they're this far above the one on the block
+const PRESS_INTEREST_P = 0.35  # press a nominee it suspects at least this much (always its own)
+const VIGIL_SAFE_P = 0.35      # a trusted claimant: below this P(evil)
+const DEMON_CANDIDATES = 3     # the Demon guess weighs P(Demon) for the top few by P(evil)
+const HIGH_VALUE_GIFTS = ["warden", "veteran"]   # plus C.INFO_ROLES
+const WALK_CLAIMS = ["lamplighter", "nightwatch", "medium", "warden", "sexton"]
 
 const NEW_ACTIONS = ["offer_ward", "offer_vigil", "ask_person", "answer_confidence", "answer_protection", "apologise", "request_check", "request_guard", "request_watch", "keep_ward", "keep_vigil"]
 var talk_policy_used = {}
@@ -75,6 +91,9 @@ var analyst = {}
 var _belief_key = ""
 var _belief_cache = {}
 var dynamic_scripts = false
+var m4 = true
+var _demon_key = ""
+var _demon_guess = ""
 var last_commands: int = 0
 var last_guard: int = 0
 
@@ -93,6 +112,7 @@ func _init() -> void:
 	passive = args.has("passive")
 	trace_enabled = not args.has("no-trace")
 	dynamic_scripts = args.has("dynamic")
+	m4 = not args.has("pre-m4")
 	var jsonl = null
 	if args.has("results-jsonl"):
 		var jpath = ProjectSettings.globalize_path(args["results-jsonl"])
@@ -186,8 +206,11 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	workshop_cases_filed = 0
 	hub_cases_filed = 0
 	analyst = Analyst.new_state(insight)
+	analyst["exclusion_cards"] = m4
 	_belief_key = ""
 	_belief_cache = {}
+	_demon_key = ""
+	_demon_guess = ""
 	talk_policy_used = {}
 	new_talk_counts = {}
 	for key in NEW_ACTIONS: new_talk_counts[key] = 0
@@ -422,6 +445,8 @@ func _print_scale(cases: Array) -> void:
 func _unblocked(cmd: String) -> String:
 	if cmd.begins_with("accuse"):
 		return "accuse"
+	if cmd.begins_with("press"):
+		return "press skip"
 	if cmd.begins_with("present") or cmd.begins_with("defend"):
 		return "done" if g.town_quiet else "wait"
 	return "ask today"
@@ -433,8 +458,25 @@ func _record_theory() -> void:
 	var candidates: Array = g.w.living()
 	candidates.sort_custom(func(a, b): return scores[a.id] > scores[b.id] if scores[a.id] != scores[b.id] else a.id < b.id)
 	if candidates.size() >= 2 and scores[candidates[0].id] > 0.0:
-		g.set_guess(candidates[0].id, "demon", 2)
-		g.set_guess(candidates[1].id, "poisoner", 1)
+		var demon_id: String = _demon_pick(candidates.slice(0, DEMON_CANDIDATES)) if m4 else candidates[0].id
+		var minion_id: String = candidates[0].id if demon_id != candidates[0].id else candidates[1].id
+		g.set_guess(demon_id, "demon", 2)
+		g.set_guess(minion_id, "poisoner", 1)
+
+## M4: the likeliest Demon among the top suspects by P(evil), from the juror's P(Demon),
+## so a confident Minion read isn't scored as the Demon guess. Cached per board state.
+func _demon_pick(candidates: Array) -> String:
+	if _demon_key == _belief_key and _demon_guess != "":
+		return _demon_guess
+	_demon_key = _belief_key
+	_demon_guess = candidates[0].id
+	var best: float = -1.0
+	for n in candidates:
+		var p: float = Analyst.demon_posterior(g, analyst, n.id)
+		if p > best + 1e-9:
+			best = p
+			_demon_guess = n.id
+	return _demon_guess
 
 func _out(s: String) -> void:
 	if transcript:
@@ -606,14 +648,19 @@ func _decide() -> String:
 				if ded > 0:
 					return "present %d" % ded
 			var ts = _top_suspect()
-			if ts[0] != null and ts[1] >= NOMINATE_P and w.day >= 2 and w.can_nominate("player", ts[0].id) == "":
-				if w.meeting["block"] != ts[0].id:
+			var nominate_p: float = M4_NOMINATE_P if m4 else NOMINATE_P
+			if ts[0] != null and ts[1] >= nominate_p and w.day >= 2 and w.can_nominate("player", ts[0].id) == "":
+				var blk: String = w.meeting["block"]
+				# M4: back the one already on the block unless this is clearly stronger.
+				if blk != ts[0].id and (not m4 or blk == "" or ts[1] > _scores().get(blk, 0.0) + M4_BLOCK_MARGIN):
 					return "nominate " + ts[0].id
 			return "done" if g.town_quiet else "wait"
 		"nomination":
 			var sc = _scores()
 			var nm: Dictionary = w.meeting["pending"]
 			var s: float = sc.get(nm["nominee"], 0.0)
+			if m4 and nm.get("press", "") == "open":
+				return _press_choice(nm, s)
 			if not g.statement_used and nm["by"] != "player":
 				var best_card = 0
 				for c in g.board:
@@ -637,11 +684,54 @@ func _decide() -> String:
 				if not cands.is_empty():
 					cands.sort_custom(func(a, b): return sc[a.id] < sc[b.id])
 					return "ward " + cands[0].id
+			if m4:
+				var blk: String = _vigil_block(sc)
+				if blk != "":
+					return "vigil " + blk
 			var ts = _top_suspect()
 			if ts[0] != null:
 				return "vigil " + ts[0].home_block
 			return "sleep"
 	return "look"
+
+## M4, the podium press: a card about the nominee (a sighting or trace) if it holds one,
+## else their gift (or, once claimed, readings they haven't shared), else last night. Skip a nominee it doesn't
+## suspect (unless it nominated them).
+func _press_choice(nm: Dictionary, s: float) -> String:
+	var t = g.w.by_id[nm["nominee"]]
+	if nm["by"] != "player" and s < PRESS_INTEREST_P:
+		return "press skip"
+	for i in range(g.board.size() - 1, -1, -1):
+		var c: Dictionary = g.board[i]
+		if c["kind"] in ["sighting", "trace"] and t.id in c.get("subject", []) and c.get("source", "") != t.id \
+				and g._presentation_rejection(c) == "" and MindPodium.card_fits(g.w, t, c):
+			return "press card %d" % c["n"]
+	var opts: Dictionary = MindPodium.options(g.w, t)
+	if opts.get("gift", "") != "":
+		return "press role"
+	if (g.w.day - 1) in opts.get("nights", []):
+		return "press night %d" % (g.w.day - 1)
+	return "press skip"
+
+## M4: keep the vigil where the Demon is likeliest to strike: the home of a trusted
+## high-value gift (an information gift, the Warden, the Veteran). A watch there sees the
+## killer arrive. Avoid the home block of a suspected walker claimant, so the vigil also
+## tests the claim (an empty vigil is soft evidence against a claimed walker who should have
+## passed: Tuning.Workshop.VIGIL_MISS). Returns "" when no trusted high-value claim is known.
+func _vigil_block(sc: Dictionary) -> String:
+	var living: Array = g.w.living()
+	var targets: Array = living.filter(func(n): return n.claim_public and (n.claimed_role in C.INFO_ROLES or n.claimed_role in HIGH_VALUE_GIFTS) and sc.get(n.id, 0.0) < VIGIL_SAFE_P)
+	if targets.is_empty():
+		return ""
+	targets.sort_custom(func(a, b): return sc[a.id] < sc[b.id] if not is_equal_approx(sc[a.id], sc[b.id]) else a.id < b.id)
+	var avoid: Dictionary = {}
+	for n in living:
+		if n.claim_public and n.claimed_role in WALK_CLAIMS and sc.get(n.id, 0.0) >= VIGIL_SAFE_P:
+			avoid[n.home_block] = true
+	for n in targets:
+		if not avoid.has(n.home_block):
+			return n.home_block
+	return targets[0].home_block
 
 func _pick_location() -> String:
 	var w = g.w
