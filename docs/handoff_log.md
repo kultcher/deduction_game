@@ -27,10 +27,10 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-05 night, Claude-Tally: NPCs more open with each other (step 1), PR open
+## 2026-11-05 night, Claude-Tally: NPCs more open with each other (step 1) on main (PR #77)
 
-Base `440800d`. Branch `claude/npc-openness`. Status: **PR open, for Michael to decide.**
-New baseline `baseline_9379b1e`.
+Base `440800d`, main (M2c) merged in. Merged at Michael's request; the big sweep runs overnight.
+New baseline `baseline_7a96d27` (with M2c).
 
 - Michael wants NPCs more open with each other, especially friends and anyone who's come to
   trust each other. It also brings back some of the meeting spark that the backlogged

@@ -44,13 +44,13 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 6): `baseline_MERGED`
+### Current baseline (Nov 6): `baseline_7a96d27`
 
-`tools/golden/baseline_MERGED/` is the capture from `MERGED`: `baseline_a9e0301` (M2c) plus NPCs being more open with each other. Chats pass on up to three
+`tools/golden/baseline_7a96d27/` is the capture from `7a96d27`: `baseline_a9e0301` (M2c) plus NPCs being more open with each other. Chats pass on up to three
 things; readings go far more readily to trusted listeners; hints and claims reach
 acquaintances; the dead's private readings get passed on and told at the meeting. Two
 captures identical. Every seed parts from `baseline_a9e0301` early, at the first NPC conversations. (The
-branch alone, before M2c, was captured as `baseline_9379b1e`; the A/B below is from it.)
+branch alone, before M2c, was captured as `9379b1e`; the A/B below is from it.)
 
 Passive A/B, seeds 2000-2011, 12 games per cell, Default script:
 
@@ -179,7 +179,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_MERGED /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_7a96d27 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
