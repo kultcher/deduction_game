@@ -30,6 +30,7 @@ func _init() -> void:
 	_test_public_sexton_tolls()
 	_test_refusal_reconsidered()
 	_test_late_relay_public()
+	_test_toll_kept_quiet()
 	print("Codex fixes: %d checks, %d failures" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
 
@@ -161,3 +162,22 @@ func _test_late_relay_public() -> void:
 	var listeners: Array = w.living().filter(func(m): return m != n and not m.is_evil())
 	_check(listeners.all(public_in), "every good listener holds it as public grounds")
 	_check(public_in.call(n), "so does the teller's own copy")
+
+
+## Maintenance Nov 6 (A1, A2): the toll isn't gossip while the bell holds, and a reading's text
+## carries no time of its own (the sentence says when).
+func _test_toll_kept_quiet() -> void:
+	var gs = _sexton_game(56795)
+	var w = gs[0].w
+	var sx = gs[1]
+	var rdef = C.role_def("sexton")
+	w.day = 2
+	_check(not rdef.may_share_reading(w, sx, {}), "the day after the toll, the Sexton won't gossip about it")
+	sx.dialogue_memory["toll_told_public"] = true
+	_check(rdef.may_share_reading(w, sx, {}), "once told before the town, it's no secret")
+	sx.dialogue_memory.erase("toll_told_public")
+	w.day = 3
+	_check(rdef.may_share_reading(w, sx, {}), "once the bell has worn off, it can be told")
+	var e: Dictionary = {"day": 1, "role": "monitor", "data": {"block": "square", "walked": false}, "text": "no one walked by my house"}
+	var st: String = MindMeeting._info_intent(w, sx, e)["statement"]
+	_check(not ("last night" in st.substr(1)) and st.count("night") == 1, "a first-night Monitor reading told on Day 3 says when once (%s)" % st)

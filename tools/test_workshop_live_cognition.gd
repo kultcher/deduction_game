@@ -197,6 +197,14 @@ func _registration() -> void:
 	var memory = n.workshop_state.theories.duplicate(true)
 	g._evaluate_deduction(n, g.board[marked - 1], 0.6, true, "meeting")
 	check(n.workshop_state.theories == memory and _close(before, n.suspicion), "repeating registration claims cannot sharpen alignment or registration commitment")
+	# Premises step 0b revised: until step 1 conditions on the premise, the same cards under
+	# another alignment premise (another target) move nobody, and the earlier framing doesn't
+	# linger into a later refresh.
+	var retargeted = g.file_deduction({"type": "evil", "a": p[5].id}, g.board[number - 1].supports)
+	g._evaluate_deduction(n, g.board[retargeted - 1], 1.0, false)
+	check(_close(before, n.suspicion), "the same cards aimed at someone else move beliefs no differently")
+	Mind.refresh_beliefs(g.w, n, " (later refresh)")
+	check(_close(before, n.suspicion), "a later refresh isn't steered by the last argument's framing")
 	check(r.assessment.theory == n.workshop_state.theories[key].decision, "scoped registration reply uses the committed union decision")
 
 func _close(a: Dictionary, b: Dictionary) -> bool:

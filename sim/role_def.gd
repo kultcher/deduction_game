@@ -444,6 +444,12 @@ func honest_outing(_w, _n, _nd: int, _mind, _public: bool) -> String:
 	return ""
 
 
+## Whether `n` may tell someone this unshared reading of theirs now (gossip, chat).
+## Sexton: not the toll while the bell holds (DESIGN: they keep it to themself).
+func may_share_reading(_w, _n, _entry: Dictionary) -> bool:
+	return true
+
+
 ## Lines and cards added when `n` comes out with this role before the town (Sexton: the toll).
 func on_public_claim(_w, _n, _lines: Array, _facts: Array, _mind) -> void:
 	pass

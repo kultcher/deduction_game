@@ -107,16 +107,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		novelty_ids = snapshot.selected
 	var fresh: Array = novelty_ids.filter(func(id): return id not in earlier and not state.get("rewarded_facts", {}).has(id))
 	var previous_focus: Array = state.get("attention_focus", []).duplicate()
-	var previous_focus_target: String = str(state.get("attention_target", ""))
 	state["attention_focus"] = original_ids.duplicate()
-	# Whom the presentation is about: the belief update ranks attention against it too
-	# (premises pass, step 0b), as the judging pass does. Alignment premises only: a Marked,
-	# secret or conflict premise isn't an argument about alignment, so it must not steer
-	# the alignment update (the plan settles those by conditioning, steps 1-2, not by
-	# attention).
-	# A non-alignment premise leaves the last alignment target in place.
-	if str(headline.conclusion.get("type", "")) in ATTENTION_TARGET_TYPES:
-		state["attention_target"] = str(headline.conclusion.get("a", headline.conclusion.get("target", "")))
 	state.presentations = proposals
 	state.get("withdrawn", {}).erase(key)
 	if not state.has("disclosures"):
@@ -137,7 +128,6 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		# an unsupported endorsement behind when blocking the presentation.
 		state.presentations = previous
 		state.attention_focus = previous_focus
-		state.attention_target = previous_focus_target
 		Mind.refresh_beliefs(g.w, n, " (presentation capability fallback)")
 		return _unavailable(g, n, card, "ownership", state.get("issues", ["Ownership was not activated."]))
 	var plan: Dictionary = g._workshop_plans[listener_key]
@@ -448,9 +438,6 @@ static func _snapshot(g, n, card: Dictionary, targets: Array, direction: String,
 	for i in range(1, targets.size()):
 		input.arguments.append({"board_number": -2 - i, "conclusion": {"type": "good" if direction == "defend" else "suspicious", "a": targets[i]}, "supports": [card.get("n", 0)]})
 	return input
-
-## Premise types whose target the belief update's attention ranks against (step 0b).
-const ATTENTION_TARGET_TYPES = ["evil", "good", "demon", "notdemon", "minion", "suspicious", "role", "notrole", "lied", "truthful"]
 
 ## Agreement for the trust reward: the case cards plus the listener's own readings only, not
 ## hearsay the player may never have heard (premises pass, step 0b). A listener with no

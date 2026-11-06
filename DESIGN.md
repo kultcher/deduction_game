@@ -597,8 +597,12 @@ player's case; it doesn't search for theories.**
   to the night, not the person; a good NPC never doubts their own honesty but can accept
   that their own reading was poisoned.
 - **Bounded attention:** Insight sets how much of what a listener holds they actually
-  weigh. A duller listener also takes a strong evil reading partly at its word ("one of
-  Kiran or Fenwick is the Demon") on top of the full model.
+  weigh. Presented cards are always read, and the listener's own readings are pinned
+  beside them. The rest is ranked by salience: naming the premise's target (when judging a
+  case), naming someone the presented cards name, being a gift reading, trust. The belief
+  update has no premise target, so an argument's framing never moves beliefs on its own
+  (premises plan, step 0b revised). A duller listener also takes a strong evil reading
+  partly at its word ("one of Kiran or Fenwick is the Demon") on top of the full model.
 - **Suspicion change** = 0.45 × the shift from prior to posterior, scaled by how far the
   listener trusts the source of the evidence, then by **directional Confidence**: the
   `1.4 − 0.8 × Confidence` factor applies only to moves against the listener's lean (their

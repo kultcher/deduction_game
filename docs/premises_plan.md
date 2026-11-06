@@ -2,10 +2,26 @@
 
 Nov 5, 2026 · @Michael Smith · revised Nov 5, 22:50 ET (Claude-Bailiff)
 
-**Status (Nov 6, 02:45 ET):** Step 0 (a bare defence cites no grounds; PR #81) and step 0b
-(one attended set; PR #86, `baseline_50bd642`) are on main. In 0b the belief update's focus
-target follows alignment premises only: a Marked, secret or conflict premise leaves the last
-one in place. Steps 1–4 aren't started; step 1 is measured with the M4 bot (on main, PR #84).
+**Status (Nov 6, afternoon):** Step 0 (a bare defence cites no grounds; PR #81) and step 0b
+(one attended set; PR #86) are on main.
+
+**Step 0b revised (Nov 6, with Michael):** the belief update has no premise target, and
+nothing about an argument is remembered between presentations. The judging pass (agreement,
+reasons, the trust reward) still ranks attention against the premise's target. The belief
+update ranks by what was just shown: the people the presented cards name and come from, plus
+the listener's pinned own readings.
+- **What it replaces:** the night-of-Nov-5 version remembered the last alignment premise's
+  target per listener (`attention_target`). That target steered every later refresh, for
+  days, and moved beliefs through framing alone (the same cards, a different target,
+  different beliefs).
+- **The two invariants until step 1:** the same cards under any premise move beliefs the
+  same way, and a later refresh isn't steered by an earlier argument's framing (both in
+  `test_workshop_live_cognition`).
+- **After step 1:** a premise moves beliefs only by conditioning (step 1).
+
+Steps 1–4 aren't started; step 1 is measured with the M4 bot (on main, PR #84). Deliberate
+recency in attention is a separate step after step 1 (see "Recency: the topic of the day"
+below).
 
 Today a premise changes what a listener says, not what they believe. Every person's belief change comes from one pass over the evidence the player presents; the premise picks the reply, the stance, a small trust reward, and two side preferences. Reading challenges reach the numbers only when the player links cards that flatly contradict the reading, and then only slightly.
 
@@ -250,6 +266,35 @@ These answers replace the open questions. Where they differ from the proposed me
   2. **Types and secrets:** merge the types, add the suspicious pressure play, add secrets as linkable premises, and remove the per-card "evil or Marked" pick (this removes existing UI, so it needs your sign-off). The contradiction-link and auto-included claim UX changes go here, since they touch the same canvas code.
   3. **Challenges:** graded leave-one-out scoring, same-source inconsistency, the causes and the Poisoner-candidate rule, and the Minion lineup variable that "they were poisoned" depends on.
   4. **Later:** Scion and Revenant identity, then movement premises. Breathstealer and Brute stay circumstantial, as decided.
+  - **Recency (after step 1, its own A/B):** the topic of the day, card age decay, and calling attention back. See the section below.
+
+## Recency: the topic of the day (decided Nov 6, built after step 1)
+
+Real Blood on the Clocktower towns lock onto the day's topic, and established facts drift
+until someone calls them back. Attention should model that on purpose, not by accident (the
+old remembered `attention_target` resembled it but was per listener, set only by the player,
+and never faded).
+- **A public topic of the day.** People nominated, accused or argued about at today's
+  meeting, shared by the whole town. Cards about them rank higher in attention, fading over
+  a day or two.
+- **Card age decay.** Older cards lose salience, so established facts drift out of a
+  bounded mind's attention. Lower Insight drifts more.
+- **Calling attention back.** Citing or re-presenting an old card refreshes its age, so the
+  player (or an NPC) can say "remember Dorian's Dowser reading?" and it lands.
+- **Re-presenting restores attention, never weight** (Nov 6, with Michael). Today's rule,
+  "re-presenting evidence they already hold adds nothing", becomes "re-presenting adds no
+  evidence; it can bring back what the listener stopped weighing".
+  - Its effect is bounded by what full attention to that card would give. A mind that never
+    let it drift (high Insight, or the card is recent) doesn't move. A low-Insight mind
+    that dropped it moves back toward it.
+  - Repeating it again while it's still recent does nothing, so spamming a case can't
+    ratchet belief.
+  - Cited at a meeting, it refreshes the card for the whole town.
+  - Tests: no change while recent; after decay, movement toward the full-attention value
+    and never past it.
+- **Measure separately.** It likely makes the town worse in long games, so it gets its own
+  A/B after step 1, not mixed into step 1's.
+- **For the evil-mind work:** evil could steer the topic away from a teammate.
 
 ## Tally's Nov 5 findings and how they change the plan
 

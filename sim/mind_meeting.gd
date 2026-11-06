@@ -249,7 +249,8 @@ static func _late_relay(w, n, lines: Array, facts: Array) -> void:
 			var Muddler = preload("res://sim/muddler.gd")
 			var spoken_e: Dictionary = Muddler.maybe_muddle_reading(w, n, src_id, e)
 			var rn: String = C.role_name(spoken_e["role"])
-			var said: String = C.third_person(reading_body(spoken_e["text"]))
+			# The reading's text carries no time: say when, relative to today.
+			var said: String = "%s %s" % [C.spoken_when(int(spoken_e.get("day", w.day)), w.day), C.third_person(reading_body(spoken_e["text"]))]
 			lines.append(say_voiced(n, "meeting_late_relay", "Before %s died, they told me they were the %s, and that %s." % [src.name, rn, said],
 				{"dead": src.name, "role": rn, "reading": said}))
 			var f: Dictionary = info_fact(w, src, spoken_e)

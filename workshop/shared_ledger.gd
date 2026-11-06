@@ -287,7 +287,6 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 		if not focus.is_empty():
 			prepared.listener.knowledge["presented_reports"] = focus.filter(func(id): return facts.has(id))
 			prepared.listener.knowledge.presented_reports.sort()
-			prepared.listener.knowledge["attention_target"] = str(input.listener.get("attention_target", ""))
 		# Per-card source reliability (Phase 3.2): each spoken card carries its own
 		# source/teller/player trust into CaseEval and _headline individually, so a low-trust
 		# rumor never dilutes a firsthand clue and a firsthand clue never launders a rumor.

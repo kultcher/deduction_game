@@ -22,6 +22,7 @@ const IN = 0.24           # how far a yes voter steps in (fraction of the ring r
 const OUT = 0.1           # how far a no voter pulls back
 const DUSK_ARRIVAL = 1.2  # seconds the town gathers in the ring before the first speaker
 const VOTE_MARK = "Votes to execute "   # the tally's narration: what's said after it waits for the count
+const MEETING_HEADER = "the town meeting"   # GameMeeting._start_meeting's header ("Day N: the town meeting")
 
 var g
 var _res: Dictionary = {}    # the vote being shown (or last shown)
@@ -79,6 +80,13 @@ func arrive() -> void:
 ## A command's events: speech goes to the stage; anything said after the tally waits for
 ## the count to finish.
 func consume(events: Array) -> void:
+	# A command that also opened the meeting (the evening's last question, say) carries the
+	# day's conversation before the meeting's header. That speech was already shown in the
+	# conversation view: only what's said from the meeting's opening on comes to the stage.
+	for i in range(events.size() - 1, -1, -1):
+		if events[i].get("k", "") == "header" and MEETING_HEADER in str(events[i].get("text", "")):
+			events = events.slice(i)
+			break
 	var cut: int = -1
 	for i in range(events.size()):
 		var e: Dictionary = events[i]

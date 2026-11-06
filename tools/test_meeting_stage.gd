@@ -115,6 +115,13 @@ func _test_meeting(scene) -> void:
 	if g.state != "meeting":
 		return
 	mv.stage.clear()
+	# The command that opens the meeting can carry the day's last conversation line (the
+	# evening's last question): that stays in the conversation view, not on the stage.
+	var other = g.w.living()[0]
+	mv.consume([_speech(other.id, other.name, "That's all I know."), {"k": "header", "text": "Day %d: the town meeting" % g.w.day}, _speech(other.id, other.name, "Good evening, all.")])
+	_check(mv.stage.busy() and mv.stage.queue.size() + (0 if mv.stage.current.is_empty() else 1) == 1 and (str(mv.stage.current.get("text", "")) == "Good evening, all." or (mv.stage.queue.size() == 1 and mv.stage.queue[0].text == "Good evening, all.")),
+		"a conversation line from before the meeting opened doesn't replay on the stage")
+	mv.stage.clear()
 	var t = g.w.living().filter(func(n): return not n.silenced and g.w.can_nominate("player", n.id) == "")[0]
 	scene._run("nominate %s raw" % t.name.to_lower())
 	_check(mv.visible and mv.stage_busy() and mv.stage.queue.size() + 1 >= 1, "a nomination's defence comes forward on the stage")

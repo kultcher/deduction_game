@@ -39,8 +39,8 @@ func _spoken_text(block: String, walked: bool, role: String) -> String:
 	var C = content()
 	var bname: String = C.block_name(block)
 	if walked:
-		return "I learned that a %s was abroad on %s last night" % [C.role_name(role), bname]
-	return "no one walked by my house last night"
+		return "I learned that a %s was abroad on %s" % [C.role_name(role), bname]
+	return "no one walked by my house"
 
 
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
