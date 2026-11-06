@@ -94,8 +94,8 @@ request. New baseline `baseline_b9a0376`: identical to `baseline_e9f1e47` except
 
 ## 2026-11-05 late night, Claude-Bailiff: meeting plan M2d (player's turn, resistance lines) on main
 
-**Base:** `main` at `f999e09`. **Branch:** `claude/meeting-m2d`. **Baseline:** `baseline_fb7e6ef`.
-**Status:** merged. 110/110 suites; two golden captures identical.
+**Base:** `main` at `f999e09`, with main (NPC openness, `8554730`) merged in. **Branch:** `claude/meeting-m2d`. **Baseline:** `baseline_a64553d`.
+**Status:** merged. 111/111 suites; two golden captures identical.
 
 - **Step 5, the player's turn after the town.**
   - New nomination command `hear` (also `listen`). The "Hear the town" button runs the
