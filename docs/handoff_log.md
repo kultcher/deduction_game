@@ -29,8 +29,8 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ## 2026-11-06 early, Claude-Bailiff: meeting plan M4, the bot (sweep for Tally)
 
-Branch `claude/m4-bot`, built on `claude/defence-empty-grounds` (step 0, PR #81) merged with
-main. It needs PR #81 first.
+Branch `claude/m4-bot`, on main after step 0 (PR #81). Golden identical to
+`baseline_55cea76` at `--tol 0` (the passive golden player doesn't use the bot); 114/114 suites.
 
 - `tools/autoplay.gd` (default policy; `--pre-m4` keeps the old one for A/Bs):
   - **Podium press:** a sighting or trace card about the nominee, else their gift (or
@@ -51,7 +51,7 @@ main. It needs PR #81 first.
   identified 8 → 12 of 16; wrongful executions 15 → 14; evil executed 15 → 15. Too small to
   read beyond "nothing broke, and the Demon guess is better".
 - **For Tally:** the M4 sweep (meeting plan slice M4: 150 seeds at 7 and 10 NPCs,
-  `--dynamic`, M4 against `--pre-m4`) once PR #81 and this are merged. Worth adding the
+  `--dynamic`, M4 against `--pre-m4`) once this is merged (step 0b too, if it's close). Worth adding the
   hidden night-walker hang rate and how often the press and exclusion cards fire.
 
 ---
@@ -74,7 +74,11 @@ Base `ce26d25`. Branch `claude/defence-empty-grounds`. New baseline `baseline_55
 - Passive A/B (`docs/golden_baseline.md`): 7 NPCs flat; 10 NPCs good wins 3 → 1 of 12. That's
   plausible, since the town loses accidental full attention, but small. Tonight's sweep
   should include it.
-- Next: step 1 goes back to Quill. Hold attention budgets fixed between the A/B arms.
+- Rode along (the plan suggested it): dev logs' `case_start.build` now records the git
+  commit (`sim/build_info.gd`), and `log_replay.gd` notes when a log came from other code,
+  with the worktree command to replay it there.
+- Next: step 0b (own readings pinned during presentations), then step 1 goes back to Quill.
+  Hold attention budgets fixed between the A/B arms.
 
 ---
 

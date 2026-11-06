@@ -372,7 +372,11 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 	town_hall_uses_left = Tuning.Setup.TOWN_HALL_USES_PER_CASE
 	town_hall_shown_roles = []
 	_town_hall_rng = null
-	var build_id: String = trace_build if trace_build != "" else str(ProjectSettings.get_setting("application/config/version", "dev"))
+	var build_id: String = trace_build if trace_build != "" else str(ProjectSettings.get_setting("application/config/version", ""))
+	if build_id == "":
+		build_id = preload("res://sim/build_info.gd").commit() # the git commit, so a log can be replayed on its code
+	if build_id == "":
+		build_id = "dev"
 	var tuning_id: String = trace_tuning if trace_tuning != "" else Tuning.fingerprint()
 	trace_build = build_id
 	trace_tuning = tuning_id
