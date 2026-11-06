@@ -9,6 +9,9 @@ const Dialogue = preload("res://sim/dialogue.gd")
 const Solver = preload("res://workshop/solver.gd")
 
 const ACCUSING_TYPES = ["evil", "demon", "minion", "lied", "notrole", "suspicious", "unreliable"]
+## Premises the "seen elsewhere / the traces" movement notes can speak to: whether someone is
+## on the killer's side. Role, secret, Marked and misled premises don't.
+const MOVEMENT_NOTE_TYPES = ["evil", "demon", "minion", "suspicious", "good", "notdemon"]
 const MARKED_PING_ROLES = ["seer", "dowser", "clerk", "gravedigger", "hearthwitch", "surveyor", "augur", "magistrate", "executor", "registrar"]
 
 const FALSE_SELF_EXPRESSIONS = {
@@ -358,7 +361,10 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 		if ignored_presented or not reasoning.get("ignored_lines", []).is_empty():
 			parts.append(Dialogue.voice_line(listener.id, "present_partial_attention", ""))
 
-	if primary_key not in ["present_false_self", "present_false_known", "present_conflict_found", "present_conflict_none", "present_conditional"]:
+	# The movement notes ("seen elsewhere, so not the killer", "the traces incline me") only
+	# fit premises about whether someone is the killer's side (premises pass step 1; playtest
+	# issue #5: "Dorian is the Warden" drew a killer clause).
+	if primary_key not in ["present_false_self", "present_false_known", "present_conflict_found", "present_conflict_none", "present_conditional"] and ctype in MOVEMENT_NOTE_TYPES:
 		_append_movement_notes(w, listener.id, ctype, stance_subject, ev, parts, used_circumstantial, allow_lean)
 
 	var joined: String = " ".join(PackedStringArray(parts.filter(func(s): return str(s).strip_edges() != "")))

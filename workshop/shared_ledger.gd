@@ -494,15 +494,108 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 ## Inputs for deferred reason attribution from the most recent evaluate() call.
 static var last_reason_ctx: Dictionary = {}
 
-static func evaluate(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}) -> Dictionary:
+## Premises pass step 1: which remembered presentations shape this listener's beliefs.
+## A card is shaped when only presentations brought it (not the listener's own readings or
+## hearsay) and at least one of them argued an alignment premise about someone (its
+## target). The targets take the shaped cards' full effect, everyone else `spill` of it.
+## Re-presenting the same cards under a Marked or conflict premise neither shapes nor
+## unshapes them. Returns {} when nothing is shaped. `keys` are the presentations that
+## own a shaped card; dropping them gives the "without" plan.
+static func premise_shaping(plan: Dictionary, presentations: Dictionary, withdrawn: Dictionary, insight: float) -> Dictionary:
+	if not plan.get("ready", false) or presentations.is_empty():
+		return {}
+	var named_by: Dictionary = {}  # "case:<key>" -> alignment targets ([] for a non-shaping premise)
+	for key in presentations:
+		if withdrawn.has(key) or withdrawn.has(str(key)):
+			continue
+		named_by["case:" + str(key)] = premise_targets(str(key), presentations[key])
+	var shaped_owners: Dictionary = {}
+	var shaped_cards: Array = []
+	for id in plan.get("owners", {}):
+		var owned_by: Array = plan.owners[id]
+		if owned_by.is_empty() or not owned_by.all(func(o): return named_by.has(str(o))):
+			continue  # held another way too: their own reading, hearsay or the public record
+		if not owned_by.any(func(o): return not named_by[str(o)].is_empty()):
+			continue
+		shaped_cards.append(str(id))
+		for o in owned_by:
+			shaped_owners[str(o)] = true
+	if shaped_owners.is_empty():
+		return {}
+	var keys: Array = []
+	var trim: Array = []   # shaped owners with no alignment target (Marked, conflict): keep their other cards
+	var targets: Array = []
+	for owner in shaped_owners:
+		keys.append(owner.trim_prefix("case:"))
+		if named_by[owner].is_empty():
+			trim.append(owner.trim_prefix("case:"))
+		for t in named_by[owner]:
+			if t not in targets:
+				targets.append(t)
+	keys.sort()
+	targets.sort()
+	var spill: float = lerpf(Tuning.Workshop.PREMISE_SPILLOVER_MIN, Tuning.Workshop.PREMISE_SPILLOVER_MAX, clampf(insight, 0.0, 1.0))
+	shaped_cards.sort()
+	return {"keys": keys, "trim": trim, "cards": shaped_cards, "targets": targets, "spill": spill}
+
+## The alignment targets a presentation argued about: its root premise (every argument for
+## a direct accuse / defend), when its type asks an alignment question about a person.
+static func premise_targets(key: String, presented: Dictionary) -> Array:
+	var named: Array = []
+	for argument in presented.get("arguments", []):
+		var is_root: bool = int(argument.get("board_number", -998)) == int(presented.get("root", -999))
+		if not is_root and not key.begins_with("direct:"):
+			continue
+		if str(argument.get("conclusion", {}).get("type", "")) not in Tuning.Workshop.PREMISE_SHAPING_TYPES:
+			continue
+		var target: String = Assess._target(argument.conclusion)
+		if target != "" and target not in named:
+			named.append(target)
+	return named
+
+## The presentations left once the shaping ones are dropped (the "without" side). An
+## alignment presentation that owns a shaped card is dropped whole (its other cards are held
+## another way, or they'd be shaped too). A presentation with no alignment target (Marked,
+## conflict) that shares a shaped card keeps everything but the shaped cards, so its own
+## cards aren't discounted for anyone (Codex review of PR #92).
+static func without_shaping(presentations: Dictionary, shaping: Dictionary) -> Dictionary:
+	var rest: Dictionary = {}
+	var keys: Array = shaping.get("keys", []).map(func(k): return str(k))
+	var trim: Array = shaping.get("trim", []).map(func(k): return str(k))
+	var cards: Array = shaping.get("cards", [])
+	for key in presentations:
+		if str(key) in trim:
+			var kept: Dictionary = presentations[key].duplicate(true)
+			kept.selected = kept.get("selected", []).filter(func(id): return str(id) not in cards)
+			rest[key] = kept
+		elif str(key) not in keys:
+			rest[key] = presentations[key]
+	return rest
+
+## Blend one person's effect between the "without" pass and the full pass: the
+## presentations' share of the change is scaled by `spill`.
+static func _shape_effect(effect: Dictionary, without: Dictionary, spill: float) -> void:
+	for field in ["requested", "raw_requested", "posterior", "evil_agreement", "evil_change"]:
+		if effect.has(field):
+			var base: float = float(without.get(field, 0.0 if field in ["requested", "raw_requested", "evil_change"] else effect.get("prior", effect[field])))
+			effect[field] = base + spill * (float(effect[field]) - base)
+	if effect.has("good_agreement") and effect.has("evil_agreement"):
+		effect.good_agreement = 1.0 - float(effect.evil_agreement)
+	if effect.has("good_change") and effect.has("evil_change"):
+		effect.good_change = -float(effect.evil_change)
+	effect["premise_spill"] = spill
+
+## `shaping` (premises pass step 1): {targets, spill, without} from premise_shaping, with
+## `without` the plan prepared without the shaping presentations. Empty: no shaping.
+static func evaluate(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}, shaping: Dictionary = {}) -> Dictionary:
 	if not SolverBackend.profiling_enabled:
-		return _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt)
+		return _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt, shaping)
 	var _st: int = SolverBackend.begin_stage("outer_prep")
-	var _res: Dictionary = _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt)
+	var _res: Dictionary = _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt, shaping)
 	SolverBackend.end_stage(_st)
 	return _res
 
-static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}) -> Dictionary:
+static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}, shaping: Dictionary = {}) -> Dictionary:
 	if not plan.ready:
 		return {}
 	if plan.empty:
@@ -543,6 +636,16 @@ static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt
 		prepared.listener.reading_reliability[card.id] = route_weight * (1.0 - doubt)
 	# No headline: the union only asks how every suspicion moves (Jury.refresh).
 	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
+	# Premises pass step 1: the shaping presentations' effect reaches non-targets at `spill`.
+	if not shaping.is_empty() and shaping.get("without", {}).get("ready", false):
+		var without: Dictionary = _evaluate_impl(shaping.without, suspicion, source_doubt, sighting_doubt)
+		var wo_effects: Dictionary = without.get("effects", {})
+		var spill: float = float(shaping.spill)
+		for person in result.get("effects", {}):
+			if person in shaping.targets or person == prepared.listener.get("id", ""):
+				continue
+			_shape_effect(result.effects[person], wo_effects.get(person, {}), spill)
+		result["premise_shaping"] = {"targets": shaping.targets.duplicate(), "spill": spill}
 	var public_good: Array = preload("res://workshop/public_evidence.gd").known_good(plan.input.public_events, plan.input.people.map(func(p): return p.id))
 	if prepared.view.get("chronology", {}).has("curse"):
 		var curse: Dictionary = prepared.view.chronology.curse

@@ -342,6 +342,11 @@ class Trust:
 	const WARD_SIGIL_TARGET_BONUS = 0.15
 	const SELF_SUPPORT_BONUS = 0.03
 	const PRESENTATION_REWARD = 0.02
+	## Premises pass step 1: a clearly wrong premise costs what a good one earns. Agreement is
+	## CaseEval.shift (-1..1, how far the evidence moved toward the premise), so "clearly
+	## wrong" is the evidence moving a quarter of the way toward the premise being false.
+	const PRESENTATION_WRONG_COST = 0.02
+	const PRESENTATION_WRONG_AGREEMENT = -0.25
 	const NOMINATED_PRESSURE = 0.4
 	const NOMINATED_BY_PLAYER_DROP = 0.15
 	const NOMINATED_NPC_TRUST_DROP = 0.25
@@ -950,6 +955,18 @@ class Workshop:
 		"accept": 0.06,
 		"partial": 0.02,
 	}
+
+	## Premises pass step 1 (docs/premises_plan.md): a presented case moves its premise's
+	## target by the full evidence, and everyone else by this share of the presentation's
+	## effect, from the lowest to the highest Insight. Remembered for every refresh.
+	const PREMISE_SPILLOVER_MIN = 0.4
+	const PREMISE_SPILLOVER_MAX = 0.8
+	## Premise types whose target is an alignment question. Marked, secret, misled and
+	## conflict premises name no alignment target, so their cards spill over in full.
+	const PREMISE_SHAPING_TYPES = ["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrole", "lied", "truthful"]
+	## The protect / believed-role preference from a presented premise needs at least this
+	## agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks.
+	const PREMISE_PREF_MIN_AGREEMENT = 0.5
 
 	## Bounded reasoning attention profiles (`workshop/reasoner.gd`)
 	## Attention salience (Reasoner._salience; premises pass step 0b). Naming the target outranks

@@ -280,6 +280,12 @@ static func feedback(view: Dictionary, case_data: Dictionary, ev: Dictionary, re
 		if top != "":
 			result["raises"] = top
 			result["raises_text"] = "If presented, this mostly raises suspicion of %s." % Solver.person_name(view, top)
+	# A defence whose evidence points the other way (premises pass step 1, preview hint).
+	if case_data.conclusion.get("type", "") == "good" and ev.has("people") and target != "":
+		var mine: Dictionary = ev.people.get(target, {})
+		if float(mine.get("posterior", 0.0)) - float(mine.get("prior", 0.0)) > 0.05:
+			result["against"] = target
+			result["raises_text"] = "These cards make %s look more suspicious, not less." % Solver.person_name(view, target)
 
 ## "Connections" (Find Links, rebuilt on the shared model): board cards not yet in this
 ## case that bear on its premise, ranked by how far each would move the test juror, up

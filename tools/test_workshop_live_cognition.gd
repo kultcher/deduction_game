@@ -197,14 +197,19 @@ func _registration() -> void:
 	var memory = n.workshop_state.theories.duplicate(true)
 	g._evaluate_deduction(n, g.board[marked - 1], 0.6, true, "meeting")
 	check(n.workshop_state.theories == memory and _close(before, n.suspicion), "repeating registration claims cannot sharpen alignment or registration commitment")
-	# Premises step 0b revised: until step 1 conditions on the premise, the same cards under
-	# another alignment premise (another target) move nobody, and the earlier framing doesn't
-	# linger into a later refresh.
+	# Premises step 1: the premise's type doesn't move beliefs (the evidence does), its target
+	# does (the target takes the full effect, everyone else the Insight spillover), and the
+	# shaping is remembered, so a later refresh reproduces it exactly.
+	var retyped = g.file_deduction({"type": "demon", "a": p[3].id}, g.board[number - 1].supports)
+	g._evaluate_deduction(n, g.board[retyped - 1], 1.0, false)
+	check(_close(before, n.suspicion), "the same cards under another premise type about the same target move beliefs no differently")
 	var retargeted = g.file_deduction({"type": "evil", "a": p[5].id}, g.board[number - 1].supports)
 	g._evaluate_deduction(n, g.board[retargeted - 1], 1.0, false)
-	check(_close(before, n.suspicion), "the same cards aimed at someone else move beliefs no differently")
+	var others_same: bool = before.keys().all(func(id): return id == p[5].id or is_equal_approx(before[id], n.suspicion[id]))
+	check(others_same and not is_equal_approx(before[p[5].id], n.suspicion[p[5].id]), "aiming the same cards at someone else gives that person their full effect and leaves the rest as they were")
+	var shaped = n.suspicion.duplicate(true)
 	Mind.refresh_beliefs(g.w, n, " (later refresh)")
-	check(_close(before, n.suspicion), "a later refresh isn't steered by the last argument's framing")
+	check(_close(shaped, n.suspicion), "a later refresh reproduces the remembered premise shaping exactly")
 	check(r.assessment.theory == n.workshop_state.theories[key].decision, "scoped registration reply uses the committed union decision")
 
 func _close(a: Dictionary, b: Dictionary) -> bool:
