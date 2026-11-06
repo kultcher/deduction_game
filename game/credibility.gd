@@ -153,10 +153,11 @@ static func _agreement(g, n):
 		var claim: Dictionary = n.claim_record[key]
 		if str(claim.get("type", "")) != "secret" or not str(key).begins_with("secret:"):
 			continue
-		var question: Dictionary = plan.prepared.case.duplicate(true)
-		question.conclusion = {"type": "secret_mod", "target": str(claim.target), "mod": str(claim.mod), "at": plan.prepared.case.conclusion.get("at", "")}
-		var ev: Dictionary = CaseEval.evaluate(plan.prepared.view, question, plan.prepared.listener)
-		if ev.get("impossible", false) or absf(float(ev.posterior) - float(ev.prior)) < Tuning.Trust.CRED_CORROBORATION_MIN:
+		# The same attended, doubt-adjusted evidence as the alignment check above (Codex
+		# review of PR #93), not the raw prepared plan.
+		var ev: Dictionary = Shared.evaluate_question(plan, outside, doubt_bundle.pre_eval, doubt_bundle.full,
+			{"type": "secret_mod", "target": str(claim.target), "mod": str(claim.mod), "at": plan.prepared.case.conclusion.get("at", "")})
+		if ev.is_empty() or ev.get("impossible", false) or absf(float(ev.posterior) - float(ev.prior)) < Tuning.Trust.CRED_CORROBORATION_MIN:
 			continue
 		var w_s: float = clampf(float(claim.get("weight", Tuning.Trust.CRED_WEIGHT_FORMAL)), 0.05, 1.0)
 		total += w_s * CaseEval.shift(float(ev.prior), float(ev.posterior))

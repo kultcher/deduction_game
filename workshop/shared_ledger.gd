@@ -693,6 +693,25 @@ static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt
 		return {}
 	if plan.empty:
 		return {"effects": {}}
+	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt)
+	# No headline: the union only asks how every suspicion moves (Jury.refresh).
+	return _evaluate_adjusted(plan, prepared, suspicion, source_doubt, sighting_doubt, shaping)
+
+## One question (`conclusion`, e.g. a secret) asked of the listener's own evidence the way
+## the belief refresh weighs it: the same doubt-adjusted cards, through the same attention
+## and challenge machinery (Jury), not the raw prepared plan. Returns CaseEval's result
+## ({prior, posterior, impossible, ...}), or {} when the plan isn't ready.
+static func evaluate_question(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, conclusion: Dictionary) -> Dictionary:
+	if not plan.get("ready", false) or plan.get("empty", false):
+		return {}
+	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt)
+	var question: Dictionary = prepared.case.duplicate(true)
+	question.conclusion = conclusion.duplicate(true)
+	var res: Dictionary = Jury.evaluate(prepared.view, question, prepared.listener, {"headline_only": true})
+	return res.get("case_eval", {})
+
+## The plan's prepared view and listener with source and sighting doubt applied.
+static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary) -> Dictionary:
 	var eff_sighting_doubt: Dictionary = sighting_doubt if not sighting_doubt.is_empty() else source_doubt
 	var prev_doubt: Dictionary = plan.input.listener.get("source_doubt", plan.input.listener.get("discounted", {}))
 	var prepared: Dictionary = plan.prepared.duplicate(true)
@@ -727,7 +746,9 @@ static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt
 		var previous = maxf(float(prev_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(prev_doubt.get(card.source + ":*", 0.0)))
 		var route_weight = prepared.listener.reading_reliability[card.id] / (1.0 - previous) if previous < 1.0 else 0.0
 		prepared.listener.reading_reliability[card.id] = route_weight * (1.0 - doubt)
-	# No headline: the union only asks how every suspicion moves (Jury.refresh).
+	return prepared
+
+static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, shaping: Dictionary) -> Dictionary:
 	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
 	# Premises pass step 1: the shaping presentations' effect reaches non-targets at `spill`.
 	# Step 2: cards only suspicious premises brought count at `hedge` for everyone.

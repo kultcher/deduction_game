@@ -536,7 +536,17 @@ func doubt_report(id: String) -> String:
 		return "Only a gift report can be doubted this way."
 	if nodes[id].kind != "contradiction":
 		var report_node: String = contradicted_by(id)
+		# The contradiction may have been the report's only way into the case (only the
+		# alibi was linked to the premise). Give the report the alibi's links before the
+		# challenge takes them over, so compiling the premise still brings the report and
+		# its suspected lie (Codex review of PR #93).
+		var report_in_case: bool = links.any(func(edge): return edge.kind != "contradicts" and edge.from == report_node)
+		var alibi_out: Array = links.filter(func(edge): return edge.kind != "contradicts" and edge.from == id).duplicate(true)
 		remove_contradiction(id)
+		if not report_in_case:
+			for edge in alibi_out:
+				if edge.to != report_node and not links.any(func(e): return e.from == report_node and e.to == edge.to):
+					links.append({"from": report_node, "to": edge.to, "kind": edge.kind})
 		var why: String = add_modifier(report_node, "lying")
 		if why == "":
 			var challenge: String = selected

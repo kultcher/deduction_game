@@ -281,7 +281,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			hub_voiced_tail = " " + Mind.Dialogue.voice_line(n.id, "circumstantial_hub_landed", "Taken with the rest of your case, those surrounding circumstances make {target} harder to wave away.", {"target": s_name})
 			text += hub_voiced_tail
 	if root.conclusion.type == "suspicious" and direction == "deduction" and not self_support:
-		_suspicious_pressure(g, n, root, snapshot, venue, listener_key)
+		_suspicious_pressure(g, n, root, snapshot, venue, listener_key, key)
 	if root.conclusion.type == "conflict" and assessment.agreement >= 0.6 and not repeated:
 		if not state.has("scrutinized"):
 			state.scrutinized = {}
@@ -375,12 +375,18 @@ const STANCE_ONLY = [
 ## its target as pressure, once per filing (target and cards): the average full-weight rise
 ## across everyone who heard it, scaled by venue. Each new listener updates the average;
 ## the target gets only the change, so a meeting gives the average and a refiling nothing.
-static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, venue: String, listener_key: String) -> void:
+static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, venue: String, listener_key: String, key: String = "") -> void:
 	var target_id: String = str(root.conclusion.get("a", root.conclusion.get("target", "")))
 	if target_id == "" or target_id == n.id or not g.w.by_id.has(target_id):
 		return
 	var effect: Dictionary = g._workshop_evaluations.get(listener_key, {}).get("proposal", {}).get("effects", {}).get(target_id, {})
 	var rise: float = maxf(0.0, float(effect.get("suspicious_case_full", 0.0)))
+	# The remembered suspicious union's rise covers every suspicious filing this listener
+	# holds. With another one there, measure this filing's own share: the full union
+	# against the union without it (Codex review of PR #93).
+	var others: Array = _other_suspicious(n, key)
+	if not others.is_empty():
+		rise = maxf(0.0, _filing_rise(g, n, listener_key, key, target_id))
 	var ids: Array = snapshot.selected.duplicate()
 	ids.sort()
 	var filing: String = target_id + "|" + ",".join(PackedStringArray(ids))
@@ -403,6 +409,35 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 		target.pressure = maxf(0.0, target.pressure + delta)
 		g.w.dlog.trace_event("value_change", target_id, n.id, {"quantity": "pressure", "delta": delta, "rise": rise, "filing": filing, "venue": venue},
 			"A suspicious case presses its subject to explain (premises step 2)")
+
+## The listener's other remembered (not withdrawn) suspicious filings, besides `key`.
+static func _other_suspicious(n, key: String) -> Array:
+	var state: Dictionary = n.workshop_state
+	var withdrawn: Dictionary = state.get("withdrawn", {})
+	var out: Array = []
+	for k in state.get("presentations", {}):
+		if str(k) == key or withdrawn.has(k) or str(k).begins_with("direct:"):
+			continue
+		if Shared._root_type(state.presentations[k]) == "suspicious":
+			out.append(str(k))
+	return out
+
+## The rise in `target_id`'s requested change that the filing `key` brings, at full weight:
+## the unshaped union with it against the union without it.
+static func _filing_rise(g, n, listener_key: String, key: String, target_id: String) -> float:
+	var plan: Dictionary = g._workshop_plans.get(listener_key, {})
+	if not plan.get("ready", false):
+		return 0.0
+	var state: Dictionary = n.workshop_state
+	var rest: Dictionary = state.get("presentations", {}).duplicate()
+	rest.erase(key)
+	var without: Dictionary = Shared.prepare(plan.input, rest, n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
+	if not without.get("ready", false):
+		return 0.0
+	var doubt: Dictionary = state.get("source_doubt", {})
+	var with_e: Dictionary = Shared.evaluate(plan, n.suspicion, doubt, doubt).get("effects", {}).get(target_id, {})
+	var without_e: Dictionary = Shared.evaluate(without, n.suspicion, doubt, doubt).get("effects", {}).get(target_id, {})
+	return float(with_e.get("requested", 0.0)) - float(without_e.get("requested", 0.0))
 
 static func belief_stance(kind: String, before: float, after: float) -> String:
 	var toward: float = (before - after) if kind in ["good", "marked"] else (after - before)

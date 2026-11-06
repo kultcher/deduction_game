@@ -136,6 +136,18 @@ func _suspicious() -> void:
 	var held: Dictionary = n.suspicion.duplicate(true)
 	g._evaluate_deduction(n, g.board[again - 1], 1.0, false)
 	check(absf(n.suspicion[p[3].id] - held[p[3].id]) < 0.005 and is_equal_approx(p[3].pressure, pressure1), "refiled as suspicious after evil, nothing changes")
+	# Codex review of PR #93: a second suspicious filing about the same target presses only
+	# for what its own cards add, not the first filing's remembered rise.
+	var g2 = _game()
+	var first: Dictionary = _dowser_case("suspicious", g2)
+	var n2 = g2.w.npcs[0]
+	var q: Array = g2.w.npcs
+	var before2: float = q[3].pressure
+	var unrelated = _read(g2, q[6], "dowser", 1, {"group": [q[4].id, q[5].id], "count": 0})
+	var second = g2.file_deduction({"type": "suspicious", "a": q[3].id}, [unrelated])
+	g2._evaluate_deduction(n2, g2.board[second - 1], 1.0, false)
+	check(first.pressure > 0.0 and q[3].pressure - before2 <= 0.25 * first.pressure,
+		"a second suspicious filing whose cards don't raise the target adds no fresh pressure (%+.4f vs the first's %+.4f)" % [q[3].pressure - before2, first.pressure])
 
 func _node(model, view, pick: Callable) -> String:
 	for id in model.nodes:
@@ -174,6 +186,19 @@ func _contradiction_link() -> void:
 	check(model.report_doubtable(alibi) and model.doubt_report(alibi) == "" and model.contradicted_by(alibi) == "", "doubting the report removes the contradiction")
 	var challenge: String = model.selected
 	check(model.nodes[challenge].kind == "modifier" and model.nodes[challenge].mode == "lying" and model.links.any(func(e): return e.from == alibi and e.to == challenge), "and puts a suspected lie on the report, with the alibi as its grounds")
+	# Codex review of PR #93: only the alibi linked to the premise. Doubting the report must
+	# keep the report and its suspected lie in the case.
+	var m2 = CanvasModel.new(view)
+	m2.contradiction_links = true
+	var alibi2 = _node(m2, view, func(c): return c.kind == "alibi" and c.subject == seen.id)
+	var report2 = _node(m2, view, func(c): return c.kind == "report" and c.source == watcher.id)
+	m2.connect_cards(report2, alibi2)
+	var premise2: String = m2.add_premise(seen.id, "good", Vector2(400, 40))
+	m2.connect_cards(alibi2, premise2)
+	check(m2.doubt_report(alibi2) == "", "doubting the report works with only the alibi in the case")
+	var compiled: Dictionary = m2.compile(premise2)
+	check(compiled.cards.has(m2.nodes[report2].card) and not compiled.get("reading_challenges", {}).is_empty(),
+		"the report and its suspected lie stay in the case (cards %s)" % [compiled.cards])
 
 ## An outing explained by a gift brings in the walker's claim from the board.
 func _auto_citation() -> void:
