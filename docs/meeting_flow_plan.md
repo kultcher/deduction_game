@@ -1,6 +1,6 @@
 # Meeting Flow Overhaul: Trials, Podium Press, Supporters, Peer Role Gossip & VN Courtroom
 
-**Status:** Steps 1 (`nomination_case`), 2 (`defend_self`), streamed `testimony_step`, and gallows `last_words` are live on `main` (`35d319b`, post-Legacy-Purge Phase 3 & Tuning Hoist). Opening reactive pacing, player nominations (anchored or raw), Podium Press, `block_safety`, self-paced Supporters, selective post-vote resistance lines, Peer Role Gossip, and the 15-cast VN Courtroom stage are specified below as the complete implementation plan. Built since: M0, M1, M2a, M2b, M2c and M2d (see the slice list below).  
+**Status:** Steps 1 (`nomination_case`), 2 (`defend_self`), streamed `testimony_step`, and gallows `last_words` are live on `main` (`35d319b`, post-Legacy-Purge Phase 3 & Tuning Hoist). Opening reactive pacing, player nominations (anchored or raw), Podium Press, `block_safety`, self-paced Supporters, selective post-vote resistance lines, Peer Role Gossip, and the 15-cast VN Courtroom stage are specified below as the complete implementation plan. Built since: M0, M1, M2a, M2b, M2c, M2d and M3a (see the slice list below).  
 **Updated:** 2026-11-03 (review pass by Claude with Michael's decisions, same day)  
 **Repository location:** `docs/meeting_flow_plan.md`
 
@@ -295,7 +295,7 @@ Slices **M0** and **M3a** must not change behaviour: their golden captures are i
 1. **Slice M0 - Meeting Controller Extraction (`game/game_meeting.gd`, Sim-Neutral)**:
    - Extract `game/game.gd` lines `1798-2094` into static helper `game/game_meeting.gd` (+ `.uid`) with 1-line forwarders on `Game`, matching `GameBoard` and `GamePresentation`.
    - **Check**: `dotnet build -c Debug`, fast CI suites, and 5-seed golden diff vs. `baseline_82faa5b` at `--tol 0` (`0` diffs).
-2. **Slice M3a - Shared VN Portraits & Courtroom Stage on Existing Beats (`ui/vn_portraits.gd`, `ui/meeting_view.gd`, Sim-Neutral)**:
+2. **(Built Nov 5, Claude-Bailiff: `ui/courtroom_stage.gd`, `tools/test_meeting_stage.gd`.)** **Slice M3a - Shared VN Portraits & Courtroom Stage on Existing Beats (`ui/vn_portraits.gd`, `ui/meeting_view.gd`, Sim-Neutral)**:
    - Extract `ui/vn_portraits.gd`, add the `1.2s` dusk seat-ring arrival beat, mount the VN Courtroom overlay inside `ui/meeting_view.gd` for streamed testimony, nominator cases, initial defences, and gallows `last_words`, and pull back cleanly to the seat ring for vote sweeps.
    - **Check**: `test_ui`, `test_town_ui`, `test_headline`, and `--tol 0` golden parity (`0` diffs).
 3. **(Done Nov 4, Claude: `test_peer_role_gossip`, including the `answer_opinion` second-hand note.)** **Slice M1 - Peer Role-Hint & Role-Claim Gossip (`sim/social.gd`, `sim/mind_dialogue.gd`, `sim/tuning.gd`)**:
