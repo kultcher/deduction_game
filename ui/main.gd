@@ -210,6 +210,8 @@ func _ready() -> void:
 	meeting_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	meeting_view.visible = false
 	meeting_view.person_clicked.connect(func(id): _select_person(id))
+	# Last words outlast the meeting: once the stage clears, the map comes back.
+	meeting_view.stage.finished.connect(func(): if g != null and g.state not in ["meeting", "nomination"]: _refresh_all())
 	upper.add_child(meeting_view)
 	var castbox = VBoxContainer.new()
 	castbox.custom_minimum_size = Vector2(330, 0)
@@ -678,6 +680,7 @@ func _run(cmd: String) -> void:
 	var previous_state = g.state
 	_print("\n> " + cmd)
 	_print(g.command(cmd))
+	_capture_meeting(previous_state)
 	_capture_conversation(previous_state, cmd)
 	_capture_scene_search(cmd)
 	if not conversation_finished:
@@ -691,6 +694,14 @@ func _run(cmd: String) -> void:
 	_refresh_all()
 	if case_view.visible and case_view.workshop != null:
 		case_view.workshop.refresh()
+
+## What's said at the meeting comes forward on the courtroom stage (meeting plan M3a).
+func _capture_meeting(previous_state: String) -> void:
+	var was: bool = previous_state in ["meeting", "nomination"]
+	if g.state in ["meeting", "nomination"] and not was:
+		meeting_view.arrive()
+	if was or g.state in ["meeting", "nomination"]:
+		meeting_view.consume(g.last_events)
 
 func _capture_conversation(previous_state: String, cmd: String) -> void:
 	if g.state == "talk" and g.talk_with != null:
@@ -776,6 +787,7 @@ func _stream_meeting() -> void:
 		var text: String = g.testimony_step()
 		if text != "":
 			_print(text)
+		meeting_view.consume(g.last_events)
 		_consume_headlines()
 		meeting_view.refresh()
 		var left: float = STREAM_GAP - (Time.get_ticks_msec() - started) / 1000.0
@@ -791,6 +803,7 @@ func finish_streaming() -> void:
 		var text: String = g.testimony_step()
 		if text != "":
 			_print(text)
+		meeting_view.consume(g.last_events)
 		_consume_headlines()
 	_refresh_all()
 
@@ -813,9 +826,10 @@ func _refresh_all() -> void:
 	if not meeting or (g.state == "nomination" and _last_state != "nomination") or (g.state == "meeting" and _last_state == "nomination"):
 		meeting_show_map = false  # a vote starting (or being counted) brings the circle back
 	_last_state = g.state
-	map_stage.visible = conversation_finished or not meeting or meeting_show_map
+	var last_words: bool = not meeting and meeting_view.stage_busy()   # the gallows, after the meeting closes
+	map_stage.visible = conversation_finished or (not meeting and not last_words) or meeting_show_map
 	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map) or not inspect_pages.is_empty()
-	meeting_view.visible = meeting and not meeting_show_map and not conversation_finished
+	meeting_view.visible = (meeting or last_words) and not meeting_show_map and not conversation_finished
 	input.editable = not conversation_finished
 	if meeting:
 		meeting_view.refresh()

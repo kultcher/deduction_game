@@ -4,16 +4,24 @@
 ## nominee votes last), counting each vote as it passes. Those voting to execute step in;
 ## those against pull back. Click anywhere to finish the count at once; click a person to
 ## show them in the profile.
+##
+## The courtroom stage (meeting plan M3a) sits over the ring: whoever speaks comes forward
+## with their portrait while the town testifies, argues a nomination and hears last words.
+## The vote count waits until the speakers before it are done, and the voters who explain
+## themselves come forward after the hand has gone round.
 extends Control
 
 signal person_clicked(id)
 
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
+const CourtroomStage = preload("res://ui/courtroom_stage.gd")
 
 const STEP = 0.5          # seconds per seat as the hand goes round
 const IN = 0.24           # how far a yes voter steps in (fraction of the ring radius)
 const OUT = 0.1           # how far a no voter pulls back
+const DUSK_ARRIVAL = 1.2  # seconds the town gathers in the ring before the first speaker
+const VOTE_MARK = "Votes to execute "   # the tally's narration: what's said after it waits for the count
 
 var g
 var _res: Dictionary = {}    # the vote being shown (or last shown)
@@ -26,11 +34,19 @@ var _offset = {}             # id -> current step (-1 back .. +1 in)
 var _target = {}
 var _hits: Array = []        # {rect, id}
 var _font: Font
+var stage                    # the courtroom stage overlay
+var _deferred: Dictionary = {}   # a vote waiting for the speakers before it
+var _after_count: Array = []     # speech to show once the hand has gone round
+var _explaining: bool = false    # the stage is showing what was said after the count
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	_font = UITheme.serif()
+	stage = CourtroomStage.new()
+	add_child(stage)
+	stage.finished.connect(_on_stage_finished)
+	stage.status_for = _status_for
 
 func set_game(game) -> void:
 	g = game
@@ -42,11 +58,80 @@ func set_game(game) -> void:
 	_counted = 0
 	_offset = {}
 	_target = {}
+	_deferred = {}
+	_after_count = []
+	_explaining = false
+	stage.clear()
 	set_process(false)
 	queue_redraw()
 
+## The hand is going round, or a vote is waiting on the stage to count.
 func animating() -> bool:
-	return _t >= 0.0
+	return _t >= 0.0 or not _deferred.is_empty()
+
+func stage_busy() -> bool:
+	return stage.busy()
+
+## The town is gathering: a beat on the full ring before anyone speaks.
+func arrive() -> void:
+	stage.hold_for(DUSK_ARRIVAL)
+
+## A command's events: speech goes to the stage; anything said after the tally waits for
+## the count to finish.
+func consume(events: Array) -> void:
+	var cut: int = -1
+	for i in range(events.size()):
+		var e: Dictionary = events[i]
+		if e.get("k", "") == "narration" and str(e.get("text", "")).begins_with(VOTE_MARK):
+			cut = i
+	if cut < 0:
+		stage.push(events)
+	else:
+		stage.push(events.slice(0, cut))
+		_after_count.append_array(events.slice(cut))
+
+func _on_stage_finished() -> void:
+	_explaining = false
+	if not _deferred.is_empty():
+		var res: Dictionary = _deferred
+		_deferred = {}
+		_start(res)
+	queue_redraw()
+
+func _count_done() -> void:
+	if _after_count.is_empty():
+		return
+	var later: Array = _after_count
+	_after_count = []
+	_explaining = true
+	stage.push(later)
+
+## The status pill for whoever is speaking: the phase, the block, what the vote needs.
+func _status_for(speaker: String) -> String:
+	if g == null:
+		return ""
+	var m: Dictionary = g.w.meeting
+	var pend: Dictionary = m.get("pending", {})
+	var phase: String
+	if g.state not in ["meeting", "nomination"]:
+		phase = "Last Words"
+	elif g.meeting_streaming() or (pend.is_empty() and m.get("results", []).is_empty() and m.get("nominators", []).is_empty()):
+		phase = "Opening Testimony"
+	elif pend.is_empty():
+		phase = "After the Count" if _explaining else "Open Floor"
+	elif speaker == pend.get("by", ""):
+		phase = "Accuser's Case"
+	elif speaker == pend.get("nominee", ""):
+		phase = "Podium Press" if pend.get("press", "") in ["done", "skipped", "closed"] else "Nominee's Defence"
+	else:
+		phase = "Town Speaks"
+	var parts: Array = [phase]
+	var blk: String = m.get("block", "")
+	if blk != "" and g.w.by_id.has(blk) and phase != "Last Words":
+		parts.append("On the block: %s (%d)" % [g.w.by_id[blk].name, m.get("block_count", 0)])
+	if not pend.is_empty() and g.state in ["meeting", "nomination"]:
+		parts.append(g.vote_requirement_text())
+	return " · ".join(PackedStringArray(parts.filter(func(x): return x != "")))
 
 ## Called after every command: start counting a new vote, or reset for a new nomination.
 func refresh() -> void:
@@ -68,11 +153,19 @@ func refresh() -> void:
 	_pending_key = pk
 	if results.size() > _seen_results:
 		_seen_results = results.size()
-		_start(results.back())
+		if stage.busy():
+			_deferred = results.back()   # count once the speakers before it are done
+		else:
+			_start(results.back())
 	queue_redraw()
 
 func finish() -> void:
-	if not animating():
+	if not _deferred.is_empty():
+		var res: Dictionary = _deferred
+		_deferred = {}
+		stage.clear()
+		_start(res)
+	if _t < 0.0:
 		return
 	while _counted < _res["order"].size():
 		_count_next()
@@ -80,6 +173,7 @@ func finish() -> void:
 		_offset[id] = _target[id]
 	_t = -1.0
 	set_process(false)
+	_count_done()
 	queue_redraw()
 
 func _reset_steps() -> void:
@@ -102,19 +196,20 @@ func _count_next() -> void:
 	_target[id] = 1.0 if yes else -1.0
 
 func _process(delta: float) -> void:
-	if animating():
+	if _t >= 0.0:
 		_t += delta / STEP
 		while _counted < _res["order"].size() and _t >= _counted:
 			_count_next()
 		if _t >= _res["order"].size() + 0.6:
 			_t = -1.0
+			_count_done()
 	var moving = false
 	for id in _target:
 		var cur: float = _offset.get(id, 0.0)
 		var nxt = move_toward(cur, _target[id], delta * 4.0)
 		_offset[id] = nxt
 		moving = moving or not is_equal_approx(nxt, _target[id])
-	if not animating() and not moving:
+	if _t < 0.0 and not moving:
 		set_process(false)
 	queue_redraw()
 
@@ -163,7 +258,7 @@ func _draw() -> void:
 	var nominee: String = pend.get("nominee", _res.get("nominee", ""))
 	var nominator: String = pend.get("by", _res.get("by", ""))
 	# The hand.
-	if animating() and _res.has("order"):
+	if _t >= 0.0 and _res.has("order"):
 		var start = seats.find(_res["order"][0])
 		var a = _angle_of(start, n) + clampf(_t, 0.0, n - 1.0) * TAU / float(n)
 		_draw_hand(c, a, rad)
