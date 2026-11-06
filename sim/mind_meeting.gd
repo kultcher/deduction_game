@@ -77,6 +77,7 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		if acc != null:
 			lines.append(acc["line"])
 			facts.append(acc["fact"])
+		_late_relay(w, n, lines, facts)
 		_volunteer_night_sightings(w, n, lines, facts)
 		st["reactive"].erase(n.id)
 		st["spoke_ids"][n.id] = true
@@ -221,6 +222,54 @@ static func _public_sighting_allowed(w, n, b: Dictionary) -> bool:
 
 static func _town_sighting_key(n, b: Dictionary) -> String:
 	return "town|sighting:%s:%s:%d:%d:%s" % [n.id, b.who, b.day, C.NIGHT, b.block]
+
+## A reading the dead told them privately, brought to the town (Nov 5): it would be lost
+## otherwise. Named, since there's no one left to protect. At most one per speaker per
+## meeting; the more they trusted the dead, the likelier. Good minds only for now (evil
+## inventing a dead person's reading is a follow-up).
+static func _late_relay(w, n, lines: Array, facts: Array) -> void:
+	if n.is_evil() or n.silenced:
+		return
+	for src_id in n.known_claims:
+		if not w.by_id.has(src_id) or w.by_id[src_id].alive or src_id == n.id:
+			continue
+		var src = w.by_id[src_id]
+		for e in n.known_claims[src_id].get("readings", []):
+			if not e is Dictionary or _reading_public(w, src, e):
+				continue
+			var key: String = "town|late:%s:%d:%s" % [src_id, int(e.get("day", -1)), str(e.get("role", ""))]
+			if n.told_to.has(key):
+				continue
+			var parts = {"base": Tuning.Meeting.LATE_RELAY_BASE,
+				"trust_in_dead": (n.npc_trust.get(src_id, 0.5) - 0.5) * Tuning.Meeting.LATE_RELAY_TRUST_SLOPE,
+				"openness": (0.5 - trait_of(n, "privacy")) * Tuning.Meeting.LATE_RELAY_OPENNESS_SLOPE}
+			if not decide(w, n, "late_relay", parts, "Tell the town what %s told them before dying (%s, day %d)?" % [src_id, str(e.get("role", "")), int(e.get("day", -1))]):
+				continue # they may yet, at a later meeting
+			n.told_to[key] = true
+			var Muddler = preload("res://sim/muddler.gd")
+			var spoken_e: Dictionary = Muddler.maybe_muddle_reading(w, n, src_id, e)
+			var rn: String = C.role_name(spoken_e["role"])
+			var said: String = C.third_person(reading_body(spoken_e["text"]))
+			lines.append(say_voiced(n, "meeting_late_relay", "Before %s died, they told me they were the %s, and that %s." % [src.name, rn, said],
+				{"dead": src.name, "role": rn, "reading": said}))
+			var f: Dictionary = info_fact(w, src, spoken_e)
+			f["via"] = n.id
+			f["public"] = true
+			f["text"] = "%s says the late %s (as %s, night %d) told them: %s." % [n.name, src.name, rn, int(spoken_e.get("day", -1)), said]
+			facts.append(f)
+			for l in w.living():
+				if l != n:
+					apply_info(w, l, src, spoken_e, C.RELAY_WEIGHT * heard_weight(l, n), n.id)
+			w.public_event("reading", Gifts.implicated(spoken_e), n.id)
+			w.dlog.think(n.id, "relay", "Tells the town %s's private %s reading, heard before they died." % [src_id, spoken_e["role"]], {"src": src_id, "muddled": spoken_e.get("muddled", false)})
+			return
+
+## Has this reading of src already been told to the whole town?
+static func _reading_public(w, src, e: Dictionary) -> bool:
+	for own in src.info_log:
+		if int(own.get("day", -1)) == int(e.get("day", -2)) and str(own.get("role", "")) == str(e.get("role", "")):
+			return src.claim_public and bool(own.get("shared", false))
+	return false
 
 static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void:
 	if n.silenced: return
@@ -704,10 +753,12 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	# Being accused in front of the town costs the accuser some of the target's trust (Oct 30).
 	t.npc_trust[n.id] = clampf(t.npc_trust.get(n.id, 0.5) - Tuning.Social.TRUST_ACCUSED_ME, 0.0, 1.0)
 	var line: Dictionary
-	if not earlier.is_empty():
+	# Agreeing needs someone else to agree with (a speaker who interjects can come round again).
+	var others_earlier: Array = earlier.filter(func(a): return a.get("by", "") != n.id and w.by_id.has(a.get("by", "")))
+	if not others_earlier.is_empty():
 		# Someone already said it: agree rather than restate their grounds. Only grounds of
 		# their own (their reading, what they saw) are worth adding.
-		var first = w.by_id[earlier[0]["by"]]
+		var first = w.by_id[others_earlier[0]["by"]]
 		var own = why.begins_with("my own") or why.begins_with("I ")
 		var canonical_extra = " I have my own reason, but I'm not ready to share it yet." if hint else ((" " + why[0].to_upper() + why.substr(1) + ".") if own else "")
 		var voiced_extra = (" " + Dialogue.voice_line(n.id, "nomination_held_reason", "I have my own reason, but I'm not ready to share it yet.")) if hint else canonical_extra

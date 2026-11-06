@@ -373,6 +373,16 @@ class Social:
 	const SHARE_READING_BOND_FLOOR = 0.3
 	const SHARE_READING_BOND_SLOPE = 2.0
 	const SHARE_READING_PRESSURE_SCALE = 0.3
+	## Trusted listeners get readings far more readily (Nov 5, Michael): on top of the base
+	## formula, + slope x (bond - pivot) for bonds above the pivot. Friends start at 0.75.
+	const SHARE_READING_TRUSTED_PIVOT = 0.6
+	const SHARE_READING_TRUSTED_SLOPE = 4.0
+	## A conversation can pass on more than one thing (Nov 5). Item k (0-based) needs bond at
+	## least SHARE_EXTRA_ITEM_BOND[k]: the first is open to anyone, more need more trust.
+	const SHARE_EXTRA_ITEM_BOND = [0.0, 0.5, 0.65]
+	## Relaying what a dead person told you: weight per unit of the trust you had in them,
+	## scanned across all hearsay (not just the latest).
+	const SHARE_DEAD_RELAY_SLOPE = 1.5
 	const SHARE_SECRET_BOND_FLOOR = 0.6
 	const SHARE_SECRET_SLOPE = 3.0
 	const SHARE_OPINION_MIN_SUSP = 0.5
@@ -385,15 +395,15 @@ class Social:
 	const MUDDLER_CHANCE = 0.65
 	## Peer role hints and claims (meeting plan M1). A hint names only the gift's family
 	## (HINT_PACKAGES); a claim names the role, even for gifts with no readings to share.
-	const SHARE_ROLE_HINT_BOND_MIN = 0.55
+	const SHARE_ROLE_HINT_BOND_MIN = 0.45  # was 0.55 (Nov 5: acquaintances, not only friends)
 	const SHARE_ROLE_HINT_OPENNESS_SCALE = 0.9
 	const SHARE_ROLE_HINT_BOND_OFFSET = 0.15
 	const SHARE_ROLE_HINT_GOSSIP_SCALE = 0.2
-	const SHARE_ROLE_CLAIM_BOND_MIN = 0.68
-	const SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN = 0.55
+	const SHARE_ROLE_CLAIM_BOND_MIN = 0.58  # was 0.68 (Nov 5)
+	const SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN = 0.5  # was 0.55 (Nov 5)
 	const SHARE_ROLE_CLAIM_PRESSURE_MIN = 0.55
 	const SHARE_ROLE_CLAIM_SLOPE = 1.8
-	const SHARE_ROLE_CLAIM_BOND_FLOOR = 0.55
+	const SHARE_ROLE_CLAIM_BOND_FLOOR = 0.45  # was 0.55 (Nov 5)
 	const SHARE_ROLE_CLAIM_MIN_WEIGHT = 0.05
 	## Good NPCs with an untold gift count as having news on these early days.
 	const ROLE_NEWS_LAST_DAY = 2
@@ -504,6 +514,10 @@ class Meeting:
 
 	## Anonymous reading relays
 	const RELAY_WEIGHT = 0.3
+	## Telling the town what a dead person privately told you (MindMeeting._late_relay).
+	const LATE_RELAY_BASE = 0.3
+	const LATE_RELAY_TRUST_SLOPE = 2.0
+	const LATE_RELAY_OPENNESS_SLOPE = 0.8
 	const RELAY_CORROBORATE = 0.05
 
 	## Social consensus bandwagon pressure
