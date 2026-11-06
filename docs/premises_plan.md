@@ -2,10 +2,10 @@
 
 Nov 5, 2026 · @Michael Smith · revised Nov 5, 22:50 ET (Claude-Bailiff)
 
-**Status (Nov 5, 22:50 ET):** Step 0 (a bare defence cites no grounds) is written on branch
-`claude/defence-empty-grounds` (commit `55cea76`, suite `test_defence_grounds`). It has no PR
-yet and isn't merged. It hasn't been checked against the golden capture; it changes NPC beliefs
-after any defence, so expect a new baseline. Steps 1–4 aren't started.
+**Status (Nov 6, 02:45 ET):** Step 0 (a bare defence cites no grounds; PR #81) and step 0b
+(one attended set; PR #86, `baseline_50bd642`) are on main. In 0b the belief update's focus
+target follows alignment premises only: a Marked, secret or conflict premise leaves the last
+one in place. Steps 1–4 aren't started; step 1 is measured with the M4 bot (on main, PR #84).
 
 Today a premise changes what a listener says, not what they believe. Every person's belief change comes from one pass over the evidence the player presents; the premise picks the reply, the stance, a small trust reward, and two side preferences. Reading challenges reach the numbers only when the player links cards that flatly contradict the reading, and then only slightly.
 
