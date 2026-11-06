@@ -113,13 +113,13 @@ static func _rebuild_reading_text(w, role: String, d: Dictionary, fallback_text:
 		"monitor":
 			var bname_m: String = C.block_name(str(d.get("block", "")))
 			if bool(d.get("walked", false)):
-				return "I learned that a %s was abroad on %s last night" % [C.role_name(str(d.get("role", ""))), bname_m]
-			return "no one walked by my house last night"
+				return "I learned that a %s was abroad on %s" % [C.role_name(str(d.get("role", ""))), bname_m]
+			return "no one walked by my house"
 		"confessor":
 			if bool(d.get("forgot", false)):
 				return "I heard a confession in the dark hours, but I cannot remember who came to me"
 			var tgt_nm: String = nm.call(str(d.get("target", "")))
-			return "I heard %s's confession last night: their heart was pure and their spirit good" % tgt_nm
+			return "I heard %s's confession: their heart was pure and their spirit good" % tgt_nm
 		"gravedigger":
 			return "when we buried %s, I saw they were the %s" % [nm.call(str(d.get("executed", ""))), C.role_name(str(d.get("role", "")))]
 		"veteran":

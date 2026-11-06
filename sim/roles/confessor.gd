@@ -62,7 +62,7 @@ func short_text(d: Dictionary, src: String, nm: Callable) -> String:
 func _spoken_text(d: Dictionary, nm: Callable) -> String:
 	if bool(d.get("forgot", false)):
 		return "I heard a confession in the dark hours, but I cannot remember who came to me"
-	return "I heard %s's confession last night: their heart was pure and their spirit good" % nm.call(str(d.get("target", "")))
+	return "I heard %s's confession: their heart was pure and their spirit good" % nm.call(str(d.get("target", "")))
 
 
 func generate_reading(w, n, ctx: Dictionary, _mind) -> Dictionary:

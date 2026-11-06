@@ -134,6 +134,8 @@ static func _pick_item(w, s, l):
 	else:
 		for e in s.info_log:
 			var key = "reading:%d:%s" % [e["day"], e["role"]]
+			if C.has_role_def(str(e.get("role", ""))) and not C.role_def(str(e.get("role", ""))).may_share_reading(w, s, e):
+				continue
 			if not e["shared"] and not _told(s, l, key):
 				var wgt = _reading_weight(s, priv, bond)
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": key}])

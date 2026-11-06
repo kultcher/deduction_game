@@ -47,7 +47,8 @@ func try_toll(w, sx, mind) -> bool:
 		return false
 	w.sexton_suppression_night = w.day
 	w.dlog.add("sexton_toll", sx.id, "", {"works": true}, "%s tolls the church bell: all minion abilities are suppressed until next night." % sx.name)
-	w._add_info(sx, {"data": {"night": w.day}, "true": true, "text": "I tolled the church bell on night %d" % w.day})
+	# No time in the text: whoever speaks it adds when (C.spoken_when), relative to the day.
+	w._add_info(sx, {"data": {"night": w.day}, "true": true, "text": "I tolled the church bell"})
 	return true
 
 
@@ -141,6 +142,10 @@ func on_public_claim(w, n, lines: Array, facts: Array, mind) -> void:
 
 ## Already out as the Sexton when the bell was tolled: tell of it once it has worn off
 ## (the same timing as going public after a toll). Codex review of PR #69.
+func may_share_reading(w, n, _entry: Dictionary) -> bool:
+	return n.is_evil() or n.dialogue_memory.get("toll_told_public", false) or toll_window_over(w)
+
+
 func on_public_update(w, n, lines: Array, facts: Array, mind) -> void:
 	if toll_window_over(w):
 		_tell_toll(w, n, lines, facts, mind)

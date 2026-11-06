@@ -412,7 +412,7 @@ func _test_monitor_readings_and_marked() -> void:
 	_check(bool(r_none.data.walked) == false, "Monitor reports walked == false when 0 walkers abroad")
 	_check(r_none.data.block == "square", "Monitor reading block matches home block")
 	_check(not r_none.data.has("role"), "Monitor fallback reading omits role field")
-	_check(r_none.text == "no one walked by my house last night", "Monitor fallback text matches exact spec")
+	_check(r_none.text == "no one walked by my house", "Monitor fallback text matches exact spec (no time: the sentence adds it)")
 	_check(bool(r_none["true"]) == true, "Monitor fallback reading is true when 0 walkers")
 
 	# Day 1 with 1 walker abroad on home block
@@ -632,7 +632,7 @@ func _test_muddler_monitor_and_confessor() -> void:
 	var orig_conf = {
 		"role": "confessor",
 		"data": {"target": "bob", "good": true},
-		"text": "I heard Bob's confession last night: their heart was pure and their spirit good"
+		"text": "I heard Bob's confession: their heart was pure and their spirit good"
 	}
 	var mut_conf = Muddler.mutate_reading_entry(w, muddler, "other", orig_conf)
 	_check(not mut_conf.is_empty(), "Muddler mutates Confessor reading")

@@ -239,12 +239,13 @@ const LIVE_GIFT_ROLES = ["nightwatch", "gravedigger", "veteran", "lamplighter", 
 ## fixed evil count, even people they don't name.
 const COUNTED_GROUP_ROLES = ["dowser", "surveyor", "seer", "clerk", "rumormonger", "archivist", "registrar"]
 
-## The focus attention ranks against: the premise's target (or, in the belief update after
-## a presentation, that presentation's target) and everyone the presented cards name or come from.
+## The focus attention ranks against: the premise's target (the judging pass only) and
+## everyone the presented cards name or come from. The belief update has no target: it's
+## ranked by what was just shown, never by how an argument was framed, so the same cards
+## under any premise move beliefs the same way, and no earlier argument lingers (premises
+## pass, step 0b revised). A premise moves beliefs only by conditioning (step 1).
 static func _focus(view: Dictionary, full: Dictionary, listener: Dictionary, presented: Array) -> Dictionary:
 	var target: String = str(full.get("conclusion", {}).get("target", ""))
-	if target == "":
-		target = str(listener.get("knowledge", {}).get("attention_target", ""))
 	var named := {}
 	for id in presented:
 		var c: Dictionary = Solver.card_by_id(view, id)

@@ -1,6 +1,7 @@
 ## Premises pass, step 0b: one attended set for presentations. Naming the target outranks
 ## being a gift reading, a bounded listener keeps all of their own readings in view when a
-## case is presented, and the belief update ranks against the presentation's target.
+## case is presented. The judging pass ranks against the premise's target; the belief
+## update has none (step 0b revised: a premise moves beliefs only by conditioning, step 1).
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -49,7 +50,9 @@ func _salience_order() -> void:
 	_check(Reasoner._salience(other_sighting, focus, trusted, true) - sal.call(other_sighting) < Tuning.Workshop.SALIENCE_EXCLUSION, "trust only breaks ties")
 	var view := {"cards": [named_sighting]}
 	var f: Dictionary = Reasoner._focus(view, {"conclusion": {}}, {"id": "me", "knowledge": {"attention_target": "edda"}}, ["s2"])
-	_check(f.target == "edda" and f.named.has("bram") and f.named.has("x"), "the belief update ranks against the presentation's target and the presented cards' people and sources (%s)" % [f])
+	_check(f.target == "" and f.named.has("bram") and f.named.has("x"), "the belief update has no target (step 0b revised): it ranks by the presented cards' people and sources (%s)" % [f])
+	var fj: Dictionary = Reasoner._focus(view, {"conclusion": {"target": "edda"}}, {"id": "me", "knowledge": {}}, ["s2"])
+	_check(fj.target == "edda", "the judging pass still ranks against the premise's target")
 
 ## Play to Day 3's afternoon, then present each bounded good listener a case of cards they
 ## hold but didn't receive themselves, filling their whole budget.
@@ -87,7 +90,6 @@ func _seed(seed_v: int) -> int:
 		listener.knowledge["attention_reports"] = own.duplicate()
 		listener.knowledge["own_reports"] = view.cards.map(func(c): return c.id).filter(func(id): return id not in presented)
 		var target: String = str(g.w.living_good().filter(func(p): return p.id != n.id)[0].id)
-		listener.knowledge["attention_target"] = target
 		var value: Dictionary = plan.prepared.case.duplicate(true)
 		value.cards = presented.duplicate()
 		value.lines = []
