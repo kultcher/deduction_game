@@ -1521,6 +1521,13 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				best = susp(m, d.id)
 				accuser = m
 	var items: Array = _disclosed_items_against(w, d, accuser, disclosed_facts)
+	# Against the player's filed case, go after the card it depends on: the heaviest item
+	# against them (the reading challenged below, or the night disputed in step 2c).
+	var case_backed: bool = nominator_id == "player" and int(w.meeting.get("pending", {}).get("case_card", 0)) > 0
+	var hinge: Dictionary = {}
+	if case_backed and not items.is_empty():
+		items.sort_custom(func(a, b): return float(a.get("contrib", 0.0)) > float(b.get("contrib", 0.0)))
+		hinge = items[0]
 	var role: String = w.evil_plan["bluffs"].get(d.id, "") if d.is_evil() else d.role
 	var out_items: Array = items.filter(func(x): return x.get("channel", "") in ["movement_out", "alibi_contradiction"] or "out" in x["why"] or "night" in x["why"])
 	var out_weight = 0.0
@@ -1573,7 +1580,21 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			move_strengths["sleepwalk"] = 1.0
 			move_scales["sleepwalk"] = 1.0
 			defence_scopes["sleepwalk"] = {"type": "secret_claim", "owner": d.id, "kind": "sleepwalker"}
-	# 3. Against a reading that names them.
+	# 2c. The case hangs on a night sighting their gift or a confession hasn't explained:
+	# they give their account of that night, before the town (the podium press's answer).
+	if moves.is_empty() and str(hinge.get("channel", "")) == "movement_out" and str(hinge.get("eid", "")).begins_with("sighting:"):
+		var hp: PackedStringArray = str(hinge.eid).split(":")
+		var hnd: int = int(hp[3]) if hp.size() >= 4 else -1
+		if hnd >= 0 and hnd < w.day:
+			lines.append(say_voiced(d, "defence_case_hinge_night", "Your case rests on where I was %s. Then hear it from me." % C.spoken_when(hnd, w.day), {"when": C.spoken_when(hnd, w.day)}))
+			var acct: Dictionary = load("res://sim/mind_podium.gd").press_night(w, d, hnd, true)
+			lines.append_array(acct.get("lines", []))
+			facts.append_array(acct.get("facts", []))
+			moves.append("dispute_night")
+			move_strengths["dispute_night"] = 1.0
+			move_scales["dispute_night"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
+			defence_scopes["dispute_night"] = {"type": "plea"}
+	# 3. Against a reading that names them (against a filed case, the one it rests on).
 	if moves.size() < 2:
 		var rd = {}
 		var src_id = ""
@@ -1593,6 +1614,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			var dd: Dictionary = rd.get("data", {})
 			var pair: Array = dd.get("pair", [])
 			var src = w.by_id[src_id]
+			if case_backed and str(hinge.get("eid", "")) == info_eid(src_id, rd):
+				lines.append(say_voiced(d, "defence_case_hinge_reading", "Your whole case rests on %s's reading." % src.name, {"source": src.name}))
 			var rdef_rd = C.role_def(rd.get("role", ""))
 			var custom_def: Dictionary = rdef_rd.try_reading_defence(w, d, src, src_id, rd, _mind(), WorkshopLedger) if rdef_rd != null else {}
 			if custom_def.get("handled", false):

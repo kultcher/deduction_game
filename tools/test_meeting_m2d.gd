@@ -28,6 +28,7 @@ func _init() -> void:
 	_test_hear()
 	_test_voter_parts()
 	_test_resistance()
+	_test_case_hinge()
 	print("Meeting M2d: %d checks, %d failures" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
 
@@ -116,3 +117,28 @@ func _test_resistance() -> void:
 	var evil = g.w.living().filter(func(n): return n.is_evil())[0]
 	lines = MindMeeting.vote_resistance_lines(g.w, _res(g, evil, t, {"parts": {"suspicion": 0.7}, "margin": 0.3, "yes": true}, blk.id))
 	_check(lines.size() == 1 and blk.name in str(lines[0].get("statement", "")), "an evil voter covering a no gives an ordinary townsperson's reason")
+
+
+## The M2c follow-up: against the player's filed case, the defence goes after the card the
+## case rests on. Here that's a night sighting the nominee's gift can't explain, so they
+## give their account of that night before the town.
+func _test_case_hinge() -> void:
+	for case_backed in [true, false]:
+		var g = _meeting_game(9601, 3)
+		var good: Array = g.w.living().filter(func(n): return not n.is_evil())
+		var d = good[0]
+		var seer = good[1]
+		d.role = "clerk"
+		d.secret = {}
+		d.secret_mod = ""
+		g.w.open_nomination("player", d.id)
+		if case_backed:
+			g.w.meeting["pending"]["case_card"] = 1
+		var sighting: Dictionary = {"kind": "sighting", "subject": [d.id], "source": seer.id, "day": 1, "phase": C.NIGHT, "block": d.home_block,
+			"text": "%s says they saw %s out on night 1." % [seer.name, d.name]}
+		var df: Dictionary = MindMeeting.defend_self(g.w, d, "player", [sighting])
+		if case_backed:
+			_check("dispute_night" in df.moves and d.dialogue_memory.get("night_accounts", {}).has("1"),
+				"against a filed case resting on a night sighting, the nominee gives their account of that night (%s)" % ", ".join(PackedStringArray(df.moves)))
+		else:
+			_check(not ("dispute_night" in df.moves), "a raw nomination gets the ordinary defence (%s)" % ", ".join(PackedStringArray(df.moves)))
