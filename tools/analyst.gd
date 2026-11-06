@@ -25,6 +25,7 @@ const MIN_LR_GAIN = 1.03
 const MIN_CASE_LR = 1.45
 const HUB_CASE_LR = 1.55
 const PROFILE_FACETS = ["home_work", "haunts", "bonds"]
+const WALK_CLAIMS = ["lamplighter", "nightwatch", "medium", "warden", "sexton"]
 
 
 ## Per-game memory: which cards the juror has accepted into its picture, which it set
@@ -110,7 +111,19 @@ static func evaluate(g, view: Dictionary, ids: Array, profiles: Dictionary, targ
 		return {"ready": false}
 	var ev: Dictionary = CaseEval.evaluate(prepared.view, prepared.case)
 	state.eval_ms += Time.get_ticks_msec() - started
-	return {"ready": true, "impossible": ev.impossible, "lr": float(ev.get("lr", 1.0)), "people": ev.get("people", {}), "compiled": compiled}
+	return {"ready": true, "impossible": ev.impossible, "lr": float(ev.get("lr", 1.0)), "posterior": float(ev.get("posterior", 0.0)), "people": ev.get("people", {}), "compiled": compiled}
+
+
+## P(`pid` is the Demon) from the cards the juror accepts (meeting plan M4: the bot's Demon
+## guess). 0 when the board can't be read.
+static func demon_posterior(g, state: Dictionary, pid: String) -> float:
+	if state.accepted.is_empty():
+		return 0.0
+	var view: Dictionary = WorkshopCanvas.view(g)
+	var ev: Dictionary = evaluate(g, view, state.accepted, _profile_people(view), pid, state, "demon")
+	if not ev.get("ready", false) or ev.get("impossible", true):
+		return 0.0
+	return float(ev.get("posterior", 0.0))
 
 
 ## Build and file a Workshop case that `target_id` is evil: weigh each accepted card that
@@ -126,7 +139,7 @@ static func build_case(g, state: Dictionary, target_id: String, posterior: Dicti
 		by_id[c.id] = c
 	var candidates: Array = []
 	for cid in state.accepted:
-		if by_id.has(cid) and _bears_on(view, by_id[cid], target_id):
+		if by_id.has(cid) and _bears_on(view, by_id[cid], target_id, state.get("exclusion_cards", true)):
 			candidates.append(cid)
 	if candidates.is_empty():
 		return {"card": 0, "used_hub": false}
@@ -211,7 +224,7 @@ static func signed_lean(posterior: Dictionary) -> Dictionary:
 
 ## Does a juror card bear on this person: about them, a reading naming them, a death, or a
 ## trace or night card at a scene they fit?
-static func _bears_on(view: Dictionary, c: Dictionary, pid: String) -> bool:
+static func _bears_on(view: Dictionary, c: Dictionary, pid: String, exclusion: bool = true) -> bool:
 	var kind: String = c.get("kind", "")
 	if kind == "death" or (kind == "context" and c.get("context_kind", "") == "death"):
 		return true
@@ -222,6 +235,11 @@ static func _bears_on(view: Dictionary, c: Dictionary, pid: String) -> bool:
 		return true
 	if kind == "trace":
 		return LiveActivity.evaluate_trace_for_person(view, view.get("cards", []), c, pid).state == "matches"
+	# Exclusion cards (meeting plan M4): an empty vigil, or a complete vigil list that leaves
+	# them out, bears on a claimed walker the vigil should have seen. The greedy builder
+	# still keeps it only if it raises the case's strength.
+	if exclusion and (kind == "coverage" or (kind == "sighting" and c.get("complete", false))) and pid not in c.get("excluded", []):
+		return view.get("cards", []).any(func(x): return x.get("kind", "") == "claim" and str(x.get("subject", x.get("source", ""))) == pid and str(x.get("role", "")) in WALK_CLAIMS)
 	return false
 
 
