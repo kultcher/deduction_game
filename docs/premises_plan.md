@@ -20,9 +20,10 @@ the listener's pinned own readings.
 - **After step 1:** a premise moves beliefs only through its target (step 1, below).
 
 **Step 1 (Nov 6, Claude-Quill, PR #92):** built; see "Step 1 as built" below.
-**Step 2 (Nov 6, Claude-Quill, branch `claude/premises-step2`, stacked on step 1):** built;
-see "Step 2 as built". Its acceptance A/B with the M4 bot is Tally's (overnight), with attention budgets
-fixed between arms. Steps 3–4 aren't started. Deliberate recency in attention is a separate
+**Step 2 (Nov 6, Claude-Quill, PR #93):** built; see "Step 2 as built".
+**Step 3 (Nov 6, Claude-Quill, branch `claude/premises-step3`, on Bailiff's step 2 fixes):**
+built; see "Step 3 as built". Its acceptance A/B with the M4 bot is Tally's (overnight), with attention budgets
+fixed between arms. Step 4 isn't started. Deliberate recency in attention is a separate
 step after step 1 (see "Recency: the topic of the day" below).
 
 **Restored Nov 6:** the Nov 5 late-night decisions (23:10 and 23:35 ET, with Michael) were
@@ -359,6 +360,53 @@ secret premise is **the player's word**, weighted by credibility.
   card heard through the player pulled p3's clearing back by a third (test fixture:
   credibility 0.7 cleared p3 less than credibility 0.2). The posterior is right; the blend
   probably wants a strength floor. Left for a decision.
+
+## Step 3 as built (Nov 6)
+
+Built on Bailiff's step 1 and 2 review fixes (`claude/premises-step2` at `5514f14`).
+
+- **Graded challenges** (`ReadingChallenges.graded_challenge`). For a challenged reading R:
+  q and f are one CaseEval question, "R's content holds" (`conclusion.type` "holds",
+  `CaseEval._holds_mask`), before any evidence and after the rest of the attended cards; r
+  is the source being good before the case (`good` prior) times one minus R's reading error.
+  The chance R is wrong is (1 − r)q ÷ ((1 − r)q + rf); its rise above 1 − r, as a share of
+  r, is the challenge's `effect`. Neutral: q = f, effect 0, nothing changes (checked).
+  - **The Seer's content is the Demon's place** (the mask is "the Demon is in the pair" for
+    a yes, "isn't" for a no). The report table holds a Seer yes wherever anyone good is in
+    the pair (the Red Herring is a role-table weight), which made clearing the pair look
+    like support. A Red Herring or Marked ping is the "misled" explanation of a false
+    reading.
+  - The hard cases from before (no world fits, the grounds rule out the reader's presence,
+    the Gravedigger's non-execution, the Executor, a claim of the listener's own gift, the
+    Seer misled pair) stay as floors; the graded test can only add to them.
+  - The effect scales the reading's reliability: `multiplier = 1 − hearing × cause × effect`.
+- **Causes** (the reading modifier's mode): **lying** — cause = the share of "R is wrong"
+  that the reader being evil explains (`P(source evil | all) ÷ P(R wrong)`); raises the reader
+  through the existing source penalty and jury raise once agreement reaches 0.6. **Failed
+  gift** (`impaired`, new: "Poisoned" chip, "Failed gift (poisoned)") — cause = the rest of
+  the wrong share, and zero when the case's script has no Poisoner
+  (`poisoner_possible`, `view.script_roles`); points at the **Poisoner candidates**: people
+  the attended cards saw out on the reading's night with no gift or errand the case gives
+  for it (`poisoner_candidates`), raised by `CHALLENGE_POISONER_SCALE` × agreement, split
+  among them, at agreement 0.6 or more. **Misled** — honest but wrong; no one is blamed.
+  **Unlikely** (Surveyor) — kept.
+- **Backfire costs trust** (`WorkshopPresentation._challenge_backfired`, judged on the
+  narrower pass): when the rest of the evidence moves R's content a quarter of the way toward
+  certainly holding (`CHALLENGE_BACKFIRE_SHIFT` 0.25, the mirror of the wrong-premise
+  threshold). It's charged on top of how the case itself went. **Changed from the plan's "0.1
+  below the prior":** that can't be reached; the chance a reading is wrong can only fall to
+  (1 − r)q ÷ ((1 − r)q + r), about 0.09 below the prior at default trust.
+- **"Has readings that don't fit together"** (premise type `inconsistent`, with a cause:
+  any, lied, poisoned, Delusional). The case's readings by its target become one grouped
+  challenge, scored jointly (a "yes" then a "no" on the same pair can't both hold: the
+  group's multiplier fell to 0.11 in the test). Delusional's cause is the chance the source
+  holds Delusional over the chance the readings are wrong. Its premise mask is "not every
+  one of them holds".
+- **Minion lineup, minimal:** "a Poisoner can be in play" is the case's script listing one.
+  Public facts that rule a Minion in or out (a silencing, a found totem, Registrar
+  readings) aren't used yet.
+- **Tests:** `tools/test_premise_step3.gd` (neutral, strong, backfire, failed gift and
+  candidates, the grouped premise).
 
 ## Decisions (settled Nov 5)
 

@@ -27,6 +27,23 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06 evening, Claude-Quill: premises step 3 on `claude/premises-step3` (on Bailiff's step 2 fixes, `5514f14`)
+
+Plan: `docs/premises_plan.md`, "Step 3 as built".
+- **Graded challenges:** a reading challenge lands as far as the rest of the attended
+  evidence, against the reading's own chance (one CaseEval "holds" question, before and
+  after), says it's wrong. Neutral challenges do nothing; old hard cases are floors.
+- **Causes:** lied (raises the reader), failed gift (new; needs a Poisoner in the script;
+  points at people seen out that night without a reason), misled (no blame).
+- **Backfire** costs 0.02 trust, separately from the case's own reward or cost. Threshold
+  is a 0.25 shift toward the reading holding: the plan's "0.1 below the prior" is
+  unreachable (flagged to Michael).
+- **New premise "has readings that don't fit together"** with a cause; scored jointly.
+- **The Seer's "holds" is the Demon's place** (a Red Herring ping is "misled").
+- **For Tally:** an A/B row for steps 2–3 alongside step 1's would separate them.
+
+---
+
 ## 2026-11-06 evening, Claude-Quill: premises step 2 on `claude/premises-step2` (stacked on step 1, PR #92)
 
 Plan: `docs/premises_plan.md`, "Step 2 as built". Decided with Michael: both Marked pickers
