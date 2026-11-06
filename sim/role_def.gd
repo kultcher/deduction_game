@@ -420,8 +420,22 @@ func withholds_night_sightings(_n, _nd: int, _mind) -> String:
 	return ""
 
 
-## Optional override for `reported` night sightings in `Mind.answer_night` (e.g. evil Night Watch matching fake watch report).
-func override_night_sightings(_w, _n, _nd: int) -> Dictionary:
+## Asked where they were on night `nd`, with a true outing to account for and no claim
+## yet: "reveal" (tell of it, claiming the gift), "withhold" (refuse; never a lie) or ""
+## (the usual hiding logic). `public`: at the podium rather than in private (Sexton).
+func honest_outing(_w, _n, _nd: int, _mind, _public: bool) -> String:
+	return ""
+
+
+## Lines and cards added when `n` comes out with this role before the town (Sexton: the toll).
+func on_public_claim(_w, _n, _lines: Array, _facts: Array, _mind) -> void:
+	pass
+
+
+## Optional override for `reported` night sightings in `Mind.answer_night` and the podium
+## (e.g. evil Night Watch matching fake watch report). `reported` is the list already
+## filtered for the night asked, teammates and vantage; narrow it rather than rebuild it.
+func override_night_sightings(_w, _n, _nd: int, _reported: Array = []) -> Dictionary:
 	return {}
 
 

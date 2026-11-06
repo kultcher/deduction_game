@@ -538,6 +538,8 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 		for l in w.living():
 			if l != n:
 				hear_claim(w, l, n.id, claim, Tuning.Mind.PUBLIC_CLAIM_HEARING_WEIGHT, "public")
+		if C.has_role_def(n.role) and not n.is_evil():
+			C.role_def(n.role).on_public_claim(w, n, lines, facts, _mind())
 	if share_readings and C.has_readings(n.claimed_role):
 		var PsychRole = preload("res://sim/roles/psychologist.gd")
 		if not n.pending_muddle_debunks.is_empty():

@@ -1,33 +1,31 @@
 # Suites CI runs on every pull request (main runs everything). Keep this to the suites
-# that cover the shared model, the C# solver and its boundaries; about 15 minutes total.
+# that cover the shared model, the C# solver and its boundaries, and the roles.
+# Measured Nov 5: about 2.5 minutes of suite time, split over the four shards.
 test_csharp_slice_c0
 test_workshop_ownership
 test_workshop_integration
 test_workshop_efficiency
-test_workshop_clerk_archivist_seer
-test_workshop_nightwatch_gravedigger
-test_workshop_martyr_sexton
-test_workshop_protection
-test_workshop_medium
 test_workshop_reading_challenges
-test_mechanics_curse
+test_workshop_channel_likelihood
 test_shared_model
 test_execution_aftermath
 test_workshop_vote_and_alibi
 test_beliefs
 test_headline
-test_role_def_poc
 test_buildings_tavern_town_hall
 test_peer_role_gossip
 test_case_script
-test_chunk2_world_mask_roles
-test_chunk3_executor_registrar
-test_playtest_nov4_fixes
+test_workshop_regressions
+test_evil_play
 test_meeting_m2a
 test_meeting_m2b
-res://tools/test_chunk4_psychologist_muddler.gd
-tools/test_chunk5_monitor_confessor.gd
-test_chunk5_cs_tables
-tools/test_chunk6a_sexton_brute.gd
 test_town_vibe
+test_roles_registry
+test_roles_official
+test_roles_night_sight
+test_roles_dead
+test_roles_shelter
+test_roles_people
+test_roles_evil
+test_roles_secrets
 test_evidence_honesty

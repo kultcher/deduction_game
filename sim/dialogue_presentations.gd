@@ -134,9 +134,11 @@ static func _append_movement_notes(w, listener_id: String, ctype: String, stance
 			if target_prefix == "" or note.contains(": " + target_prefix):
 				var m_seen: RegExMatch = re_seen.search(note)
 				if m_seen != null:
+					# Spoken nights are "last night" / "on the second night", never a number.
 					parts.append(Dialogue.voice_line(listener_id, "present_seen_elsewhere", note, {
 						"subject": m_seen.get_string(1),
 						"night": m_seen.get_string(2),
+						"when": C.spoken_when(int(m_seen.get_string(2)), int(w.day)),
 					}))
 		elif note.begins_with("Scattered sightings:"):
 			if target_prefix == "" or note.contains(": " + target_prefix):

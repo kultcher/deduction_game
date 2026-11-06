@@ -57,6 +57,17 @@ Two captures, identical. Against `baseline_9187b09` every seed parts at record 1
 belief refresh already weighs readings differently. The passive and bot A/B is in
 `docs/handoff_log.md`.
 
+### Previous baseline (Nov 5): `baseline_a42ef71`
+
+`tools/golden/baseline_a42ef71/` is the capture from `a42ef71`: `baseline_9187b09` plus the
+fixes from the 2026-11-05 maintenance report. Two captures identical. Captures now write
+user-data paths as `user://` (the dev-log reply at game over), and `golden_diff.py`
+normalizes them, so a baseline compares on any machine (the Nov 4-5 red X on CI was the
+`/root/...` path in `baseline_9187b09`, not gameplay). Against `baseline_9187b09` only seed
+42 differs, from day 3's vote on Merrin: Agnes (the Demon) now votes to hang Merrin (the
+Revenant, totem hidden), since a Revenant with its curse ready is cheap to let hang. The
+other four seeds are identical.
+
 ### Previous baseline (Nov 4, night): `baseline_9187b09`
 
 `tools/golden/baseline_9187b09/` is the capture from `9187b09`: `baseline_175e1f5` plus

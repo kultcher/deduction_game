@@ -60,6 +60,8 @@ func breath_target(w, bs, evil) -> String:
 func run_day_gift(w, bs, _mind, evil) -> void:
 	if not bs.is_evil() or bs.breath_day == w.day:
 		return
+	if w.is_minion_suppressed():
+		return  # the Sexton's bell: no silencing until the next night
 	var tgt: String = breath_target(w, bs, evil)
 	if tgt == "":
 		return

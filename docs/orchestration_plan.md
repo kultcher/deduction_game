@@ -96,7 +96,7 @@ Because `game/game.gd` keeps 1-line forwarding methods (such as `func add_card(f
   - **Requests, Grievances & Offers (Lines 1353 to 1515)**: `_answer_request`, `_answer_request_now`, `_gift_request`, `_grievance_menu`, `grievance_text`, `_offer_command`, `offer_text`, `_settle_offers`.
   - **Haunts, Traits & Relationships (Lines 1516 to 1640)**: `OBSERVABLE_TRAITS`, `TRAIT_WORDS`, `_maybe_tell_haunts`, `_maybe_tell_trait`, `_maybe_tell_relationships`, `_remember_spoken_relationship`, `known_relationship_notes`, `find_links`, `known_haunt_names`.
 - **Forwarders Retained on `Game`**: Keep thin forwarders on `game/game.gd` for all moved methods (tests and UI directly call `_settle_offers`, `_maybe_tell_relationships`, `_maybe_tell_trait`, `_talk_options`, `_approach_command`, `_maybe_divulge`, `offer_text`, `known_relationship_notes`, `find_links`, and `known_haunt_names`).
-- **Verification**: `test_npc_interactions`, `test_dialogue`, `test_dialogue_decisions`, `test_social`, `test_backlog_batch4`, `test_playtest_followups`.
+- **Verification**: `test_npc_interactions`, `test_dialogue`, `test_dialogue_decisions`, `test_social`, `test_conversation_gifts`, `test_conversation_nights`, `test_ui_controls`.
 
 ### Slice 2: `game/game_meeting.gd` (~295 LOC Extracted)
 *Scope: Lines 1650 to 1942 (`# --- meeting`). Unblocks Meeting Flow Steps 3 to 6 and the Ace Attorney Courtroom view.*
@@ -106,7 +106,7 @@ Because `game/game.gd` keeps 1-line forwarding methods (such as `func add_card(f
   - **Floor Commands & Nominations (Lines 1711 to 1797)**: `_meeting_command`, `_next_npc_nomination`, `_defend_pending`, `vote_requirement_text`, `_show_nomination`.
   - **Voting & Trial Resolution (Lines 1798 to 1942)**: `_nomination_command` (coroutine with `await` support for progress callbacks), `_after_vote`, `_last_words`, `_close_meeting`.
 - **Forwarders Retained on `Game`**: Keep thin forwarders on `game/game.gd` (noting `await GameMeeting._nomination_command(self, verb, rest, progress)` for async parity). Tests and `ui/main.gd` directly call `meeting_streaming`, `testimony_step`, `vote_requirement_text`, `_start_meeting`, and `_close_meeting`.
-- **Verification**: `test_meeting_stream`, `test_outcomes`, `test_mechanics_defences`, `test_defence_repeats`, `test_backlog_batch3`, `test_backlog_batch4`.
+- **Verification**: `test_meeting_stream`, `test_outcomes`, `test_mechanics_defences`, `test_defence_repeats`, `test_meeting_flow`.
 
 ### Slice 3: `game/game_day_night.gd` (~430 LOC Extracted)
 *Scope: Lines 610 to 911 (`# --- day`) and Lines 1943 to 2069 (`# --- night`). Isolates `_search` and `_observe` for the Multi-Part Evidence rework.*
@@ -116,7 +116,7 @@ Because `game/game.gd` keeps 1-line forwarding methods (such as `func add_card(f
   - **Day Actions, Observation & Crime-Scene Search (Lines 675 to 911)**: `_day_command`, `_warn_busy_visit`, `_who_here`, `_observe`, `_search`, `_end_phase`.
   - **Night Actions & Dawn Resolution (Lines 1943 to 2069)**: `_night_homes`, `_night_command`, `_resolve_night`, `_fallbacks_text`, `_morning_report`.
 - **Forwarders Retained on `Game`**: Keep thin forwarders on `game/game.gd` (UI and tests directly call `can_see`, `can_see_ui`, `unseen_at`, `unseen_at_ui`, `_search`, `_morning_report`, and `_present`).
-- **Verification**: `test_mechanics_sightings`, `test_sighting_followup`, `test_lamplighter_drops`, `test_mechanics_warden`, `test_mechanics_curse`, `test_town_ui`.
+- **Verification**: `test_mechanics_sightings`, `test_sighting_followup`, `test_roles_night_sight` (Lamplighter drops), `test_roles_shelter` (Warden), `test_roles_evil` (curse), `test_town_ui`.
 
 ### Slice 4: `game/game_screens.gd` (~565 LOC Extracted)
 *Scope: Lines 2070 to 2386 (`# --- info screens`) and Lines 2472 to 2718 (Theory, Guesses, Debug Overlay, and Profile Data).*
@@ -125,7 +125,7 @@ Because `game/game.gd` keeps 1-line forwarding methods (such as `func add_card(f
   - **Text & CLI Info Screens (Lines 2070 to 2386)**: `_intro`, `_help`, `_look`, `_card_workers`, `_card_conversations`, `_map`, `_cast`, `_profile`, `_script`, `_tools`, `_board`, `_ending`, `_grimoire`, `_exchanges`, `_lies`, `_write_logs`.
   - **Player Theory, Predictions & Debug/Profile Data (Lines 2472 to 2718)**: `set_note`, `set_guess`, `set_secret_guess`, `capture_prediction`, `theory_status`, `_outcome_text`, `set_debug_overlay`, `_spread`, `debug_card_text`, `debug_npc_text`, `named_in`, `_death_text`, `_claim_text`, `profile_data`.
 - **Forwarders Retained on `Game`**: Keep thin forwarders on `game/game.gd` (`profile_data`, `set_guess`, `set_secret_guess`, `set_note`, `capture_prediction`, `theory_status`, `set_debug_overlay`, `debug_card_text`, `debug_npc_text`, `named_in`, `_card_workers`, `_help`).
-- **Verification**: `test_text_ui`, `test_ui`, `test_profile_panel` / `test_fixes`, `test_outcomes`, `test_trace` (since retired).
+- **Verification**: `test_text_ui`, `test_ui`, `test_profile_panel` / `test_evidence_cards`, `test_outcomes`, `test_trace` (since retired).
 
 ### Post-Migration Shape of `game/game.gd` (~600 LOC)
 After all four slices land, `game/game.gd` is reduced from **2,718 lines to ~600 lines** and acts purely as the **central state container and command router**:

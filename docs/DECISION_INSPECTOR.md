@@ -15,6 +15,56 @@ Use the NPC and decision filters to narrow the view. **Include good-self simulat
 - Fear uses an existing fixed NPC/day hash, not fresh game RNG. Its nominal percentage describes the fraction of daily samples under the cutoff; repeating the question does not reroll it.
 - Deterministic scores, skip gates and final choices with no additional draw show **N/A (no roll)**. There is no invented probability for an entire conversation, vote or strategy.
 
+## Why the town voted: `tools/replay_log.gd --why`
+
+The inspector shows each roll; this shows the beliefs behind the votes. `tools/replay_log.gd`
+replays a playtest dev log (seed, size and script from the log; commands and Workshop
+filings in order). With `--why` it also prints, just before each logged vote (or only those
+at `--at SEQ,...`), every good mind's view from the shared model:
+
+- **suspicion**: the value the vote and nomination scores read (`Mind.susp`).
+- **P(evil)**: that mind's joint-world posterior per person.
+- **P(Demon)**: the same posterior summed by who holds the Demon.
+- **team**: the likeliest evil teams (`--worlds N`, default 5), with their share of the posterior.
+
+```text
+godot --headless --path . --script res://tools/replay_log.gd -- logs/case_13910.jsonl [stop_seq] [--why] [--at 480] [--worlds 5] [--json out.jsonl]
+```
+
+It ends by comparing the replay's vote tallies with the log (`votes_match`). Meeting
+testimony text can differ, because the UI splits it into separate records; the votes must
+match. Each view re-runs that mind's ordinary refresh with `CaseEval.capture_worlds` on,
+which only stores per-world weights and changes no result (`tools/belief_views.gd`).
+
+## Why the town read a case that way: `tools/explain_case.gd`
+
+Two modes, both replaying a playtest log (`tools/log_replay.gd`, shared with `replay_log.gd`).
+
+**Case mode** presents a filed Workshop case, and variants of it, to every good mind for
+real (`WorkshopPresentation.present`, meeting venue, no speech). Each variant replays
+afresh. Per mind it prints the premise before and after (CaseEval prior → posterior,
+likelihood ratio, category), the mind's suspicion of the target before and after, where
+the probability went instead (rivals), and per card the mind's reliability for it and how
+likely it is to be accurate given everything. It ends with a summary across variants.
+
+```text
+godot --headless --path . --script res://tools/explain_case.gd -- logs/case_13910.jsonl --card 78 \
+    [--add fenwick] [--drop] [--challenge fenwick=lying] [--listener constance,jory] [--json out.jsonl]
+```
+
+- `--add X`: add every report of person X (or a fact-id prefix) to the case first.
+- `--drop`: also try the case with each card removed, to see which cards carry it.
+- `--challenge X=MODE`: also try it with X's reports challenged (`lying`, `misled`, `unlikely`).
+
+**Belief mode** answers "why does each mind suspect this person this much?". At a seq, it
+removes each thing a mind has heard (each ledger entry: reading, claim, defence,
+accusation, case) one at a time, re-runs the refresh and lists the biggest movers. A
+suspicion clamped at 0 understates how far the movers push it.
+
+```text
+godot --headless --path . --script res://tools/explain_case.gd -- logs/case_13910.jsonl --belief fenwick --at 372 [--top 8]
+```
+
 ## Coverage and maintenance
 
 Coverage includes weighted decision checks, gift tiers and withholding gates, protection/confidence requests, pressed nerves, whereabouts slips, opinions, gossip selection, traits/haunts/relationships, approaches and peer-conversation selection, public accusation/nomination/vote calculations, evil cover overrides, and Seer/Night Watch/Warden plus evil target decisions. Actual ability results, setup assignments and incidental flavour/world-generation randomness are outside this inspector's remit. It does not replay alternative decisions.

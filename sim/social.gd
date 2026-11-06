@@ -664,7 +664,7 @@ static func gossip_item(w, n) -> Dictionary:
 			var who = w.by_id[mh_s["about"]]
 			var by = w.by_id[mh_s["from"]].name if w.by_id.has(mh_s["from"]) else "someone"
 			var block_s: String = C.block_name(mh_s["block"])
-			var night_s: String = "on night %d" % mh_s["day"]
+			var night_s: String = C.spoken_when(int(mh_s["day"]), w.day)  # spoken: "last night", "on the second night"
 			var sighting_fallback: String = "%s says %s was out on %s %s." % [by, who.name, block_s, night_s]
 			var s_fact_out: Dictionary = {"kind": "sighting", "subject": [who.id], "block": mh_s["block"], "day": mh_s["day"], "phase": C.NIGHT, "source": mh_s["from"], "via": n.id,
 				"text": "Via %s: %s saw %s on %s on night %d." % [n.name, by, who.name, block_s, mh_s["day"]]}
@@ -1145,8 +1145,21 @@ static func town_vibe(g) -> Dictionary:
 	var trend: Dictionary = {}
 	var last: Dictionary = g.town_vibe_heard
 	if not last.is_empty():
+		# Compare the same people: a death (or a turned soul) alone shouldn't read as a change
+		# of mood. Mean change over those in both readings; older saves fall back to averages.
 		var dr: float = rap - float(last.get("rapport", rap))
 		var dc: float = cred - float(last.get("credibility", cred))
+		var per_last: Dictionary = last.get("per", {})
+		if not per_last.is_empty():
+			var both: Array = goods.filter(func(n): return per_last.has(n.id))
+			dr = 0.0
+			dc = 0.0
+			for n in both:
+				dr += float(n.trust) - float(per_last[n.id][0])
+				dc += float(n.credibility) - float(per_last[n.id][1])
+			if not both.is_empty():
+				dr /= both.size()
+				dc /= both.size()
 		if absf(dr) >= Tuning.Social.TOWN_VIBE_TREND:
 			trend["rapport"] = dr
 			r_text += ", and warming since you last listened" if dr > 0.0 else ", though cooling since you last listened"
@@ -1156,7 +1169,10 @@ static func town_vibe(g) -> Dictionary:
 	var line: String = "And about you, Demonologist: %s; %s." % [r_text, c_text]
 	if low <= rap - Tuning.Social.TOWN_VIBE_OUTLIER and low < 0.45:
 		line += " Not everyone agrees, mind: someone still doesn't trust you."
-	g.town_vibe_heard = {"day": w.day, "rapport": rap, "credibility": cred}
+	var per: Dictionary = {}
+	for n in goods:
+		per[n.id] = [float(n.trust), float(n.credibility)]
+	g.town_vibe_heard = {"day": w.day, "rapport": rap, "credibility": cred, "per": per}
 	w.dlog.add("town_vibe", "player", "", {"rapport": snappedf(rap, 0.001), "credibility": snappedf(cred, 0.001),
 		"rapport_band": rb, "credibility_band": cb, "trend": trend, "low": snappedf(low, 0.001)}, line)
 	return {"line": line, "rapport": rap, "credibility": cred, "rapport_band": rb, "credibility_band": cb, "trend": trend}

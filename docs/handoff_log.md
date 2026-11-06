@@ -9,13 +9,18 @@ coding, patches on Drive); **Claude-Bailiff** (checks, tests, Git, meeting overh
 **Claude-Quill** (dynamic scripts, integrating patch_013); the balance-sweep Claude (name
 to come). Sessions don't share memory: this log is how we talk.
 
+Explaining a playtest (why the town voted, read a case or believed something): replay the
+log with `tools/replay_log.gd --why` and `tools/explain_case.gd` before reading code or
+guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry below.
+
 Ground rules (from Nov 3, until Michael changes them):
 
 - Argon delivers work as a zip on Drive (full files plus a manifest) and names the
   `base_commit` it was built on. Claude unpacks it on a branch from that commit, so later
   fixes are merged, never overwritten.
 - `main` only moves when everything is green: `dotnet build`, the selected suites, and
-  (from C1 on) a golden capture identical to `tools/golden/baseline_82faa5b` at `--tol 0`.
+  (from C1 on) a golden capture identical to the current baseline (`BASELINE` in
+  `.github/workflows/ci.yml`; `docs/golden_baseline.md`) at `--tol 0`.
   Otherwise the work stays on its branch and the entry says why.
 - Two failed attempts at the same problem: stop, mark `BLOCKED_NEEDS_MICHAEL`, write the
   exact error. No force pushes, nothing irreversible.
@@ -90,6 +95,102 @@ Good wins when the Demon bluffs:
   Medium's relays from the dead (relay cards, not reports), which `chance_content`
   doesn't touch. Next step: check how relays are credited.
 - **The bot doesn't test claims** with vigils yet. That's M4 (meeting plan).
+
+## 2026-11-05 evening, Claude-Tally: playtest analysis tools on main (PR #72)
+
+Base `d043da9`. Merged to `main` by Claude-Tally at Michael's request; all CI green.
+
+### For every agent: use these when a playtest needs explaining
+
+When Michael asks *why* the town voted, read a case or believed something, run these
+before reading code or guessing. Each takes a playtest dev log (`logs/case_<seed>.jsonl`,
+or the attachment) and replays it exactly, dynamic scripts included. About 10 seconds per run.
+
+```text
+# What every good mind believed just before each vote (or only --at SEQ,...)
+godot --headless --path . --script res://tools/replay_log.gd -- <log> --why [--at 480]
+
+# How each mind read a filed case, and variants of it
+godot --headless --path . --script res://tools/explain_case.gd -- <log> --card 78 [--add fenwick] [--drop] [--challenge fenwick=lying]
+
+# Which heard items hold up each mind's suspicion of someone at a point in the log
+godot --headless --path . --script res://tools/explain_case.gd -- <log> --belief fenwick --at 372
+```
+
+- `--why` prints each mind's suspicion (the number the vote reads), joint-world P(evil),
+  P(Demon) and the likeliest evil teams.
+- Case mode prints premise prior → posterior, LR, rivals, and per-card reliability and
+  acceptance.
+- Belief mode is a leave-one-out over the mind's ledger.
+- Seqs come from the log's `seq` field. Check the replay's closing `votes_match=true`.
+  Text DIVERGE lines at meeting testimony are expected.
+- Details: `docs/DECISION_INSPECTOR.md`. Worked example: the case 13910 playtest report
+  in the Project (`claude/playtest-report-2026-11-05.md`, issues 9–10 and the
+  vote section).
+
+### What changed
+
+- Folded into Claude-Bailiff's `tools/replay_log.gd` rather than a second replay tool.
+  Its interface is unchanged (`-- <log> [stop_seq]`, same DIVERGE/FILED/REPLAY lines).
+  Added:
+  - The case is rebuilt with the log's `case_script`, so dynamic and custom-script cases
+    replay. Before, they were dealt from the Default script and replayed a different game.
+  - A closing vote-tally check against the log (`votes_match`), since testimony text
+    diverges harmlessly.
+  - `--why [--at S,..] [--worlds N] [--json OUT]`: before each vote, each good mind's
+    suspicion, joint-world P(evil), P(Demon) and likeliest evil teams
+    (`tools/belief_views.gd`). See `docs/DECISION_INSPECTOR.md`.
+- `workshop/case_eval.gd`: opt-in `CaseEval.capture_worlds` / `captured` (developer use
+  only). Off, the code path and results are unchanged.
+- New `tools/explain_case.gd` (and `tools/log_replay.gd`, the replay loop both tools
+  share). Case mode presents a filed case and variants of it (`--add`, `--drop`,
+  `--challenge`) to each good mind and prints premise prior → posterior, LR, rivals and
+  per-card reliability and acceptance. Belief mode (`--belief X --at SEQ`) finds which
+  heard items hold up a mind's suspicion of X, by leave-one-out. See
+  `docs/DECISION_INSPECTOR.md`.
+- **Finding for whoever owns the solver (case 13910, seq 372):** Fenwick's podium defence
+  "Merrin is lying" moves every listener's suspicion of Fenwick by −0.08 to −0.18
+  (Constance 0.18 → 0.00), even though each listener's own challenge assessment rejects
+  it (`supported: false`, `multiplier 1.0`). P(Merrin evil) barely moves. Removing just
+  that ledger entry restores the old values. Probably the lying challenge's
+  "source is evil" assumption (`Solver`, reading challenges → `positions`) applies even when
+  `ReadingChallenges.assess` rejects the challenge. Not fixed here.
+- `tools/replay_54875.gd` stays separate: it's a fixed-fixture performance and fallback
+  check, not a general replay.
+- Checked on playtest case 13910 (10 NPCs, dynamic script): all five votes replay
+  identically, with and without `--why`. CI: Suites 1–4 and the Linux golden diff pass.
+
+---
+
+## 2026-11-05 evening, Claude-Quill: maintenance report fixes (#69); golden false red fixed (#68); `baseline_a42ef71`
+
+- **Base:** `main` at `3932e86` (maintenance PR #66 merged), then `e09dbbd` (#68).
+- **#68 (merged): the red golden gate was the dev-log path**, as the Steward said:
+  `baseline_9187b09` recorded `/root/.local/share/...` in the game-over reply. Captures now
+  write `user://`; `golden_diff.py` normalizes `app_userdata` paths (Linux and Windows).
+  Main vs `baseline_9187b09`: identical on all five seeds. CI green again.
+- **#69: every Section A item, done here rather than by Argon.** Argon: nothing to pick up.
+  - A1/A2 + Michael's bell design: Breathstealer suppressed; the honest Sexton never lies
+    about the toll night (refuses while the bell holds unless pressed, open from the morning
+    after it wears off); evil plays the bell only once told of it (no Scion fallback, a
+    Revenant not worth hanging); a Revenant with its curse ready is cheap to let hang.
+    New RoleDef hooks: `honest_outing`, `on_public_claim`.
+  - A3 Monitor bluffer night-scoped (`override_night_sightings` now gets the filtered list).
+  - **A4 was a real C# bug:** `CaseEvalKernel` packed card states base 3 into a long, which
+    overflows from 40 report cards (silently merged classes, then IndexOutOfRange). Wide
+    cases key classes by digits. Seed 101032 plays clean. Compiled cases also carry their
+    own handle and generation now.
+  - A5 script spare role; A6 bot/stuck games; A7 Monitor "nobody walked by" is a movement
+    fact (move-role 7, GD and C#); A8 Confessor clears; A9/A10/A13 sweep workflow and
+    shards; A11 Marked rolled once; A12 `World.night_killer()`; A14 tavern trend.
+  - Dialogue: Nisha's patch-006 lines follow the Nov 2 round-2 rule (that pass hadn't been
+    lost: patch 006 added new lines in the old style); "on night {night}" in speech is now
+    `C.spoken_when`.
+- **`baseline_a42ef71`:** only seed 42 changes vs `baseline_9187b09` (day 3: the Demon votes
+  to let the Revenant hang). Two captures identical.
+- **Still open from the report:** section B's win-rate question (Michael's call); the
+  test-audit suggestions in section E; housekeeping branch deletions (not done).
+- **Next actor:** Michael (merge #69).
 
 ## 2026-11-05 ~05:30 ET, Claude-Tally: balance sweep done (11,000 games); tooling on main
 

@@ -617,7 +617,9 @@ func _decide() -> String:
 			if not g.statement_used and nm["by"] != "player":
 				var best_card = 0
 				for c in g.board:
-					if nm["nominee"] in c.get("subject", []) and c.get("source", "") != nm["nominee"] and c["kind"] in ["info", "sighting", "trace"]:
+					# Only cards the game will accept as evidence (not deprecated, superseded or
+					# rumour); citing a rejected one repeats forever and the game never ends.
+					if nm["nominee"] in c.get("subject", []) and c.get("source", "") != nm["nominee"] and c["kind"] in ["info", "sighting", "trace"] and g._presentation_rejection(c) == "":
 						best_card = c["n"]
 				if s <= DEFEND_P:
 					return "defend"
