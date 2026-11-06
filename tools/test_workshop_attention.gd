@@ -12,6 +12,9 @@ func _init() -> void:
 	var session = Session.new(692)
 	var view: Dictionary = session.scenario.public_view
 	var value = Solver.empty_case()
+	# Premises step 0b ranks lines by whether they name the premise's target. Aim the case at
+	# Lian (named only by the Dowser reading), so the movement line is the one a Low mind drops.
+	value.conclusion.target = "lian"
 	value.cards = ["survey", "rumor", "dowse", "watch1", "watch2"]
 	value.lines = [
 		{"id": "readings_a", "label": "Readings A", "relation": "supports", "cards": ["survey", "rumor"], "positions": {}, "answers": {}},

@@ -948,6 +948,14 @@ class Workshop:
 	}
 
 	## Bounded reasoning attention profiles (`workshop/reasoner.gd`)
+	## Attention salience (Reasoner._salience; premises pass step 0b). Naming the target outranks
+	## being a gift reading; trust in the source is a tiebreak.
+	const SALIENCE_BASE = 1.0
+	const SALIENCE_TRUST = 0.1
+	const SALIENCE_GIFT = 2.0
+	const SALIENCE_TARGET = 4.0
+	const SALIENCE_NAMED = 2.0
+	const SALIENCE_EXCLUSION = 1.0
 	const INSIGHT_LOW_CUTOFF = 0.34
 	const INSIGHT_MEDIUM_CUTOFF = 0.67
 	const PROFILE_LOW = {

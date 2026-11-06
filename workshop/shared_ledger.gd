@@ -287,6 +287,7 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 		if not focus.is_empty():
 			prepared.listener.knowledge["presented_reports"] = focus.filter(func(id): return facts.has(id))
 			prepared.listener.knowledge.presented_reports.sort()
+			prepared.listener.knowledge["attention_target"] = str(input.listener.get("attention_target", ""))
 		# Per-card source reliability (Phase 3.2): each spoken card carries its own
 		# source/teller/player trust into CaseEval and _headline individually, so a low-trust
 		# rumor never dilutes a firsthand clue and a firsthand clue never launders a rumor.
@@ -432,7 +433,10 @@ static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) 
 
 ## Same original facts and credibility inputs as the applied union. A scoped claim
 ## is assessed against the other learned reports, without applying a second vector.
-static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionary) -> Dictionary:
+## own_only (premises pass, step 0b): judge the case on its own cards plus the listener's own
+## readings, leaving out hearsay and other holdings. The trust reward uses this, so the player
+## is rewarded for what they argued, and the preview (which can't know hearsay) stays fair.
+static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionary, own_only: bool = false) -> Dictionary:
 	var scoped = Assess.prepare(snapshot)
 	if not plan.ready or not scoped.ready:
 		return {}
@@ -449,7 +453,12 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 			for k in ["hearing_weight", "via_player_only"]:
 				if prepared_cards[cid].has(k):
 					view.cards[i][k] = prepared_cards[cid][k]
+	var me: String = str(plan.prepared.listener.get("id", ""))
+	var own_reading := func(card: Dictionary) -> bool:
+		return str(card.get("kind", "")) == "report" and str(card.get("source", "")) == me
 	for card in plan.prepared.view.cards:
+		if own_only and not own_reading.call(card):
+			continue
 		if not view.cards.any(func(c): return c.id == card.id):
 			view.cards.append(card.duplicate(true))
 	var listener: Dictionary = plan.prepared.listener.duplicate(true)
@@ -467,6 +476,11 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 	listener.knowledge["presented_reports"] = snapshot.selected.duplicate()
 	listener.knowledge.presented_reports.sort()
 	listener.knowledge.own_reports = plan.facts.filter(func(id): return id not in endorsed)
+	if own_only:
+		var own_ids: Array = view.cards.filter(func(c): return own_reading.call(c)).map(func(c): return c.id)
+		listener.knowledge.own_reports = listener.knowledge.own_reports.filter(func(id): return id in own_ids)
+		if listener.knowledge.has("attention_reports"):
+			listener.knowledge.attention_reports = listener.knowledge.own_reports.duplicate()
 	if listener.get("reasoning_mode", "full") == "bounded":
 		for id in listener.knowledge.own_reports:
 			if id not in scoped.case.cards:

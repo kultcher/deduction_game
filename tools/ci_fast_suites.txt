@@ -35,4 +35,5 @@ test_playtest_13910_dialogue
 test_npc_openness
 test_defence_grounds
 test_codex_fixes
+test_attention_0b
 test_bot_m4

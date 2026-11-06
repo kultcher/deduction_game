@@ -25,6 +25,11 @@ static func profile(insight: float) -> Dictionary:
 		result.cards = 1000 # links, support and rival budgets are unchanged
 	return result
 
+## Developer inspection only (tools): when set, every prepare appends {listener, target,
+## focused, pool, presented, considered} to captured. Off in play; it changes no result.
+static var capture_attention: bool = false
+static var captured: Array = []
+
 static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
 	var inputs = [view, value, listener.get("reasoning_mode", "full"), listener.get("insight", 0.5),
 		listener.get("npc_trust", {}), listener.get("suspicion", {}), listener.get("knowledge", {})]
@@ -32,6 +37,10 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -
 	if reuse_preparations and preparations.has(key) and preparations[key].inputs == inputs:
 		return preparations[key].result.duplicate(true)
 	var result = _prepare(view, value, listener)
+	if capture_attention:
+		captured.append({"listener": str(listener.get("id", "")), "target": str(value.get("conclusion", {}).get("target", "")),
+			"focused": listener.get("knowledge", {}).has("presented_reports"), "presented": listener.get("knowledge", {}).get("presented_reports", []).duplicate(),
+			"pool": result.considered.size() + result.ignored.size(), "considered": result.considered.duplicate(), "profile": result.get("profile", "")})
 	if reuse_preparations:
 		if preparations.size() >= 256:
 			preparations.erase(preparations.keys()[0])
@@ -57,6 +66,7 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 	# including private reports, competes for the remaining card budget.
 	var focused: bool = listener.knowledge.has("presented_reports")
 	var presented: Array = cards.filter(func(c): return c.id in listener.knowledge.get("presented_reports", [])).map(func(c): return c.id)
+	var focus: Dictionary = _focus(view, full, listener, presented)
 	var groups: Array = []
 	var assigned: Array = []
 	for line in value.get("lines", []):
@@ -69,11 +79,11 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 					if partner_id not in roots:
 						roots.append(partner_id)
 			assigned.append_array(roots)
-			_add_group(view, groups, line.id, roots, full.conclusion.target, listener)
+			_add_group(view, groups, line.id, roots, focus, listener)
 	var bg_ids: Array = listener.knowledge.get("own_reports", []) if focused and not value.get("lines", []).is_empty() else []
 	var unassigned: Array = cards.filter(func(c): return c.id not in assigned and c.id not in bg_ids).map(func(c): return c.id)
 	if not unassigned.is_empty():
-		_add_group(view, groups, "", unassigned, full.conclusion.target, listener)
+		_add_group(view, groups, "", unassigned, focus, listener)
 	groups.sort_custom(func(a, b): return a.score > b.score if not is_equal_approx(a.score, b.score) else a.key < b.key)
 	var keep: Array = []
 	var kept_lines: Array = []
@@ -84,13 +94,16 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 		keep.append_array(groups[i].cards)
 		kept_lines.append_array(groups[i].ids)
 		connections.append(groups[i].key)
-	var ranked: Array = cards.filter(func(c): return (c.id in keep or c.id in bg_ids) and c.id not in presented and (focused or c.id not in personal))
+	# Step 0b: in a focused pass (a presentation, and the belief update after one) the
+	# listener's own gift readings are pinned outside the budget, like outside presentations.
+	var pinned: Array = _own_readings(view, personal, presented, listener).filter(func(id): return id in all_card_ids) if focused and bounded else []
+	var ranked: Array = cards.filter(func(c): return (c.id in keep or c.id in bg_ids) and c.id not in presented and c.id not in pinned and (focused or c.id not in personal))
 	ranked.sort_custom(func(a, b):
-		var x = _salience(a, full.conclusion.target, listener, Domain.live(view))
-		var y = _salience(b, full.conclusion.target, listener, Domain.live(view))
+		var x = _salience(a, focus, listener, Domain.live(view))
+		var y = _salience(b, focus, listener, Domain.live(view))
 		return x > y if not is_equal_approx(x, y) else Solver.semantic_key(a) < Solver.semantic_key(b))
 	var remaining: int = maxi(0, limits.cards - presented.size()) if focused else limits.cards
-	keep = presented + ranked.slice(0, remaining if bounded else ranked.size()).map(func(c): return c.id)
+	keep = presented + pinned + ranked.slice(0, remaining if bounded else ranked.size()).map(func(c): return c.id)
 	if not focused:
 		for id in personal:
 			if cards.any(func(c): return c.id == id) and id not in keep:
@@ -120,6 +133,37 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 		"ignored_lines": value.get("lines", []).filter(func(line): return line.relation == "supports" and line.id not in kept_lines).map(func(line): return line.id),
 		"private_reports": personal.duplicate(),
 		"private_checks": direct_checks(view, full, listener.knowledge)}
+
+## The listener's own gift readings among `personal` (reports they received themselves).
+static func _own_readings(view: Dictionary, personal: Array, presented: Array, listener: Dictionary) -> Array:
+	var me: String = str(listener.get("id", ""))
+	var out: Array = []
+	for id in personal:
+		if id in presented:
+			continue
+		var c: Dictionary = Solver.card_by_id(view, id)
+		if not c.is_empty() and str(c.get("kind", "")) == "report" and str(c.get("source", "")) == me:
+			out.append(id)
+	return out
+
+## People a card speaks about (the same keys as Jury._mentions, which this can't preload).
+static func _mentions(card: Dictionary) -> Array:
+	var out: Array = []
+	for key in ["subject", "subjects", "target", "who"]:
+		var v = card.get(key)
+		if v is Array:
+			out.append_array(v)
+		elif v is String and v != "":
+			out.append(v)
+	var data = card.get("data", {})
+	if data is Dictionary:
+		for key in ["pair", "group", "seen", "nbrs", "trio", "target", "chosen", "executed", "guarded", "nominator", "nominee"]:
+			var v = data.get(key)
+			if v is Array:
+				out.append_array(v)
+			elif v is String and v != "":
+				out.append(v)
+	return out
 
 ## Cards explicitly linked to disprove, challenge, or explain `card_id` stay bound to it
 ## so bounded attention cannot read a challenged claim while dropping its counter-evidence.
@@ -156,7 +200,7 @@ static func _linked_counterparts(view: Dictionary, full: Dictionary, card_id: St
 					result.append(claim_id)
 	return result
 
-static func _add_group(view: Dictionary, groups: Array, id: String, roots: Array, target: String, listener: Dictionary) -> void:
+static func _add_group(view: Dictionary, groups: Array, id: String, roots: Array, focus: Dictionary, listener: Dictionary) -> void:
 	var facts: Array = roots.map(func(root): return Solver.semantic_key(Solver.card_by_id(view, root)))
 	facts.sort()
 	var key = JSON.stringify(facts)
@@ -164,22 +208,62 @@ static func _add_group(view: Dictionary, groups: Array, id: String, roots: Array
 		if group.key == key:
 			group.ids.append(id)
 			return
-	groups.append({"ids": [id], "key": key, "cards": roots, "score": _group_score(view, roots, target, listener)})
+	groups.append({"ids": [id], "key": key, "cards": roots, "score": _group_score(view, roots, focus, listener)})
 
-static func _salience(card: Dictionary, target: String, listener: Dictionary, live: bool = false) -> float:
-	var score = 1.0 + listener.npc_trust.get(card.source, 0.5) * 0.1
-	if card.kind == "report" and (card.role in ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"] or (live and card.role in ["nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "chronicler", "augur", "magistrate", "executor", "registrar"])):
-		score += 3.0
-	if card.get("subject", "") == target or target in card.get("data", {}).get("pair", []) or target in card.get("data", {}).get("group", []) or target in card.get("data", {}).get("seen", []) or target in card.get("data", {}).get("trio", []) or target in [card.get("data", {}).get("nominator", ""), card.get("data", {}).get("nominee", "")]:
-		score += 2.0
+## How much a card asks to be attended to, against the focus ({target, named}: the premise's
+## target and the people the presented cards name). Premises pass, step 0b: naming the
+## target outweighs merely being a gift reading; a counted-group reading earns a little even
+## when it leaves the target out, since the evil count is fixed (exclusion); trust in the
+## source only breaks ties.
+static func _salience(card: Dictionary, focus: Dictionary, listener: Dictionary, live: bool = false) -> float:
+	var score = Tuning.Workshop.SALIENCE_BASE + listener.npc_trust.get(card.get("source", ""), 0.5) * Tuning.Workshop.SALIENCE_TRUST
+	var gift: bool = card.get("kind", "") == "report" and (card.get("role", "") in GIFT_ROLES or (live and card.get("role", "") in LIVE_GIFT_ROLES))
+	if gift:
+		score += Tuning.Workshop.SALIENCE_GIFT
+	var people: Array = _mentions(card)
+	var target: String = str(focus.get("target", ""))
+	var named: Dictionary = focus.get("named", {})
+	if target != "" and target in people:
+		score += Tuning.Workshop.SALIENCE_TARGET
+	elif people.any(func(p): return named.has(p)):
+		score += Tuning.Workshop.SALIENCE_NAMED
+	elif gift and target != "" and card.get("role", "") in COUNTED_GROUP_ROLES:
+		score += Tuning.Workshop.SALIENCE_EXCLUSION
 	return score
 
-static func _group_score(view: Dictionary, ids: Array, target: String, listener: Dictionary) -> float:
+## Gift readings (always), and those that count only in a live game.
+const GIFT_ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"]
+const LIVE_GIFT_ROLES = ["nightwatch", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "chronicler",
+	"augur", "magistrate", "executor", "registrar", "warden", "monitor", "confessor", "psychologist"]
+## Readings that count evil over a group or pair: they bear on anyone's odds through the
+## fixed evil count, even people they don't name.
+const COUNTED_GROUP_ROLES = ["dowser", "surveyor", "seer", "clerk", "rumormonger", "archivist", "registrar"]
+
+## The focus attention ranks against: the premise's target (or, in the belief update after
+## a presentation, that presentation's target) and everyone the presented cards name or come from.
+static func _focus(view: Dictionary, full: Dictionary, listener: Dictionary, presented: Array) -> Dictionary:
+	var target: String = str(full.get("conclusion", {}).get("target", ""))
+	if target == "":
+		target = str(listener.get("knowledge", {}).get("attention_target", ""))
+	var named := {}
+	for id in presented:
+		var c: Dictionary = Solver.card_by_id(view, id)
+		if c.is_empty():
+			continue
+		for p in _mentions(c):
+			named[p] = true
+		if str(c.get("source", "")) not in ["", "player", "evidence", "town"]:
+			named[str(c.source)] = true
+	named.erase(target)
+	named.erase(str(listener.get("id", "")))
+	return {"target": target, "named": named}
+
+static func _group_score(view: Dictionary, ids: Array, focus: Dictionary, listener: Dictionary) -> float:
 	var score = 0.0
 	for id in ids:
 		var card = Solver.card_by_id(view, id)
 		if not card.is_empty():
-			score = maxf(score, _salience(card, target, listener, Domain.live(view)))
+			score = maxf(score, _salience(card, focus, listener, Domain.live(view)))
 	return score
 
 static func search(view: Dictionary, case_data: Dictionary, cards: Array, listener: Dictionary, limits: Dictionary) -> Dictionary:
