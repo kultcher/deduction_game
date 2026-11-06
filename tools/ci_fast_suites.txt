@@ -37,4 +37,5 @@ test_defence_grounds
 test_codex_fixes
 test_attention_0b
 test_premise_step1
+test_premise_step2
 test_bot_m4
