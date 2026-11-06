@@ -235,6 +235,23 @@ func score_public_claim(w, _n, parts: Dictionary) -> void:
 		parts["one_shot_gift"] = Tuning.Roles.ONE_SHOT_GIFT_CLAIM
 
 
+## Meeting plan M2c: what this role is still worth to the town if its holder survives
+## the vote, as a bystander deciding whether to burn cover to save them sees it (the mirror
+## of `score_reveal_cost`). Readings still to come are worth most; a one-shot gift that's
+## been used, least. Override for roles whose value doesn't follow the defaults.
+func score_protect_value(w, _holder, parts: Dictionary) -> void:
+	var T = load("res://sim/tuning.gd").Meeting
+	if is_ongoing_info():
+		var days_left: float = maxf(0.0, float(T.PROTECT_VALUE_HORIZON_DAYS - w.day + 1))
+		parts["readings_to_come"] = T.PROTECT_VALUE_ONGOING * clampf(days_left / float(T.PROTECT_VALUE_HORIZON_DAYS), 0.25, 1.0)
+	elif kind == "protect":
+		parts["protects_the_town"] = T.PROTECT_VALUE_PROTECTION
+	elif first_night:
+		parts["gift_spent"] = T.PROTECT_VALUE_SPENT
+	else:
+		parts["some_use_left"] = T.PROTECT_VALUE_OTHER
+
+
 ## Role-specific terms when `n` weighs the cost of revealing their gift (`Mind.reveal_cost`).
 func score_reveal_cost(w, _n, parts: Dictionary) -> void:
 	var hide: float = hides_from_demon_claim_term(w.day)

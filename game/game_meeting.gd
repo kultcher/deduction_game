@@ -13,6 +13,7 @@ const Credibility = preload("res://game/credibility.gd")
 const CardModel = preload("res://game/card_model.gd")
 const Deduction = preload("res://sim/deduction.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
+const MindSupport = preload("res://sim/mind_support.gd")
 
 
 static func _start_meeting(g) -> void:
@@ -268,6 +269,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 			if g.statement_used:
 				g._err("You've already spoken on this nomination.")
 				return
+			_run_supporters(g)
 			var card = {}
 			if r != "":
 				var num = r.trim_prefix("#").to_int()
@@ -323,6 +325,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 			if nm["by"] == "player":
 				g._err("You can't spare someone from your own nomination.")
 				return
+			_run_supporters(g)
 			g.w.clemency()
 			g._narr("You raise your hand and invoke Clemency. %s is spared; the nomination is struck." % t.name)
 			_after_vote(g)
@@ -332,6 +335,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 			if not yes and not no:
 				g._err("'vote yes' or 'vote no'.")
 				return
+			_run_supporters(g)
 			g.capture_prediction("before_vote", {"nominee": t.id, "player_yes": yes})
 			var res: Dictionary = g.w.vote_pending(yes)
 			var yes_names: Array = res["yes"].map(func(i): return g.w.by_id[i].name)
@@ -392,6 +396,7 @@ static func _press(g, t, r: String) -> void:
 		"skip":
 			nm["press"] = "skipped"
 			g._narr("You hold your peace.")
+			_run_supporters(g)
 			g._prompt("'vote yes' or 'vote no'.")
 			return
 		"role", "gift", "readings":
@@ -436,7 +441,26 @@ static func _press(g, t, r: String) -> void:
 	nm["case_facts"] = cf
 	g.w.dlog.add("podium_press", "player", t.id, {"mode": nm["press_mode"], "card": int(card.get("n", 0)), "night": int(res.get("night", -1)), "outcome": res.get("outcome", "")},
 		"The Demonologist presses %s (%s): %s." % [t.name, nm["press_mode"], res.get("outcome", "")])
+	_run_supporters(g)
 	g._prompt("'vote yes' or 'vote no'%s." % ("" if g.statement_used else ". You may still 'defend' or 'accuse' (one statement)"))
+
+
+## Step 4, supporters (sim/mind_support.gd): once per nomination, after the press and before
+## the player's statement, Clemency or the vote (whichever comes first). The player's word
+## comes after the town's (meeting plan M2c/M2d).
+static func _run_supporters(g) -> void:
+	var nm: Dictionary = g.w.meeting["pending"]
+	if nm.get("supporters_done", false):
+		return
+	nm["supporters_done"] = true
+	if nm.get("press", "") == "open":
+		nm["press"] = "closed"
+	var res: Dictionary = MindSupport.run(g.w, nm["nominee"], nm["by"])
+	nm["supporters"] = res.get("speakers", [])
+	if res.get("lines", []).is_empty():
+		return
+	g._lines(res.lines)
+	g._facts(res.get("facts", []))
 
 
 ## The night a 'press night' with no number asks about: the latest night the case on the
