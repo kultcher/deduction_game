@@ -29,7 +29,6 @@ func _init() -> void:
 	_saw_nobody_markers()
 	_public_sighting_subject()
 	_own_standouts()
-	_accuse_floor()
 	_meeting_echo()
 	_own_sightings_left_out()
 	print("Playtest 13910 dialogue: %d checks, %d failures" % [checks, fails])
@@ -148,20 +147,6 @@ func _own_standouts() -> void:
 	pick = Presentations._own_standouts(w, me.id, sharp)
 	_check(pick["demon_id"] == others[0].id and pick["accomplice_id"] == others[1].id, "two clear standouts are named")
 	_check(Presentations._own_standouts(w, me.id, sharp, [others[0].id])["demon_id"] == others[1].id, "the case's own subject is excluded")
-
-## 13: a good NPC never accuses on starting suspicion plus the roll.
-func _accuse_floor() -> void:
-	for seed_v in [13910, 4242, 777]:
-		var g = _game(seed_v)
-		var w = g.w
-		w.day = 1
-		for n in w.living_good():
-			n.traits["confidence"] = 1.0
-			for id in n.suspicion:
-				n.suspicion[id] = Tuning.Setup.INITIAL_SUSPICION_BASE + 0.05
-			n.resentments = []
-			n.workshop_state["active"] = false
-			_check(MindMeeting._public_accusation(w, n) == null, "%s doesn't accuse at %.2f" % [n.id, Tuning.Setup.INITIAL_SUSPICION_BASE + 0.05])
 
 ## 15: a reason or "X is lying" already said at this meeting is pointed back to.
 func _meeting_echo() -> void:

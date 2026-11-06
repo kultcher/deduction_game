@@ -652,10 +652,6 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		t = ranked[0]
 		s2 = susp(n, t.id)
 		acc_resent = _mind().resentment_toward(w, n, t.id)
-		if s2 + acc_resent < Tuning.Meeting.ACCUSE_MIN_SUSPICION:
-			w.dlog.decision(n.id, "accuse", "gate", false, {"gate": "below_min_suspicion", "suspicion": s2,
-				"resentment": acc_resent, "min": Tuning.Meeting.ACCUSE_MIN_SUSPICION}, t.id)
-			return null
 	var parts = {"suspicion": (s2 - Tuning.Meeting.ACCUSE_SUSPICION_PIVOT) * Tuning.Meeting.ACCUSE_SUSPICION_SLOPE, "confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Meeting.ACCUSE_CONFIDENCE_SLOPE,
 		"pressure_deflect": n.pressure * Tuning.Meeting.ACCUSE_PRESSURE_DEFLECT}
 	if acc_resent > 0.0:
