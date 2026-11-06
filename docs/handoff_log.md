@@ -27,6 +27,32 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06 early, Claude-Tally: premises pass step 0 (defence grounds) on main
+
+Base `ce26d25`. Branch `claude/defence-empty-grounds`. New baseline `baseline_55cea76`.
+
+- Step 0 of the "Case Workshop: what premises actually do" plan (Quill's spec): a bare
+  defence ("X is lying" / "X's gift was turned") is a reading challenge with no grounds
+  (`workshop/shared_ledger.gd`; a scope that names `supports` keeps them). Before, its
+  grounds were every fact the listener held, and Reasoner's "never attend a challenged
+  report without its grounds" pulled them all in. So every listener who heard a defence
+  reasoned with full attention for the rest of the game. Defences are now judged on
+  their own merits at their 5% hearing.
+- New suite `test_defence_grounds` (fast list): 21 failures without the fix, none with it.
+  Full suite 112/112.
+- Corrected the earlier wrong cause (the "source is evil" assumption) in this log and in
+  the Project playtest report.
+- Passive A/B (`docs/golden_baseline.md`): 7 NPCs flat; 10 NPCs good wins 3 → 1 of 12. That's
+  plausible, since the town loses accidental full attention, but small. Tonight's sweep
+  should include it.
+- Rode along (the plan suggested it): dev logs' `case_start.build` now records the git
+  commit (`sim/build_info.gd`), and `log_replay.gd` notes when a log came from other code,
+  with the worktree command to replay it there.
+- Next: step 0b (own readings pinned during presentations), then step 1 goes back to Quill.
+  Hold attention budgets fixed between the A/B arms.
+
+---
+
 ## 2026-11-05 late night, Claude-Bailiff: meeting plan M3a (courtroom stage) on main
 
 - `ui/vn_portraits.gd`: the 15 VN portraits and five expressions, shared by the day
@@ -383,9 +409,11 @@ godot --headless --path . --script res://tools/explain_case.gd -- <log> --belief
   "Merrin is lying" moves every listener's suspicion of Fenwick by −0.08 to −0.18
   (Constance 0.18 → 0.00), even though each listener's own challenge assessment rejects
   it (`supported: false`, `multiplier 1.0`). P(Merrin evil) barely moves. Removing just
-  that ledger entry restores the old values. Probably the lying challenge's
-  "source is evil" assumption (`Solver`, reading challenges → `positions`) applies even when
-  `ReadingChallenges.assess` rejects the challenge. Not fixed here.
+  that ledger entry restores the old values. **Corrected later the same night:** the
+  cause isn't the challenge's "source is evil" assumption, as first guessed here. The
+  defence's grounds were every fact the listener held, and Reasoner's attention rule pulls
+  a challenge's grounds in, so bounded listeners went to full attention (Constance 8 → 22
+  cards). Fixed by the premises pass, step 0 (`claude/defence-empty-grounds`).
 - `tools/replay_54875.gd` stays separate: it's a fixed-fixture performance and fallback
   check, not a general replay.
 - Checked on playtest case 13910 (10 NPCs, dynamic script): all five votes replay

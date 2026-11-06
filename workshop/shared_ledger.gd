@@ -147,8 +147,13 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 		if not facts.has(scope.reading):
 			continue # A bare objection cannot invent the report or grounds for it.
 		var hearing: float = clampf(entry.weight * meta.get("hearing_scale", 1.0), 0.0, 1.0)
+		# A defence cites no grounds unless its scope names some. It must not borrow every fact
+		# the listener holds as grounds: Reasoner never attends a challenged report without its
+		# grounds, so that turned a bounded listener into a full-attention one for the rest of
+		# the game (case 13910: Constance 8 -> 22 cards; premises pass, step 0).
+		var grounds: Array = scope.get("supports", []).filter(func(id): return id != scope.reading and facts.has(id))
 		if not reading_challenges.has(scope.reading) or hearing > reading_challenges[scope.reading].get("weight", 1.0):
-			reading_challenges[scope.reading] = {"mode": scope.mode, "weight": hearing, "supports": facts.keys().filter(func(id): return id != scope.reading)}
+			reading_challenges[scope.reading] = {"mode": scope.mode, "weight": hearing, "supports": grounds}
 	input.evidence = facts.values()
 	input.selected = facts.keys()
 	input.private_evidence = input.private_evidence.filter(func(id): return facts.has(id))
