@@ -83,6 +83,9 @@ func _insight() -> void:
 		for venue in ["private", "meeting", "nomination", "private"]:
 			g._evaluate_deduction(n, g.board[number - 1], 0.6, true, venue)
 			check(_close(beliefs, n.suspicion) and n.workshop_state.theories == theories, "repeated venues cannot sharpen a native theory or compound suspicion")
+		# The first meeting presentation puts its subject on the town's topic (recency), a real
+		# input change; after that, nothing has changed and a refresh reuses the assessment.
+		Mind.refresh_beliefs(g.w, n, "unchanged")
 		check(g._workshop_evaluations[n.id + (":cover" if n.is_shadow else ":good")].cache_hit, "unchanged presentations reuse the committed union assessment")
 		var before = JSON.stringify([n.workshop_state, n.suspicion, n.trust, g.w.rng.state])
 		var preview = g.workshop_preview(number, n.id)

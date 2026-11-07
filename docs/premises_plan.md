@@ -498,7 +498,17 @@ solver or C# moved. The code is `sim/recency.gd`.
   budget.
 - **Plumbing:** `WorkshopBridge.capture` adds `listener.recency` = {today, topic,
   card_refresh}; `LiveAssessment._listener` carries it; fixtures and tools without it are
-  unchanged.
+  unchanged. A presentation settles its recency (the refresh, the meeting topic) before it
+  captures, so it is judged with the attention it creates.
+- **When it takes effect.** Attention is read when a mind refreshes. Every living mind
+  refreshes at dawn (`game_day_night.gd`), so a card's age and yesterday's cooled topic take
+  hold each morning even for a mind that heard nothing new overnight (before this, two of
+  seven minds in seeds 900 and 1001 carried day-3 attention into day 4, off by up to 0.21).
+  A mind that already refreshed that morning hits its cache. A topic raised mid-day reaches
+  each mind at its next refresh, which in practice is the meeting's own hearing.
+- **Watch:** by day 3 the topic can saturate (seed 900: five people at 1.0 after a busy
+  meeting), and then it ranks nobody above anybody. If Tally's A/B shows that, the fix is a
+  lower cap or normalising by the day's busiest subject.
 - **Not yet:** NPCs citing old cards ("remember Dorian's reading?") don't refresh them, and
   evil doesn't steer the topic. Both plug into `refresh_cards` and `topic`.
 - **Measure:** its own A/B (Tally): long games (day 5+), "identified but lost", and how long

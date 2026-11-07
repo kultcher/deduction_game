@@ -97,6 +97,16 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var previous: Dictionary = state.get("presentations", {}).duplicate(true)
 	var proposals: Dictionary = previous.duplicate(true)
 	proposals[key] = snapshot
+	# Recency: the presented cards are back on this listener's mind, and a case argued at a
+	# meeting puts its subject on the town's topic (sim/recency.gd). Settled before the
+	# capture, so this presentation is judged with the attention it creates and an
+	# unchanged repeat finds the same inputs.
+	Recency.refresh_cards(g.w, n, snapshot.selected)
+	if venue != "private":
+		var argued_root: Array = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)
+		var argued: String = str(argued_root[0].conclusion.get("a", argued_root[0].conclusion.get("target", ""))) if not argued_root.is_empty() else ""
+		if argued != "" and not g.w.meeting_arguments.any(func(e): return e.day == g.w.day and e.target == argued):
+			g.w.meeting_arguments.append({"day": g.w.day, "target": argued})
 	var current = Bridge.capture(g, [], n.id, venue, n)
 	var proposed = Shared.prepare(current, proposals, n.ledger, state.get("withdrawn", {}), snapshot.selected)
 	if not proposed.ready:
@@ -118,13 +128,6 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			state.disclosures[id] = {"player": true, "public": false}
 		if venue != "private":
 			state.disclosures[id].public = true
-	# Recency: the presented cards are back on this listener's mind, and a case argued at a
-	# meeting puts its subject on the town's topic (sim/recency.gd).
-	Recency.refresh_cards(g.w, n, snapshot.selected)
-	if venue != "private":
-		var argued: String = str(headline.conclusion.get("a", headline.conclusion.get("target", "")))
-		if argued != "" and not g.w.meeting_arguments.any(func(e): return e.day == g.w.day and e.target == argued):
-			g.w.meeting_arguments.append({"day": g.w.day, "target": argued})
 	# What they say follows what the case did to their belief (see _belief_stance_text).
 	var stance_subject: String = headline.conclusion.get("a", "")
 	var stance_before: float = n.suspicion.get(stance_subject, 0.1)
