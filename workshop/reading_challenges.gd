@@ -214,12 +214,11 @@ static func graded_challenge(view: Dictionary, group: Array, mode: String, liste
 	var holds_p1: float = float(ev.posterior) if ids.size() == 1 else 1.0 - float(ev.posterior)
 	var q: float = clampf(holds_p0, 1e-6, 1.0)
 	var f: float = clampf(holds_p1, 0.0, 1.0)
-	# r: the source good (before the case) and each reading's error.
-	var good_q: Dictionary = Solver.empty_case()
-	good_q.cards = rest.duplicate()
-	good_q.conclusion = {"type": "good", "target": source, "at": epoch}
-	var ev_good: Dictionary = CaseEval.evaluate(view, good_q, listener) if source in view.people.map(func(p): return p.id) else {"prior": 1.0, "posterior": 1.0}
-	var accurate: float = clampf(float(ev_good.get("prior", 1.0)), 0.0, 1.0)
+	# r: the source good (before the case) and each reading's error. A case's prior doesn't
+	# depend on its cards, so the source's prior comes from the same evaluation (its
+	# per-person prior chance of being evil).
+	var has_source: bool = source in view.people.map(func(p): return p.id)
+	var accurate: float = clampf(1.0 - float(ev.get("people", {}).get(source, {}).get("prior", 0.0)), 0.0, 1.0) if has_source else 1.0
 	for r_card in reports:
 		accurate *= 1.0 - CaseEval.reading_error(view, r_card, listener)
 	var r: float = clampf(accurate, 1e-6, 1.0 - 1e-6)
@@ -227,12 +226,16 @@ static func graded_challenge(view: Dictionary, group: Array, mode: String, liste
 	var wrong: float = wrong_prior * q / maxf(wrong_prior * q + r * f, 1e-12)
 	var rise: float = wrong - wrong_prior
 	var effect: float = clampf(rise / r, 0.0, 1.0)
-	# The cause: how much of the reading being wrong the named explanation carries.
-	var evil_q: Dictionary = Solver.empty_case()
-	evil_q.cards = rest + ids
-	evil_q.conclusion = {"type": "evil", "target": source, "at": epoch}
-	var ev_evil: Dictionary = CaseEval.evaluate(view, evil_q, listener) if source in view.people.map(func(p): return p.id) else {"posterior": 0.0}
-	var evil_share: float = clampf(float(ev_evil.get("posterior", 0.0)) / maxf(wrong, 1e-9), 0.0, 1.0)
+	# The cause: how much of the reading being wrong the named explanation carries. It only
+	# ever scales the effect, so with no effect it isn't weighed (most bare defences: the
+	# rest of the evidence doesn't make the reading look wrong).
+	var evil_share: float = 0.0
+	if effect > 0.0 and has_source:
+		var evil_q: Dictionary = Solver.empty_case()
+		evil_q.cards = rest + ids
+		evil_q.conclusion = {"type": "evil", "target": source, "at": epoch}
+		var ev_evil: Dictionary = CaseEval.evaluate(view, evil_q, listener)
+		evil_share = clampf(float(ev_evil.get("posterior", 0.0)) / maxf(wrong, 1e-9), 0.0, 1.0)
 	var cause: float = 1.0
 	var note: String = ""
 	match mode:
@@ -246,7 +249,7 @@ static func graded_challenge(view: Dictionary, group: Array, mode: String, liste
 			var del_q: Dictionary = Solver.empty_case()
 			del_q.cards = rest + ids
 			del_q.conclusion = {"type": "secret_mod", "target": source, "mod": "delusional", "at": epoch}
-			var del_ok: bool = "delusional" in view.get("world_options", {}).get("modifiers", [])
+			var del_ok: bool = effect > 0.0 and "delusional" in view.get("world_options", {}).get("modifiers", [])
 			var ev_del: Dictionary = CaseEval.evaluate(view, del_q, listener) if del_ok else {"posterior": 0.0}
 			cause = clampf(float(ev_del.get("posterior", 0.0)) / maxf(wrong, 1e-9), 0.0, 1.0)
 			note = "Those readings don't fit together; a Delusional gift would explain them without anyone lying."
