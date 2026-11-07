@@ -78,6 +78,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 				input.issues.append({"code": "cover_unavailable", "fact": "", "detail": listener_id})
 			else:
 				_listener(input, n, now)
+				input.listener["recency"] = preload("res://sim/recency.gd").snapshot(g.w, n)
 	return Evidence.normalize(input)
 
 static func _collect(g, number, numbers: Array, arguments: Array, issues: Array, path: Array) -> void:
