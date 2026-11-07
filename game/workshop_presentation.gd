@@ -239,6 +239,11 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		elif judged <= Tuning.Trust.PRESENTATION_WRONG_AGREEMENT and root.conclusion.type != "conflict":
 			Mind.set_trust(g.w, n, n.trust - Tuning.Trust.PRESENTATION_WRONG_COST, "the presented reports argue against the claim")
 			Mind.refresh_beliefs(g.w, n, " (presentation wrong-premise cost)")
+		if _challenge_backfired(plan, snapshot, state.outside, assessment):
+			# Premises step 3: doubting a reading the evidence backs up costs the same; a
+			# neutral challenge costs nothing. Judged on the case plus own readings.
+			Mind.set_trust(g.w, n, n.trust - Tuning.Trust.PRESENTATION_WRONG_COST, "the doubted reading holds up")
+			Mind.refresh_beliefs(g.w, n, " (challenge backfire cost)")
 		Profiler.close(reward_span)
 	# The premise's agreement gates its protect / believed-role preference (Mind).
 	if not state.has("presentation_agreement"):
@@ -525,6 +530,17 @@ static func _snapshot(g, n, card: Dictionary, targets: Array, direction: String,
 	for i in range(1, targets.size()):
 		input.arguments.append({"board_number": -2 - i, "conclusion": {"type": "good" if direction == "defend" else "suspicious", "a": targets[i]}, "supports": [card.get("n", 0)]})
 	return input
+
+## Premises step 3: did a challenge in this case backfire for this listener, judged like the
+## trust reward on the case cards plus their own readings?
+static func _challenge_backfired(plan: Dictionary, snapshot: Dictionary, outside: Dictionary, assessment: Dictionary) -> bool:
+	var broad: Array = assessment.get("reading_challenges", [])
+	if broad.is_empty():
+		return false
+	# Always the narrower pass (as for the wrong-premise cost): hearsay can't decide it.
+	var narrow: Dictionary = Shared.response(plan, snapshot, outside, true)
+	var results: Array = narrow.get("reading_challenges", broad) if not narrow.is_empty() else broad
+	return results.any(func(r): return r.get("backfire", false))
 
 ## Agreement for the trust reward: the case cards plus the listener's own readings only, not
 ## hearsay the player may never have heard (premises pass, step 0b). A listener with no

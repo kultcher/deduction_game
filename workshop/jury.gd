@@ -998,6 +998,10 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		for challenge in challenged.results:
 			if challenge.mode == "lying" and challenge.source == id and challenge.agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
 				net_weight = maxf(net_weight, Tuning.Workshop.JURY_CHALLENGE_LYING_SCALE * challenge.agreement)
+			# Premises step 3: an accepted failed-gift challenge points at the Poisoner candidates.
+			var cands: Dictionary = challenge.get("candidates", {})
+			if challenge.mode == "impaired" and cands.has(id) and challenge.agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
+				net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement / float(cands.size()))
 		var own_check: Dictionary = attention.case.duplicate(true)
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
 		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict"

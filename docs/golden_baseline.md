@@ -44,7 +44,27 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 6, early): `baseline_50bd642`
+### Current baseline (Nov 6, night, PR #95): `baseline_4e54261`
+
+`tools/golden/baseline_4e54261/` is the capture from `4e54261`. It replaces Quill's
+`baseline_858495d` (never on main; removed) after Bailiff's step 3 review fixes: "the
+reading's content holds" is now content only, whoever the source is, so the graded test no
+longer counts the source's goodness twice. Same divergence points from `baseline_50bd642`
+as below (every seed at the first meeting's refresh, about 1e-4 in suspicion); against
+`858495d` the values differ by 1e-5 to 1e-4 from the same records. Two captures identical.
+
+Quill's description of `858495d`, which still holds for the shape of the change: the capture is `baseline_50bd642` plus the
+premises pass steps 1–3 (Bailiff's review fixes included). The passive golden player never
+presents a case, so steps 1 and 2 left it identical; step 3 does not: NPC bare defences ("X
+is lying") have no grounds and a 5% hearing weight, and are now graded on each listener's
+attended evidence, so they can land very slightly (as planned for step 0). Every seed parts
+at the first meeting's refresh by about 1e-4 in suspicion (42 at record 48, 54875 at 27, 692
+at 36, 900 at 52, 98933 at 23); 54875 now runs to 286 records (was 267). Two captures
+identical.
+
+Passive A/B: for Tally (the step 1–3 A/B rows).
+
+### Previous baseline (Nov 6, early): `baseline_50bd642`
 
 `tools/golden/baseline_50bd642/` is the capture from `50bd642`: `baseline_55cea76` plus the
 premises pass, step 0b (one attended set for presentations: salience by the premise's
@@ -223,7 +243,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_50bd642 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_4e54261 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs

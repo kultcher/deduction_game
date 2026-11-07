@@ -6,10 +6,13 @@ const Domain = preload("res://workshop/world_domain.gd")
 static var cache: Dictionary = {}
 static var fraction_cache: Dictionary = {}
 static var _index_cache: Dictionary = {}
-const MODES = ["misled", "lying", "unlikely"]
+const MODES = ["misled", "lying", "unlikely", "impaired", "delusional"]
+const CaseEval = preload("res://workshop/case_eval.gd")
 
 static func valid(view: Dictionary, id: String, value) -> bool:
 	var card = Solver.card_by_id(view, id)
+	if value is Dictionary and value.get("mode") == "delusional" and not value.has("group"):
+		return false  # "they're Delusional" explains a source's readings together
 	return value is Dictionary and value.get("mode") in MODES and card.get("kind") == "report" and not card.has("relay_source") and not card.get("testimony_only", false) and (value.mode != "unlikely" or (card.get("role") == "surveyor" and card.get("data", {}).has("count"))) and value.get("supports", []) is Array and value.get("supports", []).all(func(root): return root != id and not Solver.card_by_id(view, root).is_empty())
 
 static func quality(listener: Dictionary, source: String) -> float:
@@ -26,7 +29,8 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 	var selected: Dictionary = value.get("reading_challenges", {})
 	if selected.is_empty():
 		return {"reports": {}, "sources": {}, "results": []}
-	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), view.get("world_options", {}), view.evil_count, selected, cards, listener.knowledge, listener.suspicion, listener.npc_trust, listener.trust]
+	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), view.get("world_options", {}), view.evil_count, selected, cards, listener.knowledge, listener.suspicion, listener.npc_trust, listener.trust,
+		listener.get("reading_reliability", {}), view.get("script_minions", []), value.get("reasons", {})]
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
@@ -137,13 +141,155 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				note += " I am not convinced the reader deliberately lied."
 		elif challenge.mode == "misled" and supported:
 			note += " Misled can include impairment or a gift's misleading registration; it does not establish poisoning."
-		result.reports[id] = multiplier
+		# Premises step 3: graded scoring. The hard cases above stay as floors; the graded
+		# test asks how far the rest of the attended evidence, against chance, says the
+		# reading (or the source's readings together) is wrong, and how well the named cause
+		# explains that.
+		var group: Array = challenge.get("group", [id])
+		# A Seer "misled" (Red Herring, Marked registration) keeps its explicit rule: an
+		# honest gift that registered correctly isn't discounted, and a yes/no flip on one
+		# pair is no automatic discount either. Its registration is already in the worlds.
+		var graded: Dictionary = {} if (challenge.mode == "misled" and str(report.get("role", "")) == "seer" and not challenge.has("group")) else graded_challenge(view, group, challenge.mode, listener, cards)
+		var backfire: bool = false
+		var candidates: Dictionary = {}
+		if not graded.is_empty():
+			var g_mult: float = 1.0 - hearing * graded.cause * graded.effect
+			if g_mult < multiplier:
+				multiplier = g_mult
+				supported = true
+				note = graded.note
+			var g_agree: float = hearing * graded.cause * graded.effect
+			accuracy_agreement = maxf(accuracy_agreement, hearing * graded.effect)
+			if challenge.mode == "lying" and not (report.source in listener.knowledge.get("good", [])):
+				if g_agree > cause_agreement:
+					cause_agreement = g_agree
+					if cause_agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
+						result.sources[report.source] = minf(result.sources.get(report.source, 1.0), 1.0 - Tuning.Workshop.CHALLENGE_SOURCE_PENALTY_SCALE * cause_agreement)
+			elif challenge.mode == "impaired":
+				cause_agreement = g_agree
+				candidates = poisoner_candidates(view, report, value, cards)
+			elif challenge.mode in ["misled", "unlikely", "delusional"]:
+				cause_agreement = maxf(cause_agreement, g_agree)
+			backfire = graded.backfire
+		for member in group:
+			if member != id and cards.any(func(c): return c.id == member):
+				result.reports[member] = minf(result.reports.get(member, 1.0), multiplier)
+		result.reports[id] = minf(result.reports.get(id, 1.0), multiplier)
 		result.results.append({"card": id, "mode": challenge.mode, "supported": supported, "fraction": fraction,
-			"agreement": cause_agreement, "accuracy_agreement": accuracy_agreement, "multiplier": multiplier, "source": report.source, "note": note})
+			"agreement": cause_agreement, "accuracy_agreement": accuracy_agreement, "multiplier": multiplier, "source": report.source, "note": note,
+			"graded": graded, "backfire": backfire, "candidates": candidates, "group": group})
 	if cache.size() >= 64:
 		cache.clear()
 	cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
+
+## Premises step 3: the graded test for a challenged reading (or a source's readings,
+## `group`, taken together). With r the prior chance the reading(s) are accurate (the source
+## good, times one minus the reading error), q the share of worlds in which the content
+## holds before any evidence and f the share after the rest of the attended evidence (both
+## from one CaseEval question, so on one footing), the chance the reading is wrong is
+## (1 - r) q / ((1 - r) q + r f). Its rise above the prior 1 - r, as a share of r, is the
+## challenge's `effect`; `cause` is how well the named explanation accounts for it. A
+## neutral rest moves nothing; a rest that backs the reading up is a `backfire`.
+static func graded_challenge(view: Dictionary, group: Array, mode: String, listener: Dictionary, cards: Array) -> Dictionary:
+	var reports: Array = group.map(func(gid): return Solver.card_by_id(view, gid)).filter(func(c): return not c.is_empty() and c.get("kind", "") == "report" and Solver.tabled(c))
+	if reports.is_empty():
+		return {}
+	var source: String = str(reports[0].source)
+	var ids: Array = reports.map(func(c): return c.id)
+	var rest: Array = cards.filter(func(c): return c.id not in ids and not c.get("quoted", false)).map(func(c): return c.id)
+	var epoch = view.get("alignment_epoch", "")
+	# f and q: does every reading in the group hold, after the rest and before anything.
+	# Jointly: two readings that can't both hold have no shared share of worlds.
+	var question: Dictionary = Solver.empty_case()
+	question.cards = rest.duplicate()
+	if ids.size() == 1:
+		question.conclusion = {"type": "holds", "report": ids[0], "target": source, "at": epoch}
+	else:
+		question.conclusion = {"type": "inconsistent", "reports": ids, "target": source, "at": epoch}
+	var ev: Dictionary = CaseEval.evaluate(view, question, listener)
+	if ev.get("impossible", false):
+		return {}
+	var holds_p0: float = float(ev.prior) if ids.size() == 1 else 1.0 - float(ev.prior)
+	var holds_p1: float = float(ev.posterior) if ids.size() == 1 else 1.0 - float(ev.posterior)
+	var q: float = clampf(holds_p0, 1e-6, 1.0)
+	var f: float = clampf(holds_p1, 0.0, 1.0)
+	# r: the source good (before the case) and each reading's error.
+	var good_q: Dictionary = Solver.empty_case()
+	good_q.cards = rest.duplicate()
+	good_q.conclusion = {"type": "good", "target": source, "at": epoch}
+	var ev_good: Dictionary = CaseEval.evaluate(view, good_q, listener) if source in view.people.map(func(p): return p.id) else {"prior": 1.0, "posterior": 1.0}
+	var accurate: float = clampf(float(ev_good.get("prior", 1.0)), 0.0, 1.0)
+	for r_card in reports:
+		accurate *= 1.0 - CaseEval.reading_error(view, r_card, listener)
+	var r: float = clampf(accurate, 1e-6, 1.0 - 1e-6)
+	var wrong_prior: float = 1.0 - r
+	var wrong: float = wrong_prior * q / maxf(wrong_prior * q + r * f, 1e-12)
+	var rise: float = wrong - wrong_prior
+	var effect: float = clampf(rise / r, 0.0, 1.0)
+	# The cause: how much of the reading being wrong the named explanation carries.
+	var evil_q: Dictionary = Solver.empty_case()
+	evil_q.cards = rest + ids
+	evil_q.conclusion = {"type": "evil", "target": source, "at": epoch}
+	var ev_evil: Dictionary = CaseEval.evaluate(view, evil_q, listener) if source in view.people.map(func(p): return p.id) else {"posterior": 0.0}
+	var evil_share: float = clampf(float(ev_evil.get("posterior", 0.0)) / maxf(wrong, 1e-9), 0.0, 1.0)
+	var cause: float = 1.0
+	var note: String = ""
+	match mode:
+		"lying":
+			cause = evil_share
+			note = "Weighed against the rest of what I know, that reading looks wrong, and a lying reader explains it."
+		"impaired":
+			cause = (1.0 - evil_share) if poisoner_possible(view) else 0.0
+			note = "Weighed against the rest of what I know, that reading looks wrong; a failed gift that night could explain it." if cause > 0.0 else "A failed gift needs a Poisoner in play, and this town can't have one."
+		"delusional":
+			var del_q: Dictionary = Solver.empty_case()
+			del_q.cards = rest + ids
+			del_q.conclusion = {"type": "secret_mod", "target": source, "mod": "delusional", "at": epoch}
+			var del_ok: bool = "delusional" in view.get("world_options", {}).get("modifiers", [])
+			var ev_del: Dictionary = CaseEval.evaluate(view, del_q, listener) if del_ok else {"posterior": 0.0}
+			cause = clampf(float(ev_del.get("posterior", 0.0)) / maxf(wrong, 1e-9), 0.0, 1.0)
+			note = "Those readings don't fit together; a Delusional gift would explain them without anyone lying."
+		_:
+			cause = 1.0 - evil_share if mode == "misled" else 1.0
+			note = "Weighed against the rest of what I know, that reading looks wrong, though the reader may be honest."
+	if effect <= 0.0:
+		note = "Weighed against the rest of what I know, that reading still fits; I don't see a reason to doubt it."
+	# Backfire: the rest of the evidence moves the content a quarter of the way toward
+	# certainly holding (the mirror of the wrong-premise threshold).
+	var backfire: bool = CaseEval.shift(q, f) >= Tuning.Workshop.CHALLENGE_BACKFIRE_SHIFT
+	if backfire:
+		note = "The rest of what I know backs that reading up; doubting it doesn't hold."
+	return {"r": r, "q": q, "f": f, "wrong": wrong, "wrong_prior": wrong_prior, "rise": rise, "effect": effect, "cause": cause, "evil_share": evil_share, "backfire": backfire, "note": note}
+
+## Whether a Poisoner can be in play (the minion lineup, premises step 3): the case's script
+## has one, and no public fact rules it out. Unknown scripts allow it.
+static func poisoner_possible(view: Dictionary) -> bool:
+	var roles: Array = view.get("script_minions", [])
+	return roles.is_empty() or "poisoner" in roles
+
+## Poisoner candidates for a failed gift: people the attended cards saw out on the night
+## the reading was taken, with no gift or private errand the case gives for it. Nobody
+## without such a sighting is a candidate.
+static func poisoner_candidates(view: Dictionary, report: Dictionary, value: Dictionary, cards: Array) -> Dictionary:
+	var night: int = int(report.get("night", -1))
+	if night < 0:
+		var obs: Dictionary = report.get("observed_at", {})
+		night = int(obs.get("day", 0)) - (1 if str(obs.get("phase", "")) == "morning" else 0)
+	var reasons: Dictionary = value.get("reasons", {})
+	var out: Dictionary = {}
+	for c in cards:
+		var seen: Array = []
+		if c.get("kind", "") == "sighting" and int(c.get("night", -1)) == night:
+			seen = c.get("subjects", [c.get("subject", "")])
+		elif c.get("kind", "") == "report" and c.get("role", "") == "nightwatch" and int(c.get("night", -1)) == night:
+			seen = c.get("data", {}).get("seen", [])
+		for person in seen:
+			var key: String = "%s:%d" % [person, night]
+			if str(person) == "" or person == report.source or str(reasons.get(key, "")) in ["gift", "secret"]:
+				continue
+			out[person] = true
+	return out
 
 ## Count distinct alignment/modifier layouts, ignoring redundant Demon identities.
 ## Report and role tables are compiled once; no per-world strings or role-cache hash.

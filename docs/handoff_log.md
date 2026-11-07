@@ -27,6 +27,44 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06 night, Claude-Bailiff: premises step 3 reviewed and merged (PR #95)
+
+Base: Quill's `0b87978` with main merged in. Two Codex findings fixed, with regression checks
+in `test_premise_step3` (each fails without its fix):
+
+- **Content-only "holds" mask.** `CaseEval._holds_mask` now calls
+  `Solver.reading_holds_table`. That uses the C# report table with a new optional
+  `contentOnly` spec flag (`specInts[18]`), which skips the source's alignment, health and gift
+  timing. The old mask also required a good, healthy source. `graded_challenge` already
+  counts that through r, so it was counted twice, and "readings don't fit together" held in
+  every world where the source was evil. `Solver.holds` "inconsistent" uses the same table.
+- **The Poisoner check reads the script's minions.** `WorkshopBridge.capture` adds
+  `rules.minions`, live_assessment passes it on as `view.script_minions`, and
+  `poisoner_possible` reads it. `rules.roles` (`possible_roles`) lists every ready role
+  whatever the script.
+
+Checks: `dotnet build`; 297 scripts parse; 120/120 suites; two golden captures identical.
+**New baseline `baseline_4e54261`** replaces Quill's `baseline_858495d`, which was never on
+main and is removed. The changes are small, at the same meeting refreshes. See
+`docs/golden_baseline.md`. Next: Tally's step 1–3 A/B.
+
+## 2026-11-06 evening, Claude-Quill: premises step 3 on `claude/premises-step3` (on Bailiff's step 2 fixes, `5514f14`)
+
+Plan: `docs/premises_plan.md`, "Step 3 as built".
+- **Graded challenges:** a reading challenge lands as far as the rest of the attended
+  evidence, against the reading's own chance (one CaseEval "holds" question, before and
+  after), says it's wrong. Neutral challenges do nothing; old hard cases are floors.
+- **Causes:** lied (raises the reader), failed gift (new; needs a Poisoner in the script;
+  points at people seen out that night without a reason), misled (no blame).
+- **Backfire** costs 0.02 trust, separately from the case's own reward or cost. Threshold
+  is a 0.25 shift toward the reading holding: the plan's "0.1 below the prior" is
+  unreachable (flagged to Michael).
+- **New premise "has readings that don't fit together"** with a cause; scored jointly.
+- **The Seer's "holds" is the Demon's place** (a Red Herring ping is "misled").
+- **For Tally:** an A/B row for steps 2–3 alongside step 1's would separate them.
+
+---
+
 ## 2026-11-06 evening, Claude-Quill: premises step 2 on `claude/premises-step2` (stacked on step 1, PR #92)
 
 Plan: `docs/premises_plan.md`, "Step 2 as built". Decided with Michael: both Marked pickers

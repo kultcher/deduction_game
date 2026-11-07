@@ -352,7 +352,7 @@ func add_modifier(id: String, mode: String) -> String:
 	if not nodes.has(id) or nodes[id].kind != "evidence":
 		return "Select a reading card."
 	var report = Solver.card_by_id(view, nodes[id].card)
-	if report.kind != "report" or report.has("relay_source") or report.get("testimony_only", false) or mode not in ["misled", "lying", "unlikely"] or (mode == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))):
+	if report.kind != "report" or report.has("relay_source") or report.get("testimony_only", false) or mode not in ["misled", "lying", "unlikely", "impaired"] or (mode == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))):
 		return "This modifier is not supported for that evidence type."
 	for node in nodes.values():
 		if node.kind == "modifier" and node.card == report.id:
@@ -765,7 +765,7 @@ const PREMISE_TEXT = {"evil": "is evil", "suspicious": "is suspicious", "good": 
 	"conflict": "these reports conflict", "demon": "is the Demon", "minion": "is a Minion",
 	"notdemon": "is not the Demon", "secret_mod": "holds a secret", "role": "holds their claimed gift",
 	"notrole": "is bluffing their claimed gift", "lied": "lied about a reading", "truthful": "told the truth about a reading",
-	"misled": "was misled by a reading", "unreliable": "gave an unreliable reading"}
+	"misled": "was misled by a reading", "unreliable": "gave an unreliable reading", "inconsistent": "has readings that don't fit together"}
 
 func title(id: String) -> String:
 	var node: Dictionary = nodes[id]
@@ -780,7 +780,7 @@ func title(id: String) -> String:
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
 	if node.kind == "modifier":
-		return {"misled": "Misled reading", "lying": "Suspected lie", "unlikely": "Unlikely reading"}[node.mode]
+		return {"misled": "Misled reading", "lying": "Suspected lie", "unlikely": "Unlikely reading", "impaired": "Failed gift"}[node.mode]
 	if node.kind == "profile_info":
 		return "%s's Profile" % Solver.person_name(view, node.get("person", ""))
 	if node.kind == "circumstantial":
