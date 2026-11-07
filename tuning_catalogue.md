@@ -42,6 +42,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PLAYER_TRUST_MAX` | `0.9` |  | `sim/world.gd` |
 | `OWN_ROLE_CLAIM_WEIGHT` | `1.5` | First-hand knowledge weight of an NPC's own true gift | `sim/mind.gd`, `sim/world.gd` |
 | `IDLE_HAUNT_CHANCE` | `0.4` | Conversation & movement rates | `sim/world.gd` |
+| `HAUNT_SIGHTING_DAYS` | `2` |  | `game/game_day_night.gd` |
+| `HAUNT_SIGHTING_DAYS_TAVERN` | `3` |  | `game/game_day_night.gd` |
 | `TOWN_HALL_USES_PER_CASE` | `3` |  | `game/game_day_night.gd`, `sim/world.gd` |
 | `PAIR_SILENCED_WEIGHT` | `0.02` |  | `sim/world.gd` |
 | `PAIR_TRUST_PIVOT` | `0.3` |  | `sim/world.gd` |
@@ -200,6 +202,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WARD_SIGIL_TARGET_BONUS` | `0.15` |  | `game/game_presentation.gd` |
 | `SELF_SUPPORT_BONUS` | `0.03` |  | `game/workshop_presentation.gd`, `sim/mind.gd` |
 | `PRESENTATION_REWARD` | `0.02` |  | `game/workshop_presentation.gd` |
+| `PRESENTATION_WRONG_COST` | `0.02` | Premises pass step 1: a clearly wrong premise costs what a good one earns. Agreement is CaseEval.shift (-1..1, how far the evidence moved toward the premise), so "clearly wrong" is the evidence moving a quarter of the way toward the premise being false. | `game/workshop_presentation.gd` |
+| `PRESENTATION_WRONG_AGREEMENT` | `-0.25` |  | `game/workshop_presentation.gd` |
 | `NOMINATED_PRESSURE` | `0.4` |  | `sim/world.gd` |
 | `NOMINATED_BY_PLAYER_DROP` | `0.15` |  | `sim/world.gd` |
 | `NOMINATED_NPC_TRUST_DROP` | `0.25` |  | `sim/world.gd` |
@@ -617,6 +621,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WITNESS_QUALITY_MAX` | `0.95` |  | `workshop/reading_challenges.gd`, `workshop/support_model.gd` |
 | `CHALLENGE_GROUND_MIN_QUALITY` | `0.4` |  | `workshop/reading_challenges.gd` |
 | `CHALLENGE_SOURCE_PENALTY_SCALE` | `0.3` |  | `workshop/reading_challenges.gd` |
+| `CHALLENGE_BACKFIRE_SHIFT` | `0.25` | Premises step 3: a challenge backfires (and costs the presentation trust) when the rest of the evidence moves the reading's content this far toward certainly holding (CaseEval.shift of its share of worlds; the mirror of PRESENTATION_WRONG_AGREEMENT). The plan's "0.1 below the prior" can't be reached: the chance a reading is wrong can only fall to (1 - r) q / ((1 - r) q + r), about 0.09 below the prior at default trust. | `workshop/reading_challenges.gd` |
+| `CHALLENGE_POISONER_SCALE` | `0.12` | An accepted "the gift failed" challenge raises its Poisoner candidates by this share of its agreement, split among them. | `workshop/jury.gd` |
 | `BLUFF_WEIGHT` | `0.92` | Role constraints, movement & public/speech evidence (`workshop/*.gd`) | `workshop/role_constraints.gd` |
 | `CHANCE_CONTENT_FLOOR` | `0.01` | Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds where a report's content holds). | `workshop/case_eval.gd` |
 | `VIGIL_MISS` | `0.05` | A player vigil that should have seen someone and didn't: the town's allowance that the Demonologist missed them (the player can't be wrong; the town doesn't know that). With the walker-claim split below, an empty vigil on a claimed walker's block is about 10:1 against the claim (strong, not certain). Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`. | `tools/autoplay.gd`, `workshop/live_activity.gd` |
@@ -676,6 +682,12 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `THEORY_THRESHOLD_SLOPE` | `4.0` |  | `workshop/theory.gd` |
 | `VENUE_MULTS` | `{ "private": 1.0, "meeting": 0.6, "nomination": 0.5, }` | Presentation venue multipliers (`game/workshop_presentation.gd`) | `game/game_meeting.gd`, `game/game_presentation.gd` |
 | `STANCE_MOVE` | `{ "accept": 0.06, "partial": 0.02, }` |  | `game/workshop_presentation.gd` |
+| `PREMISE_SPILLOVER_MIN` | `0.4` | Premises pass step 1 (docs/premises_plan.md): a presented case moves its premise's target by the full evidence, and everyone else by this share of the presentation's effect, from the lowest to the highest Insight. Remembered for every refresh. | `workshop/shared_ledger.gd` |
+| `PREMISE_SPILLOVER_MAX` | `0.8` |  | `workshop/shared_ledger.gd` |
+| `PREMISE_SHAPING_TYPES` | `["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrol...` | Premise types whose target is an alignment question. Marked, secret, misled and conflict premises name no alignment target, so their cards spill over in full. | `workshop/shared_ledger.gd` |
+| `PREMISE_PREF_MIN_AGREEMENT` | `0.5` | The protect / believed-role preference from a presented premise needs at least this agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks. | `sim/mind.gd` |
+| `SUSPICIOUS_HEARING` | `0.5` | Premises pass step 2: "suspicious" hedges, so the cards only suspicious premises brought count at this share for everyone (both directions), and the rest of their full effect on the target becomes pressure, once per filing: the average listener's full-weight rise times this (private / meeting), so a rise of 0.2 gives the conflict premise's +0.1 / +0.2. | `workshop/shared_ledger.gd` |
+| `SUSPICIOUS_PRESSURE_PER_RISE` | `{"private": 0.5, "meeting": 1.0}` |  | `game/workshop_presentation.gd` |
 | `SALIENCE_BASE` | `1.0` | Bounded reasoning attention profiles (`workshop/reasoner.gd`) Attention salience (Reasoner._salience; premises pass step 0b). Naming the target outranks being a gift reading; trust in the source is a tiebreak. | `workshop/reasoner.gd` |
 | `SALIENCE_TRUST` | `0.1` |  | `workshop/reasoner.gd` |
 | `SALIENCE_GIFT` | `2.0` |  | `workshop/reasoner.gd` |

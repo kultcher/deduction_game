@@ -122,7 +122,9 @@ it means the game must teach its own way of thinking and make evidence very read
   and talked to at work then. Free slots are flexible and unannounced; deviation is
   normal, so absence alone is not damning.
 - **Haunts:** each person has two favourite idle spots (40% of idle hours). Nobody's haunts
-  are known at the start; asking someone about a person may reveal one or both.
+  are known at the start; asking someone about a person may reveal one or both. Searching a
+  place names one of its regulars (once per place per game), and seeing someone idle at a
+  haunt on 2 different days (3 for the tavern; `Tuning.Setup.HAUNT_SIGHTING_DAYS*`) teaches it.
 - **Profile receipts.** Where someone lives, works and idles, their learned traits and
   their known bonds are kept as hidden **profile receipts** rather than board cards. They
   show in the person's profile and enter a case through a **Profile Info** node in the
