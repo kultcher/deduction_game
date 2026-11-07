@@ -96,6 +96,9 @@ vote resistance lines, including "when they agree and still vote no, they say wh
   Measure with the bot A/B; check this doesn't let moderately supported wrong
   nominations through. [decided: direction; numbers open]
 
+  Built Nov 6 as premises steps 1–3 (PRs #92, #93, #95; `docs/premises_plan.md`). The
+  acceptance A/B is still to come.
+
 - **Seen with the silenced.** (user, Oct 25) Being somewhere with a person who was later
   breath-stolen should add a little suspicion, enough to reward noticing it, without the
   player linking every location card. Options: (a) a flat circumstantial amount for

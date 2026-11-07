@@ -188,7 +188,9 @@ live, work and idle, their traits and bonds) goes into their profile, from where
 join a case. People at work or deep in conversation are visible from anywhere; anyone else only
 once you pick their block. `go <person>` takes you to them if you know where they are,
 otherwise to their block; people at home can be visited. People in conversation can't be
-talked to. Asking someone about a person may reveal that person's haunts.
+talked to. Asking someone about a person may reveal that person's haunts. So can searching one of
+the eight town places (it names one of its regulars, once per place per game), and seeing someone idle
+at one of their haunts on two different days (three for the tavern).
 
 **Talking.** A conversation has three questions. `ask gift` answers at one of four levels
 depending on the NPC's Privacy, their trust in you, pressure and the day: deny or refuse, a

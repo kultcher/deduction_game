@@ -21,8 +21,7 @@ the listener's pinned own readings.
 
 **Step 1 (Nov 6, Claude-Quill, PR #92):** built; see "Step 1 as built" below.
 **Step 2 (Nov 6, Claude-Quill, PR #93):** built; see "Step 2 as built".
-**Step 3 (Nov 6, Claude-Quill, branch `claude/premises-step3`, on Bailiff's step 2 fixes):**
-built; see "Step 3 as built". Its acceptance A/B with the M4 bot is Tally's (overnight), with attention budgets
+**Step 3 (Nov 6, Claude-Quill, with Bailiff's review fixes, PR #95):** on main; see "Step 3 as built". Its acceptance A/B with the M4 bot is Tally's (overnight), with attention budgets
 fixed between arms. Step 4 isn't started. Deliberate recency in attention is a separate
 step after step 1 (see "Recency: the topic of the day" below).
 
