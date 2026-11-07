@@ -27,6 +27,27 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-07 evening, Claude-Bailiff: step 3 speed fix (`perf/step3-speed`)
+
+The step 3 slowdown in the Nov 7 A/B (`claude/premises-ab-2026-11-07.md`) comes from NPC
+bare defences. Every challenge in a passive game and in an M4-bot game was a bare defence:
+no grounds, hearing 0.03–0.05. Every listener holding one ran `graded_challenge` at every
+refresh, and each run made three full CaseEval evaluations. Caching doesn't help: 541 of 586
+inputs were distinct. Two of the evaluations were avoidable without changing a decision:
+- **r's prior** comes from the holds evaluation's per-person prior. The separate "good"
+  evaluation agreed to 1e-14.
+- **The cause is skipped when the effect is zero.** That covers the source-evil and
+  Delusional evaluations, and 91% of challenges in a passive game.
+One game, 10 NPCs: passive (seed 100000) went from 71 s to 35 s; M4 bot (seed 100003) from
+214 s to 152 s. Outcomes were the same.
+
+Checks: 297 parse, 116/116 suites, two captures identical. New baseline `baseline_5ba1d64`;
+the games are the same (see `docs/golden_baseline.md`).
+
+**Open, for Michael:** skipping graded scoring for bare defences altogether (no supports,
+hearing < 0.1) takes those two games to 19 s and 112 s. That would end bare defences' slight
+step 3 effect. Not done.
+
 ## 2026-11-06 night, Claude-Bailiff: premises step 3 reviewed and merged (PR #95)
 
 Base: Quill's `0b87978` with main merged in. Two Codex findings fixed, with regression checks
