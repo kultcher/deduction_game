@@ -30,7 +30,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 	if selected.is_empty():
 		return {"reports": {}, "sources": {}, "results": []}
 	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), view.get("world_options", {}), view.evil_count, selected, cards, listener.knowledge, listener.suspicion, listener.npc_trust, listener.trust,
-		listener.get("reading_reliability", {}), view.get("script_roles", []), value.get("reasons", {})]
+		listener.get("reading_reliability", {}), view.get("script_minions", []), value.get("reasons", {})]
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
@@ -265,7 +265,7 @@ static func graded_challenge(view: Dictionary, group: Array, mode: String, liste
 ## Whether a Poisoner can be in play (the minion lineup, premises step 3): the case's script
 ## has one, and no public fact rules it out. Unknown scripts allow it.
 static func poisoner_possible(view: Dictionary) -> bool:
-	var roles: Array = view.get("script_roles", [])
+	var roles: Array = view.get("script_minions", [])
 	return roles.is_empty() or "poisoner" in roles
 
 ## Poisoner candidates for a failed gift: people the attended cards saw out on the night

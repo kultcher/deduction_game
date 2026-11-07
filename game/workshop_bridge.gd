@@ -15,13 +15,21 @@ static func possible_roles(g) -> Array:
 	return C.ROLES.keys().filter(func(r): return ScriptDef.status_of(r) != "experimental" or (sc != null and sc.has(r)))
 
 
+## The minions this case's script may deal (null deals the Default script's). Not
+## possible_roles, which keeps every ready role for the solver whatever the script.
+static func script_minions(g) -> Array:
+	var sc = g.w.case_script
+	return (sc.minions if sc != null else ScriptDef.default_minions()).duplicate()
+
+
 static func capture(g, selected: Array, listener_id: String = "", venue: String = "private", cover_mind = null) -> Dictionary:
 	var now = {"day": g.w.day, "phase": g._phase_now()}
 	var input = {"case_id": "case:%d:%d" % [g.w.seed_value, g.w.n_npcs], "now": now, "venue": venue,
 		"people": [], "receipts": [], "selected": [], "arguments": [], "root": 0, "issues": [],
 		"public_events": [], "rules": {"initial_evil_count": 1 + C.SETUPS.get(g.w.n_npcs, {"minions": 1}).minions,
 			"modifier_options": g.w.case_script.secrets.duplicate() if g.w.case_script != null else C.SECRET_MOD_LIST.duplicate(), "one_modifier_kind": true,
-			"lovers_holders": 2, "other_modifier_holders": 1, "roles": possible_roles(g)}}
+			"lovers_holders": 2, "other_modifier_holders": 1, "roles": possible_roles(g),
+			"minions": script_minions(g)}}
 	if venue not in ["private", "meeting", "nomination"]:
 		input.issues.append({"code": "invalid_venue", "fact": "", "detail": venue})
 	for n in g.w.npcs:

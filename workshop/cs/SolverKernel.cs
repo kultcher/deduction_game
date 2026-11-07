@@ -773,6 +773,13 @@ internal static class SolverKernel
         }
     }
 
+    private static byte[] AllOnes(int n)
+    {
+        var ones = new byte[n];
+        Array.Fill(ones, (byte)1);
+        return ones;
+    }
+
     public static byte[] EvaluateReportTable(
         int universeHandle,
         long[] fallbackWorlds,
@@ -802,6 +809,8 @@ internal static class SolverKernel
         // [15] markedRegisters (0/1)
         // [16] testimonyMask
         // [17] testimonySecretModCode
+        // [18] contentOnly (0/1, optional): skip the source's alignment, health and gift
+        //      timing, so 1 means only that the content holds (premises step 3)
         long[] worlds = SolverContext.ResolveWorlds(universeHandle, Array.Empty<int>(), fallbackWorlds);
         int n = worlds.Length;
         byte[] accepted = new byte[n];
@@ -824,13 +833,14 @@ internal static class SolverKernel
         bool markedRegisters = specInts[15] != 0;
         int testimonyMask = specInts[16];
         int testimonySecretModCode = specInts[17];
+        bool contentOnly = specInts.Length > 18 && specInts[18] != 0;
 
         if (testimonyOnly && cardKindCode == CardKindReport)
         {
             for (int i = 0; i < n; i++)
             {
                 var w = new WorldEntry(worlds[i]);
-                bool ok = SourceValidWorld(w, isLive, CardKindReport, true, sourceIdx, giftTimeAndAliveOk, convEvilAtStmt)
+                bool ok = (contentOnly || SourceValidWorld(w, isLive, CardKindReport, true, sourceIdx, giftTimeAndAliveOk, convEvilAtStmt))
                     && EvalTestimonyContentWorld(
                         w,
                         nPeople,
@@ -854,7 +864,7 @@ internal static class SolverKernel
         // Chronicler and Augur depend on world.Demon, which sig_groups collapses; evaluate per world.
         if (cardKindCode == CardKindReport && (contentMode == ContentChronicler || contentMode == ContentAugur || contentMode == ContentMonitor))
         {
-            byte[] valid = EvaluateValidTable(
+            byte[] valid = contentOnly ? AllOnes(n) : EvaluateValidTable(
                 universeHandle,
                 worlds,
                 nPeople,
@@ -900,7 +910,7 @@ internal static class SolverKernel
 
         if (cardKindCode == CardKindReport)
         {
-            byte[] valid = EvaluateValidTable(
+            byte[] valid = contentOnly ? AllOnes(n) : EvaluateValidTable(
                 universeHandle,
                 worlds,
                 nPeople,

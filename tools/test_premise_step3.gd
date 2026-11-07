@@ -12,6 +12,8 @@ const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Challenges = preload("res://workshop/reading_challenges.gd")
+const CaseEval = preload("res://workshop/case_eval.gd")
+const Bridge = preload("res://game/workshop_bridge.gd")
 var checks = 0
 var fails = 0
 
@@ -20,6 +22,8 @@ func _init() -> void:
 	_backfire()
 	_impaired()
 	_inconsistent()
+	_script_without_poisoner()
+	_content_only()
 	print("Premises step 3: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -167,12 +171,12 @@ func _impaired() -> void:
 	var roles: Array = g.w.case_script.minions if g.w.case_script != null else []
 	print("impaired: script minions %s, candidates %s, graded %s" % [roles, ir.get("candidates", {}), ir.get("graded", {})])
 	check(not ir.is_empty(), "a failed-gift challenge is assessed")
-	var possible: bool = Challenges.poisoner_possible({"script_roles": g.w.case_script.minions if g.w.case_script != null else []})
+	var possible: bool = Challenges.poisoner_possible({"script_minions": g.w.case_script.minions if g.w.case_script != null else []})
 	if possible:
 		check(ir.get("candidates", {}).has(p[1].id), "someone seen out that night with no reason is a Poisoner candidate")
 		check(not ir.get("candidates", {}).has(p[3].id), "nobody without such a sighting is")
-	check(not Challenges.poisoner_possible({"script_roles": ["scion", "brute"]}), "with no Poisoner in the script, the cause can't hold")
-	check(Challenges.poisoner_possible({"script_roles": ["poisoner", "scion"]}), "with one, it can")
+	check(not Challenges.poisoner_possible({"script_minions": ["scion", "brute"]}), "with no Poisoner in the script, the cause can't hold")
+	check(Challenges.poisoner_possible({"script_minions": ["poisoner", "scion"]}), "with one, it can")
 
 func _inconsistent() -> void:
 	var g = _game()
@@ -186,6 +190,56 @@ func _inconsistent() -> void:
 	check(not grouped.is_empty(), "a source's readings that don't fit together are challenged as a group")
 	if not grouped.is_empty():
 		check(grouped[0].mode == "lying" and float(grouped[0].multiplier) < 1.0, "a yes and then a no on the same pair: the group lands, with the named cause")
+
+## Review fix (Codex, PR #95): the Poisoner check reads the case script's minions, not the
+## solver's possible roles (every ready role, whatever the script).
+func _script_without_poisoner() -> void:
+	var g = _game()
+	var p: Array = g.w.npcs
+	g.w.case_script.minions = g.w.case_script.minions.filter(func(r): return r != "poisoner")
+	check(not ("poisoner" in Bridge.capture(g, []).rules.get("minions", [])), "the snapshot carries the script's minions")
+	check("poisoner" in Bridge.capture(g, []).rules.roles, "while the solver's roles still list every ready role")
+	var seer = _remember(g, _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true}))
+	var d1 = _remember(g, _read(g, p[5], "dowser", 1, {"group": [p[3].id], "count": 0}))
+	var d2 = _remember(g, _read(g, p[6], "dowser", 1, {"group": [p[4].id], "count": 0}))
+	var res: Dictionary = _present(g, "evil", p[2].id, [seer, d1, d2], seer, "impaired", [d1, d2])
+	var ir: Dictionary = _result_for(res.results, "impaired")
+	check(not ir.is_empty() and float(ir.get("graded", {}).get("cause", 1.0)) == 0.0 and float(ir.get("agreement", 1.0)) == 0.0,
+		"with no Poisoner on the script, a failed-gift challenge carries no blame (%s)" % ir.get("graded", {}))
+
+## Review fix (Codex, PR #95): "the content holds" is about the content, not the source.
+## A Dowser's clear holds wherever its subject is good, even if the Dowser is evil, and
+## two readings that can both be true never "don't fit together".
+func _content_only() -> void:
+	var g = _game()
+	var p: Array = g.w.npcs
+	_read(g, p[5], "dowser", 1, {"group": [p[3].id], "count": 0})
+	_read(g, p[5], "dowser", 2, {"group": [p[4].id], "count": 0})
+	var view: Dictionary = Live.view(g)
+	var reps: Array = view.cards.filter(func(c): return c.get("kind", "") == "report" and c.get("source", "") == p[5].id and c.get("role", "") == "dowser")
+	check(reps.size() == 2, "both readings are on the board")
+	if reps.size() != 2:
+		return
+	var epoch = view.get("alignment_epoch", "")
+	var worlds: Array = Solver.universe(view)
+	var evil = func(w, id): return Solver.holds(view, w, {"type": "evil", "target": id, "at": epoch})
+	var holds: PackedByteArray = CaseEval._premise_mask(view, {"type": "holds", "report": reps[0].id, "target": p[5].id, "at": epoch})
+	var odd: PackedByteArray = CaseEval._premise_mask(view, {"type": "inconsistent", "reports": [reps[0].id, reps[1].id], "target": p[5].id, "at": epoch})
+	var evil_src_clear: int = 0
+	var bad_holds: int = 0
+	var bad_odd: int = 0
+	for i in range(worlds.size()):
+		var w = worlds[i]
+		var clear3: bool = not evil.call(w, p[3].id)
+		if evil.call(w, p[5].id) and clear3:
+			evil_src_clear += 1
+		if (holds[i] != 0) != clear3:
+			bad_holds += 1
+		if (odd[i] != 0) != (evil.call(w, p[3].id) or evil.call(w, p[4].id)):
+			bad_odd += 1
+	check(evil_src_clear > 0, "some worlds have an evil Dowser and a good subject (%d)" % evil_src_clear)
+	check(bad_holds == 0, "the clear holds exactly where its subject is good, whoever the Dowser is (%d worlds off)" % bad_holds)
+	check(bad_odd == 0, "two clears only fail to fit where one of them is wrong, not wherever the Dowser is evil (%d worlds off)" % bad_odd)
 
 func check(ok: bool, label: String) -> void:
 	checks += 1

@@ -120,7 +120,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	var view = {"seed": 0, "day": snapshot.now.day, "people": snapshot.people.duplicate(true), "cards": cards,
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": epoch, "history": [],
 		"world_options": {"modifiers": snapshot.rules.modifier_options.duplicate()}, "scope": result.scope,
-		"script_roles": snapshot.rules.get("roles", []).duplicate(),
+		"script_minions": snapshot.rules.get("minions", []).duplicate(),
 		"timeline": History.from_events(snapshot.public_events)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value

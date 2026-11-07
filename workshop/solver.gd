@@ -324,15 +324,17 @@ static func _build_universe(view: Dictionary) -> Array:
 ## For one report (or curse event) card: a byte per universe world, 1 where the card's
 ## content holds as a healthy reading from a good source (cached by exact inputs).
 ## marked: answered "registered because Marked" (Dowser and Surveyor answers only).
-static func report_table(view: Dictionary, card: Dictionary, positive: Array = [], positive_blocks: Array = [], marked: Array = []) -> PackedByteArray:
+## content_only: 1 where the content holds, whoever the source is and whatever their
+## health (premises step 3's graded challenges weigh the source separately).
+static func report_table(view: Dictionary, card: Dictionary, positive: Array = [], positive_blocks: Array = [], marked: Array = [], content_only: bool = false) -> PackedByteArray:
 	if not SolverBackend.profiling_enabled:
-		return _report_table_dispatch(view, card, positive, positive_blocks, marked)
+		return _report_table_dispatch(view, card, positive, positive_blocks, marked, content_only)
 	var st: int = SolverBackend.begin_stage("world_domain")
-	var out: PackedByteArray = _report_table_dispatch(view, card, positive, positive_blocks, marked)
+	var out: PackedByteArray = _report_table_dispatch(view, card, positive, positive_blocks, marked, content_only)
 	SolverBackend.end_stage(st)
 	return out
 
-static func _report_table_dispatch(view: Dictionary, card: Dictionary, positive: Array, positive_blocks: Array, marked: Array) -> PackedByteArray:
+static func _report_table_dispatch(view: Dictionary, card: Dictionary, positive: Array, positive_blocks: Array, marked: Array, content_only: bool = false) -> PackedByteArray:
 	var universe_key = _universe_key(view)
 	var u_worlds: Array = universe(view)
 	positive = positive.duplicate()
@@ -349,15 +351,17 @@ static func _report_table_dispatch(view: Dictionary, card: Dictionary, positive:
 		inputs.append(marked)
 	if card.get("testimony_only", false):
 		inputs.append([true, card.get("reported_at")])
+	if content_only:
+		inputs.append("content_only")
 	var key = hash(inputs)
 	if not report_matches.has(key) or report_matches[key].inputs != inputs:
 		if report_matches.size() > 512:
 			report_matches.clear()
-		var accepted: PackedByteArray = _report_table_cs(view, universe_key, u_worlds, card, positive, positive_blocks, marked)
+		var accepted: PackedByteArray = _report_table_cs(view, universe_key, u_worlds, card, positive, positive_blocks, marked, content_only)
 		report_matches[key] = {"inputs": inputs.duplicate(true), "accepted": accepted}
 	return report_matches[key].accepted
 
-static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: Array, card: Dictionary, positive: Array, positive_blocks: Array, marked: Array) -> PackedByteArray:
+static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: Array, card: Dictionary, positive: Array, positive_blocks: Array, marked: Array, content_only: bool = false) -> PackedByteArray:
 	_ensure_people(view)
 	var u_handle: int = SolverBackend.get_universe_handle(universe_key, u_worlds)
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
@@ -640,6 +644,7 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 		1 if marked_reg else 0,
 		testim_mask,
 		testim_secret_code,
+		1 if content_only else 0,
 	])
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("Solver.report_table", pack_u)
@@ -1669,7 +1674,7 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 			var evil: bool = TimeModel.evil_index(view, world, index, conclusion.get("question_at", conclusion.at))
 			return evil if conclusion.type == "lied" else not evil
 		"inconsistent":
-			# Premises step 3: not every one of the source's readings holds in this world.
+			# Premises step 3: not every one of the source's readings' content holds here.
 			var i_w: int = world.get("__i", -1)
 			if i_w < 0:
 				i_w = universe(view).find(world)
@@ -1677,7 +1682,7 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 				var rep: Dictionary = card_by_id(view, str(rid))
 				if rep.is_empty() or i_w < 0:
 					continue
-				var tbl: PackedByteArray = report_table(view, rep)
+				var tbl: PackedByteArray = reading_holds_table(view, rep, conclusion.get("at", view.get("alignment_epoch", "")))
 				if i_w < tbl.size() and tbl[i_w] == 0:
 					return true
 			return false
@@ -1690,6 +1695,35 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 	return false
 
 static var question_cache: Dictionary = {}
+
+## Premises step 3: a byte per universe world, 1 where a reading's content holds, whoever
+## gave it and however healthy they were (the source's goodness and the reading's error
+## are weighed separately, as r in ReadingChallenges.graded_challenge). The Seer's content
+## is the Demon's place: a Red Herring or Marked registration is how a false Seer reading
+## happens, not the reading holding.
+static func reading_holds_table(view: Dictionary, report: Dictionary, at = null) -> PackedByteArray:
+	var worlds: Array = universe(view)
+	var epoch = view.get("alignment_epoch", "") if at == null else at
+	var input = [_universe_key(view), view.people, view.get("timeline", {}), view.get("live_activity", false), "holds", report, epoch]
+	var key = hash(input)
+	if question_cache.has(key) and question_cache[key].input == input:
+		return question_cache[key].table
+	var out := PackedByteArray()
+	out.resize(worlds.size())
+	if report.get("kind", "") != "report" or not tabled(report):
+		out.fill(1)
+	elif str(report.get("role", "")) == "seer":
+		var pair: Array = report.get("data", {}).get("pair", []).map(func(p): return str(p))
+		var yes: bool = bool(report.get("data", {}).get("yes", false))
+		for i in range(worlds.size()):
+			var in_pair: bool = pair.any(func(p): return person_index(view, p) >= 0 and position_holds(view, worlds[i], p, "demon", epoch))
+			out[i] = 1 if in_pair == yes else 0
+	else:
+		out = report_table(view, report, [], [], [], true)
+	if question_cache.size() >= 128:
+		question_cache.clear()
+	question_cache[key] = {"input": input.duplicate(true), "table": out}
+	return out
 
 static func question_inputs(view: Dictionary, conclusion: Dictionary) -> Array:
 	if conclusion.get("type") == "inconsistent":
