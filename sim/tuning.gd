@@ -822,6 +822,10 @@ class Workshop:
 	## (headline - model) where the headline is higher. The per-role values are the chance
 	## each named person is evil "if the reading is simply true" (1.0 = full share).
 	const HEADLINE_WEIGHT = 1.0
+	## The blend toward the headline grows with the headline's strength, full at this value
+	## (about one Seer ping at default trust). Before Nov 6 any positive headline, however
+	## faint, pulled by the whole gap, so a faint ping halved a clearing at Insight 0.5.
+	const HEADLINE_FULL_AT = 0.1
 	## Directional Confidence: below this lean (suspicion minus the listener's average) there
 	## is no hunch to defend, so Confidence doesn't resist (Oct 30).
 	const LEAN_MIN = 0.05
@@ -993,6 +997,18 @@ class Workshop:
 	const SALIENCE_TARGET = 4.0
 	const SALIENCE_NAMED = 2.0
 	const SALIENCE_EXCLUSION = 1.0
+	## Recency (sim/recency.gd): attention drifts. A card loses salience by days since it was
+	## learned or last brought up, at RECENCY_DECAY_LOW per day for Insight 0 down to
+	## RECENCY_DECAY_HIGH for Insight 1, at most RECENCY_AGE_CAP. A card naming (or from)
+	## today's topic gains RECENCY_TOPIC_WEIGHT times that person's topic weight (0..1).
+	const RECENCY_DECAY_LOW = 0.5
+	const RECENCY_DECAY_HIGH = 0.1
+	const RECENCY_AGE_CAP = 3.0
+	const RECENCY_TOPIC_WEIGHT = 1.5
+	## The topic of the day: what each public act adds to a person's topic weight (summed,
+	## capped at 1), and how much of it is left each following day.
+	const RECENCY_TOPIC_EVENTS = {"nomination": 1.0, "accusation": 0.6, "argued": 0.6, "defence": 0.3}
+	const RECENCY_TOPIC_DAILY = 0.5
 	const INSIGHT_LOW_CUTOFF = 0.34
 	const INSIGHT_MEDIUM_CUTOFF = 0.67
 	const PROFILE_LOW = {

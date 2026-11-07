@@ -84,6 +84,9 @@ func _secret_word() -> void:
 	# In the solver's posterior. (Suspicion also carries the headline rule, which here pulls
 	# against the word harder when the Seer card, heard through the player, is trusted more.)
 	check(base_low.post3 - word_low.post3 < base.post3 - word.post3, "a listener who doubts the player believes the word less (posterior drop %.3f vs %.3f)" % [base_low.post3 - word_low.post3, base.post3 - word.post3])
+	# Headline fix (Nov 6, with recency): a faint Seer ping no longer pulls a clearing back
+	# by the whole gap, so the trusted player's word clears p3 more in suspicion too.
+	check(word.p3 < word_low.p3, "a trusted player's word clears p3 more than a doubted one's (%.3f vs %.3f)" % [word.p3, word_low.p3])
 
 func _secret_record() -> void:
 	var g = _game()

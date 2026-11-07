@@ -10,6 +10,7 @@ const Mind = preload("res://sim/mind.gd")
 const Deduction = preload("res://sim/deduction.gd")
 const PresentationReply = preload("res://sim/presentation_reply.gd")
 const Profiler = preload("res://workshop/profiler.gd")
+const Recency = preload("res://sim/recency.gd")
 const Ownership = preload("res://game/workshop_ownership.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
@@ -117,6 +118,13 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			state.disclosures[id] = {"player": true, "public": false}
 		if venue != "private":
 			state.disclosures[id].public = true
+	# Recency: the presented cards are back on this listener's mind, and a case argued at a
+	# meeting puts its subject on the town's topic (sim/recency.gd).
+	Recency.refresh_cards(g.w, n, snapshot.selected)
+	if venue != "private":
+		var argued: String = str(headline.conclusion.get("a", headline.conclusion.get("target", "")))
+		if argued != "" and not g.w.meeting_arguments.any(func(e): return e.day == g.w.day and e.target == argued):
+			g.w.meeting_arguments.append({"day": g.w.day, "target": argued})
 	# What they say follows what the case did to their belief (see _belief_stance_text).
 	var stance_subject: String = headline.conclusion.get("a", "")
 	var stance_before: float = n.suspicion.get(stance_subject, 0.1)

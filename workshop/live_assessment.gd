@@ -806,7 +806,7 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 		"reading_reliability": reliability, "knowledge": {"self": src.id, "good": good, "own_role": src.own_gift, "public_roles": public_roles,
 			"own_reports": cards.filter(func(c): return c.id in snapshot.private_evidence).map(func(c): return c.id),
 			"attention_reports": cards.filter(func(c): return c.id in snapshot.private_evidence and (c.source == src.id or c.get("relay_source") == src.id)).map(func(c): return c.id), "own_outings": src.get("own_outings", {}).duplicate(true)},
-		"ledger": {}, "case_memory": {}}
+		"ledger": {}, "case_memory": {}, "recency": src.get("recency", {}).duplicate(true)}
 	if public_roles.is_empty():
 		result.knowledge.erase("public_roles")
 	if cursed:
