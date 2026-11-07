@@ -21,10 +21,13 @@ the listener's pinned own readings.
 
 **Step 1 (Nov 6, Claude-Quill, PR #92):** built; see "Step 1 as built" below.
 **Step 2 (Nov 6, Claude-Quill, PR #93):** built; see "Step 2 as built".
-**Step 3 (Nov 6, Claude-Quill, branch `claude/premises-step3`, on Bailiff's step 2 fixes):**
-built; see "Step 3 as built". Its acceptance A/B with the M4 bot is Tally's (overnight), with attention budgets
-fixed between arms. Step 4 isn't started. Deliberate recency in attention is a separate
-step after step 1 (see "Recency: the topic of the day" below).
+**Step 3 (Nov 6, Claude-Quill, PR #95, Bailiff's review fixes):** built; see "Step 3 as built".
+Steps 1–3 are on main; their acceptance A/B with the M4 bot is Tally's, with attention
+budgets fixed between arms.
+**Recency and the headline fix (Nov 6, Claude-Quill, branch `claude/recency`):** built; see
+"Recency as built" and "The headline blend" below. Its own A/B, separate from steps 1–3.
+**Tabled (Nov 6, with Michael):** step 4's Minion-specific reads (Scion, Revenant) and
+assumptions as conditional beliefs (proposal 6).
 
 **Restored Nov 6:** the Nov 5 late-night decisions (23:10 and 23:35 ET, with Michael) were
 lost when this doc was rebuilt from the 22:50 copy. They're back in "Decisions": suspicious as
@@ -465,6 +468,62 @@ and never faded).
 - **Measure separately.** It likely makes the town worse in long games, so it gets its own
   A/B after step 1, not mixed into step 1's.
 - **For the evil-mind work:** evil could steer the topic away from a teammate.
+
+### Recency as built (Nov 6, Claude-Quill)
+
+All of it is attention (`Reasoner._salience`); no card's weight changes, and nothing in the
+solver or C# moved. The code is `sim/recency.gd`.
+
+- **Card age.** A card's salience loses `age_days × fade`, at most `RECENCY_AGE_CAP` (3.0).
+  The fade runs from `RECENCY_DECAY_LOW` (0.5 a day) at Insight 0 to `RECENCY_DECAY_HIGH`
+  (0.1) at Insight 1. Age is days since the later of when the listener learned the card
+  (`learned_at`, else `observed_at`) and when it was last brought back to mind. For scale:
+  salience is base 1, +2 for a gift reading, +4 for naming the premise's target, +2 for
+  naming someone the presented cards name. A four-day-old Seer reading costs a low-Insight
+  mind 2.0 (it falls behind a fresh card about the topic) and a sharp one 0.4.
+- **The topic of the day** (`Recency.topic`, shared by the whole town): a nomination adds
+  1.0 to its nominee, a public accusation 0.6, a case the player argued at a meeting 0.6
+  (`World.meeting_arguments`), a defence 0.3 to the defended (`World.defences`), summed and
+  capped at 1, and halved each following day (`RECENCY_TOPIC_DAILY`). A card naming or coming
+  from someone on the topic gains `RECENCY_TOPIC_WEIGHT` (1.5) times their weight.
+- **Calling attention back.** Presenting a card resets its age for that listener
+  (`Recency.refresh_cards`, in `WorkshopPresentation`); at a meeting every hearer gets the
+  presentation, so it resets for each. Because cards are held once at their highest weight,
+  re-presenting can only restore attention: the belief moves back toward the full-attention
+  value and no further, and repeating it while fresh does nothing (`test_recency`: a
+  low-Insight listener's view of one person drifted to −0.020 against their full-attention
+  0.010, came back to −0.013, and a repeat changed nothing).
+- **Own readings stay pinned** (step 0b): your own gift never drifts out of view. Presented
+  cards are always attended, as before. Recency ranks only what competes for the leftover
+  budget.
+- **Plumbing:** `WorkshopBridge.capture` adds `listener.recency` = {today, topic,
+  card_refresh}; `LiveAssessment._listener` carries it; fixtures and tools without it are
+  unchanged.
+- **Not yet:** NPCs citing old cards ("remember Dorian's reading?") don't refresh them, and
+  evil doesn't steer the topic. Both plug into `refresh_cards` and `topic`.
+- **Measure:** its own A/B (Tally): long games (day 5+), "identified but lost", and how long
+  a good day-1 read survives. Expected to make the town somewhat worse in long games.
+
+### The headline blend (Nov 6, folded in with recency)
+
+`Jury`'s headline rule lets a low-Insight listener take a strong evil reading at its word:
+where the reading's literal claim beats the model, `alignment += dull × (headline −
+alignment)`, `dull` = 1 − Insight. Before, any positive headline pulled by the whole gap, so
+a faint ping (0.001) halved a clearing (−0.377 → −0.188 at Insight 0.5; the step 2
+secret-word test, where a trusted player's word cleared p3 less than a doubted one's).
+Now the pull is scaled by the headline's strength: `dull × min(1, headline /
+HEADLINE_FULL_AT) × (headline − alignment)`, full at 0.1 (about one Seer ping at default
+trust).
+
+| Case (Insight 0.5) | Model | Headline | Before | Now |
+|---|---|---|---|---|
+| A faint ping against a clearing (step 2 test) | −0.377 | 0.001 | −0.188 | −0.375 |
+| A real Seer ping, the model agrees a little | +0.064 | 0.129 | +0.096 | +0.096 |
+| A strong ping the model's other evidence clears (the rule's purpose) | −0.225 | 0.096 | −0.064 | −0.071 |
+
+In two instrumented golden games (seeds 900 and 42) the blend fired 16 times, every time
+with a headline of 0.08 to 0.21; the scaling changes two of them, by less than 0.002 each.
+The step 2 suite now checks that a trusted player's word clears more than a doubted one's.
 
 ## Tally's Nov 5 findings and how they change the plan
 
