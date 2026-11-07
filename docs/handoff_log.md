@@ -27,6 +27,32 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-06 late night, Claude-Quill: recency and the headline blend on `claude/recency` (from main `226d566`)
+
+Plan: `docs/premises_plan.md`, "Recency as built" and "The headline blend". All attention;
+no card weight, solver or C# changes.
+- **Recency** (`sim/recency.gd`, in `Reasoner._salience`): a card loses salience with age
+  (0.5 a day at Insight 0 to 0.1 at Insight 1, capped at 3), the town's topic of the day
+  (nominations 1.0, accusations 0.6, cases the player argued at a meeting 0.6, defences
+  0.3; halved daily) draws attention, and presenting a card resets its age for that
+  listener. Own readings stay pinned; presented cards are always attended.
+- **Headline blend** (`workshop/jury.gd`): the low-Insight pull toward a reading's literal
+  claim is scaled by `min(1, headline / 0.1)`. A faint ping no longer halves a clearing;
+  the step 2 test now checks that a trusted player's word clears more than a doubted one's.
+- **Dawn refresh** (`game_day_night.gd`): every living mind refreshes at dawn, so age and
+  the cooled topic take hold each morning. Without it, minds that heard nothing overnight
+  kept yesterday's attention (two in seeds 900 and 1001, off by up to 0.21).
+- **Presentation order:** the card refresh and meeting topic are set before the capture.
+  `test_workshop_live_cognition`'s reuse check now refreshes once after the meeting, since
+  the meeting's topic is a real input change; the check itself is unchanged.
+
+Checks: `dotnet build`; 121/121 suites (new `test_recency` in the fast list); two golden
+captures identical. **New baseline `baseline_b157258`** replaces `baseline_4e54261`;
+divergence from day 1 is intended (see `docs/golden_baseline.md`).
+**For Tally:** an A/B against main on long games (day 5+), "identified but lost", how long a
+good day-1 read survives, and whether the topic saturates (seed 900 had five people at 1.0
+on day 3). Expected: the town a bit worse in long games.
+
 ## 2026-11-06 night, Claude-Bailiff: premises step 3 reviewed and merged (PR #95)
 
 Base: Quill's `0b87978` with main merged in. Two Codex findings fixed, with regression checks

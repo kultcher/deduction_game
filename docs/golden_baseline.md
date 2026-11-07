@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 6, night, PR #95): `baseline_4e54261`
+### Current baseline (Nov 6, late night, recency): `baseline_b157258`
+
+`tools/golden/baseline_b157258/` is the capture from `claude/recency` at `b157258`: recency
+in bounded attention (card age fade, topic of the day, recall on presentation), the headline
+blend scaled by strength, and a dawn refresh of every living mind
+(`docs/premises_plan.md`, "Recency as built"). This is meant to change behaviour, and it
+does from day 1: cards from night 0 are a day old by the first refresh, so bounded minds
+rank their leftover attention differently. Against `baseline_4e54261`, 900 parts at record
+1 (greta on odette, 0.1933 → 0.1926), 692 at record 5 (merrin on nisha, 0.067 → −0.031, an
+attention swap), 54875 and 98933 at record 16, and 42 at record 21, the first dawn refresh
+(a new record). Record counts move with the dawn refreshes and the changed games: 42
+111 → 112, 54875 286 → 321, 692 312 → 302, 900 133 → 147, 98933 229 → 186. Two captures
+identical.
+
+### Previous baseline (Nov 6, night, PR #95): `baseline_4e54261`
 
 `tools/golden/baseline_4e54261/` is the capture from `4e54261`. It replaces Quill's
 `baseline_858495d` (never on main; removed) after Bailiff's step 3 review fixes: "the
@@ -243,7 +257,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_4e54261 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_b157258 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
