@@ -367,7 +367,8 @@ Built on Bailiff's step 1 and 2 review fixes (`claude/premises-step2` at `5514f1
 
 - **Graded challenges** (`ReadingChallenges.graded_challenge`). For a challenged reading R:
   q and f are one CaseEval question, "R's content holds" (`conclusion.type` "holds",
-  `CaseEval._holds_mask`), before any evidence and after the rest of the attended cards; r
+  `Solver.reading_holds_table`: content only, whoever gave it and however healthy, since r
+  carries the source and the reading's error; review fix), before any evidence and after the rest of the attended cards; r
   is the source being good before the case (`good` prior) times one minus R's reading error.
   The chance R is wrong is (1 − r)q ÷ ((1 − r)q + rf); its rise above 1 − r, as a share of
   r, is the challenge's `effect`. Neutral: q = f, effect 0, nothing changes (checked).
@@ -385,7 +386,8 @@ Built on Bailiff's step 1 and 2 review fixes (`claude/premises-step2` at `5514f1
   through the existing source penalty and jury raise once agreement reaches 0.6. **Failed
   gift** (`impaired`, new: "Poisoned" chip, "Failed gift (poisoned)") — cause = the rest of
   the wrong share, and zero when the case's script has no Poisoner
-  (`poisoner_possible`, `view.script_roles`); points at the **Poisoner candidates**: people
+  (`poisoner_possible`, `view.script_minions` from the snapshot's `rules.minions`, the case
+  script's own minions; not the solver's possible roles, which list every ready role); points at the **Poisoner candidates**: people
   the attended cards saw out on the reading's night with no gift or errand the case gives
   for it (`poisoner_candidates`), raised by `CHALLENGE_POISONER_SCALE` × agreement, split
   among them, at agreement 0.6 or more. **Misled** — honest but wrong; no one is blamed.
@@ -401,7 +403,8 @@ Built on Bailiff's step 1 and 2 review fixes (`claude/premises-step2` at `5514f1
   challenge, scored jointly (a "yes" then a "no" on the same pair can't both hold: the
   group's multiplier fell to 0.11 in the test). Delusional's cause is the chance the source
   holds Delusional over the chance the readings are wrong. Its premise mask is "not every
-  one of them holds".
+  one of their contents holds" (so two readings that can both be true never count, even
+  from an evil source).
 - **Minion lineup, minimal:** "a Poisoner can be in play" is the case's script listing one.
   Public facts that rule a Minion in or out (a silencing, a found totem, Registrar
   readings) aren't used yet.
