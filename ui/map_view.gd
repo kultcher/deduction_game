@@ -67,7 +67,7 @@ const MAP_STREETS = {         # a stretch of path on each block, for people out 
 	"market": Rect2(80, 175, 320, 50),
 	"hill": Rect2(1180, 165, 200, 40),
 	"square": Rect2(1120, 440, 300, 50),
-	"docks": Rect2(60, 600, 300, 50),
+	"docks": Rect2(420, 745, 160, 40),   # the path between the mill green and the wharf
 }
 const MAP_SIGNS = {           # where each block's name sign sits
 	"market": Vector2(330, 30), "hill": Vector2(1110, 170), "square": Vector2(1260, 420), "docks": Vector2(400, 612),

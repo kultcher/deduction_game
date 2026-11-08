@@ -43,6 +43,14 @@ func _run() -> void:
 		var rel: String = MapView.cottage_art(p)
 		_check(_exists("art/" + rel), "%s has a cottage (%s)" % [p["name"], rel])
 
+	# People out on a block's street stand inside that block: the street sits in the block
+	# with room above it for a standee (about 90 image px), so zooming in doesn't dim them.
+	for b in MapView.MAP_STREETS:
+		var street: Rect2 = MapView.MAP_STREETS[b]
+		var block: Rect2 = MapView.MAP_BLOCKS[b]
+		_check(block.encloses(street) and street.end.y - 90.0 >= block.position.y,
+			"%s street standees fit inside the %s block" % [b, b])
+
 	# The view swaps between the room and the blurred map.
 	var view = ConversationView.new()
 	root.add_child(view)
