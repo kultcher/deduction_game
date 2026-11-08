@@ -62,12 +62,27 @@ func _test_location_isolation_and_map_rect() -> void:
 
 	var mv = MapView.new()
 	mv.g = g
-	var sq_rect: Rect2 = MapView.BLOCK_RECTS["square"]
+	var sq_rect: Rect2 = MapView._block_rect("square")
 	var r_tav: Rect2 = mv._loc_rect("tavern")
 	var r_well: Rect2 = mv._loc_rect("well")
 	var r_th: Rect2 = mv._loc_rect("town_hall")
-	_check(sq_rect.encloses(r_tav) and sq_rect.encloses(r_well) and sq_rect.encloses(r_th) and not r_tav.intersects(r_well) and not r_well.intersects(r_th),
-		"Square map layout fits Tavern, Well, and Town Hall blank square cleanly without overlap")
+	if MapView.BESPOKE:
+		# The bespoke map paints the buildings onto hand-placed lots, and roofs may rise past
+		# the block's hit area. What matters: each lot sits in the Square, and the middle of
+		# each building is inside its own clickable area and nobody else's.
+		var names: Array = ["tavern", "well", "town_hall"]
+		var ok := true
+		for l in names:
+			var p: Array = MapView.MAP_PADS[l]
+			var c: Vector2 = MapView._px(Vector2(p[0], p[1]))
+			ok = ok and sq_rect.has_point(c) and mv._loc_rect(l).has_point(c)
+			for m in names:
+				if m != l and mv._loc_rect(m).has_point(c):
+					ok = false
+		_check(ok, "Square map layout fits Tavern, Well, and Town Hall in the Square, each clickable in its middle")
+	else:
+		_check(sq_rect.encloses(r_tav) and sq_rect.encloses(r_well) and sq_rect.encloses(r_th) and not r_tav.intersects(r_well) and not r_well.intersects(r_th),
+			"Square map layout fits Tavern, Well, and Town Hall blank square cleanly without overlap")
 	mv.free()
 
 
