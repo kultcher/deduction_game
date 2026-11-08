@@ -53,7 +53,7 @@ const MAP_BLOCKS = {          # each block's area on the image (for zoom, hits a
 }
 const MAP_PADS = {            # building lots: centre x, centre y, width, height, lot art ("" = painted on the map)
 	"smithy": [440, 165, 230, 105, "terrain/dirt_b"], "bakery": [215, 300, 250, 115, "terrain/dirt_a"],
-	"chapel": [1355, 268, 230, 125, "terrain/dirt_c"], "graveyard": [1170, 112, 270, 95, "terrain/grass_dirt"],
+	"chapel": [1355, 268, 230, 125, "terrain/dirt_c"], "graveyard": [1160, 128, 290, 115, "terrain/grass_dirt"],
 	"tavern": [1345, 548, 275, 161, ""], "town_hall": [1045, 715, 231, 171, ""], "well": [1180, 625, 120, 80, ""],
 	"mill": [190, 775, 270, 130, "terrain/dirt_a"], "wharf": [615, 872, 280, 105, "terrain/dirt_b"],
 }
