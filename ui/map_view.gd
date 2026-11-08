@@ -57,11 +57,12 @@ const MAP_PADS = {            # building lots: centre x, centre y, width, height
 	"tavern": [1345, 548, 275, 161, ""], "town_hall": [1045, 715, 231, 171, ""], "well": [1180, 625, 120, 80, ""],
 	"mill": [190, 775, 270, 130, "terrain/dirt_a"], "wharf": [615, 872, 280, 105, "terrain/dirt_b"],
 }
-const MAP_COTTAGES = {        # cottage lots per block: centre x, centre y
-	"market": [[150, 140], [285, 132], [415, 300], [90, 330]],
+const MAP_COTTAGES = {        # cottage lots per block: centre x, centre y. A block houses at most
+	# ceil(10 / 4) = 3 people; a lot is drawn only under a cottage that's there (Nov 8).
+	"market": [[150, 118], [280, 112], [380, 290]],
 	"hill": [[1010, 112], [1200, 262], [1360, 95]],
-	"square": [[975, 470], [1080, 535], [1285, 745], [1385, 735]],
-	"docks": [[405, 740], [300, 845], [90, 850]],
+	"square": [[985, 505], [1285, 745], [1385, 735]],
+	"docks": [[390, 738], [320, 838], [85, 842]],
 }
 const MAP_STREETS = {         # a stretch of path on each block, for people out and about
 	"market": Rect2(80, 175, 320, 50),
@@ -183,15 +184,20 @@ func _street_rect(b: String) -> Rect2:
 	var R: Rect2 = BLOCK_RECTS[b]
 	return Rect2(R.position.x + R.size.x * 0.08, R.position.y + R.size.y * 0.6, R.size.x * 0.84, R.size.y * 0.14)
 
+## The centre of a townsperson's cottage lot, in image pixels.
+func _home_slot(n) -> Vector2:
+	var slots: Array = MAP_COTTAGES[n.home_block]
+	var mine: Array = g.w.npcs.filter(func(x): return x.home_block == n.home_block)
+	var k: int = mine.find(n)
+	var c: Array = slots[k % slots.size()]
+	var over: float = 40.0 * (k / slots.size())   # more residents than pads: nudge the extras
+	return Vector2(c[0] + over, c[1] - over * 0.4)
+
 func _home_rect(n) -> Rect2:
 	if BESPOKE:
-		var slots: Array = MAP_COTTAGES[n.home_block]
-		var mine: Array = g.w.npcs.filter(func(x): return x.home_block == n.home_block)
-		var k: int = mine.find(n)
-		var c: Array = slots[k % slots.size()]
-		var over: float = 40.0 * (k / slots.size())   # more residents than pads: nudge the extras
+		var c: Vector2 = _home_slot(n)
 		var sz: float = 78.0
-		return _px_rect(Rect2(c[0] - sz / 2.0 + over, c[1] + 22 - sz - over * 0.4, sz, sz))
+		return _px_rect(Rect2(c.x - sz / 2.0, c.y + 22 - sz, sz, sz))
 	var b: String = n.home_block
 	var R: Rect2 = BLOCK_RECTS[b]
 	var residents: Array = g.w.npcs.filter(func(x): return x.home_block == b)
@@ -292,11 +298,12 @@ func _draw() -> void:
 				var lt = _art(pad[4], 0.5)
 				if lt != null:
 					draw_texture_rect(lt, _r(_px_rect(Rect2(pad[0] - pad[2] / 2.0, pad[1] - pad[3] / 2.0, pad[2], pad[3]))), false, tint)
+		# One lot under each cottage that's drawn, so no lot stands empty and no cottage lacks one.
 		var cot_lot = _art("terrain/dirt_c", 0.3)
-		for b in MAP_COTTAGES:
-			for c in MAP_COTTAGES[b]:
-				if cot_lot != null:
-					draw_texture_rect(cot_lot, _r(_px_rect(Rect2(c[0] - 48, c[1] - 26, 96, 56))), false, tint)
+		if cot_lot != null:
+			for n in w.npcs:
+				var c: Vector2 = _home_slot(n)
+				draw_texture_rect(cot_lot, _r(_px_rect(Rect2(c.x - 48, c.y - 26, 96, 56))), false, tint)
 	# Dressing behind everything.
 	for d in ([] if BESPOKE else DECOR):
 		var t = _art("decor/" + d[0], 0.4)
@@ -470,7 +477,7 @@ func _draw_people(font) -> void:
 			groups[key] = []
 			rects[key] = rect
 		groups[key].append(n)
-	var h = clampf(54.0 * _scale, 22.0, 120.0)
+	var h = clampf(62.0 * _scale, 25.0, 138.0)   # 15% up on Nov 8
 	var lf = mini(_fs(12), 19)
 	for key in groups:
 		var rect: Rect2 = rects[key]
@@ -484,7 +491,9 @@ func _draw_people(font) -> void:
 			hh = maxf(h * 0.55, avail / (members.size() * 0.78))
 		var step = hh * 0.78
 		var per_row = maxi(1, int(avail / step))
-		var base_y = sr.end.y - (hh * 0.1 if C.LOCATIONS.has(_loc_of_rect(rect)) else -hh * 0.15)
+		# At a building, stand on top of its name plaque (centred 4 px above the building's
+		# foot, _fs(11) * 1.9 tall) rather than over it; at home, just below the cottage.
+		var base_y = sr.end.y - (4.0 + _fs(11) * 0.95 - 2.0 if C.LOCATIONS.has(_loc_of_rect(rect)) else -hh * 0.15)
 		for i in range(members.size()):
 			var n = members[i]
 			var row = i / per_row
