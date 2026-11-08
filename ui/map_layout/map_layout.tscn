@@ -1,0 +1,203 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/map_layout/map_layout.gd" id="1_o4j3t"]
+[ext_resource type="Texture2D" path="res://assets/art/map/town_open.png" id="2_edfpy"]
+[ext_resource type="Script" path="res://ui/map_layout/map_area.gd" id="3_tyx0l"]
+[ext_resource type="Script" path="res://ui/map_layout/map_sign.gd" id="4_7gxkj"]
+[ext_resource type="Script" path="res://ui/map_layout/map_pad.gd" id="5_1ck3t"]
+[ext_resource type="Script" path="res://ui/map_layout/map_cottage.gd" id="6_2b4ra"]
+
+[node name="MapLayout" type="Node2D" unique_id=958509804]
+script = ExtResource("1_o4j3t")
+
+[node name="BaseMap" type="Sprite2D" parent="." unique_id=1619682234]
+texture = ExtResource("2_edfpy")
+centered = false
+
+[node name="Blocks" type="Node2D" parent="." unique_id=972717075]
+
+[node name="market" type="Node2D" parent="Blocks" unique_id=286938671]
+position = Vector2(0, 20)
+script = ExtResource("3_tyx0l")
+size = Vector2(600, 400)
+
+[node name="hill" type="Node2D" parent="Blocks" unique_id=1243338903]
+position = Vector2(880, 0)
+script = ExtResource("3_tyx0l")
+size = Vector2(656, 420)
+
+[node name="square" type="Node2D" parent="Blocks" unique_id=1070572924]
+position = Vector2(830, 400)
+script = ExtResource("3_tyx0l")
+size = Vector2(706, 420)
+
+[node name="docks" type="Node2D" parent="Blocks" unique_id=1227744015]
+position = Vector2(0, 640)
+script = ExtResource("3_tyx0l")
+size = Vector2(860, 384)
+
+[node name="Streets" type="Node2D" parent="." unique_id=518843989]
+
+[node name="market" type="Node2D" parent="Streets" unique_id=1604662878]
+position = Vector2(80, 175)
+script = ExtResource("3_tyx0l")
+size = Vector2(320, 50)
+color = Color(0.4, 1, 0.5, 0.9)
+
+[node name="hill" type="Node2D" parent="Streets" unique_id=1786893275]
+position = Vector2(1180, 165)
+script = ExtResource("3_tyx0l")
+size = Vector2(200, 40)
+color = Color(0.4, 1, 0.5, 0.9)
+
+[node name="square" type="Node2D" parent="Streets" unique_id=1670541362]
+position = Vector2(1120, 440)
+script = ExtResource("3_tyx0l")
+size = Vector2(300, 50)
+color = Color(0.4, 1, 0.5, 0.9)
+
+[node name="docks" type="Node2D" parent="Streets" unique_id=115063413]
+position = Vector2(420, 745)
+script = ExtResource("3_tyx0l")
+size = Vector2(160, 40)
+color = Color(0.4, 1, 0.5, 0.9)
+
+[node name="Buildings" type="Node2D" parent="." unique_id=962780020]
+
+[node name="smithy" type="Node2D" parent="Buildings" unique_id=2004479774]
+position = Vector2(440, 165)
+script = ExtResource("5_1ck3t")
+size = Vector2(230, 105)
+lot_art = "terrain/dirt_b"
+
+[node name="bakery" type="Node2D" parent="Buildings" unique_id=114205353]
+position = Vector2(215, 300)
+script = ExtResource("5_1ck3t")
+size = Vector2(250, 115)
+lot_art = "terrain/dirt_a"
+
+[node name="chapel" type="Node2D" parent="Buildings" unique_id=586433762]
+position = Vector2(1355, 268)
+script = ExtResource("5_1ck3t")
+size = Vector2(230, 125)
+lot_art = "terrain/dirt_c"
+
+[node name="graveyard" type="Node2D" parent="Buildings" unique_id=1233602099]
+position = Vector2(1160, 128)
+script = ExtResource("5_1ck3t")
+size = Vector2(290, 115)
+lot_art = "terrain/grass_dirt"
+
+[node name="tavern" type="Node2D" parent="Buildings" unique_id=616463396]
+position = Vector2(1345, 548)
+script = ExtResource("5_1ck3t")
+size = Vector2(275, 161)
+
+[node name="town_hall" type="Node2D" parent="Buildings" unique_id=343108172]
+position = Vector2(1045, 715)
+script = ExtResource("5_1ck3t")
+size = Vector2(231, 171)
+
+[node name="well" type="Node2D" parent="Buildings" unique_id=2025419054]
+position = Vector2(1180, 625)
+script = ExtResource("5_1ck3t")
+size = Vector2(120, 80)
+
+[node name="mill" type="Node2D" parent="Buildings" unique_id=2003470391]
+position = Vector2(190, 775)
+script = ExtResource("5_1ck3t")
+size = Vector2(270, 130)
+lot_art = "terrain/dirt_a"
+
+[node name="wharf" type="Node2D" parent="Buildings" unique_id=1316504631]
+position = Vector2(615, 872)
+script = ExtResource("5_1ck3t")
+size = Vector2(280, 105)
+lot_art = "terrain/dirt_b"
+
+[node name="Cottages" type="Node2D" parent="." unique_id=1885842454]
+
+[node name="market" type="Node2D" parent="Cottages" unique_id=457992986]
+
+[node name="spot1" type="Node2D" parent="Cottages/market" unique_id=193421279]
+position = Vector2(150, 118)
+script = ExtResource("6_2b4ra")
+
+[node name="spot2" type="Node2D" parent="Cottages/market" unique_id=1943863488]
+position = Vector2(280, 112)
+script = ExtResource("6_2b4ra")
+preview_cottage = "bartholomew"
+
+[node name="spot3" type="Node2D" parent="Cottages/market" unique_id=1769404336]
+position = Vector2(380, 290)
+script = ExtResource("6_2b4ra")
+preview_cottage = "constance"
+
+[node name="hill" type="Node2D" parent="Cottages" unique_id=2125131856]
+
+[node name="spot1" type="Node2D" parent="Cottages/hill" unique_id=1513420925]
+position = Vector2(1010, 112)
+script = ExtResource("6_2b4ra")
+preview_cottage = "dorian"
+
+[node name="spot2" type="Node2D" parent="Cottages/hill" unique_id=1894640082]
+position = Vector2(1200, 262)
+script = ExtResource("6_2b4ra")
+preview_cottage = "edda"
+
+[node name="spot3" type="Node2D" parent="Cottages/hill" unique_id=28782326]
+position = Vector2(1360, 95)
+script = ExtResource("6_2b4ra")
+preview_cottage = "fenwick"
+
+[node name="square" type="Node2D" parent="Cottages" unique_id=1749868936]
+
+[node name="spot1" type="Node2D" parent="Cottages/square" unique_id=1506450057]
+position = Vector2(985, 505)
+script = ExtResource("6_2b4ra")
+preview_cottage = "greta"
+
+[node name="spot2" type="Node2D" parent="Cottages/square" unique_id=1910979483]
+position = Vector2(1285, 745)
+script = ExtResource("6_2b4ra")
+preview_cottage = "hollis"
+
+[node name="spot3" type="Node2D" parent="Cottages/square" unique_id=1527049203]
+position = Vector2(1385, 735)
+script = ExtResource("6_2b4ra")
+preview_cottage = "isolde"
+
+[node name="docks" type="Node2D" parent="Cottages" unique_id=1124477475]
+
+[node name="spot1" type="Node2D" parent="Cottages/docks" unique_id=1456564962]
+position = Vector2(390, 738)
+script = ExtResource("6_2b4ra")
+preview_cottage = "jory"
+
+[node name="spot2" type="Node2D" parent="Cottages/docks" unique_id=2052948331]
+position = Vector2(320, 838)
+script = ExtResource("6_2b4ra")
+preview_cottage = "kiran"
+
+[node name="spot3" type="Node2D" parent="Cottages/docks" unique_id=789860752]
+position = Vector2(85, 842)
+script = ExtResource("6_2b4ra")
+preview_cottage = "lian"
+
+[node name="Signs" type="Node2D" parent="." unique_id=965973074]
+
+[node name="market" type="Node2D" parent="Signs" unique_id=449093972]
+position = Vector2(330, 30)
+script = ExtResource("4_7gxkj")
+
+[node name="hill" type="Node2D" parent="Signs" unique_id=1416439916]
+position = Vector2(1110, 170)
+script = ExtResource("4_7gxkj")
+
+[node name="square" type="Node2D" parent="Signs" unique_id=1476231058]
+position = Vector2(1260, 420)
+script = ExtResource("4_7gxkj")
+
+[node name="docks" type="Node2D" parent="Signs" unique_id=670646906]
+position = Vector2(400, 612)
+script = ExtResource("4_7gxkj")

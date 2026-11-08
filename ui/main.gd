@@ -549,25 +549,25 @@ func _build_roles(embedded: bool) -> void:
 	for ch in roles_box.get_children():
 		roles_box.remove_child(ch)
 		ch.queue_free()
-	var cols: BoxContainer = VBoxContainer.new() if embedded else HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 18)
-	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	roles_box.add_child(cols)
-	var left = VBoxContainer.new()
-	var right = VBoxContainer.new()
-	for c in [left, right]:
-		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		c.add_theme_constant_override("separation", 6)
-		cols.add_child(c)
-	_roles_group(left, "Gifts of the town", g.w.case_script.town)
-	_roles_group(right, "The demon's side: the demon and %d minion%s" % [g.w.minion_ids.size(), "" if g.w.minion_ids.size() == 1 else "s"], g.w.case_script.demons + g.w.case_script.minions)
+	# Four stacked sections, as on a Clocktower script sheet: gifts, secrets, minions, demons.
+	# Each lays its roles out in two columns in the window, one when pinned beside the profile.
+	var sections = VBoxContainer.new()
+	sections.name = "ScriptSections"
+	sections.add_theme_constant_override("separation", 14)
+	sections.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	roles_box.add_child(sections)
+	var sc = g.w.case_script
+	var minions: int = g.w.minion_ids.size()
+	_roles_group(sections, "Gifts of the town", sc.town, "good", embedded)
+	_roles_group(sections, "Secrets: one in play, on top of a gift", sc.secrets, "secret", embedded)
+	_roles_group(sections, "Minions: %d in play" % minions, sc.minions, "evil", embedded)
+	var demon_box = _roles_group(sections, "Demon" if sc.demons.size() == 1 else "Demons: one in play", sc.demons, "evil", embedded)
 	var night_rule = Label.new()
 	night_rule.name = "DemonNightRule"
 	night_rule.text = C.DEMON_NIGHT_RULE
 	night_rule.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	night_rule.add_theme_color_override("font_color", UITheme.color("ink"))
-	right.add_child(night_rule)
-	_roles_group(right, "Secrets: one in play, on top of a gift", g.w.case_script.secrets)
+	demon_box.add_child(night_rule)
 	var summary = Label.new()
 	summary.name = "SetupSummary"
 	summary.text = setup_summary(g.w.n_npcs)
@@ -578,24 +578,65 @@ func _build_roles(embedded: bool) -> void:
 	bottom_pad.custom_minimum_size = Vector2(0, 12)
 	roles_box.add_child(bottom_pad)
 
-func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
-	var ink = UITheme.color("ink")
+## Team colours on the script sheet: blue gifts, violet secrets, red for the demon's side.
+const ROLE_TEAM_COLOR = {"good": "role_good_ink", "secret": "role_secret_ink", "evil": "role_evil_ink"}
+
+## Recolours a role icon's dark ink to its team colour, keeping the gold and paper fills.
+static var _icon_shader: Shader = null
+static func _team_icon_material(team_color: Color) -> ShaderMaterial:
+	if _icon_shader == null:
+		_icon_shader = Shader.new()
+		_icon_shader.code = """shader_type canvas_item;
+uniform vec4 tint : source_color;
+void fragment() {
+	vec4 c = texture(TEXTURE, UV);
+	float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+	float ink = 1.0 - smoothstep(0.18, 0.42, lum);
+	COLOR = vec4(mix(c.rgb, tint.rgb, ink), c.a);
+}"""
+	var m = ShaderMaterial.new()
+	m.shader = _icon_shader
+	m.set_shader_parameter("tint", team_color)
+	return m
+
+## One section: its heading, then its roles in a grid. Returns the section box.
+func _roles_group(parent: Container, title: String, roles: Array, team: String, embedded: bool) -> VBoxContainer:
+	var team_color: Color = UITheme.color(ROLE_TEAM_COLOR[team])
+	var box = VBoxContainer.new()
+	box.name = "Section_" + team
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 6)
+	parent.add_child(box)
 	var h = Label.new()
 	h.text = title
 	h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	h.add_theme_font_size_override("font_size", 18)
-	h.add_theme_color_override("font_color", UITheme.color("red"))
+	h.add_theme_color_override("font_color", team_color)
 	box.add_child(h)
+	var rule = ColorRect.new()
+	rule.color = Color(team_color, 0.45)
+	rule.custom_minimum_size = Vector2(0, 2)
+	box.add_child(rule)
+	var grid = GridContainer.new()
+	grid.columns = 1 if embedded else 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 10)
+	box.add_child(grid)
+	var icon_material := _team_icon_material(team_color)
 	for r in roles:
 		var row = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		box.add_child(row)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(row)
 		var ic = TextureRect.new()
 		var rt = UITheme.tex("ui/roles/" + r, 0.1)
 		ic.texture = rt if rt != null else UITheme.tex("ui/roles/unknown", 0.1)  # icons for new gifts still to come
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ic.custom_minimum_size = Vector2(34, 34)
+		ic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		ic.material = icon_material
 		row.add_child(ic)
 		var col = VBoxContainer.new()
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -604,7 +645,7 @@ func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
 		var nm = Label.new()
 		nm.text = C.role_name(r)
 		nm.add_theme_font_size_override("font_size", 16)
-		nm.add_theme_color_override("font_color", ink)
+		nm.add_theme_color_override("font_color", team_color)
 		col.add_child(nm)
 		var d = Label.new()
 		d.text = C.ROLES[r]["desc"] if C.ROLES.has(r) else C.SECRET_MODS[r]["desc"]
@@ -623,6 +664,7 @@ func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
 			c2.add_theme_font_size_override("font_size", 13)
 			c2.add_theme_color_override("font_color", UITheme.color("red").darkened(0.2))
 			col.add_child(c2)
+	return box
 
 enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE }
 

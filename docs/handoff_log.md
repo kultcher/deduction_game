@@ -27,6 +27,18 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-08 ~17:50, Claude-Tally: the town map's layout is an editable scene
+
+- Branch `claude/ui-script-map` (PR #106). Block areas, streets, block signs, building lots and
+  cottage spots now live in `ui/map_layout/map_layout.tscn`, not in constants in
+  `ui/map_view.gd`. Open the scene in the Godot editor to drag things on the base map (image
+  pixels); the preview draws buildings, lots and cottages with the game's own geometry
+  (`ui/map_layout/map_geometry.gd`, shared with the map view), so the editor shows what the game
+  will. The map view reads the scene once at startup; `MapView.MAP_PADS` etc. are now static vars
+  with the same shapes. Rendering is pixel-identical to before the move.
+- Cottage spots fill in child order; a block needs 3 (the most residents in a 10-person town).
+  `test_location_art` checks spots, signs, streets and lots exist.
+
 ## 2026-11-08 evening, Claude-Bailiff: demon types step 1 (`claude/demon-types`)
 
 - Base `f167c63` (main after #104). Status: green, ready to merge. Next actor: whoever takes step 2 (daytime presence).
