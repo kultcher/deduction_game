@@ -450,6 +450,20 @@ static func has_readings(r: String) -> bool:
 		return rdef.has_readings()
 	return r in INFO_ROLES or r in ["veteran", "martyr"]
 
+## Demon types (docs/demon_types_plan.md). Every role that fills the demon slot, so code
+## asks C.is_demon(role) instead of comparing with "demon". Only the night-walking Demon is
+## built; "daykiller" is reserved for the day-killing demon (marks a place by day, kills at
+## night without walking) and isn't a dealable role yet.
+const DEMON_ROLES = ["demon"]
+const DAY_DEMONS = ["daykiller"]
+
+static func is_demon(r: String) -> bool:
+	return r in DEMON_ROLES or r in DAY_DEMONS
+
+## A demon type that never walks at night to kill.
+static func is_day_demon(r: String) -> bool:
+	return r in DAY_DEMONS
+
 static func is_minion(r: String) -> bool:
 	var rdef = role_def(r)
 	if rdef != null:

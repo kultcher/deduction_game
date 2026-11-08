@@ -27,6 +27,25 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-08 evening, Claude-Bailiff: demon types step 1 (`claude/demon-types`)
+
+- Base `f167c63` (main after #104). Status: green, ready to merge. Next actor: whoever takes step 2 (daytime presence).
+- Design: `docs/demon_types_plan.md` (Project `claude/demon-types-plan.md`). It covers the day-killer rules
+  settled with Michael on Nov 8 and the solver maths.
+- `C.is_demon` / `C.is_day_demon` (`sim/content.gd`). `daykiller` is a reserved id, not a dealable role.
+  Role-id checks now go through the helper. Checks on the demon slot (`world.demon`) and on guess or premise
+  types don't.
+- The snapshot's rules carry `demons` (`WorkshopBridge.script_demons`), and the live view gets `script_demons`.
+- `LiveActivity.day_demon_share` / `mix_demon`: the demon's whole-case movement likelihood is mixed over the
+  types (a walking demon, or a day-killer that's out at night like a minion). It's applied to the joint
+  factor's main profiles and `_likelihood(..., "demon")`. It isn't applied night by night, which would act
+  as if the type were redrawn each night.
+- Scion splits (Codex P2 on #105): the before/after scores multiply, so they're mixed after multiplying,
+  in C# `ScoreWorldCore`, from a trailing `day_demon_share` double in the compiled factor. Splits keep walking
+  profiles in GD.
+- Share 0 on every script today: golden identical to `baseline_7034f36`, 124/124 suites.
+  New `test_demon_types` (22 checks).
+
 ## 2026-11-08 afternoon, Claude-Bailiff: bespoke papercraft map to main (`mock/bespoke-map`)
 
 - Base `862cd27` (main after #102). Status: green, merging on Michael's go-ahead. Next actor: Michael (playtest).

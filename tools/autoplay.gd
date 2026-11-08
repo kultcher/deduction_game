@@ -324,7 +324,7 @@ func _scale_snapshot() -> Dictionary:
 		for i in range(others.size()):
 			var o = others[i]
 			if o.is_evil():
-				evil.append({"id": o.id, "demon": o.role == "demon", "susp": Mind.susp(n, o.id), "action": Mind.action_susp(n, o.id), "rank": i + 1})
+				evil.append({"id": o.id, "demon": C.is_demon(o.role), "susp": Mind.susp(n, o.id), "action": Mind.action_susp(n, o.id), "rank": i + 1})
 		var top_action = 0.0
 		var top_nom_score = -1.0
 		for o in others:
