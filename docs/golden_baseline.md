@@ -44,20 +44,22 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 8, recency): `baseline_06d26bf`
+### Current baseline (Nov 8, recency): `baseline_9a09894`
 
-`tools/golden/baseline_06d26bf/` is the capture from `claude/recency` at `06d26bf` (PR #96,
-on main `f167c63`): recency in bounded attention (card age fade, topic of the day, recall
-on presentation), the headline blend scaled by strength, a dawn refresh of every living
-mind, and the topic halving from its capped value (`docs/premises_plan.md`, "Recency as
-built"). This is meant to change behaviour, and it does from day 1: cards from night 0 are
-a day old by the first refresh, so bounded minds rank their leftover attention
-differently. Against `baseline_7034f36`, 900 parts at record 1 (greta on odette, 0.1933 →
-0.1926), 692 at record 5 (merrin on nisha, 0.067 → −0.031, an attention swap), 54875 and
-98933 at record 16, and 42 at record 21, the first dawn refresh (a new record). Record
-counts: 42 111 → 142, 54875 267 → 293, 692 312 → 300, 900 133 → 147, 98933 229 → 186. Two
-captures identical. (Quill's earlier `baseline_b157258` for this branch was never on main
-and is removed.)
+`tools/golden/baseline_9a09894/` is the capture from `claude/recency` at `9a09894` (PR #96,
+on main `7017a98`): recency in bounded attention (card age fade, topic of the day, recall
+on presentation, and NPCs' spoken reasons recalling their cards), the headline blend
+scaled by strength, a dawn refresh of every living mind, and the topic halving from its
+capped value (`docs/premises_plan.md`, "Recency as built"). This is meant to change
+behaviour, and it does from day 1: cards from night 0 are a day old by the first refresh,
+so bounded minds rank their leftover attention differently. Against `baseline_7034f36`,
+900 parts at record 1 (greta on odette, 0.1933 → 0.1926), 692 at record 5 (merrin on
+nisha, 0.067 → −0.031, an attention swap), 54875 and 98933 at record 16, and 42 at record
+21, the first dawn refresh (a new record). Record counts: 42 111 → 142, 54875 267 → 265,
+692 312 → 288, 900 133 → 131, 98933 229 → 186. Against the branch's own earlier
+`baseline_06d26bf` (never on main, removed, as is `baseline_b157258`), the NPC recall
+first shows at the day-1 meeting (900 record 22: a cited card moves up Constance's
+attention order). Two captures identical.
 
 ### Previous baseline (Nov 7, bare defences ungraded): `baseline_7034f36`
 
@@ -277,7 +279,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_06d26bf /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_9a09894 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs

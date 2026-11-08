@@ -27,6 +27,19 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-08 night, Claude-Quill: recency, NPCs' spoken reasons recall their cards (PR #96, on main `7017a98`)
+
+Status: green, ready for review. Next actor: Bailiff (review and merge), then Tally (A/B).
+- **New, decided with Michael:** when an NPC nominates or publicly accuses and states a
+  reason (headline, "Remember: …" recap, a revealed or relayed reading), the cards behind it
+  are refreshed for every living hearer (`MindMeeting.recall_cited`), as a player
+  presentation does for its listener. A hinted reason recalls nothing. Shared reasons
+  already carry their card ids (`card_id` / `root_ids`), which are the same content ids
+  listeners' attention uses. Seed 900 by day 4: 39 recalls, 31 of cards the hearer held.
+- **Checks:** `dotnet build`; 124/124 suites (`test_recency` now 26 checks); two golden
+  captures identical. **New baseline `baseline_9a09894`** replaces `baseline_06d26bf`
+  (never on main, removed). See `docs/golden_baseline.md`.
+
 ## 2026-11-08 evening, Claude-Quill: recency (PR #96) refreshed onto main `f167c63`
 
 Status: green, ready for review. Next actor: Bailiff (review and merge), then Tally (A/B).

@@ -506,6 +506,18 @@ solver or C# moved. The code is `sim/recency.gd`.
   value and no further, and repeating it while fresh does nothing (`test_recency`: a
   low-Insight listener's view of one person drifted to −0.020 against their full-attention
   0.010, came back to −0.013, and a repeat changed nothing).
+- **NPCs calling attention back** (Nov 8). When an NPC nominates or publicly accuses and
+  states a reason, the cards behind it are refreshed for every living hearer
+  (`MindMeeting.recall_cited`). What counts as stated: the nomination's headline reason, the
+  "Remember: …" recap, a reading the nominator reveals or relays. A hinted "I have a reason
+  I'm not ready to share" recalls nothing. Shared reasons already carry their card ids
+  (`card_id`, or `root_ids` for a joint reason), and those are the content ids every
+  listener's attention uses, so a cited card is recalled for each hearer who holds it and
+  ignored by those who don't (seed 900 by day 4: 39 recalls, 31 of them cards the hearer
+  held). Evil nominators recall too: it moves attention, not weight. Before this, a
+  nomination only put the nominee on the topic (+1.5 to every card about them), which a
+  low-Insight mind's age penalty could outweigh (a four-day-old reading on the nominee: −2.0
+  + 1.5 = −0.5; recalled, +1.5).
 - **Own readings stay pinned** (step 0b): your own gift never drifts out of view. Presented
   cards are always attended, as before. Recency ranks only what competes for the leftover
   budget.
@@ -524,8 +536,9 @@ solver or C# moved. The code is `sim/recency.gd`.
   nominee and one or two accused) and the rest fading 0.5, 0.25. If Tally's A/B still shows
   the topic ranking nobody above anybody, the next lever is a lower cap or normalising by
   the day's busiest subject.
-- **Not yet:** NPCs citing old cards ("remember Dorian's reading?") don't refresh them, and
-  evil doesn't steer the topic. Both plug into `refresh_cards` and `topic`.
+- **Not yet:** evil doesn't steer the topic (it plugs into `Recency.topic`), and reasons
+  given in private talks or in defences don't recall cards (only nominations and public
+  accusations do).
 - **Measure:** its own A/B (Tally): long games (day 5+), "identified but lost", and how long
   a good day-1 read survives. Expected to make the town somewhat worse in long games.
 
