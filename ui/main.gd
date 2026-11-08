@@ -821,6 +821,7 @@ func _stream_meeting() -> void:
 		meeting_view.consume(g.last_events)
 		_consume_headlines()
 		meeting_view.refresh()
+		_refresh_actions()   # Continue appears as soon as someone's on the stage
 		var left: float = STREAM_GAP - (Time.get_ticks_msec() - started) / 1000.0
 		if left > 0.0:
 			await get_tree().create_timer(left).timeout
