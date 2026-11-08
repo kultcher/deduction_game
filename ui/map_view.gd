@@ -44,35 +44,17 @@ const OVERVIEW = Rect2(0, 0, 1000, 700)
 const BESPOKE = true
 const MAP_PX = Vector2(1536, 1024)
 const MAP_TOP = 16.6          # the image spans the full 1000 wide, centred vertically in 700
-const MAP_IMAGE = "map/town_open"   # the lot-less map: lots are drawn from assets/art/terrain
-const MAP_BLOCKS = {          # each block's area on the image (for zoom, hits and highlights)
-	"market": Rect2(0, 20, 600, 400),
-	"hill": Rect2(880, 0, 656, 420),
-	"square": Rect2(830, 400, 706, 420),
-	"docks": Rect2(0, 640, 860, 384),
-}
-const MAP_PADS = {            # building lots: centre x, centre y, width, height, lot art ("" = painted on the map)
-	"smithy": [440, 165, 230, 105, "terrain/dirt_b"], "bakery": [215, 300, 250, 115, "terrain/dirt_a"],
-	"chapel": [1355, 268, 230, 125, "terrain/dirt_c"], "graveyard": [1160, 128, 290, 115, "terrain/grass_dirt"],
-	"tavern": [1345, 548, 275, 161, ""], "town_hall": [1045, 715, 231, 171, ""], "well": [1180, 625, 120, 80, ""],
-	"mill": [190, 775, 270, 130, "terrain/dirt_a"], "wharf": [615, 872, 280, 105, "terrain/dirt_b"],
-}
-const MAP_COTTAGES = {        # cottage lots per block: centre x, centre y. A block houses at most
-	# ceil(10 / 4) = 3 people; a lot is drawn only under a cottage that's there (Nov 8).
-	"market": [[150, 118], [280, 112], [380, 290]],
-	"hill": [[1010, 112], [1200, 262], [1360, 95]],
-	"square": [[985, 505], [1285, 745], [1385, 735]],
-	"docks": [[390, 738], [320, 838], [85, 842]],
-}
-const MAP_STREETS = {         # a stretch of path on each block, for people out and about
-	"market": Rect2(80, 175, 320, 50),
-	"hill": Rect2(1180, 165, 200, 40),
-	"square": Rect2(1120, 440, 300, 50),
-	"docks": Rect2(420, 745, 160, 40),   # the path between the mill green and the wharf
-}
-const MAP_SIGNS = {           # where each block's name sign sits
-	"market": Vector2(330, 30), "hill": Vector2(1110, 170), "square": Vector2(1260, 420), "docks": Vector2(400, 612),
-}
+# The layout (blocks, streets, signs, building lots and cottage spots) lives in the editable
+# scene ui/map_layout/map_layout.tscn: open it in the Godot editor and drag things about.
+const Layout = preload("res://ui/map_layout/map_layout.gd")
+const Geo = preload("res://ui/map_layout/map_geometry.gd")
+static var LAYOUT: Dictionary = Layout.load_data()
+static var MAP_IMAGE: String = LAYOUT.image                 # the lot-less map: lots are drawn from assets/art/terrain
+static var MAP_BLOCKS: Dictionary = LAYOUT.blocks           # each block's area on the image (for zoom, hits and highlights)
+static var MAP_PADS: Dictionary = LAYOUT.pads               # building lots: centre x, centre y, width, height, lot art ("" = none)
+static var MAP_COTTAGES: Dictionary = LAYOUT.cottages       # cottage spots per block (lot centres), filled in order
+static var MAP_STREETS: Dictionary = LAYOUT.streets         # a stretch of path on each block, for people out and about
+static var MAP_SIGNS: Dictionary = LAYOUT.signs             # where each block's name sign sits
 const PAPER_ART = {
 	"bakery": "buildings_paper/bakery", "smithy": "buildings_paper/smithy",
 	"tavern": "buildings_paper/tavern", "well": "buildings_paper/well",
@@ -158,11 +140,7 @@ func _map_buildings_on(b: String) -> Array:
 
 func _loc_rect(l: String) -> Rect2:
 	if BESPOKE and MAP_PADS.has(l):
-		var p: Array = MAP_PADS[l]
-		var w: float = p[2] * 0.78
-		var bottom: float = p[1] + p[3] * 0.32
-		var h: float = minf(p[3] * 1.35, bottom - 8.0)   # pads at the top edge: keep the roof on the map
-		return _px_rect(Rect2(p[0] - w / 2.0, bottom - h, w, h))
+		return _px_rect(Geo.building_box(MAP_PADS[l]))
 	var b: String = C.loc_block(l)
 	var R: Rect2 = BLOCK_RECTS[b]
 	var locs: Array = _map_buildings_on(b)
@@ -195,9 +173,7 @@ func _home_slot(n) -> Vector2:
 
 func _home_rect(n) -> Rect2:
 	if BESPOKE:
-		var c: Vector2 = _home_slot(n)
-		var sz: float = 78.0
-		return _px_rect(Rect2(c.x - sz / 2.0, c.y + 22 - sz, sz, sz))
+		return _px_rect(Geo.cottage_box(_home_slot(n)))
 	var b: String = n.home_block
 	var R: Rect2 = BLOCK_RECTS[b]
 	var residents: Array = g.w.npcs.filter(func(x): return x.home_block == b)
@@ -303,7 +279,7 @@ func _draw() -> void:
 		if cot_lot != null:
 			for n in w.npcs:
 				var c: Vector2 = _home_slot(n)
-				draw_texture_rect(cot_lot, _r(_px_rect(Rect2(c.x - 64, c.y - 12, 128, 58))), false, tint)   # wide enough to show round the cottage
+				draw_texture_rect(cot_lot, _r(_px_rect(Geo.cottage_lot(c))), false, tint)
 	# Dressing behind everything.
 	for d in ([] if BESPOKE else DECOR):
 		var t = _art("decor/" + d[0], 0.4)
