@@ -72,7 +72,13 @@ const MAP_STREETS = {         # a stretch of path on each block, for people out 
 const MAP_SIGNS = {           # where each block's name sign sits
 	"market": Vector2(330, 30), "hill": Vector2(1110, 170), "square": Vector2(1260, 420), "docks": Vector2(400, 612),
 }
-const PAPER_ART = {"bakery": "buildings_paper/bakery", "smithy": "buildings_paper/smithy", "tavern": "buildings_paper/tavern"}   # Michael's papercraft tests
+const PAPER_ART = {
+	"bakery": "buildings_paper/bakery", "smithy": "buildings_paper/smithy",
+	"tavern": "buildings_paper/tavern", "well": "buildings_paper/well",
+	"chapel": "buildings_paper/chapel", "graveyard": "buildings_paper/graveyard",
+	"wharf": "buildings_paper/wharf", "mill": "buildings_paper/mill",
+	"town_hall": "buildings_paper/town_hall",
+}
 
 static func _px(v: Vector2) -> Vector2:
 	return Vector2(v.x * 1000.0 / MAP_PX.x, MAP_TOP + v.y * 1000.0 / MAP_PX.x)
