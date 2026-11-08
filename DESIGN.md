@@ -395,7 +395,9 @@ scouting tool). Then one action:
 
 **Approaches:** at the start of some phases an NPC asks to talk (news, a frame or probe,
 a busybody's gossip, or a fearful NPC asking for your protection in exchange for their
-gift). Accepting costs the phase; declining is free.
+gift). Accepting costs the phase; declining is free. The approach waits for your answer:
+no other action is taken until you accept or decline. Someone who came to tell you news,
+a frame or their gift shares every sighting they remember in that conversation.
 
 ### Night
 
@@ -433,7 +435,8 @@ friction or protection). It has **3 questions**. The menu:
   question). Trust +0.03 on the offer, +0.06 when kept, −0.15 when broken; settled when
   you choose your night work. An evil NPC passes your promise to its team. **[watch]** on
   the numbers.
-- **Ask where they were and who they saw…**: today, last night, yesterday evening /
+- **Ask where they were and who they saw…**: earlier today (not the phase you're in;
+  first thing in the morning, that means yesterday), last night, yesterday evening /
   afternoon / morning. Daytime answers start with where they were and are truthful
   (daytime whereabouts are open to anyone's eyes). People you can already see are left
   out. Night answers go through the night account (Lying, below).
