@@ -47,6 +47,22 @@ func _topic() -> void:
 	w.day += 1
 	var tomorrow: Dictionary = Recency.topic(w)
 	check(is_equal_approx(tomorrow.get(p[1].id, 0.0), 0.5), "a day later it has halved")
+	# A busy day saturates its subject for that day only: nomination plus accusation is 1.0
+	# today and 0.5 tomorrow, not 0.8 (the excess over the cap is gone, Codex on #96).
+	var g2 = Game.new()
+	g2.detailed_logging = false
+	g2.new_case(692, 7)
+	var w2 = g2.w
+	var q: Array = w2.npcs
+	w2.public_log.append({"day": w2.day, "kind": "nomination", "subjects": [q[1].id], "by": q[2].id})
+	w2.public_log.append({"day": w2.day, "kind": "accusation", "subjects": [q[1].id], "by": q[3].id})
+	check(is_equal_approx(Recency.topic(w2).get(q[1].id, 0.0), 1.0), "nomination plus accusation caps at 1.0")
+	w2.day += 1
+	check(is_equal_approx(Recency.topic(w2).get(q[1].id, 0.0), 0.5), "and halves from the cap the next day (%.2f)" % Recency.topic(w2).get(q[1].id, 0.0))
+	w2.public_log.append({"day": w2.day, "kind": "accusation", "subjects": [q[1].id], "by": q[4].id})
+	check(is_equal_approx(Recency.topic(w2).get(q[1].id, 0.0), 1.0), "a fresh accusation on a half-faded topic tops it back up to the cap")
+	w2.day += 2
+	check(is_equal_approx(Recency.topic(w2).get(q[1].id, 0.0), 0.25), "and two quiet days later it is a quarter")
 	var card = {"id": "c2", "kind": "report", "role": "dowser", "source": p[6].id, "learned_at": {"day": w.day}}
 	var boost: float = Recency.salience(card, [p[1].id], {"today": w.day, "topic": tomorrow, "card_refresh": {}}, 0.5)
 	check(is_equal_approx(boost, Tuning.Workshop.RECENCY_TOPIC_WEIGHT * 0.5), "a card naming yesterday's nominee gains topic salience")

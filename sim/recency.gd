@@ -12,15 +12,18 @@ extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
 
 ## The town's topic: person id -> 0..1, from public nominations and accusations, the
-## player's meeting arguments and the latest defences, each fading by half a day.
+## player's meeting arguments and the latest defences. Each day's acts add up, the total is
+## capped at 1, and what is left halves every following day: a busy day saturates a person
+## for that day only, never for longer (Codex review on #96).
 static func topic(w) -> Dictionary:
 	var weights: Dictionary = Tuning.Workshop.RECENCY_TOPIC_EVENTS
-	var out: Dictionary = {}
+	var by_day: Dictionary = {} # person -> {day -> summed weight}
 	var add := func(person: String, weight: float, day: int) -> void:
-		if person == "" or day > w.day:
+		if person == "" or day > w.day or weight <= 0.0:
 			return
-		var faded: float = weight * pow(Tuning.Workshop.RECENCY_TOPIC_DAILY, float(w.day - day))
-		out[person] = minf(1.0, float(out.get(person, 0.0)) + faded)
+		if not by_day.has(person):
+			by_day[person] = {}
+		by_day[person][day] = float(by_day[person].get(day, 0.0)) + weight
 	for e in w.public_log:
 		var kind: String = str(e.get("kind", ""))
 		if weights.has(kind):
@@ -31,9 +34,19 @@ static func topic(w) -> Dictionary:
 	for supporter in w.defences:
 		var d: Dictionary = w.defences[supporter]
 		add.call(str(d.get("target", "")), float(weights.get("defence", 0.0)), int(d.get("day", w.day)))
-	for person in out.keys():
-		if out[person] < 0.01:
-			out.erase(person)
+	var out: Dictionary = {}
+	var daily: float = Tuning.Workshop.RECENCY_TOPIC_DAILY
+	for person in by_day:
+		var days: Array = by_day[person].keys()
+		days.sort()
+		var value: float = 0.0
+		var last: int = int(days[0])
+		for day in days:
+			value = minf(1.0, value * pow(daily, float(int(day) - last)) + float(by_day[person][day]))
+			last = int(day)
+		value *= pow(daily, float(w.day - last))
+		if value >= 0.01:
+			out[person] = value
 	return out
 
 ## What attention needs from the listener: today, the town's topic and this listener's
