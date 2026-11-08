@@ -493,9 +493,12 @@ solver or C# moved. The code is `sim/recency.gd`.
   mind 2.0 (it falls behind a fresh card about the topic) and a sharp one 0.4.
 - **The topic of the day** (`Recency.topic`, shared by the whole town): a nomination adds
   1.0 to its nominee, a public accusation 0.6, a case the player argued at a meeting 0.6
-  (`World.meeting_arguments`), a defence 0.3 to the defended (`World.defences`), summed and
-  capped at 1, and halved each following day (`RECENCY_TOPIC_DAILY`). A card naming or coming
-  from someone on the topic gains `RECENCY_TOPIC_WEIGHT` (1.5) times their weight.
+  (`World.meeting_arguments`), a defence 0.3 to the defended (`World.defences`). Each day's
+  acts are summed and capped at 1, and the running total halves each quiet day
+  (`RECENCY_TOPIC_DAILY`), so a busy day saturates its subject for that day only (fixed Nov 8
+  from Codex's review on #96: each act used to fade on its own before the cap, so
+  nomination plus accusation read 1.0 then 0.8 instead of 1.0 then 0.5). A card naming or
+  coming from someone on the topic gains `RECENCY_TOPIC_WEIGHT` (1.5) times their weight.
 - **Calling attention back.** Presenting a card resets its age for that listener
   (`Recency.refresh_cards`, in `WorkshopPresentation`); at a meeting every hearer gets the
   presentation, so it resets for each. Because cards are held once at their highest weight,
@@ -516,9 +519,11 @@ solver or C# moved. The code is `sim/recency.gd`.
   seven minds in seeds 900 and 1001 carried day-3 attention into day 4, off by up to 0.21).
   A mind that already refreshed that morning hits its cache. A topic raised mid-day reaches
   each mind at its next refresh, which in practice is the meeting's own hearing.
-- **Watch:** by day 3 the topic can saturate (seed 900: five people at 1.0 after a busy
-  meeting), and then it ranks nobody above anybody. If Tally's A/B shows that, the fix is a
-  lower cap or normalising by the day's busiest subject.
+- **Watch: saturation.** Before the decay fix, seed 900 had five people at 1.0 on day 3.
+  With it, seeds 900, 1001 and 1002 have at most three at the cap on any day (usually the
+  nominee and one or two accused) and the rest fading 0.5, 0.25. If Tally's A/B still shows
+  the topic ranking nobody above anybody, the next lever is a lower cap or normalising by
+  the day's busiest subject.
 - **Not yet:** NPCs citing old cards ("remember Dorian's reading?") don't refresh them, and
   evil doesn't steer the topic. Both plug into `refresh_cards` and `topic`.
 - **Measure:** its own A/B (Tally): long games (day 5+), "identified but lost", and how long

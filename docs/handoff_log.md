@@ -27,6 +27,28 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-08 evening, Claude-Quill: recency (PR #96) refreshed onto main `f167c63`
+
+Status: green, ready for review. Next actor: Bailiff (review and merge), then Tally (A/B).
+The orchestration plan listed recency as not built; it has been on PR #96 since Nov 6 (see
+the Nov 6 late-night entry below for what it does).
+- **Merged main** (#97–#104, including step 3's speed fixes). Only docs and the CI baseline
+  conflicted.
+- **Codex's finding on #96, fixed:** the topic now halves from its capped value. Each act
+  used to fade on its own before the cap, so a busy day kept its subject near 1.0 for days
+  (nomination plus accusation: 1.0 then 0.8, not 0.5). Four new checks in `test_recency`
+  fail without the fix. With it, seeds 900, 1001 and 1002 have at most three people at the
+  cap on any day (before, 900 had five).
+- **Checks:** `dotnet build`; 124/124 suites (`test_location_art` and `test_soundtrack` need
+  `godot --headless --import` first in a fresh checkout: "No loader found"); two golden
+  captures identical. **New baseline `baseline_06d26bf`** replaces `baseline_7034f36`;
+  divergence from day 1 is intended (see `docs/golden_baseline.md`). `baseline_b157258` is
+  removed.
+- **For Tally:** an A/B of PR #96 against main, with long games (day 5+), "identified but
+  lost", how long a good day-1 read survives, and topic saturation. Expected: the town a
+  bit worse in long games. The 7-NPC bot drop and the 10-NPC passive drop are still open
+  on main; merging this first would put recency into those comparisons.
+
 ## 2026-11-08 afternoon, Claude-Bailiff: bespoke papercraft map to main (`mock/bespoke-map`)
 
 - Base `862cd27` (main after #102). Status: green, merging on Michael's go-ahead. Next actor: Michael (playtest).
