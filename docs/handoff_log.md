@@ -27,6 +27,22 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-07 night, Claude-Bailiff: bare defences ungraded (`perf/bare-defence-skip`)
+
+Michael's call: an NPC's defence with no grounds isn't put through step 3's graded test. It
+brings nothing new; the listener already weighed the rest of the evidence. `SharedLedger`
+marks such challenges `bare`, and `ReadingChallenges.assess` skips them. They still count
+through the older challenge rules, and Workshop challenges are graded as before. A check in
+`test_defence_grounds` fails without the change. Passive 10-NPC game (seed 100000): 35 s
+became 20 s, about where it was before step 3.
+
+Checks: 297 parse, 120/120 suites, two captures identical. New baseline `baseline_7034f36`, a
+small behaviour change (see `docs/golden_baseline.md`).
+
+(My local check script's suite line read an old results file when copied with sed, so it
+printed a stale count. The real results were 120/120 for #99 and here, and CI agreed for #99.
+The script is fixed.)
+
 ## 2026-11-07 evening, Claude-Bailiff: step 3 speed fix (`perf/step3-speed`)
 
 The step 3 slowdown in the Nov 7 A/B (`claude/premises-ab-2026-11-07.md`) comes from NPC
