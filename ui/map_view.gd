@@ -80,6 +80,10 @@ const PAPER_ART = {
 	"town_hall": "buildings_paper/town_hall",
 }
 
+## A townsperson's own cottage art (named after them in full: Bartholomew, not bart).
+static func cottage_art(n) -> String:
+	return "cottages_poc/%s-cottage-papercraft-v1" % String(n.name).to_lower()
+
 static func _px(v: Vector2) -> Vector2:
 	return Vector2(v.x * 1000.0 / MAP_PX.x, MAP_TOP + v.y * 1000.0 / MAP_PX.x)
 
@@ -360,16 +364,19 @@ func _draw() -> void:
 				var un = g.unseen_at_ui(l)
 				var lbl = C.loc_name(l) + ((" (%d more there you can't see from here)" % un) if un > 0 else "")
 				_hits.append({"rect": LR, "kind": "location", "id": l, "label": lbl, "hint": hint})
-		# Homes (and crime scenes): small cottages with the owner's colour on the door.
+		# Homes (and crime scenes): each townsperson's own papercraft cottage in their colours
+		# (Nov 8); anyone without one gets a generic cottage with their colour on the door.
 		for n in w.npcs:
 			if n.home_block != b:
 				continue
 			var HR: Rect2 = _r(_home_rect(n))
-			var cot = _art("buildings/" + ("cottage_red" if n.id.hash() % 2 == 0 else "cottage_blue"), 0.25)
-			var hd = _draw_art(cot, HR.grow(HR.size.x * 0.15), "contain", tint) if cot != null else HR
+			var own = _art(cottage_art(n), 0.25)
+			var cot = own if own != null else _art("buildings/" + ("cottage_red" if n.id.hash() % 2 == 0 else "cottage_blue"), 0.25)
+			var hd = _draw_art(cot, HR.grow(HR.size.x * (0.22 if own != null else 0.15)), "contain", tint) if cot != null else HR
 			if cot == null:
 				draw_rect(HR, Color(0.22, 0.2, 0.18))
-			draw_circle(Vector2(hd.get_center().x, hd.end.y - hd.size.y * 0.12), maxf(3.0, 5.0 * _scale), C.npc_color(n.id))
+			if own == null:
+				draw_circle(Vector2(hd.get_center().x, hd.end.y - hd.size.y * 0.12), maxf(3.0, 5.0 * _scale), C.npc_color(n.id))
 			var sid = "scene_" + n.id
 			if w.scenes.has(sid):
 				draw_line(hd.position, hd.end, Color(0.85, 0.15, 0.15), 3.0)

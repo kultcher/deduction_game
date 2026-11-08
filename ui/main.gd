@@ -733,6 +733,7 @@ func _capture_conversation(previous_state: String, cmd: String) -> void:
 		if previous_state != "talk" or conversation_view.person_id != g.talk_with.id:
 			conversation_show_map = false
 			conversation_view.begin(g.talk_with.id, g.talk_with.name)
+			conversation_view.set_location(g.loc)
 		conversation_view.consume(g.last_events)
 	elif previous_state == "talk":
 		conversation_view.consume(g.last_events)
@@ -771,6 +772,7 @@ func _capture_scene_search(cmd: String) -> void:
 
 func _show_inspect_page() -> void:
 	var page: Dictionary = inspect_pages[inspect_index]
+	conversation_view.set_location(g.loc)
 	conversation_view.show_item(page.title, page.texture, page.text)
 
 func _inspect_next() -> void:
