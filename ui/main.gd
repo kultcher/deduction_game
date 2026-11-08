@@ -855,8 +855,8 @@ func _refresh_all() -> void:
 	_refresh_side()
 	_refresh_actions()
 	var meeting = g.state in ["meeting", "nomination"]
-	if not meeting or (g.state == "nomination" and _last_state != "nomination") or (g.state == "meeting" and _last_state == "nomination"):
-		meeting_show_map = false  # a vote starting (or being counted) brings the circle back
+	if not meeting or (g.state == "nomination" and _last_state != "nomination") or (g.state == "meeting" and _last_state == "nomination") or meeting_view.presenting():
+		meeting_show_map = false  # a vote starting (or being counted), or anyone speaking, brings the circle back
 	_last_state = g.state
 	var last_words: bool = not meeting and meeting_view.stage_busy()   # the gallows, after the meeting closes
 	var reading: bool = not inspect_pages.is_empty()   # traces from the evening's search come before the meeting

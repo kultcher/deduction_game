@@ -123,6 +123,9 @@ func _count_done() -> void:
 	_after_count = []
 	_explaining = true
 	stage.push(later)
+	if not stage.busy():   # nobody spoke after the tally: it was all for the log
+		_explaining = false
+		settled.emit()
 
 ## The status pill for whoever is speaking: the phase, the block, what the vote needs.
 func _status_for(speaker: String) -> String:

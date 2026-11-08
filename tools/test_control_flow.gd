@@ -63,6 +63,7 @@ func _run() -> void:
 	await _test_day_pane(scene)
 	await _test_lock(scene)
 	await _test_meeting_log(scene)
+	_test_review_fixes(scene)
 	await _test_traces_before_meeting(scene)
 	_test_sightings()
 	print("Control flow: %d checks, %d failures" % [_checks, _fails])
@@ -193,6 +194,30 @@ func _test_meeting_log(scene) -> void:
 		var said: String = str(stage.current.get("text", "")).split("\n")[0]
 		_check(said in _log(scene), "the speaker on stage is in the log")
 		stage.clear()
+
+
+## Review fixes (Codex, PR #101).
+func _test_review_fixes(scene) -> void:
+	var g = scene.g
+	_check(g.state in ["meeting", "nomination"], "still at the meeting for the review checks (%s)" % g.state)
+	if g.state not in ["meeting", "nomination"]:
+		return
+	var mv = scene.meeting_view
+	# A count with nothing said after it still lets the actions back.
+	var settled: Array = [0]
+	mv.settled.connect(func(): settled[0] += 1)
+	mv._after_count = [{"k": "narration", "text": "Votes to execute 2 of 5."}]
+	mv._count_done()
+	_check(settled[0] == 1 and not mv.presenting() and "Votes to execute 2 of 5." in _log(scene), "a count with nobody speaking after it settles (and logs)")
+	# Someone speaking while you look at the map brings the circle back.
+	scene.meeting_show_map = true
+	scene._refresh_all()
+	_check(not mv.visible, "the map can be up during the meeting")
+	var n = g.w.living()[0]
+	mv.stage.push([_speech(n.id, n.name, "Listen.")])
+	scene._refresh_all()
+	_check(mv.visible and not scene.meeting_show_map, "anyone speaking brings the circle back from the map")
+	mv.stage.clear()
 
 
 func _test_traces_before_meeting(scene) -> void:
