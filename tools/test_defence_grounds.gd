@@ -1,5 +1,6 @@
 ## A bare defence ("X is lying") cites no grounds, so it can't widen a bounded listener's
-## attention (premises pass, step 0; case 13910).
+## attention (premises pass, step 0; case 13910). It also isn't graded (Nov 7): an NPC's
+## word with no grounds brings nothing new, so step 3's graded test is left out.
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -58,6 +59,9 @@ func _seed(seed_v: int) -> int:
 		var rc: Dictionary = plan2.prepared.case.get("reading_challenges", {})
 		var after: int = n.workshop_state.get("reasoning", {}).get("considered", []).size()
 		_check(rc.has(rid) and rc[rid].get("supports", ["x"]).is_empty(), "%s/%s: the defence is a challenge with no grounds" % [seed_v, n.id])
+		_check(rc.has(rid) and rc[rid].get("bare", false), "%s/%s: and it's marked bare" % [seed_v, n.id])
+		var held: Array = n.workshop_state.get("reading_challenges", []).filter(func(r): return str(r.get("card", "")) == rid)
+		_check(not held.is_empty() and held.all(func(r): return r.get("graded", {"x": 1}).is_empty()), "%s/%s: a bare defence isn't graded (%s)" % [seed_v, n.id, held.map(func(r): return r.get("graded", {}).keys())])
 		_check(after <= before + 1, "%s/%s: attention stays bounded (%d -> %d of %d)" % [seed_v, n.id, before, after, plan2.prepared.view.cards.size()])
 		tested += 1
 	return tested

@@ -149,7 +149,9 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 		# A Seer "misled" (Red Herring, Marked registration) keeps its explicit rule: an
 		# honest gift that registered correctly isn't discounted, and a yes/no flip on one
 		# pair is no automatic discount either. Its registration is already in the worlds.
-		var graded: Dictionary = {} if (challenge.mode == "misled" and str(report.get("role", "")) == "seer" and not challenge.has("group")) else graded_challenge(view, group, challenge.mode, listener, cards)
+		# A bare defence (an NPC's word, no grounds; SharedLedger) isn't graded: see there.
+		var ungraded: bool = challenge.get("bare", false) or (challenge.mode == "misled" and str(report.get("role", "")) == "seer" and not challenge.has("group"))
+		var graded: Dictionary = {} if ungraded else graded_challenge(view, group, challenge.mode, listener, cards)
 		var backfire: bool = false
 		var candidates: Dictionary = {}
 		if not graded.is_empty():

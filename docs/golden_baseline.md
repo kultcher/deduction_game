@@ -44,7 +44,16 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 7, step 3 speed): `baseline_5ba1d64`
+### Current baseline (Nov 7, bare defences ungraded): `baseline_7034f36`
+
+`tools/golden/baseline_7034f36/` is the capture from `7034f36`. An NPC's defence with no grounds is
+no longer put through step 3's graded test (decided with Michael). A behaviour change, but a
+small one: every seed parts from `baseline_5ba1d64` at its first stored bare challenge, which
+has no `graded` result now. Ignoring `graded`, the first belief differences are about 4e-5 in
+suspicion, from day 1 or 2's refreshes. Seed 54875 records 267 records instead of 286. The final
+results are unchanged. Two captures identical.
+
+### Previous baseline (Nov 7, step 3 speed): `baseline_5ba1d64`
 
 `tools/golden/baseline_5ba1d64/` is the capture from `5ba1d64`: `baseline_4e54261` with graded
 challenges no longer running two of their three evaluations (the source's prior comes from the
@@ -253,7 +262,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_5ba1d64 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_7034f36 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs
