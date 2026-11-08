@@ -519,6 +519,10 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		"label": "Movement / trace: joint live comparison", "profiles": profiles, "scene_tables": scene_tables, "scion_splits": scion_splits,
 		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
 	result[0]["relationships"] = relationships(view, cards)
+	if share > 0.0:
+		# The Scion's before/after splits keep walking demon profiles; C# mixes each split's
+		# pre x post product over the one shared type (see ScoreWorldCore).
+		result[0]["day_demon_share"] = share
 	return result
 
 static func _append_scene_packed(n: int, st: Dictionary, meta_ints: PackedInt32Array, meta_doubles: PackedFloat64Array) -> void:
@@ -555,7 +559,9 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 	if _mru_epoch != epoch:
 		_factor_handles.clear()
 		_mru_epoch = epoch
-	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", [])])
+	var day_share: float = float(factor.get("day_demon_share", 0.0))
+	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", [])]) if day_share <= 0.0 \
+		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
 		if hit.factor == factor:
@@ -617,6 +623,9 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 			_append_scene_packed(n, st, meta_ints, meta_doubles)
 		for st in post_sc:
 			_append_scene_packed(n, st, meta_ints, meta_doubles)
+	if day_share > 0.0:
+		# Trailing, so a share of 0 packs exactly as before.
+		meta_doubles.append(day_share)
 
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("LiveActivity.register_factor", pack_u)
@@ -918,7 +927,6 @@ static func _scion_succession_splits_cs(view: Dictionary, ids: Array, env: Dicti
 			false, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
 			DEMON_DETOUR, p_post.ints, p_post.doubles
 		)
-		var day_share: float = day_demon_share(view)
 		var pre_profiles: Array = []
 		var post_profiles: Array = []
 		pre_profiles.resize(n)
@@ -928,8 +936,8 @@ static func _scion_succession_splits_cs(view: Dictionary, ids: Array, env: Dicti
 			if exec_day < env.deaths[i]:
 				alive_mask |= (1 << i)
 			var b: int = i * 3
-			pre_profiles[i] = {"good": raw_pre[b], "minion": raw_pre[b + 1], "demon": mix_demon(raw_pre[b + 2], raw_pre[b + 1], day_share)}
-			post_profiles[i] = {"good": raw_post[b], "minion": raw_post[b + 1], "demon": mix_demon(raw_post[b + 2], raw_post[b + 1], day_share)}
+			pre_profiles[i] = {"good": raw_pre[b], "minion": raw_pre[b + 1], "demon": raw_pre[b + 2]}
+			post_profiles[i] = {"good": raw_post[b], "minion": raw_post[b + 1], "demon": raw_post[b + 2]}
 		var pre_scenes: Array = _build_scene_tables_cs(view, ids, env, pre_cards, p_pre)
 		var post_scenes: Array = _build_scene_tables_cs(view, ids, env, post_cards, p_post)
 		for exec_id in execs[day_str]:

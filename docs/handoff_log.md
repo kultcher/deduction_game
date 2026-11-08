@@ -38,10 +38,13 @@ Ground rules (from Nov 3, until Michael changes them):
 - The snapshot's rules carry `demons` (`WorkshopBridge.script_demons`), and the live view gets `script_demons`.
 - `LiveActivity.day_demon_share` / `mix_demon`: the demon's whole-case movement likelihood is mixed over the
   types (a walking demon, or a day-killer that's out at night like a minion). It's applied to the joint
-  factor's profiles, the Scion splits and `_likelihood(..., "demon")`. It isn't applied night by night,
-  which would act as if the type were redrawn each night. There's no C# change.
+  factor's main profiles and `_likelihood(..., "demon")`. It isn't applied night by night, which would act
+  as if the type were redrawn each night.
+- Scion splits (Codex P2 on #105): the before/after scores multiply, so they're mixed after multiplying,
+  in C# `ScoreWorldCore`, from a trailing `day_demon_share` double in the compiled factor. Splits keep walking
+  profiles in GD.
 - Share 0 on every script today: golden identical to `baseline_7034f36`, 124/124 suites.
-  New `test_demon_types` (18 checks).
+  New `test_demon_types` (22 checks).
 
 ## 2026-11-08 afternoon, Claude-Bailiff: bespoke papercraft map to main (`mock/bespoke-map`)
 

@@ -48,6 +48,31 @@ func _close(x: float, y: float) -> bool:
 	return absf(x - y) <= 1e-12 * maxf(1.0, maxf(absf(x), absf(y)))
 
 
+## A hand-built joint factor with one Scion split: person 0 is executed, person 1 rises.
+## `day` puts the minion profile in the split's demon slot; `premix` mixes it in per profile
+## (the wrong way) at that share.
+func _split_factor(share: float, day: bool, premix: float = 0.0) -> Dictionary:
+	var main: Array = []
+	var pre: Array = []
+	var post: Array = []
+	var walk_pre: Array = [0.9, 0.2, 0.5, 0.6]
+	var walk_post: Array = [0.3, 0.8, 0.4, 0.7]
+	for i in range(4):
+		main.append({"good": 0.5, "minion": 0.4, "demon": 0.3 + 0.1 * i})
+		var dp: float = 0.25 if day else walk_pre[i]
+		var dq: float = 0.15 if day else walk_post[i]
+		if premix > 0.0:
+			dp = LiveActivity.mix_demon(walk_pre[i], 0.25, premix)
+			dq = LiveActivity.mix_demon(walk_post[i], 0.15, premix)
+		pre.append({"good": 0.5, "minion": 0.25, "demon": dp})
+		post.append({"good": 0.5, "minion": 0.15, "demon": dq})
+	var f: Dictionary = {"profiles": main, "scene_tables": [], "scion_splits": [{"exec_day": 2, "executed_idx": 0,
+		"alive_demon_mask": 0b1110, "pre_profiles": pre, "post_profiles": post, "pre_scenes": [], "post_scenes": []}]}
+	if share > 0.0:
+		f["day_demon_share"] = share
+	return f
+
+
 func _run() -> void:
 	# The helper.
 	_check(C.is_demon("demon") and C.is_demon("daykiller"), "is_demon covers the Demon and the reserved day-killer")
@@ -88,6 +113,21 @@ func _run() -> void:
 		_check(f0[0].scene_tables == f_half[0].scene_tables, "trace and scene tables don't change: either demon is at the victim's house")
 	var again: Array = LiveActivity.factors(_view(["demon"]), cards, {})
 	_check(not again.is_empty() and again[0].profiles == f0[0].profiles, "the factor cache keeps the two views apart")
+
+	# A Scion succession split mixes over one shared type: (1-s)*Wpre*Wpost + s*Dpre*Dpost,
+	# with no cross terms from mixing the before and after profiles separately.
+	var world: Dictionary = {"evil": 0b0011, "demon": 1}  # 0 = the executed demon, 1 = the Scion who rose
+	var f_walk: Dictionary = _split_factor(0.0, false)
+	var f_day: Dictionary = _split_factor(0.0, true)
+	var f_mix: Dictionary = _split_factor(0.5, false)
+	var s_walk: float = LiveActivity.score(world, f_walk)
+	var s_day: float = LiveActivity.score(world, f_day)
+	var s_mix: float = LiveActivity.score(world, f_mix)
+	_check(s_walk > 0.0 and s_day > 0.0 and not _close(s_walk, s_day), "the split scores differ by type (walk %.5f, day %.5f)" % [s_walk, s_day])
+	_check(_close(s_mix, 0.5 * s_walk + 0.5 * s_day), "a Scion split mixes after multiplying before and after (%.5f)" % s_mix)
+	var f_cross: Dictionary = _split_factor(0.0, false, 0.5)
+	_check(not _close(s_mix, LiveActivity.score(world, f_cross)), "pre-mixing the before and after profiles would give a different score")
+	_check(LiveActivity.score(world, _split_factor(0.0, false)) == s_walk, "the factor cache keeps shared and walking-only splits apart")
 
 	# The bridge hands the script's demons to the solver.
 	var g = Game.new()

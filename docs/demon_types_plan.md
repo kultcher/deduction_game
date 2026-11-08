@@ -79,13 +79,19 @@ the type wouldn't build up over several nights.
 - The snapshot's rules carry the script's demons (`WorkshopBridge.script_demons`), and the
   live view gets `script_demons`.
 - `LiveActivity.day_demon_share(view)` and `mix_demon(...)` work as follows:
-  - The demon entry of the joint factor's profiles is mixed, including the Scion's
-    before/after splits. `LiveActivity._likelihood(..., "demon")` is mixed too.
-  - The factor cache keys on the share when it's above 0.
-  - There's no C# change: the mixing happens on the C# outputs.
+  - The demon entry of the joint factor's main profiles is mixed. That's exact, because the
+    world's score is linear in the one demon's profile. `LiveActivity._likelihood(..., "demon")`
+    is mixed too.
+  - The Scion's before/after splits are different: the before and after scores multiply, so
+    mixing each profile would add cross terms (a walker before and a day-killer after). The
+    splits keep walking profiles, the factor carries `day_demon_share`, and C#
+    (`ScoreWorldCore`) mixes the product: `(1-s)·Wpre·Wpost + s·Dpre·Dpost`, where the day
+    version puts the minion profile in the demon's slot. (Codex's review on PR #105.)
+  - The share is packed as an optional trailing double, and the factor cache keys on it
+    only when it's above 0, so a share of 0 packs exactly as before.
 - **Behaviour:** with a share of 0, which is every script today, every number is unchanged.
   The golden capture is identical to the baseline.
-- **Test:** `tools/test_demon_types.gd` (18 checks).
+- **Test:** `tools/test_demon_types.gd` (22 checks, including a hand-built Scion split).
 
 ### Step 2: daytime presence (not started)
 
