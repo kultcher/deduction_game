@@ -996,7 +996,7 @@ static func _evil_nomination(w, n, m: Dictionary, block: String):
 	var sc = shadow_eval(w, n, func(sh): return _good_nomination(w, sh, m, block))
 	if sc != null:
 		sc["by"] = n.id
-		if w.by_id[sc["nominee"]].role == "demon":
+		if C.is_demon(w.by_id[sc["nominee"]].role):
 			w.dlog.think(n.id, "team_survival", "Protects the demon: maintaining cover cannot justify nominating them.")
 			return _evil_counter_or_pass(w, n, m, ev)
 		if Evil.is_teammate(w, n, sc["nominee"]):
@@ -1719,7 +1719,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		return false
 	if v.is_evil():
 		var scion_safe: bool = Evil.scion_fallback_active(w)
-		if w.by_id[nominee].role == "demon" and not scion_safe:
+		if C.is_demon(w.by_id[nominee].role) and not scion_safe:
 			w.dlog.think(v.id, "team_survival", "Votes no on the demon: later voters can make even an early vote decisive.")
 			return false
 		if v.id == nominator and not Evil.is_teammate(w, v, nominee):
@@ -1766,11 +1766,11 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		elif mate_on_block:
 			rescue = Tuning.Meeting.EVIL_VOTE_RESCUE_MINION
 		var stakes = 0.3
-		if Evil.is_teammate(w, v, nominee) or w.by_id[nominee].role == "demon":
+		if Evil.is_teammate(w, v, nominee) or C.is_demon(w.by_id[nominee].role):
 			if not evil_yes:
 				var mate_pivot: float = 1.0 if pivot >= 1.0 else (Tuning.Meeting.EVIL_VOTE_LANDSLIDE_PIVOT if landslide else Tuning.Meeting.EVIL_VOTE_NONPIVOTAL_TEAMMATE)
 				stakes = Evil.teammate_value(w, nominee) * mate_pivot
-				if scion_safe and w.by_id[nominee].role == "demon" and v.role == "scion":
+				if scion_safe and C.is_demon(w.by_id[nominee].role) and v.role == "scion":
 					stakes *= Tuning.Meeting.EVIL_VOTE_SCION_COVER_MULT
 			else:
 				stakes = 0.75

@@ -511,7 +511,7 @@ static func _report_table_cs(view: Dictionary, universe_key: String, u_worlds: A
 						var m_cls: int = 0
 						if data.has("role"):
 							var m_role: String = str(data.get("role", ""))
-							m_cls = 1 if C.is_minion(m_role) else (2 if m_role == "demon" else 3)
+							m_cls = 1 if C.is_minion(m_role) else (2 if C.is_demon(m_role) else 3)
 						target_or_secret = (1 if bool(data.get("walked", false)) else 0) | (m_cls << 1)
 				elif role_str == "confessor":
 					if bool(data.get("forgot", false)):
@@ -1324,7 +1324,7 @@ static func _report_content_impl(view: Dictionary, world: Dictionary, card: Dict
 					var is_marked_m: bool = (int(world.marked) == pi)
 					if not is_evil_m and not is_marked_m:
 						return false
-				elif m_role == "demon":
+				elif C.is_demon(m_role):
 					var is_dem: bool = (int(world.get("demon", -1)) == pi) if world.has("demon") else ((int(world.evil) & (1 << pi)) != 0)
 					var is_marked_d: bool = (int(world.marked) == pi)
 					if not is_dem and not is_marked_d:
