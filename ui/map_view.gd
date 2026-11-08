@@ -37,6 +37,49 @@ const BLOCK_TINT = {
 	"square": Color(0.16, 0.18, 0.14), "docks": Color(0.12, 0.15, 0.20),
 }
 const OVERVIEW = Rect2(0, 0, 1000, 700)
+
+# ---------------------------------------------------------------- bespoke base map (mock, Nov 7)
+# One painted map (assets/art/map/town.png, 1536 x 1024) with fixed pads: the large pads take
+# the buildings, the small ones the cottages. Coordinates below are image pixels.
+const BESPOKE = true
+const MAP_PX = Vector2(1536, 1024)
+const MAP_TOP = 16.6          # the image spans the full 1000 wide, centred vertically in 700
+const MAP_BLOCKS = {          # each block's area on the image (for zoom, hits and highlights)
+	"market": Rect2(0, 0, 640, 430),
+	"hill": Rect2(860, 0, 676, 410),
+	"square": Rect2(870, 410, 666, 430),
+	"docks": Rect2(0, 600, 880, 424),
+}
+const MAP_PADS = {            # building pads: centre x, centre y, width, height
+	"smithy": [431, 121, 269, 151], "bakery": [201, 308, 258, 160],
+	"chapel": [1163, 100, 264, 137], "graveyard": [1332, 274, 295, 171],
+	"tavern": [1345, 548, 275, 161], "town_hall": [1049, 714, 231, 171], "well": [1156, 609, 120, 90],
+	"mill": [144, 777, 263, 167], "wharf": [634, 870, 266, 127],
+}
+const MAP_COTTAGES = {        # cottage pads per block: centre x, centre y
+	"market": [[146, 147], [244, 146], [497, 244], [393, 329]],
+	"hill": [[1065, 196], [1360, 141], [978, 224]],
+	"square": [[956, 557], [1077, 504], [1293, 744], [1406, 723]],
+	"docks": [[307, 746], [387, 784], [454, 880]],
+}
+const MAP_STREETS = {         # a stretch of path on each block, for people out and about
+	"market": Rect2(90, 205, 380, 50),
+	"hill": Rect2(900, 140, 330, 50),
+	"square": Rect2(1180, 610, 300, 60),
+	"docks": Rect2(60, 850, 380, 50),
+}
+const MAP_SIGNS = {           # where each block's name sign sits
+	"market": Vector2(105, 30), "hill": Vector2(1010, 40), "square": Vector2(1120, 400), "docks": Vector2(380, 640),
+}
+
+static func _px(v: Vector2) -> Vector2:
+	return Vector2(v.x * 1000.0 / MAP_PX.x, MAP_TOP + v.y * 1000.0 / MAP_PX.x)
+
+static func _px_rect(r: Rect2) -> Rect2:
+	return Rect2(_px(r.position), r.size * 1000.0 / MAP_PX.x)
+
+static func _block_rect(b: String) -> Rect2:
+	return _px_rect(MAP_BLOCKS[b]) if BESPOKE else BLOCK_RECTS[b]
 const BUILDING_ART = {"tavern": "tavern", "well": "well", "smithy": "smithy", "bakery": "bakery",
 	"wharf": "wharf", "mill": "mill", "chapel": "chapel", "graveyard": "graveyard", "town_hall": "town_hall"}
 ## Shorter signs for blocks with three buildings (the Square with the Town Hall), so
@@ -76,7 +119,7 @@ func zoom_to(block: String) -> void:
 
 func _view_rect() -> Rect2:
 	if zoom_block != "" and BLOCK_RECTS.has(zoom_block):
-		return BLOCK_RECTS[zoom_block].grow(24)
+		return _block_rect(zoom_block).grow(24)
 	return OVERVIEW
 
 func _fit() -> void:
@@ -101,6 +144,12 @@ func _map_buildings_on(b: String) -> Array:
 	return locs
 
 func _loc_rect(l: String) -> Rect2:
+	if BESPOKE and MAP_PADS.has(l):
+		var p: Array = MAP_PADS[l]
+		var w: float = p[2] * 0.78
+		var bottom: float = p[1] + p[3] * 0.32
+		var h: float = minf(p[3] * 1.35, bottom - 8.0)   # pads at the top edge: keep the roof on the map
+		return _px_rect(Rect2(p[0] - w / 2.0, bottom - h, w, h))
 	var b: String = C.loc_block(l)
 	var R: Rect2 = BLOCK_RECTS[b]
 	var locs: Array = _map_buildings_on(b)
@@ -117,10 +166,20 @@ func _loc_of_rect(rect: Rect2) -> String:
 	return ""
 
 func _street_rect(b: String) -> Rect2:
+	if BESPOKE:
+		return _px_rect(MAP_STREETS[b])
 	var R: Rect2 = BLOCK_RECTS[b]
 	return Rect2(R.position.x + R.size.x * 0.08, R.position.y + R.size.y * 0.6, R.size.x * 0.84, R.size.y * 0.14)
 
 func _home_rect(n) -> Rect2:
+	if BESPOKE:
+		var slots: Array = MAP_COTTAGES[n.home_block]
+		var mine: Array = g.w.npcs.filter(func(x): return x.home_block == n.home_block)
+		var k: int = mine.find(n)
+		var c: Array = slots[k % slots.size()]
+		var over: float = 40.0 * (k / slots.size())   # more residents than pads: nudge the extras
+		var sz: float = 78.0
+		return _px_rect(Rect2(c[0] - sz / 2.0 + over, c[1] + 22 - sz - over * 0.4, sz, sz))
 	var b: String = n.home_block
 	var R: Rect2 = BLOCK_RECTS[b]
 	var residents: Array = g.w.npcs.filter(func(x): return x.home_block == b)
@@ -143,7 +202,7 @@ func _home_rect(n) -> Rect2:
 	return Rect2(x0 + (i % per_row) * (hs + gap), R.position.y + R.size.y - hs - 8 - row * (hs + 4), hs, hs)
 
 func _block_center(b: String) -> Vector2:
-	return BLOCK_RECTS[b].get_center()
+	return _block_rect(b).get_center()
 
 ## A road's course in virtual coordinates. The outer roads to the Docks run down the
 ## sides of the map and in along the bottom, clear of the Square.
@@ -210,15 +269,19 @@ func _draw() -> void:
 	var night = g.state == "night"
 	var tint = Color(0.5, 0.55, 0.85) if night else Color.WHITE
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.07, 0.09, 0.14) if night else Color(0.12, 0.16, 0.18))
+	if BESPOKE:
+		var base_map = _art("map/town", 1.0)
+		if base_map != null:
+			draw_texture_rect(base_map, _r(_px_rect(Rect2(Vector2.ZERO, MAP_PX))), false, tint)
 	# Dressing behind everything.
-	for d in DECOR:
+	for d in ([] if BESPOKE else DECOR):
 		var t = _art("decor/" + d[0], 0.4)
 		if t != null:
 			var hh: float = d[2]
 			var ww = hh * t.get_width() / t.get_height()
 			_draw_art(t, _r(Rect2(d[1] - Vector2(ww / 2.0, 0), Vector2(ww, hh))), "contain", tint)
 	# Roads: sandy paths with a dark edge, and a lamp halfway along.
-	for road in C.ROADS:
+	for road in ([] if BESPOKE else C.ROADS):
 		var pts: Array = _road_points(road[0], road[1])
 		for i in range(pts.size() - 1):
 			var a = _p(pts[i])
@@ -235,15 +298,18 @@ func _draw() -> void:
 	var unseen_badges: Array = []
 	# Blocks.
 	for b in BLOCK_RECTS:
-		var R: Rect2 = _r(BLOCK_RECTS[b])
-		var base = _art("blocks/" + b, 0.6)
-		if base != null:
-			_draw_art(base, R, "cover", tint)
-		else:
-			draw_rect(R, BLOCK_TINT[b] if not night else BLOCK_TINT[b].darkened(0.45))
+		var R: Rect2 = _r(_block_rect(b))
 		var here = not night and g.moved and w.loc_block(g.loc) == b
-		var border = UITheme.color("accent") if (b == selected_block or here) else Color(0.12, 0.1, 0.08, 0.8)
-		draw_rect(R, border, false, 3.0 if (b == selected_block or here) else 2.0)
+		if not BESPOKE:
+			var base = _art("blocks/" + b, 0.6)
+			if base != null:
+				_draw_art(base, R, "cover", tint)
+			else:
+				draw_rect(R, BLOCK_TINT[b] if not night else BLOCK_TINT[b].darkened(0.45))
+			var border = UITheme.color("accent") if (b == selected_block or here) else Color(0.12, 0.1, 0.08, 0.8)
+			draw_rect(R, border, false, 3.0 if (b == selected_block or here) else 2.0)
+		elif b == selected_block or here:
+			draw_rect(R, UITheme.color("accent"), false, 3.0)
 		if zoom_block == "":
 			_hits.append({"rect": R, "kind": "block", "id": b, "label": C.block_name(b), "hint": "Click to look closer" if not night else "Click to choose it for your vigil"})
 		# Locations and player-only buildings (the Town Hall): building sprites with a name sign.
@@ -305,7 +371,8 @@ func _draw() -> void:
 							home_hint = "click to call on them" + (" (free move)" if g.moved else "")
 					_hits.append({"rect": HR, "kind": "home", "id": n.id, "label": "%s's home" % n.name, "hint": home_hint})
 		# The block's name on a sign.
-		_sign(font, C.block_name(b).trim_prefix("the "), Vector2(R.get_center().x, R.position.y + _fs(16)), _fs(15), b == selected_block)
+		var sign_at: Vector2 = _p(_px(MAP_SIGNS[b])) + Vector2(0, _fs(16)) if BESPOKE else Vector2(R.get_center().x, R.position.y + _fs(16))
+		_sign(font, C.block_name(b).trim_prefix("the "), sign_at, _fs(15), b == selected_block)
 	if night:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.1, 0.25))
 	_draw_selection_marks()
@@ -322,7 +389,7 @@ func _draw() -> void:
 		draw_string(font, Vector2(bc.x - br, bc.y + br * 0.4), "+%d" % bdg["count"], HORIZONTAL_ALIGNMENT_CENTER, br * 2.0, int(br * 1.1), UITheme.color("paper"))
 	# Zoomed in: dim everything outside the block in view.
 	if zoom_block != "" and BLOCK_RECTS.has(zoom_block):
-		var Z: Rect2 = _r(BLOCK_RECTS[zoom_block])
+		var Z: Rect2 = _r(_block_rect(zoom_block))
 		var dim = Color(0.04, 0.05, 0.08, 0.72)
 		draw_rect(Rect2(0, 0, size.x, Z.position.y), dim)
 		draw_rect(Rect2(0, Z.end.y, size.x, size.y - Z.end.y), dim)
@@ -415,7 +482,7 @@ func _draw_people(font) -> void:
 				var width: float = font.get_string_size(n.name, HORIZONTAL_ALIGNMENT_LEFT, -1, lfs).x + 8
 				var desired = Rect2(Vector2(foot.x - width / 2.0, foot.y + 2 + (lfs if (i % 2 == 1 and members.size() > 2) else 0)), Vector2(width, lfs + 5))
 				var label_bounds = Rect2(Vector2(4, 4), size - Vector2(8, 40))
-				if BLOCK_RECTS.has(zoom_block): label_bounds = label_bounds.intersection(_r(BLOCK_RECTS[zoom_block]).grow(-4))
+				if BLOCK_RECTS.has(zoom_block): label_bounds = label_bounds.intersection(_r(_block_rect(zoom_block)).grow(-4))
 				var label = name_label_rect(desired, _label_obstacles, label_bounds)
 				_label_obstacles.append(label)
 				_name_labels.append({"id": n.id, "rect": label})
