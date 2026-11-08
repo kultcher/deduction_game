@@ -464,6 +464,8 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests]
 	if view.get("chronology", {}).has("curse"):
 		input.append(view.chronology.curse)
+	if day_demon_share(view) > 0.0:
+		input.append({"day_demon_share": day_demon_share(view)})
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
@@ -496,6 +498,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		DEMON_DETOUR, packed_checked.ints, packed_checked.doubles
 	)
 	var n: int = ids.size()
+	var share: float = day_demon_share(view)
 	var stride: int = 4 if has_curse else 3
 	var profiles: Array = []
 	profiles.resize(n)
@@ -504,7 +507,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		var p_dict: Dictionary = {
 			"good": raw_prof[b],
 			"minion": raw_prof[b + 1],
-			"demon": raw_prof[b + 2],
+			"demon": mix_demon(raw_prof[b + 2], raw_prof[b + 1], share),
 		}
 		if has_curse:
 			p_dict["converted"] = raw_prof[b + 3]
@@ -668,11 +671,19 @@ static func _scores_dispatch(universe: Array, factor: Dictionary, u_handle: int,
 
 static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
 	if not SolverBackend.profiling_enabled:
-		return _likelihood_dispatch(view, cards, person, alignment)
+		return _likelihood_typed(view, cards, person, alignment)
 	var _st: int = SolverBackend.begin_stage("live_activity")
-	var _res: float = _likelihood_dispatch(view, cards, person, alignment)
+	var _res: float = _likelihood_typed(view, cards, person, alignment)
 	SolverBackend.end_stage(_st)
 	return _res
+
+## The demon's likelihood mixes over demon types (mix_demon); every other alignment is as before.
+static func _likelihood_typed(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
+	var walking: float = _likelihood_dispatch(view, cards, person, alignment)
+	var share: float = day_demon_share(view) if alignment == "demon" else 0.0
+	if share <= 0.0:
+		return walking
+	return mix_demon(walking, _likelihood_dispatch(view, cards, person, "minion"), share)
 
 static func _likelihood_dispatch(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
 	var ids: Array = view.people.map(func(p): return p.id)
@@ -754,6 +765,32 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 				weight *= sum
 			total += weight
 	return total
+
+## The share of the script's possible demons that never walk at night (the day-killer,
+## docs/demon_types_plan.md). 0 on every script the game deals today, which leaves every
+## movement likelihood exactly as before.
+static func day_demon_share(view: Dictionary) -> float:
+	var demons: Array = view.get("script_demons", [])
+	if demons.is_empty():
+		return 0.0
+	var day: int = 0
+	for d in demons:
+		if C.is_day_demon(str(d)):
+			day += 1
+	return float(day) / float(demons.size())
+
+## The demon slot's movement likelihood, mixed over the script's demon types. A day-killer
+## kills without walking, so at night it's out like a minion. The type is one hidden fact for
+## the whole case, and in any world only the demon's own movement factor depends on it, so
+## mixing that person's whole likelihood (every night at once) is exact:
+##   sum_t pi_t * prod_i L_i^t = prod_{i != demon} L_i * (pi_walk * L_walk + pi_day * L_still).
+## Mixing night by night instead would act as if the type were redrawn each night, and
+## evidence about it wouldn't build up. Trace and scene factors don't change: either demon
+## is at the victim's house. Returns `walking` untouched when the share is 0.
+static func mix_demon(walking: float, still: float, share: float) -> float:
+	if share <= 0.0:
+		return walking
+	return walking * (1.0 - share) + still * share
 
 static func _profile_paths(view: Dictionary, person: Dictionary, night: int, profile: String, cards: Array) -> Array:
 	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
@@ -881,6 +918,7 @@ static func _scion_succession_splits_cs(view: Dictionary, ids: Array, env: Dicti
 			false, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
 			DEMON_DETOUR, p_post.ints, p_post.doubles
 		)
+		var day_share: float = day_demon_share(view)
 		var pre_profiles: Array = []
 		var post_profiles: Array = []
 		pre_profiles.resize(n)
@@ -890,8 +928,8 @@ static func _scion_succession_splits_cs(view: Dictionary, ids: Array, env: Dicti
 			if exec_day < env.deaths[i]:
 				alive_mask |= (1 << i)
 			var b: int = i * 3
-			pre_profiles[i] = {"good": raw_pre[b], "minion": raw_pre[b + 1], "demon": raw_pre[b + 2]}
-			post_profiles[i] = {"good": raw_post[b], "minion": raw_post[b + 1], "demon": raw_post[b + 2]}
+			pre_profiles[i] = {"good": raw_pre[b], "minion": raw_pre[b + 1], "demon": mix_demon(raw_pre[b + 2], raw_pre[b + 1], day_share)}
+			post_profiles[i] = {"good": raw_post[b], "minion": raw_post[b + 1], "demon": mix_demon(raw_post[b + 2], raw_post[b + 1], day_share)}
 		var pre_scenes: Array = _build_scene_tables_cs(view, ids, env, pre_cards, p_pre)
 		var post_scenes: Array = _build_scene_tables_cs(view, ids, env, post_cards, p_post)
 		for exec_id in execs[day_str]:

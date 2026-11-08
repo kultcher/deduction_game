@@ -16,7 +16,7 @@ static func _walks(id: String) -> bool:
 
 ## The role someone was dealt. Only the Scion changes role (it becomes "demon").
 static func start_role(w, n) -> String:
-	if n.role == "demon" and n.id != w.first_demon_id and n.id in w.initial_minion_ids:
+	if C.is_demon(n.role) and n.id != w.first_demon_id and n.id in w.initial_minion_ids:
 		return "scion"
 	return n.role
 
@@ -58,7 +58,7 @@ static func build(g, ctx: Dictionary) -> Dictionary:
 			secret = n.secret_mod
 			secret_holders.append(n.id)
 	rec["secret"] = secret
-	rec["scion_rose"] = w.npcs.any(func(n): return start_role(w, n) == "scion" and n.role == "demon")
+	rec["scion_rose"] = w.npcs.any(func(n): return start_role(w, n) == "scion" and C.is_demon(n.role))
 	rec["secret_holders"] = secret_holders
 	var dealt: Array = town + minions
 	var walkers: int = dealt.filter(func(x): return _walks(x)).size() + 1  # the Demon walks
