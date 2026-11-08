@@ -44,33 +44,35 @@ const OVERVIEW = Rect2(0, 0, 1000, 700)
 const BESPOKE = true
 const MAP_PX = Vector2(1536, 1024)
 const MAP_TOP = 16.6          # the image spans the full 1000 wide, centred vertically in 700
+const MAP_IMAGE = "map/town_open"   # the lot-less map: lots are drawn from assets/art/terrain
 const MAP_BLOCKS = {          # each block's area on the image (for zoom, hits and highlights)
-	"market": Rect2(0, 0, 640, 430),
-	"hill": Rect2(860, 0, 676, 410),
-	"square": Rect2(870, 410, 666, 430),
-	"docks": Rect2(0, 600, 880, 424),
+	"market": Rect2(0, 20, 600, 400),
+	"hill": Rect2(880, 0, 656, 420),
+	"square": Rect2(830, 400, 706, 420),
+	"docks": Rect2(0, 640, 860, 384),
 }
-const MAP_PADS = {            # building pads: centre x, centre y, width, height
-	"smithy": [431, 121, 269, 151], "bakery": [201, 308, 258, 160],
-	"chapel": [1163, 100, 264, 137], "graveyard": [1332, 274, 295, 171],
-	"tavern": [1345, 548, 275, 161], "town_hall": [1049, 714, 231, 171], "well": [1156, 609, 120, 90],
-	"mill": [144, 777, 263, 167], "wharf": [634, 870, 266, 127],
+const MAP_PADS = {            # building lots: centre x, centre y, width, height, lot art ("" = painted on the map)
+	"smithy": [440, 165, 230, 105, "terrain/dirt_b"], "bakery": [215, 300, 250, 115, "terrain/dirt_a"],
+	"chapel": [1355, 268, 230, 125, "terrain/dirt_c"], "graveyard": [1170, 112, 270, 95, "terrain/grass_dirt"],
+	"tavern": [1345, 548, 275, 161, ""], "town_hall": [1045, 715, 231, 171, ""], "well": [1180, 625, 120, 80, ""],
+	"mill": [190, 775, 270, 130, "terrain/dirt_a"], "wharf": [615, 872, 280, 105, "terrain/dirt_b"],
 }
-const MAP_COTTAGES = {        # cottage pads per block: centre x, centre y
-	"market": [[146, 147], [244, 146], [497, 244], [393, 329]],
-	"hill": [[1065, 196], [1360, 141], [978, 224]],
-	"square": [[956, 557], [1077, 504], [1293, 744], [1406, 723]],
-	"docks": [[307, 746], [387, 784], [454, 880]],
+const MAP_COTTAGES = {        # cottage lots per block: centre x, centre y
+	"market": [[150, 140], [285, 132], [415, 300], [90, 330]],
+	"hill": [[1010, 112], [1200, 262], [1360, 95]],
+	"square": [[975, 470], [1080, 535], [1285, 745], [1385, 735]],
+	"docks": [[405, 740], [300, 845], [90, 850]],
 }
 const MAP_STREETS = {         # a stretch of path on each block, for people out and about
-	"market": Rect2(90, 205, 380, 50),
-	"hill": Rect2(900, 140, 330, 50),
-	"square": Rect2(1180, 610, 300, 60),
-	"docks": Rect2(60, 850, 380, 50),
+	"market": Rect2(80, 175, 320, 50),
+	"hill": Rect2(1180, 165, 200, 40),
+	"square": Rect2(1120, 440, 300, 50),
+	"docks": Rect2(60, 600, 300, 50),
 }
 const MAP_SIGNS = {           # where each block's name sign sits
-	"market": Vector2(105, 30), "hill": Vector2(1010, 40), "square": Vector2(1120, 400), "docks": Vector2(380, 640),
+	"market": Vector2(330, 30), "hill": Vector2(1110, 170), "square": Vector2(1260, 420), "docks": Vector2(400, 612),
 }
+const PAPER_ART = {"bakery": "buildings_paper/bakery", "smithy": "buildings_paper/smithy"}   # Michael's papercraft tests
 
 static func _px(v: Vector2) -> Vector2:
 	return Vector2(v.x * 1000.0 / MAP_PX.x, MAP_TOP + v.y * 1000.0 / MAP_PX.x)
@@ -270,9 +272,21 @@ func _draw() -> void:
 	var tint = Color(0.5, 0.55, 0.85) if night else Color.WHITE
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.07, 0.09, 0.14) if night else Color(0.12, 0.16, 0.18))
 	if BESPOKE:
-		var base_map = _art("map/town", 1.0)
+		var base_map = _art(MAP_IMAGE, 1.0)
 		if base_map != null:
 			draw_texture_rect(base_map, _r(_px_rect(Rect2(Vector2.ZERO, MAP_PX))), false, tint)
+		# Lots: dirt under the buildings and the cottages.
+		for l in MAP_PADS:
+			var pad: Array = MAP_PADS[l]
+			if pad[4] != "":
+				var lt = _art(pad[4], 0.5)
+				if lt != null:
+					draw_texture_rect(lt, _r(_px_rect(Rect2(pad[0] - pad[2] / 2.0, pad[1] - pad[3] / 2.0, pad[2], pad[3]))), false, tint)
+		var cot_lot = _art("terrain/dirt_c", 0.3)
+		for b in MAP_COTTAGES:
+			for c in MAP_COTTAGES[b]:
+				if cot_lot != null:
+					draw_texture_rect(cot_lot, _r(_px_rect(Rect2(c[0] - 48, c[1] - 26, 96, 56))), false, tint)
 	# Dressing behind everything.
 	for d in ([] if BESPOKE else DECOR):
 		var t = _art("decor/" + d[0], 0.4)
@@ -315,7 +329,7 @@ func _draw() -> void:
 		# Locations and player-only buildings (the Town Hall): building sprites with a name sign.
 		for l in _map_buildings_on(b):
 			var LR: Rect2 = _r(_loc_rect(l))
-			var art = _art("buildings/" + BUILDING_ART.get(l, "cottage_red"), 0.5)
+			var art = _art(PAPER_ART[l], 0.5) if BESPOKE and PAPER_ART.has(l) else _art("buildings/" + BUILDING_ART.get(l, "cottage_red"), 0.5)
 			var drawn = _draw_art(art, LR.grow_individual(0, LR.size.y * 0.1, 0, 0), "contain", tint) if art != null else LR
 			if art == null:
 				draw_rect(LR, Color(0.3, 0.26, 0.22) * tint)
