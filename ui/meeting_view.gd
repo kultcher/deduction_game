@@ -12,6 +12,7 @@
 extends Control
 
 signal person_clicked(id)
+signal settled        # nothing left to show: the stage is empty and no count is running
 
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
@@ -62,7 +63,7 @@ func set_game(game) -> void:
 	_deferred = {}
 	_after_count = []
 	_explaining = false
-	stage.clear()
+	stage.reset()
 	set_process(false)
 	queue_redraw()
 
@@ -85,6 +86,7 @@ func consume(events: Array) -> void:
 	# conversation view: only what's said from the meeting's opening on comes to the stage.
 	for i in range(events.size() - 1, -1, -1):
 		if events[i].get("k", "") == "header" and MEETING_HEADER in str(events[i].get("text", "")):
+			stage.push_log(events.slice(0, i))   # still logged, in order
 			events = events.slice(i)
 			break
 	var cut: int = -1
@@ -105,9 +107,17 @@ func _on_stage_finished() -> void:
 		_deferred = {}
 		_start(res)
 	queue_redraw()
+	if not animating() and not stage.busy():
+		settled.emit()
+
+## Whether anything is still being shown: a speaker, a waiting vote, or the hand going round.
+func presenting() -> bool:
+	return stage.busy() or animating() or not _after_count.is_empty()
 
 func _count_done() -> void:
 	if _after_count.is_empty():
+		if not stage.busy():
+			settled.emit()
 		return
 	var later: Array = _after_count
 	_after_count = []
@@ -193,6 +203,7 @@ func _start(res: Dictionary) -> void:
 	_res = res
 	_reset_steps()
 	if not res.has("order"):
+		_count_done()   # nothing to count: what was said after the tally comes forward now
 		return
 	_t = 0.0
 	set_process(true)

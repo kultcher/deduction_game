@@ -210,8 +210,10 @@ func _ready() -> void:
 	meeting_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	meeting_view.visible = false
 	meeting_view.person_clicked.connect(func(id): _select_person(id))
-	# Last words outlast the meeting: once the stage clears, the map comes back.
-	meeting_view.stage.finished.connect(func(): if g != null and g.state not in ["meeting", "nomination"]: _refresh_all())
+	# The log follows the stage, speaker by speaker; once nothing is left to show (last words
+	# included), the actions come back.
+	meeting_view.stage.logged.connect(_log_events)
+	meeting_view.settled.connect(func(): if g != null: _refresh_all())
 	upper.add_child(meeting_view)
 	var castbox = VBoxContainer.new()
 	castbox.custom_minimum_size = Vector2(330, 0)
@@ -454,6 +456,7 @@ func _new_case() -> void:
 	if g != null and (g.workshop_presenting or g.meeting_streaming()):
 		return
 	conversation_finished = false
+	_day_pick = ""
 	conversation_show_map = false
 	inspect_pages.clear()
 	_case_seed = int(seed_box.value)
@@ -668,7 +671,7 @@ func _open_theory() -> void:
 func _on_submit(text: String) -> void:
 	var t = text.strip_edges()
 	input.clear()
-	if t == "":
+	if t == "" or _presenting():
 		return
 	history.append(t)
 	hist_i = history.size()
@@ -679,14 +682,20 @@ func _run(cmd: String) -> void:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
-	_print(g.command(cmd))
+	if g.meeting_streaming() or g.workshop_presenting:
+		_print(g.command(cmd))   # refused; no new events
+		return
+	var out: String = g.command(cmd)
+	# What's said at the meeting reaches the log as the stage shows it (see _log_events).
+	if not _meeting_owns_log(previous_state):
+		_print(out)
 	_capture_meeting(previous_state)
 	_capture_conversation(previous_state, cmd)
 	_capture_scene_search(cmd)
 	if not conversation_finished:
 		_consume_headlines()
 		_show_notes()
-	if g.meeting_streaming() and not conversation_finished:
+	if g.meeting_streaming() and not conversation_finished and inspect_pages.is_empty():
 		_stream_meeting()
 		return
 	if g.state == "talk" and g.talk_with != null:
@@ -694,6 +703,22 @@ func _run(cmd: String) -> void:
 	_refresh_all()
 	if case_view.visible and case_view.workshop != null:
 		case_view.workshop.refresh()
+
+## A command's log goes through the stage when the meeting is (or was) on.
+func _meeting_owns_log(previous_state: String) -> bool:
+	return previous_state in ["meeting", "nomination"] or g.state in ["meeting", "nomination"]
+
+func _log_events(evs: Array) -> void:
+	var text: String = Game.render(evs)
+	if text != "":
+		_print(text)
+
+## Something is still being shown (a speaker, a vote count, a trace, the town still
+## speaking): nothing moves on until it's done (Nov 7). The action pane offers Continue.
+func _presenting() -> bool:
+	if g == null:
+		return false
+	return meeting_view.presenting() or g.meeting_streaming() or g.workshop_presenting or not inspect_pages.is_empty()
 
 ## What's said at the meeting comes forward on the courtroom stage (meeting plan M3a).
 func _capture_meeting(previous_state: String) -> void:
@@ -753,6 +778,10 @@ func _inspect_next() -> void:
 	if inspect_index >= inspect_pages.size():
 		inspect_pages.clear()
 		inspect_index = 0
+		# A search that ended the evening: the meeting waited for you to finish reading.
+		if g.meeting_streaming() and not conversation_finished:
+			_stream_meeting()
+			return
 	else:
 		_show_inspect_page()
 	_refresh_all()
@@ -770,23 +799,25 @@ func _run_seq(cmds: Array) -> void:
 	for c in cmds:
 		var before = g.state
 		_run(c)
-		if g.meeting_streaming():
+		if g.meeting_streaming() or g.state == "approach" or _presenting():
 			break
 		if g.state == "over" or (before == g.state and g.last_events.any(func(e): return e.get("k", "") == "error")):
 			break
 
-## The meeting's testimony, one speaker at a time: each speaker's lines show while the next
-## is worked out. Actions wait until the town has spoken.
+## The meeting's testimony, one speaker at a time: the next speaker is worked out while the
+## current one is on the stage, never more than one ahead, so the stage (and the log, which
+## follows it) moves at the player's pace. Actions wait until the town has spoken.
 const STREAM_GAP = 0.15   # seconds between speakers, at least (the work itself takes longer)
 
 func _stream_meeting() -> void:
 	_refresh_all()
-	while g.meeting_streaming():
+	var game = g
+	while game == g and g.meeting_streaming():
 		await get_tree().process_frame
+		if meeting_view.stage.waiting() > 0:
+			continue
 		var started: int = Time.get_ticks_msec()
-		var text: String = g.testimony_step()
-		if text != "":
-			_print(text)
+		g.testimony_step()
 		meeting_view.consume(g.last_events)
 		_consume_headlines()
 		meeting_view.refresh()
@@ -800,14 +831,13 @@ func _stream_meeting() -> void:
 ## Finish a streamed meeting at once (tests and scripted clicks that can't wait).
 func finish_streaming() -> void:
 	while g != null and g.meeting_streaming():
-		var text: String = g.testimony_step()
-		if text != "":
-			_print(text)
+		g.testimony_step()
 		meeting_view.consume(g.last_events)
 		_consume_headlines()
 	_refresh_all()
 
 var _last_phase_key = ""
+var _day_pick: String = ""   # the person you clicked this phase (the profile panel's default doesn't count)
 
 func _refresh_all() -> void:
 	if roles_pinned and roles_showing and _roles_signature != _roles_state_key():
@@ -818,6 +848,7 @@ func _refresh_all() -> void:
 		_last_phase_key = key
 		map.zoom_block = ""
 		map.selected_block = ""
+		_day_pick = ""
 	if g.state in ["day", "talk", "approach"] and g.moved:
 		map.zoom_block = g.w.loc_block(g.loc)
 	_refresh_side()
@@ -827,10 +858,11 @@ func _refresh_all() -> void:
 		meeting_show_map = false  # a vote starting (or being counted) brings the circle back
 	_last_state = g.state
 	var last_words: bool = not meeting and meeting_view.stage_busy()   # the gallows, after the meeting closes
-	map_stage.visible = conversation_finished or (not meeting and not last_words) or meeting_show_map
-	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map) or not inspect_pages.is_empty()
-	meeting_view.visible = (meeting or last_words) and not meeting_show_map and not conversation_finished
-	input.editable = not conversation_finished
+	var reading: bool = not inspect_pages.is_empty()   # traces from the evening's search come before the meeting
+	map_stage.visible = conversation_finished or reading or (not meeting and not last_words) or meeting_show_map
+	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map) or reading
+	meeting_view.visible = (meeting or last_words) and not meeting_show_map and not conversation_finished and not reading
+	input.editable = not conversation_finished and not _presenting()
 	if meeting:
 		meeting_view.refresh()
 	else:
@@ -856,6 +888,7 @@ func _select_person(id: String) -> void:
 
 func _on_town_person_clicked(id: String) -> void:
 	var selected: String = "" if cast_list.selected == id else id
+	_day_pick = id   # their profile stays up either way
 	cast_list.selected = selected
 	map.selected_npc = selected
 	if selected != "":
@@ -879,7 +912,10 @@ func _swatch(c: Color) -> ImageTexture:
 # ---------------------------------------------------------------- map clicks
 
 func _on_map_clicked(kind: String, id: String) -> void:
+	if _presenting() and kind != "npc":
+		return
 	if kind == "npc":
+		_day_pick = id
 		_select_person(id)
 		if g.state == "day": _refresh_actions()
 		if g.state == "night":
@@ -930,9 +966,16 @@ func _refresh_actions() -> void:
 	if not inspect_pages.is_empty():
 		var more: bool = inspect_index < inspect_pages.size() - 1
 		_button(conversation_view.controls, "Next trace" if more else "Done", _inspect_next)
-	if g.meeting_streaming():
-		action_title.text = "Day %d: the town meeting" % w.day
-		_hint("The town is speaking…")
+		action_title.text = "Reading the traces"
+		_hint("Finish reading before you move on.")
+		return
+	if _presenting():
+		action_title.text = ("Day %d: the town meeting" % w.day) if g.state in ["meeting", "nomination"] or g.meeting_streaming() else "The town is speaking"
+		if meeting_view.stage.busy():
+			_button(actions, "Continue", func(): meeting_view.stage.advance())
+		elif meeting_view.animating():
+			_button(actions, "Finish the count", func(): meeting_view.finish())
+		_hint("The town is speaking…" if g.meeting_streaming() or meeting_view.stage.busy() else "The hand goes round…")
 		return
 	match g.state:
 		"day":
@@ -1047,21 +1090,31 @@ func _talk_to_person(id: String) -> void:
 func _actions_day(w) -> void:
 	if not g.moved:
 		action_title.text = "Day %d, %s: where will you go?" % [w.day, C.PHASES[w.phase].to_lower()]
-		_hint("Click a block to look closer or a person to inspect their profile. Choose Talk to start a conversation.")
-		var selected = w.by_id.get(_side_person_id())
-		if selected != null and selected.alive and g.can_see_ui(selected):
-			var talk = _button(actions, "Talk to %s" % selected.name, func(): _talk_to_person(selected.id), C.npc_color(selected.id))
-			talk.disabled = selected.busy_with != ""
+		var picked = w.by_id.get(_day_pick)
+		if picked != null and picked.alive and g.can_see_ui(picked):
+			var talk = _button(actions, "Talk to %s" % picked.name, func(): _talk_to_person(picked.id), C.npc_color(picked.id))
+			talk.disabled = picked.busy_with != ""
 		if map.zoom_block != "" and C.BLOCKS.has(map.zoom_block):
-			for l in C.LOCATIONS.keys() + C.PLAYER_BUILDINGS.keys():
-				if C.loc_block(l) != map.zoom_block:
-					continue
-				var loc_id: String = l
-				_button(actions, "Go to %s" % w.loc_name(loc_id), func(): _run("go " + loc_id))
+			# Zoomed in on a block: go there (its busiest spot; the other is a free step away),
+			# to its crime scene, or back out.
+			var zb: String = map.zoom_block
+			_hint("Click a spot on the block to go straight there, or a person to inspect their profile.")
+			_button(actions, "Visit %s" % C.block_name(zb), func(): _run("go " + zb))
 			for sid in w.scenes:
-				if w.scenes[sid].get("block", "") == map.zoom_block:
+				if w.scenes[sid].get("block", "") == zb:
 					var scene_id: String = sid
 					_button(actions, "Go to %s (crime scene)" % w.scenes[scene_id]["name"], func(): _run("go " + scene_id))
+			_button(actions, "Back to town view", func():
+				map.zoom_block = ""
+				map.refresh()
+				_refresh_actions())
+		else:
+			_hint("Examine a block to look closer, or click a person to inspect their profile.")
+			for b in C.BLOCKS.keys():
+				var blk: String = b
+				_button(actions, "Examine %s" % C.block_name(blk), func():
+					map.zoom_to(blk)
+					_refresh_actions())
 		_button(actions, "Wait (let the %s pass)" % C.PHASES[w.phase].to_lower(), func(): _run("wait"))
 		return
 	action_title.text = "%s, %s" % [w.loc_name(g.loc).capitalize(), C.PHASES[w.phase].to_lower()]
@@ -1354,7 +1407,10 @@ func _gift_request_picker(anchor: Control, role: String, verb: String) -> void:
 
 ## "Ask where they were and who they saw…": a time to ask about.
 func _ask_when_picker(anchor: Control) -> void:
-	var items: Array = [["…today", "ask seen today", null], ["…last night", "ask night", null]]
+	# Not this phase: you can see who's around for yourself.
+	var items: Array = [["…last night", "ask night", null]]
+	if g.w.phase > 0:
+		items.push_front(["…earlier today", "ask seen today", null])
 	if g.w.day > 1:
 		for ph in [2, 1, 0]:
 			items.append(["…yesterday %s" % C.PHASES[ph].to_lower(), "ask seen yesterday " + C.PHASES[ph].to_lower(), null])

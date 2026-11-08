@@ -88,6 +88,9 @@ static func _approach_command(g, verb: String, rest: String) -> void:
 			g.w.player_loc = g.loc
 			g.talk_with = n
 			Mind.Dialogue.begin_conversation(n.dialogue_memory)
+			# They came to tell you their gift: open with you for this conversation.
+			if g.approach["agenda"] in ["news", "frame", "divulge"]:
+				n.dialogue_memory["conversation"]["opened_up"] = true
 			g.questions_left = 3
 			g.talk_approached = true
 			g.free_repeats = 0
@@ -108,11 +111,8 @@ static func _approach_command(g, verb: String, rest: String) -> void:
 			g._narr("You excuse yourself. %s shrugs and goes about their day." % n.name)
 			g._prompt("Where will you spend the %s? ('go <place | block | person>')" % g.w.phase_name().to_lower())
 		_:
-			# Any other action means declining; carry on with it.
-			g.state = "day"
-			g.w.dlog.add("approach_declined", "player", n.id, {"implicit": true})
-			g._narr("You wave %s off for now." % n.name)
-			g._day_command(verb, rest)
+			# An approach waits for an answer (Nov 7): nothing else, a wait included, moves on.
+			g._err("%s is waiting for an answer: 'accept' to hear them out, or 'decline'." % n.name)
 
 
 ## "Watch over me tonight, and I'll tell you": free to answer, nothing else follows.
@@ -129,10 +129,7 @@ static func _protect_approach_answer(g, n, verb: String, rest: String) -> void:
 			g._line(Mind.say_voiced(n, "request_declined", "I see. I'll manage."))
 			g._prompt("Where will you spend the %s? ('go <place | block | person>')" % g.w.phase_name().to_lower())
 		_:
-			g.state = "day"
-			g.w.dlog.add("protection_declined", "player", n.id, {"implicit": true})
-			g._narr("You leave %s's request unanswered." % n.name)
-			g._day_command(verb, rest)
+			g._err("%s is waiting for an answer: 'yes' to promise it, or 'no'." % n.name)
 
 
 ## Yes to a request for protection: the usual promise, then either they tell you now (a
@@ -318,6 +315,13 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 					var frame: String = " ".join(PackedStringArray(words))
 					if frame == "today" or frame == "":
 						frame = ""
+						# "Today" means earlier today: you can see who's around this phase yourself
+						# (Nov 7). First thing in the morning, that's yesterday.
+						if g.w.phase == 0:
+							if g.w.day <= 1:
+								g._err("The day's only just begun; ask about last night instead.")
+								return
+							frame = "yesterday"
 					var ok_frames = ["", "morning", "afternoon", "evening", "yesterday", "yesterday morning", "yesterday afternoon", "yesterday evening"]
 					if frame == "last night" or frame == "night":
 						r = Mind.answer_night(g.w, n)
@@ -329,6 +333,9 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 						return
 					elif frame in ["morning", "afternoon", "evening"] and ["morning", "afternoon", "evening"].find(frame) > g.w.phase:
 						g._err("It isn't the %s yet." % frame)
+						return
+					elif frame in ["morning", "afternoon", "evening"] and ["morning", "afternoon", "evening"].find(frame) == g.w.phase:
+						g._err("You can see who's around this %s for yourself; ask about earlier." % frame)
 						return
 					else:
 						r = Mind.answer_today(g.w, n, frame, g.loc, g.seen_pairs())
